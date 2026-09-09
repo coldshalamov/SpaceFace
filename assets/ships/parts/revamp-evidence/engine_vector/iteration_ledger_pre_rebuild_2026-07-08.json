@@ -1,0 +1,184 @@
+{
+  "part_id": "engine_vector",
+  "story": "Fighter vectoring drive \u2014 Fringe red heat on nozzle bell and fan collar. Compact hard-surface thruster: intake cowl, compression body, gimbal yoke, nozzle bell, connected RCS pods (no floaters). Readable at chase scale on starter.",
+  "campaign": "full_rebuild_2026-07-09",
+  "prior_note": "2026-07-08 20 iters left primitive cube; ledger archived by rebuild",
+  "iterations": [
+    {
+      "iter": 1,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "need_connected_thruster_body",
+        "need_nozzle_bell_silhouette",
+        "need_gimbal_read",
+        "need_rcs_not_floating",
+        "need_fringe_red_heat",
+        "need_meso_panel_rings",
+        "need_hook_drive_socket",
+        "need_fullview_ritual_fill"
+      ],
+      "techniques": [
+        "connected_thruster_macro",
+        "nozzle_bell_silhouette",
+        "gimbal_ring_yoke",
+        "rcs_pods_on_stubs",
+        "fringe_heat_band"
+      ],
+      "deficiencies_addressed_next": [
+        "connected_thruster_macro",
+        "nozzle_bell_silhouette",
+        "gimbal_ring_yoke",
+        "rcs_pods_on_stubs",
+        "fringe_heat_band"
+      ],
+      "shots": [
+        "2026-07-09_engine_vector_rebuild_iter1_clay_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter1_clay_front.png",
+        "2026-07-09_engine_vector_rebuild_iter1_clay_side.png",
+        "2026-07-09_engine_vector_rebuild_iter1_lit_34_full.png",
+        "2026-07-09_engine_vector_rebuild_iter1_lit_close_detail.png",
+        "2026-07-09_engine_vector_rebuild_iter1_lit_nozzle.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 3.9,
+        "bevel_language": 4.0,
+        "material_zones": 3.8,
+        "wear_story": 3.5,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.1,
+        "contract_readiness": 4.0,
+        "weighted": 4.19,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.2506,
+          "centroid": [
+            0.447,
+            0.454
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.444,
+          "fill_ratio": 0.367,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.6825,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2069,
+          "centroid": [
+            0.445,
+            0.428
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.163,
+          "fill_ratio": 0.42,
+          "edge_complexity": 0.017,
+          "bbox_area_ratio": 0.493,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2888,
+          "centroid": [
+            0.514,
+            0.488
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.862,
+          "fill_ratio": 0.377,
+          "edge_complexity": 0.023,
+          "bbox_area_ratio": 0.7667,
+          "bg_sample": [
+            195,
+            197,
+            204
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.2396,
+          "centroid": [
+            0.437,
+            0.451
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.314,
+          "bbox_aspect": 1.445,
+          "fill_ratio": 0.351,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.6832,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_lit_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3687,
+          "centroid": [
+            0.568,
+            0.6
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.901,
+          "bbox_aspect": 1.589,
+          "fill_ratio": 0.413,
+          "edge_complexity": 0.008,
+          "bbox_area_ratio": 0.8938,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_lit_close_detail.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.3687,
+          "centroid": [
+            0.568,
+            0.6
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.901,
+          "bbox_aspect": 1.589,
+          "fill_ratio": 0.413,
+          "edge_complexity": 0.008,
+          "bbox_area_ratio": 0.8938,
+          "bg_sample": [
+            37,
+            41,
+            48
+          ],
+          "shot_id": "lit_nozzle",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\engine_vector\\renders\\2026-07-09_engine_vector_rebuild_iter1_lit_nozzle.png"
+        }
+      ]
+    }
+  ]
+}

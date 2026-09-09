@@ -1,0 +1,167 @@
+{
+  "produced": "2026-07-11T03:37:05.544Z",
+  "pass": "material_provenance_repair_v2",
+  "gates": {
+    "parts_manifest": "PASS 2725 ok 0 fail",
+    "sg04": "PASS",
+    "assets_live": "PASS",
+    "visual_stability": "PASS"
+  },
+  "assets": [
+    {
+      "id": "place_station_billboard",
+      "generator": "SpaceFace tools/art/blender/author_place_archetype.py - Blender-authored place archetype",
+      "authoringMethod": "blender_mcp",
+      "materials": [
+        {
+          "name": "Material_Hull",
+          "base": 2,
+          "normal": 0,
+          "orm": 1
+        },
+        {
+          "name": "Material_Accent",
+          "base": 2,
+          "normal": 0,
+          "orm": 1
+        },
+        {
+          "name": "Material_Mechanical",
+          "base": 2,
+          "normal": 0,
+          "orm": 1
+        }
+      ],
+      "hooks": [
+        {
+          "name": "HOOK_Emissive",
+          "extras": {
+            "spacefaceHook": true,
+            "damageRole": "navLight",
+            "role": "emissive",
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "spaceface_hook": "HOOK_Emissive"
+          }
+        }
+      ],
+      "sockets": [
+        "SOCKET_Camera_Focus"
+      ],
+      "sourceBytes": 181128,
+      "sourceSha256": "6d486366af29201810d808b3f0907d36004fc10e1d2e74c5615a093bc8e43140",
+      "releaseBytes": 211796,
+      "releaseSha256": "194b064505adf5faf14ed55b9b488f9f9e53a34a5f84152934260e9127f16401",
+      "tris": 948
+    },
+    {
+      "id": "place_dead_hulk",
+      "generator": "SpaceFace tools/art/blender/author_place_archetype.py - Blender-authored place archetype",
+      "authoringMethod": "blender_mcp",
+      "materials": [
+        {
+          "name": "Material_Accent",
+          "base": 2,
+          "normal": 0,
+          "orm": 1
+        },
+        {
+          "name": "Material_Hull",
+          "base": 2,
+          "normal": 0,
+          "orm": 1
+        },
+        {
+          "name": "Material_Mechanical",
+          "base": 2,
+          "normal": 0,
+          "orm": 1
+        }
+      ],
+      "hooks": [
+        {
+          "name": "HOOK_Emissive",
+          "extras": {
+            "spacefaceHook": true,
+            "damageRole": "navLight",
+            "role": "emissive",
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "spaceface_hook": "HOOK_Emissive"
+          }
+        }
+      ],
+      "sockets": [
+        "SOCKET_Hazard_Core",
+        "SOCKET_Salvage_Core"
+      ],
+      "sourceBytes": 210676,
+      "sourceSha256": "1d031e0d612ed4ce519334a6bdc006c520d77b751be9632b535ecaff3741c063",
+      "releaseBytes": 220048,
+      "releaseSha256": "588809cb1c96ddffe9ff634a4d97dface958111d8973b5a2e2c0447e09bcaf32",
+      "tris": 1740
+    },
+    {
+      "id": "place_conveyor_barge",
+      "generator": "SpaceFace tools/art/blender/author_place_archetype.py - Blender-authored place archetype",
+      "authoringMethod": "blender_mcp",
+      "materials": [
+        {
+          "name": "Material_Hull",
+          "base": 2,
+          "normal": 0,
+          "orm": 1
+        },
+        {
+          "name": "Material_Accent",
+          "base": 2,
+          "normal": 0,
+          "orm": 1
+        },
+        {
+          "name": "Material_Mechanical",
+          "base": 2,
+          "normal": 0,
+          "orm": 1
+        }
+      ],
+      "hooks": [
+        {
+          "name": "HOOK_DRIVE_PLUME",
+          "extras": {
+            "spacefaceHook": true,
+            "spaceface_hook": "HOOK_DRIVE_PLUME"
+          }
+        },
+        {
+          "name": "HOOK_Emissive",
+          "extras": {
+            "spacefaceHook": true,
+            "damageRole": "navLight",
+            "role": "emissive",
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "spaceface_hook": "HOOK_Emissive"
+          }
+        }
+      ],
+      "sockets": [
+        "SOCKET_Trail_Main"
+      ],
+      "sourceBytes": 191884,
+      "sourceSha256": "caf4efcb88589583563bdac54229c0531267e4a52361558e722485185a95236f",
+      "releaseBytes": 218704,
+      "releaseSha256": "f304e55850309a53bd490525c53469337ea80ae87b0bf688e88b2455aab2d47e",
+      "tris": 1144
+    }
+  ]
+}

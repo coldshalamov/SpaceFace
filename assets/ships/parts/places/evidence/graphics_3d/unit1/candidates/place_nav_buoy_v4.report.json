@@ -1,0 +1,48 @@
+{
+  "ok": true,
+  "asset": "place_nav_buoy",
+  "revision": "chase_surgical_v3",
+  "source": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\place_nav_buoy.glb",
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit1\\candidates\\place_nav_buoy_v4.glb",
+  "surgery": {
+    "deletedCaps": {
+      "LOD0_Buoy_Pressure_Shell": 18,
+      "LOD1_Buoy_Pressure_Shell": 14,
+      "LOD2_Buoy_Pressure_Shell": 10
+    },
+    "boolean": []
+  },
+  "lod": {
+    "lod0": {
+      "triangles": 1734,
+      "objects": [
+        "LOD0_Buoy_Nav_Optic",
+        "LOD0_Buoy_Pressure_Shell",
+        "LOD0_Buoy_Service_Marking",
+        "LOD0_Buoy_Solar_Cell",
+        "LOD0_Buoy_Stabilizer_Frame"
+      ]
+    },
+    "lod1": {
+      "triangles": 1030,
+      "objects": [
+        "LOD1_Buoy_Nav_Optic",
+        "LOD1_Buoy_Pressure_Shell",
+        "LOD1_Buoy_Service_Marking",
+        "LOD1_Buoy_Solar_Cell",
+        "LOD1_Buoy_Stabilizer_Frame"
+      ]
+    },
+    "lod2": {
+      "triangles": 354,
+      "objects": [
+        "LOD2_Buoy_Nav_Optic",
+        "LOD2_Buoy_Pressure_Shell",
+        "LOD2_Buoy_Service_Marking",
+        "LOD2_Buoy_Solar_Cell",
+        "LOD2_Buoy_Stabilizer_Frame"
+      ]
+    }
+  },
+  "bytes": 428580
+}

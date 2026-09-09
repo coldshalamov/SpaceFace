@@ -1,0 +1,33 @@
+{
+  "center": [
+    0.05,
+    -0.0574,
+    5.5159
+  ],
+  "extents": [
+    0.96,
+    0.9852,
+    11.0318
+  ],
+  "fov_deg": 50.0,
+  "glb": "scenery_lane_beacon_v03.glb",
+  "mesh_count": 5,
+  "resolution": 384,
+  "samples": 24,
+  "study_az_deg": 128.0,
+  "study_el_deg": 46.0,
+  "tilt_deg": 60.0,
+  "view_transform": "Filmic",
+  "views": [
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\qa\\scenery\\scenery_lane_beacon_v03\\neutral_close.png",
+      "view": "neutral_close"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\qa\\scenery\\scenery_lane_beacon_v03\\zoom_out.png",
+      "view": "zoom_out"
+    }
+  ]
+}

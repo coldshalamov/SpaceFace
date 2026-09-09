@@ -1,0 +1,126 @@
+{
+  "bbox": {
+    "dims": [
+      170.8,
+      44.9463,
+      130.8
+    ],
+    "max": [
+      76.3995,
+      56.177,
+      65.398
+    ],
+    "min": [
+      -94.4005,
+      11.2307,
+      -65.402
+    ]
+  },
+  "drawGroups": {
+    "meshes": [
+      {
+        "name": "VAR_SCN_bastion_nn",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_bastion_np",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_bastion_pn",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_bastion_pp",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_boom_gate",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_boom_n",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_boom_p",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_cladding_band",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_SCN_mast00",
+        "primitives": 2
+      },
+      {
+        "name": "VAR_SCN_mast01",
+        "primitives": 2
+      },
+      {
+        "name": "VAR_SCN_mast02",
+        "primitives": 2
+      },
+      {
+        "name": "VAR_SCN_mast10",
+        "primitives": 2
+      },
+      {
+        "name": "VAR_SCN_mast11",
+        "primitives": 2
+      },
+      {
+        "name": "VAR_SCN_mast12",
+        "primitives": 2
+      }
+    ],
+    "primitiveCount": 20
+  },
+  "extensionsUsed": [],
+  "file": "var_station_trade_hub_scn_overlay_v01.glb",
+  "geometry": {
+    "primitives": 20,
+    "tangentPrimitives": 0,
+    "tangentsPresent": false,
+    "uvSets": []
+  },
+  "materials": {
+    "count": 3,
+    "usage": {
+      "KitMat_Emissive": 6,
+      "KitMat_Paint": 5,
+      "KitMat_Steel": 9
+    }
+  },
+  "nodeNames": [
+    "VAR_SCN_bastion_nn",
+    "VAR_SCN_bastion_np",
+    "VAR_SCN_bastion_pn",
+    "VAR_SCN_bastion_pp",
+    "VAR_SCN_boom_gate",
+    "VAR_SCN_boom_n",
+    "VAR_SCN_boom_p",
+    "VAR_SCN_cladding_band",
+    "VAR_SCN_mast00",
+    "VAR_SCN_mast01",
+    "VAR_SCN_mast02",
+    "VAR_SCN_mast10",
+    "VAR_SCN_mast11",
+    "VAR_SCN_mast12"
+  ],
+  "textures": [],
+  "transforms": {
+    "nodeCount": 14,
+    "nonAppliedCount": 0,
+    "nonAppliedNodes": []
+  },
+  "tris": 2756,
+  "verdict": {
+    "budget": 12000,
+    "class": "variant",
+    "failures": [],
+    "pass": true,
+    "warnings": []
+  }
+}

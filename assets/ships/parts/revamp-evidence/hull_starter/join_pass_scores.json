@@ -1,0 +1,34 @@
+{
+  "silhouette": 5.0,
+  "macro_meso_micro": 4.5,
+  "bevel_language": 4.5,
+  "material_zones": 4.5,
+  "wear_story": 4.4,
+  "scale_truth": 5.0,
+  "lighting_readability": 4.6,
+  "contract_readiness": 4.5,
+  "weighted": 4.645,
+  "export_bar_ok": true,
+  "shots": [
+    "2026-07-09_hull_starter_iter22_clay_34_full.png",
+    "2026-07-09_hull_starter_iter22_clay_front.png",
+    "2026-07-09_hull_starter_iter22_clay_side.png",
+    "2026-07-09_hull_starter_iter22_lit_34_full.png",
+    "2026-07-09_hull_starter_iter22_lit_close_detail.png"
+  ],
+  "analyses_ok": [
+    true,
+    true,
+    true,
+    true,
+    false
+  ],
+  "pass": "join_DET_into_hull_body",
+  "techniques": [
+    "object_join_DET_to_LOD0",
+    "ProBevel_angle",
+    "delete_far_floaters",
+    "unified_hull_mesh"
+  ],
+  "mesh_count": 1
+}

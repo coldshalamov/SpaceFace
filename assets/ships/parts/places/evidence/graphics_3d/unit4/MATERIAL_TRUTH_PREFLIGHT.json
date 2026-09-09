@@ -1,0 +1,44 @@
+{
+  "schema": "spaceface.graphics3d.unit4.materialTruthPreflight.v1",
+  "campaign": "GRAPHICS_3D unit 4 — mining drone + conveyor barge live places",
+  "supportedViews": ["play_chase", "play_chase_abeam", "play_chase_close"],
+  "camera": "tools/blender/spaceface_chase_camera.py 60deg/FOV50 D=144 and D=58",
+  "liveChaseFinding": {
+    "place_mining_drone": "5 m industrial cutter with hazard plate, hull, and tool; speck at D=144, readable at D=58. Already a manufactured place file, not a diamond.",
+    "place_conveyor_barge": "73 m deck with forked boom, three seated containers, hazard rails, drive block. Reads as a hauler at D=144.",
+    "drone_entity": "Flying mining drones are still a code-built diamond + stick arms + glow. Separate cousin. Do not hook visualFactory while hitch owns the render thread."
+  },
+  "componentReferenceDecision": "not_needed",
+  "referenceReason": "Live Helios opening-route V3 places are the objects. Chase review is whether they already meet the bar, not a primitive rebuild.",
+  "frozenIdentity": {
+    "place_mining_drone": {
+      "root": "place_mining_drone",
+      "sockets": ["SOCKET_Mining_Front"],
+      "hooks": ["HOOK_Emissive", "HOOK_Spin"]
+    },
+    "place_conveyor_barge": {
+      "root": "place_conveyor_barge",
+      "sockets": ["SOCKET_Trail_Main"],
+      "hooks": ["HOOK_DRIVE_PLUME", "HOOK_Emissive"]
+    }
+  },
+  "billedZones": [
+    {
+      "id": "drone_cutter_body",
+      "asset": "place_mining_drone",
+      "fiction": "Parked service drone: hull, cutter, hazard plate.",
+      "material": "mapped hull / tool / safety",
+      "chaseMustShow": "a small machine, not a diamond with sticks"
+    },
+    {
+      "id": "barge_deck_and_boom",
+      "asset": "place_conveyor_barge",
+      "fiction": "Ore transfer barge: keel, deck cradles, boom, drive.",
+      "material": "mapped hull / container / safety / drive",
+      "chaseMustShow": "a long industrial hauler with cargo on deck"
+    }
+  ],
+  "allSupportedViewZonesClassified": true,
+  "workingScene": "live assets/ships/parts/places/place_mining_drone.glb and place_conveyor_barge.glb",
+  "gateScope": "chase review of live places; do not run remaster_opening_*; do not hook flying drone entities in visualFactory.js"
+}

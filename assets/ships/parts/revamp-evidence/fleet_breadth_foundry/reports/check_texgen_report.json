@@ -1,0 +1,67 @@
+{
+  "decal_count": 66,
+  "determinism_check": "identical",
+  "mask_metrics": {
+    "mask_carbon.png": {
+      "max": 181,
+      "min": 4,
+      "pct_pure_black": 0.0,
+      "pct_pure_white": 0.0,
+      "range": 177
+    },
+    "mask_chips.png": {
+      "max": 251,
+      "min": 4,
+      "pct_pure_black": 0.0,
+      "pct_pure_white": 0.0,
+      "range": 247
+    },
+    "mask_corrosion.png": {
+      "max": 250,
+      "min": 4,
+      "pct_pure_black": 0.0,
+      "pct_pure_white": 0.0,
+      "range": 246
+    },
+    "mask_edgewear.png": {
+      "max": 251,
+      "min": 4,
+      "pct_pure_black": 0.0,
+      "pct_pure_white": 0.0,
+      "range": 247
+    },
+    "mask_heatradial.png": {
+      "max": 239,
+      "min": 4,
+      "pct_pure_black": 0.0,
+      "pct_pure_white": 0.0,
+      "range": 235
+    },
+    "mask_panelfade.png": {
+      "max": 213,
+      "min": 34,
+      "pct_pure_black": 0.0,
+      "pct_pure_white": 0.0,
+      "range": 179
+    },
+    "mask_recessdust.png": {
+      "max": 249,
+      "min": 4,
+      "pct_pure_black": 0.0,
+      "pct_pure_white": 0.0,
+      "range": 245
+    },
+    "mask_streaking.png": {
+      "max": 206,
+      "min": 4,
+      "pct_pure_black": 0.0,
+      "pct_pure_white": 0.0,
+      "range": 202
+    }
+  },
+  "normal_map_metrics": {
+    "mean_green_up_slope": 0.9527776709371061,
+    "mean_length_error": 0.0009992026901541988
+  },
+  "validation_status": "PASSED"
+}

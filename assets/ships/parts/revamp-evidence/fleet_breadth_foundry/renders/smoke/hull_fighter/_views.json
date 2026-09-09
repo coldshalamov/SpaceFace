@@ -1,0 +1,123 @@
+{
+  "center": [
+    0.0745,
+    0.0,
+    0.1734
+  ],
+  "extents": [
+    10.449,
+    5.8845,
+    1.3969
+  ],
+  "fov_deg": 50.0,
+  "glb": "hull_fighter.glb",
+  "mesh_count": 9,
+  "resolution": 512,
+  "samples": 64,
+  "study_az_deg": 128.0,
+  "study_el_deg": 46.0,
+  "tilt_deg": 60.0,
+  "view_transform": "Filmic",
+  "views": [
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\neutral_close.png",
+      "view": "neutral_close"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\game_cam.png",
+      "view": "game_cam"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\zoom_out.png",
+      "view": "zoom_out"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\silhouette.png",
+      "view": "silhouette"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\clay.png",
+      "view": "clay"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\basecolor.png",
+      "view": "basecolor"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\roughness.png",
+      "view": "roughness"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\metallic.png",
+      "view": "metallic"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\normal.png",
+      "view": "normal"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\ao.png",
+      "view": "ao"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\emissive_only.png",
+      "view": "emissive_only"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\wireframe.png",
+      "view": "wireframe"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\turntable_00.png",
+      "view": "turntable_00"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\turntable_01.png",
+      "view": "turntable_01"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\turntable_02.png",
+      "view": "turntable_02"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\turntable_03.png",
+      "view": "turntable_03"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\turntable_04.png",
+      "view": "turntable_04"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\turntable_05.png",
+      "view": "turntable_05"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\turntable_06.png",
+      "view": "turntable_06"
+    },
+    {
+      "ok": true,
+      "path": "C:\\Users\\93rob\\sf-fleet-breadth\\assets\\ships\\parts\\revamp-evidence\\fleet_breadth_foundry\\renders\\smoke\\hull_fighter\\turntable_07.png",
+      "view": "turntable_07"
+    }
+  ]
+}

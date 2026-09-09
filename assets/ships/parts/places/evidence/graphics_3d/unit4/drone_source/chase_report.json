@@ -1,0 +1,88 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\place_mining_drone.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit4\\drone_source",
+  "focus": [
+    2.1,
+    -0.0,
+    0.5905
+  ],
+  "boundsMin": [
+    -0.4,
+    -1.195,
+    -0.1215
+  ],
+  "boundsMax": [
+    4.6,
+    1.195,
+    1.3025
+  ],
+  "size": [
+    5.0,
+    2.39,
+    1.424
+  ],
+  "lightScale": 0.463,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_Drone_Material_Accent",
+      "triangles": 108,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Drone_Material_Tool",
+      "triangles": 1596,
+      "materials": [
+        "Material_Tool"
+      ]
+    },
+    {
+      "name": "LOD0_Drone_Material_Cable",
+      "triangles": 1296,
+      "materials": [
+        "Material_Cable"
+      ]
+    },
+    {
+      "name": "LOD0_Drone_Material_Hull",
+      "triangles": 324,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Drone_Material_Mechanical",
+      "triangles": 2812,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Drone_Material_Radiator",
+      "triangles": 540,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_Drone_Material_Safety",
+      "triangles": 2040,
+      "materials": [
+        "Material_Safety"
+      ]
+    }
+  ],
+  "triangles": 8716,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit4\\drone_source\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit4\\drone_source\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit4\\drone_source\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\unit4\\drone_source\\clay_play_chase.png"
+}

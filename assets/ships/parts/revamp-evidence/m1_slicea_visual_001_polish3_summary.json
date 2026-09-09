@@ -1,0 +1,44 @@
+{
+  "packet": "M1-SLICEA-VISUAL-001",
+  "cycle": "polish3",
+  "date": "2026-07-11",
+  "status": "needs_continuation",
+  "selfAccept": false,
+  "gates": {
+    "check:asset-status": "PASS",
+    "check:asset-reachability": "PASS",
+    "check:station-archetype-glb-load": "PASS",
+    "check-place-concept-resemblance": "PASS",
+    "check:assets:live": "PASS",
+    "check:visual-stability": "PASS"
+  },
+  "formChanges": {
+    "hub": "Replaced cylindrical limbs with rectangular/hexagonal dock arms, hangar mouths, gussets, cargo gantry, customs module, layered decks, truss ring; merged by material role; UV PBR atlases (basecolor/normal/ORM)",
+    "gate": "Faceted 16-segment continuous armor torus + outer/spine/emitter bands; solid A-frame supports; floating free-segment approach abandoned after transform bugs; UV PBR atlases",
+    "rocks": "Displaced geology + fracture/strata slabs + continuous ore veins (texture + geo ribbons); per-asset UV PBR atlases with mineral colors"
+  },
+  "textures": [
+    "assets/ships/parts/textures/place_station_trade_hub/{basecolor,normal,orm}.png",
+    "assets/ships/parts/textures/place_gate_jump_ring/{basecolor,normal,orm}.png",
+    "assets/ships/parts/textures/place_asteroid_rock_{a,b,c}/{basecolor,normal,orm}.png"
+  ],
+  "evidence": {
+    "hub_full": "assets/ships/parts/revamp-evidence/place_station_trade_hub/renders/2026-07-10_place_station_trade_hub_polish3_lit_34_full.png",
+    "hub_close": "assets/ships/parts/revamp-evidence/place_station_trade_hub/renders/2026-07-10_place_station_trade_hub_polish3_lit_close_detail.png",
+    "hub_clay": "assets/ships/parts/revamp-evidence/place_station_trade_hub/renders/2026-07-10_place_station_trade_hub_polish3_clay_34_full.png",
+    "gate_full": "assets/ships/parts/revamp-evidence/place_gate_jump_ring/renders/2026-07-10_place_gate_jump_ring_polish3_lit_34_full.png",
+    "rocks": "assets/ships/parts/revamp-evidence/place_asteroid_rock_{a,b,c}/renders/2026-07-10_*_polish3_lit_34_full.png",
+    "sliceA": ".devshots/slice-A/{station-approach,gate-approach,asteroid-rock-a,b,c}.png",
+    "liveProbe": ".devshots/authored-assets-live.jpg",
+    "perf": ".devshots/perf/performance-profile.{json,md}"
+  },
+  "remainingDefects": [
+    "Gate supports still block-tower language; lattice not true triangular beam network at K0 density",
+    "Gate faceted torus reads segmented but not discrete armor modules with walkways/emitter housings",
+    "Rock ore veins partly texture-driven; still need deeper cavities/overhangs and more continuous surface-following geo seams",
+    "Hub still modular-primitive vs Helios concept plate density",
+    "No dedicated player-route station/gate/rock world screenshots beyond authored-assets-live probe",
+    "Perf probe may still report default renderScale 0.85 if CLI flag ignored"
+  ],
+  "k0": "read-only floor only; not wired"
+}

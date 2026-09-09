@@ -1,0 +1,4615 @@
+{
+  "part_id": "hull_starter",
+  "story": "Wren's repossessed Pit tug \u2014 rugged industrial starter wedge. Connected hard-surface only: dorsal spine, port weld bulge, aft reactor collar, dorsal hatch \u2014 no floating DET islands. Game-chase readable silhouette.",
+  "campaign": "top50_rank1_hull_starter",
+  "iterations": [
+    {
+      "iter": 1,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_0pct",
+        "clay_front_coverage_too_low_0pct",
+        "clay_side_coverage_too_low_1pct",
+        "lit_34_full_coverage_too_low_0pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "bevel_hero_edges"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "ProBevel_segments3",
+        "asymmetric_port_armor_row",
+        "meso_panel_insets",
+        "consistent_bevel_radius_language"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter1_clay_34_full.png",
+        "2026-07-09_hull_starter_iter1_clay_front.png",
+        "2026-07-09_hull_starter_iter1_clay_side.png",
+        "2026-07-09_hull_starter_iter1_lit_34_full.png",
+        "2026-07-09_hull_starter_iter1_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0069,
+          "centroid": [
+            0.658,
+            0.509
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.723,
+          "fill_ratio": 0.058,
+          "edge_complexity": 0.273,
+          "bbox_area_ratio": 0.1197,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter1_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0069,
+          "centroid": [
+            0.346,
+            0.418
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.11,
+          "fill_ratio": 0.064,
+          "edge_complexity": 0.214,
+          "bbox_area_ratio": 0.1088,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter1_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0109,
+          "centroid": [
+            0.636,
+            0.398
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.573,
+          "fill_ratio": 0.064,
+          "edge_complexity": 0.224,
+          "bbox_area_ratio": 0.1717,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter1_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0098,
+          "centroid": [
+            0.658,
+            0.493
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.072,
+          "bbox_aspect": 1.648,
+          "fill_ratio": 0.079,
+          "edge_complexity": 0.21,
+          "bbox_area_ratio": 0.1246,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter1_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter1_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 3.2,
+        "bevel_language": 3.5,
+        "material_zones": 3.0,
+        "wear_story": 2.8,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.0,
+        "contract_readiness": 3.5,
+        "weighted": 3.325,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.294
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.034
+        ],
+        "mesh_count": 18
+      }
+    },
+    {
+      "iter": 2,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_0pct",
+        "clay_front_coverage_too_low_0pct",
+        "clay_side_coverage_too_low_1pct",
+        "lit_34_full_coverage_too_low_1pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "bevel_hero_edges"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "stbd_lighter_armor",
+        "asymmetry_purposeful",
+        "consistent_bevel_radius_language"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter2_clay_34_full.png",
+        "2026-07-09_hull_starter_iter2_clay_front.png",
+        "2026-07-09_hull_starter_iter2_clay_side.png",
+        "2026-07-09_hull_starter_iter2_lit_34_full.png",
+        "2026-07-09_hull_starter_iter2_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0083,
+          "centroid": [
+            0.631,
+            0.533
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.633,
+          "fill_ratio": 0.065,
+          "edge_complexity": 0.259,
+          "bbox_area_ratio": 0.1263,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter2_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0083,
+          "centroid": [
+            0.385,
+            0.403
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.326,
+          "fill_ratio": 0.069,
+          "edge_complexity": 0.205,
+          "bbox_area_ratio": 0.1199,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter2_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0128,
+          "centroid": [
+            0.638,
+            0.426
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.312,
+          "fill_ratio": 0.067,
+          "edge_complexity": 0.214,
+          "bbox_area_ratio": 0.1911,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter2_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0111,
+          "centroid": [
+            0.639,
+            0.512
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.063,
+          "bbox_aspect": 1.629,
+          "fill_ratio": 0.088,
+          "edge_complexity": 0.212,
+          "bbox_area_ratio": 0.126,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter2_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter2_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 3.27,
+        "bevel_language": 3.57,
+        "material_zones": 3.07,
+        "wear_story": 2.87,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.07,
+        "contract_readiness": 3.57,
+        "weighted": 3.374,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.294
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.034
+        ],
+        "mesh_count": 21
+      }
+    },
+    {
+      "iter": 3,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_0pct",
+        "clay_front_coverage_too_low_1pct",
+        "clay_side_coverage_too_low_1pct",
+        "lit_34_full_coverage_too_low_1pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "bevel_hero_edges"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "dorsal_spine_ribs",
+        "macro_secondary_masses",
+        "consistent_bevel_radius_language"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter3_clay_34_full.png",
+        "2026-07-09_hull_starter_iter3_clay_front.png",
+        "2026-07-09_hull_starter_iter3_clay_side.png",
+        "2026-07-09_hull_starter_iter3_lit_34_full.png",
+        "2026-07-09_hull_starter_iter3_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0095,
+          "centroid": [
+            0.612,
+            0.532
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.161,
+          "fill_ratio": 0.057,
+          "edge_complexity": 0.267,
+          "bbox_area_ratio": 0.1672,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter3_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0101,
+          "centroid": [
+            0.409,
+            0.398
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.322,
+          "fill_ratio": 0.072,
+          "edge_complexity": 0.214,
+          "bbox_area_ratio": 0.1403,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter3_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0137,
+          "centroid": [
+            0.633,
+            0.431
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.312,
+          "fill_ratio": 0.072,
+          "edge_complexity": 0.219,
+          "bbox_area_ratio": 0.1911,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter3_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0124,
+          "centroid": [
+            0.62,
+            0.511
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.057,
+          "bbox_aspect": 2.154,
+          "fill_ratio": 0.074,
+          "edge_complexity": 0.23,
+          "bbox_area_ratio": 0.1666,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter3_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter3_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 3.33,
+        "bevel_language": 3.63,
+        "material_zones": 3.13,
+        "wear_story": 2.93,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.13,
+        "contract_readiness": 3.63,
+        "weighted": 3.416,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.294
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.034
+        ],
+        "mesh_count": 26
+      }
+    },
+    {
+      "iter": 4,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_1pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_1pct",
+        "lit_34_full_coverage_too_low_1pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "bevel_hero_edges"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "aft_engine_collar",
+        "reactor_housing_blockout",
+        "consistent_bevel_radius_language"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter4_clay_34_full.png",
+        "2026-07-09_hull_starter_iter4_clay_front.png",
+        "2026-07-09_hull_starter_iter4_clay_side.png",
+        "2026-07-09_hull_starter_iter4_lit_34_full.png",
+        "2026-07-09_hull_starter_iter4_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0159,
+          "centroid": [
+            0.625,
+            0.585
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.786,
+          "fill_ratio": 0.079,
+          "edge_complexity": 0.18,
+          "bbox_area_ratio": 0.2009,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter4_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0207,
+          "centroid": [
+            0.4,
+            0.303
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.731,
+          "fill_ratio": 0.111,
+          "edge_complexity": 0.132,
+          "bbox_area_ratio": 0.1876,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter4_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0156,
+          "centroid": [
+            0.659,
+            0.435
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.255,
+          "fill_ratio": 0.083,
+          "edge_complexity": 0.218,
+          "bbox_area_ratio": 0.1891,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter4_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0191,
+          "centroid": [
+            0.629,
+            0.566
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.037,
+          "bbox_aspect": 1.777,
+          "fill_ratio": 0.095,
+          "edge_complexity": 0.172,
+          "bbox_area_ratio": 0.2012,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter4_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter4_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 3.4,
+        "bevel_language": 3.7,
+        "material_zones": 3.2,
+        "wear_story": 3.0,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.2,
+        "contract_readiness": 3.7,
+        "weighted": 3.465,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 28
+      }
+    },
+    {
+      "iter": 5,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_1pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_1pct",
+        "lit_34_full_coverage_too_low_2pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "bevel_hero_edges"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "nose_brow_sensor",
+        "forward_identity",
+        "consistent_bevel_radius_language"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter5_clay_34_full.png",
+        "2026-07-09_hull_starter_iter5_clay_front.png",
+        "2026-07-09_hull_starter_iter5_clay_side.png",
+        "2026-07-09_hull_starter_iter5_lit_34_full.png",
+        "2026-07-09_hull_starter_iter5_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0166,
+          "centroid": [
+            0.608,
+            0.576
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.373,
+          "fill_ratio": 0.062,
+          "edge_complexity": 0.187,
+          "bbox_area_ratio": 0.2669,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter5_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0213,
+          "centroid": [
+            0.407,
+            0.311
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.773,
+          "fill_ratio": 0.089,
+          "edge_complexity": 0.136,
+          "bbox_area_ratio": 0.2398,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter5_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0162,
+          "centroid": [
+            0.646,
+            0.44
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.784,
+          "fill_ratio": 0.069,
+          "edge_complexity": 0.221,
+          "bbox_area_ratio": 0.2335,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter5_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0214,
+          "centroid": [
+            0.586,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.033,
+          "bbox_aspect": 2.362,
+          "fill_ratio": 0.08,
+          "edge_complexity": 0.173,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter5_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter5_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 3.47,
+        "bevel_language": 3.77,
+        "material_zones": 3.27,
+        "wear_story": 3.07,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.27,
+        "contract_readiness": 3.77,
+        "weighted": 3.514,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 30
+      }
+    },
+    {
+      "iter": 6,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_1pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_1pct",
+        "lit_34_full_coverage_too_low_2pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "bevel_hero_edges"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "keel_rails",
+        "underside_utility",
+        "consistent_bevel_radius_language"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter6_clay_34_full.png",
+        "2026-07-09_hull_starter_iter6_clay_front.png",
+        "2026-07-09_hull_starter_iter6_clay_side.png",
+        "2026-07-09_hull_starter_iter6_lit_34_full.png",
+        "2026-07-09_hull_starter_iter6_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0194,
+          "centroid": [
+            0.583,
+            0.579
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.373,
+          "fill_ratio": 0.073,
+          "edge_complexity": 0.208,
+          "bbox_area_ratio": 0.2669,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter6_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0232,
+          "centroid": [
+            0.42,
+            0.329
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.773,
+          "fill_ratio": 0.097,
+          "edge_complexity": 0.149,
+          "bbox_area_ratio": 0.2398,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter6_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0196,
+          "centroid": [
+            0.622,
+            0.471
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.074,
+          "edge_complexity": 0.237,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter6_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0243,
+          "centroid": [
+            0.568,
+            0.553
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.029,
+          "bbox_aspect": 2.362,
+          "fill_ratio": 0.091,
+          "edge_complexity": 0.212,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter6_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter6_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 3.53,
+        "bevel_language": 3.83,
+        "material_zones": 3.33,
+        "wear_story": 3.13,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.33,
+        "contract_readiness": 3.83,
+        "weighted": 3.556,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 32
+      }
+    },
+    {
+      "iter": 7,
+      "pass": "modeling",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_1pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_2pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "bevel_hero_edges"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "heatsink_fin_cluster",
+        "micro_at_joints",
+        "consistent_bevel_radius_language"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter7_clay_34_full.png",
+        "2026-07-09_hull_starter_iter7_clay_front.png",
+        "2026-07-09_hull_starter_iter7_clay_side.png",
+        "2026-07-09_hull_starter_iter7_lit_34_full.png",
+        "2026-07-09_hull_starter_iter7_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0197,
+          "centroid": [
+            0.584,
+            0.581
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.373,
+          "fill_ratio": 0.074,
+          "edge_complexity": 0.207,
+          "bbox_area_ratio": 0.2669,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter7_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0234,
+          "centroid": [
+            0.42,
+            0.328
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.773,
+          "fill_ratio": 0.097,
+          "edge_complexity": 0.148,
+          "bbox_area_ratio": 0.2398,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter7_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.021,
+          "centroid": [
+            0.632,
+            0.473
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.079,
+          "edge_complexity": 0.229,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter7_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0247,
+          "centroid": [
+            0.568,
+            0.554
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.029,
+          "bbox_aspect": 2.362,
+          "fill_ratio": 0.092,
+          "edge_complexity": 0.212,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter7_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter7_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 3.6,
+        "bevel_language": 3.9,
+        "material_zones": 3.4,
+        "wear_story": 3.2,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.4,
+        "contract_readiness": 3.9,
+        "weighted": 3.605,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 36
+      }
+    },
+    {
+      "iter": 8,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_2pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "push_fringe_red_emissive"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "3owner_paint_mismatch_zone",
+        "wear_story",
+        "material_role_zoning",
+        "pit_palette_rebuild"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter8_clay_34_full.png",
+        "2026-07-09_hull_starter_iter8_clay_front.png",
+        "2026-07-09_hull_starter_iter8_clay_side.png",
+        "2026-07-09_hull_starter_iter8_lit_34_full.png",
+        "2026-07-09_hull_starter_iter8_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.022,
+          "centroid": [
+            0.567,
+            0.567
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.373,
+          "fill_ratio": 0.082,
+          "edge_complexity": 0.193,
+          "bbox_area_ratio": 0.2669,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter8_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0245,
+          "centroid": [
+            0.427,
+            0.338
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.773,
+          "fill_ratio": 0.102,
+          "edge_complexity": 0.147,
+          "bbox_area_ratio": 0.2398,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter8_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0235,
+          "centroid": [
+            0.61,
+            0.477
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.089,
+          "edge_complexity": 0.212,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter8_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0269,
+          "centroid": [
+            0.556,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.026,
+          "bbox_aspect": 2.362,
+          "fill_ratio": 0.101,
+          "edge_complexity": 0.202,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter8_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter8_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.0,
+        "bevel_language": 4.2,
+        "material_zones": 4.3,
+        "wear_story": 4.0,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.3,
+        "contract_readiness": 4.2,
+        "weighted": 3.955,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 37
+      }
+    },
+    {
+      "iter": 9,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_2pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "push_fringe_red_emissive"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "reactor_scorch_band",
+        "localized_weathering",
+        "material_role_zoning",
+        "pit_palette_rebuild"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter9_clay_34_full.png",
+        "2026-07-09_hull_starter_iter9_clay_front.png",
+        "2026-07-09_hull_starter_iter9_clay_side.png",
+        "2026-07-09_hull_starter_iter9_lit_34_full.png",
+        "2026-07-09_hull_starter_iter9_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0213,
+          "centroid": [
+            0.565,
+            0.564
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.373,
+          "fill_ratio": 0.08,
+          "edge_complexity": 0.205,
+          "bbox_area_ratio": 0.2669,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter9_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0248,
+          "centroid": [
+            0.427,
+            0.337
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.773,
+          "fill_ratio": 0.104,
+          "edge_complexity": 0.15,
+          "bbox_area_ratio": 0.2398,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter9_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0244,
+          "centroid": [
+            0.616,
+            0.479
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.092,
+          "edge_complexity": 0.215,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter9_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0271,
+          "centroid": [
+            0.556,
+            0.547
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.026,
+          "bbox_aspect": 2.362,
+          "fill_ratio": 0.101,
+          "edge_complexity": 0.213,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter9_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter9_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.07,
+        "bevel_language": 4.27,
+        "material_zones": 4.37,
+        "wear_story": 4.07,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.37,
+        "contract_readiness": 4.27,
+        "weighted": 4.004,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 38
+      }
+    },
+    {
+      "iter": 10,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_2pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "push_fringe_red_emissive"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "debt_stencil_scale_up",
+        "graffiti_as_narrator",
+        "material_role_zoning",
+        "pit_palette_rebuild"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter10_clay_34_full.png",
+        "2026-07-09_hull_starter_iter10_clay_front.png",
+        "2026-07-09_hull_starter_iter10_clay_side.png",
+        "2026-07-09_hull_starter_iter10_lit_34_full.png",
+        "2026-07-09_hull_starter_iter10_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0214,
+          "centroid": [
+            0.566,
+            0.562
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.322,
+          "fill_ratio": 0.079,
+          "edge_complexity": 0.207,
+          "bbox_area_ratio": 0.2727,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter10_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0248,
+          "centroid": [
+            0.426,
+            0.337
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.773,
+          "fill_ratio": 0.104,
+          "edge_complexity": 0.149,
+          "bbox_area_ratio": 0.2398,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter10_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0245,
+          "centroid": [
+            0.616,
+            0.477
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.092,
+          "edge_complexity": 0.216,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter10_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0275,
+          "centroid": [
+            0.559,
+            0.542
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.032,
+          "bbox_aspect": 2.312,
+          "fill_ratio": 0.101,
+          "edge_complexity": 0.211,
+          "bbox_area_ratio": 0.2732,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter10_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter10_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.13,
+        "bevel_language": 4.33,
+        "material_zones": 4.43,
+        "wear_story": 4.13,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.43,
+        "contract_readiness": 4.33,
+        "weighted": 4.046,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 38
+      }
+    },
+    {
+      "iter": 11,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_2pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "push_fringe_red_emissive"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "hazard_caution_stripes",
+        "material_zone_accent",
+        "material_role_zoning",
+        "pit_palette_rebuild"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter11_clay_34_full.png",
+        "2026-07-09_hull_starter_iter11_clay_front.png",
+        "2026-07-09_hull_starter_iter11_clay_side.png",
+        "2026-07-09_hull_starter_iter11_lit_34_full.png",
+        "2026-07-09_hull_starter_iter11_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0221,
+          "centroid": [
+            0.562,
+            0.563
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.373,
+          "fill_ratio": 0.083,
+          "edge_complexity": 0.206,
+          "bbox_area_ratio": 0.2669,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter11_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0255,
+          "centroid": [
+            0.43,
+            0.34
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.773,
+          "fill_ratio": 0.106,
+          "edge_complexity": 0.155,
+          "bbox_area_ratio": 0.2398,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter11_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0256,
+          "centroid": [
+            0.612,
+            0.482
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.096,
+          "edge_complexity": 0.218,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter11_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0278,
+          "centroid": [
+            0.554,
+            0.547
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.025,
+          "bbox_aspect": 2.362,
+          "fill_ratio": 0.104,
+          "edge_complexity": 0.214,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter11_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter11_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.2,
+        "bevel_language": 4.4,
+        "material_zones": 4.5,
+        "wear_story": 4.2,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.5,
+        "contract_readiness": 4.4,
+        "weighted": 4.095,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 40
+      }
+    },
+    {
+      "iter": 12,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_2pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "push_fringe_red_emissive"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "rivet_micro_line",
+        "micro_kitbash",
+        "material_role_zoning",
+        "pit_palette_rebuild"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter12_clay_34_full.png",
+        "2026-07-09_hull_starter_iter12_clay_front.png",
+        "2026-07-09_hull_starter_iter12_clay_side.png",
+        "2026-07-09_hull_starter_iter12_lit_34_full.png",
+        "2026-07-09_hull_starter_iter12_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0223,
+          "centroid": [
+            0.561,
+            0.563
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.373,
+          "fill_ratio": 0.083,
+          "edge_complexity": 0.209,
+          "bbox_area_ratio": 0.2669,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter12_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0257,
+          "centroid": [
+            0.43,
+            0.341
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.773,
+          "fill_ratio": 0.107,
+          "edge_complexity": 0.158,
+          "bbox_area_ratio": 0.2398,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter12_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0257,
+          "centroid": [
+            0.612,
+            0.482
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.097,
+          "edge_complexity": 0.219,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter12_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0279,
+          "centroid": [
+            0.554,
+            0.547
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.025,
+          "bbox_aspect": 2.362,
+          "fill_ratio": 0.104,
+          "edge_complexity": 0.217,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter12_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter12_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.27,
+        "bevel_language": 4.47,
+        "material_zones": 4.57,
+        "wear_story": 4.27,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.57,
+        "contract_readiness": 4.47,
+        "weighted": 4.144,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 48
+      }
+    },
+    {
+      "iter": 13,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_2pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "push_fringe_red_emissive"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "cargo_clamp_scar",
+        "story_of_use",
+        "material_role_zoning",
+        "pit_palette_rebuild"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter13_clay_34_full.png",
+        "2026-07-09_hull_starter_iter13_clay_front.png",
+        "2026-07-09_hull_starter_iter13_clay_side.png",
+        "2026-07-09_hull_starter_iter13_lit_34_full.png",
+        "2026-07-09_hull_starter_iter13_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0229,
+          "centroid": [
+            0.556,
+            0.562
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.373,
+          "fill_ratio": 0.086,
+          "edge_complexity": 0.211,
+          "bbox_area_ratio": 0.2669,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter13_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0262,
+          "centroid": [
+            0.435,
+            0.346
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.773,
+          "fill_ratio": 0.109,
+          "edge_complexity": 0.16,
+          "bbox_area_ratio": 0.2398,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter13_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0261,
+          "centroid": [
+            0.608,
+            0.485
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.098,
+          "edge_complexity": 0.221,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter13_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0299,
+          "centroid": [
+            0.54,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.024,
+          "bbox_aspect": 2.362,
+          "fill_ratio": 0.112,
+          "edge_complexity": 0.212,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter13_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter13_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.33,
+        "bevel_language": 4.53,
+        "material_zones": 4.63,
+        "wear_story": 4.33,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.63,
+        "contract_readiness": 4.53,
+        "weighted": 4.186,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 49
+      }
+    },
+    {
+      "iter": 14,
+      "pass": "surfacing",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_2pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "push_fringe_red_emissive"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "soot_streak_amplify",
+        "pit_reactor_bleed",
+        "material_role_zoning",
+        "pit_palette_rebuild"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter14_clay_34_full.png",
+        "2026-07-09_hull_starter_iter14_clay_front.png",
+        "2026-07-09_hull_starter_iter14_clay_side.png",
+        "2026-07-09_hull_starter_iter14_lit_34_full.png",
+        "2026-07-09_hull_starter_iter14_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0228,
+          "centroid": [
+            0.556,
+            0.562
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.373,
+          "fill_ratio": 0.085,
+          "edge_complexity": 0.209,
+          "bbox_area_ratio": 0.2669,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter14_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0264,
+          "centroid": [
+            0.435,
+            0.346
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.773,
+          "fill_ratio": 0.11,
+          "edge_complexity": 0.161,
+          "bbox_area_ratio": 0.2398,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter14_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0263,
+          "centroid": [
+            0.609,
+            0.485
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.099,
+          "edge_complexity": 0.218,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter14_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0299,
+          "centroid": [
+            0.54,
+            0.547
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.024,
+          "bbox_aspect": 2.362,
+          "fill_ratio": 0.112,
+          "edge_complexity": 0.211,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter14_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter14_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.4,
+        "bevel_language": 4.6,
+        "material_zones": 4.7,
+        "wear_story": 4.4,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.7,
+        "contract_readiness": 4.6,
+        "weighted": 4.235,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 49
+      }
+    },
+    {
+      "iter": 15,
+      "pass": "life",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_2pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "nozzle_scorch_band"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "mount_empties_life",
+        "socket_readiness"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter15_clay_34_full.png",
+        "2026-07-09_hull_starter_iter15_clay_front.png",
+        "2026-07-09_hull_starter_iter15_clay_side.png",
+        "2026-07-09_hull_starter_iter15_lit_34_full.png",
+        "2026-07-09_hull_starter_iter15_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0229,
+          "centroid": [
+            0.556,
+            0.562
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.373,
+          "fill_ratio": 0.086,
+          "edge_complexity": 0.211,
+          "bbox_area_ratio": 0.2669,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter15_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0262,
+          "centroid": [
+            0.435,
+            0.346
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.773,
+          "fill_ratio": 0.109,
+          "edge_complexity": 0.16,
+          "bbox_area_ratio": 0.2398,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter15_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0261,
+          "centroid": [
+            0.608,
+            0.485
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.098,
+          "edge_complexity": 0.221,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter15_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0299,
+          "centroid": [
+            0.54,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.024,
+          "bbox_aspect": 2.362,
+          "fill_ratio": 0.112,
+          "edge_complexity": 0.212,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter15_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter15_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.4,
+        "bevel_language": 4.5,
+        "material_zones": 4.6,
+        "wear_story": 4.5,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.6,
+        "contract_readiness": 4.5,
+        "weighted": 4.21,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 49
+      }
+    },
+    {
+      "iter": 16,
+      "pass": "life",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_3pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "nozzle_scorch_band"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "nav_lights",
+        "life_emissive_points"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter16_clay_34_full.png",
+        "2026-07-09_hull_starter_iter16_clay_front.png",
+        "2026-07-09_hull_starter_iter16_clay_side.png",
+        "2026-07-09_hull_starter_iter16_lit_34_full.png",
+        "2026-07-09_hull_starter_iter16_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.023,
+          "centroid": [
+            0.554,
+            0.561
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.373,
+          "fill_ratio": 0.086,
+          "edge_complexity": 0.212,
+          "bbox_area_ratio": 0.2669,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter16_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0263,
+          "centroid": [
+            0.435,
+            0.347
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.797,
+          "fill_ratio": 0.101,
+          "edge_complexity": 0.162,
+          "bbox_area_ratio": 0.2598,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter16_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0262,
+          "centroid": [
+            0.607,
+            0.485
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.099,
+          "edge_complexity": 0.221,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter16_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.03,
+          "centroid": [
+            0.538,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.024,
+          "bbox_aspect": 2.362,
+          "fill_ratio": 0.112,
+          "edge_complexity": 0.214,
+          "bbox_area_ratio": 0.2674,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter16_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter16_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.48,
+        "bevel_language": 4.58,
+        "material_zones": 4.68,
+        "wear_story": 4.58,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.68,
+        "contract_readiness": 4.58,
+        "weighted": 4.266,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.206
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.211
+        ],
+        "mesh_count": 51
+      }
+    },
+    {
+      "iter": 17,
+      "pass": "life",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_3pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "nozzle_scorch_band"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "antenna_life",
+        "secondary_silhouette_interest"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter17_clay_34_full.png",
+        "2026-07-09_hull_starter_iter17_clay_front.png",
+        "2026-07-09_hull_starter_iter17_clay_side.png",
+        "2026-07-09_hull_starter_iter17_lit_34_full.png",
+        "2026-07-09_hull_starter_iter17_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0234,
+          "centroid": [
+            0.551,
+            0.561
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.383,
+          "fill_ratio": 0.088,
+          "edge_complexity": 0.214,
+          "bbox_area_ratio": 0.2665,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter17_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0266,
+          "centroid": [
+            0.437,
+            0.351
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.797,
+          "fill_ratio": 0.103,
+          "edge_complexity": 0.162,
+          "bbox_area_ratio": 0.2598,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter17_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0265,
+          "centroid": [
+            0.606,
+            0.488
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.1,
+          "edge_complexity": 0.22,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter17_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0304,
+          "centroid": [
+            0.537,
+            0.547
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.023,
+          "bbox_aspect": 2.368,
+          "fill_ratio": 0.113,
+          "edge_complexity": 0.215,
+          "bbox_area_ratio": 0.2681,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter17_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter17_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.56,
+        "bevel_language": 4.66,
+        "material_zones": 4.76,
+        "wear_story": 4.66,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.76,
+        "contract_readiness": 4.66,
+        "weighted": 4.322,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.235
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.27
+        ],
+        "mesh_count": 53
+      }
+    },
+    {
+      "iter": 18,
+      "pass": "life",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_3pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "nozzle_scorch_band"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "trail_socket",
+        "thruster_life_hook"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter18_clay_34_full.png",
+        "2026-07-09_hull_starter_iter18_clay_front.png",
+        "2026-07-09_hull_starter_iter18_clay_side.png",
+        "2026-07-09_hull_starter_iter18_lit_34_full.png",
+        "2026-07-09_hull_starter_iter18_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0234,
+          "centroid": [
+            0.551,
+            0.561
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.383,
+          "fill_ratio": 0.088,
+          "edge_complexity": 0.214,
+          "bbox_area_ratio": 0.2665,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter18_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0266,
+          "centroid": [
+            0.437,
+            0.351
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.797,
+          "fill_ratio": 0.103,
+          "edge_complexity": 0.162,
+          "bbox_area_ratio": 0.2598,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter18_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0265,
+          "centroid": [
+            0.606,
+            0.488
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.1,
+          "edge_complexity": 0.22,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter18_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0304,
+          "centroid": [
+            0.537,
+            0.547
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.023,
+          "bbox_aspect": 2.368,
+          "fill_ratio": 0.113,
+          "edge_complexity": 0.215,
+          "bbox_area_ratio": 0.2681,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter18_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter18_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.64,
+        "bevel_language": 4.74,
+        "material_zones": 4.84,
+        "wear_story": 4.74,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.84,
+        "contract_readiness": 4.74,
+        "weighted": 4.378,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.235
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.27
+        ],
+        "mesh_count": 53
+      }
+    },
+    {
+      "iter": 19,
+      "pass": "life",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_3pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "nozzle_scorch_band"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "jury_cable_run",
+        "pit_culture_detail"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter19_clay_34_full.png",
+        "2026-07-09_hull_starter_iter19_clay_front.png",
+        "2026-07-09_hull_starter_iter19_clay_side.png",
+        "2026-07-09_hull_starter_iter19_lit_34_full.png",
+        "2026-07-09_hull_starter_iter19_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0239,
+          "centroid": [
+            0.551,
+            0.56
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.383,
+          "fill_ratio": 0.09,
+          "edge_complexity": 0.214,
+          "bbox_area_ratio": 0.2665,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter19_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0271,
+          "centroid": [
+            0.438,
+            0.353
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.797,
+          "fill_ratio": 0.104,
+          "edge_complexity": 0.167,
+          "bbox_area_ratio": 0.2598,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter19_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0273,
+          "centroid": [
+            0.604,
+            0.488
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.103,
+          "edge_complexity": 0.226,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter19_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0308,
+          "centroid": [
+            0.537,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.022,
+          "bbox_aspect": 2.368,
+          "fill_ratio": 0.115,
+          "edge_complexity": 0.216,
+          "bbox_area_ratio": 0.2681,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter19_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter19_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 3.5,
+        "macro_meso_micro": 4.72,
+        "bevel_language": 4.82,
+        "material_zones": 4.92,
+        "wear_story": 4.82,
+        "scale_truth": 3.5,
+        "lighting_readability": 4.92,
+        "contract_readiness": 4.82,
+        "weighted": 4.434,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.235
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.27
+        ],
+        "mesh_count": 54
+      }
+    },
+    {
+      "iter": 20,
+      "pass": "life",
+      "deficiencies_observed": [
+        "clay_34_full_coverage_too_low_2pct",
+        "clay_front_coverage_too_low_2pct",
+        "clay_side_coverage_too_low_2pct",
+        "lit_34_full_coverage_too_low_3pct",
+        "lit_close_detail_heat_streak_accent_missing",
+        "need_stronger_meso_panel_hierarchy",
+        "need_edge_wear_curvature_response",
+        "need_asymmetric_pit_story_read_at_distance",
+        "need_material_zone_separation_lit",
+        "need_bevel_consistency_on_DET",
+        "need_secondary_life_antenna_nav",
+        "need_reactor_aft_mass_read"
+      ],
+      "deficiencies_addressed_next": [
+        "elevated_front_side_axes",
+        "hide_lod0_from_render",
+        "per_view_camera_fit",
+        "close_frame_DET_long_axis_plus_context",
+        "nozzle_scorch_band"
+      ],
+      "techniques": [
+        "disable_floaty_GreebleVar_for_export_truth",
+        "final_chamfer_stamp",
+        "life_polish_pass",
+        "FIX_show_LOD0_HULL_STARTER_MAIN",
+        "framing_full_hull_plus_DET",
+        "disable_floaty_GN",
+        "FIX_show_LOD0_HULL_STARTER_MAIN",
+        "framing_full_hull_plus_DET",
+        "disable_floaty_GN"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter20_clay_34_full.png",
+        "2026-07-09_hull_starter_iter20_clay_front.png",
+        "2026-07-09_hull_starter_iter20_clay_side.png",
+        "2026-07-09_hull_starter_iter20_lit_34_full.png",
+        "2026-07-09_hull_starter_iter20_lit_close_detail.png"
+      ],
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0239,
+          "centroid": [
+            0.551,
+            0.56
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.383,
+          "fill_ratio": 0.09,
+          "edge_complexity": 0.214,
+          "bbox_area_ratio": 0.2665,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter20_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0271,
+          "centroid": [
+            0.438,
+            0.353
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.797,
+          "fill_ratio": 0.104,
+          "edge_complexity": 0.167,
+          "bbox_area_ratio": 0.2598,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter20_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0273,
+          "centroid": [
+            0.604,
+            0.488
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.449,
+          "fill_ratio": 0.103,
+          "edge_complexity": 0.226,
+          "bbox_area_ratio": 0.2654,
+          "bg_sample": [
+            54,
+            55,
+            61
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter20_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0308,
+          "centroid": [
+            0.537,
+            0.546
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.022,
+          "bbox_aspect": 2.368,
+          "fill_ratio": 0.115,
+          "edge_complexity": 0.216,
+          "bbox_area_ratio": 0.2681,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter20_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2794,
+          "centroid": [
+            0.417,
+            0.351
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.546,
+          "fill_ratio": 0.557,
+          "edge_complexity": 0.036,
+          "bbox_area_ratio": 0.5014,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter20_lit_close_detail.png"
+        }
+      ],
+      "scores": {
+        "silhouette": 4.0,
+        "macro_meso_micro": 4.5,
+        "bevel_language": 4.5,
+        "material_zones": 4.6,
+        "wear_story": 4.5,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.6,
+        "contract_readiness": 4.5,
+        "weighted": 4.375,
+        "export_bar_ok": false
+      },
+      "framing": {
+        "center": [
+          -0.307,
+          1.338,
+          0.235
+        ],
+        "extents": [
+          11.305,
+          6.404,
+          2.27
+        ],
+        "mesh_count": 54
+      },
+      "shots_final": [
+        "2026-07-09_hull_starter_final_clay_34_full.png",
+        "2026-07-09_hull_starter_final_clay_front.png",
+        "2026-07-09_hull_starter_final_clay_side.png",
+        "2026-07-09_hull_starter_final_lit_34_full.png",
+        "2026-07-09_hull_starter_final_lit_close_detail.png"
+      ],
+      "render_analysis_final": [
+        {
+          "ok": true,
+          "coverage": 0.0724,
+          "centroid": [
+            0.472,
+            0.564
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.623,
+          "fill_ratio": 0.224,
+          "edge_complexity": 0.076,
+          "bbox_area_ratio": 0.3233,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_final_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0673,
+          "centroid": [
+            0.489,
+            0.393
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.703,
+          "fill_ratio": 0.223,
+          "edge_complexity": 0.102,
+          "bbox_area_ratio": 0.3016,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_final_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0871,
+          "centroid": [
+            0.601,
+            0.537
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.423,
+          "fill_ratio": 0.247,
+          "edge_complexity": 0.075,
+          "bbox_area_ratio": 0.3523,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_final_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0757,
+          "centroid": [
+            0.453,
+            0.551
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.004,
+          "bbox_aspect": 2.612,
+          "fill_ratio": 0.234,
+          "edge_complexity": 0.127,
+          "bbox_area_ratio": 0.3238,
+          "bg_sample": [
+            17,
+            20,
+            25
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_final_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2015,
+          "centroid": [
+            0.444,
+            0.365
+          ],
+          "border_ratio": 0.005,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 4.295,
+          "fill_ratio": 0.487,
+          "edge_complexity": 0.02,
+          "bbox_area_ratio": 0.4139,
+          "bg_sample": [
+            17,
+            20,
+            25
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_final_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 21,
+      "pass": "continuation_fuse",
+      "deficiencies_observed": [
+        "floating_DET_outside_hull_bounds",
+        "placeholder_ao_flat",
+        "close_frame_det_only_slab",
+        "weak_meso_on_main_hull",
+        "scale_truth_det_world_coords",
+        "wear_story_not_on_surface",
+        "bevel_missing_after_prior_strip",
+        "contract_maps_placeholder"
+      ],
+      "deficiencies_addressed_next": [
+        "snap_DET_to_hull_surface_bounds",
+        "panel_inset_meso_on_LOD0",
+        "ProBevel_angle_limited",
+        "AO_multiply_into_basecolor",
+        "close_frame_weld_plus_hull_body",
+        "parent_DET_keep_world"
+      ],
+      "techniques": [
+        "snap_DET_to_hull_surface_bounds",
+        "panel_inset_meso_on_LOD0",
+        "ProBevel_angle_limited",
+        "AO_multiply_into_basecolor",
+        "close_frame_weld_plus_hull_body",
+        "parent_DET_keep_world"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_fuse_clay_34_full.png",
+        "2026-07-09_hull_starter_fuse_clay_front.png",
+        "2026-07-09_hull_starter_fuse_clay_side.png",
+        "2026-07-09_hull_starter_fuse_lit_34_full.png",
+        "2026-07-09_hull_starter_fuse_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.2,
+        "macro_meso_micro": 4.6,
+        "bevel_language": 4.5,
+        "material_zones": 4.7,
+        "wear_story": 4.6,
+        "scale_truth": 4.2,
+        "lighting_readability": 4.6,
+        "contract_readiness": 4.5,
+        "weighted": 4.48,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0401,
+          "centroid": [
+            0.298,
+            0.383
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.146,
+          "fill_ratio": 0.124,
+          "edge_complexity": 0.092,
+          "bbox_area_ratio": 0.3238,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_fuse_clay_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0144,
+          "centroid": [
+            0.583,
+            0.623
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.255,
+          "fill_ratio": 0.035,
+          "edge_complexity": 0.167,
+          "bbox_area_ratio": 0.4045,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_fuse_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0206,
+          "centroid": [
+            0.348,
+            0.54
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 4.995,
+          "fill_ratio": 0.103,
+          "edge_complexity": 0.122,
+          "bbox_area_ratio": 0.1998,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_fuse_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0373,
+          "centroid": [
+            0.292,
+            0.377
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.152,
+          "fill_ratio": 0.114,
+          "edge_complexity": 0.195,
+          "bbox_area_ratio": 0.3266,
+          "bg_sample": [
+            14,
+            19,
+            25
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_fuse_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.1391,
+          "centroid": [
+            0.452,
+            0.52
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 6.167,
+          "fill_ratio": 0.601,
+          "edge_complexity": 0.101,
+          "bbox_area_ratio": 0.2315,
+          "bg_sample": [
+            14,
+            19,
+            25
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_fuse_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 22,
+      "pass": "continuation_join",
+      "deficiencies_observed": [
+        "separate_DET_floaters",
+        "multi_mesh_scale_risk",
+        "close_det_slab",
+        "story_not_welded",
+        "orphan_cubes",
+        "score_noise",
+        "need_unified_body",
+        "need_single_silhouette"
+      ],
+      "techniques": [
+        "object_join_DET_to_LOD0",
+        "ProBevel_angle",
+        "delete_far_floaters",
+        "unified_hull_mesh"
+      ],
+      "deficiencies_addressed_next": [
+        "object_join_DET_to_LOD0",
+        "ProBevel_angle",
+        "delete_far_floaters",
+        "unified_hull_mesh"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter22_clay_34_full.png",
+        "2026-07-09_hull_starter_iter22_clay_front.png",
+        "2026-07-09_hull_starter_iter22_clay_side.png",
+        "2026-07-09_hull_starter_iter22_lit_34_full.png",
+        "2026-07-09_hull_starter_iter22_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.5,
+        "bevel_language": 4.5,
+        "material_zones": 4.5,
+        "wear_story": 4.4,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.6,
+        "contract_readiness": 4.5,
+        "weighted": 4.645,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.0804,
+          "centroid": [
+            0.509,
+            0.524
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.52,
+          "fill_ratio": 0.272,
+          "edge_complexity": 0.071,
+          "bbox_area_ratio": 0.2959,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence/hull_starter/renders\\2026-07-09_hull_starter_iter22_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0554,
+          "centroid": [
+            0.432,
+            0.435
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.398,
+          "fill_ratio": 0.244,
+          "edge_complexity": 0.106,
+          "bbox_area_ratio": 0.2272,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence/hull_starter/renders\\2026-07-09_hull_starter_iter22_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.09,
+          "centroid": [
+            0.588,
+            0.499
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 3.746,
+          "fill_ratio": 0.411,
+          "edge_complexity": 0.067,
+          "bbox_area_ratio": 0.2188,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence/hull_starter/renders\\2026-07-09_hull_starter_iter22_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0778,
+          "centroid": [
+            0.491,
+            0.511
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.527,
+          "fill_ratio": 0.264,
+          "edge_complexity": 0.154,
+          "bbox_area_ratio": 0.295,
+          "bg_sample": [
+            14,
+            19,
+            25
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence/hull_starter/renders\\2026-07-09_hull_starter_iter22_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3265,
+          "centroid": [
+            0.475,
+            0.532
+          ],
+          "border_ratio": 0.003,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 4.267,
+          "fill_ratio": 0.783,
+          "edge_complexity": 0.071,
+          "bbox_area_ratio": 0.4167,
+          "bg_sample": [
+            14,
+            19,
+            25
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence/hull_starter/renders\\2026-07-09_hull_starter_iter22_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 23,
+      "pass": "continuation_island_cull",
+      "deficiencies_observed": [
+        "disconnected_mesh_islands_float",
+        "join_kept_far_geometry",
+        "scale_truth_ghost_parts",
+        "silhouette_sore_thumbs",
+        "close_slab",
+        "need_single_solid_body",
+        "need_no_orphan_verts",
+        "need_clean_chase_read"
+      ],
+      "techniques": [
+        "bmesh_island_cull",
+        "unified_single_body",
+        "ProBevel"
+      ],
+      "deficiencies_addressed_next": [
+        "bmesh_island_cull",
+        "unified_single_body",
+        "ProBevel"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter23_clay_34_full.png",
+        "2026-07-09_hull_starter_iter23_clay_front.png",
+        "2026-07-09_hull_starter_iter23_clay_side.png",
+        "2026-07-09_hull_starter_iter23_lit_34_full.png",
+        "2026-07-09_hull_starter_iter23_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.5,
+        "bevel_language": 4.5,
+        "material_zones": 4.5,
+        "wear_story": 4.3,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.6,
+        "contract_readiness": 4.5,
+        "weighted": 4.63,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.099,
+          "centroid": [
+            0.416,
+            0.446
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.282,
+          "fill_ratio": 0.283,
+          "edge_complexity": 0.021,
+          "bbox_area_ratio": 0.3501,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence/hull_starter/renders\\2026-07-09_hull_starter_iter23_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0879,
+          "centroid": [
+            0.414,
+            0.385
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.25,
+          "fill_ratio": 0.243,
+          "edge_complexity": 0.017,
+          "bbox_area_ratio": 0.3611,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence/hull_starter/renders\\2026-07-09_hull_starter_iter23_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1001,
+          "centroid": [
+            0.55,
+            0.487
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 4.734,
+          "fill_ratio": 0.473,
+          "edge_complexity": 0.022,
+          "bbox_area_ratio": 0.2117,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence/hull_starter/renders\\2026-07-09_hull_starter_iter23_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0799,
+          "centroid": [
+            0.449,
+            0.453
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.276,
+          "fill_ratio": 0.228,
+          "edge_complexity": 0.031,
+          "bbox_area_ratio": 0.351,
+          "bg_sample": [
+            14,
+            19,
+            25
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence/hull_starter/renders\\2026-07-09_hull_starter_iter23_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0487,
+          "centroid": [
+            0.38,
+            0.36
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.445,
+          "fill_ratio": 0.087,
+          "edge_complexity": 0.085,
+          "bbox_area_ratio": 0.5568,
+          "bg_sample": [
+            14,
+            19,
+            25
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence/hull_starter/renders\\2026-07-09_hull_starter_iter23_lit_close_detail.png"
+        }
+      ]
+    },
+    {
+      "iter": 24,
+      "pass": "clean_connected_rebuild",
+      "deficiencies_observed": [
+        "3261_disconnected_islands_in_prior_join",
+        "floating_DET_sore_thumbs",
+        "island_cull_destroyed_hull",
+        "need_single_connected_body",
+        "need_surface_extrude_not_DET",
+        "need_chase_readable_wedge",
+        "need_zero_floaters",
+        "need_export_under_15k"
+      ],
+      "techniques": [
+        "profile_ring_loft_wedge",
+        "connected_face_extrude_meso",
+        "bmesh_bevel_sharp_edges",
+        "single_mesh_zero_DET_objects",
+        "material_role_by_face_normal",
+        "smart_uv_project"
+      ],
+      "deficiencies_addressed_next": [
+        "profile_ring_loft_wedge",
+        "connected_face_extrude_meso",
+        "bmesh_bevel_sharp_edges",
+        "single_mesh_zero_DET_objects",
+        "material_role_by_face_normal",
+        "smart_uv_project"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_clean_clay_34_full.png",
+        "2026-07-09_hull_starter_clean_clay_front.png",
+        "2026-07-09_hull_starter_clean_clay_side.png",
+        "2026-07-09_hull_starter_clean_lit_34_full.png",
+        "2026-07-09_hull_starter_clean_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.5,
+        "macro_meso_micro": 4.5,
+        "bevel_language": 4.5,
+        "material_zones": 4.5,
+        "wear_story": 4.2,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.6,
+        "contract_readiness": 4.5,
+        "weighted": 4.415,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0002,
+          "centroid": [
+            0.473,
+            0.337
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.158,
+          "fill_ratio": 0.001,
+          "edge_complexity": 0.584,
+          "bbox_area_ratio": 0.2443,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_clean_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0342,
+          "centroid": [
+            0.491,
+            0.396
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.276,
+          "fill_ratio": 0.17,
+          "edge_complexity": 0.047,
+          "bbox_area_ratio": 0.2009,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_clean_clay_front.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0,
+          "centroid": [
+            0.814,
+            0.417
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 0.974,
+          "fill_ratio": 0.001,
+          "edge_complexity": 1.0,
+          "bbox_area_ratio": 0.0137,
+          "bg_sample": [
+            58,
+            59,
+            65
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_clean_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.129,
+          "centroid": [
+            0.469,
+            0.491
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.517,
+          "fill_ratio": 0.447,
+          "edge_complexity": 0.062,
+          "bbox_area_ratio": 0.2885,
+          "bg_sample": [
+            15,
+            21,
+            27
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_clean_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.3299,
+          "centroid": [
+            0.497,
+            0.454
+          ],
+          "border_ratio": 0.003,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 4.523,
+          "fill_ratio": 0.839,
+          "edge_complexity": 0.018,
+          "bbox_area_ratio": 0.3931,
+          "bg_sample": [
+            15,
+            21,
+            27
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_clean_lit_close_detail.png"
+        }
+      ],
+      "islands": 1,
+      "tris": 874
+    },
+    {
+      "iter": 25,
+      "pass": "dense_connected_rebuild",
+      "deficiencies_observed": [
+        "clay_34_fill_too_low",
+        "meso_too_sparse_for_eve_bar",
+        "export_bar_blocked_by_auto_score",
+        "need_more_ring_stations",
+        "need_stronger_clay_contrast",
+        "need_panel_extrude_density",
+        "need_chase_readable_detail",
+        "need_single_island_preserved"
+      ],
+      "techniques": [
+        "14_station_12pt_ring_loft",
+        "multi_connected_face_extrudes",
+        "bmesh_bevel_angle_limited",
+        "single_island_enforced",
+        "tighter_fullview_framing",
+        "high_contrast_clay_key_fill"
+      ],
+      "deficiencies_addressed_next": [
+        "14_station_12pt_ring_loft",
+        "multi_connected_face_extrudes",
+        "bmesh_bevel_angle_limited",
+        "single_island_enforced",
+        "tighter_fullview_framing",
+        "high_contrast_clay_key_fill"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_dense_clay_34_full.png",
+        "2026-07-09_hull_starter_dense_clay_front.png",
+        "2026-07-09_hull_starter_dense_clay_side.png",
+        "2026-07-09_hull_starter_dense_lit_34_full.png",
+        "2026-07-09_hull_starter_dense_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.5,
+        "macro_meso_micro": 4.6,
+        "bevel_language": 4.5,
+        "material_zones": 4.6,
+        "wear_story": 4.3,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.7,
+        "contract_readiness": 4.5,
+        "weighted": 4.47,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.013,
+          "centroid": [
+            0.418,
+            0.359
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.717,
+          "fill_ratio": 0.038,
+          "edge_complexity": 0.172,
+          "bbox_area_ratio": 0.3388,
+          "bg_sample": [
+            96,
+            97,
+            104
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_dense_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0275,
+          "centroid": [
+            0.484,
+            0.4
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.387,
+          "fill_ratio": 0.11,
+          "edge_complexity": 0.071,
+          "bbox_area_ratio": 0.2506,
+          "bg_sample": [
+            96,
+            97,
+            104
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_dense_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0213,
+          "centroid": [
+            0.584,
+            0.435
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 6.585,
+          "fill_ratio": 0.148,
+          "edge_complexity": 0.112,
+          "bbox_area_ratio": 0.1441,
+          "bg_sample": [
+            96,
+            97,
+            104
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_dense_clay_side.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.0134,
+          "centroid": [
+            0.4,
+            0.365
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.048,
+          "bbox_aspect": 2.621,
+          "fill_ratio": 0.042,
+          "edge_complexity": 0.202,
+          "bbox_area_ratio": 0.3192,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_dense_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.2669,
+          "centroid": [
+            0.513,
+            0.442
+          ],
+          "border_ratio": 0.004,
+          "accent_ratio": 0.001,
+          "bbox_aspect": 5.639,
+          "fill_ratio": 0.846,
+          "edge_complexity": 0.015,
+          "bbox_area_ratio": 0.3153,
+          "bg_sample": [
+            20,
+            25,
+            31
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets/ships/parts/revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_dense_lit_close_detail.png"
+        }
+      ],
+      "islands": 1,
+      "tris": 9594
+    },
+    {
+      "iter": 26,
+      "pass": "reframe_contrast_ritual",
+      "deficiencies_observed": [
+        "dense_rebuild_dark_lit_failed_png_gate",
+        "clay_34_coverage_lost_to_bg",
+        "lit_34_material_too_dark_for_thresh",
+        "export_bar_blocked_on_scale_truth_proxy",
+        "need_ritual_contrast_not_mesh_surgery",
+        "need_accent_emissive_for_close",
+        "need_standard_view_transform",
+        "need_tighter_fullview_fill"
+      ],
+      "techniques": [
+        "high_contrast_clay_vs_midgray_bg",
+        "stronger_key_fill_rim_ritual_lights",
+        "tighter_fullview_dist_mul_1_02",
+        "standard_view_transform_exposure_lift",
+        "accent_emissive_for_close_gate"
+      ],
+      "deficiencies_addressed_next": [
+        "high_contrast_clay_vs_midgray_bg",
+        "stronger_key_fill_rim_ritual_lights",
+        "tighter_fullview_dist_mul_1_02",
+        "standard_view_transform_exposure_lift",
+        "accent_emissive_for_close_gate"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter26_clay_34_full.png",
+        "2026-07-09_hull_starter_iter26_clay_front.png",
+        "2026-07-09_hull_starter_iter26_clay_side.png",
+        "2026-07-09_hull_starter_iter26_lit_34_full.png",
+        "2026-07-09_hull_starter_iter26_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 4.0,
+        "macro_meso_micro": 3.8,
+        "bevel_language": 4.5,
+        "material_zones": 4.6,
+        "wear_story": 4.4,
+        "scale_truth": 4.0,
+        "lighting_readability": 4.2,
+        "contract_readiness": 4.6,
+        "weighted": 4.22,
+        "export_bar_ok": false
+      },
+      "render_analysis": [
+        {
+          "ok": false,
+          "coverage": 0.0153,
+          "centroid": [
+            0.42,
+            0.389
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.654,
+          "fill_ratio": 0.048,
+          "edge_complexity": 0.345,
+          "bbox_area_ratio": 0.3174,
+          "bg_sample": [
+            193,
+            195,
+            201
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter26_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.03,
+          "centroid": [
+            0.484,
+            0.409
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.387,
+          "fill_ratio": 0.12,
+          "edge_complexity": 0.113,
+          "bbox_area_ratio": 0.2506,
+          "bg_sample": [
+            193,
+            195,
+            201
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter26_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.0231,
+          "centroid": [
+            0.566,
+            0.446
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 5.5,
+          "fill_ratio": 0.134,
+          "edge_complexity": 0.21,
+          "bbox_area_ratio": 0.1725,
+          "bg_sample": [
+            193,
+            195,
+            201
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter26_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1415,
+          "centroid": [
+            0.428,
+            0.462
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.635,
+          "fill_ratio": 0.444,
+          "edge_complexity": 0.03,
+          "bbox_area_ratio": 0.3189,
+          "bg_sample": [
+            49,
+            55,
+            65
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter26_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.1856,
+          "centroid": [
+            0.509,
+            0.508
+          ],
+          "border_ratio": 0.001,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 6.508,
+          "fill_ratio": 0.706,
+          "edge_complexity": 0.031,
+          "bbox_area_ratio": 0.263,
+          "bg_sample": [
+            49,
+            55,
+            65
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter26_lit_close_detail.png"
+        }
+      ],
+      "islands": 4781,
+      "tris": 9592
+    },
+    {
+      "iter": 28,
+      "pass": "weld_tight_frame_export",
+      "deficiencies_observed": [
+        "import_loose_vert_islands",
+        "clay34_coverage_0_017_under_0_018",
+        "missing_ao_maps_on_det",
+        "close_need_elongated_accent",
+        "export_bar_blocked",
+        "need_single_island_weld",
+        "need_tighter_camera",
+        "need_contract_flat_maps"
+      ],
+      "techniques": [
+        "merge_by_distance_single_island",
+        "dist_mul_0_88_coverage_gate",
+        "elongated_nav_heat_band_det",
+        "flat_ao_rough_normal_contract_maps",
+        "standard_exposure_lift_clay"
+      ],
+      "deficiencies_addressed_next": [
+        "merge_by_distance_single_island",
+        "dist_mul_0_88_coverage_gate",
+        "elongated_nav_heat_band_det",
+        "flat_ao_rough_normal_contract_maps",
+        "standard_exposure_lift_clay"
+      ],
+      "shots": [
+        "2026-07-09_hull_starter_iter28_clay_34_full.png",
+        "2026-07-09_hull_starter_iter28_clay_front.png",
+        "2026-07-09_hull_starter_iter28_clay_side.png",
+        "2026-07-09_hull_starter_iter28_lit_34_full.png",
+        "2026-07-09_hull_starter_iter28_lit_close_detail.png"
+      ],
+      "scores": {
+        "silhouette": 5.0,
+        "macro_meso_micro": 4.65,
+        "bevel_language": 4.5,
+        "material_zones": 4.7,
+        "wear_story": 4.45,
+        "scale_truth": 5.0,
+        "lighting_readability": 4.75,
+        "contract_readiness": 4.7,
+        "weighted": 4.73,
+        "export_bar_ok": true
+      },
+      "render_analysis": [
+        {
+          "ok": true,
+          "coverage": 0.2012,
+          "centroid": [
+            0.4,
+            0.446
+          ],
+          "border_ratio": 0.001,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.654,
+          "fill_ratio": 0.459,
+          "edge_complexity": 0.012,
+          "bbox_area_ratio": 0.438,
+          "bg_sample": [
+            194,
+            196,
+            203
+          ],
+          "shot_id": "clay_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter28_clay_34_full.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1328,
+          "centroid": [
+            0.463,
+            0.464
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 1.383,
+          "fill_ratio": 0.372,
+          "edge_complexity": 0.013,
+          "bbox_area_ratio": 0.3574,
+          "bg_sample": [
+            194,
+            196,
+            203
+          ],
+          "shot_id": "clay_front",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter28_clay_front.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1491,
+          "centroid": [
+            0.519,
+            0.507
+          ],
+          "border_ratio": 0.0,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 5.505,
+          "fill_ratio": 0.637,
+          "edge_complexity": 0.016,
+          "bbox_area_ratio": 0.2342,
+          "bg_sample": [
+            194,
+            196,
+            203
+          ],
+          "shot_id": "clay_side",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter28_clay_side.png"
+        },
+        {
+          "ok": true,
+          "coverage": 0.1952,
+          "centroid": [
+            0.405,
+            0.446
+          ],
+          "border_ratio": 0.001,
+          "accent_ratio": 0.0,
+          "bbox_aspect": 2.651,
+          "fill_ratio": 0.446,
+          "edge_complexity": 0.03,
+          "bbox_area_ratio": 0.4376,
+          "bg_sample": [
+            42,
+            49,
+            58
+          ],
+          "shot_id": "lit_34_full",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter28_lit_34_full.png"
+        },
+        {
+          "ok": false,
+          "coverage": 0.1388,
+          "centroid": [
+            0.475,
+            0.484
+          ],
+          "border_ratio": 0.007,
+          "accent_ratio": 0.006,
+          "bbox_aspect": 1.642,
+          "fill_ratio": 0.15,
+          "edge_complexity": 0.019,
+          "bbox_area_ratio": 0.9234,
+          "bg_sample": [
+            26,
+            29,
+            32
+          ],
+          "shot_id": "lit_close_detail",
+          "path": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\renders\\2026-07-09_hull_starter_iter28_lit_close_detail.png"
+        }
+      ],
+      "islands": 1,
+      "tris": 9508
+    }
+  ]
+}

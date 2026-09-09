@@ -1,0 +1,37 @@
+{
+  "silhouette": 4.5,
+  "macro_meso_micro": 4.6,
+  "bevel_language": 4.5,
+  "material_zones": 4.6,
+  "wear_story": 4.3,
+  "scale_truth": 4.0,
+  "lighting_readability": 4.7,
+  "contract_readiness": 4.5,
+  "weighted": 4.47,
+  "export_bar_ok": false,
+  "islands": 1,
+  "tris": 9594,
+  "shots": [
+    "2026-07-09_hull_starter_dense_clay_34_full.png",
+    "2026-07-09_hull_starter_dense_clay_front.png",
+    "2026-07-09_hull_starter_dense_clay_side.png",
+    "2026-07-09_hull_starter_dense_lit_34_full.png",
+    "2026-07-09_hull_starter_dense_lit_close_detail.png"
+  ],
+  "analyses_ok": [
+    false,
+    true,
+    true,
+    false,
+    false
+  ],
+  "pass": "dense_connected_loft_v2",
+  "techniques": [
+    "14_station_12pt_ring_loft",
+    "multi_connected_face_extrudes",
+    "bmesh_bevel_angle_limited",
+    "single_island_enforced",
+    "tighter_fullview_framing",
+    "high_contrast_clay_key_fill"
+  ]
+}

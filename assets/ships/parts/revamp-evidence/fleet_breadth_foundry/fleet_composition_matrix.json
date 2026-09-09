@@ -1,0 +1,2781 @@
+{
+  "schema": "sf-foundry-composition/1",
+  "batch": "fleet_breadth_20260720",
+  "lane": "G",
+  "generatedFrom": {
+    "audit": "assets/ships/parts/revamp-evidence/fleet_breadth_foundry/repetition-audit.json",
+    "bible": "design/foundry/FACTION_SURFACE_LANGUAGE.md",
+    "materialProfiles": "assets/ships/foundry/fleet_breadth_20260720/materials/material_profiles.json",
+    "kitManifest": "assets/ships/foundry/fleet_breadth_20260720/kit/kit_manifest.json",
+    "variantsManifest": "assets/ships/foundry/fleet_breadth_20260720/variants/variants_manifest.json",
+    "heroManifest": "assets/ships/foundry/fleet_breadth_20260720/variants/hero_manifest.json",
+    "decalsAtlas": "assets/ships/foundry/fleet_breadth_20260720/textures/decals_atlas.json",
+    "liveGrammar": "src/render/partsLibrary.js (read-only)",
+    "branch": "codex/fleet-breadth-foundry-20260720"
+  },
+  "sectorModifiers": {
+    "high_sec": {
+      "security": "high",
+      "wearSkew": "fresh ↑, patched ↓",
+      "example": {
+        "fresh": "+0.15",
+        "serviceWorn": "0",
+        "patched": "-0.15",
+        "clamp": "[0,1] renormalize"
+      },
+      "sectors": [
+        "sector_helios_prime",
+        "high-sec core"
+      ],
+      "note": "SCN yards and MTS detail crews keep hulls fresher; DMC still dirtier baseline."
+    },
+    "mid_sec": {
+      "security": "mid",
+      "wearSkew": "serviceWorn default",
+      "example": {
+        "fresh": "0",
+        "serviceWorn": "0",
+        "patched": "0"
+      },
+      "sectors": [
+        "Tethys industrial approaches",
+        "Ceres belt approaches"
+      ]
+    },
+    "fringe": {
+      "security": "fringe/low",
+      "wearSkew": "patched ↑, fresh ↓",
+      "example": {
+        "fresh": "-0.15",
+        "serviceWorn": "-0.10",
+        "patched": "+0.25",
+        "clamp": "[0,1] renormalize"
+      },
+      "sectors": [
+        "frontier",
+        "Ashfall/Sker approaches"
+      ],
+      "note": "Free/Reach/Quiet skew hard to patched; Choir votive soot allowed."
+    }
+  },
+  "cells": [
+    {
+      "faction": "faction_choir",
+      "role": "choir_zealot",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/wasp_production_v1.glb",
+        "cite": "enemies.js:251-253 choir_zealot ship_wasp; NOT in WHOLE_SHIP_FILE_BY_HOSTILE_ID → production wasp (gap)"
+      },
+      "proposed": {
+        "donor": "wholeships/wasp_production_v1.glb",
+        "variantParts": [
+          "KIT_PACK choir_zealot: kit_rail_split_v03×2 (795×2=1590), kit_sensor_housing_v01×1 (268×1=268), kit_weapon_collar_v03×1 (696×1=696), kit_plate_lip_v01×2 (216×2=432), kit_rivet_strip_v04×2 (398×2=796), kit_heat_shield_v03×1 (216×1=216)"
+        ],
+        "materialProfile": "faction_choir",
+        "wearTierDistribution": {
+          "fresh": 0.15,
+          "serviceWorn": 0.55,
+          "patched": 0.3
+        },
+        "decalSet": [
+          "fac_choir",
+          "char_* AC-####",
+          "warn_radiation_trefoil",
+          "serv_inspection_tag"
+        ],
+        "socketsUsed": [
+          "dorsal spine rails",
+          "weapon collar as censer",
+          "ritual rivet rows"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 3998,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack choir_zealot = 3998"
+        },
+        "integrationRequirement": "ADD WHOLE_SHIP_FILE_BY_HOSTILE_ID.choir_zealot → wasp+choir kit or dedicated body; materialProfile faction_choir"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "10 Emissive",
+        "6 Fasteners",
+        "8 Repair"
+      ],
+      "bibleRefs": [
+        "§8 faction_choir",
+        "axis 10 brightest emissive 1.6",
+        "axis 8 votive blanking"
+      ],
+      "notes": "Same need (light fighter) different answer: radial lancet rails + ritual rivets + halo emissive — not production patrol Wasp."
+    },
+    {
+      "faction": "faction_dmc",
+      "role": "courier",
+      "currentLive": {
+        "defId": "ship_kestrel",
+        "visual": "wholeships/helios_lark.glb",
+        "cite": "partsLibrary.js:429-430 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.courier; traffic.js:67-68 (player kestrel diverted)"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_lark.glb",
+        "variantParts": [
+          "KIT_PACK dmc_hauler: kit_rivet_strip_v01×2 (398×2=796), kit_rivet_strip_v02×1 (428×1=428), kit_bracket_gusset_v01×4 (140×4=560), kit_plate_lip_v01×2 (216×2=432), kit_pipe_clamp_v01×2 (484×2=968)…"
+        ],
+        "materialProfile": "faction_dmc",
+        "wearTierDistribution": {
+          "fresh": 0.1,
+          "serviceWorn": 0.5,
+          "patched": 0.4
+        },
+        "decalSet": [
+          "fac_dmc",
+          "char_* DMC-####",
+          "warn_stripe_block"
+        ],
+        "socketsUsed": [
+          "dorsal pouch zone",
+          "door seal"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 4360,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack dmc_hauler = 4360"
+        },
+        "integrationRequirement": "partsLibrary.js WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.courier + faction kit attach; baked lark variants not yet in foundry (GAP)"
+      },
+      "distinguishedBy": [
+        "6 Fasteners",
+        "11 Cleanliness",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§3"
+      ]
+    },
+    {
+      "faction": "faction_dmc",
+      "role": "escort",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/wasp_production_v1.glb",
+        "cite": "partsLibrary.js:387-390 WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp; traffic.js:71-74 patrol/escort; visualOverrides.js:30-37"
+      },
+      "proposed": {
+        "donor": "wholeships/wasp_production_v1.glb",
+        "variantParts": [
+          "KIT_PACK dmc_industrial (same construction language as DMC patrol)",
+          "var_weapon_pulse_cannon_industrial_v01.glb"
+        ],
+        "materialProfile": "faction_dmc",
+        "wearTierDistribution": {
+          "fresh": 0.05,
+          "serviceWorn": 0.5,
+          "patched": 0.45
+        },
+        "decalSet": [
+          "fac_dmc",
+          "warn_chevron_strip",
+          "serv_tow_brackets"
+        ],
+        "socketsUsed": [
+          "SOCKET_Weapon_Front"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 4652,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "dmc pack 4360 + industrial cannon 292"
+        },
+        "integrationRequirement": "same DMC wasp kit path + industrial weapon barrel when modular hardpoints show"
+      },
+      "distinguishedBy": [
+        "12 Modules",
+        "7 Heat wear",
+        "9 Decals"
+      ],
+      "bibleRefs": [
+        "§3"
+      ]
+    },
+    {
+      "faction": "faction_dmc",
+      "role": "hauler",
+      "currentLive": {
+        "defId": "ship_mule",
+        "visual": "wholeships/helios_span.glb",
+        "cite": "partsLibrary.js:429-432 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler; traffic.js:65-66,407"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_span.glb",
+        "variantParts": [
+          "var_helios_span_dmc_orebox_v01.glb"
+        ],
+        "materialProfile": "faction_dmc",
+        "wearTierDistribution": {
+          "fresh": 0.05,
+          "serviceWorn": 0.45,
+          "patched": 0.5
+        },
+        "decalSet": [
+          "fac_dmc",
+          "char_* DMC-####",
+          "warn_stripe_block",
+          "serv_lift_here_left",
+          "serv_lift_here_right",
+          "serv_tow_brackets"
+        ],
+        "socketsUsed": [
+          "mid orebox flanks",
+          "saddle pipe clamps",
+          "work lamp stanchions"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 4560,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "variants_manifest tris_added = 4560"
+        },
+        "integrationRequirement": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler faction fork → var_helios_span_dmc_orebox_v01.glb"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "8 Repair",
+        "11 Cleanliness"
+      ],
+      "bibleRefs": [
+        "§3",
+        "ore-box + rivet grammar"
+      ]
+    },
+    {
+      "faction": "faction_dmc",
+      "role": "miner",
+      "currentLive": {
+        "defId": "ship_pelican",
+        "visual": "wholeships/helios_cradle.glb",
+        "cite": "partsLibrary.js:429-431 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner; traffic.js:69-70"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_cradle.glb",
+        "variantParts": [
+          "KIT_PACK dmc_cradle"
+        ],
+        "materialProfile": "faction_dmc",
+        "wearTierDistribution": {
+          "fresh": 0.05,
+          "serviceWorn": 0.4,
+          "patched": 0.55
+        },
+        "decalSet": [
+          "fac_dmc",
+          "char_* DMC-####",
+          "warn_chevron_strip",
+          "serv_lift_here_left",
+          "serv_tow_brackets"
+        ],
+        "socketsUsed": [
+          "drill-forward dorsal",
+          "hold flanks",
+          "service hatch"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 4360,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack dmc_cradle = 4360"
+        },
+        "integrationRequirement": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner + faction kit/profile; no baked cradle variants yet (GAP var_helios_cradle_*)"
+      },
+      "distinguishedBy": [
+        "6 Fasteners",
+        "8 Repair",
+        "11 Cleanliness",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§3"
+      ],
+      "notes": "Primary belt industrial read; highest miner weight × industrial boost."
+    },
+    {
+      "faction": "faction_dmc",
+      "role": "patrol",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/wasp_production_v1.glb",
+        "cite": "partsLibrary.js:387-390 WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp; traffic.js:71-74 patrol/escort; visualOverrides.js:30-37"
+      },
+      "proposed": {
+        "donor": "wholeships/wasp_production_v1.glb",
+        "variantParts": [
+          "KIT_PACK dmc_industrial: kit_rivet_strip_v01×2 (398×2=796), kit_rivet_strip_v02×1 (428×1=428), kit_bracket_gusset_v01×4 (140×4=560), kit_plate_lip_v01×2 (216×2=432)…"
+        ],
+        "materialProfile": "faction_dmc",
+        "wearTierDistribution": {
+          "fresh": 0.05,
+          "serviceWorn": 0.55,
+          "patched": 0.4
+        },
+        "decalSet": [
+          "fac_dmc",
+          "char_* DMC-####",
+          "warn_chevron_strip",
+          "warn_stripe_block",
+          "serv_lift_here_left",
+          "serv_tow_brackets"
+        ],
+        "socketsUsed": [
+          "SOCKET_Weapon_Front",
+          "hatch sides",
+          "ore-loading flank habit on fighter saddle"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 4360,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit_manifest sum dmc_industrial pack = 4360 (796+428+560+432+968+588+588)"
+        },
+        "integrationRequirement": "partsLibrary.js faction-aware ship_wasp compose: donor wasp_production_v1 + runtime kit attach OR bake foundry var_wasp_dmc_* (GAP — no baked wasp DMC variant yet)",
+        "kitPlacementZone": "dorsal mid + engine saddle + hatch flanks"
+      },
+      "distinguishedBy": [
+        "6 Fasteners",
+        "8 Repair",
+        "11 Cleanliness",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§3 faction_dmc",
+        "preferredKitFamilies rivet_strip/bracket_gusset/plate_lip/pipe_clamp/vent_grid/heat_shield"
+      ],
+      "notes": "Buildable from kit+profile now; preferred future bake: var_wasp_dmc_patrol (listed in gaps)."
+    },
+    {
+      "faction": "faction_dmc",
+      "role": "weapon_pulse_default",
+      "currentLive": {
+        "defId": "weapon_pulse_cannon",
+        "visual": "weapons/weapon_pulse_cannon.glb",
+        "cite": "partsLibrary.js:2669-2678 weaponRecordFor default barrel"
+      },
+      "proposed": {
+        "donor": "weapons/weapon_pulse_cannon.glb",
+        "variantParts": [
+          "var_weapon_pulse_cannon_industrial_v01.glb"
+        ],
+        "materialProfile": "faction_dmc",
+        "wearTierDistribution": {
+          "fresh": 0.2,
+          "serviceWorn": 0.6,
+          "patched": 0.2
+        },
+        "decalSet": [
+          "fac_dmc",
+          "warn_chevron_strip"
+        ],
+        "socketsUsed": [
+          "hardpoint muzzle axis preserved"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 292,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "variants_manifest var_weapon_pulse_cannon_industrial_v01 tris_added = 292"
+        },
+        "integrationRequirement": "partsLibrary.js weaponRecordFor default file map → faction barrel variant"
+      },
+      "distinguishedBy": [
+        "12 Modules",
+        "6 Fasteners",
+        "7 Heat wear"
+      ],
+      "bibleRefs": [
+        "axis 12 weapon collars / clamps / scrap jackets"
+      ]
+    },
+    {
+      "faction": "faction_free",
+      "role": "courier",
+      "currentLive": {
+        "defId": "ship_kestrel",
+        "visual": "wholeships/helios_lark.glb",
+        "cite": "partsLibrary.js:429-430 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.courier; traffic.js:67-68 (player kestrel diverted)"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_lark.glb",
+        "variantParts": [
+          "KIT_PACK free_courier: kit_rivet_strip_v03×1 (568×1=568), kit_plate_lip_v02×3 (216×3=648), kit_pipe_clamp_v02×2 (324×2=648), kit_access_panel_v02×1 (636×1=636), kit_hatch_frame_v01×1 (284×1=284)…"
+        ],
+        "materialProfile": "faction_free",
+        "wearTierDistribution": {
+          "fresh": 0.15,
+          "serviceWorn": 0.45,
+          "patched": 0.4
+        },
+        "decalSet": [
+          "fac_free",
+          "char_* FF-####",
+          "wear_chips_stamp2"
+        ],
+        "socketsUsed": [
+          "dorsal pouch zone",
+          "door seal"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 3504,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack free_courier = 3504"
+        },
+        "integrationRequirement": "partsLibrary.js WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.courier + faction kit attach; baked lark variants not yet in foundry (GAP)"
+      },
+      "distinguishedBy": [
+        "8 Repair",
+        "6 Fasteners",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§7"
+      ]
+    },
+    {
+      "faction": "faction_free",
+      "role": "escort",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/wasp_production_v1.glb",
+        "cite": "partsLibrary.js:387-390 WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp; traffic.js:71-74 patrol/escort; visualOverrides.js:30-37"
+      },
+      "proposed": {
+        "donor": "wholeships/wasp_production_v1.glb",
+        "variantParts": [
+          "var_wasp_free_militia_v01.glb"
+        ],
+        "materialProfile": "faction_free",
+        "wearTierDistribution": {
+          "fresh": 0.15,
+          "serviceWorn": 0.4,
+          "patched": 0.45
+        },
+        "decalSet": [
+          "fac_free",
+          "wear_kill_tally",
+          "char_* FF-####"
+        ],
+        "socketsUsed": [
+          "SOCKET_Weapon_Front"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 1468,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "hero_manifest wasp.free added = 1468"
+        },
+        "integrationRequirement": "same Free militia wasp map as patrol"
+      },
+      "distinguishedBy": [
+        "8 Repair",
+        "7 Heat wear",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§7"
+      ]
+    },
+    {
+      "faction": "faction_free",
+      "role": "hauler",
+      "currentLive": {
+        "defId": "ship_mule",
+        "visual": "wholeships/helios_span.glb",
+        "cite": "partsLibrary.js:429-432 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler; traffic.js:65-66,407"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_span.glb",
+        "variantParts": [
+          "KIT_PACK free_hauler: kit_rivet_strip_v03×1 (568×1=568), kit_plate_lip_v02×3 (216×3=648), kit_pipe_clamp_v02×2 (324×2=648), kit_access_panel_v02×1 (636×1=636), kit_hatch_frame_v01×1 (284×1=284), kit_weld_seam_v01×2 (360×2=720)"
+        ],
+        "materialProfile": "faction_free",
+        "wearTierDistribution": {
+          "fresh": 0.1,
+          "serviceWorn": 0.4,
+          "patched": 0.5
+        },
+        "decalSet": [
+          "fac_free",
+          "char_* FF-####",
+          "wear_chips_stamp1",
+          "wear_patch_outline"
+        ],
+        "socketsUsed": [
+          "aftermarket plates mid",
+          "hand pipe runs"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 3504,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack free_hauler = 3504"
+        },
+        "integrationRequirement": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler + Free kit attach OR bake var_helios_span_free_patchwork (GAP)"
+      },
+      "distinguishedBy": [
+        "8 Repair",
+        "6 Fasteners",
+        "2 Paint",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§7"
+      ]
+    },
+    {
+      "faction": "faction_free",
+      "role": "miner",
+      "currentLive": {
+        "defId": "ship_pelican",
+        "visual": "wholeships/helios_cradle.glb",
+        "cite": "partsLibrary.js:429-431 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner; traffic.js:69-70"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_cradle.glb",
+        "variantParts": [
+          "KIT_PACK free_cradle"
+        ],
+        "materialProfile": "faction_free",
+        "wearTierDistribution": {
+          "fresh": 0.1,
+          "serviceWorn": 0.4,
+          "patched": 0.5
+        },
+        "decalSet": [
+          "fac_free",
+          "char_* FF-####",
+          "wear_patch_outline"
+        ],
+        "socketsUsed": [
+          "drill-forward dorsal",
+          "hold flanks",
+          "service hatch"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 3504,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack free_cradle = 3504"
+        },
+        "integrationRequirement": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner + faction kit/profile; no baked cradle variants yet (GAP var_helios_cradle_*)"
+      },
+      "distinguishedBy": [
+        "8 Repair",
+        "2 Paint",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§7"
+      ],
+      "notes": "Independent prospector frame."
+    },
+    {
+      "faction": "faction_free",
+      "role": "patrol",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/wasp_production_v1.glb",
+        "cite": "partsLibrary.js:387-390 WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp; traffic.js:71-74 patrol/escort; visualOverrides.js:30-37"
+      },
+      "proposed": {
+        "donor": "wholeships/wasp_production_v1.glb",
+        "variantParts": [
+          "var_wasp_free_militia_v01.glb",
+          "kit_rivet_strip_v03",
+          "kit_weld_seam_v01"
+        ],
+        "materialProfile": "faction_free",
+        "wearTierDistribution": {
+          "fresh": 0.1,
+          "serviceWorn": 0.45,
+          "patched": 0.45
+        },
+        "decalSet": [
+          "fac_free",
+          "char_* FF-####",
+          "wear_kill_tally",
+          "warn_no_step_frame",
+          "wear_chips_stamp1"
+        ],
+        "socketsUsed": [
+          "SOCKET_Weapon_Front"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 1468,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "hero_manifest wasp.free added = 1468"
+        },
+        "integrationRequirement": "partsLibrary.js faction-aware ship_wasp → var_wasp_free_militia_v01.glb for faction_free traffic"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "8 Repair",
+        "9 Decals"
+      ],
+      "bibleRefs": [
+        "§7 faction_free",
+        "axis 8 Repair: tapeAndPray"
+      ]
+    },
+    {
+      "faction": "faction_free",
+      "role": "smuggler",
+      "currentLive": {
+        "defId": "ship_drifter",
+        "visual": "hulls/hull_multirole.glb",
+        "cite": "traffic.js:75-76 smuggler; HULL_FILE_BY_DEF_ID.ship_drifter partsLibrary.js:371"
+      },
+      "proposed": {
+        "donor": "hulls/hull_multirole.glb",
+        "variantParts": [
+          "KIT_PACK free_smuggler"
+        ],
+        "materialProfile": "faction_free",
+        "wearTierDistribution": {
+          "fresh": 0.1,
+          "serviceWorn": 0.4,
+          "patched": 0.5
+        },
+        "decalSet": [
+          "fac_free",
+          "wear_chips_stamp3"
+        ],
+        "socketsUsed": [
+          "MOUNT_*",
+          "false panels as plate_lip overlays"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 3504,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack free_smuggler = 3504"
+        },
+        "integrationRequirement": "modular multirole + Free kit for mid-sec smuggler traffic"
+      },
+      "distinguishedBy": [
+        "8 Repair",
+        "6 Fasteners",
+        "2 Paint"
+      ],
+      "bibleRefs": [
+        "§7"
+      ]
+    },
+    {
+      "faction": "faction_free",
+      "role": "station_trade_hub",
+      "currentLive": {
+        "defId": "place_station_trade_hub",
+        "visual": "places/place_station_trade_hub.glb",
+        "cite": "partsLibrary.js:57-66 STATION_ARCHETYPE_FILES; sectorAnchors.js core trade hubs; world.js:1075"
+      },
+      "proposed": {
+        "donor": "places/place_station_trade_hub.glb",
+        "variantParts": [
+          "var_station_trade_hub_free_overlay_v01.glb"
+        ],
+        "materialProfile": "faction_free",
+        "wearTierDistribution": {
+          "fresh": 0.1,
+          "serviceWorn": 0.45,
+          "patched": 0.45
+        },
+        "decalSet": [
+          "fac_free",
+          "wear_patch_outline",
+          "wear_chips_stamp1"
+        ],
+        "socketsUsed": [
+          "donor-origin roof/rim overlay attach (tradehub_overlays.json)"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 1752,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "hero_manifest hub.free.tris = 1752 (tradehub_overlays.json matches)"
+        },
+        "integrationRequirement": "STATION_ARCHETYPE_FILES / placeFileForEntity: attach faction overlay GLB or select faction hub composite; files under foundry variants/"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "12 Modules",
+        "10 Emissive",
+        "8 Repair"
+      ],
+      "bibleRefs": [
+        "§7 habitat pods"
+      ]
+    },
+    {
+      "faction": "faction_mts",
+      "role": "courier",
+      "currentLive": {
+        "defId": "ship_kestrel",
+        "visual": "wholeships/helios_lark.glb",
+        "cite": "partsLibrary.js:429-430 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.courier; traffic.js:67-68 (player kestrel diverted)"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_lark.glb",
+        "variantParts": [
+          "KIT_PACK mts_courier: kit_access_panel_v01×2 (492×2=984), kit_hatch_frame_v02×1 (684×1=684), kit_sensor_housing_v02×1 (350×1=350), kit_pipe_clamp_v01×2 (484×2=968), kit_plate_lip_v01×2 (216×2=432)…"
+        ],
+        "materialProfile": "faction_mts",
+        "wearTierDistribution": {
+          "fresh": 0.5,
+          "serviceWorn": 0.45,
+          "patched": 0.05
+        },
+        "decalSet": [
+          "fac_mts",
+          "char_* MTS-#####",
+          "serv_umbilical_socket"
+        ],
+        "socketsUsed": [
+          "dorsal pouch zone",
+          "door seal"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 4143,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack mts_courier = 4143"
+        },
+        "integrationRequirement": "partsLibrary.js WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.courier + faction kit attach; baked lark variants not yet in foundry (GAP)"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "2 Paint",
+        "6 Fasteners"
+      ],
+      "bibleRefs": [
+        "§2"
+      ]
+    },
+    {
+      "faction": "faction_mts",
+      "role": "escort",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/wasp_production_v1.glb",
+        "cite": "partsLibrary.js:387-390 WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp; traffic.js:71-74 patrol/escort; visualOverrides.js:30-37"
+      },
+      "proposed": {
+        "donor": "wholeships/wasp_production_v1.glb",
+        "variantParts": [
+          "var_wasp_mts_escort_v01.glb"
+        ],
+        "materialProfile": "faction_mts",
+        "wearTierDistribution": {
+          "fresh": 0.5,
+          "serviceWorn": 0.45,
+          "patched": 0.05
+        },
+        "decalSet": [
+          "fac_mts",
+          "char_* MTS-#####"
+        ],
+        "socketsUsed": [
+          "SOCKET_Weapon_Front"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 1448,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "hero_manifest wasp.mts added = 1448"
+        },
+        "integrationRequirement": "same MTS wasp map as patrol; wearTier roll skews fresh for branded escorts"
+      },
+      "distinguishedBy": [
+        "2 Paint",
+        "10 Emissive",
+        "11 Cleanliness"
+      ],
+      "bibleRefs": [
+        "§2"
+      ]
+    },
+    {
+      "faction": "faction_mts",
+      "role": "express",
+      "currentLive": {
+        "defId": "ship_mule",
+        "visual": "hulls/hull_freighter.glb",
+        "cite": "traffic.js:83-84 trafficRole express NOT in WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE → HULL_FILE_BY_DEF_ID.ship_mule modular (partsLibrary.js:375)"
+      },
+      "proposed": {
+        "donor": "hulls/hull_freighter.glb",
+        "variantParts": [
+          "KIT_PACK mts_hauler",
+          "pod_cargo_container (live)",
+          "engines/engine_industrial.glb (live map)"
+        ],
+        "materialProfile": "faction_mts",
+        "wearTierDistribution": {
+          "fresh": 0.45,
+          "serviceWorn": 0.5,
+          "patched": 0.05
+        },
+        "decalSet": [
+          "fac_mts",
+          "char_* MTS-#####",
+          "serv_umbilical_socket"
+        ],
+        "socketsUsed": [
+          "MOUNT_ENGINE_*",
+          "cargoSlots pods"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 4143,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack mts_hauler = 4143"
+        },
+        "integrationRequirement": "Either map express→helios_span/variant (preferred) OR keep modular freighter + MTS kit; traffic.js:83-84 vs WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "2 Paint",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§2"
+      ],
+      "notes": "Live express is modular freighter while hauler is Span — composition prefers aligning express to Span MTS sealed when integrated."
+    },
+    {
+      "faction": "faction_mts",
+      "role": "hauler",
+      "currentLive": {
+        "defId": "ship_mule",
+        "visual": "wholeships/helios_span.glb",
+        "cite": "partsLibrary.js:429-432 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler; traffic.js:65-66,407"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_span.glb",
+        "variantParts": [
+          "var_helios_span_mts_sealed_v01.glb"
+        ],
+        "materialProfile": "faction_mts",
+        "wearTierDistribution": {
+          "fresh": 0.4,
+          "serviceWorn": 0.5,
+          "patched": 0.1
+        },
+        "decalSet": [
+          "fac_mts",
+          "char_* MTS-#####",
+          "serv_umbilical_socket",
+          "serv_fuel_port_ring"
+        ],
+        "socketsUsed": [
+          "cargo door seal rails",
+          "clamshell parting lines",
+          "logo backlight zone"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 2028,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "variants_manifest tris_added = 2028"
+        },
+        "integrationRequirement": "partsLibrary.js WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler → faction fork to var_helios_span_mts_sealed_v01.glb when entity.factionId=faction_mts"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "2 Paint",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§2",
+        "axis 12 clamshell seals"
+      ]
+    },
+    {
+      "faction": "faction_mts",
+      "role": "miner",
+      "currentLive": {
+        "defId": "ship_pelican",
+        "visual": "wholeships/helios_cradle.glb",
+        "cite": "partsLibrary.js:429-431 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner; traffic.js:69-70"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_cradle.glb",
+        "variantParts": [
+          "KIT_PACK mts_hauler"
+        ],
+        "materialProfile": "faction_mts",
+        "wearTierDistribution": {
+          "fresh": 0.4,
+          "serviceWorn": 0.5,
+          "patched": 0.1
+        },
+        "decalSet": [
+          "fac_mts",
+          "char_* MTS-#####"
+        ],
+        "socketsUsed": [
+          "drill-forward dorsal",
+          "hold flanks",
+          "service hatch"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 4143,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack mts_hauler = 4143"
+        },
+        "integrationRequirement": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner + faction kit/profile; no baked cradle variants yet (GAP var_helios_cradle_*)"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "2 Paint",
+        "6 Fasteners"
+      ],
+      "bibleRefs": [
+        "§2"
+      ],
+      "notes": "Corporate licensed prospectors — sealed clamshell service culture on cradle donor."
+    },
+    {
+      "faction": "faction_mts",
+      "role": "patrol",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/wasp_production_v1.glb",
+        "cite": "partsLibrary.js:387-390 WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp; traffic.js:71-74 patrol/escort; visualOverrides.js:30-37"
+      },
+      "proposed": {
+        "donor": "wholeships/wasp_production_v1.glb",
+        "variantParts": [
+          "var_wasp_mts_escort_v01.glb",
+          "kit_access_panel_v01",
+          "kit_sensor_housing_v02"
+        ],
+        "materialProfile": "faction_mts",
+        "wearTierDistribution": {
+          "fresh": 0.45,
+          "serviceWorn": 0.5,
+          "patched": 0.05
+        },
+        "decalSet": [
+          "fac_mts",
+          "char_* MTS-#####",
+          "serv_umbilical_socket",
+          "serv_fuel_port_ring",
+          "serv_panel_labelframe"
+        ],
+        "socketsUsed": [
+          "SOCKET_Weapon_Front",
+          "cabin strip emissive"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 1448,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "hero_manifest wasp.mts added = 1448"
+        },
+        "integrationRequirement": "partsLibrary.js faction-aware ship_wasp whole-ship → var_wasp_mts_escort_v01.glb for faction_mts traffic"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "2 Paint",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§2 faction_mts",
+        "axis 12: flush access, conformal sensors"
+      ]
+    },
+    {
+      "faction": "faction_mts",
+      "role": "station_trade_hub",
+      "currentLive": {
+        "defId": "place_station_trade_hub",
+        "visual": "places/place_station_trade_hub.glb",
+        "cite": "partsLibrary.js:57-66 STATION_ARCHETYPE_FILES; sectorAnchors.js core trade hubs; world.js:1075"
+      },
+      "proposed": {
+        "donor": "places/place_station_trade_hub.glb",
+        "variantParts": [
+          "var_station_trade_hub_mts_overlay_v01.glb"
+        ],
+        "materialProfile": "faction_mts",
+        "wearTierDistribution": {
+          "fresh": 0.4,
+          "serviceWorn": 0.5,
+          "patched": 0.1
+        },
+        "decalSet": [
+          "fac_mts",
+          "serv_umbilical_socket"
+        ],
+        "socketsUsed": [
+          "donor-origin roof/rim overlay attach (tradehub_overlays.json)"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 4800,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "hero_manifest hub.mts.tris = 4800 (tradehub_overlays.json matches)"
+        },
+        "integrationRequirement": "STATION_ARCHETYPE_FILES / placeFileForEntity: attach faction overlay GLB or select faction hub composite; files under foundry variants/"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "12 Modules",
+        "10 Emissive",
+        "8 Repair"
+      ],
+      "bibleRefs": [
+        "§2 commerce rings"
+      ]
+    },
+    {
+      "faction": "faction_quiet",
+      "role": "miner",
+      "currentLive": {
+        "defId": "ship_pelican",
+        "visual": "wholeships/helios_cradle.glb",
+        "cite": "partsLibrary.js:429-431 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner; traffic.js:69-70"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_cradle.glb",
+        "variantParts": [
+          "KIT_PACK quiet_smuggler"
+        ],
+        "materialProfile": "faction_quiet",
+        "wearTierDistribution": {
+          "fresh": 0.2,
+          "serviceWorn": 0.5,
+          "patched": 0.3
+        },
+        "decalSet": [
+          "fac_quiet"
+        ],
+        "socketsUsed": [
+          "drill-forward dorsal",
+          "hold flanks",
+          "service hatch"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 3272,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack quiet_smuggler = 3272"
+        },
+        "integrationRequirement": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner + faction kit/profile; no baked cradle variants yet (GAP var_helios_cradle_*)"
+      },
+      "distinguishedBy": [
+        "6 Fasteners",
+        "9 Decals",
+        "10 Emissive"
+      ],
+      "bibleRefs": [
+        "§5"
+      ],
+      "notes": "Quiet stripped-hold miner (rare traffic); registration removed scar."
+    },
+    {
+      "faction": "faction_quiet",
+      "role": "quiet_ghost",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/wasp_production_v1.glb",
+        "cite": "enemies.js:273-275 quiet_ghost ship_wasp; NOT in WHOLE_SHIP_FILE_BY_HOSTILE_ID → production wasp (gap)"
+      },
+      "proposed": {
+        "donor": "wholeships/wasp_production_v1.glb",
+        "variantParts": [
+          "KIT_PACK quiet_ghost: kit_sensor_housing_v03×2 (346×2=692), kit_access_panel_v03×2 (736×2=1472), kit_hatch_frame_v02×1 (684×1=684), kit_pipe_clamp_v03×1 (424×1=424)"
+        ],
+        "materialProfile": "faction_quiet",
+        "wearTierDistribution": {
+          "fresh": 0.2,
+          "serviceWorn": 0.55,
+          "patched": 0.25
+        },
+        "decalSet": [
+          "fac_quiet"
+        ],
+        "socketsUsed": [
+          "baffled sensors",
+          "flush access blanks",
+          "registration-removal scar zone"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 3272,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack quiet_ghost = 3272"
+        },
+        "integrationRequirement": "ADD WHOLE_SHIP_FILE_BY_HOSTILE_ID.quiet_ghost → wasp+quiet kit or dedicated low-sig body"
+      },
+      "distinguishedBy": [
+        "6 Fasteners",
+        "9 Decals",
+        "10 Emissive",
+        "11 Cleanliness"
+      ],
+      "bibleRefs": [
+        "§5",
+        "axis 10 emissive 0.35 shuttered",
+        "axis 6 bonded fasteners none"
+      ],
+      "notes": "Desaturated read: flush seams, no rivets, dim slits — opposite of Reach scrap and Choir sermon."
+    },
+    {
+      "faction": "faction_quiet",
+      "role": "smuggler",
+      "currentLive": {
+        "defId": "ship_drifter",
+        "visual": "hulls/hull_multirole.glb",
+        "cite": "traffic.js:75-76 smuggler; HULL_FILE_BY_DEF_ID.ship_drifter partsLibrary.js:371"
+      },
+      "proposed": {
+        "donor": "hulls/hull_multirole.glb",
+        "variantParts": [
+          "KIT_PACK quiet_smuggler"
+        ],
+        "materialProfile": "faction_quiet",
+        "wearTierDistribution": {
+          "fresh": 0.15,
+          "serviceWorn": 0.55,
+          "patched": 0.3
+        },
+        "decalSet": [
+          "fac_quiet"
+        ],
+        "socketsUsed": [
+          "MOUNT_COCKPIT",
+          "false panel zones",
+          "sensor baffles"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 3272,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack quiet_smuggler = 3272"
+        },
+        "integrationRequirement": "HULL_FILE_BY_DEF_ID.ship_drifter remains; add faction kit attach for trafficRole smuggler + faction_quiet; optional WHOLE_SHIP later"
+      },
+      "distinguishedBy": [
+        "6 Fasteners",
+        "9 Decals",
+        "10 Emissive",
+        "11 Cleanliness"
+      ],
+      "bibleRefs": [
+        "§5 faction_quiet"
+      ]
+    },
+    {
+      "faction": "faction_reach",
+      "role": "bruiser_brawler",
+      "currentLive": {
+        "defId": "ship_bastion",
+        "visual": "wholeships/ashline_lode.glb",
+        "cite": "partsLibrary.js:416 WHOLE_SHIP_FILE_BY_HOSTILE_ID.bruiser_brawler; enemies.js:55-57"
+      },
+      "proposed": {
+        "donor": "wholeships/ashline_lode.glb",
+        "variantParts": [
+          "KIT_PACK reach_scrap",
+          "kit_heat_shield_v01×2",
+          "kit_weapon_collar_v01×2"
+        ],
+        "materialProfile": "faction_reach",
+        "wearTierDistribution": {
+          "fresh": 0.0,
+          "serviceWorn": 0.35,
+          "patched": 0.65
+        },
+        "decalSet": [
+          "fac_reach",
+          "wear_scorch_ring",
+          "wear_weld_ring"
+        ],
+        "socketsUsed": [
+          "armor flanks",
+          "weapon roots"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 8512,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "reach_scrap 5848 + 2×heat_v01=1176 + 2×collar_v01=1488"
+        },
+        "integrationRequirement": "keep ashline_lode map; kit armor dialects; optional bake var_ashline_lode_* (GAP)"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "7 Heat wear",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§4"
+      ]
+    },
+    {
+      "faction": "faction_reach",
+      "role": "corsair_raider",
+      "currentLive": {
+        "defId": "ship_hornet",
+        "visual": "wholeships/ashline_rig.glb",
+        "cite": "partsLibrary.js:414-418 WHOLE_SHIP_FILE_BY_HOSTILE_ID.corsair_raider (SHARED with reaver); enemies.js:114-116"
+      },
+      "proposed": {
+        "donor": "wholeships/ashline_rig.glb",
+        "variantParts": [
+          "var_ashline_rig_corsair_blade_v01.glb",
+          "var_weapon_pulse_cannon_pirate_v01.glb"
+        ],
+        "materialProfile": "faction_reach",
+        "wearTierDistribution": {
+          "fresh": 0.0,
+          "serviceWorn": 0.35,
+          "patched": 0.65
+        },
+        "decalSet": [
+          "fac_reach",
+          "wear_kill_tally",
+          "wear_scorch_ring"
+        ],
+        "socketsUsed": [
+          "fore blades",
+          "ram lip",
+          "weapon collars port/stbd"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 1720,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "corsair blade 1332 + pirate cannon 388"
+        },
+        "integrationRequirement": "WHOLE_SHIP_FILE_BY_HOSTILE_ID.corsair_raider → var_ashline_rig_corsair_blade_v01.glb (must diverge from reaver map)"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "12 Modules",
+        "7 Heat wear",
+        "5 Edge"
+      ],
+      "bibleRefs": [
+        "§4",
+        "blade interceptor vs reaver hook"
+      ]
+    },
+    {
+      "faction": "faction_reach",
+      "role": "hauler",
+      "currentLive": {
+        "defId": "ship_mule",
+        "visual": "wholeships/helios_span.glb",
+        "cite": "partsLibrary.js:429-432 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler; traffic.js:65-66,407"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_span.glb",
+        "variantParts": [
+          "var_helios_span_reach_scrap_v01.glb"
+        ],
+        "materialProfile": "faction_reach",
+        "wearTierDistribution": {
+          "fresh": 0.0,
+          "serviceWorn": 0.25,
+          "patched": 0.75
+        },
+        "decalSet": [
+          "fac_reach",
+          "wear_kill_tally",
+          "wear_scorch_ring",
+          "wear_weld_ring",
+          "wear_patch_outline"
+        ],
+        "socketsUsed": [
+          "scrap plates mid/fore/aft",
+          "standoff feet",
+          "muzzle collars if armed"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 2296,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "variants_manifest tris_added = 2296"
+        },
+        "integrationRequirement": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler faction fork → var_helios_span_reach_scrap_v01.glb (rare lawful Reach traffic / captured freighter presentation)"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "8 Repair",
+        "7 Heat wear"
+      ],
+      "bibleRefs": [
+        "§4 faction_reach"
+      ],
+      "notes": "Reach rarely owns high-sec hauler traffic; cell covers captured/reflagged freighters and mid-sec pirate logistics."
+    },
+    {
+      "faction": "faction_reach",
+      "role": "lancer_sniper",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/wasp_production_v1.glb",
+        "cite": "enemies.js:36-38 lancer_sniper ship_wasp; NOT in WHOLE_SHIP_FILE_BY_HOSTILE_ID → production wasp (gap)"
+      },
+      "proposed": {
+        "donor": "wholeships/wasp_production_v1.glb",
+        "variantParts": [
+          "KIT_PACK lancer_sniper: weapon_collar_v01×1, sensor_housing_v03×2, rail_split_v04×2, armor_spacer_v01×2, weld_seam_v02×2, heat_shield_v03×1",
+          "var_weapon_pulse_cannon_pirate_v01.glb (placeholder barrel jacket until rail visual)"
+        ],
+        "materialProfile": "faction_reach",
+        "wearTierDistribution": {
+          "fresh": 0.0,
+          "serviceWorn": 0.35,
+          "patched": 0.65
+        },
+        "decalSet": [
+          "fac_reach",
+          "wear_kill_tally",
+          "wear_scorch_ring"
+        ],
+        "socketsUsed": [
+          "SOCKET_Weapon_Front as lance root",
+          "sensor housings fore"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 3752,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "lancer kit 3364 + pirate cannon 388"
+        },
+        "integrationRequirement": "ADD WHOLE_SHIP_FILE_BY_HOSTILE_ID.lancer_sniper → dedicated lance body or wasp+kit; currently falls to production wasp via ship_wasp"
+      },
+      "distinguishedBy": [
+        "12 Modules",
+        "1 Segmentation",
+        "7 Heat wear",
+        "6 Fasteners"
+      ],
+      "bibleRefs": [
+        "§4",
+        "hostile gap audit"
+      ],
+      "notes": "Must read as sniper lance, not patrol Wasp. Preferred long-term: unique silhouette donor (GAP)."
+    },
+    {
+      "faction": "faction_reach",
+      "role": "mine_layer_jackal",
+      "currentLive": {
+        "defId": "ship_drifter",
+        "visual": "hulls/hull_multirole.glb",
+        "cite": "enemies.js:179-180 mine_layer_jackal; not in hostile whole map → modular multirole"
+      },
+      "proposed": {
+        "donor": "wholeships/ashline_rig.glb",
+        "variantParts": [
+          "var_ashline_rig_reaver_hook_v01.glb",
+          "kit_pipe_clamp_v01×2 mine-rack read",
+          "kit_vent_grid_v03×1"
+        ],
+        "materialProfile": "faction_reach",
+        "wearTierDistribution": {
+          "fresh": 0.0,
+          "serviceWorn": 0.35,
+          "patched": 0.65
+        },
+        "decalSet": [
+          "fac_reach",
+          "wear_scorch_ring"
+        ],
+        "socketsUsed": [
+          "fore hook family",
+          "mid rack clamps"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 2408,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "reaver_hook 828 + 2×pipe_v01=968 + vent_v03=612"
+        },
+        "integrationRequirement": "ADD WHOLE_SHIP_FILE_BY_HOSTILE_ID.mine_layer_jackal → ashline reaver_hook (or dedicated); currently modular multirole gap"
+      },
+      "distinguishedBy": [
+        "12 Modules",
+        "8 Repair",
+        "7 Heat wear"
+      ],
+      "bibleRefs": [
+        "§4"
+      ],
+      "notes": "Integration closes audit gap: jackal currently falls to hull_multirole."
+    },
+    {
+      "faction": "faction_reach",
+      "role": "pd_screen_escort",
+      "currentLive": {
+        "defId": "ship_bastion",
+        "visual": "hulls/hull_corvette.glb",
+        "cite": "enemies.js:205-207 pd_screen_escort; not in hostile whole map → modular hull_corvette"
+      },
+      "proposed": {
+        "donor": "wholeships/ashline_lode.glb",
+        "variantParts": [
+          "KIT_PACK reach_scrap",
+          "kit_weapon_collar_v02×3 PD turrets read",
+          "kit_sensor_housing_v02×2"
+        ],
+        "materialProfile": "faction_reach",
+        "wearTierDistribution": {
+          "fresh": 0.0,
+          "serviceWorn": 0.4,
+          "patched": 0.6
+        },
+        "decalSet": [
+          "fac_reach",
+          "wear_scorch_ring"
+        ],
+        "socketsUsed": [
+          "weapon collars",
+          "sensor housings"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 8900,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "reach_scrap 5848 + 3×collar_v02=2352 + 2×sensor_v02=700"
+        },
+        "integrationRequirement": "ADD WHOLE_SHIP_FILE_BY_HOSTILE_ID.pd_screen_escort → ashline_lode + PD kit; currently modular corvette gap"
+      },
+      "distinguishedBy": [
+        "12 Modules",
+        "7 Heat wear",
+        "1 Segmentation"
+      ],
+      "bibleRefs": [
+        "§4"
+      ]
+    },
+    {
+      "faction": "faction_reach",
+      "role": "pirate",
+      "currentLive": {
+        "defId": "ship_hornet",
+        "visual": "hulls/hull_interceptor.glb",
+        "cite": "traffic.js:77-78 pirate role; not in whole-ship traffic map → modular hull_interceptor"
+      },
+      "proposed": {
+        "donor": "hulls/hull_interceptor.glb",
+        "variantParts": [
+          "KIT_PACK reach_pirate_mod",
+          "var_weapon_pulse_cannon_pirate_v01.glb"
+        ],
+        "materialProfile": "faction_reach",
+        "wearTierDistribution": {
+          "fresh": 0.0,
+          "serviceWorn": 0.3,
+          "patched": 0.7
+        },
+        "decalSet": [
+          "fac_reach",
+          "wear_kill_tally",
+          "wear_patch_outline"
+        ],
+        "socketsUsed": [
+          "MOUNT_*",
+          "SOCKET_Weapon_Front"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 6236,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "reach_pirate_mod 5848 + pirate cannon 388"
+        },
+        "integrationRequirement": "trafficRole pirate modular path: hull_interceptor + Reach kit (distinct from ashline hostile wholeships)"
+      },
+      "distinguishedBy": [
+        "6 Fasteners",
+        "5 Edge",
+        "8 Repair"
+      ],
+      "bibleRefs": [
+        "§4"
+      ]
+    },
+    {
+      "faction": "faction_reach",
+      "role": "reaver_pirate",
+      "currentLive": {
+        "defId": "ship_drifter",
+        "visual": "wholeships/ashline_rig.glb",
+        "cite": "partsLibrary.js:414-418 WHOLE_SHIP_FILE_BY_HOSTILE_ID.reaver_pirate; enemies.js:94-96"
+      },
+      "proposed": {
+        "donor": "wholeships/ashline_rig.glb",
+        "variantParts": [
+          "var_ashline_rig_reaver_hook_v01.glb"
+        ],
+        "materialProfile": "faction_reach",
+        "wearTierDistribution": {
+          "fresh": 0.0,
+          "serviceWorn": 0.3,
+          "patched": 0.7
+        },
+        "decalSet": [
+          "fac_reach",
+          "wear_kill_tally",
+          "wear_scorch_ring",
+          "wear_weld_ring"
+        ],
+        "socketsUsed": [
+          "fore grapple/hook",
+          "crane gantry mid",
+          "prow plates"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 828,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "variants_manifest tris_added = 828"
+        },
+        "integrationRequirement": "partsLibrary.js WHOLE_SHIP_FILE_BY_HOSTILE_ID.reaver_pirate → var_ashline_rig_reaver_hook_v01.glb (split from corsair)"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "8 Repair",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§4",
+        "hook scavenger construction"
+      ]
+    },
+    {
+      "faction": "faction_reach",
+      "role": "wasp_swarmer",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/ashline_dart.glb",
+        "cite": "partsLibrary.js:415 WHOLE_SHIP_FILE_BY_HOSTILE_ID.wasp_swarmer; enemies.js:19-20"
+      },
+      "proposed": {
+        "donor": "wholeships/ashline_dart.glb",
+        "variantParts": [
+          "KIT_PACK reach_scrap (scaled light): kit_weld_seam_v03×2, kit_plate_lip_v01×2, kit_armor_spacer_v02×1, kit_weapon_collar_v03×1"
+        ],
+        "materialProfile": "faction_reach",
+        "wearTierDistribution": {
+          "fresh": 0.0,
+          "serviceWorn": 0.4,
+          "patched": 0.6
+        },
+        "decalSet": [
+          "fac_reach",
+          "wear_scorch_ring"
+        ],
+        "socketsUsed": [
+          "fore",
+          "weapon root"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 1880,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "2×weld_v03=504 + 2×lip_v01=432 + spacer_v02=248 + collar_v03=696"
+        },
+        "integrationRequirement": "keep WHOLE_SHIP_FILE_BY_HOSTILE_ID.wasp_swarmer=ashline_dart; optional swarm damage dialects via kit attach (no baked dart variants — GAP)"
+      },
+      "distinguishedBy": [
+        "6 Fasteners",
+        "7 Heat wear",
+        "8 Repair"
+      ],
+      "bibleRefs": [
+        "§4"
+      ]
+    },
+    {
+      "faction": "faction_reach",
+      "role": "weapon_pulse_default",
+      "currentLive": {
+        "defId": "weapon_pulse_cannon",
+        "visual": "weapons/weapon_pulse_cannon.glb",
+        "cite": "partsLibrary.js:2669-2678 weaponRecordFor default barrel"
+      },
+      "proposed": {
+        "donor": "weapons/weapon_pulse_cannon.glb",
+        "variantParts": [
+          "var_weapon_pulse_cannon_pirate_v01.glb"
+        ],
+        "materialProfile": "faction_reach",
+        "wearTierDistribution": {
+          "fresh": 0.2,
+          "serviceWorn": 0.6,
+          "patched": 0.2
+        },
+        "decalSet": [
+          "fac_reach",
+          "wear_scorch_ring"
+        ],
+        "socketsUsed": [
+          "hardpoint muzzle axis preserved"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 388,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "variants_manifest var_weapon_pulse_cannon_pirate_v01 tris_added = 388"
+        },
+        "integrationRequirement": "partsLibrary.js weaponRecordFor default file map → faction barrel variant"
+      },
+      "distinguishedBy": [
+        "12 Modules",
+        "6 Fasteners",
+        "7 Heat wear"
+      ],
+      "bibleRefs": [
+        "axis 12 weapon collars / clamps / scrap jackets"
+      ]
+    },
+    {
+      "faction": "faction_scn",
+      "role": "courier",
+      "currentLive": {
+        "defId": "ship_kestrel",
+        "visual": "wholeships/helios_lark.glb",
+        "cite": "partsLibrary.js:429-430 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.courier; traffic.js:67-68 (player kestrel diverted)"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_lark.glb",
+        "variantParts": [
+          "KIT_PACK scn_courier: kit_fastener_recessed_v01×3 (172×3=516), kit_rail_split_v01×2 (324×2=648), kit_hatch_frame_v01×1 (284×1=284), kit_armor_spacer_v01×2 (324×2=648), kit_sensor_housing_v01×1 (268×1=268)…"
+        ],
+        "materialProfile": "faction_scn",
+        "wearTierDistribution": {
+          "fresh": 0.35,
+          "serviceWorn": 0.55,
+          "patched": 0.1
+        },
+        "decalSet": [
+          "fac_scn",
+          "char_* SCN-####",
+          "warn_intake_triangle"
+        ],
+        "socketsUsed": [
+          "dorsal pouch zone",
+          "door seal"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 2364,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack scn_courier = 2364"
+        },
+        "integrationRequirement": "partsLibrary.js WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.courier + faction kit attach; baked lark variants not yet in foundry (GAP)"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "9 Decals"
+      ],
+      "bibleRefs": [
+        "§1"
+      ]
+    },
+    {
+      "faction": "faction_scn",
+      "role": "customs_cutter",
+      "currentLive": {
+        "defId": "ship_hornet",
+        "visual": "hulls/hull_interceptor.glb",
+        "cite": "enemies.js:231-233 customs_cutter; same modular interceptor as patrol_lawman"
+      },
+      "proposed": {
+        "donor": "hulls/hull_interceptor.glb",
+        "variantParts": [
+          "KIT_PACK scn_law",
+          "kit_sensor_housing_v02×1 interdiction boom read",
+          "var_weapon_pulse_cannon_military_v01.glb"
+        ],
+        "materialProfile": "faction_scn",
+        "wearTierDistribution": {
+          "fresh": 0.35,
+          "serviceWorn": 0.55,
+          "patched": 0.1
+        },
+        "decalSet": [
+          "fac_scn",
+          "serv_inspection_tag",
+          "warn_no_step_frame"
+        ],
+        "socketsUsed": [
+          "MOUNT_*",
+          "SOCKET_Weapon_Front"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 4230,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "scn_law 3512 + sensor_v02 350 + military cannon 368"
+        },
+        "integrationRequirement": "same modular interceptor + denser sensor kit; optional hostile whole map later"
+      },
+      "distinguishedBy": [
+        "12 Modules",
+        "9 Decals",
+        "10 Emissive"
+      ],
+      "bibleRefs": [
+        "§1"
+      ],
+      "notes": "Customs shares interceptor donor with lawman but heavier sensor housing emphasis."
+    },
+    {
+      "faction": "faction_scn",
+      "role": "escort",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/wasp_production_v1.glb",
+        "cite": "partsLibrary.js:387-390 WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp; traffic.js:71-74 patrol/escort; visualOverrides.js:30-37"
+      },
+      "proposed": {
+        "donor": "wholeships/wasp_production_v1.glb",
+        "variantParts": [
+          "var_wasp_scn_patrol_v01.glb",
+          "var_weapon_pulse_cannon_military_v01.glb"
+        ],
+        "materialProfile": "faction_scn",
+        "wearTierDistribution": {
+          "fresh": 0.4,
+          "serviceWorn": 0.5,
+          "patched": 0.1
+        },
+        "decalSet": [
+          "fac_scn",
+          "char_* SCN-####",
+          "warn_intake_triangle",
+          "serv_inspection_tag"
+        ],
+        "socketsUsed": [
+          "SOCKET_Weapon_Front"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 968,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "wasp_scn 600 + weapon military tris_added 368 = 968"
+        },
+        "integrationRequirement": "partsLibrary.js WHOLE_SHIP_FILE_BY_DEF_ID / trafficRole escort faction fork + weaponRecordFor military barrel map when modular hardpoints present"
+      },
+      "distinguishedBy": [
+        "6 Fasteners",
+        "9 Decals",
+        "10 Emissive"
+      ],
+      "bibleRefs": [
+        "§1"
+      ],
+      "notes": "Escort reuses SCN patrol body; wear skews slightly fresher (yard-maintained convoy escort)."
+    },
+    {
+      "faction": "faction_scn",
+      "role": "hauler",
+      "currentLive": {
+        "defId": "ship_mule",
+        "visual": "wholeships/helios_span.glb",
+        "cite": "partsLibrary.js:429-432 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler; traffic.js:65-66,407"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_span.glb",
+        "variantParts": [
+          "KIT_PACK scn_hauler: kit_fastener_recessed_v01×3 (172×3=516), kit_rail_split_v01×2 (324×2=648), kit_hatch_frame_v01×1 (284×1=284), kit_armor_spacer_v01×2 (324×2=648), kit_sensor_housing_v01×1 (268×1=268)"
+        ],
+        "materialProfile": "faction_scn",
+        "wearTierDistribution": {
+          "fresh": 0.3,
+          "serviceWorn": 0.6,
+          "patched": 0.1
+        },
+        "decalSet": [
+          "fac_scn",
+          "char_* SCN-####",
+          "warn_no_step_frame",
+          "serv_panel_labelframe"
+        ],
+        "socketsUsed": [
+          "dorsal frame rails",
+          "hatch service"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 2364,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack scn_hauler = 2364"
+        },
+        "integrationRequirement": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler + kit attach OR bake var_helios_span_scn_sealed (GAP)",
+        "kitPlacementZone": "dorsal orthogonal grid + stern overlap"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "11 Cleanliness",
+        "10 Emissive"
+      ],
+      "bibleRefs": [
+        "§1"
+      ]
+    },
+    {
+      "faction": "faction_scn",
+      "role": "miner",
+      "currentLive": {
+        "defId": "ship_pelican",
+        "visual": "wholeships/helios_cradle.glb",
+        "cite": "partsLibrary.js:429-431 WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner; traffic.js:69-70"
+      },
+      "proposed": {
+        "donor": "wholeships/helios_cradle.glb",
+        "variantParts": [
+          "KIT_PACK scn_hauler"
+        ],
+        "materialProfile": "faction_scn",
+        "wearTierDistribution": {
+          "fresh": 0.25,
+          "serviceWorn": 0.6,
+          "patched": 0.15
+        },
+        "decalSet": [
+          "fac_scn",
+          "char_* SCN-####",
+          "warn_no_step_frame"
+        ],
+        "socketsUsed": [
+          "drill-forward dorsal",
+          "hold flanks",
+          "service hatch"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 2364,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "kit pack scn_hauler = 2364"
+        },
+        "integrationRequirement": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner + faction kit/profile; no baked cradle variants yet (GAP var_helios_cradle_*)"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "11 Cleanliness"
+      ],
+      "bibleRefs": [
+        "§1"
+      ],
+      "notes": "Licensed Concord miners in high-sec — same cradle donor, navy yard language."
+    },
+    {
+      "faction": "faction_scn",
+      "role": "patrol",
+      "currentLive": {
+        "defId": "ship_wasp",
+        "visual": "wholeships/wasp_production_v1.glb",
+        "cite": "partsLibrary.js:387-390 WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp; traffic.js:71-74 patrol/escort; visualOverrides.js:30-37"
+      },
+      "proposed": {
+        "donor": "wholeships/wasp_production_v1.glb",
+        "variantParts": [
+          "var_wasp_scn_patrol_v01.glb",
+          "kit_fastener_recessed (v01–v02 rows)",
+          "kit_rail_split_v01 mid",
+          "kit_armor_spacer_v01 flanks"
+        ],
+        "materialProfile": "faction_scn",
+        "wearTierDistribution": {
+          "fresh": 0.35,
+          "serviceWorn": 0.55,
+          "patched": 0.1
+        },
+        "decalSet": [
+          "fac_scn",
+          "char_* digits for SCN-####",
+          "warn_intake_triangle",
+          "warn_high_voltage_bolt",
+          "warn_no_step_frame",
+          "serv_panel_labelframe"
+        ],
+        "socketsUsed": [
+          "SOCKET_Weapon_Front",
+          "SOCKET_Trail_Main",
+          "dorsal spine registration"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 600,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "hero_manifest wasp.scn tris_variant-tris_donor = 600"
+        },
+        "integrationRequirement": "src/render/partsLibrary.js: introduce faction-aware whole-ship fork for trafficRole patrol/escort OR WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp + factionId selector; candidate path assets/ships/foundry/.../variants/var_wasp_scn_patrol_v01.glb (not release)"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "8 Repair",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§1 faction_scn",
+        "axis 12 Modules: recessed seams, spacers, collars"
+      ]
+    },
+    {
+      "faction": "faction_scn",
+      "role": "patrol_lawman",
+      "currentLive": {
+        "defId": "ship_hornet",
+        "visual": "hulls/hull_interceptor.glb",
+        "cite": "enemies.js:134-136 patrol_lawman; HULL_FILE_BY_DEF_ID.ship_hornet partsLibrary.js:378; high-sec pool world.js:129,1623-1624"
+      },
+      "proposed": {
+        "donor": "hulls/hull_interceptor.glb",
+        "variantParts": [
+          "KIT_PACK scn_law: kit_fastener_recessed_v02×2 (236×2=472), kit_rail_split_v02×2 (324×2=648), kit_armor_spacer_v03×2 (548×2=1096), kit_hatch_frame_v01×1 (284×1=284), kit_sensor_housing_v01×1 (268×1=268), kit_weapon_collar_v01×1 (744×1=744)",
+          "var_weapon_pulse_cannon_military_v01.glb",
+          "engines/engine_vector.glb (live)"
+        ],
+        "materialProfile": "faction_scn",
+        "wearTierDistribution": {
+          "fresh": 0.3,
+          "serviceWorn": 0.6,
+          "patched": 0.1
+        },
+        "decalSet": [
+          "fac_scn",
+          "char_* SCN-####",
+          "warn_intake_triangle",
+          "warn_high_voltage_bolt"
+        ],
+        "socketsUsed": [
+          "MOUNT_COCKPIT",
+          "MOUNT_ENGINE_*",
+          "MOUNT_FIN_*",
+          "SOCKET_Weapon_Front"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 3880,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "scn_law 3512 + military cannon 368"
+        },
+        "integrationRequirement": "HULL_FILE_BY_DEF_ID.ship_hornet stays; add faction/role kit attach for patrol_lawman OR WHOLE_SHIP_FILE_BY_HOSTILE_ID.patrol_lawman future whole body"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "8 Repair",
+        "12 Modules"
+      ],
+      "bibleRefs": [
+        "§1",
+        "high-sec ambient exclusively patrol_lawman"
+      ]
+    },
+    {
+      "faction": "faction_scn",
+      "role": "rescue",
+      "currentLive": {
+        "defId": "ship_drifter",
+        "visual": "hulls/hull_multirole.glb",
+        "cite": "traffic.js:79-80 rescue; same modular multirole path as smuggler"
+      },
+      "proposed": {
+        "donor": "hulls/hull_multirole.glb",
+        "variantParts": [
+          "KIT_PACK scn_law (light service gear)",
+          "kit_hatch_frame_v02×1",
+          "kit_sensor_housing_v01×1"
+        ],
+        "materialProfile": "faction_scn",
+        "wearTierDistribution": {
+          "fresh": 0.4,
+          "serviceWorn": 0.5,
+          "patched": 0.1
+        },
+        "decalSet": [
+          "fac_scn",
+          "warn_no_step_frame",
+          "serv_panel_labelframe"
+        ],
+        "socketsUsed": [
+          "MOUNT_*",
+          "rescue gear hardpoints mid"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 4464,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "scn_law 3512 + hatch_frame_v02 684 + sensor_v01 268"
+        },
+        "integrationRequirement": "modular multirole + SCN rescue kit attach for trafficRole rescue"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "6 Fasteners",
+        "9 Decals"
+      ],
+      "bibleRefs": [
+        "§1"
+      ]
+    },
+    {
+      "faction": "faction_scn",
+      "role": "station_trade_hub",
+      "currentLive": {
+        "defId": "place_station_trade_hub",
+        "visual": "places/place_station_trade_hub.glb",
+        "cite": "partsLibrary.js:57-66 STATION_ARCHETYPE_FILES; sectorAnchors.js core trade hubs; world.js:1075"
+      },
+      "proposed": {
+        "donor": "places/place_station_trade_hub.glb",
+        "variantParts": [
+          "var_station_trade_hub_scn_overlay_v01.glb"
+        ],
+        "materialProfile": "faction_scn",
+        "wearTierDistribution": {
+          "fresh": 0.4,
+          "serviceWorn": 0.5,
+          "patched": 0.1
+        },
+        "decalSet": [
+          "fac_scn",
+          "warn_no_step_frame",
+          "serv_panel_labelframe"
+        ],
+        "socketsUsed": [
+          "donor-origin roof/rim overlay attach (tradehub_overlays.json)"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 2756,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "hero_manifest hub.scn.tris = 2756 (tradehub_overlays.json matches)"
+        },
+        "integrationRequirement": "STATION_ARCHETYPE_FILES / placeFileForEntity: attach faction overlay GLB or select faction hub composite; files under foundry variants/"
+      },
+      "distinguishedBy": [
+        "1 Segmentation",
+        "12 Modules",
+        "10 Emissive",
+        "8 Repair"
+      ],
+      "bibleRefs": [
+        "§1 bastion cladding"
+      ]
+    },
+    {
+      "faction": "faction_scn",
+      "role": "weapon_pulse_default",
+      "currentLive": {
+        "defId": "weapon_pulse_cannon",
+        "visual": "weapons/weapon_pulse_cannon.glb",
+        "cite": "partsLibrary.js:2669-2678 weaponRecordFor default barrel"
+      },
+      "proposed": {
+        "donor": "weapons/weapon_pulse_cannon.glb",
+        "variantParts": [
+          "var_weapon_pulse_cannon_military_v01.glb"
+        ],
+        "materialProfile": "faction_scn",
+        "wearTierDistribution": {
+          "fresh": 0.2,
+          "serviceWorn": 0.6,
+          "patched": 0.2
+        },
+        "decalSet": [
+          "fac_scn",
+          "warn_high_voltage_bolt"
+        ],
+        "socketsUsed": [
+          "hardpoint muzzle axis preserved"
+        ],
+        "expectedRuntimeCost": {
+          "trisAdded": 368,
+          "materialsAdded": 0,
+          "texturesShared": true,
+          "trisBasis": "variants_manifest var_weapon_pulse_cannon_military_v01 tris_added = 368"
+        },
+        "integrationRequirement": "partsLibrary.js weaponRecordFor default file map → faction barrel variant"
+      },
+      "distinguishedBy": [
+        "12 Modules",
+        "6 Fasteners",
+        "7 Heat wear"
+      ],
+      "bibleRefs": [
+        "axis 12 weapon collars / clamps / scrap jackets"
+      ]
+    }
+  ],
+  "sharedResources": {
+    "kitMaterials": [
+      "KitMat_Emissive",
+      "KitMat_Paint",
+      "KitMat_Rubber",
+      "KitMat_Steel"
+    ],
+    "atlases": [
+      "textures/decals_atlas.png",
+      "textures/trim_basecolor.png",
+      "textures/trim_normal.png",
+      "textures/trim_orm.png"
+    ],
+    "grimeMasks": [
+      "textures/mask_edgewear.png",
+      "textures/mask_chips.png",
+      "textures/mask_corrosion.png",
+      "textures/mask_recessdust.png",
+      "textures/mask_streaking.png",
+      "textures/mask_carbon.png",
+      "textures/mask_heatradial.png",
+      "textures/mask_panelfade.png"
+    ],
+    "materialProfiles": "materials/material_profiles.json (8 factions)",
+    "drawCallStrategy": "Prefer single shared KitMat_* material library across all kit/variant overlays; decals from one atlas; trim ORM/normal shared; wear masks sampled as scalar fields not unique materials. Whole-ship donors keep existing material slots; overlays add geometry only under KitMat_Paint/Steel/Emissive/Rubber. Target: zero unique textures per faction instance — only tint multipliers + mask amplitudes differ."
+  },
+  "cloneFleetProof": {
+    "before": [
+      {
+        "factions": [
+          "faction_scn",
+          "faction_mts",
+          "faction_dmc",
+          "faction_free"
+        ],
+        "sharedVisual": "wholeships/wasp_production_v1.glb",
+        "roles": [
+          "patrol",
+          "escort"
+        ],
+        "cite": "repetition-audit.json donors wholeship_wasp_production_v1; partsLibrary.js:387-390"
+      },
+      {
+        "factions": [
+          "all_sector_owners_via_traffic"
+        ],
+        "sharedVisual": "wholeships/helios_span.glb",
+        "roles": [
+          "hauler"
+        ],
+        "cite": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler"
+      },
+      {
+        "factions": [
+          "all_sector_owners_via_traffic"
+        ],
+        "sharedVisual": "wholeships/helios_cradle.glb",
+        "roles": [
+          "miner"
+        ],
+        "cite": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.miner"
+      },
+      {
+        "factions": [
+          "all_sector_owners_via_traffic"
+        ],
+        "sharedVisual": "wholeships/helios_lark.glb",
+        "roles": [
+          "courier"
+        ],
+        "cite": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.courier"
+      },
+      {
+        "factions": [
+          "faction_reach"
+        ],
+        "sharedVisual": "wholeships/ashline_rig.glb",
+        "roles": [
+          "reaver_pirate",
+          "corsair_raider"
+        ],
+        "cite": "WHOLE_SHIP_FILE_BY_HOSTILE_ID both → ashline_rig"
+      },
+      {
+        "factions": [
+          "faction_reach",
+          "faction_choir",
+          "faction_quiet"
+        ],
+        "sharedVisual": "wholeships/wasp_production_v1.glb",
+        "roles": [
+          "lancer_sniper",
+          "choir_zealot",
+          "quiet_ghost"
+        ],
+        "cite": "hostile whole-map gaps → production wasp"
+      },
+      {
+        "factions": [
+          "faction_scn",
+          "faction_mts",
+          "faction_free"
+        ],
+        "sharedVisual": "places/place_station_trade_hub.glb",
+        "roles": [
+          "station_trade_hub"
+        ],
+        "cite": "STATION_ARCHETYPE_FILES multi-faction recolor"
+      }
+    ],
+    "after": [
+      {
+        "cell": "faction_choir:choir_zealot",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "10 Emissive",
+          "6 Fasteners",
+          "8 Repair"
+        ],
+        "constructionAnswer": "KIT_PACK choir_zealot: kit_rail_split_v03×2 (795×2=1590), kit_sensor_housing_v01×1 (268×1=268), kit_weapon_collar_v03×1 (696×1=696), kit_plate_lip_v01×2 (216×2=432), kit_rivet_strip_v04×2 (398×2=796), kit_heat_shield_v03×1 (216×1=216)",
+        "materialProfile": "faction_choir",
+        "trisAdded": 3998
+      },
+      {
+        "cell": "faction_dmc:hauler",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "6 Fasteners",
+          "8 Repair",
+          "11 Cleanliness"
+        ],
+        "constructionAnswer": "var_helios_span_dmc_orebox_v01.glb",
+        "materialProfile": "faction_dmc",
+        "trisAdded": 4560
+      },
+      {
+        "cell": "faction_dmc:miner",
+        "distinguishedBy": [
+          "6 Fasteners",
+          "8 Repair",
+          "11 Cleanliness",
+          "12 Modules"
+        ],
+        "constructionAnswer": "KIT_PACK dmc_cradle",
+        "materialProfile": "faction_dmc",
+        "trisAdded": 4360
+      },
+      {
+        "cell": "faction_dmc:patrol",
+        "distinguishedBy": [
+          "6 Fasteners",
+          "8 Repair",
+          "11 Cleanliness",
+          "12 Modules"
+        ],
+        "constructionAnswer": "KIT_PACK dmc_industrial: kit_rivet_strip_v01×2 (398×2=796), kit_rivet_strip_v02×1 (428×1=428), kit_bracket_gusset_v01×4 (140×4=560), kit_plate_lip_v01×2 (216×2=432)…",
+        "materialProfile": "faction_dmc",
+        "trisAdded": 4360
+      },
+      {
+        "cell": "faction_free:hauler",
+        "distinguishedBy": [
+          "8 Repair",
+          "6 Fasteners",
+          "2 Paint",
+          "12 Modules"
+        ],
+        "constructionAnswer": "KIT_PACK free_hauler: kit_rivet_strip_v03×1 (568×1=568), kit_plate_lip_v02×3 (216×3=648), kit_pipe_clamp_v02×2 (324×2=648), kit_access_panel_v02×1 (636×1=636), kit_hatch_frame_v01×1 (284×1=284), kit_weld_seam_v01×2 (360×2=720)",
+        "materialProfile": "faction_free",
+        "trisAdded": 3504
+      },
+      {
+        "cell": "faction_free:miner",
+        "distinguishedBy": [
+          "8 Repair",
+          "2 Paint",
+          "12 Modules"
+        ],
+        "constructionAnswer": "KIT_PACK free_cradle",
+        "materialProfile": "faction_free",
+        "trisAdded": 3504
+      },
+      {
+        "cell": "faction_free:patrol",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "6 Fasteners",
+          "8 Repair",
+          "9 Decals"
+        ],
+        "constructionAnswer": "var_wasp_free_militia_v01.glb",
+        "materialProfile": "faction_free",
+        "trisAdded": 1468
+      },
+      {
+        "cell": "faction_free:station_trade_hub",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "12 Modules",
+          "10 Emissive",
+          "8 Repair"
+        ],
+        "constructionAnswer": "var_station_trade_hub_free_overlay_v01.glb",
+        "materialProfile": "faction_free",
+        "trisAdded": 1752
+      },
+      {
+        "cell": "faction_mts:hauler",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "6 Fasteners",
+          "2 Paint",
+          "12 Modules"
+        ],
+        "constructionAnswer": "var_helios_span_mts_sealed_v01.glb",
+        "materialProfile": "faction_mts",
+        "trisAdded": 2028
+      },
+      {
+        "cell": "faction_mts:miner",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "2 Paint",
+          "6 Fasteners"
+        ],
+        "constructionAnswer": "KIT_PACK mts_hauler",
+        "materialProfile": "faction_mts",
+        "trisAdded": 4143
+      },
+      {
+        "cell": "faction_mts:patrol",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "6 Fasteners",
+          "2 Paint",
+          "12 Modules"
+        ],
+        "constructionAnswer": "var_wasp_mts_escort_v01.glb",
+        "materialProfile": "faction_mts",
+        "trisAdded": 1448
+      },
+      {
+        "cell": "faction_mts:station_trade_hub",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "12 Modules",
+          "10 Emissive",
+          "8 Repair"
+        ],
+        "constructionAnswer": "var_station_trade_hub_mts_overlay_v01.glb",
+        "materialProfile": "faction_mts",
+        "trisAdded": 4800
+      },
+      {
+        "cell": "faction_quiet:miner",
+        "distinguishedBy": [
+          "6 Fasteners",
+          "9 Decals",
+          "10 Emissive"
+        ],
+        "constructionAnswer": "KIT_PACK quiet_smuggler",
+        "materialProfile": "faction_quiet",
+        "trisAdded": 3272
+      },
+      {
+        "cell": "faction_quiet:quiet_ghost",
+        "distinguishedBy": [
+          "6 Fasteners",
+          "9 Decals",
+          "10 Emissive",
+          "11 Cleanliness"
+        ],
+        "constructionAnswer": "KIT_PACK quiet_ghost: kit_sensor_housing_v03×2 (346×2=692), kit_access_panel_v03×2 (736×2=1472), kit_hatch_frame_v02×1 (684×1=684), kit_pipe_clamp_v03×1 (424×1=424)",
+        "materialProfile": "faction_quiet",
+        "trisAdded": 3272
+      },
+      {
+        "cell": "faction_reach:corsair_raider",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "12 Modules",
+          "7 Heat wear",
+          "5 Edge"
+        ],
+        "constructionAnswer": "var_ashline_rig_corsair_blade_v01.glb",
+        "materialProfile": "faction_reach",
+        "trisAdded": 1720
+      },
+      {
+        "cell": "faction_reach:hauler",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "6 Fasteners",
+          "8 Repair",
+          "7 Heat wear"
+        ],
+        "constructionAnswer": "var_helios_span_reach_scrap_v01.glb",
+        "materialProfile": "faction_reach",
+        "trisAdded": 2296
+      },
+      {
+        "cell": "faction_reach:lancer_sniper",
+        "distinguishedBy": [
+          "12 Modules",
+          "1 Segmentation",
+          "7 Heat wear",
+          "6 Fasteners"
+        ],
+        "constructionAnswer": "KIT_PACK lancer_sniper: weapon_collar_v01×1, sensor_housing_v03×2, rail_split_v04×2, armor_spacer_v01×2, weld_seam_v02×2, heat_shield_v03×1",
+        "materialProfile": "faction_reach",
+        "trisAdded": 3752
+      },
+      {
+        "cell": "faction_reach:reaver_pirate",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "6 Fasteners",
+          "8 Repair",
+          "12 Modules"
+        ],
+        "constructionAnswer": "var_ashline_rig_reaver_hook_v01.glb",
+        "materialProfile": "faction_reach",
+        "trisAdded": 828
+      },
+      {
+        "cell": "faction_scn:hauler",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "6 Fasteners",
+          "11 Cleanliness",
+          "10 Emissive"
+        ],
+        "constructionAnswer": "KIT_PACK scn_hauler: kit_fastener_recessed_v01×3 (172×3=516), kit_rail_split_v01×2 (324×2=648), kit_hatch_frame_v01×1 (284×1=284), kit_armor_spacer_v01×2 (324×2=648), kit_sensor_housing_v01×1 (268×1=268)",
+        "materialProfile": "faction_scn",
+        "trisAdded": 2364
+      },
+      {
+        "cell": "faction_scn:miner",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "6 Fasteners",
+          "11 Cleanliness"
+        ],
+        "constructionAnswer": "KIT_PACK scn_hauler",
+        "materialProfile": "faction_scn",
+        "trisAdded": 2364
+      },
+      {
+        "cell": "faction_scn:patrol",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "6 Fasteners",
+          "8 Repair",
+          "12 Modules"
+        ],
+        "constructionAnswer": "var_wasp_scn_patrol_v01.glb",
+        "materialProfile": "faction_scn",
+        "trisAdded": 600
+      },
+      {
+        "cell": "faction_scn:patrol_lawman",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "6 Fasteners",
+          "8 Repair",
+          "12 Modules"
+        ],
+        "constructionAnswer": "KIT_PACK scn_law: kit_fastener_recessed_v02×2 (236×2=472), kit_rail_split_v02×2 (324×2=648), kit_armor_spacer_v03×2 (548×2=1096), kit_hatch_frame_v01×1 (284×1=284), kit_sensor_housing_v01×1 (268×1=268), kit_weapon_collar_v01×1 (744×1=744)",
+        "materialProfile": "faction_scn",
+        "trisAdded": 3880
+      },
+      {
+        "cell": "faction_scn:station_trade_hub",
+        "distinguishedBy": [
+          "1 Segmentation",
+          "12 Modules",
+          "10 Emissive",
+          "8 Repair"
+        ],
+        "constructionAnswer": "var_station_trade_hub_scn_overlay_v01.glb",
+        "materialProfile": "faction_scn",
+        "trisAdded": 2756
+      }
+    ]
+  },
+  "gaps": [
+    {
+      "id": "var_wasp_dmc_patrol",
+      "need": "Baked DMC wasp patrol body (rivet/ore-saddle grammar)",
+      "fallbackUsedInMatrix": "kit pack dmc_industrial on wasp_production_v1",
+      "roles": [
+        "patrol",
+        "escort"
+      ],
+      "faction": "faction_dmc"
+    },
+    {
+      "id": "var_helios_cradle_*",
+      "need": "Faction cradle miner variants (DMC ore barge, Free prospector, SCN licensed, Quiet stripped, MTS sealed)",
+      "fallbackUsedInMatrix": "kit packs on helios_cradle donor",
+      "roles": [
+        "miner"
+      ],
+      "faction": "multi"
+    },
+    {
+      "id": "var_helios_lark_*",
+      "need": "Faction courier variants on helios_lark",
+      "fallbackUsedInMatrix": "kit packs on helios_lark donor",
+      "roles": [
+        "courier"
+      ],
+      "faction": "multi"
+    },
+    {
+      "id": "var_helios_span_scn_sealed",
+      "need": "SCN sealed corporate hauler (kit pack used now)",
+      "fallbackUsedInMatrix": "kit pack scn_hauler",
+      "roles": [
+        "hauler"
+      ],
+      "faction": "faction_scn"
+    },
+    {
+      "id": "var_helios_span_free_patchwork",
+      "need": "Free patchwork hauler bake",
+      "fallbackUsedInMatrix": "kit pack free_hauler",
+      "roles": [
+        "hauler"
+      ],
+      "faction": "faction_free"
+    },
+    {
+      "id": "var_ashline_dart_*",
+      "need": "Swarm dart damage/patch dialects",
+      "fallbackUsedInMatrix": "light Reach kit on ashline_dart",
+      "roles": [
+        "wasp_swarmer"
+      ],
+      "faction": "faction_reach"
+    },
+    {
+      "id": "var_ashline_lode_*",
+      "need": "Heavy brawler armor dialects",
+      "fallbackUsedInMatrix": "reach_scrap kit on ashline_lode",
+      "roles": [
+        "bruiser_brawler",
+        "pd_screen_escort"
+      ],
+      "faction": "faction_reach"
+    },
+    {
+      "id": "var_wasp_lancer_sniper",
+      "need": "Dedicated lancer silhouette (not production patrol Wasp)",
+      "fallbackUsedInMatrix": "kit pack lancer_sniper on wasp_production_v1",
+      "roles": [
+        "lancer_sniper"
+      ],
+      "faction": "faction_reach"
+    },
+    {
+      "id": "var_wasp_choir_zealot",
+      "need": "Baked Choir zealot fighter (lancet rails + halo)",
+      "fallbackUsedInMatrix": "kit pack choir_zealot",
+      "roles": [
+        "choir_zealot"
+      ],
+      "faction": "faction_choir"
+    },
+    {
+      "id": "var_wasp_quiet_ghost",
+      "need": "Baked Quiet ghost low-sig fighter",
+      "fallbackUsedInMatrix": "kit pack quiet_ghost",
+      "roles": [
+        "quiet_ghost"
+      ],
+      "faction": "faction_quiet"
+    },
+    {
+      "id": "var_station_blackmarket_*",
+      "need": "Quiet/Reach/Vael blackmarket overlays (audit multi-faction station)",
+      "fallbackUsedInMatrix": "none in cells (out of traffic/hostile scope); scenery wreck fragments only",
+      "roles": [
+        "station_blackmarket"
+      ],
+      "faction": "multi"
+    },
+    {
+      "id": "var_hull_interceptor_law",
+      "need": "Baked law interceptor whole or overlay",
+      "fallbackUsedInMatrix": "kit pack scn_law on hull_interceptor",
+      "roles": [
+        "patrol_lawman",
+        "customs_cutter"
+      ],
+      "faction": "faction_scn"
+    },
+    {
+      "id": "kit_organic_vael_*",
+      "need": "Re-proportioned organic kit (bible: do not bolt rectangular kit onto Vael)",
+      "fallbackUsedInMatrix": "no Vael ship cells — Vael only via zones/dreadnought out of first-hour core",
+      "roles": [],
+      "faction": "faction_vael"
+    },
+    {
+      "id": "place_lane_beacon faction wiring",
+      "need": "Runtime map from place_lane_beacon to scenery_lane_beacon_v0{1,2,3}",
+      "fallbackUsedInMatrix": "not a ship cell; scenery candidates exist (tris 1048/264/392)",
+      "roles": [
+        "core_lane_dressing"
+      ],
+      "faction": "sector_owner"
+    }
+  ],
+  "costRollup": {
+    "foundryCandidateGeometryTris": {
+      "kit_all_pieces": 20600,
+      "lane_f_variants_tris_added": 12092,
+      "hero_wasp_tris_added": 3516,
+      "hero_hub_overlay_tris": 9308,
+      "scenery_props_tris": 15798,
+      "sum": 61314,
+      "note": "Sum of unique authored candidate geometry (not concurrent on-screen). Kit pieces are shared pool; variants include donor+added but tris_added is overlay cost only."
+    },
+    "texturesUnique": {
+      "decals_atlas": 1,
+      "trim_sheet_maps": 3,
+      "grime_masks": 8,
+      "sum": 12,
+      "sharedAcrossAllCells": true
+    },
+    "materialsShared": [
+      "KitMat_Emissive",
+      "KitMat_Paint",
+      "KitMat_Rubber",
+      "KitMat_Steel"
+    ],
+    "materialsUniquePerCell": 0,
+    "cellCount": 44,
+    "cellsWithBakedVariant": 23,
+    "cellsKitOnly": 21
+  },
+  "top5IntegrationActions": [
+    {
+      "rank": 1,
+      "action": "Faction-fork WHOLE_SHIP for traffic patrol/escort (ship_wasp)",
+      "file": "src/render/partsLibrary.js",
+      "map": "WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp + factionId OR new trafficRole patrol/escort map",
+      "candidates": [
+        "var_wasp_scn_patrol_v01.glb",
+        "var_wasp_mts_escort_v01.glb",
+        "var_wasp_free_militia_v01.glb"
+      ],
+      "firstHourVisibility": "Highest concurrent combat silhouette in Helios pocket",
+      "trisDeltaVsLive": "SCN+600 / MTS+1448 / Free+1468 per instance"
+    },
+    {
+      "rank": 2,
+      "action": "Faction-fork WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler",
+      "file": "src/render/partsLibrary.js",
+      "map": "WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler",
+      "candidates": [
+        "var_helios_span_mts_sealed_v01.glb",
+        "var_helios_span_dmc_orebox_v01.glb",
+        "var_helios_span_reach_scrap_v01.glb"
+      ],
+      "firstHourVisibility": "Dominant bulk civilian ship (weight 30)",
+      "trisDeltaVsLive": "MTS+2028 / DMC+4560 / Reach+2296"
+    },
+    {
+      "rank": 3,
+      "action": "Attach trade-hub faction overlays at station spawn",
+      "file": "src/render/partsLibrary.js (+ world/station place path)",
+      "map": "STATION_ARCHETYPE_FILES / placeFileForEntity / archetypeGlb for place_station_trade_hub",
+      "candidates": [
+        "var_station_trade_hub_scn_overlay_v01.glb",
+        "var_station_trade_hub_mts_overlay_v01.glb",
+        "var_station_trade_hub_free_overlay_v01.glb"
+      ],
+      "firstHourVisibility": "First dock (Helios SCN hub) + Tethys MTS + Free Reach Station",
+      "trisDeltaVsLive": "SCN+2756 / MTS+4800 / Free+1752 overlay tris"
+    },
+    {
+      "rank": 4,
+      "action": "Split reaver vs corsair ashline_rig hostile map + close three wasp gaps",
+      "file": "src/render/partsLibrary.js",
+      "map": "WHOLE_SHIP_FILE_BY_HOSTILE_ID (reaver_pirate, corsair_raider, lancer_sniper, choir_zealot, quiet_ghost)",
+      "candidates": [
+        "var_ashline_rig_reaver_hook_v01.glb",
+        "var_ashline_rig_corsair_blade_v01.glb",
+        "kit packs for lancer/choir/quiet on wasp donor"
+      ],
+      "firstHourVisibility": "Combat cast collapses until mid-route hostiles; gap roles currently look like patrol Wasps",
+      "trisDeltaVsLive": "reaver+828 / corsair+1332"
+    },
+    {
+      "rank": 5,
+      "action": "Faction weapon barrels + law interceptor kit on modular path",
+      "file": "src/render/partsLibrary.js",
+      "map": "weaponRecordFor default; modular compose for ship_hornet patrol_lawman",
+      "candidates": [
+        "var_weapon_pulse_cannon_military_v01.glb",
+        "var_weapon_pulse_cannon_industrial_v01.glb",
+        "var_weapon_pulse_cannon_pirate_v01.glb",
+        "kit scn_law pack"
+      ],
+      "firstHourVisibility": "Multiplies on every modular hardpoint; lawman is sole high-sec ambient enemy",
+      "trisDeltaVsLive": "military+368 / industrial+292 / pirate+388"
+    }
+  ],
+  "contrastAxesReference": [
+    "1 Segmentation",
+    "2 Paint",
+    "3 Alloy",
+    "4 Roughness",
+    "5 Edge",
+    "6 Fasteners",
+    "7 Heat wear",
+    "8 Repair",
+    "9 Decals",
+    "10 Emissive",
+    "11 Cleanliness",
+    "12 Modules"
+  ],
+  "decalCellCount": 66,
+  "kitPieceCount": 47,
+  "packTris": {
+    "scn_fighter": 2652,
+    "mts_fighter": 2988,
+    "dmc_industrial": 4360,
+    "free_militia": 3504,
+    "reach_scrap": 5848,
+    "quiet_ghost": 3272,
+    "choir_zealot": 3998,
+    "scn_law": 3512,
+    "mts_hauler": 4143,
+    "scn_hauler": 2364,
+    "dmc_cradle": 4360,
+    "free_cradle": 3504,
+    "free_hauler": 3504,
+    "scn_courier": 2364,
+    "mts_courier": 4143,
+    "free_courier": 3504,
+    "dmc_hauler": 4360,
+    "quiet_smuggler": 3272,
+    "free_smuggler": 3504,
+    "reach_pirate_mod": 5848
+  }
+}

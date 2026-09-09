@@ -1,0 +1,129 @@
+{
+  "attachments": [
+    {
+      "kind": "HOOK",
+      "name": "HOOK_Emissive",
+      "parent": "weapon_pulse_cannon",
+      "world_pos": [
+        4.58,
+        0.0,
+        0.0
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    },
+    {
+      "kind": "SOCKET",
+      "name": "SOCKET_Muzzle",
+      "parent": "weapon_pulse_cannon",
+      "world_pos": [
+        4.7,
+        0.0,
+        0.0
+      ],
+      "world_rot_euler": [
+        0.0,
+        -0.0,
+        0.0
+      ]
+    }
+  ],
+  "axis_convention": "+X=thrust/forward, +Y=beam, +Z=up(dorsal) (Blender Z-up post-import)",
+  "forward_axis": {
+    "convention": "+X=thrust/forward, +Y=beam, +Z=up(dorsal)",
+    "dims": [
+      4.79,
+      1.0,
+      1.04
+    ],
+    "longest_axis": "X",
+    "note": "OK: +X is the longest axis (single-body length convention).",
+    "x_is_longest": true
+  },
+  "lod0_meshes": [],
+  "material_slots": [
+    "Material_Accent",
+    "Material_Hull",
+    "Material_Mechanical"
+  ],
+  "part_id": "weapon_pulse_cannon",
+  "proxy_meshes": [],
+  "render_meshes": [
+    {
+      "material_slots": [
+        "Material_Accent"
+      ],
+      "name": "Pulse_Muzzle_Glow",
+      "parent": "HOOK_Emissive",
+      "polys": 64,
+      "world_center": [
+        4.58,
+        0.0,
+        0.0
+      ],
+      "world_dims": [
+        0.12,
+        0.36,
+        0.36
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Hull"
+      ],
+      "name": "weapon_pulse_cannon_Material_Hull_Merged",
+      "parent": "weapon_pulse_cannon",
+      "polys": 840,
+      "world_center": [
+        1.2238,
+        0.0,
+        0.0
+      ],
+      "world_dims": [
+        2.7476,
+        1.0,
+        0.9
+      ]
+    },
+    {
+      "material_slots": [
+        "Material_Mechanical"
+      ],
+      "name": "weapon_pulse_cannon_Material_Mechanical_Merged",
+      "parent": "weapon_pulse_cannon",
+      "polys": 1040,
+      "world_center": [
+        2.305,
+        0.0,
+        0.0
+      ],
+      "world_dims": [
+        4.59,
+        0.99,
+        1.04
+      ]
+    }
+  ],
+  "render_poly_total": 1944,
+  "root_node": "weapon_pulse_cannon",
+  "world_bbox": {
+    "dims": [
+      4.79,
+      1.0,
+      1.04
+    ],
+    "max": [
+      4.64,
+      0.5,
+      0.52
+    ],
+    "min": [
+      -0.15,
+      -0.5,
+      -0.52
+    ]
+  }
+}

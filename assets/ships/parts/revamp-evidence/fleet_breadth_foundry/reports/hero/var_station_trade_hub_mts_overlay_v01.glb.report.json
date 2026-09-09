@@ -1,0 +1,141 @@
+{
+  "bbox": {
+    "dims": [
+      152.7142,
+      22.55,
+      132.4401
+    ],
+    "max": [
+      79.3566,
+      49.227,
+      66.2181
+    ],
+    "min": [
+      -73.3576,
+      26.677,
+      -66.2221
+    ]
+  },
+  "drawGroups": {
+    "meshes": [
+      {
+        "name": "VAR_MTS_adframe0",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_adframe1",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_adframe2",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_adframe3",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_adpanel0",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_adpanel1",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_adpanel2",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_adpanel3",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_crown0",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_crown1",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_crown2",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_crown3",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_crown4",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_crown5",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_ring_inner",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_ring_outer",
+        "primitives": 1
+      },
+      {
+        "name": "VAR_MTS_struts",
+        "primitives": 1
+      }
+    ],
+    "primitiveCount": 17
+  },
+  "extensionsUsed": [],
+  "file": "var_station_trade_hub_mts_overlay_v01.glb",
+  "geometry": {
+    "primitives": 17,
+    "tangentPrimitives": 0,
+    "tangentsPresent": false,
+    "uvSets": []
+  },
+  "materials": {
+    "count": 3,
+    "usage": {
+      "KitMat_Emissive": 4,
+      "KitMat_Paint": 6,
+      "KitMat_Steel": 7
+    }
+  },
+  "nodeNames": [
+    "VAR_MTS_adframe0",
+    "VAR_MTS_adframe1",
+    "VAR_MTS_adframe2",
+    "VAR_MTS_adframe3",
+    "VAR_MTS_adpanel0",
+    "VAR_MTS_adpanel1",
+    "VAR_MTS_adpanel2",
+    "VAR_MTS_adpanel3",
+    "VAR_MTS_crown0",
+    "VAR_MTS_crown1",
+    "VAR_MTS_crown2",
+    "VAR_MTS_crown3",
+    "VAR_MTS_crown4",
+    "VAR_MTS_crown5",
+    "VAR_MTS_ring_inner",
+    "VAR_MTS_ring_outer",
+    "VAR_MTS_struts"
+  ],
+  "textures": [],
+  "transforms": {
+    "nodeCount": 17,
+    "nonAppliedCount": 0,
+    "nonAppliedNodes": []
+  },
+  "tris": 4800,
+  "verdict": {
+    "budget": 12000,
+    "class": "variant",
+    "failures": [],
+    "pass": true,
+    "warnings": []
+  }
+}

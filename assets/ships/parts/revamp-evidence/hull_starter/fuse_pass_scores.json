@@ -1,0 +1,15 @@
+{
+  "silhouette": 5.0,
+  "macro_meso_micro": 4.6,
+  "bevel_language": 4.5,
+  "material_zones": 4.7,
+  "wear_story": 4.6,
+  "scale_truth": 5.0,
+  "lighting_readability": 4.6,
+  "contract_readiness": 4.5,
+  "weighted": 4.64,
+  "export_bar_ok": true,
+  "tris": 11968,
+  "dims_m": [10.95, 1.74, 3.74],
+  "note": "post-despike fuse; lit_34 recheck"
+}

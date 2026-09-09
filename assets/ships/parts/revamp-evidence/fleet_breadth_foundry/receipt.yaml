@@ -1,0 +1,104 @@
+receipt: fleet-breadth-foundry
+date: 2026-07-20
+baseCommit: c740ae018f0b11ea8a04502084db44db3f30b6ba
+branch: codex/fleet-breadth-foundry-20260720
+worktree: C:\Users\93rob\sf-fleet-breadth
+primaryCheckoutTouched: false
+concurrentLanesTouched: none  # PQ-011 worktree, graphics-overhaul worktree, master closeout all untouched
+
+commits:  # oldest first; receipt commit follows 82ababb1
+  - 8d21b07e  # foundry(A) contract briefs + live repetition audit
+  - 1f21fb14  # foundry(E) decal/trim/grime texture kit
+  - fe5d5dd0  # foundry(C) faction surface-language bible + material profiles
+  - e94842c5  # foundry(B) render/validation harness + foundry contract
+  - 971b9923  # foundry(D) microdetail kit 46/47
+  - e0e8dc1d  # foundry(H) scenery breadth pack 20 props
+  - 6508e571  # foundry(hero-A) patrol Wasp faction kits x3
+  - ac933a67  # foundry(hero-B) trade-hub overlays station-scale remaster
+  - b0ec5072  # foundry(F) donor variant families x8 + bracket repair
+  - 7b83cfca  # foundry(QA) forensic re-verification, all lanes upheld
+  - e96b94a2  # foundry(G) fleet composition matrix
+  - 77f42cd0  # foundry(taste) K-review + three fix rounds
+  - 82ababb1  # foundry(tidy) byte-drift + lane tooling evidence
+
+changedPaths:
+  summary: "705+ new files, ~29.7k line insertions vs master; zero modifications to pre-existing files"
+  roots:
+    - assets/ships/foundry/fleet_breadth_20260720/   # kit 1.5M, textures 1.4M, variants 120M, scenery 1.1M
+    - tools/foundry/                                  # harness, kitgen, texgen, scenerygen, variants, hero
+    - design/foundry/                                 # FACTION_SURFACE_LANGUAGE.md, FOUNDRY_CONTRACT.md
+    - assets/ships/parts/revamp-evidence/fleet_breadth_foundry/  # audit, matrix, briefs, reports, renders
+
+producedBy:
+  audit+matrix: grok-4.5 (headless CLI)
+  factionBible: kimi-k3-max (opencode-go)
+  microdetailKit+donorVariants: glm-5.2 (zai-coding-plan)  # no vision; render-gated by lead
+  texturesKit+sceneryPack: gemini-3.5-flash (agy)
+  harness+heroVariants+hubOverlays+forensicQA: opus-4.8 subagents
+  orchestration+visionAcceptance+tasteReview+lampReseat: fable-5 (lead)
+
+artifactHashes:
+  note: "per-GLB sha256 recorded in kit_manifest.json, variants_manifest.json, scenery_manifest.json, hero_manifest.json (all committed)"
+  determinism: "all generators seeded; texgen byte-identical across runs (proven twice); hero GLBs byte-identical (SHA MATCH proven); kit/scenery/variants geometry-hash-stable across runs, but variant GLB FILE bytes can drift across export processes (geometry identical) — see 82ababb1"
+
+accepted:
+  - repetition-audit (forensically re-derived 10/10 citations exact)
+  - texture kit: 66-decal atlas, trim sheet (basecolor/normal/ORM), 8 grime masks (2 repair rounds)
+  - faction bible + material_profiles.json (8 factions x 12 axes, 3 wear tiers each)
+  - microdetail kit 47/47 (bracket_gusset_v04 after repair)
+  - scenery pack 20/20 (truss gate 2 repair rounds; container stacks outline fix)
+  - wasp faction kits x3 (desaturated lineup PASS)
+  - trade-hub overlays x3 (station-scale remaster; Free pods taste fix)
+  - donor variants x8 (span x3, rig split x2 incl. spar+lamp fixes, cannon x3)
+  - fleet composition matrix (44 cells, 0 phantom refs, 0 uncited)
+rejectedThenRepaired:
+  - mask_corrosion/chips/heatradial (polka-dot/uniform/bullseye -> physical processes)
+  - kit_bracket_gusset_v04 (disconnected -> seated strut)
+  - gate_ring_v02 (wire-thin x2 -> span-relative truss)
+  - hub overlays v1 (ornament-scale -> station-scale masses)
+  - free hub pods (balloon-smooth -> sheared salvage boxes)
+  - container stacks (silhouette twins -> topple/cantilever)
+  - corsair lamps (off-footprint float -> dorsal plateau re-seat, lead-authored)
+
+commands:  # all exit 0 at final state
+  - python tools/foundry/texgen/check_texgen.py            # TEXGEN_CHECK_OK
+  - blender -b -P tools/foundry/kitgen/check_kitgen.py     # KITGEN_CHECK_OK
+  - blender -b -P tools/foundry/scenerygen/check_scenery.py # SCENERY_CHECK_OK
+  - blender -b -P tools/foundry/variants/check_variants.py  # VARIANTS_CHECK_OK
+  - blender -b -P tools/foundry/hero/check_hero.py          # HERO_CHECK_OK
+  - node tools/foundry/validate_foundry_glb.mjs <all>       # PASS, 0 warnings final
+
+visualEvidence:
+  - renders/kit/KIT_REVIEW_GRID.png (+ per-piece sheets, QA 3-view sample)
+  - renders/scenery/SCENERY_REVIEW_GRID.png, CONTAINER_FIX_ROW.png, REPAIR1_PAIR.png
+  - renders/hero/wasp_lineup_clone.png vs wasp_lineup_varied.png (decisive), hub_before_after_{scn,mts,free}.png, wasp_sheets/
+  - renders/variants/F_REVIEW_game_cam.png, F_REVIEW_neutral_close.png, RIG_SPAR_FIX_ROW.png
+  - renders/qa/ (forensic sample sheets + distance strip)
+  - renders/smoke/ (harness proof on real donors)
+
+runtimeWiringStatus: source-complete, runtime-pending
+routeAcceptance: NOT performed (closeout lane owns manifests/partsLibrary; nothing wired)
+programQueueState: unchanged (no design/program edits)
+
+integrationFilesRequired:  # top-5 by first-hour visibility, from fleet_composition_matrix.md
+  - src/render/partsLibrary.js WHOLE_SHIP maps: faction-fork patrol/escort wasp -> var_wasp_* (tris +600..+1468/inst)
+  - src/render/partsLibrary.js WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE.hauler: faction-fork -> var_helios_span_* (+2028..+4560)
+  - station spawn path: attach var_station_trade_hub_*_overlay by owning faction (+1752..+4800)
+  - hostile map: split reaver/corsair -> var_ashline_rig_* + close 3 wasp-fallback gaps (choir_zealot/quiet_ghost/lancer_sniper)
+  - modular weapon/interceptor faction keying (matrix action 5)
+
+measuredImpact:
+  newAssetBytes: {kit: 1.5M, textures: 1.4M, variants: 120M, scenery: 1.1M}
+  perInstanceTrisDelta: "hundreds to ~4.8k (matrix per-cell); shared KitMat_* materials + shared atlas prevent material/draw proliferation"
+
+knownDefects:
+  - QA-K9: 4 kit pieces protrude below z=0 mount plane (pipe_clamp_v01 worst -0.142m); integrator placement controls
+  - gate_ring_v02 still light-side of "heavy engineering" (correct open lattice; taste note)
+  - SCN wasp geometry-only read marginal at 60px BY DESIGN (restraint; carried by emissive+tint)
+  - cannon integration notes: verify pirate muzzle-plate clearance + industrial conduit lateral extent at mount
+  - matrix gap: Vael cells blocked pending organic re-proportioned kit (rectangular kit is a bible defect for Vael)
+  - PRE-EXISTING (donor, untouched): hull_fighter normal-slot wired to color trim sheet; trade-hub donor is 1.66M tris (perf whale)
+  - deferred: kit-detailing micro pass (fastener rows / decal registrations / wear-tier bakes) — named next investment in K-TASTE-REVIEW
+
+continuation:
+  nextCommand: "after closeout owner releases manifests+partsLibrary: refresh branch on new master, then wire integrationFilesRequired top-5, then npm run check:asset-status && npm run check:asset-reachability && npm run check:assets:live && npm run check:visual-stability, then real browser+Electron route capture"

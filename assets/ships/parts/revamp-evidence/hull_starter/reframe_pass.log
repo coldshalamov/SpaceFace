@@ -1,0 +1,24 @@
+Reloading external rigs...
+Reloading external metarigs...
+12:48:20 | INFO: Data are loaded, start creating Blender stuff
+12:48:20 | INFO: Blender create Mesh node hull_starter_mesh
+12:48:20 | INFO: glTF import finished in 0.07s
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\hull_starter_reframe_pass.py:78: DeprecationWarning: 'World.use_nodes' is expected to be removed in Blender 6.0
+  world.use_nodes = True
+C:\Users\93rob\Documents\GitHub\SpaceFace\tools\art\blender\hull_starter_reframe_pass.py:130: DeprecationWarning: 'Material.use_nodes' is expected to be removed in Blender 6.0
+  mat.use_nodes = True
+00:11.656  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\hull_starter\renders\2026-07-09_hull_starter_iter26_clay_34_full.png'
+00:18.687  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\hull_starter\renders\2026-07-09_hull_starter_iter26_clay_front.png'
+00:25.203  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\hull_starter\renders\2026-07-09_hull_starter_iter26_clay_side.png'
+00:29.875  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\hull_starter\renders\2026-07-09_hull_starter_iter26_lit_34_full.png'
+00:36.141  render           | Saved: 'C:\Users\93rob\Documents\GitHub\SpaceFace\assets\ships\parts\revamp-evidence\hull_starter\renders\2026-07-09_hull_starter_iter26_lit_close_detail.png'
+SHOT clay_34_full ok False cov 0.0153 fill 0.048 edge 0.345
+SHOT clay_front ok True cov 0.03 fill 0.12 edge 0.113
+SHOT clay_side ok True cov 0.0231 fill 0.134 edge 0.21
+SHOT lit_34_full ok True cov 0.1415 fill 0.444 edge 0.03
+SHOT lit_close_detail ok False cov 0.1856 fill 0.706 edge 0.031
+Info: Saved as "hull_starter_authored.blend"
+RESULT {"weighted": 4.22, "export_bar_ok": false, "ok_full": false, "islands": 4781, "tris": 9592, "silhouette": 4.0, "scale_truth": 4.0, "analyses_ok": [false, true, true, true, false]}
+Blender 5.1.2 (hash ec6e62d40fa9 built 2026-05-19 01:37:34)
+
+Blender quit

@@ -1,0 +1,195 @@
+{
+  "bbox": {
+    "dims": [
+      3.02,
+      1.8926,
+      3.7352
+    ],
+    "max": [
+      2.8,
+      0.8176,
+      1.8676
+    ],
+    "min": [
+      -0.22,
+      -1.075,
+      -1.8676
+    ]
+  },
+  "drawGroups": {
+    "meshes": [
+      {
+        "name": "Cube",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.001",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.002",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.003",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.004",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.005",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.006",
+        "primitives": 1
+      },
+      {
+        "name": "Cube.007",
+        "primitives": 1
+      },
+      {
+        "name": "HOOK_DRIVE_CORE_P",
+        "primitives": 1
+      },
+      {
+        "name": "HOOK_DRIVE_CORE_S",
+        "primitives": 1
+      },
+      {
+        "name": "HOOK_DRIVE_FAN_P",
+        "primitives": 1
+      },
+      {
+        "name": "HOOK_DRIVE_FAN_S",
+        "primitives": 1
+      },
+      {
+        "name": "HOOK_DRIVE_PLUME_P",
+        "primitives": 1
+      },
+      {
+        "name": "HOOK_DRIVE_PLUME_S",
+        "primitives": 1
+      },
+      {
+        "name": "LOD0_ENGINE_ION_TWIN_MAIN",
+        "primitives": 1
+      },
+      {
+        "name": "Static_Hull_Merged",
+        "primitives": 1
+      },
+      {
+        "name": "Static_Mechanical_Merged",
+        "primitives": 1
+      }
+    ],
+    "primitiveCount": 17
+  },
+  "extensionsUsed": [
+    "KHR_materials_clearcoat"
+  ],
+  "file": "engine_ion_twin.glb",
+  "geometry": {
+    "primitives": 17,
+    "tangentPrimitives": 17,
+    "tangentsPresent": true,
+    "uvSets": [
+      0,
+      1
+    ]
+  },
+  "materials": {
+    "count": 3,
+    "usage": {
+      "Material_Accent": 3,
+      "Material_Hull": 4,
+      "Material_Mechanical": 10
+    }
+  },
+  "nodeNames": [
+    "DET_cyan_nav_stripe",
+    "DET_dock_collar_scuff",
+    "DET_inspection_stencil",
+    "DET_maintenance_tick",
+    "DET_panel_respray_edge",
+    "DET_sync_ring_bridge",
+    "DET_torque_witness",
+    "DET_torque_witness.001",
+    "HOOK_DRIVE_CORE_P",
+    "HOOK_DRIVE_CORE_S",
+    "HOOK_DRIVE_FAN_P",
+    "HOOK_DRIVE_FAN_S",
+    "HOOK_DRIVE_PLUME_P",
+    "HOOK_DRIVE_PLUME_S",
+    "LOD0_ENGINE_ION_TWIN_MAIN",
+    "MOUNT_Child",
+    "Static_Hull_Merged",
+    "Static_Mechanical_Merged",
+    "Twin_Housing_P",
+    "Twin_Housing_S",
+    "Twin_Nozzle_P",
+    "Twin_Nozzle_S",
+    "Twin_Ring_P",
+    "Twin_Ring_S",
+    "engine_ion_twin"
+  ],
+  "textures": [
+    {
+      "colorSpaceRole": "sRGB",
+      "mimeType": "image/png",
+      "name": "engine_ion_twin_trim_sheet_1k",
+      "resolution": "1024x1024",
+      "slots": [
+        "baseColorTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "engine_ion_twin_wear_mask_1k",
+      "resolution": "1024x1024",
+      "slots": [
+        "metallicRoughnessTexture"
+      ]
+    },
+    {
+      "colorSpaceRole": "linear",
+      "mimeType": "image/png",
+      "name": "spaceface_neutral_normal_1024",
+      "resolution": "1024x1024",
+      "slots": [
+        "normalTexture"
+      ]
+    }
+  ],
+  "transforms": {
+    "nodeCount": 25,
+    "nonAppliedCount": 12,
+    "nonAppliedNodes": [
+      "HOOK_DRIVE_CORE_P",
+      "HOOK_DRIVE_CORE_S",
+      "HOOK_DRIVE_FAN_P",
+      "HOOK_DRIVE_FAN_S",
+      "HOOK_DRIVE_PLUME_P",
+      "HOOK_DRIVE_PLUME_S",
+      "LOD0_ENGINE_ION_TWIN_MAIN",
+      "MOUNT_Child",
+      "Twin_Nozzle_P",
+      "Twin_Nozzle_S",
+      "Twin_Ring_P",
+      "Twin_Ring_S"
+    ]
+  },
+  "tris": 5664,
+  "verdict": {
+    "budget": 8000,
+    "class": "variant",
+    "failures": [],
+    "pass": true,
+    "warnings": []
+  }
+}

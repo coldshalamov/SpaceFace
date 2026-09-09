@@ -1,0 +1,154 @@
+{
+  "produced": "2026-07-11T03:20:10.583Z",
+  "assets": [
+    {
+      "id": "place_station_trade_hub",
+      "sourceBytes": 2653352,
+      "sourceSha256": "1d62a98de199db09dc9851a31213f4018ce10e8a877467353cb2e5a1fc5571ce",
+      "releaseBytes": 1919028,
+      "releaseSha256": "acef218278d30e5661a61929ea9290d58b364dc389842630014725d23ae30f2d",
+      "hooks": [
+        {
+          "name": "HOOK_Emissive",
+          "mesh": null,
+          "translation": [
+            1.0749993324279785,
+            8.784000396728516,
+            -0.7624998092651367
+          ],
+          "extras": {
+            "role": "emissive",
+            "forward": [
+              0,
+              0,
+              1
+            ],
+            "spaceface_hook": "HOOK_Emissive",
+            "damageRole": "navLight"
+          }
+        }
+      ],
+      "sockets": [
+        {
+          "name": "SOCKET_Structure_Core",
+          "mesh": null,
+          "translation": [
+            1.0749993324279785,
+            -0.5924994945526123,
+            -0.7624998092651367
+          ],
+          "extras": {
+            "role": "dock",
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "spaceface_hook": "SOCKET_Structure_Core"
+          }
+        }
+      ],
+      "meshNodes": [
+        "Merged_Accent",
+        "Merged_Mechanical",
+        "Merged_Hull",
+        "Merged_Glass"
+      ]
+    },
+    {
+      "id": "place_gate_jump_ring",
+      "sourceBytes": 2843076,
+      "sourceSha256": "e2d5103fc309da17598988a154091d0070274744ae70bd6adf7bd30727dcfcc1",
+      "releaseBytes": 1971440,
+      "releaseSha256": "6a5f6e18ce03866c8ad456a7de95021bceca3e66830848b1ea9ccaca4f95c736",
+      "hooks": [
+        {
+          "name": "HOOK_Emissive",
+          "mesh": null,
+          "translation": [
+            0,
+            15.811249732971191,
+            0
+          ],
+          "extras": {
+            "role": "emissive",
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "spaceface_hook": "HOOK_Emissive",
+            "damageRole": "navLight"
+          }
+        }
+      ],
+      "sockets": [
+        {
+          "name": "SOCKET_Structure_Core",
+          "mesh": null,
+          "translation": [
+            0,
+            4.929500102996826,
+            0
+          ],
+          "extras": {
+            "role": "gate",
+            "forward": [
+              1,
+              0,
+              0
+            ],
+            "spaceface_hook": "SOCKET_Structure_Core"
+          }
+        }
+      ],
+      "meshNodes": [
+        "Merged_Hull",
+        "Merged_Accent",
+        "Merged_Mechanical"
+      ]
+    },
+    {
+      "id": "place_asteroid_rock_a",
+      "sourceBytes": 2484632,
+      "sourceSha256": "a8c9a6e6c16d14e443e5a3878fdf2f854853a374ae1d653c5b95f4302eef079f",
+      "releaseBytes": 1745620,
+      "releaseSha256": "157728e030b39d7b59a9237100f46bc5b4e79d3173697273b7e57e3fcbb1e57b",
+      "hooks": [],
+      "sockets": [],
+      "meshNodes": [
+        "ROCK_body",
+        "Merged_Mechanical",
+        "Merged_Accent"
+      ]
+    },
+    {
+      "id": "place_asteroid_rock_b",
+      "sourceBytes": 1544124,
+      "sourceSha256": "63e7c2b269a980012f9400f8046a25feaa7a66326c7b79c1b079c7df9c214a2c",
+      "releaseBytes": 1504448,
+      "releaseSha256": "c5f98d2e5a956c53631f79ddd5cadbbbb7fb20df8b2c1d228d53ba32e4717979",
+      "hooks": [],
+      "sockets": [],
+      "meshNodes": [
+        "Merged_Hull",
+        "Merged_Mechanical",
+        "Merged_Accent"
+      ]
+    },
+    {
+      "id": "place_asteroid_rock_c",
+      "sourceBytes": 2371168,
+      "sourceSha256": "09955382bd8ac6f70f2aa8d760c18c968e40eab490bcd7117f88be1d1bad2599",
+      "releaseBytes": 1708476,
+      "releaseSha256": "74c8c8aa0d6be539462310dce726eec74fc2275ad1cff36e99ae1b1b1af41aa2",
+      "hooks": [],
+      "sockets": [],
+      "meshNodes": [
+        "ROCK_body",
+        "Merged_Mechanical",
+        "Merged_Accent"
+      ]
+    }
+  ]
+}

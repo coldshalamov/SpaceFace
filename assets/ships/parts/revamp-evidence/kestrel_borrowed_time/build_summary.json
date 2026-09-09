@@ -1,0 +1,59 @@
+{
+  "packet": "M5-KESTREL-VISUAL-UPGRADE-001",
+  "gateOk": true,
+  "gateErrors": [],
+  "totalTriangles": 28864,
+  "hullTriangles": 4868,
+  "lodTriangles": {
+    "lod0": 19050,
+    "lod1": 8362,
+    "lod2": 1452
+  },
+  "drawEstimates": {
+    "lod0": 15,
+    "lod1": 11,
+    "lod2": 7
+  },
+  "sockets": [
+    "SOCKET_Camera_Focus",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Engine_Main",
+    "SOCKET_Mining_Front",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard",
+    "SOCKET_Trail_Main",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Weapon_Front"
+  ],
+  "materials": [
+    "Material_Mechanical",
+    "Material_Drive_Core",
+    "Material_Cyan_Emissive",
+    "Material_Cyan_Paint",
+    "Material_Decal_BorrowedTime",
+    "Material_Decal_Hazard",
+    "Material_Decal_Stencils",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Repair_Paint",
+    "Material_Warm_Emissive",
+    "Material_Warm_Paint"
+  ],
+  "tangentPrimitiveCount": 33,
+  "uvPrimitiveCount": 33,
+  "removedPlumes": [
+    "Engine_Plume_HotCore",
+    "Engine_Plume_Inner",
+    "Engine_Plume_Outer",
+    "Studio_Floor",
+    "Studio_Pad",
+    "Studio_Pad_LightRing",
+    "material:Material_Plume_HotCore",
+    "material:Material_Plume_Inner",
+    "material:Material_Plume_Outer"
+  ],
+  "sourceSha256": "C48BCD2CD7AA9B8DAF4AC253221ED259DB781A1BF0602EDB7286D916191D6502",
+  "targetSha256": "F07ACF0F4D573A026CB6778960809CD0EBDC3B3E01CBED44DD0202A1C22E6266",
+  "outGlb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\wholeships\\kestrel.glb",
+  "outBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\blender\\kestrel_borrowed_time_production.blend"
+}

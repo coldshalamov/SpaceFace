@@ -1,0 +1,158 @@
+{
+  "part_id": "hull_starter",
+  "iters_run": [
+    {
+      "iter": 1,
+      "pass": "modeling",
+      "weighted": 3.325,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 2,
+      "pass": "modeling",
+      "weighted": 3.374,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 3,
+      "pass": "modeling",
+      "weighted": 3.416,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 4,
+      "pass": "modeling",
+      "weighted": 3.465,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 5,
+      "pass": "modeling",
+      "weighted": 3.514,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 6,
+      "pass": "modeling",
+      "weighted": 3.556,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 7,
+      "pass": "modeling",
+      "weighted": 3.605,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 8,
+      "pass": "surfacing",
+      "weighted": 3.955,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 9,
+      "pass": "surfacing",
+      "weighted": 4.004,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 10,
+      "pass": "surfacing",
+      "weighted": 4.046,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 11,
+      "pass": "surfacing",
+      "weighted": 4.095,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 12,
+      "pass": "surfacing",
+      "weighted": 4.144,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 13,
+      "pass": "surfacing",
+      "weighted": 4.186,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 14,
+      "pass": "surfacing",
+      "weighted": 4.235,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 15,
+      "pass": "life",
+      "weighted": 4.21,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 16,
+      "pass": "life",
+      "weighted": 4.266,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 17,
+      "pass": "life",
+      "weighted": 4.322,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 18,
+      "pass": "life",
+      "weighted": 4.378,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 19,
+      "pass": "life",
+      "weighted": 4.434,
+      "export_bar_ok": false,
+      "shots_ok": false
+    },
+    {
+      "iter": 20,
+      "pass": "life",
+      "weighted": 4.49,
+      "export_bar_ok": false,
+      "shots_ok": false
+    }
+  ],
+  "final_scores": {
+    "silhouette": 3.5,
+    "macro_meso_micro": 4.8,
+    "bevel_language": 4.9,
+    "material_zones": 5.0,
+    "wear_story": 4.9,
+    "scale_truth": 3.5,
+    "lighting_readability": 5.0,
+    "contract_readiness": 4.9,
+    "weighted": 4.49,
+    "export_bar_ok": false
+  },
+  "ledger": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\revamp-evidence\\hull_starter\\iteration_ledger.json"
+}
