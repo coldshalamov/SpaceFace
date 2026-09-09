@@ -113,6 +113,7 @@ const NPC_LINE_CONTROL_MODE = 'npc_tow';
 // Salvors keep the tractor on through the haul home so the wreck is visibly wrangled, not
 // teleported into the hold. Sweepers only stretch the whip while they are on the rock.
 const NPC_SALVOR_LINE_PHASES = new Set([
+  NPC_JOB_PHASE.COMMISSION,
   NPC_JOB_PHASE.TRANSIT,
   NPC_JOB_PHASE.APPROACH,
   NPC_JOB_PHASE.WORK,
@@ -125,9 +126,12 @@ const NPC_SWEEPER_LINE_PHASES = new Set([
   NPC_JOB_PHASE.WORK,
 ]);
 const NPC_PATROL_LINE_PHASES = new Set([
+  NPC_JOB_PHASE.COMMISSION,
+  NPC_JOB_PHASE.TRANSIT,
   NPC_JOB_PHASE.APPROACH,
   NPC_JOB_PHASE.HOLD,
 ]);
+const NPC_CERES_SCAVENGER_ADOPT_LIMIT = 1;
 
 // R6 escort formation is deliberately one exact authored relationship, not a generic targetRef
 // movement language. Stable record/job ids remain the authority across rematerialization; live
@@ -434,15 +438,48 @@ function isPatrolJob(entry) {
   return !!entry && !!entry.job && entry.job.kind === NPC_JOB_KIND.PATROL;
 }
 
+function allowsMasslineBody(entity) {
+  // Explicit `physicsBody: false` is presentation scenery (site proxies, FX). A missing spec is
+  // still a live gameplay body; activity residency may simply not have indexed it yet.
+  return !!entity && entity.physicsBody !== false;
+}
+
+function pinOccupationalLatch(entity) {
+  if (!allowsMasslineBody(entity)) return false;
+  const data = entity.data || (entity.data = {});
+  if (data.npcMasslineLatch === true) return true;
+  entity.flags = Object.assign({}, entity.flags, { tethered: true });
+  data.npcMasslineLatch = true;
+  return true;
+}
+
+function unpinOccupationalLatch(entity) {
+  if (!entity || !entity.data || entity.data.npcMasslineLatch !== true) return;
+  delete entity.data.npcMasslineLatch;
+  if (entity.flags && entity.flags.tethered) {
+    const next = { ...entity.flags };
+    delete next.tethered;
+    entity.flags = next;
+  }
+}
+
 function isPatrolNetTarget(candidate, patrol, playerId) {
   if (!candidate || candidate === patrol || candidate.alive === false || candidate.type !== 'ship') {
     return false;
   }
+  if (!allowsMasslineBody(candidate)) return false;
   if (playerId != null && candidate.id === playerId) return false;
   const data = candidate.data || {};
+  const ai = data.ai || {};
   const role = data.trafficRole || data.role;
-  if (role === 'pirate' || role === 'smuggler') return true;
-  return !!(data.ai && data.ai.pirate === true);
+  if (role === 'pirate' || role === 'smuggler' || role === 'scavenger' || role === 'raider') {
+    return true;
+  }
+  if (ai.pirate === true || ai.hostile === true) return true;
+  const spawn = String(ai.spawnContext || '');
+  if (spawn.includes('ambush') || spawn.includes('zone_hostile')) return true;
+  const faction = candidate.factionId || data.factionId;
+  return faction === 'faction_reach';
 }
 
 // Snapshot the head onto derived immediately before attachments.create. ships.js will recompute
@@ -461,6 +498,7 @@ function stampNpcMasslineHead(entity, headId) {
 // lot through the same field, so a claim held by this tug is a reservation, not a refusal.
 function isTowableCargoTarget(target, ownerRecordId = null) {
   if (!target || target.alive === false || (target.type !== 'payload' && target.type !== 'wreck')) return false;
+  if (!allowsMasslineBody(target)) return false;
   const data = target.data;
   if (!data || data.npcTowedByJobId != null) return false;
   if (data.salvorClaimedBy != null && data.salvorClaimedBy !== ownerRecordId) return false;
@@ -474,6 +512,31 @@ function isTowableCargoTarget(target, ownerRecordId = null) {
   // additionally mark a finite cargo manifest as towable, but the marker alone is never enough.
   return finiteSalvageQuantity(data.salvagePool) > 0
     || (data.towable === true && finiteManifestQuantity(data.cargoManifest) > 0);
+}
+
+function isDynamicSalvageBody(target) {
+  if (!target || target.alive === false) return false;
+  if (target.type !== 'payload' && target.type !== 'wreck') return false;
+  const data = target.data || {};
+  const salvage = finiteSalvageQuantity(data.salvagePool) > 0
+    || (data.towable === true && finiteManifestQuantity(data.cargoManifest) > 0);
+  if (!salvage) return false;
+  if (!(Number(target.mass) > 0) || Number(target.mass) >= NPC_TOW_PINNED_BODY_MASS) return false;
+  if (data.role === 'world_site_payload' || data.worldSiteTargetable === true) {
+    const body = target.physicsBody;
+    return !!(body && body.dynamic === true);
+  }
+  const body = target.physicsBody;
+  return !!(body && body.dynamic === true);
+}
+
+function isSalvorTractorTarget(target, ownerRecordId = null) {
+  if (isTowableCargoTarget(target, ownerRecordId)) return true;
+  if (!isDynamicSalvageBody(target)) return false;
+  const data = target.data;
+  if (!data || data.npcTowedByJobId != null) return false;
+  if (data.salvorClaimedBy != null && data.salvorClaimedBy !== ownerRecordId) return false;
+  return true;
 }
 
 const THREAT_QUERY_DIAGNOSTIC_FIELDS = Object.freeze([
@@ -1666,6 +1729,105 @@ export const npcJobsRuntime = {
     return best;
   },
 
+  _findNearestOccupationalTarget(entry, entity, accept) {
+    const data = entity && entity.data;
+    const ownerRecordId = data && typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
+    const list = this.state && this.state.entityList;
+    const entities = this.state && this.state.entities;
+    if (!Array.isArray(list) || !entity || !entity.pos || typeof accept !== 'function') return null;
+    let best = null;
+    let bestDistance = Infinity;
+    let bestId = '';
+    const maxDistanceSq = NPC_TOW_MAX_RANGE_WU * NPC_TOW_MAX_RANGE_WU;
+    for (const candidate of list) {
+      if (!candidate || candidate === entity || candidate.alive === false
+        || !candidate.pos || !entities || entities.get(candidate.id) !== candidate
+        || !accept(candidate, ownerRecordId)) continue;
+      const targetSector = candidate.data && candidate.data.sectorId;
+      if (targetSector && entry && entry.sectorId && targetSector !== entry.sectorId) continue;
+      const dx = candidate.pos.x - entity.pos.x;
+      const dz = candidate.pos.z - entity.pos.z;
+      const distanceSq = dx * dx + dz * dz;
+      if (!Number.isFinite(distanceSq) || distanceSq > maxDistanceSq) continue;
+      const candidateId = String(candidate.id);
+      if (distanceSq < bestDistance
+        || (distanceSq === bestDistance && candidateId < bestId)) {
+        best = candidate;
+        bestDistance = distanceSq;
+        bestId = candidateId;
+      }
+    }
+    return best;
+  },
+
+  _countCeresScavengerJobs() {
+    const byId = this._byId();
+    let count = 0;
+    for (const jobId of Object.keys(byId)) {
+      const entry = byId[jobId];
+      if (!entry || !entry.job || entry.job.kind !== NPC_JOB_KIND.SALVOR) continue;
+      if (entry.job.payload && entry.job.payload.role === 'scavenger') count += 1;
+    }
+    return count;
+  },
+
+  _adoptCeresScavengerTractors() {
+    if (!this.state || this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return 0;
+    if ((this.state.mode || 'flight') !== 'flight') return 0;
+    if (this._countCeresScavengerJobs() >= NPC_CERES_SCAVENGER_ADOPT_LIMIT) return 0;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    let adopted = this._countCeresScavengerJobs();
+    for (const entity of this.state.entityList || []) {
+      if (adopted >= NPC_CERES_SCAVENGER_ADOPT_LIMIT) break;
+      if (!entity || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
+      const data = entity.data || (entity.data = {});
+      if (data.ceresActivityCast === true || data.activityActorSlotId) continue;
+      if ((data.trafficRole || data.role) !== 'scavenger') continue;
+      if (data.jobId) continue;
+      const probe = { job: { payload: {} }, sectorId: CERES_ACTIVITY_SECTOR_ID };
+      const target = this._findNearestOccupationalTarget(probe, entity, isTowableCargoTarget);
+      if (!target || !target.pos) continue;
+      if (!data.worldRecordId) {
+        data.worldRecordId = stableRecordId(
+          seed,
+          CERES_ACTIVITY_SECTOR_ID,
+          RECORD_KIND.CONVOY,
+          `ceres:occupation:scavenger:${Math.round(entity.pos.x)}:${Math.round(entity.pos.z)}`,
+        );
+      }
+      if (data.sectorId == null) data.sectorId = CERES_ACTIVITY_SECTOR_ID;
+      if (data.homeSectorId == null) data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
+      if (target.data && target.data.sectorId == null) target.data.sectorId = CERES_ACTIVITY_SECTOR_ID;
+      // Salvor transit interpolates home → wreck. A 17 kWU yard waypoint would haul the cutter
+      // off the hulk before the tractor can land. Keep both marks on the existing wreck side.
+      pinOccupationalLatch(target);
+      const jobId = this.assign(entity, {
+        kind: NPC_JOB_KIND.SALVOR,
+        sectorId: CERES_ACTIVITY_SECTOR_ID,
+        speed: 40,
+        commissionS: 0.05,
+        transitS: 0.05,
+        approachS: 0.05,
+        workS: 8,
+        route: [
+          { id: 'cut:hold', pos: { x: entity.pos.x, z: entity.pos.z }, label: 'Hold' },
+          { id: `hulk:${target.id}`, pos: { x: target.pos.x, z: target.pos.z }, label: 'Hulk' },
+        ],
+        payload: {
+          targetId: target.id,
+          targetType: target.type,
+          role: 'scavenger',
+          extracted: false,
+        },
+      });
+      if (!jobId) continue;
+      data.jobKind = 'salvor';
+      data.towTargetId = target.id;
+      adopted += 1;
+    }
+    return adopted;
+  },
+
   _findSalvorTractorTarget(entry, entity) {
     const data = entity && entity.data;
     const ownerRecordId = data && typeof data.worldRecordId === 'string' ? data.worldRecordId : null;
@@ -1680,16 +1842,14 @@ export const npcJobsRuntime = {
     const entities = this.state && this.state.entities;
     if (explicitId != null) {
       const explicit = entities && typeof entities.get === 'function' ? entities.get(explicitId) : null;
-      if (!explicit || !isTowableCargoTarget(explicit, ownerRecordId)
-        || !explicit.pos || !entity.pos
-        || Math.hypot(explicit.pos.x - entity.pos.x, explicit.pos.z - entity.pos.z) > NPC_TOW_MAX_RANGE_WU) {
-        return null;
+      if (explicit && isSalvorTractorTarget(explicit, ownerRecordId)
+        && explicit.pos && entity.pos
+        && Math.hypot(explicit.pos.x - entity.pos.x, explicit.pos.z - entity.pos.z) <= NPC_TOW_MAX_RANGE_WU) {
+        const targetSector = explicit.data && explicit.data.sectorId;
+        if (!(targetSector && entry.sectorId && targetSector !== entry.sectorId)) return explicit;
       }
-      const targetSector = explicit.data && explicit.data.sectorId;
-      if (targetSector && entry.sectorId && targetSector !== entry.sectorId) return null;
-      return explicit;
     }
-    return this._findTugTowTarget(entry, entity);
+    return this._findNearestOccupationalTarget(entry, entity, isSalvorTractorTarget);
   },
 
   _findSweeperWhipTarget(entry, entity) {
@@ -1791,6 +1951,7 @@ export const npcJobsRuntime = {
     if (target && target.data) {
       if (target.data.npcTowAttachmentId === attachmentId) delete target.data.npcTowAttachmentId;
       if (target.data.npcTowedByJobId === jobId) delete target.data.npcTowedByJobId;
+      unpinOccupationalLatch(target);
     }
     entry.towAttachmentId = null;
     entry.towTargetId = null;
@@ -1874,6 +2035,7 @@ export const npcJobsRuntime = {
     entry.towNextScanSimT = simT + NPC_TOW_SCAN_INTERVAL_S;
     const target = plan.findTarget();
     if (!target || !entity.pos || !target.pos) return false;
+    pinOccupationalLatch(target);
     stampNpcMasslineHead(entity, plan.headId);
     const created = attachments.create({
       defId: NPC_TOW_ATTACHMENT_DEF_ID,
@@ -2330,6 +2492,7 @@ export const npcJobsRuntime = {
       this._threatQueryDirty = true;
       return; // scenery only matters in flight (mirrors traffic)
     }
+    this._adoptCeresScavengerTractors();
     const byId = this._byId();
     const ids = Object.keys(byId);
     const step = Math.max(0, finite(dt, 0));
