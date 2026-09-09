@@ -1,3 +1,4 @@
+import { createPauseFrame } from '../views/menuFrames.js';
 // Pause menu (ARCHITECTURE §5.4, design/specs/09). Opened by ESC in flight.
 // The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, pause, amended by Task B §1.4):
 // the world held, not hidden — the frozen game at 0 % scrim; "Paused" at screen-title size top-left;
@@ -362,22 +363,9 @@ export const pauseScreen = {
     rootEl.classList.add('k-screen', 'k-screen--stage');
     delete rootEl.dataset.stamp;
 
-    // .k-title — "Paused" and the brief beneath it (hooks sf-pause-brief / sf-slot-* kept for checks).
-    const title = el('header', 'k-title');
-    title.appendChild(el('h1', 'k-display k-t-title', coreText('paused')));
-    const brief = el('div', 'sf-pause-brief');
-    brief.setAttribute('aria-live', 'polite');
-    const briefKicker = el('span', 'k-caps sf-slot-sub');
-    briefKicker.textContent = coreText('flightBrief');
-    const briefObjective = el('p', 'k-sentence k-sentence--emph sf-slot-name');
-    const briefNext = el('p', 'k-sentence sf-muted');
-    const briefSave = el('p', 'k-t-fine k-38 sf-slot-sub');
-    brief.appendChild(briefKicker);
-    brief.appendChild(briefObjective);
-    brief.appendChild(briefNext);
-    brief.appendChild(briefSave);
-    title.appendChild(brief);
-    rootEl.appendChild(title);
+    const { title, briefObjective, briefNext, briefSave } = createPauseFrame(rootEl, {
+      titleText: coreText('paused'), briefLabel: coreText('flightBrief'),
+    });
 
     // .k-stage — the actions as one column of words. `mk` keeps the legacy shape the checks read
     // (label, handler) and appends a kit word to the column; `words()` is built once at the end.

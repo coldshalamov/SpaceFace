@@ -87,10 +87,10 @@ function mediaBodies(source) {
 }
 
 const uiCss = read('styles/ui.css');
-const uiRootSource = read('src/ui/uiRoot.js');
-const hudCss = extractHudCssFromUiRoot(uiRootSource);
+const hudStyleSource = read('src/ui/views/hudStyles.js');
+const hudCss = extractHudCssFromUiRoot(hudStyleSource);
 if (!hudCss) {
-  fail('extract/hud-css', 'failed to extract injectHudCss() template from src/ui/uiRoot.js');
+  fail('extract/hud-css', 'failed to extract injectHudCss() template from src/ui/views/hudStyles.js');
 }
 
 // 1) --sf-safe-inset-x once, exact formula.

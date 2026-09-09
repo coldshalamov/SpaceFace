@@ -1,3 +1,5 @@
+import { MARKET_FILTERS, marketFamily, marketBrowserHtml, marketRowHtml, marketQuoteHtml, marketTradeHtml, marketReceiptRow as rowKV } from '../../views/marketPresentation.js';
+import { marketFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/market.js — "Market": the dense register (Frontend Task C §1.3).
 // Left half: the commodity table — name, buy, sell, stock, held — twelve rows visible with hairlines,
 // the selected row marked by a gold rule on its left edge. Right half: the selected commodity's name
@@ -22,7 +24,6 @@ const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME = new Map();
 for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_NAME.set(s.id, s.name || s.id);
 
-const LEGAL_LABEL = { legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' };
 
 // Meaning roles kept for the instrument-hierarchy tests and the help screen's shared vocabulary.
 export function chartTrendRole(up) { return up ? 'you' : 'foe'; }
@@ -44,26 +45,6 @@ export function legalityRole(legal) {
   return 'calm';
 }
 
-const MARKET_FILTERS = [
-  { id: 'all', label: 'All stock' },
-  { id: 'hold', label: 'In hold' },
-  { id: 'raw', label: 'Raw & rare' },
-  { id: 'industry', label: 'Industry' },
-  { id: 'civilian', label: 'Civilian' },
-  { id: 'salvage', label: 'Salvage' },
-  { id: 'military', label: 'Military' },
-  { id: 'restricted', label: 'Restricted' },
-];
-
-function marketFamily(category) {
-  if (['raw ore', 'gas', 'crystal', 'exotic'].includes(category)) return 'raw';
-  if (['refined', 'component', 'tech'].includes(category)) return 'industry';
-  if (['consumer', 'luxury', 'food', 'med'].includes(category)) return 'civilian';
-  if (category === 'salvage') return 'salvage';
-  if (category === 'military') return 'military';
-  if (category === 'contraband') return 'restricted';
-  return 'civilian';
-}
 
 function stationId(state) { return state && state.ui && state.ui.dockedStationId; }
 function marketTable(state) {
@@ -101,48 +82,11 @@ function priceHistory(entry, def) {
   const current = Math.max(1, unitBuy(entry, def));
   return [current, current];
 }
-// The trend glyph is a numeral's sign, not an icon: ▲/▼ after the buy price, with the movement.
-function trendHtml(hist) {
-  const pct = hist[0] ? Math.round(((hist[hist.length - 1] - hist[0]) / hist[0]) * 100) : 0;
-  const up = pct >= 0;
-  return `<span class="sx-mkt-row__tr k-t-fine ${up ? 'k-good is-up' : 'k-bad is-down'}">${up ? '▲' : '▼'}${Math.abs(pct)}%</span>`;
-}
-
-// ---- the sparkline ----
-// 240×48, the history as a hairline and the last point in the signal colour. The gradient id is kept
-// in the signature so the chart contract check still finds the builder; nothing is filled.
-function buildChart(hist, avg, gradientId, label) {
-  const W = 240, H = 48, pad = 3;
-  const min = Math.min(...hist, avg), max = Math.max(...hist, avg);
-  const span = (max - min) || 1;
-  const x = (i) => pad + (i / Math.max(1, hist.length - 1)) * (W - pad * 2);
-  const y = (v) => pad + (1 - (v - min) / span) * (H - pad * 2);
-  const pts = hist.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`);
-  const endX = x(hist.length - 1).toFixed(1), endY = y(hist[hist.length - 1]).toFixed(1);
-  const avgY = y(avg).toFixed(1);
-  return (
-    `<svg class="sx-mkt-chart" data-chart="${escapeHtml(gradientId)}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img"` +
-      ` aria-label="${escapeHtml(label || 'Price history')}: ${hist.length} samples, ${fmt(hist[0])} to ${fmt(hist[hist.length - 1])} credits.">` +
-      `<line class="sx-mkt-avg" x1="${pad}" y1="${avgY}" x2="${W - pad}" y2="${avgY}" style="stroke:var(--k-hair)" stroke-dasharray="2 4"/>` +
-      `<path class="sx-mkt-line" d="M ${pts.join(' L ')}" fill="none" style="stroke:var(--k-bone-38)" stroke-width="1" stroke-linejoin="round"/>` +
-      `<circle cx="${endX}" cy="${endY}" r="2.5" style="fill:var(--k-signal)"/>` +
-    `</svg>`
-  );
-}
 
 export function createMarketScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'k-panel k-panel--split sx-mkt';
-  el.innerHTML =
-    `<nav class="k-hang sx-mkt__list" aria-label="Commodities"></nav>` +
-    `<section class="k-stage k-stage--scroll sx-mkt__stage" id="sx-market-instrument" role="tabpanel" aria-describedby="sx-market-driver-summary">` +
-      `<div class="sx-mkt__quote"></div>` +
-      `<div class="sx-mkt__console">` +
-        `<div class="sx-mkt__trade"></div>` +
-        `<div class="sx-mkt__routes" aria-label="Trade routes"></div>` +
-        `<aside class="k-t-fine k-62 sx-adboard" data-ad-board aria-label="Dockside commerce notice" hidden></aside>` +
-      `</div>` +
-    `</section>`;
+  el.innerHTML = marketFrameHtml();
   const adBoardEl = el.querySelector('[data-ad-board]');
   const listEl = el.querySelector('.sx-mkt__list');
   const stageEl = el.querySelector('.sx-mkt__stage');
@@ -291,21 +235,10 @@ export function createMarketScreen(ctx) {
     const stock = Math.max(0, Math.floor(Number(r.entry && r.entry.stock) || 0));
     const demand = demandLevel(r.entry);
     const drivers = presentMarketDrivers({ state, stationId: stationId(state), commodity: r.def, entry: r.entry });
-    const active = selected ? ' is-active' : '';
-    const tracked = r.id === tracked_ ? ' is-tracked' : '';
     const held = heldQty(state, r.id);
-    return (
-      `<tr id="sx-market-tab-${escapeHtml(r.id)}" class="sx-mkt-row${active}${tracked}" data-cmdty="${escapeHtml(r.id)}" role="tab"` +
-        ` aria-selected="${!!selected}" tabindex="${selected ? '0' : '-1'}" aria-controls="sx-market-instrument"` +
-        ` data-family="${marketFamily(r.def.category || '')}"` +
-        ` aria-label="${escapeHtml(r.def.name)}, ${fmt(buy)} credits, ${demandWord(demand)} demand${held ? `, ${fmt(held)} units held` : ''}${tracked ? ', tracked for your active contract' : ''}. ${escapeHtml(drivers.accessibleSummary)}">` +
-        `<td class="k-name sx-mkt-row__name">${tracked ? `<span class="sx-mkt-row__flag k-t-fine k-signal" aria-hidden="true">◆ </span>` : ''}${escapeHtml(r.def.name)}</td>` +
-        `<td class="k-num sx-mkt-row__price">${fmt(buy)} ${trendHtml(hist)}</td>` +
-        `<td class="k-num sx-mkt-row__sell">${fmt(sell)}</td>` +
-        `<td class="k-num sx-mkt-row__stock">${fmt(stock)}</td>` +
-        `<td class="k-t-data k-62 sx-mkt-row__held">${held > 0 ? fmt(held) + ' u' : '—'}</td>` +
-      `</tr>`
-    );
+    return marketRowHtml({ id: r.id, name: r.def.name, category: r.def.category,
+      buy, sell, stock, held, hist, demandWord: demandWord(demand),
+      driversSummary: drivers.accessibleSummary, selected, tracked: r.id === tracked_ });
   }
 
   function emptyFilterLabel() {
@@ -315,23 +248,7 @@ export function createMarketScreen(ctx) {
   // The register chrome (exchange line, family filters, search, table) is built once and then
   // updated in place, so typing in the search and arrowing through the rows survive price ticks.
   function buildBrowserChrome() {
-    listEl.innerHTML =
-      `<div class="sx-mkt-browser">` +
-        `<p class="k-caps sx-mkt-browser__mode">Station exchange<b class="sx-mkt-browser__count"></b></p>` +
-        `<ul class="k-words k-words--row sx-mkt-browser__filters" aria-label="Commodity families">` +
-          MARKET_FILTERS.map((filter) =>
-            `<li><button type="button" class="k-word k-word--body sx-mkt-filter" data-market-filter="${filter.id}" aria-pressed="false">${filter.label}</button></li>`).join('') +
-        `</ul>` +
-        `<input class="k-input sx-mkt-search" type="search" data-market-search placeholder="Find a commodity" aria-label="Find a commodity" autocomplete="off" spellcheck="false"/>` +
-        `<div class="k-table-wrap sx-mkt-browser__rail">` +
-          `<table class="k-table sx-mkt-table">` +
-            `<thead><tr><th class="k-caps" scope="col">Commodity</th><th class="k-caps k-num" scope="col">Buy</th>` +
-              `<th class="k-caps k-num" scope="col">Sell</th><th class="k-caps k-num" scope="col">Stock</th><th class="k-caps" scope="col">Held</th></tr></thead>` +
-            `<tbody role="tablist" aria-label="Commodities"></tbody>` +
-          `</table>` +
-          `<p class="k-empty sx-mkt-browser__empty" hidden></p>` +
-        `</div>` +
-      `</div>`;
+    listEl.innerHTML = marketBrowserHtml();
     modeEl = listEl.querySelector('.sx-mkt-browser__mode');
     searchEl = listEl.querySelector('[data-market-search]');
     tbodyEl = listEl.querySelector('tbody');
@@ -463,24 +380,9 @@ export function createMarketScreen(ctx) {
     stageEl.setAttribute('aria-labelledby', `sx-market-tab-${r.id}`);
     stageEl.setAttribute('aria-label', def.name);
     stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
-    const heroSide = mode === 'sell' ? sell : buy;
-    quoteEl.innerHTML =
-      (isTracked ? `<p class="k-sentence k-signal sx-mkt-tracked" data-tracked-state="${trackedGuidance.state}"><b>Tracked contract</b> — ${escapeHtml(trackedGuidance.text)}</p>` : '') +
-      `<p class="k-caps sx-mkt-cat-inline">${escapeHtml(def.category || 'goods')} · <span class="${legal === 'contraband' ? 'k-bad' : (legal === 'restricted' ? 'k-signal' : '')}">${LEGAL_LABEL[legal]}</span></p>` +
-      `<h2 class="k-display k-t-title sx-mkt-title">${entitySpanHtml('commodity:' + r.id, escapeHtml(def.name))}</h2>` +
-      `<div class="k-hero k-hero--hero k-hero--signal sx-mkt__hero"><div class="k-hero__n">${fmt(heroSide)}</div><div class="k-hero__w">${mode === 'sell' ? 'station pays' : 'you pay'} · per unit</div></div>` +
-      `<p class="k-sentence" id="sx-market-driver-summary">${escapeHtml(drivers.accessibleSummary)}</p>` +
-      buildChart(hist, avg, `sxmkt-${String(r.id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, def.name) +
-      `<ul class="k-rows sx-mkt-stats">` +
-        statRow('Buy', fmt(buy) + ' cr', 'you pay') +
-        statRow('Sell', fmt(sell) + ' cr', 'station pays') +
-        statRow('Galactic average', fmt(avg) + ' cr') +
-        statRow('Demand', demandWord(demand)) +
-      `</ul>`;
-  }
-
-  function statRow(k, v, sub) {
-    return `<li class="k-row k-row--static sx-stat"><span class="sx-stat__k">${escapeHtml(k)}${sub ? ` <span class="k-row__sub">${escapeHtml(sub)}</span>` : ''}</span><span class="k-row__num sx-stat__v">${escapeHtml(v)}</span></li>`;
+    quoteEl.innerHTML = marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
+      titleHtml: entitySpanHtml('commodity:' + r.id, escapeHtml(def.name)), mode, buy, sell, avg,
+      demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, hist, trackedGuidance });
   }
 
   function renderConsole(state, { receiptOnly = false } = {}) {
@@ -541,32 +443,8 @@ export function createMarketScreen(ctx) {
       return;
     }
 
-    // The two words are the mode: the live one carries data-go and commits; the other switches.
-    const word = (side) => {
-      const live = side === mode;
-      return `<li><button type="button" class="k-word k-word--emph sx-seg__btn sx-trade__go sx-trade__go--${side}${live ? ' is-on k-word--primary' : ''}"` +
-        ` data-mode="${side}" aria-pressed="${live}"${live ? ` data-go${canAct ? '' : ' disabled'}` : ''}>${live ? goLabel(side) : (side === 'buy' ? 'Buy' : 'Sell')}</button></li>`;
-    };
-    tradeEl.innerHTML =
-      `<div class="sx-trade">` +
-        `<div class="sx-qty">` +
-          `<label class="k-caps sx-qty__k" for="sx-market-qty">Quantity</label>` +
-          `<input id="sx-market-qty" class="k-input k-input--num sx-qty__in" type="text" inputmode="numeric" value="${qty}" aria-label="Quantity"/>` +
-          `<ul class="k-words k-words--row sx-qty__words">` +
-            `<li><button type="button" class="k-word k-word--body sx-qty__b" data-q="-1">fewer</button></li>` +
-            `<li><button type="button" class="k-word k-word--body sx-qty__b" data-q="1">more</button></li>` +
-            `<li><button type="button" class="k-word k-word--body sx-qty__max" data-q="max">Max</button></li>` +
-          `</ul>` +
-        `</div>` +
-        `<ul class="k-rows sx-trade__rows" data-market-intel>${receiptHtml}</ul>` +
-        `<ul class="k-words k-words--row sx-seg sx-trade__words" role="tablist" aria-label="Buy or sell">${word('buy')}${word('sell')}</ul>` +
-        `<p class="k-t-fine k-38 sx-trade__note" ${note ? '' : 'hidden'}>${escapeHtml(note)}</p>` +
-      `</div>`;
-  }
-
-  function rowKV(k, v, tone) {
-    const cls = tone === 'gain' ? ' k-good' : (tone === 'loss' ? ' k-bad' : '');
-    return `<li class="k-row k-row--static sx-kv"><span>${escapeHtml(k)}</span><b class="k-row__num${cls}">${escapeHtml(v)}</b></li>`;
+    // Preserve the native event contract: the live side commits, the other side switches mode.
+    tradeEl.innerHTML = marketTradeHtml({ mode, qty, canAct, receiptHtml, note });
   }
 
   // Best trade runs from here + one-click course plotting (canonical logic, same nav contract).

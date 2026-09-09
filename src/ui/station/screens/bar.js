@@ -1,3 +1,4 @@
+import { barFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/bar.js — "Bar": the conversation as a kit panel (Frontend Task C §1.8).
 // Left: who is here tonight as a column of words, then the leads as rows (survey data and board
 // jobs with a priced / named verb). Right: the contact's role, name and portrait (the one image
@@ -73,12 +74,7 @@ function offerWord(attrs, label) {
 export function createBarScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'k-panel sx-bar';
-  el.innerHTML =
-    `<div class="k-hang sx-bar__hang">` +
-      `<nav class="sx-bar__rail" aria-label="Contacts"></nav>` +
-      `<aside class="sx-bar__leads" aria-label="Leads"></aside>` +
-    `</div>` +
-    `<section class="k-stage sx-bar__stage" aria-live="polite"></section>`;
+  el.innerHTML = barFrameHtml();
   const railEl = el.querySelector('.sx-bar__rail');
   const stageEl = el.querySelector('.sx-bar__stage');
   const leadsEl = el.querySelector('.sx-bar__leads');

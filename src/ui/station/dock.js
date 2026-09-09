@@ -1,4 +1,5 @@
-// src/ui/station/dock.js — the station's destinations as words along the bottom edge (Task C §1.2).
+import { iconHtml, escapeMarkup } from '../views/identity.js';
+// Station destinations: an explicit facility rail, horizontal on narrow screens.
 // A real ARIA tablist of kit words: role=tab, roving tabindex, arrow keys, aria-current on the live
 // one. The pointer/keyboard distance field still writes --dock-scale / --dock-lift / --dock-near on
 // each word (the tab-navigation check reads them); the sheet no longer applies them — words do not
@@ -12,10 +13,10 @@ function tileHtml(item, kind) {
     : `data-act="${item.id}"`;
   const extra = isNav ? '' : ' sx-tile--act';
   return (
-    `<li><button type="button" class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${item.aria || item.label}">` +
-      `<span class="sx-tile__seat" aria-hidden="true"></span>` +
+    `<li><button type="button" class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
+      `<span class="sx-tile__seat" aria-hidden="true">${iconHtml(item.id)}</span>` +
       `<span class="sx-tile__badge k-t-fine k-signal" data-badge="${item.id}" hidden></span>` +
-      `<span class="sx-tile__label">${item.label}</span>` +
+      `<span class="sx-tile__label">${escapeMarkup(item.label)}</span>` +
       (kind === 'act' ? `<span class="sx-tile__cost k-t-fine k-38" data-cost="${item.id}">—</span>` : '') +
     `</button></li>`
   );
@@ -34,9 +35,9 @@ export function createCommandDock(cfg) {
   el.className = 'sx-dock';
   el.setAttribute('role', 'toolbar');
   el.setAttribute('aria-label', 'Station destinations');
-  el.setAttribute('aria-orientation', 'horizontal');
+  el.setAttribute('aria-orientation', 'vertical');
   el.innerHTML =
-    `<ul class="k-words k-words--row sx-dock__group sx-dock__group--nav" role="tablist" aria-label="Destinations">` +
+    `<ul class="k-words k-words--row sx-dock__group sx-dock__group--nav" role="tablist" aria-orientation="vertical" aria-label="Destinations">` +
       destinations.map((d) => tileHtml(d, 'nav')).join('') +
     `</ul>` +
     (actions.length
@@ -62,6 +63,14 @@ export function createCommandDock(cfg) {
 
   // Arrow / Home / End move between destinations (Enter+Space activate natively on <button>).
   const navGroup = el.querySelector('.sx-dock__group--nav');
+  const narrowQuery = typeof matchMedia === 'function' ? matchMedia('(max-width: 899px)') : null;
+  const syncOrientation = () => {
+    const direction = narrowQuery?.matches ? 'horizontal' : 'vertical';
+    el.setAttribute('aria-orientation', direction);
+    navGroup.setAttribute('aria-orientation', direction);
+  };
+  syncOrientation();
+  narrowQuery?.addEventListener?.('change', syncOrientation);
   navGroup.addEventListener('keydown', (ev) => {
     const tabs = [...navGroup.querySelectorAll('[data-nav]')];
     const cur = tabs.indexOf(document.activeElement);
@@ -193,6 +202,7 @@ export function createCommandDock(cfg) {
   }
 
   function dispose() {
+    narrowQuery?.removeEventListener?.('change', syncOrientation);
     if (fieldFrame) cancelAnimationFrame(fieldFrame);
     el.removeEventListener('pointermove', onPointerMove);
     el.removeEventListener('pointerleave', onPointerLeave);

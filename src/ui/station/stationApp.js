@@ -1,3 +1,4 @@
+import { stationFrameHtml } from '../views/stationFrames.js';
 // src/ui/station/stationApp.js — the station as a place (Frontend Task C §1.2).
 // Docking is an arrival, not a menu: the berth with the player's hull in it (the world canvas is
 // frozen while docked, so the hull rig is the picture), the station's name at hero size, one line of
@@ -247,43 +248,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   if (rootEl && rootEl.classList) rootEl.classList.add('k-screen');
   const app = document.createElement('div');
   app.className = 'sx-app';
-  app.innerHTML =
-    // The berth: the hull mount fills the frame behind everything (k-world, z-index -2).
-    `<canvas class="k-world sxb-berth__world" aria-hidden="true"></canvas>` +
-    // The title block: the station's name at hero size, the news line, the first-dock handoff.
-    `<header class="k-title sxb-berth">` +
-      `<h1 class="k-display k-t-hero sxb-berth__name"></h1>` +
-      `<p class="k-t-emph k-62 sxb-berth__news"></p>` +
-      `<div class="sxb-handoff" hidden></div>` +
-    `</header>` +
-    // The quiet column top-right: credits as the hero number, the vitals as rows with their verbs.
-    `<aside class="k-corner sxb-crown" aria-label="Credits and ship vitals">` +
-      `<div class="k-hero sxb-purse"><div class="k-hero__n sxb-purse__value">0</div><div class="k-hero__w sxb-purse__label">credits</div></div>` +
-      `<ul class="k-rows sxb-vitals" style="--k-row-cols: 1fr auto auto"></ul>` +
-    `</aside>` +
-    // The destination's panel spans both columns of the grid; each destination is a .k-panel.
-    `<div class="k-span sx-screen__body" id="sx-panel" role="tabpanel" tabindex="0"></div>` +
-    // The foot: the destinations as words, the receipts line, Undock at the row's end.
-    `<footer class="k-foot sxb-ops">` +
-      `<div class="sxb-ops__dock"></div>` +
-      `<aside class="sx-comms" aria-label="Station communications">` +
-        `<div class="sx-receipt" role="status" aria-live="polite" aria-atomic="true" hidden>` +
-          `<span class="sx-receipt__kind k-caps"></span> <strong class="sx-receipt__title"></strong> <span class="sx-receipt__delta k-62"></span>` +
-        `</div>` +
-        `<button type="button" class="k-word k-word--fine sx-comms__toggle" aria-expanded="false" aria-controls="sx-comms-history" aria-label="Open station communications history">` +
-          `<span>Comms</span><span class="sx-comms__count" hidden>0</span>` +
-        `</button>` +
-        `<button type="button" class="k-word k-word--fine sxb-help" aria-expanded="false" aria-label="Explain the active station operation" data-why="Context help">Help</button>` +
-        `<div class="sx-comms__history" id="sx-comms-history" aria-label="Berth session log" hidden></div>` +
-      `</aside>` +
-      `<div class="sxb-launch-seat">` +
-          `<button type="button" class="k-word k-word--emph k-word--primary sxb-launch" data-act="undock" data-pop-owner>` +
-            `<span class="sxb-launch__label">Undock</span>` +
-            `<span class="k-word-sub sxb-launch__state"></span>` +
-          `</button>` +
-      `</div>` +
-    `</footer>` +
-    `<div class="sx-pop" hidden></div>`;
+  app.innerHTML = stationFrameHtml();
   rootEl.appendChild(app);
 
   const berthCanvas = app.querySelector('.sxb-berth__world');

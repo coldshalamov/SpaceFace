@@ -1,3 +1,4 @@
+import { industryFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/industry.js — "Industry" fabrication as a kit panel (Frontend Task C §1.7).
 // Left: the processes under a k-caps per category — each blueprint a row (output × qty, the tier
 // and its one-line readiness as the sub-line, the readiness as the name's colour only). Right: the
@@ -73,9 +74,7 @@ export function industryReadiness(bp, state, stnType) {
 export function createIndustryScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'k-panel sx-ind';
-  el.innerHTML =
-    `<nav class="k-hang sx-ind__list" aria-label="Blueprints"></nav>` +
-    `<section class="k-stage sx-ind__stage"></section>`;
+  el.innerHTML = industryFrameHtml();
   const listEl = el.querySelector('.sx-ind__list');
   const stageEl = el.querySelector('.sx-ind__stage');
   let selectedId = BLUEPRINTS[0] && BLUEPRINTS[0].id;

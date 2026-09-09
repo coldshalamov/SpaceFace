@@ -1,3 +1,4 @@
+import { createSaveStage } from '../views/saveFrame.js';
 // Load screen (ARCHITECTURE §4.5, §5; design/specs/09).
 // The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, load, amended by Task B §1.2):
 // saves as portraits — the focused save's hull on the stage as it is in that save, its name huge,
@@ -534,36 +535,7 @@ export const saveLoadScreen = {
     const hang = el('div', 'k-hang');
     rootEl.appendChild(hang);
 
-    // The stage: the focused save's hull, its name huge, scars / titles / rap / grudge, the
-    // objective, the credits as a hero number, sector · saved-at · playtime in fine print.
-    const stage = el('div', 'k-stage');
-    const caption = el('div', 'k-stage__foot');
-    const shipName = el('h2', 'k-display k-t-title', '');
-    const portrait = el('div', 'sf-save-portrait');
-    portrait.setAttribute('aria-label', 'Save portrait');
-    const scars = el('p', 'k-sentence k-t-fine sf-portrait-scars', '');
-    scars.dataset.portraitField = 'scars';
-    const titles = el('p', 'k-sentence k-t-fine sf-portrait-titles', '');
-    titles.dataset.portraitField = 'titles';
-    const rapSheet = el('p', 'k-sentence k-t-fine sf-portrait-rap', '');
-    rapSheet.dataset.portraitField = 'rapSheet';
-    const grudge = el('p', 'k-sentence k-t-fine sf-portrait-grudge', '');
-    grudge.dataset.portraitField = 'grudge';
-    portrait.appendChild(scars);
-    portrait.appendChild(titles);
-    portrait.appendChild(rapSheet);
-    portrait.appendChild(grudge);
-    const objective = el('p', 'k-sentence k-sentence--emph sf-slot-detail', '');
-    const credits = hero('', 'credits', { size: 'hero' });
-    const fine = el('p', 'k-t-fine k-38 sf-slot-context', '');
-    const actions = el('div');
-    caption.appendChild(shipName);
-    caption.appendChild(portrait);
-    caption.appendChild(objective);
-    caption.appendChild(credits);
-    caption.appendChild(fine);
-    caption.appendChild(actions);
-    stage.appendChild(caption);
+    const { stage, caption, shipName, portrait, scars, titles, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
     rootEl.appendChild(stage);
     this.hull = createStageHull(stage, { rootEl });
 

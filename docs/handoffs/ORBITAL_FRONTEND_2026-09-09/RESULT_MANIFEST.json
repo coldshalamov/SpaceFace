@@ -1,0 +1,949 @@
+{
+  "format": "spaceface-source-overlay-v1",
+  "baseSHA": "bee6bbe19e822cb9f04bdf73af911ddf95f63038",
+  "inputZip": "SpaceFace-frontend-upload-20260909-v2.zip",
+  "inputZipSHA256": "7187409e5b39a9fe4670ea35cf224d845427b9eaf01b62d055334b1e23c13c72",
+  "productCandidateDigest": "293a6a0b06e0f3244451287f390be3df3b48623e88c9dc605f753fa947da2e58",
+  "standaloneGame": false,
+  "productFiles": 35,
+  "files": [
+    {
+      "path": "GPT6_RESULT.md",
+      "status": "new",
+      "bytes": 25003,
+      "sha256": "5a5e753ad4ed3f12cdf0d3eeb7e50e5d74a4f7727cc2372e9295235754b7ba63",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/QA.md",
+      "status": "new",
+      "bytes": 7467,
+      "sha256": "c23cb92a1bd9dc1c2a5088eabeba697412bb39b56871b20bf682e75f3ea1bab0",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/browser-final.json",
+      "status": "new",
+      "bytes": 33998,
+      "sha256": "83c35bcf334c61cf1d6ffb0877f6540805eade20089a495060ef519854e76b78",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/browser-final.log",
+      "status": "new",
+      "bytes": 2140,
+      "sha256": "5ae7057a4ef6a3443b4b3db8bcef58f566ba75a5fd1755644d1a3beadbf7dd83",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/browser-first-matrix.json",
+      "status": "new",
+      "bytes": 35246,
+      "sha256": "c26cd49ecf572d7634defb3399ce98c245c6430df1ca15b579ce68d6d24e47b7",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/browser-interactions-intermediate.json",
+      "status": "new",
+      "bytes": 6176,
+      "sha256": "29609a2517908821364946fad8ee6ad74e68281e808e749ede755cda555d8779",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/browser-interactions-intermediate.log",
+      "status": "new",
+      "bytes": 708,
+      "sha256": "52f51cf611bb4ace3333ddf3ee887a747598bbd677db8a21782865fca08410f8",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/existing-tests-final.log",
+      "status": "new",
+      "bytes": 62668,
+      "sha256": "a3e182dbb272695fa3e330b132aae8a3e11cd9b41883b41aa88fc809b65d3649",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/existing-tests.log",
+      "status": "new",
+      "bytes": 56139,
+      "sha256": "834eaaaaca35e5814e93724ef8fac9088e7d9473b92470783e6aa79e94726d9e",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-contracts-1280x720.png",
+      "status": "new",
+      "bytes": 95730,
+      "sha256": "73e082e093d8feb684cab55d29ff19ccfab64fab77a7631b6a3a26615b5c9d15",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-contracts-1920x1080.png",
+      "status": "new",
+      "bytes": 106001,
+      "sha256": "b64bdb1a974a6f56cd7a975f99348e2abfa3f2b1f8b49890bf678cb18e32b6d5",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-contracts-2560x1080.png",
+      "status": "new",
+      "bytes": 111824,
+      "sha256": "25dfbebf6fed104800d1d98dab16aecf19c4ac0d284de27250327345e47ee48f",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-contracts-blocked-1280x720.png",
+      "status": "new",
+      "bytes": 97961,
+      "sha256": "3bde4c00c4dcd268b266519fdf93c72780f084f82f0236b356c01096b5ef25a0",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-flight-1280x720.png",
+      "status": "new",
+      "bytes": 60930,
+      "sha256": "a6aec5414c561907550285c2a91a537f209f01230ec1107ffe88229376c1278e",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-flight-1920x1080.png",
+      "status": "new",
+      "bytes": 67370,
+      "sha256": "0b9e4ba243655a94a0318d1ccc3bc6fe9397e995f1a58934dd7c83eaa4cd1feb",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-flight-2560x1080.png",
+      "status": "new",
+      "bytes": 71173,
+      "sha256": "cd0d20ecddd72849a876ae121d35d78cf7021025011cfbc3a011ae0d818684b0",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-flight-danger-1280x720.png",
+      "status": "new",
+      "bytes": 70907,
+      "sha256": "8e1ba9095ce37a7d62b592df8bcc0c6ee051f4b0a7f92d6a4a6802a50518f5ec",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-gameover-1280x720.png",
+      "status": "new",
+      "bytes": 71289,
+      "sha256": "0d279692b47936cffd9934881c8412bf3a7eb89172b554e2ba6c33adc9323b1d",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-gameover-1920x1080.png",
+      "status": "new",
+      "bytes": 83514,
+      "sha256": "fd714b40e788624f60f8c9b9f5a4958a2f5c6986cfed80d0c5cca89f7dcafd72",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-gameover-2560x1080.png",
+      "status": "new",
+      "bytes": 87547,
+      "sha256": "132dadc4c49fd9139fa73952847084dd24f8f6eb161a738dc51331b91cd95867",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-gameover-ironman-1280x720.png",
+      "status": "new",
+      "bytes": 73843,
+      "sha256": "0b01c60af17132881ab69d90a1fea0f866f992a4d2cd2db4e187b9a3903327cd",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-market-1280x720.png",
+      "status": "new",
+      "bytes": 112521,
+      "sha256": "80c82d5f896ad9e02d0c3bbe52a81a0570e74bc2824e5f0c150ca1eb8acd4fd0",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-market-1920x1080.png",
+      "status": "new",
+      "bytes": 147742,
+      "sha256": "cde829858eeef22b5483d0b1d410f3803bbfb6600add49d13d014518b4bd2cf0",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-market-2560x1080.png",
+      "status": "new",
+      "bytes": 152391,
+      "sha256": "5bc1daac1d69a94dd2874e174da174c2812f597fea043df15623a94851280d75",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-market-390x844.png",
+      "status": "new",
+      "bytes": 59541,
+      "sha256": "e3887fcab67319fe3faad8bc8b5de884e1a4df27a08ef7f0f43bed3d97de5822",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-market-unavailable-1280x720.png",
+      "status": "new",
+      "bytes": 110218,
+      "sha256": "d59dcb2a3b76b43023052b907774c3b96465ee418d2df68dc85aa9d0cf39c75d",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-navigation-1280x720.png",
+      "status": "new",
+      "bytes": 106092,
+      "sha256": "b40f8bc741641f279f123cff0c8d1c79aa5baebd4a22cc8602db48d0b65507ab",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-navigation-1920x1080.png",
+      "status": "new",
+      "bytes": 138002,
+      "sha256": "300d8b69a387b94c148ae9682d470381403b158cc0cae4fa21bfa03d1efa4992",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-navigation-2560x1080.png",
+      "status": "new",
+      "bytes": 146380,
+      "sha256": "1c50df6c3e4ef190fba1df9b35ab3a076b130765a8c520acfc87f4222bf33ae9",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-pause-1280x720.png",
+      "status": "new",
+      "bytes": 42331,
+      "sha256": "cfc3a6d0fdbdd9eb814420264df79f8b9b70c87dc2cddc09cd6c466849196b3d",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-pause-1920x1080.png",
+      "status": "new",
+      "bytes": 51608,
+      "sha256": "b9974f047172826658ebdea3323f61a0f53dcda72d4fc7ec0ac9e5530cd2fe2d",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-pause-2560x1080.png",
+      "status": "new",
+      "bytes": 54945,
+      "sha256": "e4c95c7be832ebbceae95c7a2158914c9ddd9f3369c6c63e64382887348fa6cf",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-research-1280x720.png",
+      "status": "new",
+      "bytes": 149398,
+      "sha256": "c9bd3fb7ce346464c4fc205722f082b4ea5e031958f52be8adb01c93a1063880",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-research-1920x1080.png",
+      "status": "new",
+      "bytes": 214493,
+      "sha256": "83d9552878589c1d05328a169dee17029c2f5bde928780830764fe78e52c38ed",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-research-2560x1080.png",
+      "status": "new",
+      "bytes": 221469,
+      "sha256": "678a721eef25c01e4a93f4cbfdd6163854e9ff23e1429cb9f429b0b46561b4e8",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-research-locked-1280x720.png",
+      "status": "new",
+      "bytes": 155538,
+      "sha256": "95ad9635f15784f56b9979b3733c1921edd55961b4b43b877f618d32bbfc4d66",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-saves-1280x720.png",
+      "status": "new",
+      "bytes": 50491,
+      "sha256": "8594614b4d5f4a7475a4f6eac3740df6c592384e6c8943c39717de4d43804f3a",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-saves-1920x1080.png",
+      "status": "new",
+      "bytes": 60774,
+      "sha256": "0053ebc51775ca783b75affb1acbb5c8ee266cfc783011c9fd4ee744623770bc",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-saves-2560x1080.png",
+      "status": "new",
+      "bytes": 64039,
+      "sha256": "25b0b4204f7be8289381807a752bdad25e939e8634ea905b590ab401f3810c53",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-saves-empty-1280x720.png",
+      "status": "new",
+      "bytes": 41066,
+      "sha256": "266e2d50f08288e6a2d9330f8d348287d92f6d689022f8eeee98ee7244efa144",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-settings-1280x720.png",
+      "status": "new",
+      "bytes": 43638,
+      "sha256": "f9bda4faa43aab4b2ecb67667d1db0008be3794c0591d8a722856d326410362f",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-settings-1920x1080.png",
+      "status": "new",
+      "bytes": 53823,
+      "sha256": "91b207685727d8d6861132d823f18277c8736da61c0e5650529034f4c83b2cfa",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-settings-2560x1080.png",
+      "status": "new",
+      "bytes": 57656,
+      "sha256": "8ee51c3033ae4b8f431ebaf0bcb825e32083387dd898d28c5a42bff9cc079fe0",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-settings-390x844.png",
+      "status": "new",
+      "bytes": 35384,
+      "sha256": "33075ff82287f63978a2c3ce01336d519eca8533f28fa76731e9bffd792109e3",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-settings-access-reduced-1280x720.png",
+      "status": "new",
+      "bytes": 43733,
+      "sha256": "5a98b55e7e525a54eee70997bbaaa43f53473b654a6ac3fdc54637ea41117968",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-shipworks-1280x720.png",
+      "status": "new",
+      "bytes": 104423,
+      "sha256": "24b840380a37d5998ea629e9b9066fffcf6199e406ec7d569fbb7b72aa0e1823",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-shipworks-1920x1080.png",
+      "status": "new",
+      "bytes": 114878,
+      "sha256": "15a8e5aca1b8c5fd51c1e57e4a4c9784c97ae38852b8416651af51dc3909f882",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-shipworks-2560x1080.png",
+      "status": "new",
+      "bytes": 119813,
+      "sha256": "f86ac85d84c0cad806129d093470e8e0b3729ad62cbd533d53872681f8ee2844",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-title-1280x720.png",
+      "status": "new",
+      "bytes": 422020,
+      "sha256": "a83f1f79f0fb8420302c651edd334dc4081df89f8ab05e415b5a8c2826fa4fa5",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-title-1920x1080.png",
+      "status": "new",
+      "bytes": 825183,
+      "sha256": "110e6c7701779249bf74f5f11b3edb0bf660d1faa59456712efeedf7e4edd765",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-title-2560x1080.png",
+      "status": "new",
+      "bytes": 816717,
+      "sha256": "820091be2fc235880ea411a0371f3b2ac8b2c70b1daf1123c4745fdcc53ecfdc",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-title-390x844.png",
+      "status": "new",
+      "bytes": 76738,
+      "sha256": "a888095caaf3993008e7d74932091e95c561cf77a3ea2a1b8bd5ed57c251c854",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-title-empty-1280x720.png",
+      "status": "new",
+      "bytes": 422014,
+      "sha256": "cbda4a91798135b4c8145d6db9c14590e9e19a4a4a708d661f378e37e0ae2800",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/final-title-reduced-1280x720.png",
+      "status": "new",
+      "bytes": 422020,
+      "sha256": "a83f1f79f0fb8420302c651edd334dc4081df89f8ab05e415b5a8c2826fa4fa5",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/http-navigation-attempt.json",
+      "status": "new",
+      "bytes": 400,
+      "sha256": "b80ed86350cc3a4f8bc451a0c5c88254a8278af74c59f7f3f682baf643219f4e",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/interaction-market-mobile-commit-390.png",
+      "status": "new",
+      "bytes": 54843,
+      "sha256": "1cc83de28c3e39e672338756a21dff99af1ad375ae674595201df2d290735727",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/interaction-research-selection-1280.png",
+      "status": "new",
+      "bytes": 184861,
+      "sha256": "26af5f5df796fff21538cb2b4074933ece6ffc94d61665c3742c553c8384bb88",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/interaction-settings-access-1280.png",
+      "status": "new",
+      "bytes": 48259,
+      "sha256": "9ebc018ce0315a83a6f9f65c4db291ab2a750c01a84821eb01dc5b66b77508b0",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/map-label-regression-after.log",
+      "status": "new",
+      "bytes": 731,
+      "sha256": "dc29fe7afaeaf7671af13929478b0fd80bb5a2201fc12010d3cb4bda9cb10ff9",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/map-label-regression-before.log",
+      "status": "new",
+      "bytes": 2020,
+      "sha256": "f19c8c750000b1fd0fa394702230b8cb79c93dc3ed4a1720ef2088cdd4ddbcd2",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/offline-transport.json",
+      "status": "new",
+      "bytes": 1532,
+      "sha256": "ced7c77748dd3794f3c4cd2f5ecc1fc07ec80e244bd355e31a7df52b92b70312",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/orbital-unit-tests.log",
+      "status": "new",
+      "bytes": 6638,
+      "sha256": "20c23869836bdeef50e98604366bcaa18b88e3d6b121837618cf545e83e3a20f",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass1-browser.json",
+      "status": "new",
+      "bytes": 805,
+      "sha256": "db7efb0f75735cfcf14f9829978b128da52873a98be02c752e6ac0dbab2d76ef",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass1-contracts-1280.png",
+      "status": "new",
+      "bytes": 75485,
+      "sha256": "a7cafe9483d71475637affecb05fbbfc921a6d5e34544d8444166389a36a6ead",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass1-gameover-1280.png",
+      "status": "new",
+      "bytes": 66257,
+      "sha256": "7a4f0b59d518d72e2a0170683230a52312583f703923d25ee88cd2912074d9c2",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass1-market-1280.png",
+      "status": "new",
+      "bytes": 97185,
+      "sha256": "e3218a7b596d80979460a9e128e5ac683b9e830150e9e04cb552b22900b55386",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass1-pause-1280.png",
+      "status": "new",
+      "bytes": 42350,
+      "sha256": "ed69d2c56580335d45ae5abbc3a9d72dbc3ffc0f071b04ad43382d3c6bed5239",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass1-settings-1280.png",
+      "status": "new",
+      "bytes": 42819,
+      "sha256": "69cb415249be55f77628107a853ef09fb694a960c67c17fa7f0972338be9c6de",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass1-shipworks-1280.png",
+      "status": "new",
+      "bytes": 92936,
+      "sha256": "3e1903aefde895ac9cbcef538f70ec728e33a0e25c174f37858ceba5da2182dc",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass1-title-1280.png",
+      "status": "new",
+      "bytes": 422020,
+      "sha256": "a83f1f79f0fb8420302c651edd334dc4081df89f8ab05e415b5a8c2826fa4fa5",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass2-market-1280.png",
+      "status": "new",
+      "bytes": 112521,
+      "sha256": "80c82d5f896ad9e02d0c3bbe52a81a0570e74bc2824e5f0c150ca1eb8acd4fd0",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass2-shipworks-1280.png",
+      "status": "new",
+      "bytes": 101145,
+      "sha256": "5b167c113b16cb28f95bc46e214f9dde3e06519a480f15a1b126de38be162e87",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass3-browser.json",
+      "status": "new",
+      "bytes": 2371,
+      "sha256": "7e0670e0460e983968cdf01a0f1db8d64318242c54f45a52de25d39674d10983",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass3-contracts-1280.png",
+      "status": "new",
+      "bytes": 83820,
+      "sha256": "0a6424946136b7e981a5ae5c5d5875bf187055c097ba25eeba9ae956c916725c",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass3-flight-1280.png",
+      "status": "new",
+      "bytes": 62114,
+      "sha256": "0db449e359774ca533fc46de2d49016ca3f4b4a0c88f716c3acf73a6cf673e56",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass3-gameover-1280.png",
+      "status": "new",
+      "bytes": 68229,
+      "sha256": "184c31a11748223b1e865f459d89fddaaee1a5c3e0282eb74206a1682bc06ad0",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass3-navigation-1280.png",
+      "status": "new",
+      "bytes": 106895,
+      "sha256": "d2982ae174e75ff69a1d11a3448afae2bfbf20553f4b71325feb48502d382eee",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass3-research-1280.png",
+      "status": "new",
+      "bytes": 151681,
+      "sha256": "62e6dac20d7dbc7f012c65ab9ff8cf430897436be031f8dbab91050f5a60fa44",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass3-saves-1280.png",
+      "status": "new",
+      "bytes": 48685,
+      "sha256": "72a95189b6e121569a2e02871bdbac9e22841ab03d107cbec9b94bc46e86cade",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass4-browser.json",
+      "status": "new",
+      "bytes": 2382,
+      "sha256": "f24a80acbd5e43f2a989d2561fd754de716dcf3063034ba3421d7f34bfbc6a1d",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass4-contracts-1280.png",
+      "status": "new",
+      "bytes": 89264,
+      "sha256": "f9bb932cbb7d0360317aec59bcb78e7cebccae00573819516be52f4272233e2a",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass4-flight-1280.png",
+      "status": "new",
+      "bytes": 57106,
+      "sha256": "6315d8181e20997eaae13850f4e805dfc6e2b23137ec44267bb6c668b9a943e1",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass4-navigation-1280.png",
+      "status": "new",
+      "bytes": 106092,
+      "sha256": "b40f8bc741641f279f123cff0c8d1c79aa5baebd4a22cc8602db48d0b65507ab",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass4-research-1280.png",
+      "status": "new",
+      "bytes": 149390,
+      "sha256": "263b270859e4c1b2c1e064c99a0f7d970525bdfd8f19b6d7f9591d7dc86dd121",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass4-saves-1280.png",
+      "status": "new",
+      "bytes": 46845,
+      "sha256": "e35e48afce3367a0f9588582fc199d17eff27a6f436d5cb7e93be8d487873e7c",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/pass4-shipworks-1280.png",
+      "status": "new",
+      "bytes": 96971,
+      "sha256": "a0a33b28a0049ee3f47c31a4569d4b46c240af541efbfbe5862f574931c163ae",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/review-1280.jpg",
+      "status": "new",
+      "bytes": 581738,
+      "sha256": "92d18998600e452f793f43404a2cd7f13e9561d16f7206b24c8abc146e5cbd2c",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/review-1920.jpg",
+      "status": "new",
+      "bytes": 249676,
+      "sha256": "b75c5f7d282baacea1731796d8b7a38e26f03336d73c101546e754b2138be700",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/review-2560.jpg",
+      "status": "new",
+      "bytes": 187787,
+      "sha256": "e711e52be07913bafb995e20168bb97edfc50eac3ccb966606aed538de42a17b",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/server-attempt.log",
+      "status": "new",
+      "bytes": 966,
+      "sha256": "da64feeefcb03f0924926394c6dbedf47eb9917a7ac7f1fe9607f187430baa68",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/source-preservation.json",
+      "status": "new",
+      "bytes": 1723,
+      "sha256": "7293a120db110e88f3008b1ab81492c313e507d0edaaafbd30679477c651095b",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/supplied-test-comparison.json",
+      "status": "new",
+      "bytes": 4805,
+      "sha256": "4513da445174ea28defde3829466e5a479dde7669187fe3d43d928c401cd089b",
+      "originalSha256": null
+    },
+    {
+      "path": "artifacts/frontend-orbital/syntax-checks.json",
+      "status": "new",
+      "bytes": 3368,
+      "sha256": "c2cf4b2586372c5a5a9efa1990796328c9e67a885c9b6a2a48e347da7b8f7b8c",
+      "originalSha256": null
+    },
+    {
+      "path": "assets/ui/hud/ship-condition-scout.png",
+      "status": "reused",
+      "bytes": 794172,
+      "sha256": "c944df2e108ecbd35592d659b633a61b7808b7bbac1a4c34bc0025c211fd9bf2",
+      "originalSha256": "c944df2e108ecbd35592d659b633a61b7808b7bbac1a4c34bc0025c211fd9bf2"
+    },
+    {
+      "path": "assets/ui/orbital/brand.svg",
+      "status": "new",
+      "bytes": 275,
+      "sha256": "5027ebc0a8dd43a02b4ab40bdcd42e61ef009e3d7cbc1308f6e89d82c42c722a",
+      "originalSha256": null
+    },
+    {
+      "path": "assets/ui/orbital/orbit-plate.svg",
+      "status": "new",
+      "bytes": 5524,
+      "sha256": "ef05d49f85a9e16a1bc85772de1cc4267beb341265cd9356e86381893ad07fcd",
+      "originalSha256": null
+    },
+    {
+      "path": "index.html",
+      "status": "modified",
+      "bytes": 3446,
+      "sha256": "89043c283577c40207675b4f124cfbb9b330d4460de957a93be7ec527ef0fa70",
+      "originalSha256": "d6a6a0e0ad69265cd27ea30c97fb75e3ed5a510dbbf1f4b9f8dd922debfbac84"
+    },
+    {
+      "path": "src/ui/galaxyMap.js",
+      "status": "modified",
+      "bytes": 427724,
+      "sha256": "51afd9cd584d6ae2ea08eec90cbafaa4c25c71f20cc2e06ea177d9b2ed9a20a8",
+      "originalSha256": "238fe3e7481c764f28bdbb49140d6a3ba47a728858532e283075575516b6a7ed"
+    },
+    {
+      "path": "src/ui/hud.js",
+      "status": "modified",
+      "bytes": 205257,
+      "sha256": "8944714f43dc152330c5c9d0e79b414c4fe6d541632c63784c87bef10582a70b",
+      "originalSha256": "2460c24267584756d92f8d87966757024ab2390d7b5eb1c653231016e2700841"
+    },
+    {
+      "path": "src/ui/map/tacticalMapGrammar.js",
+      "status": "modified",
+      "bytes": 15572,
+      "sha256": "51218494cb3e4f0c62cb61ab61ec5ba3b4d46c0e8c533fe30a333ff186d10db1",
+      "originalSha256": "0b2eb53757744d6c797fc4807c19b2896ebbd90038bb46327b2fc68703cfd430"
+    },
+    {
+      "path": "src/ui/screens/mainMenu.js",
+      "status": "modified",
+      "bytes": 18417,
+      "sha256": "27fca6ed424f94c5c0b7231605f51829239a59d4847bf0a640b1d5878529f313",
+      "originalSha256": "57bdbbf71774094a256ad69139a25c7b4bfc4fc6fb19d3214c36997879f2130c"
+    },
+    {
+      "path": "src/ui/screens/pause.js",
+      "status": "modified",
+      "bytes": 21001,
+      "sha256": "e90fd546d287448e86ccc29fb0340e8720bb6a538984dd92a6937608704bb9bc",
+      "originalSha256": "e710950178978a6ff5867a9fb13871604062aa0d19329da73f4d9af6e16f23c6"
+    },
+    {
+      "path": "src/ui/screens/saveLoad.js",
+      "status": "modified",
+      "bytes": 36842,
+      "sha256": "80d00ab63f693897a6fc45abc8c4e70dafb2fa0ea0fe9942652e4f2a0eab3acb",
+      "originalSha256": "be9504c7799c029217157c711b9a10d9043d9c8b1f66ba80882045594783416e"
+    },
+    {
+      "path": "src/ui/screens/settings.js",
+      "status": "modified",
+      "bytes": 28947,
+      "sha256": "4cf5e2e9a751adf269250ebcb824203eabf171eabd3ec37fb9075ef9a0bfa414",
+      "originalSha256": "770b09fb29c739a0c20e7bcc856f3b60b02d7d9e29ce0211936d6e68e2368170"
+    },
+    {
+      "path": "src/ui/screens/techTree.js",
+      "status": "modified",
+      "bytes": 32878,
+      "sha256": "50000a71c47bbd8c73c6cd917f3e3929c6fe459ec5d2af16bb89bb6e9b12f7a2",
+      "originalSha256": "d1711ab6988bd4e1dbc161b262814e0c765fed3227e3ab69ea0e288d6d4f1d68"
+    },
+    {
+      "path": "src/ui/station/dock.js",
+      "status": "modified",
+      "bytes": 9887,
+      "sha256": "4f665bdff00422ef31d4b7bc6f95470a8e65ad56f5880d9bf8baa4f91028af62",
+      "originalSha256": "e97ad246e88023e792f477057429e271c7b84540be0849991cb459a78a6a9f2a"
+    },
+    {
+      "path": "src/ui/station/screens/bar.js",
+      "status": "modified",
+      "bytes": 23176,
+      "sha256": "b4e3a7ecbfee67174a6fb3fb79a10cd5ebb7986c79c7bb1f98c213f7275fe4b8",
+      "originalSha256": "2badd72ec399a8a5d63b239b805a29eb5b6352d270438d195f919cf5ff0c524e"
+    },
+    {
+      "path": "src/ui/station/screens/contracts.js",
+      "status": "modified",
+      "bytes": 30172,
+      "sha256": "80ad399d72724c2a7b517a9093554df4e7bc543341a3bf5109f420e9ed035958",
+      "originalSha256": "8fbaed950c2fa99a91512133e271cbacb4e3fd18d4df2dbbc1d5ffa0f46c1baa"
+    },
+    {
+      "path": "src/ui/station/screens/factions.js",
+      "status": "modified",
+      "bytes": 13441,
+      "sha256": "4ed1be8d769b5cd2ee19ca78acef7729d06586a6b7bbc55c84e0c6fd050dc789",
+      "originalSha256": "2e504f0c6e99593f08eb5f68aab37c07cb6e80f543d205a4ea98f5c50f0ae7e8"
+    },
+    {
+      "path": "src/ui/station/screens/industry.js",
+      "status": "modified",
+      "bytes": 14021,
+      "sha256": "56022106f020053aff7f244acbdc08605b14fd30d251938e597fe08a02742c24",
+      "originalSha256": "5b3a235ed0f6196485eac1a12186e97a49b294e2f700c56f253427f142199327"
+    },
+    {
+      "path": "src/ui/station/screens/market.js",
+      "status": "modified",
+      "bytes": 30288,
+      "sha256": "3b4c3c23a7d5f5e0c58a84af7bc4f788364c879caeaafb7fdb2594c56a2c0b1f",
+      "originalSha256": "0b8080a45a0448ebaeb2d1dd41368c2208050c0a09fcbe6e9ec153d54b4c2cce"
+    },
+    {
+      "path": "src/ui/station/screens/shipworks.js",
+      "status": "modified",
+      "bytes": 112484,
+      "sha256": "de4847479bac58284192b804d8caf81275f7b91de28dc5c08ccc1dd2adcabd78",
+      "originalSha256": "b00316992cadea46080a0377e3892e3a1e64478da4d74bb6746766f8d8179205"
+    },
+    {
+      "path": "src/ui/station/stationApp.js",
+      "status": "modified",
+      "bytes": 57643,
+      "sha256": "0909588ab8145fc5a55440a2aa2c2578bcf6ac8984c6b38260a343737927d042",
+      "originalSha256": "a1a3af72046718077264e4fb659f22e55d1bb60bb062f632dedc114e2f5e2d40"
+    },
+    {
+      "path": "src/ui/targetPanel.js",
+      "status": "modified",
+      "bytes": 32091,
+      "sha256": "d16df82f0c80209d7dc93604f4cf253e427d55423856ecd17f60ca0adeaf00c1",
+      "originalSha256": "5bfc79af480bd425f2f0630a111df967c0331a42c13ef753b535cd64f7417aad"
+    },
+    {
+      "path": "src/ui/uiRoot.js",
+      "status": "modified",
+      "bytes": 71737,
+      "sha256": "addc10372044192cd24c802d8e50eb0d20a990464ab932dc2fcbe3dcda1cb4f6",
+      "originalSha256": "4a4932972a7a0318d0f23e5065f6da2ec75fa5bc5d1ed8b43dbc3456c8437727"
+    },
+    {
+      "path": "src/ui/views/contractPresentation.js",
+      "status": "new",
+      "bytes": 2600,
+      "sha256": "524c4625bf5b9fe5b04931979b1f0e86811d0950654acbcada78bba5bb388000",
+      "originalSha256": null
+    },
+    {
+      "path": "src/ui/views/flightInstruments.js",
+      "status": "new",
+      "bytes": 1501,
+      "sha256": "591fcb29f3213444908e9d67742ffdb2d6e4349d3753dec5b95d695e65a1a94c",
+      "originalSha256": null
+    },
+    {
+      "path": "src/ui/views/hudStyles.js",
+      "status": "new",
+      "bytes": 89754,
+      "sha256": "f75ceb84e450396c0e0c3a0dcf70df5527966a5c922ae0cf8f10efdcd7df7788",
+      "originalSha256": null
+    },
+    {
+      "path": "src/ui/views/identity.js",
+      "status": "new",
+      "bytes": 1777,
+      "sha256": "4ec6560f386e90272d2461d9afb93b6e28f5d837e42458d91913fe77ec73b325",
+      "originalSha256": null
+    },
+    {
+      "path": "src/ui/views/marketPresentation.js",
+      "status": "new",
+      "bytes": 9083,
+      "sha256": "8cebf1c78cae6a102b9f4186d2dd2448897b934b2e953547ca008d454413241e",
+      "originalSha256": null
+    },
+    {
+      "path": "src/ui/views/menuFrames.js",
+      "status": "new",
+      "bytes": 2224,
+      "sha256": "0356140d2280d71cc82fe557cea9919d33e4e22c581323754ea9e5b4705a23da",
+      "originalSha256": null
+    },
+    {
+      "path": "src/ui/views/navigationFrame.js",
+      "status": "new",
+      "bytes": 11317,
+      "sha256": "554ece3a67ce4b658d4768fbc6fe358f9e8f68a67be6c30db45150ac2e924318",
+      "originalSha256": null
+    },
+    {
+      "path": "src/ui/views/navigationStyles.js",
+      "status": "new",
+      "bytes": 28758,
+      "sha256": "facbc880e79294dbf76ed8bbd9b2c803f1a2e1d742a432a2f98f6ffde0e3bc05",
+      "originalSha256": null
+    },
+    {
+      "path": "src/ui/views/saveFrame.js",
+      "status": "new",
+      "bytes": 1660,
+      "sha256": "dabf5ea037908c409e2b195e19d079caefa5c8159aacfccf69a7767353727300",
+      "originalSha256": null
+    },
+    {
+      "path": "src/ui/views/settingsControls.js",
+      "status": "new",
+      "bytes": 6240,
+      "sha256": "2f872ca1d62a9bcf77548ac86335223ae1e4799acfcb9ff1a461042f73a5cb17",
+      "originalSha256": null
+    },
+    {
+      "path": "src/ui/views/stationFrames.js",
+      "status": "new",
+      "bytes": 7678,
+      "sha256": "c9291441aa5ec786b61daf0d1945a7dc5eae14026a2557b9f0df3c43f2edd89d",
+      "originalSha256": null
+    },
+    {
+      "path": "src/ui/views/targetFrame.js",
+      "status": "new",
+      "bytes": 3327,
+      "sha256": "03460a49a26e2cf8301a84b5a88b5d2a3faaf0837eadb29570fc2d604905aed1",
+      "originalSha256": null
+    },
+    {
+      "path": "styles/orbital.css",
+      "status": "new",
+      "bytes": 55444,
+      "sha256": "957796f21605fb5ea93f87027229b11f448da63316537c9bea9704e4c2d22810",
+      "originalSha256": null
+    },
+    {
+      "path": "test/fixtures/orbital-interface.html",
+      "status": "new",
+      "bytes": 1778,
+      "sha256": "11171015315ad5dfc3d8887eb74f93899c214488c2a22e4bc3bb085c08ed03a5",
+      "originalSha256": null
+    },
+    {
+      "path": "test/fixtures/orbital-interface.js",
+      "status": "new",
+      "bytes": 27945,
+      "sha256": "8104246f8179fdc0f1b35a79c45cf3fec62d8ddc7f0f810814bb417e43928803",
+      "originalSha256": null
+    },
+    {
+      "path": "test/frontend_orbital_browser.py",
+      "status": "new",
+      "bytes": 17453,
+      "sha256": "68224d132f70193e6dbab1fc6e8d54c2414752170c788596ee30ece57aa0c16f",
+      "originalSha256": null
+    },
+    {
+      "path": "test/frontend_orbital_transport.py",
+      "status": "new",
+      "bytes": 3619,
+      "sha256": "7da65c2752faf3855f5cddfdadf2f6b7303aac35fd70a565f6e26bb47510ff49",
+      "originalSha256": null
+    },
+    {
+      "path": "test/orbital-map-labels.test.mjs",
+      "status": "new",
+      "bytes": 1330,
+      "sha256": "9192f1b20b82106606ddcdb0462ac079adc240ba18461d275a6603f6ef23fbe4",
+      "originalSha256": null
+    },
+    {
+      "path": "test/orbital-presentation.test.mjs",
+      "status": "new",
+      "bytes": 10121,
+      "sha256": "b4d1356bf0d3f1111f203c898398789ce490fcc711635a41fe88582573aef669",
+      "originalSha256": null
+    }
+  ]
+}

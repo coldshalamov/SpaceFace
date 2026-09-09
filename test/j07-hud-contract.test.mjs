@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 const root = (p) => fileURLToPath(new URL('../' + p, import.meta.url));
 const radarSrc = readFileSync(root('src/ui/radar.js'), 'utf8');
 const uiRootSrc = readFileSync(root('src/ui/uiRoot.js'), 'utf8');
+const hudCssSrc = readFileSync(root('src/ui/views/hudStyles.js'), 'utf8');
 const uiCssSrc = readFileSync(root('styles/ui.css'), 'utf8');
 
 const compactSize = Number(/const COMPACT_SIZE\s*=\s*(\d+)/.exec(radarSrc)[1]);
@@ -39,12 +40,17 @@ function withoutMediaBlocks(css) {
   }
   return out;
 }
-const uiRootBase = withoutMediaBlocks(uiRootSrc);
+const hudCssBase = withoutMediaBlocks(hudCssSrc);
+
+test('uiRoot still mounts the extracted HUD stylesheet', () => {
+  assert.match(uiRootSrc, /from '\.\/views\/hudStyles\.js'/);
+  assert.match(uiRootSrc, /injectHudCss\(\)/);
+});
 
 test('the default radar dial is exactly the size the canvas is drawn at', () => {
   // A 180px canvas centred in a 220px CSS circle is invisible to every unit test and obvious on
   // screen. The BASE declaration (the one outside every @media block) is the pair that has to hold.
-  const base = /--sf-radar-size:\s*(\d+)px/.exec(uiRootBase);
+  const base = /--sf-radar-size:\s*(\d+)px/.exec(hudCssBase);
   assert.ok(base, 'injectHudCss no longer declares a base --sf-radar-size');
   assert.equal(
     Number(base[1]), compactSize,
@@ -56,9 +62,9 @@ test('every breakpoint that narrows the dial also scales the canvas', () => {
   // radar.js always draws COMPACT_SIZE px. A breakpoint that shrinks .sf-radar without an
   // equal-sized `.sf-radar canvas` override clips the drawing against the dial's overflow:hidden —
   // and nothing else in the build can see that happen. This assertion caught it once already.
-  const dialSizes = [...uiRootSrc.matchAll(/--sf-radar-size:\s*(\d+)px/g)].map((m) => Number(m[1]));
+  const dialSizes = [...hudCssSrc.matchAll(/--sf-radar-size:\s*(\d+)px/g)].map((m) => Number(m[1]));
   const canvasSizes = new Set(
-    [...uiRootSrc.matchAll(/\.sf-radar canvas \{\s*width:\s*(\d+)px\s*!important/g)].map((m) => Number(m[1])),
+    [...hudCssSrc.matchAll(/\.sf-radar canvas \{\s*width:\s*(\d+)px\s*!important/g)].map((m) => Number(m[1])),
   );
   assert.ok(dialSizes.length >= 2, 'expected a --sf-radar-size per breakpoint');
   for (const size of dialSizes) {
@@ -93,14 +99,14 @@ test('the right dock is one column: no surface hard-codes its own width', () => 
       if (w) offenders.push(`${label}: .${m[1]} { width:${w[1]}px }`);
     }
   };
-  scan('uiRoot.injectHudCss', uiRootSrc);
+  scan('views/hudStyles.injectHudCss', hudCssSrc);
   scan('styles/ui.css', uiCssSrc);
   assert.deepEqual(offenders, [], 'dock surfaces must be width:100% against --sf-dock-w:\n' + offenders.join('\n'));
 });
 
 test('--sf-dock-w is declared for every breakpoint that repositions the dock', () => {
   // Locking the column at 1440 and forgetting the narrow breakpoints ships a half-lock.
-  const declared = [...uiRootSrc.matchAll(/--sf-dock-w:\s*(\d+)px/g)].map((m) => Number(m[1]));
+  const declared = [...hudCssSrc.matchAll(/--sf-dock-w:\s*(\d+)px/g)].map((m) => Number(m[1]));
   assert.ok(declared.length >= 3, `expected a --sf-dock-w per breakpoint, found ${declared.length}`);
   for (const w of declared) assert.ok(w >= 150 && w <= 320, `implausible dock width ${w}px`);
 });
@@ -113,7 +119,7 @@ test('the threat badge styles the tier values scanner.js actually emits', () => 
   const tiers = /const THREAT_MASS_TIERS = \[([^\]]*)\]/.exec(scanner);
   assert.ok(tiers, 'scanner.js no longer declares THREAT_MASS_TIERS');
   const maxTier = tiers[1].split(',').filter((x) => x.trim()).length;   // tier 1..N
-  const selectors = [...uiRootSrc.matchAll(/\.sf-target__threat\[data-tier="([^"]+)"\]/g)].map((m) => m[1]);
+  const selectors = [...hudCssSrc.matchAll(/\.sf-target__threat\[data-tier="([^"]+)"\]/g)].map((m) => m[1]);
   assert.ok(selectors.length > 0, 'the threat badge has no tier styling at all');
   for (const sel of selectors) {
     assert.match(sel, /^\d+$/, `[data-tier="${sel}"] is not a number; contactThreatTier emits 0..${maxTier}`);
@@ -132,12 +138,16 @@ test('the target card does not duplicate health that the world already draws', (
   // J07 moved shield/armour/hull onto the in-world arcs. Putting the bars back on the card spends
   // the whole card width re-answering a question the reticle already answers.
   const panel = readFileSync(root('src/ui/targetPanel.js'), 'utf8');
-  assert.ok(!/sf-bar--segmented/.test(panel), 'the segmented health bars are back on the target card');
-  assert.match(panel, /sf-target__threat/, 'the threat badge that replaced them is missing');
+  const frame = readFileSync(root('src/ui/views/targetFrame.js'), 'utf8');
+  const markup = `${panel}\n${frame}`;
+  assert.ok(!/sf-bar--segmented/.test(markup), 'the segmented health bars are back on the target card');
+  assert.match(markup, /sf-target__threat/, 'the threat badge that replaced them is missing');
   // Assert the element AND its wiring. Matching one class name once is too weak: the mutation
   // that deleted half the range bar left this green, which is exactly the "passed for the wrong
-  // reason" failure this suite exists to avoid.
-  assert.match(panel, /class="sf-target__rangebar"/, 'the range bar element is missing from the card');
+  // reason" failure this suite exists to avoid. Markup lives in the extracted frame; the panel
+  // still owns the distance write.
+  assert.match(panel, /targetFrameHtml/, 'the card markup is no longer mounted from the extracted frame');
+  assert.match(frame, /class="sf-target__rangebar"/, 'the range bar element is missing from the card');
   assert.match(panel, /elRangeFill\.style\.transform = rangeScale/, 'the range bar is never driven by distance');
 });
 
@@ -158,7 +168,7 @@ test('every de-boxed surface draws brackets from the one shared recipe', () => {
   // Five stylesheets inject HUD surfaces. A bracket recipe copied into each drifts; this pins them
   // all to src/ui/hudBrackets.js.
   const consumers = [
-    'src/ui/uiRoot.js',
+    'src/ui/views/hudStyles.js',
     'src/ui/sectorLawPresenter.js',
     'src/systems/onboarding.js',
   ];

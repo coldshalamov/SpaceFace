@@ -1,3 +1,5 @@
+import { canvasFont } from '../canvasFonts.js';
+
 // Shared semantic grammar for the always-on radar and the paused navigation chart.
 //
 // This module owns meaning, projection, and crisp glyph geometry — never simulation. Every primary
@@ -5,17 +7,17 @@
 // rather than the only way to tell "me", "goal", "threat", and "infrastructure" apart.
 
 export const TACTICAL_MAP_PALETTE = Object.freeze({
-  ground: '#071015',
-  groundPlate: 'rgba(5, 12, 16, 0.92)',
-  ink: '#f4f0e6',
-  inkDim: '#b9c3c2',
-  player: '#63f3ff',
-  objective: '#ffc064',
-  hostile: '#ff6673',
-  station: '#63d8ff',
-  gate: '#c7a9ff',
-  neutral: '#a9b4c2',
-  asteroid: '#66717c',
+  ground: '#101916',
+  groundPlate: 'rgba(16, 25, 22, 0.96)',
+  ink: '#f0eee1',
+  inkDim: '#b8c3b5',
+  player: '#aed4b1',
+  objective: '#e6b478',
+  hostile: '#ee9d83',
+  station: '#bacbc1',
+  gate: '#c4b4d8',
+  neutral: '#b5bbaa',
+  asteroid: '#788475',
 });
 
 export const TACTICAL_SYMBOLS = Object.freeze({
@@ -290,7 +292,7 @@ export function drawPlayerHull(g, x, y, rotation = 0, { label = true } = {}) {
   g.fill();
   g.stroke();
 
-  // White nose notch: self remains identifiable in monochrome and against cyan infrastructure.
+  // White nose notch: self remains identifiable in monochrome and against station infrastructure.
   g.fillStyle = TACTICAL_MAP_PALETTE.ink;
   g.beginPath();
   g.moveTo(11, 0);
@@ -298,7 +300,7 @@ export function drawPlayerHull(g, x, y, rotation = 0, { label = true } = {}) {
   g.lineTo(5.2, 2.2);
   g.closePath();
   g.fill();
-  g.strokeStyle = 'rgba(99,243,255,0.78)';
+  g.strokeStyle = 'rgba(174,212,177,0.78)';
   g.lineWidth = 1.2;
   g.beginPath();
   g.moveTo(-8.8, 0);
@@ -308,7 +310,7 @@ export function drawPlayerHull(g, x, y, rotation = 0, { label = true } = {}) {
 
   // Non-rotating centre brackets make self-location instantaneous while the hull turns.
   g.save();
-  g.strokeStyle = 'rgba(99,243,255,0.82)';
+  g.strokeStyle = 'rgba(174,212,177,0.82)';
   g.lineWidth = 1.25;
   drawOpenCorners(g, x, y, 15, 4.5);
   if (label) {

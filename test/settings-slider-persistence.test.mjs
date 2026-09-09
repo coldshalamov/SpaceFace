@@ -7,6 +7,9 @@ function fakeRange(value) {
   const listeners = new Map();
   return {
     value: String(value),
+    min: '0',
+    max: '1',
+    style: { setProperty() {} },
     addEventListener(type, listener) {
       const list = listeners.get(type) || [];
       list.push(listener);

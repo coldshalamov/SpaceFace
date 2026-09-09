@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-ui-theme="orbital">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <!-- Browser chrome (tab strip / mobile bar) tints to the game background instead of default white. -->
-  <meta name="theme-color" content="#05070d" />
+  <meta name="theme-color" content="#101516" />
   <title>SpaceFace</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%2305070d'/%3E%3Ccircle cx='32' cy='32' r='18' fill='none' stroke='%2339d0ff' stroke-width='4'/%3E%3Cpath d='M32 10v14M32 40v14M10 32h14M40 32h14' stroke='%237af7d0' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <link rel="icon" type="image/svg+xml" href="assets/ui/orbital/brand.svg" />
   <link rel="stylesheet" href="./styles/ui.css" />
   <link rel="stylesheet" href="./styles/fonts.css" />
   <link rel="stylesheet" href="./styles/menu.css" />
@@ -16,9 +16,9 @@
   <!-- The frontend kit (design/frontend/direction/KIT_SPEC.md §1): tokens, temperature and the
        k- components. Loaded after the legacy sheets so its rules win on migrated screens. -->
   <link rel="stylesheet" href="./styles/kit.css" />
-  <!-- Additive command-deck presentation (PR #113). After the kit so identified
-       surfaces can regain plates and control treatment without replacing handlers. -->
-  <link rel="stylesheet" href="./styles/command-deck-refit.css" />
+  <!-- Orbital: explicit production screen composition; no document-wide presentation observer.
+       Keep quarks importmap below — PQ-190 VFX runtime still loads three.quarks. -->
+  <link rel="stylesheet" href="./styles/orbital.css" />
   <script type="importmap">
   {
     "imports": {
@@ -50,13 +50,13 @@
       <canvas id="boot-terminal-canvas" class="boot-canvas" width="640" height="380"></canvas>
       <div class="boot-scrim" aria-hidden="true"></div>
       <header class="boot-meta" aria-hidden="true">
-        <span class="boot-meta__registry">VHL-4471-T · TESSERA // COLD RESTART</span>
+        <span class="boot-meta__registry">SPACEFACE · FLIGHT SYSTEMS</span>
         <span class="boot-meta__clock" data-loading-clock>00:00:00.0</span>
       </header>
       <div class="boot-lockup">
         <span class="boot-wordmark">SPACEFACE</span>
         <span class="boot-label" data-loading-label>Initializing systems…</span>
-        <span class="boot-detail" data-loading-detail>Preparing the command deck</span>
+        <span class="boot-detail" data-loading-detail>Preparing your next departure</span>
         <div class="boot-progress-row" aria-hidden="true">
           <span class="boot-progress"><span data-loading-progress></span></span>
           <span class="boot-progress-pct" data-loading-pct>0%</span>
@@ -69,7 +69,6 @@
     import { bootstrapLoadingTerminal } from './src/ui/loadingTerminalArt.js';
     bootstrapLoadingTerminal();
   </script>
-  <script type="module" src="./src/ui/commandDeckRefit.js"></script>
   <script type="module" src="./src/main.js"></script>
 </body>
 </html>

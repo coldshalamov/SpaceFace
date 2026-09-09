@@ -1,3 +1,5 @@
+import { contractDossierView, termRow, commitWordHtml } from '../../views/contractPresentation.js';
+import { contractsFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/contracts.js — station Missions board (internal id remains contracts).
 // A kit panel (Frontend Task C §1.5): the posted jobs and the player's own missions as rows down
 // the hang column, the open job's dossier on the stage — its title, client, payout at hero size,
@@ -262,29 +264,6 @@ export function finalDispositionPresentation(mission) {
 }
 
 /** One static row of the dossier's terms: label · value (· a fine note). */
-function termRow(k, v, sub) {
-  return (
-    `<li class="k-row k-row--static">` +
-      `<span class="k-62">${k}</span>` +
-      `<span class="k-row__num sx-term__v">${v}${sub ? `<span class="k-row__sub sx-term__sub">${sub}</span>` : ''}</span>` +
-    `</li>`
-  );
-}
-
-/** The Accept word (or its final-disposition variant); disabled with its reason while blocked. */
-function commitWordHtml({ id, ready, readyLabel, blockedLabel, aria, focus, reason }) {
-  return (
-    `<ul class="k-words k-words--row sx-dossier__foot">` +
-      `<li><button type="button" class="k-word k-word--emph k-word--primary sx-ct-commit${focus ? ' is-attention' : ''}"` +
-        ` data-accept="${escapeHtml(String(id))}"${ready ? '' : ' disabled'} aria-label="${escapeHtml(aria)}">` +
-        `<span>${ready ? readyLabel : blockedLabel}</span>` +
-      `</button>` +
-      (ready ? '' : `<span class="k-word-sub">${escapeHtml(reason)}</span>`) +
-      `</li>` +
-    `</ul>`
-  );
-}
-
 function finalDispositionDossierHtml(mission, filing, options = {}) {
   const origin = options.origin || 'Ash Cache';
   const blocked = cleanText(options.blockedReason);
@@ -360,38 +339,26 @@ export function missionDossierHtml(m, state, options = {}) {
     ? `Accept ${title} and bind its route. ${readiness.detail}.`
     : `Cannot accept ${title}. ${readiness.detail}.`;
 
-  return (
-    `<div class="sx-dossier${focusAccept ? ' is-attention' : ''}">` +
-      `<p class="k-caps">${escapeHtml(typeLabel(m.type))}</p>` +
-      `<h2 class="k-display k-t-title sx-dossier__title">${entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title))}</h2>` +
-      `<p class="k-sentence k-sentence--emph sx-dossier__client">${clientEntityHtml(m)} · ${escapeHtml(typeLabel(m.type))}</p>` +
-      `<div class="k-hero k-hero--hero k-hero--signal sx-dossier__reward"><span class="k-hero__n">${reward(m).toLocaleString('en-US')}</span><span class="k-hero__w">cr on delivery</span></div>` +
-      (authoredSummary ? `<p class="k-sentence sx-dossier__summary">${escapeHtml(authoredSummary)}</p>` : '') +
-      `<p class="k-sentence sx-dossier__route" aria-label="Mission operation route">${originEntityHtml(state, origin)} → ${destEntityHtml(m)} · ${escapeHtml(routeText)}</p>` +
-      `<p class="k-sentence sx-dossier__risk">${riskSentence(m, consequences, facShort)}</p>` +
-      `<ul class="k-rows sx-dossier__terms">` +
-        (cargoName ? termRow('Payload', cargoEntityHtml(cargo, cargoName), cargo.qty ? `${num(cargo.qty)} u` : '') : '') +
-        termRow('Time', escapeHtml(m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible'))) +
-        (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure') : '') +
-        (upfrontCr ? termRow('Upfront', cr(upfrontCr), 'to accept') : '') +
-        (missionOffersFollowUp(m) ? termRow('Follow-up', 'Posted on success', 'same contract family') : '') +
-        termRow('Readiness', escapeHtml(readiness.label), escapeHtml(readiness.detail)) +
-      `</ul>` +
-      // One gate line. A blocker names what stops the accept; a warning names what to check and
-      // leaves the accept available.
-      (readiness.blocker
-        ? `<p class="k-sentence k-bad sx-dossier__gate">${escapeHtml(readiness.blocker)}</p>`
-        : (readiness.warning ? `<p class="k-sentence sx-dossier__gate">${escapeHtml(readiness.warning)}</p>` : '')) +
-      (clauses.length
-        ? `<ul class="k-words k-words--row sx-dossier__clauses" aria-label="Contract clauses">${clauses.map((c) => `<li class="k-t-fine k-62"><span class="sx-tag"${clauseWhyAttr(c)}>${escapeHtml(c.label || c.id || 'clause')}</span></li>`).join('')}</ul>`
-        : '') +
-      commitWordHtml({
-        id: mid(m), ready, focus: focusAccept && ready,
-        readyLabel: 'Accept', blockedLabel: 'Resolve Readiness',
-        aria: acceptAria, reason: readiness.detail,
-      }) +
-    `</div>`
-  );
+  return contractDossierView({
+    typeName: typeLabel(m.type),
+    titleHtml: entitySpanHtml('contract:' + String(mid(m)), escapeHtml(title)),
+    clientHtml: clientEntityHtml(m),
+    reward: reward(m).toLocaleString('en-US'),
+    summary: authoredSummary,
+    routeHtml: `${originEntityHtml(state, origin)} → ${destEntityHtml(m)} · ${escapeHtml(routeText)}`,
+    riskHtml: riskSentence(m, consequences, facShort),
+    termsHtml: (cargoName ? termRow('Payload', cargoEntityHtml(cargo, cargoName), cargo.qty ? `${num(cargo.qty)} u` : '') : '')
+      + termRow('Time', escapeHtml(m.timeLabel || (m.timeLimitMin ? m.timeLimitMin + ' min' : 'Flexible')))
+      + (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure') : '')
+      + (upfrontCr ? termRow('Upfront', cr(upfrontCr), 'to accept') : '')
+      + (missionOffersFollowUp(m) ? termRow('Follow-up', 'Posted on success', 'same contract family') : '')
+      + termRow('Readiness', escapeHtml(readiness.label), escapeHtml(readiness.detail)),
+    readiness,
+    clausesHtml: clauses.map((c) => `<li class="k-t-fine k-62"><span class="sx-tag"${clauseWhyAttr(c)}>${escapeHtml(c.label || c.id || 'clause')}</span></li>`).join(''),
+    focusAccept,
+    action: { id: mid(m), ready, focus: focusAccept && ready,
+      readyLabel: 'Accept', blockedLabel: 'Resolve Readiness', aria: acceptAria, reason: readiness.detail },
+  });
 }
 
 function cleanText(value) {
@@ -401,15 +368,7 @@ function cleanText(value) {
 export function createContractsScreen(ctx) {
   const el = document.createElement('div');
   el.className = 'k-panel sx-ct';
-  el.innerHTML =
-    `<div class="k-hang sx-ct__hang">` +
-      `<p class="k-caps">Posted here</p>` +
-      `<p class="k-t-fine k-38 sx-ct-dispatch__label"></p>` +
-      `<nav class="sx-ct__board" aria-label="Available missions"></nav>` +
-      `<p class="k-caps sx-ct__yours">Yours</p>` +
-      `<aside class="sx-ct__active" aria-label="Active missions"></aside>` +
-    `</div>` +
-    `<section class="k-stage sx-ct__dossier" aria-live="polite"></section>`;
+  el.innerHTML = contractsFrameHtml();
   const dispatchEl = el.querySelector('.sx-ct-dispatch__label');
   const boardEl = el.querySelector('.sx-ct__board');
   const dossierEl = el.querySelector('.sx-ct__dossier');

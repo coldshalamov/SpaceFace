@@ -1,3 +1,4 @@
+import { createTitleFrame, TITLE_PLATE_SRC } from '../views/menuFrames.js';
 // Main Menu / title screen (ARCHITECTURE §1.3 step 6, §5; design/specs/09).
 // The sheet's title line (design/frontend/direction/DIRECTION_SHEET.md, title screen): the starter
 // hull in its hangar fills the frame, the game's name enormous top-left, a column of words down the
@@ -16,7 +17,7 @@ import { IS_DEV } from '../../core/devMode.js';
 import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 
 const LS_PREFIX = 'sf.save.';
-const MENU_BACKDROP_SRC = 'assets/cinematics/menu_hangar_bg.jpg';
+const MENU_BACKDROP_SRC = TITLE_PLATE_SRC;
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -191,19 +192,7 @@ export const mainMenuScreen = {
     rootEl.classList.add('k-screen', 'k-screen--stage');
     rootEl.dataset.kReady = '0';
 
-    // The hangar still: the kit's world canvas slot, filled with the authored plate instead of a
-    // live WebGL mount (kit.css .k-world; the --still variant frames the plate to the viewport).
-    const backdrop = el('div', 'k-world k-world--still');
-    backdrop.setAttribute('aria-hidden', 'true');
-    rootEl.appendChild(backdrop);
-
-    const title = el('header', 'k-title');
-    title.appendChild(el('h1', 'k-display k-t-name', 'SpaceFace'));
-    title.appendChild(el('p', 'k-t-emph k-62', 'Contract 47-A remains open'));
-    rootEl.appendChild(title);
-
-    const stage = el('div', 'k-stage');
-    rootEl.appendChild(stage);
+    const { backdrop, title, stage } = createTitleFrame(rootEl);
 
     // The words. Visible words follow the sheet; the accessible names keep the game's core copy
     // (coreText) so every route that finds "New Game" / "Continue" / "Quit Game" still does.

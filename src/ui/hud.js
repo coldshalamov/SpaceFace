@@ -42,7 +42,7 @@ import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
-import { SHIP_SILHOUETTES } from '../data/shipSilhouettes.js';
+import { hullMarkSvg, shipConditionMarkup, hudBarMarkup } from './views/flightInstruments.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
@@ -1034,9 +1034,8 @@ export function createHud(ctx, alerts) {
   leftContext.className = 'sf-leftcontext';
   leftStack.appendChild(leftContext);
 
-  // Ship condition is built around a production raster silhouette, not a hand-drawn glyph. The
-  // shield remains a live vector ring because it carries state; the authored ship cutout carries
-  // shape, material, and visual identity at the small size this instrument actually occupies.
+  // The active ship uses its canonical vector silhouette; the ring carries shield state.
+  // Presentation is shared with the isolated fixture, without a second HUD state owner.
   const bars = document.createElement('div');
   bars.className = 'sf-bars';
 
@@ -1062,13 +1061,6 @@ export function createHud(ctx, alerts) {
   // measured in the running game, the attribute did not take effect here and the hull drew
   // unrotated and outside its own box. CSS transform on an SVG element wins over the attribute, so
   // driving it from one place removes the ambiguity entirely.
-  function hullMarkSvg(cls, defId) {
-    const body = SHIP_SILHOUETTES[defId] || SHIP_SILHOUETTES.ship_kestrel;
-    return '<svg class="sf-sch-ship ' + cls + '" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" '
-      + 'aria-hidden="true" preserveAspectRatio="xMidYMid meet">'
-      + '<g class="sf-sch-hull">' + body + '</g>'
-      + '</svg>';
-  }
   function playerHullId(entity) {
     const d = entity && entity.data;
     return (d && (d.defId || d.shipId)) || 'ship_kestrel';
@@ -1077,18 +1069,9 @@ export function createHud(ctx, alerts) {
 
   const schematic = document.createElement('div');
   schematic.className = 'sf-schematic';
-  schematic.innerHTML =
-    '<svg class="sf-sch-ring" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-      '<circle class="sf-sch-track" cx="50" cy="50" r="46"/>' +
-      '<circle class="sf-sch-shield" cx="50" cy="50" r="46" transform="rotate(-90 50 50)"/>' +
-    '</svg>' +
-    '<div class="sf-sch-ship-wrap">' +
-      hullMarkSvg('sf-sch-ship--empty', schematicHullId) +
-      '<div class="sf-sch-ship-fill-crop">' +
-        hullMarkSvg('sf-sch-ship--fill', schematicHullId) +
-      '</div>' +
-      '<div class="sf-sch-fill-line"></div>' +
-    '</div>';
+  schematic.innerHTML = shipConditionMarkup(schematicHullId);
+  schematic.setAttribute('role', 'img');
+  schematic.setAttribute('aria-label', 'Ship condition');
   bars.appendChild(schematic);
   const schShield = schematic.querySelector('.sf-sch-shield');
   const schHullVal = conditionHead.querySelector('.sf-cond-hull-val');
@@ -1107,16 +1090,12 @@ export function createHud(ctx, alerts) {
     // shown on this same gauge; see the honest caveat where it is updated below.
     ['boost', 'drive', 'boost'],   // shared drive-energy pool: dash + boost + burn (hidden if the ship can't boost)
     ['heat', 'heat', 'heat'],      // weapon-instance heat (max across p.data.weapons), not WANTED heat
-    ['fuel', 'fuel', 'fuel'],
   ];
   const fillEls = {}, numEls = {}, rowEls = {};
   for (const [key, label, mod] of barDefs) {
     const row = document.createElement('div');
     row.className = 'sf-barrow';
-    row.innerHTML = `
-      <span class="sf-barrow__label">${label}</span>
-      <div class="sf-bar sf-bar--${mod}"><div class="sf-bar__fill"></div></div>
-      <span class="sf-barrow__num mono">0</span>`;
+    row.innerHTML = hudBarMarkup(label, mod);
     bars.appendChild(row);
     fillEls[key] = row.querySelector('.sf-bar__fill');
     numEls[key] = row.querySelector('.sf-barrow__num');
@@ -1510,6 +1489,18 @@ export function createHud(ctx, alerts) {
       otherPos: (other && other.pos) || (p && p.pos),
     }, state.playerId);
     if (cue) dmgInd.onDamage(cue);
+  });
+
+  // Shield blowout visual cue: momentary HUD glitch/flicker when player shields collapse
+  let shieldBlowoutTimer = null;
+  ctx.bus.on('shieldDown', (p) => {
+    if (!p || p.combatantId !== state.playerId) return;
+    root.classList.add('sf-hud--blowout');
+    if (shieldBlowoutTimer) clearTimeout(shieldBlowoutTimer);
+    shieldBlowoutTimer = setTimeout(() => {
+      root.classList.remove('sf-hud--blowout');
+      shieldBlowoutTimer = null;
+    }, 450);
   });
 
   // ---- objective tracker (relocated to the bottom-left contextual column) + off-screen arrow.
@@ -4206,6 +4197,8 @@ export function createHud(ctx, alerts) {
       if (slow) {
         const showHull = vitalNumericVisible(hullFrac);
         const showShield = vitalNumericVisible(shieldFrac);
+        const conditionLabel = `Hull ${Math.round(hullFrac * 100)} percent; shield ${Math.round(shieldFrac * 100)} percent`;
+        if (schematic.getAttribute('aria-label') !== conditionLabel) schematic.setAttribute('aria-label', conditionLabel);
         if (schHullVal) setText(schHullVal, Math.max(0, Math.round(p.hull)) + '');
         if (schShdVal) setText(schShdVal, Math.max(0, Math.round(p.shield)) + '');
         setHidden(schHullStat, !showHull);

@@ -3,12 +3,11 @@
 // locked), cost (credits + RP). Click a node -> the side column -> Unlock emits ui:unlockTech{nodeId}
 // (ships handles it). READ-ONLY on state; emits intents only.
 //
-// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, tech tree, Task D §3.4): the lanes
-// drawn as hairline paths on the sky; nodes as words; the selected node's name at screen-title size
-// with its cost as a number and Unlock as a word. Built on the frontend kit (styles/kit.css,
-// src/ui/kit/); this file owns no CSS. The canvas is transparent over the sky and paints only the
-// kit's colours (KIT_INK below — the one place a hex literal is allowed here, because it paints a
-// canvas, not CSS).
+// Engineering register: prerequisite depth reads left to right; available, researched and locked
+// nodes have distinct fill, border and text states. The selected dossier retains all native unlock
+// guards. A labelled node selector is the keyboard and screen-reader equivalent of canvas picking.
+// Layout and interaction remain owned here; the Orbital stylesheet owns DOM presentation.
+// Canvas ink is centralized below because Canvas 2D does not consume CSS custom properties.
 //
 // Export: techTreeScreen  (id 'techTree'). No 'three' import.
 
@@ -17,7 +16,7 @@ import { SHIPS } from '../../data/ships.js';
 import { MODULES } from '../../data/modules.js';
 import { WEAPONS } from '../../data/weapons.js';
 import { BODY_MODULES } from '../../data/claimableBodies.js';
-import { escapeHtml } from '../comms.js';
+import { escapeMarkup as escapeHtml } from '../views/identity.js';
 import { el, hero, settle, cue } from '../kit/index.js';
 
 // Branch -> column index. Colour is by MEANING (researched / available / locked), never by branch.
@@ -39,7 +38,7 @@ const UNLOCK_NAME_BY_ID = new Map(
 // the vertical axis inside each band and siblings across, which drew the combat branch's fan-out
 // as a tangle of curves crossing the whole canvas and left two thirds of the frame empty.
 // NODE_W × NODE_H is each node's word box: the hit-test rectangle and the space its two name lines
-// and cost line occupy. Nothing is drawn around it.
+// and cost line occupy. The register border follows this same hit-test rectangle.
 const NODE_W = 168, NODE_H = 58, COL_GAP = 56, ROW_GAP = 16, PAD_X = 32, PAD_Y = 40;
 const LANE_GAP = 34;          // vertical space between branch lanes (holds the lane label)
 const LANE_LABEL_H = 22;      // label sits inside the lane's top inset
@@ -49,14 +48,17 @@ const NAME_LINE_H = 20;       // canvas line height for the node's name at body 
 // signal gold, the wanted red, good, ink. Canvas 2D cannot read a CSS custom property, so the values
 // are spelled here — the only hex allowed in this file. Every fillStyle/strokeStyle below is one of these.
 const KIT_INK = Object.freeze({
-  bone: '#eae6df',
-  bone62: 'rgba(234,230,223,.62)',
-  bone38: 'rgba(234,230,223,.38)',
-  hair: 'rgba(234,230,223,.14)',
-  signal: '#f2b950',
-  red: '#ff4d3d',
-  good: '#9bd8a0',
-  ink: '#0a0b0d',
+  bone: '#f0eee1',
+  bone62: '#bec9b6',
+  bone38: '#98a791',
+  hair: '#47583f',
+  signal: '#e6b478',
+  red: '#ee9d83',
+  good: '#aed4b1',
+  ink: '#152018',
+  available: '#223026',
+  researched: '#29392b',
+  locked: '#18231c',
 });
 // The kit's text face (styles/kit.css --k-text), spelled out because ctx.font cannot resolve var().
 const KIT_TEXT_FACE = '"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
@@ -302,6 +304,18 @@ export const techTreeScreen = {
     foot.appendChild(el('span', 'k-word--fine k-62', 'available'));
     foot.appendChild(el('span', 'k-word--fine', 'researched'));
     foot.appendChild(el('span', 'k-word--fine k-38', 'locked'));
+    // Canvas labels have a native keyboard/screen-reader equivalent. Selecting a locked node is
+    // allowed: it reveals the exact prerequisite reason without pretending it can be researched.
+    const nodeLabel = el('label', 'k-t-fine', 'Research node');
+    const nodeSelect = el('select', 'k-select tt-node-select');
+    nodeSelect.id = 'sf-research-node'; nodeLabel.htmlFor = nodeSelect.id;
+    const placeholder = el('option', '', 'Select a node'); placeholder.value = ''; nodeSelect.appendChild(placeholder);
+    for (const node of this._nodes()) {
+      const option = el('option', '', node.name); option.value = node.id; nodeSelect.appendChild(option);
+    }
+    nodeSelect.addEventListener('change', () => this._selectNode(nodeSelect.value));
+    foot.appendChild(nodeLabel); foot.appendChild(nodeSelect);
+    this._nodeSelect = nodeSelect;
     rootEl.appendChild(foot);
 
     this._regions = { head, corner, stage, foot };
@@ -513,7 +527,7 @@ export const techTreeScreen = {
       }
     }
 
-    // ---- nodes as words: the name at body size in its strength, the cost (or "researched") at data size, 38 % ----
+    // ---- engineering registers: named nodes, visible dependencies, exact costs and state ----
     for (const n of nodes) {
       const p = pos[n.id];
       if (!p) continue;
@@ -521,6 +535,16 @@ export const techTreeScreen = {
       const sel = n.id === this._selectedId;
       const hov = n.id === this._hoverId;
 
+      // State uses shape and weight as well as colour. No animation or extra frame loop.
+      g.fillStyle = KIT_INK[stt];
+      g.fillRect(p.x - 8, p.y - 6, NODE_W + 16, NODE_H + 12);
+      g.strokeStyle = sel ? KIT_INK.signal : KIT_INK.hair;
+      g.lineWidth = (sel ? 2 : 1) / zoom;
+      g.setLineDash(stt === 'locked' ? [3 / zoom, 3 / zoom] : []);
+      g.strokeRect(p.x - 8, p.y - 6, NODE_W + 16, NODE_H + 12);
+      g.setLineDash([]);
+      g.fillStyle = stt === 'researched' ? KIT_INK.good : sel ? KIT_INK.signal : KIT_INK.hair;
+      g.fillRect(p.x - 8, p.y - 6, 3 / zoom, NODE_H + 12);
       g.fillStyle = this._nodeInk(stt, sel, hov);
       g.font = kitFont(sel ? 500 : 400, 16, zoom);
       g.textAlign = 'left'; g.textBaseline = 'top';
@@ -548,7 +572,13 @@ export const techTreeScreen = {
   _onCanvasClick(e) {
     const hit = this._hitTest(e);
     if (!hit) return;
-    this._selectedId = hit.id;
+    this._selectNode(hit.id);
+  },
+
+  _selectNode(id) {
+    if (!this._nodes().some(node => node.id === id)) return;
+    this._selectedId = id;
+    if (this._nodeSelect) this._nodeSelect.value = id;
     cue('move');
     this._syncSidebar();
     this._draw();

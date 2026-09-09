@@ -1,3 +1,4 @@
+import { shipworksFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/shipworks.js — "Shipworks" and THE SHIP: the shared stage (Frontend
 // Task C §1.9). The hull fills the panel behind everything, orbitable; the hulls (fleet / for sale)
 // as a column of rows down the hang; the hull's name at title size with its blurb; six compact
@@ -326,42 +327,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   // whole panel behind both (positioned like .k-world); the corner rows, the pinned labels, the
   // four bands along the foot and the verbs all sit on top. The chooser is a third child that
   // takes the hang column's cell while a slot is being chosen (`is-choosing` on the panel).
-  el.innerHTML =
-    `<nav class="k-hang sx-sw__rail" aria-label="Shipworks ship selection">` +
-      `<ul class="k-words k-words--row sx-seg" aria-label="Fleet or buy">` +
-        `<li><button type="button" class="k-word k-word--body sx-seg__btn is-on" data-mode="fleet" aria-pressed="true">Fleet</button></li>` +
-        `<li><button type="button" class="k-word k-word--body sx-seg__btn" data-mode="buy" aria-pressed="false">For sale</button></li>` +
-      `</ul>` +
-      `<div class="sx-sw__carousel">` +
-        `<button type="button" class="sx-sw__railstep is-prev" data-rail-step="prev" aria-label="Previous ships" hidden>‹</button>` +
-        `<div class="k-rows sx-sw__list" tabindex="0" aria-label="Available ships"></div>` +
-        `<button type="button" class="sx-sw__railstep is-next" data-rail-step="next" aria-label="Next ships" hidden>›</button>` +
-        `<span class="sx-sw__railtrack" aria-hidden="true" hidden><i></i></span>` +
-      `</div>` +
-    `</nav>` +
-    `<section class="k-stage sx-sw__main">` +
-      `<div class="sx-sw__stage sf-stage">` +
-        `<canvas class="sx-sw__canvas" tabindex="0" aria-label="Interactive ship preview. Drag or scroll horizontally to orbit; scroll vertically or pinch to zoom."></canvas>` +
-        `<div class="sx-sw__baylines" aria-hidden="true"><span></span><span></span><span></span></div>` +
-        `<div class="sx-sw__power" aria-hidden="true"></div>` +
-        `<ul class="k-rows sx-sw__gauges" role="group" aria-label="Ship gauges"></ul>` +
-        `<div class="sx-sw__slotfield" role="group" aria-label="Ship systems"></div>` +
-        `<div class="sx-sw__scarfield" role="group" aria-label="Living hull condition markers"></div>` +
-        `<div class="sx-sw__focusline" aria-hidden="true"></div>` +
-        `<div class="sx-sw__delta k-t-fine k-38" aria-live="polite" hidden></div>` +
-        `<div class="sx-sw__acquiring" data-sf-acquire-host></div>` +
-        `<div class="sx-sw__nameplate"></div>` +
-        `<ul class="k-words k-words--row sx-sw__camera" aria-label="Ship preview controls">` +
-          `<li><button type="button" class="k-word k-word--fine" data-camera="left" aria-label="Rotate ship left">Left</button></li>` +
-          `<li><button type="button" class="k-word k-word--fine" data-camera="reset" aria-label="Reset ship view">Center</button></li>` +
-          `<li><button type="button" class="k-word k-word--fine" data-camera="right" aria-label="Rotate ship right">Right</button></li>` +
-        `</ul>` +
-        `<span class="sx-sw__dragcue k-t-fine k-38" aria-hidden="true">Drag to orbit · pinch to zoom</span>` +
-      `</div>` +
-      `<div class="sx-sw__stats"></div>` +
-    `</section>` +
-    `<aside class="sx-sw__side" aria-label="Shipworks operation controls"></aside>` +
-    `<div class="k-hang sx-sw__chooser" hidden></div>`;
+  el.innerHTML = shipworksFrameHtml();
 
   const railListEl = el.querySelector('.sx-sw__list');
   const railPrevEl = el.querySelector('[data-rail-step="prev"]');

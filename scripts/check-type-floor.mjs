@@ -27,7 +27,7 @@ const JS_ROOTS = ['src/ui'];
 
 const LIVE = [
   'ui.css', 'menu.css', 'intro.css', 'asteroid-ops.css',
-  'station.css', 'commsradial.css',
+  'station.css', 'commsradial.css', 'orbital.css',
 ];
 const FLOOR = 12;
 

@@ -145,7 +145,7 @@ test('the CSS sweep keyframe matches the JS ring circumference', () => {
   // The keyframe lives in injectHudCss and cannot read a JS constant. If these drift, the radial
   // stops at the wrong angle and a slot LOOKS ready while it is still cooling — a silent lie, and
   // exactly the class of cross-file drift that a comment alone has never prevented in this repo.
-  const css = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+  const css = readFileSync(new URL('../src/ui/views/hudStyles.js', import.meta.url), 'utf8');
   // Match the `to` stop specifically. A lazy `[^}]*` here grabs the `from` stop (0) instead and the
   // assertion then compares 0 against the circumference — which is how this test first failed
   // against correct CSS.

@@ -1,3 +1,4 @@
+import { factionsFrameHtml } from '../../views/stationFrames.js';
 // src/ui/station/screens/factions.js — "Standing & Relations" as a kit panel (Frontend Task C §1.6).
 // Left: every power as a row — name (prefixed "Authority · " when it owns the berth), the standing
 // signed, a bar under the name with the zero marker. Right: the crest at hero size, the name, the
@@ -106,9 +107,7 @@ export function createFactionsScreen(ctx) {
   let selectedId = factions[0] && factions[0].id;
   let picked = false;
 
-  el.innerHTML =
-    `<nav class="k-hang sx-fac__rail" aria-label="Factions"></nav>` +
-    `<section class="k-stage sx-fac__stage" aria-live="polite"></section>`;
+  el.innerHTML = factionsFrameHtml();
 
   const railEl = el.querySelector('.sx-fac__rail');
   const stageEl = el.querySelector('.sx-fac__stage');
