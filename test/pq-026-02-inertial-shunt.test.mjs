@@ -24,12 +24,14 @@ import {
 import { SHIPS } from '../src/data/ships.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { WEAPONS } from '../src/data/weapons.js';
+import { buildSlotList, fits } from '../src/systems/ships.js';
 import { weapons } from '../src/systems/weapons.js';
 
 const SEED = 26002;
 const CRUISE = 105;
 const SCREEN = INERTIAL_SHUNT_TUNING.screenDepthWu;
 const PLAYER_STOP = INERTIAL_SHUNT_TUNING.playerStopWu;
+const HITCH = SHIPS.find((entry) => entry.id === 'ship_kestrel');
 const HORNET = SHIPS.find((entry) => entry.id === 'ship_hornet');
 const WASP = SHIPS.find((entry) => entry.id === 'ship_wasp');
 
@@ -145,13 +147,20 @@ test('PQ-026.02 shunt catalog is a ping-only ram plate on graviton drives', () =
   const weapon = WEAPONS.find((entry) => entry.id === INERTIAL_SHUNT_WEAPON_ID);
   const graviton = TECH_NODES.find((entry) => entry.id === 'tech_graviton_drives');
   assert.ok(weapon, 'Inertial Shunt S is in the catalog');
-  assert.ok(HORNET && WASP, 'Hornet / Wasp hulls exist');
+  assert.ok(HITCH && HORNET && WASP, 'Hitch / Hornet / Wasp hulls exist');
   assert.equal(weapon.size, 'S');
   assert.equal(weapon.requiresTech, 'tech_graviton_drives');
   assert.ok(weapon.impulsePerHit <= 1, 'the ping is not the shove');
   assert.ok(graviton.unlocks.modules.includes(INERTIAL_SHUNT_WEAPON_ID));
   assert.equal(INERTIAL_SHUNT_TUNING.screenDepthWu, 126);
   assert.equal(INERTIAL_SHUNT_TUNING.playerStopWu, 20);
+
+  const hitchWeapon = buildSlotList(HITCH).find((slot) => slot.type === 'weapon');
+  const hornetWeapon = buildSlotList(HORNET).find((slot) => slot.type === 'weapon');
+  assert.equal(hitchWeapon && hitchWeapon.size, 'S', 'leftover Hitch weapon slot is S');
+  assert.equal(hornetWeapon && hornetWeapon.size, 'M', 'leftover Hornet weapon slot is M');
+  assert.equal(fits(hitchWeapon, weapon), true, 'leftover Hitch S slot takes the S shunt');
+  assert.equal(fits(hornetWeapon, weapon), true, 'leftover Hornet M slot takes the S shunt');
 });
 
 test('PQ-026.02 live physics:impact hook shunts a Wasp ≥ 1 screen and stops the Hornet on seed 26002', () => {
@@ -210,6 +219,44 @@ test('PQ-026.02 live physics:impact hook shunts a Wasp ≥ 1 screen and stops th
   assert.ok(
     playerTravel <= PLAYER_STOP,
     `displacement: Hornet must stay within ${PLAYER_STOP} WU in 1s, got ${playerTravel.toFixed(3)} WU`,
+  );
+});
+
+test('PQ-026.02 leftover Hitch fit: S shunt rams a Wasp but leftover Hitch mass stays short of 1 screen', () => {
+  const player = hull(1, HITCH, CRUISE, [INERTIAL_SHUNT_WEAPON_ID]);
+  const wasp = hull(2, WASP, 0);
+  player.pos.x = 0;
+  wasp.pos.x = HITCH.collisionRadius + WASP.collisionRadius;
+  const state = combatState(player, wasp);
+  const { bus } = armWeapons(state);
+  let receipt = null;
+  bus.on('weapons:inertialShunt', (payload) => {
+    receipt = payload;
+  });
+  bus.emit('physics:impact', headOnImpact(state, player, wasp, CRUISE));
+  assert.ok(receipt, 'leftover Hitch still fires the live hook');
+  applyQueuedDeltaV(player);
+  const waspKick = applyQueuedDeltaV(wasp);
+  const lightTravel = coast(wasp, 1);
+  const playerTravel = coast(player, 1);
+  console.log(
+    `PQ-026.02 leftover Hitch seed=${SEED} lightTravel=${lightTravel.toFixed(3)}WU`
+    + ` (${(lightTravel / SCREEN).toFixed(3)} screens / 1s)`
+    + ` lightDeltaV=${waspKick.deltaV.toFixed(3)}WU/s`
+    + ` playerTravel=${playerTravel.toFixed(3)}WU / 1s`
+    + ` hull=Hitch mass=${HITCH.mass}`,
+  );
+  assert.ok(
+    Math.abs(lightTravel - 112.219) < 0.01,
+    `leftover Hitch cruise ram stays 112.219 WU / 1s, got ${lightTravel.toFixed(3)}`,
+  );
+  assert.ok(
+    lightTravel < SCREEN,
+    `leftover Hitch does not meet the Hornet screen bar, got ${lightTravel.toFixed(3)} WU`,
+  );
+  assert.ok(
+    playerTravel <= PLAYER_STOP,
+    `leftover Hitch still stops within ${PLAYER_STOP} WU, got ${playerTravel.toFixed(3)} WU`,
   );
 });
 
