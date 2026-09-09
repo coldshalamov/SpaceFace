@@ -82,6 +82,12 @@ import {
   missingThreeStrokeActive,
   missingThreeWithinHour,
 } from '../onboarding/missingThree.js';
+import {
+  STORE_SENTENCE,
+  buildFirstHourSentenceEvent,
+  freshStoreSentenceState,
+  stampStoreClause,
+} from '../onboarding/storeSentence.js';
 
 const PANEL_ID = 'sf-onboarding';
 const STYLE_ID = 'sf-onboarding-style';
@@ -263,6 +269,7 @@ export const onboarding = {
     bus.on('combat:fire', (p) => this._onRescueFire(p || {}));
     bus.on('entity:killed', (p) => this._onRescueKilled(p || {}));
     bus.on('player:death', () => this._onRescuePlayerDeath());
+    bus.on('rescue:started', (p) => this._showStoreSentenceOnce(p || {}));
 
     // ── Range pointer & funnel (PQ-163.01 — "The Range is the door") ─────────────────────
     bus.on('tether:latched', (p) => this._onLatchPointer(p || {}));
@@ -1137,8 +1144,39 @@ export const onboarding = {
     ob.rescue.startedAt = st.simTime || 0;
     ob.missingThree = freshMissingThreeState();
     ob.missingThree.startedAt = st.simTime || 0;
+    ob.storeSentence = freshStoreSentenceState();
     this._spawnRescueCast();
     this.bus.emit('rescue:started', buildRescueStartedEvent(st.simTime || 0));
+  },
+
+  // PQ-163.03: the store-page sentence is shown once at rescue start, then silence.
+  // Distinct voice id so leftover B0 / verb lines do not replace it. Never hudAttention.
+  _showStoreSentenceOnce() {
+    const ob = this.state && this.state.onboarding;
+    if (!ob) return;
+    if (!ob.storeSentence) ob.storeSentence = freshStoreSentenceState();
+    if (ob.storeSentence.shown) return;
+    const atS = this.state.simTime || 0;
+    ob.storeSentence.shown = true;
+    ob.storeSentence.shownAt = atS;
+    this._sayTutorial(STORE_SENTENCE, { visual: false });
+    const voice = this.helpers && this.helpers.voice;
+    const said = voice && typeof voice.say === 'function'
+      && voice.say({
+        channel: 'tutorial',
+        text: STORE_SENTENCE,
+        kind: 'info',
+        ttl: 8,
+        id: 'firsthour:sentence',
+      });
+    if (!said) this.bus.emit('toast', { text: STORE_SENTENCE, kind: 'info', ttl: 8, id: 'firsthour:sentence' });
+    this.bus.emit('firsthour:sentence', buildFirstHourSentenceEvent(atS));
+  },
+
+  _stampStoreClause(leftoverKey) {
+    const rec = this.state && this.state.onboarding && this.state.onboarding.storeSentence;
+    if (!rec) return;
+    stampStoreClause(rec, leftoverKey, this.state.simTime || 0);
   },
 
   _spawnRescueCast() {
@@ -1463,6 +1501,7 @@ export const onboarding = {
     rescue.rockReleasedAfterReel = false;
     if (key !== 'grab') rescue.podLatched = false;
     this.bus.emit('rescue:beat', { ...buildRescueFunnelEvent(key, 'complete', atS), fails: rescue.beats[key].fails });
+    this._stampStoreClause(key);
     // The drill's silence gate already keys off the tutorial voice clock, which the rescue
     // line moved — the next drill verb waits its ≥4 s without any extra timer.
     if (rescue.beats.swing.state === 'done'
@@ -1744,6 +1783,7 @@ export const onboarding = {
     three.beats[key].doneAt = atS;
     if (three.current === key) three.current = null;
     this.bus.emit('firsthour:beat', { ...buildFirstHourBeatEvent(key, 'complete', atS), fails: three.beats[key].fails });
+    this._stampStoreClause(key);
     if (MISSING_THREE_ORDER.every((k) => three.beats[k].state === 'done')) this._missingThreeAllDone();
     this._setMissingThreeWaypoint(true);
     this._refreshBeatPanel();
