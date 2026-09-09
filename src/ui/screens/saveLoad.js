@@ -7,15 +7,26 @@
 // defensively from the save system's public API if present, else from localStorage (manifest:
 // SaveLoadScreen reads sf.save.index).
 
-import { confirm } from '../confirm.js';
+import { livingHullScars } from '../../core/livingHull.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
+import { THUNDERCHILD, THUNDERCHILD_TITLE_ID, TITLES } from '../../data/titles.js';
 import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength } from '../../save/saveSystem.js';
+import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
+import { confirm } from '../confirm.js';
 import { el, rows, words, hero, settle, cue } from '../kit/index.js';
 import { createStageHull } from './stageHull.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
 const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+const ACE_MEMORY_META = new Set([
+  'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle', 'aces',
+]);
+const TITLE_BY_ID = new Map(TITLES.map((title) => [title.id, title]));
+const PORTRAIT_SCAR_MAX = 3;
+
+export const SAVE_PORTRAIT_SEED = 15610;
+export const SAVE_PORTRAIT_FIELDS = Object.freeze(['hull', 'scars', 'titles', 'rapSheet', 'grudge']);
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -234,9 +245,263 @@ export function shouldOfferNewGameShortcut(meta, saveAllowed) {
 }
 
 /** The save's hull id (the index stores the def id under shipName); the starter when a save has none. */
-function slotShipId(meta) {
+function slotShipId(meta, player) {
+  const fromPlayer = activeOwnedShip(player) && activeOwnedShip(player).defId;
+  if (typeof fromPlayer === 'string' && /^ship_/.test(fromPlayer)) return fromPlayer;
   const id = meta && typeof meta.shipName === 'string' && /^ship_/.test(meta.shipName) ? meta.shipName : null;
   return id || NEW_GAME.shipId;
+}
+
+function unwrapSaveData(input) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null;
+  if (input.data && typeof input.data === 'object' && !Array.isArray(input.data)) return input.data;
+  if (input.player || input.missions || input.story || input.aceMemory) return input;
+  return null;
+}
+
+function storyFromPortraitSource(data, state) {
+  if (state && state.story && typeof state.story === 'object' && !Array.isArray(state.story)) return state.story;
+  if (data && data.story && typeof data.story === 'object' && !Array.isArray(data.story)) return data.story;
+  const missions = data && data.missions;
+  if (missions && missions.story && typeof missions.story === 'object' && !Array.isArray(missions.story)) {
+    return missions.story;
+  }
+  if (missions && missions.missions && missions.missions.story
+      && typeof missions.missions.story === 'object' && !Array.isArray(missions.missions.story)) {
+    return missions.missions.story;
+  }
+  return null;
+}
+
+function activeOwnedShip(player) {
+  if (!player || !Array.isArray(player.ownedShips) || !player.ownedShips.length) return null;
+  const index = Number.isInteger(player.activeShipIndex) ? player.activeShipIndex : 0;
+  return player.ownedShips[index] || player.ownedShips[0] || null;
+}
+
+function portraitLine(value, fallback) {
+  if (typeof value === 'string') {
+    const text = value.replace(/\s+/g, ' ').trim();
+    return text || fallback;
+  }
+  if (value && typeof value === 'object' && typeof value.line === 'string') {
+    const text = value.line.replace(/\s+/g, ' ').trim();
+    return text || fallback;
+  }
+  return fallback;
+}
+
+function isPlayerHeldTitle(record) {
+  if (!record || typeof record !== 'object' || record.status !== 'held') return false;
+  const key = String(record.holderKey || '');
+  if (key === 'player' || key === 'player_ship' || key.startsWith('player')) return true;
+  if (record.trickId) return true;
+  return false;
+}
+
+function titleDisplayName(record, titleId) {
+  const authored = TITLE_BY_ID.get(titleId);
+  if (authored && authored.title) return authored.title;
+  if (titleId === THUNDERCHILD_TITLE_ID) return THUNDERCHILD.title;
+  if (record && typeof record.title === 'string' && record.title.trim()) return record.title.trim();
+  return titleCaseWords(String(titleId || '').replace(/^title_/, '')) || 'Title';
+}
+
+function collectPlayerTitles(story) {
+  const names = [];
+  const seen = new Set();
+  const byId = story && story.titles && story.titles.byId && typeof story.titles.byId === 'object'
+    ? story.titles.byId
+    : {};
+  for (const titleId of Object.keys(byId)) {
+    const record = byId[titleId];
+    if (!isPlayerHeldTitle(record)) continue;
+    const name = titleDisplayName(record, record.titleId || titleId);
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    names.push(name);
+  }
+  return names;
+}
+
+function aceRecords(memory) {
+  if (!memory || typeof memory !== 'object' || Array.isArray(memory)) return [];
+  const bag = memory.aces && typeof memory.aces === 'object' && !Array.isArray(memory.aces)
+    ? memory.aces
+    : memory;
+  const out = [];
+  for (const aceId of Object.keys(bag)) {
+    if (ACE_MEMORY_META.has(aceId)) continue;
+    const rec = bag[aceId];
+    if (!rec || typeof rec !== 'object' || Array.isArray(rec)) continue;
+    out.push([aceId, rec]);
+  }
+  return out;
+}
+
+function pickGrudge(memory) {
+  let best = null;
+  for (const [aceId, rec] of aceRecords(memory)) {
+    if (rec.fled !== true || rec.defeated === true) continue;
+    const name = (typeof rec.name === 'string' && rec.name.trim())
+      ? rec.name.trim()
+      : titleCaseWords(String(rec.id || aceId).replace(/^ace_/, ''));
+    if (!name) continue;
+    const returnTier = Math.max(0, Math.floor(Number(rec.returnTier) || 0));
+    const fleeCount = Math.max(0, Math.floor(Number(rec.fleeCount) || 0));
+    const score = returnTier * 1000 + fleeCount;
+    if (best && score < best.score) continue;
+    best = {
+      aceId: rec.id || aceId,
+      name,
+      returnTier,
+      fleeCount,
+      returnsBigger: rec.returnsBigger === true,
+      score,
+    };
+  }
+  return best;
+}
+
+function formatScarLine(scar) {
+  const facing = scar && scar.facing ? scar.facing : 'hull';
+  const band = scar && scar.band ? scar.band : 'marked';
+  const patched = scar && scar.patchedAtT != null;
+  return facing + ', ' + band + (patched ? ' (patched)' : '');
+}
+
+function buildScarsField(livingHull, meta) {
+  const scars = livingHullScars(livingHull);
+  if (scars.length) {
+    const newest = scars.slice(-PORTRAIT_SCAR_MAX);
+    const extra = scars.length - newest.length;
+    const line = newest.map(formatScarLine).join(' · ')
+      + (extra > 0 ? ' · and ' + extra + ' more' : '');
+    return {
+      count: scars.length,
+      open: scars.filter((scar) => scar.patchedAtT == null).length,
+      patched: scars.filter((scar) => scar.patchedAtT != null).length,
+      line,
+    };
+  }
+  return { count: 0, open: 0, patched: 0, line: portraitLine(meta && meta.scars, 'Clean plates') };
+}
+
+function buildTitlesField(story, meta) {
+  const names = collectPlayerTitles(story);
+  if (names.length) return { names, line: names.join(' · ') };
+  const fromMeta = portraitLine(meta && meta.titles, '');
+  if (fromMeta && fromMeta !== 'No titles') return { names: [fromMeta], line: fromMeta };
+  return { names: [], line: 'No titles' };
+}
+
+function buildRapSheetField(player, meta) {
+  const heat = Number(player && player.heat);
+  const bounty = Number(player && player.bounty);
+  const info = wantedTierInfo(Number.isFinite(heat) ? heat : 0);
+  const parts = [];
+  if (info && info.id && info.id !== WANTED_TIER.NONE) parts.push(info.label);
+  if (Number.isFinite(bounty) && bounty > 0) parts.push(fmtCredits(bounty) + ' bounty');
+  if (parts.length) return { tier: info.id, heat: Number.isFinite(heat) ? heat : 0, bounty: bounty || 0, line: parts.join(' · ') };
+  return {
+    tier: WANTED_TIER.NONE,
+    heat: Number.isFinite(heat) ? heat : 0,
+    bounty: 0,
+    line: portraitLine(meta && meta.rapSheet, 'Clean'),
+  };
+}
+
+function buildGrudgeField(memory, meta) {
+  const grudge = pickGrudge(memory);
+  if (grudge) {
+    return {
+      aceId: grudge.aceId,
+      name: grudge.name,
+      returnTier: grudge.returnTier,
+      line: grudge.name + ' hates you' + (grudge.returnsBigger ? ' · comes back harder' : ''),
+    };
+  }
+  return { aceId: null, name: '', returnTier: 0, line: portraitLine(meta && meta.grudge, 'No one hunts you') };
+}
+
+/** Headless model of the load-stage portrait: hull + scars + titles + rap sheet + grudge. */
+export function buildSavePortrait(source = {}) {
+  const data = unwrapSaveData(source.data || source.envelope || source.save);
+  const state = source.state && typeof source.state === 'object' && !Array.isArray(source.state)
+    ? source.state
+    : null;
+  const meta = source.meta && typeof source.meta === 'object' && !Array.isArray(source.meta)
+    ? source.meta
+    : {};
+  const useState = !data && !!state;
+  const player = (data && data.player) || (useState && state.player) || {};
+  const story = storyFromPortraitSource(data, useState ? state : null);
+  const aceMemory = (data && data.aceMemory) || (useState && state.aceMemory) || {};
+  const ship = activeOwnedShip(player);
+  const defId = slotShipId(meta, player);
+  const hullName = (typeof source.shipName === 'string' && source.shipName.trim())
+    || (typeof meta.shipDisplayName === 'string' && meta.shipDisplayName.trim())
+    || shipLabel(defId)
+    || 'Hull';
+  const fittings = Array.isArray(ship && ship.fittings)
+    ? ship.fittings
+    : (defId === NEW_GAME.shipId ? NEW_GAME.fittedModules : []);
+  return {
+    hull: { id: defId, name: hullName, fittings, line: hullName },
+    scars: buildScarsField(ship && ship.livingHull, meta),
+    titles: buildTitlesField(story, meta),
+    rapSheet: buildRapSheetField(player, meta),
+    grudge: buildGrudgeField(aceMemory, meta),
+  };
+}
+
+export function savePortraitFieldsPresent(portrait) {
+  if (!portrait || typeof portrait !== 'object') return false;
+  return SAVE_PORTRAIT_FIELDS.every((field) => {
+    const part = portrait[field];
+    return !!(part && typeof part.line === 'string' && part.line.trim());
+  });
+}
+
+export function paintSavePortrait(nodes, portrait) {
+  if (!nodes || !portrait) return portrait;
+  if (nodes.hull) nodes.hull.textContent = portrait.hull.line;
+  if (nodes.scars) nodes.scars.textContent = portrait.scars.line;
+  if (nodes.titles) nodes.titles.textContent = portrait.titles.line;
+  if (nodes.rapSheet) nodes.rapSheet.textContent = portrait.rapSheet.line;
+  if (nodes.grudge) nodes.grudge.textContent = portrait.grudge.line;
+  return portrait;
+}
+
+export function roundTripSavePortrait(source) {
+  const first = buildSavePortrait(source);
+  const raw = source && (source.data || source.envelope || source.save);
+  const cloned = raw ? JSON.parse(JSON.stringify(raw)) : JSON.parse(JSON.stringify({
+    player: source && source.state && source.state.player,
+    story: source && source.state && source.state.story,
+    aceMemory: source && source.state && source.state.aceMemory,
+    meta: source && source.meta,
+  }));
+  const second = buildSavePortrait({ data: cloned, meta: source && source.meta, shipName: source && source.shipName });
+  return { first, second, ok: JSON.stringify(first) === JSON.stringify(second) };
+}
+
+function readSlotSaveData(ctx, slot) {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const raw = localStorage.getItem(LS_PREFIX + slot);
+      const data = unwrapSaveData(raw ? JSON.parse(raw) : null);
+      if (data) return data;
+    }
+  } catch (e) {}
+  const sys = ctx && ctx.registry && ctx.registry.get && ctx.registry.get('save');
+  if (sys && typeof sys.peekSlot === 'function') {
+    try {
+      const peeked = unwrapSaveData(sys.peekSlot(slot));
+      if (peeked) return peeked;
+    } catch (e) {}
+  }
+  return null;
 }
 
 function shipDisplayName(ctx, defId) {
@@ -269,16 +534,31 @@ export const saveLoadScreen = {
     const hang = el('div', 'k-hang');
     rootEl.appendChild(hang);
 
-    // The stage: the focused save's hull, its name huge, the objective, the credits as a hero
-    // number, sector · saved-at · playtime in fine print, then the save's words.
+    // The stage: the focused save's hull, its name huge, scars / titles / rap / grudge, the
+    // objective, the credits as a hero number, sector · saved-at · playtime in fine print.
     const stage = el('div', 'k-stage');
     const caption = el('div', 'k-stage__foot');
     const shipName = el('h2', 'k-display k-t-title', '');
+    const portrait = el('div', 'sf-save-portrait');
+    portrait.setAttribute('aria-label', 'Save portrait');
+    const scars = el('p', 'k-sentence k-t-fine sf-portrait-scars', '');
+    scars.dataset.portraitField = 'scars';
+    const titles = el('p', 'k-sentence k-t-fine sf-portrait-titles', '');
+    titles.dataset.portraitField = 'titles';
+    const rapSheet = el('p', 'k-sentence k-t-fine sf-portrait-rap', '');
+    rapSheet.dataset.portraitField = 'rapSheet';
+    const grudge = el('p', 'k-sentence k-t-fine sf-portrait-grudge', '');
+    grudge.dataset.portraitField = 'grudge';
+    portrait.appendChild(scars);
+    portrait.appendChild(titles);
+    portrait.appendChild(rapSheet);
+    portrait.appendChild(grudge);
     const objective = el('p', 'k-sentence k-sentence--emph sf-slot-detail', '');
     const credits = hero('', 'credits', { size: 'hero' });
     const fine = el('p', 'k-t-fine k-38 sf-slot-context', '');
     const actions = el('div');
     caption.appendChild(shipName);
+    caption.appendChild(portrait);
     caption.appendChild(objective);
     caption.appendChild(credits);
     caption.appendChild(fine);
@@ -309,7 +589,8 @@ export const saveLoadScreen = {
 
     refs = {
       root: rootEl, title, sub, hang, stage, foot, list: null,
-      caption, shipName, objective, credits, fine, actions,
+      caption, shipName, portrait, scars, titles, rapSheet, grudge,
+      objective, credits, fine, actions,
       selected: null, shownShipId: null, ids: [], slots: {},
     };
     this._render(ctx);
@@ -406,9 +687,32 @@ export const saveLoadScreen = {
     const meta = refs.slots[id];
     const occupied = isOccupied(meta);
     const saveAllowed = refs.saveAllowed;
-    const defId = occupied ? slotShipId(meta) : NEW_GAME.shipId;
+    const saveData = occupied ? readSlotSaveData(ctx, id) : null;
+    const currentSlot = ctx && ctx.state && ctx.state.save && ctx.state.save.currentSlot;
+    const portrait = occupied
+      ? buildSavePortrait({
+        data: saveData,
+        state: (!saveData && currentSlot === id) ? ctx.state : null,
+        meta,
+        shipName: shipDisplayName(ctx, slotShipId(meta, saveData && saveData.player)),
+      })
+      : null;
+    const defId = occupied
+      ? (portrait && portrait.hull && portrait.hull.id) || slotShipId(meta, saveData && saveData.player)
+      : NEW_GAME.shipId;
+    const fittings = occupied
+      ? (portrait && portrait.hull && portrait.hull.fittings) || (defId === NEW_GAME.shipId ? NEW_GAME.fittedModules : null)
+      : NEW_GAME.fittedModules;
 
-    refs.shipName.textContent = occupied ? shipDisplayName(ctx, defId) : slotLabel(id);
+    refs.shipName.textContent = occupied ? ((portrait && portrait.hull.line) || shipDisplayName(ctx, defId)) : slotLabel(id);
+    if (occupied && portrait) {
+      paintSavePortrait({
+        scars: refs.scars, titles: refs.titles, rapSheet: refs.rapSheet, grudge: refs.grudge,
+      }, portrait);
+      if (!refs.portrait.parentNode) refs.caption.insertBefore(refs.portrait, refs.objective);
+    } else if (refs.portrait.parentNode) {
+      refs.portrait.remove();
+    }
     const objective = occupied ? slotObjectiveSummary(meta) : '';
     refs.objective.textContent = occupied ? (objective || 'Saved game') : 'Empty slot';
     const creditsText = occupied ? fmtCredits(meta.credits) : '';
@@ -423,10 +727,11 @@ export const saveLoadScreen = {
       ? [meta.sectorName, fmtSavedAt(meta), fmtPlaytime(meta.playtimeS)].filter(Boolean).join(' · ')
       : 'No save data yet';
 
-    // The hull as it is in that save (the index carries the def id; the fittings stay the hull's own).
-    if (this.hull && this.hull.hasMount() && refs.shownShipId !== defId) {
-      refs.shownShipId = defId;
-      this.hull.show(defId, { fittings: defId === NEW_GAME.shipId ? NEW_GAME.fittedModules : null });
+    // The hull as it is in that save (def id + fittings from the envelope when the index has them).
+    const showKey = defId + ':' + (Array.isArray(fittings) ? fittings.join(',') : '');
+    if (this.hull && this.hull.hasMount() && refs.shownShipId !== showKey) {
+      refs.shownShipId = showKey;
+      this.hull.show(defId, { fittings: Array.isArray(fittings) ? fittings : null });
     }
 
     // The save's words: Load, Save here, Delete — or New game on an empty slot at the title.
