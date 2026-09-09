@@ -2,6 +2,12 @@
 // The proof stays headless: authored mass makes Pulse negligible on a heavy, the heavy keeps
 // carrying speed through a line change, and the existing collision consequence law makes a light
 // hull's committed contact lethal without adding an HP aura.
+//
+// Read the last two tests together. The collision-law kill is real *kernel* arithmetic but it is
+// fed a momentum the live solver cannot produce: `sg02DynamicBodyOwner.js:107` bounds every
+// per-contact momentum exchange to `min(mass) x MAX_CONTACT_DV` before the kernel ever sees it
+// (`design/FEEL_CONTRACT.md` A6). At that bound the light survives. This file pins both numbers so
+// the gap between the law and the route is a fact the next reader inherits, not a surprise.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -14,6 +20,11 @@ import { shapeHeavyManeuverRequest } from '../src/systems/tacticalAI.js';
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
 const EPSILON = 1e-9;
+// Mirrored, not imported: `MAX_CONTACT_DV` lives in `src/core/sg02DynamicBodyOwner.js:107` and
+// importing that module drags the physics backend into a data-only test. Every solver contact is
+// bounded to `min(dynamic mass) * MAX_CONTACT_DV` at sg02DynamicBodyOwner.js:1153 and again on the
+// merge at :1196, so this is the largest `exchangedMomentum` the kernel can be handed on the route.
+const MAX_CONTACT_DV = 40;
 
 function ship(id) {
   const def = SHIP_BY_ID.get(id);
@@ -148,13 +159,19 @@ test('heavy steering carries momentum and honors the 150-mass boundary', () => {
     'the authored hull id cannot override a sub-150 live mass');
 });
 
-test('a Wasp thrown into a heavy dies through the collision law while the heavy shrugs', () => {
+// Kernel arithmetic only. The momentum below is constructed by this test from a hand-written
+// elastic exchange, NOT measured from the solver, and it lands ~2.8x above the live contact bound
+// pinned by the next test. Read this as "the consequence law would kill a light at that momentum",
+// never as "a light thrown into a heavy dies on the route".
+test('at a constructed above-bound momentum the collision law kills a light and shrugs a heavy', () => {
   const wasp = ship('ship_wasp');
   const heavy = ship('ship_warden');
   const closingSpeed = 105;
   const restitution = 0.18;
   const exchangedMomentum = (1 + restitution) * closingSpeed
     / (1 / wasp.mass + 1 / heavy.mass);
+  assert.ok(exchangedMomentum > Math.min(wasp.mass, heavy.mass) * MAX_CONTACT_DV,
+    'this scenario is deliberately above the live solver bound; the next test holds the route number');
   const lightReceipt = directContactReceipt(wasp, heavy, exchangedMomentum);
   const heavyReceipt = directContactReceipt(heavy, wasp, exchangedMomentum);
 
@@ -166,4 +183,27 @@ test('a Wasp thrown into a heavy dies through the collision law while the heavy 
     `the same contact barely marks the heavy (${heavyReceipt.impactDamage})`);
   assert.ok(lightReceipt.deltaV > 100, `light contact Δv is committed (${lightReceipt.deltaV})`);
   assert.ok(heavyReceipt.deltaV < 15, `heavy contact Δv stays small (${heavyReceipt.deltaV})`);
+});
+
+// The route number. The heavy half of B11 holds here — a heavy is genuinely unmoved by contact with
+// a light. The light half of B6 does not: at the bound the thrown light keeps most of its
+// durability, so "a light that hits one dies" is not yet true on the live path through this law.
+// `TERRAIN_CRUMPLE_LAW` does not rescue it either — the kernel gates the crumple bypass on
+// `worldSurface` (terrain/structure), so craft-vs-craft contact stays on the bounded-Δv energy
+// proxy. Both assertions below hold at either authored `energyDamageScale` (HEAD 0.007 -> 34.4
+// damage, working tree 0.011 -> 54.1), so this test does not pin the dirty constant.
+test('at the live contact bound the same throw does not kill the light', () => {
+  const wasp = ship('ship_wasp');
+  const heavy = ship('ship_warden');
+  const boundedMomentum = Math.min(wasp.mass, heavy.mass) * MAX_CONTACT_DV;
+  const lightReceipt = directContactReceipt(wasp, heavy, boundedMomentum);
+  const heavyReceipt = directContactReceipt(heavy, wasp, boundedMomentum);
+
+  assert.equal(lightReceipt.deltaV, MAX_CONTACT_DV,
+    'the bound spends itself entirely on the light hull');
+  assert.ok(lightReceipt.impactDamage < wasp.hull + wasp.shield,
+    `the light survives the hardest contact the solver can deliver (${lightReceipt.impactDamage} of ${wasp.hull + wasp.shield})`);
+  assert.equal(heavyReceipt.impactDamage, 0,
+    'the same contact does not scratch the heavy: its Δv sits under the damage threshold');
+  assert.equal(heavyReceipt.control, 'none', 'the heavy never loses the helm to a light');
 });
