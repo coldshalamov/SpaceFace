@@ -1,8 +1,8 @@
 // PQ-155.00 — committed hour → verb → cost → gate table for TECH_NODES.
 //
 // Hours are honest, not the §15.1 wish. First research is RP-gated at 60–90 min
-// (recon_scan), not 15 min. Do not retune economy.js or the costs in tech.js
-// from this leaf. PQ-155.01 owns the ten-hour sim that will gate the curve.
+// (recon_scan), not 15 min. Do not retune these hours to hide the canyon.
+// PQ-155.01 owns the ten-hour sim; this file also holds unlock helpers.
 //
 // tech.js stays import-free; this file is the table.
 
@@ -236,3 +236,191 @@ export const FIRST_UPGRADE = Object.freeze({
   shortfallCredits: Math.max(0, firstRow.cost.credits - VERB_LADDER_RATES.startCredits),
   shortfallRp: Math.max(0, firstRow.cost.rp - VERB_LADDER_RATES.startRp),
 });
+
+/** Preferred branch order when the ten-hour sim spends on the next affordable node. */
+export const ECONOMY_CURVE_BRANCH_ORDER = Object.freeze({
+  hunter: Object.freeze(['combat', 'drives', 'logistics', 'industry']),
+  trader: Object.freeze(['industry', 'logistics', 'drives', 'combat']),
+  miner: Object.freeze(['industry', 'logistics', 'drives', 'combat']),
+});
+
+/**
+ * Next-verb goals. The curve sim saves for these instead of dumping RP into
+ * whichever cheap combat node is affordable. Off-goal buys are skipped.
+ */
+export const ECONOMY_CURVE_GOALS = Object.freeze({
+  hunter: Object.freeze([
+    'tech_combat_basics',
+    'tech_beam_focusing',
+    'tech_kinetic_drivers',
+    'tech_attack_topology',
+    'tech_guided_ordnance',
+    'tech_deflector_theory',
+  ]),
+  trader: Object.freeze([
+    'tech_tractor_systems',
+    'tech_bulk_logistics',
+    'tech_drive_tuning',
+    'tech_deflector_theory',
+    'tech_matter_compression',
+  ]),
+  miner: Object.freeze([
+    'tech_industrial_mining',
+    'tech_focused_extraction',
+    'tech_bulk_logistics',
+    'tech_tractor_systems',
+    'tech_drive_tuning',
+  ]),
+});
+
+export function treePathCost(nodes = TECH_NODES) {
+  let credits = 0;
+  let rp = 0;
+  for (const node of nodes) {
+    const cost = node && node.cost ? node.cost : {};
+    credits += Number(cost.credits) || 0;
+    rp += Number(cost.rp) || 0;
+  }
+  return Object.freeze({ credits, rp, nodes: nodes.length });
+}
+
+export function verbForNodeId(nodeId, ladder = TECH_VERB_LADDER) {
+  const row = ladder.find((entry) => entry.nodeId === nodeId);
+  if (row) return row.verb;
+  return VERBS[nodeId] || nodeId;
+}
+
+export function verbIdsOf(researched, mode = 'strict', nodes = TECH_NODES) {
+  const have = new Set(Array.isArray(researched) ? researched : []);
+  const ids = [];
+  for (const node of nodes) {
+    if (!have.has(node.id)) continue;
+    if (classifyTechNode(node, mode) === 'verb') ids.push(node.id);
+  }
+  return ids;
+}
+
+export function listAffordableTechNodes(wallet, nodes = TECH_NODES) {
+  const have = new Set(wallet && Array.isArray(wallet.researched) ? wallet.researched : []);
+  const credits = Number(wallet && wallet.credits) || 0;
+  const rp = Number(wallet && wallet.rp) || 0;
+  const out = [];
+  for (const node of nodes) {
+    if (have.has(node.id)) continue;
+    const prereqs = list(node.prereqs);
+    let ready = true;
+    for (const id of prereqs) {
+      if (!have.has(id)) { ready = false; break; }
+    }
+    if (!ready) continue;
+    const cost = node.cost || {};
+    if (credits < (Number(cost.credits) || 0)) continue;
+    if (rp < (Number(cost.rp) || 0)) continue;
+    out.push(node);
+  }
+  return out;
+}
+
+export function pickNextTechUnlock(wallet, archetype, nodes = TECH_NODES, ladder = TECH_VERB_LADDER) {
+  const candidates = listAffordableTechNodes(wallet, nodes);
+  if (!candidates.length) return null;
+  const goals = ECONOMY_CURVE_GOALS[archetype] || [];
+  if (goals.length) {
+    const researched = new Set(wallet && Array.isArray(wallet.researched) ? wallet.researched : []);
+    const affordable = new Map(candidates.map((node) => [node.id, node]));
+    for (const id of goals) {
+      if (researched.has(id)) continue;
+      return affordable.get(id) || null;
+    }
+    return null;
+  }
+  const prefs = ECONOMY_CURVE_BRANCH_ORDER[archetype] || [];
+  const hourById = new Map(ladder.map((row) => [row.nodeId, row.hour]));
+  let best = null;
+  let bestPref = 99;
+  let bestHour = Infinity;
+  for (const node of candidates) {
+    const prefIdx = prefs.indexOf(node.branch);
+    const pref = prefIdx === -1 ? 99 : prefIdx;
+    const hour = hourById.has(node.id) ? hourById.get(node.id) : Infinity;
+    if (
+      !best
+      || pref < bestPref
+      || (pref === bestPref && hour < bestHour)
+      || (pref === bestPref && hour === bestHour && node.id.localeCompare(best.id) < 0)
+    ) {
+      best = node;
+      bestPref = pref;
+      bestHour = hour;
+    }
+  }
+  return best;
+}
+
+export function purchaseAffordableTech(wallet, archetype, nodes = TECH_NODES, ladder = TECH_VERB_LADDER) {
+  const bought = [];
+  if (!wallet || typeof wallet !== 'object') return bought;
+  if (!Array.isArray(wallet.researched)) wallet.researched = [];
+  while (true) {
+    const next = pickNextTechUnlock(wallet, archetype, nodes, ladder);
+    if (!next) break;
+    const cost = next.cost || {};
+    wallet.credits = (Number(wallet.credits) || 0) - (Number(cost.credits) || 0);
+    wallet.rp = (Number(wallet.rp) || 0) - (Number(cost.rp) || 0);
+    wallet.researched.push(next.id);
+    bought.push({
+      id: next.id,
+      name: next.name,
+      branch: next.branch,
+      verb: verbForNodeId(next.id, ladder),
+      credits: Number(cost.credits) || 0,
+      rp: Number(cost.rp) || 0,
+    });
+  }
+  return bought;
+}
+
+export function assertCommittedLadder(ladder = TECH_VERB_LADDER) {
+  const errors = [];
+  if (ladder.length !== TECH_NODES.length) {
+    errors.push(`ladder rows ${ladder.length} !== nodes ${TECH_NODES.length}`);
+  }
+  const nodeIds = new Set(TECH_NODES.map((node) => node.id));
+  for (const row of ladder) {
+    if (!nodeIds.has(row.nodeId)) errors.push(`unknown ladder row ${row.nodeId}`);
+    if (!(typeof row.hour === 'number' && row.hour > 0)) errors.push(`${row.nodeId} missing hour`);
+    if (!(typeof row.verb === 'string' && row.verb.length > 0)) errors.push(`${row.nodeId} missing verb`);
+    if (!row.cost || !Number.isFinite(row.cost.credits) || !Number.isFinite(row.cost.rp)) {
+      errors.push(`${row.nodeId} missing cost`);
+    }
+    if (!row.gate || (row.gate.bottleneck !== 'rp' && row.gate.bottleneck !== 'credits')) {
+      errors.push(`${row.nodeId} missing gate`);
+    }
+    const node = TECH_NODES.find((entry) => entry.id === row.nodeId);
+    if (node) {
+      if (row.cost.credits !== (Number(node.cost && node.cost.credits) || 0)) {
+        errors.push(`${row.nodeId} credit cost drifted from tech.js`);
+      }
+      if (row.cost.rp !== (Number(node.cost && node.cost.rp) || 0)) {
+        errors.push(`${row.nodeId} RP cost drifted from tech.js`);
+      }
+    }
+  }
+  if (FIRST_UPGRADE.nodeId !== 'tech_combat_basics') {
+    errors.push(`first upgrade is ${FIRST_UPGRADE.nodeId}, expected tech_combat_basics`);
+  }
+  if (FIRST_UPGRADE.meetsTarget) {
+    errors.push('first upgrade was faked to the 15-minute wish');
+  }
+  const minutes = FIRST_UPGRADE.hour * 60;
+  if (minutes < FIRST_UPGRADE_MINUTES.min - 0.01 || minutes > FIRST_UPGRADE_MINUTES.max + 0.01) {
+    errors.push(`first upgrade ${minutes} min is outside the honest 60–90 band`);
+  }
+  if (FIRST_UPGRADE.bottleneck !== 'rp') {
+    errors.push(`first upgrade bottleneck is ${FIRST_UPGRADE.bottleneck}, expected rp`);
+  }
+  if (FIRST_UPGRADE.targetMinutes !== TARGET_FIRST_UPGRADE_MINUTES) {
+    errors.push('15-minute wish constant drifted');
+  }
+  return { ok: errors.length === 0, errors, firstUpgrade: FIRST_UPGRADE };
+}
