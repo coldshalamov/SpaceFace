@@ -593,7 +593,8 @@
     "factory:dashboard": "node scripts/content-factory-dashboard.mjs",
     "check:content-factory": "node --test test/content-factory.test.mjs && node scripts/content-factory-validate.mjs && node scripts/content-factory-lint.mjs",
     "check:vision:assertions": "node scripts/check-vision-assertions.mjs",
-    "check:deep-field": "node --test test/deep-field-design.test.mjs test/deep-field-renderer.test.mjs test/deep-field-stars.test.mjs && node scripts/check-parallax-layers.mjs"
+    "check:deep-field": "node --test test/deep-field-design.test.mjs test/deep-field-renderer.test.mjs test/deep-field-stars.test.mjs && node scripts/check-parallax-layers.mjs",
+    "test:command-deck-refit": "node --test test/command-deck-refit.test.mjs"
   },
   "private": true,
   "devDependencies": {

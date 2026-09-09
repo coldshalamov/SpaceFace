@@ -1,0 +1,1093 @@
+/* SpaceFace / command-deck refit. Every rule is scoped to an identified game
+   surface or an explicitly owned enhancement. No simulation or canvas layout
+   is owned here. Artwork is static, local, and shipped with the game. */
+
+:root {
+  --sf-refit-ink: #eae5db;
+  --sf-refit-muted: #aaa99f;
+  --sf-refit-dim: #747d7d;
+  --sf-refit-dark: #10191c;
+  --sf-refit-deep: #080f12;
+  --sf-refit-line: #465052;
+  --sf-refit-accent: #e2b778;
+  --sf-refit-accent-rgb: 226 183 120;
+  --sf-refit-danger: #ff8a76;
+  --sf-refit-success: #a6d4ac;
+  --sf-refit-body: 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
+  --sf-refit-display: 'Bricolage Grotesque', 'Instrument Sans', 'Segoe UI', system-ui, sans-serif;
+  --sf-refit-travel: 110ms;
+  --sf-refit-settle: 150ms;
+  --sf-refit-cut: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+
+[data-sf-surface] {
+  --sf-accent: var(--sf-refit-accent);
+  --sf-accent-rgb: var(--sf-refit-accent-rgb);
+  --sf-panel-pad: clamp(18px, 2.1vw, 38px);
+  --sf-row-height: 46px;
+  color: var(--sf-refit-ink);
+  font-family: var(--sf-refit-body);
+  font-size: 15px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+  color-scheme: dark;
+  isolation: isolate;
+  min-width: 0;
+  scrollbar-color: #73817d #111a1c;
+  scrollbar-width: thin;
+  -webkit-font-smoothing: antialiased;
+}
+[data-sf-position='static'] { position: relative; }
+[data-sf-material='panel'] {
+  background-color: var(--sf-refit-dark);
+  background-image: linear-gradient(128deg, rgb(57 68 66 / 20%), transparent 60%),
+    url('../assets/ui/command-deck-refit/plate-grain.png');
+  background-repeat: no-repeat, repeat;
+  border-color: var(--sf-refit-line);
+  border-radius: 0;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+[data-sf-surface] :where(h1,h2,h3,h4,p,ul,ol,dl) { max-width: 100%; }
+[data-sf-surface] :where(p,li,dd) { overflow-wrap: break-word; }
+[data-sf-surface] :where(h1,h2,h3,h4) {
+  font-family: var(--sf-refit-display);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -.035em;
+  text-transform: none;
+  text-wrap: balance;
+}
+[data-sf-part='heading'] {
+  color: var(--sf-refit-ink);
+  font-size: clamp(29px, 3.2vw, 52px);
+  margin-block: 0 22px;
+  font-variation-settings: 'opsz' 48;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+[data-sf-surface] :where(small,.muted,.secondary,.description) {
+  color: var(--sf-refit-muted);
+  line-height: 1.5;
+}
+[data-sf-surface] :where(a) { color: var(--sf-accent); text-underline-offset: 4px; }
+[data-sf-surface] :where(strong,b) { font-weight: 650; }
+[data-sf-surface] :where(code,kbd) { font-family: var(--sf-refit-body); }
+[data-sf-surface] :where(kbd) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 23px;
+  min-height: 24px;
+  padding: 1px 6px;
+  margin-inline: 2px;
+  border: 1px solid #69716c;
+  border-bottom-width: 3px;
+  background: #1b2526;
+  color: #dadccf;
+  font-size: 12px;
+  font-weight: 550;
+  line-height: 1;
+  letter-spacing: 0;
+  vertical-align: middle;
+}
+[data-sf-surface] :where(hr) {
+  height: 1px;
+  margin-block: 22px;
+  border: 0;
+  background: linear-gradient(90deg, var(--sf-refit-line), transparent);
+}
+
+/* The controls are cut plates, not outlined HTML boxes. The actual element is
+   not clipped, so focus rings and long labels remain legible. */
+[data-sf-control] {
+  position: relative;
+  isolation: isolate;
+  min-height: 38px;
+  padding: 9px 16px;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: var(--sf-refit-ink) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-family: var(--sf-refit-body) !important;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .005em;
+  line-height: 1.25;
+  text-transform: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color var(--sf-refit-travel), translate var(--sf-refit-travel);
+  -webkit-tap-highlight-color: transparent;
+}
+[data-sf-control]::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0 0 2px;
+  content: '';
+  pointer-events: none;
+  background: linear-gradient(180deg, #354142, #243032);
+  clip-path: var(--sf-refit-cut);
+  transition: background-color var(--sf-refit-travel), opacity var(--sf-refit-travel);
+}
+[data-sf-control]::after {
+  position: absolute;
+  z-index: -1;
+  inset: auto 10px 0 10px;
+  height: 3px;
+  content: '';
+  pointer-events: none;
+  background: #050c0e;
+}
+[data-sf-control]:hover:not(:disabled):not([aria-disabled='true'])::before {
+  background: linear-gradient(180deg, #475453, #344341);
+}
+[data-sf-control]:active:not(:disabled):not([aria-disabled='true']) {
+  translate: 0 2px;
+}
+[data-sf-control]:active:not(:disabled):not([aria-disabled='true'])::after { opacity: 0; }
+[data-sf-control]:focus-visible,
+[data-sf-control].controller-focus,
+[data-sf-control].gamepad-focus,
+[data-sf-control][data-controller-focus='true'] {
+  outline: 2px solid var(--sf-accent) !important;
+  outline-offset: 4px;
+}
+[data-sf-control][data-sf-intent='primary'] {
+  color: #10191b !important;
+  font-weight: 750;
+}
+[data-sf-control][data-sf-intent='primary']::before {
+  background: linear-gradient(180deg, var(--sf-accent), rgb(var(--sf-accent-rgb) / 78%));
+}
+[data-sf-control][data-sf-intent='primary']:hover:not(:disabled):not([aria-disabled='true'])::before {
+  background: linear-gradient(180deg, #f3ead7, var(--sf-accent));
+}
+[data-sf-control][data-sf-intent='quiet'] { color: var(--sf-refit-muted) !important; }
+[data-sf-control][data-sf-intent='quiet']::before { background: rgb(103 119 117 / 12%); }
+[data-sf-control][data-sf-intent='quiet']::after { background: #364243; height: 1px; }
+[data-sf-control][data-sf-intent='danger'] { color: #ffb6a7 !important; }
+[data-sf-control][data-sf-intent='danger']::before { background: linear-gradient(180deg, #623a32, #3d2724); }
+[data-sf-control][data-sf-intent='danger']:hover:not(:disabled)::before { background: #824739; }
+[data-sf-control]:where(:disabled,[aria-disabled='true']) {
+  opacity: .47;
+  color: #a2aaa3 !important;
+  cursor: not-allowed;
+  translate: none;
+}
+[data-sf-control]:where(:disabled,[aria-disabled='true'])::before {
+  background: repeating-linear-gradient(135deg, #273133 0 6px, #222c2f 6px 12px);
+}
+[data-sf-control]:where([aria-pressed='true'],[aria-selected='true'],.selected,.active,[data-selected='true']) {
+  color: #fff4dc !important;
+}
+[data-sf-control]:where([aria-pressed='true'],[aria-selected='true'],.selected,.active,[data-selected='true'])::before {
+  background: linear-gradient(90deg, rgb(var(--sf-accent-rgb) / 26%), #243130);
+}
+[data-sf-control]:where([aria-pressed='true'],[aria-selected='true'],.selected,.active,[data-selected='true'])::after {
+  left: 0;
+  right: auto;
+  top: 5px;
+  bottom: 5px;
+  width: 3px;
+  height: auto;
+  background: var(--sf-accent);
+}
+[data-sf-control][aria-busy='true'] {
+  cursor: progress;
+  color: var(--sf-refit-ink) !important;
+}
+[data-sf-control][aria-busy='true']:disabled { opacity: .9; cursor: progress; }
+[data-sf-control][aria-busy='true']::before {
+  background: repeating-linear-gradient(115deg, #35403d 0 10px, #475044 10px 20px);
+  animation: sf-refit-pending 1.3s ease-in-out infinite alternate;
+}
+[data-sf-control]:where([data-state='success'],[data-state='complete'])::before { background: #42634c; }
+[data-sf-control]:where([data-state='locked'],.locked)::before {
+  background: repeating-linear-gradient(135deg, #28302d 0 9px, #333a33 9px 11px);
+}
+.sf-refit-icon {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  margin-inline-end: 9px;
+  flex: 0 0 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.65;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+  vertical-align: -.35em;
+  pointer-events: none;
+}
+input[data-sf-control] {
+  background: #344141 !important;
+  border-bottom: 2px solid #061012 !important;
+}
+input[data-sf-control][data-sf-intent='primary'] { background: var(--sf-accent) !important; }
+
+/* Inputs keep their native data and validation behavior. */
+[data-sf-surface] :where(input:not([type='button']):not([type='submit']):not([type='reset']):not([type='range']):not([type='checkbox']):not([type='radio']),select,textarea) {
+  box-sizing: border-box;
+  min-height: 39px;
+  max-width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 2px solid #667572;
+  border-radius: 0;
+  background: #0d171a;
+  color: var(--sf-refit-ink);
+  font-family: var(--sf-refit-body);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 22%);
+}
+[data-sf-surface] :where(input,select,textarea):focus-visible {
+  outline: 2px solid var(--sf-accent);
+  outline-offset: 3px;
+  border-color: var(--sf-accent);
+}
+[data-sf-surface] :where(input,select,textarea):disabled { opacity: .48; cursor: not-allowed; }
+[data-sf-surface] :where(input,textarea):user-invalid { border-color: var(--sf-refit-danger); }
+[data-sf-surface] :where(input,textarea)::placeholder { color: #81918c; opacity: 1; }
+[data-sf-surface] :where(select) {
+  appearance: none;
+  padding-inline-end: 35px;
+  background-image: url('../assets/ui/command-deck-refit/select-chevron.svg');
+  background-position: right 11px center;
+  background-repeat: no-repeat;
+  background-size: 12px 8px;
+}
+[data-sf-surface] :where(input[type='checkbox'],input[type='radio']) {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0 8px 0 0;
+  padding: 0;
+  border: 1px solid #7b8981;
+  border-radius: 0;
+  background: #0c1518;
+  vertical-align: -.3em;
+  cursor: pointer;
+}
+[data-sf-surface] :where(input[type='checkbox'])::before {
+  content: '';
+  width: 11px;
+  height: 6px;
+  border-left: 2px solid #10201a;
+  border-bottom: 2px solid #10201a;
+  transform: translateY(-1px) rotate(-45deg) scale(0);
+}
+[data-sf-surface] :where(input[type='checkbox']):checked { background: var(--sf-accent); border-color: var(--sf-accent); }
+[data-sf-surface] :where(input[type='checkbox']):checked::before { transform: translateY(-1px) rotate(-45deg) scale(1); }
+[data-sf-surface] :where(input[type='checkbox']):indeterminate { background: var(--sf-accent); }
+[data-sf-surface] :where(input[type='checkbox']):indeterminate::before {
+  border-left: 0;
+  height: 0;
+  transform: scale(1);
+}
+[data-sf-surface] :where(input[type='radio']) { border-radius: 50%; }
+[data-sf-surface] :where(input[type='radio']):checked { border: 6px solid var(--sf-accent); }
+[data-sf-surface] :where(input[type='range']) {
+  appearance: none;
+  height: 28px;
+  min-width: 100px;
+  max-width: 100%;
+  margin: 5px 0;
+  background: transparent;
+  accent-color: var(--sf-accent);
+  cursor: pointer;
+}
+[data-sf-surface] input[type='range']::-webkit-slider-runnable-track {
+  height: 5px;
+  background: linear-gradient(90deg, var(--sf-accent) var(--sf-range-position, 0%), #4a5853 var(--sf-range-position, 0%));
+  border: 0;
+}
+[data-sf-surface] input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 23px;
+  margin-top: -9px;
+  border: 2px solid #d8dec9;
+  border-radius: 0;
+  background: #273d35;
+  box-shadow: 0 2px 0 #040a0b;
+}
+[data-sf-surface] input[type='range']::-moz-range-track { height: 5px; background: #4a5853; }
+[data-sf-surface] input[type='range']::-moz-range-progress { height: 5px; background: var(--sf-accent); }
+[data-sf-surface] input[type='range']::-moz-range-thumb {
+  width: 9px;
+  height: 20px;
+  border: 2px solid #d8dec9;
+  border-radius: 0;
+  background: #273d35;
+}
+.sf-refit-range-value {
+  display: inline-block;
+  min-width: 4ch;
+  margin-inline-start: 13px;
+  color: var(--sf-accent);
+  font-size: 17px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+  text-align: end;
+}
+
+/* Local artwork occupies no layout space and never intercepts the game. */
+.sf-refit-art {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+}
+.sf-refit-art--title {
+  background-image: linear-gradient(90deg, #0d171b 0%, rgb(13 23 27 / 88%) 28%, transparent 67%),
+    url('../assets/ui/command-deck-refit/orbital-berth.svg');
+  background-position: center, 65% center;
+  background-size: cover;
+}
+.sf-refit-art--pause {
+  background: linear-gradient(90deg, rgb(12 22 26 / 99%) 0%, rgb(12 22 26 / 96%) 34%, rgb(12 22 26 / 65%) 68%, rgb(12 22 26 / 36%));
+}
+.sf-refit-art--station {
+  background-image: linear-gradient(180deg, transparent, #111b1e 215px),
+    url('../assets/ui/command-deck-refit/berth-section.svg');
+  background-position: top right;
+  background-size: 100% 260px, auto 250px;
+  opacity: .62;
+}
+.sf-refit-art--shipworks {
+  background-image: url('../assets/ui/command-deck-refit/service-bay.svg');
+  background-position: 42% 48%;
+  background-size: auto 82%;
+  opacity: .14;
+}
+.sf-refit-art--industry {
+  background-image: url('../assets/ui/command-deck-refit/berth-section.svg');
+  background-position: right bottom;
+  background-size: auto 58%;
+  opacity: .12;
+}
+.sf-refit-art--research {
+  background-image: url('../assets/ui/command-deck-refit/research-lattice.svg');
+  background-position: right center;
+  background-size: auto 92%;
+  opacity: .13;
+}
+.sf-refit-art--game-over {
+  background-image: linear-gradient(90deg, #1b1515 15%, rgb(20 18 20 / 60%) 70%),
+    url('../assets/ui/command-deck-refit/orbital-berth.svg');
+  background-position: center, right center;
+  opacity: .52;
+}
+.sf-refit-art--crucible {
+  background-image: url('../assets/ui/command-deck-refit/crucible-mark.svg');
+  background-size: auto 90%;
+  background-position: right 10% center;
+  opacity: .1;
+}
+
+/* Title / launch: an editorial silhouette rather than a centered card. */
+[data-sf-surface='title'] {
+  --sf-accent: #e6bc7e;
+  --sf-accent-rgb: 230 188 126;
+  background-color: transparent;
+  background-image: none;
+  border: 0;
+}
+[data-sf-surface='title'] [data-sf-part='heading'] {
+  font-size: clamp(68px, 8.6vw, 156px);
+  font-weight: 800;
+  line-height: .83;
+  letter-spacing: -.075em;
+  margin-bottom: clamp(26px, 5vh, 56px);
+  text-shadow: 0 3px 20px rgb(0 0 0 / 24%);
+  font-variation-settings: 'opsz' 96, 'wdth' 95;
+}
+[data-sf-surface='title'] :where(.menu-content,.title-content,.main-menu-content) {
+  box-sizing: border-box;
+  width: min(540px, 100%);
+  margin-inline: clamp(24px, 7vw, 140px) auto;
+  padding-block: clamp(30px, 9vh, 110px);
+  text-align: left;
+  background: none;
+  border: 0;
+  box-shadow: none;
+}
+[data-sf-surface='title'] [data-sf-control] {
+  min-height: 47px;
+  padding-inline: 22px 30px;
+  font-size: clamp(16px, 1.35vw, 21px);
+  text-align: left;
+  font-weight: 550;
+}
+[data-sf-surface='title'] [data-sf-control][data-sf-intent='primary'] { min-height: 58px; font-weight: 750; }
+[data-sf-surface='title'] [data-sf-control]:not([data-sf-intent='primary'])::before { background: rgb(23 37 41 / 82%); }
+[data-sf-surface='title'] [data-sf-control]:hover:not(:disabled)::before { background: #49514a; }
+[data-sf-surface='title'] [data-sf-control][data-sf-intent='primary']:hover:not(:disabled)::before { background: #eee0bc; }
+[data-sf-surface='title'] :where(.version,.build,.subtitle,.tagline) { color: #a7b0a8; letter-spacing: .03em; }
+[data-sf-surface='new-game'] { --sf-accent: #bbcfac; --sf-accent-rgb: 187 207 172; }
+[data-sf-surface='new-game'] :where(.scenario,.scenario-card,.start-option) {
+  border: 0;
+  border-left: 3px solid #697a64;
+  border-radius: 0;
+  padding: 18px 22px;
+  background: linear-gradient(90deg, rgb(135 164 128 / 13%), transparent);
+}
+[data-sf-surface='new-game'] :where(.scenario,.scenario-card,.start-option):where(.selected,[aria-selected='true']) {
+  border-left-color: var(--sf-accent);
+  background: linear-gradient(90deg, rgb(var(--sf-accent-rgb) / 24%), rgb(39 53 43 / 30%));
+}
+
+/* Pause is an interruption; game pixels remain visible beside the controls. */
+[data-sf-surface='pause'] {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+[data-sf-surface='pause'] [data-sf-part='heading'] {
+  font-size: clamp(43px, 5.8vw, 84px);
+  letter-spacing: -.055em;
+  margin-bottom: 32px;
+}
+[data-sf-surface='pause'] :where(.pause-content,.pause-panel,.menu-content) {
+  width: min(430px, calc(100% - 40px));
+  padding: clamp(24px, 3vw, 46px);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+[data-sf-surface='pause'] [data-sf-control] { min-height: 43px; padding-block: 12px; font-size: 16px; }
+[data-sf-surface='pause'] [data-sf-control][data-sf-intent='primary'] { min-height: 52px; }
+
+/* Station uses a real navigation/content seam only where the source has one. */
+[data-sf-composition='navigation-content'] {
+  display: grid;
+  grid-template-columns: minmax(160px, 210px) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 20px 28px;
+}
+[data-sf-grid='header'] { grid-column: 1 / -1; }
+[data-sf-composition='navigation-content'] > [data-sf-part='navigation'] { grid-column: 1; min-width: 0; }
+[data-sf-composition='navigation-content'] > [data-sf-part='content'] { grid-column: 2; min-width: 0; min-height: 0; }
+[data-sf-part='navigation'] {
+  gap: 5px;
+  min-width: 0;
+  padding: 7px;
+  background: rgb(6 14 17 / 54%);
+  border: 0;
+  border-radius: 0;
+}
+[data-sf-part='navigation'] [data-sf-control] {
+  min-height: 43px;
+  padding: 11px 14px;
+  font-size: 14px;
+  font-weight: 550;
+  text-align: left;
+}
+[data-sf-part='navigation'] [data-sf-control]::before { clip-path: none; background: transparent; }
+[data-sf-part='navigation'] [data-sf-control]::after { display: none; }
+[data-sf-part='navigation'] [data-sf-control]:where([aria-selected='true'],[aria-pressed='true'],.active,.selected)::before {
+  background: linear-gradient(90deg, rgb(var(--sf-accent-rgb) / 23%), rgb(var(--sf-accent-rgb) / 6%));
+}
+[data-sf-part='navigation'] [data-sf-control]:where([aria-selected='true'],[aria-pressed='true'],.active,.selected)::after {
+  display: block;
+  top: 7px;
+  bottom: 7px;
+  left: 0;
+  width: 3px;
+  height: auto;
+  background: var(--sf-accent);
+}
+[data-sf-surface='station'] [data-sf-part='heading'] { margin-bottom: 25px; }
+[data-sf-surface='station'] :where(.station-name,.facility-name) {
+  color: #ebe6d9;
+  font-family: var(--sf-refit-display);
+  font-weight: 750;
+  letter-spacing: -.045em;
+}
+[data-sf-surface='station'] :where(.station-meta,.station-description) { max-width: 75ch; color: #b6beb3; }
+[data-sf-part='content'] { min-width: 0; min-height: 0; }
+[data-sf-part='inspector'] {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: clamp(15px, 1.8vw, 27px);
+  background: linear-gradient(150deg, #263334, #162225 70%);
+  border: 0;
+  border-top: 3px solid var(--sf-accent);
+  border-radius: 0;
+  box-shadow: 0 5px 0 rgb(0 0 0 / 20%);
+}
+[data-sf-part='inspector'] :where(h2,h3,.item-name,.module-name) { font-size: clamp(22px, 2.2vw, 34px); }
+[data-sf-part='inspector'] :where(dl) { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px 16px; }
+[data-sf-part='inspector'] :where(dt) { color: var(--sf-refit-muted); }
+[data-sf-part='inspector'] :where(dd) { margin: 0; text-align: right; }
+
+/* Market: open rows, hard numeric alignment, and an unmistakable action zone. */
+[data-sf-surface='market'] { --sf-accent: #b6cc9d; --sf-accent-rgb: 182 204 157; }
+[data-sf-surface='market'] [data-sf-part='heading'] { font-size: clamp(31px, 3.7vw, 58px); }
+[data-sf-part='table'] {
+  width: 100%;
+  border-spacing: 0;
+  border-collapse: collapse;
+  border: 0;
+  background: transparent;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+[data-sf-part='table'] :where(th) {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  padding: 12px 13px;
+  border: 0;
+  border-bottom: 2px solid #677361;
+  background: #172324;
+  color: #bdc8b3;
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: .015em;
+  text-transform: none;
+  text-align: end;
+  white-space: nowrap;
+}
+[data-sf-part='table'] :where(td) {
+  height: var(--sf-row-height);
+  box-sizing: border-box;
+  padding: 10px 13px;
+  border: 0;
+  border-bottom: 1px solid #33413d;
+  color: #d9dfd2;
+  text-align: end;
+}
+[data-sf-part='table'] :where(th,td):first-child { text-align: start; }
+[data-sf-part='table'] tbody tr { background: transparent; transition: background-color var(--sf-refit-travel); }
+[data-sf-part='table'] tbody tr:nth-child(2n) { background: rgb(126 145 121 / 4%); }
+[data-sf-part='table'] tbody tr:hover { background: rgb(var(--sf-accent-rgb) / 10%); }
+[data-sf-part='table'] tbody tr:where(.selected,.active,[aria-selected='true'],[data-selected='true']) {
+  background: linear-gradient(90deg, rgb(var(--sf-accent-rgb) / 22%), rgb(var(--sf-accent-rgb) / 6%));
+  box-shadow: inset 3px 0 var(--sf-accent);
+}
+[data-sf-part='commodity'] {
+  min-height: var(--sf-row-height);
+  border-radius: 0;
+  border-color: #354339;
+}
+[data-sf-surface='market'] :where(.price,.credits,.balance,.total,.quantity,.stock) { font-variant-numeric: tabular-nums; }
+[data-sf-surface='market'] :where(.balance,.credits-total,.trade-total) {
+  color: var(--sf-accent);
+  font-size: clamp(23px, 2.4vw, 36px);
+  font-family: var(--sf-refit-display);
+  font-weight: 650;
+  letter-spacing: -.03em;
+  overflow-wrap: anywhere;
+}
+[data-sf-surface='market'] [data-sf-part='quantity'] {
+  min-width: 6ch;
+  min-height: 46px;
+  font-size: 23px;
+  font-weight: 650;
+  text-align: center;
+  border-bottom-color: var(--sf-accent);
+}
+[data-sf-part='transaction'] {
+  position: sticky;
+  z-index: 3;
+  bottom: 0;
+  padding: 17px 0 0;
+  margin-top: 20px;
+  border-top: 1px solid #70816b;
+  background: linear-gradient(180deg, #1b2a25, #15221f);
+}
+[data-sf-part='transaction'] [data-sf-control] { min-height: 48px; font-size: 16px; }
+[data-sf-surface='market'] :where(.profit,.positive,.price-good) { color: #b9dba7; }
+[data-sf-surface='market'] :where(.loss,.negative,.price-bad) { color: #eaaa92; }
+
+/* Shipworks: the existing ship renderer stays intact inside a service cradle. */
+[data-sf-surface='shipworks'],[data-sf-surface='ship'] { --sf-accent: #ddac82; --sf-accent-rgb: 221 172 130; }
+[data-sf-surface='shipworks'] [data-sf-part='heading'] { font-size: clamp(34px, 4.1vw, 64px); }
+[data-sf-part='ship-preview'] {
+  background-color: #0e171b;
+  background-image: url('../assets/ui/command-deck-refit/service-bay.svg');
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  border: 0;
+  border-block: 1px solid #55554a;
+  border-radius: 0;
+  min-width: 0;
+}
+[data-sf-part='ship-preview'] :where(canvas,img) { max-width: 100%; }
+[data-sf-part='module'] {
+  box-sizing: border-box;
+  padding: 13px 15px;
+  border: 0;
+  border-left: 3px solid #606458;
+  border-bottom: 1px solid #313f3c;
+  border-radius: 0;
+  background: linear-gradient(90deg, #2c3531, #192327);
+  color: #d7d9c9;
+  transition: background-color var(--sf-refit-travel), border-color var(--sf-refit-travel);
+}
+[data-sf-part='module']:hover { border-left-color: var(--sf-accent); background: #343d33; }
+[data-sf-part='module']:where(.selected,.active,[aria-selected='true'],[data-selected='true']) {
+  border-left-color: var(--sf-accent);
+  background: linear-gradient(90deg, rgb(var(--sf-accent-rgb) / 23%), #293028);
+}
+[data-sf-part='module']:where(.empty,[data-empty='true']) {
+  border-left-style: dashed;
+  background: repeating-linear-gradient(135deg, rgb(131 145 130 / 3%) 0 6px, transparent 6px 12px);
+  color: #93a090;
+}
+[data-sf-part='module']:where(.locked,[aria-disabled='true'],[data-locked='true']) { opacity: .48; }
+[data-sf-surface='shipworks'] :where(.module-name,.equipment-name) { font-size: 17px; font-weight: 650; color: #eee4d4; }
+[data-sf-surface='shipworks'] :where(.slot-label,.module-type,.equipment-type) { color: #b7b39f; font-size: 13px; }
+[data-sf-surface='shipworks'] :where(.stat-row,.comparison-row) {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  padding-block: 8px;
+  border-bottom: 1px solid #3f4840;
+  font-variant-numeric: tabular-nums;
+}
+[data-sf-surface='shipworks'] :where(.stat-improvement,.positive) { color: #a8d4a1; }
+[data-sf-surface='shipworks'] :where(.stat-loss,.negative) { color: #edaa94; }
+
+/* Contracts and missions: a docket with clear consequences, not a card grid. */
+[data-sf-surface='contracts'],[data-sf-surface='missions'] { --sf-accent: #dfcc9b; --sf-accent-rgb: 223 204 155; }
+[data-sf-part='contract'] {
+  position: relative;
+  padding: 20px 23px;
+  border: 0;
+  border-top: 1px solid #786e54;
+  border-radius: 0;
+  background: linear-gradient(108deg, #30332b, #1a2727);
+  box-shadow: 0 3px 0 rgb(0 0 0 / 18%);
+  margin-bottom: 12px;
+}
+[data-sf-part='contract'] :where(h3,.contract-title,.mission-title) {
+  color: #f0e3c9;
+  font-size: clamp(20px, 1.8vw, 28px);
+  font-weight: 700;
+  margin-block: 0 10px;
+}
+[data-sf-part='contract'] :where(p,.description) { max-width: 78ch; margin-block: 8px 15px; color: #c0c0ac; }
+[data-sf-part='contract'] :where(.reward,.payout) { color: #e7d1a2; font-size: 23px; font-weight: 700; }
+[data-sf-part='contract'] :where(.risk,.deadline,.distance) { color: #cfc6ac; font-size: 14px; }
+[data-sf-part='contract']:where(.tracked,[data-tracked='true']) { border-top: 3px solid var(--sf-accent); }
+[data-sf-part='contract']:where(.failed,[data-state='failed']) { border-top-color: var(--sf-refit-danger); }
+[data-sf-part='contract']:where(.complete,[data-state='complete']) { border-top-color: var(--sf-refit-success); }
+[data-sf-surface='contacts'] { --sf-accent: #c8ada6; --sf-accent-rgb: 200 173 166; }
+[data-sf-surface='contacts'] :where(.contact,.contact-card,.dialogue-panel) {
+  border-radius: 0;
+  border: 0;
+  border-left: 3px solid #ac908a;
+  background: linear-gradient(115deg, #342b2b, #1d282b);
+  padding: 22px;
+}
+[data-sf-surface='contacts'] :where(.dialogue,.dialogue-text) { max-width: 75ch; font-size: 17px; line-height: 1.65; }
+[data-sf-surface='contacts'] :where(.portrait,img.portrait) { border: 0; border-radius: 0; }
+[data-sf-surface='industry'] { --sf-accent: #c8c398; --sf-accent-rgb: 200 195 152; }
+[data-sf-surface='industry'] :where(.recipe,.production-line,.industry-item) {
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid #505743;
+  padding: 15px 18px;
+  background: linear-gradient(90deg, #2a3327, transparent);
+}
+[data-sf-surface='industry'] :where(.inputs,.outputs,.recipe-flow) { font-variant-numeric: tabular-nums; }
+[data-sf-surface='factions'] { --sf-accent: #bdb0c9; --sf-accent-rgb: 189 176 201; }
+[data-sf-surface='factions'] :where(.faction,.faction-row,.faction-card) {
+  border: 0;
+  border-left: 4px solid #77677e;
+  border-radius: 0;
+  padding: 19px 22px;
+  background: linear-gradient(95deg, #302d3b, #1c292c);
+}
+[data-sf-surface='factions'] :where(.reputation,.standing) { font-size: 18px; font-weight: 600; }
+[data-sf-surface='ledger'] { --sf-accent: #b8cbb2; --sf-accent-rgb: 184 203 178; }
+[data-sf-surface='ledger'] :where(.summary,.ledger-summary) { border: 0; border-bottom: 2px solid #70866a; padding-bottom: 22px; }
+
+/* Navigation owns its inspector, not the map renderer or pointer gestures. */
+[data-sf-surface='galaxy-map'],[data-sf-surface='local-map'],[data-sf-surface='navigation'] {
+  --sf-accent: #c0b9db;
+  --sf-accent-rgb: 192 185 219;
+}
+[data-sf-surface='galaxy-map'],[data-sf-surface='local-map'] { background-color: #0a1218; border-radius: 0; }
+[data-sf-surface='galaxy-map'] [data-sf-part='inspector'],
+[data-sf-surface='local-map'] [data-sf-part='inspector'] {
+  background: linear-gradient(160deg, #272c3c, #151d28);
+  border-top-color: var(--sf-accent);
+  box-shadow: -10px 0 30px rgb(0 0 0 / 20%);
+}
+[data-sf-surface='galaxy-map'] :where(.system-name,.target-name),
+[data-sf-surface='local-map'] :where(.system-name,.target-name) {
+  color: #e4dfee;
+  font-size: clamp(25px, 2.7vw, 42px);
+  font-family: var(--sf-refit-display);
+  font-weight: 700;
+  letter-spacing: -.04em;
+}
+[data-sf-surface='navigation'] :where(.route-step,.waypoint,.route-item) {
+  border: 0;
+  border-left: 2px solid #77728f;
+  border-radius: 0;
+  padding: 12px 18px;
+  margin-left: 8px;
+  background: linear-gradient(90deg, rgb(159 151 189 / 13%), transparent);
+}
+[data-sf-surface='navigation'] :where(.route-step,.waypoint,.route-item):where(.active,[aria-current='step']) {
+  border-left: 4px solid var(--sf-accent);
+  color: #eee7fa;
+}
+
+/* Progression presents capability through the existing graph and real nodes. */
+[data-sf-surface='research'] { --sf-accent: #aebfda; --sf-accent-rgb: 174 191 218; }
+[data-sf-surface='research'] :where(.tech-node,.research-node,.technology) {
+  border-radius: 0;
+  border: 1px solid #5d6d7a;
+  border-bottom-width: 3px;
+  background: linear-gradient(145deg, #303c4b, #1c2a35);
+  color: #d7e2ec;
+}
+[data-sf-surface='research'] :where(.tech-node,.research-node,.technology):where(.locked,[data-locked='true']) {
+  color: #81919b;
+  border-color: #3f4a53;
+  background: #18222b;
+}
+[data-sf-surface='research'] :where(.tech-node,.research-node,.technology):where(.unlocked,.researched,[data-state='complete']) {
+  border-bottom-color: #a2cfae;
+  background: linear-gradient(145deg, #324442, #1d3035);
+}
+[data-sf-surface='automation'] { --sf-accent: #a6c8c0; --sf-accent-rgb: 166 200 192; }
+[data-sf-surface='automation'] :where(.fleet-row,.fleet-item,.automation-rule,.order-row) {
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid #46615b;
+  padding: 14px 18px;
+  background: linear-gradient(90deg, #233c38, #19272b);
+}
+[data-sf-surface='automation'] :where(.order-status,.ship-status,.worker-status) { color: #b9d4c4; font-weight: 600; }
+
+/* System surfaces share the same hardware, but use reading-first composition. */
+[data-sf-surface='settings'] { --sf-accent: #cad0b7; --sf-accent-rgb: 202 208 183; }
+[data-sf-part='settings-group'] {
+  min-inline-size: 0;
+  padding: 20px 0 24px;
+  margin: 0 0 20px;
+  border: 0;
+  border-bottom: 1px solid #4f5c52;
+}
+[data-sf-part='settings-group'] legend { padding: 0; font-size: 23px; font-family: var(--sf-refit-display); font-weight: 650; color: #e2e5d1; }
+[data-sf-surface='settings'] :where(.setting-row,.option-row,.settings-row) {
+  min-height: 46px;
+  padding-block: 12px;
+  border-bottom: 1px solid #304139;
+  gap: 20px;
+}
+[data-sf-surface='settings'] :where(label) { color: #d9dece; font-size: 15px; }
+[data-sf-surface='settings'] :where(.description,.hint,.setting-description) { color: #a5b39f; font-size: 13px; max-width: 76ch; }
+[data-sf-surface='saves'] { --sf-accent: #b4c2ad; --sf-accent-rgb: 180 194 173; }
+[data-sf-part='save-slot'] {
+  padding: 19px 22px;
+  margin-bottom: 12px;
+  border: 0;
+  border-left: 4px solid #85967c;
+  border-radius: 0;
+  background: linear-gradient(95deg, #2b3a2f, #1a2829);
+}
+[data-sf-part='save-slot']:where(.empty,[data-empty='true']) {
+  background: repeating-linear-gradient(135deg, #192526 0 10px, #1c2a29 10px 12px);
+  border-left-style: dashed;
+  border-left-color: #647662;
+}
+[data-sf-part='save-slot'] :where(.save-name,.slot-name) { font-size: 23px; font-family: var(--sf-refit-display); font-weight: 650; }
+[data-sf-part='save-slot'] :where(time,.timestamp,.save-meta) { color: #a2b39a; font-size: 13px; }
+[data-sf-surface='help'],[data-sf-surface='codex'] { --sf-accent: #d6ccb1; --sf-accent-rgb: 214 204 177; }
+[data-sf-surface='help'] :where(article,.help-content,.manual-content),
+[data-sf-surface='codex'] :where(article,.codex-content,.entry-content) { max-width: 88ch; line-height: 1.65; }
+[data-sf-surface='help'] :where(h3),[data-sf-surface='codex'] :where(h3) {
+  margin-top: 28px;
+  padding-top: 15px;
+  border-top: 1px solid #4d5144;
+  color: #e6ddc4;
+  font-size: 26px;
+}
+[data-sf-surface='help'] :where(.keybinding,.control-row) {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 20px;
+  padding-block: 9px;
+  border-bottom: 1px solid #37453d;
+}
+[data-sf-surface='confirmation'] {
+  --sf-accent: #e2bd8e;
+  --sf-accent-rgb: 226 189 142;
+  padding: clamp(23px, 3vw, 40px);
+  border: 0;
+  border-top: 4px solid var(--sf-accent);
+  box-shadow: 0 18px 80px rgb(0 0 0 / 55%);
+}
+[data-sf-surface='confirmation']:is(dialog,[role='dialog']) { max-width: min(560px, calc(100vw - 32px)); box-sizing: border-box; }
+[data-sf-surface='confirmation'] [data-sf-part='heading'] { font-size: clamp(28px, 3vw, 40px); margin-bottom: 17px; }
+[data-sf-surface='confirmation'] :where(p) { color: #c4c8bb; font-size: 16px; line-height: 1.55; }
+[data-sf-surface='confirmation'] :where(.actions,.dialog-actions,footer) { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 25px; }
+[data-sf-surface='game-over'] {
+  --sf-accent: #d49784;
+  --sf-accent-rgb: 212 151 132;
+  background-color: #1a1718;
+  border: 0;
+}
+[data-sf-surface='game-over'] [data-sf-part='heading'] { font-size: clamp(50px, 7vw, 104px); letter-spacing: -.055em; color: #e5b39f; }
+
+/* Empty/error/success states only decorate actual state emitted by the game. */
+[data-sf-part='empty'] {
+  padding: clamp(25px, 4vw, 55px);
+  border: 0;
+  border-block: 1px solid #435048;
+  border-radius: 0;
+  background: repeating-linear-gradient(135deg, rgb(132 151 130 / 3%) 0 8px, transparent 8px 16px);
+  color: #a3b29f;
+  text-align: center;
+  line-height: 1.6;
+}
+[data-sf-part='error'],[data-sf-surface] :where(.error-message,[data-error='true']) {
+  padding: 13px 17px;
+  border: 0;
+  border-left: 3px solid var(--sf-refit-danger);
+  border-radius: 0;
+  background: #3d2725;
+  color: #ffd0c3;
+  font-size: 14px;
+  line-height: 1.5;
+}
+[data-sf-part='success'],[data-sf-surface] :where(.success-message,[data-success='true']) {
+  padding: 13px 17px;
+  border: 0;
+  border-left: 3px solid #b0d5a0;
+  border-radius: 0;
+  background: #263b2d;
+  color: #d7ebcd;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Flight: retain the original geometry. No dashboard, reflow, or extra data. */
+[data-sf-surface='flight'] {
+  --sf-accent: #ddc298;
+  --sf-accent-rgb: 221 194 152;
+  font-size: 13px;
+  line-height: 1.3;
+  background: transparent;
+  border: 0;
+  text-shadow: 0 1px 3px #02080b;
+}
+[data-sf-surface='flight'] [data-sf-control] { min-height: 28px; padding: 5px 9px; font-size: 12px; text-shadow: none; }
+[data-sf-surface='flight'] .sf-refit-icon { width: 16px; height: 16px; flex-basis: 16px; margin-right: 6px; }
+[data-sf-surface='flight'] :where(.hud-panel,.hud-group,.instrument-group) {
+  background: linear-gradient(90deg, rgb(9 19 22 / 86%), rgb(9 19 22 / 59%));
+  border: 0;
+  border-radius: 0;
+  backdrop-filter: none !important;
+}
+[data-sf-surface='flight'] :where(.speed-value,.throttle-value,.hull-value,.shield-value,.energy-value) {
+  color: #eee5d0;
+  font-family: var(--sf-refit-display);
+  font-weight: 650;
+  letter-spacing: -.025em;
+  font-variant-numeric: tabular-nums;
+}
+[data-sf-surface='flight'] :where(.hud-label,.instrument-label) { color: #bbc7b9; font-size: 11px; letter-spacing: .04em; }
+[data-sf-surface='flight'] [data-sf-part='radar'] {
+  border-color: #74816b;
+  box-shadow: 0 0 0 1px rgb(3 9 13 / 88%), 0 3px 12px rgb(0 0 0 / 20%);
+}
+[data-sf-surface='flight'] [data-sf-part='target'] {
+  background-color: rgb(12 24 27 / 84%);
+  background-image: url('../assets/ui/command-deck-refit/target-corners.svg');
+  background-position: center;
+  background-size: 100% 100%;
+  border: 0;
+  border-radius: 0;
+  color: #e2dfc9;
+  padding: 10px 15px;
+}
+[data-sf-surface='flight'] :where(.target-name,.target-label) { font-size: 16px; font-weight: 700; color: #f1e5c9; }
+[data-sf-surface='flight'] :where(.target-distance,.target-speed,.target-faction) { color: #b4c6bb; font-variant-numeric: tabular-nums; }
+[data-sf-surface='flight'] :where(.lock-progress,.target-lock) { color: #e6c389; accent-color: #e6c389; }
+[data-sf-surface='flight'] :where(.locked,[data-lock-state='locked']) { color: #efd088; }
+[data-sf-surface='flight'] :where(.interaction-prompt,.dock-prompt,.context-prompt) {
+  padding: 8px 13px;
+  border: 0;
+  border-left: 3px solid #d4c293;
+  border-radius: 0;
+  background: rgb(14 26 28 / 90%);
+  color: #e9e5cd;
+  font-size: 14px;
+}
+[data-sf-surface='flight'] :where(.warning,.combat-alert,[data-warning='true']) {
+  color: #ffb397;
+  border-color: #e8886d;
+  text-shadow: 0 1px 3px #170908;
+}
+[data-sf-surface='flight'] :where(.critical,[data-state='critical'],[data-danger='true']) {
+  color: #ffc1a9;
+  background-color: rgb(64 27 23 / 88%);
+}
+[data-sf-surface='flight'] :where(.combat-alert,.damage-warning) { border-left: 3px solid #ff9d7e; padding-left: 9px; }
+[data-sf-surface] progress {
+  appearance: none;
+  height: 8px;
+  max-width: 100%;
+  border: 0;
+  border-radius: 0;
+  overflow: hidden;
+  color: var(--sf-instrument-color, var(--sf-accent));
+  background: #263636;
+  accent-color: var(--sf-instrument-color, var(--sf-accent));
+}
+[data-sf-surface] progress::-webkit-progress-bar { background: #263636; border-radius: 0; }
+[data-sf-surface] progress::-webkit-progress-value {
+  border-radius: 0;
+  background: repeating-linear-gradient(90deg, var(--sf-instrument-color, var(--sf-accent)) 0 10px, transparent 10px 12px);
+}
+[data-sf-surface] progress::-moz-progress-bar {
+  border-radius: 0;
+  background: repeating-linear-gradient(90deg, var(--sf-instrument-color, var(--sf-accent)) 0 10px, transparent 10px 12px);
+}
+[data-sf-instrument='hull'] { --sf-instrument-color: #d1c296; }
+[data-sf-instrument='shield'] { --sf-instrument-color: #adc6cf; }
+[data-sf-instrument='energy'] { --sf-instrument-color: #c9d89f; }
+[data-sf-instrument='heat'] { --sf-instrument-color: #e5a07d; }
+[data-sf-instrument='boost'] { --sf-instrument-color: #d8be8b; }
+[data-sf-instrument='cargo'] { --sf-instrument-color: #b9c79b; }
+[data-sf-instrument='lock'] { --sf-instrument-color: #edca85; }
+[data-sf-instrument='mining'] { --sf-instrument-color: #d3bf83; }
+
+/* Mining and Crucible keep their live progress and actual result content. */
+[data-sf-surface='mining'] { --sf-accent: #d6bd87; --sf-accent-rgb: 214 189 135; }
+[data-sf-surface='mining'] :where(.mineral,.ore-row,.yield-row,.mining-target) {
+  padding: 12px 16px;
+  border: 0;
+  border-left: 3px solid #8a7854;
+  border-radius: 0;
+  background: linear-gradient(90deg, #3a3325, #1a2829);
+}
+[data-sf-surface='mining'] :where(.yield,.purity,.ore-quantity) { color: #e7d4a8; font-variant-numeric: tabular-nums; }
+[data-sf-surface='crucible'] { --sf-accent: #e29e86; --sf-accent-rgb: 226 158 134; background-color: #211c1d; }
+[data-sf-surface='crucible'] [data-sf-part='heading'] { color: #edbd9e; font-size: clamp(42px, 5.7vw, 86px); }
+[data-sf-surface='crucible'] :where(.round,.wave,.score,.result-value) {
+  color: #efd3b3;
+  font-family: var(--sf-refit-display);
+  font-size: clamp(24px, 3.3vw, 49px);
+  font-weight: 750;
+  letter-spacing: -.04em;
+  font-variant-numeric: tabular-nums;
+}
+[data-sf-surface='crucible'] :where(.challenge,.challenge-card,.result-row) {
+  padding: 20px;
+  border: 0;
+  border-left: 3px solid #b98168;
+  border-radius: 0;
+  background: linear-gradient(90deg, #432e28, #252323);
+}
+[data-sf-surface='range'] { --sf-accent: #bac6af; --sf-accent-rgb: 186 198 175; }
+
+/* Scroll feedback is state-derived, cheap, and does not clip focus outlines. */
+[data-sf-scroll='true'] { overscroll-behavior: contain; scroll-padding: 12px; }
+[data-sf-scroll='true'][data-sf-scroll-start='false'] { box-shadow: inset 0 9px 9px -11px #f4ddaa; }
+[data-sf-scroll='true'][data-sf-scroll-end='false'] { box-shadow: inset 0 -9px 9px -11px #f4ddaa; }
+[data-sf-scroll='true'][data-sf-scroll-start='false'][data-sf-scroll-end='false'] {
+  box-shadow: inset 0 9px 9px -11px #f4ddaa, inset 0 -9px 9px -11px #f4ddaa;
+}
+[data-sf-surface] ::-webkit-scrollbar { width: 7px; height: 7px; }
+[data-sf-surface] ::-webkit-scrollbar-track { background: #101d20; }
+[data-sf-surface] ::-webkit-scrollbar-thumb { background: #64756b; border: 2px solid #101d20; }
+[data-sf-surface] ::-webkit-scrollbar-thumb:hover { background: #9dac94; }
+
+@keyframes sf-refit-pending { from { opacity: .67; } to { opacity: 1; } }
+
+@media (max-width: 1280px), (max-height: 760px) {
+  [data-sf-surface] { --sf-panel-pad: 20px; --sf-row-height: 39px; font-size: 14px; }
+  [data-sf-part='heading'] { margin-bottom: 17px; }
+  [data-sf-part='inspector'] { padding: 17px; }
+  [data-sf-composition='navigation-content'] { grid-template-columns: minmax(142px, 178px) minmax(0, 1fr); gap: 14px 20px; }
+  [data-sf-part='navigation'] [data-sf-control] { min-height: 37px; padding: 9px 11px; font-size: 13px; }
+  [data-sf-part='table'] :where(th,td) { padding: 9px 10px; }
+  [data-sf-surface='title'] [data-sf-control] { min-height: 40px; }
+  [data-sf-surface='title'] [data-sf-control][data-sf-intent='primary'] { min-height: 49px; }
+  [data-sf-surface='title'] :where(.menu-content,.title-content,.main-menu-content) { padding-block: 28px; }
+  [data-sf-surface='pause'] [data-sf-part='heading'] { margin-bottom: 23px; }
+  [data-sf-surface='pause'] [data-sf-control] { min-height: 38px; padding-block: 9px; }
+  [data-sf-part='contract'] { padding: 16px 18px; }
+  [data-sf-part='contract'] :where(.reward,.payout) { font-size: 20px; }
+}
+@media (min-aspect-ratio: 21/9) {
+  [data-sf-surface='title'] :where(.menu-content,.title-content,.main-menu-content) { margin-left: max(5vw, calc((100vw - 1900px) / 2)); }
+  .sf-refit-art--title { background-position: center, right center; background-size: cover, auto 130%; }
+  [data-sf-part='inspector'] { max-width: 520px; }
+  [data-sf-surface='help'] :where(article),[data-sf-surface='codex'] :where(article) { max-width: 88ch; }
+}
+@media (max-width: 800px) {
+  [data-sf-composition='navigation-content'] { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); gap: 12px; }
+  [data-sf-composition='navigation-content'] > [data-sf-part='navigation'],
+  [data-sf-composition='navigation-content'] > [data-sf-part='content'] { grid-column: 1; }
+  [data-sf-part='navigation'] { display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; padding: 6px; gap: 5px; scroll-padding: 8px; }
+  [data-sf-part='navigation'] [data-sf-control] { flex: 0 0 auto; max-width: 190px; }
+  [data-sf-part='navigation'] .sf-refit-icon { width: 19px; height: 19px; margin-right: 6px; }
+  [data-sf-part='inspector'] { max-width: none; padding: 16px; }
+  [data-sf-surface='title'] [data-sf-part='heading'] { font-size: clamp(54px, 11vw, 88px); }
+  [data-sf-surface='title'] :where(.menu-content,.title-content,.main-menu-content) { width: min(460px, calc(100% - 36px)); margin-inline: 18px auto; }
+  .sf-refit-art--title { background-position: center, 70% center; opacity: .8; }
+  [data-sf-part='contract'] { padding: 16px; }
+  [data-sf-surface='confirmation'] { padding: 22px; }
+}
+@media (max-width: 520px) {
+  [data-sf-surface] { --sf-panel-pad: 14px; font-size: 13px; }
+  [data-sf-part='heading'] { font-size: 29px; }
+  [data-sf-part='table'] { font-size: 12px; }
+  [data-sf-part='table'] :where(th,td) { padding: 8px 6px; }
+  [data-sf-part='table'] th { font-size: 11px; }
+  [data-sf-part='table'] [data-sf-control] { min-height: 32px; padding: 5px 7px; font-size: 12px; }
+  [data-sf-surface='confirmation'] :where(.actions,.dialog-actions,footer) { justify-content: stretch; }
+  [data-sf-surface='confirmation'] :where(.actions,.dialog-actions,footer) [data-sf-control] { flex: 1 1 110px; }
+  [data-sf-surface='flight'] [data-sf-part='target'] { padding: 7px 10px; }
+  [data-sf-surface='flight'] :where(.target-name,.target-label) { font-size: 14px; }
+}
+@media (pointer: coarse) {
+  [data-sf-control] { min-height: 44px; }
+  [data-sf-surface] :where(input[type='checkbox'],input[type='radio']) { width: 25px; height: 25px; }
+  [data-sf-surface] input[type='range'] { height: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-sf-control],[data-sf-control]::before,[data-sf-control]::after,
+  [data-sf-part='module'],[data-sf-part='table'] tbody tr { transition: none !important; animation: none !important; }
+  [data-sf-control]:active:not(:disabled):not([aria-disabled='true']) { translate: none; }
+  [data-sf-surface],[data-sf-surface] * { scroll-behavior: auto !important; }
+}
+@media (forced-colors: active) {
+  [data-sf-surface] { color: CanvasText; background: Canvas; }
+  .sf-refit-art { display: none; }
+  [data-sf-control] { color: ButtonText !important; background: ButtonFace !important; border: 1px solid ButtonText !important; }
+  [data-sf-control]::before,[data-sf-control]::after { display: none; }
+  [data-sf-control]:where([aria-pressed='true'],[aria-selected='true'],.selected,.active) { outline: 2px solid Highlight; }
+  [data-sf-control]:focus-visible { outline: 3px solid Highlight !important; }
+  [data-sf-control]:disabled { opacity: 1; color: GrayText !important; border-color: GrayText !important; }
+  [data-sf-surface] :where(input[type='checkbox'],input[type='radio']) { appearance: auto; }
+}
+
+/* A recycled status region can be empty between transactions. */
+[data-sf-part='error']:empty,[data-sf-part='success']:empty { display: none; }
