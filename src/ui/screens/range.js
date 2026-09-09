@@ -2,7 +2,15 @@ import { SHIPS } from '../../data/ships.js';
 import { ENEMY_TYPES } from '../../data/enemies.js';
 import { WEAK_POINTS_BY_CLASS } from '../../data/weakPoints.js';
 import { ATTACHMENT_DEFS } from '../../data/combatDefs.js';
+import { getPropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { getDerivedStats } from '../../systems/ships.js';
+import {
+  ELASTIC_WHIP_MAX_STRETCH_RATIO,
+  ELASTIC_WHIP_SPRING_K,
+  ELASTIC_WHIP_SPRING_ZETA,
+  whipStoredEnergy,
+  whipStrainGlow,
+} from '../../systems/tetherGameplay.js';
 import { formatBindingCode, resolveActionCodes, resolveActionLabel } from '../../systems/input.js';
 import { stopDistanceEstimate } from '../panels/massDelta.js';
 import { createRouteBeam } from '../effects/index.js';
@@ -111,6 +119,11 @@ export function sentenceCase(text) {
 }
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
+export const TRACTOR_THROW_DRILL_ID = 'tractor_throw';
+export const TRACTOR_THROW_DRILL_SECONDS = 60;
+export const ELASTIC_WHIP_DRILL_ID = 'whip_snap';
+export const ELASTIC_WHIP_DRILL_SECONDS = 60;
+
 const RAIL_ROWS = Object.freeze([
   Object.freeze({ id: 'heavy_turns_wide', group: 'MASS', rule: 'HEAVY HULLS TURN WIDE', instruction: 'Fly the loaded hull through all four gates without clipping one.' }),
   Object.freeze({ id: 'stopping_takes_room', group: 'MASS', rule: 'STOPPING TAKES ROOM', instruction: 'From flat out, stop before the wall line.' }),
@@ -119,6 +132,20 @@ const RAIL_ROWS = Object.freeze([
   Object.freeze({ id: 'boost_keep_speed', group: 'SPEED', rule: 'BOOST KEEPS THE SPEED', instruction: 'Hold boost through the far gate. Thrust alone will not make it.' }),
   Object.freeze({ id: 'draw_the_stroke', group: 'FLIGHT', rule: 'DRAW THE STROKE', instruction: 'Draw a line through the gate. The hull follows your stroke.' }),
   Object.freeze({ id: 'well_pulls_light', group: 'FIELD', rule: 'THE WELL PULLS LIGHT', instruction: 'Drop a well near the scrap. Let it pull.' }),
+  Object.freeze({
+    id: TRACTOR_THROW_DRILL_ID,
+    group: 'MASSLINE',
+    rule: 'PICK UP, SPIN, THROW',
+    instruction: 'Latch the pod, swing it up, and cut so it flies through the gate.',
+    durationSeconds: TRACTOR_THROW_DRILL_SECONDS,
+  }),
+  Object.freeze({
+    id: ELASTIC_WHIP_DRILL_ID,
+    group: 'MASSLINE',
+    rule: 'STRETCH STORES, RELEASE SNAPS',
+    instruction: 'Latch the wasp, burn away to store the stretch, and let the return yank it through the gate.',
+    durationSeconds: ELASTIC_WHIP_DRILL_SECONDS,
+  }),
 ]);
 const RAIL_INDEX_BY_ID = new Map(RAIL_ROWS.map((row, index) => [row.id, index]));
 export const RANGE_RAIL_ROWS = RAIL_ROWS;
@@ -423,6 +450,437 @@ function inBoundsBounce(player, bounds) {
 
 function speedOf(body) {
   return Math.hypot(finite(body && body.vx, 0), finite(body && body.vz, 0));
+}
+
+function tractorCruiseForShip(shipId) {
+  const driveId = SHIP_BY_ID.get(shipId) && SHIP_BY_ID.get(shipId).driveId;
+  const profile = driveId ? getPropulsionProfile(driveId) : null;
+  const combat = profile && profile.combatSpeed;
+  return Number.isFinite(combat) && combat > 0 ? combat : 95;
+}
+
+function toggleTractorThrow(sim) {
+  const tether = sim.tether;
+  const payload = sim.payload;
+  if (!tether || !payload) return 'deny';
+  if (tether.active) {
+    tether.active = false;
+    if (tether.attachedOnce) {
+      tether.releasedAfterAttach = true;
+      tether.throwSpeed = speedOf(payload);
+    }
+    return 'cut';
+  }
+  if (!tether.allowed) return 'deny';
+  const dist = Math.hypot(sim.player.x - payload.x, sim.player.z - payload.z);
+  if (dist <= tether.length + 90) {
+    tether.active = true;
+    tether.attachedOnce = true;
+    tether.prevAngle = Math.atan2(payload.z - sim.player.z, payload.x - sim.player.x);
+    tether.latchSpeed = speedOf(sim.player);
+    return 'latch';
+  }
+  return 'deny';
+}
+
+function applyTractorCarry(sim, stepS) {
+  const player = sim.player;
+  const payload = sim.payload;
+  const tether = sim.tether;
+  const dx = payload.x - player.x;
+  const dz = payload.z - player.z;
+  const dist = Math.hypot(dx, dz);
+  if (dist < 0.0001) {
+    payload.x = player.x + tether.length;
+    payload.z = player.z;
+    return;
+  }
+  const angle = Math.atan2(dz, dx);
+  if (Number.isFinite(tether.prevAngle)) {
+    tether.angVel = wrapAngle(angle - tether.prevAngle) / Math.max(1e-6, stepS);
+  } else {
+    tether.angVel = 0;
+  }
+  tether.prevAngle = angle;
+  const nx = dx / dist;
+  const nz = dz / dist;
+  const length = Math.max(24, finite(tether.length, 48));
+  payload.x = player.x + nx * length;
+  payload.z = player.z + nz * length;
+  const carry = payload.mass > 200 ? 0 : 1;
+  payload.vx = player.vx * carry + (-nz) * tether.angVel * length * carry;
+  payload.vz = player.vz * carry + nx * tether.angVel * length * carry;
+}
+
+function evaluateTractorThrow(sim) {
+  const payload = sim.payload;
+  const gate = sim.gates && sim.gates[0];
+  if (!payload || !gate) return null;
+  const previousX = sim.prevPayloadX != null ? sim.prevPayloadX : payload.x;
+  sim.prevPayloadX = payload.x;
+  if (previousX < gate.x && payload.x >= gate.x) {
+    if (Math.abs(payload.z - gate.centerZ) <= gate.tol) {
+      gate.state = 'passed';
+      gate.crossed = true;
+      const throwSpeed = Number.isFinite(sim.tether.throwSpeed) ? sim.tether.throwSpeed : speedOf(payload);
+      const cruise = sim.cruise;
+      if (sim.tether.allowed && sim.tether.attachedOnce && sim.tether.releasedAfterAttach) {
+        return {
+          kind: 'clear',
+          text: 'RULE CLEARED',
+          because: `You threw at ${Math.round(throwSpeed)}. Hitch cruises at ${Math.round(cruise)}.`,
+        };
+      }
+      if (!sim.tether.allowed) {
+        return { kind: 'fail', text: 'NO TRACTOR, NO THROW', because: 'Without the tractor the pod stays put.' };
+      }
+      return { kind: 'fail', text: 'LATCH, SPIN, CUT', because: 'Pick it up, swing it, then cut through the gate.' };
+    }
+  }
+  if (sim.timeS > TRACTOR_THROW_DRILL_SECONDS) {
+    return { kind: 'fail', text: 'OUT OF TIME', because: 'The drill teaches the throw in sixty seconds.' };
+  }
+  return null;
+}
+
+export function createTractorThrowRung(options = {}) {
+  const variant = options.variant === 'heavy' ? 'heavy' : 'light';
+  const shipId = options.shipId || 'ship_kestrel';
+  const fittings = Array.isArray(options.fittings) ? options.fittings.slice() : [];
+  const row = RAIL_ROWS.find((entry) => entry.id === TRACTOR_THROW_DRILL_ID);
+  const derived = options.derived || getDerivedStats(shipId, fittings, options.player || null);
+  const model = options.model || derived.flightModel;
+  const cruise = tractorCruiseForShip(shipId);
+  const startSpeed = cruise * 0.8;
+  const pod = {
+    x: 0,
+    z: 0,
+    vx: 0,
+    vz: 0,
+    radius: variant === 'heavy' ? 28 : 10,
+    mass: variant === 'heavy' ? 2400 : 4,
+  };
+  const drone = options.drone || {
+    id: 'training_drone',
+    name: 'Training Drone',
+    shortName: 'DRONE',
+    shipClass: 'gunship',
+    behavior: 'Holds the far corner.',
+    preferredRange: '—',
+    maxSpeed: 0,
+    turnRate: 0,
+    mass: 18,
+    radius: 10,
+    x: -360,
+    z: 260,
+    vx: 0,
+    vz: 0,
+    rot: 0,
+    baseX: -360,
+    baseZ: 260,
+    orbitRadius: 0,
+    orbitSpeed: 0,
+    orbitT: 0,
+  };
+  return {
+    id: TRACTOR_THROW_DRILL_ID,
+    rule: row.rule,
+    instruction: row.instruction,
+    variant,
+    shipId,
+    shipName: shipName(shipId),
+    fittings,
+    derived,
+    model,
+    cruise,
+    durationSeconds: TRACTOR_THROW_DRILL_SECONDS,
+    player: makePlayerFromModel(model, {
+      x: -160,
+      z: 50,
+      vx: startSpeed,
+      vz: 0,
+      rot: 0,
+      radius: derived.radius,
+      mass: derived.mass,
+    }),
+    payload: pod,
+    scrap: pod,
+    drone,
+    weakPoint: null,
+    ghostTrail: cloneTrail(options.ghostTrail || []),
+    trail: [],
+    timeS: 0,
+    verdict: null,
+    because: variant === 'heavy'
+      ? 'A heavy hull shrugs. The tractor throws light bodies.'
+      : 'Latch the pod, swing, cut. A light throw should beat cruise.',
+    progress: '',
+    headingHint: '',
+    anchor: { x: -800, z: -800, radius: 1, mass: 1, vx: 0, vz: 0 },
+    bounds: { minX: -420, maxX: 520, minZ: -280, maxZ: 300 },
+    tether: {
+      allowed: true,
+      active: false,
+      length: 150,
+      attachedOnce: false,
+      releasedAfterAttach: false,
+      prevAngle: null,
+      angVel: 0,
+      latchSpeed: 0,
+      throwSpeed: 0,
+    },
+    gates: [{ x: 300, centerZ: 30, tol: 160, state: 'pending', crossed: false }],
+  };
+}
+
+export function tickTractorThrowDrill(sim, stepS, { input = {}, toggleTether = false, advanceTime = true } = {}) {
+  if (advanceTime) sim.timeS += stepS;
+  let cueName = null;
+  if (!sim.verdict) {
+    drivePlayerStep(sim.player, sim.model, input, stepS);
+    if (toggleTether) cueName = toggleTractorThrow(sim);
+    if (sim.tether && sim.tether.active) {
+      if (sim.tether.length > 48) sim.tether.length = Math.max(48, sim.tether.length - 42 * stepS);
+      applyTractorCarry(sim, stepS);
+    } else if (sim.payload) {
+      sim.payload.x += sim.payload.vx * stepS;
+      sim.payload.z += sim.payload.vz * stepS;
+    }
+    resolveCircleCollision(sim.player, sim.payload);
+    resolveCircleCollision(sim.player, sim.drone);
+    inBoundsBounce(sim.player, sim.bounds);
+    if (sim.payload) inBoundsBounce(sim.payload, sim.bounds);
+    const verdict = evaluateTractorThrow(sim);
+    if (verdict) return { cleared: verdict.kind === 'clear', verdict, cue: cueName };
+  }
+  return { cleared: false, verdict: null, cue: cueName };
+}
+
+function waspCruise() {
+  const profile = getPropulsionProfile('drive_reaction_s');
+  const combat = profile && profile.combatSpeed;
+  return Number.isFinite(combat) && combat > 0 ? combat : 105;
+}
+
+function toggleElasticWhip(sim) {
+  const tether = sim.tether;
+  const hostile = sim.hostile;
+  if (!tether || !hostile) return 'deny';
+  if (tether.active) {
+    tether.active = false;
+    if (tether.attachedOnce) tether.releasedAfterAttach = true;
+    return 'cut';
+  }
+  if (!tether.allowed) return 'deny';
+  const dist = Math.hypot(sim.player.x - hostile.x, sim.player.z - hostile.z);
+  if (dist <= tether.restLength + 90) {
+    tether.active = true;
+    tether.attachedOnce = true;
+    tether.prevAngle = Math.atan2(hostile.z - sim.player.z, hostile.x - sim.player.x);
+    tether.latchSpeed = speedOf(sim.player);
+    return 'latch';
+  }
+  return 'deny';
+}
+
+function applyElasticWhipSpring(sim, stepS) {
+  const player = sim.player;
+  const hostile = sim.hostile;
+  const tether = sim.tether;
+  if (!player || !hostile || !tether) return;
+  const dx = hostile.x - player.x;
+  const dz = hostile.z - player.z;
+  const dist = Math.hypot(dx, dz);
+  const rest = Math.max(24, finite(tether.restLength, 80));
+  if (dist < 0.0001) {
+    hostile.x = player.x + rest;
+    hostile.z = player.z;
+    return;
+  }
+  const nx = dx / dist;
+  const nz = dz / dist;
+  const stretch = Math.max(0, dist - rest);
+  const storedEnergy = whipStoredEnergy(stretch, ELASTIC_WHIP_SPRING_K);
+  const strainGlow = whipStrainGlow(stretch, rest);
+  tether.stretch = stretch;
+  tether.storedEnergy = storedEnergy;
+  tether.strainGlow = strainGlow;
+  tether.maxStoredEnergy = Math.max(finite(tether.maxStoredEnergy, 0), storedEnergy);
+  tether.maxStrainGlow = Math.max(finite(tether.maxStrainGlow, 0), strainGlow);
+  if (stretch > rest * ELASTIC_WHIP_MAX_STRETCH_RATIO) {
+    tether.active = false;
+    tether.brokeByLoad = true;
+    tether.snapSpeed = speedOf(hostile);
+    return;
+  }
+  const massA = Math.max(1, finite(player.mass, 18));
+  const massB = Math.max(1, finite(hostile.mass, 16));
+  const mu = (massA * massB) / (massA + massB);
+  const damping = 2 * ELASTIC_WHIP_SPRING_ZETA * Math.sqrt(ELASTIC_WHIP_SPRING_K * mu);
+  const rel = (hostile.vx - player.vx) * nx + (hostile.vz - player.vz) * nz;
+  const force = Math.max(0, ELASTIC_WHIP_SPRING_K * stretch + damping * rel);
+  const impulse = force * stepS;
+  player.vx += (impulse / massA) * nx;
+  player.vz += (impulse / massA) * nz;
+  hostile.vx -= (impulse / massB) * nx;
+  hostile.vz -= (impulse / massB) * nz;
+  hostile.x += hostile.vx * stepS;
+  hostile.z += hostile.vz * stepS;
+  tether.snapSpeed = speedOf(hostile);
+}
+
+function evaluateElasticWhip(sim) {
+  const hostile = sim.hostile;
+  const gate = sim.gates && sim.gates[0];
+  const tether = sim.tether;
+  if (!hostile || !gate || !tether) return null;
+  if (tether.brokeByLoad && !gate.crossed) {
+    return { kind: 'fail', text: 'THE LINE BROKE', because: 'The whip stores only so much. Stretch past the load and it snaps empty.' };
+  }
+  const previousX = sim.prevHostileX != null ? sim.prevHostileX : hostile.x;
+  sim.prevHostileX = hostile.x;
+  if (previousX < gate.x && hostile.x >= gate.x) {
+    if (Math.abs(hostile.z - gate.centerZ) <= gate.tol) {
+      gate.state = 'passed';
+      gate.crossed = true;
+      const snapSpeed = Number.isFinite(tether.snapSpeed) ? tether.snapSpeed : speedOf(hostile);
+      const cruise = sim.cruise;
+      const stored = finite(tether.maxStoredEnergy, 0);
+      if (tether.allowed && tether.attachedOnce && stored > 0 && snapSpeed >= cruise * 0.4) {
+        return {
+          kind: 'clear',
+          text: 'RULE CLEARED',
+          because: `The return snapped at ${Math.round(snapSpeed)}. The wasp cruises at ${Math.round(cruise)}.`,
+        };
+      }
+      if (!tether.allowed) {
+        return { kind: 'fail', text: 'NO WHIP, NO SNAP', because: 'Without the whip the wasp stays put.' };
+      }
+      if (stored <= 0) {
+        return { kind: 'fail', text: 'STORE THE STRETCH', because: 'Burn away first. The snap is stored energy, not a shove.' };
+      }
+      return { kind: 'fail', text: 'THE HEAVY END WINS', because: 'A heavy hull shrugs. The whip snaps light bodies.' };
+    }
+  }
+  if (sim.timeS > ELASTIC_WHIP_DRILL_SECONDS) {
+    return { kind: 'fail', text: 'OUT OF TIME', because: 'The drill teaches the snap in sixty seconds.' };
+  }
+  return null;
+}
+
+export function createElasticWhipRung(options = {}) {
+  const variant = options.variant === 'heavy' ? 'heavy' : 'light';
+  const shipId = options.shipId || 'ship_kestrel';
+  const fittings = Array.isArray(options.fittings) ? options.fittings.slice() : [];
+  const row = RAIL_ROWS.find((entry) => entry.id === ELASTIC_WHIP_DRILL_ID);
+  const derived = options.derived || getDerivedStats(shipId, fittings, options.player || null);
+  const model = options.model || derived.flightModel;
+  const cruise = waspCruise();
+  const startSpeed = tractorCruiseForShip(shipId) * 0.55;
+  const hostile = {
+    x: 0,
+    z: 0,
+    vx: 0,
+    vz: 0,
+    radius: variant === 'heavy' ? 28 : 10,
+    mass: variant === 'heavy' ? 2400 : 16,
+    shortName: variant === 'heavy' ? 'HULK' : 'WASP',
+  };
+  const drone = options.drone || {
+    id: 'training_drone',
+    name: 'Training Drone',
+    shortName: 'DRONE',
+    shipClass: 'gunship',
+    behavior: 'Holds the far corner.',
+    preferredRange: '—',
+    maxSpeed: 0,
+    turnRate: 0,
+    mass: 18,
+    radius: 10,
+    x: -360,
+    z: 260,
+    vx: 0,
+    vz: 0,
+    rot: 0,
+    baseX: -360,
+    baseZ: 260,
+    orbitRadius: 0,
+    orbitSpeed: 0,
+    orbitT: 0,
+  };
+  return {
+    id: ELASTIC_WHIP_DRILL_ID,
+    rule: row.rule,
+    instruction: row.instruction,
+    variant,
+    shipId,
+    shipName: shipName(shipId),
+    fittings,
+    derived,
+    model,
+    cruise,
+    durationSeconds: ELASTIC_WHIP_DRILL_SECONDS,
+    player: makePlayerFromModel(model, {
+      x: 80,
+      z: 0,
+      vx: startSpeed,
+      vz: 0,
+      rot: 0,
+      radius: derived.radius,
+      mass: derived.mass,
+    }),
+    hostile,
+    drone,
+    weakPoint: null,
+    ghostTrail: cloneTrail(options.ghostTrail || []),
+    trail: [],
+    timeS: 0,
+    verdict: null,
+    because: variant === 'heavy'
+      ? 'A heavy hull shrugs. The whip snaps the light end.'
+      : 'Latch, burn away, stay on the line. The return snaps the wasp.',
+    progress: '',
+    headingHint: '',
+    anchor: { x: -800, z: -800, radius: 1, mass: 1, vx: 0, vz: 0 },
+    bounds: { minX: -220, maxX: 480, minZ: -240, maxZ: 280 },
+    tether: {
+      allowed: true,
+      active: false,
+      restLength: 80,
+      length: 80,
+      attachedOnce: false,
+      releasedAfterAttach: false,
+      brokeByLoad: false,
+      stretch: 0,
+      storedEnergy: 0,
+      maxStoredEnergy: 0,
+      strainGlow: 0,
+      maxStrainGlow: 0,
+      snapSpeed: 0,
+    },
+    gates: [{ x: 130, centerZ: 0, tol: 160, state: 'pending', crossed: false }],
+  };
+}
+
+export function tickElasticWhipDrill(sim, stepS, { input = {}, toggleTether = false, advanceTime = true } = {}) {
+  if (advanceTime) sim.timeS += stepS;
+  let cueName = null;
+  if (!sim.verdict) {
+    drivePlayerStep(sim.player, sim.model, input, stepS);
+    if (toggleTether) cueName = toggleElasticWhip(sim);
+    if (sim.tether && sim.tether.active) applyElasticWhipSpring(sim, stepS);
+    else if (sim.hostile) {
+      sim.hostile.x += sim.hostile.vx * stepS;
+      sim.hostile.z += sim.hostile.vz * stepS;
+    }
+    resolveCircleCollision(sim.player, sim.hostile);
+    resolveCircleCollision(sim.player, sim.drone);
+    inBoundsBounce(sim.player, sim.bounds);
+    if (sim.hostile) inBoundsBounce(sim.hostile, sim.bounds);
+    const verdict = evaluateElasticWhip(sim);
+    if (verdict) return { cleared: verdict.kind === 'clear', verdict, cue: cueName };
+  }
+  return { cleared: false, verdict: null, cue: cueName };
 }
 
 function mapPoint(bounds, width, height, x, z) {
@@ -1222,6 +1680,8 @@ export const rangeScreen = {
     if (sim.id === 'boost_keep_speed') return sim.variant === 'boost' ? 'no_boost' : 'boost';
     if (sim.id === 'draw_the_stroke') return sim.variant === 'stroke' ? 'keys' : 'stroke';
     if (sim.id === 'well_pulls_light') return sim.variant === 'light' ? 'heavy' : 'light';
+    if (sim.id === TRACTOR_THROW_DRILL_ID) return sim.variant === 'light' ? 'heavy' : 'light';
+    if (sim.id === ELASTIC_WHIP_DRILL_ID) return sim.variant === 'light' ? 'heavy' : 'light';
     return null;
   },
 
@@ -1478,6 +1938,28 @@ export const rangeScreen = {
       };
     }
 
+    if (row.id === TRACTOR_THROW_DRILL_ID) {
+      return createTractorThrowRung({
+        variant: variantOverride,
+        shipId,
+        fittings,
+        player: state.player,
+        derived: getDerivedStats(shipId, fittings, state.player),
+        ghostTrail,
+      });
+    }
+
+    if (row.id === ELASTIC_WHIP_DRILL_ID) {
+      return createElasticWhipRung({
+        variant: variantOverride,
+        shipId,
+        fittings,
+        player: state.player,
+        derived: getDerivedStats(shipId, fittings, state.player),
+        ghostTrail,
+      });
+    }
+
     if (row.id === 'well_pulls_light') {
       const selected = variantOverride === 'heavy' ? 'heavy' : 'light';
       const activeDerived = getDerivedStats(shipId, fittings, state.player);
@@ -1589,6 +2071,8 @@ export const rangeScreen = {
     if (sim.id === 'boost_keep_speed') return sim.variant === 'boost' ? 'Try it without boost' : 'Try it with boost';
     if (sim.id === 'draw_the_stroke') return sim.variant === 'stroke' ? 'Try it with keys' : 'Try it with a stroke';
     if (sim.id === 'well_pulls_light') return sim.variant === 'light' ? 'Try a heavy mass' : 'Try light scrap';
+    if (sim.id === TRACTOR_THROW_DRILL_ID) return sim.variant === 'light' ? 'Try a heavy hull' : 'Try the light pod';
+    if (sim.id === ELASTIC_WHIP_DRILL_ID) return sim.variant === 'light' ? 'Try a heavy hull' : 'Try the light wasp';
     return 'Try the contrast';
   },
 
@@ -1604,6 +2088,16 @@ export const rangeScreen = {
     if (sim.id === 'boost_keep_speed') return `Gate ${sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0} / 1`;
     if (sim.id === 'draw_the_stroke') return `Gate ${sim.gates && sim.gates[0] && sim.gates[0].state === 'passed' ? 1 : 0} / 1`;
     if (sim.id === 'well_pulls_light') return sim.well ? 'Well live' : 'No well';
+    if (sim.id === TRACTOR_THROW_DRILL_ID) {
+      if (!sim.tether || !sim.tether.attachedOnce) return 'Latch 0 / 1';
+      if (!sim.tether.releasedAfterAttach) return 'Swing';
+      return `Throw ${sim.gates && sim.gates[0] && sim.gates[0].crossed ? 1 : 0} / 1`;
+    }
+    if (sim.id === ELASTIC_WHIP_DRILL_ID) {
+      if (!sim.tether || !sim.tether.attachedOnce) return 'Latch 0 / 1';
+      if (!(sim.tether.maxStoredEnergy > 0)) return 'Stretch';
+      return `Snap ${sim.gates && sim.gates[0] && sim.gates[0].crossed ? 1 : 0} / 1`;
+    }
     return '';
   },
 
@@ -1721,7 +2215,10 @@ export const rangeScreen = {
       || this._held.strafeLeft || this._held.strafeRight || this._held.boost || this._held.fireKey || this._held.firePointer;
     const strokeLive = this._sim.stroke && (this._sim.stroke.drawing || this._sim.stroke.flying);
     const wellLive = !!(this._sim.well && this._sim.scrap);
-    return !(playerStill || droneStill || inputHeld || strokeLive || wellLive);
+    const payloadStill = (this._sim.payload && speedOf(this._sim.payload) > 0.45)
+      || (this._sim.id === TRACTOR_THROW_DRILL_ID && this._sim.scrap && speedOf(this._sim.scrap) > 0.45)
+      || (this._sim.id === ELASTIC_WHIP_DRILL_ID && this._sim.hostile && speedOf(this._sim.hostile) > 0.45);
+    return !(playerStill || droneStill || inputHeld || strokeLive || wellLive || payloadStill);
   },
 
   _currentInput() {
@@ -1755,6 +2252,33 @@ export const rangeScreen = {
     if (!sim.verdict) {
       const input = this._currentInput();
       if (sim.id === 'boost_keep_speed' && sim.boostAllowed === false) input.boost = false;
+      if (sim.id === TRACTOR_THROW_DRILL_ID) {
+        const toggleTether = this._toggleTetherQueued;
+        this._toggleTetherQueued = false;
+        this._deployWellQueued = false;
+        const result = tickTractorThrowDrill(sim, stepS, { input, toggleTether, advanceTime: false });
+        if (result.cue === 'latch' || result.cue === 'cut') cue('confirm');
+        else if (result.cue === 'deny') cue('deny');
+        sim.trail.push({ x: sim.player.x, z: sim.player.z });
+        if (sim.trail.length > TRAIL_MAX) sim.trail.splice(0, sim.trail.length - TRAIL_MAX);
+        if (result.verdict) {
+          if (result.cleared) this._markCleared(sim.id);
+          this._setVerdict(sim, result.verdict.kind, result.verdict.text, result.verdict.because);
+        }
+      } else if (sim.id === ELASTIC_WHIP_DRILL_ID) {
+        const toggleTether = this._toggleTetherQueued;
+        this._toggleTetherQueued = false;
+        this._deployWellQueued = false;
+        const result = tickElasticWhipDrill(sim, stepS, { input, toggleTether, advanceTime: false });
+        if (result.cue === 'latch' || result.cue === 'cut') cue('confirm');
+        else if (result.cue === 'deny') cue('deny');
+        sim.trail.push({ x: sim.player.x, z: sim.player.z });
+        if (sim.trail.length > TRAIL_MAX) sim.trail.splice(0, sim.trail.length - TRAIL_MAX);
+        if (result.verdict) {
+          if (result.cleared) this._markCleared(sim.id);
+          this._setVerdict(sim, result.verdict.kind, result.verdict.text, result.verdict.because);
+        }
+      } else {
       const followStroke = sim.id === 'draw_the_stroke' && sim.stroke && sim.stroke.flying;
       if (!followStroke) drivePlayerStep(sim.player, sim.model, input, stepS);
       updateDroneMotion(sim, stepS);
@@ -1816,6 +2340,7 @@ export const rangeScreen = {
       else if (sim.id === 'boost_keep_speed') this._stepBoostRung(sim, input);
       else if (sim.id === 'draw_the_stroke') this._stepStrokeRung(sim, stepS);
       else if (sim.id === 'well_pulls_light') this._stepWellRung(sim, stepS);
+      }
     }
 
     this._syncChrome();
@@ -2079,6 +2604,10 @@ export const rangeScreen = {
       sim.drone.vz = 0;
       sim.drone.orbitSpeed = 0;
     }
+    if (sim.payload) {
+      sim.payload.vx = 0;
+      sim.payload.vz = 0;
+    }
     if (kind === 'clear') cue('confirm');
     else cue('deny');
   },
@@ -2119,11 +2648,13 @@ export const rangeScreen = {
     if (sim.id === 'heavy_turns_wide') this._drawHeavyGates(ctx2d, sim, width, height, forced, roles);
     if (sim.id === 'stopping_takes_room') this._drawStopLine(ctx2d, sim, width, height, forced, roles);
     if (sim.id === 'swing_do_not_pull') this._drawSwingGate(ctx2d, sim, width, height, forced, roles);
-    if (sim.id === 'boost_keep_speed' || sim.id === 'draw_the_stroke') {
+    if (sim.id === 'boost_keep_speed' || sim.id === 'draw_the_stroke' || sim.id === TRACTOR_THROW_DRILL_ID || sim.id === ELASTIC_WHIP_DRILL_ID) {
       this._drawHeavyGates(ctx2d, sim, width, height, forced, roles);
     }
 
-    if (sim.anchor) drawAsteroid(ctx2d, sim.anchor, sim.bounds, width, height, forced, roles);
+    if (sim.anchor && sim.id !== TRACTOR_THROW_DRILL_ID && sim.id !== ELASTIC_WHIP_DRILL_ID) {
+      drawAsteroid(ctx2d, sim.anchor, sim.bounds, width, height, forced, roles);
+    }
     if (sim.scrap) drawAsteroid(ctx2d, sim.scrap, sim.bounds, width, height, forced, roles);
 
     if (sim.stroke && sim.stroke.points && sim.stroke.points.length > 1) {
@@ -2152,6 +2683,59 @@ export const rangeScreen = {
       ctx2d.moveTo(a.x, a.y);
       ctx2d.lineTo(p.x, p.y);
       ctx2d.stroke();
+      ctx2d.restore();
+    }
+
+    if (sim.id === TRACTOR_THROW_DRILL_ID && sim.tether && sim.tether.active && sim.payload) {
+      const a = mapPoint(sim.bounds, width, height, sim.payload.x, sim.payload.z);
+      const p = mapPoint(sim.bounds, width, height, sim.player.x, sim.player.z);
+      ctx2d.save();
+      ctx2d.strokeStyle = forced ? 'CanvasText' : roles.you;
+      ctx2d.lineWidth = forced ? 2 : 2.6;
+      ctx2d.beginPath();
+      ctx2d.moveTo(a.x, a.y);
+      ctx2d.lineTo(p.x, p.y);
+      ctx2d.stroke();
+      ctx2d.restore();
+    }
+
+    if (sim.id === ELASTIC_WHIP_DRILL_ID && sim.tether && sim.tether.active && sim.hostile) {
+      const a = mapPoint(sim.bounds, width, height, sim.hostile.x, sim.hostile.z);
+      const p = mapPoint(sim.bounds, width, height, sim.player.x, sim.player.z);
+      const glow = clamp(finite(sim.tether.strainGlow, 0), 0, 1);
+      ctx2d.save();
+      ctx2d.strokeStyle = forced ? 'CanvasText' : (glow >= 0.35 ? roles.goal : roles.you);
+      ctx2d.lineWidth = forced ? 2 : 2.2 + glow * 3.4;
+      ctx2d.globalAlpha = reduced ? 1 : 0.72 + glow * 0.28;
+      ctx2d.beginPath();
+      ctx2d.moveTo(a.x, a.y);
+      ctx2d.lineTo(p.x, p.y);
+      ctx2d.stroke();
+      ctx2d.restore();
+    }
+
+    if (sim.id === ELASTIC_WHIP_DRILL_ID && sim.hostile) {
+      const point = mapPoint(sim.bounds, width, height, sim.hostile.x, sim.hostile.z);
+      const radius = Math.max(8, finite(sim.hostile.radius, 10) * 0.45);
+      ctx2d.save();
+      ctx2d.beginPath();
+      ctx2d.moveTo(point.x, point.y - radius);
+      ctx2d.lineTo(point.x + radius, point.y);
+      ctx2d.lineTo(point.x, point.y + radius);
+      ctx2d.lineTo(point.x - radius, point.y);
+      ctx2d.closePath();
+      if (!forced) {
+        ctx2d.fillStyle = roles.surface;
+        ctx2d.fill();
+      }
+      ctx2d.strokeStyle = forced ? 'CanvasText' : roles.foe;
+      ctx2d.lineWidth = 1.6;
+      ctx2d.stroke();
+      ctx2d.font = canvasFont('600', 12, 'body');
+      ctx2d.fillStyle = forced ? 'CanvasText' : roles.paper;
+      ctx2d.textAlign = 'center';
+      ctx2d.textBaseline = 'top';
+      ctx2d.fillText(sim.hostile.shortName || 'WASP', point.x, point.y + radius + 6);
       ctx2d.restore();
     }
 
