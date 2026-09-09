@@ -26,6 +26,12 @@ const PLAYER_POS = Object.freeze({ x: -56, z: 0 });
 const CHAIN_TICKS = 360;
 const NEED = 3;
 const PASS_SEEDS = 4;
+const EVENT_ORDER = Object.freeze({
+  'chain:slam': 0,
+  'charge:detonated': 1,
+  'combat:tumbled': 2,
+  'combat:collisionConsequence': 3,
+});
 
 function withFieldsFlag(fn) {
   const prev = FIELD_FLAGS.enabled;
@@ -214,30 +220,49 @@ async function runSeed(seed, jitterZ) {
         chainStarted: false,
         entityOf: (id) => state.entities.get(id),
       };
-      let secondaries = [];
-      const feed = (name, rows) => {
-        for (let i = 0; i < rows.length; i++) {
-          secondaries = mergeClusterSecondaries(secondaries, classifyClusterReceipt(name, rows[i], ctx));
-        }
+      // Tick order matches the live moment detector. Batching detonations first would
+      // mark the chain started and then credit earlier collision tumbles as secondaries.
+      const timeline = [];
+      const pushAll = (name, rows) => {
+        for (let i = 0; i < rows.length; i++) timeline.push({ name, row: rows[i] });
       };
-      feed('chain:slam', rec.slams);
-      feed('charge:detonated', rec.detonations);
-      feed('combat:tumbled', rec.tumbled);
-      feed('combat:collisionConsequence', rec.collisions);
+      pushAll('chain:slam', rec.slams);
+      pushAll('charge:detonated', rec.detonations);
+      pushAll('combat:tumbled', rec.tumbled);
+      pushAll('combat:collisionConsequence', rec.collisions);
+      timeline.sort((a, b) => {
+        const tick = (a.row.tick | 0) - (b.row.tick | 0);
+        if (tick !== 0) return tick;
+        return eventOrder(a.name) - eventOrder(b.name);
+      });
+      let secondaries = [];
+      for (let i = 0; i < timeline.length; i++) {
+        secondaries = mergeClusterSecondaries(
+          secondaries,
+          classifyClusterReceipt(timeline[i].name, timeline[i].row, ctx),
+        );
+      }
 
       const rating = rateClusterMoment(secondaries);
+      const live = rec.ratings[0] || null;
+      const liveFinal = fieldsRt.cluster && Number.isFinite(fieldsRt.cluster.count)
+        ? fieldsRt.cluster.count
+        : 0;
       const kinds = rating.kinds.join(',');
       return {
         seed,
         secondaries: rating.count,
         kinds,
         kindList: rating.kinds,
-        pass: rating.count >= NEED,
+        pass: rating.count >= NEED && liveFinal >= NEED && !!live,
         detonations: rec.detonations.length,
         slams: rec.slams.length,
         flings: rec.flings.length,
         captures: rec.captures.length,
-        ratedEvent: rec.ratings.length > 0,
+        ratedEvent: !!live,
+        liveCount: live ? live.count : 0,
+        liveFinal,
+        liveKinds: live && live.kinds ? live.kinds.join(',') : '',
         tricks: rec.tricks.slice(),
         causal: secondaries.map((row) => `${row.kind}@t${row.tick}: ${row.detail}`),
         ticks,
@@ -250,11 +275,16 @@ async function runSeed(seed, jitterZ) {
   });
 }
 
+function eventOrder(name) {
+  const order = EVENT_ORDER[name];
+  return Number.isFinite(order) ? order : 9;
+}
+
 function printTable(rows) {
   console.log('PQ-147.03 cluster-and-detonate seed table');
-  console.log('seed\tsecondaries\tkinds\tpass');
+  console.log('seed\tsecondaries\tliveFirst\tliveFinal\tkinds\tpass');
   for (const row of rows) {
-    console.log(`${row.seed}\t${row.secondaries}\t${row.kinds || '-'}\t${row.pass ? 'YES' : 'no'}`);
+    console.log(`${row.seed}\t${row.secondaries}\t${row.liveCount}\t${row.liveFinal}\t${row.kinds || '-'}\t${row.pass ? 'YES' : 'no'}`);
   }
   const passed = rows.filter((row) => row.pass).length;
   console.log(`${passed}/${rows.length} seeds ≥ ${NEED} secondaries`);
@@ -309,7 +339,8 @@ test('PQ-147.03: well + primed light yields ≥ 3 secondaries in 4 of 5 seeds', 
   for (let i = 0; i < SEEDS.length; i++) {
     const row = await runSeed(SEEDS[i], JITTER[i]);
     rows.push(row);
-    t.diagnostic(`seed ${row.seed}: ${row.secondaries} [${row.kinds}] det=${row.detonations} fling=${row.flings}`);
+    t.diagnostic(`seed ${row.seed}: ${row.secondaries} liveFirst=${row.liveCount} liveFinal=${row.liveFinal} [${row.kinds}] det=${row.detonations} fling=${row.flings} rated=${row.ratedEvent}`);
+    t.diagnostic(`  ${row.causal.join(' | ')}`);
   }
   const passed = printTable(rows);
   assert.ok(passed >= PASS_SEEDS,
