@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { createBus } from '../src/core/eventBus.js';
 import { OUTPOSTS } from '../src/data/automation.js';
 import { automation } from '../src/systems/automation.js';
+import { forEachDressingRow } from '../src/world/dressingTable.js';
 
 const HELIOS = 'sector_helios_prime';
 const CERES = 'sector_ceres_belt';
@@ -146,13 +147,22 @@ function attachRuntimeEntity(harness, outpost) {
   return entity;
 }
 
-function liveOutpostEntities(harness, outpostId = null) {
-  return harness.state.entityList.filter((entity) => entity
-    && entity.alive
-    && entity.type === 'fx'
-    && entity.data
+function matchesOutpost(entity, outpostId) {
+  return !!(entity && entity.alive !== false && entity.data
     && entity.data.automationOutpostId != null
     && (outpostId == null || entity.data.automationOutpostId === outpostId));
+}
+
+function liveOutpostListEntities(harness, outpostId = null) {
+  return (harness.state.entityList || []).filter((entity) => matchesOutpost(entity, outpostId));
+}
+
+function liveOutpostEntities(harness, outpostId = null) {
+  const live = liveOutpostListEntities(harness, outpostId);
+  forEachDressingRow(harness.state, (row) => {
+    if (matchesOutpost(row, outpostId)) live.push(row);
+  });
+  return live;
 }
 
 test('buildOutpost anchors the ledger near the current global player or asteroid field, never origin', () => {
@@ -198,13 +208,15 @@ test('a built current-sector outpost owns exactly one authored place entity thro
   h.inst.update(1 / 60, h.state);
 
   const live = liveOutpostEntities(h, outpost.id);
-  assert.equal(live.length, 1, 'build, enter, and update must converge on one live outpost entity');
+  assert.equal(live.length, 1, 'build, enter, and update must converge on one live outpost visual');
   const entity = live[0];
+  assert.equal(entity.dressingResident, true, 'the outpost place is dressing, not a combat-list entity');
+  assert.equal(liveOutpostListEntities(h, outpost.id).length, 0);
   assert.equal(entity.data.placeId, REFINERY_PLACE_ID, 'refinery uses its authored outpost place');
   assert.equal(entity.data.defId, outpost.defId);
   assert.equal(entity.data.sectorId, HELIOS);
   assert.equal(entity.homeSectorId || entity.data.homeSectorId, HELIOS);
-  assert.equal(outpost.entityId, entity.id, 'ledger stores only the current runtime entity id');
+  assert.equal(outpost.entityId, entity.id, 'ledger stores only the current runtime visual id');
 });
 
 test('presence reconciliation removes duplicate live entities for one outpost', () => {

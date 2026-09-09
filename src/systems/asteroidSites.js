@@ -53,6 +53,7 @@ import {
   SURVEY_LIMITS, selectSurveyTarget, surveyRevealFrontier, validateSurveyTarget,
   normalizeSurveyRecord,
 } from './siteSurvey.js';
+import { getDressingRow, insertDressingRow } from '../world/dressingTable.js';
 
 const WORLD_SITE_PAYLOAD_CAPTURE_TICKS = 15;
 
@@ -1465,24 +1466,20 @@ export const asteroidSites = {
     const state = this.state;
     const rt = this._rt.get(site.id) || {};
     if (rt.beaconId != null) {
-      const existing = state.entities.get(rt.beaconId);
+      const existing = (state.entities && state.entities.get(rt.beaconId))
+        || getDressingRow(state, rt.beaconId);
       if (existing && existing.alive !== false && existing.data && existing.data.siteBeacon === site.id) return;
     }
     const rock = state.entities.get(site.asteroidId);
-    const spawnEntity = this.ctx && this.ctx.helpers && this.ctx.helpers.spawnEntity;
-    if (!rock || typeof spawnEntity !== 'function') return;
+    if (!rock) return;
     const ang = ((hash32(site.id) % 628) / 100);
     const dist = (rock.radius || 8) + 7;
-    const beacon = spawnEntity({
+    const beacon = insertDressingRow(state, {
       type: 'fx',
-      factionId: 'faction_player',
       pos: { x: rock.pos.x + Math.cos(ang) * dist, z: rock.pos.z + Math.sin(ang) * dist },
       rot: ang + Math.PI,
       radius: 6,
-      mass: 0,
-      collides: false,
-      ttl: Infinity,
-      flags: { noInterp: true },
+      homeSectorId: site.sectorId,
       data: {
         placeId: 'place_claim_outpost_relay',
         // The relay GLB is authored at outpost scale (automation spawns it full-size as a
@@ -1495,6 +1492,7 @@ export const asteroidSites = {
         name: 'Massline Site Relay',
         visualRadius: 6,
         placeRadius: 6,
+        factionId: 'faction_player',
       },
     });
     if (beacon) {

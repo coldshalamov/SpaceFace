@@ -60,6 +60,12 @@ import {
 } from '../data/wingOrders.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { droneBayCompatibleSlotCount, droneBayCountForFittings } from './ships.js';
+import {
+  dropDressingRow,
+  forEachDressingRow,
+  getDressingRow,
+  insertDressingRow,
+} from '../world/dressingTable.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const compareStableId = (left, right) => {
@@ -1154,10 +1160,22 @@ export const automation = {
     }
   },
 
+  _collectOutpostPresence(o) {
+    const live = [];
+    for (const entity of (this.state && this.state.entityList) || []) {
+      if (entity && entity.alive !== false && entity.data
+        && entity.data.automationOutpostId === o.id) {
+        live.push(entity);
+      }
+    }
+    forEachDressingRow(this.state, (row) => {
+      if (row.data && row.data.automationOutpostId === o.id) live.push(row);
+    });
+    return live;
+  },
+
   _spawnOutpostEntity(o, reconcile = true) {
-    if (!o) return null;
-    const spawn = this.helpers && this.helpers.spawnEntity;
-    if (!spawn) return null;
+    if (!o || !this.state) return null;
 
     this._ensureOutpostPosition(o);
 
@@ -1169,11 +1187,9 @@ export const automation = {
     }
     if (o.entityId != null) delete o.entityId;
 
-    // Reconcile from the entity list as well as the transient id. This makes repeated enter/load
-    // events idempotent and cleans up a duplicate if an earlier partial transition spawned twice.
-    const live = ((this.state && this.state.entityList) || [])
-      .filter((entity) => entity && entity.alive !== false
-        && entity.data && entity.data.automationOutpostId === o.id);
+    // Reconcile leftover live entities and dressing rows. Repeated enter/load must stay
+    // idempotent and collapse a duplicate if an earlier partial transition spawned twice.
+    const live = this._collectOutpostPresence(o);
     if (live.length) {
       const canonical = tracked && live.includes(tracked) ? tracked : live[0];
       o.entityId = canonical.id;
@@ -1186,15 +1202,11 @@ export const automation = {
 
     const visual = OUTPOST_VISUAL_BY_DEF[o.defId]
       || { placeId: 'place_claim_outpost_base', claimSpecId: null };
-    const entity = spawn({
+    const entity = insertDressingRow(this.state, {
       type: 'fx',
-      team: 0,
-      factionId: 'faction_player',
       pos: { x: Number(o.pos && o.pos.x) || 0, z: Number(o.pos && o.pos.z) || 0 },
       rot: this._outpostOrientation(o),
       radius: 24,
-      mass: 1e6,
-      collides: false,
       homeSectorId: o.sectorId,
       data: {
         kind: 'automation_outpost',
@@ -1206,6 +1218,7 @@ export const automation = {
         landmarkGlb: visual.placeId,
         claimSpecId: visual.claimSpecId,
         claimOwned: true,
+        factionId: 'faction_player',
       },
     });
     if (entity) o.entityId = entity.id;
@@ -1217,27 +1230,33 @@ export const automation = {
     const ids = new Set();
     if (o.entityId != null) ids.add(o.entityId);
     if (reconcile) {
-      for (const entity of (this.state && this.state.entityList) || []) {
-        if (entity && entity.alive !== false && entity.data
-          && entity.data.automationOutpostId === o.id) ids.add(entity.id);
-      }
+      for (const entity of this._collectOutpostPresence(o)) ids.add(entity.id);
     }
-    if (!ids.size) return;
     for (const id of ids) {
       const entity = this._getRuntimeEntity(id);
       if (entity) this._removeRuntimeEntity(entity);
+      else dropDressingRow(this.state, id);
     }
     delete o.entityId;
   },
 
   _getRuntimeEntity(id) {
     if (id == null) return null;
-    if (this.helpers && this.helpers.getEntity) return this.helpers.getEntity(id);
-    return this.state.entities && this.state.entities.get(id) || null;
+    if (this.helpers && this.helpers.getEntity) {
+      const ent = this.helpers.getEntity(id);
+      if (ent) return ent;
+    }
+    const fromMap = this.state.entities && this.state.entities.get(id) || null;
+    if (fromMap) return fromMap;
+    return getDressingRow(this.state, id);
   },
 
   _removeRuntimeEntity(entity) {
     if (!entity) return;
+    if (entity.dressingResident || getDressingRow(this.state, entity.id) === entity) {
+      dropDressingRow(this.state, entity.id);
+      return;
+    }
     if (this.helpers && this.helpers.removeEntity) this.helpers.removeEntity(entity.id);
     else entity.alive = false;
   },

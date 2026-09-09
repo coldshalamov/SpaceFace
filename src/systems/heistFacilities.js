@@ -13,6 +13,12 @@ import {
   PQ019_HEIST_SECTOR_ID,
   projectPq019FacilitySocket,
 } from '../data/heistFacilities.js';
+import {
+  dropDressingRow,
+  forEachDressingRow,
+  getDressingRow,
+  insertDressingRow,
+} from '../world/dressingTable.js';
 
 const HEIST_FACILITIES_SCHEMA_VERSION = 1;
 const MAX_CANDIDATE_RECEIPTS = 32;
@@ -104,6 +110,13 @@ function entityIsAlive(state, id) {
   if (id == null || !state?.entities?.get) return null;
   const entity = state.entities.get(id);
   return entity && entity.alive !== false ? entity : null;
+}
+
+function liveOwnedThing(state, id) {
+  const entity = entityIsAlive(state, id);
+  if (entity) return entity;
+  const row = getDressingRow(state, id);
+  return row && row.alive !== false ? row : null;
 }
 
 function stableNumber(value) {
@@ -249,7 +262,7 @@ export const heistFacilities = {
     let created = 0;
     for (const facility of Object.values(PQ019_FACILITIES)) {
       const record = this._facilityRecord(facility.id);
-      let visual = entityIsAlive(this.state, record.visualEntityId)
+      let visual = liveOwnedThing(this.state, record.visualEntityId)
         || this._findOwnedEntity(facility.id, `${facility.role}_visual`);
       if (!visual) {
         visual = this._spawnFacilityVisual(facility);
@@ -333,11 +346,20 @@ export const heistFacilities = {
   },
 
   _findOwnedEntity(facilityId, role) {
-    return this.state.entityList.find((entity) => (
+    const fromList = (this.state.entityList || []).find((entity) => (
       entity?.alive !== false
       && entity.data?.heistFacilityId === facilityId
       && entity.data?.heistFacilityRole === role
-    )) || null;
+    ));
+    if (fromList) return fromList;
+    let found = null;
+    forEachDressingRow(this.state, (row) => {
+      if (found) return;
+      if (row.data?.heistFacilityId === facilityId && row.data?.heistFacilityRole === role) {
+        found = row;
+      }
+    });
+    return found;
   },
 
   _global(localPos) {
@@ -345,16 +367,11 @@ export const heistFacilities = {
   },
 
   _spawnFacilityVisual(facility) {
-    return this.helpers.spawnEntity({
+    return insertDressingRow(this.state, {
       type: 'fx',
-      factionId: facility.factionId,
       pos: this._global(facility.localPos),
       rot: facility.rot,
       radius: Math.max(20, facility.headRadius * 2),
-      mass: 0,
-      collides: false,
-      ttl: Infinity,
-      flags: { noInterp: true },
       homeSectorId: facility.sectorId,
       data: {
         heistFacilityId: facility.id,
@@ -367,6 +384,7 @@ export const heistFacilities = {
         name: facility.name,
         worldDressing: true,
         placeRadius: Math.max(20, facility.headRadius * 2),
+        factionId: facility.factionId,
       },
     });
   },
@@ -419,7 +437,11 @@ export const heistFacilities = {
 
     for (const facility of Object.values(PQ019_FACILITIES)) {
       const record = this._facilityRecord(facility.id);
-      if (record.visualEntityId != null) this.helpers.removeEntity(record.visualEntityId);
+      if (record.visualEntityId != null) {
+        if (!dropDressingRow(this.state, record.visualEntityId)) {
+          this.helpers.removeEntity(record.visualEntityId);
+        }
+      }
       if (record.headEntityId != null) this.helpers.removeEntity(record.headEntityId);
       record.visualEntityId = null;
       record.headEntityId = null;
@@ -523,11 +545,31 @@ export const heistFacilities = {
   _onEntityDestroyed(id) {
     if (id == null) return;
     const owned = this.state.heistFacilities;
-    if (owned.capsuleEntityId === id) owned.capsuleEntityId = null;
-    if (owned.schedule?.capsuleEntityId === id) owned.schedule.capsuleEntityId = null;
+    const current = this.state.entities?.get(id);
+    const dressing = getDressingRow(this.state, id);
+    const stillOurs = (entity, role) => !!(
+      entity
+      && entity.alive !== false
+      && entity.data?.heistFacilityRole === role
+    );
+    if (owned.capsuleEntityId === id && !stillOurs(current, 'cargo_capsule')) {
+      owned.capsuleEntityId = null;
+    }
+    if (owned.schedule?.capsuleEntityId === id && !stillOurs(current, 'cargo_capsule')) {
+      owned.schedule.capsuleEntityId = null;
+    }
     for (const record of Object.values(owned.facilities)) {
-      if (record.visualEntityId === id) record.visualEntityId = null;
-      if (record.headEntityId === id) record.headEntityId = null;
+      const facility = PQ019_FACILITIES[record.facilityId];
+      const visualRole = facility ? `${facility.role}_visual` : null;
+      const headRole = facility ? `${facility.role}_head` : null;
+      if (record.visualEntityId === id
+        && !stillOurs(current, visualRole)
+        && !stillOurs(dressing, visualRole)) {
+        record.visualEntityId = null;
+      }
+      if (record.headEntityId === id && !stillOurs(current, headRole)) {
+        record.headEntityId = null;
+      }
     }
   },
 

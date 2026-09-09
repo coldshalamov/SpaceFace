@@ -24,6 +24,7 @@ import {
   restoreFeatureMaps,
   snapshotFeatureMaps,
 } from '../src/data/featureFlags.js';
+import { forEachDressingRow } from '../src/world/dressingTable.js';
 
 // Canonical authored projection: root + rotate((socket - visualCenter) * scale).
 // Pinning these independently keeps the physical custody envelope from agreeing
@@ -89,8 +90,19 @@ function boot(seed = 19019) {
 }
 
 function roleEntities(state, role) {
-  return state.entityList.filter((entity) => (
-    entity?.alive !== false && entity.data?.heistFacilityRole === role
+  const live = [];
+  for (const entity of state.entityList || []) {
+    if (entity?.alive !== false && entity.data?.heistFacilityRole === role) live.push(entity);
+  }
+  forEachDressingRow(state, (row) => {
+    if (row.data?.heistFacilityRole === role) live.push(row);
+  });
+  return live;
+}
+
+function liveOwnedHeist(state) {
+  return (state.entityList || []).filter((entity) => (
+    entity?.alive !== false && entity.data?.runtimeOwner === 'heistFacilities'
   ));
 }
 
@@ -140,6 +152,8 @@ test('Tethys exposes three ordinary delegated Atlas POIs and materializes their 
     const visual = visuals[0];
     assert.equal(visual.type, 'fx');
     assert.equal(visual.collides, false);
+    assert.equal(visual.dressingResident, true, `${facility.id} visual is dressing, not a live combat entity`);
+    assert.equal(t.state.entities.has(visual.id), false);
     assert.equal(visual.data.placeId, facility.placeId);
     assert.equal(visual.data.placeScale, facility.placeScale);
 
@@ -164,11 +178,16 @@ test('Tethys exposes three ordinary delegated Atlas POIs and materializes their 
     assert.ok(Math.abs(distance - leg.distance) < 1e-9, `${leg.from} -> ${leg.to} remains at its pinned length`);
   }
 
-  const owned = t.state.entityList.filter((entity) => (
-    entity?.alive !== false && entity.data?.runtimeOwner === 'heistFacilities'
-  ));
-  assert.equal(owned.length, 6, 'the idle route is bounded to three visual roots and three socket heads');
+  const owned = liveOwnedHeist(t.state);
+  assert.equal(owned.length, 3, 'the idle live list is the three colliding socket heads');
   assert.equal(owned.filter((entity) => entity.collides).length, 3, 'only the three socket heads collide while idle');
+  let dressingVisuals = 0;
+  forEachDressingRow(t.state, (row) => {
+    if (row.data?.runtimeOwner === 'heistFacilities' && String(row.data.heistFacilityRole || '').endsWith('_visual')) {
+      dressingVisuals += 1;
+    }
+  });
+  assert.equal(dressingVisuals, 3, 'the three authored roots sit on the dressing table');
 
   t.system.materializeForSector(PQ019_HEIST_SECTOR_ID);
   for (const facility of Object.values(PQ019_FACILITIES)) {
@@ -218,10 +237,8 @@ test('schedule intent is deterministic, idempotent, competing-safe, and launches
   assert.deepEqual(t.state.player.cargo, cargoBefore, 'capsule never enters hidden player cargo');
   assert.equal(t.state.heistFacilities.schedule.status, 'launched');
   assert.equal(t.events.filter((entry) => entry.name === 'heist:capsuleLaunched').length, 1);
-  const ownedAfterLaunch = t.state.entityList.filter((entity) => (
-    entity?.alive !== false && entity.data?.runtimeOwner === 'heistFacilities'
-  ));
-  assert.equal(ownedAfterLaunch.length, 7, 'one active schedule adds exactly one capsule');
+  const ownedAfterLaunch = liveOwnedHeist(t.state);
+  assert.equal(ownedAfterLaunch.length, 4, 'one active schedule adds exactly one capsule beside the three heads');
   assert.equal(ownedAfterLaunch.filter((entity) => entity.collides).length, 4);
 
   for (let index = 0; index < 30; index++) t.sim.step(SIM_DT);

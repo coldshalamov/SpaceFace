@@ -91,6 +91,17 @@ function makeHarness({ spawnNull = false } = {}) {
   return { sys, state, bus, entities, helpers, spawned };
 }
 
+function siteBeacons(h, siteId) {
+  const rows = [];
+  const dressing = h.state.world && h.state.world.dressing;
+  if (dressing && Array.isArray(dressing.rows)) {
+    for (const row of dressing.rows) {
+      if (row && row.alive !== false && row.data && row.data.siteBeacon === siteId) rows.push(row);
+    }
+  }
+  return rows;
+}
+
 function addAsteroid(h, id = 42) {
   const ent = {
     id, type: 'asteroid', alive: true, pos: { x: 120, z: -40 }, radius: 9,
@@ -412,6 +423,7 @@ test('first real positive output advances committed -> producing: one receipt, e
   assert.equal(site.survey.lifecycle, 'committed');
   h.state.drill = null; // production runs on sim time
   assert.equal(h.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 0);
+  assert.equal(siteBeacons(h, site.id).length, 0);
   let producingTick = -1;
   for (let i = 0; i < 120 && producingTick < 0; i++) {
     tick(h);
@@ -430,14 +442,16 @@ test('first real positive output advances committed -> producing: one receipt, e
   assert.ok(receipt.sourceMutationId.includes(extractorId));
   // Exactly one authoritative receipt, exactly one relay with the PQ-022 accepted identity.
   assert.equal(h.bus.events.filter((e) => e.name === 'site:producing').length, 1);
-  const beacons = h.spawned.filter((e) => e.data && e.data.siteBeacon === site.id);
+  const beacons = siteBeacons(h, site.id);
   assert.equal(beacons.length, 1);
   assert.equal(beacons[0].data.placeId, 'place_claim_outpost_relay');
   assert.equal(beacons[0].type, 'fx');
+  assert.equal(beacons[0].dressingResident, true);
+  assert.equal(h.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 0);
   // Further output never re-fires: the lifecycle is monotonic, replays idempotent.
   tick(h, 60);
   assert.equal(h.bus.events.filter((e) => e.name === 'site:producing').length, 1);
-  assert.equal(h.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 1);
+  assert.equal(siteBeacons(h, site.id).length, 1);
   const extractor = site.machines.find((m) => m.id === extractorId);
   assert.equal(h.sys._emitProductionReceipt(site, extractor, { outputId: 'cmdty_silicate', qty: 1, recipeId: null }), false);
   const replay = h.sys._acceptProductionReceipt(site, receipt);
@@ -471,6 +485,7 @@ test('receipt validation rejects forgery classes (no self-minted production)', (
   assert.equal(h.sys._emitProductionReceipt(site, core, { outputId: 'cmdty_silicate', qty: 1 }), false);
   assert.equal(site.survey.lifecycle, 'committed', 'forgeries never advance the lifecycle');
   assert.ok(!h.spawned.some((e) => e.data && e.data.siteBeacon === site.id));
+  assert.equal(siteBeacons(h, site.id).length, 0);
   assert.ok(!h.bus.events.some((e) => e.name === 'site:producing'));
 });
 
@@ -492,7 +507,8 @@ test('legacy anchored site without a survey converges at its first real output',
   assert.deepEqual(site.survey.cells, want.cells);
   assert.deepEqual(site.survey.revealedCells, []);
   assert.ok(site.survey.receipt);
-  assert.equal(h.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 1);
+  assert.equal(siteBeacons(h, site.id).length, 1);
+  assert.equal(h.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 0);
 });
 
 // ------------------------------------------------------------------ save / Continue / re-entry
@@ -513,11 +529,12 @@ test('save/Continue preserves producing truth; re-entry re-ensures exactly one r
   assert.ok(site2, 'anchored site survived the save');
   assert.deepEqual(site2.survey, before, 'survey record is byte-identical after Continue');
   assert.equal(site2.survey.lifecycle, 'producing');
-  assert.equal(h2.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 0);
+  assert.equal(siteBeacons(h2, site.id).length, 0);
   tick(h2); // repair sweep on the restored world: rock + exactly one relay
-  assert.equal(h2.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 1);
+  assert.equal(siteBeacons(h2, site.id).length, 1);
   tick(h2); // idempotent across ticks
-  assert.equal(h2.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 1);
+  assert.equal(siteBeacons(h2, site.id).length, 1);
+  assert.equal(h2.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 0);
   const rock = [...h2.entities.values()].find((e) => e.type === 'asteroid' && e.data && e.data.siteId === site.id);
   assert.ok(rock, 'anchored rock re-materialized on Continue');
   assert.equal(rock.data.boreSeed, 42);
@@ -534,12 +551,13 @@ test('committed (pre-output) survives Continue with zero relay; later output tur
   const site2 = h2.sys.getSite(site.id);
   assert.equal(site2.survey.lifecycle, 'committed');
   tick(h2); // sweep: rock rematerializes, but committed = 0 exterior
-  assert.equal(h2.spawned.filter((e) => e.data && e.data.siteBeacon === site2.id).length, 0,
+  assert.equal(siteBeacons(h2, site2.id).length, 0,
     'committed projects nothing even after Continue');
   let guard = 0;
   while (site2.survey.lifecycle !== 'producing' && guard++ < 120) tick(h2);
   assert.equal(site2.survey.lifecycle, 'producing');
-  assert.equal(h2.spawned.filter((e) => e.data && e.data.siteBeacon === site2.id).length, 1);
+  assert.equal(siteBeacons(h2, site2.id).length, 1);
+  assert.equal(h2.spawned.filter((e) => e.data && e.data.siteBeacon === site2.id).length, 0);
 });
 
 // ------------------------------------------------------------------ partial claim / missing asset
@@ -572,14 +590,14 @@ test('missing asset / spawn failure: lifecycle still records; relay recovers on 
   h.state.drill = null;
   let guard = 0;
   while (site.survey.lifecycle !== 'producing' && guard++ < 120) tick(h);
-  assert.equal(site.survey.lifecycle, 'producing', 'the lifecycle records even when the projector cannot spawn');
+  assert.equal(site.survey.lifecycle, 'producing', 'the lifecycle records even when spawnEntity is missing');
   assert.equal(h.spawned.filter((e) => e.data && e.data.siteBeacon === site.id).length, 0);
-  // A later visit with a working projector re-ensures exactly one relay (no permanent loss).
+  assert.equal(siteBeacons(h, site.id).length, 1, 'the relay is dressing and does not need spawnEntity');
   const data = JSON.parse(JSON.stringify(h.sys.serialize()));
   const h2 = makeHarness();
   h2.sys.deserialize(data);
   tick(h2);
-  const beacons = h2.spawned.filter((e) => e.data && e.data.siteBeacon === site.id);
+  const beacons = siteBeacons(h2, site.id);
   assert.equal(beacons.length, 1);
   assert.equal(beacons[0].data.placeId, 'place_claim_outpost_relay');
 });
@@ -667,7 +685,7 @@ test('determinism: identical runs produce identical records, receipts, and relay
     h.state.drill = null;
     const site = h.sys.getSite(res.siteId);
     tick(h, 90);
-    const beacon = h.spawned.find((e) => e.data && e.data.siteBeacon === site.id);
+    const beacon = siteBeacons(h, site.id)[0];
     return {
       survey: site.survey,
       beacon: beacon ? { x: beacon.pos.x, z: beacon.pos.z, rot: beacon.rot } : null,

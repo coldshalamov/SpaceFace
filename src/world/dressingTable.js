@@ -69,6 +69,18 @@ export function getDressingRow(state, id) {
   return table.byId.get(id) || null;
 }
 
+export function dropDressingRow(state, id) {
+  const table = state && state.world && state.world.dressing;
+  if (!table || id == null) return false;
+  const row = table.byId && table.byId.get(id);
+  if (!row) return false;
+  const idx = table.rows.indexOf(row);
+  if (idx >= 0) table.rows.splice(idx, 1);
+  table.byId.delete(id);
+  table.version++;
+  return true;
+}
+
 export function dropDressingSector(state, sectorId) {
   const table = state && state.world && state.world.dressing;
   if (!table || !sectorId) return 0;
