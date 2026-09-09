@@ -405,7 +405,7 @@ export const heistFacilities = {
       collides: true,
       collisionMask: Masks.PAYLOAD,
       ttl: Infinity,
-      flags: { noInterp: true, invuln: true },
+      flags: { noInterp: true, invuln: true, missionPinned: true },
       homeSectorId: facility.sectorId,
       physicsBody: {
         dynamic: false,
@@ -488,6 +488,7 @@ export const heistFacilities = {
       hullMax: PQ019_CAPSULE.hull,
       collides: true,
       ttl: Infinity,
+      flags: { missionPinned: true },
       homeSectorId: PQ019_HEIST_SECTOR_ID,
       physicsBody: {
         dynamic: true,
@@ -504,6 +505,7 @@ export const heistFacilities = {
         legalOwnerFactionId: PQ019_CAPSULE.legalOwnerFactionId,
         ownerId: PQ019_CAPSULE.ownerId,
         launchScheduleId: schedule.scheduleId,
+        missionPinned: true,
         runtimeOwner: 'heistFacilities',
         sectorId: PQ019_HEIST_SECTOR_ID,
         homeSectorId: PQ019_HEIST_SECTOR_ID,

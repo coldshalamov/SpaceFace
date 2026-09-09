@@ -192,6 +192,7 @@ test('heist facility visuals leave the live list; heads and the capsule stay col
     assert.equal(heads.length, 1, `${facility.id} socket head stays a live entity`);
     assert.equal(heads[0].collides, true);
     assert.equal(heads[0].collisionMask, Masks.PAYLOAD);
+    assert.equal(heads[0].flags?.missionPinned, true, `${facility.id} head stays in Rapier when the player is far`);
     assert.equal(state.entities.has(heads[0].id), true);
   }
 
@@ -201,6 +202,8 @@ test('heist facility visuals leave the live list; heads and the capsule stay col
   assert.equal(capsules.length, 1);
   assert.equal(capsules[0].type, 'payload');
   assert.equal(capsules[0].collides, true);
+  assert.equal(capsules[0].flags?.missionPinned, true);
+  assert.equal(capsules[0].data?.missionPinned, true);
   assert.equal(capsules[0].radius, PQ019_CAPSULE.radius);
   assert.ok(spawned.some((entity) => entity.data?.heistFacilityRole === 'cargo_capsule'));
   assert.equal(spawned.filter((entity) => String(entity.data?.heistFacilityRole || '').endsWith('_visual')).length, 0);
