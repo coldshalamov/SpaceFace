@@ -26,7 +26,12 @@
 import { validateRunState } from '../core/runState.js';
 import { MODULES } from '../data/modules.js';
 import { SHIPS } from '../data/ships.js';
-import { SURVIVAL_DRAFT_CHOICES, offerDraft, rerollPrice } from '../data/survivalDraft.js';
+import {
+  SURVIVAL_DRAFT_CHOICES,
+  auditDraftCatalog,
+  offerDraft,
+  rerollPrice,
+} from '../data/survivalDraft.js';
 import { isSwarmDraftWave, isSwarmRefitWave, isSwarmRuleset } from './survivalSwarm.js';
 import { WEAPONS } from '../data/weapons.js';
 import { buildSlotList, fits } from './ships.js';
@@ -99,6 +104,11 @@ export const survivalDraft = {
   /** Live offers for the draft surface. Empty when no draft is open. */
   currentOffers() {
     return this._offers ? this._offers.slice() : [];
+  },
+
+  /** PQ-175.02 catalog audit. Pure data; does not touch the open draft. */
+  catalogAudit(ruleset) {
+    return auditDraftCatalog(ruleset);
   },
 
   currentWave() {

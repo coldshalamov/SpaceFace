@@ -53,68 +53,147 @@ function freezeDeep(value) {
   return Object.freeze(value);
 }
 
+export const DRAFT_CARD_KIND_VERB = 'verb';
+export const DRAFT_CARD_KIND_NUMBER = 'number';
+export const DRAFT_VERB_SHAPES = Object.freeze(['line_load', 'well', 'reel', 'ram', 'whip']);
+export const DRAFT_VERB_CARD_MIN_RATIO = 2 / 3;
+
 /**
- * The verb pool. `verb` is the one-word identity the player reads; `blurb` says what changes about
- * the fight, in the terms of the thing that happens on screen — never in percentages.
+ * The draft pool. `kind` is verb (changes how a verb plays) or number (a bigger gun / thicker
+ * number). `shape` names the verb that changed — line load, well, reel, ram, whip — when it is
+ * one of those. `blurb` is one line, never a +stat.
  */
 export const SURVIVAL_DRAFT_OFFERS = freezeDeep([
   {
     id: 'throw', defId: 'wpn_concussion_cannon_m', verb: 'Throw',
-    blurb: 'A momentum slug. Light hulls are picked up and put into the terrain — the wall gets the kill.',
+    kind: DRAFT_CARD_KIND_VERB, shape: null,
+    blurb: 'Throws a light hull into the wall — the wall gets the kill.',
   },
   {
     id: 'tag', defId: 'wpn_gravity_marker_s', verb: 'Tag',
-    blurb: 'Marks a hull so every gravity field in the room pulls on it far harder.',
+    kind: DRAFT_CARD_KIND_VERB, shape: 'well',
+    blurb: 'Marks a hull so the well grabs it from farther out.',
   },
   {
     id: 'bind', defId: 'wpn_momentum_sink_s', verb: 'Bind',
-    blurb: 'Latches the target into your frame of motion. Where you go, it follows.',
+    kind: DRAFT_CARD_KIND_VERB, shape: null,
+    blurb: 'Latches a hull to your frame. Where you go, it follows.',
   },
   {
     id: 'mine', defId: 'wpn_vector_mine_m', verb: 'Mine',
-    blurb: 'Deployed ordnance that shoves everything out of a lane — including you, if you dive back through.',
+    kind: DRAFT_CARD_KIND_VERB, shape: null,
+    blurb: 'A mine that shoves everything out of a lane, including you.',
   },
   {
     id: 'unsteer', defId: 'wpn_rcs_disruptor_m', verb: 'Unsteer',
-    blurb: 'Takes a pilot\'s attitude control away. It drifts, and it cannot hold a firing line.',
+    kind: DRAFT_CARD_KIND_VERB, shape: null,
+    blurb: 'Takes a pilot\'s steering. It drifts and cannot hold a line.',
   },
   {
     id: 'scramble', defId: 'wpn_emp_disruptor_m', verb: 'Scramble',
-    blurb: 'Couples through shields into subsystems. Sensors and guns go dark before the hull does.',
+    kind: DRAFT_CARD_KIND_VERB, shape: null,
+    blurb: 'Couples through shields. Sensors and guns go dark first.',
   },
   {
     id: 'screen', defId: 'wpn_flak_turret_s', verb: 'Screen',
-    blurb: 'A turret that answers incoming ordnance instead of the hull that fired it.',
+    kind: DRAFT_CARD_KIND_VERB, shape: null,
+    blurb: 'A turret that answers incoming fire, not the hull that fired it.',
   },
   {
     id: 'seek', defId: 'wpn_missile_rack_m', verb: 'Seek',
-    blurb: 'Guided ordnance that turns after a target you are no longer pointing at.',
+    kind: DRAFT_CARD_KIND_VERB, shape: null,
+    blurb: 'Guided shots that turn after a target you stopped pointing at.',
   },
   {
     id: 'pierce', defId: 'wpn_railgun_m', verb: 'Pierce',
-    blurb: 'A flat, fast slug that goes through armour rather than around it.',
+    kind: DRAFT_CARD_KIND_NUMBER, shape: null,
+    blurb: 'A flat slug that goes through armour rather than around it.',
   },
   {
     id: 'sustain', defId: 'wpn_beam_laser_m', verb: 'Sustain',
-    blurb: 'A held beam. Damage while you keep the line, nothing the moment you break it.',
+    kind: DRAFT_CARD_KIND_NUMBER, shape: null,
+    blurb: 'A held beam. Damage while you keep the line.',
   },
   {
     id: 'burn', defId: 'wpn_plasma_cannon_m', verb: 'Burn',
-    blurb: 'Slow, heavy plasma. It leaves a hull cooking after the shot has landed.',
+    kind: DRAFT_CARD_KIND_NUMBER, shape: null,
+    blurb: 'Slow plasma that leaves a hull cooking after the shot.',
   },
   {
     id: 'volume', defId: 'wpn_autocannon_m', verb: 'Volume',
-    blurb: 'Heavy kinetic cadence. Nothing clever — a great deal of it, arriving continuously.',
+    kind: DRAFT_CARD_KIND_NUMBER, shape: null,
+    blurb: 'Heavy kinetic fire, arriving continuously.',
   },
   {
     id: 'cadence', defId: 'wpn_pulse_laser_m', verb: 'Cadence',
-    blurb: 'A bigger energy repeater. Fast, cheap on heat, honest.',
+    kind: DRAFT_CARD_KIND_NUMBER, shape: null,
+    blurb: 'A bigger energy repeater. Fast and cheap on heat.',
   },
   {
     id: 'sidearm', defId: 'wpn_autocannon_s', verb: 'Sidearm',
+    kind: DRAFT_CARD_KIND_NUMBER, shape: null,
     blurb: 'A light kinetic repeater for a small hardpoint.',
   },
 ]);
+
+export function draftCatalogFor(ruleset = SWARM_RULESET) {
+  return ruleset === SWARM_RULESET
+    ? SURVIVAL_DRAFT_OFFERS.concat(SWARM_DRAFT_OFFERS)
+    : SURVIVAL_DRAFT_OFFERS.slice();
+}
+
+function isOneLineBlurb(blurb) {
+  return typeof blurb === 'string'
+    && blurb.length > 20
+    && !blurb.includes('\n')
+    && !/\d+\s*%/.test(blurb)
+    && !/\+\d/.test(blurb);
+}
+
+/**
+ * Combined catalog audit for PQ-175.02. Swarm pool is the live draft; arc-only is the weapon
+ * slice. Verb cards must be at least two in three, and the five named shapes must be present.
+ */
+export function auditDraftCatalog(ruleset = SWARM_RULESET) {
+  const cards = draftCatalogFor(ruleset);
+  const verbCards = [];
+  const numberCards = [];
+  const issues = [];
+  const shapes = new Set();
+  for (const card of cards) {
+    if (card.kind !== DRAFT_CARD_KIND_VERB && card.kind !== DRAFT_CARD_KIND_NUMBER) {
+      issues.push(`${card.id} is missing kind`);
+    }
+    if (!isOneLineBlurb(card.blurb)) issues.push(`${card.id} blurb is not one clean line`);
+    if (card.kind === DRAFT_CARD_KIND_VERB) {
+      verbCards.push(card);
+      if (typeof card.shape === 'string' && card.shape) shapes.add(card.shape);
+    } else if (card.kind === DRAFT_CARD_KIND_NUMBER) {
+      numberCards.push(card);
+    }
+  }
+  for (const shape of DRAFT_VERB_SHAPES) {
+    if (ruleset === SWARM_RULESET && !shapes.has(shape)) {
+      issues.push(`missing verb shape ${shape}`);
+    }
+  }
+  const verbRatio = cards.length ? verbCards.length / cards.length : 0;
+  if (verbRatio + 1e-9 < DRAFT_VERB_CARD_MIN_RATIO) {
+    issues.push(`verb ratio ${(verbRatio * 100).toFixed(1)}% is under 66%`);
+  }
+  return {
+    ok: issues.length === 0,
+    issues,
+    total: cards.length,
+    verbCount: verbCards.length,
+    numberCount: numberCards.length,
+    verbPercent: Math.round(verbRatio * 1000) / 10,
+    verbRatio,
+    shapes: [...shapes],
+    verbCards,
+    numberCards,
+  };
+}
 
 /** Credits a re-roll costs before the same-draft multiplier — the fixed part of the price. */
 export const SURVIVAL_REROLL_BASE_CREDITS = 6;
@@ -287,6 +366,8 @@ function offerDraftInner(input) {
       name: def.name,
       verb: offer.verb,
       blurb: offer.blurb,
+      kind: offer.kind,
+      shape: offer.shape || null,
       slotIndex: target.slotIndex,
       replaces: target.replaces,
     });

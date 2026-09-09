@@ -21,8 +21,8 @@
  * (src/data/survivalDraft.js): Throw Tag Bind Mine Unsteer Scramble Screen Seek
  * Pierce Sustain Burn Volume Cadence Sidearm. Swarm additions
  * (src/data/swarmDraft.js): Bank Punch Fork Twin Arc Weight Short Freeze Fan Ram
- * Cool Charges Harden Bank Screen Burst Knit Lead Drive Pull Whip Sweep Snare
- * Spool Chaff (Burn and Screen overlap the arc pool).
+ * Reel Cool Charges Harden Burst Drive Pull Whip Sweep Snare Spool Chaff
+ * (Burn, Screen, and Ram overlap the arc pool).
  */
 export const RUN_MODIFIER_VERBS = Object.freeze([
   'Throw',
@@ -49,13 +49,11 @@ export const RUN_MODIFIER_VERBS = Object.freeze([
   'Freeze',
   'Fan',
   'Ram',
+  'Reel',
   'Cool',
   'Charges',
   'Harden',
-  'Bank Screen',
   'Burst',
-  'Knit',
-  'Lead',
   'Drive',
   'Pull',
   'Whip',

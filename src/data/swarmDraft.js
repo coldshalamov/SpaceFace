@@ -1,144 +1,154 @@
-// Swarm draft additions (PQ-135) — what "upgrade every five waves" actually gives you.
+// Swarm draft additions (PQ-135 / PQ-175.02) — what "upgrade every five waves" actually gives you.
 //
 // THE PROBLEM THIS SOLVES
 // -----------------------
-// The arc's draft pool is fourteen WEAPONS, and the starter hull holds three. On a thirty-wave arc
-// with a draft after every wave that is fine: you are constantly re-answering the question of what
-// your three guns should be. In an endless swarm run it is not. After three picks the hull is full
-// and every later draft is a sideways swap forever, while enemy levels keep climbing — so the run
-// stops being about how well you play and starts being about when the numbers run out.
+// The arc's draft pool is weapons, and the starter hull holds three. On a thirty-wave arc with a
+// draft after every wave that is fine: you are constantly re-answering the question of what your
+// three guns should be. In an endless swarm run it is not. After three picks the hull is full and
+// every later draft is a sideways swap forever, while enemy levels keep climbing.
 //
-// The fix is not a percentage. It is the ATTACK TRAIT catalog that already ships
-// (src/data/attackTraits.js, compiled by combat/attackSpec.js): fittable modules that change what
-// every shot you fire DOES. A Piercing Core makes shots carry through the first hull. A Forked Core
-// splits them. Relay Arc jumps a hit to the next hull in reach. Bank Shot makes them ricochet off
-// rock — which in an arena carrying a real debris field turns the room itself into a firing angle,
-// and is the single most on-theme upgrade in the game.
+// The fix is not a percentage. It is fittings that change a verb's shape: a heavier line, a wider
+// well, a faster reel, a ram plate, a whip snap. Attack traits (src/data/attackTraits.js) change
+// what every shot DOES. Massline heads and the Hitch-legal winch change the line. A ram plate
+// makes the hull the weapon. Number cards stay in the minority — at most one in three.
 //
-// Those live in UTILITY, SHIELD and ENGINE slots, which the weapon-only pool could never reach. So
-// a swarm hull fills seven slots over a run instead of three, and every one of them is a verb the
-// player can name rather than a number they have to trust.
+// Those live in UTILITY, SHIELD and ENGINE slots, which the weapon-only pool could never reach.
+// `fits` decides where a card can land. Hitch cannot take M concussion or M utility heads; those
+// cards stay in the pool for hulls that can, and Hitch simply never sees them.
 //
 // RULES
 // -----
-//   * Every id here is a live module in src/data/modules.js with a live entry in the attack-trait
-//     catalog or a live consumer system. Nothing is invented.
-//   * No percentages in the copy — same rule the weapon pool follows. The blurb says what changes
-//     on screen.
-//   * `fits` decides where a card can land; this file never asserts a slot. A hull without a
-//     utility slot simply never sees the utility cards.
+//   * Every id here is a live module in src/data/modules.js. Nothing is invented.
+//   * `kind` is verb or number. Verb cards name a shape when they change one.
+//   * Blurbs are one line. No percentages, no +stat.
 //   * The arc is untouched. This pool is appended only for the swarm ruleset.
+//   * Kind strings stay literal here so this file never imports survivalDraft (that file imports us).
 
 export const SWARM_DRAFT_SCHEMA_VERSION = 1;
 
 /**
- * The trait pool. Ordered so the shots-do-more-things family leads: those are the cards that make
- * a full hull feel like a growing build rather than a finished one.
+ * The trait pool. Verb-shape cards lead. Number cards stay at the tail so the audit can name them.
  */
 export const SWARM_DRAFT_OFFERS = Object.freeze([
   {
     id: 'bank', defId: 'mod_bank_shot', verb: 'Bank',
-    blurb: 'Your shots bounce off rock. Every wall in the arena becomes a firing angle.',
+    kind: 'verb', shape: null,
+    blurb: 'Your shots bounce off rock. Every wall becomes a firing angle.',
   },
   {
     id: 'pierce_core', defId: 'mod_piercing_core', verb: 'Punch',
-    blurb: 'Shots carry through the first hull and keep going into whatever is behind it.',
+    kind: 'verb', shape: null,
+    blurb: 'Shots carry through the first hull into whatever is behind it.',
   },
   {
     id: 'fork', defId: 'mod_forked_core', verb: 'Fork',
-    blurb: 'Every shot splits on the way out. One trigger pull, two things to hit.',
+    kind: 'verb', shape: null,
+    blurb: 'Every shot splits. One trigger pull, two things to hit.',
   },
   {
     id: 'twin', defId: 'mod_twin_mount', verb: 'Twin',
+    kind: 'verb', shape: null,
     blurb: 'Every gun grows a second barrel.',
   },
   {
     id: 'relay', defId: 'mod_relay_arc', verb: 'Arc',
-    blurb: 'A hit jumps to the next hull in reach. Tight formations kill themselves.',
+    kind: 'verb', shape: null,
+    blurb: 'A hit jumps to the next hull in reach. Tight packs kill themselves.',
   },
   {
     id: 'gravity_payload', defId: 'mod_gravity_tag', verb: 'Weight',
-    blurb: 'Everything you hit is left heavy — the room pulls on it far harder afterwards.',
+    kind: 'verb', shape: 'well',
+    blurb: 'Hits leave a hull heavy. The well reaches it from farther away.',
   },
   {
     id: 'ion', defId: 'mod_ion_payload', verb: 'Short',
+    kind: 'verb', shape: null,
     blurb: 'Hits bleed into systems, not just plating.',
   },
   {
     id: 'incendiary', defId: 'mod_incendiary_payload', verb: 'Burn',
+    kind: 'verb', shape: null,
     blurb: 'Hits keep burning after the shot has gone.',
   },
   {
     id: 'cryo', defId: 'mod_cryo_payload', verb: 'Freeze',
-    blurb: 'Hits stiffen a hull, so the next thing that hits it does more.',
+    kind: 'verb', shape: null,
+    blurb: 'Hits stiffen a hull so the next blow does more.',
   },
   {
     id: 'herald', defId: 'mod_herald_fan', verb: 'Fan',
-    blurb: 'Your shots spread as they travel — worse against one hull, far better against eight.',
+    kind: 'verb', shape: null,
+    blurb: 'Shots spread as they travel — worse on one, better on eight.',
   },
   {
     id: 'ram', defId: 'mod_ram_plate', verb: 'Ram',
-    blurb: 'A reinforced prow. Flying through something stops being your problem.',
+    kind: 'verb', shape: 'ram',
+    blurb: 'A ram plate. Flying through something stops being your problem.',
   },
   {
-    id: 'sink', defId: 'mod_thermal_sink_s', verb: 'Cool',
-    blurb: 'Heat leaves the guns faster, so you stop having to let go of the trigger.',
+    id: 'reel', defId: 'mod_winch_hd', verb: 'Reel',
+    kind: 'verb', shape: 'reel',
+    blurb: 'The line comes back faster than they can pull away.',
   },
   {
     id: 'charges', defId: 'mod_charge_rack', verb: 'Charges',
-    blurb: 'Impulse charges on the rack — a shove big enough to move what is on top of you.',
-  },
-  {
-    id: 'booster', defId: 'mod_shield_booster_s', verb: 'Screen',
-    blurb: 'A heavier screen between the swarm and your hull.',
-  },
-  {
-    id: 'hardener', defId: 'mod_shield_hardener_m', verb: 'Harden',
-    blurb: 'The screen stops shrugging off one kind of fire and starts shrugging off all of it.',
-  },
-  {
-    id: 'capacitor', defId: 'mod_shield_capacitor_m', verb: 'Bank Screen',
-    blurb: 'A deeper screen that takes longer to break and longer to come back.',
+    kind: 'verb', shape: null,
+    blurb: 'Impulse charges on the rack — a shove for whatever is on top of you.',
   },
   {
     id: 'burner', defId: 'mod_afterburner_m', verb: 'Burst',
+    kind: 'verb', shape: null,
     blurb: 'A hard shove on demand. The way out of a closing ring.',
   },
   {
-    id: 'nanobots', defId: 'mod_repair_nanobots_m', verb: 'Knit',
-    blurb: 'The hull closes its own wounds between fights.',
-  },
-  {
-    id: 'targeting', defId: 'mod_targeting_computer_m', verb: 'Lead',
-    blurb: 'The guns lead their targets for you.',
-  },
-  {
-    id: 'fusion', defId: 'mod_engine_fusion_m', verb: 'Drive',
-    blurb: 'More thrust under you. The whole fight gets faster.',
-  },
-  {
     id: 'tractor', defId: 'mod_tractor_beam_m', verb: 'Pull',
-    blurb: 'A line you can put on a hull and haul — bring the fight where you want it.',
+    kind: 'verb', shape: null,
+    blurb: 'A line you put on a hull and haul.',
   },
   {
     id: 'whip', defId: 'mod_elastic_whip_m', verb: 'Whip',
-    blurb: 'A springy line. What you latch, you can sling into something solid.',
+    kind: 'verb', shape: 'whip',
+    blurb: 'A springy line. Latch, stretch, snap them into something solid.',
   },
   {
     id: 'sweep', defId: 'mod_monofilament_sweep_m', verb: 'Sweep',
-    blurb: 'A taut line that cuts whatever crosses it. Fly the rope through the swarm.',
+    kind: 'verb', shape: null,
+    blurb: 'A taut line that cuts whatever crosses it.',
   },
   {
     id: 'snare', defId: 'mod_transverse_snare_m', verb: 'Snare',
+    kind: 'verb', shape: null,
     blurb: 'One line laid across the lane they are coming down.',
   },
   {
     id: 'spool', defId: 'mod_massline_spool_m', verb: 'Spool',
-    blurb: 'A longer line, so the thing you are slinging has further to build speed.',
+    kind: 'verb', shape: 'line_load',
+    blurb: 'A longer line, so the sling has farther to build speed.',
   },
   {
     id: 'chaff', defId: 'mod_chaff_dispenser_m', verb: 'Chaff',
+    kind: 'verb', shape: null,
     blurb: 'A cloud that breaks every missile lock behind you at once.',
+  },
+  {
+    id: 'booster', defId: 'mod_shield_booster_s', verb: 'Screen',
+    kind: 'number', shape: null,
+    blurb: 'A heavier screen between the swarm and your hull.',
+  },
+  {
+    id: 'sink', defId: 'mod_thermal_sink_s', verb: 'Cool',
+    kind: 'number', shape: null,
+    blurb: 'Heat leaves the guns so you can hold the trigger.',
+  },
+  {
+    id: 'hardener', defId: 'mod_shield_hardener_m', verb: 'Harden',
+    kind: 'number', shape: null,
+    blurb: 'The screen shrugs every flavor of fire, not just one.',
+  },
+  {
+    id: 'fusion', defId: 'mod_engine_fusion_m', verb: 'Drive',
+    kind: 'number', shape: null,
+    blurb: 'More thrust under you. The whole fight gets faster.',
   },
 ]);
 
