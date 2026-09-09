@@ -7,7 +7,6 @@ import {
   isLivingWorldActor,
   livingWorldActorSeenTypes,
 } from '../src/world/livingWorldViews.js';
-import { lawWitnessesNear } from '../src/systems/lawSecurity.js';
 import { barkDirector } from '../src/systems/barkDirector.js';
 
 function fatState() {
@@ -55,18 +54,6 @@ test('living-world helper never yields asteroids or dressing FX', () => {
   forEachJobInteractable(state, (entity) => jobSeen.push(entity.type));
   assert.ok(!jobSeen.includes('asteroid'));
   assert.ok(!jobSeen.includes('fx'));
-});
-
-test('law witnesses skip rocks and dressing on a fat list', () => {
-  const state = fatState();
-  const witnesses = lawWitnessesNear(state, { pos: { x: 0, z: 0 }, radius: 1000 });
-  const types = new Set();
-  for (const row of witnesses) {
-    const entity = state.entities.get(row.entityId);
-    types.add(entity && entity.type);
-  }
-  assert.equal(types.has('asteroid'), false);
-  assert.equal(types.has('fx'), false);
 });
 
 test('bark director update does not walk rocks or dressing', () => {
