@@ -258,6 +258,10 @@ units; open the door below only when the owner names the campaign.
   does not close a ship.
 - **The 3D picture never looks broken** → **§13D** `--id PQ-193`. Complete bodies, opening flyby,
   tubes, shelf hulls, places. Flyable remaster stays `--id PQ-050`. Hitch stays frozen.
+- **Audit every 3D model / plan A-list quality from the shelf we already have** → copy
+  [`MODEL_STOCKTAKE_GOAL.txt`](./design/program/MODEL_STOCKTAKE_GOAL.txt). Law:
+  [`MODEL_STOCKTAKE.md`](./design/program/MODEL_STOCKTAKE.md). Research and a plan only. Folds
+  into §13D / `PQ-193`. Do not model. Do not open a second queue.
 - **Live-route visual cleanup (mixed-game NPCs, floating parts, needle retros)** →
   `--id PQ-193` leaves `.01` / `.02`. Law: [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md).
   Taste-led. Do not pre-solve the look. Hitch stays frozen. `PQ-190` remains the style-slice owner.

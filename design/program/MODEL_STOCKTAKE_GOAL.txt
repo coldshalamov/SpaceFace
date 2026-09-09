@@ -1,0 +1,21 @@
+This is a research campaign: audit every 3D thing the player can see, start from the models we already have, and write the plan that gets the picture to one A-list manufactured world. Do not use INFERENCE. Do not model. Do not wire. Do not stop after a catalog dump.
+
+Law: design/program/MODEL_STOCKTAKE.md. Follow it for truth sources, how to count, verdicts, efficiency order, artifacts, and bans. Copy this file as the whole prompt. Do not paraphrase.
+
+Bar: Hitch is the floor, not the photocopy. One game. Complete hulls. Jets are jets. A valid file is not accepted art. Chase camera only (play_chase / play_chase_abeam / play_chase_close). No seats. Do not dump Hitch. Do not cut default quality.
+
+PQ-193 (build_map.md §13D) is the live never-broken board. PQ-050 is one-ship remaster. PQ-136 is unused-pack fielding. This session does not replace those packets. It proves what they missed and writes the missing rows into them.
+
+Mission:
+1. Inventory from LIVE MAPS, not a filename grep. partsLibrary.js, assetLoader allowlists, ships.js roster, release_manifest.json, WORLD_VISUAL_CENSUS.md, npm run check:asset-reachability, npm run check:live-whole-ship-admission, and the default Helios / Kessler flyby at the shipping chase camera. Dated catalogs (needed-assets.md, VISUAL_ASSET_CATALOG 2026-08-08) are archaeology only — re-prove every row.
+2. For every player-visible slot AND every unused authored body: name the thing, the live file or “code-built, no file”, whether it is packaged and allowed to publish, the chase-camera grade vs Hitch, shelf cousins, and one verdict: KEEP / ADMIT / IMPROVE-IN-PLACE / ENCLOSE / REPURPOSE / REMAP-AFTER-PROOF / RETIRE / COMMISSION-LAST.
+3. Write three artifacts, then stop:
+   - design/program/MODEL_STOCKTAKE_MANIFEST.md — the tables.
+   - design/program/MODEL_STOCKTAKE_PLAN.md — the ordered work in owner words. Each row names an existing leaf (PQ-193.xx, PQ-050.xx, PQ-136, PQ-049.05). New leaf only when no packet owns the slot. Call out anything §13D missed.
+   - Queue fold only if a new leaf is required: PQ-193.md + build_map.md §13D + program-queue.json. Do not create PQ-194. Do not duplicate Hornet or liner G7.
+4. Efficiency order is law: nothing invisible or falling apart → reverse is a jet → upgrade the object already on camera → field unused bodies that beat live → one flyable remaster at a time → places in the live game → commission last → retire half-built junk so nobody wires it. Reuse before authoring. Do not start variety until the opening flyby is true.
+5. Performance is equal picture: residency, packages, join-by-material. Never “make Hitch cheaper.” Distant LOD selectors are later, not this list.
+
+Hitch / Kestrel frozen. Stay off a live NOW.md exact path. Do not remap an unpackaged factory remaster. Do not recommend a glow blob, a second needle trail, or a procedural fallback hull.
+
+RESULT: DONE only when the manifest and the plan exist, every slot has a verdict, the plan folds into the existing packets, and a stranger can read the plan and know what to build vs improve vs throw away vs never start.

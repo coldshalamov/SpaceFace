@@ -11,7 +11,7 @@ a dated sprint prompt, an old automation script, or a runtime folder.
 | Concept or generated construction/material reference | `assets/concept/AGENTS.md`; component handoff contract in `AGENT_PROMPTS.md` § E |
 | Cinematic, key art, runtime VFX, compositor, or presentation imagery | `VFX_TECHNIQUE_STANDARD.md` first (bans the blurry-square stand-in; distant background stars are the only exception), then `design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md`, then the owning `src/render/AGENTS.md`, `src/ui/AGENTS.md`, or asset registry. Live cheap-card instances: `SOFT_CARD_INVENTORY.json` |
 | Live-route mixed-game NPCs, floating hull parts, or needle reverse jets | `build_map.md` §13D → `PQ-193.01` / `.02`. Law: `design/program/VISUAL_WORLD_CLEANUP.md`. Taste-led; Hitch frozen; do not execute a pixel recipe |
-| Repository-wide inventory/prioritization | `design/graphics-sprints/VISUAL_ASSET_CATALOG.md` plus live manifests/runtime maps |
+| Repository-wide inventory/prioritization | Live stocktake: `design/program/MODEL_STOCKTAKE.md` (operator `MODEL_STOCKTAKE_GOAL.txt`). Dated companion: `design/graphics-sprints/VISUAL_ASSET_CATALOG.md` plus live manifests/runtime maps |
 
 Across every class:
 

@@ -15,7 +15,7 @@ one task and stops; it does not start an open-ended campaign.
 ## Prompt 0 — the default (no scope words)
 
 ```text
-Read CANONICAL_BUILD_MAP.md section 1 and do exactly what it says: node scripts/program-dispatch.mjs --next is your unit (fresh lookahead reservations are skipped); read its packet, especially "How agents get this wrong"; before mutation create a checkpoint for the current unit and reserve at most the next four units if this prompt is a sequence; finish the whole unit to its done-when in player units on a fixed seed; if it is feel or combat, run design/program/FUN_CONVERGENCE_LOOP.md; commit only your files by pathspec and push the current branch by name; report in the section 1.4 format in plain words; then close the checkpoint before taking the next unit. Stop only for a section 1.5 stop condition, and say which.
+Read build_map.md section 1 and do exactly what it says: node scripts/program-dispatch.mjs --next is your unit (fresh lookahead reservations are skipped); read its packet, especially "How agents get this wrong"; before mutation create a checkpoint for the current unit and reserve at most the next four units if this prompt is a sequence; finish the whole unit to its done-when in player units on a fixed seed; if it is feel or combat, run design/program/FUN_CONVERGENCE_LOOP.md; commit only your files by pathspec and push the current branch by name; report in the section 1.4 format in plain words; then close the checkpoint before taking the next unit. Stop only for a section 1.5 stop condition, and say which.
 ```
 
 ## Which door? Exact task vs. develop the game
@@ -78,6 +78,35 @@ Commit and push each merged unit on the current branch by name. Do not delete a 
 Keep going until every known copy and unused model has a ledger row, every MERGE is on the main line, every near-done item is finished or honestly checkpointed with a next action, and DROP copies are safe to delete.
 
 RESULT: DONE only when no finished work remains only on an orphan copy and the ledger is complete.
+```
+
+## Prompt A0-I — 3D stocktake (research the shelf, write the A-list plan)
+
+Copy `MODEL_STOCKTAKE_GOAL.txt` as the whole prompt. Do not paraphrase. The law
+file it names is mandatory. This session inventories and plans. It does not model.
+
+```text
+This is a research campaign: audit every 3D thing the player can see, start from the models we already have, and write the plan that gets the picture to one A-list manufactured world. Do not use INFERENCE. Do not model. Do not wire. Do not stop after a catalog dump.
+
+Law: design/program/MODEL_STOCKTAKE.md. Follow it for truth sources, how to count, verdicts, efficiency order, artifacts, and bans. Copy this file as the whole prompt. Do not paraphrase.
+
+Bar: Hitch is the floor, not the photocopy. One game. Complete hulls. Jets are jets. A valid file is not accepted art. Chase camera only (play_chase / play_chase_abeam / play_chase_close). No seats. Do not dump Hitch. Do not cut default quality.
+
+PQ-193 (build_map.md §13D) is the live never-broken board. PQ-050 is one-ship remaster. PQ-136 is unused-pack fielding. This session does not replace those packets. It proves what they missed and writes the missing rows into them.
+
+Mission:
+1. Inventory from LIVE MAPS, not a filename grep. partsLibrary.js, assetLoader allowlists, ships.js roster, release_manifest.json, WORLD_VISUAL_CENSUS.md, npm run check:asset-reachability, npm run check:live-whole-ship-admission, and the default Helios / Kessler flyby at the shipping chase camera. Dated catalogs (needed-assets.md, VISUAL_ASSET_CATALOG 2026-08-08) are archaeology only — re-prove every row.
+2. For every player-visible slot AND every unused authored body: name the thing, the live file or “code-built, no file”, whether it is packaged and allowed to publish, the chase-camera grade vs Hitch, shelf cousins, and one verdict: KEEP / ADMIT / IMPROVE-IN-PLACE / ENCLOSE / REPURPOSE / REMAP-AFTER-PROOF / RETIRE / COMMISSION-LAST.
+3. Write three artifacts, then stop:
+   - design/program/MODEL_STOCKTAKE_MANIFEST.md — the tables.
+   - design/program/MODEL_STOCKTAKE_PLAN.md — the ordered work in owner words. Each row names an existing leaf (PQ-193.xx, PQ-050.xx, PQ-136, PQ-049.05). New leaf only when no packet owns the slot. Call out anything §13D missed.
+   - Queue fold only if a new leaf is required: PQ-193.md + build_map.md §13D + program-queue.json. Do not create PQ-194. Do not duplicate Hornet or liner G7.
+4. Efficiency order is law: nothing invisible or falling apart → reverse is a jet → upgrade the object already on camera → field unused bodies that beat live → one flyable remaster at a time → places in the live game → commission last → retire half-built junk so nobody wires it. Reuse before authoring. Do not start variety until the opening flyby is true.
+5. Performance is equal picture: residency, packages, join-by-material. Never “make Hitch cheaper.” Distant LOD selectors are later, not this list.
+
+Hitch / Kestrel frozen. Stay off a live NOW.md exact path. Do not remap an unpackaged factory remaster. Do not recommend a glow blob, a second needle trail, or a procedural fallback hull.
+
+RESULT: DONE only when the manifest and the plan exist, every slot has a verdict, the plan folds into the existing packets, and a stranger can read the plan and know what to build vs improve vs throw away vs never start.
 ```
 
 ## Prompt A0-G — 3D objects / same-bar remaster (safe beside hitch work)
@@ -164,7 +193,7 @@ RESULT: DONE when every inventory row is an authored, reviewed, wired asset on m
 ## Prompt A0 — overnight / “the work in the build map” / non-INFERENCE
 
 ```text
-This is a campaign, not one task. Start at CANONICAL_BUILD_MAP.md. Do not use
+This is a campaign, not one task. Start at build_map.md. Do not use
 INFERENCE_CONVERGENCE_METHOD.md or INFERENCE_LANES.md unless the user said INFERENCE.
 
 The fleet remaster campaign is PQ-050 (its packet owns its law). Run
@@ -183,7 +212,7 @@ Do not stop after one ship. Do not touch Hitch. Do not model a cabin.
 
 ```text
 This is a campaign, not one task. The game is hitching. Start at
-CANONICAL_BUILD_MAP.md §8.4 and design/program/PERF_HITCH_CAMPAIGN.md.
+build_map.md §8.4 and design/program/PERF_HITCH_CAMPAIGN.md.
 Do not use INFERENCE. Do not take PQ-050. Do not lower default quality.
 
 Run node scripts/program-dispatch.mjs --id PQ-129 and take the first
@@ -203,7 +232,7 @@ owner. Keep going until the campaign stop condition is met.
 ```text
 Finish one SpaceFace task end to end.
 
-Start at CANONICAL_BUILD_MAP.md and design/program/NOW.md. Run
+Start at build_map.md and design/program/NOW.md. Run
 `node scripts/program-dispatch.mjs --next` and take that first task, then open its exact queue row
 and active packet. Use `--ready` only to select the next result when the first task has an exact
 currently dirty overlapping hunk that another thread has not handed off. Do not create a
@@ -234,7 +263,7 @@ Replace `<UNIT_ID>` once before sending.
 ```text
 Finish exactly `<UNIT_ID>` in SpaceFace and do not start another unit.
 
-Read CANONICAL_BUILD_MAP.md and design/program/NOW.md, then run
+Read build_map.md and design/program/NOW.md, then run
 `node scripts/program-dispatch.mjs --ready` and locate `<UNIT_ID>` in
 `design/program/roadmap/program-queue.json`. Run `node scripts/program-dispatch.mjs --id PQ-XXX`
 using the unit's `parentId`, then open that packet, verify the live owner code, and deliver the exact
@@ -255,7 +284,7 @@ state. End with the DONE/NOT DONE template from design/program/02_REMAINING_WORK
 ```text
 Take responsibility for the unfinished candidate named below. Do not create a new parallel copy.
 
-Read CANONICAL_BUILD_MAP.md, design/program/NOW.md,
+Read build_map.md, design/program/NOW.md,
 design/program/DEVELOPMENT_HANDOFF_2026-08-09.md, and the candidate's current diff/evidence. Add a NOW
 row when mutation begins. Determine the exact player outcome it was meant to deliver, then either:
 (1) revise it through the real production owner until it passes its required review and publish it,
