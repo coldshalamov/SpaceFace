@@ -19,6 +19,7 @@
 
 import { zonesForSector, VESTA_DERELICT_SALVAGE_SOURCE } from '../data/sectorZones.js';
 import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
+import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './aftermathWrecks.js';
 
 // Tuning (kept conservative so we never blow the ship/entity budget — brief: ≤2 salvage per zone).
 const MAX_SALVAGE_PER_ZONE = 2;     // hard cap on entities placed per derelict zone
@@ -65,6 +66,8 @@ export const salvage = {
 
     // On sector entry, (re)plan salvage for this sector's derelict fields.
     this.bus.on('sector:enter', (p) => this._planForSector(p && p.sectorId));
+    this.bus.on('aftermathWreck:recorded', (p) => this._onPlayerWreckMarker(p));
+    this.bus.on('aftermathWreck:spawned', (p) => this._onPlayerWreckSpawned(p));
     // Scanning a communicator is an alternate trigger to reaching it (scan:completed carries a target).
     this.bus.on('scan:completed', (p) => this._onScan(p));
     // Clear transient entity ids BEFORE Continue rebuilds the sector. The prior save:loaded clear ran
@@ -281,7 +284,10 @@ export const salvage = {
 
     const zones = (typeof zonesForSector === 'function' ? zonesForSector(sectorId) : [])
       .filter((z) => z && z.type === 'derelict_field' && z.center);
-    if (!zones.length) return; // no derelict fields here → strict no-op
+    if (!zones.length) {
+      this._bindPlayerWreckFromAftermath(sectorId);
+      return;
+    }
 
     const hash32 = (this.helpers && this.helpers.hash32) || fallbackHash32;
     const mulberry32 = (this.helpers && this.helpers.mulberry32) || fallbackMulberry32;
@@ -326,6 +332,86 @@ export const salvage = {
         communicators: state.salvage.points.filter((s) => s.isCommunicator).length,
       });
     }
+    this._publishWreckFieldSources(sectorId, zones, state.salvage.points);
+    this._bindPlayerWreckFromAftermath(sectorId);
+  },
+
+  _publishWreckFieldSources(sectorId, zones, points) {
+    if (!this.bus || typeof this.bus.emit !== 'function' || !Array.isArray(zones)) return 0;
+    let published = 0;
+    for (const zone of zones) {
+      const local = (points || []).filter((point) => point && point.zoneId === zone.id);
+      const pos = local[0] && local[0].pos
+        ? { x: local[0].pos.x, z: local[0].pos.z }
+        : (zone.center ? { x: zone.center.x, z: zone.center.z } : null);
+      if (!pos) continue;
+      this.bus.emit('wreckField:source', {
+        fieldId: `salvage:${zone.id}`,
+        sectorId,
+        zoneId: zone.id,
+        kind: 'salvage',
+        pos,
+        // Authored derelicts have been here for years. Age them one day so the field is an
+        // encounter place on the first visit, still using the same sim-day clock.
+        bornAt: -WRECK_ECOLOGY_DAY_S,
+      });
+      published += 1;
+    }
+    return published;
+  },
+
+  _onPlayerWreckMarker(payload) {
+    if (!isPlayerWreckMarker(payload)) return null;
+    return this._bindPlayerWreckPoint(payload);
+  },
+
+  _onPlayerWreckSpawned(payload) {
+    if (!payload || !payload.markerId) return null;
+    const marker = playerWreckMarker(this.state);
+    if (!marker || marker.markerId !== payload.markerId) return null;
+    return this._bindPlayerWreckPoint(marker, payload.entityId);
+  },
+
+  _bindPlayerWreckFromAftermath(sectorId) {
+    const marker = playerWreckMarker(this.state);
+    if (!marker || (sectorId && marker.sectorId !== sectorId)) return null;
+    let entityId = null;
+    const list = this.state && this.state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (entity && entity.alive !== false && entity.data && entity.data.markerId === marker.markerId) {
+        entityId = entity.id;
+        break;
+      }
+    }
+    return this._bindPlayerWreckPoint(marker, entityId);
+  },
+
+  _bindPlayerWreckPoint(marker, entityId = null) {
+    if (!isPlayerWreckMarker(marker) || !marker.markerId) return null;
+    const salvageState = this._ensureState();
+    const id = `player_wreck:${marker.markerId}`;
+    let rec = salvageState.points.find((point) => point && point.id === id);
+    if (!rec) {
+      rec = {
+        id,
+        sectorId: marker.sectorId,
+        zoneId: marker.zoneId || null,
+        pos: { x: marker.pos.x, z: marker.pos.z },
+        playerWreck: true,
+        markerId: marker.markerId,
+        isCommunicator: false,
+        offered: false,
+        entityId: entityId,
+      };
+      salvageState.points.push(rec);
+    } else {
+      rec.pos = { x: marker.pos.x, z: marker.pos.z };
+      rec.playerWreck = true;
+      rec.markerId = marker.markerId;
+      if (entityId != null) rec.entityId = entityId;
+    }
+    return rec;
   },
 
   _makeSalvagePoint(sectorId, zone, idx, pos, isCommunicator, rng, spawnEntity) {

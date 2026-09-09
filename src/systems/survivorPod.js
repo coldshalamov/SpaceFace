@@ -29,6 +29,7 @@ import { SECTORS } from '../data/sectors.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { rememberMoralDebt } from './moralMemory.js';
+import { playerWreckMarker } from './aftermathWrecks.js';
 
 const MISSION_ID = 'wm_survivor_pod';
 const CONCORD_FACTION_ID = 'faction_scn';
@@ -202,6 +203,11 @@ export function isCausalSurvivorPod(entity) {
     && entity.data.payloadType === CAUSAL_SURVIVOR_PAYLOAD_TYPE);
 }
 
+export function isPlayerWreckPod(entity) {
+  return !!(entity && entity.alive !== false && entity.data && entity.data.playerWreck === true
+    && (entity.data.payloadType === CAUSAL_SURVIVOR_PAYLOAD_TYPE || entity.data.tetherRole === 'survivor_pod'));
+}
+
 export function isCrewedHullForPodEject(entity) {
   if (!entity || entity.type !== 'ship') return false;
   if (entity.alive === false) return false;
@@ -286,7 +292,8 @@ export function enforceCausalSurvivorPodCap(
   found.sort((a, b) => (a.id | 0) - (b.id | 0));
   const drop = found.length - max;
   let removed = 0;
-  for (let i = 0; i < drop; i++) {
+  for (let i = 0; i < found.length && removed < drop; i++) {
+    if (isPlayerWreckPod(found[i])) continue;
     if (disposeEntity(state, bus, found[i], 'survivor_pod_cap', helpers)) removed += 1;
   }
   return removed;
@@ -378,7 +385,12 @@ export const survivorPod = {
     this._onChoice = (p) => this._handleChoice(p);
     this._onNewGame = () => this.newGame();
     this._onKilled = (p) => this._onEntityKilled(p || {});
+    this._onPlayerDeath = (p) => this._onPlayerWreckDeath(p || {});
     this._onLatched = (p) => this._onTetherLatched(p || {});
+    this._onSaveLoaded = () => {
+      this.newGame();
+      this._rematerializePlayerWreckPod();
+    };
     if (this._bus && this._bus.on) {
       this._bus.on('salvage:placed', this._onPlaced);
       this._bus.on('sector:enter', this._onSectorEnter);
@@ -386,8 +398,9 @@ export const survivorPod = {
       this._bus.on('survivorPod:choose', this._onChoice);
       this._bus.on('game:newGame', this._onNewGame);
       this._bus.on('game:new', this._onNewGame);
-      this._bus.on('save:loaded', this._onNewGame);
+      this._bus.on('save:loaded', this._onSaveLoaded);
       this._bus.on('entity:killed', this._onKilled);
+      this._bus.on('player:death', this._onPlayerDeath);
       this._bus.on('tether:latched', this._onLatched);
     }
   },
@@ -414,6 +427,7 @@ export const survivorPod = {
 
     // Causal path: re-adopt + settle + TTL.
     this._tickCausal(state, own);
+    this._readoptPlayerWreckPod(state);
   },
 
   // ── Causal eject ─────────────────────────────────────────────────────────────────────────────
@@ -443,6 +457,132 @@ export const survivorPod = {
     if (payload.data && payload.data.survivorPodEjected === true) return null;
     if (!shouldEjectCausalSurvivorPod(state, hull)) return null;
     return this._spawnCausalPod(state, hull, payload);
+  },
+
+  _onPlayerWreckDeath(payload) {
+    const state = this._state;
+    if (!state) return null;
+    return this._spawnPlayerWreckPod(state, payload || {});
+  },
+
+  _livePlayerWreckPod(state) {
+    const list = state && state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      if (isPlayerWreckPod(list[i])) return list[i];
+    }
+    return null;
+  },
+
+  _readoptPlayerWreckPod(state) {
+    const entity = this._livePlayerWreckPod(state);
+    if (!entity || !entity.data) return entity;
+    entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    entity.data.playerWreck = true;
+    entity.data.tetherRole = 'survivor_pod';
+    entity.data.scanLabel = entity.data.scanLabel || 'Your Pod';
+    entity.data.masslineTetherable = true;
+    return entity;
+  },
+
+  _rematerializePlayerWreckPod() {
+    const state = this._state;
+    if (!state) return null;
+    if (this._livePlayerWreckPod(state)) return this._readoptPlayerWreckPod(state);
+    const marker = playerWreckMarker(state);
+    if (!marker || !marker.pos) return null;
+    return this._spawnPlayerWreckPod(state, {
+      pos: marker.pos,
+      markerId: marker.markerId,
+      rematerialize: true,
+    });
+  },
+
+  _spawnPlayerWreckPod(state, payload = {}) {
+    if (this._livePlayerWreckPod(state)) return this._readoptPlayerWreckPod(state);
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const pos = (payload && payload.pos) || (player && player.pos);
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const velSrc = (player && player.vel) || (payload && payload.vel) || { x: 0, z: 0 };
+    const entity = spawnPayloadEntity(state, {
+      pos: { x: pos.x + 6, z: pos.z - 4 },
+      vel: {
+        x: Number.isFinite(velSrc.x) ? velSrc.x * 0.15 : 0,
+        z: Number.isFinite(velSrc.z) ? velSrc.z * 0.15 : 0,
+      },
+      radius: 5,
+      mass: 24,
+      hull: 40,
+      hullMax: 40,
+      ownerId: null,
+      factionId: player && player.factionId || 'faction_free',
+      salvagePool: {},
+      payloadType: CAUSAL_SURVIVOR_PAYLOAD_TYPE,
+      worldRecordId: null,
+      transientSector: false,
+    }, this.helpers);
+    if (!entity) return null;
+    entity.flags = Object.assign({}, entity.flags, { persistent: true });
+    entity.data.playerWreck = true;
+    entity.data.sourceVictimId = state.playerId;
+    entity.data.playerWreckMarkerId = payload.markerId || (playerWreckMarker(state) && playerWreckMarker(state).markerId) || null;
+    entity.data.tetherRole = 'survivor_pod';
+    entity.data.scanLabel = 'Your Pod';
+    entity.data.masslineTetherable = true;
+    entity.data.survivorPodCausal = {
+      entityId: entity.id,
+      victimId: state.playerId,
+      sectorId: state.world && state.world.currentSectorId || null,
+      factionId: entity.factionId || 'faction_free',
+      memoryId: `player-wreck-pod:${hash32((state.meta && state.meta.seed) || 1, 'player_wreck_pod').toString(36)}`,
+      phase: 'adrift',
+      ejectedAt: Number.isFinite(state.simTime) ? state.simTime : 0,
+      expireAt: null,
+      resolved: false,
+      playerWreck: true,
+    };
+    if (this._bus && typeof this._bus.emit === 'function') {
+      this._bus.emit('survivorPod:ejected', {
+        entityId: entity.id,
+        victimId: state.playerId,
+        sectorId: entity.data.survivorPodCausal.sectorId,
+        factionId: entity.factionId,
+        expireAt: null,
+        phase: 'adrift',
+        source: 'player_wreck',
+        playerWreck: true,
+        markerId: entity.data.playerWreckMarkerId,
+      });
+    }
+    return entity;
+  },
+
+  spawnWreckSquatter(request = {}) {
+    const state = this._state;
+    const pos = request && request.pos;
+    if (!state || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const entity = spawnPayloadEntity(state, {
+      pos: { x: pos.x, z: pos.z },
+      vel: { x: 0, z: 0 },
+      radius: 5,
+      mass: 24,
+      hull: 40,
+      hullMax: 40,
+      ownerId: null,
+      factionId: request.factionId || 'faction_reach',
+      salvagePool: {},
+      payloadType: 'wreck_squatter',
+      worldRecordId: null,
+      transientSector: true,
+    }, this.helpers);
+    if (!entity || !entity.data) return entity;
+    entity.data.tetherRole = 'survivor_pod';
+    entity.data.scanLabel = 'Wreck Squatter';
+    entity.data.wreckSquatter = true;
+    entity.data.masslineTetherable = true;
+    entity.data.sourceFieldId = request.fieldId || null;
+    return entity;
   },
 
   _spawnCausalPod(state, victim, payload) {
@@ -514,7 +654,7 @@ export const survivorPod = {
     const list = state.entityList || [];
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
-      if (!isCausalSurvivorPod(entity)) continue;
+      if (!isCausalSurvivorPod(entity) || isPlayerWreckPod(entity)) continue;
       const stamp = entity.data && entity.data.survivorPodCausal;
       if (!stamp || stamp.resolved) continue;
       if (!own.causal.byEntityId[entity.id]) {
@@ -546,7 +686,7 @@ export const survivorPod = {
       const entity = state.entities && state.entities.get
         ? state.entities.get(Number(id) === Number(id) ? Number(id) : id) || state.entities.get(id)
         : null;
-      if (!entity || entity.alive === false || !isCausalSurvivorPod(entity)) {
+      if (!entity || entity.alive === false || !isCausalSurvivorPod(entity) || isPlayerWreckPod(entity)) {
         delete own.causal.byEntityId[id];
         continue;
       }
@@ -901,9 +1041,10 @@ export const survivorPod = {
       if (this._onNewGame) {
         this._bus.off('game:newGame', this._onNewGame);
         this._bus.off('game:new', this._onNewGame);
-        this._bus.off('save:loaded', this._onNewGame);
       }
+      if (this._onSaveLoaded) this._bus.off('save:loaded', this._onSaveLoaded);
       if (this._onKilled) this._bus.off('entity:killed', this._onKilled);
+      if (this._onPlayerDeath) this._bus.off('player:death', this._onPlayerDeath);
       if (this._onLatched) this._bus.off('tether:latched', this._onLatched);
     }
     this._onPlaced = null;
@@ -911,7 +1052,9 @@ export const survivorPod = {
     this._onMissionOffered = null;
     this._onChoice = null;
     this._onNewGame = null;
+    this._onSaveLoaded = null;
     this._onKilled = null;
+    this._onPlayerDeath = null;
     this._onLatched = null;
     this.helpers = null;
   },
