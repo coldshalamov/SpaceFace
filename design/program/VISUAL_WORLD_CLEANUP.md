@@ -11,6 +11,9 @@ are a broken picture.
 This campaign is for a **taste model** (Claude Opus 5 max, or equal). The controller does
 not pre-solve the look. The worker picks among real options, then beats its first idea.
 
+Admitted as [`PQ-193.01`](./roadmap/active/PQ-193.md) (hulls) and `PQ-193.02` (jets).
+Dispatch `--id PQ-193` then leaf `.01`. The ordered board is [`../../build_map.md`](../../build_map.md) §13D.
+
 Copy-paste operator: [`VISUAL_WORLD_CLEANUP_GOAL.txt`](./VISUAL_WORLD_CLEANUP_GOAL.txt).
 
 ---

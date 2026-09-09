@@ -1,4 +1,4 @@
-This is a campaign: raise live 3D objects to one quality bar. Do not use INFERENCE. Do not take hitch/PQ-129 work. Do not stop after one unit.
+This is a campaign: raise live 3D objects to one quality bar. Do not use INFERENCE. Do not take hitch/PQ-129 work. Do not stop after one unit. The live ordered board is build_map.md §13D. Dispatch --id PQ-193 then leaves .03, .04, .05.
 
 Law: design/program/GRAPHICS_3D_CAMPAIGN.md and docs/visual-assets/FLYABLE_SHIP_WORKFLOW.md. Camera is the 60° chase at 144 WU (close 58 WU). Capture with tools/blender/spaceface_chase_camera.py. No seats, no studio three-quarter, no cabin kits.
 

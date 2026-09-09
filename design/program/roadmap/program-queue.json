@@ -83,7 +83,8 @@
         "PQ-129",
         "PQ-130",
         "PQ-187",
-        "PQ-188"
+        "PQ-188",
+        "PQ-193"
       ]
     },
     {
@@ -1462,7 +1463,7 @@
       ],
       "sources": [
         "design/program/06_RETAINED_FUTURE_BACKLOG.md",
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -1473,7 +1474,7 @@
         "public-route",
         "counterplay"
       ],
-      "brief": "Reactivated. The three mass tools in the data become readable tactics with the momentum-bungee joust as the showcase. Gap: `wpn_gravity_marker_s` and `wpn_momentum_sink_s` exist in weapons data with status effects and no play arc. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-026.md."
+      "brief": "Reactivated. The three mass tools in the data become readable tactics with the momentum-bungee joust as the showcase. Gap: `wpn_gravity_marker_s` and `wpn_momentum_sink_s` exist in weapons data with status effects and no play arc. See build_map.md section 15 and design/program/roadmap/active/PQ-026.md."
     },
     {
       "id": "PQ-027",
@@ -1497,7 +1498,7 @@
       ],
       "sources": [
         "design/program/06_RETAINED_FUTURE_BACKLOG.md",
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -1509,7 +1510,7 @@
         "public-route",
         "accessibility"
       ],
-      "brief": "Reactivated. Crushers, furnaces, conveyors, mass drivers, debris currents, storms and timed access become physical actors the player can feed enemies into. Gap: `environmentalMachinery.js` exists as a system with dressing; nothing in it takes a hull. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-027.md."
+      "brief": "Reactivated. Crushers, furnaces, conveyors, mass drivers, debris currents, storms and timed access become physical actors the player can feed enemies into. Gap: `environmentalMachinery.js` exists as a system with dressing; nothing in it takes a hull. See build_map.md section 15 and design/program/roadmap/active/PQ-027.md."
     },
     {
       "id": "PQ-028",
@@ -1535,7 +1536,7 @@
       ],
       "sources": [
         "design/program/06_RETAINED_FUTURE_BACKLOG.md",
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -1548,7 +1549,7 @@
         "save",
         "performance"
       ],
-      "brief": "Reactivated. One sling ring or mass driver per region that launches ships (and thrown enemies) — the anchor-ski and catapult toys. Gap: Travel between sectors is Atlas; nothing in a sector launches mass. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-028.md."
+      "brief": "Reactivated. One sling ring or mass driver per region that launches ships (and thrown enemies) — the anchor-ski and catapult toys. Gap: Travel between sectors is Atlas; nothing in a sector launches mass. See build_map.md section 15 and design/program/roadmap/active/PQ-028.md."
     },
     {
       "id": "PQ-029",
@@ -1572,7 +1573,7 @@
       ],
       "sources": [
         "design/program/06_RETAINED_FUTURE_BACKLOG.md",
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -1584,7 +1585,7 @@
         "public-route",
         "save"
       ],
-      "brief": "Reactivated. The three practical heads already in the data become unlockable toys with a Range drill, a sentence, and NPC use. Gap: Seven heads exist as ordinary purchasable modules with no arc; a player can finish the campaign using the rope as a tractor beam only. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-029.md."
+      "brief": "Reactivated. The three practical heads already in the data become unlockable toys with a Range drill, a sentence, and NPC use. Gap: Seven heads exist as ordinary purchasable modules with no arc; a player can finish the campaign using the rope as a tractor beam only. See build_map.md section 15 and design/program/roadmap/active/PQ-029.md."
     },
     {
       "id": "PQ-030",
@@ -1609,7 +1610,7 @@
       ],
       "sources": [
         "design/program/06_RETAINED_FUTURE_BACKLOG.md",
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -1622,7 +1623,7 @@
         "counterplay",
         "accessibility"
       ],
-      "brief": "Reactivated. The two combat heads become late-game toys with counterplay and a specialist enemy that carries them. Gap: Combat heads exist in data with no arc, no enemy use, no drill. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-030.md."
+      "brief": "Reactivated. The two combat heads become late-game toys with counterplay and a specialist enemy that carries them. Gap: Combat heads exist in data with no arc, no enemy use, no drill. See build_map.md section 15 and design/program/roadmap/active/PQ-030.md."
     },
     {
       "id": "PQ-031",
@@ -1645,7 +1646,7 @@
       ],
       "sources": [
         "design/program/06_RETAINED_FUTURE_BACKLOG.md",
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -1658,7 +1659,7 @@
         "save",
         "performance"
       ],
-      "brief": "Reactivated. Object-to-object tether as the signature abuse: tie two enemies together and watch physics finish the fight. Gap: Twin Bridle exists behind a flag with setup time and no gameplay arc; the most-requested verb in the vision ('tether them together so they yank each other') is unreachable in practice. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-031.md."
+      "brief": "Reactivated. Object-to-object tether as the signature abuse: tie two enemies together and watch physics finish the fight. Gap: Twin Bridle exists behind a flag with setup time and no gameplay arc; the most-requested verb in the vision ('tether them together so they yank each other') is unreachable in practice. See build_map.md section 15 and design/program/roadmap/active/PQ-031.md."
     },
     {
       "id": "PQ-032",
@@ -1691,7 +1692,7 @@
       "sources": [
         "design/depth-program/BUILD_PLAN.md",
         "design/spec3/SPEC3-F7-living-universe.md",
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md",
         "design/program/roadmap/retired/PQ-032.md"
@@ -1704,7 +1705,7 @@
         "public-route",
         "five-endings"
       ],
-      "brief": "Reactivated. One building story, no branch investment: beats 1–3 stop being errands, the ending gate moves to where the toys are, NG+ carries a legacy. Gap: Authored content ~10–14 h; sharpest cliff at minute 12; ending at 100k cr vs 4.5M hulls. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-032.md."
+      "brief": "Reactivated. One building story, no branch investment: beats 1–3 stop being errands, the ending gate moves to where the toys are, NG+ carries a legacy. Gap: Authored content ~10–14 h; sharpest cliff at minute 12; ending at 100k cr vs 4.5M hulls. See build_map.md section 15 and design/program/roadmap/active/PQ-032.md."
     },
     {
       "id": "PQ-033",
@@ -1740,7 +1741,7 @@
       "sources": [
         "design/spec2/08_RELEASE_READINESS.md",
         "design/program/roadmap/04_WORLD_CONTENT_RELEASE.md",
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md",
         "design/program/roadmap/retired/PQ-033.md"
@@ -1758,7 +1759,7 @@
         "accessibility",
         "store-media"
       ],
-      "brief": "Reactivated. The release matrix: legal and credits (the only hard blocker today), crash reporting, auto-update, version string, min-spec floors, soaks, Browser/Electron parity, store readiness. Gap: No root LICENSE/NOTICE/credits; no crashReporter; no auto-updater; no version in UI; presets/frame cap missing (PQ-165). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-033.md."
+      "brief": "Reactivated. The release matrix: legal and credits (the only hard blocker today), crash reporting, auto-update, version string, min-spec floors, soaks, Browser/Electron parity, store readiness. Gap: No root LICENSE/NOTICE/credits; no crashReporter; no auto-updater; no version in UI; presets/frame cap missing (PQ-165). See build_map.md section 15 and design/program/roadmap/active/PQ-033.md."
     },
     {
       "id": "PQ-034",
@@ -2343,7 +2344,7 @@
       "dependsOn": [],
       "mutexes": [],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/program/06_RETAINED_FUTURE_BACKLOG.md",
         "assets/ships/massline_express_liner_v1/reference/stopped_lark_iter19/REFERENCE_PROVENANCE.md",
         "design/program/roadmap/active/PQ-049.md"
@@ -2377,7 +2378,7 @@
       "dependsOn": [],
       "mutexes": [],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/program/06_RETAINED_FUTURE_BACKLOG.md",
         "assets/ships/fleet_remaster_v1/HITCH_QUALITY_FLOOR.md",
         "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
@@ -2414,7 +2415,7 @@
         "performance-hitch"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/program/PERF_HITCH_CAMPAIGN.md",
         "design/PERF_OPTION_SPACE.md",
         "design/PERF_BUDGET.md",
@@ -2450,7 +2451,7 @@
         "asteroid-works-playfield"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/ASTEROID_WORKS_DESIGN_LAW.md",
         "design/program/ASTEROID_WORKS_PLAYFIELD.md",
         "design/frontend/SCREENS_E_ASTEROID_WORKS.md",
@@ -2489,7 +2490,7 @@
         "asteroid-works-art"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/program/ASTEROID_WORKS_ART_CAMPAIGN.md",
         "design/ASTEROID_WORKS_DESIGN_LAW.md",
         "docs/visual-assets/ADVANCED_MODEL_TECHNIQUE_CONTRACT.md",
@@ -2526,7 +2527,7 @@
         "asteroid-works-geology"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/ASTEROID_WORKS_DESIGN_LAW.md",
         "design/ASTEROID_OPS_VISION.md",
         "src/systems/asteroidFormationModel.js",
@@ -2565,7 +2566,7 @@
         "sandbox-launch-schema"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md",
         "design/PHYSICAL_PLAY_GRAMMAR.md",
         "design/PHYSICAL_PLAY_BUILD_PLAN.md",
@@ -2586,7 +2587,7 @@
         "campaign-contamination-test",
         "playable"
       ],
-      "brief": "Admitted 2026-08-21 from the 6,900-line master plan. A concentrated combat proving ground (Crucible) with a scored thirty-wave Survival ruleset, a Combat Lab built on the existing Sandbox, and a shared attack algebra (emitter/trajectory/propagation/payload/trigger/constraint) compiled into immutable AttackSpecs with lineage and a shared proc budget. state.mode stays flight; state.run is orthogonal; a run starts from fresh state through the real New Game path and never touches the Adventure save. Leaves .00-.13 are the plan phases in order; .00-.04 are strictly sequential. See CANONICAL_BUILD_MAP.md section 12."
+      "brief": "Admitted 2026-08-21 from the 6,900-line master plan. A concentrated combat proving ground (Crucible) with a scored thirty-wave Survival ruleset, a Combat Lab built on the existing Sandbox, and a shared attack algebra (emitter/trajectory/propagation/payload/trigger/constraint) compiled into immutable AttackSpecs with lineage and a shared proc budget. state.mode stays flight; state.run is orthogonal; a run starts from fresh state through the real New Game path and never touches the Adventure save. Leaves .00-.13 are the plan phases in order; .00-.04 are strictly sequential. See build_map.md section 12."
     },
     {
       "id": "PQ-134",
@@ -2605,7 +2606,7 @@
         "arcade-structural-fx"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "src/render/combat/arcadeStructuralFx.js",
         "design/program/roadmap/active/PQ-134.md",
         "design/program/roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md"
@@ -2619,7 +2620,7 @@
         "four-way-capture-at-play-size",
         "playable"
       ],
-      "brief": "The orphan branch feat/arcade-vfx-foundation (20216c9c) was pulled to master as ce340812: a pooled instanced structural-FX primitive set (blades 128, broken arcs 48, shards 64) with priority-aware slot admission and zero consumers. Wire it behind cueArbitration for kill, hard-collision, and bank-shot cues, then grow it into the causal VFX/audio grammar Crucible needs (family/generation/material/status legible under saturation). See CANONICAL_BUILD_MAP.md section 13."
+      "brief": "The orphan branch feat/arcade-vfx-foundation (20216c9c) was pulled to master as ce340812: a pooled instanced structural-FX primitive set (blades 128, broken arcs 48, shards 64) with priority-aware slot admission and zero consumers. Wire it behind cueArbitration for kill, hard-collision, and bank-shot cues, then grow it into the causal VFX/audio grammar Crucible needs (family/generation/material/status legible under saturation). See build_map.md section 13."
     },
     {
       "id": "PQ-135",
@@ -2635,12 +2636,12 @@
         "flight-motion"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Flight and movement convergence per CRUCIBLE_SURVIVAL_MASTER_PLAN.md section 21A, admitted by the owner 2026-08-24 after playtest (\"every ship is heavy like underwater\"). Target: every ship should look like it meant to do what it just did. Order: Motion Lab -> player handling -> hull-relative enemy actuator -> formation choreography -> coherent swarm. Binding: no new direct position/velocity writes, no campaign AI fork, no perf regression hidden by cutting entity count or quality. See CANONICAL_BUILD_MAP.md section 13A."
+      "brief": "Flight and movement convergence per CRUCIBLE_SURVIVAL_MASTER_PLAN.md section 21A, admitted by the owner 2026-08-24 after playtest (\"every ship is heavy like underwater\"). Target: every ship should look like it meant to do what it just did. Order: Motion Lab -> player handling -> hull-relative enemy actuator -> formation choreography -> coherent swarm. Binding: no new direct position/velocity writes, no campaign AI fork, no perf regression hidden by cutting entity count or quality. See build_map.md section 13A."
     },
     {
       "id": "PQ-136",
@@ -2656,11 +2657,11 @@
         "asset-fielding"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md"
+        "build_map.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Field the authored assets we already own: 80 unused authored models (wreck_aftermath_pack 44/44 unused, everyday_space_kit 30 unused, npc_activity_pack 6 unused) plus triage of half-finished hulls. Reuse before authoring; a variant counts as fielding; check:asset-reachability is the instrument, never a filename grep. See CANONICAL_BUILD_MAP.md section 13B."
+      "brief": "Field the authored assets we already own: 80 unused authored models (wreck_aftermath_pack 44/44 unused, everyday_space_kit 30 unused, npc_activity_pack 6 unused) plus triage of half-finished hulls. Reuse before authoring; a variant counts as fielding; check:asset-reachability is the instrument, never a filename grep. See build_map.md section 13B."
     },
     {
       "id": "PQ-137",
@@ -2676,13 +2677,13 @@
         "flight-physics-feel"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Two speeds in one default mode (nimble in a fight, earned speed kept across the galaxy); shoves throw; one hitstun law for guns, throws, flings and collisions; terrain lethal; the rope is a rope; draw-to-fly rips; chains go off; every bar measured on the default route. Bars B1-B8, B11 in design/FEEL_CONTRACT.md. See CANONICAL_BUILD_MAP.md section 13C."
+      "brief": "Two speeds in one default mode (nimble in a fight, earned speed kept across the galaxy); shoves throw; one hitstun law for guns, throws, flings and collisions; terrain lethal; the rope is a rope; draw-to-fly rips; chains go off; every bar measured on the default route. Bars B1-B8, B11 in design/FEEL_CONTRACT.md. See build_map.md section 13C."
     },
     {
       "id": "PQ-138",
@@ -2698,7 +2699,7 @@
         "world-reaction"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -2720,7 +2721,7 @@
         "impact-spectacle"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -2744,7 +2745,7 @@
         "roster-physical"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -2770,7 +2771,7 @@
         "sixty-second-proof"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -2794,7 +2795,7 @@
         "progression-verbs"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -2818,7 +2819,7 @@
         "places-ordinary-life"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -2840,7 +2841,7 @@
         "density-perf-guard"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -2865,7 +2866,7 @@
         "industry-authorship"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
@@ -2889,13 +2890,13 @@
         "stunt-grammar"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Named tricks detected from physics receipts, a combo meter, style titles, and the moment detector that feeds clips and slow-mo. Gap: Tony Hawk, Rocket League and Bulletstorm made a physics toy legible by naming the tricks; the audit found every link of the 60-second chain exists and nothing rewards composing them. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-146.md."
+      "brief": "Named tricks detected from physics receipts, a combo meter, style titles, and the moment detector that feeds clips and slow-mo. Gap: Tony Hawk, Rocket League and Bulletstorm made a physics toy legible by naming the tricks; the audit found every link of the 60-second chain exists and nothing rewards composing them. See build_map.md section 15 and design/program/roadmap/active/PQ-146.md."
     },
     {
       "id": "PQ-147",
@@ -2914,13 +2915,13 @@
         "field-toys"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "All five number-key powers become real, physical, legible toys with NPC counterplay; the Power Bar is the progression display. Gap: The Power Bar (§11.4) is half-built at the input layer; the powers themselves are uneven and unteachable. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-147.md."
+      "brief": "All five number-key powers become real, physical, legible toys with NPC counterplay; the Power Bar is the progression display. Gap: The Power Bar (§11.4) is half-built at the input layer; the powers themselves are uneven and unteachable. See build_map.md section 15 and design/program/roadmap/active/PQ-147.md."
     },
     {
       "id": "PQ-148",
@@ -2939,13 +2940,13 @@
         "cargo-physics"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Spilled cargo is real mass on the field: shield, projectile, prize; volatile cargo detonates, corrodes or drags; smuggling is a physics problem. Gap: Cargo spills exist as TTL pickups that NPCs ignore; mass on the field is inventory. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-148.md."
+      "brief": "Spilled cargo is real mass on the field: shield, projectile, prize; volatile cargo detonates, corrodes or drags; smuggling is a physics problem. Gap: Cargo spills exist as TTL pickups that NPCs ignore; mass on the field is inventory. See build_map.md section 15 and design/program/roadmap/active/PQ-148.md."
     },
     {
       "id": "PQ-149",
@@ -2963,13 +2964,13 @@
         "director"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "One pacing owner sustains work→travel→curiosity→tension→violence→aftermath→quiet and seeds 'so then' escalations on a budget. Gap: Three directors exist (encounter, campaign pressure decks, station side events) with no owner of rhythm; ambient tier exists but nothing guarantees quiet or seeds escalation. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-149.md."
+      "brief": "One pacing owner sustains work→travel→curiosity→tension→violence→aftermath→quiet and seeds 'so then' escalations on a budget. Gap: Three directors exist (encounter, campaign pressure decks, station side events) with no owner of rhythm; ambient tier exists but nothing guarantees quiet or seeds escalation. See build_map.md section 15 and design/program/roadmap/active/PQ-149.md."
     },
     {
       "id": "PQ-150",
@@ -2988,13 +2989,13 @@
         "people"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Named aces hunt you with counter-loadouts and taunts, rivals escalate, a mechanic narrates your scars, and the radio talks about what you did. Gap: Aces and memory exist; nothing escalates against the player's style, no character lives anywhere, and barks are text after a squelch. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-150.md."
+      "brief": "Named aces hunt you with counter-loadouts and taunts, rivals escalate, a mechanic narrates your scars, and the radio talks about what you did. Gap: Aces and memory exist; nothing escalates against the player's style, no character lives anywhere, and barks are text after a squelch. See build_map.md section 15 and design/program/roadmap/active/PQ-150.md."
     },
     {
       "id": "PQ-151",
@@ -3013,13 +3014,13 @@
         "law"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Four tiers (fine → bounty → hunters → impound), patrol nets and checkpoints, corrupt ports, laundering, insurance and restitution, impound recovery as play. Gap: Heat is a decaying scalar; incidents chase always; custody/surrender/recovery systems (54 KB) are rich but unadvertised; no tiers, no nets, no laundering. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-151.md."
+      "brief": "Four tiers (fine → bounty → hunters → impound), patrol nets and checkpoints, corrupt ports, laundering, insurance and restitution, impound recovery as play. Gap: Heat is a decaying scalar; incidents chase always; custody/surrender/recovery systems (54 KB) are rich but unadvertised; no tiers, no nets, no laundering. See build_map.md section 15 and design/program/roadmap/active/PQ-151.md."
     },
     {
       "id": "PQ-152",
@@ -3038,13 +3039,13 @@
         "story"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Tow, sling, demolish, rescue, jam, siege: mission TYPES, not contract clauses. The Massline becomes a job. Gap: Ten procedural verbs, eight are fly-there; physical play lives only in optional clauses (`no_slack` applies to bulk_haul only). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-152.md."
+      "brief": "Tow, sling, demolish, rescue, jam, siege: mission TYPES, not contract clauses. The Massline becomes a job. Gap: Ten procedural verbs, eight are fly-there; physical play lives only in optional clauses (`no_slack` applies to bulk_haul only). See build_map.md section 15 and design/program/roadmap/active/PQ-152.md."
     },
     {
       "id": "PQ-153",
@@ -3063,13 +3064,13 @@
         "places"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Six of the ten authored core sectors get a verb, a rhythm, a law, a hazard geometry, a landmark and a signature toy (the owner named the first three; the next three are proposed by tier spread and existing content); the frontier stays texture. Gap: 24 sectors exist (10 authored + 14 frontier); identity is palette; the frontier has no beats. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-153.md."
+      "brief": "Six of the ten authored core sectors get a verb, a rhythm, a law, a hazard geometry, a landmark and a signature toy (the owner named the first three; the next three are proposed by tier spread and existing content); the frontier stays texture. Gap: 24 sectors exist (10 authored + 14 frontier); identity is palette; the frontier has no beats. See build_map.md section 15 and design/program/roadmap/active/PQ-153.md."
     },
     {
       "id": "PQ-154",
@@ -3087,13 +3088,13 @@
         "wrecks"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Dead capital hulls become arenas with ambush ecology; hulls fracture along authored seams on extreme impact; dying seeds your wreck, pod and reputation. Gap: Wrecks spawn flat and static; fracture is a swap; unique wrecks exist as one-shots. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-154.md."
+      "brief": "Dead capital hulls become arenas with ambush ecology; hulls fracture along authored seams on extreme impact; dying seeds your wreck, pod and reputation. Gap: Wrecks spawn flat and static; fracture is a swap; unique wrecks exist as one-shots. See build_map.md section 15 and design/program/roadmap/active/PQ-154.md."
     },
     {
       "id": "PQ-155",
@@ -3112,13 +3113,13 @@
         "economy-curve"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "First upgrade in 15 minutes, a new verb every hour for ten hours, the ending at the heavy-verb tier, sinks and faucets balanced by a deterministic ten-hour economy simulation. Gap: Start 5,000 cr vs cheapest tech 6,000; spool ceiling behind 2.5 M; ending at 100 k of a 4.5 M curve; the 100 k → 4.5 M canyon is 40+ hours of repetition. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-155.md."
+      "brief": "First upgrade in 15 minutes, a new verb every hour for ten hours, the ending at the heavy-verb tier, sinks and faucets balanced by a deterministic ten-hour economy simulation. Gap: Start 5,000 cr vs cheapest tech 6,000; spool ceiling behind 2.5 M; ending at 100 k of a 4.5 M curve; the 100 k → 4.5 M canyon is 40+ hours of repetition. See build_map.md section 15 and design/program/roadmap/active/PQ-155.md."
     },
     {
       "id": "PQ-156",
@@ -3137,13 +3138,13 @@
         "progression-verbs"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Brawler, skater, tug as starting hulls that are three ways to play, and a load screen that shows your ship, scars, rap sheet and grudges. Gap: One starter; the load screen is a list. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-156.md."
+      "brief": "Brawler, skater, tug as starting hulls that are three ways to play, and a load screen that shows your ship, scars, rap sheet and grudges. Gap: One starter; the load screen is a list. See build_map.md section 15 and design/program/roadmap/active/PQ-156.md."
     },
     {
       "id": "PQ-158",
@@ -3162,13 +3163,13 @@
         "audio"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Authored samples replace the oscillator stack, an impact ladder by mass and speed, the Massline as an instrument, composed adaptive themes, voice for the 271-line script, a reverb bus, and a weight-first mix. Gap: Zero authored audio files; 167 synth recipes share one timbre; no reverb; one collision sound; boostStop empty; Massline reel/release silent; barks are text. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-158.md."
+      "brief": "Authored samples replace the oscillator stack, an impact ladder by mass and speed, the Massline as an instrument, composed adaptive themes, voice for the 271-line script, a reverb bus, and a weight-first mix. Gap: Zero authored audio files; 167 synth recipes share one timbre; no reverb; one collision sound; boostStop empty; Massline reel/release silent; barks are text. See build_map.md section 15 and design/program/roadmap/active/PQ-158.md."
     },
     {
       "id": "PQ-159",
@@ -3187,13 +3188,13 @@
         "camera"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Speed opens the frame, impacts kick by delta-V, two-body moments auto-frame as tension diagrams, signature kills get a beat, and a photo mode sells the game. Gap: Speed zoom tops out at 1.55×; kicks are damage-driven; no auto-framing for two-body moments; no photo mode. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-159.md."
+      "brief": "Speed opens the frame, impacts kick by delta-V, two-body moments auto-frame as tension diagrams, signature kills get a beat, and a photo mode sells the game. Gap: Speed zoom tops out at 1.55×; kicks are damage-driven; no auto-framing for two-body moments; no photo mode. See build_map.md section 15 and design/program/roadmap/active/PQ-159.md."
     },
     {
       "id": "PQ-160",
@@ -3212,13 +3213,13 @@
         "replay"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The deterministic sim replays the last thirty seconds in-game; rated moments become clips; GIF/MP4 export; Crucible seeds and ghosts share. Gap: Replay exists only in the lab; no photo, clip or share surface. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-160.md."
+      "brief": "The deterministic sim replays the last thirty seconds in-game; rated moments become clips; GIF/MP4 export; Crucible seeds and ghosts share. Gap: Replay exists only in the lab; no photo, clip or share surface. See build_map.md section 15 and design/program/roadmap/active/PQ-160.md."
     },
     {
       "id": "PQ-161",
@@ -3237,13 +3238,13 @@
         "readability"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Role-readable hulls and liveries, danger telegraphs you die to on purpose, a colourblind-safe force palette, and a teaching-only trajectory overlay. Gap: Silhouette identity routes through asset programs; telegraphs and force palette have no owner. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-161.md."
+      "brief": "Role-readable hulls and liveries, danger telegraphs you die to on purpose, a colourblind-safe force palette, and a teaching-only trajectory overlay. Gap: Silhouette identity routes through asset programs; telegraphs and force palette have no owner. See build_map.md section 15 and design/program/roadmap/active/PQ-161.md."
     },
     {
       "id": "PQ-163",
@@ -3261,13 +3262,13 @@
         "onboarding"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "A stranger performs a swing-release, a shove and a grab-and-run in minute five without reading a wall; boost, draw-to-fly and wells are taught by doing; the 47-A opener stays the climax. Gap: Boost/draw-to-fly/wells untaught; starter gun cannot shove; the quality cliff after 47-A. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-163.md."
+      "brief": "A stranger performs a swing-release, a shove and a grab-and-run in minute five without reading a wall; boost, draw-to-fly and wells are taught by doing; the 47-A opener stays the climax. Gap: Boost/draw-to-fly/wells untaught; starter gun cannot shove; the quality cliff after 47-A. See build_map.md section 15 and design/program/roadmap/active/PQ-163.md."
     },
     {
       "id": "PQ-164",
@@ -3285,13 +3286,13 @@
         "input"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Full gamepad in every screen with device-aware glyphs and remapping, Steam Deck verified, trackpad gestures honest, haptics by line tension. Gap: Fixed pad map, no remap, keyboard-only glyphs, menu coverage unverified per screen, no Deck work. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-164.md."
+      "brief": "Full gamepad in every screen with device-aware glyphs and remapping, Steam Deck verified, trackpad gestures honest, haptics by line tension. Gap: Fixed pad map, no remap, keyboard-only glyphs, menu coverage unverified per screen, no Deck work. See build_map.md section 15 and design/program/roadmap/active/PQ-164.md."
     },
     {
       "id": "PQ-165",
@@ -3309,13 +3310,13 @@
         "options"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Graphics presets and a frame cap, subtitles for every voice line, audio cues for visual events, assist options, and the accessibility checklist green. Gap: No presets or frame cap; no subtitles for audio; no audio cues for visual events; gamepad remap missing (PQ-164). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-165.md."
+      "brief": "Graphics presets and a frame cap, subtitles for every voice line, audio cues for visual events, assist options, and the accessibility checklist green. Gap: No presets or frame cap; no subtitles for audio; no audio cues for visual events; gamepad remap missing (PQ-164). See build_map.md section 15 and design/program/roadmap/active/PQ-165.md."
     },
     {
       "id": "PQ-166",
@@ -3333,13 +3334,13 @@
         "localization"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The existing 9,530-key runtime carries five launch languages; every screen survives +40 % growth; fonts fall back. Gap: Locale only via URL; default route English-only by assertion; no language setting; growth unverified on the station. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-166.md."
+      "brief": "The existing 9,530-key runtime carries five launch languages; every screen survives +40 % growth; fonts fall back. Gap: Locale only via URL; default route English-only by assertion; no language setting; growth unverified on the station. See build_map.md section 15 and design/program/roadmap/active/PQ-166.md."
     },
     {
       "id": "PQ-167",
@@ -3355,13 +3356,13 @@
         "telemetry"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Designer-readable funnels from the telemetry that already exists, a weekly owner playtest with captured sessions, and the numbers that gate ALPHA and BETA. Gap: Telemetry is local-only, reachable via a window global; no export, no funnel, no playtest ritual. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-167.md."
+      "brief": "Designer-readable funnels from the telemetry that already exists, a weekly owner playtest with captured sessions, and the numbers that gate ALPHA and BETA. Gap: Telemetry is local-only, reachable via a window global; no export, no funnel, no playtest ritual. See build_map.md section 15 and design/program/roadmap/active/PQ-167.md."
     },
     {
       "id": "PQ-169",
@@ -3380,13 +3381,13 @@
         "crucible-meta"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "A daily seed with a leaderboard and ghosts, weekly mutators (gravity slalom), stunt scoring; the Crucible is the combat lab that adventure inherits from. Gap: Records and build codes exist; no daily, no board, no ghosts, no stunt score. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-169.md."
+      "brief": "A daily seed with a leaderboard and ghosts, weekly mutators (gravity slalom), stunt scoring; the Crucible is the combat lab that adventure inherits from. Gap: Records and build codes exist; no daily, no board, no ghosts, no stunt score. See build_map.md section 15 and design/program/roadmap/active/PQ-169.md."
     },
     {
       "id": "PQ-170",
@@ -3404,13 +3405,13 @@
         "endgame"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "After the ending: territory wars you tilt, two mega-heists, capital boss set-pieces, the Ace's trophy line, a station that expands and a faction that depends on you. Gap: No faction endgame; no station growth; no faction dependency; post-ending chains reuse ten verbs. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-170.md."
+      "brief": "After the ending: territory wars you tilt, two mega-heists, capital boss set-pieces, the Ace's trophy line, a station that expands and a faction that depends on you. Gap: No faction endgame; no station growth; no faction dependency; post-ending chains reuse ten verbs. See build_map.md section 15 and design/program/roadmap/active/PQ-170.md."
     },
     {
       "id": "PQ-171",
@@ -3428,13 +3429,13 @@
         "content-grammar"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "A written grammar for encounters, microevents and contracts so twenty-five hours do not repeat, and a check that measures repetition. Gap: Ten verbs and 65 one-shots; nothing measures repetition. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-171.md."
+      "brief": "A written grammar for encounters, microevents and contracts so twenty-five hours do not repeat, and a check that measures repetition. Gap: Ten verbs and 65 one-shots; nothing measures repetition. See build_map.md section 15 and design/program/roadmap/active/PQ-171.md."
     },
     {
       "id": "PQ-172",
@@ -3452,13 +3453,13 @@
         "mods"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Content directories loadable as JSON (weapons, ships, encounters, sectors) with validation; Workshop later. Gap: All content is compiled ES modules; one JSON scenario. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-172.md."
+      "brief": "Content directories loadable as JSON (weapons, ships, encounters, sectors) with validation; Workshop later. Gap: All content is compiled ES modules; one JSON scenario. See build_map.md section 15 and design/program/roadmap/active/PQ-172.md."
     },
     {
       "id": "PQ-162",
@@ -3477,14 +3478,14 @@
         "station-ui"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md",
         "design/FRONTEND_DIRECTION.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. Gap: Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-162.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "Seven station screens adopt the instrument grammar skeleton and data states for real; the owner review findings close; docking reads as arriving somewhere. Gap: Flatten happened, redesign did not; zero skeleton adoption; review findings unverified (orange doing four jobs, bar transcript void, italic flavour outranking data). See build_map.md section 15 and design/program/roadmap/active/PQ-162.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-168",
@@ -3504,14 +3505,14 @@
         "chart"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md",
         "design/FRONTEND_DIRECTION.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-168.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "The strategic centrepiece stops reading as an admin screen: the deferred traffic layer lands, duplicated navigation answers merge, tabs get a hierarchy, heat and contracts pin. Gap: J12b traffic layer deferred; duplication; single tab size; sub-12 px nodes; the strategic reviewer called it cheap admin. See build_map.md section 15 and design/program/roadmap/active/PQ-168.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-173",
@@ -3527,13 +3528,13 @@
         "fun-loop"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The tooling that makes \"MAKE IT BETTER\" executable: a fixed-seed Crucible and verb bench, a bar-and-fun-metrics printer, frame strips for a vision critic with the ten-question rubric, the one-page owner report, and the verdict-to-bar translator protocol. Gap: Nineteen deterministic scenarios, a sixty-second capture script, a fixed-seed Crucible route check and a manager loop exist; nothing chains them into play → measure → judge → fix → compare → report, and no fun metric is printed anywhere. See CANONICAL_BUILD_MAP.md section 15 and design/program/roadmap/active/PQ-173.md."
+      "brief": "The tooling that makes \"MAKE IT BETTER\" executable: a fixed-seed Crucible and verb bench, a bar-and-fun-metrics printer, frame strips for a vision critic with the ten-question rubric, the one-page owner report, and the verdict-to-bar translator protocol. Gap: Nineteen deterministic scenarios, a sixty-second capture script, a fixed-seed Crucible route check and a manager loop exist; nothing chains them into play → measure → judge → fix → compare → report, and no fun metric is printed anywhere. See build_map.md section 15 and design/program/roadmap/active/PQ-173.md."
     },
     {
       "id": "PQ-174",
@@ -3552,13 +3553,13 @@
         "crucible-feel"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The Crucible becomes the game's best fifteen minutes: bars for pacing, verbs, moments, deaths and builds; the physics kit is the strongest kit; every arena and boss is a physics problem. Gap: Phases 0–12 of the Crucible are engineering-complete and the swarm ruleset exists; nothing measures whether a run is fun, the free Pulse out-damages the physics kit (owner ruling recorded in the Crucible memory), and the owner's verdict is that combat 'just sucks'. See CANONICAL_BUILD_MAP.md section 16 and design/program/roadmap/active/PQ-174.md."
+      "brief": "The Crucible becomes the game's best fifteen minutes: bars for pacing, verbs, moments, deaths and builds; the physics kit is the strongest kit; every arena and boss is a physics problem. Gap: Phases 0–12 of the Crucible are engineering-complete and the swarm ruleset exists; nothing measures whether a run is fun, the free Pulse out-damages the physics kit (owner ruling recorded in the Crucible memory), and the owner's verdict is that combat 'just sucks'. See build_map.md section 16 and design/program/roadmap/active/PQ-174.md."
     },
     {
       "id": "PQ-175",
@@ -3576,13 +3577,13 @@
         "crucible-content"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Thirty waves that each ask a different physical question, five arenas whose props participate, drafts that change how you fly (never only how hard you hit), and mutators that are new games. Gap: Waves are pinned recipes with roles; drafts include stat modifiers; arena props are mostly dressing; mutators exist as a list. See CANONICAL_BUILD_MAP.md section 16 and design/program/roadmap/active/PQ-175.md."
+      "brief": "Thirty waves that each ask a different physical question, five arenas whose props participate, drafts that change how you fly (never only how hard you hit), and mutators that are new games. Gap: Waves are pinned recipes with roles; drafts include stat modifiers; arena props are mostly dressing; mutators exist as a list. See build_map.md section 16 and design/program/roadmap/active/PQ-175.md."
     },
     {
       "id": "PQ-176",
@@ -3601,13 +3602,13 @@
         "outfitting"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Mass is the law, budgets have shape, drives and thrusters split, mounts gate by size, every module is visible and has a sentence, and the fit screen predicts handling before you commit. Gap: Six-type slot grid; module mass barely matters; nothing makes a max-gun build feel different in the hands; the ship screen shows six of thirty-five derived fields; the signature mechanic's ceiling sits behind a 2.5 M tech. See CANONICAL_BUILD_MAP.md section 17 and design/program/roadmap/active/PQ-176.md."
+      "brief": "Mass is the law, budgets have shape, drives and thrusters split, mounts gate by size, every module is visible and has a sentence, and the fit screen predicts handling before you commit. Gap: Six-type slot grid; module mass barely matters; nothing makes a max-gun build feel different in the hands; the ship screen shows six of thirty-five derived fields; the signature mechanic's ceiling sits behind a 2.5 M tech. See build_map.md section 17 and design/program/roadmap/active/PQ-176.md."
     },
     {
       "id": "PQ-177",
@@ -3626,13 +3627,13 @@
         "economy-legibility"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The living economy becomes a strategy surface: a one-line ticker of real events, per-commodity charts with a forecast cone, supply-chain glyphs, event cards on arrival, profit felt on sale, contracts whose clauses twist, and a black market reached by smuggling physics. Gap: Price cycles are computed but chartless; events fire silently; the production graph exists only as data; forecasts exist and are never drawn; contract twists exist only as static clauses. See CANONICAL_BUILD_MAP.md section 17 and design/program/roadmap/active/PQ-177.md."
+      "brief": "The living economy becomes a strategy surface: a one-line ticker of real events, per-commodity charts with a forecast cone, supply-chain glyphs, event cards on arrival, profit felt on sale, contracts whose clauses twist, and a black market reached by smuggling physics. Gap: Price cycles are computed but chartless; events fire silently; the production graph exists only as data; forecasts exist and are never drawn; contract twists exist only as static clauses. See build_map.md section 17 and design/program/roadmap/active/PQ-177.md."
     },
     {
       "id": "PQ-178",
@@ -3650,13 +3651,13 @@
         "story"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "How agents write, voice and stage the linear story: canon sheets, faction registers, one-line barks, set-piece scripts with physical headline verbs, synthetic voice, and a craft bar equal to the 47-A opener. Gap: 47-A is bespoke and everything after it is thinner; there is no written standard for how an agent produces a beat, so quality falls off a cliff at minute twelve. See CANONICAL_BUILD_MAP.md section 17 and design/program/roadmap/active/PQ-178.md."
+      "brief": "How agents write, voice and stage the linear story: canon sheets, faction registers, one-line barks, set-piece scripts with physical headline verbs, synthetic voice, and a craft bar equal to the 47-A opener. Gap: 47-A is bespoke and everything after it is thinner; there is no written standard for how an agent produces a beat, so quality falls off a cliff at minute twelve. See build_map.md section 17 and design/program/roadmap/active/PQ-178.md."
     },
     {
       "id": "PQ-180",
@@ -3672,13 +3673,13 @@
         "frontend-matrix"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "One generated matrix: every 2D surface × every rule of the instrument grammar and the A-list standards, with a check that fails any surface below the floor; the list of what 'brought into the newest version' means, surface by surface. Gap: The grammar exists and sixteen jobs landed for the four instruments and the HUD, but the station, Crucible screens, Asteroid Works, the meta shell and the legacy modules were never held to it; nothing measures adoption per surface. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-180.md."
+      "brief": "One generated matrix: every 2D surface × every rule of the instrument grammar and the A-list standards, with a check that fails any surface below the floor; the list of what 'brought into the newest version' means, surface by surface. Gap: The grammar exists and sixteen jobs landed for the four instruments and the HUD, but the station, Crucible screens, Asteroid Works, the meta shell and the legacy modules were never held to it; nothing measures adoption per surface. See build_map.md section 18 and design/program/roadmap/active/PQ-180.md."
     },
     {
       "id": "PQ-181",
@@ -3697,14 +3698,14 @@
         "meta-shell"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md",
         "design/FRONTEND_DIRECTION.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Every shell screen to the grammar with the three missing meta screens added, the save portrait, a returning-player digest, a version string, and keyboard/gamepad parity. Gap: Credits, statistics and photo mode absent; no version string; settings lacks presets, frame cap and pad remap; load is a list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-181.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "Every shell screen to the grammar with the three missing meta screens added, the save portrait, a returning-player digest, a version string, and keyboard/gamepad parity. Gap: Credits, statistics and photo mode absent; no version string; settings lacks presets, frame cap and pad remap; load is a list. See build_map.md section 18 and design/program/roadmap/active/PQ-181.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-182",
@@ -3724,14 +3725,14 @@
         "crucible-ui"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md",
         "design/FRONTEND_DIRECTION.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The swarm mode's screens become instruments: a door that sells the run in five seconds, drafts readable in one line, a results screen that tells the story, and lab controls that are a toy. Gap: Crucible screens were built during engineering phases and never held to the grammar; results list numbers; the draft explains itself in paragraphs. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-182.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "The swarm mode's screens become instruments: a door that sells the run in five seconds, drafts readable in one line, a results screen that tells the story, and lab controls that are a toy. Gap: Crucible screens were built during engineering phases and never held to the grammar; results list numbers; the draft explains itself in paragraphs. See build_map.md section 18 and design/program/roadmap/active/PQ-182.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-183",
@@ -3750,13 +3751,13 @@
         "entity-links"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Every entity name anywhere opens its dossier in place; a watch list pins prices, rivals, deadlines and factions onto the HUD; global find jumps to anything; the chart takes player notes. Gap: The resolver and drawer exist with seventeen adopters; the station and legacy screens have zero; no watch list, no global find, no notes. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-183.md."
+      "brief": "Every entity name anywhere opens its dossier in place; a watch list pins prices, rivals, deadlines and factions onto the HUD; global find jumps to anything; the chart takes player notes. Gap: The resolver and drawer exist with seventeen adopters; the station and legacy screens have zero; no watch list, no global find, no notes. See build_map.md section 18 and design/program/roadmap/active/PQ-183.md."
     },
     {
       "id": "PQ-184",
@@ -3774,13 +3775,13 @@
         "ui-perf"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Every surface inside a 2 ms UI frame budget and a DOM node budget; long lists virtualised; layout thrash and per-frame allocations removed; the four-thousand-line legacy station hub lifted out; measured by the matrix. Gap: One breakpoint until recently; no list virtualisation; no UI frame budget enforced per surface; a 4,057-line legacy hub still imported for helpers; the chart carries ~80 sub-12 px nodes. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-184.md."
+      "brief": "Every surface inside a 2 ms UI frame budget and a DOM node budget; long lists virtualised; layout thrash and per-frame allocations removed; the four-thousand-line legacy station hub lifted out; measured by the matrix. Gap: One breakpoint until recently; no list virtualisation; no UI frame budget enforced per surface; a 4,057-line legacy hub still imported for helpers; the chart carries ~80 sub-12 px nodes. See build_map.md section 18 and design/program/roadmap/active/PQ-184.md."
     },
     {
       "id": "PQ-185",
@@ -3799,14 +3800,14 @@
         "asteroid-works-ui"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md",
         "design/FRONTEND_DIRECTION.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The one surface with an explicit owner fail is finished under its own design law and the frontend matrix: warm board, perfect grid, authored objects, ≤ 15 visible words, board ≥ 88 % of the glass. Gap: PQ-130 implemented but not accepted; PQ-131 art blocked on its units; the 2026-08-20 playtest remains the defect list. See CANONICAL_BUILD_MAP.md section 18 and design/program/roadmap/active/PQ-185.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "The one surface with an explicit owner fail is finished under its own design law and the frontend matrix: warm board, perfect grid, authored objects, ≤ 15 visible words, board ≥ 88 % of the glass. Gap: PQ-130 implemented but not accepted; PQ-131 art blocked on its units; the 2026-08-20 playtest remains the defect list. See build_map.md section 18 and design/program/roadmap/active/PQ-185.md. DIRECTION OVERRIDE 2026-09-05: 'to the grammar' is void on aesthetics; builds on the PQ-187.03 kit; done is a hash-bound visual review against design/frontend/direction/DIRECTION_SHEET.md (decided 2026-09-06) (design/FRONTEND_DIRECTION.md section 8). Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-186",
@@ -3822,13 +3823,13 @@
         "regression"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FEEL_CONTRACT.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Every feel bar, owner ruling and refusal in this map is encoded as a deterministic check with the vision sentence in its assertion, so a future agent cannot quietly undo the game. Gap: The 2026-09-03 audit found anti-vision behaviour pinned green by tests; nothing prevents it happening again. See CANONICAL_BUILD_MAP.md section 19 and design/program/roadmap/active/PQ-186.md."
+      "brief": "Every feel bar, owner ruling and refusal in this map is encoded as a deterministic check with the vision sentence in its assertion, so a future agent cannot quietly undo the game. Gap: The 2026-09-03 audit found anti-vision behaviour pinned green by tests; nothing prevents it happening again. See build_map.md section 19 and design/program/roadmap/active/PQ-186.md."
     },
     {
       "id": "PQ-187",
@@ -3844,7 +3845,7 @@
         "frontend-direction"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FRONTEND_DIRECTION.md"
       ],
@@ -3869,7 +3870,7 @@
         "instruments-direction"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/VISION.md",
         "design/FRONTEND_DIRECTION.md"
       ],
@@ -3891,13 +3892,13 @@
         "program-docs"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "docs/handoffs/STUDIO_RECOVERY_AUDIT_2026-09-05/README.md",
         "src/systems/input.js"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Agents receive current controls, current defects and unambiguous acceptance: every displayed key label is resolved from the binding source; contradicted instructions are retired in place; the reviewer checklist separates blockers from proofs. Gap: the 2026-09-05 Studio Recovery Audit found executable ambiguity (README vs bindings, checklist polarity, a shipped scheduler still ordered). See CANONICAL_BUILD_MAP.md section 15.9b and design/program/roadmap/active/PQ-189.md."
+      "brief": "Agents receive current controls, current defects and unambiguous acceptance: every displayed key label is resolved from the binding source; contradicted instructions are retired in place; the reviewer checklist separates blockers from proofs. Gap: the 2026-09-05 Studio Recovery Audit found executable ambiguity (README vs bindings, checklist polarity, a shipped scheduler still ordered). See build_map.md section 15.9b and design/program/roadmap/active/PQ-189.md."
     },
     {
       "id": "PQ-190",
@@ -3913,13 +3914,13 @@
         "visual-direction"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "docs/handoffs/STUDIO_RECOVERY_AUDIT_2026-09-05/README.md",
         "docs/visual-assets/VFX_TECHNIQUE_STANDARD.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "Solid readable industrial forms with expressive luminous machinery and effects, proven on six things at the shipping camera before any fleet pass; the VFX standard becomes an effect-class matrix. Gap: the owner asked for less shiny, more luminous, more expressive; the current standard generalises one thruster reference into a universal technique law. See CANONICAL_BUILD_MAP.md section 15.9b and design/program/roadmap/active/PQ-190.md."
+      "brief": "Solid readable industrial forms with expressive luminous machinery and effects, proven on six things at the shipping camera before any fleet pass; the VFX standard becomes an effect-class matrix. Gap: the owner asked for less shiny, more luminous, more expressive; the current standard generalises one thruster reference into a universal technique law. See build_map.md section 15.9b and design/program/roadmap/active/PQ-190.md."
     },
     {
       "id": "PQ-191",
@@ -3935,12 +3936,12 @@
         "landing-passover"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/program/roadmap/active/PQ-191.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "A second agent plays the 2026-09-06 landings, fixes real taste and bugs, and writes the receipt in owner words. This is the passover itself, not a second standing queue. Gap: units can sit at implemented or done after the implementer's own review without a cold play pass. See CANONICAL_BUILD_MAP.md section 1.7 and design/program/roadmap/active/PQ-191.md."
+      "brief": "A second agent plays the 2026-09-06 landings, fixes real taste and bugs, and writes the receipt in owner words. This is the passover itself, not a second standing queue. Gap: units can sit at implemented or done after the implementer's own review without a cold play pass. See build_map.md section 1.7 and design/program/roadmap/active/PQ-191.md."
     },
     {
       "id": "PQ-192",
@@ -3958,13 +3959,40 @@
         "reading-screens"
       ],
       "sources": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/FRONTEND_DIRECTION.md",
         "design/frontend/direction/DIRECTION_SHEET.md"
       ],
       "checks": [],
       "evidence": [],
       "brief": "The four screens the player reads rather than operates - missions log, codex, help, tech tree - migrate onto the kit to the pictures in design/frontend/direction/DIRECTION_SHEET.md section 2 'The reading screens', keeping what each does and deleting their old style blocks as they move. Gap: reachable on the default route, covered by no frontend packet. See design/program/roadmap/active/PQ-192.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+    },
+    {
+      "id": "PQ-193",
+      "priority": 113,
+      "title": "The 3D picture never looks broken",
+      "state": "ready",
+      "canonical": [
+        "GFX-3D-PICTURE-NEVER-BROKEN"
+      ],
+      "aliases": [
+        "3D-PICTURE",
+        "NEVER-LOOKS-BROKEN"
+      ],
+      "dependsOn": [],
+      "mutexes": [
+        "visual-world-3d"
+      ],
+      "sources": [
+        "build_map.md",
+        "design/program/roadmap/active/PQ-193.md",
+        "design/program/VISUAL_WORLD_CLEANUP.md",
+        "design/program/GRAPHICS_3D_CAMPAIGN.md",
+        "design/program/WORLD_VISUAL_CENSUS.md"
+      ],
+      "checks": [],
+      "evidence": [],
+      "brief": "Complete packaged bodies, opening-flyby NPCs that belong next to Hitch, reverse jets that read as thrust, then tubes, shelf hulls, and places. Do not start variety until the Helios flyby is true. Flyable remaster stays PQ-050. See build_map.md section 13D."
     }
   ],
   "dispatchUnits": [
@@ -5445,7 +5473,7 @@
         "program-docs"
       ],
       "paths": [
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/FEEL_CONTRACT.md",
         "design/program/FUN_CONVERGENCE_LOOP.md",
         "design/program/PERF_WHAT_MATTERS.md",
@@ -6560,7 +6588,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-180-02-REPORT.md"
       ],
-      "brief": "ACCEPTED 2026-09-05 (5169ec66; 40 surfaces in the manifest = 40 rows in map §18.2, same order; every red cell carries a packet and leaf; the mirror is prose-enforced, not tested). IMPLEMENTED 2026-09-05: every failing cell carries an owner packet and leaf (754 in the measured run); the eleven unowned surfaces now own their reds (PQ-181, PQ-168); CANONICAL_BUILD_MAP §18.2 mirrors the manifest row for row. Commit 5169ec66. Every red cell is assigned to a packet (PQ-162 station, PQ-168 chart, PQ-181 meta shell, PQ-182 Crucible screens, PQ-130 works, PQ-183 links, PQ-184 UI perf) with the leaf that clears it; the matrix is the frontend's queue. DONE WHEN: No red cell without an owner; the map §18 table mirrors the matrix."
+      "brief": "ACCEPTED 2026-09-05 (5169ec66; 40 surfaces in the manifest = 40 rows in map §18.2, same order; every red cell carries a packet and leaf; the mirror is prose-enforced, not tested). IMPLEMENTED 2026-09-05: every failing cell carries an owner packet and leaf (754 in the measured run); the eleven unowned surfaces now own their reds (PQ-181, PQ-168); build_map §18.2 mirrors the manifest row for row. Commit 5169ec66. Every red cell is assigned to a packet (PQ-162 station, PQ-168 chart, PQ-181 meta shell, PQ-182 Crucible screens, PQ-130 works, PQ-183 links, PQ-184 UI perf) with the leaf that clears it; the matrix is the frontend's queue. DONE WHEN: No red cell without an owner; the map §18 table mirrors the matrix."
     },
     {
       "id": "PQ-180.03",
@@ -14039,7 +14067,7 @@
       ],
       "receiptRefs": [],
       "brief": "Reserved PQ-068. Promote to ready only when hitch count is halved or the classifier names runway submit. Off-glass roots already hide. Do not pop on-glass ships. Do not shrink hail 5200.",
-      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See build_map.md section 8.4."
     },
     {
       "id": "PQ-129.12",
@@ -14063,7 +14091,7 @@
       ],
       "receiptRefs": [],
       "brief": "Reserved PQ-052. Instance+BatchedMesh is partial. Unique on-glass hulls still pay many opaque draws. Replaying the rejected heterogeneous candidate that lost 250-616 ms p95 is forbidden. Same-picture A/B required.",
-      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See build_map.md section 8.4."
     },
     {
       "id": "PQ-129.13",
@@ -14087,7 +14115,7 @@
       ],
       "receiptRefs": [],
       "brief": "Reserved PQ-076. Keep canopies and plumes out of the rigid opaque batch. Collapse shared programs only if pixels match.",
-      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See build_map.md section 8.4."
     },
     {
       "id": "PQ-129.14",
@@ -14111,7 +14139,7 @@
       ],
       "receiptRefs": [],
       "brief": "Reserved PQ-108. A 30-pixel on-glass fighter is cheap; close ships stay full. Selector exists; prove crowded flight with a pixel histogram. Not a far-world impostor.",
-      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See build_map.md section 8.4."
     },
     {
       "id": "PQ-129.15",
@@ -14137,7 +14165,7 @@
       ],
       "receiptRefs": [],
       "brief": "Reserved PQ-080 after PQ-066 when required. Only when sim is the pole and GPU present is already cheap. Input/flight/weapons/collisions stay 60 Hz. Hostiles stay awake. Do not start a sim Worker.",
-      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See build_map.md section 8.4."
     },
     {
       "id": "PQ-129.16",
@@ -14161,7 +14189,7 @@
       ],
       "receiptRefs": [],
       "brief": "Reserved PQ-097 / PQ-078. July 2026 bloom-off did not save crowded p95. Close no-mutation if submit is still the pole. Stills must keep the default halo. Never disable bloom to pass a gate.",
-      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See build_map.md section 8.4."
     },
     {
       "id": "PQ-129.17",
@@ -14185,7 +14213,7 @@
       ],
       "receiptRefs": [],
       "brief": "Reserved PQ-087. Capture is already sliced to 8/12 ms between rAFs. Wire autosave into the hitch classifier and yield after capture before Worker construction if .02 names it. Do not weaken transactional save.",
-      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See CANONICAL_BUILD_MAP.md section 8.4."
+      "note": "Closed as no-op 2026-08-24: measured crowded scene shows the assumed pole does not exist. See build_map.md section 8.4."
     },
     {
       "id": "PQ-129.18",
@@ -14203,7 +14231,7 @@
       "paths": [
         "design/PERF_OPTION_SPACE.md",
         "design/program/PERF_HITCH_CAMPAIGN.md",
-        "CANONICAL_BUILD_MAP.md"
+        "build_map.md"
       ],
       "checks": [
         "node scripts/check-program-docs.mjs"
@@ -14858,7 +14886,7 @@
         "design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md",
         "design/program/roadmap/active/PQ-133.md",
         "design/program/roadmap/active/PQ-133_SEAM_AUDIT.md",
-        "CANONICAL_BUILD_MAP.md",
+        "build_map.md",
         "design/PLAN_REGISTRY.md",
         "design/program/PROGRAM_MAP.md"
       ],
@@ -15597,7 +15625,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-129-19-continue-residency-REPORT.md"
       ],
-      "brief": "CANONICAL_BUILD_MAP section 8.4: after e7c6dffd killed the entering-flight brick, Continue/load still logs two ~730 ms bricks (programs 14->17, geometries 13->19); New Game is clean. The only worked-out geometry-admission code in the fleet is the 452-line startupGpuResidency rewrite on origin/perf/exact-opening-geometry-residency (PR 100, closed as superseded for the opening path) - port its geometry-cohort admission to the Continue route, do not re-merge the branch wholesale. Promotion law: a hitch RISE is disqualifying (the prior attempt of this shape took hitches 15->80 and was rejected); justify with a clean matched A/B on the real Continue route, not unit tests."
+      "brief": "build_map section 8.4: after e7c6dffd killed the entering-flight brick, Continue/load still logs two ~730 ms bricks (programs 14->17, geometries 13->19); New Game is clean. The only worked-out geometry-admission code in the fleet is the 452-line startupGpuResidency rewrite on origin/perf/exact-opening-geometry-residency (PR 100, closed as superseded for the opening path) - port its geometry-cohort admission to the Continue route, do not re-merge the branch wholesale. Promotion law: a hitch RISE is disqualifying (the prior attempt of this shape took hitches 15->80 and was rejected); justify with a clean matched A/B on the real Continue route, not unit tests."
     },
     {
       "id": "PQ-129.20",
@@ -17468,7 +17496,7 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Cold play of the ten implementation-landing surfaces (jobs vs patrol, UI matrix spot-check, ordinary contact, critic verdict shape, live key labels, first-playable audio, reduced-motion reads, four specialists, cargo custody, first mill as claim). Fix real taste and bugs. Sacred: drill cadence 0.18/0.24/0.18, noteSiteCourier never pays, contact-ring clones the field. DONE WHEN: each surface played; adopted defects gone from the camera; receipt in CANONICAL_BUILD_MAP.md section 1.4 words under design/program/roadmap/receipts/PQ-191-00-REPORT.md."
+      "brief": "Cold play of the ten implementation-landing surfaces (jobs vs patrol, UI matrix spot-check, ordinary contact, critic verdict shape, live key labels, first-playable audio, reduced-motion reads, four specialists, cargo custody, first mill as claim). Fix real taste and bugs. Sacred: drill cadence 0.18/0.24/0.18, noteSiteCourier never pays, contact-ring clones the field. DONE WHEN: each surface played; adopted defects gone from the camera; receipt in build_map.md section 1.4 words under design/program/roadmap/receipts/PQ-191-00-REPORT.md."
     },
     {
       "id": "PQ-191.01",
@@ -17549,6 +17577,334 @@
         "design/program/roadmap/receipts/FRONTEND-D-REPORT.md"
       ],
       "brief": "IMPLEMENTED 2026-09-07: help (help.js, `2345e7d49`) as hairline rows of action and key with the profile named; the tech tree (techTree.js, `cac3adefd`) as hairline lanes on the sky, nodes as words, the selected node at title size with its cost at hero size and Unlock as a word; style blocks deleted. Receipt: design/program/roadmap/receipts/FRONTEND-D-REPORT.md. Original: Help as hairline rows of action and key with the current profile named; the tech tree's lanes as hairline paths on the sky, nodes as words, the selected node's name at screen-title size with its cost and Unlock as one word. Old style blocks deleted. DONE WHEN: captures at three widths match the sheet under a hash-bound visual review against DIRECTION_SHEET.md; every displayed key still resolves from input.js after a remap; unlocks still apply; check:ui-screen-imports green. Task file: design/frontend/direction/tasks/TASK_D_MODES_READING_SWEEP_PROOF.md (spec: design/frontend/direction/KIT_SPEC.md)."
+    },
+    {
+      "id": "PQ-193.00",
+      "parentId": "PQ-193",
+      "priority": 472,
+      "title": "Every lockable ship publishes a packaged complete body",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "visual-world-3d",
+        "asset-manifest"
+      ],
+      "paths": [
+        "src/render/partsLibrary.js",
+        "src/render/assetLoader.js",
+        "test/live-ship-visual-package-coverage.test.mjs",
+        "test/live-whole-ship-admission.test.mjs"
+      ],
+      "checks": [
+        "node --test test/live-ship-visual-package-coverage.test.mjs test/live-whole-ship-admission.test.mjs test/fleet-player-wholeship-routing.test.mjs",
+        "npm run check:live-whole-ship-admission",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Put all 13 roster hulls and the Massline liner on the empty-admission allowlist. A targeted ship must never publish as blank space. Accessory-only modular junk never substitutes. Hitch freeze untouched. Done when default-route targeting never sits on empty space for those hulls."
+    },
+    {
+      "id": "PQ-193.01",
+      "parentId": "PQ-193",
+      "priority": 473,
+      "title": "Opening NPCs belong in Hitch's world; no floating parts",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-193.00"
+      ],
+      "mutexes": [
+        "visual-world-3d"
+      ],
+      "paths": [
+        "design/program/VISUAL_WORLD_CLEANUP.md",
+        "src/render/partsLibrary.js",
+        "assets/ships/"
+      ],
+      "checks": [
+        "npm run check:playable",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Helios/Kessler opening flyby: every NPC hull is a complete manufactured body from the same game as Hitch. No floating engine, wing, socket, or glow blob. Taste-led per VISUAL_WORLD_CLEANUP.md. Hitch frozen. Done when a stranger shown Hitch and the nearest NPC says they are the same game."
+    },
+    {
+      "id": "PQ-193.02",
+      "parentId": "PQ-193",
+      "priority": 474,
+      "title": "Reverse and brake read as jets, not needles",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "visual-world-3d"
+      ],
+      "paths": [
+        "src/render/vfx.js",
+        "src/render/thruster/"
+      ],
+      "checks": [
+        "npm run check:vfx-techniques",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "One honest reverse/brake path from the existing volumetric retro. Stop the leftover needle trail. Same family as the main drive. Do not stack a second needle on a failed volume. Do not dump Hitch. Done when a stranger can tell, HUD hidden, that the player is braking."
+    },
+    {
+      "id": "PQ-193.03",
+      "parentId": "PQ-193",
+      "priority": 475,
+      "title": "Lane buoy, beacon, and cargo pod look manufactured at chase size",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-193.00"
+      ],
+      "mutexes": [
+        "visual-world-3d",
+        "blender"
+      ],
+      "paths": [
+        "assets/ships/parts/places/",
+        "assets/ships/parts/pods/",
+        "design/program/GRAPHICS_3D_CAMPAIGN.md"
+      ],
+      "checks": [
+        "npm run check:playable",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Same-slot replace of the repeating lane marks and cargo pod. Chase stills vs Hitch. Not a tube-plus-ring. GRAPHICS_3D_CAMPAIGN bar. Do not invent a parallel prop."
+    },
+    {
+      "id": "PQ-193.04",
+      "parentId": "PQ-193",
+      "priority": 476,
+      "title": "47-A code-built family and the generic TOW can become designed objects",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-193.03"
+      ],
+      "mutexes": [
+        "visual-world-3d",
+        "blender"
+      ],
+      "paths": [
+        "design/program/WORLD_VISUAL_CENSUS.md",
+        "src/render/scenarioPropBatching.js",
+        "assets/"
+      ],
+      "checks": [
+        "npm run check:playable",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Spindle, rescue capsule, Kessler beacon, Bourse wreck, and the ordinary TOW can. Model first if hitch still owns the 47-A wiring file; hook when that row is idle. Upgrade the existing object. No parallel prop."
+    },
+    {
+      "id": "PQ-193.05",
+      "parentId": "PQ-193",
+      "priority": 477,
+      "title": "Drone, gate, mine, generic wreck, and mass seed stop being primitives",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-193.04"
+      ],
+      "mutexes": [
+        "visual-world-3d",
+        "blender"
+      ],
+      "paths": [
+        "design/program/WORLD_VISUAL_CENSUS.md",
+        "src/render/",
+        "assets/"
+      ],
+      "checks": [
+        "npm run check:playable",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Remaining WORLD_VISUAL_CENSUS A shapes on the default route: mining-drone entity, jump gate, disc mine, generic wreck, mass seed. Designed objects at chase size. No quality cut."
+    },
+    {
+      "id": "PQ-193.06",
+      "parentId": "PQ-193",
+      "priority": 478,
+      "title": "Corsair raiders no longer share the pirate Rig",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-193.01"
+      ],
+      "mutexes": [
+        "visual-world-3d",
+        "asset-manifest"
+      ],
+      "paths": [
+        "src/render/partsLibrary.js",
+        "assets/ships/"
+      ],
+      "checks": [
+        "node --test test/live-ship-visual-package-coverage.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Give corsair_raider its own body. Use the existing foundry Corsair Blade if it beats live after package and chase stills. Do not start while the opening flyby still shows a kitbash NPC."
+    },
+    {
+      "id": "PQ-193.07",
+      "parentId": "PQ-193",
+      "priority": 479,
+      "title": "Helios Arclight appears as a rare heavy hauler",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-193.01"
+      ],
+      "mutexes": [
+        "visual-world-3d",
+        "asset-manifest"
+      ],
+      "paths": [
+        "assets/ships/m4_hero_hauler/",
+        "src/render/partsLibrary.js",
+        "src/systems/traffic.js"
+      ],
+      "checks": [
+        "npm run check:asset-reachability",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Promote and route the existing Arclight. Player can find it. Do not steal the Span or Atlas slot. Package before wiring. Do not start while the opening flyby still shows a kitbash NPC."
+    },
+    {
+      "id": "PQ-193.08",
+      "parentId": "PQ-193",
+      "priority": 480,
+      "title": "Tanker and inspection cutter spawn only after they read as ships",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-193.01"
+      ],
+      "mutexes": [
+        "visual-world-3d"
+      ],
+      "paths": [
+        "src/data/occupationalYardDressing.js",
+        "src/render/partsLibrary.js",
+        "assets/ships/parts/wholeships/volatiles_tanker.glb",
+        "assets/ships/parts/wholeships/inspection_cutter.glb"
+      ],
+      "checks": [
+        "node --test test/unused-model-live-wire.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Chase-camera stills first. If they still read as missing-hull kits, enclose, then let the existing tanker and customs traffic roles roll. Tug is already live. Do not spawn a toy."
+    },
+    {
+      "id": "PQ-193.09",
+      "parentId": "PQ-193",
+      "priority": 481,
+      "title": "Faction kits on live Span and Wasp; trade-hub overlays readable",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-193.01"
+      ],
+      "mutexes": [
+        "visual-world-3d",
+        "asset-manifest"
+      ],
+      "paths": [
+        "src/render/partsLibrary.js",
+        "assets/ships/"
+      ],
+      "checks": [
+        "npm run check:asset-reachability",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "The faction-skinned Wasps and the three trade-hub overlays already on disk become visible. No new faction systems. Do not start while the opening flyby still shows a kitbash NPC."
+    },
+    {
+      "id": "PQ-193.10",
+      "parentId": "PQ-193",
+      "priority": 482,
+      "title": "Opening dock, dead hulk, and debris chunk pass in the live game",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-193.00"
+      ],
+      "mutexes": [
+        "visual-world-3d"
+      ],
+      "paths": [
+        "assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md",
+        "assets/ships/parts/places/",
+        "src/render/partsLibrary.js"
+      ],
+      "checks": [
+        "npm run check:playable",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Close G5-G7 of the dock/hulk/debris remaster at the shipping camera. Offline Blender success is not live presentation. Military/grit dock variants were never in that slice; name a follow-up rather than pretending they closed."
+    },
+    {
+      "id": "PQ-193.11",
+      "parentId": "PQ-193",
+      "priority": 483,
+      "title": "Helios lane marks hold at chase camera",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-193.00"
+      ],
+      "mutexes": [
+        "visual-world-3d"
+      ],
+      "paths": [
+        "assets/places/lane_furniture/",
+        "src/render/partsLibrary.js",
+        "src/data/occupationalYardDressing.js"
+      ],
+      "checks": [
+        "node --test test/unused-model-live-wire.test.mjs",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "The four Helios marks wired 2026-09-09 (tally, claim, ash pin, whistle) reviewed at chase camera. Cube foot/deck is a fail. Pin and locker stay the 2026-08-18 unanimous pair."
+    },
+    {
+      "id": "PQ-193.12",
+      "parentId": "PQ-193",
+      "priority": 484,
+      "title": "Fat-cylinder station fallback never appears on the default route",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-193.00"
+      ],
+      "mutexes": [
+        "visual-world-3d"
+      ],
+      "paths": [
+        "src/render/partsLibrary.js",
+        "src/render/spaceBackground.js"
+      ],
+      "checks": [
+        "npm run check:playable",
+        "npm run check:assets:live",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Every station the player can reach on the default route loads its authored body. The fat cylinder plus hoops fallback is a defect, not a style. Diagnose load failure; do not pretty the primitive."
     }
   ]
 }

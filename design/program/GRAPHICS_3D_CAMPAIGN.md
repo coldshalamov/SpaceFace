@@ -1,6 +1,10 @@
 <!-- LIFETIME: DURABLE -->
 # 3D world-object campaign — same bar, chase camera, no hitch collision
 
+The live ordered board is [`../../build_map.md`](../../build_map.md) **§13D** (`PQ-193`).
+This file remains the tube-vs-Hitch bar and the hitch-collision law. Dispatch
+`--id PQ-193` then leaves `.03` (buoy/beacon/pod), `.04` (47-A family), `.05` (remaining census A).
+
 Law for an agent doing **models in the world** while another thread owns hitch smoothness
 (`PQ-129`). Copy-paste operator: [`GRAPHICS_3D_GOAL.txt`](./GRAPHICS_3D_GOAL.txt).
 

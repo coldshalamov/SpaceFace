@@ -69,16 +69,16 @@ wait for, so content cannot be handed out before the ship handles.
 | Phase | Gate it serves (§15.1) | Packets, in order |
 |---|---|---|
 | **A · The toy works** (now) | ALPHA | `PQ-173` the fun-loop instrument · `PQ-167` telemetry and the weekly playtest · `PQ-137` the guts (`.03`–`.11`) · `PQ-189` **correct the compass** (controls contract, stale diagnoses retired) · `PQ-174` the swarm fun contract (with `.08` earned breathing room) · `PQ-139` impacts answer · `PQ-158.06` minimal action audio · `PQ-165.03` reduced motion keeps information · `PQ-138` the world reacts · `PQ-140` roster as physical problems · `PQ-146` stunt grammar · `PQ-186` the regression fortress · `PQ-180` the frontend grammar matrix · `PQ-144.01` the production baseline · `PQ-163` the first ten minutes · `PQ-141` **the 60-second proof (gate)** |
-| **B · The swarm and the world** | BETA | `PQ-190` **the style slice** (stylized industrial energy, approved at the shipping camera before any fleet pass) · `PQ-175` swarm content at craft · `PQ-029` `PQ-030` `PQ-031` `PQ-026` heads and coupling · `PQ-147` field toys · `PQ-027` `PQ-028` machinery and infrastructure · `PQ-148` cargo is physics · `PQ-149` the storyteller · `PQ-150` people who remember · `PQ-151` the wanted loop · `PQ-154` wrecks as terrain · `PQ-161` readable at zoom · `PQ-169` Crucible as replay surface |
+| **B · The swarm and the world** | BETA | `PQ-190` **the style slice** (stylized industrial energy, approved at the shipping camera before any fleet pass) · `PQ-193` **the 3D picture never looks broken** (complete bodies, opening flyby, tubes, shelf, places) · `PQ-175` swarm content at craft · `PQ-029` `PQ-030` `PQ-031` `PQ-026` heads and coupling · `PQ-147` field toys · `PQ-027` `PQ-028` machinery and infrastructure · `PQ-148` cargo is physics · `PQ-149` the storyteller · `PQ-150` people who remember · `PQ-151` the wanted loop · `PQ-154` wrecks as terrain · `PQ-161` readable at zoom · `PQ-169` Crucible as replay surface |
 | **C · Adventure depth** | BETA | `PQ-177.06`/`.07` cargo custody and visible industrial limits · `PQ-145.01` the first durable site loop · `PQ-176` customization with consequences · `PQ-155` the verb curve · `PQ-156` three starters · `PQ-142` progression and my ship · `PQ-177` an economy you can read · `PQ-178` the story pipeline · `PQ-032` the linear spine · `PQ-152` set pieces from verbs · `PQ-153` six sectors · `PQ-143` ordinary life · `PQ-145` industry authorship · `PQ-171` content grammar |
 | **D · Frontend to the newest version** | BETA | `PQ-162` the station redesign · `PQ-168` the chart finished · `PQ-181` the meta shell · `PQ-182` Crucible screens · `PQ-183` everything is a link · `PQ-184` UI performance · `PQ-185` Asteroid Works accepted (with the live `PQ-130` / `PQ-131`) |
 | **E · It ships** | RELEASE | `PQ-158` audio direction · `PQ-159` camera and photo mode · `PQ-160` replay and clips · `PQ-164` input truth · `PQ-165` accessibility and options · `PQ-166` five languages · `PQ-144` density and perf guard · `PQ-033` the release closeout |
 | **F · After** | POST | `PQ-170` endgame pulls · `PQ-172` mods |
 
 Live campaigns owned by other threads (`PQ-129` hitch, `PQ-130`/`PQ-131` Asteroid Works, `PQ-050`
-fleet remaster, `PQ-045` Ceres slice, `PQ-136` fielding) keep their own doors in §1B and their own
-units in the queue; `--next` interleaves them by kind and priority. Do not take a unit whose paths a
-live row names.
+fleet remaster, `PQ-045` Ceres slice, `PQ-136` fielding, `PQ-193` 3D picture) keep their own doors
+in §1B and their own units in the queue; `--next` interleaves them by kind and priority. Do not take
+a unit whose paths a live row names.
 
 ### 1.3 The law (binding on every unit; the reviewer rejects on any one)
 
@@ -179,8 +179,9 @@ procedure:
 | "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.14** (decided 2026-09-06: [`DIRECTION_SHEET.md`](./design/frontend/direction/DIRECTION_SHEET.md)) → [`design/FRONTEND_DIRECTION.md`](./design/FRONTEND_DIRECTION.md) → `--id PQ-187` (direction lock; owner picks from rendered options) → then the surface packets it gates. `PQ-180` is the floor, not the gate |
 | "it's hitching / stuttering" | §8.4 → `--id PQ-129`; measure first, never cut quality |
 | "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
-| "the ships / objects look like toys" | §1B graphics doors → `PQ-050`, `PQ-045`, `PQ-136` |
-| "NPC ships look like another game / floating parts / reverse jets are needles" | §1B → [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md) (operator [`VISUAL_WORLD_CLEANUP_GOAL.txt`](./design/program/VISUAL_WORLD_CLEANUP_GOAL.txt)). Taste model chooses among options. Hitch stays frozen. |
+| "the ships / objects look like toys" | **§13D** → `--id PQ-193`; flyable remaster stays `PQ-050`; unused packs stay `PQ-136` |
+| "NPC ships look like another game / floating parts / reverse jets are needles" | **§13D** → `--id PQ-193` leaves `.01` / `.02`. Law: [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md). Hitch stays frozen. |
+| "ships don't render / pieces missing / empty targeting lock" | **§13D** → `--id PQ-193` leaf `.00`. Complete packaged body, not a procedural fallback. |
 | "the world feels dead / nobody reacts" | §13C `PQ-138`, then §15 `PQ-149`–`PQ-151` |
 | "I can't tell what anything is" | `PQ-161` readable at zoom, `PQ-153` sectors, `PQ-162` station |
 | "the sound is bad / there's no music" | `PQ-158` (after the ALPHA gate) |
@@ -228,9 +229,9 @@ units; open the door below only when the owner names the campaign.
 - **Hitching / stuttering** → §8.4, [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md),
   `--id PQ-129`. Measure with `npm run probe:runtime-witness` first. Never cut quality or delete
   off-screen actors.
-- **3D objects look like toys next to real ships** → [`design/program/GRAPHICS_3D_CAMPAIGN.md`](./design/program/GRAPHICS_3D_CAMPAIGN.md)
-  (operator [`GRAPHICS_3D_GOAL.txt`](./design/program/GRAPHICS_3D_GOAL.txt)); same chase-camera bar as
-  Hitch/Helios; stay off the hitch thread's renderer files; not `PQ-129`, not a quality cut.
+- **3D objects look like toys next to real ships** → **§13D** `--id PQ-193` leaves `.03`–`.05`. Bar and
+  hitch-collision law: [`design/program/GRAPHICS_3D_CAMPAIGN.md`](./design/program/GRAPHICS_3D_CAMPAIGN.md)
+  (operator [`GRAPHICS_3D_GOAL.txt`](./design/program/GRAPHICS_3D_GOAL.txt)). Not `PQ-129`, not a quality cut.
 - **Asteroid Works unreadable / undrivable / ugly** → [`design/ASTEROID_WORKS_DESIGN_LAW.md`](./design/ASTEROID_WORKS_DESIGN_LAW.md),
   [`ASTEROID_WORKS_PLAYFIELD.md`](./design/program/ASTEROID_WORKS_PLAYFIELD.md), `--id PQ-130`; the
   procedural stand-ins → [`ASTEROID_WORKS_ART_CAMPAIGN.md`](./design/program/ASTEROID_WORKS_ART_CAMPAIGN.md),
@@ -255,10 +256,11 @@ units; open the door below only when the owner names the campaign.
   technique contract, the review workflow and the one-ship-at-a-time rule. Hitch stays frozen.
   A factory loft with boxes, a zoomed gray crop, or a seat nobody can see from the chase camera
   does not close a ship.
+- **The 3D picture never looks broken** → **§13D** `--id PQ-193`. Complete bodies, opening flyby,
+  tubes, shelf hulls, places. Flyable remaster stays `--id PQ-050`. Hitch stays frozen.
 - **Live-route visual cleanup (mixed-game NPCs, floating parts, needle retros)** →
-  [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md). Taste-led.
-  Do not pre-solve the look. Hitch stays frozen. `PQ-190` remains the style-slice owner;
-  this door is the opening flyby the player already has.
+  `--id PQ-193` leaves `.01` / `.02`. Law: [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md).
+  Taste-led. Do not pre-solve the look. Hitch stays frozen. `PQ-190` remains the style-slice owner.
 
 
 ### 1B.1 Retained campaign laws (verbatim from the previous front door)
@@ -1727,6 +1729,121 @@ for draw-to-fly — and each contributed one guard worth keeping: Kimi's *"keep 
 velocity lag or 'drift when I choose to' stops meaning anything"* and *"do not scale knockback with
 HP %"*; Gemini's *"no cheating gyros."* Their numbers are recorded as experiment bands in
 `FEEL_CONTRACT.md` §C, not as law.
+
+## 13D. The 3D picture never looks broken (`PQ-193`) — ADMITTED 2026-09-09
+
+**Owner, 2026-09-09:** what models have missing pieces, what does not meet the bar, what sits unused,
+why ships sometimes do not render, and the ordered work so the world never looks broken.
+
+Packet: [`PQ-193.md`](./design/program/roadmap/active/PQ-193.md). Dispatch:
+`node scripts/program-dispatch.mjs --id PQ-193` and take the first ready leaf (`.00` first). Flyable
+remaster stays `PQ-050`. Unused-pack fielding stays `PQ-136` (`.00`–`.03` done). Liner G7 stays
+`PQ-049.05`. Hitch stays frozen.
+
+### The bar
+
+1. **One game.** A stranger shown Hitch and the nearest NPC does not ask which title each is from.
+2. **Complete hulls.** No floating engine, wing, socket, or glow blob. An empty targeting lock is a
+   defect, not a style.
+3. **Jets are jets.** Reverse/brake is force leaving a nozzle, the same family as the main drive.
+4. **A valid file is not accepted art.** Packaged and wired is not Hitch-plus.
+
+Hitch is the floor, not the photocopy. Do not dump Hitch. Do not paste Hitch panels onto NPCs.
+Chase camera only. No seats.
+
+### What is true now (live census 2026-09-09)
+
+Three different failures get mixed together. Treat them as three queues, not one "graphics" pile.
+
+| Failure | What the player sees | Cause | First leaf |
+|---|---|---|---|
+| **Invisible** | Targeting locks empty space | Live slot asked for a body the loader will not admit (no package, or not on the empty-admission allowlist). Hitch and Wasp are the only *required* whole-ships; Pelican, Mule, Drifter, the nine factory hulls, and the liner have packages but are still omitted from that allowlist. | `PQ-193.00` |
+| **Falls apart** | Engine / wing / glow hanging in space | Accessory-only file, or modular kit with no meeting hull. Legacy Pelican/Wasp wholeships are blocked forever. Owner playtest 2026-09-08 still saw this on the opening NPC. | `PQ-193.01` |
+| **Wrong game / plastic** | Draws, but toy, unpainted, or another title | Factory player hulls (Hornet→Leviathan) now load; they have not closed Hitch-plus. Hornet burned dozens of cycles and still failed (fragmentary form; maps ~30 px/m where the bar wants hundreds). Reverse still reads as two needles even though a volumetric retro path exists. | `PQ-193.01` / `.02`, then `PQ-050` |
+
+Also true:
+
+- All 13 roster ships have dedicated models and render packages. Only Wasp is `accepted`.
+- Code-built cans, gates, drones, mines, wrecks, and mass seeds have **no model file**
+  ([`WORLD_VISUAL_CENSUS.md`](./design/program/WORLD_VISUAL_CENSUS.md) A).
+- Factory remasters of already-live Ashline / Helios / work boats sit on disk. An earlier remap
+  onto them made traffic invisible. **Do not remap** until that exact body is packaged and beats live.
+- Corsair still shares the pirate Rig. Arclight has no route. Tanker and inspection cutter are held.
+  Faction kits exist; nothing reads them. Dock / hulk / debris remaster is stuck at live presentation.
+  Station fallback is still a fat cylinder plus hoops.
+- Distant cheap LODs exist for every player hull and are never switched in. That is a later
+  performance unlock, not this packet.
+- `needed-assets.md` is stale (still calls Hitch / Pelican / Wasp blocked). Do not dispatch from it.
+
+### The order (law)
+
+Do not start Waves C–E until Wave A is true on the Helios / Kessler opening flyby. Do not start a
+second buyable-ship remaster until Hornet's chase-camera form closes (`PQ-050.01` residual). Never
+commission a new hull for a slot an unused authored body already fills.
+
+### Wave A — opening flyby never broken
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-193.00`** | **Every ship the player can lock publishes a packaged complete body.** Put all 13 roster hulls and the liner on the empty-admission allowlist. Accessory-only modular junk never substitutes. | Default-route targeting never sits on blank space for those hulls. `check:live-whole-ship-admission` and `test/live-ship-visual-package-coverage.test.mjs` cover them. Hitch freeze untouched. |
+| **`PQ-193.01`** | **Opening NPCs belong in Hitch's world.** No floating parts on the Helios / Kessler flyby. Taste-led ([`VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md)). | A stranger shown Hitch and the nearest NPC says they are the same game. Nothing structural floats. Hitch frozen. |
+| **`PQ-193.02`** | **Reverse / brake is a jet.** One honest path from the existing volumetric retro; delete or stop the leftover needle trail. | A stranger can tell, HUD hidden, that the player is braking. Same family as the main drive. No second needle stacked on a failed volume. |
+
+### Wave B — tubes next to ships
+
+Bar and hitch-collision law: [`GRAPHICS_3D_CAMPAIGN.md`](./design/program/GRAPHICS_3D_CAMPAIGN.md).
+Upgrade the existing object. Do not invent a parallel prop.
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-193.03`** | Lane buoy, lane beacon, and cargo pod look manufactured at chase size. | Same-slot replace. Stranger can name the job at 144 WU. Not a tube-plus-ring next to Hitch. |
+| **`PQ-193.04`** | 47-A spindle, rescue capsule, Kessler beacon, Bourse wreck, and the generic TOW can are designed objects. | Code-built family gone from that mission slot. Model first if hitch still owns the 47-A wiring file. |
+| **`PQ-193.05`** | Mining-drone entity, jump gate, disc mine, generic wreck, and mass seed stop being primitives. | Default route no longer shows those census-A shapes as cylinder stacks. |
+
+### Wave C — buyable ships to Hitch-plus (already queued)
+
+Do not duplicate these as `PQ-193` leaves. One ship at a time. Chase camera. No cabins.
+
+| Leaf | Ship | Note |
+|---|---|---|
+| `PQ-050.01` | Hornet | Wired candidate, Hitch-plus unmet. Next: form + texture density, not garnish. |
+| `PQ-050.02` | Drifter | After Hornet closes. |
+| `PQ-050.03`–`.09` | Ranger, Ironback, Bastion, Atlas, Warden, Colossus, Leviathan | Factory bodies now load; they are not accepted. |
+| `PQ-050.10`–`.12` | Pelican, Mule, Wasp | Dedicated packages, not factory clones. Wasp is the only accepted non-Hitch hull; still in the sequence if Hitch still wins on matched stills. |
+| `PQ-050.13`–`.22` | Ashline Dart/Lode/Rig, Helios Lark/Cradle/Span, ore barge, tender, salvage cutter, survey pin | Remaster the **live** body. Do not swap the unused factory `*_production_v1` files onto traffic until packaged and better. |
+
+### Wave D — shelf that beats live
+
+Reuse before authoring. A variant counts.
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-193.06`** | Corsair raiders no longer share the pirate Rig. | Distinct Corsair body on the live corsair slot. Existing foundry kit if it beats live. |
+| **`PQ-193.07`** | Helios Arclight appears as a rare heavy. | Player can find it. Does not steal Span or Atlas. |
+| **`PQ-193.08`** | Volatiles tanker and inspection cutter spawn only after they read as ships. | Chase stills pass; then the existing roles roll. Tug is already live. |
+| **`PQ-193.09`** | Live Span and Wasp carry faction kits; the three trade-hub overlays on disk are readable. | Faction-distinct stations/traffic without a new faction system. |
+
+### Wave E — places
+
+| Leaf | Outcome | Done when |
+|---|---|---|
+| **`PQ-193.10`** | Opening dock, dead hulk, and debris chunk pass **in the game**, not only in Blender. | G5–G7 of [`REMASTER_HANDOFF_dock_hulk_debris.md`](./assets/ships/parts/places/REMASTER_HANDOFF_dock_hulk_debris.md). Military/grit dock variants were never in that slice; name a follow-up rather than pretending they closed. |
+| **`PQ-193.11`** | The four Helios lane marks wired 2026-09-09 hold at chase camera. | No cube foot/deck on tally, claim, ash pin, whistle. |
+| **`PQ-193.12`** | The fat-cylinder station fallback never appears on the default route. | Every station the player can reach loads its authored body. |
+
+### Later — not this packet
+
+- Distant cheap LODs (LOD1/2 residency selector): performance, not broken.
+- Massline liner independent G7: `PQ-049.05`.
+- Hitch remaster: frozen.
+- New hull commissions while a shelf body can fill the slot.
+
+### How agents get this wrong
+
+Wiring an unpackaged factory remaster and calling the blank lock a renderer bug. Starting Corsair
+or Arclight while the opening NPC is still a kitbash. Hornet interiors. Lowering texture size to
+dodge a Blender crash. Dispatching from `needed-assets.md`. Filename-grep "unused" counts. A glow
+blob or a second needle trail. Editing Hitch. Cutting default quality.
 
 ## 14. Fleet orchestration law for the 2026-08-21 final run
 

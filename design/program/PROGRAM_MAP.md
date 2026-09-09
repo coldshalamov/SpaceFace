@@ -7,7 +7,7 @@ This is a plan-family catalog, not a current dispatch list. Current leases live 
 
 | Surface | Purpose |
 |---|---|
-| [`../../CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md) | repository entry and work-selection algorithm |
+| [`../../build_map.md`](../../build_map.md) | repository entry and work-selection algorithm |
 | [`../../ARCHITECTURE.md`](../../ARCHITECTURE.md) | engine invariants, ownership, loop, save, rendering contracts |
 | [`../VISION.md`](../VISION.md) | the owner's fantasy and UVP — wins on product emphasis |
 | [`../GDD_2_0.md`](../GDD_2_0.md) | product pillars and intended player experience |
@@ -28,6 +28,7 @@ This is a plan-family catalog, not a current dispatch list. Current leases live 
 | `design/PERFORMANCE_MODERNIZATION_EXECUTION_PLAN.md` plus its constellation appendix | performance modernization source plan and option/research context | executable only through PQ-034–PQ-044; queue/packet/lease evidence owns live state |
 | [`PERF_HITCH_CAMPAIGN.md`](./PERF_HITCH_CAMPAIGN.md) | owner-visible hitching / smoothness campaign | admitted as `PQ-129`; consumes reserved `PQ-061`–`PQ-128` identities; not a quality-cut plan |
 | [`ASTEROID_WORKS_PLAYFIELD.md`](./ASTEROID_WORKS_PLAYFIELD.md) | mining minigame playfield after the 2026-08-20 playtest | admitted as `PQ-130`; board is the STAGE; not Waves 1–4, not hitch, not fleet remaster |
+| [`../../build_map.md`](../../build_map.md) §13D | Ordered 3D picture: complete bodies, opening flyby, tubes, shelf hulls, places | admitted as `PQ-193`; flyable remaster stays `PQ-050`; unused-pack fielding stays `PQ-136`; Hitch frozen |
 | [`../vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md`](../vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md) | Crucible: Survival mode, Combat Lab, shared attack algebra, five arena laws, Adventure convergence | admitted as `PQ-133` (phases 0–13 are leaves `.00`–`.13`, `.00`–`.04` strictly ordered); arcade structural VFX is `PQ-134`; not PQ-050, not PQ-129, does not close Physics-as-Spectacle gates |
 | Git history and `docs/handoffs/` | archaeology | never current dispatch authority |
 

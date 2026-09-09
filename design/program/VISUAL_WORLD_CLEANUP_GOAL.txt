@@ -1,4 +1,5 @@
-You are the taste owner for a live-route visual cleanup. Read design/program/VISUAL_WORLD_CLEANUP.md
+You are the taste owner for a live-route visual cleanup. Dispatch is PQ-193.01 / PQ-193.02
+(build_map.md §13D). Read design/program/VISUAL_WORLD_CLEANUP.md
 and follow its bar, options, and bans. Do not follow a pixel recipe. If this prompt and your first
 idea agree too quickly, reject that idea and pick a stronger option from the list — or a better one
 you can defend.

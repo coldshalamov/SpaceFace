@@ -97,6 +97,7 @@ evidence triggers are proved.
 | [`PQ-129.md`](./PQ-129.md) | name every hitch on the live path, then remove compose/compile/upload/admission bricks without quality cuts | `--id PQ-129`; Wave A measure; Wave B ready after the classifier; Wave C planned |
 | [`PQ-130.md`](./PQ-130.md) | put the player inside the asteroid; HUD is ugly and too big | `--id PQ-130`; theater/dashboard first; vanilla CSS shrink is a fail |
 | [`PQ-191.md`](./PQ-191.md) | independent play pass over the 2026-09-06 landings for taste, improvements, and bugs | `--id PQ-191`; first ready leaf; a report with defects still visible is not done |
+| [`PQ-193.md`](./PQ-193.md) | the 3D picture never looks broken: complete bodies, opening flyby, tubes, shelf hulls, places | `--id PQ-193`; first ready leaf `.00`; flyable remaster stays PQ-050; Hitch frozen |
 
 PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their
 conditional triggers are proved.
@@ -128,6 +129,12 @@ work is `node scripts/program-dispatch.mjs --id PQ-130`. First claimable leaf is
 `.01` Theater: the mine is the screen and the HUD is a dashboard, not a shorter
 website. Vanilla collapse (campaign §3) cannot close a leaf. Waves 1–4 are out of
 scope.
+
+PQ-193 is active for `GFX-3D-PICTURE-NEVER-BROKEN`. Its parent is `ready` / `unproven` /
+`leaf_required`. The ordered board is `build_map.md` §13D. Dispatch
+`node scripts/program-dispatch.mjs --id PQ-193` and take the first ready leaf (`.00`
+complete packaged bodies, then `.01` opening NPCs and `.02` reverse jets). Flyable
+remaster stays `PQ-050`. Unused-pack fielding stays `PQ-136`. Hitch stays frozen.
 
 PQ-032 (five endings/continuing universe) and PQ-033 (release closeout) are also deferred and
 unfinished. They are stored under `../retired/` only to keep them out of current execution; that
