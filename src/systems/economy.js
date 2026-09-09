@@ -145,6 +145,69 @@ export const INSURANCE_DEFAULTS = Object.freeze({
   deductibleCr: 500,
 });
 
+/** PQ-155.02 — named debit stories. Economy writes the receipt; the ledger only prints it. */
+export const SESSION_SINK_KINDS = Object.freeze([
+  'repair', 'fine', 'insurance', 'restitution', 'impound',
+]);
+export const SESSION_SINK_LEDGER_MAX = 48;
+export const SESSION_SINK_CAUSES = Object.freeze({
+  repair: 'hull scar',
+  fine: 'restricted cargo',
+  insurance: 'hull deductible',
+  restitution: 'spilled cargo',
+  impound: 'wanted hull',
+});
+const SESSION_SINK_KIND_SET = new Set(SESSION_SINK_KINDS);
+
+export function classifySessionSink(reason) {
+  const r = String(reason || '');
+  if (r === 'service:repair' || r === 'beam:repair') return 'repair';
+  if (r === 'fine:contraband' || r.startsWith('fine:')) return 'fine';
+  if (r === 'service:insurance' || r === 'recovery:deductible') return 'insurance';
+  if (r === 'restitution' || r.startsWith('restitution:')) return 'restitution';
+  if (r === 'impound:pay' || r.startsWith('impound:')) return 'impound';
+  return null;
+}
+
+export function ensureSessionSinkLedger(player) {
+  if (!player) return [];
+  if (!Array.isArray(player.sessionSinks)) player.sessionSinks = [];
+  if (!Number.isSafeInteger(player.sessionSinkSeq) || player.sessionSinkSeq < 0) player.sessionSinkSeq = 0;
+  return player.sessionSinks;
+}
+
+function sinkCauseToken(value, fallback) {
+  if (typeof value !== 'string') return fallback;
+  const out = value.replace(/\s+/g, ' ').trim();
+  return out || fallback;
+}
+
+export function fileSessionSink(state, input = {}) {
+  const player = state && state.player;
+  if (!player) return null;
+  const kind = SESSION_SINK_KIND_SET.has(input.kind) ? input.kind : classifySessionSink(input.reason);
+  if (!kind) return null;
+  const amount = Math.max(0, Math.round(Number(input.amount) || 0));
+  if (amount <= 0) return null;
+  const cause = sinkCauseToken(input.cause, SESSION_SINK_CAUSES[kind]);
+  const ledger = ensureSessionSinkLedger(player);
+  const seq = (player.sessionSinkSeq || 0) + 1;
+  player.sessionSinkSeq = seq;
+  const record = {
+    id: `sink:${seq}`,
+    kind,
+    cause,
+    amount,
+    reason: String(input.reason || kind),
+    at: Math.max(0, Number(state.simTime) || 0),
+  };
+  ledger.push(record);
+  if (ledger.length > SESSION_SINK_LEDGER_MAX) {
+    ledger.splice(0, ledger.length - SESSION_SINK_LEDGER_MAX);
+  }
+  return record;
+}
+
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 const round = Math.round;
 // Bitwise |0 is a signed-32 truncate: a 2^31-credit fortune becomes -2147483648, then
@@ -658,6 +721,7 @@ export const economy = {
     ensureSalvageIntakeState(state.economy);
     ensurePlayerMarketMemory(state.player);
     ensurePlayerTradeState(state.player);
+    ensureSessionSinkLedger(state.player);
     if (!Number.isFinite(state.economy.rngSeed) || (state.economy.rngSeed >>> 0) === 0) state.economy.rngSeed = hash32(state.meta && state.meta.seed, 'economy');
     this._nextEventId = 1;
     this._eventAccumulator = 0;
@@ -667,7 +731,8 @@ export const economy = {
 
     // ---- SOLE credits writer (§0.6) -------------------------------------------------------
     bus.on('economy:grantCredits', (p) => this.grantCredits((p && p.amount) || 0, p && p.reason));
-    bus.on('economy:chargeCredits', (p) => this.chargeCredits((p && p.amount) || 0, p && p.reason));
+    bus.on('economy:chargeCredits', (p) => this.chargeCredits((p && p.amount) || 0, p && p.reason, p));
+    bus.on('freight:cargoSpilled', (p) => this.levyRestitutionSink(p));
     bus.on('economy:payBounty', (p) => {
       const payload = (p && typeof p === 'object') ? p : {};
       payload.result = this.payBounty(payload);
@@ -1654,7 +1719,7 @@ export const economy = {
     return p.credits;
   },
 
-  chargeCredits(amount, reason) {
+  chargeCredits(amount, reason, extra) {
     amount = Math.round(amount || 0);
     if (amount <= 0) return this.state.player.credits;
     const p = this.state.player;
@@ -1662,7 +1727,41 @@ export const economy = {
     p.credits = normalizeCredits(before - amount); // clamp ≥0 (§ spec)
     const delta = p.credits - before;          // actual change (may be smaller if it floored at 0)
     this.bus.emit('credits:changed', { delta, reason: reason || 'charge', total: p.credits });
+    const charged = -delta;
+    if (charged > 0) {
+      const hint = extra && typeof extra === 'object' && !Array.isArray(extra) ? extra : null;
+      const kind = (hint && SESSION_SINK_KIND_SET.has(hint.sink) && hint.sink)
+        || classifySessionSink(reason);
+      if (kind) {
+        const record = fileSessionSink(this.state, {
+          kind,
+          cause: hint && hint.cause,
+          amount: charged,
+          reason: reason || 'charge',
+        });
+        if (record && this.bus) {
+          this.bus.emit('economy:sinkCharged', {
+            id: record.id,
+            kind: record.kind,
+            cause: record.cause,
+            amount: record.amount,
+            reason: record.reason,
+            at: record.at,
+          });
+        }
+      }
+    }
     return p.credits;
+  },
+
+  /** PQ-155.02 — spilled named cargo can levy restitution. No levy, no debit. */
+  levyRestitutionSink(p) {
+    if (!p || p.playerCaused !== true) return null;
+    const amount = Math.max(0, Math.round(Number(p.levyCr) || 0));
+    if (amount <= 0) return null;
+    const cause = sinkCauseToken(p.sinkCause, SESSION_SINK_CAUSES.restitution);
+    this.chargeCredits(amount, 'restitution:spill', { sink: 'restitution', cause });
+    return amount;
   },
 
   payBounty(payload = {}) {
@@ -2147,6 +2246,8 @@ export const economy = {
     state.player.tradeLedger = [];
     state.player.tradeLots = {};
     state.player.tradeReceiptSeq = 0;
+    state.player.sessionSinks = [];
+    state.player.sessionSinkSeq = 0;
     delete state.economy.committedIntents;
     this.resetRng();
     this._nextEventId = 1;

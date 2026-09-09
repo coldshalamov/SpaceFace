@@ -131,6 +131,18 @@ function factionName(id) {
   return entry && (entry.short || entry.name) || humanizeId(id, 'somebody on the channel');
 }
 
+const SESSION_SINK_EVENT = Object.freeze({
+  repair: 'a repair',
+  fine: 'a fine',
+  insurance: 'hull insurance',
+  restitution: 'restitution',
+  impound: 'an impound',
+});
+
+function sessionSinkEventPhrase(kind) {
+  return SESSION_SINK_EVENT[kind] || 'a debit';
+}
+
 function shipName(entry) {
   const retainedIdentity = entry && (entry.victimCallsign || entry.victimName);
   if (retainedIdentity) return text(retainedIdentity, 'an unnamed hull');
@@ -420,6 +432,47 @@ function collectCandidates(state) {
         credits: Math.round(Math.abs(finite(entry.total, 0))).toLocaleString('en-US'),
       },
     });
+  }
+
+  // PQ-155.02 — session sinks are durable economy receipts. This projector only reads them.
+  // Explicit paid-for copy (not the witness bank) so a debit does not read as an encounter.
+  for (const record of sourceArray(state && state.player && state.player.sessionSinks)) {
+    if (!record) continue;
+    const kind = text(record.kind, '');
+    const cause = text(record.cause, '');
+    if (!kind || !cause) continue;
+    const sourceId = text(record.id, `sink:${kind}:${record.at || 0}:${record.reason || ''}`);
+    const at = Math.max(0, finite(record.at, 0));
+    const credits = Math.round(Math.abs(finite(record.amount, 0))).toLocaleString('en-US');
+    const event = sessionSinkEventPhrase(kind);
+    const candidate = {
+      id: `ledger_${hash32(seed, 'witness', sourceId).toString(36)}`,
+      schemaVersion: SHIP_LEDGER_SCHEMA_VERSION,
+      type: 'witness',
+      sourceId,
+      sourceKind: 'player.sessionSinks',
+      at,
+      cycle: cycleOf(at),
+      cycleLabel: formatLedgerCycle(at),
+      templateId: `sink.${kind}`,
+      text: `Paid ${credits} cr for ${event} because of the ${cause}.`,
+      hand: 'captain',
+      annotationId: null,
+      annotation: null,
+      cause,
+      beat: kind,
+      tokens: {
+        event,
+        outcome: `because of the ${cause}`,
+        cause,
+        beat: kind,
+        credits,
+      },
+    };
+    observed++;
+    if (observed > SHIP_LEDGER_MAX_SOURCE_RECORDS || seen.has(candidate.id)) continue;
+    seen.add(candidate.id);
+    candidates.push(candidate);
   }
 
   const bearings = sourceObjectValues(state && state.player && state.player.uniqueWrecks

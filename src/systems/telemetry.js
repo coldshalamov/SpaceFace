@@ -603,6 +603,19 @@ export function createTelemetry(bus, state) {
     });
   });
 
+  // PQ-155.02 — session sink stories. Economy writes the debit; this ring only prints it.
+  sub('economy:sinkCharged', (p) => {
+    if (!p || !p.kind || !p.cause) return;
+    pushRing('economy:sinkCharged', {
+      kind: p.kind,
+      cause: p.cause,
+      amount: p.amount,
+      reason: p.reason,
+      simTime: Number.isFinite(p.at) ? p.at : simNow(),
+    });
+    scheduleSave();
+  });
+
   // ----------------------------------------------------------------------------------------------
   // page-lifecycle flush — there is NO session-end gameplay event (see EVENT_TAXONOMY gaps), so we
   // lean on the browser to flush a final snapshot. These are browser listeners, not file edits.
@@ -824,6 +837,14 @@ export function renderStorySoFarFromRing(events) {
     if (event.type === 'rhythm:phase' && typeof data.phase === 'string') {
       phase = data.phase;
       if (STORY_SO_FAR_ORDINARY.has(data.phase)) ordinary = data.phase;
+      continue;
+    }
+    if (event.type === 'economy:sinkCharged') {
+      if (!data.cause || !data.kind) continue;
+      const sinkAt = Number.isFinite(data.simTime) ? data.simTime : 0;
+      escalations.push({
+        cause: data.cause, beat: data.kind, at: sinkAt, arrivedAt: sinkAt, seededAt: sinkAt,
+      });
       continue;
     }
     if (event.type !== 'escalation:seeded' && event.type !== 'escalation:arrived') continue;
