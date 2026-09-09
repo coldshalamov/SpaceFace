@@ -19,6 +19,21 @@
 //    hull. The cargo is reeled to a tight carry and flown in on a live `state.player.tether` mirror,
 //    and the arrival pose is asserted legal (clear of the hull, clear of the ship, player inside the
 //    live docking range from src/core/physics.js:757) before the turn-in is attempted.
+//  • The far throw is the LIVE event chain, not a bare bus poke. src/systems/masslineThrow.js:419-463
+//    only emits `massline:throw` when `state.player.tether.attachmentId` is set and the attachment
+//    service accepts the cut — and that same cut makes the canonical `tether:releaseRated` land on
+//    the following tick. So one far throw is really THREE inputs (latch, throw, clean release) and
+//    all three have to refuse. An earlier revision emitted the throw with no latch at all, a shape
+//    the live publisher cannot produce.
+//  • The refusal distances are SMALLER than the live ones. `_spawnPhysicalTargetsFor`
+//    (src/systems/missions.js:3888) drops the cargo 220-300 WU from the PLAYER on the first target
+//    pass after arrival, and a real jump lands the player at `world.entryPoint` — 2663 WU from
+//    station_expanse, 4444 WU from station_ceres. The spine below spawns off the sector origin
+//    instead, so it refuses at 890 / 1471 WU where the live route would refuse at ~2.4k / ~4.2k WU.
+//    The third test pins that live arrival geometry so the bound stays a bound.
+//  • Both of B3's posted methods are proven, one per spine run (missions.js:2008 posts
+//    ['tow_in','sling_in']). A mission settles ONCE — the first pay ends it — so a single run cannot
+//    assert both, and asserting only the throw would leave the beat's own headline verb unproven.
 //
 // The tow itself is scripted kinematics, not a rapier solve: this harness runs no physics and no
 // `tetherGameplay`, so the reel and the run home are stepped by hand. What that buys is an arrival
@@ -228,6 +243,12 @@ function knockTheTower(h, mission) {
 // B3 leftover throw door: one massline:throw in the dest sector used to pay sling_in with no
 // dest-dock test. Story B3 must refuse that sector-scale throw; leftover authored sling_in may
 // still use PHYSICAL_BERTH_WU 700.
+//
+// This drives the whole live release chain, because the live route cannot produce the throw alone:
+// masslineThrow arms off a real attachment, cuts it, emits `massline:throw` on that tick, and the
+// attachment cut makes `tether:releaseRated` land next tick. Both of those events reach a story-B3
+// completion path (`_onPhysicalThrow`, `_onPhysicalReleaseRated`), so refusing only one would leave
+// the other door open.
 function throwFromTheField(h, mission, role) {
   const cargo = targetsByRole(h.state, mission, role)[0];
   assert.ok(cargo, `${mission.type} needs a ${role}`);
@@ -235,23 +256,42 @@ function throwFromTheField(h, mission, role) {
   assert.ok(berth, `${mission.type} needs the live ${mission.destStationId}`);
   const far = wuBetween(cargo, berth);
   const beatBefore = h.state.story.beatIndex;
+
+  // Latch first: no attachment, no throw. This is the arm state masslineThrow requires.
+  setLiveTether(h, cargo.id, wuBetween(cargo, h.player));
+  h.sim.bus.emit('tether:latched', { targetId: cargo.id, type: 'tether_standard' });
   h.sim.bus.emit('massline:throw', {
     releaseId: `massline:throw:${h.state.tick}:${cargo.id}`,
     payloadId: cargo.id, aimTargetId: berth.id, aimSynthetic: false, mode: 'aimed',
   });
-  const paid = h.state.story.beatIndex > beatBefore;
-  console.log(`PQ-032.00 ${mission.type} ${role} one leftover throw at ${Math.round(far)} WU `
-    + `— paid: ${paid ? 'yes' : 'no'}`);
+  const paidThrow = h.state.story.beatIndex > beatBefore;
+
+  // The cut drops the line, then the canonical rated release lands on the next tick.
+  setLiveTether(h, null, 0);
+  h.sim.bus.emit('tether:releaseRated', {
+    targetId: cargo.id, sourceId: h.player.id, classification: 'clean',
+  });
+  const paidRelease = h.state.story.beatIndex > beatBefore;
+
+  console.log(`PQ-032.00 ${mission.type} ${role} one leftover latch+throw+clean release at `
+    + `${Math.round(far)} WU — throw paid: ${paidThrow ? 'yes' : 'no'}, `
+    + `release paid: ${paidRelease ? 'yes' : 'no'}`);
   assert.ok(far > PHYSICAL_BERTH_WU,
     `the ${role} throw must start outside the leftover ${PHYSICAL_BERTH_WU} WU berth`);
-  assert.equal(paid, false,
+  assert.equal(paidThrow, false,
     `${role} throw at ${Math.round(far)} WU must not settle ${mission.type}`);
+  assert.equal(paidRelease, false,
+    `${role} clean release at ${Math.round(far)} WU must not settle ${mission.type} either`);
   return far;
 }
 
 // B2/B3: the tow. Latch a live tether mirror, prove a turn-in with the mass still out in the field
 // does not pay, then reel to a tight carry and fly the package to the hull before docking.
-function towToTheDock(h, mission, role, method) {
+//
+// `settle` names the posted method this run ends on, and it is asserted — never defaulted to the
+// mission TYPE. `sling_in` cuts the line at the dock and lets the mass fly the last stretch;
+// anything else docks with the mass still on the line (latch-dock).
+function towToTheDock(h, mission, role, settle) {
   const cargo = targetsByRole(h.state, mission, role)[0];
   assert.ok(cargo, `${mission.type} needs a ${role}`);
   const berth = liveStation(h, mission.destStationId);
@@ -350,8 +390,10 @@ function towToTheDock(h, mission, role, method) {
     'the ship must be inside the live docking range for dock:docked to be reachable');
 
   // Leftover throw at the dest dock still pays. Story B3 used to treat any in-sector throw as
-  // sling_in; the dest-dock gate is what closed that. B2 stays latch-dock (no throw settle).
-  if (method === 'tow_in') {
+  // sling_in; the dest-dock gate is what closed that. The SAME pose is what pays tow_in through
+  // dock:docked, so the two posted methods differ only in whether the line is cut — which is why
+  // each needs its own spine run.
+  if (settle === 'sling_in') {
     h.sim.bus.emit('massline:throw', {
       releaseId: `massline:throw:${h.state.tick}:${cargo.id}`,
       payloadId: cargo.id, aimTargetId: berth.id, aimSynthetic: false, mode: 'aimed',
@@ -370,11 +412,11 @@ function towToTheDock(h, mission, role, method) {
   h.sim.bus.emit('dock:docked', { stationId: mission.destStationId });
   const paidNear = h.state.story.beatIndex > beatBefore;
   console.log(`PQ-032.00 ${mission.type} ${role} towed to ${Math.round(cargoToBerth)} WU `
-    + `(gate ${Math.round(gate)} WU) — paid: ${paidNear ? 'yes' : 'no'}`);
+    + `(gate ${Math.round(gate)} WU) — paid: ${paidNear ? 'yes' : 'no'} (${settle})`);
   assert.equal(paidNear, true, `${role} towed to the dest dock must settle ${mission.type}`);
   const last = h.completed[h.completed.length - 1];
-  assert.equal(last && last.completionMethod, method,
-    `${mission.type} must settle on ${method}, not another posted method`);
+  assert.equal(last && last.completionMethod, settle,
+    `${mission.type} must settle on ${settle}, not another posted method`);
   setLiveTether(h, null, 0);
 }
 
@@ -433,8 +475,48 @@ test('PQ-032.00 the story latch-dock gate is live station geometry, not a fixtur
   assert.equal(72 + 16 + STORY_LATCH_DOCK_SLACK_WU, 112, 'live B3 core gate');
 });
 
-test('PQ-032.00 seed 3200 plays the three set pieces as one linear spine', () => {
-  printSpine();
+// A real jump is what puts the leftover cargo out in the field, and it puts it FURTHER out than the
+// spine below does. `_spawnPhysicalTargetsFor` (src/systems/missions.js:3888) drops the cargo
+// 220-300 WU from the player on the first target pass after arrival, and an intentional jump places
+// the player at `world.entryPoint` (src/systems/world.js:660). So the live leftover pose is at least
+// (entry distance - 300) WU from the berth. If that is not comfortably outside the leftover
+// PHYSICAL_BERTH_WU rule, then "the leftover throw starts out in the field" is a harness artifact
+// rather than the live case, and the spine's refusals prove nothing about a real run.
+test('PQ-032.00 a live jump lands the leftover cargo outside the old 700 WU berth', () => {
+  const sim = createSimulation({ seed: SEED, systems: [world], updateOrder: [] });
+  const { state } = sim;
+  const player = sim.spawn({
+    type: 'ship', team: 0, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    hull: 200, hullMax: 200, radius: 8,
+  });
+  state.playerId = player.id;
+  const worldSys = sim.registry.get('world');
+  const SPAWN_RING_MAX_WU = 300; // missions.js:3888 — r = 220 + rng() * 80.
+  for (const [destSectorId, fromSectorId, stationId] of [
+    ['sector_charon_expanse', 'sector_io_reach', 'station_expanse'],
+    ['sector_ceres_belt', 'sector_tethys_junction', 'station_ceres'],
+  ]) {
+    worldSys.enterSector(destSectorId, { fromJump: true, via: 'jump', fromSectorId });
+    let berth = null;
+    for (const e of state.entities.values()) {
+      if (e && e.alive !== false && e.type === 'station' && e.pos
+        && e.data && e.data.stationId === stationId) berth = e;
+    }
+    assert.ok(berth, `a jump into ${destSectorId} must materialize ${stationId}`);
+    const entry = state.world.entryPoint;
+    const arrival = Math.hypot(entry.x - berth.pos.x, entry.z - berth.pos.z);
+    const nearest = arrival - SPAWN_RING_MAX_WU;
+    console.log(`PQ-032.00 live jump into ${destSectorId} arrives ${Math.round(arrival)} WU from `
+      + `${stationId} — leftover cargo spawns no closer than ${Math.round(nearest)} WU`);
+    assert.ok(nearest > PHYSICAL_BERTH_WU,
+      `a live arrival at ${Math.round(arrival)} WU must leave the cargo outside the leftover `
+      + `${PHYSICAL_BERTH_WU} WU berth, or the spine's field refusals are a harness artifact`);
+  }
+  sim.dispose();
+});
+
+// Both posted B3 methods, one spine per run: a mission settles ONCE, so the first pay ends it.
+function playTheSpine(b3Settle) {
   const h = boot();
   h.sim.bus.emit('mining:yield', { commodityId: 'cmdty_ore_iron', qty: 1 });
   h.sim.bus.emit('dock:docked', { stationId: 'station_helios' });
@@ -463,14 +545,23 @@ test('PQ-032.00 seed 3200 plays the three set pieces as one linear spine', () =>
   assert.equal(b3.params.physicalVerb, 'tow');
   flyToDestSector(h, b3);
   throwFromTheField(h, b3, 'slag_core');
-  towToTheDock(h, b3, 'slag_core', 'tow_in');
+  towToTheDock(h, b3, 'slag_core', b3Settle);
   assert.equal(h.state.story.beatIndex, 4, 'the long tow advances Bigger Boat');
 
   // Name the methods the spine actually settled on, with no `||` fallback to the mission TYPE —
-  // a type is what was posted, a completionMethod is what the player did. B3 dest-dock leftover
-  // throw pays sling_in; dest-dock latch-dock tow_in is the same pose via dock:docked (B2).
-  assert.deepEqual(h.completed.map((row) => row.completionMethod), [
-    'wrecking_ball', 'stage_tow', 'sling_in',
-  ]);
+  // a type is what was posted, a completionMethod is what the player did.
+  const methods = h.completed.map((row) => row.completionMethod);
   h.sim.dispose();
+  return methods;
+}
+
+test('PQ-032.00 seed 3200 plays the three set pieces as one linear spine', () => {
+  printSpine();
+  // B3 posts ['tow_in','sling_in'] (src/systems/missions.js:2008). Prove BOTH from the same
+  // dest-dock arrival pose: cutting the line for the last stretch pays sling_in, keeping the mass
+  // on the line and docking pays tow_in — the beat's own headline verb.
+  console.log('PQ-032.00 --- spine run 1: B3 settles by cutting the line at the dock ---');
+  assert.deepEqual(playTheSpine('sling_in'), ['wrecking_ball', 'stage_tow', 'sling_in']);
+  console.log('PQ-032.00 --- spine run 2: B3 settles by docking with the mass on the line ---');
+  assert.deepEqual(playTheSpine('tow_in'), ['wrecking_ball', 'stage_tow', 'tow_in']);
 });
