@@ -1,0 +1,62 @@
+{
+  "brushed_band": {
+    "description": "blank brushed band",
+    "name": "brushed_band",
+    "y_end": 1024,
+    "y_start": 918
+  },
+  "double_panel_gap": {
+    "description": "double panel gap with fastener row",
+    "name": "double_panel_gap",
+    "y_end": 204,
+    "y_start": 102
+  },
+  "grip_plate": {
+    "description": "tread/grip plate",
+    "name": "grip_plate",
+    "y_end": 918,
+    "y_start": 816
+  },
+  "hatch_frame": {
+    "description": "hatch frame edge",
+    "name": "hatch_frame",
+    "y_end": 612,
+    "y_start": 510
+  },
+  "louvered_vent": {
+    "description": "louvered vent run",
+    "name": "louvered_vent",
+    "y_end": 306,
+    "y_start": 204
+  },
+  "panel_gap": {
+    "description": "panel gap with shadow line",
+    "name": "panel_gap",
+    "y_end": 102,
+    "y_start": 0
+  },
+  "radiator_fins": {
+    "description": "ribbed radiator fins",
+    "name": "radiator_fins",
+    "y_end": 816,
+    "y_start": 714
+  },
+  "raised_rail": {
+    "description": "raised rail with center bevel",
+    "name": "raised_rail",
+    "y_end": 408,
+    "y_start": 306
+  },
+  "recessed_channel": {
+    "description": "recessed channel with drainage holes",
+    "name": "recessed_channel",
+    "y_end": 510,
+    "y_start": 408
+  },
+  "weld_bead": {
+    "description": "weld bead lap",
+    "name": "weld_bead",
+    "y_end": 714,
+    "y_start": 612
+  }
+}

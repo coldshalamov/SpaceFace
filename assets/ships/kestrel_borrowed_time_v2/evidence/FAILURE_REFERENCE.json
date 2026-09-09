@@ -1,0 +1,23 @@
+{
+  "schema": "spaceface.kestrelBorrowedTimeV2.failureReference.v1",
+  "packet": "PROFESSIONAL-KESTREL-BORROWED-TIME-V2-CODEX-001",
+  "baselineImage": "evidence/devshots/current_live_kestrel_baseline.png",
+  "baselineAsset": "assets/ships/release/parts/wholeships/kestrel.glb",
+  "baselineSha256": "633C6A26C384832D2D870198C5A39D4F209EC6B9E4096F9A8DAC0EBB3940AB3F",
+  "rejectedPatterns": [
+    "accessory-only or floating-module hull",
+    "featureless black primary mass",
+    "undifferentiated forward and aft silhouette",
+    "detail expressed as unbraced rails or random cubes",
+    "embedded drive plume replacing runtime VFX",
+    "quality claim based on file size rather than visible structure"
+  ],
+  "candidateResponse": [
+    "substantive authored hull with 10036 hull-role triangles",
+    "open hull-colored drive yoke and visible forward keel",
+    "shortened nav rails supported by mechanical stanchions",
+    "material hierarchy reads in Three.js without relying on bloom",
+    "runtime plume remains removed"
+  ],
+  "acceptanceClaim": false
+}

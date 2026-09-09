@@ -1,0 +1,229 @@
+{
+  "schema": "spaceface.wreckAftermathSurfaceBuild.v1",
+  "generator": "tools/art/build_wreck_aftermath_maps.py",
+  "deterministic": true,
+  "baseSize": 512,
+  "ormChannels": "R=AO,G=Roughness,B=Metallic",
+  "normalConvention": "OpenGL tangent space",
+  "roles": [
+    "wreck_painted_hull",
+    "wreck_armor_dark",
+    "wreck_structural_alloy",
+    "wreck_rupture_insulation",
+    "wreck_service_trunks",
+    "wreck_dead_glass",
+    "wreck_heat_affected"
+  ],
+  "artifacts": [
+    {
+      "role": "wreck_painted_hull",
+      "channel": "basecolor",
+      "path": "wreck_painted_hull_basecolor.png",
+      "sha256": "8CCBA225FAC8AE3F4D16E5DC93ECCB492BA824DE28B30FE22CD1B5FD9DDFBA29",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "wreck_painted_hull",
+      "channel": "normal",
+      "path": "wreck_painted_hull_normal.png",
+      "sha256": "60FE9336A22240B16811C357A6237A308BDCA51C3B7C07EB7E0B289B542AFD93",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "wreck_painted_hull",
+      "channel": "orm",
+      "path": "wreck_painted_hull_orm.png",
+      "sha256": "EC3B6A6827EA477464AAD60D822A8AB3B031EB0FF0FC95EBE032BD28725072EB",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "wreck_armor_dark",
+      "channel": "basecolor",
+      "path": "wreck_armor_dark_basecolor.png",
+      "sha256": "C6DA2CCCAF3CFA894F165EEFCC18F8F317D8DA98590F68CC8624BEC269F8259B",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "wreck_armor_dark",
+      "channel": "normal",
+      "path": "wreck_armor_dark_normal.png",
+      "sha256": "1329B96521E27D92A517EE17CB742FE9AA1FFA0BA656741CD787B6E82738AC62",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "wreck_armor_dark",
+      "channel": "orm",
+      "path": "wreck_armor_dark_orm.png",
+      "sha256": "47965BF8E623D1D381DFECF61C04CF6AD2AF4E71A28C7FB6D7AA12B0BB4B2D0B",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "wreck_structural_alloy",
+      "channel": "basecolor",
+      "path": "wreck_structural_alloy_basecolor.png",
+      "sha256": "9737AFADCC53BC414E251C29BD98F8DF92FA31DB7719A46D7191D715433419D4",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "wreck_structural_alloy",
+      "channel": "normal",
+      "path": "wreck_structural_alloy_normal.png",
+      "sha256": "FCBF2985583F846C1219762C135DE50BB75558C9981D6616D565B4704475E7F0",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "wreck_structural_alloy",
+      "channel": "orm",
+      "path": "wreck_structural_alloy_orm.png",
+      "sha256": "DD7D1204E0FFA832E21C78262BD462ECC4833F499D7E972A5BE82029452CA087",
+      "dimensions": [
+        512,
+        512
+      ]
+    },
+    {
+      "role": "wreck_rupture_insulation",
+      "channel": "basecolor",
+      "path": "wreck_rupture_insulation_basecolor.png",
+      "sha256": "1ACF9092DC7A5FE061B7A3EACFC5142963E8C9844B19A3E817451A4B0BD51692",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "wreck_rupture_insulation",
+      "channel": "normal",
+      "path": "wreck_rupture_insulation_normal.png",
+      "sha256": "BB2D86511145F7BE5288D0D6EE2B214B2BB33D6624D459BBD78762E12370645A",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "wreck_rupture_insulation",
+      "channel": "orm",
+      "path": "wreck_rupture_insulation_orm.png",
+      "sha256": "08265AB43824C00F7A77A1F201E09E66D3C4D5A4BFA810CE9256D3DA8DB8F213",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "wreck_service_trunks",
+      "channel": "basecolor",
+      "path": "wreck_service_trunks_basecolor.png",
+      "sha256": "E97C7512C4BD73D78E335339E76CEC39532071540EA7C4B0A9D6D0F83B5B283F",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "wreck_service_trunks",
+      "channel": "normal",
+      "path": "wreck_service_trunks_normal.png",
+      "sha256": "A98F4F0481610EDB504DF63C6209B2BDE35AE274A305A31580F95B33D4442FEE",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "wreck_service_trunks",
+      "channel": "orm",
+      "path": "wreck_service_trunks_orm.png",
+      "sha256": "5DCCAE06B6F69FAF301C7322F6370AFA6C126893509DFDD74A78C403A63FB89C",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "wreck_dead_glass",
+      "channel": "basecolor",
+      "path": "wreck_dead_glass_basecolor.png",
+      "sha256": "956D67D29955D825AED3262C88B1FB276E7B27D15E564BEF94BDD2A6175DE1FD",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "wreck_dead_glass",
+      "channel": "normal",
+      "path": "wreck_dead_glass_normal.png",
+      "sha256": "B77BA3D03EA0AED8C07C6C563798F0928FCBE1F25434B9A68F12C76587334E6C",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "wreck_dead_glass",
+      "channel": "orm",
+      "path": "wreck_dead_glass_orm.png",
+      "sha256": "CBAD678E67823A7AD4A18CDA043DD98AC52224F0C1F5E9276DAEDABCDAC14660",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "wreck_heat_affected",
+      "channel": "basecolor",
+      "path": "wreck_heat_affected_basecolor.png",
+      "sha256": "B2160534885016A8E39C91D5137933C1AB5EE9A2D7A8E33D5683F31A77711348",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "wreck_heat_affected",
+      "channel": "normal",
+      "path": "wreck_heat_affected_normal.png",
+      "sha256": "A356C7ED54C72E6CF0214F90A19892A77A6722389BC36A3FE258246E6FC604C8",
+      "dimensions": [
+        256,
+        256
+      ]
+    },
+    {
+      "role": "wreck_heat_affected",
+      "channel": "orm",
+      "path": "wreck_heat_affected_orm.png",
+      "sha256": "DBFBC263CAC3D3B60F43F764E87A88E2E06AA0135A31195EB2FA2A115D58691A",
+      "dimensions": [
+        256,
+        256
+      ]
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "spaceface.kestrelBorrowedTimeV3.failureReference.v1",
+  "packet": "PROFESSIONAL-KESTREL-BORROWED-TIME-V3-CODEX-001",
+  "baselineImages": [
+    "evidence/devshots/failure_v2_close.png",
+    "evidence/devshots/failure_current_live.png"
+  ],
+  "baselineAsset": "assets/ships/release/parts/wholeships/kestrel.glb",
+  "baselineSha256": "633C6A26C384832D2D870198C5A39D4F209EC6B9E4096F9A8DAC0EBB3940AB3F",
+  "rejectedPatterns": [
+    "V2 stacked shoulder slabs over the coherent source hull",
+    "long detached cyan and warm rails",
+    "black spear-like dorsal members",
+    "detached radiator pontoons and floating RCS pods",
+    "rectangular nose cap stacked above the pressure hull",
+    "featureless black engine or primary hull mass",
+    "accessory-only body or embedded drive plume"
+  ],
+  "candidateResponse": [
+    "imports the original user ZIP blend directly and never consumes V2 geometry",
+    "replaces detached shoulder grammar with two continuous shell volumes overlapping the pressure hull",
+    "integrates the dorsal saddle, tapered prow, hardpoint, drive buttresses, cargo doors, and RCS cowls",
+    "preserves nine operational sockets, collision, explicit LOD0/1/2, and runtime-owned plume",
+    "retains a restrained warm/cool material hierarchy across four Three.js proof distances"
+  ],
+  "acceptanceClaim": false
+}

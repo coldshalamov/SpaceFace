@@ -1,0 +1,92 @@
+
+> spaceface@0.1.0 check:graphics:asset-receipts
+> node scripts/check-graphics-asset-receipts.mjs
+
+Graphics asset receipt closure: PASS
+{
+  "helios": {
+    "bytes": 79717896,
+    "triangles": 1664738,
+    "sha256": "94CB9DC727D606DF2F7C32F2C0FFB274EE6A572A8FA7BD40836D721563D1A578"
+  },
+  "rockA": {
+    "bytes": 1970132,
+    "triangles": 1977,
+    "sha256": "E99971402AB9A4A7335DBBFA44C582A9596357225BD3336A2914B192677DEFDA"
+  },
+  "wasp": {
+    "bytes": 12797604,
+    "triangles": 11526,
+    "sha256": "FDFD7C76C793C5BE9593E9C095BADE0708C36163086F181FF08BDDFBE5173E5A"
+  },
+  "rcs": {
+    "bytes": 238516,
+    "triangles": 1040,
+    "sha256": "EBB28EEC748A46086B52B96E4C870ABFD98F7E38AD256591837356F934D94934"
+  },
+  "place_asteroid_rock_b": {
+    "bytes": 1867224,
+    "triangles": 1755,
+    "sha256": "2B32F11A29E372C08C07CF8326153ED9D4150FCF8CCC3236CA5D11FB6AE9EB87"
+  },
+  "place_asteroid_rock_c": {
+    "bytes": 2814260,
+    "triangles": 3239,
+    "sha256": "18534D6D9EB542084AAD21644C9E13D549FDDF93A9D2BD1A1FCA42BD7EB36ED1"
+  },
+  "hull_starter": {
+    "bytes": 3677036,
+    "triangles": 14550,
+    "sha256": "AF96ED8B755EDB65B4161716F2F352DD59963A31108BBFC17EA314FEB18AB489"
+  },
+  "hull_fighter": {
+    "bytes": 2811496,
+    "triangles": 4690,
+    "sha256": "2C13BC5967EBB93CA14997A9E536556A09193AB44103ED0F1D5F6FB4E905369C"
+  },
+  "hull_miner": {
+    "bytes": 3960108,
+    "triangles": 12991,
+    "sha256": "C23BBF68D3D3D327B82024275D66D982002BCF60D19D503577ED01EBACF7C8A4"
+  },
+  "hull_freighter": {
+    "bytes": 3213976,
+    "triangles": 4621,
+    "sha256": "056AE7BA211EF8CD0A86BA4262CA5F25EFD6EFF91B146409164EBDEBB00576FE"
+  },
+  "hull_interceptor": {
+    "bytes": 3263456,
+    "triangles": 4539,
+    "sha256": "1D59C23FBC1CCDC68A2BDB8CBF33ADFEF64AEDD5BD8F1CBE798C2DDAA9F4BBFB"
+  },
+  "hull_corvette": {
+    "bytes": 3260756,
+    "triangles": 4596,
+    "sha256": "1F1FD46F9673BB6D251CF4647A48BD7E124E44427F471A311BE5D0A5AA06EE6C"
+  },
+  "hull_frigate": {
+    "bytes": 3229000,
+    "triangles": 4685,
+    "sha256": "FA42688849DAF3EBEFD011849670BC4B9EFF4C0BA7D02AE70EEC70613F09DF60"
+  },
+  "hull_capital": {
+    "bytes": 3019044,
+    "triangles": 4882,
+    "sha256": "A898CD84E5CCBA5D906952CB9845571259156384CB034981E126E653F17CC376"
+  },
+  "hull_multirole": {
+    "bytes": 3143036,
+    "triangles": 3534,
+    "sha256": "DCA3F1D7F8022ADB67FBEF40DE7EEFB5D72FDDADB1C21D087BF14DBC042D5D78"
+  },
+  "hull_gunship": {
+    "bytes": 3733500,
+    "triangles": 4671,
+    "sha256": "EF69E0A1B55A9904ECA354FBA0C6A52D900DA4FD5FE3982E0E31112B84F5CDFC"
+  },
+  "wholeship_kestrel": {
+    "bytes": 44916544,
+    "triangles": 27340,
+    "sha256": "0C0BE004FBF77202380384E7D925318262A2F9B75D886F592AF9620E7F8DA586"
+  }
+}

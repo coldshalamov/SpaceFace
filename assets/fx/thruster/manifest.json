@@ -1,0 +1,101 @@
+{
+  "schema": "spaceface.thrusterTextureManifest.v1",
+  "generator": "scripts/generate-thruster-textures.mjs",
+  "deterministic": true,
+  "textures": [
+    {
+      "id": "plume_core_flow_v1",
+      "path": "assets/fx/thruster/plume_core_flow_v1.png",
+      "width": 256,
+      "height": 128,
+      "kind": "flow",
+      "seed": 19,
+      "bytes": 14890,
+      "sha256": "f71ea13dc464d2c79f6fb94b9542d9be858187822a198f356e658dc42787560d"
+    },
+    {
+      "id": "plume_inner_flipbook_v1",
+      "path": "assets/fx/thruster/plume_inner_flipbook_v1.png",
+      "width": 256,
+      "height": 256,
+      "kind": "flipbook",
+      "seed": 33,
+      "bytes": 56636,
+      "sha256": "f3fadb3158f126c2a9880830e428774dea7a6598f70a68c98285eca83d247879"
+    },
+    {
+      "id": "plume_sheath_noise_v1",
+      "path": "assets/fx/thruster/plume_sheath_noise_v1.png",
+      "width": 256,
+      "height": 128,
+      "kind": "directional_sheath",
+      "seed": 27,
+      "bytes": 11985,
+      "sha256": "3e095e1f99bff82b6813dd10c4e69b716d0a65e180382c656cdd20b23daf4da0"
+    },
+    {
+      "id": "plume_vapor_soft_v1",
+      "path": "assets/fx/thruster/plume_vapor_soft_v1.png",
+      "width": 256,
+      "height": 128,
+      "kind": "directional_vapor",
+      "seed": 11,
+      "bytes": 10481,
+      "sha256": "0f7d44529f1454902479c6920c30bb0851e06c7d5f36d75c703858cdefe0c0bf"
+    },
+    {
+      "id": "plume_distortion_interface_v1",
+      "path": "assets/fx/thruster/plume_distortion_interface_v1.png",
+      "width": 128,
+      "height": 128,
+      "kind": "distortion_interface",
+      "seed": 63,
+      "bytes": 28402,
+      "sha256": "ede7e74363c259dd1c2b5e3f8f8157cb817f8f5977da78e66806b278a450b483"
+    },
+    {
+      "id": "rcs_core_jet_v1",
+      "path": "assets/fx/thruster/rcs_core_jet_v1.png",
+      "width": 128,
+      "height": 64,
+      "kind": "flow",
+      "seed": 41,
+      "bytes": 2421,
+      "sha256": "9e329786b17c343faa72df84205e40ddb870f1b73ba457ead071b85f12473b54"
+    },
+    {
+      "id": "rcs_inner_streak_v1",
+      "path": "assets/fx/thruster/rcs_inner_streak_v1.png",
+      "width": 128,
+      "height": 64,
+      "kind": "flow",
+      "seed": 47,
+      "bytes": 2172,
+      "sha256": "98ee738a3599a844f6ef438bb32dae1782d5477e9e50021fb2c6c46a106496f7"
+    },
+    {
+      "id": "rcs_sheath_puff_v1",
+      "path": "assets/fx/thruster/rcs_sheath_puff_v1.png",
+      "width": 128,
+      "height": 64,
+      "kind": "directional_sheath",
+      "seed": 53,
+      "bytes": 2114,
+      "sha256": "07dfe0b3b22ef2aae03fce8bf28f99b21022b233a3c9c1636bc292f0c3b9486a"
+    },
+    {
+      "id": "rcs_vapor_dissipate_v1",
+      "path": "assets/fx/thruster/rcs_vapor_dissipate_v1.png",
+      "width": 128,
+      "height": 64,
+      "kind": "directional_vapor",
+      "seed": 59,
+      "bytes": 1473,
+      "sha256": "86bac67d4679eb41bf271cba6bdef228da170660c7fe30dcff28d3d4cddc4fc5"
+    }
+  ],
+  "ktx2": {
+    "produced": false,
+    "reason": "PNG runtime sources retained until the project KTX2 toolchain is available and visually validated."
+  }
+}

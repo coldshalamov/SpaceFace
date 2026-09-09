@@ -1,0 +1,108 @@
+{
+  "schema": "spaceface.everydaySpaceProps.publish.reproducibility.v1",
+  "stage": "publish_finalize",
+  "tool": "tools/art/publish_everyday_space_props.mjs",
+  "assets": 16,
+  "matches": 16,
+  "treeDigestA": "929be62336eadb27fe1ccfd5d93965306b98c2e602fc485c8d91e852680f6eb0",
+  "treeDigestB": "929be62336eadb27fe1ccfd5d93965306b98c2e602fc485c8d91e852680f6eb0",
+  "treeDigestsMatch": true,
+  "rows": [
+    {
+      "id": "place_cargo_pod_standard",
+      "bytes": 695336,
+      "sha256": "872b50c4338ae3b2ea76b34c115027ecc9f124de0b85f32feefc35633931b5a8",
+      "match": true
+    },
+    {
+      "id": "place_container_rack",
+      "bytes": 1968120,
+      "sha256": "bddef4066b25da9c5cfb5d872c73e68a82ce449bb55da689f1edfb4aa114795c",
+      "match": true
+    },
+    {
+      "id": "place_conveyor_truss",
+      "bytes": 1541324,
+      "sha256": "4c36a8f84053d4d914387680e90be72b7682d1e420939a1fdec2f49fe8d0fb30",
+      "match": true
+    },
+    {
+      "id": "place_drill_platform",
+      "bytes": 1495548,
+      "sha256": "c9e26be5e8ec21fa28e19a8911d3e6a13fb9c24e5b08a653dd95dce9fafe2be6",
+      "match": true
+    },
+    {
+      "id": "place_extraction_mast",
+      "bytes": 1077640,
+      "sha256": "2a922f129d684fd0273646fc4601dd4199f8ad4d0f229637b28c6a27a6a7c797",
+      "match": true
+    },
+    {
+      "id": "place_freight_platform",
+      "bytes": 2093108,
+      "sha256": "22f5d4f11210694dc5a6ad325b9ca6bca9f1a6b8e0d96c38507e03a6f48367f2",
+      "match": true
+    },
+    {
+      "id": "place_improvised_dock",
+      "bytes": 1369808,
+      "sha256": "71541d46e085d8f8292a6a3feed23aef81ef88e2cc745c23b5d8a256dc8a762e",
+      "match": true
+    },
+    {
+      "id": "place_interdiction_buoy",
+      "bytes": 955308,
+      "sha256": "a32c620b5df8a7879ed76c98a6c9f91ac01b6760dcaad3f978d380f51b8d1ccc",
+      "match": true
+    },
+    {
+      "id": "place_maintenance_gantry",
+      "bytes": 1289420,
+      "sha256": "f6cc97547e854bcba24c77cd7f240f3679161367b72e8f577bf56ba1589de334",
+      "match": true
+    },
+    {
+      "id": "place_radiator_bank",
+      "bytes": 1079776,
+      "sha256": "c0690db21e9a401318855793bdfaadf53ea11e7a029d0ba6b504e6cdcb8a7144",
+      "match": true
+    },
+    {
+      "id": "place_scrap_cage",
+      "bytes": 1049140,
+      "sha256": "2b3b5edf1ce5c5b1ee934ae932137e65ca72dedf8eae9dc39c2c95c3e15e918c",
+      "match": true
+    },
+    {
+      "id": "place_sensor_mast",
+      "bytes": 1238272,
+      "sha256": "9b6ec31ee9047422d909e70206e4f89c10051091d5dd03d451ab305c26622e1e",
+      "match": true
+    },
+    {
+      "id": "place_slurry_tank",
+      "bytes": 1910784,
+      "sha256": "9670b49d7772931ee4a1883a05f97e08fb8dc80ce55522cf20bd31cc691b39bc",
+      "match": true
+    },
+    {
+      "id": "place_transfer_arm",
+      "bytes": 1244012,
+      "sha256": "fb397b8222fcfc03e7272c4ff7ee03d9fcaf28a5c4806b1cb0d90582ab41caa3",
+      "match": true
+    },
+    {
+      "id": "place_transponder_gate",
+      "bytes": 1132280,
+      "sha256": "e913c839846c0d4cb5fe11f2297b75d15d83d28ad83385ea83e0f0b5ad5166d2",
+      "match": true
+    },
+    {
+      "id": "place_worklight_tower",
+      "bytes": 654728,
+      "sha256": "c93f0335ef9c62facb01e9549080b2ff5ae6806a2488871f483b17ceaca746b3",
+      "match": true
+    }
+  ]
+}

@@ -1,0 +1,1006 @@
+{
+  "schemaVersion": 1,
+  "id": "spacepunk_markings_v1",
+  "status": "authoring-source-only",
+  "runtimeWired": false,
+  "generatedBy": "tools/art/build_spacepunk_markings_atlas.mjs",
+  "conceptReference": "assets/concept/factions/spacepunk_markings_motif_study_v1.png",
+  "artDirectionSources": [
+    "src/data/palettes.js#PAINT_PROFILES",
+    "src/data/palettes.js#PLAYER_NOSE_ART",
+    "src/data/flavor/030-graffiti.js"
+  ],
+  "dimensions": {
+    "width": 2048,
+    "height": 1024
+  },
+  "grid": {
+    "columns": 8,
+    "rows": 4,
+    "cellSize": 256
+  },
+  "images": {
+    "baseColor": {
+      "path": "markings_basecolor.png",
+      "colorSpace": "srgb",
+      "alpha": "coverage",
+      "sha256": "d68935976cf6680ef68d783775031431bb64762b265c62f4f17486c464234b89"
+    },
+    "emissive": {
+      "path": "markings_emissive.png",
+      "colorSpace": "srgb",
+      "alpha": "coverage",
+      "sha256": "6377a6663d282220ec36740ad530cd5a896d7c0b5e0900d998a2ea870e69d1af"
+    }
+  },
+  "integrationContract": {
+    "exactTextAuthoredConventionally": true,
+    "generatedPixelsUsedDirectly": false,
+    "glbIntegrationRequired": true,
+    "ktx2ReleaseRequired": true,
+    "representativeRuntimeReviewRequired": true,
+    "note": "Choose exact cells per ship/faction. Do not apply every marking to every hull."
+  },
+  "cells": [
+    {
+      "id": "free_broken_clock",
+      "index": 0,
+      "group": "identity",
+      "factionId": "faction_free",
+      "story": "A broken port-clock: the player hull returned with eleven years missing.",
+      "pixelRect": {
+        "x": 0,
+        "y": 0,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0,
+        "v0": 0,
+        "u1": 0.125,
+        "v1": 0.25
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#55B4B8",
+      "authoredEmissiveColor": null,
+      "wear": 0.12,
+      "coveragePixels": 6371,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "free_ghost_mark",
+      "index": 1,
+      "group": "identity",
+      "factionId": "faction_free",
+      "story": "The weary ghost attached to the Hitch and its Borrowed Time reputation.",
+      "pixelRect": {
+        "x": 256,
+        "y": 0,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.125,
+        "v0": 0,
+        "u1": 0.25,
+        "v1": 0.25
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#DED6BE",
+      "authoredEmissiveColor": null,
+      "wear": 0.18,
+      "coveragePixels": 11553,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "free_tally_thirteen",
+      "index": 2,
+      "group": "identity",
+      "factionId": "faction_free",
+      "story": "Exactly thirteen old combat tallies; a history, not a generic kill badge.",
+      "pixelRect": {
+        "x": 512,
+        "y": 0,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.25,
+        "v0": 0,
+        "u1": 0.375,
+        "v1": 0.25
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#DED6BE",
+      "authoredEmissiveColor": null,
+      "wear": 0.16,
+      "coveragePixels": 8937,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "free_severed_chain",
+      "index": 3,
+      "group": "identity",
+      "factionId": "faction_free",
+      "story": "An independent crew mark: one load-bearing link deliberately cut.",
+      "pixelRect": {
+        "x": 768,
+        "y": 0,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.375,
+        "v0": 0,
+        "u1": 0.5,
+        "v1": 0.25
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#55B4B8",
+      "authoredEmissiveColor": null,
+      "wear": 0.2,
+      "coveragePixels": 7334,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "quiet_occluded_eye",
+      "index": 4,
+      "group": "identity",
+      "factionId": "faction_quiet",
+      "story": "The Quiet see the route while hiding the observer.",
+      "pixelRect": {
+        "x": 1024,
+        "y": 0,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.5,
+        "v0": 0,
+        "u1": 0.625,
+        "v1": 0.25
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#766A91",
+      "authoredEmissiveColor": null,
+      "wear": 0.1,
+      "coveragePixels": 9891,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "quiet_folded_route",
+      "index": 5,
+      "group": "identity",
+      "factionId": "faction_quiet",
+      "story": "A contraband route folded through legitimate handoff points.",
+      "pixelRect": {
+        "x": 1280,
+        "y": 0,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.625,
+        "v0": 0,
+        "u1": 0.75,
+        "v1": 0.25
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#766A91",
+      "authoredEmissiveColor": null,
+      "wear": 0.08,
+      "coveragePixels": 7137,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "quiet_cut_signal",
+      "index": 6,
+      "group": "identity",
+      "factionId": "faction_quiet",
+      "story": "A transponder carrier interrupted without broadcasting hostility.",
+      "pixelRect": {
+        "x": 1536,
+        "y": 0,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.75,
+        "v0": 0,
+        "u1": 0.875,
+        "v1": 0.25
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#766A91",
+      "authoredEmissiveColor": "#55B4B8",
+      "wear": 0.1,
+      "coveragePixels": 9608,
+      "emissiveCoveragePixels": 4806
+    },
+    {
+      "id": "quiet_keyhole",
+      "index": 7,
+      "group": "identity",
+      "factionId": "faction_quiet",
+      "story": "A small access mark for people who know which sealed route still opens.",
+      "pixelRect": {
+        "x": 1792,
+        "y": 0,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.875,
+        "v0": 0,
+        "u1": 1,
+        "v1": 0.25
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#766A91",
+      "authoredEmissiveColor": null,
+      "wear": 0.06,
+      "coveragePixels": 7080,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "mts_ledger_orbit",
+      "index": 8,
+      "group": "identity",
+      "factionId": "faction_mts",
+      "story": "Meridian mass and custody moving through a closed ledger orbit.",
+      "pixelRect": {
+        "x": 0,
+        "y": 256,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0,
+        "v0": 0.25,
+        "u1": 0.125,
+        "v1": 0.5
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#D9A441",
+      "authoredEmissiveColor": "#D9A441",
+      "wear": 0.02,
+      "coveragePixels": 8622,
+      "emissiveCoveragePixels": 8653
+    },
+    {
+      "id": "mts_counterfeit_seal",
+      "index": 9,
+      "group": "identity",
+      "factionId": "faction_mts",
+      "story": "A deliberately imperfect copy of an institutional cargo seal.",
+      "pixelRect": {
+        "x": 256,
+        "y": 256,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.125,
+        "v0": 0.25,
+        "u1": 0.25,
+        "v1": 0.5
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#D9A441",
+      "authoredEmissiveColor": null,
+      "wear": 0.18,
+      "coveragePixels": 8303,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "scn_custody_brackets",
+      "index": 10,
+      "group": "identity",
+      "factionId": "faction_scn",
+      "story": "Concord evidence-custody brackets around a recorded object.",
+      "pixelRect": {
+        "x": 512,
+        "y": 256,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.25,
+        "v0": 0.25,
+        "u1": 0.375,
+        "v1": 0.5
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#A7C6D9",
+      "authoredEmissiveColor": "#A7C6D9",
+      "wear": 0.01,
+      "coveragePixels": 6126,
+      "emissiveCoveragePixels": 6135
+    },
+    {
+      "id": "scn_rescue_corridor",
+      "index": 11,
+      "group": "identity",
+      "factionId": "faction_scn",
+      "story": "A lawful rescue corridor, distinct from an attack chevron.",
+      "pixelRect": {
+        "x": 768,
+        "y": 256,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.375,
+        "v0": 0.25,
+        "u1": 0.5,
+        "v1": 0.5
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#A7C6D9",
+      "authoredEmissiveColor": "#FFF2C0",
+      "wear": 0.02,
+      "coveragePixels": 6384,
+      "emissiveCoveragePixels": 6441
+    },
+    {
+      "id": "dmc_drill_tooth",
+      "index": 12,
+      "group": "identity",
+      "factionId": "faction_dmc",
+      "story": "A practical cutter tooth used by Drift mining crews.",
+      "pixelRect": {
+        "x": 1024,
+        "y": 256,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.5,
+        "v0": 0.25,
+        "u1": 0.625,
+        "v1": 0.5
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#D86B24",
+      "authoredEmissiveColor": null,
+      "wear": 0.14,
+      "coveragePixels": 12836,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "dmc_pressure_warning",
+      "index": 13,
+      "group": "identity",
+      "factionId": "faction_dmc",
+      "story": "A pressure vessel warning with no fake alien typography.",
+      "pixelRect": {
+        "x": 1280,
+        "y": 256,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.625,
+        "v0": 0.25,
+        "u1": 0.75,
+        "v1": 0.5
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#D86B24",
+      "authoredEmissiveColor": null,
+      "wear": 0.1,
+      "coveragePixels": 8240,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "reach_boarding_hook",
+      "index": 14,
+      "group": "identity",
+      "factionId": "faction_reach",
+      "story": "A Crimson Reach boarding hook cut from an older chain mark.",
+      "pixelRect": {
+        "x": 1536,
+        "y": 256,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.75,
+        "v0": 0.25,
+        "u1": 0.875,
+        "v1": 0.5
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#B93632",
+      "authoredEmissiveColor": null,
+      "wear": 0.24,
+      "coveragePixels": 6999,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "pitborn_weld_scar",
+      "index": 15,
+      "group": "identity",
+      "factionId": "faction_pitborn",
+      "story": "A repair-as-identity weld scar used on stolen and recovered plates.",
+      "pixelRect": {
+        "x": 1792,
+        "y": 256,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.875,
+        "v0": 0.25,
+        "u1": 1,
+        "v1": 0.5
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#D86B24",
+      "authoredEmissiveColor": "#FF762B",
+      "wear": 0.26,
+      "coveragePixels": 4282,
+      "emissiveCoveragePixels": 2101
+    },
+    {
+      "id": "serial_bt_13",
+      "index": 16,
+      "group": "serial",
+      "factionId": "faction_free",
+      "story": "Exact player-history stencil: BT-13.",
+      "pixelRect": {
+        "x": 0,
+        "y": 512,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0,
+        "v0": 0.5,
+        "u1": 0.125,
+        "v1": 0.75
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#DED6BE",
+      "authoredEmissiveColor": null,
+      "wear": 0.15,
+      "coveragePixels": 2966,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "serial_mts_47b",
+      "index": 17,
+      "group": "serial",
+      "factionId": "faction_mts",
+      "story": "Exact Meridian custody serial: MTS-47B.",
+      "pixelRect": {
+        "x": 256,
+        "y": 512,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.125,
+        "v0": 0.5,
+        "u1": 0.25,
+        "v1": 0.75
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#D9A441",
+      "authoredEmissiveColor": null,
+      "wear": 0.03,
+      "coveragePixels": 2348,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "dock_07",
+      "index": 18,
+      "group": "serial",
+      "factionId": "faction_scn",
+      "story": "Exact dock numeral: DOCK 07.",
+      "pixelRect": {
+        "x": 512,
+        "y": 512,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.25,
+        "v0": 0.5,
+        "u1": 0.375,
+        "v1": 0.75
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#A7C6D9",
+      "authoredEmissiveColor": null,
+      "wear": 0.01,
+      "coveragePixels": 5951,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "shaft_s7",
+      "index": 19,
+      "group": "serial",
+      "factionId": "faction_dmc",
+      "story": "Exact working-site identifier: SHAFT S7.",
+      "pixelRect": {
+        "x": 768,
+        "y": 512,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.375,
+        "v0": 0.5,
+        "u1": 0.5,
+        "v1": 0.75
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#D86B24",
+      "authoredEmissiveColor": null,
+      "wear": 0.12,
+      "coveragePixels": 5273,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "maintenance_fuel",
+      "index": 20,
+      "group": "service",
+      "factionId": null,
+      "story": "Fuel service glyph with conventional lettering.",
+      "pixelRect": {
+        "x": 1024,
+        "y": 512,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.5,
+        "v0": 0.5,
+        "u1": 0.625,
+        "v1": 0.75
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#DED6BE",
+      "authoredEmissiveColor": null,
+      "wear": 0.07,
+      "coveragePixels": 6616,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "maintenance_tow",
+      "index": 21,
+      "group": "service",
+      "factionId": null,
+      "story": "Tow hardpoint glyph with conventional lettering.",
+      "pixelRect": {
+        "x": 1280,
+        "y": 512,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.625,
+        "v0": 0.5,
+        "u1": 0.75,
+        "v1": 0.75
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#DED6BE",
+      "authoredEmissiveColor": null,
+      "wear": 0.08,
+      "coveragePixels": 7029,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "hazard_chevrons",
+      "index": 22,
+      "group": "hazard",
+      "factionId": null,
+      "story": "Mip-safe directional hazard tape.",
+      "pixelRect": {
+        "x": 1536,
+        "y": 512,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.75,
+        "v0": 0.5,
+        "u1": 0.875,
+        "v1": 0.75
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#D9A441",
+      "authoredEmissiveColor": null,
+      "wear": 0.12,
+      "coveragePixels": 13824,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "hazard_pressure",
+      "index": 23,
+      "group": "hazard",
+      "factionId": null,
+      "story": "Pressure hazard block for tanks, locks, and patch plates.",
+      "pixelRect": {
+        "x": 1792,
+        "y": 512,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.875,
+        "v0": 0.5,
+        "u1": 1,
+        "v1": 0.75
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": false,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#D86B24",
+      "authoredEmissiveColor": null,
+      "wear": 0.1,
+      "coveragePixels": 21264,
+      "emissiveCoveragePixels": 0
+    },
+    {
+      "id": "runlight_cyan",
+      "index": 24,
+      "group": "emissive",
+      "factionId": null,
+      "story": "Cyan running-light cluster.",
+      "pixelRect": {
+        "x": 0,
+        "y": 768,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0,
+        "v0": 0.75,
+        "u1": 0.125,
+        "v1": 1
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#292B2D",
+      "authoredEmissiveColor": "#55B4B8",
+      "wear": 0,
+      "coveragePixels": 17800,
+      "emissiveCoveragePixels": 5940
+    },
+    {
+      "id": "runlight_amber",
+      "index": 25,
+      "group": "emissive",
+      "factionId": null,
+      "story": "Amber service-light cluster.",
+      "pixelRect": {
+        "x": 256,
+        "y": 768,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.125,
+        "v0": 0.75,
+        "u1": 0.25,
+        "v1": 1
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#292B2D",
+      "authoredEmissiveColor": "#D9A441",
+      "wear": 0,
+      "coveragePixels": 17800,
+      "emissiveCoveragePixels": 5940
+    },
+    {
+      "id": "rescue_lane_emissive",
+      "index": 26,
+      "group": "emissive",
+      "factionId": "faction_scn",
+      "story": "Restrained rescue-lane light, not an always-on bloom strip.",
+      "pixelRect": {
+        "x": 512,
+        "y": 768,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.25,
+        "v0": 0.75,
+        "u1": 0.375,
+        "v1": 1
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#292B2D",
+      "authoredEmissiveColor": "#FFF2C0",
+      "wear": 0,
+      "coveragePixels": 7914,
+      "emissiveCoveragePixels": 2463
+    },
+    {
+      "id": "custody_pulse_emissive",
+      "index": 27,
+      "group": "emissive",
+      "factionId": "faction_scn",
+      "story": "Evidence-custody status pulse.",
+      "pixelRect": {
+        "x": 768,
+        "y": 768,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.375,
+        "v0": 0.75,
+        "u1": 0.5,
+        "v1": 1
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#292B2D",
+      "authoredEmissiveColor": "#A7C6D9",
+      "wear": 0,
+      "coveragePixels": 6654,
+      "emissiveCoveragePixels": 2809
+    },
+    {
+      "id": "quiet_transponder_emissive",
+      "index": 28,
+      "group": "emissive",
+      "factionId": "faction_quiet",
+      "story": "Quiet transponder arcs with the carrier visibly cut.",
+      "pixelRect": {
+        "x": 1024,
+        "y": 768,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.5,
+        "v0": 0.75,
+        "u1": 0.625,
+        "v1": 1
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#292B2D",
+      "authoredEmissiveColor": "#766A91",
+      "wear": 0,
+      "coveragePixels": 8063,
+      "emissiveCoveragePixels": 3798
+    },
+    {
+      "id": "counterfeit_beacon_emissive",
+      "index": 29,
+      "group": "emissive",
+      "factionId": "faction_mts",
+      "story": "Counterfeit Meridian beacon with uneven pulse spacing.",
+      "pixelRect": {
+        "x": 1280,
+        "y": 768,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.625,
+        "v0": 0.75,
+        "u1": 0.75,
+        "v1": 1
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#292B2D",
+      "authoredEmissiveColor": "#D9A441",
+      "wear": 0.05,
+      "coveragePixels": 7741,
+      "emissiveCoveragePixels": 1044
+    },
+    {
+      "id": "pitborn_weld_hot",
+      "index": 30,
+      "group": "emissive",
+      "factionId": "faction_pitborn",
+      "story": "Recently repaired weld points; localized heat only.",
+      "pixelRect": {
+        "x": 1536,
+        "y": 768,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.75,
+        "v0": 0.75,
+        "u1": 0.875,
+        "v1": 1
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#292B2D",
+      "authoredEmissiveColor": "#FF762B",
+      "wear": 0.08,
+      "coveragePixels": 4478,
+      "emissiveCoveragePixels": 2031
+    },
+    {
+      "id": "archive_record_lamp",
+      "index": 31,
+      "group": "emissive",
+      "factionId": "faction_archive",
+      "story": "A dark maintained record lamp for Archive equipment.",
+      "pixelRect": {
+        "x": 1792,
+        "y": 768,
+        "width": 256,
+        "height": 256
+      },
+      "normalizedImageRect": {
+        "origin": "image-top-left",
+        "u0": 0.875,
+        "v0": 0.75,
+        "u1": 1,
+        "v1": 1
+      },
+      "channels": {
+        "baseColor": true,
+        "emissive": true,
+        "alpha": "coverage"
+      },
+      "authoredBaseColor": "#292B2D",
+      "authoredEmissiveColor": "#FFF2C0",
+      "wear": 0,
+      "coveragePixels": 8616,
+      "emissiveCoveragePixels": 1918
+    }
+  ]
+}

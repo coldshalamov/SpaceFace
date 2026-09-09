@@ -1,0 +1,26 @@
+{
+  "schema": "spaceface.kestrelBorrowedTimeV3.tasteReview.v1",
+  "packet": "PROFESSIONAL-KESTREL-BORROWED-TIME-V3-CODEX-001",
+  "reviewCount": 2,
+  "repairCount": 1,
+  "disposition": "PASS",
+  "livePromotion": false,
+  "bar": "foundation rebuild above V2 and at least the user Borrowed Time/current-release quality tier",
+  "evidence": [
+    "evidence/devshots/kestrel_v3_three_close.png",
+    "evidence/devshots/kestrel_v3_three_mid.png",
+    "evidence/devshots/kestrel_v3_three_120px.png",
+    "evidence/devshots/kestrel_v3_three_under45px.png",
+    "evidence/renders/forward_34.png",
+    "evidence/renders/rear_34.png",
+    "evidence/renders/top_ortho.png"
+  ],
+  "observations": [
+    "The pressure hull and two continuous shoulder shells read as one load-bearing mass rather than stacked slabs or detached pontoons.",
+    "Forward carapace, compact hardpoint, and axial drive collar make fore and aft immediately distinct at close, 120px, and under 45px.",
+    "The repair removed inherited dorsal spear rails, rectangular brow cap, and floating legacy RCS pods; replacement equipment overlaps the hull skin.",
+    "Warm cargo latches and drive crown organize service structure while cool paint and small emitters remain subordinate navigation cues.",
+    "Close view retains cockpit, cargo, engine, repair, and hardpoint biography without accessory-only body construction or a featureless black primary mass."
+  ],
+  "boundedAcceptance": "isolated candidate only; no live wiring, manifest edit, renderer edit, Electron edit, or promotion"
+}

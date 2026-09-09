@@ -1,0 +1,564 @@
+{
+  "file": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\kestrel_borrowed_time_v2\\source\\wholeships\\kestrel_borrowed_time_v2.glb",
+  "bytes": 15400404,
+  "totalTriangles": 42528,
+  "hullTriangles": 10036,
+  "lodBreakdown": {
+    "lod0": {
+      "triangles": 28672,
+      "primitives": 15,
+      "drawEstimate": 15,
+      "nodes": [
+        {
+          "name": "LOD0_Gun_Assembly",
+          "tris": 3256
+        },
+        {
+          "name": "LOD0_HOOK_DRIVE_CORE",
+          "tris": 1026
+        },
+        {
+          "name": "LOD0_HOOK_DRIVE_FAN",
+          "tris": 1134
+        },
+        {
+          "name": "LOD0_Merged_Material_Cyan_Emissive",
+          "tris": 698
+        },
+        {
+          "name": "LOD0_Merged_Material_Cyan_Paint",
+          "tris": 682
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_BorrowedTime",
+          "tris": 62
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_Hazard",
+          "tris": 62
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_Stencils",
+          "tris": 62
+        },
+        {
+          "name": "LOD0_Merged_Material_Glass",
+          "tris": 256
+        },
+        {
+          "name": "LOD0_Merged_Material_Hull",
+          "tris": 6334
+        },
+        {
+          "name": "LOD0_Merged_Material_Mechanical",
+          "tris": 11218
+        },
+        {
+          "name": "LOD0_Merged_Material_Repair_Paint",
+          "tris": 342
+        },
+        {
+          "name": "LOD0_Merged_Material_Warm_Emissive",
+          "tris": 124
+        },
+        {
+          "name": "LOD0_Merged_Material_Warm_Paint",
+          "tris": 2070
+        },
+        {
+          "name": "LOD0_Mining_Emitter",
+          "tris": 1346
+        }
+      ]
+    },
+    "lod1": {
+      "triangles": 12034,
+      "primitives": 11,
+      "drawEstimate": 11,
+      "nodes": [
+        {
+          "name": "LOD1_Gun_Assembly",
+          "tris": 1684
+        },
+        {
+          "name": "LOD1_HOOK_DRIVE_CORE",
+          "tris": 530
+        },
+        {
+          "name": "LOD1_HOOK_DRIVE_FAN",
+          "tris": 586
+        },
+        {
+          "name": "LOD1_Merged_Material_Cyan_Emissive",
+          "tris": 128
+        },
+        {
+          "name": "LOD1_Merged_Material_Cyan_Paint",
+          "tris": 352
+        },
+        {
+          "name": "LOD1_Merged_Material_Glass",
+          "tris": 132
+        },
+        {
+          "name": "LOD1_Merged_Material_Hull",
+          "tris": 2822
+        },
+        {
+          "name": "LOD1_Merged_Material_Mechanical",
+          "tris": 4442
+        },
+        {
+          "name": "LOD1_Merged_Material_Repair_Paint",
+          "tris": 120
+        },
+        {
+          "name": "LOD1_Merged_Material_Warm_Paint",
+          "tris": 542
+        },
+        {
+          "name": "LOD1_Mining_Emitter",
+          "tris": 696
+        }
+      ]
+    },
+    "lod2": {
+      "triangles": 1822,
+      "primitives": 7,
+      "drawEstimate": 7,
+      "nodes": [
+        {
+          "name": "LOD2_Gun_Assembly",
+          "tris": 184
+        },
+        {
+          "name": "LOD2_HOOK_DRIVE_CORE",
+          "tris": 70
+        },
+        {
+          "name": "LOD2_Merged_Material_Cyan_Paint",
+          "tris": 134
+        },
+        {
+          "name": "LOD2_Merged_Material_Glass",
+          "tris": 98
+        },
+        {
+          "name": "LOD2_Merged_Material_Hull",
+          "tris": 880
+        },
+        {
+          "name": "LOD2_Merged_Material_Mechanical",
+          "tris": 332
+        },
+        {
+          "name": "LOD2_Mining_Emitter",
+          "tris": 124
+        }
+      ]
+    }
+  },
+  "sockets": [
+    "SOCKET_Camera_Focus",
+    "SOCKET_Cargo_Ventral",
+    "SOCKET_Engine_Main",
+    "SOCKET_Mining_Front",
+    "SOCKET_RCS_Port",
+    "SOCKET_RCS_Starboard",
+    "SOCKET_Trail_Main",
+    "SOCKET_Utility_Dorsal",
+    "SOCKET_Weapon_Front"
+  ],
+  "materials": [
+    "Material_Mechanical",
+    "Material_Drive_Core",
+    "Material_Cyan_Emissive",
+    "Material_Cyan_Paint",
+    "Material_Decal_BorrowedTime",
+    "Material_Decal_Hazard",
+    "Material_Decal_Stencils",
+    "Material_Glass",
+    "Material_Hull",
+    "Material_Repair_Paint",
+    "Material_Warm_Emissive",
+    "Material_Warm_Paint"
+  ],
+  "primitiveCount": 33,
+  "tangentPrimitiveCount": 33,
+  "uvPrimitiveCount": 33,
+  "constantTangentPrimitives": [],
+  "dimensionsAccessorSpace": [
+    27.83963108062744,
+    7.569064378738403,
+    14.150000095367432
+  ],
+  "spacefaceAsset": {
+    "contractVersion": 1,
+    "assetId": "SF_WHOLESHIP_KESTREL_BORROWED_TIME_V2",
+    "slot": "hull",
+    "forward": "+X",
+    "up": "+Y",
+    "starboard": "+Z",
+    "unit": "metre",
+    "normalConvention": "OpenGL",
+    "ormChannels": "R=AO,G=Roughness,B=Metallic",
+    "textureCompression": "PNG-source",
+    "chamfered": true,
+    "bevelRadiusM": 0.025,
+    "partId": "wholeship_kestrel_borrowed_time_v2",
+    "category": "wholeships",
+    "sourceRole": "whole-ship hull",
+    "packet": "PROFESSIONAL-KESTREL-BORROWED-TIME-V2-CODEX-001",
+    "triangleCount": 42528,
+    "hullTriangleCount": 10036,
+    "deliverableRole": "production_multi_lod",
+    "lods": [
+      "lod0",
+      "lod1",
+      "lod2"
+    ],
+    "removedPlumeMeshes": [
+      "Engine_Plume_HotCore",
+      "Engine_Plume_Inner",
+      "Engine_Plume_Outer",
+      "Studio_Floor",
+      "Studio_Pad",
+      "Studio_Pad_LightRing"
+    ]
+  },
+  "lodBuildStats": [
+    {
+      "lod": "lod0",
+      "max_detail": 2,
+      "decimate_ratio": 0.58,
+      "mesh_count": 15,
+      "triangles": 28672,
+      "meshes": [
+        {
+          "name": "LOD0_Merged_Material_Hull",
+          "tris": 6334,
+          "materials": [
+            "Material_Hull"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Mechanical",
+          "tris": 11218,
+          "materials": [
+            "Material_Mechanical"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Warm_Paint",
+          "tris": 2070,
+          "materials": [
+            "Material_Warm_Paint"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Glass",
+          "tris": 256,
+          "materials": [
+            "Material_Glass"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Cyan_Emissive",
+          "tris": 698,
+          "materials": [
+            "Material_Cyan_Emissive"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Cyan_Paint",
+          "tris": 682,
+          "materials": [
+            "Material_Cyan_Paint"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Repair_Paint",
+          "tris": 342,
+          "materials": [
+            "Material_Repair_Paint"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_BorrowedTime",
+          "tris": 62,
+          "materials": [
+            "Material_Decal_BorrowedTime"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_Stencils",
+          "tris": 62,
+          "materials": [
+            "Material_Decal_Stencils"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Decal_Hazard",
+          "tris": 62,
+          "materials": [
+            "Material_Decal_Hazard"
+          ]
+        },
+        {
+          "name": "LOD0_Merged_Material_Warm_Emissive",
+          "tris": 124,
+          "materials": [
+            "Material_Warm_Emissive"
+          ]
+        },
+        {
+          "name": "LOD0_HOOK_DRIVE_FAN",
+          "tris": 1134,
+          "materials": [
+            "Material_Mechanical"
+          ]
+        },
+        {
+          "name": "LOD0_HOOK_DRIVE_CORE",
+          "tris": 1026,
+          "materials": [
+            "Material_Drive_Core"
+          ]
+        },
+        {
+          "name": "LOD0_Gun_Assembly",
+          "tris": 3256,
+          "materials": [
+            "Material_Mechanical"
+          ]
+        },
+        {
+          "name": "LOD0_Mining_Emitter",
+          "tris": 1346,
+          "materials": [
+            "Material_Mechanical"
+          ]
+        }
+      ],
+      "removed_close_only": [],
+      "removed_detail_count": 0,
+      "draw_estimate": 15
+    },
+    {
+      "lod": "lod1",
+      "max_detail": 1,
+      "decimate_ratio": 0.3,
+      "mesh_count": 11,
+      "triangles": 12034,
+      "meshes": [
+        {
+          "name": "LOD1_Merged_Material_Hull",
+          "tris": 2822,
+          "materials": [
+            "Material_Hull"
+          ]
+        },
+        {
+          "name": "LOD1_Merged_Material_Mechanical",
+          "tris": 4442,
+          "materials": [
+            "Material_Mechanical"
+          ]
+        },
+        {
+          "name": "LOD1_Merged_Material_Warm_Paint",
+          "tris": 542,
+          "materials": [
+            "Material_Warm_Paint"
+          ]
+        },
+        {
+          "name": "LOD1_Merged_Material_Glass",
+          "tris": 132,
+          "materials": [
+            "Material_Glass"
+          ]
+        },
+        {
+          "name": "LOD1_Merged_Material_Cyan_Emissive",
+          "tris": 128,
+          "materials": [
+            "Material_Cyan_Emissive"
+          ]
+        },
+        {
+          "name": "LOD1_Merged_Material_Cyan_Paint",
+          "tris": 352,
+          "materials": [
+            "Material_Cyan_Paint"
+          ]
+        },
+        {
+          "name": "LOD1_Merged_Material_Repair_Paint",
+          "tris": 120,
+          "materials": [
+            "Material_Repair_Paint"
+          ]
+        },
+        {
+          "name": "LOD1_HOOK_DRIVE_FAN",
+          "tris": 586,
+          "materials": [
+            "Material_Mechanical"
+          ]
+        },
+        {
+          "name": "LOD1_HOOK_DRIVE_CORE",
+          "tris": 530,
+          "materials": [
+            "Material_Drive_Core"
+          ]
+        },
+        {
+          "name": "LOD1_Gun_Assembly",
+          "tris": 1684,
+          "materials": [
+            "Material_Mechanical"
+          ]
+        },
+        {
+          "name": "LOD1_Mining_Emitter",
+          "tris": 696,
+          "materials": [
+            "Material_Mechanical"
+          ]
+        }
+      ],
+      "removed_close_only": [
+        "FieldRepair_Port_Plate",
+        "Antenna_Loop"
+      ],
+      "removed_detail_count": 96,
+      "draw_estimate": 11
+    },
+    {
+      "lod": "lod2",
+      "max_detail": 0,
+      "decimate_ratio": 0.14,
+      "mesh_count": 7,
+      "triangles": 1822,
+      "meshes": [
+        {
+          "name": "LOD2_Merged_Material_Hull",
+          "tris": 880,
+          "materials": [
+            "Material_Hull"
+          ]
+        },
+        {
+          "name": "LOD2_Merged_Material_Mechanical",
+          "tris": 332,
+          "materials": [
+            "Material_Mechanical"
+          ]
+        },
+        {
+          "name": "LOD2_Merged_Material_Glass",
+          "tris": 98,
+          "materials": [
+            "Material_Glass"
+          ]
+        },
+        {
+          "name": "LOD2_Merged_Material_Cyan_Paint",
+          "tris": 134,
+          "materials": [
+            "Material_Cyan_Paint"
+          ]
+        },
+        {
+          "name": "LOD2_HOOK_DRIVE_CORE",
+          "tris": 70,
+          "materials": [
+            "Material_Drive_Core"
+          ]
+        },
+        {
+          "name": "LOD2_Gun_Assembly",
+          "tris": 184,
+          "materials": [
+            "Material_Mechanical"
+          ]
+        },
+        {
+          "name": "LOD2_Mining_Emitter",
+          "tris": 124,
+          "materials": [
+            "Material_Mechanical"
+          ]
+        }
+      ],
+      "removed_close_only": [],
+      "removed_detail_count": 228,
+      "draw_estimate": 7
+    }
+  ],
+  "sourceBlend": "C:\\Users\\93rob\\AppData\\Local\\Temp\\spaceface_kestrel_bt_v2_source\\SF_K0_Borrowed_Time_Revamp.blend",
+  "sourceSha256": "C48BCD2CD7AA9B8DAF4AC253221ED259DB781A1BF0602EDB7286D916191D6502",
+  "targetSha256": "FEDC6A1C88683F9A4E2CB515E8D5A40FF83CB74A6FE6BBBC6609DC2C0C866759",
+  "productionBlend": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\kestrel_borrowed_time_v2\\blender\\kestrel_borrowed_time_v2_production.blend",
+  "productionBlendSha256": "5CE7200FC6469F2EF773EC85171DAB22CF7AB655A22B4790A0C55D60F12517E4",
+  "removedPlumes": [
+    "Engine_Plume_HotCore",
+    "Engine_Plume_Inner",
+    "Engine_Plume_Outer",
+    "Studio_Floor",
+    "Studio_Pad",
+    "Studio_Pad_LightRing",
+    "material:Material_Plume_HotCore",
+    "material:Material_Plume_Inner",
+    "material:Material_Plume_Outer"
+  ],
+  "decalTextureResamples": [
+    {
+      "name": "decal_borrowed_time.png",
+      "from": [
+        1024,
+        512
+      ],
+      "to": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "name": "decal_hazard_stripes.png",
+      "from": [
+        1024,
+        256
+      ],
+      "to": [
+        1024,
+        1024
+      ]
+    },
+    {
+      "name": "decal_stencils.png",
+      "from": [
+        1024,
+        512
+      ],
+      "to": [
+        1024,
+        1024
+      ]
+    }
+  ],
+  "packet": "PROFESSIONAL-KESTREL-BORROWED-TIME-V2-CODEX-001",
+  "buildSeconds": 37.45,
+  "renders": [
+    "renders\\forward_34.png",
+    "renders\\rear_34.png",
+    "renders\\top_ortho.png",
+    "renders\\readability_close.png",
+    "renders\\readability_120px.png",
+    "renders\\readability_under45px.png"
+  ],
+  "gateErrors": [],
+  "gateOk": true
+}

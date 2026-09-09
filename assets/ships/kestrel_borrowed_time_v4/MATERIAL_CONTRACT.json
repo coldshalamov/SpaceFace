@@ -1,0 +1,37 @@
+{
+  "schema": "spaceface.shipMaterialContract.v2",
+  "assetId": "SF_K0_KESTREL_BORROWED_TIME_V4",
+  "normalConvention": "OpenGL",
+  "tangentConvention": "MikkTSpace",
+  "ormChannels": { "R": "ambientOcclusion", "G": "roughness", "B": "metallic" },
+  "textureShipping": "KTX2 BasisU with mipmaps",
+  "paint": {
+    "hull": "warm neutral worn paint",
+    "recess": "readable warm charcoal; never a clipped black mass",
+    "cyan": "ordinary Frontier/service paint",
+    "orange": "ordinary warning/mining paint"
+  },
+  "emissiveAllowedRoles": ["axial drive", "RCS/nav", "sensor", "mining lens", "cockpit displays"],
+  "emissiveForbiddenRoles": ["pulse muzzle at rest", "utility practicals", "hull paint", "radiator lips", "embedded plume"],
+  "wear": ["directional travel wear", "engine heat path", "service grime", "repair-green mismatch", "localized edge chips"],
+  "decals": ["one-sided DIE LAUGHING identity paint", "engine hazard", "service stencil"],
+  "factorOnlyMaterialExceptions": {
+    "Material_V6_MarkingIvory": "non-emissive dirty warm-ivory stencil paint; separate conventionally authored main/wear meshes spell DIE LAUGHING, conform to V6_ShoulderArmor_Port_Aft at 0.30 mm normal offset, and must not sample generated pixels or the legacy stencil atlas"
+  },
+  "heroMarkingContract": {
+    "fiction": "crew-applied gallows-humor name sprayed onto the accessible aft port armor course, clear of the inspection hatch",
+    "method": "original two-line hand-cut vector stencil with explicit bridges, missing-paint gaps, chipped edges and localized overspray",
+    "targetSurface": "V6_ShoulderArmor_Port_Aft",
+    "mainDetailLevel": 0,
+    "wearDetailLevel": 2,
+    "wearLodPolicy": "LOD0 only",
+    "surfaceOffsetMeters": 0.0003,
+    "generatedPixelsShipped": false
+  },
+  "materialTruthDiagnostics": {
+    "scope": "V6 camera-prominent components with named G1/G2/G4 failures",
+    "requiredResult": "fiction material, manufacturing process, geometry, UVs and runtime material response agree",
+    "unacceptableReads": ["plastic toy", "clay blockout", "rubber or leather where not specified"]
+  },
+  "mirroredText": false
+}
