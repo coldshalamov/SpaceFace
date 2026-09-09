@@ -508,6 +508,8 @@ function settleDemand(system, state, rec, demand, tithe) {
       const after = Math.max(0, Math.floor(Number(state.player && state.player.credits) || 0));
       if (before - after === amount) return { kind: 'credits', amount, commodityId: null };
     }
+    // A credit demand that cannot settle must not dump the hold. Cargo tithe is a different demand.
+    return null;
   }
   const cargoSys = system.registry && system.registry.get && system.registry.get('cargo');
   const dropped = tithe.commodityId && tithe.qty > 0 && cargoSys && typeof cargoSys.jettison === 'function'

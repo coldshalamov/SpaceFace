@@ -17,7 +17,9 @@ export function createBus() {
 
   function off(event, fn) {
     const set = listeners.get(event);
-    if (set) set.delete(fn);
+    if (!set) return;
+    set.delete(fn);
+    if (set.size === 0) listeners.delete(event);
   }
 
   function once(event, fn) {

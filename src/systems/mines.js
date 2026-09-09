@@ -119,7 +119,7 @@ export const mines = {
   update(_dt, state) {
     if (state.mode !== 'flight') return;
     const now = state.simTime || 0;
-    const list = state.entityList || [];
+    const list = liveMineList(state);
     for (const mine of list) {
       if (!mine || !mine.alive || mine.type !== MINE_TYPE) continue;
       const data = mine.data || (mine.data = {});
@@ -216,9 +216,10 @@ export const mines = {
   /** Release mines on sector exit / lifecycle (ownership lifecycle). */
   releaseAll(reason = 'release') {
     const state = this.state;
-    if (!state || !state.entityList) return 0;
+    if (!state) return 0;
+    const list = liveMineList(state);
     let n = 0;
-    for (const e of state.entityList) {
+    for (const e of list) {
       if (!e || !e.alive || e.type !== MINE_TYPE) continue;
       e.alive = false;
       n++;
@@ -231,7 +232,7 @@ export const mines = {
 export function countOwnerMines(state, ownerId) {
   if (!state || ownerId == null) return 0;
   let n = 0;
-  for (const e of state.entityList || []) {
+  for (const e of liveMineList(state)) {
     if (!e || !e.alive || e.type !== MINE_TYPE) continue;
     if (e.ownerId === ownerId || (e.data && e.data.ownerId === ownerId)) n++;
   }
@@ -240,10 +241,16 @@ export function countOwnerMines(state, ownerId) {
 
 export function listMines(state) {
   const out = [];
-  for (const e of (state && state.entityList) || []) {
+  for (const e of liveMineList(state)) {
     if (e && e.alive && e.type === MINE_TYPE) out.push(e);
   }
   return out;
+}
+
+function liveMineList(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.mines)) return index.mines;
+  return (state && state.entityList) || [];
 }
 
 function teamOf(state, ownerId) {

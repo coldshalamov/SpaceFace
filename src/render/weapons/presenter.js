@@ -342,7 +342,10 @@ export class WeaponVfxPresenter {
     const camera = context.camera;
     const alpha = Number.isFinite(context.interpolationAlpha) ? context.interpolationAlpha : 1;
     const viewportHeight = context.viewportHeight || 1000;
-    const entities = (this.state && this.state.entityList) || [];
+    const index = this.state && this.state.entityIndex;
+    const entities = (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles))
+      ? index.projectiles
+      : ((this.state && this.state.entityList) || []);
     ageShieldContacts(dt);
     this.bolts.setCamera(camera, viewportHeight);
     this.bolts.setDepthTexture(

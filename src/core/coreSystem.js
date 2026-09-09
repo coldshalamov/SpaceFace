@@ -89,6 +89,7 @@ export const core = {
       let write = 0;
       for (let i = 0; i < out.length; i++) {
         const e = out[i];
+        if (!e || !e.alive || !e.collides || !e.pos) continue;
         const dx = e.pos.x - pos.x, dz = e.pos.z - pos.z;
         if (dx * dx + dz * dz <= r2) out[write++] = e;
       }
@@ -278,6 +279,8 @@ function ensureEntityIndex(state) {
     asteroids: [],
     mineables: [],
     wrecks: [],
+    mines: [],
+    vectorMines: [],
     statics: [],
     damageables: [],
     aiShips: [],
@@ -315,6 +318,14 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.asteroids)) index.asteroids = [];
   if (!Array.isArray(index.mineables)) index.mineables = [];
   if (!Array.isArray(index.wrecks)) index.wrecks = [];
+  if (!Array.isArray(index.mines)) {
+    index.mines = [];
+    index.ready = false;
+  }
+  if (!Array.isArray(index.vectorMines)) {
+    index.vectorMines = [];
+    index.ready = false;
+  }
   if (!Array.isArray(index.statics)) index.statics = [];
   if (!Array.isArray(index.damageables)) index.damageables = [];
   if (!Array.isArray(index.aiShips)) index.aiShips = [];
@@ -355,6 +366,8 @@ function clearEntityIndex(index) {
   index.asteroids.length = 0;
   index.mineables.length = 0;
   index.wrecks.length = 0;
+  index.mines.length = 0;
+  index.vectorMines.length = 0;
   index.statics.length = 0;
   index.damageables.length = 0;
   index.aiShips.length = 0;
@@ -447,6 +460,10 @@ function appendEntityIndex(index, e) {
     case 'mine':
       // W03 physical mines: shootable (damageables) so clearing a wake is counterplay.
       index.damageables.push(e);
+      index.mines.push(e);
+      break;
+    case 'vectormine':
+      index.vectorMines.push(e);
       break;
     case 'massSeed':
       // PQ-011 anchor seeds: damageable in every phase (counterplay — hostile fire and stray
@@ -493,6 +510,8 @@ function removeEntityIndex(index, e) {
   removeFromIndexArray(index.asteroids, e);
   removeFromIndexArray(index.mineables, e);
   removeFromIndexArray(index.wrecks, e);
+  removeFromIndexArray(index.mines, e);
+  removeFromIndexArray(index.vectorMines, e);
   removeFromIndexArray(index.statics, e);
   removeFromIndexArray(index.damageables, e);
   removeFromIndexArray(index.aiShips, e);

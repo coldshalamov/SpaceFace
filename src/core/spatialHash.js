@@ -25,6 +25,7 @@ export class SpatialHash {
     this._dynamicSyncStamp = 1;
     this._memberRemoveScratch = [];
     this._seenIds = new Map();
+    this._spanScratch = { r: 0, x0: 0, x1: 0, z0: 0, z1: 0 };
     this._batchSeenIds = [];
     this._batchFootprints = [];
     this._batchMetas = [];
@@ -59,6 +60,8 @@ export class SpatialHash {
   clear() {
     this._clearDynamicLayer();
     this._clearStaticLayer();
+    this._seenIds.clear();
+    this._queryStamp = 1;
     this._staticVersion = null;
     this._updateActiveDiagnostics();
   }
@@ -238,13 +241,13 @@ export class SpatialHash {
   _cellSpan(e) {
     const c = this.cell;
     const r = e.radius || 0;
-    return {
-      r,
-      x0: Math.floor((e.pos.x - r) / c),
-      x1: Math.floor((e.pos.x + r) / c),
-      z0: Math.floor((e.pos.z - r) / c),
-      z1: Math.floor((e.pos.z + r) / c),
-    };
+    const span = this._spanScratch;
+    span.r = r;
+    span.x0 = Math.floor((e.pos.x - r) / c);
+    span.x1 = Math.floor((e.pos.x + r) / c);
+    span.z0 = Math.floor((e.pos.z - r) / c);
+    span.z1 = Math.floor((e.pos.z + r) / c);
+    return span;
   }
 
   _recordDynamicMember(e) {
@@ -671,7 +674,7 @@ export class SpatialHash {
   }
 
   _clearDynamicLayer() {
-    for (const bucket of this._activeBuckets) bucket.length = 0;
+    this.buckets.clear();
     this._activeBuckets.length = 0;
     this._activeCellX.length = 0;
     this._activeCellZ.length = 0;
@@ -680,7 +683,7 @@ export class SpatialHash {
 
   _clearStaticLayer() {
     this._clearStaticQueryCache();
-    for (const bucket of this._staticActiveBuckets) bucket.length = 0;
+    this._staticBuckets.clear();
     this._staticActiveBuckets.length = 0;
     this._staticActiveCellX.length = 0;
     this._staticActiveCellZ.length = 0;

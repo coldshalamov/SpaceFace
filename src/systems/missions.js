@@ -2174,6 +2174,17 @@ export const missions = {
     const withdrawnSetPiece = setPieceCauseOf(offer)
       ? this._withdrawSetPieceChoiceOffers(offer) : [];
     if (!setPieceCauseOf(offer) && board) board.slots = board.slots.filter((o) => o.id !== offer.id);
+    if (inst.preloadedCargo && inst.params && inst.params.cmdtyId) {
+      const sealedQty = Math.max(1, inst.params.qty || 1);
+      const loaded = addCargo(state, inst.params.cmdtyId, sealedQty);
+      if (loaded < sealedQty) {
+        if (loaded > 0) removeCargo(state, inst.params.cmdtyId, loaded);
+        if (withdrawnSetPiece.length) this._restoreWithdrawnSetPieceOffers(withdrawnSetPiece);
+        else if (board && !board.slots.some((candidate) => candidate.id === offer.id)) board.slots.unshift(offer);
+        this.bus.emit('toast', { text: 'Cargo hold cannot receive the sealed manifest', kind: 'error', ttl: 3 });
+        return false;
+      }
+    }
     if (collateralCr > 0) {
       this.bus.emit('economy:chargeCredits', { amount: collateralCr, reason: `collateral:${offer.id}` });
     }
@@ -2181,16 +2192,6 @@ export const missions = {
       this.bus.emit('economy:chargeCredits', { amount: upfrontCostCr, reason: `mission_upfront:${offer.id}` });
     }
     state.missions.active.push(inst);
-    if (inst.preloadedCargo && inst.params && inst.params.cmdtyId) {
-      const loaded = addCargo(state, inst.params.cmdtyId, Math.max(1, inst.params.qty || 1));
-      if (loaded < Math.max(1, inst.params.qty || 1)) {
-        state.missions.active.pop();
-        if (withdrawnSetPiece.length) this._restoreWithdrawnSetPieceOffers(withdrawnSetPiece);
-        else if (board && !board.slots.some((candidate) => candidate.id === offer.id)) board.slots.unshift(offer);
-        this.bus.emit('toast', { text: 'Cargo hold cannot receive the sealed manifest', kind: 'error', ttl: 3 });
-        return false;
-      }
-    }
     // B5 is a real choice: once one loop is accepted, withdraw the two tutorial siblings before
     // synchronous mission:accepted listeners run. The accepted instance remains an ordinary live
     // mission; only the unchosen board invitations disappear.

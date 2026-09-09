@@ -10,6 +10,14 @@
 
 import { viewHalfExtents } from './entityViewSyncBand.js';
 
+const _glassCache = {
+  zoom: NaN,
+  fov: NaN,
+  aspect: NaN,
+  tilt: NaN,
+  result: { halfX: 0, halfZ: 0 },
+};
+
 /** Typical live maxSpeed (engine.topSpeed * SPEED_SCALE) used when state has no ship. */
 export const TABLE_REFERENCE_SPEED_WU = 160;
 
@@ -291,7 +299,16 @@ export function glassHalfExtents(zoom, fovDeg, aspect, tiltDeg = 60) {
   const distance = Number.isFinite(zoom) ? zoom : 88;
   const fov = Number.isFinite(fovDeg) ? fovDeg : 50;
   const aspectValue = Number.isFinite(aspect) && aspect > 0 ? aspect : 16 / 9;
-  const tilt = (Number.isFinite(tiltDeg) ? tiltDeg : 60) * Math.PI / 180;
+  const tiltDegValue = Number.isFinite(tiltDeg) ? tiltDeg : 60;
+  if (
+    _glassCache.zoom === distance
+    && _glassCache.fov === fov
+    && _glassCache.aspect === aspectValue
+    && _glassCache.tilt === tiltDegValue
+  ) {
+    return _glassCache.result;
+  }
+  const tilt = tiltDegValue * Math.PI / 180;
   const camY = distance * Math.sin(tilt);
   const camZ = -distance * Math.cos(tilt);
   const flen = Math.hypot(camY, -camZ) || 1;
@@ -322,8 +339,17 @@ export function glassHalfExtents(zoom, fovDeg, aspect, tiltDeg = 60) {
     maxX = Math.max(maxX, Math.abs(dx * hit));
     maxZ = Math.max(maxZ, Math.abs(camZ + dz * hit));
   }
-  if (!(maxX > 0 && maxZ > 0)) return viewHalfExtents(distance, fov, aspectValue, 1);
-  return { halfX: maxX, halfZ: maxZ };
+  const fallback = (!(maxX > 0 && maxZ > 0))
+    ? viewHalfExtents(distance, fov, aspectValue, 1)
+    : null;
+  _glassCache.zoom = distance;
+  _glassCache.fov = fov;
+  _glassCache.aspect = aspectValue;
+  _glassCache.tilt = tiltDegValue;
+  _glassCache.result = fallback
+    ? { halfX: fallback.halfX, halfZ: fallback.halfZ }
+    : { halfX: maxX, halfZ: maxZ };
+  return _glassCache.result;
 }
 
 export function submitRunwayWu(speed = TABLE_REFERENCE_SPEED_WU) {

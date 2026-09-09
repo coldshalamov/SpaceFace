@@ -590,6 +590,10 @@ export function createRadar(ctx) {
   let cachedLength = -1;
   let cachedPlayerId = null;
   const radarQueryScratch = [];
+  const fieldCellCounts = new Uint16Array(ASTEROID_FIELD_CELLS * ASTEROID_FIELD_CELLS);
+  const nearRockSlots = Array.from({ length: ASTEROID_DOT_LIMIT }, () => ({ x: 0, y: 0, distanceSq: Infinity }));
+  const hostileMarks = [];
+  const infrastructureMarks = [];
   let trailPruneCountdown = 0;
   const unsubscribers = [];
 
@@ -697,12 +701,14 @@ export function createRadar(ctx) {
       const wpLabel = label;
       const legacyIdentity = `◆ AMBER DIAMOND · ${wpLabel}`;
       const distance = cue && cue.resolved ? formatRadarDistance(cue.distance) : 'ROUTE PENDING';
-      objectiveKey.textContent = `⌜◆⌝  OBJ  ${distance}  ·  ${label}`;
+      const nextText = `⌜◆⌝  OBJ  ${distance}  ·  ${label}`;
+      if (objectiveKey.textContent !== nextText) objectiveKey.textContent = nextText;
       objectiveKey.title = `${legacyIdentity} · FOUR-CORNER BRACKET · ROUTE CORRIDOR`;
       objectiveKey.dataset.mode = 'objective';
       return;
     }
-    objectiveKey.textContent = 'YOU HULL · HOSTILE CHEVRON · DOCK HEX · GATE RINGS';
+    const legend = 'YOU HULL · HOSTILE CHEVRON · DOCK HEX · GATE RINGS';
+    if (objectiveKey.textContent !== legend) objectiveKey.textContent = legend;
     objectiveKey.removeAttribute('title');
     objectiveKey.dataset.mode = 'legend';
   }
@@ -719,7 +725,7 @@ export function createRadar(ctx) {
     const range = expanded ? baseRange * 2 : baseRange;
     const rangeSq = range * range;
     const radarScale = radius / range;
-    const now = Date.now();
+    const now = (Number.isFinite(state.simTime) ? state.simTime : 0) * 1000;
     const reducedMotion = prefersReducedMotion();
 
     g.clearRect(0, 0, size, size);
@@ -794,8 +800,9 @@ export function createRadar(ctx) {
 
     let targetAsteroid = null;
     const fieldCellPx = size / ASTEROID_FIELD_CELLS;
-    const fieldCells = new Map();
-    const nearRocks = [];
+    fieldCellCounts.fill(0);
+    let fieldOccupied = 0;
+    let nearRockCount = 0;
     for (let i = 0; i < asteroidSource.length; i += 1) {
       const entity = asteroidSource[i];
       if (
@@ -815,24 +822,36 @@ export function createRadar(ctx) {
       const gx = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(x / fieldCellPx)));
       const gy = Math.max(0, Math.min(ASTEROID_FIELD_CELLS - 1, Math.floor(y / fieldCellPx)));
       const key = gy * ASTEROID_FIELD_CELLS + gx;
-      fieldCells.set(key, (fieldCells.get(key) || 0) + 1);
-      if (
-        nearRocks.length < ASTEROID_DOT_LIMIT
-        || distanceSq < nearRocks[nearRocks.length - 1].distanceSq
-      ) {
-        nearRocks.push({ x, y, distanceSq });
-        nearRocks.sort((a, b) => a.distanceSq - b.distanceSq);
-        if (nearRocks.length > ASTEROID_DOT_LIMIT) nearRocks.length = ASTEROID_DOT_LIMIT;
+      if (fieldCellCounts[key] === 0) fieldOccupied += 1;
+      fieldCellCounts[key] += 1;
+      if (nearRockCount < ASTEROID_DOT_LIMIT) {
+        const slot = nearRockSlots[nearRockCount++];
+        slot.x = x; slot.y = y; slot.distanceSq = distanceSq;
+        for (let k = nearRockCount - 1; k > 0 && nearRockSlots[k].distanceSq < nearRockSlots[k - 1].distanceSq; k--) {
+          const tmp = nearRockSlots[k];
+          nearRockSlots[k] = nearRockSlots[k - 1];
+          nearRockSlots[k - 1] = tmp;
+        }
+      } else if (distanceSq < nearRockSlots[nearRockCount - 1].distanceSq) {
+        const slot = nearRockSlots[nearRockCount - 1];
+        slot.x = x; slot.y = y; slot.distanceSq = distanceSq;
+        for (let k = nearRockCount - 1; k > 0 && nearRockSlots[k].distanceSq < nearRockSlots[k - 1].distanceSq; k--) {
+          const tmp = nearRockSlots[k];
+          nearRockSlots[k] = nearRockSlots[k - 1];
+          nearRockSlots[k - 1] = tmp;
+        }
       }
       if (entity.id === targetId) targetAsteroid = { x, y };
     }
-    if (fieldCells.size) {
+    if (fieldOccupied) {
       g.save();
       g.beginPath();
       g.arc(center, center, radius, 0, Math.PI * 2);
       g.clip();
       g.fillStyle = TACTICAL_MAP_PALETTE.asteroid;
-      for (const [key, count] of fieldCells) {
+      for (let key = 0; key < fieldCellCounts.length; key++) {
+        const count = fieldCellCounts[key];
+        if (!count) continue;
         const gx = key % ASTEROID_FIELD_CELLS;
         const gy = (key - gx) / ASTEROID_FIELD_CELLS;
         g.globalAlpha = Math.min(0.13, 0.03 + count * 0.011);
@@ -845,7 +864,7 @@ export function createRadar(ctx) {
     g.save();
     g.globalAlpha = 0.55;
     g.fillStyle = TACTICAL_MAP_PALETTE.asteroid;
-    for (const rock of nearRocks) drawAsteroidBlip(g, rock.x, rock.y);
+    for (let i = 0; i < nearRockCount; i++) drawAsteroidBlip(g, nearRockSlots[i].x, nearRockSlots[i].y);
     g.restore();
     if (targetAsteroid) drawTargetRing(g, targetAsteroid.x, targetAsteroid.y, center);
 
@@ -853,8 +872,8 @@ export function createRadar(ctx) {
     let salientContactCount = 0;
     let nearestOffRangeHostile = null;
     let nearestOffRangeHostileDistanceSq = Infinity;
-    const hostileMarks = [];
-    const infrastructureMarks = [];
+    hostileMarks.length = 0;
+    infrastructureMarks.length = 0;
 
     for (let i = 0; i < contacts.length; i += 1) {
       const entity = contacts[i];

@@ -54,8 +54,9 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
 ]);
 
 /**
- * Production sim update order — matches createRegistry UPDATE_ORDER (98 entries).
+ * Production sim update order — matches createRegistry UPDATE_ORDER.
  * Excludes pure render-phase systems; includes DOM-guarded HUD systems that no-op under Node.
+ * `save` ticks last so interval autosave actually runs (event saves still fire from their owners).
  */
 export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'input', 'autoTargetAssist', 'flybyFocus', 'bulletTime', 'cloak', 'lawSecurity', 'scanner',
@@ -92,6 +93,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // the readout above has, and only ever toggles one class on the UI root.
   'crucibleFocus',
   'voiceArbiter',
+  'save',
 ]);
 
 /** Slot IDs resolved from settings.gameplay backends (not fixed module singletons). */
@@ -118,6 +120,7 @@ export const SYSTEM_CAPABILITIES = Object.freeze({
   fieldHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   planetHud: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'hud', domGuarded: true }),
   voiceArbiter: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'voice' }),
+  save: Object.freeze({ nodeSafe: true, phase: 'sim', capability: 'persistence' }),
 });
 
 export function isPresentationPlatformId(id) {

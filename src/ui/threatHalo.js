@@ -1,4 +1,4 @@
-import { contactThreatTier, isHostileToPlayer } from '../systems/scanner.js';
+import { contactThreatTier, isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
 import {
   OCCUPATIONAL_ROLE_IDS,
   OCCUPATIONAL_SILHOUETTE_TOKENS,
@@ -46,6 +46,8 @@ export function getThreatHaloSilhouetteToken(entity) {
 const HOSTILE_LIMIT = 4;
 const MISSILE_LIMIT = 3;
 const TOTAL_LIMIT = HOSTILE_LIMIT + MISSILE_LIMIT;
+const HALO_RANGE = SCANNER_CONTACT_RANGE;
+const HALO_RANGE_SQ = HALO_RANGE * HALO_RANGE;
 
 const EDGE_BAND_PX = 24;
 const EDGE_CENTER_PX = EDGE_BAND_PX * 0.5;
@@ -518,6 +520,10 @@ export function createThreatHalo(root) {
     for (let i = 0; i < ships.length; i++) {
       const entity = ships[i];
       if (!entity || entity === player || entity.alive === false || entity.type !== 'ship' || !entity.pos) continue;
+      const dx = entity.pos.x - player.pos.x;
+      const dz = entity.pos.z - player.pos.z;
+      const distSq = dx * dx + dz * dz;
+      if (distSq > HALO_RANGE_SQ) continue;
       const hostile = isHostileToPlayer(entity, playerTeam, state);
       if (!hostile) continue;
 
@@ -527,9 +533,7 @@ export function createThreatHalo(root) {
       const projected = worldToScreen(projectionWorld, projectionScreen);
       if (!projected || projected.onScreen) continue;
 
-      const dx = entity.pos.x - player.pos.x;
-      const dz = entity.pos.z - player.pos.z;
-      const dist = Math.hypot(dx, dz);
+      const dist = Math.sqrt(distSq);
       const tier = contactThreatTier(entity, true);
       const evx = entity.vel && Number.isFinite(entity.vel.x) ? entity.vel.x : 0;
       const evz = entity.vel && Number.isFinite(entity.vel.z) ? entity.vel.z : 0;

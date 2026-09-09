@@ -316,8 +316,7 @@ function mergeContacts(perceptions, freeze = Object.freeze, mergeScratch = null,
       }
       record.confidenceTotal += contact.confidence;
       record.confidenceSamples++;
-      const teamMismatch = contact.team != null && perception.self.team != null && contact.team !== perception.self.team;
-      const hostile = contact.hostile === true || (contact.hostile !== false && teamMismatch && contact.threat > 0);
+      const hostile = contact.hostile === true;
       if (hostile) record.hostileVotes++;
       else if (contact.team != null) record.friendlyVotes++;
       if (contact.confidence > record.confidence) Object.assign(record, contact);

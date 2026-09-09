@@ -641,12 +641,8 @@ export const weapons = {
     if (arcadeAim) beamAim = this._arcadeMountAngle(e, w, arcadeTarget, 0);
     const canFire = firing && !solutionBlocked && !overheated && capLeft >= energyCost * dt;
     if (!canFire) {
-      // cool while not firing
-      if (!firing) {
-        const baseDissip = w.heatDissip != null ? w.heatDissip : (def.heatDissip || 0);
-        const dissip = baseDissip * WEAPON_RECHARGE_MULT;
-        if (w._heat > 0 && dissip > 0) w._heat = Math.max(0, w._heat - dissip * dt);
-      }
+      // Heat already dissipates once in `_tickWeapons`. A second idle pass made beams cool twice
+      // as fast as projectile mounts.
       return capLeft;
     }
     capLeft -= energyCost * dt;
@@ -1124,7 +1120,7 @@ export const weapons = {
 
   _countOwnerVectorMines(state, ownerId) {
     let n = 0;
-    const list = state.entityList || [];
+    const list = liveVectorMineList(state);
     for (const ent of list) {
       if (ent.type === 'vectormine' && ent.alive && ent.data && ent.data.ownerId === ownerId) n++;
     }
@@ -1136,10 +1132,10 @@ export const weapons = {
   // query (perf-budget constraint), and touches only mine.data — no entity motion is written here.
   _tickVectorMines(_dt, state) {
     if (!combatFlag('weaponImpulseConsequences')) return;
-    const list = state.entityList;
-    if (!list) return;
+    const list = liveVectorMineList(state);
+    if (!list.length) return;
     const now = state.simTime || 0;
-    const ships = (state.entityIndex && state.entityIndex.ships) || list;
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList || list;
     for (const mine of list) {
       if (mine.type !== 'vectormine' || !mine.alive) continue;
       const d = mine.data;
@@ -1357,6 +1353,12 @@ function refillLabPlayerHeat(state) {
     const mount = mounts[i];
     if (mount) mount._heat = 0;
   }
+}
+
+function liveVectorMineList(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.vectorMines)) return index.vectorMines;
+  return (state && state.entityList) || [];
 }
 
 // Exact lead/intercept solver for the shipped aim-true projectile model. Flight time is solved in

@@ -182,8 +182,8 @@ export function spawnPayloadEntity(state, spec = {}, helpers = null) {
     mass,
     pos: { x: spec.pos ? spec.pos.x : 0, z: spec.pos ? spec.pos.z : 0 },
     vel: { x: spec.vel ? spec.vel.x : 0, z: spec.vel ? spec.vel.z : 0 },
-    hull: spec.hull || 100,
-    hullMax: spec.hullMax || 100,
+    hull: Number.isFinite(spec.hull) ? spec.hull : 100,
+    hullMax: Number.isFinite(spec.hullMax) ? spec.hullMax : 100,
     data: {
       kind: 'payload',
       payloadType: spec.payloadType || 'cut_panel',

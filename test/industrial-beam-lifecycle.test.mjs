@@ -30,6 +30,17 @@ function visitKinds(journal) {
   return records;
 }
 
+test('payload hull 0 stays wrecked instead of snapping to 100', () => {
+  const { state, helpers } = createHarness();
+  try {
+    const payload = spawnPayloadEntity(state, { pos: { x: 0, z: 0 }, hull: 0, hullMax: 0 }, helpers);
+    assert.equal(payload.hull, 0);
+    assert.equal(payload.hullMax, 0);
+  } finally {
+    core.destroy();
+  }
+});
+
 test('industrial payload spawn enters every canonical entity lifecycle surface', () => {
   const { state, bus, helpers, presentationJournal } = createHarness();
   const spawned = [];

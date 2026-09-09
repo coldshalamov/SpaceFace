@@ -8,38 +8,34 @@
 
 import { SHADOW_CAST_RADIUS_SQ } from './shadowCasterPolicy.js';
 
-export function nearestSubmittedInstanceAxisDistance(chunk, playerX = 0, playerZ = 0) {
-  if (!chunk || !chunk.visibleIndices || chunk.visibleIndices.size === 0) return Infinity;
-  const array = chunk.mesh && chunk.mesh.instanceMatrix && chunk.mesh.instanceMatrix.array;
-  if (!array) return Infinity;
-  const originX = Number(playerX) || 0;
-  const originZ = Number(playerZ) || 0;
-  let nearest = Infinity;
-  for (const index of chunk.visibleIndices) {
-    const offset = (index * 16) + 12;
-    const dx = Math.abs((array[offset] || 0) - originX);
-    const dz = Math.abs((array[offset + 2] || 0) - originZ);
-    const dist = Math.max(dx, dz);
-    if (dist < nearest) nearest = dist;
+export function nearestSubmittedInstanceMetrics(chunk, playerX = 0, playerZ = 0) {
+  if (!chunk || !chunk.visibleIndices || chunk.visibleIndices.size === 0) {
+    return { nearestSq: Infinity, nearestAxis: Infinity };
   }
-  return nearest;
-}
-
-export function nearestSubmittedInstanceDistanceSq(chunk, playerX = 0, playerZ = 0) {
-  if (!chunk || !chunk.visibleIndices || chunk.visibleIndices.size === 0) return Infinity;
   const array = chunk.mesh && chunk.mesh.instanceMatrix && chunk.mesh.instanceMatrix.array;
-  if (!array) return Infinity;
+  if (!array) return { nearestSq: Infinity, nearestAxis: Infinity };
   const originX = Number(playerX) || 0;
   const originZ = Number(playerZ) || 0;
-  let nearest = Infinity;
+  let nearestSq = Infinity;
+  let nearestAxis = Infinity;
   for (const index of chunk.visibleIndices) {
     const offset = (index * 16) + 12;
     const dx = (array[offset] || 0) - originX;
     const dz = (array[offset + 2] || 0) - originZ;
-    const dist = (dx * dx) + (dz * dz);
-    if (dist < nearest) nearest = dist;
+    const distSq = (dx * dx) + (dz * dz);
+    if (distSq < nearestSq) nearestSq = distSq;
+    const axis = Math.max(Math.abs(dx), Math.abs(dz));
+    if (axis < nearestAxis) nearestAxis = axis;
   }
-  return nearest;
+  return { nearestSq, nearestAxis };
+}
+
+export function nearestSubmittedInstanceAxisDistance(chunk, playerX = 0, playerZ = 0) {
+  return nearestSubmittedInstanceMetrics(chunk, playerX, playerZ).nearestAxis;
+}
+
+export function nearestSubmittedInstanceDistanceSq(chunk, playerX = 0, playerZ = 0) {
+  return nearestSubmittedInstanceMetrics(chunk, playerX, playerZ).nearestSq;
 }
 
 export function isOpaqueInstancePoolMaterial(material) {
@@ -87,19 +83,12 @@ export function applyInstanceChunkSubmitPolicy(chunk, options = {}) {
   }
 
   const material = (chunk.pool && chunk.pool.material) || mesh.material;
+  const nearest = nearestSubmittedInstanceMetrics(chunk, options.playerX, options.playerZ);
   const nextCast = shouldInstanceChunkCastShadow({
     opaque: isOpaqueInstancePoolMaterial(material),
     submittedCount: submitted,
-    nearestDistanceSq: nearestSubmittedInstanceDistanceSq(
-      chunk,
-      options.playerX,
-      options.playerZ,
-    ),
-    nearestAxisDistance: nearestSubmittedInstanceAxisDistance(
-      chunk,
-      options.playerX,
-      options.playerZ,
-    ),
+    nearestDistanceSq: nearest.nearestSq,
+    nearestAxisDistance: nearest.nearestAxis,
     castRadiusSq: options.castRadiusSq,
     castRadius: options.castRadius,
   });

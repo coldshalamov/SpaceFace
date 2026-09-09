@@ -31,7 +31,9 @@ test('production init + update order lengths match the live browser baseline', (
   // chrome, and swarmChain ticks only to notice a kill chain lapsing — so those two are the ones
   // in the update order, and the two figures move by different amounts on purpose.
   assert.equal(PRODUCTION_INIT_ORDER.length, 147);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 106);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 107);
+  assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
+  assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
   assert.ok(PRODUCTION_INIT_ORDER.includes('render'));
   assert.ok(PRODUCTION_INIT_ORDER.includes('save'));

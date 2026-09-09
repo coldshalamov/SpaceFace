@@ -288,7 +288,7 @@ function applyRadialPublishedImpulse(host, origin, skipId, magnitude, radius, re
   return applied;
 }
 
-function routeCorrosiveHullTick(host, target, damage, pos) {
+function routeCorrosiveHullTick(host, target, damage, pos, pod = null) {
   const packet = scalarHitToDamagePacket({
     damage,
     damageType: 'thermal',
@@ -297,22 +297,26 @@ function routeCorrosiveHullTick(host, target, damage, pos) {
     shieldBypass: 1,
   });
   packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+  const attackerId = pod && pod.ownerId != null
+    ? pod.ownerId
+    : (pod && pod.data && pod.data.ownerId != null ? pod.data.ownerId : null);
+  const origin = { kind: 'volatile_corrosive', id: pod && pod.id != null ? pod.id : (target && target.id) };
   const helpers = host.helpers;
   if (helpers && typeof helpers.routeCombatDamage === 'function') {
     return helpers.routeCombatDamage({
-      attackerId: host.state && host.state.playerId,
+      attackerId,
       targetId: target.id,
       packet,
-      origin: { kind: 'volatile_corrosive', id: target.id },
+      origin,
     });
   }
   const kernel = combatKernelOf(host);
   if (kernel && typeof kernel.routeDamage === 'function') {
     return kernel.routeDamage({
-      attackerId: host.state && host.state.playerId,
+      attackerId,
       targetId: target.id,
       packet,
-      origin: { kind: 'volatile_corrosive', id: target.id },
+      origin,
     });
   }
   return null;
@@ -629,7 +633,7 @@ export const lootShards = {
     const last = Number(pod.data.volatileCorrosiveAt);
     if (Number.isFinite(last) && now - last < CORROSIVE_TICK_COOLDOWN_S) return;
     const hullBefore = Number(other.hull);
-    const result = routeCorrosiveHullTick(this, other, CORROSIVE_HULL_TICK, payload.pos || pod.pos);
+    const result = routeCorrosiveHullTick(this, other, CORROSIVE_HULL_TICK, payload.pos || pod.pos, pod);
     const hullAfter = Number(other.hull);
     const lost = Number.isFinite(hullBefore) && Number.isFinite(hullAfter)
       ? Math.max(0, hullBefore - hullAfter)

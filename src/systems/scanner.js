@@ -4,7 +4,7 @@
 // plain data fields that UI/render layers can read. No wall-clock; durations are simTime-based.
 // Ghost reveal uses entity-keyed deterministic streams (hash32), not ambient Math.random.
 import { ASTEROIDS } from '../data/mining.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js';
 import { hash32 } from '../core/rng.js';
 import { isPlayerWanted } from './heat.js';
@@ -389,6 +389,39 @@ function isCargoLike(entity) {
 function isAnomalyLike(entity) {
   const data = entity && entity.data || {};
   return entity && (entity.type === 'anomaly' || data.poiType === 'anomaly');
+}
+
+function appendNonCollidingScanTargets(state, origin, radius, out) {
+  if (!state || !origin || !out) return out;
+  const seen = new Set();
+  for (let i = 0; i < out.length; i++) {
+    const entity = out[i];
+    if (entity && entity.id != null) seen.add(entity.id);
+  }
+  const r2 = Number(radius) * Number(radius);
+  const consider = (entity) => {
+    if (!entity || !entity.alive || !entity.pos || entity.id == null) return;
+    if (seen.has(entity.id)) return;
+    const dx = entity.pos.x - origin.x;
+    const dz = entity.pos.z - origin.z;
+    if (!(dx * dx + dz * dz <= r2)) return;
+    seen.add(entity.id);
+    out.push(entity);
+  };
+  const index = state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.wrecks)) {
+    for (let i = 0; i < index.wrecks.length; i++) consider(index.wrecks[i]);
+  }
+  const pois = state.world && state.world.activeSector && state.world.activeSector.pois;
+  const entities = state.entities;
+  if (Array.isArray(pois) && entities && typeof entities.get === 'function') {
+    for (let i = 0; i < pois.length; i++) {
+      const poi = pois[i];
+      if (!poi) continue;
+      consider(entities.get(poi.id));
+    }
+  }
+  return out;
 }
 
 function ensurePingBucket(state, sectorId) {
@@ -852,6 +885,9 @@ export const scanner = {
     const profile = scannerProfileForState(state);
     const found = { asteroids: 0, wrecks: 0, anomalies: 0 };
     const candidates = queryNearbyEntities(state, origin, profile.nearRadius, this._scratch, state.entityList);
+    if (hasActiveSpatialHash(state.spatialHash)) {
+      appendNonCollidingScanTargets(state, origin, profile.nearRadius, candidates);
+    }
 
     this.bus.emit('scan:pulse', { pos: origin });
 
