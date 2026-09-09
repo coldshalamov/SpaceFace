@@ -3,6 +3,25 @@
  *
  * One player-caused freight kill at the Ceres Refinery Approach. The checklist reads
  * world state / existing receipts after a few sim seconds — not a synthetic ledger.
+ *
+ * SCOPE (2026-09-09 review). This proves WORLD STATE, not a trace the player can see.
+ * Two of the five checked fields have no live consumer:
+ *   • `routeDisrupted` is written at traffic.js:8589/:8592 and read nowhere in the repo.
+ *   • `state.ui.pirateRumor` / `pirateRumor:card` / `news:headline` have no production reader
+ *     or listener; the pirateRumor readout exports are imported only by tests.
+ *   • `station.data.structurePatch` and its `patched` receipt are read by nothing in
+ *     src/ui or src/render.
+ * Only the wreck and the price move reach a player-visible surface (the rendered wreck body,
+ * and the market plus `freight:loss` → src/ui/marketNews.js).
+ *
+ * The kill is injected: `combat:damage` + `entity:killed` are emitted directly. The payload
+ * matches what the live gun path emits at src/systems/combat.js:585, including the
+ * `killerId === playerId` gate every trace here depends on, so the inputs are faithful — but no
+ * weapon, physics, AI, or law system runs. The witness hauler is planted co-targeting
+ * `station_ceres` so `_markRouteDisrupted` has someone to mark. AFTER_S is decorative: all five
+ * writes land synchronously inside the two emits, and `stepWorld` ticks only rumor heat decay.
+ *
+ * Do not read a green run here as "the leaf is done" — see PQ-138.05-REPORT.md (STATUS NOT DONE).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
