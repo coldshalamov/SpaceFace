@@ -279,6 +279,7 @@
     "check:pirate-ecology": "npm run check:pirate-doctrines && npm run check:pirate-parley && npm run check:pirate-disguise && npm run check:pirate-disengage && npm run check:ace-memory && npm run check:pirate-promotion && npm run check:pirate-rumor && npm run check:route-danger-feedback && npm run check:ambush-signatures && npm run check:pirate-base-provenance && npm run check:bounty-hunter-neutrality && npm run check:bounty-hunter-tricks",
     "check:causal-economy": "npm run check:cause-ledger && npm run check:economy-born-missions && npm run check:customs-prompt && npm run check:cargo-conscience && npm run check:security-readout && npm run check:price-forecast && npm run check:blockade-relief && npm run check:contract-clauses && npm run check:moral-traps && npm run check:convoy-loss-investigation && npm run check:salvage-actions && npm run check:survivor-pod && npm run check:ghost-convoy-rumor && npm run check:salvage-legality",
     "check:price-memory": "node scripts/check-price-memory.mjs",
+    "check:economy:curve": "node scripts/check-economy-curve.mjs",
     "check:economy:regional-supply": "node scripts/check-economy-regional-supply.mjs",
     "check:economy:freight-causality": "node scripts/check-economy-freight-causality.mjs",
     "check:economy:market-intelligence": "node scripts/check-economy-market-intelligence.mjs",
