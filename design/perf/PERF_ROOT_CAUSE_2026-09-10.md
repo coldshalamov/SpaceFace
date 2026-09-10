@@ -57,7 +57,7 @@ in as a CSS size, and `setSize` multiplies by the device pixel ratio again.
 On this machine `devicePixelRatio` is 1.25, so the drawing buffer grows **1.25x per frame without
 bound**. It is a pure positive-feedback loop; nothing in the path clamps it.
 
-Two changes landed in `76dab7e2a`:
+Two changes landed in `725a57495`:
 
 - `resize()` falls back to the last known **CSS** size, never to the backing store, and clamps to a
   4096 px preview ceiling.
@@ -213,21 +213,25 @@ current number actually points at them:
 
 ## Instruments worth keeping
 
-The scratchpad probe that found this should be promoted into `scripts/` as a new file (it edits
-nothing existing):
+Both instruments that found this are now one script:
 
-1. Launch the isolated evidence Electron via `createIsolatedElectronLaunch`.
-2. `page.context().newCDPSession(page)`, then `Profiler.enable` and `setSamplingInterval 200`.
-3. Drive New Game to Launch, wait for `window.__SF_WITNESS__.verdict().facts.mode === 'flight'`.
-4. `Profiler.start()`, hold `KeyW` 20 s, `Profiler.stop()`, write the `.cpuprofile`.
-5. Aggregate self time by `callFrame`, and inclusive time by top-level entry.
+```
+node scripts/probe-main-thread-profile.mjs [--ms=20000]
+```
 
-A second, even cheaper one: **census every `<canvas>` in the document during flight** — id, class,
-backing store, client size, connected. That one call is what turned a profile line into a proof, and
-it would have caught this bug at any point in the last several weeks.
+It launches the isolated evidence Electron, opens a CDP session on the page, drives New Game to
+flight, records a V8 CPU profile of a held-thrust window, and writes
+`.devshots/main-thread-profile/{profile.cpuprofile,report.md,canvas-census.json}`. The report ranks
+**top-level entry points by inclusive time** — the table that names an owner, because a parasite
+shows up there as an entry that is not the game's own presentation frame — and it prints a **census
+of every `<canvas>` in the document**, which is what turned a profile line into a proof. The
+`.cpuprofile` opens directly in Chrome DevTools.
 
-Both are additive. Neither requires touching `scripts/probe-runtime-witness.mjs`, which is dirty with
-foreign work.
+It is a new file: `scripts/probe-runtime-witness.mjs` and `package.json` are both dirty with foreign
+work, so nothing existing was touched and no npm alias was added.
+
+Use it whenever the runtime witness reports a large unattributed residual, or whenever a frame is
+slower than the sum of everything you can measure. It is a diagnosis instrument, not a gate.
 
 ## Standing corrections to the program docs
 
@@ -246,6 +250,6 @@ dirty with foreign work. Whoever owns them should apply these:
 
 ## Files
 
-- Fix: `76dab7e2a` — `src/ui/shipPreviewMount.js`, `src/ui/screens/stageHull.js`
+- Fix: `725a57495` — `src/ui/shipPreviewMount.js`, `src/ui/screens/stageHull.js`
 - Evidence: `.devshots/runtime-witness/report-claude-*.md` and `.json`
   (`baseline-prior`, `run2-newgame-gc-alloc`, `run3-nosubmit`, `after-newgame`, `after-ceres`)
