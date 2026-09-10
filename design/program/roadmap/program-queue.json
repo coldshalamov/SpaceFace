@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-07T23:15:49.000Z",
+  "updatedAt": "2026-09-10",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -5666,7 +5666,7 @@
       "priority": 59,
       "title": "Pacing: the first minute and the wave curve",
       "kind": "implementation",
-      "state": "ready",
+      "state": "claimed",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -6928,7 +6928,9 @@
       "checks": [
         "npm run check:vfx-techniques"
       ],
-      "receiptRefs": ["design/program/roadmap/receipts/PQ-190.01-REPORT.md"],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-190.01-REPORT.md"
+      ],
       "brief": "The VFX standard becomes a per-effect-class table (jet, history, impact, shield, gas, debris/cargo, Massline, background) with preferred construction, what must survive at play scale, and what to reject; every rejection criterion kept; prohibitions revised only where .00 demonstrated a better result. DONE WHEN: one row per class; every effect family assigned; check:vfx-techniques green; the derived material/effect/LOD/composition rules written once.",
       "kind": "implementation"
     },
@@ -7738,7 +7740,7 @@
       "priority": 139,
       "title": "Inertial shunt",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7757,8 +7759,12 @@
         "npm run check:baseline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
-      "brief": "On contact, swap momentum with the target (bounded by mass ratio); the ram that stops you and launches them. DONE WHEN: A shunt ram on a light hostile sends it ≥ 1 screen; the player stops within 20 WU."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-026.02-REPORT.md"
+      ],
+      "brief": "On contact, swap momentum with the target (bounded by mass ratio); the ram that stops you and launches them. DONE WHEN: A shunt ram on a light hostile sends it ≥ 1 screen; the player stops within 20 WU.",
+      "integratedCommit": "49b5009f3",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-026.02-REPORT.md"
     },
     {
       "id": "PQ-147.00",
@@ -7836,7 +7842,7 @@
       "priority": 142,
       "title": "Counterplay",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7860,8 +7866,12 @@
         "npm run check:combat",
         "npm run check:vfx-techniques"
       ],
-      "receiptRefs": [],
-      "brief": "Fly out, cut the emitter, mark it, or out-mass it; the player is never trapped without a verb. DONE WHEN: Each field has one deterministic escape in a scenario."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-147.02-REPORT.md"
+      ],
+      "brief": "Fly out, cut the emitter, mark it, or out-mass it; the player is never trapped without a verb. DONE WHEN: Each field has one deterministic escape in a scenario.",
+      "integratedCommit": "4af916cf8",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-147.02-REPORT.md"
     },
     {
       "id": "PQ-147.03",
@@ -7903,7 +7913,7 @@
       "priority": 144,
       "title": "Three machines that kill",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7924,8 +7934,11 @@
         "npm run check:baseline",
         "npm run check:atlas-integrity"
       ],
-      "receiptRefs": [],
-      "brief": "Excavator jaws, refinery furnace mouth, mass-driver breech: each a legible danger volume with a schedule and a slam-law payoff (PQ-137.06). DONE WHEN: A shoved light dies in each; a capture per machine."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-027.00-REPORT.md",
+        "design/program/roadmap/receipts/PQ-027-CONTROLLER-REVIEW-2026-09-10.md"
+      ],
+      "brief": "Excavator jaws, refinery furnace mouth, mass-driver breech: each a legible danger volume with a schedule and a slam-law payoff (PQ-137.06). DONE WHEN: A shoved light dies in each; a capture per machine. | 2026-09-10 controller: momentum kill measured and reproduced on the production route (commit dec8f7edd); OPEN on the capture clause only — no vision-capable reviewer has inspected a shipping-camera still. Batched into one headed vision pass."
     },
     {
       "id": "PQ-027.01",
@@ -7933,7 +7946,7 @@
       "priority": 145,
       "title": "Debris currents and reefs",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7954,8 +7967,13 @@
         "npm run check:baseline",
         "npm run check:atlas-integrity"
       ],
-      "receiptRefs": [],
-      "brief": "Authored flows that carry loose mass; mines and pods ride them; the reef pinball. DONE WHEN: Mine pinball cascades in a scenario."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-027.01-REPORT.md",
+        "design/program/roadmap/receipts/PQ-027-CONTROLLER-REVIEW-2026-09-10.md"
+      ],
+      "brief": "Authored flows that carry loose mass; mines and pods ride them; the reef pinball. DONE WHEN: Mine pinball cascades in a scenario.",
+      "integratedCommit": "dec8f7edd",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-027.01-REPORT.md"
     },
     {
       "id": "PQ-027.02",
