@@ -120,6 +120,7 @@ function passengerLinerServiceForSector(sectorId) {
 const PASSENGER_LINER_RECEIPT_CAP = 24;
 const PASSENGER_LINER_SUSPENSION_CAP = 4;
 const PASSENGER_LINER_INVALIDATED_CAP = 8;
+const DISRUPTED_ROUTE_STATION_CAP = 16;
 const PASSENGER_LINER_INCIDENT_MAX_AGE_S = 180;
 const PASSENGER_LINER_ACTIVE_INCIDENT_STATUSES = new Set(['distress', 'responding', 'monitoring']);
 
@@ -879,6 +880,52 @@ function normalizeCeresDisabledHaulerIncident(value, copy = true) {
   };
 }
 
+function leftoverHaulerSlot(entry) {
+  const slot = entry && entry.slot;
+  if (!slot) return false;
+  return slot.presentationRole === 'hauler' || slot.jobKind === 'hauler';
+}
+
+function leftoverSlotTargetsStation(entry, stationId) {
+  if (!entry || !stationId) return false;
+  const marks = entry.slot && entry.slot.route && entry.slot.route.marks;
+  if (!Array.isArray(marks)) return false;
+  const dest = `dest:${stationId}`;
+  const stationPrefix = `station:${stationId}`;
+  for (const mark of marks) {
+    const ref = mark && mark.targetRef;
+    if (typeof ref !== 'string') continue;
+    if (ref === dest || ref === stationId || ref === `station:${stationId}` || ref.startsWith(`${stationPrefix}:`)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function leftoverSlotDestStationId(entry) {
+  const marks = entry && entry.slot && entry.slot.route && entry.slot.route.marks;
+  if (!Array.isArray(marks)) return null;
+  for (const mark of marks) {
+    const ref = mark && mark.targetRef;
+    if (typeof ref !== 'string' || !ref.startsWith('dest:')) continue;
+    const dest = ref.slice(5);
+    if (dest) return dest;
+  }
+  return null;
+}
+
+function leftoverNormalizeDisruptedStationIds(value) {
+  const ids = [];
+  const seen = new Set();
+  const list = Array.isArray(value) ? value : [];
+  for (const id of list) {
+    if (typeof id !== 'string' || !id || seen.has(id)) continue;
+    seen.add(id);
+    ids.push(id);
+  }
+  return ids;
+}
+
 function ceresActivityJobSpec(entry) {
   if (!entry || entry.service || !entry.pocket || !entry.slot) return null;
   const { pocket, slot } = entry;
@@ -1330,16 +1377,21 @@ export const traffic = {
     // Pocket anchor: cluster the first freighters near the busiest station so sensor-range
     // density holds for the first-hour Helios play space (not scattered to far yards only).
     const pocketStation = this._pocketStation(stations, sectorId);
+    const leftoverDisrupted = this._leftoverDisruptedStationIds();
 
     for (let i = 0; i < need; i++) {
       const role = pocketRoles[i] || 'hauler';
       const def = TRAFFIC_ROLES[role] || TRAFFIC_ROLES.hauler;
       const priorityCourier = !!priorityService && i === priorityCourierSlot;
-      const station = priorityCourier
+      let station = priorityCourier
         ? (this._stationForPriorityCourier(stations, priorityService.stops[0]) || stations[0])
         : (i < Math.min(4, need) && pocketStation)
         ? pocketStation
         : (stations[Math.floor(this._rng() * stations.length)] || stations[0]);
+      if (!this._leftoverStationOpenForTopUp(station, leftoverDisrupted)) {
+        station = stations.find((candidate) => this._leftoverStationOpenForTopUp(candidate, leftoverDisrupted)) || null;
+        if (!station) continue;
+      }
       // spawn near the station but offset so they don't overlap it
       const ang = this._rng() * Math.PI * 2;
       const r = (i < Math.min(4, need))
@@ -1484,6 +1536,7 @@ export const traffic = {
       || pair.entity.data.activityActorSlotId !== CERES_REFINERY_HAULER_SLOT_ID) return false;
     const recordId = pair.worldRecordId || pair.entity.data.worldRecordId;
     const entry = CERES_ACTIVITY_CAST_BY_SLOT_ID.get(CERES_REFINERY_HAULER_SLOT_ID);
+    if (this._leftoverSlotRefillsDisruptedApproach(entry, this._leftoverDisruptedStationIds())) return false;
     if (typeof recordId !== 'string' || !recordId || !entry) return false;
     this._releaseCeresActivityJob(recordId);
     return !!this._assignCeresActivityJob(pair.entity, entry);
@@ -1663,6 +1716,7 @@ export const traffic = {
     const prior = this.state.traffic.freighters || [];
     const authored = [];
     const authoredSlotIds = new Set(CERES_ACTIVITY_CAST.map(({ slot }) => slot.id));
+    const leftoverDisrupted = this._leftoverDisruptedStationIds();
 
     for (const entry of CERES_ACTIVITY_CAST) {
       const { pocket, slot, service } = entry;
@@ -1715,6 +1769,7 @@ export const traffic = {
       canonicalSpec.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
 
       const wasFresh = !entity;
+      if (wasFresh && this._leftoverSlotRefillsDisruptedApproach(entry, leftoverDisrupted)) continue;
       if (wasFresh) entity = this.helpers.spawnEntity(canonicalSpec);
       if (!entity) continue;
       if (wasFresh) {
@@ -8422,6 +8477,9 @@ export const traffic = {
       });
     }
     if (!rec && !(ent && ent.data && ent.data.trafficRole)) return;
+    if (p.killerId != null && p.killerId === this.state.playerId) {
+      this._markRouteDisrupted(this._leftoverKillStationId(ent, rec), p.id);
+    }
     // The civic liner is passenger custody, never freight. Its loss stops the one durable
     // service and publishes its own exactly-once receipt before any freight/economy loss branch.
     const passengerItinerary = ent && this._passengerLinerClaim(ent);
@@ -8574,8 +8632,61 @@ export const traffic = {
     }
   },
 
+  _leftoverDisruptedStationIds() {
+    this._ensureState();
+    const ids = new Set(this.state.traffic.disruptedStationIds);
+    const list = this.state.traffic && this.state.traffic.freighters;
+    if (!Array.isArray(list)) return ids;
+    for (const rec of list) {
+      if (!rec) continue;
+      const ent = liveEntity(this.state, rec.id);
+      if (!ent) continue;
+      if (!(rec.routeDisrupted || (ent.data && ent.data.routeDisrupted))) continue;
+      const stationId = (ent.data && ent.data.stationId)
+        || (rec.targetId != null && this._stationIdForEntity(rec.targetId))
+        || this._nearestStationId(ent.pos);
+      if (stationId) ids.add(stationId);
+    }
+    this.state.traffic.disruptedStationIds = leftoverNormalizeDisruptedStationIds([...ids]);
+    return ids;
+  },
+
+  _leftoverRememberDisruptedStation(stationId) {
+    if (typeof stationId !== 'string' || !stationId) return;
+    this._ensureState();
+    if (!this.state.traffic.disruptedStationIds.includes(stationId)) {
+      this.state.traffic.disruptedStationIds.push(stationId);
+    }
+  },
+
+  _leftoverKillStationId(ent, rec) {
+    const fromEntity = ent && ent.data && (ent.data.stationId || ent.data.destStationId);
+    if (typeof fromEntity === 'string' && fromEntity) return fromEntity;
+    const fromTarget = rec && rec.targetId != null
+      ? this._stationIdForEntity(rec.targetId)
+      : null;
+    if (typeof fromTarget === 'string' && fromTarget) return fromTarget;
+    return this._nearestStationId(ent && ent.pos) || null;
+  },
+
+  _leftoverSlotRefillsDisruptedApproach(entry, disruptedIds) {
+    if (!leftoverHaulerSlot(entry) || !disruptedIds || !disruptedIds.size) return false;
+    for (const stationId of disruptedIds) {
+      if (leftoverSlotTargetsStation(entry, stationId)) return true;
+    }
+    return false;
+  },
+
+  _leftoverStationOpenForTopUp(station, disruptedIds) {
+    if (!station || !disruptedIds || !disruptedIds.size) return true;
+    const stationId = station.data && station.data.stationId;
+    if (!stationId) return true;
+    return !disruptedIds.has(stationId);
+  },
+
   _markRouteDisrupted(stationId, victimId) {
     if (!stationId) return 0;
+    this._leftoverRememberDisruptedStation(stationId);
     const list = this.state.traffic && this.state.traffic.freighters;
     if (!Array.isArray(list)) return 0;
     let marked = 0;
@@ -8620,6 +8731,9 @@ export const traffic = {
   _ensureState() {
     if (!this.state.traffic) this.state.traffic = { freighters: [] };
     if (!Array.isArray(this.state.traffic.freighters)) this.state.traffic.freighters = [];
+    this.state.traffic.disruptedStationIds = leftoverNormalizeDisruptedStationIds(
+      this.state.traffic.disruptedStationIds,
+    );
     if (!Array.isArray(this.state.traffic.appliedArrivalIds)) this.state.traffic.appliedArrivalIds = [];
     if (!Array.isArray(this.state.traffic.appliedLossIds)) this.state.traffic.appliedLossIds = [];
     if (!Array.isArray(this.state.traffic.appliedMinerWorkIds)) this.state.traffic.appliedMinerWorkIds = [];

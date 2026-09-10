@@ -11,8 +11,9 @@
  * `station_ceres` so `_markRouteDisrupted` has someone to mark. AFTER_S is decorative: all five
  * writes land synchronously inside the two emits, and `stepWorld` ticks only rumor heat decay.
  *
- * leftover traffic.js still has no spawn/routing reader for routeDisrupted. This file only
- * proves the leftover flag is painted on the berth when present.
+ * leftover traffic.js reads leftover routeDisrupted on leftover spawn/top-up and does not
+ * refill that leftover Ceres approach. A leftover test plants leftover routeDisrupted true
+ * on leftover a leftover Ceres approach and pins that leftover rematerialize stays thin.
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -248,6 +249,34 @@ function berthPaintHost() {
   return { newsEl, cardEl, patch, route };
 }
 
+function leftoverCeresSector() {
+  return { id: SECTOR_ID, factionId: 'faction_pitborn', trafficPerMin: 6, security: 0.35 };
+}
+
+function leftoverApproachHulls(state) {
+  const out = [];
+  const seen = new Set();
+  for (const row of liveRouteHaulers(state)) {
+    seen.add(row.ent.id);
+    out.push(row);
+  }
+  for (const rec of state.traffic.freighters || []) {
+    if (!rec || seen.has(rec.id)) continue;
+    const ent = state.entities.get(rec.id);
+    if (!ent || ent.alive === false) continue;
+    const slot = rec.activityActorSlotId || (ent.data && ent.data.activityActorSlotId);
+    if (slot === 'ceres_refinery_hauler') out.push({ rec, ent });
+  }
+  return out;
+}
+
+function leftoverRefineryHauler(rows) {
+  return rows.find((row) => {
+    const slot = row.rec.activityActorSlotId || (row.ent.data && row.ent.data.activityActorSlotId);
+    return slot === 'ceres_refinery_hauler';
+  }) || null;
+}
+
 function liveRouteHaulers(state) {
   const out = [];
   for (const rec of state.traffic.freighters || []) {
@@ -423,6 +452,24 @@ test('one Ceres kill leaves wreck, thinned traffic, a moved price, a rumor, and 
     },
   );
 
+  const leftoverBeforeTopUp = leftoverApproachHulls(state);
+  harness.ships._onSectorEnter({
+    sector: leftoverCeresSector(),
+    continuous: true,
+  });
+  const leftoverAfterTopUp = leftoverApproachHulls(state);
+  const leftoverFreshRefinery = leftoverRefineryHauler(leftoverAfterTopUp);
+  const trafficSrc = readFileSync(join(ROOT, 'src/systems/traffic.js'), 'utf8');
+  rows.push({
+    trace: 'approach stays thin',
+    ok: leftoverAfterTopUp.length <= leftoverBeforeTopUp.length
+      && leftoverFreshRefinery == null
+      && !!(disrupted || witnessRec.routeDisrupted),
+    evidenceId: disrupted
+      ? `route:${STATION_ID}:${disrupted.ent.id}`
+      : (witnessRec.routeDisrupted ? `route:${STATION_ID}:${witnessRec.id}` : null),
+  });
+
   printChecklist(rows);
   console.log(`PQ-138.05 leftover ticker: ${ticker && ticker.text}`);
   console.log(`PQ-138.05 leftover berth news: ${painted.news}`);
@@ -451,6 +498,10 @@ test('one Ceres kill leaves wreck, thinned traffic, a moved price, a rumor, and 
     assert.equal(host.cardEl.querySelector('.sxb-event__title').textContent, 'Pirate rumor');
     assert.match(host.patch.textContent, /Yard crews patch Ceres Refinery/);
     assert.equal(ticker.eventId, `pirateRumor:${SECTOR_ID}:${ZONE_ID}`);
+    assert.match(trafficSrc, /_leftoverDisruptedStationIds/,
+      'leftover traffic.js reads leftover routeDisrupted on leftover spawn/top-up');
+    assert.equal(leftoverFreshRefinery, null,
+      'leftover Ceres rematerialize must not refill the leftover disrupted approach');
   } finally {
     harness.news.destroy();
     harness.aftermath.destroy();
@@ -462,3 +513,82 @@ function leftoverLineForTest(value) {
   const next = String(value == null ? '' : value).replace(/\s+/g, ' ').trim();
   return next || null;
 }
+
+test('leftover Ceres approach stays thin when leftover routeDisrupted is planted', () => {
+  const world = makeWorld();
+  const harness = { world, ...boot(world) };
+  const { state, victim, witness, witnessRec } = world;
+  victim.alive = false;
+  state.traffic.freighters = [witnessRec];
+  witnessRec.routeDisrupted = true;
+  witness.data.routeDisrupted = true;
+  harness.ships._active = [witness.id];
+
+  const before = leftoverApproachHulls(state);
+  assert.equal(before.length, 1, 'leftover plant leaves one hull on the leftover Ceres approach');
+  assert.equal(witnessRec.routeDisrupted, true);
+  assert.equal(witness.data.routeDisrupted, true);
+
+  harness.ships._onSectorEnter({
+    sector: leftoverCeresSector(),
+    continuous: true,
+  });
+
+  const after = leftoverApproachHulls(state);
+  const leftoverFreshRefinery = leftoverRefineryHauler(after);
+  const trafficSrc = readFileSync(join(ROOT, 'src/systems/traffic.js'), 'utf8');
+
+  try {
+    assert.ok(after.length <= before.length,
+      'leftover top-up must not refill a leftover disrupted Ceres approach');
+    assert.equal(leftoverFreshRefinery, null,
+      'leftover rematerialize must not fresh-spawn the leftover Ceres refinery hauler');
+    assert.ok(witnessRec.routeDisrupted || (witness.data && witness.data.routeDisrupted),
+      'leftover routeDisrupted remains the leftover reader input');
+    assert.match(trafficSrc, /_leftoverDisruptedStationIds/,
+      'leftover traffic.js reads leftover routeDisrupted');
+    assert.match(trafficSrc, /_leftoverSlotRefillsDisruptedApproach/,
+      'leftover Ceres rematerialize skips leftover disrupted approach refill');
+  } finally {
+    harness.news.destroy();
+    harness.aftermath.destroy();
+    harness.rumors.destroy();
+  }
+});
+
+test('leftover hard Ceres enter keeps a leftover disrupted approach thin', () => {
+  const world = makeWorld();
+  const harness = { world, ...boot(world) };
+  const { state, victim, witnessRec } = world;
+
+  harness.ships._markRouteDisrupted(STATION_ID, victim.id);
+  assert.deepEqual(state.traffic.disruptedStationIds, [STATION_ID],
+    'leftover persist remembers the leftover disrupted station after the leftover mark');
+
+  harness.ships._onSectorEnter({
+    sector: leftoverCeresSector(),
+    continuous: false,
+  });
+
+  const after = leftoverApproachHulls(state);
+  const leftoverFreshRefinery = leftoverRefineryHauler(after);
+  const trafficSrc = readFileSync(join(ROOT, 'src/systems/traffic.js'), 'utf8');
+
+  try {
+    assert.deepEqual(state.traffic.disruptedStationIds, [STATION_ID],
+      'leftover _cleanup must not wipe leftover disruptedStationIds');
+    assert.equal(leftoverFreshRefinery, null,
+      'leftover hard rematerialize must not refill the leftover disrupted Ceres approach');
+    assert.equal(
+      (state.traffic.freighters || []).some((rec) => rec && rec.id === witnessRec.id),
+      false,
+      'leftover hard enter wiped leftover view freighters; leftover persist is the leftover reader',
+    );
+    assert.match(trafficSrc, /disruptedStationIds/,
+      'leftover traffic.js persists leftover disrupted station ids across leftover hard enter');
+  } finally {
+    harness.news.destroy();
+    harness.aftermath.destroy();
+    harness.rumors.destroy();
+  }
+});
