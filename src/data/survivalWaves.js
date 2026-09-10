@@ -80,6 +80,75 @@ function freezeDeep(value) {
   return Object.freeze(value);
 }
 
+/**
+ * PQ-174.03 — Support / Anchor / Disruptor / Elite as positioning problems.
+ *
+ * A role is the problem it creates, not a stat block. The counter is a starter-kit verb
+ * (well, rope, shove, throw). Recipe bodies for waves 1, 5 and 10 stay byte-identical;
+ * this table does not live on those packages.
+ */
+export const SURVIVAL_PROBLEM_ROLES = Object.freeze(['support', 'anchor', 'disruptor', 'elite']);
+
+export const SURVIVAL_ROLE_PROBLEMS = freezeDeep({
+  support: {
+    role: 'support',
+    enemyId: 'pd_screen_escort',
+    counterVerb: 'well',
+    alternatives: ['guns', 'shove', 'rope'],
+    telegraphCue: 'pd_curtain',
+    telegraphLine: 'Point-defense curtain spinning up. Hold missiles.',
+    problem: 'A huddle of screens covers the pack. Well the cluster so they share one hole.',
+    throwable: true,
+    cluster: true,
+    lightCount: 3,
+    resolve: 'cluster_dead',
+    consequences: ['cluster_clump', 'screen_drops'],
+  },
+  anchor: {
+    role: 'anchor',
+    enemyId: 'field_anchor_controller',
+    counterVerb: 'rope',
+    alternatives: ['guns', 'well', 'shove'],
+    telegraphCue: 'field_spool',
+    telegraphLine: 'Anchor field winding. Break radius or move the hull.',
+    problem: 'A snare well holds the room. Rope the hull so the well moves with it.',
+    throwable: true,
+    fieldAnchor: true,
+    resolve: 'snare_gone',
+    consequences: ['snare_moves', 'room_opens'],
+  },
+  disruptor: {
+    role: 'disruptor',
+    enemyId: 'mine_layer_jackal',
+    counterVerb: 'shove',
+    alternatives: ['guns', 'well', 'rope'],
+    telegraphCue: 'wake_mines',
+    telegraphLine: 'Wake is salted. Turn now or fly through our work.',
+    problem: 'It salts the lane. Shove it into the elite so its mass does the kill.',
+    throwable: true,
+    ammunition: true,
+    resolve: 'body_dead',
+    consequences: ['thrown_into_elite', 'wake_clears'],
+  },
+  elite: {
+    role: 'elite',
+    enemyId: 'corsair_raider',
+    counterVerb: 'throw',
+    alternatives: ['guns', 'well', 'rope'],
+    telegraphCue: 'weapon_charge',
+    telegraphLine: 'The ace is lining a pass. Throw mass, do not chase its guns.',
+    problem: 'The ace is the hull that matters. Throw the disruptor into it rather than grinding DPS.',
+    throwable: true,
+    resolve: 'body_dead',
+    consequences: ['takes_thrown_mass', 'priority_target'],
+  },
+});
+
+export function survivalRoleProblem(role) {
+  if (typeof role !== 'string') return null;
+  return SURVIVAL_ROLE_PROBLEMS[role] || null;
+}
+
 function isPlainObject(value) {
   return value != null && typeof value === 'object' && !Array.isArray(value);
 }

@@ -32,7 +32,14 @@ import {
   offerDraft,
   rerollPrice,
 } from '../data/survivalDraft.js';
-import { isSwarmDraftWave, isSwarmRefitWave, isSwarmRuleset } from './survivalSwarm.js';
+import {
+  bindSwarmRoleProblems,
+  isSwarmDraftWave,
+  isSwarmRefitWave,
+  isSwarmRuleset,
+  preferRoleCounterOffers,
+  unbindSwarmRoleProblems,
+} from './survivalSwarm.js';
 import { WEAPONS } from '../data/weapons.js';
 import { buildSlotList, fits } from './ships.js';
 
@@ -79,6 +86,8 @@ export const survivalDraft = {
     this._unsubs = [];
     this._reset();
     if (!this.bus || typeof this.bus.on !== 'function') return;
+    bindSwarmRoleProblems(ctx);
+    this._unsubs.push(() => unbindSwarmRoleProblems());
     this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
     this._unsubs.push(this.bus.on('run:draftPickRequested', (p) => this.resolvePick(p)));
     this._unsubs.push(this.bus.on('run:refitCloseRequested', (p) => this.closeRefit(p)));
@@ -199,9 +208,9 @@ export const survivalDraft = {
       this._finish({ picked: null, applied: false, reason: 'no_legal_offer' });
       return;
     }
-    this._offers = offers;
+    this._offers = preferRoleCounterOffers(offers, this.state);
     this._emit('run:draftOffered', {
-      wave: run.wave, offers: offers.map((o) => ({ ...o })), rerolls: 0,
+      wave: run.wave, offers: this._offers.map((o) => ({ ...o })), rerolls: 0,
     });
     this._openScreen(CRUCIBLE_DRAFT_SCREEN_ID);
   },
@@ -303,7 +312,7 @@ export const survivalDraft = {
     // is belt and braces: keep the standing offers rather than blanking a surface the run waits on.
     if (offers.length === 0) return;
     this._rerolls = pending.next;
-    this._offers = offers;
+    this._offers = preferRoleCounterOffers(offers, this.state);
     this._notice = null;
     this._emit('run:draftRerolled', {
       wave: pending.wave,
@@ -343,7 +352,8 @@ export const survivalDraft = {
   _peekOffers(rerollCount) {
     if (!this._draftInput) return [];
     const result = offerDraft({ ...this._draftInput, rerollCount });
-    return result && result.ok && Array.isArray(result.offers) ? result.offers : [];
+    const offers = result && result.ok && Array.isArray(result.offers) ? result.offers : [];
+    return preferRoleCounterOffers(offers, this.state);
   },
 
   /**
