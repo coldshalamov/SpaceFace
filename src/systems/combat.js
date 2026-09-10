@@ -535,7 +535,12 @@ export const combat = {
     if (!target || target.alive === false) return 1;
     const wp = weakPointForEntity(target);
     if (!wp || !isHitInWeakArc(target, pos, wp)) return 1;
-    this.bus.emit('combat:weakPointHit', { targetId, ownerId, label: wp.label, mult: wp.bonusMult, pos: { x: pos.x, z: pos.z } });
+    this.bus.emit('combat:weakPointHit', {
+      targetId, ownerId, label: wp.label, mult: wp.bonusMult,
+      // Earned by the existing arc test; this is presentation metadata, never a chance roll.
+      critical: true, criticalLabel: 'CRIT',
+      pos: { x: pos.x, z: pos.z },
+    });
     return wp.bonusMult;
   },
 

@@ -42,6 +42,17 @@ export function factionRepToastText(state, payload = {}) {
   return (delta > 0 ? '+' : '') + delta + ' REP · ' + name;
 }
 
+// Computed once per receipt, never during the pooled frame update. Keep legacy weak-point copy.
+export function weakPointFloatingTextSpec(payload) {
+  if (!payload?.pos) return null;
+  const critical = payload.critical === true;
+  const label = payload.label || 'WEAK POINT';
+  return {
+    text: '◈ ' + (critical ? (payload.criticalLabel || 'CRIT') + ' · ' : '') + label,
+    cls: critical ? 'sf-ft--weak sf-ft--critical' : 'sf-ft--weak',
+  };
+}
+
 export function createFloatingText(ctx) {
   const { state, helpers, bus } = ctx;
   injectStyle();
@@ -134,8 +145,10 @@ export function createFloatingText(ctx) {
   // Weak-point hit (BP-02): a player shot landed in the target's exposed subsystem arc. Callout at the
   // hit so the bonus reads as skill, not noise. targetId lets it ride the target's screen motion.
   bus.on('combat:weakPointHit', (p) => {
-    if (!p || !p.pos) return;
-    spawn('◈ ' + (p.label || 'WEAK POINT'), 'sf-ft--weak', p.pos.x, p.pos.z, p.targetId, { life: 1.0, vy: 40 });
+    const spec = weakPointFloatingTextSpec(p);
+    if (!spec) return;
+    // Accent the existing callout; combat:damage remains the sole damage-number receipt.
+    spawn(spec.text, spec.cls, p.pos.x, p.pos.z, p.targetId, { life: 1.0, vy: 40 });
   });
   // Direct-to-cargo mining never fires pickup:collected, so this is the only on-screen yield
   // receipt — always name the commodity (bare "+1" is opaque; cargo hold is the real ledger).
@@ -269,6 +282,7 @@ function injectStyle() {
   .sf-ft--shielddown { color:#9fe8ff; font-size:12px; letter-spacing:.06em; }
   .sf-ft--kill { color:#ff8a4a; font-size:15px; letter-spacing:.06em; text-shadow:0 0 10px rgba(255,120,40,.7),0 0 4px #000; }
   .sf-ft--weak { color:#ffd24a; font-size:13px; font-weight:800; letter-spacing:.06em; text-shadow:0 0 9px rgba(255,200,60,.8),0 0 4px #000; }
+  .sf-ft--critical { color:#fff1ad; font-size:15px; font-weight:900; text-shadow:0 0 6px rgba(0,0,0,.9),0 1px 2px #000; }
   .sf-ft--ore { color:#4fbf8f; }
   .sf-ft--credits { color:#ffd84a; font-size:15px; }
   .sf-ft--bounty { color:#ffd84a; font-size:18px; font-weight:900; letter-spacing:.06em;
