@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { attachDamageStateDriver } from './kestrelDamage.js';
 import { attachLodState } from '../lod.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
 
 const TAU = Math.PI * 2;
 const DESIGN_RADIUS = 14;
@@ -24,11 +25,15 @@ export const KESTREL_HERO_COLORS = Object.freeze({
 });
 
 function standardMaterial(color, roughness = 0.55, metalness = 0.45, options = {}) {
-  return new THREE.MeshStandardMaterial({ color, roughness, metalness, ...options });
+  return stampSharedMaterialRole(
+    new THREE.MeshStandardMaterial({ color, roughness, metalness, ...options }),
+    SHARED_MATERIAL_ROLE.HULL,
+  );
 }
 
 function emissiveMaterial(color, intensity = 1.5, opacity = 1) {
-  return new THREE.MeshStandardMaterial({
+  const driveLike = intensity >= 2.4;
+  return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color,
     emissive: new THREE.Color(color),
     emissiveIntensity: intensity,
@@ -37,7 +42,7 @@ function emissiveMaterial(color, intensity = 1.5, opacity = 1) {
     transparent: opacity < 1,
     opacity,
     depthWrite: opacity >= 1,
-  });
+  }), driveLike ? SHARED_MATERIAL_ROLE.PLUME : SHARED_MATERIAL_ROLE.HULL);
 }
 
 function glowMaterial(color, opacity = 0.55) {
@@ -216,7 +221,7 @@ function addBorrowedTimeDecal(parent) {
   });
   if (!texture) return;
   borrowedTimeTexture = texture;
-  const material = new THREE.MeshStandardMaterial({
+  const material = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     map: texture,
     transparent: true,
     alphaTest: 0.05,
@@ -226,7 +231,7 @@ function addBorrowedTimeDecal(parent) {
     side: THREE.DoubleSide,
     polygonOffset: true,
     polygonOffsetFactor: -2,
-  });
+  }), SHARED_MATERIAL_ROLE.HULL);
   const decal = addMesh(parent, new THREE.PlaneGeometry(5.8, 2.1), material, 'Kestrel_Decal_Borrowed_Time', [-1.0, 0.35, -2.73], [0, Math.PI, 0]);
   decal.userData.keepSeparate = true;
   decal.renderOrder = 3;
@@ -255,7 +260,7 @@ function addFadedSharkTeeth(parent) {
   });
   if (!texture) return;
   sharkTeethTexture = texture;
-  const material = new THREE.MeshStandardMaterial({
+  const material = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     map: texture,
     transparent: true,
     alphaTest: 0.03,
@@ -265,7 +270,7 @@ function addFadedSharkTeeth(parent) {
     side: THREE.DoubleSide,
     polygonOffset: true,
     polygonOffsetFactor: -2,
-  });
+  }), SHARED_MATERIAL_ROLE.HULL);
   for (const z of [-1.72, 1.72]) {
     const decal = addMesh(parent, new THREE.PlaneGeometry(4.8, 1.4), material, `Kestrel_Decal_Shark_${z < 0 ? 'Port' : 'Starboard'}`, [8.4, -0.12, z], [0, z < 0 ? Math.PI : 0, 0]);
     decal.userData.keepSeparate = true;
@@ -324,7 +329,7 @@ function buildMaterials() {
     warning: standardMaterial(KESTREL_HERO_COLORS.warning, 0.66, 0.06),
     repair: standardMaterial(KESTREL_HERO_COLORS.repair, 0.72, 0.22),
     rust: standardMaterial(KESTREL_HERO_COLORS.rust, 0.86, 0.02),
-    canopy: new THREE.MeshStandardMaterial({
+    canopy: stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: KESTREL_HERO_COLORS.canopy,
       emissive: new THREE.Color('#0a3040'),
       emissiveIntensity: 0.35,
@@ -332,7 +337,7 @@ function buildMaterials() {
       metalness: 0.08,
       transparent: true,
       opacity: 0.92,
-    }),
+    }), SHARED_MATERIAL_ROLE.CANOPY),
     // Overnight B1: high-intensity pale emissive on box prims read as "floating white cubes".
     // Sensors stay readable cyan but stay subordinate to the hull silhouette.
     sensor: emissiveMaterial(KESTREL_HERO_COLORS.frontier, 0.95),

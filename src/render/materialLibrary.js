@@ -17,6 +17,7 @@
 
 import * as THREE from 'three';
 import { normalizeMaterialAbi } from './materialAbi.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 
 // ---- tiny seeded hash (same scheme visualFactory uses) --------------------------------------
 function hashId(id) {
@@ -181,12 +182,26 @@ function stampMaterialAbi(material, libraryRole) {
   return normalizeMaterialAbi(material, libraryRole);
 }
 
+const LIBRARY_SHARED_ROLE = Object.freeze({
+  bodyPrimary: SHARED_MATERIAL_ROLE.HULL,
+  bodySecondary: SHARED_MATERIAL_ROLE.HULL,
+  trim: SHARED_MATERIAL_ROLE.HULL,
+  hazard: SHARED_MATERIAL_ROLE.HULL,
+  reward: SHARED_MATERIAL_ROLE.HULL,
+  glass: SHARED_MATERIAL_ROLE.GLASS,
+  emissiveSignal: SHARED_MATERIAL_ROLE.PLUME,
+  decalDark: SHARED_MATERIAL_ROLE.HULL,
+  decalLight: SHARED_MATERIAL_ROLE.HULL,
+});
+
 function _matGet(key, build) {
   let m = _mat.get(key);
   if (!m) {
     m = noDispose(build());
     const role = String(key || '').split(':')[1] || String(key || '').replace(/^role:/, '').split(':')[0];
     stampMaterialAbi(m, role);
+    const sharedRole = LIBRARY_SHARED_ROLE[role];
+    if (sharedRole) stampSharedMaterialRole(m, sharedRole);
     _mat.set(key, m);
   }
   return m;

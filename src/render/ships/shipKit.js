@@ -20,6 +20,7 @@ import {
   makeGreebleDetailTexture, makeGrimeTexture, makeDecalSheet, makeNoseArtTexture,
 } from '../canvasTextures.js';
 import { attachDamageStateDriver } from './shipDamage.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
 
 const TAU = Math.PI * 2;
 const DRIVE_POSE_KEY = 'spacefaceDrivePose';
@@ -192,11 +193,15 @@ export function mirroredXZ(points) {
 // hulls get real beveled-panel normal maps + albedo variation (the thing they were entirely missing).
 // ---------------------------------------------------------------------------------------------
 export function standardMaterial(color, roughness = 0.55, metalness = 0.45, options = {}) {
-  return new THREE.MeshStandardMaterial({ color, roughness, metalness, ...options });
+  return stampSharedMaterialRole(
+    new THREE.MeshStandardMaterial({ color, roughness, metalness, ...options }),
+    SHARED_MATERIAL_ROLE.HULL,
+  );
 }
 
 export function emissiveMaterial(color, intensity = 1.5, opacity = 1) {
-  return new THREE.MeshStandardMaterial({
+  const driveLike = intensity >= 3;
+  return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color,
     emissive: new THREE.Color(color),
     emissiveIntensity: intensity,
@@ -205,7 +210,7 @@ export function emissiveMaterial(color, intensity = 1.5, opacity = 1) {
     transparent: opacity < 1,
     opacity,
     depthWrite: opacity >= 1,
-  });
+  }), driveLike ? SHARED_MATERIAL_ROLE.PLUME : SHARED_MATERIAL_ROLE.HULL);
 }
 
 export function glowMaterial(color, opacity = 0.55) {
@@ -222,7 +227,10 @@ export function glowMaterial(color, opacity = 0.55) {
 // Dark dielectric "machinery" material for internal/exposed structure (gun breeches, drive housings,
 // keel beams). Reads as bare metal against the painted hull, carrying the material hierarchy.
 export function machineryMaterial(color = '#10161b', roughness = 0.42, metalness = 0.78) {
-  return new THREE.MeshStandardMaterial({ color, roughness, metalness });
+  return stampSharedMaterialRole(
+    new THREE.MeshStandardMaterial({ color, roughness, metalness }),
+    SHARED_MATERIAL_ROLE.HULL,
+  );
 }
 
 // Module-level texture cache shared across ALL ships (canvas generation is the costly part; textures
@@ -261,7 +269,7 @@ export function pbrHullMaterial({ hull, accent, seed, panelCount = 12, metalness
       emissive: new THREE.Color(emissive || accent),
       emissiveIntensity: 0.04,
     });
-    return noDispose(mat);
+    return stampSharedMaterialRole(noDispose(mat), SHARED_MATERIAL_ROLE.HULL);
   });
 }
 
@@ -278,7 +286,7 @@ export function decalMaterial({ hull, accent, seed, kind = 'greeble' }) {
       color: 0xffffff, roughness: 0.7, metalness: 0.2,
       emissive: new THREE.Color(accent), emissiveIntensity: 0.04,
     });
-    return noDispose(mat);
+    return stampSharedMaterialRole(noDispose(mat), SHARED_MATERIAL_ROLE.HULL);
   });
 }
 
@@ -292,7 +300,7 @@ export function grimeMaterial({ hull, seed, intensity = 0.5 }) {
       map: tex, transparent: true, depthWrite: false,
       color: 0xffffff, roughness: 0.9, metalness: 0.0,
     });
-    return noDispose(mat);
+    return stampSharedMaterialRole(noDispose(mat), SHARED_MATERIAL_ROLE.HULL);
   });
 }
 
@@ -308,7 +316,7 @@ export function noseArtMaterial({ style, accent, seed, motto, mascot, tally }) {
       emissive: new THREE.Color(accent), emissiveIntensity: 0.05,
       side: THREE.DoubleSide,
     });
-    return noDispose(mat);
+    return stampSharedMaterialRole(noDispose(mat), SHARED_MATERIAL_ROLE.HULL);
   });
 }
 
@@ -322,7 +330,7 @@ export function chromeFoilMaterial(envMap, intensity = 0.7) {
       envMap, envMapIntensity: intensity,
       transparent: true, opacity: 0.45 + intensity * 0.35, depthWrite: false,
     });
-    return noDispose(mat);
+    return stampSharedMaterialRole(noDispose(mat), SHARED_MATERIAL_ROLE.HULL);
   });
 }
 
