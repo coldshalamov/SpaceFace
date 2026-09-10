@@ -77,6 +77,22 @@ function named(emitted, event) {
   return emitted.filter((entry) => entry.event === event);
 }
 
+test('loading prepares the real opening cohort once, without advancing combat time', () => {
+  const h = boot();
+  h.state.mode = 'loading';
+  h.bus.emit('run:beginRequested', { kind: 'survival', ruleset: 'swarm', seed: SEED, arenaId: ARENA });
+  h.bus.emit('run:loadoutReady', {});
+  const time = h.state.simTime;
+  h.bus.emit('run:openingPrepareRequested', {});
+  assert.equal(h.state.run.phase, 'active');
+  assert.equal(h.state.run.wave, 1);
+  assert.ok(h.spawned.length > 0, 'GPU preparation sees actual enemy hulls');
+  assert.equal(h.state.simTime, time);
+  const count = h.spawned.length;
+  h.bus.emit('run:openingPrepareRequested', {});
+  assert.equal(h.spawned.length, count, 'duplicate preparation does not spawn a second pack');
+});
+
 function tick(harness, n = 1) {
   for (let i = 0; i < n; i++) {
     survivalWave.update(DT);
@@ -149,6 +165,7 @@ test('a begun survival run reaches phase active with wave 1 planned and live hos
     assert.equal(entity.data.runWave, 1);
     assert.equal(entity.data.runRole, 'mass');
     assert.equal(entity.team, 1);
+    assert.equal(entity.data.weapons[0].dmg, 8, 'arena wasps mount the real pulse burst');
     const owner = harness.budget.ownerForEntity(entity.id);
     assert.equal(owner, waveOwnerId(1));
     assert.ok(String(owner).startsWith(SURVIVAL_WAVE_OWNER_PREFIX));

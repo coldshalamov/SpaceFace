@@ -174,8 +174,8 @@ export class ManeuverPlanner {
       if (!choreo) {
         desired = applyShipCollisionAvoidance(desired, selfPose, contactSource.ships, intent, this.seed, entityId, tick, runtime, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
       }
-      desired = applyObstacleAvoidance(desired, selfPose, contactSource.obstacles, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
     }
+    desired = applyObstacleAvoidance(desired, selfPose, contactSource.obstacles, this.config, this.workCounters, contactIndex ? 'indexed' : 'legacy');
     const speed = Math.hypot(selfPose.vel.x, selfPose.vel.z);
     const commanded = Math.hypot(desired.x, desired.z);
     const intentionalHold = intent.kind === ManeuverKind.HOLD && formationDistance <= this.config.arrivalRadius;
@@ -197,7 +197,7 @@ export class ManeuverPlanner {
     // Some combat phases hold or return to a formation point while charging a fixed gun. Keep the
     // translational request pointed at that slot, but let the authored intent explicitly aim the
     // ship's nose at its target so HOLD does not turn a firing window into deterministic misses.
-    const facingUnit = intent.faceTarget === true && target
+    const facingUnit = intent.faceTarget === true && target && !desired.obstacleAvoidance
       ? unit2(target.pos.x - selfPose.pos.x, target.pos.z - selfPose.pos.z, desiredUnit.x, desiredUnit.z)
       : desiredUnit;
     const heading = Math.atan2(facingUnit.z, facingUnit.x);
@@ -254,13 +254,13 @@ export class ManeuverPlanner {
       rawForward = 0;
       rawRight = 0;
     }
-    if (choreo && choreo.coast) {
+    if (choreo && choreo.coast && !desired.obstacleAvoidance) {
       rawForward = 0;
       rawRight = 0;
     }
 
-    const rawTorqueYaw = choreo && choreo.coast ? 0 : yawRequestFor(angleError, kind, this.config, hullScale);
-    const emergencyManeuver = kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
+    const rawTorqueYaw = choreo && choreo.coast && !desired.obstacleAvoidance ? 0 : yawRequestFor(angleError, kind, this.config, hullScale);
+    const emergencyManeuver = desired.obstacleAvoidance || kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER;
     const smooth = smoothControls(runtime, tick, {
       forward: rawForward,
       right: rawRight,
@@ -269,14 +269,14 @@ export class ManeuverPlanner {
 
     const boostWanted = (kind === ManeuverKind.RETREAT || kind === ManeuverKind.ESCAPE_TETHER || kind === ManeuverKind.CLEAR_DEADLOCK) &&
       speed < envelope.maxSpeed * 0.85 && Math.abs(angleError) < 0.78;
-    const boost = boostWanted && selfPose.energyFraction >= this.config.minBoostEnergyFraction && selfPose.heatFraction <= this.config.maxBoostHeatFraction;
+    const boost = boostWanted && !desired.obstacleAvoidance && selfPose.energyFraction >= this.config.minBoostEnergyFraction && selfPose.heatFraction <= this.config.maxBoostHeatFraction;
     const slotSpeed = choreo && choreo.slotVel
       ? Math.hypot(choreo.slotVel.x || 0, choreo.slotVel.z || 0)
       : 0;
-    const brake = choreo && choreo.coast
+    const brake = desired.obstacleBrake || (choreo && choreo.coast
       ? false
       : (intent.crossingLane ? speedLimited : (speedLimited || closingLimited)) || (!(choreo && slotSpeed > 12) && (kind === ManeuverKind.HOLD || kind === ManeuverKind.FORMATION) &&
-        arrival < slowRadius && speed > Math.max(4, arrival / 2));
+        arrival < slowRadius && speed > Math.max(4, arrival / 2)));
     const trajectory = this.includeTrajectory
       ? buildTrajectory(selfPose, desiredUnit, speed, tick, this.config.trajectoryHorizonTicks, envelope.maxSpeed)
       : EMPTY_TRAJECTORY;
@@ -690,21 +690,41 @@ function tetherApproach(kind) {
 }
 
 function applyObstacleAvoidance(desired, self, contacts, config, counters, counterMode = 'legacy') {
-  let x = desired.x, z = desired.z;
-  const dir = unit2(x, z, Math.cos(self.rot), Math.sin(self.rot));
-  const look = { x: self.pos.x + dir.x * config.obstacleLookahead, z: self.pos.z + dir.z * config.obstacleLookahead };
+  const dir = unit2(desired.x, desired.z, Math.cos(self.rot), Math.sin(self.rot));
+  const speed = Math.hypot(self.vel.x, self.vel.z);
+  const lookahead = Math.max(config.obstacleLookahead, speed * 1.25);
+  let obstacle = null, nearest = Infinity, clearance = 0, lateral = 0, along = 0;
   for (const contact of contacts) {
     countContactVisit(counters, counterMode);
     if (contact.kind !== ContactKind.HAZARD && !contact.tags.includes('solid')) continue;
-    const clearance = config.obstacleClearance + self.radius + contact.radius;
-    const d = distance2(look, contact.pos);
-    if (d >= clearance) continue;
-    const away = unit2(look.x - contact.pos.x, look.z - contact.pos.z, -dir.z, dir.x);
-    const strength = saturate(1 - d / clearance) * 2.2;
-    x += away.x * strength;
-    z += away.z * strength;
+    const dx = contact.pos.x - self.pos.x, dz = contact.pos.z - self.pos.z;
+    const ahead = dx * dir.x + dz * dir.z;
+    const across = -dx * dir.z + dz * dir.x;
+    // Leave real hull clearance without sealing every authored choke with a 55-WU halo.
+    const margin = Math.min(config.obstacleClearance, Math.max(6, self.radius * 0.6)) + self.radius + contact.radius;
+    if (ahead < 0 || ahead > lookahead + margin || Math.abs(across) >= margin) continue;
+    const entry = ahead - Math.sqrt(Math.max(0, margin * margin - across * across));
+    if (entry >= nearest) continue;
+    obstacle = contact; nearest = entry; clearance = margin; lateral = across; along = ahead;
   }
-  return stampDesired(desired, { x, z, arrivalDistance: desired.arrivalDistance });
+  if (!obstacle) return desired;
+  // A two-unit nudge cannot alter a 600-unit seek vector. More importantly, tracked
+  // maneuvers use desiredPos/desiredVel, so changing only x/z never changed their thrust.
+  // Route the physical controller toward the near shoulder of the blocking collider.
+  const side = Math.abs(lateral) > 1 ? -Math.sign(lateral)
+    : (hashUnit(0, self.id, obstacle.id, 'rock_pass') < 0.5 ? -1 : 1);
+  const point = {
+    x: obstacle.pos.x - dir.x * clearance * 0.4 - dir.z * side * clearance * 1.25,
+    z: obstacle.pos.z - dir.z * clearance * 0.4 + dir.x * side * clearance * 1.25,
+  };
+  const route = unit2(point.x - self.pos.x, point.z - self.pos.z);
+  const routeSpeed = Math.min(config.interceptSpeed, Math.max(25, speed * 0.75));
+  return {
+    ...desired, x: route.x, z: route.z, control: 'track', desiredPos: point,
+    desiredVel: { x: route.x * routeSpeed, z: route.z * routeSpeed },
+    obstacleAvoidance: true,
+    obstacleBrake: speed > 20 && along < clearance + speed * 0.75,
+  };
 }
 
 function motionEnvelope(kind, intent, arrival, formationDistance, formationBound, config, hullScale = ENEMY_MOTION_IDENTITY_SCALE) {

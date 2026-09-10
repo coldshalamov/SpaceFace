@@ -122,7 +122,9 @@ export function authorizeAIEngagement({
   const phase = doctrinePhase(objectiveReason, doctrineId);
   if (!phase || !DOCTRINE_FIRE_PHASES[doctrineId]?.has(phase)) return denied('doctrine_fire_window');
 
-  const protection = protectedStationAt(state, target);
+  const arenaPursuer = state.run?.kind === 'survival' && state.run.phase !== 'inactive'
+    && self.data?.runCohort === 'survival';
+  const protection = arenaPursuer ? null : protectedStationAt(state, target);
   if (protection) {
     // Security dispatch is target-specific. It must work against a pirate even though the legacy
     // team model puts patrols and hostiles on team 1, and it must work against the clean player who

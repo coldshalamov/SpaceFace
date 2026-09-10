@@ -420,6 +420,7 @@ export const onboarding = {
   // this is a no-op. Respects the tutorialHints setting.
   _showHint(key, text, payload) {
     const st = this.state;
+    if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') return;
     if (st.settings && st.settings.gameplay && st.settings.gameplay.tutorialHints === false) return;
     // The staged rail is already the tutorial. Contextual walls wait until it finishes so a
     // combat hit, dock range, or cargo edge cannot queue a second lesson behind the current verb.
@@ -443,6 +444,12 @@ export const onboarding = {
     this._dockControlInRange = false;
     this._gateControlInRange = false;
     this._lastControlMode = null;
+    if (st.run?.kind === 'survival' && st.run.phase !== 'inactive') {
+      // The fresh world may already have reused the old tutorial actor IDs.
+      this._teardown({ removeActors: false });
+      st.onboarding = { active: false, finished: false };
+      return;
+    }
     const hintsOn = !st.settings || !st.settings.gameplay || st.settings.gameplay.tutorialHints !== false;
     // First-hour pacing state (spec2/03). currentBeat is the beat the player is ON (its line has
     // fired); pendingBeat is the next one waiting for the silence gate. beatDoneAtS timestamps each
@@ -516,11 +523,14 @@ export const onboarding = {
     this._kickerLabelEl = null;
   },
 
-  _teardown() {
+  _teardown({ removeActors = true } = {}) {
     const ob = this.state.onboarding; if (ob) ob.active = false;
-    this._removeTrainingActors();
-    this._removeRescueActors();
-    this._removeMissingThreeActors();
+    if (removeActors) {
+      this._removeTrainingActors();
+      this._removeRescueActors();
+      this._removeMissingThreeActors();
+    }
+    this._trainerId = this._derelictId = this._miningRockId = null;
     if (this._panel) { this._panel.remove(); this._panel = null; }
     this._bodyEl = null;
     this._titleEl = null;

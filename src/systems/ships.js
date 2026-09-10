@@ -1123,6 +1123,13 @@ export const ships = {
         this._reduceLivingHull((hull, now) => livingHullWithGraffiti(hull, p, now), 'bulkhead_graffiti');
       }
     });
+    bus.on('run:loadoutReady', () => {
+      if (this.state.run?.kind !== 'survival') return;
+      // Arena survival uses the hull's authored shield, with the same fitting bonuses.
+      // Adventure's generous recovery assist would erase the first packs' entire damage.
+      this.state.player.combatProfile = 'crucible';
+      this.recomputeEntity(this.state.playerId);
+    });
     bus.on('game:started', () => {
       this._resetScarAdmission();
       this.reconcileLivingHull({ announce: false });
@@ -1843,6 +1850,7 @@ export const ships = {
    *  caller spawns it via makeShipEntitySpec + helpers.spawnEntity. */
   newGame() {
     const p = this.state.player;
+    delete p.combatProfile;
     p.ownedShips = [{
       defId: NEW_GAME.shipId,
       fittings: this.fittingsFromDefaults(NEW_GAME.shipId, NEW_GAME.fittedModules || []),

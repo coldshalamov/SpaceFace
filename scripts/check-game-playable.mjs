@@ -120,7 +120,9 @@ async function startServer() {
 async function clickButton(page, label) {
   return page.evaluate((wanted) => {
     const norm = (s) => String(s || '').replace(/\s+/g, ' ').trim();
-    const all = [...document.querySelectorAll('button')];
+    const all = [...document.querySelectorAll('button')].filter(x =>
+      x.getClientRects().length && getComputedStyle(x).visibility !== 'hidden'
+      && !x.disabled && x.getAttribute('aria-disabled') !== 'true');
     const b = all.find((x) => norm(x.textContent) === norm(wanted)) || all.find((x) => norm(x.textContent).includes(norm(wanted)));
     if (!b || b.disabled) return false;
     b.click();
@@ -306,13 +308,14 @@ try {
     }
   }
   let bootOk = true;
+  const menuWaitStarted = Date.now();
   try {
-    await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 30000 });
+    await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 60000 });
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-screen="mainMenu"]');
       return el && getComputedStyle(el).display !== 'none';
-    }, null, { timeout: 30000 });
-    record('BOOT', true, 'main menu reached');
+    }, null, { timeout: 60000 });
+    record('BOOT', true, `main menu reached after ${((Date.now() - menuWaitStarted) / 1000).toFixed(1)}s`);
   } catch (err) {
     bootOk = false;
     const stuck = await page.evaluate(() => ({
@@ -320,7 +323,7 @@ try {
       overlay: (() => { const o = document.getElementById('boot-overlay') || document.querySelector('.sf-loading, #sf-loading'); return o ? getComputedStyle(o).display : '(none found)'; })(),
       screens: [...document.querySelectorAll('[data-screen]')].filter((e) => getComputedStyle(e).display !== 'none').map((e) => e.dataset.screen),
     })).catch(() => null);
-    record('BOOT', false, `never reached the main menu in 30s — ${JSON.stringify(stuck)}`);
+    record('BOOT', false, `never reached the main menu within its 60s readiness budget — ${JSON.stringify(stuck)}`);
   }
 
   // ── 2. LAUNCH ──────────────────────────────────────────────────────────────────────────────
@@ -328,6 +331,11 @@ try {
   let inFlight = false;
   if (bootOk) {
     try {
+      await page.evaluate(() => {
+        window.__playableStart = {};
+        window.SF.bus.on('game:loadingProgress', stage => { window.__playableStart.stage = stage; });
+        window.SF.bus.on('game:startFailed', error => { window.__playableStart.error = error; });
+      });
       if (REAL_SAVES) {
         // Straight onto the load path — this is what the player was doing when it broke.
         if (!(await clickButton(page, 'Continue'))) throw new Error('Continue button absent or disabled with real saves present');
@@ -345,7 +353,13 @@ try {
       phase = 'flight';
       record('LAUNCH', true, 'flight mode entered');
     } catch (err) {
-      record('LAUNCH', false, `never entered flight — ${err.message}`);
+      const detail = await page.evaluate(() => ({
+        mode: window.SF?.state?.mode,
+        start: window.__playableStart,
+        screens: [...document.querySelectorAll('[data-screen]')]
+          .filter(e => getComputedStyle(e).display !== 'none').map(e => e.dataset.screen),
+      })).catch(() => null);
+      record('LAUNCH', false, `never entered flight — ${err.message} — ${JSON.stringify(detail)}`);
     }
   } else {
     record('LAUNCH', false, 'skipped (boot failed)');

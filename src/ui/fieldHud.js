@@ -100,7 +100,7 @@ export const fieldHud = {
       // Authored environmental fields use the same pooled world-space presentation but are not a
       // player deploy. Their hazard language/site clock owns the readout; never let one masquerade
       // as the player's held Clearing Cone.
-      if (rec.tag === 'environmental') continue;
+      if (rec.tag === 'environmental' || rec.tag === 'npc') continue;
       if (rec.kind === 'cone') cone = rec;
       else if (!soonest || rec.expireAt < soonest.expireAt) soonest = rec;
     }

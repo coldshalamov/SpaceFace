@@ -238,7 +238,9 @@ export class SquadCommander {
       : 'disable mobility before capture or egress');
     push('cut_and_scatter', exposedTether && capabilities.has('counter_tether_cut') ? 0.92 : 0, 'exposed hostile tether can be severed');
     push('overload_and_break', memberTethered && capabilities.has('counter_tether_overload') ? 0.96 : 0, 'tethered member has energy and overload capability');
-    push('fighting_retreat', (director && director.command && director.command.type === 'order_retreat') || profileRetreat
+    // Survival cohorts still dodge, flank and break webs. Attrition cannot order them to
+    // leave the arena indefinitely and strand a finite round with unreachable survivors.
+    if (!perceptions.some(perception => perception.self.moraleImmune)) push('fighting_retreat', (director && director.command && director.command.type === 'order_retreat') || profileRetreat
       ? 1
       : lowHull * 0.62 + disabled * 0.5 + outnumbered * 0.35,
     profileRetreat ? 'sampled hull retreat threshold' : 'explicit director retreat or observed wing attrition');
@@ -268,6 +270,7 @@ function normalizeMember(member, index) {
 }
 
 function profileRetreatRequired(squad, perceptions) {
+  if (perceptions.some(perception => perception.self.moraleImmune)) return false;
   for (const perception of perceptions) {
     const profile = normalizeFactionBehaviorProfile(perception.self && perception.self.factionBehavior)
       || squad.factionBehavior;
@@ -391,6 +394,11 @@ function objectiveFor(tactic, role, focus, objective, tether, perception, assign
     return freezeObjective(ObjectiveKind.SCREEN, objective && objective.id, 'protect_specialist', freeze);
   }
   if (tactic === 'hold_formation') return freezeObjective(ObjectiveKind.HOLD, null, 'weak_contact_picture', freeze);
+  // Arena pressure comes from the whole pack. Adventure's two-gun target allocation
+  // would otherwise turn every remaining member into a permanent screening spectator.
+  if (perception?.self?.arenaPursuit && focus) return freezeObjective(
+    tactic === 'contain_and_disable' ? ObjectiveKind.ENGAGE : ObjectiveKind.FOCUS,
+    focus.id, 'arena_pursuit', freeze);
   if (allocationActive) {
     if (!assignedTarget) return freezeObjective(ObjectiveKind.SCREEN, focus && focus.id, 'fire_lane_reserve', freeze);
     if (tactic === 'contain_and_disable') return freezeObjective(ObjectiveKind.ENGAGE, assignedTarget.id, 'disable_assignment', freeze);

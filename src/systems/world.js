@@ -396,6 +396,7 @@ export const world = {
     bus.on('dock:undocked', () => { this._pallasDecisionSignature = null; });
     bus.on('landmark:artifactRecovered', (p) => this._onLandmarkArtifactRecovered(p || {}));
     bus.on('spawn:request', (p) => this._onSpawnRequest(p || {}));
+    bus.on('run:loadoutReady', () => this._clearAdventureCombatantsForRun());
     bus.on('ui:purchaseSurveyData', (p) => this._onPurchaseSurveyData(p || {}));
     bus.on('ui:purchaseFrontierRumor', (p) => this._onPurchaseFrontierRumor(p || {}));
     bus.on('claim:sensorPostRumor', (p) => this._onSensorPostRumor(p || {}));
@@ -2810,6 +2811,11 @@ export const world = {
   // =========================================================================================
   update(dt, state) {
     if (state.mode !== 'flight') return;
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') {
+      this._tickFrameOrigin(state);
+      this._tickWorldOneOffSpin(dt, state);
+      return;
+    }
     const jump = state.jump;
 
     if (jump.cooldownT > 0) {
@@ -2850,6 +2856,23 @@ export const world = {
       if (dx * dx + dz * dz <= rad * rad) {
         promoteAsteroidFieldRock(state, rec.id, this.helpers, 'ram');
       }
+    }
+  },
+
+  _clearAdventureCombatantsForRun() {
+    const state = this.state;
+    if (state.run?.kind !== 'survival' || state.run.phase === 'inactive') return;
+    const remove = this.helpers?.removeEntity;
+    if (typeof remove !== 'function') return;
+    for (const entity of state.entityList || []) {
+      if (!entity.alive || entity.id === state.playerId
+        || !['ship', 'drone'].includes(entity.type)
+        || entity.data?.runCohort === 'survival'
+        || entity.data?.ownerId === state.playerId) continue;
+      // Despawn through core lifetime, never a kill: no loot, score, explosions
+      // or recycled identity before the queued lifecycle event has drained.
+      remove(entity.id);
+      this.helpers.spawnBudget?.releaseEntity?.(entity.id);
     }
   },
 

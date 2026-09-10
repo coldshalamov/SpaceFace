@@ -9,6 +9,7 @@ import { economy } from '../src/systems/economy.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { isSwarmDraftWave } from '../src/data/swarmMode.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
+import { offerDraft } from '../src/data/survivalDraft.js';
 
 function shop({ cash = 100, unlock = true } = {}) {
   const state = createGameState(4242);
@@ -43,6 +44,16 @@ test('every Swarm round offers shopping and requires defeating a finite pack', (
     assert.ok(plan.swarm.killTarget > 0);
     assert.equal(plan.level, 1, 'higher rounds do not inflate hull points');
   }
+});
+
+test('Swarm can add a second favourite gun, without offering to replace a gun with itself', () => {
+  const input = { seed: 4242, wave: 1, hullId: 'ship_hornet',
+    fittings: ['wpn_autocannon_m'], count: 100, ruleset: 'swarm' };
+  const copy = offerDraft(input).offers.find(o => o.defId === 'wpn_autocannon_m');
+  assert.ok(copy, 'a volume-fire build can buy another cannon');
+  assert.notEqual(copy.slotIndex, 0);
+  const gauntlet = offerDraft({ ...input, ruleset: 'scored' }).offers;
+  assert.ok(!gauntlet.some(o => o.defId === 'wpn_autocannon_m'));
 });
 
 test('purchase spends exactly its price, fits the real hull, and keeps the shop open', () => {

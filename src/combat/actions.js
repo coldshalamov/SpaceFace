@@ -2,7 +2,7 @@ import { otherAttachmentEndpoint } from './attachments.js';
 import { ensureCombatant, entityKey } from './runtime.js';
 import { actionBlockedByCombatant } from './subsystems.js';
 import { appendCombatTrace } from './trace.js';
-import { usesMountedBurst } from './mountedBurst.js';
+import { usesMountedBurst, mountedBurstRange } from './mountedBurst.js';
 
 export function createActionService(context, attachments, routeDamage) {
   const { state, catalog, bus, helpers } = context;
@@ -81,13 +81,16 @@ export function createActionService(context, attachments, routeDamage) {
     if (blocked) return reject(request, `disabled:${blocked}`);
     const missingPhysics = missingPhysicsOperation(def, combatPhysics());
     if (missingPhysics) return reject(request, `physics_port_unavailable:${missingPhysics}`);
-    const targetCheck = validateTarget(actor, request.target, def.target);
+    const mountedBurst = usesMountedBurst(actor, def.id, state.playerId);
+    const targetDefinition = mountedBurst
+      ? { ...def.target, maxRange: mountedBurstRange(actor, def.target?.maxRange) }
+      : def.target;
+    const targetCheck = validateTarget(actor, request.target, targetDefinition);
     if (!targetCheck.ok) return reject(request, targetCheck.reason);
 
     const cooldowns = cooldownMap(actor.id);
     const readyTick = Number(cooldowns[def.id]) || 0;
     if (state.tick < readyTick) return reject(request, `cooldown:${readyTick}`);
-    const mountedBurst = usesMountedBurst(actor, def.id, state.playerId);
     const capacitorCost = mountedBurst ? 0 : Math.max(0, Number(def.costs && def.costs.capacitor) || 0);
     const heatCost = mountedBurst ? 0 : Math.max(0, Number(def.costs && def.costs.heat) || 0);
     const cap = Math.max(0, Number(actor.cap) || 0);

@@ -83,6 +83,7 @@ export const survivalRun = {
     this._unsubs.push(this.bus.on('run:transitioned', (payload) => this._onTransitioned(payload)));
     this._unsubs.push(this.bus.on('run:ended', () => this._resetMachine()));
     this._unsubs.push(this.bus.on('run:loadoutReady', (payload) => this._onLoadoutReady(payload)));
+    this._unsubs.push(this.bus.on('run:openingPrepareRequested', () => this._prepareOpening()));
     this._unsubs.push(this.bus.on('run:arenaIntroComplete', () => this._onArenaIntroComplete()));
     this._unsubs.push(this.bus.on('run:waveIntroComplete', () => this._onWaveIntroComplete()));
     this._unsubs.push(this.bus.on(WAVE_CLEARED_SEAM, (payload) => this._onWaveCleared(payload)));
@@ -254,6 +255,17 @@ export const survivalRun = {
     const run = liveSurvivalRun(this.state);
     if (!run || run.phase !== 'loadout') return;
     this._loadoutReady = true;
+  },
+
+  _prepareOpening() {
+    const run = liveSurvivalRun(this.state);
+    if (this.state?.mode !== 'loading' || !run || run.phase !== 'loadout' || !this._loadoutReady) return;
+    // Populate the real first round before GPU preparation. Intro timers are
+    // useful between rounds; at launch they would hide the very hulls and rocks
+    // the loading screen needs to prepare, leaving invisible pursuers in flight.
+    this._requestTransition('loadout', 'arena_intro', REASON_READY);
+    this._requestTransition('arena_intro', 'wave_intro', REASON_INTRO_DONE);
+    if (!this._planFailed) this._requestTransition('wave_intro', 'active', REASON_WAVE_START);
   },
 
   _onArenaIntroComplete() {

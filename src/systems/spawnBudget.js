@@ -100,6 +100,10 @@ export function makeBudgetApi(state) {
   function available() { return Math.max(0, b.max - b.used); }
 
   function request(n, requesterId) {
+    // A Crucible round owns its combat population. Adventure patrols, missions
+    // and traffic cannot consume its slots or arrive as unscored attackers.
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive'
+      && !String(requesterId || '').startsWith('survival-wave:')) return 0;
     const want = clampInt(n, 0, HARD_MAX);
     if (want <= 0) return 0;
     const grant = Math.min(want, available());

@@ -221,6 +221,7 @@ export const encounterDirector = {
 
   update(dt, state) {
     if (state.mode && state.mode !== 'flight') return;
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     if (this._freightCustodyRebindPasses > 0) {
       this._freightCustodyRebindPasses--;
       this._restorePersistedFreightCustodies();

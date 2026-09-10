@@ -4195,8 +4195,9 @@ export function createHud(ctx, alerts) {
       syncSafetyAlerts(p, hullFrac, shieldFrac);
 
       if (slow) {
-        const showHull = vitalNumericVisible(hullFrac);
-        const showShield = vitalNumericVisible(shieldFrac);
+        const arcadeVitals = state.run?.kind === 'survival' && state.run.phase !== 'inactive';
+        const showHull = arcadeVitals || vitalNumericVisible(hullFrac);
+        const showShield = arcadeVitals || vitalNumericVisible(shieldFrac);
         const conditionLabel = `Hull ${Math.round(hullFrac * 100)} percent; shield ${Math.round(shieldFrac * 100)} percent`;
         if (schematic.getAttribute('aria-label') !== conditionLabel) schematic.setAttribute('aria-label', conditionLabel);
         if (schHullVal) setText(schHullVal, Math.max(0, Math.round(p.hull)) + '');

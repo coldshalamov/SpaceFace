@@ -10,6 +10,20 @@ import { tableSimAuthorityWuFromState } from '../src/render/tabletopPolicy.js';
 import { aiPorts } from '../src/systems/aiPorts.js';
 import { applyAIFiringIntent } from '../src/systems/aiFireIntent.js';
 
+test('the real arena roster commits its whole pack instead of reserving all but two firing lanes', () => {
+  const h = squadHarness();
+  for (const enemy of h.attackers) {
+    enemy.data.runCohort = 'survival';
+    enemy.data.ai.forcePlayerTarget = true;
+  }
+  const roster = h.helpers.aiRoster.liveListSquads(60);
+  const frames = h.helpers.aiSensors.liveFramesFor(roster[0].members.map(member => member.id), 60);
+  const result = command(roster[0], frames, 47);
+  const summary = assignmentSummary(result);
+  assert.equal(summary.screenCount, 0);
+  assert.equal(summary.targetCounts.reduce((sum, [, count]) => sum + count, 0), h.attackers.length);
+});
+
 test('actual SG06 sensor and roster ports allocate two light targets without a five-ship dogpile', () => {
   const h = squadHarness();
   const roster = h.helpers.aiRoster.liveListSquads(60);

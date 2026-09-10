@@ -471,9 +471,16 @@ async function main() {
   if (FULL) {
     const log = [];
     let guard = 0;
-    // Ten waves each carry a 180-240 tick cleanup plus a draft, so this needs room to breathe.
-    while (guard++ < 400) {
-      const phase = await page.evaluate(() => window.SF.state.run.phase);
+    let lastProgress = '';
+    const startedAt = Date.now();
+    while (guard++ < 400 && Date.now() - startedAt < 600000) {
+      const progress = await page.evaluate(() => ({ phase: window.SF.state.run.phase,
+        wave: window.SF.state.run.wave,
+        alive: window.SF.state.entityList.filter(e => e.alive && e.data?.runCohort === 'survival').length }));
+      const phase = progress.phase;
+      const progressKey = `${progress.wave}:${phase}`;
+      if (VERBOSE && progressKey !== lastProgress) console.log(`  WALK      wave ${progress.wave} · ${phase} · ${progress.alive} live`);
+      lastProgress = progressKey;
       if (phase === 'victory' || phase === 'ended') break;
       if (phase === 'active') {
         await page.waitForFunction(
@@ -495,7 +502,7 @@ async function main() {
       if (phase === 'draft') {
         await page.evaluate((gauntlet) => {
           if (!gauntlet) { window.SF.bus.emit('run:draftPickRequested', { offerId: null }); return; }
-          const card = document.querySelector('#screens .sf-cru-card');
+          const card = document.querySelector('#screens .sf-cru-card:not(:disabled)');
           if (card) card.click();
           else window.SF.bus.emit('run:draftPickRequested', { offerId: null });
         }, GAUNTLET);
@@ -546,6 +553,8 @@ async function main() {
       `phase ${won.phase} wave ${won.wave} · "${won.title}" — ${won.headline} · `
       + `${won.kills} kills, ${won.score} score, ${won.credits} cr, level ${won.level}, `
       + `build: ${won.picks.join('/') || '(none)'} · cleared ${log.join(' ')}`);
+    const noisy = pageErrors.filter(t => !/favicon|KHR_parallel_shader_compile|partsLibrary|opening submission pre-submit gate failed closed/i.test(t));
+    record('CLEAN', noisy.length === 0, noisy.length ? noisy.slice(0, 3).join(' | ') : 'no uncaught errors');
     // A won run is terminal; the death path below cannot run on the same session.
     return;
   }

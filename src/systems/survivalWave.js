@@ -36,19 +36,11 @@ export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
 /**
  * SWARM REINFORCEMENT (PQ-135).
  *
- * The arc's wave is a SCHEDULE: every body is named up front, and the wave ends when all of them
- * are dead. That produces the dead air a swarm game cannot have — the last twenty seconds of every
- * wave are spent hunting one straggler in an otherwise empty room.
- *
- * A swarm wave is a STREAM instead. It holds the room at `concurrent` bodies and ends on a
- * SIXTY-SECOND CLOCK, so:
- *   * the room never empties while the wave is live — a kill is replaced within a few ticks;
- *   * survivors are never chased. When the clock hits sixty seconds the wave ends with hostiles
- *     still on you, and they roll into the next wave as its opening pressure. There is no lull.
- *   * the stream does not stop at a kill count. Kills buy score, salvage and reservoir openings.
- *
- * Everything still goes through materializeWaveBatch — the same spawnBudget authority and the same
- * makeEnemySpawnSpec builder the arc uses. There is no swarm-only spawn path and no raised cap.
+ * The arc names its batches up front. Swarm fills a finite round quota in paced groups,
+ * maintaining concurrency until that quota has arrived. All survivors must be defeated;
+ * then the player spends, refits or saves and explicitly starts the next round.
+ * Both use materializeWaveBatch and the same physical enemy/weapon builders. Legacy timed
+ * plans remain readable, but the current ruleset never ends a round over a living champion.
  */
 function swarmStreamSeed(seed, wave, index) {
   const label = `swarm-reinforce-v1|w${wave}|n${index}`;
@@ -336,7 +328,7 @@ export const survivalWave = {
         this._pending[write++] = { ...item, entry: { ...entry, count: count - receipt.admitted } };
       }
       // A refused swarm batch must never shrink the planned figure — the stream will bring
-      // those bodies later. The clock, not a body count, ends the wave.
+      // those bodies later, up to the finite quota.
       if (!this._swarm) {
         this._plannedBodies = Math.max(0, this._plannedBodies - receipt.rejected);
       }
@@ -365,23 +357,14 @@ export const survivalWave = {
     const emergencyOnly = opts.emergencyOnly === true;
     if (!emergencyOnly && (this._cleared || !this._active)) return;
     if (!emergencyOnly && this._cursor < 0) return;
-    // AN EMPTY ROOM IS AN EMERGENCY, NOT A WAIT.
-    //
-    // The gap timer paces an ordinary top-up so bodies arrive as groups rather than a dribble. It
-    // must not apply when there is nothing on the board at all: once the wave opens below its
-    // ceiling (the crescendo) a fast player can clear the last survivor of the previous wave in the
-    // one beat before the new wave's burst lands, and a live walk caught exactly that — one empty
-    // moment in eighty-six. "The room is never empty" is the promise this whole ruleset is built
-    // on, so the first body back is never made to queue.
+    // Refill an empty active fight promptly while the quota is still owed. The finite
+    // remainder below stops arrivals after the earned clear; the armory owns that breathing room.
     const roomIsEmpty = this._cohort.size === 0 && this._pendingBodies() === 0;
     if (emergencyOnly && !roomIsEmpty) return;
     if (!emergencyOnly && !roomIsEmpty && this._cursor - this._lastReinforceTick < this._reinforceGap) return;
 
-    // NO TAPER and NO QUOTA STOP. The stream supplies the fight until the sixty-second boundary.
-    // Kill count does not stop arrivals. A living champion is not a gate.
-    //
-    // THE WAVE BUILDS. Elapsed-time fraction is the crescendo input: the room opens at a fraction
-    // of its ceiling and closes in as the minute burns down.
+    // Current rounds build pressure with resolved quota progress. Timed plans use elapsed
+    // time only for compatibility with older saved/replay plans.
     const durationSeconds = this._durationSeconds();
     const progress = this._swarm.killTarget
       ? this._resolved / Math.max(1, this._plannedBodies)

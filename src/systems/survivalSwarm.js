@@ -56,9 +56,8 @@ export function isSwarmRuleset(ruleset) {
 /**
  * Does this wave end in a menu?
  *
- * The arc opens a draft after EVERY wave, which is the single biggest reason it does not read as a
- * swarm game: you never fight twice in a row. Here the answer is no four times out of five — the
- * run goes cleanup -> (auto-resolved draft) -> next wave with nothing to click.
+ * Every Swarm round has a cash armory. Refit/extraction stops add a bench at
+ * their cadence; the player explicitly launches the next round after shopping.
  */
 export function swarmWaveEndsInMenu(wave) {
   return isSwarmDraftWave(wave) || isSwarmRefitWave(wave);

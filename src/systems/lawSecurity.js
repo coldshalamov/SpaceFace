@@ -171,6 +171,7 @@ export const lawSecurity = {
   },
 
   update(_dt, state) {
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     this._reconcileJobResponses();
     if (state.mode && state.mode !== 'flight') return;
     const own = ensureState(state);
@@ -485,6 +486,7 @@ export const lawSecurity = {
 
   _withdrawFromSanctuary(entity, target, jurisdiction) {
     const state = this.state;
+    if (entity.data?.runCohort === 'survival') return;
     const data = entity.data || (entity.data = {});
     const ai = data.ai || (data.ai = {});
     const firstWithdrawal = ai.sanctuaryWithdrawn !== true;

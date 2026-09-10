@@ -839,6 +839,8 @@ function sensorSelf(state, entity, capabilities = capabilitiesFor(state, entity)
     rot: wrapAngle(finite(entity.rot)),
     radius: positive(entity.radius, 1),
     hullFraction: fraction(entity.hull, entity.hullMax, 1),
+    moraleImmune: ai.moraleImmune === true,
+    arenaPursuit: entity.data?.runCohort === 'survival' && ai.forcePlayerTarget === true,
     energyFraction: fraction(entity.cap, entity.capMax, 1),
     heatFraction: clamp(finite(runtime && runtime.heat, 0) / heatMax, 0, 1),
     disabled: isDisabled(runtime, entity),

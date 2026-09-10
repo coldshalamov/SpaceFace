@@ -154,6 +154,17 @@ export function materializeWaveBatch(ctx, request) {
       // Cohort stamp travels with the body. Reward owners read it off the victim rather than
       // asking a global "is a run live?" question that would also capture ambient traffic.
       spec.data.runCohort = SURVIVAL_COHORT_TAG;
+      // Adventure's opening wasps use a softened teaching gun. Arena packs get a
+      // readable pulse burst that can threaten a stationary pilot, without hidden damage.
+      if (req.enemyId === 'wasp_swarmer') {
+        for (const weapon of spec.data.weapons || []) {
+          if (weapon.id === 'wpn_pulse_laser_s') {
+            weapon.dmg = 8;
+            weapon.rof = 3.6;
+            weapon.dps = weapon.dmg * weapon.rof;
+          }
+        }
+      }
       spec.data.runWave = Number.isInteger(req.wave) ? req.wave : 0;
       if (typeof req.role === 'string') spec.data.runRole = req.role;
       const spawned = helpers.spawnEntity(spec);

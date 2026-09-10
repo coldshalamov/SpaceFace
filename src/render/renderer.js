@@ -2,6 +2,7 @@
 // lifecycle. Exposes worldToScreen / raycastToPlane via ctx.helpers and a renderFrame() the loop
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
 import * as THREE from 'three';
+import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
 import { createSpaceBackground } from './spaceBackground.js';
 import * as parallaxLayers from './parallaxLayers.js';
@@ -4254,6 +4255,20 @@ export const render = {
       });
     };
     state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
+    this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({
+      compile: (root) => state.render.compileObjectPipelines(root),
+      prepare: (root, options) => state.render.prepareAuthoredGpuResidency(root, options),
+      yieldToMain: yieldToNextPresent,
+      isActive: (entity, root) => lifecycle.isActive() && entity.alive !== false
+        && this._meshes.get(entity.id) === root && state.mode === 'flight',
+      onReady: (entity, root) => {
+        root.userData.geometryPending = false;
+        root.userData.spacefaceGeometryResident = true;
+        registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, root);
+        this._persistentSubmitLanes.markDirty(entity.id, 'geometry-ready');
+      },
+      onError: (error, entity) => console.warn('[render] live geometry admission failed', entity.id, error),
+    });
     state.render.yieldToNextPresent = yieldToNextPresent;
     state.render.openingAdmission = openingCohort;
     const buildOpeningSubmissionPlan = () => {
@@ -6468,6 +6483,10 @@ export const render = {
         }
       }
 
+      if (mesh.userData?.geometryPending && this.state.mode === 'flight'
+        && Number.isFinite(this.state.render?.firstPlayableFrameAt)) {
+        void this._liveGeometryAdmissions?.enqueue(entity, mesh);
+      }
       const visibilityChanged = !(!posed && protectedRoot)
         && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
           isPlayer,

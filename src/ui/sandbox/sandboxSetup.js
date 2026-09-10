@@ -1129,6 +1129,7 @@ export function applySandboxSetup(ctx, config) {
       //    no wave ever plans.
       if (ctx.bus && typeof ctx.bus.emit === 'function') {
         ctx.bus.emit('run:loadoutReady', { source: 'crucible:launch', arenaId: setup.arenaId });
+        ctx.bus.emit('run:openingPrepareRequested', { source: 'crucible:launch' });
       }
     }
   }

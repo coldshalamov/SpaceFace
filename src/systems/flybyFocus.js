@@ -341,6 +341,9 @@ export const flybyFocus = {
       return;
     }
     const now = Number.isFinite(st.simTime) ? st.simTime : 0;
+    // The arena needs the generous latch window without turning every passing
+    // pursuer into three seconds of involuntary bullet time.
+    const arcade = st.run?.kind === 'survival' && st.run.phase !== 'inactive';
     const player = playerEntity(st);
     if (!player || player.alive === false || !hasFinitePos(player)) {
       if (focus.active) this._finish(player ? 'death' : 'target-lost', false, true);
@@ -361,7 +364,10 @@ export const flybyFocus = {
       if (invalidReason) {
         this._finish(invalidReason);
       } else {
-        if (this.timeEffects) this.timeEffects.set(TIME_EFFECT_SOURCE, FOCUS_REQUEST);
+        if (this.timeEffects) {
+          if (arcade) this.timeEffects.clear(TIME_EFFECT_SOURCE);
+          else this.timeEffects.set(TIME_EFFECT_SOURCE, FOCUS_REQUEST);
+        }
       }
     }
 
@@ -391,20 +397,23 @@ export const flybyFocus = {
     if (this._targetCooldowns) this._targetCooldowns.set(pick.id, now + TARGET_COOLDOWN_S);
     focus.targetId = pick.id;
     focus.zoom = 0.35;
-    if (this.timeEffects) this.timeEffects.set(TIME_EFFECT_SOURCE, FOCUS_REQUEST);
+    if (this.timeEffects) {
+      if (arcade) this.timeEffects.clear(TIME_EFFECT_SOURCE);
+      else this.timeEffects.set(TIME_EFFECT_SOURCE, FOCUS_REQUEST);
+    }
     if (this.bus) {
       this.bus.emit('flybyFocus:start', {
         targetId: pick.id,
         startedAt: now,
         until: focus.until,
         durationS: FOCUS_DURATION_S,
-        scale: FOCUS_SCALE,
+        scale: arcade ? 1 : FOCUS_SCALE,
         relativeSpeed: pick.relativeSpeed,
         closingSpeed: pick.closingSpeed,
         timeToClosestS: pick.timeToClosestS,
         closestSurfaceMiss: pick.closestSurfaceMiss,
       });
-      this.bus.emit('toast', {
+      if (!arcade) this.bus.emit('toast', {
         text: 'FLYBY FOCUS — latch window open',
         kind: 'good',
         ttl: 1.6,

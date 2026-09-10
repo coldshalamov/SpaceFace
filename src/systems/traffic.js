@@ -1312,6 +1312,7 @@ export const traffic = {
   },
 
   _onSectorEnter(p) {
+    if (this.state.run?.kind === 'survival' && this.state.run.phase !== 'inactive') return;
     const continuous = !!(p && (p.continuous || p.noTeleport));
     const requestedSectorId = (p && p.sector && p.sector.id)
       || (p && p.sectorId)
@@ -3469,6 +3470,7 @@ export const traffic = {
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
+    if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     ensureActivityClassified(state);
     this._ensureState();
     const list = state.traffic.freighters;

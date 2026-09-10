@@ -376,7 +376,13 @@ export const presentationAdapters = {
     // vfx and audio stay WORLD-scoped on purpose. An NPC's shield popping should spark at the NPC —
     // that is pillar 2, "read the battlefield at a glance" — and the audio lane is already
     // spatialized and voice-budgeted, so gating it would deaden the world rather than declutter it.
-    const playerScoped = finite(cue && cue.playerRelevance, 1) >= PLAYER_LANE_RELEVANCE_FLOOR;
+    // Breaking an enemy shield makes the player the source (relevance .88),
+    // but does not mean the player's shields failed. That alarm belongs to its
+    // recipient; world sparks and positional audio still play.
+    const warnsAboutRecipient = cue?.id === 'shield.collapse';
+    const playerScoped = warnsAboutRecipient
+      ? cue.targetId != null && cue.targetId === this.state?.playerId
+      : finite(cue && cue.playerRelevance, 1) >= PLAYER_LANE_RELEVANCE_FLOOR;
     const tutorialOwnsSignalAnnouncement = onboardingOwnsSignalAnnouncement(this.state, cue);
     const camera = playerScoped ? this._applyCamera(cue) : null;
     if (camera) outputs.camera = camera;

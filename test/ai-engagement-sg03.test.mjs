@@ -70,7 +70,8 @@ test('armed NPC burst opens its firing window without extra instant damage or do
   state.world.currentSectorId = 'sector_ceres_belt';
   state.entities.delete(3);
   state.entityList = state.entityList.filter(e => e.id !== 3);
-  enemy.data.weapons = [{ defId: 'wpn_autocannon_s' }];
+  enemy.data.weapons = [{ defId: 'wpn_autocannon_s', range: 520 }];
+  state.entities.get(1).pos.x = enemy.pos.x + 350;
   enemy.cap = 5; // enough for a real shell, below the former abstract burst surcharge
   const ctx = { state, bus: null, helpers: {} };
   const port = createSG03ActionPort(ctx);

@@ -260,6 +260,7 @@ function targetSlotFor(def, slots, fittings) {
     if (!fits(slots[i], def)) continue;
     const current = fittings[i];
     if (!current) return { slotIndex: i, replaces: null };
+    if (current === def.id) continue; // never charge for replacing a gun with itself
     const currentDef = WEAPON_BY_ID.get(current);
     const tier = currentDef && Number.isFinite(currentDef.tier) ? currentDef.tier : 0;
     if (tier < replaceTier) {
@@ -364,8 +365,10 @@ function offerDraftInner(input) {
   for (const offer of pool) {
     const def = FITTING_BY_ID.get(offer.defId);
     if (!def) continue;
-    // Never offer a verb the player already has — a duplicate is a stat bump wearing a name.
-    if (owned.has(offer.defId)) continue;
+    // Swarm can build a battery of a favourite gun. Gauntlet keeps its variety-focused draft;
+    // support modules remain distinct choices instead of stacking the same passive repeatedly.
+    const duplicateGun = src.ruleset === SWARM_RULESET && def.slotType === 'weapon';
+    if (owned.has(offer.defId) && !duplicateGun) continue;
     const target = targetSlotFor(def, slots, fittings);
     if (!target) continue;
     if (!withinCapacity(hullId, fittings, target.slotIndex, offer.defId)) continue;

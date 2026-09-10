@@ -471,9 +471,9 @@ export const crucibleScreen = {
     }
 
     // Hull — the starter names as words, the live one bright, its blurb beneath.
-    const hullBody = settingRow('Hull', 'sf-crd-row--hull');
+    const hullBody = settingRow('Starter build', 'sf-crd-row--hull');
     const hulls = el('ul', 'k-words k-words--row sf-crd-hulls');
-    hulls.setAttribute('aria-label', 'Hull');
+    hulls.setAttribute('aria-label', 'Starter build');
     const buttons = [];
     const hullSentence = el('p', 'k-sentence sf-crd-hull-sub', '');
     function syncHull() {

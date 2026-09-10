@@ -62,7 +62,42 @@
 .sf-swarm-flight .sf-ft { text-shadow: 0 2px 1px #07101a, 0 0 5px #07101a; }
 .sf-swarm-flight .sf-ft--hull { color: #fff0b3; }
 .sf-swarm-flight .sf-ft--big { font-size: 27px; font-weight: 900; }
-.sf-swarm-flight .sf-wpn-heat__label { width: 132px; max-width: 132px; flex: 0 0 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sf-swarm-flight #hud { --hud-cyan: #9ae6ee; --hud-amber: #ffd477; --hud-paper: #f0f7fa; --hud-muted: #b5cad4; }
+.sf-swarm-flight #hud .sf-leftstack { left: 20px; bottom: 20px; width: 310px; }
+.sf-swarm-flight #hud .sf-bars {
+  width: 310px; padding: 12px 14px; gap: 5px 10px;
+  grid-template-columns: 72px minmax(0, 1fr); grid-template-rows: auto repeat(4, auto);
+  background: linear-gradient(120deg, rgb(6 17 28 / 93%), rgb(6 17 28 / 65%));
+  border: 1px solid rgb(154 230 238 / 23%); border-radius: 5px;
+}
+.sf-swarm-flight #hud .sf-condition-metrics { gap: 18px; font-size: 12px; }
+.sf-swarm-flight #hud .sf-cond-stat strong { font-size: 19px; color: #f0f7fa; }
+.sf-swarm-flight #hud .sf-barrow { grid-template-columns: 48px minmax(30px, 1fr) 38px; gap: 8px; }
+.sf-swarm-flight #hud .sf-barrow__num { white-space: nowrap; text-align: right; }
+.sf-swarm-flight #hud .sf-schematic { width: 68px; height: 78px; }
+.sf-swarm-flight #hud .sf-schematic .sf-sch-ring { width: 66px; height: 76px; }
+.sf-swarm-flight #hud .sf-wpn-heats { gap: 6px; margin-top: 4px; }
+.sf-swarm-flight #hud .sf-wpn-heat { grid-template-columns: minmax(0, 175px) minmax(35px, 1fr); gap: 8px; }
+.sf-swarm-flight #hud .sf-wpn-heat__label { width: auto; max-width: none; font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sf-swarm-flight #hud .sf-wpn-heat__bar { height: 4px; }
+.sf-swarm-flight #hud .sf-command-deck { bottom: 125px; width: auto; min-width: 0; padding: 0; }
+.sf-swarm-flight #hud .sf-cluster { width: auto; min-width: 90px; padding: 6px 12px; background: rgb(6 17 28 / 65%); border: 0; }
+.sf-swarm-flight #hud .sf-stat[data-chip] { display: none !important; }
+.sf-swarm-flight #hud .sf-prail {
+  bottom: 20px; gap: 12px; padding: 10px 12px; max-width: calc(100vw - 380px);
+  background: rgb(6 17 28 / 93%); border: 1px solid rgb(154 230 238 / 23%); border-radius: 5px;
+}
+.sf-swarm-flight #hud .sf-prail__slots { gap: 7px; }
+.sf-swarm-flight #hud .sf-prail__label { color: #9bb4c2; font-size: 12px; letter-spacing: .09em; }
+.sf-swarm-flight #hud .sf-pslot { flex-direction: column; align-items: center; gap: 6px; min-width: 46px; padding: 5px 3px; }
+.sf-swarm-flight #hud .sf-pslot__key { color: #e4f4ff; font-size: 12px; font-weight: 700; }
+.sf-swarm-flight #hud .sf-pslot__name { font-size: 12px; color: #b5cad4; }
+.sf-swarm-flight #hud .sf-pslot[data-state="empty"] .sf-pslot__name { display: block; color: #93a3b0; }
+.sf-swarm-flight #hud .sf-pslot[data-state="armed"] .sf-pslot__name { color: #ffd477; }
+.sf-swarm-flight #hud .sf-pslot[data-state="cooling"] .sf-pslot__name { color: #e6ad8d; }
+.sf-swarm-flight #hud .sf-pslot[data-slot="9"],
+.sf-swarm-flight #hud .sf-pslot[data-slot="8"][data-state="locked"] { display: none; }
+.sf-swarm-flight #hud .sf-field-pill { bottom: 168px; }
 .sf-swarm-flight .sf-cluster:has(.sf-stat--speed) { width: auto; min-width: 90px; }
 .sf-crucible-door .k-title h1 { font-weight: 800; letter-spacing: -.055em; }
 .sf-crucible-door .k-word[aria-checked="true"] { color: #ffe4a8; }
@@ -76,6 +111,11 @@
   .sf-swarm-flight .sf-crun__wave, .sf-swarm-flight .sf-crun__label { color: CanvasText; }
 }
 @media (max-width: 760px) {
+  .sf-swarm-flight #hud .sf-leftstack { left: 10px; bottom: 112px; width: 245px; }
+  .sf-swarm-flight #hud .sf-bars { width: 245px; padding: 8px; grid-template-columns: 60px minmax(0, 1fr); }
+  .sf-swarm-flight #hud .sf-wpn-heat { grid-template-columns: minmax(0, 155px) minmax(24px, 1fr); }
+  .sf-swarm-flight #hud .sf-prail { max-width: calc(100vw - 20px); gap: 8px; padding: 8px; }
+  .sf-swarm-flight #hud .sf-command-deck { display: none; }
   .sf-crucible-armory .sf-cru-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sf-crucible-door .sf-crd-settings .k-row { display: block; }
   .sf-crucible-armory .sf-cru-foot { display: block; }

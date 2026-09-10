@@ -493,6 +493,15 @@ test('the full Helios starter sanctuary is protected even beyond the station pat
   assert.deepEqual(authorize(outside), { ok: true, reason: 'authorized' });
 });
 
+test('run cohorts use arena combat rules even when pursuit crosses Adventure station coordinates', () => {
+  const state = stateWith(authorizedAI(), { playerPos: { x: 900, z: 0 } });
+  state.run = { kind: 'survival', phase: 'active' };
+  state.entities.get(2).data.runCohort = 'survival';
+  assert.deepEqual(authorize(state), { ok: true, reason: 'authorized' });
+  state.run.phase = 'inactive';
+  assert.equal(authorize(state).reason, 'station_protection');
+});
+
 test('passive and hold-fire transitions clear stale weapon intent in the live AI port sweep', () => {
   const passive = stateWith(authorizedAI({ passive: true }));
   passive.entities.get(2).data.intent = { fire: true, fireGroup: 'primary' };

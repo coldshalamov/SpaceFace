@@ -4,6 +4,26 @@ import assert from 'node:assert/strict';
 import { ManeuverKind, ObjectiveKind } from '../src/ai/contracts.js';
 import { ManeuverPlanner } from '../src/ai/maneuver.js';
 
+test('a tracked attack actually steers and brakes around the collider between it and its flight point', () => {
+  const planner = new ManeuverPlanner({ seed: 7, config: { inputSlewPerTick: 1,
+    emergencyInputSlewPerTick: 1, torqueSlewPerTick: 1, emergencyTorqueSlewPerTick: 1 } });
+  const rock = { id: 90, kind: 'hazard', pos: { x: 90, z: 0 }, vel: { x: 0, z: 0 },
+    radius: 30, tags: ['solid'], confidence: 1 };
+  const perception = { tick: 1, self: { id: 2, team: 1, pos: { x: 0, z: 0 },
+    vel: { x: 70, z: 0 }, rot: 0, radius: 12, energyFraction: 1, heatFraction: 0 }, contacts: [rock] };
+  const maneuver = { kind: ManeuverKind.INTERCEPT, flightPoint: { x: 600, z: 0 },
+    formationSlot: { x: 600, z: 0 }, formationBound: 170, breakFormation: true };
+  const directive = { squadId: 'run', formation: { slot: { x: 600, z: 0 }, bound: 170, breakFormation: true } };
+  const request = planner.plan({ entityId: 2, tick: 1, perception, behavior: { maneuver }, directive });
+  assert.ok(Math.abs(request.targetHeading) > 0.6, 'the collider produces a real shoulder route');
+  assert.ok(Math.abs(request.forceLocal.right) > 0.02, 'tracked thrust follows that route too');
+  assert.equal(request.brake, true, 'carried momentum needs braking before the rock');
+  assert.equal(request.boost, false);
+  perception.contacts = [{ ...rock, pos: { x: 90, z: 250 } }];
+  const clear = planner.plan({ entityId: 2, tick: 2, perception, behavior: { maneuver }, directive });
+  assert.ok(Math.abs(clear.targetHeading) < 0.01, 'cover outside the corridor does not deflect the pass');
+});
+
 test('retreat steering ignores a different-team contact the sensor oracle marks neutral', () => {
   const planner = new ManeuverPlanner({
     seed: 7,

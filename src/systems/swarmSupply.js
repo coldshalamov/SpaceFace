@@ -14,8 +14,8 @@
 //     flying back into the thing you were escaping.
 //   * It expires. A cell you decide to leave is a cell you lose, so "grab it now or take the fight
 //     without it" is a real question with a clock on it.
-//   * It never fully heals. It is a top-up, not a reset — attrition still wins eventually, which
-//     is what makes a run END rather than stall.
+//   * Each cell is a modest top-up. Chaining risky recoveries can restore a skilled pilot;
+//     escalating enemy pressure ends the run, not an artificial ceiling on recovery.
 //
 // It leans HARDER when you are hurt. That is deliberate and it is not the game playing itself: a
 // player at 20% hull is one mistake from over, and a swarm mode that only drops medicine to people

@@ -51,12 +51,19 @@ the wonderfully excessive aftermath. Good direct shooting remains an enjoyable p
   Armed enemies' tactical firing actions authorize their mounted guns; they must not also apply
   instant damage through cover. Incoming damage needs a visible projectile, beam, contact or
   explicitly telegraphed physical field, with the actual weapon paying its firing costs once.
+  Crucible owns its combat population: Adventure patrols, freight, rescue lessons and encounter
+  directors must not occupy its ship budget or clear its rounds. Keep the shared terrain and
+  physical systems, with the run director supplying the opponents.
 - **A battlefield that explains the hit.** A brief directional contact flash, material fragments,
   visible hull recoil and clustered damage numbers tell the player what struck what. Luminous
   fire can be abundant while the player, incoming danger, ropes and collision surfaces stay clear.
   Damage numbers are useful combat feedback here; make them configurable and aggregate rapid hits.
   A big collision gets a stronger accent than routine fire. Avoid routine slow motion that keeps
   stealing the speed of the chase. Reduced flash/motion retains direction and causality.
+  A passing enemy may widen a useful latch window, but must not repeatedly impose three seconds
+  of half-speed play. Enemy shield breaks belong on the enemy; a full-screen shield alarm means
+  the player's shields broke. Prepare the real opening cohort and terrain before flight, then
+  admit new geometry in paced work during play. An invisible physical obstacle is a failed arena.
 - **A HUD that serves the next move.** Hull, boost and the ready/cooldown state of the gun, trap
   and web belong in a small combat cluster. Chain and wave information are secondary. Bindings
   come from the active input scheme. The field itself carries threat and opportunity; neither
@@ -90,6 +97,9 @@ styles immediately, then let purchases transform them. Cards describe a changed 
 cost in one glance: returning bank shot,
 web forks, delayed double burst, blast-propelled escape, volatile wreck, orbiting debris shield.
 Useful numerical upgrades may support a build; changing a radius alone is not a new verb.
+Buying another copy of a favourite gun for a different compatible mount is a valid build choice.
+Never charge to replace a fitting with itself. Show fitted weapon names, hull/shield values and
+the live bindings for tools plainly; don't clip names to satisfy a typography rule.
 
 Kill chains reward continuation and ingenuity without demanding frantic kill-stealing. Near
 misses, successful links, banks and committed movement may bridge a setup window when their
@@ -123,6 +133,17 @@ through its money, research, contracts and exploration. Acquiring a favourite Sw
 should mean "now I can use this everywhere." Share the toy's behavior, not its unlock timetable.
 Swarm purchases never grant free Adventure gear, research or currency. Adventure's starter must
 still be fun; do not withhold basic responsive flight and satisfying shooting as progression.
+
+Arena balance uses the hull's authored shield capacity and regeneration, including earned fitting
+bonuses. Adventure's extra recovery assistance does not make a stationary arena pilot immune to
+the opening pack. Wasps use a visible mounted pulse burst; attack permission follows that gun's
+range and never adds invisible damage. Ordinary enemy piloting must route around rock colliders
+through real thrust and braking. Knockback, webs and committed escape lines can defeat that
+avoidance. Attrition cannot order a run cohort to leave, and Adventure station jurisdiction cannot
+cancel its pursuit or fire. These are gameplay requirements, not extra benchmark projects.
+The squad's target allocation must also commit the full arena pack; removing an opening-session
+attacker cap is insufficient if a second layer still assigns only two guns and parks the rest.
+Preserve physical friendly-fire lanes, distinct attack tells and a usable exit between arrivals.
 
 Build the connected opening loop first, then carry its interactions through every arena, build,
 boss and replay surface. This order retains the scope: a polished opening alone does not finish

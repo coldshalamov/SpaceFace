@@ -40,10 +40,7 @@ export const SWARM_WAVE_DURATION_TICKS = 3600;
 export const SWARM_WAVE_MAX = 999;
 
 /**
- * Every fifth wave opens the upgrade draft. Every tenth ALSO opens the refit bench after it —
- * both, not one instead of the other, because a swarm run that skipped its wave-10 card to get a
- * bench would be paying for the bench with the upgrade it came for. The bench is also the only
- * surface a ten-wave extraction window is ever open on.
+ * Every round opens the cash armory. Every tenth also opens the refit/extraction bench.
  */
 export const SWARM_DRAFT_EVERY = 1;
 export const SWARM_REFIT_EVERY = 10;
@@ -86,7 +83,7 @@ export const SWARM_FULL_PRESSURE_AT = 0.66;
  * The live concurrency target partway through a wave. Pure, so the crescendo is one readable line
  * rather than something hidden in the spawner.
  *
- * `progress` is elapsed-time fraction of the sixty-second wave, 0..1.
+ * `progress` is the resolved fraction of the current round's finite quota, 0..1.
  *
  * Wave 1's ceiling IS the opening floor (ten hulls). Thinning that pile below ten starved unlucky
  * seeds more than it stretched lucky ones (PQ-174.01). Raising the kill quota stalled or killed
@@ -262,7 +259,7 @@ export function swarmReinforceCount(deficit) {
  */
 export const SWARM_SPAWN_DISTANCE = 165;
 
-/** Ticks of breathing room after the sixty-second clock. Under a second: long enough to read, short enough to hurt. */
+/** Brief settlement beat before the player-controlled armory break. */
 export const SWARM_CLEANUP_TICKS = 45;
 
 const GATES = Object.freeze(['nw', 'ne', 'se', 'sw', 'front', 'rear', 'diagonal_a', 'diagonal_b']);
@@ -409,12 +406,8 @@ export function swarmConcurrent(wave) {
 }
 
 /**
- * CHIP VALUATION IS A CONSTANT CURVE, NOT THE WAVE CLOCK.
- *
- * A wave lasts sixty seconds. These numbers used to be the kill quota that ended the wave; they
- * are now only `rewardReferenceKills`, so one body is still worth a whole, legible 2 credits.
- * They climb early and flatten at SWARM_QUOTA_CAP so a deep wave does not inflate the purse
- * forever. They do not stop the stream and they do not end the wave.
+ * Finite round quotas also anchor chip valuation. They climb early and flatten so deeper
+ * rounds gain variety and pressure without turning into a health or currency treadmill.
  */
 export const SWARM_QUOTA_CAP = 48;
 
@@ -427,7 +420,7 @@ export const SWARM_QUOTA_CAP = 48;
  * The thing that actually matters is an ABSOLUTE margin: you must put down a full room's worth
  * and then some, so the stream always gets to do its work and the wave always has a middle.
  *
- * Wave 1 is the exception: it must last 45–90 s (PQ-174.01) without inflating hull values.
+ * Wave 1 is the exception: it should reach the first purchase quickly without inflating hull.
  * Quota 15 against a 10-hull pile clears in 23–35 s on the fast kits (.00 bench). Quota 24
  * put two of nine cells inside 45–90 s and left seven unfinished — a stall after ~22 kills,
  * or a death on the longer clock. Thinning the opening room starved unlucky seeds worse.
@@ -646,7 +639,7 @@ export function swarmPlanBlock(wave) {
     spawnCap: SWARM_SPAWN_CAP,
     level: swarmLevel(w),
     boss: isSwarmBossWave(w),
-    // Identity only. A living champion carries into the next wave; the clock never waits for it.
+    // A champion must be defeated before the finite round clears.
     requireBoss: isSwarmBossWave(w),
     bossId: boss ? boss.id : null,
     bossLabel: boss ? boss.label : null,

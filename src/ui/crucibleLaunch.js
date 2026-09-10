@@ -20,9 +20,8 @@ export const CRUCIBLE_ARENA_ID = 'helios_core';
 /**
  * WHAT THE CRUCIBLE BUTTON PLAYS.
  *
- * Swarm is the default and the headline: constant pressure, a kill quota, no menu four waves out
- * of five, and no last wave. The authored thirty-wave arc is still here under `scored` — it is a
- * different, slower ruleset and it is not what "Crucible" means from the main menu.
+ * Swarm is the default: clear a finite pack, spend or save, then launch the next
+ * round. It has no last round. The authored thirty-wave Gauntlet remains under `scored`.
  */
 export const CRUCIBLE_DEFAULT_RULESET = SWARM_RULESET;
 // The fresh Crucible route teaches shove physics immediately; benchmark package IDs stay stable.

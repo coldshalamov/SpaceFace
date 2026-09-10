@@ -472,6 +472,26 @@ for (const event of ['save:restoring', 'save:loaded', 'game:started', 'dock:dock
   old.system.destroy();
 }
 
+// Pursuit keeps the latch assist, but an arena full of fast contacts must not
+// keep stealing the player's speed or announcing the same tutorial toast.
+for (const ruleset of ['swarm', 'arc']) {
+  const f = runtimeFor([hostile(2)]);
+  f.state.run = { kind: 'survival', phase: 'active', ruleset };
+  const starts = [], toasts = [];
+  f.bus.on('flybyFocus:start', payload => starts.push(payload));
+  f.bus.on('toast', payload => toasts.push(payload));
+  f.system.update(DT, f.state);
+  assert.equal(f.state.player.flybyFocus.active, true);
+  assert.ok(f.state.player.flybyFocus.latchScale > 1);
+  assert.equal(f.state.timeScale, 1);
+  assert.equal(starts[0].scale, 1);
+  assert.equal(toasts.length, 0);
+  f.timeEffects.set('other-effect', { scale: 0.75 });
+  f.system.update(DT, f.state);
+  assert.equal(f.state.timeScale, 0.75, 'Focus does not clear another effect');
+  f.system.destroy();
+}
+
 const source = readFileSync(new URL('../src/systems/flybyFocus.js', import.meta.url), 'utf8');
 assert.doesNotMatch(source, /Math\.random\s*\(/, 'Focus sim code must not use Math.random');
 assert.doesNotMatch(source, /(?:Date|performance)\.now\s*\(/, 'Focus sim code must not use wall-clock time');
