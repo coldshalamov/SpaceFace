@@ -7517,7 +7517,7 @@
       "priority": 131,
       "title": "Monofilament sweep",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7539,8 +7539,10 @@
         "npm run check:massline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
-      "brief": "Swing arc cuts lines and staggers lights; visible blade-line; costs line integrity. DONE WHEN: Cuts an NPC tether in one pass; scenario + capture."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-030.00-REPORT.md"
+      ],
+      "brief": "Swing arc cuts lines and staggers lights; visible blade-line; costs line integrity. DONE WHEN: Cuts an NPC tether in one pass; scenario + capture. | 2026-09-10: headless proof reproduced (cut in one pass, seed 30000; a cut now costs 0.2 line integrity). OPEN on the capture clause and the visible-blade-line claim — batched into one headed vision pass with PQ-027.00 and the PQ-161 telegraphs."
     },
     {
       "id": "PQ-030.01",
@@ -7548,7 +7550,7 @@
       "priority": 132,
       "title": "Transverse snare",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7570,7 +7572,9 @@
         "npm run check:massline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-030.01-REPORT.md"
+      ],
       "brief": "A line across a lane catches the first crosser and yanks it into the anchor; the clothesline toy. DONE WHEN: A pursuer at full burn is caught and tumbled (B11) in the scenario."
     },
     {
