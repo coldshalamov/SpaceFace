@@ -116,14 +116,14 @@ export const MODULES = [
   },
   {
     id: 'mod_tractor_beam_m', name: 'Tractor Beam M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 12000, requiresTech: 'tech_tractor_systems',
-    // magnetRange must beat mining.MAGNET_RANGE floor (420) so the fitted tractor is player-felt.
+    // magnetRange must beat mining.MAGNET_RANGE floor (800) so the fitted tractor is player-felt.
     // Salvage cutters snapshot this head onto their wreck latch so the player sees the pick-up verb.
-    energyDraw: 3, mods: { magnetRange: 560, masslineHeadId: 'tractor' },
+    energyDraw: 3, mods: { magnetRange: 1200, masslineHeadId: 'tractor' },
   },
   {
     id: 'unique_tideline_tractor', baseId: 'mod_tractor_beam_m', name: 'Tideline Tractor', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,
     energyDraw: 6, purchasable: false, unique: true, salvageOnly: true,
-    mods: { magnetRange: 780, tractorWholeWrecks: true, masslineHeadId: 'tractor' },
+    mods: { magnetRange: 1600, tractorWholeWrecks: true, masslineHeadId: 'tractor' },
     variantBonuses: { magnetRangePct: 0.80, energyDrawPct: 1.00, tractorWholeWrecks: true },
   },
   {

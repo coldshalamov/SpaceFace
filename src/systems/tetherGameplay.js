@@ -18,11 +18,12 @@ import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js
 import { createMasslineRuntime } from '../core/constraints/masslineController.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
-import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { isMassSeedTetherEligible } from './massSeed.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
+import { lineSweepContact } from './masslineImpacts.js';
 
 const TETHER_DEF_ID = 'tether_standard';
 // PQ-137.09 — the tag a shared helm loss carries, and the loop guard. A shared tumble never
@@ -46,6 +47,9 @@ export const ELASTIC_WHIP_GLOW_STRETCH_RATIO = 0.28;
 const MONOFILAMENT_HEAD_ID = 'monofilament_sweep';
 // One taut cut spends the winch's own integrity. Slack never reaches this spend.
 export const MONOFILAMENT_CUT_INTEGRITY_COST = 0.2;
+// Full reduced-mass coupling: the blade dumps its transverse momentum into what it cuts.
+export const MONOFILAMENT_SWEEP_COUPLING = 1;
+const MONOFILAMENT_STAGGER_TRAVEL_PAD = 32;
 const NPC_LINE_CUT_TAUT_RATIO = 0.92;
 const NPC_BRIDLE_CUT_COOLDOWN_TICKS = 90;
 const NPC_BRIDLE_CUT_RANGE_WU = 180;
@@ -128,6 +132,9 @@ export const tetherGameplay = {
     this._bridleActive = null;
     this._npcBridleCutTicks = new Map();
     this._monofilamentCutIds = new Set();
+    this._monofilamentKickIds = new Set();
+    this._monofilamentVictimScratch = [];
+    this._monofilamentQueryCenter = { x: 0, z: 0 };
     this._hostileSweepCutIds = new Set();
     this._monofilamentLatchId = null;
     this._bridleAdoptionPending = true;
@@ -145,6 +152,7 @@ export const tetherGameplay = {
       this._lastStrainT = -Infinity;
       this._npcBridleCutTicks.clear();
       this._monofilamentCutIds.clear();
+      this._monofilamentKickIds.clear();
       this._hostileSweepCutIds.clear();
       this._monofilamentLatchId = null;
       this._cancelDrillApproach('save_loaded');
@@ -155,6 +163,7 @@ export const tetherGameplay = {
       this._cancelDrillApproach('new_game');
       this._npcBridleCutTicks.clear();
       this._monofilamentCutIds.clear();
+      this._monofilamentKickIds.clear();
       this._hostileSweepCutIds.clear();
       this._monofilamentLatchId = null;
       this._resetAcquisitionRuntime(this.state);
@@ -240,7 +249,8 @@ export const tetherGameplay = {
     const now = Number.isFinite(state.simTime) ? state.simTime : state.tick / 60;
     this._reconcileActive(attachments, state);
     this._adoptExisting(attachments, state);
-    this._cutNpcLinesWithMonofilament(attachments, state, player);
+    this._cutNpcLinesWithMonofilament(attachments, state, player, dt);
+    this._staggerLightsWithMonofilament(attachments, state, player, dt);
     this._cutPlayerLinesWithHostileSweep(attachments, state, player);
     this._startPendingDrillApproach(attachments, state, player);
     this._reconcileTwinBridle(attachments, state, player, now);
@@ -1456,8 +1466,9 @@ export const tetherGameplay = {
   },
 
   // PQ-030.00 — a taut Monofilament line is a blade. Crossing an NPC tether severs that line in
-  // one pass. Hull stagger stays with masslineImpacts; this owner only cuts other attachments.
-  _cutNpcLinesWithMonofilament(attachments, state, player) {
+  // one pass and dumps the blade's transverse momentum into both freed bodies. They keep whatever
+  // velocity they already had; this owner never writes position or clamps given momentum.
+  _cutNpcLinesWithMonofilament(attachments, state, player, dt) {
     if (!this._active || !player || !player.pos || !attachments) return;
     if (!massline2Flag('masslineHeadMonofilamentSweep', state.runtime && state.runtime.features)) return;
     const blade = attachments.get(this._active.attachmentId);
@@ -1476,6 +1487,7 @@ export const tetherGameplay = {
     if (this._monofilamentLatchId !== blade.id) {
       this._monofilamentLatchId = blade.id;
       this._monofilamentCutIds.clear();
+      this._monofilamentKickIds.clear();
     }
 
     const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
@@ -1494,6 +1506,10 @@ export const tetherGameplay = {
       this._monofilamentCutIds.add(other.id);
       const result = attachments.breakAttachment(other, 'monofilament_sweep', player.id);
       if (result && result.ok) {
+        const contact = segmentIntersection(player.pos, mass.pos, source.pos, target.pos)
+          || { x: (source.pos.x + target.pos.x) * 0.5, z: (source.pos.z + target.pos.z) * 0.5 };
+        impartMonofilamentMomentum(this.bus, state, source, player, mass, contact, this._monofilamentKickIds);
+        impartMonofilamentMomentum(this.bus, state, target, player, mass, contact, this._monofilamentKickIds);
         const integrity = spendMonofilamentIntegrity(blade, MONOFILAMENT_CUT_INTEGRITY_COST);
         if (this.bus && typeof this.bus.emit === 'function') {
           this.bus.emit('massline:npcLineCut', {
@@ -1504,9 +1520,64 @@ export const tetherGameplay = {
             ownerId: other.ownerId,
             targetId: other.targetId,
             integrity,
+            contact,
           });
         }
       }
+    }
+  },
+
+  // Lights the filament itself clips keep travelling: additive kick along the blade, then B11
+  // decides helm-loss. Hit points are not a lever.
+  _staggerLightsWithMonofilament(attachments, state, player, dt) {
+    if (!this._active || !player || !player.pos || !player.vel || !attachments) return;
+    if (!massline2Flag('masslineHeadMonofilamentSweep', state.runtime && state.runtime.features)) return;
+    const blade = attachments.get(this._active.attachmentId);
+    if (!blade || blade.state !== 'active') return;
+    const headId = blade.tetherPolicy && blade.tetherPolicy.headId
+      || player.data && player.data.derived && player.data.derived.masslineHeadId;
+    if (headId !== MONOFILAMENT_HEAD_ID) return;
+    const mass = state.entities && state.entities.get && state.entities.get(blade.targetId);
+    if (!mass || !mass.pos) return;
+    const span = Math.hypot(mass.pos.x - player.pos.x, mass.pos.z - player.pos.z);
+    const rest = Number.isFinite(blade.restLength) && blade.restLength > 0 ? blade.restLength : span;
+    const phase = state.player && state.player.tether && state.player.tether.phase;
+    const taut = phase === 'loaded' || phase === 'overload' || span >= rest * NPC_LINE_CUT_TAUT_RATIO;
+    if (!taut) return;
+
+    if (this._monofilamentLatchId !== blade.id) {
+      this._monofilamentLatchId = blade.id;
+      this._monofilamentCutIds.clear();
+      this._monofilamentKickIds.clear();
+    }
+
+    const dx = finite(mass.pos.x) - finite(player.pos.x);
+    const dz = finite(mass.pos.z) - finite(player.pos.z);
+    const center = this._monofilamentQueryCenter || (this._monofilamentQueryCenter = { x: 0, z: 0 });
+    center.x = finite(player.pos.x) + dx * 0.5;
+    center.z = finite(player.pos.z) + dz * 0.5;
+    const queryRadius = Math.hypot(dx, dz) * 0.5 + MONOFILAMENT_STAGGER_TRAVEL_PAD;
+    const fallback = state.entityIndex && state.entityIndex.ready && Array.isArray(state.entityIndex.shipLike)
+      ? state.entityIndex.shipLike
+      : (state.entityList || []);
+    const candidates = queryNearbyEntities(
+      state,
+      center,
+      queryRadius,
+      this._monofilamentVictimScratch || (this._monofilamentVictimScratch = []),
+      fallback,
+    );
+    const playerTeam = player.team;
+    const step = Number.isFinite(dt) ? dt : 1 / 60;
+    for (const victim of candidates) {
+      if (!victim || !victim.alive || !victim.pos || !victim.vel) continue;
+      if (victim.type !== 'ship' && victim.type !== 'drone') continue;
+      if (victim.id === player.id || victim.id === mass.id) continue;
+      if (this._monofilamentKickIds.has(victim.id)) continue;
+      if (!isHostileToPlayer(victim, playerTeam, state)) continue;
+      const contact = lineSweepContact(player, mass, victim, step);
+      if (!contact) continue;
+      impartMonofilamentMomentum(this.bus, state, victim, player, mass, contact.pos, this._monofilamentKickIds);
     }
   },
 
@@ -2729,6 +2800,99 @@ function segmentsProperlyCross(a, b, c, d) {
   const o3 = orient2d(c, d, a);
   const o4 = orient2d(c, d, b);
   return o1 * o2 < 0 && o3 * o4 < 0;
+}
+
+function segmentIntersection(a, b, c, d) {
+  const den = (a.x - b.x) * (c.z - d.z) - (a.z - b.z) * (c.x - d.x);
+  if (!(Math.abs(den) > 1e-12)) return null;
+  const t = ((a.x - c.x) * (c.z - d.z) - (a.z - c.z) * (c.x - d.x)) / den;
+  const u = ((a.x - c.x) * (a.z - b.z) - (a.z - c.z) * (a.x - b.x)) / den;
+  if (!(t > 0) || !(t < 1) || !(u > 0) || !(u < 1)) return null;
+  return { x: a.x + t * (b.x - a.x), z: a.z + t * (b.z - a.z), t };
+}
+
+function bodyMassOf(entity) {
+  return positive(entity && entity.physicsBody && entity.physicsBody.mass, positive(entity && entity.mass, 1));
+}
+
+function twoBodyReducedMass(a, b) {
+  const am = bodyMassOf(a);
+  const bm = bodyMassOf(b);
+  return am > 0 && bm > 0 ? (am * bm) / (am + bm) : 0;
+}
+
+function sweepKickVector(player, mass, contact) {
+  if (!player || !player.pos || !mass || !mass.pos) return null;
+  const dx = finite(mass.pos.x) - finite(player.pos.x);
+  const dz = finite(mass.pos.z) - finite(player.pos.z);
+  const len = Math.hypot(dx, dz);
+  if (!(len > 1e-6)) return null;
+  const nx = -dz / len;
+  const nz = dx / len;
+  const t = Number.isFinite(contact && contact.t)
+    ? Math.max(0, Math.min(1, contact.t))
+    : parameterOnSegment(player.pos, mass.pos, contact);
+  const lvx = finite(player.vel && player.vel.x) * (1 - t) + finite(mass.vel && mass.vel.x) * t;
+  const lvz = finite(player.vel && player.vel.z) * (1 - t) + finite(mass.vel && mass.vel.z) * t;
+  const signed = lvx * nx + lvz * nz;
+  const speed = Math.abs(signed);
+  if (!(speed > 1e-6)) return null;
+  const sign = signed >= 0 ? 1 : -1;
+  return { nx: nx * sign, nz: nz * sign, speed, reducedMass: twoBodyReducedMass(player, mass), t };
+}
+
+function parameterOnSegment(a, b, p) {
+  if (!p) return 0.5;
+  const dx = finite(b.x) - finite(a.x);
+  const dz = finite(b.z) - finite(a.z);
+  const lenSq = dx * dx + dz * dz;
+  if (!(lenSq > 1e-12)) return 0.5;
+  return Math.max(0, Math.min(1, ((finite(p.x) - finite(a.x)) * dx + (finite(p.z) - finite(a.z)) * dz) / lenSq));
+}
+
+function impartMonofilamentMomentum(bus, state, body, player, mass, contact, kickIds) {
+  if (!body || body.alive === false || !body.pos) return;
+  if (body.id === player.id || body.id === mass.id) return;
+  if (kickIds && kickIds.has(body.id)) return;
+  const kick = sweepKickVector(player, mass, contact);
+  if (!kick) return;
+  const bodyM = bodyMassOf(body);
+  const bladeM = kick.reducedMass;
+  if (!(bodyM > 0) || !(bladeM > 0)) return;
+  const mu = (bladeM * bodyM) / (bladeM + bodyM);
+  const impulseMag = mu * kick.speed * MONOFILAMENT_SWEEP_COUPLING;
+  if (!(impulseMag > 0)) return;
+  const jx = kick.nx * impulseMag;
+  const jz = kick.nz * impulseMag;
+  queuePhysicsImpulse(body, { x: jx, y: 0, z: jz });
+  const cx = finite(contact && contact.x, finite(body.pos.x));
+  const cz = finite(contact && contact.z, finite(body.pos.z));
+  const rx = cx - finite(body.pos.x);
+  const rz = cz - finite(body.pos.z);
+  queuePhysicsTorqueImpulse(body, { x: 0, y: rx * jz - rz * jx, z: 0 });
+  if (kickIds) kickIds.add(body.id);
+  if (!combatFlag('weaponImpulseConsequences', state.runtime && state.runtime.features)) return;
+  if (body.type !== 'ship' && body.type !== 'drone') return;
+  if (body.id === state.playerId) return;
+  publishHitstunImpulse(bus, {
+    source: 'monofilament_sweep',
+    victimId: body.id,
+    attackerId: player.id,
+    attackerMass: bladeM,
+    victimMass: bodyM,
+    deltaV: kick.speed,
+    dirX: kick.nx,
+    dirZ: kick.nz,
+    hitSide: signedHitSide(body, { dirX: kick.nx, dirZ: kick.nz }, { pos: { x: cx, z: cz } }, body.id),
+    provenance: Object.freeze({
+      schemaVersion: 1,
+      kind: 'massline',
+      source: 'monofilament_sweep',
+      tag: 'monofilament_sweep_cut',
+      victimId: body.id,
+    }),
+    tick: state.tick,
+  });
 }
 
 function spendMonofilamentIntegrity(blade, amount) {

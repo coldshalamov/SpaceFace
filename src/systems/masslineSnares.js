@@ -10,6 +10,7 @@
 
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { Masks } from '../core/entity.js';
+import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { lineSweepContact } from './masslineImpacts.js';
@@ -30,6 +31,8 @@ const SNARE_ANCHOR_HULL = 28;
 const SNARE_ANCHOR_BODY_MASS = 40;
 const SNARE_MAX_TENSION = 5400;
 const ANCHOR_PROFILE_ID = 'combat_profile_tether_anchor';
+export const TRANSVERSE_SNARE_CATCH_COUPLING = 0.65;
+export const TRANSVERSE_SNARE_YANK_COUPLING = 0.35;
 export const TETHER_CONTROL_RAIDER_TELEGRAPH = Object.freeze({
   kind: 'tether_control_raider',
   cue: 'attach_spool',
@@ -414,7 +417,45 @@ export const masslineSnares = {
       transverseSpeed: contact.transverseSpeed,
       pos: contact.pos,
     });
+    this._impartSnareCatchMomentum(state, victim, keptAnchor, source, target, contact);
     this._tumbleCaughtPursuer(state, victim, keptAnchor, contact);
+  },
+
+  _impartSnareCatchMomentum(state, victim, keptAnchor, source, target, contact) {
+    if (!victim || !victim.pos || !keptAnchor || !keptAnchor.pos) return;
+    if (victim.id === state.playerId) return;
+    const victimMass = Math.max(
+      0.1,
+      finite(victim.physicsBody && victim.physicsBody.mass, finite(victim.mass, 1)),
+    );
+    const anchorMass = Math.max(
+      0.1,
+      finite(keptAnchor.physicsBody && keptAnchor.physicsBody.mass, finite(keptAnchor.mass, SNARE_ANCHOR_BODY_MASS)),
+    );
+    const reduced = (victimMass * anchorMass) / (victimMass + anchorMass);
+    const deltaV = finite(contact && contact.transverseSpeed);
+    if (!(deltaV > 0) || !(reduced > 0)) return;
+
+    const ldx = finite(target && target.pos && target.pos.x) - finite(source && source.pos && source.pos.x);
+    const ldz = finite(target && target.pos && target.pos.z) - finite(source && source.pos && source.pos.z);
+    const llen = Math.hypot(ldx, ldz);
+    const nx = llen > 1e-6 ? -ldz / llen : 1;
+    const nz = llen > 1e-6 ? ldx / llen : 0;
+    const vx = finite(victim.vel && victim.vel.x);
+    const vz = finite(victim.vel && victim.vel.z);
+    const alongN = vx * nx + vz * nz;
+    const catchSign = alongN >= 0 ? -1 : 1;
+    const catchMag = reduced * deltaV * TRANSVERSE_SNARE_CATCH_COUPLING;
+    const yankDx = finite(keptAnchor.pos.x) - finite(contact && contact.pos && contact.pos.x);
+    const yankDz = finite(keptAnchor.pos.z) - finite(contact && contact.pos && contact.pos.z);
+    const yankLen = Math.hypot(yankDx, yankDz);
+    const yankMag = reduced * deltaV * TRANSVERSE_SNARE_YANK_COUPLING;
+    const jx = nx * catchSign * catchMag + (yankLen > 1e-6 ? (yankDx / yankLen) * yankMag : 0);
+    const jz = nz * catchSign * catchMag + (yankLen > 1e-6 ? (yankDz / yankLen) * yankMag : 0);
+    queuePhysicsImpulse(victim, { x: jx, y: 0, z: jz });
+    const rx = finite(contact && contact.pos && contact.pos.x) - finite(victim.pos.x);
+    const rz = finite(contact && contact.pos && contact.pos.z) - finite(victim.pos.z);
+    queuePhysicsTorqueImpulse(victim, { x: 0, y: rx * jz - rz * jx, z: 0 });
   },
 
   _tumbleCaughtPursuer(state, victim, keptAnchor, contact) {
