@@ -131,6 +131,13 @@ never stops to ask. If a session runs out before its last phase, the checkpoint 
 and the remainder becomes the next session's first phase. One follow-up turn may request exactly
 the items `NOTES.md` lists as missing; after that the controller takes the rest locally.
 
+**The session's environment.** The ChatGPT 6 Pro VM has internet (web search, fetch, curl, package
+managers) and a GitHub connector that reads repository files by path and opens pull requests; it
+cannot clone the ~20 GB repository. Session zips therefore carry what a session needs (prior
+returns, a font baseline, libraries, a pinned source snapshot for S4/S5), sessions may fetch better
+typefaces and libraries themselves under the bundling-licence rule, and S4/S5 return code as a pull
+request as well as a zip.
+
 **Phase specs by session.** S1: P01, P02, P10, P11, P12, P13, P14, P17 · S2: P03, P04, P15, P16 ·
 S3: P05 · S4: P20, P21, P22, P30–P38 · S5: P40, P41, P42. Local lanes carry the same specs
 (L-A = P20, L-B = P16, L-C = P21/P22/P30–P38, L-D = P40–P42) for the engine half of each.

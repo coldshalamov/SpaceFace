@@ -63,8 +63,12 @@ you did not produce. If a capability is unavailable (image generation, a font, a
   `plate-<screen>[-v<n>].png`) when the scene was generated rather than described.
 - Use the exact live strings from `01_GAME_DOSSIER.md` §4 for the screen. Do not invent menu
   items, numbers or names. Placeholder numbers are allowed only where the dossier gives none.
-- Fonts in frames: name them in `kit-notes.md`; only faces licensed under the SIL OFL (or
-  equivalent free, offline-vendorable licence) may be named. If your image tool cannot render an
+- Fonts: name every face in `kit-notes.md`. The game is a packaged desktop app that bundles its
+  fonts, so a face qualifies only if its licence allows bundling in a shipped game (SIL OFL,
+  Apache, the Fontshare free licence, or a purchased app licence). Search the web for the best
+  such face; the files in `inputs/` are a baseline, not a limit. Deliver the font files and their
+  licence with the kit. You may recommend a commercial face for the owner to buy, with a
+  rationale, while delivering with the best free alternative. If your image tool cannot render an
   exact face, approximate it and *say which face is intended*.
 - Every frame ships with `kit-notes.md`: the faces and sizes used, the hex values of every colour,
   the plate thickness / edge-light / glass values, the icon style rules, and a short paragraph per

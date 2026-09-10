@@ -25,7 +25,10 @@ assets, icons and marks. **Match them exactly.** Extend the kit; do not fork it.
 components to `fh.css` under a `/* S2 */` banner and new tokens under `/* S2 */`.
 
 Ground rules are S1's: plan first, checkpoint after every phase, never stop to ask, masters then
-scripts, real strings, `file://`-openable prototypes.
+scripts, real strings, `file://`-openable prototypes. You have the web: the Three.js files in
+`inputs/` are a convenience (you may install or fetch libraries yourself), and the reference study
+rule applies to the bench screens too (station and garage interfaces, instrument panels, industrial
+product photography).
 
 ## Phases
 

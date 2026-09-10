@@ -16,11 +16,20 @@ returns: S4-return.zip
 
 You port the finished prototype (S1–S3) into SpaceFace's own front-end modules. `source/` is a
 snapshot of the repository's UI code at the commit stamped in `README.txt`; `inputs/S3-return/` is
-the prototype with `HANDOFF_TO_ENGINE.md`. You have no game runtime here — no WebGL, no
-simulation — so the discipline is: **keep every contract the modules already honour, change the
-DOM and CSS to the prototype's, and leave the repository's own static checks green.** A local
-lane integrates your return, runs the game, captures every screen with the world, and fixes what
-only a runtime can reveal.
+the prototype with `HANDOFF_TO_ENGINE.md`. Your GitHub connector can read any further file by
+path **at that commit** (name the SHA in every request) and can open a pull request; it cannot
+clone the repository, which is why the snapshot is in the zip. You have no game runtime here — no
+WebGL, no simulation — so the discipline is: **keep every contract the modules already honour,
+change the DOM and CSS to the prototype's, and leave the repository's own static checks green.** A
+local lane integrates your return, runs the game, captures every screen with the world, and fixes
+what only a runtime can reveal.
+
+**Delivery.** Return the port two ways: (1) a branch `chatgpt/s4-engine-port` from the stamped
+commit with one commit per phase and a pull request against `master` titled "S4 — engine port
+(unverified at runtime)", opened through the connector; (2) the zip below with the same full files
+and patch, in case the connector fails. The repository also carries an "agent code packet"
+GitHub Actions workflow; if the connector surfaces it, use it as its documentation says. Never
+push to `master` directly.
 
 ## What you must know about the code (audited 2026-09-10)
 

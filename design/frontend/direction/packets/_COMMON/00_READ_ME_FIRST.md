@@ -1,8 +1,12 @@
 # Read me first
 
 You are producing part of the user interface for **SpaceFace**, a 2026 desktop space game built to
-an A-list standard. This zip is a self-contained work packet. You have no access to the game's
-repository and do not need it: everything required is in this archive.
+an A-list standard. This zip is a self-contained work packet: everything the session needs is in
+the archive, so nothing waits on a download. Your VM has internet (web search, fetch, curl, package
+managers) and a GitHub connector that can read individual repository files by path and open pull
+requests; it cannot clone the whole repository (it is ~20 GB). Use the network for typefaces,
+libraries and reference study; use the connector for extra source files at the commit named in
+`README.txt`, and to return code as a pull request where the packet says so.
 
 ## Read in this order
 

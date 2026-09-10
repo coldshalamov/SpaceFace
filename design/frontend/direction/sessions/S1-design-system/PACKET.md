@@ -36,10 +36,20 @@ inventories for each phase; this file is the plan and the contract.
   packaging are cheap — spend the hours there.
 - **Real strings only.** Every word on a frame or prototype comes from
   `01_GAME_DOSSIER.md` §4.
-- **Fonts.** `inputs/` contains **Archivo** (variable: width 62–125, weight 100–900) and
-  **Instrument Sans** (variable, tabular figures) as woff2 under the OFL. Use them in every
-  prototype via `@font-face` with relative URLs. Frames made by image generation may only
+- **Fonts.** `inputs/` carries **Archivo** (variable: width 62–125, weight 100–900) and
+  **Instrument Sans** (variable, tabular figures) as a baseline. You have the web: search for a
+  better display face and text face if they exist, subject to one rule — the game bundles its
+  fonts, so the licence must allow shipping inside a desktop game (SIL OFL, Apache, Fontshare's
+  free licence, or a purchased app licence you recommend to the owner). Put the chosen files and
+  licences in `kit/fonts/`, load them via `@font-face` with relative URLs, and record the choice
+  and the rejected candidates in `kit-notes.md`. Frames made by image generation may only
   approximate a face; the prototypes set the real one.
+- **Reference study.** Spend a bounded half hour on the web at the official galleries of the
+  named references (Hardspace: Shipbreaker's HAB terminal and work orders, Armored Core VI's garage,
+  Control's mission board, Destiny 2's character screen, Helldivers 2's ship management, Teenage
+  Engineering and Braun product photography). Study technique — materials, light, hierarchy, how
+  legends are lit, how depth is layered — and write six lines of findings into `NOTES.md`. Copy
+  nothing.
 - **The three title variants differ by world shot, not by material.** Build the kit once. The
   controller's pick of a variant decides which scene the game's stage renders behind the title;
   it does not change a plate, a key or a colour. Do not stall on "which variant is the kit for."

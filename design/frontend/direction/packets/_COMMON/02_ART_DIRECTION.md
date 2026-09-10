@@ -90,8 +90,13 @@ machined plates, restraint), aerospace ground-support equipment (safety paint, s
 | Data numerals (tables, readouts) | Instrument Sans tabular (`tnum`) or Archivo Condensed tabular if verified | right-aligned, never proportional |
 | Hero numerals (speed, credits, price, score) | Archivo Expanded 800, tabular | the one number the screen is about |
 
-Alternates a frame may propose (all OFL, vendorable offline): Tektur, Chakra Petch, Barlow /
-Barlow Condensed, Big Shoulders Display. Never a face that cannot be vendored as woff2.
+Archivo is the baseline, not a ceiling. A session with web access should look for a better
+display face — a wide or variable-width industrial grotesque with real stencil potential — and
+may propose it with a specimen, provided its licence allows bundling in a shipped desktop game
+(SIL OFL, Apache, Fontshare's free licence, or a purchased app licence the owner approves).
+Starting points: Tektur, Chakra Petch, Barlow / Barlow Condensed, Big Shoulders Display, Archivo
+Expanded; foundries with free-for-apps licences (Fontshare, Velvetyne, Collletttivo). Never a
+face that cannot be shipped as woff2 inside the game.
 
 Scale at 1920 px wide (×0.75 at 1280 with a 12 px floor; ×1.25 at 2560): 12 fine print · 14 data ·
 16 body · 20 emphasis · 28 subhead · 40 menu · 64 hero number · 96 screen title · 140 hero ·

@@ -49,7 +49,8 @@ Contact sheets. Checkpoint.
 
 For every punch-list row attributed to CSS or DOM: the change against `source/` (the
 post-integration snapshot), as full files plus `patch/S5.diff`; run the static checks as in S4.
-Checkpoint.
+As in S4, also deliver the fixes as a branch `chatgpt/s5-second-pass` with a pull request through
+the connector; never push to `master`. Checkpoint.
 
 ### Phase 4 — Motion and sound corrections — specs `phases/P40.md`, `phases/P41.md`
 

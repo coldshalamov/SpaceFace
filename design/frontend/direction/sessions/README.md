@@ -22,6 +22,16 @@ the game; session 5 corrects it against live captures.
 S1 is the big one: it front-loads everything the other sessions consume. S5 waits on L-C, so it is
 not "five sessions in five days" — it is five sessions across the program.
 
+## What a session can and cannot do
+
+The ChatGPT 6 Pro VM has internet — web search, fetch, curl, package managers — so a session may
+download any typeface or library it wants (subject to the bundling-licence rule in
+`_COMMON/03_CONVENTIONS.md` §4) and study the named references at their official galleries. It has
+a GitHub connector that reads individual repository files by path and opens pull requests, but it
+**cannot clone the repository** (~20 GB). That is why each session zip carries everything it needs
+(prior returns, fonts, libraries, a pinned source snapshot for the engine sessions): nothing waits
+on the connector, and S4/S5 return their code both as a pull request and as a zip.
+
 ## Sizing rationale
 
 One session = one ChatGPT 6 Pro conversation with its VM, run as a sprint: a written plan first,
