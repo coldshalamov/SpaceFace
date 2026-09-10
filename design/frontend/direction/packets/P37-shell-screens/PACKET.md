@@ -2,7 +2,7 @@
 packet: P37
 title: The shell — Load, Settings, Pause, Game over, Credits, Photo mode
 lane: CODE
-tool: local (Codex or Grok in an isolated checkout; the controller integrates)
+tool: local (Codex or Grok in the shared checkout, isolated by write set and mutex (no worktrees); the controller integrates)
 dependsOn: [P22, P11, P16]
 current: [save-load, settings, pause, game-over, credits, photo-mode]
 inputs: [design/frontend/direction/approved/frame-settings.png, design/frontend/direction/approved/frame-load.png, design/frontend/direction/approved/frame-game-over.png, design/frontend/direction/approved/crops-controls.png, design/frontend/direction/approved/kit-notes.md]

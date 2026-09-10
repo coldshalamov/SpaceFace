@@ -2,7 +2,7 @@
 packet: P34
 title: The station, part two — Contracts, Factions, Industry, the Bar
 lane: CODE
-tool: local (Codex or Grok in an isolated checkout; the controller integrates)
+tool: local (Codex or Grok in the shared checkout, isolated by write set and mutex (no worktrees); the controller integrates)
 dependsOn: [P33, P14]
 current: [station-contracts, station-factions, station-industry, station-bar]
 inputs: [design/frontend/direction/approved/frame-station-market.png, design/frontend/direction/approved/frame-mission-log.png, design/frontend/direction/approved/kit-notes.md]

@@ -2,8 +2,8 @@
 packet: P20
 title: The UI stage — a lit world behind every screen, in the main renderer, with plate fallbacks
 lane: CODE
-tool: local (Codex gpt-5.6/gpt-6 or Grok 4.6 xhigh in an isolated checkout; the controller integrates)
-dependsOn: [P01, P16]
+tool: local (Codex gpt-5.6/gpt-6 or Grok 4.6 xhigh in the shared checkout, isolated by write set and mutex (no worktrees); the controller integrates)
+dependsOn: [P01]
 current: [title, station-dock, crucible-door, pause]
 inputs: [design/frontend/direction/approved/frame-title.png, design/frontend/direction/approved/frame-station-dock.png, design/frontend/direction/approved/frame-crucible-door.png]
 returns: commits on a branch + receipt design/frontend/direction/receipts/P20-REPORT.md
@@ -34,7 +34,9 @@ is an ambush"). Keep that reason: **the simulation stays frozen; the picture doe
    `berth` (P16 berth + the player's hull, while docked), `arena-foundry` (the Crucible door
    diorama), and `held-world` (the frozen flight picture, sharp, for pause/chart/ship in flight).
    Scene swap, slow authored camera drift, the P16 lighting; no second WebGL context on the
-   default path.
+   default path. **Prove the machinery first with the existing `place_dock_interior` GLB and the
+   Kestrel** — the freeze policy, the scene swap and the flight-cost proof do not wait for P16;
+   P16's hangar, berth and arena sets swap in when they land.
 3. **Plate fallback.** When the stage cannot run (context lost, blocked GPU, headless capture), the
    screen shows the matching P15 backdrop plate (or the P16 rendered still) so no screen is ever
    black. The fallback is authored and looks like the stage in a still.

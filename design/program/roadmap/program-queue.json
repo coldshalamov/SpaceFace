@@ -4026,7 +4026,7 @@
         "npm run check:bundle"
       ],
       "evidence": [],
-      "brief": "ADMITTED 2026-09-10 on the owner's directive that ten frontend passes were \"equally bad\" and that agent-written style docs were poisoning the work. The interface is rebuilt by PRODUCTION, not styling: rendered style frames first (ChatGPT 6 Pro), produced assets second (transparent-PNG kits, SVG icon family and marks, 3D sets and hull renders), code that assembles the assets to match the frames third, and a picture-comparison review at every step. Direction: Field Hardware (manufactured, backlit, hand-worn equipment over a lit living world; POSTER/BENCH/EDGE registers). The frames under design/frontend/direction/approved/ outrank every prose doc. Supersedes PQ-187 (Cinematic Minimal) and build_map.md section 20.14 on aesthetics; the old units stay recorded as implemented and are not dispatched again. 27 packet briefs under design/frontend/direction/packets/; build a hand-off zip with node scripts/build-ui-packet.mjs P01."
+      "brief": "ADMITTED 2026-09-10 on the owner's directive that ten frontend passes were \"equally bad\" and that agent-written style docs were poisoning the work. The interface is rebuilt by PRODUCTION, not styling: rendered style frames first (ChatGPT 6 Pro), produced assets second (transparent-PNG kits, SVG icon family and marks, 3D sets and hull renders), code that assembles the assets to match the frames third, and a picture-comparison review at every step. Direction: Field Hardware (manufactured, backlit, hand-worn equipment over a lit living world; POSTER/BENCH/EDGE registers). The frames under design/frontend/direction/approved/ outrank every prose doc. Supersedes PQ-187 (Cinematic Minimal) and build_map.md section 20.14 on aesthetics; the old units stay recorded as implemented and are not dispatched again. 28 packet briefs under design/frontend/direction/packets/; build a hand-off zip with node scripts/build-ui-packet.mjs P01."
     }
   ],
   "dispatchUnits": [
@@ -17994,7 +17994,7 @@
       "parentId": "PQ-194",
       "priority": 485,
       "title": "The style frames, approved (P01-P05)",
-      "kind": "acceptance_repair",
+      "kind": "acceptance_review",
       "state": "ready",
       "dependsOn": [],
       "mutexes": [
@@ -18016,7 +18016,7 @@
       "parentId": "PQ-194",
       "priority": 486,
       "title": "The asset kits, accepted (P10-P15, P17)",
-      "kind": "acceptance_repair",
+      "kind": "acceptance_review",
       "state": "ready",
       "dependsOn": [
         "PQ-194.00"
@@ -18070,8 +18070,7 @@
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
-        "PQ-194.00",
-        "PQ-194.02"
+        "PQ-194.00"
       ],
       "mutexes": [
         "frontend-direction"

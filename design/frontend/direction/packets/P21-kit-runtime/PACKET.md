@@ -2,7 +2,7 @@
 packet: P21
 title: The kit runtime — fonts, tokens, asset loader, components from assets, motion, sound, lab page
 lane: CODE
-tool: local (Codex or Grok in an isolated checkout; the controller integrates)
+tool: local (Codex or Grok in the shared checkout, isolated by write set and mutex (no worktrees); the controller integrates)
 dependsOn: [P10, P11, P12, P13, P14, P17]
 current: [station-market, settings]
 inputs: [design/frontend/direction/approved/kit-notes.md]

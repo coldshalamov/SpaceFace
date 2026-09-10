@@ -2,7 +2,7 @@
 packet: P32
 title: Flight HUD, part two — the radar face, contacts, target panel, sector-law badge, reticle, the wanted temperature
 lane: CODE
-tool: local (Codex or Grok in an isolated checkout; the controller integrates)
+tool: local (Codex or Grok in the shared checkout, isolated by write set and mutex (no worktrees); the controller integrates)
 dependsOn: [P31]
 current: [flight, comms-radial, wingman-radial]
 inputs: [design/frontend/direction/approved/frame-hud-resting.png, design/frontend/direction/approved/frame-hud-wanted.png, design/frontend/direction/approved/layer-hud-wanted.png, design/frontend/direction/approved/kit-notes.md]

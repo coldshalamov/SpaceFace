@@ -2,7 +2,7 @@
 packet: P38
 title: The reading screens — missions log, codex, help, tech tree — and Asteroid Works reconciled
 lane: CODE
-tool: local (Codex or Grok in an isolated checkout; the controller integrates)
+tool: local (Codex or Grok in the shared checkout, isolated by write set and mutex (no worktrees); the controller integrates)
 dependsOn: [P22, P10, P13]
 current: [mission-log, codex, help, tech-tree, asteroid-works]
 inputs: [design/frontend/direction/approved/frame-mission-log.png, design/frontend/direction/approved/frame-codex.png, design/frontend/direction/approved/kit-notes.md]

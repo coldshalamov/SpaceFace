@@ -2,7 +2,7 @@
 packet: P30
 title: The Crucible — door, draft, refit, results, lab on the kit
 lane: CODE
-tool: local (Codex or Grok in an isolated checkout; the controller integrates)
+tool: local (Codex or Grok in the shared checkout, isolated by write set and mutex (no worktrees); the controller integrates)
 dependsOn: [P22, P15, P16]
 current: [crucible-door, crucible-draft, crucible-refit, crucible-results, crucible-lab]
 inputs: [design/frontend/direction/approved/frame-crucible-door.png, design/frontend/direction/approved/frame-crucible-results.png, design/frontend/direction/approved/kit-notes.md]

@@ -29,7 +29,7 @@ mechanism had four parts, and each is reversed by this program:
 | **No picture before code.** The target was words ("cinematic", "minimal", "no boxes"). | Words on black; agents interpreted the prose in the only way one session can execute: text and hairlines. | **Style frames first.** A rendered picture of each screen, made by an image-capable model from a self-contained brief, is approved before any code. Code is judged by comparison to the frame. |
 | **No produced assets.** The UI had twelve image files, most in a dead refit. Everything else was CSS. | Every "material" was a border; every icon a line glyph; every list a column of words. | **Asset-first.** Plates, windows, controls, instruments, an icon family, marks, keyart tiles, 3D sets and hull renders are produced by the tools that can make them (image generation, SVG, Blender) and the code assembles them. A screen with no produced assets in it is not done. |
 | **Prose as authority.** Each direction sheet's never-list banned the tools of the trade (gradients, glow, plates, icons in menus, chamfers) and its "minimal" licensed emptiness. | Agents read the complaint, checked the sheet, and concluded the complaint must be about something else. | **Frames as authority.** The prior sheets are void on aesthetics (§8). The two tests in the art direction (does it have the material and light truth of Asteroid Works; does it read as equipment a worker uses) replace the never-list. The floors that are not aesthetic (§7) are named so nobody "cleans them up" with the skin. |
-| **One-shot per screen.** A screen was rebuilt in one packet, end to end, by one agent. | The agent chose what one session could finish. | **A multi-session series** of 27 right-sized packets (§4) across four lanes — frames, image assets, vector and 3D assets, code — each returning one durable artifact, each reviewed before the next depends on it. |
+| **One-shot per screen.** A screen was rebuilt in one packet, end to end, by one agent. | The agent chose what one session could finish. | **A multi-session series** of 28 right-sized packets (§4) across four lanes — frames, image assets, vector and 3D assets, code — each returning one durable artifact, each reviewed before the next depends on it. |
 
 One more finding changed the engineering: **no screen in the game has a lit world behind it, by
 explicit design** — any open screen freezes rendering, and the only 3D under a menu is a second
@@ -96,7 +96,7 @@ Rules that make it hold:
    grep before it is rejected by eye.
 5. **Every packet quotes the way it gets faked.** Evidence from this repository's delegation
    history: a worker is honest when the packet names the specific fake, and pads when it does not.
-6. **Right-sized.** One packet = one conversation or one isolated checkout = one durable return
+6. **Right-sized.** One packet = one conversation or one local lane in the shared checkout = one durable return
    (a zip or a branch), reviewed before anything depends on it. One correction turn; then the
    controller repairs or re-packets.
 
@@ -121,7 +121,7 @@ zip with `node scripts/build-ui-packet.mjs P01`; it lands in `.devshots/ui-packe
 | P15 | Keyart: arena/mode/difficulty tiles, backdrop plates | IMG · ChatGPT 6 Pro | 14 tiles + 6 plates | P01, P05 |
 | P16 | 3D sets (hangar, berth, arena) + hull render harness | 3D · Codex + Blender (local) | GLBs, .blend, scripts, hull tiles | P01, P03 |
 | P17 | Motion library + sound recipes, demo pages | CODE · ChatGPT 6 Pro | motion.js, recipes.json, specs | P01–P03 |
-| P20 | The UI stage: lit world behind every screen, one context, plate fallbacks | CODE · local | branch + receipt | P01, P16 |
+| P20 | The UI stage: lit world behind every screen, one context, plate fallbacks | CODE · local | branch + receipt | P01 |
 | P21 | The kit runtime: fonts, tokens, asset loader, asset-built components, motion, sound, lab | CODE · local | branch + receipt | P10–P14, P17 |
 | **P22** | **The Title live — the veto point** | CODE · local | branch + side-by-side | P20, P21, P14 |
 | P30 | Crucible door/draft/refit/results/lab | CODE · local | branch + receipt | P22, P15, P16 |
@@ -155,7 +155,7 @@ re-packet the remainder or take it locally.
 | Style frames; transparent-PNG kits; keyart; logotype exploration; the motion/sound demo | **ChatGPT 6 Pro** in the browser (image generation + a VM to cut, align, alpha-clean, vectorise, script, zip) | The only tool in the fleet that can render a finished picture and return a durable archive of assets in one turn | Words on black; concept art instead of the game's render; invented strings; a description instead of a file |
 | Icon family, marks (alternate) | ChatGPT 6 Pro or **Codex** | Hand-written SVG is code; both write it well; Codex can also run it against the repo's checks | Line icons; inconsistent weights; arrows for everything |
 | 3D sets, hull render harness | **Codex with Blender**, locally, under the repo's material-truth preflight | Codex is the fleet's strongest 3D author; the standard needs repo access and exact-source evidence | Primitive boxes named "gantry"; screenshots of the live game as "renders" |
-| Code packets (stage, kit runtime, screens) | **Codex gpt-5.6/gpt-6** or **cursor Grok 4.6 xhigh** in an isolated checkout | Bounded implementation with named traps is where these land; Grok is honest when the packet quotes the specific fake | CSS-styled components instead of asset-built; a static PNG as "the stage"; restyled text boxes |
+| Code packets (stage, kit runtime, screens) | **Codex gpt-5.6/gpt-6** or **cursor Grok 4.6 xhigh** in the shared checkout, isolated by write set and mutex (no worktrees) | Bounded implementation with named traps is where these land; Grok is honest when the packet quotes the specific fake | CSS-styled components instead of asset-built; a static PNG as "the stage"; restyled text boxes |
 | Frame-versus-capture review | **Gemini 3.8 Flash via `agy`** (verified: it truly sees a PNG named in the prompt) or a fresh ChatGPT thread as adversarial reviewer | Memoryless, sees only the two images and the two tests | A reviewer that is told what it should see |
 | Integration, acceptance, the pick, the receipts | **The controller (Claude)** | Repo authority, collision awareness, taste | Accepting a description; accepting a headless capture with a black world |
 | Local single-image generation when the browser round-trip is too slow | `node .grok/skills/spaceface-blender-material-truth/scripts/request_imagegen_reference.mjs` (Codex's built-in image generation, fail-closed, one PNG) | Exists and is proven; too narrow for kits | — |

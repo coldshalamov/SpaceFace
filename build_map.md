@@ -3626,7 +3626,7 @@ kits, an SVG icon family and marks, Blender sets and hull renders), code that as
 match the frames third, and a picture-comparison review at every step. Direction: **Field Hardware** —
 manufactured, backlit, hand-worn equipment over a lit living world; three registers POSTER / BENCH /
 EDGE; two tests (the Asteroid Works material-and-light test; the Shipbreaker equipment test). Frames
-under `design/frontend/direction/approved/` outrank every prose document. 27 packets under
+under `design/frontend/direction/approved/` outrank every prose document. 28 packets under
 `design/frontend/direction/packets/`; build one with `node scripts/build-ui-packet.mjs P01`. Packet:
 [`active/PQ-194.md`](./design/program/roadmap/active/PQ-194.md).
 

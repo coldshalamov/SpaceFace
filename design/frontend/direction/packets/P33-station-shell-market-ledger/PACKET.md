@@ -2,7 +2,7 @@
 packet: P33
 title: The station, part one — docking arrival, the shell, the Market, the Ledger
 lane: CODE
-tool: local (Codex or Grok in an isolated checkout; the controller integrates)
+tool: local (Codex or Grok in the shared checkout, isolated by write set and mutex (no worktrees); the controller integrates)
 dependsOn: [P22, P20, P16]
 current: [station-dock, station-market, station-ledger]
 inputs: [design/frontend/direction/approved/frame-station-dock.png, design/frontend/direction/approved/frame-station-market.png, design/frontend/direction/approved/layer-station-market.png, design/frontend/direction/approved/kit-notes.md]

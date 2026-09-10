@@ -11,7 +11,7 @@
 **Status:** DECIDED 2026-09-06 under the owner's delegation (receipt:
 [`PQ-187-01-REPORT.md`](../../program/roadmap/receipts/PQ-187-01-REPORT.md)). This sheet is the
 aesthetic authority for every player-facing screen and the HUD. `design/FRONTEND_DIRECTION.md` §13
-says why; `CANONICAL_BUILD_MAP.md` §20.14 is the task series; [`KIT_SPEC.md`](./KIT_SPEC.md) gives the
+says why; `build_map.md` §20.14 is the task series; [`KIT_SPEC.md`](./KIT_SPEC.md) gives the
 exact tokens, classes and seams and [`tasks/`](./tasks/) the four handoff tasks. A frame is right when it
 matches this sheet; a reviewer checks a frame with §9. *Amended 2026-09-06 after the code audit: one
 starter hull, the real menu words, no station home, the real game-over fields.* Nobody is asked to choose between options — the sheet
@@ -295,7 +295,7 @@ change makes no sound.
 
 ## 9. The review — how a frame is judged
 
-A reviewer (memoryless, sees only the capture and this sheet) answers these for the screen's line in
+Answer these for the screen's line in
 §2 and the rules in §3–§8. Any "no" fails the frame. One exception: a capture in which the world object
 the sheet puts in the shot (hull, berth, chart, arena) is missing while the DOM is right is a **capture
 defect** — headless captures of THE SHIP today show no hull — and is returned to the capture seam, never

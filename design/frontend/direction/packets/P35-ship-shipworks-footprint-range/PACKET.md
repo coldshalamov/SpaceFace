@@ -2,7 +2,7 @@
 packet: P35
 title: THE SHIP and Shipworks on the stage; THE FOOTPRINT and THE RANGE on the kit
 lane: CODE
-tool: local (Codex or Grok in an isolated checkout; the controller integrates)
+tool: local (Codex or Grok in the shared checkout, isolated by write set and mutex (no worktrees); the controller integrates)
 dependsOn: [P22, P20, P12, P16]
 current: [ship, station-shipworks, footprint, range]
 inputs: [design/frontend/direction/approved/frame-ship.png, design/frontend/direction/approved/layer-ship.png, design/frontend/direction/approved/kit-notes.md]
