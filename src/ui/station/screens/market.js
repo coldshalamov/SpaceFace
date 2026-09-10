@@ -13,7 +13,6 @@ import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.j
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
-import { ageBandFor } from '../../marketIntelligence.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { renderAdBoardNotice } from '../adBoard.js';
 import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
@@ -194,14 +193,11 @@ function liveRegimeWord(state, sid, commodityId) {
   return regimeLabel(cycle && (cycle.regime || cycle.family) || 'stable');
 }
 
-function quoteAgeWord(state, sid, commodityId) {
-  const rec = state && state.player && state.player.marketMemory
-    && sid && commodityId && state.player.marketMemory[sid] && state.player.marketMemory[sid][commodityId];
-  if (!rec || rec.seenAt == null) return '';
-  const seenAt = Number(rec.seenAt);
-  if (!Number.isFinite(seenAt)) return '';
-  const ageS = Math.max(0, (Number(state && state.simTime) || 0) - seenAt);
-  return ageBandFor(ageS).key === 'fresh' ? 'fresh' : 'stale';
+// Docked inspector looks at the live feed. Opening the market restamps
+// seenAt, so a fresh/stale word here was a constant. Age bands stay on
+// remote intel. This readout does not pretend the counter has a memory age.
+export function quoteAgeWord(_state, _sid, _commodityId) {
+  return '';
 }
 
 export function createMarketScreen(ctx) {

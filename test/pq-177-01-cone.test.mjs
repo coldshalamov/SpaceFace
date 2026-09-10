@@ -13,8 +13,7 @@ import { COMMODITIES } from '../src/data/commodities.js';
 import { SECTORS } from '../src/data/sectors.js';
 import { economy } from '../src/systems/economy.js';
 import { predictPriceCurve, regimeLabel } from '../src/systems/economyCycles.js';
-import { ageBandFor } from '../src/ui/marketIntelligence.js';
-import { resolveDockStationType } from '../src/ui/station/screens/market.js';
+import { quoteAgeWord, resolveDockStationType } from '../src/ui/station/screens/market.js';
 import { marketQuoteHtml } from '../src/ui/views/marketPresentation.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -65,12 +64,7 @@ function lastTenMinutes(entry, nowS) {
 }
 
 function liveQuoteAge(state) {
-  const rec = state.player && state.player.marketMemory
-    && state.player.marketMemory.station_ceres
-    && state.player.marketMemory.station_ceres[IRON.id];
-  if (!rec || rec.seenAt == null) return '';
-  const ageS = Math.max(0, (Number(state.simTime) || 0) - Number(rec.seenAt));
-  return ageBandFor(ageS).key === 'fresh' ? 'fresh' : 'stale';
+  return quoteAgeWord(state, 'station_ceres', IRON.id);
 }
 
 function inspectorHtml(state, { saleQty = 1 } = {}) {
@@ -138,8 +132,8 @@ test('Ceres Iron Ore inspector paints last-ten-minute hist plus predictPriceCurv
   const regime = regimeLabel(cycle && (cycle.regime || cycle.family) || 'stable');
   assert.match(html, new RegExp(regime.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
   assert.match(html, /data-regime/);
-  assert.match(html, /data-quote-age="fresh"/);
-  assert.match(html, /fresh quote/);
+  assert.doesNotMatch(html, /data-quote-age/);
+  assert.doesNotMatch(html, /fresh quote|stale quote/);
 
   const forecastMids = attr(html, 'data-forecast-mids');
   assert.equal(forecastMids, forecast.map((p) => p.mid).join(','));
@@ -175,11 +169,14 @@ test('Ceres Iron Ore inspector paints last-ten-minute hist plus predictPriceCurv
   economy._instance = null;
 });
 
-test('a remembered quote older than the leftover fresh band reads stale', () => {
-  const { state, sim } = bootCeres({ simTime: 2000, memorySeenAt: 0 });
-  const { html } = inspectorHtml(state, { quoteAge: 'stale' });
-  assert.match(html, /data-quote-age="stale"/);
-  assert.match(html, /stale quote/);
+test('docked Ceres inspector does not paint a leftover quote-age word', () => {
+  const { state, sim, econ } = bootCeres({ simTime: 0, memorySeenAt: 0 });
+  state.simTime = 2000;
+  econ.snapshotIntel('station_ceres');
+  const { html } = inspectorHtml(state);
+  assert.equal(quoteAgeWord(state, 'station_ceres', IRON.id), '');
+  assert.doesNotMatch(html, /data-quote-age/);
+  assert.doesNotMatch(html, /fresh quote|stale quote/);
   sim.dispose();
   economy._instance = null;
 });
