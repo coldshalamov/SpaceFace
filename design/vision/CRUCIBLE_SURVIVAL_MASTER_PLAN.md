@@ -151,6 +151,26 @@ the five-arena mode. Conversely, completing a telemetry dashboard or a menu matr
 the opening. Optional network services, storefront work and whole-world asset programs do not
 gate these local gameplay outcomes.
 
+### Implementation checkpoint — 2026-09-10
+
+The connected arcade pass now ships finite cash rounds, a full compatible armory with multi-buy
+and saving, six immediate starter builds, default bank-shot/repulsion play, real enemy-to-enemy
+Snarl constraints, rear-dropped repulsion traps, bounded collateral chains, independent Pilot aim,
+outgoing damage numbers and a compact combat HUD. Arena cohorts own their population and pursuit;
+Adventure law, tutorials, retreat orders and two-attacker allocation no longer cancel the fight.
+Tracked pilots route around rock colliders, and late terrain is uploaded before its mesh is admitted.
+The shared toy definitions retain Adventure research/acquisition requirements.
+
+Direct mouse/keyboard passes exercised firing, boosts and charge drops; real Snarl hits created
+physical links and their braided render instances. Focused gameplay checks pass. The scripted
+player route exercised shopping/refitting/retry, ten-round Swarm extraction and thirty-wave
+Gauntlet victory. Those scripted clears establish route continuity, not human balance mastery.
+Five-arena laws, later-wave recipes and mutators remain part of the implemented shared systems;
+the extended idea bank below remains a source for further content, not a claim that every old
+roadmap receipt is closed. Known validation limits: the connected route passes its fifteen
+gameplay checks but fails its shared renderer post-submit resource diagnostic; the separate
+Adventure cold-start check times out during GPU preparation. Neither is recorded as a pass.
+
 ### Corrections to older success criteria
 
 1. **Physics multiplies good shooting.** Retire "the free Pulse cannot top the board" and mandatory
