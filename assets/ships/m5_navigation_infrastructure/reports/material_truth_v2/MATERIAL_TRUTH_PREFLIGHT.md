@@ -57,15 +57,15 @@ salvage-and-service economy.
    silhouette. Unchanged.
 3. **Buoy_Nav_Optic — `recessed_multiface_navigation_optic` (retuned emission).**
    Function: the lane signal itself. Four large cardinal panes set INTO framed recesses under
-   cast hoods (emissive pixels live inside a fixture), plus a hooded mast lamp. Emission colour
-   retained (cyan family), strength raised 2.7 → ~4.5 so the signal carries at the range the
+   cast hoods (emissive pixels live inside a fixture), plus a hooded mast lantern drum. Emission
+   colour retained (cyan family), strength raised 2.7 → 6.0 so the signal carries at the range the
    billboard's display face proved achievable in the same scene. With emission disabled the panes
    still read as glazed instrument facets in bezels — the head explains itself unlit.
 4. **Buoy_Solar_Cell — `segmented_photovoltaic_laminate` (retuned).**
    Function: self-powered beacon service array. Gold-anodized radiator-backed photovoltaic
    laminate (Kapton-family thermal language), segmented, edge-framed in bright machined rail,
    mounted on tilted pylons so the laminae read as angled machinery rather than flush plating.
-   Optical read: dark warm bronze-gold, metallic, clearly hardware. Forbidden reads: asteroid
+   Optical read: warm gold-bronze, semi-metallic, clearly hardware. Forbidden reads: asteroid
    value/hue, flat black absence, pale camouflage.
    - Repair rationale: causal review — the pale panel "camouflages against the belt"; the retained
      near-black-blue tuning was invisible at range and the flush mount read as a rock shard.

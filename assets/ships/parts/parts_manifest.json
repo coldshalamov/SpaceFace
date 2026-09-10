@@ -3317,9 +3317,9 @@
       "priority": "P1",
       "file": "places/place_nav_buoy.glb",
       "tris": 1876,
-      "bytes": 425408,
+      "bytes": 430492,
       "textureSize": 256,
-      "note": "PQ-022 navigation-infrastructure material-truth V2 buoy repair — admitted candidate a00bac948d23, promoted source bc079ae13753; LOD0/1/2 1876/972/288 render tris across five semantic PBR groups. Billboard and memorial rows are accepted and untouched by this transaction. Browser/Electron route and performance remain separate gates.",
+      "note": "PQ-022 navigation-infrastructure material-truth V2 buoy repair — admitted candidate cbaed85c003e, promoted source edcfd2779a42; LOD0/1/2 1876/972/288 render tris across five semantic PBR groups. Billboard and memorial rows are accepted and untouched by this transaction. Browser/Electron route and performance remain separate gates.",
       "hooks": [],
       "sockets": [
         "SOCKET_Structure_Core"

@@ -221,11 +221,11 @@ MATERIAL_TUNING = {
     "Memorial_Candle_Optic": ((0.42, 0.11, 0.018), 0.00, 0.21, "optic_warm"),
     "Memorial_Service_Alloy": ((0.34, 0.38, 0.39), 0.90, 0.34, "machined"),
     "Memorial_Inscribed_Bronze": ((0.40, 0.17, 0.045), 0.82, 0.42, "bronze"),
-    "Buoy_Pressure_Shell": ((0.60, 0.55, 0.45), 0.03, 0.50, "coat"),
+    "Buoy_Pressure_Shell": ((0.88, 0.82, 0.70), 0.03, 0.50, "coat"),
     "Buoy_Stabilizer_Frame": ((0.15, 0.18, 0.19), 0.78, 0.49, "cast"),
     "Buoy_Nav_Optic": ((0.015, 0.16, 0.20), 0.01, 0.19, "optic_cool"),
-    "Buoy_Solar_Cell": ((0.16, 0.10, 0.035), 0.85, 0.28, "solar"),
-    "Buoy_Service_Marking": ((0.72, 0.23, 0.018), 0.00, 0.66, "marking"),
+    "Buoy_Solar_Cell": ((0.42, 0.28, 0.10), 0.55, 0.38, "solar"),
+    "Buoy_Service_Marking": ((0.98, 0.50, 0.06), 0.00, 0.66, "marking"),
 }
 
 
@@ -447,7 +447,7 @@ def create_materials(config: dict, texture_files: dict[str, dict[str, Path]]) ->
             shader.inputs["Emission Strength"].default_value = 3.2
         elif family == "optic_cool":
             shader.inputs["Emission Color"].default_value = (0.02, 0.62, 0.85, 1.0)
-            shader.inputs["Emission Strength"].default_value = 4.5
+            shader.inputs["Emission Strength"].default_value = 6.0
         elif name == "Display_Safety_Marking":
             shader.inputs["Emission Color"].default_value = (0.62, 0.10, 0.008, 1.0)
             shader.inputs["Emission Strength"].default_value = 0.75
@@ -879,17 +879,19 @@ def buoy_geometry(collection, materials, lod: int) -> None:
                 (-1.10, 0.88, 8.02), shell, 0.02)
         add_box(collection, materials, lod, "GantryMarkingCap", (0.30, 0.24, 0.07),
                 (-1.10, 0.88, 8.20), marking, 0.0)
-    # Mast lands on the cap and carries a hooded beacon lamp above the head signal.
+    # Mast lands on the cap and carries the beacon lantern. The mast itself is coated hull
+    # plate, not dark cast: at lane range a dark mast vanishes and truncates the tower, so the
+    # vertical silhouette is carried by the same warm bone enamel as the spine.
     if lod < 2:
-        add_cylinder(collection, materials, lod, "TelemetryMast", 0.12, 2.08,
-                     (0.0, 0.0, 9.26), stabilizer, vertices=segments, bevel=0.0)
-        add_cylinder(collection, materials, lod, "MastBeaconLamp", 0.16, 0.26,
-                     (0.0, 0.0, 9.80), optic, vertices=segments, bevel=0.0)
+        add_cylinder(collection, materials, lod, "TelemetryMast", 0.14, 2.08,
+                     (0.0, 0.0, 9.26), shell, vertices=segments, bevel=0.0)
+        add_cylinder(collection, materials, lod, "MastBeaconLamp", 0.30, 0.50,
+                     (0.0, 0.0, 9.72), optic, vertices=segments, bevel=0.0)
         if lod == 0:
-            add_cylinder(collection, materials, lod, "MastBeaconBezel", 0.19, 0.10,
-                         (0.0, 0.0, 9.62), stabilizer, vertices=segments, bevel=0.0)
-            add_cylinder(collection, materials, lod, "MastBeaconCap", 0.13, 0.08,
-                         (0.0, 0.0, 9.97), stabilizer, vertices=segments, bevel=0.0)
+            add_cylinder(collection, materials, lod, "MastBeaconBezel", 0.34, 0.12,
+                         (0.0, 0.0, 9.42), stabilizer, vertices=segments, bevel=0.0)
+            add_cylinder(collection, materials, lod, "MastBeaconCap", 0.26, 0.10,
+                         (0.0, 0.0, 10.01), stabilizer, vertices=segments, bevel=0.0)
     else:
         add_cylinder(collection, materials, lod, "TelemetryMast", 0.10, 2.35,
                      (0.0, 0.0, 9.125), stabilizer, vertices=segments, bevel=0.0)
@@ -897,9 +899,9 @@ def buoy_geometry(collection, materials, lod: int) -> None:
             (1.3999999284744263, 0.0, 3.90), marking, 0.025 if lod < 2 else 0.0)
     if lod < 2:
         add_box(collection, materials, lod, "TelemetryVanePort", (0.50, 0.07, 0.22),
-                (-0.34, 0.0, 9.30), stabilizer, 0.0)
+                (-0.34, 0.0, 9.16), stabilizer, 0.0)
         add_box(collection, materials, lod, "TelemetryVaneStarboard", (0.50, 0.07, 0.22),
-                (0.34, 0.0, 9.62), stabilizer, 0.0)
+                (0.34, 0.0, 9.32), stabilizer, 0.0)
 
 
 def candidate_path(asset_key: str) -> Path:

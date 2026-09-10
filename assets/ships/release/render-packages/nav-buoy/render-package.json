@@ -53,153 +53,153 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "ba9929ce6f6d9d401a2c6d1757aa0211d9fbafe2bb7fd25314f923ff86e046ef",
+  "contentHash": "d9fa4a711f060e98b36152a3c3ef34aac9106ccbc590ee24ce01ca1c9ac3b438",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          1.290000081062317,
-          7.319913387298584,
-          1.290000081062317
+          1.1800034046173096,
+          9.970000267028809,
+          1.1800034046173096
         ],
         "min": [
-          -1.290000081062317,
-          6.780086994171143,
-          -1.290000081062317
+          -1.1800034046173096,
+          6.099999904632568,
+          -1.1800034046173096
         ]
       },
       "drawMode": 4,
-      "geometryHash": "22167effe950ea546b9dc35a0236ddb36ca0c105863497336389f4641ca08841",
+      "geometryHash": "a1a5483a0692833038c67923a75c9268464d044d97afd49ad9015f38b338a3e5",
       "id": "sf.render.nav-buoy.mesh.lod0-buoy-nav-optic.primitive.0",
-      "indexCount": 336,
+      "indexCount": 252,
       "indexed": true,
-      "materialHash": "b3ad80ea167ab8623ff28f3f8fef676c3a6811a03e1d5b05ea8a71dbd161dd90",
+      "materialHash": "05939ccf93f64ae51a515aa60b8488d579f9f11853de6fa156689c103006e5dc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Buoy_Nav_Optic_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod0-buoy-nav-optic",
       "primitiveIndex": 0,
-      "vertexCount": 192
+      "vertexCount": 156
     },
     {
       "bounds": {
         "max": [
-          1.1470592021942139,
-          8.720000267028809,
-          1.176552653312683
+          1.1471343040466309,
+          10.300000190734863,
+          1.1759262084960938
         ],
         "min": [
-          -1.1470592021942139,
+          -1.2297377586364746,
           -4.339654922485352,
-          -1.176552653312683
+          -1.1759262084960938
         ]
       },
       "drawMode": 4,
-      "geometryHash": "228e324ab7fc02c0481239d4adb1b711cc1a6f03757f9117df4f443925544e65",
+      "geometryHash": "de4ce74e66ff41b058938fcf249e97919dcd821134d324b0597bd93e6ede09c0",
       "id": "sf.render.nav-buoy.mesh.lod0-buoy-pressure-shell.primitive.0",
-      "indexCount": 1158,
+      "indexCount": 996,
       "indexed": true,
-      "materialHash": "2d13bae1fcb57d1e69c5db2c69ce6a8916abf4a6c152c7a27bb2697f7af7f059",
+      "materialHash": "e95256577c68f90d0279770b1b751ac8a3cc381058f3412e0334b58dc04b5742",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Buoy_Pressure_Shell_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod0-buoy-pressure-shell",
       "primitiveIndex": 0,
-      "vertexCount": 884
+      "vertexCount": 696
     },
     {
       "bounds": {
         "max": [
-          1.5749999284744263,
-          4.375040531158447,
-          0.6600571870803833
+          1.5751311779022217,
+          8.234999656677246,
+          1.366347074508667
         ],
         "min": [
-          -0.6600000262260437,
-          3.424959421157837,
-          -0.6600571870803833
+          -1.2501312494277954,
+          1.2137351036071777,
+          -1.366347074508667
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4b96ce998ab7cfb0b030c06976fa193f24c800a6670edf759cc8786d941dc71c",
+      "geometryHash": "40b24d952d15f7d9d8768d7f7d319d74a016977afcac5227c1d50bdab74a7411",
       "id": "sf.render.nav-buoy.mesh.lod0-buoy-service-marking.primitive.0",
-      "indexCount": 456,
+      "indexCount": 684,
       "indexed": true,
-      "materialHash": "2df342231f2b734949bd8674733692facdd3279c85fa10b501df4e2d5a8e4228",
+      "materialHash": "10e9eab73402453384a1e8f25f920c17be6699f93f3ae1d57d0bdf8fd89eae98",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Buoy_Service_Marking_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod0-buoy-service-marking",
       "primitiveIndex": 0,
-      "vertexCount": 336
+      "vertexCount": 492
     },
     {
       "bounds": {
         "max": [
-          1.004970669746399,
-          2.375,
-          0.4300248622894287
+          0.4599176049232483,
+          1.9748607873916626,
+          1.3827710151672363
         ],
         "min": [
-          -1.004970669746399,
-          0.125,
-          -0.4300248622894287
+          -0.15991760790348053,
+          1.2651392221450806,
+          -1.3827710151672363
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4f1427bd5b68e6ad0d451ee659fd5aedb966aed2a299afdbfd56b0c983d7d8cb",
+      "geometryHash": "29c7785f4c05f95c6e4e9931fb41930c51ad64d0f594ad13ecec9137c7e6c858",
       "id": "sf.render.nav-buoy.mesh.lod0-buoy-solar-cell.primitive.0",
-      "indexCount": 648,
+      "indexCount": 72,
       "indexed": true,
-      "materialHash": "bc8b21eacf5408311abb62ad0559cb4f52c373754fc8b2f5d9eb45d8690a6daf",
+      "materialHash": "3e9dea9bfac74a26dca36768fb0ac7e46acdd6d1b66c7316e6d4bf04a2fa649c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Buoy_Solar_Cell_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod0-buoy-solar-cell",
       "primitiveIndex": 0,
-      "vertexCount": 528
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          1.399865746498108,
-          10.300000190734863,
-          1.399865746498108
+          1.3999683856964111,
+          10.0600004196167,
+          1.3999683856964111
         ],
         "min": [
-          -1.399865746498108,
+          -1.3999683856964111,
           -5,
-          -1.399865746498108
+          -1.3999683856964111
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c7eb758b3f972a365761eefe1da2067588e394d9c7e645c04cbfcb73efac7d17",
+      "geometryHash": "37f5fcd6d24d80b4e89019e17c75e7d10da8a13abd94acb7212bb15417c4cbaa",
       "id": "sf.render.nav-buoy.mesh.lod0-buoy-stabilizer-frame.primitive.0",
-      "indexCount": 2604,
+      "indexCount": 3624,
       "indexed": true,
       "materialHash": "a9d5402d02f99f1efbaa9686df4d32a5bd64981359cd090d86b978c3e6110c4c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD0_Buoy_Stabilizer_Frame_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod0-buoy-stabilizer-frame",
       "primitiveIndex": 0,
-      "vertexCount": 1656
+      "vertexCount": 2292
     },
     {
       "bounds": {
         "max": [
-          1.290000081062317,
-          7.319913387298584,
-          1.290000081062317
+          1.1800034046173096,
+          9.970000267028809,
+          1.1800034046173096
         ],
         "min": [
-          -1.290000081062317,
-          6.780086994171143,
-          -1.290000081062317
+          -1.1800034046173096,
+          6.099999904632568,
+          -1.1800034046173096
         ]
       },
       "drawMode": 4,
-      "geometryHash": "03ee79fb12d76796c646fe8cb11ff26c2812bba3841b4af13b7520e533c71233",
+      "geometryHash": "c91a42ba177fbe2fafa0d944637558fba378c47edd4e05c370d67d57428198e8",
       "id": "sf.render.nav-buoy.mesh.lod1-buoy-nav-optic.primitive.0",
-      "indexCount": 240,
+      "indexCount": 228,
       "indexed": true,
-      "materialHash": "b3ad80ea167ab8623ff28f3f8fef676c3a6811a03e1d5b05ea8a71dbd161dd90",
+      "materialHash": "05939ccf93f64ae51a515aa60b8488d579f9f11853de6fa156689c103006e5dc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Buoy_Nav_Optic_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod1-buoy-nav-optic",
@@ -209,122 +209,122 @@
     {
       "bounds": {
         "max": [
-          1.08980131149292,
-          8.720000267028809,
-          1.08980131149292
+          1.0896488428115845,
+          10.300000190734863,
+          1.0897176265716553
         ],
         "min": [
-          -1.08980131149292,
+          -1.22947096824646,
           -4.369999885559082,
-          -1.08980131149292
+          -1.0897176265716553
         ]
       },
       "drawMode": 4,
-      "geometryHash": "8aa0893ca36b3402396ebe8555c29bbc7f48d32ea59d822ec868344120237a26",
+      "geometryHash": "c3766e3acdb8c595e5f7f855f0dd7ef2d5c25afd63eb374f8e4c125c0da1ac97",
       "id": "sf.render.nav-buoy.mesh.lod1-buoy-pressure-shell.primitive.0",
-      "indexCount": 666,
+      "indexCount": 660,
       "indexed": true,
-      "materialHash": "2d13bae1fcb57d1e69c5db2c69ce6a8916abf4a6c152c7a27bb2697f7af7f059",
+      "materialHash": "e95256577c68f90d0279770b1b751ac8a3cc381058f3412e0334b58dc04b5742",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Buoy_Pressure_Shell_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod1-buoy-pressure-shell",
       "primitiveIndex": 0,
-      "vertexCount": 464
+      "vertexCount": 432
     },
     {
       "bounds": {
         "max": [
-          1.5749999284744263,
-          4.375031471252441,
-          0.6600630283355713
+          1.5751229524612427,
+          8.234999656677246,
+          0.7999536395072937
         ],
         "min": [
-          -0.6276973485946655,
-          3.4249684810638428,
-          -0.6600630283355713
+          -1.2501230239868164,
+          3.5900001525878906,
+          -0.9999536275863647
         ]
       },
       "drawMode": 4,
-      "geometryHash": "51352c70b4eeecacb83efd59ebe9632e183637c9a141a07116f189d45fe3ea54",
+      "geometryHash": "c2a0a2ea741189e424c79af0227ee34ffb4c88af51c31178b87e66125f76966a",
       "id": "sf.render.nav-buoy.mesh.lod1-buoy-service-marking.primitive.0",
-      "indexCount": 240,
+      "indexCount": 252,
       "indexed": true,
-      "materialHash": "2df342231f2b734949bd8674733692facdd3279c85fa10b501df4e2d5a8e4228",
+      "materialHash": "10e9eab73402453384a1e8f25f920c17be6699f93f3ae1d57d0bdf8fd89eae98",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Buoy_Service_Marking_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod1-buoy-service-marking",
       "primitiveIndex": 0,
-      "vertexCount": 156
+      "vertexCount": 168
     },
     {
       "bounds": {
         "max": [
-          1.004970669746399,
-          2.375,
-          0.4300248622894287
+          0.4599176049232483,
+          1.9748607873916626,
+          1.3827710151672363
         ],
         "min": [
-          -1.004970669746399,
-          0.125,
-          -0.4300248622894287
+          -0.15991760790348053,
+          1.2651392221450806,
+          -1.3827710151672363
         ]
       },
       "drawMode": 4,
-      "geometryHash": "3af0cafbbae4c14a2992ac028853740b0a839af86df7c78a8f899cbc51cb34f3",
+      "geometryHash": "29c7785f4c05f95c6e4e9931fb41930c51ad64d0f594ad13ecec9137c7e6c858",
       "id": "sf.render.nav-buoy.mesh.lod1-buoy-solar-cell.primitive.0",
-      "indexCount": 264,
+      "indexCount": 72,
       "indexed": true,
-      "materialHash": "bc8b21eacf5408311abb62ad0559cb4f52c373754fc8b2f5d9eb45d8690a6daf",
+      "materialHash": "3e9dea9bfac74a26dca36768fb0ac7e46acdd6d1b66c7316e6d4bf04a2fa649c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Buoy_Solar_Cell_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod1-buoy-solar-cell",
       "primitiveIndex": 0,
-      "vertexCount": 192
+      "vertexCount": 48
     },
     {
       "bounds": {
         "max": [
-          1.399865746498108,
-          10.300000190734863,
-          1.399865746498108
+          1.3995342254638672,
+          9.429999351501465,
+          1.3995342254638672
         ],
         "min": [
-          -1.399865746498108,
+          -1.3995342254638672,
           -5,
-          -1.399865746498108
+          -1.3995342254638672
         ]
       },
       "drawMode": 4,
-      "geometryHash": "4970f15b42ac8fc7879a88355a8c80aa9185966dab518ebd3b1b62db50750682",
+      "geometryHash": "e5f023e0f7012c29be1f5daf9debaba9bbf8c3b51ac54f06ab1e4d1def8767fe",
       "id": "sf.render.nav-buoy.mesh.lod1-buoy-stabilizer-frame.primitive.0",
-      "indexCount": 1680,
+      "indexCount": 1704,
       "indexed": true,
       "materialHash": "a9d5402d02f99f1efbaa9686df4d32a5bd64981359cd090d86b978c3e6110c4c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD1_Buoy_Stabilizer_Frame_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod1-buoy-stabilizer-frame",
       "primitiveIndex": 0,
-      "vertexCount": 1072
+      "vertexCount": 1080
     },
     {
       "bounds": {
         "max": [
-          1.2899999618530273,
-          7.269993305206299,
-          1.2899999618530273
+          1.0899999141693115,
+          7.19992208480835,
+          1.0899999141693115
         ],
         "min": [
-          -1.2899999618530273,
-          6.830007076263428,
-          -1.2899999618530273
+          -1.0899999141693115,
+          6.180078029632568,
+          -1.0899999141693115
         ]
       },
       "drawMode": 4,
-      "geometryHash": "1f0abbbcb2e7aea6581680a4fe82bedde2ea48ee05881123333ab0ac48dcfe4c",
+      "geometryHash": "8020c01bcb9a5dafc1b1719fb5d5fef1c371d05778629bd8903513014b6431fc",
       "id": "sf.render.nav-buoy.mesh.lod2-buoy-nav-optic.primitive.0",
       "indexCount": 144,
       "indexed": true,
-      "materialHash": "b3ad80ea167ab8623ff28f3f8fef676c3a6811a03e1d5b05ea8a71dbd161dd90",
+      "materialHash": "05939ccf93f64ae51a515aa60b8488d579f9f11853de6fa156689c103006e5dc",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Buoy_Nav_Optic_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod2-buoy-nav-optic",
@@ -334,72 +334,72 @@
     {
       "bounds": {
         "max": [
-          1.0900310277938843,
-          8.720000267028809,
-          1.1694214344024658
+          1.0898206233978271,
+          7.809999942779541,
+          1.1695636510849
         ],
         "min": [
-          -1.0900310277938843,
+          -1.0898206233978271,
           -4.286935806274414,
-          -1.1694214344024658
+          -1.1695636510849
         ]
       },
       "drawMode": 4,
-      "geometryHash": "85b194864b9e3261aa7e543f4338e3bca745a075fc9276f91f2cc5f6e07a754e",
+      "geometryHash": "8ca531805023574180af28141ebde5fd51f4ed5c07e3c22d2725fb263c03939d",
       "id": "sf.render.nav-buoy.mesh.lod2-buoy-pressure-shell.primitive.0",
-      "indexCount": 294,
+      "indexCount": 252,
       "indexed": true,
-      "materialHash": "2d13bae1fcb57d1e69c5db2c69ce6a8916abf4a6c152c7a27bb2697f7af7f059",
+      "materialHash": "e95256577c68f90d0279770b1b751ac8a3cc381058f3412e0334b58dc04b5742",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Buoy_Pressure_Shell_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod2-buoy-pressure-shell",
       "primitiveIndex": 0,
-      "vertexCount": 208
+      "vertexCount": 164
     },
     {
       "bounds": {
         "max": [
-          1.5749999284744263,
-          4.375040531158447,
-          0.6600571870803833
+          1.5750046968460083,
+          4.210000038146973,
+          0.21000942587852478
         ],
         "min": [
-          -0.6600000262260437,
-          3.424959421157837,
-          -0.6600571870803833
+          1.2249952554702759,
+          3.5900001525878906,
+          -0.21000942587852478
         ]
       },
       "drawMode": 4,
-      "geometryHash": "11a80d68b60abc7f77f389b1ce8eac8dd7ccef731cf250f991aeb02700d4f0a1",
+      "geometryHash": "0211c5aa5b9810cbc7f1619a8d198bd31bf596f4e5bfd79cf8bb2165352ec3d0",
       "id": "sf.render.nav-buoy.mesh.lod2-buoy-service-marking.primitive.0",
-      "indexCount": 120,
+      "indexCount": 36,
       "indexed": true,
-      "materialHash": "2df342231f2b734949bd8674733692facdd3279c85fa10b501df4e2d5a8e4228",
+      "materialHash": "10e9eab73402453384a1e8f25f920c17be6699f93f3ae1d57d0bdf8fd89eae98",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Buoy_Service_Marking_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod2-buoy-service-marking",
       "primitiveIndex": 0,
-      "vertexCount": 72
+      "vertexCount": 24
     },
     {
       "bounds": {
         "max": [
-          -0.6000128388404846,
-          2.299999952316284,
-          0.4599337577819824
+          0.2099444568157196,
+          1.6499313116073608,
+          1.149999976158142
         ],
         "min": [
-          -0.7199872136116028,
-          0.20000004768371582,
-          -0.4599337577819824
+          0.09005554765462875,
+          1.3500686883926392,
+          -1.149999976158142
         ]
       },
       "drawMode": 4,
-      "geometryHash": "98256dbdf9220459c4037e686d7475f06daeb8a701f54086c07b3cde52b19866",
+      "geometryHash": "38e249e5b1c1eff6f67fc69484ea924a37972b63a9af1a9a0002d4a97b3f3db7",
       "id": "sf.render.nav-buoy.mesh.lod2-buoy-solar-cell.primitive.0",
       "indexCount": 36,
       "indexed": true,
-      "materialHash": "bc8b21eacf5408311abb62ad0559cb4f52c373754fc8b2f5d9eb45d8690a6daf",
+      "materialHash": "3e9dea9bfac74a26dca36768fb0ac7e46acdd6d1b66c7316e6d4bf04a2fa649c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Buoy_Solar_Cell_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod2-buoy-solar-cell",
@@ -420,16 +420,16 @@
         ]
       },
       "drawMode": 4,
-      "geometryHash": "ae48dd3e81cc282514b945cd74f7e5cc45a3240ed87a3c2a54819953730a0f01",
+      "geometryHash": "5176353c9a29150f222dfdfec98c2dfc109248099d7eb0749df9301eee42e63e",
       "id": "sf.render.nav-buoy.mesh.lod2-buoy-stabilizer-frame.primitive.0",
-      "indexCount": 468,
+      "indexCount": 396,
       "indexed": true,
       "materialHash": "a9d5402d02f99f1efbaa9686df4d32a5bd64981359cd090d86b978c3e6110c4c",
       "materialPipelineKey": "opaque",
       "meshName": "LOD2_Buoy_Stabilizer_Frame_Mesh",
       "nodeId": "sf.render.nav-buoy.mesh.lod2-buoy-stabilizer-frame",
       "primitiveIndex": 0,
-      "vertexCount": 308
+      "vertexCount": 264
     }
   ],
   "hlods": [],
@@ -437,40 +437,40 @@
   "lods": [],
   "materials": [
     {
-      "hash": "2d13bae1fcb57d1e69c5db2c69ce6a8916abf4a6c152c7a27bb2697f7af7f059",
-      "id": "material:2d13bae1fcb57d1e69c5db2c",
-      "name": "Buoy_Pressure_Shell",
+      "hash": "05939ccf93f64ae51a515aa60b8488d579f9f11853de6fa156689c103006e5dc",
+      "id": "material:05939ccf93f64ae51a515aa6",
+      "name": "Buoy_Nav_Optic",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "neutral_coated_pressure_shell_basecolor",
+          "name": "recessed_multiface_navigation_optic_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "neutral_coated_pressure_shell_orm",
+          "name": "recessed_multiface_navigation_optic_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "neutral_coated_pressure_shell_normal",
+          "name": "recessed_multiface_navigation_optic_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "neutral_coated_pressure_shell_orm",
+          "name": "recessed_multiface_navigation_optic_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "2df342231f2b734949bd8674733692facdd3279c85fa10b501df4e2d5a8e4228",
-      "id": "material:2df342231f2b734949bd8674",
+      "hash": "10e9eab73402453384a1e8f25f920c17be6699f93f3ae1d57d0bdf8fd89eae98",
+      "id": "material:10e9eab73402453384a1e8f2",
       "name": "Buoy_Service_Marking",
       "pipelineKey": "opaque:double",
       "textures": [
@@ -495,6 +495,38 @@
         {
           "colorSpace": "linear",
           "name": "finite_tow_service_marking_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "3e9dea9bfac74a26dca36768fb0ac7e46acdd6d1b66c7316e6d4bf04a2fa649c",
+      "id": "material:3e9dea9bfac74a26dca36768",
+      "name": "Buoy_Solar_Cell",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "segmented_photovoltaic_laminate_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "segmented_photovoltaic_laminate_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "segmented_photovoltaic_laminate_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "segmented_photovoltaic_laminate_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -533,64 +565,32 @@
       ]
     },
     {
-      "hash": "b3ad80ea167ab8623ff28f3f8fef676c3a6811a03e1d5b05ea8a71dbd161dd90",
-      "id": "material:b3ad80ea167ab8623ff28f3f",
-      "name": "Buoy_Nav_Optic",
+      "hash": "e95256577c68f90d0279770b1b751ac8a3cc381058f3412e0334b58dc04b5742",
+      "id": "material:e95256577c68f90d0279770b",
+      "name": "Buoy_Pressure_Shell",
       "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "recessed_multiface_navigation_optic_basecolor",
+          "name": "neutral_coated_pressure_shell_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "recessed_multiface_navigation_optic_orm",
+          "name": "neutral_coated_pressure_shell_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "recessed_multiface_navigation_optic_normal",
+          "name": "neutral_coated_pressure_shell_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "recessed_multiface_navigation_optic_orm",
-          "slot": "occlusion",
-          "uri": null
-        }
-      ]
-    },
-    {
-      "hash": "bc8b21eacf5408311abb62ad0559cb4f52c373754fc8b2f5d9eb45d8690a6daf",
-      "id": "material:bc8b21eacf5408311abb62ad",
-      "name": "Buoy_Solar_Cell",
-      "pipelineKey": "opaque:double",
-      "textures": [
-        {
-          "colorSpace": "srgb",
-          "name": "segmented_photovoltaic_laminate_basecolor",
-          "slot": "baseColor",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "segmented_photovoltaic_laminate_orm",
-          "slot": "metallicRoughness",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "segmented_photovoltaic_laminate_normal",
-          "slot": "normal",
-          "uri": null
-        },
-        {
-          "colorSpace": "linear",
-          "name": "segmented_photovoltaic_laminate_orm",
+          "name": "neutral_coated_pressure_shell_orm",
           "slot": "occlusion",
           "uri": null
         }
@@ -1387,42 +1387,42 @@
       "sha256": "4b185e90c7db4094a8d43108b3c1342656892598104b4b5ef6002a32a0b462f7"
     },
     "sourceGlb": {
-      "bytes": 205128,
-      "sha256": "d39f5b42d5b790c12546cb395629ff79c82b607296e1b0b555eed6b25f7a2dcd",
+      "bytes": 205660,
+      "sha256": "e7d41985b76e4c02394dd39e84997e478cc3b9f8016eb93cbd1d74206cc226f2",
       "uri": "place_nav_buoy.glb"
     },
     "sourceManifest": {
-      "bytes": 76590,
-      "sha256": "af6db6d0014cc5be145fe032d29e293dab6eade7b7312f4882510bfebaf20300",
+      "bytes": 160166,
+      "sha256": "bc91cd4262c0d15d12225dc97f5953df109594a837a9d85fccc056c236d3990f",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 274324,
-    "sha256": "9b737cfac2d07800cea225c59305490bb513f240ef3b10c5b34bfc929386df2e",
+    "bytes": 270676,
+    "sha256": "7d04046c2ca563b47ff43bd7ac72695215cecfa471d210d9fecb2b34689d271c",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        0.08756709098815918,
+        0.08758139610290527,
         2.6500000953674316,
         0
       ],
       "max": [
-        1.5749999284744263,
+        1.5751311779022217,
         10.300000190734863,
-        1.399865746498108
+        1.3999683856964111
       ],
       "min": [
-        -1.399865746498108,
+        -1.3999683856964111,
         -5,
-        -1.399865746498108
+        -1.3999683856964111
       ],
       "size": [
-        2.974865674972534,
+        2.975099563598633,
         15.300000190734863,
-        2.799731492996216
+        2.7999367713928223
       ]
     },
     "hidden": [],
@@ -2009,20 +2009,20 @@
     "slot": "place",
     "url": "assets/ships/release/parts/places/place_nav_buoy.glb"
   },
-  "runtimeHash": "a866510bf95cec213a178d1ec9da787c47530d91e21d1407885a43cb0a8a5c66",
+  "runtimeHash": "9a1d770ba20453e49678a37ed50c3fad2fbc7103cb9a915150782002ce17b13c",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          1.5749999284744263,
+          1.5751311779022217,
           10.300000190734863,
-          1.399865746498108
+          1.3999683856964111
         ],
         "min": [
-          -1.399865746498108,
+          -1.3999683856964111,
           -5,
-          -1.399865746498108
+          -1.3999683856964111
         ]
       },
       "id": "sf.render.nav-buoy.body",

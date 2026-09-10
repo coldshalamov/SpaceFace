@@ -1,0 +1,361 @@
+{
+  "schema": "spaceface.pq022-nav-buoy-repair-h1.v1",
+  "row": 7,
+  "disposition": "PASS",
+  "runtime": "electron",
+  "brokerManifestId": "pq022-nav-buoy-repair-electron",
+  "broker": {
+    "reason": "broker-claim-consumed",
+    "diagnostic": false,
+    "primaryAcceptance": true,
+    "claimId": "24500-71cff1104595298b2d6d29ae",
+    "mode": "acceptance",
+    "runtimeKind": "electron",
+    "candidateDigest": "b07864050f76e75d097cbd1114bee70e9e006bab1bac80fbc67cad5319a99e0e",
+    "manifestDigest": "fc557fa371d997655c5984d07774ff00a539467c815f44ee6675d3192fd40b2c",
+    "inputDigest": "ce8695eca16577b866b03e62bc5664f7090e0274aad8fef5efd3f09319eb81b5"
+  },
+  "selector": "nav-buoy-repair",
+  "fixedSeed": 47,
+  "recordedSeed": 47,
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "gpu": {
+    "available": true,
+    "vendor": "Google Inc. (Intel)",
+    "renderer": "ANGLE (Intel, Intel(R) Graphics (0x00007D45) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "routeContract": "visible fixed-seed New Game -> Tethys Customs Log buoy owner -> ordinary and diagnostic-close game-canvas stills",
+  "compressions": [
+    {
+      "kind": "travel",
+      "subject": "corridor-lane-furniture",
+      "detail": "called the registered world.enterSector(sector_tethys_junction) owner; the public Customs Log Relay is the ordinary live buoy subject"
+    },
+    {
+      "kind": "serving-path-probe",
+      "subject": "nav-buoy",
+      "detail": "{\"status\":200,\"bytes\":205660,\"sha256\":\"e7d41985b76e4c02394dd39e84997e478cc3b9f8016eb93cbd1d74206cc226f2\",\"entries\":[]}"
+    }
+  ],
+  "relayPlacement": null,
+  "trafficFixtures": null,
+  "manifestIdentity": [
+    {
+      "key": "nav-buoy",
+      "assetId": "place_nav_buoy",
+      "manifestId": "place_nav_buoy",
+      "family": "corridor-lane-furniture",
+      "source": "assets/ships/parts/places/place_nav_buoy.glb",
+      "release": "assets/ships/release/parts/places/place_nav_buoy.glb",
+      "sourceSha256": "edcfd2779a4248c32d71a3f8984644be8fadbeedac9493e13d869955ad9e0780",
+      "releaseSha256": "e7d41985b76e4c02394dd39e84997e478cc3b9f8016eb93cbd1d74206cc226f2",
+      "sourceBytes": 430492,
+      "releaseBytes": 205660,
+      "sourceManifestFile": "places/place_nav_buoy.glb"
+    }
+  ],
+  "captures": [
+    {
+      "subjectKey": "nav-buoy",
+      "assetId": "place_nav_buoy",
+      "manifestId": "place_nav_buoy",
+      "family": "corridor-lane-furniture",
+      "file": ".devshots/pq022-nav-buoy-repair/electron/01-tethys-customs-buoy-ordinary.png",
+      "bytes": 234427,
+      "sha256": "6afbb1aafed2f18ddeea2bade9ffb49939e867717020da6a180517a888184a7d",
+      "framing": "default",
+      "requestedLod": "lod1",
+      "mode": "flight",
+      "sectorId": "sector_tethys_junction",
+      "entityId": 434,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_nav_buoy",
+        "poiId": "poi_tethys_customs_log",
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "captureSurface": "game-render-canvas-hud-excluded",
+      "cameraRig": "shipping-chase-angle-and-zoom-target-centred",
+      "emissiveComparison": "not-supported-by-shared-public-rig",
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_nav_buoy",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_nav_buoy.glb"
+        ]
+      },
+      "visibleMeshes": 5,
+      "materialNames": [
+        "SF_Shared_hull_textured_hull",
+        "SF_Shared_none_textured_none_native",
+        "SF_Shared_signal_hull"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        2.97465717792511,
+        15.300000190734863,
+        2.7990684509277344
+      ],
+      "cameraDistance": 144,
+      "centerNdc": {
+        "x": 0,
+        "y": 0,
+        "z": 0.9862529863244199
+      },
+      "centerOnScreen": true
+    },
+    {
+      "subjectKey": "nav-buoy",
+      "assetId": "place_nav_buoy",
+      "manifestId": "place_nav_buoy",
+      "family": "corridor-lane-furniture",
+      "file": ".devshots/pq022-nav-buoy-repair/electron/02-tethys-customs-buoy-diagnostic-close.png",
+      "bytes": 213512,
+      "sha256": "18ae3722aa48400747965afe28456eec635679b83898b5cc4a2f343e76d6a491",
+      "framing": "close",
+      "requestedLod": "lod0",
+      "mode": "flight",
+      "sectorId": "sector_tethys_junction",
+      "entityId": 434,
+      "entityType": "fx",
+      "runtimeIdentity": {
+        "stationId": null,
+        "archetypeGlb": null,
+        "placeId": "place_nav_buoy",
+        "poiId": "poi_tethys_customs_log",
+        "isGate": false,
+        "trafficRole": null,
+        "defId": null,
+        "worldRecordId": null
+      },
+      "captureSurface": "game-render-canvas-hud-excluded",
+      "cameraRig": "diagnostic-low-angle",
+      "emissiveComparison": "not-supported-by-shared-public-rig",
+      "presentationAdmission": "ready",
+      "authoredAssetState": "authored",
+      "authoredAssetMode": "release",
+      "authoredVisualRoot": "authored-root",
+      "authoredReadableFallbackRetained": false,
+      "authoredCompositionId": "GLTFKIT_place_nav_buoy",
+      "authoredSlots": {
+        "place": [
+          "assets/ships/release/parts/places/place_nav_buoy.glb"
+        ]
+      },
+      "visibleMeshes": 5,
+      "materialNames": [
+        "SF_Shared_hull_textured_hull",
+        "SF_Shared_none_textured_none_native",
+        "SF_Shared_signal_hull"
+      ],
+      "textureRoles": [
+        "aoMap",
+        "map",
+        "metalnessMap",
+        "normalMap",
+        "roughnessMap"
+      ],
+      "visibleSizeM": [
+        2.975099563598633,
+        15.300000190734863,
+        2.7999367713928223
+      ],
+      "cameraDistance": 29.484233074645086,
+      "centerNdc": {
+        "x": -2.067225300108874e-14,
+        "y": -8.268901200435495e-15,
+        "z": 0.993230950869975
+      },
+      "centerOnScreen": true
+    }
+  ],
+  "uniqueAssetCount": 1,
+  "screenshotCount": 2,
+  "pageIssues": [],
+  "deferredKnownIssues": [
+    {
+      "type": "error",
+      "text": "[render] opening submission post-submit validation failed {ok: false, baseline: Object, current: Object, currentResources: Object, delta: Object}"
+    }
+  ],
+  "deferredKnownIssuesNote": "Known contended-tree diagnostic from the in-flight smoothness renderer lane; re-run this cell on a clean src/render tree to clear it.",
+  "informational_contended": true,
+  "informational_contended_note": "Phase H1 ran contended by design. This receipt contains identity, admission, visibility, and still-image facts only; no time-valued field is performance evidence.",
+  "noPerformanceEvidence": true,
+  "noPerformanceEvidenceNote": "Matched performance remains Phase H3.",
+  "browserComparison": {
+    "pass": true,
+    "comparedAgainst": ".devshots/pq022-nav-buoy-repair/browser/report.json",
+    "normalizedBrowser": {
+      "schema": "spaceface.pq022-nav-buoy-repair-h1.v1",
+      "selector": "nav-buoy-repair",
+      "fixedSeed": 47,
+      "routeContract": "visible fixed-seed New Game -> Tethys Customs Log buoy owner -> ordinary and diagnostic-close game-canvas stills",
+      "uniqueAssetCount": 1,
+      "screenshotCount": 2,
+      "captures": [
+        {
+          "subjectKey": "nav-buoy",
+          "assetId": "place_nav_buoy",
+          "manifestId": "place_nav_buoy",
+          "family": "corridor-lane-furniture",
+          "framing": "default",
+          "requestedLod": "lod1",
+          "runtimeIdentity": {
+            "stationId": null,
+            "archetypeGlb": null,
+            "placeId": "place_nav_buoy",
+            "poiId": "poi_tethys_customs_log",
+            "isGate": false,
+            "trafficRole": null,
+            "defId": null,
+            "worldRecordId": null
+          },
+          "captureSurface": "game-render-canvas-hud-excluded",
+          "cameraRig": "shipping-chase-angle-and-zoom-target-centred",
+          "emissiveComparison": "not-supported-by-shared-public-rig",
+          "presentationAdmission": "ready",
+          "authoredAssetState": "authored",
+          "authoredAssetMode": "release",
+          "authoredVisualRoot": "authored-root",
+          "authoredReadableFallbackRetained": false,
+          "authoredCompositionId": "GLTFKIT_place_nav_buoy",
+          "authoredSlots": {
+            "place": [
+              "assets/ships/release/parts/places/place_nav_buoy.glb"
+            ]
+          },
+          "centerOnScreen": true
+        },
+        {
+          "subjectKey": "nav-buoy",
+          "assetId": "place_nav_buoy",
+          "manifestId": "place_nav_buoy",
+          "family": "corridor-lane-furniture",
+          "framing": "close",
+          "requestedLod": "lod0",
+          "runtimeIdentity": {
+            "stationId": null,
+            "archetypeGlb": null,
+            "placeId": "place_nav_buoy",
+            "poiId": "poi_tethys_customs_log",
+            "isGate": false,
+            "trafficRole": null,
+            "defId": null,
+            "worldRecordId": null
+          },
+          "captureSurface": "game-render-canvas-hud-excluded",
+          "cameraRig": "diagnostic-low-angle",
+          "emissiveComparison": "not-supported-by-shared-public-rig",
+          "presentationAdmission": "ready",
+          "authoredAssetState": "authored",
+          "authoredAssetMode": "release",
+          "authoredVisualRoot": "authored-root",
+          "authoredReadableFallbackRetained": false,
+          "authoredCompositionId": "GLTFKIT_place_nav_buoy",
+          "authoredSlots": {
+            "place": [
+              "assets/ships/release/parts/places/place_nav_buoy.glb"
+            ]
+          },
+          "centerOnScreen": true
+        }
+      ]
+    },
+    "normalizedElectron": {
+      "schema": "spaceface.pq022-nav-buoy-repair-h1.v1",
+      "selector": "nav-buoy-repair",
+      "fixedSeed": 47,
+      "routeContract": "visible fixed-seed New Game -> Tethys Customs Log buoy owner -> ordinary and diagnostic-close game-canvas stills",
+      "uniqueAssetCount": 1,
+      "screenshotCount": 2,
+      "captures": [
+        {
+          "subjectKey": "nav-buoy",
+          "assetId": "place_nav_buoy",
+          "manifestId": "place_nav_buoy",
+          "family": "corridor-lane-furniture",
+          "framing": "default",
+          "requestedLod": "lod1",
+          "runtimeIdentity": {
+            "stationId": null,
+            "archetypeGlb": null,
+            "placeId": "place_nav_buoy",
+            "poiId": "poi_tethys_customs_log",
+            "isGate": false,
+            "trafficRole": null,
+            "defId": null,
+            "worldRecordId": null
+          },
+          "captureSurface": "game-render-canvas-hud-excluded",
+          "cameraRig": "shipping-chase-angle-and-zoom-target-centred",
+          "emissiveComparison": "not-supported-by-shared-public-rig",
+          "presentationAdmission": "ready",
+          "authoredAssetState": "authored",
+          "authoredAssetMode": "release",
+          "authoredVisualRoot": "authored-root",
+          "authoredReadableFallbackRetained": false,
+          "authoredCompositionId": "GLTFKIT_place_nav_buoy",
+          "authoredSlots": {
+            "place": [
+              "assets/ships/release/parts/places/place_nav_buoy.glb"
+            ]
+          },
+          "centerOnScreen": true
+        },
+        {
+          "subjectKey": "nav-buoy",
+          "assetId": "place_nav_buoy",
+          "manifestId": "place_nav_buoy",
+          "family": "corridor-lane-furniture",
+          "framing": "close",
+          "requestedLod": "lod0",
+          "runtimeIdentity": {
+            "stationId": null,
+            "archetypeGlb": null,
+            "placeId": "place_nav_buoy",
+            "poiId": "poi_tethys_customs_log",
+            "isGate": false,
+            "trafficRole": null,
+            "defId": null,
+            "worldRecordId": null
+          },
+          "captureSurface": "game-render-canvas-hud-excluded",
+          "cameraRig": "diagnostic-low-angle",
+          "emissiveComparison": "not-supported-by-shared-public-rig",
+          "presentationAdmission": "ready",
+          "authoredAssetState": "authored",
+          "authoredAssetMode": "release",
+          "authoredVisualRoot": "authored-root",
+          "authoredReadableFallbackRetained": false,
+          "authoredCompositionId": "GLTFKIT_place_nav_buoy",
+          "authoredSlots": {
+            "place": [
+              "assets/ships/release/parts/places/place_nav_buoy.glb"
+            ]
+          },
+          "centerOnScreen": true
+        }
+      ]
+    }
+  },
+  "ownedRuntimeClosed": true
+}

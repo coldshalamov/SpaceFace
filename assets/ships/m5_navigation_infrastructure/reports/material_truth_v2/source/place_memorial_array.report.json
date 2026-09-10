@@ -22,28 +22,28 @@
   },
   "candidate": {
     "path": "assets/ships/m5_navigation_infrastructure/source_candidates/material_truth_v2/places/place_memorial_array.glb",
-    "sha256": "974bef5474cdc3945bbc9487099d007edce50db1d2d8ea333d5cd06c4654b0ce",
+    "sha256": "3a4a6d1b96142fa0d9e2e456d0b2e25a5a3fb62c2e4e6a367f308c86ae379388",
     "bytes": 526108
   },
   "spacefaceCandidate": {
     "path": "assets/ships/m5_navigation_infrastructure/source_candidates/material_truth_v2/places/place_memorial_array.glb",
-    "sha256": "974bef5474cdc3945bbc9487099d007edce50db1d2d8ea333d5cd06c4654b0ce",
+    "sha256": "3a4a6d1b96142fa0d9e2e456d0b2e25a5a3fb62c2e4e6a367f308c86ae379388",
     "bytes": 526108
   },
   "releaseMirror": {
     "path": "assets/ships/m5_navigation_infrastructure/release_candidates/material_truth_v2/places/place_memorial_array.glb",
-    "sha256": "974bef5474cdc3945bbc9487099d007edce50db1d2d8ea333d5cd06c4654b0ce",
+    "sha256": "3a4a6d1b96142fa0d9e2e456d0b2e25a5a3fb62c2e4e6a367f308c86ae379388",
     "bytes": 526108
   },
   "blender": {
     "path": "assets/ships/m5_navigation_infrastructure/blender/source/material_truth_v2/place_memorial_array.blend",
-    "sha256": "210b39137d60788044621029329a789af7234ef39c2b6b22d4c894b558d7f9c3",
-    "bytes": 253319
+    "sha256": "1d4c721e81036c7dce07930cd4858b870d3fd85af47616e5d98ee5e0e854de1f",
+    "bytes": 253303
   },
   "generator": {
     "path": "tools/blender/build_navigation_infrastructure_material_truth_v2.py",
-    "sha256": "cb49a69d29745ca81cc110cc39d9a03ca9cf402e3fb191f3fea05c0e6c521f39",
-    "bytes": 105006
+    "sha256": "a2a811fee87e616e15029e4b6567d452cf1ba6626ac5e03d330ded00422f78c2",
+    "bytes": 105182
   },
   "export": {
     "nodeCount": 18,
@@ -629,8 +629,8 @@
       {
         "name": "face_count",
         "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/face_count.png",
-        "sha256": "8f78f9a3436a5d5d2a3fc44eb38c2fa6f8adac825efd902d58705881fbf859df",
-        "bytes": 1251068,
+        "sha256": "76d4b503b89408b7f35a6974f17ec4e4a8e316bc96c0dbedbe96dc1617f3ceaa",
+        "bytes": 1251171,
         "resolution": [
           1600,
           900
@@ -653,8 +653,8 @@
       {
         "name": "front_three_quarter",
         "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/front_three_quarter.png",
-        "sha256": "2d073a121852da25da90e0ca254a601aed6bba300122702415d3cc1e5955c29a",
-        "bytes": 1339674,
+        "sha256": "1ca0b4719c5eb31952c4640028f7fa4c4e14f81c6f83f1bd906d0f12fb5530f3",
+        "bytes": 1339653,
         "resolution": [
           1600,
           900
@@ -677,7 +677,7 @@
       {
         "name": "rear_service_three_quarter",
         "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/rear_service_three_quarter.png",
-        "sha256": "4b6db45f968e5512650c2b9e079f5d19534a6f7bd93c7cb1e98f1fef8e9c18ca",
+        "sha256": "934fd6eff07579dfede9385c1c9e7741638868f38484d364322c13407cf434f5",
         "bytes": 1324344,
         "resolution": [
           1600,
@@ -701,7 +701,7 @@
       {
         "name": "end_load_path",
         "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/end_load_path.png",
-        "sha256": "7dcd6aff43259e41a4aafef06d456f63448cc5ea99f85c07135420e103c01738",
+        "sha256": "ed7b86df16dc5c91c4cf45ae4d7622c6a1f8366c7ac9756100b51353c0604f29",
         "bytes": 1460396,
         "resolution": [
           1600,
@@ -725,7 +725,7 @@
       {
         "name": "top",
         "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/top.png",
-        "sha256": "45f62bda1680d7c38d9461506b6c663a6fcf44f4a69748a3e8979fa66b90f410",
+        "sha256": "b1d7ae79e6ce2318f768a48dbe60f1fa51977377f6a47da1a01896c67cf91d9e",
         "bytes": 1248855,
         "resolution": [
           1600,
@@ -749,8 +749,8 @@
       {
         "name": "front_three_quarter_emissive_off",
         "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/front_three_quarter_emissive_off.png",
-        "sha256": "0755695ed34ea2d653c08fd9cbe51a2526573e6b4c9abbbec829404a7c568d3f",
-        "bytes": 1337313,
+        "sha256": "e373ad1ea61251f0ddf270b255e6de942228174e921a0254b23058e06a48527f",
+        "bytes": 1337327,
         "resolution": [
           1600,
           900
@@ -773,8 +773,8 @@
       {
         "name": "material_id",
         "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/material_id.png",
-        "sha256": "786d4fa201e6114ada165e59b280082266b7205b2ab53e034ef90c098b222137",
-        "bytes": 1312833,
+        "sha256": "5f909a35eda17551249ad75f2dc89f2ce6f7b5d5f89d67581e9ef5d7d53b4637",
+        "bytes": 1312809,
         "resolution": [
           1600,
           900
@@ -797,8 +797,8 @@
       {
         "name": "grazing_light",
         "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/grazing_light.png",
-        "sha256": "d639f65fe4f6a536f901e05238f8e9fddab70671ae9f4dabfc966580daf7673d",
-        "bytes": 1197136,
+        "sha256": "789d788df2aa5451e66dcad584701aa868dc2f89c9a8ad0d31f31442b9eafc87",
+        "bytes": 1197130,
         "resolution": [
           1600,
           900
@@ -821,7 +821,7 @@
       {
         "name": "lod1_26_5m",
         "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/lod1_26_5m.png",
-        "sha256": "bf05cf6ae3883d09cebfd0840b548348b134b31d2e7883bb9848e7e413973085",
+        "sha256": "2f79ece281f7a41490ba6aa822007e28b8b58e4fcf65fb2987b889babfc46763",
         "bytes": 1319068,
         "resolution": [
           1600,
@@ -845,7 +845,7 @@
       {
         "name": "lod2_far",
         "path": "assets/ships/m5_navigation_infrastructure/reports/material_truth_v2/renders/place_memorial_array/lod2_far.png",
-        "sha256": "777697d726fcc704fbdb01d604753f3471e1c76373f57a0d4f2d11cc5f288fb0",
+        "sha256": "2246f7b62b7002c5402176715246bb8ef44c0f1ecf91a2b1f8120c480f63e9c1",
         "bytes": 1176470,
         "resolution": [
           1600,
@@ -877,6 +877,6 @@
     "g7IndependentAcceptance": false,
     "promotionAuthorized": false
   },
-  "builtAt": "2026-09-10T12:39:38Z",
-  "elapsedSeconds": 65.55
+  "builtAt": "2026-09-10T13:56:50Z",
+  "elapsedSeconds": 53.61
 }

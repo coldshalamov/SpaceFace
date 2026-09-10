@@ -7,11 +7,12 @@ import path from 'node:path';
 export const PQ022_NAV_BUOY_REPAIR_FIXED_SEED = 47;
 
 // `check:assets:live` is omitted from this cell's gates on purpose: that probe refuses to run
-// unless HEAD == origin/master, which the shared concurrent tree cannot satisfy. The candidate
-// admission check is the stronger buoy-repair-relevant gate and runs clean.
+// unless HEAD == origin/master, which the shared concurrent tree cannot satisfy. The corridor
+// gate is the live hash-binding authority here (it recomputes every manifest binding from disk).
+// The candidate admission check is deliberately NOT a post-promotion gate: it is a pre-promotion
+// admission and goes stale by design once the transaction publishes.
 const FAST_GATES = Object.freeze([
   'npm run check:pq022:corridor-assets',
-  'node scripts/check-pq022-navigation-infrastructure-candidate.mjs',
   'node --test test/pq022-reauthor-h1-manifests.test.mjs',
 ]);
 

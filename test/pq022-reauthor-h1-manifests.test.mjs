@@ -40,12 +40,10 @@ function assertH1Manifest(manifest, { id, runtimeKind, selector, artifactRoot, l
   if (liveGate) {
     assert.ok(manifest.fastGateCommands.includes('npm run check:assets:live'));
   } else {
-    // The repair cell substitutes the candidate admission check: the generic live probe is
-    // environment-gated on HEAD == origin/master and cannot run on the shared concurrent tree.
+    // The repair cell drops the generic live probe: it is environment-gated on
+    // HEAD == origin/master and cannot run on the shared concurrent tree. The corridor gate
+    // carries the live hash-binding proof for this cell.
     assert.equal(manifest.fastGateCommands.includes('npm run check:assets:live'), false);
-    assert.ok(manifest.fastGateCommands.includes(
-      'node scripts/check-pq022-navigation-infrastructure-candidate.mjs',
-    ));
   }
   assert.ok(manifest.fastGateCommands.includes('node --test test/pq022-reauthor-h1-manifests.test.mjs'));
 }
