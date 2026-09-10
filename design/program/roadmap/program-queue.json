@@ -5666,7 +5666,7 @@
       "priority": 59,
       "title": "Pacing: the first minute and the wave curve",
       "kind": "implementation",
-      "state": "claimed",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -5694,7 +5694,8 @@
         "npm run check:crucible:arc"
       ],
       "receiptRefs": [
-        "design/program/roadmap/receipts/PQ-174.01-REPORT.md"
+        "design/program/roadmap/receipts/PQ-174.01-REPORT.md",
+        "design/program/roadmap/active/PQ-174.01-DESIGN-MEMO.md"
       ],
       "brief": "READY after 2026-09-07 measure (Grok). First kill already <=12s; menus 0; cleanup 0.77s. Wave 1 at quota 15 clears in 23-52s (6 of 8 finishes under 45s). Quota 24 and thinning/doors cannot put all kits in 45-90s without stalling or starving slow seeds. Do not retry count/geometry/HP. Next pass must change the farm. DONE WHEN: Time-to-first-kill <= 20 s on all seeds; wave durations inside the band; menu frequency <= 0.2 per wave."
     },
@@ -7981,7 +7982,7 @@
       "priority": 146,
       "title": "Weather that shapes fights",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8002,7 +8003,9 @@
         "npm run check:baseline",
         "npm run check:atlas-integrity"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-027.02-REPORT.md"
+      ],
       "brief": "One storm and one radiation belt per affected sector: shots bend, sensors shrink, fields amplify; ordinary traffic avoids them. DONE WHEN: Blind reviewer names the hazard from motion alone."
     },
     {
@@ -8011,7 +8014,7 @@
       "priority": 147,
       "title": "Timed access",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8032,7 +8035,9 @@
         "npm run check:baseline",
         "npm run check:atlas-integrity"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-027.03-REPORT.md"
+      ],
       "brief": "Gates, locks and doors on schedules; the station-door jam. DONE WHEN: A jammed aperture holds reinforcements for ≥ 20 s in the scenario."
     },
     {
