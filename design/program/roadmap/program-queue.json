@@ -4868,7 +4868,7 @@
       "priority": 30,
       "title": "Re-author the corridor billboard and navigation buoy, and split the Helios memorial identity",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-022.corridor-assets-human-disposition"
       ],
@@ -4912,7 +4912,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-022-billboard-buoy-reauthor-REPORT.md"
       ],
-      "brief": "Integrated at dab9199a: ordinary core stations retain the shared neutral information display, poi_memorial alone selects the new 24-light place_memorial_array, and the broadly reused navigation buoy retains one faction-neutral navigation identity. Canonical source, authored Blend, optimized release, both manifest rows, ordinary place registration, deterministic producer/tooling, and exact-source review are committed. Browser/Electron route presentation, causal route review, and representative performance remain separate units.",
+      "brief": "Integrated at dab9199a: ordinary core stations retain the shared neutral information display, poi_memorial alone selects the new 24-light place_memorial_array, and the broadly reused navigation buoy retains one faction-neutral navigation identity. Canonical source, authored Blend, optimized release, both manifest rows, ordinary place registration, deterministic producer/tooling, and exact-source review are committed. Browser/Electron route presentation, causal route review, and representative performance remain separate units. | REOPENED 2026-09-10 for the BUOY ONLY — the billboard PASSED review and must not be touched. Buoy verdict: dark low-contrast post-and-cap; beacon is sub-pixel at ordinary framing where the billboard face carries fine in the same scene; the pale service panel shares the asteroid value/hue and camouflages. Needs a head with silhouette, an emissive beacon at billboard scale, a panel off the rock palette. Receipt: design/program/roadmap/receipts/PQ-022-reauthor-causal-review-2026-09-10.md",
       "partialIntegration": "The three live source GLBs preserve byte-identical BIN payloads from the KEEP-reviewed candidates while adding only guarded lifecycle metadata; their exact canonical releases and manifest hashes are bound at dab9199a. Reconciliation at current master passed the three-case runtime identity split and the 280-node atlas-integrity gate. No Browser/Electron launch or performance measurement was used or claimed.",
       "blocker": null
     },
@@ -4922,7 +4922,7 @@
       "priority": 31,
       "title": "Capture revised billboard and buoy Browser and Electron presentation",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.billboard-buoy-reauthor"
       ],
@@ -4941,7 +4941,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-022-billboard-buoy-reauthor-h1-REPORT.md"
       ],
-      "brief": "Capture only the revised billboard and navigation buoy at useful game-camera framings with distinct Electron parity; retain all unaffected Row 7 evidence. | REOPENED 2026-09-10 for the BUOY ONLY. The billboard is accepted and must not be recaptured. Buoy needs: a head with silhouette (not post-and-cap), an emissive beacon at the scale the billboard now carries, a service panel off the asteroid value/hue, and ordinary PLUS diagnostic-close frames in both runtimes.",
+      "brief": "Capture only the revised billboard and navigation buoy at useful game-camera framings with distinct Electron parity; retain all unaffected Row 7 evidence. | 2026-09-10: this CAPTURE is done and correct for the billboard. The buoy needs re-AUTHORING first (PQ-022.billboard-buoy-reauthor), then a fresh buoy-only capture including a diagnostic-close frame.",
       "partialIntegration": "2026-09-07 candidate 5b1ee35e retains accepted Browser and source-Electron launches at fixed seed 47, exact source/release identity, default framing, authored-release admission, live Helios/Tethys placements, normalized semantic parity, zero page issues, consumed claim ledgers, and clean Electron teardown. Both headed mutexes are released; no performance or causal visual verdict is claimed.",
       "blocker": null
     },
