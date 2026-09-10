@@ -271,6 +271,83 @@ This is the long-form reward for having practiced the tool in Swarm. You recogni
 
 **Connection:** this joins the existing living-world ambition to the combat toys, rather than surrounding the same dull combat with more dialogue.
 
+## Seventh design thread: the pleasure of landing hits
+
+**Added 10 September 2026 from the owner's clarification:** the desired feeling includes an enemy visibly and audibly taking a blow, damage popping out, occasional exciting critical hits, and the continuous satisfaction of fast arcade/RPG combat. This develops I18–I20; it does not replace those ideas or the earlier mechanical findings.
+
+**Assessment of the current game: pieces exist, but the complete feeling is underdeveloped.** The preceding play review did not establish this as a consistent pleasure, and the current source explains several gaps:
+
+- Damage numbers already appear immediately. Repeated hits on the same hull/layer aggregate within 0.14 seconds. The current normal text is 16 px, shield text 14 px and “big” text 24 px; the big category uses a damage threshold of 25 or a killing flag. A big number is not evidence of a critical-hit mechanic.
+- Ordinary hull damage produces local smoke, combustion, fragments and a contact light. Shield breaks and kills receive stronger punctuation. Ordinary armor/hull hit-stop durations are zero. A generalized ship damage-state driver also exists, but persistent hull deterioration is a different job from a sharp reaction to each new hit.
+- Positional weak-point bonuses exist for selected larger ship classes, with multipliers around 1.45–1.6 and a weak-point text cue. They are feature-flag gated and geometric. This is useful existing groundwork; it is not a general occasional-crit system for ordinary fighting. No general random-crit resolution or dedicated crit-number classification was found in the inspected damage and floating-text paths.
+- Hit audio routing exists, but audio remains muted in the default settings. Its live artistic quality was not assessed in this pass.
+
+This assessment combines the preceding play sample with current source inspection, not a new live audiovisual playtest. Sources: [floating damage text](../../src/ui/floatingText.js), [damage VFX](../../src/render/vfx.js), [hit emphasis](../../src/render/feel.js), [ship deterioration](../../src/render/ships/shipDamage.js), [weak-point definitions](../../src/data/weakPoints.js), [weak-point application](../../src/systems/combat.js), [damage resolution](../../src/combat/damage.js), [audio routing](../../src/audio/audioSystem.js), [defaults](../../src/core/gameState.js).
+
+### I24 — The damage ding: every ordinary hit should feel like contact
+
+An ordinary shot should produce one coordinated response: a sharp flash on the struck enemy, a small directional visual kick, a percussive hit sound, and a number that pops away from that same body. The response starts with contact and settles quickly enough for the next shot to articulate another beat. The player should enjoy landing three ordinary shots before any spectacular physics combination occurs.
+
+**The ship takes the hit.** Briefly light the struck hull or a substantial portion of its silhouette, with a hot contact accent and a short recovery. A slight mesh recoil, tilt or compressed pose can make the blow feel bodily at the gameplay camera. Keep the effect recognizably attached to this enemy, rather than lighting the whole scene or spawning a detached spark somewhere nearby.
+
+Distinguish a visual reaction from gameplay stun. Ordinary bullets can produce crisp visual recoil without repeatedly stopping the enemy's AI, reducing its real mass or moving its collider through terrain. Force weapons still own substantial physical displacement; a heavy body can visibly absorb a blow while resisting the throw. The player must perceive both “I hit it” and “this one is heavy.”
+
+**The number lands with the hit.** Give the first number a brief scale punch, strong contrast and an upward or contact-directed drift that clears the hull. Keep it readable after the target moves or dies. Show actual applied damage; do not inflate numbers for spectacle. A large font should not cover the target's next attack.
+
+Retain short aggregation for pellets and very rapid fire, but animate the accumulating total so subsequent hits visibly register. Do not silently merge a rare crit or shield-break payoff into an ordinary total. Damage numbers, hit shapes and sounds should agree about which event mattered.
+
+**The sound supplies the “ding.”** Give ordinary contact a short, satisfying attack: shield contact can have a taut electrical note, armor a metallic crack, exposed hull a heavier crunch. Modest variation keeps sustained fire from sounding like the same cheap sample repeated. Prioritize the current target and significant hits when many things are happening.
+
+**The gun and the victim share a rhythm.** Muzzle kick, projectile arrival, target reaction and number movement should feel causally joined. A rapid gun becomes a satisfying series of impacts; a heavy gun delivers a distinct single blow. This is not achieved by making all impacts equally bright or loud.
+
+Screen-wide hit-stop is not required on every bullet. Most response belongs to the struck body. Reserve brief global punctuation for selected heavy impacts, breaks and major kills, with repetition control so a beam or chain does not turn continuous flying into constant pauses. Reduced-flash and reduced-motion settings should substitute gentler contrast and pose responses while retaining the information.
+
+**Connection:** I18 gains a concrete contact language, I19 gains the ordinary-hit sound layer, and I20 gains damage information anchored to action. This is foundational feel work, not a reward gated behind an advanced build.
+
+### I25 — Critical hits and earned big blows
+
+Occasional critical hits belong in this game. They can give a rapid volley a surprising accent: ordinary hits chatter across a hull, then one lands with a sharper star-shaped contact, a heavier crunch and a larger, emphatic number. The enemy visibly reacts more strongly and loses the corresponding health.
+
+The important distinction is between **ordinary hits that are already satisfying** and occasional stronger events. Do not make non-crits feel soft so the crit can compensate. Do not use “CRIT” as a decorative label on any number above a fixed threshold.
+
+Develop two compatible sources of that payoff:
+
+- **Occasional weapon crits:** a modest, readable chance of an empowered hit, with equipment that can specialize in it. Preserve the pleasure of an unexpected spike even for a player who is simply aiming well and firing.
+- **Earned openings:** exposed weak points, a freshly broken shield, a damaged mounting, or a recent physical slam can create opportunities for an empowered strike. These should be recognizable states with a short useful window, not mandatory tiny targeting dots on every swarmer.
+
+Keep their meanings understandable. A positional weak-point bonus need not be relabeled a lucky crit; both can receive special presentation, with the strongest applicable event owning the main cue. Decide deliberately how bonuses combine instead of accidentally multiplying every inherited projectile, web branch and death blast.
+
+A few build directions make the system more than a damage stat:
+
+- **Fracture rounds:** breaking protection prepares one especially forceful follow-up shot.
+- **Execution coils:** earn stronger strikes against a target recently slammed or destabilized, giving ordinary guns a satisfying way to finish a physics setup.
+- **Lucky chamber:** occasional empowered shots provide a distinct gun-focused play style without requiring environmental tricks.
+- **Feedback capacitor:** a critical hit returns a limited amount of cooling or drive energy, connecting a damage spike to the next maneuver.
+
+Resolve a crit once in the authoritative combat path and carry its identity with the actual damage event. The renderer, text and sound should present that same result. Random crits should use the simulation's seeded randomness. Balance the chance, multiplier and trigger unit for the weapon family so a shotgun's pellets or an extremely rapid beam do not accidentally create a wall of constant “special” hits.
+
+A crit can increase damage without automatically multiplying knockback and stun. Reserve especially dramatic launches for force-oriented variants and appropriate light targets. That keeps heavies physically credible and allows crit gun builds to coexist with concussion and Massline builds.
+
+**Connection:** the existing large-ship weak points are a starting point; I09's equipment, I06's web and I14's resource return create further opportunities. The critical-hit concept is retained as a proposed expansion, not claimed implemented.
+
+### I26 — Hurt, break, launch, finish: the fast RPG combat rhythm
+
+The broader feeling is a sequence of small and large payoffs while the player keeps moving. Ordinary shots visibly chew into protection; a shield snaps; an exposed hull recoils; a strong strike or slam produces a larger response; the enemy breaks apart and releases useful rewards. These events should overlap into a lively fight rather than require a prescribed combo sequence.
+
+Different enemies should tell different short stories. A light swarmer may die after a few clean hits, with a sharp pop and a small spray of rewards. A protected fighter offers a satisfying break before the finish. A heavy shows a mounting fail, a plate separate or a drive become unstable while retaining its mass. Long, identical health bars on every target would flatten this rhythm.
+
+Borrow the sense of accumulating vulnerability from the owner's fighting-game reference where it suits the physics. Damage can disrupt stabilizers, expose an engine or weaken a component so that a later shove becomes harder to recover from. Do not silently reduce every enemy's physical mass as its health falls, and do not make every near-dead target an uncontrollable ragdoll. The change should be visible, causal and appropriate to that enemy.
+
+Give fast fire some rhythmic variation without requiring constant button changes: bright ordinary contact beats, occasional crit accents, the distinct crack of protection breaking, then the heavier finish. A web catching several ships should make the gun volley feel even better because the player can watch damage travel through the trapped group.
+
+Damage over time and secondary chains need their own quieter visual and audio treatment so they do not compete equally with aimed hits. Finishers deserve clearer punctuation, but a dozen simultaneous small kills should read as one satisfying cascade rather than twelve global freezes and twelve overlapping labels.
+
+Progression should make the rhythm evolve. More rounds, a returned cutter, a larger crit, a second target pierced or a web pulse spreading all change what the player sees and hears while fighting. The basic shot must already feel good in the first encounter. Adventure should not make the player grind to unlock convincing hit feedback.
+
+**A concrete imagined beat:** your stream lands several bright pings across a pursuer, a larger crit number kicks out as its shield tears, and a concussion hit sends the exposed hull sideways. It strikes the rock, bursts, and catches the next two enemies; their damage numbers rise through the debris as you boost through the resulting gap. The ordinary pings are pleasurable, the crit is exciting, and the physical follow-through is the distinctive SpaceFace payoff.
+
+**Connection:** this binds I24–I25 to the earlier crowd, web, wreckage, sound and reward ideas. A successful implementation should make a short ordinary fight satisfying as well as the advanced combination. No special showcase or expensive capture routine is required to ask whether the hits actually feel good.
+
 ## Combinations worth developing into complete play experiences
 
 These are current creative preferences, not a new ranked replacement for the diagnosis or the other ideas.
@@ -295,7 +372,7 @@ Each should work as a recognizable build before combining everything. The game b
 | Death chains are weak and narrowly gated | I10 adds useful wreck states; I01, I09 and I13 make destruction supply physical opportunities as well as damage. |
 | Current web is a short physical chain | I06 develops a moving attack network; the already-planned hub and Capstan remain important and are not replaced. |
 | Terrain lacks reliably useful relationships | I11, I12 and I16 create routes, powered machinery and continuity between rounds. |
-| Weak urgency and sensory feedback | I14 and I17 shape spending and recovery; I18–I20 make the resulting physical situation readable and satisfying. |
+| Weak urgency and sensory feedback | I14 and I17 shape spending and recovery; I18–I20 make the resulting physical situation readable; I24–I26 develop ordinary hit pleasure, critical strikes and the hurt-to-finish rhythm. |
 | Adventure should reward earning the same toys | I21–I23 give movement, equipment acquisition and contracts a direct relationship to those toys. |
 
 The broad prerequisite is a small set of trustworthy shared interactions: reflect, attach, release, conduct, displace, fracture and collect. A property should keep its meaning across a projectile, a loose part, an enemy component and an arena prop. Build these through the existing physics/combat owners; do not create a second miniature simulation for every weapon.
@@ -316,6 +393,8 @@ These are productive tradeoffs to investigate, not reasons to flatten the game i
 ## Development record
 
 **10 September 2026 — initial creative expansion.** Preserved all ten mechanical findings and added I01–I23. Recovered five supporting observations from the earlier report as R01–R05 in the diagnosis, retaining their original scope and evidence limits. Retained and developed existing plan seeds rather than presenting Wake Cutter, returning shots, orbiting debris, physical materials or hub webs as newly invented ideas. Added four combined build experiences and connected them to the diagnosis.
+
+**10 September 2026 — hit feel and fast RPG combat.** Added I24–I26 in response to the owner's damage-ding, flash, damage-number and occasional-crit description. Inspected current hit presentation, floating text, damage resolution, large-ship weak points and default audio. Kept existing ingredients distinct from the proposed complete sensation; added coordinated ordinary-hit feedback, critical/earned strike opportunities and the broader damage-break-launch-finish rhythm. All earlier ideas and findings remain.
 
 **Questions for the next creative pass:** Which enemy or arena response makes each combination surprising a second time? What playful interaction is missing from the weaker build styles? What would make a quiet Adventure route memorable with the same tools? Answer these by extending the relevant entries and adding new connections. If play disproves an idea, record the specific failure and revise it; do not erase the rest of the investigation.
 
