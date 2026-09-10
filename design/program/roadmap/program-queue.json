@@ -4845,7 +4845,7 @@
       "priority": 29,
       "title": "Causally review the revised Ceres refinery",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.refinery-reauthor-h1"
       ],
@@ -4857,7 +4857,9 @@
         "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/"
       ],
       "checks": [],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-reauthor-causal-review-2026-09-10.md"
+      ],
       "brief": "Review only whether the revised refinery closes the recorded process-chain, silhouette, material-zone and serviceability defects at ordinary framing."
     },
     {
@@ -4920,7 +4922,7 @@
       "priority": 31,
       "title": "Capture revised billboard and buoy Browser and Electron presentation",
       "kind": "acceptance_capture",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-022.billboard-buoy-reauthor"
       ],
@@ -4939,7 +4941,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-022-billboard-buoy-reauthor-h1-REPORT.md"
       ],
-      "brief": "Capture only the revised billboard and navigation buoy at useful game-camera framings with distinct Electron parity; retain all unaffected Row 7 evidence.",
+      "brief": "Capture only the revised billboard and navigation buoy at useful game-camera framings with distinct Electron parity; retain all unaffected Row 7 evidence. | REOPENED 2026-09-10 for the BUOY ONLY. The billboard is accepted and must not be recaptured. Buoy needs: a head with silhouette (not post-and-cap), an emissive beacon at the scale the billboard now carries, a service panel off the asteroid value/hue, and ordinary PLUS diagnostic-close frames in both runtimes.",
       "partialIntegration": "2026-09-07 candidate 5b1ee35e retains accepted Browser and source-Electron launches at fixed seed 47, exact source/release identity, default framing, authored-release admission, live Helios/Tethys placements, normalized semantic parity, zero page issues, consumed claim ledgers, and clean Electron teardown. Both headed mutexes are released; no performance or causal visual verdict is claimed.",
       "blocker": null
     },
@@ -4949,7 +4951,7 @@
       "priority": 32,
       "title": "Causally review the revised billboard and navigation buoy",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.billboard-buoy-reauthor-h1"
       ],
@@ -4961,8 +4963,10 @@
         "design/program/roadmap/evidence/h1/row7-pq022-asset-leaves/"
       ],
       "checks": [],
-      "receiptRefs": [],
-      "brief": "Review only whether both revised candidates close the recorded role-readability, display/signal, navigation and construction defects."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-reauthor-causal-review-2026-09-10.md"
+      ],
+      "brief": "Review only whether both revised candidates close the recorded role-readability, display/signal, navigation and construction defects. | 2026-09-10 REVIEWED: billboard PASSES (framed emissive display face, dominant, legible at ordinary framing). BUOY FAILS and is returned: dark low-contrast post-and-cap, sub-pixel beacon at ordinary framing, and its service panel shares the asteroid palette so it camouflages. No diagnostic-close buoy frame exists in the evidence set. Repair routing in the receipt."
     },
     {
       "id": "PQ-173.00",
