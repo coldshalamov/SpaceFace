@@ -1,4 +1,10 @@
 <!-- LIFETIME: DURABLE -->
+> **2026-09-10 — SUPERSEDED ON AESTHETICS.** The tokens, faces, palette, component recipes, motion
+> numbers and banned-CSS table below describe "Cinematic Minimal", which the owner judged generic
+> after it shipped. The authority is now [`FIELD_HARDWARE_PROGRAM.md`](./FIELD_HARDWARE_PROGRAM.md)
+> and the rendered frames under [`approved/`](./approved/). Read this file only for engineering
+> seams (§11 file:line references, the capture/review protocol, the font-vendoring command).
+
 # KIT_SPEC — the implementation spec for the SpaceFace frontend
 
 **Authority order:** [`DIRECTION_SHEET.md`](./DIRECTION_SHEET.md) (what every screen looks like and

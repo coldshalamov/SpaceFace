@@ -1,4 +1,11 @@
 <!-- LIFETIME: DURABLE -->
+> **2026-09-10 — SUPERSEDED.** This sheet ("Cinematic Minimal") was built (Tasks A–D, 2026-09-07) and
+> the owner judged the result generic: words on black. Its never-list (§11) and review checklist (§9)
+> are void — they banned the tools an A-list interface is made of. The authority is
+> [`FIELD_HARDWARE_PROGRAM.md`](./FIELD_HARDWARE_PROGRAM.md) and the frames under
+> [`approved/`](./approved/). Read below only for the per-screen content inventory (§2) and the
+> engineering seams in §10.
+
 # The direction sheet — Cinematic Minimal, tuned for SpaceFace
 
 **Status:** DECIDED 2026-09-06 under the owner's delegation (receipt:

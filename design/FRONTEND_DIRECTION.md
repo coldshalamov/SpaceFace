@@ -294,8 +294,9 @@ An integrator rejects a unit that matches any line.
 
 - **Reaching for glow to be bold.** Boldness is scale, face, composition, imagery, motion (§4).
   A halo, a gradient fill, a glass panel or a tracked-out label is an automatic reject.
-- **Building the comps as mock-ups.** Phase 0 comps are real HTML in the lab at real size with real
-  data; an image made elsewhere proves nothing about the build.
+- **Building the comps as CSS mock-ups in a lab.** *(Reversed 2026-09-10, §14.)* A rendered
+  picture made elsewhere is the target; the build proves itself by matching it. Building "comps" as
+  real HTML in one session is exactly how every pass went generic.
 - **Making the three directions three tints of the same layout.** They must differ on face, scale,
   temperature, composition and imagery, or the owner is not being offered a choice.
 - **Writing a new direction sheet from prose.** The sheet describes the approved frames; frames
@@ -428,3 +429,22 @@ The ordered list, each line saying what the owner will see in the game when it l
 the flight HUD → the station → THE SHIP, THE FOOTPRINT and THE RANGE → the chart → the Crucible →
 Asteroid Works reconciled → the reading screens → one system, fast → the proof. After the title is
 live, the surface tasks run in parallel under their own packets.
+
+---
+
+## 14. The second decision — 2026-09-10: Field Hardware, by production
+
+§13's decision shipped (Tasks A–D landed 2026-09-07) and the owner judged it generic: *"a bit generic
+and simple for an A-list spaceship game … we've taken about 10 shots at this and it's equally bad each
+time."* The owner also named the mechanism: agents choose the generic HTML/CSS UI because it is what
+one session can finish, and the docs each pass leaves behind — this file's §5 and §13 included, and
+the direction sheet's never-list — steer the next pass back to the same place.
+
+The decision is replaced, and so is the method. Authority is now
+[`design/frontend/direction/FIELD_HARDWARE_PROGRAM.md`](./frontend/direction/FIELD_HARDWARE_PROGRAM.md) and the rendered frames under
+`design/frontend/direction/approved/`. §5, §9's "building the comps as mock-ups" rule and §13 are void;
+§2's principle that frames outrank prose finally has frames. Two corrections to this file's own
+reasoning: (1) "the world is the interface" was asserted without machinery — no screen has a lit world
+behind it by design, and the program's first engineering leaf (P20) builds one; (2) "minimal" licensed
+emptiness — the new direction's two tests (material and light truth; equipment truth) replace restraint
+as the bar. The task series is `build_map.md` §20.15 (`PQ-194`).

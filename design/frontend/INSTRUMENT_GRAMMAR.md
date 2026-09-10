@@ -1,4 +1,9 @@
 <!-- LIFETIME: DURABLE -->
+> **2026-09-10 — SUPERSEDED ON AESTHETICS by
+> [`direction/FIELD_HARDWARE_PROGRAM.md`](./direction/FIELD_HARDWARE_PROGRAM.md)** and the frames
+> under `direction/approved/`. The centerpiece-and-verb rule (§ anti-slop) survives as an
+> engineering fact; every visual rule here is void.
+>
 > **2026-09-05 — §3 (Type) and §4 (Colour) SUPERSEDED; the identity is no longer decided here.**
 > Owner ruling: agent-written design law produced a neutral dashboard and keeps the frontend cheap.
 > [`design/FRONTEND_DIRECTION.md`](../FRONTEND_DIRECTION.md) outranks this file on every aesthetic

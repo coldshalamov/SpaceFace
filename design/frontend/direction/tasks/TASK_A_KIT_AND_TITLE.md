@@ -1,4 +1,8 @@
-<!-- LIFETIME: ACTIVE_PACKET -->
+<!-- LIFETIME: HISTORICAL -->
+> **2026-09-10 — SUPERSEDED.** Landed 2026-09-07 under Cinematic Minimal; the result was judged
+> generic by the owner. Its engineering notes (seams, traps, checks) stay useful; its look does not.
+> Live program: [`../FIELD_HARDWARE_PROGRAM.md`](../FIELD_HARDWARE_PROGRAM.md) (packets P20–P22).
+
 # Task A — The kit and the title (queue: `PQ-187.02`, `PQ-187.03`)
 
 **Read first:** [`../DIRECTION_SHEET.md`](../DIRECTION_SHEET.md) (all of it), then

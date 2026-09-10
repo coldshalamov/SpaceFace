@@ -1,4 +1,9 @@
 <!-- LIFETIME: DURABLE -->
+> **2026-09-10 — SUPERSEDED AGAIN, ON AESTHETICS AND METHOD.** The Cinematic Minimal series (Tasks
+> A–D) landed and the owner judged it generic. Authority:
+> [`direction/FIELD_HARDWARE_PROGRAM.md`](./direction/FIELD_HARDWARE_PROGRAM.md) and the frames under
+> `direction/approved/`. Everything in this folder is engineering reference only.
+>
 > **2026-09-05 — SUPERSEDED ON AESTHETICS.** The owner ruled that the frontend authority in this
 > folder was written by agents and caps quality at "cheap". On anything aesthetic — type, colour,
 > tone, composition, imagery, motion, sound, what polished means — every file here is outranked by

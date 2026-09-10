@@ -176,7 +176,7 @@ procedure:
 | "finish the game", "what's next for release", "the professional bar" | §15 gates → `--next` |
 | "swarm mode should be more fun" | §16 → `--id PQ-174` |
 | "adventure is boring / thin" | §17 → `--id PQ-176`, `PQ-177`, `PQ-178` |
-| "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.14** (decided 2026-09-06: [`DIRECTION_SHEET.md`](./design/frontend/direction/DIRECTION_SHEET.md)) → [`design/FRONTEND_DIRECTION.md`](./design/FRONTEND_DIRECTION.md) → `--id PQ-187` (direction lock; owner picks from rendered options) → then the surface packets it gates. `PQ-180` is the floor, not the gate |
+| "the screens look cheap", "polish the frontend", "bring the UI up to date", "A-list / bold / expressive frontend" | **§20.15** (admitted 2026-09-10: [`FIELD_HARDWARE_PROGRAM.md`](./design/frontend/direction/FIELD_HARDWARE_PROGRAM.md)) → `--id PQ-194` (style frames → asset kits → the stage → the title live as the veto point → surfaces). §20.14 / `PQ-187` is superseded. `PQ-180` is the floor, not the gate |
 | "it's hitching / stuttering" | §8.4 → `--id PQ-129`; measure first, never cut quality |
 | "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
 | "the ships / objects look like toys" | **§13D** → `--id PQ-193`; flyable remaster stays `PQ-050`; unused packs stay `PQ-136` |
@@ -3533,7 +3533,7 @@ published page "SpaceFace Frontend Direction".
 **Answered 2026-09-06.** The owner declined to review a board or stylesheets and delegated the
 decision; see §20.14. The question is closed.
 
-### 20.14 The decision and the task series — 2026-09-06
+### 20.14 The decision and the task series — 2026-09-06 *(SUPERSEDED 2026-09-10 on aesthetics — see §20.15)*
 
 **Decided: Cinematic Minimal, tuned for SpaceFace — the world is the interface.** The owner looked
 at the three direction cards and said (verbatim in
@@ -3609,3 +3609,37 @@ and the integration seams with file and line references (audited 2026-09-06: no 
 one starter hull, the world canvas frozen while docked, one shared ship stage, the chart is
 `galaxyMap.js`). `PQ-183`'s link/find/watch-list features are feature work outside the four tasks
 and keep their own packet. The sheet was amended the same day to match the audited facts.
+
+### 20.15 Field Hardware — the UI production program (`PQ-194`) — ADMITTED 2026-09-10
+
+**Supersedes §20.14 on aesthetics.** The Cinematic Minimal series landed (Tasks A–D, 2026-09-07) and
+the owner judged the result generic: *"we've taken about 10 shots at this and it's equally bad each
+time … agents … choose this sort of simple generic HTML/CSS UI because that's what they think they
+can do in one session … [the docs] are poisoning the frontend development."* The finding behind it:
+every pass was CSS styled in one session against a prose target with no produced assets; and no
+screen has a lit world behind it by design (rendering freezes on any screen stack; the second WebGL
+preview context is refused on Intel GPUs), so "the world is the interface" never had machinery.
+
+**The program:** [`design/frontend/direction/FIELD_HARDWARE_PROGRAM.md`](./design/frontend/direction/FIELD_HARDWARE_PROGRAM.md) — style frames
+rendered first (ChatGPT 6 Pro, self-contained zip packets), produced assets second (transparent-PNG
+kits, an SVG icon family and marks, Blender sets and hull renders), code that assembles the assets to
+match the frames third, and a picture-comparison review at every step. Direction: **Field Hardware** —
+manufactured, backlit, hand-worn equipment over a lit living world; three registers POSTER / BENCH /
+EDGE; two tests (the Asteroid Works material-and-light test; the Shipbreaker equipment test). Frames
+under `design/frontend/direction/approved/` outrank every prose document. 27 packets under
+`design/frontend/direction/packets/`; build one with `node scripts/build-ui-packet.mjs P01`. Packet:
+[`active/PQ-194.md`](./design/program/roadmap/active/PQ-194.md).
+
+| Leaf | What lands | What you will see |
+|---|---|---|
+| `.00` | The style frames (P01–P05) | Finished pictures of the title, the Crucible door, the HUD, the station, THE SHIP, the chart, settings, load, results, game over, missions, codex — before any code. |
+| `.01` · `.02` | Asset kits (P10–P15, P17); 3D sets and hull renders (P16) | Nothing in the game yet; a lab sheet of plates, keys, gauges, icons, marks and tiles that match the frames. |
+| `.03` | The UI stage (P20) | Boot the game: a lit hangar with your hull turning behind the title, on one GPU context, with an authored plate when the GPU cannot draw it. |
+| `.04` | The kit runtime (P21) | The lab page: every component built from the produced assets, nothing styled by hand. |
+| `.05` | **The Title live (P22) — the veto point** | The approved frame, running. Look at it. Say what is wrong in plain words, or say nothing. |
+| `.06` | The surfaces (P30–P38) | Screen by screen, each matching its frame: Crucible, HUD, station, ship, chart, shell, reading screens. |
+| `.07` | Motion, sound, sweep, proof (P40–P42) | Everything moves and sounds like one instrument; the old skin is gone; a blind tally against Everspace 2 and A-list frames; a ninety-second reel. |
+
+**How the owner uses this.** Say "build UI packet P01", hand the zip in `.devshots/ui-packets/` to
+ChatGPT 6 Pro with the one-line prompt in `design/frontend/direction/packets/README.md`, drop the
+return back, say "review P01". The only moment that needs your eyes is `.05`.

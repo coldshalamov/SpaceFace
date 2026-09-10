@@ -1,4 +1,8 @@
-<!-- LIFETIME: ACTIVE_PACKET -->
+<!-- LIFETIME: HISTORICAL -->
+> **2026-09-10 — SUPERSEDED.** Landed under Cinematic Minimal; judged generic by the owner. Keep
+> for seams and traps only. Live program: [`../FIELD_HARDWARE_PROGRAM.md`](../FIELD_HARDWARE_PROGRAM.md)
+> (packets P30, P38, P42).
+
 # Task D — The modes, the reading screens, the sweep and the proof (queue: `PQ-182.00`–`.03`, `PQ-185.00`–`.01`, `PQ-192.00`–`.01`, the CSS/font sweep of `PQ-184`, `PQ-187.04`)
 
 **Read first:** [`../DIRECTION_SHEET.md`](../DIRECTION_SHEET.md) (all of it; your screens are under

@@ -1,4 +1,9 @@
 <!-- LIFETIME: DURABLE -->
+> **2026-09-10 — HISTORICAL.** These four prompts built the Cinematic Minimal screens (Tasks A–D,
+> landed 2026-09-07) that the owner judged generic. Do not hand them out again. The live hand-off
+> series is [`packets/README.md`](./packets/README.md) under
+> [`FIELD_HARDWARE_PROGRAM.md`](./FIELD_HARDWARE_PROGRAM.md).
+
 # The four frontend handoffs — starter prompts
 
 Copy one prompt per agent, in order. **Task A must be finished, reviewed and accepted before B, C

@@ -1,4 +1,8 @@
-<!-- LIFETIME: ACTIVE_PACKET -->
+<!-- LIFETIME: HISTORICAL -->
+> **2026-09-10 — SUPERSEDED.** Landed under Cinematic Minimal; judged generic by the owner. Keep
+> for seams and traps only. Live program: [`../FIELD_HARDWARE_PROGRAM.md`](../FIELD_HARDWARE_PROGRAM.md)
+> (packets P31, P32, P37).
+
 # Task B — The shell and the flight HUD (queue: `PQ-181.00`–`.03`, `PQ-188.00`)
 
 **Read first:** [`../DIRECTION_SHEET.md`](../DIRECTION_SHEET.md) (all of it; your screens are under

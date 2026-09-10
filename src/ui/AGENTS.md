@@ -3,6 +3,11 @@
 > The DOM/CSS overlay UI. It reads state and emits gameplay intents. Explicit UI/input-owned
 > selection state such as `state.player.targetId` is the narrow direct-write exception.
 > Read root `AGENTS.md` §6 (hard engineering contracts) first.
+>
+> Frontend direction: `design/frontend/direction/FIELD_HARDWARE_PROGRAM.md` (2026-09-10; frames under
+> `design/frontend/direction/approved/` outrank prose). Do not style screens by hand: every visual
+> element is assembled from the produced kit under `assets/ui/kit/` (packet P21). Why:
+> `design/FRONTEND_DIRECTION.md` §14.
 
 ## Standing rules
 

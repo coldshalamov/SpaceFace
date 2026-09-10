@@ -1,11 +1,10 @@
 /* ============================================================================
    SpaceFace · MENU FASCIA — title / pause / system-menu surfaces.
 
-   Direction (INSTRUMENT_GRAMMAR §3/§4, 2026-08 revision): a quiet neutral plate.
-   One flat translucent dark surface, 1px hairline edges, Instrument Sans for every
-   word and numeral (tabular), and ONE blue interaction accent spent on
-   what the player can act on. No glass blur, no glow, no gradient fills, no
-   accent rails, no decorative sweeps, no diegetic flavour stamps.
+   RETIRING (2026-09-10): this file is the old "quiet neutral plate" skin. The visual
+   rules that used to sit here (no glow, no gradient, no accent rails) are VOID — see
+   design/frontend/direction/FIELD_HARDWARE_PROGRAM.md; every screen migrates to the
+   asset-built kit and this stylesheet is deleted in packet P42. Do not add rules here.
 
    Key Architectural Rules:
    - Stable geometry for multi-tab consoles (Settings, Codex, Help, Save/Load).

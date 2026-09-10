@@ -3851,7 +3851,7 @@
       ],
       "checks": [],
       "evidence": [],
-      "brief": "The owner declined to choose between abstract directions and delegated the decision on 2026-09-06 ('You'll just have to decide'; leaning Cinematic Minimal). Decided: Cinematic Minimal tuned for SpaceFace - the world is the interface. design/frontend/direction/DIRECTION_SHEET.md is the aesthetic authority; a kit is built from it; the title goes live first so the direction is seen in the actual game after one unit and the owner can veto before anything else moves; a blind side-by-side against A-list games proves the result. Receipt: design/program/roadmap/receipts/PQ-187-01-REPORT.md. See design/FRONTEND_DIRECTION.md section 13 and design/program/roadmap/active/PQ-187.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
+      "brief": "SUPERSEDED 2026-09-10 by PQ-194 (Field Hardware: the UI production program) on aesthetics: the Cinematic Minimal screens landed and the owner judged them generic (\"equally bad each time\"). Do not dispatch .04 or restart the sheet; the frames under design/frontend/direction/approved/ are the authority. Historical brief follows. The owner declined to choose between abstract directions and delegated the decision on 2026-09-06 ('You'll just have to decide'; leaning Cinematic Minimal). Decided: Cinematic Minimal tuned for SpaceFace - the world is the interface. design/frontend/direction/DIRECTION_SHEET.md is the aesthetic authority; a kit is built from it; the title goes live first so the direction is seen in the actual game after one unit and the owner can veto before anything else moves; a blind side-by-side against A-list games proves the result. Receipt: design/program/roadmap/receipts/PQ-187-01-REPORT.md. See design/FRONTEND_DIRECTION.md section 13 and design/program/roadmap/active/PQ-187.md. Handoff prompts: design/frontend/direction/HANDOFF_PROMPTS.md."
     },
     {
       "id": "PQ-188",
@@ -3926,7 +3926,7 @@
       "id": "PQ-191",
       "priority": 111,
       "title": "Independent passover: play what just landed for taste, improvements, and bugs",
-      "state": "ready",
+      "state": "deferred",
       "canonical": [
         "LANDING-PASSOVER"
       ],
@@ -3937,11 +3937,12 @@
       ],
       "sources": [
         "build_map.md",
-        "design/program/roadmap/active/PQ-191.md"
+        "design/program/roadmap/retired/PQ-191.md"
       ],
       "checks": [],
       "evidence": [],
-      "brief": "A second agent plays the 2026-09-06 landings, fixes real taste and bugs, and writes the receipt in owner words. This is the passover itself, not a second standing queue. Gap: units can sit at implemented or done after the implementer's own review without a cold play pass. See build_map.md section 1.7 and design/program/roadmap/active/PQ-191.md."
+      "brief": "A second agent plays the 2026-09-06 landings, fixes real taste and bugs, and writes the receipt in owner words. This is the passover itself, not a second standing queue. Gap: units can sit at implemented or done after the implementer's own review without a cold play pass. See build_map.md section 1.7 and design/program/roadmap/retired/PQ-191.md.",
+      "deferredNote": "Standing review ceremony retired 2026-09-10 by owner direction."
     },
     {
       "id": "PQ-192",
@@ -3993,6 +3994,39 @@
       "checks": [],
       "evidence": [],
       "brief": "Complete packaged bodies, opening-flyby NPCs that belong next to Hitch, reverse jets that read as thrust, then tubes, shelf hulls, and places. Do not start variety until the Helios flyby is true. Flyable remaster stays PQ-050. See build_map.md section 13D."
+    },
+    {
+      "id": "PQ-194",
+      "priority": 114,
+      "title": "Field Hardware: the UI production program (frames, asset kits, stage, kit runtime, title live, surfaces, proof)",
+      "state": "ready",
+      "canonical": [
+        "FRONTEND-FIELD-HARDWARE"
+      ],
+      "aliases": [
+        "FIELD-HARDWARE",
+        "UI-PRODUCTION",
+        "FRONTEND-A-LIST"
+      ],
+      "dependsOn": [],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "sources": [
+        "build_map.md",
+        "design/VISION.md",
+        "design/frontend/direction/FIELD_HARDWARE_PROGRAM.md",
+        "design/frontend/direction/packets/_COMMON/02_ART_DIRECTION.md",
+        "design/frontend/direction/packets/README.md",
+        "design/program/roadmap/active/PQ-194.md"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:ui:perf",
+        "npm run check:bundle"
+      ],
+      "evidence": [],
+      "brief": "ADMITTED 2026-09-10 on the owner's directive that ten frontend passes were \"equally bad\" and that agent-written style docs were poisoning the work. The interface is rebuilt by PRODUCTION, not styling: rendered style frames first (ChatGPT 6 Pro), produced assets second (transparent-PNG kits, SVG icon family and marks, 3D sets and hull renders), code that assembles the assets to match the frames third, and a picture-comparison review at every step. Direction: Field Hardware (manufactured, backlit, hand-worn equipment over a lit living world; POSTER/BENCH/EDGE registers). The frames under design/frontend/direction/approved/ outrank every prose doc. Supersedes PQ-187 (Cinematic Minimal) and build_map.md section 20.14 on aesthetics; the old units stay recorded as implemented and are not dispatched again. 27 packet briefs under design/frontend/direction/packets/; build a hand-off zip with node scripts/build-ui-packet.mjs P01."
     }
   ],
   "dispatchUnits": [
@@ -10223,7 +10257,6 @@
       "state": "ready",
       "dependsOn": [
         "PQ-019.h2-verdict",
-        "PQ-019.facility-presentation-review",
         "PQ-019.h3-performance"
       ],
       "mutexes": [
@@ -10321,9 +10354,7 @@
       "state": "ready",
       "dependsOn": [
         "PQ-018.art-verdict",
-        "PQ-018.cathedral-reauthor-review",
         "PQ-020.h2-verdict",
-        "PQ-020.pocket-presentation-review",
         "PQ-020.h3-performance"
       ],
       "mutexes": [
@@ -10983,7 +11014,7 @@
       "priority": 239,
       "title": "Capture target-visible Ceres pocket approaches",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "deferred",
       "dependsOn": [
         "PQ-020.h2-verdict",
         "PQ-022.refinery-reauthor-review"
@@ -11003,7 +11034,8 @@
       ],
       "receiptRefs": [],
       "brief": "After the revised refinery passes causal review, characterize and repair only the presentation capture seam, add a seconds-scale regression, then capture target-visible public-control approach/arrival evidence for the refinery, retained Belt Outpost, and Throughline beacon in Browser and Electron without rerunning unrelated accepted route claims.",
-      "blocker": null
+      "blocker": null,
+      "deferredNote": "Standing review/capture ceremony retired 2026-09-10 by owner direction: the doing agent reviews its own work and iterates; no separate review/capture unit."
     },
     {
       "id": "PQ-020.pocket-presentation-review",
@@ -11011,10 +11043,8 @@
       "priority": 240,
       "title": "Causally review revised Ceres pocket presentation",
       "kind": "acceptance_review",
-      "state": "ready",
-      "dependsOn": [
-        "PQ-020.pocket-presentation-recapture"
-      ],
+      "state": "deferred",
+      "dependsOn": [],
       "mutexes": [
         "evidence-review"
       ],
@@ -11025,7 +11055,8 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Review only whether the refinery, retained Belt Outpost, and Throughline beacon now carry distinct target-visible place identity during the ordinary route; retain the accepted topology, functional pair, and Cathedral-presence verdict.",
-      "blocker": null
+      "blocker": null,
+      "deferredNote": "Standing review/capture ceremony retired 2026-09-10 by owner direction: the doing agent reviews its own work and iterates; no separate review/capture unit."
     },
     {
       "id": "PQ-018.cathedral-reauthor",
@@ -11067,7 +11098,7 @@
       "priority": 242,
       "title": "Capture the revised Wreck Cathedral candidate",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "deferred",
       "dependsOn": [
         "PQ-018.cathedral-reauthor"
       ],
@@ -11086,7 +11117,8 @@
       ],
       "receiptRefs": [],
       "brief": "Capture exact-source neutral diagnostics plus target-visible close/default/far/arrival and bounded motion evidence in Browser and source Electron for only the revised Cathedral; retain the accepted Ceres functional route facts.",
-      "blocker": null
+      "blocker": null,
+      "deferredNote": "Standing review/capture ceremony retired 2026-09-10 by owner direction: the doing agent reviews its own work and iterates; no separate review/capture unit."
     },
     {
       "id": "PQ-018.cathedral-reauthor-review",
@@ -11094,10 +11126,8 @@
       "priority": 243,
       "title": "Causally review the revised Wreck Cathedral",
       "kind": "acceptance_review",
-      "state": "ready",
-      "dependsOn": [
-        "PQ-018.cathedral-reauthor-h1"
-      ],
+      "state": "deferred",
+      "dependsOn": [],
       "mutexes": [
         "evidence-review"
       ],
@@ -11108,7 +11138,8 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Review only whether the revised exact candidate closes the recorded whole-asset G1, G2 and G4 defects across dominant source and production-runtime views while preserving identity, cavity, components and monumental presence.",
-      "blocker": null
+      "blocker": null,
+      "deferredNote": "Standing review/capture ceremony retired 2026-09-10 by owner direction: the doing agent reviews its own work and iterates; no separate review/capture unit."
     },
     {
       "id": "PQ-019.receiver-facility-reauthor",
@@ -11151,7 +11182,7 @@
       "priority": 245,
       "title": "Capture the revised four-role facility presentation",
       "kind": "acceptance_capture",
-      "state": "implemented",
+      "state": "deferred",
       "dependsOn": [
         "PQ-019.receiver-facility-reauthor",
         "PQ-022.relay-reauthor-review"
@@ -11172,7 +11203,8 @@
       ],
       "receiptRefs": [],
       "brief": "Characterize and repair only the facility-framing seam, add a seconds-scale regression, then capture target-visible launcher, lawful-catcher and fence approach/interaction evidence in Browser and source Electron without rerunning the accepted capsule or five mission outcomes.",
-      "blocker": null
+      "blocker": null,
+      "deferredNote": "Standing review/capture ceremony retired 2026-09-10 by owner direction."
     },
     {
       "id": "PQ-019.facility-presentation-review",
@@ -11180,10 +11212,8 @@
       "priority": 246,
       "title": "Causally review the revised four-role facility presentation",
       "kind": "acceptance_review",
-      "state": "ready",
-      "dependsOn": [
-        "PQ-019.facility-presentation-h1"
-      ],
+      "state": "deferred",
+      "dependsOn": [],
       "mutexes": [
         "evidence-review"
       ],
@@ -11194,7 +11224,8 @@
       "checks": [],
       "receiptRefs": [],
       "brief": "Review only whether launcher, lawful catcher, covert fence and retained physical capsule now read as four distinct purposeful identities at the normal camera while preserving all accepted route semantics.",
-      "blocker": null
+      "blocker": null,
+      "deferredNote": "Standing review/capture ceremony retired 2026-09-10 by owner direction: the doing agent reviews its own work and iterates; no separate review/capture unit."
     },
     {
       "id": "PQ-023.combat-readability-repair",
@@ -11873,7 +11904,7 @@
       "priority": 271,
       "title": "Capture the five-minute Ceres gate in Browser and Electron",
       "kind": "acceptance_capture",
-      "state": "ready",
+      "state": "deferred",
       "dependsOn": [
         "PQ-045.causal-chain",
         "PQ-045.npc-identity",
@@ -11892,7 +11923,8 @@
         "npm run check:ceres:five-minute"
       ],
       "receiptRefs": [],
-      "brief": "Both machine-evidence blobs are missing and the gate has never run. First account for and publish the exact dirty task bytes, then run the fixed seed-47, 18,000-tick, four-pocket candidate from the shared checkout. Do not leave a long-lived worktree behind."
+      "brief": "Both machine-evidence blobs are missing and the gate has never run. First account for and publish the exact dirty task bytes, then run the fixed seed-47, 18,000-tick, four-pocket candidate from the shared checkout. Do not leave a long-lived worktree behind.",
+      "deferredNote": "Standing review/capture ceremony retired 2026-09-10 by owner direction: the doing agent reviews its own work and iterates; no separate review/capture unit."
     },
     {
       "id": "PQ-045.human-review",
@@ -11900,10 +11932,8 @@
       "priority": 272,
       "title": "Independent five-minute Ceres review",
       "kind": "acceptance_review",
-      "state": "ready",
-      "dependsOn": [
-        "PQ-045.five-minute-h1"
-      ],
+      "state": "deferred",
+      "dependsOn": [],
       "mutexes": [
         "evidence-review"
       ],
@@ -11914,7 +11944,8 @@
         "npm run check:ceres:five-minute"
       ],
       "receiptRefs": [],
-      "brief": "Run the candidate-bound five-minute evidence review with an independent agent reviewer, timestamp, KEEP or REVISE verdict, and explicit judgment on whether the longest zero-visible-activity interval reads as a brief intentional void. Record the reviewing thread identity in the compatibility reviewer field; no human verdict is required. It is the declared precondition for R8 showcase work and for any sector-propagation pass."
+      "brief": "Run the candidate-bound five-minute evidence review with an independent agent reviewer, timestamp, KEEP or REVISE verdict, and explicit judgment on whether the longest zero-visible-activity interval reads as a brief intentional void. Record the reviewing thread identity in the compatibility reviewer field; no human verdict is required. It is the declared precondition for R8 showcase work and for any sector-propagation pass.",
+      "deferredNote": "Standing review/capture ceremony retired 2026-09-10 by owner direction: the doing agent reviews its own work and iterates; no separate review/capture unit."
     },
     {
       "id": "PQ-153.01",
@@ -17528,7 +17559,7 @@
       "priority": 468,
       "title": "Play-and-fix the 2026-09-06 implementation landing",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "deferred",
       "dependsOn": [],
       "mutexes": [
         "landing-passover-impl-2026-09-06"
@@ -17547,7 +17578,8 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [],
-      "brief": "Cold play of the ten implementation-landing surfaces (jobs vs patrol, UI matrix spot-check, ordinary contact, critic verdict shape, live key labels, first-playable audio, reduced-motion reads, four specialists, cargo custody, first mill as claim). Fix real taste and bugs. Sacred: drill cadence 0.18/0.24/0.18, noteSiteCourier never pays, contact-ring clones the field. DONE WHEN: each surface played; adopted defects gone from the camera; receipt in build_map.md section 1.4 words under design/program/roadmap/receipts/PQ-191-00-REPORT.md."
+      "brief": "Cold play of the ten implementation-landing surfaces (jobs vs patrol, UI matrix spot-check, ordinary contact, critic verdict shape, live key labels, first-playable audio, reduced-motion reads, four specialists, cargo custody, first mill as claim). Fix real taste and bugs. Sacred: drill cadence 0.18/0.24/0.18, noteSiteCourier never pays, contact-ring clones the field. DONE WHEN: each surface played; adopted defects gone from the camera; receipt in build_map.md section 1.4 words under design/program/roadmap/receipts/PQ-191-00-REPORT.md.",
+      "deferredNote": "Standing review/capture ceremony retired 2026-09-10 by owner direction: the doing agent reviews its own work and iterates; no separate review/capture unit."
     },
     {
       "id": "PQ-191.01",
@@ -17956,6 +17988,231 @@
       ],
       "receiptRefs": [],
       "brief": "Every station the player can reach on the default route loads its authored body. The fat cylinder plus hoops fallback is a defect, not a style. Diagnose load failure; do not pretty the primitive."
+    },
+    {
+      "id": "PQ-194.00",
+      "parentId": "PQ-194",
+      "priority": 485,
+      "title": "The style frames, approved (P01-P05)",
+      "kind": "acceptance_repair",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "design/frontend/direction/approved/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/frontend/direction/receipts/"
+      ],
+      "brief": "Hand P01 to ChatGPT 6 Pro (node scripts/build-ui-packet.mjs P01), review the returned frames against the two tests and the guard in packets/_COMMON/02_ART_DIRECTION.md, pick the Title variant, commit frames/plates/crops/kit-notes under approved/ with DECISIONS.md; then P02-P05 in turn. The owner is never asked to choose between variants. Done when every screen family in the program has an approved frame."
+    },
+    {
+      "id": "PQ-194.01",
+      "parentId": "PQ-194",
+      "priority": 486,
+      "title": "The asset kits, accepted (P10-P15, P17)",
+      "kind": "acceptance_repair",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-194.00"
+      ],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "assets/ui/kit/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/frontend/direction/receipts/"
+      ],
+      "brief": "Build and hand off P10-P15 and P17; validate each return's manifest and quality checks; composite the assets over the approved frames; accept into assets/ui/kit/ (already a bundled root). A kit whose assets do not reproduce the frame is returned once, then taken locally."
+    },
+    {
+      "id": "PQ-194.02",
+      "parentId": "PQ-194",
+      "priority": 487,
+      "title": "3D sets and the hull render harness (P16)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-194.00"
+      ],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "assets/ships/parts/",
+        "src/render/shipPreview.js",
+        "scripts/render-hull-tiles.mjs",
+        "assets/ui/tiles/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/frontend/direction/receipts/"
+      ],
+      "brief": "Codex with Blender under the material-truth preflight: hangar, berth and arena sets that render the approved plates from the frames' camera; a harness that renders a tile and portrait for every roster hull at one fixed lighting. Named fake: primitive boxes named gantry; screenshots of the live game as renders."
+    },
+    {
+      "id": "PQ-194.03",
+      "parentId": "PQ-194",
+      "priority": 488,
+      "title": "The UI stage, gate zero (P20)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-194.00",
+        "PQ-194.02"
+      ],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "src/core/presentationFreeze.js",
+        "src/core/renderUpdatePhase.js",
+        "src/render/uiStage.js",
+        "src/ui/screenManager.js",
+        "src/ui/views/menuFrames.js",
+        "src/ui/screens/stageHull.js",
+        "src/ui/station/stationApp.js",
+        "src/ui/screens/crucible.js",
+        "styles/kit.css"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/frontend/direction/receipts/"
+      ],
+      "brief": "No screen has a lit world behind it today (presentationFreeze on any screen stack; the second WebGL preview context is refused on Intel GPUs). Build a main-context presentation stage (title hangar, berth, arena diorama, held world) with authored plate fallbacks; prove title, station-dock and crucible-door show a lit 3D world via capture-ui-matrix --world at 1280/1920/2560; flight frame cost unchanged. Named fake: a static PNG of a ship with data-k-ready=1; a black canvas."
+    },
+    {
+      "id": "PQ-194.04",
+      "parentId": "PQ-194",
+      "priority": 489,
+      "title": "The kit runtime (P21)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-194.01"
+      ],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "assets/ui/kit/",
+        "styles/fh.css",
+        "styles/kit.css",
+        "styles/fonts.css",
+        "styles/fonts/",
+        "src/ui/kit/",
+        "src/ui/station/icons.js",
+        "src/ui/glyphs.js",
+        "src/data/audioRecipes.js",
+        "scripts/check-ui-kit-manifest.mjs",
+        "scripts/check-type-floor.mjs",
+        "scripts/check-colour-tokens.mjs",
+        "_uikit.html"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/frontend/direction/receipts/"
+      ],
+      "brief": "Fonts vendored, Field Hardware tokens, the asset loader, every component assembled from produced assets (border-image plates, sprites, the SVG sprite, instrument geometry), the P17 motion library and sound recipes, a lab page captured at three widths, the dead command-deck refit deleted, kit.css added to the lint lists. Named fake: components styled with CSS borders/gradients/shadows instead of the assets."
+    },
+    {
+      "id": "PQ-194.05",
+      "parentId": "PQ-194",
+      "priority": 490,
+      "title": "The Title live, the veto point (P22)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-194.03",
+        "PQ-194.04"
+      ],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "src/ui/screens/mainMenu.js",
+        "src/ui/screens/newGame.js",
+        "src/ui/views/menuFrames.js",
+        "styles/orbital.css",
+        "styles/fh.css"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/frontend/direction/receipts/"
+      ],
+      "brief": "The approved Title frame, live on the default route: the 1920 --world capture beside the frame passes a memoryless vision rubric (materials, type, lit dimensional world, reading order, not a web page); keyboard/pad reach everything; reduced motion is a cut. Then the owner looks. Nothing in .06 starts before this holds."
+    },
+    {
+      "id": "PQ-194.06",
+      "parentId": "PQ-194",
+      "priority": 491,
+      "title": "The surfaces (P30-P38, parallel by mutex)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-194.05"
+      ],
+      "mutexes": [
+        "frontend-direction",
+        "ui-kit"
+      ],
+      "paths": [
+        "src/ui/",
+        "styles/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/frontend/direction/receipts/"
+      ],
+      "brief": "Crucible; HUD instruments; HUD sensors/law/wanted; station arrival/shell/market/ledger; contracts/factions/industry/bar; THE SHIP/Shipworks/Footprint/Range; the chart; the shell screens; the reading screens and Asteroid Works chrome. Each on its own packet and mutex, each accepted by its --world capture beside its frame plus its named runtime checks. Named fake: restyling the existing text boxes with a plate background."
+    },
+    {
+      "id": "PQ-194.07",
+      "parentId": "PQ-194",
+      "priority": 492,
+      "title": "Motion, sound, sweep, proof (P40-P42)",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-194.06"
+      ],
+      "mutexes": [
+        "frontend-direction",
+        "ui-kit"
+      ],
+      "paths": [
+        "src/ui/",
+        "styles/",
+        "test/ui-frame-references/",
+        "scripts/check-ui-screen-imports.mjs"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/frontend/direction/receipts/"
+      ],
+      "brief": "Thirteen clips to the register numbers; every cue wired and the mute default decided with the owner; dead stylesheets, injected style nodes, old token layers and unused fonts deleted; budgets.json and the visual-regression matrix reshot; the blind tally against the genre baseline and A-list frames; the ninety-second reel."
     }
   ]
 }

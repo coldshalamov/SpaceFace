@@ -1,4 +1,8 @@
-<!-- LIFETIME: ACTIVE_PACKET -->
+<!-- LIFETIME: HISTORICAL -->
+> **2026-09-10 — SUPERSEDED.** Landed under Cinematic Minimal; judged generic by the owner. Keep
+> for seams and traps only. Live program: [`../FIELD_HARDWARE_PROGRAM.md`](../FIELD_HARDWARE_PROGRAM.md)
+> (packets P33–P36).
+
 # Task C — The station, the instruments and the chart (queue: `PQ-162.00`–`.02`, `PQ-188.01`, `PQ-188.02`, `PQ-168.00`–`.01`)
 
 **Read first:** [`../DIRECTION_SHEET.md`](../DIRECTION_SHEET.md) (all of it; your screens are under
