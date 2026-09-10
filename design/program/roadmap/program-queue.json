@@ -5785,7 +5785,7 @@
       "priority": 62,
       "title": "Arena laws change the top strategy",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -5812,7 +5812,9 @@
         "npm run check:crucible:run",
         "npm run check:crucible:arc"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-174.04-REPORT.md"
+      ],
       "brief": "Each of the five arenas measurably changes which build and which verbs win (telemetry over seeds): the gravity arena rewards wells and slings, the current arena rewards riding, the foundry rewards banks and machinery kills. DONE WHEN: For each arena, the top build differs from the Foundry's; the difference is visible in the results screen."
     },
     {
@@ -5821,7 +5823,7 @@
       "priority": 63,
       "title": "Boss waves are physics puzzles",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -5848,7 +5850,9 @@
         "npm run check:crucible:run",
         "npm run check:crucible:arc"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-174.05-REPORT.md"
+      ],
       "brief": "Wave 10/20/30 bosses die to thrown mass, machinery or their own tumbling sub-systems; guns alone are the slow way, never the only way; no immunity theatre. DONE WHEN: Each boss killed in a scenario by physics alone within 90 s; capture."
     },
     {
