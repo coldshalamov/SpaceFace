@@ -7622,7 +7622,7 @@
       "priority": 134,
       "title": "Bolas throw in one input",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7640,7 +7640,9 @@
         "npm run check:baseline",
         "npm run check:massline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-031.00-REPORT.md"
+      ],
       "brief": "Setup time drops to a throw: latch A, latch B, the bridle exists; setup ≤ 2 s at combat range. DONE WHEN: Two lights bridled within 3 s of the first latch in a scenario; the pair tumbles (B11)."
     },
     {
@@ -7649,7 +7651,7 @@
       "priority": 135,
       "title": "Coupled-pair physics",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7667,7 +7669,9 @@
         "npm run check:baseline",
         "npm run check:massline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-031.01-REPORT.md"
+      ],
       "brief": "Shared inertia, shared helm loss, bounded line load, break by load rating; the pair reads as one system in the camera. DONE WHEN: Pair orbits and impacts terrain in ≥ 4 of 5 seeds."
     },
     {
@@ -7676,7 +7680,7 @@
       "priority": 136,
       "title": "NPC counterplay",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7694,7 +7698,9 @@
         "npm run check:baseline",
         "npm run check:massline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-031.02-REPORT.md"
+      ],
       "brief": "Aces cut bridles; heavies ignore them; the specialist carries a line-cutter. DONE WHEN: Scenario shows one cut and one ignore."
     },
     {
