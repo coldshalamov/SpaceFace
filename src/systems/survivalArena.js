@@ -886,13 +886,40 @@ export const survivalArena = {
           if (shot.alive === false || !platePos) continue;
           const dx = shot.pos.x - platePos.x;
           const dz = shot.pos.z - platePos.z;
-          if (Math.hypot(dx, dz) > reach) continue;
+          let contacts = this._bankFeedbackContacts.get(shot);
+          if (Math.hypot(dx, dz) > reach) {
+            if (contacts) contacts.delete(toy.id);
+            continue;
+          }
           const banked = bankShotOffPlate(toy, {
             id: shot.id,
             pos: shot.pos,
             vel: toyBodyOf(shot).vel,
           });
-          if (banked && banked.ok) writeVel(shot, banked.vel.x, banked.vel.z);
+          if (banked && banked.ok) {
+            writeVel(shot, banked.vel.x, banked.vel.z);
+            // Latch feedback only: keep the existing reflection on every successful contact.
+            // A miss while still in reach does not rearm; leaving this plate's reach does.
+            if (contacts && contacts.has(toy.id)) continue;
+            if (!contacts) this._bankFeedbackContacts.set(shot, contacts = new Set());
+            contacts.add(toy.id);
+            const receipt = banked.receipt;
+            this._emit('combat:bankShot', {
+              id: shot.id,
+              projectileId: shot.id,
+              ownerId: shot.ownerId ?? shot.data?.ownerId ?? null,
+              weaponId: shot.data?.weaponId ?? null,
+              arenaId: state.run.arenaId,
+              plateId: receipt.surfaceId,
+              tick: state.tick,
+              pos: receipt.point,
+              normal: receipt.normal,
+              approach: receipt.velocity,
+              incomingVelocity: receipt.velocity,
+              outgoingVelocity: { x: banked.vel.x, z: banked.vel.z },
+              receipt,
+            });
+          }
         }
       }
     }
@@ -930,6 +957,7 @@ export const survivalArena = {
     this._cryoRoom = null;
     this._stormAt = null;
     this._cryoShocked = new Set();
+    this._bankFeedbackContacts = new WeakMap();
     this._toys = [];
     this._installedFields = [];
   },
