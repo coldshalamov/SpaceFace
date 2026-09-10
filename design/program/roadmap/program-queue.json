@@ -5748,7 +5748,7 @@
       "priority": 61,
       "title": "Roles in the swarm are physical problems",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-140.02",
         "PQ-137.03",
@@ -5776,7 +5776,9 @@
         "npm run check:crucible:run",
         "npm run check:crucible:arc"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-174.03-REPORT.md"
+      ],
       "brief": "Support/Anchor/Disruptor/Elite each pose a positioning problem the player solves with a verb (rope the anchor, shove the disruptor into the elite, well the support cluster); the cohort flows and stays throwable (PQ-135.05). DONE WHEN: Blind reviewer names each role's counter from a 12 s strip; median time-to-resolve a light under physics ≤ under guns."
     },
     {
