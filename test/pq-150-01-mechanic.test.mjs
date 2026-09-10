@@ -231,7 +231,16 @@ test('leftover heat or leftover ship ledger adds leftover rap line', () => {
     assert.doesNotMatch(hotLine, new RegExp(`\\b${band}\\b`, 'i'));
   }
 
-  const filed = leftoverEmptyHull();
+  const traded = leftoverEmptyHull();
+  traded.player.tradeLedger = [{ side: 'buy', commodityId: 'iron_ore', qty: 4, seenAt: 12 }];
+  const tradedLine = leftoverMechanicLine(traded);
+  assert.match(tradedLine, /Clean plate/);
+  assert.doesNotMatch(tradedLine, /ship ledger already has a fact/i);
+  for (const band of SCAR_CLASSES) {
+    assert.doesNotMatch(tradedLine, new RegExp(`\\b${band}\\b`, 'i'));
+  }
+
+  const filed = leftoverHardBow();
   filed.lossLedger = {
     entries: [{
       lossId: 'loss:ship_wasp:1',
@@ -245,6 +254,7 @@ test('leftover heat or leftover ship ledger adds leftover rap line', () => {
     }],
   };
   const filedLine = leftoverMechanicLine(filed);
+  assert.match(filedLine, /Hard scar/);
   assert.match(filedLine, /ship ledger already has a fact/i);
 });
 

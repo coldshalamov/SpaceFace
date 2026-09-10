@@ -60,10 +60,13 @@ function leftoverRepairLine(hull) {
   return leftoverLine(`Yard patched the ${leftoverFacing(patched[0])}. The weld is still proud.`);
 }
 
-function leftoverRapLine(state) {
+function leftoverRapLine(state, hull) {
   if (isPlayerWanted(state)) {
     return leftoverLine('Heat is on this hull. The law already filed the rap.');
   }
+  // A clean plate is a hull file. Trade, renown, and loss rows are not scars —
+  // naming them here made the mechanic contradict himself after the first sale.
+  if (!livingHullScars(hull).length) return null;
   const page = buildShipLedger(state || {}, { page: 0, pageSize: SHIP_LEDGER_MAX_PAGE_SIZE });
   const fact = (page.entries || []).find((entry) => entry && !HULL_HISTORY_TYPES.has(entry.type));
   if (!fact) return null;
@@ -92,7 +95,7 @@ export function leftoverMechanicLines(state) {
     const clean = leftoverCleanPlateLine(hull);
     if (clean) lines.push(clean);
   }
-  const rap = leftoverRapLine(state);
+  const rap = leftoverRapLine(state, hull);
   if (rap) lines.push(rap);
   return lines;
 }
