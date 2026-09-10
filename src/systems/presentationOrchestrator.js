@@ -13,6 +13,10 @@ import {
   sectorPaletteTag,
   travelSequence,
 } from '../presentation/travelChoreography.js';
+import {
+  COMBAT_ACTION_LIFECYCLE_EVENTS,
+  requestCombatActionAudio,
+} from '../audio/minimalActionAudio.js';
 
 export const PRESENTATION_ORCHESTRATOR_SCHEMA_VERSION = 1;
 
@@ -153,6 +157,9 @@ export const presentationOrchestrator = {
       this.bus.on('ai:flee', (payload) => this._onDoctrineWithdraw(payload || {})),
       this.bus.on('combat:fire', (payload) => this._onCombatFire(payload || {})),
       this.bus.on('combat:actionStarted', (payload) => this._onCombatActionStarted(payload || {})),
+      ...COMBAT_ACTION_LIFECYCLE_EVENTS.map((sourceEvent) => (
+        this.bus.on(sourceEvent, (payload) => this._onCombatActionLifecycle(sourceEvent, payload || {}))
+      )),
       this.bus.on('projectile:nearMiss', (payload) => this._onProjectileNearMiss(payload || {})),
       this.bus.on('entity:killed', (payload) => this._onEntityKilled(payload || {})),
       this.bus.on('entity:destroyed', (payload) => this._clearDoctrineCyclesFor(payload && payload.id)),
@@ -243,6 +250,7 @@ export const presentationOrchestrator = {
       emitted: this._emitted || 0,
       suppressed: this._suppressed || 0,
       lastCue: this._lastCue,
+      combatActionLifecycle: this._combatActionLog ? this._combatActionLog.slice() : [],
       activeDedupeKeys: this._lastByDedupeKey ? this._lastByDedupeKey.size : 0,
       dedupeKeysPruned: this._dedupeKeysPruned || 0,
       dedupeSweepCount: this._dedupeSweepCount || 0,
@@ -262,6 +270,12 @@ export const presentationOrchestrator = {
     this._laneCounts = {};
     this._laneTick = -1;
     this._lastCue = null;
+    this._combatActionLog = [];
+    this._combatActionLastTick = Object.create(null);
+    if (this._combatActionAudioHost) {
+      this._combatActionAudioHost._combatActionLog = this._combatActionLog;
+      this._combatActionAudioHost._combatActionLastTick = this._combatActionLastTick;
+    }
   },
 
   _onScenarioBeat(payload) {
@@ -420,6 +434,30 @@ export const presentationOrchestrator = {
     const targetId = payload.target && payload.target.entityId;
     if (targetId != null && targetId !== cycle.targetId) return;
     this._emitDoctrineAction(cycle, payload, 'combat:actionStarted');
+  },
+
+  _onCombatActionLifecycle(sourceEvent, payload) {
+    const host = this._combatActionAudioHost || (this._combatActionAudioHost = {
+      state: this.state,
+      _combatActionLog: this._combatActionLog || [],
+      _combatActionLastTick: this._combatActionLastTick || Object.create(null),
+      play: (recipeId, opts) => {
+        this.bus.emit('audio:cue', {
+          id: recipeId,
+          cueId: recipeId,
+          importance: opts && opts.gain,
+          playerRelevance: 1,
+          position: opts && opts.position || null,
+          reducedMotionKept: true,
+        });
+      },
+    });
+    host.state = this.state;
+    if (!host._combatActionLog) host._combatActionLog = this._combatActionLog || [];
+    const record = requestCombatActionAudio(host, sourceEvent, payload, currentTick(this.state));
+    this._combatActionLog = host._combatActionLog;
+    this._combatActionLastTick = host._combatActionLastTick;
+    return record;
   },
 
   _onCounterTether(payload) {

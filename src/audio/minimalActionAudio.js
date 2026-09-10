@@ -3,7 +3,44 @@
 // that must request a voice within 0.1 s (6 ticks) of the receipt. Bind only the gaps;
 // shield, boost, vent, purchase, and Massline attach already speak on the default route.
 
+import { ACTION_DEFS } from '../data/combatDefs.js';
+
 export const MINIMAL_ACTION_AUDIO_MAX_DELAY_TICKS = 6;
+
+export const COMBAT_ACTION_LIFECYCLE_EVENTS = Object.freeze([
+  'combat:actionPhase',
+  'combat:actionCompleted',
+  'combat:actionCancelled',
+  'combat:actionRejected',
+]);
+
+const ACTION_CUES_BY_ID = new Map(
+  ACTION_DEFS.map((def) => [def.id, def.cues || null]),
+);
+
+// Lock, release, snap, denial, plus the dash-in and burst fire tells. Starts, ends, and
+// reel.tick stay quiet so a six-verb combo cannot become thirty beats a second.
+export const COMBAT_ACTION_SCORED_CUES = Object.freeze([
+  'combat.action.dash.active',
+  'combat.action.attach.lock',
+  'combat.action.sling.release',
+  'combat.action.cut.snap',
+  'combat.action.burst.fire',
+  'combat.action.cancel',
+  'combat.action.reject',
+]);
+
+export const COMBAT_ACTION_QUIET_CUES = Object.freeze([
+  'combat.action.dash.start', 'combat.action.dash.end',
+  'combat.action.attach.start', 'combat.action.attach.end',
+  'combat.action.reel.start', 'combat.action.reel.tick', 'combat.action.reel.end',
+  'combat.action.sling.start', 'combat.action.sling.end',
+  'combat.action.cut.start', 'combat.action.cut.end',
+  'combat.action.burst.start', 'combat.action.burst.end',
+]);
+
+const SCORED_CUE_SET = new Set(COMBAT_ACTION_SCORED_CUES);
+const QUIET_CUE_SET = new Set(COMBAT_ACTION_QUIET_CUES);
 
 export const MINIMAL_ACTION_AUDIO = Object.freeze([
   Object.freeze({
@@ -165,6 +202,105 @@ export function bindMinimalActionAudio(host, bus) {
     bus.on(spec.sourceEvent, (payload) => {
       const tick = host.state && host.state.tick;
       requestMinimalActionAudio(host, spec.id, payload, tick);
+    });
+  }
+}
+
+export function actionCuesFor(actionId) {
+  return ACTION_CUES_BY_ID.get(actionId) || null;
+}
+
+export function resolveCombatActionLifecycleCue(sourceEvent, payload = {}) {
+  if (sourceEvent === 'combat:actionPhase') {
+    return typeof payload.cueId === 'string' && payload.cueId ? payload.cueId : null;
+  }
+  const cues = ACTION_CUES_BY_ID.get(payload.actionId);
+  if (sourceEvent === 'combat:actionCompleted') return (cues && cues.end) || null;
+  if (sourceEvent === 'combat:actionCancelled') {
+    return (cues && cues.cancel) || 'combat.action.cancel';
+  }
+  if (sourceEvent === 'combat:actionRejected') {
+    return (cues && cues.reject) || 'combat.action.reject';
+  }
+  return null;
+}
+
+export function shouldPlayCombatActionCue(cueId) {
+  return typeof cueId === 'string' && SCORED_CUE_SET.has(cueId);
+}
+
+export function isQuietCombatActionCue(cueId) {
+  return typeof cueId === 'string' && QUIET_CUE_SET.has(cueId);
+}
+
+export function combatActionLifecyclePlayerRelevant(state, payload = {}) {
+  const playerId = state && state.playerId;
+  if (playerId == null) return true;
+  if (payload.actorId === playerId) return true;
+  const target = payload.target;
+  const targetId = target && target.kind === 'entity'
+    ? target.entityId
+    : (payload.targetId != null ? payload.targetId : (target && target.entityId));
+  return targetId === playerId;
+}
+
+export function requestCombatActionAudio(host, sourceEvent, payload, tick) {
+  const cueId = resolveCombatActionLifecycleCue(sourceEvent, payload);
+  const nowTick = Number.isFinite(tick) ? tick : Number(host && host.state && host.state.tick);
+  const relevant = combatActionLifecyclePlayerRelevant(host && host.state, payload);
+  const scored = shouldPlayCombatActionCue(cueId);
+  const record = {
+    sourceEvent,
+    cueId,
+    tick: nowTick,
+    played: false,
+    quiet: !scored,
+    relevant,
+    reason: payload && payload.reason || null,
+    actionId: payload && payload.actionId || null,
+  };
+  if (!host._combatActionLog) host._combatActionLog = [];
+  host._combatActionLog.push(record);
+  if (host._combatActionLog.length > 64) host._combatActionLog.shift();
+  if (!cueId || !relevant || !scored) return record;
+  const last = host._combatActionLastTick && host._combatActionLastTick[cueId];
+  if (Number.isFinite(last) && Number.isFinite(nowTick) && (nowTick - last) < 4) {
+    return record;
+  }
+  if (!host._combatActionLastTick) host._combatActionLastTick = Object.create(null);
+  if (Number.isFinite(nowTick)) host._combatActionLastTick[cueId] = nowTick;
+  const importance = cueId === 'combat.action.reject' || cueId === 'combat.action.cut.snap' ? 0.9 : 0.78;
+  if (typeof host._applyPriorityCue === 'function') {
+    host._applyPriorityCue({
+      id: cueId,
+      importance,
+      playerRelevance: 1,
+    });
+  }
+  const actor = host.state && host.state.entities && host.state.entities.get && payload && payload.actorId != null
+    ? host.state.entities.get(payload.actorId)
+    : null;
+  const position = payload && payload.pos && Number.isFinite(payload.pos.x) && Number.isFinite(payload.pos.z)
+    ? payload.pos
+    : (actor && actor.pos) || null;
+  if (typeof host.play !== 'function') return record;
+  host.play(cueId, {
+    gain: importance,
+    critical: importance >= 0.8,
+    reducedMotionKept: true,
+    position,
+    cueId,
+  });
+  record.played = true;
+  return record;
+}
+
+export function bindCombatActionLifecycleAudio(host, bus) {
+  if (!host || !bus || typeof bus.on !== 'function') return;
+  for (const sourceEvent of COMBAT_ACTION_LIFECYCLE_EVENTS) {
+    bus.on(sourceEvent, (payload) => {
+      const tick = host.state && host.state.tick;
+      requestCombatActionAudio(host, sourceEvent, payload || {}, tick);
     });
   }
 }

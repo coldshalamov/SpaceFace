@@ -21,6 +21,7 @@ import { isVoiceOwnedAlertToast } from './alerts.js';
 import { admitReceipt, RECEIPT_MAX } from './hudAttention.js';
 import { resolveObjectiveHudLayout } from './hud.js';
 import { glyphSvg } from './glyphs.js';
+import { bindAutomationPayoffUi } from './automationPayoff.js';
 
 const MAX = RECEIPT_MAX;
 // Receipt kind icons — inline SVG from src/ui/glyphs.js (was text ✓ ✕ ! ¢ ◈, which leaned on
@@ -170,7 +171,7 @@ export function createToasts(ctx) {
     });
   }
 
-  function push({ text = '', kind = 'info', ttl = 4, _fromVoice = false } = {}) {
+  function push({ text = '', kind = 'info', ttl = 4, _fromVoice = false, channel = '' } = {}) {
     if (!root || !text) return;
     ensureConnected();
     // One-voice (spec2/06): the voiceArbiter re-emits its surfaced floor as a _fromVoice toast for
@@ -185,7 +186,7 @@ export function createToasts(ctx) {
     const job = typeof document !== 'undefined' && document.body && document.body.dataset
       ? document.body.dataset.sfHudJob
       : '';
-    const decision = admitReceipt({ text, kind, _fromVoice, combat: job === 'fight' || job === 'hurt' });
+    const decision = admitReceipt({ text, kind, channel, _fromVoice, combat: job === 'fight' || job === 'hurt' });
     if (!decision.admit) return;
     // Grouping: if an identical toast (same text + kind) is already live and recent (within 2.5s of
     // its birth), collapse into it — bump a count badge and refresh its TTL instead of stacking N
@@ -291,6 +292,8 @@ export function createToasts(ctx) {
   }
 
   bus.on('toast', push);
+  bindCombatDenialToasts(bus, () => ctx.state);
+  bindAutomationPayoffUi(bus, () => ctx.state);
 
   return { push, tick };
 }
@@ -303,4 +306,49 @@ function normalizeTtlMs(ttl) {
 
 function fadeWakeAt(rec, fadeMs) {
   return rec.born + Math.max(0, rec.ttl - fadeMs);
+}
+
+const REJECT_LINE = Object.freeze({
+  insufficient_capacitor: 'Not enough capacitor',
+  heat_limit: 'Too hot to act',
+  target_required: 'Need a target',
+  target_missing: 'Need a target',
+  target_out_of_range: 'Out of range',
+  target_not_hostile: 'Not a hostile',
+  attachment_missing: 'No line attached',
+  not_attachment_owner: 'Not your line',
+  unknown_action: "Can't do that",
+  actor_missing: "You can't act",
+});
+
+export function formatCombatActionRejectLine(reason) {
+  const raw = String(reason || '').trim();
+  if (!raw) return '';
+  if (REJECT_LINE[raw]) return REJECT_LINE[raw];
+  if (raw.startsWith('cooldown:')) return 'Not ready yet';
+  if (raw.startsWith('busy:')) return 'Still busy';
+  if (raw.startsWith('disabled:')) {
+    const part = raw.slice('disabled:'.length).replace(/_/g, ' ');
+    return part ? `${part} disabled` : 'System disabled';
+  }
+  if (raw.startsWith('physics_')) return "Can't do that now";
+  return raw.replace(/_/g, ' ');
+}
+
+function isPlayerCombatActor(state, payload) {
+  if (!payload) return false;
+  const playerId = state && state.playerId;
+  if (playerId == null) return true;
+  return payload.actorId === playerId;
+}
+
+export function bindCombatDenialToasts(bus, getState) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('combat:actionRejected', (payload) => {
+    const state = typeof getState === 'function' ? getState() : getState;
+    if (!isPlayerCombatActor(state, payload)) return;
+    const text = formatCombatActionRejectLine(payload && payload.reason);
+    if (!text) return;
+    bus.emit('toast', { text, kind: 'error', ttl: 3.5 });
+  });
 }
