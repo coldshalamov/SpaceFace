@@ -22,6 +22,7 @@
 //   - All spawn paths reuse scratch vectors/matrices; bursts only (rateOverTime: 0).
 
 import * as THREE from 'three';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
 import {
   BatchedParticleRenderer,
   ParticleSystem,
@@ -183,12 +184,12 @@ export class QuarksVfxSystem {
     // -------------------------------------------------------------
     const casingGeo = facet(new THREE.CylinderGeometry(0.07, 0.07, 0.28, 6));
     casingGeo.rotateZ(Math.PI / 2);
-    const casingMat = new THREE.MeshStandardMaterial({
+    const casingMat = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0xc9a227,
       metalness: 0.35,
       roughness: 0.4,
       transparent: true,
-    });
+    }), SHARED_MATERIAL_ROLE.HULL);
     this.casingEjection = new ParticleSystem({
       duration: 1,
       looping: false,
@@ -273,12 +274,12 @@ export class QuarksVfxSystem {
     // tetrahedra, tumbling hard off the contact plane and settling as they drag.
     // -------------------------------------------------------------
     const rockShardGeo = facet(new THREE.TetrahedronGeometry(0.3));
-    const rockShardMat = new THREE.MeshStandardMaterial({
+    const rockShardMat = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
       color: 0x9a9088,
       metalness: 0.05,
       roughness: 0.9,
       transparent: true,
-    });
+    }), SHARED_MATERIAL_ROLE.ROCK);
     this.collisionSpall = new ParticleSystem({
       duration: 1,
       looping: false,

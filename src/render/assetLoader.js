@@ -7,6 +7,7 @@
 // ready; a temporary procedural body must never impersonate the final ship, station, or place.
 import * as THREE from 'three';
 import { applyAuthoredMaterialProfile, configureAuthoredMaterialProfiles } from './authoredMaterialProfiles.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 import {
   disposeAssetResidency,
   getAssetResidency,
@@ -1988,7 +1989,7 @@ export function makeCanopyMaterial(source) {
   physical.opacity = finiteInRange(input.opacity, 0, 1) ? Number(input.opacity) : 1;
   physical.depthWrite = false;
   physical.userData = { ...(input.userData || {}), spacefaceCanopy: true };
-  return physical;
+  return stampSharedMaterialRole(physical, SHARED_MATERIAL_ROLE.CANOPY);
 }
 
 function blueprintGpuResources(blueprint) {
