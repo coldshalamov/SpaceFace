@@ -381,7 +381,9 @@ export const swarmArena = {
     if (!run) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
     this._pressureWave = wave;
-    resetSwarmPressureState();
+    // Consecutive waves of the same run carry remaining hold time and stored pressure.
+    // Reset only on a new run's opener; teardown / newGame / run:ended already reset.
+    if (wave <= 1) resetSwarmPressureState();
     this._pressureAlive = liveCohortCount(this.state);
     this._raiseCapacity();
     this._cullWrecks();

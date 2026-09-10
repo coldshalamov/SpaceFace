@@ -25,6 +25,7 @@ import {
 import {
   SWARM_CLEANUP_TICKS,
   SWARM_RULESET,
+  SWARM_WAVE_DURATION_TICKS,
   isSwarmDraftWave,
   isSwarmRefitWave,
   swarmArenaPhase,
@@ -45,6 +46,8 @@ const SEED_MIN = 1;
 const SEED_MAX = 0xffffffff;
 const WAVE_MIN = 1;
 const WAVE_MAX = 999;
+
+export const WAVE_PLAN_ERROR = 'invalid_input';
 
 const ARENA_IDS = new Set(COMBAT_LAB_ARENAS.map((arena) => arena.id));
 
@@ -332,9 +335,9 @@ export function resolvePlanMode(input) {
  * results screen) keeps working without a swarm-shaped branch of its own. The one addition is
  * `plan.swarm`, the block that describes the reinforcement stream.
  *
- * Completion here is a KILL QUOTA, not "every scheduled package materialized and every blocking
- * role dead". `requiredPackagesMaterialized` is false and `blockingRoles` is empty on purpose:
- * a swarm wave must never be able to stall on one straggler flying home.
+ * Completion here is a SIXTY-SECOND CLOCK, not "every scheduled package materialized and every
+ * blocking role dead". `requiredPackagesMaterialized` is false and `blockingRoles` is empty
+ * on purpose: a swarm wave must never be able to stall on one straggler flying home.
  */
 function planSwarmWave({ seed, wave, rng, mutators }) {
   const w = swarmWaveOf(wave);
@@ -369,6 +372,8 @@ function planSwarmWave({ seed, wave, rng, mutators }) {
       ? { kind: 'refit', choices: null }
       : (isSwarmDraftWave(w) ? { kind: 'draft', choices: 3 } : { kind: 'none', choices: null }),
     completionRules: {
+      kind: 'duration',
+      durationTicks: SWARM_WAVE_DURATION_TICKS,
       requiredPackagesMaterialized: false,
       blockingRoles: [],
       cleanupTicks: SWARM_CLEANUP_TICKS,

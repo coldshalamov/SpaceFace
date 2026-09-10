@@ -16,10 +16,12 @@ import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
 import {
   SWARM_BOSS_ENEMY_ID,
+  SWARM_WAVE_DURATION_TICKS,
   pickSwarmArchetype,
   swarmGateFor,
   swarmLevel,
   swarmPressureAt,
+  swarmPressureIsHolding,
   swarmReinforceCount,
 } from '../data/swarmMode.js';
 import { WAVE_CLEARED_SEAM } from './survivalRun.js';
@@ -38,13 +40,12 @@ export const SURVIVAL_WAVE_OWNER_PREFIX = 'survival-wave:';
  * are dead. That produces the dead air a swarm game cannot have — the last twenty seconds of every
  * wave are spent hunting one straggler in an otherwise empty room.
  *
- * A swarm wave is a STREAM instead. It holds the room at `concurrent` bodies and ends on a KILL
- * QUOTA, so:
+ * A swarm wave is a STREAM instead. It holds the room at `concurrent` bodies and ends on a
+ * SIXTY-SECOND CLOCK, so:
  *   * the room never empties while the wave is live — a kill is replaced within a few ticks;
- *   * survivors are never chased. When the quota is met the wave ends with hostiles still on you,
- *     and they roll into the next wave as its opening pressure. There is no lull to cover.
- *   * it self-tapers. The spawn target is `min(concurrent, quota - killed)`, so the last few kills
- *     of a wave do not summon a fresh dozen that the next wave would then have to inherit.
+ *   * survivors are never chased. When the clock hits sixty seconds the wave ends with hostiles
+ *     still on you, and they roll into the next wave as its opening pressure. There is no lull.
+ *   * the stream does not stop at a kill count. Kills buy score, salvage and reservoir openings.
  *
  * Everything still goes through materializeWaveBatch — the same spawnBudget authority and the same
  * makeEnemySpawnSpec builder the arc uses. There is no swarm-only spawn path and no raised cap.
@@ -71,6 +72,16 @@ function liveSurvivalRun(state) {
 export function waveOwnerId(wave) {
   return `${SURVIVAL_WAVE_OWNER_PREFIX}${Number.isInteger(wave) ? wave : 0}`;
 }
+
+function playerIsAlive(state) {
+  if (!state || state.playerId == null || !state.entities || typeof state.entities.get !== 'function') {
+    return false;
+  }
+  const player = state.entities.get(state.playerId);
+  return !!(player && player.alive !== false);
+}
+
+const TRANSITIONAL_PHASES = new Set(['cleanup', 'wave_intro', 'arena_intro', 'draft', 'refit']);
 
 export const survivalWave = {
   name: 'survivalWave',
@@ -104,12 +115,20 @@ export const survivalWave = {
   update() {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
+    // Across cleanup / introduction / auto-draft the clock is frozen, but an empty board is
+    // still an emergency. Use the carried cohort and the current plan through the same
+    // materializer so a sixty-second boundary cannot disable the refill.
+    if (this._swarm && this._plan && TRANSITIONAL_PHASES.has(run.phase)) {
+      this._reinforceSwarm(run, { emergencyOnly: true });
+      return;
+    }
     if (run.phase !== 'active') return;
     if (!this._active) return;
 
     this._cursor += 1;
     this._dispatchDue();
     this._reinforceSwarm(run);
+    this._publishWaveProgress();
     this._checkCleared(run);
   },
 
@@ -140,9 +159,18 @@ export const survivalWave = {
     const roles = Array.isArray(rules.blockingRoles) ? rules.blockingRoles : [];
     this._blockingRoles = new Set(roles);
     if (swarm) {
-      // The readout's denominator is the KILL QUOTA, not a body count — that is the number the
-      // player is actually working toward, and the only one that can be finished.
-      this._quota = Number.isInteger(swarm.quota) && swarm.quota > 0 ? swarm.quota : 10;
+      const rulesDuration = Number.isInteger(rules.durationTicks) && rules.durationTicks > 0
+        ? rules.durationTicks
+        : 0;
+      const swarmDuration = Number.isInteger(swarm.durationTicks) && swarm.durationTicks > 0
+        ? swarm.durationTicks
+        : 0;
+      this._durationTicks = rulesDuration || swarmDuration || SWARM_WAVE_DURATION_TICKS;
+      const reference = Number.isInteger(swarm.rewardReferenceKills) && swarm.rewardReferenceKills > 0
+        ? swarm.rewardReferenceKills
+        : (Number.isInteger(swarm.quota) && swarm.quota > 0 ? swarm.quota : 10);
+      this._rewardReferenceKills = reference;
+      this._plannedBodies = reference;
       this._concurrent = Number.isInteger(swarm.concurrent) && swarm.concurrent > 0
         ? swarm.concurrent
         : 8;
@@ -155,8 +183,6 @@ export const survivalWave = {
       this._spawnDistance = Number.isFinite(swarm.spawnDistance) && swarm.spawnDistance > 0
         ? swarm.spawnDistance
         : SURVIVAL_SPAWN_DISTANCE;
-      this._requireBoss = swarm.requireBoss === true;
-      this._plannedBodies = this._quota;
     } else {
       // Publish the wave's planned body count so a readout can say how many are still out there.
       this._plannedBodies = plan.schedule.reduce(
@@ -176,6 +202,10 @@ export const survivalWave = {
     this._admittedTotal = 0;
     this._requestedTotal = 0;
     this._resolved = 0;
+    this._waveStartedSimTime = this.state && Number.isFinite(this.state.simTime)
+      ? this.state.simTime
+      : 0;
+    this._lastProgressSecond = null;
     // Dispatch tick-0 batches on the same tick the wave goes active so the fight starts
     // immediately instead of one frame late.
     this._cursor = 0;
@@ -184,6 +214,7 @@ export const survivalWave = {
     this._lastReinforceTick = 0;
     this._reinforceIndex = 0;
     this._dispatchDue();
+    this._publishWaveProgress({ force: true });
     this._checkCleared(run);
   },
 
@@ -233,9 +264,7 @@ export const survivalWave = {
     if (!plan) return;
     const run = liveSurvivalRun(this.state);
     const seed = run && Number.isInteger(run.seed) ? run.seed : 1;
-    // The swarm's own level curve stops (swarmMode.js SWARM_LEVEL_CAP); the arc's does not. Both
-    // are the same formula below the cap, so a swarm hostile is never a different animal from the
-    // arc's — it just stops growing once every other dial has also reached its maximum.
+    // The swarm always materializes at swarmLevel 1 so scaleCombatant cannot inflate hull.
     const level = this._swarm ? swarmLevel(this._wave) : levelForWave(this._wave);
     const ownerId = waveOwnerId(this._wave);
     if (!this._owners.includes(ownerId)) this._owners.push(ownerId);
@@ -247,6 +276,18 @@ export const survivalWave = {
       const atTick = Number.isInteger(entry.atTick) ? entry.atTick : 0;
       if (atTick > this._cursor) {
         this._pending[write++] = item;
+        continue;
+      }
+      const holding = this._swarm && swarmPressureIsHolding();
+      const emptyBoard = this._cohort.size === 0;
+      // A carried reservoir hold is a protected hole. Ordinary opening packages must not refill
+      // it. Champions stay owed — they defer until the hold finishes rather than being dropped.
+      // An empty board is the emergency exception.
+      if (this._swarm && holding && !emptyBoard) {
+        if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID) {
+          this._pending[write++] = item;
+          continue;
+        }
         continue;
       }
       // A swarm wave's opening burst is bounded by the SAME concurrency target the stream uses.
@@ -289,10 +330,8 @@ export const survivalWave = {
         // of three raiders exactly as easily as it owes one Dreadnought.
         if (entry.champion === true || entry.enemyId === SWARM_BOSS_ENEMY_ID) this._bossIds.add(id);
       }
-      // A batch the cap refused lowers the wave's real body count, so the readout never asks the
-      // player to kill bodies that were never admitted. A SWARM wave's denominator is its kill
-      // quota, not a body count, so a refused batch must never shrink it — the stream will simply
-      // bring those bodies later.
+      // A refused swarm batch must never shrink the planned figure — the stream will bring
+      // those bodies later. The clock, not a body count, ends the wave.
       if (!this._swarm) {
         this._plannedBodies = Math.max(0, this._plannedBodies - receipt.rejected);
       }
@@ -316,9 +355,11 @@ export const survivalWave = {
    * Hold the room at strength. Runs only for a swarm wave; a no-op everywhere else, including on
    * ticks where the room is already full — the common case, and the cheap one.
    */
-  _reinforceSwarm(run) {
-    if (!this._swarm || this._cleared || !this._active) return;
-    if (this._cursor < 0) return;
+  _reinforceSwarm(run, opts = {}) {
+    if (!this._swarm || !this._plan) return;
+    const emergencyOnly = opts.emergencyOnly === true;
+    if (!emergencyOnly && (this._cleared || !this._active)) return;
+    if (!emergencyOnly && this._cursor < 0) return;
     // AN EMPTY ROOM IS AN EMERGENCY, NOT A WAIT.
     //
     // The gap timer paces an ordinary top-up so bodies arrive as groups rather than a dribble. It
@@ -328,37 +369,22 @@ export const survivalWave = {
     // moment in eighty-six. "The room is never empty" is the promise this whole ruleset is built
     // on, so the first body back is never made to queue.
     const roomIsEmpty = this._cohort.size === 0 && this._pendingBodies() === 0;
-    if (!roomIsEmpty && this._cursor - this._lastReinforceTick < this._reinforceGap) return;
+    if (emergencyOnly && !roomIsEmpty) return;
+    if (!emergencyOnly && !roomIsEmpty && this._cursor - this._lastReinforceTick < this._reinforceGap) return;
 
-    // NO TAPER. An earlier version shrank the spawn target toward the end of a wave so the next
-    // wave would not inherit a crowd — and that produced exactly the dead air this whole ruleset
-    // exists to delete: the last third of every wave played out in a thinning room, and the wave
-    // ended with nothing on screen.
+    // NO TAPER and NO QUOTA STOP. The stream supplies the fight until the sixty-second boundary.
+    // Kill count does not stop arrivals. A living champion is not a gate.
     //
-    // Holding the room at full strength right through the last kill is the point. Inheriting that
-    // crowd is not a cost, it IS the no-lull rule: wave N+1 opens with wave N's survivors already
-    // on the player. Growth is bounded by `concurrent` (and, behind that, by the shared spawn cap),
-    // so there is nothing here to run away.
-    //
-    // The only stop is a quota already met with no boss owed — the wave ends on this same tick, so
-    // spawning into it would just be litter.
-    if (this._resolved >= this._quota && !(this._requireBoss && this._bossIds.size > 0)) return;
-    // THE WAVE BUILDS. A flat target for a whole wave makes its first second and its last feel the
-    // same; the room now opens at a fraction of its ceiling and closes in as the quota burns down,
-    // so every wave has a shape. The ceiling itself never moves mid-wave — only how much of it is
-    // being used right now.
-    const progress = this._quota > 0 ? this._resolved / this._quota : 1;
+    // THE WAVE BUILDS. Elapsed-time fraction is the crescendo input: the room opens at a fraction
+    // of its ceiling and closes in as the minute burns down.
+    const durationSeconds = this._durationSeconds();
+    const progress = durationSeconds > 0
+      ? Math.max(0, Math.min(1, this._elapsedSeconds() / durationSeconds))
+      : 1;
     const target = Math.min(this._concurrent, swarmPressureAt(this._wave, progress));
-    // COUNT THE BODIES ALREADY ON THEIR WAY. The opening burst is staged over a few ticks so it
-    // arrives as groups on different bearings rather than one block; without this the stream sees a
-    // thin room, tops it up, and then the rest of the burst lands on top — every wave opened over
-    // its own pressure. Pending is what the schedule still owes, not a guess.
     const alive = this._cohort.size + this._pendingBodies();
     if (alive >= target) return;
 
-    // Adaptive: a small hole gets the ordinary batch, a big one gets a surge. See
-    // swarmReinforceCount — a fixed batch can always be out-cleared by a fast player, and being
-    // out-cleared looks exactly like the dead air this ruleset exists to delete.
     const want = swarmReinforceCount(target - alive);
     if (want <= 0) return;
 
@@ -420,22 +446,24 @@ export const survivalWave = {
   _checkCleared(run) {
     if (this._cleared) return;
     if (!this._active) return;
-    // A swarm wave clears on KILLS. Survivors are left flying — they become the next wave's
-    // opening pressure. Nothing here waits for an empty room, so the wave can never stall on a
-    // straggler and there is no lull between waves to cover with a menu.
+    // A swarm wave clears on the SIXTY-SECOND CLOCK. Survivors are left flying — they become
+    // the next wave's opening pressure. Kill count does not end the wave. A living champion
+    // does not end the wave. Death at the boundary is a death, not a surviving-wave award.
     if (this._swarm) {
-      if (this._resolved < this._quota) return;
-      // A boss wave owes BOTH: the quota and the Dreadnought. Until the boss is down the wave
-      // keeps running, and the stream keeps its escort coming.
-      if (this._requireBoss && this._bossIds.size > 0) return;
+      if (run.phase !== 'active') return;
+      if (!playerIsAlive(this.state)) return;
+      const durationSeconds = this._durationSeconds();
+      if (this._elapsedSeconds() < durationSeconds) return;
       this._cleared = true;
       this._active = false;
+      this._publishWaveProgress({ force: true });
       this._emit(WAVE_CLEARED_SEAM, {
         wave: this._wave,
+        completionKind: 'duration',
+        durationTicks: this._durationTicks,
         requested: this._requestedTotal,
         admitted: this._admittedTotal,
         killed: this._resolved,
-        quota: this._quota,
         survivors: this._cohort.size,
         starved: this._requestedTotal > 0 && this._admittedTotal === 0,
         tick: this._cursor,
@@ -478,14 +506,16 @@ export const survivalWave = {
     this._resolved = 0;
     this._spawnDistance = SURVIVAL_SPAWN_DISTANCE;
     this._swarm = null;
-    this._quota = 0;
+    this._rewardReferenceKills = 0;
+    this._durationTicks = 0;
+    this._waveStartedSimTime = null;
+    this._lastProgressSecond = null;
     this._concurrent = 0;
     this._reinforceGap = 24;
     this._reinforceBatch = 3;
     this._reinforceIndex = 0;
     this._lastReinforceTick = -9999;
     this._bossIds = new Set();
-    this._requireBoss = false;
   },
 
   _teardown() {
@@ -499,5 +529,43 @@ export const survivalWave = {
 
   _emit(event, payload) {
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
+  },
+
+  _elapsedSeconds() {
+    const start = this._waveStartedSimTime;
+    const now = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0;
+    if (Number.isFinite(start)) {
+      const fromSim = now - start;
+      if (fromSim > 0) return fromSim;
+    }
+    // Focused harnesses that do not tick core still advance `_cursor` during active combat.
+    return this._cursor > 0 ? this._cursor / 60 : 0;
+  },
+
+  _durationSeconds() {
+    const ticks = Number.isInteger(this._durationTicks) && this._durationTicks > 0
+      ? this._durationTicks
+      : SWARM_WAVE_DURATION_TICKS;
+    return ticks / 60;
+  },
+
+  _elapsedTicks() {
+    return Math.max(0, Math.floor(this._elapsedSeconds() * 60 + 1e-9));
+  },
+
+  _publishWaveProgress({ force = false } = {}) {
+    if (!this._swarm) return;
+    const durationTicks = Number.isInteger(this._durationTicks) && this._durationTicks > 0
+      ? this._durationTicks
+      : SWARM_WAVE_DURATION_TICKS;
+    const remainingTicks = Math.max(0, durationTicks - this._elapsedTicks());
+    const displaySecond = Math.ceil(remainingTicks / 60);
+    if (!force && displaySecond === this._lastProgressSecond) return;
+    this._lastProgressSecond = displaySecond;
+    this._emit('run:waveProgress', {
+      wave: this._wave,
+      remainingTicks,
+      durationTicks,
+    });
   },
 };

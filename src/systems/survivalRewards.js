@@ -40,12 +40,16 @@ export function chipValueForPlan(plan) {
   const credits = rewards && Number.isInteger(rewards.credits) ? rewards.credits : 0;
   if (credits <= 0) return 0;
   // A swarm wave's packages are only its OPENING burst; the bodies that actually die over the wave
-  // are its kill quota. Splitting the purse by the burst would pay two or three times the authored
-  // figure, so the swarm divides by the number the wave is really asking for.
+  // are counted against `rewardReferenceKills` (the old quota curve, kept so one chip is still
+  // worth two credits). Splitting the purse by the burst would pay two or three times the authored
+  // figure. Every actual kill pays, including those past the reference count — there is no
+  // exhausted purse.
   const swarm = plan && plan.swarm;
-  const bodies = swarm && Number.isInteger(swarm.quota) && swarm.quota > 0
-    ? swarm.quota
-    : peakConcurrentDemand(plan && plan.packages);
+  const bodies = swarm && Number.isInteger(swarm.rewardReferenceKills) && swarm.rewardReferenceKills > 0
+    ? swarm.rewardReferenceKills
+    : (swarm && Number.isInteger(swarm.quota) && swarm.quota > 0
+      ? swarm.quota
+      : peakConcurrentDemand(plan && plan.packages));
   if (bodies <= 0) return credits;
   return Math.max(1, Math.round(credits / bodies));
 }

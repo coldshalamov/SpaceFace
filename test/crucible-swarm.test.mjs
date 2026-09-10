@@ -1,4 +1,4 @@
-// PQ-135 — the swarm ruleset: constant pressure, a kill quota, and no menu four waves in five.
+// PQ-135 / PQ-174.01 — the swarm ruleset: constant pressure, a sixty-second clock, and no menu four waves in five.
 //
 // These tests drive the REAL phase machine and the REAL wave owner through the REAL spawn budget.
 // Nothing here stubs the streaming loop; the reinforcement behaviour under test is the behaviour
@@ -31,6 +31,7 @@ import {
   SWARM_BOSS_ROTATION,
   SWARM_LEVEL_CAP,
   SWARM_QUOTA_CAP,
+  SWARM_WAVE_DURATION_TICKS,
   SWARM_ROSTER,
   swarmBossFor,
   swarmConcurrent,
@@ -110,6 +111,7 @@ function boot(seed = SEED) {
 
 function tick(h, n = 1) {
   for (let i = 0; i < n; i++) {
+    h.state.simTime += DT;
     survivalWave.update(DT);
     survivalRun.update(DT);
   }
@@ -182,7 +184,11 @@ test('every swarm wave names a live enemy, a legal gate and a room that is never
       `wave ${wave} opening burst fits the cap`,
     );
     assert.ok(plan.swarm.concurrent <= SWARM_CONCURRENT_MAX);
-    assert.ok(plan.swarm.quota > 0);
+    // PQ-174.01 design memo: a wave ends on a sixty-second clock, not a kill quota.
+    // The old quota numbers survive only as chip valuation (`rewardReferenceKills`).
+    assert.ok(plan.swarm.rewardReferenceKills > 0);
+    assert.equal(plan.completionRules.kind, 'duration');
+    assert.equal(plan.completionRules.durationTicks, SWARM_WAVE_DURATION_TICKS);
   }
 });
 
@@ -318,10 +324,10 @@ test('the stream holds the room near strength across a whole wave, and never bre
   assert.ok(h.budget.current() <= h.budget.max(), 'the budget was never oversubscribed');
 });
 
-test('a wave clears on KILLS, with survivors still flying', () => {
+test('a wave clears on the sixty-second clock, with survivors still flying', () => {
   const h = boot();
   beginSwarm(h);
-  const quota = swarmQuota(1);
+  const reference = swarmQuota(1);
 
   let killed = 0;
   for (let i = 0; i < 4000 && h.state.run.phase === 'active'; i++) {
@@ -330,9 +336,12 @@ test('a wave clears on KILLS, with survivors still flying', () => {
   }
   const cleared = named(h.emitted, 'run:waveCleared');
   assert.equal(cleared.length, 1, 'the wave reported itself cleared');
-  assert.equal(cleared[0].payload.quota, quota);
-  assert.ok(cleared[0].payload.killed >= quota, 'the quota was met');
-  assert.ok(killed >= quota);
+  // PQ-174.01 design memo: a wave ends on a sixty-second clock, not a kill quota.
+  assert.equal(cleared[0].payload.completionKind, 'duration');
+  assert.equal(cleared[0].payload.durationTicks, SWARM_WAVE_DURATION_TICKS);
+  assert.equal(cleared[0].payload.quota, undefined);
+  assert.ok(cleared[0].payload.killed >= reference, 'kills past the old quota still count');
+  assert.ok(killed >= reference);
   // THE POINT: the room was not empty when the wave ended.
   assert.ok(cleared[0].payload.survivors > 0, 'survivors carried, so there is no lull to cover');
   assert.ok(liveHostiles(h).length > 0);
@@ -370,7 +379,9 @@ test('the room is never empty across a wave boundary', () => {
   beginSwarm(h);
   let emptyTicks = 0;
   let sampled = 0;
-  for (let i = 0; i < 5000 && h.state.run.wave < 3; i++) {
+  // Two sixty-second waves plus cleanup/intro: 5000 ticks used to be enough when a quota
+  // ended the wave in ~20 s. The clock needs ~7300 ticks to reach wave 3.
+  for (let i = 0; i < 16000 && h.state.run.wave < 3; i++) {
     if (i % 7 === 0 && h.state.run.phase === 'active') killOne(h);
     tick(h, 1);
     sampled++;
@@ -403,13 +414,15 @@ test('a fast clear cannot empty the room — a wiped board still refills immedia
   // PQ-174.08 replaced the instant deficit surge with a 4 s breath after a substantial clear.
   // The empty-room emergency is unchanged: 15 kills a second may thin the room, it may not
   // leave it at zero, and the wave still ends with survivors rolling forward.
+  // PQ-174.01 design memo: a wave ends on a sixty-second clock, not a kill quota — so this
+  // walk must last two full minutes, not the old ~20 s quota clear.
   const h = boot();
   beginSwarm(h);
   let empty = 0;
   let samples = 0;
   let survivorsAtClear = null;
   h.bus.on('run:waveCleared', (p) => { if (survivorsAtClear == null) survivorsAtClear = p.survivors; });
-  for (let i = 0; i < 3000 && h.state.run.wave < 3; i++) {
+  for (let i = 0; i < 16000 && h.state.run.wave < 3; i++) {
     if (i % 4 === 0 && h.state.run.phase === 'active') killOne(h);
     tick(h, 1);
     samples++;
@@ -554,31 +567,30 @@ function this_cleared(h) {
   return named(h.emitted, 'run:waveCleared').length > 0;
 }
 
-test('the stat curve stops, so a deep run ends on execution rather than arithmetic', () => {
-  // This module's first rule is "pressure is concurrency, not HP", and it originally used the arc's
-  // unbounded level curve anyway. Charted, incoming pressure hit 5.9x wave one by wave 25 and kept
-  // climbing on level alone while the player's build finishes at seven fitted slots.
+test('the stat curve is pinned at 1, so a deep run ends on execution rather than arithmetic', () => {
+  // PQ-174.01 design memo: return 1 at every swarm wave, including opening and reinforcement
+  // materialization. This closes an existing route to HP escalation; count, composition, mass,
+  // hazards and bearings carry the difficulty curve.
   assert.equal(swarmLevel(1), 1);
-  assert.equal(swarmLevel(swarmFullIntensityWave()), SWARM_LEVEL_CAP);
-  for (const wave of [30, 60, 100, 500, 999]) {
-    assert.equal(swarmLevel(wave), SWARM_LEVEL_CAP, `wave ${wave} does not out-scale the player`);
+  assert.equal(swarmLevel(swarmFullIntensityWave()), 1);
+  for (const wave of [8, 22, 30, 60, 100, 500, 999]) {
+    assert.equal(swarmLevel(wave), 1, `wave ${wave} never inflates hull`);
   }
-  // Below the cap it is the SAME curve the arc uses — a swarm hostile is never a different animal.
-  for (let wave = 1; wave <= swarmFullIntensityWave(); wave++) {
-    assert.equal(swarmLevel(wave), levelForWave(wave), `wave ${wave} matches the shared curve`);
-  }
+  // SWARM_LEVEL_CAP still names the wave at which concurrency and roster max out — not HP.
+  assert.equal(swarmFullIntensityWave(), 1 + (SWARM_LEVEL_CAP - 1) * 3);
   // And the arc keeps its own unbounded curve.
   assert.ok(levelForWave(60) > SWARM_LEVEL_CAP, 'the authored arc is untouched');
 });
 
 test('everything the mode has is on the table by the full-intensity wave', () => {
-  // The claim the cap is priced on: by then concurrency, roster, quota and level are all maxed, so
+  // The claim the cap is priced on: by then concurrency, roster and chip valuation are all maxed, so
   // the only thing left to test is whether the player can keep doing it.
   const full = swarmFullIntensityWave();
   assert.equal(swarmConcurrent(full), SWARM_CONCURRENT_MAX, 'concurrency is at its ceiling');
-  assert.equal(swarmQuota(full), SWARM_QUOTA_CAP, 'the quota is at its cap');
+  assert.equal(swarmQuota(full), SWARM_QUOTA_CAP, 'the chip-valuation curve is at its cap');
   assert.equal(swarmRosterFor(full).length, SWARM_ROSTER.length, 'every archetype has arrived');
-  assert.equal(swarmLevel(full), SWARM_LEVEL_CAP);
+  // PQ-174.01 design memo: return 1 at every swarm wave so scaleCombatant cannot inflate hull.
+  assert.equal(swarmLevel(full), 1);
 });
 
 // ---------------------------------------------------------------------------
@@ -620,17 +632,20 @@ test('a boss wave fields a Dreadnought and says it owes one', () => {
   assert.ok(plan.swarm.concurrent >= 10);
 });
 
-test('meeting the quota does NOT clear a boss wave while the Dreadnought is alive', () => {
+test('the clock, not the Dreadnought, ends a boss wave', () => {
+  // PQ-174.01 design memo: Every swarm wave uses this rule, including boss waves. A living
+  // champion carries forward with its identity, health and momentum intact. Keeping boss death
+  // as an additional gate would reintroduce an unbounded duration.
   const h = boot();
   beginSwarm(h);
   const plan = forceWave(h, 10);
-  const quota = plan.swarm.quota;
+  const reference = plan.swarm.rewardReferenceKills;
   tick(h, 30);
   assert.ok(liveBosses(h, 10).length > 0, 'the champion is on the board');
 
-  // Kill only chaff, well past the quota.
+  // Kill only chaff, well past the old valuation, for twenty seconds — the clock has not elapsed.
   let chaffKilled = 0;
-  for (let i = 0; i < 4000 && chaffKilled < quota + 12; i++) {
+  for (let i = 0; i < 1200 && chaffKilled < reference + 12; i++) {
     if (i % 5 === 0) {
       const bossIds = new Set(liveBosses(h, 10).map((e) => e.id));
       const chaff = liveHostiles(h).find((e) => !bossIds.has(e.id));
@@ -643,34 +658,29 @@ test('meeting the quota does NOT clear a boss wave while the Dreadnought is aliv
     }
     tick(h, 1);
   }
-  assert.ok(chaffKilled > quota, `killed ${chaffKilled} chaff, past the quota of ${quota}`);
+  assert.ok(chaffKilled > reference, `killed ${chaffKilled} chaff, past the old valuation of ${reference}`);
   assert.equal(
     named(h.emitted, 'run:waveCleared').length,
     0,
-    'the wave is still running — the boss is the work, not one more body in the count',
+    'kills still do not end a boss wave — the clock has not elapsed',
   );
-  // And the room did not go quiet while the duel was owed.
+  assert.ok(liveBosses(h, 10).length > 0, 'the champion is still flying');
   assert.ok(liveHostiles(h).length > 1, 'a screen is still coming during the duel');
 
-  // Now kill EVERY champion — a boss wave may owe a wing, not just one hull.
-  const bosses = liveBosses(h, 10);
-  assert.ok(bosses.length > 0, 'the champion is still flying');
-  for (const boss of bosses) {
-    boss.alive = false;
-    h.state.entities.delete(boss.id);
-    h.bus.emit('entity:destroyed', { id: boss.id });
+  for (let i = 0; i < 4000 && named(h.emitted, 'run:waveCleared').length === 0; i++) {
+    tick(h, 1);
   }
-  tick(h, 2);
-
   const cleared = named(h.emitted, 'run:waveCleared');
-  assert.equal(cleared.length, 1, 'killing the Dreadnought ends the wave');
+  assert.equal(cleared.length, 1, 'the sixty-second clock ended the boss wave');
+  assert.equal(cleared[0].payload.completionKind, 'duration');
   assert.equal(cleared[0].payload.wave, 10);
+  assert.ok(liveBosses(h, 10).length > 0, 'the living champion carried; the clock did not wait for a kill');
 });
 
-test('a boss wave still ends normally when the boss dies first', () => {
+test('a boss wave still runs the clock when the boss dies first', () => {
   const h = boot();
   beginSwarm(h);
-  const plan = forceWave(h, 10);
+  forceWave(h, 10);
   tick(h, 30);
   const bosses = liveBosses(h, 10);
   assert.ok(bosses.length > 0);
@@ -680,18 +690,18 @@ test('a boss wave still ends normally when the boss dies first', () => {
     h.bus.emit('entity:destroyed', { id: boss.id });
   }
 
-  // The quota is still owed after the boss goes down — the wave does not end early either.
+  // PQ-174.01 design memo: It remains dangerous and pays its kill reward only when actually
+  // killed; the clock never fabricates a boss kill. Killing it also does not end the wave early.
   tick(h, 5);
-  assert.equal(named(h.emitted, 'run:waveCleared').length, 0, 'the quota is still owed');
+  assert.equal(named(h.emitted, 'run:waveCleared').length, 0, 'boss death does not end the wave early');
 
-  let killed = bosses.length;
-  for (let i = 0; i < 6000 && named(h.emitted, 'run:waveCleared').length === 0; i++) {
-    if (i % 5 === 0 && killOne(h)) killed++;
+  for (let i = 0; i < 5000 && named(h.emitted, 'run:waveCleared').length === 0; i++) {
+    if (i % 5 === 0) killOne(h);
     tick(h, 1);
   }
   const cleared = named(h.emitted, 'run:waveCleared');
   assert.equal(cleared.length, 1);
-  assert.ok(cleared[0].payload.killed >= plan.swarm.quota);
+  assert.equal(cleared[0].payload.completionKind, 'duration');
 });
 
 test('a boss wave fields its champion even when it inherits a FULL room', () => {

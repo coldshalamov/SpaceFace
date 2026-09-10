@@ -17,10 +17,10 @@
 //      fast a dead one is replaced. Nothing here inflates health (§33 fails a leaf on sight for
 //      that) — `levelForWave` in waveMaterialization.js is the only stat scaler and it is shared
 //      with the arc.
-//   2. A WAVE ENDS ON KILLS, NOT ON AN EMPTY ROOM. `quota` is the number of bodies you have to
-//      put down. Survivors are NOT chased down — they roll into the next wave. That single rule
-//      is what removes the dead air the arc has at the end of every wave, where the fight is over
-//      but one straggler is still flying home.
+//   2. A WAVE ENDS ON A SIXTY-SECOND CLOCK, NOT ON A KILL QUOTA. Survivors are NOT chased
+//      down — they roll into the next wave. Kills buy score, salvage and reservoir openings.
+//      `rewardReferenceKills` keeps the old quota curve's numbers solely so a chip is still
+//      worth the same per body. The stream does not stop when that number is met.
 //   3. THE ROOM IS NEVER IDLE. Every swarm wave names a live `arenaPhase`, so survivalArena.js
 //      always has a room to install. Wave 1 of the arc is `idle`; wave 1 here is not.
 //   4. COVER IS THE POINT, NOT A GARNISH. The draft's verbs are Throw / Tag / Bind — physical
@@ -34,7 +34,10 @@
 import { SPAWN_BUDGET_DEFAULT_MAX, SPAWN_BUDGET_HARD_MAX } from './survivalActs.js';
 
 export const SWARM_RULESET = 'swarm';
-export const SWARM_SCHEMA_VERSION = 1;
+export const SWARM_SCHEMA_VERSION = 2;
+
+/** Active combat ticks for every swarm wave. 3600 ticks = 60 s at 60 Hz. */
+export const SWARM_WAVE_DURATION_TICKS = 3600;
 
 /** No authored ceiling. Matches SURVIVAL_ENDLESS_WAVE_MAX so the phase machine has one cap idiom. */
 export const SWARM_WAVE_MAX = 999;
@@ -86,7 +89,7 @@ export const SWARM_FULL_PRESSURE_AT = 0.66;
  * The live concurrency target partway through a wave. Pure, so the crescendo is one readable line
  * rather than something hidden in the spawner.
  *
- * `progress` is killed/quota, 0..1.
+ * `progress` is elapsed-time fraction of the sixty-second wave, 0..1.
  *
  * Wave 1's ceiling IS the opening floor (ten hulls). Thinning that pile below ten starved unlucky
  * seeds more than it stretched lucky ones (PQ-174.01). Raising the kill quota stalled or killed
@@ -262,7 +265,7 @@ export function swarmReinforceCount(deficit) {
  */
 export const SWARM_SPAWN_DISTANCE = 165;
 
-/** Ticks of breathing room after a wave's quota is met. Under a second: long enough to read, short enough to hurt. */
+/** Ticks of breathing room after the sixty-second clock. Under a second: long enough to read, short enough to hurt. */
 export const SWARM_CLEANUP_TICKS = 45;
 
 const GATES = Object.freeze(['nw', 'ne', 'se', 'sw', 'front', 'rear', 'diagonal_a', 'diagonal_b']);
@@ -409,16 +412,12 @@ export function swarmConcurrent(wave) {
 }
 
 /**
- * WAVE LENGTH IS A CONSTANT, NOT A CURVE.
+ * CHIP VALUATION IS A CONSTANT CURVE, NOT THE WAVE CLOCK.
  *
- * The quota climbs early and then FLATTENS at SWARM_QUOTA_CAP. That is deliberate: if the kill
- * count kept rising with the wave number, wave 40 would take ten minutes and the run would die of
- * tedium long before the player did. Difficulty past the cap arrives the way the rest of this
- * repo does it — composition and concurrency — while a wave keeps taking about a minute.
- *
- * The quota must also stay comfortably ABOVE the concurrency target. A quota near `concurrent`
- * makes the wave nothing but its opening burst: the stream's self-taper engages immediately and
- * the room drains instead of holding. Two-to-one is the floor, and `swarmCurveIsSane` asserts it.
+ * A wave lasts sixty seconds. These numbers used to be the kill quota that ended the wave; they
+ * are now only `rewardReferenceKills`, so one body is still worth a whole, legible 2 credits.
+ * They climb early and flatten at SWARM_QUOTA_CAP so a deep wave does not inflate the purse
+ * forever. They do not stop the stream and they do not end the wave.
  */
 export const SWARM_QUOTA_CAP = 48;
 
@@ -462,23 +461,17 @@ export function swarmQuota(wave) {
 /**
  * WHERE THE STAT CURVE STOPS.
  *
- * This module's first rule is "pressure is concurrency, not HP" — and then it used the arc's level
- * curve, which raises both damage and health by 12% a level forever. Charted against the roster,
- * incoming pressure reached 5.9x wave one by wave 25 and kept climbing on level alone, while the
- * player's build finishes at seven fitted slots around the same point. Past there the run does not
- * end because the player made mistakes; it ends because the numbers walked away from them.
- *
- * So the level curve stops at SWARM_LEVEL_CAP, which lands on wave 22 — the same wave the roster
- * completes, with concurrency already at its ceiling since wave 16 and the kill quota capped since
- * wave 14. Everything the mode has arrives by wave 22, and from then on it is asking one question:
- * can you keep doing this? That is a skill wall rather than an arithmetic one, and it is the wall
- * an endless mode is supposed to have.
+ * `makeEnemySpawnSpec` → `scaleCombatant` raises hull, armor and shield by 12% per level
+ * (`src/systems/combat.js`). That is hit-point inflation, which this mode is forbidden to use.
+ * Swarm materialization still passes `swarmLevel` into that path, so the only legal return is 1
+ * at every wave. Count, composition, mass, hazards and bearings carry the difficulty curve.
+ * `SWARM_LEVEL_CAP` remains the wave at which every OTHER dial (concurrency, roster) is maxed.
  */
 export const SWARM_LEVEL_CAP = 8;
 
 export function swarmLevel(wave) {
-  const w = swarmWaveOf(wave);
-  return Math.min(SWARM_LEVEL_CAP, 1 + Math.floor((w - 1) / 3));
+  swarmWaveOf(wave);
+  return 1;
 }
 
 /** The wave at which every dial this mode has is at its maximum. */
@@ -647,14 +640,14 @@ export function swarmPlanBlock(wave) {
   return {
     schemaVersion: SWARM_SCHEMA_VERSION,
     wave: w,
-    quota: swarmQuota(w),
+    rewardReferenceKills: swarmQuota(w),
+    durationTicks: SWARM_WAVE_DURATION_TICKS,
     concurrent: swarmConcurrent(w),
     openingPressure: swarmPressureAt(w, 0),
     spawnCap: SWARM_SPAWN_CAP,
     level: swarmLevel(w),
     boss: isSwarmBossWave(w),
-    // A boss wave is not clearable by killing chaff around a live champion. The quota AND every
-    // champion body are both owed.
+    // Identity only. A living champion carries into the next wave; the clock never waits for it.
     requireBoss: isSwarmBossWave(w),
     bossId: boss ? boss.id : null,
     bossLabel: boss ? boss.label : null,
@@ -684,23 +677,16 @@ export function swarmConcurrencyIsLegal(concurrent) {
 }
 
 /**
- * The two invariants the curve must never break, checkable for any wave. Kept here beside the
- * numbers rather than only in a test, so a future edit to the curve has to walk past it.
+ * Duration and concurrency invariants, checkable for any wave. Kept here beside the numbers
+ * rather than only in a test, so a future edit to the curve has to walk past it.
  */
 export function swarmCurveIsSane(wave) {
   const w = swarmWaveOf(wave);
   const concurrent = swarmConcurrent(w);
-  const quota = swarmQuota(w);
   const opening = swarmPressureAt(w, 0);
-  const margin = w <= 1 ? SWARM_QUOTA_OPENING_MARGIN : SWARM_QUOTA_MARGIN;
   return swarmConcurrencyIsLegal(concurrent)
-    // You must put down a full room and then some — otherwise the wave is its opening burst.
-    // Wave 1 uses the opening-specific margin so a 15-kill opener stays legal without
-    // weakening later-wave margin or the global cap.
-    && quota >= concurrent + margin
-    // And the opening burst must never be the whole wave.
-    && quota > opening
-    // The crescendo must never ask for more than the wave's own ceiling.
+    && SWARM_WAVE_DURATION_TICKS === 3600
+    && opening > 0
     && opening <= concurrent
     && swarmPressureAt(w, 1) <= concurrent;
 }

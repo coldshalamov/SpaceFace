@@ -263,7 +263,7 @@ test('new-run capture: firstHostile, menus, quota, and telegraphed death with at
   assert.equal(swarm.playerDeaths[0].telegraph, 'ram');
 });
 
-test('.01 opening quota is 15; later waves still climb; concurrency and level unchanged', () => {
+test('.01 opening reward-reference is 15; later waves still climb; concurrency unchanged; swarm level stays 1', () => {
   assert.equal(SWARM_OPENING_QUOTA, 15);
   assert.equal(SWARM_QUOTA_OPENING_MARGIN, 5);
   assert.equal(SWARM_QUOTA_MARGIN, 8, 'global later-wave margin is not weakened');
@@ -273,7 +273,9 @@ test('.01 opening quota is 15; later waves still climb; concurrency and level un
   assert.equal(swarmConcurrent(1), 10, 'live population at wave 1 is unchanged');
   assert.equal(swarmPressureAt(1, 0), 10, 'opening live pressure is unchanged');
   assert.equal(swarmLevel(1), 1);
-  assert.equal(swarmLevel(22), SWARM_LEVEL_CAP);
+  // PQ-174.01 design memo: return 1 at every swarm wave so scaleCombatant cannot inflate hull.
+  assert.equal(swarmLevel(22), 1);
+  assert.equal(SWARM_LEVEL_CAP, 8, 'the intensity-wave marker is not the hull scaler');
   // Later count still increases (wave-2 formula is the pre-.01 20+2w curve).
   assert.equal(swarmQuota(2), 24);
   assert.ok(swarmQuota(2) > swarmQuota(1));
