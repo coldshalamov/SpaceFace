@@ -119,3 +119,119 @@ test('leftover Free Frontier is leftover cite-only, not a leftover ninth leftove
   assert.match(index, /7-of-8 leftover % is leftover uninvented/);
   assert.doesNotMatch(index, /7 of 8 times:\s*\d/);
 });
+
+// ---------------------------------------------------------------------------
+// Leftover honesty review 2026-09-09. CHARACTERIZATION, not endorsement.
+//
+// The cases above call assignRegister() with a sheet's own register_example,
+// which returns on the exact-match branch. The register_tell substring branch —
+// the only path a bark a writer NEWLY writes can take — was never executed.
+// The cases below pin what that branch actually does today, so the receipt's
+// flipped STATUS cannot go stale silently. They are EXPECTED TO FAIL once the
+// reader is fixed; when they do, update PQ-178.02-REPORT.md rather than
+// deleting them.
+// ---------------------------------------------------------------------------
+
+const LEFTOVER_TELL_VERBATIM = [
+  ['faction_scn', 'Concord Patrol. Present your manifest. Ref 44-C.'],
+  ['faction_choir', 'The Choir observes. Be still.'],
+  ['faction_helix', 'VESSEL TAG UNREAD — VARIANCE FILE OPEN. NO ACTION REQUIRED.'],
+  ['faction_vael', 'Vael Consensus. Clause 1: your transit is noted.'],
+  ['faction_quiet', 'Seen.'],
+  ['faction_dmc', 'Drift Collective. Long shift. Keep off our rock.'],
+  ['faction_reach', 'Weigh-slip open. You weigh what you weigh.'],
+  ['faction_mts', 'Meridian Trade. Your account is late. Nothing personal.'],
+];
+
+// Each line obeys its own sheet's register_rule but does not reproduce
+// register_tell byte-for-byte. Seven of eight are unassignable today.
+const LEFTOVER_RULE_OBEDIENT = [
+  ['faction_scn', 'Concord Patrol. Stand by. Reference 44-C applies.', null],
+  ['faction_choir', 'The Pattern observes. Hold your heading.', null],
+  ['faction_helix', 'Vessel flagged. Variance file open. No action required.', null],
+  ['faction_vael', 'Vael Consensus. Clause 7: your presence is registered.', null],
+  ['faction_quiet', 'Noted.', null],
+  ['faction_dmc', 'Drift Collective. Long day. You ain’t claim-jumping, are you.', null],
+  ['faction_reach', 'Your weigh-slip is open. Mass is on the board.', null],
+  ['faction_mts', 'Meridian Trade. Fee assessed to your account. Nothing personal about it.', 'faction_mts'],
+];
+
+test('leftover honesty: the leftover tell branch assigns only a byte-for-byte leftover tell', () => {
+  for (const [id, line] of LEFTOVER_TELL_VERBATIM) {
+    assert.equal(assignRegister(line), id, `leftover verbatim tell ${id}: ${line}`);
+  }
+
+  const leftoverUnassignable = [];
+  for (const [id, line, expected] of LEFTOVER_RULE_OBEDIENT) {
+    const got = assignRegister(line);
+    assert.equal(got, expected, `leftover rule-obedient ${id}: ${line}`);
+    if (got === null) leftoverUnassignable.push(id);
+  }
+
+  // Seven of eight rule-obedient barks a writer could write are unassignable.
+  assert.equal(leftoverUnassignable.length, 7, leftoverUnassignable.join(','));
+  assert.ok(!leftoverUnassignable.includes('faction_mts'));
+});
+
+test('leftover honesty: the leftover reader is precise and nearly blind on the leftover live corpus', () => {
+  let total = 0;
+  let assigned = 0;
+  let misassigned = 0;
+  let unassignable = 0;
+
+  for (const id of REGISTER_HOUSE_IDS) {
+    const table = BARKS[id];
+    if (!table) continue;
+    for (const lines of Object.values(table)) {
+      if (!Array.isArray(lines)) continue;
+      for (const line of lines) {
+        if (typeof line !== 'string') continue;
+        total += 1;
+        const got = assignRegister(line);
+        if (got === id) assigned += 1;
+        else if (got) misassigned += 1;
+        else unassignable += 1;
+      }
+    }
+  }
+
+  const leftoverTally = `total=${total} assigned=${assigned} misassigned=${misassigned} null=${unassignable}`;
+
+  // Helix has no bark table at all, so the corpus covers seven houses.
+  assert.equal(BARKS.faction_helix, undefined);
+  assert.ok(total > 200, leftoverTally);
+
+  // Precise: it never puts a live bark on the wrong house.
+  assert.equal(misassigned, 0, leftoverTally);
+
+  // Blind: the overwhelming majority of the barks the game already speaks come
+  // back null, so a reader must guess. Relational, not a pinned 224-vs-14, so
+  // an unrelated barks.js edit does not red this file.
+  assert.ok(unassignable > assigned * 5, leftoverTally);
+  assert.ok(assigned / total < 0.25, leftoverTally);
+});
+
+test('leftover honesty: three leftover validator holes are silent', () => {
+  const live = loadRegisterHouses().find((sheet) => sheet.id === 'faction_scn');
+
+  // Hole 1 — the cite is never checked against the sheet's own house.
+  const crossed = {
+    ...live,
+    register_example: BARKS.faction_mts.scan[0],
+    register_example_cite: 'src/data/barks.js#faction_mts.scan[0]',
+  };
+  assert.deepEqual(validateFactionRegister(crossed), [], 'leftover cross-house cite');
+
+  // Hole 2 — only register_rule has an empty check; the other keys may be blank.
+  for (const key of ['register_tell', 'register_forbidden', 'voice_direction']) {
+    assert.deepEqual(validateFactionRegister({ ...live, [key]: '   ' }), [], `leftover blank ${key}`);
+  }
+
+  // Hole 3 — register_forbidden is prose; nothing is ever compared against it.
+  assert.match(live.register_forbidden, /leftover slang/);
+  assert.deepEqual(
+    validateFactionRegister({ ...live, register_rule: 'Bloodless leftover clerk. Contractions and leftover slang welcome.' }),
+    [],
+    'leftover forbidden is unenforced',
+  );
+});
