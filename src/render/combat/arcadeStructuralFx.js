@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { createStructuredBurstGeometry } from './structuredBurstGeometry.js';
 import { createStructuralSurfaceMaterial } from './transientVfxMaterials.js';
 import { worldSizeForPixels } from '../weapons/pixelFloor.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from '../sharedMaterialRoles.js';
 
 export const ARCADE_STRUCTURAL_FX_CAPACITY = Object.freeze({
   blades: 128,
@@ -352,12 +353,12 @@ class StructuralPool {
 function arcadeAdditiveMaterial(name) { return createStructuralSurfaceMaterial(name); }
 
 function arcadeShardMaterial() {
-  const material = new THREE.MeshStandardMaterial({
+  const material = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0xffffff,
     roughness: 0.82,
     metalness: 0.16,
     flatShading: true,
-  });
+  }), SHARED_MATERIAL_ROLE.HULL);
   material.name = 'SF_ArcadePhysicalShardMaterial';
   material.userData.spacefaceArcadeVfxMaterial = true;
   return material;

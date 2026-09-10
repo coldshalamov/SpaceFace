@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 
 export const SCENARIO_47A_PROP_ASSET_IDS = Object.freeze({
   'asset.slice.47a_spindle': 'SF_47A_EVIDENCE_SPINDLE',
@@ -51,18 +52,22 @@ const SCENARIO_PROGRAM = Object.freeze({
 });
 
 function standard(name, color, roughness = 0.65, metalness = 0.3, options = {}) {
-  const mat = new THREE.MeshStandardMaterial({ color, roughness, metalness, ...options });
+  const mat = stampSharedMaterialRole(
+    new THREE.MeshStandardMaterial({ color, roughness, metalness, ...options }),
+    SHARED_MATERIAL_ROLE.HULL,
+  );
   mat.name = name;
   mat.userData = {
     ...(mat.userData || {}),
     spacefaceProgramFamily: SCENARIO_PROGRAM.standard,
     spacefaceScenarioRole: name,
+    spacefaceSharedMaterialRole: SHARED_MATERIAL_ROLE.HULL,
   };
   return mat;
 }
 
 function glow(name, color, intensity = 1.8, opacity = 1) {
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color,
     emissive: new THREE.Color(color),
     emissiveIntensity: intensity,
@@ -71,12 +76,13 @@ function glow(name, color, intensity = 1.8, opacity = 1) {
     transparent: opacity < 1,
     opacity,
     depthWrite: opacity >= 1,
-  });
+  }), SHARED_MATERIAL_ROLE.PLUME);
   mat.name = name;
   mat.userData = {
     ...(mat.userData || {}),
     spacefaceProgramFamily: opacity < 1 ? SCENARIO_PROGRAM.glowTransparent : SCENARIO_PROGRAM.glow,
     spacefaceScenarioRole: name,
+    spacefaceSharedMaterialRole: SHARED_MATERIAL_ROLE.PLUME,
   };
   return mat;
 }

@@ -11,6 +11,7 @@ import {
   LIVING_HULL_REPAIR_PATCH_MAX,
 } from '../core/livingHull.js';
 import { shouldUseTransparentSinglePass } from './transparentSinglePassPolicy.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 
 const GRAFFITI_WIDTH = 256;
 const GRAFFITI_HEIGHT = 64;
@@ -216,17 +217,17 @@ export function createLivingHullPresentation(options = {}) {
   const grimeTexture = createGrimeTexture();
   const graffitiSurface = createGraffitiSurface();
 
-  const tallyMaterial = configureDecalMaterial(new THREE.MeshStandardMaterial({
+  const tallyMaterial = configureDecalMaterial(stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0xd8c79e,
     roughness: 0.92,
     metalness: 0,
     side: THREE.DoubleSide,
-  }));
-  const patchMaterial = new THREE.MeshStandardMaterial({
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const patchMaterial = stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: 0x806f5d,
     roughness: 0.68,
     metalness: 0.48,
-  });
+  }), SHARED_MATERIAL_ROLE.HULL);
   const scorchMaterial = configureDecalMaterial(new THREE.MeshBasicMaterial({
     color: 0x160d0a,
     transparent: true,
@@ -242,7 +243,7 @@ export function createLivingHullPresentation(options = {}) {
     side: THREE.DoubleSide,
     toneMapped: false,
   }));
-  const graffitiMaterial = configureDecalMaterial(new THREE.MeshStandardMaterial({
+  const graffitiMaterial = configureDecalMaterial(stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     map: graffitiSurface.texture,
     color: 0xffffff,
     roughness: 0.88,
@@ -250,7 +251,7 @@ export function createLivingHullPresentation(options = {}) {
     transparent: true,
     alphaTest: 0.06,
     side: THREE.DoubleSide,
-  }));
+  }), SHARED_MATERIAL_ROLE.HULL));
 
   if (singlePassDecals) {
     enableSinglePassDecals([

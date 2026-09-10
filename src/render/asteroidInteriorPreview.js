@@ -15,6 +15,19 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
+
+function stampRock(material) {
+  return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
+}
+
+function stampHull(material) {
+  return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.HULL);
+}
+
+function stampPlume(material) {
+  return stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.PLUME);
+}
 
 // ---------------------------------------------------------------- deterministic noise + textures
 function hash2(x, y) {
@@ -121,21 +134,21 @@ export function makeRockMaterials(envMap, surface = null) {
       // NB: no vertexColors here. The ?dev=astlab harness feeds these same materials plain
       // BoxGeometry/DodecahedronGeometry with no colour attribute, and a USE_COLOR program with no
       // attribute bound reads (0,0,0) — every rock would render black.
-      matrix: new THREE.MeshStandardMaterial({ color: 0x8a7357, roughness: 0.96, metalness: 0.05,
-        bumpMap: bump, bumpScale: 0.75, envMap: envMap || null, envMapIntensity: 0.3 }),
-      basalt: new THREE.MeshStandardMaterial({ color: 0x454a58, roughness: 0.82, metalness: 0.12,
-        bumpMap: bump, bumpScale: 0.9, envMap: envMap || null, envMapIntensity: 0.4 }),
-      ice: new THREE.MeshStandardMaterial({ color: 0xb9d6d8, roughness: 0.26, metalness: 0.0,
-        bumpMap: bump, bumpScale: 0.3, envMap: envMap || null, envMapIntensity: 1.2 }),
-      metal: new THREE.MeshStandardMaterial({ color: 0x6f5b48, roughness: 0.78, metalness: 0.22,
-        bumpMap: bump, bumpScale: 0.85, envMap: envMap || null, envMapIntensity: 0.5 }),
-      exotic: new THREE.MeshStandardMaterial({ color: 0x352a4d, roughness: 0.62, metalness: 0.18,
-        bumpMap: bump, bumpScale: 0.8, envMap: envMap || null, envMapIntensity: 0.7 }),
-      gas: new THREE.MeshStandardMaterial({ color: 0x4a4a36, roughness: 0.94, metalness: 0.04,
-        bumpMap: bump, bumpScale: 1.0, envMap: envMap || null, envMapIntensity: 0.25 }),
+      matrix: stampRock(new THREE.MeshStandardMaterial({ color: 0x8a7357, roughness: 0.96, metalness: 0.05,
+        bumpMap: bump, bumpScale: 0.75, envMap: envMap || null, envMapIntensity: 0.3 })),
+      basalt: stampRock(new THREE.MeshStandardMaterial({ color: 0x454a58, roughness: 0.82, metalness: 0.12,
+        bumpMap: bump, bumpScale: 0.9, envMap: envMap || null, envMapIntensity: 0.4 })),
+      ice: stampRock(new THREE.MeshStandardMaterial({ color: 0xb9d6d8, roughness: 0.26, metalness: 0.0,
+        bumpMap: bump, bumpScale: 0.3, envMap: envMap || null, envMapIntensity: 1.2 })),
+      metal: stampRock(new THREE.MeshStandardMaterial({ color: 0x6f5b48, roughness: 0.78, metalness: 0.22,
+        bumpMap: bump, bumpScale: 0.85, envMap: envMap || null, envMapIntensity: 0.5 })),
+      exotic: stampRock(new THREE.MeshStandardMaterial({ color: 0x352a4d, roughness: 0.62, metalness: 0.18,
+        bumpMap: bump, bumpScale: 0.8, envMap: envMap || null, envMapIntensity: 0.7 })),
+      gas: stampRock(new THREE.MeshStandardMaterial({ color: 0x4a4a36, roughness: 0.94, metalness: 0.04,
+        bumpMap: bump, bumpScale: 1.0, envMap: envMap || null, envMapIntensity: 0.25 })),
     };
   }
-  const build = (tint, normalScale, roughMul, metalMul, envI) => new THREE.MeshStandardMaterial({
+  const build = (tint, normalScale, roughMul, metalMul, envI) => stampRock(new THREE.MeshStandardMaterial({
     color: new THREE.Color().setRGB(tint[0], tint[1], tint[2]),
     map: surface.baseColor,
     normalMap: surface.normal,
@@ -150,7 +163,7 @@ export function makeRockMaterials(envMap, surface = null) {
     envMapIntensity: envI,
     // carries makeCellBlockGeos' baked joint/cavity occlusion (and multiplies the instance tint)
     vertexColors: true,
-  });
+  }));
   // The tints are SOLVED, not eyeballed: authored basecolour linear mean (0.0471, 0.0384, 0.0287)
   // × tint = the albedo that, under the works light rig, comes out of the shared ACES composite
   // (exposure 1.25, grade off) on the law's §3.5 hex. Both tints run cool because both the stone
@@ -269,7 +282,7 @@ export function buildRock(group, grid, S, depth, mats) {
   // dark backing wall so open cavities have a floor behind them (reads as depth)
   const back = new THREE.Mesh(
     new THREE.PlaneGeometry(COLS * S * 1.3, ROWS * S * 1.3),
-    new THREE.MeshStandardMaterial({ color: 0x0a0c12, roughness: 1, metalness: 0 }));
+    stampRock(new THREE.MeshStandardMaterial({ color: 0x0a0c12, roughness: 1, metalness: 0 })));
   back.position.z = -depth * 1.1; back.receiveShadow = true;
   group.add(back);
   return { oreCells, gasCells };
@@ -279,10 +292,10 @@ export function buildOre(group, oreCells, S, depth, envMap, pulseTargets) {
   const geo = new THREE.IcosahedronGeometry(S * 0.16, 0);
   for (const cell of oreCells) {
     const t = ORE_TINT[cell.tint] || ORE_TINT.iron;
-    const mat = new THREE.MeshStandardMaterial({
+    const mat = stampRock(new THREE.MeshStandardMaterial({
       color: t.col, emissive: t.emissive, emissiveIntensity: t.ei,
       roughness: 0.35, metalness: 0.6, envMap: envMap || null, flatShading: true,
-    });
+    }));
     if (t.glow) pulseTargets.push({ mat, base: t.ei, amp: t.ei * 0.5 });
     // a little cluster of nodules embedded in the front face of the cell
     const n = 3 + ((hash2(cell.x | 0, cell.y | 0) * 4) | 0);
@@ -301,10 +314,10 @@ export function buildOre(group, oreCells, S, depth, envMap, pulseTargets) {
 export function buildGas(group, gasCells, S, depth, pulseTargets) {
   if (!gasCells.length) return;
   let cx = 0, cy = 0; for (const g of gasCells) { cx += g.x; cy += g.y; } cx /= gasCells.length; cy /= gasCells.length;
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = stampPlume(new THREE.MeshStandardMaterial({
     color: 0x1c8f74, emissive: 0x18d69a, emissiveIntensity: 0.7,
     roughness: 1, metalness: 0, transparent: true, opacity: 0.42, depthWrite: false,
-  });
+  }));
   pulseTargets.push({ mat, base: 0.7, amp: 0.35 });
   const blob = new THREE.Mesh(new THREE.IcosahedronGeometry(S * 1.15, 2), mat);
   blob.position.set(cx, cy, depth * 0.1);
@@ -318,16 +331,16 @@ export function buildGas(group, gasCells, S, depth, pulseTargets) {
 
 // ---------------------------------------------------------------- machines (code-built, ship palette)
 export function metalMat(color, envMap) {
-  return new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.82, envMap: envMap || null });
+  return stampHull(new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.82, envMap: envMap || null }));
 }
 export function emissiveMat(color, ei = 1.2) {
-  return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: ei, roughness: 0.5, metalness: 0.2 });
+  return stampPlume(new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: ei, roughness: 0.5, metalness: 0.2 }));
 }
 
 // Paint: a matte industrial coat, not a plastic toy. Roughness stays high so painted panels read
 // as sprayed steel next to the polished machined parts.
 export function paintMat(color, envMap, rough = 0.58) {
-  return new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0.25, envMap: envMap || null });
+  return stampHull(new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0.25, envMap: envMap || null }));
 }
 
 // Single-cell placeable devices for the interactive build lab AND the live works renderer. Each is
@@ -383,9 +396,9 @@ export function makeMachine(kind, S, envMap) {
     hood.rotation.x = Math.PI / 2;
     hood.position.set(S * 0.32, S * 0.32, lampZ - S * 0.03);
     g.add(hood);
-    const lampMat = new THREE.MeshStandardMaterial({
+    const lampMat = stampPlume(new THREE.MeshStandardMaterial({
       color: 0x2a2b2e, emissive: 0x5a7aa0, emissiveIntensity: 0.85, roughness: 0.4, metalness: 0.1,
-    });
+    }));
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(S * 0.055, 10, 8), lampMat);
     lamp.position.set(S * 0.32, S * 0.32, lampZ + S * 0.02);
     g.add(lamp);
