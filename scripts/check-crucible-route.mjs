@@ -541,7 +541,7 @@ async function main() {
     });
     record(GAUNTLET ? 'VICTORY' : 'EXTRACT',
       (GAUNTLET ? won.phase === 'victory' && won.wave === 30 && won.outcome === 'victory'
-        : won.phase === 'ended' && won.wave === 10 && won.outcome === 'aborted')
+        : won.phase === 'ended' && won.wave === 10 && won.outcome === 'extracted')
       && won.top === 'crucibleResults',
       `phase ${won.phase} wave ${won.wave} · "${won.title}" — ${won.headline} · `
       + `${won.kills} kills, ${won.score} score, ${won.credits} cr, level ${won.level}, `

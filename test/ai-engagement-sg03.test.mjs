@@ -3,6 +3,8 @@ import test from 'node:test';
 
 import { normalizeActivity, ActivityKind, RulesOfEngagement } from '../src/ai/doctrine.js';
 import { createSG03ActionPort } from '../src/ai/sg03ActionPort.js';
+import { getCombatKernel } from '../src/combat/kernel.js';
+import { applyAIFiringIntent } from '../src/systems/aiFireIntent.js';
 
 function makeState(overrides = {}) {
   const player = {
@@ -61,6 +63,35 @@ function request(port, state) {
     objectiveReason: 'combat_doctrine:interceptor_flyby:strike',
   });
 }
+
+test('armed NPC burst opens its firing window without extra instant damage or double payment', () => {
+  const state = makeState();
+  const enemy = state.entities.get(2);
+  state.world.currentSectorId = 'sector_ceres_belt';
+  state.entities.delete(3);
+  state.entityList = state.entityList.filter(e => e.id !== 3);
+  enemy.data.weapons = [{ defId: 'wpn_autocannon_s' }];
+  enemy.cap = 5; // enough for a real shell, below the former abstract burst surcharge
+  const ctx = { state, bus: null, helpers: {} };
+  const port = createSG03ActionPort(ctx);
+  const permission = request(port, state);
+  assert.equal(permission.ok, true, JSON.stringify(permission));
+  assert.ok(port.start(2, 'action_burst', { targetId: 1, tick: state.tick,
+    objective: 'focus', objectiveReason: 'combat_doctrine:interceptor_flyby:strike' }));
+  const kernel = getCombatKernel(ctx);
+  const player = state.entities.get(1);
+  const before = [player.hull, player.shield, enemy.cap];
+  for (let i = 0; i < 4; i++) { kernel.prePhysics(1 / 60); state.tick++; }
+  assert.deepEqual([player.hull, player.shield, enemy.cap], before,
+    'no damage reaches through a wall before a mounted projectile makes contact');
+  assert.ok(state.combat.trace.events.some(e => e.kind === 'action.started'), 'the real action still authorizes firing');
+  applyAIFiringIntent({ entityId: 2,
+    directive: { objective: { kind: 'focus', targetId: 1, reason: 'combat_doctrine:interceptor_flyby:strike' } },
+    combatDoctrine: { doctrineId: 'interceptor_flyby', phase: 'strike', fireWindow: true },
+    action: { actionId: 'action_burst' },
+  }, state);
+  assert.equal(enemy.data.intent.fire, true, 'the mounted guns still receive their real firing intent');
+});
 
 test('production SG-03 rejects anonymous damage action', () => {
   const state = makeState({ anonymous: true });

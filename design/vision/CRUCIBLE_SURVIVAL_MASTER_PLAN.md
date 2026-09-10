@@ -48,6 +48,9 @@ the wonderfully excessive aftermath. Good direct shooting remains an enjoyable p
 - **A pack with intent.** Fodder follows readable streams around obstacles; flankers threaten the
   next exit, heavies create mobile cover, and specialists interrupt a setup with visible tells.
   They remain bodies the player can displace. No snapping back into formation after a shove.
+  Armed enemies' tactical firing actions authorize their mounted guns; they must not also apply
+  instant damage through cover. Incoming damage needs a visible projectile, beam, contact or
+  explicitly telegraphed physical field, with the actual weapon paying its firing costs once.
 - **A battlefield that explains the hit.** A brief directional contact flash, material fragments,
   visible hull recoil and clustered damage numbers tell the player what struck what. Luminous
   fire can be abundant while the player, incoming danger, ropes and collision surfaces stay clear.

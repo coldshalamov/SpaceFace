@@ -1,4 +1,5 @@
 import { getCombatKernel } from '../combat/kernel.js';
+import { usesMountedBurst } from '../combat/mountedBurst.js';
 import { ContactKind, ObjectiveKind, wrapAngle } from './contracts.js';
 import {
   authorizeAIEngagement,
@@ -158,8 +159,9 @@ export function createSG03ActionPort(ctx, { controllerId = 'sg06' } = {}) {
       if (blockedTag) return { ok: false, reason: `disabled:${blockedTag}` };
       const readyTick = cooldownReadyTick(state, entityId, actionId);
       if (state.tick < readyTick) return { ok: false, reason: `cooldown:${readyTick}`, retryAtTick: readyTick };
-      const capCost = Math.max(0, Number(def.costs && def.costs.capacitor) || 0);
-      const heatCost = Math.max(0, Number(def.costs && def.costs.heat) || 0);
+      const mountedBurst = usesMountedBurst(entity, actionId, state.playerId);
+      const capCost = mountedBurst ? 0 : Math.max(0, Number(def.costs && def.costs.capacitor) || 0);
+      const heatCost = mountedBurst ? 0 : Math.max(0, Number(def.costs && def.costs.heat) || 0);
       if ((Number(entity.cap) || 0) < capCost) return { ok: false, reason: 'insufficient_capacitor' };
       if ((combat.heat || 0) + heatCost > (combat.heatMax || Infinity)) return { ok: false, reason: 'heat_limit' };
       if (def.target && def.target.required && request.targetId == null) return { ok: false, reason: 'target_required' };

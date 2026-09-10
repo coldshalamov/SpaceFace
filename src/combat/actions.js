@@ -2,6 +2,7 @@ import { otherAttachmentEndpoint } from './attachments.js';
 import { ensureCombatant, entityKey } from './runtime.js';
 import { actionBlockedByCombatant } from './subsystems.js';
 import { appendCombatTrace } from './trace.js';
+import { usesMountedBurst } from './mountedBurst.js';
 
 export function createActionService(context, attachments, routeDamage) {
   const { state, catalog, bus, helpers } = context;
@@ -86,8 +87,9 @@ export function createActionService(context, attachments, routeDamage) {
     const cooldowns = cooldownMap(actor.id);
     const readyTick = Number(cooldowns[def.id]) || 0;
     if (state.tick < readyTick) return reject(request, `cooldown:${readyTick}`);
-    const capacitorCost = Math.max(0, Number(def.costs && def.costs.capacitor) || 0);
-    const heatCost = Math.max(0, Number(def.costs && def.costs.heat) || 0);
+    const mountedBurst = usesMountedBurst(actor, def.id, state.playerId);
+    const capacitorCost = mountedBurst ? 0 : Math.max(0, Number(def.costs && def.costs.capacitor) || 0);
+    const heatCost = mountedBurst ? 0 : Math.max(0, Number(def.costs && def.costs.heat) || 0);
     const cap = Math.max(0, Number(actor.cap) || 0);
     if (cap < capacitorCost) return reject(request, 'insufficient_capacitor');
     if (runtime.heat + heatCost > runtime.heatMax) return reject(request, 'heat_limit');
@@ -226,6 +228,10 @@ export function createActionService(context, attachments, routeDamage) {
         result = attachments.cut(instance.target && instance.target.attachmentId, actor.id, effect.reason || 'action_cut');
         break;
       case 'damage': {
+        if (usesMountedBurst(actor, instance.actionId, state.playerId)) {
+          result = { ok: true, reason: 'mounted_weapons_own_burst' };
+          break;
+        }
         const targetId = instance.target && instance.target.entityId;
         const target = entity(targetId);
         if (!target || !target.alive) result = { ok: false, reason: 'target_missing' };
