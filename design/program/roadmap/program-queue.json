@@ -5709,7 +5709,7 @@
       "priority": 60,
       "title": "The physics kit wins",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.05",
         "PQ-146.01",
@@ -5737,7 +5737,9 @@
         "npm run check:crucible:run",
         "npm run check:crucible:arc"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-174.02-REPORT.md"
+      ],
       "brief": "With PQ-137.05's force table landed in the Crucible first: a shove-and-rock run outscores a gun-only run of equal skill by ≥ 2× (stunt scoring, PQ-146.01); the free Pulse cannot top the board; the starter kit includes a shove. DONE WHEN: Telemetry over 20 seeded runs per kit; the balance dashboard shows the ordering."
     },
     {
