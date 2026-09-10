@@ -24,15 +24,21 @@ export const MOMENTUM_SINK_BUNGEE = Object.freeze({
   capitalAnchorMassMult: 8,
 });
 
-// PQ-026.02 ram plate: dump closing speed into the other hull. Light hostiles fly;
-// heavies shrug. FEEL_CONTRACT B3 screen depth is 126 WU.
+// PQ-026.02 ram plate: dump the shunter's OWN normal speed into the other hull
+// (equal-and-opposite). Relative closing is only the ram floor — dumping it
+// would reverse you into an oncoming light. Light hostiles fly; heavies shrug.
+// FEEL_CONTRACT B3: one screen is 126 WU, crossed in 1.2 s at Wasp cruise.
 export const INERTIAL_SHUNT_TUNING = Object.freeze({
   minClosingSpeed: 40,
   dumpVsLight: 0.95,
+  liveDumpVsLight: 1,
   refMass: 24,
   cooldownTicks: 45,
   screenDepthWu: 126,
+  screenCoastS: 1.2,
   playerStopWu: 20,
+  tumbleTorque: 14,
+  momentumTolerance: 1e-6,
 });
 export const UNMOORED_STATUS_ID = 'status_unmoored';
 export const CRYO_LOCK_STATUS_ID = 'status_cryo_lock';

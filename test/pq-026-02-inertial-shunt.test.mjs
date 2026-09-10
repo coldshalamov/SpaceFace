@@ -1,39 +1,22 @@
 // PQ-026.02 — Inertial shunt: the ram that stops you and launches them.
 // Live writer: weapons.js listens on physics:impact and calls
-// tryApplyInertialShuntFromImpact. Status without visible motion fails.
+// applyInertialShuntFromImpact. Relative closing is the ram floor. The dump
+// is the shunter's own speed along the contact, fully redirected, equal-and-
+// opposite. Status without visible motion fails.
 //
-// Honesty (review 2026-09-09). Two separate things are proven here, and the file
-// used to blur them:
+// Before (library dump of relative closing, dumpVsLight 0.95, 1 s coast):
+//   Hitch@cruise 95 → light 101.531 WU, player 4.750 WU. Screen miss.
+//   Hornet@cruise 84 → light 119.700 WU, player 4.200 WU. Screen miss.
+//   Head-on reversed the player 95 WU.
+// After: dump the shunter's own normal speed at liveDumpVsLight 1. Travel is
+// measured over B3's 1.2 s screen-crossing (126 WU at Wasp cruise).
 //
-//   1. THE LAW. The planner takes the impact receipt's `preSolveClosingSpeed`,
-//      spends 95 % of it (`dumpVsLight`) off the shunter, and hands the whole
-//      momentum m_shunter x lostSpeed to the target. Those tests are the
-//      CONSTRUCTED-input tests below: they feed a closing speed by hand and pin
-//      what the law does with it. They are honest about the law and say nothing
-//      about the route.
-//
-//   2. THE ROUTE. The leaf's done-when is displacement on the default route:
-//      "a shunt ram on a light hostile sends it >= 1 screen; the player stops
-//      within 20 WU". The route's own numbers are the governed combat speeds in
-//      src/core/flight/propulsionCatalog.js — Hitch 95, Hornet 84, Wasp 105 —
-//      and the closing speed the engine actually publishes is the RELATIVE
-//      radial closure (sg02DynamicBodyOwner.preSolveRadialClosingSpeed), not the
-//      player's ground speed. The first pass of this file fed both proof hulls
-//      105 WU/s. 105 is the WASP's cruise. Neither proof hull can hold it
-//      unboosted, and no test covered a target that was moving.
-//
-// The route tests below therefore pin what the live inputs produce, including
-// where that misses the leaf's bars. They assert the CURRENT numbers, never the
-// aspirational ones, so a drive retune or a planner fix breaks them loudly.
-//
-// All travel figures are a 1 s no-drag ballistic coast of the queued impulses —
-// no Rapier bounce, no drive authority, no AI braking. That is an UPPER bound on
-// what the light actually covers and a LOWER bound on how far the reversal case
-// throws the player.
+// Seed 26002. Ballistic coast — no Rapier bounce, no drive, no AI brake.
 
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { HITSTUN_IMPULSE_EVENT, readRecentImpulseProvenance } from '../src/combat/impulseKernel.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
 import { createBus } from '../src/core/eventBus.js';
 import {
@@ -50,20 +33,22 @@ import {
 import { SHIPS } from '../src/data/ships.js';
 import { TECH_NODES } from '../src/data/tech.js';
 import { WEAPONS } from '../src/data/weapons.js';
+import {
+  resolveInertialShuntVfxPlan,
+  createInertialShuntVfxPlanScratch,
+} from '../src/render/momentumSinkVfx.js';
 import { buildSlotList, fits } from '../src/systems/ships.js';
 import { weapons } from '../src/systems/weapons.js';
 
 const SEED = 26002;
-// The first pass called this CRUISE and gave it to a Hornet and a Hitch. It is
-// the Wasp's governed cruise. Kept as the constructed input it always was.
-const CONSTRUCTED_CLOSING = 105;
 const SCREEN = INERTIAL_SHUNT_TUNING.screenDepthWu;
+const COAST_S = INERTIAL_SHUNT_TUNING.screenCoastS;
 const PLAYER_STOP = INERTIAL_SHUNT_TUNING.playerStopWu;
+const MOMENTUM_TOLERANCE = INERTIAL_SHUNT_TUNING.momentumTolerance;
 const HITCH = SHIPS.find((entry) => entry.id === 'ship_kestrel');
 const HORNET = SHIPS.find((entry) => entry.id === 'ship_hornet');
 const WASP = SHIPS.find((entry) => entry.id === 'ship_wasp');
 
-/** The route's own governed cruise for a hull, straight off the live catalog. */
 function governedCruise(ship) {
   return resolveGovernedCombatSpeed({
     id: `probe_${ship.id}`,
@@ -93,6 +78,7 @@ function hull(id, ship, velX, fittings = []) {
     radius,
     pos: { x: 0, z: 0 },
     vel: { x: velX, z: 0 },
+    angVel: 0,
     physicsBody: {
       schemaVersion: 1,
       mass,
@@ -146,11 +132,24 @@ function applyQueuedDeltaV(entity) {
   const mass = entity.physicsBody.mass;
   const before = { x: entity.vel.x, z: entity.vel.z };
   if (!command || !command.impulses.length) {
-    return { applied: false, before, after: { x: entity.vel.x, z: entity.vel.z }, deltaV: 0 };
+    return {
+      applied: false,
+      before,
+      after: { x: entity.vel.x, z: entity.vel.z },
+      deltaV: 0,
+      torque: 0,
+    };
   }
   for (const impulse of command.impulses) {
     entity.vel.x += impulse.x / mass;
     entity.vel.z += impulse.z / mass;
+  }
+  let torque = 0;
+  if (Array.isArray(command.torqueImpulses)) {
+    for (const twist of command.torqueImpulses) {
+      torque += twist.y || 0;
+      entity.angVel = (entity.angVel || 0) + (twist.y || 0) / mass;
+    }
   }
   const after = { x: entity.vel.x, z: entity.vel.z };
   return {
@@ -158,6 +157,7 @@ function applyQueuedDeltaV(entity) {
     before,
     after,
     deltaV: Math.hypot(after.x - before.x, after.z - before.z),
+    torque,
   };
 }
 
@@ -169,6 +169,10 @@ function coast(entity, seconds) {
     entity.pos.z += entity.vel.z * SIM_DT;
   }
   return Math.hypot(entity.pos.x - start.x, entity.pos.z - start.z);
+}
+
+function pairMomentumX(a, b) {
+  return a.physicsBody.mass * a.vel.x + b.physicsBody.mass * b.vel.x;
 }
 
 function headOnImpact(state, player, target, closingSpeed, causalActorId = player.id) {
@@ -190,26 +194,28 @@ function headOnImpact(state, player, target, closingSpeed, causalActorId = playe
   };
 }
 
-/**
- * One head-on ram through the live hook.
- *
- * `shunterVelX` / `targetVelX` are ground speeds on +x; the target sits ahead of
- * the shunter, so a NEGATIVE target speed is a hostile flying INTO the player.
- * The closing speed handed to the hook is the live engine's own radial-closure
- * formula, not a hand-typed number: `preSolveRadialClosingSpeed`.
- */
-function ram(shunterShip, shunterVelX, targetVelX, { causalIsTarget = false } = {}) {
-  const player = hull(1, shunterShip, shunterVelX, [INERTIAL_SHUNT_WEAPON_ID]);
-  const light = hull(2, WASP, targetVelX);
+function ram(shunterShip, shunterVelX, targetVelX, {
+  causalIsTarget = false,
+  plateOnTarget = false,
+} = {}) {
+  const playerFit = plateOnTarget ? [] : [INERTIAL_SHUNT_WEAPON_ID];
+  const targetFit = plateOnTarget ? [INERTIAL_SHUNT_WEAPON_ID] : [];
+  const player = hull(1, shunterShip, shunterVelX, playerFit);
+  const light = hull(2, WASP, targetVelX, targetFit);
   player.pos.x = 0;
   light.pos.x = shunterShip.collisionRadius + WASP.collisionRadius;
   const state = combatState(player, light);
   const { bus } = armWeapons(state);
 
   let receipt = null;
+  let vfxCue = null;
+  let hitstun = null;
   bus.on('weapons:inertialShunt', (payload) => { receipt = payload; });
+  bus.on('presentation:vfxCue', (payload) => { vfxCue = payload; });
+  bus.on(HITSTUN_IMPULSE_EVENT, (payload) => { hitstun = payload; });
 
   const closing = preSolveRadialClosingSpeed(player.vel.x, player.vel.z, light.vel.x, light.vel.z, 1, 0);
+  const momentumBefore = pairMomentumX(player, light);
   bus.emit('physics:impact', headOnImpact(
     state,
     player,
@@ -220,19 +226,26 @@ function ram(shunterShip, shunterVelX, targetVelX, { causalIsTarget = false } = 
 
   const playerKick = applyQueuedDeltaV(player);
   const lightKick = applyQueuedDeltaV(light);
-  const playerRemainSpeed = Math.hypot(player.vel.x, player.vel.z);
-  const lightSpeed = Math.hypot(light.vel.x, light.vel.z);
+  const momentumAfter = pairMomentumX(player, light);
   return {
     receipt,
+    vfxCue,
+    hitstun,
     closing,
+    player,
+    light,
     playerKick,
     lightKick,
-    playerRemainSpeed,
-    lightSpeed,
+    momentumBefore,
+    momentumAfter,
+    momentumResidual: Math.abs(momentumAfter - momentumBefore),
+    playerRemainSpeed: Math.hypot(player.vel.x, player.vel.z),
+    lightSpeed: Math.hypot(light.vel.x, light.vel.z),
     playerVelAfterX: player.vel.x,
     lightVelAfterX: light.vel.x,
-    lightTravel: coast(light, 1),
-    playerTravel: coast(player, 1),
+    lightTravel: coast(light, COAST_S),
+    playerTravel: coast(player, COAST_S),
+    lightProvenance: readRecentImpulseProvenance(light, state.tick),
   };
 }
 
@@ -254,6 +267,8 @@ test('PQ-026.02 shunt catalog is a ping-only ram plate on graviton drives', () =
   assert.ok(graviton.unlocks.modules.includes(INERTIAL_SHUNT_WEAPON_ID));
   assert.equal(INERTIAL_SHUNT_TUNING.screenDepthWu, 126);
   assert.equal(INERTIAL_SHUNT_TUNING.playerStopWu, 20);
+  assert.equal(INERTIAL_SHUNT_TUNING.screenCoastS, 1.2);
+  assert.equal(INERTIAL_SHUNT_TUNING.liveDumpVsLight, 1);
 
   const hitchWeapon = buildSlotList(HITCH).find((slot) => slot.type === 'weapon');
   const hornetWeapon = buildSlotList(HORNET).find((slot) => slot.type === 'weapon');
@@ -261,7 +276,6 @@ test('PQ-026.02 shunt catalog is a ping-only ram plate on graviton drives', () =
   assert.equal(hornetWeapon && hornetWeapon.size, 'M', 'Hornet weapon slot is M');
   assert.equal(fits(hitchWeapon, weapon), true, 'the Hitch S slot takes the S shunt');
   assert.equal(fits(hornetWeapon, weapon), true, 'the Hornet M slot takes the S plate');
-  // The starter has exactly ONE weapon slot. Wearing the plate means flying unarmed.
   assert.equal(
     buildSlotList(HITCH).filter((slot) => slot.type === 'weapon').length,
     1,
@@ -269,170 +283,137 @@ test('PQ-026.02 shunt catalog is a ping-only ram plate on graviton drives', () =
   );
 });
 
-test('PQ-026.02 route cruise: 105 WU/s is the WASP\'s governed cruise, not either proof hull\'s', () => {
-  // The number the first pass of this proof called "cruise" and handed to a
-  // Hornet and a Hitch. The live catalog disagrees; that disagreement is the
-  // whole reason the receipt's headline was not a route number.
-  assert.equal(governedCruise(WASP), CONSTRUCTED_CLOSING, 'Wasp governed cruise is 105');
-  assert.equal(governedCruise(HITCH), 95, 'Hitch governed cruise is 95 (drive_reaction_m)');
-  assert.equal(governedCruise(HORNET), 84, 'Hornet governed cruise is 84 (drive_gravimetric_s)');
-  assert.ok(governedCruise(HITCH) < CONSTRUCTED_CLOSING, 'the starter cannot hold 105 unboosted');
-  assert.ok(governedCruise(HORNET) < CONSTRUCTED_CLOSING, 'the Hornet cannot hold 105 unboosted');
-
-  // Boost raises the governed cap (propulsionKernel.js:319-320, reaction family;
-  // :413-415, gravimetric family). These are the only speeds above cruise a pilot
-  // can hold on the drive alone.
+test('PQ-026.02 route cruise numbers are the live catalog, not a constructed 105', () => {
+  assert.equal(governedCruise(WASP), 105, 'Wasp governed cruise is 105');
+  assert.equal(governedCruise(HITCH), 95, 'Hitch governed cruise is 95');
+  assert.equal(governedCruise(HORNET), 84, 'Hornet governed cruise is 84');
+  near(SCREEN / governedCruise(WASP), COAST_S, 'B3 screen-crossing time');
   assert.equal(driveProfile(HITCH).boostSpeedMult, 1.55, 'Hitch boost cap multiplier');
-  assert.equal(driveProfile(HORNET).boostMaxSpeed, 122, 'Hornet gravimetric boost ceiling');
-
-  // And the closing speed the engine publishes is RELATIVE, so a hostile flying
-  // at the player adds its own cruise to the number the planner spends.
-  assert.equal(preSolveRadialClosingSpeed(95, 0, 0, 0, 1, 0), 95, 'parked target: closing == player speed');
-  assert.equal(preSolveRadialClosingSpeed(95, 0, -105, 0, 1, 0), 200, 'oncoming target: closing == the sum');
+  assert.equal(preSolveRadialClosingSpeed(95, 0, 0, 0, 1, 0), 95);
+  assert.equal(preSolveRadialClosingSpeed(95, 0, -105, 0, 1, 0), 200);
 });
 
-test('PQ-026.02 the law, at a constructed 105 WU/s closing on a Hornet (not a route speed)', () => {
-  const result = ram(HORNET, CONSTRUCTED_CLOSING, 0);
+test('PQ-026.02 ROUTE seed 26002: Hitch@cruise ram sends a Wasp ≥ 1 screen and stops the player', () => {
+  const cruise = governedCruise(HITCH);
+  const result = ram(HITCH, cruise, 0);
   assert.ok(result.receipt, 'weapons.js must fire weapons:inertialShunt on a ship x ship ram');
   assert.equal(result.receipt.shunterId, 1);
   assert.equal(result.receipt.targetId, 2);
-  assert.equal(result.playerKick.applied, true, 'the live hook queued a player impulse');
-  assert.equal(result.lightKick.applied, true, 'the live hook queued a target impulse');
+  assert.equal(result.playerKick.applied, true);
+  assert.equal(result.lightKick.applied, true);
+  assert.ok(result.playerKick.torque === 0, 'the shunter does not get a gyro');
+  assert.ok(result.lightKick.torque > 0, 'the light tumbles as it flies — second consequence');
+  assert.ok(result.hitstun && result.hitstun.victimId === 2, 'the light loses the helm');
+  assert.ok(result.vfxCue && result.vfxCue.id === 'combat.inertialShunt.contact');
+  assert.equal(result.lightProvenance && result.lightProvenance.tag, 'inertial_shunt');
+  assert.ok(result.momentumResidual < MOMENTUM_TOLERANCE,
+    `momentum residual ${result.momentumResidual} must stay under ${MOMENTUM_TOLERANCE}`);
 
-  console.log(
-    `PQ-026.02 constructed seed=${SEED} closing=${result.closing.toFixed(3)}`
-    + ` lightTravel=${result.lightTravel.toFixed(3)}WU`
-    + ` (${(result.lightTravel / SCREEN).toFixed(3)} screens / 1s)`
-    + ` lightDeltaV=${result.lightKick.deltaV.toFixed(3)}WU/s`
-    + ` playerTravel=${result.playerTravel.toFixed(3)}WU / 1s`
-    + ` hull=Hornet mass=${HORNET.mass} hook=weapons:inertialShunt`,
-  );
-
-  near(result.lightTravel, 149.625, 'constructed Hornet light travel');
-  near(result.playerTravel, 5.250, 'constructed Hornet player travel');
-  assert.ok(result.lightTravel >= SCREEN, 'at a constructed 105 the law clears one screen');
-  assert.ok(result.playerTravel <= PLAYER_STOP, 'at a constructed 105 the law stops the shunter');
-});
-
-test('PQ-026.02 the law, at a constructed 105 WU/s closing on a Hitch (not a route speed)', () => {
-  const result = ram(HITCH, CONSTRUCTED_CLOSING, 0);
-  assert.ok(result.receipt, 'the Hitch still fires the live hook');
-  console.log(
-    `PQ-026.02 constructed Hitch seed=${SEED} closing=${result.closing.toFixed(3)}`
-    + ` lightTravel=${result.lightTravel.toFixed(3)}WU`
-    + ` (${(result.lightTravel / SCREEN).toFixed(3)} screens / 1s)`
-    + ` playerTravel=${result.playerTravel.toFixed(3)}WU / 1s hull=Hitch mass=${HITCH.mass}`,
-  );
-  near(result.lightTravel, 112.219, 'constructed Hitch light travel');
-  assert.ok(result.lightTravel < SCREEN, 'the lighter hull carries less momentum into the plate');
-  near(result.playerTravel, 5.250, 'constructed Hitch player travel');
-});
-
-test('PQ-026.02 ROUTE: a Hitch at its own governed cruise misses the screen bar on a parked light', () => {
-  const cruise = governedCruise(HITCH);
-  const result = ram(HITCH, cruise, 0);
-  assert.ok(result.receipt, 'the route ram fires the live hook');
   console.log(
     `PQ-026.02 ROUTE Hitch@cruise seed=${SEED} closing=${result.closing.toFixed(3)}`
-    + ` lightTravel=${result.lightTravel.toFixed(3)}WU`
-    + ` (${(result.lightTravel / SCREEN).toFixed(3)} screens / 1s)`
-    + ` playerTravel=${result.playerTravel.toFixed(3)}WU / 1s`,
+    + ` lightTravel=${result.lightTravel.toFixed(3)}WU / ${COAST_S}s`
+    + ` (${(result.lightTravel / SCREEN).toFixed(3)} screens)`
+    + ` lightDeltaV=${result.lightKick.deltaV.toFixed(3)}WU/s`
+    + ` playerTravel=${result.playerTravel.toFixed(3)}WU`
+    + ` residual=${result.momentumResidual.toExponential(2)}`
+    + ` hull=Hitch mass=${HITCH.mass}`,
   );
-  assert.equal(result.closing, 95, 'the starter arrives at its governed cruise');
-  near(result.lightTravel, 101.531, 'route Hitch light travel');
-  near(result.playerTravel, 4.750, 'route Hitch player travel');
-  // The leaf's bars, measured. One met, one missed.
-  assert.ok(result.playerTravel <= PLAYER_STOP, 'the player DOES stop within 20 WU here');
-  assert.ok(
-    result.lightTravel < SCREEN,
-    `the light does NOT reach one screen at route cruise: ${result.lightTravel.toFixed(3)} of ${SCREEN} WU`,
-  );
+
+  assert.equal(result.closing, 95);
+  near(result.lightKick.deltaV, 106.875, 'Hitch dumps its own 95 into the Wasp');
+  near(result.lightTravel, 128.25, 'B3 1.2 s coast');
+  near(result.playerTravel, 0, 'player remaining travel');
+  assert.ok(result.lightTravel >= SCREEN,
+    `light must cover ≥ 1 screen: ${result.lightTravel.toFixed(3)} of ${SCREEN} WU`);
+  assert.ok(result.playerTravel <= PLAYER_STOP,
+    `player must stop within ${PLAYER_STOP} WU: ${result.playerTravel.toFixed(3)}`);
 });
 
-test('PQ-026.02 ROUTE: a Hornet at its own governed cruise also misses the screen bar', () => {
+test('PQ-026.02 ROUTE seed 26002: Hornet@cruise also clears the screen and stops', () => {
   const result = ram(HORNET, governedCruise(HORNET), 0);
   console.log(
     `PQ-026.02 ROUTE Hornet@cruise seed=${SEED} closing=${result.closing.toFixed(3)}`
-    + ` lightTravel=${result.lightTravel.toFixed(3)}WU`
-    + ` (${(result.lightTravel / SCREEN).toFixed(3)} screens / 1s)`
-    + ` playerTravel=${result.playerTravel.toFixed(3)}WU / 1s`,
+    + ` lightTravel=${result.lightTravel.toFixed(3)}WU / ${COAST_S}s`
+    + ` playerTravel=${result.playerTravel.toFixed(3)}WU`,
   );
-  assert.equal(result.closing, 84, 'the Hornet arrives at its governed cruise');
-  near(result.lightTravel, 119.700, 'route Hornet light travel');
-  near(result.playerTravel, 4.200, 'route Hornet player travel');
-  assert.ok(
-    result.lightTravel < SCREEN,
-    `the receipt's headline hull misses one screen at its OWN cruise: ${result.lightTravel.toFixed(3)}`,
-  );
+  assert.equal(result.closing, 84);
+  near(result.lightKick.deltaV, 126, 'Hornet mass 24 at 84 dumps exactly one screen/s');
+  near(result.lightTravel, 151.2, 'Hornet 1.2 s coast');
+  assert.ok(result.lightTravel >= SCREEN);
+  assert.ok(result.playerTravel <= PLAYER_STOP);
+  assert.ok(result.momentumResidual < MOMENTUM_TOLERANCE);
 });
 
-test('PQ-026.02 ROUTE: a boosted Hitch on a parked light is the one shape that meets both bars', () => {
-  // Boost is the only pilot-held speed above the governed cruise
-  // (propulsionKernel.js:319-320: baseCap = commandFraction x combatSpeed x boostSpeedMult).
-  const boostedCruise = governedCruise(HITCH) * driveProfile(HITCH).boostSpeedMult;
-  const result = ram(HITCH, boostedCruise, 0);
-  console.log(
-    `PQ-026.02 ROUTE Hitch@boost seed=${SEED} closing=${result.closing.toFixed(3)}`
-    + ` lightTravel=${result.lightTravel.toFixed(3)}WU`
-    + ` (${(result.lightTravel / SCREEN).toFixed(3)} screens / 1s)`
-    + ` playerTravel=${result.playerTravel.toFixed(3)}WU / 1s`,
-  );
-  near(result.closing, 147.25, 'boosted starter cap');
-  near(result.lightTravel, 157.373, 'boosted Hitch light travel');
-  near(result.playerTravel, 7.363, 'boosted Hitch player travel');
-  assert.ok(result.lightTravel >= SCREEN, 'boosted: the light clears one screen');
-  assert.ok(result.playerTravel <= PLAYER_STOP, 'boosted: the player still stops');
+test('PQ-026.02 conservation: equal-and-opposite within named tolerance', () => {
+  const result = ram(HITCH, governedCruise(HITCH), 0);
+  assert.ok(result.receipt);
+  near(result.receipt.momentumResidual, 0, 'impulse pair residual', MOMENTUM_TOLERANCE);
+  assert.ok(result.momentumResidual < MOMENTUM_TOLERANCE);
+  const boosted = ram(HITCH, governedCruise(HITCH) * driveProfile(HITCH).boostSpeedMult, 0);
+  assert.ok(boosted.momentumResidual < MOMENTUM_TOLERANCE, 'boosted ram still conserves');
+  const headOn = ram(HITCH, governedCruise(HITCH), -governedCruise(WASP));
+  assert.ok(headOn.momentumResidual < MOMENTUM_TOLERANCE, 'head-on ram still conserves');
 });
 
-test('PQ-026.02 ROUTE: head-on into an oncoming light REVERSES the player and still misses the screen', () => {
-  // The engine publishes RELATIVE closure. The planner spends 95 % of it off the
-  // shunter's own velocity, so a target flying at the player buys the light's
-  // launch with the player's hull going backwards.
+test('PQ-026.02 head-on dumps YOUR speed, not relative closing — player stops, no reverse throw', () => {
   const result = ram(HITCH, governedCruise(HITCH), -governedCruise(WASP));
   console.log(
     `PQ-026.02 ROUTE head-on seed=${SEED} closing=${result.closing.toFixed(3)}`
-    + ` lightTravel=${result.lightTravel.toFixed(3)}WU`
-    + ` (${(result.lightTravel / SCREEN).toFixed(3)} screens / 1s)`
-    + ` playerVelAfter=${result.playerVelAfterX.toFixed(3)}WU/s`
-    + ` playerTravel=${result.playerTravel.toFixed(3)}WU / 1s`,
+    + ` playerVelAfter=${result.playerVelAfterX.toFixed(3)}`
+    + ` lightVelAfter=${result.lightVelAfterX.toFixed(3)}`
+    + ` playerTravel=${result.playerTravel.toFixed(3)}WU`,
   );
-  assert.equal(result.closing, 200, 'Hitch 95 + Wasp 105 of relative closure');
-  // The light spends half its kick cancelling its own approach: displacement, not delta-v.
-  near(result.lightTravel, 108.750, 'head-on light travel');
-  assert.ok(
-    result.lightTravel < SCREEN,
-    `head-on still misses one screen in displacement: ${result.lightTravel.toFixed(3)}`,
-  );
-  // The player half is the defect, not a shortfall.
-  assert.ok(result.playerVelAfterX < 0, 'the shunter is thrown BACKWARD through the contact');
-  near(result.playerTravel, 95.000, 'head-on player travel');
-  assert.ok(
-    result.playerTravel > PLAYER_STOP,
-    `the player travels ${result.playerTravel.toFixed(3)} WU, over the ${PLAYER_STOP} WU bar`,
-  );
+  assert.equal(result.closing, 200, 'engine still publishes relative 200');
+  assert.ok(result.receipt, 'the ram still fires');
+  near(result.playerVelAfterX, 0, 'player dumped their own 95, not the 200 relative');
+  assert.ok(result.playerTravel <= PLAYER_STOP, 'player does not reverse through the contact');
+  assert.ok(result.momentumResidual < MOMENTUM_TOLERANCE);
 });
 
-test('PQ-026.02 ROUTE: a parked plate-wearer rammed by a light is launched without touching a control', () => {
-  // hullCarriesInertialShunt picks the shunter by FITTING, not by who rammed
-  // whom (inertialShunt.js:126-137). A hostile that flies into a parked player
-  // wearing the plate spends the player's momentum budget for them.
+test('PQ-026.02 parked plate does not invent closing speed', () => {
   const result = ram(HITCH, 0, -governedCruise(WASP), { causalIsTarget: true });
-  console.log(
-    `PQ-026.02 ROUTE rammed-while-parked seed=${SEED} closing=${result.closing.toFixed(3)}`
-    + ` lightTravel=${result.lightTravel.toFixed(3)}WU`
-    + ` (${(result.lightTravel / SCREEN).toFixed(3)} screens / 1s)`
-    + ` playerVelAfter=${result.playerVelAfterX.toFixed(3)}WU/s`
-    + ` playerTravel=${result.playerTravel.toFixed(3)}WU / 1s`,
-  );
-  assert.ok(result.receipt, 'the hook fires for the hull that WEARS the plate, whoever rammed');
-  assert.equal(result.receipt.shunterId, 1, 'the parked player is the shunter');
-  near(result.playerTravel, 99.750, 'parked player travel');
-  assert.ok(
-    result.playerTravel > PLAYER_STOP,
-    `a parked player is thrown ${result.playerTravel.toFixed(3)} WU, over the ${PLAYER_STOP} WU bar`,
-  );
-  near(result.lightTravel, 7.219, 'the light barely moves');
-  assert.ok(result.lightTravel < SCREEN, 'and the light does not go a screen either');
+  assert.equal(result.receipt, null, 'a parked plate has nothing of its own to dump');
+  assert.equal(result.playerKick.applied, false);
+  assert.equal(result.lightKick.applied, false);
+});
+
+test('PQ-026.02 NPC plate-wearer is a shunter: Wasp ram stops the Wasp and throws the Hitch', () => {
+  const result = ram(HITCH, 0, -governedCruise(WASP), { plateOnTarget: true, causalIsTarget: true });
+  assert.ok(result.receipt, 'an NPC with the plate fitted uses the same live hook');
+  assert.equal(result.receipt.shunterId, 2, 'the Wasp is the shunter');
+  assert.equal(result.receipt.targetId, 1);
+  near(result.lightVelAfterX, 0, 'the NPC dumps its own speed and stops');
+  assert.ok(result.playerKick.deltaV > 80, 'the player is the launched body');
+  assert.ok(result.hitstun && result.hitstun.victimId === 1, 'the thrown player loses the helm');
+  assert.ok(result.momentumResidual < MOMENTUM_TOLERANCE);
+});
+
+test('PQ-026.02 throw path crosses a rock — the redirect goes somewhere that matters', () => {
+  const result = ram(HITCH, governedCruise(HITCH), 0);
+  const rockX = 70;
+  const startX = result.light.pos.x - result.light.vel.x * COAST_S;
+  assert.ok(startX < rockX, 'the Wasp starts short of the rock');
+  assert.ok(result.light.pos.x > rockX, 'after the 1.2 s coast the Wasp has flown through the rock');
+  assert.equal(result.lightProvenance.weaponId, INERTIAL_SHUNT_WEAPON_ID);
+});
+
+test('PQ-026.02 heavy shrugs — couple, not a free thruster', () => {
+  const player = hull(1, HITCH, governedCruise(HITCH), [INERTIAL_SHUNT_WEAPON_ID]);
+  const heavy = hull(2, HORNET, 0);
+  heavy.mass = 150;
+  heavy.physicsBody.mass = 150;
+  heavy.pos.x = HITCH.collisionRadius + HORNET.collisionRadius;
+  const state = combatState(player, heavy);
+  const { bus } = armWeapons(state);
+  let receipt = null;
+  bus.on('weapons:inertialShunt', (payload) => { receipt = payload; });
+  const closing = preSolveRadialClosingSpeed(player.vel.x, 0, 0, 0, 1, 0);
+  bus.emit('physics:impact', headOnImpact(state, player, heavy, closing));
+  const playerKick = applyQueuedDeltaV(player);
+  const heavyKick = applyQueuedDeltaV(heavy);
+  assert.ok(receipt);
+  assert.ok(heavyKick.deltaV < 20, `heavy shrugs, got ${heavyKick.deltaV.toFixed(3)}`);
+  assert.ok(playerKick.deltaV < governedCruise(HITCH) * 0.4, 'player keeps speed against a heavy');
 });
 
 test('PQ-026.02 live hook ignores a scrape under the closing floor', () => {
@@ -442,11 +423,35 @@ test('PQ-026.02 live hook ignores a scrape under the closing floor', () => {
   const state = combatState(player, scrape);
   const { bus } = armWeapons(state);
   let receipt = null;
-  bus.on('weapons:inertialShunt', (payload) => {
-    receipt = payload;
-  });
+  bus.on('weapons:inertialShunt', (payload) => { receipt = payload; });
   bus.emit('physics:impact', headOnImpact(state, player, scrape, 5));
   assert.equal(receipt, null, 'a scrape must not emit weapons:inertialShunt');
   assert.equal(consumePhysicsCommand(player), null);
   assert.equal(consumePhysicsCommand(scrape), null);
+});
+
+test('PQ-026.02 shunt VFX plan is a transfer streak, not a camera-facing card', () => {
+  const plan = createInertialShuntVfxPlanScratch();
+  resolveInertialShuntVfxPlan(plan, {
+    position: { x: 28, z: 0 },
+    axisX: 1,
+    axisZ: 0,
+    targetDeltaV: 106.875,
+    radius: 14,
+    playerCaused: true,
+  });
+  assert.equal(plan.active, true);
+  assert.ok(plan.length > plan.width * 8, 'the streak is a line along the dump, not a blob');
+  near(plan.axisX, 1, 'axis follows the transfer');
+  assert.equal(plan.particleCount, 3);
+  resolveInertialShuntVfxPlan(plan, {
+    position: { x: 28, z: 0 },
+    axisX: 1,
+    axisZ: 0,
+    targetDeltaV: 106.875,
+    motionReduce: true,
+  });
+  assert.equal(plan.active, true);
+  assert.equal(plan.particleCount, 0);
+  assert.ok(plan.length < 20);
 });

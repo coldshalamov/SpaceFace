@@ -18,6 +18,82 @@ export const MOMENTUM_SINK_VFX_COLORS = Object.freeze({
   particleEnd: '#ff713d',
 });
 
+export const INERTIAL_SHUNT_VFX_COLORS = Object.freeze({
+  core: '#e8f6ff',
+  transfer: '#7ec8ff',
+});
+
+export function createInertialShuntVfxPlanScratch() {
+  return {
+    active: false,
+    x: 0,
+    z: 0,
+    axisX: 0,
+    axisZ: 0,
+    length: 0,
+    width: 0,
+    opacity: 0,
+    life: 0,
+    particleCount: 0,
+    admissionPriority: DEFAULT_VFX_ADMISSION_PRIORITY,
+  };
+}
+
+/**
+ * Contact flash along the momentum-transfer axis. Sim owns the dump; this planner
+ * only names the streak a later spawn path (or the existing presentation:vfxCue
+ * listener) can draw. No new pool.
+ */
+export function resolveInertialShuntVfxPlan(out, input) {
+  if (!out) return null;
+  resetShuntPlan(out);
+  if (!input) return out;
+  const position = input.position;
+  if (!finiteXZ(position)) return out;
+  const axisX = Number(input.axisX);
+  const axisZ = Number(input.axisZ);
+  const axisLen = Math.hypot(axisX, axisZ);
+  if (!(axisLen > 1e-6)) return out;
+  const targetDeltaV = Number(input.targetDeltaV);
+  if (!(Number.isFinite(targetDeltaV) && targetDeltaV > MOMENTUM_SINK_VFX_DEADBAND_SPEED)) return out;
+  const radiusInput = Number(input.radius);
+  const radius = clamp(Number.isFinite(radiusInput) ? radiusInput : 8, 2, 30);
+  const speedT = clamp01(targetDeltaV / MAX_AUTHORED_RELATIVE_SPEED);
+  const motionReduce = input.motionReduce === true;
+  const flashReduce = input.flashReduce === true;
+  out.active = true;
+  out.x = position.x;
+  out.z = position.z;
+  out.axisX = axisX / axisLen;
+  out.axisZ = axisZ / axisLen;
+  out.length = motionReduce
+    ? clamp(8 + speedT * 10, 6, 18)
+    : clamp(12 + radius * 0.4 + speedT * 22, 10, 36);
+  out.width = motionReduce ? 0.35 : clamp(0.4 + speedT * 0.35, 0.4, 1);
+  out.opacity = motionReduce ? 0.28 : 0.62 + speedT * 0.2;
+  out.life = RESIDUE_LIFE_S;
+  out.particleCount = motionReduce || flashReduce ? 0 : 3;
+  out.admissionPriority = input.playerCaused === true
+    ? PLAYER_CAUSED_PRIORITY
+    : DEFAULT_VFX_ADMISSION_PRIORITY;
+  return out;
+}
+
+function resetShuntPlan(plan) {
+  plan.active = false;
+  plan.x = 0;
+  plan.z = 0;
+  plan.axisX = 0;
+  plan.axisZ = 0;
+  plan.length = 0;
+  plan.width = 0;
+  plan.opacity = 0;
+  plan.life = 0;
+  plan.particleCount = 0;
+  plan.admissionPriority = DEFAULT_VFX_ADMISSION_PRIORITY;
+  return plan;
+}
+
 export function createMomentumSinkVfxPlanScratch() {
   return {
     active: false,
