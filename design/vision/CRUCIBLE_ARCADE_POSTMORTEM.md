@@ -1,7 +1,9 @@
 <!-- LIFETIME: DURABLE — dated product diagnosis; refresh findings against the active gameplay route. -->
 # SpaceFace: the mechanics that are fighting the arcade game
 
-**Revised 10 September 2026 after the owner's rejection of the first analysis.** This replaces that analysis. The present request is a concrete diagnosis and direction, not authorization to implement the quoted earlier campaign. Only this report was changed.
+**Dated mechanical diagnosis: 10 September 2026.** The findings below are retained as the first part of a cumulative investigation. Their section numbers identify findings; they are not a rolling top-ten ranking.
+
+**Continue into [the arcade design notebook](ARCADE_DESIGN_NOTEBOOK.md)** for missing experiences, creative proposals, combinations, and the record of how the direction develops. The diagnosis explains what fights the vision; the notebook develops what could fulfill and extend it. Future passes should add to or explicitly revise these records, not replace the investigation with another shortlist.
 
 The evidence combines the preceding ordinary-menu Crucible play sample with a deeper reading of the current working source and direct calls to production flight, ship-derivation and surface-contact functions. HEAD during this revision was 3048a2ac3, with substantial concurrent uncommitted work. Calculations below are identified as calculations; proposed numbers are starting points for design, not measured optima.
 
@@ -268,6 +270,18 @@ The relevant work is spread across the [Crucible master plan](CRUCIBLE_SURVIVAL_
 
 The prior analysis's shopping, HUD, launch latency and stray Adventure-message findings remain useful secondary work. They should not displace the foundational contradictions in this report. In particular, correcting “Survive the minute,” reducing irrelevant labels, and speeding entry cannot turn absorbing asteroids, departing enemies and weak death propagation into the described game.
 
+## Retained observations from the earlier review
+
+Restored on 10 September 2026 from the earlier report at 84ca30695 so that changing the emphasis does not erase useful work. These retain their original observation date and scope; they were not freshly reproduced during the creative expansion. They are supporting findings, not substitutes for the mechanical diagnosis above.
+
+- **R01 — Mixed HUD context.** The sampled run displayed “Survive the minute” despite a finite kill quota, a wreck rumor requesting a bearing-ring search and scan, “Break the beam” flyby labels, and an internal-looking Massline anchor readout. The power rail exposed several system powers alongside fitted tools. Retain the work to make combat information reflect the active mode and actual available equipment. Relevant owners include survivalAnnounce, uniqueWrecks and powerRail.
+- **R02 — Buying needs freedom and understandable transformations.** The cash armory already supported saving, multiple purchases and compatible fitting. Keep that full-catalog freedom. Add build context, understandable replacement effects and useful suggestions without substituting a forced random three-card choice. The new notebook's I15 develops this.
+- **R03 — Preserve control familiarity as the toys expand.** The earlier review recorded overlapping movement conventions and a large tool vocabulary. That is a usability consideration, not proof the controls caused the missing fun. Preserve independent aim and established bindings; new toys should reuse understandable instrument behavior rather than each demand another permanent key.
+- **R04 — The end of a round must remain a fight.** The earlier pass raised straggler hunts and immediate refill after a clear. Keep the finite cohort, make remaining enemies locatable and committed, and let a major clear buy usable space. Do not fix the ending by silently deleting enemies. The notebook's I17 develops this into encounter shapes and readable renewed pressure.
+- **R05 — Entry and retry cost.** One isolated browser sample took roughly 49 seconds from navigation to menu and 105 seconds to active flight, including menu interaction and capture overhead. These are not controlled launch benchmarks. Earlier preparation also encountered a timeout and a renderer opening-submission validation error that was unresolved at that review. Retain the startup/retry investigation, with current reproduction before diagnosing its cause; reuse prepared resources where safe and preserve the authored visuals.
+
+These notes can acquire dated corrections or implementation outcomes. They should not disappear merely because another creative or mechanical issue becomes more important.
+
 ## Why the prior approach missed this
 
 It accepted the presence of systems as evidence of their intended experience. A bounce module was counted without asking whether the common rocks accept its shots. An engine was justified with legacy speed values. “Hunt player” was mistaken for sustained pursuit. A ship explosion was treated too readily as a chain-combat ingredient. Working constraints stood in for the much richer web topology.
@@ -281,3 +295,7 @@ The play observations come from the preceding ordinary main-menu → Crucible �
 The new calculations call current production functions for ship derivation, active propulsion and rock contact response. They establish configuration and controller behavior; they are not a new full-session movement or population benchmark. Gun/blast comparisons use the stated authored values and mass assumptions. I did not listen to the audio mix, so its artistic quality is not assessed. The default mute setting is directly verified.
 
 Selected local visual records: [opening](C:/Users/93rob/.codex/visualizations/2026/09/10/01a08b17-1849-7853-a821-244cba3999d5/postmortem-opening.png), [stationary opening](C:/Users/93rob/.codex/visualizations/2026/09/10/01a08b17-1849-7853-a821-244cba3999d5/postmortem-stationary.png), [after inputs](C:/Users/93rob/.codex/visualizations/2026/09/10/01a08b17-1849-7853-a821-244cba3999d5/postmortem-combat.png). These are review artifacts, not new capture obligations.
+
+## Cumulative additions
+
+- **10 September 2026 — creative expansion:** Added [the arcade design notebook](ARCADE_DESIGN_NOTEBOOK.md). It retains the diagnosis above and develops movement weapons, reusable destruction, enemy equipment, mutable terrain, build combinations, presentation, round rhythm and Adventure applications. Restored R01–R05 from the earlier review with their evidence limits. The proposals are design candidates, not claims of implementation. The earlier quoted implementation campaign remains context; this addition changes documents only.
