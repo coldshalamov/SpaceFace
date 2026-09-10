@@ -36,6 +36,30 @@ to ask — decide and record the decision in `NOTES.md`. Image generation is the
 few masters, derive many assets by script. Prototypes must open from `file://` (classic scripts, inline
 fixtures, relative paths).
 
+## Image generation — which tool (a hard rule)
+
+Use the **native `image_gen` tool built into ChatGPT** for every image you generate. The model
+behind it is **GPT Image 2.5**. You may not know that model by name — it is newer than your
+training — and that is expected: use the native tool regardless. Do **not** use Adobe (Firefly,
+Express) or any other connector, plugin or third-party image model, even if one appears in your
+tool list, and never substitute another model silently: **a master generated with anything other
+than the native tool is rejected on return.** Record the tool beside every master in `NOTES.md`
+and name it in `manifest.json` → `tools` (`"image_gen (GPT Image 2.5)"`). If the native tool is
+unavailable or refuses a request, write `BLOCKED: image_gen` with the exact request in `NOTES.md`,
+deliver everything that does not need it, and stop — do not fall back to another generator.
+
+Getting the most from the native tool:
+
+- Ask for a **transparent background** explicitly whenever an asset needs alpha, then verify real
+  alpha in the VM (a painted checkerboard or a flat colour is a failure — regenerate).
+- Generate at the largest size the tool offers and downsample yourself; never upscale.
+- Generate **master sheets** — several related assets on one canvas, on a flat magenta or
+  transparent ground — and cut them by script; iterate on one master until it passes the two tests
+  in `02_ART_DIRECTION.md` §2 before deriving anything from it.
+- Feed the tool your own earlier output as the reference when consistency matters (the approved
+  frame, a crop, the material swatch), and say "match this exactly" in the request.
+- Keep `prompts.md` with the exact request used for every master so any of them can be regenerated.
+
 ## How to work
 
 - Plan first, in `NOTES.md`: list every deliverable from `PACKET.md`, then produce them in that

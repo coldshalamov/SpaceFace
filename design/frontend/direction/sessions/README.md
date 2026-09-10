@@ -24,6 +24,11 @@ not "five sessions in five days" — it is five sessions across the program.
 
 ## What a session can and cannot do
 
+Images come from ChatGPT's **native `image_gen` tool (GPT Image 2.5)** and nothing else: the
+sessions have been seen defaulting to an Adobe connector, a much weaker generator, so every brief,
+the read-me and the hand-off prompt name the native tool explicitly and reject returns made with
+anything else.
+
 The ChatGPT 6 Pro VM has internet — web search, fetch, curl, package managers — so a session may
 download any typeface or library it wants (subject to the bundling-licence rule in
 `_COMMON/03_CONVENTIONS.md` §4) and study the named references at their official galleries. It has
@@ -82,9 +87,15 @@ exactly:
 > other zips are attached, they are previous sessions' returns: unzip each into the packet's
 > `inputs/` folder first. This is a full development session: plan it in `PLAN.md`, work phase by
 > phase, overwrite the checkpoint zip after every phase, keep `PROGRESS.md` current, and never
-> stop to ask a question — decide and record the decision. Return the final zip named as the
-> packet says, with `manifest.json`, `NOTES.md` and `QA.md`. Keep your reply short: what is in the
-> zip, what is missing and why.
+> stop to ask a question — decide and record the decision. For every image, use only your native
+> `image_gen` tool (its model is GPT Image 2.5; you may not know that name — use the native tool
+> anyway); never Adobe or any other connector or plugin, and never substitute another image model
+> silently. Return the final zip named as the packet says, with `manifest.json`, `NOTES.md` and
+> `QA.md`. Keep your reply short: what is in the zip, what is missing and why.
+
+If the session still reaches for another image tool mid-run, reply once: "Stop. Use only the native
+image_gen tool for images; regenerate every master that was not made with it, and note the tool
+beside each master in NOTES.md." A return whose masters came from another generator is rejected.
 
 One session per conversation. If the return is partial, one follow-up turn may ask for the exact
 missing items named in `NOTES.md`; after that the remainder goes into the next session's brief.

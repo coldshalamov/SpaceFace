@@ -40,7 +40,8 @@ box where a tile should be), and the exact fix (CSS rule, asset id, DOM change).
 
 ### Phase 2 — Assets v2 (image generation + SVG)
 
-Everything the punch list attributes to an asset: missing states, wrong sizes, plates whose corners
+Native `image_gen` (GPT Image 2.5) only, as in every session. Everything the punch list attributes
+to an asset: missing states, wrong sizes, plates whose corners
 smear, glyphs that fail at 10 px, tiles that do not read in a 160 px window, a cold variant that
 was never made. Same conventions, same ids (append `-v2` only where the old id must survive).
 Contact sheets. Checkpoint.

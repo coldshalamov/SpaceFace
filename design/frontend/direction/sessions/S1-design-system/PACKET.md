@@ -25,6 +25,10 @@ inventories for each phase; this file is the plan and the contract.
 
 ## Ground rules for the session
 
+- **Image tool.** Every image comes from your **native `image_gen` tool** (GPT Image 2.5; you may
+  not know the name — use the native tool anyway). Never Adobe or any other connector or plugin,
+  never a silent substitution; a master made with anything else is rejected on return. Details and
+  technique: `_COMMON/00_READ_ME_FIRST.md`.
 - **Plan first.** Write `PLAN.md`: every deliverable below, in order, with the method you will use
   for each. Then follow it.
 - **Checkpoint after every phase.** Overwrite `S1-return.zip` at the end of each phase so a

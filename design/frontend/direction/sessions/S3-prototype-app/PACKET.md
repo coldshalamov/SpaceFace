@@ -24,7 +24,8 @@ Inputs are the S1 and S2 returns (attached as `S1-return.zip` and `S2-return.zip
 (`DECISIONS.md`, review corrections) are present in a return, apply them; if not, proceed on the
 returns as they are and carry their `MISSING` lists as your Phase 1a.
 
-Ground rules are S1's.
+Ground rules are S1's, including the image-tool rule: every image from the native `image_gen`
+tool (GPT Image 2.5), never Adobe or another connector, never a silent substitution.
 
 ## Phases
 

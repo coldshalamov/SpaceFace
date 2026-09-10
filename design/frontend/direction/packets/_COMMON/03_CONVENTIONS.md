@@ -22,6 +22,9 @@ you did not produce. If a capability is unavailable (image generation, a font, a
 
 ## 2. Raster assets (transparent PNG)
 
+- Generator: every raster master is made with ChatGPT's **native `image_gen` tool (GPT Image
+  2.5)** — see `00_READ_ME_FIRST.md`. `manifest.json` → `tools` names it; a return whose masters
+  came from Adobe or any other connector or model fails acceptance, however good they look.
 - Format: **PNG-32 with real alpha**. No matting to black or white; edges must be premultiplied
   cleanly (verify by placing the asset on a pure white and on a pure magenta ground and confirming
   no fringe).
@@ -89,7 +92,7 @@ you did not produce. If a capability is unavailable (image generation, a font, a
   "packet": "P10",
   "returned": "2026-09-12",
   "producer": "ChatGPT 6 Pro | Codex | agent name",
-  "tools": ["image generation model name", "Python 3.x Pillow", "Inkscape"],
+  "tools": ["image_gen (GPT Image 2.5)", "Python 3.x Pillow", "hand-written SVG"],
   "license": "All original work; OFL fonts named in kit-notes.md",
   "assets": [
     {

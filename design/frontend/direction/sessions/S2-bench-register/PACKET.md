@@ -32,7 +32,8 @@ unless its `QA.md` flags a defect that blocks a bench screen — then fix it in 
 `/* S2 fix */` banner, and say so in `NOTES.md`.
 
 Ground rules are S1's: plan first, checkpoint after every phase, never stop to ask, masters then
-scripts, real strings, `file://`-openable prototypes. You have the web: the Three.js files in
+scripts, real strings, `file://`-openable prototypes, and **images only from the native `image_gen`
+tool (GPT Image 2.5) — never Adobe or another connector**. You have the web: the Three.js files in
 `inputs/` are a convenience (you may install or fetch libraries yourself), and the reference study
 rule applies to the bench screens too (station and garage interfaces, instrument panels, industrial
 product photography).
