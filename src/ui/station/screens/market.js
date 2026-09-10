@@ -9,9 +9,11 @@ import { marketFrameHtml } from '../../views/stationFrames.js';
 import { COMMODITIES } from '../../../data/commodities.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
+import { predictPriceCurve, regimeLabel } from '../../../systems/economyCycles.js';
 import { escapeHtml } from '../../comms.js';
 import { entitySpanHtml } from '../../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
+import { ageBandFor } from '../../marketIntelligence.js';
 import { mountDataState } from '../../uiPrimitives.js';
 import { renderAdBoardNotice } from '../adBoard.js';
 import { marketQuoteValue, presentMarketDrivers } from '../../marketDriverPresenter.js';
@@ -135,15 +137,71 @@ function demandLevel(entry) {
   return multiplier > 1.08 ? 3 : multiplier < 0.94 ? 1 : 2;
 }
 function demandWord(level) { return level >= 3 ? 'high' : level === 1 ? 'low' : 'normal'; }
-function priceHistory(entry, def) {
+
+// Economy samples every 15s. Forty points is ten minutes when timestamps are missing.
+const TEN_MIN_S = 600;
+const TEN_MIN_SAMPLES = 40;
+
+function parseHistoryPoints(entry) {
   const points = entry && Array.isArray(entry.history) ? entry.history : [];
-  const values = points.map((p) => Number(p && typeof p === 'object' ? p.mid : p))
-    .filter((p) => Number.isFinite(p) && p > 0);
+  const out = [];
+  for (const point of points) {
+    if (point && typeof point === 'object') {
+      const mid = Number(point.mid != null ? point.mid : point);
+      const t = Number(point.t);
+      if (Number.isFinite(mid) && mid > 0) out.push(Number.isFinite(t) ? { t, mid } : { mid });
+    } else {
+      const mid = Number(point);
+      if (Number.isFinite(mid) && mid > 0) out.push({ mid });
+    }
+  }
+  return out;
+}
+
+function windowHistory(points, nowS) {
+  const now = Number(nowS);
+  const timed = points.filter((point) => Number.isFinite(point.t));
+  if (Number.isFinite(now) && timed.length) {
+    const cut = now - TEN_MIN_S;
+    const windowed = points.filter((point) => !Number.isFinite(point.t) || point.t >= cut);
+    if (windowed.length) return windowed;
+  }
+  return points.length > TEN_MIN_SAMPLES ? points.slice(-TEN_MIN_SAMPLES) : points;
+}
+
+function priceHistory(entry, def, nowS) {
+  const values = windowHistory(parseHistoryPoints(entry), nowS).map((point) => point.mid);
   if (values.length > 1) return values;
   // The economy seeds every listing before this screen opens. This is only a defensive
   // degradation for malformed legacy data; it never invents a shared trend.
   const current = Math.max(1, unitBuy(entry, def));
   return [current, current];
+}
+
+function priceHistorySeries(entry, def, nowS) {
+  const windowed = windowHistory(parseHistoryPoints(entry), nowS);
+  if (windowed.length > 1) return windowed;
+  const current = Math.max(1, unitBuy(entry, def));
+  const now = Number(nowS);
+  return Number.isFinite(now)
+    ? [{ t: now - TEN_MIN_S, mid: current }, { t: now, mid: current }]
+    : [{ mid: current }, { mid: current }];
+}
+
+function liveRegimeWord(state, sid, commodityId) {
+  const cycle = state && state.economy && state.economy.cycles
+    && sid && commodityId && state.economy.cycles[sid] && state.economy.cycles[sid][commodityId];
+  return regimeLabel(cycle && (cycle.regime || cycle.family) || 'stable');
+}
+
+function quoteAgeWord(state, sid, commodityId) {
+  const rec = state && state.player && state.player.marketMemory
+    && sid && commodityId && state.player.marketMemory[sid] && state.player.marketMemory[sid][commodityId];
+  if (!rec || rec.seenAt == null) return '';
+  const seenAt = Number(rec.seenAt);
+  if (!Number.isFinite(seenAt)) return '';
+  const ageS = Math.max(0, (Number(state && state.simTime) || 0) - seenAt);
+  return ageBandFor(ageS).key === 'fresh' ? 'fresh' : 'stale';
 }
 
 export function createMarketScreen(ctx) {
@@ -292,7 +350,7 @@ export function createMarketScreen(ctx) {
 
   // One register row: name (◆ before it when tracked), buy + trend, sell, stock, held.
   function commodityRowHtml(r, state, tracked_, selected) {
-    const hist = priceHistory(r.entry, r.def);
+    const hist = priceHistory(r.entry, r.def, state && state.simTime);
     const buy = unitBuy(r.entry, r.def);
     const sell = unitSell(r.entry, r.def);
     const stock = Math.max(0, Math.floor(Number(r.entry && r.entry.stock) || 0));
@@ -366,7 +424,7 @@ export function createMarketScreen(ctx) {
     const signature = JSON.stringify({
       marketFilter, marketQuery, cargoOnly, tracked: tracked_,
       rows: visible.map((r) => [r.id, unitBuy(r.entry, r.def), unitSell(r.entry, r.def), r.entry && r.entry.stock,
-        heldQty(state, r.id), r.entry && r.entry.demandMult, priceHistory(r.entry, r.def).at(-1)]),
+        heldQty(state, r.id), r.entry && r.entry.demandMult, priceHistory(r.entry, r.def, state.simTime).at(-1)]),
     });
     if (signature !== listRenderSignature) {
       listRenderSignature = signature;
@@ -432,11 +490,13 @@ export function createMarketScreen(ctx) {
     }
     consoleEl.hidden = false;
     const def = r.def, entry = r.entry;
-    const hist = priceHistory(entry, def);
+    const sid = stationId(state);
+    const hist = priceHistorySeries(entry, def, state && state.simTime);
+    const forecast = sid ? predictPriceCurve(state, sid, r.id) : [];
     const buy = unitBuy(entry, def), sell = unitSell(entry, def);
     const avg = Number(def.basePrice) || buy;
     const demand = demandLevel(entry);
-    const drivers = presentMarketDrivers({ state, stationId: stationId(state), commodity: def, entry });
+    const drivers = presentMarketDrivers({ state, stationId: sid, commodity: def, entry });
     const legal = def.legality || 'legal';
     const isTracked = trackedCmdty(state) === r.id;
     const trackedGuidance = isTracked ? trackedCargoGuidance(state, r.id, def.name) : null;
@@ -446,7 +506,9 @@ export function createMarketScreen(ctx) {
     quoteEl.innerHTML = marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
       titleHtml: entitySpanHtml('commodity:' + r.id, escapeHtml(def.name)), mode, buy, sell, avg,
       demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, hist, trackedGuidance,
-      producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state) });
+      producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
+      forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
+      quoteAge: quoteAgeWord(state, sid, r.id), saleQty: qty });
   }
 
   function renderConsole(state, { receiptOnly = false } = {}) {
@@ -636,6 +698,7 @@ export function createMarketScreen(ctx) {
       const def = r && r.def; const entry = r && r.entry;
       const maxQty = tradeQuantityLimit(state, { id: selectedId, entry, def });
       if (v === 'max') qty = maxQty; else qty = Math.max(1, Math.min(maxQty, qty + Number(v)));
+      renderStage(state);
       renderConsole(state);
     }
   });
@@ -644,6 +707,7 @@ export function createMarketScreen(ctx) {
     if (!ev.target.classList.contains('sx-qty__in')) return;
     const n = parseInt(ev.target.value, 10);
     qty = Number.isFinite(n) ? Math.max(0, n) : 0;
+    renderStage(ctx.state || {});
     renderConsole(ctx.state || {}, { receiptOnly: true });
   });
 

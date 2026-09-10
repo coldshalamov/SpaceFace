@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 import { COMMODITIES } from '../src/data/commodities.js';
 import { SECTORS } from '../src/data/sectors.js';
+import { economy } from '../src/systems/economy.js';
 import { resolveDockStationType } from '../src/ui/station/screens/market.js';
 import {
   cleanStationRole,
@@ -147,4 +148,106 @@ test('the Orbital market screen paints that leftover inspector from COMMODITIES 
   const css = readFileSync(join(ROOT, 'styles/orbital.css'), 'utf8');
   assert.match(css, /#screens \.sx-mkt-chain/, 'Orbital owns the leftover chain line');
   assert.doesNotMatch(css, /kit\.css/);
+});
+
+// Honesty leftover iterate: neither-role docks still buy legal goods. The line must say so
+// and name the leftover consumer roles, not refuse a sale the live quote will take.
+
+const VEIL = SECTORS.flatMap((sec) => sec.stations || []).find((st) => st.id === 'station_veil');
+
+function bootEconomy() {
+  const handlers = new Map();
+  const bus = {
+    on(event, handler) {
+      const list = handlers.get(event) || [];
+      list.push(handler);
+      handlers.set(event, list);
+      return () => {};
+    },
+    off() {},
+    emit(event, payload) { for (const handler of [...(handlers.get(event) || [])]) handler(payload); },
+  };
+  const state = {
+    mode: 'flight', simTime: 0, meta: { seed: 0x5face },
+    player: {
+      credits: 10000,
+      cargo: { items: { cmdty_ore_iron: 10 }, capVolume: 100, usedVolume: 10 },
+      marketMemory: {}, tradeLedger: [], tradeLots: {},
+    },
+    economy: {}, conflicts: {}, sectorSim: { field: { nodes: {} } },
+    world: { currentSectorId: 'sector_helios_prime', sectors: {} },
+    ui: {}, nav: {}, entities: new Map(), entityList: [],
+  };
+  const econ = { ...economy };
+  econ.init({ state, bus, helpers: {}, registry: { get: () => null } });
+  econ.newGame();
+  return { state, econ };
+}
+
+test('a leftover neither-role dock still buys leftover ore and names the leftover better prices', () => {
+  assert.ok(VEIL && VEIL.type === 'research', 'Research Station Veil is a live neither-role dock for ore');
+
+  const stationType = resolveDockStationType(dockedState(VEIL));
+  assert.equal(stationType, 'research');
+  const chain = presentSupplyChain({
+    producedBy: IRON.producedBy,
+    consumedBy: IRON.consumedBy,
+    stationType,
+  });
+  assert.equal(chain.dockRole, 'neither');
+  assert.match(chain.dock, /This dock buys it\./);
+  assert.doesNotMatch(chain.dock, /does not buy/);
+  for (const role of IRON.consumedBy) {
+    assert.match(chain.dock, new RegExp(cleanStationRole(role)));
+  }
+
+  const { state, econ } = bootEconomy();
+  econ.ensureMarket(VEIL.id);
+  const entry = state.economy.markets[VEIL.id][IRON.id];
+  assert.ok(entry, 'Iron Ore is listed at a research station — every legal good trades everywhere');
+  assert.equal(entry.role, 'none');
+  const sale = econ.quote(VEIL.id, IRON.id, 'sell', 5);
+  assert.equal(sale.ok, true, 'the station quotes a real sell for leftover ore');
+  assert.ok(sale.total > 0, 'and pays credits for it');
+  economy._instance = null;
+
+  const html = marketQuoteHtml({
+    id: IRON.id,
+    name: IRON.name,
+    category: IRON.category,
+    legal: IRON.legality,
+    buy: IRON.basePrice,
+    sell: IRON.basePrice,
+    avg: IRON.basePrice,
+    hist: [IRON.basePrice, IRON.basePrice],
+    producedBy: IRON.producedBy,
+    consumedBy: IRON.consumedBy,
+    stationType,
+  });
+  assert.match(html, /data-dock-role="neither"/);
+  assert.match(html, /This dock buys it\./);
+  assert.doesNotMatch(html, /does not buy/);
+
+  console.log(`PQ-177.02 ${VEIL.name} (${stationType}): ${chain.dock} — live sell of 5 ore clears for ${Math.round(sale.total)} cr`);
+});
+
+test('leftover neither-role views still name leftover consumer docks, never leftover a false refusal', () => {
+  const stationTypes = SECTORS.flatMap((sec) => (sec.stations || []).map((st) => st.type));
+  let pairs = 0;
+  let neither = 0;
+  for (const type of stationTypes) {
+    for (const def of COMMODITIES) {
+      if (def.legality === 'contraband' || def.legality === 'illegal') continue;
+      pairs += 1;
+      const view = presentSupplyChain({ producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: type });
+      assert.doesNotMatch(view.dock || '', /does not buy/, `${def.id} at ${type} must not refuse a live sale`);
+      if (view.dockRole === 'neither') {
+        neither += 1;
+        assert.match(view.dock, /This dock buys it\./);
+      }
+    }
+  }
+  assert.ok(pairs > 0);
+  assert.ok(neither / pairs > 0.5, 'most legal listings are leftover transit docks, not leftover listed consumers');
+  console.log(`PQ-177.02 leftover transit views: ${neither}/${pairs} (${Math.round((100 * neither) / pairs)}%) of legal listings`);
 });

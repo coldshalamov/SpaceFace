@@ -257,11 +257,18 @@ html[data-k-temp='crucible'] { --k-signal: var(--of-accent); }
 #screens .sx-mkt-chain[data-dock-role='produce'] .sx-mkt-chain__dock,
 #screens .sx-mkt-chain[data-dock-role='both'] .sx-mkt-chain__dock { color: var(--of-accent); }
 #screens .sx-mkt-chain[data-dock-role='neither'] .sx-mkt-chain__dock { color: var(--of-muted); }
-#screens .sx-mkt-chart { width: 100%; max-width: none; height: 44px; margin-top: 9px; display: block; }
+#screens .sx-mkt-chart { width: 100%; max-width: none; height: 56px; margin-top: 9px; display: block; }
 #screens .sx-mkt-chart .sx-mkt-line { stroke: var(--of-accent) !important; stroke-width: 1.6; }
 #screens .sx-mkt-chart .sx-mkt-avg { stroke: #738371; }
 #screens .sx-mkt-chart circle { fill: var(--of-accent); }
 #screens .sx-mkt-chart .of-chart-area { fill: #e6b4780d; }
+#screens .sx-mkt-chart .sx-mkt-cone { fill: #8aa3c233; }
+#screens .sx-mkt-chart .sx-mkt-forecast { stroke: var(--of-muted); }
+#screens .sx-mkt-chart .sx-mkt-now { stroke: var(--of-line); stroke-dasharray: 2 3; }
+#screens .sx-mkt-cone-read { margin: 8px 0 0; font-size: 13px; }
+#screens .sx-mkt-chart-key { display: flex; gap: 14px; margin: 4px 0 0; color: var(--of-muted); }
+#screens .sx-mkt-chart-key [data-history-key] { color: var(--of-accent); }
+#screens .sx-mkt-sale { margin: 6px 0 0; font-size: 13px; }
 #screens .sx-mkt-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin: 8px 0 0; }
 #screens .sx-mkt-stats .sx-stat { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 4px; min-height: 0; padding: 8px 0 0; font-size: 12px; }
 #screens .sx-mkt-stats .sx-stat__v { font-size: 14px; }

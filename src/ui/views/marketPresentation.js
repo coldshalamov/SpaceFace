@@ -28,8 +28,55 @@ export function marketBrowserHtml() {
       <tbody role="tablist" aria-label="Commodities"></tbody></table><p class="k-empty sx-mkt-browser__empty" hidden></p>
     </div></div>`;
 }
+function historyMid(value) {
+  if (typeof value === 'number') return value;
+  if (value && typeof value === 'object') return Number(value.mid);
+  return NaN;
+}
+function historySamples(history) {
+  const out = [];
+  for (const value of Array.isArray(history) ? history : []) {
+    const mid = historyMid(value);
+    if (!Number.isFinite(mid) || mid <= 0) continue;
+    const t = value && typeof value === 'object' ? Number(value.t) : NaN;
+    out.push(Number.isFinite(t) ? { t, mid } : { mid });
+  }
+  return out;
+}
 function finiteHistory(history) {
-  return (Array.isArray(history) ? history : []).filter(value => typeof value === 'number' && Number.isFinite(value));
+  return historySamples(history).map((point) => point.mid);
+}
+function forecastSamples(forecast) {
+  return historySamples(forecast);
+}
+function chartXMapper(histPts, forecastPts, nowHint, pad, innerW) {
+  const histTimes = histPts.map((p) => p.t).filter((t) => Number.isFinite(t));
+  const forecastTimes = forecastPts.map((p) => p.t).filter((t) => Number.isFinite(t));
+  const timedHist = histTimes.length === histPts.length && histPts.length > 0;
+  const timedForecast = !forecastPts.length || forecastTimes.length === forecastPts.length;
+  if (timedHist && timedForecast) {
+    const now = Number.isFinite(Number(nowHint)) ? Number(nowHint) : histTimes.at(-1);
+    const start = Math.min(histTimes[0], now);
+    const end = forecastTimes.length ? Math.max(now, forecastTimes.at(-1)) : now;
+    const span = end > start ? end - start : 1;
+    return {
+      mode: 'time',
+      now,
+      at(t, fallbackIndex) {
+        const value = Number.isFinite(t) ? t : start + fallbackIndex;
+        return pad + ((value - start) / span) * innerW;
+      },
+    };
+  }
+  const lastHistIndex = Math.max(0, histPts.length - 1);
+  const maxIndex = lastHistIndex + forecastPts.length;
+  return {
+    mode: 'index',
+    nowIndex: lastHistIndex,
+    at(_t, index) {
+      return pad + (index / Math.max(1, maxIndex)) * innerW;
+    },
+  };
 }
 export function trendHtml(history = []) {
   const hist = finiteHistory(history);
@@ -37,20 +84,51 @@ export function trendHtml(history = []) {
   const pct = Math.round(((hist.at(-1) - hist[0]) / hist[0]) * 100);
   return `<span class="sx-mkt-row__tr k-t-fine ${pct >= 0 ? 'k-good is-up' : 'k-bad is-down'}">${pct >= 0 ? '▲' : '▼'}${Math.abs(pct)}%</span>`;
 }
-export function buildChart(history, average, gradientId, label) {
-  const hist = finiteHistory(history);
+export function buildChart(history, average, gradientId, label, extras = {}) {
+  const histPts = historySamples(history);
+  const hist = histPts.map((p) => p.mid);
   if (!hist.length) return '<p class="k-empty">Price history unavailable.</p>';
+  const forecastPts = forecastSamples(extras && extras.forecast);
+  const forecast = forecastPts.map((p) => p.mid);
   const W = 300, H = 74, pad = 5;
   const avg = Number.isFinite(Number(average)) ? Number(average) : hist[0];
-  const min = Math.min(...hist, avg), max = Math.max(...hist, avg), span = max - min || 1;
-  const x = i => pad + i / Math.max(1, hist.length - 1) * (W - 2 * pad);
-  const y = v => pad + (1 - (v - min) / span) * (H - 2 * pad);
-  const points = hist.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`);
-  const endX = x(hist.length - 1).toFixed(1), endY = y(hist.at(-1)).toFixed(1);
-  return `<svg class="sx-mkt-chart" data-chart="${escapeHtml(gradientId)}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(label || 'Price history')}: ${hist.length} samples, ${fmt(hist[0])} to ${fmt(hist.at(-1))} credits.">
+  const min = Math.min(...hist, avg, ...(forecast.length ? forecast : [hist[0]]));
+  const max = Math.max(...hist, avg, ...(forecast.length ? forecast : [hist[0]]));
+  const span = max - min || 1;
+  const mapper = chartXMapper(histPts, forecastPts, extras && extras.now, pad, W - 2 * pad);
+  const y = (v) => pad + (1 - (v - min) / span) * (H - 2 * pad);
+  const histCoords = histPts.map((p, i) => ({
+    x: mapper.at(p.t, i),
+    y: y(p.mid),
+  }));
+  const points = histCoords.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+  const endX = histCoords.at(-1).x.toFixed(1);
+  const endY = histCoords.at(-1).y.toFixed(1);
+  const histMids = hist.join(',');
+  let coneMarkup = '';
+  if (forecastPts.length) {
+    const join = histCoords.at(-1);
+    const forecastCoords = forecastPts.map((p, i) => ({
+      x: mapper.at(p.t, histPts.length + i),
+      y: y(p.mid),
+    }));
+    const coneCoords = [join, ...forecastCoords];
+    const conePoints = coneCoords.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+    const forecastLine = forecastCoords.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`);
+    const nowX = join.x.toFixed(1);
+    const lastX = coneCoords.at(-1).x.toFixed(1);
+    coneMarkup = `<line class="sx-mkt-now" data-now x1="${nowX}" y1="${pad}" x2="${nowX}" y2="${H - pad}"/>
+    <path class="sx-mkt-cone" data-forecast-band data-forecast-mids="${escapeHtml(forecast.join(','))}" d="M ${conePoints.join(' L ')} L ${lastX},${H - pad} L ${nowX},${H - pad} Z"/>
+    <path class="sx-mkt-forecast" data-forecast-line fill="none" stroke-width="1.4" stroke-dasharray="4 3" stroke-linejoin="round" d="M ${forecastLine.join(' L ')}"/>`;
+  }
+  const forecastNote = forecast.length
+    ? ` History ${hist.length} samples, ${fmt(hist[0])} to ${fmt(hist.at(-1))} credits. Forecast ${forecast.length} steps, ${fmt(forecast[0])} to ${fmt(forecast.at(-1))} credits.`
+    : `: ${hist.length} samples, ${fmt(hist[0])} to ${fmt(hist.at(-1))} credits.`;
+  return `<svg class="sx-mkt-chart" data-chart="${escapeHtml(gradientId)}" data-history-mids="${escapeHtml(histMids)}" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="${escapeHtml(label || 'Price history')}${forecastNote}">
     <line class="sx-mkt-avg" x1="${pad}" y1="${y(avg).toFixed(1)}" x2="${W-pad}" y2="${y(avg).toFixed(1)}" stroke-dasharray="2 4"/>
     <path class="of-chart-area" d="M ${pad},${H-pad} L ${points.join(' L ')} L ${endX},${H-pad} Z"/>
-    <path class="sx-mkt-line" d="M ${points.join(' L ')}" fill="none" stroke-width="1.6" stroke-linejoin="round"/>
+    <path class="sx-mkt-line" data-history-line d="M ${points.join(' L ')}" fill="none" stroke-width="1.6" stroke-linejoin="round"/>
+    ${coneMarkup}
     <circle cx="${endX}" cy="${endY}" r="3"/></svg>`;
 }
 export function marketRowHtml({ id, name, category = '', buy, sell, stock, held = 0, hist = [], demandWord = 'normal', driversSummary = '', selected = false, tracked = false }) {
@@ -106,7 +184,10 @@ export function presentSupplyChain({ producedBy = [], consumedBy = [], stationTy
       dock = 'This dock produces it.';
       dockRole = 'produce';
     } else {
-      dock = 'This dock does not buy it.';
+      // Legal goods trade at every station. "Does not buy" is a lie on the live route.
+      dock = consumePhrase
+        ? `This dock buys it. Better prices at ${consumePhrase}.`
+        : 'This dock buys it.';
       dockRole = 'neither';
     }
   }
@@ -125,9 +206,33 @@ export function supplyChainHtml(view) {
   return `<p class="k-sentence sx-mkt-chain" data-supply-chain data-dock-role="${escapeHtml(role)}">${flow}${dock}</p>`;
 }
 
-export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', hist = [], trackedGuidance = null, producedBy, consumedBy, stationType }) {
+function coneReadoutHtml({ regime, quoteAge }) {
+  const bits = [];
+  if (regime) bits.push(`<span data-regime>${escapeHtml(regime)}</span>`);
+  if (quoteAge === 'fresh' || quoteAge === 'stale') {
+    bits.push(`<span data-quote-age="${quoteAge}">${quoteAge} quote</span>`);
+  }
+  if (!bits.length) return '';
+  return `<p class="k-sentence sx-mkt-cone-read">${bits.join(' · ')}</p>`;
+}
+
+function saleLineHtml({ sell, saleQty }) {
+  const qty = Math.max(1, Math.floor(Number(saleQty) || 1));
+  const unit = Number(sell);
+  if (!Number.isFinite(unit)) return '';
+  const credits = Math.round(unit * qty);
+  return `<p class="k-sentence sx-mkt-sale" data-sale-line data-sale-qty="${qty}" data-sale-credits="${credits}">Contemplated sale · ${fmt(qty)} × ${fmt(unit)} cr = ${fmt(credits)} cr</p>`;
+}
+
+function chartKeyHtml(hasForecast) {
+  if (!hasForecast) return '';
+  return `<p class="k-t-fine sx-mkt-chart-key"><span data-history-key>Last ten minutes</span><span data-forecast-key>Forecast</span></p>`;
+}
+
+export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml, mode = 'buy', buy, sell, avg, demandWord = 'normal', driversSummary = '', hist = [], forecast = [], now, regime = '', quoteAge = '', saleQty = 1, trackedGuidance = null, producedBy, consumedBy, stationType }) {
   const legalText = ({ legal: 'Legal', restricted: 'Restricted', contraband: 'Contraband' })[legal] || String(legal);
   const chainHtml = supplyChainHtml(presentSupplyChain({ producedBy, consumedBy, stationType }));
+  const forecastPts = forecastSamples(forecast);
   // titleHtml is a trusted entityResolver fragment generated by the production controller, never user input.
   return (trackedGuidance ? `<p class="k-sentence k-signal sx-mkt-tracked" data-tracked-state="${escapeHtml(trackedGuidance.state)}"><b>Tracked contract</b> — ${escapeHtml(trackedGuidance.text)}</p>` : '') +
     `<p class="k-caps sx-mkt-cat-inline">${escapeHtml(category || 'goods')} · <span class="${legal === 'contraband' ? 'k-bad' : legal === 'restricted' ? 'k-signal' : ''}">${escapeHtml(legalText)}</span></p>
@@ -135,7 +240,10 @@ export function marketQuoteHtml({ id, name, category, legal = 'legal', titleHtml
     <div class="k-hero k-hero--hero k-hero--signal sx-mkt__hero"><div class="k-hero__n">${fmt(mode === 'sell' ? sell : buy)}</div><div class="k-hero__w">${mode === 'sell' ? 'station pays' : 'you pay'} · per unit</div></div>
     <p class="k-sentence" id="sx-market-driver-summary">${escapeHtml(driversSummary)}</p>
     ${chainHtml}
-    ${buildChart(hist, avg, `sxmkt-${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, name)}
+    ${coneReadoutHtml({ regime, quoteAge })}
+    ${buildChart(hist, avg, `sxmkt-${String(id).replace(/[^a-zA-Z0-9_-]/g, '_')}`, name, { forecast: forecastPts, now })}
+    ${chartKeyHtml(forecastPts.length > 0)}
+    ${saleLineHtml({ sell, saleQty })}
     <ul class="k-rows sx-mkt-stats">${statRow('Buy', fmt(buy) + ' cr', 'you pay')}${statRow('Sell', fmt(sell) + ' cr', 'station pays')}${statRow('Galactic average', fmt(avg) + ' cr')}${statRow('Demand', demandWord)}</ul>`;
 }
 export function marketReceiptRow(k, v, tone) {
