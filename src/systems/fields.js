@@ -68,6 +68,39 @@ function finite(value, fallback = 0) { return Number.isFinite(value) ? value : f
 function positive(value, fallback) { return Number.isFinite(value) && value > 0 ? value : fallback; }
 function nowOf(state) { return Number.isFinite(state.simTime) ? state.simTime : state.tick / 60; }
 
+function massStatePolarity(kind) {
+  if (kind === FIELD_KINDS.WELL) return 1;
+  if (kind === FIELD_KINDS.REPULSOR) return -1;
+  return 0;
+}
+
+/**
+ * Reserved-id spawns (tests, authored hulls) do not bump nextEntityId. A field emitter that
+ * then allocateEntityId()'s into an occupied slot replaces the player or the pinned target, so
+ * the Repulsor never lands on the body the Well just held. Skip occupied ids before every emitter
+ * spawn; this is not a second id allocator, it only keeps the existing counter honest.
+ */
+function advanceEntityIdPastOccupied(state) {
+  if (!state || !state.entities || typeof state.entities.has !== 'function') return;
+  if (Array.isArray(state.freeIds) && state.freeIds.length > 0) {
+    state.freeIds = state.freeIds.filter((id) => Number.isSafeInteger(id) && id > 0 && !state.entities.has(id));
+  }
+  let next = Number.isSafeInteger(state.nextEntityId) && state.nextEntityId > 0 ? state.nextEntityId : 1;
+  while (state.entities.has(next)) next += 1;
+  state.nextEntityId = next;
+}
+
+function cancelConsumeWithPartners(kernel, entity, runtime, statusId) {
+  const def = kernel && kernel.catalog && kernel.catalog.statuses && kernel.catalog.statuses.get(statusId);
+  if (!def || !kernel.statuses || typeof kernel.statuses.clear !== 'function') return;
+  for (const interaction of def.interactions || []) {
+    if (!interaction || interaction.consumeWith !== true) continue;
+    const other = interaction.with;
+    if (!other || other === statusId) continue;
+    kernel.statuses.clear(entity, runtime, other, 'polarity_cancel');
+  }
+}
+
 function npcConeRoleLabel(entity) {
   const data = entity && entity.data || {};
   const ai = data.ai || {};
@@ -346,6 +379,7 @@ export const fields = {
     if (wantEmitter) {
       const spawnEntity = this.helpers && this.helpers.spawnEntity;
       if (typeof spawnEntity === 'function') {
+        advanceEntityIdPastOccupied(s);
         const hull = positive(def.hull, 42);
         const rad = positive(def.emitterRadius, 6);
         emitter = spawnEntity({
@@ -610,6 +644,7 @@ export const fields = {
 
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     if (typeof spawnEntity !== 'function') return;
+    advanceEntityIdPastOccupied(state);
     const fieldId = `field_${kind}_${state.tick}_${player.id}`;
     const expireAt = now + def.durationS;
     const emitter = spawnEntity({
@@ -1089,6 +1124,23 @@ export const fields = {
     const strength = this._massStateAccel.ax * this._massStateAccel.ax
       + this._massStateAccel.az * this._massStateAccel.az;
     if (!(strength > 0)) return;
+    const previousField = this._massStateFields.get(entity);
+    if (previousField) {
+      const prevPol = massStatePolarity(previousField.kind);
+      const nextPol = massStatePolarity(field.kind);
+      if (prevPol && nextPol && prevPol !== nextPol) {
+        // Opposite polarity: the newer field is the counterplay verb. Strength does not
+        // veto it — a Well sitting on a body must not swallow a later Repulsor.
+        const prevCreated = finite(previousField.createdAt);
+        const nextCreated = finite(field.createdAt);
+        const newer = nextCreated > prevCreated
+          || (nextCreated === prevCreated && String(field.id) > String(previousField.id));
+        if (!newer) return;
+        this._massStateStrengths.set(entity, strength);
+        this._massStateFields.set(entity, field);
+        return;
+      }
+    }
     const previous = this._massStateStrengths.get(entity);
     if (previous != null && previous >= strength) return;
     this._massStateStrengths.set(entity, strength);
@@ -1101,6 +1153,7 @@ export const fields = {
     if (!kernel || !kernel.statuses) return;
     const runtime = ensureCombatant(state, entity, kernel.catalog);
     if (!runtime) return;
+    cancelConsumeWithPartners(kernel, entity, runtime, statusId);
     const tick = state.tick >>> 0;
     const active = runtime.statuses && runtime.statuses[statusId];
     if (active && active.expiresTick > tick + MASS_STATE_REFRESH_LEAD_TICKS) return;
