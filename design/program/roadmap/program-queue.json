@@ -7432,7 +7432,7 @@
       "priority": 128,
       "title": "Elastic whip as stored energy",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7452,7 +7452,9 @@
         "npm run check:baseline",
         "npm run check:massline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-029.01-REPORT.md"
+      ],
       "brief": "Stretch stores energy, release snaps the payload or the player; readable strain glow; break by load. DONE WHEN: A whip snap moves a light hostile ≥ 40 % of its cruise; the drill exists."
     },
     {
@@ -7461,7 +7463,7 @@
       "priority": 129,
       "title": "Frame coupler as the tow you can trust",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7481,7 +7483,9 @@
         "npm run check:baseline",
         "npm run check:massline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-029.02-REPORT.md"
+      ],
       "brief": "Rigid tow for the long haul; the coupled pair reads as one body in the physics and the camera. DONE WHEN: A 200-mass tow holds through a 180° turn at 60 % cruise without oscillation."
     },
     {
@@ -7511,7 +7515,7 @@
         "npm run check:massline"
       ],
       "receiptRefs": [],
-      "brief": "Tugs couple, scavengers tractor, patrols net; the player sees the verbs in the world before buying them. DONE WHEN: Each head is seen in ordinary traffic within 10 minutes at the reference site."
+      "brief": "Tugs couple, scavengers tractor, patrols net; the player sees the verbs in the world before buying them. DONE WHEN: Each head is seen in ordinary traffic within 10 minutes at the reference site. | 2026-09-10 REOPENED: the published sighting times (tractor 0.52s, whip 1.02s on seed 47) DO NOT REPRODUCE — both MISSING at 600s. Root cause: every live occupational job runs with tow:null; the world spawns the roles and never gives them anything to hold. Fix is in npcJobsRuntime.js. test/pq-029-03-npc-heads.test.mjs (committed 9404d2e21) is the measurement."
     },
     {
       "id": "PQ-030.00",
