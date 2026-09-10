@@ -64,7 +64,9 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'aceMemory', 'factionPresence', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
   'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
   'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
-  'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery', 'fields', 'planetRuntime', 'physics', 'combat',
+  'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
+  // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
+  'survivalArena', 'fields', 'planetRuntime', 'physics', 'combat',
   'combatOutcome', 'aftermathWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery',
   'custodyConsequences', 'masslineTelemetry', 'masslineThreats', 'masslineImpacts',
   'masslineSnares', 'masslineThrow', 'masslineImpactDamage', 'lootShards', 'terrainAnchors', 'jettisonImpulse',
