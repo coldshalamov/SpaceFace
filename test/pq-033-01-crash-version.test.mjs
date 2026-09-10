@@ -2,7 +2,7 @@
 // Pause paints the leftover title version string. Electron main starts
 // leftover crashReporter into userData/crashes. Updater is NOT DONE.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -176,9 +176,8 @@ function installMiniDom() {
     removeEventListener() {},
   };
   globalThis.requestAnimationFrame = (fn) => { fn(0); return 1; };
-  globalThis.fetch = async (url) => {
-    assert.equal(String(url), '/package.json');
-    return { ok: true, async json() { return leftoverPkg; } };
+  globalThis.fetch = async () => {
+    throw new Error('leftover version must not fetch /package.json');
   };
 
   return {
@@ -399,4 +398,48 @@ test('electron main starts leftover crashReporter into userData', async () => {
 
   console.log('PQ-033.01 crashReporter: started leftover userData/crashes version=' + leftoverVersion);
   console.log('PQ-033.01 updater: NOT DONE');
+});
+
+// Packaged builds serve build/web and never copy package.json there. The leftover
+// version now comes from bundled credits, so title/pause still paint SpaceFace v
+// when GET /package.json is 404.
+test('leftover version paints from bundled credits on the packaged route', async () => {
+  const { RELEASE_COPY_MAPPINGS } = await import('../scripts/lib/releasePackaging.mjs');
+  const deliversPackageJson = RELEASE_COPY_MAPPINGS.some(
+    (mapping) => mapping.source === 'package.json' || mapping.destination === 'package.json',
+  );
+  assert.equal(deliversPackageJson, false, 'packaged web root still does not ship package.json');
+  assert.equal(
+    existsSync(path.join(ROOT, 'build', 'web', 'package.json')),
+    false,
+    'the packaged web root still carries no package.json',
+  );
+  assert.equal(CREDITS.version, leftoverVersion, 'bundled credits carry the leftover package version');
+
+  const dom = installMiniDom();
+  try {
+    let fetched = 0;
+    globalThis.fetch = async () => {
+      fetched += 1;
+      return { ok: false, status: 404, async json() { throw new Error('404 Not Found'); } };
+    };
+
+    const root = globalThis.document.createElement('div');
+    const ctx = {
+      state: { mode: 'flight', missions: { active: [] }, nav: {}, save: {}, meta: {}, ui: {}, run: { phase: 'inactive' } },
+      bus: { emit() {}, on() { return () => {}; } },
+      screenManager: { pushScreen() {}, popScreen() {}, hasScreen() { return true; } },
+    };
+    pauseScreen.mount(root, ctx);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const versionNode = root.querySelector('[data-role="version"]');
+    assert.ok(versionNode, 'pause still paints the leftover version fine print');
+    assert.equal(versionNode.textContent, leftoverLabel);
+    assert.equal(fetched, 0, 'packaged pause does not fetch /package.json');
+    console.log('PQ-033.01 packaged route: pause version = "' + versionNode.textContent + '"');
+  } finally {
+    dom.restore();
+  }
 });

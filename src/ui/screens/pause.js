@@ -16,6 +16,7 @@ import { MAP_FOCUS, mapHandoffAction, openGalaxyMap } from '../mapAuthority.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { requestQuit } from '../quitGame.js';
 import { IS_DEV } from '../../core/devMode.js';
+import { CREDITS } from '../../data/credits.js';
 import { leftoverVersionLabel, paintLeftoverVersion } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
 
@@ -446,7 +447,7 @@ export const pauseScreen = {
 
     const version = el('p', 'k-fine');
     version.dataset.role = 'version';
-    const versionText = el('span', '', leftoverVersionLabel(null));
+    const versionText = el('span', '', leftoverVersionLabel(CREDITS));
     version.appendChild(versionText);
     rootEl.appendChild(version);
 

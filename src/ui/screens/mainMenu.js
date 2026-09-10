@@ -10,6 +10,7 @@ import { createTitleFrame, TITLE_PLATE_SRC } from '../views/menuFrames.js';
 // hull the old live preview framed, pre-rendered at cutscene quality. A photograph that never
 // changes should not own a render loop.
 
+import { CREDITS } from '../../data/credits.js';
 import { requestCodexTab } from './codex.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { requestQuit } from '../quitGame.js';
@@ -182,7 +183,7 @@ function objectiveSummaryText(meta) {
   return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
 }
 
-/** Leftover version payload is package.json `{ version }`. Title and pause share this string. */
+/** Leftover version payload is the bundled credits `{ version }`. Title and pause share this string. */
 export function leftoverVersionToken(payload) {
   if (!payload || typeof payload.version !== 'string') return '';
   return payload.version.trim();
@@ -203,10 +204,7 @@ export function applyLeftoverVersionText(target, payload) {
 }
 
 export function loadLeftoverVersionPayload() {
-  if (typeof fetch !== 'function') return Promise.resolve(null);
-  return fetch('/package.json')
-    .then((response) => (response && response.ok ? response.json() : null))
-    .catch(() => null);
+  return Promise.resolve(CREDITS);
 }
 
 export function paintLeftoverVersion(target, stillCurrent) {
@@ -275,7 +273,7 @@ export const mainMenuScreen = {
     // lives in its own span so _loadVersion can rewrite it without touching the word.
     const version = el('div', 'k-fine');
     version.dataset.role = 'version';
-    const versionText = el('span', '', 'SpaceFace');
+    const versionText = el('span', '', leftoverVersionLabel(CREDITS));
     version.appendChild(versionText);
     version.appendChild(el('span', '', ' · '));
     const bCredits = el('button', 'k-word k-word--fine', 'Credits');
@@ -422,7 +420,7 @@ export const mainMenuScreen = {
     for (const li of refs.list.children) li.classList.add('k-in', 'k-in--stamp');
   },
 
-  // Version in fine print. The leftover payload is package.json; pause paints the same string.
+  // Version in fine print. The leftover payload is bundled credits; pause paints the same string.
   _loadVersion() {
     if (!refs) return;
     const target = refs.versionText;
