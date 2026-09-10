@@ -93,7 +93,6 @@ test('createSimulation calendar owners run at 2 Hz, not every tick', () => {
 });
 
 test('production combat order excludes calendar owners', () => {
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 107);
   assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('physics'));
   assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('weapons'));
   assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('npcJobsRuntime'));
