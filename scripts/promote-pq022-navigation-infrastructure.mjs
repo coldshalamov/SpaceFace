@@ -1,13 +1,17 @@
 #!/usr/bin/env node
 
-// Fail-closed three-asset promotion for PQ-022.billboard-buoy-reauthor. Candidate and review
-// evidence remain immutable, release generation happens in a disposable root, and all three
-// sources, Blender files, releases, and both manifests publish as one guarded transaction.
+// Fail-closed buoy-repair promotion for the reopened PQ-022.billboard-buoy-reauthor unit.
+// The 2026-09-10 causal review returned ONLY the navigation buoy; the station billboard and the
+// memorial array are accepted and must not be touched. This transaction therefore publishes the
+// exact buoy set (source, authored Blend, release, both manifests) as one guarded atomic write,
+// hash-guards the two accepted assets' live files, and re-proves their rebuilt candidates remain
+// BIN-payload identical to what is live before anything is published.
 
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
+import { execFileSync } from 'node:child_process';
 import {
   dirname,
   isAbsolute,
@@ -28,12 +32,17 @@ import {
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CONTRACT = PQ022_NAVIGATION_INFRASTRUCTURE_CONTRACT;
 const APPLY = process.argv.includes('--apply');
-const OWNED_IDS = Object.freeze(CONTRACT.assets.map((asset) => asset.partId));
-const NEW_ASSET_ID = 'place_memorial_array';
-const INSERT_AFTER_ID = 'place_station_billboard';
-const NEW_RUNTIME_FILE = 'places/place_memorial_array.glb';
-const INSERT_AFTER_RUNTIME_FILE = 'places/place_station_billboard.glb';
-const BUOY_RUNTIME_FILE = 'places/place_nav_buoy.glb';
+const PUBLISH_KEYS = Object.freeze([...CONTRACT.promotion.publishAssetKeys]);
+const GUARD_KEYS = Object.freeze([...CONTRACT.promotion.guardAssetKeys]);
+const PUBLISH_IDS = Object.freeze(PUBLISH_KEYS.map((key) => contractAsset(key).partId));
+const OWNED_IDS = PUBLISH_IDS;
+const PUBLISH_RUNTIME_FILE = 'places/place_nav_buoy.glb';
+
+function contractAsset(key) {
+  const asset = CONTRACT.assets.find((entry) => entry.key === key);
+  if (!asset) throw new Error(`unknown navigation-infrastructure asset key: ${key}`);
+  return asset;
+}
 
 export function sha256(bytes) {
   return createHash('sha256').update(bytes).digest('hex');
@@ -209,6 +218,18 @@ export function promoteNavigationInfrastructureSourceBytes(candidateBytes, candi
   };
 }
 
+export function assertGuardCandidateBinPayloadIdentity({ candidateBytes, referenceBytes, asset }) {
+  const candidate = parseGlbDocument(candidateBytes, `${asset.partId} guard candidate`);
+  const reference = parseGlbDocument(referenceBytes, `${asset.partId} promoted-era candidate`);
+  if (!candidate.binaryPayload.equals(reference.binaryPayload)) {
+    throw new Error(
+      `${asset.partId}: guard candidate BIN payload diverged from the promoted-era candidate content; `
+      + `this unit must not modify accepted billboard/memorial candidate geometry`,
+    );
+  }
+  return { binaryPayloadSha256: sha256(reference.binaryPayload), binaryPayloadBytes: reference.binaryPayload.length };
+}
+
 function assertExactAssetPayloads(byKey, label) {
   if (!byKey || typeof byKey !== 'object') throw new TypeError(`${label} requires an asset map`);
   const keys = Object.keys(byKey).sort();
@@ -245,7 +266,7 @@ function partsRow(asset, promoted, facts) {
     tris: facts.lodTriangles.LOD0,
     bytes: promoted.bytes.length,
     textureSize: facts.textureSize,
-    note: `PQ-022 navigation-infrastructure material-truth V2 — admitted candidate ${promoted.candidateSha256.slice(0, 12)}, promoted source ${promoted.sourceSha256.slice(0, 12)}; LOD0/1/2 ${facts.lodTriangles.LOD0}/${facts.lodTriangles.LOD1}/${facts.lodTriangles.LOD2} render tris across five semantic PBR groups. Browser/Electron route and performance remain separate gates.`,
+    note: `PQ-022 navigation-infrastructure material-truth V2 buoy repair — admitted candidate ${promoted.candidateSha256.slice(0, 12)}, promoted source ${promoted.sourceSha256.slice(0, 12)}; LOD0/1/2 ${facts.lodTriangles.LOD0}/${facts.lodTriangles.LOD1}/${facts.lodTriangles.LOD2} render tris across five semantic PBR groups. Billboard and memorial rows are accepted and untouched by this transaction. Browser/Electron route and performance remain separate gates.`,
     hooks: [],
     sockets: ['SOCKET_Structure_Core'],
     mount: 'origin',
@@ -263,24 +284,6 @@ function replaceExistingRow(rows, id, row, label) {
   rows[indices[0]] = row;
 }
 
-function insertNewRowAfter(rows, afterId, row, label) {
-  if (rows.some((entry) => entry?.id === row.id)) throw new Error(`${label} already contains ${row.id}`);
-  const anchors = rows.map((entry, index) => (entry?.id === afterId ? index : -1)).filter((index) => index >= 0);
-  if (anchors.length !== 1) throw new Error(`${label} must contain exactly one insertion anchor ${afterId}`);
-  rows.splice(anchors[0] + 1, 0, row);
-}
-
-function insertNewValueAfter(values, afterValue, value, label) {
-  if (!Array.isArray(values)) throw new TypeError(`${label} requires an array`);
-  if (values.filter((entry) => entry === value).length !== 0) {
-    throw new Error(`${label} already contains ${value}`);
-  }
-  const anchors = values.map((entry, index) => (entry === afterValue ? index : -1))
-    .filter((index) => index >= 0);
-  if (anchors.length !== 1) throw new Error(`${label} must contain exactly one insertion anchor ${afterValue}`);
-  values.splice(anchors[0] + 1, 0, value);
-}
-
 export function buildNavigationInfrastructurePartsManifest(partsManifest, {
   promotedByKey,
   factsByKey,
@@ -291,50 +294,14 @@ export function buildNavigationInfrastructurePartsManifest(partsManifest, {
   assertExactAssetPayloads(promotedByKey, 'parts-manifest promotion');
   assertExactAssetPayloads(factsByKey, 'parts-manifest facts');
   const next = structuredClone(partsManifest);
-  for (const asset of CONTRACT.assets) {
-    const promoted = promotedByKey[asset.key];
-    const facts = factsByKey[asset.key];
+  for (const key of PUBLISH_KEYS) {
+    const asset = contractAsset(key);
+    const promoted = promotedByKey[key];
+    const facts = factsByKey[key];
     assertMeasuredAssetFacts(asset, promoted, facts);
     const row = partsRow(asset, promoted, facts);
-    if (asset.partId === NEW_ASSET_ID) {
-      insertNewRowAfter(next.parts, INSERT_AFTER_ID, row, 'parts manifest');
-    } else {
-      replaceExistingRow(next.parts, asset.partId, row, 'parts manifest');
-    }
+    replaceExistingRow(next.parts, asset.partId, row, 'parts manifest');
   }
-  insertNewValueAfter(
-    next.runtimeSlots?.place,
-    INSERT_AFTER_RUNTIME_FILE,
-    NEW_RUNTIME_FILE,
-    'parts manifest runtimeSlots.place',
-  );
-  return next;
-}
-
-function placeholderReleaseRow(asset) {
-  return {
-    id: asset.partId,
-    kind: 'part:places',
-    source: asset.paths.liveSource,
-    release: asset.paths.liveRelease,
-    sourceSha256: '0'.repeat(64),
-    releaseSha256: '0'.repeat(64),
-    sourceBytes: 0,
-    releaseBytes: 0,
-    textures: 0,
-    ktx2Textures: 0,
-    meshoptBufferViews: 0,
-    contractNodeCount: 0,
-  };
-}
-
-export function seedNavigationInfrastructureReleaseManifest(releaseManifest) {
-  if (!releaseManifest || !Array.isArray(releaseManifest.assets)) {
-    throw new TypeError('navigation-infrastructure release seed requires an assets manifest');
-  }
-  const next = structuredClone(releaseManifest);
-  const memorial = CONTRACT.assets.find((asset) => asset.partId === NEW_ASSET_ID);
-  insertNewRowAfter(next.assets, INSERT_AFTER_ID, placeholderReleaseRow(memorial), 'release manifest');
   return next;
 }
 
@@ -344,26 +311,12 @@ function exactSingleRow(rows, id, label, failures) {
   return matches[0] || null;
 }
 
-function expectedIdsAfterInsertion(beforeIds) {
-  const next = [...beforeIds];
-  const anchor = next.indexOf(INSERT_AFTER_ID);
-  if (anchor < 0 || next.includes(NEW_ASSET_ID)) return null;
-  next.splice(anchor + 1, 0, NEW_ASSET_ID);
-  return next;
-}
-
-function untouchedRowsEqual(before, next, collection, { normalizeRuntimePlace = false } = {}) {
-  const owned = new Set(OWNED_IDS);
-  const beforeRows = (before[collection] || []).filter((row) => !owned.has(row?.id));
-  const nextRows = (next[collection] || []).filter((row) => !owned.has(row?.id));
+function untouchedRowsEqual(before, next, collection) {
+  const published = new Set(OWNED_IDS);
+  const beforeRows = (before[collection] || []).filter((row) => !published.has(row?.id));
+  const nextRows = (next[collection] || []).filter((row) => !published.has(row?.id));
   const beforeShell = structuredClone({ ...before, [collection]: [] });
   const nextShell = structuredClone({ ...next, [collection]: [] });
-  if (normalizeRuntimePlace) {
-    if (!Array.isArray(beforeShell.runtimeSlots?.place)
-        || !Array.isArray(nextShell.runtimeSlots?.place)) return false;
-    beforeShell.runtimeSlots.place = [];
-    nextShell.runtimeSlots.place = [];
-  }
   return jsonEqual(beforeRows, nextRows) && jsonEqual(beforeShell, nextShell);
 }
 
@@ -381,46 +334,32 @@ export function assessNavigationInfrastructureManifestPlan({
   }
   const beforePartIds = beforeParts.parts.map((row) => row?.id);
   const beforeReleaseIds = beforeRelease.assets.map((row) => row?.id);
-  const expectedPartIds = expectedIdsAfterInsertion(beforePartIds);
-  const expectedReleaseIds = expectedIdsAfterInsertion(beforeReleaseIds);
   const nextPartIds = nextParts.parts.map((row) => row?.id);
   const nextReleaseIds = nextRelease.assets.map((row) => row?.id);
-  const expectedRuntimePlace = Array.isArray(beforeParts.runtimeSlots?.place)
-    ? [...beforeParts.runtimeSlots.place]
-    : null;
-  if (expectedRuntimePlace) {
-    const anchor = expectedRuntimePlace.indexOf(INSERT_AFTER_RUNTIME_FILE);
-    if (anchor < 0 || expectedRuntimePlace.includes(NEW_RUNTIME_FILE)) {
-      expectedRuntimePlace.splice(0);
-    } else {
-      expectedRuntimePlace.splice(anchor + 1, 0, NEW_RUNTIME_FILE);
-    }
+  // Buoy-only transaction: no insertion or reorder anywhere; only the published row may change,
+  // and the accepted billboard/memorial rows plus every unrelated row must survive untouched.
+  if (new Set(nextPartIds).size !== nextPartIds.length
+      || !jsonEqual(nextPartIds, beforePartIds)
+      || !untouchedRowsEqual(beforeParts, nextParts, 'parts')) {
+    failures.push('parts manifest changed outside the exact buoy-row replacement transaction');
   }
-  if (!expectedPartIds
-      || new Set(nextPartIds).size !== nextPartIds.length
-      || !jsonEqual(nextPartIds, expectedPartIds)
-      || !expectedRuntimePlace?.length
-      || !jsonEqual(nextParts.runtimeSlots?.place, expectedRuntimePlace)
-      || nextParts.runtimeSlots.place.filter((entry) => entry === INSERT_AFTER_RUNTIME_FILE).length !== 1
-      || nextParts.runtimeSlots.place.filter((entry) => entry === NEW_RUNTIME_FILE).length !== 1
-      || nextParts.runtimeSlots.place.filter((entry) => entry === BUOY_RUNTIME_FILE).length !== 1
-      || !untouchedRowsEqual(beforeParts, nextParts, 'parts', { normalizeRuntimePlace: true })) {
-    failures.push('parts manifest insertion/order/untouched rows changed outside the exact three-asset transaction');
-  }
-  if (!expectedReleaseIds
-      || new Set(nextReleaseIds).size !== nextReleaseIds.length
-      || !jsonEqual(nextReleaseIds, expectedReleaseIds)
+  if (new Set(nextReleaseIds).size !== nextReleaseIds.length
+      || !jsonEqual(nextReleaseIds, beforeReleaseIds)
       || !untouchedRowsEqual(beforeRelease, nextRelease, 'assets')) {
-    failures.push('release manifest insertion/order/untouched rows changed outside the exact three-asset transaction');
+    failures.push('release manifest changed outside the exact buoy-row replacement transaction');
+  }
+  if (!jsonEqual(nextParts.runtimeSlots?.place || [], beforeParts.runtimeSlots?.place || [])) {
+    failures.push('runtimeSlots.place must remain byte-identical in a buoy-row transaction');
   }
   const partsRows = {};
   const releaseRows = {};
-  for (const asset of CONTRACT.assets) {
-    const expected = expectedByKey?.[asset.key];
+  for (const key of PUBLISH_KEYS) {
+    const asset = contractAsset(key);
+    const expected = expectedByKey?.[key];
     const part = exactSingleRow(nextParts.parts, asset.partId, 'parts manifest', failures);
     const release = exactSingleRow(nextRelease.assets, asset.partId, 'release manifest', failures);
-    partsRows[asset.key] = part;
-    releaseRows[asset.key] = release;
+    partsRows[key] = part;
+    releaseRows[key] = release;
     if (!part
         || part.category !== 'places'
         || part.priority !== 'P1'
@@ -539,12 +478,13 @@ export function assessNavigationInfrastructurePromotionReview({ review, admissio
       || !jsonEqual(review?.buildReport, facts?.buildReport)) {
     failures.push('promotion review build/render identities are stale');
   }
+  const publishAssets = PUBLISH_KEYS.map((key) => contractAsset(key));
   const rows = Array.isArray(review?.assets) ? review.assets : [];
-  if (rows.length !== CONTRACT.assets.length
+  if (rows.length !== publishAssets.length
       || !jsonEqual(rows.map((row) => row?.partId), OWNED_IDS)) {
-    failures.push('promotion review must cover the exact ordered three-asset set');
+    failures.push('promotion review must cover the exact ordered published-asset set');
   }
-  for (const asset of CONTRACT.assets) {
+  for (const asset of publishAssets) {
     const admitted = facts?.assets?.[asset.key];
     const row = rows.find((entry) => entry?.partId === asset.partId);
     const expectedViews = asset.renderViews.map((path) => {
@@ -560,6 +500,24 @@ export function assessNavigationInfrastructurePromotionReview({ review, admissio
         || !jsonEqual(row.gates, { G1: 'KEEP', G2: 'KEEP', G4: 'KEEP', emissive: 'KEEP' })
         || row.decision !== 'KEEP') {
       failures.push(`${asset.partId} review does not bind exact evidence to KEEP`);
+    }
+  }
+  const guardAssets = GUARD_KEYS.map((key) => contractAsset(key));
+  const guardRows = Array.isArray(review?.guardAssets) ? review.guardAssets : [];
+  if (guardRows.length !== guardAssets.length
+      || !jsonEqual(guardRows.map((row) => row?.partId), guardAssets.map((asset) => asset.partId))) {
+    failures.push('promotion review must re-affirm the exact ordered accepted-asset guard set');
+  }
+  for (const asset of guardAssets) {
+    const admitted = facts?.assets?.[asset.key];
+    const row = guardRows.find((entry) => entry?.partId === asset.partId);
+    if (!row
+        || row.candidateId !== asset.candidateId
+        || !jsonEqual(row.candidate, admitted?.candidate)
+        || !jsonEqual(row.blender, admitted?.blender)
+        || row.decision !== 'UNCHANGED_KEEP'
+        || row.candidateBinUnchangedReproven !== true) {
+      failures.push(`${asset.partId} guard re-affirmation is incomplete`);
     }
   }
   if (!jsonEqual(review?.claims, { routeEvidence: false, performanceEvidence: false })) {
@@ -597,10 +555,10 @@ function assertVerifiedDisposableRoot(parent, root) {
 function builtEntryMap(build) {
   const entries = Array.isArray(build?.built) ? build.built : [];
   const ids = entries.map((entry) => entry?.id);
-  if (entries.length !== CONTRACT.assets.length
-      || new Set(ids).size !== CONTRACT.assets.length
+  if (entries.length !== PUBLISH_KEYS.length
+      || new Set(ids).size !== PUBLISH_KEYS.length
       || !OWNED_IDS.every((id) => ids.includes(id))) {
-    throw new Error('temporary release build omitted or duplicated an owned asset');
+    throw new Error('temporary release build omitted or duplicated a published asset');
   }
   return new Map(entries.map((entry) => [entry.id, entry]));
 }
@@ -624,14 +582,16 @@ export async function prepareNavigationInfrastructureRelease({
   );
   try {
     const writes = [];
-    for (const asset of CONTRACT.assets) {
+    for (const key of PUBLISH_KEYS) {
+      const asset = contractAsset(key);
+      const promoted = promotedByKey[key];
       const sourcePath = resolveUnder(tempRoot, asset.paths.liveSource, `${asset.partId} temporary source`);
       const releasePath = resolveUnder(tempRoot, asset.paths.liveRelease, `${asset.partId} temporary release`);
       await Promise.all([
         mkdir(dirname(sourcePath), { recursive: true }),
         mkdir(dirname(releasePath), { recursive: true }),
       ]);
-      writes.push(writeFile(sourcePath, promotedByKey[asset.key].bytes));
+      writes.push(writeFile(sourcePath, promoted.bytes));
     }
     const partsPath = resolveUnder(tempRoot, CONTRACT.paths.partsManifest, 'temporary parts manifest');
     const releaseManifestPath = resolveUnder(tempRoot, CONTRACT.paths.releaseManifest, 'temporary release manifest');
@@ -647,8 +607,9 @@ export async function prepareNavigationInfrastructureRelease({
     const built = builtEntryMap(build);
     const releases = {};
     const expectedByKey = {};
-    for (const asset of CONTRACT.assets) {
-      const promoted = promotedByKey[asset.key];
+    for (const key of PUBLISH_KEYS) {
+      const asset = contractAsset(key);
+      const promoted = promotedByKey[key];
       const entry = built.get(asset.partId);
       const stagedSource = identityAtRoot(tempRoot, asset.paths.liveSource);
       const stagedRelease = identityAtRoot(tempRoot, asset.paths.liveRelease);
@@ -659,13 +620,13 @@ export async function prepareNavigationInfrastructureRelease({
           || entry.releaseBytes !== stagedRelease.bytes) {
         throw new Error(`${asset.partId}: temporary release identities do not match promoted source`);
       }
-      releases[asset.key] = stagedRelease;
-      expectedByKey[asset.key] = {
+      releases[key] = stagedRelease;
+      expectedByKey[key] = {
         sourceSha256: promoted.sourceSha256,
         sourceBytes: promoted.bytes.length,
         releaseSha256: stagedRelease.sha256,
         releaseBytes: stagedRelease.bytes,
-        lodTriangles: factsByKey[asset.key].lodTriangles,
+        lodTriangles: factsByKey[key].lodTriangles,
       };
     }
     const stagedParts = identityAtRoot(tempRoot, CONTRACT.paths.partsManifest);
@@ -719,10 +680,11 @@ export function buildNavigationInfrastructurePublicationTransaction({
   assertExactAssetPayloads(promotedByKey, 'publication promoted set');
   assertExactAssetPayloads(admittedBlendByKey, 'publication Blender set');
   const files = [];
-  for (const asset of CONTRACT.assets) {
-    const promoted = promotedByKey[asset.key];
-    const blend = admittedBlendByKey[asset.key];
-    const assetBaseline = baseline.assets[asset.key];
+  for (const key of PUBLISH_KEYS) {
+    const asset = contractAsset(key);
+    const promoted = promotedByKey[key];
+    const blend = admittedBlendByKey[key];
+    const assetBaseline = baseline.assets[key];
     files.push({
       path: resolveUnder(rootDir, asset.paths.liveSource),
       bytes: promoted.bytes,
@@ -753,19 +715,18 @@ export function buildNavigationInfrastructurePublicationTransaction({
           throw new Error(`staged parts manifest lost exact ${id} membership`);
         }
       }
-      if ((parsed.runtimeSlots?.place || []).filter((entry) => entry === NEW_RUNTIME_FILE).length !== 1
-          || (parsed.runtimeSlots?.place || []).filter((entry) => entry === INSERT_AFTER_RUNTIME_FILE).length !== 1
-          || (parsed.runtimeSlots?.place || []).filter((entry) => entry === BUOY_RUNTIME_FILE).length !== 1) {
-        throw new Error('staged parts manifest lost exact billboard/memorial/buoy runtime-slot membership');
+      if ((parsed.runtimeSlots?.place || []).filter((entry) => entry === PUBLISH_RUNTIME_FILE).length !== 1) {
+        throw new Error('staged parts manifest lost exact buoy runtime-slot membership');
       }
     }),
   });
-  for (const asset of CONTRACT.assets) {
-    const release = prepared.releases[asset.key];
+  for (const key of PUBLISH_KEYS) {
+    const asset = contractAsset(key);
+    const release = prepared.releases[key];
     files.push({
       path: resolveUnder(rootDir, asset.paths.liveRelease),
       bytes: release.contents,
-      expectedCurrentSha256: baseline.assets[asset.key].release?.sha256 ?? null,
+      expectedCurrentSha256: baseline.assets[key].release?.sha256 ?? null,
       validate: stagedHashValidator(release.sha256, `${asset.partId} release`, (bytes) => {
         parseGlbDocument(bytes, `${asset.partId} staged release`);
       }),
@@ -784,6 +745,20 @@ export function buildNavigationInfrastructurePublicationTransaction({
       }
     }),
   });
+  // Accepted-asset guards: the billboard and memorial live files are hash-pinned; any drift
+  // aborts the transaction instead of overwriting accepted art.
+  const guardLiveFiles = [];
+  for (const key of GUARD_KEYS) {
+    const asset = contractAsset(key);
+    const assetBaseline = baseline.assets[key];
+    for (const [kind, identity] of [['source', assetBaseline.source], ['release', assetBaseline.release], ['blender', assetBaseline.blender]]) {
+      if (!identity) throw new Error(`${asset.partId} accepted live ${kind} is missing from the baseline snapshot`);
+      guardLiveFiles.push({
+        path: resolveUnder(rootDir, identity.path, 'accepted-asset guard'),
+        expectedCurrentSha256: identity.sha256,
+      });
+    }
+  }
   const guards = [
     ...requiredAdmissionIdentities(admission),
     publicIdentity(reviewIdentity),
@@ -792,17 +767,20 @@ export function buildNavigationInfrastructurePublicationTransaction({
     expectedCurrentSha256: identity.sha256,
   }));
   const expectedPaths = [
-    ...CONTRACT.assets.flatMap((asset) => [asset.paths.liveSource, asset.paths.liveBlend]),
+    ...PUBLISH_KEYS.flatMap((key) => {
+      const asset = contractAsset(key);
+      return [asset.paths.liveSource, asset.paths.liveBlend];
+    }),
     CONTRACT.paths.partsManifest,
-    ...CONTRACT.assets.map((asset) => asset.paths.liveRelease),
+    ...PUBLISH_KEYS.map((key) => contractAsset(key).paths.liveRelease),
     CONTRACT.paths.releaseManifest,
   ].map((entry) => resolveUnder(rootDir, entry));
-  if (files.length !== 11
+  if (files.length !== 2 + PUBLISH_KEYS.length * 3
       || !jsonEqual(files.map((file) => file.path), expectedPaths)
-      || new Set(files.map((file) => file.path.toLowerCase())).size !== 11) {
-    throw new Error('navigation-infrastructure promotion must publish the exact 11-file three-asset set');
+      || new Set(files.map((file) => file.path.toLowerCase())).size !== files.length) {
+    throw new Error(`navigation-infrastructure promotion must publish the exact ${PUBLISH_KEYS.length * 3 + 2}-file buoy-repair set`);
   }
-  return { files, guards };
+  return { files, guards: [...guards, ...guardLiveFiles] };
 }
 
 function readBaselineSnapshot(rootDir, admission) {
@@ -859,14 +837,38 @@ async function main() {
   const factsByKey = {};
   for (const asset of CONTRACT.assets) {
     const facts = admission.facts.assets[asset.key];
-    const candidate = admitted.get(asset.paths.candidate);
-    promotedByKey[asset.key] = promoteNavigationInfrastructureSourceBytes(
-      candidate.contents,
-      facts.candidate.sha256,
-      asset,
-    );
+    if (PUBLISH_KEYS.includes(asset.key)) {
+      const candidate = admitted.get(asset.paths.candidate);
+      promotedByKey[asset.key] = promoteNavigationInfrastructureSourceBytes(
+        candidate.contents,
+        facts.candidate.sha256,
+        asset,
+      );
+      factsByKey[asset.key] = facts.glb;
+    } else {
+      // Accepted asset: re-prove the rebuilt candidate still carries the exact promoted-era BIN
+      // payload (the committed candidate content) before pinning its live files into the guards.
+      // The live billboard may legitimately be a later accepted re-author; hash guards cover it.
+      const headCandidateBytes = execFileSync('git', [
+        'show', `HEAD:${asset.paths.candidate}`,
+      ], { cwd: ROOT, maxBuffer: 64 * 1024 * 1024 });
+      const guardProof = assertGuardCandidateBinPayloadIdentity({
+        candidateBytes: admitted.get(asset.paths.candidate).contents,
+        referenceBytes: headCandidateBytes,
+        asset,
+      });
+      promotedByKey[asset.key] = {
+        asset,
+        bytes: baseline.assets[asset.key].source.contents,
+        candidateSha256: facts.candidate.sha256,
+        sourceSha256: baseline.assets[asset.key].source.sha256,
+        binaryPayloadSha256: guardProof.binaryPayloadSha256,
+        binaryPayloadBytes: guardProof.binaryPayloadBytes,
+        guardOnly: true,
+      };
+      factsByKey[asset.key] = facts.glb;
+    }
     admittedBlendByKey[asset.key] = admitted.get(asset.paths.blender);
-    factsByKey[asset.key] = facts.glb;
   }
   const beforeParts = JSON.parse(baseline.partsManifest.contents.toString('utf8'));
   const beforeRelease = JSON.parse(baseline.releaseManifest.contents.toString('utf8'));
@@ -874,7 +876,7 @@ async function main() {
     promotedByKey,
     factsByKey,
   });
-  const seededRelease = seedNavigationInfrastructureReleaseManifest(beforeRelease);
+  const seededRelease = beforeRelease;
   const nextPartsBytes = jsonBytes(nextParts);
   const prepared = await prepareNavigationInfrastructureRelease({
     promotedByKey,
@@ -899,18 +901,26 @@ async function main() {
     applied: false,
     dispatchUnit: CONTRACT.dispatchUnit,
     candidateSetId: CONTRACT.candidateSetId,
+    publishedAssets: OWNED_IDS,
+    guardedAssets: GUARD_KEYS.map((key) => contractAsset(key).partId),
     review: publicIdentity(review.identity),
     assets: CONTRACT.assets.map((asset) => ({
       partId: asset.partId,
+      role: PUBLISH_KEYS.includes(asset.key) ? 'published' : 'guarded_unchanged',
       candidate: admission.facts.assets[asset.key].candidate,
-      promotedSource: {
+      promotedSource: PUBLISH_KEYS.includes(asset.key) ? {
         path: asset.paths.liveSource,
         sha256: promotedByKey[asset.key].sourceSha256,
         bytes: promotedByKey[asset.key].bytes.length,
         binaryPayloadSha256: promotedByKey[asset.key].binaryPayloadSha256,
+      } : {
+        path: asset.paths.liveSource,
+        sha256: baseline.assets[asset.key].source.sha256,
+        bytes: baseline.assets[asset.key].source.bytes,
+        binaryPayloadSha256: promotedByKey[asset.key].binaryPayloadSha256,
       },
       blender: publicIdentity(admittedBlendByKey[asset.key]),
-      release: publicIdentity(prepared.releases[asset.key]),
+      release: publicIdentity(prepared.releases[asset.key] ?? baseline.assets[asset.key].release),
       lodTriangles: factsByKey[asset.key].lodTriangles,
     })),
     publicationFiles: transaction.files.map((file) => file.path),
@@ -930,7 +940,7 @@ async function main() {
   console.log(JSON.stringify({
     ...planned,
     applied: true,
-    next: 'run focused live asset checks; route H1/review/performance remain separate exact units',
+    next: 'run focused live asset checks; route ordinary/diagnostic-close captures and causal re-review remain separate exact units',
   }, null, 2));
 }
 

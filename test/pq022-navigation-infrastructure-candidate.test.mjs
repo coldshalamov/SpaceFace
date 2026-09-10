@@ -233,7 +233,16 @@ test('navigation-infrastructure contract is an exact three-asset split with 27 r
   assert.equal(CONTRACT.assets.reduce((sum, asset) => sum + asset.renderViews.length, 0), 27);
   assert.equal(CONTRACT.assets.every((asset) => asset.materials.length === 5), true);
   assert.equal(CONTRACT.assets.every((asset) => asset.collision.triangleCount === 0), true);
-  assert.equal(CONTRACT.assets.find((asset) => asset.partId === 'place_memorial_array').baseline.sourceSha256, null);
+  // Buoy-repair epoch: every asset pins an accepted/known live identity; only the buoy publishes.
+  assert.equal(CONTRACT.assets.every((asset) => /^[0-9a-f]{64}$/.test(asset.baseline.sourceSha256 || '')), true);
+  assert.deepEqual([...CONTRACT.promotion.publishAssetKeys], ['buoy']);
+  assert.deepEqual([...CONTRACT.promotion.guardAssetKeys], ['billboard', 'memorial']);
+  assert.equal(CONTRACT.assets.find((asset) => asset.partId === 'place_nav_buoy').requireLodNovelty, true);
+  assert.equal(
+    CONTRACT.assets.filter((asset) => asset.requireLodNovelty).length,
+    1,
+    'only the buoy requires novel LOD totals in the repair epoch',
+  );
   assert.deepEqual(
     CONTRACT.assets.find((asset) => asset.partId === 'place_nav_buoy').renderViews.map((view) => (
       view.split('/').at(-1).replace(/\.png$/, '')

@@ -13,13 +13,18 @@ import billboardBuoyBrowser, {
   PQ022_BILLBOARD_BUOY_REAUTHOR_FIXED_SEED,
 } from '../scripts/validation-manifests/pq022-billboard-buoy-reauthor-browser.mjs';
 import billboardBuoyElectron from '../scripts/validation-manifests/pq022-billboard-buoy-reauthor-electron.mjs';
+import navBuoyRepairBrowser, {
+  createPq022NavBuoyRepairBrowserManifest,
+  PQ022_NAV_BUOY_REPAIR_FIXED_SEED,
+} from '../scripts/validation-manifests/pq022-nav-buoy-repair-browser.mjs';
+import navBuoyRepairElectron from '../scripts/validation-manifests/pq022-nav-buoy-repair-electron.mjs';
 import { loadValidationManifestById } from '../scripts/lib/validationManifestRegistry.mjs';
 
 const ROOT = new URL('../', import.meta.url);
 const probe = readFileSync(new URL('scripts/probe-pq022-corridor-asset-leaves.mjs', ROOT), 'utf8');
 const rootPath = fileURLToPath(ROOT);
 
-function assertH1Manifest(manifest, { id, runtimeKind, selector, artifactRoot }) {
+function assertH1Manifest(manifest, { id, runtimeKind, selector, artifactRoot, liveGate = true }) {
   assert.equal(manifest.id, id);
   assert.equal(manifest.runtimeKind, runtimeKind);
   assert.equal(manifest.mode, 'acceptance');
@@ -32,7 +37,16 @@ function assertH1Manifest(manifest, { id, runtimeKind, selector, artifactRoot })
   ]);
   assert.match(manifest.artifactRoot.replace(/\\/g, '/'), artifactRoot);
   assert.ok(manifest.fastGateCommands.includes('npm run check:pq022:corridor-assets'));
-  assert.ok(manifest.fastGateCommands.includes('npm run check:assets:live'));
+  if (liveGate) {
+    assert.ok(manifest.fastGateCommands.includes('npm run check:assets:live'));
+  } else {
+    // The repair cell substitutes the candidate admission check: the generic live probe is
+    // environment-gated on HEAD == origin/master and cannot run on the shared concurrent tree.
+    assert.equal(manifest.fastGateCommands.includes('npm run check:assets:live'), false);
+    assert.ok(manifest.fastGateCommands.includes(
+      'node scripts/check-pq022-navigation-infrastructure-candidate.mjs',
+    ));
+  }
   assert.ok(manifest.fastGateCommands.includes('node --test test/pq022-reauthor-h1-manifests.test.mjs'));
 }
 
@@ -63,7 +77,7 @@ test('PQ-022 billboard/buoy H1 has distinct one-use Browser and Electron cells',
 });
 
 test('the selected routes use current live subjects and preserve the aggregate selector', () => {
-  assert.match(probe, /\['relay-collar', 'refinery', 'billboard-buoy'\]/);
+  assert.match(probe, /\['relay-collar', 'refinery', 'billboard-buoy', 'nav-buoy-repair'\]/);
   assert.match(probe, /type: 'fx', placeId: 'place_station_billboard'/);
   assert.doesNotMatch(probe, /poiId: 'poi_memorial', placeId: 'place_station_billboard'/);
   assert.match(probe, /poi_tethys_customs_log/);
@@ -97,6 +111,27 @@ test('probe configures billboard and buoy shot plan and subjects', () => {
   assert.match(probe, /BILLBOARD_BUOY_REAUTHOR_SHOT_PLAN/);
   assert.match(probe, /places\/place_station_billboard\.glb/);
   assert.match(probe, /places\/place_nav_buoy\.glb/);
+});
+
+test('PQ-022 nav-buoy repair H1 has distinct one-use Browser and Electron cells', () => {
+  assert.equal(PQ022_NAV_BUOY_REPAIR_FIXED_SEED, 47);
+  assertH1Manifest(navBuoyRepairBrowser, {
+    id: 'pq022-nav-buoy-repair-browser', runtimeKind: 'browser', selector: 'nav-buoy-repair',
+    artifactRoot: /^\.devshots\/pq022-nav-buoy-repair\/browser$/, liveGate: false,
+  });
+  assertH1Manifest(navBuoyRepairElectron, {
+    id: 'pq022-nav-buoy-repair-electron', runtimeKind: 'electron', selector: 'nav-buoy-repair',
+    artifactRoot: /^\.devshots\/pq022-nav-buoy-repair\/electron$/, liveGate: false,
+  });
+  assert.equal(createPq022NavBuoyRepairBrowserManifest({ timeoutMs: 1234 }).timeoutMs, 1234);
+});
+
+test('nav-buoy repair cell captures only the returned buoy at ordinary and diagnostic-close', () => {
+  assert.match(probe, /NAV_BUOY_REPAIR_SHOT_PLAN/);
+  assert.match(probe, /01-tethys-customs-buoy-ordinary\.png/);
+  assert.match(probe, /02-tethys-customs-buoy-diagnostic-close\.png/);
+  const registry = [...probe.matchAll(/NAV_BUOY_REPAIR_ONLY\b/g)].length;
+  assert.ok(registry >= 6, 'the repair selector must gate manifest, assets, plan, tethys, framing, and schema');
 });
 
 

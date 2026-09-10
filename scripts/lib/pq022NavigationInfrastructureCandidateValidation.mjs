@@ -91,6 +91,7 @@ function assetContract({
   collision,
   baseline,
   renderNames,
+  requireLodNovelty = false,
 }) {
   const partFile = `places/${partId}.glb`;
   return Object.freeze({
@@ -114,9 +115,10 @@ function assetContract({
     }),
     collision,
     budgets: Object.freeze({
-      candidateBytes: baseline?.sourceBytes || 4_486_260,
+      candidateBytes: baseline?.candidateByteCeiling || 4_486_260,
       lodTriangles: Object.freeze({ LOD0: 3000, LOD1: 1000, LOD2: 300 }),
     }),
+    requireLodNovelty,
     baseline: Object.freeze(baseline),
     paths: Object.freeze({
       candidate: `${SHARED_ROOT}/source_candidates/material_truth_v2/places/${partId}.glb`,
@@ -163,13 +165,13 @@ const ASSETS = Object.freeze([
     },
     collision: BILLBOARD_COLLISION,
     baseline: {
-      sourceSha256: '557d5065d0435e3dc8128b4623135addf0b372d282ecb9f331e6a289b0d9ff7a',
-      sourceBytes: 4486260,
-      releaseSha256: '598b130176e2e1b4b0bf89ec57cec7993e411ca548b28ac858dd04473f2c3098',
-      releaseBytes: 6658368,
-      blendSha256: '1b4b97b6fdfc4b4a8cac9eeceaff3c45dff82edf6524f23dc905b0b2a62d9b3b',
-      blendBytes: 253158,
-      lodTriangles: Object.freeze({ LOD0: 976, LOD1: 413, LOD2: 180 }),
+      candidateByteCeiling: 1_600_000,
+      sourceSha256: '9245e7275b36ebed9e7e853a14f1e0315d85d23c14323b6d947ea4cb3a1f2ff6',
+      sourceBytes: 1314736,
+      releaseSha256: 'f94ce276f99defb0aa770dd9cc0accd24e828d9b56ecb27d5ea0b3383699a293',
+      releaseBytes: 430692,
+      blendSha256: 'dc8fa2c9a6233345adb4c2d6269f240adde1f8f17bc59f23f5c042207c09e7e9',
+      blendBytes: 207381,
     },
     renderNames: [
       'front_three_quarter',
@@ -204,14 +206,13 @@ const ASSETS = Object.freeze([
     },
     collision: BILLBOARD_COLLISION,
     baseline: {
-      sourceSha256: null,
-      sourceBytes: null,
-      releaseSha256: null,
-      releaseBytes: null,
-      blendSha256: null,
-      blendBytes: null,
-      predecessorSourceSha256: '557d5065d0435e3dc8128b4623135addf0b372d282ecb9f331e6a289b0d9ff7a',
-      predecessorLodTriangles: Object.freeze({ LOD0: 976, LOD1: 413, LOD2: 180 }),
+      candidateByteCeiling: 700_000,
+      sourceSha256: '9cb774d83ea03e3fbc40e47852b2bc3f9944be9979c0b57473aa7ba6cbd645f4',
+      sourceBytes: 526636,
+      releaseSha256: '7bb0c7709a33e7b3972d5a32226037605792666b439c94b934dc04d15b238667',
+      releaseBytes: 238788,
+      blendSha256: 'fcaa6e9b4fa5af64a278b8ec10dd76398949521455e9ebd8500816adaab2305f',
+      blendBytes: 255037,
     },
     renderNames: [
       'face_count',
@@ -249,14 +250,16 @@ const ASSETS = Object.freeze([
     },
     collision: BUOY_COLLISION,
     baseline: {
-      sourceSha256: 'f1599e2f5ff47aca1bff2ff311f111bee9ce3ae076123b36eb71e32343ab7b4d',
-      sourceBytes: 3775832,
-      releaseSha256: 'c227ec86343f3105d312c4127daf4e2516ca45ac4a26e7fb27368ae308a02c20',
-      releaseBytes: 5570068,
-      blendSha256: 'd82ad8797f93194d17420ef5f0dd22202d3c621f10186a057e92da53a5e6782b',
-      blendBytes: 595607,
-      lodTriangles: Object.freeze({ LOD0: 1284, LOD1: 520, LOD2: 222 }),
+      candidateByteCeiling: 700_000,
+      sourceSha256: 'ced25c9c6d47bf27ab1c58ed61658738d2b28e36e7b0e743c6d245df042cf77b',
+      sourceBytes: 429928,
+      releaseSha256: 'd39f5b42d5b790c12546cb395629ff79c82b607296e1b0b555eed6b25f7a2dcd',
+      releaseBytes: 205128,
+      blendSha256: 'dd102ac9601950106f3f61646dd738bae450f1d333fe99ffe74a72fc1996a2f8',
+      blendBytes: 236824,
+      lodTriangles: Object.freeze({ LOD0: 1734, LOD1: 1030, LOD2: 354 }),
     },
+    requireLodNovelty: true,
     renderNames: [
       'full_three_quarter',
       'service_side',
@@ -298,10 +301,14 @@ export const PQ022_NAVIGATION_INFRASTRUCTURE_CONTRACT = Object.freeze({
     releaseManifest: 'assets/ships/release/release_manifest.json',
   }),
   baselineManifests: Object.freeze({
-    partsSha256: '8bc37fce5ae05eb7c9315ad5d19066d3c13fe1904115dde82292a71d1593149a',
-    partsBytes: 116185,
-    releaseSha256: '26ce452ff40b673bc2b7fd6c8cd5f56d3653f70730dd2f835b18598cbf23bbcc',
-    releaseBytes: 52392,
+    partsSha256: 'c05d398cdbf24371e03a50cb979a15daf963612e08e3fff9b0b3c6474906a547',
+    partsBytes: 195346,
+    releaseSha256: '75598766897aa3e50e8cafb8c8d53d2da4ca408616bf070b9562d97cf916b029',
+    releaseBytes: 180109,
+  }),
+  promotion: Object.freeze({
+    publishAssetKeys: Object.freeze(['buoy']),
+    guardAssetKeys: Object.freeze(['billboard', 'memorial']),
   }),
 });
 
@@ -791,7 +798,7 @@ export function assessNavigationInfrastructureAssetGlb(glb, asset) {
     issue(failures, 'lod-reduction', 'LOD0 > LOD1 > LOD2 must be three distinct real geometry levels', asset.partId);
   }
   const rejectedBaseline = asset.baseline.lodTriangles || asset.baseline.predecessorLodTriangles;
-  if (jsonEqual(facts.lodTriangles, rejectedBaseline)) {
+  if (asset.requireLodNovelty && rejectedBaseline && jsonEqual(facts.lodTriangles, rejectedBaseline)) {
     issue(failures, 'lod-novelty', 'candidate still has the exact rejected/predecessor render-geometry totals', asset.partId);
   }
   if (glb.bytes > asset.budgets.candidateBytes) {

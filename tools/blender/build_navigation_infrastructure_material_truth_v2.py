@@ -221,10 +221,10 @@ MATERIAL_TUNING = {
     "Memorial_Candle_Optic": ((0.42, 0.11, 0.018), 0.00, 0.21, "optic_warm"),
     "Memorial_Service_Alloy": ((0.34, 0.38, 0.39), 0.90, 0.34, "machined"),
     "Memorial_Inscribed_Bronze": ((0.40, 0.17, 0.045), 0.82, 0.42, "bronze"),
-    "Buoy_Pressure_Shell": ((0.33, 0.37, 0.36), 0.03, 0.61, "coat"),
+    "Buoy_Pressure_Shell": ((0.60, 0.55, 0.45), 0.03, 0.50, "coat"),
     "Buoy_Stabilizer_Frame": ((0.15, 0.18, 0.19), 0.78, 0.49, "cast"),
     "Buoy_Nav_Optic": ((0.015, 0.16, 0.20), 0.01, 0.19, "optic_cool"),
-    "Buoy_Solar_Cell": ((0.012, 0.035, 0.075), 0.18, 0.28, "solar"),
+    "Buoy_Solar_Cell": ((0.16, 0.10, 0.035), 0.85, 0.28, "solar"),
     "Buoy_Service_Marking": ((0.72, 0.23, 0.018), 0.00, 0.66, "marking"),
 }
 
@@ -447,7 +447,7 @@ def create_materials(config: dict, texture_files: dict[str, dict[str, Path]]) ->
             shader.inputs["Emission Strength"].default_value = 3.2
         elif family == "optic_cool":
             shader.inputs["Emission Color"].default_value = (0.02, 0.62, 0.85, 1.0)
-            shader.inputs["Emission Strength"].default_value = 2.7
+            shader.inputs["Emission Strength"].default_value = 4.5
         elif name == "Display_Safety_Marking":
             shader.inputs["Emission Color"].default_value = (0.62, 0.10, 0.008, 1.0)
             shader.inputs["Emission Strength"].default_value = 0.75
@@ -780,15 +780,24 @@ def buoy_geometry(collection, materials, lod: int) -> None:
         (4.85, 0.45, 0.43, 0.0, 0.0),
         (5.35, 0.68, 0.66, 0.0, 0.0),
     ), shell, segments)
+    # Tilted radiator-backed photovoltaic wings replace the flush laminates that camouflaged
+    # against the belt: pylons, a framed gold-anodized laminate, and (LOD0) a tip marker keep the
+    # array legible as angled service machinery rather than a pale plate.
     if lod < 2:
-        add_box(collection, materials, lod, "PortBatteryCase", (0.45, 1.10, 2.65),
-                (-0.72, 0.0, 1.25), shell, 0.055)
-        add_box(collection, materials, lod, "StarboardBatteryCase", (0.45, 1.10, 2.65),
-                (0.72, 0.0, 1.25), shell, 0.055)
-        add_box(collection, materials, lod, "PortSolarLaminate", (0.08, 0.86, 2.25),
-                (-0.965, 0.0, 1.25), solar, 0.015)
-        add_box(collection, materials, lod, "StarboardSolarLaminate", (0.08, 0.86, 2.25),
-                (0.965, 0.0, 1.25), solar, 0.015)
+        for side in (-1, 1):
+            label = "Port" if side < 0 else "Starboard"
+            tilt = -0.55 * side
+            add_beam(collection, materials, lod, f"{label}WingPylon",
+                     (0.15, side * 0.46, 1.42), (0.15, side * 0.78, 1.42), 0.06, stabilizer,
+                     bevel=0.0)
+            add_box(collection, materials, lod, f"{label}SolarLaminate", (0.62, 1.26, 0.06),
+                    (0.15, side * 0.83, 1.62), solar, 0.0, rotation=(tilt, 0.0, 0.0))
+            add_box(collection, materials, lod, f"{label}LaminateRail", (0.66, 1.30, 0.09),
+                    (0.15, side * 0.80, 1.55), stabilizer, 0.0, rotation=(tilt, 0.0, 0.0))
+            if lod == 0:
+                add_box(collection, materials, lod, f"{label}WingTipMarker", (0.08, 0.14, 0.14),
+                        (0.15, side * 1.27, 1.62 - side * 0.31), marking, 0.0,
+                        rotation=(tilt, 0.0, 0.0))
         add_box(collection, materials, lod, "OffsetServiceTrunk", (0.35, 0.48, 3.85),
                 (1.08, 0.0, 1.65), stabilizer, 0.045)
         for index, z in enumerate((-0.25, 1.25, 2.75)):
@@ -796,35 +805,94 @@ def buoy_geometry(collection, materials, lod: int) -> None:
                      (0.55, -0.44, z), (1.08, -0.28, z + 0.30), 0.045, stabilizer,
                      bevel=0.0)
     else:
-        add_box(collection, materials, lod, "SolarProxy", (0.12, 0.92, 2.1), (-0.66, 0.0, 1.25), solar, 0.0)
-    add_frustum_z(collection, materials, lod, "SignalHead", (
-        (5.20, 0.72, 0.72, 0.0, 0.0),
-        (5.75, 1.18, 1.18, 0.0, 0.0),
-        (8.25, 1.18, 1.18, 0.0, 0.0),
-        (8.72, 0.80, 0.80, 0.0, 0.0),
-    ), shell, segments)
-    # Four finite apertures are true multi-azimuth hardware, not a glowing crown.
-    aperture_specs = (
-        ("Fore", (1.23, 0.0, 7.05), (0.0, math.pi / 2, 0.0)),
-        ("Aft", (-1.23, 0.0, 7.05), (0.0, math.pi / 2, 0.0)),
-        ("Port", (0.0, -1.23, 7.05), (math.pi / 2, 0.0, 0.0)),
-        ("Starboard", (0.0, 1.23, 7.05), (math.pi / 2, 0.0, 0.0)),
+        add_box(collection, materials, lod, "SolarProxy", (0.12, 2.30, 0.30),
+                (0.15, 0.0, 1.50), solar, 0.0)
+    # --- navigation head: a wide faceted lantern with a hazard waist, framed signal panes on
+    # every cardinal face, a dark overhanging cap, and an offset service gantry.  The repair
+    # replaces the rejected post-and-cap frustum; the head must read in outline at lane range.
+    if lod < 2:
+        add_cylinder(collection, materials, lod, "HeadHazardCollar", 0.80, 0.30,
+                     (0.0, 0.0, 5.42), marking, vertices=segments, bevel=0.0)
+        add_frustum_z(collection, materials, lod, "LanternDrum", (
+            (5.57, 0.96, 0.96, 0.0, 0.0),
+            (5.72, 1.18, 1.18, 0.0, 0.0),
+            (7.66, 1.18, 1.18, 0.0, 0.0),
+            (7.81, 0.94, 0.94, 0.0, 0.0),
+        ), shell, segments)
+    else:
+        add_frustum_z(collection, materials, lod, "LanternDrum", (
+            (5.72, 1.18, 1.18, 0.0, 0.0),
+            (7.81, 0.94, 0.94, 0.0, 0.0),
+        ), shell, segments)
+    pane_specs = (
+        ("Fore", (1.0, 0.0), 0.0),
+        ("Aft", (-1.0, 0.0), 0.0),
+        ("Port", (0.0, -1.0), math.pi / 2),
+        ("Starboard", (0.0, 1.0), math.pi / 2),
     )
-    for label, location, rotation in aperture_specs:
+    for label, (dx, dy), quarter_turn in pane_specs:
         if lod == 2:
-            optic_size = (0.12, 0.44, 0.44) if label in {"Fore", "Aft"} else (0.44, 0.12, 0.44)
-            add_box(collection, materials, lod, f"{label}NavOptic", optic_size,
-                    location, optic, 0.0)
-        else:
-            add_cylinder(collection, materials, lod, f"{label}NavOptic", 0.27,
-                         0.12, location, optic, rotation=rotation,
-                         vertices=8 if lod == 0 else 6, bevel=0.0)
-        if lod < 2:
-            hood_location = (location[0] * 0.91, location[1] * 0.91, location[2] + 0.28)
-            add_box(collection, materials, lod, f"{label}OpticHood", (0.50, 0.50, 0.18),
-                    hood_location, stabilizer, 0.0)
-    add_cylinder(collection, materials, lod, "TelemetryMast", 0.12 if lod < 2 else 0.10, 1.58,
-                 (0.0, 0.0, 9.51), stabilizer, vertices=segments, bevel=0.0)
+            pane_size = (0.06, 0.92, 1.02) if dx else (0.92, 0.06, 1.02)
+            add_box(collection, materials, lod, f"{label}NavPane", pane_size,
+                    (dx * 1.06, dy * 1.06, 6.69), optic, 0.0)
+            continue
+        # Glazed signal facet in an open four-bar frame: the pane stands proud of the lantern
+        # apothem so no drum edge can clip the emission, and its edges tuck behind the bars so
+        # no hull gap shows through; the bars read as bezel hardware without burying the optic.
+        add_box(collection, materials, lod, f"{label}NavPane", (0.10, 1.08, 1.18),
+                (dx * 1.13, dy * 1.13, 6.69), optic, 0.0,
+                rotation=(0.0, 0.0, quarter_turn))
+        if lod == 0:
+            bar_specs = (
+                (1.24, 0.16, 0.0, 0.67),
+                (1.24, 0.16, 0.0, -0.67),
+                (0.16, 1.34, 0.58, 0.0),
+                (0.16, 1.34, -0.58, 0.0),
+            )
+            for bar, (tangent_size, vertical_size, t_offset, z_offset) in enumerate(bar_specs):
+                size = (0.16, tangent_size, vertical_size)
+                if dx:
+                    location = (dx * 1.14, t_offset, 6.69 + z_offset)
+                else:
+                    location = (t_offset, dy * 1.14, 6.69 + z_offset)
+                add_box(collection, materials, lod, f"{label}PaneFrameBar{bar + 1:02d}", size,
+                        location, stabilizer, 0.0, rotation=(0.0, 0.0, quarter_turn))
+            add_box(collection, materials, lod, f"{label}PaneHood", (0.22, 1.28, 0.14),
+                    (dx * 1.26, dy * 1.26, 7.55), stabilizer, 0.0,
+                    rotation=(0.0, 0.0, quarter_turn))
+    if lod == 0:
+        for index, (sx, sy) in enumerate(((0.792, 0.792), (-0.792, 0.792),
+                                          (-0.792, -0.792), (0.792, -0.792))):
+            add_box(collection, materials, lod, f"LanternHazardStrip{index + 1:02d}",
+                    (0.10, 0.44, 0.92), (sx * 1.12, sy * 1.12, 6.69), marking, 0.0,
+                    rotation=(0.0, 0.0, math.pi / 4))
+    add_cylinder(collection, materials, lod, "CapSkirt", 1.26, 0.18,
+                 (0.0, 0.0, 7.90), stabilizer, vertices=segments, bevel=0.0)
+    if lod < 2:
+        add_cylinder(collection, materials, lod, "CapCrown", 1.02, 0.24,
+                     (0.0, 0.0, 8.11), stabilizer, vertices=segments, bevel=0.0)
+        # Offset service gantry: the deliberate silhouette asymmetry that defeats the
+        # post-and-cap read against black space.
+        add_beam(collection, materials, lod, "GantryArm",
+                 (-0.42, 0.34, 8.10), (-1.02, 0.80, 7.94), 0.055, stabilizer, bevel=0.0)
+        add_box(collection, materials, lod, "GantryServiceBox", (0.26, 0.20, 0.30),
+                (-1.10, 0.88, 8.02), shell, 0.02)
+        add_box(collection, materials, lod, "GantryMarkingCap", (0.30, 0.24, 0.07),
+                (-1.10, 0.88, 8.20), marking, 0.0)
+    # Mast lands on the cap and carries a hooded beacon lamp above the head signal.
+    if lod < 2:
+        add_cylinder(collection, materials, lod, "TelemetryMast", 0.12, 2.08,
+                     (0.0, 0.0, 9.26), stabilizer, vertices=segments, bevel=0.0)
+        add_cylinder(collection, materials, lod, "MastBeaconLamp", 0.16, 0.26,
+                     (0.0, 0.0, 9.80), optic, vertices=segments, bevel=0.0)
+        if lod == 0:
+            add_cylinder(collection, materials, lod, "MastBeaconBezel", 0.19, 0.10,
+                         (0.0, 0.0, 9.62), stabilizer, vertices=segments, bevel=0.0)
+            add_cylinder(collection, materials, lod, "MastBeaconCap", 0.13, 0.08,
+                         (0.0, 0.0, 9.97), stabilizer, vertices=segments, bevel=0.0)
+    else:
+        add_cylinder(collection, materials, lod, "TelemetryMast", 0.10, 2.35,
+                     (0.0, 0.0, 9.125), stabilizer, vertices=segments, bevel=0.0)
     add_box(collection, materials, lod, "ServiceMarkingPlate", (0.35, 0.42, 0.62),
             (1.3999999284744263, 0.0, 3.90), marking, 0.025 if lod < 2 else 0.0)
     if lod < 2:
@@ -2079,13 +2147,13 @@ def build() -> dict:
         },
         "namedVisualCorrection": {
             "assetId": "place_nav_buoy",
-            "defect": "The closed stabilizer shoulder shell completely occluded the authored reaction wheels, gimbals, and dampers, while the whole-asset and LOD1 evidence cameras cropped the buoy ends.",
-            "change": "Replaced only the closed shoulder shell with an open cruciform yoke and four-strut cage, then widened the exact-source whole-asset framing while preserving the exact LOD1 distance with a 29 mm lens.",
+            "defect": "Causal review 2026-09-10 (buoy-only reopen): the v2 head is still a dark low-contrast post-and-cap in silhouette, the cyan slit and red band are sub-pixel at ordinary lane framing, and the pale service panel shares the belt's value and hue so it camouflages as rock.",
+            "change": "Rebuilt only the head and service zones: wide faceted lantern with hazard waist, framed emissive panes on all four cardinal faces at billboard-face scale plus a hooded mast lamp, overhanging dark cap and offset service gantry for outline asymmetry; tilted gold-anodized radiator wings with pylons replace the flush laminates; pressure shell retuned warm bone-white and solar laminate gold-bronze, off the asteroid palette. Emission strength raised 2.7 to 4.5.",
             "preserved": [
-                "frozen asset identity, envelope, collision, socket, and navigation head",
-                "bottom boss, cardinal yoke extrema, and upper collar interface",
-                "reaction wheels, gimbals, dampers, and all five semantic materials",
-                "billboard and memorial source geometry and accepted evidence cameras",
+                "frozen asset identity, envelope, collision, socket, scale, and anchors",
+                "accepted open stabilizer lower assembly and cardinal yoke extrema",
+                "five semantic material roles and the exact live registration path",
+                "billboard and memorial source geometry, accepted evidence, and live files",
             ],
         },
         "preBuildReviewAdjustments": [

@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import { PQ022_NAVIGATION_INFRASTRUCTURE_CONTRACT as CONTRACT } from '../scripts/lib/pq022NavigationInfrastructureCandidateValidation.mjs';
 import {
+  assertGuardCandidateBinPayloadIdentity,
   assessAdmissionSnapshot,
   assessNavigationInfrastructureManifestPlan,
   assessNavigationInfrastructurePromotionReview,
@@ -16,9 +17,13 @@ import {
   prepareNavigationInfrastructureRelease,
   promoteNavigationInfrastructureSourceBytes,
   requiredAdmissionIdentities,
-  seedNavigationInfrastructureReleaseManifest,
   sha256,
 } from '../scripts/promote-pq022-navigation-infrastructure.mjs';
+
+const PUBLISH_KEYS = [...CONTRACT.promotion.publishAssetKeys];
+const GUARD_KEYS = [...CONTRACT.promotion.guardAssetKeys];
+const PUBLISH_ASSETS = PUBLISH_KEYS.map((key) => CONTRACT.assets.find((asset) => asset.key === key));
+const GUARD_ASSETS = GUARD_KEYS.map((key) => CONTRACT.assets.find((asset) => asset.key === key));
 
 function digest(value) {
   return createHash('sha256').update(String(value)).digest('hex');
@@ -64,7 +69,7 @@ function validReview(admission) {
     renderManifest: admission.facts.renderManifest,
     buildReport: admission.facts.buildReport,
     claims: { routeEvidence: false, performanceEvidence: false },
-    assets: CONTRACT.assets.map((asset) => ({
+    assets: PUBLISH_ASSETS.map((asset) => ({
       partId: asset.partId,
       candidateId: asset.candidateId,
       candidate: admission.facts.assets[asset.key].candidate,
@@ -76,6 +81,15 @@ function validReview(admission) {
       })),
       gates: { G1: 'KEEP', G2: 'KEEP', G4: 'KEEP', emissive: 'KEEP' },
       decision: 'KEEP',
+    })),
+    guardAssets: GUARD_ASSETS.map((asset) => ({
+      partId: asset.partId,
+      candidateId: asset.candidateId,
+      candidate: admission.facts.assets[asset.key].candidate,
+      blender: admission.facts.assets[asset.key].blender,
+      validatorReport: admission.facts.assets[asset.key].validatorReport,
+      decision: 'UNCHANGED_KEEP',
+      candidateBinUnchangedReproven: true,
     })),
   };
 }
@@ -124,6 +138,7 @@ function manifestFixtures() {
       place: [
         'places/unrelated_before.glb',
         'places/place_station_billboard.glb',
+        'places/place_memorial_array.glb',
         'places/unrelated_middle.glb',
         'places/place_nav_buoy.glb',
         'places/unrelated_after.glb',
@@ -132,7 +147,8 @@ function manifestFixtures() {
     },
     parts: [
       { id: 'unrelated_before', value: 1 },
-      { id: 'place_station_billboard', old: true },
+      { id: 'place_station_billboard', accepted: true },
+      { id: 'place_memorial_array', accepted: true },
       { id: 'unrelated_middle', value: 2 },
       { id: 'place_nav_buoy', old: true },
       { id: 'unrelated_after', value: 3 },
@@ -142,7 +158,8 @@ function manifestFixtures() {
     schema: 'release-fixture',
     assets: [
       { id: 'unrelated_before', value: 1 },
-      { id: 'place_station_billboard', old: true },
+      { id: 'place_station_billboard', accepted: true },
+      { id: 'place_memorial_array', accepted: true },
       { id: 'unrelated_middle', value: 2 },
       { id: 'place_nav_buoy', old: true },
       { id: 'unrelated_after', value: 3 },
@@ -152,32 +169,37 @@ function manifestFixtures() {
   const factsByKey = {};
   const expectedByKey = {};
   for (const asset of CONTRACT.assets) {
+    const isPublished = PUBLISH_KEYS.includes(asset.key);
     const bytes = Buffer.from(`promoted-${asset.partId}`);
     promotedByKey[asset.key] = {
       asset,
       bytes,
       candidateSha256: digest(`candidate-${asset.partId}`),
-      sourceSha256: sha256(bytes),
+      sourceSha256: isPublished ? sha256(bytes) : digest(`live-${asset.partId}`),
       binaryPayloadSha256: digest(`bin-${asset.partId}`),
+      binaryPayloadBytes: 4,
+      ...(isPublished ? {} : { guardOnly: true }),
     };
     factsByKey[asset.key] = {
       lodTriangles: { LOD0: 100, LOD1: 50, LOD2: 20 },
       textureSize: asset.textureSize,
     };
-    expectedByKey[asset.key] = {
-      sourceSha256: sha256(bytes),
-      sourceBytes: bytes.length,
-      releaseSha256: digest(`release-${asset.partId}`),
-      releaseBytes: 500,
-      lodTriangles: factsByKey[asset.key].lodTriangles,
-    };
+    if (isPublished) {
+      expectedByKey[asset.key] = {
+        sourceSha256: sha256(bytes),
+        sourceBytes: bytes.length,
+        releaseSha256: digest(`release-${asset.partId}`),
+        releaseBytes: 500,
+        lodTriangles: factsByKey[asset.key].lodTriangles,
+      };
+    }
   }
   const nextParts = buildNavigationInfrastructurePartsManifest(beforeParts, {
     promotedByKey,
     factsByKey,
   });
-  const nextRelease = seedNavigationInfrastructureReleaseManifest(beforeRelease);
-  for (const asset of CONTRACT.assets) {
+  const nextRelease = structuredClone(beforeRelease);
+  for (const asset of PUBLISH_ASSETS) {
     const index = nextRelease.assets.findIndex((row) => row.id === asset.partId);
     const expected = expectedByKey[asset.key];
     nextRelease.assets[index] = {
@@ -225,6 +247,24 @@ test('source promotion changes only the three identical lifecycle copies and pre
   }
 });
 
+test('guard re-proof accepts identical BIN payloads and rejects any divergence', () => {
+  const asset = GUARD_ASSETS[0];
+  const promotedEra = glbBytes(candidateDocument(asset));
+  const proof = assertGuardCandidateBinPayloadIdentity({
+    candidateBytes: promotedEra,
+    referenceBytes: promotedEra,
+    asset,
+  });
+  assert.equal(proof.binaryPayloadBytes, 4);
+  const divergentDocument = candidateDocument(asset);
+  divergentDocument.nodes.push({ name: 'LOD0_Drift', mesh: 0 });
+  assert.throws(() => assertGuardCandidateBinPayloadIdentity({
+    candidateBytes: glbBytes(divergentDocument, Buffer.from([9, 9, 9, 9])),
+    referenceBytes: promotedEra,
+    asset,
+  }), /guard candidate BIN payload diverged/);
+});
+
 test('strict GLB parser rejects trailing chunks/data before lifecycle mutation', () => {
   const asset = CONTRACT.assets[0];
   const candidate = glbBytes(candidateDocument(asset));
@@ -239,21 +279,38 @@ test('immutable admission snapshot includes every candidate, mirror, Blend, vali
   assert.equal(identities.length, 44);
   assert.equal(assessAdmissionSnapshot({ admission, currentIdentities: identities }).pass, true);
   const changed = identities.map((entry) => ({ ...entry }));
-  changed.find((entry) => entry.path.includes('place_memorial_array.glb')).sha256 = 'f'.repeat(64);
+  changed.find((entry) => entry.path.includes('place_nav_buoy.glb')).sha256 = 'f'.repeat(64);
   const stale = assessAdmissionSnapshot({ admission, currentIdentities: changed });
   assert.equal(stale.pass, false);
   assert.match(stale.failures.join('\n'), /admitted identity changed/);
 });
 
-test('solo-integrator KEEP review must bind all three assets and all 27 exact views', () => {
+test('solo-integrator KEEP review binds the published buoy and re-affirms the accepted pair', () => {
   const admission = fakeAdmission();
   const review = validReview(admission);
   assert.equal(assessNavigationInfrastructurePromotionReview({ review, admission }).pass, true);
-  review.assets[1].decision = 'REVISE';
+  review.assets[0].decision = 'REVISE';
   const revised = assessNavigationInfrastructurePromotionReview({ review, admission });
   assert.equal(revised.pass, false);
-  assert.match(revised.failures.join('\n'), /place_memorial_array/);
-  review.assets[1].decision = 'KEEP';
+  assert.match(revised.failures.join('\n'), /place_nav_buoy/);
+  review.assets[0].decision = 'KEEP';
+
+  const droppedGuard = structuredClone(review);
+  droppedGuard.guardAssets = droppedGuard.guardAssets.filter((row) => row.partId !== 'place_memorial_array');
+  assert.match(
+    assessNavigationInfrastructurePromotionReview({ review: droppedGuard, admission }).failures.join('\n'),
+    /accepted-asset guard set/,
+  );
+
+  const promotedGuard = structuredClone(review);
+  promotedGuard.guardAssets = promotedGuard.guardAssets.map((row) => (
+    row.partId === 'place_station_billboard' ? { ...row, decision: 'KEEP' } : row
+  ));
+  assert.match(
+    assessNavigationInfrastructurePromotionReview({ review: promotedGuard, admission }).failures.join('\n'),
+    /place_station_billboard/,
+  );
+
   review.reviewer = { kind: 'human', id: 'nobody', evidenceBound: false };
   assert.match(
     assessNavigationInfrastructurePromotionReview({ review, admission }).failures.join('\n'),
@@ -261,7 +318,7 @@ test('solo-integrator KEEP review must bind all three assets and all 27 exact vi
   );
 });
 
-test('manifest plan changes exactly two existing rows plus one anchored insertion', () => {
+test('manifest plan replaces exactly the buoy row and preserves every other row and slot', () => {
   const fixture = manifestFixtures();
   const assessment = assessNavigationInfrastructureManifestPlan(fixture);
   assert.equal(assessment.pass, true, assessment.failures.join('\n'));
@@ -276,29 +333,25 @@ test('manifest plan changes exactly two existing rows plus one anchored insertio
       'unrelated_after',
     ],
   );
+  assert.equal(fixture.nextParts.parts.find((row) => row.id === 'place_station_billboard').accepted, true);
+  assert.equal(fixture.nextParts.parts.find((row) => row.id === 'place_memorial_array').accepted, true);
+  assert.equal(fixture.nextParts.parts.find((row) => row.id === 'place_nav_buoy').old, undefined);
   assert.deepEqual(
     fixture.nextParts.runtimeSlots.place,
-    [
-      'places/unrelated_before.glb',
-      'places/place_station_billboard.glb',
-      'places/place_memorial_array.glb',
-      'places/unrelated_middle.glb',
-      'places/place_nav_buoy.glb',
-      'places/unrelated_after.glb',
-    ],
+    fixture.beforeParts.runtimeSlots.place,
   );
-
-  const partial = structuredClone(fixture.nextRelease);
-  partial.assets = partial.assets.filter((row) => row.id !== 'place_memorial_array');
-  const partialResult = assessNavigationInfrastructureManifestPlan({ ...fixture, nextRelease: partial });
-  assert.equal(partialResult.pass, false);
-  assert.match(partialResult.failures.join('\n'), /release manifest insertion/);
 
   const collateral = structuredClone(fixture.nextParts);
   collateral.parts.find((row) => row.id === 'unrelated_middle').value = 999;
   const collateralResult = assessNavigationInfrastructureManifestPlan({ ...fixture, nextParts: collateral });
   assert.equal(collateralResult.pass, false);
-  assert.match(collateralResult.failures.join('\n'), /untouched rows/);
+  assert.match(collateralResult.failures.join('\n'), /parts manifest changed outside/);
+
+  const guardCollateral = structuredClone(fixture.nextParts);
+  guardCollateral.parts.find((row) => row.id === 'place_station_billboard').accepted = false;
+  const guardResult = assessNavigationInfrastructureManifestPlan({ ...fixture, nextParts: guardCollateral });
+  assert.equal(guardResult.pass, false);
+  assert.match(guardResult.failures.join('\n'), /parts manifest changed outside/);
 
   const slotCollateral = structuredClone(fixture.nextParts);
   slotCollateral.runtimeSlots.place.push('places/collateral.glb');
@@ -307,18 +360,25 @@ test('manifest plan changes exactly two existing rows plus one anchored insertio
     nextParts: slotCollateral,
   });
   assert.equal(slotCollateralResult.pass, false);
-  assert.match(slotCollateralResult.failures.join('\n'), /parts manifest insertion/);
+  assert.match(slotCollateralResult.failures.join('\n'), /runtimeSlots\.place/);
+
+  const reordered = structuredClone(fixture.nextParts);
+  const [moved] = reordered.parts.splice(0, 1);
+  reordered.parts.push(moved);
+  const reorderResult = assessNavigationInfrastructureManifestPlan({ ...fixture, nextParts: reordered });
+  assert.equal(reorderResult.pass, false);
+  assert.match(reorderResult.failures.join('\n'), /parts manifest changed outside/);
 });
 
-test('publication transaction is exactly 11 files and treats the new trio as absent', () => {
+test('publication transaction is exactly five files and hash-guards the accepted pair', () => {
   const fixture = manifestFixtures();
   const admission = fakeAdmission();
   const rootDir = resolve('C:/synthetic-spaceface-root');
   const baseline = {
     assets: Object.fromEntries(CONTRACT.assets.map((asset) => [asset.key, {
-      source: asset.partId === 'place_memorial_array' ? null : identity(asset.paths.liveSource),
-      release: asset.partId === 'place_memorial_array' ? null : identity(asset.paths.liveRelease),
-      blender: asset.partId === 'place_memorial_array' ? null : identity(asset.paths.liveBlend),
+      source: identity(asset.paths.liveSource),
+      release: identity(asset.paths.liveRelease),
+      blender: identity(asset.paths.liveBlend),
     }])),
     partsManifest: identity(CONTRACT.paths.partsManifest),
     releaseManifest: identity(CONTRACT.paths.releaseManifest),
@@ -327,11 +387,13 @@ test('publication transaction is exactly 11 files and treats the new trio as abs
     ...admission.facts.assets[asset.key].blender,
     contents: Buffer.from(`blend-${asset.partId}`),
   }]));
-  const releases = Object.fromEntries(CONTRACT.assets.map((asset) => [asset.key, {
-    ...identity(asset.paths.liveRelease, 500),
-    sha256: fixture.expectedByKey[asset.key].releaseSha256,
-    contents: Buffer.from(`release-${asset.partId}`),
-  }]));
+  const releases = {
+    [PUBLISH_KEYS[0]]: {
+      ...identity(PUBLISH_ASSETS[0].paths.liveRelease, 500),
+      sha256: fixture.expectedByKey[PUBLISH_KEYS[0]].releaseSha256,
+      contents: Buffer.from(`release-${PUBLISH_ASSETS[0].partId}`),
+    },
+  };
   // The descriptor builders are pure; payload validators intentionally run only inside the
   // publisher after every file has staged.
   const transaction = buildNavigationInfrastructurePublicationTransaction({
@@ -351,16 +413,28 @@ test('publication transaction is exactly 11 files and treats the new trio as abs
       },
     },
   });
-  assert.equal(transaction.files.length, 11);
-  assert.equal(new Set(transaction.files.map((file) => file.path.toLowerCase())).size, 11);
-  const memorialPaths = CONTRACT.assets.find((asset) => asset.key === 'memorial').paths;
-  for (const path of [memorialPaths.liveSource, memorialPaths.liveBlend, memorialPaths.liveRelease]) {
-    const descriptor = transaction.files.find((file) => file.path.endsWith(path.replaceAll('/', '\\')));
-    assert.ok(descriptor, `missing ${path}`);
-    assert.equal(descriptor.expectedCurrentSha256, null);
+  assert.equal(transaction.files.length, 5);
+  assert.equal(new Set(transaction.files.map((file) => file.path.toLowerCase())).size, 5);
+  const publishedPaths = transaction.files.map((file) => file.path);
+  for (const asset of GUARD_ASSETS) {
+    for (const path of [asset.paths.liveSource, asset.paths.liveBlend, asset.paths.liveRelease]) {
+      assert.equal(publishedPaths.some((entry) => entry.replaceAll('\\', '/').endsWith(path)), false,
+        `accepted asset must not be published: ${path}`);
+    }
   }
+  const guardPaths = transaction.guards.map((guard) => guard.path.replaceAll('\\', '/'));
+  for (const asset of GUARD_ASSETS) {
+    for (const path of [asset.paths.liveSource, asset.paths.liveBlend, asset.paths.liveRelease]) {
+      const guard = transaction.guards.find((entry) => entry.path.replaceAll('\\', '/').endsWith(path));
+      assert.ok(guard, `missing accepted-asset guard for ${path}`);
+      assert.equal(guard.expectedCurrentSha256, baseline.assets[asset.key][
+        path === asset.paths.liveSource ? 'source' : path === asset.paths.liveRelease ? 'release' : 'blender'
+      ].sha256);
+    }
+  }
+  assert.equal(guardPaths.length, new Set(guardPaths).size);
   const omitted = { ...fixture.promotedByKey };
-  delete omitted.memorial;
+  delete omitted[PUBLISH_KEYS[0]];
   assert.throws(() => buildNavigationInfrastructurePublicationTransaction({
     rootDir,
     baseline,
@@ -382,9 +456,7 @@ test('disposable-root build failure cleans its candidate files and never touches
     await assert.rejects(() => prepareNavigationInfrastructureRelease({
       promotedByKey: fixture.promotedByKey,
       nextPartsBytes: Buffer.from(JSON.stringify(fixture.nextParts)),
-      seededReleaseManifestBytes: Buffer.from(JSON.stringify(
-        seedNavigationInfrastructureReleaseManifest(fixture.beforeRelease),
-      )),
+      seededReleaseManifestBytes: Buffer.from(JSON.stringify(fixture.beforeRelease)),
       beforeParts: fixture.beforeParts,
       beforeRelease: fixture.beforeRelease,
       factsByKey: fixture.factsByKey,

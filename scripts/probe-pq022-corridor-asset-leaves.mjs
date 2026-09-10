@@ -49,16 +49,19 @@ import refineryBrowserManifest from './validation-manifests/pq022-refinery-reaut
 import refineryElectronManifest from './validation-manifests/pq022-refinery-reauthor-electron.mjs';
 import billboardBuoyBrowserManifest from './validation-manifests/pq022-billboard-buoy-reauthor-browser.mjs';
 import billboardBuoyElectronManifest from './validation-manifests/pq022-billboard-buoy-reauthor-electron.mjs';
+import navBuoyRepairBrowserManifest from './validation-manifests/pq022-nav-buoy-repair-browser.mjs';
+import navBuoyRepairElectronManifest from './validation-manifests/pq022-nav-buoy-repair-electron.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const ONLY = readEncodedOption('--only');
 const RUNTIME = readEncodedOption('--runtime') || 'browser';
-assert(ONLY == null || ['relay-collar', 'refinery', 'billboard-buoy'].includes(ONLY), `unsupported PQ-022 --only selector: ${ONLY}`);
+assert(ONLY == null || ['relay-collar', 'refinery', 'billboard-buoy', 'nav-buoy-repair'].includes(ONLY), `unsupported PQ-022 --only selector: ${ONLY}`);
 assert(RUNTIME === 'browser' || RUNTIME === 'electron', `unsupported PQ-022 runtime: ${RUNTIME}`);
 assert(ONLY != null || RUNTIME === 'browser', 'the aggregate corridor capture is Browser-only');
 const RELAY_ONLY = ONLY === 'relay-collar';
 const REFINERY_ONLY = ONLY === 'refinery';
 const BILLBOARD_BUOY_ONLY = ONLY === 'billboard-buoy';
+const NAV_BUOY_REPAIR_ONLY = ONLY === 'nav-buoy-repair';
 const AGGREGATE = ONLY == null;
 const ELECTRON_RUNTIME = RUNTIME === 'electron';
 const manifest = AGGREGATE
@@ -67,14 +70,18 @@ const manifest = AGGREGATE
     ? (ELECTRON_RUNTIME ? relayElectronManifest : relayBrowserManifest)
     : REFINERY_ONLY
       ? (ELECTRON_RUNTIME ? refineryElectronManifest : refineryBrowserManifest)
-      : (ELECTRON_RUNTIME ? billboardBuoyElectronManifest : billboardBuoyBrowserManifest);
+      : NAV_BUOY_REPAIR_ONLY
+        ? (ELECTRON_RUNTIME ? navBuoyRepairElectronManifest : navBuoyRepairBrowserManifest)
+        : (ELECTRON_RUNTIME ? billboardBuoyElectronManifest : billboardBuoyBrowserManifest);
 const browserManifest = RELAY_ONLY
   ? relayBrowserManifest
   : REFINERY_ONLY
     ? refineryBrowserManifest
-    : BILLBOARD_BUOY_ONLY
-      ? billboardBuoyBrowserManifest
-      : null;
+    : NAV_BUOY_REPAIR_ONLY
+      ? navBuoyRepairBrowserManifest
+      : BILLBOARD_BUOY_ONLY
+        ? billboardBuoyBrowserManifest
+        : null;
 const ARTIFACT_ROOT = path.resolve(ROOT, manifest.artifactRoot);
 const VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 const DIAGNOSTIC = process.argv.includes('--diagnostic');
@@ -164,20 +171,30 @@ const BILLBOARD_BUOY_REAUTHOR_SHOT_PLAN = Object.freeze([
   Object.freeze({ key: 'station-billboard', name: '01-core-station-billboard-ordinary.png', framing: 'default', lod: 'lod1' }),
   Object.freeze({ key: 'nav-buoy', name: '02-tethys-customs-buoy-ordinary.png', framing: 'default', lod: 'lod1' }),
 ]);
+// The reopened buoy repair recaptures ONLY the returned buoy; the accepted billboard keeps its
+// prior evidence and is not a subject of this cell.
+const NAV_BUOY_REPAIR_SHOT_PLAN = Object.freeze([
+  Object.freeze({ key: 'nav-buoy', name: '01-tethys-customs-buoy-ordinary.png', framing: 'default', lod: 'lod1' }),
+  Object.freeze({ key: 'nav-buoy', name: '02-tethys-customs-buoy-diagnostic-close.png', framing: 'close', lod: 'lod0' }),
+]);
 const ACTIVE_ASSETS = RELAY_ONLY
   ? ASSETS.filter((row) => row.key === 'relay-collar')
   : REFINERY_ONLY
     ? ASSETS.filter((row) => row.key === 'station-refinery')
-    : BILLBOARD_BUOY_ONLY
-      ? ASSETS.filter((row) => ['station-billboard', 'nav-buoy'].includes(row.key))
-      : ASSETS;
+    : NAV_BUOY_REPAIR_ONLY
+      ? ASSETS.filter((row) => row.key === 'nav-buoy')
+      : BILLBOARD_BUOY_ONLY
+        ? ASSETS.filter((row) => ['station-billboard', 'nav-buoy'].includes(row.key))
+        : ASSETS;
 const ACTIVE_SHOT_PLAN = RELAY_ONLY
   ? SHOT_PLAN.filter((row) => row.key === 'relay-collar')
   : REFINERY_ONLY
     ? REFINERY_REAUTHOR_SHOT_PLAN
-    : BILLBOARD_BUOY_ONLY
-      ? BILLBOARD_BUOY_REAUTHOR_SHOT_PLAN
-      : SHOT_PLAN;
+    : NAV_BUOY_REPAIR_ONLY
+      ? NAV_BUOY_REPAIR_SHOT_PLAN
+      : BILLBOARD_BUOY_ONLY
+        ? BILLBOARD_BUOY_REAUTHOR_SHOT_PLAN
+        : SHOT_PLAN;
 const ASSET_BY_KEY = new Map(ASSETS.map((row) => [row.key, row]));
 const FRAME_DISTANCE = Object.freeze({ close: 2.35, default: 3.7, far: 7.4 });
 
@@ -410,7 +427,7 @@ try {
     }
   }
 
-  if (AGGREGATE || BILLBOARD_BUOY_ONLY) {
+  if (AGGREGATE || BILLBOARD_BUOY_ONLY || NAV_BUOY_REPAIR_ONLY) {
     phase = 'tethys-live-subject';
     await enterSector(page, 'sector_tethys_junction');
     compressions.push({
@@ -930,7 +947,7 @@ async function captureSubject(targetPage, shot, subjectId) {
     distanceFactor: FRAME_DISTANCE[shot.framing],
     explicitDistance: shot.cameraDistance ?? null,
     explicitHeight: shot.cameraHeight ?? null,
-    shippingFraming: (REFINERY_ONLY || BILLBOARD_BUOY_ONLY) && shot.framing === 'default',
+    shippingFraming: (REFINERY_ONLY || BILLBOARD_BUOY_ONLY || NAV_BUOY_REPAIR_ONLY) && shot.framing === 'default',
   });
 
   assert.ok(!frame.error, `${shot.key}/${shot.framing}: ${frame.error}`);
@@ -1128,6 +1145,7 @@ function reportSchemaForSelector(selector) {
   if (selector === 'relay-collar') return 'spaceface.pq022-relay-reauthor-h1.v1';
   if (selector === 'refinery') return 'spaceface.pq022-refinery-reauthor-h1.v1';
   if (selector === 'billboard-buoy') return 'spaceface.pq022-billboard-buoy-reauthor-h1.v1';
+  if (selector === 'nav-buoy-repair') return 'spaceface.pq022-nav-buoy-repair-h1.v1';
   return 'spaceface.pq022-corridor-asset-leaves-h1.v1';
 }
 
@@ -1135,6 +1153,7 @@ function routeContractForSelector(selector) {
   if (selector === 'relay-collar') return 'visible fixed-seed New Game -> asteroidSites relay owner -> close/default/far game-camera stills';
   if (selector === 'refinery') return 'visible fixed-seed New Game -> Ceres refinery owner -> ordinary and diagnostic game-canvas stills';
   if (selector === 'billboard-buoy') return 'visible fixed-seed New Game -> core-station billboard dressing and Tethys Customs Log buoy -> ordinary game-canvas stills';
+  if (selector === 'nav-buoy-repair') return 'visible fixed-seed New Game -> Tethys Customs Log buoy owner -> ordinary and diagnostic-close game-canvas stills';
   return 'visible fixed-seed New Game -> production owners -> controlled game-camera stills';
 }
 
