@@ -76,6 +76,12 @@ function dirSize(p) {
   return n;
 }
 
+function tarBinFor() {
+  const winTar = process.platform === 'win32' && process.env.SystemRoot
+    ? path.join(process.env.SystemRoot, 'System32', 'tar.exe') : null;
+  return winTar && fs.existsSync(winTar) ? winTar : 'tar';
+}
+
 function gitHead() {
   const r = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' });
   return r.status === 0 ? r.stdout.trim() : 'unknown';
@@ -128,8 +134,19 @@ function build(id, { list = false } = {}) {
     fs.mkdirSync(path.join(stageRoot, 'phases'), { recursive: true });
     for (const [pid, file] of plan.phases) fs.copyFileSync(file, path.join(stageRoot, 'phases', `${pid}.md`));
   }
+  // The source snapshot comes from the commit, never the working tree: this checkout is shared by
+  // several agents and usually carries uncommitted edits, and the port's patch must apply to the SHA.
   const sha = plan.source.length ? gitHead() : null;
-  for (const rel of plan.source) copyAny(path.join(ROOT, rel), path.join(stageRoot, 'source', rel));
+  if (plan.source.length) {
+    const srcDir = path.join(stageRoot, 'source');
+    fs.mkdirSync(srcDir, { recursive: true });
+    const tarPath = path.join(stage, 'source.tar');
+    const ar = spawnSync('git', ['archive', '--format=tar', '-o', tarPath, 'HEAD', '--', ...plan.source], { cwd: ROOT, stdio: 'inherit' });
+    if (ar.status !== 0) throw new Error(`git archive failed for ${id} (exit ${ar.status})`);
+    const ex = spawnSync(tarBinFor(), ['-xf', tarPath, '-C', srcDir], { stdio: 'inherit' });
+    if (ex.status !== 0) throw new Error(`extracting the source snapshot failed for ${id} (exit ${ex.status})`);
+    fs.rmSync(tarPath, { force: true });
+  }
   if (plan.missing.length) {
     // Prior session returns and integration captures are produced later by design: they are attached
     // alongside this zip at hand-off time, not reasons to withhold the packet.
@@ -155,10 +172,7 @@ function build(id, { list = false } = {}) {
     + `Built ${new Date().toISOString().slice(0, 10)}.\n`);
 
   if (fs.existsSync(plan.zip)) fs.rmSync(plan.zip);
-  const winTar = process.platform === 'win32' && process.env.SystemRoot
-    ? path.join(process.env.SystemRoot, 'System32', 'tar.exe') : null;
-  const tarBin = winTar && fs.existsSync(winTar) ? winTar : 'tar';
-  const tar = spawnSync(tarBin, ['-a', '-cf', plan.zip, '-C', stage, slug], { stdio: 'inherit' });
+  const tar = spawnSync(tarBinFor(), ['-a', '-cf', plan.zip, '-C', stage, slug], { stdio: 'inherit' });
   const staged = dirSize(stageRoot);
   fs.rmSync(stage, { recursive: true, force: true });
   if (tar.status !== 0) throw new Error(`tar failed for ${id} (exit ${tar.status}); is bsdtar available?`);
