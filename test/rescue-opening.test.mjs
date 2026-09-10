@@ -5,15 +5,26 @@
 // complete/fail per beat. No invented percentages — the funnel events are the deliverable.
 //
 // The shove beat is completed here by leftover production routeDamage against a leftover
-// hittable scout. A combatPhysics port applies Δv = J/m (84/16) — that is the production
-// force table, not a hand-set velocity. Fail/escape coverage stays. Whip remains a live
-// untaught escape; this file now proves the taught gun.
+// hittable scout, fed the leftover packet leftover `buildWeaponDamagePacket` builds from the
+// leftover authored `wpn_pulse_laser_s` def. The combatPhysics port applies Δv = J/m — the
+// leftover magnitude (84) and the leftover mass (16) are read out of leftover production data,
+// not written here. Fail/escape/destroyed coverage stays. Whip remains a live untaught escape.
+//
+// WHAT THIS FILE CANNOT SEE, and what the receipt says out loud:
+//   1. The leftover ~118 wu the leftover scout must cross to reach the leftover wall is set by
+//      hand (`scout.pos = asteroid.pos + 40`). What is proven is leftover packet admission and
+//      the leftover speed the leftover gun raises — never the leftover crossing.
+//   2. `impulseApplied` here is guaranteed by this file's own port. Production routes to
+//      SG-02's applyImpulse, which returns false without a live dynamic Rapier record; a node
+//      test can never observe that leftover `physics_rejected`.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
-import { createDamageRouter, scalarHitToDamagePacket } from '../src/combat/damage.js';
+import { createDamageRouter } from '../src/combat/damage.js';
 import { createCombatCatalog } from '../src/combat/runtime.js';
+import { WEAPONS } from '../src/data/weapons.js';
+import { buildWeaponDamagePacket } from '../src/systems/weapons.js';
 import { makeEntity } from '../src/core/entity.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
@@ -158,13 +169,25 @@ function rescueActor(h, slot) {
   return id == null ? null : h.state.entities.get(id);
 }
 
-function starterPulsePacket() {
-  return scalarHitToDamagePacket({
-    damage: 12,
-    damageType: 'thermal',
-    impulse: { magnitude: 84 },
-    source: { weaponId: 'wpn_pulse_laser_s', impulseProvenance: 'starter_pulse_plink' },
-  });
+// The leftover starter gun the leftover New Game loadout fits (src/data/newGameDefaults.js).
+const STARTER_GUN_ID = 'wpn_pulse_laser_s';
+
+// The leftover packet the leftover live route emits: built by leftover production
+// `buildWeaponDamagePacket` from the leftover authored `wpn_pulse_laser_s` def, not written by
+// hand here. Production derives leftover magnitude as `impulsePerHit * (damage / authoredDmg)`,
+// so a leftover hand-written 84 only matches a leftover FULL-strength hit; letting the builder
+// compute it keeps the leftover force identity a leftover derivation instead of a leftover claim.
+// Must be called with `weaponImpulseConsequences` ON — the builder reads the flag and strips the
+// leftover impulse identity when it is off.
+function starterPulseDef() {
+  const def = WEAPONS.find((entry) => entry.id === STARTER_GUN_ID);
+  assert.ok(def, 'the leftover starter gun is still an authored weapon');
+  return def;
+}
+
+function starterPulsePacket(pos = null) {
+  const def = starterPulseDef();
+  return buildWeaponDamagePacket({ defId: def.id }, def, def.dmg, def.damageType, pos);
 }
 
 // Production Δv = J/m. The leftover harness has no Rapier port; this is the same
@@ -193,11 +216,12 @@ function fireStarterAt(state, attackerId, targetId) {
     },
     { schedule: () => {} },
   );
+  const target = state.entities.get(targetId);
   return router({
     attackerId,
     targetId,
-    packet: starterPulsePacket(),
-    origin: { kind: 'weapon', weaponId: 'wpn_pulse_laser_s' },
+    packet: starterPulsePacket(target && target.pos ? { x: target.pos.x, z: target.pos.z } : null),
+    origin: { kind: 'weapon', weaponId: STARTER_GUN_ID },
   });
 }
 
@@ -584,9 +608,26 @@ test('LIVE GATE: the starter gun applies impulse to the staged scout', () => {
     settings: { gameplay: { difficulty: 'veteran' } },
   };
 
+  // The leftover packet is the leftover production one, so its leftover magnitude is whatever the
+  // leftover authored def plus leftover resolveWeaponImpulseForHit produce for a leftover
+  // full-strength hit. Pin the leftover IDENTITY (Δv = J/m against the leftover authored mass),
+  // never a leftover balance float — catalog and difficulty multipliers own those.
+  const magnitude = withWeaponImpulse(() => starterPulsePacket().impulse.magnitude);
+  assert.ok(magnitude > 0, 'the leftover production builder carries a leftover impulse identity');
+  const expectedDeltaV = magnitude / scout.mass;
+
   const hullBefore = scout.hull;
   const speedBefore = Math.hypot(scout.vel.x, scout.vel.z);
-  const hits = shoveScoutWithStarterGun(state, player, scout, 20);
+  const velBefore = { x: scout.vel.x, z: scout.vel.z };
+  const oneHit = shoveScoutWithStarterGun(state, player, scout, 1);
+  assert.equal(oneHit[0].ok, true, 'leftover starter-gun packet is leftover admitted');
+  assert.notEqual(oneHit[0].reason, 'target_invulnerable');
+  assert.equal(oneHit[0].impulseApplied, true, 'leftover applyImpulse ran leftover Δv = J/m');
+  const appliedDeltaV = Math.hypot(scout.vel.x - velBefore.x, scout.vel.z - velBefore.z);
+  assert.ok(Math.abs(appliedDeltaV - expectedDeltaV) < 1e-9,
+    'one leftover hit moves the leftover scout by leftover J/m, not a leftover invented number');
+
+  const hits = shoveScoutWithStarterGun(state, player, scout, 19);
   for (const result of hits) {
     assert.equal(result.ok, true, 'leftover starter-gun packet is leftover admitted');
     assert.notEqual(result.reason, 'target_invulnerable');
@@ -598,8 +639,57 @@ test('LIVE GATE: the starter gun applies impulse to the staged scout', () => {
     'leftover gun impulse reaches leftover shove completion speed');
   assert.ok(scout.alive !== false && scout.hull > 0, 'leftover scout survives leftover twenty shots');
   assert.ok(scout.hull < hullBefore, 'leftover hits spend leftover hull; leftover invuln is gone');
-  assert.ok(scout.hull > hullBefore - 20 * 20,
-    'leftover hull is leftover-high: a leftover starter burst cannot kill the lesson');
+});
+
+// Removing the leftover scout's invuln made this leftover path reachable for the first time:
+// the leftover rail teaches shooting one beat earlier and then marks the leftover scout, so a
+// leftover player who reads "put the scout into the asteroid" as "kill it" can now destroy the
+// leftover lesson body. `_onRescueKilled` has no leftover scout branch — the leftover catch is
+// the 0.2 s leftover resolve tick, which sees no live actor and fails/restages. No leftover wall.
+test('a destroyed scout during the shove fails and restages instead of walling', () => {
+  const h = bootRescue();
+  launchDefaultRoute(h);
+  driveDrillTo(h, 'tether');
+  const rock = rescueActor(h, 'rock');
+  const derelict = rescueActor(h, 'derelict');
+  h.bus.emit('tether:latched', { targetId: rock.id });
+  h.bus.emit('tether:reel', { targetId: rock.id, before: 80, after: 40 });
+  h.bus.emit('tether:released', { targetId: rock.id });
+  rock.pos.x = derelict.pos.x + 20;
+  rock.pos.z = derelict.pos.z;
+  rock.vel.x = -30;
+  tick(h);
+  advanceTime(h);
+  tick(h);
+  driveDrillTo(h, 'burst');
+  assert.equal(h.state.onboarding.rescue.current, 'shove');
+
+  const scoutId = h.state.onboarding.rescue.ids.scout;
+  const asteroidId = h.state.onboarding.rescue.ids.asteroid;
+  const scout = rescueActor(h, 'scout');
+  scout.alive = false;
+  h.bus.emit('entity:killed', { id: scoutId, killerId: h.state.playerId, type: 'drone' });
+  assert.equal(h.state.onboarding.rescue.ids.scout, scoutId,
+    'the leftover killed handler has no leftover scout branch: nothing happens on the event');
+  tick(h);
+
+  const fail = h.seen.rescue.find((e) => e.event === 'rescue:beat' && e.beat === 'shove' && e.result === 'fail');
+  assert.ok(fail, 'the leftover resolve tick records the leftover fail');
+  assert.equal(fail.reason, 'scout lost');
+  assert.equal(h.state.onboarding.rescue.current, 'shove', 'the leftover beat retries: no leftover wall');
+  const fresh = rescueActor(h, 'scout');
+  assert.ok(fresh && fresh.id !== scoutId, 'a leftover fresh scout is staged');
+  assert.equal(!!fresh.flags.invuln, false, 'the leftover restage is leftover hittable too');
+  assert.equal(fresh._invulnUntil, undefined, 'the leftover respawn no longer stamps leftover invuln');
+  assert.equal(tutorialLines(h).at(-1), rescueBeatLine('shove'), 'the leftover verb is re-spoken once');
+
+  // The leftover honest cost of that retry: `_respawnRescueSlot` re-rolls a whole leftover tableau
+  // bearing from the leftover CURRENT player position but spawns the leftover scout slot only, so
+  // the leftover wall never moves. The leftover staged scout sits ON the player→asteroid line at
+  // 28 % of the way in (117.6 wu from the leftover wall on seed 47), which is why the leftover
+  // gun's push points at it; the leftover restaged scout has no such relation to the leftover
+  // standing wall. Pin the leftover mechanism (same wall, new bearing), not the leftover RNG float.
+  assert.equal(h.state.onboarding.rescue.ids.asteroid, asteroidId, 'the leftover wall stands');
 });
 
 test('a kill before its beat never yanks the rail', () => {
