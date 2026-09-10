@@ -1885,6 +1885,7 @@ export const npcJobsRuntime = {
         bestId = candidateId;
       }
     });
+    if (best) pinOccupationalLatch(best);
     return best;
   },
 

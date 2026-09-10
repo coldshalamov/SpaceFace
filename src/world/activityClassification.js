@@ -113,7 +113,11 @@ export function resolvePins(entity, context = {}) {
   const flags = entity.flags || {};
   if (flags.missionPinned || d.missionPinned || d.missionId || d.missionTag || d.jobId
     || d.activityActorSlotId
-    || (typeof d.activityObjectSlotId === 'string' && /[a-z]/i.test(d.activityObjectSlotId))) {
+    || (typeof d.activityObjectSlotId === 'string' && /[a-z]/i.test(d.activityObjectSlotId))
+    || d.predationRole || (d.ai && (d.ai.predationRole || d.ai.predationStatus))
+    || d.freightCustodyPersistence || d.freightCustody
+    || (d.ai && typeof d.ai.spawnContext === 'string'
+      && d.ai.spawnContext.includes('zone_hostile'))) {
     pins.push(PIN_REASON.MISSION_CRITICAL);
   }
   if (flags.tethered || d.tethered) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
