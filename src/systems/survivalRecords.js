@@ -819,6 +819,9 @@ export function compactRunResult(result, run, newly) {
     unlocksEarned: Array.isArray(newly) ? newly.slice() : [],
   };
   if (dailyDateKey) compact.dailyDateKey = dailyDateKey;
+  if (typeof (result && result.kitId) === 'string' && result.kitId) compact.kitId = result.kitId;
+  if (Number.isInteger(result && result.stuntScore) && result.stuntScore >= 0) compact.stuntScore = result.stuntScore;
+  if (Number.isInteger(result && result.physicsKills) && result.physicsKills >= 0) compact.physicsKills = result.physicsKills;
   return compact;
 }
 
@@ -914,4 +917,91 @@ export function restorePlayerFromSaveBlob(livePlayer, savedPlayer) {
   }
   player.cargo = cargo;
   return player;
+}
+
+export const KIT_GUN_ONLY_ID = 'energy_baseline';
+export const KIT_SHOVE_AND_ROCK_ID = 'physics_toolkit';
+export const KIT_STARTER_ID = 'physics_toolkit';
+export const CRUCIBLE_SHOVE_WEAPON_ID = 'wpn_concussion_cannon_m';
+export const PHYSICS_KIT_WINS_RATIO = 2;
+
+export function kitHasShove(loadout) {
+  const slots = Array.isArray(loadout) ? loadout : [];
+  for (const slot of slots) {
+    const id = typeof slot === 'string' ? slot : slot && slot.defId;
+    if (id === CRUCIBLE_SHOVE_WEAPON_ID || id === 'wpn_vector_mine_m') return true;
+  }
+  return false;
+}
+
+export function median(values) {
+  const xs = (Array.isArray(values) ? values : [])
+    .filter((n) => Number.isFinite(n))
+    .slice()
+    .sort((a, b) => a - b);
+  if (xs.length === 0) return null;
+  const mid = (xs.length - 1) / 2;
+  return (xs[Math.floor(mid)] + xs[Math.ceil(mid)]) / 2;
+}
+
+/**
+ * Crucible kit-order dashboard (PQ-174.02). Cells are { kit, seed, score }.
+ * Pulse tops the board when its median is the highest row.
+ */
+export function kitBalanceBoard(cells, {
+  gunKit = KIT_GUN_ONLY_ID,
+  physicsKit = KIT_SHOVE_AND_ROCK_ID,
+  pulseKit = KIT_GUN_ONLY_ID,
+} = {}) {
+  const byKit = {};
+  const list = Array.isArray(cells) ? cells : [];
+  for (const cell of list) {
+    if (!cell || typeof cell.kit !== 'string' || !cell.kit) continue;
+    if (!byKit[cell.kit]) byKit[cell.kit] = [];
+    const score = Number(cell.score);
+    if (Number.isFinite(score)) byKit[cell.kit].push(score);
+  }
+  const summary = {};
+  for (const kit of Object.keys(byKit)) {
+    const scores = byKit[kit].slice().sort((a, b) => a - b);
+    summary[kit] = { n: scores.length, median: median(scores), scores };
+  }
+  const gunMedian = summary[gunKit] ? summary[gunKit].median : null;
+  const physicsMedian = summary[physicsKit] ? summary[physicsKit].median : null;
+  const pulseMedian = summary[pulseKit] ? summary[pulseKit].median : null;
+  const ratio = gunMedian > 0 && physicsMedian != null ? physicsMedian / gunMedian : null;
+  const order = Object.keys(summary).sort((a, b) => {
+    const am = summary[a].median == null ? -Infinity : summary[a].median;
+    const bm = summary[b].median == null ? -Infinity : summary[b].median;
+    if (am !== bm) return bm - am;
+    return a.localeCompare(b);
+  });
+  return {
+    summary,
+    order,
+    ratio,
+    gunMedian,
+    physicsMedian,
+    pulseMedian,
+    pulseTopsBoard: pulseKit ? order[0] === pulseKit : false,
+    physicsWins2x: ratio != null && ratio >= PHYSICS_KIT_WINS_RATIO,
+    n: list.length,
+  };
+}
+
+export function formatKitBalanceBoard(board, { seeds = [] } = {}) {
+  const lines = [];
+  lines.push('[pq-174.02] kit-balance board (run.score / force-table physics pay)');
+  if (Array.isArray(seeds) && seeds.length) lines.push(`seeds: ${seeds.join(',')}`);
+  const summary = board && board.summary ? board.summary : {};
+  for (const kit of (board && board.order) || Object.keys(summary)) {
+    const row = summary[kit];
+    if (!row) continue;
+    lines.push(`  ${kit} n=${row.n} median=${row.median} scores=${row.scores.join(',')}`);
+  }
+  lines.push(`shove/gun ratio: ${board && board.ratio != null ? board.ratio.toFixed(3) : 'n/a'} (target ≥ ${PHYSICS_KIT_WINS_RATIO})`);
+  lines.push(`order: ${(board && board.order ? board.order : []).join(' > ') || 'n/a'}`);
+  lines.push(`Pulse tops board: ${board && board.pulseTopsBoard ? 'YES' : 'no'}`);
+  lines.push(`physics ≥ 2× gun: ${board && board.physicsWins2x ? 'YES' : 'NO'}`);
+  return lines.join('\n');
 }

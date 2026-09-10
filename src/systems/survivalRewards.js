@@ -16,11 +16,18 @@
 // Init-order only: event-driven, never registered in PRODUCTION_UPDATE_ORDER, never ticks.
 // Strict no-op without a live survival run.
 
+import { IMPULSE_PROVENANCE_MAX_AGE_TICKS } from '../combat/impulseKernel.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { validateRunState } from '../core/runState.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
 import { peakConcurrentDemand } from '../data/survivalWaves.js';
-import { applyStyleKill, scoreWithStyle, styleCauseFromKill } from './survivalStyle.js';
+import { trickPoints } from './stuntCombo.js';
+import {
+  SHOVE_WEAPON_ID,
+  applyStyleKill,
+  scoreWithStyle,
+  styleCauseFromKill,
+} from './survivalStyle.js';
 
 /** XP a single cohort kill is worth. Small and level-scaled so the bar visibly moves in a fight. */
 export const KILL_XP_BASE = 2;
@@ -74,6 +81,54 @@ export function killScoreFor(level) {
   return KILL_SCORE_PER_LEVEL * l;
 }
 
+function weaponIdFromKill(payload) {
+  if (!payload || typeof payload !== 'object') return null;
+  const origin = payload.origin && typeof payload.origin === 'object' ? payload.origin : null;
+  const provenance = payload.provenance && typeof payload.provenance === 'object' ? payload.provenance : null;
+  const packet = payload.packet && typeof payload.packet === 'object' ? payload.packet : null;
+  const source = packet && packet.source && typeof packet.source === 'object' ? packet.source : null;
+  const presentation = payload.presentation && typeof payload.presentation === 'object' ? payload.presentation : null;
+  const candidates = [
+    payload.weaponId,
+    payload.weapon,
+    origin && origin.weaponId,
+    origin && origin.id,
+    provenance && provenance.weaponId,
+    source && source.weaponId,
+    presentation && presentation.weaponId,
+  ];
+  for (const value of candidates) {
+    if (typeof value === 'string' && value) return value;
+  }
+  return null;
+}
+
+/**
+ * Board score from a kill split (gun vs physics-attributed). Used by the kit
+ * balance dashboard when a bench trace has causes but not the live run envelope.
+ * Live play still goes through scoreWithStyle so style and shove memory apply.
+ */
+export function estimateBoardScore({
+  gunKills = 0,
+  physicsKills = 0,
+  stuntPoints = 0,
+  shoveGun = false,
+  playerPhysics = true,
+  level = 1,
+} = {}) {
+  const base = killScoreFor(level);
+  const gunPay = shoveGun
+    ? scoreWithStyle(base, 1, 'direct', SHOVE_WEAPON_ID)
+    : scoreWithStyle(base, 1, 'direct');
+  const physicsPay = playerPhysics
+    ? scoreWithStyle(base, 1, 'terrain', SHOVE_WEAPON_ID, true)
+    : scoreWithStyle(base, 1, 'direct');
+  const stunts = Number.isFinite(stuntPoints) ? Math.max(0, Math.round(stuntPoints)) : 0;
+  return Math.max(0, Math.trunc(gunKills)) * gunPay
+    + Math.max(0, Math.trunc(physicsKills)) * physicsPay
+    + stunts;
+}
+
 export const survivalRewards = {
   name: 'survivalRewards',
 
@@ -88,6 +143,9 @@ export const survivalRewards = {
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
+    this._unsubs.push(this.bus.on('stunt:trickDetected', (p) => this._onStuntTrick(p)));
+    this._unsubs.push(this.bus.on('combat:hitstunImpulse', (p) => this._onHitstun(p)));
+    this._unsubs.push(this.bus.on('weapon:shove', (p) => this._onHitstun(p)));
     this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
     this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onEntitySpawned(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p)));
@@ -113,6 +171,54 @@ export const survivalRewards = {
     this._planWave = 0;
     this._chipValue = 0;
     this._liveChips = new Map();
+    this._recentShove = new Map();
+  },
+
+  _onHitstun(payload) {
+    const victimId = payload && (payload.victimId != null ? payload.victimId : payload.targetId);
+    if (victimId == null) return;
+    const weaponId = weaponIdFromKill(payload) || SHOVE_WEAPON_ID;
+    const tick = Number.isInteger(payload && payload.tick)
+      ? payload.tick
+      : (this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0);
+    this._recentShove.set(victimId, { weaponId, tick });
+  },
+
+  _rememberedShove(victimId, nowTick) {
+    if (victimId == null || !this._recentShove) return null;
+    const row = this._recentShove.get(victimId);
+    if (!row) return null;
+    const now = Number.isInteger(nowTick) ? nowTick : 0;
+    if (now - row.tick > IMPULSE_PROVENANCE_MAX_AGE_TICKS) {
+      this._recentShove.delete(victimId);
+      return null;
+    }
+    return row.weaponId || null;
+  },
+
+  /**
+   * PQ-146.01 combo points were a parallel meter. The Crucible board reads run.score.
+   * Bank named tricks into the same award seam so a shove-and-rock chain outscores Pulse grind.
+   */
+  _onStuntTrick(trick) {
+    const run = liveSurvivalRun(this.state);
+    if (!run) return;
+    const combo = this.state && this.state.stunts && this.state.stunts.combo;
+    const last = combo && Array.isArray(combo.lastTricks) && combo.lastTricks.length
+      ? combo.lastTricks[combo.lastTricks.length - 1]
+      : null;
+    const chainLength = combo && Number.isInteger(combo.activeCount) && combo.activeCount > 0
+      ? combo.activeCount
+      : 1;
+    const score = last && trick && last.trickId === trick.trickId && Number.isInteger(last.points)
+      ? last.points
+      : trickPoints(trick, chainLength);
+    if (!(score > 0)) return;
+    this._emit('run:awardRequested', {
+      score,
+      reason: 'stunt',
+      wave: run.wave,
+    });
   },
 
   _onWavePlanned(payload) {
@@ -146,6 +252,13 @@ export const survivalRewards = {
     // carries no cohort mark and is untouched.
     const level = this._levelOf(victim);
     const cause = styleCauseFromKill(payload);
+    const nowTick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0;
+    const remembered = this._rememberedShove(id, nowTick);
+    const weaponId = weaponIdFromKill(payload) || remembered;
+    const presentation = payload && payload.presentation;
+    const playerCaused = !!(presentation && presentation.playerCaused)
+      || !!(this.state && payload && payload.killerId === this.state.playerId)
+      || !!remembered;
     const style = run.style && typeof run.style === 'object'
       ? run.style
       : { multiplier: 1, recentCauses: [] };
@@ -154,7 +267,7 @@ export const survivalRewards = {
     run.style = applyStyleKill(style, cause);
     this._emit('run:awardRequested', {
       xp: killXpFor(level),
-      score: scoreWithStyle(base, multiplier, cause),
+      score: scoreWithStyle(base, multiplier, cause, weaponId, playerCaused),
       reason: 'kill',
       wave: run.wave,
     });
