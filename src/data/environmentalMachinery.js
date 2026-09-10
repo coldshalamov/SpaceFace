@@ -639,6 +639,26 @@ export function weatherScanScale(sectorId, point, simTime) {
   return scale;
 }
 
+/** The soonest readable weather window at a point, or null if the point is clear. */
+export function weatherWindowAt(sectorId, point, simTime, out = null) {
+  let best = null;
+  for (const volume of weatherVolumesForSector(sectorId)) {
+    if (!pointInsideWeatherVolume(volume, point)) continue;
+    const phase = weatherPhase(volume, simTime, out);
+    if (!best || phase.remainingS < best.remainingS) {
+      best = {
+        id: volume.id,
+        role: volume.role,
+        phase: phase.phase,
+        remainingS: phase.remainingS,
+        fieldActive: phase.fieldActive,
+        fieldStrengthScale: phase.fieldStrengthScale,
+      };
+    }
+  }
+  return best;
+}
+
 export function weatherHazardZones(sectorId) {
   return weatherVolumesForSector(sectorId).map((volume) => Object.freeze({
     id: volume.id,

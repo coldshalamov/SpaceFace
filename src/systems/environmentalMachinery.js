@@ -74,11 +74,13 @@ export const environmentalMachinery = {
     this._weatherFieldStrength = new Map();
     this._weatherPlayerInside = new Set();
     this._weatherPhaseOut = {};
+    this._weatherLastPhase = new Map();
     this._aperturePhaseOut = {};
     this._apertureFieldStrength = new Map();
     this._aperturePlayerInside = false;
     this._apertureJammedAtS = null;
     this._aperturePlugEnsured = false;
+    this._apertureLastPhase = null;
     if (this.bus && typeof this.bus.on === 'function') {
       const clear = (why) => this._clear(why);
       this._unsubs = [
@@ -261,12 +263,13 @@ export const environmentalMachinery = {
       occupied,
       jammedAtS: this._apertureJammedAtS,
     }, this._aperturePhaseOut);
-    if (phase.fieldActive && phase.fieldStrengthScale > 0) this._upsertApertureFields(phase);
+    if (phase.fieldActive) this._upsertApertureFields(phase);
     else this._removeApertureFields();
     const wantPlug = phase.fieldActive && phase.fieldStrengthScale > 0 && !occupied;
     if (wantPlug) this._ensureAperturePlug();
     else this._releaseAperturePlug();
-    this._updateAperturePlayerBoundary(state, phase.fieldActive);
+    this._publishAperturePhase(phase);
+    this._updateAperturePlayerBoundary(state, phase);
   },
 
   _apertureOccupied(state) {
@@ -336,15 +339,18 @@ export const environmentalMachinery = {
     this._aperturePlugEnsured = false;
   },
 
-  _updateAperturePlayerBoundary(state, fieldActive) {
+  _updateAperturePlayerBoundary(state, phase) {
     const player = state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
       : null;
-    const inside = !!(fieldActive && player && player.alive !== false
-      && pointInsideAperture(player.pos));
-    if (inside === this._aperturePlayerInside) return;
-    this._aperturePlayerInside = inside;
-    this._emitHazardBoundary(inside, HAZARD_TYPE, APERTURE_ID, APERTURE_ID);
+    const watching = !!(player && player.alive !== false && pointInsideAperture(player.pos)
+      && (phase.fieldActive || phase.phase === 'open' || phase.phase === 'jam'));
+    if (watching === this._aperturePlayerInside) return;
+    this._aperturePlayerInside = watching;
+    this._emitHazardBoundary(watching, HAZARD_TYPE, APERTURE_ID, APERTURE_ID, undefined, {
+      remainingS: phase.remainingS,
+      phase: phase.phase,
+    });
   },
 
   _updateReef(state) {
@@ -532,10 +538,16 @@ export const environmentalMachinery = {
     this._emitHazardBoundary(inside, machine.hazardType, machine.id, machine.id);
   },
 
-  _emitHazardBoundary(inside, zoneType, zoneId, siteId, why) {
+  _emitHazardBoundary(inside, zoneType, zoneId, siteId, why, extras) {
     if (!this.bus || typeof this.bus.emit !== 'function') return;
     if (inside) {
-      this.bus.emit('hazard:enter', { zoneType, zoneId, siteId });
+      this.bus.emit('hazard:enter', {
+        zoneType,
+        zoneId,
+        siteId,
+        remainingS: extras && Number.isFinite(extras.remainingS) ? extras.remainingS : null,
+        phase: extras && extras.phase ? extras.phase : null,
+      });
       return;
     }
     this.bus.emit('hazard:exit', { zoneType, zoneId, siteId, why });
@@ -546,15 +558,47 @@ export const environmentalMachinery = {
     const previous = this._lastPhase;
     this._lastPhase = phase.phase;
     this._lastRegulated = phase.regulated;
-    if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('environmentalMachinery:phaseChanged', {
-        siteId: CINDER_SLUICE_SITE_ID,
-        previous,
-        phase: phase.phase,
-        regulated: phase.regulated,
-        remainingS: phase.remainingS,
-      });
-    }
+    this._emitPhaseChanged({
+      siteId: CINDER_SLUICE_SITE_ID,
+      kind: 'current',
+      previous,
+      phase: phase.phase,
+      regulated: phase.regulated,
+      remainingS: phase.remainingS,
+    });
+  },
+
+  _publishWeatherPhase(volume, phase) {
+    const previous = this._weatherLastPhase.get(volume.id);
+    if (previous === phase.phase) return;
+    this._weatherLastPhase.set(volume.id, phase.phase);
+    this._emitPhaseChanged({
+      siteId: volume.id,
+      kind: 'weather',
+      role: volume.role,
+      previous: previous || null,
+      phase: phase.phase,
+      remainingS: phase.remainingS,
+    });
+  },
+
+  _publishAperturePhase(phase) {
+    if (this._apertureLastPhase === phase.phase) return;
+    const previous = this._apertureLastPhase;
+    this._apertureLastPhase = phase.phase;
+    this._emitPhaseChanged({
+      siteId: APERTURE_ID,
+      kind: 'aperture',
+      previous,
+      phase: phase.phase,
+      remainingS: phase.remainingS,
+      occupied: phase.occupied,
+    });
+  },
+
+  _emitPhaseChanged(payload) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('environmentalMachinery:phaseChanged', payload);
   },
 
   _clearCinder(why) {
@@ -587,6 +631,7 @@ export const environmentalMachinery = {
     }
     this._aperturePlayerInside = false;
     this._apertureJammedAtS = null;
+    this._apertureLastPhase = null;
   },
 
   _clearReef(why) {
@@ -608,7 +653,8 @@ export const environmentalMachinery = {
       const phase = weatherPhase(volume, simTime, this._weatherPhaseOut);
       if (phase.fieldActive) this._upsertWeatherField(volume, phase);
       else this._removeWeatherField(volume);
-      this._updateWeatherPlayerBoundary(volume, player, phase.fieldActive);
+      this._publishWeatherPhase(volume, phase);
+      this._updateWeatherPlayerBoundary(volume, player, phase);
     }
   },
 
@@ -648,14 +694,17 @@ export const environmentalMachinery = {
     this._weatherFieldStrength.delete(fieldId);
   },
 
-  _updateWeatherPlayerBoundary(volume, player, fieldActive) {
-    const inside = !!(fieldActive && player && player.alive !== false
+  _updateWeatherPlayerBoundary(volume, player, phase) {
+    const inside = !!(phase.fieldActive && player && player.alive !== false
       && pointInsideWeatherVolume(volume, player.pos));
     const wasInside = this._weatherPlayerInside.has(volume.id);
     if (inside === wasInside) return;
     if (inside) this._weatherPlayerInside.add(volume.id);
     else this._weatherPlayerInside.delete(volume.id);
-    this._emitHazardBoundary(inside, volume.hazardType, volume.id, volume.id);
+    this._emitHazardBoundary(inside, volume.hazardType, volume.id, volume.id, undefined, {
+      remainingS: phase.remainingS,
+      phase: phase.phase,
+    });
   },
 
   _clearWeather(why) {
@@ -667,6 +716,7 @@ export const environmentalMachinery = {
     }
     this._weatherPlayerInside.clear();
     this._weatherFieldStrength.clear();
+    this._weatherLastPhase.clear();
   },
 
   _clear(why) {

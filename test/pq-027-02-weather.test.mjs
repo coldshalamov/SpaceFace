@@ -12,6 +12,7 @@ import {
   sampleFieldAcceleration,
 } from '../src/core/fields/fieldKernel.js';
 import { FIELD_FLAGS } from '../src/data/fields.js';
+import { hazardHints } from '../src/data/hazardLanguage.js';
 import {
   VEIL_WEATHER_SECTOR_ID,
   VESTA_WEATHER_SECTOR_ID,
@@ -20,6 +21,7 @@ import {
   pointInsideWeatherVolume,
   weatherPhase,
   weatherScanScale,
+  weatherWindowAt,
 } from '../src/data/environmentalMachinery.js';
 import { environmentalMachinery } from '../src/systems/environmentalMachinery.js';
 import { fields } from '../src/systems/fields.js';
@@ -28,9 +30,12 @@ const LONG = { timeout: 180_000 };
 const SEED = 2702;
 const PLAYER_HULL_ID = 'ship_kestrel';
 const HAULER_HULL_ID = 'ship_mule';
+const WASP_HULL_ID = 'ship_wasp';
 const SHOT_TICKS = 45;
+const FIGHT_SHOT_TICKS = 50;
 const HAUL_TICKS = 90;
 const SHOT_SPEED = 140;
+const PROFILE_ID = 'production';
 
 const STORM = WEATHER_VOLUMES.find((row) => row.id === 'veil_storm_lane');
 const BELT = WEATHER_VOLUMES.find((row) => row.id === 'veil_radiation_belt');
@@ -74,6 +79,8 @@ function formatRow(row) {
     `stacked=${row.stacked.toFixed(1)}`,
     `stormType=${row.stormType}`,
     `beltType=${row.beltType}`,
+    `windowPhase=${row.windowPhase}`,
+    `windowRemainingS=${row.windowRemainingS.toFixed(2)}`,
     `backend=${row.proof.backend}`,
   ].join(' ');
 }
@@ -177,11 +184,13 @@ async function runLive({ simTime, ticks, withHauler, withShot }) {
   }
   const host = await bootRealPath({
     seed: SEED,
+    profileId: PROFILE_ID,
     systems: [
       'actions',
       'flightV3',
       environmentalMachinery,
       fields,
+      hazardHints,
       'physics',
     ],
     hulls,
@@ -245,6 +254,9 @@ test('PQ-027.02 Veil and Vesta each carry one storm and one nebula belt', () => 
   assert.equal(BELT.sectorId, VEIL_WEATHER_SECTOR_ID);
   assert.ok(WEATHER_VOLUMES.some((row) => row.sectorId === VESTA_WEATHER_SECTOR_ID && row.role === 'storm'));
   assert.ok(WEATHER_VOLUMES.some((row) => row.sectorId === VESTA_WEATHER_SECTOR_ID && row.role === 'radiation_belt'));
+  const window = weatherWindowAt(VEIL_WEATHER_SECTOR_ID, alongPoint(STORM, 90, 36), SURGE_S);
+  assert.equal(window && window.phase, 'surge');
+  assert.ok(window.remainingS > 0, 'surge names how long the window still has');
 });
 
 test('PQ-027.02 seed 2702 storm bends the shot, belt shrinks scan, traffic is scooped onto the rail', LONG, async () => {
@@ -288,6 +300,8 @@ test('PQ-027.02 seed 2702 storm bends the shot, belt shrinks scan, traffic is sc
     stacked: belt.stacked,
     stormType: STORM.hazardType,
     beltType: BELT.hazardType,
+    windowPhase: weatherWindowAt(VEIL_WEATHER_SECTOR_ID, alongPoint(STORM, 90, 36), SURGE_S).phase,
+    windowRemainingS: weatherWindowAt(VEIL_WEATHER_SECTOR_ID, alongPoint(STORM, 90, 36), SURGE_S).remainingS,
     proof: surgeHaul.proof,
   };
   console.log(formatRow(row));
@@ -314,4 +328,134 @@ test('PQ-027.02 seed 2702 storm bends the shot, belt shrinks scan, traffic is sc
   assert.ok(liveShotBend > 8, `live Rapier shot must bend (got ${liveShotBend.toFixed(1)} wu)`);
   assert.equal(STORM.hazardType, 'debris_current');
   assert.equal(BELT.hazardType, 'nebula');
+});
+
+function dist2d(a, b) {
+  return Math.hypot((a.x || 0) - (b.x || 0), (a.z || 0) - (b.z || 0));
+}
+
+async function runPlayerFight(simTime) {
+  const dir = STORM.field.dir;
+  // Player fires down the offset lane. A wasp sits on the rail, off the aim line.
+  // Calm: the round stays on the aim line and misses. Surge: the sheet bends the
+  // player's own shot onto the rail and finishes the hit.
+  const playerPos = alongPoint(STORM, 90, 36);
+  const muzzle = alongPoint(STORM, 108, 36);
+  const waspPos = alongPoint(STORM, 210, 0);
+  const vel = { x: dir.x * SHOT_SPEED, z: dir.z * SHOT_SPEED };
+  const previousFields = FIELD_FLAGS.enabled;
+  FIELD_FLAGS.enabled = true;
+  const host = await bootRealPath({
+    seed: SEED,
+    profileId: PROFILE_ID,
+    systems: [
+      'actions',
+      'flightV3',
+      environmentalMachinery,
+      fields,
+      hazardHints,
+      'physics',
+    ],
+    hulls: [{
+      hullId: PLAYER_HULL_ID,
+      pos: playerPos,
+      rot: Math.atan2(dir.z, dir.x),
+      isPlayer: true,
+      factionId: 'faction_free',
+    }, {
+      hullId: WASP_HULL_ID,
+      pos: waspPos,
+      rot: Math.atan2(dir.z, dir.x) + Math.PI,
+      team: 1,
+      factionId: 'faction_dmc',
+    }],
+  });
+  try {
+    host.state.world = host.state.world || {};
+    host.state.world.currentSectorId = VEIL_WEATHER_SECTOR_ID;
+    host.state.simTime = simTime;
+    const phases = [];
+    host.bus.on('environmentalMachinery:phaseChanged', (payload) => {
+      if (payload && payload.siteId === STORM.id) phases.push(payload);
+    });
+    host.step(1, {
+      before({ state }) {
+        state.world.currentSectorId = VEIL_WEATHER_SECTOR_ID;
+        state.simTime = simTime;
+      },
+    });
+    const wasp = host.hulls[1];
+    host.assertBodies([host.player, wasp], 'player fight bodies');
+    const shot = spawnShot(host, muzzle, vel);
+    host.step(1, {
+      before({ state }) {
+        state.world.currentSectorId = VEIL_WEATHER_SECTOR_ID;
+        state.simTime = simTime;
+      },
+    });
+    host.assertBodies([shot], 'player shot body');
+    let missMin = dist2d(shot.pos, wasp.pos);
+    host.step(FIGHT_SHOT_TICKS, {
+      before({ state }) {
+        state.world.currentSectorId = VEIL_WEATHER_SECTOR_ID;
+        state.simTime = simTime;
+      },
+      after() {
+        missMin = Math.min(missMin, dist2d(shot.pos, wasp.pos));
+      },
+    });
+    const machinery = host.runtime.getSystem('environmentalMachinery');
+    const weather = machinery && typeof machinery.diagnostics === 'function'
+      ? (machinery.diagnostics(host.state).weather || []).find((row) => row.id === STORM.id)
+      : null;
+    const read = host.state.ui && host.state.ui.hazardRead;
+    return {
+      missMin,
+      shotLateral: lateralOf(STORM, shot.pos),
+      waspLateral: lateralOf(STORM, wasp.pos),
+      remainingS: weather && weather.remainingS,
+      phase: weather && weather.phase,
+      hazardRemainingS: read && read.remainingS,
+      hazardPhase: read && read.phase,
+      playerInside: weather && weather.playerInside,
+      phaseEvents: phases.length,
+      ownerId: shot.data && shot.data.ownerId,
+      proof: host.proof(),
+    };
+  } finally {
+    host.dispose();
+    FIELD_FLAGS.enabled = previousFields;
+  }
+}
+
+test('PQ-027.02 seed 2702 the player fires: calm misses the rail, surge finishes the hit', LONG, async () => {
+  const surge = await runPlayerFight(SURGE_S);
+  const calm = await runPlayerFight(CALM_S);
+  console.log([
+    `PQ-027.02 seed=${SEED} player-fight`,
+    `calmMiss=${calm.missMin.toFixed(2)}`,
+    `surgeMiss=${surge.missMin.toFixed(2)}`,
+    `calmShotLat=${calm.shotLateral.toFixed(1)}`,
+    `surgeShotLat=${surge.shotLateral.toFixed(1)}`,
+    `calmWaspLat=${calm.waspLateral.toFixed(1)}`,
+    `surgeWaspLat=${surge.waspLateral.toFixed(1)}`,
+    `window=${surge.phase}/${Number(surge.remainingS).toFixed(2)}s`,
+    `hazardRead=${surge.hazardPhase}/${surge.hazardRemainingS}`,
+    `playerInside=${surge.playerInside}`,
+    `owner=${surge.ownerId}`,
+    `backend=${surge.proof.backend}`,
+  ].join(' '));
+
+  assert.equal(surge.proof.backend, 'rapier-dynamic');
+  assert.equal(surge.ownerId, calm.ownerId);
+  assert.ok(surge.ownerId, 'the round is the player\'s');
+  assert.equal(surge.phase, 'surge');
+  assert.ok(surge.remainingS > 0, 'the player can read how long the surge still has');
+  assert.equal(surge.playerInside, true, 'the player is in the storm, not a spectator');
+  assert.equal(surge.hazardPhase, 'surge');
+  assert.ok(Number(surge.hazardRemainingS) > 0, 'hazard language carries the remaining window');
+  assert.ok(calm.missMin > 20, `calm leaves the offset shot off the wasp (miss ${calm.missMin.toFixed(2)} wu)`);
+  assert.ok(surge.missMin < 16,
+    `surge bends the player's shot onto the wasp (calm ${calm.missMin.toFixed(2)} → surge ${surge.missMin.toFixed(2)} wu)`);
+  assert.ok(surge.missMin < calm.missMin - 8, 'the best shot changes with the weather window');
 });

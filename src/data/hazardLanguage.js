@@ -120,15 +120,17 @@ export const hazardHints = {
     this._bus = ctx && ctx.bus;
     this._state = ctx && ctx.state;
     this._hinted = new Set();   // hazard types hinted THIS session (tutorial-memory; not saved)
-    this._onHazardEnter = (p) => this._enter(p && p.zoneType, 'hazard');
+    this._onHazardEnter = (p) => this._enter(p, 'hazard');
     this._onHazardExit = (p) => this._exit(p && p.zoneType, 'hazard');
-    this._onZoneEnter = (p) => this._enter(p && p.type, 'zone');
+    this._onZoneEnter = (p) => this._enter(p, 'zone');
     this._onZoneExit = () => this._exit(null, 'zone');
+    this._onPhaseChanged = (p) => this._refreshClock(p);
     if (this._bus && this._bus.on) {
       this._bus.on('hazard:enter', this._onHazardEnter);
       this._bus.on('hazard:exit', this._onHazardExit);
       this._bus.on('world:zoneEntered', this._onZoneEnter);
       this._bus.on('world:zoneExited', this._onZoneExit);
+      this._bus.on('environmentalMachinery:phaseChanged', this._onPhaseChanged);
     }
   },
 
@@ -137,19 +139,24 @@ export const hazardHints = {
     if (this._state && this._state.ui) this._state.ui.hazardRead = null;
   },
 
-  _enter(type, source) {
+  _enter(payload, source) {
+    const type = source === 'zone' ? (payload && payload.type) : (payload && payload.zoneType);
     if (!type) return;
     const entry = HAZARD_LANGUAGE[type];
     if (!entry) return;   // non-hazard zone / unknown type → not our language
     const state = this._state;
 
     // Additive UI readout for the HUD/render layer (glyph + damage tag + counterplay verbs).
+    // remainingS / phase are the readable machinery window (PQ-027.02/.03): wait the calm,
+    // fire while the storm is up, or stuff the door before it opens.
     if (state) {
       if (!state.ui || typeof state.ui !== 'object') state.ui = {};
       state.ui.hazardRead = {
         type, source, glyph: entry.glyph, color: entry.color,
         damages: entry.damages.slice(), counterplay: entry.counterplay.slice(),
         t: state.simTime || 0,
+        remainingS: Number.isFinite(payload && payload.remainingS) ? payload.remainingS : null,
+        phase: payload && payload.phase ? payload.phase : null,
       };
     }
 
@@ -160,6 +167,13 @@ export const hazardHints = {
     if (helpers.voice && typeof helpers.voice.say === 'function') {
       helpers.voice.say({ channel: 'warn', text: entry.hint, kind: 'hazardHint' });
     }
+  },
+
+  _refreshClock(payload) {
+    const read = this._state && this._state.ui && this._state.ui.hazardRead;
+    if (!read || !payload) return;
+    if (Number.isFinite(payload.remainingS)) read.remainingS = payload.remainingS;
+    if (payload.phase) read.phase = payload.phase;
   },
 
   _exit(type, source) {
@@ -177,8 +191,10 @@ export const hazardHints = {
       if (this._onHazardExit) this._bus.off('hazard:exit', this._onHazardExit);
       if (this._onZoneEnter) this._bus.off('world:zoneEntered', this._onZoneEnter);
       if (this._onZoneExit) this._bus.off('world:zoneExited', this._onZoneExit);
+      if (this._onPhaseChanged) this._bus.off('environmentalMachinery:phaseChanged', this._onPhaseChanged);
     }
     this._onHazardEnter = this._onHazardExit = this._onZoneEnter = this._onZoneExit = null;
+    this._onPhaseChanged = null;
   },
 };
 
