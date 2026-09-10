@@ -17,6 +17,7 @@ concurrency:
 permissions:
   contents: read
   actions: write
+  statuses: write
 
 jobs:
   build:
@@ -24,6 +25,21 @@ jobs:
     timeout-minutes: 15
 
     steps:
+      - name: Publish packet run locator
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # The ChatGPT GitHub connector can read commit statuses even when it cannot enumerate
+          # arbitrary push-triggered Actions runs. Publishing the run id here gives future agents a
+          # deterministic path: current master SHA -> this status -> run id -> artifact download.
+          gh api --method POST "/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state='pending' \
+            -f context='agent-code-packet' \
+            -f description="run=${GITHUB_RUN_ID} building" \
+            -f target_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
       - name: Fetch commit metadata without heavyweight blobs
         shell: bash
         run: |
@@ -131,7 +147,7 @@ jobs:
           subprocess.run(['git', '-C', str(repo), 'config', 'core.sparseCheckout', 'true'], check=True)
           subprocess.run(['git', '-C', str(repo), 'config', 'core.sparseCheckoutCone', 'false'], check=True)
 
-          # These two generated files travel with the packet and make omissions explicit rather than
+          # These generated files travel with the packet and make omissions explicit rather than
           # allowing an agent to mistake "not transported" for "does not exist in SpaceFace".
           omitted.sort(key=lambda row: row[0])
           (repo / '.agent-omitted-files.tsv').write_text(
@@ -148,6 +164,7 @@ jobs:
               'repository': os.environ['GITHUB_REPOSITORY'],
               'ref': os.environ['GITHUB_REF_NAME'],
               'commit': os.environ['GITHUB_SHA'],
+              'runId': os.environ['GITHUB_RUN_ID'],
               'generatedAt': datetime.now(timezone.utc).isoformat(),
               'artifactName': 'spaceface-agent-code',
               'selectedFileCount': len(selected),
@@ -199,6 +216,20 @@ jobs:
           compression-level: 9
           retention-days: 30
 
+      - name: Mark packet available
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_ARTIFACT_ID: ${{ steps.upload.outputs.artifact-id }}
+        run: |
+          set -euo pipefail
+          gh api --method POST "/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state='success' \
+            -f context='agent-code-packet' \
+            -f description="run=${GITHUB_RUN_ID} artifact=${CURRENT_ARTIFACT_ID}" \
+            -f target_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
       - name: Remove superseded code packets
         if: success()
         shell: bash
@@ -218,3 +249,16 @@ jobs:
               gh api --method DELETE "/repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}"
             fi
           done
+
+      - name: Mark packet build failure
+        if: failure()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api --method POST "/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state='failure' \
+            -f context='agent-code-packet' \
+            -f description="run=${GITHUB_RUN_ID} failed" \
+            -f target_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
