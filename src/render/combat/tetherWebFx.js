@@ -3,6 +3,17 @@ import { WEB_DEF_ID, WEB_LIMITS } from '../../combat/tetherWebs.js';
 
 const SEGMENTS = 10;
 const UP = new THREE.Vector3(0, 1, 0);
+const FORMATION_SECONDS = 0.5;
+
+/** One take-up accent from the attachment's 60 Hz creation tick; no render clock. */
+export function tetherWebFormationAccent(link, simTime, motionReduce = false) {
+  if (motionReduce || link?.defId !== WEB_DEF_ID || link.state !== 'active'
+    || !Number.isInteger(link.createdTick) || link.createdTick < 0
+    || !Number.isFinite(simTime) || simTime < 0) return 0;
+  const age = Math.max(0, Math.min(1, (simTime - link.createdTick / 60) / FORMATION_SECONDS));
+  // Smoothly settle once, including a flat landing at the steady cable width.
+  return 1 - age * age * (3 - 2 * age);
+}
 
 /** Actual Snarl constraints rendered as braided, tension-shaped cables. No inferred links. */
 export class TetherWebFx {
@@ -28,6 +39,7 @@ export class TetherWebFx {
     let count = 0;
     const attachments = state.combat?.attachments?.byId;
     const cap = WEB_LIMITS.activeLinks * SEGMENTS * 2;
+    const motionReduce = !!state.settings?.video?.motionReduce;
     for (const id in attachments) {
       const link = attachments[id];
       if (link.defId !== WEB_DEF_ID || link.state !== 'active' || count >= cap) continue;
@@ -41,6 +53,8 @@ export class TetherWebFx {
       if (distance < 1) continue;
       const slack = Math.max(0, Math.min(12, (Number(link.restLength) || distance) - distance));
       const nx = -dz / distance, nz = dx / distance;
+      // A fresh catch briefly gains substance without moving the physical load curve.
+      const width = 0.48 * (1 + 0.3 * tetherWebFormationAccent(link, state.simTime, motionReduce));
       // The two physical-looking strands twist around a shared load curve. Increased
       // extension straightens the curve; no blinking or screen-space glow blanket.
       for (let strand = 0; strand < 2; strand++) {
@@ -57,7 +71,7 @@ export class TetherWebFx {
           const length = this.axis.length();
           this.pose.position.set((x + px) * 0.5, (y + py) * 0.5, (z + pz) * 0.5);
           this.pose.quaternion.setFromUnitVectors(UP, this.axis.multiplyScalar(1 / Math.max(length, 0.001)));
-          this.pose.scale.set(0.48, length, 0.48);
+          this.pose.scale.set(width, length, width);
           this.pose.updateMatrix();
           this.mesh.setMatrixAt(count++, this.pose.matrix);
           px = x; pz = z; py = y;
