@@ -407,6 +407,31 @@ export function createScreenManager(ctx) {
     clearModalFocus();
   }
 
+  // Full teardown for a screen the player has permanently left (Launch into flight, a completed
+  // load). onHide alone only quiets a screen: the def keeps its cached element, and anything
+  // mount() built stays alive with it — a stage hull's WebGLRenderer, its context, its GLBs. That
+  // orphaned the New Game / Load stage contexts for entire flights (2026-09-10 census:
+  // k-world--stage hasGL:true in flight; design/perf/PERF_ROOT_CAUSE_2026-09-10.md §4). Dispose,
+  // drop the cached element, and mark the screen unmounted so the next pushScreen rebuilds it from
+  // scratch — every screen's mount() is written to initialize a fresh root.
+  function releaseScreen(id) {
+    const rec = registry.get(id);
+    if (!rec) return;
+    cancelPendingExit(rec);
+    const stacked = stack.indexOf(id);
+    if (stacked >= 0) stack.splice(stacked, 1);
+    if (!rec.mounted) {
+      if (stacked >= 0) syncVisibility();
+      return;
+    }
+    if (rec.def.onHide) { try { rec.def.onHide(); } catch (e) { console.error(e); } }
+    if (rec.def.dispose) { try { rec.def.dispose(); } catch (e) { console.error(e); } }
+    rec.mounted = false;
+    if (rec.el && rec.el.parentNode) rec.el.parentNode.removeChild(rec.el);
+    rec.el = null;
+    if (stacked >= 0) syncVisibility();
+  }
+
   function isOpen() { return stack.length > 0; }
   function hasScreen(id) { return registry.has(id); }
   function getActiveScreenDef() { return activeDef(); }
@@ -542,7 +567,7 @@ export function createScreenManager(ctx) {
   }
 
   return {
-    register, pushScreen, popScreen, replaceScreen, closeAll,
+    register, pushScreen, popScreen, replaceScreen, closeAll, releaseScreen,
     isOpen, hasScreen, top, getActiveScreenDef, refreshTop, syncVisibility, syncHudAccessibility,
     isLiveOverlay, locked, destroy,
     screenMemory,

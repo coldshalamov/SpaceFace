@@ -1012,6 +1012,12 @@ export const ui = {
     // mode → boot screen: show Main Menu only if state.mode==='menu' (it's 'flight' now → just HUD).
     this.bus.on('game:started', () => {
       this.screenManager.closeAll();
+      // Launch leaves the menu route for good, but closeAll only hides: the screens stay cached
+      // with every WebGL context their mount() built. The New Game / Load stage hulls each hold a
+      // THREE.WebGLRenderer, its context and its hangar GLB — leaving them alive orphaned a second
+      // GL context for whole flights on Intel iGPUs (design/perf/PERF_ROOT_CAUSE_2026-09-10.md §4).
+      this.screenManager.releaseScreen('newGame');
+      this.screenManager.releaseScreen('saveLoad');
       this.screenManager.syncVisibility();
       boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
       refreshFlightUI();
@@ -1070,6 +1076,9 @@ export const ui = {
       this.state.ui.docked = false;
       this.state.ui.dockedStationId = null;
       this.screenManager.closeAll();
+      // Same release as game:started — the Load screen's stage hull is the other Launch-path leak.
+      this.screenManager.releaseScreen('newGame');
+      this.screenManager.releaseScreen('saveLoad');
       this.screenManager.syncVisibility();
       boardingFence.sync(this.state && this.state.factionPresence && this.state.factionPresence.boarding);
       refreshFlightUI();

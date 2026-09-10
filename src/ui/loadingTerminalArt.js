@@ -1791,6 +1791,17 @@ export function createTerminalArtwork({
         try { mainEngine.receive({ type: 'stop' }); } catch {}
         mainEngine = null;
       }
+      // A transferred canvas can never host another context, and a connected dead canvas is an
+      // orphaned render surface for the rest of the session — boot-terminal-canvas stayed
+      // connected with live GL programs through whole flights (2026-09-10 canvas census). Detach
+      // the dead elements; ensureBootTerminalCanvas rebuilds them the next time loading is shown.
+      for (const dead of [canvas, waveformCanvas]) {
+        if (!dead) continue;
+        try { delete dead.__sfTerminalArt; } catch { dead.__sfTerminalArt = null; }
+        if (dead.parentNode && typeof dead.parentNode.removeChild === 'function') {
+          try { dead.parentNode.removeChild(dead); } catch {}
+        }
+      }
       if (activeTerminalInstance === this) {
         activeTerminalInstance = null;
       }
@@ -1803,11 +1814,37 @@ export function createTerminalArtwork({
   return instance;
 }
 
+/**
+ * Return the live boot canvas, rebuilding the element if a previous artwork destroyed it.
+ * createTerminalArtwork() transfers the canvas to an OffscreenCanvas worker, which is
+ * irreversible — destroy() detaches the dead element, and loading is shown again after that
+ * (every run after the first: game over → New Game → Launch), so the overlay needs a virgin
+ * canvas to transfer. Returns null when there is no real DOM to build into (probes, tests).
+ */
+export function ensureBootTerminalCanvas(document = globalThis.document) {
+  if (!document || typeof document.getElementById !== 'function') return null;
+  const existing = document.getElementById('boot-terminal-canvas');
+  if (existing) return existing;
+  const overlay = document.getElementById('boot-overlay');
+  if (!overlay || typeof document.createElement !== 'function' || typeof overlay.insertBefore !== 'function') {
+    return null;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.id = 'boot-terminal-canvas';
+  canvas.className = 'boot-canvas';
+  canvas.width = 640;
+  canvas.height = 380;
+  const scrim = typeof overlay.querySelector === 'function' ? overlay.querySelector('.boot-scrim') : null;
+  if (scrim && scrim.parentNode === overlay) overlay.insertBefore(canvas, scrim);
+  else overlay.insertBefore(canvas, overlay.firstChild);
+  return canvas;
+}
+
 export function bootstrapLoadingTerminal(document = globalThis.document) {
   if (!document || typeof document.getElementById !== 'function') return null;
   if (activeTerminalInstance) return activeTerminalInstance;
 
-  const canvas = document.getElementById('boot-terminal-canvas');
+  const canvas = ensureBootTerminalCanvas(document);
   const waveformCanvas = document.getElementById('boot-waveform-canvas');
   const overlay = document.getElementById('boot-overlay');
 

@@ -1146,6 +1146,13 @@ export function createShipPreviewMount(canvas, opts) {
     meshCacheOrder.length = 0;
     disposeAuthoredAssetRuntime(renderer);
     renderer.dispose();
+    // renderer.dispose() frees three's caches but leaves the WebGL context itself live on the
+    // canvas. A cached screen keeps its element (and so the context) forever, which is how the
+    // New Game stage measured hasGL:true five seconds into flight — exactly the second context
+    // secondaryPreviewWebGlBlocked exists to keep off Intel iGPUs. WEBGL_lose_context is the only
+    // reliable kill; every GPU resource of this context (hangar GLB upload included) dies with it.
+    try { renderer.forceContextLoss(); } catch (_) {}
+    try { canvas.width = 0; canvas.height = 0; } catch (_) {}
   }
 
   return {
