@@ -22,7 +22,13 @@ import { computeBestTrades, applyTradeNavigation } from '../../market/tradeLogic
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME = new Map();
-for (const sec of SECTORS) for (const s of (sec.stations || [])) STATION_NAME.set(s.id, s.name || s.id);
+const STATION_TYPE = new Map();
+for (const sec of SECTORS) {
+  for (const s of (sec.stations || [])) {
+    STATION_NAME.set(s.id, s.name || s.id);
+    if (s.type) STATION_TYPE.set(s.id, s.type);
+  }
+}
 
 
 // Meaning roles kept for the instrument-hierarchy tests and the help screen's shared vocabulary.
@@ -47,6 +53,63 @@ export function legalityRole(legal) {
 
 
 function stationId(state) { return state && state.ui && state.ui.dockedStationId; }
+
+function stationRecordId(station) {
+  if (!station) return null;
+  if (typeof station.stationId === 'string' && station.stationId) return station.stationId;
+  return (typeof station.id === 'string' && station.id) ? station.id : null;
+}
+
+function typeFromRecord(record) {
+  if (!record) return '';
+  return String(record.type || record.stationTypeId || '');
+}
+
+function typeFromEntity(entity) {
+  const data = entity && entity.data;
+  if (!data) return '';
+  return String(data.stationTypeId || data.type || '');
+}
+
+function eachWorldSector(state, visit) {
+  const active = state && state.world && state.world.activeSector;
+  if (active && visit(active)) return true;
+  const sectors = state && state.world && state.world.sectors;
+  if (!sectors) return false;
+  const list = Array.isArray(sectors) ? sectors : Object.values(sectors);
+  for (const sector of list) {
+    if (visit(sector)) return true;
+  }
+  return false;
+}
+
+/** Live dock type: entity first, then the sector station record, then the catalog. */
+export function resolveDockStationType(state) {
+  const id = stationId(state);
+  if (!id) return '';
+  const entities = (state && state.entityList) || [];
+  for (const entity of entities) {
+    if (!entity || entity.type !== 'station') continue;
+    const data = entity.data || {};
+    if (data.stationId === id || entity.id === id) {
+      const live = typeFromEntity(entity);
+      if (live) return live;
+    }
+  }
+  let fromSector = '';
+  eachWorldSector(state, (sector) => {
+    const rec = ((sector && sector.stations) || []).find((station) => stationRecordId(station) === id);
+    const typed = typeFromRecord(rec);
+    if (typed) {
+      fromSector = typed;
+      return true;
+    }
+    return false;
+  });
+  if (fromSector) return fromSector;
+  return STATION_TYPE.get(id) || '';
+}
+
 function marketTable(state) {
   const id = stationId(state);
   const markets = state && state.economy && state.economy.markets;
@@ -382,7 +445,8 @@ export function createMarketScreen(ctx) {
     stageEl.setAttribute('aria-describedby', 'sx-market-driver-summary');
     quoteEl.innerHTML = marketQuoteHtml({ id: r.id, name: def.name, category: def.category, legal,
       titleHtml: entitySpanHtml('commodity:' + r.id, escapeHtml(def.name)), mode, buy, sell, avg,
-      demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, hist, trackedGuidance });
+      demandWord: demandWord(demand), driversSummary: drivers.accessibleSummary, hist, trackedGuidance,
+      producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state) });
   }
 
   function renderConsole(state, { receiptOnly = false } = {}) {
