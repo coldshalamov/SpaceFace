@@ -54,7 +54,6 @@ const NPC_LINE_CUT_TAUT_RATIO = 0.92;
 const NPC_BRIDLE_CUT_COOLDOWN_TICKS = 90;
 const NPC_BRIDLE_CUT_RANGE_WU = 180;
 const NPC_ACE_BRIDLE_CUT_RANGE_WU = 220;
-const NPC_HEAVY_BRIDLE_MASS = 150;
 const NPC_ACE_BRIDLE_CUT_PHASES = new Set([
   'engine_flare', 'strike', 'commit', 'control', 'anchor_hold', 'broadside_fire', 'screen_hold', 'fire_window',
 ]);
@@ -665,8 +664,10 @@ export const tetherGameplay = {
     return true;
   },
 
-  // PQ-031.00 — the bolas is a throw. Relative speed at the second latch is the clothesline ΔV;
-  // B11 decides helm-loss. This owner still never writes velocity.
+  // PQ-031.00 — the bolas is a throw. Relative speed at the second latch is the clothesline ΔV.
+  // Each end feels only the share the other mass can yank: dV = ΔV * m_partner / (m + m_p).
+  // Two lights both lose the helm (B11). A heavy's share falls under the hitstun floor, so it
+  // keeps the stick. This owner still never writes velocity.
   _tumbleBridledPair(state, source, target) {
     if (!combatFlag('weaponImpulseConsequences', state.runtime && state.runtime.features)) return;
     if (!isBridleTumbleHull(source) || !isBridleTumbleHull(target)) return;
@@ -674,8 +675,17 @@ export const tetherGameplay = {
     const relZ = finite(source.vel && source.vel.z) - finite(target.vel && target.vel.z);
     const deltaV = Math.hypot(relX, relZ);
     if (!(deltaV > 0)) return;
-    this._publishBridleCatchHitstun(state, source, target, deltaV, relX, relZ);
-    this._publishBridleCatchHitstun(state, target, source, deltaV, -relX, -relZ);
+    const sourceMass = Math.max(
+      0.1,
+      finite(source.physicsBody && source.physicsBody.mass, finite(source.mass, 1)),
+    );
+    const targetMass = Math.max(
+      0.1,
+      finite(target.physicsBody && target.physicsBody.mass, finite(target.mass, 1)),
+    );
+    const sum = sourceMass + targetMass;
+    this._publishBridleCatchHitstun(state, source, target, deltaV * (targetMass / sum), relX, relZ);
+    this._publishBridleCatchHitstun(state, target, source, deltaV * (sourceMass / sum), -relX, -relZ);
   },
 
   _publishBridleCatchHitstun(state, victim, partner, deltaV, dirX, dirZ) {
@@ -1906,11 +1916,10 @@ export function validateTwinBridlePair(host, state, player, source, target, def)
     worlds.targetWorld.z - worlds.sourceWorld.z,
   );
   if (physicalDistance > maxLength) return 'pair_out_of_range';
+  // Stations and planets stay anchors only: two scenery masses cannot bridle each other.
+  // A moving heavy NPC is a legal second endpoint. Whether it notices the line is mass and
+  // momentum, not an admission flag.
   if (isLargeBridleEndpoint(source) && isLargeBridleEndpoint(target)) return 'two_heavy_endpoints';
-  // Moving heavy NPCs are terrain in the fight: the line may pull a light hull around them, but
-  // the heavy does not accept a player bridle as a control surface. Player/persistent haulers stay
-  // eligible for the authored bolas toy; this gate is NPC identity plus mass, not mass alone.
-  if (isNpcHeavyBridleEndpoint(source) || isNpcHeavyBridleEndpoint(target)) return 'heavy_endpoint_resists';
   if (activeAttachmentPathExists(state, source.id, target.id)) return 'attachment_cycle';
   if (masslineObstructed(host, state, source, target)) return 'blocked';
   return null;
@@ -1940,20 +1949,6 @@ function isLargeBridleEndpoint(entity) {
   if (body && typeof body === 'object' && body.dynamic === false) return true;
   const mass = Number(body && body.mass != null ? body.mass : entity.mass);
   return Number.isFinite(mass) && mass >= MASSIVE_ANCHOR_MIN_MASS;
-}
-
-function isNpcHeavyBridleEndpoint(entity) {
-  if (!entity || entity.type !== 'ship') return false;
-  const data = entity.data || {};
-  const ai = data.ai || {};
-  const npc = entity.team === 1
-    || data.enemyTypeId != null
-    || data.lootTableId != null
-    || ai.combatDoctrineId != null;
-  if (!npc) return false;
-  const body = entity.physicsBody;
-  const mass = Number(body && body.mass != null ? body.mass : entity.mass);
-  return Number.isFinite(mass) && mass >= NPC_HEAVY_BRIDLE_MASS;
 }
 
 function isNamedAceEntity(entity) {
