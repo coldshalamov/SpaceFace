@@ -55,10 +55,19 @@ jobs:
       - name: Select the engineering surface
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
           MAX_FILE_BYTES: '8388608'       # 8 MiB per tracked file
           MAX_SOURCE_BYTES: '209715200'   # 200 MiB raw selected-source ceiling
         run: |
           set -euo pipefail
+
+          # `git ls-tree -l` is intentionally NOT used here: in a blobless partial clone, asking
+          # Git for blob sizes can hydrate the very 20+ GB of objects this workflow exists to avoid.
+          # GitHub's tree API gives path + blob size from repository metadata without downloading the
+          # blob bodies. Only the selected files are hydrated later by sparse checkout.
+          tree_sha="$(git -C source rev-parse 'FETCH_HEAD^{tree}')"
+          gh api "/repos/${GITHUB_REPOSITORY}/git/trees/${tree_sha}?recursive=1" > tree.json
+
           python3 - <<'PY'
           import json
           import os
@@ -88,27 +97,23 @@ jobs:
               '.ttf', '.otf', '.woff', '.woff2', '.pdf',
           }
 
-          raw = subprocess.check_output(
-              ['git', '-C', str(repo), 'ls-tree', '-r', '-l', '-z', 'FETCH_HEAD']
-          )
+          tree = json.loads(pathlib.Path('tree.json').read_text(encoding='utf-8'))
+          if tree.get('truncated'):
+              raise SystemExit(
+                  'GitHub recursive tree response was truncated; fail closed rather than publish an '
+                  'incomplete packet that an agent could mistake for the repository.'
+              )
 
           selected = []
           omitted = []
           selected_bytes = 0
           omitted_bytes = 0
 
-          for record in raw.split(b'\0'):
-              if not record:
+          for item in tree.get('tree', []):
+              if item.get('type') != 'blob':
                   continue
-              meta, path_raw = record.split(b'\t', 1)
-              fields = meta.split()
-              if len(fields) != 4:
-                  continue
-              mode, obj_type, sha, size_raw = fields
-              if obj_type != b'blob' or size_raw == b'-':
-                  continue
-              size = int(size_raw)
-              path = path_raw.decode('utf-8', 'surrogateescape')
+              path = item['path']
+              size = int(item.get('size') or 0)
               suffix = pathlib.PurePosixPath(path).suffix.lower()
 
               reason = None
