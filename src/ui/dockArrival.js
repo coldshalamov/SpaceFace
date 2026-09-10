@@ -1,6 +1,7 @@
 // Pure presenter for a compact dock-arrival strip. It consumes receipts from existing owners and
 // deliberately emits no voice, toast, mission, economy, faction, heat, or traffic mutations.
 
+import { leftoverMechanicCard } from '../story/mechanicVoice.js';
 import { leftoverLedgerCard } from '../story/storyLedger.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { isPlayerWanted } from '../systems/heat.js';
@@ -227,13 +228,14 @@ export function paintBerthEventCard(cardEl, card) {
 
 function leftoverTraceHost(targets) {
   const from = targets && (targets.patchEl || targets.routeEl || targets.ledgerEl
-    || targets.newsEl || targets.cardEl);
+    || targets.mechanicEl || targets.newsEl || targets.cardEl);
   const root = from && from.parentElement ? from.parentElement : null;
   const query = (sel) => (root && root.querySelector ? root.querySelector(sel) : null);
   return {
     patchEl: (targets && targets.patchEl) || query('.sxb-berth__patch'),
     routeEl: (targets && targets.routeEl) || query('.sxb-berth__route'),
     ledgerEl: (targets && targets.ledgerEl) || query('.sxb-berth__ledger'),
+    mechanicEl: (targets && targets.mechanicEl) || query('.sxb-berth__mechanic'),
   };
 }
 
@@ -259,6 +261,7 @@ export function writeBerthArrival(targets, view, fallbackNews = '') {
     patch: paintLeftoverLine(host.patchEl, view && view.patch),
     route: paintLeftoverLine(host.routeEl, view && view.route),
     ledger: paintBerthEventCard(host.ledgerEl, view && view.ledger),
+    mechanic: paintBerthEventCard(host.mechanicEl, view && view.mechanic),
   };
 }
 
@@ -286,12 +289,16 @@ export function buildDockArrival(state = {}, station = {}) {
   const paperwork = paperworkFor(state);
   const eventCard = leftoverEventCard(state, stationId);
   const ledger = leftoverLedgerCard(state);
+  const mechanic = leftoverMechanicCard(state);
   const patch = leftoverStructurePatch(state, station);
   const serviceCount = Array.isArray(station.services) ? station.services.length : 0;
   const identity = String(station.name || stationId || 'Station');
   const patchText = patch && patch.text ? patch.text : null;
   const ledgerLine = ledger && ledger.body ? ledger.body : null;
-  const lines = [action.label, news, traffic, paperwork, patchText, ledgerLine].filter(Boolean).slice(0, 6);
+  const mechanicLine = mechanic && mechanic.body ? mechanic.body : null;
+  const lines = [action.label, news, traffic, paperwork, patchText, ledgerLine, mechanicLine]
+    .filter(Boolean)
+    .slice(0, 7);
   return {
     identity,
     primaryAction: action.label,
@@ -304,6 +311,8 @@ export function buildDockArrival(state = {}, station = {}) {
     route,
     ledger,
     ledgerLine,
+    mechanic,
+    mechanicLine,
     traffic,
     paperwork,
     serviceState: serviceCount ? `${serviceCount} berth services listed` : 'No berth services listed',
