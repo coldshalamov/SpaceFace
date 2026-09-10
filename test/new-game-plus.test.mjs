@@ -343,14 +343,61 @@ test('leftover Thunderchild recovers from the byId map key when titlesSeen is em
   assert.equal(overlay.titles[0].status, 'held');
 });
 
-test('leftover Thunderchild recovers from the byId map key when titlesSeen is empty', () => {
+// Input truth: live holderKeys are entity.data.worldRecordId (titles.js holderKeyOf). The only
+// hold-opener, _observeCombatant, requires isDurableNpcShip, which excludes state.playerId, and
+// nothing assigns worldRecordId to the player hull. So the live Thunderchild sighting id is
+// title_thunderchild:<succession>:<world record id> — the holder half is never 'player'.
+test('leftover Thunderchild peels a live NPC sighting id and carries that dead holder key', () => {
+  const npcKey = 'wr_ship_1a2b3c4d';
   const data = completedRunData();
-  data.missions.story.titlesSeen = [];
+  data.missions.story.titlesSeen = [{
+    id: `title_thunderchild:0:${npcKey}`,
+    title: 'Thunderchild',
+    seenAt: 54000,
+    holderKey: npcKey,
+  }];
+  data.missions.story.titles.byId.title_thunderchild = {
+    status: 'held',
+    holderKey: npcKey,
+    holder: { shipDefId: 'ship_wasp', factionId: 'faction_syndicate', displayName: 'Yara No-Cut' },
+    successionCount: 0,
+  };
   const overlay = buildNewGamePlusOverlay(
     data,
     { keepsakeId: 'unique_veil_cutter' },
     { slot: 'legacy', savedAt: '2026-08-06T12:00:00.000Z' },
   );
-  assert.equal(overlay.titles[0].id, 'title_thunderchild');
+  assert.equal(overlay.titles[0].id, 'title_thunderchild', 'the live composite peels to the authored id');
   assert.equal(overlay.titles[0].status, 'held');
+  assert.equal(overlay.titles[0].holderKey, npcKey, 'the carried holder is the previous run NPC, not the player');
+
+  const state = createGameState(7711);
+  state.onboarding = { active: true, finished: false };
+  state.player.ownedShips = [{ defId: 'ship_kestrel', fittings: [] }];
+  state.player.activeShipIndex = 0;
+  const playerEntity = { id: state.playerId, type: 'ship', alive: true, data: {} };
+  state.entities.set(state.playerId, playerEntity);
+  state.entityList.push(playerEntity);
+  const bus = createBus();
+  const titles = createTitlesSystem();
+  titles.init({ state, bus, helpers: {}, registry: { get: () => null } });
+  titles.newGame();
+  const story = Object.assign({}, storyProto);
+  story.init({ state, bus, helpers: { voice: { say() {} } }, registry: { get: () => null } });
+  bus.emit('game:started', { newGamePlus: overlay });
+
+  assert.equal(state.story.titles.byId.title_thunderchild.status, 'held');
+  assert.equal(
+    state.story.titles.byId[`title_thunderchild:0:${npcKey}`],
+    undefined,
+    'no phantom composite byId row',
+  );
+  assert.equal(
+    state.story.titles.byId.title_thunderchild.holderKey,
+    npcKey,
+    'apply keeps the previous run NPC holder key',
+  );
+  // syncTitleStamp matches entity.data.worldRecordId against that key, so the fresh hull is skipped:
+  // the carried title is a state row plus a Ledger sighting, not something the new ship wears.
+  assert.equal(playerEntity.data.titleId, undefined, 'the new hull is not stamped with the carried title');
 });
