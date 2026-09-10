@@ -88,6 +88,15 @@ export function createStageHull(stageEl, { rootEl, zoom = STAGE_HULL_ZOOM, onRea
     let last = null;
     const tick = (nowMs) => {
       if (!mount) { driftRaf = 0; return; }
+      // The Launch path replaces the screen stack without always routing through onHide, which used
+      // to leave this drift running for the whole flight — a second WebGL context re-rendered every
+      // frame behind the world. A stage that has left layout cannot be seen, so stop; activate()
+      // starts a fresh drift if the screen comes back.
+      if (!canvas.isConnected || canvas.clientWidth < 1 || canvas.clientHeight < 1) {
+        driftRaf = 0;
+        try { mount.setActive(false); } catch (_) {}
+        return;
+      }
       const now = Number.isFinite(nowMs) ? nowMs : performance.now();
       const dt = last == null ? 0 : Math.min(0.1, Math.max(0, (now - last) / 1000));
       last = now;

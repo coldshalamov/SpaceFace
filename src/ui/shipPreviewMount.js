@@ -46,6 +46,36 @@ const DEFAULT_DOCK_PREVIEW_MOUNT = Object.freeze({
  */
 export const DOCK_INTERIOR_BY_ARCHETYPE = Object.freeze({});
 
+export function secondaryPreviewWebGlBlocked(state, gl = null) {
+  if (!state) return false;
+  const docked = !!(state.ui && state.ui.docked);
+  if (state.mode !== 'flight' && !docked) return false;
+  const context = gl || (
+    state.render && state.render.renderer && typeof state.render.renderer.getContext === 'function'
+      ? state.render.renderer.getContext()
+      : null
+  );
+  if (context && typeof context.isContextLost === 'function' && context.isContextLost()) {
+    return true;
+  }
+  if (!context) return false;
+  try {
+    const debug = typeof context.getExtension === 'function'
+      ? context.getExtension('WEBGL_debug_renderer_info')
+      : null;
+    const gpu = debug && typeof context.getParameter === 'function'
+      ? String(context.getParameter(debug.UNMASKED_RENDERER_WEBGL) || '')
+      : (typeof context.getParameter === 'function'
+        ? String(context.getParameter(context.RENDERER) || '')
+        : '');
+    // A second hangar compile on Intel/ANGLE TDR's the live flight context
+    // (headed dock witness). Discrete GPUs keep the authored berth picture.
+    return /intel/i.test(gpu);
+  } catch {
+    return false;
+  }
+}
+
 export function dockInteriorIdForArchetype(archetypeGlb) {
   if (typeof archetypeGlb === 'string' && DOCK_INTERIOR_BY_ARCHETYPE[archetypeGlb]) {
     return DOCK_INTERIOR_BY_ARCHETYPE[archetypeGlb];
@@ -434,6 +464,12 @@ export function createShipPreviewMount(canvas, opts) {
   // explicitly opts in (devtools). Outfitting/shipyard/new-game pass allowFastFallback:false.
   const fastPreview = opts.fastPreview === true;
   const allowFastFallback = opts.allowFastFallback === true || fastPreview === true;
+  const liveState = (typeof globalThis !== 'undefined' && globalThis.SF && globalThis.SF.state)
+    || (typeof window !== 'undefined' && window.SF && window.SF.state)
+    || null;
+  if (opts.allowSecondaryWebGl !== true && secondaryPreviewWebGlBlocked(liveState)) {
+    throw new Error('secondary WebGL preview blocked; station renders over the frozen world');
+  }
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -646,9 +682,23 @@ export function createShipPreviewMount(canvas, opts) {
     return null;
   }
 
+  // `canvas.width`/`canvas.height` are the DEVICE-pixel backing store, already multiplied by
+  // renderer.setPixelRatio(). Seeding a CSS-pixel size from them re-multiplies by the device pixel
+  // ratio on every call, so a canvas that is not in layout (clientWidth === 0 — hidden screen,
+  // detached stage, a drift loop still running after the screen left) grows its drawing buffer by
+  // the pixel ratio every frame. Measured on the New Game stage hull: 4706x2371 on entering flight,
+  // 106963x53862 five seconds later, with 59% of the whole main thread inside
+  // WebGLRenderer.setSize. Fall back to the last known CSS size, never to the backing store, and
+  // keep a hard ceiling so no other caller can drive the buffer past a sane preview size.
+  const MAX_PREVIEW_CSS_PX = 4096;
+
   function resize() {
-    const nextW = Math.max(1, Math.floor(canvas.clientWidth || canvas.width || W || 320));
-    const nextH = Math.max(1, Math.floor(canvas.clientHeight || canvas.height || H || 200));
+    const clampCss = (value, fallback) => Math.max(
+      1,
+      Math.min(MAX_PREVIEW_CSS_PX, Math.floor(value || fallback)),
+    );
+    const nextW = clampCss(canvas.clientWidth, W || 320);
+    const nextH = clampCss(canvas.clientHeight, H || 200);
     if (nextW === W && nextH === H) return;
     W = nextW; H = nextH;
     renderer.setSize(W, H, false);
