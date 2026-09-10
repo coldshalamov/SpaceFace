@@ -69,10 +69,22 @@ test(`seed ${PQ_174_05_SEED}: wave 10/20/30 champions die to thrown mass within 
     );
     assert.ok(physics.physicsDamagePerSlam > 0);
     if (spec.enemyId === 'dreadnought_boss') {
-      // Catalog armorFlat 25 zeroes Pulse (8) and Autocannon (18) after shields.
-      // A rail still kills, and it is slower than thrown mass. That is guns as the slow way.
-      assert.equal(physics.gun.dead, false, 'Pulse must not be the fast or only way through Iron Maw armour');
-      assert.ok(rail.gun.dead, 'a gun that beats armourFlat must still be able to kill Iron Maw');
+      // RETARGETED 2026-09-10. This block previously asserted `physics.gun.dead === false` --
+      // that Iron Maw's catalog armorFlat of 25 zeroed the starter Pulse (8) after shields. That
+      // was the DEFECT written down as if it were the design: `src/data/enemies.js` opens by
+      // requiring "armorFlat must stay well below starter shot damage", and names flat DR >= dmg as
+      // the bug that "made bruisers literally unkillable with the Hitch gun". Iron Maw was the only
+      // catalog hull violating it. Capital plate is now 3, and `enemy-armor-flat-contract.test.mjs`
+      // enforces the header rule against the live weapon damage so it cannot come back.
+      //
+      // The packet's law is "physics must be the fast way, guns the slow way, immunity never", so
+      // the bar is ORDERING, not a gun that cannot finish.
+      assert.ok(physics.gun.dead, 'the starter Pulse must be able to kill Iron Maw -- slowly is the design, never is immunity theatre');
+      assert.ok(
+        physics.gun.seconds > physics.physics.seconds,
+        `the starter Pulse (${physics.gun.seconds.toFixed(2)}s) must be slower than thrown mass (${physics.physics.seconds.toFixed(2)}s)`,
+      );
+      assert.ok(rail.gun.dead, 'a heavier gun must still be able to kill Iron Maw');
       assert.ok(rail.gun.seconds > physics.physics.seconds, 'rail must be slower than thrown mass');
     } else {
       const gun = kinetic.gun.dead ? kinetic : physics;

@@ -151,7 +151,7 @@ export const ENEMY_TYPES = [
     silhouette: 'dreadnought_enemy', factionId: 'faction_vael',
     aiArchetype: 'miniboss_capital', levelRange: [10, 15],
     combatDoctrineId: 'capital_broadside',
-    hull: 6000, armor: 2200, armorFlat: 25, shield: 2400, shieldRegen: 60, shieldRegenCapable: true, shieldRegenDelay: 6, cap: 2000, capRegen: 40,
+    hull: 6000, armor: 2200, armorFlat: 3, shield: 2400, shieldRegen: 60, shieldRegenCapable: true, shieldRegenDelay: 6, cap: 2000, capRegen: 40,
     maxSpeed: 49, accel: 21, turnRate: 0.3, collisionRadius: 60, mass: 2000,
     weapons: [
       { id: 'wpn_torpedo_l',      count: 2, turret: true },
