@@ -65,6 +65,8 @@ const REEL_SLIP_RELENGTH_RATIO = 0.95;
 // line, while preventing the spring from injecting an unbounded impulse into either hull.
 const TWIN_BRIDLE_DEF_ID = 'attachment_twin_bridle';
 const TWIN_BRIDLE_TENSION_OVERSHOOT = 1.05;
+// A player cut spends remaining whip PE. Occupational cleanup and load-breaks do not.
+const PLAYER_WHIP_RELEASE_REASONS = new Set(['tether_cut', 'cut']);
 const SPRING_TUNES = Object.freeze({
   tether_standard: Object.freeze({ K: 140, zeta: 0.95, captureS: 0.35, maxStretchRatio: 1.44, reelSafeStretchRatio: 1.32 }),
   attachment_massline: Object.freeze({ K: 170, zeta: 0.90, captureS: 0.30 }),
@@ -521,6 +523,15 @@ export class Sg02DynamicBodyOwner {
   cutAttachment(input = {}) {
     const attachment = this._findAttachment(input);
     if (!attachment) return false;
+    const reason = typeof input.reason === 'string' ? input.reason : '';
+    const loadBreak = !!(attachment.springState && attachment.springState.breakRequested);
+    if (usesElasticWhipSpring(attachment.spring)) {
+      if (!loadBreak && PLAYER_WHIP_RELEASE_REASONS.has(reason)) {
+        this._spendElasticWhipStoredEnergy(attachment);
+      } else if (attachment.springState) {
+        attachment.springState.lastStoredEnergy = 0;
+      }
+    }
     this._removeAttachmentJoints(attachment);
     this.attachments.delete(attachment.id);
     return true;
@@ -595,6 +606,9 @@ export class Sg02DynamicBodyOwner {
       storedEnergy: legacyRope || frameCoupler
         ? 0
         : Math.max(0, finite(springState.lastStoredEnergy, 0.5 * (spring && spring.K ? spring.K : 0) * stretch * stretch)),
+      spentEnergy: legacyRope || frameCoupler
+        ? 0
+        : Math.max(0, finite(springState.lastSpentEnergy, 0)),
       breakRequested: legacyRope ? false : !!springState.breakRequested,
       springState: legacyRope ? null : Object.freeze(cloneSpringState(springState)),
       sourceWorld: Object.freeze(source),
@@ -1545,6 +1559,7 @@ export class Sg02DynamicBodyOwner {
       state.lastImpulse = 0;
       state.lastRelativeSpeed = 0;
       state.lastYank = 0;
+      state.lastSpentEnergy = Math.max(0, finite(state.lastStoredEnergy, 0));
       state.lastStoredEnergy = 0;
       return;
     }
@@ -1651,7 +1666,11 @@ export class Sg02DynamicBodyOwner {
     state.lastImpulse = forceImpulse;
     state.lastRelativeSpeed = relativeSpeed;
     state.lastYank = yank;
-    state.lastStoredEnergy = 0.5 * spring.K * stretch * stretch;
+    {
+      const prevStored = Math.max(0, finite(state.lastStoredEnergy, 0));
+      state.lastStoredEnergy = 0.5 * spring.K * stretch * stretch;
+      state.lastSpentEnergy = Math.max(0, prevStored - state.lastStoredEnergy);
+    }
     state.lastOverloadRatio = Math.max(geometricOverloadRatio, loadRatio);
     state.phase = geometricOverloadRatio > 1 ? 'overload'
       : inCapture ? 'capture'
@@ -1776,6 +1795,41 @@ export class Sg02DynamicBodyOwner {
     attachment.contactJoint = null;
   }
 
+  // Remaining ½ k s² is spent as a closing impulse along the line. Magnitude is the stored
+  // energy, not a separate weapon table. Load-break zeroes the quantity without this dump.
+  _spendElasticWhipStoredEnergy(attachment) {
+    const state = attachment.springState || (attachment.springState = createSpringState());
+    const energy = Math.max(0, finite(state.lastStoredEnergy, 0));
+    if (!(energy > 0)) return 0;
+    const scratch = attachment.springScratch || (attachment.springScratch = createSpringScratch());
+    const source = worldAnchorInto(scratch.source, attachment.owner, attachment.anchorA);
+    const target = worldAnchorInto(scratch.target, attachment.target, attachment.anchorB);
+    const dx = target.x - source.x;
+    const dz = target.z - source.z;
+    const distance = Math.hypot(dx, dz);
+    const nx = distance > 1e-9 ? dx / distance : 1;
+    const nz = distance > 1e-9 ? dz / distance : 0;
+    const mu = reducedMass(attachment.owner, attachment.target);
+    if (!(mu > 0)) {
+      state.lastSpentEnergy = energy;
+      state.lastStoredEnergy = 0;
+      return 0;
+    }
+    const impulse = mu * Math.sqrt((2 * energy) / mu);
+    scratch.impulseA.x = nx * impulse;
+    scratch.impulseA.y = 0;
+    scratch.impulseA.z = nz * impulse;
+    scratch.impulseB.x = -scratch.impulseA.x;
+    scratch.impulseB.y = 0;
+    scratch.impulseB.z = -scratch.impulseA.z;
+    applyAttachmentImpulse(attachment, scratch.impulseA, scratch.impulseB, source, target);
+    writeEntityVelFromBody(attachment.owner);
+    writeEntityVelFromBody(attachment.target);
+    state.lastSpentEnergy = energy;
+    state.lastStoredEnergy = 0;
+    return energy;
+  }
+
 }
 
 async function loadRapierCompat() {
@@ -1880,6 +1934,7 @@ function createSpringState() {
     lastTension: 0,
     lastImpulse: 0,
     lastStoredEnergy: 0,
+    lastSpentEnergy: 0,
   };
 }
 
@@ -1900,6 +1955,7 @@ function normalizeSpringState(value = null) {
   state.lastTension = Math.max(0, finite(value.lastTension));
   state.lastImpulse = Math.max(0, finite(value.lastImpulse));
   state.lastStoredEnergy = Math.max(0, finite(value.lastStoredEnergy));
+  state.lastSpentEnergy = Math.max(0, finite(value.lastSpentEnergy));
   return state;
 }
 
@@ -1920,6 +1976,7 @@ function cloneSpringState(value = null) {
     lastTension: state.lastTension,
     lastImpulse: state.lastImpulse,
     lastStoredEnergy: state.lastStoredEnergy,
+    lastSpentEnergy: state.lastSpentEnergy,
   };
 }
 
@@ -2038,6 +2095,18 @@ function applyAttachmentImpulse(attachment, impulseA, impulseB, source, target) 
 function applyCenterImpulse(rec, impulse) {
   if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body) return;
   rec.body.applyImpulse(impulse, true);
+}
+
+function writeEntityVelFromBody(rec) {
+  if (!rec || !rec.body || !rec.entity) return;
+  const v = rec.body.linvel();
+  const vel = rec.entity.vel || (rec.entity.vel = { x: 0, z: 0 });
+  vel.x = finite(v.x);
+  vel.z = finite(v.z);
+  if (rec.kinematics) {
+    rec.kinematics.vx = finite(v.x);
+    rec.kinematics.vz = finite(v.z);
+  }
 }
 
 // PQ-137.11 C. The player's hull never takes an off-centre impulse, from any source: a weapon hit

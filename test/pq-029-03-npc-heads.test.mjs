@@ -180,6 +180,26 @@ test('Ceres ordinary traffic uses tractor, whip, and coupler within 10 min', {
       );
     }
 
+    if (!HEADS.every((headId) => first[headId])) {
+      const roles = {};
+      for (const entity of state.entities.values()) {
+        if (!entity || entity.type !== 'ship') continue;
+        const role = roleOf(entity) || 'none';
+        roles[role] = (roles[role] || 0) + 1;
+      }
+      const jobs = [];
+      const byId = state.npcJobs && state.npcJobs.byId || {};
+      for (const entry of Object.values(byId)) {
+        jobs.push({
+          kind: entry.kind || (entry.job && entry.job.kind),
+          phase: entry.job && entry.job.phase,
+          role: entry.job && entry.job.payload && entry.job.payload.role,
+          tow: entry.towAttachmentId || null,
+        });
+      }
+      console.log('PQ-029.03 census context', JSON.stringify({ t: Number((state.simTime || 0).toFixed(2)), roles, jobs }));
+    }
+
     for (const headId of HEADS) {
       assert.ok(first[headId], `ordinary Ceres traffic never used ${headId} within ${WINDOW_S}s`);
       assert.ok(first[headId].timeS <= WINDOW_S, `${headId} sighting ${first[headId].timeS}s exceeds 10 min`);

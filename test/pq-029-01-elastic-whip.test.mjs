@@ -16,6 +16,7 @@ import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
 import {
   ELASTIC_WHIP_HEAD_ID,
   ELASTIC_WHIP_SPRING_K,
+  whipGlowFromStoredEnergy,
   whipStoredEnergy,
   whipStrainGlow,
 } from '../src/systems/tetherGameplay.js';
@@ -96,11 +97,14 @@ test('a heavy hull shrugs the whip snap and an overload breaks the line', () => 
   assert.equal(broke.verdict.kind, 'fail');
 });
 
-test('stretch stores energy and the glow tracks the stretch', () => {
+test('stretch stores energy and the glow tracks that same quantity', () => {
   assert.equal(ELASTIC_WHIP_HEAD_ID, 'elastic_whip');
   assert.equal(whipStoredEnergy(20, ELASTIC_WHIP_SPRING_K), 0.5 * ELASTIC_WHIP_SPRING_K * 400);
-  assert.ok(whipStrainGlow(22.4, 80) >= 0.9, 'a working snap stretch must read as hot glow');
-  assert.ok(whipStrainGlow(2, 80) < 0.15, 'a slack stretch stays dim');
+  const hot = whipStoredEnergy(22.4);
+  assert.ok(whipGlowFromStoredEnergy(hot, 80) >= 0.9, 'a working snap stretch must read as hot glow');
+  assert.equal(whipStrainGlow(22.4, 80), whipGlowFromStoredEnergy(hot, 80));
+  assert.ok(whipGlowFromStoredEnergy(whipStoredEnergy(2), 80) < 0.15, 'a slack stretch stays dim');
+  assert.equal(whipGlowFromStoredEnergy(0, 80), 0, 'spent energy must dim the glow');
 });
 
 test('a stored whip snap on seed 29010 moves a light hostile >= 40% of Wasp cruise', async () => {
@@ -131,24 +135,77 @@ test('a stored whip snap on seed 29010 moves a light hostile >= 40% of Wasp crui
     });
     assert.ok(handle, 'the whip must latch the light hostile');
 
-    let peakWasp = 0;
     let peakEnergy = 0;
     let peakGlow = 0;
+    let releaseEnergy = 0;
+    let releaseGlow = 0;
+    let waspBefore = 0;
+    let released = false;
     for (let tick = 0; tick < 180; tick += 1) {
       runtime.step(DT);
-      peakWasp = Math.max(peakWasp, Math.hypot(wasp.vel.x, wasp.vel.z));
       const telemetry = runtime.getAttachmentTelemetry({ attachmentId: 'elastic-whip-snap-29010' });
-      if (telemetry) {
-        peakEnergy = Math.max(peakEnergy, telemetry.storedEnergy);
-        peakGlow = Math.max(peakGlow, whipStrainGlow(telemetry.stretch, telemetry.restLength));
+      if (!telemetry) continue;
+      const energy = telemetry.storedEnergy;
+      const glow = whipGlowFromStoredEnergy(energy, telemetry.restLength);
+      peakEnergy = Math.max(peakEnergy, energy);
+      peakGlow = Math.max(peakGlow, glow);
+      if (!released && energy >= 20000 && telemetry.stretch > 12) {
+        waspBefore = Math.hypot(wasp.vel.x, wasp.vel.z);
+        releaseEnergy = energy;
+        releaseGlow = glow;
+        runtime.cutAttachment({
+          attachmentId: 'elastic-whip-snap-29010',
+          reason: 'tether_cut',
+        });
+        released = true;
+        break;
       }
     }
-    const ratio = peakWasp / WASP_CRUISE;
-    console.log(`WHIP_SNAP_DV=${peakWasp.toFixed(1)} CRUISE=${WASP_CRUISE} RATIO=${ratio.toFixed(2)} FLOOR=0.40 ENERGY=${peakEnergy.toFixed(0)} GLOW=${peakGlow.toFixed(2)} SEED=${SEED}`);
-    assert.ok(peakWasp >= SNAP_FLOOR,
-      `a stored whip snap must move a light hostile >= 40% cruise (${SNAP_FLOOR}), got ${peakWasp.toFixed(1)}`);
-    assert.ok(peakEnergy > 0, 'the stretch must publish stored energy');
-    assert.ok(peakGlow >= 0.35, 'the working snap must light a readable strain glow');
+    assert.equal(released, true, 'the whip must still be stretched when the player cuts');
+    const waspAfter = Math.hypot(wasp.vel.x, wasp.vel.z);
+    const snapDv = Math.max(0, waspAfter - waspBefore);
+    const ratio = waspAfter / WASP_CRUISE;
+    console.log(`WHIP_SNAP_DV=${waspAfter.toFixed(1)} BEFORE=${waspBefore.toFixed(1)} D_V=${snapDv.toFixed(1)} CRUISE=${WASP_CRUISE} RATIO=${ratio.toFixed(2)} FLOOR=0.40 ENERGY=${releaseEnergy.toFixed(0)} SPENT=${releaseEnergy.toFixed(0)} GLOW=${releaseGlow.toFixed(2)} PEAK_ENERGY=${peakEnergy.toFixed(0)} PEAK_GLOW=${peakGlow.toFixed(2)} SEED=${SEED}`);
+    assert.ok(releaseEnergy > 0, 'the stretch must publish stored energy');
+    assert.ok(releaseGlow >= 0.35, 'the glow must read that stored energy, not a timer');
+    assert.ok(waspAfter >= SNAP_FLOOR,
+      `a stored whip snap must move a light hostile >= 40% cruise (${SNAP_FLOOR}), got ${waspAfter.toFixed(1)}`);
+    assert.equal(runtime.getAttachmentTelemetry({ attachmentId: 'elastic-whip-snap-29010' }), null,
+      'the line is gone after the release spends the store');
+  } finally {
+    runtime.dispose();
+  }
+});
+
+test('a slack whip cut spends nothing and is not a gun', async () => {
+  const STANDARD = ATTACHMENT_DEFS.find((d) => d.id === 'tether_standard');
+  const policy = effectiveTetherPolicy(STANDARD, {
+    data: { derived: { masslineHeadId: ELASTIC_WHIP_HEAD_ID } },
+  }, PRODUCTION_FEATURES);
+  const owner = makeBody('slack-owner', 0, 0, 0, 0, DRIFTER.mass, 'ship');
+  const wasp = makeBody('slack-wasp', 80, 0, 0, 0, 16, 'ship');
+  const runtime = await createSg02DynamicBodyOwner({ fixedDt: DT, quantum: 1e-5, mode: 'rapier-dynamic' });
+  try {
+    runtime.syncFromEntities([owner, wasp]);
+    runtime.createAttachment({
+      attachmentId: 'elastic-whip-slack-29010',
+      defId: 'tether_standard',
+      ownerId: owner.id,
+      targetId: wasp.id,
+      sourceWorld: owner.pos,
+      targetWorld: wasp.pos,
+      restLength: 80,
+      spring: policy.spring,
+      tick: 0,
+    });
+    runtime.step(DT);
+    const telemetry = runtime.getAttachmentTelemetry({ attachmentId: 'elastic-whip-slack-29010' });
+    const energy = telemetry ? telemetry.storedEnergy : 0;
+    runtime.cutAttachment({ attachmentId: 'elastic-whip-slack-29010', reason: 'tether_cut' });
+    const waspSpeed = Math.hypot(wasp.vel.x, wasp.vel.z);
+    console.log(`SLACK_CUT ENERGY=${energy.toFixed(1)} WASP=${waspSpeed.toFixed(2)} SEED=${SEED}`);
+    assert.ok(energy < 50, `a rest-length line must not store a snap, got ${energy.toFixed(1)}`);
+    assert.ok(waspSpeed < 4, `a slack cut must not fire a gun, wasp ${waspSpeed.toFixed(2)}`);
   } finally {
     runtime.dispose();
   }

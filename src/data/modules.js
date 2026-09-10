@@ -127,8 +127,8 @@ export const MODULES = [
     variantBonuses: { magnetRangePct: 0.80, energyDrawPct: 1.00, tractorWholeWrecks: true },
   },
   {
-    // ELASTIC WHIP — stretch stores the burn, the return stroke snaps the light end.
-    // M utility: it fits the Drifter, not Hitch. Cutting keeps earned speed; the snap is the spring.
+    // ELASTIC WHIP — stretch stores ½ k s². A player cut spends that remaining energy as a
+    // closing snap. Load-break dumps it empty. M utility: Drifter, not Hitch.
     // Scrap sweepers (and patrols netting a raider) snapshot this head on their occupational line.
     id: 'mod_elastic_whip_m', name: 'Elastic Whip M', slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 16000, requiresTech: 'tech_tractor_systems',
     energyDraw: 4, mods: { masslineHeadId: 'elastic_whip' },

@@ -288,22 +288,7 @@ export const tetherGameplay = {
       const releasedAfterPress = !reelHeld && state.tick !== this._pendingCut.firstTick;
       const heldLongEnough = now - this._pendingCut.requestedAt >= TAP_CUT_DELAY_S;
       if (releasedAfterPress) {
-        const targetId = this._active.targetId;
-        const cutPayload = this._cutPayload(state, player, targetId);
-        const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
-        // attachment_missing = the orphan sweep already broke it (target died) and reconcile
-        // emitted the event — only emit released on a cut WE performed.
-        if (result && result.ok) {
-          if (cutPayload.slingshot) this._grantSlingshotState(state, SLINGSHOT_STATE_S);
-          this.bus.emit('tether:cut', cutPayload);
-          this.bus.emit('tether:released', { targetId });
-          this.bus.emit('tether:releaseRated', rateRelease(state, targetId));
-        }
-        this._active = null;
-        this._pendingCut = null;
-        this._noRelatchUntil = now + RELATCH_COOLDOWN_S;
-        this._resetPhaseMirror();
-        this._mirror(state, null, 0);
+        this._cutActive(attachments, state, player, now);
         return;
       }
       // Legacy held-action reel intent cancels pending cut once the tap window expires so release
@@ -1638,6 +1623,7 @@ export const tetherGameplay = {
     if (!this._active) return false;
     const targetId = this._active.targetId;
     const cutPayload = this._cutPayload(state, player, targetId);
+    this._emitWhipSnapIfStored(state, targetId);
     const result = attachments.cut(this._active.attachmentId, player.id, 'tether_cut');
     if (result && result.ok) {
       if (cutPayload.slingshot) this._grantSlingshotState(state, SLINGSHOT_STATE_S);
@@ -1668,6 +1654,21 @@ export const tetherGameplay = {
     const t = player.tether || (player.tether = { active: false, targetId: null, strain: 0, load: 0, attachmentId: null, restLength: 0, phase: 'slack' });
     t.slingshotT = Math.max(finite(t.slingshotT, 0), positive(seconds, SLINGSHOT_STATE_S));
     t.slingshot = t.slingshotT > 0;
+  },
+
+  _emitWhipSnapIfStored(state, targetId) {
+    const t = state && state.player && state.player.tether;
+    if (!t || t.headId !== ELASTIC_WHIP_HEAD_ID) return false;
+    const energy = finite(t.storedEnergy, 0);
+    if (!(energy > 0)) return false;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('tether:whipSnap', {
+        targetId,
+        storedEnergy: energy,
+        strainGlow: finite(t.strainGlow, 0),
+      });
+    }
+    return true;
   },
 
   _cutPayload(state, player, targetId) {
@@ -1832,11 +1833,14 @@ export const tetherGameplay = {
     const telemetry = t.active && this._active
       ? attachmentTelemetry(this.helpers, { id: this._active.attachmentId }, state)
       : null;
-    const storedEnergy = t.active ? finite(telemetry && telemetry.storedEnergy, 0) : 0;
     const stretch = t.active ? finite(telemetry && telemetry.stretch, 0) : 0;
-    const strainGlow = t.active ? whipStrainGlow(stretch, t.restLength) : 0;
+    const storedEnergy = t.active
+      ? finite(telemetry && telemetry.storedEnergy, whipStoredEnergy(stretch))
+      : 0;
+    const strainGlow = t.active ? whipGlowFromStoredEnergy(storedEnergy, t.restLength) : 0;
     t.storedEnergy = storedEnergy;
     t.strainGlow = strainGlow;
+    t.spentEnergy = t.active ? finite(telemetry && telemetry.spentEnergy, 0) : 0;
     if (t.active && t.headId === ELASTIC_WHIP_HEAD_ID) {
       t.load = Math.max(t.load, strainGlow);
     }
@@ -2472,6 +2476,17 @@ export function whipStoredEnergy(stretch, k = ELASTIC_WHIP_SPRING_K) {
   const s = Number.isFinite(stretch) && stretch > 0 ? stretch : 0;
   const stiffness = Number.isFinite(k) && k > 0 ? k : ELASTIC_WHIP_SPRING_K;
   return 0.5 * stiffness * s * s;
+}
+
+export function whipGlowFromStoredEnergy(
+  energy,
+  restLength,
+  k = ELASTIC_WHIP_SPRING_K,
+  readableStretchRatio = ELASTIC_WHIP_GLOW_STRETCH_RATIO,
+) {
+  const stiffness = Number.isFinite(k) && k > 0 ? k : ELASTIC_WHIP_SPRING_K;
+  const stretch = energy > 0 && stiffness > 0 ? Math.sqrt((2 * energy) / stiffness) : 0;
+  return whipStrainGlow(stretch, restLength, readableStretchRatio);
 }
 
 export function whipStrainGlow(stretch, restLength, readableStretchRatio = ELASTIC_WHIP_GLOW_STRETCH_RATIO) {

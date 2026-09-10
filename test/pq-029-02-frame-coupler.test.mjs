@@ -84,17 +84,25 @@ test('PQ-029.02 seed 29020: 200-mass coupler tow holds a 180° at 60% cruise', a
     }
 
     const distSwing = maxDist - minDist;
+    const oscillationAmplitude = distSwing;
+    const restError = Math.max(Math.abs(maxDist - REST), Math.abs(minDist - REST));
     const tugHeading = Math.atan2(tug.vel.z, tug.vel.x);
+    const comVx = (tug.vel.x * tug.mass + load.vel.x * load.mass) / (tug.mass + load.mass);
+    const comVz = (tug.vel.z * tug.mass + load.vel.z * load.mass) / (tug.mass + load.mass);
+    const comHeading = Math.atan2(comVz, comVx);
     console.log(JSON.stringify({
       seed: SEED,
       towMass: TOW_MASS,
       commandedVsCruise: TURN_SPEED / HITCH_CRUISE,
       speed: TURN_SPEED,
       distSwing,
+      oscillationAmplitude,
+      restError,
       minDist,
       maxDist,
       relSignFlips,
       tugHeadingDeg: tugHeading * 180 / Math.PI,
+      comHeadingDeg: comHeading * 180 / Math.PI,
     }));
     assert.ok(minDist > REST * 0.7, `hitch must stay taut, min ${minDist.toFixed(1)}`);
     assert.ok(distSwing <= DIST_SWING_CEILING,
