@@ -169,11 +169,10 @@ export function waveOpeningLine(wave, plan) {
   //
   // The arc's line names how many hostiles arrive, because on the arc that number is the whole
   // wave. In a swarm wave the arrivals are only the opening burst — the room keeps refilling — so
-  // announcing "nine hostiles" would be a promise the wave immediately breaks. What the player
-  // actually needs is the number that ENDS the wave (the kill quota) and, on the wave that
-  // introduces one, the name of the silhouette they have not seen before.
+  // announcing "nine hostiles" would be a promise the wave immediately breaks. The wave ends on a
+  // sixty-second clock. Kills buy score; they do not close the wave.
   const swarm = plan && plan.swarm;
-  if (swarm && Number.isInteger(swarm.quota) && swarm.quota > 0) {
+  if (swarm) {
     const bearings = [];
     for (const pkg of packages) {
       const word = BEARING_WORD[pkg && pkg.gateGroup];
@@ -187,10 +186,10 @@ export function waveOpeningLine(wave, plan) {
       // and "Corsair Raider leads" would describe the second one as if it were the first.
       const label = swarm.bossLabel || 'A capital signature';
       const line = swarm.bossLine ? ` ${swarm.bossLine}` : '';
-      return `Wave ${wave}. ${arrival} ${label}.${line} Put them down, and ${swarm.quota} with them.`;
+      return `Wave ${wave}. ${arrival} ${label}.${line} Survive the minute.`;
     }
     const namecheck = newcomer ? ` ${newcomer} is new.` : '';
-    return `Wave ${wave}. ${arrival}${namecheck} Put down ${swarm.quota}.`;
+    return `Wave ${wave}. ${arrival}${namecheck} Survive the minute.`;
   }
 
   let bodies = 0;
@@ -443,9 +442,16 @@ export const survivalAnnounce = {
       this._say('alert', `survival:w${wave}:starved`, `Wave ${wave} closed empty. Nothing reached the field. That was not a clear.`, 6);
       return;
     }
+    // Swarm waves end on the clock: "survived", not "clear". Prefer actual kills when the
+    // receipt names them — admissions count bodies the stream fielded, not bodies the player
+    // put down.
+    const killed = Number.isInteger(rec.killed) && rec.killed >= 0 ? rec.killed : null;
     const admitted = Number.isInteger(rec.admitted) && rec.admitted > 0 ? rec.admitted : 0;
-    const tally = admitted > 0 ? ` ${capitalize(countWord(admitted))} down.` : '';
-    this._say('objective', `survival:w${wave}:clear`, `Wave ${wave} clear.${tally}`, 4);
+    const tallyCount = killed != null ? killed : admitted;
+    const survived = rec.completionKind === 'duration';
+    const verb = survived ? 'survived' : 'clear';
+    const tally = tallyCount > 0 ? ` ${capitalize(countWord(tallyCount))} down.` : '';
+    this._say('objective', `survival:w${wave}:clear`, `Wave ${wave} ${verb}.${tally}`, 4);
   },
 
   _onLevelUp(payload) {

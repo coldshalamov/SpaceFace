@@ -78,6 +78,24 @@ export function threatCensus(run) {
   return { alive, total, remaining, resolved };
 }
 
+/**
+ * Player-facing clock from `run:waveProgress.remainingTicks`. The HUD never ticks this itself.
+ * Format is `0:SS` so a sixty-second wave reads 0:60 … 0:00.
+ */
+export function waveCountdownClock(remainingTicks) {
+  const ticks = Number.isInteger(remainingTicks) ? Math.max(0, remainingTicks) : 0;
+  const seconds = Math.max(0, Math.ceil(ticks / 60));
+  return `0:${String(seconds).padStart(2, '0')}`;
+}
+
+/** Elapsed fraction 0..1 from the same payload. The fill is time, never kill count. */
+export function waveElapsedFill(remainingTicks, durationTicks) {
+  const duration = Number.isInteger(durationTicks) && durationTicks > 0 ? durationTicks : 0;
+  if (duration <= 0) return 0;
+  const remaining = Number.isInteger(remainingTicks) ? Math.max(0, remainingTicks) : 0;
+  return Math.max(0, Math.min(1, (duration - remaining) / duration));
+}
+
 /** Fraction of this level's XP the player has earned, 0..1. */
 export function levelProgress(run) {
   const xp = Number.isInteger(run && run.xp) ? run.xp : 0;
@@ -120,12 +138,17 @@ export const survivalHud = {
     this._objective = null;
     this._chain = 0;
     this._chainBest = 0;
+    this._waveProgress = null;
     this._unsubs = [];
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:awarded', (p) => this._onAwarded(p)));
     this._unsubs.push(this.bus.on('run:levelUp', (p) => this._onLevelUp(p)));
-    this._unsubs.push(this.bus.on('run:started', () => this._clearEarn()));
+    this._unsubs.push(this.bus.on('run:started', () => {
+      this._clearEarn();
+      this._waveProgress = null;
+    }));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
+    this._unsubs.push(this.bus.on('run:waveProgress', (p) => this._onWaveProgress(p)));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', () => this._onChainBroken()));
   },
@@ -141,6 +164,7 @@ export const survivalHud = {
 
   newGame() {
     this._clearEarn();
+    this._waveProgress = null;
   },
 
   update(dt, state) {
@@ -176,24 +200,37 @@ export const survivalHud = {
     // Threat reads as a word, a bar and a figure — three channels, so forced-colors and a
     // colour-blind reader lose nothing.
     const showThreat = run.phase === 'active' || run.phase === 'cleanup';
-    dom.threat.hidden = !showThreat;
     if (showThreat && swarm) {
-      // In a swarm wave the number that MOVES is the kill count, and the number that ENDS the wave
-      // is the quota. "How many are left in the room" is not a finishable figure here — the room
-      // refills — so printing it would look like a bar that never advances.
-      // The denominator is the QUOTA as published, not `census.total`. That figure is
-      // max(planned, spawned), and a swarm wave can admit more bodies than its quota once
-      // survivors carry in from the last one — which would quietly inflate the target the player
-      // is reading while they are working toward it.
-      const quota = Math.max(1, Number.isInteger(run.threatBudget) ? run.threatBudget : census.total);
-      const killed = Math.min(census.resolved, quota);
-      this._setText(dom.threatWord, 'KILLS');
-      this._setText(dom.threatFig, `${killed} / ${quota}`);
-      this._setStyle(dom.threatFill, 'width', `${Math.round((killed / quota) * 100)}%`);
-      dom.threat.setAttribute('aria-label', 'Wave kill quota');
-      dom.threat.setAttribute('aria-valuenow', String(killed));
-      dom.threat.setAttribute('aria-valuemax', String(quota));
+      // A swarm wave ends on the sixty-second clock published by survivalWave. The HUD renders
+      // that payload and never counts down on its own. Kills are the score, not the finish line,
+      // so they sit as a figure with no slash and no fill.
+      const progress = this._waveProgress;
+      const ready = !!(progress && Number.isInteger(progress.durationTicks) && progress.durationTicks > 0);
+      dom.threat.hidden = !ready;
+      if (ready) {
+        const remainingTicks = Number.isInteger(progress.remainingTicks) ? Math.max(0, progress.remainingTicks) : 0;
+        const durationTicks = progress.durationTicks;
+        const clock = waveCountdownClock(remainingTicks);
+        const remainingSeconds = Math.max(0, Math.ceil(remainingTicks / 60));
+        const durationSeconds = Math.max(1, Math.ceil(durationTicks / 60));
+        this._setText(dom.threatWord, 'NEXT WAVE');
+        this._setText(dom.threatFig, clock);
+        this._setStyle(dom.threatFill, 'width', `${Math.round(waveElapsedFill(remainingTicks, durationTicks) * 100)}%`);
+        dom.threat.setAttribute('aria-label', `Next wave in ${clock}`);
+        dom.threat.setAttribute('aria-valuemin', '0');
+        dom.threat.setAttribute('aria-valuenow', String(remainingSeconds));
+        dom.threat.setAttribute('aria-valuemax', String(durationSeconds));
+      }
+      if (dom.killWord && dom.killFig) {
+        dom.killWord.hidden = false;
+        dom.killFig.hidden = false;
+        this._setText(dom.killWord, 'KILLS');
+        this._setText(dom.killFig, num(census.resolved));
+      }
     } else if (showThreat) {
+      dom.threat.hidden = false;
+      if (dom.killWord) dom.killWord.hidden = true;
+      if (dom.killFig) dom.killFig.hidden = true;
       this._setText(dom.threatWord, 'THREAT');
       this._setText(dom.threatFig, `${census.remaining} / ${Math.max(census.total, census.remaining)}`);
       const fill = census.total > 0 ? (census.total - census.remaining) / census.total : 1;
@@ -201,6 +238,10 @@ export const survivalHud = {
       dom.threat.setAttribute('aria-label', 'Hostiles remaining');
       dom.threat.setAttribute('aria-valuenow', String(census.remaining));
       dom.threat.setAttribute('aria-valuemax', String(Math.max(census.total, census.remaining)));
+    } else {
+      dom.threat.hidden = true;
+      if (dom.killWord) dom.killWord.hidden = true;
+      if (dom.killFig) dom.killFig.hidden = true;
     }
 
     // The chain, if the ruleset has one. A swarm run shows the chain and hides the style
@@ -257,6 +298,21 @@ export const survivalHud = {
     const plan = payload && payload.plan;
     const kind = plan && plan.objective && plan.objective.kind;
     this._objective = objectiveWord(kind);
+  },
+
+  _onWaveProgress(payload) {
+    // Last event wins. Missing duration is ignored so a partial payload cannot invent a clock.
+    if (!payload || typeof payload !== 'object') return;
+    const durationTicks = Number.isInteger(payload.durationTicks) && payload.durationTicks > 0
+      ? payload.durationTicks
+      : 0;
+    if (durationTicks <= 0) return;
+    const remainingTicks = Number.isInteger(payload.remainingTicks) ? Math.max(0, payload.remainingTicks) : 0;
+    this._waveProgress = {
+      wave: Number.isInteger(payload.wave) ? payload.wave : 0,
+      remainingTicks,
+      durationTicks,
+    };
   },
 
   _onAwarded(payload) {
@@ -377,6 +433,11 @@ export const survivalHud = {
     const scoreWord = make('span', 'sf-crun__word', figures);
     scoreWord.textContent = 'SCORE';
     const score = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
+    const killWord = make('span', 'sf-crun__word', figures);
+    killWord.textContent = 'KILLS';
+    const killFig = make('span', 'sf-crun__fig', figures);
+    killWord.hidden = true;
+    killFig.hidden = true;
     const crWord = make('span', 'sf-crun__word', figures);
     crWord.textContent = 'CR';
     const credits = make('span', 'sf-crun__fig sf-crun__fig--you', figures);
@@ -406,7 +467,7 @@ export const survivalHud = {
     this._dom = {
       root, label, waveN, phase, threat, threatWord, threatFill, threatFig,
       chainRow, chainFig, chainBest,
-      score, credits, level, styleWord, styleFig, xpFill, earn,
+      score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn,
     };
     return this._dom;
   },
