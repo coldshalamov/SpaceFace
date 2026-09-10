@@ -14,7 +14,7 @@ picture never stopped. It kept turning, kept drawing, and — because of a two-l
 asked the graphics card to make itself **25% bigger every single frame, forever**.
 
 Five seconds into flight it had grown to **106,963 x 53,862 pixels**. That is a picture roughly
-**3,400 times** the area of the actual game window, and the game was asking the graphics driver to
+**3,200 times** the area of the actual game window, and the game was asking the graphics driver to
 allocate it sixty times a second while you were flying.
 
 That one defect was **59% of the entire main thread**. Everything else — the simulation, the AI, the
