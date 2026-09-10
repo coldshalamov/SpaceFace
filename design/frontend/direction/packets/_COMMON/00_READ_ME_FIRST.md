@@ -13,9 +13,20 @@ repository and do not need it: everything required is in this archive.
    registers, materials, type, colour, motion, and the anti-pattern guard.
 4. `_COMMON/03_CONVENTIONS.md` — file formats, naming, the manifest schema, the quality checks,
    the return contract.
-5. `inputs/` — anything specific to this packet (approved frames, prior returns, source files).
-6. `current/` — captures of the current screens: the content inventory and the *before* picture,
+5. `phases/` — the detailed phase specs a session bundles (deliverable inventories, acceptance,
+   and "the way this gets faked" per phase). `PACKET.md` is the plan; these are the details.
+6. `inputs/` — prior session returns, fonts, libraries and reference files this packet depends on.
+7. `source/` — a snapshot of repository source at the commit named in `README.txt` (engine sessions).
+8. `current/` — captures of the current screens: the content inventory and the *before* picture,
    never a look reference.
+
+## Session mode
+
+A session (`S1`–`S5`) is a full development sprint, not a single task: write `PLAN.md` first, work the
+phases in order, overwrite the checkpoint zip after every phase, keep `PROGRESS.md` current, never stop
+to ask — decide and record the decision in `NOTES.md`. Image generation is the scarce resource: generate
+few masters, derive many assets by script. Prototypes must open from `file://` (classic scripts, inline
+fixtures, relative paths).
 
 ## How to work
 

@@ -1,4 +1,9 @@
-# UI production packets
+# UI production packets — the phase specs
+
+> **These 28 briefs are phase specs, bundled into the five development sessions under
+> [`../sessions/`](../sessions/README.md). They are never handed out alone.** A session zip carries the
+> specs it needs under `phases/`; the local lanes read the code packets directly. Build a session with
+> `node scripts/build-ui-packet.mjs S1`.
 
 Each folder is one hand-off: `PACKET.md` is the brief, `_COMMON/` is the shared core that goes into
 every zip. The series, order and routing are in

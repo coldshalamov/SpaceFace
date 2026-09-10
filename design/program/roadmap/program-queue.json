@@ -4018,7 +4018,8 @@
         "design/frontend/direction/FIELD_HARDWARE_PROGRAM.md",
         "design/frontend/direction/packets/_COMMON/02_ART_DIRECTION.md",
         "design/frontend/direction/packets/README.md",
-        "design/program/roadmap/active/PQ-194.md"
+        "design/program/roadmap/active/PQ-194.md",
+        "design/frontend/direction/sessions/README.md"
       ],
       "checks": [
         "npm run check:baseline",
@@ -4026,7 +4027,7 @@
         "npm run check:bundle"
       ],
       "evidence": [],
-      "brief": "ADMITTED 2026-09-10 on the owner's directive that ten frontend passes were \"equally bad\" and that agent-written style docs were poisoning the work. The interface is rebuilt by PRODUCTION, not styling: rendered style frames first (ChatGPT 6 Pro), produced assets second (transparent-PNG kits, SVG icon family and marks, 3D sets and hull renders), code that assembles the assets to match the frames third, and a picture-comparison review at every step. Direction: Field Hardware (manufactured, backlit, hand-worn equipment over a lit living world; POSTER/BENCH/EDGE registers). The frames under design/frontend/direction/approved/ outrank every prose doc. Supersedes PQ-187 (Cinematic Minimal) and build_map.md section 20.14 on aesthetics; the old units stay recorded as implemented and are not dispatched again. 28 packet briefs under design/frontend/direction/packets/; build a hand-off zip with node scripts/build-ui-packet.mjs P01."
+      "brief": "ADMITTED 2026-09-10 on the owner's directive that ten frontend passes were \"equally bad\" and that agent-written style docs were poisoning the work. The interface is rebuilt by PRODUCTION, not styling: rendered style frames first (ChatGPT 6 Pro), produced assets second (transparent-PNG kits, SVG icon family and marks, 3D sets and hull renders), code that assembles the assets to match the frames third, and a picture-comparison review at every step. Direction: Field Hardware (manufactured, backlit, hand-worn equipment over a lit living world; POSTER/BENCH/EDGE registers). The frames under design/frontend/direction/approved/ outrank every prose doc. Supersedes PQ-187 (Cinematic Minimal) and build_map.md section 20.14 on aesthetics; the old units stay recorded as implemented and are not dispatched again. FIVE development sessions with ChatGPT 6 Pro (design/frontend/direction/sessions/ S1-S5: design system, bench register, prototype app, engine port, QA) built from 28 phase specs under packets/; local lanes between sessions (the stage, Blender sets, integration + title veto, sweep + proof). Build a session zip with node scripts/build-ui-packet.mjs S1."
     }
   ],
   "dispatchUnits": [
@@ -17993,7 +17994,7 @@
       "id": "PQ-194.00",
       "parentId": "PQ-194",
       "priority": 485,
-      "title": "The style frames, approved (P01-P05)",
+      "title": "S1 — the design system, accepted (frames, tokens, kits, icons, marks, motion, sound, hero prototypes)",
       "kind": "acceptance_review",
       "state": "ready",
       "dependsOn": [],
@@ -18001,30 +18002,7 @@
         "frontend-direction"
       ],
       "paths": [
-        "design/frontend/direction/approved/"
-      ],
-      "checks": [
-        "npm run check:baseline"
-      ],
-      "receiptRefs": [
-        "design/frontend/direction/receipts/"
-      ],
-      "brief": "Hand P01 to ChatGPT 6 Pro (node scripts/build-ui-packet.mjs P01), review the returned frames against the two tests and the guard in packets/_COMMON/02_ART_DIRECTION.md, pick the Title variant, commit frames/plates/crops/kit-notes under approved/ with DECISIONS.md; then P02-P05 in turn. The owner is never asked to choose between variants. Done when every screen family in the program has an approved frame."
-    },
-    {
-      "id": "PQ-194.01",
-      "parentId": "PQ-194",
-      "priority": 486,
-      "title": "The asset kits, accepted (P10-P15, P17)",
-      "kind": "acceptance_review",
-      "state": "ready",
-      "dependsOn": [
-        "PQ-194.00"
-      ],
-      "mutexes": [
-        "frontend-direction"
-      ],
-      "paths": [
+        "design/frontend/direction/approved/",
         "assets/ui/kit/"
       ],
       "checks": [
@@ -18033,40 +18011,13 @@
       "receiptRefs": [
         "design/frontend/direction/receipts/"
       ],
-      "brief": "Build and hand off P10-P15 and P17; validate each return's manifest and quality checks; composite the assets over the approved frames; accept into assets/ui/kit/ (already a bundled root). A kit whose assets do not reproduce the frame is returned once, then taken locally."
+      "brief": "Build and hand off S1 (node scripts/build-ui-packet.mjs S1). Review the return: open kit/index.html and the three hero prototypes; judge the six frames against the two tests and the guard; pick the Title shot (v1/v2/v3) and record it in approved/DECISIONS.md; validate the kit manifests and quality checks; commit frames to approved/ and accepted assets to assets/ui/kit/. The owner is never asked to choose between variants."
     },
     {
-      "id": "PQ-194.02",
+      "id": "PQ-194.01",
       "parentId": "PQ-194",
-      "priority": 487,
-      "title": "3D sets and the hull render harness (P16)",
-      "kind": "implementation",
-      "state": "ready",
-      "dependsOn": [
-        "PQ-194.00"
-      ],
-      "mutexes": [
-        "frontend-direction"
-      ],
-      "paths": [
-        "assets/ships/parts/",
-        "src/render/shipPreview.js",
-        "scripts/render-hull-tiles.mjs",
-        "assets/ui/tiles/"
-      ],
-      "checks": [
-        "npm run check:baseline"
-      ],
-      "receiptRefs": [
-        "design/frontend/direction/receipts/"
-      ],
-      "brief": "Codex with Blender under the material-truth preflight: hangar, berth and arena sets that render the approved plates from the frames' camera; a harness that renders a tile and portrait for every roster hull at one fixed lighting. Named fake: primitive boxes named gantry; screenshots of the live game as renders."
-    },
-    {
-      "id": "PQ-194.03",
-      "parentId": "PQ-194",
-      "priority": 488,
-      "title": "The UI stage, gate zero (P20)",
+      "priority": 486,
+      "title": "L-A — the UI stage, gate zero (P20), from the S1 frames",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -18092,32 +18043,112 @@
       "receiptRefs": [
         "design/frontend/direction/receipts/"
       ],
-      "brief": "No screen has a lit world behind it today (presentationFreeze on any screen stack; the second WebGL preview context is refused on Intel GPUs). Build a main-context presentation stage (title hangar, berth, arena diorama, held world) with authored plate fallbacks; prove title, station-dock and crucible-door show a lit 3D world via capture-ui-matrix --world at 1280/1920/2560; flight frame cost unchanged. Named fake: a static PNG of a ship with data-k-ready=1; a black canvas."
+      "brief": "No screen has a lit world behind it today (presentationFreeze on any screen stack; the second WebGL preview context is refused on Intel GPUs). Build a main-context presentation stage (title hangar, berth, arena diorama, held world) proven first with the existing place_dock_interior GLB and the Kestrel, with authored plate fallbacks; prove title, station-dock and crucible-door show a lit 3D world via capture-ui-matrix --world at 1280/1920/2560; flight frame cost unchanged. Named fake: a static PNG of a ship with data-k-ready=1; a black canvas."
     },
     {
-      "id": "PQ-194.04",
+      "id": "PQ-194.02",
       "parentId": "PQ-194",
-      "priority": 489,
-      "title": "The kit runtime (P21)",
-      "kind": "implementation",
+      "priority": 487,
+      "title": "S2 — the bench register, accepted (station, THE SHIP, chart, settings, load as frames + prototypes; keyart; 3D drafts + Blender scripts)",
+      "kind": "acceptance_review",
       "state": "ready",
       "dependsOn": [
-        "PQ-194.01"
+        "PQ-194.00"
       ],
       "mutexes": [
         "frontend-direction"
       ],
       "paths": [
+        "design/frontend/direction/approved/",
         "assets/ui/kit/",
+        "assets/ui/tiles/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/frontend/direction/receipts/"
+      ],
+      "brief": "Build S2 (carries the accepted S1 return), hand off, review: six frames, twelve prototypes on the S1 kit, keyart tiles and backdrop plates, draft GLBs in the preview page, Blender scripts read for completeness. Accept into approved/ and assets/ui/kit/; hand the Blender scripts to L-B."
+    },
+    {
+      "id": "PQ-194.03",
+      "parentId": "PQ-194",
+      "priority": 488,
+      "title": "L-B — Blender sets and the hull render harness (P16) from the S2 scripts",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-194.02"
+      ],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "assets/ships/parts/",
+        "src/render/shipPreview.js",
+        "scripts/render-hull-tiles.mjs",
+        "assets/ui/tiles/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/frontend/direction/receipts/"
+      ],
+      "brief": "Codex with Blender under the material-truth preflight: run and finish S2's build_hangar/build_berth/build_arena scripts to the approved plates from the frames' camera; extend the dev-only turntable into a harness that renders a tile and portrait for every roster hull at one fixed lighting. Named fake: primitive boxes named gantry; screenshots of the live game as renders."
+    },
+    {
+      "id": "PQ-194.04",
+      "parentId": "PQ-194",
+      "priority": 489,
+      "title": "S3 — the prototype app, accepted (every remaining screen; the whole frontend navigable outside the engine; audit suite; engine hand-off inventory)",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-194.02"
+      ],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
+        "design/frontend/direction/approved/",
+        "assets/ui/kit/"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [
+        "design/frontend/direction/receipts/"
+      ],
+      "brief": "Build S3 (carries S1+S2 returns), hand off, review: play app/index.html end to end by keyboard and by gamepad; reduced motion and forced colours; the audit results; HANDOFF_TO_ENGINE.md complete. Accept frames and assets. After this leaf the entire frontend exists as a runnable prototype."
+    },
+    {
+      "id": "PQ-194.05",
+      "parentId": "PQ-194",
+      "priority": 490,
+      "title": "S4 — the engine port, accepted; L-C integration part one: the kit runtime (P21) and the title live (P22) — the veto point",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-194.01",
+        "PQ-194.03",
+        "PQ-194.04"
+      ],
+      "mutexes": [
+        "frontend-direction"
+      ],
+      "paths": [
         "styles/fh.css",
+        "styles/hud.css",
         "styles/kit.css",
         "styles/fonts.css",
         "styles/fonts/",
         "src/ui/kit/",
-        "src/ui/station/icons.js",
-        "src/ui/glyphs.js",
-        "src/data/audioRecipes.js",
-        "scripts/check-ui-kit-manifest.mjs",
+        "src/ui/screens/mainMenu.js",
+        "src/ui/screens/newGame.js",
+        "src/ui/views/menuFrames.js",
+        "assets/ui/kit/",
         "scripts/check-type-floor.mjs",
         "scripts/check-colour-tokens.mjs",
         "_uikit.html"
@@ -18128,42 +18159,13 @@
       "receiptRefs": [
         "design/frontend/direction/receipts/"
       ],
-      "brief": "Fonts vendored, Field Hardware tokens, the asset loader, every component assembled from produced assets (border-image plates, sprites, the SVG sprite, instrument geometry), the P17 motion library and sound recipes, a lab page captured at three widths, the dead command-deck refit deleted, kit.css added to the lint lists. Named fake: components styled with CSS borders/gradients/shadows instead of the assets."
-    },
-    {
-      "id": "PQ-194.05",
-      "parentId": "PQ-194",
-      "priority": 490,
-      "title": "The Title live, the veto point (P22)",
-      "kind": "implementation",
-      "state": "ready",
-      "dependsOn": [
-        "PQ-194.03",
-        "PQ-194.04"
-      ],
-      "mutexes": [
-        "frontend-direction"
-      ],
-      "paths": [
-        "src/ui/screens/mainMenu.js",
-        "src/ui/screens/newGame.js",
-        "src/ui/views/menuFrames.js",
-        "styles/orbital.css",
-        "styles/fh.css"
-      ],
-      "checks": [
-        "npm run check:baseline"
-      ],
-      "receiptRefs": [
-        "design/frontend/direction/receipts/"
-      ],
-      "brief": "The approved Title frame, live on the default route: the 1920 --world capture beside the frame passes a memoryless vision rubric (materials, type, lit dimensional world, reading order, not a web page); keyboard/pad reach everything; reduced motion is a cut. Then the owner looks. Nothing in .06 starts before this holds."
+      "brief": "Build S4 with a source snapshot at a pinned commit (S4 lists the paths), hand off, review the patch and port map, then integrate locally: the kit runtime first (fonts, tokens, asset loader, asset-built components, motion, sound, lab page, dead refit deleted, lint lists updated), then the Title on the stage; the 1920 --world capture beside the approved frame passes a memoryless vision rubric; keyboard/pad reach everything; reduced motion is a cut. Then the owner looks. Nothing in .06 starts before this holds. Named fake: restyling the old DOM with a plate background; matching the frame's layout with the old materials."
     },
     {
       "id": "PQ-194.06",
       "parentId": "PQ-194",
       "priority": 491,
-      "title": "The surfaces (P30-P38, parallel by mutex)",
+      "title": "L-C integration part two — the surfaces (P30–P38) from the S4 port, parallel by mutex",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -18183,13 +18185,13 @@
       "receiptRefs": [
         "design/frontend/direction/receipts/"
       ],
-      "brief": "Crucible; HUD instruments; HUD sensors/law/wanted; station arrival/shell/market/ledger; contracts/factions/industry/bar; THE SHIP/Shipworks/Footprint/Range; the chart; the shell screens; the reading screens and Asteroid Works chrome. Each on its own packet and mutex, each accepted by its --world capture beside its frame plus its named runtime checks. Named fake: restyling the existing text boxes with a plate background."
+      "brief": "Land the ported Crucible, HUD instruments, HUD sensors/law/wanted, station arrival/shell/market/ledger, contracts/factions/industry/bar, THE SHIP/Shipworks/Footprint/Range, the chart, the shell screens, the reading screens and Asteroid Works chrome — each on its own mutex, each accepted by its --world capture beside its frame plus its named runtime checks; capture every surface for S5."
     },
     {
       "id": "PQ-194.07",
       "parentId": "PQ-194",
       "priority": 492,
-      "title": "Motion, sound, sweep, proof (P40-P42)",
+      "title": "S5 — QA and the second pass, accepted; L-D sweep and proof (P40–P42)",
       "kind": "implementation",
       "state": "ready",
       "dependsOn": [
@@ -18211,7 +18213,7 @@
       "receiptRefs": [
         "design/frontend/direction/receipts/"
       ],
-      "brief": "Thirteen clips to the register numbers; every cue wired and the mute default decided with the owner; dead stylesheets, injected style nodes, old token layers and unused fonts deleted; budgets.json and the visual-regression matrix reshot; the blind tally against the genre baseline and A-list frames; the ninety-second reel."
+      "brief": "Build S5 with the integration captures and clip strips, hand off, apply the punch list, assets v2 and corrections; then the motion pass (thirteen clips), the sound pass and the mute default decided with the owner, the sweep (dead stylesheets, injected style nodes, old token layers, unused fonts deleted; budgets.json and the visual-regression matrix reshot), the blind tally per S5's protocol, the ninety-second reel."
     }
   ]
 }

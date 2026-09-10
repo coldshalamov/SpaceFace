@@ -3626,20 +3626,23 @@ kits, an SVG icon family and marks, Blender sets and hull renders), code that as
 match the frames third, and a picture-comparison review at every step. Direction: **Field Hardware** —
 manufactured, backlit, hand-worn equipment over a lit living world; three registers POSTER / BENCH /
 EDGE; two tests (the Asteroid Works material-and-light test; the Shipbreaker equipment test). Frames
-under `design/frontend/direction/approved/` outrank every prose document. 28 packets under
-`design/frontend/direction/packets/`; build one with `node scripts/build-ui-packet.mjs P01`. Packet:
+under `design/frontend/direction/approved/` outrank every prose document. five development
+sessions under `design/frontend/direction/sessions/` (S1 design system → S2 bench register → S3 prototype
+app → S4 engine port → S5 QA), each a phased sprint with ChatGPT 6 Pro that uses image generation, SVG,
+code and 3D together and returns one runnable artifact, built from 28 phase specs under `packets/`;
+local lanes between sessions do the engine work. Build one with `node scripts/build-ui-packet.mjs S1`. Packet:
 [`active/PQ-194.md`](./design/program/roadmap/active/PQ-194.md).
 
 | Leaf | What lands | What you will see |
 |---|---|---|
-| `.00` | The style frames (P01–P05) | Finished pictures of the title, the Crucible door, the HUD, the station, THE SHIP, the chart, settings, load, results, game over, missions, codex — before any code. |
-| `.01` · `.02` | Asset kits (P10–P15, P17); 3D sets and hull renders (P16) | Nothing in the game yet; a lab sheet of plates, keys, gauges, icons, marks and tiles that match the frames. |
-| `.03` | The UI stage (P20) | Boot the game: a lit hangar with your hull turning behind the title, on one GPU context, with an authored plate when the GPU cannot draw it. |
-| `.04` | The kit runtime (P21) | The lab page: every component built from the produced assets, nothing styled by hand. |
-| `.05` | **The Title live (P22) — the veto point** | The approved frame, running. Look at it. Say what is wrong in plain words, or say nothing. |
-| `.06` | The surfaces (P30–P38) | Screen by screen, each matching its frame: Crucible, HUD, station, ship, chart, shell, reading screens. |
-| `.07` | Motion, sound, sweep, proof (P40–P42) | Everything moves and sounds like one instrument; the old skin is gone; a blind tally against Everspace 2 and A-list frames; a ninety-second reel. |
+| `.00` | **S1** the design system | Nothing in the game; open the returned kit page and the title, Crucible door and HUD prototypes in a browser: the new interface, real materials, moving. |
+| `.01` | L-A the UI stage (P20) | Boot the game: a lit hangar with your hull turning behind the title, on one GPU context, an authored plate when the GPU cannot draw it. |
+| `.02` · `.03` | **S2** the bench register; L-B Blender sets (P16) | Every docked screen, THE SHIP, the chart, settings and load as prototypes; then the finished hangar and berth sets. |
+| `.04` | **S3** the prototype app | The whole interface, playable in a browser end to end, before any engine code changes. |
+| `.05` | **S4** the engine port; L-C the kit runtime and **the Title live — the veto point** | The approved frame, running in the game. Look at it. Say what is wrong in plain words, or say nothing. |
+| `.06` | L-C the surfaces (P30–P38) | Screen by screen, each matching its frame. |
+| `.07` | **S5** QA; L-D sweep and proof (P40–P42) | Everything corrected, moving and sounding like one instrument; the old skin gone; a blind tally against Everspace 2 and A-list frames; a ninety-second reel. |
 
-**How the owner uses this.** Say "build UI packet P01", hand the zip in `.devshots/ui-packets/` to
-ChatGPT 6 Pro with the one-line prompt in `design/frontend/direction/packets/README.md`, drop the
-return back, say "review P01". The only moment that needs your eyes is `.05`.
+**How the owner uses this.** Say "build session S1", hand the zip in `.devshots/ui-packets/` to
+ChatGPT 6 Pro with the prompt in `design/frontend/direction/sessions/README.md`, drop the return back,
+say "review S1"; repeat through S4. The only moment that needs your eyes is `.05`.
