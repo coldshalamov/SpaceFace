@@ -8869,6 +8869,9 @@ export const traffic = {
       passengerReceiptIds: this.state.traffic.passengerReceiptIds.slice(),
       passengerLinerSuspendedIds: this.state.traffic.passengerLinerSuspendedIds.slice(),
       passengerLinerInvalidatedIds: this.state.traffic.passengerLinerInvalidatedIds.slice(),
+      disruptedStationIds: leftoverNormalizeDisruptedStationIds(
+        this.state.traffic.disruptedStationIds,
+      ),
     };
   },
 
@@ -8916,6 +8919,9 @@ export const traffic = {
       validTrafficSave ? data.passengerLinerInvalidatedIds : [],
       PASSENGER_LINER_INVALIDATED_CAP,
     );
+    this.state.traffic.disruptedStationIds = leftoverNormalizeDisruptedStationIds(
+      validTrafficSave ? data.disruptedStationIds : [],
+    );
   },
 
   newGame() {
@@ -8958,6 +8964,7 @@ export const traffic = {
       passengerReceiptIds: [],
       passengerLinerSuspendedIds: [],
       passengerLinerInvalidatedIds: [],
+      disruptedStationIds: [],
       rngSeed: hash32(this.state.meta && this.state.meta.seed, 'traffic', 'boot'),
     };
   },

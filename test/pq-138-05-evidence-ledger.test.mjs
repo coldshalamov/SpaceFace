@@ -592,3 +592,85 @@ test('leftover hard Ceres enter keeps a leftover disrupted approach thin', () =>
     harness.rumors.destroy();
   }
 });
+
+// ---------------------------------------------------------------------------
+// Input trace for the two tests above. The disruption guard only ever decides on the
+// `wasFresh` branch of _materializeCeresActivityCast — the branch reached when the durable
+// world-record bag holds nothing for that slot. These two pin both sides of that branch so a
+// later reader does not have to take the green rows on trust.
+// ---------------------------------------------------------------------------
+
+test('control: with no disruption a hard Ceres enter DOES spawn the refinery hauler', () => {
+  const world = makeWorld();
+  const harness = { world, ...boot(world) };
+  const { state } = world;
+  assert.deepEqual(state.traffic.disruptedStationIds, [],
+    'the control carries no disrupted station');
+
+  harness.ships._onSectorEnter({ sector: leftoverCeresSector(), continuous: false });
+
+  const spawned = leftoverRefineryHauler(leftoverApproachHulls(state));
+  try {
+    assert.ok(spawned,
+      'without a disrupted station the same hard enter refills ceres_refinery_hauler — '
+      + 'so the "stays thin" rows above are load-bearing, not vacuous');
+  } finally {
+    harness.news.destroy();
+    harness.aftermath.destroy();
+    harness.rumors.destroy();
+  }
+});
+
+test('an active durable record suppresses the refill BEFORE the disruption guard is consulted', () => {
+  const world = makeWorld();
+  const harness = { world, ...boot(world) };
+  const { state } = world;
+
+  harness.ships._onSectorEnter({ sector: leftoverCeresSector(), continuous: false });
+  const spawned = leftoverRefineryHauler(leftoverApproachHulls(state));
+  assert.ok(spawned, 'first materialize runs on an empty record bag and spawns the slot');
+  const recordId = spawned.ent.data && spawned.ent.data.worldRecordId;
+  assert.ok(recordId, 'the authored slot stamps a durable world-record id on its body');
+
+  // Live shape: the body is gone but world residency still owns an active record for the slot.
+  // On the live route src/systems/world.js writes this bag (kill -> markWorldRecordDestroyed,
+  // hard exit -> _captureCeresActivityCast). This harness never boots world, which is why the
+  // rows above reach the guard at all.
+  spawned.ent.alive = false;
+  state.world.records = { byId: { [recordId]: { recordId, sectorId: SECTOR_ID, kind: 'convoy', alive: true } } };
+  state.traffic.disruptedStationIds = [];
+
+  harness.ships._onSectorEnter({ sector: leftoverCeresSector(), continuous: false });
+
+  try {
+    assert.deepEqual(state.traffic.disruptedStationIds, [],
+      'the disruption guard has no input on this run');
+    assert.equal(leftoverRefineryHauler(leftoverApproachHulls(state)), null,
+      'the record branch alone keeps the approach thin; the disruption guard is not the '
+      + 'mechanism the live route uses');
+  } finally {
+    harness.news.destroy();
+    harness.aftermath.destroy();
+    harness.rumors.destroy();
+  }
+});
+
+test('leftover disruptedStationIds survive leftover traffic serialize / deserialize', () => {
+  const world = makeWorld();
+  const harness = { world, ...boot(world) };
+  const { state } = world;
+  try {
+    harness.ships._leftoverRememberDisruptedStation(STATION_ID);
+    const saved = harness.ships.serialize();
+    assert.deepEqual(saved.disruptedStationIds, [STATION_ID]);
+    harness.ships.newGame();
+    assert.deepEqual(state.traffic.disruptedStationIds, []);
+    harness.ships.deserialize(saved);
+    assert.deepEqual(state.traffic.disruptedStationIds, [STATION_ID],
+      'Continue must keep leftover disrupted station ids for leftover recommission / leftover first-visit refill');
+  } finally {
+    harness.news.destroy();
+    harness.aftermath.destroy();
+    harness.rumors.destroy();
+  }
+});
