@@ -75,6 +75,8 @@ export const survivalRun = {
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || null;
     this._unsubs = [];
+    this._lastControl = null;
+    this._launchSeed = null;
     this._resetMachine();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:started', (payload) => this._onStarted(payload)));
@@ -99,6 +101,11 @@ export const survivalRun = {
 
   newGame() {
     this._resetMachine();
+  },
+
+  /** First moment this run entered `active` — the player has control. Null before that. */
+  lastControl() {
+    return this._lastControl ? { ...this._lastControl } : null;
   },
 
   update(dt) {
@@ -163,6 +170,7 @@ export const survivalRun = {
     this._systemEventFired = false;
     this._pendingFrom = null;
     this._pendingTo = null;
+    this._controlMark = null;
   },
 
   _clearReceiptLatches() {
@@ -183,6 +191,7 @@ export const survivalRun = {
       if (queued.ruleset) run.ruleset = queued.ruleset;
     }
     if (run) {
+      this._launchSeed = Number.isInteger(run.seed) ? run.seed : null;
       beginGhostRecording({
         seed: run.seed,
         hullId: null,
@@ -229,6 +238,15 @@ export const survivalRun = {
     this._planFailed = false;
     if (phase === 'active') {
       this._emit('run:waveStarted', { wave: run.wave, tick: this._runTick });
+      if (this._controlMark == null) {
+        this._controlMark = {
+          seed: Number.isInteger(run.seed) ? run.seed : this._launchSeed,
+          wave: Number.isInteger(run.wave) ? run.wave : 0,
+          tick: this._runTick,
+          simTime: this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+        };
+        this._lastControl = { ...this._controlMark };
+      }
     }
   },
 

@@ -846,6 +846,7 @@ export function resultStamp(result) {
 
 /** The band name for a section. The damage band means something different after a clear. */
 export function sectionTitle(id, outcome) {
+  if (id === 'story') return 'The run';
   if (id === 'kill_chain') return 'How it ended';
   if (id === 'last_seconds') return outcome === 'defeat' ? 'The last seconds' : 'What you weathered';
   if (id === 'ledger') return 'Run ledger';
@@ -862,10 +863,22 @@ export function sectionTitle(id, outcome) {
  */
 export function resultSectionOrder(result) {
   if (!result) return [];
-  if (result.outcome === 'victory') return ['build', 'last_seconds', 'ledger'];
-  if (result.outcome === 'aborted') return ['ledger', 'build', 'last_seconds'];
-  if (result.defeat) return ['kill_chain', 'last_seconds', 'ledger', 'build'];
-  return ['last_seconds', 'ledger', 'build'];
+  const hasStory = !!(result.death
+    || (Array.isArray(result.moments) && result.moments.length)
+    || result.buildName
+    || result.buildCode);
+  if (result.outcome === 'victory') {
+    return hasStory ? ['story', 'build', 'last_seconds', 'ledger'] : ['build', 'last_seconds', 'ledger'];
+  }
+  if (result.outcome === 'aborted') {
+    return hasStory ? ['story', 'ledger', 'build', 'last_seconds'] : ['ledger', 'build', 'last_seconds'];
+  }
+  if (result.defeat) {
+    return hasStory
+      ? ['story', 'kill_chain', 'last_seconds', 'ledger', 'build']
+      : ['kill_chain', 'last_seconds', 'ledger', 'build'];
+  }
+  return hasStory ? ['story', 'last_seconds', 'ledger', 'build'] : ['last_seconds', 'ledger', 'build'];
 }
 
 /**
@@ -876,6 +889,37 @@ export function resultHero(result) {
   if (!result) return null;
   if (result.ruleset === SWARM_RULESET) return { number: String(result.bestChain || 0), word: 'best chain' };
   return { number: String(result.score || 0), word: 'score' };
+}
+
+/**
+ * The run as sentences a player can tell, not a table of labels. Built from the telemetry
+ * survivalResults already published: the death and its tell, the tracked moments, the build.
+ * Empty when the result has none of those fields (legacy plates stay a table).
+ */
+export function storySentences(result) {
+  if (!result) return [];
+  const lines = [];
+  const death = result.death;
+  if (death && typeof death === 'object') {
+    if (typeof death.causeText === 'string' && death.causeText) lines.push(death.causeText);
+    if (typeof death.telegraphName === 'string' && death.telegraphName) {
+      const lead = Number.isFinite(Number(death.telegraphLeadMs)) ? Number(death.telegraphLeadMs) : 0;
+      lines.push(`The tell was ${death.telegraphName} — ${lead} ms of warning.`);
+    }
+    if (typeof death.counterplay === 'string' && death.counterplay) lines.push(death.counterplay);
+  }
+  const moments = Array.isArray(result.moments) ? result.moments : [];
+  for (const moment of moments) {
+    const text = typeof moment === 'string' ? moment : (moment && moment.text);
+    if (typeof text === 'string' && text) lines.push(text);
+  }
+  if (typeof result.buildName === 'string' && result.buildName) {
+    lines.push(`You converged on ${result.buildName}.`);
+  }
+  if (typeof result.buildCode === 'string' && result.buildCode) {
+    lines.push(`Build code ${result.buildCode}`);
+  }
+  return lines;
 }
 
 /* --- the stunt combo band. DOM-free builders over the stunt module's combo snapshot.
@@ -958,6 +1002,17 @@ function pairRows(pairs, hook, valueClassFor) {
     list.appendChild(staticRow(label, value, { valueClass: valueClassFor ? valueClassFor(label) : '' }));
   }
   return list;
+}
+
+function renderStory(band, result) {
+  const lines = storySentences(result);
+  if (!lines.length) {
+    band.appendChild(el('p', 'k-empty sf-crres__empty', 'The run left no story.'));
+    return;
+  }
+  for (const line of lines) {
+    band.appendChild(el('p', 'k-sentence sf-crres__story-line', line));
+  }
 }
 
 function renderCombo(band, summary) {
@@ -1078,8 +1133,12 @@ export function buildCodeLine(picks) {
   return buildSteps(picks).map((step) => step.text).join(' · ');
 }
 
-function renderBuild(band, picks) {
+function renderBuild(band, result) {
+  const picks = result && result.picks;
   band.appendChild(el('p', 'k-sentence sf-crres__lead', buildLead(picks)));
+  if (result && typeof result.buildName === 'string' && result.buildName) {
+    band.appendChild(el('p', 'k-sentence sf-crres__build-name', result.buildName));
+  }
   const kinds = causalKindsFromPicks(picks);
   if (kinds.length) {
     band.appendChild(el('p', 'k-sentence sf-crres__causal-lead', causalKindsLead(kinds)));
@@ -1093,24 +1152,28 @@ function renderBuild(band, picks) {
     band.appendChild(tags);
   }
   const steps = buildSteps(picks);
-  if (!steps.length) return;
-  const chain = el('ul', 'k-rows sf-crres__build');
-  for (const step of steps) {
-    const node = el('li', 'k-row k-row--static sf-crres__step');
-    const left = el('div');
-    if (step.wave != null) {
-      const wave = el('span', 'k-row__sub');
-      wave.appendChild(el('span', 'sf-crres__step-word', 'Wave'));
-      wave.appendChild(el('span', 'sf-crres__step-fig', ` ${String(step.wave)}`));
-      left.appendChild(wave);
+  if (steps.length) {
+    const chain = el('ul', 'k-rows sf-crres__build');
+    for (const step of steps) {
+      const node = el('li', 'k-row k-row--static sf-crres__step');
+      const left = el('div');
+      if (step.wave != null) {
+        const wave = el('span', 'k-row__sub');
+        wave.appendChild(el('span', 'sf-crres__step-word', 'Wave'));
+        wave.appendChild(el('span', 'sf-crres__step-fig', ` ${String(step.wave)}`));
+        left.appendChild(wave);
+      }
+      left.appendChild(el('span', 'k-row__name sf-crres__step-verb', step.verb));
+      node.appendChild(left);
+      node.appendChild(el('span', 'k-row__num', ''));
+      chain.appendChild(node);
     }
-    left.appendChild(el('span', 'k-row__name sf-crres__step-verb', step.verb));
-    node.appendChild(left);
-    node.appendChild(el('span', 'k-row__num', ''));
-    chain.appendChild(node);
+    band.appendChild(chain);
   }
-  band.appendChild(chain);
-  band.appendChild(el('p', 'k-t-fine k-38 sf-crres__build-code', buildCodeLine(picks)));
+  const code = (result && typeof result.buildCode === 'string' && result.buildCode)
+    ? result.buildCode
+    : buildCodeLine(picks);
+  if (code) band.appendChild(el('p', 'k-t-fine k-38 sf-crres__build-code', code));
 }
 
 export const crucibleResultsScreen = {
@@ -1161,10 +1224,11 @@ export const crucibleResultsScreen = {
       bandTitle.setAttribute('role', 'heading');
       bandTitle.setAttribute('aria-level', '2');
       band.appendChild(bandTitle);
-      if (id === 'kill_chain') renderKillChain(band, result.defeat);
+      if (id === 'story') renderStory(band, result);
+      else if (id === 'kill_chain') renderKillChain(band, result.defeat);
       else if (id === 'last_seconds') renderLastSeconds(band, result.damageTrail);
       else if (id === 'ledger') renderLedger(band, result);
-      else if (id === 'build') renderBuild(band, result.picks);
+      else if (id === 'build') renderBuild(band, result);
       (id === 'ledger' ? ledger : story).appendChild(band);
     }
 
