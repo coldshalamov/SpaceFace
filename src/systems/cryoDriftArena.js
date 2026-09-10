@@ -28,6 +28,8 @@ export const CRYO_BOSS_ROLE = Object.freeze({
   role: 'elite',
   law: CRYO_ARENA_ID,
   arms: 4,
+  method: 'tumbling_subsystems',
+  invulnerable: false,
 });
 
 export const CRYO_FIELD_RADIUS = 420;
@@ -38,6 +40,43 @@ export const CRYO_PROP_RANGE = 300;
 
 function along(at, bearing, distance) {
   return { x: at.x + bearing.x * distance, z: at.z + bearing.z * distance };
+}
+
+function placeCryoToys(at, lane, across) {
+  return [
+    {
+      id: 'frost_shutter',
+      kind: 'shutter',
+      verb: 'cut',
+      hazardType: 'debris',
+      usable: true,
+      throwable: false,
+      a: along(at, across, -32),
+      b: along(at, across, 32),
+    },
+    {
+      id: 'ice_plate',
+      kind: 'plate',
+      verb: 'bank',
+      hazardType: 'debris',
+      usable: true,
+      throwable: true,
+      pos: along(at, { x: -across.x, z: -across.z }, 90),
+      normal: { x: across.x, z: across.z },
+      halfWidth: 28,
+    },
+    {
+      id: 'heat_plate',
+      kind: 'plate',
+      verb: 'bank',
+      hazardType: 'debris',
+      usable: true,
+      throwable: true,
+      pos: along(at, across, 90),
+      normal: { x: -across.x, z: -across.z },
+      halfWidth: 28,
+    },
+  ];
 }
 
 function finite(value, fallback = 0) {
@@ -241,6 +280,7 @@ export function planCryoInstall({
     fields: [],
     mines: [],
     cover: false,
+    toys: [],
     at: { x: at.x, z: at.z },
     thermal,
     islandRadius,
@@ -298,6 +338,7 @@ export function planCryoInstall({
       return out;
   }
 
+  out.toys = placeCryoToys(at, lane, across);
   out.fields.push(
     occupancyField('well', coolant[0]),
     occupancyField('repulsor', heat[0]),

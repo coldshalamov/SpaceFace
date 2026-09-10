@@ -18,6 +18,8 @@ export const LAGRANGE_BOSS_ROLE = Object.freeze({
   role: 'elite',
   law: LAGRANGE_ARENA_ID,
   vanes: 2,
+  method: 'thrown_mass',
+  invulnerable: false,
 });
 
 /** Distance from the fight anchor to each pylon. Overlap at the midpoint is the saddle. */
@@ -54,10 +56,53 @@ export function lagrangePylons(at, axis, sep = LAGRANGE_PYLON_SEP) {
   };
 }
 
+function perpOf(bearing) {
+  return { x: -bearing.z, z: bearing.x };
+}
+
+function currentToy(id, center, dir) {
+  return {
+    id,
+    kind: 'current',
+    verb: 'carry',
+    hazardType: 'debris_current',
+    usable: true,
+    throwable: false,
+    center,
+    dir: { x: dir.x, z: dir.z },
+    radius: 280,
+    strength: 96,
+    falloff: 1.15,
+    halfAngleRad: 0.48,
+    edgeSoftRad: 0.12,
+  };
+}
+
+function placeLagrangeToys(at, throwAxis, pylons) {
+  const hold = perpOf(throwAxis);
+  const shutterMid = along(at, throwAxis, 10);
+  const axis = { x: throwAxis.x, z: throwAxis.z };
+  const back = { x: -throwAxis.x, z: -throwAxis.z };
+  return [
+    {
+      id: 'ridge_shutter',
+      kind: 'shutter',
+      verb: 'cut',
+      hazardType: 'debris',
+      usable: true,
+      throwable: false,
+      a: along(shutterMid, hold, -36),
+      b: along(shutterMid, hold, 36),
+    },
+    currentToy('throw_current', along(pylons.a, axis, 24), axis),
+    currentToy('saddle_current', along(pylons.b, back, 24), back),
+  ];
+}
+
 /**
  * PURE room for one Lagrange wave. Always the two-pylon law; phase retunes polarity and extras.
- * Returns the same { phase, note, fields, mines, cover } shape as the Helios phase table.
- * Field ids are assigned by the caller (two-slot budget).
+ * Returns the same { phase, note, fields, mines, cover, toys } shape as the Helios phase table.
+ * Field ids are assigned by the caller (two-slot budget). Toys are extra furniture, not a third slot.
  */
 export function planLagrangeInstall({
   arenaPhase,
@@ -69,7 +114,9 @@ export function planLagrangeInstall({
 } = {}) {
   const phase = typeof arenaPhase === 'string' ? arenaPhase : 'idle';
   const pylons = lagrangePylons(at, lane);
-  const out = { phase, note: '', fields: [], mines: [], cover: false };
+  let throwAxis = lane;
+  let toyPylons = pylons;
+  const out = { phase, note: '', fields: [], mines: [], cover: false, toys: [] };
 
   switch (phase) {
     // The law at rest: two equal wells. Sit on the ridge or be thrown along the axis.
@@ -102,6 +149,8 @@ export function planLagrangeInstall({
     case 'shutter_alternating': {
       out.note = 'the ridge has rotated; hold is now across the arrival';
       const tide = lagrangePylons(at, across);
+      throwAxis = across;
+      toyPylons = tide;
       out.fields.push(wellSpec(tide.a), wellSpec(tide.b));
       break;
     }
@@ -154,6 +203,9 @@ export function planLagrangeInstall({
       break;
   }
 
+  if (out.note && out.note !== 'inert room') {
+    out.toys = placeLagrangeToys(at, throwAxis, toyPylons);
+  }
   return out;
 }
 

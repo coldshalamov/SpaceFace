@@ -19,6 +19,8 @@ export const CINDER_BOSS_ROLE = Object.freeze({
   hullId: 'dreadnought_boss',
   role: 'elite',
   law: CINDER_ARENA_ID,
+  method: 'machinery',
+  invulnerable: false,
 });
 
 /** Same numbers as the world sluice. The arena does not inherit the world centre or field id. */
@@ -30,6 +32,54 @@ export const CINDER_CURRENT_EDGE_SOFT = CINDER_SLUICE_FIELD.edgeSoftRad;
 
 function along(at, bearing, distance) {
   return { x: at.x + bearing.x * distance, z: at.z + bearing.z * distance };
+}
+
+function placeCinderToys(at, lane, across, apex, dir) {
+  return [
+    {
+      id: 'sluice_current',
+      kind: 'current',
+      verb: 'carry',
+      hazardType: 'debris_current',
+      usable: true,
+      throwable: false,
+      center: { x: apex.x, z: apex.z },
+      dir: { x: dir.x, z: dir.z },
+      radius: CINDER_CURRENT_RADIUS,
+      strength: CINDER_CURRENT_STRENGTH,
+      falloff: CINDER_CURRENT_FALLOFF,
+      halfAngleRad: CINDER_CURRENT_HALF_ANGLE,
+      edgeSoftRad: CINDER_CURRENT_EDGE_SOFT,
+    },
+    {
+      id: 'lane_shutter',
+      kind: 'shutter',
+      verb: 'cut',
+      hazardType: 'debris',
+      usable: true,
+      throwable: false,
+      a: along(along(at, lane, -40), across, -40),
+      b: along(along(at, lane, -40), across, 40),
+    },
+    {
+      id: 'mouth_crusher',
+      kind: 'crusher',
+      verb: 'kill',
+      hazardType: 'debris',
+      usable: true,
+      throwable: false,
+      pos: along(at, lane, 90),
+      anvil: along(at, lane, 122),
+      dir: { x: lane.x, z: lane.z },
+      radius: 72,
+      strength: 720,
+      anvilRadius: 22,
+      falloff: 1.08,
+      halfAngleRad: 0.42,
+      edgeSoftRad: 0.1,
+      cycle: { warningS: 2, surgeS: 3.5, calmS: 6.5 },
+    },
+  ];
 }
 
 function positiveModulo(value, modulus) {
@@ -88,7 +138,7 @@ export function planCinderInstall({
   const phase = typeof arenaPhase === 'string' ? arenaPhase : 'idle';
   const apex = along(at, lane, -200);
   const dir = { x: lane.x, z: lane.z };
-  const out = { phase, note: '', fields: [], mines: [], cover: false };
+  const out = { phase, note: '', fields: [], mines: [], cover: false, toys: [] };
 
   switch (phase) {
     case 'idle':
@@ -163,5 +213,8 @@ export function planCinderInstall({
       break;
   }
 
+  if (out.note && out.note !== 'inert room') {
+    out.toys = placeCinderToys(at, lane, across, apex, dir);
+  }
   return out;
 }

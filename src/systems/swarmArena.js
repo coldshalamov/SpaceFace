@@ -52,6 +52,10 @@ import {
 } from '../data/survivalMutators.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
+import { CINDER_ARENA_ID } from './cinderSluiceArena.js';
+import { CRYO_ARENA_ID } from './cryoDriftArena.js';
+import { LAGRANGE_ARENA_ID } from './lagrangeCrucible.js';
+import { STORM_ARENA_ID } from './stormLatticeArena.js';
 
 /** Marker on every rock this system creates, so teardown and census never touch sector terrain. */
 export const SWARM_DEBRIS_TAG = 'swarmArenaDebris';
@@ -114,6 +118,61 @@ export const SWARM_DEBRIS_FIGHT_RADIUS = SWARM_DEBRIS_OUTER + 60;
 export const SWARM_DEBRIS_SEPARATION = 34;
 /** Nothing spawns closer than this to the player, whatever the roll says. */
 export const SWARM_DEBRIS_SAFE_RADIUS = 120;
+
+/** Foundry (Helios) default: dense banks to shove into. Other arenas retune the band, not HP. */
+export const FOUNDRY_ARENA_ID = 'helios_core';
+
+export function debrisLayoutForArena(arenaId) {
+  if (arenaId === LAGRANGE_ARENA_ID) {
+    return Object.freeze({
+      id: 'wells',
+      inner: 170,
+      outer: 400,
+      target: 8,
+      safeRadius: 140,
+      separation: 48,
+    });
+  }
+  if (arenaId === CINDER_ARENA_ID) {
+    return Object.freeze({
+      id: 'current',
+      inner: 90,
+      outer: 260,
+      target: 6,
+      safeRadius: 110,
+      separation: 40,
+      laneBias: true,
+    });
+  }
+  if (arenaId === CRYO_ARENA_ID) {
+    return Object.freeze({
+      id: 'thermal',
+      inner: 80,
+      outer: 240,
+      target: 9,
+      safeRadius: 110,
+      separation: 36,
+    });
+  }
+  if (arenaId === STORM_ARENA_ID) {
+    return Object.freeze({
+      id: 'lattice',
+      inner: 100,
+      outer: 210,
+      target: 6,
+      safeRadius: 120,
+      separation: 42,
+    });
+  }
+  return Object.freeze({
+    id: 'banks',
+    inner: SWARM_DEBRIS_INNER,
+    outer: SWARM_DEBRIS_OUTER,
+    target: SWARM_DEBRIS_TARGET,
+    safeRadius: SWARM_DEBRIS_SAFE_RADIUS,
+    separation: SWARM_DEBRIS_SEPARATION,
+  });
+}
 
 /** Reef is a tighter inner obstacle recipe, not Helios Core's default annulus. */
 export const REEF_DEBRIS_INNER = 58;
@@ -208,12 +267,20 @@ function playerAnchor(state) {
  * `existing` is [{ x, z, radius }] — every solid body that could be collided with, not only ours,
  * so the field never grows into a station or a sector asteroid either.
  */
-export function planSwarmDebris({ anchor, existing = [], want = 0, rng } = {}) {
+export function planSwarmDebris({ anchor, existing = [], want = 0, rng, layout = null } = {}) {
   const at = {
     x: anchor && Number.isFinite(anchor.x) ? anchor.x : 0,
     z: anchor && Number.isFinite(anchor.z) ? anchor.z : 0,
   };
   const roll = typeof rng === 'function' ? rng : () => 0.5;
+  const inner = Number.isFinite(layout && layout.inner) ? layout.inner : SWARM_DEBRIS_INNER;
+  const outer = Number.isFinite(layout && layout.outer) ? layout.outer : SWARM_DEBRIS_OUTER;
+  const safe = Number.isFinite(layout && layout.safeRadius) ? layout.safeRadius : SWARM_DEBRIS_SAFE_RADIUS;
+  const gap = Number.isFinite(layout && layout.separation) ? layout.separation : SWARM_DEBRIS_SEPARATION;
+  const axis = layout && layout.axis && Number.isFinite(layout.axis.x) && Number.isFinite(layout.axis.z)
+    ? layout.axis
+    : null;
+  const laneBias = !!(layout && layout.laneBias);
   const placed = existing.map((e) => ({ x: e.x, z: e.z, radius: e.radius || 0 }));
   const out = [];
   const n = Math.max(0, Math.trunc(want));
@@ -223,23 +290,28 @@ export function planSwarmDebris({ anchor, existing = [], want = 0, rng } = {}) {
     let chosen = null;
     for (let attempt = 0; attempt < PLACEMENT_TRIES; attempt++) {
       // Golden-angle stride off the roll so successive rocks spread around the ring instead of
-      // clustering wherever the stream happens to be warm.
-      const angle = (roll() * Math.PI * 2) + i * 2.399963;
-      const span = SWARM_DEBRIS_OUTER - SWARM_DEBRIS_INNER;
+      // clustering wherever the stream happens to be warm. A current-law arena biases the same
+      // stride onto the lane so riding feeds walls instead of painting a second ring.
+      let angle = (roll() * Math.PI * 2) + i * 2.399963;
+      if (laneBias && axis) {
+        const axisAng = Math.atan2(axis.z, axis.x);
+        angle = axisAng + (i % 2 === 0 ? 0 : Math.PI) + (roll() - 0.5) * 0.85;
+      }
+      const span = Math.max(8, outer - inner);
       // sqrt keeps the density even across the annulus rather than piling up at the inner edge.
-      const dist = SWARM_DEBRIS_INNER + Math.sqrt(roll()) * span;
-      if (dist < SWARM_DEBRIS_SAFE_RADIUS + size) continue;
+      const dist = inner + Math.sqrt(roll()) * span;
+      if (dist < safe + size) continue;
       const x = at.x + Math.cos(angle) * dist;
       const z = at.z + Math.sin(angle) * dist;
       let clear = true;
       for (const other of placed) {
         const dx = x - other.x;
         const dz = z - other.z;
-        const min = size + (other.radius || 0) + SWARM_DEBRIS_SEPARATION;
+        const min = size + (other.radius || 0) + gap;
         if (dx * dx + dz * dz < min * min) { clear = false; break; }
       }
       if (!clear) continue;
-      chosen = { x, z, radius: size };
+      chosen = { x, z, radius: size, layoutId: layout && layout.id ? layout.id : 'banks' };
       break;
     }
     if (!chosen) continue;
@@ -557,7 +629,8 @@ export const swarmArena = {
     this._ids = surviving;
 
     const reef = runHasMutator(run, 'reef');
-    const target = reef ? REEF_DEBRIS_TARGET : SWARM_DEBRIS_TARGET;
+    const layout = debrisLayoutForArena(run && run.arenaId);
+    const target = reef ? REEF_DEBRIS_TARGET : layout.target;
     const want = Math.min(target - mine, SWARM_DEBRIS_MAX - mine);
     if (want <= 0) return;
 
@@ -567,7 +640,13 @@ export const swarmArena = {
     ));
     const spots = reef
       ? planReefLayout({ anchor, existing: nearbySolids, want, rng })
-      : planSwarmDebris({ anchor, existing: nearbySolids, want, rng });
+      : planSwarmDebris({
+        anchor,
+        existing: nearbySolids,
+        want,
+        rng,
+        layout: { ...layout, axis: { x: 1, z: 0 } },
+      });
     const spawnedIds = [];
     for (const spot of spots) {
       const size = spot.radius;
@@ -609,7 +688,7 @@ export const swarmArena = {
       wave,
       added: spawnedIds.length,
       total: this._ids.length,
-      layoutId: reef ? REEF_LAYOUT_ID : null,
+      layoutId: reef ? REEF_LAYOUT_ID : layout.id,
     });
   },
 

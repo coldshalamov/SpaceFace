@@ -33,6 +33,8 @@ export const STORM_BOSS_ROLE = Object.freeze({
   role: 'elite',
   law: STORM_ARENA_ID,
   drones: 4,
+  method: 'thrown_mass',
+  invulnerable: false,
 });
 
 export const STORM_PYLON_COUNT = 6;
@@ -322,6 +324,43 @@ export function stormGraphNodes(at, simTime = 0, extras = []) {
   return pylons.concat(relays, extra);
 }
 
+function placeStormToys(at, relays) {
+  return [
+    {
+      id: 'relay_0',
+      kind: 'relay',
+      verb: 'conduct',
+      hazardType: 'debris',
+      usable: true,
+      throwable: true,
+      pos: { x: relays[0].pos.x, z: relays[0].pos.z },
+      conductive: true,
+      score: 2,
+    },
+    {
+      id: 'relay_1',
+      kind: 'relay',
+      verb: 'conduct',
+      hazardType: 'debris',
+      usable: true,
+      throwable: true,
+      pos: { x: relays[1].pos.x, z: relays[1].pos.z },
+      conductive: true,
+      score: 2,
+    },
+    {
+      id: 'grid_shutter',
+      kind: 'shutter',
+      verb: 'cut',
+      hazardType: 'debris',
+      usable: true,
+      throwable: false,
+      a: { x: at.x - 28, z: at.z },
+      b: { x: at.x + 28, z: at.z },
+    },
+  ];
+}
+
 /**
  * PURE room for one Storm wave. Always the lattice; phase retunes extras, not the law.
  * The two field slots are the movable relays.
@@ -343,6 +382,7 @@ export function planStormInstall({
     fields: [],
     mines: [],
     cover: false,
+    toys: [],
     at: { x: at.x, z: at.z },
     pylons,
     relays,
@@ -397,5 +437,6 @@ export function planStormInstall({
   }
 
   out.fields.push(occupancyField(relays[0].pos), occupancyField(relays[1].pos));
+  out.toys = placeStormToys(at, relays);
   return out;
 }
