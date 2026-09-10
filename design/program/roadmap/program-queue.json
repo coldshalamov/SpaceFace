@@ -5861,7 +5861,7 @@
       "priority": 64,
       "title": "Death, retry, and the story",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -5888,7 +5888,9 @@
         "npm run check:crucible:run",
         "npm run check:crucible:arc"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-174.06-REPORT.md"
+      ],
       "brief": "Death names its cause and the telegraph the player missed, retry on the same seed in ≤ 5 s, and the results screen tells the run as a story: the tricks, the moments, the best chain, the build code. DONE WHEN: Session-2 return in playtests ≥ 60 %; results capture reviewed."
     },
     {
