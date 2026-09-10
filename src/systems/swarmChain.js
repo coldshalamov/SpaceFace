@@ -163,6 +163,8 @@ export const swarmChain = {
     // it. A hull the room put through a rock is the player's kill; that is the entire point of the
     // varied-cause rule below.
     if (!runOwnsReward(victim)) return;
+    const actor = payload.killerId ?? payload.provenance?.actorId;
+    if (actor !== this.state.playerId) return;
 
     const now = simTimeOf(this.state);
     const cause = styleCauseFromKill(payload);

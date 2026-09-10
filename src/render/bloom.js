@@ -1010,6 +1010,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function render(scene, camera) {
+    // The prior composite releases its sampler bindings. Invalidate Three's matching cached
+    // bindings before drawing lit scene materials again; otherwise the HDR route can present
+    // only the sky while real hulls/effects disappear. Keep the full bloom route and its quality.
+    renderer.resetState();
     const bloomActive = enabled && strength > 0.0001;
 
     const prevAutoClear = renderer.autoClear;

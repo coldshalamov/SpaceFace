@@ -217,6 +217,7 @@ export function resolveDeathTelegraph({
     for (let i = tells.length - 1; i >= 0; i -= 1) {
       const tell = tells[i];
       if (!tell || typeof tell !== 'object') continue;
+      if (!Number.isFinite(tell.simTime) || tell.simTime > death || death - tell.simTime > 6) continue;
       if (onlyKiller) {
         if (killerId == null) continue;
         if (tell.attackerId !== killerId) continue;
@@ -236,7 +237,8 @@ export function resolveDeathTelegraph({
     };
   }
   const hits = Array.isArray(damageTrail) ? damageTrail.filter((e) => e && typeof e === 'object') : [];
-  const timed = hits.filter((e) => Number.isFinite(e.simTime) && e.simTime <= death);
+  const timed = hits.filter((e) => Number.isFinite(e.simTime) && e.simTime < death
+    && death - e.simTime <= 4 && (killerId == null || e.attackerId === killerId));
   const first = timed.length ? timed.reduce((a, b) => (a.simTime <= b.simTime ? a : b)) : null;
   if (first) {
     const counts = new Map();
@@ -251,14 +253,9 @@ export function resolveDeathTelegraph({
       source: 'incoming-fire',
     };
   }
-  if (Number.isFinite(waveStartSimTime)) {
-    return {
-      name: Number.isInteger(wave) && wave > 0 ? `Wave ${wave} inbound` : 'Wave inbound',
-      leadTimeMs: Math.max(0, Math.round((death - waveStartSimTime) * 1000)),
-      source: 'wave-inbound',
-    };
-  }
-  return { name: 'Incoming fire', leadTimeMs: 0, source: 'incoming-fire' };
+  // A round announcement is not a warning for a particular attack. Absence of a matched
+  // tell is useful information; do not invent thirty seconds of reaction time.
+  return { name: null, leadTimeMs: null, source: 'unrecorded' };
 }
 
 /**
@@ -285,7 +282,7 @@ export function storyMomentsFor(summary = {}) {
   }
   const hit = summary.heaviestHit;
   if (hit && typeof hit === 'object' && num(hit.amount) > 0) {
-    moments.push(`Rode out a ${Math.round(num(hit.amount))} hit from ${hit.weapon || 'unidentified fire'}`);
+    moments.push(`Hardest hit: ${Math.round(num(hit.amount))} from ${hit.weapon || 'unidentified fire'}`);
   }
   if (Number.isFinite(summary.firstKillInS) && summary.firstKillInS >= 0) {
     const seconds = Math.round(summary.firstKillInS * 10) / 10;

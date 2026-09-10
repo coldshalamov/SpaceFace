@@ -410,11 +410,16 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       const pipelinesReady = await waitForRenderPipelineWarmup(
         state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
       );
-      return pipelinesReady && authoredVisualReadiness(state).ready;
+      return pipelinesReady;
     },
-    waitForGpuResources: () => waitForOpeningGpuResources(
-      state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
-    ),
+    waitForGpuResources: async () => {
+      const resourcesReady = await waitForOpeningGpuResources(
+        state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
+      );
+      // A same-sector restart reuses resident programs, but its new hull is published by
+      // the GPU preparation stage. Check final visual readiness after that publication.
+      return resourcesReady && authoredVisualReadiness(state).ready;
+    },
     reportProgress: (stage) => bus.emit('game:loadingProgress', {
       ...stage,
       detail: loadingDetailForStage(stage && stage.id),

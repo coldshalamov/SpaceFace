@@ -4,11 +4,148 @@
 
 **Intended repository path:** `design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md`  
 **Source audit date:** 2026-08-23  
-**Revision:** 2 — movement-convergence expansion  
-**Status:** **DURABLE DESIGN PROPOSAL + EXPERIMENT QUARRY — NOT ADMITTED WORK**  
+**Revision:** 3 — arcade pursuit, trick weapons, and readable physical spectacle  
+**Status:** **OWNER-AUTHORIZED ARCADE IMPLEMENTATION — EXTENDED IDEAS REMAIN A CONTENT BANK**  
 **Primary purpose:** Give future agents one coherent, long-horizon source from which to shape bounded roadmap packets that make SpaceFace flight, enemy motion, formations, swarm pressure, attack composition, and environmental physics converge on one nimble arcade core without severing that core from the living Adventure universe.
 
-**Scope correction — 2026-08-23:** Survival is not treated as the solution to weak moment-to-moment motion. Player handling and enemy choreography are now explicit prerequisites. More enemies only improve the game after those enemies move with readable intent and the player ship feels eager, precise, and physically honest.
+## Owner-directed arcade revision — 2026-09-10
+
+The owner has authorized revising and implementing the complete Crucible experience and the
+shared weapons, physics, flight, VFX and UX it needs. The source bank below remains useful; this
+section resolves its competing priorities. It is an implementation direction, not another
+admission exercise. Preserve the five arenas, thirty-wave Gauntlet, endless Swarm, bosses, build
+combinations and Adventure inheritance. Improve those pieces around the following game.
+
+**Fly a dangerous line. Bring the swarm with you. Turn the room against it.**
+
+The first run must offer this sequence without earning permission through five minutes of basic
+shooting: bank bright shots off a rock into a pursuing pack; boost through the gap beside it;
+leave a repulsion trap in that gap; tangle pursuers together; detonate into the rocks; double back
+through the opening to collect the spoils. Then choose an upgrade that makes the next setup
+different. The player supplies the trajectory, timing and aim. Real contacts and forces supply
+the wonderfully excessive aftermath. Good direct shooting remains an enjoyable part of this.
+
+### What excellent looks and feels like
+
+- **A gun worth holding down.** Quick, distinct projectiles, legible banks and a crisp contact
+  on the hull. Direct shots stay strong. Terrain and setup let those shots reach around cover,
+  cross the pack again or ignite a cascade; scoring cannot substitute for that combat payoff.
+- **A trap worth turning around to watch.** Drop behind the flight path while escaping. A short
+  visible arming beat makes the timing intelligible; proximity or a deliberate detonation
+  catches the pursuing mass. Repulsion must actually throw hulls into terrain and one another.
+  A momentary pull followed by a burst is a possible evolution, not a compulsory long cast.
+- **A web worth steering enemies into.** Link enemies to enemies. Tension transfers their
+  incompatible thrust and momentum; one pulling away disrupts its partners. Slack permits motion,
+  links can break, heavy anchors matter, and shoving one member can swing the knot into a rock.
+  This must not reduce to several independent slow debuffs or a line drawn over stunned ships.
+- **Flight worth practising.** Aim the gun independently while carving the escape route. Boost
+  commits visibly, braking answers promptly, and a successful sling preserves earned speed.
+  Keep mass in the outcome, not in a delay before every input takes effect. Do not prescribe a
+  one-to-three-second response lag as the definition of good handling.
+- **A pack with intent.** Fodder follows readable streams around obstacles; flankers threaten the
+  next exit, heavies create mobile cover, and specialists interrupt a setup with visible tells.
+  They remain bodies the player can displace. No snapping back into formation after a shove.
+- **A battlefield that explains the hit.** A brief directional contact flash, material fragments,
+  visible hull recoil and clustered damage numbers tell the player what struck what. Luminous
+  fire can be abundant while the player, incoming danger, ropes and collision surfaces stay clear.
+  Damage numbers are useful combat feedback here; make them configurable and aggregate rapid hits.
+  A big collision gets a stronger accent than routine fire. Avoid routine slow motion that keeps
+  stealing the speed of the chase. Reduced flash/motion retains direction and causality.
+- **A HUD that serves the next move.** Hull, boost and the ready/cooldown state of the gun, trap
+  and web belong in a small combat cluster. Chain and wave information are secondary. Bindings
+  come from the active input scheme. The field itself carries threat and opportunity; neither
+  a wall of controls nor an austere typography exercise is the identity of this mode.
+
+### The run's rhythm
+
+The opening teaches by opportunity: nearby bankable cover, an approaching pack and usable tools.
+The default kit must work before the first draft. Fast kills are welcome; surviving a timer with
+one tedious target is not the opening lesson. Build pressure through several readable arrivals,
+leave an escape seam, then let a good clear buy a few seconds to collect, reposition or lay a trap.
+Do not instantly refill the precise space the player just earned. A reinforcement tell announces
+where the next problem comes from. Keep the current round's pursuit continuous until its enemy
+cohort is resolved; preserve physical props and debris into the next round.
+
+**Owner clarification:** the challenge is the farthest round, like Zombies. Clear a quick early
+round, collect its money, buy a toy or save toward a bigger one, and take the next round. Deaths
+and fresh attempts are frequent. This is accelerated earning and spending, not an endurance
+timer interrupted by an occasional free card. Keep the purchase stop fast and optional to skip;
+give the player control over when the next round starts after a clear. Early rounds should expose
+buying and customizing quickly, then develop longer, more dangerous situations as the build grows.
+The old sixty-second wave clock and five-wave shop interval are implementation choices to replace
+where they obstruct that loop. Carry physical debris and surviving arena machinery between rounds;
+the live enemy cohort must be resolved before awarding a round clear. Avoid a last-enemy hunt by
+keeping stragglers committed and visible, not by pretending they died.
+
+The first meaningful purchase must arrive during the first minute or early in the second,
+while the opening actions are still fresh. Every round offers a cash-funded choice; prices give
+the player a reason to save across a few rounds for something outrageous. Support different
+styles immediately, then let purchases transform them. Cards describe a changed action and its
+cost in one glance: returning bank shot,
+web forks, delayed double burst, blast-propelled escape, volatile wreck, orbiting debris shield.
+Useful numerical upgrades may support a build; changing a radius alone is not a new verb.
+
+Kill chains reward continuation and ingenuity without demanding frantic kill-stealing. Near
+misses, successful links, banks and committed movement may bridge a setup window when their
+physical outcome is real. Earned breathing room and upgrade reading must not automatically erase
+the chain. Results celebrate a recognizable moment and explain an actionable cause of death;
+retry preserves the starting seed and kit. Never call a warning "missed" merely because some
+unrelated tell happened earlier.
+
+### Scope and implementation order
+
+This is the complete route to the requested mode. Packet IDs identify reusable work, not blanket
+requirements to finish unrelated Adventure or tooling deliverables first. Inspect the current
+implementation at each named seam, preserve useful work, and finish missing interactions.
+
+| Work | Reuse and amend | Complete player outcome |
+|---|---|---|
+| Immediate arcade kit | PQ-133 attack/modifier roots; PQ-174.02; PQ-182.00 | A clearly described starter with a satisfying bank-shot primary and deliberate physical tools; no campaign unlock grind or empty ammunition rack. |
+| Escape traps and chain reactions | PQ-030/031; PQ-137.09; PQ-147 | Drop, arm, trigger, radial displacement, actual slams and bounded secondary explosions; shared physics and damage attribution. |
+| Enemy webs and parkour | PQ-028/029; PQ-137.07/.09; physical-play grammar | Enemy-to-enemy constraints, tension, breaks, heavy anchors, sling/cut and useful collision consequences. |
+| Responsive flight and pursuing packs | PQ-135; PQ-137.03/.04/.05/.06/.11; PQ-140 | Nimble control, honest earned momentum, visible knockback and recovery, coherent pursuit with reachable exits. |
+| Pressure, rewards and growth | PQ-174.01/.03/.06/.07/.08; PQ-175.00/.02; PQ-146 | Quick early rounds, cash-funded shopping after each clear, meaningful saving, dangerous packs, earned openings, fair death and quick retry; no wave HP inflation. |
+| Five physical arenas | PQ-133 arena phases; PQ-027; PQ-174.04; PQ-175.01 | Foundry banks/crushers; Lagrange gravity/sling lanes; Cinder currents/heat; Cryo friction/thermal shock; Storm conductive relays. Each gives several useful routes and toys, and is reachable from the door. |
+| Bosses and authored arc | PQ-133 wave/boss phases; PQ-174.05; PQ-175.00 | Thirty escalating wave situations and bosses that create moving physical opportunities, with gun and trick solutions and tells that survive density. |
+| Combat presentation and UX | PQ-023/134; PQ-139; PQ-161; PQ-182 | Readable bright projectiles, directional contact accents, bounded damage numbers, visible rope/field state, compact combat controls, drafts and results that support the run. |
+| Replay breadth | PQ-169; PQ-175.03 | Seeded retry, daily challenge, distinct mutators, records/build identity and reachable alternate arenas/kits. No power grind required for a fun first run. |
+| Adventure inheritance | Shared combat/flight writers; PQ-141/142/152 | The same guns, web, traps, contact forces and handling are available to Adventure's acquisition and encounter systems. Preserve quiet travel and world consequences. |
+
+**Swarm previews; Adventure earns.** Swarm's short economy lets players discover the glory of
+different builds without the RPG grind. Adventure deliberately asks them to earn advanced weapons
+through its money, research, contracts and exploration. Acquiring a favourite Swarm toy there
+should mean "now I can use this everywhere." Share the toy's behavior, not its unlock timetable.
+Swarm purchases never grant free Adventure gear, research or currency. Adventure's starter must
+still be fun; do not withhold basic responsive flight and satisfying shooting as progression.
+
+Build the connected opening loop first, then carry its interactions through every arena, build,
+boss and replay surface. This order retains the scope: a polished opening alone does not finish
+the five-arena mode. Conversely, completing a telemetry dashboard or a menu matrix cannot finish
+the opening. Optional network services, storefront work and whole-world asset programs do not
+gate these local gameplay outcomes.
+
+### Corrections to older success criteria
+
+1. **Physics multiplies good shooting.** Retire "the free Pulse cannot top the board" and mandatory
+   two-to-one kit score rankings. An excellent shooter may win. A well-placed trap or bank must
+   offer a clearly better opportunity than firing into the same pile without using its geometry.
+   Do not nerf Pulse, inflate stunt points, or script equally skilled players to manufacture order.
+2. **Rhythm includes earned relief.** Retire "no second with nothing happening" as a universal bar.
+   Check whether the player has meaningful pressure or an earned useful opening. A fixed target
+   death minute and a session-return percentage are tuning hypotheses, not implementation gates.
+3. **Look, play, fix.** Use the existing route and narrow mechanic checks. Inspect real movement at
+   normal speed and the actual presentation at play size; iterate on observed weaknesses. Save a
+   capture only when it helps diagnose, compare or communicate a specific issue. No capture quotas,
+   per-leaf movies, committed dumps, repeated baseline after every edit, or new proof infrastructure
+   as prerequisites. Keep determinism, save isolation, reachability and performance checks relevant
+   to the change. Do not claim a simulation fixture proves the live picture or that a score proves fun.
+4. **One shared game.** New tools use existing input intents, combat/attachment/field ownership,
+   render cues and run boundaries. Transient Crucible supplies and progression may differ; the
+   weapon's physical laws do not. Preserve unrelated concurrent edits.
+
+**Scope correction — 2026-08-23:** Player handling and enemy choreography remain essential, but
+develop them inside the playable pursuit/trap/bank loop. Do not make a movement certification
+program an entry gate that postpones building that loop.
 
 This document is intentionally much larger than a near-term implementation packet. It contains:
 
@@ -34,7 +171,10 @@ It does **not** claim that every idea is required, admitted, implemented, integr
 - [`../program/roadmap/program-queue.json`](../program/roadmap/program-queue.json), which owns admitted task identity and dependencies;
 - an active packet under `design/program/roadmap/active/`, which alone binds a selected outcome to current code, paths, checks, cost, proof, and stop conditions.
 
-Before implementing any row from this document, an agent must re-audit the live code, deduplicate the outcome against current roadmap packets, assign or reuse a stable roadmap ID, and admit a bounded slice through `design/program/`.
+The 2026-09-10 owner request authorizes the connected Crucible scope above. Reuse existing packet
+IDs and inspect the relevant live writers; another admission or characterization campaign is not
+an implementation prerequisite. Content-bank and far-future ideas remain optional unless selected
+to improve the requested game. A missing local mechanic is implementation work.
 
 ---
 
@@ -45,7 +185,7 @@ This document uses five labels to prevent a brainstorm from masquerading as a re
 | Label | Meaning |
 |---|---|
 | **CORE** | A durable design decision that should shape downstream work unless a higher authority changes it. |
-| **FIRST SLICE** | A deliberately narrow candidate for the earliest playable implementation. It still requires roadmap admission. |
+| **FIRST SLICE** | The earliest connected playable implementation; continue through the full authorized scope afterward. |
 | **EXPERIMENT** | A falsifiable idea to test. It may be kept, revised, or rejected. |
 | **CONTENT BANK** | A reservoir of candidates. Selection is expected; wholesale implementation is not. |
 | **FAR FUTURE** | A high-cost or dependency-heavy possibility preserved so present architecture does not foreclose it. |
@@ -59,10 +199,10 @@ An agent consuming this file should follow this sequence:
 1. Read the executive thesis and the specific section relevant to the assigned outcome.
 2. Read the cited current owner files and nearest `AGENTS.md`.
 3. Check `design/program/NOW.md`, the program queue, active packets, and current dirty paths.
-4. Re-audit every code-path claim in this document. File names and seams are directional, not eternal.
-5. Select the smallest coherent player-visible outcome.
-6. Record explicit non-goals.
-7. Map the outcome to a current queue ID or shape a new stable ID through the program process.
+4. Verify the relevant live code paths; historical claims are orientation, not proof of behavior.
+5. Build coherent player-visible outcomes through the complete authorized scope.
+6. Keep the shared combat behavior and the two progression economies distinct.
+7. Reuse packet identities without inventing an administrative dependency.
 8. Implement through canonical writers and the ordinary game path.
 9. Prove deterministic behavior at the owner seam before expensive route evidence.
 10. Update only the exact packet and global roll-up rows supported by evidence.
@@ -604,20 +744,17 @@ Do not require the player to hunt one distant bugged enemy for two minutes. A wa
 
 ## 6.5 Run experience and drafts
 
-Kills, assists, physical interactions, objectives, and style actions grant run XP. The first tuning target is three to four drafts per ten-wave block.
+**Swarm:** every finite round clears into a fully paused armory. The player can make several purchases,
+rearrange owned equipment, save cash, then explicitly launch the next round. A known catalog and stable
+prices make saving a plan: seeing a Snarl Webcaster you cannot yet afford should create anticipation.
+Stock legality follows the real hull, hardpoint and capacity rules; show the item it would replace.
+An empty slot, an incompatible item, and insufficient money are different states with different remedies.
 
-When a level threshold is reached:
-
-1. Queue the draft if the game is in an unsafe transition.
-2. Pause simulation at a deterministic phase boundary.
-3. Present three choices from a seeded pool.
-4. Show exact affected weapon, trigger, and relevant caps.
-5. Allow one reroll only if the run owns a reroll resource.
-6. Apply the choice through the modifier owner.
-7. Recompile affected attack specifications.
-8. Resume from the same simulation state.
-
-The first version should pause completely. Real-time drafting is a later challenge mutator, not a default tax on comprehension.
+**Gauntlet:** retain its authored thirty-wave structure and three-choice modifier drafts. XP, tiered
+modifiers, run-long evolution and later ten-wave hull changes remain in scope. Do not import those
+draft pauses into an active fight or silently replace the Swarm cash shop with free random cards.
+Scalar improvements can be worthwhile support purchases; the catalog must also contain tools that
+change the player's movement, firing angles, targets and combination opportunities.
 
 ## 6.6 Physical rewards
 
@@ -635,28 +772,15 @@ The pickup’s visual and movement must communicate value and collection directi
 
 ## 6.7 Wave-ten refit
 
-Every ten waves, enter a full refit phase.
+Swarm offers fitting access after **every** round. Buying a tool is only half an experiment: the
+player must also be able to remove it, restore a spare and move compatible equipment between slots.
+This uses the existing fitting owner and the run's inventory. Returning from refit returns to the
+same armory with the same balance; it does not launch combat accidentally.
 
-The refit phase may allow:
-
-- repair;
-- weapon purchase;
-- weapon replacement;
-- Rig purchase;
-- fitting changes;
-- hull change;
-- trait reroll or removal;
-- shop refresh;
-- reroll-resource purchase;
-- limited conversion between run resources.
-
-The player should be able to respond to discovered weaknesses, but not erase every commitment for free. Candidate rules:
-
-- selling returns 60–80% of price;
-- removing a temporary modifier costs a scarce purge resource;
-- hull change keeps temporary traits but may invalidate slot-dependent ones;
-- invalid traits become suspended and clearly marked rather than silently lost;
-- one “emergency refit” can be earned for use between ten-wave blocks.
+Every tenth round remains a larger milestone: champion payout, optional extraction and the deeper
+hull-change bench. Hull changes need an explicit affordable price and a compatible transfer preview.
+Gauntlet retains its ten-wave refit cadence. Preserve mass, capacitor, heat, slot compatibility,
+suspended modifiers, repair and resale comparisons as the fitting system grows.
 
 ## 6.8 Boss waves
 
@@ -745,31 +869,17 @@ This clock creates immediate decisions.
 
 ## 7.2 Clock B: run XP and modifier drafts
 
-This changes attack topology several times per block.
-
-It answers:
-
-> What surprising thing does my existing build do now?
-
-Examples:
-
-- one bounce;
-- an additional projectile;
-- chain through ionized targets;
-- burning payload;
-- orbiting field node;
-- on-collision fork;
-- Massline discharge.
+The primary Swarm progression clock is round cash, not RPG XP. A first clear should normally afford
+a useful purchase; saving two or three clears should open a distinct new play style. Starter packages
+already contain a signature trick so a novice can enjoy the premise before winning a shopping phase.
+Run XP may support level rewards and Gauntlet drafts, but cannot interrupt a chase with a menu.
+Evolutions and combinations should reward a coherent build rather than repeated compulsory button presses.
 
 ## 7.3 Clock C: ten-wave refits
 
-This changes the machine itself.
-
-It answers:
-
-> What should I buy, replace, move, or repair now that I understand this arena and build?
-
-It operates through hulls, weapons, Rigs, fittings, and handling.
+The normal Swarm armory includes refitting after each round. Ten-round milestones add a champion,
+larger purchasing decision and optional extraction. Their purpose is escalation and a satisfying
+checkpoint, not withholding basic experimentation. The thirty-wave Gauntlet keeps its authored acts.
 
 ## 7.4 Clock D: run-long evolutions
 
@@ -857,29 +967,15 @@ XP should not pay repeatedly for low-cost spam. Each source needs dedupe and cau
 
 ## 7.8 Shop design
 
-The shop should be compact and legible.
+Use one clear wallet, visible prices, and stock grouped into Weapons, Rigs and Survival. Start with
+the whole legal catalog, so players can learn prices and save toward a plan. Explain the new verb,
+its control binding, its important cost and the slot it replaces in plain words. Put the purchase
+and its consequence together. Keep installed equipment visible and refitting one action away.
 
-A first refit shop can show:
-
-- two weapons;
-- two Rigs;
-- one defensive/handling component;
-- one repair option;
-- one reroll;
-- one purge;
-- one hull offer.
-
-The shop should avoid color-rarity language as the primary identity. A component is interesting because of its physical behavior, not because it is purple.
-
-Possible shop controls:
-
-- seeded inventory;
-- one free refresh per refit;
-- paid refreshes with increasing cost;
-- lock one item for the next refit;
-- salvage one offered item into a modifier reroll;
-- arena-specific merchant bias;
-- challenge mutator that removes randomness.
+Buying does not close the shop. Launching is explicit, quick and available without spending. Cash
+is paid once through the run wallet; failed fitting refunds it; stale/double requests cannot charge
+twice. Use the actual owner result to refresh the UI. Later resale, hull trades, repairs, evolution
+and rarity expansions preserve these rules. No paid reroll is required to find a basic build family.
 
 ## 7.9 Economy pressure
 
@@ -5545,7 +5641,7 @@ A boss is accepted when:
 - its dangerous states are readable without memorizing a script;
 - at least three build families can win;
 - one physical solution is clearly viable;
-- direct damage remains a slower fallback;
+- direct damage, control setups and arena exploitation remain viable; no universal damage ordering is imposed;
 - phase changes preserve causality;
 - support spawns respect budget;
 - the boss cannot leave the playable arena;
@@ -5559,17 +5655,16 @@ A boss is accepted when:
 
 ## 24.1 Why raw kill score is wrong
 
-A score based mostly on kill count and time trains the player to maximize ordinary DPS. That would pull Crucible back toward the generic shooter it exists to escape.
+**The main Swarm challenge is the farthest round reached.** Score is an expressive secondary record.
+Good shooting must feel powerful and count fairly. Pulse kills carry the same base value as other
+gun kills. Earn extra style through an actual bank, slam, web-assisted collision, dangerous escape,
+multi-kill or unusual combination; never rig the economy to guarantee one starter beats another.
 
-Score should value:
-
-- physical causality;
-- build expression;
-- risk;
-- efficiency;
-- objective play;
-- causal variety;
-- mastery of the arena law.
+Separate survival income from personal credit. A hostile that dies to the room can drop salvage
+and help clear a round. It cannot become the player's gun kill, Bank Shot or combo without retained
+player causality. One death counts once even when compatibility events describe it twice. Unknown
+causality remains unknown. A direct-fire specialist, trap runner, web controller and heavy slinger
+should each have situations where they excel, alongside meaningful weaknesses.
 
 ## 24.2 Causal tags
 
@@ -5985,7 +6080,7 @@ Survival adds pressure, but the HUD should not become a dashboard pasted over th
 Persistent additions should be minimal:
 
 - wave and phase;
-- run level and XP;
+- available cash and compact build access; Gauntlet may also show run level and XP;
 - Arena Credits;
 - score/style state;
 - boss-system state when relevant;
@@ -6008,20 +6103,14 @@ Then the transient clears. Do not leave a large banner covering spawn telegraphs
 
 ## 26.3 Draft UI
 
-Draft cards must show:
+Swarm uses a cash armory: round cleared, wallet, readable catalog, fitted state, prices, replacement
+slot, short behavior description, refit access, and a prominent Launch next round action. Include a
+small trajectory or relationship diagram where it explains a tool faster than prose. No hover-only
+information, hidden second confirmation, accidental launch on purchase, or paid stock lottery.
 
-- modifier name;
-- functional tier;
-- compatible root;
-- exact effect;
-- rank;
-- cap/cost;
-- prerequisite or exclusion;
-- a tiny trajectory/relationship diagram where useful.
-
-A card should not need a paragraph of lore to explain mechanics.
-
-Keyboard, mouse, and controller navigation must all work if supported by the project. No hover-only information.
+Gauntlet's three cards retain name, compatible root, effect, rank, cap/cost and exclusions. Mouse,
+keyboard and supported controller navigation must work. The first enabled choice receives sensible
+focus. Category changes and failed purchases preserve orientation and explain their result.
 
 ## 26.4 Refit UI
 
@@ -6859,7 +6948,7 @@ This prevents agents from repeatedly rediscovering the same bad answer.
 
 # 30. Beginning-to-end implementation roadmap
 
-This roadmap is ordered to maximize learning and minimize architectural duplication. Each phase still requires admission as one or more bounded program packets.
+This roadmap is ordered to maximize learning and minimize architectural duplication. The owner authorized implementation of the Swarm dependencies on 2026-09-10. Reuse existing owners and finish connected player outcomes; a new admission/receipt cycle is not a prerequisite.
 
 ## Phase 0 — Assimilation, deduplication, and seam audit
 
@@ -9201,7 +9290,7 @@ Recommendation: full pause in standard single-player Survival. Slow-time draftin
 
 ## F.5 Hull changes
 
-Recommendation: allow hull changes only at ten-wave refits, at meaningful cost, after compatibility UI exists.
+Owner decision: basic equipment refitting is available after every Swarm round. Hull changes remain meaningful milestone purchases with a compatible transfer preview.
 
 ## F.6 Friendly fire
 
@@ -9232,11 +9321,11 @@ Recommendation: unlock possibility, not permanent combat stats.
 
 ## F.10 Endless mode
 
-Recommendation: victory at wave 30 first; endless is an optional continuation.
+Owner decision: Swarm is the default endless sequence of finite rounds; farthest round is the challenge. Gauntlet retains its thirty-wave victory and optional continuation.
 
 ## F.11 Adventure rewards
 
-Recommendation: no campaign material reward in the first version. Later rewards require explicit settlement through campaign owners.
+Owner decision: Swarm cash, gear and research never transfer to Adventure. Shared toys have persistent acquisition paths through Adventure prices, research, salvage and missions. Earn the toy there, then use it throughout the world. Cosmetic records may be shared.
 
 ## F.12 Score visibility
 

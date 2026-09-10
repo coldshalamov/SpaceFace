@@ -2786,98 +2786,58 @@ Moved to [build_map_done.md](./build_map_done.md) — completed/historical, kept
 - Feel before content; surface before invent; collide before add.
 
 
-## 16. Swarm mode: the Crucible plays optimally (`PQ-174`, `PQ-175`) — ADMITTED 2026-09-03
+## 16. Swarm mode: the arcade survival showcase — OWNER REVISION 2026-09-10
 
-**Source:** the owner, 2026-09-03: *"fast-paced physics-centric arcade-style combat that plays
-optimally in swarm mode"* and *"if you get the crucible mode to be optimally fun, then it would make
-the goals for adventure combat more obvious."* §12 built the Crucible's engineering (phases 0–12
-complete); §13A gave it a swarm ruleset; this section makes it the game's best fifteen minutes and the
-lab every combat number is tuned in first.
+**Owner-directed arcade revision — 2026-09-10.** The complete design is
+[Crucible master plan](./design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md), especially its opening
+owner revision. This is authorized implementation, not a request to produce another admission pack.
 
-### 16.1 What "plays optimally" means, in numbers
+The default door promises an immediate arcade survival run: fly fast, bank gunfire off rock, stitch
+enemies together, leave an armed repulsion trap in a choke point, and use the resulting collisions
+to escape the pack. Clear a finite round, collect its cash, buy/refit or save, then launch again.
+Death is frequent and retry is quick; the main record is the farthest round reached. Adventure
+earns the same advanced toys over a longer acquisition arc and then lets you use them everywhere.
 
-Measured by the fun-loop bench (`PQ-173`) on fixed seeds, starter loadout, swarm ruleset, at the
-shipping camera. These are the swarm bars; `PQ-174` owns them.
+### 16.1 Required pieces and implementation order
 
-| Bar | Statement | Live value at writing |
+| Piece | Plans and owners | Player outcome |
 |---|---|---|
-| S1 First blood | First hostile within 8 s of launch; first kill possible within 20 s with the starter kit. | Unmeasured |
-| S2 Hands alive | ≥ 4 distinct verbs used per minute by wave 3 (thrust, brake, boost, latch, reel, release, throw, shove, well, stroke). | Unmeasured |
-| S3 Something happens | ≥ 2 rated moments per minute after wave 2; zero nothing-happened seconds (> 4 s with no input change and no world event) after wave 1. | Unmeasured |
-| S4 Waves breathe | Waves last 45–90 s; cleanup ≤ 4 s; a menu at most every fifth wave. | Menu frequency by ruleset: 1 in 5 (met); durations unmeasured |
-| S5 Physics wins | A shove-and-rock run outscores a gun-only run of equal skill by ≥ 2×; the free Pulse cannot top the board; the starter kit shoves. | Free Pulse out-damages the physics kit (recorded) |
-| S6 Deaths are fair | ≥ 90 % of deaths telegraphed ≥ 0.5 s ahead; every death named with its cause and the telegraph missed. | Cause named; telegraph unmeasured |
-| S7 Roles are problems | A blind reviewer names each role's physical counter from a 12 s strip; median time to resolve a light under physics ≤ under guns. | Roles exist as spawn slots |
-| S8 Arenas are laws | Each arena changes the top build and the top verbs (telemetry over seeds). | Five arenas with laws; effect on strategy unmeasured |
-| S9 Bosses are puzzles | Each boss dies to physics alone within 90 s in a scenario; no immunity theatre. | Unmeasured |
-| S10 Run shape | A competent player's first death lands between 8 and 14 minutes; retry on the same seed in ≤ 5 s; session-2 return ≥ 60 %. | Unmeasured |
-| S11 No inflation | Wave N+10 has the same enemy hull values as wave N; difficulty rises by count, mass, anchors, hazards and angles. | Recipes pinned at 1/5/10; not asserted |
+| Flight and forced motion | PQ-135 motion work; PQ-137; physical play grammar/build plan; flightV3, propulsionKernel, Rapier and impulseKernel | Immediate steering response, deliberate drift/braking, retained boost/slingshot speed, useful shove and honest collision consequences. |
+| Trick arsenal and combinations | PQ-133 attack algebra/status/lineage; PQ-137.09; PQ-146; PQ-147; weapons, attachments, fields, impulseCharges | Strong guns alongside bank, web, trap, well, ram, release, cryo/heat and chain builds. The environment amplifies their combinations. |
+| Round pressure and enemies | PQ-174.01/.03/.07/.08; PQ-140; survivalWave, planner, fodderCohort and tacticalAI | Finite cohorts, growing pressure, earned gaps, readable entry lanes, specialist counters, no wave-number HP inflation. |
+| Arenas and champions | PQ-175.00/.01/.03; PQ-174.04/.05; survivalArena and the four law owners | Five usable arenas, useful terrain from round one, evolving machinery, champions with commitment and several answers, mutators that change decisions. |
+| Fast experimentation | PQ-174; PQ-175.02; PQ-182; survivalDraft, ships, runSession | Cash shop and refit every clear; multiple purchases or saving; known prices; no accidental launch; all run funds and gear isolated from Adventure. |
+| Visual and audio response | PQ-139; PQ-161; physical-play presentation; shared VFX/feel/audio owners | Bright shaped projectiles, directional hit flashes, actual cables and traps, readable damage totals, mass-scaled explosions and force cues. Keep the flight window clear. |
+| Door, combat HUD and death | PQ-182; survivalHud, powerRail, Crucible screens | Distinct starter strategies and arena descriptions, current bindings/resources, honest fatal cause, useful results, same-seed and fresh-run retry. |
+| Breadth and transfer | PQ-133 retained content; Gauntlet/circuit/endless/records; Adventure fitting owners | Keep thirty-wave Gauntlet, five laws, challenge/replay systems and advanced acquisition; Swarm is their fast showcase, not a separate combat implementation. |
 
-### 16.2 The order inside the swarm program
+### 16.2 How to judge the game
 
-```text
-PQ-173 bench ──> PQ-174.00 bars printed ──> PQ-174.01 pacing ──┐
-PQ-137.05 force table + PQ-146.01 scoring ──> PQ-174.02 physics wins ──┼─> PQ-174.03–.07 ──> PQ-175 content at craft
-PQ-140.02 specialists ──────────────────────────────────────────┘
-```
+Enter the ordinary Crucible route with a starter. The first encounter must already let the player
+shoot, maneuver and use a signature trick. Complete a round, buy or save, refit, launch, die and
+retry. Play the bank runner and web controller against a chase, then inspect an advanced combination
+and an arena/champion change. Test the real force/attachment and wallet seams where errors matter.
+Inspect motion for motion claims and pictures for visual claims. Improve the observed weak point.
 
-Every combat number lands in the Crucible first. Adventure combat (`PQ-140`, `PQ-152`, `PQ-141`)
-inherits the numbers by reading the same data, never by a copy.
+Do not substitute a quota of screenshots, input verbs, rated moments, required deaths at minute N,
+artificial physics-to-gun score ratios or unmeasurable retention figures for this outcome. Initial
+timing targets remain tuning guides: quick first contact, a useful early purchase, short cleanup,
+fast retry. A player can finish a round unusually fast or survive unusually long without failing
+the design. A boring but statistically compliant run fails it.
 
-### 16.3 The packets
+### 16.3 Completion and preservation
 
-| Packet | Pillar | One line | Wave |
-|---|---|---|---|
-| **`PQ-174`** Swarm mode fun contract: the Crucible plays optimally — [`active/PQ-174.md`](./design/program/roadmap/active/PQ-174.md) | S · Swarm mode | The Crucible becomes the game's best fifteen minutes: bars for pacing, verbs, moments, deaths and builds; the physics kit is the strongest kit; every arena and boss is a physics problem. | ALPHA |
-| **`PQ-175`** Swarm mode content at craft: waves, arenas, drafts and mutators that create decisions — [`active/PQ-175.md`](./design/program/roadmap/active/PQ-175.md) | S · Swarm mode | Thirty waves that each ask a different physical question, five arenas whose props participate, drafts that change how you fly (never only how hard you hit), and mutators that are new games. | BETA |
+PQ-174 owns the integrated survival experience; PQ-175 retains the full content breadth; PQ-182
+owns its visible route. Shared physics, weapons and presentation dependencies above are part of
+this campaign, even if a ready-queue row is missing. Existing implementation is reused and checked
+in play; no blanket rebuild. Capture only when it resolves a real visual/temporal question. Keep
+focused deterministic, save-isolation, fitting and runtime checks. An unrelated baseline failure
+is recorded and bounded, not a reason to abandon the arcade work or rewrite golden snapshots.
 
-### 16.4 The plans, in detail
-
-#### Pillar S · Swarm mode
-
-**`PQ-174` — Swarm mode fun contract: the Crucible plays optimally** · *ALPHA* · after `PQ-137`, `PQ-173`
-
-A stranger presses the Crucible button and has the best fifteen minutes the game offers, on the first try, with the starter loadout. The swarm streams (no menu four waves out of five), the first kill lands inside twenty seconds, four verbs are in use by wave three, something worth watching happens twice a minute, no second passes with nothing happening after wave one, every death was telegraphed and named, the physics kit outscores the free gun, and a competent player dies between eight and fourteen minutes in with a story to tell. Difficulty comes from geometry, mass and numbers, never from enemy hit points.
-
-- **Gap:** Phases 0–12 of the Crucible are engineering-complete and the swarm ruleset exists; nothing measures whether a run is fun, the free Pulse out-damages the physics kit (owner ruling recorded in the Crucible memory), and the owner's verdict is that combat 'just sucks'. **Reference:** Vampire Survivors pacing, Nova Drift builds, Geometry Wars readability, Rocket League scoring, Slay the Spire drafts.
-- **Exists:** `src/systems/survivalSwarm.js` (streaming ruleset, draft every N waves), `survivalWavePlanner.js`, `src/data/survivalWaves.js` (roles Support/Anchor/Disruptor/Elite; waves 1/5/10 pinned), five arenas with laws (Foundry, Lagrange Crucible, Cinder Sluice, Cryo Drift, Storm Lattice), `survivalDraft.js`, `survivalMutators.js`, `survivalRecords.js`, `survivalResults.js`, `scripts/check-crucible-route.mjs` (fixed seed, real browser), `check-crucible-run.mjs`, content-factory balance dashboards (PQ-133.12).
-- **Routes through:** §12 (PQ-133 phases 7–10 already built the material), §13A PQ-135 swarm cohort, PQ-137.05 force table, PQ-140 roster, PQ-146 stunt grammar, PQ-173 bench.
-- **Writes:** `src/systems/survivalSwarm.js`, `src/systems/survivalWavePlanner.js`, `src/data/survivalWaves.js`, `src/data/swarmMode.js`, `src/systems/survivalDraft.js`, `src/systems/survivalResults.js`, `src/systems/survivalRun.js`, `src/data/survivalArenas.js`, `src/systems/swarmArena.js`
-
-| Leaf | Outcome | Done when |
-|---|---|---|
-| `.00` (after PQ-173.01) | **The swarm bars, printed.** With PQ-173's bench: time-to-first-kill, verbs per minute, moments per minute, nothing-happened seconds, deaths by cause with telegraph flag, build identity per run, wave duration, menu frequency, run length to first death — printed per seed for the three loadouts. | Every bar below has a number on three seeds before any tuning; the numbers are committed as the before. |
-| `.01` | **Pacing: the first minute and the wave curve.** First hostile within 8 s of launch, first kill possible within 20 s with the starter kit, waves 45–90 s, cleanup ≤ 4 s, a menu at most every fifth wave, the quota curve rising by count and geometry, never by hit points. | Time-to-first-kill ≤ 20 s on all seeds; wave durations inside the band; menu frequency ≤ 0.2 per wave. |
-| `.02` (after PQ-137.05, PQ-146.01) | **The physics kit wins.** With PQ-137.05's force table landed in the Crucible first: a shove-and-rock run outscores a gun-only run of equal skill by ≥ 2× (stunt scoring, PQ-146.01); the free Pulse cannot top the board; the starter kit includes a shove. | Telemetry over 20 seeded runs per kit; the balance dashboard shows the ordering. |
-| `.03` (after PQ-140.02) | **Roles in the swarm are physical problems.** Support/Anchor/Disruptor/Elite each pose a positioning problem the player solves with a verb (rope the anchor, shove the disruptor into the elite, well the support cluster); the cohort flows and stays throwable (PQ-135.05). | Blind reviewer names each role's counter from a 12 s strip; median time-to-resolve a light under physics ≤ under guns. |
-| `.04` | **Arena laws change the top strategy.** Each of the five arenas measurably changes which build and which verbs win (telemetry over seeds): the gravity arena rewards wells and slings, the current arena rewards riding, the foundry rewards banks and machinery kills. | For each arena, the top build differs from the Foundry's; the difference is visible in the results screen. |
-| `.05` | **Boss waves are physics puzzles.** Wave 10/20/30 bosses die to thrown mass, machinery or their own tumbling sub-systems; guns alone are the slow way, never the only way; no immunity theatre. | Each boss killed in a scenario by physics alone within 90 s; capture. |
-| `.06` | **Death, retry, and the story.** Death names its cause and the telegraph the player missed, retry on the same seed in ≤ 5 s, and the results screen tells the run as a story: the tricks, the moments, the best chain, the build code. | Session-2 return in playtests ≥ 60 %; results capture reviewed. |
-| `.07` | **Difficulty by geometry, verified.** Wave N+10 has the same enemy hull values as wave N and is harder because of count, mass, anchors, hazards and angles; a check asserts no HP inflation across the arc. | `check:crucible:arc` gains the no-inflation assertion; it fails when a wave recipe raises hull values. |
-
-- **Not:** No new arenas before the five express their laws; no draft that is a stat-only modifier; no HP or damage scaling by wave; no second combat path for the Crucible.
-- **How agents get this wrong:** Making it 'fun' by adding enemies or waves: the count is a symptom lever; the fix is pacing, verbs and consequences (bars .00–.02); Balancing the physics kit up by nerfing the gun down to nothing: the gun stays useful; physics must WIN, not be the only option; Tuning on a random seed: every number in this packet is per fixed seed and loadout, or it is an anecdote; Reading 'difficulty' as hit points: a wave that is harder because enemies take longer to kill fails leaf .07 on sight; Shipping a boss with an invulnerable phase to 'force' the mechanic: physics must be the fast way, guns the slow way, immunity never.
-
-**`PQ-175` — Swarm mode content at craft: waves, arenas, drafts and mutators that create decisions** · *BETA* · after `PQ-174`
-
-Every wave asks a question in physics ('you are surrounded', 'the anchor is behind the elite', 'the current runs against you'), every arena's props are toys (crushers, shutters, relays, currents), every draft card changes a verb (a heavier line, a wider well, a faster reel, a ram plate) with at most one in three being a number, and each weekly mutator is a distinct game (gravity slalom, heavies only, weapons cold, reef).
-
-- **Gap:** Waves are pinned recipes with roles; drafts include stat modifiers; arena props are mostly dressing; mutators exist as a list. **Reference:** Spelunky level grammar, Hades boons that change verbs, Risk of Rain stages.
-- **Exists:** `src/data/survivalWaves.js` (schema, roles, room phases), `survivalActs.js`, `arenaModuleLibrary.js`, `survivalMutators.js`, `survivalDraft.js`, the content factory validators (PQ-133.12), five arena controllers (lagrangeCrucible.js, cinderSluiceArena.js, cryoDriftArena.js, stormLatticeArena.js).
-- **Routes through:** §12 PQ-133.05–.10; PQ-027 machinery; PQ-171 content grammar.
-- **Writes:** `src/data/survivalWaves.js`, `src/data/survivalActs.js`, `src/data/arenaModuleLibrary.js`, `src/systems/survivalMutators.js`, `src/systems/survivalDraft.js`, `src/systems/lagrangeCrucible.js`, `src/systems/cinderSluiceArena.js`, `src/systems/cryoDriftArena.js`, `src/systems/stormLatticeArena.js`
-
-| Leaf | Outcome | Done when |
-|---|---|---|
-| `.00` (after PQ-174.01) | **Every wave asks a question.** Each of the thirty wave recipes declares its physical question and the verb that answers it; the planner never schedules two consecutive waves with the same question. | Validator asserts a question per recipe and no repeats in a row; a blind reviewer names the question from a strip for 8 of 10 waves. |
-| `.01` (after PQ-027.00) | **Props are toys.** Each arena's props participate: shutters cut lines, plates bank shots, crushers kill, relays conduct, currents carry; at least three throwable or usable props per arena. | Per arena, three props used in a scenario to kill or escape; capture. |
-| `.02` | **Drafts change verbs.** At most one card in three is a number; every other card changes a verb's shape (line load, well radius, reel speed, ram plate, whip snap); cards are legible in one line. | Draft catalog audit: ≥ 66 % verb cards; a playtester describes each card's effect after one use. |
-| `.03` (after PQ-169.02) | **Mutators are games.** Four weekly mutators shipped as distinct games with their own best build (telemetry): gravity slalom, heavies only, weapons cold, reef. | Top strategy differs per mutator over 10 seeds each. |
-
-- **Not:** No sixth arena; no draft rarity tiers; no wave that is a bullet-hell screen fill.
-- **How agents get this wrong:** Writing waves as spawn lists: a wave without a stated physical question is rejected by the validator, not by taste; Filling drafts with +10 % cards because they are easy to author; Dressing arenas with props that cannot be touched; a prop that does not move mass is scenery, not content.
-
-
+The September 3 descriptions and unmeasured tables were a historical tuning proposal. This section
+replaces their one-menu-in-five rule, forced physics ranking, compulsory verb counts, fifteen-minute
+session target and capture-per-leaf bureaucracy. It preserves product scope and increases emphasis
+on meaningful player choice, readable force and rapid experimentation.
 
 ## 17. Adventure mode: interesting and mentally stimulating (`PQ-176`–`PQ-178`) — ADMITTED 2026-09-03
 

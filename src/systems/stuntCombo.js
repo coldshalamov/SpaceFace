@@ -68,7 +68,7 @@ export const MAX_MASS_MULT = 2;
 // Flat kill pay. Deliberately an order of magnitude below a chained trick so that equal
 // kill counts always favor physics play, without touching gun damage anywhere.
 export const GUN_KILL_SCORE = 60;
-export const PULSE_KILL_SCORE = 25;
+export const PULSE_KILL_SCORE = GUN_KILL_SCORE;
 
 // The free Pulse kit (energy_baseline) and its unique twin. Kills credited to these
 // weapon ids pay PULSE_KILL_SCORE. Anything unknown pays the plain gun rate — never zero,

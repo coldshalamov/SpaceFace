@@ -1,12 +1,12 @@
 <!-- LIFETIME: STABLE -->
 # Physical Play — Technical Build Plan
 
-**Status: BUILD PROPOSAL, NOT ADMITTED WORK.** This document converts
+**Status: Swarm dependencies authorized by the owner on 2026-09-10; remaining material is a design bank.** This document converts
 [`PHYSICAL_PLAY_GRAMMAR.md`](./PHYSICAL_PLAY_GRAMMAR.md) into an implementable order of operations. It
 records what already exists, what actively contradicts the design, what foundational pieces are
 missing, and the sequence that reaches the outcome with the fewest blocked packets.
 
-Nothing here is committed scope until the lead assigns roadmap IDs. Companion document:
+The Swarm dependency set is defined in build_map.md §16; its necessary shared mechanics do not need another admission cycle. Companion document:
 `PHYSICAL_PLAY_GRAMMAR.md` owns *what the game should do*; this file owns *what it costs and in what
 order*.
 
@@ -14,6 +14,14 @@ Derived from a source audit at 2026-07-26. Every claim below is anchored to `fil
 before acting on any single row, and correct this file in the same pass if a claim has aged.
 
 ---
+
+## Arcade convergence — 2026-09-10
+
+The payoff is a connected action: bank fire, draw pursuit through rocks, drop an armed repulsion trap, stitch pursuers with real constraints, and use their collision cascade to escape. Preserve the full state/material/field/weapon grammar below, but implement its player-visible relationships before more evidence infrastructure.
+
+Swarm exposes toys through starter kits and cash/refitting every round; Adventure earns those same definitions through persistent acquisition. Its physical outcome must match. Bright projectiles, directional flashes, visible loaded cables and legible damage totals are core presentation. Immediate control response, useful brakes and retained momentum are core handling. Raw guns stay satisfying; score ratios cannot substitute for physical effectiveness.
+
+The July seam inventory is historical. Verify the specific owner you change, rather than treating an old zero-call count as a request to rebuild a feature.
 
 ## 0.0 The quality bar
 

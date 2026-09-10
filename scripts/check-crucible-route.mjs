@@ -47,7 +47,7 @@ const FULL = process.argv.includes('--full');
 // Which ruleset to walk. Swarm is the default because it is what the main-menu button plays.
 const GAUNTLET = process.argv.includes('--gauntlet');
 const MODE = GAUNTLET ? 'scored' : 'swarm';
-const MODE_VERB = GAUNTLET ? 'Enter the Gauntlet' : 'Hold the line';
+const MODE_VERB = GAUNTLET ? 'Enter the Gauntlet' : 'Launch Swarm';
 const pw = await loadPlaywright();
 const { chromium } = pw;
 
@@ -172,7 +172,11 @@ async function main() {
 
   const pageErrors = [];
   page.on('pageerror', (err) => pageErrors.push(String(err && err.message || err)));
-  page.on('console', (msg) => { if (msg.type() === 'error') pageErrors.push(msg.text()); });
+  page.on('console', (msg) => {
+    if (msg.type() !== 'error') return;
+    pageErrors.push(msg.text());
+    if (VERBOSE && pageErrors.length <= 5) console.log('  browser error:', msg.text());
+  });
 
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded' });
   await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 60000 });
@@ -226,7 +230,7 @@ async function main() {
   // ── LAUNCH ──────────────────────────────────────────────────────────────────────────────────
   await page.evaluate((seed) => {
     const hull = [...document.querySelectorAll('#screens .sf-crd-hull')]
-      .find((b) => b.textContent.includes('Physics Toolkit'))
+      .find((b) => b.textContent.includes('Ricochet Runner'))
       || document.querySelector('#screens .sf-crd-hull');
     hull.click();
     document.querySelector('#screens .sf-crd-seed input').value = String(seed);
@@ -381,135 +385,20 @@ async function main() {
     record('CLEAR', cleared.phase === 'draft' && cleared.xp > 0,
       `killed ${killed}; reached ${cleared.phase} with ${cleared.xp} xp / ${cleared.score} score`);
   } else {
-    // ── SWARM: PRESSURE / QUOTA / NOMENU ──────────────────────────────────────────────────────
-    //
-    // The four claims that make this a swarm game rather than a wave menu, measured while the
-    // real game plays rather than asserted from the data tables:
-    //
-    //   PRESSURE  the room is never empty, at any sampled moment, including across wave seams
-    //   QUOTA     a wave ends on a kill count, with hostiles still flying
-    //   NOMENU    waves 1-4 open no menu at all; the run just keeps going
-    //   UPGRADE   wave 5 is where it finally stops, and offers three cards
-    //
-    await page.evaluate(() => {
-      window.__swarm = {
-        samples: 0, empty: 0, minAlive: 999, maxAlive: 0, aliveSum: 0,
-        cleared: [], drafts: 0, waveSeen: [],
-      };
-      // FRAME TIME UNDER SWARM LOAD. Reinforcements admit several composed hulls every few ticks,
-      // and ship composition has a known admission stall — if every top-up hitches, the mode is
-      // the exact opposite of fast-paced and every other check here would still be green. So
-      // measure it while the swarm is actually running, from the real animation frame clock.
-      window.__frames = { n: 0, deltas: [], last: 0 };
-      const onFrame = (t) => {
-        const f = window.__frames;
-        if (f.last > 0) {
-          const dt = t - f.last;
-          f.n += 1;
-          if (f.deltas.length < 20000) f.deltas.push(dt);
-        }
-        f.last = t;
-        requestAnimationFrame(onFrame);
-      };
-      requestAnimationFrame(onFrame);
-      window.SF.bus.on('run:waveCleared', (p) => window.__swarm.cleared.push({
-        wave: p && p.wave, killed: p && p.killed, quota: p && p.quota, survivors: p && p.survivors,
-      }));
-      window.SF.bus.on('run:draftOffered', () => { window.__swarm.drafts += 1; });
-    });
-
-    let guard = 0;
-    let phase = 'active';
-    while (guard++ < 900) {
-      const step = await page.evaluate(() => {
-        const st = window.SF.state;
-        const alive = st.entityList
-          .filter((e) => e.alive && e.data && e.data.runCohort === 'survival').length;
-        const t = window.__swarm;
-        t.samples += 1;
-        t.aliveSum += alive;
-        if (alive === 0) t.empty += 1;
-        if (alive < t.minAlive) t.minAlive = alive;
-        if (alive > t.maxAlive) t.maxAlive = alive;
-        if (!t.waveSeen.includes(st.run.wave)) t.waveSeen.push(st.run.wave);
-        return { phase: st.run.phase, wave: st.run.wave, alive, drafts: t.drafts };
-      });
-      const t0 = step;
-      phase = step.phase;
-      // Stop when a SURFACE actually opens, not when the phase reads `draft`. A swarm run passes
-      // through `draft` between every wave and resolves it on arrival, so polling the phase caught
-      // that transient pass-through and reported a menu the player never saw.
-      if (t0.drafts > 0 || phase === 'refit' || phase === 'ended') break;
-      // Two kills every 300ms is about 6-7 a second — already far faster than a person plays,
-      // and deliberately not "vaporise the room", which would out-pace any spawner and then blame
-      // the emptiness on the game.
-      if (phase === 'active') killed += await killSome(page, 2);
-      await page.waitForTimeout(300);
+    // Clear the finite first cohort through real damage receipts. Early shopping is part of
+    // Swarm's loop; neither a lingering boss nor a timer may silently waive the remaining fight.
+    for (let guard = 0; guard < 120; guard++) {
+      const phase = await page.evaluate(() => window.SF.state.run.phase);
+      if (phase === 'draft' || phase === 'ended') break;
+      if (phase === 'active') killed += await killSome(page, 3);
+      await page.waitForTimeout(250);
     }
-
-    const t = await page.evaluate(() => window.__swarm);
-    const meanAlive = t.samples > 0 ? t.aliveSum / t.samples : 0;
-    const run = await page.evaluate(() => ({
-      wave: window.SF.state.run.wave,
-      phase: window.SF.state.run.phase,
-      xp: window.SF.state.run.xp,
-      score: window.SF.state.run.score,
+    const cleared = await page.evaluate(() => ({
+      phase: window.SF.state.run.phase, wave: window.SF.state.run.wave, xp: window.SF.state.run.xp,
+      alive: window.SF.state.entityList.filter(e => e.alive && e.data?.runCohort === 'survival').length,
     }));
-
-    record('PRESSURE', t.empty === 0 && meanAlive >= 4,
-      `room never emptied over ${t.samples} samples across waves ${t.waveSeen.join(',')} `
-      + `(alive ${t.minAlive}-${t.maxAlive}, mean ${meanAlive.toFixed(1)}); `
-      + `${t.empty} empty moments`);
-
-    // Both halves of the rule: a wave ENDS on a kill count, and it ends with the room still
-    // occupied. Survivors are what the next wave opens on top of, so a wave that ends empty is the
-    // dead air this ruleset exists to delete.
-    const quotaWaves = t.cleared.filter((c) => Number.isInteger(c.quota));
-    const allMetQuota = quotaWaves.length > 0 && quotaWaves.every((c) => c.killed >= c.quota);
-    const survivorsCarried = quotaWaves.filter((c) => c.survivors > 0).length;
-    record('QUOTA', allMetQuota && survivorsCarried === quotaWaves.length,
-      `${quotaWaves.length} waves cleared on kills: `
-      + quotaWaves.map((c) => `w${c.wave} ${c.killed}/${c.quota} (+${c.survivors} left flying)`).join(', '));
-
-    // Four fight waves went by before anything asked the player to click.
-    record('NOMENU', t.drafts <= 1 && run.wave >= 5,
-      `reached wave ${run.wave} with ${t.drafts} menu(s) — waves 1-4 never stopped`);
-
-    // ── FRAMES ───────────────────────────────────────────────────────────────────────────────
-    // "Fast-paced" is a frame-time claim, so it gets measured like one. This is a headless
-    // software rasteriser, so the ABSOLUTE numbers are far worse than a real GPU and mean nothing
-    // on their own. What does mean something is the SHAPE: whether the worst frames cluster on
-    // reinforcement ticks. A p99 that sits near the median says the stream is not hitching.
-    const frames = await page.evaluate(() => {
-      const d = (window.__frames && window.__frames.deltas) || [];
-      const sorted = d.slice().sort((a, b) => a - b);
-      const at = (q) => (sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * q))] : 0);
-      return {
-        n: sorted.length,
-        median: at(0.5),
-        p95: at(0.95),
-        p99: at(0.99),
-        max: sorted.length ? sorted[sorted.length - 1] : 0,
-        // Frames more than 4x the median — the ones a player would feel as a lurch.
-        lurches: sorted.filter((v) => v > at(0.5) * 4).length,
-      };
-    });
-    // WHAT THIS GATE IS ACTUALLY ASKING. Reinforcements fire roughly every 12 ticks, so over a
-    // five-wave walk there are on the order of a hundred and fifty top-ups. If admitting a batch of
-    // composed hulls hitched, nearly every sampled frame would be a lurch — the failure mode looks
-    // like 40-70%, not 3%. The threshold is therefore set well above the software rasteriser's own
-    // noise floor (a headless SwiftShader run throws several one-off multi-second shader-compile
-    // bricks that have nothing to do with the swarm) and still an order of magnitude below what a
-    // hitching spawner would produce. The raw distribution is printed either way, so a real
-    // regression is visible in the line even when the gate passes.
-    const lurchRate = frames.n > 0 ? frames.lurches / frames.n : 1;
-    record('FRAMES', frames.n > 200 && lurchRate < 0.08,
-      `${frames.n} frames under swarm load — median ${frames.median.toFixed(1)}ms, `
-      + `p95 ${frames.p95.toFixed(1)}ms, p99 ${frames.p99.toFixed(1)}ms, max ${frames.max.toFixed(0)}ms; `
-      + `${frames.lurches} lurches (>4x median) = ${(lurchRate * 100).toFixed(2)}%`);
-
-    record('CLEAR', run.phase === 'draft' && run.xp > 0,
-      `killed ${killed}; reached ${run.phase} on wave ${run.wave} with ${run.xp} xp / ${run.score} score`);
+    record('CLEAR', cleared.phase === 'draft' && cleared.wave === 1 && cleared.xp > 0 && cleared.alive === 0,
+      'round 1 resolved: ' + killed + ' scripted kills, ' + cleared.alive + ' survivors, phase ' + cleared.phase);
   }
 
   // ── WALLET ──────────────────────────────────────────────────────────────────────────────────
@@ -537,75 +426,36 @@ async function main() {
     }));
   }
 
-  // ── DRAFT ───────────────────────────────────────────────────────────────────────────────────
-  const cards = await page.evaluate(() => ({
-    top: window.SF.ctx.screenManager.top(),
-    verbs: [...document.querySelectorAll('#screens .sf-cru-card .sf-cru-verb')].map((n) => n.textContent.trim()),
-    before: (() => {
-      const p = window.SF.state.player;
-      return (p.ownedShips[p.activeShipIndex].fittings || []).slice();
-    })(),
-  }));
-  let draftDetail = `screen ${cards.top}, offers: ${cards.verbs.join(' / ')}`;
-  let draftOk = cards.top === 'crucibleDraft' && cards.verbs.length === 3;
-
-  // The paid re-roll is the only thing run credits buy. Prove it exists, that spending it actually
-  // draws different cards, and that the wallet paid for it — in the real screen, not in node.
-  if (draftOk) {
-    const before = await page.evaluate(() => ({
+  // ── ARMORY / DRAFT ────────────────────────────────────────────────────────────────────────
+  const offer = await page.evaluate(() => {
+    const owner = window.SF.registry.get('survivalDraft');
+    const choices = owner.currentOffers();
+    const candidate = choices.find(o => o.available !== false);
+    const player = window.SF.state.player;
+    return { candidate, count: choices.length, screen: window.SF.ctx.screenManager.top(),
       credits: window.SF.state.run.credits,
-      verbs: [...document.querySelectorAll('#screens .sf-cru-card .sf-cru-verb')].map((n) => n.textContent.trim()),
-      label: (() => {
-        const b = [...document.querySelectorAll('#screens button')]
-          .find((x) => /re-?roll/i.test(x.textContent));
-        return b ? { text: b.textContent.replace(/\s+/g, ' ').trim(), disabled: b.disabled } : null;
-      })(),
-    }));
-    if (before.label && !before.label.disabled) {
-      await page.evaluate(() => {
-        const b = [...document.querySelectorAll('#screens button')].find((x) => /re-?roll/i.test(x.textContent));
-        if (b) b.click();
-      });
-      await page.waitForTimeout(400);
-      const after = await page.evaluate(() => ({
-        credits: window.SF.state.run.credits,
-        verbs: [...document.querySelectorAll('#screens .sf-cru-card .sf-cru-verb')].map((n) => n.textContent.trim()),
-      }));
-      const paid = before.credits - after.credits;
-      const drew = JSON.stringify(after.verbs) !== JSON.stringify(before.verbs);
-      record('REROLL', paid > 0 && drew && after.verbs.length === 3,
-        `"${before.label.text}" · ${before.verbs.join('/')} -> ${after.verbs.join('/')} · `
-        + `wallet ${before.credits} -> ${after.credits} cr`);
-    } else {
-      record('REROLL', !!before.label,
-        before.label
-          ? `control present and correctly unaffordable at ${before.credits} cr: "${before.label.text}"`
-          : 'no re-roll control on the draft at all');
-    }
+      fittings: player.ownedShips[player.activeShipIndex].fittings.slice() };
+  });
+  record('OFFERS', offer.screen === 'crucibleDraft' && (GAUNTLET ? offer.count === 3 : offer.count > 3),
+    offer.count + (GAUNTLET ? ' draft choices' : ' purchasable armory choices'));
+  if (!offer.candidate) throw new Error('The first clear must afford a useful purchase');
+  await page.locator('[data-offer-id="' + offer.candidate.id + '"]').click();
+  const purchased = await page.evaluate(() => {
+    const p = window.SF.state.player;
+    return { credits: window.SF.state.run.credits, phase: window.SF.state.run.phase,
+      fittings: p.ownedShips[p.activeShipIndex].fittings.slice() };
+  });
+  record('FITTED', purchased.fittings[offer.candidate.slotIndex] === offer.candidate.defId
+    && JSON.stringify(purchased.fittings) !== JSON.stringify(offer.fittings), offer.candidate.name);
+  if (!GAUNTLET) {
+    record('PURCHASE', offer.credits - purchased.credits === offer.candidate.price && purchased.phase === 'draft',
+      'paid ' + offer.candidate.price + ' cr; armory stays open for another purchase or saving');
+    const saved = purchased.credits;
+    if (!(await clickButton(page, 'Launch round 2'))) throw new Error('Next round control missing');
+    await waitForPhase(page, 'active', 30000);
+    const next = await page.evaluate(() => ({ wave: window.SF.state.run.wave, credits: window.SF.state.run.credits }));
+    record('SAVE', next.wave === 2 && next.credits === saved, 'unspent ' + saved + ' cr carried to round 2');
   }
-
-  if (draftOk) {
-    // Re-read the cards: a re-roll above replaced them, and reporting the pre-roll verb would
-    // name a card the player never saw.
-    const onScreen = await page.evaluate(
-      () => [...document.querySelectorAll('#screens .sf-cru-card .sf-cru-verb')].map((n) => n.textContent.trim()),
-    );
-    cards.verbs = onScreen.length ? onScreen : cards.verbs;
-    await page.evaluate(() => { document.querySelector('#screens .sf-cru-card').click(); });
-    await page.waitForTimeout(600);
-    const after = await page.evaluate(() => {
-      const p = window.SF.state.player;
-      return {
-        fittings: (p.ownedShips[p.activeShipIndex].fittings || []).slice(),
-        modifiers: window.SF.state.run.modifiers.length,
-        phase: window.SF.state.run.phase,
-      };
-    });
-    const changed = JSON.stringify(after.fittings) !== JSON.stringify(cards.before);
-    draftOk = changed && after.modifiers === 1;
-    draftDetail = `picked ${cards.verbs[0]}; hull now ${after.fittings.filter(Boolean).join(', ')}`;
-  }
-  record('DRAFT', draftOk, draftDetail);
 
   // ── VICTORY (--full) ────────────────────────────────────────────────────────────────────────
   // The one claim nothing else proves: that a player who keeps winning actually REACHES the end.

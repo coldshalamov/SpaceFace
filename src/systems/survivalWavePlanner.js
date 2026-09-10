@@ -372,9 +372,8 @@ function planSwarmWave({ seed, wave, rng, mutators }) {
       ? { kind: 'refit', choices: null }
       : (isSwarmDraftWave(w) ? { kind: 'draft', choices: 3 } : { kind: 'none', choices: null }),
     completionRules: {
-      kind: 'duration',
-      durationTicks: SWARM_WAVE_DURATION_TICKS,
-      requiredPackagesMaterialized: false,
+      kind: 'cohort',
+      requiredPackagesMaterialized: true,
       blockingRoles: [],
       cleanupTicks: SWARM_CLEANUP_TICKS,
     },

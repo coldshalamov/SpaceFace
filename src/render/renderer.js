@@ -4894,6 +4894,14 @@ export const render = {
     // already spawned by the time this fires (enterSector spawns before its sector:enter resolves),
     // so a blind clearAllMeshes(keepPlayer) used to wipe the station/asteroids and leave the player
     // alone in empty space. reconcileMeshes() removes only meshes for entities that are gone.
+    onBus('game:new', () => {
+      // New Game (including Crucible retry) destroys the entity graph and reuses numeric
+      // ids. The same-sector save recook cannot identify those replacement hulls by id.
+      // Retain resource caches, but prepare a fresh visible composition for the new run.
+      this._sessionLiveSectorCookedId = null;
+      this._sessionRecookKeepGpu = false;
+      if (state.render) state.render.sessionLiveSectorCookedId = null;
+    });
     onBus('save:restoring', () => {
       // The save system emits this synchronously before it destroys the current entity graph.
       // Keep the current sector's decoded authored resources resident across that short gap; the

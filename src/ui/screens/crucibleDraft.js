@@ -161,6 +161,7 @@ export const crucibleDraftScreen = {
     // .k-title — "Rearm" and the sub sentence (refresh writes it: which wave, and what a pick does).
     const title = el('header', 'k-title');
     const h = el('h1', 'k-display k-t-title', 'Rearm');
+    this._title = h;
     h.id = 'sf-crucible-draft-title';
     title.appendChild(h);
     const sub = el('p', 'k-t-emph k-62 sf-cru-sub', '');
@@ -170,6 +171,18 @@ export const crucibleDraftScreen = {
 
     // .k-stage — the three offers across on the sky, then the one status line.
     const stage = el('section', 'k-stage sf-cru-stage');
+    const filters = el('div', 'k-words k-words--row sf-cru-filters');
+    filters.setAttribute('role', 'group');
+    filters.setAttribute('aria-label', 'Armory category');
+    this._category = 'All';
+    for (const category of ['All', 'Weapons', 'Rigs', 'Survival']) {
+      const button = word(category, 'k-word--fine');
+      button.dataset.category = category;
+      button.addEventListener('click', () => { this._category = category; this.refresh(ctx); });
+      filters.appendChild(button);
+    }
+    this._filters = filters;
+    stage.appendChild(filters);
     const cards = el('div', 'sf-cru-cards');
     cards.setAttribute('role', 'group');
     cards.setAttribute('aria-label', 'Offers');
@@ -194,6 +207,9 @@ export const crucibleDraftScreen = {
       ctx.bus.emit('run:draftPickRequested', { offerId: null });
     });
     this._skip = skip;
+    const refit = addWord(words, word('Rearrange loadout', 'k-word--emph'));
+    refit.addEventListener('click', () => ctx.bus.emit('ui:pushScreen', { id: 'crucibleRefit' }));
+    this._refitBtn = refit;
 
     // The run wallet is filled by physical chips the player chased down. This is the one place it
     // buys something, so this is where the balance has to be legible.
@@ -289,20 +305,35 @@ export const crucibleDraftScreen = {
     const notice = owner && typeof owner.lastNotice === 'function' ? owner.lastNotice() : null;
     const rerollState = owner && typeof owner.rerollState === 'function' ? owner.rerollState() : null;
     const lines = rerollControlLines(rerollState, notice);
+    const shop = context.state?.run?.ruleset === 'swarm';
+    rootEl.classList.toggle('sf-crucible-armory', shop);
+    this._title.textContent = shop ? 'Armory' : 'Rearm';
+    this._filters.hidden = !shop;
+    this._refitBtn.hidden = !shop;
+    for (const button of this._filters.children) {
+      button.setAttribute('aria-pressed', String(button.dataset.category === this._category));
+    }
 
     this._sub.textContent = offers.length
-      ? `Wave ${wave} cleared. Choose one — it changes what your guns do, not what they score.`
+      ? (shop ? `Round ${wave} cleared. Buy a new toy, or save for something bigger.`
+        : `Wave ${wave} cleared. Choose a new weapon.`)
       : `Wave ${wave} cleared. Nothing new fits this hull.`;
 
     cards.innerHTML = '';
-    for (const offer of offers.slice(0, SURVIVAL_DRAFT_CHOICES)) {
+    const categoryFor = offer => offer.defId.startsWith('wpn_') ? 'Weapons'
+      : /engine|shield|thermal|afterburner|chaff/.test(offer.defId) ? 'Survival' : 'Rigs';
+    const visibleOffers = shop
+      ? offers.filter(offer => this._category === 'All' || categoryFor(offer) === this._category)
+        .sort((a, b) => a.price - b.price || a.name.localeCompare(b.name))
+      : offers.slice(0, SURVIVAL_DRAFT_CHOICES);
+    for (const offer of visibleOffers) {
       const card = this._buildCard(context, offer, cards.childElementCount + 1);
       cards.appendChild(card);
     }
 
-    this._note.textContent = lines.notice || '';
+    this._note.textContent = notice || lines.notice || '';
 
-    this._skip.textContent = offers.length ? 'Keep current loadout' : 'Continue';
+    this._skip.textContent = shop ? `Launch round ${wave + 1}` : (offers.length ? 'Keep current loadout' : 'Continue');
 
     const reroll = this._rerollBtn;
     reroll.textContent = lines.label || 'Re-roll';
@@ -311,11 +342,11 @@ export const crucibleDraftScreen = {
     reroll.hidden = !lines.visible;
     reroll.style.display = lines.visible ? '' : 'none';
     // The balance, and which draw this is — a player who has paid twice should be able to see it.
-    this._wallet.textContent = lines.visible
+    this._wallet.textContent = shop ? `${context.state.run.credits} cr to spend` : lines.visible
       ? (lines.draw ? `${lines.wallet} · ${lines.draw}` : lines.wallet)
       : '';
     const keys = offers.length
-      ? (lines.visible ? '1-3 choose · R re-roll · Esc keep' : '1-3 choose · Esc keep')
+      ? (shop ? 'Buy and fit · Tab browse · Esc launch' : (lines.visible ? '1-3 choose · R re-roll · Esc keep' : '1-3 choose · Esc keep'))
       : '';
     this._hint.textContent = keys && this._wallet.textContent ? ` · ${keys}` : keys;
 
@@ -323,7 +354,7 @@ export const crucibleDraftScreen = {
     // yank the player off the control they just used.
     const active = typeof document !== 'undefined' ? document.activeElement : null;
     if (!active || !rootEl.contains || !rootEl.contains(active)) {
-      const target = cards.firstElementChild || this._skip;
+      const target = cards.querySelector('button:not(:disabled)') || this._skip;
       if (target && typeof target.focus === 'function') {
         try { target.focus(); } catch { /* focus is best-effort */ }
       }
@@ -339,16 +370,25 @@ export const crucibleDraftScreen = {
     card.dataset.offerId = offer.id;
     card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.slot}`);
 
-    const key = el('p', 'k-t-fine k-38 sf-cru-key', String(keyNumber));
+    const key = el('p', 'k-t-fine k-38 sf-cru-key', keyNumber <= 3 ? String(keyNumber) : '');
     key.setAttribute('aria-hidden', 'true');
     card.appendChild(key);
     card.appendChild(el('p', 'k-caps sf-cru-verb', lines.verb));
     card.appendChild(el('h2', 'k-display k-t-sub sf-cru-name', lines.name));
     card.appendChild(el('p', 'k-sentence sf-cru-blurb', lines.blurb));
+    if (Number.isFinite(offer.price)) {
+      card.appendChild(el('p', 'k-t-emph sf-cru-price', offer.purchased ? 'FITTED' : `${offer.price} cr`));
+      if (offer.unavailableReason && !offer.purchased) {
+        card.appendChild(el('p', 'k-t-fine sf-cru-afford', offer.unavailableReason));
+      }
+      card.disabled = !offer.available;
+      card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${offer.price} credits. ${offer.unavailableReason || lines.slot}`);
+    }
     card.appendChild(el('p', 'k-t-fine k-38 sf-cru-slot', lines.slot));
 
     card.addEventListener('click', () => {
       ctx.bus.emit('run:draftPickRequested', { offerId: offer.id });
+      if (ctx.state?.run?.ruleset === 'swarm' && ctx.state.run.phase === 'draft') this.refresh(ctx);
     });
     return card;
   },
@@ -399,8 +439,11 @@ export const crucibleRefitScreen = {
     words.setAttribute('aria-label', 'Refit');
     const done = addWord(words, word('Launch next block', 'k-word--emph k-word--primary'));
     done.addEventListener('click', () => {
-      ctx.bus.emit('run:refitCloseRequested', {});
+      if (ctx.state.run?.phase === 'draft') ctx.bus.emit('ui:popScreen', {});
+      else ctx.bus.emit('run:refitCloseRequested', {});
     });
+    this._done = done;
+    done.textContent = ctx.state.run?.phase === 'draft' ? 'Back to armory' : 'Launch next round';
 
     // WALK AWAY WITH IT (PQ-135). Extraction has existed since PQ-133.10b and was reachable only
     // from a bus event — "No UI", says its own header — so no player has ever been offered it.
@@ -408,15 +451,19 @@ export const crucibleRefitScreen = {
     // swarm run finishes is dying, and a good run's reward for being good is a worse ending. This
     // is the one surface that is open at a ten-wave boundary, which is exactly the window
     // extraction is legal in, so the offer belongs here and nowhere else.
-    if (canExtract(ctx && ctx.state && ctx.state.run)) {
+    {
       const out = addWord(words, word('Extract — end the run here', 'k-word--emph'));
+      this._extract = out;
+      out.hidden = !canExtract(ctx?.state?.run);
       out.title = 'Bank this run and stop, instead of flying on until something kills you.';
       out.addEventListener('click', () => {
         requestSurvivalExtraction(ctx.bus);
       });
     }
     foot.appendChild(words);
-    foot.appendChild(el('p', 'k-t-fine k-38 sf-cru-fine sf-cru-hint', 'Enter or Esc launch'));
+    this._refitHint = el('p', 'k-t-fine k-38 sf-cru-fine sf-cru-hint',
+      ctx.state.run?.phase === 'draft' ? 'Esc back to armory' : 'Esc launch');
+    foot.appendChild(this._refitHint);
     rootEl.appendChild(foot);
 
     // Same reasoning as the draft: the run is paused here, so Escape must mean something.
@@ -453,6 +500,9 @@ export const crucibleRefitScreen = {
     const context = ctx || this._ctx;
     if (!rows || !context) return;
     this._ctx = context;
+    if (this._done) this._done.textContent = context.state.run?.phase === 'draft' ? 'Back to armory' : 'Launch next round';
+    if (this._extract) this._extract.hidden = !canExtract(context.state.run);
+    if (this._refitHint) this._refitHint.textContent = context.state.run?.phase === 'draft' ? 'Esc back to armory' : 'Esc launch';
     rows.innerHTML = '';
 
     for (const row of this._rows_data(context)) {

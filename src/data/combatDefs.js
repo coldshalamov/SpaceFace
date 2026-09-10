@@ -292,6 +292,16 @@ export const SUBSYSTEM_DEFS = Object.freeze([
 
 export const ATTACHMENT_DEFS = Object.freeze([
   {
+    id: 'attachment_snarl', version: 1,
+    sourceSocketTags: ['tether'], targetSocketTags: ['tether'],
+    ownership: { policy: 'initiator', transferable: false },
+    maxLength: 250,
+    break: { maxTension: 6500, maxImpulse: 2200, maxYank: 5000, graceTicks: 12 },
+    spring: { K: 165, zeta: 0.68, captureS: 0.22, maxStretchRatio: 0.8 },
+    limits: { maxPerOwner: 2 },
+    cues: { created: 'combat.attachment.created', broken: 'combat.attachment.broken' },
+  },
+  {
     id: 'attachment_massline', version: 1,
     sourceSocketTags: ['massline'], targetSocketTags: ['tether'],
     ownership: { policy: 'initiator', transferable: true },

@@ -33,6 +33,15 @@ import { buildSlotList, fits, outfitBudgetForFittings } from '../systems/ships.j
 export const SURVIVAL_DRAFT_SCHEMA_VERSION = 1;
 export const SURVIVAL_DRAFT_CHOICES = 3;
 
+/** Swarm uses a short round economy; Adventure catalogue prices and unlocks stay separate. */
+export function swarmPurchasePrice(defId) {
+  const def = FITTING_BY_ID.get(defId);
+  if (!def) return null;
+  const prices = [12, 18, 28, 48, 76, 112];
+  const tier = Math.max(0, Math.min(prices.length - 1, Math.trunc(Number(def.tier) || 0)));
+  return prices[tier];
+}
+
 const WEAPON_BY_ID = new Map(WEAPONS.map((def) => [def.id, def]));
 // Weapons AND modules, because the swarm pool offers attack traits — a Piercing Core is a fitting
 // like any other. The arc's pool is weapons only and reads the same map; a module id it never

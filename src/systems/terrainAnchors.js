@@ -73,6 +73,9 @@ export const terrainAnchors = {
     const pos = payload.pos;
     if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
     if (!this.helpers || typeof this.helpers.spawnEntity !== 'function') return;
+    const arcade = payload.arcadeLayout === true && state.run?.ruleset === 'swarm';
+    const required = arcade ? 6 : ANCHOR_MIN;
+    const bubbleRadius = arcade ? 390 : ANCHOR_RADIUS;
 
     // Count existing large solids in the bubble — stations and big rocks both count as anchors.
     let present = 0;
@@ -81,7 +84,7 @@ export const terrainAnchors = {
       if (!e || e.alive === false || !e.pos || !SOLID_TYPES.has(e.type)) continue;
       if (!(Number.isFinite(e.radius) && e.radius >= ANCHOR_SIZE_MIN * 0.6)) continue;
       const dx = e.pos.x - pos.x, dz = e.pos.z - pos.z;
-      if (dx * dx + dz * dz <= ANCHOR_RADIUS * ANCHOR_RADIUS) {
+      if (dx * dx + dz * dz <= bubbleRadius * bubbleRadius) {
         present++;
         if (payload.encounterId && e.data && e.data.terrainAnchor) {
           const owners = Array.isArray(e.data.terrainAnchorEncounterIds)
@@ -90,19 +93,27 @@ export const terrainAnchors = {
           if (!owners.includes(payload.encounterId)) owners.push(payload.encounterId);
         }
       }
-      if (present >= ANCHOR_MIN) return;   // the bubble already has terrain — never add gravel
+      if (present >= required) return;
     }
 
-    const want = Math.min(ANCHOR_MAX, ANCHOR_MIN + 1) - present;
+    const want = (arcade ? required : Math.min(ANCHOR_MAX, ANCHOR_MIN + 1)) - present;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
+    // Two staggered lanes leave a broad central escape and narrower bank-shot gaps. The
+    // whole layout rotates with the run seed; it stays readable from the opening camera.
+    const layout = [[-116, -160], [116, -115], [-142, 80], [148, 140], [-35, 292], [48, -302]];
+    const rotation = ((Number(payload.arenaSeed) >>> 0) % 360) * Math.PI / 180;
     for (let i = 0; i < want; i++) {
-      const size = ANCHOR_SIZE_MIN + this._rng() * (ANCHOR_SIZE_MAX - ANCHOR_SIZE_MIN);
+      const size = arcade ? 32 + ((i + present) % 3) * 7
+        : ANCHOR_SIZE_MIN + this._rng() * (ANCHOR_SIZE_MAX - ANCHOR_SIZE_MIN);
       const ang = this._rng() * Math.PI * 2;
       const dist = 140 + this._rng() * (ANCHOR_RADIUS * 0.55);
+      const point = layout[(i + present) % layout.length];
+      const dx = arcade ? point[0] * Math.cos(rotation) - point[1] * Math.sin(rotation) : Math.cos(ang) * dist;
+      const dz = arcade ? point[0] * Math.sin(rotation) + point[1] * Math.cos(rotation) : Math.sin(ang) * dist;
       const oreHP = Math.round(360 + size * 14);
       this.helpers.spawnEntity({
         type: 'asteroid',
-        pos: { x: pos.x + Math.cos(ang) * dist, z: pos.z + Math.sin(ang) * dist },
+        pos: { x: pos.x + dx, z: pos.z + dz },
         vel: { x: 0, z: 0 },
         radius: size,
         // 2D-area-ish density scaling: these read (and sling, §4.1 anchor-mass bonus) as monoliths.

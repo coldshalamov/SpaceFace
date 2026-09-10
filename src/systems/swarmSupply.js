@@ -37,6 +37,7 @@ import { mulberry32 } from '../core/rng.js';
 import { validateRunState } from '../core/runState.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { addCargo } from './cargo.js';
 
 export const SWARM_REPAIR_KIND = 'swarm_repair';
 
@@ -98,6 +99,10 @@ export const swarmSupply = {
     this._reset();
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p)));
+    this._unsubs.push(this.bus.on('run:loadoutReady', () => this._resupplyCharges(true)));
+    this._unsubs.push(this.bus.on('run:transitioned', p => {
+      if (p?.phase === 'draft') this._resupplyCharges(false);
+    }));
     this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onSpawned(p)));
     this._unsubs.push(this.bus.on('pickup:collected', (p) => this._onCollected(p)));
     this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onDestroyed(p)));
@@ -115,6 +120,14 @@ export const swarmSupply = {
 
   /** No per-tick work: everything here hangs off a receipt. */
   update() {},
+
+  _resupplyCharges(opening) {
+    if (!liveSwarmRun(this.state) || !this.state.player?.cargo) return;
+    const commodity = 'cmdty_impulse_charge';
+    const held = this.state.player.cargo.items?.[commodity] || 0;
+    const amount = Math.max(0, Math.min(opening ? 6 : 3, 6 - held));
+    if (amount) addCargo(this.state, commodity, amount);
+  },
 
   /** Kills since the last cell, for tests and the lab overlay. */
   killsSinceDrop() {

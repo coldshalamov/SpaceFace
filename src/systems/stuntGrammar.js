@@ -94,6 +94,7 @@ export const stuntGrammar = {
       playerId: ctx && ctx.state ? ctx.state.playerId : null,
     });
     this._unsubs = [];
+    this._countedKills = new Set();
 
     if (this.bus && typeof this.bus.on === 'function') {
       const listen = (evt) => {
@@ -115,6 +116,7 @@ export const stuntGrammar = {
       listen('combat:collisionConsequence');
       listen('entity:killed');
       listen('combat:kill');
+      listen('entity:spawned');
       listen('flight:nearMiss');
       listen('well:capture');
       listen('well:fling');
@@ -151,11 +153,17 @@ export const stuntGrammar = {
   },
 
   _onEvent(evt, payload, state) {
+    if (evt === 'entity:spawned') {
+      this._countedKills.delete(payload?.id);
+      return;
+    }
     // Fresh meter per run. Reset is idempotent: game:started then run:started just opens
     // two fresh meters in a row.
     if (evt === 'run:started' || evt === 'game:started') {
       const stuntsState = ensureState(state);
       if (stuntsState) stuntsState.combo = createComboState();
+      this._countedKills.clear();
+      this.detector = createStuntDetector({ playerId: state?.playerId });
       return;
     }
     if (!this.detector) return;
@@ -163,7 +171,14 @@ export const stuntGrammar = {
       this.detector.setPlayerId(state.playerId);
     }
 
-    const tricks = this.detector.processEvent(evt, payload);
+    const isKill = KILL_EVENTS.includes(evt);
+    const victimId = payload?.id ?? payload?.targetId ?? payload?.victimId;
+    const killerId = payload?.killerId ?? payload?.actorId ?? payload?.ownerId ?? payload?.provenance?.actorId;
+    if (isKill && victimId != null && this._countedKills.has(victimId)) return;
+    const tricks = this.detector.processEvent(evt, payload).filter(trick => trick.actorId === state.playerId);
+    if (isKill && (tricks.length > 0 || killerId === state.playerId) && victimId != null) {
+      this._countedKills.add(victimId);
+    }
     if (tricks.length > 0) {
       const stuntsState = ensureState(state);
       for (const trick of tricks) {
@@ -192,11 +207,11 @@ export const stuntGrammar = {
       if (KILL_EVENTS.includes(evt)) {
         const stuntsState = ensureState(state);
         if (stuntsState && stuntsState.combo) {
-          for (let i = 0; i < tricks.length; i += 1) recordTrickKill(stuntsState.combo);
+          recordTrickKill(stuntsState.combo);
           bankIfQuiet(stuntsState.combo, Number.isFinite(Number(payload && payload.tick)) ? Number(payload.tick) : 0);
         }
       }
-    } else if (KILL_EVENTS.includes(evt)) {
+    } else if (isKill && killerId === state.playerId) {
       // A trickless kill is flat gun pay: no chain, no multiplier. The free Pulse pays
       // less than any other gun (scoring only — damage untouched).
       const stuntsState = ensureState(state);

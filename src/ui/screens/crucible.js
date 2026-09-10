@@ -10,7 +10,7 @@
 // The DOM is built with `el` + appendChild only, because the results unit test mounts the plate
 // against a minimal fake document.
 
-import { COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
+import { COMBAT_LAB_ARENAS, COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { WEAPONS } from '../../data/weapons.js';
 import {
   CRUCIBLE_ARENA_ID,
@@ -78,6 +78,7 @@ function canAnimate() {
 }
 
 function hullBlurb(starter) {
+  if (starter.blurb) return starter.blurb;
   const count = Array.isArray(starter.loadout) ? starter.loadout.length : 0;
   return `${starter.hullId.replace(/^ship_/, '')} · ${count} hardpoint${count === 1 ? '' : 's'} fitted`;
 }
@@ -260,11 +261,9 @@ const CRUCIBLE_MODE_CARDS = Object.freeze([
   {
     ruleset: SWARM_RULESET,
     label: 'Swarm',
-    verb: 'Hold the line',
-    blurb: 'Endless. The room refills as fast as you empty it.',
-    sub: `Endless waves, no lulls, no last wave. Hostiles keep coming until you go down — every `
-      + `${SWARM_DRAFT_EVERY} waves you take a new weapon, every ${SWARM_REFIT_EVERY} you rebuild `
-      + `the hull. Nothing you earn here follows you home.`,
+    verb: 'Launch Swarm',
+    blurb: 'Bring the swarm. Turn the room against it.',
+    sub: 'Clear a round. Spend the spoils or save for a bigger toy. Push your build as far as it goes.',
   },
   {
     ruleset: 'scored',
@@ -317,6 +316,7 @@ export const crucibleScreen = {
 
     const previous = lastCrucibleSetup();
     let starterId = crucibleStarterIdForSetup(previous);
+    let arenaId = previous?.arenaId || CRUCIBLE_ARENA_ID;
     let ruleset = previous ? lastCrucibleRuleset() : CRUCIBLE_DEFAULT_RULESET;
     let daily = !!(previous && previous.dailyDateKey);
     if (daily) ruleset = SWARM_RULESET;
@@ -498,6 +498,33 @@ export const crucibleScreen = {
     hullBody.appendChild(hulls);
     hullBody.appendChild(hullSentence);
 
+    const arenaBody = settingRow('Arena', 'sf-crd-row--arena');
+    const arenas = el('ul', 'k-words k-words--row sf-crd-arenas');
+    arenas.setAttribute('aria-label', 'Arena');
+    const arenaDescriptions = {
+      helios_core: ['Ricochet Foundry', 'Hard banks, tight gaps and moving machinery. Turn pursuit into a pile-up.'],
+      lagrange_crucible: ['Lagrange Crucible', 'Gravity wells and sling routes. Bend the whole fight around an anchor.'],
+      cinder_sluice: ['Cinder Sluice', 'Ride hot currents and force enemies across the flow.'],
+      cryo_drift: ['Cryo Drift', 'Slippery escape lanes and brittle targets. Set up a shattering collision.'],
+      storm_lattice: ['Storm Lattice', 'Conductive relays reward a tightly packed, electrified swarm.'],
+    };
+    const arenaSentence = el('p', 'k-sentence sf-crd-arena', '');
+    const syncArena = () => {
+      arenaSentence.textContent = (arenaDescriptions[arenaId] || arenaDescriptions.helios_core)[1];
+      for (const button of arenas.querySelectorAll('button')) {
+        button.setAttribute('aria-pressed', String(button.dataset.arenaId === arenaId));
+      }
+    };
+    for (const arena of COMBAT_LAB_ARENAS.filter(entry => arenaDescriptions[entry.id])) {
+      const button = word(arenaDescriptions[arena.id][0], 'k-word--fine sf-crd-arena-choice');
+      button.dataset.arenaId = arena.id;
+      button.addEventListener('click', () => { arenaId = arena.id; cue('confirm'); syncArena(); });
+      addWord(arenas, button);
+    }
+    arenaBody.appendChild(arenas);
+    arenaBody.appendChild(arenaSentence);
+    syncArena();
+
     // Seed — the number as an underlined input, "New seed" as a fine word, the arena in fine print.
     const seedBody = settingRow('Seed', 'sf-crd-row--seed');
     const seedRow = el('div', 'k-words k-words--row sf-crd-seed');
@@ -522,8 +549,6 @@ export const crucibleScreen = {
     });
     seedRow.appendChild(reroll);
     seedBody.appendChild(seedRow);
-    // The arena cannot change, so it is named, not offered.
-    seedBody.appendChild(el('p', 'k-t-fine k-38 sf-crd-arena', `Arena: ${arenaName()}`));
 
     // The record goes last, below the three settings: the door's job is to start a run, and the
     // reason to start another one is context for that, not a competitor for it. Reading the
@@ -532,8 +557,10 @@ export const crucibleScreen = {
     let corner = null;
     try {
       if (doorProfile) {
-        stage.appendChild(renderRecordRows(doorProfile));
-        corner = renderRecordCorner(doorProfile, utcDateKeyNow());
+        const records = el('details', 'sf-crd-records');
+        records.appendChild(el('summary', 'k-t-fine', 'Records & challenges'));
+        records.appendChild(renderRecordRows(doorProfile));
+        stage.appendChild(records);
       }
     } catch (err) {
       if (typeof console !== 'undefined' && console.warn) {
@@ -553,7 +580,7 @@ export const crucibleScreen = {
       const setup = crucibleSetupFor({
         starterId,
         seed: normalizeSeed(seedInput.value),
-        arenaId: CRUCIBLE_ARENA_ID,
+        arenaId,
         ruleset,
       });
       if (!setup.ok || !setup.value) {

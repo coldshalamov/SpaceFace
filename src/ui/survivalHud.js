@@ -174,6 +174,7 @@ export const survivalHud = {
     if (!st) return;
     const run = st.run;
     const live = !!(run && run.kind === 'survival' && run.phase !== 'inactive');
+    document.body?.classList?.toggle('sf-swarm-flight', live && run.ruleset === 'swarm' && st.mode === 'flight');
     if (!live || st.mode !== 'flight' || (st.ui && st.ui.docked)) {
       this._hide();
       return;
@@ -191,7 +192,7 @@ export const survivalHud = {
     // A swarm run has no denominator: there is no last wave to count toward, and printing one
     // would be a lie about when it ends.
     this._setText(dom.waveN, swarm
-      ? `WAVE ${Math.max(1, run.wave || 1)}`
+      ? `ROUND ${String(Math.max(1, run.wave || 1)).padStart(2, '0')}`
       : `WAVE ${Math.max(1, run.wave || 1)} / ${SURVIVAL_RUN_WAVE_COUNT}`);
     this._setText(dom.phase, phase);
     // Second channel for the boss/elite call — the WORD changes, the colour only reinforces it.
@@ -200,7 +201,7 @@ export const survivalHud = {
     // Threat reads as a word, a bar and a figure — three channels, so forced-colors and a
     // colour-blind reader lose nothing.
     const showThreat = run.phase === 'active' || run.phase === 'cleanup';
-    if (showThreat && swarm) {
+    if (showThreat && swarm && !this._roundBased) {
       // A swarm wave ends on the sixty-second clock published by survivalWave. The HUD renders
       // that payload and never counts down on its own. Kills are the score, not the finish line,
       // so they sit as a figure with no slash and no fill.
@@ -231,7 +232,7 @@ export const survivalHud = {
       dom.threat.hidden = false;
       if (dom.killWord) dom.killWord.hidden = true;
       if (dom.killFig) dom.killFig.hidden = true;
-      this._setText(dom.threatWord, 'THREAT');
+      this._setText(dom.threatWord, swarm ? 'HOSTILES' : 'THREAT');
       this._setText(dom.threatFig, `${census.remaining} / ${Math.max(census.total, census.remaining)}`);
       const fill = census.total > 0 ? (census.total - census.remaining) / census.total : 1;
       this._setStyle(dom.threatFill, 'width', `${Math.round(Math.max(0, Math.min(1, fill)) * 100)}%`);
@@ -296,6 +297,7 @@ export const survivalHud = {
 
   _onWavePlanned(payload) {
     const plan = payload && payload.plan;
+    this._roundBased = !!plan?.swarm?.killTarget;
     const kind = plan && plan.objective && plan.objective.kind;
     this._objective = objectiveWord(kind);
   },

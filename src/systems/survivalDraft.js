@@ -31,6 +31,7 @@ import {
   auditDraftCatalog,
   offerDraft,
   rerollPrice,
+  swarmPurchasePrice,
 } from '../data/survivalDraft.js';
 import {
   bindSwarmRoleProblems,
@@ -52,6 +53,7 @@ export const CRUCIBLE_REFIT_SCREEN_ID = 'crucibleRefit';
  * — a re-roll can never be applied off a spend it did not ask for.
  */
 export const CRUCIBLE_REROLL_SPEND_REASON = 'crucible:draftReroll';
+export const CRUCIBLE_PURCHASE_SPEND_REASON = 'crucible:purchase';
 
 const MODULE_DEF_BY_ID = new Map([
   ...MODULES.map((def) => [def.id, def]),
@@ -112,7 +114,21 @@ export const survivalDraft = {
 
   /** Live offers for the draft surface. Empty when no draft is open. */
   currentOffers() {
-    return this._offers ? this._offers.slice() : [];
+    const offers = this._offers ? this._offers.slice() : [];
+    const run = liveSurvivalRun(this.state);
+    if (!run || !isSwarmRuleset(run.ruleset) || !this._draftInput) return offers;
+    // Preserve the stock, but re-evaluate fitting targets after each purchase. Two offers may
+    // initially want the same empty slot; the second purchase must see the new loadout.
+    const legal = offerDraft({ ...this._draftInput, ...this._activeLoadout(), count: 100 }).offers || [];
+    return offers.map(offer => {
+      const purchased = this._purchased?.has(offer.id) === true;
+      const current = legal.find(entry => entry.id === offer.id);
+      const price = swarmPurchasePrice(offer.defId);
+      return { ...offer, ...(current || {}), price, purchased,
+        available: !purchased && !!current && price != null && run.credits >= price,
+        unavailableReason: purchased ? 'Fitted' : !current ? 'No compatible slot' :
+          run.credits < price ? `Save ${price - run.credits} more cr` : null };
+    });
   },
 
   /** PQ-175.02 catalog audit. Pure data; does not touch the open draft. */
@@ -145,6 +161,8 @@ export const survivalDraft = {
     this._pendingReroll = null;
     this._draftInput = null;
     this._notice = null;
+    this._pendingPurchase = null;
+    this._purchased = new Set();
   },
 
   _onTransitioned(payload) {
@@ -188,7 +206,9 @@ export const survivalDraft = {
       hullId: loadout.hullId,
       fittings: loadout.fittings,
       pickCount: Array.isArray(run.draftHistory) ? run.draftHistory.length : 0,
-      count: SURVIVAL_DRAFT_CHOICES,
+      // Swarm is an armory: the player can plan and save for a known toy. Gauntlet keeps its
+      // seeded three-card draft. Capacity and fitting authority still bound the eligible stock.
+      count: isSwarmRuleset(run.ruleset) ? 100 : SURVIVAL_DRAFT_CHOICES,
       // The ruleset selects the POOL. A swarm run also draws attack traits and support modules,
       // because a three-slot weapon pool has nothing left to say after three picks.
       ruleset: run.ruleset,
@@ -196,6 +216,8 @@ export const survivalDraft = {
     this._rerolls = 0;
     this._pendingReroll = null;
     this._notice = null;
+    this._pendingPurchase = null;
+    this._purchased = new Set();
     const result = offerDraft(this._draftInput);
     const offers = result && result.ok && Array.isArray(result.offers) ? result.offers : [];
     this._wave = run.wave;
@@ -233,6 +255,9 @@ export const survivalDraft = {
    */
   rerollState() {
     const run = liveSurvivalRun(this.state);
+    if (run && isSwarmRuleset(run.ruleset)) {
+      return { open: false, credits: run.credits, available: false, reason: 'armory' };
+    }
     const offers = this._offers || [];
     const rerolls = this._rerolls || 0;
     if (!run || run.phase !== 'draft' || this._resolved || offers.length === 0 || !this._draftInput) {
@@ -303,6 +328,29 @@ export const survivalDraft = {
   },
 
   _onSpent(payload) {
+    if (payload?.reason === CRUCIBLE_PURCHASE_SPEND_REASON) {
+      const pending = this._pendingPurchase;
+      if (!pending || payload.credits !== pending.price) return;
+      this._pendingPurchase = null;
+      // Fitting by definition is the existing ships-owner purchase route. There is no temporary
+      // inventory grant to leak if fitting is refused after the wallet authorizes the purchase.
+      const fitted = !!this._ships()?.fitModule({ slotIndex: pending.slotIndex, defId: pending.defId });
+      if (!fitted) {
+        this._emit('run:awardRequested', { credits: pending.price, reason: 'crucible:purchaseRefund' });
+        this._notice = `${pending.name} could not be fitted. ${pending.price} cr refunded.`;
+        return;
+      }
+      this._purchased.add(pending.id);
+      this._notice = `${pending.name} fitted. Buy again or launch the next round.`;
+      this._emit('run:modifierRecordRequested', {
+        record: { kind: 'weapon', offerId: pending.id, verb: pending.verb, defId: pending.defId,
+          slotIndex: pending.slotIndex, replaced: pending.replaces || null, wave: this._wave },
+        draft: { wave: this._wave, offered: this._offers.map(o => o.id), picked: pending.id },
+        wave: this._wave,
+      });
+      this._emit('run:shopPurchased', { wave: this._wave, offerId: pending.id, price: pending.price });
+      return;
+    }
     const pending = this._pendingReroll;
     if (!pending) return;
     if (!payload || payload.reason !== CRUCIBLE_REROLL_SPEND_REASON) return;
@@ -326,6 +374,11 @@ export const survivalDraft = {
   },
 
   _onSpendRejected(payload) {
+    if (payload?.reason === CRUCIBLE_PURCHASE_SPEND_REASON && this._pendingPurchase) {
+      this._pendingPurchase = null;
+      this._notice = 'Not enough run credits. Save for the next round.';
+      return;
+    }
     const pending = this._pendingReroll;
     if (!pending) return;
     if (!payload || payload.reason !== CRUCIBLE_REROLL_SPEND_REASON) return;
@@ -367,6 +420,7 @@ export const survivalDraft = {
     if (this._resolved) return false;
     const offers = this._offers || [];
     const offerId = request && request.offerId;
+    if (isSwarmRuleset(run.ruleset) && offerId != null) return this._purchase(offerId);
     const offer = offers.find((entry) => entry.id === offerId) || null;
     this._offers = null;
     this._pendingReroll = null;
@@ -416,6 +470,33 @@ export const survivalDraft = {
     return true;
   },
 
+  _purchase(offerId) {
+    if (this._pendingPurchase || this._pendingReroll) return false;
+    const offer = this.currentOffers().find(entry => entry.id === offerId);
+    if (!offer || !offer.available) {
+      this._notice = offer?.unavailableReason || 'That offer is no longer available.';
+      return false;
+    }
+    const ships = this._ships();
+    if (!ships || typeof ships.fitModule !== 'function') {
+      this._notice = 'Fitting is unavailable. Your money is safe.';
+      return false;
+    }
+    const blocker = ships.moduleFitBlocker?.({ slotIndex: offer.slotIndex, def: MODULE_DEF_BY_ID.get(offer.defId) });
+    if (blocker) {
+      this._notice = blocker.text || 'That item no longer fits. Your money is safe.';
+      return false;
+    }
+    this._pendingPurchase = offer;
+    this._emit('run:spendRequested', { credits: offer.price, reason: CRUCIBLE_PURCHASE_SPEND_REASON });
+    if (this._pendingPurchase) {
+      this._pendingPurchase = null;
+      this._notice = 'The run wallet did not answer. Nothing was charged.';
+      return false;
+    }
+    return this._purchased.has(offer.id);
+  },
+
   /**
    * Refit: fit a spare from the run's own inventory into a hardpoint.
    *
@@ -426,7 +507,7 @@ export const survivalDraft = {
    */
   refitFit(request) {
     const run = liveSurvivalRun(this.state);
-    if (!run || run.phase !== 'refit') return false;
+    if (!run || (run.phase !== 'refit' && !(run.ruleset === 'swarm' && run.phase === 'draft'))) return false;
     const ships = this._ships();
     if (!ships || typeof ships.fitModule !== 'function') return false;
     const slotIndex = request && request.slotIndex;
@@ -445,7 +526,7 @@ export const survivalDraft = {
   /** Refit: strip a hardpoint back to the run's inventory, through the same owner. */
   refitStrip(request) {
     const run = liveSurvivalRun(this.state);
-    if (!run || run.phase !== 'refit') return false;
+    if (!run || (run.phase !== 'refit' && !(run.ruleset === 'swarm' && run.phase === 'draft'))) return false;
     const ships = this._ships();
     if (!ships || typeof ships.unfitModule !== 'function') return false;
     const slotIndex = request && request.slotIndex;

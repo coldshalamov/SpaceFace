@@ -660,7 +660,7 @@ export const survivalArena = {
     this._installedFields = Array.isArray(install.fields) ? install.fields.slice() : [];
     this._installFields(install.fields);
     this._installMines(install.mines);
-    this._installCover(install.cover, wave);
+    this._installCover(install.cover || run.ruleset === 'swarm', wave);
     this._installToys(install);
     this._emit('survivalArena:installed', {
       wave,
@@ -732,6 +732,8 @@ export const survivalArena = {
       encounterId,
       kind: 'survival_arena',
       shape: 'survival_arena',
+      arcadeLayout: state?.run?.ruleset === 'swarm',
+      arenaSeed: state?.run?.seed,
       pos: { x: anchor.x, z: anchor.z },
       sectorId: (state && state.world && state.world.currentSectorId) || null,
     });

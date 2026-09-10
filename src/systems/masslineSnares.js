@@ -15,6 +15,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { lineSweepContact } from './masslineImpacts.js';
 import { isHostileToPlayer } from './scanner.js';
+import { createTetherWebs } from '../combat/tetherWebs.js';
 
 export const TRANSVERSE_SNARE_DEF_ID = 'attachment_transverse_snare';
 export const TRANSVERSE_SNARE_HEAD_ID = 'transverse_snare';
@@ -100,6 +101,8 @@ export const masslineSnares = {
   name: 'masslineSnares',
 
   init(ctx) {
+    this._webs?.destroy();
+    this._webs = createTetherWebs(ctx);
     for (const unsubscribe of this._lifecycleUnsubs || []) unsubscribe();
     this.state = ctx.state;
     this.bus = ctx.bus || null;
@@ -131,6 +134,8 @@ export const masslineSnares = {
   },
 
   destroy() {
+    this._webs?.destroy();
+    this._webs = null;
     for (const unsubscribe of this._lifecycleUnsubs || []) unsubscribe();
     this._lifecycleUnsubs = [];
     if (this.helpers && this.helpers.masslineSnares === this._api) delete this.helpers.masslineSnares;
@@ -164,6 +169,7 @@ export const masslineSnares = {
   },
 
   update(dt, state) {
+    this._webs?.update();
     const deployment = this._deployment;
     if (!deployment) return;
     const player = entity(state, state.playerId);

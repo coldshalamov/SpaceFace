@@ -26,7 +26,7 @@ export const CRUCIBLE_ARENA_ID = 'helios_core';
  */
 export const CRUCIBLE_DEFAULT_RULESET = SWARM_RULESET;
 // The fresh Crucible route teaches shove physics immediately; benchmark package IDs stay stable.
-export const CRUCIBLE_DEFAULT_STARTER_ID = 'physics_toolkit';
+export const CRUCIBLE_DEFAULT_STARTER_ID = 'ricochet_runner';
 export function crucibleStarterIdForSetup(setup) {
   const loadout = Array.isArray(setup?.loadout) ? setup.loadout : [];
   const match = COMBAT_LAB_STARTER_PACKAGES.find(entry => entry.hullId === setup?.hullId

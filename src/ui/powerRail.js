@@ -41,6 +41,7 @@
 // a prompt that dies without releasing cannot wedge the rail permanently.
 
 import { icon } from './station/icons.js';
+import { repulsionTrapFitted } from '../systems/impulseCharges.js';
 
 export const BAND_ORDNANCE = 'ORDNANCE';
 export const BAND_FIELDWORK = 'FIELDWORK';
@@ -59,9 +60,9 @@ export const SLOT_STATES = ['ready', 'armed', 'cooling', 'unaffordable', 'locked
 export const RAIL_SLOTS = Object.freeze([
   // Reserved sockets 1–3 stay nameless under their band pill: the band label twelve pixels above
   // already says ORDNANCE, and three stacked "Ordnance" micro-labels truncated to "ORD_" junk.
-  { index: 1, band: BAND_ORDNANCE, action: null, name: '', glyph: 'slot_weapon' },
-  { index: 2, band: BAND_ORDNANCE, action: null, name: '', glyph: 'slot_weapon' },
-  { index: 3, band: BAND_ORDNANCE, action: null, name: '', glyph: 'slot_weapon' },
+  { index: 1, band: BAND_ORDNANCE, action: 'chargeThrow', name: 'Charge', glyph: 'slot_weapon' },
+  { index: 2, band: BAND_ORDNANCE, action: 'chargeDetonate', name: 'Blast', glyph: 'danger' },
+  { index: 3, band: BAND_ORDNANCE, action: 'tether', name: 'Line', glyph: 'slot_utility' },
   { index: 4, band: BAND_FIELDWORK, action: 'deployMassSeed', name: 'Seed', glyph: 'target' },
   { index: 5, band: BAND_FIELDWORK, action: 'deployWell', name: 'Well', glyph: 'danger' },
   // Display name shortened to fit the slot's 38px label row untruncated; the verb family
@@ -194,8 +195,17 @@ export function readRailModel(state, nowS) {
   const seedCd = cooling(player.massSeed && player.massSeed.cooldownUntil);
   const wellCd = cooling(cooldowns.well);
   const repCd = cooling(cooldowns.repulsor);
+  const hull = s.entities?.get?.(s.playerId);
+  const charges = player.cargo?.items?.cmdty_impulse_charge || 0;
+  const throwCd = Math.max(0, hull?.data?.impulseCharges?.throwCdT || 0);
+  const armed = (s.entityList || []).some(e => e.alive && e.type === 'charge'
+    && e.data?.ownerId === s.playerId && e.data?.armed);
 
   return {
+    1: { name: `${repulsionTrapFitted(s) ? 'Trap' : 'Charge'} ${charges}`,
+      state: charges <= 0 ? 'empty' : throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000 },
+    2: { state: armed ? 'armed' : 'empty' },
+    3: { state: player.tether?.active ? 'armed' : 'ready' },
     4: seedCd || { state: 'ready' },
     5: wellCd || { state: 'ready' },
     6: repCd || { state: 'ready' },

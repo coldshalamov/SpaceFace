@@ -14,6 +14,28 @@ function freezeDeep(value) {
 
 export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
   {
+    id: 'web_weaver', label: 'Web Weaver', hullId: 'ship_hornet',
+    blurb: 'Stitch pursuers together, then shove the knot into cover. The pack becomes its own obstacle.',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_pulse_laser_m' },
+      { slotIndex: 1, defId: 'wpn_snarl_s' },
+      { slotIndex: 2, defId: 'wpn_concussion_cannon_m' },
+      { slotIndex: 5, defId: 'mod_repulsion_trap_s' },
+    ],
+  },
+  {
+    id: 'ricochet_runner',
+    label: 'Ricochet Runner',
+    blurb: 'Bank a stream of bullets around cover. Shove the pack into the rocks, then boost through.',
+    hullId: 'ship_hornet',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_autocannon_m' },
+      { slotIndex: 1, defId: 'wpn_concussion_cannon_m' },
+      { slotIndex: 5, defId: 'mod_bank_shot' },
+      { slotIndex: 6, defId: 'mod_repulsion_trap_s' },
+    ],
+  },
+  {
     id: 'energy_baseline',
     label: 'Baseline Energy',
     hullId: 'ship_kestrel',

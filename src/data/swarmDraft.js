@@ -31,6 +31,15 @@ export const SWARM_DRAFT_SCHEMA_VERSION = 1;
  */
 export const SWARM_DRAFT_OFFERS = Object.freeze([
   {
+    id: 'snarl', defId: 'wpn_snarl_s', verb: 'Web', kind: 'verb', shape: null,
+    blurb: 'Hits stitch nearby enemies together. Their thrust fights their partners; a shove swings the knot.',
+  },
+  {
+    id: 'repulsion_trap', defId: 'mod_repulsion_trap_s', verb: 'Trap',
+    kind: 'verb', shape: null,
+    blurb: 'Drop behind your flight path. Pursuers trigger a blast that throws the pack into the room.',
+  },
+  {
     id: 'bank', defId: 'mod_bank_shot', verb: 'Bank',
     kind: 'verb', shape: null,
     blurb: 'Your shots bounce off rock. Every wall becomes a firing angle.',

@@ -57,7 +57,8 @@ export function createFloatingText(ctx) {
     el.className = 'sf-ft';
     el.style.display = 'none';
     layer.appendChild(el);
-    nodes.push({ el, alive: false, age: 0, life: 1, x: 0, y: 0, vy: 0, vx: 0, targetId: null, wx: 0, wz: 0 });
+    nodes.push({ el, alive: false, age: 0, life: 1, x: 0, y: 0, vy: 0, vx: 0,
+      targetId: null, entity: null, wx: 0, wz: 0, damage: 0, damageClass: null });
   }
   let head = 0;
   let activeCount = 0;
@@ -72,7 +73,8 @@ export function createFloatingText(ctx) {
   }
 
   function spawn(text, cls, wx, wz, targetId, opts) {
-    if (!state.settings || state.settings.showDamageNumbers === false) return;
+    if (!state.settings || state.settings.showDamageNumbers === false
+      || state.settings.gameplay?.damageNumbers === false) return;
     opts = opts || {};
     let n = null;
     for (let k = 0; k < POOL; k++) { const idx = (head + k) % POOL; if (!nodes[idx].alive) { n = nodes[idx]; head = (idx + 1) % POOL; break; } }
@@ -80,6 +82,9 @@ export function createFloatingText(ctx) {
     activeCount++;
     n.alive = true; n.age = 0; n.life = opts.life || 0.95;
     n.targetId = targetId != null ? targetId : null;
+    n.entity = targetId != null ? state.entities.get(targetId) : null;
+    n.damage = opts.damage || 0;
+    n.damageClass = opts.damageClass || null;
     n.wx = wx; n.wz = wz;
     n.vy = -(opts.vy != null ? opts.vy : 48);      // px/s rise
     n.vx = (Math.random() - 0.5) * 26;
@@ -91,6 +96,7 @@ export function createFloatingText(ctx) {
     n._sfHudTransform = 'translate3d(0,0,0) translate(-50%,-50%)';
     n._sfOpacity = '1';
     n.x = 0; n.y = 0;
+    return n;
   }
 
   // ---- event hooks ----------------------------------------------------------------------------
@@ -100,12 +106,28 @@ export function createFloatingText(ctx) {
     return 'sf-ft--hull';
   }
   bus.on('combat:damage', (p) => {
-    if (!p || (p.amount || 0) <= 0) return;
+    const amount = Number.isFinite(p?.applied) ? p.applied : Number(p?.amount) || 0;
+    if (!p || amount <= 0 || state.settings?.gameplay?.damageNumbers === false
+      || state.settings?.showDamageNumbers === false) return;
     const e = p.targetId != null ? state.entities.get(p.targetId) : null;
+    const playerHit = p.targetId === state.playerId;
+    if (state.run?.ruleset === 'swarm' && !playerHit && p.attackerId !== state.playerId
+      && p.provenance?.actorId !== state.playerId) return;
     const wx = e ? e.pos.x : (p.pos && p.pos.x); const wz = e ? e.pos.z : (p.pos && p.pos.z);
     if (wx == null) return;
-    const big = (p.amount >= 25) || p.killing;
-    spawn(Math.round(p.amount) + '', dmgColor(p) + (big ? ' sf-ft--big' : ''), wx, wz, p.targetId, { life: big ? 1.2 : 0.9, vy: big ? 62 : 46 });
+    const cls = playerHit ? 'sf-ft--player' : dmgColor(p);
+    // Shotgun pellets and rapid hits share one short burst total per hull/layer. The
+    // initial hit appears immediately; aggregation never delays damage acknowledgement.
+    for (const n of nodes) {
+      if (!e || !n.alive || n.entity !== e || n.damageClass !== cls || n.age > 0.14 || !n.damage) continue;
+      n.damage += amount;
+      n.el.textContent = String(Math.round(n.damage));
+      n.el.className = 'sf-ft ' + cls + (n.damage >= 25 ? ' sf-ft--big' : '');
+      return;
+    }
+    const big = amount >= 25 || p.killing;
+    spawn(String(Math.round(amount)), cls + (big ? ' sf-ft--big' : ''), wx, wz, p.targetId,
+      { life: big ? 0.95 : 0.72, vy: big ? 58 : 42, damage: amount, damageClass: cls });
   });
   bus.on('combat:damage', (p) => { if (p && p.brokeShield) { const e = state.entities.get(p.targetId); if (e) spawn('SHIELD DOWN', 'sf-ft--shielddown', e.pos.x, e.pos.z, null, { life: 1.0, vy: 30 }); } });
   bus.on('entity:killed', (p) => { if (p && p.pos) spawn('DESTROYED', 'sf-ft--kill', p.pos.x, p.pos.z, null, { life: 1.3, vy: 26 }); });
@@ -205,12 +227,13 @@ export function createFloatingText(ctx) {
       if (n.age >= n.life) { retire(n); continue; }
       // follow the entity if it still exists, else stay at the world point
       let wx = n.wx, wz = n.wz;
-      if (n.targetId != null) { const e = state.entities.get(n.targetId); if (e) { wx = e.pos.x; wz = e.pos.z; } }
+      if (n.entity) { wx = n.entity.pos.x; wz = n.entity.pos.z; }
       const s = helpers.worldToScreen({ x: wx, y: 0, z: wz });
       const t = n.age / n.life;
       const rise = n.vy * n.age;            // integrated rise (px)
       const drift = n.vx * n.age;
-      const sc = popScale(n.age);           // spawn-pop scale (overshoot -> 1.0)
+      const reduced = state.settings?.video?.motionReduce;
+      const sc = reduced ? 1 : popScale(n.age);
       const nextTransform = `translate3d(${s.x + drift}px,${s.y + rise}px,0) translate(-50%,-50%) scale(${sc})`;
       if (n._sfHudTransform !== nextTransform) {
         n._sfHudTransform = nextTransform;

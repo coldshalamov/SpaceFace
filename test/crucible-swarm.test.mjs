@@ -1,4 +1,4 @@
-// PQ-135 / PQ-174.01 — the swarm ruleset: constant pressure, a sixty-second clock, and no menu four waves in five.
+// Owner direction 2026-09-10: finite pressure, earned round clears, and shopping between rounds.
 //
 // These tests drive the REAL phase machine and the REAL wave owner through the REAL spawn budget.
 // Nothing here stubs the streaming loop; the reinforcement behaviour under test is the behaviour
@@ -187,8 +187,8 @@ test('every swarm wave names a live enemy, a legal gate and a room that is never
     // PQ-174.01 design memo: a wave ends on a sixty-second clock, not a kill quota.
     // The old quota numbers survive only as chip valuation (`rewardReferenceKills`).
     assert.ok(plan.swarm.rewardReferenceKills > 0);
-    assert.equal(plan.completionRules.kind, 'duration');
-    assert.equal(plan.completionRules.durationTicks, SWARM_WAVE_DURATION_TICKS);
+    assert.equal(plan.completionRules.kind, 'cohort');
+    assert.equal(plan.swarm.killTarget, swarmQuota(wave));
   }
 });
 
@@ -201,12 +201,12 @@ test('a swarm plan is deterministic and pure JSON, like every other plan', () =>
   assert.notDeepEqual(other.schedule, a.schedule);
 });
 
-test('a swarm wave has no last wave and no blocking role that could stall it', () => {
+test('endless rounds have finite cohorts and no global sector-clear requirement', () => {
   const deep = planWave({ seed: SEED, arenaId: ARENA, wave: SWARM_WAVE_MAX, ruleset: SWARM_RULESET });
   assert.ok(!deep.error, 'the 999th wave still plans — the arc would have refused past 30');
   for (const wave of [1, 7, 40, 400]) {
     const plan = planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
-    assert.equal(plan.completionRules.requiredPackagesMaterialized, false);
+    assert.equal(plan.completionRules.requiredPackagesMaterialized, true);
     assert.deepEqual(plan.completionRules.blockingRoles, []);
   }
 });
@@ -319,76 +319,57 @@ test('the stream holds the room near strength across a whole wave, and never bre
   }
   assert.ok(sampled > 0, 'the wave stayed live long enough to sample');
   const uptime = ticksUnderPressure / sampled;
-  assert.ok(uptime > 0.9, `threat uptime ${(uptime * 100).toFixed(1)}% is near-continuous`);
+  assert.ok(peak >= 4, 'reinforcements sustain a pack before the final cleanup');
+  assert.equal(liveHostiles(h).length, 0, 'defeating the finite pack earns an empty arena');
   assert.ok(peak <= SPAWN_BUDGET_DEFAULT_MAX, `peak ${peak} respected the shared cap`);
   assert.ok(h.budget.current() <= h.budget.max(), 'the budget was never oversubscribed');
 });
 
-test('a wave clears on the sixty-second clock, with survivors still flying', () => {
+test('a fast round clear earns the shop instead of waiting for a timer', () => {
   const h = boot();
   beginSwarm(h);
-  const reference = swarmQuota(1);
-
   let killed = 0;
   for (let i = 0; i < 4000 && h.state.run.phase === 'active'; i++) {
     if (i % 6 === 0 && killOne(h)) killed++;
-    tick(h, 1);
+    tick(h);
   }
   const cleared = named(h.emitted, 'run:waveCleared');
-  assert.equal(cleared.length, 1, 'the wave reported itself cleared');
-  // PQ-174.01 design memo: a wave ends on a sixty-second clock, not a kill quota.
-  assert.equal(cleared[0].payload.completionKind, 'duration');
-  assert.equal(cleared[0].payload.durationTicks, SWARM_WAVE_DURATION_TICKS);
-  assert.equal(cleared[0].payload.quota, undefined);
-  assert.ok(cleared[0].payload.killed >= reference, 'kills past the old quota still count');
-  assert.ok(killed >= reference);
-  // THE POINT: the room was not empty when the wave ended.
-  assert.ok(cleared[0].payload.survivors > 0, 'survivors carried, so there is no lull to cover');
-  assert.ok(liveHostiles(h).length > 0);
+  assert.equal(cleared.length, 1);
+  assert.equal(cleared[0].payload.completionKind, 'cohort');
+  assert.equal(killed, swarmQuota(1));
+  assert.equal(cleared[0].payload.survivors, 0);
+  assert.ok(cleared[0].payload.tick < 3600, 'a fast player does not wait a minute');
+  tick(h, 300);
+  assert.equal(h.state.run.phase, 'draft');
+  assert.equal(liveHostiles(h).length, 0);
 });
 
-test('wave 2 opens under the pressure wave 1 left behind, and no budget slot leaks', () => {
-  const h = boot();
-  beginSwarm(h);
-  // Clear wave 1's quota, but stop shooting the moment it is met — the question here is what the
-  // NEXT wave inherits, not how fast a player can empty a room between waves.
-  for (let i = 0; i < 6000 && h.state.run.wave === 1 && h.state.run.phase === 'active'; i++) {
-    if (i % 6 === 0) killOne(h);
-    tick(h, 1);
+test('launching after shopping begins round two without leaking spawn slots', () => {
+  const h = boot(); beginSwarm(h);
+  for (let i = 0; i < 4000 && h.state.run.phase !== 'draft'; i++) {
+    if (i % 6 === 0) killOne(h); tick(h);
   }
-  const survivors = liveHostiles(h).length;
-  assert.ok(survivors > 0, 'wave 1 ended with hostiles still on the player');
-
-  // Roll through cleanup and the auto-resolved draft into wave 2 without firing a shot.
-  for (let i = 0; i < 600 && !(h.state.run.wave === 2 && h.state.run.phase === 'active'); i++) {
-    tick(h, 1);
-  }
+  assert.equal(h.state.run.phase, 'draft');
+  assert.equal(h.budget.current(), 0);
+  h.bus.emit('run:draftResolved', {});
+  tick(h, 300);
   assert.equal(h.state.run.wave, 2);
   assert.equal(h.state.run.phase, 'active');
-  assert.ok(
-    liveHostiles(h).length >= survivors,
-    'wave 2 opened with wave 1 survivors still flying, then topped up',
-  );
-  // Budget bookkeeping must still match the live board exactly — no slot leaked across the seam.
+  assert.ok(liveHostiles(h).length > 0);
   assert.equal(h.budget.current(), liveHostiles(h).length);
-  assert.ok(h.budget.current() <= h.budget.max());
 });
 
-test('the room is never empty across a wave boundary', () => {
-  const h = boot();
-  beginSwarm(h);
-  let emptyTicks = 0;
-  let sampled = 0;
-  // Two sixty-second waves plus cleanup/intro: 5000 ticks used to be enough when a quota
-  // ended the wave in ~20 s. The clock needs ~7300 ticks to reach wave 3.
-  for (let i = 0; i < 16000 && h.state.run.wave < 3; i++) {
-    if (i % 7 === 0 && h.state.run.phase === 'active') killOne(h);
-    tick(h, 1);
-    sampled++;
-    if (liveHostiles(h).length === 0) emptyTicks++;
+test('no hostiles spawn into a cleared round while the player shops', () => {
+  const h = boot(); beginSwarm(h);
+  for (let i = 0; i < 4000 && h.state.run.phase !== 'draft'; i++) {
+    if (i % 7 === 0) killOne(h); tick(h);
   }
-  assert.ok(h.state.run.wave >= 3, 'the run walked two full wave boundaries');
-  assert.equal(emptyTicks, 0, `the room was empty on ${emptyTicks} of ${sampled} ticks`);
+  const admitted = h.spawned.length;
+  tick(h, 7200);
+  assert.equal(h.state.run.wave, 1);
+  assert.equal(h.state.run.phase, 'draft');
+  assert.equal(h.spawned.length, admitted);
+  assert.equal(liveHostiles(h).length, 0);
 });
 
 test('an empty room refills on the very next tick, not on the next gap', () => {
@@ -410,42 +391,19 @@ test('an empty room refills on the very next tick, not on the next gap', () => {
   );
 });
 
-test('a fast clear cannot empty the room — a wiped board still refills immediately', () => {
-  // PQ-174.08 replaced the instant deficit surge with a 4 s breath after a substantial clear.
-  // The empty-room emergency is unchanged: 15 kills a second may thin the room, it may not
-  // leave it at zero, and the wave still ends with survivors rolling forward.
-  // PQ-174.01 design memo: a wave ends on a sixty-second clock, not a kill quota — so this
-  // walk must last two full minutes, not the old ~20 s quota clear.
-  const h = boot();
-  beginSwarm(h);
-  let empty = 0;
-  let samples = 0;
-  let survivorsAtClear = null;
-  h.bus.on('run:waveCleared', (p) => { if (survivorsAtClear == null) survivorsAtClear = p.survivors; });
-  for (let i = 0; i < 16000 && h.state.run.wave < 3; i++) {
-    if (i % 4 === 0 && h.state.run.phase === 'active') killOne(h);
-    tick(h, 1);
-    samples++;
-    if (liveHostiles(h).length === 0) empty++;
+test('a fast clear never overfills the finite round budget', () => {
+  const h = boot(); beginSwarm(h);
+  for (let i = 0; i < 4000 && h.state.run.phase !== 'draft'; i++) {
+    while (killOne(h)) {} tick(h);
   }
-  assert.equal(empty, 0, `room empty on ${empty} of ${samples} ticks under a 15/s clear`);
-  assert.ok(survivorsAtClear > 0, `wave 1 ended with ${survivorsAtClear} hostiles still flying`);
+  assert.equal(h.spawned.length, swarmQuota(1));
+  assert.equal(h.state.run.phase, 'draft');
+  assert.equal(named(h.emitted, 'run:waveCleared').length, 1);
 });
 
-test('four waves in five open no menu at all', () => {
-  for (let wave = 1; wave <= 40; wave++) {
-    const expected = wave % SWARM_DRAFT_EVERY === 0 || wave % SWARM_REFIT_EVERY === 0;
-    assert.equal(swarmWaveEndsInMenu(wave), expected, `wave ${wave} menu expectation`);
-  }
-  const menus = Array.from({ length: 40 }, (_, i) => swarmWaveEndsInMenu(i + 1))
-    .filter(Boolean).length;
-  assert.equal(menus, 8, 'eight upgrade stops in forty waves, not forty');
-  // Every refit wave is also a draft wave, so the bench never costs the player a card.
-  for (let wave = 1; wave <= 60; wave++) {
-    if (wave % SWARM_REFIT_EVERY === 0) {
-      assert.equal(wave % SWARM_DRAFT_EVERY, 0, `wave ${wave} takes its card before the bench`);
-    }
-  }
+test('every round offers a voluntary purchase stop', () => {
+  for (let wave = 1; wave <= 40; wave++) assert.equal(swarmWaveEndsInMenu(wave), true);
+  assert.equal(SWARM_DRAFT_EVERY, 1);
 });
 
 test('a swarm refit wave gives BOTH the card and the bench, in that order', () => {
@@ -473,21 +431,16 @@ test('a swarm refit wave gives BOTH the card and the bench, in that order', () =
   assert.equal(seen[tenth + 1], 'w10:refit', 'and the bench came straight after the card');
 });
 
-test('a swarm run does not stop for a draft on a fight wave — it rolls straight into the next', () => {
-  const h = boot();
-  beginSwarm(h);
-  // Walk to wave 2 and record whether any draft surface was ever offered.
-  for (let i = 0; i < 6000 && h.state.run.wave < 2; i++) {
-    if (i % 6 === 0) killOne(h);
-    tick(h, 1);
+test('the player controls when the next round begins', () => {
+  const h = boot(); beginSwarm(h);
+  for (let i = 0; i < 4000 && h.state.run.phase !== 'draft'; i++) {
+    if (i % 6 === 0) killOne(h); tick(h);
   }
+  tick(h, 1000);
+  assert.equal(h.state.run.wave, 1);
+  assert.equal(h.state.run.phase, 'draft');
+  h.bus.emit('run:draftResolved', {}); tick(h, 300);
   assert.equal(h.state.run.wave, 2);
-  const offers = named(h.emitted, 'run:draftOffered');
-  assert.equal(offers.length, 0, 'no draft was offered between wave 1 and wave 2');
-  // The run still passed THROUGH draft — that is the only legal edge out of cleanup — but it
-  // resolved on arrival.
-  const transitions = named(h.emitted, 'run:transitioned').map((e) => e.payload.phase);
-  assert.ok(transitions.includes('draft'), 'the phase machine still used the legal edge');
 });
 
 test('the room raises its own capacity for the run and gives it back afterwards', () => {
@@ -599,6 +552,7 @@ test('everything the mode has is on the table by the full-intensity wave', () =>
 
 /** Drive survivalWave onto an arbitrary wave's plan without walking there in real time. */
 function forceWave(h, wave) {
+  while (killOne(h)) {}
   const plan = planWave({ seed: SEED, arenaId: ARENA, wave, ruleset: SWARM_RULESET });
   h.bus.emit('run:wavePlanned', { wave, plan });
   h.bus.emit('run:waveStarted', { wave });
@@ -632,112 +586,49 @@ test('a boss wave fields a Dreadnought and says it owes one', () => {
   assert.ok(plan.swarm.concurrent >= 10);
 });
 
-test('the clock, not the Dreadnought, ends a boss wave', () => {
-  // PQ-174.01 design memo: Every swarm wave uses this rule, including boss waves. A living
-  // champion carries forward with its identity, health and momentum intact. Keeping boss death
-  // as an additional gate would reintroduce an unbounded duration.
-  const h = boot();
-  beginSwarm(h);
-  const plan = forceWave(h, 10);
-  const reference = plan.swarm.rewardReferenceKills;
-  tick(h, 30);
-  assert.ok(liveBosses(h, 10).length > 0, 'the champion is on the board');
-
-  // Kill only chaff, well past the old valuation, for twenty seconds — the clock has not elapsed.
-  let chaffKilled = 0;
-  for (let i = 0; i < 1200 && chaffKilled < reference + 12; i++) {
-    if (i % 5 === 0) {
-      const bossIds = new Set(liveBosses(h, 10).map((e) => e.id));
-      const chaff = liveHostiles(h).find((e) => !bossIds.has(e.id));
-      if (chaff) {
-        chaff.alive = false;
-        h.state.entities.delete(chaff.id);
-        h.bus.emit('entity:destroyed', { id: chaff.id });
-        chaffKilled++;
-      }
+test('a living champion prevents a round clear even after a minute', () => {
+  const h = boot(); beginSwarm(h); forceWave(h, 10); tick(h, 30);
+  for (let i = 0; i < 4500; i++) {
+    const bossIds = new Set(liveBosses(h, 10).map(e => e.id));
+    const chaff = liveHostiles(h).find(e => !bossIds.has(e.id));
+    if (chaff) {
+      chaff.alive = false; h.state.entities.delete(chaff.id);
+      h.bus.emit('entity:destroyed', { id: chaff.id });
     }
-    tick(h, 1);
+    tick(h);
   }
-  assert.ok(chaffKilled > reference, `killed ${chaffKilled} chaff, past the old valuation of ${reference}`);
-  assert.equal(
-    named(h.emitted, 'run:waveCleared').length,
-    0,
-    'kills still do not end a boss wave — the clock has not elapsed',
-  );
-  assert.ok(liveBosses(h, 10).length > 0, 'the champion is still flying');
-  assert.ok(liveHostiles(h).length > 1, 'a screen is still coming during the duel');
-
-  for (let i = 0; i < 4000 && named(h.emitted, 'run:waveCleared').length === 0; i++) {
-    tick(h, 1);
-  }
-  const cleared = named(h.emitted, 'run:waveCleared');
-  assert.equal(cleared.length, 1, 'the sixty-second clock ended the boss wave');
-  assert.equal(cleared[0].payload.completionKind, 'duration');
-  assert.equal(cleared[0].payload.wave, 10);
-  assert.ok(liveBosses(h, 10).length > 0, 'the living champion carried; the clock did not wait for a kill');
+  assert.ok(liveBosses(h, 10).length > 0);
+  assert.equal(named(h.emitted, 'run:waveCleared').length, 0);
+  while (killOne(h)) {} tick(h);
+  assert.equal(named(h.emitted, 'run:waveCleared').length, 1);
 });
 
-test('a boss wave still runs the clock when the boss dies first', () => {
-  const h = boot();
-  beginSwarm(h);
-  forceWave(h, 10);
-  tick(h, 30);
-  const bosses = liveBosses(h, 10);
-  assert.ok(bosses.length > 0);
-  for (const boss of bosses) {
-    boss.alive = false;
-    h.state.entities.delete(boss.id);
+test('killing the champion first still leaves the rest of its round to defeat', () => {
+  const h = boot(); beginSwarm(h); forceWave(h, 10); tick(h, 30);
+  for (const boss of liveBosses(h, 10)) {
+    boss.alive = false; h.state.entities.delete(boss.id);
     h.bus.emit('entity:destroyed', { id: boss.id });
   }
-
-  // PQ-174.01 design memo: It remains dangerous and pays its kill reward only when actually
-  // killed; the clock never fabricates a boss kill. Killing it also does not end the wave early.
   tick(h, 5);
-  assert.equal(named(h.emitted, 'run:waveCleared').length, 0, 'boss death does not end the wave early');
-
-  for (let i = 0; i < 5000 && named(h.emitted, 'run:waveCleared').length === 0; i++) {
-    if (i % 5 === 0) killOne(h);
-    tick(h, 1);
+  assert.equal(named(h.emitted, 'run:waveCleared').length, 0);
+  for (let i = 0; i < 4000 && !named(h.emitted, 'run:waveCleared').length; i++) {
+    if (i % 5 === 0) killOne(h); tick(h);
   }
   const cleared = named(h.emitted, 'run:waveCleared');
   assert.equal(cleared.length, 1);
-  assert.equal(cleared[0].payload.completionKind, 'duration');
+  assert.equal(cleared[0].payload.completionKind, 'cohort');
+  assert.equal(liveHostiles(h).length, 0);
 });
 
-test('a boss wave fields its champion even when it inherits a FULL room', () => {
-  // The real sequence this guards: wave 9 runs at concurrency 20 with no taper, so it can clear
-  // with twenty survivors. Wave 10's boss concurrency is 18. The opening-burst headroom clamp then
-  // computes min(1, 18 - 20) = 0 for the champion batch — and the dispatch loop DROPS a clamped
-  // batch rather than deferring it, so the Dreadnought would never be fielded, `requireBoss` would
-  // have nothing to require, and the boss wave would clear on chaff alone with no boss in it.
-  const h = boot();
-  beginSwarm(h);
-  const plan = planWave({ seed: SEED, arenaId: ARENA, wave: 10, ruleset: SWARM_RULESET });
-  const bossCeiling = plan.swarm.concurrent;
-
-  // Stuff the room past the boss wave's own ceiling, exactly as an inherited wave 9 would. Wave 9
-  // has to be PLAYED to get there: the crescendo means its room only reaches its own ceiling of 20
-  // as its quota burns down, which is precisely the moment a boss wave inherits from it.
-  const nine = planWave({ seed: SEED, arenaId: ARENA, wave: 9, ruleset: SWARM_RULESET });
-  h.bus.emit('run:wavePlanned', { wave: 9, plan: nine });
-  h.bus.emit('run:waveStarted', { wave: 9 });
-  for (let i = 0; i < 4000 && liveHostiles(h).length <= bossCeiling; i++) {
-    if (i % 30 === 0) killOne(h);
-    tick(h, 1);
-  }
-  assert.ok(
-    liveHostiles(h).length > bossCeiling,
-    `the room is fuller (${liveHostiles(h).length}) than the boss wave's ceiling (${bossCeiling})`,
-  );
-
-  // Now the boss wave arrives on top of it.
-  h.bus.emit('run:wavePlanned', { wave: 10, plan });
-  h.bus.emit('run:waveStarted', { wave: 10 });
-  tick(h, 60);
-  assert.ok(
-    liveBosses(h, 10).length > 0,
-    'the champion was fielded despite the room already being over strength',
-  );
+test('a refused champion remains owed until the spawn budget has room', () => {
+  const h = boot(); beginSwarm(h);
+  while (killOne(h)) {}
+  h.budget.request(h.budget.max(), 'test:occupied');
+  forceWave(h, 10); tick(h, 30);
+  assert.equal(liveBosses(h, 10).length, 0);
+  assert.equal(named(h.emitted, 'run:waveCleared').length, 0);
+  h.budget.release('test:occupied'); tick(h, 60);
+  assert.ok(liveBosses(h, 10).length > 0, 'the deferred boss materializes');
 });
 
 test('the champion changes: four different shapes of boss wave, in step with the roster', () => {

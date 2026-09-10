@@ -1,0 +1,83 @@
+/* Crucible choices stay close to play. These rules are scoped to the mode's surfaces. */
+.sf-crucible-door:not(.sf-crucible-results) .k-stage {
+  overflow: auto;
+  scrollbar-width: thin;
+  padding-right: 12px;
+}
+.sf-crucible-door .sf-crd-settings .k-row { min-height: 0; padding-block: 15px; }
+.sf-crucible-door .sf-crd-settings .k-words { flex-wrap: wrap; gap: 10px 24px; }
+.sf-crd-records { margin-top: 20px; }
+.sf-crd-records summary { cursor: pointer; padding: 12px 0; }
+.sf-crd-records .k-row { padding-block: 10px; }
+.sf-crucible-armory .sf-cru-stage { overflow: auto; scrollbar-width: thin; }
+.sf-crucible-armory .sf-cru-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+.sf-cru-filters { margin-bottom: 18px; }
+.sf-cru-filters[hidden] { display: none; }
+.sf-crucible-armory .sf-cru-card {
+  padding: 18px;
+  border: 1px solid rgb(183 219 231 / 23%);
+  background: rgb(9 22 30 / 88%);
+  border-radius: 7px;
+  text-align: left;
+  min-height: 205px;
+}
+.sf-crucible-armory .sf-cru-card:hover:not(:disabled),
+.sf-crucible-armory .sf-cru-card:focus-visible {
+  border-color: #8ee8ff;
+  background: rgb(22 47 60 / 96%);
+  outline: 2px solid #8ee8ff;
+  outline-offset: -2px;
+}
+.sf-crucible-armory .sf-cru-card:disabled { opacity: .65; cursor: default; }
+.sf-crucible-armory .sf-cru-name { font-size: clamp(18px, 1.7vw, 27px); }
+.sf-crucible-armory .sf-cru-blurb { font-size: 15px; line-height: 1.45; }
+.sf-crucible-armory .sf-cru-price { color: #ffe2a0; font-weight: 700; margin-block: 14px 6px; }
+.sf-crucible-armory .sf-cru-wallet { color: #ffe2a0; font-size: 20px; font-weight: 700; }
+.sf-crucible-armory .sf-cru-key { float: right; }
+
+/* Swarm keeps the flight controls, but gives the chase the centre of the screen. */
+.sf-swarm-flight .sf-overview,
+.sf-swarm-flight .sf-mission-tracker,
+.sf-swarm-flight #sf-wpnstat,
+.sf-swarm-flight #sf-rolestat { display: none !important; }
+.sf-swarm-flight .sf-crun {
+  position: fixed; top: 22px; left: 24px; width: 252px; min-width: 0;
+  padding: 12px 16px; border: 0; border-left: 3px solid #ffd477;
+  background: linear-gradient(90deg, rgb(6 15 24 / 90%), rgb(6 15 24 / 35%));
+  box-shadow: none;
+}
+.sf-swarm-flight .sf-crun__wave { font-size: 28px; font-weight: 800; color: #ffe4a8; letter-spacing: -.03em; }
+.sf-swarm-flight .sf-crun__label { font-size: 12px; letter-spacing: .12em; color: #c0d6df; }
+.sf-swarm-flight .sf-crun__fig--you { color: #a9f1e7; }
+.sf-swarm-flight .sf-crun__chainfig { font-size: 25px; }
+.sf-swarm-flight .sf-command-deck { background: transparent; border: 0; box-shadow: none; }
+.sf-swarm-flight .sf-cluster { min-height: 0; padding: 6px 12px; background: rgb(5 14 22 / 70%); border: 0; }
+.sf-swarm-flight .sf-stat--speed .sf-stat__v { font-size: 23px; }
+.sf-swarm-flight .sf-prail { background: rgb(5 14 22 / 88%); border-color: rgb(164 207 228 / 25%); }
+.sf-swarm-flight .sf-ft { text-shadow: 0 2px 1px #07101a, 0 0 5px #07101a; }
+.sf-swarm-flight .sf-ft--hull { color: #fff0b3; }
+.sf-swarm-flight .sf-ft--big { font-size: 27px; font-weight: 900; }
+.sf-crucible-door .k-title h1 { font-weight: 800; letter-spacing: -.055em; }
+.sf-crucible-door .k-word[aria-checked="true"] { color: #ffe4a8; }
+.sf-crucible-door .sf-crd-settings .k-row > .k-row__name { color: #a4c6d5; }
+@media (max-height: 650px) {
+  .sf-swarm-flight .sf-crun { top: 12px; left: 12px; width: 220px; padding: 8px 12px; }
+  .sf-swarm-flight .sf-crun__wave { font-size: 22px; }
+}
+@media (forced-colors: active) {
+  .sf-swarm-flight .sf-crun, .sf-swarm-flight .sf-cluster { background: Canvas; border: 1px solid CanvasText; }
+  .sf-swarm-flight .sf-crun__wave, .sf-swarm-flight .sf-crun__label { color: CanvasText; }
+}
+@media (max-width: 760px) {
+  .sf-crucible-armory .sf-cru-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sf-crucible-door .sf-crd-settings .k-row { display: block; }
+  .sf-crucible-armory .sf-cru-foot { display: block; }
+}
+@media (max-width: 480px) {
+  .sf-crucible-armory .sf-cru-cards { grid-template-columns: minmax(0, 1fr); }
+}

@@ -8,6 +8,14 @@
 // authored angular impulse for an off-center hit. impulseProvenance is the stable receipt tag.
 
 export const WEAPONS = [
+  {
+    id: 'wpn_snarl_s', name: 'Snarl Webcaster', slotType: 'weapon', size: 'S', tier: 3,
+    mass: 4, price: 38000, requiresTech: 'tech_fire_control',
+    dmg: 3, rof: 0.8, dps: 2.4, damageType: 'ion', energyCost: 10,
+    projSpeed: 390, range: 580, tracking: 'fixed', spreadDeg: 0.5,
+    heatPerShot: 12, heatMax: 100, heatDissip: 18,
+    impulsePerHit: 6, tumbleTorque: 0.2, impulseProvenance: 'snarl_catch',
+  },
   // --- SMALL (S slot) ---
   {
     id: 'wpn_pulse_laser_s', name: 'Pulse Laser S', slotType: 'weapon', size: 'S', tier: 1, mass: 2, price: 4500,

@@ -48,7 +48,7 @@ export const SWARM_WAVE_MAX = 999;
  * bench would be paying for the bench with the upgrade it came for. The bench is also the only
  * surface a ten-wave extraction window is ever open on.
  */
-export const SWARM_DRAFT_EVERY = 5;
+export const SWARM_DRAFT_EVERY = 1;
 export const SWARM_REFIT_EVERY = 10;
 
 /** Every tenth wave is a boss wave: a Dreadnought on top of a (reduced) swarm. */
@@ -640,6 +640,8 @@ export function swarmPlanBlock(wave) {
   return {
     schemaVersion: SWARM_SCHEMA_VERSION,
     wave: w,
+    // Finite pressure per round. Clearing the pack earns the shop; a timer cannot award it.
+    killTarget: swarmQuota(w),
     rewardReferenceKills: swarmQuota(w),
     durationTicks: SWARM_WAVE_DURATION_TICKS,
     concurrent: swarmConcurrent(w),

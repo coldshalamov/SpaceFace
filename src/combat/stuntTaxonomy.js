@@ -491,12 +491,14 @@ export class StuntDetector {
   }
 
   _handleWellEvent(payload, tricks) {
-    const actorId = payload.actorId || payload.playerId || this.playerId;
+    const actorId = payload.actorId ?? payload.playerId ?? payload.provenance?.actorId;
     const wellId = payload.wellId || payload.sourceId;
     const victimId = payload.targetId || payload.victimId;
     const tick = nonNegative(payload.tick, this.tick);
 
-    if (wellId != null) {
+    // Ambient arena wells have no pilot owner. Their accidents are room activity,
+    // not a player trick; never invent an initiator for a world field.
+    if (wellId != null && actorId != null) {
       this.recentSingularityWells.set(wellId, {
         actorId,
         victimId,
@@ -551,7 +553,9 @@ export class StuntDetector {
 
       // Record bounce for possible Bank Shot
       if (deltaV >= 8) {
+        const prior = this.recentImpulses.get(targetId) || this.recentTetherReleases.get(targetId);
         this.recentBounces.set(targetId, {
+          actorId: prior?.actorId ?? actorId ?? null,
           surfaceId: otherId,
           surfaceType: surface,
           tick,
@@ -569,9 +573,9 @@ export class StuntDetector {
       // A. Bank shot: bounced off wall then hit craft
       const priorBounce = this.recentBounces.get(otherId) || this.recentBounces.get(targetId);
       if (priorBounce && (tick - priorBounce.tick) <= STUNT_CONSTANTS.CHAIN_WINDOW_TICKS) {
-        const initiator = (priorReleaseOther && priorReleaseOther.actorId)
-          || (priorImpulseOther && priorImpulseOther.actorId)
-          || this.playerId;
+        // A wall collision is not evidence of a player throw. Preserve the instigator of
+        // the body that actually rebounded; enemy pile-ups must never mint player tricks.
+        const initiator = priorBounce.actorId;
 
         if (this._isPlayer(initiator)) {
           const projectile = priorBounce === this.recentBounces.get(otherId) ? otherId : targetId;

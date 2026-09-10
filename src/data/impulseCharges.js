@@ -11,6 +11,11 @@
 // Linear falloff: Δv(r) = impulse × (1 − r/radius) / mass.
 
 export const IMPULSE_CHARGES = {
+  charge_repulsion_trap: {
+    throwSpeed: 0, stickRadius: 0, armTimeS: 1.1,
+    impulse: 2400, damage: 16, radius: 105, maxActive: 4,
+    armingDelayS: 0.55, triggerRadius: 52, lifetimeS: 22,
+  },
   charge_standard: {
     throwSpeed: 120,
     stickRadius: 6,

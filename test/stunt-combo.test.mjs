@@ -67,7 +67,7 @@ test('combo schema and tuning constants', () => {
   assert.ok(COMBO_BANK_QUIET_TICKS >= COMBO_WINDOW_TICKS);
   assert.equal(CHAIN_STEP, 0.25);
   assert.equal(MAX_CHAIN_MULT, 4);
-  assert.ok(PULSE_KILL_SCORE < GUN_KILL_SCORE);
+  assert.equal(PULSE_KILL_SCORE, GUN_KILL_SCORE, 'all guns have fair base kill pay');
 });
 
 test('rarity multiplier orders common < uncommon < rare < legendary', () => {
@@ -128,7 +128,7 @@ test('bank on quiet is idempotent and tick-driven', () => {
   assert.equal(bankActive(combo), 0);
 });
 
-test('gun kills pay flat, Pulse pays less, tricks never double-pay', () => {
+test('gun kills pay flat and fairly, tricks never double-pay', () => {
   assert.equal(killPoints('wpn_autocannon_m'), GUN_KILL_SCORE);
   assert.equal(killPoints('wpn_concussion_cannon_m'), GUN_KILL_SCORE);
   assert.equal(killPoints(undefined), GUN_KILL_SCORE);
@@ -217,7 +217,7 @@ function driveTape(kind) {
   }
 }
 
-test('seeded scenario: physics outscores gun >= 2x at equal kills; Pulse cannot top it', () => {
+test('seeded scenario: executed tricks add style; base kills pay equally across guns', () => {
   const physics = driveTape('physics');
   const gun = driveTape('gun');
   const pulse = driveTape('pulse');
@@ -232,11 +232,10 @@ test('seeded scenario: physics outscores gun >= 2x at equal kills; Pulse cannot 
   assert.equal(pulse.kills, 4);
   assert.ok(physics.bestChain >= 3, `physics tape must chain, got bestChain=${physics.bestChain}`);
   assert.ok(
-    physics.score >= 2 * gun.score,
-    `physics (${physics.score}) must outscore gun (${gun.score}) by >= 2x`,
+    physics.score > gun.score,
+    `the executed multi-stage tricks (${physics.score}) add style to base kill pay (${gun.score})`,
   );
-  assert.ok(pulse.score < gun.score, `pulse (${pulse.score}) must pay less than plain gun (${gun.score})`);
-  assert.ok(pulse.score < physics.score, `free Pulse (${pulse.score}) cannot top the physics board (${physics.score})`);
+  assert.equal(pulse.score, gun.score);
 });
 
 test('crucible combo builders read the stunt snapshot and stay null-safe', () => {

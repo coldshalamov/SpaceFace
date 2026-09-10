@@ -78,6 +78,12 @@ export const MODULES = [
 
   // ===================== UTILITY =====================
   {
+    id: 'mod_repulsion_trap_s', name: 'Repulsion Trap', slotType: 'utility', size: 'S', tier: 2,
+    mass: 3, price: 18000, requiresTech: 'tech_ricochet_ballistics', energyDraw: 2,
+    mods: { repulsionTrap: true },
+    description: 'Drop a proximity charge behind your flight path. Pursuers trigger a radial shove; remote detonation still works.',
+  },
+  {
     id: 'mod_cargo_scanner_s', name: 'Cargo Scanner S', slotType: 'utility', size: 'S', tier: 1, mass: 1, price: 4000,
     energyDraw: 1, mods: { revealCargo: true },
   },

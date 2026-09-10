@@ -147,6 +147,7 @@ import {
   PhasedExplosionLifecycle,
 } from './combat/phasedExplosions.js';
 import { ArcadeStructuralFx } from './combat/arcadeStructuralFx.js';
+import { TetherWebFx } from './combat/tetherWebFx.js';
 import {
   commitInstancedSpriteBuckets,
   createInstancedSpriteBuckets,
@@ -1248,6 +1249,8 @@ export const vfx = {
     invokeVfxCall(this._unbindArcadeContextLoss, this, 'arcade context loss unbind');
     invokeVfxDisposer(this._arcadeStructural, 'arcade structural FX');
     this._arcadeStructural = null;
+    invokeVfxDisposer(this._tetherWebFx, 'Snarl cables');
+    this._tetherWebFx = null;
 
     invokeVfxCall(this._disposeEnergy, this, 'energy resources');
 
@@ -1429,6 +1432,7 @@ export const vfx = {
       this._arcadeStructural.getOwnerRoots?.() || this._arcadeStructural.getMeshes?.()
     );
     for (const root of arcadeRoots || []) add(root);
+    add(this._tetherWebFx?.mesh);
     const presenterRoots = this._weaponPresenter && (
       this._weaponPresenter.getOwnerRoots?.() || this._weaponPresenter.getMeshes?.()
     );
@@ -2810,6 +2814,7 @@ export const vfx = {
   _initArcadeStructural() {
     if (!this._scene || this._arcadeStructural) return;
     this._arcadeStructural = new ArcadeStructuralFx(this._scene);
+    this._tetherWebFx = new TetherWebFx(this._scene, this._combatBeamLocalizer);
     this._bindArcadeContextLoss();
   },
 
@@ -10045,6 +10050,7 @@ export const vfx = {
     if (this._arcadeStructural) {
       this._arcadeStructural.update(dt, cam, viewportH);
     }
+    this._tetherWebFx?.update(this.state);
     if (this._combatBeams) {
       const camDist = cam && cam.position
         ? Math.hypot(cam.position.x, cam.position.y, cam.position.z)

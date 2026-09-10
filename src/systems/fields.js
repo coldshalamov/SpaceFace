@@ -1487,8 +1487,7 @@ export const fields = {
     rec.announced = true;
     this.bus.emit('well:fling', {
       schemaVersion: 1,
-      actorId: rec.ownerId != null ? rec.ownerId : state.playerId,
-      playerId: state.playerId,
+      actorId: rec.ownerId ?? null,
       wellId: rec.fieldId,
       sourceId: rec.fieldId,
       targetId: rec.targetId,
@@ -1554,8 +1553,7 @@ export const fields = {
     rt.cluster.captureAnnounced = true;
     this.bus.emit('well:capture', {
       schemaVersion: 1,
-      actorId: state.playerId,
-      playerId: state.playerId,
+      actorId: rt.cluster.sourceId ?? null,
       wellId: rt.cluster.fieldId,
       sourceId: rt.cluster.fieldId,
       targetId: primed.id,
