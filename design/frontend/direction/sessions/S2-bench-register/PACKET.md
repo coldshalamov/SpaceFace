@@ -20,9 +20,16 @@ stage will stand on. The BENCH register (instruments on a workbench with the liv
 smoked-glass windows) is the hardest register to get right: dense data must stay an instrument,
 not a spreadsheet.
 
-`inputs/S1-return/` is the accepted S1 return: `kit-notes.md`, `tokens/`, `kit/fh.css`, the
-assets, icons and marks. **Match them exactly.** Extend the kit; do not fork it. Append new
-components to `fh.css` under a `/* S2 */` banner and new tokens under `/* S2 */`.
+`inputs/S1-return/` is the S1 return (attached as `S1-return.zip` — unzip it there): `kit-notes.md`,
+`tokens/`, `kit/fh.css`, the assets, icons and marks. **Match them exactly.** Extend the kit; do
+not fork it. Append new components to `fh.css` under a `/* S2 */` banner and new tokens under
+`/* S2 */`.
+
+**If the controller has not reviewed S1 yet** (no `DECISIONS.md` in the return), proceed anyway:
+the kit is independent of which title shot gets picked, so nothing in this session waits on that
+choice. Treat S1's `NOTES.md` `MISSING` list as your Phase 1a, and do not re-open S1's decisions
+unless its `QA.md` flags a defect that blocks a bench screen — then fix it in place, under a
+`/* S2 fix */` banner, and say so in `NOTES.md`.
 
 Ground rules are S1's: plan first, checkpoint after every phase, never stop to ask, masters then
 scripts, real strings, `file://`-openable prototypes. You have the web: the Three.js files in

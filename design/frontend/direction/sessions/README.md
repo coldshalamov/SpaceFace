@@ -53,22 +53,46 @@ Output: `.devshots/ui-packets/S1-design-system.zip`. The builder bundles `_COMMO
 `source/` stamped with the commit it was cut from. It prints the zip size; S2–S4 carry earlier
 returns and can be tens of megabytes — that is expected.
 
+## Run order — what to attach to each session
+
+All five zips are built up front and can be read today. Sessions 1–4 run **back to back**: each
+one needs only the previous session's return zip attached beside it. The controller's review of a
+return runs in parallel and never blocks the next hand-off; its corrections ride along in the
+next return or the next session's `inputs/`. Session 5 is the only one that waits, because it
+reviews the integrated game.
+
+| Hand-off | Attach | Waits on |
+|---|---|---|
+| **S1** | `S1-design-system.zip` | nothing |
+| **S2** | `S2-bench-register.zip` + `S1-return.zip` | S1's return |
+| **S3** | `S3-prototype-app.zip` + `S1-return.zip` + `S2-return.zip` | S2's return |
+| **S4** | rebuild first (`node scripts/build-ui-packet.mjs S4`, so the source snapshot is current) → `S4-engine-port.zip` + `S3-return.zip` | S3's return; the local stage and Blender lanes should have landed |
+| **S5** | rebuild first (it then carries the integration captures and the post-integration snapshot) → `S5-integration-qa.zip` | local integration of S4 (the title veto has happened) |
+
+Each zip's `inputs/MISSING.txt` names exactly what to attach. Returns go in
+`.devshots/ui-packets/returns/<S>-return.zip`; if you also unzip them there, the next rebuild packs
+them inside and nothing needs attaching.
+
 ## Hand a session to ChatGPT 6 Pro
 
-New conversation, Pro model, attach the zip, send exactly:
+New conversation, Pro model, attach the session zip and the return zip(s) the table names, send
+exactly:
 
-> Unzip the attached packet and read `_COMMON/00_READ_ME_FIRST.md`, then `PACKET.md`. This is a
-> full development session: plan it in `PLAN.md`, work phase by phase, overwrite the checkpoint zip
-> after every phase, keep `PROGRESS.md` current, and never stop to ask a question — decide and
-> record the decision. Return the final zip named as the packet says, with `manifest.json`,
-> `NOTES.md` and `QA.md`. Keep your reply short: what is in the zip, what is missing and why.
+> Unzip the attached session packet and read `_COMMON/00_READ_ME_FIRST.md`, then `PACKET.md`. If
+> other zips are attached, they are previous sessions' returns: unzip each into the packet's
+> `inputs/` folder first. This is a full development session: plan it in `PLAN.md`, work phase by
+> phase, overwrite the checkpoint zip after every phase, keep `PROGRESS.md` current, and never
+> stop to ask a question — decide and record the decision. Return the final zip named as the
+> packet says, with `manifest.json`, `NOTES.md` and `QA.md`. Keep your reply short: what is in the
+> zip, what is missing and why.
 
 One session per conversation. If the return is partial, one follow-up turn may ask for the exact
 missing items named in `NOTES.md`; after that the remainder goes into the next session's brief.
 
 ## Bring a return back
 
-Unzip the return into `.devshots/ui-packets/returns/<S>-return/` and say "review S1". The
+Save the return as `.devshots/ui-packets/returns/<S>-return.zip` and say "review S1". The
 controller validates the manifest, opens the prototypes, judges frames and assets against the two
-tests and the guard, picks among variants, commits accepted frames to `../approved/` and accepted
-assets to `assets/ui/kit/`, and builds the next session's zip (which carries the accepted return).
+tests and the guard, picks among variants (recorded in the return as `DECISIONS.md`), commits
+accepted frames to `../approved/` and accepted assets to `assets/ui/kit/`, and starts the local lane
+the session unlocks. None of that has to finish before the next session is handed off.

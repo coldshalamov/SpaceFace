@@ -20,6 +20,10 @@ libraries and reference study; use the connector for extra source files at the c
 5. `phases/` — the detailed phase specs a session bundles (deliverable inventories, acceptance,
    and "the way this gets faked" per phase). `PACKET.md` is the plan; these are the details.
 6. `inputs/` — prior session returns, fonts, libraries and reference files this packet depends on.
+   If `inputs/MISSING.txt` says a prior return must be attached, it was handed to you as a second
+   zip (`S1-return.zip`, `S2-return.zip`, …): unzip each into `inputs/` before starting. If a listed
+   return was not attached at all, record it under `BLOCKED` in `NOTES.md` and do every phase that
+   does not depend on it.
 7. `source/` — a snapshot of repository source at the commit named in `README.txt` (engine sessions).
 8. `current/` — captures of the current screens: the content inventory and the *before* picture,
    never a look reference.

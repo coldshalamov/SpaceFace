@@ -31,6 +31,12 @@ and patch, in case the connector fails. The repository also carries an "agent co
 GitHub Actions workflow; if the connector surfaces it, use it as its documentation says. Never
 push to `master` directly.
 
+**Before you start.** `inputs/S3-return/` is the S3 return (attached as `S3-return.zip`; unzip it
+there). `source/` must be a snapshot taken shortly before this session — check the commit in
+`README.txt` against the repository's `master` through the connector; if `master` has moved far
+(days of commits touching `src/ui/` or `styles/`), fetch the changed files by path at the newer
+commit, record the commit you actually ported against in `NOTES.md`, and branch from it.
+
 ## What you must know about the code (audited 2026-09-10)
 
 - Screens are duck-typed objects registered from `src/ui/uiRoot.js` (`SCREEN_MODULES`) into

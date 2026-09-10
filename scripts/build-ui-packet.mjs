@@ -131,9 +131,20 @@ function build(id, { list = false } = {}) {
   const sha = plan.source.length ? gitHead() : null;
   for (const rel of plan.source) copyAny(path.join(ROOT, rel), path.join(stageRoot, 'source', rel));
   if (plan.missing.length) {
-    fs.writeFileSync(path.join(stageRoot, 'inputs', 'MISSING.txt'),
-      'These inputs were not available when the packet was built. Do not hand this packet off until they exist:\n'
-      + plan.missing.map((m) => `- ${m}`).join('\n') + '\n');
+    // Prior session returns and integration captures are produced later by design: they are attached
+    // alongside this zip at hand-off time, not reasons to withhold the packet.
+    const attach = plan.missing.filter((m) => /ui-packets\/returns\/|frontend\/S5-captures/.test(m));
+    const absent = plan.missing.filter((m) => !attach.includes(m));
+    let txt = '';
+    if (attach.length) {
+      txt += 'ATTACH ALONGSIDE THIS ZIP WHEN HANDING OFF (unzip them into inputs/ before starting):\n'
+        + attach.map((m) => `- ${m.replace(/^inputs\//, '')}  →  attach the matching *-return.zip (or the captures folder as a zip)`).join('\n') + '\n\n';
+    }
+    if (absent.length) {
+      txt += 'NOT AVAILABLE WHEN THIS PACKET WAS BUILT (rebuild the packet before hand-off if these matter):\n'
+        + absent.map((m) => `- ${m}`).join('\n') + '\n';
+    }
+    fs.writeFileSync(path.join(stageRoot, 'inputs', 'MISSING.txt'), txt);
   }
   fs.writeFileSync(path.join(stageRoot, 'README.txt'),
     `SpaceFace UI hand-off ${id} — ${head.title}\n\n`

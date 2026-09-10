@@ -19,7 +19,10 @@ docking and first-undock choreographies, reduced motion and forced colours — s
 play the interface in a browser before a line of engine code changes, and so the engine port
 (S4) has something exact to port.
 
-Inputs are the accepted S1 and S2 returns. Extend `fh.css` under `/* S3 */`; never fork.
+Inputs are the S1 and S2 returns (attached as `S1-return.zip` and `S2-return.zip` — unzip both into
+`inputs/`). Extend `fh.css` under `/* S3 */`; never fork. If the controller's review notes
+(`DECISIONS.md`, review corrections) are present in a return, apply them; if not, proceed on the
+returns as they are and carry their `MISSING` lists as your Phase 1a.
 
 Ground rules are S1's.
 
