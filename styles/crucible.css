@@ -40,6 +40,26 @@
 .sf-crucible-armory .sf-cru-wallet { color: #ffe2a0; font-size: 20px; font-weight: 700; }
 .sf-crucible-armory .sf-cru-key { float: right; }
 
+/* Fitting guidance uses the kit's text and colour tokens; it needs neither hover nor motion. */
+.sf-cru-activation { color: var(--k-bone); margin-block: 10px; line-height: 1.45; }
+.sf-crucible-combat {
+  position: fixed; right: 24px; top: 148px; z-index: 10;
+  box-sizing: border-box; width: 310px; max-width: calc(100vw - 48px);
+  margin: 0; padding: 10px 14px; list-style: none;
+  color: var(--k-bone); background: var(--k-ink);
+  border-left: 2px solid var(--k-gold); pointer-events: none;
+  overflow-wrap: anywhere; font-variant-numeric: tabular-nums;
+}
+.sf-crucible-combat[hidden], .ui-modal-open .sf-crucible-combat { display: none; }
+.sf-crucible-combat__toy + .sf-crucible-combat__toy { margin-top: 6px; }
+@media (max-width: 760px) {
+  .sf-crucible-combat { right: 10px; top: 180px; width: 245px; max-width: calc(100vw - 20px); }
+}
+@media (forced-colors: active) {
+  .sf-crucible-combat { background: Canvas; color: CanvasText; border: 1px solid CanvasText; }
+  .sf-cru-activation { color: ButtonText; }
+}
+
 /* Swarm keeps the flight controls, but gives the chase the centre of the screen. */
 .sf-swarm-flight .sf-overview,
 .sf-swarm-flight .sf-mission-tracker,

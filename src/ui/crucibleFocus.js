@@ -29,6 +29,7 @@
 // quitting to the menu mid-fight.
 
 import { isRunSealed } from '../core/runSeal.js';
+import { mountCrucibleCombatReadout } from './crucibleCombatReadout.js';
 
 export const CRUCIBLE_FOCUS_CLASS = 'sf-crucible-focus';
 const STYLE_ID = 'sf-crucible-focus-style';
@@ -122,6 +123,7 @@ export const crucibleFocus = {
   id: 'crucibleFocus',
 
   init(ctx) {
+    this._release();
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this._applied = null;
@@ -144,10 +146,18 @@ export const crucibleFocus = {
     // workbench inside the campaign, not a match.
     const run = st && st.run;
     const wanted = !!(run && run.kind === 'survival' && isRunSealed(st));
+    const root = focusHost();
+    // Fittings, bindings and readiness can change without changing the run's focus class.
+    if (wanted && root) {
+      if (!this._combatReadout) this._combatReadout = mountCrucibleCombatReadout(root);
+      this._combatReadout.update(st);
+    } else {
+      this._combatReadout?.release();
+      this._combatReadout = null;
+    }
     if (wanted === this._applied) return;
     this._applied = wanted;
     this._applyCamera(st, wanted);
-    const root = focusHost();
     if (!root) return;
     if (wanted) this._injectCss();
     root.classList.toggle(CRUCIBLE_FOCUS_CLASS, wanted);
@@ -170,10 +180,12 @@ export const crucibleFocus = {
   },
 
   _release() {
+    this._combatReadout?.release();
+    this._combatReadout = null;
     if (this._applied === true) this._applyCamera(this.state, false);
     this._priorZoom = null;
-    if (typeof document === 'undefined') return;
     this._applied = null;
+    if (typeof document === 'undefined') return;
     const root = focusHost();
     if (root) root.classList.remove(CRUCIBLE_FOCUS_CLASS);
   },

@@ -30,6 +30,7 @@
 import { SURVIVAL_DRAFT_CHOICES } from '../../data/survivalDraft.js';
 import { canExtract, requestSurvivalExtraction } from '../../systems/survivalExtraction.js';
 import { el, settle, cue } from '../kit/index.js';
+import { crucibleFittingDescription } from '../crucibleCombatReadout.js';
 
 /** A kit word (`button.k-word`). The caller appends it. */
 function word(label, className) {
@@ -75,12 +76,13 @@ function prettyDefId(defId) {
 }
 
 /** Card text for one offer. Exported so a check can assert the wording without a DOM. */
-export function offerCardLines(offer) {
+export function offerCardLines(offer, state) {
   if (!offer) return null;
   return {
     verb: offer.verb || offer.id || '',
     name: offer.name || offer.defId || '',
     blurb: offer.blurb || '',
+    activation: crucibleFittingDescription(offer.defId, state),
     slot: offer.replaces
       ? `Hardpoint ${offer.slotIndex + 1} — replaces ${prettyDefId(offer.replaces)}`
       : `Hardpoint ${offer.slotIndex + 1} — empty`,
@@ -364,11 +366,11 @@ export const crucibleDraftScreen = {
   // One offer: the key numeral in fine print, the verb as the one permitted caps label, the name
   // at sub-title size, the blurb as a sentence, the slot in fine print. The whole block is the button.
   _buildCard(ctx, offer, keyNumber) {
-    const lines = offerCardLines(offer);
+    const lines = offerCardLines(offer, ctx.state);
     const card = el('button', 'sf-cru-card');
     card.type = 'button';
     card.dataset.offerId = offer.id;
-    card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.slot}`);
+    card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${lines.slot}`);
 
     const key = el('p', 'k-t-fine k-38 sf-cru-key', keyNumber <= 3 ? String(keyNumber) : '');
     key.setAttribute('aria-hidden', 'true');
@@ -376,13 +378,14 @@ export const crucibleDraftScreen = {
     card.appendChild(el('p', 'k-caps sf-cru-verb', lines.verb));
     card.appendChild(el('h2', 'k-display k-t-sub sf-cru-name', lines.name));
     card.appendChild(el('p', 'k-sentence sf-cru-blurb', lines.blurb));
+    if (lines.activation) card.appendChild(el('p', 'k-text k-t-data sf-cru-activation', lines.activation));
     if (Number.isFinite(offer.price)) {
       card.appendChild(el('p', 'k-t-emph sf-cru-price', offer.purchased ? 'FITTED' : `${offer.price} cr`));
       if (offer.unavailableReason && !offer.purchased) {
         card.appendChild(el('p', 'k-t-fine sf-cru-afford', offer.unavailableReason));
       }
       card.disabled = !offer.available;
-      card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${offer.price} credits. ${offer.unavailableReason || lines.slot}`);
+      card.setAttribute('aria-label', `${lines.verb}. ${lines.name}. ${lines.blurb} ${lines.activation}. ${offer.price} credits. ${offer.unavailableReason || lines.slot}`);
     }
     card.appendChild(el('p', 'k-t-fine k-38 sf-cru-slot', lines.slot));
 
