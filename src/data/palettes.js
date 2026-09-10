@@ -418,6 +418,20 @@ export const FORCE_PALETTE_LIVE_STANDINS = Object.freeze({
   shields: '#4F8FDD',
 });
 
+// PQ-161.01 — which force channel each leftover telegraph kind announces. The verb is the contract:
+// a kind maps to the force that actually lands on the hull (shots and rams punch, blasts shove,
+// tethers hitch). Faction colour never enters this table — identity and force stay two channels.
+export const TELEGRAPH_FORCE_CHANNELS = Object.freeze({
+  engine_flare: 'impulses',
+  weapon_charge: 'impulses',
+  wake_mines: 'repulsors',
+  attach_spool: 'rope',
+});
+
+export function forceChannelForTelegraphKind(kind) {
+  return TELEGRAPH_FORCE_CHANNELS[String(kind || '')] || null;
+}
+
 // Machado, Oliveira & Fernandes 2009 — 100% dichromacy, applied in linear sRGB.
 const FORCE_CVD_MATRICES = Object.freeze({
   none: Object.freeze([
@@ -644,6 +658,21 @@ export function evaluateForcePaletteContrast({
     simulations,
     errors,
   };
+}
+
+// Perceptual separation (CIE ΔE76) between any two on-screen hexes, per vision mode. Used by the
+// PQ-161 tests to prove force hues stay apart from each other AND from faction primaries.
+export function minPairDeltaE(hexA, hexB, modes = FORCE_CVD_MODES) {
+  const list = Array.isArray(modes) ? modes : [modes];
+  let min = Infinity;
+  for (const mode of list) {
+    const a = simulateLinear(hexA, mode);
+    const b = simulateLinear(hexB, mode);
+    if (!a || !b) return null;
+    const de = deltaE76(xyzToLab(linearToXyz(a)), xyzToLab(linearToXyz(b)));
+    min = Math.min(min, de);
+  }
+  return min;
 }
 
 export function formatForcePaletteReport(result) {

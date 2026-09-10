@@ -4,6 +4,8 @@ import {
   OCCUPATIONAL_SILHOUETTE_TOKENS,
   OCCUPATIONAL_SILHOUETTE_RULES,
   getOccupationalSilhouetteRule,
+  forceChannelForTelegraphKind,
+  getForcePaletteHex,
 } from '../data/palettes.js';
 
 export {
@@ -54,6 +56,11 @@ export const TELEGRAPH_CUE_TICKS = 30;
 export const TELEGRAPH_PAIR_MIN_TICKS = 30;
 export const TELEGRAPH_PAIR_MAX_TICKS = 60;
 
+// Continuous hazards (mines, snares) stay lit from placement to trigger instead of pulsing once.
+// Their event rows may declare durationTicks so death correlation can tell "still lit" from a stale
+// placement row no one can see anymore.
+export const CONTINUOUS_TELEGRAPH_KINDS = new Set(['wake_mines', 'attach_spool']);
+
 const TELEGRAPH_KIND_SET = new Set(LEFTOVER_TELEGRAPH_KINDS);
 const COMPAT_ATTACK_KINDS = new Set(['attackRun', 'alphaStrike']);
 const SLOT_TELEGRAPH_CLASS = 'sf-threat-halo__slot--telegraph';
@@ -89,6 +96,9 @@ function telegraphIdsOf(payload) {
 /**
  * Pair a leftover player death with a leftover ai:telegraph 30–60 ticks earlier
  * whose entityId / mineId matches the killer. Same-breath inject does not pair.
+ * Continuous hazards (wake_mines / attach_spool) may declare durationTicks: they pair when the
+ * announcement led the death by ≥ minLead and the cue was still lit inside the final
+ * maxLead window — a mine telegraphed 2 s ahead counts, a stale unlit placement does not.
  */
 export function pairLeftoverDeathTelegraph(death, telegraphs, opts = {}) {
   if (!death || !Array.isArray(telegraphs) || telegraphs.length === 0) return null;
@@ -107,15 +117,23 @@ export function pairLeftoverDeathTelegraph(death, telegraphs, opts = {}) {
     if (!tg) continue;
     const tgTick = Number.isInteger(tg.tick) ? tg.tick : (Number.isFinite(tg.tick) ? (tg.tick | 0) : NaN);
     if (!Number.isInteger(tgTick)) continue;
+    const kind = leftoverTelegraphKind(tg);
     const lead = deathTick - tgTick;
-    if (lead < minLead || lead > maxLead) continue;
+    if (CONTINUOUS_TELEGRAPH_KINDS.has(kind)) {
+      const duration = Number(tg.durationTicks);
+      const liveUntil = Number.isFinite(duration) && duration > 0 ? tgTick + duration : tgTick;
+      if (lead < minLead || tgTick > deathTick) continue;
+      if (liveUntil < deathTick - maxLead) continue;
+    } else if (lead < minLead || lead > maxLead) {
+      continue;
+    }
     const ids = telegraphIdsOf(tg);
     const matched = (killerId != null && ids.includes(killerId))
       || (mineId != null && ids.includes(mineId));
     if (!matched) continue;
     if (!best || tgTick > best.tick) {
       best = {
-        kind: leftoverTelegraphKind(tg),
+        kind,
         tick: tgTick,
         leadTicks: lead,
         entityId: tg.entityId != null ? tg.entityId : null,
@@ -130,6 +148,12 @@ function telegraphDurationTicks(payload) {
   const raw = Number(payload && payload.durationTicks);
   if (Number.isFinite(raw) && raw > 0) return Math.max(TELEGRAPH_CUE_TICKS, Math.floor(raw));
   return TELEGRAPH_CUE_TICKS;
+}
+
+function liveHazardDurationTicks(tick, startedTick) {
+  const started = Number.isInteger(startedTick) ? startedTick : 0;
+  const age = Number.isInteger(tick) ? tick - started : 0;
+  return Math.max(TELEGRAPH_CUE_TICKS, Math.max(0, age) + 1);
 }
 
 function placedTickFromSimTime(state, placedAt) {
@@ -247,7 +271,11 @@ export function createThreatHalo(root, busOrOpts) {
 
   const hostileSlots = new Array(HOSTILE_LIMIT);
   for (let i = 0; i < HOSTILE_LIMIT; i++) {
-    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--arc', '<div class="sf-threat-halo__arc"></div>');
+    const slot = createSlot('sf-threat-halo__slot sf-threat-halo__slot--arc', '');
+    const arc = document.createElement('div');
+    arc.className = 'sf-threat-halo__arc';
+    slot.appendChild(arc);
+    slot._sfArc = arc;
     layer.appendChild(slot);
     hostileSlots[i] = slot;
   }
@@ -387,7 +415,19 @@ export function createThreatHalo(root, busOrOpts) {
           entityId: data.ownerId != null ? data.ownerId : entity.ownerId,
           mineId: entity.id,
           kind: 'wake_mines',
-          durationTicks: TELEGRAPH_CUE_TICKS,
+          durationTicks: liveHazardDurationTicks(tick, placedTick),
+          tick: placedTick,
+        }, tick);
+        continue;
+      }
+      if (data.kind === 'transverse_snare_hazard') {
+        const placedTick = Number.isInteger(data.spawnTick)
+          ? data.spawnTick
+          : placedTickFromSimTime(state, data.placedAt);
+        noteTelegraph({
+          entityId: data.ownerId != null ? data.ownerId : entity.ownerId,
+          kind: 'attach_spool',
+          durationTicks: liveHazardDurationTicks(tick, placedTick),
           tick: placedTick,
         }, tick);
         continue;
@@ -601,6 +641,25 @@ export function createThreatHalo(root, busOrOpts) {
     slot.removeAttribute('data-entity-id');
     if (slot.className && slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
       slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
+    }
+    setForceHue(slot, slot._sfArc, null, null);
+  }
+
+  // The cue paints itself from the authored force palette (PQ-161.02): channel attribute for the
+  // rules layer, inline border colour so the palette hex wins over any stylesheet default.
+  function setForceHue(slot, arc, channel, hex) {
+    if (!slot) return;
+    const channelKey = channel || '';
+    if (slot._sfForceChannel !== channelKey) {
+      slot._sfForceChannel = channelKey;
+      if (channelKey) slot.setAttribute('data-force-channel', channelKey);
+      else slot.removeAttribute('data-force-channel');
+    }
+    if (!arc) return;
+    const colorKey = hex || '';
+    if (arc._sfForceColor !== colorKey) {
+      arc._sfForceColor = colorKey;
+      arc.style.borderColor = colorKey;
     }
   }
 
@@ -819,11 +878,14 @@ export function createThreatHalo(root, busOrOpts) {
         if (slot.className.indexOf(SLOT_TELEGRAPH_CLASS) === -1) {
           slot.className = `${slot.className} ${SLOT_TELEGRAPH_CLASS}`;
         }
+        const channel = forceChannelForTelegraphKind(cue.kind);
+        setForceHue(slot, slot._sfArc, channel, channel ? getForcePaletteHex(channel) : null);
       } else {
         slot.removeAttribute('data-telegraph-kind');
         if (slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
           slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
         }
+        setForceHue(slot, slot._sfArc, null, null);
       }
       if (hostileFaction[i]) {
         slot.setAttribute('data-faction', hostileFaction[i]);

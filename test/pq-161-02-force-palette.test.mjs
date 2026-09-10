@@ -9,10 +9,14 @@ import {
   FORCE_PALETTE,
   FORCE_PALETTE_LIVE_STANDINS,
   FORCE_PALETTE_SEED,
+  FACTION_PALETTES,
+  TELEGRAPH_FORCE_CHANNELS,
   evaluateForcePaletteContrast,
   formatForcePaletteReport,
+  forceChannelForTelegraphKind,
   forcePaletteHexes,
   getForcePaletteHex,
+  minPairDeltaE,
 } from '../src/data/palettes.js';
 import {
   FORCE_PALETTE_CLAIMS,
@@ -70,4 +74,69 @@ test('PQ-161.02: claims pin the same five hues, not labels', () => {
     assert.ok(claim.verb, `${id} verb`);
     assert.ok(claim.hueName, `${id} hue name`);
   }
+});
+
+const TELEGRAPH_VISION_MODES = Object.freeze(['none', 'deuteranopia', 'protanopia']);
+
+test('PQ-161.02: minPairDeltaE separates every force pair under normal and CVD vision', () => {
+  const modes = ['none', ...FORCE_CVD_MODES];
+  let worst = { de: Infinity, a: null, b: null, mode: null };
+  for (let i = 0; i < FORCE_CHANNEL_IDS.length; i++) {
+    for (let j = i + 1; j < FORCE_CHANNEL_IDS.length; j++) {
+      const a = FORCE_CHANNEL_IDS[i];
+      const b = FORCE_CHANNEL_IDS[j];
+      for (const mode of modes) {
+        const de = minPairDeltaE(getForcePaletteHex(a), getForcePaletteHex(b), [mode]);
+        assert.ok(Number.isFinite(de), `${a} vs ${b} ${mode}`);
+        if (de < worst.de) worst = { de, a, b, mode };
+        assert.ok(
+          de >= FORCE_CONTRAST_FLOORS.minDeltaE,
+          `${a} vs ${b} ${mode} ΔE ${de.toFixed(2)} < ${FORCE_CONTRAST_FLOORS.minDeltaE}`,
+        );
+      }
+    }
+  }
+  console.log(`PQ-161.02 minPairDeltaE force-vs-force min=${worst.de.toFixed(2)} pair=${worst.a}-${worst.b} mode=${worst.mode} seed ${FORCE_PALETTE_SEED}`);
+});
+
+test('PQ-161.02: telegraph kinds map to force channels, never faction identity', () => {
+  const kinds = Object.keys(TELEGRAPH_FORCE_CHANNELS);
+  assert.deepEqual(kinds.sort(), ['attach_spool', 'engine_flare', 'wake_mines', 'weapon_charge']);
+  const used = new Set();
+  for (const kind of kinds) {
+    const channel = forceChannelForTelegraphKind(kind);
+    assert.equal(channel, TELEGRAPH_FORCE_CHANNELS[kind]);
+    assert.equal(FORCE_CHANNEL_IDS.includes(channel), true, `${kind} maps to a force channel`);
+    assert.equal(String(channel).startsWith('faction_'), false);
+    used.add(channel);
+  }
+  assert.ok(used.size >= 2, 'telegraph kinds do not collapse onto one force hue');
+
+  const channels = [...used];
+  let worst = { de: Infinity, a: null, b: null, mode: null };
+  for (let i = 0; i < channels.length; i++) {
+    for (let j = i + 1; j < channels.length; j++) {
+      for (const mode of TELEGRAPH_VISION_MODES) {
+        const de = minPairDeltaE(getForcePaletteHex(channels[i]), getForcePaletteHex(channels[j]), [mode]);
+        if (de < worst.de) worst = { de, a: channels[i], b: channels[j], mode };
+        assert.ok(
+          de >= FORCE_CONTRAST_FLOORS.minDeltaE,
+          `telegraph ${channels[i]} vs ${channels[j]} ${mode} ΔE ${de.toFixed(2)} < ${FORCE_CONTRAST_FLOORS.minDeltaE}`,
+        );
+      }
+    }
+  }
+  console.log(`PQ-161.02 telegraph-force minPairDeltaE min=${worst.de.toFixed(2)} pair=${worst.a}-${worst.b} mode=${worst.mode}`);
+
+  let factionWorst = { de: Infinity, factionId: null, channel: null, mode: null };
+  for (const [factionId, palette] of Object.entries(FACTION_PALETTES)) {
+    for (const channel of channels) {
+      for (const mode of TELEGRAPH_VISION_MODES) {
+        const de = minPairDeltaE(getForcePaletteHex(channel), palette.primary, [mode]);
+        if (de < factionWorst.de) factionWorst = { de, factionId, channel, mode };
+      }
+    }
+  }
+  console.log(`PQ-161.02 faction-primary vs telegraph-force minPairDeltaE min=${factionWorst.de.toFixed(2)} faction=${factionWorst.factionId} channel=${factionWorst.channel} mode=${factionWorst.mode} (identity stays a separate data-faction channel; this is not the force floor)`);
+  assert.ok(Number.isFinite(factionWorst.de), 'faction vs force ΔE is measurable');
 });
