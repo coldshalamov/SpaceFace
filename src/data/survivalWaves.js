@@ -149,6 +149,237 @@ export function survivalRoleProblem(role) {
   return SURVIVAL_ROLE_PROBLEMS[role] || null;
 }
 
+/** PQ-175.00 — answering verbs reuse PQ-174.03. Do not invent a second vocabulary. */
+export const SURVIVAL_ANSWER_VERBS = Object.freeze(['well', 'rope', 'shove', 'throw']);
+const ANSWER_VERB_SET = new Set(SURVIVAL_ANSWER_VERBS);
+
+/**
+ * One physical question per template wave. The thirty-wave arc reuses this block;
+ * consecutive template ids never match. Wave 20 overlays screens on the fortress.
+ */
+export const SURVIVAL_TEMPLATE_QUESTIONS = freezeDeep({
+  1: {
+    id: 'identical_mass',
+    question: 'Six identical lights on one bearing. Throw them into each other before they close.',
+    answerVerb: 'throw',
+  },
+  2: {
+    id: 'split_behind',
+    question: 'The second pack arrives behind you. Shove the rear so you can turn.',
+    answerVerb: 'shove',
+  },
+  3: {
+    id: 'tether_pull',
+    question: 'A tether on the far end is pulling your line. Rope it so the well moves with you.',
+    answerVerb: 'rope',
+  },
+  4: {
+    id: 'three_gate_anvil',
+    question: 'A hull that will not shake, a salted wake, chaff from a third door. Shove the miner into the brawler.',
+    answerVerb: 'shove',
+  },
+  5: {
+    id: 'ace_in_the_noise',
+    question: 'The ace is behind the chaff. Throw mass into it rather than grinding the swarm.',
+    answerVerb: 'throw',
+  },
+  6: {
+    id: 'snare_holds_the_room',
+    question: 'A snare well holds the room. Rope the hull so the well moves.',
+    answerVerb: 'rope',
+  },
+  7: {
+    id: 'ghosts_and_choir',
+    question: 'Shooters leave after every shot while the choir fills the lane. Well the choir so they share one hole.',
+    answerVerb: 'well',
+  },
+  8: {
+    id: 'twin_silhouette',
+    question: 'The second seven wear the first seven silhouette and are not the same problem. Well the zealots, not the wasps.',
+    answerVerb: 'well',
+  },
+  9: {
+    id: 'exam_screens',
+    question: 'Screens cover the pack, lances punish holding still, raiders punish tunnel vision. Well the cluster first.',
+    answerVerb: 'well',
+  },
+  10: {
+    id: 'fortress_behind',
+    question: 'A slow fortress while escorts refresh behind you. Throw the screen into the dreadnought.',
+    answerVerb: 'throw',
+  },
+});
+
+export const WAVE_20_QUESTION = freezeDeep({
+  id: 'plate_theft',
+  question: 'Screens steal the plate while the fortress holds. Well the escorts, then throw the hull that matters.',
+  answerVerb: 'well',
+});
+
+/** The room is itself a question (current, furnace, snare). Swarm consecutive ids include it. */
+export const SURVIVAL_ROOM_QUESTIONS = freezeDeep({
+  idle: { id: 'quiet_room', clause: 'The room is quiet. The fight is the arrivals.' },
+  loose_plate: { id: 'cover_plate', clause: 'Cover is the toy — throw into the plate.' },
+  furnace_active: { id: 'furnace_shove', clause: 'The centre shoves. Do not camp the middle.' },
+  shutter_slow: { id: 'room_leans', clause: 'The current runs against you.' },
+  shutter_lane_close: { id: 'lane_current', clause: 'A cross-current cuts the arrival lane.' },
+  shutter_alternating: { id: 'split_flanks', clause: 'One flank pulls, the other shoves.' },
+  absorbent_screen: { id: 'drinks_momentum', clause: 'The room drinks momentum.' },
+  boss: { id: 'boss_pit', clause: 'The pit is the boss room.' },
+});
+
+export function templateQuestionOf(wave) {
+  if (!Number.isInteger(wave) || wave < 1) return null;
+  if (wave === 20) return WAVE_20_QUESTION;
+  const template = ((wave - 1) % 10) + 1;
+  return SURVIVAL_TEMPLATE_QUESTIONS[template] || null;
+}
+
+function freezeQuestion(row) {
+  if (!row || typeof row !== 'object') return null;
+  return Object.freeze({
+    id: row.id,
+    question: row.question,
+    answerVerb: row.answerVerb,
+  });
+}
+
+function swarmProblemFromPackages(packages) {
+  const roles = new Set();
+  const gates = new Set();
+  let champion = false;
+  for (const pkg of packages || []) {
+    if (!pkg) continue;
+    if (typeof pkg.role === 'string') roles.add(pkg.role);
+    if (typeof pkg.gateGroup === 'string') gates.add(pkg.gateGroup);
+    if (pkg.champion) champion = true;
+  }
+  if (champion && roles.has('support')) {
+    return {
+      id: 'screened_champion',
+      question: 'A screen covers the champion. Well the cluster so they share one hole.',
+      answerVerb: 'well',
+    };
+  }
+  if (champion && roles.has('anchor')) {
+    return {
+      id: 'anchored_champion',
+      question: 'The champion sits in a snare. Rope the well so it moves.',
+      answerVerb: 'rope',
+    };
+  }
+  if (champion) {
+    return {
+      id: 'champion_in_the_swarm',
+      question: 'The champion is the hull that matters. Throw mass into it.',
+      answerVerb: 'throw',
+    };
+  }
+  if (roles.has('support')) return SURVIVAL_TEMPLATE_QUESTIONS[9];
+  if (roles.has('anchor')) return SURVIVAL_TEMPLATE_QUESTIONS[6];
+  if (roles.has('disruptor')) {
+    return {
+      id: 'wake_is_salted',
+      question: 'The wake is salted. Shove the miner into the heavy.',
+      answerVerb: 'shove',
+    };
+  }
+  if (roles.has('control')) return SURVIVAL_TEMPLATE_QUESTIONS[3];
+  if (roles.has('elite')) return SURVIVAL_TEMPLATE_QUESTIONS[5];
+  if (roles.has('reach')) {
+    return {
+      id: 'shooters_leave',
+      question: 'Shooters leave after every shot. Close and throw, do not chase.',
+      answerVerb: 'throw',
+    };
+  }
+  if (gates.size >= 3) {
+    return {
+      id: 'surrounded',
+      question: 'You are surrounded. Shove a hole and keep it.',
+      answerVerb: 'shove',
+    };
+  }
+  if (gates.size === 2) return SURVIVAL_TEMPLATE_QUESTIONS[2];
+  return SURVIVAL_TEMPLATE_QUESTIONS[1];
+}
+
+/** Swarm plans have no authored recipe. The question is the opening plus the room. */
+export function questionFromSwarmPlan(plan) {
+  if (!plan || typeof plan !== 'object') return null;
+  const problem = swarmProblemFromPackages(plan.packages);
+  const phase = typeof plan.arenaPhase === 'string' ? plan.arenaPhase : 'idle';
+  const room = SURVIVAL_ROOM_QUESTIONS[phase] || SURVIVAL_ROOM_QUESTIONS.idle;
+  return freezeQuestion({
+    id: `${problem.id}+${room.id}`,
+    question: `${problem.question} ${room.clause}`,
+    answerVerb: problem.answerVerb,
+  });
+}
+
+/** Arc / endless look up the template. Swarm reads the generated opening. */
+export function questionForGeneratedPlan(plan, wave) {
+  if (plan && plan.swarm) return questionFromSwarmPlan(plan);
+  return freezeQuestion(templateQuestionOf(wave));
+}
+
+export function catalogQuestionIssues(recipes = SURVIVAL_WAVES) {
+  const issues = [];
+  if (!Array.isArray(recipes)) {
+    return [{ path: '', message: 'catalog must be an array' }];
+  }
+  for (const recipe of recipes) {
+    if (!recipe || typeof recipe !== 'object') {
+      issues.push({ path: '', message: 'recipe missing' });
+      continue;
+    }
+    const path = recipe.id || '';
+    if (!recipe.questionId || !recipe.question || !recipe.answerVerb) {
+      issues.push({ path, message: 'missing question fields' });
+    }
+    const result = validateWaveRecipe(recipe);
+    if (!result.ok) {
+      for (const item of result.issues) issues.push(item);
+    }
+  }
+  const byArena = new Map();
+  for (const recipe of recipes) {
+    if (!recipe || typeof recipe.arenaId !== 'string') continue;
+    const list = byArena.get(recipe.arenaId) || [];
+    list.push(recipe);
+    byArena.set(recipe.arenaId, list);
+  }
+  for (const [arenaId, list] of byArena) {
+    const ordered = list.slice().sort((a, b) => a.wave - b.wave);
+    const ids = ordered.map((row) => row.questionId);
+    for (const item of consecutiveQuestionIssues(ids)) {
+      issues.push({ path: `${arenaId}.${item.path}`, message: item.message });
+    }
+  }
+  return issues;
+}
+
+export function consecutiveQuestionIssues(questionIds) {
+  const issues = [];
+  if (!Array.isArray(questionIds)) {
+    return [{ path: 'questions', message: 'question ids must be an array' }];
+  }
+  for (let i = 0; i < questionIds.length; i += 1) {
+    const id = questionIds[i];
+    if (typeof id !== 'string' || id.length === 0) {
+      issues.push({ path: `waves[${i}]`, message: 'missing question id' });
+      continue;
+    }
+    if (i > 0 && id === questionIds[i - 1]) {
+      issues.push({
+        path: `waves[${i}]`,
+        message: `consecutive question ${id} repeats`,
+      });
+    }
+  }
+  return issues;
+}
+
 function isPlainObject(value) {
   return value != null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -330,6 +561,28 @@ function validateWaveRecipeInner(recipe) {
     }
   }
 
+  // Factory override recipes (contentFactoryExamples) are not the thirty-wave catalog and do
+  // not carry question fields. Once a recipe names any question field, all three must be valid.
+  // SURVIVAL_WAVES always names them; catalogQuestionIssues is the catalog-wide gate.
+  const questionTouched = Object.prototype.hasOwnProperty.call(recipe, 'questionId')
+    || Object.prototype.hasOwnProperty.call(recipe, 'question')
+    || Object.prototype.hasOwnProperty.call(recipe, 'answerVerb');
+  if (questionTouched) {
+    if (typeof recipe.questionId !== 'string' || recipe.questionId.length === 0) {
+      issues.push(issue('questionId', 'each wave recipe must name its physical question'));
+    }
+    if (
+      typeof recipe.question !== 'string'
+      || recipe.question.length < 24
+      || recipe.question.includes('\n')
+    ) {
+      issues.push(issue('question', 'question must be one line a player can name from a strip'));
+    }
+    if (!ANSWER_VERB_SET.has(recipe.answerVerb)) {
+      issues.push(issue('answerVerb', `answerVerb must be one of ${SURVIVAL_ANSWER_VERBS.join(', ')}`));
+    }
+  }
+
   return { ok: issues.length === 0, issues };
 }
 
@@ -377,6 +630,7 @@ function waveRecipe({
   xp,
   credits,
 }) {
+  const asked = SURVIVAL_TEMPLATE_QUESTIONS[wave];
   return {
     id: `${arenaId}_w${String(wave).padStart(2, '0')}_${shape}`,
     schemaVersion: SURVIVAL_WAVE_SCHEMA_VERSION,
@@ -392,6 +646,9 @@ function waveRecipe({
       cleanupTicks,
     },
     rewards: { xp, credits },
+    questionId: asked ? asked.id : '',
+    question: asked ? asked.question : '',
+    answerVerb: asked ? asked.answerVerb : '',
   };
 }
 
@@ -418,11 +675,11 @@ function waveRecipe({
 //    never sets: they spawn INERT, and as a blocking role they would stall the run forever.
 //    mule_trader is a fleeing_trader (alwaysFlee, defensiveOnly) marked illegalToKill.
 //
-// Waves 1, 5 and 10 are held byte-identical on every field the PLAN can see. Their content is
-// asserted in three files this lane does not own: the seed-47 snapshot in
-// test/crucible-wave-planner.js (waves 1/5/10), the wave-1 body count and roles in
-// test/crucible-wave-materialization.js, and the wave-1 / wave-10 chip arithmetic in
-// test/crucible-credit-pickup.js. Their questions were already distinct, so nothing was lost.
+// Waves 1, 5 and 10 are held byte-identical on every field the PLAN can see. Question
+// fields are authoring records the planner does not copy. Their content is asserted in
+// three files this lane does not own: the seed-47 snapshot in test/crucible-wave-planner.js
+// (waves 1/5/10), the wave-1 body count and roles in test/crucible-wave-materialization.js,
+// and the wave-1 / wave-10 chip arithmetic in test/crucible-credit-pickup.js.
 function tenWaveBlock(arenaId, gateA, gateB) {
   const gateC = thirdGate(gateA, gateB);
   return [

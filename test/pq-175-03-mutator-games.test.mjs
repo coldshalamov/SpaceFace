@@ -14,6 +14,7 @@ import {
   strategyFitsHull,
   strategyIsLegal,
   topWeeklyStrategy,
+  weeklyGameSignature,
 } from '../src/systems/survivalMutators.js';
 
 const SEEDS = Object.freeze(Array.from({ length: 10 }, (_, i) => 17530 + i));
@@ -88,6 +89,29 @@ test('four weekly mutators, four distinct top strategies on seed family 17530', 
   console.log(
     `STRATEGIES_17530 wave=${WAVE} `
     + CRUCIBLE_WEEKLY_ROTATION.map((id) => `${id}=${heads[id].strategyId}/${heads[id].verb}`).join(' | '),
+  );
+});
+
+test('four weekly games keep distinct telemetry over 10 seeds', () => {
+  const games = {};
+  for (const id of CRUCIBLE_WEEKLY_ROTATION) {
+    const rows = SEEDS.map((seed) => weeklyGameSignature(id, seed, WAVE));
+    const signatures = new Set(rows.map((row) => row.game));
+    assert.equal(signatures.size, 1, `${id} must be one game across 17530..17539`);
+    games[id] = rows[0];
+  }
+  assert.equal(games.gravity_slalom.wellCount, 3);
+  assert.equal(games.heavies_only.heavyCount, 10);
+  assert.equal(games.heavies_only.fodder, 0);
+  assert.equal(games.weapons_cold.physicsOnly, true);
+  assert.equal(games.reef.reefLayoutId, 'crucible_reef');
+  const unique = new Set(CRUCIBLE_WEEKLY_ROTATION.map((id) => games[id].game));
+  assert.equal(unique.size, 4, JSON.stringify(games, null, 2));
+  const strategies = new Set(CRUCIBLE_WEEKLY_ROTATION.map((id) => games[id].strategyId));
+  assert.equal(strategies.size, 4);
+  console.log(
+    `GAMES_17530 `
+    + CRUCIBLE_WEEKLY_ROTATION.map((id) => `${id}=${games[id].game}/${games[id].strategyId}`).join(' | '),
   );
 });
 

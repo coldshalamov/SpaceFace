@@ -4903,7 +4903,7 @@
       "priority": 30,
       "title": "Re-author the corridor billboard and navigation buoy, and split the Helios memorial identity",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.corridor-assets-human-disposition"
       ],
@@ -4947,7 +4947,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-022-billboard-buoy-reauthor-REPORT.md"
       ],
-      "brief": "Integrated at dab9199a: ordinary core stations retain the shared neutral information display, poi_memorial alone selects the new 24-light place_memorial_array, and the broadly reused navigation buoy retains one faction-neutral navigation identity. Canonical source, authored Blend, optimized release, both manifest rows, ordinary place registration, deterministic producer/tooling, and exact-source review are committed. Browser/Electron route presentation, causal route review, and representative performance remain separate units. | REOPENED 2026-09-10 for the BUOY ONLY — the billboard PASSED review and must not be touched. Buoy verdict: dark low-contrast post-and-cap; beacon is sub-pixel at ordinary framing where the billboard face carries fine in the same scene; the pale service panel shares the asteroid value/hue and camouflages. Needs a head with silhouette, an emissive beacon at billboard scale, a panel off the rock palette. Receipt: design/program/roadmap/receipts/PQ-022-reauthor-causal-review-2026-09-10.md",
+      "brief": "Buoy-only reopen repaired and route-reviewed 2026-09-10. Billboard untouched (prior PASS). Controller 01a08d61 re-ran corridor-assets twice (PASS) and pq022 runtime-split twice (3/3 PASS). Atlas integrity PASS. graphics:asset-receipts crashes on unrelated missing helios_rock_a.glb (not this leaf). H3 performance remains a separate unit.",
       "partialIntegration": "The three live source GLBs preserve byte-identical BIN payloads from the KEEP-reviewed candidates while adding only guarded lifecycle metadata; their exact canonical releases and manifest hashes are bound at dab9199a. Reconciliation at current master passed the three-case runtime identity split and the 280-node atlas-integrity gate. No Browser/Electron launch or performance measurement was used or claimed.",
       "blocker": null
     },
@@ -6990,7 +6990,7 @@
       "priority": 104,
       "title": "Every wave asks a question",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-174.01",
         "PQ-174.02"
@@ -7014,7 +7014,9 @@
         "npm run check:crucible:arc",
         "npm run check:crucible:meta"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-175.00-REPORT.md"
+      ],
       "brief": "Each of the thirty wave recipes declares its physical question and the verb that answers it; the planner never schedules two consecutive waves with the same question. DONE WHEN: Validator asserts a question per recipe and no repeats in a row; a blind reviewer names the question from a strip for 8 of 10 waves."
     },
     {
@@ -7057,7 +7059,7 @@
       "priority": 106,
       "title": "Drafts change verbs",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-174.01",
         "PQ-174.02"
@@ -7081,7 +7083,9 @@
         "npm run check:crucible:arc",
         "npm run check:crucible:meta"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-175.02-REPORT.md"
+      ],
       "brief": "At most one card in three is a number; every other card changes a verb's shape (line load, well radius, reel speed, ram plate, whip snap); cards are legible in one line. DONE WHEN: Draft catalog audit: ≥ 66 % verb cards; a playtester describes each card's effect after one use."
     },
     {
@@ -7090,7 +7094,7 @@
       "priority": 107,
       "title": "Mutators are games",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-169.02",
         "PQ-174.01",
@@ -7115,7 +7119,9 @@
         "npm run check:crucible:arc",
         "npm run check:crucible:meta"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-175.03-REPORT.md"
+      ],
       "brief": "Four weekly mutators shipped as distinct games with their own best build (telemetry): gravity slalom, heavies only, weapons cold, reef. DONE WHEN: Top strategy differs per mutator over 10 seeds each."
     },
     {

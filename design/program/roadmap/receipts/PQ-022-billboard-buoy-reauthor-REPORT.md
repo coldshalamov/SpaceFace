@@ -116,3 +116,18 @@ wings on pylons. Head silhouette defect was closed in the first repair round and
   reads near-neutral and survives by adjacency — look at both next time the package is opened).
 - Full evidence, gate records, and lineage: `assets/ships/m5_navigation_infrastructure/reports/
   material_truth_v2/VISUAL_REVIEW.md` and the validation binding.
+
+---
+
+# CONTROLLER RE-RUN — 2026-09-10 fleet 01a08d61
+
+Queue row closed to `done`. No production files changed in this close.
+
+| Check | Run 1 | Run 2 |
+|---|---|---|
+| `npm run check:pq022:corridor-assets` | PASS (4 allowed wasp LOD gaps) | PASS (same) |
+| `node --test test/pq022-navigation-infrastructure-runtime-split.test.mjs` | 3/3 PASS | 3/3 PASS |
+| `npm run check:atlas-integrity` | PASS (292 nodes) | not repeated; same committed atlas |
+| `npm run check:graphics:asset-receipts` | CRASH ENOENT `helios_rock_a.glb` | unrelated missing source; not this leaf |
+
+Honest residual: `PQ-022.h3-performance` still owns matched corridor performance. Parent PQ-022 stays open.

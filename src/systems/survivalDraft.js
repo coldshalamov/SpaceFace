@@ -29,6 +29,7 @@ import { SHIPS } from '../data/ships.js';
 import {
   SURVIVAL_DRAFT_CHOICES,
   auditDraftCatalog,
+  auditDraftShapes,
   offerDraft,
   rerollPrice,
   swarmPurchasePrice,
@@ -134,6 +135,11 @@ export const survivalDraft = {
   /** PQ-175.02 catalog audit. Pure data; does not touch the open draft. */
   catalogAudit(ruleset) {
     return auditDraftCatalog(ruleset);
+  },
+
+  /** Honest shape ratio: verb cards that change a verb, not a number. */
+  catalogShapes(ruleset) {
+    return auditDraftShapes(ruleset);
   },
 
   currentWave() {

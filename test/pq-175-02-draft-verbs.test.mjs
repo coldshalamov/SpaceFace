@@ -89,9 +89,10 @@ test('PQ-175.02: verb cards change a verb; number cards stay the minority', () =
   assert.equal(reel.defId, 'mod_winch_hd');
   assert.ok(ram.some((card) => card.defId === 'mod_ram_plate'));
   assert.equal(whip.defId, 'mod_elastic_whip_m');
-  assert.equal(line.defId, 'mod_massline_spool_m');
+  assert.equal(line.defId, 'mod_transverse_snare_m');
   assert.ok(audit.numberCards.some((card) => card.id === 'volume'));
   assert.ok(audit.numberCards.some((card) => card.id === 'fusion'));
+  assert.ok(audit.numberCards.some((card) => card.id === 'spool'));
 });
 
 test('PQ-175.02: Hitch seed 17520 never sees M concussion or M utility heads', () => {

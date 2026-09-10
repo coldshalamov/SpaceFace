@@ -434,6 +434,23 @@ export function topWeeklyStrategy(mutatorId, seed = 0) {
   });
 }
 
+/** Compact game identity for one weekly mutator on a named seed. Distinct games differ here. */
+export function weeklyGameSignature(mutatorId, seed, wave = 1) {
+  const tel = weeklyTelemetry(mutatorId, seed, wave);
+  return Object.freeze({
+    mutatorId: tel.mutatorId,
+    seed: (Number.isInteger(seed) ? seed : 0) >>> 0,
+    wellCount: tel.wellCount,
+    physicsOnly: tel.physicsOnly === true,
+    reefLayoutId: tel.reefLayoutId || null,
+    heavyCount: tel.heavyCount,
+    fodder: tel.fodder,
+    strategyId: tel.strategyId,
+    strategyVerb: tel.strategyVerb,
+    game: `${tel.wellCount}|${tel.physicsOnly ? 1 : 0}|${tel.reefLayoutId || '-'}|H${tel.heavyCount}|F${tel.fodder}`,
+  });
+}
+
 /**
  * Strategy signature for one weekly mutator on a fixed seed/wave.
  * Named fields must move; identical telemetry means the mutator is not live.

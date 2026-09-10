@@ -66,6 +66,8 @@ export const DRAFT_CARD_KIND_VERB = 'verb';
 export const DRAFT_CARD_KIND_NUMBER = 'number';
 export const DRAFT_VERB_SHAPES = Object.freeze(['line_load', 'well', 'reel', 'ram', 'whip']);
 export const DRAFT_VERB_CARD_MIN_RATIO = 2 / 3;
+/** Verb-card copy that is still a number: faster, farther, longer, +15%. */
+export const DRAFT_MAGNITUDE_SMELL = /\b(faster|farther|longer|heavier|bigger|more|wider)\b|\d+\s*%|\+\d/;
 
 /**
  * The draft pool. `kind` is verb (changes how a verb plays) or number (a bigger gun / thicker
@@ -81,7 +83,7 @@ export const SURVIVAL_DRAFT_OFFERS = freezeDeep([
   {
     id: 'tag', defId: 'wpn_gravity_marker_s', verb: 'Tag',
     kind: DRAFT_CARD_KIND_VERB, shape: 'well',
-    blurb: 'Marks a hull so the well grabs it from farther out.',
+    blurb: 'Marks a hull so the well pulls that one, not whoever is nearest.',
   },
   {
     id: 'bind', defId: 'wpn_momentum_sink_s', verb: 'Bind',
@@ -177,6 +179,9 @@ export function auditDraftCatalog(ruleset = SWARM_RULESET) {
     if (card.kind === DRAFT_CARD_KIND_VERB) {
       verbCards.push(card);
       if (typeof card.shape === 'string' && card.shape) shapes.add(card.shape);
+      if (DRAFT_MAGNITUDE_SMELL.test(card.blurb || '')) {
+        issues.push(`${card.id} verb card reads as a number`);
+      }
     } else if (card.kind === DRAFT_CARD_KIND_NUMBER) {
       numberCards.push(card);
     }
@@ -201,6 +206,19 @@ export function auditDraftCatalog(ruleset = SWARM_RULESET) {
     shapes: [...shapes],
     verbCards,
     numberCards,
+  };
+}
+
+/** Honest shape audit: verb cards must not read as +stat, and at most one in three is a number. */
+export function auditDraftShapes(ruleset = SWARM_RULESET) {
+  const audit = auditDraftCatalog(ruleset);
+  const smelled = audit.verbCards
+    .filter((card) => DRAFT_MAGNITUDE_SMELL.test(card.blurb || ''))
+    .map((card) => card.id);
+  return {
+    ...audit,
+    smelled,
+    numberShare: audit.total ? audit.numberCount / audit.total : 0,
   };
 }
 

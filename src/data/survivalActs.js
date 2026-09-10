@@ -7,6 +7,7 @@ import {
   SURVIVAL_ENDLESS_OVERLAYS,
   SURVIVAL_ENDLESS_START_WAVE,
   SURVIVAL_GATE_GROUPS,
+  templateQuestionOf,
 } from './survivalWaves.js';
 
 export const SURVIVAL_ARC_LENGTH = 30;
@@ -181,6 +182,7 @@ export function composeArcWave({ packages, blockingRoles, arenaPhase, objective,
     arenaPhase: nextPhase,
     objective: nextObjective,
     systemEvent,
+    question: templateQuestionOf(wave),
   };
 }
 
@@ -238,6 +240,7 @@ export function composeEndlessWave({ packages, blockingRoles, arenaPhase, object
     systemEvent: arc.systemEvent,
     endlessOverlay: overlay ? overlay.id : null,
     endlessCycle: cycle,
+    question: templateQuestionOf(wave),
   };
 }
 
