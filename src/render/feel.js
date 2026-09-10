@@ -53,8 +53,8 @@ function recoilWeight(weaponId) {
   return Math.min(0.2, weight);
 }
 
-// Collision impact feel (PQ-139.00). Physics already emits `physics:impact` with exchanged
-// momentum `dp`; this maps deltaV onto a monotone hitstop + FOV + trauma ramp so a scrape is a
+// Collision impact feel (PQ-139.00). Physics impacts and combat consequence receipts share one
+// frame queue; this maps deltaV onto a monotone hitstop + FOV + trauma ramp so a scrape is a
 // tick and a slam is a beat. Pure: no DOM, no state, no wall-clock, no RNG.
 export const COLLISION_DELTA_V_FLOOR = 8;     // WU/s — bar B9's own floor; below this is touching
 export const COLLISION_DELTA_V_REF = 150;     // WU/s — reference slam; curve reaches its ceiling here
@@ -71,7 +71,8 @@ const COLLISION_TRAUMA_RANGE = 400;           // WU — inverse-square falloff s
 const IMPACT_KNOCK_DV = 40;                   // WU/s — scrape → knock
 const IMPACT_SLAM_DV = 100;                   // WU/s — knock → slam
 
-export function resolveCollisionFeel(impact, context = {}) {
+// Optional caller-owned output lets the event bridge reuse its pending record.
+export function resolveCollisionFeel(impact, context = {}, out = null) {
   if (!impact) return null;
   if (context.motionReduce) return null;
   if (context.mode !== 'flight') return null;
@@ -97,7 +98,13 @@ export function resolveCollisionFeel(impact, context = {}) {
   if (deltaV < IMPACT_KNOCK_DV) id = 'impact.scrape';
   else if (deltaV < IMPACT_SLAM_DV) id = 'impact.knock';
 
-  return Object.freeze({ id, deltaV, hsDur, fov, trauma });
+  if (!out) return Object.freeze({ id, deltaV, hsDur, fov, trauma });
+  out.id = id;
+  out.deltaV = deltaV;
+  out.hsDur = hsDur;
+  out.fov = fov;
+  out.trauma = trauma;
+  return out;
 }
 
 const STYLE_ID = 'sf-feel-style';
@@ -344,7 +351,12 @@ export const feel = {
     this._hsRequest = { scale: HS_DEPTH }; // reused: frame() performs no request allocation
     this._collisionHitstopCooldown = 0; // remaining real-time seconds before another collision beat
     this._armedCollisionDeltaV = 0;     // deltaV that armed the current cooldown (upgrade gate)
-    this._pendingCollisionFeel = null;  // best physics:impact this frame; applied once in frame()
+    this._pendingCollisionFeel = null;  // strongest contact this frame, from either receipt source
+    this._collisionFeelScratch = {};
+    this._collisionFeelContext = {};
+    this._armedCollisionTick = null;
+    this._armedCollisionAId = null;
+    this._armedCollisionBId = null;
     this._velocityDriveScratch = {};
     this._legacyDriveScratch = {};
     this._regionCrossfadeScratch = {};
@@ -886,9 +898,10 @@ export const feel = {
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(trauma);
     });
 
-    // Collision momentum → hitstop / FOV / trauma. Physics already publishes physics:impact;
-    // this is the missing feel subscriber. Rate-limited in frame() so a grind cannot stack.
+    // Consequences can arrive inside physics:impact dispatch or at the deferred contact flush.
+    // Both feed one frame-level beat; neither listener writes timeScale or routes damage.
     bus.on('physics:impact', (p) => this._onPhysicsImpact(p));
+    bus.on('combat:collisionConsequence', (p) => this._onCollisionConsequence(p));
 
     // Rated holy-shit moments (PQ-146.03). bulletTime rates `stunt:trickDetected` receipts and
     // publishes `moment:holyShit`; this is the camera/punch consumer — slow-mo, audio stingers
@@ -965,9 +978,37 @@ export const feel = {
     if (dvA != null) deltaV = dvA;
     if (dvB != null && dvB > deltaV) deltaV = dvB;
 
+    this._queueCollisionFeel(p, deltaV, p.playerInvolved, p.aId, p.bId);
+  },
+
+  _onCollisionConsequence(p) {
+    if (!p || !Number.isFinite(p.exchangedMomentum) || p.exchangedMomentum <= 0) return;
+    const playerId = this.state && this.state.playerId;
+    const playerInvolved = playerId != null && (
+      p.targetId === playerId || p.otherId === playerId || p.provenance?.actorId === playerId
+    );
+    // The target may already be retired by collision damage. The receipt's deltaV was measured
+    // from exchangedMomentum and its mass at contact; never re-derive it from a later live body.
+    this._queueCollisionFeel(p, p.deltaV, playerInvolved, p.targetId, p.otherId);
+  },
+
+  _queueCollisionFeel(p, deltaV, playerInvolved, aId, bId) {
+    const state = this.state;
+    if (!state || state.mode !== 'flight' || !this._modalClear()) return;
+    const mr = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
+    if (mr) return;
+    const tick = Number.isFinite(p.tick) ? p.tick : state.tick;
+    if (Number.isFinite(tick) && tick === this._armedCollisionTick && aId != null && bId != null
+      && ((aId === this._armedCollisionAId && bId === this._armedCollisionBId)
+        || (aId === this._armedCollisionBId && bId === this._armedCollisionAId))) return;
+
+    const pending = this._pendingCollisionFeel;
+    if (pending && !(deltaV > pending.deltaV)) return;
+    const ents = state.entities;
     let playerDistance = 0;
-    if (!p.playerInvolved) {
-      const player = playerId != null ? ents.get(playerId) : null;
+    if (!playerInvolved) {
+      const player = state.playerId != null && ents && typeof ents.get === 'function'
+        ? ents.get(state.playerId) : null;
       if (player && player.pos && p.pos) {
         playerDistance = Math.hypot(
           (player.pos.x || 0) - (p.pos.x || 0),
@@ -978,19 +1019,17 @@ export const feel = {
       }
     }
 
-    const mr = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
-    const result = resolveCollisionFeel(p, {
-      deltaV,
-      playerDistance,
-      motionReduce: mr,
-      mode: this.state.mode,
-    });
+    const context = this._collisionFeelContext;
+    context.deltaV = deltaV;
+    context.playerDistance = playerDistance;
+    context.motionReduce = mr;
+    context.mode = state.mode;
+    const result = resolveCollisionFeel(p, context, this._collisionFeelScratch);
     if (!result) return;
-
-    const pending = this._pendingCollisionFeel;
-    if (!pending || result.deltaV > pending.deltaV) {
-      this._pendingCollisionFeel = result;
-    }
+    result.tick = tick;
+    result.aId = aId;
+    result.bId = bId;
+    this._pendingCollisionFeel = result;
   },
 
   _flushPendingCollision() {
@@ -1011,6 +1050,9 @@ export const feel = {
     if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(pending.trauma);
     this._collisionHitstopCooldown = COLLISION_HITSTOP_COOLDOWN;
     this._armedCollisionDeltaV = pending.deltaV;
+    this._armedCollisionTick = pending.tick;
+    this._armedCollisionAId = pending.aId;
+    this._armedCollisionBId = pending.bId;
   },
 
   _onMoment(p) {
@@ -1115,6 +1157,9 @@ export const feel = {
     this._collisionHitstopCooldown = 0;
     this._armedCollisionDeltaV = 0;
     this._pendingCollisionFeel = null;
+    this._armedCollisionTick = null;
+    this._armedCollisionAId = null;
+    this._armedCollisionBId = null;
   },
 
   frame(frameDt, state) {
