@@ -915,6 +915,17 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
       hostile,
     });
   }
+  // The Crucible pilot is the cohort's broadcast objective. Track that one ship beyond
+  // ordinary sensor range so boosting creates a chase, not abandoned enemies. Cloaking
+  // still breaks the lock; weapon range and the final firing authority stay unchanged.
+  const pilot = self.data?.runCohort === 'survival' && self.data?.ai?.forcePlayerTarget
+    ? getEntity(state, state.playerId) : null;
+  if (pilot?.alive && !out.some(c => c.id === pilot.id) && !cloakHidesPlayerFrom(state, self, pilot)) {
+    const hostile = isHostileForAI(state, self, pilot);
+    out.push({ ...buildContactBase(state, pilot, combatRuntimeFor(state, pilot.id),
+      attachmentIndex, 'ship', freeze, cacheOwner), confidence: 1,
+      threat: threatFor(state, self, pilot, hostile), hostile });
+  }
   return out;
 }
 

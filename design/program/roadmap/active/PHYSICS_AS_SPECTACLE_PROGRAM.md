@@ -13,6 +13,14 @@ foundation: MASSLINE-PRESENTATION-UVP plus published recovery, causal-receipt, p
 
 ## Outcome and truth boundary
 
+**September 10 owner direction — Crucible is the active combat proving ground.** The Swarm revival
+is authorized to use and improve this shared force/impact/flight grammar now. Its dependency is a
+playable bank, web, trap, collision and escape sequence against real pursuit; it does not wait for
+Ceres R5, a five-minute recording, a fixed-length showcase clip or asset-promotion bookkeeping.
+Inspect the actual changed action, fix visible defects, and retain only evidence useful for review.
+The Ceres route and five scene cells below remain the broader Adventure rollout, not a prerequisite
+for completing the Crucible. No feature is complete merely because a receipt or screenshot exists.
+
 SpaceFace presents physics as its brightest, most legible spectacle. After R5 and its five-minute
 gate are accepted, the first R8 integration gate is a continuous, player-controlled 20–30 second
 sequence in that frozen Ceres reference pocket: boost, latch, visible load, physical fling, readable
@@ -64,10 +72,10 @@ hierarchy; it must not erase faction paint, material separation, contact directi
 
 ## Controlling dependency chain
 
-The user's current Professional Recovery Plan direction controls this sequence; no separate tracked
+The earlier Professional Recovery Plan direction controls the Adventure reference sequence; no separate tracked
 R0–R8 authority file existed when this packet was admitted, so the executable dependency is recorded
 here. This program implements recovery stage R8 and must not leapfrog the route that makes it
-meaningful:
+meaningful. The separately authorized Crucible branch above proceeds alongside it:
 
 ```text
 R0 Sandbox launcher

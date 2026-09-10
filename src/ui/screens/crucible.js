@@ -909,12 +909,14 @@ export function resultSectionOrder(result) {
 }
 
 /**
- * The hero number the results lead with (sheet: "the best chain as a hero number"). A swarm run
- * has a chain; the arc has a score. Null when there is no result to read.
+ * Swarm is a farthest-round challenge. Tricks and score explain the run below this record.
  */
 export function resultHero(result) {
   if (!result) return null;
-  if (result.ruleset === SWARM_RULESET) return { number: String(result.bestChain || 0), word: 'best chain' };
+  if (result.ruleset === SWARM_RULESET) return {
+    number: String(Math.max(Number(result.deepestWave) || 0, Number(result.wave) || 1)),
+    word: 'round reached',
+  };
   return { number: String(result.score || 0), word: 'score' };
 }
 

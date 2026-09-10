@@ -7,6 +7,10 @@ import { stuntGrammar } from '../src/systems/stuntGrammar.js';
 import { TetherWebFx } from '../src/render/combat/tetherWebFx.js';
 import { WEB_DEF_ID } from '../src/combat/tetherWebs.js';
 import { resolveDeathTelegraph } from '../src/systems/survivalResults.js';
+import { createGameState } from '../src/core/gameState.js';
+import { makeBudgetApi } from '../src/systems/spawnBudget.js';
+import { materializeWaveBatch } from '../src/systems/waveMaterialization.js';
+import { aiPorts } from '../src/systems/aiPorts.js';
 
 test('unclaimed asteroid rebounds do not become player Bank Shots', () => {
   const d = createStuntDetector({ playerId: 1 });
@@ -71,4 +75,29 @@ test('web cables draw only actual active enemy constraints and follow rebased en
   assert.equal(fx.mesh.visible, false);
   fx.dispose();
   assert.equal(scene.children.length, 0);
+});
+
+test('survival cohorts track the distant pilot without granting ambient pirates that knowledge', () => {
+  const state = createGameState(4242); const bus = createBus();
+  const pilot = { id: 1, type: 'ship', alive: true, team: 0, pos: { x: 0, z: 0 },
+    vel: { x: 0, z: 0 }, radius: 8, mass: 16, data: {} };
+  state.playerId = 1; state.nextEntityId = 2;
+  state.entityList.push(pilot); state.entities.set(1, pilot);
+  const helpers = { spawnBudget: makeBudgetApi(state), spawnEntity(spec) {
+    const e = { ...spec, alive: true, id: state.nextEntityId++ };
+    state.entities.set(e.id, e); state.entityList.push(e); return e;
+  } };
+  const ctx = { state, bus, helpers };
+  const receipt = materializeWaveBatch(ctx, { count: 1, enemyId: 'wasp_swarmer', seed: 4242, wave: 1 });
+  const enemy = state.entities.get(receipt.spawnedIds[0]);
+  assert.equal(enemy.data.ai.moraleImmune, true);
+  assert.equal(enemy.data.ai.surrenderImmune, true);
+  assert.equal(enemy.data.ai.activity.anchor, null, 'the spawn position is not a pursuit leash');
+  pilot.pos.x = 10000;
+  const ports = Object.create(aiPorts); ports.init(ctx);
+  const contact = helpers.aiSensors.frameFor(enemy.id, 1).contacts.find(c => c.id === 1);
+  assert.ok(contact, 'the round cannot strand the pilot hunting a lost enemy');
+  assert.equal(contact.hostile, true, 'the normal hostility authority still decides the contact');
+  delete enemy.data.runCohort;
+  assert.equal(helpers.aiSensors.frameFor(enemy.id, 2).contacts.some(c => c.id === 1), false);
 });

@@ -10,9 +10,9 @@
 // Flow:
 //   1. requestSandboxGame(bus, config) stashes the config, then emits game:new with only a validated
 //      own uint32 seed when present; startNewGame builds the real NEW_GAME world before setup.
-//   2. installSandboxGameStartedHook(bus, ctx) arms a one-shot game:started listener that reads the
-//      stashed config and calls applySandboxSetup. It re-arms itself after each run so the harness
-//      survives multiple launches in one session.
+//   2. installSandboxGameStartedHook consumes Crucible setup on game:scenePrepared, before GPU
+//      preparation. Ordinary sandbox setup consumes on game:started. Each pending request is
+//      applied once; repeated launches reuse the listeners.
 //   3. applySandboxSetup(ctx, config) runs the writers in dependency-safe order.
 
 import { WEAPONS } from '../../data/weapons.js';
@@ -353,6 +353,11 @@ export function installSandboxGameStartedHook(bus, ctxRef) {
     }
   };
   bus.on('game:started', handler);
+  // Player-facing Crucible launches are complete before the shared loading gate. Ordinary
+  // sandbox experiments retain their post-start hook and the normal New Game route is a no-op.
+  bus.on('game:scenePrepared', () => {
+    if (pendingConfig?.survivalSetup) handler();
+  });
   // A failed transition never reaches game:started. Clear its staged config here so a later
   // ordinary New Game cannot inherit the abandoned Sandbox request. Repeated failures are benign.
   bus.on('game:startFailed', () => { pendingConfig = null; });
@@ -376,7 +381,7 @@ function setCredits(ctx, target) {
   }
 }
 
-function unlockAllTech(ctx) {
+function unlockAllTech(ctx, { silent = false } = {}) {
   const ships = sys(ctx, 'ships');
   if (!ships || typeof ships.unlockTech !== 'function') return;
   const p = ctx.state.player;
@@ -407,7 +412,7 @@ function unlockAllTech(ctx) {
       // prerequisites are not ready yet so this bounded dependency walk does not surface a
       // false error before a later pass unlocks the same node successfully.
       if (typeof ships.researchable === 'function' && !ships.researchable(node.id)) continue;
-      if (ships.unlockTech(node.id)) progressed = true;
+      if (ships.unlockTech(node.id, { silent })) progressed = true;
     }
     if (!progressed) break;
   }
@@ -1095,7 +1100,7 @@ export function applySandboxSetup(ctx, config) {
       //    Toolkit, and the draft pool would collapse to two tier-1 guns. Walking the real tech
       //    tree through ships.unlockTech is credit-neutral by construction. It runs BEFORE the run
       //    begins so no campaign-economy traffic happens inside a live run.
-      unlockAllTech(ctx);
+      unlockAllTech(ctx, { silent: true });
       // 2. Begin the run NEXT, before anything that can trigger an autosave. save's autosave
       //    listens to sector:enter, which the arena relocation below emits — and a campaign
       //    autosave is only suppressed once state.run is a live survival run. Beginning here is
@@ -1147,6 +1152,7 @@ export function applySandboxSetup(ctx, config) {
   // 11. Camera selection is presentation-owned and snaps only after any authored relocation.
   if (cfg.cameraCandidate) applyCameraCandidate(ctx, cfg.cameraCandidate);
 
+  if (cfg.survivalSetup) return;
   const scenario = SCENARIO_PRESETS.find((item) => item.id === cfg.scenarioId);
   ctx.bus.emit('toast', {
     text: scenario ? `Sandbox: ${scenario.title} ready` : 'Sandbox ready',

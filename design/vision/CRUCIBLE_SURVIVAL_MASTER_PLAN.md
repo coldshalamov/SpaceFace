@@ -38,7 +38,10 @@ the wonderfully excessive aftermath. Good direct shooting remains an enjoyable p
   incompatible thrust and momentum; one pulling away disrupts its partners. Slack permits motion,
   links can break, heavy anchors matter, and shoving one member can swing the knot into a rock.
   This must not reduce to several independent slow debuffs or a line drawn over stunned ships.
-- **Flight worth practising.** Aim the gun independently while carving the escape route. Boost
+- **Flight worth practising.** Aim the gun independently while carving the escape route. Flight
+  and firing remain independent: default Pilot manual fire follows the cursor through a full turn,
+  using real muzzle origins, projectile travel, costs and collisions. Do not silently shoot along
+  the nose when the cursor is outside a hidden arc. Classic and Helm retain their chosen controls. Boost
   commits visibly, braking answers promptly, and a successful sling preserves earned speed.
   Keep mass in the outcome, not in a delay before every input takes effect. Do not prescribe a
   one-to-three-second response lag as the definition of good handling.

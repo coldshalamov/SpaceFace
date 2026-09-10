@@ -114,14 +114,16 @@ before/after evidence.
    contacts survive every cap (`_clampSpeed` is the reference implementation).
 5. **NPCs obey the same physics as the player.** No hidden gyros, no transform writes, no instant
    counter-thrust after a hit. They recover with the thrusters they have.
-6. **Feel is measured, then felt.** The Motion Lab (PQ-135.02) is the instrument; add the missing
-   scenarios in Part B to it before tuning, not after.
+6. **Tune the playable action, then check the property that matters.** Use the Motion Lab when its
+   measurements can resolve a real feel defect. Missing scenarios or historical "capture owed" notes
+   do not block implementation. Play the changed manoeuvre at the gameplay camera and iterate.
 7. **The gameplay camera is the only camera.** A number that is only visible zoomed in does not
    exist (`docs/AGENT_LESSONS.md`).
 8. **Make existing features collide before adding one.** Part A's A12 is three missing listeners,
    not three missing systems.
-9. **Crucible first.** Combat and flight feel converge in the Crucible bench (bounded, seeded, known
-   loadout) and adventure inherits the numbers. Feel work that has not passed the bench is out of order.
+9. **Crucible first.** Combat and flight feel converge in a playable chasing pack with a known
+   loadout; Adventure inherits the shared mechanics. The bench supports diagnosis, not a separate
+   admission gate. Direct guns, banks, webs and traps all deserve viable, distinctive playstyles.
 10. **Everything is made by agents.** Voice is directed synthetic voice, art is Blender and imagegen through
     the generated-media rules, tuning is the Fun Convergence Loop; no step assumes a recorded actor or a
     human tuner. The owner's weekly 45-minute play is the only human step (`design/program/FUN_CONVERGENCE_LOOP.md`).

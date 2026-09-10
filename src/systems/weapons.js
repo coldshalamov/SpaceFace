@@ -293,7 +293,7 @@ export const weapons = {
       }
       const aimAngle = tetherGate
         ? tetherGate.angle
-        : (state.input.aimAngle || player.rot);
+        : (Number.isFinite(state.input.aimAngle) ? state.input.aimAngle : player.rot);
       // Transient mirror of WHAT THE GUNS ARE ACTUALLY SHOOTING AT, written by the system that owns
       // firing (single-owner rule: HUD reads, we write). It differs from state.player.targetId
       // exactly when the Massline has claimed the guns, which is precisely the case a target panel
@@ -628,6 +628,7 @@ export const weapons = {
     let beamAim = aimAngle;
     const arcadeTarget = fireGate?.target || forceTarget;
     const arcadeAim = arcadeGunTarget(e, arcadeTarget, state);
+    const pilotAim = e.id === state.playerId && state.settings?.gameplay?.controlScheme === 'pilot';
     let solutionBlocked = false;
     if (!fireGate && forceTarget && forceTarget.pos) {
       // Hitscan has no travel time. A mixed battery may have computed the ship-level aim angle for
@@ -636,7 +637,7 @@ export const weapons = {
     } else if (fireGate && fireGate.target && fireGate.target.pos) {
       beamAim = Math.atan2(fireGate.target.pos.z - e.pos.z, fireGate.target.pos.x - e.pos.x);
       const bareDir = this._hardpointDir(e, w, beamAim, 0);
-      solutionBlocked = !arcadeAim && Math.abs(wrapAngle(bareDir - beamAim)) > fireGate.tolRad;
+      solutionBlocked = !arcadeAim && !pilotAim && Math.abs(wrapAngle(bareDir - beamAim)) > fireGate.tolRad;
     }
     if (arcadeAim) beamAim = this._arcadeMountAngle(e, w, arcadeTarget, 0);
     const canFire = firing && !solutionBlocked && !overheated && capLeft >= energyCost * dt;
@@ -650,7 +651,7 @@ export const weapons = {
     if (w._heat >= heatMax) w._heat = heatMax;
 
     // A continuous beam still originates from its hardpoint facing and gimbal-assists toward aim.
-    const dir = arcadeAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
+    const dir = arcadeAim || pilotAim ? beamAim : this._hardpointDir(e, w, beamAim != null ? beamAim : e.rot, 0);
     const origin = this._muzzle(e, w, dir);
     const to = { x: origin.x + Math.cos(dir) * range, z: origin.z + Math.sin(dir) * range };
     const damage = (w.dmg != null ? w.dmg : def.dmg || 0) * dt;
@@ -706,6 +707,7 @@ export const weapons = {
 
   // Projectile weapon: gate on cooldown/cap/heat (+lock/+arc), spawn a projectile, emit combat:fire.
   _serviceProjectileWeapon(e, w, def, isPlayer, capLeft, dt, state, aimAngle, forceTarget, fireGate = null) {
+    const pilotAim = isPlayer && state.settings?.gameplay?.controlScheme === 'pilot';
     if ((w._cooldown || 0) > 0) return capLeft;
     if (this._releaseMomentumSinkIfReady(e, w, def, state)) return capLeft;
 
@@ -780,7 +782,7 @@ export const weapons = {
       // released round is a hit candidate. Tolerance is the target-size-honest solution window
       // widened to at least the mount's own spread (a gate tighter than the spread would starve
       // fire without improving hits).
-      if (mountGate && !arcadeAim) {
+      if (mountGate && !arcadeAim && !pilotAim) {
         const spreadRad = (def.spreadDeg != null ? def.spreadDeg : 0) * RAD;
         const gateTol = Math.max(mountGate.tolRad, spreadRad + 0.5 * RAD);
         const bareDir = this._hardpointDir(e, w, mountGate.angle, 0);
@@ -797,7 +799,10 @@ export const weapons = {
       // model, but no cone clamp or random aim error on this explicit hostile solution.
       dir = arcadeAim
         ? (mountGate ? fixedAim : this._arcadeMountAngle(e, w, arcadeTarget, mountProjSpeed))
-        : this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
+        // Pilot means keyboard flight plus independent mouse fire. Keep the physical muzzle,
+        // projectile travel and spread; only the obsolete nose-cone restriction is removed.
+        : pilotAim ? fixedAim + (def.spreadDeg ? this._spread(def.spreadDeg) : 0)
+          : this._hardpointDir(e, w, fixedAim, def.spreadDeg != null ? def.spreadDeg : 0);
     }
 
     const spec = this._attackSpecFor(w, def, state, e);

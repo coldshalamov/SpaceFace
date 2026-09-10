@@ -32,7 +32,7 @@
 //   * Deterministic: a seeded mulberry32 stream mixed off (run.seed, wave, index). No Math.random,
 //     no wall clock.
 //
-// Event-driven: no per-tick work at all. Debris still only changes when a wave is planned.
+// A cheap two-second drift check refreshes cover during flight; wave events seed each new round.
 // The pressure-reservoir telegraph is also event-driven: census on destroy / wave start, and
 // callbacks from swarmReinforceCount (which survivalWave already calls on the sim tick).
 
@@ -402,6 +402,9 @@ export const swarmArena = {
     this._wellIds = [];
     this._pressureAlive = null;
     this._pressureWave = 0;
+    this._lastTerrainAnchor = null;
+    this._nextTerrainCheck = 0;
+    this._terrainRetry = false;
     resetSwarmPressureState();
     bindSwarmPressureContext({
       getAlive: () => liveCohortCount(this.state),
@@ -426,6 +429,9 @@ export const swarmArena = {
 
   newGame() {
     this._ids = [];
+    this._lastTerrainAnchor = null;
+    this._nextTerrainCheck = 0;
+    this._terrainRetry = false;
     this._releaseWells();
     this._restoreCapacity();
     this._pressureAlive = null;
@@ -433,8 +439,18 @@ export const swarmArena = {
     resetSwarmPressureState();
   },
 
-  /** No per-tick work: the field only changes when a wave is planned. */
-  update() {},
+  /** Refresh only after a meaningful drift, at most once per two simulation seconds. */
+  update() {
+    const state = this.state;
+    const run = liveSwarmRun(state);
+    if (!run || run.phase !== 'active' || state.mode !== 'flight') return;
+    if ((state.simTime || 0) < (this._nextTerrainCheck || 0)) return;
+    this._nextTerrainCheck = (state.simTime || 0) + 2;
+    const anchor = playerAnchor(state);
+    if (!this._terrainRetry && this._lastTerrainAnchor && Math.hypot(anchor.x - this._lastTerrainAnchor.x,
+      anchor.z - this._lastTerrainAnchor.z) < 260) return;
+    this._topUp(run, run.wave);
+  },
 
   /** Live rocks this system owns, for tests and the lab overlay. */
   debrisCount() {
@@ -587,6 +603,7 @@ export const swarmArena = {
     const helpers = this.helpers;
     if (!state || !helpers || typeof helpers.spawnEntity !== 'function') return;
     const anchor = playerAnchor(state);
+    this._lastTerrainAnchor = anchor;
     const keepSq = SWARM_DEBRIS_KEEP_RADIUS * SWARM_DEBRIS_KEEP_RADIUS;
     const fightSq = SWARM_DEBRIS_FIGHT_RADIUS * SWARM_DEBRIS_FIGHT_RADIUS;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
@@ -631,7 +648,9 @@ export const swarmArena = {
     const reef = runHasMutator(run, 'reef');
     const layout = debrisLayoutForArena(run && run.arenaId);
     const target = reef ? REEF_DEBRIS_TARGET : layout.target;
-    const want = Math.min(target - mine, SWARM_DEBRIS_MAX - mine);
+    const want = Math.min(target - mine, SWARM_DEBRIS_MAX - mine,
+      SWARM_DEBRIS_MAX * 2 - surviving.length);
+    this._terrainRetry = mine < target && want <= 0;
     if (want <= 0) return;
 
     const rng = mulberry32(debrisStreamSeed(

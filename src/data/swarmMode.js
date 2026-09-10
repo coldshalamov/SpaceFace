@@ -3,9 +3,8 @@
 // WHY THIS EXISTS
 // ---------------
 // The authored thirty-wave arc asks a QUESTION per wave: six identical things, then a split
-// arrival, then a tether specialist. Every wave ends with an empty room and a menu. That is a
-// good ruleset and it is not a swarm game. A swarm game has one question — "can you keep up?" —
-// and it never stops asking it.
+// arrival, then a tether specialist. Swarm asks how far your evolving build can go: clear a
+// finite pursuing pack, spend its cash or save, and launch the next round when ready.
 //
 // So this file is a second ruleset, not an edit to the first. It generates every wave
 // procedurally from the wave number, so there is no last wave and no authored ceiling. Waves 1,
@@ -17,12 +16,10 @@
 //      fast a dead one is replaced. Nothing here inflates health (§33 fails a leaf on sight for
 //      that) — `levelForWave` in waveMaterialization.js is the only stat scaler and it is shared
 //      with the arc.
-//   2. A WAVE ENDS ON A SIXTY-SECOND CLOCK, NOT ON A KILL QUOTA. Survivors are NOT chased
-//      down — they roll into the next wave. Kills buy score, salvage and reservoir openings.
-//      `rewardReferenceKills` keeps the old quota curve's numbers solely so a chip is still
-//      worth the same per body. The stream does not stop when that number is met.
-//   3. THE ROOM IS NEVER IDLE. Every swarm wave names a live `arenaPhase`, so survivalArena.js
-//      always has a room to install. Wave 1 of the arc is `idle`; wave 1 here is not.
+//   2. A ROUND ENDS WHEN ITS FINITE COHORT IS DEFEATED. Reinforcements replace losses only
+//      until the quota has arrived. No surviving enemy is discarded to manufacture a clear.
+//   3. PRESSURE HAS A RELEASE. Each clear opens the armory; combat resumes on explicit launch.
+//      Arena laws add opportunities, not compulsory motion or a fixed time-to-death target.
 //   4. COVER IS THE POINT, NOT A GARNISH. The draft's verbs are Throw / Tag / Bind — physical
 //      verbs that need something to throw a hull INTO. Every wave from 2 on requests cover rocks.
 //   5. VARIETY COMES FROM THE ROSTER, ON A CLOCK YOU CAN FEEL. A new archetype unlocks on a fixed
@@ -36,7 +33,7 @@ import { SPAWN_BUDGET_DEFAULT_MAX, SPAWN_BUDGET_HARD_MAX } from './survivalActs.
 export const SWARM_RULESET = 'swarm';
 export const SWARM_SCHEMA_VERSION = 2;
 
-/** Active combat ticks for every swarm wave. 3600 ticks = 60 s at 60 Hz. */
+/** Legacy timed-plan compatibility. Current Swarm plans complete their finite cohort instead. */
 export const SWARM_WAVE_DURATION_TICKS = 3600;
 
 /** No authored ceiling. Matches SURVIVAL_ENDLESS_WAVE_MAX so the phase machine has one cap idiom. */

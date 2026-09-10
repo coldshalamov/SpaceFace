@@ -390,6 +390,10 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // renderer real entity boundaries to upgrade while the route remains frozen in loading.
       bootstrapScene(state, helpers, bus, registry);
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      // Run-specific loadouts and arena placement must exist before visual/GPU admission.
+      // Installing them on game:started prepares the wrong hull, then replaces it in flight.
+      bus.emit('game:scenePrepared', {});
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
       const saveSystem = registry.get('save');
       if (saveSystem && typeof saveSystem.primeAutosaveCapture === 'function') {
         saveSystem.primeAutosaveCapture();

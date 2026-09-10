@@ -1,12 +1,12 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace — Physical Play Grammar
 
-**Status: DESIGN PROPOSAL, NOT ADMITTED WORK.** This document owns the *mechanics-level* description
+**Status: SHARED MECHANICS DIRECTION; Crucible integration authorized September 10, 2026.** This document owns the *mechanics-level* description
 of how physical play is intended to work: the primitive/state/outcome grammar, the input models, the
 presentation language that makes them legible, and the record of ideas that were tried and rejected.
 
-It does not claim implementation, status, or acceptance. Nothing here is committed scope until the
-lead assigns a roadmap ID and admits a bounded slice through `design/program/`. Where this document
+It does not claim that every proposed state or variant already ships. The owner's Crucible campaign
+authorizes the combat and flight dependencies here; another admission ceremony is unnecessary. Where this document
 disagrees with `ARCHITECTURE.md`, architecture wins. Where it disagrees with `GDD_2_0.md` §4–§6, this
 document is the more recent design intent and the GDD should be corrected in the same pass.
 
@@ -43,8 +43,8 @@ economy attached**. You should want to fight because fighting is a puzzle made o
 should want to mine because mining funds better toys. You should want more enemies on screen, not
 fewer, because more enemies means the web catches more.
 
-The look should be **grounded ships in a dark void, and neon where the forces are.** Grey PBR hulls
-are an asset — they are the dark surround that makes the energy read. When a Massline goes taut it
+The look should be **colored, materially grounded ships in a dark void, and neon where the forces are.**
+Keep faction paint and distinctive silhouettes visible beneath the effects. When a Massline goes taut it
 should be the brightest object on the screen. When it snaps it should whip. When a gravity well
 opens, space itself should bend around it. The world stays honest; the forces glow.
 
@@ -149,7 +149,8 @@ Design constraints on the state set:
 - Every state must be **legible without UI** — it needs a distinct silhouette, motion, or emission
   (see §9.3). A state the player cannot see is a bug, not a mechanic.
 - Every state must have **counterplay**, per `CANONICAL_BUILD_MAP.md` §6 question 3.
-- States belong to simulation, not presentation, and must survive save/Continue.
+- States belong to simulation, not presentation. Persistent changes survive save/Continue; short-lived
+  webs, armed traps and temporary fields need explicit expiry and load cleanup, without dangling bodies.
 
 ### 2.3 Outcomes
 
@@ -172,8 +173,15 @@ authored:
 One setup, several seconds of consequence the player only watches. This is the felt difference
 between a physics toolbox and a physics game.
 
-**Recommended first build: disable → tow → capture.** Every part of this chain already ships and only
-one number changes:
+**Crucible priority: bank → web → shove → impact → collateral → escape.** Build the shared physical
+interactions into a pursuing pack, a readable gun and useful cover. A web is a set of real constraints:
+opposing thrust loads the knot, a heavy ship drags lighter ones, and tension can break it. A repulsion
+trap arms behind a boosting ship, then throws pursuers into the room. A primed hull detonates on a
+qualified hard impact or destruction, not on every harmless graze. Kills pay cash; surviving buys the
+next experiment. Adventure uses these same rules but makes advanced toys earned acquisitions.
+
+**Retained Adventure chain: disable → tow → capture.** These existing seams are a useful starting point;
+the table is historical orientation, not proof that capture can safely be completed by changing one number:
 
 | Step | What exists |
 |---|---|
@@ -182,12 +190,10 @@ one number changes:
 | the invitation | `aiPorts.js:984` already scores a drive-disabled ship `tetherabilityBand: 'excellent'`; `combatOutcome.js:61` already prints "capture window open" |
 | tow and capture | `src/systems/surrenderRecovery.js` already tows a yielded ship to lawful custody on a 45 s clock |
 
-**The one change:** `combatDefs.js:165` sets `multipliers: { movement: 0.25 }` for a disabled drive.
-Setting it to `0` turns "crippled" into **Drifting**, and the chain closes.
-
-Prime → tether → snap → breach was the earlier candidate and is **worse first work**: Primed and
-Breached are two of the four states that need new effect machinery (§2.5), whereas disable → tow →
-capture is one number plus a visual.
+Drive disable, recovery and capture must agree about thrust, ownership and recovery. Keep this
+Adventure opportunity in scope without putting custody or its 45-second tow ahead of the Swarm loop.
+The cost estimates below describe the original proposal; inspect the existing impulse, field and
+attachment services before creating machinery for states they already support.
 
 ### 2.5 Cost asymmetry across the eight states
 

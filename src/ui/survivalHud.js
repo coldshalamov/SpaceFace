@@ -154,6 +154,7 @@ export const survivalHud = {
   },
 
   destroy() {
+    if (typeof document !== 'undefined') document.body?.classList?.remove('sf-swarm-flight');
     for (const off of this._unsubs || []) if (typeof off === 'function') off();
     this._unsubs = [];
     if (this._dom && this._dom.root && this._dom.root.parentNode) {
@@ -188,7 +189,8 @@ export const survivalHud = {
     // A boss or elite wave says so; everything else reads as the phase, which already says FIGHT.
     const fighting = run.phase === 'active' || run.phase === 'wave_intro';
     const phase = (fighting && this._objective) ? this._objective : phaseWord(run.phase);
-    this._setText(dom.label, `CRUCIBLE · ${arenaLabel(run.arenaId)}`);
+    this._setText(dom.label, `CRUCIBLE · ${swarm && run.arenaId === 'helios_core'
+      ? 'RICOCHET FOUNDRY' : arenaLabel(run.arenaId)}`);
     // A swarm run has no denominator: there is no last wave to count toward, and printing one
     // would be a lie about when it ends.
     this._setText(dom.waveN, swarm

@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { createGameState } from '../src/core/gameState.js';
+import { createBus } from '../src/core/eventBus.js';
+import { ships } from '../src/systems/ships.js';
+import { economy } from '../src/systems/economy.js';
+import { runSession } from '../src/systems/runSession.js';
+import { crucibleSetupFor, crucibleLaunchConfig } from '../src/ui/crucibleLaunch.js';
+import { requestSandboxGame, installSandboxGameStartedHook } from '../src/ui/sandbox/sandboxSetup.js';
+
+test('Crucible fits its real selected hull before GPU admission and consumes setup only once', () => {
+  const state = createGameState(4242);
+  const bus = createBus();
+  const world = { enterSector() {}, relocatePlayerInSector() { return true; } };
+  const registry = { get: name => ({ ships, economy, runSession, world })[name] };
+  const ctx = { state, bus, registry, helpers: {} };
+  economy.init(ctx);
+  ships.init(ctx);
+  ships.newGame();
+  runSession.init(ctx);
+  installSandboxGameStartedHook(bus, ctx);
+  const setup = crucibleSetupFor({ starterId: 'web_weaver', seed: 4242 }).value;
+  let ready = 0;
+  bus.on('run:loadoutReady', () => ready++);
+  requestSandboxGame(bus, crucibleLaunchConfig(setup));
+  assert.equal(ready, 0);
+  bus.emit('game:scenePrepared', {});
+  const active = state.player.ownedShips[state.player.activeShipIndex];
+  assert.equal(active.defId, setup.hullId);
+  for (const item of setup.loadout) assert.equal(active.fittings[item.slotIndex], item.defId);
+  assert.equal(state.run.kind, 'survival');
+  assert.equal(ready, 1);
+  bus.emit('game:started', {});
+  bus.emit('game:scenePrepared', {});
+  assert.equal(ready, 1, 'late start notifications cannot reset the fitted build');
+});

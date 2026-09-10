@@ -62,6 +62,8 @@
 .sf-swarm-flight .sf-ft { text-shadow: 0 2px 1px #07101a, 0 0 5px #07101a; }
 .sf-swarm-flight .sf-ft--hull { color: #fff0b3; }
 .sf-swarm-flight .sf-ft--big { font-size: 27px; font-weight: 900; }
+.sf-swarm-flight .sf-wpn-heat__label { width: 132px; max-width: 132px; flex: 0 0 132px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sf-swarm-flight .sf-cluster:has(.sf-stat--speed) { width: auto; min-width: 90px; }
 .sf-crucible-door .k-title h1 { font-weight: 800; letter-spacing: -.055em; }
 .sf-crucible-door .k-word[aria-checked="true"] { color: #ffe4a8; }
 .sf-crucible-door .sf-crd-settings .k-row > .k-row__name { color: #a4c6d5; }

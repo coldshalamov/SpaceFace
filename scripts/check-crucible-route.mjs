@@ -42,7 +42,7 @@ import { loadPlaywright } from './lib/load-playwright.mjs';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const VERBOSE = process.argv.includes('--verbose');
 const SEED = 4242;
-// --full walks all ten waves to a victory instead of stopping at wave 2 and dying.
+// --full walks to round 10 extraction in Swarm, or the complete 30-wave Gauntlet victory.
 const FULL = process.argv.includes('--full');
 // Which ruleset to walk. Swarm is the default because it is what the main-menu button plays.
 const GAUNTLET = process.argv.includes('--gauntlet');
@@ -308,7 +308,7 @@ async function main() {
     };
   });
   const waveTextOk = MODE === 'swarm'
-    ? hud.wave === 'WAVE 1'
+    ? hud.wave === 'ROUND 01'
     : String(hud.wave).indexOf('WAVE 1 / 30') === 0;
   record('HUD',
     hud.present && hud.visible && waveTextOk
@@ -451,6 +451,14 @@ async function main() {
     record('PURCHASE', offer.credits - purchased.credits === offer.candidate.price && purchased.phase === 'draft',
       'paid ' + offer.candidate.price + ' cr; armory stays open for another purchase or saving');
     const saved = purchased.credits;
+    if (!(await clickButton(page, 'Rearrange loadout'))) throw new Error('Round refit control missing');
+    await page.waitForFunction(() => window.SF.ctx.screenManager.top() === 'crucibleRefit');
+    const row = page.locator('.sf-crucible-refit .sf-cru-row').first();
+    await row.getByRole('button', { name: 'Strip', exact: true }).click();
+    await row.getByRole('button', { name: 'Fit', exact: true }).click();
+    if (!(await clickButton(page, 'Back to armory'))) throw new Error('Refit return control missing');
+    record('REFIT', await page.evaluate(() => window.SF.ctx.screenManager.top() === 'crucibleDraft'
+      && window.SF.state.run.phase === 'draft'), 'strip and refit between rounds; return to armory');
     if (!(await clickButton(page, 'Launch round 2'))) throw new Error('Next round control missing');
     await waitForPhase(page, 'active', 30000);
     const next = await page.evaluate(() => ({ wave: window.SF.state.run.wave, credits: window.SF.state.run.credits }));
@@ -459,7 +467,7 @@ async function main() {
 
   // ── VICTORY (--full) ────────────────────────────────────────────────────────────────────────
   // The one claim nothing else proves: that a player who keeps winning actually REACHES the end.
-  // Ten waves is slow (each carries a 180-240 tick cleanup), so it is opt-in.
+  // The long progression route is opt-in; ordinary checks exercise a buy, refit and retry.
   if (FULL) {
     const log = [];
     let guard = 0;
@@ -485,16 +493,18 @@ async function main() {
         continue;
       }
       if (phase === 'draft') {
-        await page.evaluate(() => {
+        await page.evaluate((gauntlet) => {
+          if (!gauntlet) { window.SF.bus.emit('run:draftPickRequested', { offerId: null }); return; }
           const card = document.querySelector('#screens .sf-cru-card');
           if (card) card.click();
           else window.SF.bus.emit('run:draftPickRequested', { offerId: null });
-        });
+        }, GAUNTLET);
         await page.waitForTimeout(300);
         continue;
       }
       if (phase === 'refit') {
-        await page.evaluate(() => window.SF.bus.emit('run:refitCloseRequested', {}));
+        await page.evaluate((gauntlet) => window.SF.bus.emit(!gauntlet && window.SF.state.run.wave >= 10
+          ? 'run:extractionRequested' : 'run:refitCloseRequested', {}), GAUNTLET);
         await page.waitForTimeout(300);
         continue;
       }
@@ -529,9 +539,10 @@ async function main() {
         picks: result && result.picks ? result.picks.map((p) => p.verb).filter(Boolean) : [],
       };
     });
-    record('VICTORY',
-      won.phase === 'victory' && won.wave === 10 && won.outcome === 'victory'
-        && won.top === 'crucibleResults',
+    record(GAUNTLET ? 'VICTORY' : 'EXTRACT',
+      (GAUNTLET ? won.phase === 'victory' && won.wave === 30 && won.outcome === 'victory'
+        : won.phase === 'ended' && won.wave === 10 && won.outcome === 'aborted')
+      && won.top === 'crucibleResults',
       `phase ${won.phase} wave ${won.wave} · "${won.title}" — ${won.headline} · `
       + `${won.kills} kills, ${won.score} score, ${won.credits} cr, level ${won.level}, `
       + `build: ${won.picks.join('/') || '(none)'} · cleared ${log.join(' ')}`);

@@ -141,6 +141,16 @@ export function materializeWaveBatch(ctx, request) {
       spec.data = spec.data || {};
       spec.data.ai = spec.data.ai || {};
       spec.data.ai.spawnContext = 'encounter';
+      // A run cohort hunts the pilot until the round resolves. Adventure surrender,
+      // pirate morale and a spawn-point leash otherwise strand the final few enemies.
+      const playerId = ctx.state?.playerId;
+      spec.data.ai.forcePlayerTarget = true;
+      spec.data.ai.huntPlayer = true;
+      spec.data.ai.moraleImmune = true;
+      spec.data.ai.surrenderImmune = true;
+      spec.data.ai.activity = { ...spec.data.ai.activity, kind: 'attack_run',
+        reason: 'survival_pursuit', targetId: playerId ?? null, anchor: null };
+      spec.data.combat = { ...spec.data.combat, targetId: playerId ?? null };
       // Cohort stamp travels with the body. Reward owners read it off the victim rather than
       // asking a global "is a run live?" question that would also capture ambient traffic.
       spec.data.runCohort = SURVIVAL_COHORT_TAG;

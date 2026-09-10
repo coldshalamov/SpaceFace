@@ -513,6 +513,10 @@ function stationEntities(state) {
 }
 
 function inFirstSession(state, tick) {
+  // Adventure's opening protection must not turn an arena swarm into two shooters
+  // surrounded by spectators. Run waves own pressure; every firing check still applies.
+  if (state?.run?.kind === 'survival' && state.run.phase !== 'inactive'
+    && state.run.phase !== 'ended') return false;
   if (Number.isFinite(state && state.simTime)) return state.simTime < 10 * 60;
   return tick < FIRST_SESSION_DURATION_TICKS;
 }

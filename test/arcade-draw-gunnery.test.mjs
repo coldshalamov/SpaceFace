@@ -8,8 +8,9 @@ import { hash32, mulberry32 } from '../src/core/rng.js';
 
 function fire({ heading = 0, auto = true, trigger = true, targetTeam = 1,
   shooterVel = { x: 152, z: 0 }, targetVel = { x: 35, z: 65 },
-  targetPos = { x: -180, z: 90 }, projSpeed = 320, beam = false, turret = false } = {}) {
+  targetPos = { x: -180, z: 90 }, projSpeed = 320, beam = false, turret = false, scheme = 'pilot' } = {}) {
   const state = createGameState(4242);
+  state.settings.gameplay.controlScheme = scheme;
   state.mode = 'flight';
   state.entities.clear();
   state.entityList.length = 0;
@@ -57,11 +58,22 @@ for (const heading of [0, Math.PI / 2, Math.PI, -Math.PI / 2]) {
   }
 }
 
-test('manual fixed guns retain their normal cone; G without LMB does not fire', () => {
-  const manual = fire({ auto: false });
+test('classic manual fixed guns retain their cone; G without LMB does not fire', () => {
+  const manual = fire({ auto: false, scheme: 'classic' });
   assert.equal(manual.spawned.length, 1);
   assert.ok(Math.abs(manual.spawned[0].rot) < Math.PI / 10);
   assert.equal(fire({ trigger: false }).spawned.length, 0);
+});
+
+test('Pilot manual fire follows the cursor behind the hull without selecting an auto target', () => {
+  const manual = fire({ auto: false });
+  assert.equal(manual.spawned.length, 1);
+  assert.ok(Math.abs(manual.spawned[0].rot - Math.atan2(90, -180)) < 0.03);
+  const zero = fire({ auto: false, heading: Math.PI, targetPos: { x: 180, z: 0 } });
+  assert.ok(Math.abs(zero.spawned[0].rot) < 0.03, 'zero-radian aim is valid, not a missing value');
+  const beam = fire({ auto: false, beam: true });
+  const ray = beam.state.combat.beams[0];
+  assert.ok(ray.to.x < ray.from.x, 'beams follow the same independent aim contract');
 });
 
 test('G also lets a turret bear behind the hull', () => {

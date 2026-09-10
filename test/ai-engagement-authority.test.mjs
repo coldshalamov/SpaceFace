@@ -208,6 +208,10 @@ test('first-session combat permits at most two simultaneous attackers on the pla
   assert.deepEqual(authorize(state, { self: state.entities.get(5) }),
     { ok: false, reason: 'first_session_attacker_cap' });
 
+  state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active' };
+  assert.deepEqual(authorize(state, { self: state.entities.get(5) }), { ok: true, reason: 'authorized' },
+    'Crucible pursuit does not inherit Adventure novice pacing');
+  state.run = null;
   state.tick = 60 * 60 * 10;
   assert.deepEqual(authorize(state, { self: state.entities.get(5) }), { ok: true, reason: 'authorized' },
     'the novice cap is a first-session pacing rule, not a permanent challenge reduction');

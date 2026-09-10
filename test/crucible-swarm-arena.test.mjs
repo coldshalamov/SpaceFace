@@ -21,7 +21,7 @@ import {
   planSwarmDebris,
   swarmArena,
 } from '../src/systems/swarmArena.js';
-import { PRODUCTION_INIT_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
+import { PRODUCTION_INIT_ORDER, PRODUCTION_UPDATE_ORDER } from '../src/runtime/authoritativeSystemManifest.js';
 import { planWave } from '../src/systems/survivalWavePlanner.js';
 import { SWARM_RULESET } from '../src/data/swarmMode.js';
 
@@ -65,11 +65,28 @@ function rocks(h) {
   );
 }
 
-test('swarmArena is in the production init order and never joins the tick loop', () => {
+test('swarmArena initializes and refreshes terrain on the production route', () => {
   assert.ok(PRODUCTION_INIT_ORDER.includes('swarmArena'));
-  // It has an update() for registry symmetry, but it must do nothing — the field only changes
-  // when a wave is planned.
+  assert.ok(PRODUCTION_UPDATE_ORDER.includes('swarmArena'));
   assert.equal(typeof swarmArena.update, 'function');
+});
+
+test('boosting out of the opening field replenishes bounded cover during the round', () => {
+  const h = boot();
+  h.bus.emit('run:wavePlanned', { wave: 1, plan: planFor(1) });
+  h.state.mode = 'flight';
+  h.state.run.phase = 'active';
+  h.state.run.wave = 1;
+  h.player.pos.x += 1500;
+  h.state.simTime = 3;
+  const before = h.spawned.length;
+  swarmArena.update();
+  assert.ok(h.spawned.length > before, 'the pursuit has fresh physical obstacles');
+  assert.ok(rocks(h).length <= SWARM_DEBRIS_MAX * 2, 'old and new cover remain bounded');
+  const stationary = h.spawned.length;
+  h.state.simTime = 6;
+  swarmArena.update();
+  assert.equal(h.spawned.length, stationary, 'remaining in the pocket does not grow terrain');
 });
 
 test('a swarm wave installs a real debris field, not three landmarks', () => {

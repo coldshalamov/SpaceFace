@@ -1357,7 +1357,7 @@ export const ships = {
     return true;
   },
 
-  unlockTech(nodeId) {
+  unlockTech(nodeId, { silent = false } = {}) {
     const node = TECH_BY_ID.get(nodeId);
     if (!node) return false;
     const p = this.state.player;
@@ -1372,7 +1372,7 @@ export const ships = {
     this.applyUnlocks(node.unlocks || {});
 
     this.bus.emit('tech:researched', { nodeId, unlocks: node.unlocks || {} });
-    this.bus.emit('toast', { text: 'Researched ' + (node.name || nodeId), kind: 'success', ttl: 3 });
+    if (!silent) this.bus.emit('toast', { text: 'Researched ' + (node.name || nodeId), kind: 'success', ttl: 3 });
     this.recomputeActiveShip();
     return true;
   },

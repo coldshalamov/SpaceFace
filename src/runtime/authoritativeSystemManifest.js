@@ -80,7 +80,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   // receipt. Immediately before survivalRun so a wave cleared this tick advances the phase this tick.
   // survivalRun: Survival phase machine. After combat/world/spawn/scenario receipts this tick
   // (wave-cleared arrives as an explicit event, never an entity count); before heat/HUD/presentation.
-  'survivalWave', 'survivalRun',
+  'swarmArena', 'survivalWave', 'survivalRun',
   // swarmChain: the kill chain. It ticks only to notice a lapse, and it reads the phase
   // survivalRun has already settled this tick.
   'swarmChain',

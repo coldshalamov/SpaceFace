@@ -1624,7 +1624,7 @@ export function createHud(ctx, alerts) {
     wpnHeatEls = [];
     if (!weapons || !weapons.length) { setStyle(wpnHeatsWrap, 'display', 'none'); return; }
     for (const w of weapons) {
-      const name = (w.name || w.defId || '').replace(/^wpn_/, '').replace(/_/g, ' ').slice(0, 8);
+      const name = (w.name || w.defId || '').replace(/^wpn_/, '').replace(/_/g, ' ');
       const row = document.createElement('div');
       row.className = 'sf-wpn-heat';
       const labelSpan = document.createElement('span');
