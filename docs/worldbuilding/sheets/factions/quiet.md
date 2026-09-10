@@ -36,6 +36,17 @@ canon_refs:
   - ../../story/ATMOSPHERIC-ECONOMY.md#3-faction-behaviors-systemic-incentives
   - ../../vibe/vibe-04-the-pit.md#the-debt-mechanism-atmo-debt
 appears_in_chapters: [B1, B4, B7]   # Choice B "Same Silence" becomes The Quiet
+register_rule: |
+  Leftover terse. One leftover fragment. No leftover explanation.
+register_tell: |
+  Seen.
+register_forbidden: |
+  Leftover greetings, leftover explanations, leftover Ref 44-C, leftover Pattern, leftover weigh-slip, leftover Clause.
+register_example: |
+  Seen.
+register_example_cite: src/data/barks.js#faction_quiet.scan[0]
+voice_direction: |
+  Directed leftover synthetic whisper. Almost leftover no sustain. No leftover recorded actor.
 ```
 
 **Signature faction graffiti:** *The walls were never the real prison.*

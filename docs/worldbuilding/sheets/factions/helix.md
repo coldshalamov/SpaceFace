@@ -32,6 +32,17 @@ dostoyevsky_layer:
 canon_refs:
   - ../../orgs/factions-CANONICAL.md#Helix Directorate
 appears_in_chapters: [B4, B5]
+register_rule: |
+  Leftover invoice and leftover fine in the leftover same hand. File leftover variance. Require leftover no action.
+register_tell: |
+  VARIANCE FILE OPEN
+register_forbidden: |
+  Leftover pirate bravado, leftover Pattern liturgy, leftover claim-jumping, leftover Ref 44-C hail, leftover weigh-slip.
+register_example: |
+  VESSEL VHL-4471-T — VARIANCE FILE OPEN. COORDINATES ON ATTACHED MANIFEST DO NOT RESOLVE. NO ACTION REQUIRED.
+register_example_cite: src/data/narrative.js#COMMS.story.story_b8_helix_audit
+voice_direction: |
+  Directed leftover synthetic filing. ALL CAPS leftover paper. No leftover recorded actor.
 ```
 
 **Signature faction graffiti:** *The invoice and the fine are written in the same hand. Read the invoice first.*

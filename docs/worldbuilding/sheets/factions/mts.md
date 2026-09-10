@@ -36,6 +36,17 @@ canon_refs:
   - ../../orgs/factions-CANONICAL.md#Meridian Trade Syndicate
   - ../../story/ATMOSPHERIC-ECONOMY.md#3-faction-behaviors-systemic-incentives   # MTS short position (canonical)
 appears_in_chapters: [B1, B4, B6]
+register_rule: |
+  Leftover everything is a leftover fee. Leftover account. Leftover nothing personal.
+register_tell: |
+  Nothing personal
+register_forbidden: |
+  Leftover Pattern, leftover claim-jumping, leftover Clause, leftover Ref 44-C hail, leftover weigh-slip, leftover Seen.
+register_example: |
+  Meridian Trade. Just confirming your account is in good standing. Nothing personal.
+register_example_cite: src/data/barks.js#faction_mts.scan[0]
+voice_direction: |
+  Directed leftover synthetic desk. Smooth leftover mercantile. No leftover recorded actor.
 ```
 
 **Signature faction graffiti:** *Every man pays twice. First in flesh. Then in coin.*

@@ -29,6 +29,17 @@ canon_refs:
   - ../../orgs/factions-CANONICAL.md#Solar Concord Navy
   - ../../story/ATMOSPHERIC-ECONOMY.md#3-faction-behaviors-systemic-incentives
 appears_in_chapters: [B2, B4, B7]   # Choice A "Clean Uniform" joins Concord
+register_rule: |
+  Bloodless leftover clerk. Cite leftover Ref 44-C. No leftover contractions.
+register_tell: |
+  Ref 44-C
+register_forbidden: |
+  Contractions, leftover slang, leftover Pattern liturgy, leftover weigh-slip, leftover Clause, leftover VARIANCE FILE.
+register_example: |
+  Concord Patrol. Stand by for routine transponder verification. Ref 44-C.
+register_example_cite: src/data/barks.js#faction_scn.scan[0]
+voice_direction: |
+  Directed leftover synthetic clerk. Flat leftover radio. No leftover recorded actor.
 ```
 
 **Signature faction graffiti:** *Every name logged. Every shift counted. Every warden re-signed.*

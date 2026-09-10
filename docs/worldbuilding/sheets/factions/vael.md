@@ -44,6 +44,17 @@ canon_refs:
   - ../../story/ATMOSPHERIC-ECONOMY.md#3-faction-behaviors-systemic-incentives
   - ../../story/SECTOR-GRADIENT.md#s8-veil-expanse-vael-space
 appears_in_chapters: [B4, B5]
+register_rule: |
+  Leftover clause numbers. Leftover this-vessel. Leftover accord. No leftover slang.
+register_tell: |
+  Clause 1
+register_forbidden: |
+  Leftover slang, leftover Ref 44-C, leftover Pattern, leftover weigh-slip, leftover ain't, leftover VARIANCE FILE.
+register_example: |
+  Vael Consensus. Clause 1: your presence is registered. Await disposition.
+register_example_cite: src/data/barks.js#faction_vael.scan[0]
+voice_direction: |
+  Directed leftover synthetic counsel. Remote leftover legal. No leftover recorded actor.
 ```
 
 **Signature faction graffiti:** *They didn't modify the workers. They modified the terms of the workers.* / Second line (smaller): *THE ADDENDUM IS ON PAGE 9. READ PAGE 9.*

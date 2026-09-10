@@ -30,6 +30,17 @@ canon_refs:
   - ../../orgs/factions-CANONICAL.md#Drift Miners Collective
   - ../../story/ATMOSPHERIC-ECONOMY.md#3-faction-behaviors-systemic-incentives
 appears_in_chapters: [B1, B6]
+register_rule: |
+  Leftover tired leftover shift. Leftover claim. Leftover ain't. No leftover corporate jargon.
+register_tell: |
+  Long shift
+register_forbidden: |
+  Leftover corporate jargon, leftover Ref 44-C, leftover Pattern, leftover weigh-slip, leftover Clause, leftover VARIANCE FILE.
+register_example: |
+  Drift Collective. Just checking you ain’t claim-jumping. Long shift.
+register_example_cite: src/data/barks.js#faction_dmc.scan[0]
+voice_direction: |
+  Directed leftover synthetic rigger. Tired leftover mid. No leftover recorded actor.
 ```
 
 **Note (name collision):** the *faction* Drift Miners Collective shares a name with the *character* Drift (the Meridian Exchange clerk). They are separate entities. The character `npc_drift` works for the Meridian Exchange (MTS-adjacent), not for this faction.

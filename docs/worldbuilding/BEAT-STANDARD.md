@@ -32,7 +32,7 @@ Required keys:
 | Key | Meaning |
 |---|---|
 | `canon.whoWantsWhat` | Each leftover actor: who wants what, and why |
-| `register.speakers` | One-line rule + leftover example per speaking faction |
+| `register.speakers` | One-line rule + leftover example per speaking faction. Cite leftover `REGISTERS.md`. Do not invent a ninth leftover house. |
 | `setPiece.place` | Where the bodies are |
 | `setPiece.actors` | Leftover actor ids, not invented cast |
 | `setPiece.headlineVerb` | One physical verb (hitch, cut, sling, tow, fire, steer, knock, pull, whip) |

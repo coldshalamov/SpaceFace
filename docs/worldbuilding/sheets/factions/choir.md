@@ -33,6 +33,17 @@ canon_refs:
   - ../../orgs/factions-CANONICAL.md#Ascendant Choir
   - ../../story/VETHARI.md#what-the-galaxy-believes   # the Ascendant Choir's relics may or may not be Vethari in origin
 appears_in_chapters: [B5, B7]
+register_rule: |
+  Leftover liturgy. Short leftover cadence. The leftover Pattern, not leftover gothic stack.
+register_tell: |
+  The Choir observes
+register_forbidden: |
+  Leftover slang, leftover invoices, leftover Ref 44-C, leftover weigh-slip, leftover ain't, leftover VARIANCE FILE.
+register_example: |
+  The Choir observes. Hold.
+register_example_cite: src/data/barks.js#faction_choir.scan[0]
+voice_direction: |
+  Directed leftover synthetic chant. Even leftover cadence. No leftover recorded actor.
 ```
 
 **Signature faction graffiti:** *The relic reports home. The shrine is home.*

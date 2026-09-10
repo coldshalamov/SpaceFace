@@ -30,6 +30,17 @@ canon_refs:
   - ../../orgs/factions-CANONICAL.md#Crimson Reach
   - ../../story/ATMOSPHERIC-ECONOMY.md#3-faction-behaviors-systemic-incentives
 appears_in_chapters: [B4, B5]
+register_rule: |
+  Leftover salvage leftover math. Leftover weigh-slip. Leftover mass on the leftover board.
+register_tell: |
+  Weigh-slip
+register_forbidden: |
+  Leftover navy refs, leftover Pattern liturgy, leftover invoice politeness, leftover Clause, leftover ain't.
+register_example: |
+  Weigh-slip open. Your mass is already on the board.
+register_example_cite: src/data/barks.js#faction_reach.scan[3]
+voice_direction: |
+  Directed leftover synthetic pack. Thin leftover grit. Leftover counting cadence. No leftover recorded actor.
 ```
 
 **Signature faction graffiti:** *The hole had no locks on the inside.*
