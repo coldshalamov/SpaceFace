@@ -5,6 +5,7 @@
 // semantic events plus a small live-entity presentation stamp for morale/decal/news/Ledger readers.
 
 import {
+  authoredTitleId,
   THUNDERCHILD,
   THUNDERCHILD_TITLE_ID,
   TITLE_ACTIVE_HOLD_LIMIT,
@@ -412,7 +413,7 @@ export function createTitlesSystem() {
       let applied = 0;
       for (const carried of titles) {
         if (!carried || typeof carried !== 'object') continue;
-        const titleId = cleanText(carried.id || carried.titleId);
+        const titleId = authoredTitleId(carried.id || carried.titleId);
         const titleName = cleanText(carried.title, titleId === THUNDERCHILD_TITLE_ID ? THUNDERCHILD.title : '');
         const holderKey = cleanText(carried.holderKey, 'player');
         if (!titleId || !titleName) continue;

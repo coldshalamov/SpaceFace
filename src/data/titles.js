@@ -30,3 +30,17 @@ export const THUNDERCHILD = Object.freeze({
 });
 
 export const TITLES = Object.freeze([THUNDERCHILD]);
+
+/** Live titlesSeen ids are authoredId:succession:holder or authoredId:holder:tick. */
+export function authoredTitleId(value) {
+  const id = String(value == null ? '' : value).trim();
+  if (!id) return '';
+  if (id === THUNDERCHILD_TITLE_ID || id.startsWith(`${THUNDERCHILD_TITLE_ID}:`)) {
+    return THUNDERCHILD_TITLE_ID;
+  }
+  if (id.startsWith('title_')) {
+    const colon = id.indexOf(':');
+    return colon === -1 ? id : id.slice(0, colon);
+  }
+  return id;
+}

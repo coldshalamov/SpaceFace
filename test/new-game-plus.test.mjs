@@ -71,17 +71,17 @@ function completedRunData() {
         endgameChoice: 'E',
         endgameResolved: true,
         titlesSeen: [{
-          id: 'title_thunderchild',
+          id: 'title_thunderchild:0:player',
           title: 'Thunderchild',
           holderKey: 'player',
+          seenAt: 54000,
         }],
         titles: {
           byId: {
             title_thunderchild: {
-              id: 'title_thunderchild',
-              title: 'Thunderchild',
               status: 'held',
               holderKey: 'player',
+              successionCount: 0,
             },
           },
         },
@@ -289,6 +289,7 @@ test('leftover New Run+ writes scars, Thunderchild, and CONTRACT 47-B onto the f
   );
   assert.equal(overlay.scars[0].id, 'weapon:54000:bow');
   assert.equal(overlay.titles[0].id, 'title_thunderchild');
+  assert.equal(overlay.titles[0].status, 'held');
   assert.equal(overlay.worldFacts.title, 'CONTRACT 47-B');
   assert.deepEqual(overlay.worldFacts.flags, ['contract_47a_closed', 'contract_47b_pending']);
 
@@ -318,10 +319,38 @@ test('leftover New Run+ writes scars, Thunderchild, and CONTRACT 47-B onto the f
   assert.equal(state.story.flags.contract47bPending, true);
   assert.equal(state.story.postEnding && state.story.postEnding.directiveId, 'contract_47b');
   assert.equal(state.story.titles.byId.title_thunderchild.status, 'held');
+  assert.equal(state.story.titles.byId['title_thunderchild:0:player'], undefined);
+  const carriedScar = livingHullScars(state.player.ownedShips[0].livingHull)
+    .find((scar) => scar.id === 'weapon:54000:bow');
+  assert.equal(carriedScar && carriedScar.atT, 0, 'leftover scar restamps to the new run clock');
   assert.equal(
     livingHullScars(state.player.ownedShips[0].livingHull).some((scar) => scar.id === 'weapon:54000:bow'),
     true,
     'leftover scar lands on the new hull without editing ships.js',
   );
   assert.equal(hullEvents[0] && hullEvents[0].source, 'new_game_plus');
+});
+
+test('leftover Thunderchild recovers from the byId map key when titlesSeen is empty', () => {
+  const data = completedRunData();
+  data.missions.story.titlesSeen = [];
+  const overlay = buildNewGamePlusOverlay(
+    data,
+    { keepsakeId: 'unique_veil_cutter' },
+    { slot: 'legacy', savedAt: '2026-08-06T12:00:00.000Z' },
+  );
+  assert.equal(overlay.titles[0].id, 'title_thunderchild');
+  assert.equal(overlay.titles[0].status, 'held');
+});
+
+test('leftover Thunderchild recovers from the byId map key when titlesSeen is empty', () => {
+  const data = completedRunData();
+  data.missions.story.titlesSeen = [];
+  const overlay = buildNewGamePlusOverlay(
+    data,
+    { keepsakeId: 'unique_veil_cutter' },
+    { slot: 'legacy', savedAt: '2026-08-06T12:00:00.000Z' },
+  );
+  assert.equal(overlay.titles[0].id, 'title_thunderchild');
+  assert.equal(overlay.titles[0].status, 'held');
 });

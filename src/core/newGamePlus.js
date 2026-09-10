@@ -8,7 +8,7 @@ import { livingHullScars, normalizeHullScar } from './livingHull.js';
 import { MODULES } from '../data/modules.js';
 import { ENDGAME_CHOICES } from '../data/narrative.js';
 import { PIRATE_PROMOTION_MAX_TIER, aceById } from '../data/namedAces.js';
-import { TITLES, TITLES_SEEN_LIMIT } from '../data/titles.js';
+import { authoredTitleId, TITLES, TITLES_SEEN_LIMIT } from '../data/titles.js';
 import { WEAPONS } from '../data/weapons.js';
 import { endingDef } from '../story/endings/endingDefs.js';
 import {
@@ -277,7 +277,7 @@ function leftoverEarnedTitles(story) {
     if (out.length >= TITLES_SEEN_LIMIT) return out;
   }
   for (const id of Object.keys(byId).sort()) {
-    const title = leftoverTitleRecord(byId[id], byId);
+    const title = leftoverTitleRecord(byId[id], byId, id);
     if (!title || seen.has(title.id)) continue;
     seen.add(title.id);
     out.push(title);
@@ -286,19 +286,20 @@ function leftoverEarnedTitles(story) {
   return out;
 }
 
-function leftoverTitleRecord(raw, byId = {}) {
+function leftoverTitleRecord(raw, byId = {}, mapKey = '') {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-  const authored = leftoverAuthoredTitle(raw.id || raw.titleId || raw.title);
+  const authored = leftoverAuthoredTitle(raw.id || raw.titleId || raw.title || mapKey);
   const titleId = authored && authored.id
-    || clean(raw.id || raw.titleId)
+    || authoredTitleId(raw.titleId || raw.id || mapKey)
     || (raw.trickId ? `title_${clean(raw.trickId)}` : '');
+  const live = byId && (byId[titleId] || byId[mapKey]);
   const titleName = authored && authored.title
     || clean(raw.title)
+    || clean(live && live.title)
     || (raw.trickId ? clean(raw.trickId).replace(/_/g, ' ') : '');
-  const holderKey = clean(raw.holderKey);
+  const holderKey = clean(raw.holderKey) || clean(live && live.holderKey);
   if (!titleId || !titleName || !holderKey) return null;
-  const live = byId && byId[titleId];
-  const status = live && live.status === 'held' ? 'held' : 'seen';
+  const status = live && live.status === 'held' ? 'held' : (clean(raw.status) === 'held' ? 'held' : 'seen');
   const record = {
     id: titleId,
     title: titleName,
@@ -311,9 +312,9 @@ function leftoverTitleRecord(raw, byId = {}) {
 }
 
 function leftoverAuthoredTitle(value) {
-  const id = clean(value);
+  const id = authoredTitleId(value) || clean(value);
   if (TITLE_BY_ID.has(id)) return TITLE_BY_ID.get(id);
-  return TITLE_BY_NAME.get(id.toLowerCase()) || null;
+  return TITLE_BY_NAME.get(clean(value).toLowerCase()) || null;
 }
 
 function leftoverTitleList(input) {

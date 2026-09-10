@@ -1530,8 +1530,15 @@ export const story = {
     const now = Number(this.state && this.state.simTime) || 0;
     let hull = normalizeLivingHull(owned.livingHull, now);
     let applied = 0;
+    const tick = Number.isFinite(Number(this.state && this.state.tick))
+      ? Math.max(0, Math.trunc(Number(this.state.tick)))
+      : 0;
     for (const scar of scars) {
-      const next = livingHullWithScar(hull, scar, now);
+      const next = livingHullWithScar(hull, {
+        ...scar,
+        atT: now,
+        tick,
+      }, now);
       if (next !== hull) {
         hull = next;
         applied += 1;
