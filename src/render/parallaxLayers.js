@@ -7,6 +7,7 @@ import { getReadyRockSurfaceTextures } from './rockSurfaceLibrary.js';
 import { CAMERA_ZOOM_MAX, PHYSICS_EARNED_SPEED_ZOOM_MAX, CONTEXT_ZOOM_MAX, BOOST_CAMERA_ZOOM_TARGET } from './camera.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { installSpaceBackgroundFrameCoordinateBridge } from './spaceBackgroundFrameCoordinates.js';
+import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 
 // renderer.js imports this module before it constructs SpaceBackground. Install the coordinate
 // adapter at that boundary so every ordinary browser/Electron route receives the same fix.
@@ -453,7 +454,7 @@ class ParallaxLayers {
 }
 
 function createChipMaterial(maps, colorMul) {
-  return new THREE.MeshStandardMaterial({
+  return stampSharedMaterialRole(new THREE.MeshStandardMaterial({
     color: new THREE.Color(ROCK_BASE).multiplyScalar(colorMul),
     map: maps && maps.baseColor || null,
     normalMap: maps && maps.normal || null,
@@ -468,7 +469,7 @@ function createChipMaterial(maps, colorMul) {
     transparent: false,
     depthWrite: true,
     depthTest: true,
-  });
+  }), SHARED_MATERIAL_ROLE.ROCK);
 }
 
 function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms = null) {
