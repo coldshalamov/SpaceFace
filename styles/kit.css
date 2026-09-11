@@ -118,6 +118,43 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
 .k-world--still { left: 0; width: 100%;
   background: url('../assets/cinematics/menu_hangar_bg.jpg') center / cover no-repeat; }
 
+/* §6.1a THE UI STAGE — the lit world behind a screen (P20).
+   `src/render/uiStage.js` draws an authored scene with the game's own renderer while the flight
+   submit is frozen, so a menu stands on a three-dimensional world instead of a photograph or a
+   black canvas. That world is the #gl-canvas itself, BEHIND this screen; everything between it and
+   the words is transparent by the rules above (the screen ground, the modal backdrop and the
+   scrim). `.k-world--plate` is the authored fallback still: it holds the frame while the scene
+   assembles, and it is the whole picture when the stage cannot run at all (no WebGL, a lost
+   context, a refused GPU). The ScreenManager writes `data-k-stage` on the screen root. */
+.k-world--plate { left: 0; width: 100%; background-position: center; background-size: cover;
+  background-repeat: no-repeat; opacity: 1;
+  transition: opacity var(--k-d-temp) var(--k-ease); }
+[data-screen="mainMenu"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-title.jpg'); }
+[data-screen="crucible"] .k-world--plate { background-image: url('../assets/ui/backdrops/backdrop-crucible-door.jpg'); }
+[data-screen="station"]  .k-world--plate { background-image: url('../assets/cinematics/menu_hangar_bg.jpg'); }
+/* The stage is live: the still steps aside and the renderer's world is the picture. */
+.k-screen[data-k-stage="live"] .k-world--plate { opacity: 0; }
+/* A staged screen keeps its ground clear so the canvas below can be seen at all.
+   The attribute pair is load-bearing, not decoration: the legacy title ground
+   (`#screens .of-title.k-screen { background: #111817 }`, styles/orbital.css) is an ID rule that
+   paints an opaque fill over the whole viewport, and orbital.css loads AFTER this sheet. Two
+   attributes beat it on specificity from here, which is the only place in the write set that can
+   reach it. Without this line the stage renders perfectly and nobody can see it. */
+#screens .k-screen[data-screen][data-k-stage] { background: transparent; }
+/* ...and its darkening goes back to the kit's own scrim, so the words keep their contrast without
+   a wall of flat colour between the reader and the world. A dense screen keeps its deeper scrim:
+   these two selectors out-specify `.k-screen--dense::before` above, and a table of numbers over a
+   lit world needs the 0.45 ground it was given, not the menu's 0.25. */
+#screens .k-screen[data-screen][data-k-stage]::before { background: var(--k-scrim); }
+#screens .k-screen--dense[data-screen][data-k-stage]::before { background: rgb(26 20 16 / 0.45); }
+/* The Crucible door runs a ZERO scrim by temperature (html[data-k-temp="crucible"]), which was safe
+   while its ground was an opaque fill and is not safe over a lit arena. Its own reading ground comes
+   back here, and only while it is standing on a stage. */
+#screens .k-screen[data-screen="crucible"][data-k-stage]::before { background: rgb(7 9 15 / 0.46); }
+@media (prefers-reduced-motion: reduce) {
+  .k-world--plate { transition: none; }
+}
+
 /* A kit screen replaces the legacy screen ground and the screen manager's fade (§11.1). */
 .screen.k-screen { transition: none; transform: none; }
 .screen.k-screen.sf-screen--exiting { opacity: 0; transition: opacity var(--k-d-settle) var(--k-ease); }

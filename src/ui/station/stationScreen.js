@@ -10,6 +10,11 @@ let app = null;
 
 export const stationScreen = {
   id: 'station',
+
+  // The berth, drawn by the game's own renderer behind this screen (src/render/uiStage.js, P20).
+  // Docking is an arrival: the bay, the gantry and the player's hull are a lit world, not a panel
+  // background. The ScreenManager owns the request and this root's data-k-ready while we are top.
+  stage: { scene: 'berth' },
   mount(rootEl, ctx) {
     if (rootEl && rootEl.classList) rootEl.classList.add('sx-fullbleed');
     app = createStationApp(rootEl, ctx, { serviceQuote });

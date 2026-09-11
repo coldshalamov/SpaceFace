@@ -220,6 +220,11 @@ let refs = null;
 export const mainMenuScreen = {
   id: 'mainMenu',
 
+  // The lit world the title stands on: the approved "Field at dusk" shot, assembled from authored
+  // geometry by src/render/uiStage.js on the game's own renderer. The ScreenManager turns this into
+  // state.ui.stageRequest while this screen is on top, and owns this root's data-k-ready with it.
+  stage: { scene: 'title-field' },
+
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
     rootEl.classList.add('k-screen', 'k-screen--stage');
@@ -289,12 +294,16 @@ export const mainMenuScreen = {
       buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
-    // data-k-ready is the capture seam's "photograph me" signal. The picture is a static asset:
-    // ready when it has loaded (or immediately when it has failed — the words never hang on it).
+    // data-k-ready is the capture seam's "photograph me" signal, and it now reports on the WORLD.
+    // It used to flip the moment a background image decoded, which is why every title capture ever
+    // taken was a photograph of a photograph: the flag said "ready" before anything three-
+    // dimensional existed. The ScreenManager owns it for a screen that declares `stage` and raises
+    // it only when the lit scene is on the canvas (or when the stage cannot run and the authored
+    // plate is the final picture). The plate is still fetched here so it is warm in cache and the
+    // screen is never blank while the scene assembles.
     rootEl.dataset.kReady = '0';
     const plate = new Image();
-    plate.onload = () => { rootEl.dataset.kReady = '1'; };
-    plate.onerror = () => { rootEl.dataset.kReady = '1'; };
+    plate.decoding = 'async';
     plate.src = MENU_BACKDROP_SRC;
 
     // Continue follows the save store the moment it settles, not the next periodic refresh: the

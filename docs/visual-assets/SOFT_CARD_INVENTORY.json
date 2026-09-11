@@ -26,8 +26,8 @@
       "status": "exception",
       "playerSees": "Tiny bright stars with depth in the sky",
       "technique": "Point sprites with round falloff, at sky depth",
-      "whyListed": "This is the one place the cheap card reads as the real thing: small, bright, far away.",
-      "files": ["src/render/spaceBackground.js", "src/render/deepFieldStars.js"]
+      "whyListed": "This is the one place the cheap card reads as the real thing: small, bright, far away. The UI stage's menu skies (P20) use the identical construction at the same depth.",
+      "files": ["src/render/spaceBackground.js", "src/render/deepFieldStars.js", "src/render/uiStage.js"]
     },
     {
       "id": "bg-l4-flares",

@@ -16890,7 +16890,7 @@
       "priority": 442,
       "title": "Haptics",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -16910,7 +16910,9 @@
         "npm run check:settings-profile",
         "npm run check:controls-discoverability"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-164.03-REPORT.md"
+      ],
       "brief": "Line tension, slams and boost on gamepad rumble/triggers; off by default in reduce-motion. DONE WHEN: Table test of intensity by momentum."
     },
     {
@@ -18101,7 +18103,7 @@
       "priority": 486,
       "title": "L-A — the UI stage, gate zero (P20), from the S1 frames",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-194.00"
       ],

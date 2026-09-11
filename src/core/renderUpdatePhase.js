@@ -5,6 +5,7 @@
 // sim kept running. Cosmetic lanes must not strand the HUD or hit-stop clock.
 
 import { shouldFreezeFlightSubmit } from './presentationFreeze.js';
+import { presentUiStage, releaseUiStage, uiStageResident } from '../render/uiStage.js';
 
 const VFX_ERROR_LOG_CAP = 20;
 let vfxErrorLogCount = 0;
@@ -25,12 +26,31 @@ export function runRenderUpdatePhase({
   const clock = typeof now === 'function' ? now : defaultNow;
 
   if (shouldFreezeFlightSubmit(state)) {
-    record('render', 0);
+    // The flight submit is frozen; the picture is not. A screen that asked for a stage gets its own
+    // lit world drawn here, in the game's one context, while the simulation stays stopped. A screen
+    // that asked for nothing leaves the canvas exactly as it found it (pause keeps the held flight
+    // frame), and the stage costs nothing at all.
+    const stageStart = clock();
+    let stageMs = 0;
+    try {
+      presentUiStage({ render, state, frameDt });
+    } catch (error) {
+      console.error('[loop] ui stage error:', error);
+    } finally {
+      stageMs = clock() - stageStart;
+    }
+    record('render', stageMs);
     record('vfx', 0);
     record('feel', 0);
     runFeelAndUi({ feel, ui, frameDt, state, record, clock });
+    // A stage draw is not a world presentation frame: `prepareFrame` never ran, so the journal range
+    // this frame carries has not been consumed and must not be acknowledged.
     return false;
   }
+
+  // Flight: one boolean read. A stage that outlived its screen (Launch replaces the stack without
+  // routing every screen through onHide) gives its GPU memory back on the first flight frame.
+  if (uiStageResident()) releaseUiStage('flight-resumed');
 
   let t = clock();
   let renderMs = 0;

@@ -273,7 +273,90 @@ export function createScreenManager(ctx) {
       backdrop.setAttribute('aria-hidden', 'true');
       backdrop.style.pointerEvents = open ? 'auto' : 'none';
     }
+    syncStageRequest(topRec, topEl);
     syncPause();
+  }
+
+  // ------------------------------------------------------------------------------- the UI stage
+  //
+  // A screen declares the lit world it stands on with `stage` on its def — `{ scene: 'title-field' }`
+  // or a function of ctx for a screen whose world depends on the run. The manager is the only writer
+  // of `state.ui.stageRequest`, because the manager is the only thing that knows which screen is on
+  // top: screens under the top are display:none, so their world is not the one to draw.
+  //
+  // The seam is one-way by design. Nothing in `src/ui/` imports the renderer; the request is plain
+  // data on state and `src/render/uiStage.js` reads it inside the frozen presentation frame.
+  //
+  // The manager also owns `data-k-ready` for a staged screen. `data-k-ready="1"` means "the picture
+  // this screen was designed around is on the canvas" — the stage is live, or it could not run and
+  // the authored plate is the final image. It must never mean "a background image finished
+  // decoding", which is the exact fake this packet was written against.
+  let stageOwnerId = null;
+
+  function resolveStageSpec(def) {
+    if (!def || !def.stage) return null;
+    try {
+      const spec = typeof def.stage === 'function' ? def.stage(ctx) : def.stage;
+      return spec && typeof spec.scene === 'string' ? spec : null;
+    } catch (error) {
+      console.error('[screenManager] stage spec failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Every staged screen gets the authored backdrop still, whether or not its own module built one.
+   * It holds the frame while the scene assembles and it is the whole picture when the stage cannot
+   * run at all — a blocked GPU, a lost context, a host with no WebGL. This is the line that makes
+   * "no screen is ever black" true for screens nobody has revisited yet; `styles/kit.css` chooses
+   * the image per screen and fades it out when the stage reports live.
+   */
+  function ensureStagePlate(el) {
+    if (!el || typeof el.querySelector !== 'function') return;
+    if (el.querySelector('.k-world--plate')) return;
+    const plate = document.createElement('div');
+    plate.className = 'k-world k-world--plate';
+    plate.setAttribute('aria-hidden', 'true');
+    el.prepend(plate);
+  }
+
+  function applyStageStatus(el, status) {
+    if (!el || !el.dataset) return;
+    el.dataset.kStage = status;
+    // Ready means "the picture this screen was designed around is on the canvas". That is the lit
+    // scene, or — when the stage cannot run — the authored plate, which is then the final image.
+    // It never means a background finished decoding. `__SF_UI_STAGE__().status` says which of the
+    // two a given frame actually is; a capture that shows the plate is not gate zero.
+    // 'plate' = the stage runs but its canvas is hidden; 'unavailable' = it cannot run at all.
+    // Both mean the authored still is the final picture, so both are ready to photograph.
+    el.dataset.kReady = (status === 'live' || status === 'unavailable' || status === 'plate') ? '1' : '0';
+  }
+
+  function syncStageRequest(topRec, topEl) {
+    const spec = resolveStageSpec(topRec && topRec.def);
+    const topId = topRec ? topRec.def.id : null;
+    if (!spec) {
+      if (stageOwnerId !== null) {
+        stageOwnerId = null;
+        state.ui.stageRequest = null;
+      }
+      return;
+    }
+    if (stageOwnerId === topId && state.ui.stageRequest
+      && state.ui.stageRequest.scene === spec.scene) return;
+    stageOwnerId = topId;
+    ensureStagePlate(topEl);
+    applyStageStatus(topEl, 'loading');
+    state.ui.stageRequest = {
+      scene: spec.scene,
+      hullFile: spec.hullFile || null,
+      hullDefId: spec.hullDefId || null,
+      onStatus: (status) => {
+        // Late statuses from a stage whose screen has already closed must not relabel the new top.
+        if (stageOwnerId !== topId) return;
+        applyStageStatus(topEl, status);
+      },
+    };
   }
 
   function syncHudAccessibility(hidden) {

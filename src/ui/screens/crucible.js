@@ -24,6 +24,10 @@ import {
 } from '../crucibleLaunch.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
 import {
+  buildCodeFor,
+  buildNameFor,
+} from '../../systems/survivalResults.js';
+import {
   SWARM_DRAFT_EVERY,
   SWARM_REFIT_EVERY,
   SWARM_RULESET,
@@ -304,6 +308,11 @@ function weeklyDoorCard() {
 
 export const crucibleScreen = {
   id: 'crucible',
+
+  // The foundry running hot behind the door (design/frontend/direction/approved/frames/
+  // frame-crucible-door.png). ScreenManager turns this into state.ui.stageRequest while the door is
+  // on top, and owns this root's data-k-ready with it — the door is ready when the arena is lit.
+  stage: { scene: 'arena-foundry' },
 
   mount(rootEl, ctx) {
     let enterButton = null;
@@ -624,7 +633,9 @@ export const crucibleScreen = {
     syncMode();
     syncHull();
     this._regions = { title, stage, foot, enter };
-    rootEl.dataset.kReady = '1';
+    // data-k-ready belongs to the ScreenManager on a screen that declares `stage`: the door is not
+    // ready to photograph when its words are built, it is ready when the arena behind them is lit.
+    // Writing '1' here raced the stage and produced a capture of a door with nothing behind it.
 
     if (typeof enter.focus === 'function') {
       try { enter.focus(); } catch { /* focus is best-effort */ }
@@ -820,7 +831,8 @@ export function buildLead(picks) {
 }
 
 /**
- * Who, with what, from which side, through which layer. Empty when no defeat receipt was published
+ * Who, with what, from which side, through which layer — plus, when the run recorded one, the
+ * telegraph the player missed with its warning time. Empty when no defeat receipt was published
  * — which happens on a victory, on an abandoned run, AND on a defeat that carries no receipt
  * (`run:ended` defaults its outcome to 'defeat' whether or not anything killed the player).
  */
@@ -829,12 +841,21 @@ export function killChainRows(defeat) {
   const killer = defeat.attacker
     ? (defeat.faction ? `${defeat.attacker} — ${defeat.faction}` : defeat.attacker)
     : 'Unidentified attacker';
-  return [
+  const rows = [
     ['Killed by', killer],
     ['Its weapon', defeat.weapon || 'Unidentified weapon'],
     ['It came from', bearingWord(defeat.direction)],
     ['It got in', breachPhrase(defeat.dominantLayer)],
   ];
+  // PQ-174.06: the telegraph as two lines beside the cause — the frontend direction sheet's
+  // "the cause of death and its telegraph as two lines". A receipt that predates the field
+  // renders exactly as before.
+  if (defeat.telegraphName) {
+    const lead = Number.isFinite(Number(defeat.telegraphLeadMs))
+      ? ` — ${Math.max(0, Math.round(Number(defeat.telegraphLeadMs)))}ms before impact` : '';
+    rows.push(['It warned you', `${defeat.telegraphName}${lead}`]);
+  }
+  return rows;
 }
 
 /**

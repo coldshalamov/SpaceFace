@@ -17,9 +17,7 @@ import { stationOperationToSurface } from '../commandDeckRefitHooks.js';
 import { createCommandDock } from './dock.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
 import { el, settle, stamp, reducedMotion } from '../kit/index.js';
-import { createShipPreviewMount } from '../shipPreviewMount.js';
 import { buildDockArrival, writeBerthArrival } from '../dockArrival.js';
-import { shipworksDockIdForState } from './screens/shipworks.js';
 import { createFactionsScreen } from './screens/factions.js';
 import { createMarketScreen } from './screens/market.js';
 import { createContractsScreen } from './screens/contracts.js';
@@ -92,79 +90,48 @@ export function ensureStylesheet() {
   }
 }
 
-// The berth: the player's hull in the station's own dock interior, on the same preview mount the
-// title and the Shipworks stage use, filling the frame behind the words. The world canvas holds
-// its last frame while docked (renderUpdatePhase returns early), so this mount is the picture.
-const BERTH_DRIFT_RAD_PER_S = 0.06; // the title's slow yaw
-const BERTH_ZOOM = 1.0;
+// The berth: the player's hull in the station's own dock interior — now drawn by the MAIN renderer
+// (src/render/uiStage.js, packet P20) on the world canvas behind this screen, not by a second
+// WebGLRenderer inside the panel.
+//
+// The mount this used to open was refused outright on Intel GPUs while docked
+// (`secondaryPreviewWebGlBlocked`), which is the owner's own hardware: the berth simply did not
+// exist there, and where it did exist it compiled a second hangar against the live context. The
+// ScreenManager now asks for the `berth` scene while the station is the top screen and the game's
+// own renderer draws it, so there is exactly one GL context on the default route.
+//
+// This keeps the old object's shape — `show`, `setActive`, `dispose` — because the app calls all
+// three from several places and none of them should have to know where the picture comes from.
 function createBerth(canvas, ctx) {
-  let mount = null;
-  let raf = 0;
-  let active = false;
-  const motionReduced = () => {
-    const video = ctx && ctx.state && ctx.state.settings && ctx.state.settings.video;
-    return reducedMotion() || !!(video && video.motionReduce);
-  };
-  try {
-    mount = createShipPreviewMount(canvas, {
-      dockId: shipworksDockIdForState(ctx && ctx.state),
-      authoredShips: true,
-      authoredWarmup: true,
-      fastPreview: false,
-      allowFastFallback: false,
-      onFirstFrame: () => { if (mount && mount.getAssetState() === 'authored') canvas.dataset.kReady = '1'; },
-      onAssetSettled: ({ state }) => { if (state === 'authored') canvas.dataset.kReady = '1'; },
-    });
-  } catch (e) {
-    mount = null;
-    console.warn('[station] berth hull mount unavailable; the station renders over the frozen world', e);
+  // The panel's own canvas is retired. It stays in the DOM because the layout and the stylesheet
+  // both address it, but it never takes a context and never draws; the world is behind the screen.
+  if (canvas) {
+    canvas.hidden = true;
+    canvas.dataset.kStage = 'main-context';
   }
-  function stopDrift() {
-    if (raf && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(raf);
-    raf = 0;
-  }
-  function startDrift() {
-    stopDrift();
-    if (!mount || !active) return;
-    if (motionReduced() || typeof requestAnimationFrame !== 'function') { try { mount.frame(); } catch (_) {} return; }
-    let last = null;
-    const tick = (now) => {
-      if (!mount || !active) { raf = 0; return; }
-      const dt = last == null ? 0 : Math.min(0.1, Math.max(0, (now - last) / 1000));
-      last = now;
-      if (motionReduced()) { raf = 0; return; }
-      try { mount.rotateBy(dt * BERTH_DRIFT_RAD_PER_S); } catch (_) {}
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-  }
+  const stageRequest = () => (ctx && ctx.state && ctx.state.ui ? ctx.state.ui.stageRequest : null);
   return {
-    /** Show the player's live hull with its fittings, in this station's dock interior. */
+    /**
+     * Seat the player's live hull. The stage resolves a ship def to its authored whole-ship asset,
+     * so the berth shows the ship you actually fly rather than a stand-in.
+     */
     show(state) {
-      if (!mount) return;
+      const request = stageRequest();
+      if (!request || request.scene !== 'berth') return;
       const player = state && state.player;
       const ships = (player && player.ownedShips) || [];
       const ship = ships[Number(player && player.activeShipIndex) || 0] || ships[0] || null;
-      try {
-        if (typeof mount.setDockId === 'function') mount.setDockId(shipworksDockIdForState(state));
-        mount.show((ship && ship.defId) || 'ship_kestrel', {
-          rotating: false,
-          fittings: ship && Array.isArray(ship.fittings) ? ship.fittings.slice() : null,
-          isPlayer: true,
-        });
-        mount.setZoom(BERTH_ZOOM);
-      } catch (e) { console.warn('[station] berth hull show failed', e); }
+      const defId = (ship && ship.defId) || 'ship_kestrel';
+      if (request.hullDefId === defId) return;
+      // Re-request rather than mutate. A new request object is the signal: the stage compares the
+      // hull it was built for against the hull the live request names and rebuilds on a mismatch,
+      // so changing ship changes what is in the berth.
+      ctx.state.ui.stageRequest = { ...request, hullDefId: defId, __lastStatus: undefined };
     },
-    /** Shipworks shows the hull on the shared stage; two hulls must never render at once. */
-    setActive(on) {
-      active = !!on;
-      canvas.hidden = !active;
-      if (mount) try { mount.setActive(active); } catch (_) {}
-      if (active) startDrift(); else stopDrift();
-    },
+    /** Retained for callers that used to hide a second canvas. The world behind a screen is the world. */
+    setActive() {},
     dispose() {
-      stopDrift();
-      if (mount) { try { mount.dispose(); } catch (_) {} mount = null; }
+      if (canvas) canvas.hidden = true;
     },
   };
 }
