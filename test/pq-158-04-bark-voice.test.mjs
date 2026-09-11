@@ -28,10 +28,13 @@ import {
   factionRegistersAreDistinct,
   identifyRegisterFromSpeech,
   identifyRegisterFromPcm,
+  identifyRegisterFromWavBuffer,
   renderRegisterCallsignPcm,
+  renderBarkUtterancePcm,
   enumerateDeliveredBarkWavs,
   deliveredBarkWavRelPath,
   BLIND_REGISTER_CLIPS,
+  BARK_UTTERANCE_SECONDS,
 } from '../src/audio/barkVoice.js';
 import { decodePcmWav } from '../src/audio/themeCompose.js';
 
@@ -136,6 +139,44 @@ test('_onBarkVoice plays the radio recipe, uses the faction sample, and captions
   assert.equal(cap.p.shape, 'radio');
 });
 
+test('_onBarkVoice mechanic uses the close-mic register and captions the hull line', () => {
+  const plays = [];
+  const captions = [];
+  const host = Object.create(audio);
+  host.play = (recipeId, opts) => { plays.push({ recipeId, opts }); return { recipeId }; };
+  host.bus = { emit(ev, p) { captions.push({ ev, p }); } };
+  host.rt = {};
+  host._onBarkVoice({
+    mechanic: true,
+    kind: 'mechanic',
+    text: MECHANIC_LINES[0],
+  });
+  const barkPlay = plays.find((row) => row.recipeId === BARK_RECIPE_ID);
+  assert.ok(barkPlay);
+  assert.equal(barkPlay.opts.barkSampleId, 'bark_mechanic');
+  const cap = captions.find((c) => c.ev === 'presentation:caption');
+  assert.equal(cap.p.text, MECHANIC_LINES[0]);
+});
+
+test('_onDocked speaks the mechanic on the same directed-voice path', () => {
+  const plays = [];
+  const captions = [];
+  const host = Object.create(audio);
+  host.play = (recipeId, opts) => { plays.push({ recipeId, opts }); return { recipeId }; };
+  host.bus = { emit(ev, p) { captions.push({ ev, p }); } };
+  host.rt = {};
+  host.state = {};
+  host._syncEnvironmentMix = () => {};
+  host._markMusicDirty = () => {};
+  host._startStationHum = () => {};
+  host._onDocked({ stationId: 'station_test' });
+  const barkPlay = plays.find((row) => row.recipeId === BARK_RECIPE_ID);
+  assert.ok(barkPlay, 'dock must speak the mechanic');
+  assert.equal(barkPlay.opts.barkSampleId, 'bark_mechanic');
+  const cap = captions.find((c) => c.ev === 'presentation:caption');
+  assert.ok(cap && cap.p.text.length > 0);
+});
+
 test(`seed ${MEASURE_SEED}: f0/rate/filter names each faction register without the label`, () => {
   for (const factionId of BARK_FACTIONS) {
     const r = FACTION_VOICE_REGISTERS[factionId];
@@ -187,12 +228,40 @@ test(`seed ${MEASURE_SEED}: unlabeled on-disk clips name eight registers without
   const named = [];
   for (const clip of BLIND_REGISTER_CLIPS) {
     const buf = readFileSync(path.join(ROOT, clip.file));
-    const decoded = decodePcmWav(buf);
-    assert.ok(decoded, clip.file);
-    const got = identifyRegisterFromPcm(decoded.pcm, decoded.sampleRate);
+    const got = identifyRegisterFromWavBuffer(buf);
+    assert.equal(got, clip.factionId, `${clip.file} named ${got}, expected ${clip.factionId}`);
     named.push(got);
   }
-  assert.deepEqual([...new Set(named)].sort(), [...BARK_FACTIONS].sort());
-  assert.equal(named.length, 8);
+  assert.equal(new Set(named).size, 8);
   console.log(`[pq-158.04 blind-files] seed=${MEASURE_SEED} named=${named.join(',')}`);
+});
+
+test(`seed ${MEASURE_SEED}: shipped utterance PCM names each faction register (no label)`, () => {
+  const named = [];
+  for (const factionId of BARK_FACTIONS) {
+    const row = resolveBarkVoice({ factionId, situation: 'scan' });
+    assert.equal(row.speech.f0, FACTION_VOICE_REGISTERS[factionId].f0);
+    const pcm = renderBarkUtterancePcm(row, { sampleRate: 32000, seconds: BARK_UTTERANCE_SECONDS });
+    const got = identifyRegisterFromPcm(pcm, 32000);
+    assert.equal(got, factionId, `utterance ${factionId} named ${got}`);
+    named.push(got);
+  }
+  assert.equal(new Set(named).size, 8);
+  console.log(`[pq-158.04 utterance-pcm] seed=${MEASURE_SEED} named=${named.join(',')}`);
+});
+
+test(`seed ${MEASURE_SEED}: player-heard bark WAVs name eight registers from PCM, never from the filename`, () => {
+  const named = [];
+  for (const factionId of BARK_FACTIONS) {
+    const sampleId = FACTION_VOICE_REGISTERS[factionId].sampleId;
+    const entry = SAMPLE_MANIFEST.get(sampleId);
+    const buf = readFileSync(path.join(ROOT, entry.file));
+    const decoded = decodePcmWav(buf);
+    assert.ok(decoded, entry.file);
+    const got = identifyRegisterFromPcm(decoded.pcm, decoded.sampleRate);
+    assert.equal(got, factionId, `${entry.file} named ${got}, expected ${factionId}`);
+    named.push(got);
+  }
+  assert.equal(new Set(named).size, 8);
+  console.log(`[pq-158.04 bark-wav-blind] seed=${MEASURE_SEED} named=${named.join(',')}`);
 });

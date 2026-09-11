@@ -29,7 +29,8 @@ import {
   sectorBedToBandIntent,
 } from './themeMatrix.js';
 import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
-import { resolveBarkVoice, resolveBarkSampleBinding } from './barkVoice.js';
+import { resolveBarkVoice, resolveBarkSampleBinding, MECHANIC_LINES } from './barkVoice.js';
+import { leftoverMechanicLines } from '../story/mechanicVoice.js';
 import { resolveAccessibilityCue } from '../ui/captions.js';
 import {
   createEnvironmentMixRuntime,
@@ -3000,6 +3001,9 @@ export const audio = {
     this._markMusicDirty();
     // Start ambient station hum loop (faction-tinted when possible)
     this._startStationHum(p);
+    const hullLines = leftoverMechanicLines(this.state);
+    const mechanicLine = (hullLines && hullLines[0]) || MECHANIC_LINES[0];
+    if (mechanicLine) this._onBarkVoice({ mechanic: true, kind: 'mechanic', text: mechanicLine, line: mechanicLine });
   },
 
   _onUndocked() {
