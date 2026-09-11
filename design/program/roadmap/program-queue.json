@@ -6898,7 +6898,7 @@
       "priority": 100,
       "title": "Headed capture at the shipping camera and owner review",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00"
       ],
@@ -6911,7 +6911,9 @@
       "checks": [
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-141.01-REPORT.md"
+      ],
       "brief": "Normal speed, no debug overlays, default quality; owner verdict recorded; missing beats routed back to their packet."
     },
     {
@@ -8920,7 +8922,7 @@
       "priority": 172,
       "title": "Force palette",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8942,7 +8944,9 @@
         "npm run check:colour-tokens",
         "npm run check:art"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-161.02-REPORT.md"
+      ],
       "brief": "Rope, wells, repulsors, impulses, shields: five hues distinct under deuteranopia/protanopia/tritanopia; brightness order preserved. DONE WHEN: Contrast check green under all three simulations."
     },
     {
