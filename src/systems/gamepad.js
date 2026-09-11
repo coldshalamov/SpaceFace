@@ -68,6 +68,55 @@ const ACTION_MAP = {
 
 const DEFAULT_DEADZONE = 0.12;
 
+// --- Haptics (PQ-164.03) ---------------------------------------------------------------------------
+// Line tension, slams and boost are carried on the pad's rumble motors. Intensity is a function of
+// the momentum in play: a loaded Massline, an impact and a boost all read stronger the faster the
+// player (or the struck body) is moving. Reduce-motion silences every channel — haptics are
+// vestibular, so the accessibility flag that kills camera shake kills rumble too.
+export const HAPTIC_REF_MOMENTUM = 120;    // WU/s where momentum-scaled rumble is full
+export const HAPTIC_SLAM_REF_DP = 8000;    // physics impulse at a full-intensity slam
+export const HAPTIC_RUMBLE_MS = 120;       // actuator effect duration; refreshed each active tick
+export const HAPTIC_SLAM_DECAY_TICKS = 18; // ~0.3 s pulse at 60 Hz, decayed on sim ticks
+const HAPTIC_BOOST_FLOOR = 0.30;           // a boost at a standstill still hums
+
+function clamp01(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 0;
+  return n < 0 ? 0 : (n > 1 ? 1 : n);
+}
+
+function round4(v) {
+  return Math.round(v * 10000) / 10000;
+}
+
+/**
+ * Pure haptic frame. `momentum` is world units/s; `lineLoad` and `slam` are already 0..1
+ * (line load from tetherGameplay.computeTetherLoad, slam from the physics impulse). Returns the
+ * per-channel intensity plus the dual-rumble motor split (strong = low-freq/left, weak =
+ * high-freq/right). Reduce-motion returns an all-zero, disabled frame before anything is scaled.
+ */
+export function computeHapticFrame(input = {}) {
+  if (input.reduceMotion === true) {
+    return { enabled: false, reduceMotion: true, momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0 };
+  }
+  const momentum = clamp01(Number(input.momentum) / HAPTIC_REF_MOMENTUM);
+  const line = input.lineActive && input.lineLoad > 0 ? clamp01(input.lineLoad) : 0;
+  const boost = input.boost ? clamp01(HAPTIC_BOOST_FLOOR + (1 - HAPTIC_BOOST_FLOOR) * momentum) : 0;
+  const slam = clamp01(input.slam);
+  const strong = Math.max(line, slam, boost * 0.5);
+  const weak = Math.max(boost, slam * 0.8, line * 0.5);
+  return {
+    enabled: true,
+    reduceMotion: false,
+    momentum: round4(momentum),
+    line: round4(line),
+    slam: round4(slam),
+    boost: round4(boost),
+    weak: round4(clamp01(weak)),
+    strong: round4(clamp01(strong)),
+  };
+}
+
 /** Diagnostic wall stamp only — never used for aim/helm arbitration (F4). */
 function nowMs() {
   if (typeof performance !== 'undefined' && performance.now) return performance.now();
@@ -97,6 +146,38 @@ export function createGamepad(ctx) {
   const bus = ctx && ctx.bus;
   const state = ctx && ctx.state;
 
+  // PQ-164.03: latch the strongest recent slam from the physics authority. The pulse decays on sim
+  // ticks (never wall time) so the haptic is deterministic and replay-safe. Both impact receipts
+  // are read: `physics:impact` owns the raw impulse (`dp`) and `combat:collisionConsequence` owns
+  // the settled exchange (`exchangedMomentum`). Only contacts the player was part of rumble.
+  let slamPeak = 0;
+  let slamTicks = 0;
+  const registerSlam = (momentum) => {
+    const intensity = clamp01(Number(momentum) / HAPTIC_SLAM_REF_DP);
+    if (!(intensity > 0)) return;
+    slamPeak = Math.max(slamTicks > 0 ? slamPeak : 0, intensity);
+    slamTicks = HAPTIC_SLAM_DECAY_TICKS;
+  };
+  const playerIsInvolved = (p) => {
+    const pid = state && state.playerId != null ? state.playerId : null;
+    if (pid == null || !p) return false;
+    return p.playerInvolved === true
+      || p.aId === pid || p.bId === pid
+      || p.targetId === pid || p.otherId === pid
+      || !!(p.provenance && p.provenance.actorId === pid);
+  };
+  const onImpact = (p) => {
+    if (!playerIsInvolved(p)) return;
+    const momentum = Number.isFinite(p.dp) ? p.dp
+      : Number.isFinite(p.exchangedMomentum) ? p.exchangedMomentum
+      : p.impulse;
+    registerSlam(momentum);
+  };
+  if (bus && typeof bus.on === 'function') {
+    bus.on('physics:impact', onImpact);
+    bus.on('combat:collisionConsequence', onImpact);
+  }
+
   const gp = {
     connected: false,
     id: '',
@@ -106,6 +187,10 @@ export function createGamepad(ctx) {
     _wasActive: false,
     /** Diagnostic only — do not use for aim/helm selection. */
     lastActiveMs: 0,
+
+    // PQ-164.03: last resolved haptic frame (pure data; the actuator is driven from tick).
+    haptics: { enabled: true, reduceMotion: false, momentum: 0, line: 0, slam: 0, boost: 0, weak: 0, strong: 0 },
+    _hapticActive: false,
 
     axes: {
       leftX: 0,
@@ -248,6 +333,67 @@ export function createGamepad(ctx) {
       } else {
         this._wasActive = false;
       }
+
+      this._stepHaptics(pad, live, cfg);
+    },
+
+    // PQ-164.03: resolve the frame from live momentum/tether/boost and the latched slam pulse, then
+    // drive the pad. Reduce-motion (or a disabled `controls.gamepad.haptics`) yields an inert frame
+    // and resets the motors; the frame is always recorded on `this.haptics` for inspection.
+    _stepHaptics(pad, live, cfg) {
+      const reduceMotion = !!(live && live.settings && live.settings.video
+        && live.settings.video.motionReduce);
+      const disabled = !!(cfg && cfg.haptics === false);
+      const slam = slamTicks > 0 ? slamPeak * (slamTicks / HAPTIC_SLAM_DECAY_TICKS) : 0;
+      if (slamTicks > 0) slamTicks -= 1;
+
+      const player = live && live.entities && typeof live.entities.get === 'function'
+        ? live.entities.get(live.playerId)
+        : null;
+      const speed = player && player.vel
+        ? Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0)
+        : 0;
+      const tether = live && live.player && live.player.tether;
+      const frame = computeHapticFrame({
+        momentum: speed,
+        lineActive: !!(tether && tether.active),
+        lineLoad: tether ? tether.load : 0,
+        boost: !!(this.actions.boost && this.actions.boost.held),
+        slam,
+        reduceMotion: reduceMotion || disabled,
+      });
+      this.haptics = frame;
+      this._applyHaptics(pad, frame);
+    },
+
+    // Dual-rumble where the browser exposes it; the older single-motor pulse() otherwise. Active
+    // frames are re-issued every tick (the effect is short), and the motors are reset once when the
+    // frame goes quiet so a disconnected/reduce-motion pad is never left buzzing.
+    _applyHaptics(pad, frame) {
+      const actuator = pad && (pad.vibrationActuator
+        || (Array.isArray(pad.hapticActuators) && pad.hapticActuators[0]));
+      if (!actuator) return;
+      const active = !!(frame && frame.enabled && (frame.strong > 0.001 || frame.weak > 0.001));
+      if (!active) {
+        if (this._hapticActive && typeof actuator.reset === 'function') {
+          try { actuator.reset(); } catch (_) { /* haptics are best-effort */ }
+        }
+        this._hapticActive = false;
+        return;
+      }
+      this._hapticActive = true;
+      try {
+        if (typeof actuator.playEffect === 'function') {
+          actuator.playEffect('dual-rumble', {
+            startDelay: 0,
+            duration: HAPTIC_RUMBLE_MS,
+            weakMagnitude: frame.weak,
+            strongMagnitude: frame.strong,
+          });
+        } else if (typeof actuator.pulse === 'function') {
+          actuator.pulse(frame.strong, HAPTIC_RUMBLE_MS);
+        }
+      } catch (_) { /* haptics are best-effort */ }
     },
 
     _resetState() {
