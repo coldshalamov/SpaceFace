@@ -7951,7 +7951,7 @@
       "priority": 143,
       "title": "Cluster and detonate",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.09",
         "PQ-137.03",
@@ -7976,7 +7976,9 @@
         "npm run check:combat",
         "npm run check:vfx-techniques"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-147.03-REPORT.md"
+      ],
       "brief": "A well plus a primed light (PQ-137.09) produces the chain; the moment detector rates it. DONE WHEN: ≥ 3 secondary consequences from one action in 4 of 5 seeds."
     },
     {
@@ -8117,7 +8119,7 @@
       "priority": 148,
       "title": "One authored sling ring",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8137,7 +8139,9 @@
         "npm run check:baseline",
         "npm run check:atlas-integrity"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-028.00-REPORT.md"
+      ],
       "brief": "A ring on the reference site's route that accelerates aligned bodies; NPC haulers use it on schedule. DONE WHEN: Player exit speed ≥ 2× cruise and kept (B1); haulers ride it in ordinary traffic."
     },
     {
@@ -8146,7 +8150,7 @@
       "priority": 149,
       "title": "Throw something into it",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8166,7 +8170,9 @@
         "npm run check:baseline",
         "npm run check:atlas-integrity"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-028.01-REPORT.md"
+      ],
       "brief": "Bodies entering off-axis are flung; a thrown enemy becomes a long-range projectile. DONE WHEN: Scenario: a thrown light exits the ring at ≥ 3× cruise and slams terrain (B6)."
     },
     {
@@ -8175,7 +8181,7 @@
       "priority": 150,
       "title": "The player-built sling",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8195,7 +8201,9 @@
         "npm run check:baseline",
         "npm run check:atlas-integrity"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-028.02-REPORT.md"
+      ],
       "brief": "`mod_throughline_sling` becomes this structure at a claim, creating NPC traffic (PQ-145). DONE WHEN: A built sling is used by ≥ 1 NPC route within one session."
     },
     {
@@ -8204,7 +8212,7 @@
       "priority": 151,
       "title": "Pods are bodies",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8228,7 +8236,9 @@
         "npm run check:baseline",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-148.00-REPORT.md"
+      ],
       "brief": "Every spilled/jettisoned pod is a dynamic body with mass by contents, inherits velocity, collides, can be tethered and shoved. DONE WHEN: Ore shotgun: a shoved pod moves a light hostile ≥ 30 % cruise; pods persist across save."
     },
     {
@@ -8237,7 +8247,7 @@
       "priority": 152,
       "title": "Volatile classes",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8261,7 +8271,9 @@
         "npm run check:baseline",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-148.01-REPORT.md"
+      ],
       "brief": "Explosive (radial impulse on slam), corrosive (hull tick on contact), superdense (pull on fields, cannot be thrown far). DONE WHEN: Three scenarios, three distinct outcomes, readable by silhouette/lamp."
     },
     {
@@ -8270,7 +8282,7 @@
       "priority": 153,
       "title": "Smuggling physics",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8294,7 +8306,9 @@
         "npm run check:baseline",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-148.02-REPORT.md"
+      ],
       "brief": "Customs scan cones; contraband hidden in a hauler's blind spot or drop-kicked at cruise through a cone into an outlaw catch net. DONE WHEN: A drop-kick through a cone succeeds in the scenario; a scanned pod raises heat (PQ-151)."
     },
     {
@@ -8303,7 +8317,7 @@
       "priority": 154,
       "title": "Cargo with a name",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8327,7 +8341,9 @@
         "npm run check:baseline",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-148.03-REPORT.md"
+      ],
       "brief": "Pods carry origin/destination/owner; a spilled pod's owner reacts (restitution, bounty, thanks). DONE WHEN: Ledger and bark cite the owner after a spill."
     },
     {
