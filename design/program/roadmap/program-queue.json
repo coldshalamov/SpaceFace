@@ -16460,7 +16460,7 @@
       "priority": 427,
       "title": "The impact ladder, sample-backed",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-139.01",
         "PQ-141.00",
@@ -16491,7 +16491,7 @@
       "priority": 428,
       "title": "The Massline as an instrument",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16522,7 +16522,7 @@
       "priority": 429,
       "title": "Composed themes",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16553,7 +16553,7 @@
       "priority": 430,
       "title": "Voice for the barks (directed synthetic voice; no recorded actors)",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16584,7 +16584,7 @@
       "priority": 431,
       "title": "Space and mix",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16647,7 +16647,7 @@
       "priority": 433,
       "title": "Two-body framing",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16678,7 +16678,7 @@
       "priority": 434,
       "title": "The beat",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16709,7 +16709,7 @@
       "priority": 435,
       "title": "Photo mode",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16771,7 +16771,7 @@
       "priority": 437,
       "title": "Auto-clip",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16802,7 +16802,7 @@
       "priority": 438,
       "title": "Seeds and ghosts",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16833,7 +16833,7 @@
       "priority": 439,
       "title": "Every screen on a pad",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -16895,7 +16895,7 @@
       "priority": 441,
       "title": "Deck and trackpad",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -16985,7 +16985,7 @@
       "priority": 444,
       "title": "Captions and audio cues",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -17013,7 +17013,7 @@
       "priority": 445,
       "title": "The checklist",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -17069,7 +17069,7 @@
       "priority": 447,
       "title": "Growth pass",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -17826,7 +17826,7 @@
       "priority": 473,
       "title": "Opening NPCs belong in Hitch's world; no floating parts",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [
         "PQ-193.00"
       ],
@@ -17853,7 +17853,7 @@
       "priority": 474,
       "title": "Reverse and brake read as jets, not needles",
       "kind": "implementation",
-      "state": "done",
+      "state": "ready",
       "dependsOn": [],
       "mutexes": [
         "visual-world-3d"
