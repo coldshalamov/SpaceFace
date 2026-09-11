@@ -17760,7 +17760,7 @@
       "priority": 472,
       "title": "Every lockable ship publishes a packaged complete body",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "visual-world-3d",
@@ -17777,7 +17777,9 @@
         "npm run check:live-whole-ship-admission",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-193.00-REPORT.md"
+      ],
       "brief": "Put all 13 roster hulls and the Massline liner on the empty-admission allowlist. A targeted ship must never publish as blank space. Accessory-only modular junk never substitutes. Hitch freeze untouched. Done when default-route targeting never sits on empty space for those hulls."
     },
     {
@@ -18143,7 +18145,7 @@
       "priority": 487,
       "title": "S2 — the bench register, accepted (station, THE SHIP, chart, settings, load as frames + prototypes; keyart; 3D drafts + Blender scripts)",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "deferred",
       "dependsOn": [
         "PQ-194.00"
       ],
@@ -18159,9 +18161,11 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [
-        "design/frontend/direction/receipts/"
+        "design/frontend/direction/receipts/",
+        "design/program/roadmap/receipts/PQ-194.02-REPORT.md"
       ],
-      "brief": "Build S2 (carries the accepted S1 return), hand off, review: six frames, twelve prototypes on the S1 kit, keyart tiles and backdrop plates, draft GLBs in the preview page, Blender scripts read for completeness. Accept into approved/ and assets/ui/kit/; hand the Blender scripts to L-B."
+      "brief": "Build S2 (carries the accepted S1 return), hand off, review: six frames, twelve prototypes on the S1 kit, keyart tiles and backdrop plates, draft GLBs in the preview page, Blender scripts read for completeness. Accept into approved/ and assets/ui/kit/; hand the Blender scripts to L-B.",
+      "note": "REJECTED on review 2026-09-11 (receipt design/program/roadmap/receipts/PQ-194.02-REPORT.md): S2 bench-register return never arrived — external ChatGPT hand-off required. Owner/controller must hand .devshots/ui-packets/S2-bench-register.zip to the external session and drop the return into .devshots/ui-packets/returns/ before re-dispatch."
     },
     {
       "id": "PQ-194.03",
