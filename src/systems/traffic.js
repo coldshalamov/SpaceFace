@@ -1727,13 +1727,20 @@ export const traffic = {
         RECORD_KIND.CONVOY,
         slot.worldRecordSlotId,
       );
+      let entity = entityWithWorldRecord(this.state, recordId);
+      // Decide refill before durable-record exits: after a live kill world already owns a
+      // destroyed convoy record, so the fresh-spawn branch below is never reached. Keep adopting
+      // living hulls; disruption prevents replacements, not ships already on the approach.
+      if (this._leftoverSlotRefillsDisruptedApproach(entry, leftoverDisrupted) && !entity) {
+        this._releaseCeresActivityJob(recordId);
+        continue;
+      }
       const record = records[recordId] || null;
       if (terminalWorldRecord(record)) {
         this._releaseCeresActivityJob(recordId);
         continue;
       }
 
-      let entity = entityWithWorldRecord(this.state, recordId);
       // An active durable record without a live body belongs to world residency. Never additive-
       // spawn over it; the world owner will rematerialize it when this sector reaches FULL.
       if (record && !entity) continue;
@@ -1770,7 +1777,6 @@ export const traffic = {
       canonicalSpec.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
 
       const wasFresh = !entity;
-      if (wasFresh && this._leftoverSlotRefillsDisruptedApproach(entry, leftoverDisrupted)) continue;
       if (wasFresh) entity = this.helpers.spawnEntity(canonicalSpec);
       if (!entity) continue;
       if (wasFresh) {

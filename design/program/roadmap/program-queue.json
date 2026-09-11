@@ -6237,7 +6237,7 @@
       "priority": 77,
       "title": "The evidence ledger at one site",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -6254,7 +6254,9 @@
         "npm run check:baseline",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-138.05-REPORT.md"
+      ],
       "brief": "Within one session at the reference site: a wreck persists, traffic thins on a disrupted route, a price moves, a rumor appears, a structure shows a patch; a checklist scenario detects all five from one player-caused incident."
     },
     {

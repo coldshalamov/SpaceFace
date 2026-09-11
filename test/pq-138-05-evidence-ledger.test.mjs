@@ -33,6 +33,8 @@ import {
 import { createMarketNews, tickerEventRef } from '../src/ui/marketNews.js';
 import { buildDockArrival, writeBerthArrival } from '../src/ui/dockArrival.js';
 import { stationFrameHtml } from '../src/ui/views/stationFrames.js';
+import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
+import { makeShipEntitySpec } from '../src/systems/ships.js';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -672,5 +674,155 @@ test('leftover disruptedStationIds survive leftover traffic serialize / deserial
     harness.news.destroy();
     harness.aftermath.destroy();
     harness.rumors.destroy();
+  }
+});
+
+// Live-path regression. Keep the original injected-event/empty-record cases above as focused
+// coverage; this scenario uses the production Node runtime, world on the bus, authored actors,
+// real mining/custody and combat damage. It does not plant traffic, cargo, or disruption state.
+function bootLiveLedger() {
+  const runtime = createAuthoritativeRuntime({
+    profileId: 'production', nodeSafeOnly: true, seed: 13805,
+  });
+  const { state } = runtime;
+  state.mode = 'flight';
+  const player = runtime.spawn(makeShipEntitySpec('ship_hornet', {
+    isPlayer: true, player: state.player, pos: { x: 0, z: 0 },
+  }));
+  state.playerId = player.id;
+  runtime.getSystem('world').enterSector(SECTOR_ID);
+  return runtime;
+}
+
+function liveRefineryHaulers(state) {
+  // Count bodies, not traffic's adoption list: an untracked world-resident refill is still a hull.
+  return state.entityList.filter((entity) => entity.alive !== false
+    && entity.data?.activityActorSlotId === 'ceres_refinery_hauler');
+}
+
+function observeLiveRefillGuard(t, runtime) {
+  const ships = runtime.getSystem('traffic');
+  const original = ships._leftoverSlotRefillsDisruptedApproach;
+  const decisions = [];
+  t.mock.method(ships, '_leftoverSlotRefillsDisruptedApproach', function (entry, ids) {
+    const blocked = original.call(this, entry, ids);
+    if (entry.slot.id === 'ceres_refinery_hauler') decisions.push(blocked);
+    return blocked;
+  });
+  return decisions;
+}
+
+test('live world control: no-kill hard re-enter restores the authored refinery hauler', (t) => {
+  const runtime = bootLiveLedger();
+  try {
+    const { state } = runtime;
+    const first = liveRefineryHaulers(state);
+    assert.equal(first.length, 1);
+    const recordId = first[0].data.worldRecordId;
+    const world = runtime.getSystem('world');
+    world.enterSector('sector_helios_prime');
+    assert.equal(liveRefineryHaulers(state).length, 0, 'hard exit removes the old body');
+    assert.equal(state.world.records.byId[recordId].alive, true, 'world captured the living convoy');
+    const decisions = observeLiveRefillGuard(t, runtime);
+    world.enterSector(SECTOR_ID);
+    const restored = liveRefineryHaulers(state);
+    console.log(`PQ-138.05 seed=13805 control no-kill hard re-enter: refinery haulers=${restored.length}; guard=${JSON.stringify(decisions)}`);
+    assert.equal(restored.length, 1, 'ordinary hard re-entry still refills the refinery approach');
+    assert.notEqual(restored[0].id, first[0].id, 'this is a rematerialized body');
+    assert.equal(restored[0].data.worldRecordId, recordId, 'durable identity is unchanged');
+    assert.equal(state.traffic.freighters.filter((row) => row.id === restored[0].id).length, 1,
+      'traffic adopts the rematerialized body exactly once');
+    assert.deepEqual(state.traffic.disruptedStationIds, []);
+  } finally {
+    runtime.dispose();
+  }
+});
+
+test('live world: one loaded Ceres approach kill leaves five traces and the packet guard decides hard re-entry', async (t) => {
+  const runtime = bootLiveLedger();
+  try {
+    const { state, bus } = runtime;
+    const physics = runtime.getSystem('physics');
+    assert.equal(await physics.prepareBackend(state, { reset: true }), true);
+    let victim = null;
+    // Observe the ordinary miner -> rendezvous -> loaded refinery approach. The time bound is
+    // only a scenario timeout; no phase, position, manifest or witness is injected to meet it.
+    for (let tick = 0; tick < 600 * 60; tick++) {
+      runtime.step(DT);
+      const candidate = liveRefineryHaulers(state)[0];
+      if (!(candidate?.data?.cargoManifest?.totalQty > 0)) continue;
+      const local = globalToSectorLocalForSector(candidate.pos, SECTOR_ID);
+      if (zoneAt(SECTOR_ID, local.x, local.z)?.id === ZONE_ID) {
+        victim = candidate;
+        break;
+      }
+    }
+    assert.ok(victim, 'the authored hauler reaches the refinery approach carrying real mined cargo');
+    const cargo = victim.data.cargoManifest;
+    assert.equal(cargo.custody.acquiredBy, 'traffic:ceresMinerHaulerHandoff');
+    assert.ok(cargo.lotSource.workId, 'the loaded lot originates in real NPC mining');
+    const handoffId = cargo.custody.handoffId;
+    assert.equal(state.traffic.ceresMinerHaulerHandoff.handoffId, handoffId);
+    const recordId = victim.data.worldRecordId;
+    const econ = runtime.getSystem('economy');
+    const priceBefore = econ.priceOf(STATION_ID, COMMODITY_ID, 'buy');
+    const hullsBefore = liveRefineryHaulers(state).length;
+    const kills = [];
+    const pressures = [];
+    const rumors = [];
+    bus.on('entity:killed', (payload) => kills.push(payload));
+    bus.on('economy:applyTradePressure', (payload) => pressures.push(payload));
+    bus.on('pirateRumor:headline', (payload) => rumors.push(payload));
+
+    // One player-attributed lethal hit through the production damage owner; the test does not
+    // emit entity:killed or write victim.alive. Gun aiming/rendering are outside this clause.
+    runtime.getHelpers().routeCombatDamage({
+      targetId: victim.id, attackerId: state.playerId,
+      packet: { channels: { kinetic: 100000 } },
+    });
+    assert.equal(victim.alive, false);
+    assert.equal(kills.length, 1, 'one incident, emitted by the combat owner');
+    assert.equal(kills[0].id, victim.id);
+    assert.equal(kills[0].killerId, state.playerId);
+    const marker = aftermathForSector(state, SECTOR_ID).find((row) => row.victimId === victim.id);
+    const saved = runtime.getSystem('aftermathWrecks').serialize();
+    const wrecks = () => state.entityList.filter((entity) => entity.alive !== false
+      && entity.type === 'wreck' && entity.data?.markerId === marker?.markerId);
+    // The live approach contains authored places as well as the station. The existing aftermath
+    // owner patches the nearest structure, which need not be the refinery station itself.
+    const structure = state.entityList.find((entity) => entity.alive !== false
+      && (entity.type === 'station' || entity.data?.placeId || entity.data?.worldOneOff)
+      && entity.data?.structurePatch?.receiptId === `aft_patch:${marker?.markerId}`);
+    const patch = structure?.data?.structurePatch;
+    const priceAfter = econ.priceOf(STATION_ID, COMMODITY_ID, 'buy');
+    const rows = [
+      { trace: 'wreck persists', ok: !!marker && wrecks().length === 1
+        && saved.bySector[SECTOR_ID].some((row) => row.markerId === marker.markerId), evidenceId: marker?.markerId },
+      { trace: 'traffic thins', ok: hullsBefore === 1 && liveRefineryHaulers(state).length === 0
+        && state.traffic.disruptedStationIds.includes(STATION_ID), evidenceId: `route:${STATION_ID}:1->0` },
+      { trace: 'price moves', ok: priceAfter !== priceBefore && pressures.some((row) =>
+        row.freighterId === victim.id && row.stationId === STATION_ID), evidenceId: `${priceBefore}->${priceAfter}` },
+      { trace: 'rumor appears', ok: rumors.some((row) => row.sectorId === SECTOR_ID
+        && row.zoneId === ZONE_ID && row.headline), evidenceId: `${SECTOR_ID}:${ZONE_ID}` },
+      { trace: 'structure patch', ok: patch?.kind === 'patched'
+        && patch.receiptId === `aft_patch:${marker?.markerId}` && !!patch.text, evidenceId: patch?.receiptId },
+    ];
+    console.log(`PQ-138.05 live seed=13805 incidentTick=${state.tick} simTime=${state.simTime.toFixed(3)} cargo=${cargo.totalQty} handoff=${handoffId}`);
+    printChecklist(rows);
+    assert.equal(state.world.records.byId[recordId].alive, false);
+    assert.equal(state.world.records.byId[recordId].outcome, 'destroyed');
+
+    const world = runtime.getSystem('world');
+    world.enterSector('sector_helios_prime');
+    const decisions = observeLiveRefillGuard(t, runtime);
+    world.enterSector(SECTOR_ID);
+    console.log(`PQ-138.05 live seed=13805 five traces=${rows.filter((row) => row.ok).length}/5; _leftoverSlotRefillsDisruptedApproach=${JSON.stringify(decisions)}; hard re-enter refinery haulers=${liveRefineryHaulers(state).length}; wrecks=${wrecks().length}`);
+    for (const row of rows) assert.equal(row.ok, true, `${row.trace} must come from this incident`);
+    assert.deepEqual(decisions, [true], 'the packet guard must decide on the real destroyed-record branch');
+    assert.equal(liveRefineryHaulers(state).length, 0, 'hard re-enter does not refill the disrupted approach');
+    assert.equal(wrecks().length, 1, 'the same aftermath marker rematerializes one wreck');
+    assert.ok(state.traffic.disruptedStationIds.includes(STATION_ID));
+  } finally {
+    runtime.dispose();
   }
 });
