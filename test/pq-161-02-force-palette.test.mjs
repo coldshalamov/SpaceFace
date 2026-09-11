@@ -27,7 +27,7 @@ test('PQ-161.02: five force channels disagree on hue', () => {
   assert.deepEqual([...FORCE_CHANNEL_IDS], ['rope', 'wells', 'repulsors', 'impulses', 'shields']);
   const hexes = FORCE_CHANNEL_IDS.map((id) => getForcePaletteHex(id));
   assert.equal(new Set(hexes.map((hex) => hex.toUpperCase())).size, 5);
-  assert.equal(FORCE_PALETTE_SEED, 16120);
+  assert.equal(FORCE_PALETTE_SEED, 16102);
 });
 
 test('PQ-161.02: live stand-ins fail the contrast check (the gap)', () => {
@@ -41,9 +41,9 @@ test('PQ-161.02: live stand-ins fail the contrast check (the gap)', () => {
   console.log('PQ-161.02 BEFORE (live stand-ins)\n' + formatForcePaletteReport(before));
 });
 
-test('PQ-161.02: seed 16120 contrast check is green under three CVD sims', () => {
-  const result = evaluateForcePaletteContrast({ seed: 16120, palette: FORCE_PALETTE });
-  assert.equal(result.seed, 16120);
+test('PQ-161.02: seed 16102 contrast check is green under three CVD sims', () => {
+  const result = evaluateForcePaletteContrast({ seed: 16102, palette: FORCE_PALETTE });
+  assert.equal(result.seed, 16102);
   assert.equal(result.ok, true, result.errors.join('; ') || 'contrast check');
   assert.deepEqual(result.brightnessOrder, FORCE_BRIGHTNESS_ORDER);
   assert.ok(result.trichromat.minHueDeg >= FORCE_CONTRAST_FLOORS.minHueNoneDeg);

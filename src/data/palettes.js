@@ -379,7 +379,7 @@ export const SHIP_RECIPES = {
 // PQ-161.02 — force palette. Five channels that must stay distinct for every colour-vision type.
 // Identity is the hue + authored brightness order, not a HUD label. World VFX still lives in dirty
 // renderer files; this is the data contract those owners should consume.
-export const FORCE_PALETTE_SEED = 16120;
+export const FORCE_PALETTE_SEED = 16102;
 export const FORCE_CHANNEL_IDS = Object.freeze(['rope', 'wells', 'repulsors', 'impulses', 'shields']);
 export const FORCE_BRIGHTNESS_ORDER = Object.freeze(['wells', 'rope', 'shields', 'repulsors', 'impulses']);
 export const FORCE_CVD_MODES = Object.freeze(['deuteranopia', 'protanopia', 'tritanopia']);
