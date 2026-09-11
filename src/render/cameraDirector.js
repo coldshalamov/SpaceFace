@@ -125,17 +125,45 @@ function attachmentLooksLikeBridle(attachment) {
     || attachment.bridle === true;
 }
 
+function bridlePairFromIds(state, sourceId, targetId, attachmentId) {
+  const a = entityFor(state, sourceId);
+  const b = entityFor(state, targetId);
+  if (!a || !b || a === b) return null;
+  return { a, b, kind: 'bridle', attachmentId: attachmentId || null };
+}
+
 /** Twin-bridle world pair (the two chosen bodies). Player is not a third endpoint. */
 export function resolveBridlePair(state) {
+  // Live seam: tetherGameplay writes the player's bridle to player.remoteMassline.
+  const remote = state && state.player && state.player.remoteMassline;
+  if (remote && remote.active && (
+    remote.kind === TWIN_BRIDLE_HEAD_ID
+    || remote.headId === TWIN_BRIDLE_HEAD_ID
+    || remote.bridle === true
+  )) {
+    const fromMirror = bridlePairFromIds(state, remote.sourceId, remote.targetId, remote.attachmentId);
+    if (fromMirror) return fromMirror;
+  }
   const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
   if (attachments && typeof attachments === 'object') {
+    const preferredId = remote && remote.attachmentId != null ? String(remote.attachmentId) : null;
+    if (preferredId && Object.prototype.hasOwnProperty.call(attachments, preferredId)) {
+      const preferred = attachments[preferredId];
+      if (attachmentLooksLikeBridle(preferred)) {
+        const fromPreferred = bridlePairFromIds(
+          state, preferred.ownerId, preferred.targetId, preferred.id || preferredId,
+        );
+        if (fromPreferred) return fromPreferred;
+      }
+    }
     for (const key in attachments) {
       if (!Object.prototype.hasOwnProperty.call(attachments, key)) continue;
       const attachment = attachments[key];
       if (!attachmentLooksLikeBridle(attachment)) continue;
-      const a = entityFor(state, attachment.ownerId);
-      const b = entityFor(state, attachment.targetId);
-      if (a && b && a !== b) return { a, b, kind: 'bridle', attachmentId: attachment.id || key };
+      const fromAttachment = bridlePairFromIds(
+        state, attachment.ownerId, attachment.targetId, attachment.id || key,
+      );
+      if (fromAttachment) return fromAttachment;
     }
   }
   const tether = state && state.player && state.player.tether;
@@ -1002,7 +1030,11 @@ export function createCameraDirector() {
         // During acquisition, preserve the real pose we started from (including a wider legal
         // FOLLOW shot) and ease to the pair envelope. After acquisition, keep an in-envelope moving
         // pair fitted immediately; impossible pairs remain clamped and explicitly reported.
-        const appliedZoom = easingEntry ? candidateZoom : Math.max(candidateZoom, required);
+        // TWO_BODY is a taut-line picture: ease the look-at so the takeover is not a cut, but never
+        // stay tighter than the current-focus fit. Zooming out is not a cut; cropping the rock is.
+        const appliedZoom = (easingEntry && requestedMode !== CameraDirectorMode.TWO_BODY)
+          ? candidateZoom
+          : Math.max(candidateZoom, required);
         const transitionZoomMax = easingEntry
           ? Math.max(pairZoomMax, transitionStartZoom)
           : pairZoomMax;
