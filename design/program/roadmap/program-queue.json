@@ -8352,7 +8352,7 @@
       "priority": 155,
       "title": "The rhythm model",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8373,7 +8373,9 @@
         "npm run check:sim",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-149.00-REPORT.md"
+      ],
       "brief": "A phase machine (work, travel, curiosity, opportunity, tension, violence, aftermath, quiet) with dwell budgets and telegraphs, read by the existing directors as a gate. DONE WHEN: A 90-minute unaided session shows every phase and no phase > 12 min; telemetry prints the timeline."
     },
     {
@@ -8382,7 +8384,7 @@
       "priority": 156,
       "title": "Escalation seeds",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8403,7 +8405,9 @@
         "npm run check:sim",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-149.01-REPORT.md"
+      ],
       "brief": "Consequence tokens from PQ-138 (witness, spill, flee) become future beats: a bounty, an ace, a shortage, a rumor; each with a delay and a place. DONE WHEN: ≥ 3 escalations traceable to player acts per session; each cites its cause in the ledger."
     },
     {
@@ -8412,7 +8416,7 @@
       "priority": 157,
       "title": "Guaranteed ordinary life",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8433,7 +8437,9 @@
         "npm run check:sim",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-149.02-REPORT.md"
+      ],
       "brief": "Quiet phases spawn routine work (inspections, transfers, repair, waiting, a slow tug) at the camera. DONE WHEN: 5-minute quiet capture shows ≥ 4 routine behaviours; activity telemetry confirms."
     },
     {
@@ -8442,7 +8448,7 @@
       "priority": 158,
       "title": "Story so far",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8463,7 +8469,9 @@
         "npm run check:sim",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-149.03-REPORT.md"
+      ],
       "brief": "The ledger renders the session as 'I was doing X, then Y, so I Z' with the causes. DONE WHEN: Blind reader retells the session correctly from the ledger alone."
     },
     {
