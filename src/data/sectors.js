@@ -190,6 +190,29 @@ const CORE_SECTORS = [
         factionId: 'faction_dmc', requiresActiveScan: true, scannerSignalKind: 'ore',
         manualInvestigation: true,
       },
+      // PQ-153.02 hero landmark (depth program C13e, lore `landmark_c13e_resonant_cathedral`).
+      // Anchors zone_vesta_forge beside the foundry it was raised against. `pos` is inline
+      // sector-local (the frontier-region precedent) because sectorAnchors.js is a contended table
+      // this packet does not own; applySectorAnchors leaves unanchored pois untouched. A `pos` on
+      // the record means _spawnPOIs scatters nothing for it.
+      {
+        id: 'poi_vesta_resonant_cathedral',
+        type: 'anomaly',
+        name: 'The Resonant Cathedral',
+        landmark: true,
+        pos: { x: -1050, z: 1180 },
+        landmarkGlb: 'place_maintenance_gantry',
+        visualRadius: 30,
+        factionId: 'faction_choir',
+        scannerSignalKind: 'archive',
+        flavorTargetRef: 'landmark_c13e_resonant_cathedral',
+        dressingExclusionRadius: 300,
+        discoveryPlate: {
+          title: 'The Resonant Cathedral',
+          body: 'Twin spires and a resonance arch raised where the Choir first sang inside a '
+            + 'foundry\u2019s own roar \u2014 its harmonic still tuned to the Forge\u2019s old shift rhythm.',
+        },
+      },
     ],
   },
   {
@@ -314,6 +337,28 @@ const CORE_SECTORS = [
     pois: [
       { id: 'poi_bounty', type: 'wreck', name: 'Bounty Wrecks' },
       { id: 'poi_stash',  type: 'cache', name: 'Stash Cache', hidden: true },
+      // PQ-153.02 hero landmark (depth program C13d, lore `landmark_c13d_skerris_throne`).
+      // Anchors zone_sker_haven (Skerris Deep) on the approach to the Bazaar: a fortress welded
+      // from captured hulls, so the shared dead-hulk silhouette is the honest one. Inline `pos`
+      // for the same reason as the Vesta landmark above.
+      {
+        id: 'poi_sker_throne',
+        type: 'colony',
+        name: 'The Skerris Throne',
+        landmark: true,
+        pos: { x: -1500, z: 1350 },
+        landmarkGlb: 'place_dead_hulk',
+        visualRadius: 34,
+        factionId: 'faction_reach',
+        scannerSignalKind: 'archive',
+        flavorTargetRef: 'landmark_c13d_skerris_throne',
+        dressingExclusionRadius: 300,
+        discoveryPlate: {
+          title: 'The Skerris Throne',
+          body: 'A fortress welded from captured hulls, every plate a raid trophy with a story on '
+            + 'scan. No architect designed the Throne \u2014 survivors kept welding.',
+        },
+      },
     ],
   },
   {
