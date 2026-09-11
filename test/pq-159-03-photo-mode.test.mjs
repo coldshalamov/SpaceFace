@@ -341,6 +341,38 @@ test('PQ-159.03 captures are published onto the store page', () => {
   assert.equal(buf.toString('ascii', 1, 4), 'PNG');
 });
 
+test('live Capture writes the store-page still onto state even without a file writer', () => {
+  const canvas = { toDataURL: () => PNG };
+  const capture = capturePhotoPng(canvas, { kind: 'store' });
+  const state = { render: {} };
+  const downloads = [];
+  const written = writePhotoCapture(capture, {
+    state,
+    document: {
+      createElement(tag) {
+        const node = {
+          tagName: tag,
+          click() { downloads.push({ download: node.download }); },
+          href: '',
+          download: '',
+          rel: '',
+        };
+        return node;
+      },
+    },
+  });
+  assert.equal(written.ok, true);
+  assert.equal(written.via, 'download');
+  assert.equal(written.storePage.ok, true);
+  assert.equal(written.storePage.usedFor, 'store-page');
+  assert.equal(written.storePage.path, storePageScreenshotPath());
+  assert.equal(state.render.storePage.path, storePageScreenshotPath());
+  assert.equal(state.render.storePage.usedFor, 'store-page');
+  assert.ok(String(state.render.storePage.screenshot).startsWith('data:image/png'));
+  assert.equal(downloads[0].download, capture.filename);
+  console.log(`SEED=${SEED} liveCaptureStore=${state.render.storePage.path}`);
+});
+
 test('director holds FOLLOW on a taut line while photo mode is live', () => {
   const player = {
     id: 1, type: 'ship', alive: true, team: 0,

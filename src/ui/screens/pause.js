@@ -51,6 +51,30 @@ export function storePageScreenshotPath() {
   return storePagePath(STORE_PAGE_SCREENSHOT);
 }
 
+/** Remember a capture on the live game state so Capture always owns the store-page slot. */
+export function bindStorePageStill(state, rel, dataUrl) {
+  if (!state || !rel || !dataUrl) return false;
+  if (!state.render) state.render = {};
+  const slot = state.render.storePage || (state.render.storePage = {});
+  slot[rel] = dataUrl;
+  if (rel === storePageScreenshotPath() || String(rel).endsWith(STORE_PAGE_SCREENSHOT)) {
+    slot.screenshot = dataUrl;
+    slot.path = storePageScreenshotPath();
+    slot.usedFor = 'store-page';
+  }
+  return true;
+}
+
+function resolveStorePageWriter(host) {
+  const explicit = host && typeof host.writeStorePage === 'function' ? host.writeStorePage : null;
+  const state = host && host.state;
+  if (!explicit && !state) return null;
+  return (rel, dataUrl) => {
+    if (explicit) explicit(rel, dataUrl);
+    bindStorePageStill(state, rel, dataUrl);
+  };
+}
+
 /** Bind a photo-mode PNG onto the store page screenshot slot (and keep a dated archive). */
 export function publishStoreStill(capture, writer) {
   if (!capture || capture.ok === false || !capture.dataUrl || typeof writer !== 'function') {
@@ -425,11 +449,10 @@ export function writePhotoCapture(capture, host = globalThis) {
     return { ok: false, reason: (capture && capture.reason) || 'no-image' };
   }
   const electron = host && (host.sfDesktop || host.electronAPI || host.spaceface);
+  const writer = resolveStorePageWriter(host);
   const store = typeof host.publishStoreStill === 'function'
     ? host.publishStoreStill(capture)
-    : (typeof host.writeStorePage === 'function'
-      ? publishStoreStill(capture, host.writeStorePage)
-      : null);
+    : (writer ? publishStoreStill(capture, writer) : null);
   if (electron && typeof electron.savePhoto === 'function') {
     const result = electron.savePhoto({ filename: capture.filename, dataUrl: capture.dataUrl });
     return { ok: true, via: 'electron', filename: capture.filename, result, storePage: store };
@@ -478,7 +501,15 @@ function syncPhotoExposure(ctx, value) {
 
 function runPhotoCapture(ctx) {
   const capture = capturePhotoPng(resolvePhotoCanvas(ctx), { kind: PHOTO_STORE_KIND });
-  return writePhotoCapture(capture, globalThis);
+  return writePhotoCapture(capture, {
+    document: globalThis.document,
+    sfDesktop: globalThis.sfDesktop,
+    electronAPI: globalThis.electronAPI,
+    spaceface: globalThis.spaceface,
+    writeStorePage: ctx && ctx.writeStorePage,
+    publishStoreStill: ctx && ctx.publishStoreStill,
+    state: ctx && ctx.state,
+  });
 }
 
 function bindPhotoKeys(photoState) {
