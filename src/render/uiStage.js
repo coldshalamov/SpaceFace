@@ -30,6 +30,14 @@ const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
 /** Sky shell radius. Everything authored sits well inside it. */
 const SKY_RADIUS = 2600;
 
+// Scratch for the per-frame stage draw. The flight path never enters drawStage; menus do every
+// rAF, so these must not allocate.
+const _stageSize = new THREE.Vector2();
+const _stageClear = new THREE.Color();
+const _stageTarget = new THREE.Vector3();
+const _stageOffset = new THREE.Vector3();
+const _stageUp = new THREE.Vector3(0, 1, 0);
+
 /**
  * The authored scenes.
  *
@@ -814,16 +822,16 @@ function applyCamera(built, time) {
   const yaw = Math.sin(phase) * (spec.drift.yaw * Math.PI / 180) * 60;
   const lift = Math.sin(phase * 0.6) * spec.drift.pitch * 60;
 
-  const target = new THREE.Vector3(...spec.camera.target);
-  const offset = new THREE.Vector3(...spec.camera.at).sub(target);
-  offset.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
-  offset.y += lift;
-  camera.position.copy(target).add(offset);
-  camera.lookAt(target);
+  _stageTarget.fromArray(spec.camera.target);
+  _stageOffset.fromArray(spec.camera.at).sub(_stageTarget);
+  _stageOffset.applyAxisAngle(_stageUp, yaw);
+  _stageOffset.y += lift;
+  camera.position.copy(_stageTarget).add(_stageOffset);
+  camera.lookAt(_stageTarget);
 }
 
 function drawStage(built, renderer, state) {
-  const size = renderer.getSize(new THREE.Vector2());
+  const size = renderer.getSize(_stageSize);
   const aspect = size.y > 0 ? size.x / size.y : 16 / 9;
   if (Math.abs(built.camera.aspect - aspect) > 1e-4) {
     built.camera.aspect = aspect;
@@ -841,7 +849,7 @@ function drawStage(built, renderer, state) {
   const previousTarget = renderer.getRenderTarget();
   const previousAutoClear = renderer.autoClear;
   const previousShadows = renderer.shadowMap.enabled;
-  const previousClear = renderer.getClearColor(new THREE.Color());
+  const previousClear = renderer.getClearColor(_stageClear);
   const previousClearAlpha = renderer.getClearAlpha();
   try {
     renderer.setRenderTarget(null);

@@ -23,6 +23,7 @@ import {
   normalizeFrameCap,
   qualityTierForPreset,
   resolveFrameCap,
+  stepFrameCapDebt,
 } from '../src/render/adaptiveQuality.js';
 
 const SEED = 16500;
@@ -124,6 +125,44 @@ test('VSync flag is read: cap can never exceed the display refresh', () => {
   assert.equal(live.cap, 60, 'turning VSync back on re-clamps the live cap');
   controller.setDisplayHz(144);
   assert.equal(live.cap, 120, 'a 144 Hz panel lets the 120 request through');
+});
+
+test('new games persist a quality preset and an uncapped frame-cap default (seed 16500)', () => {
+  const state = createGameState(SEED);
+  assert.equal(state.settings.video.qualityPreset, 'medium');
+  assert.equal(state.settings.video.frameCap, 0);
+});
+
+test('frame-cap debt presents on rAF beats (30 on 60, 120 on 144)', () => {
+  // 30 fps on a 60 Hz panel: every other callback.
+  let debt = 0;
+  let presents = 0;
+  for (let i = 0; i < 12; i++) {
+    const step = stepFrameCapDebt({ cap: 30, displayHz: 60, debt });
+    debt = step.debt;
+    if (step.present) presents += 1;
+  }
+  assert.equal(presents, 6, '30 fps on 60 Hz presents 6 of 12 rAFs');
+
+  // Uncapped / cap at refresh: every callback.
+  debt = 0;
+  presents = 0;
+  for (let i = 0; i < 12; i++) {
+    const step = stepFrameCapDebt({ cap: 60, displayHz: 60, debt });
+    debt = step.debt;
+    if (step.present) presents += 1;
+  }
+  assert.equal(presents, 12, 'cap at refresh presents every rAF');
+
+  // 120 fps on 144 Hz: five of six callbacks (144 * 5/6 = 120).
+  debt = 0;
+  presents = 0;
+  for (let i = 0; i < 144; i++) {
+    const step = stepFrameCapDebt({ cap: 120, displayHz: 144, debt });
+    debt = step.debt;
+    if (step.present) presents += 1;
+  }
+  assert.equal(presents, 120, '120 fps on 144 Hz presents 120 of 144 rAFs');
 });
 
 test('settings screen surfaces the preset and frame cap and preserves the Language row', () => {

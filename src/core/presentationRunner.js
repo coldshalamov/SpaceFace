@@ -10,6 +10,7 @@ import {
 } from './simulationRunner.js';
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities } from '../world/presentationSources.js';
+import { resolveFrameCap, stepFrameCapDebt } from '../render/adaptiveQuality.js';
 
 // Consecutive failing frames before the loop calls the picture dead. 30 is half a second at 60 Hz:
 // long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
@@ -280,6 +281,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     recoveryCappedFrameCount: 0,
     presentFirst: true,
     lastPresentMs: 0,
+    frameCapSkips: 0,
+    frameCapDebt: 0,
     lastLeftoverMs: 0,
     lastLeftoverStepCap: 0,
     journalAvailable: presentationJournal !== null,
@@ -788,7 +791,43 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       let presentationError = null;
       const skipPresentation = destroyed || suspended
         || (!restoring && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING);
-      if (!skipPresentation) {
+      // Player frame-cap (Settings → Video). Sim keeps its 60 Hz leftover; only the GPU present
+      // is gated. Debt is fractional so 30 fps on 60 Hz and 120 fps on 144 Hz both land on rAF
+      // beats instead of trying to present off vsync.
+      const video = (state && state.settings && state.settings.video) || {};
+      const dtMs = frameDt * 1000;
+      if (!restoring && dtMs > 1 && dtMs < 80) {
+        const prev = Number(state.render && state.render.displayHzEmaMs) || 16.67;
+        const ema = prev * 0.9 + dtMs * 0.1;
+        if (!state.render) state.render = {};
+        state.render.displayHzEmaMs = ema;
+        if (diagnostics.executedFrames > 45) {
+          const hz = Math.round(1000 / ema);
+          if (hz >= 30 && hz <= 360) state.render.displayHz = hz;
+        }
+      }
+      const displayHz = Number(state.render && state.render.displayHz) || 60;
+      const effectiveCap = restoring
+        ? 0
+        : resolveFrameCap({
+          cap: video.frameCap,
+          vsync: video.vsync !== false,
+          displayHz,
+        });
+      if (state && state.render) state.render.frameCap = effectiveCap;
+      const capStep = skipPresentation
+        ? { present: false, debt: diagnostics.frameCapDebt }
+        : (diagnostics.executedFrames <= 1
+          ? { present: true, debt: 0 }
+          : stepFrameCapDebt({
+            cap: effectiveCap,
+            displayHz,
+            debt: diagnostics.frameCapDebt,
+          }));
+      diagnostics.frameCapDebt = capStep.debt;
+      const capSkip = !skipPresentation && !capStep.present;
+      if (capSkip) diagnostics.frameCapSkips++;
+      if (!skipPresentation && !capSkip) {
         try {
           presentationMs = presentLastCompletedSnapshot(frameDt, restoring, perf, fixedDt);
           renderedSnapshot = true;

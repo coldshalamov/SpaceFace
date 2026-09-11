@@ -165,6 +165,27 @@ export function resolveFrameCap({ cap, vsync, displayHz = 60 } = {}) {
   return Math.min(requested, hz);     // a cap never exceeds the display refresh
 }
 
+/**
+ * Fractional-debt present gate. rAF fires at the display refresh; a cap below that must skip
+ * some callbacks rather than presenting off the vsync beat. `cap` is the *effective* cap from
+ * `resolveFrameCap` (already vsync-clamped). Returns `{ present, debt }` for the next callback.
+ *
+ *   30 on 60 Hz → present every other rAF
+ *   120 on 144 Hz → present five of six rAFs
+ *   0 / cap ≥ displayHz → present every rAF
+ */
+export function stepFrameCapDebt({ cap, displayHz = 60, debt = 0 } = {}) {
+  const hz = Number(displayHz) > 0 ? Number(displayHz) : 60;
+  const requested = Number(cap);
+  const limit = Number.isFinite(requested) && requested > 0 ? requested : 0;
+  if (limit <= 0 || limit >= hz) return { present: true, debt: 0 };
+  let next = Number(debt);
+  if (!Number.isFinite(next) || next < 0) next = 0;
+  next += limit / hz;
+  if (next >= 1) return { present: true, debt: next - 1 };
+  return { present: false, debt: next };
+}
+
 export function createFrameCap({ vsync = true, displayHz = 60, apply } = {}) {
   const sink = typeof apply === 'function' ? apply : () => {};
   let sync = !!vsync;
