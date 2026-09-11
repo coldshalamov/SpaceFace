@@ -56,7 +56,7 @@ design/frontend/direction/approved/
   crops/    crops-title.png  crops-crucible.png  crops-hud.png  crops-hud-wanted.png
 
 assets/ui/kit/
-  kit-manifest.json
+  README.md · kit-manifest.json
   tokens/   tokens.json  tokens.css
   assets/   plates/ windows/ tiles/ keys/ controls/ lights/ gauges/ radar/ sockets/
             badges/ tapes/ strips/ wear/ svg/   (+ _contact-sheet.png per folder)
@@ -73,7 +73,7 @@ assets/ui/kit/
             icons.py  marks.py  svg_parts.py  fontkit.py  contrast.py
             alpha_check.py  nine_slice_test.py  sheet.py  build_tokens_css.py
             build_sound_js.py  build_sprites_js.py  render_svg_sheets.mjs
-            svg_png.mjs  shoot_screens.mjs
+            svg_png.mjs  shoot_screens.mjs  validate_sound.mjs  measure_delta.py
   serve.py
 
 design/frontend/direction/receipts/S1-REPORT.md   (this file)

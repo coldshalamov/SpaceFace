@@ -18,9 +18,10 @@
            background: url('../../../../design/frontend/direction/approved/plates/plate-flight.png')
                        center / cover no-repeat; }
   /* A temperature changes the WHOLE frame, not one badge. The approved frame cools the plate
-     by scaling its channels; this is the same move at runtime. */
-  [data-fh-temp="wanted"] .world { filter: saturate(.86) hue-rotate(-10deg) brightness(.95)
-                                           contrast(1.04); }
+     by scaling its channels R x0.86 G x0.94 B x1.14; `feColorMatrix` is that exact maths, so
+     the prototype and the frame agree. A `hue-rotate`/`saturate` stack cannot do it — it
+     desaturates a warm scene instead of raising its blue. */
+  [data-fh-temp="wanted"] .world { filter: url(#fh-cool); }
 
 
   /* Browser default margins are the quiet killer of a frame match: an <h1> carries
@@ -90,6 +91,12 @@
 <body class="fh-root">
 <main class="screen">
   <div class="stage" id="stage">
+    <svg width="0" height="0" aria-hidden="true" style="position:absolute">
+      <filter id="fh-cool" color-interpolation-filters="sRGB">
+        <feColorMatrix type="matrix"
+          values="0.86 0 0 0 0  0 0.94 0 0 0  0 0 1.14 0 0  0 0 0 1 0"/>
+      </filter>
+    </svg>
     <div class="world"></div>
 
     <nav class="toggle"><a href="?state=resting">RESTING</a><a href="?state=wanted">WANTED</a></nav>
