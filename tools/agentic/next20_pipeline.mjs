@@ -19,9 +19,11 @@ import {
   buildReviewerPrompt,
   canIntegrate,
   compactUnit,
+  applyReviewClose,
   formatPipelineLog,
   loadReadyFromDispatcher,
   patchDispatchUnitDone,
+  patchDispatchUnitReady,
   receiptPathFor,
   selectSlate,
 } from './next20_pipeline_lib.mjs';
@@ -40,9 +42,12 @@ function usage() {
   node tools/agentic/next20_pipeline.mjs --schedule [--count N] [--frozen ID,ID]
   node tools/agentic/next20_pipeline.mjs --prompt --id PQ-XXX.YY [--wave 0|1|2]
   node tools/agentic/next20_pipeline.mjs --integrate --id PQ-XXX.YY --receipt PATH --wave1 JSON --wave2 JSON [--tests-pass]
+  node tools/agentic/next20_pipeline.mjs --reopen --id PQ-XXX.YY
+  node tools/agentic/next20_pipeline.mjs --apply-reviews --reviews DIR [--tests-pass]
 
 --run is the primary observable: slate ids from the live dispatcher, families, review-wave plan.
---integrate is the only writer of dispatch-unit state/receiptRefs.`);
+--integrate / --apply-reviews are the only writers of dispatch-unit state/receiptRefs.
+--apply-reviews fail-closes any unit whose wave JSON is not two PASS reviews with evidence.`);
 }
 
 function csv(value) {
@@ -70,6 +75,9 @@ try {
       schedule: { type: 'boolean' },
       prompt: { type: 'boolean' },
       integrate: { type: 'boolean' },
+      reopen: { type: 'boolean' },
+      'apply-reviews': { type: 'boolean' },
+      reviews: { type: 'string' },
       count: { type: 'string' },
       frozen: { type: 'string' },
       skip: { type: 'string' },
@@ -94,8 +102,8 @@ if (values.help) {
 }
 
 const root = values.root ? path.resolve(values.root) : ROOT;
-const modes = [values.run, values.schedule, values.prompt, values.integrate].filter(Boolean).length;
-if (modes !== 1) fail('choose exactly one of --run, --schedule, --prompt, --integrate');
+const modes = [values.run, values.schedule, values.prompt, values.integrate, values.reopen, values['apply-reviews']].filter(Boolean).length;
+if (modes !== 1) fail('choose exactly one of --run, --schedule, --prompt, --integrate, --reopen, --apply-reviews');
 
 const count = values.count != null ? Number(values.count) : DEFAULT_COUNT;
 if (!Number.isInteger(count) || count < 1) fail('--count must be a positive integer');
@@ -209,5 +217,63 @@ if (values.integrate) {
   const after = patchDispatchUnitDone(before, id, receiptRel);
   if (after !== before) fs.writeFileSync(queuePath, after);
   console.log(JSON.stringify({ id, integrated: true, receipt: receiptRel, state: 'done' }, null, 2));
+  process.exit(0);
+}
+
+if (values.reopen) {
+  const id = values.id;
+  if (!id) fail('--id is required with --reopen');
+  const queuePath = path.join(root, QUEUE_REL);
+  const before = fs.readFileSync(queuePath, 'utf8');
+  const after = patchDispatchUnitReady(before, id);
+  if (after !== before) fs.writeFileSync(queuePath, after);
+  console.log(JSON.stringify({ id, reopened: true, state: 'ready' }, null, 2));
+  process.exit(0);
+}
+
+if (values['apply-reviews']) {
+  const reviewsDir = values.reviews ? path.resolve(values.reviews) : fail('--reviews DIR is required with --apply-reviews');
+  if (!fs.existsSync(reviewsDir)) fail(`reviews dir missing: ${reviewsDir}`);
+  const names = fs.readdirSync(reviewsDir).filter((n) => n.endsWith('-wave1.json'));
+  const rows = [];
+  let queueText = fs.readFileSync(path.join(root, QUEUE_REL), 'utf8');
+  for (const name of names.sort()) {
+    const id = name.replace(/-wave1\.json$/, '');
+    const wave1Path = path.join(reviewsDir, `${id}-wave1.json`);
+    const wave2Path = path.join(reviewsDir, `${id}-wave2.json`);
+    const receiptRel = receiptPathFor(id);
+    let wave1 = { verdict: 'FAIL', evidence: '' };
+    let wave2 = { verdict: 'FAIL', evidence: '' };
+    try { wave1 = JSON.parse(fs.readFileSync(wave1Path, 'utf8')); } catch { /* fail-closed */ }
+    try { wave2 = JSON.parse(fs.readFileSync(wave2Path, 'utf8')); } catch { /* fail-closed */ }
+    const receipt = assertReceiptOnDisk(root, receiptRel);
+    const gate = applyReviewClose(id, {
+      receiptExists: receipt.ok,
+      testsPass: !!values['tests-pass'],
+      reviews: [
+        { wave: 1, verdict: wave1.verdict, evidence: wave1.evidence },
+        { wave: 2, verdict: wave2.verdict, evidence: wave2.evidence },
+      ],
+    });
+    if (gate.ok) {
+      queueText = patchDispatchUnitDone(queueText, id, receiptRel);
+      rows.push({ id, verdict: 'DONE', reason: 'two PASS waves + receipt + testsPass' });
+    } else {
+      rows.push({
+        id,
+        verdict: 'NOT DONE',
+        reason: `FAIL-CLOSED ${gate.reason}${gate.wave ? ` wave ${gate.wave}` : ''}`,
+      });
+    }
+  }
+  fs.writeFileSync(path.join(root, QUEUE_REL), queueText);
+  const log = [
+    'NEXT20 APPLY-REVIEWS',
+    `reviews: ${reviewsDir}`,
+    `units: ${rows.length}`,
+    ...rows.map((row) => `${row.id} ${row.verdict} ${row.reason}`),
+  ].join('\n');
+  console.log(log);
+  if (rows.some((row) => row.verdict === 'NOT DONE')) process.exit(1);
   process.exit(0);
 }

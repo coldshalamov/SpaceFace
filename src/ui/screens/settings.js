@@ -33,6 +33,11 @@ import {
 import { BINDINGS } from '../bindings.js';
 import { setGamepadCaptureHandler } from '../bindings.js';
 import { LANGUAGE_OPTIONS, gameLocalization, setGameLocale } from '../../localization/gameLocalization.js';
+import {
+  ACCESSIBILITY_STATEMENT_ID,
+  CHECKLIST_ITEMS,
+  evaluateChecklist,
+} from '../accessibilityChecklist.js';
 import { el, words, settle, cue } from '../kit/index.js';
 
 function getManager(ctx) {
@@ -382,7 +387,7 @@ export const settingsScreen = {
       rowToggle('Damage numbers', () => !!g.damageNumbers, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
     } else if (refs.active === 'Access') {
       const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
-        motionPreference: 'system', captions: true, captionSize: 'medium', captionBackground: true });
+        motionPreference: 'system', captions: true, audioCues: true, captionSize: 'medium', captionBackground: true });
       // Language: the default route is English; choosing here switches the live locale and re-renders
       // every mounted screen through the shared document bridge (no reload).
       rowSelect('Language', () => chosenLocale(s), LANGUAGE_OPTIONS.map((option) => [option.id, option.label]),
@@ -401,6 +406,15 @@ export const settingsScreen = {
         [['system', 'Follow system'], ['reduce', 'Reduced'], ['full', 'Full']],
         (v) => this._set(ctx, 'accessibility', 'motionPreference', v));
       rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));
+      rowToggle('Audio cues', () => ac.audioCues !== false, (v) => this._set(ctx, 'accessibility', 'audioCues', v));
+      build.note('Accessibility statement: contrast, reduced motion, remap, text scale, assists, and captions are listed below. Every voiced bark is captioned when Gameplay captions is on.');
+      build.note(ACCESSIBILITY_STATEMENT_ID); // accessibility-statement
+      const checklist = evaluateChecklist(s);
+      build.header('Accessibility checklist');
+      for (const row of CHECKLIST_ITEMS) {
+        const live = checklist.rows.find((item) => item.id === row.id);
+        build.note(`${row.label}: ${live && live.ok ? 'ready' : 'off'}`);
+      }
       rowSelect('Caption size', () => ac.captionSize || 'medium',
         [['small', 'Small'], ['medium', 'Medium'], ['large', 'Large']],
         (v) => this._set(ctx, 'accessibility', 'captionSize', v));
@@ -480,6 +494,10 @@ export const settingsScreen = {
       (mode) => commitTouchValue(mode === 'auto' ? null : mode === 'on'));
     // Touch overlay exposes dedicated Dock/Map/Log/Star/Pause buttons (not only flight sticks).
     build.note('Virtual sticks: left = fly, right = aim; buttons = fire, mine, boost, dock, Map, Log (Mission Log), Star, Pause. Auto-enabled on touch devices.');
+    // PQ-164.02: one Deck/trackpad row. Gestures write the existing Massline key seams
+    // (Space latch, W/S reel, Y throw, G-stroke) — they do not add a second grammar.
+    build.header('Steam Deck');
+    build.note('Verified at 1280×800. Trackpad: middle-tap latches the Massline, two-finger scroll reels a latched line, a flick throws, a stroke draws a flight route, pinch boosts.');
   },
 
   _renderFixedShortcuts(pane, build = paneBuilder(pane)) {

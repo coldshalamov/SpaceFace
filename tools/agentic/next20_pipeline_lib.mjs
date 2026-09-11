@@ -256,6 +256,32 @@ export function patchDispatchUnitDone(queueText, unitId, receiptRelPath) {
   return next;
 }
 
+/** Surgical text patch: return a dispatch unit to ready (keep receiptRefs). */
+export function patchDispatchUnitReady(queueText, unitId) {
+  const idNeedle = `"id": ${JSON.stringify(unitId)}`;
+  const start = queueText.indexOf(idNeedle);
+  if (start < 0) throw new Error(`dispatch unit ${unitId} not found`);
+  const fromId = queueText.slice(start);
+  const stateMatch = fromId.match(/"state":\s*"(ready|done|blocked|deferred)"/);
+  if (!stateMatch) throw new Error(`dispatch unit ${unitId} has no state field`);
+  const stateOffset = start + fromId.indexOf(stateMatch[0]);
+  return `${queueText.slice(0, stateOffset)}"state": "ready"${queueText.slice(stateOffset + stateMatch[0].length)}`;
+}
+
+/**
+ * Close or refuse a slate from on-disk review JSON. Never flips done without two PASS
+ * waves, an existing receipt, and testsPass.
+ */
+export function applyReviewClose(unitId, input) {
+  const gate = canIntegrate(input);
+  return {
+    id: unitId,
+    integrated: false,
+    ...gate,
+    verdict: gate.ok ? 'ELIGIBLE' : 'FAIL-CLOSED',
+  };
+}
+
 export function buildImplementerPrompt(unit) {
   const u = compactUnit(unit);
   const paths = (u.paths || []).map((p) => `- ${p}`).join('\n');

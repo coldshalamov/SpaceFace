@@ -10,10 +10,12 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  applyReviewClose,
   canIntegrate,
   groupByOverlap,
   loadReadyFromDispatcher,
   patchDispatchUnitDone,
+  patchDispatchUnitReady,
   pathsOverlap,
   selectSlate,
   unitsOverlap,
@@ -147,6 +149,22 @@ test('patchDispatchUnitDone flips only that unit and appends the receipt ref', (
     'design/program/roadmap/receipts/PQ-DEMO.01-REPORT.md',
   ]);
   assert.equal(parsed.dispatchUnits[1].state, 'ready', 'sibling units must stay untouched');
+  const reopened = patchDispatchUnitReady(patched, 'PQ-DEMO.01');
+  assert.equal(JSON.parse(reopened).dispatchUnits[0].state, 'ready');
+});
+
+test('applyReviewClose fail-closes when wave 2 is FAIL', () => {
+  const gate = applyReviewClose('PQ-DEMO.01', {
+    receiptExists: true,
+    testsPass: true,
+    reviews: [
+      { wave: 1, verdict: 'PASS', evidence: 'tests 1/1' },
+      { wave: 2, verdict: 'FAIL', evidence: 'Leaves clause unmet' },
+    ],
+  });
+  assert.equal(gate.ok, false);
+  assert.equal(gate.reason, 'review-rejected');
+  assert.equal(gate.verdict, 'FAIL-CLOSED');
 });
 
 test('shipped CLI --schedule slate ids equal live --ready prefix', () => {
