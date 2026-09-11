@@ -37,10 +37,18 @@ import { SURVIVAL_RUN_WAVE_COUNT } from '../../systems/survivalRun.js';
 import {
   dailySeedForNow,
   ghostRaceOffer,
+  lastGhostRowByHash,
   loadCrucibleMeta,
   utcDateKeyNow,
   weeklyMutatorForNow,
 } from '../../systems/survivalRecords.js';
+import {
+  applyRunShareCode,
+  ghostShareForRun,
+  importGhostShareText,
+  runShareCodeForRun,
+  shareTextHref,
+} from './shareCode.js';
 import { SURVIVAL_MUTATOR_BY_ID } from '../../data/survivalMutators.js';
 import { clearQueuedChallenge, queueGhostPlayback, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
@@ -334,6 +342,8 @@ export const crucibleScreen = {
     let doorProfile = null;
     try { doorProfile = loadCrucibleMeta(); } catch { doorProfile = null; }
     let raceGhost = !!(previous && previous.ghostHash);
+    // PQ-160.02: a pasted run code's challenge terms ride to launch through here.
+    let pendingShare = null;
 
     // .k-title — the name and the live mode's blurb (syncMode writes it).
     const title = el('header', 'k-title');
@@ -559,6 +569,97 @@ export const crucibleScreen = {
     seedRow.appendChild(reroll);
     seedBody.appendChild(seedRow);
 
+    // Share (PQ-160.02): a run travels as a code, a ghost as a share block — files and codes,
+    // never a service. Both fields are plain paste targets; a bad code fails closed with the
+    // reason on the note line.
+    const shareBody = settingRow('Share', 'sf-crd-row--share');
+    const shareNote = el('p', 'k-t-fine k-38 sf-crd-share-sub',
+      'A run code sets the seed, the build and the rules. A ghost code adds a hull to race.');
+    const codeRow = el('div', 'k-words k-words--row sf-crd-share');
+    const codeInput = el('input', 'k-input sf-crd-code');
+    codeInput.type = 'text';
+    codeInput.inputMode = 'text';
+    codeInput.spellcheck = false;
+    codeInput.autocomplete = 'off';
+    codeInput.setAttribute('aria-label', 'Run share code');
+    codeInput.placeholder = 'SFC1-…';
+    const useCode = word('Use code', 'k-word--fine');
+    useCode.addEventListener('click', () => {
+      const res = applyRunShareCode(codeInput.value);
+      if (!res.ok) {
+        pendingShare = null;
+        shareNote.textContent = res.error;
+        cue('deny');
+        return;
+      }
+      pendingShare = {
+        mutators: res.mutators,
+        dailyDateKey: res.dailyDateKey,
+        weeklyMutatorId: res.weeklyMutatorId,
+        ghostHash: res.ghostHash,
+      };
+      starterId = res.starterId;
+      if (COMBAT_LAB_ARENAS.some((a) => a.id === res.arenaId)) arenaId = res.arenaId;
+      ruleset = res.ruleset;
+      daily = false;
+      weekly = false;
+      freeSeed = String(res.seed);
+      seedInput.value = freeSeed;
+      seedInput.readOnly = false;
+      seedInput.removeAttribute('aria-readonly');
+      reroll.disabled = false;
+      reroll.removeAttribute('aria-disabled');
+      for (const other of modeButtons) {
+        other.setAttribute('aria-pressed', String(other.dataset.ruleset === ruleset));
+      }
+      if (dailyButton) dailyButton.setAttribute('aria-pressed', 'false');
+      weeklyButton.setAttribute('aria-pressed', 'false');
+      // A code may name the exporter's ghost; it only races when the block was imported too.
+      try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+      if (res.ghostHash != null && lastGhostRowByHash(doorProfile, res.ghostHash)) raceGhost = true;
+      shareNote.textContent = `Code loaded — seed ${res.seed}`
+        + (res.mutators.length ? `, ${res.mutators.length} mutator${res.mutators.length === 1 ? '' : 's'}` : '')
+        + '.';
+      cue('confirm');
+      syncHull();
+      syncArena();
+      syncMode();
+    });
+    codeRow.appendChild(codeInput);
+    codeRow.appendChild(useCode);
+    const ghostRow = el('div', 'k-words k-words--row sf-crd-share');
+    const ghostInput = el('input', 'k-input sf-crd-ghost-code');
+    ghostInput.type = 'text';
+    ghostInput.inputMode = 'text';
+    ghostInput.spellcheck = false;
+    ghostInput.autocomplete = 'off';
+    ghostInput.setAttribute('aria-label', 'Ghost share code');
+    ghostInput.placeholder = 'SFG1-…';
+    const addGhost = word('Add ghost', 'k-word--fine');
+    addGhost.addEventListener('click', () => {
+      const res = importGhostShareText(ghostInput.value);
+      if (!res.ok) {
+        shareNote.textContent = res.error;
+        cue('deny');
+        return;
+      }
+      try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
+      // Point the door at the ghost's seed so its race offer resolves immediately.
+      freeSeed = String(res.seed);
+      seedInput.value = freeSeed;
+      ghostInput.value = '';
+      shareNote.textContent = res.alreadyPresent
+        ? `Ghost ${res.hash} was already on this machine.`
+        : `Ghost ${res.hash} added — ${res.frameCount} frames on seed ${res.seed}.`;
+      cue('confirm');
+      syncMode();
+    });
+    ghostRow.appendChild(ghostInput);
+    ghostRow.appendChild(addGhost);
+    shareBody.appendChild(codeRow);
+    shareBody.appendChild(ghostRow);
+    shareBody.appendChild(shareNote);
+
     // The record goes last, below the three settings: the door's job is to start a run, and the
     // reason to start another one is context for that, not a competitor for it. Reading the
     // profile must never be able to stop the door opening, so a broken or absent profile just
@@ -600,17 +701,28 @@ export const crucibleScreen = {
       cue('confirm');
       const payload = { ...setup.value };
       const offer = currentGhostOffer();
-      const ghostHash = raceGhost && offer.available ? offer.hash : null;
+      let ghostHash = raceGhost && offer.available ? offer.hash : null;
+      // PQ-160.02: a code-named ghost races when its block was imported to this machine.
+      if (ghostHash == null && pendingShare && pendingShare.ghostHash != null
+        && lastGhostRowByHash(doorProfile, pendingShare.ghostHash)) {
+        ghostHash = pendingShare.ghostHash;
+      }
       if (ghostHash != null) payload.ghostHash = ghostHash;
-      const weeklyMutatorId = weekly ? weeklyMutatorForNow() : null;
+      const shareMutators = pendingShare ? pendingShare.mutators : [];
+      const shareWeeklyId = pendingShare ? pendingShare.weeklyMutatorId : null;
+      const weeklyMutatorId = weekly ? weeklyMutatorForNow() : shareWeeklyId;
       if (weeklyMutatorId) payload.weeklyMutatorId = weeklyMutatorId;
-      if (daily || weeklyMutatorId) {
-        const dateKey = daily ? utcDateKeyNow() : null;
+      const challengeMutators = shareMutators.concat(
+        weeklyMutatorId && !shareMutators.includes(weeklyMutatorId) ? [weeklyMutatorId] : [],
+      );
+      const shareDailyKey = pendingShare ? pendingShare.dailyDateKey : null;
+      if (daily || weeklyMutatorId || challengeMutators.length || shareDailyKey) {
+        const dateKey = daily ? utcDateKeyNow() : shareDailyKey;
         if (dateKey) payload.dailyDateKey = dateKey;
         queueSurvivalChallenge({
           seed: payload.seed,
           ruleset: daily ? SWARM_RULESET : ruleset,
-          mutators: weeklyMutatorId ? [weeklyMutatorId] : [],
+          mutators: challengeMutators,
           dailyDateKey: dateKey,
           weeklyMutatorId,
           ghostHash,
@@ -1226,6 +1338,72 @@ function renderBuild(band, result) {
   if (code) band.appendChild(el('p', 'k-t-fine k-38 sf-crres__build-code', code));
 }
 
+/* --- SHARE BAND (PQ-160.02) ------------------------------------------------------------------
+   The run as a code and its ghost as a block — files and codes, never a service. The code carries
+   the seed, the build the run launched with, and the rules; the ghost block carries the recorded
+   pose tape. Both are selectable text and real download links on every host — the plate's three
+   action buttons stay the only buttons.
+   ------------------------------------------------------------------------------------------- */
+
+/** A kit-fine download link: a real anchor carrying a data URI, not a button. */
+function shareLink(band, label, text, filename, ariaLabel) {
+  const a = el('a', 'k-word k-word--fine sf-crres__share-link', label);
+  const href = shareTextHref(text);
+  if (!href) return;
+  a.href = href;
+  a.download = filename;
+  a.setAttribute('aria-label', ariaLabel || label);
+  band.appendChild(a);
+}
+
+function selectableText(band, tag, className, value, ariaLabel) {
+  const field = el(tag, className);
+  if (tag === 'textarea') field.rows = 4;
+  else field.type = 'text';
+  field.readOnly = true;
+  field.value = value;
+  field.setAttribute('aria-label', ariaLabel);
+  field.addEventListener('focus', () => { try { field.select(); } catch { /* stub DOM */ } });
+  field.addEventListener('click', () => { try { field.select(); } catch { /* stub DOM */ } });
+  band.appendChild(field);
+}
+
+function buildShareBand(result) {
+  const setup = lastCrucibleSetup();
+  let profile = null;
+  try { profile = loadCrucibleMeta(); } catch { profile = null; }
+  const ghost = ghostShareForRun(profile, {
+    seed: result && Number.isInteger(result.seed) ? result.seed : null,
+  });
+  const code = runShareCodeForRun(setup, result, { ghostHash: ghost ? ghost.hash : null });
+  if (!code && !(ghost && ghost.text)) return null;
+
+  const band = el('div', 'sf-crres__band');
+  const title = el('p', 'k-caps sf-crres__band-title', 'Share');
+  title.setAttribute('role', 'heading');
+  title.setAttribute('aria-level', '2');
+  band.appendChild(title);
+
+  if (code) {
+    band.appendChild(el('p', 'k-t-fine k-38',
+      'Same seed, same build, same rules — another machine reproduces this run. '
+      + 'The code selects itself when you touch it.'));
+    selectableText(band, 'input', 'k-input sf-crres__share-code', code, 'Run share code');
+    shareLink(band, 'Save run code', code + '\n',
+      `spaceface-run-${result && Number.isInteger(result.seed) ? result.seed : 'share'}.txt`,
+      'Download the run code as a file');
+  }
+
+  if (ghost && ghost.text) {
+    band.appendChild(el('p', 'k-t-fine k-38',
+      `The recorded hull — paste it on another machine's Crucible door and it races you.`));
+    selectableText(band, 'textarea', 'k-input sf-crres__ghost-code', ghost.text, 'Ghost share code');
+    shareLink(band, 'Save ghost file', ghost.text + '\n',
+      `spaceface-ghost-${ghost.hash}.txt`, 'Download the ghost as a file');
+  }
+  return band;
+}
+
 export const crucibleResultsScreen = {
   id: 'crucibleResults',
   data: { locked: true },
@@ -1298,6 +1476,14 @@ export const crucibleResultsScreen = {
       }
     } catch {
       // A combo read failure must never take down the results plate.
+    }
+
+    // PQ-160.02: the run as a code, its ghost as a block. Sharing must never take the plate down.
+    try {
+      const shareBand = buildShareBand(result);
+      if (shareBand) ledger.appendChild(shareBand);
+    } catch {
+      // A share-surface failure must never take down the results plate.
     }
     rootEl.appendChild(stage);
 
