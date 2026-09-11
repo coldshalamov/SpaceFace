@@ -8,7 +8,8 @@
 // mass, gain from dp, tier recipes) is consumed, never re-tuned. Seed: the cue resolution is pure
 // data over (mass, type, dp), identical on every run; WAV analysis reads shipped bytes.
 //
-// Headed A/B capture is residual (PQ-141.02 holds the GPU); this file is the closeable bar.
+// A/B capture is the same nine cells measured against the BEFORE recipe bodies they used to share
+// (kiss/knock/slam/broadside hybrids). Audio A/B is numbers from shipped WAVs, not a GPU still.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -345,4 +346,105 @@ test('a resident ladder sample is the attached body; a non-resident cell degrade
   const plain = harness.play('sfx_mining_impact', { gain: 0.5 });
   assert.ok(plain, 'recipe-default hybrid plays');
   samples.dispose();
+});
+
+// ---------------------------------------------------------------------------
+// 5. A/B CAPTURE — before (shared recipe bodies) vs after (nine designed cells)
+// ---------------------------------------------------------------------------
+function spectralCentroidHz(pcm, sampleRate, startN, endN) {
+  const start = Math.max(0, startN | 0);
+  const end = Math.min(pcm.length, endN | 0);
+  const N = Math.min(1024, Math.max(0, end - start));
+  if (N < 64) return 0;
+  const half = (N / 2) | 0;
+  const step = Math.max(1, (half / 48) | 0);
+  let num = 0;
+  let den = 0;
+  for (let k = 1; k < half; k += step) {
+    let re = 0;
+    let im = 0;
+    const w = (2 * Math.PI * k) / N;
+    for (let i = 0; i < N; i++) {
+      const x = pcm[start + i];
+      re += x * Math.cos(w * i);
+      im -= x * Math.sin(w * i);
+    }
+    const mag = Math.hypot(re, im);
+    num += (k * sampleRate / N) * mag;
+    den += mag;
+  }
+  return den > 0 ? num / den : 0;
+}
+
+test(`seed ${MEASURE_SEED}: A/B capture — shared recipe bodies vs nine designed ladder samples`, () => {
+  const rows = [];
+  for (const material of ['hull', 'rock', 'station']) {
+    for (const [weight, dp] of FORCES) {
+      const cue = resolveCollisionCue(collisionInput(material, dp));
+      const before = resolveSampleBinding(cue.recipeId);
+      const after = resolveLadderBinding(cue.ladderId);
+      assert.ok(before, `${cue.ladderId}: before recipe still has a sample body`);
+      assert.ok(after, `${cue.ladderId}: after ladder cell has a designed sample body`);
+      const beforeWav = readPcmWav(before.sampleId);
+      const afterWav = readPcmWav(after.sampleId);
+      assert.notEqual(
+        beforeWav.bytes.toString('base64'),
+        afterWav.bytes.toString('base64'),
+        `${cue.ladderId}: after sample must not be the before recipe body reused`,
+      );
+      const beforeHz = spectralCentroidHz(beforeWav.pcm, beforeWav.sampleRate, 0, 0.15 * beforeWav.pcm.length);
+      const afterHz = spectralCentroidHz(afterWav.pcm, afterWav.sampleRate, 0, 0.15 * afterWav.pcm.length);
+      rows.push({
+        cell: cue.ladderId,
+        force: weight,
+        beforeId: before.sampleId,
+        afterId: after.sampleId,
+        beforeSec: beforeWav.seconds,
+        afterSec: afterWav.seconds,
+        beforeHz,
+        afterHz,
+      });
+    }
+  }
+  console.log(`[pq-158.01 A/B capture] seed=${MEASURE_SEED}`);
+  console.log('cell                   before          after                  beforeSec afterSec  beforeHz afterHz');
+  for (const r of rows) {
+    console.log(
+      `${r.cell.padEnd(22)} ${r.beforeId.padEnd(15)} ${r.afterId.padEnd(22)} ` +
+      `${r.beforeSec.toFixed(2).padStart(9)} ${r.afterSec.toFixed(2).padStart(8)}  ` +
+      `${r.beforeHz.toFixed(0).padStart(8)} ${r.afterHz.toFixed(0).padStart(7)}`,
+    );
+  }
+  const uniqueBefore = new Set(rows.map((r) => r.beforeId));
+  const uniqueAfter = new Set(rows.map((r) => r.afterId));
+  const uniqueBeforeAt = (force) => new Set(rows.filter((r) => r.force === force).map((r) => r.beforeId)).size;
+  const uniqueAfterAt = (force) => new Set(rows.filter((r) => r.force === force).map((r) => r.afterId)).size;
+  console.log(
+    `[pq-158.01 A/B] unique bodies ${uniqueBefore.size} → ${uniqueAfter.size} | ` +
+    `light ${uniqueBeforeAt('light')}→${uniqueAfterAt('light')} ` +
+    `medium ${uniqueBeforeAt('medium')}→${uniqueAfterAt('medium')} ` +
+    `heavy ${uniqueBeforeAt('heavy')}→${uniqueAfterAt('heavy')}`,
+  );
+  assert.equal(uniqueAfter.size, 9, 'after arm is nine distinct designed samples');
+  assert.equal(uniqueBefore.size, 4, 'before arm reused four recipe bodies across the 3x3');
+  assert.equal(uniqueBeforeAt('light'), 1, 'before: every light tap shared one kiss body');
+  assert.equal(uniqueAfterAt('light'), 3, 'after: hull/rock/station light taps are three voices');
+  assert.ok(uniqueBeforeAt('medium') < 3, 'before: medium force still collapsed materials onto shared recipe bodies');
+  assert.equal(uniqueAfterAt('medium'), 3, 'after: hull/rock/station medium knocks are three voices');
+  assert.ok(uniqueBeforeAt('heavy') < 3, 'before: heavy force still collapsed materials onto shared recipe bodies');
+  assert.equal(uniqueAfterAt('heavy'), 3, 'after: hull/rock/station heavy hits are three voices');
+
+  const scout = rows.find((r) => r.cell === 'ladder_rock_light');
+  const freighter = rows.find((r) => r.cell === 'ladder_station_heavy');
+  const durationRatio = freighter.afterSec / scout.afterSec;
+  console.log(
+    `[pq-158.01 A/B bar] scout-on-rock ${scout.afterSec.toFixed(2)}s ${scout.afterHz.toFixed(0)} Hz vs ` +
+    `freighter-on-station ${freighter.afterSec.toFixed(2)}s ${freighter.afterHz.toFixed(0)} Hz | ` +
+    `duration ${durationRatio.toFixed(2)}x`,
+  );
+  assert.ok(durationRatio >= 2, `A/B: heavy station tail must last at least 2x the scout kiss, got ${durationRatio.toFixed(2)}x`);
+  assert.ok(
+    scout.afterHz > freighter.afterHz,
+    `A/B: scout-on-rock transient must be brighter than the station slam (${scout.afterHz.toFixed(0)} vs ${freighter.afterHz.toFixed(0)} Hz)`,
+  );
 });
