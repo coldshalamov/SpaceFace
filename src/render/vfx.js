@@ -10290,6 +10290,15 @@ export const vfx = {
       // The loading boundary already captured every VFX leaf active in the exact first picture.
       // Do not activate a motion/weapon/drive pool between that census and its first submit; the
       // publication latch releases after paint and normal VFX cadence resumes on the next frame.
+      // Exception: the Massline cable is already in the scene from init and is the taut-line
+      // picture. Skipping it here left TWO_BODY swings with a live tether and a dark chord.
+      this._syncFrameMembrane();
+      let freezeDt = frameDt;
+      if (freezeDt > 0) {
+        if (freezeDt > 0.1) freezeDt = 0.1;
+        this._t += freezeDt;
+        if (this._tetherCableActive()) this._updateTetherCable(freezeDt);
+      }
       return;
     }
     // Observe frameOriginSeq even if renderer already reprojected — same-origin is a no-op.
