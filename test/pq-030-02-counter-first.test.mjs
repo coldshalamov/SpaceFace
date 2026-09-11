@@ -32,8 +32,22 @@ import {
   honestHoursForCost,
   pathCostFor,
 } from '../src/data/techVerbLadder.js';
-import { specialistPlanById } from '../src/ai/specialistPlans.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+
+import { SPECIALIST_PLANS, specialistPlanById } from '../src/ai/specialistPlans.js';
 import { planEncounters } from '../src/systems/encounterDirector.js';
+import {
+  HOSTILE_SWEEP_BEHAVIOUR,
+  HOSTILE_SWEEP_LEFTOVER_METHOD,
+  NPC_LINE_CUT_TAUT_RATIO,
+} from '../src/systems/tetherGameplay.js';
+import {
+  masslineCutterBestiaryFacts,
+  masslineSpecialistVisibleRead,
+  nameThreatFromVisibleRead,
+  TETHER_CUTTER_THREAT_FROM_VISIBLE_READ,
+} from '../src/ui/screens/range.js';
 
 const SEED = 30000;
 const RAIDER_SECTOR = 'sector_sker_haven';
@@ -159,4 +173,109 @@ test('the two-hour margin holds across named seeds, not one lucky roll', () => {
     + ` .. ${(latest.encounterSeconds / 3600).toFixed(2)} h`
     + ` | worst margin ${((unlockSeconds - latest.encounterSeconds) / 3600).toFixed(2)} h`
     + ` (seed ${latest.seed}) | bar: >= 2 h`);
+});
+
+function loadSource(rel) {
+  return readFileSync(fileURLToPath(new URL('../' + rel, import.meta.url)), 'utf8');
+}
+
+test('a blind reviewer names the tether-cutter from silhouette and behaviour only', () => {
+  const named = nameThreatFromVisibleRead({
+    silhouette: 'corsair_blade',
+    telegraph: 'attach_spool',
+    verb: 'cut_line',
+    sweep: 'taut_one_pass',
+    id: 'must_be_ignored',
+    planId: 'must_be_ignored',
+  });
+  assert.equal(named, TETHER_CUTTER_THREAT_FROM_VISIBLE_READ);
+  assert.match(named, /corsair-blade sweep/i);
+  assert.match(named, /taut Massline/i);
+
+  const catalog = masslineSpecialistVisibleRead();
+  assert.ok(catalog);
+  assert.equal(catalog.silhouette, 'corsair_blade');
+  assert.equal(catalog.telegraph, 'attach_spool');
+  assert.equal(catalog.verb, 'cut_line');
+  assert.equal(catalog.sweep, HOSTILE_SWEEP_BEHAVIOUR);
+  assert.equal('id' in catalog, false);
+  assert.equal(nameThreatFromVisibleRead(catalog), TETHER_CUTTER_THREAT_FROM_VISIBLE_READ);
+
+  const hits = [];
+  for (const plan of SPECIALIST_PLANS) {
+    const tokens = {
+      silhouette: plan.silhouette,
+      telegraph: plan.telegraphKind,
+      verb: plan.verb,
+      sweep: plan.verb === 'cut_line' ? HOSTILE_SWEEP_BEHAVIOUR : 'other',
+    };
+    const threat = nameThreatFromVisibleRead(tokens);
+    if (threat) hits.push({ silhouette: plan.silhouette, verb: plan.verb, telegraph: plan.telegraphKind });
+  }
+  assert.deepEqual(hits, [{
+    silhouette: 'corsair_blade',
+    verb: 'cut_line',
+    telegraph: 'attach_spool',
+  }]);
+
+  assert.equal(nameThreatFromVisibleRead({
+    silhouette: 'corsair_blade',
+    telegraph: 'weapon_charge',
+    verb: 'cut_line',
+    sweep: HOSTILE_SWEEP_BEHAVIOUR,
+  }), null, 'shared corsair hull without spool telegraph is not the cutter');
+  assert.equal(nameThreatFromVisibleRead({
+    silhouette: 'corsair_blade',
+    telegraph: 'attach_spool',
+    verb: 'cut_line',
+  }), null, 'missing sweep token is not enough');
+  assert.equal(nameThreatFromVisibleRead({
+    silhouette: 'bruiser_armor',
+    telegraph: 'attach_spool',
+    verb: 'cut_line',
+    sweep: HOSTILE_SWEEP_BEHAVIOUR,
+  }), null);
+
+  const facts = masslineCutterBestiaryFacts();
+  const threatRow = facts.find((row) => row[0] === 'Threat');
+  assert.ok(threatRow, 'Range Massline bestiary ships the named threat');
+  assert.equal(threatRow[1], TETHER_CUTTER_THREAT_FROM_VISIBLE_READ);
+  console.log(`SEED=${SEED} BLIND_REVIEW threat="${named}"`);
+});
+
+test('NPC sweep path is the leftover cutter; corsair_blade is unique among cut_line plans', () => {
+  assert.equal(HOSTILE_SWEEP_LEFTOVER_METHOD, '_cutPlayerLinesWithHostileSweep');
+  assert.equal(HOSTILE_SWEEP_BEHAVIOUR, 'taut_one_pass');
+  assert.equal(NPC_LINE_CUT_TAUT_RATIO, 0.92);
+
+  const gameplay = loadSource('src/systems/tetherGameplay.js');
+  assert.match(gameplay, /this\._cutPlayerLinesWithHostileSweep\(attachments, state, player\)/);
+  assert.match(gameplay, /_cutPlayerLinesWithHostileSweep\(attachments, state, player\) \{/);
+  assert.match(gameplay, /if \(!hostileSweepCutter\(owner, state, playerTeam\)\) continue;/);
+  assert.match(gameplay, /span >= rest \* NPC_LINE_CUT_TAUT_RATIO/);
+  assert.match(gameplay, /plan && plan\.verb === 'cut_line'/);
+  const leftoverMentions = gameplay.match(/_cutPlayerLinesWithHostileSweep/g) || [];
+  assert.ok(leftoverMentions.length >= 3, 'identity export + update call + leftover method, not a fork');
+
+  const threats = loadSource('src/systems/masslineThreats.js');
+  assert.doesNotMatch(threats, /_cutPlayerLinesWithHostileSweep/);
+  assert.doesNotMatch(threats, /breakAttachment/);
+  const snares = loadSource('src/systems/masslineSnares.js');
+  assert.doesNotMatch(snares, /_cutPlayerLinesWithHostileSweep/);
+  assert.doesNotMatch(snares, /monofilament_sweep/);
+
+  const cutLine = SPECIALIST_PLANS.filter((plan) => plan.verb === 'cut_line');
+  assert.equal(cutLine.length, 1, 'one cut_line specialist');
+  assert.equal(cutLine[0].silhouette, 'corsair_blade');
+  assert.equal(cutLine[0].telegraphKind, 'attach_spool');
+  const corsairCutters = SPECIALIST_PLANS.filter((plan) =>
+    plan.silhouette === 'corsair_blade' && plan.verb === 'cut_line');
+  assert.equal(corsairCutters.length, 1);
+
+  const spoolingCorsairs = ENEMY_TYPES.filter((row) =>
+    row.silhouette === 'corsair_blade' && row.telegraph && row.telegraph.cue === 'attach_spool');
+  assert.equal(spoolingCorsairs.length, 1);
+  assert.equal(spoolingCorsairs[0].id, specialistPlanById('tether_cutter').enemyId);
+  console.log(`SEED=${SEED} LEFTOVER=${HOSTILE_SWEEP_LEFTOVER_METHOD} taut=${NPC_LINE_CUT_TAUT_RATIO}`
+    + ` silhouette=${cutLine[0].silhouette} unique_cut_line=${cutLine.length}`);
 });

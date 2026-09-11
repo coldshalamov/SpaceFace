@@ -50,7 +50,10 @@ export const MONOFILAMENT_CUT_INTEGRITY_COST = 0.2;
 // Full reduced-mass coupling: the blade dumps its transverse momentum into what it cuts.
 export const MONOFILAMENT_SWEEP_COUPLING = 1;
 const MONOFILAMENT_STAGGER_TRAVEL_PAD = 32;
-const NPC_LINE_CUT_TAUT_RATIO = 0.92;
+export const NPC_LINE_CUT_TAUT_RATIO = 0.92;
+// PQ-030.02 leftover identity — the NPC player-line cut is this method, not a second cutter.
+export const HOSTILE_SWEEP_LEFTOVER_METHOD = '_cutPlayerLinesWithHostileSweep';
+export const HOSTILE_SWEEP_BEHAVIOUR = 'taut_one_pass';
 const NPC_BRIDLE_CUT_COOLDOWN_TICKS = 90;
 const NPC_BRIDLE_CUT_RANGE_WU = 180;
 const NPC_ACE_BRIDLE_CUT_RANGE_WU = 220;

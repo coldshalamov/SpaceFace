@@ -4,10 +4,12 @@ import { WEAK_POINTS_BY_CLASS } from '../../data/weakPoints.js';
 import { ATTACHMENT_DEFS } from '../../data/combatDefs.js';
 import { getPropulsionProfile } from '../../core/flight/propulsionCatalog.js';
 import { getDerivedStats } from '../../systems/ships.js';
+import { SPECIALIST_PLANS } from '../../ai/specialistPlans.js';
 import {
   ELASTIC_WHIP_MAX_STRETCH_RATIO,
   ELASTIC_WHIP_SPRING_K,
   ELASTIC_WHIP_SPRING_ZETA,
+  HOSTILE_SWEEP_BEHAVIOUR,
   whipStoredEnergy,
   whipStrainGlow,
 } from '../../systems/tetherGameplay.js';
@@ -154,6 +156,58 @@ export const RANGE_RAIL_ROWS = RAIL_ROWS;
 export function rangeRungIndex(rungId) {
   const index = RAIL_INDEX_BY_ID.get(rungId);
   return Number.isInteger(index) ? index : -1;
+}
+
+// PQ-030.02 — blind-reviewer path. Tokens only (silhouette / telegraph / verb / sweep). No plan id.
+export const TETHER_CUTTER_THREAT_FROM_VISIBLE_READ =
+  'Cuts your taut Massline with a corsair-blade sweep.';
+
+function telegraphToken(tokens) {
+  const raw = tokens && (tokens.telegraphKind ?? tokens.telegraph);
+  if (raw && typeof raw === 'object') return String(raw.cue || raw.kind || '');
+  return String(raw || '');
+}
+
+function sweepToken(tokens) {
+  return String((tokens && (tokens.sweep || tokens.sweepBehaviour)) || '');
+}
+
+export function nameThreatFromVisibleRead(tokens) {
+  if (!tokens || typeof tokens !== 'object') return null;
+  const silhouette = String(tokens.silhouette || '');
+  const telegraph = telegraphToken(tokens);
+  const verb = String(tokens.verb || '');
+  const sweep = sweepToken(tokens);
+  if (silhouette !== 'corsair_blade') return null;
+  if (telegraph !== 'attach_spool') return null;
+  if (verb !== 'cut_line') return null;
+  if (sweep !== HOSTILE_SWEEP_BEHAVIOUR && sweep !== 'taut') return null;
+  return TETHER_CUTTER_THREAT_FROM_VISIBLE_READ;
+}
+
+export function masslineSpecialistVisibleRead() {
+  const hull = ENEMY_TYPES.find((row) =>
+    row && row.silhouette === 'corsair_blade' && row.telegraph && row.telegraph.cue === 'attach_spool');
+  const plan = SPECIALIST_PLANS.find((row) =>
+    row.silhouette === 'corsair_blade' && row.verb === 'cut_line' && row.telegraphKind === 'attach_spool');
+  if (!hull || !plan) return null;
+  return {
+    silhouette: hull.silhouette,
+    telegraph: hull.telegraph.cue,
+    verb: plan.verb,
+    sweep: HOSTILE_SWEEP_BEHAVIOUR,
+  };
+}
+
+export function masslineCutterBestiaryFacts() {
+  const visible = masslineSpecialistVisibleRead();
+  const threat = nameThreatFromVisibleRead(visible);
+  if (!visible || !threat) return [];
+  return [
+    ['Silhouette', 'Corsair blade'],
+    ['Telegraph', 'Massline spool'],
+    ['Threat', threat],
+  ];
 }
 
 const TETHER_STANDARD = ATTACHMENT_DEFS.find((def) => def && def.id === 'tether_standard');
@@ -2175,6 +2229,10 @@ export const rangeScreen = {
       ['Weak arc', weakArc],
       ['Weak point', weakPoint ? `${weakPoint.label} (${weakPoint.hint}) ×${weakPoint.bonusMult}` : '—'],
     ];
+    const rung = RAIL_ROWS.find((row) => row.id === this._sim.id);
+    if (rung && rung.group === 'MASSLINE') {
+      for (const fact of masslineCutterBestiaryFacts()) facts.push(fact);
+    }
     const list = el('ul', 'k-rows');
     list.setAttribute('aria-label', 'Bestiary');
     list.style.setProperty('--k-row-cols', 'auto minmax(0, 1fr)');
