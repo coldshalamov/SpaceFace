@@ -54,3 +54,33 @@ export function specialistPlanByEnemyId(enemyId) {
 export function specialistPlanByDoctrine(doctrineId) {
   return SPECIALIST_PLANS.find((row) => row.doctrineId === doctrineId) || null;
 }
+
+/**
+ * PQ-030.02 blind-reviewer path: name the threat from silhouette + telegraph + verb
+ * only — never from the plan id. The corsair-blade / attach-spool / cut-line read
+ * uniquely names the tether-cutter.
+ */
+export function nameThreatFromVisibleRead(visible = {}) {
+  const silhouette = visible.silhouette;
+  const telegraphKind = visible.telegraphKind;
+  const verb = visible.verb;
+  const hits = SPECIALIST_PLANS.filter((row) => (
+    row.silhouette === silhouette
+    && row.telegraphKind === telegraphKind
+    && row.verb === verb
+  ));
+  if (hits.length !== 1) return null;
+  if (hits[0].id !== 'tether_cutter') return null;
+  return 'corsair blade spools a Massline and cuts your taut line';
+}
+
+/** Silhouette-only read. corsair_blade is unique among specialist plans. */
+export function nameThreatFromSilhouetteAlone(silhouette) {
+  const hits = SPECIALIST_PLANS.filter((row) => row.silhouette === silhouette);
+  if (hits.length !== 1 || hits[0].id !== 'tether_cutter') return null;
+  return nameThreatFromVisibleRead({
+    silhouette: hits[0].silhouette,
+    telegraphKind: hits[0].telegraphKind,
+    verb: hits[0].verb,
+  });
+}

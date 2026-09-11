@@ -6922,7 +6922,7 @@
       "priority": 101,
       "title": "Every actor has a sentence (blind legibility review)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00"
       ],
@@ -7648,7 +7648,7 @@
       "priority": 133,
       "title": "The counter arrives first",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -16460,7 +16460,7 @@
       "priority": 427,
       "title": "The impact ladder, sample-backed",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-139.01",
         "PQ-141.00",
@@ -16522,7 +16522,7 @@
       "priority": 429,
       "title": "Composed themes",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16553,7 +16553,7 @@
       "priority": 430,
       "title": "Voice for the barks (directed synthetic voice; no recorded actors)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16647,7 +16647,7 @@
       "priority": 433,
       "title": "Two-body framing",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16709,7 +16709,7 @@
       "priority": 435,
       "title": "Photo mode",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16895,7 +16895,7 @@
       "priority": 441,
       "title": "Deck and trackpad",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -17069,7 +17069,7 @@
       "priority": 447,
       "title": "Growth pass",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"

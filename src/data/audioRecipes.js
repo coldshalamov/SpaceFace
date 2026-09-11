@@ -1700,6 +1700,64 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.004, sustain: 0.05, release: 0.6 },
     filterType: 'bandpass', filterFreq: 420, filterQ: 0.9,
   },
+  // PQ-158.02 — Massline instrument: reel whine, release (distinct from break), bridle chord.
+  {
+    id: 'sfx_massline_reel_whine',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 420,
+    freqSweep: [320, 640],
+    sweepTimeS: 0.22,
+    gainEnvelope: { attack: 0.04, sustain: 0.35, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 900, filterQ: 6.5,
+    lfoRate: 18, lfoDepth: 0.12,
+  },
+  {
+    id: 'sfx_massline_release',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 310,
+    freqSweep: [310, 620],
+    sweepTimeS: 0.07,
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.16 },
+    filterType: 'highpass', filterFreq: 240,
+  },
+  {
+    id: 'sfx_massline_bridle_chord',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_massline_bridle_low', 'sfx_massline_bridle_high'],
+    gainMult: 0.95,
+  },
+  {
+    id: 'sfx_massline_bridle_low',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 196,
+    gainEnvelope: { attack: 0.008, sustain: 0.12, release: 0.28 },
+    filterType: 'lowpass', filterFreq: 720, filterQ: 1.4,
+  },
+  {
+    id: 'sfx_massline_bridle_high',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sine',
+    baseFreq: 294,
+    gainEnvelope: { attack: 0.01, sustain: 0.1, release: 0.32 },
+    filterType: 'lowpass', filterFreq: 1100, filterQ: 1.8,
+  },
+  // PQ-158.04 — directed synthetic radio voice (sample body + radio recipe).
+  {
+    id: 'sfx_bark_radio',
+    category: 'comms',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.02, sustain: 0.4, release: 0.18 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.6,
+  },
 ];
 
 // PQ-158.00 — the sample-library hybrid bindings.
@@ -1913,6 +1971,12 @@ export const SAMPLE_BINDINGS = {
   sfx_tether_crack: { id: 'tether_snap', share: 0.55, rate: 1.4 },
   sfx_tether_twang: { id: 'tether_snap', share: 0.6, rate: 0.7 },
   'sfx.tetherSnap': { id: 'tether_snap', share: 0.62 },
+  sfx_massline_reel_whine: { id: 'massline_reel', share: 0.6 },
+  sfx_massline_release: { id: 'massline_release', share: 0.62 },
+  sfx_massline_bridle_low: { id: 'massline_bridle', share: 0.5, rate: 0.85 },
+  sfx_massline_bridle_high: { id: 'massline_bridle', share: 0.5, rate: 1.15 },
+  sfx_massline_bridle_chord: { id: 'massline_bridle', share: 0.62 },
+  sfx_bark_radio: { id: 'squelch_story', share: 0.55 },
 
   // station / world context
   sfx_station_hum: { id: 'station_hum_loop', share: 0.5 },
@@ -1924,11 +1988,31 @@ export const SAMPLE_BINDINGS = {
   sfx_ambient_rock_calve: { id: 'rock_calve', share: 0.6 },
 };
 
+// PQ-158.01 — the impact ladder: material (hull/rock/station) x force (light/medium/heavy).
+// A collision keeps its PQ-139.01 recipe and pitch/gain law; the ladder only decides WHICH
+// designed sample carries the body. Each cell names one layered transient/body/tail sample from
+// SAMPLE_MANIFEST (authored by assets/audio/generate-samples.mjs). Resolved by
+// resolveLadderBinding in src/audio/sampleLibrary.js; an unknown cell degrades to the recipe's
+// own default binding. Data only — no synth re-tuning, no new recipes.
+export const COLLISION_LADDER = Object.freeze({
+  ladder_hull_light: { id: 'ladder_hull_light', share: 0.72 },
+  ladder_hull_medium: { id: 'ladder_hull_medium', share: 0.72 },
+  ladder_hull_heavy: { id: 'ladder_hull_heavy', share: 0.72 },
+  ladder_rock_light: { id: 'ladder_rock_light', share: 0.72 },
+  ladder_rock_medium: { id: 'ladder_rock_medium', share: 0.72 },
+  ladder_rock_heavy: { id: 'ladder_rock_heavy', share: 0.72 },
+  ladder_station_light: { id: 'ladder_station_light', share: 0.72 },
+  ladder_station_medium: { id: 'ladder_station_medium', share: 0.72 },
+  ladder_station_heavy: { id: 'ladder_station_heavy', share: 0.72 },
+});
+
 // 4 adaptive music stems (A=ambient/safe, B=tension, C=combat, D=boss).
 export const MUSIC_STEMS = [
   {
     id: 'stem_a',
     label: 'Ambient',
+    themeState: 'travel',
+    motif: 'A C E A',
     triggerCondition: 'enemyDensityNear < 0.1 && !inCombat',
     bpm: 80,
     key: 'Am',
@@ -1943,6 +2027,8 @@ export const MUSIC_STEMS = [
   {
     id: 'stem_b',
     label: 'Tension',
+    themeState: 'wanted',
+    motif: 'A Bb A E',
     triggerCondition: 'enemyDensityNear >= 0.1 && !inCombat',
     bpm: 95,
     key: 'Am',
@@ -1958,6 +2044,8 @@ export const MUSIC_STEMS = [
   {
     id: 'stem_c',
     label: 'Combat',
+    themeState: 'combat',
+    motif: 'A E A C',
     triggerCondition: 'inCombat && !bossActive',
     bpm: 130,
     key: 'Am',
@@ -1973,6 +2061,8 @@ export const MUSIC_STEMS = [
   {
     id: 'stem_d',
     label: 'Boss',
+    themeState: 'station',
+    motif: 'C E G B',
     triggerCondition: 'bossActive',
     bpm: 140,
     key: 'Am',

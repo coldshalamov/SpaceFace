@@ -18,6 +18,17 @@
 
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
+import { resolveMasslineInstrument } from './masslineInstrument.js';
+import { resolveThemeMatrix, TRAVEL_MOTIF, THEME_STEM_WEIGHTS } from './themeMatrix.js';
+import { resolveBarkVoice, resolveBarkSampleBinding } from './barkVoice.js';
+import { resolveAccessibilityCue } from '../ui/captions.js';
+import {
+  createEnvironmentMixRuntime,
+  resolveEnvironmentClass,
+  weightDuckEnvelope,
+  weightDuckGainForTarget,
+  resolveVisualEventCue,
+} from './environmentMix.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
@@ -37,6 +48,7 @@ import { heatLevelFor } from '../systems/heat.js';
 import {
   createSampleRuntime,
   resolveSampleBinding,
+  resolveLadderBinding,
   attachSampleLayer,
 } from './sampleLibrary.js';
 
@@ -66,6 +78,9 @@ const STEM_WEIGHTS = {
   tense:  { A: 0.7, B: 0.8, C: 0.0, D: 0.0 },
   combat: { A: 0.4, B: 0.5, C: 1.0, D: 0.0 },
   docked: { A: 0.2, B: 0.2, C: 0.0, D: 0.9 },
+  travel: THEME_STEM_WEIGHTS.travel,
+  wanted: THEME_STEM_WEIGHTS.wanted,
+  station: THEME_STEM_WEIGHTS.station,
 };
 
 export const MAX_AUDIO_VOICES = 12;
@@ -427,12 +442,30 @@ export function resolveCollisionCue(input) {
       : slammed || heavy
         ? 'slam'
         : 'knock';
+  // PQ-158.01 impact ladder (additive — the tier/recipe/rate/gain law above is untouched): the
+  // MATERIAL says which designed sample family plays, the FORCE band says which rung. Force rides
+  // the same dp boundaries the tier law already established; material is the heavier participant's
+  // surface class, stations outranking rocks outranking bare hulls.
+  const material = src.typeA === 'station' || src.typeB === 'station'
+    ? 'station'
+    : src.typeA === 'asteroid' || src.typeB === 'asteroid'
+      ? 'rock'
+      : 'hull';
+  const weight = dp <= COLLISION_CUE.TIER_KISS_DP
+    ? 'light'
+    : dp <= COLLISION_CUE.TIER_SLAM_DP
+      ? 'medium'
+      : 'heavy';
+  const ladderId = `ladder_${material}_${weight}`;
   return Object.freeze({
     recipeId: COLLISION_TIER_RECIPES[tier],
     rate,
     gain,
     acousticMass,
     tier,
+    material,
+    weight,
+    ladderId,
   });
 }
 
@@ -511,6 +544,12 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   'massline.cloakOff': 'sfx_massline_cloak_off',
   'massline.jettisonKick': 'sfx_massline_jettison',
   'massline.bombDrop': 'sfx_massline_bomb_drop',
+  'massline.reel': 'sfx_massline_reel_whine',
+  'massline.release': 'sfx_massline_release',
+  'massline.bridle': 'sfx_massline_bridle_chord',
+  'presentation.tether.reel': 'sfx_massline_reel_whine',
+  'presentation.tether.release': 'sfx_massline_release',
+  'presentation.tether.bridle': 'sfx_massline_bridle_chord',
   'presentation.travel.cruise_charge': 'sfx.cruiseCharging',
   'presentation.travel.lane_lock': 'sfx_travel_lane_lock',
   'presentation.travel.cancel': 'sfx_travel_cancel',
@@ -614,7 +653,7 @@ export function getBusForRecipe(recipe, recipeId) {
     }
     return 'ui';
   }
-  if (id.includes('comms') || id.includes('squelch')) {
+  if ((recipe && recipe.category === 'comms') || id.includes('comms') || id.includes('squelch') || id.includes('bark')) {
     return 'comms';
   }
   if ((recipe && recipe.category === 'engine') || id.includes('engine') || id.includes('boost') || id.includes('dash') || id.includes('cruise') || id.includes('brake')) {
@@ -1077,6 +1116,12 @@ export const audio = {
     rt._lastMachineryAt = 0;
     rt._signatureLastAt = Object.create(null);
     rt._lastSquelchEndTime = 0;
+    rt._themeSectorId = null;
+    rt._themeFactionId = null;
+    rt._themeMatrix = null;
+    rt._weightDuckEnvelope = null;
+    rt._masslineReelLastTick = -1e9;
+    rt._environmentClass = 'void';
     rt.sidechainDuck = 1;
     rt._busGainCache = null;      // last settings-derived bus gain written per bus
     rt._bedTargetCache = null;    // last brake/tether bed target written per param
@@ -1190,9 +1235,10 @@ export const audio = {
     // makes the payoff of a major purchase/upgrade land.
     bus.on('tech:researched', () => this.play('sfx_mission_complete', { gain: 0.6 }));
     bus.on('ship:purchased', () => this.play('sfx_mission_complete', { gain: 0.7 }));
-    bus.on('sector:enter', () => {
+    bus.on('sector:enter', (p) => {
       rt._activeCombatEncounters.clear();
       rt._doctrineThreatUntil = -1e9;
+      this._applyThemeMatrix(p && p.sectorId);
       this._markMusicDirty();
     });
     bus.on('ship:boostStart', (p) => {
@@ -1228,6 +1274,22 @@ export const audio = {
       });
     });
     bus.on('audio:cue', (p) => this._onCue(p));
+    bus.on('tether:reel', (p) => this._onMasslineInstrument('reel', p));
+    bus.on('tether:releaseRated', (p) => this._onMasslineInstrument('release', p));
+    bus.on('tether:broken', (p) => this._onMasslineInstrument('break', p));
+    bus.on('tether:attached', (p) => {
+      this._onMasslineInstrument('attach', p);
+      const head = p && (p.headId || p.attachmentDefId || p.defId || p.masslineHeadId);
+      if (head && String(head).toLowerCase().includes('bridle')) this._onMasslineInstrument('bridle', p);
+    });
+    bus.on('tether:strain', (p) => this._onMasslineInstrument('strain', p));
+    bus.on('tether:nearBreak', (p) => this._onMasslineInstrument('strain', p));
+    bus.on('barkDirector:voice', (p) => this._onBarkVoice(p));
+    bus.on('fields:deployed', (p) => {
+      if (p && p.kind && p.kind !== 'well') return;
+      this._playAccessibilityCue('well', { position: p && p.center });
+    });
+    bus.on('presentation:vfx', (p) => this._onVisualEventAudio(p && (p.id || p.eventId || p.kind)));
     bus.on('bulletTime:start', () => {
       if (massline2Flag('bulletTime')) this._setBulletTimeAudio(true);
     });
@@ -1328,6 +1390,8 @@ export const audio = {
     this._teardownMine();
     if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();
     rt.bandBed = null;
+    if (rt._environmentMix && typeof rt._environmentMix.destroy === 'function') rt._environmentMix.destroy();
+    rt._environmentMix = null;
     if (rt.ctx && rt.ctx.state !== 'closed' && typeof rt.ctx.close === 'function') {
       try {
         const closing = rt.ctx.close();
@@ -1568,6 +1632,13 @@ export const audio = {
     commsBus.connect(sfxBus);
     sfxBus.connect(master);
     musicBus.connect(master);
+    // PQ-158.05: one convolver per environment class, wet-tapped from the two mix buses.
+    if (rt._environmentMix && typeof rt._environmentMix.destroy === 'function') rt._environmentMix.destroy();
+    rt._environmentMix = createEnvironmentMixRuntime(ctx, master);
+    try {
+      sfxBus.connect(rt._environmentMix.send);
+      musicBus.connect(rt._environmentMix.send);
+    } catch (_) {}
     master.connect(limiter);
     limiter.connect(ctx.destination);
     rt.masterGain = master; rt.limiter = limiter; rt.sfxBus = sfxBus; rt.musicBus = musicBus;
@@ -1827,7 +1898,10 @@ export const audio = {
     // continue inside the rock) — `resolveMineAudioIntent` owns both so they cannot drift.
     const mine = this._refreshMineIntent();
     const musicSilenced = mine.musicSilenced;
-    const musicTarget = musicSilenced ? 0 : rt._musicBase * (rt._bulletTimeMusicMult || 1);
+    const weightDuck = rt._weightDuckEnvelope
+      ? weightDuckGainForTarget('music', rt._weightDuckEnvelope, this._wallClockMs())
+      : 1;
+    const musicTarget = musicSilenced ? 0 : rt._musicBase * (rt._bulletTimeMusicMult || 1) * weightDuck;
     ramp('music', rt.musicBus.gain, musicTarget, musicSilenced);
     // The mine bus is NOT ramped here: its envelope is the law's enter/retract fade (§9, ≤600 ms
     // in), owned by `_updateMine`. It still inherits master + sfx/ambient sliders through
@@ -1878,7 +1952,13 @@ export const audio = {
     // PQ-158.00 hybrid: a resident designed sample carries the cue body at `share` of the peak
     // while the live synth layer keeps the remainder. A not-yet-resident sample degrades to the
     // full synth voice (no gap, no pop) and schedules the decode that makes the next cue hybrid.
-    const sampleBinding = rt._samples ? resolveSampleBinding(recipeId) : null;
+    // PQ-158.01: a collision cue carrying a ladder cell swaps the generic recipe sample for the
+    // designed material/force sample; the recipe and its synth law stay exactly as they were.
+    const sampleBinding = rt._samples
+      ? (opts.ladderId ? resolveLadderBinding(opts.ladderId) : null)
+        || (opts.barkSampleId ? resolveBarkSampleBinding(opts.barkSampleId) : null)
+        || resolveSampleBinding(recipeId)
+      : null;
     const sampleBuffer = sampleBinding ? rt._samples.acquire(sampleBinding.sampleId) : null;
     const synthPeak = sampleBuffer ? peak * (1 - sampleBinding.share) : peak;
 
@@ -2076,7 +2156,7 @@ export const audio = {
     this._markMusicDirty();
     // A single restrained escalation cue marks an authored encounter. Routine nearby contacts do
     // not trigger it, which keeps safe stations calm and makes intentional danger legible.
-    this.play('sfx_encounter_escalation', { position: p.pos, gain: 0.5 });
+    this._playAccessibilityCue('telegraph', { position: p.pos, gain: 0.5 });
   },
 
   _onEncounterResolvedAudio(p) {
@@ -2109,7 +2189,14 @@ export const audio = {
       typeA: a ? a.type : undefined,
       typeB: b ? b.type : undefined,
     });
-    this.play(cue.recipeId, { position: p.pos, gain: cue.gain, rate: cue.rate });
+    this.play(cue.recipeId, { position: p.pos, gain: cue.gain, rate: cue.rate, ladderId: cue.ladderId });
+    const aMass = a && Number.isFinite(a.mass) ? a.mass : 16;
+    const bMass = b && Number.isFinite(b.mass) ? b.mass : 16;
+    this._applyWeightDuck({
+      mass: Math.max(aMass, bMass),
+      dp: Number.isFinite(p.dp) ? p.dp : p.impulse,
+      importance: cue.tier === 'broadside' ? 0.9 : cue.tier === 'slam' ? 0.7 : 0.35,
+    });
   },
 
   _onKilled(p) {
@@ -2899,6 +2986,7 @@ export const audio = {
     setTimeout(() => this.play('sfx_ui_confirm', { gain: 0.6, rate: 0.7 }), 180);
     this.rt._docked = true;
     this.rt._dockStationId = p && p.stationId ? p.stationId : null;
+    this._syncEnvironmentMix(true);
     this._markMusicDirty();
     // Start ambient station hum loop (faction-tinted when possible)
     this._startStationHum(p);
@@ -2907,6 +2995,7 @@ export const audio = {
   _onUndocked() {
     this.rt._docked = false;
     this.rt._dockStationId = null;
+    this._syncEnvironmentMix(false);
     this._markMusicDirty();
     // Soft release whoosh then stop station hum — undock is decompress, not another clunk.
     this.play('sfx_undock_release', { gain: 0.55 });
@@ -3021,6 +3110,153 @@ export const audio = {
       }, 2000);
     }
     delete rt.loops.stationHum;
+  },
+
+  _emitPresentationCaption(text, opts = {}) {
+    if (!text || !this.bus || typeof this.bus.emit !== 'function') return;
+    this.bus.emit('presentation:caption', {
+      text,
+      assertive: !!opts.assertive,
+      shape: opts.shape || 'arc',
+    });
+  },
+
+  _playAccessibilityCue(kind, opts = {}) {
+    const settings = this.state && this.state.settings;
+    const cue = resolveAccessibilityCue(kind, settings);
+    if (!cue) return null;
+    return this.play(cue.recipeId, {
+      gain: opts.gain == null ? 0.55 : opts.gain,
+      position: opts.position || null,
+    });
+  },
+
+  _onMasslineInstrument(event, payload) {
+    const tether = this.state && this.state.player && this.state.player.tether;
+    const voice = resolveMasslineInstrument({
+      event,
+      payload,
+      tension: tether && Number(tether.load),
+      strain: tether && Number(tether.strain),
+      classification: payload && payload.classification,
+      headId: payload && (payload.headId || payload.attachmentDefId || payload.defId),
+      before: payload && payload.before,
+      after: payload && payload.after,
+    });
+    if (!voice) return;
+    if (event === 'reel') {
+      const tick = Number(this.state && this.state.tick);
+      const last = this.rt && this.rt._masslineReelLastTick;
+      if (Number.isFinite(tick) && Number.isFinite(last) && tick - last < 12) return;
+      if (this.rt && Number.isFinite(tick)) this.rt._masslineReelLastTick = tick;
+    }
+    if (voice.play) {
+      this.play(voice.recipeId, {
+        gain: voice.gain,
+        rate: voice.rate,
+        critical: voice.critical,
+        position: payload && payload.pos,
+      });
+      this._emitPresentationCaption(voice.caption, { assertive: voice.warning, shape: 'arc' });
+    }
+  },
+
+  _onBarkVoice(payload) {
+    if (!payload) return;
+    const resolved = resolveBarkVoice({
+      factionId: payload.factionId,
+      situation: payload.situation,
+      line: payload.text || payload.line,
+      mechanic: payload.mechanic || payload.kind === 'mechanic',
+    });
+    this.play(resolved.recipeId, {
+      gain: resolved.gain,
+      rate: resolved.speech.rate,
+      barkSampleId: resolved.sampleId,
+      critical: true,
+    });
+    this._emitPresentationCaption(resolved.caption, {
+      assertive: resolved.assertive,
+      shape: 'radio',
+    });
+    if (resolved.factionId) {
+      this.rt._themeFactionId = resolved.factionId;
+      const theme = resolveThemeMatrix({
+        docked: !!(this.rt && this.rt._docked),
+        wanted: false,
+        sectorId: this.rt && this.rt._themeSectorId,
+        factionId: resolved.factionId,
+      });
+      this._applyFactionSting(theme.sting);
+    }
+  },
+
+  _onVisualEventAudio(eventId) {
+    const cue = resolveVisualEventCue(eventId);
+    if (!cue) return;
+    this.play(cue.recipeId, { gain: 0.55 + cue.importance * 0.3, critical: cue.importance >= 0.8 });
+    this._emitPresentationCaption(cue.caption, { assertive: cue.importance >= 0.8, shape: 'flash' });
+  },
+
+  _applyWeightDuck(input) {
+    const rt = this.rt;
+    if (!rt) return;
+    rt._weightDuckEnvelope = weightDuckEnvelope(input, this._wallClockMs());
+    invalidateBusGainCache(rt, 'music');
+  },
+
+  _syncEnvironmentMix(docked) {
+    const rt = this.rt;
+    if (!rt || !rt._environmentMix) return;
+    const screen = this.state && this.state.ui && this.state.ui.screen;
+    const classId = resolveEnvironmentClass({
+      docked: !!docked,
+      hangar: screen === 'shipworks' || screen === 'hangar',
+      berth: screen === 'berth',
+      station: !!docked,
+      screen,
+    });
+    rt._environmentClass = rt._environmentMix.setClass(classId);
+  },
+
+  _applyThemeMatrix(sectorId) {
+    const rt = this.rt;
+    if (!rt) return;
+    if (sectorId) rt._themeSectorId = sectorId;
+    const player = this.state && this.state.entities && this.state.entities.get(this.state.playerId);
+    const docked = !!(rt._docked || (player && player.flags && player.flags.docked));
+    const wanted = !!(player && player.flags && player.flags.wanted);
+    const theme = resolveThemeMatrix({
+      docked,
+      wanted,
+      sectorId: rt._themeSectorId,
+      factionId: rt._themeFactionId,
+    });
+    rt._themeMatrix = theme;
+    this._applySectorBed(theme);
+    this._syncEnvironmentMix(docked);
+  },
+
+  _applySectorBed(theme) {
+    const rt = this.rt;
+    if (!rt || !theme || !theme.bed) return;
+    const bed = theme.bed;
+    rt._bandBedIntent = {
+      active: true,
+      strength: 0.45,
+      channelId: bed.id,
+      bed: {
+        kind: theme.sting && theme.sting.profileKey ? theme.sting.profileKey : 'frontier_ballad',
+        hzA: bed.hzA,
+        hzB: bed.hzB,
+      },
+    };
+    if (rt.bandBed) rt.bandBed.setIntent(rt._paused ? { active: false, reason: 'pause' } : rt._bandBedIntent);
+  },
+
+  _applyFactionSting(sting) {
+    if (!sting) return;
+    this.play('sfx_squelch_story', { gain: 0.45, rate: Math.max(0.6, sting.hz / 220), critical: true });
   },
 
   _onCue(cue) {
@@ -3269,6 +3505,11 @@ export const audio = {
     if (beat % 4 === 0) {
       const noteIdx = (beat / 4) % chord.length;
       play(chord[noteIdx], 3.5, 0.09, 'triangle');
+    }
+    // PQ-158.03 travel lead — the hummable Outbound motif (A C E A) on bar 0.
+    if (bar % 4 === 0) {
+      const stepRow = TRAVEL_MOTIF.steps.find((row) => row.beat === beat);
+      if (stepRow) play(N(stepRow.note, stepRow.oct), stepRow.dur, 0.11, 'triangle');
     }
 
     // High sparkle: octave-up arpeggio on offbeats (every 4 sixteenths, offset by 2)
@@ -3547,7 +3788,23 @@ export const audio = {
     rt.threat = threat;
     rt.threatContext = context;
 
-    let desired = docked ? 'docked' : (threat >= 0.6 ? 'combat' : threat >= 0.2 ? 'tense' : 'calm');
+    const wanted = !!(player && player.flags && player.flags.wanted)
+      || !!(state.player && state.player.wanted)
+      || !!(state.heat && state.heat.wanted);
+    const theme = resolveThemeMatrix({
+      docked,
+      wanted,
+      inCombat: threat >= 0.6,
+      threat,
+      sectorId: (state.world && state.world.currentSectorId) || rt._themeSectorId,
+      factionId: rt._themeFactionId,
+    });
+    rt._themeMatrix = theme;
+    this._syncEnvironmentMix(docked);
+    let desired = theme.musicState || (docked ? 'docked' : (threat >= 0.6 ? 'combat' : threat >= 0.2 ? 'tense' : 'calm'));
+    if (theme.state === 'wanted') desired = 'wanted';
+    if (theme.state === 'travel' && !docked && threat < 0.2) desired = 'travel';
+    if (theme.state === 'station') desired = 'docked';
 
     if (desired === rt.musicState) { rt._pendingState = null; return; }
     // hysteresis: hold the change for STATE_HOLD_S before switching (docked is immediate)
@@ -4173,12 +4430,20 @@ export const audio = {
     const tether = this.state.player && this.state.player.tether;
     const active = !!(tether && (tether.active || tether.phase === 'loaded' || tether.phase === 'overload'));
     const strain = active ? clamp(Number(tether.strain) || 0, 0, 1.25) : 0;
+    const taut = !!(tether && (tether.phase === 'capture' || tether.phase === 'loaded' || tether.phase === 'overload'));
+    if (taut && !rt._tetherWasTaut) this._playAccessibilityCue('taut');
+    rt._tetherWasTaut = taut;
+    const instrument = resolveMasslineInstrument({
+      event: 'strain',
+      strain,
+      tension: tether && Number(tether.load),
+    });
 
     let targetFreq = 90;
     let targetGain = 0.0001;
 
     if (active) {
-      targetFreq = 90 + strain * 220;
+      targetFreq = instrument && Number.isFinite(instrument.humHz) ? instrument.humHz : (90 + strain * 220);
       targetGain = 0.006 + Math.pow(strain, 1.25) * 0.13;
     }
 

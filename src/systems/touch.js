@@ -18,8 +18,46 @@
 // unchanged. input.js gives touch priority when a touch is active (analogous to how kbm-vs-gamepad
 // recency already works).
 
+import { recordDrawFlightGesture } from './drawFlightInput.js';
+
 const STYLE_ID = 'sf-touch-style';
 const OVERLAY_ID = 'sf-touch-overlay';
+
+/** Default key codes the trackpad injects — the same seams keyboard Massline already uses. */
+export const TRACKPAD_LATCH_CODES = Object.freeze(['Space', 'KeyF']);
+export const TRACKPAD_REEL_IN_CODES = Object.freeze(['KeyS', 'ArrowDown']);
+export const TRACKPAD_REEL_OUT_CODES = Object.freeze(['KeyW', 'ArrowUp']);
+export const TRACKPAD_THROW_CODES = Object.freeze(['KeyY']);
+export const TRACKPAD_BOOST_CODES = Object.freeze(['ShiftLeft', 'ShiftRight']);
+export const TRACKPAD_FIRST_TEN_VERBS = Object.freeze(['latch', 'reel', 'throw', 'stroke', 'boost']);
+export const DECK_VIEWPORT = Object.freeze({ width: 1280, height: 800 });
+
+export function deckViewportFits(width, height) {
+  return Number(width) === DECK_VIEWPORT.width && Number(height) === DECK_VIEWPORT.height;
+}
+
+const TAP_MAX_PX = 14;
+const TAP_MAX_MS = 280;
+const FLICK_PX = 90;
+const REEL_HOLD_TICKS = 12;
+const THROW_HOLD_TICKS = 2;
+const BOOST_HOLD_TICKS = 4;
+const LATCH_HOLD_TICKS = 2;
+
+export function emptyTrackpadState() {
+  return {
+    latchTicks: 0,
+    reelInTicks: 0,
+    reelOutTicks: 0,
+    throwTicks: 0,
+    boostTicks: 0,
+    strokeDx: 0,
+    strokeDy: 0,
+    pointer: { down: false, x: 0, y: 0, t: 0, moved: 0, button: 0 },
+    lastVerb: null,
+    verbs: [],
+  };
+}
 
 // Minimum screen size (px) below which we DON'T auto-enable touch — tiny screens get the overlay
 // but very small viewports (e.g. devtools device emulation at 320px) are unusable. The player can
@@ -35,6 +73,233 @@ function nowMs() {
 function isMenuAction(action) {
   return action === 'dock' || action === 'localmap' || action === 'missionLog' ||
     action === 'starmap' || action === 'pause';
+}
+
+function noteVerb(tp, verb) {
+  tp.lastVerb = verb;
+  if (tp.verbs[tp.verbs.length - 1] !== verb) tp.verbs.push(verb);
+}
+
+function injectCodes(touch, host, codes) {
+  if (!host || !host._keys) return;
+  for (const code of codes) {
+    host._keys[code] = true;
+    touch._trackpadInjected.push(code);
+  }
+}
+
+function clearInjected(touch, host) {
+  if (!host || !host._keys) {
+    touch._trackpadInjected = [];
+    return;
+  }
+  for (const code of touch._trackpadInjected) host._keys[code] = false;
+  touch._trackpadInjected = [];
+}
+
+/** Map pending trackpad verbs onto the keyboard/grammar seams the input host already samples. */
+export function applyTrackpadToInputHost(touch, inputHost, liveState) {
+  if (!touch || !touch.trackpad) return { injected: [] };
+  const tp = touch.trackpad;
+  clearInjected(touch, inputHost);
+  if (tp.latchTicks > 0) {
+    injectCodes(touch, inputHost, TRACKPAD_LATCH_CODES);
+    tp.latchTicks -= 1;
+  }
+  if (tp.reelInTicks > 0) {
+    injectCodes(touch, inputHost, TRACKPAD_LATCH_CODES);
+    injectCodes(touch, inputHost, TRACKPAD_REEL_IN_CODES);
+    tp.reelInTicks -= 1;
+  }
+  if (tp.reelOutTicks > 0) {
+    injectCodes(touch, inputHost, TRACKPAD_LATCH_CODES);
+    injectCodes(touch, inputHost, TRACKPAD_REEL_OUT_CODES);
+    tp.reelOutTicks -= 1;
+  }
+  if (tp.throwTicks > 0) {
+    injectCodes(touch, inputHost, TRACKPAD_THROW_CODES);
+    if (inputHost) inputHost._m2 = true;
+    tp.throwTicks -= 1;
+  } else if (inputHost && touch._trackpadArmedThrow) {
+    inputHost._m2 = false;
+    touch._trackpadArmedThrow = false;
+  }
+  if (tp.throwTicks > 0) touch._trackpadArmedThrow = true;
+  if (tp.boostTicks > 0) {
+    injectCodes(touch, inputHost, TRACKPAD_BOOST_CODES);
+    tp.boostTicks -= 1;
+  }
+  if ((tp.strokeDx || tp.strokeDy) && inputHost) {
+    const w = typeof innerWidth === 'number' && innerWidth > 0 ? innerWidth : 1280;
+    const h = typeof innerHeight === 'number' && innerHeight > 0 ? innerHeight : 800;
+    const now = (liveState && Number.isFinite(liveState.simTime) ? liveState.simTime : 0) * 1000;
+    recordDrawFlightGesture(inputHost, tp.strokeDx, tp.strokeDy, now, w, h);
+    tp.strokeDx = 0;
+    tp.strokeDy = 0;
+  }
+  return { injected: touch._trackpadInjected.slice() };
+}
+
+function latched(state) {
+  return !!(state && state.player && state.player.tether && state.player.tether.active);
+}
+
+/** Two-finger pixel wheel: reel when latched, flick-throw, pinch-boost. Returns true if consumed. */
+export function ingestTrackpadWheel(touch, ev, state) {
+  if (!touch || !ev) return false;
+  const tp = touch.trackpad || (touch.trackpad = emptyTrackpadState());
+  const pixel = ev.deltaMode === 0 || ev.deltaMode === undefined;
+  const dy = Number(ev.deltaY) || 0;
+  const dx = Number(ev.deltaX) || 0;
+  if (!pixel && !ev.ctrlKey && !ev.metaKey) return false;
+  touch._activityPending = true;
+  if (ev.ctrlKey || ev.metaKey) {
+    tp.boostTicks = BOOST_HOLD_TICKS;
+    noteVerb(tp, 'boost');
+    return true;
+  }
+  const mag = Math.hypot(dx, dy);
+  if (!latched(state)) return false;
+  if (mag >= FLICK_PX) {
+    tp.throwTicks = THROW_HOLD_TICKS;
+    noteVerb(tp, 'throw');
+    return true;
+  }
+  if (dy > 0) {
+    tp.reelInTicks = REEL_HOLD_TICKS;
+    noteVerb(tp, 'reel');
+  } else if (dy < 0) {
+    tp.reelOutTicks = REEL_HOLD_TICKS;
+    noteVerb(tp, 'reel');
+  }
+  return dy !== 0;
+}
+
+/** Pointer tap = latch, flick = throw, drag = stroke (draw-to-fly). */
+export function ingestTrackpadPointer(touch, ev, state) {
+  if (!touch || !ev) return false;
+  const tp = touch.trackpad || (touch.trackpad = emptyTrackpadState());
+  const type = ev.type || '';
+  const x = Number(ev.clientX) || 0;
+  const y = Number(ev.clientY) || 0;
+  const t = Number.isFinite(ev.timeStamp) ? ev.timeStamp : nowMs();
+  const button = Number.isFinite(ev.button) ? ev.button : 0;
+  touch._activityPending = true;
+  if (type === 'pointerdown' || type === 'mousedown') {
+    tp.pointer = { down: true, x, y, t, moved: 0, button };
+    return button === 1;
+  }
+  if (type === 'pointermove' || type === 'mousemove') {
+    if (!tp.pointer.down) {
+      if (state && state.input && state.input.autoFire) {
+        tp.strokeDx += x - (tp.pointer.x || x);
+        tp.strokeDy += y - (tp.pointer.y || y);
+        tp.pointer.x = x;
+        tp.pointer.y = y;
+        if (Math.hypot(tp.strokeDx, tp.strokeDy) >= 1) noteVerb(tp, 'stroke');
+      }
+      return false;
+    }
+    const dx = x - tp.pointer.x;
+    const dy = y - tp.pointer.y;
+    tp.pointer.moved += Math.hypot(dx, dy);
+    tp.pointer.x = x;
+    tp.pointer.y = y;
+    tp.strokeDx += dx;
+    tp.strokeDy += dy;
+    if (tp.pointer.moved >= TAP_MAX_PX) noteVerb(tp, 'stroke');
+    return false;
+  }
+  if (type === 'pointerup' || type === 'mouseup' || type === 'pointercancel') {
+    const dt = t - (tp.pointer.t || t);
+    const moved = tp.pointer.moved || 0;
+    const dx = x - (tp.pointer.x || x);
+    const flick = moved >= FLICK_PX || Math.hypot(dx, y - (tp.pointer.y || y)) >= FLICK_PX;
+    tp.pointer.down = false;
+    if (flick && (latched(state) || tp.pointer.button === 1)) {
+      tp.throwTicks = THROW_HOLD_TICKS;
+      noteVerb(tp, 'throw');
+      return true;
+    }
+    if (moved <= TAP_MAX_PX && dt <= TAP_MAX_MS && (button === 1 || tp.pointer.button === 1 || button === 0)) {
+      // Middle-click, or a short tap that the caller already classified as a Massline tap.
+      if (button === 1 || tp.pointer.button === 1) {
+        tp.latchTicks = LATCH_HOLD_TICKS;
+        noteVerb(tp, 'latch');
+        return true;
+      }
+    }
+    return false;
+  }
+  return false;
+}
+
+/** Test/driver helper: apply a named first-ten-minute verb through the same ingest path. */
+export function driveTrackpadGesture(touch, verb, payload = {}, state = null) {
+  const tp = touch.trackpad || (touch.trackpad = emptyTrackpadState());
+  if (verb === 'latch') {
+    ingestTrackpadPointer(touch, {
+      type: 'pointerdown', clientX: 100, clientY: 100, button: 1, timeStamp: 0,
+    }, state);
+    ingestTrackpadPointer(touch, {
+      type: 'pointerup', clientX: 100, clientY: 100, button: 1, timeStamp: 80,
+    }, state);
+    return tp.lastVerb;
+  }
+  if (verb === 'reel') {
+    const deltaY = payload.deltaY == null ? 40 : payload.deltaY;
+    ingestTrackpadWheel(touch, { deltaMode: 0, deltaY, deltaX: 0 }, state || {
+      player: { tether: { active: true } },
+    });
+    return tp.lastVerb;
+  }
+  if (verb === 'throw') {
+    ingestTrackpadWheel(touch, { deltaMode: 0, deltaY: 120, deltaX: 80 }, state || {
+      player: { tether: { active: true } },
+    });
+    return tp.lastVerb;
+  }
+  if (verb === 'stroke') {
+    const dx = payload.dx == null ? 48 : payload.dx;
+    const dy = payload.dy == null ? -24 : payload.dy;
+    ingestTrackpadPointer(touch, {
+      type: 'pointermove', clientX: 200, clientY: 200,
+    }, { input: { autoFire: true } });
+    ingestTrackpadPointer(touch, {
+      type: 'pointermove', clientX: 200 + dx, clientY: 200 + dy,
+    }, { input: { autoFire: true } });
+    return tp.lastVerb;
+  }
+  if (verb === 'boost') {
+    ingestTrackpadWheel(touch, { deltaMode: 0, deltaY: 10, ctrlKey: true }, state);
+    return tp.lastVerb;
+  }
+  return null;
+}
+
+/** Sequence the first-ten-minute verbs (latch, reel, throw, stroke, boost) on one touch layer. */
+export function runTrackpadFirstTenMinutes(touch, inputHost, state) {
+  const live = state || (inputHost && inputHost.state) || {
+    tick: 16402,
+    simTime: 16402 / 60,
+    player: { tether: { active: true } },
+    input: { autoFire: true },
+  };
+  if (!live.player) live.player = { tether: { active: true } };
+  if (!live.player.tether) live.player.tether = { active: true };
+  live.player.tether.active = true;
+  if (!live.input) live.input = { autoFire: true };
+  live.input.autoFire = true;
+  const report = { seed: 16402, verbs: [], keys: {} };
+  for (const verb of TRACKPAD_FIRST_TEN_VERBS) {
+    driveTrackpadGesture(touch, verb, {}, live);
+    const applied = applyTrackpadToInputHost(touch, inputHost, live);
+    report.verbs.push(verb);
+    report.keys[verb] = applied.injected.slice();
+  }
+  report.complete = TRACKPAD_FIRST_TEN_VERBS.every((v) => touch.trackpad.verbs.includes(v));
+  report.observed = touch.trackpad.verbs.slice();
+  return report;
 }
 
 export function createTouch(ctx) {
@@ -66,6 +331,8 @@ export function createTouch(ctx) {
     _btnHeld: {},  // action -> bool (button touches, tracked separately from sticks)
     _btnPulse: {}, // action -> one-shot pressed edge, so quick taps cannot vanish between ticks
     _enabledByAuto: false,
+    trackpad: emptyTrackpadState(),
+    _trackpadInjected: [],
 
     isConnected() { return this.active; },
 
@@ -253,8 +520,16 @@ export function createTouch(ctx) {
       });
     },
 
+    ingestTrackpadWheel(ev, liveState) {
+      return ingestTrackpadWheel(this, ev, liveState || state);
+    },
+    ingestTrackpadPointer(ev, liveState) {
+      return ingestTrackpadPointer(this, ev, liveState || state);
+    },
+
     tick(_dt, tickState = null, inputHost = null) {
       const live = tickState || state;
+      applyTrackpadToInputHost(this, inputHost, live);
       // F4/G9: stamp pending activity with (tick, sequence) for device arbitration.
       if (this._activityPending) {
         if (inputHost && typeof inputHost._bumpActivityStamp === 'function') {

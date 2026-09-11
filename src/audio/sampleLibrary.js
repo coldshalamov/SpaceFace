@@ -14,7 +14,7 @@
 // event/promise driven, so idle frames do zero sample work (stats.workOps is the frame-sleep
 // counter: it may only move on cue-triggered work, never on _frame ticks).
 
-import { SAMPLE_BINDINGS } from '../data/audioRecipes.js';
+import { SAMPLE_BINDINGS, COLLISION_LADDER } from '../data/audioRecipes.js';
 
 export const SAMPLE_TIER = Object.freeze({ CORE: 0, ACTION: 1, CONTEXT: 2 });
 
@@ -38,6 +38,15 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['impact_armor', { file: 'assets/audio/impact/impact_armor.wav', tier: 1, loop: false, seconds: 0.5 }],
   ['impact_kiss', { file: 'assets/audio/impact/impact_kiss.wav', tier: 1, loop: false, seconds: 0.45 }],
   ['impact_slam', { file: 'assets/audio/impact/impact_slam.wav', tier: 1, loop: false, seconds: 1.1 }],
+  ['ladder_hull_light', { file: 'assets/audio/impact/ladder_hull_light.wav', tier: 0, loop: false, seconds: 0.42 }],
+  ['ladder_hull_medium', { file: 'assets/audio/impact/ladder_hull_medium.wav', tier: 0, loop: false, seconds: 0.65 }],
+  ['ladder_hull_heavy', { file: 'assets/audio/impact/ladder_hull_heavy.wav', tier: 0, loop: false, seconds: 1.05 }],
+  ['ladder_rock_light', { file: 'assets/audio/impact/ladder_rock_light.wav', tier: 0, loop: false, seconds: 0.4 }],
+  ['ladder_rock_medium', { file: 'assets/audio/impact/ladder_rock_medium.wav', tier: 0, loop: false, seconds: 0.62 }],
+  ['ladder_rock_heavy', { file: 'assets/audio/impact/ladder_rock_heavy.wav', tier: 0, loop: false, seconds: 1.0 }],
+  ['ladder_station_light', { file: 'assets/audio/impact/ladder_station_light.wav', tier: 0, loop: false, seconds: 0.5 }],
+  ['ladder_station_medium', { file: 'assets/audio/impact/ladder_station_medium.wav', tier: 0, loop: false, seconds: 0.8 }],
+  ['ladder_station_heavy', { file: 'assets/audio/impact/ladder_station_heavy.wav', tier: 0, loop: false, seconds: 1.4 }],
   ['exp_small', { file: 'assets/audio/explosion/exp_small.wav', tier: 0, loop: false, seconds: 0.9 }],
   ['exp_large', { file: 'assets/audio/explosion/exp_large.wav', tier: 0, loop: false, seconds: 1.7 }],
   ['exp_capital', { file: 'assets/audio/explosion/exp_capital.wav', tier: 1, loop: false, seconds: 2.6 }],
@@ -90,6 +99,18 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['tether_latch', { file: 'assets/audio/massline/tether_latch.wav', tier: 1, loop: false, seconds: 0.3 }],
   ['tether_snap', { file: 'assets/audio/massline/tether_snap.wav', tier: 1, loop: false, seconds: 0.5 }],
   ['tether_strain', { file: 'assets/audio/massline/tether_strain.wav', tier: 1, loop: false, seconds: 0.6 }],
+  ['massline_reel', { file: 'assets/audio/massline/massline_reel.wav', tier: 1, loop: false, seconds: 0.55 }],
+  ['massline_release', { file: 'assets/audio/massline/massline_release.wav', tier: 1, loop: false, seconds: 0.35 }],
+  ['massline_bridle', { file: 'assets/audio/massline/massline_bridle.wav', tier: 1, loop: false, seconds: 0.55 }],
+  ['bark_scn', { file: 'assets/audio/voice/bark_scn.wav', tier: 2, loop: false, seconds: 1.05 }],
+  ['bark_mts', { file: 'assets/audio/voice/bark_mts.wav', tier: 2, loop: false, seconds: 1.05 }],
+  ['bark_dmc', { file: 'assets/audio/voice/bark_dmc.wav', tier: 2, loop: false, seconds: 1.05 }],
+  ['bark_reach', { file: 'assets/audio/voice/bark_reach.wav', tier: 2, loop: false, seconds: 1.05 }],
+  ['bark_quiet', { file: 'assets/audio/voice/bark_quiet.wav', tier: 2, loop: false, seconds: 1.05 }],
+  ['bark_choir', { file: 'assets/audio/voice/bark_choir.wav', tier: 2, loop: false, seconds: 1.05 }],
+  ['bark_free', { file: 'assets/audio/voice/bark_free.wav', tier: 2, loop: false, seconds: 1.05 }],
+  ['bark_vael', { file: 'assets/audio/voice/bark_vael.wav', tier: 2, loop: false, seconds: 1.05 }],
+  ['bark_mechanic', { file: 'assets/audio/voice/bark_mechanic.wav', tier: 2, loop: false, seconds: 1.05 }],
   ['kill_confirm_chime', { file: 'assets/audio/combat/kill_confirm_chime.wav', tier: 1, loop: false, seconds: 0.5 }],
   ['subsystem_pop', { file: 'assets/audio/combat/subsystem_pop.wav', tier: 1, loop: false, seconds: 0.5 }],
   ['cm_chaff', { file: 'assets/audio/combat/cm_chaff.wav', tier: 1, loop: false, seconds: 0.5 }],
@@ -141,6 +162,29 @@ export function countSampleBackedRecipes(recipes) {
     if (resolveSampleBinding(recipe.id)) count++;
   }
   return count;
+}
+
+/**
+ * PQ-158.01 impact ladder: resolve a ladder cell id (`ladder_<material>_<weight>`) to the binding
+ * shape resolveSampleBinding returns, so a collision cue keeps its recipe (and the PQ-139.01
+ * pitch/gain law) while a DESIGNED material sample carries the body. Same contract as
+ * resolveSampleBinding: null when the cell or its sample is unknown, which degrades the cue to
+ * the recipe's own default hybrid binding with no gap and no pop. Pure.
+ */
+export function resolveLadderBinding(ladderId) {
+  const entry = ladderId ? COLLISION_LADDER[ladderId] : null;
+  if (!entry) return null;
+  const manifestEntry = SAMPLE_MANIFEST.get(entry.id);
+  if (!manifestEntry) return null;
+  return {
+    sampleId: entry.id,
+    file: manifestEntry.file,
+    tier: manifestEntry.tier,
+    loop: !!manifestEntry.loop,
+    share: entry.share == null ? 0.62 : entry.share,
+    gain: entry.gain == null ? 1 : entry.gain,
+    rate: entry.rate == null ? 1 : entry.rate,
+  };
 }
 
 /**
