@@ -6800,7 +6800,7 @@
       "priority": 97,
       "title": "The sentence, proven",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -6821,7 +6821,9 @@
         "npm run check:first-15-runtime",
         "npm run check:new-game-first-run"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-163.03-REPORT.md"
+      ],
       "brief": "The store-page sentence is shown once and each clause is performed by the player before minute ten. DONE WHEN: A stranger states the fantasy back correctly after playing."
     },
     {
@@ -8949,7 +8951,7 @@
       "priority": 173,
       "title": "Teaching overlay",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8971,7 +8973,9 @@
         "npm run check:colour-tokens",
         "npm run check:art"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-161.03-REPORT.md"
+      ],
       "brief": "Trajectory and force ribbons in the Range and the stroke preview only. DONE WHEN: Never rendered in ordinary flight (test)."
     },
     {

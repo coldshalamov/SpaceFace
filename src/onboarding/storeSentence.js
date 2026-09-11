@@ -62,3 +62,27 @@ export function storeClausePerformedBefore(record, clause, limitS = STORE_SENTEN
 export function allStoreClausesPerformedBefore(record, limitS = STORE_SENTENCE_WINDOW_S) {
   return STORE_CLAUSES.every((clause) => storeClausePerformedBefore(record, clause, limitS));
 }
+
+/** Verbs a stranger can restate from play, never from the toast copy. */
+export const STORE_CLAUSE_READBACK = Object.freeze({
+  swing: 'swing a rock',
+  ammunition: 'light ships are ammunition',
+  speed: 'keep the speed',
+});
+
+/**
+ * Design-proxy stranger: restates the fantasy from clauses that were actually
+ * performed. Empty when the line was only shown as text.
+ */
+export function strangerReadback(record, limitS = STORE_SENTENCE_WINDOW_S) {
+  const performed = STORE_CLAUSES.filter((clause) => storeClausePerformedBefore(record, clause, limitS));
+  const verbs = performed.map((clause) => STORE_CLAUSE_READBACK[clause]);
+  return {
+    seed: 16303,
+    line: `STRANGER_READBACK ${verbs.join('; ')}`.trimEnd(),
+    clauses: performed,
+    verbs,
+    complete: performed.length === STORE_CLAUSES.length,
+    textOnly: Boolean(record && record.shown) && performed.length === 0,
+  };
+}

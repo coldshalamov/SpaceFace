@@ -18,11 +18,13 @@ import {
   STORE_CLAUSES,
   STORE_SENTENCE,
   STORE_SENTENCE_WINDOW_S,
+  STORE_CLAUSE_READBACK,
   allStoreClausesPerformedBefore,
   buildFirstHourSentenceEvent,
   freshStoreSentenceState,
   stampStoreClause,
   storeSentenceLine,
+  strangerReadback,
 } from '../src/onboarding/storeSentence.js';
 import { onboarding } from '../src/systems/onboarding.js';
 import { voiceArbiter } from '../src/ui/voiceArbiter.js';
@@ -391,6 +393,29 @@ test('leftover rescue + boost perform each clause before 600s; sentence stays on
   assert.equal(h.seen.sentence.length, 1);
   assert.equal(h.seen.sentence.some((e) => e.percent != null || e.rate != null), false,
     'funnel never invents a stranger-playtest percentage');
+
+  const readback = strangerReadback(rec);
+  console.log(readback.line);
+  assert.equal(readback.seed, 16303);
+  assert.equal(readback.complete, true);
+  assert.equal(readback.textOnly, false);
+  assert.equal(readback.line.startsWith('STRANGER_READBACK '), true);
+  for (const clause of STORE_CLAUSES) {
+    assert.equal(readback.clauses.includes(clause), true, `readback includes ${clause}`);
+    assert.match(readback.line, new RegExp(STORE_CLAUSE_READBACK[clause].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  }
+});
+
+test('stranger readback fails closed when the sentence was only text', () => {
+  const shownOnly = freshStoreSentenceState();
+  shownOnly.shown = true;
+  shownOnly.shownAt = 10;
+  const empty = strangerReadback(shownOnly);
+  assert.equal(empty.complete, false);
+  assert.equal(empty.textOnly, true);
+  assert.equal(empty.clauses.length, 0);
+  assert.equal(empty.line, 'STRANGER_READBACK');
+  console.log(`${empty.line} TEXT_ONLY`);
 });
 
 test('47-A scenario payload still skips the rail and never shows the sentence', () => {
