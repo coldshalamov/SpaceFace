@@ -6922,7 +6922,7 @@
       "priority": 101,
       "title": "Every actor has a sentence (blind legibility review)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00"
       ],
@@ -6936,7 +6936,9 @@
       "checks": [
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-141.02-REPORT.md"
+      ],
       "brief": "With HUD text hidden, a reviewer who has not read the scenario names what the miner, hauler, tender, survey ship, patrol, pirate and scavenger are doing from motion and light alone; >= 6 of 7."
     },
     {
@@ -7646,7 +7648,7 @@
       "priority": 133,
       "title": "The counter arrives first",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7668,7 +7670,9 @@
         "npm run check:massline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-030.02-REPORT.md"
+      ],
       "brief": "The tether-cutter specialist uses the sweep against the player two hours before the head unlocks. DONE WHEN: Blind reviewer names the specialist's threat from silhouette and behaviour."
     },
     {
@@ -16456,7 +16460,7 @@
       "priority": 427,
       "title": "The impact ladder, sample-backed",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-139.01",
         "PQ-141.00",
@@ -16476,7 +16480,9 @@
         "npm run check:baseline",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-158.01-REPORT.md"
+      ],
       "brief": "Extends PQ-139.01 (which chooses pitch and gain from dp and mass on the synth path): the same 3×3 ladder (hull/rock/station × light/medium/heavy) gets layered transient/body/tail samples; scout-on-rock vs freighter-on-station stays ≥ 1 octave and ≥ 12 dB apart. DONE WHEN: B9b table test; A/B capture."
     },
     {
@@ -16485,7 +16491,7 @@
       "priority": 428,
       "title": "The Massline as an instrument",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16505,7 +16511,9 @@
         "npm run check:baseline",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-158.02-REPORT.md"
+      ],
       "brief": "Tension to pitch, strain to grit, reel whine, release snap distinct from break, bridle chord. DONE WHEN: All massline events audible and distinct; captions name them."
     },
     {
@@ -16514,7 +16522,7 @@
       "priority": 429,
       "title": "Composed themes",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16534,7 +16542,9 @@
         "npm run check:baseline",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-158.03-REPORT.md"
+      ],
       "brief": "Four state themes with motifs, per-sector beds, faction stings via the Band; the adaptive matrix drives authored stems. DONE WHEN: A stranger hums the travel theme; per-sector bed identified blind."
     },
     {
@@ -16543,7 +16553,7 @@
       "priority": 430,
       "title": "Voice for the barks (directed synthetic voice; no recorded actors)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16563,7 +16573,9 @@
         "npm run check:baseline",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-158.04-REPORT.md"
+      ],
       "brief": "Eight faction registers produced by a directed text-to-speech pipeline agents can run (design/production/09 generated-media rules), radio-processed, with captions; the mechanic's voice the same way. No recorded actors are assumed anywhere in the plan. DONE WHEN: All 271 lines delivered through the agentic pipeline; subtitles; determinism untouched; a stranger identifies the eight registers blind."
     },
     {
@@ -16572,7 +16584,7 @@
       "priority": 431,
       "title": "Space and mix",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16592,7 +16604,9 @@
         "npm run check:baseline",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-158.05-REPORT.md"
+      ],
       "brief": "Convolver reverb bus per environment class; weight-first ducking; audio cues for visual events (accessibility). DONE WHEN: Hangar vs void audibly different; ducking table test."
     },
     {
@@ -16633,7 +16647,7 @@
       "priority": 433,
       "title": "Two-body framing",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16653,7 +16667,9 @@
         "npm run check:baseline",
         "npm run check:camera"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-159.01-REPORT.md"
+      ],
       "brief": "When a line is taut or a bridle exists, frame both bodies with the line as the diagonal. DONE WHEN: Capture of a swing shows both bodies ≥ 90 % of the time."
     },
     {
@@ -16662,7 +16678,7 @@
       "priority": 434,
       "title": "The beat",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16682,7 +16698,9 @@
         "npm run check:baseline",
         "npm run check:camera"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-159.02-REPORT.md"
+      ],
       "brief": "Rated moments get a 150 ms time dip, a camera hold, and a stinger; death gets a cam. DONE WHEN: Fires on the moment detector only; headless sims unchanged."
     },
     {
@@ -16691,7 +16709,7 @@
       "priority": 435,
       "title": "Photo mode",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16711,7 +16729,9 @@
         "npm run check:baseline",
         "npm run check:camera"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-159.03-REPORT.md"
+      ],
       "brief": "Pause, free camera, hide HUD, exposure, no filters by default; a capture path for store assets. DONE WHEN: Reachable from pause; captures are used for the store page."
     },
     {
@@ -16751,7 +16771,7 @@
       "priority": 437,
       "title": "Auto-clip",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16771,7 +16791,9 @@
         "npm run check:baseline",
         "npm run check:sim:compare"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-160.01-REPORT.md"
+      ],
       "brief": "Moment detector marks a window; the clip list shows it; export GIF/MP4 via the packaged host. DONE WHEN: A bolas kill produces an exportable clip in Electron and a downloadable one in browser."
     },
     {
@@ -16780,7 +16802,7 @@
       "priority": 438,
       "title": "Seeds and ghosts",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16800,7 +16822,9 @@
         "npm run check:baseline",
         "npm run check:sim:compare"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-160.02-REPORT.md"
+      ],
       "brief": "Crucible runs export a seed/build code; a ghost of a shared run renders as a translucent hull. DONE WHEN: Two machines reproduce the same run from the code."
     },
     {
@@ -16809,7 +16833,7 @@
       "priority": 439,
       "title": "Every screen on a pad",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -16829,7 +16853,9 @@
         "npm run check:settings-profile",
         "npm run check:controls-discoverability"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-164.00-REPORT.md"
+      ],
       "brief": "Per-screen verified navigation for all 27 screens and the station; a check walks them. DONE WHEN: `check:gamepad:screens` green."
     },
     {
@@ -16869,7 +16895,7 @@
       "priority": 441,
       "title": "Deck and trackpad",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -16889,7 +16915,9 @@
         "npm run check:settings-profile",
         "npm run check:controls-discoverability"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-164.02-REPORT.md"
+      ],
       "brief": "Deck resolution/scale verified; trackpad gestures for latch/reel/throw and stroke. DONE WHEN: Deck capture at 1280×800; trackpad route completes the first ten minutes."
     },
     {
@@ -16957,7 +16985,7 @@
       "priority": 444,
       "title": "Captions and audio cues",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -16974,7 +17002,9 @@
         "npm run check:baseline",
         "npm run check:ui-effects"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-165.01-REPORT.md"
+      ],
       "brief": "Captions for all voice; audio cues for wells, tethers taut, telegraphs when 'audio cues' is on. DONE WHEN: Every voiced bark captioned; cue table test."
     },
     {
@@ -16983,7 +17013,7 @@
       "priority": 445,
       "title": "The checklist",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -17000,7 +17030,9 @@
         "npm run check:baseline",
         "npm run check:ui-effects"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-165.02-REPORT.md"
+      ],
       "brief": "An accessibility statement in-app and the checklist (contrast, motion, remap, text scale, assists, captions) verified per screen. DONE WHEN: Checklist green; statement reachable from settings."
     },
     {
@@ -17037,7 +17069,7 @@
       "priority": 447,
       "title": "Growth pass",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -17054,7 +17086,9 @@
         "npm run check:baseline",
         "npm run check:player-facing-labels"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-166.01-REPORT.md"
+      ],
       "brief": "Pseudo-locale at +40 % on every screen and the HUD; fix clipping by layout. DONE WHEN: Zero clipped strings in the capture sweep."
     },
     {
@@ -17063,7 +17097,7 @@
       "priority": 448,
       "title": "Five languages",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -17080,7 +17114,9 @@
         "npm run check:baseline",
         "npm run check:player-facing-labels"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-166.02-REPORT.md"
+      ],
       "brief": "Translation pipeline (machine first, human review for the bark corpus and store copy); fonts. DONE WHEN: Five catalogs ship; store page in five languages."
     },
     {
@@ -17790,7 +17826,7 @@
       "priority": 473,
       "title": "Opening NPCs belong in Hitch's world; no floating parts",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-193.00"
       ],
@@ -17806,7 +17842,9 @@
         "npm run check:playable",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-193.01-REPORT.md"
+      ],
       "brief": "Helios/Kessler opening flyby: every NPC hull is a complete manufactured body from the same game as Hitch. No floating engine, wing, socket, or glow blob. Taste-led per VISUAL_WORLD_CLEANUP.md. Hitch frozen. Done when a stranger shown Hitch and the nearest NPC says they are the same game."
     },
     {
@@ -17815,7 +17853,7 @@
       "priority": 474,
       "title": "Reverse and brake read as jets, not needles",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "visual-world-3d"
@@ -17828,7 +17866,9 @@
         "npm run check:vfx-techniques",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-193.02-REPORT.md"
+      ],
       "brief": "One honest reverse/brake path from the existing volumetric retro. Stop the leftover needle trail. Same family as the main drive. Do not stack a second needle on a failed volume. Do not dump Hitch. Done when a stranger can tell, HUD hidden, that the player is braking."
     },
     {

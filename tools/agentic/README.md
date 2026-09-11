@@ -17,6 +17,20 @@ with their current canonical integration in [`CENTRAL_BRAIN.md`](../../design/pr
 These tools support `design/program/CENTRAL_BRAIN.md`. They do not replace `program-dispatch`, the deterministic lab,
 the validation broker, `NOW.md`, or packet receipts.
 
+## Next-N dispatch pipeline (implement → two review waves → integrate)
+
+The live queue stays `node scripts/program-dispatch.mjs --ready`. This runner snapshots that list,
+serializes overlapping write-sets, and is the only writer that may flip a dispatch unit to `done`.
+
+```bash
+node tools/agentic/next20_pipeline.mjs --run --count 20 --out .devshots/next20
+node tools/agentic/next20_pipeline.mjs --schedule --count 20
+node --test test/next20-pipeline-selector.test.mjs
+```
+
+Workflow: `.grok/workflows/next20-dispatch.rhai` (implementer per unit, two fail-closed review waves,
+integrator calls `--integrate`). Do not pass `isolation_worktree` — those edits never merge.
+
 ## Rank current work
 
 ```bash
