@@ -772,6 +772,10 @@ export function authoredPreloadPlanForEntity(entity, options = {}) {
     return { hull: [file] };
   }
 
+  // A required body without a packaged-live selection stays empty. Never request a modular kit
+  // that could later be mistaken for the missing whole ship.
+  if (options.requiredWholeShip === true || requiresProductionWholeShipForEntity(entity)) return {};
+
   const defId = entity.data && entity.data.defId;
   const seed = hashString(`${entity.id}|${defId}|${entity.factionId || ''}`);
   const shipDef = SHIP_BY_ID.get(defId);
@@ -794,13 +798,44 @@ export function authoredPreloadPlanForEntity(entity, options = {}) {
   return plan;
 }
 
+/** Roster hulls the empty-admission path must publish as complete packaged bodies. */
+export const REQUIRED_WHOLE_SHIP_DEF_IDS = Object.freeze([
+  'ship_kestrel',
+  'ship_wasp',
+  'ship_pelican',
+  'ship_mule',
+  'ship_drifter',
+  'ship_hornet',
+  'ship_ironback',
+  'ship_bastion',
+  'ship_atlas',
+  'ship_ranger',
+  'ship_warden',
+  'ship_colossus',
+  'ship_leviathan',
+]);
+const REQUIRED_WHOLE_SHIP_DEF_ID_SET = Object.freeze(new Set(REQUIRED_WHOLE_SHIP_DEF_IDS));
+const REQUIRED_WHOLE_SHIP_TRAFFIC_ROLES = Object.freeze(new Set([
+  'express',
+  'smuggler',
+  'pirate',
+]));
+const REQUIRED_WHOLE_SHIP_ASSET_REFS = Object.freeze(new Set([
+  'asset.slice.meridian_recovery_tug',
+]));
+
 /** Keep sector preparation on the same complete-body selector as the installed visual factory.
- * Hostile and traffic roles already select complete bodies inside wholeShipVisualForEntity; this
- * covers the two def-driven production bodies whose factory selection is intentionally stricter. */
+ * Hostile and traffic roles already select complete bodies inside wholeShipVisualForEntity; roster
+ * defs, the liner, opening smuggler/pirate traffic, and the recovery tug are required so modular
+ * kit cannot substitute while those bodies decode. Traffic-role maps still win over defId, so
+ * Helios Lark/Span/Cradle stay on courier/hauler/miner. */
 export function requiresProductionWholeShipForEntity(entity) {
   if (!entity || entity.type !== 'ship' || !entity.data) return false;
-  const defId = entity.data.defId;
-  return (entity.isPlayer === true && defId === 'ship_kestrel') || defId === 'ship_wasp';
+  const data = entity.data;
+  if (REQUIRED_WHOLE_SHIP_DEF_ID_SET.has(data.defId)) return true;
+  if (REQUIRED_WHOLE_SHIP_TRAFFIC_ROLES.has(String(data.trafficRole || ''))) return true;
+  if (REQUIRED_WHOLE_SHIP_ASSET_REFS.has(String(data.assetRef || ''))) return true;
+  return false;
 }
 
 /**
@@ -1145,6 +1180,19 @@ const PACKAGED_LIVE_WHOLE_SHIP_FILES = Object.freeze(new Set([
   'wholeships/scrap_sweeper.glb',
   'wholeships/apron_shuttle.glb',
   'wholeships/yard_tug.glb',
+  // PQ-193.00: roster LOD0 + liner on the empty-admission allowlist. Factory LOD1/2 stay off.
+  'wholeships/pelican_production_v1.glb',
+  'wholeships/mule_production_v1.glb',
+  'wholeships/drifter_production_v1.glb',
+  'wholeships/hornet_production_v1.glb',
+  'wholeships/ironback_production_v1.glb',
+  'wholeships/bastion_production_v1.glb',
+  'wholeships/atlas_production_v1.glb',
+  'wholeships/ranger_production_v1.glb',
+  'wholeships/warden_production_v1.glb',
+  'wholeships/colossus_production_v1.glb',
+  'wholeships/leviathan_production_v1.glb',
+  'wholeships/massline_express_liner_v1.glb',
 ]));
 
 export function isPackagedLiveWholeShipFile(file) {
@@ -1211,11 +1259,13 @@ const WHOLE_SHIP_FILE_BY_ASSET_REF = Object.freeze({
   enemy_reaver_interceptor: 'wholeships/ashline_rig.glb',
   enemy_reaver_skirmisher: 'wholeships/ashline_rig.glb',
   enemy_reaver_tug: 'wholeships/ashline_rig.glb',
+  'asset.slice.meridian_recovery_tug': 'wholeships/yard_tug.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_ASSET_REF = Object.freeze({
   enemy_reaver_interceptor: 'SF_WHOLESHIP_ASHLINE_RIG',
   enemy_reaver_skirmisher: 'SF_WHOLESHIP_ASHLINE_RIG',
   enemy_reaver_tug: 'SF_WHOLESHIP_ASHLINE_RIG',
+  'asset.slice.meridian_recovery_tug': 'SF_WHOLESHIP_YARD_TUG',
 });
 // Ambient civilian traffic owns a durable presentation role independent of ship-def gameplay
 // stats. This keeps role silhouettes stable across rematerialization and prevents courier traffic
@@ -1251,6 +1301,9 @@ const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   sweeper: 'wholeships/scrap_sweeper.glb',
   shuttle: 'wholeships/apron_shuttle.glb',
   tug: 'wholeships/yard_tug.glb',
+  // PQ-193.01: opening smuggler / pirate traffic publish complete roster hulls, not modular kit.
+  smuggler: 'wholeships/drifter_production_v1.glb',
+  pirate: 'wholeships/hornet_production_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   // Must match the asset identity embedded in each packaged traffic body above; the record
@@ -1269,6 +1322,8 @@ const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   sweeper: 'SF_WHOLESHIP_SCRAP_SWEEPER',
   shuttle: 'SF_WHOLESHIP_APRON_SHUTTLE',
   tug: 'SF_WHOLESHIP_YARD_TUG',
+  smuggler: 'SF_DRIFTER_PRODUCTION_V1',
+  pirate: 'SF_HORNET_PRODUCTION_V1',
 });
 const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),
@@ -1304,18 +1359,24 @@ function wholeShipSelection(file, assetId, roleId, lodFamily = null) {
   });
 }
 
+/** Empty-admission identity: a mapped file that is not packaged-live must not publish. */
+function liveWholeShipSelection(file, assetId, roleId, lodFamily = null) {
+  if (!packagedLiveWholeShipFile(file)) return null;
+  return wholeShipSelection(file, assetId, roleId, lodFamily);
+}
+
 /** Pure presentation selection hook used by composition and focused asset checks. */
 export function wholeShipVisualForEntity(entity, options = {}) {
   const data = entity && entity.data || {};
   const hostileId = String(data.lootTableId || '');
   const hostileFile = WHOLE_SHIP_FILE_BY_HOSTILE_ID[hostileId];
   if (hostileFile) {
-    return wholeShipSelection(hostileFile, WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID[hostileId], hostileId);
+    return liveWholeShipSelection(hostileFile, WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID[hostileId], hostileId);
   }
   const silhouette = String(data.silhouette || '');
   const silhouetteFile = WHOLE_SHIP_FILE_BY_SILHOUETTE[silhouette];
   if (silhouetteFile) {
-    return wholeShipSelection(
+    return liveWholeShipSelection(
       silhouetteFile,
       WHOLE_SHIP_ASSET_ID_BY_SILHOUETTE[silhouette],
       silhouette,
@@ -1324,7 +1385,7 @@ export function wholeShipVisualForEntity(entity, options = {}) {
   const assetRef = String(data.assetRef || '');
   const assetRefFile = WHOLE_SHIP_FILE_BY_ASSET_REF[assetRef];
   if (assetRefFile) {
-    return wholeShipSelection(
+    return liveWholeShipSelection(
       assetRefFile,
       WHOLE_SHIP_ASSET_ID_BY_ASSET_REF[assetRef],
       assetRef,
@@ -1333,16 +1394,16 @@ export function wholeShipVisualForEntity(entity, options = {}) {
   const trafficRole = String(data.trafficRole || '');
   const trafficFile = WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE[trafficRole];
   if (trafficFile) {
-    return wholeShipSelection(
+    return liveWholeShipSelection(
       trafficFile,
       WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE[trafficRole],
       trafficRole,
     );
   }
-  if (options.requiredWholeShip !== true) return null;
+  if (options.requiredWholeShip !== true && !requiresProductionWholeShipForEntity(entity)) return null;
   const defId = data.defId;
   const file = WHOLE_SHIP_FILE_BY_DEF_ID[defId];
-  return file ? wholeShipSelection(
+  return file ? liveWholeShipSelection(
     file,
     WHOLE_SHIP_ASSET_ID_BY_DEF_ID[defId],
     defId,
@@ -1391,7 +1452,12 @@ function wholeShipFileForResolution(entity, selection, options = {}) {
 /** Pure contract hook used by runtime composition and missing/corrupt fixture checks. */
 export function resolveRequiredWholeShipRecord(entity, records, options = {}) {
   const selection = wholeShipVisualForEntity(entity, options);
-  if (!selection) return null;
+  if (!selection) {
+    if (options.requiredWholeShip === true || requiresProductionWholeShipForEntity(entity)) {
+      throw new Error(`Ship ${entity && entity.id} has no required packaged whole-ship selection.`);
+    }
+    return null;
+  }
   const wholeShipFile = wholeShipFileForResolution(entity, selection, options);
   const partRoot = isReleaseAssetMode(options) ? PART_RELEASE_ROOT : PART_ROOT;
   // Forced LOD siblings may not share the LOD0 assetId; match on file path only then.
@@ -1464,7 +1530,8 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     if (trigger) trigger.onBeforeRender = previousBeforeRender;
     const upgradeOptions = {
       releaseMode,
-      requiredWholeShip: options.requiredWholeShip === true,
+      requiredWholeShip: options.requiredWholeShip === true
+        || requiresProductionWholeShipForEntity(entity),
       onSwap: options.onSwap,
       loadAuthoredPart: options.loadAuthoredPart,
       libraryScope: options.libraryScope,

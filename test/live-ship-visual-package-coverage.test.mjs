@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 
 import { ENEMY_TYPES } from '../src/data/enemies.js';
+import { SHIPS } from '../src/data/ships.js';
 import {
   authoredPreloadPlanForEntity,
   isPackagedLiveWholeShipFile,
@@ -14,6 +16,7 @@ import {
   wholeShipVisualForEntity,
 } from '../src/render/partsLibrary.js';
 import { TRAFFIC_ROLES } from '../src/systems/traffic.js';
+import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManifest.js';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const PART_ROOT = 'assets/ships/release/parts/';
@@ -102,14 +105,24 @@ test('47-A reaver actors resolve the packaged Ashline rig', () => {
   }
 });
 
-test('modular live contract files used by leftover patrol/capital enemies are packaged', () => {
+test('patrol and capital leftovers publish packaged roster bodies instead of modular kit', () => {
   const packaged = packagedReleaseFiles();
-  const leftovers = ENEMY_TYPES.filter((enemy) => !wholeShipVisualForEntity({
-    type: 'ship',
-    data: { lootTableId: enemy.id, silhouette: enemy.silhouette, defId: enemy.shipId },
-  }));
-  assert.ok(leftovers.some((enemy) => enemy.id === 'patrol_lawman'));
-  assert.ok(leftovers.some((enemy) => enemy.id === 'dreadnought_boss'));
+  for (const enemyId of ['patrol_lawman', 'dreadnought_boss']) {
+    const enemy = ENEMY_TYPES.find((entry) => entry.id === enemyId);
+    assert.ok(enemy, enemyId);
+    const entity = {
+      type: 'ship',
+      data: { lootTableId: enemy.id, silhouette: enemy.silhouette, defId: enemy.shipId },
+    };
+    const visual = wholeShipVisualForEntity(entity);
+    assert.ok(visual && visual.file, `${enemyId} must select a complete packaged body`);
+    assert.equal(isPackagedLiveWholeShipFile(visual.file), true, `${enemyId} ${visual.file}`);
+    assertPackaged([visual.file], enemyId, packaged);
+  }
+});
+
+test('modular live contract files remain packaged for accessory assembly', () => {
+  const packaged = packagedReleaseFiles();
   const shipSlots = ['hull', 'cockpit', 'engine', 'fin', 'weapon', 'greeble', 'gear', 'pod'];
   const allowlisted = new Set(['fins/fin_crystalline.glb']);
   for (const slot of shipSlots) {
@@ -120,5 +133,33 @@ test('modular live contract files used by leftover patrol/capital enemies are pa
       `modular ${slot}`,
       packaged,
     );
+  }
+});
+
+test('all roster hulls and the liner select a shipped render package without modular slots', () => {
+  const entities = SHIPS.map((ship) => ({ type: 'ship', data: { defId: ship.id } }));
+  entities.push({ type: 'ship', data: { trafficRole: 'express' } });
+  assert.equal(SHIPS.length, 13, 'cover the complete lockable roster');
+  for (const entity of entities) {
+    const label = entity.data.defId || entity.data.trafficRole;
+    assert.equal(requiresProductionWholeShipForEntity(entity), true, label);
+    const visual = wholeShipVisualForEntity(entity);
+    assert.ok(visual, `${label} has a complete body`);
+    assert.equal(isPackagedLiveWholeShipFile(visual.file), true, label);
+    assert.deepEqual(authoredPreloadPlanForEntity(entity), { hull: [visual.file] }, label);
+    const pilot = renderPackagePilotForSourceUrl(`${PART_ROOT}${visual.file}`);
+    assert.ok(pilot, `${label} has a live runtime package route`);
+    assert.equal(pilot.runtimeAssetId, visual.assetId, `${label} package identity`);
+    const metadataPath = resolve(ROOT, pilot.metadataUrl);
+    const metadata = JSON.parse(readFileSync(metadataPath, 'utf8'));
+    assert.equal(metadata.assetId, pilot.assetId, `${label} shipped package identity`);
+    assert.equal(metadata.runtime.slot, 'hull', label);
+    assert.ok(metadata.runtime.primitives.length > 0, `${label} contains renderable surfaces`);
+    assert.ok(metadata.runtime.primitives.some((primitive) => /hull|body/i.test(primitive.name)),
+      `${label} includes the authored body, not only accessory primitives`);
+    const render = readFileSync(resolve(dirname(metadataPath), metadata.render.uri));
+    assert.equal(render.length, metadata.render.bytes, `${label} shipped render payload`);
+    assert.equal(createHash('sha256').update(render).digest('hex'), metadata.render.sha256,
+      `${label} shipped render payload matches its package`);
   }
 });
