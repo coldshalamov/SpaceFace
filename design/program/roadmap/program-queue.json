@@ -6858,7 +6858,7 @@
       "priority": 99,
       "title": "Deterministic scenario proof.sixty_seconds",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -6881,7 +6881,9 @@
         "npm run check:baseline",
         "npm run check:playable"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-141.00-REPORT.md"
+      ],
       "brief": "Seeded scenario at the reference site with the op running, a hauler on schedule, a pirate intercept, a patrol in range, and a scripted player input tape of a few simple verbs; receipts detect the 11 beats; >= 9 of 11 across 5 seeds; never exceeds 90 s."
     },
     {
