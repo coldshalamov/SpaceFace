@@ -56,6 +56,10 @@ function nav(ctx, method, arg) {
 
 const TABS = ['Audio', 'Video', 'Gameplay', 'Access', 'Controls'];
 
+/** PQ-164.02: one Controls-tab Deck/trackpad sentence. Gestures write existing Massline keys. */
+export const STEAM_DECK_HEADER = 'Steam Deck';
+export const STEAM_DECK_NOTE = 'Verified at 1280×800. Trackpad: middle-tap latches the Massline, two-finger scroll reels a latched line, a flick throws, a stroke draws a flight route, pinch boosts.';
+
 // The locale the picker shows: the player's choice when set, otherwise the live runtime locale.
 function chosenLocale(settings) {
   const chosen = settings && settings.locale;
@@ -496,8 +500,14 @@ export const settingsScreen = {
     build.note('Virtual sticks: left = fly, right = aim; buttons = fire, mine, boost, dock, Map, Log (Mission Log), Star, Pause. Auto-enabled on touch devices.');
     // PQ-164.02: one Deck/trackpad row. Gestures write the existing Massline key seams
     // (Space latch, W/S reel, Y throw, G-stroke) — they do not add a second grammar.
-    build.header('Steam Deck');
-    build.note('Verified at 1280×800. Trackpad: middle-tap latches the Massline, two-finger scroll reels a latched line, a flick throws, a stroke draws a flight route, pinch boosts.');
+    const deckHeader = build.header(STEAM_DECK_HEADER);
+    if (deckHeader && typeof deckHeader.setAttribute === 'function') {
+      deckHeader.setAttribute('data-sf-deck', 'header');
+    }
+    const deckNote = build.note(STEAM_DECK_NOTE);
+    if (deckNote && typeof deckNote.setAttribute === 'function') {
+      deckNote.setAttribute('data-sf-deck', 'note');
+    }
   },
 
   _renderFixedShortcuts(pane, build = paneBuilder(pane)) {

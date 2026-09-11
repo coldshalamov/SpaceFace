@@ -15,13 +15,22 @@ import {
   TRACKPAD_REEL_IN_CODES,
   TRACKPAD_THROW_CODES,
   DECK_VIEWPORT,
+  DECK_UI_SCALE,
+  DECK_CAPTURE_SEED,
   FIRST_TEN_MINUTES_S,
+  applyDeckUiScale,
   applyTrackpadToInputHost,
   createTouch,
   deckViewportFits,
   driveTrackpadGesture,
+  measureDeckCapture,
   runTrackpadFirstTenMinutes,
 } from '../src/systems/touch.js';
+import {
+  STEAM_DECK_HEADER,
+  STEAM_DECK_NOTE,
+} from '../src/ui/screens/settings.js';
+import { runDeckSettingsCapture } from '../scripts/lib/pq16402-deck.mjs';
 
 const SEED = 16402;
 
@@ -102,17 +111,41 @@ test('PQ-164.02 ui input consumes latched trackpad wheel; settings names the Dec
   const uiSrc = readFileSync(fileURLToPath(new URL('../src/ui/input.js', import.meta.url)), 'utf8');
   assert.match(uiSrc, /ingestTrackpadWheel/);
   assert.match(uiSrc, /onTrackpadPointer/);
+  assert.match(STEAM_DECK_HEADER, /Steam Deck/);
+  assert.match(STEAM_DECK_NOTE, /1280/);
+  assert.match(STEAM_DECK_NOTE, /Trackpad/);
   const settingsSrc = readFileSync(fileURLToPath(new URL('../src/ui/screens/settings.js', import.meta.url)), 'utf8');
-  assert.match(settingsSrc, /Steam Deck/);
-  assert.match(settingsSrc, /1280/);
-  assert.match(settingsSrc, /Trackpad/);
+  assert.match(settingsSrc, /STEAM_DECK_HEADER/);
+  assert.match(settingsSrc, /STEAM_DECK_NOTE/);
 });
 
 test('PQ-164.02 Deck viewport is 1280x800; other sizes fail the capture pin', () => {
+  assert.equal(DECK_CAPTURE_SEED, SEED);
   assert.equal(DECK_VIEWPORT.width, 1280);
   assert.equal(DECK_VIEWPORT.height, 800);
+  assert.equal(DECK_UI_SCALE, 1);
   assert.equal(deckViewportFits(1280, 800), true);
   assert.equal(deckViewportFits(1920, 1080), false);
   assert.equal(deckViewportFits(1280, 720), false);
-  console.log(`PQ-164.02 seed=${SEED} deck=${DECK_VIEWPORT.width}x${DECK_VIEWPORT.height} residual=no-headed-still`);
+  const root = { style: { props: Object.create(null), setProperty(k, v) { this.props[k] = String(v); }, getPropertyValue(k) { return this.props[k]; } } };
+  assert.equal(applyDeckUiScale(root, DECK_UI_SCALE), 1);
+  assert.equal(root.style.props['--ui-scale'], '1');
+  const miss = measureDeckCapture({
+    width: 1920, height: 1080, uiScale: 1, overflowX: 0, overflowY: 0,
+    noteVisible: true, noteInView: true,
+  });
+  assert.equal(miss.ok, false);
+  assert.equal(miss.sizeOk, false);
+  console.log(`PQ-164.02 seed=${SEED} deck=${DECK_VIEWPORT.width}x${DECK_VIEWPORT.height} scale=${DECK_UI_SCALE}`);
+});
+
+test('PQ-164.02 seed 16402: shipped Settings sheet names Deck at 1280x800', () => {
+  const report = runDeckSettingsCapture({ seed: SEED, width: 1280, height: 800, uiScale: 1 });
+  assert.equal(report.seed, SEED);
+  assert.equal(report.ok, true, `deck pin failed ${JSON.stringify(report)}`);
+  assert.equal(report.noteVisible, true);
+  assert.equal(report.noteInView, true);
+  assert.equal(report.header, STEAM_DECK_HEADER);
+  assert.match(report.note, /middle-tap/);
+  console.log(`PQ-164.02 deck-sheet ok=${report.ok} size=${report.width}x${report.height} scale=${report.uiScale} overflowX=${report.overflowX}`);
 });

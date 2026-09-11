@@ -31,9 +31,54 @@ export const TRACKPAD_THROW_CODES = Object.freeze(['KeyY']);
 export const TRACKPAD_BOOST_CODES = Object.freeze(['ShiftLeft', 'ShiftRight']);
 export const TRACKPAD_FIRST_TEN_VERBS = Object.freeze(['latch', 'reel', 'throw', 'stroke', 'boost']);
 export const DECK_VIEWPORT = Object.freeze({ width: 1280, height: 800 });
+export const DECK_UI_SCALE = 1;
+export const DECK_CAPTURE_SEED = 16402;
 
 export function deckViewportFits(width, height) {
   return Number(width) === DECK_VIEWPORT.width && Number(height) === DECK_VIEWPORT.height;
+}
+
+/** Default UI scale at Deck native 1280×800. Same --ui-scale the Video/Access sliders write. */
+export function applyDeckUiScale(root, scale = DECK_UI_SCALE) {
+  const value = Number(scale);
+  const next = Number.isFinite(value) && value > 0 ? value : DECK_UI_SCALE;
+  if (root && root.style && typeof root.style.setProperty === 'function') {
+    root.style.setProperty('--ui-scale', String(next));
+  }
+  return next;
+}
+
+/**
+ * Pin for the PQ-164.02 Deck capture: native 1280×800, default scale, no horizontal overflow,
+ * Steam Deck note visible in the sheet.
+ */
+export function measureDeckCapture(input = {}) {
+  const width = Number(input.width);
+  const height = Number(input.height);
+  const uiScale = Number(input.uiScale);
+  const overflowX = Number(input.overflowX);
+  const overflowY = Number(input.overflowY);
+  const bytes = Number(input.bytes);
+  const sizeOk = deckViewportFits(width, height);
+  const scaleOk = uiScale === DECK_UI_SCALE;
+  const overflowOk = Number.isFinite(overflowX) && overflowX <= 0;
+  const noteOk = !!input.noteVisible && !!input.noteInView;
+  return {
+    seed: DECK_CAPTURE_SEED,
+    width: Number.isFinite(width) ? width : 0,
+    height: Number.isFinite(height) ? height : 0,
+    uiScale: Number.isFinite(uiScale) ? uiScale : 0,
+    overflowX: Number.isFinite(overflowX) ? overflowX : 0,
+    overflowY: Number.isFinite(overflowY) ? overflowY : 0,
+    noteVisible: !!input.noteVisible,
+    noteInView: !!input.noteInView,
+    bytes: Number.isFinite(bytes) ? bytes : 0,
+    sizeOk,
+    scaleOk,
+    overflowOk,
+    noteOk,
+    ok: sizeOk && scaleOk && overflowOk && noteOk,
+  };
 }
 
 const TAP_MAX_PX = 14;

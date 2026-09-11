@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" data-ui-theme="orbital">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PQ-164.02 Deck 1280×800</title>
+  <link rel="stylesheet" href="/styles/ui.css" />
+  <link rel="stylesheet" href="/styles/fonts.css" />
+  <link rel="stylesheet" href="/styles/kit.css" />
+  <link rel="stylesheet" href="/styles/orbital.css" />
+  <style>
+    html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #101516; }
+    #ui-root { position: fixed; inset: 0; pointer-events: auto; }
+    #screens { position: absolute; inset: 0; }
+    [data-screen="settings"] { display: flex !important; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/vendor/three.module.js",
+      "three/addons/": "/vendor/addons/",
+      "three.quarks": "/node_modules/three.quarks/dist/three.quarks.esm.js",
+      "quarks.core": "/node_modules/quarks.core/dist/quarks.core.esm.js",
+      "@dimforge/rapier3d-compat": "/vendor/rapier3d-compat/rapier.mjs",
+      "@floating-ui/dom": "/node_modules/@floating-ui/dom/dist/floating-ui.dom.browser.mjs",
+      "@floating-ui/core": "/node_modules/@floating-ui/core/dist/floating-ui.core.browser.mjs",
+      "@floating-ui/utils": "/node_modules/@floating-ui/utils/dist/floating-ui.utils.mjs"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="ui-root">
+    <div id="hud"></div>
+    <div id="modal-backdrop"></div>
+    <div id="screens"></div>
+  </div>
+  <div id="sf-confirm-root"></div>
+  <script type="module">
+    try {
+      const { runDeckSettingsCapture, DECK_VIEWPORT, SEED } = await import('./lib/pq16402-deck.mjs');
+      const width = window.innerWidth || DECK_VIEWPORT.width;
+      const height = window.innerHeight || DECK_VIEWPORT.height;
+      window.__sfDeckCapture = runDeckSettingsCapture({ seed: SEED, width, height });
+    } catch (err) {
+      window.__sfDeckCapture = { ok: false, error: String(err && err.stack || err) };
+    }
+    window.__sfDeckCaptureReady = true;
+  </script>
+</body>
+</html>
