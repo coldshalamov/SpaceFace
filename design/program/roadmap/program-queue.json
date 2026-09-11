@@ -16601,7 +16601,7 @@
       "priority": 432,
       "title": "Impacts kick and reduced motion holds",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-141.00",
@@ -16622,7 +16622,9 @@
         "npm run check:baseline",
         "npm run check:camera"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-159.00-REPORT.md"
+      ],
       "brief": "Extends PQ-137.03 (which owns the speed-opens zoom curve): kick and trauma from exchanged momentum rather than damage, rate-limited, honouring reduce-motion; the zoom curve is not re-tuned here. DONE WHEN: Kick magnitude table by momentum; reduce-motion capture shows none."
     },
     {
