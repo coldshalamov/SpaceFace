@@ -38,6 +38,38 @@ const PHOTO_HINT_MS = 2000;
 export const PHOTO_LABEL = 'Photo';
 export const PHOTO_CAPTURE_LABEL = 'Capture';
 export const PHOTO_STORE_KIND = 'store';
+/** Live store-page stills land here so PQ-159.03 captures are used for the store page. */
+export const STORE_PAGE_REL = 'assets/store/page';
+/** Canonical screenshot the store page consumes (PQ-033.03 uploads this slot). */
+export const STORE_PAGE_SCREENSHOT = 'spaceface-store-headed.png';
+
+export function storePagePath(filename) {
+  return `${STORE_PAGE_REL}/${filename || STORE_PAGE_SCREENSHOT}`;
+}
+
+export function storePageScreenshotPath() {
+  return storePagePath(STORE_PAGE_SCREENSHOT);
+}
+
+/** Bind a photo-mode PNG onto the store page screenshot slot (and keep a dated archive). */
+export function publishStoreStill(capture, writer) {
+  if (!capture || capture.ok === false || !capture.dataUrl || typeof writer !== 'function') {
+    return { ok: false, reason: 'no-store-writer' };
+  }
+  const archiveName = capture.filename || photoCaptureFilename();
+  const archiveRel = storePagePath(archiveName);
+  const canonicalRel = storePageScreenshotPath();
+  writer(archiveRel, capture.dataUrl);
+  if (archiveRel !== canonicalRel) writer(canonicalRel, capture.dataUrl);
+  return {
+    ok: true,
+    path: canonicalRel,
+    archive: archiveRel,
+    filename: STORE_PAGE_SCREENSHOT,
+    usedFor: 'store-page',
+    slot: 'screenshot',
+  };
+}
 export { isPhotoModeActive, PHOTO_FILTERS_DEFAULT, PHOTO_EXPOSURE_DEFAULT };
 
 /** Find the screen manager regardless of where uiRoot exposed it. Screens navigate
@@ -393,9 +425,14 @@ export function writePhotoCapture(capture, host = globalThis) {
     return { ok: false, reason: (capture && capture.reason) || 'no-image' };
   }
   const electron = host && (host.sfDesktop || host.electronAPI || host.spaceface);
+  const store = typeof host.publishStoreStill === 'function'
+    ? host.publishStoreStill(capture)
+    : (typeof host.writeStorePage === 'function'
+      ? publishStoreStill(capture, host.writeStorePage)
+      : null);
   if (electron && typeof electron.savePhoto === 'function') {
     const result = electron.savePhoto({ filename: capture.filename, dataUrl: capture.dataUrl });
-    return { ok: true, via: 'electron', filename: capture.filename, result };
+    return { ok: true, via: 'electron', filename: capture.filename, result, storePage: store };
   }
   const doc = host && host.document;
   if (doc && typeof doc.createElement === 'function') {
@@ -409,8 +446,9 @@ export function writePhotoCapture(capture, host = globalThis) {
       if (typeof a.click === 'function') a.click();
       if (a.remove) a.remove();
     }
-    return { ok: true, via: 'download', filename: capture.filename };
+    return { ok: true, via: 'download', filename: capture.filename, storePage: store };
   }
+  if (store && store.ok) return { ok: true, via: 'store-page', filename: capture.filename, storePage: store };
   return { ok: false, reason: 'no-host', filename: capture.filename };
 }
 

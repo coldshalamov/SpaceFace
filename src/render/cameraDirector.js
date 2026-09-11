@@ -75,6 +75,11 @@ function finiteOr(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
 }
 
+/** Photo mode owns the look-at; pair/gate modes must not steal a store still. */
+export function photoModeHoldsDirector(state) {
+  return !!(state && state.render && state.render.photoMode && state.render.photoMode.active);
+}
+
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
@@ -662,6 +667,15 @@ export function createCameraDirector() {
       const followZoom = finiteOr(view.followZoom, DEFAULT_ZOOM);
       const frameDt = clamp(finiteOr(dt, 0), 0, 0.1);
       if (!initialized) reset(followX, followZ, followZoom);
+
+      const photo = state && state.render && state.render.photoMode;
+      if (photo && photo.active) {
+        return syncFollow(
+          finiteOr(photo.focusX, followX),
+          finiteOr(photo.focusZ, followZ),
+          finiteOr(photo.zoom, followZoom),
+        );
+      }
 
       const tether = state && state.player && state.player.tether;
       const focus = state && state.player && state.player.flybyFocus;

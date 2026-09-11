@@ -2,12 +2,16 @@
 // by default; capture writes a PNG for the store page. Seed 15903.
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 import {
   PHOTO_CAPTURE_LABEL,
   PHOTO_LABEL,
   PHOTO_STORE_KIND,
+  STORE_PAGE_REL,
+  STORE_PAGE_SCREENSHOT,
   capturePhotoPng,
   enterPhotoMode,
   exitPhotoMode,
@@ -15,17 +19,32 @@ import {
   pauseScreen,
   photoCaptureFilename,
   photoModeFlags,
+  publishStoreStill,
+  storePagePath,
+  storePageScreenshotPath,
   writePhotoCapture,
 } from '../src/ui/screens/pause.js';
 import {
   PHOTO_EXPOSURE_DEFAULT,
   PHOTO_FILTERS_DEFAULT,
+  PHOTO_MODE_SEED,
+  PHOTO_STORE_ZOOM_FACTOR,
+  composePhotoStoreFrame,
   createChaseCamera,
   createPhotoModeState,
   stepPhotoFreeCamera,
 } from '../src/render/camera.js';
+import {
+  CameraDirectorMode,
+  createCameraDirector,
+  photoModeHoldsDirector,
+} from '../src/render/cameraDirector.js';
+import {
+  photoModeFeelPresentation,
+  resolveCollisionFeel,
+} from '../src/render/feel.js';
 
-const SEED = 15903;
+const SEED = PHOTO_MODE_SEED;
 const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
 function installMiniDom() {
@@ -168,7 +187,7 @@ test('pause lists Photo and presentation flags are HUD-off, free camera, no filt
 
   const state = {
     settings: { video: { bloom: true, fov: 50 } },
-    camera: { zoom: 144, focus: { x: 3, z: -2 } },
+    camera: { zoom: 144, trauma: 0.4, focus: { x: 3, z: -2 } },
     render: {},
   };
   const photo = enterPhotoMode(state);
@@ -178,6 +197,11 @@ test('pause lists Photo and presentation flags are HUD-off, free camera, no filt
   assert.equal(photo.filters, false);
   assert.equal(state.settings.video.bloom, false, 'filters off by default means bloom off');
   assert.equal(state.settings.video.exposure, 1);
+  assert.ok(
+    Math.abs(photo.zoom - 144 * PHOTO_STORE_ZOOM_FACTOR) < 1e-6,
+    `store composition must open the frame (zoom=${photo.zoom})`,
+  );
+  assert.equal(state.camera.trauma, 0);
   exitPhotoMode(state);
   assert.equal(isPhotoModeActive(state), false);
   assert.equal(state.settings.video.bloom, true, 'exit restores the previous bloom setting');
@@ -284,4 +308,108 @@ test('capture writes a PNG named for the store page (download or Electron file)'
   assert.equal(viaDownload.via, 'download');
   assert.equal(downloads[0].download, capture.filename);
   console.log(`SEED=${SEED} capture=${capture.filename} via=electron+download png=1`);
+});
+
+test('PQ-159.03 captures are published onto the store page', () => {
+  const canvas = { toDataURL: () => PNG };
+  const capture = capturePhotoPng(canvas, { kind: 'store' });
+  const written = [];
+  const published = publishStoreStill(capture, (rel, dataUrl) => {
+    written.push({ rel, dataUrl });
+  });
+  assert.equal(published.ok, true);
+  assert.equal(published.usedFor, 'store-page');
+  assert.equal(published.slot, 'screenshot');
+  assert.equal(published.path, storePageScreenshotPath());
+  assert.equal(published.filename, STORE_PAGE_SCREENSHOT);
+  assert.equal(written[0].rel, storePagePath(capture.filename));
+  assert.equal(written[1].rel, storePageScreenshotPath());
+  const host = {
+    writeStorePage: (rel, dataUrl) => written.push({ rel, dataUrl }),
+  };
+  const via = writePhotoCapture(capture, host);
+  assert.equal(via.ok, true);
+  assert.equal(via.via, 'store-page');
+  assert.equal(via.storePage.usedFor, 'store-page');
+  assert.equal(via.storePage.path, storePageScreenshotPath());
+  console.log(`SEED=${SEED} storePage=${published.path} archive=${published.archive}`);
+  const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
+  const live = path.join(root, STORE_PAGE_REL, STORE_PAGE_SCREENSHOT);
+  assert.equal(existsSync(live), true, 'headed store still must live on the store page path');
+  const buf = readFileSync(live);
+  assert.ok(buf.length > 1000, 'store still is a real PNG, not a 1x1 stand-in');
+  assert.equal(buf.toString('ascii', 1, 4), 'PNG');
+});
+
+test('director holds FOLLOW on a taut line while photo mode is live', () => {
+  const player = {
+    id: 1, type: 'ship', alive: true, team: 0,
+    pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 }, radius: 7,
+  };
+  const rock = {
+    id: 2, type: 'asteroid', alive: true,
+    pos: { x: 80, z: 0 }, vel: { x: 0, z: 0 }, radius: 12,
+  };
+  const state = {
+    playerId: 1,
+    entities: new Map([[1, player], [2, rock]]),
+    player: { tether: { active: true, targetId: 2, phase: 'loaded', load: 0.55, restLength: 100 } },
+    render: {
+      photoMode: { active: true, focusX: 12, focusZ: -8, zoom: 170 },
+    },
+    camera: { zoom: 144, tilt: 60 },
+    settings: { video: { fov: 50 } },
+  };
+  assert.equal(photoModeHoldsDirector(state), true);
+  const director = createCameraDirector();
+  const view = { followX: 0, followZ: 0, followZoom: 144, fov: 50, aspect: 16 / 9, tiltDeg: 60 };
+  const out = director.step(1 / 60, state, player, view);
+  assert.equal(out.mode, CameraDirectorMode.FOLLOW);
+  assert.equal(out.focusX, 12);
+  assert.equal(out.focusZ, -8);
+  assert.equal(out.zoom, 170);
+  state.render.photoMode.active = false;
+  const live = director.step(1 / 60, state, player, view);
+  assert.equal(live.mode, CameraDirectorMode.TWO_BODY);
+  console.log(`SEED=${SEED} directorPhoto=FOLLOW directorLive=${live.mode}`);
+});
+
+test('feel punch is silent in photo mode so a store still is clean', () => {
+  const flight = resolveCollisionFeel({ id: 'contact' }, {
+    mode: 'flight', deltaV: 80, momentum: 2000, kickDirX: 1, kickDirZ: 0,
+  });
+  assert.ok(flight && flight.kickWu > 0, 'ordinary flight still gets a kick');
+
+  const silenced = resolveCollisionFeel({ id: 'contact' }, {
+    mode: 'flight', deltaV: 80, momentum: 2000, kickDirX: 1, kickDirZ: 0, photoMode: true,
+  });
+  assert.equal(silenced, null);
+
+  const viaState = resolveCollisionFeel({ id: 'contact' }, {
+    mode: 'flight', deltaV: 80, momentum: 2000,
+    state: { render: { photoMode: { active: true } } },
+  });
+  assert.equal(viaState, null);
+
+  const flags = photoModeFeelPresentation({ render: { photoMode: { active: true } } });
+  assert.equal(flags.silencePunch, true);
+  assert.equal(flags.hideVignette, true);
+  assert.equal(flags.hideSpeedLines, true);
+
+  const off = photoModeFeelPresentation({ render: { photoMode: { active: false } } });
+  assert.equal(off.silencePunch, false);
+
+  const state = {
+    camera: { zoom: 144, trauma: 0.5 },
+    render: {},
+    settings: { video: { bloom: true, fov: 50 } },
+  };
+  const photo = createPhotoModeState(state);
+  composePhotoStoreFrame(state, photo);
+  assert.equal(photo.filters, false);
+  assert.equal(state.camera.trauma, 0);
+  const held = photo.zoom;
+  composePhotoStoreFrame(state, photo);
+  assert.equal(photo.zoom, held, 'store composition must not compound');
+  console.log(`SEED=${SEED} feelPhoto=silent storeZoom=${held.toFixed(1)}`);
 });

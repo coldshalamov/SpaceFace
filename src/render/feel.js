@@ -106,9 +106,21 @@ export function impactKickFromMomentum(momentum) {
 }
 
 // Optional caller-owned output lets the event bridge reuse its pending record.
+/** Photo mode is a still: no punch, vignette, or speed-line overlay on the store shot. */
+export function photoModeFeelPresentation(state) {
+  const active = !!(state && state.render && state.render.photoMode && state.render.photoMode.active);
+  return {
+    active,
+    silencePunch: active,
+    hideVignette: active,
+    hideSpeedLines: active,
+  };
+}
+
 export function resolveCollisionFeel(impact, context = {}, out = null) {
   if (!impact) return null;
   if (context.motionReduce) return null;
+  if (context.photoMode || photoModeFeelPresentation(context.state).silencePunch) return null;
   if (context.mode !== 'flight') return null;
   const deltaV = context.deltaV;
   if (!Number.isFinite(deltaV) || deltaV < COLLISION_DELTA_V_FLOOR) return null;
@@ -604,6 +616,12 @@ export const feel = {
     // record just because the overlay happened to be silent this frame — "silent" is itself the
     // band-0 signal the background needs in order to stop streaming.
     publishVelocityLanguage(this.state, drive, region);
+
+    if (photoModeFeelPresentation(this.state).hideSpeedLines) {
+      if (this._streaks) this._streaks.length = 0;
+      if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
+      return;
+    }
 
     // Smooth-damp toward target (rate 8 = responsive but not jarring). Re-clamped after the damp
     // because damp() returns NaN for a NaN dt, and a NaN opacity here would poison every gradient.
@@ -1367,6 +1385,19 @@ export const feel = {
       }
     }
     this._flushPendingCollision();
+
+    const photoFeel = photoModeFeelPresentation(this.state);
+    if (photoFeel.silencePunch) {
+      this._fovPunch = 0;
+      this._fovPunchApplied = 0;
+    }
+    if (photoFeel.hideVignette) {
+      this._vig = 0;
+      if (this._vigEl) {
+        this._vigEl.style.opacity = '0';
+        this._vigEl.style.display = 'none';
+      }
+    }
 
     // ---- FOV punch integration ----
     // Envelope holds the authored impulse energy; applied is what the camera carries. Rise is

@@ -84,6 +84,9 @@ export const PHOTO_EXPOSURE_MIN = 0.35;
 export const PHOTO_EXPOSURE_MAX = 2.2;
 export const PHOTO_FILTERS_DEFAULT = false;
 export const PHOTO_PAN_SPEED_WU_S = 90;
+export const PHOTO_MODE_SEED = 15903;
+/** Open the chase frame a little so a store still has air around the hull. */
+export const PHOTO_STORE_ZOOM_FACTOR = 1.18;
 const _KICK_AXES = Object.freeze([
   Object.freeze({ env: 'envX', app: 'x' }),
   Object.freeze({ env: 'envZ', app: 'z' }),
@@ -171,7 +174,28 @@ export function applyPhotoPresentation(state, photo) {
       video.grain = 0;
     }
   }
+  composePhotoStoreFrame(state, next);
   return next;
+}
+
+/** Store-page composition: HUD-off, filters off, trauma cleared, frame opened so the still sells. */
+export function composePhotoStoreFrame(state, photo) {
+  const record = photo || (state && state.render && state.render.photoMode) || null;
+  if (!record) return null;
+  if (!record._storeComposed) {
+    const base = finiteOr(record.zoom, finiteOr(state && state.camera && state.camera.zoom, DEFAULT_ZOOM));
+    record.zoom = Math.max(
+      CAMERA_ZOOM_MIN,
+      Math.min(CAMERA_ZOOM_MAX, base * PHOTO_STORE_ZOOM_FACTOR),
+    );
+    record.filters = false;
+    record._storeComposed = true;
+  }
+  record.hideHud = true;
+  record.freeCamera = record.freeCamera !== false;
+  if (!Number.isFinite(record.exposure)) record.exposure = PHOTO_EXPOSURE_DEFAULT;
+  if (state && state.camera) state.camera.trauma = 0;
+  return record;
 }
 
 export function restorePhotoPresentation(state) {
