@@ -8480,7 +8480,7 @@
       "priority": 159,
       "title": "Aces escalate against your style",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8502,7 +8502,9 @@
         "npm run check:baseline",
         "npm run check:bar:narrative"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-150.00-REPORT.md"
+      ],
       "brief": "Ace memory reads the stunt grammar: fling-kills bring line-cutters and sinks, gun-kills bring armour, rock-kills bring rock-avoiders; they taunt the specific act. DONE WHEN: Third same-style kill changes the ace's next loadout deterministically; bark names the act."
     },
     {
@@ -8542,7 +8544,7 @@
       "priority": 161,
       "title": "Radio that reacts",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8564,7 +8566,9 @@
         "npm run check:baseline",
         "npm run check:bar:narrative"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-150.02-REPORT.md"
+      ],
       "brief": "The Band and comms chatter keyed to world events and player acts: haulers whine, pirates negotiate, patrols threaten, stations report. DONE WHEN: ≥ 8 distinct reactive chatter classes audible in a session; captions on."
     },
     {
@@ -8573,7 +8577,7 @@
       "priority": 162,
       "title": "Fifteen people, placed",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8595,7 +8599,9 @@
         "npm run check:baseline",
         "npm run check:bar:narrative"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-150.03-REPORT.md"
+      ],
       "brief": "The depth program's named NPCs live at places, with a sentence and a reaction set. DONE WHEN: All fifteen reachable on the route with ≥ 1 reaction each."
     },
     {
@@ -8604,7 +8610,7 @@
       "priority": 163,
       "title": "Four tiers with a verb each",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8628,7 +8634,9 @@
         "npm run check:sim",
         "npm run check:faction-standings"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-151.00-REPORT.md"
+      ],
       "brief": "Fine/scan, bounty/hunters, nets/wedges, impound/heist; heat shown on the chart; each tier's escape is physical. DONE WHEN: Scenario per tier with a deterministic escape; blind reviewer names the tier from the world."
     },
     {
@@ -8637,7 +8645,7 @@
       "priority": 164,
       "title": "Patrol nets and checkpoints",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8661,7 +8669,9 @@
         "npm run check:sim",
         "npm run check:faction-standings"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-151.01-REPORT.md"
+      ],
       "brief": "Tether-net roadblocks and scan cones on lanes; break them by mass, speed, or a thrown decoy. DONE WHEN: Three break methods verified in scenarios."
     },
     {
@@ -8670,7 +8680,7 @@
       "priority": 165,
       "title": "Corrupt ports and laundering",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8694,7 +8704,9 @@
         "npm run check:sim",
         "npm run check:faction-standings"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-151.02-REPORT.md"
+      ],
       "brief": "Outlaw stations launder cargo and heat for a cut; reputation pays the cut down. DONE WHEN: A laundered pod clears a scan; the ledger records the cut."
     },
     {
@@ -8703,7 +8715,7 @@
       "priority": 166,
       "title": "Insurance, restitution, impound recovery",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8727,7 +8739,9 @@
         "npm run check:sim",
         "npm run check:faction-standings"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-151.03-REPORT.md"
+      ],
       "brief": "Collateral has a bill; paying, working it off, or stealing the ship back are all play. DONE WHEN: Each path completes in a scenario; save round-trips mid-path."
     },
     {
