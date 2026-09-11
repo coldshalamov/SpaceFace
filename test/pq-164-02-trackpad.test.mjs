@@ -15,6 +15,7 @@ import {
   TRACKPAD_REEL_IN_CODES,
   TRACKPAD_THROW_CODES,
   DECK_VIEWPORT,
+  FIRST_TEN_MINUTES_S,
   applyTrackpadToInputHost,
   createTouch,
   deckViewportFits,
@@ -85,13 +86,16 @@ test('PQ-164.02 trackpad route completes the first ten minutes', () => {
   const input = host();
   const report = runTrackpadFirstTenMinutes(touch, input, input.state);
   assert.equal(report.seed, SEED);
+  assert.equal(FIRST_TEN_MINUTES_S, 600);
+  assert.equal(report.durationS, FIRST_TEN_MINUTES_S, 'the first ten minutes is a 600 s session, not a five-item loop');
+  assert.ok(report.steps >= 600);
   assert.deepEqual(report.verbs, TRACKPAD_FIRST_TEN_VERBS.slice());
   assert.equal(report.complete, true, `missing verbs: ${TRACKPAD_FIRST_TEN_VERBS.filter((v) => !report.observed.includes(v))}`);
   assert.ok(report.keys.latch.some((c) => TRACKPAD_LATCH_CODES.includes(c)));
   assert.ok(report.keys.reel.some((c) => TRACKPAD_REEL_IN_CODES.includes(c) || c === 'KeyW'));
   assert.ok(report.keys.throw.some((c) => TRACKPAD_THROW_CODES.includes(c)));
   assert.ok(report.keys.boost.some((c) => TRACKPAD_BOOST_CODES.includes(c)));
-  console.log(`PQ-164.02 first-ten complete=${report.complete} observed=${report.observed.join(',')}`);
+  console.log(`PQ-164.02 first-ten complete=${report.complete} durationS=${report.durationS} steps=${report.steps}`);
 });
 
 test('PQ-164.02 ui input consumes latched trackpad wheel; settings names the Deck', () => {

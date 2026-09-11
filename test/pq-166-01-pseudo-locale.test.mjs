@@ -5,7 +5,9 @@
 // the real picture; this is the structural stand-in when a GPU window is not available.
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 import test from 'node:test';
 
 import { messages } from '../src/localization/catalogs/en-US.generated.js';
@@ -74,6 +76,7 @@ test('layout helpers expose wrap-safe boxes for screens and the HUD', () => {
   const narrow = measureStringWidth('Settings', 14);
   assert.ok(wide > narrow, 'pseudo string is wider than English at the same face size');
   assert.match(GROWTH_LAYOUT_CSS, /#hud/);
+  assert.match(GROWTH_LAYOUT_CSS, /sf-barrow__label/);
   assert.match(GROWTH_LAYOUT_CSS, /overflow-wrap:anywhere/);
   assert.match(GROWTH_LAYOUT_CSS, /white-space:normal/);
   assert.doesNotMatch(GROWTH_LAYOUT_CSS, /font-size:\s*\d/, 'do not cheat clips by shrinking type');
@@ -84,6 +87,16 @@ test('zero clipped strings in the +40 % screen and HUD sweep', () => {
   assert.ok(report.scanned > 400, `expected a broad sweep, scanned ${report.scanned}`);
   assert.equal(report.clipCount, 0, report.clips.slice(0, 5).map((row) => row.key).join(', '));
   assert.equal(report.clips.length, 0);
+});
+
+test('headed capture sweep of every screen reports zero clips', () => {
+  const root = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
+  const reportPath = path.join(root, 'design/program/roadmap/receipts/PQ-166.01-sweep.json');
+  assert.equal(existsSync(reportPath), true, 'headed sweep report must exist');
+  const report = JSON.parse(readFileSync(reportPath, 'utf8'));
+  assert.equal(report.clipCount, 0, JSON.stringify(report.screens.filter((s) => s.clipCount)));
+  assert.ok(report.screens.length >= 10, `sweep covered ${report.screens.length} screens`);
+  console.log(`PQ-166.01 capture-sweep screens=${report.screens.length} clipCount=${report.clipCount}`);
 });
 
 test('growth CSS lives on the shipped document bridge, not a test double', () => {

@@ -16709,7 +16709,7 @@
       "priority": 435,
       "title": "Photo mode",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16895,7 +16895,7 @@
       "priority": 441,
       "title": "Deck and trackpad",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"

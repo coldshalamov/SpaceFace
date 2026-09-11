@@ -6,6 +6,8 @@
 // It is installed for any non-default locale; normal en-US play pays no observer/style cost. Once
 // installed it stays installed so a live switch back to English can restore the authored source.
 
+import { applyLocaleFonts } from './fonts.js';
+
 const LOCALIZED_ATTRIBUTES = Object.freeze(['aria-label', 'placeholder', 'title', 'alt']);
 const SKIP_SELECTOR = '[data-localization-skip]';
 const SKIP_TAGS = new Set(['SCRIPT', 'STYLE', 'CODE', 'PRE', 'CANVAS']);
@@ -40,6 +42,7 @@ export function installLocalizedDocumentBridge({ document: doc, translate, local
   if (!doc || !doc.documentElement || typeof translate !== 'function') return false;
   activeTranslate = translate;
   injectOverflowStyle(doc, locale);
+  applyLocaleFonts(doc, locale);
   if (!installed) {
     installed = true;
     installCanvasTextBridge(doc.defaultView);
@@ -205,21 +208,38 @@ function installCanvasTextBridge(view) {
   };
 }
 
-function injectOverflowStyle(doc, locale) {
-  if (locale !== 'qps-ploc' || doc.getElementById(PSEUDO_STYLE_ID)) return;
-  const style = doc.createElement('style');
-  style.id = PSEUDO_STYLE_ID;
-  style.setAttribute('data-localization-skip', '');
-  style.textContent = `
-    html[data-locale="qps-ploc"] #screens .screen { min-width:0; max-width:100vw; }
-    html[data-locale="qps-ploc"] #screens :is(button,label,h1,h2,h3,h4,p,li,td,th,.sf-slot-name,.sf-slot-sub) {
-      min-width:0; max-width:100%; overflow-wrap:anywhere; word-break:normal;
+export const GROWTH_LAYOUT_CSS = `
+    html:not([data-locale="en-US"]) #screens .screen { min-width:0; max-width:100vw; }
+    html:not([data-locale="en-US"]) #screens :is(button,label,h1,h2,h3,h4,p,li,td,th,.sf-slot-name,.sf-slot-sub,.k-display,.k-sentence) {
+      min-width:0; max-width:100%; overflow-wrap:anywhere; word-break:normal; white-space:normal;
     }
-    html[data-locale="qps-ploc"] #screens :is(button,.sf-tab) {
+    html:not([data-locale="en-US"]) #screens :is(button,.sf-tab,.sf-btn) {
       white-space:normal; block-size:auto; min-block-size:2.5rem;
     }
-    html[data-locale="qps-ploc"] #screens :is(.sf-tabbar,.sf-foot) { flex-wrap:wrap; }
-    html[data-locale="qps-ploc"] #screens .sf-menu { min-width:min(360px,92vw); }
+    html:not([data-locale="en-US"]) #screens :is(.sf-tabbar,.sf-foot,.sf-row,.sf-actions) { flex-wrap:wrap; }
+    html:not([data-locale="en-US"]) #screens .sf-menu { min-width:min(360px,92vw); }
+    html:not([data-locale="en-US"]) #hud :is(.sf-target__name,.sf-obj__t,.sf-objarrow__label,.sf-wpn-heat__label,.sf-lockring__label,.sf-nav-label,.sf-stat__v,.sf-cargo-row__name,.sf-prail__label,.sf-pslot__name,.sf-mt-title,.sf-alert,.sf-barrow__label,.sf-command-deck,.sf-vtape,.sf-vtape__track) {
+      white-space:normal; overflow:visible; text-overflow:unset; overflow-wrap:anywhere; max-width:100%;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-barrow { min-width:4.5rem; width:auto; max-width:8rem; }
+    html:not([data-locale="en-US"]) #hud .sf-barrow__label { white-space:normal; overflow:visible; max-width:100%; }
+    html:not([data-locale="en-US"]) #hud .sf-wpn-heat__label { width:auto; min-width:46px; max-width:9rem; }
+    html:not([data-locale="en-US"]) #hud .sf-objectives { max-width:min(360px,42vw); }
+    html:not([data-locale="en-US"]) #hud .sf-toast { max-width:min(420px,92vw); white-space:normal; }
+    html:not([data-locale="en-US"]) #hud :is(.sf-confirm,.sf-dialog,.sf-panel,aside) { max-width:min(480px,94vw); }
+    html:not([data-locale="en-US"]) #screens :is(h1,h2,.k-display) { line-height:1.15; }
   `;
-  (doc.head || doc.documentElement).appendChild(style);
+
+function injectOverflowStyle(doc, locale) {
+  if (!doc) return;
+  let style = doc.getElementById(PSEUDO_STYLE_ID);
+  if (!style) {
+    style = doc.createElement('style');
+    style.id = PSEUDO_STYLE_ID;
+    style.setAttribute('data-localization-skip', '');
+    (doc.head || doc.documentElement).appendChild(style);
+  }
+  // Growth layout is live for every expanded locale, including the +40 % pseudo-locale.
+  // English keeps the authored nowrap; switching back drops the html[data-locale] match.
+  if (locale && locale !== 'en-US') style.textContent = GROWTH_LAYOUT_CSS;
 }

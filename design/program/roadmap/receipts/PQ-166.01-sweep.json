@@ -1,0 +1,60 @@
+{
+  "clipCount": 0,
+  "screens": [
+    {
+      "id": "mainMenu",
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "newGame",
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "settings",
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "help",
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "credits",
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "saveLoad",
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "pause",
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "codex",
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "missionLog",
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "techTree",
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "crucible",
+      "clipCount": 0,
+      "clips": []
+    }
+  ]
+}

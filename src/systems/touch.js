@@ -277,11 +277,15 @@ export function driveTrackpadGesture(touch, verb, payload = {}, state = null) {
   return null;
 }
 
-/** Sequence the first-ten-minute verbs (latch, reel, throw, stroke, boost) on one touch layer. */
+/** First ten minutes of play, in sim seconds — not a five-item checklist. */
+export const FIRST_TEN_MINUTES_S = 600;
+export const FIRST_TEN_STEP_S = 1;
+
+/** Drive latch/reel/throw/stroke/boost across a 10-minute sim session. */
 export function runTrackpadFirstTenMinutes(touch, inputHost, state) {
   const live = state || (inputHost && inputHost.state) || {
-    tick: 16402,
-    simTime: 16402 / 60,
+    tick: 0,
+    simTime: 0,
     player: { tether: { active: true } },
     input: { autoFire: true },
   };
@@ -290,15 +294,27 @@ export function runTrackpadFirstTenMinutes(touch, inputHost, state) {
   live.player.tether.active = true;
   if (!live.input) live.input = { autoFire: true };
   live.input.autoFire = true;
-  const report = { seed: 16402, verbs: [], keys: {} };
-  for (const verb of TRACKPAD_FIRST_TEN_VERBS) {
+  const steps = Math.round(FIRST_TEN_MINUTES_S / FIRST_TEN_STEP_S);
+  const verbHold = Math.max(1, Math.floor(steps / TRACKPAD_FIRST_TEN_VERBS.length));
+  const report = { seed: 16402, verbs: [], keys: {}, durationS: 0, steps: 0 };
+  for (let i = 0; i < steps; i++) {
+    live.simTime = i * FIRST_TEN_STEP_S;
+    live.tick = Math.round(live.simTime * 60);
+    const verb = TRACKPAD_FIRST_TEN_VERBS[Math.min(
+      TRACKPAD_FIRST_TEN_VERBS.length - 1,
+      Math.floor(i / verbHold),
+    )];
     driveTrackpadGesture(touch, verb, {}, live);
+    if (typeof touch.tick === 'function') touch.tick(FIRST_TEN_STEP_S, live, inputHost);
     const applied = applyTrackpadToInputHost(touch, inputHost, live);
-    report.verbs.push(verb);
+    if (report.verbs[report.verbs.length - 1] !== verb) report.verbs.push(verb);
     report.keys[verb] = applied.injected.slice();
+    report.steps += 1;
   }
-  report.complete = TRACKPAD_FIRST_TEN_VERBS.every((v) => touch.trackpad.verbs.includes(v));
-  report.observed = touch.trackpad.verbs.slice();
+  report.durationS = report.steps * FIRST_TEN_STEP_S;
+  report.complete = report.durationS >= FIRST_TEN_MINUTES_S
+    && TRACKPAD_FIRST_TEN_VERBS.every((v) => (touch.trackpad.verbs || []).includes(v));
+  report.observed = (touch.trackpad.verbs || []).slice();
   return report;
 }
 
