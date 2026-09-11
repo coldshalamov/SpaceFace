@@ -18058,7 +18058,7 @@
       "priority": 485,
       "title": "S1 — the design system, accepted (frames, tokens, kits, icons, marks, motion, sound, hero prototypes)",
       "kind": "acceptance_review",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "frontend-direction"
