@@ -7029,7 +7029,7 @@
       "priority": 105,
       "title": "Props are toys",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-027.00",
         "PQ-174.01",
@@ -7054,7 +7054,9 @@
         "npm run check:crucible:arc",
         "npm run check:crucible:meta"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-175.01-REPORT.md"
+      ],
       "brief": "Each arena's props participate: shutters cut lines, plates bank shots, crushers kill, relays conduct, currents carry; at least three throwable or usable props per arena. DONE WHEN: Per arena, three props used in a scenario to kill or escape; capture."
     },
     {
