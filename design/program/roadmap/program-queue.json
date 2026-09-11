@@ -16714,7 +16714,7 @@
       "priority": 436,
       "title": "Ring buffer and replay",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16734,7 +16734,9 @@
         "npm run check:baseline",
         "npm run check:sim:compare"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-160.00-REPORT.md"
+      ],
       "brief": "Keep 30 s of snapshots + inputs; replay in-game with the photo-mode camera. DONE WHEN: Replay matches live to the hash; UI reachable from pause."
     },
     {

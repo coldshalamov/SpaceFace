@@ -253,6 +253,200 @@ function copyInput(slot, input) {
     : 0;
 }
 
+/**
+ * Project a captured input snapshot record back into the schema-bounded frame.input surface the
+ * deterministic lab tape driver consumes (moveX/moveZ/turnIntent/boost/fire/aimAngle/reelDelta + the
+ * massline grammar fields). Authored massline fields win when the caller supplies them.
+ */
+export function projectInputCommandRecord(data, keys = null, authored = null) {
+  if (!data || typeof data !== 'object') return { moveX: 0, moveZ: 0, turnIntent: 0 };
+  const axes = data.axes || EMPTY_OBJECT;
+  const actions = data.actions || EMPTY_OBJECT;
+  const massline = data.massline || EMPTY_OBJECT;
+  const out = {
+    moveX: finite(axes.moveX),
+    moveZ: finite(axes.moveZ),
+    turnIntent: finite(axes.turnIntent),
+    boost: data.boost === true,
+    fire: data.fire === true,
+    reelDelta: finite(massline.reelDelta, finite(actions.reelDelta, 0)),
+  };
+  if (authored && typeof authored === 'object') {
+    if (Number.isFinite(authored.aimAngle)) out.aimAngle = Number(authored.aimAngle);
+    if (typeof authored.masslineHeld === 'boolean') out.masslineHeld = authored.masslineHeld;
+    if (Number.isFinite(authored.lineLength)) out.lineLength = Number(authored.lineLength);
+    if (Number.isFinite(authored.orbitDirection)) out.orbitDirection = Number(authored.orbitDirection);
+  }
+  return out;
+}
+
+/**
+ * Bounded fixed-tick history of input command records for replay (PQ-160.00).
+ *
+ * One reused slot per tick in a ring: capacity = windowSeconds * tickRate (30 s at 60 Hz = 1800).
+ * Records are copied into caller-owned slot storage — no state.input object graph is retained.
+ * `toTape()` reconstructs the runner-consumed { events, frames } tape for deterministic replay.
+ */
+export function createInputCommandHistory(options = {}) {
+  const tickRate = Number.isFinite(options.tickRate) && options.tickRate > 0
+    ? options.tickRate
+    : 60;
+  const seconds = Number.isFinite(options.seconds) && options.seconds > 0 ? options.seconds : 30;
+  const capacity = Math.max(1, Math.floor(
+    Number.isFinite(options.capacity) && options.capacity > 0
+      ? options.capacity
+      : Math.round(seconds * tickRate),
+  ));
+  const slots = Array.from({ length: capacity }, () => ({
+    tick: -1,
+    sequence: 0,
+    lifecycleGeneration: 0,
+    data: createInputCommandSnapshotRecord(),
+    keys: Object.create(null),
+    events: [],
+    authored: null,
+  }));
+  let write = 0;
+  let size = 0;
+  let recorded = 0;
+  let overwritten = 0;
+  let firstTick = -1;
+  let lastTick = -1;
+
+  function record(tick, input, meta = {}) {
+    const t = Number.isFinite(tick) ? Math.max(0, Math.floor(tick)) : 0;
+    if (size >= capacity) overwritten += 1;
+    const slot = slots[write];
+    slot.tick = t;
+    slot.sequence = Number.isSafeInteger(meta.sequence) ? meta.sequence : (recorded + 1);
+    slot.lifecycleGeneration = Number.isSafeInteger(meta.lifecycleGeneration)
+      && meta.lifecycleGeneration >= 0
+      ? meta.lifecycleGeneration
+      : 0;
+    copyInput({ data: slot.data }, input);
+    const keySource = meta.keys && typeof meta.keys === 'object' ? meta.keys : null;
+    slot.keys = Object.create(null);
+    if (keySource) {
+      for (const key of Object.keys(keySource)) {
+        if (keySource[key]) slot.keys[key] = true;
+      }
+    }
+    slot.events = Array.isArray(meta.events)
+      ? meta.events.map((ev) => (ev && typeof ev === 'object' ? { ...ev } : ev))
+      : [];
+    slot.authored = meta.authored && typeof meta.authored === 'object'
+      ? { ...meta.authored }
+      : null;
+    write = (write + 1) % capacity;
+    if (size < capacity) size += 1;
+    recorded += 1;
+    firstTick = firstTick < 0 ? t : firstTick;
+    lastTick = t;
+    return t;
+  }
+
+  function slotAt(offsetFromNewest) {
+    return slots[(write - 1 - offsetFromNewest + capacity * 2) % capacity];
+  }
+
+  function read(tick) {
+    const t = Number.isFinite(tick) ? Math.floor(tick) : -1;
+    for (let i = 0; i < size; i++) {
+      const slot = slotAt(i);
+      if (slot.tick === t) return slot;
+    }
+    return null;
+  }
+
+  function newest() {
+    return size > 0 ? slotAt(0) : null;
+  }
+
+  function oldest() {
+    return size > 0 ? slotAt(size - 1) : null;
+  }
+
+  function forEach(fn) {
+    if (typeof fn !== 'function') return;
+    for (let i = 0; i < size; i++) {
+      const slot = slotAt(i);
+      fn(slot, slot.tick);
+    }
+  }
+
+  function toFrames() {
+    const frames = [];
+    forEach((slot) => {
+      frames.push({ tick: slot.tick, input: projectInputCommandRecord(slot.data, slot.keys, slot.authored) });
+    });
+    frames.sort((a, b) => a.tick - b.tick);
+    return frames;
+  }
+
+  function toEvents() {
+    const events = [];
+    forEach((slot) => {
+      if (!slot.events.length) return;
+      for (const ev of slot.events) events.push({ ...ev, tick: slot.tick });
+    });
+    events.sort((a, b) => (a.tick - b.tick) || ((a.sequence | 0) - (b.sequence | 0)));
+    return events;
+  }
+
+  function toTape() {
+    return { events: toEvents(), frames: toFrames() };
+  }
+
+  function clear() {
+    for (const slot of slots) {
+      slot.tick = -1;
+      slot.events = [];
+      slot.authored = null;
+      slot.keys = Object.create(null);
+    }
+    write = 0;
+    size = 0;
+    recorded = 0;
+    overwritten = 0;
+    firstTick = -1;
+    lastTick = -1;
+  }
+
+  return {
+    capacity,
+    tickRate,
+    windowSeconds: capacity / tickRate,
+    record,
+    read,
+    newest,
+    oldest,
+    forEach,
+    toFrames,
+    toEvents,
+    toTape,
+    clear,
+    get size() { return size; },
+    get recorded() { return recorded; },
+    get overwritten() { return overwritten; },
+    get firstTick() { return firstTick; },
+    get lastTick() { return lastTick; },
+    get windowTicks() { return size > 0 ? Math.max(0, lastTick - firstTick) : 0; },
+    diagnostics() {
+      return {
+        capacity,
+        tickRate,
+        windowSeconds: capacity / tickRate,
+        size,
+        recorded,
+        overwritten,
+        firstTick,
+        lastTick,
+        windowTicks: size > 0 ? Math.max(0, lastTick - firstTick) : 0,
+      };
+    },
+  };
+}
+
 export function createInputCommandSnapshotQueue(capacity = 8) {
   const size = Math.max(1, Math.floor(Number.isFinite(capacity) ? capacity : 8));
   const slots = Array.from({ length: size }, () => createSlot());

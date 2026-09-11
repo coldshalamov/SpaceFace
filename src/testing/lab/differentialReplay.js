@@ -3,10 +3,11 @@
 // On divergence: last matching checkpoint + first differing field (raw, not rounded away).
 
 import { createHash } from 'node:crypto';
-import { canonicalStringify } from '../../core/simSnapshot.js';
+import { canonicalStringify, createSimSnapshotRingBuffer } from '../../core/simSnapshot.js';
+import { createInputCommandHistory } from '../../core/inputCommandSnapshot.js';
 import { compileSimScenario, validateCanonicalScenario } from '../../contracts/simScenarioSchema.js';
-import { runLabScenarioInternal } from './runScenario.js';
-import { hashInputTape } from './inputTape.js';
+import { runLabScenarioInternal, SIM_DT } from './runScenario.js';
+import { createInputTapeDriver, hashInputTape, resolveFrameInput } from './inputTape.js';
 import { compareCheckpoints } from './checkpointCompare.js';
 import { runChromiumLabScenarioInternal, repeatChromiumLabScenario } from './chromiumHost.js';
 import { hashDeterministicSurface } from './checkpoint.js';
@@ -477,6 +478,230 @@ export async function runChromiumDeterminismCheck(scenarioDoc, options = {}) {
     // Determinism is series-hash identity; multi-run scenario equivalences are out of scope.
     skipMultiRunEquivalence: true,
   });
+}
+
+/** Default replay window (PQ-160.00): thirty seconds at the fixed sim tick rate. */
+export const REPLAY_WINDOW_SECONDS = 30;
+
+/**
+ * Record a deterministic window into the PQ-160.00 replay ring buffers.
+ *
+ * Runs the scenario once through the fixed internal lab runner with a per-tick checkpoint, then
+ * fills:
+ *  - `snapshotRing`: canonical deterministic snapshot surfaces, one per tick, hash-keyed by the
+ *    checkpoint sha256;
+ *  - `inputRing`: the applied input command record per tick plus the raw key events, so the tape can
+ *    be reconstructed and replayed.
+ *
+ * @param {object} scenarioDoc
+ * @param {{ seconds?: number, capacity?: number, maxBytes?: number, file?: string }} [options]
+ */
+export async function recordReplayRun(scenarioDoc, options = {}) {
+  const compiled = compileSimScenario(scenarioDoc, { file: options.file });
+  if (!compiled.ok) {
+    return {
+      schema: 'spaceface.labReplayRingRecording.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'invalid-config',
+      validation: compiled.validation,
+    };
+  }
+  const canonical = options.canonical || compiled.canonical;
+  const ticks = canonical.ticks | 0;
+  const dt = Number.isFinite(canonical.dt) && canonical.dt > 0 ? canonical.dt : SIM_DT;
+  const tickRate = Math.max(1, Math.round(1 / dt));
+  const seconds = Number.isFinite(options.seconds) && options.seconds > 0
+    ? options.seconds
+    : REPLAY_WINDOW_SECONDS;
+  const capacity = Math.max(1, Math.floor(
+    Number.isFinite(options.capacity) && options.capacity > 0
+      ? options.capacity
+      : Math.round(seconds * tickRate),
+  ));
+  const scenarioDigest = options.scenarioDigest || sha256(canonicalStringify(canonical));
+  const inputDigest = options.inputDigest || hashInputTape(canonical.inputTape);
+
+  const canonicalWithCheckpoints = { ...canonical, checkpoints: [] };
+  for (let tick = 0; tick < ticks; tick++) {
+    canonicalWithCheckpoints.checkpoints.push({ tick, kind: 'deterministic-covered' });
+  }
+
+  const result = await runLabScenarioInternal(scenarioDoc, {
+    file: options.file,
+    canonical: canonicalWithCheckpoints,
+    scenarioDigest,
+    inputDigest,
+    verbosity: 0,
+    retainCheckpointSurfaces: true,
+    skipMultiRunEquivalence: true,
+    childArm: true,
+  });
+  if (result.exitClass === 3 || result.exitClass === 4) {
+    return {
+      schema: 'spaceface.labReplayRingRecording.v1',
+      ok: false,
+      exitClass: result.exitClass,
+      status: result.status || 'infra',
+      runId: result.runId,
+      error: result.error || 'recording run failed',
+    };
+  }
+
+  const snapshotRing = createSimSnapshotRingBuffer({
+    tickRate,
+    seconds,
+    capacity,
+    maxBytes: options.maxBytes,
+  });
+  const inputRing = createInputCommandHistory({ tickRate, seconds, capacity });
+
+  const recordedTicks = [];
+  const mid = (result.checkpoints && result.checkpoints.mid) || [];
+  for (const checkpoint of mid) {
+    const det = checkpoint.deterministicCovered || checkpoint.semantic;
+    if (!det) continue;
+    const tick = checkpoint.tick | 0;
+    const surface = det.surface != null ? det.surface : { tick, hash: det.hash };
+    snapshotRing.recordSnapshot(surface, tick, { hashHex: det.hash });
+    recordedTicks.push(tick);
+  }
+  recordedTicks.sort((a, b) => a - b);
+
+  // Reconstruct the applied input tape by driving the production driver over a scratch state.
+  const eventsByTick = new Map();
+  const tapeEvents = (canonical.inputTape && canonical.inputTape.events) || [];
+  for (const ev of tapeEvents) {
+    const tick = ev.tick | 0;
+    if (!eventsByTick.has(tick)) eventsByTick.set(tick, []);
+    eventsByTick.get(tick).push(ev);
+  }
+  const tapeFrames = (canonical.inputTape && canonical.inputTape.frames) || [];
+  const inputDriver = createInputTapeDriver(canonical.inputTape, {});
+  const scratch = {
+    settings: { controls: { bindings: null }, gameplay: {} },
+    input: {},
+    entities: new Map(),
+    playerId: 0,
+  };
+  for (let tick = 0; tick < ticks; tick++) {
+    const applied = inputDriver.apply(scratch, tick, dt, {});
+    const authoredFrame = resolveFrameInput(tapeFrames, tick);
+    inputRing.record(tick, scratch.input, {
+      sequence: tick + 1,
+      keys: applied.keys,
+      events: eventsByTick.get(tick) || [],
+      authored: authoredFrame && authoredFrame.input ? authoredFrame.input : null,
+    });
+  }
+
+  const finalTick = ticks > 0 ? ticks - 1 : (recordedTicks[recordedTicks.length - 1] | 0);
+  return {
+    schema: 'spaceface.labReplayRingRecording.v1',
+    ok: true,
+    exitClass: 0,
+    status: 'recorded',
+    seed: canonical.seed,
+    ticks,
+    tickRate,
+    seconds,
+    capacity,
+    scenarioDigest,
+    inputDigest,
+    canonical: canonicalWithCheckpoints,
+    snapshotRing,
+    inputRing,
+    recordedTicks,
+    liveHashes: snapshotRing.hashList(),
+    liveFinalHash: snapshotRing.hashAt(finalTick),
+    ring: snapshotRing.diagnostics(),
+    inputs: inputRing.diagnostics(),
+  };
+}
+
+/**
+ * Replay a recorded window from its ring buffers and compare each replay checkpoint hash to the
+ * recorded live hash. Deterministic replay must reproduce the live hashes tick-for-tick.
+ *
+ * @param {object} recording result of {@link recordReplayRun}
+ */
+export async function replayRingBuffer(recording, options = {}) {
+  if (!recording || !recording.canonical || !recording.inputRing || !recording.snapshotRing) {
+    return {
+      schema: 'spaceface.labReplayRing.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'invalid-config',
+      error: 'recording is missing canonical/inputRing/snapshotRing',
+    };
+  }
+  const ticks = recording.ticks | 0;
+  const canonical = { ...recording.canonical, inputTape: recording.inputRing.toTape() };
+  const result = await runLabScenarioInternal(canonical, {
+    canonical,
+    scenarioDigest: recording.scenarioDigest,
+    inputDigest: recording.inputDigest,
+    verbosity: options.verbosity ?? 0,
+    skipMultiRunEquivalence: true,
+    childArm: true,
+  });
+  if (result.exitClass === 3 || result.exitClass === 4) {
+    return {
+      schema: 'spaceface.labReplayRing.v1',
+      ok: false,
+      exitClass: result.exitClass,
+      status: result.status || 'infra',
+      runId: result.runId,
+      error: result.error || 'replay run failed',
+    };
+  }
+
+  const byTick = new Map();
+  for (const checkpoint of ((result.checkpoints && result.checkpoints.mid) || [])) {
+    const det = checkpoint.deterministicCovered || checkpoint.semantic;
+    if (det) byTick.set(checkpoint.tick | 0, det.hash);
+  }
+
+  const recordedTicks = Array.isArray(recording.recordedTicks) && recording.recordedTicks.length
+    ? recording.recordedTicks
+    : Array.from({ length: ticks }, (_, tick) => tick);
+
+  let compared = 0;
+  let firstDivergence = null;
+  for (const tick of recordedTicks) {
+    const live = recording.snapshotRing.hashAt(tick);
+    const replay = byTick.has(tick) ? byTick.get(tick) : null;
+    compared += 1;
+    if (firstDivergence == null && (live == null || replay == null || live !== replay)) {
+      firstDivergence = {
+        tick,
+        live,
+        replay,
+        reason: live == null ? 'live-missing' : (replay == null ? 'replay-missing' : 'hash-mismatch'),
+      };
+    }
+  }
+
+  const finalTick = ticks > 0 ? ticks - 1 : (recordedTicks[recordedTicks.length - 1] | 0);
+  const liveFinalHash = recording.snapshotRing.hashAt(finalTick);
+  const replayFinalHash = byTick.has(finalTick) ? byTick.get(finalTick) : null;
+  const match = firstDivergence == null && liveFinalHash != null && liveFinalHash === replayFinalHash;
+
+  return {
+    schema: 'spaceface.labReplayRing.v1',
+    ok: match,
+    exitClass: match ? 0 : 5,
+    status: match ? 'match' : 'divergence',
+    seed: recording.seed,
+    ticks,
+    comparedTicks: compared,
+    match,
+    firstDivergence,
+    liveFinalHash,
+    replayFinalHash,
+    tapeInputTicks: recording.inputRing.size | 0,
+    fingerprint: result.fingerprint || null,
+  };
 }
 
 function extractNodeSeries(nodeResult) {

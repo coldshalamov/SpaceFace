@@ -19,6 +19,7 @@ import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
 import { leftoverVersionLabel, paintLeftoverVersion } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
+import { openReplay, REPLAY_LABEL } from './replay.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 /** The photo-mode hint fades after this long (Task B §1.7: two seconds). */
@@ -407,6 +408,9 @@ export const pauseScreen = {
     mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'));
     // Photo mode (Task B §1.7): everything gone but the world; Esc returns here.
     mk('Photo', () => enterPhoto(rootEl, ctx));
+    // Replay (PQ-160.00): the deterministic last thirty seconds, played back with the photo-mode
+    // presentation. Opens over this sheet; Esc or Exit returns to pause.
+    mk(REPLAY_LABEL, () => openReplay(rootEl, ctx));
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
     if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true });
