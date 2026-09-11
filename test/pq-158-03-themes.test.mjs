@@ -5,9 +5,13 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import { MUSIC_STEMS } from '../src/data/audioRecipes.js';
 import { BAND_BED_PROFILES } from '../src/audio/bandBeds.js';
+import { SAMPLE_MANIFEST } from '../src/audio/sampleLibrary.js';
 import {
   THEME_MATRIX_SEED,
   THEME_STATES,
@@ -24,7 +28,21 @@ import {
   intervalSignature,
   identifyThemeFromIntervals,
   identifySectorBedFromSignature,
+  sectorBedToBandIntent,
 } from '../src/audio/themeMatrix.js';
+import {
+  THEME_SAMPLE_RATE,
+  THEME_ASSETS,
+  AUTHORED_STEM_SAMPLES,
+  renderMotifLeadPcm,
+  renderSectorBedPcm,
+  humMelodyFromPcm,
+  describeBedFromPcm,
+  identifySectorBedFromPcm,
+  decodePcmWav,
+} from '../src/audio/themeCompose.js';
+
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const MEASURE_SEED = 15803;
 
@@ -140,5 +158,67 @@ test(`seed ${MEASURE_SEED}: interval shape names travel without reading the humm
   assert.equal(sker, 'sector_sker_haven');
   assert.notEqual(helios, sker);
   assert.equal(identifySectorBedFromSignature('no-such-bed'), null);
-  console.log(`[pq-158.03 blind-stand-in] seed=${MEASURE_SEED} travelSig=${travelSig} helios=${helios} residual=no-stranger-listen`);
+  console.log(`[pq-158.03 interval-shape] seed=${MEASURE_SEED} travelSig=${travelSig} helios=${helios}`);
+});
+
+test(`seed ${MEASURE_SEED}: a stranger hums the travel theme from PCM (never reads the hummable label)`, () => {
+  const pcm = renderMotifLeadPcm(TRAVEL_MOTIF);
+  const hummed = humMelodyFromPcm(pcm, THEME_SAMPLE_RATE);
+  assert.deepEqual(hummed, ['A', 'C', 'E', 'A'], `stranger hummed ${hummed.join(' ') || '(silence)'}`);
+  assert.equal(THEME_MOTIFS.travel.hummable.split(' ').join(' '), hummed.join(' '));
+  console.log(`[pq-158.03 stranger-hum] seed=${MEASURE_SEED} hummed="${hummed.join(' ')}" windows=${hummed.length}`);
+});
+
+test('per-sector beds identified blind from PCM: Helios is the warm sine, Sker the saw growl', () => {
+  const heliosPcm = renderSectorBedPcm(resolveSectorBed('sector_helios_prime'));
+  const skerPcm = renderSectorBedPcm(resolveSectorBed('sector_sker_haven'));
+  const helios = describeBedFromPcm(heliosPcm, THEME_SAMPLE_RATE);
+  const sker = describeBedFromPcm(skerPcm, THEME_SAMPLE_RATE);
+  assert.equal(helios.character, 'warm-sine', `Helios described as ${helios.character} f0=${helios.f0.toFixed(1)} noise=${helios.noise.toFixed(3)}`);
+  assert.equal(sker.character, 'saw-growl', `Sker described as ${sker.character} f0=${sker.f0.toFixed(1)} noise=${sker.noise.toFixed(3)}`);
+  assert.ok(Math.abs(helios.f0 - 82.4) < 4, `Helios f0 ${helios.f0}`);
+  assert.ok(Math.abs(sker.f0 - 72) < 6, `Sker f0 ${sker.f0}`);
+  assert.equal(identifySectorBedFromPcm(heliosPcm, THEME_SAMPLE_RATE), 'sector_helios_prime');
+  assert.equal(identifySectorBedFromPcm(skerPcm, THEME_SAMPLE_RATE), 'sector_sker_haven');
+  const ash = describeBedFromPcm(renderSectorBedPcm(resolveSectorBed('sector_ashfall_reach')), THEME_SAMPLE_RATE);
+  assert.ok(ash.noise > helios.noise, `Ashfall noise ${ash.noise.toFixed(3)} must exceed Helios ${helios.noise.toFixed(3)}`);
+  let named = 0;
+  for (const sectorId of Object.keys(SECTOR_BEDS)) {
+    const pcm = renderSectorBedPcm(resolveSectorBed(sectorId));
+    if (identifySectorBedFromPcm(pcm, THEME_SAMPLE_RATE) === sectorId) named += 1;
+  }
+  assert.equal(named, Object.keys(SECTOR_BEDS).length, `blind bed names ${named}/${Object.keys(SECTOR_BEDS).length}`);
+  console.log(`[pq-158.03 blind-bed] Helios ${helios.character} ${helios.f0.toFixed(1)}Hz n=${helios.noise.toFixed(3)} | Sker ${sker.character} ${sker.f0.toFixed(1)}Hz n=${sker.noise.toFixed(3)} | named ${named}/${Object.keys(SECTOR_BEDS).length}`);
+});
+
+test('the adaptive matrix drives authored stems; Band intent carries the sector voice', () => {
+  for (const state of THEME_STATES) {
+    const stem = MUSIC_STEMS.find((row) => row.themeState === state);
+    assert.ok(stem, `${state} stem missing`);
+    assert.equal(stem.authoredSampleId, AUTHORED_STEM_SAMPLES[state]);
+    assert.ok(SAMPLE_MANIFEST.has(stem.authoredSampleId), `${state} authored sample not in the library`);
+  }
+  const helios = sectorBedToBandIntent(resolveSectorBed('sector_helios_prime'));
+  const sker = sectorBedToBandIntent(resolveSectorBed('sector_sker_haven'));
+  assert.equal(helios.bed.waveA, 'sine');
+  assert.equal(sker.bed.waveA, 'sawtooth');
+  assert.ok(sker.bed.noise > helios.bed.noise);
+  assert.notEqual(helios.bed.kind, sker.bed.kind);
+});
+
+test(`seed ${MEASURE_SEED}: authored travel WAV is the phrase a stranger hums`, () => {
+  const entry = SAMPLE_MANIFEST.get('theme_travel');
+  assert.ok(entry, 'theme_travel missing from SAMPLE_MANIFEST');
+  const file = path.join(ROOT, entry.file);
+  assert.ok(existsSync(file), `missing ${entry.file}`);
+  const decoded = decodePcmWav(readFileSync(file));
+  assert.ok(decoded, 'theme_travel is not a PCM WAV');
+  const hummed = humMelodyFromPcm(decoded.pcm, decoded.sampleRate);
+  assert.deepEqual(hummed, ['A', 'C', 'E', 'A'], `authored stem hummed ${hummed.join(' ') || '(silence)'}`);
+  for (const asset of THEME_ASSETS) {
+    const row = SAMPLE_MANIFEST.get(asset.id);
+    assert.ok(row, `${asset.id} missing from SAMPLE_MANIFEST`);
+    assert.ok(existsSync(path.join(ROOT, row.file)), `${asset.id} file missing`);
+  }
+  console.log(`[pq-158.03 authored-stem] seed=${MEASURE_SEED} file=${entry.file} hummed="${hummed.join(' ')}" assets=${THEME_ASSETS.length}`);
 });

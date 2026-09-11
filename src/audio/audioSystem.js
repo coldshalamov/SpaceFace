@@ -19,7 +19,16 @@
 import { RECIPES, MUSIC_STEMS } from '../data/audioRecipes.js';
 import { bindMinimalActionAudio } from './minimalActionAudio.js';
 import { resolveMasslineInstrument } from './masslineInstrument.js';
-import { resolveThemeMatrix, TRAVEL_MOTIF, THEME_STEM_WEIGHTS } from './themeMatrix.js';
+import {
+  resolveThemeMatrix,
+  TRAVEL_MOTIF,
+  COMBAT_MOTIF,
+  STATION_MOTIF,
+  WANTED_MOTIF,
+  THEME_STEM_WEIGHTS,
+  sectorBedToBandIntent,
+} from './themeMatrix.js';
+import { noteToHz, AUTHORED_STEM_SAMPLES } from './themeCompose.js';
 import { resolveBarkVoice, resolveBarkSampleBinding } from './barkVoice.js';
 import { resolveAccessibilityCue } from '../ui/captions.js';
 import {
@@ -72,12 +81,12 @@ export const BULLET_TIME_AUDIO = Object.freeze({
   loopRate: 0.85,
   musicMult: 0.630957, // -4 dB
 });
-// target stem weights per music state (A=calm sequence, B=tense pad, C=combat, D=docked warm)
+// target stem weights per music state. PQ-158.03: the adaptive matrix owns these.
 const STEM_WEIGHTS = {
-  calm:   { A: 1.0, B: 0.0, C: 0.0, D: 0.0 },
-  tense:  { A: 0.7, B: 0.8, C: 0.0, D: 0.0 },
-  combat: { A: 0.4, B: 0.5, C: 1.0, D: 0.0 },
-  docked: { A: 0.2, B: 0.2, C: 0.0, D: 0.9 },
+  calm:   THEME_STEM_WEIGHTS.travel,
+  tense:  THEME_STEM_WEIGHTS.wanted,
+  combat: THEME_STEM_WEIGHTS.combat,
+  docked: THEME_STEM_WEIGHTS.station,
   travel: THEME_STEM_WEIGHTS.travel,
   wanted: THEME_STEM_WEIGHTS.wanted,
   station: THEME_STEM_WEIGHTS.station,
@@ -1678,6 +1687,7 @@ export const audio = {
     if (rt._samples) {
       rt._samples.setContext(ctx);
       rt._samples.prefetchTier(0);
+      for (const id of Object.values(AUTHORED_STEM_SAMPLES)) rt._samples.acquire(id);
     }
 
     this._applySettings();
@@ -3240,17 +3250,7 @@ export const audio = {
   _applySectorBed(theme) {
     const rt = this.rt;
     if (!rt || !theme || !theme.bed) return;
-    const bed = theme.bed;
-    rt._bandBedIntent = {
-      active: true,
-      strength: 0.45,
-      channelId: bed.id,
-      bed: {
-        kind: theme.sting && theme.sting.profileKey ? theme.sting.profileKey : 'frontier_ballad',
-        hzA: bed.hzA,
-        hzB: bed.hzB,
-      },
-    };
+    rt._bandBedIntent = sectorBedToBandIntent(theme.bed);
     if (rt.bandBed) rt.bandBed.setIntent(rt._paused ? { active: false, reason: 'pause' } : rt._bandBedIntent);
   },
 
@@ -3345,13 +3345,17 @@ export const audio = {
   // The old approach used always-on drone oscillators through a lowpass — musical but static.
   // This new system creates actual melodies, rhythms, and harmonic movement.
 
-  // Note frequencies (A minor / C major family). Octave 3 = middle range.
+  // Note frequencies (A minor / C major family). Same A4=440 law as the authored stems.
   _noteFreq(note, octave) {
-    const SEMITONES = { C:0, 'C#':1, Db:1, D:2, 'D#':3, Eb:3, E:4, F:5, 'F#':6, Gb:6, G:7, 'G#':8, Ab:8, A:9, 'A#':10, Bb:10, B:11 };
-    const s = SEMITONES[note];
-    if (s == null) return 440;
-    // A4 = 440 Hz reference
-    return 440 * Math.pow(2, (s - 9) / 12 + (octave - 4));
+    return noteToHz(note, octave);
+  },
+
+  _playThemeMotif(motif, ctx, t, bar, beat, sixteenth, filterNode, delayNode, vel, wave) {
+    if (bar % 4 !== 0 || !motif || !Array.isArray(motif.steps)) return false;
+    const stepRow = motif.steps.find((row) => row.beat === beat);
+    if (!stepRow) return false;
+    this._playNote(ctx, this._noteFreq(stepRow.note, stepRow.oct), stepRow.dur * sixteenth, vel, wave, filterNode, delayNode, t);
+    return true;
   },
 
   // Play a single musical note: creates an oscillator, applies a gain envelope, routes
@@ -3501,15 +3505,12 @@ export const audio = {
     const chord = chords[bar % 4];
     const beat = step % 16;
 
-    // Arpeggio: plays one chord tone every 4 sixteenths (quarter notes), cycling up
-    if (beat % 4 === 0) {
+    // PQ-158.03 travel lead — the hummable Outbound motif (A C E A) on bar 0.
+    // Skip the arp on those beats so the phrase sits on top for a stranger to hum.
+    const motifOn = this._playThemeMotif(TRAVEL_MOTIF, ctx, t, bar, beat, sixteenth, filterNode, delayNode, 0.16, 'triangle');
+    if (!motifOn && beat % 4 === 0) {
       const noteIdx = (beat / 4) % chord.length;
       play(chord[noteIdx], 3.5, 0.09, 'triangle');
-    }
-    // PQ-158.03 travel lead — the hummable Outbound motif (A C E A) on bar 0.
-    if (bar % 4 === 0) {
-      const stepRow = TRAVEL_MOTIF.steps.find((row) => row.beat === beat);
-      if (stepRow) play(N(stepRow.note, stepRow.oct), stepRow.dur, 0.11, 'triangle');
     }
 
     // High sparkle: octave-up arpeggio on offbeats (every 4 sixteenths, offset by 2)
@@ -3560,8 +3561,10 @@ export const audio = {
     const chord = chords[bar % 4];
     const beat = step % 16;
 
+    const motifOn = this._playThemeMotif(WANTED_MOTIF, ctx, t, bar, beat, sixteenth, filterNode, delayNode, 0.14, 'triangle');
+
     // Fast arpeggio: every 2 sixteenths (eighth notes)
-    if (beat % 2 === 0) {
+    if (!motifOn && beat % 2 === 0) {
       const noteIdx = (beat / 2) % chord.length;
       play(chord[noteIdx], 1.8, 0.10, 'triangle');
     }
@@ -3617,6 +3620,8 @@ export const audio = {
     const chord = chords[bar % 4];
     const beat = step % 16;
 
+    const motifOn = this._playThemeMotif(COMBAT_MOTIF, ctx, t, bar, beat, sixteenth, filterNode, null, 0.15, 'sawtooth');
+
     // Driving bass: eighth-note pattern with accents
     if (beat % 2 === 0) {
       const vel = (beat % 4 === 0) ? 0.12 : 0.07;
@@ -3628,10 +3633,10 @@ export const audio = {
       play(chord[1] * 2, 0.8, 0.09, 'square');
     }
 
-    // Synth lead: short aggressive phrases
+    // Synth lead: short aggressive phrases (yield the bar-0 quarters to the Press motif)
     const leadPattern = [0,null,2,null, 1,null,0,null, 2,1,null,null, 0,null,2,1];
     const lp = leadPattern[beat];
-    if (lp != null) {
+    if (!motifOn && lp != null) {
       play(chord[lp % chord.length] * 2, 1.2, 0.07, 'sawtooth');
     }
 
@@ -3714,10 +3719,12 @@ export const audio = {
     const chord = chords[bar % 4];
     const beat = step % 16;
 
+    const motifOn = this._playThemeMotif(STATION_MOTIF, ctx, t, bar, beat, sixteenth, filterNode, delayNode, 0.12, 'sine');
+
     // Bell-like melody: sparse, high, with long sustain through delay
     const melodyPattern = [0,null,null,null, 2,null,null,3, null,null,1,null, null,null,null,null];
     const mp = melodyPattern[beat];
-    if (mp != null) {
+    if (!motifOn && mp != null) {
       // Bell tone: sine oscillator with bright attack
       const freq = chord[mp] * 2; // octave up for bell clarity
       const o = ctx.createOscillator();
@@ -3765,7 +3772,9 @@ export const audio = {
     const rt = this.rt, ctx = rt.ctx;
     if (!ctx) return;
     rt.musicState = stateName;
-    const w = STEM_WEIGHTS[stateName] || STEM_WEIGHTS.calm;
+    const w = (rt._themeMatrix && rt._themeMatrix.stemWeights)
+      || STEM_WEIGHTS[stateName]
+      || STEM_WEIGHTS.calm;
     const xf = stateName === 'combat' ? XFADE_COMBAT_S : XFADE_S;
     const t = ctx.currentTime;
     for (const key of ['A', 'B', 'C', 'D']) {
@@ -3800,10 +3809,10 @@ export const audio = {
       factionId: rt._themeFactionId,
     });
     rt._themeMatrix = theme;
+    this._applySectorBed(theme);
     this._syncEnvironmentMix(docked);
-    let desired = theme.musicState || (docked ? 'docked' : (threat >= 0.6 ? 'combat' : threat >= 0.2 ? 'tense' : 'calm'));
-    if (theme.state === 'wanted') desired = 'wanted';
-    if (theme.state === 'travel' && !docked && threat < 0.2) desired = 'travel';
+    let desired = theme.state || theme.musicState
+      || (docked ? 'docked' : (threat >= 0.6 ? 'combat' : threat >= 0.2 ? 'tense' : 'calm'));
     if (theme.state === 'station') desired = 'docked';
 
     if (desired === rt.musicState) { rt._pendingState = null; return; }

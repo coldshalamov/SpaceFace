@@ -46,10 +46,11 @@ export function createBandBedRuntime(ctx, destination, options = {}) {
         return null;
       }
 
-      if (!this.activeGraph || this.activeGraph.profileKey !== intent.profileKey) {
+      if (!this.activeGraph || this.activeGraph.bedSig !== intent.bedSig) {
         this._stopGraph();
         this.activeGraph = buildGraph(ctx, destination, intent.profileKey, intent.profile,
           this._noiseBuffer || (this._noiseBuffer = makeNoiseBuffer(ctx, random)));
+        if (this.activeGraph) this.activeGraph.bedSig = intent.bedSig;
       }
       updateGraph(ctx, this.activeGraph, intent);
       return this.activeGraph;
@@ -70,9 +71,33 @@ export function createBandBedRuntime(ctx, destination, options = {}) {
   return runtime;
 }
 
+function mergeBedProfile(base, bed) {
+  const src = base || {
+    waveA: 'sine', waveB: 'sine', hzA: 70, hzB: 140, detune: 0,
+    tone: 900, q: 1.4, noise: 0.12, noiseRate: 0.54, pan: 0, level: 0.68,
+  };
+  return {
+    ...src,
+    hzA: Number.isFinite(bed.hzA) ? bed.hzA : src.hzA,
+    hzB: Number.isFinite(bed.hzB) ? bed.hzB : src.hzB,
+    waveA: typeof bed.waveA === 'string' ? bed.waveA : src.waveA,
+    waveB: typeof bed.waveB === 'string' ? bed.waveB : src.waveB,
+    noise: Number.isFinite(bed.noise) ? bed.noise : src.noise,
+    tone: Number.isFinite(bed.tone) ? bed.tone : src.tone,
+  };
+}
+
+function bedSignature(profileKey, profile) {
+  if (!profile) return String(profileKey || '');
+  return `${profileKey}:${profile.waveA}:${profile.hzA}:${profile.waveB}:${profile.hzB}:${profile.noise}:${profile.tone}`;
+}
+
 function normalizeIntent(value) {
   const bed = value && value.bed || {};
   const profileKey = typeof bed.kind === 'string' ? bed.kind : null;
+  const base = profileKey && BAND_BED_PROFILES[profileKey] || null;
+  const hasBedVoice = Number.isFinite(bed.hzA) || typeof bed.waveA === 'string';
+  const profile = (base || hasBedVoice) ? mergeBedProfile(base, bed) : null;
   return {
     active: !!(value && value.active),
     silence: !!(value && value.silence),
@@ -80,7 +105,8 @@ function normalizeIntent(value) {
     channelId: value && value.channelId || null,
     sourceId: value && value.sourceId || null,
     profileKey,
-    profile: profileKey && BAND_BED_PROFILES[profileKey] || null,
+    profile,
+    bedSig: bedSignature(profileKey, profile),
   };
 }
 

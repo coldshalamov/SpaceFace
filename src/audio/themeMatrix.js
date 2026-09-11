@@ -36,6 +36,12 @@ export const COMBAT_MOTIF = Object.freeze({
   stem: 'C',
   notes: Object.freeze(['A', 'E', 'A', 'C']),
   octaves: Object.freeze([3, 4, 3, 4]),
+  steps: Object.freeze([
+    Object.freeze({ bar: 0, beat: 0, note: 'A', oct: 3, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 4, note: 'E', oct: 4, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 8, note: 'A', oct: 3, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 12, note: 'C', oct: 4, dur: 8 }),
+  ]),
 });
 
 export const STATION_MOTIF = Object.freeze({
@@ -47,6 +53,12 @@ export const STATION_MOTIF = Object.freeze({
   stem: 'D',
   notes: Object.freeze(['C', 'E', 'G', 'B']),
   octaves: Object.freeze([4, 4, 4, 4]),
+  steps: Object.freeze([
+    Object.freeze({ bar: 0, beat: 0, note: 'C', oct: 4, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 4, note: 'E', oct: 4, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 8, note: 'G', oct: 4, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 12, note: 'B', oct: 4, dur: 8 }),
+  ]),
 });
 
 export const WANTED_MOTIF = Object.freeze({
@@ -58,6 +70,12 @@ export const WANTED_MOTIF = Object.freeze({
   stem: 'B',
   notes: Object.freeze(['A', 'Bb', 'A', 'E']),
   octaves: Object.freeze([3, 3, 3, 3]),
+  steps: Object.freeze([
+    Object.freeze({ bar: 0, beat: 0, note: 'A', oct: 3, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 4, note: 'Bb', oct: 3, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 8, note: 'A', oct: 3, dur: 4 }),
+    Object.freeze({ bar: 0, beat: 12, note: 'E', oct: 3, dur: 8 }),
+  ]),
 });
 
 export const THEME_MOTIFS = Object.freeze({
@@ -153,6 +171,25 @@ export function resolveSectorBed(sectorId) {
 export function resolveFactionSting(factionId) {
   if (factionId && FACTION_STINGS[factionId]) return FACTION_STINGS[factionId];
   return null;
+}
+
+/** Band intent for a sector bed. Wave/hz/noise ride the existing Band graph; no second writer. */
+export function sectorBedToBandIntent(bed, options = {}) {
+  if (!bed) return Object.freeze({ active: false, reason: 'no-bed' });
+  return Object.freeze({
+    active: true,
+    strength: options.strength == null ? 0.45 : options.strength,
+    channelId: bed.id,
+    bed: Object.freeze({
+      kind: bed.id,
+      hzA: bed.hzA,
+      hzB: bed.hzB,
+      waveA: bed.waveA,
+      waveB: bed.waveB,
+      noise: bed.noise,
+      tone: bed.tone,
+    }),
+  });
 }
 
 export function resolveThemeState(input = {}) {

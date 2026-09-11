@@ -15,6 +15,7 @@
 // counter: it may only move on cue-triggered work, never on _frame ticks).
 
 import { SAMPLE_BINDINGS, COLLISION_LADDER } from '../data/audioRecipes.js';
+import { THEME_ASSETS } from './themeCompose.js';
 
 export const SAMPLE_TIER = Object.freeze({ CORE: 0, ACTION: 1, CONTEXT: 2 });
 
@@ -128,6 +129,12 @@ export const SAMPLE_MANIFEST = Object.freeze(new Map([
   ['fringe_tick', { file: 'assets/audio/world/fringe_tick.wav', tier: 2, loop: false, seconds: 0.2 }],
   ['ore_tick', { file: 'assets/audio/mining/ore_tick.wav', tier: 1, loop: false, seconds: 0.25 }],
   ['hopper_thock', { file: 'assets/audio/mining/hopper_thock.wav', tier: 1, loop: false, seconds: 0.3 }],
+  ...THEME_ASSETS.map((asset) => [asset.id, {
+    file: `assets/audio/${asset.family}/${asset.id}.wav`,
+    tier: asset.tier,
+    loop: !!asset.loop,
+    seconds: asset.seconds,
+  }]),
 ]));
 
 // Default decoded-audio residency: generous enough that the whole library (86 files,
