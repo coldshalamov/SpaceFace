@@ -18,6 +18,7 @@ import { massline2Flag } from '../../data/featureFlags.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
 import { BINDINGS } from '../bindings.js';
+import { LANGUAGE_OPTIONS, gameLocalization, setGameLocale } from '../../localization/gameLocalization.js';
 import { el, words, settle, cue } from '../kit/index.js';
 
 function getManager(ctx) {
@@ -35,6 +36,12 @@ function nav(ctx, method, arg) {
 }
 
 const TABS = ['Audio', 'Video', 'Gameplay', 'Access', 'Controls'];
+
+// The locale the picker shows: the player's choice when set, otherwise the live runtime locale.
+function chosenLocale(settings) {
+  const chosen = settings && settings.locale;
+  return chosen || gameLocalization.locale || 'en-US';
+}
 
 let refs = null;
 // --- Key rebinding (V2 §12) ---
@@ -291,6 +298,14 @@ export const settingsScreen = {
     } else if (refs.active === 'Access') {
       const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
         motionPreference: 'system', captions: true, captionSize: 'medium', captionBackground: true });
+      // Language: the default route is English; choosing here switches the live locale and re-renders
+      // every mounted screen through the shared document bridge (no reload).
+      rowSelect('Language', () => chosenLocale(s), LANGUAGE_OPTIONS.map((option) => [option.id, option.label]),
+        (value) => {
+          setGameLocale(value);
+          this._set(ctx, null, 'locale', value);
+          this._render(ctx);
+        });
       rowSelect('Colorblind palette', () => ac.colorblindMode || 'none',
         [['none', 'Off'], ['protanopia', 'Protanopia (red-weak)'], ['deuteranopia', 'Deuteranopia (green-weak)'], ['tritanopia', 'Tritanopia (blue-weak)']],
         (v) => this._set(ctx, 'accessibility', 'colorblindMode', v));

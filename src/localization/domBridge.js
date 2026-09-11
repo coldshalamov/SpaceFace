@@ -1,9 +1,10 @@
-// Opt-in DOM localization bridge for the public pseudo-locale route.
+// Opt-in DOM localization bridge for the public pseudo-locale route and the Settings language picker.
 //
 // Most SpaceFace screens are cached and rebuilt incrementally. The bridge translates text at the
 // DOM boundary so every newly mounted/refreshed screen exercises expansion and glyph coverage
 // without forcing localization concerns into station, HUD, simulation, or screen ownership lanes.
-// It is installed only for non-default locales; normal en-US play pays no observer/style cost.
+// It is installed for any non-default locale; normal en-US play pays no observer/style cost. Once
+// installed it stays installed so a live switch back to English can restore the authored source.
 
 const LOCALIZED_ATTRIBUTES = Object.freeze(['aria-label', 'placeholder', 'title', 'alt']);
 const SKIP_SELECTOR = '[data-localization-skip]';
@@ -13,8 +14,14 @@ const PSEUDO_STYLE_ID = 'sf-localization-overflow-style';
 let installed = false;
 let observer = null;
 let restoreCanvasText = null;
-const lastText = new WeakMap();
-const lastAttributes = new WeakMap();
+let activeTranslate = null;
+// Every node keeps the app-authored source it was rendered from, so a locale switch re-renders from
+// that source instead of translating an already-translated string. The `rendered*` maps record what
+// this bridge last wrote, which is how our own writes are told apart from an app-authored update.
+const sourceText = new WeakMap();
+const renderedText = new WeakMap();
+const sourceAttributes = new WeakMap();
+const renderedAttributes = new WeakMap();
 const canvasSamples = [];
 const stats = { textNodes: 0, attributes: 0, canvasTextDraws: 0, mutationBatches: 0 };
 
@@ -30,29 +37,17 @@ export function localizeDocumentTree(root, translate) {
 }
 
 export function installLocalizedDocumentBridge({ document: doc, translate, locale }) {
-  if (installed || !doc || !doc.documentElement || typeof translate !== 'function') return false;
-  installed = true;
+  if (!doc || !doc.documentElement || typeof translate !== 'function') return false;
+  activeTranslate = translate;
   injectOverflowStyle(doc, locale);
-  installCanvasTextBridge(doc.defaultView, translate);
-  localizeDocumentTree(doc.documentElement, translate);
-
-  if (typeof MutationObserver === 'function') {
-    observer = new MutationObserver((records) => {
-      stats.mutationBatches += 1;
-      for (const record of records) {
-        if (record.type === 'characterData') localizeTextNode(record.target, translate);
-        else if (record.type === 'attributes') localizeAttribute(record.target, record.attributeName, translate);
-        else for (const node of record.addedNodes || []) visit(node, translate);
-      }
-    });
-    observer.observe(doc.documentElement, {
-      subtree: true,
-      childList: true,
-      characterData: true,
-      attributes: true,
-      attributeFilter: LOCALIZED_ATTRIBUTES,
-    });
+  if (!installed) {
+    installed = true;
+    installCanvasTextBridge(doc.defaultView);
+    installObserver(doc);
   }
+  // Install is also the live switch: re-run the whole tree so every cached screen re-renders from
+  // its stored source under the new translator. Default play pays nothing until a locale is chosen.
+  localizeDocumentTree(doc.documentElement, translate);
   return true;
 }
 
@@ -65,7 +60,29 @@ export function stopLocalizedDocumentBridge() {
   if (restoreCanvasText) restoreCanvasText();
   observer = null;
   restoreCanvasText = null;
+  activeTranslate = null;
   installed = false;
+}
+
+function installObserver(doc) {
+  if (typeof MutationObserver !== 'function') return;
+  observer = new MutationObserver((records) => {
+    stats.mutationBatches += 1;
+    const translate = activeTranslate;
+    if (typeof translate !== 'function') return;
+    for (const record of records) {
+      if (record.type === 'characterData') localizeTextNode(record.target, translate);
+      else if (record.type === 'attributes') localizeAttribute(record.target, record.attributeName, translate);
+      else for (const node of record.addedNodes || []) visit(node, translate);
+    }
+  });
+  observer.observe(doc.documentElement, {
+    subtree: true,
+    childList: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: LOCALIZED_ATTRIBUTES,
+  });
 }
 
 function visit(node, translate) {
@@ -84,15 +101,25 @@ function visit(node, translate) {
 
 function localizeTextNode(node, translate) {
   const value = String(node && node.nodeValue || '');
-  if (!value || lastText.get(node) === value) return;
+  if (!value) return;
   const parent = node.parentElement;
   if (!parent || shouldSkipElement(parent)) return;
-  const match = value.match(/^(\s*)([\s\S]*?)(\s*)$/);
-  const body = match ? match[2] : value;
-  if (!isTranslatable(body)) return;
+  const lastRendered = renderedText.get(node);
+  // Our own last write is not a new source; anything else (or the first visit) is authored source.
+  const source = (lastRendered !== undefined && lastRendered === value)
+    ? sourceText.get(node)
+    : value;
+  if (source == null) return;
+  const match = source.match(/^(\s*)([\s\S]*?)(\s*)$/);
+  const body = match ? match[2] : source;
+  sourceText.set(node, source);
+  if (!isTranslatable(body)) {
+    renderedText.set(node, value);
+    return;
+  }
   const renderedBody = translate(body);
   const rendered = `${match ? match[1] : ''}${renderedBody}${match ? match[3] : ''}`;
-  lastText.set(node, rendered);
+  renderedText.set(node, rendered);
   if (rendered !== value) {
     stats.textNodes += 1;
     node.nodeValue = rendered;
@@ -102,14 +129,27 @@ function localizeTextNode(node, translate) {
 function localizeAttribute(element, attribute, translate) {
   if (!element || !attribute || !element.hasAttribute || !element.hasAttribute(attribute)) return;
   const value = element.getAttribute(attribute);
-  let cache = lastAttributes.get(element);
-  if (!cache) {
-    cache = new Map();
-    lastAttributes.set(element, cache);
+  let sourceCache = sourceAttributes.get(element);
+  if (!sourceCache) {
+    sourceCache = new Map();
+    sourceAttributes.set(element, sourceCache);
   }
-  if (cache.get(attribute) === value || !isTranslatable(value)) return;
-  const rendered = translate(value);
-  cache.set(attribute, rendered);
+  let renderedCache = renderedAttributes.get(element);
+  if (!renderedCache) {
+    renderedCache = new Map();
+    renderedAttributes.set(element, renderedCache);
+  }
+  const lastRendered = renderedCache.get(attribute);
+  const source = (lastRendered !== undefined && lastRendered === value)
+    ? sourceCache.get(attribute)
+    : value;
+  sourceCache.set(attribute, source);
+  if (!isTranslatable(source)) {
+    renderedCache.set(attribute, value);
+    return;
+  }
+  const rendered = translate(source);
+  renderedCache.set(attribute, rendered);
   if (rendered !== value) {
     stats.attributes += 1;
     element.setAttribute(attribute, rendered);
@@ -130,7 +170,7 @@ function shouldSkipElement(element) {
   return !!(element.closest && element.closest(SKIP_SELECTOR));
 }
 
-function installCanvasTextBridge(view, translate) {
+function installCanvasTextBridge(view) {
   const proto = view && view.CanvasRenderingContext2D && view.CanvasRenderingContext2D.prototype;
   if (!proto || restoreCanvasText) return;
   const original = {
@@ -142,8 +182,8 @@ function installCanvasTextBridge(view, translate) {
 
   const render = (value) => {
     const source = String(value == null ? '' : value);
-    if (!isTranslatable(source)) return source;
-    const localized = translate(source);
+    if (!isTranslatable(source) || typeof activeTranslate !== 'function') return source;
+    const localized = activeTranslate(source);
     if (localized !== source && canvasSamples.length < 12) canvasSamples.push({ source, localized });
     return localized;
   };

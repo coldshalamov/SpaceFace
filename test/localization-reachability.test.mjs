@@ -5,9 +5,11 @@ import test from 'node:test';
 
 import { messages } from '../src/localization/catalogs/en-US.generated.js';
 import {
+  LANGUAGE_OPTIONS,
   gameLocalization,
   localizeText,
   resolveStartupLocale,
+  setGameLocale,
   startupLocale,
 } from '../src/localization/gameLocalization.js';
 import { LOCALIZED_CORE_COPY } from '../src/ui/localizedCoreCopy.js';
@@ -15,12 +17,26 @@ import { extractPlaceholders, hasPlaceholderParity } from '../src/localization/r
 
 const messageSet = new Set(Object.values(messages));
 
-test('default player route remains English and pseudo locale is opt-in', () => {
+test('default player route remains English and any chosen locale is opt-in', () => {
   assert.equal(startupLocale, 'en-US');
   assert.equal(gameLocalization.locale, 'en-US');
   assert.equal(resolveStartupLocale(''), 'en-US');
-  assert.equal(resolveStartupLocale('?locale=fr-FR'), 'en-US');
+  assert.equal(resolveStartupLocale('?locale=!!'), 'en-US');
+  assert.equal(resolveStartupLocale('?locale=fr-FR'), 'fr-FR');
   assert.equal(resolveStartupLocale('?locale=qps-ploc'), 'qps-ploc');
+});
+
+test('settings language choice is live-applied and English is the default option', () => {
+  assert.equal(LANGUAGE_OPTIONS[0].id, 'en-US', 'English must be the default picker option');
+  const original = gameLocalization.locale;
+  try {
+    assert.equal(setGameLocale('qps-ploc'), 'qps-ploc');
+    assert.equal(gameLocalization.locale, 'qps-ploc');
+    assert.equal(setGameLocale('en-US'), 'en-US');
+    assert.equal(gameLocalization.locale, 'en-US');
+  } finally {
+    gameLocalization.setLocale(original);
+  }
 });
 
 test('core first-hour copy is owned by the generated English catalog', () => {
@@ -69,11 +85,14 @@ test('pseudo locale installs one dynamic DOM bridge while default play remains o
 
   assert.match(gameSource, /startupLocale !== DEFAULT_LOCALE/);
   assert.match(gameSource, /installLocalizedDocumentBridge/);
+  assert.match(gameSource, /setGameLocale/);
+  assert.match(gameSource, /LANGUAGE_OPTIONS/);
   assert.match(bridgeSource, /MutationObserver/);
   assert.match(bridgeSource, /attributeFilter: LOCALIZED_ATTRIBUTES/);
   assert.match(bridgeSource, /CanvasRenderingContext2D/);
   assert.match(bridgeSource, /localizedMeasureText/);
   assert.match(bridgeSource, /data-localization-skip/);
+  assert.match(bridgeSource, /activeTranslate/);
   assert.doesNotMatch(bridgeSource, /requestAnimationFrame|setInterval|setTimeout/);
 
   for (const id of ['settings', 'help', 'saveLoad', 'missionLog', 'galaxyMap', 'codex', 'gameOver']) {

@@ -16995,7 +16995,7 @@
       "priority": 446,
       "title": "Language setting and default-route bridge",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -17012,7 +17012,9 @@
         "npm run check:baseline",
         "npm run check:player-facing-labels"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-166.00-REPORT.md"
+      ],
       "brief": "Settings language picker; the DOM bridge installs for any locale; the reachability test flips to 'default stays English unless chosen'. DONE WHEN: Switching language live re-renders every screen."
     },
     {
