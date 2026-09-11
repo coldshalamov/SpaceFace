@@ -484,6 +484,16 @@ function isPatrolNetTarget(candidate, patrol, playerId) {
   return faction === 'faction_reach';
 }
 
+function isPirateActor(entity) {
+  const data = entity && entity.data || {};
+  const ai = data.ai || {};
+  const role = data.trafficRole || data.role || ai.role;
+  if (role === 'pirate' || role === 'raider') return true;
+  if (ai.pirate === true || ai.archetype === 'pirate') return true;
+  const spawn = String(ai.spawnContext || '');
+  return spawn.includes('ambush');
+}
+
 // Snapshot the head onto derived immediately before attachments.create. ships.js will recompute
 // derived later this tick from fittings, but the line policy is snapshotted at create time.
 function stampNpcMasslineHead(entity, headId) {
@@ -1815,7 +1825,7 @@ export const npcJobsRuntime = {
         commissionS: 0.05,
         transitS: 0.05,
         approachS: 0.05,
-        workS: 8,
+        workS: 40,
         route: [
           { id: 'cut:hold', pos: { x: entity.pos.x, z: entity.pos.z }, label: 'Hold' },
           { id: `hulk:${target.id}`, pos: { x: target.pos.x, z: target.pos.z }, label: 'Hulk' },
@@ -1833,6 +1843,72 @@ export const npcJobsRuntime = {
       adopted += 1;
     });
     return adopted;
+  },
+
+  _findNearestPiratePrey(entity) {
+    if (!entity || !entity.pos) return null;
+    const entities = this.state && this.state.entities;
+    let best = null;
+    let bestDistance = Infinity;
+    const byId = this._byId();
+    for (const jobId in byId) {
+      const entry = byId[jobId];
+      if (!entry || !entry.job || entry.entityId == null) continue;
+      const kind = entry.job.kind;
+      if (kind !== NPC_JOB_KIND.HAULER && kind !== NPC_JOB_KIND.MINER) continue;
+      const hull = entities && typeof entities.get === 'function' ? entities.get(entry.entityId) : null;
+      if (!hull || hull === entity || hull.alive === false || !hull.pos) continue;
+      const dx = hull.pos.x - entity.pos.x;
+      const dz = hull.pos.z - entity.pos.z;
+      const distance = Math.hypot(dx, dz);
+      if (!Number.isFinite(distance) || distance >= bestDistance || distance > 800) continue;
+      best = hull;
+      bestDistance = distance;
+    }
+    if (best) return best;
+    const playerId = this.state && this.state.playerId;
+    const player = playerId != null && entities && typeof entities.get === 'function'
+      ? entities.get(playerId)
+      : null;
+    if (player && player !== entity && player.alive !== false && player.pos) {
+      const distance = Math.hypot(player.pos.x - entity.pos.x, player.pos.z - entity.pos.z);
+      if (Number.isFinite(distance) && distance <= 800) return player;
+    }
+    return null;
+  },
+
+  // Presentation cue only: name the hull this pirate is already closing on so contact light can
+  // draw the spear. Does not assign a job and does not write movement intent.
+  _stampCeresPirateInterceptCues() {
+    if (!this.state || this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return 0;
+    const entities = this.state.entities;
+    let stamped = 0;
+    forEachLivingWorldActor(this.state, (entity) => {
+      if (!entity || entity.type !== 'ship' || !entity.pos || !isPirateActor(entity)) return;
+      const data = entity.data || (entity.data = {});
+      const existingId = data.npcInterceptTargetId;
+      const existing = existingId != null && entities && typeof entities.get === 'function'
+        ? entities.get(existingId)
+        : null;
+      if (existing && existing.alive !== false && existing !== entity && existing.pos) {
+        stamped += 1;
+        return;
+      }
+      const combatId = data.combat && data.combat.targetId;
+      const combat = combatId != null && entities && typeof entities.get === 'function'
+        ? entities.get(combatId)
+        : null;
+      if (combat && combat.alive !== false && combat !== entity && combat.pos) {
+        data.npcInterceptTargetId = combat.id;
+        stamped += 1;
+        return;
+      }
+      const prey = this._findNearestPiratePrey(entity);
+      if (!prey) return;
+      data.npcInterceptTargetId = prey.id;
+      stamped += 1;
+    });
+    return stamped;
   },
 
   _findSalvorTractorTarget(entry, entity) {
@@ -2498,6 +2574,7 @@ export const npcJobsRuntime = {
       return; // scenery only matters in flight (mirrors traffic)
     }
     this._adoptCeresScavengerTractors();
+    this._stampCeresPirateInterceptCues();
     const byId = this._byId();
     const ids = Object.keys(byId);
     const step = Math.max(0, finite(dt, 0));

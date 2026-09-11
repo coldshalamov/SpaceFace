@@ -118,6 +118,10 @@ import {
   PLAYER_RETRO_VOLUME_RECIPE,
 } from './thruster/recipes/plasmaStreamRecipe.js';
 import {
+  applyPlayerRetroVolume,
+  reverseNeedleEmissionAllowed,
+} from './thruster/systems/playerRetroVolume.js';
+import {
   KESTREL_MAIN_PLUME_RECIPE,
   KESTREL_RCS_RECIPE,
 } from './thruster/recipes/kestrelRecipes.js';
@@ -1120,8 +1124,46 @@ export const vfx = {
         reaction: 'none', // what this hull is doing about the player
         reactionT: 0,     // 0 .. 1 as the player closes
         frame: createNpcJobSignatureFrameScratch(),
+        // Contact-effect scratch (see _npcJobContactTarget / _emitNpcJobContact). Declared up
+        // front so the first contact beat never reshapes the slot's hidden class.
+        contactRef: null,
+        contactRefreshAt: 0,
+        contactTarget: null,
+        contactBest: Infinity,
+        contactSurfaceRoot: null,
+        contactSurfaceUntil: 0,
+        contactVertex: null,
+        contactPoint: null,
+        contactFrom: null,
+        contactVisit: null,
       });
     }
+    // One reused scratch for pirate intercept light. Pirates are not npcJobs; the hunt beam
+    // is pulled from live combat/activity targets and must not reshape a job slot.
+    this._pirateInterceptScratch = {
+      elapsed: 0,
+      lastEmitStep: -1,
+      jobId: null,
+      profileId: null,
+      seed: 0,
+      gen: -1,
+      deploy: 0,
+      reaction: 'none',
+      reactionT: 0,
+      frame: createNpcJobSignatureFrameScratch(),
+      contactRef: null,
+      contactRefreshAt: 0,
+      contactTarget: null,
+      contactBest: Infinity,
+      contactSurfaceRoot: null,
+      contactSurfaceUntil: 0,
+      contactVertex: null,
+      contactPoint: null,
+      contactFrom: null,
+      contactVisit: null,
+      job: { kind: 'pirate', phase: 'hold', routeIndex: 0, route: null },
+      cadence: { cadenceHz: 3.2, reducedCadenceHz: 1.2 },
+    };
     this._npcJobSignatureActive = 0;
     this._npcJobSignatureDrawn = 0;
     this._lastNpcJobSignatureId = null;
@@ -1180,9 +1222,13 @@ export const vfx = {
     // renderer/VFX ownership boundary.
     this._collectVfxGpuResidencyRoots = () => this._vfxOwnerRoots();
     this._prepareOpeningVfxFrame = () => this._publishOpeningPersistentVfx();
+    this._warmupLiveFlightEffects = () => this.warmupLiveFlightEffectsForLoading();
+    this._restLiveFlightEffectsAfterCook = () => this.restLiveFlightEffectsAfterCook();
     if (ctx.state && ctx.state.render) {
       ctx.state.render.collectVfxGpuResidencyRoots = this._collectVfxGpuResidencyRoots;
       ctx.state.render.prepareOpeningVfxFrame = this._prepareOpeningVfxFrame;
+      ctx.state.render.warmupLiveFlightEffects = this._warmupLiveFlightEffects;
+      ctx.state.render.restLiveFlightEffectsAfterCook = this._restLiveFlightEffectsAfterCook;
     }
     // Measurement-only VFX owner seam. It snapshots only roots this system owns;
     // event lights remain visible/intensity-driven to avoid shader recompiles.
@@ -1223,6 +1269,12 @@ export const vfx = {
       }
       if (render.prepareOpeningVfxFrame === this._prepareOpeningVfxFrame) {
         delete render.prepareOpeningVfxFrame;
+      }
+      if (render.warmupLiveFlightEffects === this._warmupLiveFlightEffects) {
+        delete render.warmupLiveFlightEffects;
+      }
+      if (render.restLiveFlightEffectsAfterCook === this._restLiveFlightEffectsAfterCook) {
+        delete render.restLiveFlightEffectsAfterCook;
       }
       if (render.perfVfxIsolation === this._perfVfxIsolationPort) delete render.perfVfxIsolation;
       if (render.vfxReprojectFrame === this._vfxReprojectFramePort) delete render.vfxReprojectFrame;
@@ -1397,6 +1449,9 @@ export const vfx = {
     this._vfxReprojectFramePort = null;
     this._collectVfxGpuResidencyRoots = null;
     this._prepareOpeningVfxFrame = null;
+    this._warmupLiveFlightEffects = null;
+    this._restLiveFlightEffectsAfterCook = null;
+    this._pirateInterceptScratch = null;
     this._perfVfxIsolationRestore = null;
     this._perfVfxIsolationPort = null;
     this._scene = null;
@@ -6113,6 +6168,12 @@ export const vfx = {
     this._npcJobSignatureActive = 0;
     this._npcJobSignatureDrawn = 0;
     this._cadenceNpcJobSignature = 0;
+    const pirateSlot = this._pirateInterceptScratch;
+    if (pirateSlot) {
+      pirateSlot.elapsed = 0;
+      pirateSlot.contactRef = null;
+      pirateSlot.contactTarget = null;
+    }
   },
 
   /**
@@ -6285,8 +6346,13 @@ export const vfx = {
       slot.lastEmitStep = frame.emitStep;
       this._lastNpcJobSignatureId = profile.id;
       emitted += this._emitNpcJobSignature(slot, profile, ent, job, reducedMotion);
+      emitted += this._emitNpcJobContact(slot, profile, ent, job, reducedMotion);
       emitted += this._emitNpcJobReaction(slot, ent, reducedMotion);
     }
+
+    // Pirates are not a working trade. Their sentence is the intercept itself: a hunt beam onto
+    // the live combat/activity prey, pulled from existing AI state, never a scripted pose.
+    emitted += this._emitNpcPirateIntercepts(player, drawWu, reducedMotion);
 
     // Release slots whose job vanished this tick, so a departed hull's cache cannot be mistaken for
     // a live one when ids are recycled.
@@ -6302,6 +6368,342 @@ export const vfx = {
     this._npcJobSignatureActive = active;
     this._npcJobSignatureDrawn = drawn;
     this._npcJobReacting = reacting;
+    return emitted;
+  },
+
+  // Occupational light needs a subject AND an object. Resolve only the body's actual route
+  // reference; never substitute the nearest ship/rock or draw a fictional client at a waypoint.
+  // Cache identity between beats, but validate live membership before using a retained body.
+  _npcJobContactTarget(slot, ent, job) {
+    const waypoint = job.route && job.route[job.routeIndex];
+    const ref = waypoint && (waypoint.targetRef || waypoint.id);
+    if (!ref || typeof ref !== 'string') return null;
+    const now = this.state.simTime || 0;
+    const old = slot.contactTarget;
+    if (slot.contactRef === ref && now < slot.contactRefreshAt
+      && old && old.alive !== false && this._ent(old.id) === old) return old;
+    slot.contactRef = ref;
+    slot.contactRefreshAt = now + 1;
+    slot.contactTarget = null;
+    let field = null, value = null, type = null;
+    if (ref.startsWith('object:')) {
+      field = 'activityObjectSlotId'; value = ref.slice(7); type = 'fx';
+    } else if (ref.startsWith('field:slot:')) {
+      field = 'activityObjectSlotId'; value = ref.slice(11); type = 'asteroid';
+    } else if (ref.startsWith('world-site:')) {
+      field = 'worldRecordId'; value = `${ref.slice(11)}/root`; type = 'fx';
+    } else if (ref.startsWith('dest:') || ref.startsWith('home:')) {
+      field = 'stationId'; value = ref.slice(5); type = 'station';
+    } else if (ref.startsWith('field:') || ref.startsWith('hulk:') || ref.startsWith('prey:')) {
+      const body = this._ent(Number(ref.slice(ref.indexOf(':') + 1)));
+      const validType = ref.startsWith('field:') ? body && body.type === 'asteroid'
+        : ref.startsWith('prey:') ? body && body.type === 'ship'
+        : body && (body.type === 'wreck' || body.type === 'payload');
+      if (validType && body.alive !== false && body !== ent) slot.contactTarget = body;
+      return slot.contactTarget;
+    }
+    if (!field) return null;
+    const list = this.state.entityList;
+    for (let i = 0; list && i < list.length; i++) {
+      const body = list[i];
+      if (body === ent || body.alive === false || body.type !== type
+        || !body.data || body.data[field] !== value || !body.pos) continue;
+      if (slot.contactTarget) { slot.contactTarget = null; break; }
+      slot.contactTarget = body;
+    }
+    return slot.contactTarget;
+  },
+
+  _emitNpcJobContact(slot, profile, ent, job, reducedMotion) {
+    const kind = job.kind;
+    const role = (job.payload && job.payload.role) || kind;
+    const working = job.phase === 'work' || job.phase === 'load' || job.phase === 'unload';
+    const survey = kind === 'surveyor'
+      && (job.phase === 'work' || job.phase === 'transit' || job.phase === 'approach');
+    const pirate = kind === 'pirate' || role === 'pirate' || role === 'raider';
+    const patrol = kind === 'patrol' && !pirate
+      && (job.phase === 'hold' || job.phase === 'transit' || job.phase === 'approach');
+    const miner = kind === 'miner' && job.phase === 'work';
+    const scavenger = kind === 'salvor' || kind === 'scavenger' || role === 'scavenger';
+    if (!patrol && !survey && !pirate && !miner
+      && (!working || (kind !== 'hauler' && kind !== 'tender' && !scavenger))) return 0;
+    const r = Math.max(3, Number(ent.radius) || 6);
+    const x = ent.pos.x, z = ent.pos.z;
+    // Above the working deck. The old sub-WU flashes were often occluded by their own hull.
+    let y = Math.max(2, r * 0.38);
+    const cadence = reducedMotion ? (profile.reducedCadenceHz || profile.cadenceHz) : profile.cadenceHz;
+    const life = Math.min(3, Math.max(0.35, 1.35 / cadence));
+    let emitted = 0;
+    if (survey) {
+      const bearing = Number(ent.rot) || 0;
+      const spread = 0.54;
+      const reach = r * 4.5;
+      // An instrument sweeps a bounded sector, with range returns across it; a patrol's single
+      // searchlight stays a different silhouette. These are optical traces, not solid cargo.
+      const sweep = reducedMotion ? bearing : bearing + Math.sin(slot.elapsed * 0.65) * spread;
+      for (let i = 0; i < 5; i++) {
+        const angle = bearing - spread + i * spread * 0.5;
+        const ux = Math.cos(angle), uz = Math.sin(angle);
+        const hot = Math.max(0, 1 - Math.abs(angle - sweep) / 0.35);
+        emitted += this._spawnStationSideEventStreak(
+          x + ux * reach * 0.6, y, z + uz * reach * 0.6,
+          life, r * (0.028 + hot * 0.035), reach * 0.8, 0.28 + hot * 0.40,
+          '#7ad9e8', 0, 0, ux, uz,
+        );
+        const d = reach * (0.72 + (i % 2) * 0.12);
+        emitted += this._spawnStationSideEventStreak(
+          x + ux * d, y, z + uz * d, life,
+          r * 0.055, r * 0.50, 0.40, '#b1ece9', 0, 0, -uz, ux,
+        );
+      }
+      return emitted;
+    }
+    if (pirate) {
+      const prey = this._npcPirateInterceptTarget(ent);
+      if (!prey || !prey.pos) return 0;
+      const px = prey.pos.x - x, pz = prey.pos.z - z;
+      const distance = Math.hypot(px, pz);
+      if (distance < r || distance > 220) return 0;
+      const ux = px / distance, uz = pz / distance;
+      const end = Math.max(r, distance - (Number(prey.radius) || 6) * 0.7);
+      const start = r * 0.75;
+      // One hostile hunt beam onto the live prey — not a patrol's cool searchlight, not a scan fan.
+      emitted += this._spawnStationSideEventStreak(
+        x + ux * (start + end) * 0.5, y, z + uz * (start + end) * 0.5,
+        life, r * 0.08, end - start, 0.62, '#ff6a4a', 0, 0, ux, uz,
+      );
+      emitted += this._spawnStationSideEventStreak(
+        x + ux * end, y, z + uz * end, life, r * 0.05, r * 0.85,
+        0.55, '#ffb35c', 0, 0, -uz, ux,
+      );
+      const vx = ent.vel ? ent.vel.x : -ux;
+      const vz = ent.vel ? ent.vel.z : -uz;
+      const speed = Math.hypot(vx, vz) || 1;
+      const bx = -vx / speed, bz = -vz / speed;
+      const nx = -bz, nz = bx;
+      emitted += this._spawnStationSideEventStreak(
+        x + bx * r * 1.05 + nx * r * 0.28, y * 0.7, z + bz * r * 1.05 + nz * r * 0.28,
+        life, r * 0.07, r * 1.15, 0.70, '#ff7a3a', 0, 0, bx, bz,
+      );
+      emitted += this._spawnStationSideEventStreak(
+        x + bx * r * 1.05 - nx * r * 0.28, y * 0.7, z + bz * r * 1.05 - nz * r * 0.28,
+        life, r * 0.07, r * 1.15, 0.70, '#ff7a3a', 0, 0, bx, bz,
+      );
+      return emitted;
+    }
+    if (patrol) {
+      const player = this._ent(this.state.playerId);
+      if (!player || !player.pos) return 0;
+      const ax = player.pos.x - x, az = player.pos.z - z;
+      const distance = Math.hypot(ax, az);
+      if (distance < r || distance > 140) return 0;
+      // The existing stranger-paint response held long enough to read its target in one frame.
+      // A single narrow search beam and a transverse return differ from the survey's range fan.
+      const ux = ax / distance, uz = az / distance;
+      const end = Math.max(r, distance - (Number(player.radius) || 6) * 0.7);
+      const start = r * 0.7;
+      emitted += this._spawnStationSideEventStreak(
+        x + ux * (start + end) * 0.5, y, z + uz * (start + end) * 0.5,
+        life, r * 0.055, end - start, 0.48, '#a8e4ff', 0, 0, ux, uz,
+      );
+      emitted += this._spawnStationSideEventStreak(
+        x + ux * end, y, z + uz * end, life, r * 0.035, r * 0.7,
+        0.38, '#c7eaf5', 0, 0, -uz, ux,
+      );
+      return emitted;
+    }
+    const target = this._npcJobContactTarget(slot, ent, job);
+    if (!target || !target.pos) return 0;
+    const ax = target.pos.x - x, az = target.pos.z - z;
+    const distance = Math.hypot(ax, az);
+    const targetR = Math.max(2, Number(target.radius) || 6);
+    // The effect may only bridge the real working clearance. A job clock reaching WORK early
+    // never authorizes a kilometre-long repair beam through the rest of the pocket.
+    const gap = distance - r - targetR;
+    if (gap > 100 || distance < 0.01) return 0;
+    let ux = ax / distance, uz = az / distance;
+    let end = Math.max(r, distance - targetR * 0.82);
+    let endY = y;
+    const root = target.view && target.view.root;
+    if (root) {
+      // A wreck's centre may be an empty passage. Choose a real point on its currently visible
+      // metal, with a bounded sample per submesh; never a collision-radius point in empty space.
+      const origin = this.state.world && this.state.world.frameOrigin;
+      const ox = origin && origin.x || 0, oz = origin && origin.z || 0;
+      if (!slot.contactVertex) {
+        slot.contactVertex = new THREE.Vector3();
+        slot.contactPoint = new THREE.Vector3();
+        slot.contactFrom = new THREE.Vector3();
+        slot.contactVisit = (part) => {
+          const attr = part.isMesh && part.geometry && part.geometry.attributes.position;
+          if (!attr) return;
+          const stride = Math.max(1, Math.ceil(attr.count / 128));
+          for (let i = 0; i < attr.count; i += stride) {
+            slot.contactVertex.fromBufferAttribute(attr, i).applyMatrix4(part.matrixWorld);
+            const d2 = slot.contactVertex.distanceToSquared(slot.contactFrom);
+            if (d2 < slot.contactBest) {
+              slot.contactBest = d2;
+              slot.contactPoint.copy(slot.contactVertex);
+            }
+          }
+        };
+      }
+      const now = this.state.simTime || 0;
+      if (slot.contactSurfaceRoot !== root || now >= (slot.contactSurfaceUntil || 0)) {
+        slot.contactFrom.set(x - ox, y, z - oz);
+        slot.contactBest = Infinity;
+        root.traverseVisible(slot.contactVisit);
+        slot.contactSurfaceRoot = root;
+        slot.contactSurfaceUntil = now + 0.5;
+        // Store global coordinates so an origin shift cannot drag the retained work point.
+        if (Number.isFinite(slot.contactBest)) {
+          slot.contactPoint.x += ox;
+          slot.contactPoint.z += oz;
+        }
+      }
+      if (Number.isFinite(slot.contactBest)) {
+        const point = slot.contactPoint;
+        const hx = point.x - x, hz = point.z - z;
+        end = Math.hypot(hx, hz) - 0.2;
+        ux = hx / (end + 0.2); uz = hz / (end + 0.2);
+        endY = point.y + 0.15;
+      }
+    }
+    const nx = -uz, nz = ux;
+    const start = Math.min(r * 0.65, end * 0.35);
+    if (end <= start || end - start > 120) return 0;
+    const length = end - start;
+    if (kind === 'hauler') {
+      // Parallel cargo rails + directed packets. Not a weld, not a cut.
+      for (let side = -1; side <= 1; side += 2) {
+        const offset = side * r * 0.28;
+        const segments = Math.abs(endY - y) > 1 ? 6 : 1;
+        for (let i = 0; i < segments; i++) {
+          const t = (i + 0.5) / segments;
+          const along = start + length * t;
+          emitted += this._spawnStationSideEventStreak(
+            x + ux * along + nx * offset, y + (endY - y) * t,
+            z + uz * along + nz * offset,
+            life, r * 0.07, length / segments * 1.08, 0.55, '#e5ae64', 0, 0, ux, uz,
+          );
+        }
+      }
+      const flow = reducedMotion ? 0 : (slot.elapsed * 0.65) % 1;
+      for (let i = 0; i < 3; i++) {
+        let t = (i / 3 + flow) % 1;
+        if (job.phase === 'load') t = 1 - t;
+        const along = start + t * length;
+        emitted += this._spawnStationSideEventStreak(
+          x + ux * along, y + (endY - y) * t + 0.12, z + uz * along,
+          life * 0.65, r * 0.16, r * 0.50, 0.68, '#eec897', 0, 0, nx, nz,
+        );
+      }
+      return emitted;
+    }
+    if (kind === 'tender') {
+      // Weld ON the client's plate. Long cyan rails read as station lights — that is not repair.
+      const along = reducedMotion ? 0 : Math.sin(slot.elapsed * 1.3) * r * 0.13;
+      const tx = x + ux * end + nx * along, tz = z + uz * end + nz * along;
+      emitted += this._spawnStationSideEventStreak(
+        tx + nx * r * 0.22, endY, tz + nz * r * 0.22, life, r * 0.06, r * 0.42, 0.70, '#ff4a3a', 0, 0, nx, nz,
+      );
+      emitted += this._spawnStationSideEventStreak(
+        tx - nx * r * 0.22, endY, tz - nz * r * 0.22, life, r * 0.06, r * 0.42, 0.70, '#ff4a3a', 0, 0, nx, nz,
+      );
+      emitted += this._spawnStationSideEventStreak(
+        tx, endY, tz, life, r * 0.10, r * 0.65, 0.82, '#d8f4ff', 0, 0, nx, nz,
+      );
+      emitted += this._spawnStationSideEventStreak(
+        tx, endY, tz, life, r * 0.08, r * 0.36, 0.68, '#f0f6e4', 0, 0, ux, uz,
+      );
+      return emitted;
+    }
+    if (kind === 'miner') {
+      // Cutting beam into the rock plus ejecta — amber work cone, not a survey fan or a weld.
+      emitted += this._spawnStationSideEventStreak(
+        x + ux * (start + end) * 0.5, y, z + uz * (start + end) * 0.5,
+        life, r * 0.09, length, 0.72, '#ffcf7a', 0, 0, ux, uz,
+      );
+      const hitX = x + ux * end, hitZ = z + uz * end;
+      emitted += this._spawnStationSideEventStreak(
+        hitX, endY, hitZ, life, r * 0.05, r * 0.48, 0.6, '#ffb35c',
+        (-ux + nx) * 6, (-uz + nz) * 6, -ux + nx, -uz + nz,
+      );
+      emitted += this._spawnStationSideEventStreak(
+        hitX, endY, hitZ, life, r * 0.04, r * 0.36, 0.5, '#ffe0a8',
+        (-ux - nx) * 5, (-uz - nz) * 5, -ux - nx, -uz - nz,
+      );
+      return emitted;
+    }
+    // Salvor / scavenger: one cutter into the wreck face plus scrap thrown off it.
+    emitted += this._spawnStationSideEventStreak(
+      x + ux * (start + end) * 0.5, y, z + uz * (start + end) * 0.5,
+      life, r * 0.10, length, 0.64, '#ffca89', 0, 0, ux, uz,
+    );
+    const hitX = x + ux * end, hitZ = z + uz * end;
+    const fling = reducedMotion ? 0.2 : 0.8;
+    emitted += this._spawnStationSideEventStreak(
+      hitX, endY, hitZ, life, r * 0.04, r * 0.55, 0.58, '#d8b083',
+      (-ux + nx * fling) * 9, (-uz + nz * fling) * 9, -ux + nx * fling, -uz + nz * fling,
+    );
+    emitted += this._spawnStationSideEventStreak(
+      hitX, endY, hitZ, life, r * 0.035, r * 0.42, 0.50, '#9fb0bd',
+      (-ux - nx * fling) * 8, (-uz - nz * fling) * 8, -ux - nx * fling, -uz - nz * fling,
+    );
+    return emitted;
+  },
+
+  _npcPirateIdentity(ent) {
+    if (!ent || ent.alive === false || ent.type !== 'ship' || !ent.pos) return false;
+    const data = ent.data || {};
+    const ai = data.ai || {};
+    if (ai.lawful === true) return false;
+    const role = String(data.trafficRole || data.role || ai.role || '').toLowerCase();
+    if (role === 'salvor' || role === 'scavenger' || role === 'miner' || role === 'hauler'
+      || role === 'tender' || role === 'surveyor' || role === 'patrol' || role === 'escort') {
+      return false;
+    }
+    if (role === 'pirate' || role === 'raider') return true;
+    if (ai.pirate === true || ai.archetype === 'pirate') return true;
+    const spawn = String(ai.spawnContext || '');
+    if (spawn.includes('ambush')) return true;
+    return (ent.factionId || data.factionId) === 'faction_reavers';
+  },
+
+  _npcPirateInterceptTarget(ent) {
+    const data = ent && ent.data || {};
+    const ai = data.ai || {};
+    const combat = data.combat || {};
+    const activity = ai.activity && typeof ai.activity === 'object' ? ai.activity : null;
+    const id = data.npcInterceptTargetId ?? combat.targetId ?? (activity && activity.targetId)
+      ?? ai.predationTargetId ?? ai.retaliationTargetId ?? ai.securityTargetId;
+    if (id != null) {
+      const prey = this._ent(id);
+      if (prey && prey !== ent && prey.alive !== false && prey.pos) return prey;
+    }
+    return null;
+  },
+
+  _emitNpcPirateIntercepts(player, drawWu, reducedMotion) {
+    const list = this.state && this.state.entityList;
+    const scratch = this._pirateInterceptScratch;
+    if (!list || !scratch) return 0;
+    scratch.elapsed = this.state.simTime || 0;
+    const job = scratch.job || (scratch.job = { kind: 'pirate', phase: 'hold', routeIndex: 0, route: null });
+    const profile = scratch.cadence || (scratch.cadence = { cadenceHz: 3.2, reducedCadenceHz: 1.2 });
+    let emitted = 0;
+    let used = 0;
+    for (let i = 0; i < list.length; i++) {
+      const ent = list[i];
+      if (!this._npcPirateIdentity(ent)) continue;
+      if (player && player.pos) {
+        const look = tableLookAtDelta(this.state, player.pos, ent.pos, _tableLookAtScratch);
+        if (!shouldDrawTableVfx(look.x, look.z, drawWu)) continue;
+      }
+      emitted += this._emitNpcJobContact(scratch, profile, ent, job, reducedMotion);
+      used += 1;
+      if (used >= 2) break;
+    }
     return emitted;
   },
 
@@ -6538,8 +6940,8 @@ export const vfx = {
         const spread = 0.22 + 0.78 * (slot.deploy || 0);
         const hood = (beat % 3) - 1;
         emitted += this._spawnStationSideEventStreak(
-          x + nx * hood * r * 0.7 * spread + dx * r * 0.3, 0.20, z + nz * hood * r * 0.7 * spread + dz * r * 0.3,
-          reducedMotion ? 0.74 : 0.52, r * 0.11, r * (0.16 + 0.28 * spread), 0.50, '#ffb35c', 0, 0, dx, dz,
+          x + nx * hood * r * 0.7 * spread + dx * r * 0.3, 0.55, z + nz * hood * r * 0.7 * spread + dz * r * 0.3,
+          reducedMotion ? 0.74 : 0.52, r * 0.13, r * (0.28 + 0.42 * spread), 0.62, '#ffb35c', 0, 0, dx, dz,
         );
         // Cutter arc: short, bright, and off half the beats — a wreck fights back in a way a rock
         // does not, which is what makes this irregular where the miner's work cone is even.
@@ -8976,7 +9378,7 @@ export const vfx = {
 
   _emitReverseNozzleTrail(e, role, strength) {
     if (!this._scene || !e || !(strength > 0)) return;
-    if (this._usesProductionThruster(e)) return;
+    if (!reverseNeedleEmissionAllowed(this._usesProductionThruster(e))) return;
     const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
     const rx = -sf, rz = cf;
     const side = role === 'reverse-left' ? -1 : 1;
@@ -10793,6 +11195,159 @@ export const vfx = {
     return anyVisible || !!visual;
   },
 
+  warmupLiveFlightEffectsForLoading() {
+    if (!this._scene) return { skipped: true, reason: 'no-scene' };
+    if (!this._energy) this._initEnergy();
+    const energy = this._energy;
+    if (!energy) return { skipped: true, reason: 'no-energy' };
+    const player = this.state.entities && this.state.entities.get(this.state.playerId);
+    const dt = 1 / 60;
+    const a11y = this._productionThrusterA11y || {
+      reducedMotion: false,
+      reducedFlash: false,
+      lowQuality: false,
+      qualityTier: 'high',
+    };
+    const video = this.state.settings && this.state.settings.video || {};
+    const particleQuality = video.particleQuality || 'high';
+    const compactPropulsion = !this._extendedEngineTrailsEnabled();
+    a11y.reducedMotion = false;
+    a11y.reducedFlash = false;
+    a11y.lowQuality = particleQuality === 'low' || compactPropulsion;
+    a11y.qualityTier = compactPropulsion
+      ? 'low'
+      : (particleQuality === 'med' ? 'medium' : particleQuality);
+    let socketCount = 0;
+    if (player && typeof this._writeProductionPlumeSockets === 'function') {
+      socketCount = this._writeProductionPlumeSockets(player);
+    }
+    const sockets = socketCount > 0
+      ? this._productionPlumeSocketView
+      : [{ x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 }];
+    const driveInfo = {
+      drive: 1,
+      throttle: 1,
+      speed: 0.45,
+      speedDrive: 0.45,
+      boost: 0.4,
+      cruise: 0,
+      reverse: 0,
+      retroOnly: false,
+      brake: 0,
+    };
+    if (energy.plasmaStream && typeof energy.plasmaStream.update === 'function') {
+      const warmSockets = [];
+      for (let i = 0; i < sockets.length; i++) {
+        const sock = sockets[i] || {};
+        warmSockets.push({
+          x: sock.x || 0,
+          y: sock.y || 0,
+          z: sock.z || 0,
+          ax: sock.ax == null ? 1 : sock.ax,
+          ay: sock.ay || 0,
+          az: sock.az || 0,
+        });
+      }
+      // One parked sample leaves the history filament at drawRange 0, which the
+      // 1x1 residency pass skips. Walk the nozzle so the snake has real buffers.
+      for (let step = 0; step < 8; step++) {
+        for (let i = 0; i < warmSockets.length; i++) warmSockets[i].x -= 0.75;
+        energy.plasmaStream.update(dt, warmSockets, driveInfo, a11y, player || null);
+      }
+    }
+    if (energy.retroVolume && typeof energy.retroVolume.update === 'function') {
+      energy.retroVolume.update(dt, [
+        { x: 1, y: 0, z: 0.45, ax: -1, ay: 0, az: 0 },
+        { x: 1, y: 0, z: -0.45, ax: -1, ay: 0, az: 0 },
+      ], {
+        drive: 1,
+        lengthWU: 8,
+        tailRadiusWU: 2,
+        exitRadiusWU: 0.7,
+      });
+    }
+    if (!this._ribbonTrails) this._initRibbonTrails();
+    let ribbons = 0;
+    if (this._ribbonTrails && this.state.entities && typeof this.state.entities.values === 'function') {
+      const nearby = [];
+      const originX = player && player.pos ? player.pos.x : 0;
+      const originZ = player && player.pos ? player.pos.z : 0;
+      for (const entity of this.state.entities.values()) {
+        if (!entity || !entity.alive) continue;
+        if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+        if (player && entity.id === player.id) continue;
+        if (entity.flags && entity.flags.docked) continue;
+        const dx = ((entity.pos && entity.pos.x) || 0) - originX;
+        const dz = ((entity.pos && entity.pos.z) || 0) - originZ;
+        nearby.push({ entity, d2: dx * dx + dz * dz });
+      }
+      nearby.sort((a, b) => a.d2 - b.d2);
+      const cap = Math.min(RIBBON_NPC_OWNER_CAP, nearby.length);
+      for (let i = 0; i < cap; i++) {
+        const entity = nearby[i].entity;
+        if (this._ribbonTrails.has(entity.id)) {
+          ribbons += 1;
+          continue;
+        }
+        const width = Math.max(1.45, (entity.radius || 14) * 0.095);
+        this._ribbonTrails.set(
+          entity.id,
+          createRibbonTrail(this._scene, this._engineColor(entity), NPC_RIBBON_SEGMENTS, width),
+        );
+        ribbons += 1;
+      }
+    }
+    const plumeOpts = { boost: 0.4, a11y };
+    let plumes = 0;
+    const seen = new Set();
+    const livePlumes = [];
+    if (energy.plumeSystem) livePlumes.push(energy.plumeSystem);
+    if (energy.fleet && Array.isArray(energy.fleet.families)) {
+      for (const family of energy.fleet.families) {
+        if (family && family.plume) livePlumes.push(family.plume);
+      }
+    }
+    for (const plume of livePlumes) {
+      if (!plume || seen.has(plume) || typeof plume.update !== 'function') continue;
+      seen.add(plume);
+      plume.update(dt, 1, sockets, plumeOpts);
+      plumes += 1;
+    }
+    const liveRcs = [];
+    if (energy.rcsSystem) liveRcs.push(energy.rcsSystem);
+    if (energy.fleet && Array.isArray(energy.fleet.families)) {
+      for (const family of energy.fleet.families) {
+        if (family && family.rcs) liveRcs.push(family.rcs);
+      }
+    }
+    let rcs = 0;
+    for (const system of liveRcs) {
+      if (!system || seen.has(system)) continue;
+      seen.add(system);
+      if (typeof system.fire === 'function') system.fire([0, 0, 0], [1, 0, 0], 1);
+      if (typeof system.update === 'function') system.update(dt, a11y);
+      rcs += 1;
+    }
+    return {
+      skipped: false,
+      plumes,
+      rcs,
+      ribbons,
+      retro: !!energy.retroVolume,
+      plasma: !!energy.plasmaStream,
+    };
+  },
+
+  restLiveFlightEffectsAfterCook() {
+    if (this._energy && this._energy.plasmaStream && typeof this._energy.plasmaStream.reset === 'function') {
+      this._energy.plasmaStream.reset();
+    }
+    if (this._energy && this._energy.retroVolume && typeof this._energy.retroVolume.reset === 'function') {
+      this._energy.retroVolume.reset();
+    }
+    return { skipped: false };
+  },
+
   _initEnergy() {
     if (!this._scene) return;
     const textures = loadKestrelThrusterTextures();
@@ -11317,32 +11872,10 @@ export const vfx = {
 
     if (!view.length) { volume.reset(); return; }
 
-    if (this._weaponPresenter && this._weaponPresenter.quarks && peak > 0.05) {
-      for (let i = 0; i < view.length; i++) {
-        const sock = view[i];
-        this._weaponPresenter.quarks.spawnRetroVenting(
-          sock.x, sock.y || 0, sock.z,
-          -sock.ax, -sock.ay, -sock.az,
-          peak,
-        );
-      }
-    }
-
     const cam = this.state.render && this.state.render.camera;
     if (cam) volume.setCamera(cam);
 
-    const p = this._retroParams;
-    const flashScale = a11y && a11y.reducedFlash ? 0.72 : 1;
-    p.drive = peak;
-    p.animRate = a11y && a11y.reducedMotion ? 0.12 : 1;
-    // A braking jet is short and hard: it grows a little with demand but never becomes a cruise
-    // plume, so length tracks demand only weakly.
-    p.lengthWU = PLAYER_RETRO_VOLUME_RECIPE.lengthWU * (0.55 + peak * 0.5);
-    p.exitRadiusWU = PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU;
-    p.tailRadiusWU = PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU
-      * PLAYER_RETRO_VOLUME_RECIPE.tailFlare;
-    p.radiance = PLAYER_RETRO_VOLUME_RECIPE.radiance * flashScale * (0.6 + peak * 0.55);
-    volume.update(dt, view, p);
+    applyPlayerRetroVolume(volume, view, peak, dt, a11y, this._retroParams);
   },
 
   _hideEnergyPlumes() {
