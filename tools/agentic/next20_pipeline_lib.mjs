@@ -200,6 +200,14 @@ export function loadReadyFromDispatcher(root, execPath = process.execPath) {
   return parsed;
 }
 
+function namedUnmetClause(review) {
+  const clause = review?.unmetClause;
+  if (clause == null) return '';
+  const text = String(clause).trim();
+  if (!text || text === 'null' || text === 'undefined') return '';
+  return text;
+}
+
 export function canIntegrate(input) {
   const receiptExists = !!input?.receiptExists;
   const testsPass = !!input?.testsPass;
@@ -214,6 +222,12 @@ export function canIntegrate(input) {
     }
     if (!review.evidence || String(review.evidence).trim() === '') {
       return { ok: false, reason: 'review-missing-evidence', wave: review.wave ?? i + 1 };
+    }
+    // A PASS that still names an unmet Leaves clause is an honest residual, not a close.
+    // Do not --integrate keep-ready residuals.
+    const unmet = namedUnmetClause(review);
+    if (unmet) {
+      return { ok: false, reason: 'review-unmet-clause', wave: review.wave ?? i + 1, unmetClause: unmet };
     }
   }
   return { ok: true };

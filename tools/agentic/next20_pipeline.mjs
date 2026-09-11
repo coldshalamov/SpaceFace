@@ -204,8 +204,8 @@ if (values.integrate) {
     receiptExists: receipt.ok,
     testsPass: !!values['tests-pass'],
     reviews: [
-      { wave: 1, verdict: wave1.verdict, evidence: wave1.evidence },
-      { wave: 2, verdict: wave2.verdict, evidence: wave2.evidence },
+      { wave: 1, verdict: wave1.verdict, evidence: wave1.evidence, unmetClause: wave1.unmetClause },
+      { wave: 2, verdict: wave2.verdict, evidence: wave2.evidence, unmetClause: wave2.unmetClause },
     ],
   });
   if (!gate.ok) {
@@ -251,8 +251,8 @@ if (values['apply-reviews']) {
       receiptExists: receipt.ok,
       testsPass: !!values['tests-pass'],
       reviews: [
-        { wave: 1, verdict: wave1.verdict, evidence: wave1.evidence },
-        { wave: 2, verdict: wave2.verdict, evidence: wave2.evidence },
+        { wave: 1, verdict: wave1.verdict, evidence: wave1.evidence, unmetClause: wave1.unmetClause },
+        { wave: 2, verdict: wave2.verdict, evidence: wave2.evidence, unmetClause: wave2.unmetClause },
       ],
     });
     if (gate.ok) {

@@ -123,6 +123,28 @@ test('canIntegrate fail-closes on missing receipt, failed tests, or a review wit
     }).reason,
     'review-missing-evidence',
   );
+  const residual = {
+    wave: 2,
+    verdict: 'PASS',
+    evidence: 'honest NOT DONE; queue stays ready',
+    unmetClause: 'Blind reviewer names the specialist from silhouette.',
+  };
+  assert.equal(
+    canIntegrate({ receiptExists: true, testsPass: true, reviews: [pass, residual] }).ok,
+    false,
+  );
+  assert.equal(
+    canIntegrate({ receiptExists: true, testsPass: true, reviews: [pass, residual] }).reason,
+    'review-unmet-clause',
+  );
+  assert.equal(
+    canIntegrate({
+      receiptExists: true,
+      testsPass: true,
+      reviews: [pass, { ...pass2, unmetClause: null }],
+    }).ok,
+    true,
+  );
 });
 
 test('patchDispatchUnitDone flips only that unit and appends the receipt ref', () => {
@@ -203,4 +225,37 @@ test('shipped CLI --integrate refuses a unit when a review wave fails', () => {
   const body = JSON.parse(result.stdout);
   assert.equal(body.integrated, false);
   assert.equal(body.reason, 'review-rejected');
+});
+
+test('shipped CLI --integrate refuses a PASS that still names unmetClause', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'next20-unmet-'));
+  const wave1 = path.join(dir, 'wave1.json');
+  const wave2 = path.join(dir, 'wave2.json');
+  fs.writeFileSync(wave1, JSON.stringify({
+    verdict: 'PASS',
+    evidence: 'honest NOT DONE residual; tests 3/3',
+    unmetClause: null,
+  }));
+  fs.writeFileSync(wave2, JSON.stringify({
+    verdict: 'PASS',
+    evidence: 'honest NOT DONE residual; tests 3/3',
+    unmetClause: 'Capture of a swing shows both bodies >= 90 % of the time.',
+  }));
+  const result = spawnCli([
+    'tools/agentic/next20_pipeline.mjs',
+    '--integrate',
+    '--id',
+    'PQ-159.01',
+    '--receipt',
+    'design/program/roadmap/receipts/PQ-159.01-REPORT.md',
+    '--wave1',
+    wave1,
+    '--wave2',
+    wave2,
+    '--tests-pass',
+  ]);
+  assert.notEqual(result.status, 0);
+  const body = JSON.parse(result.stdout);
+  assert.equal(body.integrated, false);
+  assert.equal(body.reason, 'review-unmet-clause');
 });
