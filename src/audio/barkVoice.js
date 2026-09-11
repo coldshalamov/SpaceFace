@@ -6,6 +6,7 @@
 
 import { BARKS, BARK_FACTIONS, BARK_SITUATIONS } from '../data/barks.js';
 import { SAMPLE_MANIFEST } from './sampleLibrary.js';
+import { detectPitchHz, decodePcmWav } from './themeCompose.js';
 
 export const BARK_VOICE_SEED = 15804;
 export const BARK_CORPUS_TARGET = 271;
@@ -129,7 +130,9 @@ export function resolveBarkVoice(input = {}) {
   const jitter = ((h % 17) - 8) / 400; // ±0.02, hashed, not Math.random
   const pitch = Math.round((register.pitch + jitter) * 1000) / 1000;
   const rate = Math.round((register.rate + ((h >>> 8) % 9 - 4) / 500) * 1000) / 1000;
-  const f0 = Math.round(register.f0 * pitch * 10) / 10;
+  // Identity pitch is the register fundamental. Pitch/rate shape cadence and the synth layer;
+  // multiplying f0 by pitch made Vael (59 Hz) inaudible to the stranger and to radio HP.
+  const f0 = register.f0;
   return Object.freeze({
     schema: 'spaceface.barkVoice.v1',
     seed: BARK_VOICE_SEED,
@@ -255,5 +258,155 @@ export function enumerateDeliveredBarkWavs() {
   }));
 }
 
-/** Autocorrelation F0 of a directed-voice PCM. Used to name a register from the WAV, not the label. */
+export const BARK_UTTERANCE_SECONDS = 1.05;
+export const REGISTER_CALLSIGN_SECONDS = 0.7;
+
+class VoiceBiquad {
+  constructor(type, f0, q, sr) {
+    const w0 = (2 * Math.PI * Math.min(f0, sr * 0.49)) / sr;
+    const cos = Math.cos(w0);
+    const sin = Math.sin(w0);
+    const alpha = sin / (2 * Math.max(0.1, q));
+    let b0;
+    let b1;
+    let b2;
+    let a0;
+    let a1;
+    let a2;
+    if (type === 'lp') {
+      b0 = (1 - cos) / 2; b1 = 1 - cos; b2 = b0;
+      a0 = 1 + alpha; a1 = -2 * cos; a2 = 1 - alpha;
+    } else if (type === 'hp') {
+      b0 = (1 + cos) / 2; b1 = -(1 + cos); b2 = b0;
+      a0 = 1 + alpha; a1 = -2 * cos; a2 = 1 - alpha;
+    } else {
+      b0 = alpha; b1 = 0; b2 = -alpha;
+      a0 = 1 + alpha; a1 = -2 * cos; a2 = 1 - alpha;
+    }
+    this.b0 = b0 / a0; this.b1 = b1 / a0; this.b2 = b2 / a0;
+    this.a1 = a1 / a0; this.a2 = a2 / a0;
+    this.x1 = this.x2 = this.y1 = this.y2 = 0;
+  }
+  process(x) {
+    const y = this.b0 * x + this.b1 * this.x1 + this.b2 * this.x2 - this.a1 * this.y1 - this.a2 * this.y2;
+    this.x2 = this.x1; this.x1 = x; this.y2 = this.y1; this.y1 = y;
+    return y;
+  }
+}
+
+function mulberry32(seed) {
+  let a = seed >>> 0;
+  return function next() {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/**
+ * Directed synthetic utterance: glottal identity at the register fundamental, formants, radio
+ * band, and a dry carrier so a stranger can name the register from the WAV. Hash-seeded noise
+ * only. Never reads sim RNG.
+ */
+export function renderBarkUtterancePcm(resolved, options = {}) {
+  const sr = options.sampleRate || 32000;
+  const dur = options.seconds == null
+    ? (resolved && resolved.speech && resolved.speech.durationS) || BARK_UTTERANCE_SECONDS
+    : options.seconds;
+  const n = Math.max(1, Math.round(Number(dur) * sr));
+  const out = new Float64Array(n);
+  if (!resolved || !resolved.speech) return out;
+  const f0 = Number(resolved.speech.f0);
+  if (!(f0 > 0)) return out;
+  const rng = mulberry32((resolved.hash || 0) ^ BARK_VOICE_SEED);
+  const formants = (resolved.speech.formants || []).map((hz) => new VoiceBiquad('bp', hz, 8, sr));
+  const radio = resolved.radio || {};
+  const radioLo = new VoiceBiquad('hp', radio.bandpassLo || 300, 0.7, sr);
+  const radioHi = new VoiceBiquad('lp', radio.bandpassHi || 2800, 0.7, sr);
+  const words = String(resolved.line || '').trim().split(/\s+/).filter(Boolean).length || 1;
+  let phase = 0;
+  const noiseAmt = Math.min(0.08, Number(radio.noise || 0) * 0.35);
+  const drive = Number(radio.drive) || 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / sr;
+    const env = Math.min(1, t / 0.02) * Math.min(1, (dur - t) / 0.08);
+    const syllable = 0.84 + 0.16 * Math.abs(Math.sin(Math.PI * words * (t / Math.max(0.05, dur))));
+    const carrier = 0.72 * Math.sin(2 * Math.PI * f0 * t) + 0.18 * Math.sin(2 * Math.PI * 2 * f0 * t);
+    const buzz = (phase % 1) < 0.12 ? 1 : -0.12;
+    phase += f0 / sr;
+    let wet = buzz * 0.4;
+    for (const f of formants) wet = f.process(wet);
+    wet = radioHi.process(radioLo.process(wet));
+    if (drive) wet = Math.tanh(wet * (1 + drive * 3));
+    wet += (rng() * 2 - 1) * noiseAmt;
+    out[i] = env * syllable * (0.46 * carrier + 0.54 * wet);
+  }
+  let peak = 0;
+  for (let i = 0; i < n; i++) peak = Math.max(peak, Math.abs(out[i]));
+  const norm = peak > 1e-9 ? 0.92 / peak : 0;
+  if (norm !== 1) for (let i = 0; i < n; i++) out[i] *= norm;
+  return out;
+}
+
+/** Isolated pitch callsign: a stranger hears the register's fundamental, no radio hash. */
+export function renderRegisterCallsignPcm(register, options = {}) {
+  const f0 = Number(register && register.f0);
+  const sr = options.sampleRate || 32000;
+  const seconds = options.seconds == null ? REGISTER_CALLSIGN_SECONDS : options.seconds;
+  const n = Math.max(1, Math.round(seconds * sr));
+  const pcm = new Float64Array(n);
+  if (!(f0 > 0)) return pcm;
+  const attack = Math.max(2, Math.round(0.02 * sr));
+  const release = Math.max(2, Math.round(0.05 * sr));
+  for (let i = 0; i < n; i++) {
+    let env = 1;
+    if (i < attack) env = i / attack;
+    const remain = n - 1 - i;
+    if (remain < release) env *= remain / release;
+    const t = i / sr;
+    pcm[i] = env * 0.78 * Math.sin(2 * Math.PI * f0 * t);
+  }
+  return pcm;
+}
+
+/** Name a faction from unlabeled PCM. Never reads the filename or the register label. */
+export function identifyRegisterFromPcm(pcm, sampleRate = 32000) {
+  const f0 = detectPitchHz(
+    pcm,
+    sampleRate,
+    Math.floor(pcm.length * 0.15),
+    Math.floor(pcm.length * 0.85),
+    { minHz: 70, maxHz: 200 },
+  );
+  if (!(f0 > 0)) return null;
+  let best = null;
+  let bestDist = Infinity;
+  for (const factionId of BARK_FACTIONS) {
+    const dist = Math.abs(FACTION_VOICE_REGISTERS[factionId].f0 - f0);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = factionId;
+    }
+  }
+  return bestDist < 3 ? best : null;
+}
+
+/** Decode a WAV and name the register. Never reads the filename. */
+export function identifyRegisterFromWavBuffer(buf) {
+  const decoded = decodePcmWav(buf);
+  if (!decoded) return null;
+  return identifyRegisterFromPcm(decoded.pcm, decoded.sampleRate);
+}
+
+export const BLIND_REGISTER_CLIPS = Object.freeze(
+  [...BARK_FACTIONS]
+    .sort((a, b) => FACTION_VOICE_REGISTERS[a].f0 - FACTION_VOICE_REGISTERS[b].f0)
+    .map((factionId, index) => Object.freeze({
+      index,
+      file: `assets/audio/voice/blind/clip_${String(index).padStart(2, '0')}.wav`,
+      factionId,
+    })),
+);
 

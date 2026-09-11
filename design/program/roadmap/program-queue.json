@@ -16522,7 +16522,7 @@
       "priority": 429,
       "title": "Composed themes",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -16553,7 +16553,7 @@
       "priority": 430,
       "title": "Voice for the barks (directed synthetic voice; no recorded actors)",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",

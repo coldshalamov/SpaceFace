@@ -27,9 +27,13 @@ import {
   resolveVoiceRegister,
   factionRegistersAreDistinct,
   identifyRegisterFromSpeech,
+  identifyRegisterFromPcm,
+  renderRegisterCallsignPcm,
   enumerateDeliveredBarkWavs,
   deliveredBarkWavRelPath,
+  BLIND_REGISTER_CLIPS,
 } from '../src/audio/barkVoice.js';
+import { decodePcmWav } from '../src/audio/themeCompose.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const MEASURE_SEED = 15804;
@@ -155,4 +159,40 @@ test(`seed ${MEASURE_SEED}: all ${BARK_CORPUS_TARGET} directed-voice lines exist
     assert.ok(buf.byteLength > 44);
   }
   console.log(`[pq-158.04 delivered] seed=${MEASURE_SEED} wavs=${rows.length}/${BARK_CORPUS_TARGET}`);
+});
+
+test(`seed ${MEASURE_SEED}: unlabeled callsign PCM names all eight registers (no filename, no label)`, () => {
+  const shuffled = [...BARK_FACTIONS];
+  // Deterministic shuffle from the seed, not Math.random.
+  let s = MEASURE_SEED >>> 0;
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    const j = s % (i + 1);
+    const tmp = shuffled[i];
+    shuffled[i] = shuffled[j];
+    shuffled[j] = tmp;
+  }
+  const named = [];
+  for (const factionId of shuffled) {
+    const pcm = renderRegisterCallsignPcm(FACTION_VOICE_REGISTERS[factionId]);
+    const got = identifyRegisterFromPcm(pcm, 32000);
+    assert.equal(got, factionId, `unlabeled ${factionId} callsign named ${got}`);
+    named.push(got);
+  }
+  assert.equal(new Set(named).size, 8);
+  console.log(`[pq-158.04 pcm-blind] seed=${MEASURE_SEED} order=${shuffled.join(',')} named=${named.join(',')}`);
+});
+
+test(`seed ${MEASURE_SEED}: unlabeled on-disk clips name eight registers without using filenames`, () => {
+  const named = [];
+  for (const clip of BLIND_REGISTER_CLIPS) {
+    const buf = readFileSync(path.join(ROOT, clip.file));
+    const decoded = decodePcmWav(buf);
+    assert.ok(decoded, clip.file);
+    const got = identifyRegisterFromPcm(decoded.pcm, decoded.sampleRate);
+    named.push(got);
+  }
+  assert.deepEqual([...new Set(named)].sort(), [...BARK_FACTIONS].sort());
+  assert.equal(named.length, 8);
+  console.log(`[pq-158.04 blind-files] seed=${MEASURE_SEED} named=${named.join(',')}`);
 });
