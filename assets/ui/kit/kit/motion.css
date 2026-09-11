@@ -1,0 +1,139 @@
+/* FH motion — the keyframes and transition classes motion.js toggles.
+ *
+ * Durations come from custom properties the library sets per call, so the register's numbers
+ * live in tokens.css and nothing here hard-codes a timing. The reduced-motion block at the
+ * bottom turns every one of them into a cut rather than shortening them, which is the floor.
+ */
+
+/* ---------------------------------------------------------------- reveal */
+
+.fh-reveal {
+  will-change: transform, opacity;
+  transition:
+    transform var(--fh-dur, 280ms) var(--fh-poster-ease, cubic-bezier(0.2, 0.8, 0.2, 1))
+      var(--fh-delay, 0ms),
+    opacity var(--fh-dur, 280ms) linear var(--fh-delay, 0ms),
+    filter var(--fh-dur, 280ms) linear var(--fh-delay, 0ms);
+  opacity: 0;
+}
+
+/* POSTER: hero type stamps in — it arrives slightly large and settles, like a struck marking */
+.fh-from-stamp { transform: scale(1.035) translateY(-6px); filter: blur(1.5px); }
+
+/* BENCH: a plate slides in with weight from the edge it belongs to */
+.fh-from-below { transform: translateY(18px); }
+.fh-from-above { transform: translateY(-18px); }
+.fh-from-left  { transform: translateX(-24px); }
+.fh-from-right { transform: translateX(24px); }
+
+/* EDGE: instruments simply arrive */
+.fh-from-cut { transform: none; }
+
+.fh-reveal.fh-revealed,
+.fh-revealed {
+  opacity: 1;
+  transform: none;
+  filter: none;
+}
+
+/* ---------------------------------------------------------------- slide (BENCH) */
+
+/* The one-frame overshoot §9 asks for: the plate passes its mark and comes back. */
+@keyframes fh-slide-below {
+  0%   { transform: translateY(22px); opacity: 0; }
+  78%  { transform: translateY(-2px); opacity: 1; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes fh-slide-left {
+  0%   { transform: translateX(-26px); opacity: 0; }
+  78%  { transform: translateX(2px); opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+@keyframes fh-slide-right {
+  0%   { transform: translateX(26px); opacity: 0; }
+  78%  { transform: translateX(-2px); opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+.fh-slide-below { animation: fh-slide-below var(--fh-dur, 200ms) var(--fh-bench-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both; }
+.fh-slide-left  { animation: fh-slide-left  var(--fh-dur, 200ms) var(--fh-bench-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both; }
+.fh-slide-right { animation: fh-slide-right var(--fh-dur, 200ms) var(--fh-bench-ease, cubic-bezier(0.2, 0.8, 0.2, 1)) both; }
+
+/* ---------------------------------------------------------------- light
+ *
+ * The state is carried by data-fh-lit, and what changes is the LIGHT LEVEL, never the hue.
+ * Consumers read --fh-lit-level; the kit's components multiply their backlight by it.
+ */
+
+[data-fh-lit] {
+  transition: --fh-lit-level var(--fh-dur, 100ms) linear,
+              opacity var(--fh-dur, 100ms) linear;
+}
+[data-fh-lit='on']   { --fh-lit-level: 1; }
+[data-fh-lit='rest'] { --fh-lit-level: var(--fh-a-legend-resting, 0.45); }
+[data-fh-lit='off']  { --fh-lit-level: 0; }
+
+@property --fh-lit-level {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/* ---------------------------------------------------------------- press
+ *
+ * The plate sinks 2 px INSIDE its own bounds. Moving the element itself would shift the
+ * layout under the pointer, which is what makes a web button feel like a web button.
+ */
+
+.fh-pressable { transition: transform var(--fh-press-up, 120ms) var(--fh-bench-ease, cubic-bezier(0.2, 0.8, 0.2, 1)); }
+.fh-pressed   { transform: translateY(2px); transition-duration: var(--fh-press-down, 60ms); }
+
+/* ---------------------------------------------------------------- pulse (EDGE)
+ *
+ * ONE pulse, then hold. No iteration count above 1 anywhere in this file.
+ */
+
+@keyframes fh-pulse {
+  0%   { filter: brightness(1); }
+  28%  { filter: brightness(1.55); }
+  100% { filter: brightness(1); }
+}
+.fh-pulse { animation: fh-pulse var(--fh-edge-pulse, 400ms) var(--fh-edge-ease, cubic-bezier(0.33, 0, 0.15, 1)) 1 both; }
+
+/* ---------------------------------------------------------------- ambient
+ *
+ * drift and parallax are the only continuous motions, and both are driven by custom
+ * properties the library writes — there is no CSS animation to leave running.
+ */
+
+.fh-drift { transform: translate3d(var(--fh-drift-x, 0), var(--fh-drift-y, 0), 0); }
+.fh-parallax { transform: translate3d(var(--fh-par-x, 0), var(--fh-par-y, 0), 0);
+               transition: transform 120ms linear; }
+
+/* ---------------------------------------------------------------- the floor */
+
+@media (prefers-reduced-motion: reduce) {
+  .fh-reveal,
+  .fh-pressable,
+  [data-fh-lit],
+  .fh-parallax {
+    transition: none !important;
+  }
+  .fh-slide-below, .fh-slide-left, .fh-slide-right, .fh-pulse {
+    animation: none !important;
+  }
+  .fh-reveal { opacity: 1; transform: none; filter: none; }
+  .fh-drift { transform: none !important; }
+}
+
+/* The same cut, driven by the library's own switch, so a demo page can show it without
+ * changing the operating system setting. */
+[data-fh-reduced] .fh-reveal,
+[data-fh-reduced] .fh-pressable,
+[data-fh-reduced] [data-fh-lit],
+[data-fh-reduced] .fh-parallax { transition: none !important; }
+[data-fh-reduced] .fh-slide-below,
+[data-fh-reduced] .fh-slide-left,
+[data-fh-reduced] .fh-slide-right,
+[data-fh-reduced] .fh-pulse { animation: none !important; }
+[data-fh-reduced] .fh-reveal { opacity: 1; transform: none; filter: none; }
+[data-fh-reduced] .fh-drift { transform: none !important; }

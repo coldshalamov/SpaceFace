@@ -1,0 +1,509 @@
+/* ============================================================================================
+ * fh.css — the Field Hardware component layer.
+ *
+ * EVERY material here is a produced asset. Plates, keys, windows, gauges and sockets are
+ * nine-sliced transparent PNGs rendered in Cycles from real modelled geometry
+ * (assets/ui/kit/tools/bl_kit.py); tiles are seamless renders; icons and marks are inline SVG.
+ * There is no `linear-gradient`, no `box-shadow` and no `border:` standing in for a material
+ * anywhere in this file — the programme's asset-coverage grep is the point, and a screen built
+ * from CSS borders is rejected before it is looked at.
+ *
+ * `border:` appears only as `border: 0` resets and as `border-image-*` longhands.
+ *
+ * Requires: tokens/tokens.css (custom properties), motion.css (transitions).
+ *
+ * --------------------------------------------------------------------------------------------
+ * CLASS INDEX (S2 builds the BENCH screens on these — names are stable)
+ *
+ *  SURFACES   .fh-plate [--raised --sunk --paper --edge]   .fh-window [--deep --viewport]
+ *             .fh-rail   .fh-row [.is-selected]            .fh-grain  .fh-hazard
+ *  TYPE       .fh-name .fh-hero .fh-title .fh-heronum .fh-menu-item .fh-subhead
+ *             .fh-body .fh-emphasis .fh-data .fh-fine .fh-legend
+ *  CONTROLS   .fh-key [--primary --secondary --hazard --legend --small] .fh-socket
+ *             .fh-toggle .fh-slider .fh-stepper .fh-input .fh-scroll
+ *  INDICATORS .fh-light[data-colour][data-level]  .fh-bar  .fh-gauge  .fh-radar
+ *             .fh-badge .fh-tape .fh-strip .fh-tag
+ *  CONTENT    .fh-tile .fh-icon .fh-mark .fh-crest
+ *  STATE      [data-fh-lit=on|rest|off]  [data-fh-temp=docked|wanted|crucible]  :focus-visible
+ * ============================================================================================ */
+
+/* ---------------------------------------------------------------- foundations */
+
+@font-face {
+  font-family: 'Archivo';
+  src: url('fonts/archivo-var-latin-standard-normal.woff2') format('woff2');
+  font-weight: 100 900;
+  font-stretch: 62% 125%;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Instrument Sans';
+  src: url('fonts/instrument-sans-var.woff2') format('woff2');
+  font-weight: 400 700;
+  font-display: block;
+}
+
+.fh-root,
+body.fh-root {
+  background: var(--fh-ground);
+  color: var(--fh-text);
+  font-family: var(--fh-face-text);
+  font-size: var(--fh-size-body);
+  line-height: var(--fh-lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------------------------------------------------------------- surfaces
+ *
+ * A plate is a nine-sliced render: real thickness, a lit top edge and an under-shadow are IN
+ * the image, so they survive any size the layout asks for and cannot be faked by a border.
+ */
+
+.fh-plate {
+  border-style: solid;
+  border-width: 24px;
+  border-image-source: url('../assets/plates/plate.bench.primary.png');
+  border-image-slice: 24 fill;
+  border-image-repeat: stretch;
+  border-image-width: 24px;
+  padding: var(--fh-space-l);
+  box-sizing: border-box;
+  color: var(--fh-text);
+}
+.fh-plate--raised { border-image-source: url('../assets/plates/plate.bench.raised.png'); }
+.fh-plate--sunk   { border-image-source: url('../assets/plates/plate.bench.sunk.png'); }
+.fh-plate--paper  { border-image-source: url('../assets/plates/plate.bench.paper.png');
+                    color: #22201C; }
+.fh-plate--edge {
+  border-width: 16px;
+  border-image-source: url('../assets/plates/plate.edge.small.png');
+  border-image-slice: 16 fill;
+  border-image-width: 16px;
+  padding: var(--fh-space-m);
+}
+
+/* The smoked window: a real darkening pane with a lit rim, so the scene reads THROUGH it and
+ * stays sharp. No backdrop-filter — it is banned in flight and it blurs the world anyway. */
+.fh-window {
+  border-style: solid;
+  border-width: 20px;
+  border-image-source: url('../assets/windows/window.glass.png');
+  border-image-slice: 20 fill;
+  border-image-repeat: stretch;
+  border-image-width: 20px;
+  padding: var(--fh-space-l);
+  box-sizing: border-box;
+}
+.fh-window--deep     { border-image-source: url('../assets/windows/window.glass.deep.png'); }
+.fh-window--viewport { border-image-source: url('../assets/windows/window.viewport.png'); }
+
+/* The POSTER legend rail: the single piece of hardware a title-register screen carries. */
+.fh-rail {
+  border-style: solid;
+  border-width: 16px;
+  border-image-source: url('../assets/plates/plate.poster.rail.png');
+  border-image-slice: 16 fill;
+  border-image-repeat: stretch;
+  border-image-width: 16px;
+  box-sizing: border-box;
+}
+
+/* An engraved row. Selected rows carry the amber left-edge light and its spill. */
+.fh-row {
+  display: flex;
+  align-items: center;
+  gap: var(--fh-space-m);
+  padding: var(--fh-space-s) var(--fh-space-l);
+  border: 0;
+  background: transparent;
+  color: var(--fh-text-resting);
+  min-height: 40px;
+  box-sizing: border-box;
+}
+.fh-row.is-selected {
+  color: var(--fh-text);
+  border-style: solid;
+  border-width: 8px 16px;
+  border-image-source: url('../assets/plates/plate.row.selected.png');
+  border-image-slice: 8 16 8 16 fill;
+  border-image-repeat: stretch;
+  border-image-width: 8px 16px;
+}
+
+/* Tileables: grain, hazard stripe, etched hairline. */
+.fh-grain::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: url('../assets/tiles/tile.grain.png');
+  background-repeat: repeat;
+  opacity: var(--fh-plate-grainOpacity, 0.06);
+  pointer-events: none;
+}
+.fh-hazard {
+  background-image: url('../assets/tiles/tile.hazard.stripe.png');
+  background-repeat: repeat-x;
+  background-size: auto 100%;
+  min-height: 24px;
+}
+[data-fh-temp='wanted'] .fh-hazard {
+  background-image: url('../assets/tiles/tile.hazard.stripe-red.png');
+}
+.fh-hairline {
+  background-image: url('../assets/tiles/tile.etch.hairline.png');
+  background-repeat: repeat-x;
+  height: 4px;
+}
+
+/* ---------------------------------------------------------------- type */
+
+.fh-name, .fh-hero, .fh-title, .fh-heronum, .fh-menu-item, .fh-subhead, .fh-legend {
+  font-family: var(--fh-face-display);
+  letter-spacing: var(--fh-track-display);
+  line-height: var(--fh-lh-display);
+  font-variation-settings: 'wght' 900, 'wdth' 125;
+  text-transform: uppercase;
+  margin: 0;
+}
+.fh-name    { font-size: var(--fh-size-name); }
+.fh-hero    { font-size: var(--fh-size-hero); }
+.fh-title   { font-size: var(--fh-size-screenTitle); }
+.fh-heronum { font-size: var(--fh-size-heroNum); font-variant-numeric: tabular-nums;
+              font-variation-settings: 'wght' 800, 'wdth' 125; }
+.fh-menu-item { font-size: var(--fh-size-menu); font-variation-settings: 'wght' 800, 'wdth' 125;
+                color: var(--fh-text-resting); }
+.fh-menu-item.is-focused  { color: var(--fh-text); }
+.fh-menu-item[aria-disabled='true'] { color: var(--fh-text-tertiary); }
+.fh-subhead { font-size: var(--fh-size-subhead); font-variation-settings: 'wght' 800, 'wdth' 125; }
+
+/* The backlit legend: condensed, tracked, and lit by LEVEL rather than by colour swap.
+ *
+ * The level is an ALPHA on the light, not a mix toward another ink. Mixing amber 45 % with
+ * 55 % bone produces a bright warm grey — a *different colour*, which is exactly the colour
+ * swap §4 forbids. A backlight at 45 % is the same amber, dimmer, with the plate showing
+ * through it: that is what the frames paint and what the contrast table measured. */
+.fh-legend {
+  font-size: var(--fh-size-fine);
+  font-variation-settings: 'wght' 600, 'wdth' 62;
+  letter-spacing: var(--fh-track-legend);
+  color: color-mix(in srgb, var(--fh-legend-now, var(--fh-legend))
+                   calc(var(--fh-lit-level, 0.45) * 100%), transparent);
+}
+.fh-legend[data-fh-lit='off'] { color: var(--fh-text-tertiary); }
+
+.fh-body     { font-family: var(--fh-face-text); font-size: var(--fh-size-body);
+               max-width: var(--fh-measure); }
+.fh-emphasis { font-family: var(--fh-face-text); font-weight: 500;
+               font-size: var(--fh-size-emphasis); }
+.fh-data     { font-family: var(--fh-face-text); font-weight: 500;
+               font-size: var(--fh-size-data); font-variant-numeric: tabular-nums;
+               text-align: right; }
+.fh-fine     { font-family: var(--fh-face-text); font-size: var(--fh-size-fine);
+               color: var(--fh-text-resting); }
+
+/* ---------------------------------------------------------------- controls
+ *
+ * Every state is its own render with identical bounds, so swapping one never moves the layout.
+ * `pressed` sinks the plate INSIDE the sprite; the element itself does not move.
+ */
+
+.fh-key {
+  border-style: solid;
+  border-width: 18px;
+  border-image-source: url('../assets/keys/key.secondary.rest.png');
+  border-image-slice: 18 fill;
+  border-image-repeat: stretch;
+  border-image-width: 18px;
+  background: transparent;
+  color: var(--fh-text);
+  font-family: var(--fh-face-display);
+  font-variation-settings: 'wght' 600, 'wdth' 62;
+  letter-spacing: var(--fh-track-legend);
+  text-transform: uppercase;
+  font-size: var(--fh-size-fine);
+  min-height: 56px;
+  min-width: 120px;
+  padding: 0 var(--fh-space-xl);
+  cursor: pointer;
+  box-sizing: border-box;
+}
+.fh-key:hover  { border-image-source: url('../assets/keys/key.secondary.hover.png'); }
+.fh-key:active { border-image-source: url('../assets/keys/key.secondary.pressed.png'); }
+.fh-key:disabled,
+.fh-key[aria-disabled='true'] {
+  border-image-source: url('../assets/keys/key.secondary.disabled.png');
+  color: var(--fh-text-tertiary);
+  cursor: default;
+}
+
+.fh-key--primary          { border-image-source: url('../assets/keys/key.primary.rest.png'); }
+.fh-key--primary:hover    { border-image-source: url('../assets/keys/key.primary.hover.png'); }
+.fh-key--primary:active   { border-image-source: url('../assets/keys/key.primary.pressed.png'); }
+.fh-key--primary:disabled { border-image-source: url('../assets/keys/key.primary.disabled.png'); }
+
+.fh-key--hazard          { border-image-source: url('../assets/keys/key.hazard.rest.png'); }
+.fh-key--hazard:hover    { border-image-source: url('../assets/keys/key.hazard.hover.png'); }
+.fh-key--hazard:active   { border-image-source: url('../assets/keys/key.hazard.pressed.png'); }
+.fh-key--hazard:disabled { border-image-source: url('../assets/keys/key.hazard.disabled.png'); }
+
+.fh-key--legend {
+  border-width: 14px;
+  border-image-source: url('../assets/keys/key.legend.rest.png');
+  border-image-slice: 14 fill;
+  border-image-width: 14px;
+  min-height: 40px;
+  min-width: 96px;
+  color: var(--fh-text-resting);
+}
+.fh-key--legend[aria-selected='true'],
+.fh-key--legend.is-lit { border-image-source: url('../assets/keys/key.legend.lit.png');
+                         color: var(--fh-text); }
+.fh-key--legend:hover  { border-image-source: url('../assets/keys/key.legend.hover.png'); }
+
+.fh-key--small {
+  border-width: 12px;
+  border-image-source: url('../assets/keys/key.small.rest.png');
+  border-image-slice: 12 fill;
+  border-image-width: 12px;
+  min-height: 36px;
+  min-width: 88px;
+  padding: 0 var(--fh-space-l);
+}
+.fh-key--small:hover  { border-image-source: url('../assets/keys/key.small.hover.png'); }
+.fh-key--small:active { border-image-source: url('../assets/keys/key.small.pressed.png'); }
+
+/* A socket is a machined recess that holds a verb icon — the action bar is sockets, not buttons */
+.fh-socket {
+  width: 56px; height: 56px;
+  border: 0;
+  background: url('../assets/sockets/socket.rest.png') center / 56px 56px no-repeat;
+  display: grid; place-items: center;
+  color: var(--fh-text-resting);
+  cursor: pointer;
+  padding: 0;
+}
+.fh-socket[data-state='lit']     { background-image: url('../assets/sockets/socket.lit.png');
+                                   color: var(--fh-legend); }
+.fh-socket[data-state='cooling'] { background-image: url('../assets/sockets/socket.cooling.png'); }
+.fh-socket[data-state='locked']  { background-image: url('../assets/sockets/socket.locked.png');
+                                   color: var(--fh-wanted); }
+.fh-socket[data-state='empty']   { background-image: url('../assets/sockets/socket.empty.png');
+                                   color: var(--fh-text-tertiary); }
+.fh-socket-group {
+  border-style: solid;
+  border-width: 18px;
+  border-image-source: url('../assets/sockets/socket.bracket.png');
+  border-image-slice: 18 fill;
+  border-image-width: 18px;
+  display: flex; gap: var(--fh-space-s);
+  padding: var(--fh-space-s) var(--fh-space-m) var(--fh-space-l);
+}
+
+.fh-toggle {
+  width: 72px; height: 32px; border: 0; padding: 0; cursor: pointer;
+  background: url('../assets/controls/toggle.switch.off-rest.png') center / 72px 32px no-repeat;
+}
+.fh-toggle:hover { background-image: url('../assets/controls/toggle.switch.off-hover.png'); }
+.fh-toggle[aria-checked='true'] {
+  background-image: url('../assets/controls/toggle.switch.on-rest.png');
+}
+.fh-toggle[aria-checked='true']:hover {
+  background-image: url('../assets/controls/toggle.switch.on-hover.png');
+}
+.fh-toggle:disabled { background-image: url('../assets/controls/toggle.switch.disabled-off.png');
+                      cursor: default; }
+
+.fh-slider { position: relative; height: 24px; display: flex; align-items: center; }
+.fh-slider-track {
+  flex: 1; height: 12px;
+  border-style: solid; border-width: 4px 8px;
+  border-image-source: url('../assets/controls/slider.track.png');
+  border-image-slice: 4 8 4 8 fill; border-image-width: 4px 8px;
+}
+.fh-slider-fill {
+  position: absolute; left: 0; height: 12px;
+  background: url('../assets/controls/slider.fill.png') left center / auto 12px repeat-x;
+}
+.fh-slider-thumb {
+  width: 24px; height: 24px; border: 0; padding: 0; position: absolute;
+  background: url('../assets/controls/slider.thumb.rest.png') center / 24px 24px no-repeat;
+}
+.fh-slider-thumb:hover  { background-image: url('../assets/controls/slider.thumb.hover.png'); }
+.fh-slider-thumb:active { background-image: url('../assets/controls/slider.thumb.pressed.png'); }
+
+.fh-stepper { display: inline-flex; align-items: center; gap: var(--fh-space-xs); }
+.fh-stepper-well {
+  border-style: solid; border-width: 14px;
+  border-image-source: url('../assets/controls/stepper.well.png');
+  border-image-slice: 14 fill; border-image-width: 14px;
+  min-width: 160px; min-height: 44px;
+  display: grid; place-items: center;
+  font-family: var(--fh-face-text); font-variant-numeric: tabular-nums;
+}
+.fh-stepper-minus, .fh-stepper-plus {
+  width: 44px; height: 44px; border: 0; padding: 0; cursor: pointer;
+  color: var(--fh-text); display: grid; place-items: center;
+}
+.fh-stepper-minus { background: url('../assets/controls/stepper.minus.rest.png') center / 44px no-repeat; }
+.fh-stepper-plus  { background: url('../assets/controls/stepper.plus.rest.png') center / 44px no-repeat; }
+.fh-stepper-minus:hover { background-image: url('../assets/controls/stepper.minus.hover.png'); }
+.fh-stepper-plus:hover  { background-image: url('../assets/controls/stepper.plus.hover.png'); }
+
+.fh-input {
+  border-style: solid; border-width: 12px;
+  border-image-source: url('../assets/controls/input.underline.rest.png');
+  border-image-slice: 12 fill; border-image-width: 12px;
+  background: transparent; color: var(--fh-text);
+  font-family: var(--fh-face-text); font-size: var(--fh-size-body);
+  min-height: 40px; padding: 0 var(--fh-space-m); box-sizing: border-box;
+}
+.fh-input:focus-visible { border-image-source: url('../assets/controls/input.underline.focus.png'); }
+.fh-input[aria-invalid='true'] { border-image-source: url('../assets/controls/input.underline.error.png'); }
+
+.fh-scroll-track { width: 8px; background: url('../assets/controls/scroll.track.png') repeat-y; }
+.fh-scroll-thumb {
+  width: 8px;
+  border-style: solid; border-width: 6px 2px;
+  border-image-source: url('../assets/controls/scroll.thumb.rest.png');
+  border-image-slice: 6 2 6 2 fill; border-image-width: 6px 2px;
+}
+
+/* ---------------------------------------------------------------- indicators */
+
+.fh-light {
+  display: inline-block; width: 12px; height: 12px;
+  background: url('../assets/lights/light.dot.legend.on.png') center / contain no-repeat;
+}
+.fh-light[data-colour='cold']   { background-image: url('../assets/lights/light.dot.cold.on.png'); }
+.fh-light[data-colour='wanted'] { background-image: url('../assets/lights/light.dot.wanted.on.png'); }
+.fh-light[data-colour='good']   { background-image: url('../assets/lights/light.dot.good.on.png'); }
+.fh-light[data-level='dim']     { background-image: url('../assets/lights/light.dot.legend.dim.png'); }
+.fh-light[data-level='off']     { background-image: url('../assets/lights/light.dot.legend.off.png'); }
+.fh-light--bar { width: 24px; height: 6px;
+                 background-image: url('../assets/lights/light.bar.legend.on.png'); }
+
+.fh-bar {
+  border-style: solid; border-width: 8px 10px;
+  border-image-source: url('../assets/gauges/bar.seg.bezel.png');
+  border-image-slice: 8 10 8 10 fill; border-image-width: 8px 10px;
+  display: flex; gap: 0; align-items: center; min-height: 28px; padding: 0 2px;
+}
+.fh-bar-seg { width: 12px; height: 16px;
+              background: url('../assets/gauges/bar.seg.off.png') center / 12px 16px no-repeat; }
+.fh-bar-seg.is-on   { background-image: url('../assets/gauges/bar.seg.on.png'); }
+.fh-bar-seg.is-hot  { background-image: url('../assets/gauges/bar.seg.hot.png'); }
+.fh-bar-seg.is-cold { background-image: url('../assets/gauges/bar.seg.cold.png'); }
+
+.fh-gauge { position: relative; width: 360px; height: 200px;
+            background: url('../assets/gauges/gauge.speed.bezel.png') center / contain no-repeat; }
+.fh-gauge-face { position: absolute; left: 100px; top: 108px; width: 160px; height: 72px;
+                 background: url('../assets/gauges/gauge.speed.face.png') center / contain no-repeat;
+                 display: grid; place-items: center; }
+.fh-gauge-needle { position: absolute; left: 50%; top: 62%; transform-origin: 0 0;
+                   transform: rotate(calc(var(--fh-gauge-value, 0) * 1deg)); }
+
+.fh-radar { position: relative; width: 320px; height: 320px;
+            background: url('../assets/radar/radar.bezel.png') center / contain no-repeat; }
+.fh-radar-face { position: absolute; inset: 0;
+                 background: url('../assets/radar/radar.face.png') center / contain no-repeat; }
+[data-fh-temp='wanted'] .fh-radar-face {
+  background-image: url('../assets/radar/radar.wanted-face.png');
+}
+
+.fh-badge { width: 280px; height: 96px; position: relative;
+            background: url('../assets/badges/badge.law.png') center / contain no-repeat; }
+[data-fh-temp='wanted'] .fh-badge {
+  background-image: url('../assets/badges/badge.law.wanted.png');
+}
+
+.fh-tape { display: inline-flex; align-items: stretch; height: 24px; }
+.fh-tape::before, .fh-tape::after { content: ''; width: 16px; }
+.fh-tape::before { background: url('../assets/tapes/tape.cap.left.png') center / contain no-repeat; }
+.fh-tape::after  { background: url('../assets/tapes/tape.cap.right.png') center / contain no-repeat; }
+.fh-tape-mid { background: url('../assets/tapes/tape.mid.png') left center / auto 24px repeat-x;
+               display: grid; place-items: center; padding: 0 var(--fh-space-s); }
+.fh-tape.is-lit .fh-tape-mid { background-image: url('../assets/tapes/tape.mid-lit.png'); }
+
+.fh-strip {
+  border-style: solid; border-width: 6px 10px;
+  border-image-source: url('../assets/strips/strip.status.bezel.png');
+  border-image-slice: 6 10 6 10 fill; border-image-width: 6px 10px;
+  display: flex; gap: 6px; align-items: center; height: 20px; padding: 0 4px;
+}
+
+.fh-tag {
+  border-style: solid; border-width: 8px 10px;
+  border-image-source: url('../assets/tapes/tag.world.png');
+  border-image-slice: 8 10 8 10 fill; border-image-width: 8px 10px;
+  font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
+  letter-spacing: var(--fh-track-legend); font-size: var(--fh-size-fine);
+  min-height: 24px; display: inline-flex; align-items: center; padding: 0 var(--fh-space-s);
+}
+
+.fh-objective {
+  border-style: solid; border-width: 16px;
+  border-image-source: url('../assets/plates/plate.objective.png');
+  border-image-slice: 16 fill; border-image-width: 16px;
+  padding: var(--fh-space-s) var(--fh-space-m);
+}
+
+/* ---------------------------------------------------------------- content */
+
+/* Any list of things that exist in the world is a row of IMAGED tiles, never a row of words. */
+.fh-tile {
+  border-style: solid; border-width: 20px;
+  border-image-source: url('../assets/windows/window.glass.png');
+  border-image-slice: 20 fill; border-image-width: 20px;
+  display: grid; grid-template-rows: 1fr auto;
+  min-width: 168px; min-height: 132px; padding: 0; cursor: pointer;
+  background: transparent; color: var(--fh-text-resting);
+  /* border-box like every other surface here: without it the 20 px border-image is ADDED to
+     the stated size, and a row of tiles silently grows 40 px taller than its frame. */
+  box-sizing: border-box;
+}
+.fh-tile[aria-selected='true'] {
+  border-image-source: url('../assets/windows/window.viewport.png');
+  color: var(--fh-text);
+}
+.fh-tile-art { display: grid; place-items: center; min-height: 78px; }
+.fh-tile-legend {
+  font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
+  letter-spacing: var(--fh-track-legend); text-transform: uppercase;
+  font-size: var(--fh-size-fine); text-align: center; padding: var(--fh-space-xs) 0;
+}
+
+.fh-icon { width: 24px; height: 24px; display: inline-block; vertical-align: -0.15em;
+           fill: currentColor; }
+.fh-icon--32 { width: 32px; height: 32px; }
+.fh-icon--48 { width: 48px; height: 48px; }
+.fh-icon .accent, .fh-mark .accent, .fh-crest .accent { fill: var(--fh-legend); }
+.fh-mark  { width: 96px; height: 96px; fill: currentColor; }
+.fh-crest { width: 64px; height: 64px; fill: currentColor; }
+
+/* ---------------------------------------------------------------- focus
+ *
+ * The ring is an inline SVG border-image, so it survives forced colours (a CSS background
+ * image does not) and it is legible on both the darkest and the lightest plate — proven at
+ * 15.49:1 and 12.83:1 in the contrast table.
+ */
+
+:where(.fh-key, .fh-socket, .fh-toggle, .fh-tile, .fh-input, .fh-row, .fh-slider-thumb,
+       .fh-stepper-minus, .fh-stepper-plus, .fh-menu-item):focus-visible {
+  outline: 2px solid var(--fh-bone);
+  outline-offset: 2px;
+}
+@media (forced-colors: active) {
+  :where(.fh-key, .fh-socket, .fh-toggle, .fh-tile, .fh-input):focus-visible {
+    outline: 3px solid Highlight;
+  }
+  .fh-icon, .fh-mark, .fh-crest { fill: CanvasText; }
+}
+
+/* ---------------------------------------------------------------- layout helpers */
+
+.fh-stack { display: flex; flex-direction: column; gap: var(--fh-space-m); }
+.fh-cluster { display: flex; gap: var(--fh-space-m); align-items: center; flex-wrap: wrap; }
+.fh-rows { display: flex; flex-direction: column; }
+.fh-screen { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.fh-world { position: absolute; inset: 0; background-size: cover; background-position: center; }
+.fh-over { position: absolute; inset: 0; }

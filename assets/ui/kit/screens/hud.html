@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en" data-fh-temp="flight">
+<head>
+<meta charset="utf-8">
+<title>Flight HUD (prototype)</title>
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="../kit/motion.css">
+<link rel="stylesheet" href="../kit/fh.css">
+<style>
+  /* EDGE register: small instruments pinned to the frame edges over the live flight picture.
+   * Nothing but the reticle and the world tag sits in the middle third, and no plate is
+   * larger than one sixth of the frame. */
+  html, body { margin: 0; height: 100%; background: #05070A; overflow: hidden; }
+  .screen { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+  .stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
+           transform: translate(-50%, -50%) scale(var(--fit, 1)); transform-origin: center; }
+  .world { position: absolute; inset: 0;
+           background: url('../../../../design/frontend/direction/approved/plates/plate-flight.png')
+                       center / cover no-repeat; }
+  /* A temperature changes the WHOLE frame, not one badge. The approved frame cools the plate
+     by scaling its channels; this is the same move at runtime. */
+  [data-fh-temp="wanted"] .world { filter: saturate(.86) hue-rotate(-10deg) brightness(.95)
+                                           contrast(1.04); }
+
+
+  /* Browser default margins are the quiet killer of a frame match: an <h1> carries
+     margin:0.67em at its 2em default size, which is exactly 21 px, and a <p> carries 1em.
+     Absolute positioning does not remove them — they offset the box inside its `top`. */
+  .at { position: absolute; margin: 0; padding: 0; }
+  /* top */
+  .tip { left: 50%; top: 26px; transform: translateX(-50%); text-align: center;
+         font-family: var(--fh-face-display);
+         font-variation-settings: 'wght' 600, 'wdth' 62;
+         letter-spacing: var(--fh-track-legend); text-transform: uppercase;
+         font-size: var(--fh-size-fine); color: var(--fh-text-resting); }
+  .band { left: 1104px; top: 62px; }
+  .law { right: 44px; top: 62px; }
+  .law-inner { position: absolute; inset: 0; display: grid;
+               grid-template-columns: 56px 1fr; align-items: center;
+               padding: 10px 14px; gap: 10px; box-sizing: border-box; }
+  .law-strip { grid-column: 2; }
+  .law-line { right: 44px; top: 166px; width: 280px; text-align: right;
+              font-family: var(--fh-face-text); font-size: 12px;
+              color: var(--fh-text-tertiary); line-height: 1.35; }
+  /* right */
+  .contacts { right: 44px; top: 232px; width: 300px; }
+  .contacts .fh-row { min-height: 28px; padding: 2px 8px; font-size: 13px;
+                      font-family: var(--fh-face-text); }
+  .contacts .dist { margin-left: auto; font-variant-numeric: tabular-nums;
+                    color: var(--fh-text-resting); }
+  .radar { right: 44px; bottom: 44px; }
+  .radar-legends { position: absolute; inset: 0; pointer-events: none; }
+  .radar-legends span { position: absolute; font-family: var(--fh-face-display);
+                        font-variation-settings: 'wght' 600, 'wdth' 62;
+                        letter-spacing: var(--fh-track-legend); font-size: 11px; }
+  .corner { right: 44px; bottom: 18px; font-family: var(--fh-face-display);
+            font-variation-settings: 'wght' 600, 'wdth' 62; font-size: 11px;
+            letter-spacing: var(--fh-track-legend); color: var(--fh-text-tertiary); }
+  /* left */
+  .tabs { left: 44px; top: 62px; display: flex; gap: 8px; }
+  .log { left: 44px; top: 116px; width: 420px; font-family: var(--fh-face-text);
+         font-size: 12px; color: var(--fh-text-tertiary); line-height: 1.4; }
+  .status { left: 44px; top: 392px; }
+  .status .fh-light { margin-right: 6px; }
+  .objective { left: 44px; top: 440px; width: 380px; }
+  .objective .meta { font-variant-numeric: tabular-nums; font-size: 12px;
+                     color: var(--fh-text-resting); font-family: var(--fh-face-text); }
+  /* bottom */
+  .ship { left: 44px; bottom: 44px; width: 300px; }
+  .speed { left: 360px; bottom: 34px; }
+  .speed-legends { position: absolute; left: 18px; bottom: -4px;
+                   font-family: var(--fh-face-text); font-size: 12px;
+                   color: var(--fh-text-tertiary); }
+  .actions { left: 620px; bottom: 30px; display: flex; gap: 18px; }
+  .actiongroup { display: flex; flex-direction: column; align-items: center; }
+  .slotkey { font-family: var(--fh-face-display);
+             font-variation-settings: 'wght' 600, 'wdth' 62; font-size: 10px;
+             letter-spacing: .06em; color: var(--fh-text-tertiary); margin-top: 3px; }
+  /* middle third: only the reticle and the world tag */
+  .reticle { left: 50%; top: 50%; transform: translate(-50%, -50%); color: var(--fh-text-resting); }
+  .worldtag { left: 1088px; top: 596px; }
+
+  .toggle { position: absolute; left: 44px; top: 20px; z-index: 5; opacity: .6; }
+  .toggle a { color: var(--fh-text-resting); text-decoration: none; font-size: 11px;
+              font-family: var(--fh-face-display); letter-spacing: .06em; padding: 3px 7px;
+              font-variation-settings: 'wght' 600, 'wdth' 62; }
+  .toggle a[aria-current] { color: var(--fh-signal); }
+</style>
+</head>
+<body class="fh-root">
+<main class="screen">
+  <div class="stage" id="stage">
+    <div class="world"></div>
+
+    <nav class="toggle"><a href="?state=resting">RESTING</a><a href="?state=wanted">WANTED</a></nav>
+
+    <p class="at tip" id="tip"></p>
+    <span class="at band fh-tape"><span class="fh-tape-mid fh-legend" data-fh-lit="rest"
+          id="band"></span></span>
+
+    <div class="at law fh-badge">
+      <div class="law-inner">
+        <span id="law-crest"></span>
+        <div>
+          <div class="fh-hazard law-strip" style="width:180px;height:18px"></div>
+          <div class="fh-legend" data-fh-lit="on" id="law-place" style="margin-top:4px"></div>
+          <div class="fh-legend" data-fh-lit="rest" id="law-juris"></div>
+        </div>
+      </div>
+    </div>
+    <p class="at law-line" id="law-line"></p>
+
+    <div class="at contacts fh-plate fh-plate--edge">
+      <div class="fh-legend" data-fh-lit="rest" id="contacts-header"></div>
+      <div class="fh-rows" id="contacts-rows"></div>
+      <div class="fh-legend" data-fh-lit="off" id="contacts-footer" style="margin-top:6px"></div>
+    </div>
+
+    <div class="at radar fh-radar" id="radar">
+      <div class="radar-legends">
+        <span style="left:50%;top:8px;transform:translateX(-50%);color:var(--fh-cold)"
+              id="radar-n"></span>
+        <span style="left:50%;bottom:10px;transform:translateX(-50%);color:var(--fh-text-tertiary)"
+              id="radar-range"></span>
+        <span style="left:50%;top:56%;transform:translateX(-50%);color:var(--fh-text-tertiary)"
+              id="radar-you"></span>
+      </div>
+    </div>
+    <p class="at corner" id="corner"></p>
+
+    <div class="at tabs" id="tabs"></div>
+    <p class="at log" id="log"></p>
+
+    <div class="at status">
+      <span class="fh-legend" data-fh-lit="rest">STATUS</span>
+      <span class="fh-strip" id="status-strip" style="width:200px;margin-top:4px"></span>
+      <span class="fh-data" id="status-value" style="display:block;text-align:left"></span>
+    </div>
+
+    <div class="at objective fh-objective">
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <span id="obj-icon"></span>
+        <div>
+          <div id="obj-line" style="font-family:var(--fh-face-text);font-size:14px"></div>
+          <div class="meta" id="obj-meta"></div>
+        </div>
+        <span id="obj-chevron" style="margin-left:auto;color:var(--fh-signal)"></span>
+      </div>
+    </div>
+
+    <div class="at ship fh-plate fh-plate--edge">
+      <div style="display:flex;gap:10px;align-items:center">
+        <span class="fh-legend" data-fh-lit="rest" style="width:54px" id="energy-legend"></span>
+        <span class="fh-bar" id="bar-energy" style="flex:1"></span>
+        <span class="fh-data" id="energy-value" style="width:34px"></span>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:6px">
+        <span class="fh-legend" data-fh-lit="rest" style="width:54px" id="drive-legend"></span>
+        <span class="fh-bar" id="bar-drive" style="flex:1"></span>
+        <span class="fh-data" id="drive-value" style="width:34px"></span>
+      </div>
+    </div>
+
+    <div class="at speed fh-gauge" id="gauge">
+      <div class="fh-gauge-face"><span class="fh-heronum" data-gauge-readout>95</span></div>
+      <div class="speed-legends" id="speed-legends"></div>
+    </div>
+
+    <div class="at actions" id="actions"></div>
+
+    <svg class="at reticle" width="56" height="56" viewBox="0 0 56 56" aria-hidden="true"
+         fill="none" stroke="currentColor" stroke-opacity=".7">
+      <path d="M28 8v12M28 36v12M8 28h12M36 28h12"/><circle cx="28" cy="28" r="3"/>
+    </svg>
+    <span class="at worldtag fh-tag" id="worldtag"></span>
+  </div>
+</main>
+
+<script src="fixtures.js"></script>
+<script src="../kit/sprites.js"></script>
+<script src="../kit/sound-recipes.js"></script>
+<script src="../kit/motion.js"></script>
+<script src="../kit/sound.js"></script>
+<script src="../kit/fh.js"></script>
+<script>
+(function () {
+  var H = FIXTURES.hud;
+  FH.kit.init({ sprite: window.FH_SPRITES.all });
+
+  var wanted = /state=wanted/.test(location.search);
+  document.documentElement.setAttribute('data-fh-temp', wanted ? 'wanted' : 'flight');
+  document.querySelectorAll('.toggle a').forEach(function (a) {
+    if (a.getAttribute('href') === '?state=' + (wanted ? 'wanted' : 'resting')) {
+      a.setAttribute('aria-current', 'page');
+    }
+  });
+
+  document.getElementById('tip').textContent = H.tip;
+  document.getElementById('band').textContent = H.band;
+  document.getElementById('law-crest').innerHTML = FH.kit.mark('crest-scn', 'fh-crest');
+  document.getElementById('law-place').textContent =
+    (wanted ? H.law.wantedLevel : H.law.level) + ' · ' + H.law.place;
+  document.getElementById('law-juris').textContent = H.law.jurisdiction;
+  document.getElementById('law-line').textContent = H.law.line;
+
+  document.getElementById('contacts-header').textContent = H.contacts.header;
+  document.getElementById('contacts-rows').innerHTML = H.contacts.rows.map(function (r, i) {
+    return '<div class="fh-row' + (i === 0 ? ' is-selected' : '') + '" tabindex="0">' +
+      FH.kit.icon(r.cls, 24, r.cls) + '<span>' + r.name + '</span>' +
+      '<span class="dist">' + r.dist + '</span>' +
+      '<span class="fh-light" data-colour="' + (wanted ? 'wanted' : 'legend') +
+      '" data-level="dim"></span></div>';
+  }).join('');
+  document.getElementById('contacts-footer').textContent = H.contacts.footer;
+
+  FH.kit.radar(document.getElementById('radar'), {
+    sweepAngle: 38,
+    contacts: wanted ? H.radar.wantedContacts : H.radar.contacts,
+  });
+  document.getElementById('radar-n').textContent = H.radar.north;
+  document.getElementById('radar-range').textContent = H.radar.range;
+  document.getElementById('radar-you').textContent = H.radar.you;
+  document.getElementById('corner').textContent = H.corner;
+
+  document.getElementById('tabs').innerHTML = H.bandTabs.map(function (t, i) {
+    return '<button class="fh-key fh-key--legend' + (i === 0 ? ' is-lit' : '') + '">' + t +
+           '</button>';
+  }).join('');
+  document.getElementById('log').textContent = H.log;
+
+  var strip = document.getElementById('status-strip');
+  for (var i = 0; i < H.status.total; i++) {
+    var l = document.createElement('span');
+    l.className = 'fh-light';
+    l.setAttribute('data-colour', wanted ? 'wanted' : 'legend');
+    l.setAttribute('data-level', i < H.status.value ? 'on' : 'off');
+    strip.appendChild(l);
+  }
+  document.getElementById('status-value').textContent =
+    H.status.value + ' / ' + H.status.total;
+
+  document.getElementById('obj-icon').innerHTML = FH.kit.icon('target', 24, 'Objective');
+  document.getElementById('obj-line').textContent = H.objective.line;
+  document.getElementById('obj-meta').textContent = H.objective.meta;
+  document.getElementById('obj-chevron').innerHTML = FH.kit.icon('chevron-right', 24);
+
+  document.getElementById('energy-legend').textContent = H.ship.energyLegend;
+  document.getElementById('drive-legend').textContent = H.ship.driveLegend;
+  document.getElementById('energy-value').textContent = H.ship.energy;
+  document.getElementById('drive-value').textContent = H.ship.drive;
+  FH.kit.bar(document.getElementById('bar-energy'), Math.round(H.ship.energy / 10), 10,
+             wanted ? 'cold' : 'on');
+  FH.kit.bar(document.getElementById('bar-drive'), Math.round(H.ship.drive / 10), 10,
+             wanted ? 'cold' : 'on');
+
+  FH.kit.gauge(document.getElementById('gauge'), H.speed.value, 200);
+  document.getElementById('speed-legends').innerHTML =
+    H.speed.weaponsLegend + ' ' + H.speed.weapons + '<br>' +
+    H.speed.classLegend + ' ' + H.speed.cls;
+
+  document.getElementById('actions').innerHTML = H.actions.map(function (g) {
+    return '<div class="actiongroup"><div class="fh-socket-group">' +
+      g.slots.map(function (s) {
+        return '<div style="display:flex;flex-direction:column;align-items:center">' +
+          '<button class="fh-socket" data-state="' + s.state + '" aria-label="' + s.key +
+          '">' + FH.kit.icon(s.icon, 32) + '</button>' +
+          '<span class="slotkey">' + s.key + '</span></div>';
+      }).join('') +
+      '</div><span class="fh-legend" data-fh-lit="rest" style="margin-top:4px">' + g.group +
+      '</span></div>';
+  }).join('');
+
+  document.getElementById('worldtag').textContent = H.worldTag;
+
+  // EDGE motion: instruments arrive, and a wanted screen pulses ONCE and holds.
+  FH.motion.group(document.querySelectorAll('.at'), { register: 'edge', from: 'cut' });
+  if (wanted) {
+    FH.motion.pulse(document.querySelector('.law'));
+    FH.sound.play('ui_wanted');
+  }
+
+  function fit() {
+    document.getElementById('stage').style.setProperty(
+      '--fit', Math.min(innerWidth / 1920, innerHeight / 1080));
+  }
+  addEventListener('resize', fit);
+  fit();
+})();
+</script>
+</body>
+</html>

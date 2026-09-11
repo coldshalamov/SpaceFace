@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en" data-fh-temp="crucible">
+<head>
+<meta charset="utf-8">
+<title>Crucible — the door (prototype)</title>
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="../kit/motion.css">
+<link rel="stylesheet" href="../kit/fh.css">
+<style>
+  html, body { margin: 0; height: 100%; background: var(--fh-ground); overflow: hidden; }
+  .screen { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+  .stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px;
+           transform: translate(-50%, -50%) scale(var(--fit, 1)); transform-origin: center; }
+  .world { position: absolute; inset: 0;
+           background: url('../../../../design/frontend/direction/approved/plates/plate-crucible-door.png')
+                       center / cover no-repeat; }
+  .vignette { position: absolute; inset: 0; pointer-events: none;
+              background: radial-gradient(ellipse 72% 72% at 50% 50%,
+                          rgba(0,0,0,0) 52%, rgba(0,0,0,.34) 100%); }
+
+  /* The title is a stencil marking at 160 px, hanging from the top-left edge. */
+
+  /* Browser default margins are the quiet killer of a frame match: an <h1> carries
+     margin:0.67em at its 2em default size, which is exactly 21 px, and a <p> carries 1em.
+     Absolute positioning does not remove them — they offset the box inside its `top`. */
+  .title, .tagline, .blurb, .aside, .rows section { margin: 0; padding: 0; }
+  .title { position: absolute; left: 104px; top: 74px; margin: 0;
+           font-size: 160px; color: var(--fh-text); }
+  .tagline { position: absolute; left: 112px; top: 246px; margin: 0; font-size: 20px;
+             color: var(--fh-text-resting); font-family: var(--fh-face-text); }
+
+  /* Three rows of IMAGED tiles hanging from the left edge — never a row of words. */
+  /* Each row is placed at the frame's own y (298 + i*230) instead of being laid out by flow:
+     intrinsic heights differ by a few px per row in the browser, and those few px compound
+     into the 89 px the frame comparison measured. */
+  /* text over a forge-lit arena needs the produced smoked window, not a CSS scrim */
+  .selectors { position: absolute; left: 72px; top: 276px; width: 780px;
+               height: 616px; box-sizing: border-box; }
+  .rows { position: absolute; left: 104px; top: 298px; }
+  .rows section { position: absolute; left: 0; top: calc(var(--i) * 230px); width: 900px; }
+  .rowhead { display: flex; align-items: baseline; gap: 16px; height: 26px; }
+  .blurb { font-family: var(--fh-face-text); font-size: 14px; color: var(--fh-text-resting);
+           max-width: 62ch; margin: 0; }
+  .aside { font-family: var(--fh-face-text); font-size: 13px; position: absolute;
+           top: 26px; left: 8px; color: var(--fh-text-tertiary); }
+  .tiles { display: flex; gap: 12px; position: absolute; top: 56px; left: 0; }
+  .fh-tile { min-width: 132px; width: 132px; min-height: 116px; height: 116px; }
+  .fh-tile .fh-mark, .fh-tile .fh-icon--48 { color: var(--fh-text-resting); }
+  .fh-tile[aria-selected='true'] .fh-mark,
+  .fh-tile[aria-selected='true'] .fh-icon--48 { color: var(--fh-text); }
+
+  /* The seed is an engraved numeric readout; Launch is ONE big machined key with live paint. */
+  .foot { position: absolute; left: 104px; top: 916px; display: flex; align-items: center;
+          gap: 20px; }
+  .seedwell { display: inline-flex; align-items: center; gap: 14px; padding: 0 22px;
+              min-height: 56px;
+              border-style: solid; border-width: 14px;
+              border-image-source: url('../assets/controls/stepper.well.png');
+              border-image-slice: 14 fill; border-image-repeat: stretch;
+              border-image-width: 14px; }
+  .seed { font-family: var(--fh-face-display);
+          font-variation-settings: 'wght' 800, 'wdth' 125; font-size: 40px;
+          font-variant-numeric: tabular-nums; letter-spacing: var(--fh-track-display); }
+  .records { position: absolute; left: 104px; top: 1006px; display: flex; align-items: center;
+             gap: 10px; background: none; border: 0; cursor: pointer; padding: 0;
+             color: inherit; }
+  .launch { position: absolute; right: 96px; bottom: 92px; min-width: 360px; min-height: 84px;
+            font-size: 20px; }
+  .back { position: absolute; right: 96px; bottom: 44px; background: none; border: 0;
+          padding: 0; cursor: pointer;
+          font-family: var(--fh-face-display);
+          font-variation-settings: 'wght' 600, 'wdth' 62;
+          letter-spacing: var(--fh-track-legend); text-transform: uppercase;
+          font-size: var(--fh-size-fine); color: var(--fh-text-resting); }
+</style>
+</head>
+<body class="fh-root">
+<main class="screen">
+  <div class="stage" id="stage">
+    <div class="world"></div>
+    <div class="vignette"></div>
+
+    <h1 class="title fh-title" id="title"></h1>
+    <p class="tagline" id="tagline"></p>
+    <div class="fh-window fh-window--deep selectors" aria-hidden="true"></div>
+    <div class="rows" id="rows"></div>
+
+    <div class="foot">
+      <span class="fh-legend" data-fh-lit="rest">SEED</span>
+      <span class="seedwell"><span class="seed" id="seed"></span></span>
+      <button class="fh-key fh-key--small fh-pressable" id="newseed"></button>
+    </div>
+    <button class="records" id="records">
+      <span class="fh-legend" data-fh-lit="rest" id="records-label"></span>
+    </button>
+
+    <button class="fh-key fh-key--hazard fh-pressable launch" id="launch"
+            data-fh-cue="ui_crucible_enter"></button>
+    <button class="back fh-pressable" id="back" data-fh-cue="ui_back"></button>
+  </div>
+</main>
+
+<script src="fixtures.js"></script>
+<script src="../kit/sprites.js"></script>
+<script src="../kit/sound-recipes.js"></script>
+<script src="../kit/motion.js"></script>
+<script src="../kit/sound.js"></script>
+<script src="../kit/fh.js"></script>
+<script>
+(function () {
+  var C = FIXTURES.crucible;
+  FH.kit.init({ sprite: window.FH_SPRITES.all });
+
+  document.getElementById('title').textContent = C.title;
+  document.getElementById('tagline').textContent = C.tagline;
+  document.getElementById('seed').textContent = C.seed;
+  document.getElementById('newseed').textContent = C.newSeed;
+  document.getElementById('records-label').textContent = C.records;
+  document.getElementById('records').insertAdjacentHTML('beforeend',
+    FH.kit.icon('chevron-right', 24));
+  document.getElementById('launch').textContent = C.launch;
+  document.getElementById('back').textContent = C.back;
+
+  document.getElementById('rows').innerHTML = C.rows.map(function (row, i) {
+    var tiles = row.items.map(function (it) {
+      var art = it.mark ? FH.kit.mark(it.mark, 'fh-mark') : FH.kit.icon(it.icon, 48);
+      return '<button class="fh-tile" role="radio"' +
+        (it.label === row.selected ? ' aria-checked="true" aria-selected="true"'
+                                   : ' aria-checked="false"') +
+        ' data-fh-cue="ui_tab" data-row="' + row.key + '">' +
+        '<span class="fh-tile-art">' + art + '</span>' +
+        '<span class="fh-tile-legend">' + it.label + '</span></button>';
+    }).join('');
+    return '<section data-row="' + row.key + '" style="--i:' + i + '">' +
+      '<div class="rowhead"><span class="fh-legend" data-fh-lit="on">' + row.legend + '</span>' +
+      '<p class="blurb">' + row.blurb + '</p></div>' +
+      (row.aside ? '<p class="aside">' + row.aside + '</p>' : '') +
+      '<div class="tiles" role="radiogroup" aria-label="' + row.legend + '">' + tiles +
+      '</div></section>';
+  }).join('');
+
+  // one selection per row, keyboard reachable with arrows inside the group
+  document.getElementById('rows').addEventListener('click', function (e) {
+    var t = e.target.closest('.fh-tile');
+    if (!t) return;
+    t.closest('.tiles').querySelectorAll('.fh-tile').forEach(function (o) {
+      o.setAttribute('aria-checked', String(o === t));
+      o.toggleAttribute('aria-selected', o === t);
+    });
+    if (t.closest('[data-row]').dataset.row === 'mode') {
+      document.getElementById('launch').textContent =
+        'Launch ' + t.querySelector('.fh-tile-legend').textContent;
+    }
+  });
+  document.getElementById('rows').addEventListener('keydown', function (e) {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    var group = e.target.closest('.tiles');
+    if (!group) return;
+    var all = Array.prototype.slice.call(group.querySelectorAll('.fh-tile'));
+    var i = all.indexOf(e.target);
+    var next = all[(i + (e.key === 'ArrowRight' ? 1 : -1) + all.length) % all.length];
+    next.focus();
+    next.click();
+    e.preventDefault();
+  });
+
+  // POSTER reveal: the title stamps in, the rows stagger
+  FH.motion.reveal(document.getElementById('title'), { register: 'poster', from: 'stamp' });
+  FH.motion.reveal(document.getElementById('tagline'), { register: 'poster', index: 1 });
+  FH.motion.group(document.querySelectorAll('.rows section'),
+                  { register: 'poster', from: 'left' });
+  FH.motion.reveal(document.getElementById('launch'), { register: 'poster', index: 5 });
+  FH.motion.parallax(document.getElementById('stage'), { max: 6 });
+
+  function fit() {
+    document.getElementById('stage').style.setProperty(
+      '--fit', Math.min(innerWidth / 1920, innerHeight / 1080));
+  }
+  addEventListener('resize', fit);
+  fit();
+})();
+</script>
+</body>
+</html>

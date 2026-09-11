@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Field Hardware — sound</title>
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="motion.css">
+<link rel="stylesheet" href="fh.css">
+<style>
+  body { margin: 0; background: var(--fh-ground); color: var(--fh-text);
+         font-family: var(--fh-face-text); }
+  header, section { padding: 22px 32px; }
+  h1 { font-family: var(--fh-face-display); font-variation-settings: 'wght' 900, 'wdth' 125;
+       font-size: 40px; margin: 0; letter-spacing: var(--fh-track-display); line-height: 1; }
+  .sub { color: var(--fh-text-resting); max-width: 84ch; margin: 12px 0 0; }
+  .bar { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding: 0 32px 8px; }
+  table { border-collapse: collapse; width: 100%; max-width: 1080px; }
+  th { text-align: left; font-family: var(--fh-face-display);
+       font-variation-settings: 'wght' 600, 'wdth' 62; letter-spacing: var(--fh-track-legend);
+       text-transform: uppercase; font-size: var(--fh-size-fine);
+       color: var(--fh-legend); padding: 8px 12px; }
+  td { padding: 6px 12px; font-size: 14px; color: var(--fh-text-resting);
+       vertical-align: middle; }
+  td.num { font-variant-numeric: tabular-nums; text-align: right;
+           color: var(--fh-text-tertiary); }
+  tr + tr td { background-image: url('../assets/tiles/tile.etch.hairline.png');
+               background-repeat: repeat-x; background-position: top left; }
+  .note { color: var(--fh-text-tertiary); font-size: var(--fh-size-fine); max-width: 86ch;
+          line-height: 1.55; }
+  code { font-size: 12px; color: var(--fh-text-resting); }
+</style>
+</head>
+<body class="fh-root">
+<header>
+  <h1>Sound</h1>
+  <p class="sub">Fourteen cues, 3.16 s of audio in total, all synthesised from recipes in the
+     game's own shape — the game has no audio files. <strong>The player starts muted</strong>,
+     and no AudioContext is created until you press something, because a context created before
+     a user gesture is suspended and plays nothing.</p>
+</header>
+
+<div class="bar">
+  <button class="fh-key fh-key--primary fh-pressable" id="unmute">Unmute</button>
+  <label class="fh-legend" data-fh-lit="rest">VOLUME
+    <input type="range" id="vol" min="0" max="100" value="70" style="vertical-align:middle">
+  </label>
+  <span class="fh-legend" data-fh-lit="off" id="state">MUTED · NO CONTEXT</span>
+</div>
+
+<section>
+  <table id="cues">
+    <thead><tr><th>Cue</th><th>Character</th><th style="text-align:right">Length</th><th></th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <p class="note" style="margin-top:18px">Every row plays through <code>FH.sound.play(id)</code>
+     with the recipe unchanged. The layered cues (<code>ui_key_press</code>,
+     <code>ui_deny</code>, <code>ui_dock</code>, <code>ui_undock</code>,
+     <code>ui_wanted</code>, <code>ui_crucible_enter</code>) build from sub-recipes that are
+     themselves in the table's source file, exactly as <code>audioRecipes.js</code> does it.</p>
+</section>
+
+<script src="sound-recipes.js"></script>
+<script src="motion.js"></script>
+<script src="sound.js"></script>
+<script>
+(function () {
+  FH.sound.load(window.FH_SOUND_RECIPES);
+
+  // only the fourteen named cues get a row; the sub-recipes are implementation
+  var CUES = ['ui_key_press', 'ui_plate_slide', 'ui_legend_on', 'ui_legend_off', 'ui_confirm',
+              'ui_deny', 'ui_open', 'ui_back', 'ui_tab', 'ui_dock', 'ui_undock', 'ui_wanted',
+              'ui_crucible_enter', 'ui_tick'];
+  var byId = {};
+  window.FH_SOUND_RECIPES.recipes.forEach(function (r) { byId[r.id] = r; });
+
+  var total = 0;
+  document.querySelector('#cues tbody').innerHTML = CUES.map(function (id) {
+    var r = byId[id] || {};
+    var d = FH.sound.duration(id);
+    total += d;
+    var note = (r['$note'] || '').replace(/\.$/, '');
+    return '<tr><td><code>' + id + '</code></td><td>' + note + '</td>' +
+      '<td class="num">' + Math.round(d * 1000) + ' ms</td>' +
+      '<td><button class="fh-key fh-key--small fh-pressable" data-cue="' + id +
+      '">Play</button></td></tr>';
+  }).join('');
+
+  document.getElementById('state').textContent =
+    'MUTED · ' + CUES.length + ' CUES · ' + total.toFixed(2) + ' S TOTAL';
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-cue]');
+    if (b) { FH.motion.press(b); FH.sound.play(b.getAttribute('data-cue'), { force: true }); }
+    var p = e.target.closest('.fh-pressable');
+    if (p && !p.hasAttribute('data-cue')) FH.motion.press(p);
+  });
+
+  document.getElementById('unmute').addEventListener('click', function () {
+    var muted = FH.sound.setMuted(!FH.sound.isMuted());
+    this.textContent = muted ? 'Unmute' : 'Mute';
+    var el = document.getElementById('state');
+    el.textContent = (muted ? 'MUTED' : 'LIVE') + ' · ' + CUES.length + ' CUES · ' +
+      total.toFixed(2) + ' S TOTAL';
+    el.setAttribute('data-fh-lit', muted ? 'off' : 'on');
+    if (!muted) FH.sound.play('ui_confirm');
+  });
+  document.getElementById('vol').addEventListener('input', function () {
+    FH.sound.setVolume(this.value / 100);
+  });
+})();
+</script>
+</body>
+</html>

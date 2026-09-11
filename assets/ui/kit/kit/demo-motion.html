@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en" data-fh-temp="flight">
+<head>
+<meta charset="utf-8">
+<title>Field Hardware — motion</title>
+<link rel="stylesheet" href="../tokens/tokens.css">
+<link rel="stylesheet" href="motion.css">
+<link rel="stylesheet" href="fh.css">
+<style>
+  /* Page chrome only. Every component below is built from the produced assets in fh.css. */
+  body { margin: 0; background: var(--fh-ground); color: var(--fh-text);
+         font-family: var(--fh-face-text); }
+  header { padding: 28px 32px 8px; }
+  h1 { font-family: var(--fh-face-display); font-variation-settings: "wght" 900, "wdth" 125;
+       letter-spacing: var(--fh-track-display); font-size: 40px; margin: 0; line-height: 1; }
+  .sub { color: var(--fh-text-resting); font-size: var(--fh-size-body); margin: 10px 0 0;
+         max-width: 78ch; }
+  .bar { display: flex; gap: 18px; align-items: center; flex-wrap: wrap;
+         padding: 18px 32px; border-top: 0; }
+  .bar label { font-family: var(--fh-face-display);
+               font-variation-settings: "wght" 600, "wdth" 62;
+               letter-spacing: var(--fh-track-legend); text-transform: uppercase;
+               font-size: var(--fh-size-fine); color: var(--fh-text-resting); }
+  section { padding: 10px 32px 34px; }
+  h2 { font-family: var(--fh-face-display);
+       font-variation-settings: "wght" 600, "wdth" 62; letter-spacing: var(--fh-track-legend);
+       text-transform: uppercase; font-size: var(--fh-size-fine); color: var(--fh-legend);
+       margin: 26px 0 12px; }
+  .row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .stage { display: flex; gap: 14px; flex-wrap: wrap; min-height: 96px; align-items: flex-start; }
+  .readout { font-variant-numeric: tabular-nums; font-size: var(--fh-size-data);
+             color: var(--fh-text-resting); }
+  .hero { font-family: var(--fh-face-display);
+          font-variation-settings: "wght" 900, "wdth" 125; font-size: 96px; line-height: .9;
+          letter-spacing: var(--fh-track-display); }
+  .note { color: var(--fh-text-tertiary); font-size: var(--fh-size-fine); margin-top: 8px;
+          max-width: 82ch; line-height: 1.5; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Motion</h1>
+  <p class="sub">Every motion below is started by a state passed in, and returns a cancel handle.
+     Nothing on this page runs until you ask it to, and nothing keeps running after it lands.</p>
+</header>
+
+<div class="bar">
+  <label><input type="checkbox" id="reduce"> Reduced motion (cut everything)</label>
+  <span class="readout" id="fps">frame cost — idle</span>
+  <span class="readout" id="raf">live rAF: 0</span>
+</div>
+
+<section>
+  <h2>Poster · reveal, stagger 40 ms, settle 280 ms</h2>
+  <div class="row"><button class="fh-key fh-key--secondary" data-run="poster">Run</button></div>
+  <div class="stage" id="poster-stage">
+    <div class="hero" data-poster>SPACEFACE</div>
+  </div>
+  <div class="row" id="poster-menu" style="margin-top:14px">
+    <span class="fh-menu-item" data-poster>NEW GAME</span>
+    <span class="fh-menu-item" data-poster>CONTINUE</span>
+    <span class="fh-menu-item" data-poster>LOAD GAME</span>
+    <span class="fh-menu-item" data-poster>SETTINGS</span>
+  </div>
+  <p class="note">The hero type stamps in: it arrives 3.5 % large and slightly blurred and
+     settles. The menu staggers at 40 ms per item.</p>
+
+  <h2>Poster · drift ≤ 0.5°/s and parallax ≤ 6 px</h2>
+  <div class="row">
+    <button class="fh-key fh-key--secondary" data-run="drift">Toggle drift</button>
+    <button class="fh-key fh-key--secondary" data-run="parallax">Toggle parallax</button>
+  </div>
+  <div class="stage">
+    <div id="ambient" class="fh-plate fh-drift fh-parallax"
+         style="width:320px;height:120px;display:grid;place-items:center">
+      <span class="fh-legend">AMBIENT</span>
+    </div>
+  </div>
+  <p class="note">Both are allowed only on a paused screen with reduced motion off. Drift parks
+     its rAF when the tab hides; parallax has no loop at all. Watch the live-rAF readout.</p>
+
+  <h2>Bench · slide 200 ms with a one-frame overshoot</h2>
+  <div class="row"><button class="fh-key fh-key--secondary" data-run="bench">Run</button></div>
+  <div class="stage" id="bench-stage">
+    <div class="fh-plate" style="width:240px;height:96px"></div>
+    <div class="fh-plate fh-plate--raised" style="width:240px;height:96px"></div>
+    <div class="fh-plate fh-plate--sunk" style="width:240px;height:96px"></div>
+  </div>
+
+  <h2>Bench · light-up 100 ms — the light is the state</h2>
+  <div class="row">
+    <button class="fh-key fh-key--secondary" data-run="light">Cycle: on → rest → off</button>
+    <span class="fh-legend" id="legend-demo" data-fh-lit="off">STATION EXCHANGE</span>
+    <span class="fh-legend" id="legend-demo2" data-fh-lit="off">TRADE ROUTES</span>
+  </div>
+
+  <h2>Bench · press 60 ms down / 120 ms up</h2>
+  <div class="row">
+    <button class="fh-key fh-key--primary fh-pressable">CONFIRM PURCHASE</button>
+    <button class="fh-key fh-key--secondary fh-pressable">Back</button>
+    <button class="fh-key fh-key--hazard fh-pressable">Launch Swarm</button>
+  </div>
+  <p class="note">The plate sinks 2 px inside its own bounds. The element does not move, so the
+     layout under the pointer never shifts.</p>
+
+  <h2>Edge · value ease 120 ms, single pulse 400 ms</h2>
+  <div class="row">
+    <button class="fh-key fh-key--secondary" data-run="value">New reading</button>
+    <button class="fh-key fh-key--secondary" data-run="pulse">Alert (once)</button>
+    <span class="hero" id="speed" style="font-size:64px">95</span>
+  </div>
+  <p class="note">The alert pulses once and holds. Nothing on an EDGE surface loops, because
+     an EDGE surface is over live flight.</p>
+</section>
+
+<script src="motion.js"></script>
+<script>
+(function () {
+  var M = FH.motion;
+  var handles = { drift: null, parallax: null };
+
+  document.getElementById('reduce').addEventListener('change', function (e) {
+    M.setReducedMotion(e.target.checked ? true : null);
+  });
+
+  function run(what) {
+    if (what === 'poster') {
+      M.group(document.querySelectorAll('[data-poster]'),
+              { register: 'poster', from: 'stamp' });
+      document.querySelectorAll('#poster-menu [data-poster]').forEach(function (el, i) {
+        el.classList.remove('fh-revealed');
+        M.reveal(el, { register: 'poster', index: i + 1, from: 'below' });
+      });
+    }
+    if (what === 'bench') {
+      document.querySelectorAll('#bench-stage > *').forEach(function (el, i) {
+        el.classList.remove('fh-slide-below', 'fh-slide-left');
+        void el.offsetWidth;                                  // restart the animation
+        setTimeout(function () { M.slide(el, { from: 'left', weight: 1 + i * 0.4 }); }, i * 60);
+      });
+    }
+    if (what === 'light') {
+      var a = document.getElementById('legend-demo');
+      var b = document.getElementById('legend-demo2');
+      var next = { off: 'on', on: 'rest', rest: 'off' }[a.dataset.fhLit || 'off'];
+      M.light(a, next === 'on', { rest: next === 'rest' });
+      setTimeout(function () { M.light(b, next === 'on', { rest: next === 'rest' }); }, 90);
+    }
+    if (what === 'value') {
+      M.value(document.getElementById('speed'), Math.round(40 + Math.random() * 120));
+    }
+    if (what === 'pulse') M.pulse(document.getElementById('speed'));
+    if (what === 'drift') {
+      if (handles.drift) { handles.drift.cancel(); handles.drift = null; }
+      else handles.drift = M.drift(document.getElementById('ambient'), { degPerSec: 0.5 });
+    }
+    if (what === 'parallax') {
+      if (handles.parallax) { handles.parallax.cancel(); handles.parallax = null; }
+      else handles.parallax = M.parallax(document.getElementById('ambient'), { max: 6 });
+    }
+  }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest('[data-run]');
+    if (el) run(el.getAttribute('data-run'));
+    var p = e.target.closest('.fh-pressable');
+    if (p) M.press(p);
+  });
+
+  // Frame-cost readout. It samples only while something is actually animating, so the page
+  // itself does not become the idle rAF the floors forbid.
+  var last = 0, acc = 0, n = 0, raf = 0;
+  function sample(now) {
+    if (last) { acc += now - last; n++; }
+    last = now;
+    if (n >= 20) {
+      document.getElementById('fps').textContent =
+        'frame cost ' + (acc / n).toFixed(2) + ' ms';
+      acc = 0; n = 0;
+    }
+    raf = handles.drift ? requestAnimationFrame(sample) : 0;
+    document.getElementById('raf').textContent =
+      'live rAF: ' + ((handles.drift ? 1 : 0) + (raf ? 0 : 0));
+    if (!raf) last = 0;
+  }
+  var origDrift = M.drift;
+  M.drift = function () {
+    var h = origDrift.apply(null, arguments);
+    if (!raf) raf = requestAnimationFrame(sample);
+    return h;
+  };
+  run('poster');
+})();
+</script>
+</body>
+</html>

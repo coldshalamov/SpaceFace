@@ -1,0 +1,2455 @@
+{
+ "packet": "S1 (P10 + P11 + P12)",
+ "returned": "2026-09-10",
+ "producer": "Claude Opus 5, local shared checkout",
+ "tools": [
+  "Blender 5.1.2 Cycles (CPU) via assets/ui/kit/tools/bl_kit.py + bl_common.py",
+  "Python 3.14 Pillow + numpy + OpenCV (cutting, alpha, tracing)",
+  "hand-written SVG from a construction grammar (icons.py, marks.py)",
+  "fontTools (variable-font instancing for real type)"
+ ],
+ "generator-note": "No native image-generation tool exists in this harness. Third-party diffusion connectors were present and were deliberately NOT used, per _COMMON/00_READ_ME_FIRST.md. Every raster here is a Cycles render of real modelled geometry, reproducible from the committed scripts.",
+ "license": "All original work; OFL fonts named in kit-notes.md",
+ "assets": [
+  {
+   "id": "badge.law",
+   "file": "assets/badges/badge.law.png",
+   "file2x": "assets/badges/badge.law@2x.png",
+   "kind": "sprite",
+   "size": [
+    280,
+    96
+   ],
+   "notes": ""
+  },
+  {
+   "id": "badge.law.wanted",
+   "file": "assets/badges/badge.law.wanted.png",
+   "file2x": "assets/badges/badge.law.wanted@2x.png",
+   "kind": "sprite",
+   "size": [
+    280,
+    96
+   ],
+   "notes": ""
+  },
+  {
+   "id": "bar.seg.bezel",
+   "file": "assets/gauges/bar.seg.bezel.png",
+   "file2x": "assets/gauges/bar.seg.bezel@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    28
+   ],
+   "notes": "",
+   "slice": {
+    "top": 8,
+    "right": 10,
+    "bottom": 8,
+    "left": 10
+   }
+  },
+  {
+   "id": "bar.seg.cold",
+   "file": "assets/gauges/bar.seg.cold.png",
+   "file2x": "assets/gauges/bar.seg.cold@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    16
+   ],
+   "notes": ""
+  },
+  {
+   "id": "bar.seg.hot",
+   "file": "assets/gauges/bar.seg.hot.png",
+   "file2x": "assets/gauges/bar.seg.hot@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    16
+   ],
+   "notes": ""
+  },
+  {
+   "id": "bar.seg.off",
+   "file": "assets/gauges/bar.seg.off.png",
+   "file2x": "assets/gauges/bar.seg.off@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    16
+   ],
+   "notes": ""
+  },
+  {
+   "id": "bar.seg.on",
+   "file": "assets/gauges/bar.seg.on.png",
+   "file2x": "assets/gauges/bar.seg.on@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    16
+   ],
+   "notes": ""
+  },
+  {
+   "id": "damage.wedge",
+   "file": "assets/svg/gauges/damage-wedge.svg",
+   "kind": "svg",
+   "viewBox": "0 0 120 120",
+   "pivot": [
+    60,
+    60
+   ],
+   "notes": "one 45-degree wedge; code rotates it per damage quadrant"
+  },
+  {
+   "id": "dial.small.bezel",
+   "file": "assets/gauges/dial.small.bezel.png",
+   "file2x": "assets/gauges/dial.small.bezel@2x.png",
+   "kind": "sprite",
+   "size": [
+    88,
+    88
+   ],
+   "notes": ""
+  },
+  {
+   "id": "dial.small.face",
+   "file": "assets/gauges/dial.small.face.png",
+   "file2x": "assets/gauges/dial.small.face@2x.png",
+   "kind": "sprite",
+   "size": [
+    88,
+    88
+   ],
+   "notes": ""
+  },
+  {
+   "id": "dial.small.needle",
+   "file": "assets/svg/gauges/dial-small-needle.svg",
+   "kind": "svg",
+   "viewBox": "-8 -40 16 52",
+   "pivot": [
+    0,
+    0
+   ],
+   "notes": ""
+  },
+  {
+   "id": "dial.small.scale",
+   "file": "assets/svg/gauges/dial-small-scale.svg",
+   "kind": "svg",
+   "viewBox": "-44 -44 88 88",
+   "pivot": [
+    0,
+    0
+   ],
+   "notes": ""
+  },
+  {
+   "id": "focus.ring",
+   "file": "assets/svg/controls/focus-ring.svg",
+   "kind": "svg",
+   "viewBox": "0 0 48 48",
+   "pivot": null,
+   "notes": "2 px bone over a 1 px dark keyline, so it survives on the darkest and the lightest plate (15.49:1 and 12.83:1); nine-sliceable at 6"
+  },
+  {
+   "id": "gauge.speed.bezel",
+   "file": "assets/gauges/gauge.speed.bezel.png",
+   "file2x": "assets/gauges/gauge.speed.bezel@2x.png",
+   "kind": "sprite",
+   "size": [
+    360,
+    200
+   ],
+   "notes": ""
+  },
+  {
+   "id": "gauge.speed.face",
+   "file": "assets/gauges/gauge.speed.face.png",
+   "file2x": "assets/gauges/gauge.speed.face@2x.png",
+   "kind": "sprite",
+   "size": [
+    160,
+    72
+   ],
+   "notes": ""
+  },
+  {
+   "id": "gauge.speed.lit-arc",
+   "file": "assets/gauges/gauge.speed.lit-arc.png",
+   "file2x": "assets/gauges/gauge.speed.lit-arc@2x.png",
+   "kind": "sprite",
+   "size": [
+    360,
+    200
+   ],
+   "notes": "the amber lit arc; masked by code to the value"
+  },
+  {
+   "id": "gauge.speed.needle",
+   "file": "assets/svg/gauges/gauge-speed-needle.svg",
+   "kind": "svg",
+   "viewBox": "-12 -80 24 100",
+   "pivot": [
+    0,
+    0
+   ],
+   "notes": "rotate about 0,0; -110deg at zero, +110deg at full scale"
+  },
+  {
+   "id": "gauge.speed.ticks",
+   "file": "assets/svg/gauges/gauge-speed-ticks.svg",
+   "kind": "svg",
+   "viewBox": "-180 -180 360 200",
+   "pivot": [
+    0,
+    0
+   ],
+   "notes": "the tick ring as paths, for lit-tick overlays; matches gauge.speed.bezel exactly"
+  },
+  {
+   "id": "input.underline.disabled",
+   "file": "assets/controls/input.underline.disabled.png",
+   "file2x": "assets/controls/input.underline.disabled@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    40
+   ],
+   "notes": "",
+   "slice": {
+    "top": 12,
+    "right": 12,
+    "bottom": 12,
+    "left": 12
+   },
+   "states": [
+    "rest",
+    "focus",
+    "error",
+    "disabled"
+   ]
+  },
+  {
+   "id": "input.underline.error",
+   "file": "assets/controls/input.underline.error.png",
+   "file2x": "assets/controls/input.underline.error@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    40
+   ],
+   "notes": "",
+   "slice": {
+    "top": 12,
+    "right": 12,
+    "bottom": 12,
+    "left": 12
+   },
+   "states": [
+    "rest",
+    "focus",
+    "error",
+    "disabled"
+   ]
+  },
+  {
+   "id": "input.underline.focus",
+   "file": "assets/controls/input.underline.focus.png",
+   "file2x": "assets/controls/input.underline.focus@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    40
+   ],
+   "notes": "",
+   "slice": {
+    "top": 12,
+    "right": 12,
+    "bottom": 12,
+    "left": 12
+   },
+   "states": [
+    "rest",
+    "focus",
+    "error",
+    "disabled"
+   ]
+  },
+  {
+   "id": "input.underline.rest",
+   "file": "assets/controls/input.underline.rest.png",
+   "file2x": "assets/controls/input.underline.rest@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    40
+   ],
+   "notes": "",
+   "slice": {
+    "top": 12,
+    "right": 12,
+    "bottom": 12,
+    "left": 12
+   },
+   "states": [
+    "rest",
+    "focus",
+    "error",
+    "disabled"
+   ]
+  },
+  {
+   "id": "key.hazard.disabled",
+   "file": "assets/keys/key.hazard.disabled.png",
+   "file2x": "assets/keys/key.hazard.disabled@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.hazard.focus",
+   "file": "assets/keys/key.hazard.focus.png",
+   "file2x": "assets/keys/key.hazard.focus@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.hazard.hover",
+   "file": "assets/keys/key.hazard.hover.png",
+   "file2x": "assets/keys/key.hazard.hover@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.hazard.pressed",
+   "file": "assets/keys/key.hazard.pressed.png",
+   "file2x": "assets/keys/key.hazard.pressed@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.hazard.rest",
+   "file": "assets/keys/key.hazard.rest.png",
+   "file2x": "assets/keys/key.hazard.rest@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.legend.disabled",
+   "file": "assets/keys/key.legend.disabled.png",
+   "file2x": "assets/keys/key.legend.disabled@2x.png",
+   "kind": "9slice",
+   "size": [
+    160,
+    40
+   ],
+   "notes": "",
+   "slice": {
+    "top": 14,
+    "right": 14,
+    "bottom": 14,
+    "left": 14
+   },
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.legend.focus",
+   "file": "assets/keys/key.legend.focus.png",
+   "file2x": "assets/keys/key.legend.focus@2x.png",
+   "kind": "9slice",
+   "size": [
+    160,
+    40
+   ],
+   "notes": "",
+   "slice": {
+    "top": 14,
+    "right": 14,
+    "bottom": 14,
+    "left": 14
+   },
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.legend.hover",
+   "file": "assets/keys/key.legend.hover.png",
+   "file2x": "assets/keys/key.legend.hover@2x.png",
+   "kind": "9slice",
+   "size": [
+    160,
+    40
+   ],
+   "notes": "",
+   "slice": {
+    "top": 14,
+    "right": 14,
+    "bottom": 14,
+    "left": 14
+   },
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.legend.lit",
+   "file": "assets/keys/key.legend.lit.png",
+   "file2x": "assets/keys/key.legend.lit@2x.png",
+   "kind": "9slice",
+   "size": [
+    160,
+    40
+   ],
+   "notes": "",
+   "slice": {
+    "top": 14,
+    "right": 14,
+    "bottom": 14,
+    "left": 14
+   },
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.legend.rest",
+   "file": "assets/keys/key.legend.rest.png",
+   "file2x": "assets/keys/key.legend.rest@2x.png",
+   "kind": "9slice",
+   "size": [
+    160,
+    40
+   ],
+   "notes": "",
+   "slice": {
+    "top": 14,
+    "right": 14,
+    "bottom": 14,
+    "left": 14
+   },
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.primary.disabled",
+   "file": "assets/keys/key.primary.disabled.png",
+   "file2x": "assets/keys/key.primary.disabled@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.primary.focus",
+   "file": "assets/keys/key.primary.focus.png",
+   "file2x": "assets/keys/key.primary.focus@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.primary.hover",
+   "file": "assets/keys/key.primary.hover.png",
+   "file2x": "assets/keys/key.primary.hover@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.primary.pressed",
+   "file": "assets/keys/key.primary.pressed.png",
+   "file2x": "assets/keys/key.primary.pressed@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.primary.rest",
+   "file": "assets/keys/key.primary.rest.png",
+   "file2x": "assets/keys/key.primary.rest@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.secondary.disabled",
+   "file": "assets/keys/key.secondary.disabled.png",
+   "file2x": "assets/keys/key.secondary.disabled@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.secondary.focus",
+   "file": "assets/keys/key.secondary.focus.png",
+   "file2x": "assets/keys/key.secondary.focus@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.secondary.hover",
+   "file": "assets/keys/key.secondary.hover.png",
+   "file2x": "assets/keys/key.secondary.hover@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.secondary.pressed",
+   "file": "assets/keys/key.secondary.pressed.png",
+   "file2x": "assets/keys/key.secondary.pressed@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.secondary.rest",
+   "file": "assets/keys/key.secondary.rest.png",
+   "file2x": "assets/keys/key.secondary.rest@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    56
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.small.disabled",
+   "file": "assets/keys/key.small.disabled.png",
+   "file2x": "assets/keys/key.small.disabled@2x.png",
+   "kind": "9slice",
+   "size": [
+    120,
+    36
+   ],
+   "notes": "",
+   "slice": {
+    "top": 12,
+    "right": 12,
+    "bottom": 12,
+    "left": 12
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.small.focus",
+   "file": "assets/keys/key.small.focus.png",
+   "file2x": "assets/keys/key.small.focus@2x.png",
+   "kind": "9slice",
+   "size": [
+    120,
+    36
+   ],
+   "notes": "",
+   "slice": {
+    "top": 12,
+    "right": 12,
+    "bottom": 12,
+    "left": 12
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.small.hover",
+   "file": "assets/keys/key.small.hover.png",
+   "file2x": "assets/keys/key.small.hover@2x.png",
+   "kind": "9slice",
+   "size": [
+    120,
+    36
+   ],
+   "notes": "",
+   "slice": {
+    "top": 12,
+    "right": 12,
+    "bottom": 12,
+    "left": 12
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.small.pressed",
+   "file": "assets/keys/key.small.pressed.png",
+   "file2x": "assets/keys/key.small.pressed@2x.png",
+   "kind": "9slice",
+   "size": [
+    120,
+    36
+   ],
+   "notes": "",
+   "slice": {
+    "top": 12,
+    "right": 12,
+    "bottom": 12,
+    "left": 12
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.small.rest",
+   "file": "assets/keys/key.small.rest.png",
+   "file2x": "assets/keys/key.small.rest@2x.png",
+   "kind": "9slice",
+   "size": [
+    120,
+    36
+   ],
+   "notes": "",
+   "slice": {
+    "top": 12,
+    "right": 12,
+    "bottom": 12,
+    "left": 12
+   },
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.socket.disabled",
+   "file": "assets/keys/key.socket.disabled.png",
+   "file2x": "assets/keys/key.socket.disabled@2x.png",
+   "kind": "sprite",
+   "size": [
+    56,
+    56
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.socket.focus",
+   "file": "assets/keys/key.socket.focus.png",
+   "file2x": "assets/keys/key.socket.focus@2x.png",
+   "kind": "sprite",
+   "size": [
+    56,
+    56
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.socket.hover",
+   "file": "assets/keys/key.socket.hover.png",
+   "file2x": "assets/keys/key.socket.hover@2x.png",
+   "kind": "sprite",
+   "size": [
+    56,
+    56
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.socket.lit",
+   "file": "assets/keys/key.socket.lit.png",
+   "file2x": "assets/keys/key.socket.lit@2x.png",
+   "kind": "sprite",
+   "size": [
+    56,
+    56
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.socket.pressed",
+   "file": "assets/keys/key.socket.pressed.png",
+   "file2x": "assets/keys/key.socket.pressed@2x.png",
+   "kind": "sprite",
+   "size": [
+    56,
+    56
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "key.socket.rest",
+   "file": "assets/keys/key.socket.rest.png",
+   "file2x": "assets/keys/key.socket.rest@2x.png",
+   "kind": "sprite",
+   "size": [
+    56,
+    56
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "light.bar.cold.dim",
+   "file": "assets/lights/light.bar.cold.dim.png",
+   "file2x": "assets/lights/light.bar.cold.dim@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.bar.cold.off",
+   "file": "assets/lights/light.bar.cold.off.png",
+   "file2x": "assets/lights/light.bar.cold.off@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.bar.cold.on",
+   "file": "assets/lights/light.bar.cold.on.png",
+   "file2x": "assets/lights/light.bar.cold.on@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.bar.good.dim",
+   "file": "assets/lights/light.bar.good.dim.png",
+   "file2x": "assets/lights/light.bar.good.dim@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.bar.good.off",
+   "file": "assets/lights/light.bar.good.off.png",
+   "file2x": "assets/lights/light.bar.good.off@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.bar.good.on",
+   "file": "assets/lights/light.bar.good.on.png",
+   "file2x": "assets/lights/light.bar.good.on@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.bar.legend.dim",
+   "file": "assets/lights/light.bar.legend.dim.png",
+   "file2x": "assets/lights/light.bar.legend.dim@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.bar.legend.off",
+   "file": "assets/lights/light.bar.legend.off.png",
+   "file2x": "assets/lights/light.bar.legend.off@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.bar.legend.on",
+   "file": "assets/lights/light.bar.legend.on.png",
+   "file2x": "assets/lights/light.bar.legend.on@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.bar.wanted.dim",
+   "file": "assets/lights/light.bar.wanted.dim.png",
+   "file2x": "assets/lights/light.bar.wanted.dim@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.bar.wanted.off",
+   "file": "assets/lights/light.bar.wanted.off.png",
+   "file2x": "assets/lights/light.bar.wanted.off@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.bar.wanted.on",
+   "file": "assets/lights/light.bar.wanted.on.png",
+   "file2x": "assets/lights/light.bar.wanted.on@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    6
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.cold.dim",
+   "file": "assets/lights/light.dot.cold.dim.png",
+   "file2x": "assets/lights/light.dot.cold.dim@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.cold.off",
+   "file": "assets/lights/light.dot.cold.off.png",
+   "file2x": "assets/lights/light.dot.cold.off@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.cold.on",
+   "file": "assets/lights/light.dot.cold.on.png",
+   "file2x": "assets/lights/light.dot.cold.on@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.good.dim",
+   "file": "assets/lights/light.dot.good.dim.png",
+   "file2x": "assets/lights/light.dot.good.dim@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.good.off",
+   "file": "assets/lights/light.dot.good.off.png",
+   "file2x": "assets/lights/light.dot.good.off@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.good.on",
+   "file": "assets/lights/light.dot.good.on.png",
+   "file2x": "assets/lights/light.dot.good.on@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.legend.dim",
+   "file": "assets/lights/light.dot.legend.dim.png",
+   "file2x": "assets/lights/light.dot.legend.dim@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.legend.off",
+   "file": "assets/lights/light.dot.legend.off.png",
+   "file2x": "assets/lights/light.dot.legend.off@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.legend.on",
+   "file": "assets/lights/light.dot.legend.on.png",
+   "file2x": "assets/lights/light.dot.legend.on@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.wanted.dim",
+   "file": "assets/lights/light.dot.wanted.dim.png",
+   "file2x": "assets/lights/light.dot.wanted.dim@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.wanted.off",
+   "file": "assets/lights/light.dot.wanted.off.png",
+   "file2x": "assets/lights/light.dot.wanted.off@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "light.dot.wanted.on",
+   "file": "assets/lights/light.dot.wanted.on.png",
+   "file2x": "assets/lights/light.dot.wanted.on@2x.png",
+   "kind": "sprite",
+   "size": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "objective.chevron",
+   "file": "assets/svg/plates/objective-chevron.svg",
+   "kind": "svg",
+   "viewBox": "0 0 24 24",
+   "pivot": [
+    12,
+    12
+   ],
+   "notes": "the same chevron construction as the icon family"
+  },
+  {
+   "id": "plate.bench.paper",
+   "file": "assets/plates/plate.bench.paper.png",
+   "file2x": "assets/plates/plate.bench.paper@2x.png",
+   "kind": "9slice",
+   "size": [
+    480,
+    320
+   ],
+   "notes": "the codex reading insert: cream paper in a machined rim",
+   "slice": {
+    "top": 24,
+    "right": 24,
+    "bottom": 24,
+    "left": 24
+   }
+  },
+  {
+   "id": "plate.bench.primary",
+   "file": "assets/plates/plate.bench.primary.png",
+   "file2x": "assets/plates/plate.bench.primary@2x.png",
+   "kind": "9slice",
+   "size": [
+    480,
+    320
+   ],
+   "notes": "the main workbench plate; one signature cut corner, top right",
+   "slice": {
+    "top": 24,
+    "right": 24,
+    "bottom": 24,
+    "left": 24
+   }
+  },
+  {
+   "id": "plate.bench.raised",
+   "file": "assets/plates/plate.bench.raised.png",
+   "file2x": "assets/plates/plate.bench.raised@2x.png",
+   "kind": "9slice",
+   "size": [
+    480,
+    320
+   ],
+   "notes": "one step lighter; the selected or active plate",
+   "slice": {
+    "top": 24,
+    "right": 24,
+    "bottom": 24,
+    "left": 24
+   }
+  },
+  {
+   "id": "plate.bench.sunk",
+   "file": "assets/plates/plate.bench.sunk.png",
+   "file2x": "assets/plates/plate.bench.sunk@2x.png",
+   "kind": "9slice",
+   "size": [
+    480,
+    320
+   ],
+   "notes": "recessed well; holds rows and readouts",
+   "slice": {
+    "top": 24,
+    "right": 24,
+    "bottom": 24,
+    "left": 24
+   }
+  },
+  {
+   "id": "plate.edge.small",
+   "file": "assets/plates/plate.edge.small.png",
+   "file2x": "assets/plates/plate.edge.small@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    120
+   ],
+   "notes": "HUD scale: thinner edge, lighter grain",
+   "slice": {
+    "top": 16,
+    "right": 16,
+    "bottom": 16,
+    "left": 16
+   }
+  },
+  {
+   "id": "plate.legend.strip",
+   "file": "assets/plates/plate.legend.strip.png",
+   "file2x": "assets/plates/plate.legend.strip@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    40
+   ],
+   "notes": "",
+   "slice": {
+    "top": 12,
+    "right": 16,
+    "bottom": 12,
+    "left": 16
+   }
+  },
+  {
+   "id": "plate.legend.strip-lit",
+   "file": "assets/plates/plate.legend.strip-lit.png",
+   "file2x": "assets/plates/plate.legend.strip-lit@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    40
+   ],
+   "notes": "",
+   "slice": {
+    "top": 12,
+    "right": 16,
+    "bottom": 12,
+    "left": 16
+   }
+  },
+  {
+   "id": "plate.legend.strip-red",
+   "file": "assets/plates/plate.legend.strip-red.png",
+   "file2x": "assets/plates/plate.legend.strip-red@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    40
+   ],
+   "notes": "wanted signal",
+   "slice": {
+    "top": 12,
+    "right": 16,
+    "bottom": 12,
+    "left": 16
+   }
+  },
+  {
+   "id": "plate.legend.strip-white",
+   "file": "assets/plates/plate.legend.strip-white.png",
+   "file2x": "assets/plates/plate.legend.strip-white@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    40
+   ],
+   "notes": "Crucible / white-hot temperature",
+   "slice": {
+    "top": 12,
+    "right": 16,
+    "bottom": 12,
+    "left": 16
+   }
+  },
+  {
+   "id": "plate.objective",
+   "file": "assets/plates/plate.objective.png",
+   "file2x": "assets/plates/plate.objective@2x.png",
+   "kind": "9slice",
+   "size": [
+    320,
+    72
+   ],
+   "notes": "",
+   "slice": {
+    "top": 16,
+    "right": 16,
+    "bottom": 16,
+    "left": 16
+   }
+  },
+  {
+   "id": "plate.poster.rail",
+   "file": "assets/plates/plate.poster.rail.png",
+   "file2x": "assets/plates/plate.poster.rail@2x.png",
+   "kind": "9slice",
+   "size": [
+    64,
+    480
+   ],
+   "notes": "the vertical legend rail a POSTER menu hangs from",
+   "slice": {
+    "top": 16,
+    "right": 16,
+    "bottom": 16,
+    "left": 16
+   }
+  },
+  {
+   "id": "plate.row.selected",
+   "file": "assets/plates/plate.row.selected.png",
+   "file2x": "assets/plates/plate.row.selected@2x.png",
+   "kind": "9slice",
+   "size": [
+    480,
+    40
+   ],
+   "notes": "amber left-edge light with a soft spill",
+   "slice": {
+    "top": 8,
+    "right": 16,
+    "bottom": 8,
+    "left": 16
+   }
+  },
+  {
+   "id": "radar.bezel",
+   "file": "assets/radar/radar.bezel.png",
+   "file2x": "assets/radar/radar.bezel@2x.png",
+   "kind": "sprite",
+   "size": [
+    320,
+    320
+   ],
+   "notes": ""
+  },
+  {
+   "id": "radar.face",
+   "file": "assets/radar/radar.face.png",
+   "file2x": "assets/radar/radar.face@2x.png",
+   "kind": "sprite",
+   "size": [
+    320,
+    320
+   ],
+   "notes": ""
+  },
+  {
+   "id": "radar.glyph-paths",
+   "file": "assets/radar/radar-glyph-paths.json",
+   "kind": "script",
+   "size": [
+    24,
+    24
+   ],
+   "notes": "12 contact-class glyphs as Path2D strings for the canvas radar"
+  },
+  {
+   "id": "radar.glyphs",
+   "file": "assets/radar/radar-glyphs.svg",
+   "kind": "svg",
+   "size": [
+    24,
+    24
+   ],
+   "notes": "the same twelve as <symbol>s, readable at 10 px"
+  },
+  {
+   "id": "radar.n-lit",
+   "file": "assets/radar/radar.n-lit.png",
+   "file2x": "assets/radar/radar.n-lit@2x.png",
+   "kind": "sprite",
+   "size": [
+    16,
+    10
+   ],
+   "notes": ""
+  },
+  {
+   "id": "radar.rings",
+   "file": "assets/svg/radar/radar-rings.svg",
+   "kind": "svg",
+   "viewBox": "0 0 320 320",
+   "pivot": [
+    160,
+    160
+   ],
+   "notes": "range rings at 40/80/120 and the cardinal ticks"
+  },
+  {
+   "id": "radar.sweep",
+   "file": "assets/svg/radar/radar-sweep.svg",
+   "kind": "svg",
+   "viewBox": "0 0 320 320",
+   "pivot": [
+    160,
+    160
+   ],
+   "notes": "rotate about 160,160; the gradient stops are recolourable via currentColor"
+  },
+  {
+   "id": "radar.wanted-face",
+   "file": "assets/radar/radar.wanted-face.png",
+   "file2x": "assets/radar/radar.wanted-face@2x.png",
+   "kind": "sprite",
+   "size": [
+    320,
+    320
+   ],
+   "notes": ""
+  },
+  {
+   "id": "reticle.lead-pip",
+   "file": "assets/svg/reticle/reticle-lead-pip.svg",
+   "kind": "svg",
+   "viewBox": "0 0 24 24",
+   "pivot": [
+    12,
+    12
+   ],
+   "notes": "placed at the lead solution; never at the target"
+  },
+  {
+   "id": "reticle.lock",
+   "file": "assets/svg/reticle/reticle-lock.svg",
+   "kind": "svg",
+   "viewBox": "0 0 56 56",
+   "pivot": [
+    28,
+    28
+   ],
+   "notes": "the corner brackets close on lock; the centre ring is the second channel"
+  },
+  {
+   "id": "reticle.pro-tick",
+   "file": "assets/svg/reticle/reticle-pro-tick.svg",
+   "kind": "svg",
+   "viewBox": "0 0 24 24",
+   "pivot": [
+    12,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "reticle.rest",
+   "file": "assets/svg/reticle/reticle-rest.svg",
+   "kind": "svg",
+   "viewBox": "0 0 56 56",
+   "pivot": [
+    28,
+    28
+   ],
+   "notes": ""
+  },
+  {
+   "id": "scroll.thumb.hover",
+   "file": "assets/controls/scroll.thumb.hover.png",
+   "file2x": "assets/controls/scroll.thumb.hover@2x.png",
+   "kind": "9slice",
+   "size": [
+    8,
+    32
+   ],
+   "notes": "",
+   "slice": {
+    "top": 6,
+    "right": 2,
+    "bottom": 6,
+    "left": 2
+   }
+  },
+  {
+   "id": "scroll.thumb.rest",
+   "file": "assets/controls/scroll.thumb.rest.png",
+   "file2x": "assets/controls/scroll.thumb.rest@2x.png",
+   "kind": "9slice",
+   "size": [
+    8,
+    32
+   ],
+   "notes": "",
+   "slice": {
+    "top": 6,
+    "right": 2,
+    "bottom": 6,
+    "left": 2
+   }
+  },
+  {
+   "id": "scroll.track",
+   "file": "assets/controls/scroll.track.png",
+   "file2x": "assets/controls/scroll.track@2x.png",
+   "kind": "tile",
+   "size": [
+    8,
+    64
+   ],
+   "notes": ""
+  },
+  {
+   "id": "slider.fill",
+   "file": "assets/controls/slider.fill.png",
+   "file2x": "assets/controls/slider.fill@2x.png",
+   "kind": "tile",
+   "size": [
+    64,
+    12
+   ],
+   "notes": ""
+  },
+  {
+   "id": "slider.thumb.disabled",
+   "file": "assets/controls/slider.thumb.disabled.png",
+   "file2x": "assets/controls/slider.thumb.disabled@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    24
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "slider.thumb.hover",
+   "file": "assets/controls/slider.thumb.hover.png",
+   "file2x": "assets/controls/slider.thumb.hover@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    24
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "slider.thumb.pressed",
+   "file": "assets/controls/slider.thumb.pressed.png",
+   "file2x": "assets/controls/slider.thumb.pressed@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    24
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "slider.thumb.rest",
+   "file": "assets/controls/slider.thumb.rest.png",
+   "file2x": "assets/controls/slider.thumb.rest@2x.png",
+   "kind": "sprite",
+   "size": [
+    24,
+    24
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "slider.track",
+   "file": "assets/controls/slider.track.png",
+   "file2x": "assets/controls/slider.track@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    12
+   ],
+   "notes": "",
+   "slice": {
+    "top": 4,
+    "right": 8,
+    "bottom": 4,
+    "left": 8
+   }
+  },
+  {
+   "id": "socket.bracket",
+   "file": "assets/sockets/socket.bracket.png",
+   "file2x": "assets/sockets/socket.bracket@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    72
+   ],
+   "notes": "",
+   "slice": {
+    "top": 18,
+    "right": 18,
+    "bottom": 18,
+    "left": 18
+   }
+  },
+  {
+   "id": "socket.cooldown-ring",
+   "file": "assets/svg/sockets/socket-cooldown-ring.svg",
+   "kind": "svg",
+   "viewBox": "0 0 56 56",
+   "pivot": [
+    28,
+    28
+   ],
+   "notes": "animate stroke-dashoffset 0 (full) to 144.5 (empty); circumference is 144.51"
+  },
+  {
+   "id": "socket.cooling",
+   "file": "assets/sockets/socket.cooling.png",
+   "file2x": "assets/sockets/socket.cooling@2x.png",
+   "kind": "sprite",
+   "size": [
+    56,
+    56
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "socket.empty",
+   "file": "assets/sockets/socket.empty.png",
+   "file2x": "assets/sockets/socket.empty@2x.png",
+   "kind": "sprite",
+   "size": [
+    56,
+    56
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "socket.lit",
+   "file": "assets/sockets/socket.lit.png",
+   "file2x": "assets/sockets/socket.lit@2x.png",
+   "kind": "sprite",
+   "size": [
+    56,
+    56
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "socket.locked",
+   "file": "assets/sockets/socket.locked.png",
+   "file2x": "assets/sockets/socket.locked@2x.png",
+   "kind": "sprite",
+   "size": [
+    56,
+    56
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "socket.rest",
+   "file": "assets/sockets/socket.rest.png",
+   "file2x": "assets/sockets/socket.rest@2x.png",
+   "kind": "sprite",
+   "size": [
+    56,
+    56
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "lit",
+    "hover",
+    "pressed",
+    "disabled",
+    "focus"
+   ]
+  },
+  {
+   "id": "stepper.minus.disabled",
+   "file": "assets/controls/stepper.minus.disabled.png",
+   "file2x": "assets/controls/stepper.minus.disabled@2x.png",
+   "kind": "sprite",
+   "size": [
+    44,
+    44
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "stepper.minus.hover",
+   "file": "assets/controls/stepper.minus.hover.png",
+   "file2x": "assets/controls/stepper.minus.hover@2x.png",
+   "kind": "sprite",
+   "size": [
+    44,
+    44
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "stepper.minus.pressed",
+   "file": "assets/controls/stepper.minus.pressed.png",
+   "file2x": "assets/controls/stepper.minus.pressed@2x.png",
+   "kind": "sprite",
+   "size": [
+    44,
+    44
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "stepper.minus.rest",
+   "file": "assets/controls/stepper.minus.rest.png",
+   "file2x": "assets/controls/stepper.minus.rest@2x.png",
+   "kind": "sprite",
+   "size": [
+    44,
+    44
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "stepper.plus.disabled",
+   "file": "assets/controls/stepper.plus.disabled.png",
+   "file2x": "assets/controls/stepper.plus.disabled@2x.png",
+   "kind": "sprite",
+   "size": [
+    44,
+    44
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "stepper.plus.hover",
+   "file": "assets/controls/stepper.plus.hover.png",
+   "file2x": "assets/controls/stepper.plus.hover@2x.png",
+   "kind": "sprite",
+   "size": [
+    44,
+    44
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "stepper.plus.pressed",
+   "file": "assets/controls/stepper.plus.pressed.png",
+   "file2x": "assets/controls/stepper.plus.pressed@2x.png",
+   "kind": "sprite",
+   "size": [
+    44,
+    44
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "stepper.plus.rest",
+   "file": "assets/controls/stepper.plus.rest.png",
+   "file2x": "assets/controls/stepper.plus.rest@2x.png",
+   "kind": "sprite",
+   "size": [
+    44,
+    44
+   ],
+   "notes": "",
+   "states": [
+    "rest",
+    "hover",
+    "pressed",
+    "disabled"
+   ]
+  },
+  {
+   "id": "stepper.well",
+   "file": "assets/controls/stepper.well.png",
+   "file2x": "assets/controls/stepper.well@2x.png",
+   "kind": "9slice",
+   "size": [
+    160,
+    44
+   ],
+   "notes": "",
+   "slice": {
+    "top": 14,
+    "right": 14,
+    "bottom": 14,
+    "left": 14
+   }
+  },
+  {
+   "id": "strip.status.bezel",
+   "file": "assets/strips/strip.status.bezel.png",
+   "file2x": "assets/strips/strip.status.bezel@2x.png",
+   "kind": "9slice",
+   "size": [
+    240,
+    20
+   ],
+   "notes": "",
+   "slice": {
+    "top": 6,
+    "right": 10,
+    "bottom": 6,
+    "left": 10
+   }
+  },
+  {
+   "id": "tag.leader",
+   "file": "assets/svg/tapes/tag-leader.svg",
+   "kind": "svg",
+   "viewBox": "0 0 64 40",
+   "pivot": null,
+   "notes": "the leader line from a world tag down to the thing it names"
+  },
+  {
+   "id": "tag.world",
+   "file": "assets/tapes/tag.world.png",
+   "file2x": "assets/tapes/tag.world@2x.png",
+   "kind": "9slice",
+   "size": [
+    120,
+    24
+   ],
+   "notes": "",
+   "slice": {
+    "top": 8,
+    "right": 10,
+    "bottom": 8,
+    "left": 10
+   }
+  },
+  {
+   "id": "tape.cap.left",
+   "file": "assets/tapes/tape.cap.left.png",
+   "file2x": "assets/tapes/tape.cap.left@2x.png",
+   "kind": "sprite",
+   "size": [
+    16,
+    24
+   ],
+   "notes": ""
+  },
+  {
+   "id": "tape.cap.right",
+   "file": "assets/tapes/tape.cap.right.png",
+   "file2x": "assets/tapes/tape.cap.right@2x.png",
+   "kind": "sprite",
+   "size": [
+    16,
+    24
+   ],
+   "notes": ""
+  },
+  {
+   "id": "tape.mid",
+   "file": "assets/tapes/tape.mid.png",
+   "file2x": "assets/tapes/tape.mid@2x.png",
+   "kind": "tile",
+   "size": [
+    64,
+    24
+   ],
+   "notes": ""
+  },
+  {
+   "id": "tape.mid-lit",
+   "file": "assets/tapes/tape.mid-lit.png",
+   "file2x": "assets/tapes/tape.mid-lit@2x.png",
+   "kind": "tile",
+   "size": [
+    64,
+    24
+   ],
+   "notes": ""
+  },
+  {
+   "id": "tile.edge.light",
+   "file": "assets/tiles/tile.edge.light.png",
+   "file2x": "assets/tiles/tile.edge.light@2x.png",
+   "kind": "tile",
+   "size": [
+    256,
+    8
+   ],
+   "notes": ""
+  },
+  {
+   "id": "tile.etch.hairline",
+   "file": "assets/tiles/tile.etch.hairline.png",
+   "file2x": "assets/tiles/tile.etch.hairline@2x.png",
+   "kind": "tile",
+   "size": [
+    256,
+    4
+   ],
+   "notes": ""
+  },
+  {
+   "id": "tile.grain",
+   "file": "assets/tiles/tile.grain.png",
+   "file2x": "assets/tiles/tile.grain@2x.png",
+   "kind": "tile",
+   "size": [
+    256,
+    256
+   ],
+   "notes": ""
+  },
+  {
+   "id": "tile.hazard.stripe",
+   "file": "assets/tiles/tile.hazard.stripe.png",
+   "file2x": "assets/tiles/tile.hazard.stripe@2x.png",
+   "kind": "tile",
+   "size": [
+    128,
+    32
+   ],
+   "notes": ""
+  },
+  {
+   "id": "tile.hazard.stripe-red",
+   "file": "assets/tiles/tile.hazard.stripe-red.png",
+   "file2x": "assets/tiles/tile.hazard.stripe-red@2x.png",
+   "kind": "tile",
+   "size": [
+    128,
+    32
+   ],
+   "notes": ""
+  },
+  {
+   "id": "toggle.switch.disabled-off",
+   "file": "assets/controls/toggle.switch.disabled-off.png",
+   "file2x": "assets/controls/toggle.switch.disabled-off@2x.png",
+   "kind": "sprite",
+   "size": [
+    72,
+    32
+   ],
+   "notes": "",
+   "states": [
+    "off-rest",
+    "off-hover",
+    "on-rest",
+    "on-hover",
+    "disabled-off",
+    "disabled-on"
+   ]
+  },
+  {
+   "id": "toggle.switch.disabled-on",
+   "file": "assets/controls/toggle.switch.disabled-on.png",
+   "file2x": "assets/controls/toggle.switch.disabled-on@2x.png",
+   "kind": "sprite",
+   "size": [
+    72,
+    32
+   ],
+   "notes": "",
+   "states": [
+    "off-rest",
+    "off-hover",
+    "on-rest",
+    "on-hover",
+    "disabled-off",
+    "disabled-on"
+   ]
+  },
+  {
+   "id": "toggle.switch.off-hover",
+   "file": "assets/controls/toggle.switch.off-hover.png",
+   "file2x": "assets/controls/toggle.switch.off-hover@2x.png",
+   "kind": "sprite",
+   "size": [
+    72,
+    32
+   ],
+   "notes": "",
+   "states": [
+    "off-rest",
+    "off-hover",
+    "on-rest",
+    "on-hover",
+    "disabled-off",
+    "disabled-on"
+   ]
+  },
+  {
+   "id": "toggle.switch.off-rest",
+   "file": "assets/controls/toggle.switch.off-rest.png",
+   "file2x": "assets/controls/toggle.switch.off-rest@2x.png",
+   "kind": "sprite",
+   "size": [
+    72,
+    32
+   ],
+   "notes": "",
+   "states": [
+    "off-rest",
+    "off-hover",
+    "on-rest",
+    "on-hover",
+    "disabled-off",
+    "disabled-on"
+   ]
+  },
+  {
+   "id": "toggle.switch.on-hover",
+   "file": "assets/controls/toggle.switch.on-hover.png",
+   "file2x": "assets/controls/toggle.switch.on-hover@2x.png",
+   "kind": "sprite",
+   "size": [
+    72,
+    32
+   ],
+   "notes": "",
+   "states": [
+    "off-rest",
+    "off-hover",
+    "on-rest",
+    "on-hover",
+    "disabled-off",
+    "disabled-on"
+   ]
+  },
+  {
+   "id": "toggle.switch.on-rest",
+   "file": "assets/controls/toggle.switch.on-rest.png",
+   "file2x": "assets/controls/toggle.switch.on-rest@2x.png",
+   "kind": "sprite",
+   "size": [
+    72,
+    32
+   ],
+   "notes": "",
+   "states": [
+    "off-rest",
+    "off-hover",
+    "on-rest",
+    "on-hover",
+    "disabled-off",
+    "disabled-on"
+   ]
+  },
+  {
+   "id": "wear.corner.01",
+   "file": "assets/wear/wear.corner.01.png",
+   "file2x": "assets/wear/wear.corner.01@2x.png",
+   "kind": "sprite",
+   "size": [
+    96,
+    96
+   ],
+   "notes": ""
+  },
+  {
+   "id": "wear.corner.02",
+   "file": "assets/wear/wear.corner.02.png",
+   "file2x": "assets/wear/wear.corner.02@2x.png",
+   "kind": "sprite",
+   "size": [
+    96,
+    96
+   ],
+   "notes": ""
+  },
+  {
+   "id": "wear.corner.03",
+   "file": "assets/wear/wear.corner.03.png",
+   "file2x": "assets/wear/wear.corner.03@2x.png",
+   "kind": "sprite",
+   "size": [
+    96,
+    96
+   ],
+   "notes": ""
+  },
+  {
+   "id": "wear.corner.04",
+   "file": "assets/wear/wear.corner.04.png",
+   "file2x": "assets/wear/wear.corner.04@2x.png",
+   "kind": "sprite",
+   "size": [
+    96,
+    96
+   ],
+   "notes": ""
+  },
+  {
+   "id": "wear.edge.chip.01",
+   "file": "assets/wear/wear.edge.chip.01.png",
+   "file2x": "assets/wear/wear.edge.chip.01@2x.png",
+   "kind": "sprite",
+   "size": [
+    160,
+    24
+   ],
+   "notes": ""
+  },
+  {
+   "id": "wear.edge.chip.02",
+   "file": "assets/wear/wear.edge.chip.02.png",
+   "file2x": "assets/wear/wear.edge.chip.02@2x.png",
+   "kind": "sprite",
+   "size": [
+    160,
+    24
+   ],
+   "notes": ""
+  },
+  {
+   "id": "wear.edge.chip.03",
+   "file": "assets/wear/wear.edge.chip.03.png",
+   "file2x": "assets/wear/wear.edge.chip.03@2x.png",
+   "kind": "sprite",
+   "size": [
+    160,
+    24
+   ],
+   "notes": ""
+  },
+  {
+   "id": "wear.glass.print",
+   "file": "assets/wear/wear.glass.print.png",
+   "file2x": "assets/wear/wear.glass.print@2x.png",
+   "kind": "sprite",
+   "size": [
+    200,
+    140
+   ],
+   "notes": ""
+  },
+  {
+   "id": "wear.grime.strip",
+   "file": "assets/wear/wear.grime.strip.png",
+   "file2x": "assets/wear/wear.grime.strip@2x.png",
+   "kind": "sprite",
+   "size": [
+    256,
+    24
+   ],
+   "notes": ""
+  },
+  {
+   "id": "window.glass",
+   "file": "assets/windows/window.glass.png",
+   "file2x": "assets/windows/window.glass@2x.png",
+   "kind": "9slice",
+   "size": [
+    480,
+    320
+   ],
+   "notes": "",
+   "slice": {
+    "top": 20,
+    "right": 20,
+    "bottom": 20,
+    "left": 20
+   }
+  },
+  {
+   "id": "window.glass.deep",
+   "file": "assets/windows/window.glass.deep.png",
+   "file2x": "assets/windows/window.glass.deep@2x.png",
+   "kind": "9slice",
+   "size": [
+    480,
+    320
+   ],
+   "notes": "for text over busy scenes",
+   "slice": {
+    "top": 20,
+    "right": 20,
+    "bottom": 20,
+    "left": 20
+   }
+  },
+  {
+   "id": "window.viewport",
+   "file": "assets/windows/window.viewport.png",
+   "file2x": "assets/windows/window.viewport@2x.png",
+   "kind": "9slice",
+   "size": [
+    480,
+    320
+   ],
+   "notes": "rim only, 0% darkening",
+   "slice": {
+    "top": 20,
+    "right": 20,
+    "bottom": 20,
+    "left": 20
+   }
+  }
+ ],
+ "blocked": [],
+ "questions": []
+}

@@ -22,4 +22,31 @@ A code packet's acceptance is its live capture beside the frame here. If the bui
 frame for an engineering reason, the frame is revised through a new packet turn, never by
 quietly building something else.
 
-This folder is empty until P01 returns. Until then, nothing in the game is to be styled by hand.
+---
+
+## What is here (S1 / PQ-194.00, 2026-09-10)
+
+**Six frames, all passing the two tests and the guard.** Per-frame judgement:
+`.devshots/delegate-20260910/scratch/pq-194/QA.md` section 1.
+
+| Screen | Register | Frame | Plate | Layer |
+|---|---|---|---|---|
+| Title v1 "Hangar" | POSTER | `frames/frame-title-v1.png` | `plates/plate-title-v1.png` | `layers/layer-title-v1.png` |
+| **Title v2 "Field at dusk" — the pick** | POSTER | `frames/frame-title-v2.png` | `plates/plate-title-v2.png` | `layers/layer-title-v2.png` |
+| Title v3 "Bay door" | POSTER | `frames/frame-title-v3.png` | `plates/plate-title-v3.png` | `layers/layer-title-v3.png` |
+| Crucible door | POSTER (Crucible temperature) | `frames/frame-crucible-door.png` | `plates/plate-crucible-door.png` | `layers/layer-crucible-door.png` |
+| Flight HUD, resting | EDGE | `frames/frame-hud-resting.png` | `plates/plate-flight.png` | `layers/layer-hud-resting.png` |
+| Flight HUD, wanted | EDGE (wanted temperature) | `frames/frame-hud-wanted.png` | (shares `plate-flight.png`) | `layers/layer-hud-wanted.png` |
+
+Crops: `crops/crops-title.png`, `crops-crucible.png`, `crops-hud.png`, `crops-hud-wanted.png`.
+Numbers: `kit-notes.md`. Picks and reasoning: `DECISIONS.md`.
+
+**The kit these frames are built from** lives at `assets/ui/kit/`: 157 manifested assets
+(transparent-PNG surfaces, controls and instruments at @1x and @2x, plus the SVG geometry for
+everything that moves), 86 icons at three sizes, the logotype and 37 marks, tokens, a motion
+library, a sound cue set, a kit page and three runnable hero prototypes. All of it opens from
+`file://`.
+
+**How to look at a frame beside its build:** open
+`assets/ui/kit/screens/_compare.html` — it overlays the approved frame on the live prototype at
+50 %, as a wipe, or as a difference.

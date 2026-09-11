@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Frame vs prototype</title>
+<link rel="stylesheet" href="../tokens/tokens.css">
+<style>
+  /* The acceptance instrument, not a screen. It lays the approved frame over a live capture of
+   * the prototype so the delta can be SEEN rather than argued about — which is the whole point
+   * of composing the frames in a separate script instead of with the prototype's own CSS. */
+  html, body { margin: 0; background: var(--fh-ground); color: var(--fh-bone);
+               font-family: var(--fh-face-text, system-ui); }
+  header { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; padding: 14px 20px; }
+  h1 { font-family: var(--fh-face-display, system-ui); font-size: 20px; margin: 0;
+       letter-spacing: .06em; text-transform: uppercase;
+       font-variation-settings: 'wght' 900, 'wdth' 125; }
+  label { font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
+          color: var(--fh-text-resting, #9a938a); display: flex; gap: 8px; align-items: center; }
+  select, input[type=range] { accent-color: var(--fh-signal); }
+  .stage { position: relative; width: min(96vw, 1600px); aspect-ratio: 16 / 9; margin: 0 20px;
+           overflow: hidden; background: #000; }
+  .stage img, .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%;
+                              border: 0; display: block; }
+  .stage iframe { z-index: 1; }
+  .stage img.frame { z-index: 2; opacity: var(--mix, .5); pointer-events: none; }
+  .stage.wipe img.frame { clip-path: inset(0 calc(100% - var(--wipe, 50%)) 0 0); opacity: 1; }
+  .stage.diff img.frame { mix-blend-mode: difference; opacity: 1; }
+  .hint { padding: 12px 20px 30px; color: var(--fh-text-tertiary, #6f6a62); font-size: 13px;
+          max-width: 90ch; line-height: 1.55; }
+  .rule { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--fh-signal);
+          left: var(--wipe, 50%); z-index: 3; pointer-events: none; display: none; }
+  .stage.wipe .rule { display: block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Frame vs prototype</h1>
+  <label>Screen
+    <select id="which">
+      <option value="title|title-v2">Title · v2 Field at dusk</option>
+      <option value="title?v=1|title-v1">Title · v1 Hangar</option>
+      <option value="title?v=3|title-v3">Title · v3 Bay door</option>
+      <option value="crucible-door|crucible-door">Crucible door</option>
+      <option value="hud|hud-resting">Flight HUD · resting</option>
+      <option value="hud?state=wanted|hud-wanted">Flight HUD · wanted</option>
+    </select>
+  </label>
+  <label>Mode
+    <select id="mode">
+      <option value="mix">Overlay at 50 %</option>
+      <option value="wipe">Wipe</option>
+      <option value="diff">Difference</option>
+    </select>
+  </label>
+  <label>Amount <input id="amount" type="range" min="0" max="100" value="50"></label>
+</header>
+
+<div class="stage" id="stage">
+  <iframe id="proto" title="prototype"></iframe>
+  <img class="frame" id="frame" alt="approved frame">
+  <div class="rule"></div>
+</div>
+
+<p class="hint">
+  The frame underneath is the approved style frame, composed in <code>tools/frame_title.py</code>
+  and <code>tools/frame_screens.py</code> from the produced assets and the real fonts. The layer
+  on top is the prototype, running live from <code>file://</code>. They are deliberately built by
+  two different programs against the same layout numbers, so a delta here is a real delta.
+  <strong>Difference</strong> is the strict read: anything that is not near-black moved.
+</p>
+
+<script>
+(function () {
+  var stage = document.getElementById('stage');
+  var proto = document.getElementById('proto');
+  var frame = document.getElementById('frame');
+  var FRAMES = '../../../../design/frontend/direction/approved/frames/';
+
+  function load() {
+    var parts = document.getElementById('which').value.split('|');
+    var f = parts[0];
+    // the option value carries any query string after the screen name, e.g. `hud?state=wanted`
+    proto.src = f.indexOf('?') >= 0 ? f.replace('?', '.html?') : f + '.html';
+    frame.src = FRAMES + 'frame-' + parts[1] + '.png';
+  }
+
+  function apply() {
+    var mode = document.getElementById('mode').value;
+    stage.className = 'stage ' + (mode === 'mix' ? '' : mode);
+    var v = document.getElementById('amount').value;
+    stage.style.setProperty('--mix', v / 100);
+    stage.style.setProperty('--wipe', v + '%');
+  }
+
+  document.getElementById('which').addEventListener('change', load);
+  document.getElementById('mode').addEventListener('change', apply);
+  document.getElementById('amount').addEventListener('input', apply);
+  load();
+  apply();
+})();
+</script>
+</body>
+</html>

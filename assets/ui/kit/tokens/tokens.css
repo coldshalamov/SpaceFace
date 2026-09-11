@@ -1,0 +1,192 @@
+/* Field Hardware tokens — GENERATED from tokens.json by tools/build_tokens_css.py.
+ * Do not edit by hand: edit tokens.json and re-run, or the contrast proof, the
+ * manifest and the frame compositor will disagree with the stylesheet.
+ *
+ * Type sizes are px at a 1920-wide frame. The 1280 and 2560 steps are real media
+ * queries below, and the 12 px floor is an accessibility floor, not a style choice.
+ */
+:root {
+  /* colour */
+  --fh-ground: #0C0A08;
+  --fh-plate: #1A1714;
+  --fh-plate-raised: #26211B;
+  --fh-plate-sunk: #100E0C;
+  --fh-edge-light: #F2B950;
+  --fh-under-shadow: #090605;
+  --fh-bone: #EAE6DF;
+  --fh-legend: #FFB347;
+  --fh-signal: #F2B950;
+  --fh-hazard: #FF6A2B;
+  --fh-hazard-paint: #D9551F;
+  --fh-hazard-yellow: #C79A3C;
+  --fh-wanted: #FF4D3D;
+  --fh-cold: #DDE6FF;
+  --fh-good: #9BD8A0;
+  --fh-bad: #FF7A6B;
+  --fh-glass: #05070A;
+  --fh-paper: #E8DFCE;
+
+  /* alpha levels — the light is the state, not a colour swap */
+  --fh-a-bone-live: 1.0;
+  --fh-a-bone-resting: 0.62;
+  --fh-a-bone-tertiary: 0.38;
+  --fh-a-legend-live: 1.0;
+  --fh-a-legend-resting: 0.45;
+  --fh-a-legend-off: 0.0;
+  --fh-a-edge-light: 0.47;
+  --fh-a-glass: 0.45;
+  --fh-a-glass-deep: 0.6;
+  --fh-a-wear-max: 0.08;
+
+  /* ready-made composited surfaces, so code never re-derives an alpha by hand */
+  --fh-text: #EAE6DF;
+  --fh-text-resting: color-mix(in srgb, var(--fh-bone) 62%, transparent);
+  --fh-text-tertiary: color-mix(in srgb, var(--fh-bone) 38%, transparent);
+  --fh-legend-lit: var(--fh-legend);
+  --fh-legend-rest: color-mix(in srgb, var(--fh-legend) 45%, transparent);
+  --fh-edge: color-mix(in srgb, var(--fh-edge-light) 47%, transparent);
+
+  /* type */
+  --fh-face-display: Archivo, system-ui, sans-serif;
+  --fh-face-text: 'Instrument Sans', system-ui, sans-serif;
+  --fh-size-fine: 12px;
+  --fh-size-data: 14px;
+  --fh-size-body: 16px;
+  --fh-size-emphasis: 20px;
+  --fh-size-subhead: 28px;
+  --fh-size-menu: 40px;
+  --fh-size-heroNum: 64px;
+  --fh-size-screenTitle: 96px;
+  --fh-size-hero: 140px;
+  --fh-size-name: 200px;
+  --fh-track-display: 0.02em;
+  --fh-track-legend: 0.06em;
+  --fh-lh-display: 0.9;
+  --fh-lh-body: 1.4;
+  --fh-measure: 64ch;
+
+  /* spacing */
+  --fh-space-hair: 2px;
+  --fh-space-xs: 4px;
+  --fh-space-s: 8px;
+  --fh-space-m: 12px;
+  --fh-space-l: 16px;
+  --fh-space-xl: 24px;
+  --fh-space-2xl: 32px;
+  --fh-space-3xl: 48px;
+  --fh-space-4xl: 64px;
+  --fh-space-5xl: 96px;
+
+  /* plate metrics — modelled values, 1 unit = 1 design pixel */
+  --fh-plate-thickness: 7px;
+  --fh-plate-edgeRelief: 3.4px;
+  --fh-plate-edgeLift: 1.3px;
+  --fh-plate-litEdgePx: 3px;
+  --fh-plate-underShadowPx: 2px;
+  --fh-plate-radius: 4px;
+  --fh-plate-radiusSmall: 2px;
+  --fh-plate-cutAngle: 30px;
+  --fh-plate-grainOpacity: 0.06;
+  --fh-plate-sliceDefault: 24px;
+  --fh-plate-sliceEdgeSmall: 16px;
+
+  /* motion, per register */
+  --fh-poster-stagger: 40ms;
+  --fh-poster-settle: 280ms;
+  --fh-poster-settleMin: 240ms;
+  --fh-poster-settleMax: 320ms;
+  --fh-poster-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --fh-poster-driftDegPerSec: 0.5;
+  --fh-poster-parallaxMaxPx: 6px;
+  --fh-bench-slide: 200ms;
+  --fh-bench-slideMin: 180ms;
+  --fh-bench-slideMax: 220ms;
+  --fh-bench-lightUp: 100ms;
+  --fh-bench-pressDown: 60ms;
+  --fh-bench-pressUp: 120ms;
+  --fh-bench-overshootFrames: 1;
+  --fh-bench-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --fh-edge-valueEase: 120ms;
+  --fh-edge-pulse: 400ms;
+  --fh-edge-pulseCount: 1;
+  --fh-edge-ease: cubic-bezier(0.33, 0, 0.15, 1);
+  --fh-reduced-all: 0ms;
+}
+
+/* ×0.75 at 1280 with the 12 px floor applied per step */
+@media (max-width: 1599px) {
+  :root {
+    --fh-size-fine: 12px;
+    --fh-size-data: 12px;
+    --fh-size-body: 12px;
+    --fh-size-emphasis: 15px;
+    --fh-size-subhead: 21px;
+    --fh-size-menu: 30px;
+    --fh-size-heroNum: 48px;
+    --fh-size-screenTitle: 72px;
+    --fh-size-hero: 105px;
+    --fh-size-name: 150px;
+  }
+}
+
+/* ×1.25 at 2560 */
+@media (min-width: 2200px) {
+  :root {
+    --fh-size-fine: 15px;
+    --fh-size-data: 18px;
+    --fh-size-body: 20px;
+    --fh-size-emphasis: 25px;
+    --fh-size-subhead: 35px;
+    --fh-size-menu: 50px;
+    --fh-size-heroNum: 80px;
+    --fh-size-screenTitle: 120px;
+    --fh-size-hero: 175px;
+    --fh-size-name: 250px;
+  }
+}
+
+/* Temperature states change the whole frame, never one badge (§7). */
+:root {
+  --fh-temp-key: #FFDCAE;
+  --fh-temp-fill: #8FA6C8;
+  --fh-signal-now: var(--fh-signal);
+  --fh-legend-now: var(--fh-legend);
+}
+[data-fh-temp="docked"] {
+  --fh-temp-key: #FFDCB4;
+  --fh-temp-fill: #A8846A;
+  --fh-signal-now: var(--fh-signal);
+  --fh-legend-now: var(--fh-legend);
+}
+[data-fh-temp="wanted"] {
+  --fh-temp-key: #E8EEFF;
+  --fh-temp-fill: #7E93C6;
+  --fh-signal-now: var(--fh-wanted);
+  --fh-legend-now: var(--fh-cold);
+}
+[data-fh-temp="crucible"] {
+  --fh-temp-key: #FFFFFF;
+  --fh-temp-fill: #CFE0FF;
+  --fh-signal-now: #FFFFFF;
+  --fh-legend-now: #FFFFFF;
+}
+
+/* Reduced motion is a floor, not a preference toggle: every transition becomes a cut. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --fh-poster-stagger: 0ms;
+    --fh-poster-settle: 0ms;
+    --fh-poster-settleMin: 0ms;
+    --fh-poster-settleMax: 0ms;
+    --fh-bench-slide: 0ms;
+    --fh-bench-slideMin: 0ms;
+    --fh-bench-slideMax: 0ms;
+    --fh-bench-lightUp: 0ms;
+    --fh-bench-pressDown: 0ms;
+    --fh-bench-pressUp: 0ms;
+    --fh-edge-valueEase: 0ms;
+    --fh-edge-pulse: 0ms;
+    --fh-poster-parallaxMaxPx: 0px;
+    --fh-poster-driftDegPerSec: 0;
+  }
+}
