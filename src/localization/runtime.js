@@ -2,7 +2,12 @@
 
 export const DEFAULT_LOCALE = 'en-US';
 export const PSEUDO_LOCALE = 'qps-ploc';
+/** Target expansion for the growth pass. Layout is designed against this ratio, not English. */
+export const PSEUDO_GROWTH_RATIO = 1.4;
 const PLACEHOLDER_RE = /\{([A-Za-z_][A-Za-z0-9_.-]*)\}/g;
+const PLACEHOLDER_SPLIT_RE = /(\{[A-Za-z_][A-Za-z0-9_.-]*\})/g;
+const PLACEHOLDER_TOKEN_RE = /^\{[A-Za-z_][A-Za-z0-9_.-]*\}$/;
+const PAD_CHAR = '·';
 const ACCENTS = Object.freeze({
   a: 'à', b: 'ƀ', c: 'ç', d: 'đ', e: 'ë', f: 'ƒ', g: 'ğ', h: 'ħ', i: 'ï',
   j: 'ĵ', k: 'ķ', l: 'ľ', m: 'ɱ', n: 'ñ', o: 'ö', p: 'þ', q: 'ʠ', r: 'ř',
@@ -41,10 +46,12 @@ export function interpolate(message, values = {}) {
 }
 
 export function pseudoLocalize(message) {
-  const parts = String(message == null ? '' : message).split(/(\{[A-Za-z_][A-Za-z0-9_.-]*\})/g);
+  // Expansion is per translatable character so `t(key, values)` on a template stays equal to
+  // pseudo-localizing the interpolated English — padding by total length would break that.
+  const parts = String(message == null ? '' : message).split(PLACEHOLDER_SPLIT_RE);
   let body = '';
   for (const part of parts) {
-    if (/^\{[A-Za-z_][A-Za-z0-9_.-]*\}$/.test(part)) {
+    if (PLACEHOLDER_TOKEN_RE.test(part)) {
       body += part;
       continue;
     }
@@ -53,10 +60,34 @@ export function pseudoLocalize(message) {
       const accented = ACCENTS[lower] || char;
       const rendered = char !== lower && ACCENTS[lower] ? accented.toUpperCase() : accented;
       body += rendered;
-      if ('aeiouAEIOU'.includes(char)) body += rendered;
+      // Per-character growth only: length-total padding would break placeholder interpolation.
+      if ('aeiouAEIOUyY'.includes(char)) body += rendered;
+      if (char === ' ' || char === '\u00a0') body += PAD_CHAR;
+      // One extra tick on the most common English consonant so the mean lands near +40%.
+      if (char === 't' || char === 'T') body += PAD_CHAR;
     }
   }
   return `⟦${body}⟧`;
+}
+
+/** Display-length ratio of the pseudo string to its English source. */
+export function pseudoGrowthRatio(message) {
+  const source = String(message == null ? '' : message);
+  if (!source) return 1;
+  return [...pseudoLocalize(source)].length / [...source].length;
+}
+
+/** Mean growth across a catalog. Short codes pull the mean down; the layout pass still uses 1.4. */
+export function meanPseudoGrowth(messages) {
+  let sourceUnits = 0;
+  let pseudoUnits = 0;
+  for (const value of Object.values(messages || {})) {
+    const source = String(value == null ? '' : value);
+    if (!source) continue;
+    sourceUnits += [...source].length;
+    pseudoUnits += [...pseudoLocalize(source)].length;
+  }
+  return sourceUnits > 0 ? pseudoUnits / sourceUnits : 1;
 }
 
 export function createLocalizationRuntime(options = {}) {

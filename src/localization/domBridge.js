@@ -218,7 +218,7 @@ export const GROWTH_LAYOUT_CSS = `
     }
     html:not([data-locale="en-US"]) #screens :is(.sf-tabbar,.sf-foot,.sf-row,.sf-actions) { flex-wrap:wrap; }
     html:not([data-locale="en-US"]) #screens .sf-menu { min-width:min(360px,92vw); }
-    html:not([data-locale="en-US"]) #hud :is(.sf-target__name,.sf-obj__t,.sf-objarrow__label,.sf-wpn-heat__label,.sf-lockring__label,.sf-nav-label,.sf-stat__v,.sf-cargo-row__name,.sf-prail__label,.sf-pslot__name,.sf-mt-title,.sf-alert,.sf-barrow__label,.sf-command-deck,.sf-vtape,.sf-vtape__track) {
+    html:not([data-locale="en-US"]) #hud :is(.sf-target__name,.sf-obj__t,.sf-objarrow__label,.sf-wpn-heat__label,.sf-lockring__label,.sf-nav-label,.sf-stat__v,.sf-cargo-row__name,.sf-prail__label,.sf-pslot__name,.sf-mt-title,.sf-alert,.sf-barrow__label,.sf-command-deck,.sf-vtape,.sf-vtape__track,.sf-overview-row__name,.sf-overview-row__detail,.sf-overview-footer) {
       white-space:normal; overflow:visible; text-overflow:unset; overflow-wrap:anywhere; max-width:100%;
     }
     html:not([data-locale="en-US"]) #hud .sf-barrow { min-width:4.5rem; width:auto; max-width:8rem; }
@@ -227,7 +227,59 @@ export const GROWTH_LAYOUT_CSS = `
     html:not([data-locale="en-US"]) #hud .sf-objectives { max-width:min(360px,42vw); }
     html:not([data-locale="en-US"]) #hud .sf-toast { max-width:min(420px,92vw); white-space:normal; }
     html:not([data-locale="en-US"]) #hud :is(.sf-confirm,.sf-dialog,.sf-panel,aside) { max-width:min(480px,94vw); }
+    html:not([data-locale="en-US"]) #hud .sf-overview { width:min(280px,34vw); max-width:min(280px,34vw); }
+    html:not([data-locale="en-US"]) #hud .sf-overview-row { flex-wrap:wrap; align-items:flex-start; }
+    html:not([data-locale="en-US"]) #hud .sf-overview-row__name {
+      white-space:normal; overflow:visible; text-overflow:unset; overflow-wrap:anywhere;
+      max-width:min(220px,30vw); width:auto;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-overview-row__right span {
+      width:auto !important; min-width:2.5rem; overflow:visible; white-space:nowrap;
+    }
     html:not([data-locale="en-US"]) #screens :is(h1,h2,.k-display) { line-height:1.15; }
+    html:not([data-locale="en-US"]) [data-screen] { min-width:0; max-width:100vw; }
+    html:not([data-locale="en-US"]) [data-screen] :is(button,label,h1,h2,h3,h4,p,li,td,th,.sf-slot-name,.sf-slot-sub,.k-display,.k-sentence,select) {
+      min-width:0; max-width:100%; overflow-wrap:anywhere; word-break:normal; white-space:normal;
+    }
+    html:not([data-locale="en-US"]) [data-screen] :is(button,.sf-tab,.sf-btn) {
+      white-space:normal; block-size:auto; min-block-size:2.5rem;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-leftstack {
+      width:min(400px,44vw); max-width:min(400px,44vw);
+    }
+    html:not([data-locale="en-US"]) #hud .sf-bars {
+      width:100%; max-width:100%;
+      grid-template-columns:minmax(92px,auto) minmax(0,1fr);
+      grid-template-rows:auto;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-wpn-heat {
+      display:grid;
+      grid-template-columns:minmax(9rem,max-content) minmax(0,1fr);
+      align-items:start;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-wpn-heat__label {
+      width:auto; max-width:none; white-space:normal; overflow:visible; text-overflow:unset;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-barrow {
+      grid-template-columns:minmax(4.5rem,max-content) minmax(0,1fr) minmax(2.2rem,max-content);
+      width:100%; max-width:none; min-width:0;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-overview { overflow:visible; height:auto; }
+    html:not([data-locale="en-US"]) #hud .sf-prail {
+      flex-wrap:wrap; width:max-content; max-width:min(96vw,1100px);
+    }
+    html:not([data-locale="en-US"]) #hud .sf-prail__slots { flex-wrap:wrap; }
+    html:not([data-locale="en-US"]) #hud .sf-pslot {
+      width:auto; min-width:38px; height:auto; min-height:38px; overflow:visible;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-pslot__name {
+      position:static; white-space:normal; overflow:visible; max-width:7rem;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-prail__label { white-space:normal; overflow:visible; }
+    html:not([data-locale="en-US"]) #hud .sf-firstuse {
+      white-space:normal; max-width:min(360px,46vw); overflow:visible;
+    }
+    html:not([data-locale="en-US"]) #hud .sf-objectives { white-space:normal; overflow:visible; }
   `;
 
 function injectOverflowStyle(doc, locale) {

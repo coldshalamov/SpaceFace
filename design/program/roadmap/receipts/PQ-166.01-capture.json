@@ -1,0 +1,98 @@
+{
+  "seed": 16601,
+  "clipCount": 0,
+  "screens": [
+    {
+      "id": "mainMenu",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "newGame",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "settings",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "help",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "credits",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "saveLoad",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "pause",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "codex",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "missionLog",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "techTree",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "crucible",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "gameOver",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    },
+    {
+      "id": "hud",
+      "visible": true,
+      "present": true,
+      "clipCount": 0,
+      "clips": []
+    }
+  ],
+  "error": null
+}

@@ -13,7 +13,18 @@ import {
   startupLocale,
 } from '../src/localization/gameLocalization.js';
 import { LOCALIZED_CORE_COPY } from '../src/ui/localizedCoreCopy.js';
-import { extractPlaceholders, hasPlaceholderParity } from '../src/localization/runtime.js';
+import { extractPlaceholders, hasPlaceholderParity, meanPseudoGrowth, pseudoLocalize } from '../src/localization/runtime.js';
+import {
+  CLIP_SWEEP_SEED,
+  CLIP_SWEEP_SELECTORS,
+  captureSweepReport,
+  collectDomClips,
+  isElementClipped,
+  isHudCatalogKey,
+  isScreenCatalogKey,
+  sweepGrowthClips,
+} from '../src/localization/layout.js';
+import { GROWTH_LAYOUT_CSS } from '../src/localization/domBridge.js';
 
 const messageSet = new Set(Object.values(messages));
 
@@ -113,4 +124,71 @@ test('readiness checker recognizes the canonical document bridge adoption route'
   assert.equal(report.runtimeAdoption.status, 'document_bridge');
   assert.equal(report.runtimeAdoption.estimatedSurfacePercent, 100,
     'a whole-document bridge should not be reported as zero direct-call adoption');
+});
+
+function mockLabel({ text, clientWidth, scrollWidth, clientHeight = 20, scrollHeight = 20, overflow = 'hidden', tag = 'BUTTON' }) {
+  return {
+    tagName: tag,
+    id: '',
+    className: '',
+    textContent: text,
+    clientWidth,
+    scrollWidth,
+    clientHeight,
+    scrollHeight,
+    style: { overflow, overflowX: overflow, overflowY: overflow },
+  };
+}
+
+function mockRoot(elements) {
+  return {
+    querySelectorAll(selector) {
+      assert.match(CLIP_SWEEP_SELECTORS, /button/);
+      assert.equal(typeof selector, 'string');
+      return elements;
+    },
+  };
+}
+
+test('PQ-166.01 pseudo-locale grows screen and HUD copy at least +40 % (seed 16601)', () => {
+  assert.equal(CLIP_SWEEP_SEED, 16601);
+  const screenHud = Object.fromEntries(
+    Object.entries(messages).filter(([key]) => isScreenCatalogKey(key) || isHudCatalogKey(key)),
+  );
+  const surfaceMean = meanPseudoGrowth(screenHud);
+  const catalogMean = meanPseudoGrowth(messages);
+  assert.ok(surfaceMean >= 1.40, `screen+HUD growth ${surfaceMean} must be at least +40 %`);
+  assert.ok(catalogMean >= 1.40, `catalog growth ${catalogMean} must be at least +40 %`);
+  const grown = pseudoLocalize('Settings');
+  assert.match(grown, /^⟦.*⟧$/u);
+  assert.ok(!grown.includes('Settings'), 'growth is never tested in English');
+});
+
+test('PQ-166.01 structural sweep of every screen and HUD key reports zero clips', () => {
+  const report = sweepGrowthClips(messages, pseudoLocalize);
+  assert.ok(report.scanned > 400, `expected a broad sweep, scanned ${report.scanned}`);
+  assert.equal(report.clipCount, 0, report.clips.slice(0, 5).map((row) => row.key).join(', '));
+});
+
+test('PQ-166.01 captureSweepReport imports the shipped DOM clip detector', () => {
+  const clipped = mockLabel({ text: '⟦Šëëŧŧïïñğš⟧', clientWidth: 40, scrollWidth: 120, overflow: 'hidden' });
+  const wrapped = mockLabel({ text: '⟦Šëëŧŧïïñğš⟧', clientWidth: 40, scrollWidth: 120, overflow: 'visible' });
+  assert.equal(isElementClipped(clipped), true);
+  assert.equal(isElementClipped(wrapped), false, 'overflow:visible is wrap, not a clip');
+  const dirty = collectDomClips(mockRoot([clipped, wrapped]));
+  assert.equal(dirty.present, true);
+  assert.equal(dirty.clipCount, 1);
+  assert.equal(dirty.clips[0].text.includes('Šëëŧ'), true);
+  const report = captureSweepReport({
+    hud: mockRoot([wrapped]),
+    mainMenu: mockRoot([wrapped]),
+    settings: mockRoot([wrapped]),
+  });
+  assert.equal(report.seed, 16601);
+  assert.equal(report.clipCount, 0);
+  assert.equal(report.screens.length, 3);
+  assert.ok(report.screens.some((row) => row.id === 'hud'));
+  assert.match(GROWTH_LAYOUT_CSS, /sf-wpn-heat/);
+  assert.match(GROWTH_LAYOUT_CSS, /overflow-wrap:anywhere/);
+  assert.doesNotMatch(GROWTH_LAYOUT_CSS, /font-size:\s*[0-9.]+px/, 'layout fix is wrap/box, not type shrink');
 });
