@@ -2,7 +2,7 @@
 packet: P17
 title: Motion library and sound cue set — spec, demo page, synth recipes (HTML/JS + JSON)
 lane: CODE
-tool: ChatGPT 6 Pro (scripting VM; no repository access needed)
+tool: local Codex or ChatGPT 6 Pro (scripting; no image generation needed)
 dependsOn: [P01, P02, P03]
 current: [title, station-market, flight]
 inputs: [design/frontend/direction/approved/kit-notes.md, design/frontend/direction/approved/frame-title.png, design/frontend/direction/approved/frame-station-market.png, src/data/audioRecipes.js, src/audio/synth.js, src/ui/kit/motion.js, src/ui/kit/sound.js]

@@ -1,7 +1,7 @@
 ```yaml
 session: S4
 title: The engine port — the prototype ported into the game's own modules against a pinned commit
-tool: ChatGPT 6 Pro — JS/CSS engineering in the VM, running the repository's static checks
+tool: local Codex (gpt-6-astra xhigh — works in the shared checkout, write-set isolated; the controller integrates) — or ChatGPT 6 Pro in the VM against the source snapshot
 dependsOn: [S3]
 phases: [P20, P21, P22, P30, P31, P32, P33, P34, P35, P36, P37, P38]
 current: [title, flight, station-market, chart-galaxy]
@@ -16,26 +16,27 @@ returns: S4-return.zip
 
 You port the finished prototype (S1–S3) into SpaceFace's own front-end modules. `source/` is a
 snapshot of the repository's UI code at the commit stamped in `README.txt`; `inputs/S3-return/` is
-the prototype with `HANDOFF_TO_ENGINE.md`. Your GitHub connector can read any further file by
-path **at that commit** (name the SHA in every request) and can open a pull request; it cannot
-clone the repository, which is why the snapshot is in the zip. You have no game runtime here — no
-WebGL, no simulation — so the discipline is: **keep every contract the modules already honour,
-change the DOM and CSS to the prototype's, and leave the repository's own static checks green.** A
-local lane integrates your return, runs the game, captures every screen with the world, and fixes
-what only a runtime can reveal.
+the prototype with `HANDOFF_TO_ENGINE.md` (in a local run, the prototype's landed tree and the live
+repository are simply in front of you). The discipline is: **keep every contract the modules
+already honour, change the DOM and CSS to the prototype's, and leave the repository's own static
+checks green.** A local lane integrates your return, runs the game, captures every screen with the
+world, and fixes what only a runtime can reveal.
 
-**Delivery.** Return the port two ways: (1) a branch `chatgpt/s4-engine-port` from the stamped
-commit with one commit per phase and a pull request against `master` titled "S4 — engine port
-(unverified at runtime)", opened through the connector; (2) the zip below with the same full files
-and patch, in case the connector fails. The repository also carries an "agent code packet"
-GitHub Actions workflow; if the connector surfaces it, use it as its documentation says. Never
-push to `master` directly.
+**Delivery.** Running under ChatGPT in the VM: return the port two ways — (1) a branch
+`chatgpt/s4-engine-port` from the stamped commit with one commit per phase and a pull request
+against `master` titled "S4 — engine port (unverified at runtime)", opened through the connector;
+(2) the zip below with the same full files and patch, in case the connector fails. The repository
+also carries an "agent code packet" GitHub Actions workflow; if the connector surfaces it, use it
+as its documentation says. Never push to `master` directly. Running locally under Codex: work in
+the shared checkout isolated by your assigned write set (no worktrees, per the program's routing),
+run the checks in place, and leave the diff for the controller to review and commit by pathspec.
 
 **Before you start.** `inputs/S3-return/` is the S3 return (attached as `S3-return.zip`; unzip it
 there). `source/` must be a snapshot taken shortly before this session — check the commit in
 `README.txt` against the repository's `master` through the connector; if `master` has moved far
 (days of commits touching `src/ui/` or `styles/`), fetch the changed files by path at the newer
-commit, record the commit you actually ported against in `NOTES.md`, and branch from it.
+commit, record the commit you actually ported against in `NOTES.md`, and branch from it. Locally,
+port against `HEAD` and record the SHA.
 
 ## What you must know about the code (audited 2026-09-10)
 

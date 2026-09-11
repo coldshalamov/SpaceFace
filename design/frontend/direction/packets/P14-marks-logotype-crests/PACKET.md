@@ -2,7 +2,7 @@
 packet: P14
 title: Marks — the SPACEFACE logotype, 14 faction crests, mode and arena marks, insignia (SVG)
 lane: SVG
-tool: ChatGPT 6 Pro (image generation for logotype exploration + vectorising and hand-written SVG in the VM)
+tool: local Codex (built-in image_gen for logotype exploration + vectorising and hand-written SVG) — or ChatGPT 6 Pro native image_gen from the zip
 dependsOn: [P01]
 current: [title, crucible-door, station-factions]
 inputs: [design/frontend/direction/approved/kit-notes.md, design/frontend/direction/approved/frame-title.png, design/frontend/direction/approved/frame-crucible-door.png, src/ui/station/icons.js, assets/ui/command-deck-refit/crucible-mark.svg, assets/ui/orbital/brand.svg]

@@ -22,9 +22,12 @@ you did not produce. If a capability is unavailable (image generation, a font, a
 
 ## 2. Raster assets (transparent PNG)
 
-- Generator: every raster master is made with ChatGPT's **native `image_gen` tool (GPT Image
-  2.5)** — see `00_READ_ME_FIRST.md`. `manifest.json` → `tools` names it; a return whose masters
-  came from Adobe or any other connector or model fails acceptance, however good they look.
+- Generator: per `00_READ_ME_FIRST.md`'s production law — manufactured surfaces from the
+  repository's Blender kit harness, world plates from the game's own GLB scenes, mood imagery
+  (keyart, backdrops, fields) from the running harness's **native `image_gen` tool** (ChatGPT's
+  is GPT Image 2.5; Codex's built-in is the same family). `manifest.json` → `tools` names the
+  tool per class; a return whose masters came from a third-party connector, a silent substitute,
+  recovered/upscaled art, or flat script-drawn fills fails acceptance, however good they look.
 - Format: **PNG-32 with real alpha**. No matting to black or white; edges must be premultiplied
   cleanly (verify by placing the asset on a pure white and on a pure magenta ground and confirming
   no fringe).
@@ -76,6 +79,9 @@ you did not produce. If a capability is unavailable (image generation, a font, a
 - Every frame ships with `kit-notes.md`: the faces and sizes used, the hex values of every colour,
   the plate thickness / edge-light / glass values, the icon style rules, and a short paragraph per
   frame on the composition decisions and what the eye should land on first, second, third.
+- **A frame is an independent target.** It is composed by an image master or a purpose-built
+  composition script — never a capture of the prototype it will later be compared against. A
+  `_compare.html` whose two sides are the same renderer measures nothing.
 
 ## 5. 3D and Blender deliverables
 
@@ -114,6 +120,10 @@ you did not produce. If a capability is unavailable (image generation, a font, a
 `id` uses dot-namespaces the code will reference (`plate.*`, `key.*`, `gauge.*`, `icon.*`,
 `mark.*`, `tile.*`, `frame.*`). Keep ids stable across returns.
 
+`blocked` is not decoration: list every required tool or input that was unavailable, with the
+exact request that could not be run. A `QA.md` may not record PASS for a deliverable class whose
+required tool was substituted — that combination is an automatic reject.
+
 ## 7. Quality checks before you package (write the results into NOTES.md)
 
 1. Alpha fringe check on white and on magenta.
@@ -128,6 +138,17 @@ you did not produce. If a capability is unavailable (image generation, a font, a
 8. Anti-pattern check against `02_ART_DIRECTION.md` §5 — cockpit, skeuomorph, sci-fi cliché, web
    page, empty, gray, noisy.
 9. The two tests (`02_ART_DIRECTION.md` §2).
+10. Icon legibility check: render the family unlabeled and name each glyph from its silhouette.
+    A glyph nobody can name fails. Two glyphs may never share a silhouette unless they are a
+    documented mirror pair (e.g. Well/Repel) differing by a second, non-directional channel —
+    "the same hexagon with the dot moved" is a failed family, not a construction grammar.
+11. Tile legibility check: every tile's art is authored *for* the tile (keyart or emblem at the
+    tile's own composition), never an arbitrary crop of a larger scene; every tile must read
+    inside its smallest presentation (the 160 px smoked window for Crucible tiles).
+12. Composition check at 100 %: no clipped or wrapped text, no elements overlapping that the
+    layout did not intend (a hazard stripe running through a word, a caption colliding with a
+    legend), and no control rendered empty where the packet says it is populated (an empty
+    socket that should hold a glyph, a blank gauge).
 
 ## 8. Naming
 

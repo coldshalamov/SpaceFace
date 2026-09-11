@@ -1,11 +1,11 @@
 ```yaml
 session: S3
 title: The prototype app — every remaining screen, then the whole frontend navigable outside the engine
-tool: ChatGPT 6 Pro — image generation + SVG + JS in the VM
+tool: local Codex (gpt-6-astra xhigh — built-in image_gen for mood imagery, Blender harness for manufactured surfaces) — or ChatGPT 6 Pro native image_gen from the zip
 dependsOn: [S1, S2]
 phases: [P05]
 current: [crucible-results, crucible-draft, crucible-refit, game-over, mission-log, codex, help, tech-tree, pause, asteroid-works]
-inputs: [.devshots/ui-packets/returns/S1-return/, .devshots/ui-packets/returns/S2-return/]
+inputs: [assets/ui/kit/, design/frontend/direction/approved/, .devshots/ui-packets/returns/S2-return/]
 returns: S3-return.zip
 ```
 
@@ -19,13 +19,16 @@ docking and first-undock choreographies, reduced motion and forced colours — s
 play the interface in a browser before a line of engine code changes, and so the engine port
 (S4) has something exact to port.
 
-Inputs are the S1 and S2 returns (attached as `S1-return.zip` and `S2-return.zip` — unzip both into
-`inputs/`). Extend `fh.css` under `/* S3 */`; never fork. If the controller's review notes
-(`DECISIONS.md`, review corrections) are present in a return, apply them; if not, proceed on the
-returns as they are and carry their `MISSING` lists as your Phase 1a.
+Inputs are the accepted S1 kit and approved frames — `inputs/kit/` + `inputs/approved/` in the
+zip, `assets/ui/kit/` + `design/frontend/direction/approved/` when running locally — plus the S2
+return (attached as `S2-return.zip`, or its landed tree under the same kit paths). Extend `fh.css`
+under `/* S3 */`; never fork. If the controller's review notes (`DECISIONS.md`, review
+corrections) are present in a return, apply them; if not, proceed on the returns as they are and
+carry their `MISSING` lists as your Phase 1a.
 
-Ground rules are S1's, including the image-tool rule: every image from the native `image_gen`
-tool (GPT Image 2.5), never Adobe or another connector, never a silent substitution.
+Ground rules are S1's, including the image-production law in `_COMMON/00_READ_ME_FIRST.md`:
+manufactured surfaces and world plates from the Blender harness, mood imagery from the native
+`image_gen` tool of whichever harness runs you, never a connector or silent substitution.
 
 ## Phases
 

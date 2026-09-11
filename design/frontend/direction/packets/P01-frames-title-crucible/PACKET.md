@@ -2,7 +2,7 @@
 packet: P01
 title: Style frames — the Title and the Crucible door
 lane: FRAMES
-tool: ChatGPT 6 Pro (image generation + scripting VM)
+tool: local Codex (gpt-6-astra xhigh — composed frames from Blender-rendered plates + kit assets; built-in image_gen for mood imagery only) — or ChatGPT 6 Pro native image_gen from the zip
 dependsOn: []
 current: [title, crucible-door, flight, station-dock, ship]
 inputs: []

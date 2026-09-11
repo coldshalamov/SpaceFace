@@ -2,7 +2,7 @@
 packet: P11
 title: Control kit — keys, toggles, sliders, steppers, inputs, status lights, focus ring (transparent PNG + SVG)
 lane: IMG
-tool: ChatGPT 6 Pro (image generation + scripting VM)
+tool: local Codex (gpt-6-astra xhigh — the Blender kit harness for manufactured controls) — or ChatGPT 6 Pro native image_gen + VM cutting from the zip
 dependsOn: [P10]
 current: [settings, station-market]
 inputs: [design/frontend/direction/approved/kit-notes.md, design/frontend/direction/approved/crops-controls.png, design/frontend/direction/approved/crops-bench.png, design/frontend/direction/approved/frame-settings.png]

@@ -2,7 +2,7 @@
 packet: P13
 title: The icon family — ~80 glyphs, one construction, three optical sizes (SVG)
 lane: SVG
-tool: ChatGPT 6 Pro (hand-written SVG in the VM) — Codex is the alternate producer
+tool: local Codex (hand-written SVG) — or ChatGPT 6 Pro in the VM
 dependsOn: [P01, P02]
 current: [flight, station-market, ship]
 inputs: [design/frontend/direction/approved/kit-notes.md, design/frontend/direction/approved/crops-hud.png, src/ui/station/icons.js, src/ui/glyphs.js]
@@ -73,8 +73,13 @@ P13-return/
    weight and corner logic are constant.
 3. Mirror pairs pass the second-channel rule; every glyph reads at 16 px.
 4. Forced-colours render (black on white) keeps every glyph recognisable.
+5. **Name-the-glyph:** on the unlabeled sheet, a reviewer who has the name list but has not seen
+   the files can match at least 90 % of glyphs to their names by silhouette alone. Two glyphs may
+   never share a silhouette unless they are a documented mirror pair.
 
 ## The way this gets faked
 
 Feather/Lucide-style line icons; inconsistent stroke weights across the set; glyphs that are
-literally the letter of the thing; arrows for everything.
+literally the letter of the thing; arrows for everything. And, shipped once already: a whole
+family that is the same silhouette with one detail moved — a construction grammar is shared
+*rules* (grid, weight, corner logic, the accent slot), not shared shapes.

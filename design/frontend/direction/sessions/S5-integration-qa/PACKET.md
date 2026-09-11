@@ -1,7 +1,7 @@
 ```yaml
 session: S5
 title: QA and the second pass — live captures reviewed against the frames; punch list, assets v2, corrections, the proof protocol
-tool: ChatGPT 6 Pro — vision review + image generation + JS/CSS in the VM
+tool: local Codex (gpt-6-astra xhigh — built-in image_gen for assets v2) — or ChatGPT 6 Pro from the zip; a memoryless vision reviewer for the frame-vs-capture judgments
 dependsOn: [S4, L-C]
 phases: [P40, P41, P42]
 current: [title, flight, station-dock, station-market, ship, chart-galaxy, crucible-door, crucible-results, settings, save-load, game-over, mission-log, codex, pause]
@@ -40,7 +40,7 @@ box where a tile should be), and the exact fix (CSS rule, asset id, DOM change).
 
 ### Phase 2 — Assets v2 (image generation + SVG)
 
-Native `image_gen` (GPT Image 2.5) only, as in every session. Everything the punch list attributes
+Native `image_gen` only (the running harness's built-in tool), as in every session. Everything the punch list attributes
 to an asset: missing states, wrong sizes, plates whose corners
 smear, glyphs that fail at 10 px, tiles that do not read in a 160 px window, a cold variant that
 was never made. Same conventions, same ids (append `-v2` only where the old id must survive).

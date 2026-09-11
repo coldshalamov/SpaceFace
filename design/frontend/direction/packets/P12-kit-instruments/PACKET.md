@@ -2,7 +2,7 @@
 packet: P12
 title: Instrument kit — gauges, bars, radar face, sockets, badges, tapes, reticle (PNG + SVG)
 lane: IMG
-tool: ChatGPT 6 Pro (image generation + scripting VM; hand-written SVG for geometry)
+tool: local Codex (gpt-6-astra xhigh — the Blender kit harness + hand-written SVG for geometry) — or ChatGPT 6 Pro native image_gen + VM from the zip
 dependsOn: [P02, P03, P10]
 current: [flight, power-rail, ship]
 inputs: [design/frontend/direction/approved/kit-notes.md, design/frontend/direction/approved/frame-hud-resting.png, design/frontend/direction/approved/frame-hud-wanted.png, design/frontend/direction/approved/crops-hud.png, design/frontend/direction/approved/frame-ship.png]

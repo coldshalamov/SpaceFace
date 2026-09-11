@@ -62,11 +62,12 @@ look is a reference for the new one.
 ## 3. The method — how a screen gets made
 
 ```
-brief (packet zip) ──► STYLE FRAME (rendered picture, GPT-6 Pro) ──► controller picks ──► approved/
+brief (packet or repo paths) ──► STYLE FRAME (composed picture: Blender plates + kit assets, or a
+                                 generated master) ──► controller picks ──► approved/
                                                                                               │
      ┌────────────────────────────────────────────────────────────────────────────────────────┘
      ▼
-ASSETS from the frame:  IMG (transparent PNG kits)  ·  SVG (icons, marks)  ·  3D (sets, hull renders)
+ASSETS from the frame:  IMG (Blender-rendered kits; image_gen for mood imagery)  ·  SVG (icons, marks)  ·  3D (sets, hull renders)
      │
      ▼
 CODE assembles assets to match the frame (prototype in the session; port in the shared checkout)
@@ -104,10 +105,14 @@ Rules that make it hold:
 
 ## 4. The five sessions (the hand-off unit) and the local lanes
 
-The interface is produced in **five development sessions** with ChatGPT 6 Pro — each a multi-hour
-sprint run from a self-contained zip, working phase by phase with a checkpoint zip after every
-phase, using image generation, hand-written SVG, code and procedural 3D together, and returning one
-coherent, runnable artifact. Between sessions, **local lanes** do what needs the engine. The 28
+The interface is produced in **five development sessions** — each a multi-hour sprint working
+phase by phase with a checkpoint after every phase, using image generation, hand-written SVG, code
+and procedural 3D together, and returning one coherent, runnable artifact. The preferred route is
+now **local Codex** (`gpt-6-astra` at `xhigh`, built-in `image_gen` for mood imagery, the
+repository's Blender harness for manufactured surfaces and world plates, the repo's own checks run
+in place); the original courier — a self-contained zip handed to ChatGPT 6 Pro — remains documented
+in [`sessions/README.md`](./sessions/README.md) for a browser run. Between sessions, **local
+lanes** do what needs the engine. The 28
 detailed briefs under [`packets/`](./packets/README.md) are the **phase specs** the sessions bundle;
 they are never handed out alone. Full plan, sizing and the courier procedure:
 [`sessions/README.md`](./sessions/README.md).
@@ -145,7 +150,7 @@ S3: P05 · S4: P20, P21, P22, P30–P38 · S5: P40, P41, P42. Local lanes carry 
 
 | Work | Tool | Why | The failure mode the packet must name |
 |---|---|---|---|
-| The five sessions: style frames, transparent-PNG kits, keyart, icon family and marks, motion/sound, HTML prototypes of every screen, the engine port against a pinned source snapshot, the QA pass | **ChatGPT 6 Pro** in the browser — its **native `image_gen` tool (GPT Image 2.5)** for every image, never an Adobe or other connector (observed defaulting to one; every brief and the hand-off prompt forbid it) — plus a VM to cut, align, alpha-clean, vectorise, script and zip | The only tool in the fleet that can render a finished picture and return a durable archive of assets in one turn | Words on black; concept art instead of the game's render; invented strings; a description instead of a file |
+| The five sessions: style frames, transparent-PNG kits, keyart, icon family and marks, motion/sound, HTML prototypes of every screen, the engine port, the QA pass | **Local Codex** (`gpt-6-astra` at `xhigh`) in the shared checkout — built-in `image_gen` (same model family as ChatGPT's native tool) for mood imagery, the repo's Blender harness for manufactured surfaces and world plates, the repo's checks run in place — or **ChatGPT 6 Pro** from the session zip, its native `image_gen` (GPT Image 2.5), never an Adobe or other connector | Codex removes the courier's two root failures: no repo access (it did not know the kit existed) and no image tool (it shipped script-drawn fakes instead of writing BLOCKED) | Words on black; concept art instead of the game's render; invented strings; a description instead of a file; flat script fills presented as manufactured hardware |
 | Icon family, marks (alternate) | ChatGPT 6 Pro or **Codex** | Hand-written SVG is code; both write it well; Codex can also run it against the repo's checks | Line icons; inconsistent weights; arrows for everything |
 | 3D sets, hull render harness | **Codex with Blender**, locally, under the repo's material-truth preflight | Codex is the fleet's strongest 3D author; the standard needs repo access and exact-source evidence | Primitive boxes named "gantry"; screenshots of the live game as "renders" |
 | Code packets (stage, kit runtime, screens) | **Codex gpt-5.6/gpt-6** or **cursor Grok 4.6 xhigh** in the shared checkout, isolated by write set and mutex (no worktrees) | Bounded implementation with named traps is where these land; Grok is honest when the packet quotes the specific fake | CSS-styled components instead of asset-built; a static PNG as "the stage"; restyled text boxes |

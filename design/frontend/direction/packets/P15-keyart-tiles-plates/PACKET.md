@@ -2,7 +2,7 @@
 packet: P15
 title: Keyart — Crucible mode/arena/difficulty tiles and the backdrop plates (opaque + masked PNG)
 lane: IMG
-tool: ChatGPT 6 Pro (image generation + scripting VM)
+tool: local Codex (built-in image_gen + scripting) — or ChatGPT 6 Pro native image_gen from the zip; this is the legitimate mood-imagery packet
 dependsOn: [P01, P05]
 current: [crucible-door, codex, help]
 inputs: [design/frontend/direction/approved/kit-notes.md, design/frontend/direction/approved/frame-crucible-door.png, design/frontend/direction/approved/plate-crucible-door.png, design/frontend/direction/approved/frame-codex.png]
@@ -38,11 +38,16 @@ palette) → `03_CONVENTIONS.md` §2.
 ## Acceptance
 
 1. All files; arena tiles share lens/horizon/grade (a strip of the five in `NOTES.md`).
-2. Every tile reads inside a 160 px-wide smoked window (test that crop in `NOTES.md`).
+2. Every tile reads inside a 160 px-wide smoked window (test that crop in `NOTES.md`). Tile art is
+   authored *for* the tile — the tile's own composition — never an arbitrary crop of a larger scene.
 3. Backdrop plates keep 4.5:1 text contrast with bone text over their busiest region.
 4. Nothing looks like concept art or a painting; everything looks like the game's own render.
+5. Every master is named with its tool and exact request in `prompts.md` / `manifest.json` —
+   and if the native `image_gen` tool was not available, the return says `BLOCKED: image_gen`
+   instead of shipping a substitute.
 
 ## The way this gets faked
 
 Generic sci-fi wallpaper; five arenas that are the same picture with a colour cast; plates with a
-bright focal object in the text region.
+bright focal object in the text region; tiles that are near-black crops of a bigger render;
+flat fills drawn in a script and labelled keyart.

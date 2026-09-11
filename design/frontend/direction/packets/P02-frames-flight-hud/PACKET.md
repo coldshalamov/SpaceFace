@@ -2,7 +2,7 @@
 packet: P02
 title: Style frames — the flight HUD, resting and wanted
 lane: FRAMES
-tool: ChatGPT 6 Pro (image generation + scripting VM)
+tool: local Codex (gpt-6-astra xhigh — composed frames from Blender-rendered plates + kit assets; built-in image_gen for mood imagery only) — or ChatGPT 6 Pro native image_gen from the zip
 dependsOn: [P01]
 current: [flight, power-rail, comms-radial, pause]
 inputs: [design/frontend/direction/approved/frame-title.png, design/frontend/direction/approved/kit-notes.md]

@@ -1,11 +1,21 @@
-# The five sessions — the hand-off plan for ChatGPT 6 Pro
+# The five sessions — the hand-off plan
 
-The interface is produced in **five development sessions** with ChatGPT 6 Pro, each a multi-hour,
+The interface is produced in **five development sessions**, each a multi-hour,
 multi-phase sprint that uses image generation, hand-written SVG, code and 3D together and returns
 **one coherent, runnable artifact**. Between sessions, local lanes (Codex with Blender, the
 controller in the repository) do the work that needs the engine. The detailed briefs under
 [`../packets/`](../packets/README.md) are the **phase specs** each session bundles; they are never
 handed out alone.
+
+**A session runs one of two ways.** The preferred route is now **local Codex**
+(`codex exec`, model `gpt-6-astra` at `xhigh`): the worker runs inside the repository with the
+accepted kit at `assets/ui/kit/` and the approved frames at `design/frontend/direction/approved/`
+in front of it, uses its built-in `image_gen` (same model family the ChatGPT rule names) for mood
+imagery and the Blender harness for manufactured surfaces, and returns a branch plus a receipt.
+The alternative is the original courier: a session zip handed to **ChatGPT 6 Pro**, whose VM gets
+everything by attachment because it cannot clone the repository. Both routes run the same phases
+and the same return contract; `_COMMON/00_READ_ME_FIRST.md` states which tool makes which kind of
+image.
 
 The professional shape is the one studios use: **design → prototype outside the engine → port →
 QA.** After session 3 the entire frontend exists as a runnable prototype; session 4 ports it into
@@ -24,10 +34,13 @@ not "five sessions in five days" — it is five sessions across the program.
 
 ## What a session can and cannot do
 
-Images come from ChatGPT's **native `image_gen` tool (GPT Image 2.5)** and nothing else: the
-sessions have been seen defaulting to an Adobe connector, a much weaker generator, so every brief,
-the read-me and the hand-off prompt name the native tool explicitly and reject returns made with
-anything else.
+Images follow `_COMMON/00_READ_ME_FIRST.md`'s production law: **manufactured surfaces and world
+plates come from the repository's Blender harness** (modelled geometry, Cycles, real game GLBs —
+the way the approved kit was made); **mood imagery** (keyart tiles, backdrops, nebula fields)
+comes from the running harness's **native `image_gen`** — ChatGPT's GPT Image 2.5 or Codex's
+built-in tool. Never a third-party connector, never a silent substitution, never flat fills drawn
+in a script; a return whose masters were substituted is rejected however good it looks. If no
+capable tool exists the session writes `BLOCKED` and stops rather than faking.
 
 The ChatGPT 6 Pro VM has internet — web search, fetch, curl, package managers — so a session may
 download any typeface or library it wants (subject to the bundling-licence rule in
@@ -76,7 +89,9 @@ reviews the integrated game.
 
 Each zip's `inputs/MISSING.txt` names exactly what to attach. Returns go in
 `.devshots/ui-packets/returns/<S>-return.zip`; if you also unzip them there, the next rebuild packs
-them inside and nothing needs attaching.
+them inside and nothing needs attaching. **Under the local Codex route none of this applies:**
+the worker reads the repository paths the session's `inputs:` names and returns a branch plus a
+receipt instead of a zip.
 
 ## Hand a session to ChatGPT 6 Pro
 

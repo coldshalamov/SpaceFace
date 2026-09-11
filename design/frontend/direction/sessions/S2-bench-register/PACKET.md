@@ -1,11 +1,11 @@
 ```yaml
 session: S2
 title: The bench register — station, THE SHIP, chart, settings, load as frames and prototypes; keyart; 3D drafts
-tool: ChatGPT 6 Pro — image generation + SVG + Python/JS + procedural 3D in the VM
+tool: local Codex (gpt-6-astra xhigh — built-in image_gen for mood imagery, Blender harness for manufactured surfaces and world plates) — or ChatGPT 6 Pro native image_gen from the zip
 dependsOn: [S1]
 phases: [P03, P04, P15, P16]
 current: [station-dock, station-market, station-shipworks, station-ledger, station-contracts, station-factions, station-industry, station-bar, ship, chart-galaxy, chart, settings, save-load, new-game]
-inputs: [.devshots/ui-packets/returns/S1-return/, node_modules/three/build/three.module.js, node_modules/three/build/three.core.js, node_modules/three/examples/jsm/loaders/GLTFLoader.js, node_modules/three/examples/jsm/controls/OrbitControls.js]
+inputs: [assets/ui/kit/, design/frontend/direction/approved/, node_modules/three/build/three.module.js, node_modules/three/build/three.core.js, node_modules/three/examples/jsm/loaders/GLTFLoader.js, node_modules/three/examples/jsm/controls/OrbitControls.js]
 returns: S2-return.zip
 ```
 
@@ -20,30 +20,36 @@ stage will stand on. The BENCH register (instruments on a workbench with the liv
 smoked-glass windows) is the hardest register to get right: dense data must stay an instrument,
 not a spreadsheet.
 
-`inputs/S1-return/` is the S1 return (attached as `S1-return.zip` — unzip it there): `kit-notes.md`,
-`tokens/`, `kit/fh.css`, the assets, icons and marks. **Match them exactly.** Extend the kit; do
-not fork it. Append new components to `fh.css` under a `/* S2 */` banner and new tokens under
-`/* S2 */`.
+The accepted S1 kit is your input: `inputs/kit/` and `inputs/approved/` in the zip
+(`assets/ui/kit/` and `design/frontend/direction/approved/` when running locally — the same
+directories): `kit-notes.md`, `tokens/`, `kit/fh.css`, the Blender-rendered assets, icons, marks,
+tools, and the approved frames that are the visual authority. **Match them exactly.** Extend the
+kit; do not fork it. Append new components to `fh.css` under a `/* S2 */` banner and new tokens
+under `/* S2 */`. New manufactured assets are *rendered through the kit's own Blender tools*
+(`kit/tools/bl_common.py` + `bl_kit.py`), extended where the bench needs new geometry — never
+painted by an image model and never flat-filled by a script.
 
-**If the controller has not reviewed S1 yet** (no `DECISIONS.md` in the return), proceed anyway:
+**If the controller has not reviewed S1 yet** (no `DECISIONS.md` under `approved/`), proceed anyway:
 the kit is independent of which title shot gets picked, so nothing in this session waits on that
-choice. Treat S1's `NOTES.md` `MISSING` list as your Phase 1a, and do not re-open S1's decisions
-unless its `QA.md` flags a defect that blocks a bench screen — then fix it in place, under a
-`/* S2 fix */` banner, and say so in `NOTES.md`.
+choice. Treat the kit's `MISSING`/`blocked` lists as your Phase 1a, and do not re-open S1's
+decisions unless a defect blocks a bench screen — then fix it in place, under a `/* S2 fix */`
+banner, and say so in `NOTES.md`.
 
 Ground rules are S1's: plan first, checkpoint after every phase, never stop to ask, masters then
-scripts, real strings, `file://`-openable prototypes, and **images only from the native `image_gen`
-tool (GPT Image 2.5) — never Adobe or another connector**. You have the web: the Three.js files in
-`inputs/` are a convenience (you may install or fetch libraries yourself), and the reference study
-rule applies to the bench screens too (station and garage interfaces, instrument panels, industrial
-product photography).
+scripts, real strings, `file://`-openable prototypes, and the image-production law in
+`_COMMON/00_READ_ME_FIRST.md` — manufactured surfaces and world plates from the Blender harness,
+mood imagery (the P15 keyart and backdrops) from the native `image_gen` tool, no substitutions.
+You have the web: the Three.js files in `inputs/` are a convenience (you may install or fetch
+libraries yourself), and the reference study rule applies to the bench screens too (station and
+garage interfaces, instrument panels, industrial product photography).
 
 ## Phases
 
 ### Phase 0 — Set up
 
-Read `inputs/S1-return/NOTES.md` and `QA.md` first: anything S1 listed under `MISSING` that a
-BENCH screen needs is your Phase 1a. Skeleton, `PLAN.md`, `PROGRESS.md`; copy S1's `tools/`.
+Read `inputs/kit/kit-notes.md`, `inputs/approved/kit-notes.md` and any `MISSING`/`blocked` lists
+first: anything S1 listed that a BENCH screen needs is your Phase 1a. Skeleton, `PLAN.md`,
+`PROGRESS.md`; copy the kit's `tools/` (`kit/tools/`).
 
 ### Phase 1 — Frames (image generation) — specs `phases/P03.md`, `phases/P04.md`
 
@@ -54,15 +60,17 @@ toggle both states, slider, key-bind cell, lens key, sector mark, beacon mark), 
 **appended** (never rewritten) with the BENCH values: row height, twelve-row table metrics, window
 darkening over a busy berth, the paper insert if you introduce it early. Checkpoint.
 
-### Phase 2 — Assets for the bench (image generation + Python + SVG)
+### Phase 2 — Assets for the bench (Blender harness + SVG; image_gen for keyart only)
 
-The delta the BENCH screens need beyond S1: the small dial set for THE SHIP (bezel, face, needle
-SVG, scale SVG), engraved row plates and column-header strips, the etched price-trace window, the
-stepper well, the sector marks and lane/pin geometry for the chart (SVG), the chart's field plates
-(three nebula/dust plates, tileable star layers at two depths), the lens-key group bracket, the
-inspector plate. Then **keyart** — spec `phases/P15.md`: five arena tiles, five mode tiles, four
-difficulty tiles, three backdrop plates with cold variants — same lens, same grade, opaque plus
-masked. Contact sheets, manifest entries. Checkpoint.
+The delta the BENCH screens need beyond S1 — every manufactured surface is **rendered through the
+kit's Blender tools**, extended where the bench needs new geometry: the small dial set for THE SHIP
+(bezel, face, needle SVG, scale SVG), engraved row plates and column-header strips, the etched
+price-trace window, the stepper well, the sector marks and lane/pin geometry for the chart (SVG),
+the lens-key group bracket, the inspector plate. The chart's field plates (three nebula/dust
+plates, tileable star layers at two depths) may be generated imagery or Blender — they are mood
+imagery. Then **keyart** — spec `phases/P15.md`, the legitimate `image_gen` work: five arena
+tiles, five mode tiles, four difficulty tiles, three backdrop plates with cold variants — same
+lens, same grade, opaque plus masked. Contact sheets, manifest entries. Checkpoint.
 
 ### Phase 3 — Prototypes on the kit (code)
 
@@ -133,4 +141,6 @@ documentation at the top of the file current.
 
 A market that is a full-width table; a chart that is the S1 plate with pins on top; twelve
 prototypes that share one silhouette; GLBs that are boxes with names; Blender scripts that were
-never read back.
+never read back. And, shipped once already by an image-less harness: frames that are screenshots
+of the prototypes they will be compared against, "plates" that are flat script fills, arena tiles
+that are unidentifiable dark crops of a bigger render, and a `QA.md` that says PASS over all of it.

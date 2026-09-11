@@ -2,7 +2,7 @@
 packet: P04
 title: Style frames — the chart, Settings, Load
 lane: FRAMES
-tool: ChatGPT 6 Pro (image generation + scripting VM)
+tool: local Codex (gpt-6-astra xhigh — composed frames from Blender-rendered plates + kit assets; built-in image_gen for mood imagery only) — or ChatGPT 6 Pro native image_gen from the zip
 dependsOn: [P01, P03]
 current: [chart-galaxy, chart, settings, save-load, new-game]
 inputs: [design/frontend/direction/approved/frame-title.png, design/frontend/direction/approved/frame-station-market.png, design/frontend/direction/approved/kit-notes.md]

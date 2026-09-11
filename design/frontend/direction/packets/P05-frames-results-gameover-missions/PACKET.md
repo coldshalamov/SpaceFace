@@ -2,7 +2,7 @@
 packet: P05
 title: Style frames — Crucible results, game over, missions log, codex
 lane: FRAMES
-tool: ChatGPT 6 Pro (image generation + scripting VM)
+tool: local Codex (gpt-6-astra xhigh — composed frames from Blender-rendered plates + kit assets; built-in image_gen for mood imagery only) — or ChatGPT 6 Pro native image_gen from the zip
 dependsOn: [P01, P03]
 current: [crucible-results, crucible-draft, game-over, mission-log, codex, help, tech-tree]
 inputs: [design/frontend/direction/approved/frame-crucible-door.png, design/frontend/direction/approved/frame-station-market.png, design/frontend/direction/approved/kit-notes.md]

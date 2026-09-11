@@ -2,7 +2,7 @@
 packet: P03
 title: Style frames — docking arrival, the Market, THE SHIP
 lane: FRAMES
-tool: ChatGPT 6 Pro (image generation + scripting VM)
+tool: local Codex (gpt-6-astra xhigh — composed frames from Blender-rendered plates + kit assets; built-in image_gen for mood imagery only) — or ChatGPT 6 Pro native image_gen from the zip
 dependsOn: [P01]
 current: [station-dock, station-market, station-shipworks, ship, station-ledger]
 inputs: [design/frontend/direction/approved/frame-title.png, design/frontend/direction/approved/kit-notes.md]

@@ -2,7 +2,7 @@
 packet: P10
 title: Surface kit — plates, windows, legends, stripes, wear, grain (transparent PNG)
 lane: IMG
-tool: ChatGPT 6 Pro (image generation + scripting VM; Pillow/OpenCV for cutting and alpha)
+tool: local Codex (gpt-6-astra xhigh — the Blender kit harness for manufactured surfaces; Pillow/OpenCV for cutting and alpha) — or ChatGPT 6 Pro native image_gen + VM cutting from the zip
 dependsOn: [P01, P02, P03]
 current: [station-market, flight]
 inputs: [design/frontend/direction/approved/kit-notes.md, design/frontend/direction/approved/frame-station-market.png, design/frontend/direction/approved/frame-hud-resting.png, design/frontend/direction/approved/crops-bench.png, design/frontend/direction/approved/crops-hud.png]
