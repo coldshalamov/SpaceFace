@@ -14,6 +14,11 @@ import {
   DEFAULTS as INPUT_DEFAULTS,
   formatBindingCode,
 } from '../../systems/input.js';
+import {
+  GAMEPAD_BUTTON_LABELS,
+  findGamepadBindConflict,
+  resolveGamepadBindings,
+} from '../../systems/gamepad.js';
 import { massline2Flag } from '../../data/featureFlags.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
@@ -26,6 +31,7 @@ import {
   normalizeFrameCap,
 } from '../../render/adaptiveQuality.js';
 import { BINDINGS } from '../bindings.js';
+import { setGamepadCaptureHandler } from '../bindings.js';
 import { LANGUAGE_OPTIONS, gameLocalization, setGameLocale } from '../../localization/gameLocalization.js';
 import { el, words, settle, cue } from '../kit/index.js';
 
@@ -110,6 +116,31 @@ const REBIND_LABELS = {
   deployWell: 'Field: deploy attractive Well',
   deployRepulsor: 'Field: deploy Repulsor',
   toggleClearingCone: 'Field: toggle Clearing Cone',
+};
+
+// PQ-164.01 pad remap. Every gamepad action is rebindable; labels describe the verb, not the
+// default button (the live resolved map prints the button on the right of each row).
+const GAMEPAD_REBINDABLE = [
+  'accept', 'cancel', 'massline', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
+  'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'tabPrev', 'tabNext',
+];
+const GAMEPAD_REBIND_LABELS = {
+  accept: 'Accept / dock',
+  cancel: 'Back / cancel',
+  massline: 'Massline: tap latch/cut; hold line control',
+  fire: 'Fire',
+  mine: 'Mine beam (analog trigger)',
+  boost: 'Boost',
+  brake: 'Brake / reverse thrust',
+  cycleTarget: 'Cycle target',
+  autoTarget: 'Auto-target / draw-to-fly toggle',
+  map: 'Star map',
+  codex: 'Codex / journal',
+  pause: 'Pause menu',
+  countermeasure: 'Countermeasure',
+  travelBurn: 'Travel drive (burn latch)',
+  tabPrev: 'Station tab: previous',
+  tabNext: 'Station tab: next',
 };
 
 function controlSchemeFor(settings) {
@@ -411,6 +442,23 @@ export const settingsScreen = {
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
     build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, A/Cross Massline (dock/accept when prompted), X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Y/Triangle codex, Start → Pause → Mission Log.');
 
+    // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
+    // a word, then press the pad button. Conflict detection honours the designed context shares
+    // (A/Cross accept+Massline, LB brake+tab, RB boost+tab); same-context doubles are denied.
+    build.header('Gamepad Buttons');
+    const padMap = resolveGamepadBindings(s);
+    GAMEPAD_REBINDABLE.forEach((action) => {
+      const names = padMap[action] || [];
+      const keyText = names.map((n) => GAMEPAD_BUTTON_LABELS[n] || n).join(' / ') || '—';
+      build.key(GAMEPAD_REBIND_LABELS[action] || action, keyText,
+        (btn) => this._capturePad(ctx, btn, action, padMap));
+    });
+    build.word('Reset pad layout', () => {
+      this._set(ctx, 'controls', 'gamepad', { ...gp(), bindings: null });
+      this._render(ctx);
+    }, 'Press a row to rebind; Backspace restores one row.');
+    if (gp().bindings) build.note('Custom pad layout active — the rows above are your live map, not the defaults.');
+
     // Touch (P1-12): virtual dual-stick + buttons for touchscreens. Auto-detects on touch devices;
     // this tri-state lets the player force-enable (e.g. a touchscreen laptop), force-disable, or
     // return to automatic detection.
@@ -540,6 +588,80 @@ export const settingsScreen = {
     }
     ctx.bus.emit('settings:changed', { section: 'controls', key: action, value: s.controls.bindings[action] });
     this._render(ctx); // refresh the rows to show the new label
+  },
+
+  // --- Gamepad rebinding (PQ-164.01) ---
+  // Capture the next pad button press as the new binding for `action`. Pad buttons are not DOM
+  // events: the press edge is recorded by src/systems/gamepad.js and forwarded by the UI input
+  // tick (src/ui/input.js) to the capture handler registered on the binding registry. While the
+  // handler is registered the pad's actions are inert (captureMode), so the press cannot also
+  // fire its current verb. Escape cancels, Backspace restores the default, a 30 s timeout or a
+  // click away ends the listen so a pad-only player is never trapped in capture.
+  _capturePad(ctx, btn, action, liveMap) {
+    if (this._capturing) return;
+    this._capturing = true;
+    // Take effect immediately — don't wait a frame for the UI tick to mirror the handler.
+    if (ctx.gamepad) ctx.gamepad.captureMode = true;
+    const prev = btn.textContent;
+    btn.textContent = 'Press a pad button…';
+    btn.classList.add('sf-bind-btn--capture');
+    btn.setAttribute('aria-pressed', 'true'); // listening
+
+    const done = (commit) => {
+      this._capturing = false;
+      btn.classList.remove('sf-bind-btn--capture');
+      btn.removeAttribute('aria-pressed');
+      setGamepadCaptureHandler(null);
+      clearTimeout(timer);
+      window.removeEventListener('keydown', onKey, true);
+      window.removeEventListener('mousedown', onClickAway, true);
+      this._activeCapture = null;
+      if (!commit) btn.textContent = prev;
+    };
+    const timer = setTimeout(() => done(false), 30000);
+    const onKey = (ev) => {
+      ev.preventDefault(); ev.stopPropagation();
+      if (ev.code === 'Escape') { done(false); return; }
+      if (ev.code === 'Backspace' || ev.code === 'Delete') {
+        this._commitPadBind(ctx, action, null);
+        done(true);
+        return;
+      }
+      // Any other key is not a pad button — keep listening.
+    };
+    setGamepadCaptureHandler((stdName) => {
+      // Conflict check: the row being rebound cannot conflict with itself; test the candidate
+      // button against every other action's claim under the live resolved map.
+      const others = { ...liveMap, [action]: [] };
+      const conflict = findGamepadBindConflict(others, action, stdName);
+      if (conflict) {
+        btn.textContent = 'In use: ' + (GAMEPAD_REBIND_LABELS[conflict] || conflict);
+        cue('deny');
+        setTimeout(() => done(false), 900);
+        return;
+      }
+      this._commitPadBind(ctx, action, stdName);
+      done(true);
+    });
+    const onClickAway = (ev) => { if (ev.target !== btn) done(false); };
+    this._activeCapture = done;
+    window.addEventListener('keydown', onKey, true);
+    window.addEventListener('mousedown', onClickAway, true);
+  },
+
+  // Persist a pad override into settings.controls.gamepad.bindings — a sparse action ->
+  // [std button name] map layered over the default layout by resolveGamepadBindings. The whole
+  // controls subtree rides the settings profile, so the remap survives boot and old saves.
+  _commitPadBind(ctx, action, stdName) {
+    const s = ctx.state.settings;
+    if (!s.controls) s.controls = {};
+    if (!s.controls.gamepad) s.controls.gamepad = { enabled: true, deadzone: 0.12, invertY: false };
+    const overrides = { ...(s.controls.gamepad.bindings || {}) };
+    if (stdName == null) delete overrides[action];
+    else overrides[action] = [stdName];
+    const bindings = Object.keys(overrides).length ? overrides : null;
+    this._set(ctx, 'controls', 'gamepad', { ...s.controls.gamepad, bindings });
+    this._render(ctx); // refresh the rows to show the new glyph
   },
 
   onShow(ctx) {

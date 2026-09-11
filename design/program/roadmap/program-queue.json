@@ -16836,7 +16836,7 @@
       "priority": 440,
       "title": "Glyphs and remap",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"
@@ -16856,7 +16856,9 @@
         "npm run check:settings-profile",
         "npm run check:controls-discoverability"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-164.01-REPORT.md"
+      ],
       "brief": "Device-aware prompt glyphs; gamepad remapping with conflict detection; persists through save/profile. DONE WHEN: Settings-profile check green; capture on both devices."
     },
     {

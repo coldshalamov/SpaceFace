@@ -10,8 +10,14 @@
 // The UI never mutates sim state; docking sets ui.docked + emits dock:docked + pushes 'station'.
 
 import { isConfirmOpen, confirmGamepadAccept, confirmGamepadCancel } from './confirm.js';
-import { BINDINGS } from './bindings.js';
+import {
+  BINDINGS,
+  setPromptDevice,
+  setGamepadPromptBindings,
+  getGamepadCaptureHandler,
+} from './bindings.js';
 import { resolveActionLabel, selectedWorldSiteTarget } from '../systems/input.js';
+import { resolveGamepadBindings } from '../systems/gamepad.js';
 import { MAP_FOCUS, openGalaxyMap, isMapScreenId } from './mapAuthority.js';
 import { interactionDisplayName, interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveDockDeny } from './dockDenyBanner.js';
@@ -69,6 +75,41 @@ export function createUiInput(ctx, screenManager) {
     repeatDelay: 0.12,
   };
 
+  // PQ-164.01: last-used device drives prompt glyphs (bindings.js owns the presentation state).
+  // Device order is a local observation counter fed by pad/touch activity *edges* (the shared
+  // input sequence stamps) and by DOM key/pointer events — a held stick does not re-stamp, so a
+  // keyboard act during pad flight still flips the chips, and a pad edge flips them back.
+  const _deviceOrder = { kbm: 0, gamepad: -1, touch: -1 };
+  let _deviceCounter = 0;
+  let _seenPadSeq = -1;
+  let _seenTouchSeq = -1;
+  let _lastPromptDevice = 'kbm';
+  let _seenPadBindings;
+  function noteDevice(d) {
+    _deviceOrder[d] = ++_deviceCounter;
+  }
+  function syncPromptDevice() {
+    let dev = 'kbm';
+    if (_deviceOrder.gamepad > _deviceOrder.kbm && _deviceOrder.gamepad >= _deviceOrder.touch) dev = 'gamepad';
+    else if (_deviceOrder.touch > _deviceOrder.kbm) dev = 'touch';
+    setPromptDevice(dev);
+    // The pad glyph chips read the resolved map, so a remap re-labels live prompts too.
+    const custom = state && state.settings && state.settings.controls
+      && state.settings.controls.gamepad ? state.settings.controls.gamepad.bindings : undefined;
+    if (custom !== _seenPadBindings) {
+      _seenPadBindings = custom;
+      setGamepadPromptBindings(resolveGamepadBindings(state && state.settings));
+    }
+    if (dev !== _lastPromptDevice) {
+      _lastPromptDevice = dev;
+      // Repaint a live dock prompt under the new device's glyph by re-emitting the UI-owned
+      // dock:range fact the alert layer already listens to.
+      if (dockInRange && bus && bus.emit) {
+        bus.emit('dock:range', { stationId: dockStationId, inRange: true });
+      }
+    }
+  }
+
   // physics emits dock:range while the player is near a station
   unsubscribers.push(bus.on('dock:range', ({ stationId, inRange }) => {
     dockInRange = !!inRange;
@@ -120,6 +161,7 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function onKeyDown(ev) {
+    noteDevice('kbm');
     // Let text fields keep ordinary typing, but still honor universal modal escape below.
     const t = ev.target;
     const textEntry = isTextEntryTarget(t);
@@ -565,6 +607,7 @@ export function createUiInput(ctx, screenManager) {
   function onWheel(ev) {
     // Chrome reports a trackpad pinch as a Ctrl/Cmd-modified wheel. Cancel the browser's page-zoom
     // default before the mode gates so the DOM HUD stays at its fixed viewport scale.
+    noteDevice('kbm');
     if ((ev.ctrlKey || ev.metaKey) && typeof ev.preventDefault === 'function') ev.preventDefault();
     if (isUiInteractionFenced(state) || screenManager.isOpen() || (state.ui && state.ui.docked) || state.mode !== 'flight') return;
     bus.emit('camera:zoom', { delta: Math.sign(ev.deltaY) * 8 });
@@ -581,7 +624,12 @@ export function createUiInput(ctx, screenManager) {
   }
   document.addEventListener('keydown', onKeyDown);
   window.addEventListener('wheel', onWheel, { passive: false });
-  const clearGamepadFocus = () => document.documentElement.classList.remove('sf-gamepad-focus');
+  const clearGamepadFocus = (ev) => {
+    document.documentElement.classList.remove('sf-gamepad-focus');
+    // A pointerdown with pointerType 'touch' is the touch overlay/screen — the user's hand, not a
+    // mouse; everything else on a pointer is the keyboard/mouse device class for prompt glyphs.
+    noteDevice(ev && ev.pointerType === 'touch' ? 'touch' : 'kbm');
+  };
   document.addEventListener('pointerdown', clearGamepadFocus, true);
 
   // let other modules (uiRoot Undock button) trigger an undock
@@ -755,6 +803,22 @@ export function createUiInput(ctx, screenManager) {
     if (!gp || !gp.isConnected()) return;
     const cfg = getGamepadConfig();
     if (cfg.enabled === false) return;
+    // PQ-164.01: while Settings captures a pad rebind, buttons route to the capture handler and
+    // nowhere else — gamepad.js keeps gp.actions inert under captureMode, so the sim merge and
+    // the UI navigation below both stay quiet for the duration.
+    const captureHandler = typeof getGamepadCaptureHandler === 'function' ? getGamepadCaptureHandler() : null;
+    gp.captureMode = !!captureHandler;
+    if (captureHandler) {
+      const presses = typeof gp.drainButtonPresses === 'function' ? gp.drainButtonPresses() : [];
+      _nav.up = _nav.down = _nav.left = _nav.right = false;
+      _nav.holdT = 0;
+      _nav.repeatT = 0;
+      for (const name of presses) {
+        try { captureHandler(name); } catch (e) { console.error('[uiInput] pad capture error:', e); }
+      }
+      return;
+    }
+    if (typeof gp.drainButtonPresses === 'function') gp.drainButtonPresses();
     if (isUiInteractionFenced(state)) {
       _nav.up = _nav.down = _nav.left = _nav.right = false;
       _nav.holdT = 0;
@@ -898,6 +962,22 @@ export function createUiInput(ctx, screenManager) {
     if (ctx.touch && (state.mode !== 'flight' || state.timeScale === 0)) {
       ctx.touch.tick(dt);
     }
+    // PQ-164.01: fold new pad/touch activity edges into the prompt-device order. When both moved
+    // this frame, the shared input sequence decides which was truly later.
+    const padSeq = gp && Number.isFinite(gp.lastActiveSeq) ? gp.lastActiveSeq : -1;
+    const tp = ctx.touch;
+    const touchSeq = tp && Number.isFinite(tp.lastActiveSeq) ? tp.lastActiveSeq : -1;
+    if (padSeq !== _seenPadSeq && touchSeq !== _seenTouchSeq) {
+      if (padSeq < touchSeq) { noteDevice('gamepad'); noteDevice('touch'); }
+      else { noteDevice('touch'); noteDevice('gamepad'); }
+    } else if (padSeq !== _seenPadSeq) {
+      noteDevice('gamepad');
+    } else if (touchSeq !== _seenTouchSeq) {
+      noteDevice('touch');
+    }
+    _seenPadSeq = padSeq;
+    _seenTouchSeq = touchSeq;
+    syncPromptDevice();
     handleTouchUi();
     handleGamepadUi(dt);
   }

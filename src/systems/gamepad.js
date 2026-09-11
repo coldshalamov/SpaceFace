@@ -43,28 +43,156 @@ const STD = {
 };
 
 // An action can be bound to multiple physical buttons (e.g. accept also fires in flight).
-const ACTION_MAP = {
-  fire: ['r2'],
-  mine: ['l2'],
-  boost: ['r1'],
-  brake: ['l1'],
-  cycleTarget: ['action'],
-  autoTarget: ['dUp'],
-  map: ['view'],
-  codex: ['alt'],
-  pause: ['menu'],
-  countermeasure: ['r3'],
-  accept: ['accept'],
-  massline: ['accept'],
-  cancel: ['cancel'],
-  tabPrev: ['l1'],
-  tabNext: ['r1'],
+// This is the default map; Settings may overlay player remaps (PQ-164.01) stored at
+// settings.controls.gamepad.bindings — resolved per tick by resolveGamepadBindings().
+export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
+  fire: Object.freeze(['r2']),
+  mine: Object.freeze(['l2']),
+  boost: Object.freeze(['r1']),
+  brake: Object.freeze(['l1']),
+  cycleTarget: Object.freeze(['action']),
+  autoTarget: Object.freeze(['dUp']),
+  map: Object.freeze(['view']),
+  codex: Object.freeze(['alt']),
+  pause: Object.freeze(['menu']),
+  countermeasure: Object.freeze(['r3']),
+  accept: Object.freeze(['accept']),
+  massline: Object.freeze(['accept']),
+  cancel: Object.freeze(['cancel']),
+  tabPrev: Object.freeze(['l1']),
+  tabNext: Object.freeze(['r1']),
   // Travel Burn latch (atlas D5 / W1-5). L3 (left stick click, STD index 10) was the only
   // standard-layout button still unbound, and it is the right one on the merits: the left stick
   // is the throttle hand, so "press the throttle stick in" reads as committing to a long burn.
   // It is an edge (`.pressed`), never a hold — the latch owns the state, not the button.
-  travelBurn: ['l3'],
-};
+  travelBurn: Object.freeze(['l3']),
+});
+const ACTION_MAP = GAMEPAD_DEFAULT_BINDINGS;
+
+// Player-facing glyph per standard-layout button (PQ-164.01). Short primary names — the
+// Settings layout note and Help carry the dual Xbox/PlayStation naming.
+export const GAMEPAD_BUTTON_LABELS = Object.freeze({
+  accept: 'A',
+  cancel: 'B',
+  action: 'X',
+  alt: 'Y',
+  l1: 'LB',
+  r1: 'RB',
+  l2: 'LT',
+  r2: 'RT',
+  view: 'View',
+  menu: 'Menu',
+  l3: 'L3',
+  r3: 'R3',
+  dUp: 'D-Pad Up',
+  dDown: 'D-Pad Down',
+  dLeft: 'D-Pad Left',
+  dRight: 'D-Pad Right',
+  home: 'Home',
+});
+
+// --- Remapping (PQ-164.01) -------------------------------------------------------------------
+// A button may serve two actions only when their contexts are disjoint — a modal-only verb
+// (cancel, station tab cycling) is inert in flight, and flight verbs are neutralized while a
+// modal owns input — or when the pair is a designed arbitration (A/Cross is Massline in flight
+// but dock/accept under the dock prompt; brake/boost share LB/RB with station tab cycling).
+const PAD_ACTION_CONTEXT = Object.freeze({
+  accept: 'both',
+  map: 'both',
+  pause: 'both',
+  codex: 'flight',
+  fire: 'flight',
+  mine: 'flight',
+  boost: 'flight',
+  brake: 'flight',
+  cycleTarget: 'flight',
+  autoTarget: 'flight',
+  countermeasure: 'flight',
+  travelBurn: 'flight',
+  massline: 'flight',
+  cancel: 'modal',
+  tabPrev: 'modal',
+  tabNext: 'modal',
+});
+const PAD_SHARE_PAIRS = new Set(['accept|massline']);
+
+export function gamepadShareAllowed(a, b) {
+  if (a === b) return true;
+  if (PAD_SHARE_PAIRS.has([a, b].sort().join('|'))) return true;
+  const ca = PAD_ACTION_CONTEXT[a] || 'both';
+  const cb = PAD_ACTION_CONTEXT[b] || 'both';
+  return (ca === 'flight' && cb === 'modal') || (ca === 'modal' && cb === 'flight');
+}
+
+/**
+ * The action that already owns `stdName` in `map` and may not share it with `action`, or null.
+ * Used by the Settings capture for conflict detection and by the resolver to drop illegal shares
+ * stored in a stale/hand-edited profile.
+ */
+export function findGamepadBindConflict(map, action, stdName) {
+  for (const other in map) {
+    if (other === action) continue;
+    const list = map[other];
+    if (!list || !list.includes(stdName)) continue;
+    if (!gamepadShareAllowed(action, other)) return other;
+  }
+  return null;
+}
+
+/**
+ * Resolved action -> [std button names] for the live settings. Player overrides at
+ * settings.controls.gamepad.bindings replace an action's whole list; unknown actions/buttons and
+ * illegal shares are dropped (canonical declaration order wins). With no overrides this returns
+ * the frozen default map — callers on the hot tick path must not allocate.
+ */
+export function resolveGamepadBindings(settings) {
+  const custom = settings && settings.controls && settings.controls.gamepad
+    ? settings.controls.gamepad.bindings : null;
+  if (!custom || typeof custom !== 'object' || Array.isArray(custom)) return ACTION_MAP;
+  const owners = {}; // std button name -> [actions holding it]
+  const claimable = (action, name) =>
+    (owners[name] || []).every((other) => gamepadShareAllowed(action, other));
+  const place = (action, names) => {
+    const kept = [];
+    for (const name of names) {
+      if (!claimable(action, name)) continue;
+      kept.push(name);
+      (owners[name] || (owners[name] = [])).push(action);
+    }
+    return kept;
+  };
+  const sanitize = (raw) => {
+    const names = Array.isArray(raw) ? raw : [raw];
+    const out = [];
+    for (const n of names) {
+      if (typeof n === 'string' && STD[n] != null && !out.includes(n)) out.push(n);
+    }
+    return out;
+  };
+  const has = (a) => Object.prototype.hasOwnProperty.call(custom, a);
+  const out = {};
+  // Pass 1: untouched actions keep their shipped defaults (the stock map is internally legal).
+  for (const action in ACTION_MAP) {
+    if (has(action)) continue;
+    out[action] = place(action, ACTION_MAP[action]);
+  }
+  // Pass 2: overrides claim buttons in canonical order. An override that loses every button to a
+  // disallowed share (corrupt or hand-edited profile) falls back to the action's default, so a
+  // stored map can never leave the pad worse than stock. An explicitly empty list is a deliberate
+  // unbind and stays empty.
+  for (const action in ACTION_MAP) {
+    if (!has(action)) continue;
+    const raw = custom[action];
+    if (Array.isArray(raw) && raw.length === 0) { out[action] = []; continue; }
+    const desired = sanitize(raw);
+    // An all-invalid or fully conflicted override is corrupt data, not a choice — restore the
+    // action's default rather than leave a dead verb.
+    let kept = desired.length ? place(action, desired) : [];
+    if (kept.length === 0) kept = place(action, ACTION_MAP[action]);
+    out[action] = kept;
+  }
+  return out;
+}
 
 const DEFAULT_DEADZONE = 0.12;
 
@@ -205,6 +333,22 @@ export function createGamepad(ctx) {
     actions: {},
     _prev: {},
 
+    // PQ-164.01 remap: raw button edge queue + capture flag for the Settings rebind flow.
+    // While captureMode is set every action reports inert — neither the sim merge nor the UI
+    // layer may act on a button the player is in the middle of binding.
+    captureMode: false,
+    lastButton: null,
+    _prevButtons: {},
+    _pressQueue: [],
+    _mapCache: { source: undefined, map: ACTION_MAP },
+
+    /** Std button names pressed since the last drain (for the Settings pad-capture flow). */
+    drainButtonPresses() {
+      const q = this._pressQueue;
+      this._pressQueue = [];
+      return q;
+    },
+
     isConnected() {
       return this.connected;
     },
@@ -273,6 +417,28 @@ export function createGamepad(ctx) {
       this.axes.l2 = Math.max(0, pad.buttons[6] ? pad.buttons[6].value : 0);
       this.axes.r2 = Math.max(0, pad.buttons[7] ? pad.buttons[7].value : 0);
 
+      // PQ-164.01: resolved binding map, rebuilt only when the stored override object changes.
+      const customBindings = cfg.bindings;
+      if (this._mapCache.source !== customBindings) {
+        this._mapCache.source = customBindings;
+        this._mapCache.map = resolveGamepadBindings(live && live.settings);
+      }
+      const actionMap = this._mapCache.map;
+
+      // Raw button edges for the remap capture — recorded for every standard button, bound or
+      // not, so an unbound button can still be offered to the capture handler.
+      const prevButtons = this._prevButtons;
+      for (const name in STD) {
+        const idx = STD[name];
+        const b = pad.buttons && pad.buttons[idx];
+        const pressed = !!(b && (b.pressed || b.value > 0.5));
+        if (pressed && !prevButtons[name]) {
+          if (this._pressQueue.length < 8) this._pressQueue.push(name);
+          this.lastButton = name;
+        }
+        prevButtons[name] = pressed;
+      }
+
       let activity =
         Math.abs(this.axes.leftX) > 0.001 ||
         Math.abs(this.axes.leftY) > 0.001 ||
@@ -283,8 +449,8 @@ export function createGamepad(ctx) {
 
       const actions = {};
       const prev = this._prev;
-      for (const action in ACTION_MAP) {
-        const names = ACTION_MAP[action];
+      for (const action in actionMap) {
+        const names = actionMap[action];
         let held = false;
         let value = 0;
         for (const n of names) {
@@ -303,7 +469,17 @@ export function createGamepad(ctx) {
         };
         prev[action] = held;
       }
-      this.actions = actions;
+      if (this.captureMode) {
+        // Remap capture: edges still reach the queue above, but every action reports inert so
+        // neither the sim merge nor the UI layer acts on a button mid-bind.
+        const inert = {};
+        for (const action in actions) {
+          inert[action] = { held: false, pressed: false, released: false, value: 0 };
+        }
+        this.actions = inert;
+      } else {
+        this.actions = actions;
+      }
 
       if (activity) {
         // G9: update tick every held frame for cross-tick recency, but only bump the
@@ -409,6 +585,9 @@ export function createGamepad(ctx) {
       }
       this.actions = actions;
       this._prev = {};
+      this._prevButtons = {};
+      this._pressQueue = [];
+      this.lastButton = null;
       this._wasActive = false;
     },
   };
