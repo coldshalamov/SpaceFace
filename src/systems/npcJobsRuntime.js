@@ -642,6 +642,13 @@ export const npcJobsRuntime = {
         this._threatQueryDirty = true;
         this._onCeresRealTargetSpawn(payload);
       });
+      // Ecology has stamped its role and field by this event. Adopt the existing pair before
+      // world's first tick shelves jobless distant hulls; the regular update scan is too late.
+      this.bus.on('wreckEcology:spawned', (p) => {
+        if (p && p.role === 'scavenger' && p.sectorId === CERES_ACTIVITY_SECTOR_ID) {
+          this._adoptCeresScavengerTractors();
+        }
+      });
       // A job whose hull is destroyed (never demoted) ends with the entity (ruling 5).
       this.bus.on('entity:killed', (p) => {
         const payload = p || {};
@@ -1774,7 +1781,6 @@ export const npcJobsRuntime = {
 
   _adoptCeresScavengerTractors() {
     if (!this.state || this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return 0;
-    if ((this.state.mode || 'flight') !== 'flight') return 0;
     if (this._countCeresScavengerJobs() >= NPC_CERES_SCAVENGER_ADOPT_LIMIT) return 0;
     const seed = (this.state.meta && this.state.meta.seed) || 1;
     let adopted = this._countCeresScavengerJobs();
@@ -1799,8 +1805,8 @@ export const npcJobsRuntime = {
       if (data.sectorId == null) data.sectorId = CERES_ACTIVITY_SECTOR_ID;
       if (data.homeSectorId == null) data.homeSectorId = CERES_ACTIVITY_SECTOR_ID;
       if (target.data && target.data.sectorId == null) target.data.sectorId = CERES_ACTIVITY_SECTOR_ID;
-      // Salvor transit interpolates home → wreck. A 17 kWU yard waypoint would haul the cutter
-      // off the hulk before the tractor can land. Keep both marks on the existing wreck side.
+      // This cutter works the existing wreck field. Keep its hold and work marks there; the
+      // cathedral's immovable grave scenery is not a salvage destination for this occupation.
       pinOccupationalLatch(target);
       const jobId = this.assign(entity, {
         kind: NPC_JOB_KIND.SALVOR,

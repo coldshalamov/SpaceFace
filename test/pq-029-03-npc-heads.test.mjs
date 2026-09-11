@@ -18,6 +18,8 @@ import {
   snapshotFeatureMaps,
 } from '../src/data/featureFlags.js';
 import { CERES_REFERENCE_ACCEPTANCE_ENTRY } from '../src/data/sectorActivityPockets.js';
+import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { zonesForSector } from '../src/data/sectorZones.js';
 import { makeShipEntitySpec, buildSlotList, fits } from '../src/systems/ships.js';
 import { stuntGrammar } from '../src/systems/stuntGrammar.js';
 import { createAuthoritativeRuntime } from '../src/runtime/createAuthoritativeRuntime.js';
@@ -30,7 +32,7 @@ import {
   pocketEntryGlobal,
 } from '../src/testing/lab/proofSixtySeconds.js';
 
-const SEED = CERES_REFERENCE_ACCEPTANCE_ENTRY.fixedSeed;
+const SEED = Number(process.env.PQ029_SEED || CERES_REFERENCE_ACCEPTANCE_ENTRY.fixedSeed);
 const WINDOW_S = 600;
 const HEADS = Object.freeze(['tractor', 'elastic_whip', 'frame_coupler']);
 const HEAD_MODULES = Object.freeze([
@@ -77,6 +79,8 @@ function sampleHeads(state) {
     if (!HEADS.includes(headId)) continue;
     const owner = state.entities && state.entities.get(attachment.ownerId);
     if (!owner || owner.alive === false) continue;
+    const target = state.entities.get(attachment.targetId);
+    if (!target || target.alive === false || target.physicsBody === false) continue;
     const jobId = owner.data && owner.data.jobId;
     if (!jobId || !state.npcJobs || !state.npcJobs.byId || !state.npcJobs.byId[jobId]) continue;
     rows.push({
@@ -85,6 +89,12 @@ function sampleHeads(state) {
       jobId,
       timeS: Number((Number(state.simTime) || 0).toFixed(2)),
       seed: SEED,
+      ownerPos: { ...owner.pos },
+      targetPos: { ...target.pos },
+      playerDistanceWU: Number(Math.hypot(
+        owner.pos.x - state.entities.get(state.playerId).pos.x,
+        owner.pos.z - state.entities.get(state.playerId).pos.z,
+      ).toFixed(2)),
     });
   }
   return rows;
@@ -150,6 +160,40 @@ test('Hitch cannot fit the M Massline heads', () => {
   }
 });
 
+test('Ceres salvage and its scavenger spawn at the authored field in global space', async () => {
+  const { runtime, state } = await bootCeres(SEED);
+  try {
+    const zones = zonesForSector(PROOF_SECTOR_ID).filter((zone) => zone.type === 'derelict_field');
+    const points = state.salvage.points;
+    assert.ok(points.length, `seed ${SEED} needs existing salvage work`);
+    for (const point of points) {
+      const zone = zones.find((candidate) => candidate.id === point.zoneId);
+      assert.ok(zone, 'salvage belongs to an authored derelict field');
+      const center = sectorLocalToGlobalForSector(zone.center, PROOF_SECTOR_ID);
+      const wreck = state.entities.get(point.entityId);
+      assert.ok(wreck, 'salvage record resolves to its existing wreck');
+      assert.deepEqual({ x: wreck.pos.x, z: wreck.pos.z }, point.pos,
+        'record and body share the same global position');
+      assert.ok(Math.hypot(wreck.pos.x - center.x, wreck.pos.z - center.z) <= zone.radius,
+        `seed ${SEED}: wreck ${JSON.stringify(wreck.pos)} must be at global field ${JSON.stringify(center)}`);
+      const scavenger = [...state.entities.values()].find((entity) =>
+        entity.data?.wreckFieldId === `salvage:${zone.id}` && roleOf(entity) === 'scavenger');
+      assert.ok(scavenger, 'the existing wreck-field ecology supplies the scavenger');
+      assert.ok(Math.hypot(scavenger.pos.x - wreck.pos.x, scavenger.pos.z - wreck.pos.z) < 390,
+        'scavenger and wreck occupy the same working volume');
+      console.log('PQ-029.03 spawn', JSON.stringify({ seed: SEED, center, wreck: wreck.pos, scavenger: scavenger.pos }));
+    }
+    runtime.step(SIM_DT);
+    for (const point of points) {
+      assert.ok(state.entities.has(point.entityId), 'real salvage survives the first world tick');
+    }
+    assert.ok(sampleHeads(state).some((row) => row.headId === 'tractor'),
+      'the existing scavenger has its job before the first world tick can shelve it');
+  } finally {
+    runtime.dispose();
+  }
+});
+
 test('Ceres ordinary traffic uses tractor, whip, and coupler within 10 min', {
   timeout: 600_000,
 }, async () => {
@@ -168,6 +212,7 @@ test('Ceres ordinary traffic uses tractor, whip, and coupler within 10 min', {
 
     const sightings = HEADS.map((headId) => first[headId] || null);
     console.log('PQ-029.03 sightings');
+    console.log(JSON.stringify(first));
     console.log('head            job                              timeS   seed');
     for (const headId of HEADS) {
       const row = first[headId];

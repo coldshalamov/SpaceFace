@@ -18,6 +18,7 @@
 // draw-order, so interleaving with other sector:enter consumers can't shift our rolls.
 
 import { zonesForSector, VESTA_DERELICT_SALVAGE_SOURCE } from '../data/sectorZones.js';
+import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
 import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './aftermathWrecks.js';
 
@@ -343,7 +344,7 @@ export const salvage = {
       const local = (points || []).filter((point) => point && point.zoneId === zone.id);
       const pos = local[0] && local[0].pos
         ? { x: local[0].pos.x, z: local[0].pos.z }
-        : (zone.center ? { x: zone.center.x, z: zone.center.z } : null);
+        : (zone.center ? sectorLocalToGlobalForSector(zone.center, sectorId) : null);
       if (!pos) continue;
       this.bus.emit('wreckField:source', {
         fieldId: `salvage:${zone.id}`,
@@ -414,7 +415,10 @@ export const salvage = {
     return rec;
   },
 
-  _makeSalvagePoint(sectorId, zone, idx, pos, isCommunicator, rng, spawnEntity) {
+  _makeSalvagePoint(sectorId, zone, idx, localPos, isCommunicator, rng, spawnEntity) {
+    // Zone scatter is authored in sector-local XZ. Entity positions, discovery records and the
+    // wreckField:source consumed by scavenger ecology all use galactic-global XZ, just like world.
+    const pos = sectorLocalToGlobalForSector(localPos, sectorId);
     const id = `${zone.id}:sal${idx}`;
     let mission = null;
     if (isCommunicator) mission = pickWreckMission(rng);
