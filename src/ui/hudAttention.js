@@ -12,6 +12,7 @@ const TARGET_RECEIPT = /^\s*target\s*:/i;
 const CONTROL_LAUNDRY = /\s+•\s+/;
 const BIND_WALL = /\b(thrusts?|steer|mouse aims|lmb fire|left stick flies)\b/i;
 const COMBAT_KEEP = /\b(cr|credit|cargo|rep|save|saved|cannot|insufficient|no wingmen)\b/i;
+const RADIO_CHATTER = /^["'“‘]|(\b(chatter|radio|hail|routine transponder|incident logged|clause \w+ observed|witness the|the pattern sings|meridian floor:|saw that|caught that|clause satisfied)\b)/i;
 
 export function vitalNumericVisible(frac) {
   const n = Number(frac);
@@ -38,19 +39,27 @@ export function formatDestinationLine({
 export function admitReceipt({
   text = '',
   kind = 'info',
+  channel = '',
   _fromVoice = false,
   combat = false,
 } = {}) {
   const line = String(text || '').trim();
   if (!line) return { admit: false, reason: 'empty' };
   if (_fromVoice) return { admit: false, reason: 'voice-mirror' };
+  if (channel === 'bark' || channel === 'chatter' || channel === 'news') {
+    return { admit: false, reason: 'chatter' };
+  }
   if (isVoiceOwnedAlertToast(line)) return { admit: false, reason: 'danger-floor' };
   if (TARGET_RECEIPT.test(line)) return { admit: false, reason: 'target-card' };
   if (CONTROL_LAUNDRY.test(line) || BIND_WALL.test(line)) {
     return { admit: false, reason: 'key-laundry' };
   }
+  if (RADIO_CHATTER.test(line)) {
+    return { admit: false, reason: 'radio-chatter' };
+  }
   const k = String(kind || 'info');
   if (k === 'danger') return { admit: false, reason: 'danger-floor' };
+  if (k === 'bark' || k === 'chatter') return { admit: false, reason: 'chatter' };
   if (combat && k !== 'error' && !COMBAT_KEEP.test(line)) {
     return { admit: false, reason: 'combat-quiet' };
   }
