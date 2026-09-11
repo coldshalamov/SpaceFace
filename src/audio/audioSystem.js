@@ -38,6 +38,8 @@ import {
   weightDuckEnvelope,
   weightDuckGainForTarget,
   resolveVisualEventCue,
+  visualEventAudioAllowed,
+  VISUAL_EVENT_BUS,
 } from './environmentMix.js';
 import { playRecipe, releaseVoice, disposeVoice, getNoiseBuffer } from './synth.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
@@ -1132,6 +1134,8 @@ export const audio = {
     rt._weightDuckEnvelope = null;
     rt._masslineReelLastTick = -1e9;
     rt._environmentClass = 'void';
+    rt._heardAudioTick = -1;
+    rt._heardRecipes = new Set();
     rt.sidechainDuck = 1;
     rt._busGainCache = null;      // last settings-derived bus gain written per bus
     rt._bedTargetCache = null;    // last brake/tether bed target written per param
@@ -1299,7 +1303,7 @@ export const audio = {
       if (p && p.kind && p.kind !== 'well') return;
       this._playAccessibilityCue('well', { position: p && p.center });
     });
-    bus.on('presentation:vfx', (p) => this._onVisualEventAudio(p && (p.id || p.eventId || p.kind)));
+    bus.on(VISUAL_EVENT_BUS, (p) => this._onVisualEventAudio(p));
     bus.on('bulletTime:start', () => {
       if (massline2Flag('bulletTime')) this._setBulletTimeAudio(true);
     });
@@ -1887,7 +1891,11 @@ export const audio = {
 
     const sidechain = rt.sidechainDuck || 1.0;
     const ambientVal = a.ambient == null ? 0.7 : a.ambient;
-    const ambientTarget = linearGain(sfxVal) * linearGain(ambientVal) * 0.06309 * sidechain;
+    const nowMs = this._wallClockMs();
+    const ambientDuck = rt._weightDuckEnvelope
+      ? weightDuckGainForTarget('ambient', rt._weightDuckEnvelope, nowMs)
+      : 1;
+    const ambientTarget = linearGain(sfxVal) * linearGain(ambientVal) * 0.06309 * sidechain * ambientDuck;
     ramp('ambient', rt.ambientBus.gain, ambientTarget);
 
     const combatVal = a.combat == null ? 0.7 : a.combat;
@@ -1910,7 +1918,7 @@ export const audio = {
     const mine = this._refreshMineIntent();
     const musicSilenced = mine.musicSilenced;
     const weightDuck = rt._weightDuckEnvelope
-      ? weightDuckGainForTarget('music', rt._weightDuckEnvelope, this._wallClockMs())
+      ? weightDuckGainForTarget('music', rt._weightDuckEnvelope, nowMs)
       : 1;
     const musicTarget = musicSilenced ? 0 : rt._musicBase * (rt._bulletTimeMusicMult || 1) * weightDuck;
     ramp('music', rt.musicBus.gain, musicTarget, musicSilenced);
@@ -1989,6 +1997,7 @@ export const audio = {
       dest = panner;
     }
 
+    this._noteRecipeHeard(recipeId);
     this._evictIfFull();
     const voice = playRecipe(ctx, recipe, dest, {
       peakGain: synthPeak, detune: opts.detune || 0, rate, id: rt._nextVoiceId++, trackId: opts.trackId || null,
@@ -3205,11 +3214,24 @@ export const audio = {
     }
   },
 
-  _onVisualEventAudio(eventId) {
+  _onVisualEventAudio(payload) {
+    const eventId = payload && typeof payload === 'object'
+      ? (payload.id || payload.eventId || payload.kind || payload.lane)
+      : payload;
     const cue = resolveVisualEventCue(eventId);
     if (!cue) return;
-    this.play(cue.recipeId, { gain: 0.55 + cue.importance * 0.3, critical: cue.importance >= 0.8 });
-    this._emitPresentationCaption(cue.caption, { assertive: cue.importance >= 0.8, shape: 'flash' });
+    const accessibility = this.state && this.state.settings && this.state.settings.accessibility;
+    const captionsOn = !accessibility || accessibility.captions !== false;
+    if (visualEventAudioAllowed(this.state && this.state.settings) && !this._recipeHeardThisTick(cue.recipeId)) {
+      this.play(cue.recipeId, {
+        gain: 0.55 + cue.importance * 0.3,
+        critical: cue.importance >= 0.8,
+        position: (payload && (payload.position || payload.pos)) || null,
+      });
+    }
+    if (captionsOn) {
+      this._emitPresentationCaption(cue.caption, { assertive: cue.importance >= 0.8, shape: 'flash' });
+    }
   },
 
   _applyWeightDuck(input) {
@@ -3217,6 +3239,26 @@ export const audio = {
     if (!rt) return;
     rt._weightDuckEnvelope = weightDuckEnvelope(input, this._wallClockMs());
     invalidateBusGainCache(rt, 'music');
+    invalidateBusGainCache(rt, 'ambient');
+  },
+
+  _recipeHeardThisTick(recipeId) {
+    const rt = this.rt;
+    if (!rt || !rt._heardRecipes) return false;
+    const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1;
+    if (rt._heardAudioTick !== tick) return false;
+    return rt._heardRecipes.has(recipeId);
+  },
+
+  _noteRecipeHeard(recipeId) {
+    const rt = this.rt;
+    if (!rt) return;
+    const tick = this.state && Number.isFinite(this.state.tick) ? this.state.tick : -1;
+    if (rt._heardAudioTick !== tick) {
+      rt._heardAudioTick = tick;
+      rt._heardRecipes = new Set();
+    }
+    rt._heardRecipes.add(recipeId);
   },
 
   _syncEnvironmentMix(docked) {
@@ -3266,6 +3308,9 @@ export const audio = {
   _onCue(cue) {
     const id = typeof cue === 'string' ? cue : cue && cue.id;
     if (!id) { this.play('sfx_ui_click', { gain: 0.7 }); return; }
+    // Juice emits presentation:vfxCue then audio:cue with the same id. Unmapped juice ids used
+    // to collapse to a UI click on top of the visual-event recipe; the visual-event path owns them.
+    if (resolveVisualEventCue(id) && !AUDIO_CUE_TO_RECIPE[id] && !AUDIO_RECIPE_BY_ID[id]) return;
     const rid = resolveAudioCueRecipeId(id);
     const opts = (cue && typeof cue === 'object') ? cue : {};
     // While the mine owns the ear its own synthesized voice replaces the flight-mix recipe for
