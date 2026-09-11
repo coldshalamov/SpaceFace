@@ -14,7 +14,7 @@
 //     mission rewards all already flow through it, so we never also add `tradeCompleted.total` etc.
 //     into the money buckets (that would double-count). Trade *volume* is a separate aggregate.
 //   - kills are filtered to `killerId === playerId` (most `entity:killed` are NPC-vs-NPC).
-//   - first-hour onboarding funnel (CANONICAL_BUILD_MAP.md §15.4 / PQ-167): first flight, first swing,
+//   - first-hour onboarding funnel (build_map.md §15.4 / PQ-167): first flight, first swing,
 //     first shove, first dock, first heat, plus difficulty-ramp and career progression milestones.
 //
 // Entry point: createTelemetry(bus, state). No-op-safe singleton (a second call disposes the prior
@@ -25,11 +25,17 @@ import {
   renderSessionReportMarkdown,
   exportSessionReportJson,
 } from '../observability/sessionReport.js';
+import {
+  pairLeftoverDeathTelegraph,
+  leftoverTelegraphKind,
+  CONTINUOUS_TELEGRAPH_KINDS,
+} from '../ui/threatHalo.js';
 import { projectStorySoFar } from './shipLedger.js';
 
 const STORAGE_KEY = 'sf_telemetry_v1';
 const SCHEMA_VERSION = 1;
 const RING_CAP = 2000;        // recent-event ring buffer cap (no unbounded growth)
+const TELEGRAPH_LOG_CAP = 256; // recent ai:telegraph cues held for death pairing (PQ-161.01)
 const MAX_SESSIONS = 25;      // stored-session cap; oldest rotated out
 const MAX_DEATH_LOG = 200;    // per-session death/lifespan log cap
 const SAVE_DEBOUNCE_MS = 4000;
@@ -76,7 +82,8 @@ function emptyAggregates() {
     trades: { buy: 0, sell: 0, byCommodity: {} },          // counts + per-commodity {buy,sell,qty}
     credits: { earned: 0, spent: 0, byReason: {} },         // sole source: credits:changed
     kills: { total: 0, byVictimClass: {}, byFaction: {} },  // player kills only
-    deaths: { total: 0, byCause: {} },
+    // `telegraphed` counts deaths a matching ai:telegraph preceded by 0.5-1 s (PQ-161.01).
+    deaths: { total: 0, byCause: {}, telegraphed: 0, unannounced: 0 },
     ore: { unitsTotal: 0, byType: {} },                      // mining:yield qty by commodityId
     missions: { accepted: 0, completed: 0, failed: 0, expired: 0, byType: {} },
     progression: { techResearched: 0, factionTierUps: 0, techNodes: [], tierUps: [] },
@@ -90,7 +97,7 @@ function emptyAggregates() {
     // First-occurrence timestamps (monotonic ms since session start). -1 = not yet reached. We use
     // -1 (not 0) so that a step reached on the exact rebase tick — offset 0ms — still reads as reached.
     funnel: {
-      // Core first-hour onboarding funnel (CANONICAL_BUILD_MAP.md §15.4 / PQ-167)
+      // Core first-hour onboarding funnel (build_map.md §15.4 / PQ-167)
       firstFlightAt: -1, firstSwingAt: -1, firstShoveAt: -1, firstDockAt: -1, firstHeatAt: -1,
       // Gameplay milestones
       firstTradeAt: -1, firstMineAt: -1, firstKillAt: -1,
@@ -122,6 +129,11 @@ export function createTelemetry(bus, state) {
   let lastSpawnMark = now();     // lifespan anchor (game start / respawn)
   let saveTimer = null;
   let disposed = false;
+
+  // Recent ai:telegraph cues, held only long enough to pair the next player death (PQ-161.01).
+  // This is the live done-when instrument: the death site records whether a matching announcement
+  // led it by 0.5-1 s over the real cause taxonomy. Bounded like the ring — no unbounded growth.
+  const telegraphLog = [];
 
   // ----------------------------------------------------------------------------------------------
   // ring buffer (cap RING_CAP, drop-oldest)
@@ -229,9 +241,76 @@ export function createTelemetry(bus, state) {
   }
 
   // ----------------------------------------------------------------------------------------------
+  // telegraph instrument (PQ-161.01 done-when). `ai:telegraph` is the only live announcement
+  // channel. We keep the recent cues so the death site can ask "was there a matching warning
+  // 0.5-1 s earlier?" over the live cause taxonomy instead of a hand-picked fixture.
+  // ----------------------------------------------------------------------------------------------
+  function telegraphTickOf(payload) {
+    if (Number.isInteger(payload.tick)) return payload.tick;
+    return Number.isInteger(state && state.tick) ? state.tick : 0;
+  }
+
+  /**
+   * Continuous hazards (mines / snares) stay lit until they trigger, so their cue is not a
+   * one-tick pulse. When the payload does not declare a duration, read it off the live hazard
+   * entity so the death site can tell "still lit in the final second" from a stale placement.
+   */
+  function hazardDurationTicksFor(payload, kind) {
+    const declared = Number(payload.durationTicks);
+    if (Number.isFinite(declared) && declared > 0) return Math.floor(declared);
+    if (!CONTINUOUS_TELEGRAPH_KINDS.has(kind)) return undefined;
+    const mineId = payload.mineId != null ? payload.mineId : null;
+    const entity = mineId != null && state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(mineId) : null;
+    const data = entity && entity.data;
+    if (data && Number.isFinite(data.placedAt) && Number.isFinite(data.armedAt)) {
+      const ticks = Math.round((data.armedAt - data.placedAt) * 60);
+      if (ticks > 0) return ticks;
+    }
+    return undefined;
+  }
+
+  function recordTelegraph(payload) {
+    if (!payload) return;
+    const kind = leftoverTelegraphKind(payload);
+    if (!kind) return;
+    const tick = telegraphTickOf(payload);
+    if (tick < 0) return;
+    const durationTicks = hazardDurationTicksFor(payload, kind);
+    const record = {
+      kind,
+      tick,
+      entityId: payload.entityId != null ? payload.entityId : null,
+      mineId: payload.mineId != null ? payload.mineId : null,
+      actorId: payload.actorId != null ? payload.actorId : null,
+      sourceId: payload.sourceId != null ? payload.sourceId : null,
+      ownerId: payload.ownerId != null ? payload.ownerId : null,
+    };
+    if (durationTicks != null) record.durationTicks = durationTicks;
+    telegraphLog.push(record);
+    if (telegraphLog.length > TELEGRAPH_LOG_CAP) {
+      telegraphLog.splice(0, telegraphLog.length - TELEGRAPH_LOG_CAP);
+    }
+  }
+
+  function telegraphMatchForDeath(payload) {
+    if (telegraphLog.length === 0) return null;
+    return pairLeftoverDeathTelegraph({
+      tick: Number.isInteger(payload.tick) ? payload.tick
+        : (Number.isInteger(state && state.tick) ? state.tick : 0),
+      killerId: payload.killerId != null ? payload.killerId : payload.attackerId,
+      mineId: payload.mineId != null ? payload.mineId
+        : (payload.origin && payload.origin.kind === 'mine' ? payload.origin.id : null),
+      origin: payload.origin,
+    }, telegraphLog);
+  }
+
+  // ----------------------------------------------------------------------------------------------
   // subscriptions — every name below is verified against an emit site in src/ (see EVENT_TAXONOMY).
   // ----------------------------------------------------------------------------------------------
   function sub(event, fn) { unsubs.push(bus.on(event, fn)); }
+
+  sub('ai:telegraph', recordTelegraph);
 
   // game lifecycle — reset the lifespan anchor so death lifespans are measured from spawn. We also
   // re-base the funnel/ring time origin (`startedSimMark`) to actual play start, so "time to first
@@ -467,16 +546,23 @@ export function createTelemetry(bus, state) {
   });
 
   // PLAYER DEATH — deaths-by-cause + death/lifespan log. combat.js:194
+  // The telegraph pairing happens HERE, at the death site, against the recent ai:telegraph cues.
   sub('player:death', (p) => {
     p = p || {};
     const c = deriveDeathCause(p.killerId);
+    const telegraph = telegraphMatchForDeath(p);
     session.deaths.total += 1;
     bump(session.deaths.byCause, c.cause);
+    if (telegraph) session.deaths.telegraphed += 1;
+    else session.deaths.unannounced += 1;
     const atMs = now() - session.startedSimMark;
     const entry = {
       atMs, simTime: simNow(), cause: c.cause,
       killerId: p.killerId == null ? null : p.killerId,
       killerType: c.type, killerFaction: c.faction,
+      telegraphed: !!telegraph,
+      telegraphKind: telegraph ? telegraph.kind : null,
+      telegraphLeadTicks: telegraph ? telegraph.leadTicks : null,
       pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
       lifespanMs: now() - lastSpawnMark,
     };
@@ -767,11 +853,25 @@ export function createTelemetry(bus, state) {
     return exportSessionReportJson(s);
   }
 
+  // PQ-161.01 done-when readout: how many recorded player deaths a matching ai:telegraph led by
+  // 0.5-1 s. Death-cause telemetry is the instrument; this is the number it prints.
+  function getTelegraphCoverage() {
+    const total = session.deaths.total;
+    const preceded = session.deaths.telegraphed;
+    return {
+      preceded,
+      unannounced: session.deaths.unannounced,
+      total,
+      percent: total === 0 ? 0 : Math.round((preceded / total) * 1000) / 10,
+    };
+  }
+
   // Reset: clear the LIVE session aggregates + ring (does NOT wipe persisted history; pass true to also
   // clear localStorage). A fresh session id is minted so the next persist() appends cleanly.
   function reset(clearStored) {
     session = emptyAggregates();
     ring.length = 0;
+    telegraphLog.length = 0;
     ringSeq = 0;
     lastSpawnMark = now();
     lastThrustActive = false;
@@ -807,6 +907,7 @@ export function createTelemetry(bus, state) {
     name: 'telemetry',
     getSessionStats, getCareerStats, getFunnel, getDeathHeatmap,
     getRecentEvents, getStorySoFar, reset, dispose,
+    getTelegraphCoverage,
     recordVerb, getSessionReport, exportSessionReport,
     getAllSessions: () => readAllSessions().filter((s) => s && s.sessionId !== session.sessionId).concat([serializeSession()]),
     // live handles for dev inspection

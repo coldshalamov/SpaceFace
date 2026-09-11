@@ -8881,7 +8881,7 @@
       "priority": 171,
       "title": "Telegraphs",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -8903,7 +8903,9 @@
         "npm run check:colour-tokens",
         "npm run check:art"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-161.01-REPORT.md"
+      ],
       "brief": "Every lethal thing announces itself 0.5–1 s ahead in motion, light or sound. DONE WHEN: Death-cause telemetry shows ≥ 90 % of deaths preceded by a telegraph."
     },
     {

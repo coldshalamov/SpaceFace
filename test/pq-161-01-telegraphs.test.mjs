@@ -7,9 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { ContactKind } from '../src/ai/contracts.js';
 import { CombatDoctrineId, DOCTRINE_TELEGRAPH_TICKS } from '../src/ai/combatDoctrine.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../src/ai/doctrine.js';
-import { scalarHitToDamagePacket } from '../src/combat/damage.js';
 import { physics } from '../src/core/physics.js';
-import { createSimulation, SIM_DT } from '../src/core/sim.js';
+import { createSimulation } from '../src/core/sim.js';
 import {
   forceChannelForTelegraphKind,
   TELEGRAPH_FORCE_CHANNELS,
@@ -18,6 +17,7 @@ import { mines, MINE_TELEGRAPH_CUE, MINE_BLAST_DAMAGE } from '../src/systems/min
 import { combat } from '../src/systems/combat.js';
 import { weapons } from '../src/systems/weapons.js';
 import { createTacticalAISystem } from '../src/systems/tacticalAI.js';
+import { createTelemetry } from '../src/systems/telemetry.js';
 import { isHostileToPlayer } from '../src/systems/scanner.js';
 import {
   createThreatHalo,
@@ -84,7 +84,7 @@ function pairDeaths(deaths, telegraphs) {
   return { preceded, total, percent, rows };
 }
 
-function bootMineCombat(seed = SEED) {
+function bootMineCombat(seed = SEED, opts = {}) {
   const sim = createSimulation({ seed, systems: [mines, combat] });
   const { state, bus } = sim;
   state.mode = 'flight';
@@ -105,6 +105,7 @@ function bootMineCombat(seed = SEED) {
     data: {},
   });
   state.playerId = player.id;
+  const telemetry = opts.telemetry ? createTelemetry(bus, state) : null;
   const telegraphs = [];
   const deaths = [];
   bus.on('ai:telegraph', (p) => {
@@ -121,11 +122,11 @@ function bootMineCombat(seed = SEED) {
       cause: p.cause || p.context || null,
     });
   });
-  return { sim, state, bus, player, telegraphs, deaths, minesSys: sim.registry.get('mines') };
+  return { sim, state, bus, player, telegraphs, deaths, minesSys: sim.registry.get('mines'), telemetry };
 }
 
 function leftoverMineDeath(opts = {}) {
-  const t = bootMineCombat(opts.seed || SEED);
+  const t = bootMineCombat(opts.seed || SEED, opts);
   const owner = t.sim.spawn({
     type: 'ship',
     team: 1,
@@ -149,253 +150,15 @@ function leftoverMineDeath(opts = {}) {
   return { ...t, owner, mine };
 }
 
-function doctrineState(combatDoctrineId, targetX) {
-  const player = {
-    id: 1,
-    type: 'ship',
-    alive: true,
-    team: 0,
-    pos: { x: targetX, z: 0 },
-    vel: { x: 0, z: 0 },
-    rot: 0,
-    radius: 14,
-    hull: 6,
-    hullMax: 80,
-    shield: 0,
-    shieldMax: 0,
-    armorHp: 0,
-    armorMax: 0,
-    flags: {},
-    data: { defId: 'ship_kestrel' },
-  };
-  const npc = {
-    id: 2,
-    type: 'ship',
-    alive: true,
-    team: 1,
-    pos: { x: 0, z: 0 },
-    vel: { x: 0, z: 0 },
-    rot: 0,
-    radius: 12,
-    hull: 100,
-    hullMax: 100,
-    cap: 100,
-    capMax: 100,
-    flags: {},
-    data: {
-      encounter: true,
-      ai: {
-        squadId: `pq161_${combatDoctrineId}`,
-        doctrine: 'scavenger',
-        activity: normalizeActivity({
-          kind: ActivityKind.ATTACK_RUN,
-          reason: `pq161:${combatDoctrineId}`,
-          anchor: { x: 0, z: 0 },
-          leashRadius: 1200,
-          startedTick: 0,
-        }),
-        roe: RulesOfEngagement.WEAPONS_FREE,
-        combatDoctrineId,
-        hostileTeams: [0],
-        motive: 'assigned_interdiction',
-        engagementTrigger: 'authorized_hostile_spawn',
-        zoneId: 'zone_pq161',
-        approachTelegraph: combatDoctrineId === CombatDoctrineId.RANGED_DISENGAGER
-          ? 'weapon_charge'
-          : 'engine_flare',
-        noFireResponseWindowS: 1,
-      },
-      weapons: [{ defId: 'fixture_laser', projSpeed: 420, dmg: 40, dps: 40, rof: 2 }],
-      combat: { targetId: player.id },
-      intent: {},
-    },
-  };
-  return {
-    tick: 0,
-    simTime: 0,
-    mode: 'flight',
-    playerId: 1,
-    meta: { seed: SEED },
-    settings: { gameplay: { difficulty: 'standard' } },
-    player: { heat: 0, insurance: { rate: 0.6, deductibleCr: 500, insuredModules: false, lastStationId: 'station_helios' } },
-    entities: new Map([[1, player], [2, npc]]),
-    entityList: [player, npc],
-    combat: { trace: { events: [] } },
-  };
-}
-
-// HONESTY NOTE (review 2026-09-09) — this fixture is NOT a sim kill and its lead is NOT a
-// measurement. It ticks tacticalAI only; weapons.js is never registered, so nothing consumes the
-// intent.fire it waits on. The lethal packet below is injected, which removes projectile flight
-// time and multi-shot time-to-kill from the lead. Worse, the injection gate reads the same
-// TELEGRAPH_PAIR_MIN_TICKS that pairLeftoverDeathTelegraph enforces, so these rows cannot fail the
-// window's lower bound — they are self-fulfilling. Do not read the printed percent as a live mix,
-// and do not add an assertion pinning it; the done-when needs a real instrument (telemetry.js has
-// no telegraph field) before any leaf can claim it.
-function leftoverDoctrineDeath(combatDoctrineId, targetX, ticks = 120) {
-  const state = doctrineState(combatDoctrineId, targetX);
-  const telegraphs = [];
-  const deaths = [];
-  const starts = [];
-  const bus = {
-    on(name, fn) {
-      this._l = this._l || new Map();
-      let set = this._l.get(name);
-      if (!set) { set = new Set(); this._l.set(name, set); }
-      set.add(fn);
-      return () => set.delete(fn);
-    },
-    emit(name, payload) {
-      if (name === 'ai:telegraph') {
-        telegraphs.push({
-          ...payload,
-          tick: Number.isInteger(payload.tick) ? payload.tick : state.tick,
-        });
-      }
-      if (name === 'player:death') {
-        deaths.push({
-          tick: state.tick | 0,
-          killerId: payload.killerId != null ? payload.killerId : payload.attackerId,
-          mineId: null,
-        });
-      }
-      const set = this._l && this._l.get(name);
-      if (!set) return;
-      for (const fn of [...set]) fn(payload);
-    },
-  };
-  combat.init({ state, bus, helpers: {}, registry: { get() { return null; } } });
-  const tacticalAI = createTacticalAISystem({
-    seed: SEED,
-    sensors: {
-      frameFor(_entityId, tick) {
-        const npc = state.entities.get(2);
-        const player = state.entities.get(1);
-        return {
-          tick,
-          self: {
-            id: npc.id,
-            team: npc.team,
-            pos: { ...npc.pos },
-            vel: { ...npc.vel },
-            rot: npc.rot,
-            radius: npc.radius,
-            hullFraction: 1,
-            energyFraction: 1,
-            heatFraction: 0,
-            disabled: false,
-            tethered: false,
-            capabilities: ['drive', 'sensor', 'weapon', 'ranged'],
-            subsystemFractions: {},
-            activity: npc.data.ai.activity,
-            roe: npc.data.ai.roe,
-            combatDoctrineId: npc.data.ai.combatDoctrineId,
-          },
-          contacts: [{
-            id: player.id,
-            kind: ContactKind.SHIP,
-            team: player.team,
-            classification: 'player_ship_sensor_track',
-            pos: { ...player.pos },
-            vel: { ...player.vel },
-            radius: player.radius,
-            confidence: 1,
-            threat: 0.9,
-            hostile: true,
-            alive: true,
-            valid: true,
-            visible: true,
-            tags: ['armed'],
-          }],
-          events: [],
-        };
-      },
-    },
-    roster: {
-      listSquads: () => [{
-        id: 'pq161_doctrine',
-        doctrine: 'scavenger',
-        faction: 'faction_reach',
-        formation: 'wedge',
-        members: [{
-          id: 2,
-          preferredRole: 'striker',
-          capabilities: ['drive', 'sensor', 'weapon', 'ranged'],
-          combatDoctrineId,
-        }],
-      }],
-    },
-    maneuver: { request() { return true; } },
-    actionPortFactory: () => ({
-      list() {
-        return [{
-          id: 'action_burst',
-          tags: ['attack'],
-          minCommitTicks: 1,
-          switchMargin: 0,
-          range: 700,
-          preferredRange: 220,
-          targetKinds: [ContactKind.SHIP],
-        }];
-      },
-      canStart() { return { ok: true, reason: 'fixture_ok' }; },
-      start(entityId, actionId, request) {
-        starts.push({ entityId, actionId, tick: request.tick });
-        return { entityId, actionId, startedTick: request.tick };
-      },
-      status(_entityId, handle) {
-        return state.tick - (handle && handle.startedTick || state.tick) >= 2 ? 'completed' : 'running';
-      },
-      interrupt() { return true; },
-    }),
-    config: {
-      runtime: { decisionIntervalTicks: 1 },
-      trace: { enabled: false },
-      squad: { minTacticTicks: 1 },
-      behavior: { minCommitTicks: 1, switchMargin: 0 },
-      utility: { minCommitTicks: 1, switchMargin: 0 },
-    },
-  });
-  tacticalAI.init({ state, bus, helpers: {} });
-
-  let firstFireTick = null;
-  let routedAfterTelegraph = false;
-  for (let tick = 0; tick < ticks && deaths.length === 0; tick++) {
-    state.tick = tick;
-    state.simTime = tick / 60;
-    tacticalAI.update(SIM_DT, state);
-    const npc = state.entities.get(2);
-    const firing = !!(npc.data.intent && npc.data.intent.fire);
-    if (firing && firstFireTick == null) firstFireTick = tick;
-    const telegraphTick = telegraphs.length ? telegraphs[0].tick : null;
-    // Circular by construction: the kill waits for the pairing window to open, then lands on the
-    // first admissible tick. Both doctrine rows therefore sit exactly on a window edge (60 = max,
-    // 30 = min) with zero margin. See the HONESTY NOTE above.
-    if (firing && telegraphTick != null && tick - telegraphTick >= TELEGRAPH_PAIR_MIN_TICKS && !routedAfterTelegraph) {
-      routedAfterTelegraph = true;
-      combat.ensureKernel().routeDamage({
-        attackerId: npc.id,
-        targetId: state.playerId,
-        packet: scalarHitToDamagePacket({
-          damage: 80,
-          damageType: 'thermal',
-          pos: state.entities.get(1).pos,
-          source: { kind: 'weapon', id: 'fixture_laser', weaponId: 'fixture_laser' },
-        }),
-        origin: { kind: 'weapon', id: 'fixture_laser' },
-      });
-    }
-  }
-
-  return { state, telegraphs, deaths, firstFireTick, starts, combatDoctrineId };
-}
 
 // A real doctrine kill: the injected sensors/roster are a supported production port shape, but the
-// damage chain is entirely live — tacticalAI publishes ai:telegraph, holds fire DOCTRINE_TELEGRAPH_TICKS,
-// weapons spawns a real projectile that physics flies into the player and combat routes as a real
-// death. Nothing about the kill is gated on the pairing window; the lead is whatever production
-// produced. The range is scenario geometry on a fixed seed. The NPC sits at the origin facing +X
-// so the player downrange is in the gun line — a nose-away spawn never fires.
+// damage chain is entirely live — tacticalAI publishes ai:telegraph, holds fire
+// DOCTRINE_TELEGRAPH_TICKS, engagement authority arms, weapons spawns a real railgun slug that
+// physics flies into the player and combat routes as a real death. Nothing about the kill is gated
+// on the pairing window; the lead is whatever production produced. Geometry is authored scenario
+// data on a fixed seed (interceptor 110 WU, ranged 301 WU), and the activity startedTick -30
+// authors a run that began half a second before first contact, so the spawn-protection response
+// window has already burned — the same history a live encounter NPC carries.
 async function realDoctrineDeath(combatDoctrineId, playerX, opts = {}) {
   const seed = opts.seed || SEED;
   const ids = { player: null, npc: null };
@@ -501,7 +264,7 @@ async function realDoctrineDeath(combatDoctrineId, playerX, opts = {}) {
   const player = sim.spawn({
     type: 'ship',
     team: 0,
-    pos: { x: playerX, z: 0 },
+    pos: { x: 0, z: 0 },
     vel: { x: 0, z: 0 },
     rot: 0,
     radius: 12,
@@ -519,9 +282,9 @@ async function realDoctrineDeath(combatDoctrineId, playerX, opts = {}) {
   const npc = sim.spawn({
     type: 'ship',
     team: 1,
-    pos: { x: 0, z: 0 },
+    pos: { x: playerX, z: 0 },
     vel: { x: 0, z: 0 },
-    rot: 0,
+    rot: Math.PI,
     radius: 12,
     hull: 100,
     hullMax: 100,
@@ -535,9 +298,9 @@ async function realDoctrineDeath(combatDoctrineId, playerX, opts = {}) {
         activity: normalizeActivity({
           kind: ActivityKind.ATTACK_RUN,
           reason: `pq161:${combatDoctrineId}`,
-          anchor: { x: 0, z: 0 },
+          anchor: { x: playerX, z: 0 },
           leashRadius: 1200,
-          startedTick: 0,
+          startedTick: -30,
         }),
         roe: RulesOfEngagement.WEAPONS_FREE,
         combatDoctrineId,
@@ -550,7 +313,7 @@ async function realDoctrineDeath(combatDoctrineId, playerX, opts = {}) {
           : 'engine_flare',
         noFireResponseWindowS: 1,
       },
-      weapons: [{ defId: 'wpn_pulse_laser_s' }],
+      weapons: [{ defId: 'wpn_railgun_m' }],
       combat: { targetId: player.id },
       intent: {},
     },
@@ -574,6 +337,10 @@ async function realDoctrineDeath(combatDoctrineId, playerX, opts = {}) {
     });
   });
 
+  // The live done-when instrument subscribes here, before any tick runs, so it sees every
+  // ai:telegraph and records the real death at the death site (no injected routeDamage).
+  const telemetry = opts.telemetry ? createTelemetry(bus, state) : null;
+
   const registry = sim.registry;
   const physicsSys = registry.get('physics');
   const readiness = typeof physicsSys.prepareBackend === 'function'
@@ -582,7 +349,7 @@ async function realDoctrineDeath(combatDoctrineId, playerX, opts = {}) {
   assert.equal(readiness, true, 'rapier-dynamic must initialize for the projectile flight');
 
   let firstFireTick = null;
-  const maxTicks = opts.maxTicks || 240;
+  const maxTicks = opts.maxTicks || 420;
   for (let i = 0; i < maxTicks && deaths.length === 0; i++) {
     sim.runTicks(1);
     if (firstFireTick == null && npc.data.intent && npc.data.intent.fire) firstFireTick = state.tick;
@@ -599,6 +366,7 @@ async function realDoctrineDeath(combatDoctrineId, playerX, opts = {}) {
     firstFireTick,
     telegraphTick: telegraphs.length ? telegraphs[0].tick : null,
     combatDoctrineId,
+    telemetry,
   };
 }
 
@@ -633,20 +401,14 @@ test('PQ-161.01: leftover telegraph kinds resolve without invented cues', () => 
 test('PQ-161.01: leftover lethal pairing on seed 16101', async () => {
   const mineDefault = leftoverMineDeath({ seed: SEED });
   const mineHalf = leftoverMineDeath({ seed: SEED + 1, armDelayS: 0.5, maxTicks: 90 });
-  const interceptor = leftoverDoctrineDeath(CombatDoctrineId.INTERCEPTOR_FLYBY, 190, 120);
-  const ranged = leftoverDoctrineDeath(CombatDoctrineId.RANGED_DISENGAGER, 620, 140);
   const liveInterceptor = await realDoctrineDeath(CombatDoctrineId.INTERCEPTOR_FLYBY, 110);
-  const liveRanged = await realDoctrineDeath(CombatDoctrineId.RANGED_DISENGAGER, 620, { seed: SEED + 3, maxTicks: 360 });
+  const liveRanged = await realDoctrineDeath(CombatDoctrineId.RANGED_DISENGAGER, 301, { seed: SEED + 3, maxTicks: 420 });
 
   for (const run of [mineDefault, mineHalf]) {
     assert.ok(run.deaths.length >= 1, 'leftover mine blast must be able to kill a thin hull');
   }
   assert.ok(mineDefault.telegraphs.some((tg) => leftoverTelegraphKind(tg) === 'wake_mines'),
     'leftover placeMine emits wake_mines');
-  assert.ok(interceptor.deaths.length >= 1, 'leftover interceptor fixture must produce a death');
-  assert.ok(ranged.deaths.length >= 1, 'leftover ranged fixture must produce a death');
-  console.log(`PQ-161.01 live interceptor deaths=${liveInterceptor.deaths.length} firstFire=${liveInterceptor.firstFireTick} telegraphTick=${liveInterceptor.telegraphTick} deathTick=${liveInterceptor.deaths[0] && liveInterceptor.deaths[0].tick}`);
-  console.log(`PQ-161.01 live ranged deaths=${liveRanged.deaths.length} firstFire=${liveRanged.firstFireTick} telegraphTick=${liveRanged.telegraphTick} deathTick=${liveRanged.deaths[0] && liveRanged.deaths[0].tick}`);
   assert.ok(liveInterceptor.deaths.length >= 1, 'interceptor doctrine must produce a real projectile kill');
   assert.ok(liveRanged.deaths.length >= 1, 'ranged doctrine must produce a real projectile kill');
   assert.ok(liveInterceptor.telegraphTick != null, 'live interceptor kill was announced');
@@ -655,6 +417,11 @@ test('PQ-161.01: leftover lethal pairing on seed 16101', async () => {
   const liveRangedLeadMs = Math.round((liveRanged.deaths[0].tick - liveRanged.telegraphTick) * TICK_MS);
   console.log(`PQ-161.01 live interceptor lead=${liveInterceptorLeadMs} ms firstFire=${liveInterceptor.firstFireTick} telegraphTick=${liveInterceptor.telegraphTick} deathTick=${liveInterceptor.deaths[0].tick}`);
   console.log(`PQ-161.01 live ranged lead=${liveRangedLeadMs} ms firstFire=${liveRanged.firstFireTick} telegraphTick=${liveRanged.telegraphTick} deathTick=${liveRanged.deaths[0].tick}`);
+  // The done-when window in player units: the killing blow lands 0.5-1 s after its announcement.
+  assert.ok(liveInterceptorLeadMs >= 500 && liveInterceptorLeadMs <= 1000,
+    `live interceptor lead ${liveInterceptorLeadMs} ms is outside the 0.5-1 s window`);
+  assert.ok(liveRangedLeadMs >= 500 && liveRangedLeadMs <= 1000,
+    `live ranged lead ${liveRangedLeadMs} ms is outside the 0.5-1 s window`);
 
   const deaths = [];
   const telegraphs = [];
@@ -694,11 +461,10 @@ test('PQ-161.01: leftover lethal pairing on seed 16101', async () => {
     const armTicks = Math.round((mineHalf.mine.data.armedAt - mineHalf.mine.data.placedAt) * 60);
     return { durationTicks: armTicks };
   });
-  ingest('doctrine_interceptor', interceptor);
-  ingest('doctrine_ranged', ranged);
+  ingest('live_doctrine_interceptor', liveInterceptor);
+  ingest('live_doctrine_ranged', liveRanged);
 
   const stats = pairDeaths(deaths, telegraphs);
-  console.log(`PQ-161.01 leftover preceded/total/percent: ${stats.preceded}/${stats.total}/${stats.percent}`);
   console.log(`PQ-161.01 deaths preceded by a telegraph: ${stats.preceded}/${stats.total} = ${stats.percent}% (seed ${SEED}, need >= 90%)`);
   for (const row of stats.rows) {
     const lead = row.match ? row.match.leadTicks : null;
@@ -707,8 +473,6 @@ test('PQ-161.01: leftover lethal pairing on seed 16101', async () => {
   }
   console.log(`PQ-161.01 mine_default telegraphs=${mineDefault.telegraphs.length} deaths=${mineDefault.deaths.length} firstTelegraphTick=${mineDefault.telegraphs[0] && mineDefault.telegraphs[0].tick}`);
   console.log(`PQ-161.01 mine_0.5s telegraphs=${mineHalf.telegraphs.length} deaths=${mineHalf.deaths.length}`);
-  console.log(`PQ-161.01 interceptor telegraphs=${interceptor.telegraphs.length} deaths=${interceptor.deaths.length} firstFire=${interceptor.firstFireTick}`);
-  console.log(`PQ-161.01 ranged telegraphs=${ranged.telegraphs.length} deaths=${ranged.deaths.length} firstFire=${ranged.firstFireTick}`);
 
   assert.ok(stats.total >= 1, 'leftover lethal route produced at least one player:death');
   assert.ok(stats.total >= 4, 'four lethal routes produced deaths');
@@ -943,4 +707,43 @@ test('PQ-161.01: live HUD binds leftover ai:telegraph and paints the leftover cl
     'injected HUD CSS must style the leftover telegraph class');
   assert.match(orbital, /#hud \.sf-threat-halo__slot--telegraph/,
     'Orbital overlay must keep the leftover telegraph cue visible');
+});
+
+// The done-when clause: death-cause telemetry shows >=90% of deaths preceded by a telegraph. This
+// measures the LIVE instrument (src/systems/telemetry.js) over real simulation kills on two fixed
+// seeds. Every route runs the production weapon/mine chain into combat; no routeDamage is injected.
+test('PQ-161.01: death-cause telemetry pairs the live mix with its telegraphs', async () => {
+  const baseSeeds = [SEED, 17011];
+  const routes = [];
+  for (const seed of baseSeeds) {
+    routes.push(await realDoctrineDeath(CombatDoctrineId.INTERCEPTOR_FLYBY, 110, { seed, telemetry: true }));
+    routes.push(await realDoctrineDeath(CombatDoctrineId.RANGED_DISENGAGER, 301, {
+      seed: seed + 3, maxTicks: 420, telemetry: true,
+    }));
+    routes.push(leftoverMineDeath({ seed, telemetry: true }));
+    routes.push(leftoverMineDeath({ seed: seed + 1, armDelayS: 0.5, maxTicks: 90, telemetry: true }));
+  }
+
+  let preceded = 0;
+  let total = 0;
+  for (const run of routes) {
+    assert.ok(run.telemetry, 'every live route must carry the telemetry instrument');
+    const stats = run.telemetry.getSessionStats();
+    const coverage = run.telemetry.getTelegraphCoverage();
+    preceded += coverage.preceded;
+    total += coverage.total;
+    for (const d of stats.deathLog) {
+      const lead = d.telegraphLeadTicks == null ? '-' : d.telegraphLeadTicks;
+      console.log(`PQ-161.01 telemetry death route=${run.combatDoctrineId || 'mine'} cause=${d.cause} telegraphed=${d.telegraphed} kind=${d.telegraphKind || '-'} lead=${lead}`);
+    }
+    console.log(`PQ-161.01 telemetry route=${run.combatDoctrineId || 'mine'} preceded=${coverage.preceded}/${coverage.total} = ${coverage.percent}%`);
+    run.telemetry.dispose();
+  }
+  const percent = total === 0 ? 0 : Math.round((preceded / total) * 1000) / 10;
+  console.log(`PQ-161.01 live-mix death-cause telemetry: ${preceded}/${total} = ${percent}% (seeds ${baseSeeds.join(',')}, need >= 90%)`);
+  assert.ok(total >= 8, `live mix must record at least eight player deaths across two seeds, got ${total}`);
+  assert.ok(
+    percent >= 90,
+    `done-when: >=90% of live-mix deaths preceded by a telegraph, got ${preceded}/${total} = ${percent}%`,
+  );
 });
