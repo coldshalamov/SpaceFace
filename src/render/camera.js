@@ -64,6 +64,46 @@ export const MASSLINE_RELEASE_ZOOM_MAX = 0.14;
 export const MASSLINE_RELEASE_ZOOM_DURATION_S = 0.65;
 const TRAUMA_DECAY_PER_S = 1.8;
 const MAX_MOMENTUM_TRAUMA = 0.5;
+// PQ-159.00 impact kick: a DIRECTED, translational jolt — the whole frame slides a few world units
+// in the direction the hull was knocked, then eases back. Scalar trauma shake cannot express a
+// shove direction; this channel is fed only by the momentum-scaled collision beat in feel.js.
+// Envelope/applied split mirrors the FOV punch doctrine: the authored impulse is the envelope, the
+// camera-carried offset rises toward it at a bounded rate, and the envelope only decays once the
+// applied offset has caught the peak — spectacle lands in full, the projection never thrashes.
+export const IMPACT_KICK_RISE_WU_S = 110;   // applied offset rate limit; a max kick peaks in ~2 frames
+export const IMPACT_KICK_DECAY_PER_S = 7.5; // envelope decay once the applied offset has caught it
+export const IMPACT_KICK_WU_MAX = 4;        // absolute displacement ceiling, world units
+const _KICK_AXES = Object.freeze([
+  Object.freeze({ env: 'envX', app: 'x' }),
+  Object.freeze({ env: 'envZ', app: 'z' }),
+]);
+
+/**
+ * Peak-preserving kick integrator (allocation-free; the kick record is mutated in place).
+ * `kick = { envX, envZ, x, z }`: envelope is the summed authored impulse per axis, x/z are what the
+ * camera carries. Envelope decay waits until applied has caught the peak; applied is rate-limited
+ * toward the envelope in both directions so re-kicks and recovery share one slew ceiling.
+ */
+export function stepCameraKick(kick, dt) {
+  if (!kick) return kick;
+  const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+  const maxStep = IMPACT_KICK_RISE_WU_S * step;
+  for (const axis of _KICK_AXES) {
+    let env = Number.isFinite(kick[axis.env]) ? kick[axis.env] : 0;
+    let app = Number.isFinite(kick[axis.app]) ? kick[axis.app] : 0;
+    const caught = Math.abs(app - env) <= Math.max(1e-4, maxStep * 0.5);
+    if (caught || Math.abs(app) >= Math.abs(env) - 1e-4) {
+      env = damp(env, 0, IMPACT_KICK_DECAY_PER_S, step);
+      if (Math.abs(env) < 0.001) env = 0;
+    }
+    if (env > app) app = Math.min(env, app + maxStep);
+    else if (env < app) app = Math.max(env, app - maxStep);
+    if (Math.abs(app) < 0.001) app = 0;
+    kick[axis.env] = env;
+    kick[axis.app] = app;
+  }
+  return kick;
+}
 export const CAMERA_ZOOM_MIN = 45;
 export const CAMERA_ZOOM_MAX = 330; // 50% more manual zoom-out than the previous 220 wu ceiling.
 export const SPEED_ZOOM_SAMPLE_INTERVAL = 0.125; // seconds — 8 Hz target updates, smoothed per-frame.
@@ -640,6 +680,7 @@ export function createChaseCamera(state) {
   const c = state.camera;
   c.zoom = resolveInitialChaseZoom(c.zoom);
   c.shakeOffset = new THREE.Vector3();
+  c.kickOffset = new THREE.Vector3();
   c.focus = new THREE.Vector3();
   const tiltRad = (c.tilt || 60) * Math.PI / 180;
   const offset = new THREE.Vector3();
@@ -691,6 +732,9 @@ export function createChaseCamera(state) {
   // Shake noise is resampled at a fixed rate so shake FREQUENCY does not track display refresh.
   let _shakeNoiseT = 0;
   const _shakeNoise = [0, 0, 0, 0];   // posX, posZ, roll, pitch — held between resample steps
+  // PQ-159.00 directed impact kick. env = summed authored impulse (wu) per axis; x/z = applied
+  // offset the camera actually carries this frame. Allocation-free record stepped in follow().
+  const _kick = { envX: 0, envZ: 0, x: 0, z: 0 };
   // FR-5: transient recenter after boost-release / tether-slingshot. While active, the lookahead +
   // aim + composition bias is scaled down so the frame glides to player-centered instead of the
   // sudden velocity change snapping the lookahead. Decays over its window with an ease-out.
@@ -751,6 +795,9 @@ export function createChaseCamera(state) {
     }
     _speedZoomFactor = SPEED_ZOOM_MIN;
     _speedZoomSampleT = 0;
+    // A snap is a teleport; any in-flight kick would read as the world sliding after a cut.
+    _kick.envX = 0; _kick.envZ = 0; _kick.x = 0; _kick.z = 0;
+    if (c.kickOffset) c.kickOffset.set(0, 0, 0);
     computeOffset(_dynamicZoom);
     cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
     cam.lookAt(c.focus.x, 0, c.focus.z);
@@ -767,6 +814,21 @@ export function createChaseCamera(state) {
       if (a <= 0) return;
       const scale = isMotionReduced(state) ? MOTION_REDUCE_SHAKE_SCALE : 1;
       c.trauma = Math.min(1, Math.max(0, c.trauma || 0) + a * scale);
+    },
+    // PQ-159.00: directed impact kick. `dirX/dirZ` is the direction the hull was knocked (any
+    // magnitude is normalized), `magnitudeWu` the peak view displacement in world units. Impulses
+    // add into the shared envelope (opposing kicks cancel, as exchanged momentum does) and clamp
+    // to the ceiling. Unlike trauma shake — which scales to 25% under reduced motion — the kick is
+    // fully vestibular, so reduce-motion shows none.
+    impactKick(dirX, dirZ, magnitudeWu) {
+      if (isMotionReduced(state)) return;
+      const mag = Math.min(IMPACT_KICK_WU_MAX, Math.max(0, finiteOr(magnitudeWu, 0)));
+      const dx = finiteOr(dirX, 0);
+      const dz = finiteOr(dirZ, 0);
+      const len = Math.hypot(dx, dz);
+      if (mag <= 0 || !(len > 1e-6)) return;
+      _kick.envX = Math.max(-IMPACT_KICK_WU_MAX, Math.min(IMPACT_KICK_WU_MAX, _kick.envX + (dx / len) * mag));
+      _kick.envZ = Math.max(-IMPACT_KICK_WU_MAX, Math.min(IMPACT_KICK_WU_MAX, _kick.envZ + (dz / len) * mag));
     },
     setZoom(z) { c.zoom = Math.max(CAMERA_ZOOM_MIN, Math.min(CAMERA_ZOOM_MAX, finiteOr(z, c.zoom || DEFAULT_ZOOM))); },
     snapToPlayer() {
@@ -1134,8 +1196,20 @@ export function createChaseCamera(state) {
         // the frame trauma arrives.
         _shakeNoiseT = SHAKE_NOISE_STEP_S;
       }
-      cam.position.set(c.focus.x + offset.x + c.shakeOffset.x, offset.y, c.focus.z + offset.z + c.shakeOffset.z);
-      cam.lookAt(c.focus.x, 0, c.focus.z);
+      // PQ-159.00 kick integration: the offset translates BOTH the camera and its look-at target,
+      // so the whole frame slides in the direction the hull was knocked (the ship visibly displaces
+      // off-centre for a beat) instead of orbiting the focus the way a position-only offset would.
+      // c.focus itself is never written — the kick cannot feed back into the damped follow.
+      if (_kick.envX !== 0 || _kick.envZ !== 0 || _kick.x !== 0 || _kick.z !== 0) {
+        stepCameraKick(_kick, frameDt);
+      }
+      c.kickOffset.set(_kick.x, 0, _kick.z);
+      cam.position.set(
+        c.focus.x + offset.x + c.shakeOffset.x + c.kickOffset.x,
+        offset.y,
+        c.focus.z + offset.z + c.shakeOffset.z + c.kickOffset.z,
+      );
+      cam.lookAt(c.focus.x + c.kickOffset.x, 0, c.focus.z + c.kickOffset.z);
       // apply a gentle, damped roll in the camera's local frame — counter to the ship's bank so the
       // view tips into the turn. lookAt() set the quaternion; we post-multiply a local-Z rotation so
       // we never clobber the heading (safe with the no-yaw-follow rule).

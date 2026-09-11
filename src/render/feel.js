@@ -71,6 +71,40 @@ const COLLISION_TRAUMA_RANGE = 400;           // WU — inverse-square falloff s
 const IMPACT_KNOCK_DV = 40;                   // WU/s — scrape → knock
 const IMPACT_SLAM_DV = 100;                   // WU/s — knock → slam
 
+// Directed camera kick (PQ-159.00). Hitstop/FOV/trauma are scalar — they can say HOW HARD, never
+// WHICH WAY. The kick is the translational half of the same collision beat: the whole frame slides
+// a few world units along the direction the hull was knocked, then eases back through the same
+// rate-limited cooldown. Magnitude is keyed to EXCHANGED MOMENTUM (dp / exchangedMomentum,
+// mass·wu/s), never to damage — the packet's law is that a kick is bought with physics, not with
+// hit points. Piecewise-linear between rows; below the first row the contact is a touch, not a
+// kick, and the last row is the ceiling (dp 8000 is also the trauma cap reference in camera.js).
+export const IMPACT_KICK_MOMENTUM_FLOOR = 160; // mass·wu/s — deltaV 8 on a mass-20 hull, the scrape floor
+export const IMPACT_KICK_TABLE = Object.freeze([
+  Object.freeze({ momentum: 160,  kickWu: 0.30 }),
+  Object.freeze({ momentum: 800,  kickWu: 0.90 }),
+  Object.freeze({ momentum: 2000, kickWu: 1.80 }),
+  Object.freeze({ momentum: 4000, kickWu: 2.60 }),
+  Object.freeze({ momentum: 8000, kickWu: 3.20 }),
+]);
+
+/** Peak kick displacement (world units) for a contact that exchanged `momentum`. Pure, monotone. */
+export function impactKickFromMomentum(momentum) {
+  const dp = Number.isFinite(momentum) ? Math.max(0, momentum) : 0;
+  const rows = IMPACT_KICK_TABLE;
+  if (dp < IMPACT_KICK_MOMENTUM_FLOOR) return 0;
+  const last = rows[rows.length - 1];
+  if (dp >= last.momentum) return last.kickWu;
+  for (let i = 0; i < rows.length - 1; i++) {
+    const lo = rows[i];
+    const hi = rows[i + 1];
+    if (dp <= hi.momentum) {
+      const t = (dp - lo.momentum) / (hi.momentum - lo.momentum);
+      return lo.kickWu + (hi.kickWu - lo.kickWu) * t;
+    }
+  }
+  return last.kickWu;
+}
+
 // Optional caller-owned output lets the event bridge reuse its pending record.
 export function resolveCollisionFeel(impact, context = {}, out = null) {
   if (!impact) return null;
@@ -94,16 +128,35 @@ export function resolveCollisionFeel(impact, context = {}, out = null) {
   const falloff = d2 <= range2 ? 1 : range2 / d2;
   const trauma = Math.min(TRAUMA_IMPACT_MAX, TRAUMA_IMPACT_MAX * t * falloff);
 
+  // Directed kick (PQ-159.00): magnitude from the exchanged-momentum table, attenuated by the same
+  // inverse-square distance falloff as trauma so a distant NPC bump does not shove the player's
+  // frame. Direction is caller-resolved (context.kickDirX/Z — the way the knocked hull went); a
+  // missing or degenerate direction yields magnitude-only fields with a zero unit vector, and the
+  // camera declines a directionless kick.
+  const kickWu = impactKickFromMomentum(context.momentum) * falloff;
+  let kickX = 0;
+  let kickZ = 0;
+  const kdx = Number.isFinite(context.kickDirX) ? context.kickDirX : 0;
+  const kdz = Number.isFinite(context.kickDirZ) ? context.kickDirZ : 0;
+  const kLen = Math.hypot(kdx, kdz);
+  if (kickWu > 0 && kLen > 1e-6) {
+    kickX = kdx / kLen;
+    kickZ = kdz / kLen;
+  }
+
   let id = 'impact.slam';
   if (deltaV < IMPACT_KNOCK_DV) id = 'impact.scrape';
   else if (deltaV < IMPACT_SLAM_DV) id = 'impact.knock';
 
-  if (!out) return Object.freeze({ id, deltaV, hsDur, fov, trauma });
+  if (!out) return Object.freeze({ id, deltaV, hsDur, fov, trauma, kickWu, kickX, kickZ });
   out.id = id;
   out.deltaV = deltaV;
   out.hsDur = hsDur;
   out.fov = fov;
   out.trauma = trauma;
+  out.kickWu = kickWu;
+  out.kickX = kickX;
+  out.kickZ = kickZ;
   return out;
 }
 
@@ -978,7 +1031,14 @@ export const feel = {
     if (dvA != null) deltaV = dvA;
     if (dvB != null && dvB > deltaV) deltaV = dvB;
 
-    this._queueCollisionFeel(p, deltaV, p.playerInvolved, p.aId, p.bId);
+    // Kick direction (PQ-159.00): the body that took the larger share of the exchange is the one
+    // that got knocked. When the player is part of the contact it is always that body — the
+    // player's camera kicks the way the player's hull went.
+    const knockId = p.playerInvolved
+      ? playerId
+      : (dvB != null && (dvA == null || dvB > dvA) ? p.bId : p.aId);
+    const otherId = knockId === p.bId ? p.aId : p.bId;
+    this._queueCollisionFeel(p, deltaV, p.playerInvolved, p.aId, p.bId, p.dp, knockId, otherId);
   },
 
   _onCollisionConsequence(p) {
@@ -989,10 +1049,18 @@ export const feel = {
     );
     // The target may already be retired by collision damage. The receipt's deltaV was measured
     // from exchangedMomentum and its mass at contact; never re-derive it from a later live body.
-    this._queueCollisionFeel(p, p.deltaV, playerInvolved, p.targetId, p.otherId);
+    // The receipt's subject (targetId) is the body the exchange knocked. When the player is a
+    // contact party the player's own hull got shoved, so it owns the kick; when the player only
+    // CAUSED the exchange (provenance.actorId), the kick follows the victim — the direction the
+    // momentum actually went.
+    const playerIsContact = playerId != null && (p.targetId === playerId || p.otherId === playerId);
+    const knockId = playerIsContact ? playerId : p.targetId;
+    const otherId = knockId === p.targetId ? p.otherId : p.targetId;
+    this._queueCollisionFeel(p, p.deltaV, playerInvolved, p.targetId, p.otherId,
+      p.exchangedMomentum, knockId, otherId);
   },
 
-  _queueCollisionFeel(p, deltaV, playerInvolved, aId, bId) {
+  _queueCollisionFeel(p, deltaV, playerInvolved, aId, bId, momentum, knockId, otherId) {
     const state = this.state;
     if (!state || state.mode !== 'flight' || !this._modalClear()) return;
     const mr = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
@@ -1019,11 +1087,47 @@ export const feel = {
       }
     }
 
+    // Kick direction: from the counterpart body toward the knocked hull — the direction that hull
+    // was physically shoved. Positions, not the `normal` field, are the authority: both payload
+    // families carry an UNORIENTED contact axis there (the SG-02 normal never supplies sign), so
+    // only a body-pair difference can pick the right sign. Fallback chain when bodies are retired
+    // or degenerate: contact point → signed normal (b/other end is pushed +n, a/target end −n).
+    const bodyAt = (id) => (id != null && ents && typeof ents.get === 'function' ? ents.get(id) : null);
+    const knockBody = bodyAt(knockId);
+    const otherBody = bodyAt(otherId);
+    const finitePos = (pos) => pos && Number.isFinite(pos.x) && Number.isFinite(pos.z);
+    let kickDirX = 0;
+    let kickDirZ = 0;
+    const aim = (fx, fz, tx, tz) => {
+      const d = Math.hypot(tx - fx, tz - fz);
+      if (!(d > 1e-3)) return false;
+      kickDirX = (tx - fx) / d;
+      kickDirZ = (tz - fz) / d;
+      return true;
+    };
+    if (finitePos(knockBody && knockBody.pos) && finitePos(otherBody && otherBody.pos)) {
+      aim(otherBody.pos.x, otherBody.pos.z, knockBody.pos.x, knockBody.pos.z);
+    } else if (finitePos(knockBody && knockBody.pos) && finitePos(p.pos)) {
+      aim(p.pos.x, p.pos.z, knockBody.pos.x, knockBody.pos.z);
+    }
+    if (kickDirX === 0 && kickDirZ === 0 && p.normal
+      && Number.isFinite(p.normal.x) && Number.isFinite(p.normal.z)) {
+      const nl = Math.hypot(p.normal.x, p.normal.z);
+      if (nl > 1e-6) {
+        const sign = knockId === bId ? 1 : -1;
+        kickDirX = (p.normal.x / nl) * sign;
+        kickDirZ = (p.normal.z / nl) * sign;
+      }
+    }
+
     const context = this._collisionFeelContext;
     context.deltaV = deltaV;
     context.playerDistance = playerDistance;
     context.motionReduce = mr;
     context.mode = state.mode;
+    context.momentum = Number.isFinite(momentum) ? Math.max(0, momentum) : 0;
+    context.kickDirX = kickDirX;
+    context.kickDirZ = kickDirZ;
     const result = resolveCollisionFeel(p, context, this._collisionFeelScratch);
     if (!result) return;
     result.tick = tick;
@@ -1048,6 +1152,11 @@ export const feel = {
     this._trigger(pending.hsDur, pending.fov, 0, null);
     const ctrl = this.state.render && this.state.render.cameraCtrl;
     if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(pending.trauma);
+    // Directed kick rides the SAME armed beat — the cooldown above rate-limits it identically, so
+    // a grind cannot machine-gun the offset any more than it can the hitstop.
+    if (ctrl && pending.kickWu > 0 && typeof ctrl.impactKick === 'function') {
+      ctrl.impactKick(pending.kickX, pending.kickZ, pending.kickWu);
+    }
     this._collisionHitstopCooldown = COLLISION_HITSTOP_COOLDOWN;
     this._armedCollisionDeltaV = pending.deltaV;
     this._armedCollisionTick = pending.tick;
