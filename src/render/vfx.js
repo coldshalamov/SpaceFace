@@ -119,6 +119,7 @@ import {
 } from './thruster/recipes/plasmaStreamRecipe.js';
 import {
   applyPlayerRetroVolume,
+  PlayerRetroJets,
   reverseNeedleEmissionAllowed,
 } from './thruster/systems/playerRetroVolume.js';
 import {
@@ -964,6 +965,7 @@ export const vfx = {
     // Scratch for parsing faction thruster hex → RGB without per-frame Color alloc on set.
     this._factionRgbScratch = { r: 0.533, g: 0.667, b: 1.0 };
     this._rcsPoseScratch = { x: 0, z: 0, rot: 0, radius: 6 };
+    this._actuatorScratch = { reverse: 0, lateral: 0, yaw: 0, main: 0 };
     this._rcsDefaultScale = resolveActuatorScale(null);
     this._rcsScaleCache = new Map();
     for (const driveId of Object.keys(PROPULSION_PROFILES)) {
@@ -11261,9 +11263,12 @@ export const vfx = {
         { x: 1, y: 0, z: -0.45, ax: -1, ay: 0, az: 0 },
       ], {
         drive: 1,
-        lengthWU: 8,
-        tailRadiusWU: 2,
-        exitRadiusWU: 0.7,
+        lengthWU: PLAYER_RETRO_VOLUME_RECIPE.lengthWU,
+        tailRadiusWU: PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU * PLAYER_RETRO_VOLUME_RECIPE.tailFlare,
+        exitRadiusWU: PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU,
+        spread: PLAYER_RETRO_VOLUME_RECIPE.spread,
+        radiance: PLAYER_RETRO_VOLUME_RECIPE.radiance,
+        opacity: PLAYER_RETRO_VOLUME_RECIPE.opacity,
       });
     }
     if (!this._ribbonTrails) this._initRibbonTrails();
@@ -11367,17 +11372,11 @@ export const vfx = {
     const plasmaStream = new PlasmaStreamSystem(THREE, PLAYER_PLASMA_STREAM_RECIPE);
     plasmaStream.attach(this._scene);
 
-    // Bow retro jets: the same volumetric exhaust as the main drive, driven continuously from
-    // signed reverse demand. See PLAYER_RETRO_VOLUME_RECIPE for why this is no longer an impulse.
-    const retroVolume = new VolumetricPlumeSystem(THREE, {
-      name: 'sf-retro-volume',
-      maxNozzles: 2,
-      minSteps: PLAYER_RETRO_VOLUME_RECIPE.minSteps,
-      maxSteps: PLAYER_RETRO_VOLUME_RECIPE.maxSteps,
-      renderOrder: 14,
-      coreColor: PLAYER_RETRO_VOLUME_RECIPE.coreColor,
-      midColor: PLAYER_RETRO_VOLUME_RECIPE.midColor,
-      edgeColor: PLAYER_RETRO_VOLUME_RECIPE.edgeColor,
+    // Bow retro jets: the same swept-ribbon + forge family as the main drive, driven continuously
+    // from signed reverse demand. See PLAYER_RETRO_VOLUME_RECIPE for why this is no longer an impulse.
+    const retroVolume = new PlayerRetroJets(THREE, {
+      name: 'sf-retro-jets',
+      recipe: PLAYER_RETRO_VOLUME_RECIPE,
     });
     retroVolume.attach(this._scene);
 
@@ -11749,13 +11748,15 @@ export const vfx = {
   _updateProductionRcs(player, dt, a11y) {
     const energy = this._energy;
     if (!energy) return;
+    const actuators = this._actuatorsFor(player);
+    // Retro is a sustained bow jet and does not need the impulse RCS system. Lighting it only
+    // after playerRcsSystem() resolved is how reverse demand could sit at 55 while the jets stayed dark.
+    this._updateRetroVolume(player, actuators, dt, a11y);
     // Player RCS rides the active family system (signed telemetry is player-only).
     const rcsSystem = (energy.fleet && energy.fleet.playerRcsSystem()) || energy.rcsSystem;
     if (!rcsSystem) return;
     energy.rcsSystem = rcsSystem;
     energy.rcsCooldown = Math.max(0, energy.rcsCooldown - dt);
-    const actuators = this._actuatorsFor(player);
-    this._updateRetroVolume(player, actuators, dt, a11y);
     if (actuators && energy.rcsCooldown <= 0) {
       const pose = this._rcsPoseScratch;
       pose.x = player.pos && Number.isFinite(player.pos.x) ? player.pos.x : 0;
@@ -11875,6 +11876,7 @@ export const vfx = {
     const cam = this.state.render && this.state.render.camera;
     if (cam) volume.setCamera(cam);
 
+    // Envelope: PLAYER_RETRO_VOLUME_RECIPE (stubby jet). applyPlayerRetroVolume → volume.update(dt, view, params).
     applyPlayerRetroVolume(volume, view, peak, dt, a11y, this._retroParams);
   },
 
@@ -12005,11 +12007,25 @@ export const vfx = {
 
   /** Signed player actuator truth published by flightV3; presentation never re-simulates physics. */
   _actuatorsFor(e) {
-    if (!e || e.id !== this.state.playerId) return null;
     const state = this.state;
+    if (e && state.playerId != null && e.id !== state.playerId) return null;
     const runtime = state.flightRuntime;
     const telemetry = runtime && runtime.telemetry;
-    return telemetry && telemetry.actuators ? telemetry.actuators : null;
+    if (telemetry && telemetry.actuators) return telemetry.actuators;
+    const frame = e && e._flightFrame;
+    if (frame && frame.actuators && Number.isFinite(frame.actuators.reverse)) return frame.actuators;
+    const acc = frame && frame.acceleration;
+    const scratch = this._actuatorScratch;
+    if (!scratch || !acc) return null;
+    const rot = e.rot || 0;
+    const fx = Math.cos(rot);
+    const fz = Math.sin(rot);
+    const forward = (acc.x || 0) * fx + (acc.z || 0) * fz;
+    scratch.main = forward > 0 ? forward : 0;
+    scratch.reverse = forward < 0 ? -forward : 0;
+    scratch.lateral = (acc.x || 0) * -fz + (acc.z || 0) * fx;
+    scratch.yaw = Number.isFinite(frame.angularAcceleration) ? frame.angularAcceleration : 0;
+    return scratch;
   },
 
   _engineDriveFor(e, out = this._driveScratch) {

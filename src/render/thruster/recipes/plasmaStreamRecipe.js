@@ -159,7 +159,7 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
   },
 
   // Nozzle-interior glow discs (one per socket): the lit engine core inside the bell.
-  // (retro jets are configured separately — see PLAYER_RETRO_VOLUME_RECIPE below)
+  // (retro jets are configured separately — PLAYER_RETRO_VOLUME_RECIPE, same ribbon family)
   // Small and restrained now that the volume renders its own hot core — the disc only supplies the
   // over-range pinpoint at the bell that an emission integral cannot reach on its own. Oversized,
   // it stops reading as a throat and becomes a white ball stuck on the back of the ship.
@@ -180,45 +180,28 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
  * input and a burst-only renderer is what read as a dotted line, and no amount of tuning inside
  * the burst system could have fixed it.
  *
- * So retro is the same volumetric exhaust as the main drive, only small: stubby and hard, because
- * a braking thruster is a short high-pressure jet rather than a long cruising plume. Genuinely
- * impulsive attitude pops (strafe, yaw) stay on the burst system, where that model is correct.
+ * Retro is the same swept-ribbon + forge family as the main drive, only small: stubby and hard,
+ * because a braking thruster is a short high-pressure jet rather than a long cruising plume.
+ * Genuinely impulsive attitude pops (strafe, yaw) stay on the burst system, where that model is
+ * correct. An isotropic density volume cannot make the crease the drive sheets do, so it is not
+ * this recipe.
  */
 export const PLAYER_RETRO_VOLUME_RECIPE = freezeDeep({
-  id: 'player_retro_volume_v2',
-  lengthWU: 4.8,
-  exitRadiusWU: 0.18,
-  tailFlare: 1.75,
-  spread: 0.75,
-  fadeStart: 0.42,
+  id: 'player_retro_jet_v4',
+  // Short and fat: a braking thruster is a stubby high-pressure jet, not a long cruise plume.
+  // Long enough to read at chase height (~140 WU), still well under the main drive's 17 WU jet.
+  lengthWU: 4.6,
+  exitRadiusWU: 1.28,
+  tailFlare: 1.7,
+  spread: 1.55,
+  radiance: 1.12,
+  opacity: 0.036,
+  ribbons: 18,
+  stations: 32,
+  across: 5,
 
-  // Fine-grained supersonic needle filaments with high axial stretch
-  noiseScale: 0.22,
-  stretch: 7.5,
-  threshold: 0.58,
-  sigma: 0.85,
-  veil: 0.01,
-  coherence: 0.35,
-  coreDensity: 0.88,
-  radialTight: 3.8,
-
-  warpAmp: 0.45,
-  warpScale: 0.35,
-  warpGrowth: 1.2,
-  flowSpeed: 22.0,
-
-  // Supersonic shock diamond train
-  shockAmp: 0.55,
-  shockPitch: 0.95,
-  shockDecay: 3.2,
-  radiance: 3.8,
-
-  // High-intensity white-hot core with electric cyan mid and deep sapphire boundary
-  coreColor: [1.0, 1.0, 1.0],
-  midColor: [0.65, 0.92, 1.0],
-  edgeColor: [0.08, 0.35, 0.95],
-
-  // Sharp raymarching steps for crisp needle silhouette without banding
-  minSteps: 16,
-  maxSteps: 40,
+  // Same temperature ramp as the main drive sheets so a stranger reads one engine family.
+  coreColor: [1.0, 0.99, 0.97],
+  midColor: [0.09, 0.55, 1.0],
+  edgeColor: [0.015, 0.08, 0.86],
 });
