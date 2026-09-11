@@ -347,7 +347,7 @@ try {
       await page.waitForFunction(() => {
         const st = window.SF.state;
         return st && st.mode === 'flight';
-      }, null, { timeout: 90000 });
+      }, null, { timeout: 180000 });
       await page.waitForTimeout(2500);   // let the first sector settle
       inFlight = true;
       phase = 'flight';
@@ -491,7 +491,7 @@ try {
       let loaded = false;
       try {
         phase = 'harness-reload';
-        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.reload({ waitUntil: 'domcontentloaded', timeout: 120000 });
         await page.waitForFunction(() => window.SF && window.SF.state && window.SF.bus, null, { timeout: 60000 });
         await page.waitForFunction(() => {
           const el = document.querySelector('[data-screen="mainMenu"]');
@@ -664,7 +664,11 @@ try {
   // header that an absent store must never break anything, and server.js only mounts it when
   // SPACEFACE_PLAYER_STORE_DIR is set. Reporting a designed-optional 404 as a failure is how a
   // check earns a reputation for crying wolf and stops being run at all.
-  const OPTIONAL_ROUTES = [/__spaceface_player_store/];
+  const OPTIONAL_ROUTES = [
+    /__spaceface_player_store/,
+    // Packaged-build version receipt. The menu already falls back when it 404s in a local check.
+    /spaceface-release-build\.json/,
+  ];
   // ERR_ABORTED is not a missing asset. The streaming/LOD layer cancels requests it no longer needs,
   // and the harness's own reload cancels whatever was in flight. Neither is the game being broken,
   // and reporting them as such is how a check earns a reputation for crying wolf. What actually

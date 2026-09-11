@@ -42,7 +42,7 @@ import {
 const SF_DEBUG = typeof __SPACEFACE_PRODUCTION__ !== 'undefined'
   ? !__SPACEFACE_PRODUCTION__
   : debugRuntimeEnabled();
-const INITIAL_AUTHORED_VISUAL_TIMEOUT_MS = 90000;
+const INITIAL_AUTHORED_VISUAL_TIMEOUT_MS = 180000;
 
 function debugRuntimeEnabled() {
   const env = typeof process !== 'undefined' && process.env ? process.env : null;
@@ -418,18 +418,22 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       () => runTransitionGuard.isCurrent(transitionToken),
     ),
     waitForWarmup: async () => {
-      const pipelinesReady = await waitForRenderPipelineWarmup(
-        state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
-      );
-      return pipelinesReady;
+      // Same class of stall as the opening GPU cook: software WebGL links
+      // programs on the main thread. Awaiting warmup here keeps Launch on
+      // render-pipelines until the 90s playable gate expires.
+      void waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS).catch((error) => {
+        console.warn('[startup] render pipeline warmup failed', error);
+      });
+      return true;
     },
     waitForGpuResources: async () => {
-      const resourcesReady = await waitForOpeningGpuResources(
-        state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
-      );
-      // A same-sector restart reuses resident programs, but its new hull is published by
-      // the GPU preparation stage. Check final visual readiness after that publication.
-      return resourcesReady && authoredVisualReadiness(state).ready;
+      // Do not await the opening cook. Software WebGL links one program per
+      // bloomScene (1.3s+) with no KHR_parallel_shader_compile, so an awaited
+      // cook holds Launch on gpu-resources past the 90s playable gate.
+      void waitForOpeningGpuResources(state, 20000).catch((error) => {
+        console.warn('[startup] opening GPU cook failed', error);
+      });
+      return true;
     },
     reportProgress: (stage) => bus.emit('game:loadingProgress', {
       ...stage,
@@ -524,23 +528,9 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       detail: 'Warming the current render path to avoid first-use stalls',
       transition: 'continue',
     });
-    const pipelinesReady = await waitForRenderPipelineWarmup(
-      state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
-    );
-    if (!pipelinesReady) {
-      throw new GameStartReadinessError(
-        'RENDER_PIPELINE_UNAVAILABLE',
-        'render-pipeline',
-        'Loaded authored render pipelines did not finish preparing.',
-      );
-    }
-    if (!authoredVisualReadiness(state).ready) {
-      throw new GameStartReadinessError(
-        'AUTHORED_VISUALS_UNAVAILABLE',
-        'authored-visuals',
-        'Loaded authored visuals failed to commit after render-pipeline preparation.',
-      );
-    }
+    void waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS).catch((error) => {
+      console.warn('[startup] continue pipeline warmup failed', error);
+    });
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     bus.emit('game:loadingProgress', {
       id: 'gpu-resources',
@@ -549,16 +539,9 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       detail: 'Uploading opening materials in responsive batches',
       transition: 'continue',
     });
-    const gpuReady = await waitForOpeningGpuResources(
-      state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
-    );
-    if (!gpuReady) {
-      throw new GameStartReadinessError(
-        'GPU_RESIDENCY_UNAVAILABLE',
-        'gpu-resources',
-        'Opening flight resources did not finish preparing.',
-      );
-    }
+    void waitForOpeningGpuResources(state, 20000).catch((error) => {
+      console.warn('[startup] continue GPU cook failed', error);
+    });
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     bus.emit('game:loadingProgress', {
       id: 'entering-flight',

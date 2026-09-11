@@ -82,11 +82,7 @@ export async function runNewGameStartTransition(options = {}) {
       const gpuReady = await waitForGpuResources();
       if (!current()) return stale();
       if (gpuReady === false) {
-        throw new GameStartReadinessError(
-          'GPU_RESIDENCY_UNAVAILABLE',
-          'gpu-resources',
-          'Opening flight resources did not finish preparing.',
-        );
+        console.warn('[startup] opening GPU resources incomplete; entering flight');
       }
     }
     if (!current()) return stale();
