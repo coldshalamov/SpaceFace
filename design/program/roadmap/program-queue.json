@@ -7648,7 +7648,7 @@
       "priority": 133,
       "title": "The counter arrives first",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
