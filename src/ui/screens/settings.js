@@ -411,8 +411,8 @@ export const settingsScreen = {
         (v) => this._set(ctx, 'accessibility', 'motionPreference', v));
       rowToggle('Gameplay captions', () => ac.captions !== false, (v) => this._set(ctx, 'accessibility', 'captions', v));
       rowToggle('Audio cues', () => ac.audioCues !== false, (v) => this._set(ctx, 'accessibility', 'audioCues', v));
-      build.note('Accessibility statement: contrast, reduced motion, remap, text scale, assists, and captions are listed below. Every voiced bark is captioned when Gameplay captions is on.');
-      build.note(ACCESSIBILITY_STATEMENT_ID); // accessibility-statement
+      const statement = build.note('Accessibility statement: contrast, reduced motion, remap, text scale, assists, and captions are listed below. Every voiced bark is captioned when Gameplay captions is on.');
+      statement.id = ACCESSIBILITY_STATEMENT_ID;
       const checklist = evaluateChecklist(s);
       build.header('Accessibility checklist');
       for (const row of CHECKLIST_ITEMS) {

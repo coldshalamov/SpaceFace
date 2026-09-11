@@ -183,6 +183,10 @@ export const ACCESSIBILITY_SETTINGS_SCHEMA = [
     label: 'Gameplay captions', help: 'Shows readable text for important audio and gameplay cues.',
   },
   {
+    key: 'audioCues', path: 'accessibility.audioCues', type: 'toggle', default: true, status: 'EXISTS',
+    label: 'Audio cues', help: 'Plays sounds for wells, taut tethers, and combat telegraphs.',
+  },
+  {
     key: 'captionSize', path: 'accessibility.captionSize', type: 'select',
     options: CAPTION_SIZES, default: 'medium', status: 'EXISTS',
     label: 'Caption size', help: 'Changes caption text size without scaling the flight view.',

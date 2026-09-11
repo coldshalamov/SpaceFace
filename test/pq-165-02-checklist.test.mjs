@@ -53,6 +53,8 @@ test(`seed ${CHECKLIST_SEED}: live settings paths turn the checklist green, and 
   assert.ok(settingsSrc.includes('evaluateChecklist(s)'), 'Access tab must pass live settings, not hardcoded trues');
   assert.equal(ACCESSIBILITY_STATEMENT_ROUTE.from, 'settings');
   assert.ok(settingsSrc.includes(ACCESSIBILITY_STATEMENT_ID) || settingsSrc.includes('ACCESSIBILITY_STATEMENT_ID'));
+  assert.match(settingsSrc, /Accessibility statement:/);
+  assert.doesNotMatch(settingsSrc, /build\.note\(ACCESSIBILITY_STATEMENT_ID\)/);
 
   const offCaptions = fullOnSettings();
   offCaptions.accessibility.captions = false;

@@ -52,7 +52,7 @@ function defaultSettings() {
     // root field above. These are the net-new a11y fields driven by src/ui/accessibility.js.
     accessibility: {
       colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
-      motionPreference: 'system', captions: true, captionSize: 'medium', captionBackground: true,
+      motionPreference: 'system', captions: true, audioCues: true, captionSize: 'medium', captionBackground: true,
     },
   };
 }
