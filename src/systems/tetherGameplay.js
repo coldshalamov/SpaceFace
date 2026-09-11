@@ -2956,6 +2956,72 @@ function hostileSweepCutter(entity, state, playerTeam) {
   return headId === MONOFILAMENT_HEAD_ID;
 }
 
+function playerOwnedMassline(attachment, playerId) {
+  if (!attachment || playerId == null) return false;
+  return attachment.ownerId === playerId
+    || attachment.targetId === playerId
+    || (attachment.controllerId != null && String(attachment.controllerId) === String(playerId));
+}
+
+// Read-only: a taut hostile sweep is crossing (or just severed) a player Massline.
+// Writes into `out` when provided so the threat observer allocates nothing per tick.
+export function readTautHostileSweepCrossing(state, player, out) {
+  const result = out || {
+    cutterId: null,
+    bladeId: null,
+    playerLineId: null,
+    taut: false,
+  };
+  result.cutterId = null;
+  result.bladeId = null;
+  result.playerLineId = null;
+  result.taut = false;
+  if (!player || !state) return null;
+  const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (!byId || typeof byId !== 'object') return null;
+  const playerId = state.playerId;
+  const playerTeam = player.team;
+  const tick = Number.isFinite(state.tick) ? state.tick : null;
+  const entities = state.entities;
+  if (!entities || typeof entities.get !== 'function') return null;
+  for (const id in byId) {
+    if (!Object.prototype.hasOwnProperty.call(byId, id)) continue;
+    const blade = byId[id];
+    if (!blade || blade.state !== 'active') continue;
+    const owner = entities.get(blade.ownerId);
+    if (!owner || owner.alive === false || owner.id === playerId) continue;
+    if (!hostileSweepCutter(owner, state, playerTeam)) continue;
+    const mass = entities.get(blade.targetId);
+    if (!mass || !mass.pos || !owner.pos) continue;
+    const span = Math.hypot(mass.pos.x - owner.pos.x, mass.pos.z - owner.pos.z);
+    const rest = Number.isFinite(blade.restLength) && blade.restLength > 0 ? blade.restLength : span;
+    if (!(span >= rest * NPC_LINE_CUT_TAUT_RATIO)) continue;
+    for (const otherId in byId) {
+      if (!Object.prototype.hasOwnProperty.call(byId, otherId)) continue;
+      const other = byId[otherId];
+      if (!other || other.id === blade.id) continue;
+      if (!playerOwnedMassline(other, playerId)) continue;
+      const justCut = other.state === 'broken'
+        && other.breakReason === 'monofilament_sweep'
+        && other.brokenTick === tick;
+      let crossing = justCut;
+      if (!crossing && other.state === 'active') {
+        const source = entities.get(other.ownerId);
+        const target = entities.get(other.targetId);
+        if (!source || !source.pos || !target || !target.pos) continue;
+        crossing = segmentsProperlyCross(owner.pos, mass.pos, source.pos, target.pos);
+      }
+      if (!crossing) continue;
+      result.cutterId = owner.id;
+      result.bladeId = blade.id;
+      result.playerLineId = other.id;
+      result.taut = true;
+      return result;
+    }
+  }
+  return null;
+}
+
 function orient2d(a, b, p) {
   return (b.x - a.x) * (p.z - a.z) - (b.z - a.z) * (p.x - a.x);
 }

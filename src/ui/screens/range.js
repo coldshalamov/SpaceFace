@@ -185,6 +185,28 @@ export function nameThreatFromVisibleRead(tokens) {
   return TETHER_CUTTER_THREAT_FROM_VISIBLE_READ;
 }
 
+function hullFromLiveEntity(entity) {
+  const data = entity && entity.data || {};
+  const id = data.enemyTypeId || data.lootTableId || data.typeId || null;
+  if (!id) return null;
+  return ENEMY_TYPES.find((row) => row && row.id === id) || null;
+}
+
+// Live world tokens only: hull silhouette + telegraph cue + taut-sweep behaviour. No plan id.
+export function visibleReadFromLiveCutter(entity, opts = {}) {
+  const hull = hullFromLiveEntity(entity);
+  if (!hull) return null;
+  const taut = opts.taut === true
+    || opts.sweep === HOSTILE_SWEEP_BEHAVIOUR
+    || opts.sweep === 'taut';
+  return {
+    silhouette: String(hull.silhouette || ''),
+    telegraph: hull.telegraph && hull.telegraph.cue ? String(hull.telegraph.cue) : '',
+    verb: taut ? 'cut_line' : '',
+    sweep: taut ? HOSTILE_SWEEP_BEHAVIOUR : '',
+  };
+}
+
 export function masslineSpecialistVisibleRead() {
   const hull = ENEMY_TYPES.find((row) =>
     row && row.silhouette === 'corsair_blade' && row.telegraph && row.telegraph.cue === 'attach_spool');
@@ -196,6 +218,23 @@ export function masslineSpecialistVisibleRead() {
     telegraph: hull.telegraph.cue,
     verb: plan.verb,
     sweep: HOSTILE_SWEEP_BEHAVIOUR,
+  };
+}
+
+export function masslineCutterBestiarySubject() {
+  const hull = ENEMY_TYPES.find((row) =>
+    row && row.silhouette === 'corsair_blade' && row.telegraph && row.telegraph.cue === 'attach_spool');
+  if (!hull) return null;
+  return {
+    id: hull.id,
+    name: hull.name,
+    shortName: String(hull.name || 'Cutter').split(' ')[0].toUpperCase(),
+    shipClass: hull.shipClass || 'gunship',
+    behavior: hull.behavior || '',
+    preferredRange: preferredRangeText(hull),
+    maxSpeed: Math.round(finite(hull.maxSpeed, 0)),
+    turnRate: round1(finite(hull.turnRate, 0)),
+    mass: Math.max(4, finite(hull.mass, 24)),
   };
 }
 
@@ -2213,8 +2252,10 @@ export const rangeScreen = {
 
   _syncBestiary() {
     if (!this._els || !this._els.bestiary || !this._sim) return;
-    const drone = this._sim.drone;
-    const weakPoint = this._sim.weakPoint;
+    const rung = RAIL_ROWS.find((row) => row.id === this._sim.id);
+    const cutter = rung && rung.group === 'MASSLINE' ? masslineCutterBestiarySubject() : null;
+    const drone = cutter || this._sim.drone;
+    const weakPoint = cutter ? null : this._sim.weakPoint;
     const weakArc = weakPoint
       ? `${Math.round((weakPoint.arcCenter * 180) / Math.PI)}° ±${Math.round((weakPoint.arcHalfWidth * 180) / Math.PI)}°`
       : 'No weak arc data';
@@ -2229,8 +2270,7 @@ export const rangeScreen = {
       ['Weak arc', weakArc],
       ['Weak point', weakPoint ? `${weakPoint.label} (${weakPoint.hint}) ×${weakPoint.bonusMult}` : '—'],
     ];
-    const rung = RAIL_ROWS.find((row) => row.id === this._sim.id);
-    if (rung && rung.group === 'MASSLINE') {
+    if (cutter) {
       for (const fact of masslineCutterBestiaryFacts()) facts.push(fact);
     }
     const list = el('ul', 'k-rows');

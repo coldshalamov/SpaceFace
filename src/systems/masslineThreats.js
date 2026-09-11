@@ -17,7 +17,13 @@
 //   • 'collision-course' — the player's current velocity carries them into a solid body
 //     (asteroid/ship/station/drone, including the anchor itself) within ~1.5 s. Emitted at most
 //     once per obstacle per latch.
+//   • 'hostile-sweep'    — a taut hostile monofilament blade is crossing (or just severed) the
+//     player's Massline. Observer only: tetherGameplay remains the cutter.
 import { isHostileToPlayer } from './scanner.js';
+import { massline2Flag } from '../data/featureFlags.js';
+import { readTautHostileSweepCrossing } from './tetherGameplay.js';
+
+export const HOSTILE_SWEEP_THREAT_KIND = 'hostile-sweep';
 
 const THREAT_NEAR_BREAK_STRAIN = 0.75;   // overload floor — mirrors REEL_PUMP_RISK_HIGH (telemetry)
 const THREAT_SWING_MIN_TANGENTIAL = 25;  // wu/s — mirrors SNAP_CATCH_MIN_SPEED ("genuinely moving")
@@ -53,6 +59,8 @@ export const masslineThreats = {
     this._nearBreakFired = false;
     this._warnedHostiles = new Set();
     this._warnedCollisions = new Set();
+    this._warnedSweep = new Set();
+    this._sweepReadScratch = { cutterId: null, bladeId: null, playerLineId: null, taut: false };
   },
 
   update(dt, state) {
@@ -129,6 +137,14 @@ export const masslineThreats = {
         }
       }
     }
+
+    if (massline2Flag('masslineHeadMonofilamentSweep', state.runtime && state.runtime.features)) {
+      const crossing = readTautHostileSweepCrossing(state, player, this._sweepReadScratch);
+      if (crossing && crossing.cutterId != null && !this._warnedSweep.has(crossing.cutterId)) {
+        this._warnedSweep.add(crossing.cutterId);
+        this._emitThreat(runtime, state, HOSTILE_SWEEP_THREAT_KIND, crossing.cutterId, 1);
+      }
+    }
   },
 
   _resetLatch(targetId) {
@@ -136,6 +152,7 @@ export const masslineThreats = {
     this._nearBreakFired = false;
     if (this._warnedHostiles) this._warnedHostiles.clear();
     if (this._warnedCollisions) this._warnedCollisions.clear();
+    if (this._warnedSweep) this._warnedSweep.clear();
   },
 
   // The single documented emit. The record is mirrored at runtime.latest + runtime.threats (this
