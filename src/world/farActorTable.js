@@ -351,6 +351,37 @@ function dist2(a, b) {
   return dx * dx + dz * dz;
 }
 
+function pushAliveIds(list, out) {
+  if (!list) return;
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false || entity.id == null) continue;
+    out.push(entity.id);
+  }
+}
+
+/**
+ * Leftover S2/S3/S4 keep their stamp but drop off this-tick abstract/dormant
+ * buckets under production incremental classify. Shelving must still see them.
+ */
+function collectFarActorCandidateIds(state, out) {
+  out.length = 0;
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1) {
+    pushAliveIds(index.shipLike, out);
+    pushAliveIds(index.wrecks, out);
+    return out;
+  }
+  const list = (state && state.entityList) || [];
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false || entity.id == null) continue;
+    const type = entity.type;
+    if (type === 'ship' || type === 'drone' || type === 'wreck') out.push(entity.id);
+  }
+  return out;
+}
+
 export function tickFarActors(state, helpers, bus) {
   if (!state || state.mode !== 'flight' || survivalHold(state)) return { shelved: 0, restored: 0 };
   ensureActivityClassified(state);
@@ -363,14 +394,18 @@ export function tickFarActors(state, helpers, bus) {
   let shelved = 0;
   let restored = 0;
 
-  const list = state.entityList || [];
-  for (let i = list.length - 1; i >= 0; i--) {
-    const entity = list[i];
+  const farIds = tickFarActors._idScratch || (tickFarActors._idScratch = []);
+  collectFarActorCandidateIds(state, farIds);
+  const entities = state.entities;
+  for (let i = farIds.length - 1; i >= 0; i--) {
+    const entity = entities && typeof entities.get === 'function'
+      ? entities.get(farIds[i])
+      : null;
     if (!shouldVirtualizeFarActor(entity, state)) continue;
     if (dist2(entity.pos, player.pos) <= exit2) continue;
     const rec = insertFarActor(state, entity, simTime);
     const remove = helpers && typeof helpers.removeEntity === 'function' ? helpers.removeEntity : null;
-    if (remove) remove(entity.id, { immediate: true, index: i, reason: 'virtualize' });
+    if (remove) remove(entity.id, { immediate: true, reason: 'virtualize' });
     else entity.alive = false;
     if (bus && typeof bus.emit === 'function') {
       bus.emit('world:farActorShelved', {

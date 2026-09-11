@@ -4,9 +4,11 @@ import test from 'node:test';
 import { createGameState } from '../src/core/gameState.js';
 import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
-import { SIM_TIER } from '../src/world/activityClassification.js';
+import { NEAR_EXIT_PAD_WU, SIM_TIER } from '../src/world/activityClassification.js';
+import { ensureActivityClassified } from '../src/world/activityRuntime.js';
 import {
   farActorCensus,
+  farActorTableRadius,
   getFarActor,
   insertFarActor,
   promoteFarActor,
@@ -188,4 +190,57 @@ test('far snapshot stays lean and promote runs catch-up first', () => {
   assert.ok(live);
   assert.ok(Math.abs(live.pos.x - 100) < 0.01, `expected catch-up pose ~100, got ${live.pos.x}`);
   assert.equal(getFarActor(state, rec.id), null);
+});
+
+test('production leftover S3 still shelves after delayed far-actor exit', () => {
+  const { state, helpers, bus, player } = boot();
+  state.runtime = { ...(state.runtime || {}), profileId: 'production' };
+  player.maxSpeed = 500;
+  state.tick = 1;
+
+  const primed = ensureActivityClassified(state);
+  assert.equal(primed.classifyMode, 'full');
+  const radii = farActorTableRadius(state);
+  const nearExit = (primed.physicsReachWu || 0) + NEAR_EXIT_PAD_WU;
+  assert.ok(
+    radii.exit > nearExit + 8,
+    `need decodeR hysteresis band (far exit ${radii.exit} vs near exit ${nearExit})`,
+  );
+
+  const x = (nearExit + radii.exit) / 2;
+  const far = spawnShip(helpers, {
+    pos: { x, z: 0 },
+    data: {
+      trafficRole: 'hauler',
+      homeSectorId: 'sector_ceres_belt',
+      named: true,
+    },
+  });
+  const farId = far.id;
+
+  state.tick = 2;
+  const insideExit = tickFarActors(state, helpers, bus);
+  assert.equal(insideExit.shelved, 0, 'S3 inside far-actor exit must stay live');
+  assert.equal(state.entities.has(farId), true);
+  const stamped = state.entities.get(farId);
+  assert.equal(stamped.activity.simTier, SIM_TIER.S3_DORMANT);
+  const listed = ensureActivityClassified(state);
+  assert.ok(
+    listed.dormantIds.includes(farId) || listed.abstractIds.includes(farId),
+    'visited S3 is listed on the classify tick',
+  );
+
+  player.pos.x = -1e5;
+  state.tick = 3;
+  const leftover = ensureActivityClassified(state);
+  assert.equal(leftover.classifyMode, 'incremental');
+  assert.equal(leftover.dormantIds.includes(farId), false, 'leftover S3 is counted not listed');
+  assert.equal(leftover.abstractIds.includes(farId), false);
+  assert.ok(leftover.counts.s3 >= 1);
+  assert.equal(state.entities.get(farId).activity.simTier, SIM_TIER.S3_DORMANT);
+
+  const delayed = tickFarActors(state, helpers, bus);
+  assert.ok(delayed.shelved >= 1, 'unvisited S3 beyond exit must still shelve');
+  assert.equal(state.entities.has(farId), false);
+  assert.ok(getFarActor(state, farId));
 });
