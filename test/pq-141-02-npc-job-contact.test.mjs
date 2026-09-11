@@ -63,7 +63,9 @@ test('service contact reaches the visible plate across a floating origin', () =>
   const slot = { elapsed: 0 };
   assert.ok(h._emitNpcJobContact(slot, { cadenceHz: 2 }, actor, job, false) >= 4);
   const weld = h.lines.at(-2);
-  assert.ok(Math.abs(weld[0] - 55.8) < 0.01, `plate contact x=${weld[0]}`);
+  const nearFace = 55.8;
+  assert.ok(weld[0] > nearFace + 2, `weld must sit inboard of the near face, x=${weld[0]}`);
+  assert.ok(weld[0] < 65, `weld must stay on the plate, x=${weld[0]}`);
   assert.ok(Math.abs(weld[1] - 6.15) < 0.01, 'contact lies on the upper plate with the 0.15 WU surface bias');
   assert.equal(JSON.stringify([actor.pos, plate.pos]), before);
   root.geometry.dispose();
@@ -83,11 +85,79 @@ test('patrol search light needs the player inside its reach and reads one beam',
   assert.equal(farPlayer._emitNpcJobContact({ elapsed: 1 }, { cadenceHz: 2 }, actor, patrolJob, false), 0);
 });
 
+test('tender client: and berth: refs resolve the named station, not empty space', () => {
+  const station = {
+    id: 20, type: 'station', alive: true, pos: { x: 65, z: 0 }, radius: 42,
+    data: { stationId: 'station_helios' },
+  };
+  const tenderJob = {
+    kind: 'tender', phase: 'work', routeIndex: 1,
+    route: [
+      { id: 'berth:station_home', pos: { x: 0, z: 0 } },
+      { id: 'client:station_helios', pos: { x: 65, z: 0 } },
+    ],
+  };
+  const h = host([actor, station]);
+  assert.equal(h._npcJobContactTarget({}, actor, tenderJob), station);
+  assert.equal(h._emitNpcJobContact({ elapsed: 0.5 }, { cadenceHz: 2 }, actor, tenderJob, false), 4);
+  const miss = host([actor, { ...station, data: { stationId: 'station_other' } }]);
+  assert.equal(miss._npcJobContactTarget({}, actor, tenderJob), null);
+});
+
+test('tender prey: ref welds a live client ship plate, not a station', () => {
+  const client = { id: 7, type: 'ship', alive: true, pos: { x: 40, z: 0 }, radius: 8, data: {} };
+  const tenderJob = {
+    kind: 'tender', phase: 'work', routeIndex: 0,
+    route: [{ id: 'prey:7', pos: { x: 40, z: 0 } }],
+  };
+  const h = host([actor, client]);
+  assert.equal(h._npcJobContactTarget({}, actor, tenderJob), client);
+  assert.equal(h._emitNpcJobContact({ elapsed: 0.5 }, { cadenceHz: 2 }, actor, tenderJob, false), 4);
+  const colors = h.lines.map((line) => line[7]);
+  assert.ok(colors.includes('#ff4a3a'), `red weld stitches missing, got ${colors.join(',')}`);
+  assert.equal(colors.includes('#a8e4ff'), false, 'patrol cyan is not a weld');
+});
+
+test('a large tender welding a small fighter keeps the mark on the fighter plate', () => {
+  const barge = { id: 1, pos: { x: 0, z: 0 }, radius: 40, rot: 0 };
+  const fighter = { id: 7, type: 'ship', alive: true, pos: { x: 55, z: 0 }, radius: 8, data: {} };
+  const tenderJob = {
+    kind: 'tender', phase: 'work', routeIndex: 0,
+    route: [{ id: 'prey:7', pos: { x: 55, z: 0 } }],
+  };
+  const h = host([barge, fighter]);
+  assert.equal(h._emitNpcJobContact({ elapsed: 0.5 }, { cadenceHz: 2 }, barge, tenderJob, false), 4);
+  const lengths = h.lines.map((line) => line[5]);
+  assert.ok(lengths.every((len) => len <= fighter.radius), `fighter weld must be plate-local, got ${lengths.join(',')}`);
+  for (const line of h.lines) {
+    assert.ok(Math.abs(line[0] - fighter.pos.x) < fighter.radius,
+      `weld x=${line[0]} must sit on the fighter at ${fighter.pos.x} r=${fighter.radius}`);
+    assert.ok(Math.abs(line[2] - fighter.pos.z) < fighter.radius,
+      `weld z=${line[2]} must sit on the fighter`);
+  }
+});
+
+test('scavenger hulk: ref is the live wreck face', () => {
+  const wreck = { id: 8, type: 'wreck', alive: true, pos: { x: 65, z: 0 }, radius: 12, data: {} };
+  const salvorJob = {
+    kind: 'salvor', phase: 'work', routeIndex: 0,
+    route: [{ id: 'hulk:8', pos: { x: 65, z: 0 } }],
+  };
+  const h = host([actor, wreck]);
+  assert.equal(h._npcJobContactTarget({}, actor, salvorJob), wreck);
+  assert.equal(h._emitNpcJobContact({ elapsed: 0.5 }, { cadenceHz: 2 }, actor, salvorJob, false), 3);
+});
+
 test('repair stays on the client plate; long cyan rails are not a weld', () => {
   const h = host();
   assert.equal(h._emitNpcJobContact({ elapsed: 0.5 }, { cadenceHz: 2 }, actor, job, false), 4);
   const lengths = h.lines.map((line) => line[5]);
   assert.ok(lengths.every((len) => len < 20), `tender stitches must be local, got ${lengths.join(',')}`);
+  const nearFace = 65 - 12 * 0.82;
+  for (const line of h.lines) {
+    assert.ok(line[0] > nearFace, `weld center x=${line[0]} must sit inboard of the client near face ${nearFace}`);
+    assert.ok(Math.abs(line[0] - 65) < 12, `weld center x=${line[0]} must stay on the client hull`);
+  }
 });
 
 test('a scavenger cutter reaches the wreck face and throws scrap off it', () => {

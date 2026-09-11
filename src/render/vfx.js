@@ -6394,8 +6394,13 @@ export const vfx = {
       field = 'activityObjectSlotId'; value = ref.slice(11); type = 'asteroid';
     } else if (ref.startsWith('world-site:')) {
       field = 'worldRecordId'; value = `${ref.slice(11)}/root`; type = 'fx';
-    } else if (ref.startsWith('dest:') || ref.startsWith('home:')) {
-      field = 'stationId'; value = ref.slice(5); type = 'station';
+    } else if (ref.startsWith('dest:') || ref.startsWith('home:')
+      || ref.startsWith('client:') || ref.startsWith('berth:')) {
+      // Traffic tenders name the call-out `client:<stationId>` and home `berth:<stationId>`.
+      // Treating those as unknown left the weld in empty space and the hull reading as a factory.
+      field = 'stationId';
+      value = ref.slice(ref.indexOf(':') + 1);
+      type = 'station';
     } else if (ref.startsWith('field:') || ref.startsWith('hulk:') || ref.startsWith('prey:')) {
       const body = this._ent(Number(ref.slice(ref.indexOf(':') + 1)));
       const validType = ref.startsWith('field:') ? body && body.type === 'asteroid'
@@ -6604,19 +6609,37 @@ export const vfx = {
     }
     if (kind === 'tender') {
       // Weld ON the client's plate. Long cyan rails read as station lights — that is not repair.
-      const along = reducedMotion ? 0 : Math.sin(slot.elapsed * 1.3) * r * 0.13;
-      const tx = x + ux * end + nx * along, tz = z + uz * end + nz * along;
+      // Size from the CLIENT, never the tender: a mule-radius stitch (6–10 wu) through a fighter
+      // hangs into the working gap and reads as exhaust or a factory spark (seed 14102).
+      const plate = Math.max(2.6, Math.min(5.2, targetR * 0.42));
+      const stitch = plate;
+      const spark = Math.min(3.4, plate * 0.62);
+      const inboard = Math.max(2.45, Math.min(targetR * 0.28, 4.8));
+      const along = reducedMotion ? 0 : Math.sin(slot.elapsed * 1.3) * Math.min(0.35, targetR * 0.04);
+      const side = Math.min(0.85, targetR * 0.08);
+      const thick = Math.max(0.32, Math.min(0.72, targetR * 0.07));
+      // Pin to the live client body. A closest-vertex sample on a fighter fin parks the
+      // cross in empty sky (seed 14102). Inset from the hull centre toward the tender.
+      const tx = target.pos.x - ux * inboard + nx * along;
+      const tz = target.pos.z - uz * inboard + nz * along;
+      let weldY = endY;
+      const weldRoot = target.view && target.view.root;
+      if (weldRoot) {
+        if (!slot.contactBox) slot.contactBox = new THREE.Box3();
+        slot.contactBox.setFromObject(weldRoot);
+        if (Number.isFinite(slot.contactBox.max.y)) weldY = slot.contactBox.max.y + 0.15;
+      }
       emitted += this._spawnStationSideEventStreak(
-        tx + nx * r * 0.22, endY, tz + nz * r * 0.22, life, r * 0.06, r * 0.42, 0.70, '#ff4a3a', 0, 0, nx, nz,
+        tx + nx * side, weldY, tz + nz * side, life, thick, stitch, 0.88, '#ff4a3a', 0, 0, nx, nz,
       );
       emitted += this._spawnStationSideEventStreak(
-        tx - nx * r * 0.22, endY, tz - nz * r * 0.22, life, r * 0.06, r * 0.42, 0.70, '#ff4a3a', 0, 0, nx, nz,
+        tx - nx * side, weldY, tz - nz * side, life, thick, stitch, 0.88, '#ff4a3a', 0, 0, nx, nz,
       );
       emitted += this._spawnStationSideEventStreak(
-        tx, endY, tz, life, r * 0.10, r * 0.65, 0.82, '#d8f4ff', 0, 0, nx, nz,
+        tx, weldY, tz, life, thick * 1.15, spark, 0.94, '#d8f4ff', 0, 0, nx, nz,
       );
       emitted += this._spawnStationSideEventStreak(
-        tx, endY, tz, life, r * 0.08, r * 0.36, 0.68, '#f0f6e4', 0, 0, ux, uz,
+        tx, weldY, tz, life, thick, stitch * 0.55, 0.82, '#f0f6e4', 0, 0, ux, uz,
       );
       return emitted;
     }
@@ -12097,11 +12120,10 @@ export const vfx = {
     const forwardSpeed = Number.isFinite(frame.forwardSpeed) ? frame.forwardSpeed : (vx * cf + vz * sf);
     let forwardDrive = Math.min(1.1, Math.max(0, forwardSpeed) / Math.max(35, maxSpeed * 0.75));
     let speedDrive = Math.min(1, speed / Math.max(40, maxSpeed * 0.75));
-    // A ship on its retros has a cold main nozzle. The speed-derived glow used to keep the engine
-    // lit while the bow jets fired, which read as accelerating into your own brake — the same class
-    // of lie as firing the wrong RCS jet. Damped rather than hard-zeroed so a hard brake at speed
-    // still shows a residual thermal glow instead of snapping to black.
-    if (retroOnly) { forwardDrive *= 0.18; speedDrive *= 0.18; }
+    // A ship on its retros has a cold main nozzle. Any leftover speed-derived glow still draws the
+    // 17 WU cruise jet (driveLengthFloor) and reads as thrusting into the brake. The bow pair is
+    // the brake picture; the main bell goes dark.
+    if (retroOnly) { forwardDrive = 0; speedDrive = 0; }
     let boost = e.flags && e.flags.boosting ? 1 : 0;
     const cruising = e.id === this.state.playerId
       && this.state.player
@@ -12116,6 +12138,7 @@ export const vfx = {
       brake = Math.min(1, speedDrive * 0.55);
     }
     let drive = Math.min(1.35, Math.max(throttle, forwardDrive * 0.85, speedDrive * 0.40) + boost * 0.45);
+    if (retroOnly) drive = 0;
     // Floor: while the pilot is commanding forward thrust, never let residual drive fall into the
     // idle/sleep band that blanks nozzle VFX (then only reappears when turning re-wakes the path).
     if (pilotForward > 0.05 && !retroOnly) {
