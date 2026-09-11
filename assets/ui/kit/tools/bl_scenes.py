@@ -1,4 +1,4 @@
-"""bl_scenes — the five lit world shots the S1 frames sit on.
+"""bl_scenes — the lit world shots the S1 and S2 frames sit on.
 
 Composition follows the POSTER register (02_ART_DIRECTION §3): the world fills the frame and is
 lit; there is a foreground, a subject and a background; the hull sits in the right two thirds,
@@ -8,6 +8,8 @@ nothing here draws a menu.
     blender -b --factory-startup --python assets/ui/kit/tools/bl_scenes.py -- <scene> [out.png] [samples=N] [width=N]
 
 Scenes: title-v1-hangar · title-v2-field · title-v3-baydoor · crucible-door · flight
+S2: berth · berth-cold · chart-field · workshop-bench · ship-rig
+S2 follow-up: hangar-wall · hangar-wall-cold · workshop-bench-cold
 """
 from __future__ import annotations
 
@@ -269,12 +271,311 @@ def scene_flight(samples=140):
     return hull
 
 
+# ---------------------------------------------------------------- S2 BENCH world plates
+# These builders deliberately leave the five S1 builders and their helpers unchanged.
+
+
+def _s2_load(key, **placement):
+    """Use the native importer, with one authored LOD and a fresh parent hierarchy.
+
+    The S1 cache duplicates objects without remapping nested parents. Re-import for S2
+    instances so a second gantry cannot leave its meshes attached to the first gantry.
+    This is local to the new builders; S1's scene construction is untouched.
+    """
+    W._CACHE.pop(key, None)
+    root = W.load(key, **placement)
+    for ob in root.children_recursive:
+        if key != "kestrel" and ob.type == "MESH" and ob.name.startswith(("LOD1_", "LOD2_")):
+            ob.hide_render = True
+    return root
+
+
+def _s2_ground(root, height):
+    """Seat native feet on the deck without changing their geometry or scale."""
+    bottom, _ = W.bounds(root)
+    root.location.z += height - bottom.z
+    bpy.context.view_layer.update()
+    return root
+
+
+def _s2_service_accent(root):
+    """Replace only the support equipment's untextured cyan paint, in this scene."""
+    coating = B.paint("s2-service-coating", "#706454", roughness=.68)
+    for ob in root.children_recursive:
+        if ob.type == "MESH":
+            for slot in ob.material_slots:
+                if slot.material and slot.material.name.split('.')[0] == "Material_Accent":
+                    slot.material = coating
+
+
+def _s2_dock_lights(dock, scale=1.0, cold=False, power=2.8):
+    """Place practical sources at the authored rear portal's recessed flood fixtures."""
+    from mathutils import Vector
+    bpy.context.view_layer.update()
+    colour = "#DDE6FF" if cold else "#FFC18A"
+    for x in (-15.2, 15.2):
+        loc = dock.matrix_world @ Vector((x, 14.3, 10.5))
+        at = dock.matrix_world @ Vector((x * .35, -2, -1))
+        W.worklight(loc, at=at, irradiance=power, colour=colour, radius=2.4 * scale)
+    # Only the dock's light-lens material is re-coloured, not its textured metal.
+    for ob in dock.children_recursive:
+        if ob.type != "MESH":
+            continue
+        for mat in ob.data.materials:
+            if mat and mat.name.split('.')[0] == "Material_Accent":
+                p = mat.node_tree.nodes.get("Principled BSDF")
+                if p:
+                    B._set(p, "Base Color", B.srgb(colour))
+                    B._set(p, "Emission Color", B.srgb(colour))
+
+
+def _s2_berth_set(samples, cold=False):
+    """The shared dock and landed hull, with a real native skid assembly under its belly."""
+    from mathutils import Vector
+    W.stage(samples=samples, exposure=-1.05)
+    W._CACHE.clear()
+    W.sky(top="#131C30", horizon="#23180F", strength=.12)
+    dock_scale = 1.6
+    dock = _s2_load("dock", loc=(4, 3, 0), scale=dock_scale)
+    floor_z, pad_z = -3.76 * dock_scale, -3.55 * dock_scale
+    # Continuous apron under the authored deck, using the same floor material as S1.
+    W.floor(size=320, colour="#15110D", roughness=.7, z=floor_z - .17)
+
+    yaw = math.radians(202)
+    hull = _s2_load("kestrel", loc=(4, 3, pad_z + 4.85), rot_z=yaw)
+    # Complete authored landing gear, used as the berth's removable support stand.
+    W.GLB["s2-skid"] = "assets/ships/parts/gear/skid_quad.glb"
+    for i, local_x in enumerate((-6.4, 1.6)):
+        offset = Vector((local_x, 0, 0))
+        offset.rotate(hull.rotation_euler)
+        skid = _s2_load("s2-skid", loc=(4 + offset.x, 3 + offset.y, 0),
+                        rot_z=yaw, scale=1.5, name="berth-skid-%d" % i)
+        _s2_ground(skid, pad_z)
+        _s2_service_accent(skid)
+
+    # Structure is off the hull's face; the native dock crane supplies the overhead cable.
+    gantry = _s2_load("gantry", loc=(20, 16, 0), scale=1.5,
+                      rot_z=math.radians(90), name="berth-service-gantry")
+    _s2_ground(gantry, floor_z)
+    rack = _s2_load("rack", loc=(33, 22, 0), rot_z=-.25, scale=.8)
+    _s2_ground(rack, floor_z)
+    pod = _s2_load("pod", loc=(28, -8, 0), rot_z=.2, scale=.8)
+    _s2_ground(pod, floor_z)
+    tower = _s2_load("worklight", loc=(29, -12, 0), rot_z=-.6, scale=.85)
+    _s2_ground(tower, floor_z)
+    B.retint()
+    _s2_dock_lights(dock, dock_scale, cold=cold, power=2.6)
+    key = "#DDE6FF" if cold else "#FFBE7A"
+    fill = "#829BCC" if cold else "#FFC28E"
+    W.worklight((29, -12, floor_z + 12.5), at=(4, 3, 0), irradiance=3.1,
+                colour=key, radius=2.4)
+    W.worklight((-18, -28, 12), at=(4, 3, 0), irradiance=1.45,
+                colour=fill, radius=12)
+    W.worklight((8, 28, 17), at=(4, 3, 0), irradiance=.65,
+                colour="#9AAECE", radius=7)
+    # The same geometry/camera is used by berth-cold; only light temperature changes.
+    if cold:
+        for mat in bpy.data.materials:
+            if mat.use_nodes and "lightflood" in mat.name.lower():
+                for node in mat.node_tree.nodes:
+                    for socket in ("Emission Color", "Color"):
+                        if socket in node.inputs and not node.inputs[socket].is_linked:
+                            node.inputs[socket].default_value = B.srgb("#DDE6FF")
+    return hull
+
+
+def scene_berth(samples=96):
+    """Dock arrival / Market: a working warm berth with a calm left overlay area."""
+    hull = _s2_berth_set(samples)
+    W.camera(loc=(-28, -57, 11), at=(-5, 4, 1.2), lens=43, shift_y=-.025,
+             dof_at=(4, 3, 0), fstop=5.6)
+    return hull
+
+
+def scene_berth_cold(samples=96):
+    """Wanted-temperature version: identical set and framing, cold practicals."""
+    hull = _s2_berth_set(samples, cold=True)
+    W.camera(loc=(-28, -57, 11), at=(-5, 4, 1.2), lens=43, shift_y=-.025,
+             dof_at=(4, 3, 0), fstop=5.6)
+    return hull
+
+
+def scene_ship_rig(samples=96):
+    """THE SHIP / Load: whole Hitch, three-quarter, occupying the presentation stage."""
+    hull = _s2_berth_set(samples)
+    W.camera(loc=(-24, -37, 13), at=(2, 3, .5), lens=45, shift_y=-.015,
+             dof_at=(4, 3, 0), fstop=6.3)
+    return hull
+
+
+def scene_workshop_bench(samples=96):
+    """Settings: the dock's native service plinth and indexed tool cassettes, close up.
+
+    The complete dock is uniformly scaled for a human-sized maintenance alcove. Its work
+    deck, access steps, cassettes, rear cabinets, crane and cable are all authored GLB parts.
+    """
+    W.stage(samples=samples, exposure=-1.6)
+    W._CACHE.clear()
+    W.sky(top="#161C28", horizon="#23180F", strength=.1)
+    dock = _s2_load("dock", scale=.32)
+    floor_z = -3.76 * .32
+    W.floor(size=90, colour="#15110D", roughness=.78, z=floor_z - .055)
+    # Native maintenance assembly laid on the service deck beside its tool cassettes.
+    W.GLB["s2-repair"] = "assets/ships/parts/pods/pod_repair_patch.glb"
+    repair = _s2_load("s2-repair", loc=(-7.5, -4.65, 0), scale=.2, rot_z=.08)
+    _s2_ground(repair, -1.96 * .32)
+    _s2_service_accent(repair)
+    _s2_dock_lights(dock, .32, power=1.5)
+    tower = _s2_load("worklight", loc=(-9.2, -1.6, 0), scale=.22, rot_z=.7)
+    _s2_ground(tower, floor_z)
+    W.worklight((-9.2, -1.6, floor_z + 3.22), at=(-6.4, -4, -.6),
+                irradiance=2.1, colour="#FFC18A", radius=.55)
+    W.worklight((-3, -8, 3), at=(-6.4, -4, -.6), irradiance=.75,
+                colour="#FFD1A6", radius=3)
+    B.retint()
+    W.camera(loc=(-10.7, -13.3, 3.1), at=(-4.8, -2.3, -.25), lens=52,
+             dof_at=(-6.48, -4.25, -.63), fstop=.7, shift_y=-.045)
+    return dock
+
+
+# The eight named systems requested by P04. Positions/edges retain the game's graph:
+# src/data/sectors.js and src/data/frontierRegions/south.js (Dione), 2026-09-11.
+# Z is a presentation-depth layer only, not a change to the world's 2D geography.
+S2_CHART_SYSTEMS = (
+    ("Helios Prime",     0,  0,  -4, "#FFE0AE", .37),
+    ("Vesta Forge",      0,  4, -16, "#E5B088", .30),
+    ("Ceres Belt",      -3,  2,  -9, "#D9BE95", .28),
+    ("Tethys Junction",  3,  2, -20, "#CED7E6", .32),
+    ("Pallas Drift",    -5,  5, -27, "#B9C5D9", .25),
+    ("Io Reach",         5,  5, -12, "#DACAB4", .28),
+    ("Dione Lane",       8, -1, -22, "#DDE6FF", .28),
+    ("Charon Expanse",   2,  7, -32, "#BCA9A5", .25),
+)
+S2_CHART_LANES = ((0, 2), (0, 3), (0, 1), (2, 3), (2, 4), (3, 1),
+                  (3, 5), (1, 7), (4, 5), (5, 7), (3, 6))
+
+
+def scene_chart_field(samples=96):
+    """A deep survey field: eight real sector positions, quiet etches, open centre."""
+    from mathutils import Vector
+    W.stage(samples=samples, exposure=-.15)
+    W._CACHE.clear()
+    W.sky(top="#111725", horizon="#13111A", strength=.3)
+    cam = W.camera(loc=(0, 0, 160), at=(0, 0, 0), lens=43)
+    cam.data.clip_end = 20000
+    # Separate distant shells give actual depth; no stars become foreground dust cards.
+    for i, (distance, count, size, strength) in enumerate(
+            ((1200, 220, .00065, 1.2), (2900, 520, .0004, .85),
+             (6000, 1000, .00025, .6))):
+        B.chart_stars(cam, distance, count, size, strength, seed=19420 + i)
+    B.chart_dust("chart-dust-warm", (-180, 95, -680), (450, 86, 52),
+                 "#80543A", rotation=-.3)
+    B.chart_dust("chart-dust-cool", (150, -155, -1080), (670, 125, 70),
+                 "#34445C", rotation=.24)
+    points = []
+    for name, x, y, z, colour, radius in S2_CHART_SYSTEMS:
+        depth_scale = (160 - z) / 160
+        point = Vector(((x - 1.5) * 7.0 * depth_scale,
+                        (y - 3) * 7.0 * depth_scale, z))
+        points.append(point)
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=24, ring_count=12,
+                                             radius=radius * depth_scale, location=point)
+        star = bpy.context.object
+        star.name = "sector-" + name.lower().replace(" ", "-")
+        star["sector_name"] = name
+        B.assign(star, B.emissive(star.name, colour, strength=4.0))
+    etch = B.gunmetal("chart-lane-etch", tone="#756C60", roughness=.7,
+                     metallic=.35, grain=False)
+    for a, b in S2_CHART_LANES:
+        direction = (points[b] - points[a]).normalized()
+        start, end = points[a] + direction * .8, points[b] - direction * .8
+        B.spatial_line("lane-%d-%d" % (a, b), (start, end), .035, etch)
+    W.worklight((-40, 40, 95), at=(0, 0, -10), irradiance=1.0,
+                colour="#CBB89D", radius=65)
+    return cam
+
+
+def _s2_cold_practicals():
+    """Re-light the current set at wanted temperature, preserving geometry and camera."""
+    for ob in bpy.context.scene.objects:
+        if ob.type == "LIGHT":
+            ob.data.color = B.srgb("#DDE6FF")[:3]
+    # Match the kit's cold fill without changing the warm builder's lights or API.
+    # The workshop fill is the existing broad source at (-3, -8, 3).
+    for ob in bpy.context.scene.objects:
+        if ob.type == "LIGHT" and (ob.name == "hangar-wall-fill" or
+                all(abs(ob.location[i] - v) < .001 for i, v in enumerate((-3, -8, 3)))):
+            ob.data.color = B.srgb("#829BCC")[:3]
+    fixture_roles = {"Material_Accent", "Material_LightFlood", "Material_LightSignal"}
+    for mat in bpy.data.materials:
+        if not mat.use_nodes or mat.name.split('.')[0] not in fixture_roles:
+            continue
+        for node in mat.node_tree.nodes:
+            sockets = ("Color",) if node.type == "EMISSION" else (
+                ("Base Color", "Emission Color") if node.type == "BSDF_PRINCIPLED" else ())
+            for socket in sockets:
+                if socket in node.inputs and not node.inputs[socket].is_linked:
+                    node.inputs[socket].default_value = B.srgb("#DDE6FF")
+
+
+def scene_hangar_wall(samples=48):
+    """Title-adjacent wall: near-frontal dressed panels, quiet middle, edge machinery.
+
+    The native wall supplies its own seams, cabinets, pipe runs, crane and lettering.
+    The camera looks past peripheral gantries rather than toward a centred hull or prop.
+    """
+    W.stage(samples=samples, exposure=-1.55)
+    W._CACHE.clear()
+    W.sky(top="#161C28", horizon="#23180F", strength=.1)
+    dock = _s2_load("dock")
+    floor_z = -3.76
+    W.floor(size=160, colour="#15110D", roughness=.78, z=floor_z - .17)
+    for name, x, y, scale in (("wall-gantry-left", -23, 5, .75),
+                               ("wall-gantry-right", 18, 8, 1.0)):
+        gantry = _s2_load("gantry", loc=(x, y, 0), rot_z=math.pi / 2,
+                          scale=scale, name=name)
+        _s2_ground(gantry, floor_z)
+    B.retint()
+    _s2_dock_lights(dock, power=.9)
+    # A broad warm rake reveals the wall's relief without a bright pool in its centre.
+    W.worklight((-18, -6, 11), at=(-8.5, 16, 5.5), irradiance=1.1,
+                colour="#FFC18A", radius=10)
+    fill = W.worklight((6, 3, 9), at=(-8, 16, 6), irradiance=.45,
+                       colour="#D5B59A", radius=7)
+    fill.name = "hangar-wall-fill"
+    W.camera(loc=(-10, -36, 5.6), at=(-8.5, 16, 5.8), lens=55,
+             dof_at=(-8.5, 16, 5.8), fstop=.7, shift_y=-.03)
+    return dock
+
+
+def scene_hangar_wall_cold(samples=48):
+    """The same quiet wall shot, with wanted-temperature practicals and fill."""
+    dock = scene_hangar_wall(samples=samples)
+    _s2_cold_practicals()
+    return dock
+
+
+def scene_workshop_bench_cold(samples=48):
+    """The delivered workshop's exact geometry, exposure and camera, re-lit cold."""
+    dock = scene_workshop_bench(samples=samples)
+    _s2_cold_practicals()
+    return dock
+
+
 SCENES = {
     "title-v1-hangar": scene_title_v1_hangar,
     "title-v2-field": scene_title_v2_field,
     "title-v3-baydoor": scene_title_v3_baydoor,
     "crucible-door": scene_crucible_door,
     "flight": scene_flight,
+    "berth": scene_berth,
+    "berth-cold": scene_berth_cold,
+    "chart-field": scene_chart_field,
+    "workshop-bench": scene_workshop_bench,
+    "ship-rig": scene_ship_rig,
+    "hangar-wall": scene_hangar_wall,
+    "hangar-wall-cold": scene_hangar_wall_cold,
+    "workshop-bench-cold": scene_workshop_bench_cold,
 }
 
 
@@ -286,6 +587,11 @@ if __name__ == "__main__":
     out = positional[1] if len(positional) > 1 else os.path.join(
         W.REPO, ".devshots", "delegate-20260910", "scratch", "pq-194", "build", "plates",
         "plate-%s.png" % name)
+    if len(positional) < 2 and name in ("berth", "berth-cold", "chart-field",
+                                       "workshop-bench", "ship-rig", "hangar-wall",
+                                       "hangar-wall-cold", "workshop-bench-cold"):
+        out = os.path.join(W.REPO, ".devshots", "ui-packets", "S2-work", "plates",
+                           "plate-%s.png" % name)
     SCENES[name](samples=int(opts.get("samples", 140)))
     if "width" in opts:
         sc = bpy.context.scene

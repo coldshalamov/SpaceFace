@@ -6,7 +6,11 @@
   "Blender 5.1.2 Cycles (CPU) via assets/ui/kit/tools/bl_kit.py + bl_common.py",
   "Python 3.14 Pillow + numpy + OpenCV (cutting, alpha, tracing)",
   "hand-written SVG from a construction grammar (icons.py, marks.py)",
-  "fontTools (variable-font instancing for real type)"
+  "fontTools (variable-font instancing for real type)",
+  "image_gen (Codex built-in; P15 arena/mode/difficulty mood imagery)",
+  "Python Pillow 12.2.0 + numpy 2.4.4 (P15 Lanczos downsamples, vignette alpha, contact sheets); kit contrast.py luminance formula",
+  "Codex built-in image_gen (gpt-6-astra) — P15 keyart tiles",
+  "Blender 5.1.2 Cycles via bl_scenes.py — S2 world/backdrop plates"
  ],
  "generator-note": "No native image-generation tool exists in this harness. Third-party diffusion connectors were present and were deliberately NOT used, per _COMMON/00_READ_ME_FIRST.md. Every raster here is a Cycles render of real modelled geometry, reproducible from the committed scripts.",
  "license": "All original work; OFL fonts named in kit-notes.md",
@@ -2448,6 +2452,275 @@
     "bottom": 20,
     "left": 20
    }
+  },
+  {
+   "id": "tile.arena.ricochet-foundry",
+   "file": "assets/tiles/tile.arena.ricochet-foundry.png",
+   "file2x": "assets/tiles/tile.arena.ricochet-foundry@2x.png",
+   "kind": "tile",
+   "size": [
+    640,
+    360
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.arena.ricochet-foundry."
+  },
+  {
+   "id": "tile.arena.ricochet-foundry-masked",
+   "file": "assets/tiles/tile.arena.ricochet-foundry-masked.png",
+   "file2x": "assets/tiles/tile.arena.ricochet-foundry-masked@2x.png",
+   "kind": "tile",
+   "size": [
+    640,
+    360
+   ],
+   "notes": "P15; built-in image_gen; vignette alpha; prompt tile.arena.ricochet-foundry."
+  },
+  {
+   "id": "tile.arena.lagrange-crucible",
+   "file": "assets/tiles/tile.arena.lagrange-crucible.png",
+   "file2x": "assets/tiles/tile.arena.lagrange-crucible@2x.png",
+   "kind": "tile",
+   "size": [
+    640,
+    360
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.arena.lagrange-crucible."
+  },
+  {
+   "id": "tile.arena.lagrange-crucible-masked",
+   "file": "assets/tiles/tile.arena.lagrange-crucible-masked.png",
+   "file2x": "assets/tiles/tile.arena.lagrange-crucible-masked@2x.png",
+   "kind": "tile",
+   "size": [
+    640,
+    360
+   ],
+   "notes": "P15; built-in image_gen; vignette alpha; prompt tile.arena.lagrange-crucible."
+  },
+  {
+   "id": "tile.arena.cinder-sluice",
+   "file": "assets/tiles/tile.arena.cinder-sluice.png",
+   "file2x": "assets/tiles/tile.arena.cinder-sluice@2x.png",
+   "kind": "tile",
+   "size": [
+    640,
+    360
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.arena.cinder-sluice-clean."
+  },
+  {
+   "id": "tile.arena.cinder-sluice-masked",
+   "file": "assets/tiles/tile.arena.cinder-sluice-masked.png",
+   "file2x": "assets/tiles/tile.arena.cinder-sluice-masked@2x.png",
+   "kind": "tile",
+   "size": [
+    640,
+    360
+   ],
+   "notes": "P15; built-in image_gen; vignette alpha; prompt tile.arena.cinder-sluice-clean."
+  },
+  {
+   "id": "tile.arena.cryo-drift",
+   "file": "assets/tiles/tile.arena.cryo-drift.png",
+   "file2x": "assets/tiles/tile.arena.cryo-drift@2x.png",
+   "kind": "tile",
+   "size": [
+    640,
+    360
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.arena.cryo-drift."
+  },
+  {
+   "id": "tile.arena.cryo-drift-masked",
+   "file": "assets/tiles/tile.arena.cryo-drift-masked.png",
+   "file2x": "assets/tiles/tile.arena.cryo-drift-masked@2x.png",
+   "kind": "tile",
+   "size": [
+    640,
+    360
+   ],
+   "notes": "P15; built-in image_gen; vignette alpha; prompt tile.arena.cryo-drift."
+  },
+  {
+   "id": "tile.arena.storm-lattice",
+   "file": "assets/tiles/tile.arena.storm-lattice.png",
+   "file2x": "assets/tiles/tile.arena.storm-lattice@2x.png",
+   "kind": "tile",
+   "size": [
+    640,
+    360
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.arena.storm-lattice."
+  },
+  {
+   "id": "tile.arena.storm-lattice-masked",
+   "file": "assets/tiles/tile.arena.storm-lattice-masked.png",
+   "file2x": "assets/tiles/tile.arena.storm-lattice-masked@2x.png",
+   "kind": "tile",
+   "size": [
+    640,
+    360
+   ],
+   "notes": "P15; built-in image_gen; vignette alpha; prompt tile.arena.storm-lattice."
+  },
+  {
+   "id": "tile.difficulty.1",
+   "file": "assets/tiles/tile.difficulty.1.png",
+   "file2x": "assets/tiles/tile.difficulty.1@2x.png",
+   "kind": "tile",
+   "size": [
+    320,
+    160
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.difficulty.1."
+  },
+  {
+   "id": "tile.mode.swarm",
+   "file": "assets/tiles/tile.mode.swarm.png",
+   "file2x": "assets/tiles/tile.mode.swarm@2x.png",
+   "kind": "tile",
+   "size": [
+    320,
+    320
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.mode.swarm."
+  },
+  {
+   "id": "tile.mode.gauntlet",
+   "file": "assets/tiles/tile.mode.gauntlet.png",
+   "file2x": "assets/tiles/tile.mode.gauntlet@2x.png",
+   "kind": "tile",
+   "size": [
+    320,
+    320
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.mode.gauntlet."
+  },
+  {
+   "id": "tile.mode.daily",
+   "file": "assets/tiles/tile.mode.daily.png",
+   "file2x": "assets/tiles/tile.mode.daily@2x.png",
+   "kind": "tile",
+   "size": [
+    320,
+    320
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.mode.daily."
+  },
+  {
+   "id": "tile.mode.weekly",
+   "file": "assets/tiles/tile.mode.weekly.png",
+   "file2x": "assets/tiles/tile.mode.weekly@2x.png",
+   "kind": "tile",
+   "size": [
+    320,
+    320
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.mode.weekly."
+  },
+  {
+   "id": "tile.mode.ghost",
+   "file": "assets/tiles/tile.mode.ghost.png",
+   "file2x": "assets/tiles/tile.mode.ghost@2x.png",
+   "kind": "tile",
+   "size": [
+    320,
+    320
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.mode.ghost."
+  },
+  {
+   "id": "tile.difficulty.2",
+   "file": "assets/tiles/tile.difficulty.2.png",
+   "file2x": "assets/tiles/tile.difficulty.2@2x.png",
+   "kind": "tile",
+   "size": [
+    320,
+    160
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.difficulty.2-readable."
+  },
+  {
+   "id": "tile.difficulty.3",
+   "file": "assets/tiles/tile.difficulty.3.png",
+   "file2x": "assets/tiles/tile.difficulty.3@2x.png",
+   "kind": "tile",
+   "size": [
+    320,
+    160
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.difficulty.3-readable."
+  },
+  {
+   "id": "tile.difficulty.4",
+   "file": "assets/tiles/tile.difficulty.4.png",
+   "file2x": "assets/tiles/tile.difficulty.4@2x.png",
+   "kind": "tile",
+   "size": [
+    320,
+    160
+   ],
+   "notes": "P15; built-in image_gen; opaque; prompt tile.difficulty.4."
+  },
+  {
+   "id": "plate.backdrop.hangar-wall",
+   "file": "assets/plates/plate.backdrop.hangar-wall.png",
+   "kind": "plate",
+   "size": [
+    1920,
+    1080
+   ],
+   "notes": "Cycles render of game GLBs via bl_scenes.py; quiet-backdrop grade (exposure pull + soft knee) for text-over-glass use; full-strength plate in .devshots/ui-packets/S2-work/plates/"
+  },
+  {
+   "id": "plate.backdrop.hangar-wall-cold",
+   "file": "assets/plates/plate.backdrop.hangar-wall-cold.png",
+   "kind": "plate",
+   "size": [
+    1920,
+    1080
+   ],
+   "notes": "Cycles render of game GLBs via bl_scenes.py; quiet-backdrop grade (exposure pull + soft knee) for text-over-glass use; full-strength plate in .devshots/ui-packets/S2-work/plates/"
+  },
+  {
+   "id": "plate.backdrop.berth-bay",
+   "file": "assets/plates/plate.backdrop.berth-bay.png",
+   "kind": "plate",
+   "size": [
+    1920,
+    1080
+   ],
+   "notes": "Cycles render of game GLBs via bl_scenes.py; quiet-backdrop grade (exposure pull + soft knee) for text-over-glass use; full-strength plate in .devshots/ui-packets/S2-work/plates/"
+  },
+  {
+   "id": "plate.backdrop.berth-bay-cold",
+   "file": "assets/plates/plate.backdrop.berth-bay-cold.png",
+   "kind": "plate",
+   "size": [
+    1920,
+    1080
+   ],
+   "notes": "Cycles render of game GLBs via bl_scenes.py; quiet-backdrop grade (exposure pull + soft knee) for text-over-glass use; full-strength plate in .devshots/ui-packets/S2-work/plates/"
+  },
+  {
+   "id": "plate.backdrop.workshop-bench",
+   "file": "assets/plates/plate.backdrop.workshop-bench.png",
+   "kind": "plate",
+   "size": [
+    1920,
+    1080
+   ],
+   "notes": "Cycles render of game GLBs via bl_scenes.py; quiet-backdrop grade (exposure pull + soft knee) for text-over-glass use; full-strength plate in .devshots/ui-packets/S2-work/plates/"
+  },
+  {
+   "id": "plate.backdrop.workshop-bench-cold",
+   "file": "assets/plates/plate.backdrop.workshop-bench-cold.png",
+   "kind": "plate",
+   "size": [
+    1920,
+    1080
+   ],
+   "notes": "Cycles render of game GLBs via bl_scenes.py; quiet-backdrop grade (exposure pull + soft knee) for text-over-glass use; full-strength plate in .devshots/ui-packets/S2-work/plates/"
   }
  ],
  "blocked": [],

@@ -880,3 +880,107 @@ def recess_round(ob, diameter: float, depth: float, x: float = 0.0, y: float = 0
     bpy.data.objects.remove(knife, do_unlink=True)
     return ob
 
+
+# ---------------------------------------------------------------- S2 spatial chart helpers
+
+
+def spatial_line(name, points, radius, material):
+    """A thin, non-glowing three-dimensional etch between chart coordinates."""
+    curve = bpy.data.curves.new(name, "CURVE")
+    curve.dimensions = "3D"
+    curve.bevel_depth, curve.bevel_resolution = radius, 2
+    spline = curve.splines.new("POLY")
+    spline.points.add(len(points) - 1)
+    for p, co in zip(spline.points, points):
+        p.co = (*co, 1)
+    ob = bpy.data.objects.new(name, curve)
+    bpy.context.collection.objects.link(ob)
+    assign(ob, material)
+    return ob
+
+
+def chart_stars(camera, distance, count, size, strength, seed):
+    """Tiny sky stars in a deterministic depth slab, with a calm central reading area.
+
+    `size` is a fraction of depth, independent of slab distance. The scatter is built in
+    the camera basis, so it is sky-depth geometry rather than a 2D noise texture.
+    """
+    import random
+    rng = random.Random(seed)
+    basis = camera.rotation_euler.to_matrix()
+    verts, faces = [], []
+    for _ in range(count):
+        x, y = rng.uniform(-.43, .43), rng.uniform(-.25, .25)
+        if (x / .055) ** 2 + (y / .045) ** 2 < 1:
+            continue
+        depth = distance * rng.uniform(.9, 1.1)
+        center = camera.location + basis @ Vector((x * depth, y * depth, -depth))
+        half = size * depth * rng.uniform(.25, .7)
+        right, up = basis @ Vector((half, 0, 0)), basis @ Vector((0, half, 0))
+        n = len(verts)
+        verts.extend((center - right - up, center + right - up,
+                      center + right + up, center - right + up))
+        faces.append((n, n + 1, n + 2, n + 3))
+    mesh = bpy.data.meshes.new("chart-stars-%s" % seed)
+    mesh.from_pydata(verts, [], faces)
+    mesh.update()
+    ob = bpy.data.objects.new(mesh.name, mesh)
+    bpy.context.collection.objects.link(ob)
+    assign(ob, emissive(mesh.name, "#CDD4E2", strength))
+    ob.visible_shadow = False
+    return ob
+
+
+def chart_dust(name, location, scale, colour, rotation=0.0):
+    """A faint, bounded volume filament. Its container has no surface shader.
+
+    Density fades to zero before the ellipsoid boundary; two noise scales break the cloud
+    internally. No camera-facing nebula rectangle or luminous sphere surface is rendered.
+    """
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1,
+                                         location=location)
+    ob = bpy.context.object
+    ob.name, ob.scale = name, scale
+    ob.rotation_euler.z = rotation
+    mat = bpy.data.materials.new(name)
+    mat.use_nodes = True
+    nt = mat.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    volume = nt.nodes.new("ShaderNodeVolumePrincipled")
+    volume.inputs["Color"].default_value = srgb(colour)
+    volume.inputs["Emission Color"].default_value = srgb(colour)
+    coord = nt.nodes.new("ShaderNodeTexCoord")
+    center = nt.nodes.new("ShaderNodeVectorMath")
+    center.operation = "SUBTRACT"
+    center.inputs[1].default_value = (.5, .5, .5)
+    nt.links.new(coord.outputs["Generated"], center.inputs[0])
+    length = nt.nodes.new("ShaderNodeVectorMath")
+    length.operation = "LENGTH"
+    nt.links.new(center.outputs["Vector"], length.inputs[0])
+    edge = nt.nodes.new("ShaderNodeMapRange")
+    edge.inputs["From Min"].default_value = .15
+    edge.inputs["From Max"].default_value = .46
+    edge.inputs["To Min"].default_value = 1
+    edge.inputs["To Max"].default_value = 0
+    nt.links.new(length.outputs["Value"], edge.inputs["Value"])
+    noise = nt.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 6
+    noise.inputs["Detail"].default_value = 6
+    noise.inputs["Roughness"].default_value = .7
+    nt.links.new(coord.outputs["Generated"], noise.inputs["Vector"])
+    structure = nt.nodes.new("ShaderNodeMapRange")
+    structure.inputs["From Min"].default_value = .38
+    structure.inputs["From Max"].default_value = .72
+    structure.inputs["To Min"].default_value = 0
+    structure.inputs["To Max"].default_value = .006
+    nt.links.new(noise.outputs["Fac"], structure.inputs["Value"])
+    density = nt.nodes.new("ShaderNodeMath")
+    density.operation = "MULTIPLY"
+    nt.links.new(edge.outputs["Result"], density.inputs[0])
+    nt.links.new(structure.outputs["Result"], density.inputs[1])
+    nt.links.new(density.outputs[0], volume.inputs["Density"])
+    nt.links.new(density.outputs[0], volume.inputs["Emission Strength"])
+    nt.links.new(volume.outputs["Volume"], out.inputs["Volume"])
+    assign(ob, mat)
+    return ob
