@@ -9,7 +9,7 @@ import { encounterDirector } from '../src/systems/encounterDirector.js';
 import { save } from '../src/save/saveSystem.js';
 import { makeShipEntitySpec } from '../src/systems/ships.js';
 import { SECTORS } from '../src/data/sectors.js';
-import { sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
+import { globalToSectorLocalForSector, sectorLocalToGlobalForSector } from '../src/data/sectorCoordinates.js';
 import { careersForSector } from '../src/ui/map/careersReadout.js';
 import { buildClaimOwnershipMarkers } from '../src/ui/galaxyMap.js';
 
@@ -60,8 +60,13 @@ test('PQ-145.00 default Ceres claim dispatches a real persistent hauler service'
     assert.equal(names.length, 1, 'the existing Chart Careers surface sees the job');
     assert.match(names[0].siteLabel, /Rookery/);
     const drawnRoute = buildClaimOwnershipMarkers(state, SECTOR, owner)
-      .some((marker) => marker.travelRoute?.claimId === body.id);
-    console.log(JSON.stringify({ seed: SEED, chartCareerRoutePresent: true, mapRoutePresent: drawnRoute }));
+      .find((marker) => marker.travelRoute?.claimId === body.id)?.travelRoute;
+    console.log(JSON.stringify({ seed: SEED, chartCareerRoutePresent: true, mapRoutePresent: !!drawnRoute }));
+    assert.equal(!!drawnRoute, true, 'the claim hauler route is drawn on the existing map');
+    assert.deepEqual(drawnRoute.from, jobs[0].job.route[0].pos, 'route starts at the real station waypoint');
+    assert.deepEqual(drawnRoute.to, jobs[0].job.route[1].pos, 'route ends at the real depot waypoint');
+    assert.deepEqual(drawnRoute.drawFrom, globalToSectorLocalForSector(drawnRoute.from, SECTOR));
+    assert.deepEqual(drawnRoute.drawTo, globalToSectorLocalForSector(drawnRoute.to, SECTOR));
     sim.runTicks(900);
     const watch = state.encounterDirector?.live?.[`depot-watch:${body.id}`];
     console.log(JSON.stringify({ pirateWatch: !!watch, pirateShips: watch?.ids,
@@ -83,6 +88,11 @@ test('PQ-145.00 default Ceres claim dispatches a real persistent hauler service'
       assert.equal(watch.phase, 'conflict', 'entering the watched route springs the existing ambush');
       assert.deepEqual(continued[0].job.payload.claimDepot, jobs[0].job.payload.claimDepot,
         'the restored job keeps its exact service leg');
+      const continuedRoute = buildClaimOwnershipMarkers(cold.state, SECTOR, cold.registry.get('claims'))
+        .find((marker) => marker.travelRoute?.claimId === body.id)?.travelRoute;
+      assert.ok(continuedRoute, 'Continue restores the drawn claim route');
+      assert.deepEqual(continuedRoute.from, continued[0].job.route[0].pos);
+      assert.deepEqual(continuedRoute.to, continued[0].job.route[1].pos);
     } finally { cold.dispose(); }
   } finally {
     sim.dispose();
@@ -104,7 +114,15 @@ test('PQ-145.00 an uncontested supply run unloads once and takes the return job'
     for (let second = 0; second < 100; second += 1) {
       sim.runTicks(60);
       const jobs = depotJobs(sim, body);
-      if (jobs.some((entry) => entry.job.route[0].id === `depot:${body.id}`)) returnJobs = 1;
+      const returnJob = jobs.find((entry) => entry.job.route[0].id === `depot:${body.id}`);
+      if (returnJob) {
+        returnJobs = 1;
+        const returnRoute = buildClaimOwnershipMarkers(sim.state, SECTOR, owner)
+          .find((marker) => marker.travelRoute?.claimId === body.id)?.travelRoute;
+        assert.ok(returnRoute, 'the map shows the return job too');
+        assert.deepEqual(returnRoute.from, returnJob.job.route[0].pos);
+        assert.deepEqual(returnRoute.to, returnJob.job.route[1].pos);
+      }
     }
     const service = sim.state.traffic.depotServices[0];
     console.log(JSON.stringify({ seed: SEED, returnJobs, completedLegs: service.legSeq,

@@ -12187,7 +12187,7 @@
       "priority": 279,
       "title": "A player-built depot creates persistent traffic",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.01",
         "PQ-143.01"
@@ -12206,7 +12206,9 @@
         "npm run check:save-schema",
         "npm run check:atlas-integrity"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-145.00-REPORT.md"
+      ],
       "brief": "Placing a depot/claim spawns real hauler jobs to and from it; the route shows on the map; pirates begin to watch it; traffic persists across sessions."
     },
     {

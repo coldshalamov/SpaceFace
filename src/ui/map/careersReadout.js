@@ -2,7 +2,7 @@
 //
 // WHY THIS EXISTS
 // ---------------
-// CANONICAL_BUILD_MAP §11.11 inhibitor #1, measured: `state.npcJobs` — the career simulation that
+// build_map §11.11 inhibitor #1, measured: `state.npcJobs` — the career simulation that
 // runs haulers, miners, salvors, surveyors, patrols and tenders across the pockets — is written by
 // npcJobsRuntime and read by ZERO UI files. The sim was invisible. This module is the read half:
 // it joins `state.npcJobs.byId` (the runtime's entries) with the live entity table and the entity

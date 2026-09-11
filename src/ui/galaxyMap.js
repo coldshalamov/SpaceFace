@@ -1222,6 +1222,28 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
     const part = entity && entity.data && entity.data.claimTravelPart;
     if (infrastructureId && part) liveByInfrastructurePart.set(`${infrastructureId}:${part}`, entity);
   }
+  // Depot freight already owns its itinerary; project that same service leg onto the chart.
+  const depotRoutes = new Map();
+  for (const entry of Object.values(state?.npcJobs?.byId || {})) {
+    const job = entry?.job;
+    const claimId = job?.payload?.claimDepot?.bodyId;
+    if (entry?.sectorId !== sid || job?.kind !== 'hauler' || job.corrupt === true
+      || !claimId || !Array.isArray(job.route) || job.route.length !== 2) continue;
+    const from = job.route[0]?.pos;
+    const to = job.route[1]?.pos;
+    if (![from?.x, from?.z, to?.x, to?.z].every(Number.isFinite)) continue;
+    depotRoutes.set(claimId, {
+      id: job.id,
+      claimId,
+      operational: true,
+      lineStyle: 'long-dash',
+      color: INK.ink1,
+      from: { x: from.x, z: from.z },
+      to: { x: to.x, z: to.z },
+      drawFrom: globalToSectorLocalForSector(from, sid),
+      drawTo: globalToSectorLocalForSector(to, sid),
+    });
+  }
   const markers = [];
   for (const body of bodies) {
     if (!body || body.owned !== true || body.sectorId !== sid) continue;
@@ -1230,6 +1252,7 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
       : null;
     const marker = describeClaimMapMarker(body, ledger, liveByPoi.get(body.poiId) || null);
     marker.drawPos = globalToSectorLocalForSector(marker, sid);
+    if (depotRoutes.has(body.id)) marker.travelRoute = depotRoutes.get(body.id);
     markers.push(marker);
     const infrastructure = body.infrastructure;
     if (!infrastructure || !infrastructure.from || !infrastructure.support || !infrastructure.to) continue;
@@ -7422,8 +7445,7 @@ export const galaxyMapScreen = {
       }
     }
 
-    // Manufactured corridors are one saved physical route, not three unrelated ownership dots.
-    // Paint the route beneath its ring/relay/station marks and only on the existing Route layer.
+    // Claim freight and manufactured corridors share the existing Route layer beneath their marks.
     if (this._layers.route) {
       for (const marker of model.ownership) {
         if (marker.travelRoute) drawManufacturedTravelRoute(g, marker.travelRoute, sx, sz, true);
@@ -8363,7 +8385,8 @@ function drawPoiMark(g, x, y) {
 function drawManufacturedTravelRoute(g, route, sx, sz, useDrawFrame) {
   if (!route || typeof sx !== 'function' || typeof sz !== 'function') return;
   const from = useDrawFrame ? route.drawFrom : route.from;
-  const support = useDrawFrame ? route.drawSupport : route.support;
+  // Freight has two endpoints; only a manufactured corridor has an intermediate relay.
+  const support = (useDrawFrame ? route.drawSupport : route.support) || from;
   const to = useDrawFrame ? route.drawTo : route.to;
   if (!from || !support || !to) return;
   const ax = sx(from.x), ay = sz(from.z);
@@ -8394,7 +8417,7 @@ function drawManufacturedTravelRoute(g, route, sx, sz, useDrawFrame) {
   g.stroke();
 
   // Solid endpoint bars make the drawn extent explicit; dash cadence carries operating state
-  // without relying on color, and the fixed chevron communicates the ring-to-station direction.
+  // without relying on color, and the fixed chevron communicates the current leg's direction.
   g.setLineDash([]);
   g.beginPath();
   g.moveTo(ax - nx * 5, ay - ny * 5);
