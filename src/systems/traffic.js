@@ -1128,6 +1128,24 @@ function ensurePocketRoleMix(roles, sector) {
   return out;
 }
 
+function normalizeDepotServices(rows) {
+  if (!Array.isArray(rows)) return [];
+  const seen = new Set();
+  const out = [];
+  for (const row of rows) {
+    if (!row || typeof row.bodyId !== 'string' || !row.bodyId
+      || typeof row.stationId !== 'string' || !row.stationId || seen.has(row.bodyId)) continue;
+    seen.add(row.bodyId);
+    const integer = (key) => Number.isSafeInteger(row[key]) && row[key] >= 0 ? row[key] : 0;
+    const time = (key) => Number.isFinite(row[key]) && row[key] >= 0 ? row[key] : 0;
+    out.push({ bodyId: row.bodyId, stationId: row.stationId,
+      generation: integer('generation'), legSeq: integer('legSeq'),
+      nextDispatchAt: time('nextDispatchAt'), watchAt: time('watchAt'),
+      watchResolved: row.watchResolved === true, deliveredU: integer('deliveredU') });
+  }
+  return out;
+}
+
 export const traffic = {
   name: 'traffic',
 
@@ -1251,6 +1269,12 @@ export const traffic = {
     );
     this.bus.on('claim:infrastructureActive', refreshClaimTravel);
     this.bus.on('claim:infrastructureStatus', refreshClaimTravel);
+    this.bus.on('claim:claimed', () => this._maintainClaimDepotTraffic());
+    this.bus.on('encounter:resolved', ({ encounterId } = {}) => {
+      for (const service of this.state.traffic?.depotServices || []) {
+        if (encounterId === `depot-watch:${service.bodyId}`) service.watchResolved = true;
+      }
+    });
     this.bus.on('worldSite:operationReceipt', ({ siteId, receipt } = {}) => {
       // Held tools publish progress every fixed tick. Traffic topology changes only on completion;
       // projecting all sites and scanning freighters for every partial tick is pure hot-path waste.
@@ -1482,6 +1506,7 @@ export const traffic = {
       const home = record && (record.homeSectorId || record.sectorId);
       if (!record || record.kind !== RECORD_KIND.CONVOY || !record.trafficRole
         || home !== CERES_ACTIVITY_SECTOR_ID || authoredRecordIds.has(recordId)
+        || record.itinerary?.kind === 'claim_depot'
         || terminalWorldRecord(record)) continue;
       if (worldOwner && typeof worldOwner.markWorldRecordDestroyed === 'function') {
         worldOwner.markWorldRecordDestroyed(recordId, { outcome: 'destroyed' });
@@ -2110,6 +2135,135 @@ export const traffic = {
       assigned += 1;
     }
     return assigned;
+  },
+
+  // PQ-145.00: one supply hauler per owned claim, using the SAME durable hull/job owners as
+  // ordinary traffic. Inbound supplies are consumed at the depot; the return berth run is empty.
+  // No abstract income, new movement writer, or Throughline requirement. Dispatch is a one-second
+  // lifecycle pass; the job runtime alone drives the live ship between these physical endpoints.
+  _maintainClaimDepotTraffic() {
+    if (this._restoreEpochPending || this.state.mode !== 'flight') return;
+    const bodies = this.state.claims?.bodies;
+    if (!bodies?.length || !this.helpers?.npcJobs?.assign) return;
+    const sectorId = this.state.world?.currentSectorId;
+    const stations = this._sectorStations();
+    if (!stations.length) return;
+    const services = this.state.traffic.depotServices || (this.state.traffic.depotServices = []);
+    const now = this.state.simTime || 0;
+    for (const body of bodies) {
+      if (body.owned === false || body.sectorId !== sectorId
+        || !Number.isFinite(body.x) || !Number.isFinite(body.z)) continue;
+      let service = services.find((row) => row.bodyId === body.id);
+      let station = service && stations.find((row) => stationIdentity(row) === service.stationId);
+      if (!service) {
+        station = stations.reduce((best, row) => !best
+          || Math.hypot(row.pos.x - body.x, row.pos.z - body.z)
+            < Math.hypot(best.pos.x - body.x, best.pos.z - body.z) ? row : best, null);
+        if (!station) continue;
+        service = {
+          bodyId: body.id, stationId: stationIdentity(station), generation: 0,
+          legSeq: 0, nextDispatchAt: now, watchAt: now + 12,
+          watchResolved: false, deliveredU: 0,
+        };
+        services.push(service);
+      }
+      if (!station || now < service.nextDispatchAt) continue;
+      const worldRecordId = stableRecordId(this.state.meta?.seed || 1, sectorId,
+        RECORD_KIND.CONVOY, `claim-depot:${body.id}:${service.generation}`);
+      let entity = entityWithWorldRecord(this.state, worldRecordId);
+      const record = this.state.world?.records?.byId?.[worldRecordId];
+      if (terminalWorldRecord(record)) {
+        service.generation += 1;
+        service.legSeq = 0;
+        service.nextDispatchAt = now + 30;
+        continue;
+      }
+      // World residency owns an extant offscreen hull; never spawn a second copy over its record.
+      if (record && !entity) continue;
+      if (!entity) {
+        const dx = body.x - station.pos.x;
+        const dz = body.z - station.pos.z;
+        const length = Math.hypot(dx, dz) || 1;
+        const berth = (station.radius || 50) + 70;
+        const spec = makeShipEntitySpec(TRAFFIC_ROLES.hauler.ship, {
+          team: 2, factionId: station.data?.factionId || 'faction_free',
+          pos: { x: station.pos.x + dx / length * berth, z: station.pos.z + dz / length * berth },
+          ai: { archetype: TRAFFIC_ROLES.hauler.archetype, passive: true, spawnContext: 'convoy_civilian' },
+        });
+        entity = this.helpers.spawnEntity(spec);
+        if (!entity) continue;
+        entity.data.worldRecordId = worldRecordId;
+        entity.data.identityKey = `claim-depot:${body.id}:${service.generation}`;
+        entity.data.durable = true;
+        entity.data.claimDepotId = body.id;
+        this._stampTrafficDurableIdentity(entity, sectorId, 'hauler', TRAFFIC_ROLES.hauler, 0);
+        entity.flags = { ...entity.flags, persistent: true };
+        entity.data.trafficLabel = `${body.name} supply hauler`;
+      }
+      // World records retain itinerary and cargo, while transient entity tags are reconstructed.
+      entity.data.claimDepotId = body.id;
+      entity.data.itinerary = { kind: 'claim_depot', bodyId: body.id };
+      if (!entity.flags?.persistent) entity.flags = { ...entity.flags, persistent: true };
+      let rec = this.state.traffic.freighters.find((row) => row.id === entity.id);
+      if (!rec) {
+        rec = { id: entity.id, role: 'hauler', targetId: station.id,
+          waitT: 0, nextTradeT: 0, orbitPhase: 0, dockSeq: 0,
+          manifest: entity.data.cargoManifest || null };
+        this.state.traffic.freighters.push(rec);
+        if (!this._active.includes(entity.id)) this._active.push(entity.id);
+      }
+      if (!entity.data.jobId) {
+        const inbound = service.legSeq % 2 === 0;
+        const manifest = inbound
+          ? this._assignManifest(entity, 'hauler', station, sectorId)
+          : { lines: [], totalQty: 0, totalValue: 0 };
+        this._setTrafficManifest(entity, rec, manifest);
+        const stationPoint = { id: `dest:${service.stationId}`, targetRef: `station:${service.stationId}`,
+          pos: { x: station.pos.x, z: station.pos.z }, label: `${stationName(station, 'Station')} → ${body.name}` };
+        const depotPoint = { id: `depot:${body.id}`, pos: { x: body.x, z: body.z },
+          label: `${body.name} → ${stationName(station, 'Station')}` };
+        this.helpers.npcJobs.assign(entity, {
+          kind: 'hauler', sectorId, route: inbound ? [stationPoint, depotPoint] : [depotPoint, stationPoint],
+          payload: { manifest, claimDepot: { bodyId: body.id, legSeq: service.legSeq } },
+        });
+      }
+      if (!service.watchResolved && now >= service.watchAt) {
+        const requested = this._depotWatchRequested || (this._depotWatchRequested = new Set());
+        if (!requested.has(body.id)) {
+          const director = this._registry?.get('encounterDirector');
+          const result = director?.requestAuthoredEncounter({
+            shapeId: 'ambush_snare', encounterId: `depot-watch:${body.id}`, sectorId,
+            anchor: { x: station.pos.x + (body.x - station.pos.x) * 0.75,
+              z: station.pos.z + (body.z - station.pos.z) * 0.75 },
+            zoneId: `depot-route:${body.id}`, zoneName: `${body.name} supply route`,
+            zoneType: 'ambush_lane', zoneRadius: 240, force: true,
+            data: { claimDepotId: body.id },
+          });
+          if (result?.ok) requested.add(body.id);
+        }
+      }
+    }
+  },
+
+  _unloadClaimDepot(intent) {
+    const marker = intent?.payload?.claimDepot;
+    if (!marker || intent.completed !== true) return false;
+    const context = this._jobTrafficContext(intent, 'hauler', ['hauler']);
+    const service = this.state.traffic.depotServices?.find((row) => row.bodyId === marker.bodyId);
+    const job = context && this.helpers.npcJobs.get(context.jobId)?.job;
+    if (!context || !service || marker.legSeq !== service.legSeq
+      || job?.payload?.claimDepot?.bodyId !== marker.bodyId
+      || job.payload.claimDepot.legSeq !== marker.legSeq
+      || context.entity.data.claimDepotId !== service.bodyId) return false;
+    const inbound = service.legSeq % 2 === 0;
+    if (intent.destination !== (inbound ? `depot:${service.bodyId}` : `dest:${service.stationId}`)) return false;
+    // Commit before emitting: duplicate/reentrant completion cannot consume the same supplies twice.
+    const qty = inbound ? Math.max(0, context.entity.data.cargoManifest?.totalQty || 0) : 0;
+    service.deliveredU += qty;
+    service.legSeq += 1;
+    this._setTrafficManifest(context.entity, context.rec, { lines: [], totalQty: 0, totalValue: 0 });
+    this.bus.emit('claim:freightDelivered', { bodyId: service.bodyId, inbound, quantity: qty });
+    return true;
   },
 
   // PQ-014 — natural NPC job assignment. Civilian traffic IS the natural producer for the three
@@ -3479,6 +3633,10 @@ export const traffic = {
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     ensureActivityClassified(state);
     this._ensureState();
+    if ((state.simTime || 0) >= (this._nextDepotDispatchAt || 0)) {
+      this._nextDepotDispatchAt = (state.simTime || 0) + 1;
+      this._maintainClaimDepotTraffic();
+    }
     const list = state.traffic.freighters;
     const stations = this._sectorStations();
     // Even with zero freighters, a wreck can still call a cutter into the sector.
@@ -3574,6 +3732,7 @@ export const traffic = {
       // PQ-014: when this hull carries a live NPC job, npcJobsRuntime owns its steering. Traffic
       // yields entirely (no setIntent) so there is exactly one intent writer per job hull per tick.
       if (e.data && e.data.jobId) continue;
+      if (e.data?.claimDepotId) continue; // wait for the depot's next berth job, never ambient rerouting
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
 
       if (rec.worldSiteRoute) {
@@ -8296,6 +8455,7 @@ export const traffic = {
   },
 
   _onNpcJobUnload(intent) {
+    if (intent?.payload?.claimDepot) return this._unloadClaimDepot(intent);
     const ceresOwned = this._ceresActivityIntentClaimsOwnership(intent);
     const actorContext = this._ceresActivityActorContext(intent);
     if (ceresOwned) {
@@ -8864,6 +9024,8 @@ export const traffic = {
     this._ensureState();
     return {
       schema: CERES_MINER_HAULER_SAVE_SCHEMA,
+      ...(this.state.traffic.depotServices?.length
+        ? { depotServices: normalizeDepotServices(this.state.traffic.depotServices) } : {}),
       ceresMinerHaulerHandoff: normalizeCeresMinerHaulerHandoff(
         this.state.traffic.ceresMinerHaulerHandoff,
       ),
@@ -8891,6 +9053,11 @@ export const traffic = {
     this._releaseCeresDisabledHaulerControls(previousTraffic && previousTraffic.ceresDisabledHaulerIncident);
     this._resetCeresDisabledHaulerRuntime();
     this._ensureState();
+    this._nextDepotDispatchAt = 0;
+    this._depotWatchRequested = new Set();
+    const depotServices = normalizeDepotServices(data?.depotServices);
+    if (depotServices.length) this.state.traffic.depotServices = depotServices;
+    else delete this.state.traffic.depotServices;
     this.state.traffic.ceresMinerHaulerHandoff = data
       && !Array.isArray(data)
       && data.schema === CERES_MINER_HAULER_SAVE_SCHEMA
@@ -8933,6 +9100,8 @@ export const traffic = {
   },
 
   newGame() {
+    this._nextDepotDispatchAt = 0;
+    this._depotWatchRequested = new Set();
     this._releaseCeresMinerHaulerHandoffControls(
       this.state && this.state.traffic && this.state.traffic.ceresMinerHaulerHandoff,
     );
