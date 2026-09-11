@@ -8750,7 +8750,7 @@
       "priority": 167,
       "title": "Authored fracture seams",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8771,7 +8771,9 @@
         "npm run check:save-schema",
         "npm run check:perf"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-154.00-REPORT.md"
+      ],
       "brief": "Three to five seams per hull class; a slam above a threshold splits along one; pieces inherit motion and mass. DONE WHEN: A wrecking-ball hit on a medium produces ≥ 2 pieces in the scenario; frame budget unchanged."
     },
     {
@@ -8780,7 +8782,7 @@
       "priority": 168,
       "title": "Wreck ecology",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8801,7 +8803,9 @@
         "npm run check:save-schema",
         "npm run check:perf"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-154.01-REPORT.md"
+      ],
       "brief": "Persistent wrecks attract scavengers (PQ-138.01), squatters, and traps; the field is an encounter place. DONE WHEN: A wreck field older than one day has ≥ 2 inhabitants on the route."
     },
     {
@@ -8810,7 +8814,7 @@
       "priority": 169,
       "title": "Your own wreck",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -8831,7 +8835,9 @@
         "npm run check:save-schema",
         "npm run check:perf"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-154.02-REPORT.md"
+      ],
       "brief": "Death leaves your hull and pod; recovery, surrender and custody paths reach them; NG+ can find them. DONE WHEN: Save round-trip of the player wreck; one encounter references it."
     },
     {
@@ -9256,7 +9262,7 @@
       "priority": 183,
       "title": "The verb ladder",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9279,7 +9285,9 @@
         "npm run check:balance",
         "npm run check:economy:regional-supply"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-155.00-REPORT.md"
+      ],
       "brief": "A table of hour → verb → cost → gate; every tech node either unlocks a verb or is folded. DONE WHEN: Table committed; ≤ 12 stat-only nodes remain, each justified."
     },
     {
@@ -9288,7 +9296,7 @@
       "priority": 184,
       "title": "The ten-hour simulation",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9311,7 +9319,9 @@
         "npm run check:balance",
         "npm run check:economy:regional-supply"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-155.01-REPORT.md"
+      ],
       "brief": "Headless economy sim with three player archetypes prints net worth, verbs unlocked and sinks per hour; a check asserts the ladder. DONE WHEN: `check:economy:curve` green for all three archetypes."
     },
     {
@@ -9320,7 +9330,7 @@
       "priority": 185,
       "title": "Sinks that tell stories",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9343,7 +9353,9 @@
         "npm run check:balance",
         "npm run check:economy:regional-supply"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-155.02-REPORT.md"
+      ],
       "brief": "Repairs, fines, insurance, restitution, impound: each a receipt with a cause. DONE WHEN: Each sink appears in a session ledger with its cause."
     },
     {
@@ -9352,7 +9364,7 @@
       "priority": 186,
       "title": "Stunts pay",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9375,7 +9387,9 @@
         "npm run check:balance",
         "npm run check:economy:regional-supply"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-155.03-REPORT.md"
+      ],
       "brief": "Trick receipts pay in reputation and salvage rights, never in raw credits (no grind-by-stunt). DONE WHEN: A physics run earns ≥ the reputation of a gun run; credits equal."
     },
     {
