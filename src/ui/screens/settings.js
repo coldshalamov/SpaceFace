@@ -17,6 +17,14 @@ import {
 import { massline2Flag } from '../../data/featureFlags.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
+import {
+  DEFAULT_QUALITY_PRESET,
+  QUALITY_PRESETS,
+  applyQualityPreset,
+  createFrameCap,
+  frameCapLabel,
+  normalizeFrameCap,
+} from '../../render/adaptiveQuality.js';
 import { BINDINGS } from '../bindings.js';
 import { LANGUAGE_OPTIONS, gameLocalization, setGameLocale } from '../../localization/gameLocalization.js';
 import { el, words, settle, cue } from '../kit/index.js';
@@ -44,6 +52,26 @@ function chosenLocale(settings) {
 }
 
 let refs = null;
+// One frame-cap controller for the whole screen. It resolves the effective cap (honouring VSync)
+// and publishes it to state.render.frameCap; it never rewrites settings.video, so the persisted
+// request and the live value stay separate. TODO(renderer): the render-frame scheduler is outside
+// this leaf's write set and does not yet consume state.render.frameCap.
+let frameCapController = null;
+
+function publishFrameCap(ctx) {
+  const state = ctx && ctx.state;
+  if (!state) return null;
+  if (!state.render) state.render = {};
+  const vd = (state.settings && state.settings.video) || {};
+  if (!frameCapController) {
+    frameCapController = createFrameCap({
+      vsync: vd.vsync !== false,
+      apply: (cap) => { state.render.frameCap = cap; },
+    });
+  }
+  frameCapController.setVsync(vd.vsync !== false);
+  return frameCapController.setCap(vd.frameCap);
+}
 // --- Key rebinding (V2 §12) ---
 // input.js owns the binding tables; the settings UI mirrors the active control scheme and overlays
 // saved custom keys so "reset to defaults" means the defaults for the selected scheme.
@@ -206,6 +234,19 @@ export const settingsScreen = {
     ctx.bus.emit('settings:changed', payload);
   },
 
+  // Apply a Low/Medium/High preset. `applyQualityPreset` writes only presentation keys, then we
+  // publish each changed key so the renderer live-applies exactly what moved.
+  _applyPreset(ctx, presetId) {
+    const applied = applyQualityPreset(ctx.state.settings, presetId);
+    if (!applied) return;
+    const video = ctx.state.settings.video;
+    for (const key of applied.changed) {
+      if (key === 'qualityPreset') this._set(ctx, 'video', 'qualityPreset', applied.preset);
+      else this._set(ctx, 'video', key, video[key]);
+    }
+    this._render(ctx);
+  },
+
   _render(ctx) {
     if (!refs) return;
     const pane = refs.pane;
@@ -233,6 +274,11 @@ export const settingsScreen = {
       rowSlider('Comms', () => a.comms == null ? 0.7 : a.comms, 0, 1, 0.01, pct, (v, persist) => this._set(ctx, 'audio', 'comms', v, persist));
     } else if (refs.active === 'Video') {
       const vd = s.video;
+      // One-click preset: writes the adaptive-quality tier (render scale, particle density, render
+      // graph) and keeps the individual rows below as the source of truth for advanced edits.
+      rowSelect('Quality preset', () => vd.qualityPreset || DEFAULT_QUALITY_PRESET,
+        QUALITY_PRESETS.map((preset) => [preset.id, preset.label]),
+        (value) => this._applyPreset(ctx, value));
       rowToggle('Bloom', () => vd.bloom, (v) => this._set(ctx, 'video', 'bloom', v));
       // Shadows are a sun-depth pass of nearby ships/rocks/stations so they darken each other.
       // Empty space does not receive them. Off skips that extra pass. Live-applied.
@@ -257,7 +303,15 @@ export const settingsScreen = {
       rowSlider('FOV', () => vd.fov, 35, 90, 1, (x) => Math.round(x) + '°', (v, persist) => this._set(ctx, 'video', 'fov', v, persist));
       rowSelect('Particle quality', () => vd.particleQuality, [['low', 'Low'], ['medium', 'Medium'], ['high', 'High']], (v) => this._set(ctx, 'video', 'particleQuality', v));
       rowToggle('Engine trails', () => vd.engineTrails !== false, (v) => this._set(ctx, 'video', 'engineTrails', v));
-      rowToggle('VSync', () => vd.vsync, (v) => this._set(ctx, 'video', 'vsync', v));
+      rowToggle('VSync', () => vd.vsync, (v) => { this._set(ctx, 'video', 'vsync', v); publishFrameCap(ctx); });
+      // Frame cap 30 / 60 / 120 / off. The effective cap is the request clamped to the display
+      // refresh when VSync is on; off means the display refresh (VSync) or uncapped (VSync off).
+      rowSelect('Frame cap', () => String(normalizeFrameCap(vd.frameCap)), [0, 30, 60, 120].map((cap) => [String(cap), frameCapLabel(cap)]),
+        (value) => {
+          vd.frameCap = normalizeFrameCap(value);
+          this._set(ctx, 'video', 'frameCap', vd.frameCap);
+          publishFrameCap(ctx);
+        });
       // Accessibility (V2 §9/§12): vestibular-sensitive players get hit feedback (numbers, audio,
       // smoke) with the camera shake / FOV punch / hit-stop freeze suppressed. Live-applied: the
       // feel module reads settings.video.motionReduce every trigger, so the preference takes effect now.

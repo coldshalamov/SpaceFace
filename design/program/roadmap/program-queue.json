@@ -16921,7 +16921,7 @@
       "priority": 443,
       "title": "Presets and frame cap",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01"

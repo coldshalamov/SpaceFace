@@ -55,6 +55,137 @@ export function detectGpu(renderer) {
   };
 }
 
+// --- Player quality presets -------------------------------------------------------------------
+// Low / Medium / High are the player-facing presets. Each one maps to an adaptive-quality tier: the
+// internal-resolution posture (dynamic-resolution floor + persisted render scale) and the optional
+// presentation features that tier may use. A preset NEVER changes simulation content — no actor,
+// spawn, cargo, mission, or economy count is read or written; it only trades rendering quality for
+// headroom. Medium is the shipped default and matches the gameState video defaults.
+//
+// Presets deliberately do not disable authored world content (ships, trails, stations): they lower
+// resolution and particle density, not the number of things in the world.
+export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
+  low: Object.freeze({
+    id: 'low',
+    label: 'Low',
+    adaptiveFloor: 0.5,
+    renderScale: 0.75,
+    bloom: true,
+    shadows: true,
+    energyMaterials: true,
+    renderGraph: false,
+    engineTrails: true,
+    particleQuality: 'low',
+  }),
+  medium: Object.freeze({
+    id: 'medium',
+    label: 'Medium',
+    adaptiveFloor: 0.6,
+    renderScale: 1,
+    bloom: true,
+    shadows: true,
+    energyMaterials: true,
+    renderGraph: false,
+    engineTrails: true,
+    particleQuality: 'medium',
+  }),
+  high: Object.freeze({
+    id: 'high',
+    label: 'High',
+    adaptiveFloor: 0.6,
+    renderScale: 1,
+    bloom: true,
+    shadows: true,
+    energyMaterials: true,
+    renderGraph: true,
+    engineTrails: true,
+    particleQuality: 'high',
+  }),
+});
+
+export const QUALITY_PRESETS = Object.freeze([
+  Object.freeze({ id: 'low', label: 'Low', tier: 'low' }),
+  Object.freeze({ id: 'medium', label: 'Medium', tier: 'medium' }),
+  Object.freeze({ id: 'high', label: 'High', tier: 'high' }),
+]);
+export const DEFAULT_QUALITY_PRESET = 'medium';
+
+const QUALITY_PRESET_IDS = new Set(QUALITY_PRESETS.map((p) => p.id));
+const PRESET_VIDEO_KEYS = Object.freeze([
+  'renderScale', 'bloom', 'shadows', 'energyMaterials', 'renderGraph', 'engineTrails', 'particleQuality',
+]);
+
+/** The adaptive-quality tier a preset selects. An unknown id falls back to the default preset. */
+export function qualityTierForPreset(presetId) {
+  const id = QUALITY_PRESET_IDS.has(presetId) ? presetId : DEFAULT_QUALITY_PRESET;
+  return ADAPTIVE_QUALITY_TIERS[id];
+}
+
+/**
+ * Write a preset's tier into `settings.video` and return `{ preset, tier, changed }`. Presentation
+ * keys only — never a sim, spawn, cargo, or economy writer. `changed` lists the keys that actually
+ * moved so the caller can publish just those to `settings:changed`.
+ */
+export function applyQualityPreset(settings, presetId) {
+  const video = settings && settings.video;
+  if (!video || typeof video !== 'object') return null;
+  const tier = qualityTierForPreset(presetId);
+  const changed = [];
+  for (const key of PRESET_VIDEO_KEYS) {
+    if (video[key] !== tier[key]) { video[key] = tier[key]; changed.push(key); }
+  }
+  if (video.qualityPreset !== tier.id) { video.qualityPreset = tier.id; changed.push('qualityPreset'); }
+  return { preset: tier.id, tier: tier.id, changed };
+}
+
+// --- Frame cap --------------------------------------------------------------------------------
+// 30 / 60 / 120 / off, with VSync honoured. `off` (0) means "no explicit cap": with VSync on the
+// effective cap is the display refresh; with VSync off it is uncapped (0). A cap never exceeds the
+// display refresh — a 120 request on a 60 Hz panel resolves to 60. The controller mirrors the
+// adaptive-resolution controller: it reports the effective cap through an `apply` callback and
+// never writes settings.video itself, so a settings edit and a runtime override stay separate.
+export const FRAME_CAP_OPTIONS = Object.freeze([30, 60, 120, 0]);
+
+export function normalizeFrameCap(value) {
+  const n = Number(value);
+  return FRAME_CAP_OPTIONS.includes(n) ? n : 0;
+}
+
+export function frameCapLabel(value) {
+  const n = normalizeFrameCap(value);
+  return n === 0 ? 'Off' : n + ' fps';
+}
+
+/** Resolve the live cap in fps (0 = uncapped) from a request, the VSync flag, and the display Hz. */
+export function resolveFrameCap({ cap, vsync, displayHz = 60 } = {}) {
+  const requested = normalizeFrameCap(cap);
+  const hz = Number(displayHz) > 0 ? Number(displayHz) : 60;
+  if (!vsync) return requested;       // no sync: the request is the cap (0 = uncapped)
+  if (requested === 0) return hz;     // sync + off: the display refresh is the cap
+  return Math.min(requested, hz);     // a cap never exceeds the display refresh
+}
+
+export function createFrameCap({ vsync = true, displayHz = 60, apply } = {}) {
+  const sink = typeof apply === 'function' ? apply : () => {};
+  let sync = !!vsync;
+  let hz = Number(displayHz) > 0 ? Number(displayHz) : 60;
+  let requested = 0;
+  let effective = resolveFrameCap({ cap: requested, vsync: sync, displayHz: hz });
+  function publish() {
+    effective = resolveFrameCap({ cap: requested, vsync: sync, displayHz: hz });
+    sink(effective);
+    return effective;
+  }
+  return {
+    setCap(cap) { requested = normalizeFrameCap(cap); return publish(); },
+    setVsync(on) { sync = !!on; return publish(); },
+    setDisplayHz(value) { hz = Number(value) > 0 ? Number(value) : 60; return publish(); },
+    getCap() { return requested; },
+    getVsync() { return sync; },
+    getEffectiveCap() { return effective; },
+  };
+}
+
 // Frame-time-driven resolution controller. Smooths frame time (EMA) and backs the internal scale down
 // a step when sustained slower than the down-threshold. Recovery is the tricky part: because browser
 // rAF floors frame times at the display refresh (~16.7 ms on a 60 Hz panel), a GPU with tons of
