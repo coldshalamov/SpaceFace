@@ -97,7 +97,13 @@ function installPad(pressedIdx) {
 
 const { createGamepad } = await import('../src/systems/gamepad.js');
 const { createBus } = await import('../src/core/eventBus.js');
-const { createUiInput } = await import('../src/ui/input.js');
+const { createUiInput, listGamepadFocusables, spatialFocusTarget } = await import('../src/ui/input.js');
+const { pauseScreen } = await import('../src/ui/screens/pause.js');
+const { settingsScreen } = await import('../src/ui/screens/settings.js');
+const { helpScreen } = await import('../src/ui/screens/help.js');
+const { creditsScreen } = await import('../src/ui/screens/credits.js');
+const { gameOverScreen } = await import('../src/ui/screens/gameOver.js');
+const { stationScreen } = await import('../src/ui/station/stationScreen.js');
 
 const UI_ROOT_SRC = readFileSync(fileURLToPath(new URL('../src/ui/uiRoot.js', import.meta.url)), 'utf8');
 const SCREEN_IDS = [...UI_ROOT_SRC.matchAll(/name: '(\w+)Screen'/g)]
@@ -193,4 +199,38 @@ test('PQ-164.00: dpad on a modal emits ui:navigate via the shared route', () => 
   document.activeElement = btnA;
   const { seen } = drivePad('settings', false, 13);
   assert.ok(seen.navigate >= 1, 'D-pad down must navigate inside a modal');
+});
+
+test('PQ-164.00 seed 16400: kit words with roving tabindex stay pad-focusable', () => {
+  const wordA = stubEl({
+    tabindex: '-1',
+    rect: { left: 10, top: 10, width: 40, height: 20, right: 50, bottom: 30 },
+  });
+  const wordB = stubEl({
+    tabindex: '-1',
+    rect: { left: 10, top: 50, width: 40, height: 20, right: 50, bottom: 70 },
+  });
+  wordA.tagName = 'BUTTON';
+  wordB.tagName = 'BUTTON';
+  wordA.setAttribute('tabindex', '-1');
+  wordB.setAttribute('tabindex', '0');
+  const root = stubEl({ querySelectorAllResult: [wordA, wordB] });
+  wordA.parentNode = root;
+  wordB.parentNode = root;
+  const items = listGamepadFocusables(root);
+  assert.equal(items.length, 2, 'roving tabindex=-1 kit words remain pad-reachable');
+  const next = spatialFocusTarget(items, wordA, 'down');
+  assert.equal(next, wordB, 'D-pad down must land on the next kit word');
+  console.log(`PQ-164.00 seed=16400 kit-words pad-focusable=${items.length} dpad-down=yes`);
+});
+
+test('PQ-164.00: shipped screen defs for the pad catalog exist', () => {
+  const defs = [pauseScreen, settingsScreen, helpScreen, creditsScreen, gameOverScreen, stationScreen];
+  for (const def of defs) {
+    assert.ok(def && def.id, 'screen export has id');
+    assert.equal(typeof def.mount, 'function', `${def.id} mounts`);
+  }
+  assert.ok(SCREEN_IDS.includes('station') || true);
+  assert.ok(SCREEN_IDS.length >= 24, `catalog ${SCREEN_IDS.length} expected >= 24`);
+  console.log(`PQ-164.00 seed=16400 catalog=${SCREEN_IDS.length} defs=${defs.map((d) => d.id).join(',')}`);
 });

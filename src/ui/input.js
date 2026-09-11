@@ -59,6 +59,44 @@ export function spatialFocusTarget(items, active, dir) {
   return best;
 }
 
+const PAD_WIDGET_TAG = /^(BUTTON|A|INPUT|SELECT|TEXTAREA)$/;
+
+function isPadWidget(el) {
+  if (!el || !el.tagName) return false;
+  if (PAD_WIDGET_TAG.test(el.tagName)) return true;
+  const role = typeof el.getAttribute === 'function' ? el.getAttribute('role') : null;
+  return role === 'tab' || role === 'button' || role === 'menuitem' || role === 'option' || role === 'link';
+}
+
+function isPadFocusable(el, root) {
+  if (!el) return false;
+  if (el.disabled || el.hidden || el.inert) return false;
+  if (typeof el.getAttribute === 'function') {
+    if (el.getAttribute('aria-hidden') === 'true') return false;
+    if (el.getAttribute('aria-disabled') === 'true') return false;
+  }
+  const tabindex = typeof el.getAttribute === 'function' ? el.getAttribute('tabindex') : null;
+  // Kit words and tablists use roving tabindex: inactive siblings are tabindex=-1 so they stay
+  // out of Tab order. The D-pad is the arrow-key analog, so those widgets stay pad-focusable.
+  if (tabindex != null && Number(tabindex) < 0 && !isPadWidget(el)) return false;
+  let p = el;
+  while (p && p !== root) {
+    if (p.hidden || p.inert) return false;
+    if (p.style && p.style.display === 'none') return false;
+    if (typeof p.getAttribute === 'function' && p.getAttribute('aria-hidden') === 'true') return false;
+    p = p.parentNode;
+  }
+  return true;
+}
+
+/** Visible pad-reachable controls inside a screen root, including roving-tabindex widgets. */
+export function listGamepadFocusables(root) {
+  if (!root || typeof root.querySelectorAll !== 'function') return [];
+  return Array.from(root.querySelectorAll(
+    'button, [href], input, select, textarea, [role="tab"], [role="button"], [role="menuitem"], [tabindex]:not([tabindex="-1"])'
+  )).filter((el) => isPadFocusable(el, root));
+}
+
 export function createUiInput(ctx, screenManager) {
   const { state, bus } = ctx;
   const gp = ctx.gamepad;
@@ -610,7 +648,25 @@ export function createUiInput(ctx, screenManager) {
     noteDevice('kbm');
     if ((ev.ctrlKey || ev.metaKey) && typeof ev.preventDefault === 'function') ev.preventDefault();
     if (isUiInteractionFenced(state) || screenManager.isOpen() || (state.ui && state.ui.docked) || state.mode !== 'flight') return;
+    const tp = ctx.touch;
+    if (tp && typeof tp.ingestTrackpadWheel === 'function' && tp.ingestTrackpadWheel(ev, state)) {
+      if (typeof ev.preventDefault === 'function') ev.preventDefault();
+      noteDevice('touch');
+      return;
+    }
     bus.emit('camera:zoom', { delta: Math.sign(ev.deltaY) * 8 });
+  }
+
+  function onTrackpadPointer(ev) {
+    if (isUiInteractionFenced(state) || screenManager.isOpen() || (state.ui && state.ui.docked) || state.mode !== 'flight') return;
+    const target = ev && ev.target;
+    if (target && typeof target.closest === 'function'
+      && target.closest('button, a, input, textarea, select, [role="dialog"]')) {
+      return;
+    }
+    const tp = ctx.touch;
+    if (!tp || typeof tp.ingestTrackpadPointer !== 'function') return;
+    if (tp.ingestTrackpadPointer(ev, state)) noteDevice('touch');
   }
 
   const blackoutPointerEvents = [
@@ -631,6 +687,10 @@ export function createUiInput(ctx, screenManager) {
     noteDevice(ev && ev.pointerType === 'touch' ? 'touch' : 'kbm');
   };
   document.addEventListener('pointerdown', clearGamepadFocus, true);
+  document.addEventListener('pointerdown', onTrackpadPointer, true);
+  document.addEventListener('pointermove', onTrackpadPointer, true);
+  document.addEventListener('pointerup', onTrackpadPointer, true);
+  document.addEventListener('pointercancel', onTrackpadPointer, true);
 
   // let other modules (uiRoot Undock button) trigger an undock
   unsubscribers.push(bus.on('ui:undock', undock));
@@ -643,27 +703,18 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function focusableInside(root) {
-    if (!root) return [];
-    return Array.from(root.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )).filter((el) => {
-      if (el.disabled) return false;
-      if (el.getAttribute('aria-hidden') === 'true') return false;
-      const t = el.getAttribute('tabindex');
-      if (t != null && Number(t) < 0) return false;
-      let p = el;
-      while (p && p !== root) {
-        if (p.style && p.style.display === 'none') return false;
-        p = p.parentNode;
-      }
-      return true;
-    });
+    return listGamepadFocusables(root);
   }
 
   function activeScreenEl() {
     const screensRoot = document.getElementById('screens');
     if (!screensRoot) return null;
-    for (const el of screensRoot.querySelectorAll('.screen')) {
+    const top = screenManager.top ? screenManager.top() : null;
+    if (top) {
+      const owned = screensRoot.querySelector(`[data-screen="${top}"]`);
+      if (owned && owned.style.display !== 'none') return owned;
+    }
+    for (const el of screensRoot.querySelectorAll('[data-screen]')) {
       if (el.style.display !== 'none') return el;
     }
     return null;
@@ -955,11 +1006,15 @@ export function createUiInput(ctx, screenManager) {
   }
 
   function tick(dt) {
-    // Poll the gamepad whenever the sim is not stepping in flight so menus stay navigable.
-    if (gp && (state.mode !== 'flight' || state.timeScale === 0)) {
+    // Poll the pad whenever a modal owns input, not only when timeScale has already dropped.
+    // A first-frame push can race the pause request; D-pad/A/B still have to land.
+    const modalOpen = !!(screenManager && screenManager.isOpen && screenManager.isOpen());
+    const menusLive = state.mode !== 'flight' || state.timeScale === 0 || modalOpen
+      || !!(state.ui && state.ui.docked);
+    if (gp && menusLive) {
       gp.tick(dt);
     }
-    if (ctx.touch && (state.mode !== 'flight' || state.timeScale === 0)) {
+    if (ctx.touch && menusLive) {
       ctx.touch.tick(dt);
     }
     // PQ-164.01: fold new pad/touch activity edges into the prompt-device order. When both moved
@@ -992,6 +1047,10 @@ export function createUiInput(ctx, screenManager) {
       document.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('wheel', onWheel);
       document.removeEventListener('pointerdown', clearGamepadFocus, true);
+      document.removeEventListener('pointerdown', onTrackpadPointer, true);
+      document.removeEventListener('pointermove', onTrackpadPointer, true);
+      document.removeEventListener('pointerup', onTrackpadPointer, true);
+      document.removeEventListener('pointercancel', onTrackpadPointer, true);
       for (const unsubscribe of unsubscribers.splice(0)) {
         try { unsubscribe(); } catch (_) {}
       }
