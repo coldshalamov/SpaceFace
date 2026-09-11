@@ -42,9 +42,20 @@ export const CameraDirectorMode = Object.freeze({
   FOLLOW: 'FOLLOW',
   FOCUS_PAIR: 'FOCUS_PAIR',
   TETHER_PAIR: 'TETHER_PAIR',
+  // PQ-159.01: taut Massline / twin bridle. Not a combat pair — mining swings and world-to-world
+  // bridles use this so CAMERA-FOCUS-SEPARATION still holds (TETHER_PAIR stays hostile-only).
+  TWO_BODY: 'TWO_BODY',
   GATE_APPROACH: 'GATE_APPROACH',
   RECOVER: 'RECOVER',
 });
+
+export const TWO_BODY_SEED = 15901;
+export const TWIN_BRIDLE_DEF_ID = 'attachment_twin_bridle';
+export const TWIN_BRIDLE_HEAD_ID = 'twin_bridle';
+export const TAUT_LINE_PHASES = Object.freeze(['loaded', 'overload']);
+export const TAUT_LINE_LOAD = 0.5;
+export const TAUT_LINE_RATIO = 0.92;
+export const TWO_BODY_SAFE_NDC = CAMERA_DIRECTOR_SAFE_NDC;
 
 const DEFAULT_FOV = 50;
 const DEFAULT_ASPECT = 16 / 9;
@@ -83,6 +94,171 @@ function entityFor(state, id) {
 
 function entityRadius(entity) {
   return Math.max(0, finiteOr(entity && entity.radius, DEFAULT_RADIUS));
+}
+
+function readBodyXZ(body) {
+  if (!body) return null;
+  if (Number.isFinite(body.x) && Number.isFinite(body.z)) return { x: body.x, z: body.z };
+  const pos = body.pos;
+  if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) return { x: pos.x, z: pos.z };
+  return null;
+}
+
+/** True when the HUD-facing tether mirror is a taut line (loaded/overload, or a high load/ratio). */
+export function isLineTaut(tether) {
+  if (!tether || tether.active === false) return false;
+  const phase = String(tether.phase || '');
+  if (TAUT_LINE_PHASES.includes(phase)) return true;
+  const load = Number(tether.load);
+  if (Number.isFinite(load) && load >= TAUT_LINE_LOAD) return true;
+  const ratio = Number(tether.ratio ?? tether.stretchRatio ?? tether.tautRatio);
+  return Number.isFinite(ratio) && ratio >= TAUT_LINE_RATIO;
+}
+
+function attachmentLooksLikeBridle(attachment) {
+  if (!attachment || attachment.state === 'broken' || attachment.state === 'idle') return false;
+  if (attachment.state && attachment.state !== 'active') return false;
+  const defId = String(attachment.defId || attachment.attachmentDefId || '');
+  const headId = String(attachment.headId || '');
+  return defId === TWIN_BRIDLE_DEF_ID
+    || headId === TWIN_BRIDLE_HEAD_ID
+    || attachment.bridle === true;
+}
+
+/** Twin-bridle world pair (the two chosen bodies). Player is not a third endpoint. */
+export function resolveBridlePair(state) {
+  const attachments = state && state.combat && state.combat.attachments && state.combat.attachments.byId;
+  if (attachments && typeof attachments === 'object') {
+    for (const key in attachments) {
+      if (!Object.prototype.hasOwnProperty.call(attachments, key)) continue;
+      const attachment = attachments[key];
+      if (!attachmentLooksLikeBridle(attachment)) continue;
+      const a = entityFor(state, attachment.ownerId);
+      const b = entityFor(state, attachment.targetId);
+      if (a && b && a !== b) return { a, b, kind: 'bridle', attachmentId: attachment.id || key };
+    }
+  }
+  const tether = state && state.player && state.player.tether;
+  if (tether && tether.active !== false && (
+    tether.bridle === true
+    || tether.headId === TWIN_BRIDLE_HEAD_ID
+    || tether.attachmentId === TWIN_BRIDLE_DEF_ID
+  )) {
+    const player = entityFor(state, state.playerId);
+    const other = entityFor(state, tether.targetId);
+    if (player && other) return { a: player, b: other, kind: 'bridle', attachmentId: tether.attachmentId };
+  }
+  return null;
+}
+
+export function isTautOrBridle(tether, state) {
+  if (state && resolveBridlePair(state)) return true;
+  if (tether && (tether.bridle === true
+    || tether.headId === TWIN_BRIDLE_HEAD_ID
+    || tether.attachmentId === TWIN_BRIDLE_DEF_ID)) {
+    return tether.active !== false;
+  }
+  return isLineTaut(tether);
+}
+
+/** The two bodies a taut line or live bridle should put on the frame diagonal. */
+export function resolveTwoBodyLinePair(state, player) {
+  const bridle = resolveBridlePair(state);
+  if (bridle) return bridle;
+  const tether = state && state.player && state.player.tether;
+  if (!isLineTaut(tether)) return null;
+  const self = player || entityFor(state, state && state.playerId);
+  const other = entityFor(state, tether.targetId);
+  if (!self || !other || self === other) return null;
+  return { a: self, b: other, kind: 'taut', attachmentId: tether.attachmentId || null };
+}
+
+/**
+ * Frame two bodies so the taut line is the frame diagonal: AABB midpoint is the look-at, zoom
+ * fits both radii inside the safe NDC. No-yaw chase camera cannot rotate onto the screen
+ * diagonal, so the bounding box of the segment is the composition. Allocation-free when `out`
+ * is provided.
+ */
+export function frameTwoBodyLine(a, b, view = {}, out = null) {
+  const result = out || {
+    focusX: 0,
+    focusZ: 0,
+    zoom: DEFAULT_ZOOM,
+    requiredZoom: DEFAULT_ZOOM,
+    overflow: false,
+    ax: 0,
+    az: 0,
+    bx: 0,
+    bz: 0,
+  };
+  const pa = readBodyXZ(a);
+  const pb = readBodyXZ(b);
+  if (!pa || !pb) {
+    result.focusX = 0;
+    result.focusZ = 0;
+    result.zoom = DEFAULT_ZOOM;
+    result.requiredZoom = DEFAULT_ZOOM;
+    result.overflow = false;
+    return result;
+  }
+  const ar = Math.max(0, finiteOr(a && a.radius, DEFAULT_RADIUS));
+  const br = Math.max(0, finiteOr(b && b.radius, DEFAULT_RADIUS));
+  const minX = Math.min(pa.x - ar, pb.x - br);
+  const maxX = Math.max(pa.x + ar, pb.x + br);
+  const minZ = Math.min(pa.z - ar, pb.z - br);
+  const maxZ = Math.max(pa.z + ar, pb.z + br);
+  const focusX = (minX + maxX) * 0.5;
+  const focusZ = (minZ + maxZ) * 0.5;
+  const fov = clamp(finiteOr(view.fov, DEFAULT_FOV), 10, 140);
+  const aspect = Math.max(0.25, finiteOr(view.aspect, DEFAULT_ASPECT));
+  const tilt = clamp(finiteOr(view.tiltDeg, DEFAULT_TILT_DEG), 1, 89) * Math.PI / 180;
+  const tanHalfFov = Math.tan(fov * Math.PI / 360);
+  const sinTilt = Math.sin(tilt);
+  const cosTilt = Math.cos(tilt);
+  const safeNdc = Math.max(0.2, finiteOr(view.safeNdc, TWO_BODY_SAFE_NDC));
+  const zoomMax = Math.max(CAMERA_DIRECTOR_MIN_ZOOM, finiteOr(view.zoomMax, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM));
+  const required = Math.max(
+    requiredZoomForLocal(pa.x, pa.z, ar, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, safeNdc),
+    requiredZoomForLocal(pb.x, pb.z, br, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, safeNdc),
+  );
+  result.ax = pa.x;
+  result.az = pa.z;
+  result.bx = pb.x;
+  result.bz = pb.z;
+  result.focusX = focusX;
+  result.focusZ = focusZ;
+  result.requiredZoom = required;
+  result.overflow = required > CAMERA_DIRECTOR_MAX_ZOOM + 1e-9;
+  result.zoom = clamp(required, CAMERA_DIRECTOR_MIN_ZOOM, zoomMax);
+  return result;
+}
+
+/** NDC extent of a body under the chase tilt/FOV used by the director (same contract as pair tests). */
+export function projectBodyNdc(body, frame, view = {}) {
+  const pos = readBodyXZ(body);
+  if (!pos || !frame) return { x: Infinity, y: Infinity, depth: 0 };
+  const fov = clamp(finiteOr(view.fov, DEFAULT_FOV), 10, 140);
+  const aspect = Math.max(0.25, finiteOr(view.aspect, DEFAULT_ASPECT));
+  const tilt = clamp(finiteOr(view.tiltDeg, DEFAULT_TILT_DEG), 1, 89) * Math.PI / 180;
+  const tanHalf = Math.tan(fov * Math.PI / 360);
+  const radius = Math.max(0, finiteOr(body && body.radius, DEFAULT_RADIUS));
+  const dx = pos.x - finiteOr(frame.focusX, 0);
+  const dz = pos.z - finiteOr(frame.focusZ, 0);
+  const zoom = Math.max(1e-3, finiteOr(frame.zoom, DEFAULT_ZOOM));
+  const nearestDepth = zoom - (Math.cos(tilt) * Math.abs(dz) + radius);
+  const depth = Math.max(1e-3, nearestDepth);
+  return {
+    x: (Math.abs(dx) + radius) / (depth * tanHalf * aspect),
+    y: (Math.sin(tilt) * Math.abs(dz) + radius) / (depth * tanHalf),
+    depth: nearestDepth,
+  };
+}
+
+export function bodyInsideDirectorFrame(body, frame, view = {}, limit = 1) {
+  const ndc = projectBodyNdc(body, frame, view);
+  if (!(ndc.depth > 0)) return false;
+  const cap = Math.max(0.2, finiteOr(limit, 1));
+  return ndc.x <= cap + 1e-6 && ndc.y <= cap + 1e-6;
 }
 
 function boundedPredictionOffset(entity, horizonS, out) {
@@ -332,6 +508,20 @@ export function createCameraDirector() {
     playerOffset: { x: 0, z: 0 },
     targetOffset: { x: 0, z: 0 },
   };
+  const twoBodyPose = {
+    focusX: 0,
+    focusZ: 0,
+    zoom: DEFAULT_ZOOM,
+    requiredZoom: DEFAULT_ZOOM,
+    overflow: false,
+    ax: 0,
+    az: 0,
+    bx: 0,
+    bz: 0,
+  };
+  const twoBodyA = { x: 0, z: 0, radius: 0 };
+  const twoBodyB = { x: 0, z: 0, radius: 0 };
+  const twoBodyView = { fov: DEFAULT_FOV, aspect: DEFAULT_ASPECT, tiltDeg: DEFAULT_TILT_DEG, safeNdc: TWO_BODY_SAFE_NDC };
   let initialized = false;
   let transitionStartX = 0;
   let transitionStartZ = 0;
@@ -453,6 +643,7 @@ export function createCameraDirector() {
       let pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
       let trainingFocusPair = false;
       let gateApproach = null;
+      let twoBodyPair = null;
 
       // A HOSTILE Flyby Focus lease no longer takes the camera.
       //
@@ -523,8 +714,23 @@ export function createCameraDirector() {
         pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
       }
 
-      // Gate approach is lower authority than Flyby Focus and combat tether. It is available only
-      // while the flight computer owns a concrete gate entity; manual flight remains pure FOLLOW.
+      // PQ-159.01: a taut line or a live bridle owns TWO_BODY (the line as the frame diagonal).
+      // Lower than combat TETHER_PAIR / training FOCUS_PAIR so CAMERA-FOCUS-SEPARATION holds;
+      // higher than GATE_APPROACH so a swing is not replaced by a scenic gate shot.
+      if (requestedMode === CameraDirectorMode.FOLLOW) {
+        const pair = resolveTwoBodyLinePair(state, player);
+        if (pair && pair.a && pair.b) {
+          twoBodyPair = pair;
+          requestedMode = CameraDirectorMode.TWO_BODY;
+          targetId = pair.b.id != null ? pair.b.id : pair.a.id;
+          target = pair.b;
+          pairSafeNdc = TWO_BODY_SAFE_NDC;
+        }
+      }
+
+      // Gate approach is lower authority than Flyby Focus, combat tether, and taut-line TWO_BODY.
+      // It is available only while the flight computer owns a concrete gate entity; manual flight
+      // remains pure FOLLOW.
       if (requestedMode === CameraDirectorMode.FOLLOW && !focusHoldsAuthority) {
         const activeGateId = output.mode === CameraDirectorMode.GATE_APPROACH ? output.targetId : null;
         gateApproach = resolveGateApproachTarget(state, player, activeGateId);
@@ -617,7 +823,9 @@ export function createCameraDirector() {
       }
 
       if (requestedMode !== CameraDirectorMode.FOLLOW && playerValid) {
-        const wasSamePair = (output.mode === CameraDirectorMode.FOCUS_PAIR || output.mode === CameraDirectorMode.TETHER_PAIR)
+        const wasSamePair = (output.mode === CameraDirectorMode.FOCUS_PAIR
+          || output.mode === CameraDirectorMode.TETHER_PAIR
+          || output.mode === CameraDirectorMode.TWO_BODY)
           && output.targetId === targetId;
         if (!wasSamePair) beginTransition();
 
@@ -627,17 +835,33 @@ export function createCameraDirector() {
         const tanHalfFov = Math.tan(fov * Math.PI / 360);
         const sinTilt = Math.sin(tilt);
         const cosTilt = Math.cos(tilt);
-        const playerRadius = entityRadius(player);
-        const targetRadius = entityRadius(target);
-        globalToFrame(player.pos, frameOrigin, _entityLocalA);
-        globalToFrame(target.pos, frameOrigin, _entityLocalB);
+        const pairA = (requestedMode === CameraDirectorMode.TWO_BODY && twoBodyPair) ? twoBodyPair.a : player;
+        const pairB = (requestedMode === CameraDirectorMode.TWO_BODY && twoBodyPair) ? twoBodyPair.b : target;
+        const pairOnlyZoom = trainingFocusPair || requestedMode === CameraDirectorMode.TWO_BODY;
+        const playerRadius = entityRadius(pairA);
+        const targetRadius = entityRadius(pairB);
+        globalToFrame(pairA.pos, frameOrigin, _entityLocalA);
+        globalToFrame(pairB.pos, frameOrigin, _entityLocalB);
         const pLx = _entityLocalA.x;
         const pLz = _entityLocalA.z;
         const tLx = _entityLocalB.x;
         const tLz = _entityLocalB.z;
-        resolvePairPrediction(state, player, target, pLx, pLz, tLx, tLz, pairPrediction);
+        if (requestedMode === CameraDirectorMode.TWO_BODY) {
+          pairPrediction.horizonS = 0;
+          pairPrediction.playerX = pLx;
+          pairPrediction.playerZ = pLz;
+          pairPrediction.targetX = tLx;
+          pairPrediction.targetZ = tLz;
+          pairPrediction.playerOffset.x = 0;
+          pairPrediction.playerOffset.z = 0;
+          pairPrediction.targetOffset.x = 0;
+          pairPrediction.targetOffset.z = 0;
+        } else {
+          resolvePairPrediction(state, pairA, pairB, pLx, pLz, tLx, tLz, pairPrediction);
+        }
         // Primary composition owns the current exact pair plus a bounded immediate motion corridor.
         // Nearby hostiles can widen zoom, but never pull focus away from this authored pair.
+        // TWO_BODY uses the taut-line helper so the segment itself is the frame diagonal.
         const currentMidX = (
           Math.min(pLx - playerRadius, tLx - targetRadius)
           + Math.max(pLx + playerRadius, tLx + targetRadius)
@@ -646,43 +870,61 @@ export function createCameraDirector() {
           Math.min(pLz - playerRadius, tLz - targetRadius)
           + Math.max(pLz + playerRadius, tLz + targetRadius)
         ) * 0.5;
-        const desiredX = (
-          Math.min(
-            pLx - playerRadius,
-            tLx - targetRadius,
-            pairPrediction.playerX - playerRadius,
-            pairPrediction.targetX - targetRadius,
-          )
-          + Math.max(
-            pLx + playerRadius,
-            tLx + targetRadius,
-            pairPrediction.playerX + playerRadius,
-            pairPrediction.targetX + targetRadius,
-          )
-        ) * 0.5;
-        const desiredZ = (
-          Math.min(
-            pLz - playerRadius,
-            tLz - targetRadius,
-            pairPrediction.playerZ - playerRadius,
-            pairPrediction.targetZ - targetRadius,
-          )
-          + Math.max(
-            pLz + playerRadius,
-            tLz + targetRadius,
-            pairPrediction.playerZ + playerRadius,
-            pairPrediction.targetZ + targetRadius,
-          )
-        ) * 0.5;
-        const desiredRequired = trainingFocusPair
-          ? requiredPairZoom(
-            player, target, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
-            pairPrediction,
-          )
-          : requiredCombatZoom(
-            state, player, target, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
-            pairPrediction,
-          );
+        let desiredX;
+        let desiredZ;
+        let twoBodyRequired = 0;
+        if (requestedMode === CameraDirectorMode.TWO_BODY) {
+          twoBodyA.x = pLx; twoBodyA.z = pLz; twoBodyA.radius = playerRadius;
+          twoBodyB.x = tLx; twoBodyB.z = tLz; twoBodyB.radius = targetRadius;
+          twoBodyView.fov = fov;
+          twoBodyView.aspect = aspect;
+          twoBodyView.tiltDeg = finiteOr(view.tiltDeg, DEFAULT_TILT_DEG);
+          twoBodyView.safeNdc = pairSafeNdc;
+          const pose = frameTwoBodyLine(twoBodyA, twoBodyB, twoBodyView, twoBodyPose);
+          desiredX = pose.focusX;
+          desiredZ = pose.focusZ;
+          twoBodyRequired = pose.requiredZoom;
+        } else {
+          desiredX = (
+            Math.min(
+              pLx - playerRadius,
+              tLx - targetRadius,
+              pairPrediction.playerX - playerRadius,
+              pairPrediction.targetX - targetRadius,
+            )
+            + Math.max(
+              pLx + playerRadius,
+              tLx + targetRadius,
+              pairPrediction.playerX + playerRadius,
+              pairPrediction.targetX + targetRadius,
+            )
+          ) * 0.5;
+          desiredZ = (
+            Math.min(
+              pLz - playerRadius,
+              tLz - targetRadius,
+              pairPrediction.playerZ - playerRadius,
+              pairPrediction.targetZ - targetRadius,
+            )
+            + Math.max(
+              pLz + playerRadius,
+              tLz + targetRadius,
+              pairPrediction.playerZ + playerRadius,
+              pairPrediction.targetZ + targetRadius,
+            )
+          ) * 0.5;
+        }
+        const desiredRequired = requestedMode === CameraDirectorMode.TWO_BODY
+          ? twoBodyRequired
+          : pairOnlyZoom
+            ? requiredPairZoom(
+              pairA, pairB, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+              pairPrediction,
+            )
+            : requiredCombatZoom(
+              state, pairA, pairB, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+              pairPrediction,
+            );
         const pairZoomMax = CAMERA_DIRECTOR_ENGINE_MAX_ZOOM;
         // Overflow describes the best authored pair pose, not the transient pose during its ease.
         // Publish it immediately so a 245-wu requirement can never masquerade as a successful
@@ -708,13 +950,13 @@ export function createCameraDirector() {
           candidateZoom = output.zoom + (clamp(desiredRequired, CAMERA_DIRECTOR_MIN_ZOOM, pairZoomMax) - output.zoom) * followAlpha;
         }
 
-        let required = trainingFocusPair
+        let required = pairOnlyZoom
           ? requiredPairZoom(
-            player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+            pairA, pairB, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
             pairPrediction,
           )
           : requiredCombatZoom(
-            state, player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+            state, pairA, pairB, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
             pairPrediction,
           );
         // Do not move the focus ahead of the authored 0.35-second composition ease just to make an
@@ -729,13 +971,13 @@ export function createCameraDirector() {
             const mid = (lo + hi) * 0.5;
             const probeX = startX + (desiredX - startX) * mid;
             const probeZ = startZ + (desiredZ - startZ) * mid;
-            const probeRequired = trainingFocusPair
+            const probeRequired = pairOnlyZoom
               ? requiredPairZoom(
-                player, target, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+                pairA, pairB, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
                 pairPrediction,
               )
               : requiredCombatZoom(
-                state, player, target, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+                state, pairA, pairB, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
                 pairPrediction,
               );
             if (probeRequired <= pairZoomMax) hi = mid;
@@ -743,13 +985,13 @@ export function createCameraDirector() {
           }
           candidateX = startX + (desiredX - startX) * hi;
           candidateZ = startZ + (desiredZ - startZ) * hi;
-          required = trainingFocusPair
+          required = pairOnlyZoom
             ? requiredPairZoom(
-              player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+              pairA, pairB, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
               pairPrediction,
             )
             : requiredCombatZoom(
-              state, player, target, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
+              state, pairA, pairB, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
               pairPrediction,
             );
         }
@@ -782,6 +1024,7 @@ export function createCameraDirector() {
 
       const leavingPair = output.mode === CameraDirectorMode.FOCUS_PAIR
         || output.mode === CameraDirectorMode.TETHER_PAIR
+        || output.mode === CameraDirectorMode.TWO_BODY
         || output.mode === CameraDirectorMode.GATE_APPROACH;
       if (leavingPair) beginTransition();
       if (leavingPair || output.mode === CameraDirectorMode.RECOVER) {

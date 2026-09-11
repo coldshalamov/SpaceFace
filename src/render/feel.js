@@ -174,15 +174,71 @@ const HS_CAPITAL_KILL = 0.80; // s — capital-kill hit-stop window (≤ 800 ms,
 const HS_DEATH = 0.90;        // s — dip duration for the player dying (the biggest beat)
 const HS_RAMP_TIME = 0.25;    // s — cinematic ease-IN for the death dip (1 -> floor over this window)
 const HS_DEPTH = 0.12;        // timeScale floor during a normal dip
-// Rated-moment feel (PQ-146.03). A `moment:holyShit` bus event carries the rated score; the
-// feel layer answers with a brief hit-stop kiss (which min-wins with the moment slow-mo pulse
-// owned by bulletTime), a score-scaled FOV punch and a fixed trauma kick. Never score text:
-// adventure HUD stays quiet (the HUD attention pass stands); tricks go to ledger/titles.
-const MOMENT_FEEL_HS = 0.06;      // s — hit-stop kiss on a rated moment
+// Rated-moment feel (PQ-146.03 + PQ-159.02). A `moment:holyShit` bus event is the moment
+// detector's output (bulletTime rates `stunt:trickDetected`). The beat is a 150 ms time dip,
+// a camera hold, and a stinger — never a raw collision. Min-wins with bulletTime's longer
+// `moment:slow-mo` pulse via timeEffects. Never score text: adventure HUD stays quiet.
+export const BEAT_SEED = 15902;
+export const BEAT_DIP_MS = 150;
+export const BEAT_DIP_S = BEAT_DIP_MS / 1000;
+export const BEAT_HOLD_S = BEAT_DIP_S;
+export const BEAT_STINGER = 'moment.stinger';
+export const BEAT_TIME_SOURCE = 'feel:hit-stop';
+export const BEAT_SCALE = 0.12;
+export const MOMENT_DETECTOR_EVENT = 'moment:holyShit';
+const MOMENT_FEEL_HS = BEAT_DIP_S; // 150 ms beat (was a 60 ms kiss)
 const MOMENT_FOV_BASE = 2.5;      // deg — FOV punch base for a threshold moment
 const MOMENT_FOV_PER_SCORE = 0.15;// deg per rated score point above threshold
 const MOMENT_FOV_MAX = 6.0;       // deg — moment FOV ceiling (below the 7° death punch)
 const MOMENT_TRAUMA = 0.25;       // camera trauma kick on a rated moment
+
+export function isMomentDetectorEvent(eventName) {
+  return String(eventName || '') === MOMENT_DETECTOR_EVENT;
+}
+
+/** Pure: the 150 ms beat fires only on the moment detector. Collisions and unrated tricks return null. */
+export function resolveMomentBeat(eventName, payload = {}, context = {}) {
+  if (!isMomentDetectorEvent(eventName)) return null;
+  if (context.motionReduce) return null;
+  if (context.mode && context.mode !== 'flight') return null;
+  const score = Number.isFinite(Number(payload && payload.score)) ? Number(payload.score) : 0;
+  const fov = Math.min(MOMENT_FOV_MAX, MOMENT_FOV_BASE + Math.max(0, score) * MOMENT_FOV_PER_SCORE);
+  return Object.freeze({
+    dipMs: BEAT_DIP_MS,
+    dipS: BEAT_DIP_S,
+    holdS: BEAT_HOLD_S,
+    scale: BEAT_SCALE,
+    stinger: BEAT_STINGER,
+    source: BEAT_TIME_SOURCE,
+    fov,
+    trauma: MOMENT_TRAUMA,
+    death: false,
+  });
+}
+
+export function applyMomentBeat(host, beat) {
+  if (!host || !beat) return false;
+  const timeEffects = host.timeEffects;
+  if (timeEffects && typeof timeEffects.set === 'function') {
+    if (!host._hsRequest) host._hsRequest = { scale: beat.scale };
+    else host._hsRequest.scale = beat.scale;
+    timeEffects.set(beat.source || BEAT_TIME_SOURCE, host._hsRequest);
+  }
+  if (typeof host._hsTimer === 'number' || host._hsTimer === 0) {
+    if (!(host._hsTimer > beat.dipS)) {
+      host._hsTimer = beat.dipS;
+      host._hsRampIn = 0;
+      host._hsFreezeTimer = 0;
+    }
+  }
+  const ctrl = host.state && host.state.render && host.state.render.cameraCtrl;
+  if (ctrl && typeof ctrl.hold === 'function') ctrl.hold(beat.holdS);
+  const bus = host.bus;
+  if (bus && typeof bus.emit === 'function' && beat.stinger) {
+    bus.emit('audio:cue', { id: beat.stinger, importance: 0.9 });
+  }
+  return true;
+}
 const FOV_PUNCH_HEAVY = 2.2;   // deg additive on heavy hit
 const FOV_PUNCH_KILL  = 4.0;   // deg additive on kill
 const FOV_PUNCH_DEATH = 7.0;   // deg additive on player death
@@ -857,9 +913,12 @@ export const feel = {
       this.bus.emit('camera:kill', {});
     });
 
-    // Player death is the single biggest beat in the game — long dip, big FOV punch, red wash.
+    // Player death is the single biggest beat in the game — long dip, big FOV punch, red wash,
+    // and a death cam (PQ-159.02) so the wreck is a picture, not a cut.
     bus.on('player:death', () => {
       this._trigger(HS_DEATH, FOV_PUNCH_DEATH, VIG_DEATH, 'death');
+      const ctrl = this.state && this.state.render && this.state.render.cameraCtrl;
+      if (ctrl && typeof ctrl.deathCam === 'function') ctrl.deathCam();
     });
 
     // Weapon recoil on the player's own shots. Firing currently produces VFX + audio but ZERO camera
@@ -1168,15 +1227,15 @@ export const feel = {
     if (!p) return;
     if (this.state.mode !== 'flight' || !this._modalClear()) return;
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
-    if (mr) return;
-    const score = Number.isFinite(Number(p.score)) ? Number(p.score) : 0;
-    const fov = Math.min(
-      MOMENT_FOV_MAX,
-      MOMENT_FOV_BASE + Math.max(0, score) * MOMENT_FOV_PER_SCORE,
-    );
-    this._trigger(MOMENT_FEEL_HS, fov, 0, null);
+    const beat = resolveMomentBeat(MOMENT_DETECTOR_EVENT, p, {
+      motionReduce: !!mr,
+      mode: this.state.mode,
+    });
+    if (!beat) return;
+    this._trigger(beat.dipS, beat.fov, 0, null);
+    applyMomentBeat(this, beat);
     const ctrl = this.state.render && this.state.render.cameraCtrl;
-    if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(MOMENT_TRAUMA);
+    if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(beat.trauma);
   },
 
   _applyMasslineFeelPunch(event, raw) {

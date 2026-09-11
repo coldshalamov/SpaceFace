@@ -73,6 +73,17 @@ const MAX_MOMENTUM_TRAUMA = 0.5;
 export const IMPACT_KICK_RISE_WU_S = 110;   // applied offset rate limit; a max kick peaks in ~2 frames
 export const IMPACT_KICK_DECAY_PER_S = 7.5; // envelope decay once the applied offset has caught it
 export const IMPACT_KICK_WU_MAX = 4;        // absolute displacement ceiling, world units
+// PQ-159.02 camera hold / death cam. Presentation-only: follow pose freezes, sim state is untouched.
+export const CAMERA_HOLD_S = 0.15;
+export const DEATH_CAM_HOLD_S = 1.2;
+export const DEATH_CAM_PUSH_ZOOM = 0.22;
+// PQ-159.03 photo mode. Free camera + exposure live on the chase controller; filters stay off
+// unless the player turns them on. Capture lives on the pause surface.
+export const PHOTO_EXPOSURE_DEFAULT = 1;
+export const PHOTO_EXPOSURE_MIN = 0.35;
+export const PHOTO_EXPOSURE_MAX = 2.2;
+export const PHOTO_FILTERS_DEFAULT = false;
+export const PHOTO_PAN_SPEED_WU_S = 90;
 const _KICK_AXES = Object.freeze([
   Object.freeze({ env: 'envX', app: 'x' }),
   Object.freeze({ env: 'envZ', app: 'z' }),
@@ -104,6 +115,110 @@ export function stepCameraKick(kick, dt) {
   }
   return kick;
 }
+
+export function isPhotoModeActive(state) {
+  return !!(state && state.render && state.render.photoMode && state.render.photoMode.active);
+}
+
+export function createPhotoModeState(state, overrides = {}) {
+  const cam = state && state.camera;
+  const focus = cam && cam.focus;
+  const exposure = Number.isFinite(overrides.exposure)
+    ? Math.max(PHOTO_EXPOSURE_MIN, Math.min(PHOTO_EXPOSURE_MAX, overrides.exposure))
+    : PHOTO_EXPOSURE_DEFAULT;
+  return {
+    active: true,
+    hideHud: true,
+    freeCamera: overrides.freeCamera !== false,
+    filters: overrides.filters === true,
+    exposure,
+    focusX: focus && Number.isFinite(focus.x) ? focus.x : finiteOr(overrides.focusX, 0),
+    focusZ: focus && Number.isFinite(focus.z) ? focus.z : finiteOr(overrides.focusZ, 0),
+    zoom: finiteOr(overrides.zoom, finiteOr(cam && cam.zoom, DEFAULT_ZOOM)),
+    inputX: 0,
+    inputZ: 0,
+    zoomInput: 0,
+    panSpeed: PHOTO_PAN_SPEED_WU_S,
+  };
+}
+
+export function applyPhotoPresentation(state, photo) {
+  if (!state) return photo || null;
+  if (!state.render) state.render = {};
+  const next = photo || createPhotoModeState(state);
+  next.active = true;
+  next.hideHud = true;
+  next.freeCamera = next.freeCamera !== false;
+  next.filters = next.filters === true;
+  if (!Number.isFinite(next.exposure)) next.exposure = PHOTO_EXPOSURE_DEFAULT;
+  state.render.photoMode = next;
+  const video = state.settings && (state.settings.video || (state.settings.video = {}));
+  if (video) {
+    if (!next._prevVideo) {
+      next._prevVideo = {
+        bloom: video.bloom,
+        exposure: video.exposure,
+        grade: video.grade,
+        vignette: video.vignette,
+        grain: video.grain,
+      };
+    }
+    video.bloom = next.filters === true;
+    video.exposure = next.exposure;
+    if (next.filters !== true) {
+      video.grade = 0;
+      video.vignette = 0;
+      video.grain = 0;
+    }
+  }
+  return next;
+}
+
+export function restorePhotoPresentation(state) {
+  const photo = state && state.render && state.render.photoMode;
+  const video = state && state.settings && state.settings.video;
+  if (photo && photo._prevVideo && video) {
+    const prev = photo._prevVideo;
+    video.bloom = prev.bloom;
+    if (prev.exposure !== undefined) video.exposure = prev.exposure;
+    else delete video.exposure;
+    if (prev.grade !== undefined) video.grade = prev.grade;
+    else delete video.grade;
+    if (prev.vignette !== undefined) video.vignette = prev.vignette;
+    else delete video.vignette;
+    if (prev.grain !== undefined) video.grain = prev.grain;
+    else delete video.grain;
+  }
+  if (state && state.render) {
+    state.render.photoMode = { active: false, hideHud: false, freeCamera: false, filters: PHOTO_FILTERS_DEFAULT };
+  }
+  return state && state.render && state.render.photoMode;
+}
+
+export function stepPhotoFreeCamera(photo, input, dt) {
+  if (!photo) return photo;
+  const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+  const speed = finiteOr(photo.panSpeed, PHOTO_PAN_SPEED_WU_S);
+  let ax = finiteOr(photo.inputX, 0);
+  let az = finiteOr(photo.inputZ, 0);
+  if (input && input.axes) {
+    ax += finiteOr(input.axes.x, 0);
+    az += finiteOr(input.axes.z, finiteOr(input.axes.y, 0));
+  }
+  photo.focusX = finiteOr(photo.focusX, 0) + ax * speed * step;
+  photo.focusZ = finiteOr(photo.focusZ, 0) + az * speed * step;
+  const zoomDelta = finiteOr(photo.zoomInput, 0);
+  photo.zoom = Math.max(
+    CAMERA_ZOOM_MIN,
+    Math.min(CAMERA_ZOOM_MAX, finiteOr(photo.zoom, DEFAULT_ZOOM) + zoomDelta * 110 * step),
+  );
+  photo.zoomInput = 0;
+  if (Number.isFinite(photo.exposure)) {
+    photo.exposure = Math.max(PHOTO_EXPOSURE_MIN, Math.min(PHOTO_EXPOSURE_MAX, photo.exposure));
+  }
+  return photo;
+}
+
 export const CAMERA_ZOOM_MIN = 45;
 export const CAMERA_ZOOM_MAX = 330; // 50% more manual zoom-out than the previous 220 wu ceiling.
 export const SPEED_ZOOM_SAMPLE_INTERVAL = 0.125; // seconds — 8 Hz target updates, smoothed per-frame.
@@ -749,6 +864,8 @@ export function createChaseCamera(state) {
   // U13 sticky composed-threat bag — keeps dense furball bias from thrashing every frame.
   const _compositionSticky = { id: null, remainS: 0, wasActive: false };
   const cameraDirector = createCameraDirector();
+  let _holdT = 0;
+  let _deathCam = false;
   let _directorFrame = cameraDirector.output;
   const _directorView = {
     followX: 0,
@@ -876,6 +993,22 @@ export function createChaseCamera(state) {
       // Kill-cam "kiss" (spec2/02 §2): tighten to 0.96x for 250 ms on player kill only.
       this.pushZoom(-0.04, 0.25);
     },
+    // PQ-159.02: freeze chase composition for `durationS` so a rated moment reads. Reduce-motion
+    // skips the hold (same vestibular gate as the kick).
+    hold(durationS) {
+      if (isMotionReduced(state)) return;
+      const d = Math.max(0, finiteOr(durationS, CAMERA_HOLD_S));
+      if (d > _holdT) _holdT = d;
+    },
+    holdRemaining() { return _holdT; },
+    // PQ-159.02 death cam: hold the wreck and ease out so the kill is a picture, not a cut.
+    deathCam() {
+      if (isMotionReduced(state)) return;
+      _deathCam = true;
+      this.hold(DEATH_CAM_HOLD_S);
+      this.pushZoom(DEATH_CAM_PUSH_ZOOM, DEATH_CAM_HOLD_S);
+    },
+    isDeathCam() { return _deathCam; },
     // FR-5: ease the camera back to a player-centered pose over durS after a boost-release or a
     // tether slingshot, instead of letting the sudden velocity change snap the lookahead. Respects
     // motionReduce (shortened). Cruise-drop settle stays owned by its own spec2/02 §1 path.
@@ -886,6 +1019,27 @@ export function createChaseCamera(state) {
     },
     follow(dt) {
       const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 1 / 15) : 0;
+      const photo = state.render && state.render.photoMode;
+      if (photo && photo.active && photo.freeCamera !== false) {
+        stepPhotoFreeCamera(photo, state.input, frameDt);
+        c.focus.x = finiteOr(photo.focusX, finiteOr(c.focus.x, 0));
+        c.focus.z = finiteOr(photo.focusZ, finiteOr(c.focus.z, 0));
+        _dynamicZoom = Math.max(CAMERA_ZOOM_MIN, Math.min(CAMERA_ZOOM_MAX, finiteOr(photo.zoom, _dynamicZoom)));
+        computeOffset(_dynamicZoom);
+        const renderer = state.render && state.render.renderer;
+        if (renderer && Number.isFinite(photo.exposure)) {
+          renderer.toneMappingExposure = photo.exposure;
+        }
+        cam.position.set(c.focus.x + offset.x, offset.y, c.focus.z + offset.z);
+        cam.lookAt(c.focus.x, 0, c.focus.z);
+        if (_directorFrame) {
+          _directorFrame.mode = CameraDirectorMode.FOLLOW;
+          _directorFrame.focusX = c.focus.x;
+          _directorFrame.focusZ = c.focus.z;
+          _directorFrame.zoom = _dynamicZoom;
+        }
+        return;
+      }
       const p = readPlayerEntity(state);
       let fx = finiteOr(c.focus.x, 0), fz = finiteOr(c.focus.z, 0);
       let bankForLean = 0;
@@ -1021,10 +1175,16 @@ export function createChaseCamera(state) {
         // counter-lean uses the ship's bank (already smoothed); fraction tuned for chase readability
         bankForLean = (Number.isFinite(p.bank) ? p.bank : 0) * 0.068;
       }
+      const holding = _holdT > 0;
+      if (holding) {
+        _holdT = Math.max(0, _holdT - frameDt);
+        fx = finiteOr(c.focus.x, fx);
+        fz = finiteOr(c.focus.z, fz);
+      }
       const followLerp = finiteOr(c.lerp, 6);
       fx = finiteOr(fx, finiteOr(c.focus.x, 0));
       fz = finiteOr(fz, finiteOr(c.focus.z, 0));
-      if (directorOwnsComposition) {
+      if (holding || directorOwnsComposition) {
         c.focus.x = fx;
         c.focus.z = fz;
       } else {
@@ -1102,8 +1262,11 @@ export function createChaseCamera(state) {
           if (Math.abs(_pushZoom) < 0.0001) _pushZoom = 0;
         }
       }
-      if (directorOwnsComposition) {
+      if (holding && !_deathCam) {
+        // PQ-159.02 camera hold: freeze distance as well as look-at.
+      } else if (directorOwnsComposition) {
         _dynamicZoom = _directorFrame.zoom;
+        if (_deathCam && Math.abs(_pushZoom) > 0.0001) _dynamicZoom *= (1 + _pushZoom);
       } else {
         let nextZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
         // When minZoom is demanding more distance than the ease would open this frame, step toward

@@ -20,10 +20,25 @@ import { CREDITS } from '../../data/credits.js';
 import { leftoverVersionLabel, paintLeftoverVersion } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { openReplay, REPLAY_LABEL } from './replay.js';
+import { openClips, CLIPS_LABEL } from './clips.js';
+import {
+  PHOTO_EXPOSURE_DEFAULT,
+  PHOTO_EXPOSURE_MAX,
+  PHOTO_EXPOSURE_MIN,
+  PHOTO_FILTERS_DEFAULT,
+  applyPhotoPresentation,
+  createPhotoModeState,
+  restorePhotoPresentation,
+  isPhotoModeActive,
+} from '../../render/camera.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 /** The photo-mode hint fades after this long (Task B §1.7: two seconds). */
 const PHOTO_HINT_MS = 2000;
+export const PHOTO_LABEL = 'Photo';
+export const PHOTO_CAPTURE_LABEL = 'Capture';
+export const PHOTO_STORE_KIND = 'store';
+export { isPhotoModeActive, PHOTO_FILTERS_DEFAULT, PHOTO_EXPOSURE_DEFAULT };
 
 /** Find the screen manager regardless of where uiRoot exposed it. Screens navigate
  *  by asking the manager to push/pop/replace; if it is not reachable we degrade to
@@ -306,24 +321,178 @@ function renderFlightBrief(ctx) {
   els.briefSave.textContent = lines.save;
 }
 
-/* ---------- photo mode (Task B §1.7, sheet moment 12) ---------- */
+/* ---------- photo mode (Task B §1.7, sheet moment 12, PQ-159.03) ---------- */
 
 let photo = null;
 
 function photoHintText() {
   // No photo/pause binding is registered in bindings.js; Esc is the modal-close key uiInput owns.
-  return 'Esc to return';
+  return 'Esc to return · WASD pan · wheel zoom · Capture for the store page';
 }
 
-/** Enter photo mode: the pause root goes invisible, body.k-photo hides the HUD (kit.css), one fine
- *  hint fades out after two seconds. The screen stack — and so the sim pause — is untouched. */
+export function photoCaptureFilename(kind = PHOTO_STORE_KIND, now = new Date()) {
+  const stamp = now && typeof now.toISOString === 'function'
+    ? now.toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    : 'shot';
+  return 'spaceface-' + (kind || PHOTO_STORE_KIND) + '-' + stamp + '.png';
+}
+
+export function photoModeFlags(overrides = {}) {
+  return {
+    active: true,
+    hideHud: true,
+    freeCamera: overrides.freeCamera !== false,
+    filters: overrides.filters === true ? true : PHOTO_FILTERS_DEFAULT,
+    exposure: Number.isFinite(overrides.exposure) ? overrides.exposure : PHOTO_EXPOSURE_DEFAULT,
+    kind: overrides.kind || PHOTO_STORE_KIND,
+  };
+}
+
+export function enterPhotoMode(state, overrides = {}) {
+  const flags = photoModeFlags(overrides);
+  const photoState = createPhotoModeState(state, flags);
+  applyPhotoPresentation(state, photoState);
+  if (state && state.bus && typeof state.bus.emit === 'function') {
+    state.bus.emit('settings:changed', { section: 'video', key: 'exposure', source: 'photo' });
+  }
+  return photoState;
+}
+
+export function exitPhotoMode(state) {
+  restorePhotoPresentation(state);
+  if (state && state.bus && typeof state.bus.emit === 'function') {
+    state.bus.emit('settings:changed', { section: 'video', key: 'exposure', source: 'photo-exit' });
+  }
+  return state && state.render && state.render.photoMode;
+}
+
+export function capturePhotoPng(source, opts = {}) {
+  if (!source || typeof source.toDataURL !== 'function') {
+    return { ok: false, reason: 'no-canvas', mime: 'image/png', filename: photoCaptureFilename(opts.kind) };
+  }
+  let dataUrl;
+  try {
+    dataUrl = source.toDataURL('image/png');
+  } catch {
+    return { ok: false, reason: 'capture-failed', mime: 'image/png', filename: photoCaptureFilename(opts.kind) };
+  }
+  if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:image/png') !== 0) {
+    return { ok: false, reason: 'not-png', mime: 'image/png', filename: photoCaptureFilename(opts.kind) };
+  }
+  return {
+    ok: true,
+    mime: 'image/png',
+    dataUrl,
+    filename: photoCaptureFilename(opts.kind || PHOTO_STORE_KIND),
+    kind: opts.kind || PHOTO_STORE_KIND,
+  };
+}
+
+export function writePhotoCapture(capture, host = globalThis) {
+  if (!capture || capture.ok === false || !capture.dataUrl) {
+    return { ok: false, reason: (capture && capture.reason) || 'no-image' };
+  }
+  const electron = host && (host.sfDesktop || host.electronAPI || host.spaceface);
+  if (electron && typeof electron.savePhoto === 'function') {
+    const result = electron.savePhoto({ filename: capture.filename, dataUrl: capture.dataUrl });
+    return { ok: true, via: 'electron', filename: capture.filename, result };
+  }
+  const doc = host && host.document;
+  if (doc && typeof doc.createElement === 'function') {
+    const a = doc.createElement('a');
+    a.href = capture.dataUrl;
+    a.download = capture.filename;
+    a.rel = 'noopener';
+    if (typeof a.click === 'function') a.click();
+    else if (doc.body && typeof doc.body.appendChild === 'function') {
+      doc.body.appendChild(a);
+      if (typeof a.click === 'function') a.click();
+      if (a.remove) a.remove();
+    }
+    return { ok: true, via: 'download', filename: capture.filename };
+  }
+  return { ok: false, reason: 'no-host', filename: capture.filename };
+}
+
+function resolvePhotoCanvas(ctx) {
+  const state = ctx && ctx.state;
+  const renderer = state && state.render && state.render.renderer;
+  if (renderer && renderer.domElement) return renderer.domElement;
+  const doc = globalThis.document;
+  if (doc && typeof doc.querySelector === 'function') {
+    return doc.querySelector('canvas');
+  }
+  return null;
+}
+
+function syncPhotoExposure(ctx, value) {
+  const state = ctx && ctx.state;
+  const photoState = state && state.render && state.render.photoMode;
+  if (!photoState || !photoState.active) return;
+  const next = Math.max(PHOTO_EXPOSURE_MIN, Math.min(PHOTO_EXPOSURE_MAX, Number(value)));
+  if (!Number.isFinite(next)) return;
+  photoState.exposure = next;
+  applyPhotoPresentation(state, photoState);
+  if (ctx.bus && typeof ctx.bus.emit === 'function') {
+    ctx.bus.emit('settings:changed', { section: 'video', key: 'exposure', source: 'photo' });
+  }
+}
+
+function runPhotoCapture(ctx) {
+  const capture = capturePhotoPng(resolvePhotoCanvas(ctx), { kind: PHOTO_STORE_KIND });
+  return writePhotoCapture(capture, globalThis);
+}
+
+function bindPhotoKeys(photoState) {
+  return (ev) => {
+    if (!photo || !photoState) return;
+    const key = ev.key;
+    if (key === 'Escape') return; // owned by onKey
+    const down = ev.type === 'keydown';
+    const pressed = down ? 1 : 0;
+    if (key === 'w' || key === 'W' || key === 'ArrowUp') photoState.inputZ = down ? -pressed : (photoState.inputZ < 0 ? 0 : photoState.inputZ);
+    else if (key === 's' || key === 'S' || key === 'ArrowDown') photoState.inputZ = down ? pressed : (photoState.inputZ > 0 ? 0 : photoState.inputZ);
+    else if (key === 'a' || key === 'A' || key === 'ArrowLeft') photoState.inputX = down ? -pressed : (photoState.inputX < 0 ? 0 : photoState.inputX);
+    else if (key === 'd' || key === 'D' || key === 'ArrowRight') photoState.inputX = down ? pressed : (photoState.inputX > 0 ? 0 : photoState.inputX);
+    else if (down && (key === '+' || key === '=')) photoState.zoomInput = -1;
+    else if (down && (key === '-' || key === '_')) photoState.zoomInput = 1;
+    else if (down && (key === 'c' || key === 'C' || key === 'Enter')) {
+      ev.preventDefault();
+      runPhotoCapture(photo.ctx);
+    }
+  };
+}
+
+/** Enter photo mode: the pause root goes invisible, body.k-photo hides the HUD (kit.css), free
+ *  camera + exposure + capture for store assets. The screen stack — and so the sim pause — is
+ *  untouched. Filters stay off by default. */
 function enterPhoto(rootEl, ctx) {
   if (photo) return;
+  const state = ctx && ctx.state;
+  const photoState = enterPhotoMode(state);
+  if (state && !state.bus && ctx.bus) state.bus = ctx.bus;
+  const host = rootEl.parentElement || document.body;
   const hint = el('p', 'k-fine sf-photo-hint', photoHintText());
   hint.setAttribute('role', 'status');
-  // Inside #screens (z-index 100, the pause root's parent) so the hint paints over the world canvas;
-  // a body child at z-auto would sit under it.
-  (rootEl.parentElement || document.body).appendChild(hint);
+  const bar = el('div', 'sf-photo-bar');
+  bar.setAttribute('role', 'region');
+  bar.setAttribute('aria-label', 'Photo mode');
+  const exposure = document.createElement('input');
+  exposure.type = 'range';
+  exposure.min = String(PHOTO_EXPOSURE_MIN);
+  exposure.max = String(PHOTO_EXPOSURE_MAX);
+  exposure.step = '0.05';
+  exposure.value = String(PHOTO_EXPOSURE_DEFAULT);
+  exposure.setAttribute('aria-label', 'Exposure');
+  exposure.addEventListener('input', () => syncPhotoExposure(ctx, exposure.value));
+  const captureBtn = el('button', 'k-word k-word--fine', PHOTO_CAPTURE_LABEL);
+  captureBtn.type = 'button';
+  captureBtn.addEventListener('click', () => runPhotoCapture(ctx));
+  bar.appendChild(el('span', 'k-fine', 'Exposure'));
+  bar.appendChild(exposure);
+  bar.appendChild(captureBtn);
+  host.appendChild(hint);
+  host.appendChild(bar);
   settle(hint, { from: 'bottom', state: 'photo-hint' });
   const onKey = (ev) => {
     if (ev.key !== 'Escape') return;
@@ -331,14 +500,22 @@ function enterPhoto(rootEl, ctx) {
     ev.stopImmediatePropagation();
     exitPhoto(rootEl, ctx);
   };
+  const onMove = bindPhotoKeys(photoState);
+  const onWheel = (ev) => {
+    if (!photoState) return;
+    photoState.zoomInput = ev.deltaY > 0 ? 1 : -1;
+  };
   // Capture phase on window: runs ahead of uiInput's document-level handler, which would otherwise
   // pop the pause screen (and unpause the sim) on the same Esc.
   window.addEventListener('keydown', onKey, true);
+  window.addEventListener('keydown', onMove, true);
+  window.addEventListener('keyup', onMove, true);
+  window.addEventListener('wheel', onWheel, { passive: true });
   const fade = setTimeout(() => { if (photo && photo.hint === hint) hint.classList.add('k-out'); }, PHOTO_HINT_MS);
   document.body.classList.add('k-photo');
   rootEl.style.visibility = 'hidden';
   rootEl.setAttribute('aria-hidden', 'true');
-  photo = { hint, onKey, fade, rootEl };
+  photo = { hint, bar, onKey, onMove, onWheel, fade, rootEl, ctx, exposure };
   cue('open');
 }
 
@@ -346,11 +523,18 @@ function exitPhoto(rootEl, ctx) {
   if (!photo) return;
   clearTimeout(photo.fade);
   window.removeEventListener('keydown', photo.onKey, true);
+  if (photo.onMove) {
+    window.removeEventListener('keydown', photo.onMove, true);
+    window.removeEventListener('keyup', photo.onMove, true);
+  }
+  if (photo.onWheel) window.removeEventListener('wheel', photo.onWheel);
   if (photo.hint && photo.hint.parentNode) photo.hint.parentNode.removeChild(photo.hint);
+  if (photo.bar && photo.bar.parentNode) photo.bar.parentNode.removeChild(photo.bar);
   document.body.classList.remove('k-photo');
   const root = photo.rootEl || rootEl;
   root.style.removeProperty('visibility');
   root.removeAttribute('aria-hidden');
+  exitPhotoMode(ctx && ctx.state);
   photo = null;
   cue('close');
   if (els && els.bResume) try { els.bResume.focus(); } catch (e) {}
@@ -406,11 +590,15 @@ export const pauseScreen = {
     if (mapAction) mk('Review ' + mapAction.label, () => openPauseMapReview(ctx, mapAction));
     mk(coreText('helpControls'), () => nav(ctx, 'pushScreen', 'help'));
     mk(coreText('codex'), () => nav(ctx, 'pushScreen', 'codex'));
-    // Photo mode (Task B §1.7): everything gone but the world; Esc returns here.
-    mk('Photo', () => enterPhoto(rootEl, ctx));
+    // Photo mode (Task B §1.7 / PQ-159.03): HUD gone, free camera, exposure, capture for store
+    // assets; filters off by default. Esc returns here. Do not restyle this sheet.
+    mk(PHOTO_LABEL, () => enterPhoto(rootEl, ctx));
     // Replay (PQ-160.00): the deterministic last thirty seconds, played back with the photo-mode
     // presentation. Opens over this sheet; Esc or Exit returns to pause.
     mk(REPLAY_LABEL, () => openReplay(rootEl, ctx));
+    // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
+    // Esc or Exit returns. This screen owns presentation only, not export encoding.
+    mk(CLIPS_LABEL, () => openClips(rootEl, ctx));
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
     if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true });
