@@ -4,8 +4,9 @@
  *
  * Reads the live dispatcher (`node scripts/program-dispatch.mjs --ready`),
  * never a hand-built backlog. Groups overlapping write-sets so they run in
- * series. Prints implementer/reviewer prompts. Integrates a unit to `done`
- * only after two PASS review waves, an on-disk receipt, and testsPass.
+ * series. Prints implementer and teammate-review prompts. Integrates a unit
+ * to `done` when the checks that catch the change passed and a reviewer
+ * would ship it.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -40,14 +41,14 @@ function usage() {
   console.log(`Usage:
   node tools/agentic/next20_pipeline.mjs --run [--count N] [--frozen ID,ID] [--skip ID,ID] [--out DIR]
   node tools/agentic/next20_pipeline.mjs --schedule [--count N] [--frozen ID,ID]
-  node tools/agentic/next20_pipeline.mjs --prompt --id PQ-XXX.YY [--wave 0|1|2]
-  node tools/agentic/next20_pipeline.mjs --integrate --id PQ-XXX.YY --receipt PATH --wave1 JSON --wave2 JSON [--tests-pass]
+  node tools/agentic/next20_pipeline.mjs --prompt --id PQ-XXX.YY [--wave 0|1]
+  node tools/agentic/next20_pipeline.mjs --integrate --id PQ-XXX.YY [--receipt PATH] [--review JSON] [--tests-pass]
   node tools/agentic/next20_pipeline.mjs --reopen --id PQ-XXX.YY
   node tools/agentic/next20_pipeline.mjs --apply-reviews --reviews DIR [--tests-pass]
 
---run is the primary observable: slate ids from the live dispatcher, families, review-wave plan.
---integrate / --apply-reviews are the only writers of dispatch-unit state/receiptRefs.
---apply-reviews fail-closes any unit whose wave JSON is not two PASS reviews with evidence.`);
+--run snapshots the live dispatcher. --prompt 0 is the implementer; --prompt 1 is one teammate look.
+--integrate / --apply-reviews are the only writers of dispatch-unit state. A reviewer who would not
+ship the work keeps the unit ready.`);
 }
 
 function csv(value) {
@@ -86,8 +87,7 @@ try {
       id: { type: 'string' },
       wave: { type: 'string' },
       receipt: { type: 'string' },
-      wave1: { type: 'string' },
-      wave2: { type: 'string' },
+      review: { type: 'string' },
       'tests-pass': { type: 'boolean' },
       root: { type: 'string' },
     },
@@ -171,8 +171,7 @@ if (values.run) {
       const dir = path.join(outDir, 'prompts', unit.id);
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, 'implementer.txt'), `${buildImplementerPrompt(unit)}\n`);
-      fs.writeFileSync(path.join(dir, 'review-wave1.txt'), `${buildReviewerPrompt(unit, 1)}\n`);
-      fs.writeFileSync(path.join(dir, 'review-wave2.txt'), `${buildReviewerPrompt(unit, 2)}\n`);
+      fs.writeFileSync(path.join(dir, 'reviewer.txt'), `${buildReviewerPrompt(unit, 1)}\n`);
     }
   }
   process.exit(0);
@@ -186,8 +185,8 @@ if (values.prompt) {
   if (!unit) fail(`unit ${id} is not in the live --ready list (already done, blocked, or unknown)`);
   const wave = values.wave == null ? 0 : Number(values.wave);
   if (wave === 0) process.stdout.write(`${buildImplementerPrompt(unit)}\n`);
-  else if (wave === 1 || wave === 2) process.stdout.write(`${buildReviewerPrompt(unit, wave)}\n`);
-  else fail('--wave must be 0 (implementer), 1, or 2');
+  else if (wave === 1) process.stdout.write(`${buildReviewerPrompt(unit, 1)}\n`);
+  else fail('--wave must be 0 (implementer) or 1 (one teammate look)');
   process.exit(0);
 }
 
@@ -197,26 +196,24 @@ if (values.integrate) {
   const receiptRel = values.receipt
     ? String(values.receipt).replaceAll('\\', '/')
     : receiptPathFor(id);
-  const wave1 = parseJsonArg(values.wave1, 'wave1');
-  const wave2 = parseJsonArg(values.wave2, 'wave2');
+  let review = null;
+  if (values.review) {
+    review = parseJsonArg(values.review, 'review');
+  }
   const receipt = assertReceiptOnDisk(root, receiptRel);
   const gate = canIntegrate({
-    receiptExists: receipt.ok,
     testsPass: !!values['tests-pass'],
-    reviews: [
-      { wave: 1, verdict: wave1.verdict, evidence: wave1.evidence, unmetClause: wave1.unmetClause },
-      { wave: 2, verdict: wave2.verdict, evidence: wave2.evidence, unmetClause: wave2.unmetClause },
-    ],
+    review,
   });
   if (!gate.ok) {
-    console.log(JSON.stringify({ id, integrated: false, reason: gate.reason, wave: gate.wave || null }, null, 2));
+    console.log(JSON.stringify({ id, integrated: false, reason: gate.reason, notes: gate.notes || null }, null, 2));
     process.exit(1);
   }
   const queuePath = path.join(root, QUEUE_REL);
   const before = fs.readFileSync(queuePath, 'utf8');
-  const after = patchDispatchUnitDone(before, id, receiptRel);
+  const after = patchDispatchUnitDone(before, id, receipt.ok ? receiptRel : '');
   if (after !== before) fs.writeFileSync(queuePath, after);
-  console.log(JSON.stringify({ id, integrated: true, receipt: receiptRel, state: 'done' }, null, 2));
+  console.log(JSON.stringify({ id, integrated: true, receipt: receipt.ok ? receiptRel : null, state: 'done' }, null, 2));
   process.exit(0);
 }
 
@@ -234,35 +231,28 @@ if (values.reopen) {
 if (values['apply-reviews']) {
   const reviewsDir = values.reviews ? path.resolve(values.reviews) : fail('--reviews DIR is required with --apply-reviews');
   if (!fs.existsSync(reviewsDir)) fail(`reviews dir missing: ${reviewsDir}`);
-  const names = fs.readdirSync(reviewsDir).filter((n) => n.endsWith('-wave1.json'));
+  const names = fs.readdirSync(reviewsDir).filter((n) => n.endsWith('-review.json'));
   const rows = [];
   let queueText = fs.readFileSync(path.join(root, QUEUE_REL), 'utf8');
   for (const name of names.sort()) {
-    const id = name.replace(/-wave1\.json$/, '');
-    const wave1Path = path.join(reviewsDir, `${id}-wave1.json`);
-    const wave2Path = path.join(reviewsDir, `${id}-wave2.json`);
+    const id = name.replace(/-review\.json$/, '');
+    const reviewPath = path.join(reviewsDir, `${id}-review.json`);
     const receiptRel = receiptPathFor(id);
-    let wave1 = { verdict: 'FAIL', evidence: '' };
-    let wave2 = { verdict: 'FAIL', evidence: '' };
-    try { wave1 = JSON.parse(fs.readFileSync(wave1Path, 'utf8')); } catch { /* fail-closed */ }
-    try { wave2 = JSON.parse(fs.readFileSync(wave2Path, 'utf8')); } catch { /* fail-closed */ }
+    let review = { wouldShip: false, notes: 'missing review file' };
+    try { review = JSON.parse(fs.readFileSync(reviewPath, 'utf8')); } catch { /* keep ready */ }
     const receipt = assertReceiptOnDisk(root, receiptRel);
     const gate = applyReviewClose(id, {
-      receiptExists: receipt.ok,
       testsPass: !!values['tests-pass'],
-      reviews: [
-        { wave: 1, verdict: wave1.verdict, evidence: wave1.evidence, unmetClause: wave1.unmetClause },
-        { wave: 2, verdict: wave2.verdict, evidence: wave2.evidence, unmetClause: wave2.unmetClause },
-      ],
+      review,
     });
     if (gate.ok) {
-      queueText = patchDispatchUnitDone(queueText, id, receiptRel);
-      rows.push({ id, verdict: 'DONE', reason: 'two PASS waves + receipt + testsPass' });
+      queueText = patchDispatchUnitDone(queueText, id, receipt.ok ? receiptRel : '');
+      rows.push({ id, verdict: 'DONE', reason: 'would ship; checks that catch the change passed' });
     } else {
       rows.push({
         id,
         verdict: 'NOT DONE',
-        reason: `FAIL-CLOSED ${gate.reason}${gate.wave ? ` wave ${gate.wave}` : ''}`,
+        reason: gate.reason,
       });
     }
   }

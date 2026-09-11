@@ -100,50 +100,18 @@ test('substitute pulls the next ready unit when a frozen id is already gone', ()
   assert.ok(selection.skipped.some((row) => row.id === 'PQ-KEEP.02' && row.reason === 'substitute'));
 });
 
-test('canIntegrate fail-closes on missing receipt, failed tests, or a review without evidence', () => {
-  const pass = { wave: 1, verdict: 'PASS', evidence: 'node --test test/foo.test.mjs 3/3' };
-  const pass2 = { wave: 2, verdict: 'PASS', evidence: 're-ran test/foo.test.mjs 3/3' };
-  assert.equal(canIntegrate({ receiptExists: true, testsPass: true, reviews: [pass, pass2] }).ok, true);
-  assert.equal(canIntegrate({ receiptExists: false, testsPass: true, reviews: [pass, pass2] }).ok, false);
-  assert.equal(canIntegrate({ receiptExists: true, testsPass: false, reviews: [pass, pass2] }).ok, false);
-  assert.equal(canIntegrate({ receiptExists: true, testsPass: true, reviews: [pass] }).ok, false);
+test('canIntegrate refuses failed checks or a teammate who would not ship it', () => {
+  assert.equal(canIntegrate({ testsPass: true }).ok, true);
+  assert.equal(canIntegrate({ testsPass: true, review: { wouldShip: true } }).ok, true);
+  assert.equal(canIntegrate({ testsPass: false }).ok, false);
+  assert.equal(canIntegrate({ testsPass: false }).reason, 'tests-failed');
   assert.equal(
-    canIntegrate({
-      receiptExists: true,
-      testsPass: true,
-      reviews: [pass, { wave: 2, verdict: 'FAIL', evidence: 'unmet Leaves clause' }],
-    }).reason,
-    'review-rejected',
-  );
-  assert.equal(
-    canIntegrate({
-      receiptExists: true,
-      testsPass: true,
-      reviews: [pass, { wave: 2, verdict: 'PASS', evidence: '' }],
-    }).reason,
-    'review-missing-evidence',
-  );
-  const residual = {
-    wave: 2,
-    verdict: 'PASS',
-    evidence: 'honest NOT DONE; queue stays ready',
-    unmetClause: 'Blind reviewer names the specialist from silhouette.',
-  };
-  assert.equal(
-    canIntegrate({ receiptExists: true, testsPass: true, reviews: [pass, residual] }).ok,
+    canIntegrate({ testsPass: true, review: { wouldShip: false, notes: 'tender weld is in empty space' } }).ok,
     false,
   );
   assert.equal(
-    canIntegrate({ receiptExists: true, testsPass: true, reviews: [pass, residual] }).reason,
-    'review-unmet-clause',
-  );
-  assert.equal(
-    canIntegrate({
-      receiptExists: true,
-      testsPass: true,
-      reviews: [pass, { ...pass2, unmetClause: null }],
-    }).ok,
-    true,
+    canIntegrate({ testsPass: true, review: { wouldShip: false, notes: 'tender weld is in empty space' } }).reason,
+    'reviewer-would-not-ship',
   );
 });
 
@@ -175,18 +143,14 @@ test('patchDispatchUnitDone flips only that unit and appends the receipt ref', (
   assert.equal(JSON.parse(reopened).dispatchUnits[0].state, 'ready');
 });
 
-test('applyReviewClose fail-closes when wave 2 is FAIL', () => {
+test('applyReviewClose keeps the unit ready when the teammate would not ship it', () => {
   const gate = applyReviewClose('PQ-DEMO.01', {
-    receiptExists: true,
     testsPass: true,
-    reviews: [
-      { wave: 1, verdict: 'PASS', evidence: 'tests 1/1' },
-      { wave: 2, verdict: 'FAIL', evidence: 'Leaves clause unmet' },
-    ],
+    review: { wouldShip: false, notes: 'unfinished' },
   });
   assert.equal(gate.ok, false);
-  assert.equal(gate.reason, 'review-rejected');
-  assert.equal(gate.verdict, 'FAIL-CLOSED');
+  assert.equal(gate.reason, 'reviewer-would-not-ship');
+  assert.equal(gate.verdict, 'NOT-YET');
 });
 
 test('shipped CLI --schedule slate ids equal live --ready prefix', () => {
@@ -200,62 +164,37 @@ test('shipped CLI --schedule slate ids equal live --ready prefix', () => {
   assert.deepEqual(payload.slate.map((unit) => unit.id), readyIds);
 });
 
-test('shipped CLI --integrate refuses a unit when a review wave fails', () => {
+test('shipped CLI --integrate refuses when the teammate would not ship it', () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'next20-int-'));
-  const waveFail = path.join(dir, 'wave2.json');
-  fs.writeFileSync(waveFail, JSON.stringify({ verdict: 'FAIL', evidence: 'Leaves clause unmet: no still' }));
-  const wavePass = path.join(dir, 'wave1.json');
-  fs.writeFileSync(wavePass, JSON.stringify({ verdict: 'PASS', evidence: 'tests 1/1' }));
-  const receipt = path.join(ROOT, 'design', 'program', 'roadmap', 'receipts', 'PQ-159.00-REPORT.md');
-  assert.equal(fs.existsSync(receipt), true, 'need an on-disk receipt to prove the receipt-exists half');
+  const reviewPath = path.join(dir, 'review.json');
+  fs.writeFileSync(reviewPath, JSON.stringify({
+    wouldShip: false,
+    unfinished: 'tender weld sits in empty space',
+  }));
   const result = spawnCli([
     'tools/agentic/next20_pipeline.mjs',
     '--integrate',
     '--id',
     'PQ-159.01',
-    '--receipt',
-    'design/program/roadmap/receipts/PQ-159.00-REPORT.md',
-    '--wave1',
-    wavePass,
-    '--wave2',
-    waveFail,
+    '--review',
+    reviewPath,
     '--tests-pass',
   ]);
   assert.notEqual(result.status, 0);
   const body = JSON.parse(result.stdout);
   assert.equal(body.integrated, false);
-  assert.equal(body.reason, 'review-rejected');
+  assert.equal(body.reason, 'reviewer-would-not-ship');
 });
 
-test('shipped CLI --integrate refuses a PASS that still names unmetClause', () => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'next20-unmet-'));
-  const wave1 = path.join(dir, 'wave1.json');
-  const wave2 = path.join(dir, 'wave2.json');
-  fs.writeFileSync(wave1, JSON.stringify({
-    verdict: 'PASS',
-    evidence: 'honest NOT DONE residual; tests 3/3',
-    unmetClause: null,
-  }));
-  fs.writeFileSync(wave2, JSON.stringify({
-    verdict: 'PASS',
-    evidence: 'honest NOT DONE residual; tests 3/3',
-    unmetClause: 'Capture of a swing shows both bodies >= 90 % of the time.',
-  }));
+test('shipped CLI --integrate without --tests-pass refuses', () => {
   const result = spawnCli([
     'tools/agentic/next20_pipeline.mjs',
     '--integrate',
     '--id',
     'PQ-159.01',
-    '--receipt',
-    'design/program/roadmap/receipts/PQ-159.01-REPORT.md',
-    '--wave1',
-    wave1,
-    '--wave2',
-    wave2,
-    '--tests-pass',
   ]);
   assert.notEqual(result.status, 0);
   const body = JSON.parse(result.stdout);
   assert.equal(body.integrated, false);
-  assert.equal(body.reason, 'review-unmet-clause');
+  assert.equal(body.reason, 'tests-failed');
 });

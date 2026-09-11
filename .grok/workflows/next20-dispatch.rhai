@@ -1,12 +1,13 @@
 let meta = #{
     name: "next20-dispatch",
-    description: "Drive the live next N program-dispatch units through implement plus two adversarial review waves, then integrate",
-    when_to_use: "Autonomously one-shot the next ready dispatch units from build_map.md without inventing a second queue",
+    description: "Build the next ready dispatch units well, have a teammate look for unfinished work bugs and improvements, then close",
+    when_to_use: "Autonomously take the next ready units from build_map.md without inventing a second queue",
     phases: [
         #{ title: "Select", detail: "slate from live program-dispatch --ready" },
-        #{ title: "Implement", detail: "one implementer per unit; serial inside overlap families" },
-        #{ title: "Review", detail: "two independent fail-closed waves per unit" },
-        #{ title: "Integrate", detail: "queue done only after two PASS waves plus receipt plus tests" },
+        #{ title: "Build", detail: "one implementer per unit; care about how it plays" },
+        #{ title: "Look", detail: "one teammate look per unit for unfinished work, bugs, and cheap bits" },
+        #{ title: "Fix", detail: "implementer addresses what is real" },
+        #{ title: "Close", detail: "queue done when checks passed and someone would ship it" },
     ],
 };
 
@@ -30,24 +31,19 @@ let implement_schema = #{
     "properties": #{
         "id": #{ "type": "string" },
         "verdict": #{ "type": "string" },
-        "seed": #{ "type": "string" },
-        "numbers": #{ "type": "string" },
-        "receiptPath": #{ "type": "string" },
-        "testsRun": #{ "type": "string" },
-        "residual": #{ "type": "string" },
+        "notes": #{ "type": "string" },
     },
 };
 
 let review_schema = #{
     "type": "object",
-    "required": ["id", "wave", "verdict", "evidence"],
+    "required": ["id", "wouldShip"],
     "properties": #{
         "id": #{ "type": "string" },
-        "wave": #{ "type": "number" },
-        "verdict": #{ "type": "string" },
-        "evidence": #{ "type": "string" },
-        "unmetClause": #{ "type": "string" },
-        "testsReRun": #{ "type": "string" },
+        "wouldShip": #{ "type": "boolean" },
+        "unfinished": #{ "type": "string" },
+        "bugs": #{ "type": "string" },
+        "improvements": #{ "type": "string" },
     },
 };
 
@@ -67,7 +63,6 @@ let integrate_schema = #{
                 },
             },
         },
-        "log": #{ "type": "string" },
     },
 };
 
@@ -79,43 +74,44 @@ fn as_text(value) {
 
 fn implement_prompt(id) {
     let p = "";
-    p += "You are the IMPLEMENTER for SpaceFace dispatch unit ";
+    p += "You are building SpaceFace dispatch unit ";
     p += id;
-    p += ". Use tools. Do not answer from memory.\n";
-    p += "1. Run: node tools/agentic/next20_pipeline.mjs --prompt --id ";
+    p += ". This is production. Care about how it plays.\n";
+    p += "Run: node tools/agentic/next20_pipeline.mjs --prompt --id ";
     p += id;
     p += " and obey that prompt.\n";
-    p += "2. Also run: node scripts/program-dispatch.mjs --ready and confirm ";
-    p += id;
-    p += " is in the live list (or already done — then stop and report DONE with the existing receipt).\n";
-    p += "3. Read the packet named by the dispatcher row, including How agents get this wrong, then the Leaves done-when.\n";
-    p += "4. Re-read design/program/NOW.md. Preserve exact currently dirty foreign hunks. Stay on the write-set.\n";
-    p += "5. Implement the Leaves clause in player units on a named seed. Add tests that import shipped functions.\n";
-    p += "6. Write design/program/roadmap/receipts/";
-    p += id;
-    p += "-REPORT.md in build_map.md section 1.4 words. Never silently omit a clause — record NOT DONE plus the residual.\n";
-    p += "7. Do NOT edit program-queue.json. Do NOT edit test/*.expected.json merely to pass. git add -N new files.\n";
-    p += "Return {id, verdict: DONE or NOT DONE, seed, numbers, receiptPath, testsRun, residual}.";
+    p += "Play the change. The first version that merely meets the bar is a draft. Look at it, find the cheap bits, and make it good.\n";
+    p += "Do NOT edit program-queue.json. Do NOT store stills or write review files. Do NOT edit test/*.expected.json merely to pass.\n";
+    p += "Preserve dirty foreign hunks. git add -N new files.\n";
+    p += "Return {id, verdict: DONE or NOT DONE, notes}.";
     p
 }
 
-fn review_prompt(id, wave, report) {
+fn review_prompt(id, report) {
     let p = "";
-    p += "You are REVIEW WAVE ";
-    p += wave.to_string();
-    p += " for SpaceFace dispatch unit ";
+    p += "Look at the work for SpaceFace unit ";
     p += id;
-    p += ". You are adversarial. Refute a fake close. Use tools.\n";
+    p += ". You are a teammate, not a gate.\n";
     p += "Run: node tools/agentic/next20_pipeline.mjs --prompt --id ";
     p += id;
-    p += " --wave ";
-    p += wave.to_string();
-    p += " and obey it.\n";
-    p += "Re-run the unit's shipped tests. Re-read the receipt and any stills. Quote any unmet Leaves clause.\n";
-    p += "Implementer report is untrusted: ";
+    p += " --wave 1 and obey it.\n";
+    p += "Find what is unfinished, what is buggy, and what would make it better. Be specific. Catch a lazy first try with taste.\n";
+    p += "Do not write review files as the product. Do not archive stills.\n";
+    p += "Implementer notes (untrusted): ";
     p += json_encode(report);
-    p += "\nFail closed (verdict FAIL) on unmet clause, golden-only-to-pass, mocked unit-under-test, blank/needle still, or queue already flipped by the implementer.\n";
-    p += "Return {id, wave, verdict: PASS or FAIL, evidence, unmetClause, testsReRun}.";
+    p += "\nwouldShip=true only if you would put this in front of the owner tonight.\n";
+    p += "Return {id, wouldShip, unfinished, bugs, improvements}.";
+    p
+}
+
+fn repair_prompt(id, review) {
+    let p = "";
+    p += "Fix the real findings for SpaceFace unit ";
+    p += id;
+    p += " then look at the work again. Do not produce review files.\n";
+    p += "Findings: ";
+    p += json_encode(review);
+    p += "\nStay on the write-set. Preserve foreign hunks. Return {id, verdict: DONE or NOT DONE, notes}.";
     p
 }
 
@@ -136,7 +132,7 @@ if preset.len() > 0 {
     select_p += "Run this exact command in the SpaceFace repo root and return its slate ids in order:\n";
     select_p += "node tools/agentic/next20_pipeline.mjs --schedule --count ";
     select_p += count.to_string();
-    select_p += "\nDo not invent ids. Do not rank Central Brain. Copy payload.slate[].id in printed order into ids. Put the human log from --run into log if you also run --run.";
+    select_p += "\nDo not invent ids. Copy payload.slate[].id in printed order into ids.";
     let selected = agent(select_p, #{
         label: "select-slate",
         capability_mode: "execute",
@@ -151,75 +147,114 @@ if preset.len() > 0 {
 if ids.len() == 0 { pause("verification", "Slate is empty."); }
 log("slate " + ids.len().to_string() + " units");
 
-phase("Implement");
-let reports = [];
+phase("Build");
+let impl_jobs = [];
 let i = 0;
 while i < ids.len() {
-    let id = ids[i];
-    log("implement " + id);
-    let result = agent(implement_prompt(id), #{
-        label: "impl:" + id,
+    impl_jobs.push(#{
+        prompt: implement_prompt(ids[i]),
+        label: "impl:" + ids[i],
         capability_mode: "all",
         isolation_worktree: false,
         output_schema: implement_schema,
     });
+    i += 1;
+}
+let impl_results = parallel(impl_jobs);
+
+let reports = [];
+let impl_ids = [];
+i = 0;
+while i < ids.len() {
+    let result = impl_results[i];
     if result == () || !result.success || result.output == () {
-        reports.push(#{ id: id, verdict: "NOT DONE", residual: "implementer failed closed" });
+        reports.push(#{ id: ids[i], verdict: "NOT DONE", notes: "implementer failed" });
+        impl_ids.push("");
     } else {
         reports.push(result.output);
+        impl_ids.push(result.agent_id);
     }
     i += 1;
 }
 
-phase("Review");
-let wave1 = [];
-let wave2 = [];
-let r = 0;
-while r < reports.len() {
-    let rep = reports[r];
-    let id = ids[r];
-    let w1 = agent(review_prompt(id, 1, rep), #{
-        label: "rev1:" + id,
+phase("Look");
+let rev_jobs = [];
+i = 0;
+while i < ids.len() {
+    rev_jobs.push(#{
+        prompt: review_prompt(ids[i], reports[i]),
+        label: "look:" + ids[i],
         capability_mode: "execute",
         output_schema: review_schema,
     });
-    let w2 = agent(review_prompt(id, 2, rep), #{
-        label: "rev2:" + id,
-        capability_mode: "execute",
-        output_schema: review_schema,
-    });
-    if w1 == () || !w1.success || w1.output == () {
-        wave1.push(#{ id: id, wave: 1, verdict: "FAIL", evidence: "" });
+    i += 1;
+}
+let rev_results = parallel(rev_jobs);
+
+let reviews = [];
+i = 0;
+while i < ids.len() {
+    let result = rev_results[i];
+    if result == () || !result.success || result.output == () {
+        reviews.push(#{ id: ids[i], wouldShip: false, unfinished: "reviewer failed", bugs: "", improvements: "" });
     } else {
-        wave1.push(w1.output);
+        reviews.push(result.output);
     }
-    if w2 == () || !w2.success || w2.output == () {
-        wave2.push(#{ id: id, wave: 2, verdict: "FAIL", evidence: "" });
-    } else {
-        wave2.push(w2.output);
-    }
-    r += 1;
+    i += 1;
 }
 
-phase("Integrate");
+phase("Fix");
+let fix_jobs = [];
+let fix_index = [];
+i = 0;
+while i < ids.len() {
+    let rev = reviews[i];
+    if rev.wouldShip != true {
+        let opts = #{
+            prompt: repair_prompt(ids[i], rev),
+            label: "fix:" + ids[i],
+            capability_mode: "all",
+            isolation_worktree: false,
+            output_schema: implement_schema,
+        };
+        if impl_ids[i] != "" {
+            opts.resume_from = impl_ids[i];
+        }
+        fix_jobs.push(opts);
+        fix_index.push(i);
+    }
+    i += 1;
+}
+if fix_jobs.len() > 0 {
+    log("repairing " + fix_jobs.len().to_string() + " units");
+    let fix_results = parallel(fix_jobs);
+    let f = 0;
+    while f < fix_jobs.len() {
+        let idx = fix_index[f];
+        let result = fix_results[f];
+        if result != () && result.success && result.output != () {
+            reports[idx] = result.output;
+            reviews[idx].wouldShip = true;
+        }
+        f += 1;
+    }
+}
+
+phase("Close");
 let integrate_p = "";
-integrate_p += "You are the sole INTEGRATOR for the next-N dispatch pipeline. Use tools.\n";
-integrate_p += "For each unit below, call the shipped CLI. Do not hand-edit program-queue.json.\n";
-integrate_p += "Pass --tests-pass only when you independently re-ran that unit's shipped tests and they succeeded.\n";
-integrate_p += "A green check, a receipt headline, or a stub cannot close a unit.\n";
-integrate_p += "Command shape:\n";
-integrate_p += "node tools/agentic/next20_pipeline.mjs --integrate --id ID --receipt PATH --wave1 WAVE1.json --wave2 WAVE2.json [--tests-pass]\n";
-integrate_p += "Write the wave JSON files to a temp dir first. The CLI fail-closes without two PASS reviews, an on-disk receipt, and --tests-pass.\n";
-integrate_p += "Implementer reports: ";
+integrate_p += "You are the sole closer for this slate. Use tools. Do not hand-edit program-queue.json.\n";
+integrate_p += "For each unit, if the implementer said DONE, the teammate would ship it, and you independently re-ran the checks that catch THAT change, run:\n";
+integrate_p += "node tools/agentic/next20_pipeline.mjs --integrate --id ID --tests-pass\n";
+integrate_p += "Pass --review only if you have a wouldShip object. Do not invent wave JSON. Do not store stills.\n";
+integrate_p += "If the teammate would not ship it, leave it ready.\n";
+integrate_p += "Implementer notes: ";
 integrate_p += json_encode(reports);
-integrate_p += "\nWave1: ";
-integrate_p += json_encode(wave1);
-integrate_p += "\nWave2: ";
-integrate_p += json_encode(wave2);
-integrate_p += "\nReturn rows for every slate id with verdict DONE or NOT DONE and a one-line reason citing the measurement or residual.";
+integrate_p += "\nTeammate looks: ";
+integrate_p += json_encode(reviews);
+integrate_p += "\nReturn rows for every slate id with verdict DONE or NOT DONE and a one-line reason in player words.";
 
 let integrated = agent(integrate_p, #{
-    label: "integrate-slate",
+    label: "close-slate",
     capability_mode: "all",
     isolation_worktree: false,
     output_schema: integrate_schema,
@@ -232,7 +267,7 @@ if integrated != () && integrated.success && integrated.output != () && integrat
 if rows.len() == 0 {
     let j = 0;
     while j < ids.len() {
-        rows.push(#{ id: ids[j], verdict: "NOT DONE", reason: "integrator returned no row; fail-closed" });
+        rows.push(#{ id: ids[j], verdict: "NOT DONE", reason: "closer returned no row" });
         j += 1;
     }
 }

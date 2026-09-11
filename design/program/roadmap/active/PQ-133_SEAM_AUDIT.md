@@ -1033,7 +1033,7 @@ commit hashes above are history evidence, not alternate owners.
 ### Dirty tree overlap at audit close
 
 git status --short showed unrelated Hornet texture/GLB/evidence and Blender-tool work.
-It also showed concurrent program-admission edits in CANONICAL_BUILD_MAP.md,
+It also showed concurrent program-admission edits in build_map.md,
 design/PLAN_REGISTRY.md, design/program/NOW.md, design/program/PROGRAM_MAP.md,
 design/program/roadmap/program-queue.json, and new PQ-132/PQ-133/PQ-134 packet files.
 Those program files were not edited by this audit.

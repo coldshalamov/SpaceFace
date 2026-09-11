@@ -24,9 +24,13 @@ Numbers in briefs are sanity bounds, not goals. Never make the game worse to hit
 bound is wrong, change the bound and say why in the same change.
 
 Tests and checks are your safety net — run them. Evidence artifacts are not: no committed
-screenshots, capture strips, telemetry dumps, or receipt theater. The improved work is the proof.
-If you learned something non-obvious, write one paragraph where the next engineer will find it.
-That is the only reason to write prose.
+screenshots, capture strips, telemetry dumps, review JSON, unlabeled still archives, or receipt
+theater. The improved work is the proof. If you learned something non-obvious, write one paragraph
+where the next engineer will find it. That is the only reason to write prose.
+
+A teammate looking at the work for unfinished bits, bugs, and cheap first tries is part of
+finishing. That look is a conversation, then you fix what is real. It is not a second queue, not a
+grade file, and not two adversarial waves.
 
 Context is the shared budget. Every file you add is a tax on every agent who comes after you.
 Write less. Delete the document you proved wrong. Fix the rule next to the code you are editing
@@ -68,17 +72,16 @@ normal, not a reason to stop.
 ## `NOW.md` and bounded checkpoints
 
 `design/program/NOW.md` records short mutation windows for exact dirty hunks — not task-long leases.
+They exist so two live agents do not edit the same file; they are not a general ceremony.
 
-1. Before the first patch: `node scripts/agent-checkpoint.mjs start` with owner, exact paths, and
-   5–10 bounded todos. Reserve the current task plus at most four next with `--reserve`.
-2. Add the exact-path NOW row, including the checkpoint path in a backtick cell.
-3. `agent-checkpoint.mjs check` at a real todo boundary — it is event-based progress, not a
-   heartbeat. `node scripts/check-now-liveness.mjs`: more than 90 minutes without progress makes a
-   row stale by definition; adopt it (`agent-checkpoint.mjs adopt`), preserve every hunk, continue
-   the same task. Never rewrite a foreign dirty file merely because its writer is gone.
+- If other agents are live, or the task will span sessions: `node scripts/agent-checkpoint.mjs
+  start` with owner, exact paths, and a short todo list; add the exact-path NOW row with the
+  checkpoint path; release the row when mutation stops.
+- Otherwise skip it — glance at `NOW.md` before you mutate and get on with the work.
+- More than 90 minutes without progress (`node scripts/check-now-liveness.mjs`) makes a row stale by
+  definition; adopt it (`agent-checkpoint.mjs adopt`), preserve every hunk, continue
+  the same task. Never rewrite a foreign dirty file merely because its writer is gone.
 - Reading, testing, and reviewing reserve no files.
-- At a task boundary, close the checkpoint and start the next; re-plan rather than contest a live
-  reservation.
 
 ## No worktrees; junctions are grenades
 

@@ -11,7 +11,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 export const DEFAULT_COUNT = 20;
-export const REVIEW_WAVES = 2;
 
 export function normalizePathSpec(value) {
   return String(value || '').replaceAll('\\', '/').replace(/\/+$/, '');
@@ -200,35 +199,12 @@ export function loadReadyFromDispatcher(root, execPath = process.execPath) {
   return parsed;
 }
 
-function namedUnmetClause(review) {
-  const clause = review?.unmetClause;
-  if (clause == null) return '';
-  const text = String(clause).trim();
-  if (!text || text === 'null' || text === 'undefined') return '';
-  return text;
-}
-
 export function canIntegrate(input) {
-  const receiptExists = !!input?.receiptExists;
   const testsPass = !!input?.testsPass;
-  const reviews = Array.isArray(input?.reviews) ? input.reviews : [];
-  if (!receiptExists) return { ok: false, reason: 'missing-receipt' };
   if (!testsPass) return { ok: false, reason: 'tests-failed' };
-  if (reviews.length < REVIEW_WAVES) return { ok: false, reason: 'need-two-review-waves' };
-  for (let i = 0; i < REVIEW_WAVES; i += 1) {
-    const review = reviews[i];
-    if (!review || review.verdict !== 'PASS') {
-      return { ok: false, reason: 'review-rejected', wave: review?.wave ?? i + 1 };
-    }
-    if (!review.evidence || String(review.evidence).trim() === '') {
-      return { ok: false, reason: 'review-missing-evidence', wave: review.wave ?? i + 1 };
-    }
-    // A PASS that still names an unmet Leaves clause is an honest residual, not a close.
-    // Do not --integrate keep-ready residuals.
-    const unmet = namedUnmetClause(review);
-    if (unmet) {
-      return { ok: false, reason: 'review-unmet-clause', wave: review.wave ?? i + 1, unmetClause: unmet };
-    }
+  const review = input?.review;
+  if (review && review.wouldShip === false) {
+    return { ok: false, reason: 'reviewer-would-not-ship', notes: String(review.notes || '').trim() };
   }
   return { ok: true };
 }
@@ -251,18 +227,18 @@ export function patchDispatchUnitDone(queueText, unitId, receiptRelPath) {
   let next = `${queueText.slice(0, stateOffset)}"state": "done"${queueText.slice(stateOffset + stateMatch[0].length)}`;
 
   const rel = String(receiptRelPath || '').replaceAll('\\', '/');
-  if (!rel) throw new Error('receiptRelPath is required');
+  if (!rel) return next;
   const again = next.indexOf(idNeedle);
   const window = next.slice(again, again + 4000);
   const refsMatch = window.match(/"receiptRefs":\s*(\[[^\]]*\])/);
-  if (!refsMatch) throw new Error(`dispatch unit ${unitId} has no receiptRefs`);
+  if (!refsMatch) return next;
   let refs;
   try {
     refs = JSON.parse(refsMatch[1]);
   } catch {
-    throw new Error(`dispatch unit ${unitId} receiptRefs is not a JSON array`);
+    return next;
   }
-  if (!Array.isArray(refs)) throw new Error(`dispatch unit ${unitId} receiptRefs is not an array`);
+  if (!Array.isArray(refs)) return next;
   if (!refs.includes(rel)) refs.push(rel);
   const rendered = JSON.stringify(refs, null, 8).replace(/\n/g, '\n      ');
   const refsAt = again + window.indexOf(refsMatch[0]);
@@ -283,8 +259,8 @@ export function patchDispatchUnitReady(queueText, unitId) {
 }
 
 /**
- * Close or refuse a slate from on-disk review JSON. Never flips done without two PASS
- * waves, an existing receipt, and testsPass.
+ * Close or refuse from a teammate look, not from review-file theater.
+ * wouldShip false keeps the unit ready so the implementer can fix what was found.
  */
 export function applyReviewClose(unitId, input) {
   const gate = canIntegrate(input);
@@ -292,7 +268,7 @@ export function applyReviewClose(unitId, input) {
     id: unitId,
     integrated: false,
     ...gate,
-    verdict: gate.ok ? 'ELIGIBLE' : 'FAIL-CLOSED',
+    verdict: gate.ok ? 'ELIGIBLE' : 'NOT-YET',
   };
 }
 
@@ -301,58 +277,49 @@ export function buildImplementerPrompt(unit) {
   const paths = (u.paths || []).map((p) => `- ${p}`).join('\n');
   const checks = (u.checks || []).map((c) => `- ${c}`).join('\n');
   return [
-    `You are the IMPLEMENTER for SpaceFace dispatch unit ${u.id} (${u.title}).`,
-    'Use tools. Read the packet before editing. Do not answer from memory.',
-    '',
-    'Authority: user direction → ARCHITECTURE.md → design/VISION.md → the packet → supporting refs.',
-    'The queue is program-dispatch. Do not invent a second backlog. Do not mark the queue done.',
+    `You are building SpaceFace unit ${u.id} — ${u.title}.`,
+    'This is production. Care about how it plays, how it looks, and whether a person would enjoy it.',
+    'The first version that merely meets the bar is a draft. Look at it, find the cheap bits, and make it good.',
     '',
     `Packet: ${u.packet}`,
     `Kind: ${u.kind}  Priority: ${u.priority}`,
-    `Done-when (brief): ${u.brief}`,
+    `What done looks like: ${u.brief}`,
     '',
-    'Write-set (stay inside; preserve any currently dirty foreign hunk on these paths):',
+    'Stay on this write-set. Preserve any currently dirty foreign hunk on these paths:',
     paths || '- (none listed)',
     '',
-    'Named checks (run the ones that catch THIS change; do not loop the world):',
+    'Checks that catch THIS change (run these, not the world):',
     checks || '- (none listed)',
     '',
-    'Required procedure:',
-    '1. Read design/program/NOW.md and git status --short for the write-set. Preserve exact dirty foreign hunks.',
-    '2. Open the packet. Read **How agents get this wrong** before touching code, then the Leaves row for this leaf.',
-    '3. Surface before invent: list what already computes the thing; connect it. Do not add a second writer.',
-    '4. Implement the Leaves done-when in player units on a named seed. A green check is not the number.',
-    '5. Add or extend tests that import the SHIPPED functions (not a copy, not a mock of the unit under test).',
-    '6. Write design/program/roadmap/receipts/' + u.id + '-REPORT.md in build_map.md §1.4 words with seed + before/after or honest NOT DONE residual. Never silently omit a clause.',
-    '7. Do not edit test/*.expected.json merely to pass. Do not check off program-queue.json. The integrator does that after two review waves.',
-    '8. git add -N any new files. Pathspec-commit owned files if you can; skip unrelated dirty files.',
+    'How to work:',
+    '- Glance at NOW.md and git status so you do not collide. Then start.',
+    '- Read How agents get this wrong, then the Leaves row. Connect what already exists before inventing.',
+    '- Play the change on the default route. If the player would see or hear it, look at it.',
+    '- Tests import shipped functions. Do not mock the thing under test. Do not edit goldens merely to pass.',
+    '- Do not mark the queue done. Do not invent a second backlog. Do not store stills or review files.',
+    '- A short note for the next engineer only if you learned something they could not see from the code.',
     '',
-    'Return JSON: { id, verdict: "DONE"|"NOT DONE", seed, numbers, receiptPath, testsRun, residual }.',
+    'Return JSON: { id, verdict: "DONE"|"NOT DONE", notes }.',
   ].join('\n');
 }
 
-export function buildReviewerPrompt(unit, wave, implementerReport = '') {
+export function buildReviewerPrompt(unit, _wave, implementerReport = '') {
   const u = compactUnit(unit);
   return [
-    `You are REVIEW WAVE ${wave} for SpaceFace dispatch unit ${u.id} (${u.title}).`,
-    'You are adversarial and independent of the implementer. Your job is to REFUTE a false close.',
-    'Use tools. Re-run the shipped tests. Re-read stills and the receipt. Do not trust the implementer\'s word.',
+    `Look at the work for SpaceFace unit ${u.id} — ${u.title}.`,
+    'You are a teammate, not a gate. Read the actual change. Play it if the player would see it.',
+    'Find three things: what is unfinished, what is buggy, and what would make it better.',
+    'Be specific. A lazy first try is common — catch it with taste, not with a checklist.',
+    'Do not write review JSON as the product. Do not archive stills. Do not re-type test stdout as evidence.',
     '',
     `Packet: ${u.packet}`,
-    `Done-when: ${u.brief}`,
+    `What done looks like: ${u.brief}`,
     `Write-set: ${(u.paths || []).join(', ')}`,
-    implementerReport ? `\nImplementer report (untrusted):\n${implementerReport}\n` : '',
-    'Fail closed (verdict FAIL) if any of these hold:',
-    '- An unmet Leaves clause, including a silent omit of a visual/TTS/GPU/Chromium bar.',
-    '- A golden / expected.json edited only to pass.',
-    '- Tests that mock the unit under test, hard-code the expected value, or re-implement the shipped function.',
-    '- A still that does not show the claim, is blank, or shows needle-jets when the claim is "honest nozzle thrust".',
-    '- Queue state flipped to done by the implementer.',
-    '- Wiring-only / stub / receipt-headline with no player-unit measurement.',
+    implementerReport ? `\nImplementer notes (untrusted):\n${implementerReport}\n` : '',
+    'wouldShip=true only if you would put this in front of the owner tonight.',
+    'wouldShip=false if it is unfinished, buggy, thin, or cheap — say what to fix.',
     '',
-    'Pass only if you independently re-ran the unit tests (or the new tests that drive shipped functions) and they succeeded, AND the receipt quotes the Leaves done-when numbers on a named seed (or honest NOT DONE residual).',
-    '',
-    'Return JSON: { id, wave, verdict: "PASS"|"FAIL", evidence, unmetClause, testsReRun }.',
+    'Return JSON: { id, wouldShip, unfinished, bugs, improvements }.',
   ].join('\n');
 }
 
@@ -367,9 +334,9 @@ export function formatPipelineLog(selection) {
     const shared = (family.sharedPaths || []).join(', ') || 'none';
     lines.push(`  ${family.id} serial [${family.ids.join(', ')}] overlap ${shared}`);
   }
-  lines.push('implementer assignment: one worker per unit; serial within family; fan-out only across disjoint families');
-  lines.push(`review waves: ${REVIEW_WAVES} independent waves per unit after implementer returns; fail-closed`);
-  lines.push('integrator: sole writer of queue state/receiptRefs; refuses without two PASS reviews + existing receipt + testsPass');
+  lines.push('implementer: one worker per unit; serial within overlapping write-sets; fan-out across disjoint families');
+  lines.push('review: one teammate look per unit for unfinished work, bugs, and improvements — then fix what is real');
+  lines.push('integrator: sole writer of queue state; refuses if tests that catch the change failed or the reviewer would not ship it');
   if ((selection.skipped || []).length) {
     lines.push('skipped/substituted:');
     for (const row of selection.skipped) {

@@ -42,8 +42,9 @@ const ROOT = values.root ? path.resolve(values.root) : path.resolve(SCRIPT_DIR, 
 const ALLOW_NO_GIT = Boolean(values['allow-no-git']);
 
 const stableFiles = [
-  'CANONICAL_BUILD_MAP.md',
+  'build_map.md',
   'AGENTS.md',
+  'docs/TASK_ROUTER.md',
   'design/AGENTS.md',
   'design/program/AGENTS.md',
   'design/program/README.md',
@@ -245,16 +246,10 @@ function activePacketFiles() {
 }
 
 function checkPacketSections(rel, packet) {
+  // Outcome is the job. The rest is craft, not a section inventory — requiring
+  // Entry / Verification / Review / Checkoff produced copy-paste ceremony.
   const required = [
     ['Outcome', /^##\s+Outcome\b/mi],
-    ['Entry conditions', /^##\s+Entry conditions\b/mi],
-    ['Work breakdown/phased implementation', /^##\s+(?:Work breakdown|Phased implementation)\b/mi],
-    ['Non-goals', /^##\s+Non-goals\b/mi],
-    ['Performance', /^##\s+.*Performance.*\b/mi],
-    ['Verification budget', /^##\s+Verification budget\b/mi],
-    ['Review questions', /^##\s+Review questions\b/mi],
-    ['Stop conditions', /^##\s+Stop conditions\b/mi],
-    ['Checkoff', /^##\s+.*Checkoff.*\b/mi],
   ];
   for (const [label, pattern] of required) {
     if (!pattern.test(packet.prose)) errors.push(`${rel}: missing required section: ${label}`);
