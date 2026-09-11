@@ -357,3 +357,184 @@ function vec2(v) {
 function round6(value) {
   return Number.isFinite(value) ? Math.round(value * 1e6) / 1e6 : 0;
 }
+
+/* ------------------------------------------------------------------------- *
+ * Auto-clip moment detection (PQ-160.01).
+ *
+ * A clip is a marked window in the replay ring: the detector watches the same
+ * authoritative receipts the live game already emits (`stunt:trickDetected` from
+ * systems/stuntGrammar.js and attributed `entity:killed`) and records a bounded
+ * [moment - preRoll, moment + postRoll] window. It never records video and never
+ * mutates gameplay; the window is resolved against the ring by differentialReplay.
+ * ------------------------------------------------------------------------- */
+
+export const CLIP_SCHEMA_VERSION = 'spaceface.clip.v1';
+export const CLIP_PRE_ROLL_SECONDS = 3;
+export const CLIP_POST_ROLL_SECONDS = 2;
+const CLIP_MAX_CLIPS = 64;
+
+function clipLabel(kind, trickId, fallback) {
+  if (fallback) return String(fallback);
+  if (trickId) {
+    return String(trickId)
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  return kind === 'kill' ? 'Kill' : 'Moment';
+}
+
+/**
+ * Bounded clip list keyed off rated-moment receipts. Newest first from `list()`.
+ */
+export function createClipDirector(options = {}) {
+  const tickRate = Number.isFinite(options.tickRate) && options.tickRate > 0
+    ? options.tickRate
+    : 60;
+  const preRollSeconds = Number.isFinite(options.preRollSeconds) && options.preRollSeconds >= 0
+    ? options.preRollSeconds
+    : CLIP_PRE_ROLL_SECONDS;
+  const postRollSeconds = Number.isFinite(options.postRollSeconds) && options.postRollSeconds >= 0
+    ? options.postRollSeconds
+    : CLIP_POST_ROLL_SECONDS;
+  const preRollTicks = Math.max(0, Math.round(preRollSeconds * tickRate));
+  const postRollTicks = Math.max(0, Math.round(postRollSeconds * tickRate));
+  const maxClips = Math.max(1, Math.floor(
+    Number.isFinite(options.maxClips) && options.maxClips > 0 ? options.maxClips : CLIP_MAX_CLIPS,
+  ));
+  const clips = [];
+  const seen = new Set();
+  let sequence = 0;
+
+  function mark(moment) {
+    if (!moment || typeof moment !== 'object') return null;
+    const rawTick = Number(moment.tick);
+    if (!Number.isFinite(rawTick)) return null;
+    const tick = Math.max(0, Math.floor(rawTick));
+    const kind = moment.kind ? String(moment.kind) : (moment.trickId ? 'trick' : 'moment');
+    const trickId = moment.trickId ? String(moment.trickId) : null;
+    const key = [tick, kind, trickId || '', moment.label || ''].join('|');
+    if (seen.has(key)) return null;
+    seen.add(key);
+    const startTick = Math.max(0, tick - preRollTicks);
+    const endTick = tick + postRollTicks;
+    const clip = Object.freeze({
+      schema: CLIP_SCHEMA_VERSION,
+      id: 'clip_' + String(++sequence).padStart(4, '0'),
+      kind,
+      trickId,
+      label: clipLabel(kind, trickId, moment.label),
+      rarity: moment.rarity ? String(moment.rarity) : null,
+      actorId: moment.actorId == null ? null : moment.actorId,
+      targetId: moment.targetId == null ? null : moment.targetId,
+      seed: Number.isFinite(Number(moment.seed)) ? Number(moment.seed) : null,
+      momentTick: tick,
+      startTick,
+      endTick,
+      tickRate,
+      seconds: (endTick - startTick) / tickRate,
+    });
+    clips.push(clip);
+    while (clips.length > maxClips) clips.shift();
+    return clip;
+  }
+
+  function observeTrick(trick) {
+    if (!trick || typeof trick !== 'object' || !trick.trickId) return null;
+    return mark({
+      tick: trick.tick,
+      kind: 'trick',
+      trickId: trick.trickId,
+      label: trick.name,
+      rarity: trick.rarity,
+      actorId: trick.actorId,
+      targetId: trick.targetId,
+      seed: trick.seed,
+    });
+  }
+
+  function observeKill(receipt) {
+    if (!receipt || typeof receipt !== 'object') return null;
+    if (receipt.trick) return observeTrick(receipt.trick);
+    const rawTick = Number(receipt.tick);
+    if (!Number.isFinite(rawTick)) return null;
+    return mark({
+      tick: rawTick,
+      kind: 'kill',
+      label: receipt.label || 'Kill',
+      rarity: receipt.rarity || null,
+      actorId: receipt.killerId != null ? receipt.killerId : receipt.actorId,
+      targetId: receipt.id != null ? receipt.id : receipt.targetId,
+      seed: receipt.seed,
+    });
+  }
+
+  function list() { return clips.slice().reverse(); }
+  function latest() { return clips.length ? clips[clips.length - 1] : null; }
+  function find(id) {
+    for (let i = clips.length - 1; i >= 0; i--) {
+      if (clips[i].id === id) return clips[i];
+    }
+    return null;
+  }
+  function clear() {
+    clips.length = 0;
+    seen.clear();
+    sequence = 0;
+  }
+
+  return {
+    schema: CLIP_SCHEMA_VERSION,
+    tickRate,
+    preRollTicks,
+    postRollTicks,
+    mark,
+    observeTrick,
+    observeKill,
+    list,
+    latest,
+    find,
+    clear,
+    get size() { return clips.length; },
+  };
+}
+
+/**
+ * Subscribe a clip director to the live event bus. Attributed kills and every named
+ * trick become clips; returns an unsubscribe. `seedOf` / `tickOf` stamp live receipts
+ * that omit those fields (production `entity:killed` has no tick).
+ */
+export function attachClipDirectorToBus(bus, director, options = {}) {
+  if (!bus || typeof bus.on !== 'function' || !director) return () => {};
+  const seedOf = typeof options.seedOf === 'function' ? options.seedOf : null;
+  const tickOf = typeof options.tickOf === 'function' ? options.tickOf : null;
+  const decorate = (receipt) => {
+    if (!receipt || typeof receipt !== 'object') return receipt;
+    const seed = seedOf ? seedOf() : null;
+    const tick = tickOf ? tickOf() : null;
+    const needSeed = Number.isFinite(Number(seed));
+    const needTick = !Number.isFinite(Number(receipt.tick)) && Number.isFinite(Number(tick));
+    if (!needSeed && !needTick) return receipt;
+    const next = { ...receipt };
+    if (needSeed) next.seed = Number(seed);
+    if (needTick) next.tick = Number(tick);
+    return next;
+  };
+  const unsubs = [];
+  const on = (evt, fn) => {
+    const unsub = bus.on(evt, fn);
+    if (typeof unsub === 'function') unsubs.push(unsub);
+  };
+  on('stunt:trickDetected', (trick) => director.observeTrick(decorate(trick)));
+  on('entity:killed', (receipt) => {
+    if (receipt && receipt.killerId != null) director.observeKill(decorate(receipt));
+  });
+  on('combat:kill', (receipt) => {
+    if (receipt && receipt.killerId != null) director.observeKill(decorate(receipt));
+  });
+  return () => {
+    for (const unsub of unsubs) {
+      try { unsub(); } catch (e) { /* best-effort */ }
+    }
+    unsubs.length = 0;
+  };
+}

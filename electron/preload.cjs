@@ -66,10 +66,14 @@ contextBridge.exposeInMainWorld('spacefaceLifecycle', Object.freeze({
 }));
 
 // Also expose a minimal shell bridge for quit callers that prefer window.spacefaceShell
+const SHELL_SAVE_CLIP_CHANNEL = 'spaceface:save-clip';
 try {
   contextBridge.exposeInMainWorld('spacefaceShell', Object.freeze({
     quit() {
       try { ipcRenderer.send(SHELL_QUIT_CHANNEL); } catch (e) {}
+    },
+    saveClip(payload) {
+      return ipcRenderer.invoke(SHELL_SAVE_CLIP_CHANNEL, payload);
     },
   }));
 } catch (e) {}

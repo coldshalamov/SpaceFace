@@ -662,9 +662,20 @@ export async function replayRingBuffer(recording, options = {}) {
     if (det) byTick.set(checkpoint.tick | 0, det.hash);
   }
 
-  const recordedTicks = Array.isArray(recording.recordedTicks) && recording.recordedTicks.length
-    ? recording.recordedTicks
+  let recordedTicks = Array.isArray(recording.recordedTicks) && recording.recordedTicks.length
+    ? recording.recordedTicks.slice()
     : Array.from({ length: ticks }, (_, tick) => tick);
+
+  // Clip / replay-window support (PQ-160.01): restrict the compared ticks to a bounded range.
+  // No range means the whole recorded tape (PQ-160.00 behaviour).
+  const rangeStart = Number.isFinite(options.startTick) ? Math.floor(options.startTick) : null;
+  const rangeEnd = Number.isFinite(options.endTick) ? Math.floor(options.endTick) : null;
+  const windowed = rangeStart != null || rangeEnd != null;
+  if (windowed) {
+    recordedTicks = recordedTicks.filter((tick) => (
+      (rangeStart == null || tick >= rangeStart) && (rangeEnd == null || tick <= rangeEnd)
+    ));
+  }
 
   let compared = 0;
   let firstDivergence = null;
@@ -682,7 +693,9 @@ export async function replayRingBuffer(recording, options = {}) {
     }
   }
 
-  const finalTick = ticks > 0 ? ticks - 1 : (recordedTicks[recordedTicks.length - 1] | 0);
+  const finalTick = recordedTicks.length
+    ? (recordedTicks[recordedTicks.length - 1] | 0)
+    : (ticks > 0 ? ticks - 1 : 0);
   const liveFinalHash = recording.snapshotRing.hashAt(finalTick);
   const replayFinalHash = byTick.has(finalTick) ? byTick.get(finalTick) : null;
   const match = firstDivergence == null && liveFinalHash != null && liveFinalHash === replayFinalHash;
@@ -694,6 +707,7 @@ export async function replayRingBuffer(recording, options = {}) {
     status: match ? 'match' : 'divergence',
     seed: recording.seed,
     ticks,
+    window: windowed ? { startTick: rangeStart, endTick: rangeEnd } : null,
     comparedTicks: compared,
     match,
     firstDivergence,
@@ -701,6 +715,47 @@ export async function replayRingBuffer(recording, options = {}) {
     replayFinalHash,
     tapeInputTicks: recording.inputRing.size | 0,
     fingerprint: result.fingerprint || null,
+  };
+}
+
+/**
+ * Replay one clip window (PQ-160.01) from a recording and compare every in-window tick's
+ * replay hash to the live recorded hash. Re-runs the tape from tick 0 (window state depends
+ * on prior ticks) but reports only the covered window.
+ *
+ * @param {object} recording result of {@link recordReplayRun}
+ * @param {object} clip      a clip from createClipDirector
+ */
+export async function replayClipWindow(recording, clip, options = {}) {
+  if (!recording || !clip) {
+    return {
+      schema: 'spaceface.labReplayClip.v1',
+      ok: false,
+      exitClass: 4,
+      status: 'invalid-config',
+      error: 'recording and clip are required',
+    };
+  }
+  const startTick = Number.isFinite(clip.startTick) ? Math.floor(clip.startTick) : undefined;
+  const endTick = Number.isFinite(clip.endTick) ? Math.floor(clip.endTick) : undefined;
+  const result = await replayRingBuffer(recording, { ...options, startTick, endTick });
+  return {
+    schema: 'spaceface.labReplayClip.v1',
+    ok: !!result.ok,
+    exitClass: result.exitClass,
+    status: result.status,
+    clipId: clip.id || null,
+    kind: clip.kind || null,
+    trickId: clip.trickId || null,
+    seed: recording.seed,
+    momentTick: clip.momentTick,
+    startTick: startTick == null ? null : startTick,
+    endTick: endTick == null ? null : endTick,
+    comparedTicks: result.comparedTicks | 0,
+    match: !!result.match,
+    liveFinalHash: result.liveFinalHash,
+    replayFinalHash: result.replayFinalHash,
+    firstDivergence: result.firstDivergence || null,
   };
 }
 

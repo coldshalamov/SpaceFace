@@ -8,8 +8,9 @@
 // window creation, fixed-port-for-saves, packaged→bundle root selection.
 // `npm run check:launch-policy` enforces that both launchers share that module.
 const electron = require('electron');
-const { app, BrowserWindow, ipcMain, powerMonitor } = electron;
+const { app, BrowserWindow, ipcMain, powerMonitor, dialog } = electron;
 const path = require('path');
+const fs = require('fs');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
 const {
   appendLaunchReceipt,
@@ -68,6 +69,46 @@ const SHELL_QUIT_CHANNEL = 'spaceface:quit';
 ipcMain.on(SHELL_QUIT_CHANNEL, () => {
   receipt('quit-requested', {});
   app.quit();
+});
+
+// PQ-160.01 clip export: the renderer may save a GIF/MP4 the encoder already produced.
+// Filename is a basename only; bytes arrive as base64 so the sandbox never sees a path.
+const SHELL_SAVE_CLIP_CHANNEL = 'spaceface:save-clip';
+const CLIP_SAVE_MAX_BYTES = 24 * 1024 * 1024;
+ipcMain.handle(SHELL_SAVE_CLIP_CHANNEL, async (_event, payload) => {
+  const rawName = payload && typeof payload.filename === 'string' ? payload.filename : '';
+  const filename = path.basename(rawName).replace(/[^\w.\-]+/g, '_');
+  if (!filename || !/\.(gif|mp4)$/i.test(filename)) {
+    return { ok: false, error: 'filename must be a .gif or .mp4 basename' };
+  }
+  const b64 = payload && typeof payload.bytesB64 === 'string' ? payload.bytesB64 : '';
+  let bytes;
+  try { bytes = Buffer.from(b64, 'base64'); } catch {
+    return { ok: false, error: 'clip bytes were not valid base64' };
+  }
+  if (!bytes.length || bytes.length > CLIP_SAVE_MAX_BYTES) {
+    return { ok: false, error: 'clip bytes missing or too large' };
+  }
+  const defaultDir = playerStoreDir || app.getPath('documents');
+  const defaultPath = path.join(defaultDir, filename);
+  const parent = _event && _event.sender ? BrowserWindow.fromWebContents(_event.sender) : null;
+  const picked = await dialog.showSaveDialog(parent || undefined, {
+    title: 'Save clip',
+    defaultPath,
+    filters: [
+      { name: 'GIF', extensions: ['gif'] },
+      { name: 'MP4', extensions: ['mp4'] },
+    ],
+  });
+  if (picked.canceled || !picked.filePath) return { ok: false, canceled: true };
+  const dest = picked.filePath;
+  const ext = path.extname(filename).toLowerCase();
+  if (path.extname(dest).toLowerCase() !== ext) {
+    return { ok: false, error: 'save path extension must match the clip format' };
+  }
+  fs.writeFileSync(dest, bytes);
+  receipt('clip-saved', { path: dest, bytes: bytes.length });
+  return { ok: true, path: dest, bytes: bytes.length };
 });
 
 // Explicit evidence probes use a temporary Chromium profile. Electron's single-instance lock is

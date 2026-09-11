@@ -10,6 +10,7 @@ import { startLoop } from './core/loop.js';
 import { createPresentationJournal } from './core/presentationJournal.js';
 import { createPresentationRuntimeCloser } from './core/presentationRunner.js';
 import { canonicalStringify } from './core/simSnapshot.js';
+import { installLiveClipDirector } from './ui/screens/clips.js';
 import { makeShipEntitySpec } from './systems/ships.js';
 import { makeEnemySpawnSpec } from './systems/combat.js';
 import { NEW_GAME } from './data/newGameDefaults.js';
@@ -103,6 +104,12 @@ async function boot() {
     const runTransitionGuard = createRunTransitionGuard();
     timeEffects.set('runtime:boot-menu', { scale: 0 });
     const bus = createBus();
+    // PQ-160.01: rated moments mark clip windows on the live bus so Pause → Clips lists them.
+    // Production entity:killed has no tick; stamp sim tick + world seed onto the receipt.
+    installLiveClipDirector(bus, {
+      seedOf: () => state && state.meta && state.meta.seed,
+      tickOf: () => state && state.tick,
+    });
     const presentationJournal = createPresentationJournal();
     const loadingPresenter = createLoadingPresenter({ document, bus });
     const contract = await loadScenarioContract(new URL('./data/scenarios/47a.scenario.json', import.meta.url), SCENARIO_47A_CONTRACT_PATH);
