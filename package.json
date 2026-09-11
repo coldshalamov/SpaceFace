@@ -619,7 +619,8 @@
       "scripts/lib/electronLaunchProtocol.cjs",
       "scripts/lib/playerSaveStore.cjs",
       "scripts/lib/staticCachePolicy.cjs",
-      "package.json"
+      "package.json",
+      "NOTICE"
     ],
     "win": {
       "target": "nsis",

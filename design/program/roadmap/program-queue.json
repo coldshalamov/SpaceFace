@@ -17152,7 +17152,7 @@
       "priority": 450,
       "title": "Legal and credits",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -17177,7 +17177,9 @@
         "npm run check:all",
         "npm run probe:runtime-witness"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-033.00-REPORT.md"
+      ],
       "brief": "Root LICENSE, third-party NOTICE bundled into the packaged files list, an in-app credits screen, privacy and accessibility statements. DONE WHEN: Packaged build contains every required notice; credits reachable from the title."
     },
     {
