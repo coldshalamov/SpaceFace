@@ -238,3 +238,22 @@ export function identifyRegisterFromSpeech(speech = {}) {
   }
   return bestDist < 8 ? best : null;
 }
+
+/** Pipeline delivery path: one WAV per corpus row, written by generate-bark-voice.mjs --all. */
+export function deliveredBarkWavRelPath(index, registerId) {
+  const n = String(Number(index) || 0).padStart(3, '0');
+  return `assets/audio/voice/line_${n}_${registerId}.wav`;
+}
+
+export function enumerateDeliveredBarkWavs() {
+  return enumerateBarkPipeline().map((row, index) => Object.freeze({
+    index,
+    file: deliveredBarkWavRelPath(index, row.registerId),
+    factionId: row.factionId,
+    registerId: row.registerId,
+    caption: row.caption,
+  }));
+}
+
+/** Autocorrelation F0 of a directed-voice PCM. Used to name a register from the WAV, not the label. */
+

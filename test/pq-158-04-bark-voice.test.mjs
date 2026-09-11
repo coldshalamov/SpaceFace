@@ -27,6 +27,8 @@ import {
   resolveVoiceRegister,
   factionRegistersAreDistinct,
   identifyRegisterFromSpeech,
+  enumerateDeliveredBarkWavs,
+  deliveredBarkWavRelPath,
 } from '../src/audio/barkVoice.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -138,4 +140,19 @@ test(`seed ${MEASURE_SEED}: f0/rate/filter names each faction register without t
   }
   assert.equal(identifyRegisterFromSpeech({ f0: 0, rate: 0, filterHz: 0 }), null);
   console.log(`[pq-158.04 blind-stand-in] seed=${MEASURE_SEED} 8/8 speech-params residual=no-stranger-headphones`);
+});
+
+test(`seed ${MEASURE_SEED}: all ${BARK_CORPUS_TARGET} directed-voice lines exist as WAVs on disk`, () => {
+  const rows = enumerateDeliveredBarkWavs();
+  assert.equal(rows.length, BARK_CORPUS_TARGET);
+  for (let i = 0; i < rows.length; i++) {
+    assert.equal(rows[i].file, deliveredBarkWavRelPath(i, rows[i].registerId));
+    const file = path.join(ROOT, rows[i].file);
+    assert.ok(existsSync(file), `missing delivered line ${rows[i].file}`);
+    const buf = readFileSync(file);
+    assert.equal(buf.toString('ascii', 0, 4), 'RIFF');
+    assert.equal(buf.toString('ascii', 8, 12), 'WAVE');
+    assert.ok(buf.byteLength > 44);
+  }
+  console.log(`[pq-158.04 delivered] seed=${MEASURE_SEED} wavs=${rows.length}/${BARK_CORPUS_TARGET}`);
 });

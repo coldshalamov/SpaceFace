@@ -16460,7 +16460,7 @@
       "priority": 427,
       "title": "The impact ladder, sample-backed",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-139.01",
         "PQ-141.00",
