@@ -26,6 +26,8 @@ const {
   resolvePlayerSaveDir,
   writePlayerStoreKeysSync,
 } = require('../scripts/lib/playerSaveStore.cjs');
+const { publicBuildInfo, resolveReleaseIdentity } = require('./releaseIdentity.cjs');
+const { configureAutoUpdate } = require('./autoUpdate.cjs');
 
 // WEB ROOT: packaged desktop serves the bundled release output in build/web/. Electron dev serves
 // the project root so `npm run electron` and `node server.js 8123` run the same source route even
@@ -118,9 +120,21 @@ if (launchConfig.isolatedEvidence) {
   app.setPath('userData', launchConfig.userDataDir);
 }
 
-// PQ-033.01 leftover crash dumps: Crashpad writes under userData/crashes. No electron-updater
-// and no upload store — local files only, leftover app version in the report extras.
-startLeftoverCrashReporter(electron);
+// PQ-033.01 release identity resolves once: version + build hash (release-receipt digest when
+// packaged, git HEAD in dev, env pin for evidence). It feeds crash extras, the readable crash
+// report files, and the build-info IPC the title/pause fine print reads through the preload bridge.
+const releaseIdentity = resolveReleaseIdentity({ appApi: app, projectRoot: PROJECT_ROOT, env: process.env });
+
+// The title/pause fine print reads version+build through this one channel; the payload is the
+// public view only — never paths, env, or process internals.
+const SHELL_BUILD_INFO_CHANNEL = 'spaceface:build-info';
+ipcMain.handle(SHELL_BUILD_INFO_CHANNEL, () => publicBuildInfo(releaseIdentity));
+
+// PQ-033.01 crash reports: Crashpad dumps under userData/crashes carry version+build in extras;
+// human-readable JSON reports land alongside them on renderer/child-process/uncaught faults. Local
+// files only — no upload store.
+startLeftoverCrashReporter(electron, releaseIdentity);
+installCrashReportWriters(electron, releaseIdentity);
 
 // GPU hints (shell-only — must not change gameplay/renderer features).
 app.commandLine.appendSwitch('ignore-gpu-blocklist');
@@ -368,17 +382,17 @@ function leftoverCrashExtra(identity) {
   return extra;
 }
 
-function leftoverCrashIdentity(appApi = app) {
+function leftoverCrashIdentity(appApi = app, build = '') {
   let version = '';
   try {
     if (appApi && typeof appApi.getVersion === 'function') {
       version = String(appApi.getVersion() || '');
     }
   } catch (_) {}
-  return leftoverCrashExtra({ version });
+  return leftoverCrashExtra({ version, build });
 }
 
-function startLeftoverCrashReporter(electronApi = electron) {
+function startLeftoverCrashReporter(electronApi = electron, identity = null) {
   const crashReporter = electronApi && electronApi.crashReporter;
   const appApi = (electronApi && electronApi.app) || app;
   if (!crashReporter || typeof crashReporter.start !== 'function') {
@@ -399,7 +413,7 @@ function startLeftoverCrashReporter(electronApi = electron) {
     }
   } catch (_) {}
 
-  const extra = leftoverCrashIdentity(appApi);
+  const extra = leftoverCrashIdentity(appApi, identity && identity.build);
   crashReporter.start({
     productName: 'SpaceFace',
     uploadToServer: false,
@@ -407,6 +421,100 @@ function startLeftoverCrashReporter(electronApi = electron) {
     globalExtra: extra,
   });
   return { started: true, dumpDir, extra };
+}
+
+// A crashpad .dmp is binary; the done-when asks for a report that names the build. So every
+// process-level fault also writes a plain JSON report next to the dumps, and refreshes
+// crashes/reports/latest.json so the newest crash is always one file deep.
+const CRASH_REPORT_SCHEMA = 'spaceface.crashReport.v1';
+let crashReportSequence = 0;
+
+function writeCrashReport({ reportDir, identity, event }) {
+  const dir = path.join(String(reportDir || ''), 'reports');
+  const report = {
+    schema: CRASH_REPORT_SCHEMA,
+    version: identity && identity.version ? String(identity.version) : '',
+    build: identity && identity.build ? String(identity.build) : '',
+    packaged: !!(identity && identity.packaged),
+    event: event || {},
+    uptimeSeconds: typeof process.uptime === 'function' ? Math.round(process.uptime()) : null,
+    pid: typeof process.pid === 'number' ? process.pid : null,
+    runtime: collectRuntimeIdentity(),
+  };
+  const body = `${JSON.stringify(report, null, 2)}\n`;
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const written = path.join(dir, `report-${stamp}-${report.pid || 0}-${++crashReportSequence}.json`);
+    fs.writeFileSync(written, body, 'utf8');
+    const latestPath = path.join(dir, 'latest.json');
+    fs.writeFileSync(latestPath + '.tmp', body, 'utf8');
+    fs.renameSync(latestPath + '.tmp', latestPath);
+    receipt('crash-report-written', { path: written, processType: report.event.processType });
+    return { written, report };
+  } catch (error) {
+    receipt('crash-report-write-failed', {
+      message: error && error.message ? error.message : String(error),
+    });
+    return { written: null, report };
+  }
+}
+
+function installCrashReportWriters(electronApi = electron, identity = releaseIdentity) {
+  const appApi = (electronApi && electronApi.app) || app;
+  let dumpDir = '';
+  try {
+    if (appApi && typeof appApi.getPath === 'function') {
+      dumpDir = String(appApi.getPath('crashDumps') || '');
+    }
+  } catch (_) {}
+  if (!dumpDir) return { installed: false, reason: 'no-dump-dir' };
+
+  const emit = (event) => writeCrashReport({ reportDir: dumpDir, identity, event });
+  // process-gone fires on ordinary teardown too — 'clean-exit' on every normal quit, and Chromium
+  // routinely kills/respawns GPU and utility children. None of those are the crash this file is
+  // for; only real faults write reports, and a quitting app reports nothing.
+  if (typeof appApi.on === 'function') {
+    appApi.on('render-process-gone', (_event, webContents, details = {}) => {
+      const reason = details && details.reason;
+      if (appQuitting || reason === 'clean-exit') return;
+      // A webContents already mid-teardown throws on any property access.
+      let webContentsId = null;
+      try { webContentsId = webContents && !webContents.isDestroyed() ? (webContents.id ?? null) : null; }
+      catch (_) {}
+      emit({
+        processType: 'renderer',
+        reason: reason || '',
+        exitCode: (details && details.exitCode) ?? null,
+        webContentsId,
+      });
+    });
+    appApi.on('child-process-gone', (_event, details = {}) => {
+      const reason = details && details.reason;
+      if (appQuitting || reason === 'clean-exit' || reason === 'killed') return;
+      emit({
+        processType: details && details.type ? `child:${details.type}` : 'child',
+        reason: reason || '',
+        exitCode: (details && details.exitCode) ?? null,
+        serviceName: (details && details.serviceName) || '',
+      });
+    });
+  }
+  if (typeof process.on === 'function') {
+    process.on('uncaughtException', (error) => {
+      emit({
+        processType: 'main',
+        reason: 'uncaughtException',
+        message: error && error.message ? String(error.message).slice(0, 1000) : String(error || ''),
+        stack: String((error && error.stack) || error || '').slice(0, 8000),
+      });
+      // The handler suppresses Node's own stderr dump; keep the crash loud on dev consoles.
+      console.error(error);
+      // exit() bypasses will-quit, so a downloaded update does not auto-install on a crash-quit.
+      if (typeof process.exit === 'function') process.exit(1);
+    });
+  }
+  return { installed: true, reportDir: path.join(dumpDir, 'reports') };
 }
 
 function collectRuntimeIdentity() {
@@ -614,7 +722,21 @@ if (!app.requestSingleInstanceLock()) {
     }
   });
   app.whenReady()
-    .then(() => { void requestGameWindow(); })
+    .then(() => {
+      void requestGameWindow();
+      // Auto-update is a packaged-route citizen: check once after boot, download quietly, and
+      // offer Restart-or-Later when a build lands. Fail-closed everywhere else, and isolated
+      // evidence launches (including packaged-startup probes) never touch the feed at all.
+      if (!launchConfig.isolatedEvidence) {
+        const update = configureAutoUpdate({
+          appApi: app,
+          receipt,
+          dialogApi: dialog,
+          browserWindowApi: BrowserWindow,
+        });
+        if (update && update.enabled === false) receipt('update-skipped', { reason: update.reason });
+      }
+    })
     .catch(handleWindowCreationFailure);
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
   app.on('activate', () => {
@@ -624,7 +746,10 @@ if (!app.requestSingleInstanceLock()) {
   });
 }
 
+module.exports.CRASH_REPORT_SCHEMA = CRASH_REPORT_SCHEMA;
+module.exports.installCrashReportWriters = installCrashReportWriters;
 module.exports.leftoverCrashDumpDir = leftoverCrashDumpDir;
 module.exports.leftoverCrashExtra = leftoverCrashExtra;
 module.exports.leftoverCrashIdentity = leftoverCrashIdentity;
 module.exports.startLeftoverCrashReporter = startLeftoverCrashReporter;
+module.exports.writeCrashReport = writeCrashReport;

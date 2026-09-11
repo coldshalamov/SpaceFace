@@ -1,8 +1,12 @@
-// PQ-033.01 — leftover crash reporting and version. Headless.
-// Pause paints the leftover title version string. Electron main starts
-// leftover crashReporter into userData/crashes. Updater is NOT DONE.
+// PQ-033.01 — crash reporting, auto-update, and the version/build string. Headless.
+// Pause and title paint the shared version/build label. Electron main starts the
+// crashReporter into userData/crashes with the build hash in extras, writes readable
+// JSON crash reports on process-gone faults, and wires electron-updater fail-closed
+// to the packaged route.
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -10,14 +14,20 @@ import vm from 'node:vm';
 
 import { CREDITS } from '../src/data/credits.js';
 import {
+  leftoverBuildToken,
   leftoverVersionLabel,
   leftoverVersionToken,
+  loadLeftoverVersionPayload,
   paintLeftoverVersion,
+  resetLeftoverVersionCache,
 } from '../src/ui/screens/mainMenu.js';
 import { pauseScreen } from '../src/ui/screens/pause.js';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const MAIN_PATH = path.join(ROOT, 'electron', 'main.cjs');
+const realRequire = createRequire(MAIN_PATH);
+const releaseIdentity = realRequire('./releaseIdentity.cjs');
+const autoUpdate = realRequire('./autoUpdate.cjs');
 const leftoverPkg = JSON.parse(readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
 const leftoverVersion = leftoverVersionToken(leftoverPkg);
 const leftoverLabel = leftoverVersionLabel(leftoverPkg);
@@ -197,29 +207,47 @@ function installMiniDom() {
   };
 }
 
-async function loadMainWithCrashReporter() {
+async function loadMainWithCrashReporter({ isPackaged = false, isolatedEvidence = false, updaterSpy = null } = {}) {
   const crashStarts = [];
+  const consoleErrors = [];
+  const tmpRoot = mkdtempSync(path.join(os.tmpdir(), 'sf-pq033-'));
   const paths = {
-    userData: path.join(ROOT, '.tmp-pq033-userData'),
-    exe: path.join(ROOT, 'electron.exe'),
+    userData: path.join(tmpRoot, 'userData'),
+    exe: path.join(tmpRoot, 'electron.exe'),
   };
   const windows = [];
   const receipts = [];
+  const processEvents = emitter({
+    env: {},
+    platform: 'win32',
+    execPath: paths.exe,
+    resourcesPath: path.join(tmpRoot, 'resources'),
+    versions: { electron: '43.2.0', chrome: '150.0.0', node: '24.18.0', v8: '15.0.0' },
+    pid: 4242,
+    uptime() { return 12; },
+    exitCodes: [],
+    exit(code) { this.exitCodes.push(code); },
+  });
   const powerMonitor = emitter();
-  const ipcMain = emitter();
+  const ipcHandlers = new Map();
+  const ipcMain = emitter({
+    handle(channel, handler) { ipcHandlers.set(channel, handler); },
+  });
   const crashReporter = {
     start(options) { crashStarts.push(options); },
   };
   const app = emitter({
-    isPackaged: false,
+    isPackaged,
     commandLine: { appendSwitch() {} },
     getVersion() { return leftoverVersion; },
-    getPath(name) { return paths[name] || path.join(ROOT, `.electron-${name}`); },
+    getPath(name) { return paths[name] || path.join(tmpRoot, `.electron-${name}`); },
     setPath(name, value) { paths[name] = value; },
     requestSingleInstanceLock() { return true; },
     whenReady() { return Promise.resolve(); },
     quit() { this.emit('before-quit'); },
-    exit(code) { throw new Error(`unexpected app.exit(${code})`); },
+    exit(code) {
+      throw new Error(`unexpected app.exit(${code}); tail receipts=${JSON.stringify(receipts.slice(-3))}`);
+    },
   });
 
   function FakeBrowserWindow(options) {
@@ -263,22 +291,15 @@ async function loadMainWithCrashReporter() {
 
   const sandbox = {
     __dirname: path.join(ROOT, 'electron'),
-    console,
+    console: { ...console, error: (...args) => consoleErrors.push(args) },
     URL,
     module: { exports: {} },
     exports: {},
-    process: {
-      env: {},
-      platform: 'win32',
-      execPath: paths.exe,
-      resourcesPath: path.join(ROOT, 'resources'),
-      versions: { electron: '43.2.0', chrome: '150.0.0', node: '24.18.0', v8: '15.0.0' },
-    },
+    process: processEvents,
     require(specifier) {
       if (specifier === 'electron') {
         return { app, BrowserWindow: FakeBrowserWindow, powerMonitor, ipcMain, crashReporter };
       }
-      if (specifier === 'path') return path;
       if (specifier === '../scripts/lib/gameServer.cjs') {
         return {
           createGameServer() {
@@ -294,10 +315,11 @@ async function loadMainWithCrashReporter() {
         return {
           LOCAL_STORAGE_DUMP_SOURCE: '({})',
           PLAYER_STORE_ORIGIN_ROUTE: '/__spaceface_player_store/origin',
-          resolvePlayerSaveDir() { return path.join(ROOT, '.tmp-player-saves'); },
+          resolvePlayerSaveDir() { return path.join(tmpRoot, 'player-saves'); },
           writePlayerStoreKeysSync() { return {}; },
         };
       }
+      if (specifier === './autoUpdate.cjs' && updaterSpy) return updaterSpy;
       if (specifier === '../scripts/lib/electronLaunchProtocol.cjs') {
         return {
           appendLaunchReceipt(_receiptPath, status, details) { receipts.push({ status, details }); },
@@ -305,7 +327,7 @@ async function loadMainWithCrashReporter() {
           isAssetPreloadFailureMessage() { return false; },
           resolveElectronLaunchConfig() {
             return {
-              isolatedEvidence: false,
+              isolatedEvidence,
               port: 41788,
               userDataDir: paths.userData,
               lockNamespace: 'player',
@@ -314,14 +336,22 @@ async function loadMainWithCrashReporter() {
           resolveWebRoot({ projectRoot }) { return projectRoot; },
         };
       }
-      throw new Error(`unexpected require: ${specifier}`);
+      // Real builtins (fs, path, child_process) and the electron/*.cjs neighbours load for real:
+      // the crash-report writer genuinely writes report files under the temp userData dir, and
+      // release identity genuinely resolves this repo's git HEAD in the unpackaged fake.
+      return realRequire(specifier);
     },
   };
 
   vm.runInNewContext(readFileSync(MAIN_PATH, 'utf8'), sandbox, { filename: MAIN_PATH });
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
-  return { crashStarts, paths, exports: sandbox.module.exports };
+  await new Promise((resolve) => setImmediate(resolve));
+  return {
+    app, consoleErrors, crashStarts, ipcHandlers, paths, processEvents, receipts, tmpRoot,
+    exports: sandbox.module.exports,
+    cleanup() { rmSync(tmpRoot, { recursive: true, force: true }); },
+  };
 }
 
 test('leftover version label matches the title payload', () => {
@@ -361,49 +391,297 @@ test('pause copy includes leftover version', async () => {
   }
 });
 
-test('electron main starts leftover crashReporter into userData', async () => {
+test('electron main starts crashReporter with the build hash in extras', async () => {
   const mainSrc = readFileSync(MAIN_PATH, 'utf8');
-  assert.match(mainSrc, /startLeftoverCrashReporter\(electron\)/);
+  assert.match(mainSrc, /startLeftoverCrashReporter\(electron,\s*releaseIdentity\)/);
   assert.match(mainSrc, /crashReporter\.start\(/);
   assert.match(mainSrc, /uploadToServer:\s*false/);
   assert.match(mainSrc, /leftoverCrashDumpDir/);
   assert.match(mainSrc, /['"]crashes['"]/);
-  assert.doesNotMatch(mainSrc, /require\(['"]electron-updater['"]\)/);
-  assert.doesNotMatch(mainSrc, /\bautoUpdater\b/);
+  assert.match(mainSrc, /require\(['"]\.\/releaseIdentity\.cjs['"]\)/);
+  assert.match(mainSrc, /require\(['"]\.\/autoUpdate\.cjs['"]\)/);
+  assert.match(mainSrc, /configureAutoUpdate\(/);
 
   const loaded = await loadMainWithCrashReporter();
-  assert.equal(loaded.crashStarts.length, 1, 'leftover crashReporter.start must run at boot');
-  const options = loaded.crashStarts[0];
-  assert.equal(options.uploadToServer, false);
-  assert.equal(options.extra.version, leftoverVersion);
-  assert.equal(options.globalExtra.version, leftoverVersion);
-  assert.equal(loaded.paths.crashDumps, path.join(loaded.paths.userData, 'crashes'));
+  try {
+    assert.equal(loaded.crashStarts.length, 1, 'crashReporter.start must run at boot');
+    const options = loaded.crashStarts[0];
+    assert.equal(options.uploadToServer, false);
+    assert.equal(options.extra.version, leftoverVersion);
+    assert.equal(options.globalExtra.version, leftoverVersion);
+    assert.match(options.extra.build, /^[0-9a-f]{12}$/, 'crash extras carry the dev build hash (git HEAD)');
+    assert.equal(options.extra.build, options.globalExtra.build);
+    assert.equal(loaded.paths.crashDumps, path.join(loaded.paths.userData, 'crashes'));
 
-  const helper = loaded.exports.startLeftoverCrashReporter;
-  assert.equal(typeof helper, 'function');
-  const helperStarts = [];
-  const helperPaths = { userData: path.join(ROOT, '.tmp-pq033-helper-userData') };
-  const helperResult = helper({
-    crashReporter: { start(options) { helperStarts.push(options); } },
-    app: {
-      getVersion() { return leftoverVersion; },
-      getPath(name) { return helperPaths[name] || ''; },
-      setPath(name, value) { helperPaths[name] = value; },
-    },
-  });
-  assert.equal(helperResult.started, true);
-  assert.equal(helperResult.dumpDir, path.join(helperPaths.userData, 'crashes'));
-  assert.equal(helperResult.extra.version, leftoverVersion);
-  assert.equal(helperStarts.length, 1);
-
-  console.log('PQ-033.01 crashReporter: started leftover userData/crashes version=' + leftoverVersion);
-  console.log('PQ-033.01 updater: NOT DONE');
+    const helper = loaded.exports.startLeftoverCrashReporter;
+    assert.equal(typeof helper, 'function');
+    const helperStarts = [];
+    const helperPaths = { userData: mkdtempSync(path.join(os.tmpdir(), 'sf-pq033-helper-')) };
+    try {
+      const helperResult = helper({
+        crashReporter: { start(o) { helperStarts.push(o); } },
+        app: {
+          getVersion() { return leftoverVersion; },
+          getPath(name) { return helperPaths[name] || ''; },
+          setPath(name, value) { helperPaths[name] = value; },
+        },
+      }, { version: leftoverVersion, build: 'b001dc0ffee7' });
+      assert.equal(helperResult.started, true);
+      assert.equal(helperResult.dumpDir, path.join(helperPaths.userData, 'crashes'));
+      assert.equal(helperResult.extra.version, leftoverVersion);
+      assert.equal(helperResult.extra.build, 'b001dc0ffee7', 'a supplied build id lands in crash extras');
+      assert.equal(helperStarts.length, 1);
+    } finally {
+      rmSync(helperPaths.userData, { recursive: true, force: true });
+    }
+    console.log('PQ-033.01 crashReporter: userData/crashes version=' + leftoverVersion + ' build=' + options.extra.build);
+  } finally {
+    loaded.cleanup();
+  }
 });
 
-// Packaged builds serve build/web and never copy package.json there. The leftover
-// version now comes from bundled credits, so title/pause still paint SpaceFace v
-// when GET /package.json is 404.
-test('leftover version paints from bundled credits on the packaged route', async () => {
+test('a forced process fault writes a readable crash report carrying the build hash', async () => {
+  const loaded = await loadMainWithCrashReporter();
+  try {
+    const reportDir = path.join(loaded.paths.crashDumps, 'reports');
+    const reportFiles = () => readdirSync(reportDir).filter((name) => /^report-.*\.json$/.test(name)).sort();
+
+    // Renderer gone — the crash the player would actually hit.
+    loaded.app.emit('render-process-gone', {}, { id: 7, isDestroyed: () => false }, { reason: 'crashed', exitCode: 3 });
+    // GPU/utility child gone with a real fault.
+    loaded.app.emit('child-process-gone', {}, { type: 'GPU', reason: 'crashed', exitCode: 34 });
+    // Main-process uncaught exception: report written, stderr kept loud, then the shell exits.
+    loaded.processEvents.emit('uncaughtException', new Error('synthetic pq033.01 fault'));
+    assert.deepEqual(loaded.processEvents.exitCodes, [1], 'main fault still terminates after reporting');
+    assert.equal(loaded.consoleErrors.length, 1, 'the handler does not swallow the dev-mode stack dump');
+
+    const latest = JSON.parse(readFileSync(path.join(reportDir, 'latest.json'), 'utf8'));
+    assert.equal(latest.schema, loaded.exports.CRASH_REPORT_SCHEMA);
+    assert.equal(latest.version, leftoverVersion);
+    assert.match(latest.build, /^[0-9a-f]{12}$/, 'the report carries the build hash');
+    assert.equal(latest.event.processType, 'main');
+    assert.equal(latest.event.reason, 'uncaughtException');
+    assert.equal(latest.event.message, 'synthetic pq033.01 fault');
+    assert.match(latest.event.stack, /synthetic pq033\.01 fault/, 'the report keeps the stack');
+    assert.equal(latest.packaged, false);
+
+    let written = reportFiles();
+    assert.equal(written.length, 3, 'one report file per fault');
+    const rendererReport = JSON.parse(readFileSync(path.join(reportDir, written[0]), 'utf8'));
+    assert.equal(rendererReport.event.processType, 'renderer');
+    assert.equal(rendererReport.event.reason, 'crashed');
+    assert.equal(rendererReport.event.exitCode, 3);
+    assert.equal(rendererReport.event.webContentsId, 7);
+    assert.equal(rendererReport.build, latest.build, 'every report names the same build');
+    assert.ok(loaded.receipts.some((entry) => entry.status === 'crash-report-written'));
+
+    // Ordinary teardown is not a crash: clean-exit renderers, routine Chromium child kills, a
+    // destroyed webContents mid-teardown, and anything after before-quit write nothing — and the
+    // half-dead webContents id read cannot bounce into the uncaughtException report path.
+    loaded.app.emit('render-process-gone', {}, { id: 8, isDestroyed: () => false }, { reason: 'clean-exit', exitCode: 0 });
+    loaded.app.emit('render-process-gone', {}, { isDestroyed() { throw new Error('Object has been destroyed'); } }, { reason: 'crashed', exitCode: 9 });
+    loaded.app.emit('child-process-gone', {}, { type: 'GPU', reason: 'killed', exitCode: 0 });
+    loaded.app.quit();
+    loaded.app.emit('render-process-gone', {}, { id: 9, isDestroyed: () => false }, { reason: 'crashed', exitCode: 1 });
+    written = reportFiles();
+    assert.equal(written.length, 4, 'teardown noise writes no reports; a real fault still does');
+    assert.deepEqual(loaded.processEvents.exitCodes, [1], 'a torn-down webContents read never reaches process.exit');
+
+    const tornDownReport = JSON.parse(readFileSync(path.join(reportDir, written[written.length - 1]), 'utf8'));
+    assert.equal(tornDownReport.event.webContentsId, null, 'destroyed webContents reports a null id');
+    console.log('PQ-033.01 forced crash: ' + written.length + ' reports, latest build=' + latest.build);
+  } finally {
+    loaded.cleanup();
+  }
+});
+
+test('release identity resolves env pin, packaged receipt, and dev git head', async () => {
+  const { readReleaseReceiptDigest, resolveReleaseIdentity } = releaseIdentity;
+
+  const envId = resolveReleaseIdentity({
+    appApi: { isPackaged: false, getVersion: () => '0.1.0' },
+    projectRoot: ROOT,
+    env: { SPACEFACE_BUILD_HASH: 'cafe1234beef' },
+  });
+  assert.equal(envId.build, 'cafe1234beef');
+  assert.equal(envId.source, 'env');
+
+  const devId = resolveReleaseIdentity({
+    appApi: { isPackaged: false, getVersion: () => leftoverVersion },
+    projectRoot: ROOT,
+    env: {},
+  });
+  assert.equal(devId.version, leftoverVersion);
+  assert.match(devId.build, /^[0-9a-f]{12}$/, 'dev build hash is the git short HEAD');
+  assert.equal(devId.source, 'git-head');
+
+  // Packaged identity comes from the bundle's release receipt — a fixture keeps this
+  // independent of whether a build has happened in this checkout (build/ is not committed).
+  const fakeProject = mkdtempSync(path.join(os.tmpdir(), 'sf-pq033-pkg-'));
+  try {
+    const digest = 'ab'.repeat(32);
+    mkdirSync(path.join(fakeProject, 'build', 'web'), { recursive: true });
+    writeFileSync(
+      path.join(fakeProject, 'build', 'web', 'spaceface-release-build.json'),
+      JSON.stringify({ output: { digest } }),
+    );
+    const packagedId = resolveReleaseIdentity({
+      appApi: { isPackaged: true, getVersion: () => leftoverVersion },
+      projectRoot: fakeProject,
+      env: {},
+    });
+    assert.equal(packagedId.build, 'abababababab', 'packaged build hash is the receipt digest prefix');
+    assert.equal(packagedId.source, 'release-receipt');
+    const publicView = releaseIdentity.publicBuildInfo(packagedId);
+    assert.deepEqual(Object.keys(publicView).sort(), ['build', 'channel', 'packaged', 'version']);
+    assert.equal(publicView.channel, 'release');
+  } finally {
+    rmSync(fakeProject, { recursive: true, force: true });
+  }
+
+  // If this checkout has actually built the bundle, the real receipt must resolve too.
+  const realReceipt = path.join(ROOT, 'build', 'web', 'spaceface-release-build.json');
+  if (existsSync(realReceipt)) {
+    assert.match(readReleaseReceiptDigest(realReceipt) || '', /^[0-9a-f]{12}$/,
+      'an on-disk release receipt resolves to a build hash');
+  }
+
+  const noReceipt = resolveReleaseIdentity({
+    appApi: { isPackaged: true, getVersion: () => leftoverVersion },
+    projectRoot: mkdtempSync(path.join(os.tmpdir(), 'sf-pq033-noreceipt-')),
+    env: {},
+  });
+  assert.equal(noReceipt.build, '', 'unreceipted package reports no build rather than lying');
+  console.log('PQ-033.01 identity: dev=' + devId.build + ' packaged=fixture abababababab');
+});
+
+test('auto-update wires only on the packaged route and installs on confirm', async () => {
+  const { configureAutoUpdate } = autoUpdate;
+
+  const off = configureAutoUpdate({ appApi: { isPackaged: false } });
+  assert.equal(off.enabled, false);
+  assert.equal(off.reason, 'unpackaged');
+
+  const missing = [];
+  const missingResult = configureAutoUpdate({
+    appApi: { isPackaged: true },
+    receipt: (status, details) => missing.push({ status, details }),
+    loadUpdater: () => null,
+  });
+  assert.equal(missingResult.enabled, false);
+  assert.equal(missingResult.reason, 'module-missing');
+  assert.ok(missing.some((entry) => entry.status === 'update-unavailable'));
+
+  const calls = { checks: 0, installs: 0 };
+  const fakeUpdater = emitter({
+    autoDownload: false,
+    autoInstallOnAppQuit: false,
+    checkForUpdates() { calls.checks += 1; return Promise.resolve(); },
+    quitAndInstall() { calls.installs += 1; },
+  });
+  const updateReceipts = [];
+  const dialogs = [];
+  const gameWindow = { id: 'game-window' };
+  const on = configureAutoUpdate({
+    appApi: { isPackaged: true },
+    receipt: (status, details) => updateReceipts.push({ status, details }),
+    browserWindowApi: { getAllWindows: () => [gameWindow] },
+    dialogApi: {
+      showMessageBox(...args) {
+        const options = args[args.length - 1];
+        dialogs.push({ parent: args.length > 1 ? args[0] : undefined, options });
+        return Promise.resolve({ response: 0 });
+      },
+    },
+    updaterModule: { autoUpdater: fakeUpdater },
+  });
+  assert.equal(on.enabled, true);
+  assert.equal(fakeUpdater.autoDownload, true);
+  assert.equal(fakeUpdater.autoInstallOnAppQuit, true, 'a deferred prompt still applies on quit');
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(calls.checks, 1, 'packaged boot checks the update feed once');
+
+  fakeUpdater.emit('update-available', { version: '0.2.0' });
+  fakeUpdater.emit('update-downloaded', { version: '0.2.0' });
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(dialogs.length, 1, 'a downloaded update offers the restart prompt');
+  assert.equal(dialogs[0].parent, gameWindow, 'the prompt is parented to the fullscreen game window');
+  assert.deepEqual(dialogs[0].options.buttons, ['Restart', 'Later']);
+  assert.equal(calls.installs, 1, 'Restart applies the downloaded update');
+  assert.ok(updateReceipts.some((entry) => entry.status === 'update-downloaded'));
+  assert.ok(updateReceipts.some((entry) => entry.status === 'update-install-requested'));
+  console.log('PQ-033.01 updater: packaged check + download + restart apply wired');
+});
+
+test('isolated evidence launches never touch the update feed', async () => {
+  const updaterCalls = [];
+  const updaterSpy = {
+    configureAutoUpdate(options) { updaterCalls.push(options); return Object.freeze({ enabled: true }); },
+  };
+  const isolated = await loadMainWithCrashReporter({ isPackaged: true, isolatedEvidence: true, updaterSpy });
+  try {
+    assert.equal(updaterCalls.length, 0, 'isolated probe boots configure nothing on the feed');
+    assert.ok(!isolated.receipts.some((entry) => /^update-/.test(entry.status)),
+      'no update receipts appear on an evidence run');
+  } finally {
+    isolated.cleanup();
+  }
+
+  const normal = await loadMainWithCrashReporter({ isPackaged: true, updaterSpy });
+  try {
+    assert.equal(updaterCalls.length, 1, 'a normal packaged boot wires the updater once');
+    const opts = updaterCalls[0];
+    assert.equal(opts.appApi.isPackaged, true);
+    assert.equal(typeof opts.browserWindowApi, 'function', 'the window class is passed for prompt parenting');
+    assert.equal(typeof opts.receipt, 'function');
+  } finally {
+    normal.cleanup();
+  }
+});
+
+test('packaged packaging metadata ships the updater, modules, and feed', async () => {
+  assert.equal(leftoverPkg.dependencies['electron-updater'], '6.2.1',
+    'updater is pinned to the electron-builder 24-train sibling (6.2.1 fixes the 6.2.0 mac critical)');
+  assert.ok(leftoverPkg.build.files.includes('electron/autoUpdate.cjs'));
+  assert.ok(leftoverPkg.build.files.includes('electron/releaseIdentity.cjs'));
+  assert.deepEqual(leftoverPkg.build.publish, {
+    provider: 'github',
+    owner: 'coldshalamov',
+    repo: 'SpaceFace',
+  }, 'electron-updater feed resolves to the project GitHub releases');
+  assert.match(leftoverPkg.scripts['check:pq033:release-closeout'], /pq-033-01-crash-version/);
+
+  const loaded = await loadMainWithCrashReporter();
+  try {
+    const buildInfoHandler = loaded.ipcHandlers.get('spaceface:build-info');
+    assert.equal(typeof buildInfoHandler, 'function', 'preload channel is handled in main');
+    const info = buildInfoHandler();
+    assert.equal(info.version, leftoverVersion);
+    assert.match(info.build, /^[0-9a-f]{12}$/);
+    assert.equal(info.packaged, false);
+    assert.equal(info.channel, 'dev');
+    assert.deepEqual(Object.keys(info).sort(), ['build', 'channel', 'packaged', 'version'],
+      'the bridge payload is the public view only — no paths, env, or process internals');
+  } finally {
+    loaded.cleanup();
+  }
+
+  const preloadSrc = readFileSync(path.join(ROOT, 'electron', 'preload.cjs'), 'utf8');
+  assert.match(preloadSrc, /buildInfo\(\)/);
+  assert.match(preloadSrc, /spaceface:build-info/);
+  const updaterSrc = readFileSync(path.join(ROOT, 'electron', 'autoUpdate.cjs'), 'utf8');
+  assert.match(updaterSrc, /require\(['"]electron-updater['"]\)/);
+  assert.match(updaterSrc, /autoInstallOnAppQuit\s*=\s*true/);
+  console.log('PQ-033.01 packaging: files + publish feed + bridge present');
+});
+
+// Packaged builds serve build/web and never copy package.json there. The version still comes from
+// bundled credits; the build hash comes from the release receipt at the web root when the Electron
+// bridge is absent (a statically served bundle) — and that is the only fetch the screen makes.
+test('version paints from bundled credits plus the release receipt on the packaged route', async () => {
   const { RELEASE_COPY_MAPPINGS } = await import('../scripts/lib/releasePackaging.mjs');
   const deliversPackageJson = RELEASE_COPY_MAPPINGS.some(
     (mapping) => mapping.source === 'package.json' || mapping.destination === 'package.json',
@@ -414,15 +692,16 @@ test('leftover version paints from bundled credits on the packaged route', async
     false,
     'the packaged web root still carries no package.json',
   );
-  assert.equal(CREDITS.version, leftoverVersion, 'bundled credits carry the leftover package version');
+  assert.equal(CREDITS.version, leftoverVersion, 'bundled credits carry the package version');
 
   const dom = installMiniDom();
   try {
-    let fetched = 0;
-    globalThis.fetch = async () => {
-      fetched += 1;
+    const fetchedUrls = [];
+    globalThis.fetch = async (url) => {
+      fetchedUrls.push(String(url));
       return { ok: false, status: 404, async json() { throw new Error('404 Not Found'); } };
     };
+    resetLeftoverVersionCache();
 
     const root = globalThis.document.createElement('div');
     const ctx = {
@@ -435,11 +714,46 @@ test('leftover version paints from bundled credits on the packaged route', async
     await new Promise((resolve) => setTimeout(resolve, 0));
 
     const versionNode = root.querySelector('[data-role="version"]');
-    assert.ok(versionNode, 'pause still paints the leftover version fine print');
+    assert.ok(versionNode, 'pause still paints the version fine print');
     assert.equal(versionNode.textContent, leftoverLabel);
-    assert.equal(fetched, 0, 'packaged pause does not fetch /package.json');
+    assert.deepEqual(fetchedUrls, ['spaceface-release-build.json'],
+      'the only fetch is the build receipt at the web root — never /package.json');
     console.log('PQ-033.01 packaged route: pause version = "' + versionNode.textContent + '"');
   } finally {
     dom.restore();
+    resetLeftoverVersionCache();
+  }
+});
+
+test('version label gains the build hash from the shell bridge or the receipt', async () => {
+  const dom = installMiniDom();
+  try {
+    // Electron route: the preload bridge answers from the shell's resolved identity.
+    globalThis.window.spacefaceShell = {
+      buildInfo: async () => ({ version: leftoverVersion, build: 'deedbeef1234', packaged: true, channel: 'release' }),
+    };
+    resetLeftoverVersionCache();
+    let payload = await loadLeftoverVersionPayload();
+    assert.equal(payload.build, 'deedbeef1234');
+    assert.equal(leftoverVersionLabel(payload), 'SpaceFace v' + leftoverVersion + ' · deedbeef1234');
+
+    // Statically served packaged bundle (no bridge): the web-root receipt supplies the digest.
+    delete globalThis.window.spacefaceShell;
+    const digest = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ output: { digest } }) });
+    resetLeftoverVersionCache();
+    payload = await loadLeftoverVersionPayload();
+    assert.equal(payload.build, '0123456789ab', 'build label uses the receipt digest prefix');
+
+    // A malformed receipt never becomes a build claim.
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ output: { digest: 'not-a-hash' } }) });
+    resetLeftoverVersionCache();
+    payload = await loadLeftoverVersionPayload();
+    assert.equal(payload.build, '');
+    assert.equal(leftoverVersionLabel(payload), leftoverLabel);
+    console.log('PQ-033.01 label: "' + leftoverVersionLabel({ version: leftoverVersion, build: 'deedbeef1234' }) + '"');
+  } finally {
+    dom.restore();
+    resetLeftoverVersionCache();
   }
 });

@@ -85,6 +85,7 @@
     "check:bark-director": "node scripts/check-bark-director.mjs",
     "check:bark-silence": "node scripts/check-bark-silence.mjs",
     "check:proof-ritual": "node scripts/check-proof-ritual.mjs",
+    "check:pq033:release-closeout": "node --test test/pq-033-01-crash-version.test.mjs",
     "check:build-identity": "node scripts/check-build-identity.mjs",
     "check:synergy-tells": "node scripts/check-synergy-tells.mjs",
     "check:intent-glyphs": "node scripts/check-intent-glyphs.mjs",
@@ -296,6 +297,7 @@
     "check:settings-profile": "node scripts/check-settings-profile-persistence.mjs",
     "credits": "node scripts/write-credits.mjs",
     "check:controls-discoverability": "node scripts/check-controls-discoverability.mjs",
+    "check:gamepad:screens": "node scripts/check-gamepad-screens.mjs",
     "check:ui:control-labels": "node scripts/check-ui-control-labels.mjs",
     "check:cargo-jettison-copy": "node scripts/check-cargo-jettison-copy.mjs",
     "check:player-facing-labels": "node scripts/check-player-facing-labels.mjs",
@@ -615,6 +617,8 @@
       "build/web/**",
       "electron/main.cjs",
       "electron/preload.cjs",
+      "electron/autoUpdate.cjs",
+      "electron/releaseIdentity.cjs",
       "scripts/lib/gameServer.cjs",
       "scripts/lib/electronLaunchProtocol.cjs",
       "scripts/lib/playerSaveStore.cjs",
@@ -622,12 +626,20 @@
       "package.json",
       "NOTICE"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "coldshalamov",
+      "repo": "SpaceFace"
+    },
     "win": {
       "target": "nsis",
       "artifactName": "SpaceFace-Setup-${version}.${ext}"
     },
     "mac": {
-      "target": "dmg"
+      "target": [
+        "dmg",
+        "zip"
+      ]
     },
     "linux": {
       "target": "AppImage"
@@ -636,6 +648,8 @@
   "dependencies": {
     "@dimforge/rapier3d-compat": "0.19.3",
     "@floating-ui/dom": "^1.8.0",
-    "three": "0.184.0"
+    "electron-updater": "6.2.1",
+    "three": "0.184.0",
+    "three.quarks": "^0.17.1"
   }
 }

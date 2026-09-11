@@ -183,15 +183,24 @@ function objectiveSummaryText(meta) {
   return meta.objectiveSummary || meta.navObjectiveSummary || meta.missionSummary || meta.storySummary || '';
 }
 
-/** Leftover version payload is the bundled credits `{ version }`. Title and pause share this string. */
+/** Version payload is bundled credits `{ version }` plus a build hash when the host can name one:
+ * Electron's preload bridge answers from the shell's resolved release identity; a statically
+ * served packaged bundle carries its receipt at the web root. Title and pause share this string. */
 export function leftoverVersionToken(payload) {
   if (!payload || typeof payload.version !== 'string') return '';
   return payload.version.trim();
 }
 
+export function leftoverBuildToken(payload) {
+  if (!payload || typeof payload.build !== 'string') return '';
+  return payload.build.trim();
+}
+
 export function leftoverVersionLabel(payload) {
   const version = leftoverVersionToken(payload);
-  return version ? ('SpaceFace v' + version) : 'SpaceFace';
+  if (!version) return 'SpaceFace';
+  const build = leftoverBuildToken(payload);
+  return 'SpaceFace v' + version + (build ? ' · ' + build : '');
 }
 
 export function applyLeftoverVersionText(target, payload) {
@@ -203,8 +212,42 @@ export function applyLeftoverVersionText(target, payload) {
   return label;
 }
 
+const RELEASE_RECEIPT_URL = 'spaceface-release-build.json';
+let versionPayloadPromise = null;
+
+/** Test seam: the resolved payload is session-cached so screens never refetch per mount. */
+export function resetLeftoverVersionCache() {
+  versionPayloadPromise = null;
+}
+
 export function loadLeftoverVersionPayload() {
-  return Promise.resolve(CREDITS);
+  if (!versionPayloadPromise) versionPayloadPromise = resolveLeftoverVersionPayload();
+  return versionPayloadPromise;
+}
+
+async function resolveLeftoverVersionPayload() {
+  const base = { version: leftoverVersionToken(CREDITS), build: '' };
+  try {
+    const shell = globalThis.window && globalThis.window.spacefaceShell;
+    if (shell && typeof shell.buildInfo === 'function') {
+      const info = await shell.buildInfo();
+      const build = leftoverBuildToken(info);
+      if (build) return { version: leftoverVersionToken(info) || base.version, build: build.slice(0, 32) };
+    }
+  } catch (e) {}
+  try {
+    if (typeof fetch === 'function') {
+      const res = await fetch(RELEASE_RECEIPT_URL, { cache: 'no-store' });
+      if (res && res.ok) {
+        const receiptData = await res.json();
+        const digest = receiptData && receiptData.output && receiptData.output.digest;
+        if (typeof digest === 'string' && /^[0-9a-f]{16,64}$/i.test(digest)) {
+          return { ...base, build: digest.slice(0, 12) };
+        }
+      }
+    }
+  } catch (e) {}
+  return base;
 }
 
 export function paintLeftoverVersion(target, stillCurrent) {

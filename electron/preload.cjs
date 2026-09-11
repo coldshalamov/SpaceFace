@@ -1,5 +1,6 @@
-// Narrow one-way lifecycle bridge for the context-isolated game renderer.
-// The renderer may subscribe to allowlisted shell state; it cannot send or invoke Electron IPC.
+// Narrow bridge for the context-isolated game renderer.
+// The renderer may subscribe to allowlisted shell state and invoke the few named request channels
+// exposed below (quit, save-clip, build-info); there is no generic send/invoke surface.
 const { contextBridge, ipcRenderer } = require('electron');
 
 const SHELL_LIFECYCLE_CHANNEL = 'spaceface:shell-lifecycle';
@@ -67,6 +68,7 @@ contextBridge.exposeInMainWorld('spacefaceLifecycle', Object.freeze({
 
 // Also expose a minimal shell bridge for quit callers that prefer window.spacefaceShell
 const SHELL_SAVE_CLIP_CHANNEL = 'spaceface:save-clip';
+const SHELL_BUILD_INFO_CHANNEL = 'spaceface:build-info';
 try {
   contextBridge.exposeInMainWorld('spacefaceShell', Object.freeze({
     quit() {
@@ -74,6 +76,10 @@ try {
     },
     saveClip(payload) {
       return ipcRenderer.invoke(SHELL_SAVE_CLIP_CHANNEL, payload);
+    },
+    // {version, build, packaged, channel} — the same build id crash reports carry.
+    buildInfo() {
+      return ipcRenderer.invoke(SHELL_BUILD_INFO_CHANNEL);
     },
   }));
 } catch (e) {}
