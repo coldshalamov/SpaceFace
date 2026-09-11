@@ -16423,7 +16423,7 @@
       "priority": 426,
       "title": "The sample library pipeline",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",

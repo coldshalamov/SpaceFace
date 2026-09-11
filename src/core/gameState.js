@@ -17,7 +17,9 @@ function defaultSettings() {
       master: 0.55,
       sfx: 0.7,
       music: 0.32,
-      muted: true,
+      // PQ-158.00: the designed sample library is the default voice — new games start unmuted.
+      // Stored profiles keep the player's own choice (graphicsProfileBootstrap owns that migration).
+      muted: false,
       defaultMuteVersion: AUDIO_DEFAULT_MUTE_VERSION,
     },
     // renderScale/shadows raised from 0.85/false after a matched A/B on the 60fps target hardware

@@ -1702,6 +1702,228 @@ export const RECIPES = [
   },
 ];
 
+// PQ-158.00 — the sample-library hybrid bindings.
+//
+// A bound recipe plays as a sample+synth HYBRID: `id` names a designed sample in
+// src/audio/sampleLibrary.js SAMPLE_MANIFEST (authored offline by assets/audio/generate-samples.mjs),
+// `share` is the fraction of the cue's peak the designed body carries while the live synth layer
+// keeps the remainder (pitch/mass coupling, endless variation, and the no-sample fallback), and
+// `gain`/`rate` shape the sample inside the cue. Bindings are data only: the synth fields above
+// stay the authoritative voice of every recipe, so a missing/undecoded sample degrades to exactly
+// the pre-158 sound with no gap and no pop.
+export const SAMPLE_BINDINGS = {
+  // weapons
+  sfx_wpn_pulse_laser: { id: 'wpn_pulse', share: 0.62 },
+  sfx_wpn_autocannon: { id: 'wpn_cannon', share: 0.62 },
+  sfx_wpn_railgun: { id: 'wpn_rail', share: 0.65 },
+  sfx_wpn_beam_laser: { id: 'wpn_beam_loop', share: 0.55 },
+  sfx_wpn_missile: { id: 'wpn_missile_loop', share: 0.6 },
+  sfx_combat_near_miss: { id: 'near_miss', share: 0.6 },
+
+  // doctrine telegraphs
+  sfx_doctrine_flyby: { id: 'doctrine_flyby', share: 0.6 },
+  sfx_doctrine_flyby_break: { id: 'doctrine_flyby', share: 0.5, rate: 0.8 },
+  sfx_doctrine_flyby_withdraw: { id: 'near_miss', share: 0.45, rate: 0.7 },
+  sfx_doctrine_tether_spool: { id: 'doctrine_spool', share: 0.6 },
+  sfx_doctrine_tether_break: { id: 'tether_snap', share: 0.5, rate: 0.85 },
+  sfx_doctrine_tether_withdraw: { id: 'doctrine_spool', share: 0.45, rate: 0.7 },
+  sfx_doctrine_ranged_charge: { id: 'doctrine_charge', share: 0.6 },
+  sfx_doctrine_ranged_break: { id: 'rcs_disrupt', share: 0.5 },
+  sfx_doctrine_ranged_withdraw: { id: 'travel_lock', share: 0.4, rate: 0.8 },
+  sfx_doctrine_brawler_commit: { id: 'doctrine_growl', share: 0.6 },
+  sfx_doctrine_brawler_break: { id: 'doctrine_growl', share: 0.55, rate: 0.72 },
+  sfx_doctrine_brawler_withdraw: { id: 'doctrine_spool', share: 0.4, rate: 0.6 },
+  sfx_doctrine_escort_screen: { id: 'doctrine_escort', share: 0.6 },
+  sfx_doctrine_capital_broadside: { id: 'doctrine_broadside', share: 0.65 },
+  sfx_doctrine_break: { id: 'doctrine_growl', share: 0.45 },
+  sfx_doctrine_withdraw: { id: 'doctrine_spool', share: 0.4, rate: 0.8 },
+  sfx_encounter_escalation: { id: 'escalation_sub', share: 0.6 },
+
+  // impacts (the mass ladder feeds PQ-158.01's 3x3 grid)
+  'sfx.hullHit': { id: 'impact_hull', share: 0.62 },
+  'sfx.armorHit': { id: 'impact_armor', share: 0.62 },
+  'sfx.playerDamage': { id: 'impact_hull', share: 0.55, rate: 1.15 },
+  sfx_dock_clunk: { id: 'ui_dock', share: 0.6 },
+  sfx_mining_mass_required: { id: 'impact_kiss', share: 0.5, rate: 0.7 },
+  sfx_mining_mass_engaged: { id: 'impact_kiss', share: 0.55 },
+  sfx_travel_settle: { id: 'impact_kiss', share: 0.45, rate: 0.6 },
+
+  // explosions
+  sfx_explosion_small: { id: 'exp_small', share: 0.65 },
+  sfx_explosion_large: { id: 'exp_large', share: 0.65 },
+  sfx_kill_capital_sub: { id: 'escalation_sub', share: 0.5, rate: 0.6 },
+  sfx_kill_capital_noise: { id: 'exp_large', share: 0.5, rate: 0.8 },
+  'sfx.killCapital': { id: 'exp_capital', share: 0.62 },
+  'sfx.killSmall': { id: 'exp_small', share: 0.62 },
+  sfx_kill_sine: { id: 'escalation_sub', share: 0.5, rate: 0.8 },
+  sfx_kill_noise: { id: 'exp_small', share: 0.5, rate: 0.7 },
+  'sfx.killConfirmed': { id: 'exp_small', share: 0.6 },
+  sfx_kill_confirm: { id: 'kill_confirm_chime', share: 0.6 },
+  sfx_vector_mine: { id: 'vector_mine', share: 0.6 },
+  'sfx.chargeDetonate': { id: 'exp_large', share: 0.6, rate: 1.3 },
+  sfx_player_death: { id: 'player_death', share: 0.65 },
+
+  // shields
+  'sfx.shieldHit': { id: 'shield_break', share: 0.45, rate: 1.25 },
+  sfx_shield_break_crystal: { id: 'shield_break', share: 0.6 },
+  sfx_shield_break_crack: { id: 'shield_blowout', share: 0.45, rate: 1.4 },
+  'sfx.shieldBreak': { id: 'shield_break', share: 0.62 },
+  sfx_shield_blowout_pop: { id: 'shield_blowout', share: 0.62 },
+  sfx_shield_blowout_discharge: { id: 'shield_blowout', share: 0.5 },
+  sfx_shield_blowout_alarm: { id: 'ui_alert', share: 0.55, rate: 1.2 },
+
+  // subsystems / countermeasures
+  sfx_subsystem_disabled: { id: 'subsystem_pop', share: 0.6 },
+  sfx_subsystem_drive_disabled: { id: 'doctrine_growl', share: 0.5, rate: 0.8 },
+  sfx_subsystem_sensor_disabled: { id: 'subsystem_pop', share: 0.5, rate: 1.4 },
+  sfx_subsystem_weapon_disabled: { id: 'subsystem_pop', share: 0.5, rate: 0.8 },
+  sfx_cm_chaff: { id: 'cm_chaff', share: 0.6 },
+  sfx_cm_ecm: { id: 'cm_ecm', share: 0.6 },
+  sfx_rcs_disrupt: { id: 'rcs_disrupt', share: 0.6 },
+
+  // mining
+  sfx_mining_beam: { id: 'mine_beam_loop', share: 0.55 },
+  sfx_mining_impact: { id: 'impact_rock', share: 0.6 },
+  sfx_mining_drill_grind: { id: 'mine_drill', share: 0.55 },
+  sfx_mining_drill_contact: { id: 'mine_drill', share: 0.5, rate: 1.2 },
+  sfx_mining_drill_break: { id: 'mine_gravel', share: 0.6, rate: 0.8 },
+  sfx_mining_drill_yield: { id: 'ore_tick', share: 0.55, rate: 1.2 },
+  sfx_mining_drill_abort: { id: 'mine_abort', share: 0.55 },
+  sfx_mining_drill_retry: { id: 'mine_scan', share: 0.45, rate: 0.7 },
+  sfx_mining_hardness: { id: 'mine_gravel', share: 0.5 },
+  sfx_mining_cutter_lock: { id: 'tether_latch', share: 0.5 },
+  sfx_mining_seam_reward: { id: 'mine_seam', share: 0.6 },
+  sfx_mining_fracture_sub: { id: 'mine_fracture', share: 0.55, rate: 0.8 },
+  sfx_mining_fracture_noise: { id: 'mine_gravel', share: 0.55 },
+  sfx_mining_fracture_break: { id: 'mine_fracture', share: 0.65 },
+  sfx_mining_fracture_warning: { id: 'rock_groan', share: 0.45, rate: 2.2 },
+  sfx_mining_core_exposed: { id: 'mine_core', share: 0.55 },
+  sfx_mining_core_charge: { id: 'doctrine_charge', share: 0.5, rate: 0.7 },
+  sfx_mining_core_reward: { id: 'mine_core', share: 0.65 },
+  sfx_mining_core_fizzle: { id: 'mine_abort', share: 0.5, rate: 1.3 },
+  sfx_mining_yield: { id: 'ui_loot', share: 0.45 },
+  sfx_mining_cargo_settle: { id: 'hopper_thock', share: 0.55 },
+  sfx_mining_field_settle: { id: 'mine_gravel', share: 0.45, rate: 0.7 },
+  sfx_mining_heat_warning: { id: 'cm_ecm', share: 0.4, rate: 1.4 },
+  sfx_mining_seismic_pulse: { id: 'escalation_sub', share: 0.5, rate: 0.7 },
+  sfx_mining_gas_hazard: { id: 'mine_gas', share: 0.6 },
+  sfx_core_bell: { id: 'mine_core', share: 0.6 },
+  sfx_vent_chime: { id: 'mine_vent', share: 0.5, rate: 2.4 },
+
+  // scanner family
+  sfx_mining_scan_root: { id: 'mine_scan', share: 0.5, rate: 0.5 },
+  sfx_mining_scan_air: { id: 'squelch_ambient', share: 0.4 },
+  sfx_mining_scan_pulse: { id: 'mine_scan', share: 0.5, rate: 0.75 },
+  sfx_mining_scan_return: { id: 'mine_scan', share: 0.55, rate: 1.1 },
+  sfx_mining_scan_classified: { id: 'mine_scan', share: 0.5, rate: 0.8 },
+  sfx_mining_scan_tracked: { id: 'mine_scan', share: 0.5, rate: 0.62 },
+  sfx_mining_scan_investigated: { id: 'mine_scan', share: 0.5, rate: 0.9 },
+  sfx_scan_pulse: { id: 'mine_scan', share: 0.5, rate: 0.9 },
+  sfx_scenario_signal: { id: 'mine_scan', share: 0.5, rate: 1.5 },
+
+  // UI kit
+  sfx_ui_click: { id: 'ui_click', share: 0.6 },
+  sfx_ui_hover: { id: 'ui_click', share: 0.5, rate: 1.3 },
+  sfx_ui_tab: { id: 'ui_click', share: 0.5, rate: 0.8 },
+  sfx_ui_switch_detent: { id: 'ui_detent', share: 0.6 },
+  sfx_ui_drawer_latch: { id: 'ui_detent', share: 0.5, rate: 0.7 },
+  sfx_ui_confirm: { id: 'ui_confirm', share: 0.6 },
+  sfx_ui_error: { id: 'ui_deny', share: 0.6 },
+  sfx_ui_open: { id: 'ui_open', share: 0.6 },
+  sfx_ui_back: { id: 'ui_open', share: 0.6, rate: 0.8 },
+  sfx_ui_alert: { id: 'ui_alert', share: 0.55 },
+  sfx_lock_acquired: { id: 'ui_lock', share: 0.6 },
+  sfx_mission_accept: { id: 'ui_mission', share: 0.6 },
+  sfx_mission_complete: { id: 'ui_mission', share: 0.6, rate: 0.92 },
+  sfx_discovery_reveal: { id: 'ui_respawn', share: 0.5, rate: 1.1 },
+  sfx_loot_collect: { id: 'ui_loot', share: 0.6 },
+  sfx_respawn_chime: { id: 'ui_respawn', share: 0.55 },
+  sfx_undock_release: { id: 'ui_undock', share: 0.6 },
+  sfx_branch_resolved: { id: 'ui_confirm', share: 0.45, rate: 0.8 },
+  sfx_objective_priority_split: { id: 'ui_lock', share: 0.45, rate: 0.7 },
+
+  // wanted / heat
+  sfx_wanted_alert: { id: 'wanted_alert', share: 0.6 },
+  sfx_wanted_clear: { id: 'wanted_clear', share: 0.6 },
+
+  // engine / dash / cruise / jump
+  sfx_engine_thrust: { id: 'engine_thrust_loop', share: 0.55 },
+  sfx_engine_boost: { id: 'engine_thrust_loop', share: 0.5, rate: 1.25 },
+  sfx_boost_whoosh: { id: 'boost_whoosh', share: 0.6 },
+  sfx_dash_whoosh: { id: 'boost_whoosh', share: 0.5, rate: 1.3 },
+  sfx_dash_thump: { id: 'dash_punch', share: 0.6 },
+  'sfx.shipDash': { id: 'dash_punch', share: 0.62 },
+  'combat.action.dash.active': { id: 'dash_punch', share: 0.6 },
+  sfx_accel_transition: { id: 'dash_punch', share: 0.45, rate: 1.15 },
+  sfx_cruise_charge_root: { id: 'travel_gate', share: 0.5, rate: 0.7 },
+  sfx_cruise_charge_fifth: { id: 'travel_gate', share: 0.45, rate: 1.05 },
+  'sfx.cruiseCharging': { id: 'travel_gate', share: 0.55 },
+  'sfx.cruiseEngaged': { id: 'engine_thrust_loop', share: 0.55 },
+  'sfx.cruiseSnared': { id: 'travel_fail', share: 0.55 },
+  sfx_jump_charge: { id: 'jump_charge', share: 0.55 },
+  sfx_jump_arrive: { id: 'jump_arrive', share: 0.6 },
+
+  // travel family
+  sfx_travel_motif: { id: 'travel_lock', share: 0.5, rate: 0.8 },
+  sfx_travel_lane_lock: { id: 'travel_lock', share: 0.6 },
+  sfx_travel_gate_approach: { id: 'travel_gate', share: 0.5, rate: 1.2 },
+  sfx_travel_gate_align: { id: 'travel_gate', share: 0.55 },
+  sfx_travel_commit_window: { id: 'travel_lock', share: 0.5, rate: 1.4 },
+  sfx_travel_commit_sub: { id: 'travel_commit', share: 0.55, rate: 0.9 },
+  sfx_travel_transit: { id: 'boost_whoosh', share: 0.5, rate: 0.8 },
+  sfx_travel_commit: { id: 'travel_commit', share: 0.62 },
+  sfx_travel_arrival_tone: { id: 'travel_arrival', share: 0.55 },
+  sfx_travel_arrival: { id: 'travel_arrival', share: 0.62 },
+  sfx_travel_sector_identity: { id: 'travel_lock', share: 0.45, rate: 0.75 },
+  sfx_travel_cancel: { id: 'mine_abort', share: 0.5, rate: 0.9 },
+  sfx_travel_fail_tone: { id: 'travel_fail', share: 0.55 },
+  sfx_travel_fail_noise: { id: 'mine_gravel', share: 0.45, rate: 0.6 },
+  sfx_travel_fail: { id: 'travel_fail', share: 0.62 },
+  sfx_travel_interdiction: { id: 'travel_interdict', share: 0.6 },
+  sfx_travel_recovery: { id: 'travel_lock', share: 0.5, rate: 1.2 },
+
+  // comms / squelch
+  sfx_squelch_story: { id: 'squelch_story', share: 0.6 },
+  sfx_squelch_ambient: { id: 'squelch_ambient', share: 0.6 },
+  sfx_squelch_danger: { id: 'squelch_danger', share: 0.6 },
+  sfx_comms_kessler: { id: 'squelch_story', share: 0.5, rate: 1.1 },
+  sfx_comms_denial: { id: 'squelch_ambient', share: 0.5, rate: 0.8 },
+
+  // massline / tether
+  sfx_massline_throw: { id: 'massline_throw', share: 0.62 },
+  sfx_massline_solution: { id: 'ui_lock', share: 0.5, rate: 0.9 },
+  sfx_massline_sling: { id: 'massline_sling', share: 0.62 },
+  sfx_massline_tumble: { id: 'massline_tumble', share: 0.6 },
+  sfx_massline_bt_in: { id: 'massline_bt', share: 0.6 },
+  sfx_massline_bt_out: { id: 'massline_bt', share: 0.6, rate: 1.35 },
+  sfx_massline_cloak_on: { id: 'massline_cloak', share: 0.6 },
+  sfx_massline_cloak_off: { id: 'massline_cloak', share: 0.6, rate: 1.4 },
+  sfx_massline_jettison: { id: 'dash_punch', share: 0.5, rate: 0.8 },
+  sfx_massline_bomb_drop: { id: 'ui_detent', share: 0.5, rate: 0.6 },
+  'combat.action.attach.lock': { id: 'tether_latch', share: 0.62 },
+  'combat.action.sling.release': { id: 'massline_sling', share: 0.6 },
+  'combat.action.cut.snap': { id: 'tether_snap', share: 0.62 },
+  'combat.action.burst.fire': { id: 'wpn_pulse', share: 0.6, rate: 0.95 },
+  'combat.action.cancel': { id: 'mine_abort', share: 0.5, rate: 1.3 },
+  'combat.action.reject': { id: 'ui_deny', share: 0.5, rate: 1.1 },
+  sfx_tether_latch_lock: { id: 'tether_latch', share: 0.55, rate: 1.2 },
+  sfx_tether_latch_body: { id: 'tether_latch', share: 0.6, rate: 0.9 },
+  'sfx.tetherLatch': { id: 'tether_latch', share: 0.62 },
+  sfx_tether_strain_creak: { id: 'tether_strain', share: 0.6 },
+  sfx_tether_crack: { id: 'tether_snap', share: 0.55, rate: 1.4 },
+  sfx_tether_twang: { id: 'tether_snap', share: 0.6, rate: 0.7 },
+  'sfx.tetherSnap': { id: 'tether_snap', share: 0.62 },
+
+  // station / world context
+  sfx_station_hum: { id: 'station_hum_loop', share: 0.5 },
+  sfx_station_machinery: { id: 'station_tick', share: 0.55 },
+  sfx_traffic_blip: { id: 'traffic_blip', share: 0.55 },
+  sfx_fringe_tick: { id: 'fringe_tick', share: 0.6 },
+  sfx_anomaly_swell: { id: 'ambient_swell', share: 0.55 },
+  sfx_ambient_rock_groan: { id: 'rock_groan', share: 0.6 },
+  sfx_ambient_rock_calve: { id: 'rock_calve', share: 0.6 },
+};
+
 // 4 adaptive music stems (A=ambient/safe, B=tension, C=combat, D=boss).
 export const MUSIC_STEMS = [
   {

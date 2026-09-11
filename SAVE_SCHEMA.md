@@ -317,7 +317,7 @@ Current save version: `14`
 | `$.settings.audio.defaultMuteVersion` | number | 1 |
 | `$.settings.audio.master` | number | 0.55 |
 | `$.settings.audio.music` | number | 0.32 |
-| `$.settings.audio.muted` | boolean | true |
+| `$.settings.audio.muted` | boolean | false |
 | `$.settings.audio.sfx` | number | 0.7 |
 | `$.settings.controls` | object | {} |
 | `$.settings.controls.bindings` | null | null |

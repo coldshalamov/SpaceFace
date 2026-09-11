@@ -1,5 +1,7 @@
-// src/audio/audioSystem.js — the `audio` system. 100% Web Audio synthesis (no files, no three).
-// Builds master -> limiter -> { sfxBus, musicBus }, synthesizes SFX from RECIPES on gameplay
+// src/audio/audioSystem.js — the `audio` system. Web Audio synthesis (no three) layered with the
+// PQ-158.00 designed sample library (assets/audio/, residency-gated in sampleLibrary.js) so bound
+// recipes play as sample+synth hybrids. Builds master -> limiter -> { sfxBus, musicBus }, synthesizes
+// SFX from RECIPES on gameplay
 // events with 2D distance attenuation + stereo pan relative to the player ship, runs low-shield /
 // low-hull alarm loops, and an adaptive 4-state music bed (calm/tense/combat/docked) driven by a
 // derived threat level. Honors settings.audio.{master,sfx,music,muted} and settings:changed.
@@ -32,6 +34,11 @@ import {
 import { TABLE_HEARING_FAR_WU, TABLE_HEARING_PAN_WU } from '../render/tabletopPolicy.js';
 import { entityNeedsExactAudio } from './audioActiveSet.js';
 import { heatLevelFor } from '../systems/heat.js';
+import {
+  createSampleRuntime,
+  resolveSampleBinding,
+  attachSampleLayer,
+} from './sampleLibrary.js';
 
 // --- positional model (ARCHITECTURE / spec) ---
 const D_NEAR = 40;     // wu — full volume within this
@@ -996,6 +1003,7 @@ export const audio = {
     rt.threat = 0;
     rt.alarms = { lowShield: false, lowHull: false };
     rt._caches = {};              // noise buffer + distortion curves
+    rt._samples = createSampleRuntime(); // PQ-158.00 sample library (promise-driven, never per-frame)
     rt._nextVoiceId = 1;
     rt._lastDamageT = -1e9;       // sim-time of last player damage (for inCombatRecent)
     rt._stateSince = 0;          // wallclock when current music state started
@@ -1101,14 +1109,23 @@ export const audio = {
     bus.on('combat:damage', (p) => this._onDamage(p));
     bus.on('collision', (p) => this._onCollision(p));
     bus.on('shieldDown', (p) => {
-      // Shield break: a sharp energy crackle at the target's position. Use the explosion-small recipe
-      // with a high pitch shift so it reads as an energy discharge, not a kinetic blast.
+      // Shield break: a sharp energy crackle at the target's position.
       const pos = p && p.pos;
       const target = p && p.combatantId ? this.state.entities.get(p.combatantId) : null;
+      const isPlayer = !!(
+        (p && p.combatantId === this.state.playerId) ||
+        (target && target.isPlayer)
+      );
       const position = pos || (target ? { x: target.pos.x, z: target.pos.z } : null);
       const signature = FIRST_HOUR_AUDIO_SIGNATURES.shieldBreak;
-      this._applyPriorityCue({ id: 'shield.collapse', importance: signature.priority, playerRelevance: 1 });
-      this.play(signature.recipeId, { position, gain: 0.64, critical: true });
+      this._applyPriorityCue({ id: 'shield.collapse', importance: signature.priority, playerRelevance: isPlayer ? 1 : 0.4 });
+      if (isPlayer) {
+        // Player shield blowout: distinct electrical pop + audible alarm cue
+        this.play('sfx_shield_blowout_pop', { position, gain: 0.9, critical: true });
+        this.play('sfx_shield_blowout_alarm', { gain: 0.8, critical: true });
+      } else {
+        this.play(signature.recipeId, { position, gain: 0.64, critical: true });
+      }
     });
     bus.on('shieldRestored', () => {});
     bus.on('entity:killed', (p) => this._onKilled(p));
@@ -1585,6 +1602,13 @@ export const audio = {
 
     getNoiseBuffer(ctx, rt._caches); // pre-build the shared noise buffer
 
+    // PQ-158.00: the graph exists — warm the core sample tier. Fetch+decode are promise-driven
+    // (decodeAudioData runs off the main thread); nothing here polls on a frame.
+    if (rt._samples) {
+      rt._samples.setContext(ctx);
+      rt._samples.prefetchTier(0);
+    }
+
     this._applySettings();
     this._setBulletTimeAudio(!!rt._bulletTimeAudioActive);
 
@@ -1851,6 +1875,13 @@ export const audio = {
     const peak = Math.min(1, recipeAmp * callGain * att);
     if (peak < 0.0008) return null;
 
+    // PQ-158.00 hybrid: a resident designed sample carries the cue body at `share` of the peak
+    // while the live synth layer keeps the remainder. A not-yet-resident sample degrades to the
+    // full synth voice (no gap, no pop) and schedules the decode that makes the next cue hybrid.
+    const sampleBinding = rt._samples ? resolveSampleBinding(recipeId) : null;
+    const sampleBuffer = sampleBinding ? rt._samples.acquire(sampleBinding.sampleId) : null;
+    const synthPeak = sampleBuffer ? peak * (1 - sampleBinding.share) : peak;
+
     let targetBus = rt.sfxBus;
     if (busName === 'engine') targetBus = rt.engineBus;
     else if (busName === 'ambient') targetBus = rt.ambientBus;
@@ -1869,13 +1900,21 @@ export const audio = {
 
     this._evictIfFull();
     const voice = playRecipe(ctx, recipe, dest, {
-      peakGain: peak, detune: opts.detune || 0, rate, id: rt._nextVoiceId++, trackId: opts.trackId || null,
+      peakGain: synthPeak, detune: opts.detune || 0, rate, id: rt._nextVoiceId++, trackId: opts.trackId || null,
       startTime: opts.startTime,
     }, rt._caches);
     voice.busName = busName;
     voice._panner = panner;
     voice.loop = !!recipe.loop || (recipe.type && String(recipe.type).startsWith('continuous'));
     voice.role = busName === 'engine' ? 'engineLoop' : (recipe.category === 'weapon' && voice.loop ? 'weaponLoop' : busName);
+    if (sampleBuffer) {
+      attachSampleLayer(ctx, sampleBuffer, sampleBinding, voice,
+        opts.startTime !== undefined ? opts.startTime : ctx.currentTime, {
+          rate, detune: opts.detune || 0,
+          peak: peak * sampleBinding.share,
+          loop: voice.loop,
+        });
+    }
     rt.voices.push(voice);
     return voice;
   },
@@ -2820,8 +2859,12 @@ export const audio = {
       dest = panner;
     }
     const peak = Math.min(1, this._ampFor(recipe) * (gain == null ? 1 : gain) * att);
+    // PQ-158.00 hybrid loop: resident sample body + live synth layer, released together.
+    const sampleBinding = rt._samples ? resolveSampleBinding(recipeId) : null;
+    const sampleBuffer = sampleBinding ? rt._samples.acquire(sampleBinding.sampleId) : null;
+    const loopSynthPeak = Math.max(0.02, sampleBuffer ? peak * (1 - sampleBinding.share) : peak);
     const v = playRecipe(ctx, recipe, dest, {
-      peakGain: Math.max(0.02, peak),
+      peakGain: loopSynthPeak,
       rate: isPhysicalAudioBus(busName) ? (rt._bulletTimePitch || 1) : 1,
       id: rt._nextVoiceId++,
     }, rt._caches);
@@ -2832,6 +2875,13 @@ export const audio = {
     v.role = busName === 'engine'
       ? 'engineLoop'
       : ((recipe.category === 'weapon' || String(recipeId).includes('wpn')) ? 'weaponLoop' : busName);
+    if (sampleBuffer) {
+      attachSampleLayer(ctx, sampleBuffer, sampleBinding, v, ctx.currentTime, {
+        rate: isPhysicalAudioBus(busName) ? (rt._bulletTimePitch || 1) : 1,
+        peak: peak * sampleBinding.share,
+        loop: true,
+      });
+    }
     rt.voices.push(v);
     return v;
   },
@@ -3935,6 +3985,8 @@ export const audio = {
     const familyVoice = identity.voice;
 
     // Spec frequencies are exact; place identity lives in the station/palette layers.
+    // Idle stays silent (no unearned 55 Hz floor). Thrust, boost, and cruise keep their
+    // authored propulsion identities so sustained flight still has engine feedback.
     let f1 = 55, f2 = 55, d2 = 6, noiseG = 0.0001, noiseHz = 300, subG = 0.08 * massNorm, humG = 0.55;
     if (tier === 'cruise') {
       f1 = 65;
@@ -3961,8 +4013,6 @@ export const audio = {
       subG = 0.12 * massNorm;
       humG = 0.72;
     } else {
-      // Idle has no physical event to voice. The old 55 Hz saw/sine stack was the startup buzz;
-      // thrust, boost, and cruise still retain their authored propulsion identities.
       humG = 0;
       subG = 0;
       noiseG = 0;

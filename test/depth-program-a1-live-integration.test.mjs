@@ -10,9 +10,9 @@ import { bandRadio, deriveBandEventKeys, numbersBearingDue } from '../src/system
 import { uniqueWrecks } from '../src/systems/uniqueWrecks.js';
 import { uniqueWreckById } from '../src/data/uniqueWrecks.js';
 
-test('new games remain silent until the player explicitly enables audio', () => {
+test('new games start unmuted now that the designed sample library is the default voice', () => {
   const state = createGameState(0xa1);
-  assert.equal(state.settings.audio.muted, true);
+  assert.equal(state.settings.audio.muted, false);
   assert.equal(state.settings.audio.defaultMuteVersion, AUDIO_DEFAULT_MUTE_VERSION);
 });
 
