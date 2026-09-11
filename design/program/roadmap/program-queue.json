@@ -7549,7 +7549,7 @@
       "priority": 130,
       "title": "NPCs use the heads",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -7569,8 +7569,10 @@
         "npm run check:baseline",
         "npm run check:massline"
       ],
-      "receiptRefs": [],
-      "brief": "Tugs couple, scavengers tractor, patrols net; the player sees the verbs in the world before buying them. DONE WHEN: Each head is seen in ordinary traffic within 10 minutes at the reference site. | 2026-09-10 REOPENED: the published sighting times (tractor 0.52s, whip 1.02s on seed 47) DO NOT REPRODUCE — both MISSING at 600s. Root cause: every live occupational job runs with tow:null; the world spawns the roles and never gives them anything to hold. Fix is in npcJobsRuntime.js. test/pq-029-03-npc-heads.test.mjs (committed 9404d2e21) is the measurement."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-029.03-REPORT.md"
+      ],
+      "brief": "Tugs couple, scavengers tractor, patrols net; the player sees the verbs in the world before buying them. DONE WHEN: Each head is seen in ordinary traffic within 10 minutes at the reference site. | 2026-09-10 REOPENED: the published sighting times (tractor 0.52s, whip 1.02s on seed 47) DO NOT REPRODUCE — both MISSING at 600s. Root cause: every live occupational job runs with tow:null; the world spawns the roles and never gives them anything to hold. Fix is in npcJobsRuntime.js. test/pq-029-03-npc-heads.test.mjs (committed 9404d2e21) is the measurement. | 2026-09-11 CLOSED: repair landed at 7a7a3c8bc (global-space salvage spawn + scavenger adoption before world shelving); census reproduces tractor 0.02s / whip 0.02s / coupler 10.52s on seed 47 twice and on seed 4242."
     },
     {
       "id": "PQ-030.00",
@@ -16443,7 +16445,9 @@
         "npm run check:baseline",
         "npm run check:presentation"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-158.00-REPORT.md"
+      ],
       "brief": "A licensed/authored sample library (recorded or designed offline) per cue family, encoded and residency-gated like assets; recipes become sample+synth hybrids. DONE WHEN: ≥ 120 cues sample-backed; default unmute; frame-sleep counters unchanged."
     },
     {
@@ -16938,7 +16942,9 @@
         "npm run check:baseline",
         "npm run check:ui-effects"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-165.00-REPORT.md"
+      ],
       "brief": "Low/Medium/High map to the adaptive-quality tiers; frame cap 30/60/120/off; VSync honoured. DONE WHEN: Preset switch captured; frame cap measured."
     },
     {
@@ -18125,7 +18131,7 @@
         "npm run check:baseline"
       ],
       "receiptRefs": [
-        "design/frontend/direction/receipts/"
+        "design/frontend/direction/receipts/P20-REPORT.md"
       ],
       "brief": "No screen has a lit world behind it today (presentationFreeze on any screen stack; the second WebGL preview context is refused on Intel GPUs). Build a main-context presentation stage (title hangar, berth, arena diorama, held world) proven first with the existing place_dock_interior GLB and the Kestrel, with authored plate fallbacks; prove title, station-dock and crucible-door show a lit 3D world via capture-ui-matrix --world at 1280/1920/2560; flight frame cost unchanged. Named fake: a static PNG of a ship with data-k-ready=1; a black canvas."
     },
