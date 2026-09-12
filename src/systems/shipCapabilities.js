@@ -110,6 +110,17 @@ export function heaviestHullWithin(massT) {
   return best;
 }
 
+/** The lightest hull the line canNOT get under way — the thing just out of reach. */
+export function lightestHullAbove(massT) {
+  let best = null;
+  for (const shipDef of SHIPS) {
+    const m = finite(shipDef.mass, 0);
+    if (m <= massT) continue;
+    if (!best || m < finite(best.mass, 0) || (m === finite(best.mass, 0) && shipDef.id < best.id)) best = shipDef;
+  }
+  return best;
+}
+
 // ---------------------------------------------------------------------------------------------
 // SLAM SURVIVAL — the closing speed this hull walks away from.
 //
@@ -263,6 +274,7 @@ export function shipCapabilityVerbs({ derived, fittings = [] } = {}) {
 
   const towMassT = towClassMassFor(derived);
   const towHull = heaviestHullWithin(towMassT);
+  const towNextHull = lightestHullAbove(towMassT);
   const tow = {
     id: 'tow_class',
     massT: round(towMassT, 1),
@@ -271,11 +283,18 @@ export function shipCapabilityVerbs({ derived, fittings = [] } = {}) {
     verb: towHull
       ? `Can tow ${withArticle(towHull.name)}`
       : 'Too loaded to tow anything',
-    sub: towHull ? `${round(towMassT, 0)} t on the line` : 'no tow',
+    sub: towHull ? `${Math.floor(towMassT)} t on the line` : 'no tow',
+    // FLOOR, not round: the sentence names the heaviest hull at or under this figure, so rounding
+    // 47.6 up to 48 made it claim 48 t and then name a 32 t Pelican, because the 48 t Drifter was
+    // half a tonne out of reach. The next hull up is named for exactly that reason — sixteen
+    // tonnes of unexplained headroom under a sentence about towing reads as a bug.
     why: towHull
-      ? `Your drive gets ${round(towMassT, 0)} t under way on the line — ${CAPABILITY_LAW.towUnderWaySpeed} WU/s in `
+      ? `Your drive gets ${Math.floor(towMassT)} t under way on the line — ${CAPABILITY_LAW.towUnderWaySpeed} WU/s in `
         + `${CAPABILITY_LAW.towUnderWaySeconds} s with the load attached. The ${towHull.name} weighs `
-        + `${round(towHull.mass, 0)} t.`
+        + `${round(towHull.mass, 0)} t`
+        + (towNextHull
+          ? `; the ${towNextHull.name} at ${round(towNextHull.mass, 0)} t is out of reach.`
+          : `, and nothing on the roster is heavier.`)
       : `At ${round(finite(derived.operationalMass, 0), 0)} t you cannot get anything else moving as well as yourself. `
         + 'Drop cargo or fit a stronger drive.',
   };
