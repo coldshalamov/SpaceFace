@@ -3575,11 +3575,15 @@ export async function prepareFirstQueuedAuthoredBoundaryForOpening(scene) {
   return { prepared: true, source: 'queued', result };
 }
 
-function isLoadingHullUpgradeJob(job) {
+export function isLoadingHullUpgradeJob(job) {
   const entity = job && job.entity;
   if (!entity) return false;
   if (entity.isPlayer === true) return true;
-  return entity.type === 'ship' || entity.type === 'place';
+  // A station is the biggest authored body in most sectors and the one the player steers toward.
+  // Leaving it out of the hulls-only cohort meant the jump/Continue cook admitted every hull and
+  // then parked the destination station behind the leftover-FX hold. Authored `fx` places stay
+  // out: those are exactly the leftover compiles this cohort exists to defer.
+  return entity.type === 'ship' || entity.type === 'place' || entity.type === 'station';
 }
 
 /** Release the bounded handoff hold after the first playable picture has painted or startup aborts. */

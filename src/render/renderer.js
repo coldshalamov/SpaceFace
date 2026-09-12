@@ -195,7 +195,7 @@ import {
   createGpuResidencyAdmissionTracker,
   createPipelineAdmissionTracker,
 } from './pipelineReadiness.js';
-import { shouldDeferPipelineAutoFlush } from './pipelineAutoFlushPolicy.js';
+import { FIRST_FLIGHT_PIPELINE_HOLD_S, shouldDeferPipelineAutoFlush } from './pipelineAutoFlushPolicy.js';
 import {
   prepareStartupGpuResidency,
   yieldToBrowser,
@@ -4700,11 +4700,12 @@ export const render = {
     state.render.resumeDeferredPipelineAdmissions = (options = {}) => {
       // Seed 47's leftover FX compiles (entity:fx:77/80/81) are still in-flight
       // when loading settles. Flushing that queue on first paint TDR'd Intel.
-      // Keep them deferred through the first 20 flight seconds; prepareFrame
-      // force-resumes once the window has passed.
+      // Keep them deferred through the first flight window; prepareFrame
+      // force-resumes once that window has passed. A sector arrival re-arms the
+      // same window against the arrival clock (firstFlightDeferredHoldUntil).
       if (options.force !== true
           && state.mode === 'flight'
-          && (Number(state.simTime) || 0) < 20) {
+          && (Number(state.simTime) || 0) < firstFlightDeferredReleaseSimTime(state)) {
         return { skipped: true, reason: 'hold-deferred-through-first-flight' };
       }
       const pipelines = options.hullsOnly === true
@@ -5260,6 +5261,12 @@ export const render = {
         state.render.liveSectorFirstFlightIds = null;
         holdAuthoredUpgradeQueueForFirstFlight(scene);
         freezeOpeningGraphPublication(this);
+        // Both guards above are the OPENING's, and the only thing that ever lifts them is the
+        // opening's one-shot latch (`_firstFlightDeferredHold`, armed by mode:changed -> loading
+        // and fired once by prepareFrame). A gate jump never returns to loading, so without this
+        // re-arm the guards are permanent: every authored body materialized in the arriving sector
+        // prepares and then parks, and the destination station stays `pending` for the session.
+        armSectorArrivalPublishRelease(this);
       }
     };
     state.render.preparePostOpeningPipelines = async () => {
@@ -6291,6 +6298,10 @@ export const render = {
         this._openingPictureHoldSinceMs = null;
         this._firstPlayablePaintScheduled = false;
         this._firstFlightDeferredHold = true;
+        // A fresh opening owns the absolute first-flight window again. Leaving an arrival deadline
+        // here would make Continue (restored simTime already past it) release on frame one, or a
+        // restored clock behind it hold for the difference.
+        state.render.firstFlightDeferredHoldUntil = null;
         if (recook) {
           // Keep the cooked GPU set and opening receipt. Clearing them made F9's
           // next present an opening first-draw that compiled 37 extra programs.
@@ -7879,12 +7890,9 @@ export const render = {
         && (Number(this.state.simTime) || 0) < 3;
       data.spacefaceBrickWarnMs = firstFlight ? 100 : 200;
     }
-    if (this.state && this.state.mode === 'flight'
-        && (Number(this.state.simTime) || 0) >= 20
-        && this._firstFlightDeferredHold !== false
-        && this.state.render
-        && typeof this.state.render.resumeDeferredPipelineAdmissions === 'function') {
+    if (shouldReleaseFirstFlightDeferredHold(this)) {
       this._firstFlightDeferredHold = false;
+      this.state.render.firstFlightDeferredHoldUntil = null;
       void this.state.render.resumeDeferredPipelineAdmissions({ force: true });
     }
     // Publication is consumed before any context-loss early return. PresentationRunner acknowledges
@@ -8877,6 +8885,75 @@ export const render = {
     }
   },
 };
+
+/**
+ * Absolute sim seconds the opening keeps leftover-FX publication deferred after first flight.
+ * Bound to the pipeline auto-flush hold on purpose: this release is what calls
+ * `resumeDeferredPipelineAdmissions({ force: true })`, and that call is wasted — the bounded-resume
+ * lane arms with no timer and no caller — if it lands while `shouldDeferPipelineAutoFlush` is still
+ * holding. One clock, one release.
+ */
+export const FIRST_FLIGHT_DEFERRED_HOLD_SECONDS = FIRST_FLIGHT_PIPELINE_HOLD_S;
+
+/**
+ * Sim seconds the live-sector cook keeps the same publication guards after a sector arrival.
+ * Long enough to cover the arrival presents the guards exist for (the run70 Intel brick), short
+ * enough that the destination's authored bodies are on the glass while the player is still
+ * looking at the arrival, not twenty seconds later.
+ */
+export const SECTOR_ARRIVAL_PUBLISH_HOLD_SECONDS = 1.5;
+
+/** Sim time at which the first-flight publication guards release; arrival re-arms it relatively. */
+export function firstFlightDeferredReleaseSimTime(state) {
+  const raw = state && state.render ? state.render.firstFlightDeferredHoldUntil : null;
+  if (raw == null) return FIRST_FLIGHT_DEFERRED_HOLD_SECONDS;
+  const until = Number(raw);
+  return Number.isFinite(until) ? until : FIRST_FLIGHT_DEFERRED_HOLD_SECONDS;
+}
+
+/**
+ * Re-arm the first-flight publication release against the arrival clock.
+ *
+ * `prepareLiveSectorAfterJump` ends by re-applying the opening's two publication guards —
+ * `holdAuthoredUpgradeQueueForFirstFlight` (the authored upgrade queue refuses to schedule another
+ * frame) and `freezeOpeningGraphPublication` (`commitAuthored*Boundary` awaits a gate). Both are
+ * lifted only by the opening's one-shot latch, which `mode:changed -> 'loading'` arms and
+ * `prepareFrame` fires once at the absolute 20 s mark. A gate jump stays in `flight`, so after the
+ * opening has fired that latch the guards would never lift again and every body in the arriving
+ * sector would park at `presentationAdmission: 'pending'` for the rest of the session.
+ */
+/**
+ * The per-frame latch that lifts the first-flight publication guards. It is a one-shot: it fires
+ * once per armed window, and `_firstFlightDeferredHold` stays false until an opening or a sector
+ * arrival arms it again.
+ */
+export function shouldReleaseFirstFlightDeferredHold(owner) {
+  const state = owner && owner.state;
+  if (!state || state.mode !== 'flight') return false;
+  if (owner._firstFlightDeferredHold === false) return false;
+  const render = state.render;
+  if (!render || typeof render.resumeDeferredPipelineAdmissions !== 'function') return false;
+  return (Number(state.simTime) || 0) >= firstFlightDeferredReleaseSimTime(state);
+}
+
+export function armSectorArrivalPublishRelease(owner, holdSeconds = SECTOR_ARRIVAL_PUBLISH_HOLD_SECONDS) {
+  const state = owner && owner.state;
+  const render = state && state.render;
+  if (!render) return owner;
+  const hold = Math.max(0, Number(holdSeconds) || 0);
+  // An arrival may never SHORTEN the opening's absolute first-flight window. That window is the
+  // same clock `shouldDeferPipelineAutoFlush` uses, and this release is the session's one call to
+  // `resumeDeferredPipelineAdmissions({force:true})`: firing it early spent the pipeline lane's
+  // only wake-up inside the auto-flush hold, and nothing at the destination ever compiled. A jump
+  // before the window has passed (a probe, `--teleport`, an unusually fast run to the gate) keeps
+  // the absolute deadline; every ordinary jump is long past it and releases 1.5 s after arrival.
+  render.firstFlightDeferredHoldUntil = Math.max(
+    (Number(state.simTime) || 0) + hold,
+    FIRST_FLIGHT_DEFERRED_HOLD_SECONDS,
+  );
+  owner._firstFlightDeferredHold = true;
+  return owner;
+}
 
 /**
  * End the opening first-picture hold after its paint latch. Runs on every first playable paint —

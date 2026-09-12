@@ -148,10 +148,23 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   }
 
   function scheduleResumedBatch() {
-    if (!boundedResume || resumeScheduled || deferAutoFlush() || queued.length === 0) return;
+    if (!boundedResume || resumeScheduled || queued.length === 0) return;
     resumeScheduled = true;
+    // A scheduler that runs its callback synchronously (test fakes) must not recurse through the
+    // hold poll below; it keeps the pre-poll behaviour of stopping once while deferred.
+    let ranSynchronously = true;
     scheduleResume(() => {
       resumeScheduled = false;
+      if (deferAutoFlush()) {
+        // The auto-flush hold is a DELAY, not a cancellation. Bounded resume used to give up here
+        // (and in resumeAutoFlush) whenever it was armed inside the hold: timers were already
+        // cleared, nothing was scheduled, and the only thing that could ever wake the lane again
+        // was a NEW compile() call. On a sector arrival the queued compiles ARE what the next
+        // authored job waits for, so the lane deadlocked and every body in the arriving sector
+        // stayed at `presentationAdmission: 'pending'` for the rest of the session.
+        if (!ranSynchronously) scheduleResumedBatch();
+        return;
+      }
       const lastPresentDtMs = typeof options.getLastPresentDtMs === 'function'
         ? options.getLastPresentDtMs()
         : NaN;
@@ -163,6 +176,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       skippedResumeForLatePresent = false;
       void flushResumedBatch();
     });
+    ranSynchronously = false;
   }
 
   function flushResumedBatch() {
@@ -254,7 +268,12 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     resumeAutoFlush() {
       boundedResume = true;
       clearTimers();
-      if (deferAutoFlush()) return compileTail;
+      if (deferAutoFlush()) {
+        // Resuming inside the hold must leave the lane alive: clearTimers() just removed the only
+        // thing that would have re-entered it. Poll the hold instead of returning a dead queue.
+        scheduleResumedBatch();
+        return compileTail;
+      }
       return flushResumedBatch();
     },
     waitForPending,

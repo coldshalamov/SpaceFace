@@ -276,6 +276,7 @@ const BROWSER_LEAF_FILES = new Set([
   // Raw Chrome + CDP, no Playwright import anywhere in its tree.
   'scripts/probe-authored-assets-live.mjs',
   'scripts/probe-flight-visual.mjs',
+  'scripts/probe-sector-arrival-admission.mjs',
   'scripts/probe-ship-visual-stability.mjs',
   'test/lab-browser-input-grammar.test.mjs',
 ]);
