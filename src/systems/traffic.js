@@ -329,10 +329,8 @@ const TRAFFIC_ROLES = {
   // PQ-136.02 — packaged work-fleet hulls on existing job kinds. Weights add variety
   // inside the current ambient cap; they do not raise MAX_PER_SECTOR.
   //
-  // Held back deliberately (no role here, so they never roll): `tanker`
-  // (volatiles_tanker) and `customs` (inspection_cutter). The yard tug is a bounded draft
-  // through the existing hauler job/economy path pending the current owner visual review;
-  // its physical tow attachment is owned separately.
+  // PQ-193.08: tanker and customs are Helios fixtures (mix weight zeroed below), not
+  // ambient rolls. They do not remap hauler/Span, Atlas, Arclight, or hostile customs.
   prospector: { ship: 'ship_drifter',  team: 2, speed: 32, archetype: 'fleeing_trader', weight: 5,
               label: 'Prospector', docks: true, trades: false, seeks: 'asteroid' },
   sweeper:    { ship: 'ship_pelican',  team: 2, speed: 28, archetype: 'fleeing_trader', weight: 4,
@@ -348,6 +346,12 @@ const TRAFFIC_ROLES = {
   // Ambient mix weight is zeroed below so the seeded hauler draw stays Span.
   arclight:   { ship: 'ship_mule',     team: 2, speed: 22, archetype: 'fleeing_trader', weight: 2,
               label: 'Helios Arclight', docks: true, trades: true },
+  // PQ-193.08: rare Helios extras. Own roles and bodies. Ambient mix is zeroed so
+  // seeded haulers stay Span and goldens stay byte-identical.
+  tanker:     { ship: 'ship_mule',     team: 2, speed: 24, archetype: 'fleeing_trader', weight: 2,
+              label: 'Volatiles Tanker', docks: true, trades: true },
+  customs:    { ship: 'ship_wasp',     team: 2, speed: 40, archetype: 'passive', weight: 2,
+              label: 'Inspection Cutter', docks: true, trades: false },
 };
 
 function lawPresenceRole(role) {
@@ -380,6 +384,8 @@ const HEAVE_TO_COMPLIANT_ROLES = new Set([
   'shuttle',
   'tug',
   'arclight',
+  'tanker',
+  'customs',
 ]);
 
 function trafficHeaveToComplies(role, entity) {
@@ -1066,6 +1072,9 @@ export function trafficRoleMixForSector(sector, state = null) {
   // PQ-193.07: the Arclight is a dedicated Helios fixture, not a mix roll. Zero here keeps
   // every seeded hauler as Span and leaves goldens byte-identical.
   out.arclight = 0;
+  // PQ-193.08: tanker and inspection cutter are the same fixture doctrine.
+  out.tanker = 0;
+  out.customs = 0;
   return state ? regionalTrafficRoleWeights(state, sec.id, out) : out;
 }
 function pickRole(roleWeights, rng) {
@@ -2370,7 +2379,7 @@ export const traffic = {
         },
       };
     }
-    if (role === 'hauler' || role === 'arclight' || occupationalJobKind(role) === 'hauler') {
+    if (role === 'hauler' || role === 'arclight' || role === 'tanker' || occupationalJobKind(role) === 'hauler') {
       // The ambient stepper's target is deliberately random. Reusing it here can turn a local
       // terminal run into an express-scale crossing, so durable working freight chooses the nearest
       // other berth from its actual spawn/home station instead. Express liners keep their separate
@@ -3254,6 +3263,8 @@ export const traffic = {
     // Kess) still appears alongside her.
     this._ensureCinderRunCourierFixture(sectorId, sector, stations, list);
     this._ensureHeliosArclightFixture(sectorId, sector, stations, list);
+    this._ensureHeliosTankerFixture(sectorId, sector, stations, list);
+    this._ensureHeliosCustomsFixture(sectorId, sector, stations, list);
     // Already have a live named contact? (The courier's dedicated fixture slot does not count.)
     for (const rec of list) {
       const e = this.state.entities && this.state.entities.get(rec.id);
@@ -3440,6 +3451,113 @@ export const traffic = {
     };
     list.push(rec);
     this._maybeAssignJob(ent, 'arclight', station, target, stations, sectorId);
+  },
+
+  // PQ-193.08: one volatiles tanker on Helios as a rare extra. Own role and body.
+  // Does not consume the ambient RNG stream or steal Span / Atlas / Arclight.
+  _ensureHeliosTankerFixture(sectorId, sector, stations, list) {
+    if (sectorId !== 'sector_helios_prime') return;
+    const def = TRAFFIC_ROLES.tanker;
+    if (!def) return;
+    for (const rec of list) {
+      if (rec && rec.role === 'tanker') return;
+      const entity = liveEntity(this.state, rec && rec.id);
+      if (entity && entity.data && entity.data.trafficRole === 'tanker') return;
+    }
+    if (!this.helpers || !this.helpers.spawnEntity || !stations || !stations.length) return;
+    const station = this._pocketStation(stations, sectorId) || stations[0];
+    if (!station || !station.pos) return;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const ang = ((hash32(seed, 'helios_tanker_spawn', sectorId) >>> 0) / 0xffffffff) * Math.PI * 2;
+    const r = 220;
+    const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+    const laneFaction = (sector && sector.factionId) || 'faction_free';
+    const spec = makeShipEntitySpec(def.ship, {
+      team: def.team,
+      factionId: laneFaction,
+      pos,
+      ai: {
+        archetype: def.archetype,
+        passive: true,
+        spawnContext: 'convoy_civilian',
+      },
+    });
+    const ent = this.helpers.spawnEntity(spec);
+    if (!ent) return;
+    this._stampTrafficDurableIdentity(ent, sectorId, 'tanker', def, 710);
+    ent.data.trafficRole = 'tanker';
+    ent.data.role = 'tanker';
+    ent.data.trafficLabel = def.label;
+    ent.data.scanLabel = 'VOLATILES TANKER';
+    ent.flags = Object.assign({}, ent.flags, { persistent: true });
+    const target = this._nearestStationTo(stations, station) || station;
+    const manifest = this._assignManifest(ent, 'tanker', target, sectorId);
+    this._active.push(ent.id);
+    const rec = {
+      id: ent.id,
+      role: 'tanker',
+      targetId: target.id,
+      waitT: 0,
+      nextTradeT: 3,
+      orbitPhase: ang,
+      dockSeq: 0,
+      manifest,
+    };
+    list.push(rec);
+    this._maybeAssignJob(ent, 'tanker', station, target, stations, sectorId);
+  },
+
+  // PQ-193.08: one inspection cutter on Helios as a rare extra. Ambient customs only —
+  // hostile customs_cutter stays the Hornet. Does not steal patrol or escort.
+  _ensureHeliosCustomsFixture(sectorId, sector, stations, list) {
+    if (sectorId !== 'sector_helios_prime') return;
+    const def = TRAFFIC_ROLES.customs;
+    if (!def) return;
+    for (const rec of list) {
+      if (rec && rec.role === 'customs') return;
+      const entity = liveEntity(this.state, rec && rec.id);
+      if (entity && entity.data && entity.data.trafficRole === 'customs') return;
+    }
+    if (!this.helpers || !this.helpers.spawnEntity || !stations || !stations.length) return;
+    const station = this._pocketStation(stations, sectorId) || stations[0];
+    if (!station || !station.pos) return;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const ang = ((hash32(seed, 'helios_customs_spawn', sectorId) >>> 0) / 0xffffffff) * Math.PI * 2;
+    const r = 125;
+    const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+    const laneFaction = (sector && sector.factionId) || 'faction_free';
+    const spec = makeShipEntitySpec(def.ship, {
+      team: def.team,
+      factionId: laneFaction,
+      pos,
+      ai: {
+        archetype: def.archetype,
+        passive: true,
+        spawnContext: 'convoy_civilian',
+      },
+    });
+    const ent = this.helpers.spawnEntity(spec);
+    if (!ent) return;
+    this._stampTrafficDurableIdentity(ent, sectorId, 'customs', def, 720);
+    ent.data.trafficRole = 'customs';
+    ent.data.role = 'customs';
+    ent.data.trafficLabel = def.label;
+    ent.data.scanLabel = 'INSPECTION CUTTER';
+    ent.flags = Object.assign({}, ent.flags, { persistent: true });
+    const target = this._nearestStationTo(stations, station) || station;
+    this._active.push(ent.id);
+    const rec = {
+      id: ent.id,
+      role: 'customs',
+      targetId: target.id,
+      waitT: 0,
+      nextTradeT: 3,
+      orbitPhase: ang,
+      dockSeq: 0,
+      manifest: null,
+    };
+    list.push(rec);
+    this._maybeAssignJob(ent, 'customs', station, target, stations, sectorId);
   },
 
   /**

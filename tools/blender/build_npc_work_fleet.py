@@ -472,6 +472,51 @@ def make_cone(name: str, radius1: float, radius2: float, depth: float,
     return obj
 
 
+def make_uv_sphere(name: str, radius: float, loc_rt: tuple[float, float, float],
+                   mat: bpy.types.Material | None, coll: bpy.types.Collection, *,
+                   segments: int = 20, rings: int = 12, bevel: float = 0.0,
+                   close: bool = False, component: str = '') -> bpy.types.Object:
+    """Formed pressure vessel. A UV sphere, not a cone standing in for a tank."""
+    bpy.ops.mesh.primitive_uv_sphere_add(
+        segments=segments, ring_count=rings, radius=radius, location=L(*loc_rt),
+    )
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.name = name
+    if bevel > 0:
+        bevel_object(obj, bevel)
+    _assign(obj, mat)
+    move_to_collection(obj, coll)
+    if close:
+        obj['sf_close_only'] = True
+    if component:
+        obj['sf_component'] = component
+    return obj
+
+
+def make_torus(name: str, major: float, minor: float, loc_rt: tuple[float, float, float],
+               mat: bpy.types.Material | None, coll: bpy.types.Collection, *,
+               rot: tuple[float, float, float] = (0.0, 0.0, 0.0),
+               major_seg: int = 20, minor_seg: int = 8, close: bool = False,
+               component: str = '') -> bpy.types.Object:
+    """Rolled hoop / equator band. Axis follows `rot` (Blender Euler)."""
+    bpy.ops.mesh.primitive_torus_add(
+        major_segments=major_seg, minor_segments=minor_seg,
+        major_radius=major, minor_radius=minor,
+        location=L(*loc_rt), rotation=rot,
+    )
+    obj = bpy.context.active_object
+    obj.name = name
+    obj.data.name = name
+    _assign(obj, mat)
+    move_to_collection(obj, coll)
+    if close:
+        obj['sf_close_only'] = True
+    if component:
+        obj['sf_component'] = component
+    return obj
+
+
 # ---------------------------------------------------------------------------
 # Procedural PBR maps (deterministic; numpy-vectorized, no RNG)
 # ---------------------------------------------------------------------------
@@ -1267,42 +1312,147 @@ def build_rescue_lifter_parts(coll: bpy.types.Collection, mats: dict[str, bpy.ty
 
 
 def build_volatiles_tanker_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
-    """Fiction §3: three pressure spheres in a stand-off truss. Cargo IS the ship.
-    Red equator bands, dorsal piping, bow coupling cage, aft cab behind a blast wall."""
+    """Fiction §3: three formed pressure spheres in a stand-off truss. Cargo IS the ship.
+
+    PQ-193.08 enclose. The 2026-08-18 still panel (and 8257fd9e hold) rejected the
+    prior kit: cones standing in for tanks, a metre-wide mechanical spine box, a
+    hollow cone as a coupling cage, and a disk-drive cluster. Chase camera is
+    overhead, so the plan must read as three vessels on a girder, not stacked
+    primitives.
+
+    Preflight (Tier C working-fleet, grouped families):
+      billed: pressure spheres (painted formed plate), equator warning bands,
+      polar manways, lofted spine girder, saddles/stays, dorsal insulated pipe
+      with flanges/risers, caged bow probe, blast bulkhead, lofted aft cab with
+      inset glass, hollow drive bells. supportedViews: play_chase / abeam / close.
+      allSupportedViewZonesClassified: false.
+      componentReferenceDecision: not_needed — the dossier freezes three spheres
+      plus a bow coupling; no component is trapped by the software vocabulary.
+      G1/G2/G4 remain OPEN pending hash-bound review of this exact candidate.
+    Frozen sockets stay on real hardware: Engine_Main between the bells,
+    Coupling_Front on the probe, Cargo_Dorsal on the mid tank crown.
+    """
     H = mats['Material_Hull']
     M = mats['Material_Mechanical']
     W = mats['Material_Warm']
     G = mats['Material_Glass']
     parts: list[bpy.types.Object] = []
 
-    parts.append(make_box('Tanker_Spine', (28.0, 1.15, 1.7), (-1.2, 0.55, 0.0), M, coll, bevel=0.08))
-    parts.append(make_box('Tanker_Keel', (22.0, 0.7, 1.2), (-2.0, -0.7, 0.0), M, coll, bevel=0.05))
-    for i, px in enumerate((-8.4, 0.2, 8.8)):
-        sphere = make_cone(f'Tanker_Tank_{i}', 2.55, 2.55, 5.1, (px, 2.35, 0.0), H, coll,
-                           rot=(0.0, 0.0, 0.0), verts=16, bevel=0.08, component='cargo')
-        parts.append(sphere)
-        parts.append(make_cylinder(f'Tanker_Band_{i}', 2.62, 0.28, (px, 2.35, 0.0), W, coll,
-                                   rot=(0.0, 0.0, 0.0), verts=16, close=True))
-        parts.append(make_box(f'Tanker_Saddle_{i}', (2.2, 0.55, 2.4), (px, 0.85, 0.0), M, coll,
-                              bevel=0.05))
-        for side in (-1, 1):
-            parts.append(make_box(f'Tanker_Stay_{i}_{side}', (0.22, 2.4, 0.22),
-                                  (px, 1.7, side * 2.15), M, coll, bevel=0.03, close=True))
-    parts.append(make_box('Tanker_Pipe', (22.0, 0.22, 0.22), (0.2, 4.55, 0.0), M, coll, bevel=0.03))
-    for px in (-8.4, 0.2, 8.8):
-        parts.append(make_cylinder(f'Tanker_Riser_{px}', 0.12, 1.6, (px, 3.85, 0.0), M, coll,
-                                   rot=(0.0, 0.0, 0.0), verts=8, close=True))
+    tank_xs = (-7.8, 0.2, 8.2)
+    tank_y = 2.18
+    tank_r = 2.42
 
-    parts.append(make_cone('Tanker_CouplingCage', 1.15, 1.05, 2.2, (15.6, 0.7, 0.0), M, coll,
-                           rot=ROT_ALONG_X, verts=10, fill='NOTHING'))
-    parts.append(make_cylinder('Tanker_Probe', 0.28, 2.6, (16.6, 0.7, 0.0), W, coll,
+    # --- spine girder: one lofted plate I-beam, not a 28 m mechanical brick -----
+    spine_stations = [
+        (-13.20, 0.62, 0.92, -0.38),
+        (-9.40, 0.78, 1.02, -0.48),
+        (-4.00, 0.86, 1.08, -0.52),
+        (0.20, 0.88, 1.10, -0.54),
+        (4.40, 0.84, 1.06, -0.50),
+        (9.00, 0.74, 0.98, -0.42),
+        (13.40, 0.52, 0.82, -0.22),
+    ]
+    parts.append(_tug_loft('Tanker_Spine', spine_stations, H, coll, bevel=0.04))
+    parts.append(_tug_loft('Tanker_KeelGirder', [
+        (-11.40, 0.42, -0.22, -0.72),
+        (-4.00, 0.50, -0.38, -0.88),
+        (4.00, 0.50, -0.38, -0.88),
+        (11.20, 0.36, -0.18, -0.58),
+    ], H, coll, bevel=0.03))
+    # Dark walkway on the girder crown — the plan-view break between tanks.
+    _tug_deck_run(parts, coll, M, spine_stations, 'Tanker_Walk',
+                  -11.60, 12.40, inset=0.0, width=0.72, height=0.08, count=8,
+                  centreline=True)
+
+    for i, px in enumerate(tank_xs):
+        parts.append(make_uv_sphere(f'Tanker_Tank_{i}', tank_r, (px, tank_y, 0.0), H, coll,
+                                    segments=20, rings=12, component='cargo'))
+        # Red volatile equator — a rolled hoop, not a painted stripe on a cone.
+        parts.append(make_torus(f'Tanker_Band_{i}', tank_r + 0.08, 0.13, (px, tank_y, 0.0),
+                                W, coll, major_seg=20, minor_seg=8, component='cargo'))
+        # Polar manway + crown flood: the overhead camera's tank identity.
+        parts.append(make_cylinder(f'Tanker_Manway_{i}', 0.42, 0.28,
+                                   (px, tank_y + tank_r - 0.02, 0.0), M, coll,
+                                   rot=(0.0, 0.0, 0.0), verts=12, component='cargo'))
+        parts.append(make_cylinder(f'Tanker_ManLid_{i}', 0.48, 0.08,
+                                   (px, tank_y + tank_r + 0.16, 0.0), H, coll,
+                                   rot=(0.0, 0.0, 0.0), verts=12, close=True))
+        _flood_fixture(parts, coll, mats, (px, tank_y + tank_r + 0.10, 0.72),
+                       f'Tanker_Flood_{i}', tilt=math.radians(8.0))
+        # Saddle cups the tank; stays are sections, never metre-wide plates.
+        parts.append(make_box(f'Tanker_SaddleWeb_{i}', (2.10, 0.70, 0.18),
+                              (px, 0.62, 0.0), M, coll, bevel=0.03))
+        parts.append(make_box(f'Tanker_SaddleFlange_{i}', (2.30, 0.12, 2.20),
+                              (px, 0.30, 0.0), M, coll, bevel=0.02))
+        for side in (-1, 1):
+            parts.append(make_box(f'Tanker_Stay_{i}_{side}', (0.18, 2.10, 0.18),
+                                  (px, 1.55, side * 2.05), M, coll, bevel=0.02))
+            parts.append(make_box(f'Tanker_SaddleCheek_{i}_{side}', (1.60, 0.22, 0.16),
+                                  (px, 0.78, side * 1.15), M, coll, bevel=0.02, close=True))
+
+    # Dorsal insulated pipe: one run, flanges at each tank, risers into the crowns.
+    parts.append(make_cylinder('Tanker_Pipe', 0.16, 22.4, (0.20, 4.82, 0.0), M, coll,
+                               rot=ROT_ALONG_X, verts=12))
+    for i, px in enumerate(tank_xs):
+        parts.append(make_cylinder(f'Tanker_Riser_{i}', 0.12, 1.15, (px, 4.20, 0.0), M, coll,
+                                   rot=(0.0, 0.0, 0.0), verts=10, close=True))
+        parts.append(make_torus(f'Tanker_Flange_{i}', 0.28, 0.06, (px, 4.82, 0.0), M, coll,
+                                rot=ROT_ALONG_X, major_seg=12, minor_seg=6, close=True))
+
+    # Bow coupling: caged, lit, painted like a warning. Probe is the only piece
+    # anyone else touches. Cage is bars + hoops, never a hollow cone.
+    parts.append(make_cylinder('Tanker_Probe', 0.26, 2.80, (16.40, 0.70, 0.0), W, coll,
+                               rot=ROT_ALONG_X, verts=12, component='utility'))
+    parts.append(make_cylinder('Tanker_ProbeTip', 0.18, 0.36, (17.70, 0.70, 0.0), W, coll,
                                rot=ROT_ALONG_X, verts=10, component='utility'))
-    parts.append(make_box('Tanker_BlastWall', (0.45, 3.4, 5.2), (-12.4, 1.0, 0.0), M, coll, bevel=0.06))
-    parts.append(make_box('Tanker_Cab', (4.6, 2.6, 3.8), (-14.8, 0.7, 0.0), H, coll, bevel=0.14))
-    parts.append(make_box('Tanker_Canopy', (1.7, 0.55, 2.2), (-13.6, 1.85, 0.0), G, coll,
-                          bevel=0.1, component='canopy'))
-    parts.append(make_box('Tanker_DriveCowl', (2.8, 2.2, 3.6), (-16.2, 0.55, 0.0), M, coll, bevel=0.1))
-    _drive_cluster(parts, coll, mats, -16.9, 0.55, [-0.95, 0.95], 0.7, 'Tanker')
+    parts.append(make_box('Tanker_CouplingTrunk', (1.80, 1.10, 1.10),
+                          (14.20, 0.70, 0.0), H, coll, bevel=0.05, component='utility'))
+    hoop_rot = (0.0, math.radians(90.0), 0.0)
+    for i, hx in enumerate((15.40, 16.60)):
+        parts.append(make_torus(f'Tanker_CageHoop_{i}', 0.92, 0.05, (hx, 0.70, 0.0), M, coll,
+                                rot=hoop_rot, major_seg=12, minor_seg=6, component='utility'))
+    for i, ang in enumerate((0.0, 60.0, 120.0, 180.0, 240.0, 300.0)):
+        rad = math.radians(ang)
+        parts.append(make_cylinder(f'Tanker_CageBar_{i}', 0.045, 1.40,
+                                   (16.00, 0.70 + math.cos(rad) * 0.92, math.sin(rad) * 0.92),
+                                   M, coll, rot=ROT_ALONG_X, verts=8, close=True,
+                                   component='utility'))
+    _flood_fixture(parts, coll, mats, (15.10, 1.55, 0.0), 'Tanker_CageFlood',
+                   tilt=math.radians(-18.0))
+
+    # Aft: blast bulkhead, then a small lofted cab looking away from the cargo.
+    parts.append(make_box('Tanker_BlastWeb', (0.28, 3.20, 4.60), (-12.55, 1.05, 0.0), M, coll,
+                          bevel=0.04))
+    parts.append(make_box('Tanker_BlastFlange', (0.46, 0.16, 4.80), (-12.55, 2.70, 0.0), M, coll,
+                          bevel=0.02, close=True))
+    parts.append(_tug_loft('Tanker_Cab', [
+        (-16.40, 1.05, 1.55, -0.55),
+        (-15.20, 1.35, 1.85, -0.70),
+        (-14.00, 1.42, 1.90, -0.72),
+        (-13.00, 1.22, 1.70, -0.58),
+    ], H, coll, bevel=0.05))
+    parts.append(make_box('Tanker_CabRoof', (2.80, 0.14, 2.55), (-14.55, 1.96, 0.0), H, coll,
+                          bevel=0.04))
+    parts.append(make_box('Tanker_GlassAft', (0.10, 0.85, 1.55), (-16.20, 1.15, 0.0), G, coll,
+                          component='canopy'))
+    for side in (-1, 1):
+        tag = 'S' if side > 0 else 'P'
+        parts.append(make_box(f'Tanker_Glass_{tag}', (1.60, 0.70, 0.10),
+                              (-14.70, 1.20, side * 1.38), G, coll, component='canopy'))
+        parts.append(make_box(f'Tanker_WindowRail_{tag}', (1.80, 0.12, 0.12),
+                              (-14.70, 0.80, side * 1.42), M, coll, close=True))
+
+    # Twin hollow bells on a short machinery raft — painted pods, dark bells.
+    for side in (-1, 1):
+        tag = 'S' if side > 0 else 'P'
+        pod_z = side * 0.95
+        parts.append(_tug_loft(f'Tanker_Pod_{tag}', [
+            (-17.00, 0.52, 1.05, -0.15),
+            (-16.20, 0.62, 1.18, -0.22),
+            (-15.20, 0.48, 0.95, -0.08),
+        ], H, coll, z_off=pod_z, bevel=0.04, component='engine'))
+        _tug_drive_bell(parts, coll, mats, -17.20, 0.45, pod_z,
+                        mouth=0.62, throat=0.32, depth=1.70, prefix='Tanker')
     return parts
 
 
@@ -1604,7 +1754,8 @@ def _tug_deck_run(parts: list[bpy.types.Object], coll: bpy.types.Collection,
 
 def _tug_drive_bell(parts: list[bpy.types.Object], coll: bpy.types.Collection,
                     mats: dict[str, bpy.types.Material], x_mouth: float, y: float, z: float,
-                    *, mouth: float = 0.86, throat: float = 0.44, depth: float = 2.1) -> None:
+                    *, mouth: float = 0.86, throat: float = 0.44, depth: float = 2.1,
+                    prefix: str = 'Tug', tag: str | None = None) -> None:
     """Hollow drive bell seated in the pod casing: outer cone, inward-facing
     liner (wall thickness and a real cavity), rolled rim, and the emissive core
     recessed ~1.9 m up the throat. Never a bright disk on a flat face.
@@ -1614,28 +1765,29 @@ def _tug_drive_bell(parts: list[bpy.types.Object], coll: bpy.types.Collection,
     """
     mech = mats['Material_Mechanical']
     cyan = mats['Material_Cyan']
-    tag = 'S' if z >= 0 else 'P'
+    if tag is None:
+        tag = 'S' if z >= 0 else 'P'
     centre = x_mouth + depth * 0.5
 
-    outer = make_cone(f'Tug_Bell_{tag}', mouth, throat, depth, (centre, y, z), mech, coll,
+    outer = make_cone(f'{prefix}_Bell_{tag}', mouth, throat, depth, (centre, y, z), mech, coll,
                       rot=ROT_ALONG_X, verts=14, fill='NOTHING', component='engine')
     outer['sf_drive_part'] = 'fan'
     parts.append(outer)
 
-    liner = make_cone(f'Tug_BellLiner_{tag}', mouth * 0.86, throat * 0.80, depth * 0.94,
+    liner = make_cone(f'{prefix}_BellLiner_{tag}', mouth * 0.86, throat * 0.80, depth * 0.94,
                       (centre + depth * 0.03, y, z), mech, coll,
                       rot=ROT_ALONG_X, verts=14, fill='NOTHING', component='engine')
     _tug_flip_normals(liner)
     liner['sf_drive_part'] = 'fan'
     parts.append(liner)
 
-    rim = make_cone(f'Tug_BellRim_{tag}', mouth * 1.07, mouth * 0.99, 0.22,
+    rim = make_cone(f'{prefix}_BellRim_{tag}', mouth * 1.07, mouth * 0.99, 0.22,
                     (x_mouth + 0.11, y, z), mech, coll,
                     rot=ROT_ALONG_X, verts=14, fill='NOTHING', component='engine')
     rim['sf_drive_part'] = 'fan'
     parts.append(rim)
 
-    core = make_cylinder(f'Tug_DriveCore_{tag}', throat * 0.78, 0.14,
+    core = make_cylinder(f'{prefix}_DriveCore_{tag}', throat * 0.78, 0.14,
                          (x_mouth + depth * 0.92, y, z), cyan, coll,
                          rot=ROT_ALONG_X, verts=12, component='engine')
     core['sf_drive_part'] = 'core'
@@ -1880,8 +2032,25 @@ def build_yard_tug_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.M
 
 
 def build_inspection_cutter_parts(coll: bpy.types.Collection, mats: dict[str, bpy.types.Material]) -> list[bpy.types.Object]:
-    """Fiction §10: authority wedge, dorsal fin, bow inspection frame (judge's collar),
-    ventral boarding collar, flush hardpoints, always-lit registry plates."""
+    """Fiction §10: 24 m authority wedge, dorsal sensor fin, bow inspection frame
+    (judge's collar), ventral boarding collar, flush hardpoints, lit registry.
+
+    PQ-193.08 enclose. The held kit was three hull boxes + a 4-vert cone + a cyan
+    picture-frame of slabs and a disk drive. Chase camera needs one continuous
+    wedge, a real collar with thickness, and a fin that is a plate — not a stack.
+
+    Preflight (Tier C working-fleet, grouped families):
+      billed: lofted wedge hull, keel girder, dorsal fin + array, squared
+      inspection collar (hollow frame), ventral boarding collar with inner wall,
+      registry plates, cyan identity bars, inset canopy, hollow drive bells.
+      supportedViews: play_chase / abeam / close.
+      allSupportedViewZonesClassified: false.
+      componentReferenceDecision: not_needed — the dossier freezes the wedge,
+      collar, and fin; no generated reference.
+      G1/G2/G4 remain OPEN pending hash-bound review of this exact candidate.
+    Frozen sockets stay on hardware: Engine_Main between bells, Inspection_Front
+    on the collar, Sensor_Dorsal on the fin array.
+    """
     H = mats['Material_Hull']
     M = mats['Material_Mechanical']
     C = mats['Material_Cyan']
@@ -1889,36 +2058,116 @@ def build_inspection_cutter_parts(coll: bpy.types.Collection, mats: dict[str, bp
     G = mats['Material_Glass']
     parts: list[bpy.types.Object] = []
 
-    parts.append(make_box('CutLaw_HullMid', (12.4, 2.5, 5.4), (-1.0, 0.2, 0.0), H, coll, bevel=0.16))
-    parts.append(make_cone('CutLaw_Wedge', 2.35, 0.45, 6.4, (8.0, 0.25, 0.0), H, coll,
-                           rot=ROT_ALONG_X, verts=4, bevel=0.08))
-    parts.append(make_box('CutLaw_Aft', (4.6, 2.3, 4.8), (-8.4, 0.15, 0.0), H, coll, bevel=0.14))
-    parts.append(make_box('CutLaw_Keel', (14.0, 0.75, 1.8), (-0.8, -1.25, 0.0), M, coll, bevel=0.05))
-    _panel_seams(parts, coll, mats, 'CutLawMid', -6.8, 4.6, 0.2, 2.7, 2.5, count=5)
+    hull_stations = [
+        (-11.20, 1.48, 1.28, -0.72),
+        (-8.40, 2.05, 1.42, -0.88),
+        (-4.20, 2.42, 1.50, -0.98),
+        (-0.40, 2.48, 1.48, -1.02),
+        (3.40, 2.18, 1.36, -0.90),
+        (6.80, 1.48, 1.12, -0.62),
+        (9.60, 0.82, 0.86, -0.28),
+        (11.00, 0.42, 0.62, -0.08),
+    ]
+    parts.append(_tug_loft('CutLaw_Hull', hull_stations, H, coll, bevel=0.05))
+    parts.append(_tug_loft('CutLaw_KeelGirder', [
+        (-9.60, 0.70, -0.55, -1.12),
+        (-2.00, 0.82, -0.78, -1.28),
+        (4.40, 0.62, -0.62, -1.04),
+        (8.80, 0.32, -0.22, -0.52),
+    ], H, coll, bevel=0.03))
+    _tug_flank_run(parts, coll, M, hull_stations, 'CutLaw_Strake',
+                   -8.80, 8.40, 0.05, 0.22, 0.10, count=5)
+    # Plan-view deck margin so the wedge is not one pale slab from overhead.
+    _tug_deck_run(parts, coll, M, hull_stations, 'CutLaw_DeckMargin',
+                  -10.40, 10.20, inset=0.16, width=0.22, height=0.20, count=7)
+    _tug_deck_run(parts, coll, M, hull_stations, 'CutLaw_Walk',
+                  -8.80, 6.80, inset=0.0, width=0.55, height=0.07, count=5,
+                  centreline=True)
+    for i, hx in enumerate((-6.40, -2.20, 2.80)):
+        deck_y = _tug_station(hull_stations, hx, 2)
+        parts.append(make_box(f'CutLaw_HatchCoaming_{i}', (1.05, 0.14, 0.90),
+                              (hx, deck_y + 0.05, 0.0), M, coll, bevel=0.02))
+        parts.append(make_box(f'CutLaw_HatchLid_{i}', (0.86, 0.08, 0.72),
+                              (hx, deck_y + 0.14, 0.0), H, coll))
 
-    parts.append(make_box('CutLaw_Fin', (4.8, 2.4, 0.28), (1.2, 2.35, 0.0), H, coll, bevel=0.05,
-                          component='sensor'))
-    parts.append(make_box('CutLaw_FinArray', (3.4, 0.12, 0.18), (1.2, 3.45, 0.0), C, coll,
+    # Dorsal sensor fin: a real plate with a leading-edge array, not a blank box.
+    parts.append(_tug_loft('CutLaw_Fin', [
+        (-0.40, 0.22, 3.55, 1.42),
+        (1.40, 0.28, 3.85, 1.40),
+        (3.20, 0.24, 3.40, 1.28),
+        (4.40, 0.16, 2.55, 1.12),
+    ], H, coll, bevel=0.03, component='sensor'))
+    parts.append(make_box('CutLaw_FinArray', (3.20, 0.08, 0.16), (1.40, 3.78, 0.0), C, coll,
+                          bevel=0.01, component='sensor'))
+    parts.append(make_box('CutLaw_FinMast', (0.22, 0.70, 0.22), (1.40, 3.20, 0.0), M, coll,
                           bevel=0.02, close=True, component='sensor'))
-    parts.append(make_box('CutLaw_CollarA', (0.28, 2.0, 3.6), (10.5, 0.4, 0.0), C, coll,
-                          bevel=0.03, component='sensor'))
-    parts.append(make_box('CutLaw_CollarB', (2.2, 0.22, 3.6), (9.6, 1.35, 0.0), C, coll,
-                          bevel=0.03, component='sensor'))
-    parts.append(make_box('CutLaw_CollarC', (2.2, 0.22, 3.6), (9.6, -0.55, 0.0), C, coll,
-                          bevel=0.03, component='sensor'))
 
-    parts.append(make_cylinder('CutLaw_Board', 0.85, 1.1, (2.2, -1.55, 0.0), M, coll,
-                               rot=(0.0, 0.0, 0.0), verts=12, component='utility'))
+    # Judge's collar: a squared emitter frame around the nose, with thickness
+    # and an inner wall so it reads as a fixture, not four painted slabs.
+    collar_x = 10.55
+    collar_h = 1.55
+    collar_b = 1.70
+    bar = 0.16
+    parts.append(make_box('CutLaw_CollarTop', (bar, bar, collar_b * 2 + bar),
+                          (collar_x, 0.40 + collar_h, 0.0), C, coll,
+                          bevel=0.02, component='sensor'))
+    parts.append(make_box('CutLaw_CollarBot', (bar, bar, collar_b * 2 + bar),
+                          (collar_x, 0.40 - collar_h, 0.0), C, coll,
+                          bevel=0.02, component='sensor'))
     for side in (-1, 1):
-        parts.append(make_box(f'CutLaw_Fairing_{side}', (3.6, 0.55, 0.35), (1.6, 0.15, side * 2.75),
-                              M, coll, bevel=0.04, close=True))
-        parts.append(make_box(f'CutLaw_Plate_{side}', (1.1, 0.45, 0.08), (-4.8, 0.75, side * 2.72),
-                              W, coll, bevel=0.02, close=True))
+        tag = 'S' if side > 0 else 'P'
+        parts.append(make_box(f'CutLaw_Collar_{tag}', (bar, collar_h * 2, bar),
+                              (collar_x, 0.40, side * collar_b), C, coll,
+                              bevel=0.02, component='sensor'))
+        parts.append(make_box(f'CutLaw_CollarInner_{tag}', (0.08, collar_h * 1.7, 0.08),
+                              (collar_x - 0.12, 0.40, side * (collar_b - 0.10)), M, coll,
+                              close=True, component='sensor'))
 
-    parts.append(make_box('CutLaw_Canopy', (2.0, 0.55, 1.5), (4.6, 1.35, 0.0), G, coll,
-                          bevel=0.12, component='canopy'))
-    parts.append(make_box('CutLaw_DriveCowl', (2.6, 2.0, 3.8), (-10.4, 0.3, 0.0), M, coll, bevel=0.1))
-    _drive_cluster(parts, coll, mats, -11.3, 0.3, [-0.95, 0.95], 0.68, 'CutLaw')
+    # Ventral boarding collar: ring with an inner wall, not a solid puck.
+    board = make_cylinder('CutLaw_BoardOuter', 0.78, 0.55, (2.20, -1.42, 0.0), M, coll,
+                          rot=(0.0, 0.0, 0.0), verts=14, component='utility')
+    parts.append(board)
+    board_in = make_cylinder('CutLaw_BoardInner', 0.58, 0.50, (2.20, -1.42, 0.0), M, coll,
+                             rot=(0.0, 0.0, 0.0), verts=14, component='utility')
+    _tug_flip_normals(board_in)
+    parts.append(board_in)
+    parts.append(make_cylinder('CutLaw_BoardRim', 0.84, 0.08, (2.20, -1.68, 0.0), W, coll,
+                               rot=(0.0, 0.0, 0.0), verts=14, close=True, component='utility'))
+
+    for side in (-1, 1):
+        tag = 'S' if side > 0 else 'P'
+        hb = _tug_half_beam(hull_stations, -4.60)
+        parts.append(make_box(f'CutLaw_Plate_{tag}', (1.20, 0.42, 0.08),
+                              (-4.60, 0.55, side * (hb + 0.02)), W, coll, bevel=0.02, close=True))
+        parts.append(make_box(f'CutLaw_IdBar_{tag}', (6.40, 0.14, 0.08),
+                              (0.80, 0.72, side * (_tug_half_beam(hull_stations, 0.80) + 0.01)),
+                              C, coll, bevel=0.01, close=True))
+        parts.append(make_box(f'CutLaw_Fairing_{tag}', (2.40, 0.36, 0.22),
+                              (1.80, -0.15, side * (_tug_half_beam(hull_stations, 1.80) + 0.08)),
+                              M, coll, bevel=0.03, close=True))
+
+    # Forward house: raked glass looking through the collar, inset in a brow.
+    parts.append(make_box('CutLaw_House', (2.40, 0.70, 1.90), (4.40, 1.55, 0.0), H, coll,
+                          bevel=0.05))
+    parts.append(make_box('CutLaw_Brow', (0.70, 0.12, 1.70), (5.55, 1.95, 0.0), H, coll,
+                          bevel=0.02, rot=(0.0, math.radians(12.0), 0.0)))
+    parts.append(make_box('CutLaw_GlassFront', (0.10, 0.72, 1.35), (5.50, 1.52, 0.0), G, coll,
+                          rot=(0.0, math.radians(14.0), 0.0), component='canopy'))
+    for side in (-1, 1):
+        tag = 'S' if side > 0 else 'P'
+        parts.append(make_box(f'CutLaw_Glass_{tag}', (1.50, 0.55, 0.10),
+                              (4.30, 1.55, side * 0.98), G, coll, component='canopy'))
+
+    for side in (-1, 1):
+        tag = 'S' if side > 0 else 'P'
+        pod_z = side * 0.92
+        parts.append(_tug_loft(f'CutLaw_Pod_{tag}', [
+            (-11.40, 0.48, 0.95, -0.18),
+            (-10.40, 0.58, 1.08, -0.26),
+            (-9.20, 0.42, 0.88, -0.10),
+        ], H, coll, z_off=pod_z, bevel=0.04, component='engine'))
+        _tug_drive_bell(parts, coll, mats, -11.55, 0.28, pod_z,
+                        mouth=0.58, throat=0.30, depth=1.55, prefix='CutLaw')
     return parts
 
 

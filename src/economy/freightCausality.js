@@ -52,6 +52,8 @@ export const FREIGHT_TRADING_ROLES = Object.freeze([
   'express',
   'shuttle',
   'tug',
+  'arclight',
+  'tanker',
 ]);
 
 const ROLE_CAPACITY = Object.freeze({
@@ -64,6 +66,8 @@ const ROLE_CAPACITY = Object.freeze({
   shuttle: 16,
   // A yard tug carries a finite work lot while its physical tow attachment is separate.
   tug: 24,
+  arclight: 28,
+  tanker: 32,
   patrol: 0,
   escort: 0,
   pirate: 0,

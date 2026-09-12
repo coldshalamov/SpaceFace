@@ -1176,7 +1176,9 @@ const PACKAGED_LIVE_WHOLE_SHIP_FILES = Object.freeze(new Set([
   'wholeships/salvage_cutter.glb',
   'wholeships/survey_pin.glb',
   // PQ-136.02: packaged work-fleet hulls admitted to the live role map.
-  // volatiles_tanker and inspection_cutter remain held back — see 8257fd9e.
+  // PQ-193.08: tanker and inspection cutter enclosed; admitted as rare Helios extras.
+  'wholeships/volatiles_tanker.glb',
+  'wholeships/inspection_cutter.glb',
   'wholeships/rescue_lifter.glb',
   'wholeships/prospector_skiff.glb',
   'wholeships/scrap_sweeper.glb',
@@ -1305,6 +1307,9 @@ const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   sweeper: 'wholeships/scrap_sweeper.glb',
   shuttle: 'wholeships/apron_shuttle.glb',
   tug: 'wholeships/yard_tug.glb',
+  // PQ-193.08: rare Helios extras. Additive keys — do not remap Span, Atlas, or Arclight.
+  tanker: 'wholeships/volatiles_tanker.glb',
+  customs: 'wholeships/inspection_cutter.glb',
   // PQ-193.01: opening smuggler / pirate traffic publish complete roster hulls, not modular kit.
   smuggler: 'wholeships/drifter_production_v1.glb',
   pirate: 'wholeships/hornet_production_v1.glb',
@@ -1327,6 +1332,8 @@ const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   sweeper: 'SF_WHOLESHIP_SCRAP_SWEEPER',
   shuttle: 'SF_WHOLESHIP_APRON_SHUTTLE',
   tug: 'SF_WHOLESHIP_YARD_TUG',
+  tanker: 'SF_WHOLESHIP_VOLATILES_TANKER',
+  customs: 'SF_WHOLESHIP_INSPECTION_CUTTER',
   smuggler: 'SF_DRIFTER_PRODUCTION_V1',
   pirate: 'SF_HORNET_PRODUCTION_V1',
 });

@@ -1,12 +1,10 @@
 // PQ-136.02 fields the admitted occupational hulls through live traffic + npcJobs
 // (rescue lifter, prospector skiff, scrap sweeper, apron shuttle, yard tug).
 //
-// TWO remain checkpointed OFF live traffic: volatiles_tanker and the inspection_cutter-as-customs.
-// The tug draft uses the current released whole-ship body and existing hauler/economy path;
-// the old still-review note remains open for owner visual review. The two other candidates stay
-// guarded here.
-//
-// Yard props stay checkpointed off the place selector. Helios lane furniture is admitted.
+// PQ-193.08 fielded volatiles_tanker and inspection_cutter as mix-zero Helios fixtures
+// after chase stills of the enclosed bodies. Hostile customs_cutter stays Hornet.
+// The tug remains demand-dispatched. Yard props stay checkpointed off the place selector.
+// Helios lane furniture is admitted.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
@@ -45,11 +43,12 @@ const WIRED_LANE_FURNITURE_RELEASE_SHA256 = Object.freeze({
   place_whistle: '90ef2650216aa214bce5520d829d03a9c0d682e7057a8f982bf243b695aa100e',
 });
 
-// Still-rejected in 8257fd9e — packaged and kept on disk, but must not reach live traffic.
-const HELD_BACK_HULLS = Object.freeze([
-  { id: 'volatiles_tanker', role: 'tanker', file: 'wholeships/volatiles_tanker.glb' },
+// Mix-zero Helios extras — packaged, role-mapped, never drawn from the ambient mix.
+const HELIOS_RARE_EXTRAS = Object.freeze([
+  { id: 'volatiles_tanker', role: 'tanker', file: 'wholeships/volatiles_tanker.glb',
+    assetId: 'SF_WHOLESHIP_VOLATILES_TANKER' },
   { id: 'inspection_cutter', role: 'customs', hostile: 'customs_cutter',
-    file: 'wholeships/inspection_cutter.glb' },
+    file: 'wholeships/inspection_cutter.glb', assetId: 'SF_WHOLESHIP_INSPECTION_CUTTER' },
 ]);
 
 // Professions that only fly when a real body needs them (traffic's `_dispatchGeneralSalvors` /
@@ -274,29 +273,32 @@ test('live ambient spawn assigns fielded occupational craft to existing job mach
   }
 });
 
-test('still-rejected work hulls stay on disk but never reach live traffic (8257fd9e)', () => {
+test('tanker and inspection cutter are mix-zero Helios extras, not ambient rolls', () => {
   const mix = trafficRoleMixForSector(FIELDING_SECTOR_DATA);
-  for (const hull of HELD_BACK_HULLS) {
-    // Kept as a candidate: the body must not be deleted while it waits for a still review.
-    // Both copies are guarded — the release body is the one a cleanup pass would sweep, and
-    // it is what the live loader would read the day the review clears.
+  const heliosMix = trafficRoleMixForSector({
+    id: 'sector_helios_prime',
+    security: 0.95,
+    trafficPerMin: 18,
+  });
+  for (const hull of HELIOS_RARE_EXTRAS) {
     const abs = resolve(ROOT, 'assets/ships/parts', hull.file);
-    assert.ok(existsSync(abs), `keep ${hull.file} on disk as a review candidate`);
+    assert.ok(existsSync(abs), `keep ${hull.file} on disk`);
     assert.ok(triangleCount(parseGlbJson(abs)) > 200, `${hull.id} source is a stub`);
     assert.ok(existsSync(resolve(ROOT, 'assets/ships/release/parts', hull.file)),
-      `keep the packaged release body for ${hull.id} — held back is not deleted`);
+      `keep the packaged release body for ${hull.id}`);
 
-    // ...but nothing may select it.
-    assert.equal(TRAFFIC_ROLES[hull.role], undefined,
-      `${hull.role} must not exist as a traffic role until a still review clears ${hull.id}`);
-    assert.ok(!(hull.role in mix), `${hull.role} must not be drawable in the ambient mix`);
+    const def = TRAFFIC_ROLES[hull.role];
+    assert.ok(def, `${hull.role} must exist as a traffic role`);
+    assert.notEqual(def.label, TRAFFIC_ROLES.hauler.label);
+    assert.equal(mix[hull.role], 0, `${hull.role} must not roll from the ambient mix`);
+    assert.equal(heliosMix[hull.role], 0, `${hull.role} must not steal Helios mix slots`);
     assert.equal(
       OCCUPATIONAL_TRAFFIC_CRAFT.some((row) => row.craftId === hull.id), false,
-      `${hull.id} must not be listed as a fielded craft`,
+      `${hull.id} is a Helios fixture, not an occupational mix craft`,
     );
     const visual = wholeShipVisualForEntity({ data: { trafficRole: hull.role } });
-    assert.notEqual(visual && visual.file, hull.file,
-      `${hull.role} must not select ${hull.file}`);
+    assert.equal(visual && visual.file, hull.file, `${hull.role} must select ${hull.file}`);
+    assert.equal(visual && visual.assetId, hull.assetId);
     if (hull.hostile) {
       const customs = wholeShipVisualForEntity({
         data: { lootTableId: hull.hostile, defId: 'ship_hornet' },
@@ -305,12 +307,53 @@ test('still-rejected work hulls stay on disk but never reach live traffic (8257f
         'customs hostiles must keep the Hornet, not the inspection cutter');
     }
   }
-
+  assert.equal(wholeShipVisualForEntity({ data: { trafficRole: 'hauler' } }).file,
+    'wholeships/helios_span.glb', 'tanker must not steal the Span hauler slot');
+  assert.equal(wholeShipVisualForEntity({ data: { trafficRole: 'arclight' } }).file,
+    'wholeships/helios_arclight.glb', 'tanker must not steal the Arclight slot');
+  const atlas = wholeShipVisualForEntity(
+    { type: 'ship', data: { defId: 'ship_atlas' } },
+    { requiredWholeShip: true },
+  );
+  assert.equal(atlas && atlas.file, 'wholeships/atlas_production_v1.glb',
+    'tanker must not steal Atlas');
   // PQ-049 owns Express Liner identity; PQ-136.02 must not re-skin already-shipping express
   // traffic as a side effect of fielding the apron shuttle.
   const express = wholeShipVisualForEntity({ data: { trafficRole: 'express' } });
   assert.equal(express && express.file, 'wholeships/massline_express_liner_v1.glb',
     'express selects the packaged Massline liner, not a fallback hull');
+});
+
+test('Helios start-sector traffic always includes the tanker and inspection cutter', () => {
+  const sim = createSimulation({ seed: 47, systems: [traffic] });
+  const { state, bus } = sim;
+  state.mode = 'flight';
+  state.world = state.world || {};
+  state.world.currentSectorId = 'sector_helios_prime';
+  sim.spawn({
+    type: 'station', team: 2, pos: { x: 0, z: 0 }, vel: { x: 0, z: 0 },
+    radius: 40, hull: 1000, hullMax: 1000,
+    data: { stationId: 'station_helios', name: 'Helios Station' },
+  });
+  sim.spawn({
+    type: 'station', team: 2, pos: { x: 900, z: 120 }, vel: { x: 0, z: 0 },
+    radius: 34, hull: 1000, hullMax: 1000,
+    data: { stationId: 'station_helios_yard', name: 'Helios Yard' },
+  });
+  bus.emit('sector:enter', {
+    sectorId: 'sector_helios_prime',
+    sector: { id: 'sector_helios_prime', security: 0.95, trafficPerMin: 18, factionId: 'faction_helios' },
+  });
+  const roles = (state.traffic.freighters || []).map((rec) => rec && rec.role);
+  assert.ok(roles.includes('tanker'), `Helios traffic missing tanker: ${roles.join(',')}`);
+  assert.ok(roles.includes('customs'), `Helios traffic missing inspection cutter: ${roles.join(',')}`);
+  const tanker = (state.traffic.freighters || []).find((rec) => rec && rec.role === 'tanker');
+  const customs = (state.traffic.freighters || []).find((rec) => rec && rec.role === 'customs');
+  const tankerEnt = state.entities.get(tanker.id);
+  const customsEnt = state.entities.get(customs.id);
+  assert.equal(wholeShipVisualForEntity(tankerEnt).file, 'wholeships/volatiles_tanker.glb');
+  assert.equal(wholeShipVisualForEntity(customsEnt).file, 'wholeships/inspection_cutter.glb');
+  sim.dispose();
 });
 
 test('Helios lane furniture admits the repaired corridor family', () => {
