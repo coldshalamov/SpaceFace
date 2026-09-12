@@ -319,14 +319,17 @@ the performance truth.
 - The `typeof window` heat vent in `weapons.js:31` preserves determinism — don't "fix" it.
 - `canonicalStringify` (`simSnapshot.js`) is the hash basis — changing serialization breaks all goldens.
 
-**Current 47-A golden status (2026-08-09):** both envelopes have deliberate, deterministic
-records. The legacy envelope is `CONTENT_ONLY`. The V3 envelope is intentionally
-`MOTION_CHANGED`: commit `37e4d74c` made spawned ships honor their authored drive families, moving
-14 entity motion fields and 12 corresponding physics-body position/velocity fields, changing
-Massline break timing from tick 173 to 190, and allowing one additional projectile hit. The exact
-causal evidence is recorded in `test/47a.telemetry.v3.expected.json`; this is an accepted gameplay
-change, not a bookkeeping repin. A future red golden still requires the procedure in §10d—same-shape
-determinism alone does not authorize changing an expected hash.
+**Current 47-A golden status (2026-09-12):** both envelopes were deliberately re-recorded over
+`73f2cae0c..824c773bb`. The 2026-09-08 fresh root squashed history, so the last commit that actually
+recorded the goldens lives on `archive/pre-squash-2026-09-08` (`73f2cae0c`); pass it as `--ref` to
+the diff tool, otherwise the tool reports that the reference does not reproduce the hash. Verdict for
+both envelopes: `CONTENT_ONLY` — zero motion fields changed. The 36 / 38 moved leaves are hull
+derived stats (cargoCap, shield, weapon heat), `packagedProp*` identity fields from the packaged
+hardware presentation (`PQ-193`), new mission base rewards, and the player `sessionSink` ledger. The
+V3 trace counts for alert/presentation cues moved with the re-tuned shield thresholds; combat, tether
+and scenario counts did not. The full causal record is in each expected file under `notes`. A future
+red golden still requires the procedure in §10d — same-shape determinism alone does not authorize
+changing an expected hash.
 
 **If your change is a legitimate sim-shape change:** describe in your PR how you preserved or will re-record goldens.
 

@@ -63,10 +63,10 @@
     "presentation:caption": 2,
     "presentation:cueApplied": 6,
     "presentation:cue": 6,
-    "audio:cue": 2
+    "audio:cue": 3
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "ecd131b4344e5be230cb9ed31e87b42cb530aa3b31dcf6cfa578e9109f1035af",
+    "authoritativeHash": "371585f229c9795d513b009da5afa9942533d52156a0b02e74469932e3df1524",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -131,6 +131,13 @@
     "2026-09-06 integrator acceptance of the deliberate PQ-137.11 contact-episode rule (cfb505ef): PLAYER_CONTACT_EVENT_BRIDGE_TICKS 6 -> 90 keeps a repeated scrape within one 10% cruise shove budget.",
     "Prior authoritativeHash was 76116bb577b52a939eadd8ed6ae7266c7bebe112d8a7a326ebff24cacaf34edd. Current sim-golden-diff reproduced the prior reference: MOTION_CHANGED, 11 entity motion, 12 physics and 2 aimWorld fields; trace counts unchanged.",
     "Player x 551.349731 -> 552.200928 at tick 720. The isolated bridge experiment is recorded in design/program/roadmap/receipts/PQ-137.11-REPORT.md: restoring 6 while retaining off-centre impulse and yaw changes reproduces the previous hash.",
-    "This is an accepted gameplay change, not content-only churn. The V3 golden is unchanged and both save/reload comparisons passed at campaign entry."
+    "This is an accepted gameplay change, not content-only churn. The V3 golden is unchanged and both save/reload comparisons passed at campaign entry.",
+    "2026-09-12 deliberate re-record over 73f2cae0c..824c773bb. The 2026-09-08 fresh root d5e6728ce squashed history; 73f2cae0c on archive/pre-squash-2026-09-08 last recorded this envelope and reproduces the prior hash exactly under git archive.",
+    "The prior authoritativeHash was ecd131b4344e5be230cb9ed31e87b42cb530aa3b31dcf6cfa578e9109f1035af.",
+    "Verdict from node scripts/sim-golden-diff.mjs --ref 73f2cae0c: CONTENT_ONLY. Zero motion fields changed: no entity pos/vel/rot/angVel/prevPos moved across the 720-tick run. Re-recording is bookkeeping, not a physics change.",
+    "By-key breakdown of the 36 non-identical leaf fields: $.entities[] 24, $.missions 10, $.player 2. Nine tenths of the tree is unchanged; economy did not move at all this time.",
+    "Causes are landed content: hull derived stats (cargoCap, shield, shieldRegenRate, weapon heat) re-tuned with the packaged player hull; packagedProp* identity fields from the packaged-hardware presentation (PQ-193).",
+    "Also: mission base rewards added for the set-piece / rescue-under-fire / tow-recovery / demolition / capital-boss kinds, and the player sessionSink ledger (momentum sinks) added to the save shape.",
+    "phase0ObservedTraceCounts moved: audio:cue 2->3. Alert and presentation cue counts follow the re-tuned shield thresholds; every combat, tether, scenario and economy count is unchanged."
   ]
 }

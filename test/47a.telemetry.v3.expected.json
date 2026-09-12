@@ -57,18 +57,18 @@
     "projectile:hit": 17,
     "combat:damage": 17,
     "economy:tick": 2,
-    "camera:shake": 4,
-    "presentation:cameraCue": 4,
+    "camera:shake": 3,
+    "presentation:cameraCue": 3,
     "presentation:vfxCue": 5,
     "presentation:audioCue": 5,
-    "presentation:uiCue": 5,
-    "presentation:caption": 5,
+    "presentation:uiCue": 4,
+    "presentation:caption": 4,
     "presentation:cueApplied": 22,
     "presentation:cue": 22,
-    "audio:cue": 5
+    "audio:cue": 6
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "77bbd9cd12f3145c855c6e045ea73adec2982912f0d9695c6c3cbdf757c1cc3b",
+    "authoritativeHash": "b9f763317ad088fe74c599f13a61b6618ec8ddfd1b273f9896097fbb89e639cd",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -148,6 +148,14 @@
     "2026-09-05 causal-record completion (acceptance review of PQ-137.03-.10): the 83444ec2 -> 0c9c1549 window this re-record diffed also carried PQ-137.03, PQ-137.04 and PQ-137.06, not only PQ-137.11 (a3bd740d).",
     "PQ-137.03 = 3c4c424a (camera keyed to governed combat speed + catalogue rescale) and 461c2cb3 (planar assisted-translation cap). PQ-137.04 = 4085ecac, 4a10cbca, 940b3b95 (one hitstun law).",
     "PQ-137.06 = 634a900f (terrain damage from pre-solve closing speed). The MOTION_CHANGED verdict above is the JOINT effect of those four deliberate, reviewed feel changes (packet PQ-137, each receipted).",
-    "Per-leaf shares of the moved hash were not separated. No silent regression hides in it."
+    "Per-leaf shares of the moved hash were not separated. No silent regression hides in it.",
+    "2026-09-12 deliberate re-record over 73f2cae0c..824c773bb. The 2026-09-08 fresh root d5e6728ce squashed history; 73f2cae0c on archive/pre-squash-2026-09-08 last recorded this envelope and reproduces the prior hash exactly under git archive.",
+    "The prior authoritativeHash was 77bbd9cd12f3145c855c6e045ea73adec2982912f0d9695c6c3cbdf757c1cc3b.",
+    "Verdict from node scripts/sim-golden-diff.mjs --ref 73f2cae0c --flight-system v3: CONTENT_ONLY. Zero motion fields changed: no entity pos/vel/rot/angVel/prevPos moved across the 720-tick run. Re-recording is bookkeeping, not a physics change.",
+    "By-key breakdown of the 38 non-identical leaf fields: $.entities[] 24, $.missions 10, $.player 2, $.scenario 2. Economy did not move at all this time.",
+    "Causes are landed content: hull derived stats (cargoCap, shield, shieldRegenRate, weapon heat) re-tuned with the packaged player hull; packagedProp* identity fields from the packaged-hardware presentation (PQ-193).",
+    "Also: mission base rewards added for the set-piece / rescue-under-fire / tow-recovery / demolition / capital-boss kinds, and the player sessionSink ledger (momentum sinks) added to the save shape.",
+    "phase0ObservedTraceCounts moved: audio:cue 5->6; camera:shake 4->3; presentation:cameraCue 4->3; presentation:caption 5->4; presentation:uiCue 5->4.",
+    "Those alert/presentation cue counts follow the re-tuned shield thresholds (scenario evidence event 2 fires at tick 147 instead of 152); every combat, tether, scenario-beat and economy count is unchanged."
   ]
 }
