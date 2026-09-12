@@ -1,13 +1,11 @@
 // src/ui/screens/techTree.js — Tech-tree progression screen (ARCHITECTURE §5, spec 09).
-// Draws the TECH_NODES DAG to a <canvas>: prereq lines, node state (researched / available /
-// locked), cost (credits + RP). Click a node -> the side column -> Unlock emits ui:unlockTech{nodeId}
-// (ships handles it). READ-ONLY on state; emits intents only.
-//
-// Engineering register: prerequisite depth reads left to right; available, researched and locked
-// nodes have distinct fill, border and text states. The selected dossier retains all native unlock
-// guards. A labelled node selector is the keyboard and screen-reader equivalent of canvas picking.
-// Layout and interaction remain owned here; the Orbital stylesheet owns DOM presentation.
-// Canvas ink is centralized below because Canvas 2D does not consume CSS custom properties.
+// Field Hardware BENCH: lanes etched on the held world, nodes as kit legend-strip tiles with
+// status lights, the selected dossier on a sunk plate, Unlock as one key, quiet type.
+// Click a node -> the side column -> Unlock emits ui:unlockTech{nodeId} (ships handles it).
+// READ-ONLY on state; emits intents only. A labelled node selector is the keyboard and
+// screen-reader equivalent of canvas picking. This file owns no CSS; hardware is the produced
+// kit sprites pinned on the elements. Canvas 2D cannot read CSS custom properties, so ink and
+// faces are spelled below from the kit tokens.
 //
 // Export: techTreeScreen  (id 'techTree'). No 'three' import.
 
@@ -18,6 +16,11 @@ import { WEAPONS } from '../../data/weapons.js';
 import { BODY_MODULES } from '../../data/claimableBodies.js';
 import { escapeMarkup as escapeHtml } from '../views/identity.js';
 import { el, hero, settle, cue } from '../kit/index.js';
+import {
+  wrapCanvasLines,
+  techTreeNameLineBudget,
+  techTreeNodeHeight,
+} from '../../localization/layout.js';
 
 // Branch -> column index. Colour is by MEANING (researched / available / locked), never by branch.
 const BRANCHES = [
@@ -37,31 +40,332 @@ const UNLOCK_NAME_BY_ID = new Map(
 // prerequisite (drives → flagship command) is the only diagonal. The previous layout put depth on
 // the vertical axis inside each band and siblings across, which drew the combat branch's fan-out
 // as a tangle of curves crossing the whole canvas and left two thirds of the frame empty.
-// NODE_W × NODE_H is each node's word box: the hit-test rectangle and the space its two name lines
-// and cost line occupy. The register border follows this same hit-test rectangle.
-const NODE_W = 168, NODE_H = 58, COL_GAP = 56, ROW_GAP = 16, PAD_X = 32, PAD_Y = 40;
+// NODE_W is the word box width. Height follows techTreeNodeHeight() so a growth locale can take a
+// third name line instead of an ellipsis. The register border follows the same hit-test rectangle.
+const NODE_W = 168, COL_GAP = 56, ROW_GAP = 16, PAD_X = 32, PAD_Y = 40;
 const LANE_GAP = 34;          // vertical space between branch lanes (holds the lane label)
 const LANE_LABEL_H = 22;      // label sits inside the lane's top inset
 const NAME_LINE_H = 20;       // canvas line height for the node's name at body size (16 px × 1.25)
+const PLATE_PAD_X = 8;
+const PLATE_PAD_Y = 6;
+const STRIP_SLICE = Object.freeze({ t: 12, r: 16, b: 12, l: 16 });
+const SELECTED_SLICE = Object.freeze({ t: 8, r: 16, b: 8, l: 16 });
 
-// The kit's colours for the canvas (styles/kit.css §3 tokens): bone at 100 / 62 / 38 / 14 %, the
-// signal gold, the wanted red, good, ink. Canvas 2D cannot read a CSS custom property, so the values
-// are spelled here — the only hex allowed in this file. Every fillStyle/strokeStyle below is one of these.
+const FH_KEY = {
+  primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
+  legend: { file: 'key.legend', width: '14px', minW: '72px', minH: '32px', pad: '0 10px', font: '12px' },
+};
+const FH_PLATE = {
+  sunk: { file: 'plate.bench.sunk.png', width: '24px', slice: '24 fill' },
+  edge: { file: 'plate.edge.small.png', width: '16px', slice: '16 fill' },
+};
+
+function fhUrl(rel) {
+  return new URL(`../../../assets/ui/kit/assets/${rel}`, import.meta.url).href;
+}
+function forcedColorsActive() {
+  return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
+}
+function pin(node, props) {
+  if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
+  for (const name of Object.keys(props)) node.style.setProperty(name, props[name], 'important');
+  return node;
+}
+function installShell(root) {
+  root.classList.add('fh-shell');
+  pin(root, { background: 'transparent', 'border-width': '0', 'box-shadow': 'none' });
+}
+function paintMarking(node) {
+  if (!node) return node;
+  node.classList.add('fh-title');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 900, 'wdth' 125",
+    'letter-spacing': 'var(--fh-track-display)',
+    'text-transform': 'uppercase',
+    'line-height': '0.9',
+    color: 'var(--fh-text)',
+  });
+}
+function paintLegend(node, lit = false) {
+  if (!node) return node;
+  node.classList.add('fh-legend');
+  if (!node.getAttribute('data-fh-lit')) node.setAttribute('data-fh-lit', lit ? 'on' : 'off');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 600, 'wdth' 62",
+    'letter-spacing': 'var(--fh-track-legend)',
+    'text-transform': 'uppercase',
+    'font-size': 'var(--fh-size-fine)',
+    color: lit ? 'var(--fh-legend-lit)' : 'var(--fh-legend-rest)',
+    margin: '0',
+  });
+}
+function paintBody(node) {
+  if (!node) return node;
+  node.classList.add('fh-body');
+  return pin(node, {
+    'font-family': 'var(--fh-face-text)',
+    'font-size': 'var(--fh-size-body)',
+    color: 'var(--fh-text-resting)',
+    margin: '0',
+  });
+}
+function paintPlate(node, variant = 'sunk', extra = {}) {
+  if (!node) return node;
+  const spec = FH_PLATE[variant] || FH_PLATE.sunk;
+  node.classList.add('fh-plate', variant === 'edge' ? 'fh-plate--edge' : 'fh-plate--sunk');
+  if (forcedColorsActive()) {
+    return pin(node, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', ...extra,
+    });
+  }
+  return pin(node, {
+    'border-style': 'solid',
+    'border-width': spec.width,
+    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
+    'border-image-slice': spec.slice,
+    'border-image-repeat': 'stretch',
+    'border-image-width': spec.width,
+    background: 'transparent',
+    'box-sizing': 'border-box',
+    padding: '10px 14px',
+    ...extra,
+  });
+}
+function paintInput(input) {
+  if (!input) return input;
+  input.classList.add('fh-input', 'k-input');
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(input, { 'border-image-source': 'none', 'border-bottom': '1px solid CanvasText', background: 'transparent' });
+      return;
+    }
+    pin(input, {
+      'border-style': 'solid',
+      'border-width': '12px',
+      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
+      'border-image-slice': '12 fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': '12px',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'min-height': '40px',
+      padding: '0 8px',
+      'box-sizing': 'border-box',
+    });
+  };
+  apply('rest');
+  if (input.dataset.fhBound !== '1') {
+    input.dataset.fhBound = '1';
+    input.addEventListener('focus', () => apply('focus'));
+    input.addEventListener('blur', () => apply('rest'));
+  }
+  return input;
+}
+function paintKey(button, kind = 'legend') {
+  if (!button) return button;
+  const spec = FH_KEY[kind] || FH_KEY.legend;
+  button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(button, {
+        'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+        background: 'transparent', color: 'CanvasText',
+      });
+      return;
+    }
+    pin(button, {
+      display: 'inline-flex',
+      width: 'max-content',
+      'max-width': '100%',
+      'min-width': spec.minW,
+      'min-height': spec.minH,
+      padding: spec.pad,
+      'font-size': spec.font,
+      'font-family': 'var(--fh-face-display)',
+      'font-variation-settings': "'wght' 600, 'wdth' 62",
+      'letter-spacing': 'var(--fh-track-legend)',
+      'text-transform': 'uppercase',
+      'justify-content': 'center',
+      'align-items': 'center',
+      'box-sizing': 'border-box',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'border-style': 'solid',
+      'border-width': spec.width,
+      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
+      'border-image-slice': parseInt(spec.width, 10) + ' fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': spec.width,
+    });
+  };
+  const sync = () => {
+    const disabled = button.getAttribute('aria-disabled') === 'true' || button.disabled;
+    apply(disabled ? 'disabled' : 'rest');
+  };
+  button._fhSync = sync;
+  if (button.dataset.fhBound !== '1') {
+    button.dataset.fhBound = '1';
+    button.addEventListener('pointerenter', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply('hover');
+    });
+    button.addEventListener('pointerleave', sync);
+    button.addEventListener('pointerdown', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply('pressed');
+    });
+    button.addEventListener('pointerup', sync);
+    button.addEventListener('focus', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply('hover');
+    });
+    button.addEventListener('blur', sync);
+  }
+  sync();
+  return button;
+}
+function paintRow(row) {
+  if (!row) return row;
+  row.classList.add('fh-row');
+  return pin(row, {
+    border: '0',
+    'box-shadow': 'none',
+    'background-image': 'url("' + fhUrl('tiles/tile.etch.hairline.png') + '")',
+    'background-repeat': 'repeat-x',
+    'background-position': 'top left',
+    'background-color': 'transparent',
+    color: 'var(--fh-text-resting)',
+  });
+}
+function paintHairline(node) {
+  if (!node) return node;
+  node.classList.add('fh-hairline');
+  return pin(node, {
+    border: '0',
+    height: '4px',
+    background: 'url("' + fhUrl('tiles/tile.etch.hairline.png') + '") repeat-x left center',
+    'background-color': 'transparent',
+    margin: '12px 0',
+  });
+}
+
+const KIT_IMG = Object.create(null);
+function kitImage(rel) {
+  if (Object.prototype.hasOwnProperty.call(KIT_IMG, rel)) return KIT_IMG[rel];
+  if (typeof Image === 'undefined') {
+    KIT_IMG[rel] = null;
+    return null;
+  }
+  const img = new Image();
+  KIT_IMG[rel] = img;
+  try { img.src = fhUrl(rel); }
+  catch {
+    KIT_IMG[rel] = null;
+    return null;
+  }
+  img.addEventListener('load', () => {
+    if (techTreeScreen._g) techTreeScreen._draw();
+  });
+  return img;
+}
+function imgReady(img) {
+  return !!(img && img.complete && img.naturalWidth > 1);
+}
+function drawNineSlice(g, img, dx, dy, dw, dh, slice) {
+  if (!imgReady(img) || dw < 4 || dh < 4) return false;
+  const iw = img.naturalWidth;
+  const ih = img.naturalHeight;
+  const l = slice.l;
+  const r = slice.r;
+  const t = slice.t;
+  const b = slice.b;
+  if (iw < l + r + 1 || ih < t + b + 1) return false;
+  const cl = Math.min(l, Math.max(1, Math.floor(dw / 2) - 1));
+  const cr = Math.min(r, Math.max(1, Math.floor(dw / 2) - 1));
+  const ct = Math.min(t, Math.max(1, Math.floor(dh / 2) - 1));
+  const cb = Math.min(b, Math.max(1, Math.floor(dh / 2) - 1));
+  const srcCW = iw - l - r;
+  const srcCH = ih - t - b;
+  const dstCW = dw - cl - cr;
+  const dstCH = dh - ct - cb;
+  const parts = [
+    [0, 0, l, t, dx, dy, cl, ct],
+    [l, 0, srcCW, t, dx + cl, dy, dstCW, ct],
+    [iw - r, 0, r, t, dx + cl + dstCW, dy, cr, ct],
+    [0, t, l, srcCH, dx, dy + ct, cl, dstCH],
+    [l, t, srcCW, srcCH, dx + cl, dy + ct, dstCW, dstCH],
+    [iw - r, t, r, srcCH, dx + cl + dstCW, dy + ct, cr, dstCH],
+    [0, ih - b, l, b, dx, dy + ct + dstCH, cl, cb],
+    [l, ih - b, srcCW, b, dx + cl, dy + ct + dstCH, dstCW, cb],
+    [iw - r, ih - b, r, b, dx + cl + dstCW, dy + ct + dstCH, cr, cb],
+  ];
+  for (const p of parts) {
+    if (p[2] < 1 || p[3] < 1 || p[6] < 1 || p[7] < 1) continue;
+    g.drawImage(img, p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+  }
+  return true;
+}
+function drawEtchLine(g, x1, y, x2) {
+  const img = kitImage('tiles/tile.etch.hairline.png');
+  const yy = Math.round(y);
+  if (imgReady(img)) {
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    for (let x = x1; x < x2; x += w) {
+      const dw = Math.min(w, x2 - x);
+      g.drawImage(img, 0, 0, dw, h, x, yy - h / 2, dw, h);
+    }
+    return;
+  }
+  g.strokeStyle = KIT_INK.hair;
+  g.lineWidth = 1;
+  g.beginPath();
+  g.moveTo(x1, yy + 0.5);
+  g.lineTo(x2, yy + 0.5);
+  g.stroke();
+}
+function drawLight(g, kind, x, y) {
+  const file = kind === 'good'
+    ? 'lights/light.dot.good.on.png'
+    : kind === 'on'
+      ? 'lights/light.dot.legend.on.png'
+      : kind === 'dim'
+        ? 'lights/light.dot.legend.dim.png'
+        : 'lights/light.dot.legend.off.png';
+  const img = kitImage(file);
+  if (imgReady(img)) {
+    g.drawImage(img, x, y, 12, 12);
+    return;
+  }
+  g.fillStyle = kind === 'good' ? KIT_INK.good : kind === 'off' ? KIT_INK.bone38 : KIT_INK.signal;
+  g.beginPath();
+  g.arc(x + 6, y + 6, 3, 0, Math.PI * 2);
+  g.fill();
+}
+
+// Canvas 2D cannot read a CSS custom property, so the kit tokens are spelled here — the only
+// colour literals allowed in this file. Values match assets/ui/kit/tokens/tokens.css.
 const KIT_INK = Object.freeze({
-  bone: '#f0eee1',
-  bone62: '#bec9b6',
-  bone38: '#98a791',
-  hair: '#47583f',
-  signal: '#e6b478',
-  red: '#ee9d83',
-  good: '#aed4b1',
-  ink: '#152018',
-  available: '#223026',
-  researched: '#29392b',
-  locked: '#18231c',
+  bone: '#eae6df',
+  bone62: 'rgba(234,230,223,0.62)',
+  bone38: 'rgba(234,230,223,0.38)',
+  hair: 'rgba(234,230,223,0.14)',
+  signal: '#f2b950',
+  legend: '#ffb347',
+  red: '#ff4d3d',
+  good: '#9bd8a0',
+  ink: '#0c0a08',
+  available: '#26211b',
+  researched: '#1a1714',
+  locked: '#100e0c',
 });
-// The kit's text face (styles/kit.css --k-text), spelled out because ctx.font cannot resolve var().
+// The kit's text face (styles/kit.css --k-text / --fh-face-text), spelled out because ctx.font
+// cannot resolve var(). Lane legends use the display face.
 const KIT_TEXT_FACE = '"Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif';
+const KIT_DISPLAY_FACE = 'Archivo, system-ui, sans-serif';
 
 /**
  * A canvas font shorthand in the kit face for a canvas whose element is scaled by `zoom`.
@@ -72,6 +376,11 @@ function kitFont(weight, screenPx, zoom) {
   const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
   const size = Math.max(12, Number.isFinite(screenPx) ? screenPx : 12) / z;
   return weight + ' ' + size + 'px ' + KIT_TEXT_FACE;
+}
+function kitLegendFont(screenPx, zoom) {
+  const z = Number.isFinite(zoom) && zoom > 0 ? zoom : 1;
+  const size = Math.max(12, Number.isFinite(screenPx) ? screenPx : 12) / z;
+  return '600 ' + size + 'px ' + KIT_DISPLAY_FACE;
 }
 
 function setText(el, text) { if (el && el.textContent !== text) el.textContent = text; }
@@ -191,6 +500,7 @@ function buildLayout(nodes) {
       lane.rows = Math.max(lane.rows, col.length);
     }
   }
+  const boxH = techTreeNodeHeight();
   const branchTop = {};   // lane label y (the lane's top inset)
   const laneBottom = {};  // last word box's bottom edge in the lane
   const positions = {};
@@ -206,12 +516,12 @@ function buildLayout(nodes) {
         const l = layout[n.id];
         positions[n.id] = {
           x: PAD_X + l.depth * (NODE_W + COL_GAP),
-          y: cardsTop + l.slot * (NODE_H + ROW_GAP),
+          y: cardsTop + l.slot * (boxH + ROW_GAP),
         };
         maxX = Math.max(maxX, positions[n.id].x + NODE_W);
       }
     }
-    laneBottom[b.id] = cardsTop + lane.rows * (NODE_H + ROW_GAP) - ROW_GAP;
+    laneBottom[b.id] = cardsTop + lane.rows * (boxH + ROW_GAP) - ROW_GAP;
     y = laneBottom[b.id] + LANE_GAP;
   }
   return { byId, positions, width: maxX + PAD_X, height: y - LANE_GAP + PAD_Y, branchTop, laneBottom };
@@ -221,7 +531,17 @@ function buildLayout(nodes) {
 function cornerHero(parent, word, hook) {
   const block = hero('0', word);
   const n = block.querySelector('.k-hero__n');
+  const w = block.querySelector('.k-hero__w');
   n.setAttribute(hook, '');
+  n.classList.add('fh-heronum', 'fh-data');
+  pin(n, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 800, 'wdth' 125",
+    color: 'var(--fh-signal)',
+    'font-size': 'var(--fh-size-subhead)',
+    'line-height': '0.9',
+  });
+  if (w) paintLegend(w);
   parent.appendChild(block);
   return n;
 }
@@ -252,61 +572,99 @@ export const techTreeScreen = {
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-techtree');
     rootEl.classList.add('k-screen');
     rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('data-fh-register', 'bench');
     rootEl.setAttribute('aria-label', 'Research');
+    installShell(rootEl);
 
     // .k-title — "Research"; the selected node's branch as the second line.
     const head = el('header', 'k-title');
-    head.appendChild(el('h1', 'k-display k-t-title', 'Research'));
-    const branchLine = el('p', 'k-t-emph k-62', 'Select a node');
+    pin(head, { 'border-bottom': '0' });
+    const heading = el('h1', 'k-display k-t-title', 'Research');
+    paintMarking(heading);
+    head.appendChild(heading);
+    const branchLine = el('p', 'k-t-emph k-62 fh-legend', 'Select a node');
+    paintLegend(branchLine);
     head.appendChild(branchLine);
     rootEl.appendChild(head);
 
-    // .k-corner — credits, research points, unlocked n/N as three hero numbers in a column.
+    // .k-corner — credits, research points, unlocked n/N as three hero numbers on an edge plate.
     const corner = el('div', 'k-corner');
     corner.setAttribute('aria-label', 'Research resources');
+    paintPlate(corner, 'edge', {
+      display: 'flex',
+      'flex-direction': 'column',
+      gap: '8px',
+      'text-align': 'right',
+    });
     const crEl = cornerHero(corner, 'credits', 'data-cr');
     const rpEl = cornerHero(corner, 'research points', 'data-rp');
     const countEl = cornerHero(corner, 'unlocked', 'data-count');
     setText(countEl, '0/' + TECH_NODES.length);
     rootEl.appendChild(corner);
 
-    // .k-stage — a two-column kit panel: the canvas (scrolling) on the left, the selected node's
-    // column on the right. `k-span` takes the stage across the hang column too: the DAG wants the width.
+    // .k-stage — canvas on the held world (leftover orbital fill killed), selected node on a plate.
     const stage = el('div', 'k-stage k-span k-panel k-panel--split');
+    pin(stage, {
+      background: 'transparent',
+      'border-width': '0',
+      'box-shadow': 'none',
+      'grid-template-columns': 'minmax(0, 1fr) minmax(220px, 310px)',
+    });
     const scrollEl = el('div', 'tt-scroll k-stage--scroll');
     // The kit's scroll rule scrolls one axis (overflow: hidden auto). Panning a zoomed tree needs
     // both; this is the pan behaviour the screen has always had, not a look.
     scrollEl.style.overflowX = 'auto';
+    pin(scrollEl, {
+      background: 'transparent',
+      border: '0',
+      'border-image-source': 'none',
+      'box-shadow': 'none',
+    });
     const canvas = el('canvas');
     canvas.setAttribute('aria-label', 'Tech tree');
     canvas.style.display = 'block';
     scrollEl.appendChild(canvas);
     // The zoom badge pins to the stage's bottom-left (the kit's stage caption slot) and does not scroll.
-    const zoomBadge = el('div', 'tt-zoom-badge k-stage__foot k-t-fine k-38', '100% zoom');
+    const zoomBadge = el('div', 'tt-zoom-badge k-stage__foot k-t-fine k-38 fh-legend', '100% zoom');
     zoomBadge.setAttribute('aria-live', 'off');
+    paintLegend(zoomBadge);
+    pin(zoomBadge, { background: 'transparent', border: '0', padding: '0' });
     scrollEl.appendChild(zoomBadge);
     stage.appendChild(scrollEl);
 
     const side = el('div', 'tt-side k-stage--scroll');
     side.setAttribute('aria-label', 'Selected node');
+    paintPlate(side, 'sunk', {
+      'padding-top': 'calc(80px * var(--k-s))',
+      background: 'transparent',
+    });
     const selected = el('div');
     selected.setAttribute('data-sel', '');
-    const actions = el('div');
+    const actions = el('div', 'of-pause');
     actions.setAttribute('data-actions', '');
     side.appendChild(selected);
     side.appendChild(actions);
     stage.appendChild(side);
     rootEl.appendChild(stage);
 
-    // .k-foot — the legend as three static words in their strengths; no swatches.
+    // .k-foot — the legend as three quiet words; node picker stays the keyboard equivalent.
     const foot = el('footer', 'k-foot');
     foot.setAttribute('aria-label', 'Legend');
-    foot.appendChild(el('span', 'k-word--fine k-62', 'available'));
-    foot.appendChild(el('span', 'k-word--fine', 'researched'));
-    foot.appendChild(el('span', 'k-word--fine k-38', 'locked'));
+    pin(foot, { 'border-top': '0' });
+    const availableWord = el('span', 'k-word--fine k-62 fh-legend', 'available');
+    paintLegend(availableWord, true);
+    const researchedWord = el('span', 'k-word--fine fh-legend', 'researched');
+    paintLegend(researchedWord, true);
+    researchedWord.setAttribute('data-fh-lit', 'on');
+    const lockedWord = el('span', 'k-word--fine k-38 fh-legend', 'locked');
+    paintLegend(lockedWord, false);
+    foot.appendChild(availableWord);
+    foot.appendChild(researchedWord);
+    foot.appendChild(lockedWord);
     // Canvas labels have a native keyboard/screen-reader equivalent. Selecting a locked node is
     // allowed: it reveals the exact prerequisite reason without pretending it can be researched.
-    const nodeLabel = el('label', 'k-t-fine', 'Research node');
+    const nodeLabel = el('label', 'k-t-fine fh-legend', 'Research node');
+    paintLegend(nodeLabel);
     const nodeSelect = el('select', 'k-select tt-node-select');
     nodeSelect.id = 'sf-research-node'; nodeLabel.htmlFor = nodeSelect.id;
     const placeholder = el('option', '', 'Select a node'); placeholder.value = ''; nodeSelect.appendChild(placeholder);
@@ -314,6 +672,7 @@ export const techTreeScreen = {
       const option = el('option', '', node.name); option.value = node.id; nodeSelect.appendChild(option);
     }
     nodeSelect.addEventListener('change', () => this._selectNode(nodeSelect.value));
+    paintInput(nodeSelect);
     foot.appendChild(nodeLabel); foot.appendChild(nodeSelect);
     this._nodeSelect = nodeSelect;
     rootEl.appendChild(foot);
@@ -322,6 +681,7 @@ export const techTreeScreen = {
     this._canvas = canvas;
     this._g = canvas.getContext('2d');
     this._layout = buildLayout(this._nodes());
+    this._layoutLocale = (typeof document !== 'undefined' && document.documentElement && document.documentElement.dataset.locale) || 'en-US';
     this._els = { cr: crEl, rp: rpEl, count: countEl, branch: branchLine, selected, actions };
     this._zoomBadge = zoomBadge;
     this._zoom = 1.0;
@@ -478,47 +838,56 @@ export const techTreeScreen = {
   _draw() {
     const g = this._g, cv = this._canvas;
     if (!g || !this._layout) return;
+    const loc = (typeof document !== 'undefined' && document.documentElement && document.documentElement.dataset.locale) || 'en-US';
+    if (this._layoutLocale !== loc) {
+      this._layout = buildLayout(this._nodes());
+      this._layoutLocale = loc;
+    }
+    const boxH = techTreeNodeHeight(loc);
+    const nameLines = techTreeNameLineBudget(loc);
     this._drawSig = this._drawSignature();
     g.setTransform(this._dpr, 0, 0, this._dpr, 0, 0);
     const w = cv.width / this._dpr, h = cv.height / this._dpr;
     g.clearRect(0, 0, w, h); // transparent: the sky is the ground
+    g.imageSmoothingEnabled = true;
+    if (g.imageSmoothingQuality) g.imageSmoothingQuality = 'high';
 
     const nodes = this._nodes();
     const pos = this._layout.positions;
     const zoom = this._zoom || 1;
+    const strip = kitImage('plates/plate.legend.strip.png');
+    const stripSel = kitImage('plates/plate.row.selected.png');
 
-    // Lane labels sit in each lane's top inset at data size, 38 %; a hairline closes the lane below
-    // its last word. Branch identity is lane + word, never hue.
+    // Lane labels sit in each lane's top inset at data size, 38 %; an etched hairline closes the
+    // lane below its last tile. Branch identity is lane + word, never hue.
     g.textAlign = 'left'; g.textBaseline = 'top';
     g.lineWidth = 1;
     for (const b of BRANCHES) {
       const top = this._layout.branchTop[b.id];
       if (top == null) continue;
-      g.fillStyle = KIT_INK.bone38;
-      g.font = kitFont(400, 14, zoom);
-      g.fillText(b.label, PAD_X, top + 2);
+      g.fillStyle = KIT_INK.legend;
+      g.globalAlpha = 0.45;
+      g.font = kitLegendFont(12, zoom);
+      g.fillText(String(b.label).toUpperCase(), PAD_X, top + 2);
+      g.globalAlpha = 1;
       const bottom = this._layout.laneBottom[b.id];
       if (bottom != null && bottom + LANE_GAP < this._layout.height - PAD_Y) {
-        const y = Math.round(bottom + LANE_GAP / 2) + 0.5;
-        g.beginPath();
-        g.moveTo(PAD_X, y);
-        g.lineTo(this._layout.width - PAD_X, y);
-        g.strokeStyle = KIT_INK.hair;
-        g.stroke();
+        drawEtchLine(g, PAD_X, bottom + LANE_GAP / 2, this._layout.width - PAD_X);
       }
     }
 
-    // ---- prereq edges: parent's right edge → child's left edge, always pointing right, as hairlines ----
+    // ---- prereq edges: parent's right edge → child's left edge, always pointing right, etched ----
     g.strokeStyle = KIT_INK.hair;
+    g.globalAlpha = 1;
     for (const n of nodes) {
       if (!n.prereqs) continue;
       const np = pos[n.id];
       if (!np) continue;
-      const childLeft = { x: np.x, y: np.y + NODE_H / 2 };
+      const childLeft = { x: np.x, y: np.y + boxH / 2 };
       for (const p of n.prereqs) {
         const pp = pos[p];
         if (!pp) continue;
-        const parentRight = { x: pp.x + NODE_W, y: pp.y + NODE_H / 2 };
+        const parentRight = { x: pp.x + NODE_W, y: pp.y + boxH / 2 };
         const reach = Math.max(COL_GAP * 0.55, (childLeft.x - parentRight.x) * 0.5);
         g.beginPath();
         g.moveTo(parentRight.x, parentRight.y);
@@ -527,37 +896,55 @@ export const techTreeScreen = {
       }
     }
 
-    // ---- engineering registers: named nodes, visible dependencies, exact costs and state ----
+    // ---- kit tiles: legend-strip plates, status light, quiet type ----
     for (const n of nodes) {
       const p = pos[n.id];
       if (!p) continue;
       const stt = this._nodeState(n);
       const sel = n.id === this._selectedId;
       const hov = n.id === this._hoverId;
+      const px = p.x - PLATE_PAD_X;
+      const py = p.y - PLATE_PAD_Y;
+      const pw = NODE_W + PLATE_PAD_X * 2;
+      const ph = boxH + PLATE_PAD_Y * 2;
+      // Lit legend strips are a solid amber bar — they wash the name. Nodes sit on the
+      // dark strip; the selected node takes the amber-edge row plate instead.
+      const plateImg = sel ? stripSel : strip;
+      const slice = sel ? SELECTED_SLICE : STRIP_SLICE;
+      g.globalAlpha = stt === 'locked' && !sel ? 0.62 : 1;
+      const plated = !forcedColorsActive() && drawNineSlice(g, plateImg, px, py, pw, ph, slice);
+      if (!plated) {
+        g.fillStyle = KIT_INK[stt];
+        g.fillRect(px, py, pw, ph);
+        g.strokeStyle = sel ? KIT_INK.signal : KIT_INK.hair;
+        g.lineWidth = (sel ? 2 : 1) / zoom;
+        g.setLineDash(stt === 'locked' ? [3 / zoom, 3 / zoom] : []);
+        g.strokeRect(px, py, pw, ph);
+        g.setLineDash([]);
+      }
+      g.globalAlpha = 1;
+      if (!sel && stt !== 'locked') {
+        g.fillStyle = stt === 'researched' ? KIT_INK.good : KIT_INK.signal;
+        g.fillRect(px + 3, py + 10, 2, Math.max(8, ph - 20));
+      }
+      const lightKind = stt === 'researched' ? 'good' : stt === 'available' ? (sel || hov ? 'on' : 'dim') : 'off';
+      // Status light sits bottom-right so the name still wraps to NODE_W
+      // (growth locales already budget every pixel of that box).
+      drawLight(g, lightKind, p.x + NODE_W - 10, p.y + boxH - 14);
 
-      // State uses shape and weight as well as colour. No animation or extra frame loop.
-      g.fillStyle = KIT_INK[stt];
-      g.fillRect(p.x - 8, p.y - 6, NODE_W + 16, NODE_H + 12);
-      g.strokeStyle = sel ? KIT_INK.signal : KIT_INK.hair;
-      g.lineWidth = (sel ? 2 : 1) / zoom;
-      g.setLineDash(stt === 'locked' ? [3 / zoom, 3 / zoom] : []);
-      g.strokeRect(p.x - 8, p.y - 6, NODE_W + 16, NODE_H + 12);
-      g.setLineDash([]);
-      g.fillStyle = stt === 'researched' ? KIT_INK.good : sel ? KIT_INK.signal : KIT_INK.hair;
-      g.fillRect(p.x - 8, p.y - 6, 3 / zoom, NODE_H + 12);
       g.fillStyle = this._nodeInk(stt, sel, hov);
       g.font = kitFont(sel ? 500 : 400, 16, zoom);
       g.textAlign = 'left'; g.textBaseline = 'top';
-      wrapText(g, n.name, p.x, p.y, NODE_W, NAME_LINE_H, 2);
+      wrapText(g, n.name, p.x, p.y, NODE_W, NAME_LINE_H, nameLines);
 
-      g.font = kitFont(400, 14, zoom);
+      g.font = kitFont(400, 12, zoom);
       g.fillStyle = KIT_INK.bone38;
       g.textBaseline = 'bottom';
       if (stt === 'researched') {
-        g.fillText('researched', p.x, p.y + NODE_H);
+        g.fillText('researched', p.x, p.y + boxH);
       } else {
         const cost = n.cost || {};
-        g.fillText(fmtCr(cost.credits || 0) + ' cr · ' + (cost.rp || 0) + ' RP', p.x, p.y + NODE_H);
+        g.fillText(fmtCr(cost.credits || 0) + ' cr · ' + (cost.rp || 0) + ' RP', p.x, p.y + boxH);
       }
     }
   },
@@ -590,10 +977,14 @@ export const techTreeScreen = {
     const mx = (e.clientX - rect.left) / this._zoom;
     const my = (e.clientY - rect.top) / this._zoom;
     const pos = this._layout.positions;
+    const boxH = techTreeNodeHeight();
     for (const n of this._nodes()) {
       const p = pos[n.id];
       if (!p) continue;
-      if (mx >= p.x && mx <= p.x + NODE_W && my >= p.y && my <= p.y + NODE_H) return n;
+      if (
+        mx >= p.x - PLATE_PAD_X && mx <= p.x + NODE_W + PLATE_PAD_X
+        && my >= p.y - PLATE_PAD_Y && my <= p.y + boxH + PLATE_PAD_Y
+      ) return n;
     }
     return null;
   },
@@ -608,6 +999,35 @@ export const techTreeScreen = {
     setText(this._els && this._els.count, `${researchedCount}/${this._nodes().length}`);
   },
 
+  _paintDossier() {
+    const sel = this._els && this._els.selected;
+    const actions = this._els && this._els.actions;
+    if (sel) {
+      const heading = sel.querySelector('h2');
+      if (heading) paintMarking(heading);
+      for (const cap of sel.querySelectorAll('.k-caps')) paintLegend(cap);
+      for (const row of sel.querySelectorAll('.k-row')) paintRow(row);
+      for (const p of sel.querySelectorAll('.k-sentence, .k-empty')) paintBody(p);
+      const heroN = sel.querySelector('.k-hero__n');
+      if (heroN) {
+        heroN.classList.add('fh-heronum');
+        pin(heroN, {
+          'font-family': 'var(--fh-face-display)',
+          'font-variation-settings': "'wght' 800, 'wdth' 125",
+          color: 'var(--fh-signal)',
+        });
+      }
+      const heroW = sel.querySelector('.k-hero__w');
+      if (heroW) paintLegend(heroW, true);
+      const rule = sel.querySelector('.k-rule');
+      if (rule) paintHairline(rule);
+    }
+    if (actions) {
+      const btn = actions.querySelector('button');
+      if (btn) paintKey(btn, btn.getAttribute('data-act') === 'unlock' ? 'primary' : 'legend');
+    }
+  },
+
   _syncSidebar() {
     const sel = this._els && this._els.selected;
     const actions = this._els && this._els.actions;
@@ -617,6 +1037,7 @@ export const techTreeScreen = {
       setText(this._els.branch, 'Select a node');
       sel.innerHTML = `<p class="k-empty">Select a node to inspect its cost, effects and prerequisites.</p>`;
       actions.innerHTML = '';
+      this._paintDossier();
       return;
     }
     const n = this._layout.byId[this._selectedId] || this._nodes().find((x) => x.id === this._selectedId);
@@ -654,6 +1075,7 @@ export const techTreeScreen = {
     } else {
       actions.innerHTML = disabledActionHtml(readiness);
     }
+    this._paintDossier();
   },
 
   _onAction(act) {
@@ -751,22 +1173,9 @@ function fmtCr(v) {
 }
 
 function wrapText(g, text, x, y, maxW, lineH, maxLines) {
-  const words = String(text).split(' ');
-  let line = '', lines = 0;
-  for (let i = 0; i < words.length; i++) {
-    const test = line ? line + ' ' + words[i] : words[i];
-    if (g.measureText(test).width > maxW && line) {
-      g.fillText(line, x, y); y += lineH; line = words[i]; lines++;
-      if (lines >= maxLines - 1) {
-        // last allowed line: fit the remainder with ellipsis if needed
-        let rest = words.slice(i).join(' ');
-        while (g.measureText(rest + '…').width > maxW && rest.length) rest = rest.slice(0, -1);
-        g.fillText(rest + (rest !== words.slice(i).join(' ') ? '…' : ''), x, y);
-        return;
-      }
-    } else {
-      line = test;
-    }
+  const lines = wrapCanvasLines((value) => g.measureText(value).width, text, maxW);
+  const limit = Math.max(1, maxLines || lines.length);
+  for (let i = 0; i < Math.min(limit, lines.length); i += 1) {
+    g.fillText(lines[i], x, y + i * lineH);
   }
-  if (line) g.fillText(line, x, y);
 }
