@@ -347,7 +347,9 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
             });
             return { contextLost: true, programs: 0 };
           }
-          if (program.isReady()) batch.programs.delete(program);
+          if (program && typeof program.isReady === 'function' && program.isReady()) {
+            batch.programs.delete(program);
+          }
         }
         if (batch.programs.size === 0) break;
         if (now() - started > timeoutMs) break;
@@ -845,6 +847,95 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     renderer.render(quadScene, quadCam);
   }
 
+  function releaseBloomSceneSamplers() {
+    downsampleMat.uniforms.tDiffuse.value = null;
+    compositeMat.uniforms.tScene.value = null;
+    compositeMat.uniforms.tBloom0.value = null;
+    compositeMat.uniforms.tBloom1.value = null;
+    const glState = renderer && renderer.state;
+    if (!glState || typeof glState.unbindTexture !== 'function') return;
+    const gl = renderer.getContext && renderer.getContext();
+    // One unbindTexture() only clears the current unit. Composite leftovers sit on
+    // other units and ANGLE reports a framebuffer/texture feedback loop on the next
+    // rtScene pass — that GL error is what later TDR'd Intel mid-flight.
+    if (typeof glState.activeTexture === 'function' && gl && gl.TEXTURE0 != null) {
+      // Hard cap — do not gl.getParameter() every frame; that sync flush TDR'd Intel.
+      // 16 covers the usual D3D11/ANGLE unit set. The old 8-unit walk left
+      // composite leftovers on 8–15 and still TDR'd after ~10s of bloom.
+      for (let unit = 0; unit < 16; unit++) {
+        glState.activeTexture(gl.TEXTURE0 + unit);
+        glState.unbindTexture();
+      }
+      glState.activeTexture(gl.TEXTURE0);
+      return;
+    }
+    glState.unbindTexture();
+  }
+
+  // Programs already counted in renderer.info can still be linking. Three's draw path
+  // never polls isReady() — gl.useProgram waits out the driver, which is the leftover
+  // ~200 ms bloomScene with programs/geometries/textures unchanged. Hide those
+  // drawables until the link finishes; admission still owns first-time compile.
+  const UNREADY_SCENE_CAP = 512;
+  const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
+  let unreadySceneCount = 0;
+
+  function hideUnreadySceneDrawables(scene) {
+    unreadySceneCount = 0;
+    const props = renderer && renderer.properties;
+    if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
+      return;
+    }
+    scene.traverse(hideOneUnreadySceneDrawable);
+  }
+
+  function hideOneUnreadySceneDrawable(object) {
+    if (unreadySceneCount >= UNREADY_SCENE_CAP) return;
+    if (!object || object.visible !== true) return;
+    if (!(object.isMesh || object.isSkinnedMesh || object.isPoints
+        || object.isLine || object.isSprite || object.isInstancedMesh)) {
+      return;
+    }
+    if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
+    const props = renderer.properties;
+    const list = object.material;
+    if (Array.isArray(list)) {
+      for (let i = 0; i < list.length; i++) {
+        if (hideIfProgramUnready(object, list[i], props)) return;
+      }
+      return;
+    }
+    hideIfProgramUnready(object, list, props);
+  }
+
+  function hideIfProgramUnready(object, material, props) {
+    if (!material || unreadySceneCount >= UNREADY_SCENE_CAP) return false;
+    let program = null;
+    try {
+      const rec = props.get(material);
+      program = rec && rec.currentProgram || null;
+    } catch (_) {
+      return false;
+    }
+    if (!program || typeof program.isReady !== 'function') return false;
+    let ready = true;
+    try { ready = program.isReady() === true; } catch (_) { ready = false; }
+    if (ready) return false;
+    unreadySceneScratch[unreadySceneCount] = object;
+    unreadySceneCount += 1;
+    object.visible = false;
+    return true;
+  }
+
+  function restoreUnreadySceneDrawables() {
+    for (let i = 0; i < unreadySceneCount; i++) {
+      const object = unreadySceneScratch[i];
+      if (object) object.visible = true;
+      unreadySceneScratch[i] = null;
+    }
+    unreadySceneCount = 0;
+  }
+
   // Measurement-only: CPU pass times require perfRuntime.renderWorkEnabled (default OFF).
   // GPU begin/end only runs when the timer set is enabled (default OFF).
   function timePassGroup(label, fn, arg0 = null, arg1 = null, arg2 = null) {
@@ -887,6 +978,85 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   // "common rock spawned and nothing warmed it". Runs ONLY on a frame that already blew the
   // threshold, so the traversal cost cannot matter; keep it armed for the same reason the brick
   // warning itself is always armed.
+  const seenBloomGeometryUuids = new Set();
+
+  function describeUnstampedVisibleGeometries(scene) {
+    if (!scene || typeof scene.traverse !== 'function') return [];
+    const rows = [];
+    const rootOf = (object) => {
+      let root = object;
+      while (root && root.parent && root.parent !== scene) root = root.parent;
+      return root;
+    };
+    try {
+      scene.traverse((object) => {
+        if (rows.length >= 24) return;
+        const geometry = object && object.geometry;
+        if (!geometry) return;
+        if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite || object.isInstancedMesh)) {
+          return;
+        }
+        if (object.visible !== true) return;
+        if (object.isInstancedMesh && !(Number(object.count) > 0)) return;
+        const drawRange = geometry.drawRange;
+        if (drawRange && Number.isFinite(Number(drawRange.count)) && Number(drawRange.count) <= 0) {
+          return;
+        }
+        if (geometry.userData && geometry.userData.spacefaceGpuResident === true) return;
+        rows.push({
+          object: String(object.name || object.type || 'unnamed'),
+          root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed'),
+          geometry: String(geometry.name || geometry.type || 'BufferGeometry'),
+          uuid: String(geometry.uuid || '').slice(0, 8),
+          count: object.isInstancedMesh ? Number(object.count) || 0 : undefined,
+          drawRange: drawRange ? Number(drawRange.count) : null,
+        });
+      });
+    } catch {
+      return rows;
+    }
+    return rows;
+  }
+
+  function describeNewGeometryOwners(scene, seen) {
+    if (!scene || typeof scene.traverse !== 'function') return [];
+    const rows = [];
+    const rootOf = (object) => {
+      let root = object;
+      while (root && root.parent && root.parent !== scene) root = root.parent;
+      return root;
+    };
+    try {
+      scene.traverse((object) => {
+        if (rows.length >= 24) return;
+        const geometry = object && object.geometry;
+        if (!geometry || seen.has(geometry.uuid)) return;
+        if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite || object.isInstancedMesh)) {
+          return;
+        }
+        rows.push({
+          object: String(object.name || object.type || 'unnamed'),
+          root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed'),
+          geometry: String(geometry.name || geometry.type || 'BufferGeometry'),
+          uuid: String(geometry.uuid || '').slice(0, 8),
+          visible: object.visible === true,
+          count: object.isInstancedMesh ? Number(object.count) || 0 : undefined,
+        });
+      });
+    } catch {
+      return rows;
+    }
+    return rows;
+  }
+
+  function rememberBloomGeometries(scene) {
+    if (!scene || typeof scene.traverse !== 'function') return;
+    scene.traverse((object) => {
+      const geometry = object && object.geometry;
+      if (geometry && geometry.uuid) seenBloomGeometryUuids.add(geometry.uuid);
+    });
+  }
+
   function describeNewProgramOwners(scene, seenKeys) {
     if (!scene || typeof scene.traverse !== 'function') return null;
     const rows = [];
@@ -907,7 +1077,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
           let program = null;
           try { program = props.get(material)?.currentProgram || null; } catch (_) { continue; }
           const key = String(program && (program.cacheKey || program.name) || '');
-          if (!key || seenKeys.has(key)) continue;
+          // seenKeys is the set this render just linked. Keep those owners; skip already-warm ones.
+          if (!key || !seenKeys.has(key)) continue;
           rows.push({
             key: key.slice(0, 40),
             object: String(object.name || object.type || 'unnamed'),
@@ -940,22 +1111,34 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       ? performance.now()
       : 0;
     try {
+      // Bloom's own fullscreen materials keep rtScene.texture bound after the
+      // previous composite. ANGLE treats any unit still holding the current
+      // color attachment as a framebuffer feedback loop — the bind is on
+      // compositeMat, not a game-scene mesh, so a scene walk cannot see it.
+      releaseBloomSceneSamplers();
+      hideUnreadySceneDrawables(scene);
       renderer.setRenderTarget(rtScene);
       renderer.clear();
       renderer.render(scene, camera);
       if (tier1) tier1.countRenderPassPixels(rtScene.width * rtScene.height, 'bloom-scene');
     } finally {
+      restoreUnreadySceneDrawables();
       renderer.autoClear = prevAutoClear;
       {
         const elapsedMs = (typeof performance !== 'undefined' && typeof performance.now === 'function'
           ? performance.now()
           : 0) - startedAt;
-        if (elapsedMs > BRICK_WARN_MS) {
+        const geometriesAfter = Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null;
+        const warnMs = Number(renderer.userData && renderer.userData.spacefaceBrickWarnMs);
+        const brick = elapsedMs > (Number.isFinite(warnMs) && warnMs > 0 ? warnMs : BRICK_WARN_MS);
+        const grewGeometries = geometriesAfter != null && geometriesBefore != null
+          && geometriesAfter > geometriesBefore;
+        if (brick) {
           console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify({
             programsBefore,
             programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
             geometriesBefore,
-            geometriesAfter: Number.isFinite(info?.memory?.geometries) ? info.memory.geometries : null,
+            geometriesAfter,
             texturesBefore,
             texturesAfter: Number.isFinite(info?.memory?.textures) ? info.memory.textures : null,
             // Three appends to info.programs as it acquires them, so the tail beyond
@@ -964,8 +1147,13 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             // legitimately warm ones — which made the payload unusable for naming a producer.
             newPrograms: exactNewProgramKeys(programsBefore).map((key) => key.slice(0, 120)),
             owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
+            newGeometries: grewGeometries
+              ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
+              : [],
+            unstampedVisible: describeUnstampedVisibleGeometries(scene),
           })}`);
         }
+        if (brick || grewGeometries) rememberBloomGeometries(scene);
       }
     }
   }
@@ -1010,10 +1198,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   }
 
   function render(scene, camera) {
-    // The prior composite releases its sampler bindings. Invalidate Three's matching cached
-    // bindings before drawing lit scene materials again; otherwise the HDR route can present
-    // only the sky while real hulls/effects disappear. Keep the full bloom route and its quality.
-    renderer.resetState();
+    // Sampler unbind already clears Three's per-unit texture cache. resetState() also
+    // drops VAO/program/framebuffer caches every frame; do not re-admit that hitch.
     const bloomActive = enabled && strength > 0.0001;
 
     const prevAutoClear = renderer.autoClear;
@@ -1040,6 +1226,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
     renderer.autoClear = prevAutoClear;
     renderer.setRenderTarget(null);
+    releaseBloomSceneSamplers();
   }
 
   function compileScenePipelines(subject, camera, lightingScene = subject) {
