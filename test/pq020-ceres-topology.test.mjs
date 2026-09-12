@@ -9,8 +9,12 @@ import {
 
 const SITE_ID = 'world_site_wreck_cathedral';
 const PLACE_ID = 'place_landmark_wreck_cathedral';
+// Re-pinned 2026-09-12 with scripts/lib/pq020CeresTopology.mjs: the far shelf (9c4509ff1) parks
+// 14 of the cathedral's 15 bodies and the sluice's 4 wrecks at boot; the census now counts
+// live + shelved against the plan and records `shelvedEntities`. Prior digest
+// f09251bb6637c48f264551a386a30ffc76d33b5d4a42fee87867e1f6243ec5a1.
 const EXPECTED_STRUCTURAL_COST_DIGEST =
-  'f09251bb6637c48f264551a386a30ffc76d33b5d4a42fee87867e1f6243ec5a1';
+  'd07a76c72022e2199191e5e991267ba3e137a31705c4beb5d909b7909cbc593b';
 
 function pocket(receipt, id) {
   const value = receipt.topology.pockets.find((candidate) => candidate.id === id);
@@ -121,14 +125,19 @@ test('PQ-020 structural-cost fingerprint is deterministic and headed-only fields
   assert.equal(first.receiptDigest, second.receiptDigest);
 
   assert.equal(first.structuralCost.scope, 'sector_ceres_belt:seed47:one-fixed-tick');
+  // Live core cost at boot since the far shelf (9c4509ff1, b8cce1567): the cathedral's 14 wrecks
+  // and one POI marker are far-actor rows until the player approaches, so they are not on the
+  // combat list. They are still materialized as planned (worldSite below counts live + shelved).
+  // Pre-shelf this was total 38 / fx 10 / wreck 14 / collidable 21.
   assert.deepEqual(first.structuralCost.entities, {
-    total: 38,
-    byType: { asteroid: 6, fx: 10, ship: 2, station: 6, wreck: 14 },
-    collidable: 21,
+    total: 23,
+    byType: { asteroid: 6, fx: 9, ship: 2, station: 6 },
+    collidable: 14,
   });
-  assert.equal(first.structuralCost.colliders, 21);
+  assert.equal(first.structuralCost.colliders, 14);
   assert.equal(first.structuralCost.worldSite.siteId, SITE_ID);
   assert.equal(first.structuralCost.worldSite.materializedEntities, 15);
+  assert.equal(first.structuralCost.worldSite.shelvedEntities, 14);
   assert.equal(first.structuralCost.residencyTier, 'FULL');
   assert.equal(first.structuralCost.presentationAdmission, 'headless');
   assert.ok(Number.isInteger(first.structuralCost.spatial.queries));

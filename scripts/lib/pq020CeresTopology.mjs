@@ -71,8 +71,14 @@ export const PQ020_CERES_ADDITIVE_DRESSING_SCHEMA =
 // Additive dressing still exists (presenter table); the digest now records 6 live asteroids
 // (activity/geology) instead of the former sector-wide entityList belt. Prior digest was
 // a6ea5a9622566ddfd9894b857eb34495fcdd7ad81dd4004ce3d2eaac5a070c83.
+// Re-pinned 2026-09-12 after the far shelf (9c4509ff1 "Shelve far ships and wrecks until the
+// player approaches", b8cce1567) started parking 14 of the cathedral's 15 planned bodies and the
+// sluice's 4 wrecks as far-actor rows at boot. The census now counts live + shelved against the
+// plan (cathedral 15/15, 14 shelved; sluice 5/5, 4 shelved) and records `shelvedEntities`. The
+// core live cost is unchanged. Prior digest was
+// f09251bb6637c48f264551a386a30ffc76d33b5d4a42fee87867e1f6243ec5a1.
 export const PQ020_EXPECTED_STRUCTURAL_COST_DIGEST =
-  'f09251bb6637c48f264551a386a30ffc76d33b5d4a42fee87867e1f6243ec5a1';
+  'd07a76c72022e2199191e5e991267ba3e137a31705c4beb5d909b7909cbc593b';
 
 const EXPECTED_ADDITIVE_WORLD_SITE_IDS = Object.freeze([CINDER_SLUICE_SITE_ID]);
 const EXPECTED_ADDITIVE_DRESSING_CENSUSES = Object.freeze({
@@ -606,6 +612,18 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
       .filter((entity) => entity && entity.alive !== false && !entity.data?.pq020HarnessPlayer)
       .filter((entity) => entitySectorId(entity) === sector.id
         || worldRecordId(entity).startsWith(`${PQ020_CATHEDRAL_SITE_ID}/`));
+    // Since 2026-09-09 (9c4509ff1, b8cce1567) ships and wrecks beyond the player's bubble are
+    // shelved as far-actor rows (src/world/farActorTable.js) until the player approaches. A shelved
+    // row is still the planned materialization of its world site — it keeps its worldRecordId,
+    // pose, mass and collides flag and is promoted back to a live body on approach — so the site
+    // census counts live + shelved against the plan and records how many were shelved. The core
+    // structural-cost census stays live-only: that is the real per-tick cost of the sector.
+    const farTable = state.world && state.world.farActors;
+    const farCeresRows = ((farTable && Array.isArray(farTable.rows)) ? farTable.rows : [])
+      .filter((row) => row && row.alive !== false)
+      .filter((row) => entitySectorId(row) === sector.id
+        || worldRecordId(row).startsWith(`${PQ020_CATHEDRAL_SITE_ID}/`));
+    const materializedCeresEntities = [...liveCeresEntities, ...farCeresRows];
     const dressingRows = [];
     forEachDressingRow(state, (row) => {
       if (!row || row.alive === false) return;
@@ -614,15 +632,22 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
     const additiveManifests = WORLD_SITE_MANIFESTS.filter((manifest) => (
       manifest.sectorId === sector.id && manifest.id !== PQ020_CATHEDRAL_SITE_ID
     ));
-    const additiveWorldSites = buildAdditiveWorldSiteCensus(liveCeresEntities, additiveManifests);
+    const additiveWorldSites = buildAdditiveWorldSiteCensus(
+      materializedCeresEntities,
+      additiveManifests,
+      farCeresRows,
+    );
     const additiveDressing = buildAdditiveDressingCensus([...liveCeresEntities, ...dressingRows]);
     const additiveWorldObjectIds = new Set(additiveManifests.map((manifest) => manifest.worldObjectId));
     const entities = liveCeresEntities.filter((entity) => (
       !worldSiteOwnerIdForEntity(entity, additiveWorldObjectIds)
     )).filter((entity) => !isAdditiveDressingEntity(entity));
     const coreCensus = censusLiveEntities(entities);
-    const siteEntities = entities.filter((entity) => (
+    const siteEntities = materializedCeresEntities.filter((entity) => (
       worldRecordId(entity).startsWith(`${PQ020_CATHEDRAL_SITE_ID}/`)
+    ));
+    const shelvedSiteEntities = farCeresRows.filter((row) => (
+      worldRecordId(row).startsWith(`${PQ020_CATHEDRAL_SITE_ID}/`)
     ));
     const cathedralPlan = planWorldSiteMaterialization(
       cathedralManifest,
@@ -662,6 +687,7 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
       worldSite: {
         siteId: cathedralManifest.id,
         materializedEntities: siteEntities.length,
+        shelvedEntities: shelvedSiteEntities.length,
         plannedEntities: cathedralPlan.entities.length,
         interactionProxies: cathedralPlan.components.length,
         collisionProxies: cathedralPlan.collisionProxies.length,
@@ -692,14 +718,17 @@ async function buildHeadlessCeresHarness({ sector, cathedralManifest, cathedralB
   }
 }
 
-function buildAdditiveWorldSiteCensus(liveEntities, manifests) {
+function buildAdditiveWorldSiteCensus(materializedEntities, manifests, farRows = []) {
   const sites = [...manifests]
     .sort((left, right) => left.id.localeCompare(right.id))
     .map((manifest) => {
       const ownerIds = new Set([manifest.worldObjectId]);
-      const live = censusLiveEntities(liveEntities.filter((entity) => (
-        worldSiteOwnerIdForEntity(entity, ownerIds) === manifest.worldObjectId
-      )));
+      const owned = (entity) => worldSiteOwnerIdForEntity(entity, ownerIds) === manifest.worldObjectId;
+      // `live` is the site as materialized against its plan: live bodies plus far-shelved rows
+      // (which keep pose, mass, collides and worldRecordId and promote on approach). `shelved`
+      // says how many of those are currently on the far shelf rather than the combat list.
+      const live = censusLiveEntities(materializedEntities.filter(owned));
+      const shelved = farRows.filter(owned).length;
       const planned = censusPlannedWorldSite(manifest);
       return {
         siteId: manifest.id,
@@ -707,6 +736,7 @@ function buildAdditiveWorldSiteCensus(liveEntities, manifests) {
         manifestSchemaVersion: manifest.schemaVersion,
         producerKind: manifest.producer?.kind || null,
         live,
+        shelved,
         planned,
         exactAgreement: stableStringify(live) === stableStringify(planned),
       };
