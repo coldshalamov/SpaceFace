@@ -178,14 +178,23 @@ const CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID = Object.freeze({
   spec_relay: 'places/place_claim_outpost_relay.glb',
   spec_bastion: 'places/place_claim_outpost_bastion.glb',
 });
+// PQ-193.10: opening dock / dead hulk / debris chunk publish the remastered packaged
+// GLBs already on disk. Same-slot identities. Military/grit dock variants stay unrouted
+// (sealed foreground hid the selected ship).
+export const OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID = Object.freeze({
+  place_dock_interior: 'places/place_dock_interior.glb',
+  place_dead_hulk: 'places/place_dead_hulk.glb',
+  place_debris_chunk: 'places/place_debris_chunk.glb',
+});
 const PLACE_FILES = Object.freeze([
   'places/place_lane_beacon.glb',
   'places/place_nav_buoy.glb',
   'places/place_asteroid_seamed.glb',
-  'places/place_debris_chunk.glb',
+  OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID.place_debris_chunk,
   'places/place_station_billboard.glb',
   'places/place_memorial_array.glb',
-  'places/place_dead_hulk.glb',
+  OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID.place_dead_hulk,
+  OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID.place_dock_interior,
   'places/place_ceres_bait_wreck.glb',
   'places/place_ceres_grave_shard.glb',
   'places/place_conveyor_barge.glb',
@@ -3182,6 +3191,8 @@ function placeFileForEntity(entity) {
     data.archetypeGlb || data.landmarkGlb || data.placeId || data.assetId || '',
   ).replace(/^places\//, '').replace(/\.glb$/, '');
   if (id) {
+    const remasterFile = OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID[id];
+    if (remasterFile) return remasterFile;
     if (data.everydaySpaceKit === true) {
       const kitFile = EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[id];
       if (kitFile) return kitFile;
