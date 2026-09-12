@@ -38,11 +38,15 @@ import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibi
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
+import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
-import { hullMarkSvg, shipConditionMarkup, hudBarMarkup } from './views/flightInstruments.js';
+import {
+  hullMarkSvg, shipConditionMarkup, hudBarMarkup,
+  speedGaugeMarkup, mountRadarKit, setKitBar, setKitGauge,
+} from './views/flightInstruments.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
 import { confirm } from './confirm.js';
 import { bestKnownSellFor, applyTradeNavigation } from './market/tradeLogic.js';
@@ -1091,13 +1095,14 @@ export function createHud(ctx, alerts) {
     ['boost', 'drive', 'boost'],   // shared drive-energy pool: dash + boost + burn (hidden if the ship can't boost)
     ['heat', 'heat', 'heat'],      // weapon-instance heat (max across p.data.weapons), not WANTED heat
   ];
-  const fillEls = {}, numEls = {}, rowEls = {};
+  const fillEls = {}, numEls = {}, rowEls = {}, barEls = {};
   for (const [key, label, mod] of barDefs) {
     const row = document.createElement('div');
     row.className = 'sf-barrow';
     row.innerHTML = hudBarMarkup(label, mod);
     bars.appendChild(row);
     fillEls[key] = row.querySelector('.sf-bar__fill');
+    barEls[key] = row.querySelector('.sf-bar');
     numEls[key] = row.querySelector('.sf-barrow__num');
     rowEls[key] = row;
   }
@@ -1219,8 +1224,7 @@ export function createHud(ctx, alerts) {
   // changed. THR/STOP retired to the SPD hover tip (already carries the braking solution).
   const center = document.createElement('div');
   center.className = 'sf-cluster';
-  center.innerHTML = `
-    <div class="sf-stat sf-stat--info sf-stat--speed"><span class="sf-stat__k">speed</span><span class="sf-stat__v mono" data-k="speed">0</span><div class="sf-tip" data-tip="speed"></div></div>
+  center.innerHTML = speedGaugeMarkup() + `
     <div class="sf-stat sf-stat--info" id="sf-wpnstat"><span class="sf-stat__k">weapons</span><span class="sf-stat__v mono" data-k="weapons">—</span><div class="sf-tip" data-tip="weapons"></div></div>
     <div class="sf-stat sf-stat--wide" id="sf-tetherstat" style="display:none"><span class="sf-stat__k">tether</span><span class="sf-stat__v mono" data-k="tether">LOCKED</span><span class="sf-stat__hint mono" data-k="tetherkeys" hidden></span></div>
     <div class="sf-stat sf-stat--wide sf-stat--chip" data-chip="cargo"><span class="sf-stat__k">cargo</span><span class="sf-stat__v mono" data-k="cargo">0 / 40 u</span></div>
@@ -1306,6 +1310,7 @@ export function createHud(ctx, alerts) {
   let _vtapeAlpha = 0;      // smooth-damped reveal so it eases in rather than popping
   let _vtapeBrakeOn = false;
 
+  const speedGaugeEl = center.querySelector('.sf-kit-gauge');
   const elSpeed = center.querySelector('[data-k=speed]');
   const elCargo = center.querySelector('[data-k=cargo]');
   const elCredits = center.querySelector('[data-k=credits]');
@@ -1435,6 +1440,7 @@ export function createHud(ctx, alerts) {
   elOverview.className = 'sf-overview';
   
   const radar = createRadar(ctx);
+  mountRadarKit(radar.el);
   rightDock.append(targetPanel.el, elOverview, radar.el);
   root.appendChild(rightDock);
 
@@ -3655,6 +3661,10 @@ export function createHud(ctx, alerts) {
     // Bound ONCE for the life of the row. Re-binding a fresh closure per sample was part of the
     // teardown cost this rewrite removes; the record carries the live name so the toast stays current.
     el.addEventListener('click', () => {
+      const contact = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(rec.id)
+        : (state.entityList || []).find((candidate) => candidate && candidate.id === rec.id);
+      if (!presentationAllowsTargetLock(contact, state)) return;
       if (!state.player) state.player = {};
       state.player.targetId = rec.id;
       ctx.bus.emit('toast', { text: `Selected target: ${rec.name}`, kind: 'info', ttl: 2 });
@@ -4157,6 +4167,9 @@ export function createHud(ctx, alerts) {
       setScaleX(fillEls.energy, capVisual, gaugeScaleLimits);
       setScaleX(fillEls.heat, heatVisual, gaugeScaleLimits);
       if (fillEls.fuel) setScaleX(fillEls.fuel, fuelVisual, gaugeScaleLimits);
+      setKitBar(barEls.energy, capVisual, capFrac < 0.2 ? 'hot' : 'on');
+      setKitBar(barEls.heat, heatVisual, wpnHeat.overheated ? 'hot' : 'on');
+      if (barEls.fuel) setKitBar(barEls.fuel, fuelVisual, fuelFrac < 0.25 ? 'hot' : 'on');
 
       // Phase 3 boost micro-bar: energy fraction; the row is hidden entirely if the ship can't boost.
       // When a dash is ready (cooldown elapsed + enough energy) the bar gets a 'ready' glow.
@@ -4176,6 +4189,7 @@ export function createHud(ctx, alerts) {
         // packet does not own. So this marks the gauge the burn belongs to; it is not yet a drain.
         const burning = !!(travelFlag('travelBurn') && state.input && state.input.travelDrive
           && state.input.travelDrive.state === 'engaged');
+        setKitBar(barEls.boost, boostVisual, burning ? 'hot' : 'on');
         setClass(fillEls.boost && fillEls.boost.parentElement, 'sf-bar--burn', burning);
         if (slow) setText(numEls.boost, Math.round(bf * 100) + (burning ? ' ⟫' : (dashReady ? ' ▸' : '%')));
       } else if (boostRow) {
@@ -4250,11 +4264,14 @@ export function createHud(ctx, alerts) {
     updateTravelTape(p, frameDt, slow);
 
     // --- speed (numerics @10Hz) — THR/STOP live in the SPD hover tip now (HUD 2.0) ---
-    if (slow && p) {
+    if (p) {
       const vx = p.vel && Number.isFinite(p.vel.x) ? p.vel.x : 0;
       const vz = p.vel && Number.isFinite(p.vel.z) ? p.vel.z : 0;
       const sp = Math.hypot(vx, vz);
-      setText(elSpeed, Math.round(sp) + '');
+      setKitGauge(speedGaugeEl, sp, Math.max(1, p.maxSpeed || 1));
+      if (slow) setText(elSpeed, Math.round(sp) + '');
+    }
+    if (slow && p) {
       // Tether readout: status + target while latched. Control chips paint separately so the
       // instrument value never becomes a rebind encyclopedia that overflows the deck.
       const localTether = state.player && state.player.tether;

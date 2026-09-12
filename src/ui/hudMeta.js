@@ -252,44 +252,47 @@ export function createHudMeta(ctx) {
 // CSS is injected by uiRoot's HUD stylesheet block (added there to keep all HUD CSS in one place).
 // The classes used: .sf-stableload, .sf-tagflicker, .sf-hudphase, .sf-manifest-ghost.
 export const HUD_META_CSS = `
-  /* STABLE LOAD — the persistent cargo lie (Phase 1+). Chromeless, glowing-edge marker. */
-  .sf-stableload { position:absolute; left:22px; bottom:210px; display:none; align-items:center; gap:8px;
-    padding-left:8px; border-left:1px solid var(--sf-edge);
+  /* STABLE LOAD — the persistent cargo lie (Phase 1+). Quiet stencil, not a card. */
+  .sf-stableload { position:absolute; left:22px; bottom:248px; display:none; align-items:center; gap:8px;
+    padding:0; border:0;
     pointer-events:auto; cursor:pointer; opacity:0; transition:opacity .5s ease; }
   .sf-stableload--visible { display:flex; opacity:1; }
-  .sf-stableload__k { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
-  .sf-stableload__v { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
-  .sf-stableload--p3 { border-left-color:var(--visor-red); }
-  .sf-stableload--p3 .sf-stableload__v { color:var(--visor-red); text-shadow:var(--text-shadow-hard), var(--visor-glow-red);
+  .sf-stableload__k { font-family:var(--k-display, var(--hud-display)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; text-transform:uppercase; color:var(--k-bone-62, var(--text-secondary)); }
+  .sf-stableload__v { font-family:var(--k-text, var(--hud-data)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; color:var(--k-bone-62, var(--text-secondary)); }
+  .sf-stableload--p3 .sf-stableload__v { color:var(--k-red, var(--visor-red));
     animation:sf-stablepulse 2.5s ease-in-out infinite alternate; }
   @keyframes sf-stablepulse { from { opacity:.7; } to { opacity:1; } }
-  /* civilian tag flicker (B2) */
+  /* civilian tag flicker (B2) — stencil, never a boxed toast */
   .sf-tagflicker { position:absolute; left:50%; top:42%; transform:translate(-50%,-50%); pointer-events:none;
     opacity:0; transition:opacity .12s ease; z-index:12; }
   .sf-tagflicker--show { opacity:1; }
-  .sf-tagflicker__tag { font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--good);
-    padding:4px 12px; border:1px solid var(--good); border-radius:4px;
-    text-shadow:var(--text-shadow-hard), 0 0 8px rgba(98,224,138,.5); }
-  .sf-tagflicker--overwrite .sf-tagflicker__tag { color:var(--visor-red); border-color:var(--visor-red);
-    text-shadow:var(--text-shadow-hard), 0 0 8px rgba(255,42,42,.5); }
-  /* phase readout — general ship-status line, just under the top-center target lock (§3E).
-     (Chromeless: stays clear of the now-borderless bottom-right radar/target dock.) */
+  .sf-tagflicker__tag { font-family:var(--k-display, var(--mono)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; text-transform:uppercase; color:var(--k-good, var(--good)); padding:0; border:0; }
+  .sf-tagflicker--overwrite .sf-tagflicker__tag { color:var(--k-red, var(--visor-red)); }
   .sf-hudphase { position:absolute; top:96px; left:50%; transform:translateX(-50%);
     display:flex; align-items:center; gap:7px; pointer-events:none; opacity:.85; }
-  .sf-hudphase__k { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
-  .sf-hudphase__v { font-size:12px; letter-spacing:.06em; color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
-  .sf-hudphase--p2 .sf-hudphase__v { color:var(--accent-2); text-shadow:var(--text-shadow-hard); }
-  .sf-hudphase--p3 .sf-hudphase__v { color:var(--text-secondary); text-shadow:var(--text-shadow-hard); }
+  .sf-hudphase__k { font-family:var(--k-display, var(--hud-display)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; text-transform:uppercase; color:var(--k-bone-62, var(--text-secondary)); }
+  .sf-hudphase__v { font-family:var(--k-text, var(--hud-data)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; color:var(--k-bone-62, var(--text-secondary)); }
+  .sf-hudphase--p2 .sf-hudphase__v { color:var(--k-signal, var(--accent-2)); }
+  .sf-hudphase--p3 .sf-hudphase__v { color:var(--k-bone-62, var(--text-secondary)); }
   .sf-hudlegacy { position:absolute; top:116px; left:50%; transform:translateX(-50%); max-width:min(680px,72vw);
-    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none; font-size:12px;
-    letter-spacing:.06em; color:var(--text-secondary); opacity:.72; text-shadow:var(--text-shadow-hard); }
-  /* manifest ghost (Phase 2 silent correction) */
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none;
+    font-family:var(--k-text, var(--hud-data)); font-size:var(--k-fs-data, 12px);
+    letter-spacing:.06em; color:var(--k-bone-62, var(--text-secondary)); opacity:.72; }
   .sf-manifest-ghost { position:absolute; left:50%; top:54%; transform:translateX(-50%); pointer-events:none;
-    font-family:var(--mono); font-size:12px; letter-spacing:.06em; color:var(--text-secondary); opacity:0;
-    transition:opacity .4s ease; text-shadow:var(--text-shadow-hard), 0 0 8px rgba(0,0,0,.8); }
+    font-family:var(--k-text, var(--mono)); font-size:var(--k-fs-data, 12px); letter-spacing:.06em;
+    color:var(--k-bone-62, var(--text-secondary)); opacity:0; transition:opacity .4s ease; }
   .sf-manifest-ghost--show { opacity:.6; }
+  @media (prefers-reduced-motion: reduce) {
+    .sf-stableload--p3 .sf-stableload__v { animation:none; }
+    .sf-stableload, .sf-tagflicker, .sf-manifest-ghost { transition:none; }
+  }
   @media (max-width: 760px) {
-    .sf-stableload { left:8px; bottom:210px; }
+    .sf-stableload { left:8px; bottom:248px; }
     .sf-hudphase { top:48px; }
     .sf-hudlegacy { top:68px; max-width:88vw; }
   }

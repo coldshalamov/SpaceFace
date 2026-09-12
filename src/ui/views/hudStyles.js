@@ -1338,6 +1338,158 @@ export function injectHudCss() {
   @media (prefers-reduced-motion:reduce) {
     .sf-pslot::after { transition:none; }
   }
+
+  /* ===== Field Hardware instruments — produced bezels/faces, not CSS hairlines ===== */
+  .sf-bars {
+    width:min(320px, 100%);
+    grid-template-columns:88px minmax(0, 1fr);
+    grid-template-rows:auto 88px repeat(3, 32px);
+    gap:6px 10px;
+    align-items:center;
+  }
+  .sf-barrow {
+    grid-template-columns:54px minmax(88px, 1fr) 34px;
+    min-height:28px; gap:8px;
+  }
+  .sf-barrow__label {
+    font-family:var(--k-display, var(--hud-display));
+    font-variation-settings:"wght" 600, "wdth" 62;
+    letter-spacing:.06em; text-transform:uppercase;
+    color:color-mix(in srgb, var(--k-signal, var(--hud-amber)) 45%, transparent);
+  }
+  .sf-bars .sf-bar.sf-kit-bar,
+  .sf-kit-bar {
+    position:relative; height:28px; min-height:28px; width:100%;
+    display:flex; align-items:center; gap:0; padding:0 2px;
+    box-sizing:border-box; overflow:visible; background:none;
+    border-style:solid; border-width:8px 10px;
+    border-image-source:url("assets/ui/kit/assets/gauges/bar.seg.bezel.png");
+    border-image-slice:8 10 8 10 fill; border-image-width:8px 10px;
+  }
+  .sf-kit-bar > .sf-bar__fill {
+    position:absolute; inset:6px 10px; width:auto; height:auto; opacity:0; pointer-events:none;
+    background:var(--k-signal, var(--hud-amber)); transform-origin:left center;
+  }
+  .sf-kit-bar:not(:has(.sf-kit-seg.is-on)) > .sf-bar__fill { opacity:1; }
+  .sf-kit-seg {
+    flex:0 0 12px; width:12px; height:16px;
+    background:url("assets/ui/kit/assets/gauges/bar.seg.off.png") center / 12px 16px no-repeat;
+  }
+  .sf-kit-seg.is-on {
+    background-image:url("assets/ui/kit/assets/gauges/bar.seg.on.png");
+  }
+  .sf-kit-seg.is-hot {
+    background-image:url("assets/ui/kit/assets/gauges/bar.seg.hot.png");
+  }
+  .sf-kit-seg.is-cold,
+  html[data-k-temp="wanted"] .sf-kit-seg.is-on {
+    background-image:url("assets/ui/kit/assets/gauges/bar.seg.cold.png");
+  }
+
+  .sf-command-deck {
+    width:min(360px, calc(100vw - 560px)); min-width:240px;
+  }
+  .sf-cluster {
+    flex-direction:column; align-items:stretch; justify-content:flex-end; gap:6px;
+  }
+  .sf-kit-gauge {
+    position:relative; width:360px; height:200px; max-width:100%;
+    margin:0 auto; color:var(--k-signal, var(--hud-amber));
+    background:url("assets/ui/kit/assets/gauges/gauge.speed.bezel.png") center / contain no-repeat;
+    --sf-gauge-deg:-110deg; --sf-gauge-arc:0deg;
+  }
+  .sf-kit-gauge__arc {
+    position:absolute; inset:0; pointer-events:none;
+    background:url("assets/ui/kit/assets/gauges/gauge.speed.lit-arc.png") center / contain no-repeat;
+    -webkit-mask-image:conic-gradient(from -110deg at 50% 62%, #000 0deg, #000 var(--sf-gauge-arc), transparent var(--sf-gauge-arc));
+    mask-image:conic-gradient(from -110deg at 50% 62%, #000 0deg, #000 var(--sf-gauge-arc), transparent var(--sf-gauge-arc));
+  }
+  .sf-kit-gauge__needle {
+    position:absolute; left:50%; top:62%; width:24px; height:100px;
+    margin-left:-12px; margin-top:-80px; overflow:visible; pointer-events:none; z-index:2;
+    transform-origin:12px 80px; transform:rotate(var(--sf-gauge-deg));
+    color:var(--k-signal, var(--hud-amber));
+  }
+  .sf-kit-gauge__hub { fill:var(--k-ink); }
+  .sf-kit-gauge__face {
+    position:absolute; left:100px; top:108px; width:160px; height:72px;
+    display:grid; place-items:center;
+    background:url("assets/ui/kit/assets/gauges/gauge.speed.face.png") center / contain no-repeat;
+  }
+  .sf-kit-gauge__num {
+    font-family:var(--k-display, var(--hud-display));
+    font-weight:800; font-variation-settings:"opsz" 96, "wdth" 125;
+    font-size:max(40px, calc(64px * var(--k-s, 1))); line-height:.9; letter-spacing:-.03em;
+    color:var(--k-text-live, var(--hud-paper));
+  }
+  .sf-kit-gauge .sf-tip { left:50%; bottom:calc(100% + 8px); }
+
+  .sf-rightdock { contain:layout style; }
+  .sf-radar-wrap.sf-kit-radar {
+    --sf-kit-radar-rim:28px;
+    position:relative;
+    width:calc(var(--sf-radar-size, 220px) + var(--sf-kit-radar-rim) * 2);
+    min-height:calc(var(--sf-radar-size, 220px) + var(--sf-kit-radar-rim) * 2);
+    padding:0; contain:layout style; background:none;
+  }
+  .sf-kit-radar__bezel,
+  .sf-kit-radar__face,
+  .sf-kit-radar__n { position:absolute; pointer-events:none; }
+  .sf-kit-radar__bezel {
+    left:50%; top:0; width:100%; height:calc(var(--sf-radar-size, 220px) + var(--sf-kit-radar-rim) * 2);
+    transform:translateX(-50%);
+    background:url("assets/ui/kit/assets/radar/radar.bezel.png") center / contain no-repeat;
+    z-index:0;
+  }
+  .sf-kit-radar__face {
+    left:50%; top:var(--sf-kit-radar-rim); width:var(--sf-radar-size, 220px); height:var(--sf-radar-size, 220px);
+    transform:translateX(-50%); border-radius:50%;
+    background:url("assets/ui/kit/assets/radar/radar.face.png") center / contain no-repeat;
+    z-index:1;
+  }
+  html[data-k-temp="wanted"] .sf-kit-radar__face {
+    background-image:url("assets/ui/kit/assets/radar/radar.wanted-face.png");
+  }
+  .sf-kit-radar .sf-radar {
+    z-index:2; background:none; margin-top:var(--sf-kit-radar-rim);
+  }
+  .sf-kit-radar__n {
+    left:50%; top:8px; width:16px; height:10px; transform:translateX(-50%);
+    background:url("assets/ui/kit/assets/radar/radar.n-lit.png") center / contain no-repeat;
+    z-index:3;
+  }
+  .sf-radar-wrap.sf-kit-radar:has(.sf-radar--expanded) {
+    --sf-kit-radar-rim:40px;
+    width:420px; min-height:420px;
+  }
+  .sf-radar-wrap.sf-kit-radar:has(.sf-radar--expanded) .sf-kit-radar__bezel { height:420px; }
+  .sf-radar-wrap.sf-kit-radar:has(.sf-radar--expanded) .sf-kit-radar__face { width:340px; height:340px; }
+
+  @media (max-width:1180px), (max-height:700px) {
+    .sf-kit-gauge { width:270px; height:150px; }
+    .sf-kit-gauge__face { left:75px; top:81px; width:120px; height:54px; }
+    .sf-kit-gauge__num { font-size:max(36px, calc(48px * var(--k-s, 1))); }
+    .sf-command-deck { width:min(270px, calc(100vw - 24px)); min-width:0; }
+  }
+  @media (max-width:760px), (max-height:620px) {
+    .sf-bars { grid-template-rows:auto 64px repeat(3, 28px); }
+    .sf-kit-gauge { width:220px; height:122px; }
+    .sf-kit-gauge__face { left:61px; top:66px; width:98px; height:44px; }
+  }
+  @media (forced-colors: active) {
+    .sf-kit-bar {
+      border:1px solid CanvasText; border-image:none; background:Canvas;
+      forced-color-adjust:none;
+    }
+    .sf-kit-seg { background:Canvas; box-shadow:inset 0 0 0 1px GrayText; }
+    .sf-kit-seg.is-on { background:Highlight; }
+    .sf-kit-gauge { background:Canvas; border:1px solid CanvasText; forced-color-adjust:none; }
+    .sf-kit-gauge__arc, .sf-kit-gauge__face { background:none; }
+    .sf-kit-gauge__num { color:CanvasText; }
+    .sf-kit-gauge__needle { color:CanvasText; }
+    .sf-kit-radar__bezel, .sf-kit-radar__face, .sf-kit-radar__n { display:none; }
+    .sf-kit-radar .sf-radar { margin-top:0; }
+  }
   `;
   document.head.appendChild(s);
 }
