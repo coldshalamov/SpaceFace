@@ -207,6 +207,7 @@ import {
   createOpeningProducerCensus,
   createOpeningSubmissionPlan,
   createOpeningSubmissionReceipt,
+  openingSubmissionUnboundSubjects,
   validateOpeningSubmissionReceipt,
 } from './openingSubmissionPlan.js';
 import {
@@ -5433,6 +5434,21 @@ export const render = {
           });
           openingPostMaterials = this._renderGraph.openingProgramMaterials();
         }
+        // Ship pipeline compiles queued during authored-visuals keep landing through this stage.
+        // Flush the captured queue before the binding snapshot so the receipt measures resident
+        // programs rather than freezing an in-flight compile as a permanent first-draw refusal.
+        const pendingPipelinePlan = pipelineAdmissions.capturePending();
+        if (pendingPipelinePlan && pendingPipelinePlan.pendingCount > 0) {
+          let pipelineDrainTimeout = null;
+          try {
+            await Promise.race([
+              pipelineAdmissions.waitForCaptured(pendingPipelinePlan).catch(() => null),
+              new Promise((resolve) => { pipelineDrainTimeout = setTimeout(resolve, 3000); }),
+            ]);
+          } finally {
+            if (pipelineDrainTimeout !== null) clearTimeout(pipelineDrainTimeout);
+          }
+        }
         // The first visible frame is the only submission. Capture its resource baseline now that
         // exact leaves, textures, and post targets are admitted; drawPreparedFrame validates that
         // no program/geometry/texture appears outside this frozen plan.
@@ -6296,6 +6312,7 @@ export const render = {
           state.render.openingSubmissionPlan = null;
           state.render.openingSubmissionReceipt = null;
           this._openingShadowAdmission = null;
+          this._openingPreSubmitRefusals = 0;
           state.render.openingFirstVisibleGpuCounts = null;
           state.render.openingSubmissionPreSubmitValidation = null;
           state.render.openingSubmissionValidation = null;
@@ -8116,25 +8133,54 @@ export const render = {
             + (preSubmitValidation.missingGeometryBufferIds || []).length
             + (preSubmitValidation.missingTextureIds || []).length
             + (preSubmitValidation.missingShadowResourceIds || []).length;
-          const failure = {
-            reason: preSubmitValidation.reason || null,
-            uncaptured: preSubmitValidation.uncaptured || [],
-            uncapturedProgramKeys: preSubmitValidation.uncapturedProgramKeys || [],
-            uncapturedGeometryBufferIds: preSubmitValidation.uncapturedGeometryBufferIds || [],
-            uncapturedTextureIds: preSubmitValidation.uncapturedTextureIds || [],
-            uncapturedShadowResourceIds: preSubmitValidation.uncapturedShadowResourceIds || [],
-            missingProgramKeys: preSubmitValidation.missingProgramKeys || [],
-            missingProgramBindings: preSubmitValidation.missingProgramBindings || [],
-            missingGeometryBufferIds: preSubmitValidation.missingGeometryBufferIds || [],
-            missingTextureIds: preSubmitValidation.missingTextureIds || [],
-            missingShadowResourceIds: preSubmitValidation.missingShadowResourceIds || [],
-          };
           // Loading admission may compile extra programs/textures after the frozen census.
           // Those extras are already resident, so they are not a first-draw hitch. Only a
           // missing required identity can refuse the first presented frame.
           if (missingCount > 0) {
             this.state.render.openingSubmissionValidation = preSubmitValidation;
-            console.error(`[render] opening submission pre-submit gate failed closed ${JSON.stringify(failure)}`);
+            // The gate re-probes the same bindings against the live renderer on every refused
+            // frame and reopens the moment deferred compiles land. Log the full identity list
+            // once, then a compact heartbeat — a 10KB console.error per frame is its own stall.
+            const refusals = (this._openingPreSubmitRefusals || 0) + 1;
+            this._openingPreSubmitRefusals = refusals;
+            if (refusals === 1 || refusals % 120 === 0) {
+              const failure = {
+                reason: preSubmitValidation.reason || null,
+                uncaptured: preSubmitValidation.uncaptured || [],
+                uncapturedProgramKeys: preSubmitValidation.uncapturedProgramKeys || [],
+                uncapturedGeometryBufferIds: preSubmitValidation.uncapturedGeometryBufferIds || [],
+                uncapturedTextureIds: preSubmitValidation.uncapturedTextureIds || [],
+                uncapturedShadowResourceIds: preSubmitValidation.uncapturedShadowResourceIds || [],
+                missingProgramKeys: preSubmitValidation.missingProgramKeys || [],
+                missingProgramBindings: preSubmitValidation.missingProgramBindings || [],
+                missingGeometryBufferIds: preSubmitValidation.missingGeometryBufferIds || [],
+                missingTextureIds: preSubmitValidation.missingTextureIds || [],
+                missingShadowResourceIds: preSubmitValidation.missingShadowResourceIds || [],
+                refusedFrames: refusals,
+              };
+              console.error(`[render] opening submission pre-submit gate failed closed ${JSON.stringify(failure)}`);
+            }
+            // The deferred compile queue holds the very bindings this gate waits on, but its
+            // rAF auto-flush stays held until the first playable stamp — which only a submitted
+            // draw creates. Authored upgrade jobs compile detached roots and wait on the graph
+            // release, so they never bind these materials: re-queue the exact unbound plan
+            // subjects, then drain the captured queue (waitForCaptured ignores the hold) while
+            // the picture is already refused. Re-kick only after the previous drain settles.
+            if (typeof this.state.render.compileObjectPipelines === 'function') {
+              for (const subject of openingSubmissionUnboundSubjects(receipt, preSubmitValidation)) {
+                if (subject.userData && subject.userData.pipelinesPending === true) continue;
+                try { this.state.render.compileObjectPipelines(subject); } catch (_) { /* retry next frame */ }
+              }
+            }
+            const pending = typeof this.state.render.pendingPipelineAdmissions === 'function'
+              ? Number(this.state.render.pendingPipelineAdmissions()) || 0
+              : 0;
+            if (pending > 0 && !this._openingPreSubmitDrain) {
+              this._openingPreSubmitDrain = Promise.resolve()
+                .then(() => this.state.render.drainPendingPipelineAdmissions())
+                .catch(() => {})
+                .finally(() => { this._openingPreSubmitDrain = null; });
+            }
             return false;
           }
           this.state.render.openingSubmissionPreSubmitValidation = {

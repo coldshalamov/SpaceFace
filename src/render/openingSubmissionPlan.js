@@ -1068,6 +1068,15 @@ export function createOpeningSubmissionReceipt(renderer, plan, options = {}) {
       : [...resourceIdentitySets.shadowResourceIds],
   };
   required.shadowResources = [...required.shadowResourceIds];
+  // A recorded binding failure is a capture-time observation, not a verdict: deferred pipeline
+  // compiles keep landing after this snapshot. The first-draw gate re-probes these exact
+  // materials against the live renderer so a program that exists now clears its stale record
+  // instead of refusing the picture it already finished serving.
+  const programBindingRevalidation = {
+    programMaterials: arrayFrom(options.programMaterials),
+    shadowProgramBindingFailures: arrayFrom(options.shadowProgramBindingFailures)
+      .map((failure) => String(failure)).filter(Boolean),
+  };
   const receipt = {
     schema: OPENING_SUBMISSION_PLAN_SCHEMA,
     planSchema: plan && plan.schema || null,
@@ -1080,6 +1089,7 @@ export function createOpeningSubmissionReceipt(renderer, plan, options = {}) {
     plannedProgramKeys,
     before,
     required,
+    programBindingRevalidation,
     plan,
     admitted: {
       drawLeaves: Number(plan && plan.drawLeaves && plan.drawLeaves.length) || 0,
@@ -1093,6 +1103,7 @@ export function createOpeningSubmissionReceipt(renderer, plan, options = {}) {
     ...(Array.isArray(plan && plan.textureRefs) ? plan.textureRefs : []),
     plan && plan.scene,
     plan && plan.camera,
+    ...programBindingRevalidation.programMaterials.filter(Boolean),
   ].filter(Boolean));
   return freeze(receipt, new Set(), liveReferences);
 }
@@ -1120,6 +1131,68 @@ function currentPlanResourceIdentitySets(plan) {
     plan && plan.scene && plan.scene.environment,
   ].filter((texture) => texture && texture.isTexture === true);
   return collectResourceIdentitySets([...leaves], plan && plan.route || {}, explicitTextures);
+}
+
+function objectReachesScene(object, scene) {
+  for (let cursor = object; cursor; cursor = cursor.parent) {
+    if (cursor === scene) return true;
+  }
+  return false;
+}
+
+// The receipt's binding failure list is frozen at capture time, but the compiles it measured
+// are not: deferred pipeline admissions keep landing between capture and first paint, and a
+// rebuilt opening subject detaches the leaf whose material was probed. Re-run the same probe
+// against the live renderer — same subjects, same labels — so the gate stays closed only while
+// a material the first picture would still submit is genuinely unprepared.
+function revalidateProgramBindings(renderer, receipt) {
+  const plan = receipt && receipt.plan;
+  const revalidation = receipt && receipt.programBindingRevalidation;
+  const recorded = receipt && receipt.required && receipt.required.programBindingFailures;
+  if (!plan || !revalidation) return recorded || [];
+  const scene = plan.scene || null;
+  const failures = [];
+  const seen = new Set();
+  const probe = (material, label) => {
+    if (!material || seen.has(material)) return;
+    seen.add(material);
+    const binding = materialProgramBinding(renderer, material, label);
+    if (binding.failure) failures.push(binding.failure);
+  };
+  for (const [index, subject] of (plan.compileSubjects || []).entries()) {
+    if (scene && !objectReachesScene(subject, scene)) continue;
+    for (const [materialIndex, material] of materialList(subject).entries()) {
+      probe(material, `plan:${index}:material:${materialIndex}`);
+    }
+  }
+  for (const [index, material] of (revalidation.programMaterials || []).entries()) {
+    probe(material, `post:${index}`);
+  }
+  for (const failure of revalidation.shadowProgramBindingFailures || []) {
+    if (failure != null && String(failure)) failures.push(String(failure));
+  }
+  return failures.sort();
+}
+
+// Refused first draws can compile the exact live subjects behind a still-unbound material.
+// The tracker queue those compiles join stays deferred until the first playable stamp, so the
+// gate's caller must drain it explicitly — but the subjects must come from here.
+export function openingSubmissionUnboundSubjects(receipt, validation) {
+  const plan = receipt && receipt.plan;
+  const subjects = [];
+  const seen = new Set();
+  for (const label of (validation && validation.missingProgramBindings) || []) {
+    const match = /^plan:(\d+):material:\d+:/.exec(String(label));
+    if (!match) continue;
+    const subject = plan && Array.isArray(plan.compileSubjects)
+      ? plan.compileSubjects[Number(match[1])]
+      : null;
+    if (!subject || seen.has(subject)) continue;
+    if (plan && plan.scene && !objectReachesScene(subject, plan.scene)) continue;
+    seen.add(subject);
+    subjects.push(subject);
+  }
+  return Object.freeze(subjects);
 }
 
 export function validateOpeningSubmissionReceipt(receipt, renderer) {
@@ -1183,7 +1256,7 @@ export function validateOpeningSubmissionReceipt(receipt, renderer) {
     required.shadowResourceIds,
     required.programBindingFailures,
   ].every((value) => Array.isArray(value));
-  const missingProgramBindings = required.programBindingFailures || [];
+  const missingProgramBindings = revalidateProgramBindings(renderer, receipt);
   return freeze({
     ok: !!(planComplete && exactReceipt && receipt.planSchema === OPENING_SUBMISSION_PLAN_SCHEMA
       && missingProgramBindings.length === 0 && uncaptured.length === 0),
