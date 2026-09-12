@@ -17188,7 +17188,7 @@
       "priority": 451,
       "title": "Crash reporting, auto-update, version",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -17213,7 +17213,9 @@
         "npm run check:all",
         "npm run probe:runtime-witness"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-033.01-REPORT.md"
+      ],
       "brief": "Electron crashReporter to a store or file, electron-updater, version/build string in the title and pause screens. DONE WHEN: A forced crash produces a report with the build hash; an update applies."
     },
     {
