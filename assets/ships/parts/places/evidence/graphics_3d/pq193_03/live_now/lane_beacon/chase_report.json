@@ -1,0 +1,68 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\place_lane_beacon.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\live_now\\lane_beacon",
+  "focus": [
+    3.725,
+    0.0,
+    2.05
+  ],
+  "boundsMin": [
+    -1.575,
+    -1.575,
+    -5.13
+  ],
+  "boundsMax": [
+    9.025,
+    1.575,
+    9.23
+  ],
+  "size": [
+    10.6,
+    3.15,
+    14.36
+  ],
+  "lightScale": 1.3296,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_HOOK_EMISSIVE",
+      "triangles": 420,
+      "materials": [
+        "Material_Accent"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Hull",
+      "triangles": 836,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Mechanical",
+      "triangles": 5796,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_Merged_Material_Warm",
+      "triangles": 216,
+      "materials": [
+        "Material_Warm"
+      ]
+    }
+  ],
+  "triangles": 7268,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\live_now\\lane_beacon\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\live_now\\lane_beacon\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\live_now\\lane_beacon\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\live_now\\lane_beacon\\clay_play_chase.png",
+  "clayClose": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\live_now\\lane_beacon\\clay_play_chase_close.png"
+}
