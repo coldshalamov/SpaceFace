@@ -1,5 +1,22 @@
+/* THE PRODUCED FIELD HARDWARE LAYER (must precede every rule below — @import is order-sensitive).
+   `assets/ui/kit/` is the S1 return: 157 manifested transparent-PNG surfaces, controls and
+   instruments rendered in Cycles from real modelled geometry, plus the tokens the approved frames
+   were measured against (design/frontend/direction/approved/kit-notes.md). Until now NOTHING in
+   `src/` or `styles/` referenced a single file of it — the programme's own asset-coverage grep
+   (FIELD_HARDWARE_PROGRAM.md §3 rule 4) returned one hit, and that hit was a sentence in
+   `src/ui/AGENTS.md` telling agents to use it. The shell was still CSS borders on a scrim.
+
+   These two imports are what make it consumed. `fh.css` is the kit's own component layer, shipped
+   with the frames and never modified here; its asset URLs are relative to itself, and `assets/ui`
+   is already a bundled root (scripts/check-asset-reachability.mjs), so the plates ship. Every
+   `.fh-*` name is namespaced and collides with nothing in this tree. */
+@import url('../assets/ui/kit/tokens/tokens.css');
+@import url('../assets/ui/kit/kit/fh.css');
+
 /* The kit — design/frontend/direction/KIT_SPEC.md §3–§7, copied in the spec's order.
-   Authority: DIRECTION_SHEET.md, then KIT_SPEC.md. Screens add kit classes; they add no CSS here.
+   Authority: the approved frames under design/frontend/direction/approved/, then
+   FIELD_HARDWARE_PROGRAM.md. (KIT_SPEC.md and DIRECTION_SHEET.md are void on aesthetics per
+   FIELD_HARDWARE_PROGRAM.md §8; they remain accurate on which seams exist.)
    Task additions go at the end under a "Task <X> additions" comment. */
 
 /* §3 tokens and the scale */
@@ -312,8 +329,11 @@ html.sf-high-contrast .k-screen { --k-bone-62: var(--k-bone); --k-bone-38: var(-
 .k-stage > .k-world--stage { left: 0; width: 100%; height: 100%; z-index: -1; }
 /* §1.1/§1.2: the stage's caption block (the hull's name and sentence; the save portrait) hangs from the stage's bottom-left. */
 .k-stage__foot { position: absolute; left: 0; bottom: 0; max-width: 100%; }
-/* §1.4: the HUD dims to 38 % under the pause instead of hiding (ui.css body.ui-modal-open #hud). */
-body.k-screen-top[data-k-screen="pause"] #hud { opacity: 0.38; }
+/* §1.4: the HUD dims to 38 % under the pause instead of hiding (ui.css body.ui-modal-open #hud).
+   `:has` covers the live route when data-k-screen is late or missing — otherwise the energy
+   bars and contact list read straight through the bulkhead. */
+body.k-screen-top[data-k-screen="pause"] #hud,
+body:has(#screens .of-pause) #hud { opacity: 0.38; pointer-events: none; }
 /* §1.5: game over is the one screen that deepens its scrim to the wanted blue. */
 .k-screen--cold::before { background: rgb(6 8 15 / 0.35); }
 /* §1.7: photo mode - everything gone but the world. !important outranks the pause 38 % above. */
@@ -393,3 +413,363 @@ body.k-screen-top #modal-backdrop { background: none; }
 /* §3.2: the codex search field spans the hang and keeps a gap from the tab words beneath it. */
 /* Outranks the kit's own `input.k-input:focus { all: unset }` while the field is focused; the 2 px inset keeps the focus ring inside the hang's clip. */
 .k-screen .k-hang input.sf-codex-search, .k-screen .k-hang input.sf-codex-search:focus { display: block; width: calc(100% - 4px); margin: 2px 2px calc(16px * var(--k-s)); }
+
+/* ===========================================================================================
+ * FIELD HARDWARE — the title and the pause menu, built from the produced kit.
+ *
+ * Authority: design/frontend/direction/approved/frames/frame-title-v2.png ("Field at dusk", the
+ * pick recorded in approved/DECISIONS.md), its 100 % crops, and approved/kit-notes.md §5/§7 for
+ * the numbers. Frames outrank prose, including everything above this line.
+ *
+ * WHY THIS EXISTS. The S1 return shipped 157 manifested surfaces, controls and instruments —
+ * transparent PNGs rendered in Cycles from real modelled geometry, with thickness, a relieved lit
+ * edge and an under-shadow baked into the image — and until the @import at the top of this file
+ * NOTHING in src/ or styles/ referenced one of them. The shell was words at 62 % bone with a 2 px
+ * underline on a scrim: no plate, no icon, no legend, no marking, no produced asset of any kind.
+ * That is the screen FIELD_HARDWARE_PROGRAM.md §1 says ten passes converged on, and §3 rule 4
+ * makes it a grep failure before it is a taste failure. Everything below hands the materials to
+ * `.fh-*` from assets/ui/kit/kit/fh.css and adds only composition — where hardware sits, and how
+ * big it is at this frame size.
+ *
+ * NOT aesthetic, do not "simplify" (FIELD_HARDWARE_PROGRAM.md §7): the 12 px floor; the
+ * forced-colours block at the end, without which every material here vanishes and takes the
+ * "which row is live" signal with it; the roving Tab stop and the visible focus ring; and
+ * `.sf-menu-save-summary` staying laid out and legible, because check-title-continue-runtime
+ * measures its box. Casing is done HERE and not in the DOM: that same check matches the Continue
+ * button by exact textContent. No backdrop-filter, no ambient loop — the only motion is the focus
+ * light, and it is a transition, which tokens.css already collapses to 0 ms under reduced motion.
+ * =========================================================================================== */
+
+/* ---------------------------------------------------------------- TITLE (POSTER register) */
+
+#screens .of-title.k-screen {
+  /* The frame's own margins: 118 / 1920 = 6.15 vw across, 104 / 1080 = 9.6 vh down. The lit world
+     is src/render/uiStage.js on the game's own renderer behind this root, so the screen paints no
+     ground of its own. */
+  padding: clamp(30px, 9.6vh, 104px) clamp(40px, 6.15vw, 118px) clamp(22px, 3.2vh, 38px);
+  gap: clamp(14px, 2.4vh, 30px);
+  overflow: hidden;
+  /* The rail is 64 px wide and the menu ink starts at 232 px, both at a 1920-wide frame. */
+  --fht-rail-w: clamp(38px, 3.33vw, 64px);
+  --fht-indent: clamp(64px, 5.95vw, 114px);
+  /* The menu is tied to HEIGHT as well as width. Nine words at the frame's 40 px run off a
+     1080-tall frame — the pause screen already recorded this exact overflow in its own source —
+     and a word below the fold is a dead route, not a style problem. */
+  --fht-menu-size: clamp(20px, min(2.1vw, 3.4vh), 40px);
+  --fht-row-h: calc(var(--fht-menu-size) * 2.1);
+}
+/* THE READING GROUND. Measured on the live route, not assumed: the title mounts with
+   `html[data-k-temp="flight"]`, whose scrim is `rgb(7 9 15 / 0)` — so the words were standing on
+   ZERO ground over a dusk sky with a bright horizon band running right through the menu column,
+   and bone at 62 % does not hold 4.5:1 against it. (The temperature wiring that should say "menu"
+   here lives in src/ui/kit/temperature.js, outside this write set; this holds the floor either
+   way, and does nothing when a menu scrim does arrive.)
+   It is a falloff and not a panel on purpose. A flat wall of colour between the reader and the
+   world is the thing the direction rejects; §7 reverses the gradient ban specifically for light.
+   This is a graduated filter over the left sixth of the frame: it protects the column, and the
+   hull, the horizon and the sky the frame is built around stay untouched. */
+/* `[data-screen]` is carried for the specificity: §6.1a's staged-screen rule is (1,3,1) and sets
+   the `background` SHORTHAND, which would otherwise reset this image to none. Matching its weight
+   and landing later leaves that rule owning the colour and this one owning the light. */
+#screens .of-title.k-screen[data-screen]::before {
+  display: block;
+  background-image: linear-gradient(101deg,
+    rgb(8 6 5 / 0.66) 0%, rgb(8 6 5 / 0.52) 14%, rgb(8 6 5 / 0.24) 34%, rgb(8 6 5 / 0) 54%);
+}
+
+/* THE WORDMARK is the produced logotype (marks/logotype/spaceface-logotype.svg), not the game's
+   name re-set in a UI face — kit-notes §1 is explicit that re-setting it is the fake. It is
+   painted through a mask so the glyph keeps control of its own light: warm on the top face,
+   falling to the shadowed bottom, which is what the frame's 188 px cap reads as. The <h1>'s own
+   text never leaves the DOM or the accessibility tree; forced colours brings it back visibly. */
+#screens .of-title .k-t-name {
+  display: block; width: clamp(360px, 61.5vw, 1180px); aspect-ratio: 684.7 / 60;
+  margin: 0; font-size: 0; line-height: 0; color: transparent; letter-spacing: 0;
+  background: linear-gradient(177deg, #F7ECDA 0%, #E6D1AB 44%, #B5915E 100%);
+  -webkit-mask: url('../assets/ui/kit/marks/logotype/spaceface-logotype.svg') left top / 100% 100% no-repeat;
+  mask: url('../assets/ui/kit/marks/logotype/spaceface-logotype.svg') left top / 100% 100% no-repeat;
+}
+/* The orbital brand glyph is a line drawing on a screen whose frame carries no icon at all, and
+   the kit's icon law is one FILLED family. It goes with the rest of the old skin. */
+#screens .of-title .of-brand-mark { display: none; }
+/* THE STATUS STRIP — the frame's "a backlit legend on its own plate" element (crops-title.png,
+   fifth crop), carrying the live save state. The plate is `plate.legend.strip` and NOT the
+   `-lit` variant: `-lit` is the fully-backlit state, whose `fill` centre is solid amber, and amber
+   legend type on it is invisible. The light belongs to the TEXT here, on an unlit plate, which is
+   what the crop shows.
+   It sits bottom-left above the save sentence and the build line, at the frame's own y — it is a
+   readout, not a subtitle, and hanging it under the wordmark would push the whole menu column
+   down past the fold on a short frame. `.k-title` is a static grid area, so absolute positioning
+   here resolves against the fixed screen root. */
+#screens .of-title .of-title-line {
+  position: absolute; left: clamp(52px, 10.6vw, 204px); bottom: clamp(48px, 8vh, 87px);
+  margin: 0; width: fit-content; max-width: 46ch;
+  border-style: solid; border-width: 12px 16px;
+  border-image-source: url('../assets/ui/kit/assets/plates/plate.legend.strip.png');
+  border-image-slice: 12 16 12 16 fill; border-image-repeat: stretch; border-image-width: 12px 16px;
+  display: inline-flex; align-items: center; min-height: 20px; padding: 0 clamp(10px, 1vw, 20px);
+  font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
+  text-transform: uppercase; letter-spacing: 0.09em; font-size: var(--fh-size-fine);
+  color: var(--fh-legend-now, var(--fh-legend));
+}
+/* Before the first render the readout has no text, and an empty lit plate floating over the world
+   is a broken instrument, not a quiet one. */
+#screens .of-title .of-title-line:empty { display: none; }
+
+/* THE MENU COLUMN. The rail is a real piece of hardware standing behind the words (the produced
+   `plate.poster.rail` nine-slice, via .fh-rail); the words hang off it at the frame's indent. */
+#screens .of-title .of-title-actions {
+  position: relative; align-self: start; justify-self: start;
+  /* Wide enough that the longest save sentence sets on one or two lines rather than four, and
+     still narrow enough that the column never crowds the hull the frame is built around. */
+  width: min(100%, calc(var(--fht-indent) + 46ch));
+  max-height: 100%; overflow: hidden auto; overscroll-behavior: contain; padding: 0 0 4px;
+}
+#screens .of-title .of-title-rail {
+  position: absolute; left: 0; top: 0; bottom: 0; width: var(--fht-rail-w); pointer-events: none;
+}
+#screens .of-title .k-words { gap: 0; }
+#screens .of-title .k-words > li { position: relative; }
+
+/* A menu word: no box, no fill, no hairline. Archivo Expanded, uppercased by CSS.
+   THE BORDER BOX IS DECLARED ONCE AND NEVER CHANGES. Every row carries the row plate's geometry
+   (8 px / 16 px, transparent, no image) at rest, and lighting a row swaps ONLY
+   `border-image-source`. The first build of this moved padding and margin on :hover, which shifted
+   the row about 10 px left under the pointer — a row that jumps when you point at it, and an
+   element Playwright can never call stable, so the automated walk could not click New Game at all.
+   A geometry-free state swap is also what the kit's own control sprites do (fh.css §controls:
+   "every state is its own render with identical bounds"). */
+#screens .of-title .k-word {
+  width: 100%; box-sizing: border-box; position: relative; background: none;
+  min-height: var(--fht-row-h);
+  border-style: solid; border-width: 8px 16px; border-color: transparent;
+  border-image-source: none; border-image-slice: 8 16 8 16 fill;
+  border-image-repeat: stretch; border-image-width: 8px 16px;
+  padding: 0 calc(clamp(14px, 1.6vw, 30px) - 16px) 0 calc(var(--fht-indent) - 16px);
+  display: flex; align-items: center; text-align: left;
+  font-family: var(--fh-face-display); font-variation-settings: 'wght' 800, 'wdth' 125;
+  font-size: var(--fht-menu-size); line-height: 0.9; letter-spacing: var(--fh-track-display);
+  text-transform: uppercase; white-space: nowrap; color: var(--fh-text-resting);
+  transition: color var(--fh-bench-lightUp, 100ms) var(--fh-bench-ease, ease-out);
+}
+/* §6.2's 2 px scale-in underline is the old skin's idea of "selected"; the lit plate is this
+   one's, and two selection signals on one row read as a mistake. */
+#screens .of-title .k-word::after { display: none; }
+/* A disabled word (Continue with no save) is 48 % bone here, not the kit's 38 % tertiary. Measured
+   off the live capture, not asserted: the brightest background inside the menu column is
+   rgb(103 48 8) — the dusk band, after the graduated filter above — and bone at 38 % over it is
+   **2.52:1**, under §7's 3:1 UI floor. 48 % is 3.15:1. (The resting 62 % measures 4.25:1 and the
+   lit word 8.43:1, so both already hold.)
+   This is the same move `approved/DECISIONS.md` records for resting legends (40 → 45 %) and the
+   edge light (38 → 47 %): `tools/contrast.py` validated the kit's levels against the PLATE they sit
+   on, and a POSTER-register word sits on a lit world instead. Continue-with-no-save is also the one
+   disabled control on this screen that has something to say, so it has to stay readable. */
+#screens .of-title .k-word[aria-disabled='true'] {
+  color: color-mix(in srgb, var(--fh-bone) 48%, transparent); cursor: default;
+}
+
+/* THE FOCUS LIGHT — the produced `plate.row.selected`: a machined plate with the amber left-edge
+   light and its spill already in the image. Its left edge lands on the rail, so the light meets
+   the hardware exactly as the frame paints it. ONE row is lit at a time: while focus is inside the
+   list the light follows focus, and only when nothing there has focus does it fall back to the
+   default word (Continue when a save exists, else New Game). */
+#screens .of-title :is(.k-word:hover, .k-word:focus-visible),
+#screens .of-title .k-words:not(:focus-within) .k-word[aria-current='true'] {
+  color: var(--fh-text);
+  border-image-source: url('../assets/ui/kit/assets/plates/plate.row.selected.png');
+}
+#screens .of-title .k-word[aria-disabled='true']:hover {
+  border-image-source: none; color: color-mix(in srgb, var(--fh-bone) 48%, transparent);
+}
+/* Quit keeps an affordance without becoming a red web button: hazard enamel mixed into bone. */
+#screens .of-title .k-word--danger { color: color-mix(in srgb, var(--fh-hazard) 38%, var(--fh-bone)); }
+
+/* The save readout rides Continue. It is the sentence the frame prints, in the body face, and it
+   stays a laid-out, legible box in every save state — the boot and title-continue checks measure
+   it, so `display:none` here would be a green-to-red change, not a tidy-up. */
+#screens .of-title .k-word-sub {
+  margin: 0 0 clamp(6px, 1vh, 14px); padding: 0 0 0 var(--fht-indent); background: none;
+  font-family: var(--fh-face-text); font-size: var(--fh-size-data);
+  color: var(--fh-text-resting); max-width: 58ch; white-space: normal;
+}
+
+/* The fine line: a status light, the build, and Credits — the frame's bottom-left corner. */
+#screens .of-title .k-fine {
+  left: clamp(40px, 6.15vw, 118px); bottom: clamp(14px, 2vh, 24px);
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
+  letter-spacing: var(--fh-track-legend); font-size: var(--fh-size-fine);
+  color: var(--fh-text-tertiary);
+}
+#screens .of-title .k-fine .k-word {
+  width: auto; min-height: 28px; padding: 4px 6px; margin: 0; display: inline-flex;
+  font-family: inherit; font-variation-settings: inherit; letter-spacing: inherit;
+  text-transform: none; font-size: var(--fh-size-fine); color: var(--fh-text-resting);
+}
+#screens .of-title .k-fine .k-word:is(:hover, :focus-visible) {
+  border-image-source: none; padding: 4px 6px; margin: 0; color: var(--fh-legend);
+}
+
+/* ---------------------------------------------------------------- PAUSE (BENCH register) */
+
+/* There is no approved pause frame yet — the S1 return holds the three titles, the Crucible door
+   and the two HUD frames — so this borrows the title's grammar rather than inventing a
+   composition: the held world stays visible, the instrument column stands against the left edge
+   on a machined bulkhead, the brief reads out of a recessed well, and the verbs are one column.
+   Every verb that was reachable is still reachable; nothing was removed to make this tidier. */
+#screens .of-pause.k-screen {
+  inset: 0 auto 0 0; width: min(700px, 62vw); max-width: none;
+  padding: clamp(26px, 4.6vh, 76px) clamp(28px, 3.4vw, 64px) clamp(20px, 2.6vh, 34px);
+  /* The right edge is the produced `plate.edge.small` nine-slice with NO `fill`, so only the
+     plate's real relieved edge is drawn — a centre slice stretched across 700x1080 would wash its
+     grain out. The face under it is the ground with the produced grain tile at the kit's own 6 %. */
+  border-style: solid; border-width: 0 16px 0 0;
+  border-image-source: url('../assets/ui/kit/assets/plates/plate.edge.small.png');
+  border-image-slice: 16; border-image-repeat: stretch; border-image-width: 16px;
+  /* 0.95, not the 0.90 this started at: the flight HUD does NOT dim behind pause on the live route
+     (the objective card, the contact rows and the segmented bars read straight through a 0.90
+     bulkhead and collide with the brief). Measured on a real Esc-from-flight capture, not assumed.
+     The world beyond the panel's right edge is still fully visible, which is the "held, not hidden"
+     part that matters. */
+  background: rgb(12 10 8 / 0.95);
+  gap: clamp(12px, 1.8vh, 22px);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: 'title' 'stage' 'foot';
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+#screens .of-pause.k-screen::before {
+  z-index: -1; background-color: transparent;
+  background-image: url('../assets/ui/kit/assets/tiles/tile.grain.png');
+  background-repeat: repeat; opacity: var(--fh-plate-grainOpacity, 0.06);
+}
+#screens .of-pause .k-t-title {
+  font-family: var(--fh-face-display); font-variation-settings: 'wght' 900, 'wdth' 125;
+  text-transform: uppercase; letter-spacing: var(--fh-track-display); line-height: 0.9;
+  font-size: clamp(38px, min(3.6vw, 6.4vh), 96px); color: var(--fh-text);
+}
+/* The flight brief on a produced sunk plate: the recessed well an instrument reads out of. */
+#screens .of-pause .sf-pause-brief {
+  margin-top: clamp(14px, 2vh, 24px); box-sizing: border-box;
+  border-style: solid; border-width: 24px;
+  border-image-source: url('../assets/ui/kit/assets/plates/plate.bench.sunk.png');
+  border-image-slice: 24 fill; border-image-repeat: stretch; border-image-width: 24px;
+  background: none; padding: var(--fh-space-s) var(--fh-space-m);
+}
+#screens .of-pause .sf-pause-brief .sf-slot-sub:first-child {
+  font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
+  text-transform: uppercase; letter-spacing: var(--fh-track-legend);
+  font-size: var(--fh-size-fine); color: var(--fh-legend-rest);
+}
+#screens .of-pause .sf-pause-brief .sf-slot-name {
+  color: var(--fh-text); font-family: var(--fh-face-text); font-weight: 500;
+  font-size: var(--fh-size-emphasis); margin: 6px 0 0;
+}
+#screens .of-pause .sf-pause-brief .sf-muted {
+  font-size: var(--fh-size-data); color: var(--fh-text-resting);
+}
+#screens .of-pause .sf-pause-brief .sf-slot-sub:last-child {
+  margin-top: 12px; padding-top: 10px; font-size: var(--fh-size-fine);
+  color: var(--fh-text-tertiary);
+  background: url('../assets/ui/kit/assets/tiles/tile.etch.hairline.png') repeat-x top left;
+}
+/* THE VERB COLUMN. `.k-word { all: unset }` would wipe the kit key, so this restores the
+   produced nine-slice AFTER that reset. Keys fill the bulkhead as a rack of hardware — not
+   shrink-wrapped 12 px pills on the left edge of an empty wall. */
+#screens .of-pause .k-stage { overflow: hidden auto; overscroll-behavior: contain; padding: 2px 2px 8px 0; }
+#screens .of-pause .k-words,
+#screens .of-pause .sf-pause-keys {
+  display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%;
+}
+#screens .of-pause .k-words > li { width: 100%; }
+#screens .of-pause .k-word::after { display: none; }
+#screens .of-pause .k-word.fh-key {
+  display: flex; align-items: center; justify-content: flex-start;
+  width: 100%; max-width: 100%; box-sizing: border-box;
+  min-height: clamp(34px, 3.6vh, 44px);
+  padding: 0 16px;
+  background: none;
+  border-style: solid; border-width: 14px; border-color: transparent;
+  border-image-source: url('../assets/ui/kit/assets/keys/key.legend.rest.png');
+  border-image-slice: 14 fill; border-image-repeat: stretch; border-image-width: 14px;
+  font-family: var(--fh-face-display); font-variation-settings: 'wght' 700, 'wdth' 85;
+  font-size: clamp(13px, 1.35vw, 18px); line-height: 1;
+  letter-spacing: var(--fh-track-legend); text-transform: uppercase;
+  color: var(--fh-text); cursor: pointer; white-space: nowrap;
+}
+#screens .of-pause .k-word.fh-key--primary {
+  min-height: clamp(42px, 4.4vh, 56px);
+  border-width: 18px; border-image-width: 18px; border-image-slice: 18 fill;
+  border-image-source: url('../assets/ui/kit/assets/keys/key.primary.rest.png');
+  font-variation-settings: 'wght' 800, 'wdth' 100;
+  font-size: clamp(15px, 1.55vw, 20px);
+}
+#screens .of-pause .k-word.fh-key--hazard {
+  border-image-source: url('../assets/ui/kit/assets/keys/key.hazard.rest.png');
+  color: color-mix(in srgb, var(--fh-hazard) 42%, var(--fh-bone));
+}
+#screens .of-pause .k-word.fh-key:is(:hover, :focus-visible) {
+  border-image-source: url('../assets/ui/kit/assets/keys/key.legend.hover.png');
+  color: var(--fh-text);
+}
+#screens .of-pause .k-word.fh-key--primary:is(:hover, :focus-visible),
+#screens .of-pause .k-words:not(:focus-within) .k-word.fh-key--primary[aria-current='true'] {
+  border-image-source: url('../assets/ui/kit/assets/keys/key.primary.hover.png');
+}
+#screens .of-pause .k-word.fh-key--hazard:is(:hover, :focus-visible) {
+  border-image-source: url('../assets/ui/kit/assets/keys/key.hazard.hover.png');
+}
+#screens .of-pause .k-word.fh-key:active {
+  border-image-source: url('../assets/ui/kit/assets/keys/key.legend.pressed.png');
+}
+#screens .of-pause .k-word.fh-key--primary:active {
+  border-image-source: url('../assets/ui/kit/assets/keys/key.primary.pressed.png');
+}
+#screens .of-pause .k-word.fh-key--hazard:active {
+  border-image-source: url('../assets/ui/kit/assets/keys/key.hazard.pressed.png');
+}
+/* Pause ends with TWO `.k-fine` lines (the build string and "Esc resumes"). §6.1 pins `.k-fine`
+   absolutely to one bottom-left slot, so as plain kit rows they land on top of each other and the
+   build string is unreadable. They are a footer here, stacked in flow. */
+#screens .of-pause .k-fine {
+  position: static; margin: 0; color: var(--fh-text-tertiary);
+  font-family: var(--fh-face-display); font-variation-settings: 'wght' 600, 'wdth' 62;
+  letter-spacing: var(--fh-track-legend); text-transform: uppercase; font-size: var(--fh-size-fine);
+}
+#screens .of-pause .k-fine + .k-fine { margin-top: 6px; color: var(--fh-legend-rest); }
+
+/* ---------------------------------------------------------------- FORCED COLOURS
+ * A CSS background image and a nine-sliced border-image do not survive forced colours (§7 names
+ * this, and the ui-matrix shoots the variant), so every material above is dropped and the
+ * information those materials carried — which row is live, where a surface begins — comes back as
+ * system-colour borders and text. The masked logotype goes with them, and the <h1>'s own words,
+ * which never left the DOM, become visible again. */
+@media (forced-colors: active) {
+  #screens .of-title .k-t-name {
+    width: auto; aspect-ratio: auto; background: none; -webkit-mask: none; mask: none;
+    color: CanvasText; font-family: var(--fh-face-display);
+    font-variation-settings: 'wght' 900, 'wdth' 125;
+    font-size: clamp(40px, 7vw, 132px); line-height: 0.95; text-transform: uppercase;
+  }
+  #screens .of-title .of-title-line,
+  #screens .of-pause .sf-pause-brief,
+  #screens :is(.of-title, .of-pause) .k-word {
+    border-image-source: none !important; background: none !important;
+  }
+  #screens .of-title .of-title-line { border: 1px solid CanvasText; padding: 4px 10px; color: CanvasText; }
+  #screens .of-title .of-title-rail { display: none; }
+  #screens .of-title.k-screen[data-screen]::before { background-image: none; }
+  #screens .of-pause .sf-pause-brief { border: 1px solid CanvasText; padding: 12px 14px; }
+  #screens .of-pause.k-screen {
+    background: Canvas; border-image-source: none;
+    border-width: 0 1px 0 0; border-color: CanvasText;
+  }
+  #screens .of-pause.k-screen::before { background-image: none; }
+  #screens :is(.of-title, .of-pause) .k-word { color: CanvasText; }
+  #screens :is(.of-title, .of-pause) :is(.k-word:hover, .k-word:focus-visible),
+  #screens :is(.of-title, .of-pause) .k-words:not(:focus-within) .k-word[aria-current='true'] {
+    border: 2px solid Highlight; color: Highlight;
+  }
+  #screens :is(.of-title, .of-pause) .k-word[aria-disabled='true'] { color: GrayText; }
+}
+/* Forced-colours pause keys: sprites are class-driven (not inline !important), so the block
+   above can strip the nine-slice and put a Highlight outline on the live row. */

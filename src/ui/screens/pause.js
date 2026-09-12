@@ -513,56 +513,15 @@ function runPhotoCapture(ctx) {
   });
 }
 
-const PAUSE_KEY_KIND = {
-  primary: { file: 'key.primary', width: '18px' },
-  hazard: { file: 'key.hazard', width: '18px' },
-  legend: { file: 'key.legend', width: '14px' },
-};
-
-function pauseKeyUrl(file, state) {
-  return new URL(`../../../assets/ui/kit/assets/keys/${file}.${state}.png`, import.meta.url).href;
-}
-
 /** Paint a pause action as a produced kit key.
- *  The button keeps `.k-word` (roving list + checks) and `.fh-key` (the hardware). Kit
- *  `.k-word { all: unset }` and `#screens .of-pause .k-word { border: 0 }` would otherwise
- *  wipe the nine-slice, so the sprite is pinned on the element. */
+ *  Classes only: `.k-word` keeps the roving list, `.fh-key` names the hardware.
+ *  Geometry and the nine-slice live in `styles/kit.css` so forced-colours can drop
+ *  the sprite (an inline `!important` border-image cannot be overridden). */
 function paintPauseKey(button, { primary = false, danger = false, dev = false } = {}) {
   if (!button) return button;
   const kind = primary ? 'primary' : danger ? 'hazard' : 'legend';
-  const spec = PAUSE_KEY_KIND[kind];
   button.classList.add('k-word', 'fh-key', `fh-key--${kind}`);
   if (dev) button.classList.add('k-38');
-  const style = button.style;
-  if (!style || typeof style.setProperty !== 'function') return button;
-  const apply = (state) => {
-    const slice = `${parseInt(spec.width, 10)} fill`;
-    const compact = kind !== 'primary';
-    style.setProperty('display', 'inline-flex', 'important');
-    style.setProperty('width', 'max-content', 'important');
-    style.setProperty('max-width', '100%', 'important');
-    style.setProperty('min-width', compact ? '112px' : '148px', 'important');
-    style.setProperty('min-height', compact ? '32px' : '44px', 'important');
-    style.setProperty('padding', compact ? '0 12px' : '0 18px', 'important');
-    style.setProperty('font-size', compact ? '12px' : '16px', 'important');
-    style.setProperty('justify-content', 'flex-start', 'important');
-    style.setProperty('align-items', 'center', 'important');
-    style.setProperty('box-sizing', 'border-box', 'important');
-    style.setProperty('background', 'transparent', 'important');
-    style.setProperty('border-style', 'solid', 'important');
-    style.setProperty('border-width', spec.width, 'important');
-    style.setProperty('border-image-source', `url("${pauseKeyUrl(spec.file, state)}")`, 'important');
-    style.setProperty('border-image-slice', slice, 'important');
-    style.setProperty('border-image-repeat', 'stretch', 'important');
-    style.setProperty('border-image-width', spec.width, 'important');
-  };
-  apply('rest');
-  button.addEventListener('pointerenter', () => apply('hover'));
-  button.addEventListener('pointerleave', () => apply('rest'));
-  button.addEventListener('pointerdown', () => apply('pressed'));
-  button.addEventListener('pointerup', () => apply('rest'));
-  button.addEventListener('focus', () => apply('hover'));
-  button.addEventListener('blur', () => apply('rest'));
   return button;
 }
 
@@ -749,14 +708,10 @@ export const pauseScreen = {
     }, { danger: true });
 
     const list = words(items, {
-      size: 'fine',
       ariaLabel: 'Pause',
       onPick: (action) => { const h = handlers.get(action); if (h) h.fn(); },
     });
     list.classList.add('sf-pause-keys');
-    if (list.style && typeof list.style.setProperty === 'function') {
-      list.style.setProperty('gap', '2px');
-    }
     for (const [action, h] of handlers) {
       paintPauseKey(list.querySelector(`[data-action="${action}"]`), h);
     }

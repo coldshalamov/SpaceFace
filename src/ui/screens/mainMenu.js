@@ -416,6 +416,7 @@ export const mainMenuScreen = {
       setDisabled(refs.bContinue, true, 'Checking saves');
       refs.saveSummary.classList.remove('has-save');
       refs.saveSummary.textContent = 'Checking saves...';
+      if (refs.status) refs.status.textContent = 'Checking saves';
       this._syncCurrent();
       return;
     }
