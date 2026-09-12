@@ -15,9 +15,16 @@ export const SCENARIO_47A_PACKAGED_PROPS = Object.freeze({
     slot: 'place',
   }),
   'asset.slice.kessler_handoff_beacon': Object.freeze({
-    file: 'places/place_sensor_mast.glb',
+    // NOT place_sensor_mast. That body is one of the sixteen OCCUPATIONAL_YARD_PLACE_IDS the
+    // 2026-08-18 still panel checkpointed as toy / open-cage / LEGO, and
+    // src/data/occupationalYardDressing.js keeps it out of PLACE_FILES for exactly that reason —
+    // at the chase camera it is a lattice tower on a flat mustard slab with flat navy boxes.
+    // Naming a file here bypasses `resolvePlaceFileForEntity`, so the checkpoint could not stop it;
+    // test/unused-model-live-wire.test.mjs now guards this table against the same list.
+    // The lane beacon is admitted, live in Helios today, and was chase-reviewed in PQ-193.03.
+    file: 'places/place_lane_beacon.glb',
     slot: 'place',
-    // Entity radius is the covert zone disc, not the mast envelope.
+    // Entity radius is the covert zone disc, not the marker envelope.
     visualRadius: 22,
   }),
   'asset.slice.bourse_carrier_wreck': Object.freeze({

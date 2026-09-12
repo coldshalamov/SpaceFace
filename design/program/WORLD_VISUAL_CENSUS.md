@@ -17,24 +17,25 @@ These are live world objects, not effects and not menu toys.
 
 | What you see | Same object, every time | Notes |
 |---|---|---|
-| 47-A sample can with hoops (Payload / TOW) | evidence spindle | Cylinder + glowing core + clamp rings. **No model file.** |
-| 47-A white rescue capsule | civilian pod | Capsule + scorched band + distress rings. **No model file.** |
-| 47-A violet handoff marker + floor disc | Kessler beacon | Mast + hoops + big faint circle. **No model file.** |
-| 47-A broken carrier hulk | Bourse wreck | Boxes and ribs. **No model file.** |
-| Other towed cargo cans | generic payload | Cylinder + two orange collars + blinker. Used for ordinary TOW too, not only 47-A. **No model file.** |
+| 47-A sample can with hoops (Payload / TOW) | evidence spindle | **Live file:** `pods/pod_cargo_container.glb` (`SCENARIO_47A_PACKAGED_PROPS`, f580852a9). The cylinder stack is hidden while it publishes. Reads as real hardware. Same body as an ordinary tow can, so the hero can has no tell. |
+| 47-A white rescue capsule | civilian pod | **Live file:** `places/place_habitat_pod.glb`. Publishes, but at 58 WU it is a faceted white blockout with a flat navy decal — packaged, not finished. |
+| 47-A violet handoff marker + floor disc | Kessler beacon | **Live file:** `places/place_lane_beacon.glb` (2026-09-12). Was `place_sensor_mast`, a checkpointed toy/open-cage yard prop reached by naming its file path around PLACE_FILES; `test/unused-model-live-wire.test.mjs` now guards that table. |
+| 47-A broken carrier hulk | Bourse wreck | **Live file:** `places/place_aftermath_wreck_liner_bow.glb`. A modelled bow rather than boxes and ribs, still in untextured blockout language at 58 WU. |
+| Other towed cargo cans | generic payload | **Live file:** `pods/pod_cargo_container.glb` (`GENERIC_TOW_PACKAGED_PROP`). Not hidden while it publishes, so the code can is still the first frame. |
 | Ore / loot gems floating in space | pickup | Spinning diamond. Freight-custody pickups reuse the cargo can. |
 | Credit chips | credit chip | Small code mesh. |
 | Common rocks | asteroid | Generated lumpy rock (5 variants). Crystal rocks grow extra diamond shards. Named rock GLBs (`place_asteroid_rock_*`) are a different, rarer set. |
 | Stations that missed their model | station fallback | Fat cylinder + two hoops + box spars. Authored station GLBs exist; this is what you get when they don’t load. |
-| Jump gates / wormholes | gate | Giant hoop, inner ring, glowing disc, pylons. **No model file.** |
-| Small mining drones | drone entity | Diamond body + stick arms + glow. Separate from the `place_mining_drone` GLB. |
+| Jump gates / wormholes | gate | **Live file:** stations spawn with `archetypeGlb: place_gate_jump_ring.glb` (`world.js`). The hoop in `visualFactory.buildGate` is leftover fallback, not the live selector. Stocktake 2026-09-09. |
+| Small mining drones | drone entity | Diamond body + stick arms + glow. Separate from the `place_mining_drone` GLB. Point the flyer at that file after it looks like hardware (`PQ-193.05`). |
+| Vector mine / impulse charge | mine / charge | Code pucks if they appear on the default route. Same family as the disc mine. |
 | Generic wreckage | wreck | Broken tube spine + hull plates. |
 | Disc mines | mine | Puck + hoop + warning lens. |
 | Mass seed (deployed anchor) | mass seed | Diamond core + hoop + folding arms. |
 | Massline snare ends | snare anchor | Short cylinder + rails + hoop. |
 | Planets you fly near | planet | Shader ball (Helios Prime). Rings are painted on the look, not a separate model. |
 | Distant suns | sun | Smaller shader ball. |
-| Distant fake planets in the sky | background heroes | Sprites, not flyable bodies. |
+| Distant fake planets in the sky | background heroes | Sprites, not flyable bodies. `paintedPlanets.js` references `assets/background/quiet-planets.png` and `quiet-ringed-planet.png` — **not retail-routable** (`check:asset-reachability` 2026-09-09). Bundle later; not a hull commission. |
 
 ## B. Already a model file — upgrade in place, do not start over
 
@@ -44,6 +45,7 @@ file look like hardware from the bird’s-eye camera.
 - Lane buoy, lane beacon, lane pin
 - Cargo container pod
 - Mining drone place, conveyor barge
+- Jump-gate ring (`place_gate_jump_ring.glb`) — live selector, not the leftover hoop
 - Hornet (and the rest of the flyable-ship remaster)
 - Stations / outposts / wreck cathedral that already have a GLB
 - Named rock GLBs (`rock_a/b/c`, seamed, graffiti)

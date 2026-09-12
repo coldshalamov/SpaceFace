@@ -15,6 +15,10 @@ import test from 'node:test';
 import { createSimulation } from '../src/core/sim.js';
 import { OCCUPATIONAL_TRAFFIC_CRAFT } from '../src/data/occupationalTrafficCraft.js';
 import {
+  GENERIC_TOW_PACKAGED_PROP,
+  SCENARIO_47A_PACKAGED_PROPS,
+} from '../src/data/scenarios/47aLiveScene.js';
+import {
   ADMITTED_LANE_FURNITURE_PLACE_IDS,
   CHECKPOINTED_LANE_FURNITURE_PLACE_IDS,
   LANE_FURNITURE_PLACE_IDS,
@@ -416,6 +420,27 @@ test('yard props stay packaged on disk but are not admitted to the live place se
   assert.ok(occupationalYardDressingForSector('sector_ceres_belt').length >= 8,
     'keep the authored Ceres yard offsets on disk, unwired');
   assert.equal(occupationalYardDressingForSector('sector_helios_prime').length, 0);
+});
+
+test('a checkpointed yard prop cannot reach the live route by naming its file', () => {
+  // PQ-193.04, 2026-09-12. The yard checkpoint above is enforced by PLACE_FILES, which
+  // `resolvePlaceFileForEntity` consults. But `visualOverrides.packagedPropForEntity` also accepts
+  // a literal file path — `data.packagedPropFile`, or a SCENARIO_47A_PACKAGED_PROPS row — and that
+  // route never touches PLACE_FILES. f580852a9 used it to point the live 47-A Kessler handoff
+  // beacon at `places/place_sensor_mast.glb`: a body the 2026-08-18 still panel had blocked as
+  // toy / open-cage, drawn on the default route with `hideImmediately`, and no check said a word.
+  // A file path is not a licence. Anything named here is on screen, so it obeys the same list.
+  const blocked = new Set(OCCUPATIONAL_YARD_PLACE_IDS.map((id) => `places/${id}.glb`));
+  const named = [
+    ...Object.entries(SCENARIO_47A_PACKAGED_PROPS).map(([slice, spec]) => [slice, spec.file]),
+    ['GENERIC_TOW_PACKAGED_PROP', GENERIC_TOW_PACKAGED_PROP.file],
+  ];
+  for (const [label, file] of named) {
+    assert.ok(!blocked.has(String(file).replace(/^[\\/]+/, '')),
+      `${label} names ${file}, which a still panel checkpointed as toy/open-cage — clear it first, or pick an admitted body`);
+    const abs = resolve(ROOT, 'assets/ships/release/parts', String(file).replace(/^[\\/]+/, ''));
+    assert.ok(existsSync(abs), `${label} names ${file}, which is not in the release parts tree`);
+  }
 });
 
 test('restored Ceres/Tethys landmarks do not wear the toy yard kit', () => {
