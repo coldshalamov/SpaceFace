@@ -1701,7 +1701,13 @@ export function injectHudCss() {
 
   /* The Band chip floated at top:150px, unattached, halfway down the sky. The frame keeps it in the
      top band with the rest of the top-edge instruments. */
-  #hud .sf-band-hud { top:calc(62px * var(--k-s, 1)); }
+  /* Top band, and squared to the right instrument column rather than floating 20px + a dock width
+     inboard of it — at 1280 that inboard anchor put the chip 33px inside the centred one-voice
+     line's own box, so a two-line alert would have landed on it. */
+  #hud .sf-band-hud {
+    top:calc(62px * var(--k-s, 1));
+    right:calc(12px + var(--sf-safe-inset-x, 0px));
+  }
 
   /* The one-voice floor line ("Light ships are ammunition. Swing a rock. Keep the speed.") sat at
      top:13% — 140 px down a 1080 picture, floating in open sky with nothing to belong to. The frame
