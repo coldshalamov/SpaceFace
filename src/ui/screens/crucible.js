@@ -4,11 +4,11 @@
 // (src/ui/crucibleLaunch.js). The results surface explains how the run ended and offers the same
 // seed again. Neither writes state.run, the phase, or a fitting.
 //
-// Both are built on the frontend kit (styles/kit.css, src/ui/kit/) — Frontend Task D §1. This file
-// owns no CSS. The door is three words with their values and one verb (sheet §2, "The modes"); the
-// results are the run as a story: a hero number, a column of sentences, the build as fine print.
-// The DOM is built with `el` + appendChild only, because the results unit test mounts the plate
-// against a minimal fake document.
+// The door is Field Hardware POSTER: stencil title, imaged selector tiles, smoked window over the
+// arena, engraved seed, one hazard Launch key. Results stay a story: a hero number, a column of
+// sentences, the build as fine print. This file owns no stylesheet; hardware is produced kit
+// sprites pinned on the elements. The DOM is built with `el` + appendChild only, because the
+// results unit test mounts the plate against a minimal fake document.
 
 import { COMBAT_LAB_ARENAS, COMBAT_LAB_STARTER_PACKAGES } from '../../data/combatLabSetups.js';
 import { WEAPONS } from '../../data/weapons.js';
@@ -56,6 +56,243 @@ import { compileAttackSpec } from '../../combat/attackSpec.js';
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
 import { comboSummary } from '../../systems/stuntCombo.js';
 import { el, settle, stamp, cue } from '../kit/index.js';
+
+const FH_KEY = {
+  primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
+  hazard: { file: 'key.hazard', width: '18px', minW: '280px', minH: '72px', pad: '0 22px', font: '20px' },
+  legend: { file: 'key.legend', width: '14px', minW: '72px', minH: '32px', pad: '0 10px', font: '12px' },
+  small: { file: 'key.small', width: '12px', minW: '88px', minH: '36px', pad: '0 10px', font: '12px' },
+};
+function kitUrl(rel) {
+  try { return new URL('../../../assets/ui/kit/' + rel, import.meta.url).href; }
+  catch { return 'assets/ui/kit/' + rel; }
+}
+function fhUrl(rel) {
+  return kitUrl('assets/' + rel);
+}
+function forcedColorsActive() {
+  return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
+}
+function pin(node, props) {
+  if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
+  for (const name of Object.keys(props)) node.style.setProperty(name, props[name], 'important');
+  return node;
+}
+function paintMarking(node) {
+  if (!node) return node;
+  if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-title');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 900, 'wdth' 125",
+    'letter-spacing': 'var(--fh-track-display)',
+    'text-transform': 'uppercase',
+    'line-height': '0.9',
+    'font-size': 'clamp(72px, 12vw, 160px)',
+    color: 'var(--fh-text)',
+    margin: '0',
+  });
+}
+function paintLegend(node, lit = false) {
+  if (!node) return node;
+  if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-legend');
+  if (typeof node.setAttribute === 'function' && !node.getAttribute('data-fh-lit')) {
+    node.setAttribute('data-fh-lit', lit ? 'on' : 'off');
+  }
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 600, 'wdth' 62",
+    'letter-spacing': 'var(--fh-track-legend)',
+    'text-transform': 'uppercase',
+    'font-size': 'var(--fh-size-fine)',
+    color: lit ? 'var(--fh-legend-lit, var(--fh-legend))' : 'var(--fh-legend-rest, var(--fh-legend))',
+    margin: '0',
+  });
+}
+function paintWindow(node) {
+  if (!node) return node;
+  if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-window', 'fh-window--deep');
+  if (forcedColorsActive()) {
+    return pin(node, { 'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid', background: 'transparent' });
+  }
+  return pin(node, {
+    'border-style': 'solid',
+    'border-width': '20px',
+    'border-image-source': 'url("' + fhUrl('windows/window.glass.deep.png') + '")',
+    'border-image-slice': '20 fill',
+    'border-image-repeat': 'stretch',
+    'border-image-width': '20px',
+    'box-sizing': 'border-box',
+    padding: '12px 16px',
+    background: 'transparent',
+  });
+}
+function paintInput(input) {
+  if (!input) return input;
+  if (input.classList && typeof input.classList.add === 'function') input.classList.add('fh-input');
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(input, { 'border-image-source': 'none', 'border-bottom': '1px solid CanvasText', background: 'transparent' });
+      return;
+    }
+    pin(input, {
+      'border-style': 'solid',
+      'border-width': '12px',
+      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
+      'border-image-slice': '12 fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': '12px',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'min-height': '40px',
+      padding: '0 8px',
+      'box-sizing': 'border-box',
+      'font-family': 'var(--fh-face-display)',
+      'font-variation-settings': "'wght' 800, 'wdth' 125",
+      'font-size': 'var(--fh-size-menu, 40px)',
+      'font-variant-numeric': 'tabular-nums',
+    });
+  };
+  apply('rest');
+  if (input.dataset && input.dataset.fhBound !== '1') {
+    input.dataset.fhBound = '1';
+    input.addEventListener('focus', () => apply('focus'));
+    input.addEventListener('blur', () => apply('rest'));
+  }
+  return input;
+}
+function paintKey(button, kind = 'legend') {
+  if (!button) return button;
+  const spec = FH_KEY[kind] || FH_KEY.legend;
+  if (button.classList && typeof button.classList.add === 'function') {
+    button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
+  }
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(button, {
+        'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+        background: 'transparent', color: 'CanvasText',
+      });
+      return;
+    }
+    pin(button, {
+      display: 'inline-flex',
+      width: 'max-content',
+      'max-width': '100%',
+      'min-width': spec.minW,
+      'min-height': spec.minH,
+      padding: spec.pad,
+      'font-size': spec.font,
+      'font-family': 'var(--fh-face-display)',
+      'font-variation-settings': "'wght' 600, 'wdth' 62",
+      'letter-spacing': 'var(--fh-track-legend)',
+      'text-transform': 'uppercase',
+      'justify-content': 'center',
+      'align-items': 'center',
+      'box-sizing': 'border-box',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'border-style': 'solid',
+      'border-width': spec.width,
+      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
+      'border-image-slice': parseInt(spec.width, 10) + ' fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': spec.width,
+    });
+  };
+  const sync = () => {
+    const disabled = button.getAttribute && (button.getAttribute('aria-disabled') === 'true' || button.disabled);
+    apply(disabled ? 'disabled' : (kind === 'legend' && button.getAttribute && button.getAttribute('aria-pressed') === 'true' ? 'lit' : 'rest'));
+  };
+  button._fhSync = sync;
+  if (!(button.dataset && button.dataset.fhBound === '1')) {
+    if (button.dataset) button.dataset.fhBound = '1';
+    if (typeof button.addEventListener === 'function') {
+      button.addEventListener('pointerenter', () => {
+        if (button.getAttribute && (button.getAttribute('aria-disabled') === 'true' || button.disabled)) return;
+        apply('hover');
+      });
+      button.addEventListener('pointerleave', sync);
+      button.addEventListener('pointerdown', () => {
+        if (button.getAttribute && (button.getAttribute('aria-disabled') === 'true' || button.disabled)) return;
+        apply('pressed');
+      });
+      button.addEventListener('pointerup', sync);
+    }
+  }
+  sync();
+  return button;
+}
+function paintTile(button, selected) {
+  if (!button) return button;
+  if (button.classList && typeof button.classList.add === 'function') button.classList.add('fh-tile');
+  const src = selected ? fhUrl('windows/window.viewport.png') : fhUrl('windows/window.glass.png');
+  if (forcedColorsActive()) {
+    return pin(button, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', color: 'CanvasText',
+    });
+  }
+  return pin(button, {
+    display: 'grid',
+    'grid-template-rows': '1fr auto',
+    width: '132px',
+    'min-width': '132px',
+    'min-height': '116px',
+    padding: '0',
+    cursor: 'pointer',
+    'box-sizing': 'border-box',
+    background: 'transparent',
+    color: selected ? 'var(--fh-text)' : 'var(--fh-text-resting)',
+    'border-style': 'solid',
+    'border-width': '20px',
+    'border-image-source': 'url("' + src + '")',
+    'border-image-slice': '20 fill',
+    'border-image-repeat': 'stretch',
+    'border-image-width': '20px',
+  });
+}
+function choiceTile(label, className, artSrc) {
+  const button = el('button', 'fh-tile ' + className);
+  button.type = 'button';
+  const art = el('span', 'fh-tile-art');
+  const img = el('img');
+  img.src = artSrc;
+  img.alt = '';
+  if (typeof img.setAttribute === 'function') img.setAttribute('aria-hidden', 'true');
+  pin(img, { width: '48px', height: '48px', 'object-fit': 'contain' });
+  art.appendChild(img);
+  button.appendChild(art);
+  button.appendChild(el('span', 'fh-tile-legend', label));
+  paintTile(button, false);
+  return button;
+}
+function syncChoice(button, on) {
+  if (!button || typeof button.setAttribute !== 'function') return;
+  button.setAttribute('aria-pressed', String(on));
+  button.setAttribute('aria-selected', String(on));
+  button.setAttribute('aria-checked', String(on));
+  paintTile(button, on);
+}
+
+const MODE_TILE = Object.freeze({
+  swarm: 'assets/tiles/tile.mode.swarm.png',
+  scored: 'assets/tiles/tile.mode.gauntlet.png',
+});
+const HULL_ICON = Object.freeze({
+  web_weaver: 'icons/48/icon-line.svg',
+  ricochet_runner: 'icons/48/icon-boost.svg',
+  energy_baseline: 'icons/48/icon-energy.svg',
+  kinetic_baseline: 'icons/48/icon-weapon.svg',
+  physics_toolkit: 'icons/48/icon-well.svg',
+  massline_rig: 'icons/48/icon-tow.svg',
+});
+const ARENA_TILE = Object.freeze({
+  helios_core: 'assets/tiles/tile.arena.ricochet-foundry.png',
+  lagrange_crucible: 'assets/tiles/tile.arena.lagrange-crucible.png',
+  cinder_sluice: 'assets/tiles/tile.arena.cinder-sluice.png',
+  cryo_drift: 'assets/tiles/tile.arena.cryo-drift.png',
+  storm_lattice: 'assets/tiles/tile.arena.storm-lattice.png',
+});
 
 /** A kit word (`button.k-word`). The caller appends it. */
 function word(label, className) {
@@ -325,11 +562,13 @@ export const crucibleScreen = {
   mount(rootEl, ctx) {
     let enterButton = null;
     rootEl.innerHTML = '';
-    rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door');
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'sf-crucible-door', 'of-crucible-door');
     rootEl.dataset.kReady = '0';
     rootEl.dataset.stamp = 'CRUCIBLE / SURVIVAL';
+    rootEl.setAttribute('data-fh-register', 'poster');
     rootEl.setAttribute('role', 'dialog');
     rootEl.setAttribute('aria-labelledby', 'sf-crucible-title');
+    pin(rootEl, { background: 'transparent' });
 
     const previous = lastCrucibleSetup();
     let starterId = crucibleStarterIdForSetup(previous);
@@ -345,17 +584,20 @@ export const crucibleScreen = {
     // PQ-160.02: a pasted run code's challenge terms ride to launch through here.
     let pendingShare = null;
 
-    // .k-title — the name and the live mode's blurb (syncMode writes it).
+    // .k-title — stencil marking and the live mode's blurb (syncMode writes it).
     const title = el('header', 'k-title');
-    const h = el('h1', 'k-display k-t-title', 'Crucible');
+    const h = el('h1', 'k-display k-t-name fh-hero', 'Crucible');
     h.id = 'sf-crucible-title';
+    paintMarking(h);
     title.appendChild(h);
-    const sub = el('p', 'k-t-emph k-62 sf-crd-sub', '');
+    const sub = el('p', 'k-t-emph k-62 sf-crd-sub fh-legend', '');
+    paintLegend(sub, true);
     title.appendChild(sub);
     rootEl.appendChild(title);
 
-    // .k-stage — Mode, Hull and Seed as three static rows; each row is the word and its values.
-    const stage = el('section', 'k-stage');
+    // .k-stage — Mode, Hull and Seed as imaged tiles inside a smoked window.
+    const stage = el('section', 'k-stage fh-window fh-window--deep');
+    paintWindow(stage);
     const settings = el('ul', 'k-rows sf-crd-settings');
     settings.style.setProperty('--k-row-cols', 'auto minmax(0, 1fr)');
     settings.setAttribute('aria-label', 'Run settings');
@@ -363,7 +605,9 @@ export const crucibleScreen = {
 
     function settingRow(label, hook) {
       const row = el('li', 'k-row k-row--static ' + hook);
-      row.appendChild(el('span', 'k-row__name k-62', label));
+      const cap = el('span', 'k-row__name k-62 fh-legend', label);
+      paintLegend(cap, true);
+      row.appendChild(cap);
       const body = el('div');
       row.appendChild(body);
       settings.appendChild(row);
@@ -376,8 +620,9 @@ export const crucibleScreen = {
     // existing two-mode door check still sees Swarm/Gauntlet as the ruleset pair. Weekly is the
     // same kind of sibling: it locks this UTC week's mutator without becoming a fourth ruleset.
     const modeBody = settingRow('Mode', 'sf-crd-row--mode');
-    const modes = el('ul', 'k-words k-words--row sf-crd-modes');
+    const modes = el('ul', 'k-words k-words--row sf-crd-modes fh-cluster');
     modes.setAttribute('aria-label', 'Mode');
+    pin(modes, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     const modeButtons = [];
     let dailyButton = null;
     const addWord = (list, button) => {
@@ -387,49 +632,47 @@ export const crucibleScreen = {
       return button;
     };
     for (const entry of CRUCIBLE_MODE_CARDS) {
-      const card = word(entry.label, 'k-word--emph sf-crd-mode');
+      const card = choiceTile(entry.label, 'sf-crd-mode', kitUrl(MODE_TILE[entry.ruleset] || MODE_TILE.swarm));
       card.dataset.ruleset = entry.ruleset;
-      card.setAttribute('aria-pressed', String(!daily && entry.ruleset === ruleset));
+      syncChoice(card, !daily && entry.ruleset === ruleset);
       card.addEventListener('click', () => {
         if (daily) {
           daily = false;
           if (freeSeed) seedInput.value = freeSeed;
         }
         ruleset = entry.ruleset;
-        for (const other of modeButtons) {
-          other.setAttribute('aria-pressed', String(other.dataset.ruleset === ruleset));
-        }
-        if (dailyButton) dailyButton.setAttribute('aria-pressed', 'false');
+        for (const other of modeButtons) syncChoice(other, other.dataset.ruleset === ruleset);
+        if (dailyButton) syncChoice(dailyButton, false);
         cue('confirm');
         syncMode();
       });
       modeButtons.push(card);
       addWord(modes, card);
     }
-    dailyButton = word(DAILY_CARD.label, 'k-word--fine sf-crd-daily');
-    dailyButton.setAttribute('aria-pressed', String(daily));
+    dailyButton = choiceTile(DAILY_CARD.label, 'sf-crd-daily', kitUrl('assets/tiles/tile.mode.daily.png'));
+    syncChoice(dailyButton, daily);
     dailyButton.addEventListener('click', () => {
       if (!daily) freeSeed = seedInput.value;
       daily = true;
       ruleset = SWARM_RULESET;
-      for (const other of modeButtons) other.setAttribute('aria-pressed', 'false');
-      dailyButton.setAttribute('aria-pressed', 'true');
+      for (const other of modeButtons) syncChoice(other, false);
+      syncChoice(dailyButton, true);
       cue('confirm');
       syncMode();
     });
     addWord(modes, dailyButton);
     // PQ-169.02: weekly rotation is local. No live-ops feed.
     const weeklyCard = weeklyDoorCard();
-    const weeklyButton = word(weeklyCard.label, 'k-word--fine sf-crd-weekly');
-    weeklyButton.setAttribute('aria-pressed', String(weekly));
+    const weeklyButton = choiceTile(weeklyCard.label, 'sf-crd-weekly', kitUrl('assets/tiles/tile.mode.weekly.png'));
+    syncChoice(weeklyButton, weekly);
     weeklyButton.addEventListener('click', () => {
       weekly = !weekly;
-      weeklyButton.setAttribute('aria-pressed', String(weekly));
+      syncChoice(weeklyButton, weekly);
       cue('confirm');
       syncMode();
     });
     addWord(modes, weeklyButton);
-    const ghostButton = word(GHOST_CARD.label, 'k-word--fine sf-crd-ghost');
+    const ghostButton = choiceTile(GHOST_CARD.label, 'sf-crd-ghost', kitUrl('assets/tiles/tile.mode.ghost.png'));
     ghostButton.addEventListener('click', () => {
       const offer = currentGhostOffer();
       if (!offer.available) {
@@ -458,7 +701,7 @@ export const crucibleScreen = {
       const offer = currentGhostOffer();
       if (!offer.available) raceGhost = false;
       ghostBlurb.textContent = offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff;
-      ghostButton.setAttribute('aria-pressed', String(!!(raceGhost && offer.available)));
+      syncChoice(ghostButton, !!(raceGhost && offer.available));
       ghostButton.setAttribute('aria-disabled', String(!offer.available));
     }
 
@@ -475,6 +718,9 @@ export const crucibleScreen = {
         seedInput.value = String(dailySeedForNow());
         reroll.disabled = true;
         reroll.setAttribute('aria-disabled', 'true');
+        if (typeof reroll._fhSync === 'function') reroll._fhSync();
+        for (const other of modeButtons) syncChoice(other, false);
+        if (dailyButton) syncChoice(dailyButton, true);
         syncGhost();
         return;
       }
@@ -486,26 +732,28 @@ export const crucibleScreen = {
       seedInput.removeAttribute('aria-readonly');
       reroll.disabled = false;
       reroll.removeAttribute('aria-disabled');
+      if (typeof reroll._fhSync === 'function') reroll._fhSync();
+      for (const other of modeButtons) syncChoice(other, !daily && other.dataset.ruleset === ruleset);
+      if (dailyButton) syncChoice(dailyButton, false);
       syncGhost();
     }
 
     // Hull — the starter names as words, the live one bright, its blurb beneath.
     const hullBody = settingRow('Starter build', 'sf-crd-row--hull');
-    const hulls = el('ul', 'k-words k-words--row sf-crd-hulls');
+    const hulls = el('ul', 'k-words k-words--row sf-crd-hulls fh-cluster');
     hulls.setAttribute('aria-label', 'Starter build');
+    pin(hulls, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     const buttons = [];
     const hullSentence = el('p', 'k-sentence sf-crd-hull-sub', '');
     function syncHull() {
       const starter = COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === starterId) || COMBAT_LAB_STARTER_PACKAGES[0];
       hullSentence.textContent = starter ? hullBlurb(starter) : '';
-      for (const other of buttons) {
-        other.setAttribute('aria-pressed', String(other.dataset.starterId === starterId));
-      }
+      for (const other of buttons) syncChoice(other, other.dataset.starterId === starterId);
     }
     for (const starter of COMBAT_LAB_STARTER_PACKAGES) {
-      const card = word(starter.label, 'k-word--emph sf-crd-hull');
+      const card = choiceTile(starter.label, 'sf-crd-hull', kitUrl(HULL_ICON[starter.id] || 'icons/48/icon-hull.svg'));
       card.dataset.starterId = starter.id;
-      card.setAttribute('aria-pressed', String(starter.id === starterId));
+      syncChoice(card, starter.id === starterId);
       card.addEventListener('click', () => {
         starterId = starter.id;
         cue('confirm');
@@ -518,8 +766,9 @@ export const crucibleScreen = {
     hullBody.appendChild(hullSentence);
 
     const arenaBody = settingRow('Arena', 'sf-crd-row--arena');
-    const arenas = el('ul', 'k-words k-words--row sf-crd-arenas');
+    const arenas = el('ul', 'k-words k-words--row sf-crd-arenas fh-cluster');
     arenas.setAttribute('aria-label', 'Arena');
+    pin(arenas, { gap: '10px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     const arenaDescriptions = {
       helios_core: ['Ricochet Foundry', 'Hard banks, tight gaps and moving machinery. Turn pursuit into a pile-up.'],
       lagrange_crucible: ['Lagrange Crucible', 'Gravity wells and sling routes. Bend the whole fight around an anchor.'],
@@ -531,11 +780,11 @@ export const crucibleScreen = {
     const syncArena = () => {
       arenaSentence.textContent = (arenaDescriptions[arenaId] || arenaDescriptions.helios_core)[1];
       for (const button of arenas.querySelectorAll('button')) {
-        button.setAttribute('aria-pressed', String(button.dataset.arenaId === arenaId));
+        syncChoice(button, button.dataset.arenaId === arenaId);
       }
     };
     for (const arena of COMBAT_LAB_ARENAS.filter(entry => arenaDescriptions[entry.id])) {
-      const button = word(arenaDescriptions[arena.id][0], 'k-word--fine sf-crd-arena-choice');
+      const button = choiceTile(arenaDescriptions[arena.id][0], 'sf-crd-arena-choice', kitUrl(ARENA_TILE[arena.id] || ARENA_TILE.helios_core));
       button.dataset.arenaId = arena.id;
       button.addEventListener('click', () => { arenaId = arena.id; cue('confirm'); syncArena(); });
       addWord(arenas, button);
@@ -547,14 +796,30 @@ export const crucibleScreen = {
     // Seed — the number as an underlined input, "New seed" as a fine word, the arena in fine print.
     const seedBody = settingRow('Seed', 'sf-crd-row--seed');
     const seedRow = el('div', 'k-words k-words--row sf-crd-seed');
+    const seedWell = el('div', 'fh-stepper-well');
+    pin(seedWell, {
+      'border-style': 'solid',
+      'border-width': '14px',
+      'border-image-source': 'url("' + fhUrl('controls/stepper.well.png') + '")',
+      'border-image-slice': '14 fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': '14px',
+      'min-height': '56px',
+      padding: '0 16px',
+      display: 'inline-flex',
+      'align-items': 'center',
+    });
     const seedInput = el('input', 'k-input k-input--num');
     seedInput.type = 'text';
     seedInput.inputMode = 'numeric';
     seedInput.spellcheck = false; seedInput.autocomplete = 'off';
     seedInput.setAttribute('aria-label', 'Run seed');
     seedInput.value = String(daily ? dailySeedForNow() : (previous ? previous.seed : freshSeed()));
-    seedRow.appendChild(seedInput);
+    paintInput(seedInput);
+    seedWell.appendChild(seedInput);
+    seedRow.appendChild(seedWell);
     const reroll = word('New seed', 'k-word--fine');
+    paintKey(reroll, 'small');
     reroll.addEventListener('click', () => {
       if (daily) { cue('deny'); return; }
       seedInput.value = String(freshSeed());
@@ -583,7 +848,9 @@ export const crucibleScreen = {
     codeInput.autocomplete = 'off';
     codeInput.setAttribute('aria-label', 'Run share code');
     codeInput.placeholder = 'SFC1-…';
+    paintInput(codeInput);
     const useCode = word('Use code', 'k-word--fine');
+    paintKey(useCode, 'small');
     useCode.addEventListener('click', () => {
       const res = applyRunShareCode(codeInput.value);
       if (!res.ok) {
@@ -609,11 +876,9 @@ export const crucibleScreen = {
       seedInput.removeAttribute('aria-readonly');
       reroll.disabled = false;
       reroll.removeAttribute('aria-disabled');
-      for (const other of modeButtons) {
-        other.setAttribute('aria-pressed', String(other.dataset.ruleset === ruleset));
-      }
-      if (dailyButton) dailyButton.setAttribute('aria-pressed', 'false');
-      weeklyButton.setAttribute('aria-pressed', 'false');
+      for (const other of modeButtons) syncChoice(other, other.dataset.ruleset === ruleset);
+      if (dailyButton) syncChoice(dailyButton, false);
+      syncChoice(weeklyButton, false);
       // A code may name the exporter's ghost; it only races when the block was imported too.
       try { doorProfile = loadCrucibleMeta(); } catch { /* keep the prior read */ }
       if (res.ghostHash != null && lastGhostRowByHash(doorProfile, res.ghostHash)) raceGhost = true;
@@ -635,7 +900,9 @@ export const crucibleScreen = {
     ghostInput.autocomplete = 'off';
     ghostInput.setAttribute('aria-label', 'Ghost share code');
     ghostInput.placeholder = 'SFG1-…';
+    paintInput(ghostInput);
     const addGhost = word('Add ghost', 'k-word--fine');
+    paintKey(addGhost, 'small');
     addGhost.addEventListener('click', () => {
       const res = importGhostShareText(ghostInput.value);
       if (!res.ok) {
@@ -668,7 +935,9 @@ export const crucibleScreen = {
     try {
       if (doorProfile) {
         const records = el('details', 'sf-crd-records');
-        records.appendChild(el('summary', 'k-t-fine', 'Records & challenges'));
+        const recSum = el('summary', 'k-t-fine fh-legend', 'Records & challenges');
+        paintLegend(recSum, false);
+        records.appendChild(recSum);
         records.appendChild(renderRecordRows(doorProfile));
         stage.appendChild(records);
       }
@@ -686,6 +955,7 @@ export const crucibleScreen = {
     footWords.setAttribute('aria-label', 'Crucible');
     const enter = word('Hold the line', 'k-word--emph k-word--primary');
     enterButton = enter;
+    paintKey(enter, 'hazard');
     enter.addEventListener('click', () => {
       const setup = crucibleSetupFor({
         starterId,
@@ -737,6 +1007,7 @@ export const crucibleScreen = {
     });
     addWord(footWords, enter);
     const back = word('Back', 'k-word--emph');
+    paintKey(back, 'small');
     back.addEventListener('click', () => { cue('close'); ctx.bus.emit('ui:popScreen', {}); });
     addWord(footWords, back);
     foot.appendChild(footWords);

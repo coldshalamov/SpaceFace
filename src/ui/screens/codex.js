@@ -5,12 +5,11 @@
 // seenComms, graffitiShown), so nothing is spoiled ahead of its beat. Unseen entries show a locked
 // placeholder ("— not yet encountered —") rather than the content.
 //
-// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, codex): a left column of entry
-// names; the entry as a readable measure of text at body size with a plate image where one exists;
-// the entry title at screen-title size. A book, not a wiki. Built on the frontend kit
-// (styles/kit.css, src/ui/kit/); this file owns no CSS. The hang holds the search, the eight tab
-// words and the index of entry names as hairline rows; the stage holds the one focused entry.
-// Reads state.story + the pure-data narrative tables; never mutates sim state.
+// Field Hardware BENCH: stencil title, legend tab keys, engraved index, the focused entry on a
+// paper plate. Archive stills are imaged tiles. Built from the produced kit (assets/ui/kit);
+// this file owns no stylesheet. The hang holds the search, the eight section keys and the index
+// of entry names; the stage holds the one focused entry. Reads state.story + the pure-data
+// narrative tables; never mutates sim state.
 
 import { SHIP, COLD_START, REFS, FIGURES, COMMS, GRAFFITI, BEAT_CONTENT, ENDGAME_CHOICES, PERSISTENT_CARGO } from '../../data/narrative.js';
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../../data/frontierRumors.js';
@@ -19,6 +18,243 @@ import { decorateEntityNode } from '../entityResolver.js';
 import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { createShipLedgerPanel } from '../shipLedgerPanel.js';
 import { el, words, rows, hero, settle, cue } from '../kit/index.js';
+
+const FH_KEY = {
+  primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
+  legend: { file: 'key.legend', width: '14px', minW: '72px', minH: '32px', pad: '0 10px', font: '12px' },
+  small: { file: 'key.small', width: '12px', minW: '72px', minH: '28px', pad: '0 8px', font: '12px' },
+};
+function fhUrl(rel) {
+  try { return new URL('../../../assets/ui/kit/assets/' + rel, import.meta.url).href; }
+  catch { return 'assets/ui/kit/assets/' + rel; }
+}
+function forcedColorsActive() {
+  return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
+}
+function pin(node, props) {
+  if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
+  for (const name of Object.keys(props)) node.style.setProperty(name, props[name], 'important');
+  return node;
+}
+function paintMarking(node) {
+  if (!node) return node;
+  if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-title');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 900, 'wdth' 125",
+    'letter-spacing': 'var(--fh-track-display)',
+    'text-transform': 'uppercase',
+    'line-height': '0.9',
+    color: 'var(--fh-text)',
+  });
+}
+function paintLegend(node, lit = false) {
+  if (!node) return node;
+  if (node.classList && typeof node.classList.add === 'function') node.classList.add('fh-legend');
+  if (typeof node.setAttribute === 'function' && !node.getAttribute('data-fh-lit')) {
+    node.setAttribute('data-fh-lit', lit ? 'on' : 'off');
+  }
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 600, 'wdth' 62",
+    'letter-spacing': 'var(--fh-track-legend)',
+    'text-transform': 'uppercase',
+    'font-size': 'var(--fh-size-fine)',
+    color: lit ? 'var(--fh-legend-lit, var(--fh-legend))' : 'var(--fh-legend-rest, var(--fh-legend))',
+    margin: '0',
+  });
+}
+function paintPlate(node, variant = 'sunk', extra = {}) {
+  if (!node) return node;
+  const file = variant === 'paper' ? 'plate.bench.paper.png'
+    : variant === 'edge' ? 'plate.edge.small.png'
+    : 'plate.bench.sunk.png';
+  const width = variant === 'edge' ? '16px' : '24px';
+  if (node.classList && typeof node.classList.add === 'function') {
+    node.classList.add('fh-plate', variant === 'paper' ? 'fh-plate--paper'
+      : variant === 'edge' ? 'fh-plate--edge' : 'fh-plate--sunk');
+  }
+  if (forcedColorsActive()) {
+    return pin(node, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', ...extra,
+    });
+  }
+  return pin(node, {
+    'border-style': 'solid',
+    'border-width': width,
+    'border-image-source': 'url("' + fhUrl('plates/' + file) + '")',
+    'border-image-slice': (variant === 'edge' ? '16' : '24') + ' fill',
+    'border-image-repeat': 'stretch',
+    'border-image-width': width,
+    background: 'transparent',
+    'box-sizing': 'border-box',
+    padding: '10px 14px',
+    ...(variant === 'paper' ? { color: '#22201C' } : {}),
+    ...extra,
+  });
+}
+function paintInput(input) {
+  if (!input) return input;
+  if (input.classList && typeof input.classList.add === 'function') input.classList.add('fh-input');
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(input, { 'border-image-source': 'none', 'border-bottom': '1px solid CanvasText', background: 'transparent' });
+      return;
+    }
+    pin(input, {
+      'border-style': 'solid',
+      'border-width': '12px',
+      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
+      'border-image-slice': '12 fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': '12px',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'min-height': '40px',
+      padding: '0 8px',
+      'box-sizing': 'border-box',
+    });
+  };
+  apply('rest');
+  if (input.dataset && input.dataset.fhBound !== '1') {
+    input.dataset.fhBound = '1';
+    input.addEventListener('focus', () => apply('focus'));
+    input.addEventListener('blur', () => apply('rest'));
+  }
+  return input;
+}
+function paintKey(button, kind = 'legend') {
+  if (!button) return button;
+  const spec = FH_KEY[kind] || FH_KEY.legend;
+  if (button.classList && typeof button.classList.add === 'function') {
+    button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
+  }
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(button, {
+        'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+        background: 'transparent', color: 'CanvasText',
+      });
+      return;
+    }
+    pin(button, {
+      display: 'inline-flex',
+      width: 'max-content',
+      'max-width': '100%',
+      'min-width': spec.minW,
+      'min-height': spec.minH,
+      padding: spec.pad,
+      'font-size': spec.font,
+      'font-family': 'var(--fh-face-display)',
+      'font-variation-settings': "'wght' 600, 'wdth' 62",
+      'letter-spacing': 'var(--fh-track-legend)',
+      'text-transform': 'uppercase',
+      'justify-content': 'center',
+      'align-items': 'center',
+      'box-sizing': 'border-box',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'border-style': 'solid',
+      'border-width': spec.width,
+      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
+      'border-image-slice': parseInt(spec.width, 10) + ' fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': spec.width,
+    });
+  };
+  const sync = () => {
+    const disabled = button.getAttribute && (button.getAttribute('aria-disabled') === 'true' || button.disabled);
+    const lit = button.getAttribute && (
+      button.getAttribute('aria-pressed') === 'true'
+      || button.getAttribute('aria-selected') === 'true'
+      || button.getAttribute('aria-current') === 'true'
+    );
+    apply(disabled ? 'disabled' : (kind === 'legend' && lit ? 'lit' : 'rest'));
+  };
+  button._fhSync = sync;
+  if (!(button.dataset && button.dataset.fhBound === '1')) {
+    if (button.dataset) button.dataset.fhBound = '1';
+    button.addEventListener('pointerenter', () => {
+      if (button.getAttribute && (button.getAttribute('aria-disabled') === 'true' || button.disabled)) return;
+      apply(kind === 'legend' && button.getAttribute && (button.getAttribute('aria-selected') === 'true' || button.getAttribute('aria-current') === 'true') ? 'lit' : 'hover');
+    });
+    button.addEventListener('pointerleave', sync);
+    button.addEventListener('pointerdown', () => {
+      if (button.getAttribute && (button.getAttribute('aria-disabled') === 'true' || button.disabled)) return;
+      apply(kind === 'legend' ? 'hover' : 'pressed');
+    });
+    button.addEventListener('pointerup', sync);
+    button.addEventListener('focus', () => {
+      if (button.getAttribute && (button.getAttribute('aria-disabled') === 'true' || button.disabled)) return;
+      apply('hover');
+    });
+    button.addEventListener('blur', sync);
+  }
+  sync();
+  return button;
+}
+function paintRow(row, selected) {
+  if (!row) return row;
+  if (row.classList && typeof row.classList.add === 'function') {
+    row.classList.add('fh-row');
+    if (typeof row.classList.toggle === 'function') row.classList.toggle('is-selected', !!selected);
+    else if (selected) row.classList.add('is-selected');
+    else if (typeof row.classList.remove === 'function') row.classList.remove('is-selected');
+  }
+  if (selected && !forcedColorsActive()) {
+    return pin(row, {
+      'border-style': 'solid',
+      'border-width': '8px 16px',
+      'border-image-source': 'url("' + fhUrl('plates/plate.row.selected.png') + '")',
+      'border-image-slice': '8 16 8 16 fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': '8px 16px',
+      'box-shadow': 'none',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+    });
+  }
+  return pin(row, {
+    border: '0',
+    'box-shadow': 'none',
+    'background-image': 'url("' + fhUrl('tiles/tile.etch.hairline.png') + '")',
+    'background-repeat': 'repeat-x',
+    'background-position': 'bottom left',
+    'background-color': 'transparent',
+    color: 'var(--fh-text-resting)',
+  });
+}
+function paintTile(button, selected) {
+  if (!button) return button;
+  if (button.classList && typeof button.classList.add === 'function') button.classList.add('fh-tile');
+  const src = selected
+    ? fhUrl('windows/window.viewport.png')
+    : fhUrl('windows/window.glass.png');
+  if (forcedColorsActive()) {
+    return pin(button, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', color: 'CanvasText',
+    });
+  }
+  return pin(button, {
+    display: 'grid',
+    'grid-template-rows': '1fr auto',
+    'min-width': '168px',
+    'min-height': '132px',
+    padding: '0',
+    cursor: 'pointer',
+    'box-sizing': 'border-box',
+    background: 'transparent',
+    color: selected ? 'var(--fh-text)' : 'var(--fh-text-resting)',
+    'border-style': 'solid',
+    'border-width': '20px',
+    'border-image-source': 'url("' + src + '")',
+    'border-image-slice': '20 fill',
+    'border-image-repeat': 'stretch',
+    'border-image-width': '20px',
+  });
+}
 
 /** Honest org → faction id only. Unknown orgs stay plain text — never invent a door. */
 const FIGURE_FACTION = Object.freeze({
@@ -283,7 +519,8 @@ function normalizeSearch(value) {
  * note as the emphasised sentence under a hairline. `signal` marks the filed endgame choice.
  */
 function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', note = '', noteBad = false, signal = false, locked = false, image = null }) {
-  const article = el('article', 'sf-codex-entry');
+  const article = el('article', 'sf-codex-entry fh-plate fh-plate--paper');
+  paintPlate(article, 'paper');
   if (typeof image === 'string' && image) {
     const img = el('img');
     img.src = image;
@@ -291,16 +528,20 @@ function makeEntry({ id, name, sub = '', title = null, meta = null, body = '', n
     img.style.height = '320px';
     article.appendChild(img);
   }
-  const heading = el('h2', 'k-display k-t-title');
+  const heading = el('h2', 'k-display k-t-title fh-title');
+  paintMarking(heading);
+  pin(heading, { color: '#22201C' });
   heading.appendChild(el('span', signal ? 'k-signal' : (locked ? 'k-38' : ''), title != null ? title : name));
   article.appendChild(heading);
   if (meta != null && meta !== '') {
-    const metaEl = el('p', 'k-t-fine k-38');
+    const metaEl = el('p', 'k-t-fine k-38 fh-legend');
+    paintLegend(metaEl, false);
     if (typeof meta === 'string') metaEl.textContent = meta;
     else metaEl.appendChild(meta);
     article.appendChild(metaEl);
   }
-  const measure = el('div', 'k-measure');
+  const measure = el('div', 'k-measure fh-body');
+  pin(measure, { color: '#22201C', 'max-width': '64ch' });
   for (const para of String(body || '').split('\n')) {
     if (para.trim()) measure.appendChild(el('p', 'k-sentence' + (locked ? ' k-38' : ''), para));
   }
@@ -320,15 +561,20 @@ export const codexScreen = {
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-codex');
-    rootEl.classList.add('k-screen');
+    rootEl.classList.add('k-screen', 'of-codex');
     rootEl.dataset.kReady = '0';
     delete rootEl.dataset.stamp;
+    rootEl.setAttribute('data-fh-register', 'bench');
     rootEl.setAttribute('aria-label', 'Codex');
+    pin(rootEl, { background: 'transparent' });
 
     // Title: "Codex" and the live tab's one line.
     const title = el('header', 'k-title');
-    title.appendChild(el('h1', 'k-display k-t-title', 'Codex'));
-    const tabLine = el('p', 'k-t-emph k-62', TAB_LINES[this._activeTab] || '');
+    const heading = el('h1', 'k-display k-t-title', 'Codex');
+    paintMarking(heading);
+    title.appendChild(heading);
+    const tabLine = el('p', 'k-t-emph k-62 fh-legend', TAB_LINES[this._activeTab] || '');
+    paintLegend(tabLine, true);
     title.appendChild(tabLine);
     rootEl.appendChild(title);
     this._tabLine = tabLine;
@@ -338,8 +584,13 @@ export const codexScreen = {
     stage.id = 'sf-codex-stage';
     stage.setAttribute('role', 'tabpanel');
 
-    // The hang: the search, the eight tab words, then the index of entry names.
+    // The hang: the search, the eight section keys, then the index of entry names.
     const hang = el('div', 'k-hang');
+    pin(hang, { position: 'relative', background: 'transparent' });
+    const rail = el('div', 'fh-rail');
+    rail.setAttribute('aria-hidden', 'true');
+    pin(rail, { position: 'absolute', inset: '0 auto 0 0', width: '28px', 'pointer-events': 'none' });
+    hang.appendChild(rail);
     const searchWrap = el('div');
     // `k-input` restates the search field in kit clothes; `sf-codex-search` is the inert hook.
     const search = el('input', 'k-input sf-codex-search');
@@ -351,6 +602,7 @@ export const codexScreen = {
       this._query = search.value || '';
       this._render(ctx);
     });
+    paintInput(search);
     searchWrap.appendChild(search);
     hang.appendChild(searchWrap);
     this._search = search;
@@ -364,6 +616,7 @@ export const codexScreen = {
     });
     bar.classList.add('sf-tabbar');
     bar.setAttribute('role', 'tablist');
+    pin(bar, { gap: '6px', 'align-items': 'stretch', 'flex-wrap': 'wrap' });
     this._tabBtns = {};
     for (const b of bar.querySelectorAll('.k-word')) {
       const t = b.dataset.action;
@@ -372,6 +625,7 @@ export const codexScreen = {
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-controls', stage.id);
       b.parentElement.setAttribute('role', 'presentation');
+      paintKey(b, 'legend');
       this._tabBtns[t] = b;
     }
     hang.appendChild(bar);
@@ -383,10 +637,11 @@ export const codexScreen = {
     this._index = index;
     this._body = stage;
 
-    // Foot: Close as a word; the unlock-status strip in fine print beside it.
+    // Foot: Close as a key; the unlock-status strip in fine print beside it.
     const foot = el('footer', 'k-foot');
     const close = el('button', 'k-word k-word--emph', 'Close');
     close.type = 'button'; close.dataset.action = 'close';
+    paintKey(close, 'primary');
     close.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
     foot.appendChild(close);
     const statusWrap = el('div');
@@ -466,6 +721,7 @@ export const codexScreen = {
       b.setAttribute('aria-current', String(active));
       b.setAttribute('aria-selected', String(active));
       b.tabIndex = active ? 0 : -1;
+      if (typeof b._fhSync === 'function') b._fhSync();
     }
     if (this._tabLine) this._tabLine.textContent = TAB_LINES[this._activeTab] || '';
   },
@@ -520,27 +776,41 @@ export const codexScreen = {
   // and Play as a fine word; Play runs the 6s clip through the UI system's shared cinematic player
   // (ui.playCinematic). No new modal machinery; reuses the existing player.
   _renderArchive() {
-    const article = el('article', 'sf-codex-entry');
-    article.appendChild(el('h2', 'k-display k-t-title', 'Signal Archive'));
-    article.appendChild(el('p', 'k-t-fine k-38', SIGNAL_ARCHIVE.length + ' recovered signals'));
-    article.appendChild(el('p', 'k-sentence', 'Recovered transmission stills from the Reach corridor. Select a signal to replay its clip.'));
-    const row = el('ul', 'k-words k-words--row');
+    const article = el('article', 'sf-codex-entry fh-plate fh-plate--sunk');
+    paintPlate(article, 'sunk');
+    const heading = el('h2', 'k-display k-t-title fh-title', 'Signal Archive');
+    paintMarking(heading);
+    article.appendChild(heading);
+    const count = el('p', 'k-t-fine k-38 fh-legend', SIGNAL_ARCHIVE.length + ' recovered signals');
+    paintLegend(count, false);
+    article.appendChild(count);
+    article.appendChild(el('p', 'k-sentence fh-body', 'Recovered transmission stills from the Reach corridor. Select a signal to replay its clip.'));
+    const row = el('ul', 'k-words k-words--row fh-cluster');
     row.setAttribute('aria-label', 'Signal Archive');
+    pin(row, { gap: '12px', 'align-items': 'stretch' });
     for (const c of SIGNAL_ARCHIVE) {
       const item = el('li');
-      const still = el('div');
+      pin(item, { display: 'flex', 'flex-direction': 'column', gap: '8px' });
+      const still = el('button', 'fh-tile');
+      still.type = 'button';
+      still.setAttribute('aria-label', 'Play signal ' + c.id + ': ' + c.title);
+      paintTile(still, false);
+      const art = el('span', 'fh-tile-art');
       const img = el('img');
       img.src = c.poster;
       img.alt = c.title;
-      img.style.height = '200px';
-      still.appendChild(img);
+      pin(img, { height: '120px', width: '100%', 'object-fit': 'cover' });
+      art.appendChild(img);
+      still.appendChild(art);
+      still.appendChild(el('span', 'fh-tile-legend', c.title));
+      still.addEventListener('click', () => { cue('confirm'); this._playCinematic(c.video, c.title); });
       item.appendChild(still);
-      item.appendChild(el('div', 'k-t-body', c.title));
-      item.appendChild(el('div', 'k-t-fine k-38', c.caption));
+      item.appendChild(el('div', 'k-t-fine k-38 fh-fine', c.caption));
       const play = el('button', 'k-word k-word--fine', 'Play');
       play.type = 'button';
       play.dataset.action = 'play:' + c.id;
       play.setAttribute('aria-label', 'Play signal ' + c.id + ': ' + c.title);
+      paintKey(play, 'small');
       play.addEventListener('click', () => { cue('confirm'); this._playCinematic(c.video, c.title); });
       const verb = el('div');
       verb.appendChild(play);
@@ -630,6 +900,7 @@ export const codexScreen = {
         returnToTethys.type = 'button';
         returnToTethys.dataset.action = 'tethys-return';
         returnToTethys.setAttribute('aria-label', 'Show Tethys Trade Hub on the map');
+        paintKey(returnToTethys, 'primary');
         returnToTethys.addEventListener('click', () => { cue('confirm'); openTethysCodexReturn(ctx, plate); });
         entry.article.appendChild(returnToTethys);
       }
@@ -643,12 +914,14 @@ export const codexScreen = {
     const summary = codexProgressSummary(safeStory(ctx), ctx && ctx.state);
     const box = this._status;
     box.innerHTML = '';
-    box.appendChild(el('div', 'k-caps', 'Codex Unlock Status'));
+    const cap = el('div', 'k-caps fh-legend', 'Codex Unlock Status');
+    paintLegend(cap, true);
+    box.appendChild(cap);
     // "Phase 1" already names its key; every other value is prefixed with its key word.
-    box.appendChild(el('p', 'k-t-fine k-62', summary.items
+    box.appendChild(el('p', 'k-t-fine k-62 fh-fine', summary.items
       .map((item) => (String(item.value).startsWith(item.key) ? item.value : item.key + ' ' + item.value))
       .join(' · ')));
-    box.appendChild(el('p', 'k-t-fine k-38 k-measure', summary.note));
+    box.appendChild(el('p', 'k-t-fine k-38 k-measure fh-body', summary.note));
   },
 
   // The index: a caps row per section and a hairline row per entry that matches the search (the
@@ -681,6 +954,7 @@ export const codexScreen = {
     // row's own name rule outranks the colour classes.
     for (const row of list.querySelectorAll('.k-row')) {
       const entry = visible.find((candidate) => candidate.id === row.dataset.id);
+      paintRow(row, !!(entry && focus && entry.id === focus.id));
       if (!entry || (!entry.signal && !entry.locked)) continue;
       const name = row.querySelector('.k-row__name');
       if (!name) continue;
@@ -697,7 +971,9 @@ export const codexScreen = {
       if (query && !section.entries.length) continue;
       const header = el('li', 'k-row k-row--static');
       header.setAttribute('role', 'presentation');
-      header.appendChild(el('span', 'k-caps', section.label));
+      const cap = el('span', 'k-caps fh-legend', section.label);
+      paintLegend(cap, true);
+      header.appendChild(cap);
       list.appendChild(header);
       if (!section.entries.length) {
         const empty = el('li', 'k-row k-row--static');
@@ -724,7 +1000,11 @@ export const codexScreen = {
     if (!entry) return;
     this._focusByTab[this._activeTab] = id;
     if (this._list) {
-      for (const row of this._list.querySelectorAll('.k-row[data-id]')) row.setAttribute('aria-selected', String(row.dataset.id === id));
+      for (const row of this._list.querySelectorAll('.k-row[data-id]')) {
+        const on = row.dataset.id === id;
+        row.setAttribute('aria-selected', String(on));
+        paintRow(row, on);
+      }
     }
     this._showEntry(entry);
   },

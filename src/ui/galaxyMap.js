@@ -2206,15 +2206,243 @@ const STYLE_ID = 'sf-galaxymap-style';
 /** The scan ring's whole life, in ms — the kit's `--k-d-temp`; a canvas draw cannot read the token. */
 const SCAN_RING_MS = 400;
 
+function kitAsset(rel) {
+  try { return new URL('../../assets/ui/kit/' + rel, import.meta.url).href; }
+  catch { return 'assets/ui/kit/' + rel; }
+}
+function kitIconSrc(name, size = 24) {
+  return kitAsset('icons/' + size + '/icon-' + name + '.svg');
+}
+function kitIconHtml(name, size = 24) {
+  return '<img class="fh-icon" src="' + kitIconSrc(name, size) + '" alt="" width="' + size + '" height="' + size + '">';
+}
+const LAYER_KIT_ICON = Object.freeze({
+  route: 'route', mission: 'missions', market: 'market', events: 'warning',
+  security: 'patrol', faction: 'factions', hazard: 'danger', services: 'station',
+  holdings: 'cargo', discovery: 'scan',
+});
+const SERVICE_KIT_ICON = Object.freeze({
+  trade: 'market', shipyard: 'shipworks', repair: 'repair', refuel: 'fuel',
+  refine: 'industry', missions: 'missions', ore_buy: 'ore', black_market: 'pirate',
+  module_craft: 'module', toll: 'credits', scan: 'scan',
+});
 
+/** Field Hardware BENCH chrome for the chart. Produced kit sprites; layout stays in navigationStyles. */
+const CHART_HARDWARE = `
+#sf-galaxymap.of-chart {
+  font-family: var(--fh-face-text, var(--k-text));
+  color: var(--fh-text, var(--k-text-live));
+}
+#sf-galaxymap.of-chart .k-word::after { display: none !important; background: none !important; }
+#sf-galaxymap.of-chart .gm-title {
+  font-family: var(--fh-face-display, var(--k-display)) !important;
+  font-variation-settings: 'wght' 900, 'wdth' 125 !important;
+  letter-spacing: var(--fh-track-display, 0.02em) !important;
+  text-transform: uppercase !important;
+  line-height: 0.9 !important;
+  font-size: clamp(40px, 5vw, 96px) !important;
+  color: var(--fh-text, var(--k-bone)) !important;
+}
+#sf-galaxymap.of-chart .gm-stamp,
+#sf-galaxymap.of-chart .gm-level,
+#sf-galaxymap.of-chart .k-caps,
+#sf-galaxymap.of-chart .gm-rail-sum,
+#sf-galaxymap.of-chart .gm-rail-sum-t,
+#sf-galaxymap.of-chart .gm-deck-title,
+#sf-galaxymap.of-chart .gm-hints-title,
+#sf-galaxymap.of-chart .gm-layer-bank-title {
+  font-family: var(--fh-face-display, var(--k-display)) !important;
+  font-variation-settings: 'wght' 600, 'wdth' 62 !important;
+  letter-spacing: var(--fh-track-legend, 0.06em) !important;
+  text-transform: uppercase !important;
+  font-size: var(--fh-size-fine, 12px) !important;
+  color: color-mix(in srgb, var(--fh-legend, var(--k-gold)) 45%, transparent) !important;
+}
+#sf-galaxymap.of-chart .gm-left-rail,
+#sf-galaxymap.of-chart .gm-right-inspector,
+#sf-galaxymap.of-chart .gm-deck,
+#sf-galaxymap.of-chart .gm-hints,
+#sf-galaxymap.of-chart .gm-search-results {
+  border-style: solid;
+  border-width: 16px;
+  border-image-source: url("assets/ui/kit/assets/plates/plate.edge.small.png");
+  border-image-slice: 16 fill;
+  border-image-repeat: stretch;
+  border-image-width: 16px;
+  background: transparent;
+  box-sizing: border-box;
+}
+#sf-galaxymap.of-chart .gm-search-input {
+  border-style: solid !important;
+  border-width: 12px !important;
+  border-image-source: url("assets/ui/kit/assets/controls/input.underline.rest.png");
+  border-image-slice: 12 fill;
+  border-image-repeat: stretch;
+  border-image-width: 12px;
+  background: transparent !important;
+  color: var(--fh-text, var(--k-bone)) !important;
+  font-family: var(--fh-face-text, var(--k-text)) !important;
+  min-height: 36px;
+}
+#sf-galaxymap.of-chart .gm-search-input:focus {
+  border-image-source: url("assets/ui/kit/assets/controls/input.underline.focus.png");
+}
+#sf-galaxymap.of-chart .gm-scale-btn,
+#sf-galaxymap.of-chart .gm-tab,
+#sf-galaxymap.of-chart .gm-layer-btn,
+#sf-galaxymap.of-chart .gm-ins-btn,
+#sf-galaxymap.of-chart .gm-place-btn,
+#sf-galaxymap.of-chart .gm-ribbon-btn,
+#sf-galaxymap.of-chart .gm-deck-sort,
+#sf-galaxymap.of-chart .gm-close,
+#sf-galaxymap.of-chart .gm-hint-btn {
+  all: unset;
+  box-sizing: border-box;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  border-style: solid;
+  border-width: 12px;
+  border-image-source: url("assets/ui/kit/assets/keys/key.small.rest.png");
+  border-image-slice: 12 fill;
+  border-image-repeat: stretch;
+  border-image-width: 12px;
+  background: transparent;
+  color: var(--fh-text, var(--k-bone));
+  font-family: var(--fh-face-display, var(--k-display));
+  font-variation-settings: 'wght' 600, 'wdth' 62;
+  letter-spacing: var(--fh-track-legend, 0.06em);
+  text-transform: uppercase;
+  font-size: var(--fh-size-fine, 12px);
+  min-height: 32px;
+  min-width: 72px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+#sf-galaxymap.of-chart .gm-scale-btn,
+#sf-galaxymap.of-chart .gm-tab,
+#sf-galaxymap.of-chart .gm-layer-btn {
+  border-width: 14px;
+  border-image-source: url("assets/ui/kit/assets/keys/key.legend.rest.png");
+  border-image-slice: 14 fill;
+  border-image-width: 14px;
+  justify-content: flex-start;
+  min-height: 36px;
+  color: var(--fh-text-resting, var(--k-bone-62));
+}
+#sf-galaxymap.of-chart .gm-scale-btn:hover,
+#sf-galaxymap.of-chart .gm-tab:hover,
+#sf-galaxymap.of-chart .gm-layer-btn:hover,
+#sf-galaxymap.of-chart .gm-hint-btn:hover,
+#sf-galaxymap.of-chart .gm-close:hover,
+#sf-galaxymap.of-chart .gm-place-btn:hover,
+#sf-galaxymap.of-chart .gm-ribbon-btn:hover,
+#sf-galaxymap.of-chart .gm-deck-sort:hover,
+#sf-galaxymap.of-chart .gm-ins-btn:hover {
+  border-image-source: url("assets/ui/kit/assets/keys/key.small.hover.png");
+  color: var(--fh-text, var(--k-bone));
+}
+#sf-galaxymap.of-chart .gm-scale-btn:hover,
+#sf-galaxymap.of-chart .gm-tab:hover,
+#sf-galaxymap.of-chart .gm-layer-btn:hover {
+  border-image-source: url("assets/ui/kit/assets/keys/key.legend.hover.png");
+}
+#sf-galaxymap.of-chart .gm-scale-btn[aria-pressed="true"],
+#sf-galaxymap.of-chart .gm-scale-btn.is-current,
+#sf-galaxymap.of-chart .gm-tab[aria-selected="true"],
+#sf-galaxymap.of-chart .gm-layer-btn[aria-pressed="true"],
+#sf-galaxymap.of-chart .gm-layer-btn.active {
+  border-image-source: url("assets/ui/kit/assets/keys/key.legend.lit.png");
+  color: var(--fh-text, var(--k-bone));
+}
+#sf-galaxymap.of-chart .gm-plot-btn,
+#sf-galaxymap.of-chart #gm-plot-course-btn,
+#sf-galaxymap.of-chart #gm-engage-route-btn {
+  border-width: 18px;
+  border-image-source: url("assets/ui/kit/assets/keys/key.primary.rest.png");
+  border-image-slice: 18 fill;
+  border-image-width: 18px;
+  min-height: 44px;
+  min-width: 120px;
+}
+#sf-galaxymap.of-chart .gm-plot-btn:hover,
+#sf-galaxymap.of-chart #gm-plot-course-btn:hover,
+#sf-galaxymap.of-chart #gm-engage-route-btn:hover {
+  border-image-source: url("assets/ui/kit/assets/keys/key.primary.hover.png");
+}
+#sf-galaxymap.of-chart .gm-ins-btn[aria-disabled="true"],
+#sf-galaxymap.of-chart .gm-place-btn[aria-disabled="true"],
+#sf-galaxymap.of-chart .gm-ribbon-btn[aria-disabled="true"],
+#sf-galaxymap.of-chart .gm-ins-btn:disabled {
+  border-image-source: url("assets/ui/kit/assets/keys/key.small.disabled.png");
+  color: var(--fh-text-tertiary, var(--k-bone-38));
+  cursor: default;
+}
+#sf-galaxymap.of-chart .gm-layer-ico,
+#sf-galaxymap.of-chart .gm-legend-ico {
+  display: inline-flex !important;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  color: var(--fh-text-resting, var(--k-bone-62));
+}
+#sf-galaxymap.of-chart .gm-layer-ico img,
+#sf-galaxymap.of-chart .gm-legend-ico img {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+#sf-galaxymap.of-chart .gm-layer-btn {
+  gap: 8px;
+}
+#sf-galaxymap.of-chart .gm-rail-sec {
+  border-top: 0 !important;
+  border-bottom: 0 !important;
+}
+#sf-galaxymap.of-chart .gm-legend-row,
+#sf-galaxymap.of-chart .gm-hint-row,
+#sf-galaxymap.of-chart .gm-search-item {
+  background-image: url("assets/ui/kit/assets/tiles/tile.etch.hairline.png");
+  background-repeat: repeat-x;
+  background-position: bottom left;
+  border: 0;
+  box-shadow: none;
+}
+@media (forced-colors: active) {
+  #sf-galaxymap.of-chart .gm-left-rail,
+  #sf-galaxymap.of-chart .gm-right-inspector,
+  #sf-galaxymap.of-chart .gm-deck,
+  #sf-galaxymap.of-chart .gm-hints,
+  #sf-galaxymap.of-chart .gm-search-results,
+  #sf-galaxymap.of-chart .gm-scale-btn,
+  #sf-galaxymap.of-chart .gm-tab,
+  #sf-galaxymap.of-chart .gm-layer-btn,
+  #sf-galaxymap.of-chart .gm-ins-btn,
+  #sf-galaxymap.of-chart .gm-place-btn,
+  #sf-galaxymap.of-chart .gm-ribbon-btn,
+  #sf-galaxymap.of-chart .gm-deck-sort,
+  #sf-galaxymap.of-chart .gm-close,
+  #sf-galaxymap.of-chart .gm-hint-btn,
+  #sf-galaxymap.of-chart .gm-search-input {
+    border: 1px solid CanvasText !important;
+    border-image: none !important;
+    background: Canvas !important;
+    color: CanvasText !important;
+  }
+}
+`;
 
 let _styleInjected = false;
 function injectStyle() {
   if (!HAS_DOC || _styleInjected || document.getElementById(STYLE_ID)) { _styleInjected = true; return; }
   const el = document.createElement('style');
   el.id = STYLE_ID;
-  el.textContent = CSS;
-  document.head.appendChild(el);
+  el.textContent = CSS + '\n' + CHART_HARDWARE;
+  if (document.head && typeof document.head.appendChild === 'function') document.head.appendChild(el);
   _styleInjected = true;
 }
 
@@ -3488,15 +3716,16 @@ export const galaxyMapScreen = {
     // chart's own `.gm-*` layout rules (the permitted canvas-instrument block) place its regions.
     // Guarded: headless fixtures hand in roots without classList/dataset.
     if (rootEl.classList && typeof rootEl.classList.add === 'function') {
-      rootEl.classList.add('k-screen', 'k-screen--stage');
+      rootEl.classList.add('k-screen', 'k-screen--stage', 'of-chart');
     }
+    if (typeof rootEl.setAttribute === 'function') rootEl.setAttribute('data-fh-register', 'bench');
     if (rootEl.dataset) rootEl.dataset.kReady = '0';
     if (rootEl.style && typeof rootEl.style.setProperty === 'function') {
       rootEl.style.setProperty('--gm-apron-h', 'clamp(168px, 26vh, 232px)');
     }
     const layerButtonById = new Map(LAYER_DEFS.map((layer) => [layer.id, `
-            <button class="gm-layer-btn k-word k-word--body${this._layers[layer.id] ? ' active' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
-              <span class="gm-layer-ico" aria-hidden="true">${strokeSvg(layer.icon)}</span>
+            <button class="gm-layer-btn k-word k-word--body fh-key fh-key--legend${this._layers[layer.id] ? ' active is-lit' : ''}" type="button" data-layer="${layer.id}" aria-pressed="${this._layers[layer.id] ? 'true' : 'false'}">
+              <span class="gm-layer-ico" aria-hidden="true">${kitIconHtml(LAYER_KIT_ICON[layer.id] || 'scan')}</span>
               <span class="gm-layer-name">${layer.name}</span>
               <span class="gm-layer-state" aria-hidden="true"></span>
             </button>`]));
@@ -3506,12 +3735,12 @@ export const galaxyMapScreen = {
                 ${bank.layers.map((layerId) => layerButtonById.get(layerId) || '').join('')}
               </div>`).join('');
     const legendHtml = LEGEND_SERVICES.map((svc) => `
-            <div class="gm-legend-row k-row k-row--static">
-              <span class="gm-legend-ico" aria-hidden="true">${serviceIconSvg(svc)}</span>
+            <div class="gm-legend-row k-row k-row--static fh-row">
+              <span class="gm-legend-ico" aria-hidden="true">${kitIconHtml(SERVICE_KIT_ICON[svc] || 'station')}</span>
               <span>${svc === 'ore_buy' ? 'Ore buy' : svc[0].toUpperCase() + svc.slice(1)}</span>
             </div>`).join('');
     const markLegendHtml = LEGEND_MARKS.map((mark) => `
-            <div class="gm-legend-row k-row k-row--static">
+            <div class="gm-legend-row k-row k-row--static fh-row">
               <span class="gm-legend-ico gm-legend-ico--mark" aria-hidden="true">${mark.svg}</span>
               <span>${mark.name}</span>
             </div>`).join('');
@@ -5440,7 +5669,7 @@ export const galaxyMapScreen = {
       const plot = resolveGalaxyMapPlotAction(state, t);
       acts.unshift({ id: 'plot', label: 'Plot course', available: plot.available, reason: plot.reason });
     }
-    const html = acts.map((a) => `<button class="gm-place-btn" type="button" data-place-action="${a.id}"
+    const html = acts.map((a) => `<button class="gm-place-btn fh-key fh-key--small" type="button" data-place-action="${a.id}"
       ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}" data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`).join('');
     if (this._lastPlaceActionsHtml !== html) {
       host.innerHTML = html;
@@ -5508,7 +5737,7 @@ export const galaxyMapScreen = {
 
     if (!this._tabButtons.length) {
       host.innerHTML = MAP_INSPECTOR_TABS.map((tab) => `
-        <button class="gm-tab k-word k-word--fine" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
+        <button class="gm-tab k-word k-word--fine fh-key fh-key--legend" type="button" role="tab" id="gm-tab-${tab.id}" data-tab="${tab.id}"
                 aria-controls="gm-tabpanel" aria-selected="false" tabindex="-1">${tab.label}</button>`).join('');
       this._tabButtons = Array.from(host.querySelectorAll('.gm-tab'));
       for (const btn of this._tabButtons) {
@@ -5888,7 +6117,7 @@ export const galaxyMapScreen = {
         actionsEl.innerHTML = RIBBON_ACTION_IDS.map((id) => {
           const a = ribbon.actions[id];
           if (!a) return '';
-          return `<button class="gm-ribbon-btn k-word k-word--body" type="button" data-ribbon-action="${a.id}"
+          return `<button class="gm-ribbon-btn k-word k-word--body fh-key fh-key--small" type="button" data-ribbon-action="${a.id}"
             ${a.available ? '' : 'tabindex="0"'} aria-disabled="${!a.available}"
             data-why="${escapeMapHtml(a.reason)}">${escapeMapHtml(a.label)}</button>`;
         }).join('');
