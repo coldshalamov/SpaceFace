@@ -24,12 +24,12 @@ import { canvasFont } from '../canvasFonts.js';
 import { el, words, rows, hero, settle, cue } from '../kit/index.js';
 import { drawTeachingOverlay, planTeachingOverlay, TEACHING_OVERLAY_SURFACES } from '../teachingOverlay.js';
 
-// THE RANGE (F4). The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, the instruments):
-// the drill box on the sky; the teaching voice as one sentence at emphasis size; the rung's name at
-// screen-title size; the score as a tabular number. Four rungs, four words. Built on the frontend
-// kit (styles/kit.css, src/ui/kit/). A canvas instrument keeps ONE local style block (KIT_SPEC §12):
-// the seven canvas grammar roles as kit tokens, the drill box's fill of the stage, the stage-right
-// column. Every other size, face and colour is a kit class.
+// THE RANGE (F4). Field Hardware EDGE: the drill box on the sky; the teaching voice as one
+// sentence; the rung's name as a hull marking; the score as a quiet number; verbs and rungs as
+// kit keys. Range is the verb door (design/HUD_FLIGHT_ATTENTION.md) — one instruction, no
+// on-screen key laundry; binds live in Help. A canvas instrument keeps ONE local style block
+// (KIT_SPEC §12): the seven canvas grammar roles as kit tokens, the drill box's fill of the
+// stage, the stage-right column. Every other size, face and colour is a kit class.
 const STYLE_ID = 'sf-range-style';
 
 // Canvas 2D cannot resolve CSS variables. Same seven grammar hexes as localmap / drill / starmap.
@@ -89,11 +89,14 @@ html:has(> body[data-k-screen="range"]) {
 #sf-range .sf-range__canvas { display: block; width: 100%; height: 100%; background: transparent; box-shadow: none; }
 #sf-range .sf-range__beam { position: absolute; inset: 0; pointer-events: none; }
 #sf-range .sf-range__drawer { position: absolute; top: 0; right: 0; bottom: 0; width: var(--k-hang); box-sizing: border-box;
-  padding-left: var(--k-gap); border-left: 1px solid var(--k-hair); display: flex; flex-direction: column; gap: var(--k-gap);
+  display: flex; flex-direction: column; gap: var(--k-gap);
   overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
 #sf-range .sf-range__drawer[hidden] { display: none; }
 #sf-range .sf-range__pane { display: flex; flex-direction: column; gap: var(--k-pad); }
 #sf-range .sf-range__pane[hidden] { display: none; }
+#sf-range .k-word::after { display: none; }
+#sf-range .k-words--row { gap: calc(8px * var(--k-s)); align-items: center; }
+#sf-range .k-row { box-shadow: none; }
 `;
 
 function injectStyle() {
@@ -103,6 +106,163 @@ function injectStyle() {
   el.id = STYLE_ID;
   el.textContent = CSS;
   document.head.appendChild(el);
+}
+
+const FH_KEY = {
+  primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 15px', typeSize: '15px' },
+  legend: { file: 'key.legend', width: '14px', minW: '72px', minH: '32px', pad: '0 10px', typeSize: '12px' },
+  small: { file: 'key.small', width: '12px', minW: '56px', minH: '28px', pad: '0 8px', typeSize: '12px' },
+};
+const FH_PLATE = {
+  sunk: { file: 'plate.bench.sunk.png', width: '24px', slice: '24 fill' },
+  edge: { file: 'plate.edge.small.png', width: '16px', slice: '16 fill' },
+};
+
+function fhUrl(rel) {
+  return new URL(`../../../assets/ui/kit/assets/${rel}`, import.meta.url).href;
+}
+function forcedColorsActive() {
+  return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
+}
+function pin(node, props) {
+  if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
+  for (const name of Object.keys(props)) node.style.setProperty(name, props[name], 'important');
+  return node;
+}
+function paintMarking(node) {
+  if (!node) return node;
+  node.classList.add('fh-title');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 900, 'wdth' 125",
+    'letter-spacing': 'var(--fh-track-display)',
+    'text-transform': 'uppercase',
+    'line-height': '0.9',
+    color: 'var(--fh-text)',
+  });
+}
+function paintLegend(node, lit = false) {
+  if (!node) return node;
+  node.classList.add('fh-legend');
+  if (!node.getAttribute('data-fh-lit')) node.setAttribute('data-fh-lit', lit ? 'on' : 'off');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 600, 'wdth' 62",
+    'letter-spacing': 'var(--fh-track-legend)',
+    'text-transform': 'uppercase',
+    'font-size': 'var(--fh-size-fine)',
+    color: lit ? 'var(--fh-legend-lit)' : 'var(--fh-legend-rest)',
+    margin: '0',
+  });
+}
+function paintPlate(node, variant = 'sunk', extra = {}) {
+  if (!node) return node;
+  const spec = FH_PLATE[variant] || FH_PLATE.sunk;
+  node.classList.add('fh-plate', variant === 'edge' ? 'fh-plate--edge' : 'fh-plate--sunk');
+  if (forcedColorsActive()) {
+    return pin(node, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', ...extra,
+    });
+  }
+  return pin(node, {
+    'border-style': 'solid',
+    'border-width': spec.width,
+    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
+    'border-image-slice': spec.slice,
+    'border-image-repeat': 'stretch',
+    'border-image-width': spec.width,
+    background: 'transparent',
+    'box-sizing': 'border-box',
+    padding: '10px 14px',
+    ...extra,
+  });
+}
+function paintKey(button, kind = 'legend') {
+  if (!button) return button;
+  const spec = FH_KEY[kind] || FH_KEY.legend;
+  button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
+  const apply = (state) => {
+    if (forcedColorsActive() || (typeof window !== 'undefined' && window.matchMedia
+      && window.matchMedia('(forced-colors: active)').matches)) {
+      pin(button, {
+        'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+        background: 'transparent', color: 'CanvasText',
+      });
+      return;
+    }
+    pin(button, {
+      display: 'inline-flex',
+      width: 'max-content',
+      'max-width': '100%',
+      'min-width': spec.minW,
+      'min-height': spec.minH,
+      padding: spec.pad,
+      'font-size': spec.typeSize,
+      'font-family': 'var(--fh-face-display)',
+      'font-variation-settings': "'wght' 600, 'wdth' 62",
+      'letter-spacing': 'var(--fh-track-legend)',
+      'text-transform': 'uppercase',
+      'justify-content': 'center',
+      'align-items': 'center',
+      'box-sizing': 'border-box',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'border-style': 'solid',
+      'border-width': spec.width,
+      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
+      'border-image-slice': parseInt(spec.width, 10) + ' fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': spec.width,
+    });
+  };
+  const sync = () => {
+    const disabled = button.getAttribute('aria-disabled') === 'true' || button.disabled;
+    const lit = button.getAttribute('aria-pressed') === 'true'
+      || button.getAttribute('aria-selected') === 'true'
+      || button.getAttribute('aria-current') === 'true';
+    apply(disabled ? 'disabled' : (kind === 'legend' && lit ? 'lit' : 'rest'));
+  };
+  button._fhSync = sync;
+  if (button.dataset && button.dataset.fhBound !== '1') {
+    if (button.dataset) button.dataset.fhBound = '1';
+    button.addEventListener('pointerenter', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' && (button.getAttribute('aria-current') === 'true' || button.getAttribute('aria-pressed') === 'true') ? 'lit' : 'hover');
+    });
+    button.addEventListener('pointerleave', sync);
+    button.addEventListener('pointerdown', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' ? 'hover' : 'pressed');
+    });
+    button.addEventListener('pointerup', sync);
+    button.addEventListener('focus', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply('hover');
+    });
+    button.addEventListener('blur', sync);
+  }
+  sync();
+  return button;
+}
+function paintRow(row) {
+  if (!row) return row;
+  row.classList.add('fh-row');
+  return pin(row, {
+    border: '0',
+    'box-shadow': 'none',
+    'background-image': 'url("' + fhUrl('tiles/tile.etch.hairline.png') + '")',
+    'background-repeat': 'repeat-x',
+    'background-position': 'top left',
+    'background-color': 'transparent',
+    color: 'var(--fh-text-resting)',
+  });
+}
+function syncKeys(root) {
+  if (!root || !root.querySelectorAll) return;
+  for (const button of root.querySelectorAll('.fh-key')) {
+    if (typeof button._fhSync === 'function') button._fhSync();
+  }
 }
 
 const STEP_S = 1 / 60;
@@ -1254,19 +1414,26 @@ export const rangeScreen = {
     rootEl.id = 'sf-range';
     rootEl.innerHTML = '';
     rootEl.classList.remove('sf-range', 'panel', 'sf-menu');
-    rootEl.classList.add('k-screen', 'k-screen--stage');
+    rootEl.classList.add('k-screen', 'k-screen--stage', 'of-range');
     rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('data-fh-register', 'edge');
+    rootEl.setAttribute('aria-label', 'The Range');
+    pin(rootEl, { background: 'transparent' });
 
-    // .k-title — the rung's rule at screen-title size, the instruction as the teaching voice at
-    // emphasis size, the verdict line beneath (k-good / k-bad), then the rung's verbs as words.
+    // .k-title — the rung's rule as a hull marking, the instruction as the teaching voice,
+    // the verdict line beneath (k-good / k-bad), then the rung's verbs as kit keys.
     const title = el('header', 'k-title');
+    pin(title, { 'border-bottom': '0' });
     const rule = el('h1', 'k-display k-t-title sf-range__rule');
     rule.setAttribute('data-range-rule', '');
-    const instruction = el('p', 'k-sentence k-sentence--emph');
+    paintMarking(rule);
+    const instruction = el('p', 'k-sentence k-sentence--emph fh-emphasis');
     instruction.setAttribute('data-range-instruction', '');
-    const verdict = el('p', 'k-sentence');
+    pin(instruction, { color: 'var(--fh-text)', margin: '8px 0 0' });
+    const verdict = el('p', 'k-sentence fh-body');
     verdict.setAttribute('data-range-verdict', '');
     verdict.setAttribute('aria-live', 'polite');
+    pin(verdict, { color: 'var(--fh-text-resting)', margin: '6px 0 0' });
     title.appendChild(rule);
     title.appendChild(instruction);
     title.appendChild(verdict);
@@ -1274,21 +1441,34 @@ export const rangeScreen = {
       { action: 'again', label: 'Again' },
       { action: 'contrast', label: 'Try the contrast' },
       { action: 'next', label: 'Next rule' },
-      { action: 'return', label: 'Return to the ship' },
+      { action: 'return', label: 'Return to the ship', primary: true },
     ], { row: true, size: 'emph', ariaLabel: 'Range verbs', onPick: (action) => this._onVerb(action) });
+    verbs.classList.add('sf-range__verbs');
+    pin(verbs, { margin: '12px 0 0' });
     for (const button of verbs.querySelectorAll('.k-word')) {
       button.setAttribute('data-range-action', button.dataset.action);
+      const action = button.dataset.action;
+      paintKey(button, action === 'return' ? 'primary' : action === 'next' ? 'legend' : 'small');
     }
     title.appendChild(verbs);
     rootEl.appendChild(title);
 
-    // .k-corner — the score: cleared count over the rail as a hero number, gate progress in fine print.
+    // .k-corner — the score as a quiet number, no plate around two figures.
     const corner = el('div', 'k-corner');
     const score = hero('0 / ' + RAIL_ROWS.length, 'cleared');
     const cleared = score.querySelector('.k-hero__n');
     cleared.setAttribute('data-range-cleared', '');
-    const progress = el('p', 'k-t-fine k-38');
+    cleared.classList.add('fh-heronum');
+    pin(cleared, {
+      'font-family': 'var(--fh-face-display)',
+      'font-variation-settings': "'wght' 800, 'wdth' 125",
+      color: 'var(--fh-text)',
+    });
+    const scoreWord = score.querySelector('.k-hero__w');
+    if (scoreWord) paintLegend(scoreWord);
+    const progress = el('p', 'k-t-fine k-38 sf-range__progress sf-fig fh-legend');
     progress.setAttribute('data-range-progress', '');
+    paintLegend(progress);
     corner.appendChild(score);
     corner.appendChild(progress);
     rootEl.appendChild(corner);
@@ -1308,21 +1488,26 @@ export const rangeScreen = {
     box.appendChild(beamMount);
     stage.appendChild(box);
 
-    const drawer = el('aside', 'sf-range__drawer');
+    const drawer = el('aside', 'sf-range__drawer fh-plate fh-plate--sunk');
     drawer.setAttribute('data-range-drawer', '');
     drawer.setAttribute('role', 'region');
     drawer.setAttribute('aria-label', 'Range drawers');
     drawer.hidden = true;
+    paintPlate(drawer, 'sunk');
     const rulesPane = el('section', 'sf-range__pane');
     rulesPane.setAttribute('data-range-pane', 'rules');
-    rulesPane.appendChild(el('h2', 'k-caps', 'Rule rail'));
+    const rulesHead = el('h2', 'k-caps', 'Rule rail');
+    paintLegend(rulesHead, true);
+    rulesPane.appendChild(rulesHead);
     const rail = el('div');
     rail.setAttribute('data-range-rail', '');
     rulesPane.appendChild(rail);
     const bestiaryPane = el('section', 'sf-range__pane');
     bestiaryPane.setAttribute('data-range-pane', 'bestiary');
     bestiaryPane.hidden = true;
-    bestiaryPane.appendChild(el('h2', 'k-caps', 'Bestiary'));
+    const bestiaryHead = el('h2', 'k-caps', 'Bestiary');
+    paintLegend(bestiaryHead, true);
+    bestiaryPane.appendChild(bestiaryHead);
     const bestiary = el('div');
     bestiary.setAttribute('data-range-bestiary', '');
     bestiaryPane.appendChild(bestiary);
@@ -1330,20 +1515,22 @@ export const rangeScreen = {
     drawer.appendChild(bestiaryPane);
     stage.appendChild(drawer);
 
-    const empty = el('section');
+    const empty = el('section', 'fh-plate fh-plate--sunk');
     empty.setAttribute('data-range-empty', '');
     empty.hidden = true;
-    empty.appendChild(el('p', 'k-empty', 'No range subject is staged.'));
-    empty.appendChild(el('p', 'k-sentence', 'The range loads your active ship. Open THE SHIP and use Take it to the range, or return to the ship now.'));
+    paintPlate(empty, 'sunk', { 'max-width': '42ch', margin: 'auto' });
+    empty.appendChild(el('p', 'k-empty fh-emphasis', 'No range subject is staged.'));
+    empty.appendChild(el('p', 'k-sentence fh-body', 'The range loads your active ship. Open THE SHIP and use Take it to the range, or return to the ship now.'));
     const emptyReturn = el('button', 'k-word k-word--emph k-word--primary', 'Return to the ship');
     emptyReturn.type = 'button';
     emptyReturn.setAttribute('data-range-empty-return', '');
+    paintKey(emptyReturn, 'primary');
     empty.appendChild(emptyReturn);
     stage.appendChild(empty);
     rootEl.appendChild(stage);
 
-    // .k-foot — the rungs as a row of words (the live one aria-current; a cleared one carries a ✓ in
-    // good fine print), then Rules / Bestiary / Close as body words that open the stage-right column.
+    // .k-foot — the rungs as a row of keys (the live one lit; a cleared one carries a ✓ in
+    // good fine print), then Rules / Bestiary / Close as small keys that open the stage-right plate.
     const foot = el('footer', 'k-foot');
     const rungWords = words(RAIL_ROWS.map((row) => ({ action: 'rung:' + row.id, label: sentenceCase(row.rule) })), {
       row: true,
@@ -1356,9 +1543,11 @@ export const rangeScreen = {
         this._setRung(index, null, []);
       },
     });
+    pin(foot, { 'border-top': '0', 'flex-wrap': 'wrap' });
     for (const button of rungWords.querySelectorAll('.k-word')) {
       button.setAttribute('data-rung-id', button.dataset.action.slice('rung:'.length));
       button.setAttribute('data-state', 'new');
+      paintKey(button, 'legend');
       const check = el('span', 'k-t-fine k-good', ' ✓');
       check.setAttribute('data-range-check', '');
       check.setAttribute('aria-label', 'cleared');
@@ -1387,9 +1576,11 @@ export const rangeScreen = {
       if (which === 'close') {
         closeDrawer = button;
         button.setAttribute('data-range-drawer-close', '');
+        paintKey(button, 'small');
       } else {
         button.setAttribute('data-drawer-tab', which);
         button.setAttribute('aria-pressed', 'false');
+        paintKey(button, 'small');
         drawerTabs.push(button);
       }
     }
@@ -1448,7 +1639,9 @@ export const rangeScreen = {
       grouped.get(row.group).push(row);
     }
     for (const [group, groupRows] of grouped) {
-      rail.appendChild(el('div', 'k-caps', group));
+      const head = el('div', 'k-caps', group);
+      paintLegend(head);
+      rail.appendChild(head);
       const list = rows(groupRows.map((row) => ({ id: row.id, name: sentenceCase(row.rule), sub: 'New' })), {
         ariaLabel: group + ' rungs',
         onPick: (id) => {
@@ -1458,6 +1651,7 @@ export const rangeScreen = {
           this._setRung(index, null, []);
         },
       });
+      for (const row of list.querySelectorAll('.k-row')) paintRow(row);
       this._els.railRows.push(...list.querySelectorAll('.k-row'));
       rail.appendChild(list);
     }
@@ -1735,6 +1929,7 @@ export const rangeScreen = {
     this._els.drawerTabs.forEach((tab) => {
       tab.setAttribute('aria-pressed', String(tab.getAttribute('data-drawer-tab') === which));
     });
+    syncKeys(this._els.foot);
     this._els.drawerPanes.forEach((section) => {
       section.hidden = section.getAttribute('data-range-pane') !== which;
     });
@@ -1745,6 +1940,7 @@ export const rangeScreen = {
     this._els.drawer.hidden = true;
     this._els.drawer.classList.remove('is-open');
     this._els.drawerTabs.forEach((tab) => tab.setAttribute('aria-pressed', 'false'));
+    syncKeys(this._els.foot);
     this._refit();
   },
 
@@ -2169,6 +2365,7 @@ export const rangeScreen = {
     if (contrastButton) {
       const label = this._contrastLabel(sim);
       if (contrastButton.textContent !== label) contrastButton.textContent = label;
+      if (typeof contrastButton._fhSync === 'function') contrastButton._fhSync();
     }
   },
 
@@ -2235,12 +2432,15 @@ export const rangeScreen = {
       else button.removeAttribute('aria-current');
       const check = button.parentElement ? button.parentElement.querySelector('[data-range-check]') : null;
       if (check) check.hidden = state !== 'cleared';
+      if (typeof button._fhSync === 'function') button._fhSync();
     }
     for (const row of this._els.railRows) {
       const id = row.dataset.id;
       const state = stateOf(id);
+      const selected = !!(this._sim && this._sim.id === id);
       row.setAttribute('data-state', state);
-      row.setAttribute('aria-selected', String(!!(this._sim && this._sim.id === id)));
+      row.setAttribute('aria-selected', String(selected));
+      row.classList.toggle('is-selected', selected);
       const sub = row.querySelector('.k-row__sub');
       if (sub) {
         const label = sentenceCase(state);
@@ -2278,8 +2478,9 @@ export const rangeScreen = {
     list.style.setProperty('--k-row-cols', 'auto minmax(0, 1fr)');
     for (const [label, value] of facts) {
       const row = el('li', 'k-row k-row--static');
-      row.appendChild(el('span', 'k-row__sub', label));
-      row.appendChild(el('span', 'k-row__name', value));
+      row.appendChild(el('span', 'k-row__sub fh-fine', label));
+      row.appendChild(el('span', 'k-row__name fh-emphasis', value));
+      paintRow(row);
       list.appendChild(row);
     }
     this._els.bestiary.replaceChildren(list);

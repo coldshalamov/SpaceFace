@@ -1,14 +1,11 @@
 // Help / codex screen (ARCHITECTURE §5.6; design/specs/09).
-// Tabbed reference: Controls, Loops, Ships, Commodities, Ores, Factions.
-// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, help): the controls as hairline
-// rows of action and key; the current profile named; nothing else. Built on the frontend kit
-// (styles/kit.css, src/ui/kit/); this file owns no CSS. The six tab words hang from the left; the
-// chosen tab's reading fills the stage — Controls as static rows (action · key), Loops as sentences,
-// Ships / Commodities / Ores as the dense register, Factions as rows.
+// Field Hardware BENCH: section keys on the left, one sunk reading plate, binds as keycaps,
+// quiet type. Every tab, verb, bind, search and Close stays reachable. This file owns no CSS
+// (migrated kit screen); hardware is the produced kit sprites pinned on the elements.
 // The Controls tab reads the LIVE keybindings the player set in Settings → Controls
 // (state.settings.controls.bindings), falling back to the input system's DEFAULT_BINDINGS for
 // flight actions and the UI binding registry for fixed interface actions, so the help always
-// reflects what the keys actually do. Dismissed via the Close word or ESC (screen manager handles
+// reflects what the keys actually do. Dismissed via the Close key or ESC (screen manager handles
 // ESC). `.sf-help-now`, `.sf-tab` and `.sf-lc__search` stay on their elements as inert hooks.
 
 import { SHIPS } from '../../data/ships.js';
@@ -20,6 +17,228 @@ import { formatBindingCode, resolveActionLabel, resolveActionCodes } from '../..
 import { BINDINGS } from '../bindings.js';
 import { icon, factionIcon } from '../station/icons.js';
 import { el, words, settle, cue } from '../kit/index.js';
+
+const FH_KEY = {
+  primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
+  legend: { file: 'key.legend', width: '14px', minW: '72px', minH: '32px', pad: '0 10px', font: '12px' },
+  small: { file: 'key.small', width: '12px', minW: '56px', minH: '28px', pad: '0 8px', font: '12px' },
+};
+const FH_PLATE = {
+  sunk: { file: 'plate.bench.sunk.png', width: '24px', slice: '24 fill' },
+  edge: { file: 'plate.edge.small.png', width: '16px', slice: '16 fill' },
+};
+
+function fhUrl(rel) {
+  return new URL(`../../../assets/ui/kit/assets/${rel}`, import.meta.url).href;
+}
+function forcedColorsActive() {
+  return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
+}
+function pin(node, props) {
+  if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
+  for (const name of Object.keys(props)) node.style.setProperty(name, props[name], 'important');
+  return node;
+}
+function paintMarking(node) {
+  if (!node) return node;
+  node.classList.add('fh-title');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 900, 'wdth' 125",
+    'letter-spacing': 'var(--fh-track-display)',
+    'text-transform': 'uppercase',
+    'line-height': '0.9',
+    color: 'var(--fh-text)',
+  });
+}
+function paintLegend(node, lit = false) {
+  if (!node) return node;
+  node.classList.add('fh-legend');
+  if (!node.getAttribute('data-fh-lit')) node.setAttribute('data-fh-lit', lit ? 'on' : 'off');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 600, 'wdth' 62",
+    'letter-spacing': 'var(--fh-track-legend)',
+    'text-transform': 'uppercase',
+    'font-size': 'var(--fh-size-fine)',
+    color: lit ? 'var(--fh-legend-lit)' : 'var(--fh-legend-rest)',
+    margin: '0',
+  });
+}
+function paintPlate(node, variant = 'sunk', extra = {}) {
+  if (!node) return node;
+  const spec = FH_PLATE[variant] || FH_PLATE.sunk;
+  node.classList.add('fh-plate', variant === 'edge' ? 'fh-plate--edge' : 'fh-plate--sunk');
+  if (forcedColorsActive()) {
+    return pin(node, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', ...extra,
+    });
+  }
+  return pin(node, {
+    'border-style': 'solid',
+    'border-width': spec.width,
+    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
+    'border-image-slice': spec.slice,
+    'border-image-repeat': 'stretch',
+    'border-image-width': spec.width,
+    background: 'transparent',
+    'box-sizing': 'border-box',
+    padding: '10px 14px',
+    ...extra,
+  });
+}
+function paintInput(input) {
+  if (!input) return input;
+  input.classList.add('fh-input', 'k-input');
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(input, { 'border-image-source': 'none', 'border-bottom': '1px solid CanvasText', background: 'transparent' });
+      return;
+    }
+    pin(input, {
+      'border-style': 'solid',
+      'border-width': '12px',
+      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
+      'border-image-slice': '12 fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': '12px',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'min-height': '40px',
+      padding: '0 8px',
+      'box-sizing': 'border-box',
+    });
+  };
+  apply('rest');
+  if (input.dataset.fhBound !== '1') {
+    input.dataset.fhBound = '1';
+    input.addEventListener('focus', () => apply('focus'));
+    input.addEventListener('blur', () => apply('rest'));
+  }
+  return input;
+}
+function paintKey(button, kind = 'legend') {
+  if (!button) return button;
+  const spec = FH_KEY[kind] || FH_KEY.legend;
+  button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(button, {
+        'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+        background: 'transparent', color: 'CanvasText',
+      });
+      return;
+    }
+    pin(button, {
+      display: 'inline-flex',
+      width: kind === 'legend' ? '100%' : 'max-content',
+      'max-width': '100%',
+      'min-width': spec.minW,
+      'min-height': spec.minH,
+      padding: spec.pad,
+      'font-size': spec.font,
+      'font-family': 'var(--fh-face-display)',
+      'font-variation-settings': "'wght' 600, 'wdth' 62",
+      'letter-spacing': 'var(--fh-track-legend)',
+      'text-transform': 'uppercase',
+      'justify-content': kind === 'legend' ? 'flex-start' : 'center',
+      'align-items': 'center',
+      'box-sizing': 'border-box',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'border-style': 'solid',
+      'border-width': spec.width,
+      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
+      'border-image-slice': parseInt(spec.width, 10) + ' fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': spec.width,
+    });
+  };
+  const sync = () => {
+    const disabled = button.getAttribute('aria-disabled') === 'true' || button.disabled;
+    const lit = button.getAttribute('aria-pressed') === 'true'
+      || button.getAttribute('aria-selected') === 'true'
+      || button.getAttribute('aria-current') === 'true';
+    apply(disabled ? 'disabled' : (kind === 'legend' && lit ? 'lit' : 'rest'));
+  };
+  button._fhSync = sync;
+  if (button.dataset.fhBound !== '1') {
+    button.dataset.fhBound = '1';
+    button.addEventListener('pointerenter', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' && (button.getAttribute('aria-selected') === 'true' || button.getAttribute('aria-current') === 'true') ? 'lit' : 'hover');
+    });
+    button.addEventListener('pointerleave', sync);
+    button.addEventListener('pointerdown', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' ? 'hover' : 'pressed');
+    });
+    button.addEventListener('pointerup', sync);
+    button.addEventListener('focus', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply('hover');
+    });
+    button.addEventListener('blur', sync);
+  }
+  sync();
+  return button;
+}
+function paintCap(node) {
+  if (!node) return node;
+  node.classList.add('fh-key', 'fh-key--small');
+  if (forcedColorsActive()) {
+    return pin(node, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', color: 'CanvasText', cursor: 'default',
+    });
+  }
+  return pin(node, {
+    display: 'inline-flex',
+    width: 'max-content',
+    'max-width': '100%',
+    'min-width': FH_KEY.small.minW,
+    'min-height': FH_KEY.small.minH,
+    padding: FH_KEY.small.pad,
+    'font-size': FH_KEY.small.font,
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 600, 'wdth' 62",
+    'letter-spacing': 'var(--fh-track-legend)',
+    'text-transform': 'uppercase',
+    'justify-content': 'center',
+    'align-items': 'center',
+    'box-sizing': 'border-box',
+    background: 'transparent',
+    color: 'var(--fh-text)',
+    cursor: 'default',
+    'border-style': 'solid',
+    'border-width': FH_KEY.small.width,
+    'border-image-source': 'url("' + fhUrl('keys/' + FH_KEY.small.file + '.rest.png') + '")',
+    'border-image-slice': '12 fill',
+    'border-image-repeat': 'stretch',
+    'border-image-width': FH_KEY.small.width,
+  });
+}
+function paintRow(row) {
+  if (!row) return row;
+  row.classList.add('fh-row');
+  return pin(row, {
+    border: '0',
+    'box-shadow': 'none',
+    'background-image': 'url("' + fhUrl('tiles/tile.etch.hairline.png') + '")',
+    'background-repeat': 'repeat-x',
+    'background-position': 'top left',
+    'background-color': 'transparent',
+    color: 'var(--fh-text-resting)',
+  });
+}
+function looksLikeKey(text) {
+  const s = String(text || '').trim();
+  if (!s || s === '—' || s === '-') return false;
+  if (s.length > 16) return false;
+  if (/[:(]|when |button|prompted|->|near |target /i.test(s)) return false;
+  return true;
+}
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -174,17 +393,26 @@ const GAMEPLAY_LOOPS = [
 
 /** A column-header label above a group (`k-caps` is the kit's one tracked-caps register). */
 function caps(text) {
-  return el('p', 'k-caps', text);
+  const node = el('p', 'k-caps fh-legend', text);
+  paintLegend(node);
+  return node;
 }
 
-/** A static hairline row: the name (and an optional sub line) at rest, the number at emphasis. */
+/** A static engraved row: the verb at rest, the bind as a keycap when it is a short glyph. */
 function staticRow(name, num, sub) {
   const row = el('li', 'k-row k-row--static');
   const left = el('div');
-  left.appendChild(el('span', 'k-62', name));
-  if (sub) left.appendChild(el('div', 'k-row__sub', sub));
+  left.appendChild(el('span', 'k-62 fh-body', name));
+  if (sub) left.appendChild(el('div', 'k-row__sub fh-fine', sub));
   row.appendChild(left);
-  row.appendChild(el('span', 'k-row__num', num));
+  if (looksLikeKey(num)) {
+    const cap = el('span', 'fh-data', num);
+    paintCap(cap);
+    row.appendChild(cap);
+  } else {
+    row.appendChild(el('span', 'k-row__num k-t-body fh-data', num));
+  }
+  paintRow(row);
   return row;
 }
 
@@ -197,11 +425,13 @@ function register(head, body, { sortedIndex = 0, ariaLabel = 'Register' } = {}) 
   const wrap = el('div', 'k-table-wrap');
   const table = el('table', 'k-table');
   table.setAttribute('aria-label', ariaLabel);
+  pin(table, { border: '0', 'box-shadow': 'none' });
   const thead = el('thead');
   const hr = el('tr');
   head.forEach((column, index) => {
     const th = el('th', 'k-caps' + (column.num ? ' k-num' : ''), column.label);
     th.scope = 'col';
+    paintLegend(th, index === sortedIndex);
     if (index === sortedIndex) th.setAttribute('aria-sort', 'ascending');
     hr.appendChild(th);
   });
@@ -211,9 +441,12 @@ function register(head, body, { sortedIndex = 0, ariaLabel = 'Register' } = {}) 
   for (const cells of body) {
     const tr = el('tr');
     cells.forEach(([text, extra], index) => {
-      const cls = [head[index].num ? 'k-num' : index === 0 ? 'k-name' : '', extra || ''].filter(Boolean).join(' ');
-      tr.appendChild(el('td', cls, text));
+      const cls = [head[index].num ? 'k-num fh-data' : index === 0 ? 'k-name fh-emphasis' : 'fh-body', extra || ''].filter(Boolean).join(' ');
+      const td = el('td', cls, text);
+      pin(td, { 'border-top': '0', 'box-shadow': 'none' });
+      tr.appendChild(td);
     });
+    pin(tr, { 'box-shadow': 'none' });
     tbody.appendChild(tr);
   }
   table.appendChild(tbody);
@@ -234,45 +467,69 @@ export const helpScreen = {
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
     rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-wide', 'sf-help');
-    rootEl.classList.add('k-screen');
+    rootEl.classList.add('k-screen', 'of-help');
     rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('data-fh-register', 'bench');
     rootEl.setAttribute('aria-label', 'Help');
+    pin(rootEl, {
+      background: 'transparent',
+      'grid-template-columns': 'minmax(148px, 220px) minmax(0, 1fr)',
+      'column-gap': 'clamp(16px, 2vw, 32px)',
+      'row-gap': 'clamp(16px, 2.4vh, 32px)',
+    });
 
     // Title: "Help" and the control profile the Controls tab describes.
     const title = el('header', 'k-title');
-    title.appendChild(el('h1', 'k-display k-t-title', 'Help'));
-    const now = el('p', 'k-t-emph k-62 sf-help-now', profileName(ctx.state));
+    pin(title, { 'border-bottom': '0' });
+    const heading = el('h1', 'k-display k-t-title', 'Help');
+    paintMarking(heading);
+    title.appendChild(heading);
+    const now = el('p', 'k-t-emph k-62 sf-help-now fh-legend', profileName(ctx.state));
+    paintLegend(now);
     title.appendChild(now);
     rootEl.appendChild(title);
     this._nowEl = now;
 
-    // The six tab words hang from the left.
+    // The six section keys hang from the left. `of-pause` reuses the kit's key-underline kill
+    // (`#screens .of-pause .k-word::after`) so this migrated screen still owns no CSS.
     const hang = el('nav', 'k-hang');
+    pin(hang, { position: 'relative', 'border-right': '0', background: 'transparent', 'padding-left': '10px' });
+    const rail = el('div', 'fh-rail');
+    rail.setAttribute('aria-hidden', 'true');
+    pin(rail, { position: 'absolute', inset: '0 auto 0 0', width: '28px', 'pointer-events': 'none' });
+    hang.appendChild(rail);
     const tabs = words(TABS.map((t) => ({ action: t, label: t, current: t === this._activeTab })), {
       ariaLabel: 'Help sections',
       onPick: (t) => { this._activeTab = t; this._render(ctx); },
     });
+    tabs.classList.add('of-pause');
+    pin(tabs, { gap: '6px', 'align-items': 'stretch' });
     tabs.setAttribute('role', 'tablist');
     this._tabBtns = {};
     for (const b of tabs.querySelectorAll('.k-word')) {
       b.classList.add('sf-tab');
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-selected', String(b.dataset.action === this._activeTab));
+      paintKey(b, 'legend');
+      if (b.parentElement) pin(b.parentElement, { width: '100%' });
       this._tabBtns[b.dataset.action] = b;
     }
     hang.appendChild(tabs);
     rootEl.appendChild(hang);
 
-    // The stage: the chosen tab's reading; rebuilt by _render.
-    const body = el('section', 'k-stage k-stage--scroll');
+    // The stage: one sunk plate; the chosen tab's reading; rebuilt by _render.
+    const body = el('section', 'k-stage k-stage--scroll fh-plate fh-plate--sunk');
     body.setAttribute('aria-live', 'polite');
+    paintPlate(body, 'sunk');
     rootEl.appendChild(body);
 
     // Foot: Close.
-    const foot = el('footer', 'k-foot');
+    const foot = el('footer', 'k-foot of-pause');
+    pin(foot, { 'border-top': '0' });
     const close = el('button', 'k-word k-word--emph', 'Close');
     close.type = 'button';
     close.dataset.action = 'close';
+    paintKey(close, 'primary');
     close.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
     foot.appendChild(close);
     rootEl.appendChild(foot);
@@ -301,6 +558,7 @@ export const helpScreen = {
         const on = t === this._activeTab;
         b.setAttribute('aria-selected', String(on));
         if (on) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current');
+        if (typeof b._fhSync === 'function') b._fhSync();
       }
     }
 
@@ -316,6 +574,7 @@ export const helpScreen = {
       const input = ctrls.el.querySelector('.sf-lc__search');
       if (input) {
         input.classList.add('k-input');
+        paintInput(input);
         if (this._q) input.value = this._q;
       }
       this._body.appendChild(ctrls.el);
@@ -350,14 +609,19 @@ export const helpScreen = {
       });
       this._body.appendChild(list);
     });
-    this._body.appendChild(el('p', 'k-t-fine k-38', 'Flight keys can be rebound in Settings → Controls. UI keys are fixed (ARCHITECTURE §5.6).'));
+    const note = el('p', 'k-t-fine k-38 fh-fine', 'Flight keys can be rebound in Settings → Controls. UI keys are fixed (ARCHITECTURE §5.6).');
+    this._body.appendChild(note);
   },
 
   _renderLoops() {
     GAMEPLAY_LOOPS.forEach(([name, route, value]) => {
       this._body.appendChild(caps(name));
-      this._body.appendChild(el('p', 'k-sentence k-sentence--emph', route));
-      this._body.appendChild(el('p', 'k-sentence', value));
+      const path = el('p', 'k-sentence k-sentence--emph fh-emphasis', route);
+      pin(path, { color: 'var(--fh-text)', margin: '6px 0 0' });
+      this._body.appendChild(path);
+      const why = el('p', 'k-sentence fh-body', value);
+      pin(why, { color: 'var(--fh-text-resting)', margin: '4px 0 16px' });
+      this._body.appendChild(why);
     });
   },
 
@@ -381,7 +645,7 @@ export const helpScreen = {
       [fmtPrice(s.price)],
     ]);
     this._body.appendChild(register(head, body, { sortedIndex: 2, ariaLabel: 'Ships' }));
-    if (!body.length) this._body.appendChild(el('p', 'k-empty', 'No ship matches that search.'));
+    if (!body.length) this._body.appendChild(el('p', 'k-empty fh-body', 'No ship matches that search.'));
   },
 
   _renderCommodities() {
@@ -405,7 +669,7 @@ export const helpScreen = {
       ];
     });
     this._body.appendChild(register(head, body, { sortedIndex: 1, ariaLabel: 'Commodities' }));
-    if (!body.length) this._body.appendChild(el('p', 'k-empty', 'No commodity matches that search.'));
+    if (!body.length) this._body.appendChild(el('p', 'k-empty fh-body', 'No commodity matches that search.'));
   },
 
   _renderOres() {
@@ -433,7 +697,7 @@ export const helpScreen = {
       [o.tags ? o.tags.join(', ') : ''],
     ]);
     this._body.appendChild(register(oreHead, oreBody, { sortedIndex: 1, ariaLabel: 'Mineable ores' }));
-    if (!oreBody.length) this._body.appendChild(el('p', 'k-empty', 'No ore matches that search.'));
+    if (!oreBody.length) this._body.appendChild(el('p', 'k-empty fh-body', 'No ore matches that search.'));
 
     // Asteroid types
     this._body.appendChild(caps('Asteroid types'));
@@ -466,14 +730,17 @@ export const helpScreen = {
       crest.innerHTML = crestHtml(f.id);
       row.appendChild(crest);
       const main = el('div');
-      main.appendChild(el('span', 'k-row__name', f.name + ' (' + f.short + ')'));
+      main.appendChild(el('span', 'k-row__name fh-emphasis', f.name + ' (' + f.short + ')'));
       const sub = [
         f.controls && f.controls.length ? 'Controls: ' + f.controls.join(', ') : '',
         f.startingRep != null ? 'Starting rep: ' + (f.startingRep > 0 ? '+' : '') + f.startingRep : '',
       ].filter(Boolean).join(' · ');
-      if (sub) main.appendChild(el('div', 'k-row__sub', sub));
+      if (sub) main.appendChild(el('div', 'k-row__sub fh-fine', sub));
       row.appendChild(main);
-      row.appendChild(el('span', 'k-row__num k-62', f.personality ? f.personality.toLowerCase() : ''));
+      const tag = el('span', 'k-row__num k-62 fh-legend', f.personality ? f.personality.toLowerCase() : '');
+      paintLegend(tag);
+      row.appendChild(tag);
+      paintRow(row);
       list.appendChild(row);
     }
     this._body.appendChild(list);
