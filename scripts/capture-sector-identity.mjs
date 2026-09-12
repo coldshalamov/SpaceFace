@@ -44,6 +44,9 @@ const SECTORS = ['sector_helios_prime', 'sector_ceres_belt'];
 const FRAMES = 30;
 const SECONDS_PER_FRAME = 1;
 const SEED = 4242;
+// One wheel-out from the 144 WU default. Wide enough that the station, its dock traffic and the
+// pocket's working cluster are all in the same frame — which is the thing being judged.
+const ZOOM_WU = 340;
 
 const sha256 = (buffer) => createHash('sha256').update(buffer).digest('hex').toUpperCase();
 const browserPath = [
@@ -72,14 +75,15 @@ try {
   await page.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   await page.waitForFunction(() => !!window.SF?.state, null, { timeout: 45_000 });
 
-  // The browser route seeds the world from the wall clock at boot (`src/main.js`: `Date.now() &
-  // 0x7fffffff`), so there is no URL seed to ask for. Pin it at the title screen before the run is
-  // created, then read back whatever the run ACTUALLY adopted and record that — a capture whose seed
-  // is reported as 4242 when the world used something else is worse than one that admits the truth.
-  await page.evaluate((seed) => { window.SF.state.meta.seed = seed; }, SEED);
-
+  // THE SEED, and why the old way silently did not work. Writing `state.meta.seed` at the title
+  // screen pins nothing: `resetRunState` (src/main.js) throws that state away and builds a fresh one
+  // from `opts.seed`, falling back to the wall clock. Measured 2026-09-12: this capture asked for
+  // 4242 and the run adopted 737605143, and the manifest — to its credit — said so. The seed is a
+  // real player control on the New Game screen ("Universe seed"), so the capture types it in like a
+  // player and the run is genuinely reproducible.
   await page.keyboard.press('Space');
   await page.getByRole('button', { name: /^New Game$/i }).click({ timeout: 30_000 });
+  await page.fill('#sf-ng-seed', String(SEED));
   await page.getByRole('button', { name: /^Launch$/i }).click({ timeout: 30_000 });
   await page.waitForFunction(() => window.SF.state.mode === 'flight', null, { timeout: 120_000 });
   await page.waitForFunction(() => {
@@ -111,7 +115,7 @@ try {
     const dir = path.join(OUT, sectorId);
     await mkdir(dir, { recursive: true });
 
-    const anchor = await page.evaluate((id) => {
+    const anchor = await page.evaluate(({ id, CAPTURE_ZOOM }) => {
       const SF = window.SF;
       const state = SF.state;
       const world = SF.registry.get('world');
@@ -142,11 +146,18 @@ try {
       const player = state.entities.get(state.playerId);
       player.vel.x = 0;
       player.vel.z = 0;
+      // AND THEN THE PLAYER SCROLLS OUT, because at the 144 WU default the pocket is not in the
+      // picture. Measured 2026-09-12 at Helios: standing at hull+40 the station sat ON the top edge
+      // and the frame's whole content was a planet and a galaxy — a reviewer could only have named
+      // the place from the sky, which is exactly the identity `design/VISION.md` Part II forbids.
+      // `camera:zoom` is the mouse wheel's own event (src/ui/input.js:657), so this is a player
+      // action and the rig is still the shipping chase camera.
+      SF.bus.emit('camera:zoom', { level: CAPTURE_ZOOM });
       return {
         station: (chosen.data && chosen.data.stationId) || String(chosen.id),
         x: chosen.pos.x, z: chosen.pos.z, standoffWU: standoff, hullRadiusWU: hull,
       };
-    }, sectorId);
+    }, { id: sectorId, CAPTURE_ZOOM: ZOOM_WU });
 
     // Let the place become itself before the first frame: sector spawning, the first traffic
     // dispatch, the first job cycle — the same 24 s the measurement bench waits.
@@ -159,7 +170,7 @@ try {
     for (let i = 0; i < FRAMES; i += 1) {
       const target = t0 + (i * SECONDS_PER_FRAME);
       await page.waitForFunction((t) => window.SF.state.simTime >= t, target, { timeout: 300_000 });
-      const shot = await page.screenshot({ type: 'jpeg', quality: 82 });
+      const shot = await page.screenshot({ type: 'jpeg', quality: 90 });
       const name = `frame_${String(i).padStart(2, '0')}.jpg`;
       await writeFile(path.join(dir, name), shot);
       frames.push({
@@ -191,6 +202,18 @@ try {
         playerPos: { x: Math.round(player.pos.x), z: Math.round(player.pos.z) },
         withinPocket750: at(750),
         onCamera110: at(110),
+        // What the WIDER frame can actually hold. `onCamera110` was written for the 144 WU default
+        // and reports zero for a strip that plainly contains a station.
+        onCamera340: at(340),
+        jobsOnCamera340: (state.entityList || []).filter((e) => e && e.alive !== false
+          && e.id !== state.playerId
+          && Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z) <= 340
+          && e.data && (e.data.npcJobId || e.data.jobKind || e.data.trafficRole || e.data.activityActorSlotId))
+          .map((e) => ({
+            type: e.type,
+            job: (e.data.jobKind || e.data.trafficRole || e.data.activityActorSlotId || null),
+            def: e.data.defId || null,
+          })),
       };
     }, anchor);
 

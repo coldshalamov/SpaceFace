@@ -210,3 +210,105 @@ session's uncommitted frontend work was not photographed.
   offers one working pelican and the hub; its rocks, hulks, beacons and derelicts are all further out.
   Ceres shows six distinct things in the same ring. Helios's identity is true of the *place* and
   under-served to the *camera* — the honest gap between the 750 WU number and what a reviewer sees.
+
+---
+
+# Acceptance review 2026-09-12 — the blind review happened
+
+**Verdict: NOT DONE.** The blind naming succeeded 2/2, and it succeeded for a reason the packet
+forbids. This review also found the mechanical cause, which had not been named before: **at Ceres
+almost nothing in the pocket is ever drawn.**
+
+## What was run
+
+`scripts/capture-sector-identity.mjs`, seed **4242**, real GPU, shipping chase camera, default
+quality, HUD not photographed, thirty frames per sector paced on the **simulation** clock (Helios
+1.00 wall seconds per sim second, Ceres 0.97 — normal speed, not slow motion). Six frames per sector
+(0, 6, 12, 18, 24, 29) were copied into a set named by a coin-flip letter, the letter→sector map was
+written to a file that was not opened until both verdicts were written, and the frames were then
+read and named. Frames deleted afterwards.
+
+**Two defects in the capture itself were fixed before it was trusted:**
+
+1. **It was never on seed 4242.** Writing `state.meta.seed` at the title screen pins nothing —
+   `resetRunState` throws that state away and builds a fresh one from `opts.seed`, else the wall
+   clock. The pre-fix run asked for 4242 and the run adopted **737605143**; the manifest said so and
+   nobody had read it. The capture now types the seed into the New Game screen's own "Universe seed"
+   field, which is a real player control, and the manifest reads `seedUsed: 4242`.
+2. **The pocket was not in the picture.** At the 144 WU default, standing at the station's own
+   `hull + 40`, the Helios station sat ON the top edge of the frame and the whole content was a
+   ringed planet and a galaxy — the reviewer could only have named the place from the sky. The
+   capture now scrolls out to 340 WU through `camera:zoom`, the identical event the mouse wheel
+   emits, so the station and its cluster are in the same frame. Still the shipping rig.
+
+## The blind verdicts, verbatim, written before unmasking
+
+> **Set A** — six frames, essentially identical. Four brown/tan rocks of different sizes drifting and
+> an amber dust stream through the lower left. Deep dark sky. **No station, no ships, no lights, no
+> work of any kind, and nothing man-made in frame.** No motion I can detect between frame 1 and frame
+> 6. If I must name it: **the mining belt — Ceres** — and the only thing saying so is rock.
+>
+> **Set B** — a large ring-and-spine station with lit docking arms and yellow deck strips fills the
+> upper middle, a ringed gas giant and a small moon behind it, a white hauler standing off below it
+> with a lane line, orange cargo containers alongside the station's flank in the later frames, and a
+> small cluster of yellow sparks at the dock. That is a port doing port work. **Helios.**
+
+**Unmasked: A = `sector_ceres_belt`, B = `sector_helios_prime`. Both correct.**
+
+## Why that is not the done-when
+
+The done-when is *"a blind reviewer names the sector from a 30 s capture with labels hidden"*, and the
+packet's own how-agents-get-this-wrong is *"identity by palette: a sector is recognised from
+**activity** with labels hidden."*
+
+- **Helios (B) is honestly named.** The station's silhouette is structure, and the hauler standing off
+  with cargo containers at the dock is a job. That is identity by what the place is doing.
+- **Ceres (A) is not.** It was named by **brown rock and the absence of everything else**. Not one of
+  its working hulls is in any of the thirty frames. The measurement bench and the capture's own census
+  say what should have been there: within 340 WU of where the player parked at Ceres sat **a station,
+  four working ships (a Mule on `hauler`, an Ironback on `ceres_refinery_tender`, a Kestrel on
+  `courier`), a cargo pod, two rocks and two fx** — ten things. **Two of them were drawn: the rocks.**
+
+## THE DEFECT, measured
+
+Not a framing problem and not a population problem. Probed directly on the live route at seed 4242,
+54 s after the player is put into Ceres (24 s settle + the 30 s the capture watches), reading
+`presentationAdmission` off every entity inside 340 WU:
+
+| At Ceres, 340 WU ring | Distance | `presentationAdmission` |
+|---|---|---|
+| station 97 | 112 WU | **pending** |
+| ship 541 | 63 WU | **pending** |
+| ship 537 | 135 WU | **pending** |
+| ship 519 | 273 WU | **pending** |
+| ship 305 | 273 WU | **pending** |
+| payload 298 (cargo pod) | 60 WU | **pending** |
+| fx 198 / fx 292 | 80 / 113 WU | **pending** |
+| asteroid 330 / asteroid 550 | 157 / 193 WU | `null` — no admission gate, **drawn** |
+
+Every authored body at Ceres is still `pending` almost a minute after arrival, and the only things on
+screen are the two rocks, which bypass the gate entirely. Helios does not have the problem because
+Helios is the sector the run **starts** in; Ceres is reached through an in-flight
+`world.enterSector`, and nothing materialized by that transition ever leaves `pending`.
+
+So the 2026-09-05 note in this receipt — *"Helios is thin at camera range… both strips came back as
+fields of rock that differed only by COLOUR"* — was reading a **rendering** failure as a content
+failure. Ceres's ordinary life is authored, is running, is inside camera range, and is invisible.
+
+## What was NOT done, and why
+
+No fix. This is a presentation-admission defect and it is outside this unit's write set
+(`src/data/` sector identity data and `src/systems/sectorSim.js`). The admission path
+(`src/render/presentationAdmission.js`, `liveSceneCook.js`, `authoredAdmissionPolicy.js`,
+`entityMeshVisibility.js`) is all carrying another lane's uncommitted work and was not touched.
+
+**The exact remaining defect for PQ-143.00:** bodies materialized by an in-flight sector change stay
+`presentationAdmission: 'pending'` indefinitely, so Ceres cannot be photographed at the shipping
+camera at all, and its identity cannot be judged on activity until it can. Fix that and re-run
+`scripts/capture-sector-identity.mjs` — the capture, the seed and the blind protocol are now in place
+and will answer the done-when in one pass.
+
+## Checks
+
+`npm run check:baseline` **15/15 green**. `npm run check:atlas-integrity` **PASS**. No game code was
+edited for this unit.
