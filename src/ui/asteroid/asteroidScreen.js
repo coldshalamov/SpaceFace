@@ -374,7 +374,10 @@ export const asteroidScreen = {
     hudEls.holdFill = holdFill;
     const leaveBtn = document.createElement('button');
     leaveBtn.type = 'button';
-    leaveBtn.className = 'aw-leave';
+    // The kit's produced legend key carries this verb (assets/ui/kit/assets/keys/key.legend.*):
+    // a nine-sliced render with real thickness, a lit top edge and an under-shadow in the image.
+    // `aw-leave` keeps the law's geometry and sentence case; the plate is the kit's.
+    leaveBtn.className = 'aw-leave fh-key fh-key--legend';
     const leaveLabel = document.createElement('span');
     leaveLabel.textContent = 'Leave';
     const leaveKey = document.createElement('span');
@@ -387,7 +390,9 @@ export const asteroidScreen = {
     // mode and would leave a blank square.
     const drawerBtn = document.createElement('button');
     drawerBtn.type = 'button';
-    drawerBtn.className = 'aw-drawer-key';
+    // A machined recess holding a verb glyph is what the kit calls a socket, and it is exactly
+    // what this affordance is (fh.css §controls: "the action bar is sockets, not buttons").
+    drawerBtn.className = 'aw-drawer-key fh-socket';
     drawerBtn.setAttribute('aria-label', 'Ledger, site and help drawers');
     drawerBtn.setAttribute('aria-expanded', 'false');
     drawerBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
@@ -410,7 +415,10 @@ export const asteroidScreen = {
     stage.appendChild(canvas);
 
     const rig = document.createElement('div');
-    rig.className = 'aw-rig';
+    // The instrument cluster stands on a produced plate (plate.edge.small — the kit's small-surface
+    // nine-slice) instead of a flat fill with a CSS shadow under it. The gauges inside keep the
+    // law's own chunky geometry (§6.2, 132×12px): the plate is the hardware, not the instrument.
+    rig.className = 'aw-rig fh-plate fh-plate--edge';
     rig.setAttribute('aria-label', 'Rig instruments');
     function buildGauge(kind, label) {
       const row = document.createElement('div');
@@ -947,7 +955,9 @@ export const asteroidScreen = {
     // budget on bookkeeping. The stylesheet carries the `[hidden]` override at !important for the
     // same reason `.aw-lens[hidden]` does — a plain class rule outranks the UA sheet.
     const drawer = document.createElement('section');
-    drawer.className = 'aw-drawer';
+    // The bottom sheet is a bench plate (plate.bench.primary), not a rounded rectangle with a
+    // shadow: the stylesheet paints its top and sides only, since the bottom edge is off-glass.
+    drawer.className = 'aw-drawer fh-plate';
     drawer.hidden = true;
     drawer.setAttribute('aria-label', 'Site drawers');
     const drawerGrab = document.createElement('div');
@@ -965,7 +975,7 @@ export const asteroidScreen = {
     for (const id of DRAWER_TABS) {
       const tabBtn = document.createElement('button');
       tabBtn.type = 'button';
-      tabBtn.className = 'aw-drawer-tab';
+      tabBtn.className = 'aw-drawer-tab fh-key fh-key--legend';
       tabBtn.dataset.tab = id;
       tabBtn.setAttribute('role', 'tab');
       tabBtn.setAttribute('aria-controls', 'aw-drawer-body');
@@ -1051,7 +1061,9 @@ export const asteroidScreen = {
 
     function siteBlock(host, title) {
       const sec = document.createElement('section');
-      sec.className = 'aw-site-block';
+      // A readout well is a sunk plate: the kit's recessed render, so numbers read out of a
+      // machined recess rather than off a tinted div.
+      sec.className = 'aw-site-block fh-plate fh-plate--sunk';
       const h = document.createElement('h3');
       h.className = 'aw-site-title';
       h.textContent = title;
@@ -1088,7 +1100,7 @@ export const asteroidScreen = {
     function stepBtn(host, glyph, label) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'aw-verb-step';
+      b.className = 'aw-verb-step fh-key fh-key--small';
       b.textContent = glyph;
       b.setAttribute('aria-label', label);
       host.appendChild(b);
@@ -1097,7 +1109,7 @@ export const asteroidScreen = {
     function actionBtn(host, label) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'aw-verb-btn';
+      b.className = 'aw-verb-btn fh-key fh-key--small';
       b.textContent = label;
       host.appendChild(b);
       return b;
@@ -1340,7 +1352,9 @@ export const asteroidScreen = {
         for (const good of exportVerb.goods) {
           const chip = document.createElement('button');
           chip.type = 'button';
-          chip.className = 'aw-verb-chip';
+          // A latching verb is the kit's legend key: `key.legend.rest` at rest, `key.legend.lit`
+          // when it is on (the `.on` class, still the law's mint). Every verb keeps its handler.
+          chip.className = 'aw-verb-chip fh-key fh-key--legend';
           chip.dataset.good = good.id;
           chip.addEventListener('click', () => toggleExport(good.id));
           siteUi.exportBtns.set(good.id, chip);
@@ -1374,7 +1388,7 @@ export const asteroidScreen = {
           chosen.modes.forEach((mode, i) => {
             const chip = document.createElement('button');
             chip.type = 'button';
-            chip.className = 'aw-verb-chip';
+            chip.className = 'aw-verb-chip fh-key fh-key--legend';
             chip.dataset.mode = mode;
             chip.textContent = chosen.modeLabels[i];
             chip.addEventListener('click', () => applyMachineMode(chosen.id, mode));
@@ -2062,7 +2076,10 @@ export const asteroidScreen = {
         box.appendChild(row);
       }
       const closeBtn = document.createElement('button');
-      closeBtn.className = 'sf-btn';
+      // The report's one verb is the kit's primary key. This modal mounts on #ui-root, OUTSIDE
+      // `.ast-screen`, so styles/asteroid-ops.css scopes its kit overrides to `.ast-summary-box`
+      // as well — without that pair the key would render in the kit's display face and caps.
+      closeBtn.className = 'sf-btn fh-key fh-key--primary';
       closeBtn.textContent = 'Acknowledge';
       const close = () => {
         modal.classList.remove('active');

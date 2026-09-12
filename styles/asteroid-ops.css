@@ -60,6 +60,29 @@
 .ast-screen button:focus-visible { outline: 2px solid var(--aw-gold); outline-offset: 2px; border-radius: 8px; }
 .ast-screen button:disabled { cursor: default; opacity: 0.45; }
 
+/* ============================================================================
+   FIELD HARDWARE (design/frontend/direction/FIELD_HARDWARE_PROGRAM.md).
+   The chrome on this screen was drawn by hand: soft rounded rectangles, flat
+   --aw-raised fills and a generic drop shadow standing in for machined metal.
+   Everything below now wears the PRODUCED kit instead — the nine-slice plates,
+   keys, gauge bezels and lights under assets/ui/kit/assets/, which are modelled
+   and rendered, not CSS-approximated. The kit's own plate colours (#1A1714 /
+   #26211B) are the same warm brown family law §3.2 asks for, so the screen's
+   voice is unchanged; only the manufacture is real now.
+
+   TYPE STAYS SENTENCE CASE. Field Hardware normally speaks in tracked stencil
+   caps, but law §3.3 bans every uppercase transform on this screen and
+   scripts/check-asteroid-theater.mjs enforces it on every visible element. The
+   Field Hardware voice therefore arrives here as QUIET TYPE — legend tracking
+   (--fh-track-legend), the kit's own size ramp, tabular numerals and the legend
+   amber for lit state — and never as tracked caps.
+
+   Slices are often rendered NARROWER than the sprite's authored slice (e.g.
+   `border-image-slice: 16 fill` drawn at `border-width: 8px`). That is deliberate:
+   it keeps HUD furniture inside the geometry the theater check pins (a 20px lens
+   chip, a 40px crest) while still drawing the real machined corner.
+   ============================================================================ */
+
 /* ---------------------------------------------------------------- §6.1 crest */
 .aw-crest {
   flex: 0 0 40px;
@@ -67,28 +90,51 @@
   align-items: center;
   gap: 12px;
   padding: 0 16px 0 18px;
-  background: rgba(23, 19, 16, 0.92); /* --aw-bg at 92%: the darkest chrome ever gets */
+  background-color: rgba(23, 19, 16, 0.92); /* --aw-bg at 92%: the darkest chrome ever gets */
+  /* the machined seam where the crest meets the board — the kit's etched hairline,
+     not a 1px border the browser invented */
+  background-image: url("../assets/ui/kit/assets/tiles/tile.etch.hairline.png");
+  background-repeat: repeat-x;
+  background-position: bottom left;
 }
 .aw-crest-name {
   font: 600 20px/1 var(--aw-name-font);
   color: var(--aw-ink);
   white-space: nowrap;
-  letter-spacing: 0.01em;
+  letter-spacing: var(--fh-track-display);
 }
+/* The claim and assay chips are LEGEND STRIPS: the kit's stamped status bar, whose
+   lit / red variants carry the state instead of a tinted pill. */
 .aw-chip {
   display: inline-flex;
   align-items: center;
-  min-height: 20px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  font: 500 13px/1 var(--aw-font);
+  min-height: 26px;
+  padding: 0;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 8px 14px;
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip.png");
+  border-image-slice: 12 16 fill;
+  border-image-repeat: stretch;
+  border-image-width: 8px 14px;
+  font: 500 var(--fh-size-fine)/1 var(--aw-font);
+  letter-spacing: var(--fh-track-legend);
   color: var(--aw-ink-2);
-  background: var(--aw-raised);
   white-space: nowrap;
 }
-.aw-chip.ok { color: var(--aw-mint); }
-.aw-chip.bad { color: var(--aw-coral); }
-.aw-chip.warn { color: var(--aw-gold); }
+.aw-chip.ok {
+  color: var(--aw-mint);
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-lit.png");
+}
+.aw-chip.bad {
+  color: var(--aw-coral);
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-red.png");
+}
+.aw-chip.warn {
+  color: var(--aw-gold);
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-lit.png");
+}
 
 /* one alert slot — empty and invisible by default */
 .aw-alert {
@@ -122,57 +168,97 @@
   font-variant-numeric: tabular-nums;
   color: var(--aw-ink);
 }
+
+/* ---- gauge wells (§6.1 hold, §6.2 heat/charge) -----------------------------
+   One shared build: the kit's `bar.seg.bezel` nine-slice IS the well, the kit's
+   `bar.seg.off` cell tiles the empty run, and the fill lights the same 12px
+   segment pitch. Meaning stays in colour (mint fine / gold hot / coral stop) —
+   the kit only supplies the metal. Authored height is the sprite's own 28px:
+   8px of bezel top and bottom leaves a 12px lit channel. */
 .aw-hold { display: flex; align-items: center; gap: 8px; }
-.aw-hold-track {
+.aw-hold-track,
+.aw-gauge-track {
   position: relative;
-  width: 96px;
-  height: 10px;
-  border-radius: 6px;
-  background: var(--aw-raised);
-  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  height: 28px;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 8px 10px;
+  border-image-source: url("../assets/ui/kit/assets/gauges/bar.seg.bezel.png");
+  border-image-slice: 8 10 fill;
+  border-image-repeat: stretch;
+  border-image-width: 8px 10px;
   overflow: hidden;
 }
-.aw-hold-track .ticks {
+.aw-hold-track { width: 112px; }
+.aw-hold-track .ticks,
+.aw-gauge-track .ticks {
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0 calc(25% - 1px),
-    rgba(8, 5, 2, 0.35) calc(25% - 1px) 25%
-  );
-  border-radius: 6px;
+  background-image: url("../assets/ui/kit/assets/gauges/bar.seg.off.png");
+  background-repeat: repeat-x;
+  background-size: 12px 100%;
 }
-.aw-hold-fill {
+.aw-hold-fill,
+.aw-gauge-fill {
   position: absolute;
-  inset: 1px auto 1px 1px;
+  inset: 0 auto 0 0;
   width: 0%;
-  border-radius: 5px;
-  background: var(--aw-mint);
-  transition: width 160ms var(--k-ease), background 160ms var(--k-ease);
+  /* the lit run keeps the well's own segment pitch: colour is the meaning,
+     the 12px rhythm is the hardware */
+  background-image: repeating-linear-gradient(
+    90deg,
+    transparent 0 10px,
+    var(--fh-under-shadow) 10px 12px
+  );
+  transition: width 160ms var(--k-ease), background-color 160ms var(--k-ease);
 }
-.aw-hold-fill.hot { background: var(--aw-gold); }
-.aw-hold-fill.full { background: var(--aw-coral); }
-.aw-leave {
+.aw-hold-fill { background-color: var(--aw-mint); }
+.aw-hold-fill.hot { background-color: var(--aw-gold); }
+.aw-hold-fill.full { background-color: var(--aw-coral); }
+
+/* Leave is a real key. It used to declare `background: var(--aw-raised)` at one
+   class of specificity, which `.ast-screen button { background: none }` outranked —
+   so the word sat bare on the crest with no plate under it at all. Scoped under
+   .ast-screen here, wearing the kit's small key through its five authored states. */
+.ast-screen .aw-leave {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  min-height: 28px;
+  gap: 8px;
+  min-height: 30px;
   padding: 0 12px;
-  border-radius: 8px;
-  background: var(--aw-raised);
-  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
-  font: 600 13px/1 var(--aw-font);
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 10px;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.rest.png");
+  border-image-slice: 12 fill;
+  border-image-repeat: stretch;
+  border-image-width: 10px;
+  font: 600 var(--fh-size-fine)/1 var(--aw-font);
+  letter-spacing: var(--fh-track-legend);
   color: var(--aw-ink-2);
+  transition: color 120ms var(--k-ease);
 }
-.aw-leave:hover { color: var(--aw-ink); transform: translateY(-1px); }
-.aw-leave:active { transform: translateY(0); }
+.ast-screen .aw-leave:hover {
+  color: var(--aw-ink);
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.hover.png");
+}
+.ast-screen .aw-leave:focus-visible {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.focus.png");
+}
+.ast-screen .aw-leave:active {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.pressed.png");
+}
+/* The keycap is ENGRAVED into the key, not a second box inside it: a plate on a
+   plate is the soft-rectangle habit this pass is removing. */
 .aw-key {
-  font: 500 12px/1 var(--aw-mono);
+  font: 500 var(--fh-size-fine)/1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink-3);
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: rgba(8, 5, 2, 0.35);
+  letter-spacing: var(--fh-track-legend);
+  color: var(--fh-legend-rest);
+  background: none;
+  padding: 0;
 }
 
 /* ---------------------------------------------------------------- §4 the board */
@@ -194,6 +280,9 @@
 .ast-canvas:focus-visible { box-shadow: inset 0 0 0 2px var(--aw-gold); border-radius: 4px; }
 
 /* ---------------------------------------------------------------- §6.2 rig cluster */
+/* The rig is a SUNK BENCH PLATE — the kit's recessed well, the surface the whole
+   design system reserves for instruments. It replaces a flat fill plus a generic
+   0 2px 8px drop shadow. */
 .aw-rig {
   position: absolute;
   right: 16px;
@@ -201,54 +290,39 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 14px 16px;
-  border-radius: 10px;
-  background: var(--aw-surface);
-  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  padding: 4px 6px;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 16px;
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.bench.sunk.png");
+  border-image-slice: 24 fill;
+  border-image-repeat: stretch;
+  border-image-width: 16px;
 }
 .aw-gauge { display: flex; align-items: center; gap: 10px; }
+/* Quiet type: the kit's fine step, legend tracking, resting legend amber. The
+   value keeps full ink so the eye lands on the number, not its label. */
 .aw-gauge-label {
   flex: 0 0 auto;
-  width: 52px;
-  font: 500 13px/1 var(--aw-font);
-  color: var(--aw-ink-2);
+  width: 56px;
+  font: 500 var(--fh-size-fine)/1 var(--aw-font);
+  letter-spacing: var(--fh-track-legend);
+  color: var(--fh-legend-rest);
 }
-.aw-gauge-track {
-  position: relative;
-  width: 132px;
-  height: 12px;
-  border-radius: 6px;
-  background: var(--aw-raised);
-  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
-  overflow: hidden;
-}
-.aw-gauge-track .ticks {
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    90deg,
-    transparent 0 calc(25% - 1px),
-    rgba(8, 5, 2, 0.35) calc(25% - 1px) 25%
-  );
-  border-radius: 6px;
-}
-.aw-gauge-fill {
-  position: absolute;
-  inset: 1px auto 1px 1px;
-  width: 0%;
-  border-radius: 5px;
-  transition: width 160ms var(--k-ease);
-}
-.aw-gauge-heat .aw-gauge-fill { background: var(--aw-heat); }
-.aw-gauge-heat .aw-gauge-fill.warn { background: var(--aw-gold); }
-.aw-gauge-heat .aw-gauge-fill.bad { background: var(--aw-coral); }
-.aw-gauge-charge .aw-gauge-fill { background: var(--aw-mint); }
-.aw-gauge-charge .aw-gauge-fill.bad { background: var(--aw-coral); }
+.aw-gauge-track { width: 148px; }
+/* Meaning by colour on the shared well built above; `background-color` (not the
+   `background` shorthand) so the segment pitch painted into background-image survives. */
+.aw-gauge-heat .aw-gauge-fill { background-color: var(--aw-heat); }
+.aw-gauge-heat .aw-gauge-fill.warn { background-color: var(--aw-gold); }
+.aw-gauge-heat .aw-gauge-fill.bad { background-color: var(--aw-coral); }
+.aw-gauge-charge .aw-gauge-fill { background-color: var(--aw-mint); }
+.aw-gauge-charge .aw-gauge-fill.bad { background-color: var(--aw-coral); }
 .aw-gauge-val {
   flex: 0 0 auto;
-  min-width: 38px;
+  min-width: 42px;
   text-align: right;
-  font: 500 13px/1 var(--aw-mono);
+  font: 500 var(--fh-size-data)/1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
   color: var(--aw-ink);
 }
@@ -270,6 +344,14 @@
   gap: 6px;
 }
 
+/* The sampler key is the kit's SOCKET — a modelled square cap with its own lit top
+   edge, in six authored states. It is a background sprite rather than a nine-slice
+   because law §6.3 and scripts/check-asteroid-theater.mjs pin this key to exactly
+   46x46 with an 8px radius, and a background image leaves that box untouched (a
+   border-image would eat the box and shift the hotkey numeral inward).
+   The plate colour under the sprite stays declared: the theater check reads
+   computed `backgroundColor` per state precisely because this key lost its plate
+   once before to `.ast-screen button { background: none }`. */
 .ast-screen .aw-build-key {
   position: relative;
   flex: 0 0 auto;
@@ -279,14 +361,21 @@
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: var(--aw-raised);
-  box-shadow: inset 0 1px 0 rgba(255, 232, 194, 0.1), 0 2px 8px rgba(8, 5, 2, 0.55);
+  background-color: var(--fh-plate);
+  background-image: url("../assets/ui/kit/assets/keys/key.socket.rest@2x.png");
+  background-size: 46px 46px;
+  background-repeat: no-repeat;
+  background-position: center;
+  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.55);
   color: var(--aw-ink-2);
   transition:
     transform 120ms var(--k-ease),
     background-color 120ms var(--k-ease),
     color 120ms var(--k-ease),
     box-shadow 120ms var(--k-ease);
+}
+.ast-screen .aw-build-key:focus-visible {
+  background-image: url("../assets/ui/kit/assets/keys/key.socket.focus@2x.png");
 }
 /* The silhouette IS the key. 22px of filled mass in currentColor, so every state tints it free. */
 .aw-build-glyph {
@@ -298,42 +387,48 @@
   position: absolute;
   top: 4px;
   right: 5px;
-  font: 500 12px/1 var(--aw-mono);
+  font: 500 var(--fh-size-fine)/1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink-2);
+  color: var(--fh-legend-rest);
   pointer-events: none;
 }
 
-/* ready — raised plate, ink-2 glyph; hover lifts 1px and lightens */
+/* ready — seated socket, ink-2 glyph; hover lifts 1px onto the kit's hover cap */
 .ast-screen .aw-build-key:hover {
   transform: translateY(-1px);
-  background: #3c3124;
+  background-color: var(--fh-plate-raised);
+  background-image: url("../assets/ui/kit/assets/keys/key.socket.hover@2x.png");
   color: var(--aw-ink);
 }
 .ast-screen .aw-build-key:active {
   transform: translateY(1px);
+  background-image: url("../assets/ui/kit/assets/keys/key.socket.pressed@2x.png");
 }
 
 /* armed — gold ring + gold glyph. Outside build mode nothing is being aimed, so the ring
    reads as a quiet inner hint instead of shouting a selection the player is not making. */
 .ast-screen .aw-build-key.armed {
   box-shadow:
-    inset 0 1px 0 rgba(255, 232, 194, 0.1),
     inset 0 0 0 1px color-mix(in srgb, var(--sf-goal) 45%, transparent),
     0 2px 8px rgba(8, 5, 2, 0.5);
 }
+/* live + armed is the kit's LIT socket — the cap itself is energised, so the ring
+   is confirming a key that is already glowing rather than doing the work alone. */
 .ast-screen .aw-palette.live .aw-build-key.armed {
   color: var(--aw-gold);
-  background: #33291d;
+  background-color: var(--fh-plate-raised);
+  background-image: url("../assets/ui/kit/assets/keys/key.socket.lit@2x.png");
   box-shadow: 0 0 0 2px var(--aw-gold), 0 3px 10px rgba(8, 5, 2, 0.55);
 }
 
-/* unaffordable — flat --aw-surface, ink-3 glyph, no lift; the hover tip carries the coral
-   shortfall. Armed still rings it: "this is what you are aiming, and you cannot pay for it." */
+/* unaffordable — the kit's disabled socket, ink-3 glyph, no lift; the hover tip carries
+   the coral shortfall. Armed still rings it: "this is what you are aiming, and you cannot
+   pay for it." The sunk plate colour keeps `ready` and `unaffordable` two distinct paints. */
 .ast-screen .aw-build-key.poor,
 .ast-screen .aw-build-key.poor:hover {
   transform: none;
-  background: var(--aw-surface);
+  background-color: var(--fh-plate-sunk);
+  background-image: url("../assets/ui/kit/assets/keys/key.socket.disabled@2x.png");
   box-shadow: none;
   color: var(--aw-ink-3);
 }
@@ -353,10 +448,17 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 6px 10px 7px;
-  border-radius: 8px;
-  background: var(--aw-surface);
-  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  padding: 0 2px 1px;
+  box-sizing: border-box;
+  /* the kit's HUD-scale edge plate — thinner edge, lighter grain, authored for
+     exactly this: a small card floating over a live board */
+  background: transparent;
+  border-style: solid;
+  border-width: 10px;
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.edge.small.png");
+  border-image-slice: 16 fill;
+  border-image-repeat: stretch;
+  border-image-width: 10px;
   white-space: nowrap;
   pointer-events: none;
   visibility: hidden;
@@ -400,10 +502,18 @@
   display: flex;
   flex-direction: column;
   gap: 7px;
-  padding: 9px 11px 10px;
-  border-radius: 10px;
-  background: var(--aw-surface);
-  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
+  /* The kit's HUD edge plate carries the card. Its 16px slice is drawn at 10px so
+     the interior measure stays ~240px — law §6.4 caps the card at 260px wide and
+     two text lines, and a fatter frame would start wrapping the material names. */
+  padding: 0 1px 1px;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 10px;
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.edge.small.png");
+  border-image-slice: 16 fill;
+  border-image-repeat: stretch;
+  border-image-width: 10px;
   color: var(--aw-ink-2);
   pointer-events: none;
   overflow: hidden;
@@ -495,17 +605,32 @@
   gap: 5px;
 }
 .aw-lens-chips[hidden] { display: none; }
+/* A chip is a stamped legend strip at HUD scale — law §6.4 fixes it at 20px tall,
+   so the kit's 12/16 slice is drawn at 5/8 to fit inside that height. */
 .aw-lens-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   height: 20px;
-  padding: 0 9px 0 7px;
-  border-radius: 999px;
-  background: var(--aw-raised);
-  font: 500 13px/1 var(--aw-font);
+  padding: 0 2px;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 5px 8px;
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip.png");
+  border-image-slice: 12 16 fill;
+  border-image-repeat: stretch;
+  border-image-width: 5px 8px;
+  font: 500 var(--fh-size-fine)/1 var(--aw-font);
   color: var(--aw-ink-2);
   white-space: nowrap;
+}
+.aw-lens-chip.gold,
+.aw-lens-chip.mint {
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-lit.png");
+}
+.aw-lens-chip.coral {
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-red.png");
 }
 .aw-lens-chip svg { flex: 0 0 auto; display: block; }
 .aw-lens-chip.gold { color: var(--aw-gold); }
@@ -552,24 +677,34 @@
   pointer-events: auto;
 }
 .ast-summary-modal.active { opacity: 1; }
+/* the report is a raised bench plate, and its one verb is the kit's PRIMARY key */
 .ast-summary-box {
-  background: var(--aw-surface, #221c15);
-  border-radius: 10px;
-  padding: 22px;
+  background: transparent;
+  box-sizing: border-box;
+  border-style: solid;
+  border-width: 24px;
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.bench.raised.png");
+  border-image-slice: 24 fill;
+  border-image-repeat: stretch;
+  border-image-width: 24px;
+  padding: 0;
   width: min(420px, calc(100vw - 32px));
   display: flex;
   flex-direction: column;
   gap: 10px;
   color: var(--aw-ink-2, #bfae94);
   font-family: var(--aw-font, system-ui, sans-serif);
-  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
   text-transform: none;
 }
 .ast-summary-box .title {
   font: 600 20px/1.2 var(--aw-name-font, var(--aw-font, sans-serif));
+  letter-spacing: var(--fh-track-display);
   color: var(--aw-ink, #f2e8d5);
   padding-bottom: 10px;
-  border-bottom: 1px solid var(--aw-line, #3a3126);
+  border: 0;
+  background-image: url("../assets/ui/kit/assets/tiles/tile.etch.hairline.png");
+  background-repeat: repeat-x;
+  background-position: bottom left;
 }
 .ast-summary-box .row {
   display: flex;
@@ -589,26 +724,40 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 30px;
-  padding: 4px 14px;
-  background: var(--aw-raised);
-  border: 1px solid var(--aw-line);
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(8, 5, 2, 0.5);
-  font: 600 13px/1.1 var(--aw-font);
-  color: var(--aw-ink-2);
-  transition: transform 120ms var(--k-ease), background-color 120ms var(--k-ease), color 120ms var(--k-ease), border-color 120ms var(--k-ease);
+  min-height: 40px;
+  padding: 0 12px;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 14px;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.rest.png");
+  border-image-slice: 18 fill;
+  border-image-repeat: stretch;
+  border-image-width: 14px;
+  font: 600 var(--fh-size-fine)/1.1 var(--aw-font);
+  letter-spacing: var(--fh-track-legend);
+  color: var(--fh-ground);
+  transition: transform 120ms var(--k-ease), color 120ms var(--k-ease);
 }
 .ast-screen .sf-btn:hover,
 .ast-summary-box .sf-btn:hover {
-  color: var(--aw-ink);
-  background: #3c3124;
-  border-color: var(--aw-gold);
   transform: translateY(-1px);
+  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.hover.png");
+}
+.ast-screen .sf-btn:focus-visible,
+.ast-summary-box .sf-btn:focus-visible {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.focus.png");
 }
 .ast-screen .sf-btn:active,
 .ast-summary-box .sf-btn:active {
   transform: translateY(1px);
+  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.pressed.png");
+}
+.ast-screen .sf-btn:disabled,
+.ast-summary-box .sf-btn:disabled {
+  color: var(--aw-ink-3);
+  transform: none;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.disabled.png");
 }
 
 /* ---------------------------------------------------------------- a11y + modes */
@@ -623,26 +772,75 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ast-summary-modal, .aw-hold-fill, .aw-gauge-fill, .aw-build-key { transition: none; }
-  .aw-leave:hover, .aw-build-key:hover { transform: none; }
+  .ast-summary-modal, .aw-hold-fill, .aw-gauge-fill, .aw-build-key,
+  .ast-screen .aw-leave, .ast-screen .sf-btn, .ast-summary-box .sf-btn { transition: none; }
+  .aw-leave:hover, .aw-build-key:hover,
+  .ast-screen .sf-btn:hover, .ast-summary-box .sf-btn:hover { transform: none; }
   .aw-palette.settle { animation: none; }
 }
 html.sf-reduce-motion .ast-summary-modal,
 html.sf-reduce-motion .aw-hold-fill,
 html.sf-reduce-motion .aw-build-key,
+html.sf-reduce-motion .ast-screen .aw-leave,
+html.sf-reduce-motion .ast-screen .sf-btn,
+html.sf-reduce-motion .ast-summary-box .sf-btn,
 html.sf-reduce-motion .aw-gauge-fill { transition: none; }
 html.sf-reduce-motion .aw-palette.settle { animation: none; }
-html.sf-reduce-motion .aw-build-key:hover { transform: none; }
+html.sf-reduce-motion .aw-build-key:hover,
+html.sf-reduce-motion .ast-screen .sf-btn:hover,
+html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
+
+/* FORCED COLOURS STRIPS THE KIT, NOT THE STRUCTURE.
+   A nine-slice `border-image` is NOT removed by forced-colors mode: left alone, every
+   plate and key above would ship as a 9-24px solid frame in the user's own palette and
+   the screen would read as a stack of thick boxes. So each nine-slice is explicitly
+   returned to a 1px system border here, and the sprite-backed keys and lamps fall back
+   to system paint. This is the same reason the produced kit's own chrome carries a
+   forced-colors branch. */
 @media (forced-colors: active) {
-  .ast-screen, .aw-crest, .aw-rig, .aw-leave, .aw-chip { border: 1px solid CanvasText; }
-  .aw-build-key, .aw-build-tip { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+  .ast-screen .aw-leave,
+  .ast-screen .aw-drawer-key,
+  .ast-screen .aw-drawer-tab,
+  .ast-screen .aw-verb-chip,
+  .ast-screen .aw-verb-btn,
+  .ast-screen .aw-verb-step,
+  .ast-screen .aw-verb-select,
+  .ast-screen .sf-btn,
+  .ast-summary-box,
+  .ast-summary-box .sf-btn,
+  .aw-chip, .aw-rig, .aw-drawer, .aw-site-block, .aw-rate-chip, .aw-help-keys,
+  .aw-lens, .aw-lens-chip, .aw-build-tip,
+  .aw-hold-track, .aw-gauge-track {
+    border-image-source: none;
+    border-style: solid;
+    border-width: 1px;
+    border-color: CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+  .ast-screen, .aw-crest { border: 1px solid CanvasText; }
+  .aw-crest { background-image: none; }
+  .aw-build-key {
+    border: 1px solid CanvasText;
+    background-image: none;
+    background-color: Canvas;
+    color: CanvasText;
+  }
   .aw-build-key.armed { outline: 2px solid Highlight; outline-offset: 1px; }
   .aw-build-key.poor { color: GrayText; }
   .ast-screen, .aw-leave { background: Canvas; color: CanvasText; }
-  .aw-hold-fill, .aw-gauge-fill { background: Highlight; }
-  .aw-lens, .aw-lens-chip, .aw-lens-swatch, .aw-lens-ring-cell { border: 1px solid CanvasText; }
-  .aw-lens { background: Canvas; color: CanvasText; }
+  .aw-hold-track .ticks, .aw-gauge-track .ticks { background-image: none; }
+  .aw-hold-fill, .aw-gauge-fill { background-color: Highlight; background-image: none; }
+  .ast-screen .aw-drawer-tab.on, .ast-screen .aw-verb-chip.on {
+    color: CanvasText;
+    outline: 2px solid Highlight;
+    outline-offset: 1px;
+  }
+  .aw-ledger-row + .aw-ledger-row { background-image: none; border-top: 1px solid CanvasText; }
+  .ast-summary-box .title { background-image: none; border-bottom: 1px solid CanvasText; }
+  .aw-lens-swatch, .aw-lens-ring-cell { border: 1px solid CanvasText; }
   .aw-lens-hp i { background: Highlight; }
+  .aw-key { color: CanvasText; }
 }
 
 /* ---------------------------------------------------------------- §6.6 drawers
@@ -656,6 +854,9 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
    15-word budget on bookkeeping. The [hidden] rule below needs !important for exactly the
    reason .aw-lens[hidden] does: a plain class rule with `display:flex` outranks the UA
    sheet's `[hidden] { display: none }`. */
+/* The sheet is a RAISED BENCH PLATE: the kit's one-step-lighter surface, the one
+   the system reserves for the active panel. It replaces a flat fill with rounded
+   top corners and a hand-rolled 20px shadow. */
 .aw-drawer {
   position: absolute;
   left: 0;
@@ -666,10 +867,18 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 6px 18px 14px;
+  padding: 0 4px 0;
+  box-sizing: border-box;
   border-radius: 10px 10px 0 0;
+  /* the plate's `fill` middle covers this, so law §3.2's token stays the honest
+     fallback if the sprite never arrives */
   background: var(--aw-surface);
-  box-shadow: 0 -4px 20px rgba(8, 5, 2, 0.55);
+  border-style: solid;
+  border-width: 14px 14px 16px;
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.bench.raised.png");
+  border-image-slice: 24 fill;
+  border-image-repeat: stretch;
+  border-image-width: 14px 14px 16px;
   color: var(--aw-ink-2);
   transform: translateY(102%);
   opacity: 0;
@@ -684,9 +893,8 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   flex: 0 0 auto;
   width: 44px;
   height: 4px;
-  margin: 2px auto 0;
-  border-radius: 999px;
-  background: var(--aw-line);
+  margin: 0 auto;
+  background: var(--fh-edge);
 }
 
 .aw-drawer-tabs {
@@ -695,17 +903,35 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   gap: 8px;
   align-items: center;
 }
+/* Tabs are the kit's LEGEND KEY, and the selected tab is that key's authored LIT
+   face — the light is the state, which is the whole premise of the system. */
 .ast-screen .aw-drawer-tab {
-  min-height: 28px;
-  padding: 4px 14px;
-  border-radius: 999px;
-  background: var(--aw-raised);
+  min-height: 30px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 11px;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.rest.png");
+  border-image-slice: 14 fill;
+  border-image-repeat: stretch;
+  border-image-width: 11px;
   color: var(--aw-ink-2);
-  font: 500 13px/1.1 var(--aw-font);
-  transition: color 120ms var(--k-ease), background 120ms var(--k-ease);
+  font: 500 var(--fh-size-fine)/1.1 var(--aw-font);
+  letter-spacing: var(--fh-track-legend);
+  transition: color 120ms var(--k-ease);
 }
-.ast-screen .aw-drawer-tab:hover { color: var(--aw-ink); }
-.ast-screen .aw-drawer-tab.on { color: var(--aw-gold); box-shadow: inset 0 0 0 1.5px var(--aw-gold); }
+.ast-screen .aw-drawer-tab:hover {
+  color: var(--aw-ink);
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.hover.png");
+}
+.ast-screen .aw-drawer-tab:focus-visible {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.focus.png");
+}
+.ast-screen .aw-drawer-tab.on {
+  color: var(--fh-ground);
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.lit.png");
+}
 
 .aw-drawer-body {
   flex: 1 1 auto;
@@ -713,37 +939,62 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--fh-edge) transparent;
 }
 .aw-drawer-body > [hidden] { display: none !important; }
 
-/* the crest affordance (law §2.5: one small icon, no visible word) */
+/* the crest affordance (law §2.5: one small icon, no visible word) — the kit's
+   small key, so the one icon on this screen sits on real hardware */
 .ast-screen .aw-drawer-key {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 9px;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.rest.png");
+  border-image-slice: 12 fill;
+  border-image-repeat: stretch;
+  border-image-width: 9px;
   color: var(--aw-ink-2);
   transition: color 120ms var(--k-ease), transform 120ms var(--k-ease);
 }
-.ast-screen .aw-drawer-key:hover { color: var(--aw-ink); transform: translateY(-1px); }
-.ast-screen .aw-drawer-key[aria-expanded="true"] { color: var(--aw-gold); }
+.ast-screen .aw-drawer-key:hover {
+  color: var(--aw-ink);
+  transform: translateY(-1px);
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.hover.png");
+}
+.ast-screen .aw-drawer-key:focus-visible {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.focus.png");
+}
+.ast-screen .aw-drawer-key[aria-expanded="true"] {
+  color: var(--aw-gold);
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.pressed.png");
+}
 .aw-drawer-key svg { display: block; }
 
-/* severity dot — the ledger's whole severity vocabulary, no words spent on it */
+/* severity dot — the ledger's whole severity vocabulary, no words spent on it.
+   These are the kit's LIGHTS: modelled 12px lamps with a real bloom, not flat
+   CSS circles. Tone maps onto the four authored lamp colours. */
 .aw-dot {
   flex: 0 0 auto;
-  width: 7px;
-  height: 7px;
-  border-radius: 999px;
-  background: var(--aw-ink-3);
+  width: 12px;
+  height: 12px;
+  background: none;
+  background-image: url("../assets/ui/kit/assets/lights/light.dot.legend.off.png");
+  background-size: 12px 12px;
+  background-repeat: no-repeat;
 }
-.aw-dot.mint { background: var(--aw-mint); }
-.aw-dot.gold { background: var(--aw-gold); }
-.aw-dot.coral { background: var(--aw-coral); }
-.aw-dot.sky { background: var(--aw-sky); }
-.aw-dot.ink { background: var(--aw-ink-3); }
+.aw-dot.mint { background-image: url("../assets/ui/kit/assets/lights/light.dot.good.on.png"); }
+.aw-dot.gold { background-image: url("../assets/ui/kit/assets/lights/light.dot.legend.on.png"); }
+.aw-dot.coral { background-image: url("../assets/ui/kit/assets/lights/light.dot.wanted.on.png"); }
+.aw-dot.sky { background-image: url("../assets/ui/kit/assets/lights/light.dot.cold.on.png"); }
+.aw-dot.ink { background-image: url("../assets/ui/kit/assets/lights/light.dot.legend.dim.png"); }
 
 /* ---- Ledger tab: newest first, mono clock, one line per event ---- */
 .aw-ledger { margin: 0; padding: 0; list-style: none; }
@@ -755,13 +1006,18 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   font: 400 13px/1.35 var(--aw-font);
   color: var(--aw-ink-2);
 }
-.aw-ledger-row + .aw-ledger-row { box-shadow: inset 0 1px 0 rgba(58, 49, 38, 0.5); }
+/* rows are separated by the kit's etched hairline, not an invented inset shadow */
+.aw-ledger-row + .aw-ledger-row {
+  background-image: url("../assets/ui/kit/assets/tiles/tile.etch.hairline.png");
+  background-repeat: repeat-x;
+  background-position: top left;
+}
 .aw-ledger-row .aw-dot { align-self: center; }
 .aw-ledger-clock {
   flex: 0 0 auto;
-  font: 500 13px/1.35 var(--aw-mono);
+  font: 500 var(--fh-size-fine)/1.35 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--aw-ink-3);
+  color: var(--fh-legend-rest);
 }
 .aw-ledger-text { color: var(--aw-ink); }
 .aw-ledger-empty {
@@ -778,12 +1034,24 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   align-items: center;
   gap: 6px 12px;
 }
+/* A keycap in the help map is a real keycap: the kit's small key, so the control
+   map reads as the hardware the player is about to press. */
 .aw-help-keys {
   justify-self: start;
-  padding: 3px 9px;
-  border-radius: 8px;
-  background: var(--aw-raised);
-  font: 500 13px/1.1 var(--aw-mono);
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 9px;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.rest.png");
+  border-image-slice: 12 fill;
+  border-image-repeat: stretch;
+  border-image-width: 9px;
+  font: 500 var(--fh-size-fine)/1.1 var(--aw-mono);
+  font-variant-numeric: tabular-nums;
   color: var(--aw-ink);
   white-space: nowrap;
 }
@@ -800,18 +1068,29 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   gap: 10px 18px;
   align-items: start;
 }
+/* each block is a sunk well on the sheet — the kit's recessed surface for rows
+   and readouts, drawn at 12px so a 230px column keeps its measure */
 .aw-site-block {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(23, 19, 16, 0.55);
+  padding: 0 2px;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 12px;
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.bench.sunk.png");
+  border-image-slice: 24 fill;
+  border-image-repeat: stretch;
+  border-image-width: 12px;
 }
+/* Quiet type: the block heading is a legend, tracked and in resting amber, so the
+   numbers under it are what the eye lands on. */
 .aw-site-title {
   margin: 0 0 2px;
-  font: 600 14px/1.2 var(--aw-font);
-  color: var(--aw-ink);
+  font: 600 var(--fh-size-fine)/1.2 var(--aw-font);
+  letter-spacing: var(--fh-track-legend);
+  color: var(--fh-legend-rest);
 }
 .aw-site-stat {
   display: flex;
@@ -822,7 +1101,7 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
 }
 .aw-site-stat-label { color: var(--aw-ink-2); }
 .aw-site-stat-val {
-  font: 500 13px/1.4 var(--aw-mono);
+  font: 500 var(--fh-size-data)/1.4 var(--aw-mono);
   font-variant-numeric: tabular-nums;
   color: var(--aw-ink);
 }
@@ -833,11 +1112,21 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   gap: 6px;
   margin-top: 4px;
 }
+/* a rate is a stamped legend strip, lit because it is a live production number */
 .aw-rate-chip {
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--aw-raised);
-  font: 500 13px/1.3 var(--aw-mono);
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 2px;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 7px 12px;
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip.png");
+  border-image-slice: 12 16 fill;
+  border-image-repeat: stretch;
+  border-image-width: 7px 12px;
+  font: 500 var(--fh-size-fine)/1.3 var(--aw-mono);
   font-variant-numeric: tabular-nums;
   color: var(--aw-mint);
 }
@@ -851,46 +1140,113 @@ html.sf-reduce-motion .aw-build-key:hover { transform: none; }
   color: var(--aw-ink-2);
 }
 
-/* the four operator verbs — real keys, bound straight to the owner APIs */
+/* The four operator verbs — real keys, bound straight to the owner APIs, and now
+   literally the kit's keys: legend for the toggles and actions, small for the
+   steppers, each running the sprite states the kit already authored. A toggle
+   that is ON wears the LIT face rather than a ring drawn around a flat pill. */
 .ast-screen .aw-verb-chip,
 .ast-screen .aw-verb-btn,
 .ast-screen .aw-verb-step {
-  min-height: 28px;
-  border-radius: 8px;
-  background: var(--aw-raised);
+  min-height: 30px;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
   color: var(--aw-ink-2);
-  font: 500 13px/1.1 var(--aw-font);
-  transition: color 120ms var(--k-ease), box-shadow 120ms var(--k-ease), transform 120ms var(--k-ease);
+  font: 500 var(--fh-size-fine)/1.1 var(--aw-font);
+  letter-spacing: var(--fh-track-legend);
+  transition: color 120ms var(--k-ease), transform 120ms var(--k-ease);
 }
-.ast-screen .aw-verb-chip { padding: 4px 12px; border-radius: 999px; }
-.ast-screen .aw-verb-btn { padding: 4px 14px; }
-.ast-screen .aw-verb-step { width: 28px; font-family: var(--aw-mono); }
+.ast-screen .aw-verb-chip,
+.ast-screen .aw-verb-btn {
+  padding: 0 8px;
+  border-width: 11px;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.rest.png");
+  border-image-slice: 14 fill;
+  border-image-repeat: stretch;
+  border-image-width: 11px;
+}
+.ast-screen .aw-verb-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  padding: 0;
+  font-family: var(--aw-mono);
+  letter-spacing: normal;
+  border-width: 9px;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.rest.png");
+  border-image-slice: 12 fill;
+  border-image-repeat: stretch;
+  border-image-width: 9px;
+}
 .ast-screen .aw-verb-chip:hover:not(:disabled),
-.ast-screen .aw-verb-btn:hover:not(:disabled),
-.ast-screen .aw-verb-step:hover:not(:disabled) { color: var(--aw-ink); transform: translateY(-1px); }
-.ast-screen .aw-verb-chip.on { color: var(--aw-mint); box-shadow: inset 0 0 0 1.5px var(--aw-mint); }
+.ast-screen .aw-verb-btn:hover:not(:disabled) {
+  color: var(--aw-ink);
+  transform: translateY(-1px);
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.hover.png");
+}
+.ast-screen .aw-verb-step:hover:not(:disabled) {
+  color: var(--aw-ink);
+  transform: translateY(-1px);
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.hover.png");
+}
+.ast-screen .aw-verb-chip:focus-visible,
+.ast-screen .aw-verb-btn:focus-visible {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.focus.png");
+}
+.ast-screen .aw-verb-step:focus-visible {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.focus.png");
+}
+.ast-screen .aw-verb-step:active:not(:disabled) {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.pressed.png");
+}
+.ast-screen .aw-verb-chip.on {
+  color: var(--fh-ground);
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.lit.png");
+}
 .ast-screen .aw-verb-chip:disabled,
-.ast-screen .aw-verb-btn:disabled,
-.ast-screen .aw-verb-step:disabled { color: var(--aw-ink-3); transform: none; }
+.ast-screen .aw-verb-btn:disabled {
+  color: var(--aw-ink-3);
+  transform: none;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.disabled.png");
+}
+.ast-screen .aw-verb-step:disabled {
+  color: var(--aw-ink-3);
+  transform: none;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.disabled.png");
+}
 .aw-verb-num {
   min-width: 42px;
   text-align: center;
-  font: 500 15px/1.1 var(--aw-mono);
+  font: 500 var(--fh-size-emphasis)/1.1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
   color: var(--aw-ink);
 }
+/* a picker is the kit's underlined input, which lights on focus — the one control
+   grammar the system uses for "type or choose here" */
 .ast-screen .aw-verb-select {
-  min-height: 28px;
+  min-height: 34px;
   max-width: 100%;
-  padding: 3px 8px;
-  border: none;
-  border-radius: 8px;
-  background: var(--aw-raised);
+  padding: 0 4px;
+  box-sizing: border-box;
+  background: transparent;
+  border-style: solid;
+  border-width: 10px;
+  border-image-source: url("../assets/ui/kit/assets/controls/input.underline.rest.png");
+  border-image-slice: 12 fill;
+  border-image-repeat: stretch;
+  border-image-width: 10px;
   color: var(--aw-ink);
-  font: 500 13px/1.2 var(--aw-font);
+  font: 500 var(--fh-size-fine)/1.2 var(--aw-font);
   text-transform: none;
 }
-.ast-screen .aw-verb-select:disabled { color: var(--aw-ink-3); }
+.ast-screen .aw-verb-select:focus-visible {
+  border-image-source: url("../assets/ui/kit/assets/controls/input.underline.focus.png");
+}
+.ast-screen .aw-verb-select:disabled {
+  color: var(--aw-ink-3);
+  border-image-source: url("../assets/ui/kit/assets/controls/input.underline.disabled.png");
+}
 .ast-screen .aw-verb-select option { background: var(--aw-surface); color: var(--aw-ink); }
 .aw-site-reason {
   margin: 4px 0 0;
@@ -922,7 +1278,9 @@ html.sf-reduce-motion .aw-verb-step:hover { transform: none; }
     color: CanvasText;
   }
   .aw-drawer-tab.on, .aw-verb-chip.on { outline: 2px solid Highlight; outline-offset: 1px; }
+  /* the `background` shorthand also clears the kit lamp sprite; keep it round */
   .aw-drawer-grab, .aw-dot { background: CanvasText; }
+  .aw-dot { border-radius: 999px; }
   .aw-drawer-key svg { stroke: CanvasText; }
   .aw-site-reason, .aw-ledger-empty { color: GrayText; }
 }
