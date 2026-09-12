@@ -1,10 +1,9 @@
 import { paneBuilder } from '../views/settingsControls.js';
 export { bindCommittedRange } from '../views/settingsControls.js';
-// Settings screen (ARCHITECTURE §3.3, §5; design/specs/09).
-// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, settings): the world behind at the
-// menu scrim; a left column of section words; the chosen section's controls as rows with hairlines,
-// each a label and its value; toggles are two words; nothing is a slider unless it is a number.
-// Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS.
+// Settings — Field Hardware BENCH (P04/P37). World held behind smoked glass; section keys on the
+// left; the live section as engraved rows on one plate. Toggles are machined switches, numbers are
+// sliders, choices are keycaps, binds are keycaps. Every setting stays reachable (keyboard, pad,
+// rebind, reduced-motion). Unique chrome: styles/settings.css.
 // Sections: Audio / Video / Gameplay / Access / Controls. Every change writes state.settings and
 // emits settings:changed {section,key,value,persist?} (audio/render/save listen + live-apply/profile-persist).
 // UI reads state.settings for display; the write to state.settings is the UI/settings
@@ -39,6 +38,58 @@ import {
   evaluateChecklist,
 } from '../accessibilityChecklist.js';
 import { el, words, settle, cue } from '../kit/index.js';
+
+const SETTINGS_SHEET_ID = 'of-settings-css';
+
+function ensureSettingsStyles() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(SETTINGS_SHEET_ID)) return;
+  const head = document.head || document.documentElement;
+  if (!head || typeof head.appendChild !== 'function') return;
+  const link = document.createElement('link');
+  link.id = SETTINGS_SHEET_ID;
+  link.rel = 'stylesheet';
+  try { link.href = new URL('../../../styles/settings.css', import.meta.url).href; }
+  catch { link.href = '/styles/settings.css'; }
+  head.appendChild(link);
+}
+
+function syncSwitchState(group) {
+  const on = group.querySelector('[data-action="on"]');
+  group.classList.toggle('is-on', !!(on && on.getAttribute('aria-pressed') === 'true'));
+}
+
+function dressSettingsControls(pane) {
+  if (!pane || typeof pane.querySelectorAll !== 'function') return;
+  // paneBuilder already assigned labelEl.htmlFor = id; keep those labels on the dressed rows.
+  for (const row of pane.querySelectorAll('.k-row')) row.classList.add('fh-row');
+  for (const cap of pane.querySelectorAll('.k-caps')) {
+    cap.classList.add('fh-legend');
+    if (!cap.getAttribute('data-fh-lit')) cap.setAttribute('data-fh-lit', 'on');
+  }
+  for (const btn of pane.querySelectorAll('.sf-bind-btn')) btn.classList.add('fh-key', 'fh-key--small');
+  for (const sel of pane.querySelectorAll('.k-select')) sel.classList.add('fh-input');
+  for (const note of pane.querySelectorAll('.k-sentence')) note.classList.add('fh-body');
+  for (const group of pane.querySelectorAll('.k-words--row')) {
+    const actions = [];
+    for (const b of group.querySelectorAll('.k-word')) actions.push(b.dataset.action);
+    const isToggle = actions.length === 2 && actions.includes('off') && actions.includes('on');
+    if (isToggle) {
+      group.classList.add('of-settings-switch');
+      syncSwitchState(group);
+      if (!group.dataset.fhSwitch) {
+        group.dataset.fhSwitch = '1';
+        group.addEventListener('click', () => syncSwitchState(group));
+      }
+    } else {
+      for (const b of group.querySelectorAll('.k-word')) b.classList.add('fh-key', 'fh-key--legend');
+    }
+  }
+  for (const child of pane.children || []) {
+    if (!child.classList || !child.classList.contains('k-words')) continue;
+    for (const b of child.querySelectorAll('.k-word')) b.classList.add('fh-key', 'fh-key--secondary');
+  }
+}
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -200,23 +251,28 @@ export const settingsScreen = {
   id: 'settings',
 
   mount(rootEl, ctx) {
+    ensureSettingsStyles();
     rootEl.innerHTML = '';
-    rootEl.classList.add('k-screen');
+    rootEl.classList.remove('panel', 'sf-menu', 'sf-menu-narrow');
+    rootEl.classList.add('k-screen', 'of-settings');
     rootEl.dataset.kReady = '0';
+    rootEl.setAttribute('data-fh-register', 'bench');
     rootEl.setAttribute('aria-label', 'Settings');
 
-    // Title and the one sentence naming the live profile.
     const title = el('header', 'k-title');
-    title.appendChild(el('h1', 'k-display k-t-title', 'Settings'));
-    title.appendChild(el('p', 'k-t-emph k-62', 'Saved with your profile.'));
+    title.appendChild(el('h1', 'k-display k-t-title fh-title', 'Settings'));
+    title.appendChild(el('p', 'k-t-emph k-62 fh-legend', 'Saved with your profile.'));
     rootEl.appendChild(title);
 
-    // The section words down the left. `dom.words` owns the arrow-key roving; the list is the
-    // tablist and each word a tab (`.sf-tabbar` / `.sf-tab` kept as hooks).
-    const pane = el('div', 'k-stage k-stage--scroll sf-settings-pane');
+    // Section keys down the left. `dom.words` owns the arrow-key roving; the list is the
+    // tablist and each key a tab (`.sf-tabbar` / `.sf-tab` kept as hooks).
+    const pane = el('div', 'k-stage k-stage--scroll sf-settings-pane fh-plate fh-plate--sunk');
     pane.id = 'sf-settings-pane';
     pane.setAttribute('role', 'tabpanel');
     const hang = el('div', 'k-hang');
+    const rail = el('div', 'of-settings-rail fh-rail');
+    rail.setAttribute('aria-hidden', 'true');
+    hang.appendChild(rail);
     const bar = words(TABS.map((t) => ({ action: 'tab:' + t, label: t, current: t === 'Audio' })), {
       size: 'menu', ariaLabel: 'Settings categories',
       onPick: (action) => this._select(ctx, action.slice('tab:'.length)),
@@ -226,7 +282,7 @@ export const settingsScreen = {
     const tabBtns = {};
     for (const b of bar.querySelectorAll('.k-word')) {
       const t = b.dataset.action.slice('tab:'.length);
-      b.classList.add('sf-tab');
+      b.classList.add('sf-tab', 'fh-key', 'fh-key--legend');
       b.id = `sf-settings-tab-${t.toLowerCase()}`;
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-controls', pane.id);
@@ -238,7 +294,7 @@ export const settingsScreen = {
     rootEl.appendChild(pane);
 
     const foot = el('footer', 'k-foot');
-    const back = el('button', 'k-word k-word--emph', 'Back');
+    const back = el('button', 'k-word k-word--emph fh-key fh-key--primary', 'Back');
     back.type = 'button'; back.dataset.action = 'back';
     back.addEventListener('click', () => { cue('confirm'); nav(ctx, 'popScreen'); });
     foot.appendChild(back);
@@ -443,6 +499,7 @@ export const settingsScreen = {
       this._renderFixedShortcuts(pane);
       this._renderGamepadSettings(ctx, pane);
     }
+    dressSettingsControls(pane);
   },
 
   _renderGamepadSettings(ctx, pane, build = paneBuilder(pane)) {
