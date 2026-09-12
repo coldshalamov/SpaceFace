@@ -80,3 +80,5 @@ THE NUMBERS (seed 4242, Helios → Ceres by gate after 25 s of flight, Intel iGP
 | an early jump (before sim 20) | ring at +16 s (absolute sim 20) | unchanged: the arm keeps `max(arrival + 1.5, 20)` | opening settle owns it |
 
 STILL OPEN — the player-hull pose after a jump (lane R2's measurement, files carry another writer's uncommitted hunks incl. `PERSISTENT_LANES_ENABLED` flipped to true) is not verified either way here.
+
+HULL POSE AFTER A JUMP — RESOLVED (orchestrator, same day). Measured with the renderer's own mesh map (`registry.get('render')._meshes.get(playerId)`) on the 25 s gate route: at +2 s the player's mesh still sat in the departed sector's origin frame (mesh (-55, -1) vs camera 11,410 WU away) — that is the window the arrival cook holds the picture frozen; by +5 s and +12 s the mesh is 64 WU from the chase camera at (-1437, -1913) with the jump ring's mesh 207 WU from it, exactly the sim distances (the scene re-origins by (-8192, +8192) on arrival). Lane R2's "hull 3104 WU from its camera" was that transient, not a persistent pose-mirror defect. No change made; the uncommitted `PERSISTENT_LANES_ENABLED` flip stays uncommitted and untested.
