@@ -17879,7 +17879,7 @@
       "priority": 475,
       "title": "Lane buoy, beacon, and cargo pod look manufactured at chase size",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-193.00"
       ],
@@ -17896,7 +17896,9 @@
         "npm run check:playable",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-193.03-REPORT.md"
+      ],
       "brief": "Same-slot replace of the repeating lane marks and cargo pod. Chase stills vs Hitch. Not a tube-plus-ring. GRAPHICS_3D_CAMPAIGN bar. Do not invent a parallel prop."
     },
     {
@@ -17957,7 +17959,7 @@
       "priority": 478,
       "title": "Corsair raiders no longer share the pirate Rig",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-193.01"
       ],
@@ -17973,7 +17975,9 @@
         "node --test test/live-ship-visual-package-coverage.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-193.06-REPORT.md"
+      ],
       "brief": "Give corsair_raider its own body. Use the existing foundry Corsair Blade if it beats live after package and chase stills. Do not start while the opening flyby still shows a kitbash NPC."
     },
     {
@@ -17982,7 +17986,7 @@
       "priority": 479,
       "title": "Helios Arclight appears as a rare heavy hauler",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-193.01"
       ],
@@ -18008,7 +18012,7 @@
       "priority": 480,
       "title": "Tanker and inspection cutter spawn only after they read as ships",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-193.01"
       ],
@@ -18034,7 +18038,7 @@
       "priority": 481,
       "title": "Faction kits on live Span and Wasp; trade-hub overlays readable",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-193.01"
       ],
@@ -18059,7 +18063,7 @@
       "priority": 482,
       "title": "Opening dock, dead hulk, and debris chunk pass in the live game",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-193.00"
       ],
@@ -18075,7 +18079,9 @@
         "npm run check:playable",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+              "design/program/roadmap/receipts/PQ-193.10-REPORT.md"
+      ],
       "brief": "Close G5-G7 of the dock/hulk/debris remaster at the shipping camera. Offline Blender success is not live presentation. Military/grit dock variants were never in that slice; name a follow-up rather than pretending they closed."
     },
     {
@@ -18109,7 +18115,7 @@
       "priority": 484,
       "title": "Fat-cylinder station fallback never appears on the default route",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-193.00"
       ],
