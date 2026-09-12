@@ -1166,6 +1166,7 @@ const PACKAGED_LIVE_WHOLE_SHIP_FILES = Object.freeze(new Set([
   'wholeships/ashline_dart.glb',
   'wholeships/ashline_lode.glb',
   'wholeships/ashline_rig.glb',
+  'wholeships/ashline_rig_corsair_blade.glb',
   'wholeships/helios_lark.glb',
   'wholeships/helios_cradle.glb',
   'wholeships/helios_span.glb',
@@ -1221,7 +1222,7 @@ const WHOLE_SHIP_FILE_BY_HOSTILE_ID = Object.freeze({
   field_anchor_controller: 'wholeships/ashline_lode.glb',
   reaver_pirate: 'wholeships/ashline_rig.glb',
   mine_layer_jackal: 'wholeships/ashline_rig.glb',
-  corsair_raider: 'wholeships/ashline_rig.glb',
+  corsair_raider: 'wholeships/ashline_rig_corsair_blade.glb',
   tether_control_raider: 'wholeships/ashline_rig.glb',
   mule_trader: 'wholeships/helios_span.glb',
 });
@@ -1235,7 +1236,7 @@ const WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID = Object.freeze({
   field_anchor_controller: 'SF_WHOLESHIP_ASHLINE_LODE',
   reaver_pirate: 'SF_WHOLESHIP_ASHLINE_RIG',
   mine_layer_jackal: 'SF_WHOLESHIP_ASHLINE_RIG',
-  corsair_raider: 'SF_WHOLESHIP_ASHLINE_RIG',
+  corsair_raider: 'SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE',
   tether_control_raider: 'SF_WHOLESHIP_ASHLINE_RIG',
   mule_trader: 'SF_WHOLESHIP_HELIOS_SPAN',
 });
@@ -1244,7 +1245,7 @@ const WHOLE_SHIP_FILE_BY_SILHOUETTE = Object.freeze({
   sniper_lance: 'wholeships/wasp_production_v1.glb',
   bruiser_armor: 'wholeships/ashline_lode.glb',
   pirate_swoop: 'wholeships/ashline_rig.glb',
-  corsair_blade: 'wholeships/ashline_rig.glb',
+  corsair_blade: 'wholeships/ashline_rig_corsair_blade.glb',
   trader_haul: 'wholeships/helios_span.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_SILHOUETTE = Object.freeze({
@@ -1252,7 +1253,7 @@ const WHOLE_SHIP_ASSET_ID_BY_SILHOUETTE = Object.freeze({
   sniper_lance: 'SF_WASP_PRODUCTION_V1',
   bruiser_armor: 'SF_WHOLESHIP_ASHLINE_LODE',
   pirate_swoop: 'SF_WHOLESHIP_ASHLINE_RIG',
-  corsair_blade: 'SF_WHOLESHIP_ASHLINE_RIG',
+  corsair_blade: 'SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE',
   trader_haul: 'SF_WHOLESHIP_HELIOS_SPAN',
 });
 const WHOLE_SHIP_FILE_BY_ASSET_REF = Object.freeze({

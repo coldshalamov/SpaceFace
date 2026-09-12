@@ -19,7 +19,7 @@ const HOSTILES = {
   field_anchor_controller: { file: 'wholeships/ashline_lode.glb', assetId: 'SF_WHOLESHIP_ASHLINE_LODE' },
   reaver_pirate: { file: 'wholeships/ashline_rig.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG' },
   mine_layer_jackal: { file: 'wholeships/ashline_rig.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG' },
-  corsair_raider: { file: 'wholeships/ashline_rig.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG' },
+  corsair_raider: { file: 'wholeships/ashline_rig_corsair_blade.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE' },
   tether_control_raider: { file: 'wholeships/ashline_rig.glb', assetId: 'SF_WHOLESHIP_ASHLINE_RIG' },
   mule_trader: { file: 'wholeships/helios_span.glb', assetId: 'SF_WHOLESHIP_HELIOS_SPAN' },
 };

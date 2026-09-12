@@ -5577,6 +5577,58 @@
       "note": "M4-ASHLINE-HOSTILE-VISUAL-FAMILY-001 — Ashline Hook, live tether_control_raider Reach hostile body; explicit LOD0/1/2, 9/8/8 draws, damageable drive/gun/tether roles, sodium-red/amber semantic material language, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_ashline/PROVENANCE.json."
     },
     {
+      "id": "wholeship_ashline_rig_corsair_blade",
+      "assetId": "SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/ashline_rig_corsair_blade.glb",
+      "tris": 12174,
+      "bytes": 18598504,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "Gun_Assembly",
+        "HOOK_TETHER_SPOOL"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard",
+        "SOCKET_Tether_Front"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -8.175,
+          -2.1,
+          -3.17
+        ],
+        "max": [
+          9.6417,
+          4.3494,
+          2.5526
+        ],
+        "dimensionsM": [
+          17.8167,
+          6.4494,
+          5.7226
+        ]
+      },
+      "note": "PQ-193.06 — Corsair Blade, live corsair_raider body. Foundry variant of the Ashline Rig with ram-lip, four blades, weapon collars, and lamps; donor PBR materials on the kit; pirate Rig slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_ashline_rig_corsair_blade_v01.glb."
+    },
+    {
       "id": "wholeship_atlas_production_v1",
       "assetId": "SF_ATLAS_PRODUCTION_V1",
       "category": "wholeships",

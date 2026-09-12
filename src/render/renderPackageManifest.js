@@ -41,6 +41,16 @@ const PILOTS = [
     "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig.glb"
   },
   {
+    "assetId": "sf.render.ashline-rig-corsair-blade",
+    "expectedContentHash": "a1da8a57ffe45715b1dcaebef05006c16493a8b65a87315f80f4ead7bcb26d78",
+    "key": "ashline-rig-corsair-blade",
+    "metadataUrl": "assets/ships/release/render-packages/ashline-rig-corsair-blade/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE",
+    "slot": "hull",
+    "sourceSha256": "60f62c948c3060f2ea63b3f28033d600f947b084cef8a227f445aedbad5dfa7a",
+    "sourceUrl": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb"
+  },
+  {
     "assetId": "sf.render.blackmarket",
     "expectedContentHash": "7bc754de8e04011b9010a5a4d2bd507ffdc5baebbd4de5eb263137ffb264e608",
     "key": "blackmarket",
