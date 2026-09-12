@@ -115,16 +115,26 @@ test('the stock manoeuvring set is exactly neutral on every hull', () => {
   }
 });
 
-test('the drive moves forward thrust and top speed and leaves the turning alone', () => {
+test('the drive moves forward thrust and the speed above the cap, and nothing else', () => {
   const stock = getDerivedStats(HORNET, new Array(8).fill(null), null);
   const bigDrive = new Array(8).fill(null);
   bigDrive[4] = 'mod_engine_warp_l';
   const driven = getDerivedStats(HORNET, bigDrive, null);
 
   const forward = (d) => d.propulsion.mainAccel ?? d.propulsion.maxAccel;
-  const top = (d) => d.propulsion.combatSpeed ?? d.propulsion.maxSpeed;
+  const fightCap = (d) => d.propulsion.combatSpeed ?? d.propulsion.maxSpeed;
   assert.ok(forward(driven) > forward(stock), `${SPLIT_SENTENCE} — the drive must move forward thrust`);
-  assert.ok(top(driven) > top(stock), `${SPLIT_SENTENCE} — the drive must move top speed`);
+  assert.ok(driven.propulsion.travelCeiling > stock.propulsion.travelCeiling,
+    `${SPLIT_SENTENCE} — the drive must move the travel ceiling, which is where top speed lives`);
+  assert.ok(driven.propulsion.boostMaxSpeed > stock.propulsion.boostMaxSpeed,
+    `${SPLIT_SENTENCE} — the drive must move the boost ceiling`);
+  // FEEL_CONTRACT B3 measures the screen crossing at the GOVERNED cap and the camera only opens
+  // above it. A purchasable drive that lifts the cap hands the camera a ship it cannot hold, so
+  // the drive's speed authority stops at the cap and starts again above it.
+  assert.equal(fightCap(driven), fightCap(stock),
+    `${SPLIT_SENTENCE} — no drive may raise the governed fight cap (FEEL_CONTRACT B3)`);
+  assert.equal(driven.propulsion.precisionSpeed, stock.propulsion.precisionSpeed,
+    `${SPLIT_SENTENCE} — a bigger drive does not make precision mode faster`);
   assert.equal(driven.propulsion.yawAccel, stock.propulsion.yawAccel,
     `${SPLIT_SENTENCE} — the drive must NOT move turn torque`);
   assert.equal(driven.propulsion.maxYawRate, stock.propulsion.maxYawRate,
@@ -145,6 +155,8 @@ test('the manoeuvring bay moves turning, strafe and brake and leaves the drive a
     `${SPLIT_SENTENCE} — the bay must move braking`);
   assert.equal(nimble.propulsion.maxSpeed, stock.propulsion.maxSpeed,
     `${SPLIT_SENTENCE} — the bay must NOT move top speed`);
+  assert.equal(nimble.propulsion.travelCeiling, stock.propulsion.travelCeiling,
+    `${SPLIT_SENTENCE} — the bay must NOT move the travel ceiling either`);
 });
 
 test('the two split kits are legal, launchable, and two different ships', () => {
@@ -157,9 +169,43 @@ test('the two split kits are legal, launchable, and two different ships', () => 
   }
   const b = getDerivedStats(bolt.kit.hullId, bolt.fittings, null);
   const h = getDerivedStats(hinge.kit.hullId, hinge.fittings, null);
-  const topB = b.propulsion.combatSpeed ?? b.propulsion.maxSpeed;
-  const topH = h.propulsion.combatSpeed ?? h.propulsion.maxSpeed;
-  assert.ok((topB - topH) / topH >= 0.25, `Bolt must be at least a quarter faster (${topB} vs ${topH})`);
+  const capB = b.propulsion.combatSpeed ?? b.propulsion.maxSpeed;
+  const capH = h.propulsion.combatSpeed ?? h.propulsion.maxSpeed;
+  assert.equal(capB, capH,
+    `the two kits must fight at the SAME governed cap — speed is bought above it, not at it`);
+  const burnB = b.propulsion.boostMaxSpeed ?? capB;
+  const burnH = h.propulsion.boostMaxSpeed ?? capH;
+  assert.ok((burnB - burnH) / burnH >= 0.25,
+    `Bolt must be at least a quarter faster on the burn (${burnB} vs ${burnH})`);
+  assert.ok((b.propulsion.travelCeiling - h.propulsion.travelCeiling) / h.propulsion.travelCeiling >= 0.25,
+    `Bolt must carry at least a quarter more travel ceiling (${b.propulsion.travelCeiling} vs ${h.propulsion.travelCeiling})`);
   assert.ok((h.propulsion.yawAccel - b.propulsion.yawAccel) / b.propulsion.yawAccel >= 0.25,
     `Hinge must turn at least a quarter harder (${h.propulsion.yawAccel} vs ${b.propulsion.yawAccel})`);
+});
+
+// FEEL_CONTRACT B3: "at cruise the hull needs >= 1.2 s to cross the visible depth", and the camera
+// only opens ABOVE the governed cap. That makes the cap the one speed a shop must never sell: a
+// drive that lifts it re-breaks PQ-137.03 on every kit already in the game, silently, at purchase
+// time. This sweeps the whole engine catalog against every hull so the next drive tier cannot.
+test('no engine in the catalog raises the governed fight cap on any hull', () => {
+  const engines = MODULES.filter((mod) => mod.slotType === 'engine');
+  assert.ok(engines.length >= 3, 'the sweep must actually see the engine catalog');
+  const cap = (d) => d.propulsion.combatSpeed ?? d.propulsion.maxSpeed;
+  for (const shipDef of SHIPS) {
+    const slots = buildSlotList(shipDef);
+    const engineSlot = slots.findIndex((slot) => slot.type === 'engine');
+    if (engineSlot < 0) continue;
+    const bare = getDerivedStats(shipDef.id, new Array(slots.length).fill(null), null);
+    const bareCap = cap(bare);
+    for (const engine of engines) {
+      const fittings = new Array(slots.length).fill(null);
+      fittings[engineSlot] = engine.id;
+      const fitted = getDerivedStats(shipDef.id, fittings, null);
+      assert.equal(cap(fitted), bareCap,
+        `${engine.id} moves ${shipDef.id} governed cap from ${bareCap} to ${cap(fitted)} — `
+        + 'FEEL_CONTRACT B3 measures the screen crossing at that cap, so it is not for sale');
+      assert.ok(fitted.propulsion.travelCeiling >= bare.propulsion.travelCeiling,
+        `${engine.id} must never LOWER ${shipDef.id} travel ceiling`);
+    }
+  }
 });

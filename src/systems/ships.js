@@ -559,7 +559,13 @@ function pickThruster(equipped) {
 const REFERENCE_DRIVE_ACCEL_MULT = 1.0;   // mod_engine_ion_m
 const REFERENCE_DRIVE_TOP_SPEED = 70;     // mod_engine_ion_m
 const DRIVE_SCALED_ACCEL_KEYS = Object.freeze(['mainAccel', 'maxAccel', 'rcsForwardAccel', 'fieldAccel']);
-const DRIVE_SCALED_SPEED_KEYS = Object.freeze(['combatSpeed', 'maxSpeed', 'boostMaxSpeed', 'precisionSpeed']);
+// The drive owns TOP speed, and top speed lives ABOVE the governed cap. FEEL_CONTRACT B3 measures
+// the crossing time at the cap and the camera only opens ABOVE it, so a purchasable drive must
+// never raise the cap itself: a Warp Coil that lifts `combatSpeed` (or `maxSpeed`, which IS the
+// cap on the gravimetric hulls) hands the camera a ship it cannot hold and re-breaks PQ-137.03.
+// The drive's travel authority is `travelCeilingMult` -- propulsionKernel's own words, 'drive-tier
+// upgrades hang off this' -- plus the boost ceiling, both of which sit above the cap by design.
+const DRIVE_SCALED_SPEED_KEYS = Object.freeze(['boostMaxSpeed']);
 const THRUSTER_TURN_KEYS = Object.freeze(['yawAccel', 'yawBrake']);
 // The bay owns TORQUE. The yaw-rate ceiling is the balance between that torque and the hull's own
 // damping, so it follows on the square root: a bay with twice the authority does not give the hull
@@ -933,14 +939,16 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const cruise = maxSpeed * cruiseFrac;
   const thrust = cruise * drag * THRUST_SCALE * biases.thrustBias;      // terminal velocity ≈ cruise
   const turnRate = BASE_TURN * eng.turnMult * handling * turnMass * biases.turnBias;
-  // PQ-176.01: the compatibility flight model and every screen that reads it see the SAME split the
-  // V3 profile sees, so a Vernier Cluster moves the fit screen's agility bar and a Warp Coil moves
-  // its top-speed bar. Both references are neutral, so an unfitted hull is bit-identical here.
+  // PQ-176.01: the compatibility flight model already carries the DRIVE half -- `maxSpeed` is built
+  // from `eng.topSpeed` and `cruiseFrac` from `eng.accelMult` two lines up -- so re-applying the
+  // drive multipliers here would count the same engine twice (a Warp Coil would read 1.86x on top
+  // of a maxSpeed that is already 130-based). The one half this model never had is the BAY, so the
+  // bay is the only thing added: a Vernier Cluster moves the fit screen's agility bar, and the
+  // Warp Coil moves its top-speed bar the way it always did.
   const splitThruster = thrusterScaling(shipDef, equipped);
-  const splitDrive = driveScaling(engine);
   const legacyTurnRate = turnRate * splitThruster.turn;
-  const legacyThrust = thrust * splitDrive.accel;
-  const legacyMaxSpeed = maxSpeed * splitDrive.speed;
+  const legacyThrust = thrust;
+  const legacyMaxSpeed = maxSpeed;
 
   // (4) health / energy / cargo — hull/shield stay catalog-truthful (no fake tank currency).
   // Resilient Self-Recharging Shields (docs/GAMEPLAY_QOL_OVERHAUL.md §4):

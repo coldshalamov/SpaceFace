@@ -1,7 +1,9 @@
 // PQ-176.01 — "drive and thruster split", measured in the hands.
 //
 // One hull, one gun, two ways to spend the propulsion budget. The drive owns forward thrust and the
-// speed the governor lets you hold; the manoeuvring bay owns turn torque, strafe and brake. If the
+// top speed ABOVE the governed fight cap (boost and Travel Burn); the manoeuvring bay owns turn
+// torque, strafe and brake. The fight cap itself is NOT for sale: FEEL_CONTRACT B3 measures the
+// screen crossing at that cap, so a bar here asserts both builds share it exactly. If the
 // split is real, the two builds are different SHIPS in player units — top speed, the time to turn a
 // velocity all the way round, and the radius that turn takes — and both are still viable.
 //
@@ -45,18 +47,41 @@ export const scenario = {
     const bolt = builds.bolt;
     const hinge = builds.hinge;
 
-    const topSpeedGapPct = pctGap(bolt.cruiseSpeed, hinge.cruiseSpeed);
+    const topSpeedGapPct = pctGap(bolt.boostSpeed, hinge.boostSpeed);
+    const restToCruiseGapPct = pctBetter(hinge.restToCruiseS, bolt.restToCruiseS);
     const reversalGapPct = pctBetter(bolt.velocity180TimeS, hinge.velocity180TimeS);
     const radiusGapPct = pctBetter(bolt.turnRadiusWu, hinge.turnRadiusWu);
+    const fightCapHeld = bolt.cruiseSpeed === hinge.cruiseSpeed
+      && bolt.publishedFightCap === hinge.publishedFightCap;
 
     const bars = [
       {
         bar: 'PQ-176.01',
-        label: 'the drive half — Bolt holds a higher speed than Hinge',
+        label: 'the drive half — Bolt runs away from Hinge above the fight cap',
         value: topSpeedGapPct,
-        unit: '% faster at cruise',
+        unit: '% faster on the burn',
         met: Number.isFinite(topSpeedGapPct) && topSpeedGapPct >= SPLIT_BAR_PCT,
-        note: `Bolt cruises at ${bolt.cruiseSpeed} WU/s, Hinge at ${hinge.cruiseSpeed} WU/s.`,
+        note: `Bolt burns at ${bolt.boostSpeed} WU/s (travel ceiling ${bolt.publishedTravelCeiling}), Hinge at ${hinge.boostSpeed} WU/s (ceiling ${hinge.publishedTravelCeiling}).`,
+      },
+      {
+        // Deliberately NOT held to the 25 % split bar. Below the governed cap the assist is
+        // already saturating both builds, so the drive's extra thrust buys three ticks and no
+        // more — which is the honest finding, not a miss: a drive you buy for acceleration is
+        // felt on the burn and in the corner, not in the first third of a second off the line.
+        bar: 'PQ-176.01',
+        label: 'the drive half — Bolt is quicker off the line, and the cap flattens by how much',
+        value: restToCruiseGapPct,
+        unit: '% less time from rest to the shared cap',
+        met: Number.isFinite(restToCruiseGapPct) && restToCruiseGapPct > 0,
+        note: `Bolt ${bolt.restToCruiseS} s, Hinge ${hinge.restToCruiseS} s from a standing start — both governed to ${bolt.cruiseSpeed} WU/s, so the gap the drive buys shows up above the cap, not below it.`,
+      },
+      {
+        bar: 'FEEL_CONTRACT B3',
+        label: 'the fight cap is not for sale — no drive raises the speed the screen is measured at',
+        value: fightCapHeld ? 1 : 0,
+        unit: '(1 = both builds share the governed cap exactly)',
+        met: fightCapHeld === true,
+        note: `Both cruise at ${bolt.cruiseSpeed} WU/s: ${round(115 / bolt.cruiseSpeed, 2)} s to cross a 115 WU frame, against B3 1.2 s floor.`,
       },
       {
         bar: 'PQ-176.01',
@@ -85,7 +110,7 @@ export const scenario = {
 
     return {
       eventTrace,
-      metrics: { seed, hullId: HULL_ID, builds, topSpeedGapPct, reversalGapPct, radiusGapPct, splitBarPct: SPLIT_BAR_PCT, bars },
+      metrics: { seed, hullId: HULL_ID, builds, topSpeedGapPct, restToCruiseGapPct, fightCapHeld, reversalGapPct, radiusGapPct, splitBarPct: SPLIT_BAR_PCT, bars },
     };
   },
 };
@@ -106,13 +131,16 @@ async function measureBuild(seed, build, eventTrace) {
   const budget = outfitBudgetForFittings(kit.hullId, fittings);
   const derived = getDerivedStats(kit.hullId, fittings, null);
 
-  const cruise = await flyCruise(seed, kit.hullId, fittings);
+  const cruise = await flyCruise(seed, kit.hullId, fittings, false);
+  const boostCruise = await flyCruise(seed, kit.hullId, fittings, true);
+  const restToCruise = await flyRestToCruise(seed, kit.hullId, fittings, cruise);
   const reversal = await flyReversal(seed, kit.hullId, fittings);
   const turn = await flyTurn(seed, kit.hullId, fittings);
 
   eventTrace.push({
     tick: null, type: `${build.key}:measured`,
-    cruiseSpeed: cruise, velocity180TimeS: reversal, turnRadiusWu: turn,
+    cruiseSpeed: cruise, boostSpeed: boostCruise, restToCruiseS: restToCruise,
+    velocity180TimeS: reversal, turnRadiusWu: turn,
   });
 
   const profile = derived.propulsion || {};
@@ -126,8 +154,12 @@ async function measureBuild(seed, build, eventTrace) {
     publishedForwardAccel: round(profile.mainAccel ?? profile.maxAccel, 2),
     publishedYawAccel: round(profile.yawAccel, 2),
     publishedMaxYawRate: round(profile.maxYawRate, 3),
-    publishedTopSpeed: round(profile.combatSpeed ?? profile.maxSpeed, 1),
+    publishedFightCap: round(profile.combatSpeed ?? profile.maxSpeed, 1),
+    publishedBoostCeiling: round(profile.boostMaxSpeed ?? profile.maxSpeed, 1),
+    publishedTravelCeiling: round(profile.travelCeiling, 1),
     cruiseSpeed: round(cruise, 1),
+    boostSpeed: round(boostCruise, 1),
+    restToCruiseS: round(restToCruise, 3),
     velocity180TimeS: round(reversal, 3),
     turnRadiusWu: round(turn, 1),
     budgetFits: budget ? budget.fits === true : false,
@@ -142,12 +174,34 @@ async function boot(seed, hullId, fittings) {
   });
 }
 
-async function flyCruise(seed, hullId, fittings) {
+async function flyCruise(seed, hullId, fittings, boost = false) {
   const host = await boot(seed, hullId, fittings);
   try {
     host.step(SETTLE_TICKS, { before: ({ state }) => { writeRealPathInput(state, {}); } });
-    host.step(CRUISE_TICKS, { before: ({ state }) => { writeRealPathInput(state, { moveZ: 1 }); } });
+    host.step(CRUISE_TICKS, { before: ({ state }) => { writeRealPathInput(state, { moveZ: 1, boost }); } });
     return planarSpeed(host.player);
+  } finally { host.dispose(); }
+}
+
+/** Forward thrust in the hands: how long the drive takes to bring the hull from rest to its cap. */
+async function flyRestToCruise(seed, hullId, fittings, cruiseSpeed) {
+  const target = Number(cruiseSpeed) * 0.95;
+  if (!Number.isFinite(target) || target <= 0) return null;
+  const host = await boot(seed, hullId, fittings);
+  try {
+    host.step(SETTLE_TICKS, { before: ({ state }) => { writeRealPathInput(state, {}); } });
+    let startSimTime = null;
+    let measured = null;
+    host.step(CRUISE_TICKS, {
+      before: ({ state }) => {
+        writeRealPathInput(state, { moveZ: 1 });
+        if (startSimTime == null) startSimTime = state.simTime;
+      },
+      after: ({ state, host: h }) => {
+        if (planarSpeed(h.player) >= target) { measured = state.simTime - startSimTime; return false; }
+      },
+    });
+    return measured;
   } finally { host.dispose(); }
 }
 
