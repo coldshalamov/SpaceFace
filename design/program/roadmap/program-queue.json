@@ -18098,7 +18098,7 @@
       "priority": 483,
       "title": "Helios lane marks hold at chase camera",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-193.00"
       ],
@@ -18114,8 +18114,10 @@
         "node --test test/unused-model-live-wire.test.mjs",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
-      "brief": "The four Helios marks wired 2026-09-09 (tally, claim, ash pin, whistle) reviewed at chase camera. Cube foot/deck is a fail. Pin and locker stay the 2026-08-18 unanimous pair."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-193.11-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-12 (da3abfa1b): the two red live-wire cases were a stale harness reading entityList only after b4b5b1476 moved quiet POIs to the presenter dressing table; no POI was dropped. Legal chase stills of all six lane-furniture bodies reviewed; zero four-sided foot/deck members of 42 measured; pin and locker untouched. Orchestrator re-verified 7/7 + j07 14/14 on 2026-09-12. The four Helios marks wired 2026-09-09 (tally, claim, ash pin, whistle) reviewed at chase camera. Cube foot/deck is a fail. Pin and locker stay the 2026-08-18 unanimous pair."
     },
     {
       "id": "PQ-193.12",
