@@ -47,6 +47,7 @@ import { createEnergyMaterial } from './energy/energyMaterials.js';
 import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
+import { loadAuthoredPart } from './assetLoader.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 
@@ -2770,6 +2771,133 @@ function tuneBoltMaterial(material, opts) {
 // ---------------------------------------------------------------------------------------------
 // DRONE / WRECK / fallback
 // ---------------------------------------------------------------------------------------------
+// PQ-193.05 — flying drones and generic wrecks publish packaged hardware when the GLB is
+// already on disk. Hidden procedural children stay for headless identity tests; live play
+// never unhides them. Mines and mass seeds have no dedicated package (commission-last).
+const RELEASE_PART_ROOT = 'assets/ships/release/parts/';
+const DRONE_PACKAGED_FILE = 'places/place_mining_drone.glb';
+const WRECK_PACKAGED_FILES = Object.freeze([
+  'places/place_aftermath_aft_engine_section.glb',
+  'places/place_aftermath_aft_cockpit_section.glb',
+  'places/place_aftermath_aft_cargo_module.glb',
+  'places/place_aftermath_wreck_corvette_turret.glb',
+  'places/place_aftermath_aft_weapon_spar.glb',
+  'places/place_aftermath_aft_pressure_tank.glb',
+]);
+
+function packagedPartUrl(relativeFile) {
+  return `${RELEASE_PART_ROOT}${String(relativeFile || '').replace(/^[\\/]+/, '')}`;
+}
+
+function wreckPackagedFile(e) {
+  const identity = interactionProfileForEntity(e);
+  const data = e && e.data || {};
+  if (identity.hazardous) return 'places/place_aftermath_aft_engine_section.glb';
+  if (data.wreckClass === 'military' || data.parentType === 'military') {
+    return 'places/place_aftermath_wreck_corvette_turret.glb';
+  }
+  return WRECK_PACKAGED_FILES[hashId(e && e.id) % WRECK_PACKAGED_FILES.length];
+}
+
+function isLod0Primitive(primitive) {
+  const lod = primitive && primitive.tags && primitive.tags.lod;
+  if (lod && String(lod).toLowerCase() !== 'lod0') return false;
+  const name = String(primitive && primitive.name || '');
+  if (/LOD[12][_-]/i.test(name)) return false;
+  return true;
+}
+
+function instantiatePackagedPrimitives(record, parent) {
+  const tmp = new THREE.Matrix4();
+  for (const primitive of record && record.primitives || []) {
+    if (!primitive || !primitive.geometry || !primitive.material) continue;
+    if (!isLod0Primitive(primitive)) continue;
+    const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
+    mesh.name = primitive.name || 'PackagedPrimitive';
+    if (primitive.matrix && primitive.matrix.isMatrix4) tmp.copy(primitive.matrix);
+    else if (Array.isArray(primitive.matrix) && primitive.matrix.length === 16) tmp.fromArray(primitive.matrix);
+    else tmp.identity();
+    mesh.applyMatrix4(tmp);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    parent.add(mesh);
+  }
+}
+
+function fitPackagedGroup(group, targetRadius) {
+  if (!group) return;
+  group.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(group);
+  if (box.isEmpty()) return;
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const envelope = Math.max(size.x, size.y, size.z, 1e-6);
+  group.position.sub(center);
+  const radius = Number(targetRadius);
+  if (Number.isFinite(radius) && radius > 0) group.scale.setScalar((radius * 2) / envelope);
+}
+
+function hideProceduralChildren(root) {
+  for (const child of root.children) {
+    child.visible = false;
+    child.userData = child.userData || {};
+    child.userData.authoredReadableFallbackLayer = true;
+  }
+}
+
+function attachPackagedBody(root, relativeFile, entity) {
+  if (!root || !relativeFile) return root;
+  const url = packagedPartUrl(relativeFile);
+  hideProceduralChildren(root);
+  root.userData.authoredAssetState = 'awaiting-authored-admission';
+  root.userData.authoredPackageUrl = url;
+  root.userData.authoredVisualRoot = 'none-pending-admission';
+  root.userData.renderContract = {
+    ...(root.userData.renderContract || {}),
+    assetBoundary: 'packaged body pointed from visualFactory',
+    gracefulFallback: false,
+  };
+  const start = (renderer, scene, requestOptions = {}) => {
+    const existing = root.userData.authoredUpgradePromise;
+    if (existing) return existing;
+    if (!renderer) return null;
+    if (root.userData.authoredAssetState === 'authored') return Promise.resolve(true);
+    root.userData.authoredAssetState = 'loading';
+    const completion = loadAuthoredPart(url, {
+      renderer,
+      slot: 'place',
+      optional: true,
+      ...requestOptions,
+    }).then((record) => {
+      if (!record || !root.parent) {
+        root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
+        return false;
+      }
+      const packaged = new THREE.Group();
+      packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
+      instantiatePackagedPrimitives(record, packaged);
+      if (!packaged.children.length) {
+        root.userData.authoredAssetState = 'unavailable';
+        return false;
+      }
+      fitPackagedGroup(packaged, entity && entity.radius);
+      freezeStaticChildMatrices(packaged);
+      root.add(packaged);
+      root.userData.hull = packaged;
+      root.userData.authoredAssetState = 'authored';
+      root.userData.authoredVisualRoot = record.assetId || url;
+      return true;
+    }).catch(() => {
+      root.userData.authoredAssetState = 'unavailable';
+      return false;
+    });
+    root.userData.authoredUpgradePromise = completion;
+    return completion;
+  };
+  root.userData.requestAuthoredUpgrade = start;
+  return root;
+}
+
 function buildDrone(e) {
   const R = e.radius || 4;
   const pal = resolvePalette(e);
@@ -2783,7 +2911,7 @@ function buildDrone(e) {
     arm.position.set(0, 0, sgn * R * 0.5); arm.scale.setScalar(R); g.add(arm);
   }
   g.userData.kind = 'drone';
-  return g;
+  return attachPackagedBody(g, DRONE_PACKAGED_FILE, e);
 }
 
 function wreckSurfaceTexture(role, channel = 'basecolor') {
@@ -3513,7 +3641,7 @@ export function createVisualFactory() {
           case 'charge': return buildImpulseCharge(e);
           case 'massSeed': return buildMassSeed(e);
           case 'masslineSnareAnchor': return buildMasslineSnareAnchor(e);
-          case 'wreck': return freezeStaticPresentation(buildWreck(e));
+          case 'wreck': return attachPackagedBody(freezeStaticPresentation(buildWreck(e)), wreckPackagedFile(e), e);
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
           case 'planet': return freezeStaticPresentation(buildPlanetSiteVisual(e));
           case 'fx': return null; // fx entities are handled by the vfx particle system, not meshed
