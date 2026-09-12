@@ -87,7 +87,10 @@ function paintMarking(node) {
     'letter-spacing': 'var(--fh-track-display)',
     'text-transform': 'uppercase',
     'line-height': '0.9',
-    'font-size': 'clamp(72px, 12vw, 160px)',
+    // Width AND height: 12vw alone gave a 153 px marking at 1280x800, which with its tagline ate a
+    // third of the frame and left the door's stage 270 px tall for three tile rows. 15vh keeps the
+    // approved frame's proportion (162 px at 1080) and shrinks with the short viewports.
+    'font-size': 'clamp(64px, min(12vw, 15vh), 160px)',
     color: 'var(--fh-text)',
     margin: '0',
   });
@@ -232,12 +235,16 @@ function paintTile(button, selected) {
       background: 'transparent', color: 'CanvasText',
     });
   }
+  // The tile follows the kit scale (--k-s: 0.75 at 1280x800, 1 at 1920x1080, 1.25 at 2560x1440).
+  // Fixed 132x116 tiles made the three tile rows of the door (approved/frames/frame-crucible-door.png)
+  // taller than the stage at every default viewport below 1080p, so the hull row scrolled out of
+  // sight: the player saw the mode row and never learned there was a hull to pick.
   return pin(button, {
     display: 'grid',
     'grid-template-rows': '1fr auto',
-    width: '132px',
-    'min-width': '132px',
-    'min-height': '116px',
+    width: 'calc(132px * var(--k-s, 1))',
+    'min-width': 'calc(132px * var(--k-s, 1))',
+    'min-height': 'calc(116px * var(--k-s, 1))',
     padding: '0',
     cursor: 'pointer',
     'box-sizing': 'border-box',
@@ -259,7 +266,7 @@ function choiceTile(label, className, artSrc) {
   img.src = artSrc;
   img.alt = '';
   if (typeof img.setAttribute === 'function') img.setAttribute('aria-hidden', 'true');
-  pin(img, { width: '48px', height: '48px', 'object-fit': 'contain' });
+  pin(img, { width: 'calc(48px * var(--k-s, 1))', height: 'calc(48px * var(--k-s, 1))', 'object-fit': 'contain' });
   art.appendChild(img);
   button.appendChild(art);
   button.appendChild(el('span', 'fh-tile-legend', label));
@@ -599,7 +606,10 @@ export const crucibleScreen = {
     const stage = el('section', 'k-stage fh-window fh-window--deep');
     paintWindow(stage);
     const settings = el('ul', 'k-rows sf-crd-settings');
-    settings.style.setProperty('--k-row-cols', 'auto minmax(0, 1fr)');
+    // One column: the caption (MODE / STARTER BUILD) sits above its tile row, as the approved
+    // frame composes it. A side caption column cost ~80 px and wrapped the six hull tiles onto a
+    // second line inside the frame's 48 %-wide window at every default viewport.
+    settings.style.setProperty('--k-row-cols', 'minmax(0, 1fr)');
     settings.setAttribute('aria-label', 'Run settings');
     stage.appendChild(settings);
 

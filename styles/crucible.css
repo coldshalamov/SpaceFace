@@ -1,10 +1,29 @@
 /* Crucible choices stay close to play. These rules are scoped to the mode's surfaces. */
+/* The door's smoked window is a LEFT COLUMN, not a full-width band: approved/frames/frame-crucible-door.png
+   puts it at 4-44 % of the width and 25-82 % of the height with the yard lit on the right, and its
+   three tile rows (mode, starter build, arena) all in view. Stretched full-width the window was
+   short and wide at 1280x800 and clipped the hull row out of sight. The tiles themselves follow
+   --k-s (crucible.js paintTile), so three rows fit the stage at every default viewport. */
 .sf-crucible-door:not(.sf-crucible-results) .k-stage {
   overflow: auto;
   scrollbar-width: thin;
   padding-right: 12px;
+  width: min(100%, max(760px, 50vw));
+  justify-self: start;
 }
-.sf-crucible-door .sf-crd-settings .k-row { min-height: 0; padding-block: 15px; }
+/* Vertical budget for three tile rows on a short frame: the screen's 5vw margin is 64 px top and
+   bottom at 1280x800, and the title band and the foot both carried the kit's default air. */
+#screens .sf-crucible-door.k-screen { padding-block: calc(var(--k-margin) * 0.5) calc(var(--k-margin) * 0.4); }
+#screens .sf-crucible-door .k-title p { margin-top: calc(4px * var(--k-s)); }
+#screens .sf-crucible-door .k-stage { margin-top: calc(6px * var(--k-s)); }
+#screens .sf-crucible-door .k-foot { margin-top: calc(8px * var(--k-s)); }
+#screens .sf-crucible-door .sf-crd-settings .k-sentence { margin-top: calc(6px * var(--k-s)); margin-bottom: 0; }
+/* The hero marking follows the height as well as the kit scale: at 1280x720 / 1280x800 the
+   160 px-at-1080 name plus its tagline ate a third of the screen and left the stage 270 px tall
+   with three tile rows to show. 15vh is the frame's own proportion (162 px at 1080). */
+.sf-crucible-door .k-title .k-t-name { font-size: min(var(--k-fs-name), 15vh); line-height: 0.92; }
+.sf-crucible-door .sf-crd-settings .k-row { min-height: 0; padding-block: calc(9px * var(--k-s, 1)); }
+.sf-crucible-door .sf-crd-settings .k-row .k-row__name { margin-bottom: calc(6px * var(--k-s, 1)); }
 .sf-crucible-door .sf-crd-settings .k-words { flex-wrap: wrap; gap: 10px 24px; }
 .sf-crd-records { margin-top: 20px; }
 .sf-crd-records summary { cursor: pointer; padding: 12px 0; }
