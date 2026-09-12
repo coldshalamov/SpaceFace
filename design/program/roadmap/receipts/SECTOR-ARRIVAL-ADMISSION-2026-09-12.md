@@ -64,3 +64,19 @@ UNPROVEN
 - **The run70 Intel hitch on the new +1.5 s release is not proven absent.** The release now fires 1.5 s after an arrival instead of at the absolute 20 s mark, running the same flush shape the opening runs. No brick or context loss appeared in any of the seven headed runs on this Intel/ANGLE box, but that is observation, not a hitch measurement.
 - `src/render/partsLibrary.js` carried **no** foreign hunk when I diffed it (the lane brief expected one): its only working-tree change was the predecessor's station-cohort line, so the commit is exact rather than an adoption. `src/render/renderer.js` likewise carried only the predecessor's draft.
 - Foreign uncommitted hunks in `src/render/authoredAdmissionPolicy.js`, `compilePipelinesSafely.js`, `engineTrailSurfaces.js`, `entityMeshVisibility.js`, `liveSceneCook.js`, `openingGpuAdmission.js`, `persistentSubmitLanes.js`, `precompile.js`, `presentationWorld.js` and `src/core/presentationAdmission.js` were preserved untouched and are not in the commit.
+
+## Third pass — orchestrator, 2026-09-12 (after lane R3 landed 19d19d42e)
+
+WHAT I FOUND — With nearest-first admission in place the jump ring 207 WU off the bow was composed by +5 s but still sat `pending` until +20 s (wired check: WARN past 5 s, once FAIL past 20 s under load). `--diagnose` at +5 s: `firstFlightResidencyHoldUntil` = arrival + 20 and `meshCount` 1. The flight-mode `sector:enter` branch arms the OPENING's 20 s residency hold after `compileSectorPipelines`, and that hold returns `held-first-flight` from the mesh reconcile, so nothing arriving can bind a mesh until it expires.
+
+WHAT I CHANGED — In flight (a gate jump or a direct sector enter, where the destination is already cooked) the hold is `SECTOR_ARRIVAL_PUBLISH_HOLD_SECONDS` (1.5 s), the same settle the publication release uses; the opening keeps its 20 s.
+
+THE NUMBERS (seed 4242, Helios → Ceres by gate after 25 s of flight, Intel iGPU, machine otherwise idle)
+
+| Bar | Before | After | Target |
+|---|---|---|---|
+| gate ring `ready` (wired check sample) | +20 s (WARN), +45 s under load | **+5 s**, PASS with no WARN | +5 s |
+| per-second timeline (scratch probe): publication release fired | never before +20 s | sim +4.1 s after the sector change (cook 2.5 s + 1.5 s hold), ring `ready` at +5 s | — |
+| an early jump (before sim 20) | ring at +16 s (absolute sim 20) | unchanged: the arm keeps `max(arrival + 1.5, 20)` | opening settle owns it |
+
+STILL OPEN — the player-hull pose after a jump (lane R2's measurement, files carry another writer's uncommitted hunks incl. `PERSISTENT_LANES_ENABLED` flipped to true) is not verified either way here.

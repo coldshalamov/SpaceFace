@@ -6224,7 +6224,23 @@ export const render = {
           : compileSectorPipelines(sector).finally(() => {
             state.render.sectorShellAdmission = false;
             const sim = Number(state.simTime);
-            if (Number.isFinite(sim)) state.render.firstFlightResidencyHoldUntil = sim + 20;
+            // The residency hold keeps the reconcile pass off the freshly cooked working set so a
+            // travel burst cannot evict and rebuild it (that dump TDR'd Intel). Its 20 s is the
+            // OPENING's number: the player's first flight starts on a cold GPU with the whole hub
+            // still compiling. This branch runs only in flight — a gate jump or a direct sector
+            // enter — where the destination has already been cooked by prepareLiveSectorAfterJump,
+            // so the same 20 s only held the arrival reconcile shut: measured on the Intel laptop,
+            // seed 4242, the jump ring 207 WU off the bow was composed by +5 s and then sat
+            // `pending` until the hold expired at +20 s (probe-sector-arrival-admission --diagnose:
+            // firstFlightResidencyHoldUntil = arrival + 20, meshCount 1). Arrival takes the same
+            // short settle the publication release uses.
+            if (Number.isFinite(sim)) {
+              state.render.firstFlightResidencyHoldUntil = sim + (
+                state.mode === 'flight'
+                  ? SECTOR_ARRIVAL_PUBLISH_HOLD_SECONDS
+                  : FIRST_FLIGHT_DEFERRED_HOLD_SECONDS
+              );
+            }
           });
 
       if (state.mode === 'loading' || !exactSectorId) {
