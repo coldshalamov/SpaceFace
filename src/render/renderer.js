@@ -169,6 +169,10 @@ import {
   isProtectedEntityMesh,
   shouldSubmitEntityMesh,
 } from './entityMeshVisibility.js';
+import {
+  isInsideSectorArrivalBand,
+  planarRangeWU,
+} from './authoredUpgradePolicy.js';
 import { supportsOpaqueMaterialBatch } from './opaqueMaterialBatch.js';
 import { shouldRefreshRealtimeShadowMap } from './shadowPresentCadence.js';
 import {
@@ -1732,6 +1736,21 @@ function getPooledNavLightSources(root) {
 /** How many retired-with-cause boundary records to keep readable after disposal erases them. */
 export const SECTOR_BOUNDARY_FAILURE_TAIL = 24;
 
+/**
+ * Reveal early only what the player can actually see from where they arrived.
+ *
+ * The reveal itself costs no extra GPU work — it is a bookkeeping transaction over a body whose
+ * composition and pipelines are already resident — so the arrival cook still owns every compile
+ * that could brick a weak GPU. The band is read against the live player pose, because a sector is
+ * prewarmed while the player is still in the sector they are leaving.
+ */
+function bodyIsInsideSectorArrivalBand(state, entity) {
+  if (!entity || entity.alive === false) return false;
+  if (String(entitySectorId(entity) || '') !== String(state?.world?.currentSectorId || '')) return false;
+  const player = state && state.playerId != null ? state.entities.get(state.playerId) : null;
+  return isInsideSectorArrivalBand(planarRangeWU(entity, player));
+}
+
 export const SECTOR_BOUNDARY_PREPARATION_STATE = Object.freeze({
   reserved: 'RESERVED',
   mountedHidden: 'MOUNTED_HIDDEN',
@@ -2439,7 +2458,7 @@ export function createSectorBoundaryGenerationManager(options = {}) {
     return Promise.resolve(record.settled).then(() => disposeRecord(record));
   };
 
-  const publish = async (record) => {
+  const publishOnce = async (record) => {
     if (!record) return false;
     await record.settled;
     if (record.state === states.live) return true;
@@ -2464,9 +2483,35 @@ export function createSectorBoundaryGenerationManager(options = {}) {
     }
   };
 
+  /** One publication per record. A near body may be revealed ahead of its certified set while the
+   * set's own fixpoint is settling, so two callers can reach a READY record across the same await;
+   * without this memo both would run the reveal transaction and bind the same mesh twice. */
+  const publish = (record) => {
+    if (!record) return Promise.resolve(false);
+    if (!record.publishPromise) record.publishPromise = publishOnce(record);
+    return record.publishPromise;
+  };
+
   return {
     reserve,
     publish,
+    /**
+     * Reveal one already-prepared boundary ahead of the certified set, or decline without touching
+     * it. Declining must be free: `publish()` aborts a record it cannot publish, and an aborted
+     * member fails the whole sector's certified publication closed, so a near body that is not
+     * cleanly publishable right now is simply left for the set's own fixpoint.
+     */
+    publishIfReady(record) {
+      if (!record) return Promise.resolve(false);
+      if (record.publishPromise) return record.publishPromise;
+      if (record.active !== true
+        || record.state !== states.ready
+        || records.get(record.id) !== record
+        || (typeof options.validate === 'function' && options.validate(record) !== true)) {
+        return Promise.resolve(false);
+      }
+      return publish(record);
+    },
     abort,
     abortEntity(id, reason) {
       return abort(records.get(id), reason);
@@ -4008,6 +4053,8 @@ export const render = {
           overlapAuthoredPipelineCompile: false,
           residencyRole: 'sector-prepared-boundary',
           sectorId: record.sectorId,
+          // Admission order for the arrival burst grades on the live distance to the player.
+          sectorArrivalBody: true,
           isResidencyOwnerActive: () => rendererGenerationIsActive()
             && record.active === true
             && record.boundary && record.boundary.parent === scene
@@ -5713,6 +5760,35 @@ export const render = {
         validatePopulation: validateCurrentSectorPrewarmPopulation,
       },
     );
+    /**
+     * Reveal one near arrival body the instant its own preparation is ready, instead of holding it
+     * behind the whole sector's certified set.
+     *
+     * The set contract is untouched: the fixpoint still settles, publishes, validates exact
+     * coverage and certifies the entire population, and a body revealed here is simply already LIVE
+     * when it gets there (publication skips LIVE members and coverage accepts them). If the reveal
+     * is not cleanly available at that moment it is declined without disturbing the record, because
+     * an aborted member would fail the sector's publication closed.
+     */
+    const armNearBodyEarlyPublication = (record, prepared) => {
+      if (!prepared || prepared.earlyPublishArmed === true) return;
+      prepared.earlyPublishArmed = true;
+      Promise.resolve(prepared.settled)
+        .catch(() => null)
+        .then(() => {
+          if (record.active !== true) return false;
+          // The band is judged here, not at staging time: the destination is prewarmed while the
+          // player is still in the sector they are leaving.
+          if (!bodyIsInsideSectorArrivalBand(state, prepared.entity)) return false;
+          return this._sectorBoundaryPreparations.publishIfReady(prepared);
+        })
+        .then((published) => {
+          if (published === true) {
+            record.earlyPublished = (Number(record.earlyPublished) || 0) + 1;
+          }
+        })
+        .catch(() => {});
+    };
     const stageSectorPrewarmBoundaries = (record, entities = state.entityList) => {
       if (!record || record.active !== true || record.stageBoundaries === false) return record;
       if (!record.boundaryRecords) record.boundaryRecords = new Set();
@@ -5728,8 +5804,25 @@ export const render = {
       });
       reviseSectorPrewarmPopulation(record, prunedRecords);
       const eligibleIds = new Set();
+      // Nearest first, so the reservations enter the serial admission lane in a stable, useful
+      // order rather than entity-table order. For a destination still being prewarmed this range
+      // is measured from the sector the player is leaving, so it is a tiebreak, not the decision:
+      // the queue re-grades on the live range at every admission.
+      const staged = [];
+      const stagingPlayer = state.entities.get(state.playerId);
+      const stagingX = stagingPlayer && stagingPlayer.pos ? stagingPlayer.pos.x : 0;
+      const stagingZ = stagingPlayer && stagingPlayer.pos ? stagingPlayer.pos.z : 0;
       for (const entity of entities || []) {
         if (!sectorPrewarmEntityIsEligible(record, entity)) continue;
+        staged.push({
+          entity,
+          distanceWU: entity.pos
+            ? Math.hypot(entity.pos.x - stagingX, entity.pos.z - stagingZ)
+            : Number.POSITIVE_INFINITY,
+        });
+      }
+      staged.sort((a, b) => a.distanceWU - b.distanceWU);
+      for (const { entity, distanceWU } of staged) {
         eligibleIds.add(entity.id);
         const liveBoundary = this._meshes.get(entity.id);
         if (liveBoundary) {
@@ -5767,6 +5860,9 @@ export const render = {
             liveEntry.promise = requestAuthoredUpgrade(liveBoundary, renderer, scene, {
               residencyRole: 'sector-prepared-live-boundary',
               sectorId: record.sectorId,
+              // A body that already owns a live root still competes for the same serial lane, so
+              // it grades on the live range to the player exactly like a hidden prepared one.
+              sectorArrivalBody: true,
               isResidencyOwnerActive: () => record.active === true
                 && state.entities.get(liveEntry.id) === liveEntry.entity
                 && this._meshes.get(liveEntry.id) === liveEntry.boundary
@@ -5793,6 +5889,7 @@ export const render = {
           sectorId: record.sectorId,
           generation: record.generation,
           prewarm: record,
+          stagedRangeWU: distanceWU,
           fingerprint: authoredCompositionFingerprintForEntity(entity),
           preparationEpoch: this._authoredPreparationEpoch,
           contextGeneration: this._contextRecovery.generation,
@@ -5800,9 +5897,12 @@ export const render = {
             renderer, state, this._contextRecovery.generation,
           ),
         });
-        if (prepared && !record.boundaryRecords.has(prepared)) {
-          record.boundaryRecords.add(prepared);
-          reviseSectorPrewarmPopulation(record);
+        if (prepared) {
+          if (!record.boundaryRecords.has(prepared)) {
+            record.boundaryRecords.add(prepared);
+            reviseSectorPrewarmPopulation(record);
+          }
+          armNearBodyEarlyPublication(record, prepared);
         }
       }
       for (const id of [...record.liveBoundaryPromises.keys()]) {

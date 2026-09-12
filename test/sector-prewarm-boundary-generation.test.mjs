@@ -23,6 +23,12 @@ import {
   validateSectorPrewarmPopulationCoverage,
 } from '../src/render/renderer.js';
 import {
+  isInsideSectorArrivalBand,
+  planarRangeWU,
+  SECTOR_ARRIVAL_NEAR_PUBLISH_WU,
+  sectorArrivalPriorityHint,
+} from '../src/render/authoredUpgradePolicy.js';
+import {
   authoredCompositionFingerprintForEntity,
   buildAuthoredCargoCapsule,
   disposePreparedAuthoredBoundary,
@@ -1474,4 +1480,106 @@ test('in-flight keyed authored work settles before its replacement enters the se
   assert.equal(secondReceipt.result, 'second-result');
   assert.deepEqual(order, ['first-start', 'first-finish', 'second-start']);
   scene.remove(secondBoundary);
+});
+
+// Arriving in a sector used to mean waiting for every rock in it. A body inside the arrival band
+// is revealed as soon as its own preparation is ready; the certified set still covers all of them.
+
+test('a near arrival body is revealed ahead of its certified set, and the set stays a no-op for it', async () => {
+  const { manager, events } = preparedManager();
+  const entity = { id: 41, mesh: null };
+  const record = manager.reserve({
+    id: 41, entity, sectorId: 'sector_ceres_belt', generation: 1, stagedRangeWU: 11267,
+  });
+  await record.settled;
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.ready);
+
+  assert.equal(await manager.publishIfReady(record), true);
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.live);
+  assert.equal(entity.mesh, record.boundary);
+  const bindsAfterReveal = events.filter(([kind]) => kind === 'bind').length;
+  assert.equal(bindsAfterReveal, 1);
+
+  assert.equal(await publishSectorBoundaryRecordSnapshot(new Set([record]), {
+    publishRecords: (records) => manager.publishRecords(records),
+    sectorId: 'sector_ceres_belt',
+  }), true);
+  assert.equal(events.filter(([kind]) => kind === 'bind').length, bindsAfterReveal,
+    'the set publication must not re-bind a member that is already live');
+});
+
+test('two publishers racing one prepared boundary bind it exactly once', async () => {
+  const { manager, events } = preparedManager();
+  const entity = { id: 42, mesh: null };
+  const record = manager.reserve({
+    id: 42, entity, sectorId: 'sector_ceres_belt', generation: 1, stagedRangeWU: 120,
+  });
+  await record.settled;
+  const outcomes = await Promise.all([manager.publishIfReady(record), manager.publish(record)]);
+  assert.deepEqual(outcomes, [true, true]);
+  assert.equal(events.filter(([kind]) => kind === 'bind').length, 1);
+  assert.equal(events.filter(([kind]) => kind === 'reveal-last').length, 1);
+});
+
+test('an early reveal that cannot run declines without retiring the member', async () => {
+  const { manager, events } = preparedManager();
+  const entity = { id: 43, mesh: null };
+  const record = manager.reserve({
+    id: 43,
+    entity,
+    sectorId: 'sector_ceres_belt',
+    generation: 1,
+    stagedRangeWU: 300,
+    valid: false,
+  });
+  await record.settled;
+
+  assert.equal(await manager.publishIfReady(record), false);
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.ready,
+    'a declined reveal leaves the member exactly as the certified set expects to find it');
+  assert.equal(events.filter(([kind]) => kind === 'dispose').length, 0);
+  assert.equal(entity.mesh, null);
+
+  record.valid = true;
+  assert.equal(await manager.publish(record), true);
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.live);
+});
+
+test('an unprepared member is never revealed early', async () => {
+  const { manager } = preparedManager();
+  const entity = { id: 44, mesh: null };
+  const record = manager.reserve({
+    id: 44, entity, sectorId: 'sector_ceres_belt', generation: 1, stagedRangeWU: 50,
+  });
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.reserved);
+  assert.equal(await manager.publishIfReady(record), false);
+  await record.settled;
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.ready);
+});
+
+test('arrival admission priority is graded by distance and can only promote', () => {
+  assert.equal(sectorArrivalPriorityHint(null), null);
+  assert.equal(sectorArrivalPriorityHint(-1), null);
+  assert.equal(sectorArrivalPriorityHint(Number.POSITIVE_INFINITY), null);
+  const near = sectorArrivalPriorityHint(207);
+  const middle = sectorArrivalPriorityHint(1200);
+  const far = sectorArrivalPriorityHint(9000);
+  assert.ok(near < middle && middle < far, 'the nearer body admits first');
+  assert.ok(near >= 2, 'an arrival body never outranks the player hull or the starting hub');
+  assert.ok(near < 3, 'a body on the bow outranks an ordinary faction ship elsewhere in the sector');
+  assert.equal(far, 10, 'distant bodies keep the ordinary background rung');
+  assert.equal(sectorArrivalPriorityHint(0), 2);
+  assert.ok(sectorArrivalPriorityHint(SECTOR_ARRIVAL_NEAR_PUBLISH_WU) < far);
+});
+
+test('the arrival band and its range are read from live poses, not staged ones', () => {
+  assert.equal(planarRangeWU(null, { pos: { x: 0, z: 0 } }), null);
+  assert.equal(planarRangeWU({ pos: { x: 0, z: 0 } }, { pos: {} }), null);
+  assert.equal(planarRangeWU({ pos: { x: 3, z: 4 } }, { pos: { x: 0, z: 0 } }), 5);
+  assert.equal(isInsideSectorArrivalBand(207), true);
+  assert.equal(isInsideSectorArrivalBand(SECTOR_ARRIVAL_NEAR_PUBLISH_WU), true);
+  assert.equal(isInsideSectorArrivalBand(SECTOR_ARRIVAL_NEAR_PUBLISH_WU + 1), false);
+  // The width of a gate jump: the range a destination body has while it is being prewarmed.
+  assert.equal(isInsideSectorArrivalBand(11267), false);
+  assert.equal(isInsideSectorArrivalBand(null), false);
 });

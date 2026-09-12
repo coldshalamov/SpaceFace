@@ -45,7 +45,11 @@ import {
   canBatchRenderPackageOwner,
   isRigidOpaqueBatchableSurface,
 } from './rigidOpaqueBatchPolicy.js';
-import { authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency } from './authoredUpgradePolicy.js';
+import {
+  authoredUpgradeConcurrencyLimit as resolveAuthoredUpgradeConcurrency,
+  planarRangeWU,
+  sectorArrivalPriorityHint,
+} from './authoredUpgradePolicy.js';
 import { shouldStartHeavyAdmissionEventually } from './admissionSliceBudget.js';
 import {
   computeLoadoutFingerprint,
@@ -3657,7 +3661,19 @@ function authoredUpgradePriority(job) {
   const entity = job && job.entity;
   if (entity && entity.isPlayer === true) return 0;
   if (isCriticalStartingHub(entity)) return 1;
-  return backgroundUpgradePriority(job);
+  const background = backgroundUpgradePriority(job);
+  // A sector arrival hands this queue the destination's whole authored population in one burst, and
+  // steady-flight admission is serial, so queue order decides what the player sees first. Staged
+  // arrival bodies grade by how far they are from the player *now* — the queue is re-sorted at
+  // every admission, and the destination is staged while the player is still in the sector they
+  // are leaving, so a distance measured at staging time would just be the width of the jump.
+  if (!job || !job.options || job.options.sectorArrivalBody !== true) return background;
+  const live = authoredRuntimeState();
+  const player = live && live.entities && live.playerId != null
+    ? live.entities.get(live.playerId)
+    : null;
+  const hint = sectorArrivalPriorityHint(planarRangeWU(job.entity, player));
+  return typeof hint === 'number' ? Math.min(background, hint) : background;
 }
 
 function backgroundUpgradePriority(job) {

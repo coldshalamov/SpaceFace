@@ -9,7 +9,10 @@
 // for the whole session and the player arrived at an empty field of rock.
 //
 // Contract asserted here: every entity within RANGE_WU of the player that entered the authored
-// admission path is `ready` by ARRIVE_BUDGET_S seconds of sim time after arrival.
+// admission path is `ready` by ARRIVE_BUDGET_S seconds of sim time after arrival. That budget is
+// the packet's twenty-second bar, and the run prints a WARN whenever it lands past five, because
+// the arrival band is supposed to reveal the near body on its own rather than waiting for the
+// sector's certified set.
 //
 //   node scripts/probe-sector-arrival-admission.mjs                 # gate jump, headed (real GPU)
 //   node scripts/probe-sector-arrival-admission.mjs --teleport      # world.enterSector directly
@@ -38,20 +41,31 @@ const readOption = (flag, fallback = null) => {
   if (index < 0 || index + 1 >= argv.length) return fallback;
   return argv[index + 1];
 };
-/**
- * Sim seconds after arrival by which every admitted body must be published.
- *
- * The defect this guards is categorical — before the fix the arriving sector published NOTHING for
- * the rest of the session — so the budget is set where a slow machine still passes and a broken
- * release still fails. The arriving sector publishes as one certified set (the prewarm's population
- * fixpoint) and authored admission is serial in flight, so on the reference Intel iGPU a gate jump
- * lands the whole Ceres population between +60 s and +90 s (`--teleport` +45 s, Continue +5 s). The
- * probe stops at the sample it lands on and prints it, so a speed regression is visible in the log
- * even while the assertion passes; pass `--budget` to hold a faster machine to a tighter number.
- */
-const ARRIVE_BUDGET_S = Math.max(1, Number(readOption('--budget', '120')) || 120);
 const HEADLESS = argv.includes('--headless');
 const VIA_TELEPORT = argv.includes('--teleport');
+/**
+ * `--teleport` drops the player into the destination through `world.enterSector` without the gate
+ * handoff, so the arriving population is materialized the ordinary way rather than staged behind
+ * the jump. Measured on the reference iGPU it lands at +45 s, unchanged by the arrival band. It is
+ * a compatibility seam, not the player route, so it carries its own bar instead of loosening the
+ * one the gate and Continue actually meet.
+ */
+const DEFAULT_BUDGET_S = VIA_TELEPORT ? 60 : 20;
+/**
+ * Sim seconds after arrival by which every admitted body inside RANGE_WU must be published.
+ *
+ * On the gate and Continue routes this is the packet's bar, not a slow-machine allowance: the
+ * bodies on the glass within about five seconds, everything in camera reach by twenty. Arrival
+ * bodies admit nearest-first on the live range to the player, and a body inside the arrival band is
+ * revealed the moment its own preparation is ready, so on the reference Intel iGPU (ANGLE / Intel
+ * Graphics 0x00007D45, D3D11) a gate jump lands the jump ring 207 WU off the arrival point at the
+ * +5 s sample in three runs of three, and Continue likewise. The twenty is the slack over that; the
+ * WARN below is the five. Pass `--budget` to hold a machine to a different number.
+ */
+const ARRIVE_BUDGET_S = Math.max(
+  1,
+  Number(readOption('--budget', String(DEFAULT_BUDGET_S))) || DEFAULT_BUDGET_S,
+);
 const VIA_CONTINUE = argv.includes('--continue');
 const DIAGNOSE = argv.includes('--diagnose');
 const SHOT = readOption('--shot');
@@ -300,12 +314,12 @@ try {
   const published = samples.find((sample) => sample.census.pending.length === 0)
     || samples[samples.length - 1];
   console.log(`PUBLISHED at +${published.wait}s sim (budget ${ARRIVE_BUDGET_S}s)`);
-  if (published.wait > 20) {
-    // The assert guards the categorical regression (the arriving sector publishes NOTHING, for the
-    // session). This line is the speed number: the whole authored population publishes as one
-    // certified set and admission is serial in flight, so it scales with the machine. Watch the
-    // sample it lands on — a jump from +45 to +90 is a real slowdown even while the assert passes.
-    console.log(`WARN sector arrival published at +${published.wait}s, past the 20s bar`);
+  if (published.wait > 5) {
+    // The assert holds the twenty-second bar. This line is the five: the reference iGPU lands the
+    // near body at the +5 s sample, so anything later means the near band lost its head start —
+    // the reveal fell back to the certified set, or the live-range admission grading stopped
+    // promoting the body on the player's bow.
+    console.log(`WARN sector arrival published at +${published.wait}s, past the 5s bar`);
   }
   console.log('PASS sector arrival publishes the destination');
 } catch (error) {
