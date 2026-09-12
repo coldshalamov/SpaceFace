@@ -397,6 +397,11 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
 .sx-sw__chooser.is-open { opacity: 1; }
 .sx-sw__chooser[hidden] { display: none; }
 .sx-sw.is-choosing > .sx-sw__rail { display: none; }
+/* The chooser takes the RAIL's cell (Task C 1.9), never the stage's. With the rail hidden, grid auto
+   placement slid the stage into the 480px hang column and the chooser into the wide one: nameplate,
+   gauges, the Intel systems board and the stats piled up at 360px wide. Pin the cells. */
+.sx-sw > .sx-sw__rail, .sx-sw > .sx-sw__chooser { grid-column: 1; grid-row: 1; }
+.sx-sw > .sx-sw__main { grid-column: 2; grid-row: 1; }
 .sx-chooser__panel { display: flex; flex-direction: column; min-height: 0; }
 .sx-chooser__head > * + * { margin-top: calc(12px * var(--k-s)); }
 .sx-chooser__head h3 { margin: 0; }

@@ -20,15 +20,20 @@ import {
   buildSlotList,
   dryRunLoadoutPresetApply,
   findMasslineHeadConflict,
+  fitRefusalText,
   fits,
   getDerivedStats,
+  hardpointClassOf,
+  mountOutputFactor,
+  mountRefusal,
   outfitBudgetBlocker,
   shipworksStationAccess,
+  sizeFits,
 } from '../../../systems/ships.js';
 import { SHIPS } from '../../../data/ships.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { MODULES } from '../../../data/modules.js';
-import { WEAPONS } from '../../../data/weapons.js';
+import { TURRET_RING_OUTPUT, WEAPONS } from '../../../data/weapons.js';
 import { escapeHtml } from '../../comms.js';
 import { confirm, isConfirmOpen } from '../../confirm.js';
 import { describeOutfittingSpendConfirm } from '../../outfittingSpendConfirm.js';
@@ -1440,7 +1445,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const label = fitted ? fitted.name : slotName;
       const selected = i === selectedSlot ? ' is-selected' : '';
       const kind = anchor.authored ? 'PHYSICAL' : 'SYSTEM';
-      const sub = fitted ? `${kind} / ${slot.size || ''}` : `OPEN / ${slot.size || ''}`;
+      // PQ-176.02: a turret ring is a different kind of mount; the pin says so before the chooser does.
+      const ring = hardpointClassOf(slot) === 'ring' ? ' / RING' : '';
+      const sub = fitted ? `${kind} / ${slot.size || ''}${ring}` : `OPEN / ${slot.size || ''}${ring}`;
       const aria = fitted
         ? `${slotName} ${i + 1}: ${label}. Open compatible modules.`
         : `${slotName} ${i + 1}: open slot. Open compatible modules.`;
@@ -1824,7 +1831,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return 'Utility support system';
   }
 
-  function moduleMetricRows(def) {
+  function moduleMetricRows(def, slot = null) {
     if (!def) return [];
     const rows = [];
     const add = (label, value) => {
@@ -1832,7 +1839,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       rows.push({ label, value: Number(value) });
     };
     if (def.slotType === 'weapon' || def.slotType === 'mining') {
-      add(def.slotType === 'mining' ? 'ORE DPS' : 'DPS', def.dps);
+      // PQ-176.02: the number on the row is what the gun does ON THIS MOUNT. An aimed gun on a
+      // turret ring runs at the ring's output, and the screen must predict that, not the catalog.
+      const output = def.slotType === 'weapon' && slot ? mountOutputFactor(def, slot) : 1;
+      add(def.slotType === 'mining' ? 'ORE DPS' : 'DPS',
+        Number.isFinite(Number(def.dps)) ? Number(def.dps) * output : def.dps);
       add('RANGE', def.range);
     } else if (def.slotType === 'shield') {
       add('SHIELD', def.mods && def.mods.shieldFlat);
@@ -1852,8 +1863,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return rows.slice(0, 3);
   }
 
-  function moduleMetricsHtml(def) {
-    return moduleMetricRows(def).map((row) => {
+  function moduleMetricsHtml(def, slot = null) {
+    return moduleMetricRows(def, slot).map((row) => {
       const suffix = row.label === 'RANGE' ? ' wu'
         : row.label === 'MASS' ? ' t'
           : row.label === 'DRAW' ? ' pwr'
@@ -1863,8 +1874,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }).join('');
   }
 
-  function capabilityDeltaChips(candidate, fitted) {
+  function capabilityDeltaChips(candidate, fitted, slot = null) {
     if (!candidate || (candidate.slotType !== 'weapon' && candidate.slotType !== 'mining')) return [];
+    const outputOf = (def) => (def && def.slotType === 'weapon' && slot ? mountOutputFactor(def, slot) : 1);
     const rows = [];
     const add = (label, candidateValue, fittedValue, higherIsBetter = true) => {
       const after = Number(candidateValue);
@@ -1878,7 +1890,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         tone: (higherIsBetter ? delta > 0 : delta < 0) ? 'better' : 'worse',
       });
     };
-    add(candidate.slotType === 'mining' ? 'ore dps' : 'dps', candidate.dps, fitted && fitted.dps);
+    add(candidate.slotType === 'mining' ? 'ore dps' : 'dps',
+      Number(candidate.dps) * outputOf(candidate), fitted && Number(fitted.dps) * outputOf(fitted));
     add('range', candidate.range, fitted && fitted.range);
     const candidateHeat = candidate.heatPerSec != null ? candidate.heatPerSec : candidate.heatPerShot;
     const fittedHeat = fitted && (fitted.heatPerSec != null ? fitted.heatPerSec : fitted.heatPerShot);
@@ -1886,10 +1899,10 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     return rows;
   }
 
-  function shopDeltaChipsHtml(shopDelta, candidate, fitted) {
+  function shopDeltaChipsHtml(shopDelta, candidate, fitted, slot = null) {
     if (!shopDelta) return '<span class="sx-modrow__unchanged">Preview unavailable</span>';
     if (shopDelta.ok) {
-      const all = [...capabilityDeltaChips(candidate, fitted), ...(shopDelta.chips || [])];
+      const all = [...capabilityDeltaChips(candidate, fitted, slot), ...(shopDelta.chips || [])];
       if (!all.length) return '<span class="sx-modrow__unchanged">Current fit · no ship-level change</span>';
       return all.slice(0, 4).map((chip) => {
         const label = chip.label || formatPreviewDelta(chip);
@@ -1930,8 +1943,16 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const fittings = s.fittings || [];
     const fittedId = fittings[slotIndex];
     const availability = shipworksActionAvailability(ctx.state);
-    const compat = FITTABLE.filter((d) => d.slotType === slot.type && fits(slot, d) && d.purchasable !== false)
-      .sort((a, b) => (a.tier - b.tier) || (a.price - b.price));
+    const byTierThenPrice = (a, b) => (a.tier - b.tier) || (a.price - b.price);
+    const sameType = FITTABLE.filter((d) => d.slotType === slot.type && d.purchasable !== false);
+    const compat = sameType.filter((d) => fits(slot, d)).sort(byTierThenPrice);
+    // PQ-176.02: a weapon of the right size that this hardpoint's class refuses stays on the list,
+    // locked, with the sentence. The fit screen refuses an illegal mount in words, not by omission.
+    const refused = slot.type === 'weapon'
+      ? sameType.filter((d) => sizeFits(slot, d) && !fits(slot, d)).sort(byTierThenPrice)
+      : [];
+    const hardpoint = hardpointClassOf(slot);
+    const ringPct = Math.round(TURRET_RING_OUTPUT * 100);
 
     const list = compat.map((d) => {
       const headConflict = findMasslineHeadConflict(fittings, slotIndex, d);
@@ -1944,7 +1965,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         player: ctx.state.player,
       });
       const fittedDef = fittedId ? FITTABLE_BY_ID.get(fittedId) : null;
-      const chips = shopDeltaChipsHtml(shopDelta, d, fittedDef);
+      const chips = shopDeltaChipsHtml(shopDelta, d, fittedDef, slot);
       const purchase = describeOutfittingPurchase(d, ctx.state.player || {}, slots, fittings, def);
       const selectedFittings = fittings.slice();
       selectedFittings[slotIndex] = d.id;
@@ -1952,14 +1973,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       const selectedFit = !equipped && !purchase.disabled && !headConflict && !selectedBudgetBlocker;
       const riskChips = moduleRiskChipsHtml(def, fittings, slotIndex, d);
       const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
+      const ringNote = mountOutputFactor(d, slot) < 1 ? ` The ring aims it for you at ${ringPct} % output.` : '';
       const actionDetail = equipped ? 'Installed in this slot.'
         : purchase.disabled ? purchase.title
         : headConflict ? `Unfit ${headConflict.name} before installing another Massline head. This purchase goes to inventory.`
         : selectedBudgetBlocker ? `${selectedBudgetBlocker.text || 'This fitting exceeds the hull budget'}. This purchase goes to inventory.`
         : selectedFit && fittedId
-        ? `Buy ${d.name} and replace ${(fittedDef && fittedDef.name) || 'the fitted module'}; the removed module goes to inventory.`
+        ? `Buy ${d.name} and replace ${(fittedDef && fittedDef.name) || 'the fitted module'}; the removed module goes to inventory.${ringNote}`
         : selectedFit
-          ? `Buy ${d.name} and fit it to this ${slot.type} ${slot.size} slot.`
+          ? `Buy ${d.name} and fit it to this ${slot.type} ${slot.size} slot.${ringNote}`
         : purchase.title;
       const buyWord = availability.outfitEnabled ? (selectedFit ? (fittedId ? 'Buy & Replace' : 'Buy & Fit') : 'Buy to Inventory') : 'Dock to fit';
       const btn = equipped
@@ -1973,10 +1995,23 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<li class="k-row sx-modrow${equipped ? ' is-eq' : ''}${purchase.disabled || headConflict ? ' is-locked' : ''}" ${headConflict ? '' : `data-preview-module="${escapeHtml(d.id)}" data-preview-slot="${slotIndex}"`} tabindex="0">` +
           `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
             `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
-            `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d)}</span>` +
+            `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d, slot)}</span>` +
             `<span class="k-row__sub sx-modrow__meta">${chips}${riskChips}</span>` +
             `<span class="k-row__sub k-38 sx-modrow__role">${escapeHtml(actionDetail)}</span></span>` +
           `<span class="k-row__num sx-modrow__act">${btn}</span>` +
+        `</li>`
+      );
+    }).join('');
+    const refusedList = refused.map((d) => {
+      const sentence = mountRefusal(slot, d) || fitRefusalText(slot, d) || `${d.name} does not fit this slot`;
+      const metaFallback = escapeHtml(d.size || '') + ' · T' + d.tier;
+      return (
+        `<li class="k-row sx-modrow is-locked" data-refused-module="${escapeHtml(d.id)}" tabindex="0">` +
+          `<span class="k-row__name sx-modrow__body"><span class="sx-modrow__name">${escapeHtml(d.name)}</span>` +
+            `<span class="k-row__sub sx-modrow__role">${escapeHtml(moduleRole(d))} · ${metaFallback}</span>` +
+            `<span class="k-row__sub sx-modrow__metrics">${moduleMetricsHtml(d)}</span>` +
+            `<span class="k-row__sub k-38 sx-modrow__role" data-refusal>${escapeHtml(sentence)}</span></span>` +
+          `<span class="k-row__num sx-modrow__act"><span class="k-t-fine k-38 sx-modrow__lock">Won’t mount</span></span>` +
         `</li>`
       );
     }).join('');
@@ -1996,12 +2031,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       `<div class="sx-chooser__panel" role="region" aria-label="Compatible ${escapeHtml(SLOT_LABEL[slot.type] || slot.type)} modules">` +
         `<header class="sx-chooser__head">` +
           `<ul class="k-words k-words--row"><li><button type="button" class="k-word k-word--body sx-chooser__x" data-close aria-label="Back to the hulls">Back</button></li></ul>` +
-          `<p class="k-caps sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type} slot · size ${escapeHtml(slot.size || '')}${slot.facing ? ' · ' + escapeHtml(slot.facing) : ''}</p>` +
+          `<p class="k-caps sx-chooser__kicker">${SLOT_LABEL[slot.type] || slot.type} slot · size ${escapeHtml(slot.size || '')}${hardpoint === 'ring' ? ' · turret ring' : (slot.facing ? ' · ' + escapeHtml(slot.facing) + ' hardpoint' : '')}</p>` +
           `<h3 class="k-t-sub">Compatible modules${compat.length ? ` <span class="k-38">${compat.length}</span>` : ''}</h3>` +
         `</header>` +
+        (hardpoint === 'ring'
+          ? `<p class="k-sentence sx-muted" data-ring-law>The ring aims for you. An aimed gun keeps ${ringPct} % of its output here; launchers and spinal guns need a fixed hardpoint.</p>`
+          : '') +
         (availability.outfitEnabled ? '' : `<p class="k-sentence sx-muted">${escapeHtml(availability.outfitLabel)}</p>`) +
         (fittedId ? `<ul class="k-words k-words--row"><li><button type="button" class="k-word k-word--emph sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Remove ${escapeHtml(fittedName)}` : 'Dock to remove'}</button></li></ul>` : '') +
-        `<ul class="k-rows sx-chooser__list">${list || '<li class="k-sentence sx-muted">No compatible modules.</li>'}</ul>` +
+        `<ul class="k-rows sx-chooser__list">${(list + refusedList) || '<li class="k-sentence sx-muted">No compatible modules.</li>'}</ul>` +
       `</div>`;
     dressChooser();
     chooserEl.hidden = false;

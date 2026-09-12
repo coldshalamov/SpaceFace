@@ -56,7 +56,6 @@ ALL_BUYABLE.sort((a, b) => {
   return a.price - b.price;
 });
 
-const SIZE_RANK = { S: 1, M: 2, L: 3 };
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
 function techName(id) {
@@ -93,7 +92,8 @@ export function describeOutfittingPurchase(def, player = {}, slots = [], fitting
   const afford = credits >= price;
   const safeSlots = Array.isArray(slots) ? slots : [];
   const safeFittings = Array.isArray(fittings) ? fittings : [];
-  const hasSlot = safeSlots.some((s) => s.type === def.slotType && SIZE_RANK[s.size] >= SIZE_RANK[def.size]);
+  // One fit rule (PQ-176.02): a launcher on a ring-only hull has no slot, not a full one.
+  const hasSlot = safeSlots.some((s) => fits(s, def));
   const emptyCompatibleSlots = safeSlots
     .map((slot, index) => ({ slot, index }))
     .filter(({ slot, index }) => !safeFittings[index] && fits(slot, def));

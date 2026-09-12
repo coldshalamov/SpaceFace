@@ -8,7 +8,7 @@
 // (save/newGame, render previews, UI stat readouts) can call them without going through the bus.
 import { SHIPS } from '../data/ships.js';
 import { FLIGHT_TUNING } from '../data/flightTuning.js';
-import { WEAPONS } from '../data/weapons.js';
+import { HARDPOINT_ACCEPTS, TURRET_RING_OUTPUT, WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
@@ -287,10 +287,72 @@ export function buildSlotList(shipDef) {
   return slots;
 }
 
-/** §0.18 fitting rule: a module fits a slot iff types match and the slot is large enough. */
+/** §0.18 fitting rule: a module fits a slot iff types match, the slot is large enough, and (for a
+ *  weapon) the hardpoint class carries the weapon's mount class (PQ-176.02, `mountRefusal`). */
 export function fits(slot, def) {
   if (!slot || !def) return false;
-  return slot.type === def.slotType && SIZE_RANK[slot.size] >= SIZE_RANK[def.size];
+  if (slot.type !== def.slotType || !sizeFits(slot, def)) return false;
+  return slot.type !== 'weapon' || !mountRefusal(slot, def);
+}
+
+/** Size half of the fit rule on its own, so a chooser can tell "wrong size" from "wrong mount". */
+export function sizeFits(slot, def) {
+  return !!slot && !!def && SIZE_RANK[slot.size] >= SIZE_RANK[def.size];
+}
+
+// ---- PQ-176.02 mount classes ---------------------------------------------------------------
+// The data (weapons.js HARDPOINT_ACCEPTS / TURRET_RING_OUTPUT) says what a ring carries and what
+// an aimed gun pays there; these are the only readers, so the chooser, the presets, the Crucible
+// draft, the lab schema and the runtime all agree.
+
+/** A weapon's mount class. Authored `mount` wins; otherwise the tracking mode says it. */
+export function mountClassOf(def) {
+  if (!def || def.slotType !== 'weapon') return null;
+  if (typeof def.mount === 'string' && HARDPOINT_ACCEPTS.fixed.includes(def.mount)) return def.mount;
+  const tracking = def.tracking || 'fixed';
+  if (tracking === 'auto_turret') return 'turret';
+  if (tracking === 'homing' || tracking === 'deploy') return 'launcher';
+  return 'gun';
+}
+
+/** A weapon slot's hardpoint class: 'ring' (facing turret) or 'fixed'. Null for other slot types. */
+export function hardpointClassOf(slot) {
+  if (!slot || slot.type !== 'weapon') return null;
+  return slot.facing === 'turret' ? 'ring' : 'fixed';
+}
+
+const MOUNT_CLASS_WORD = { gun: 'an aimed gun', turret: 'a turret', launcher: 'a launcher', spinal: 'a spinal gun' };
+const HARDPOINT_WORD = { ring: 'turret ring', fixed: 'fixed hardpoint' };
+
+/** The sentence a weapon slot refuses a weapon with, or null when the mount is legal. */
+export function mountRefusal(slot, def) {
+  if (!slot || !def || slot.type !== 'weapon' || def.slotType !== 'weapon') return null;
+  const hardpoint = hardpointClassOf(slot);
+  const where = HARDPOINT_WORD[hardpoint] || 'hardpoint';
+  if (!sizeFits(slot, def)) {
+    return `${def.name} does not fit here: it needs a size ${def.size} hardpoint and this ${where} is size ${slot.size}.`;
+  }
+  const mount = mountClassOf(def);
+  const accepts = HARDPOINT_ACCEPTS[hardpoint] || HARDPOINT_ACCEPTS.fixed;
+  if (accepts.includes(mount)) return null;
+  return `${def.name} does not fit a ${where}: it is ${MOUNT_CLASS_WORD[mount] || 'the wrong class'}, and a ring carries only guns and turrets. Fit it on a fixed hardpoint.`;
+}
+
+/** Output an aimed gun keeps on this slot: TURRET_RING_OUTPUT on a ring, 1 everywhere else. */
+export function mountOutputFactor(def, slot) {
+  if (!def || !slot) return 1;
+  return hardpointClassOf(slot) === 'ring' && mountClassOf(def) === 'gun' ? TURRET_RING_OUTPUT : 1;
+}
+
+/** Refusal sentence for any slot/module pair the fit rule rejects; null when it fits. */
+export function fitRefusalText(slot, def) {
+  if (!slot || !def || fits(slot, def)) return null;
+  const mount = mountRefusal(slot, def);
+  if (mount) return mount;
+  if (slot.type === def.slotType && !sizeFits(slot, def)) {
+    return `${def.name} does not fit here: it is size ${def.size} and this ${slot.type} slot takes size ${slot.size}.`;
+  }
+  return `${def.name} does not fit this slot`;
 }
 
 function outfitLimit(value) {
@@ -386,7 +448,7 @@ export function dryRunLoadoutPresetApply({
     const def = defById(defId);
     if (!def) return { ok: false, reason: 'unknown_module', text: 'Preset contains unknown hardware' };
     if (!fits(slots[slotIndex], def)) {
-      return { ok: false, reason: 'incompatible_slot', text: def.name + ' does not fit this slot' };
+      return { ok: false, reason: 'incompatible_slot', text: fitRefusalText(slots[slotIndex], def) };
     }
     const unlocked = typeof isUnlockedFn === 'function'
       ? !!isUnlockedFn(def)
@@ -1074,12 +1136,16 @@ export function getShipRoleIdentity(defId) {
 }
 
 /** Resolve equipped weapon modules into the data.weapons[] runtime list (§ shared shape). */
-function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null) {
+export function buildWeaponList(shipDef, fittings, isPlayer, derivedStats = null) {
   const { slots, equipped } = resolveFittings(shipDef, fittings);
   const weapons = [];
   for (let i = 0; i < equipped.length; i++) {
     const d = equipped[i];
     if (!d || d.slotType !== 'weapon') continue;
+    // An illegal mount (a launcher on a turret ring in a save older than the mount law) fires
+    // nothing, the same way it already counts for nothing in getDerivedStats; save:loaded moves it
+    // to inventory with its sentence.
+    if (!fits(slots[i], d)) continue;
     weapons.push(makeWeaponRuntime(d, slots[i], i, isPlayer, derivedStats));
   }
   // Legacy player saves before the explicit NEW_GAME weapon may still have no weapon fitted. Prefer
@@ -1106,11 +1172,18 @@ function makeWeaponRuntime(def, slot, slotIndex, isPlayer = false, derivedStats 
   const gimbalArc = isTurret ? (turretArc || Math.PI)
     : (isHoming ? Math.PI : (isPlayer ? PLAYER_GIMBAL_ARC : GIMBAL_ARC_DEFAULT));
   const muzzleOffset = FACING_OFFSET[facing] || FACING_OFFSET.front;
+  // PQ-176.02: an aimed gun on a turret ring aims itself and pays the ring's output margin.
+  const mountClass = mountClassOf(def);
+  const hardpointClass = hardpointClassOf(slot) || 'fixed';
+  const mountOutput = mountOutputFactor(def, slot);
+  const fitDmgMult = Number(derivedStats && derivedStats.weaponDmgMult);
+  const dmgMult = (Number.isFinite(fitDmgMult) && fitDmgMult > 0 ? fitDmgMult : 1) * mountOutput;
   return {
     slotIndex, defId: def.id, name: def.name, facing, facingAngle, gimbalArc, muzzleOffset,
-    dmg: scaleWeaponRuntimeStat(def.dmg, derivedStats && derivedStats.weaponDmgMult), rof: def.rof, energyCost: def.energyCost,
+    mountClass, hardpointClass, mountOutput,
+    dmg: scaleWeaponRuntimeStat(def.dmg, dmgMult), rof: def.rof, energyCost: def.energyCost,
     ...(def.splashDmg != null ? {
-      splashDmg: scaleWeaponRuntimeStat(def.splashDmg, derivedStats && derivedStats.weaponDmgMult),
+      splashDmg: scaleWeaponRuntimeStat(def.splashDmg, dmgMult),
     } : {}),
     heat: def.heatPerShot || def.heatPerSec || 0, heatMax: def.heatMax || 100,
     heatDissip: scaleWeaponRuntimeStat(def.heatDissip, derivedStats && derivedStats.weaponHeatDissipMult),
@@ -1236,6 +1309,7 @@ export const ships = {
     bus.on('cargo:changed', () => { this._cargoMassRefreshPending = true; });
     bus.on('cargo:massSettled', () => this.flushCargoMassRefresh());
     bus.on('save:loaded', () => {
+      this.reconcileIllegalFittings();
       this.flushCargoMassRefresh();
       this._resetScarAdmission();
       this.reconcileLivingHull({ announce: true });
@@ -1353,6 +1427,41 @@ export const ships = {
     const p = this.state.player;
     const i = (index == null) ? p.activeShipIndex : index;
     return p.ownedShips[i] || null;
+  },
+
+  /** PQ-176.02: a fitting the mount law now refuses (a launcher on a turret ring in an older save)
+   *  moves to inventory with its refusal sentence, so no hull carries a weapon that fires nothing. */
+  reconcileIllegalFittings() {
+    const p = this.state && this.state.player;
+    if (!p || !Array.isArray(p.ownedShips)) return 0;
+    let moved = 0;
+    p.ownedShips.forEach((owned, shipIndex) => {
+      const shipDef = owned && SHIP_BY_ID.get(owned.defId);
+      if (!shipDef || !Array.isArray(owned.fittings)) return;
+      const slots = buildSlotList(shipDef);
+      let movedHere = 0;
+      owned.fittings.forEach((defId, slotIndex) => {
+        if (!defId) return;
+        const def = defById(defId);
+        const slot = slots[slotIndex];
+        if (!def || !slot || fits(slot, def)) return;
+        owned.fittings[slotIndex] = null;
+        if (!Array.isArray(p.moduleInventory)) p.moduleInventory = [];
+        p.moduleInventory.push({ instanceId: this.nextInstanceId(), defId });
+        movedHere += 1;
+        this.bus.emit('toast', {
+          text: (fitRefusalText(slot, def) || def.name + ' does not fit this slot') + ' It is in your inventory.',
+          kind: 'warn',
+          ttl: 6,
+        });
+        this.bus.emit('module:unequipped', { shipId: this.shipIdFor(shipIndex), slotIndex, defId });
+      });
+      if (movedHere) {
+        moved += movedHere;
+        this.recomputeIfActive(shipIndex, owned.fittings);
+      }
+    });
+    return moved;
   },
 
   reconcileLivingHull({ announce = false } = {}) {
@@ -1790,7 +1899,7 @@ export const ships = {
     const slot = buildSlotList(shipDef)[slotIndex];
     if (!slot) return { reason: 'unknown_slot', text: null };
     if (!fits(slot, def)) {
-      return { reason: 'incompatible_slot', text: def.name + ' does not fit this slot' };
+      return { reason: 'incompatible_slot', text: fitRefusalText(slot, def) };
     }
     if (!this.isUnlocked(def)) {
       return { reason: 'research_required', text: 'Research required: ' + techDisplayName(def.requiresTech) };

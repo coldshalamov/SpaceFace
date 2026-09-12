@@ -6,6 +6,22 @@
 // PQ-009 impulse identity: impulsePerHit is world-space momentum at a full authored hit;
 // continuous weapons scale it by their per-tick damage fraction. tumbleTorque is the maximum
 // authored angular impulse for an off-center hit. impulseProvenance is the stable receipt tag.
+// PQ-176.02 mount classes: `mount` is 'gun' (aimed), 'turret' (aims itself), 'launcher' (tubes,
+//   mines) or 'spinal' (the barrel is the ship's spine). Missing -> derived from `tracking`
+//   (auto_turret -> turret, homing/deploy -> launcher, else gun). See HARDPOINT_ACCEPTS below.
+
+// A hull hardpoint is a 'ring' (facing 'turret') or 'fixed' (every other facing). The ring only
+// carries what a traversing cradle can swing: aimed guns and dedicated turrets. Launchers and
+// spinal guns need a fixed hardpoint. An aimed gun on a ring aims itself, and the traverse gear
+// costs it output: the fixed twin out-damages it by the authored margin, so aim skill is paid.
+export const WEAPON_MOUNT_CLASSES = Object.freeze(['gun', 'turret', 'launcher', 'spinal']);
+export const HARDPOINT_ACCEPTS = Object.freeze({
+  fixed: Object.freeze(['gun', 'turret', 'launcher', 'spinal']),
+  ring: Object.freeze(['gun', 'turret']),
+});
+/** Share of dmg and splash an aimed gun keeps when a turret ring does the aiming. 0.75 -> the
+ *  same gun on a fixed hardpoint out-damages its ring twin by a third. */
+export const TURRET_RING_OUTPUT = 0.75;
 
 export const WEAPONS = [
   {
@@ -37,6 +53,7 @@ export const WEAPONS = [
   },
   {
     id: 'wpn_flak_turret_s', name: 'Flak/PD Turret S', slotType: 'weapon', size: 'S', tier: 2, mass: 3, price: 11000,
+    mount: 'turret',
     dmg: 4, rof: 8.0, dps: 32, damageType: 'kinetic', energyCost: 1,
     projSpeed: 600, range: 300, tracking: 'auto_turret', turretArcDeg: 180,
     intercepts: true,
@@ -84,6 +101,7 @@ export const WEAPONS = [
   },
   {
     id: 'wpn_railgun_m', name: 'Railgun M', slotType: 'weapon', size: 'M', tier: 2, mass: 9, price: 21000, requiresTech: 'tech_kinetic_drivers',
+    mount: 'spinal',
     dmg: 60, rof: 0.8, dps: 48, damageType: 'kinetic', energyCost: 14,
     projSpeed: 700, range: 1100, tracking: 'fixed', armorPierce: 0.5,
     impulsePerHit: 168, tumbleTorque: 16, impulseProvenance: 'railgun_penetrator',
@@ -96,6 +114,7 @@ export const WEAPONS = [
   },
   {
     id: 'wpn_missile_rack_m', name: 'Missile Rack M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 24000, requiresTech: 'tech_guided_ordnance',
+    mount: 'launcher',
     dmg: 70, splashDmg: 35, splashRadius: 40, rof: 0.8, dps: 56, damageType: 'explosive', energyCost: 4,
     projSpeed: 320, projSpeedMin: 180, range: 900, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
     ammo: 'cmdty_munitions',
@@ -103,6 +122,7 @@ export const WEAPONS = [
   },
   {
     id: 'unique_nestbreaker_rack', baseId: 'wpn_missile_rack_m', name: 'Nestbreaker Rack', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 0,
+    mount: 'launcher',
     dmg: 49, splashDmg: 24.5, splashRadius: 40, rof: 0.8, dps: 78.4, damageType: 'explosive', energyCost: 4,
     projSpeed: 320, projSpeedMin: 180, range: 900, tracking: 'homing', turnRate: 3.5, lockTimeS: 1.2,
     ammo: 'cmdty_munitions', splitCount: 2, submunitions: { count: 2, damageMult: 0.70 },
@@ -130,6 +150,7 @@ export const WEAPONS = [
   },
   {
     id: 'wpn_torpedo_l', name: 'Torpedo L', slotType: 'weapon', size: 'L', tier: 4, mass: 24, price: 60000, requiresTech: 'tech_capital_weapons',
+    mount: 'launcher',
     dmg: 320, splashDmg: 120, splashRadius: 70, rof: 0.25, dps: 80, damageType: 'explosive', energyCost: 10,
     projSpeed: 240, projSpeedMin: 140, range: 1400, tracking: 'homing', turnRate: 1.4, lockTimeS: 2.5,
     ammo: 'cmdty_munitions',
@@ -137,6 +158,7 @@ export const WEAPONS = [
   },
   {
     id: 'wpn_siege_lance_l', name: 'Siege Lance L', slotType: 'weapon', size: 'L', tier: 5, mass: 24, price: 310000, requiresTech: 'tech_flagship_command',
+    mount: 'spinal',
     dmg: 420, rof: 0.5, dps: 210, damageType: 'kinetic', energyCost: 40,
     projSpeed: 600, range: 1600, tracking: 'fixed', armorPierce: 0.5,
     impulsePerHit: 420, tumbleTorque: 64, impulseProvenance: 'siege_lance_impact',
@@ -217,6 +239,7 @@ export const WEAPONS = [
     // physics authority (756 at centre = 45 % of Wasp cruise). dmg 0 is honest: the mine throws,
     // it does not damage.
     id: 'wpn_vector_mine_m', name: 'Vector Mine M', slotType: 'weapon', size: 'M', tier: 2, mass: 7, price: 22000, requiresTech: 'tech_guided_ordnance',
+    mount: 'launcher',
     dmg: 0, rof: 0.5, dps: 0, damageType: 'kinetic', energyCost: 22,
     projSpeed: 90, range: 260, tracking: 'deploy',
     heatPerShot: 34, heatMax: 100, heatDissip: 22,

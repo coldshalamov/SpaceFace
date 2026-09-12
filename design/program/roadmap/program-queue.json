@@ -9188,7 +9188,7 @@
       "priority": 180,
       "title": "Mounts gate by size and type; fixed vs turret",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9210,11 +9210,14 @@
       "checks": [
         "npm run check:baseline",
         "npm run check:outfitting-buy-fit",
+        "npm run check:mount-classes",
         "npm run check:save-schema",
         "npm run check:sim:v3"
       ],
-      "receiptRefs": [],
-      "brief": "S/M/L mounts with type classes; fixed hardpoints get more output than turrets so aim skill is paid. DONE WHEN: Fit screen refuses illegal mounts with a sentence; a fixed-mount build out-damages its turret twin by the authored margin."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-176.02-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-12: every weapon carries a mount class (gun/turret/launcher/spinal), a hardpoint is a turret ring or fixed, the ring carries only guns and turrets, and an aimed gun on the ring aims itself at TURRET_RING_OUTPUT = 0.75 (fixed twin out-damages it by 33.3 %, measured on the runtime weapon). The Shipworks chooser lists refused weapons with the sentence (headed route proof on a Hornet ring, 1280x800 + 1920x1080), a legacy save with an illegal mount is repaired on load, every shipped fit still fits, and the Crucible draft loses no card; the chooser layout bug (stage slid into the rail column while choosing) fixed in passing. check:mount-classes wired. S/M/L mounts with type classes; fixed hardpoints get more output than turrets so aim skill is paid. DONE WHEN: Fit screen refuses illegal mounts with a sentence; a fixed-mount build out-damages its turret twin by the authored margin."
     },
     {
       "id": "PQ-176.03",

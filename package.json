@@ -438,6 +438,7 @@
     "check:crafting-guidance": "node scripts/check-crafting-guidance.mjs",
     "check:services-readiness": "node scripts/check-services-readiness.mjs",
     "check:outfitting-buy-fit": "node scripts/check-outfitting-buy-fit.mjs",
+    "check:mount-classes": "node scripts/check-mount-classes.mjs",
     "check:shipworks:dock-composition": "node scripts/check-shipworks-dock-composition.mjs",
     "check:opening-place-remaster": "node scripts/check-opening-place-remaster.mjs",
     "check:ship-purchase-guidance": "node scripts/check-ship-purchase-guidance.mjs",
