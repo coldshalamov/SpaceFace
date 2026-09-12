@@ -86,7 +86,7 @@ const CENTERED_SHIP_YAW = 0;
 const FITTABLE = MODULES.concat(WEAPONS);
 const FITTABLE_BY_ID = new Map(FITTABLE.map((d) => [d.id, d]));
 
-const SLOT_LABEL = { weapon: 'Weapon', shield: 'Shield', engine: 'Engine', cargo: 'Cargo', mining: 'Mining', utility: 'Utility' };
+const SLOT_LABEL = { weapon: 'Weapon', shield: 'Shield', engine: 'Drive', cargo: 'Cargo', mining: 'Mining', utility: 'Utility', thruster: 'Thrusters' };
 
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
@@ -925,6 +925,9 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const capability = capabilityBandModel({
       derived,
       state: ctx.state,
+      // PQ-142.00: the four physical verbs read the fit itself, not just its derived stats — the
+      // field-deploy verb is a question about what is bolted on, not about a number it produces.
+      fittings,
     });
     const condition = conditionFromEntity(viewedEntityForModel());
     const scars = scarCalloutsForHull({
@@ -1736,7 +1739,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     const equippedDefs = fittings.map((id) => id && FITTABLE_BY_ID.get(id)).filter(Boolean);
     const moduleMass = equippedDefs.reduce((sum, d) => sum + (Number(d.mass) || 0), 0);
     const systemDraw = new Map();
-    for (const t of ['weapon', 'shield', 'engine', 'mining', 'utility']) systemDraw.set(t, 0);
+    for (const t of ['weapon', 'shield', 'engine', 'mining', 'utility', 'thruster']) systemDraw.set(t, 0);
     for (const d of equippedDefs) {
       const draw = Number(d.energyDraw) || (d.continuous ? Number(d.energyCost) || 0 : 0);
       systemDraw.set(d.slotType, (systemDraw.get(d.slotType) || 0) + draw);
@@ -1784,7 +1787,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       return `${titleCaseWords(def.damageType || 'combat')} ${tracking}`;
     }
     if (def.slotType === 'shield') return 'Defensive field system';
-    if (def.slotType === 'engine') return 'Propulsion and handling system';
+    if (def.slotType === 'engine') return 'Main drive: forward thrust and top speed';
+    if (def.slotType === 'thruster') return 'Manoeuvring bay: turn, strafe and brake';
     if (def.slotType === 'cargo') return def.mods && def.mods.hiddenCargoPct ? 'Concealed cargo system' : 'Load-space system';
     if (def.slotType === 'mining') return def.directToCargo ? 'Direct-feed extraction system' : 'Ore extraction system';
     const masslineOutcome = masslineHeadOutcome(def);

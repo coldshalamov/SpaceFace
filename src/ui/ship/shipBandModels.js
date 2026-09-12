@@ -10,6 +10,7 @@ import {
   normalizeLivingHull,
 } from '../../core/livingHull.js';
 import { getDerivedStats } from '../../systems/ships.js';
+import { shipCapabilityVerbs } from '../../systems/shipCapabilities.js';
 import { handlingProfileForShip } from '../panels/handlingProfile.js';
 import { stopDistanceEstimate } from '../panels/massDelta.js';
 import { describeTechNodeReadiness } from '../screens/techTree.js';
@@ -280,14 +281,47 @@ function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
     magnitude: Math.abs(hullShift),
     why: `This frame turns ${signedPercent(hullShift)} ${hullShift >= 0 ? 'faster' : 'slower'} than the roster median.`,
   });
+  // PQ-176.01: the manoeuvring bay owns turning, so when it is refitted it is the loudest reason
+  // this hull turns the way it does — louder than the hull, the modules or the hold.
+  const bay = bayFor(derived);
+  if (bay && bay.turn !== 1) {
+    const shift = (bay.turn - 1) * 100;
+    // A refitted bay always wins the line. The hull's standing against the roster is a fact the
+    // player already knows; the bay is the thing they just changed, and turning is what it owns.
+    return `${bay.name} in the manoeuvring bay. That is why you turn ${signedPercent(shift)} `
+      + `${shift >= 0 ? 'harder' : 'lazier'} than this hull's stock set.`;
+  }
   rows.sort((left, right) => right.magnitude - left.magnitude);
   return rows.length ? rows[0].why : '';
+}
+
+/** The manoeuvring bay this fit is flying on, from the derived propulsion the kernel reads. */
+function bayFor(derived) {
+  const p = derived && derived.propulsion;
+  if (!p) return null;
+  const def = p.thrusterId ? MODULE_BY_ID.get(p.thrusterId) : null;
+  return {
+    id: p.thrusterId || null,
+    name: (def && def.name) || 'The stock RCS cluster',
+    turn: finite(p.thrusterTurnMult, 1),
+    strafe: finite(p.thrusterStrafeMult, 1),
+    brake: finite(p.thrusterBrakeMult, 1),
+  };
 }
 
 function inertiaWhy(derived) {
   const mass = finite(derived && (derived.operationalMass != null ? derived.operationalMass : derived.mass), 0);
   const linearDrag = Math.max(0.001, finite(derived && derived.flightModel && derived.flightModel.linearDrag, 0));
   const settleSeconds = 1 / linearDrag;
+  // PQ-176.00: over the hull's drive rating, mass is the law and the screen has to say so in
+  // tonnes and in what it costs, not as a hidden coefficient.
+  const load = finite(derived && derived.massLoadFactor, 1);
+  const design = finite(derived && derived.designMass, 0);
+  if (load < 0.995 && design > 0) {
+    const lost = Math.round((1 - load) * 100);
+    return `${formatMass(mass)} moving on a drive rated for ${formatMass(design)}. `
+      + `That overload costs you ${lost}% of your push, and ${round1(settleSeconds)}s to change your mind.`;
+  }
   return `${formatMass(mass)} moving. It takes ${round1(settleSeconds)}s to change your mind.`;
 }
 
@@ -297,6 +331,18 @@ function topSpeedWhy(profile, derived, dryDerived, shipDef) {
   const loadedFactor = speedMassForRatio(loadedRatio);
   const dryFactor = speedMassForRatio(dryRatio);
   const massLoss = (1 - (loadedFactor / Math.max(0.001, dryFactor))) * 100;
+  // PQ-176.01: a fitted drive is the biggest single thing that moves this ceiling, so it gets the
+  // sentence before the mass note does.
+  const driveSpeed = finite(derived && derived.propulsion && derived.propulsion.driveSpeedMult, 1);
+  if (driveSpeed !== 1) {
+    const shift = Math.round((driveSpeed - 1) * 100);
+    const governed = Math.round(finite(
+      derived.propulsion.combatSpeed != null ? derived.propulsion.combatSpeed : derived.propulsion.maxSpeed,
+      0,
+    ));
+    return `The drive you fitted holds you at ${governed} in a fight, ${signedPercent(shift)} `
+      + `${shift >= 0 ? 'over' : 'under'} this hull's own motor.`;
+  }
   if (massLoss > 1) return `Mass costs you ${Math.round(massLoss)}% of your ceiling.`;
   if (profile && profile.driveLabel) return `The ${profile.driveLabel} sets your ceiling.`;
   return '';
@@ -304,6 +350,12 @@ function topSpeedWhy(profile, derived, dryDerived, shipDef) {
 
 function brakeWhy(derived) {
   const stop = Math.round(stopDistanceEstimate(derived && derived.flightModel));
+  const bay = bayFor(derived);
+  if (bay && bay.brake !== 1) {
+    const shift = Math.round((bay.brake - 1) * 100);
+    const tail = stop > 0 ? ` From flat out you need ${stop} m to stop.` : '';
+    return `${bay.name} brakes ${signedPercent(shift)} ${shift >= 0 ? 'harder' : 'softer'} than stock.${tail}`;
+  }
   if (stop <= 0) return '';
   return `From flat out you need ${stop} m to stop.`;
 }
@@ -493,8 +545,31 @@ function pickNextNode(state) {
   return available[0] || funding[0] || locked[0] || null;
 }
 
-export function capabilityBandModel({ derived, state }) {
+/**
+ * PQ-142.00 — the four physical verbs, first and unconditional.
+ *
+ * Everything below them is "you fitted a thing that does a thing". These four are the answers to
+ * "what can I do now?": what mass the line will move, what wall the hull walks away from, what
+ * swing the line carries, whether you can put a field in the water. They are always present, they
+ * always carry a number, and the number moves when the fit moves — including when the only thing
+ * that changed is what is in the hold. `depth` puts them ahead of the module chips in the rack.
+ */
+function physicalVerbChips(derived, fittings) {
+  const verbs = shipCapabilityVerbs({ derived, fittings });
+  const rows = Array.isArray(verbs.rows) ? verbs.rows : [];
+  return rows.map((row, index) => ({
+    id: row.id,
+    verb: row.verb,
+    sub: row.sub,
+    tone: row.id === 'field_deploy' && row.available === false ? 'calm' : 'you',
+    depth: -100 + index,
+    why: row.why,
+  }));
+}
+
+export function capabilityBandModel({ derived, state, fittings = [] }) {
   if (!derived) return { chips: [], next: null };
+  const verbChips = physicalVerbChips(derived, fittings);
   const baseChips = capabilityDefinitions(derived).map((row) => {
     const source = row.id;
     let depth = 0;
@@ -530,7 +605,7 @@ export function capabilityBandModel({ derived, state }) {
     }
     : null;
   return {
-    chips: baseChips,
+    chips: verbChips.concat(baseChips),
     next,
   };
 }
