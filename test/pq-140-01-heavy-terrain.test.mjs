@@ -3,16 +3,24 @@
 // carrying speed through a line change, and the existing collision consequence law makes a light
 // hull's committed contact lethal without adding an HP aura.
 //
-// Read the last two tests together. The collision-law kill is real *kernel* arithmetic but it is
-// fed a momentum the live solver cannot produce: `sg02DynamicBodyOwner.js:107` bounds every
-// per-contact momentum exchange to `min(mass) x MAX_CONTACT_DV` before the kernel ever sees it
-// (`design/FEEL_CONTRACT.md` A6). At that bound the light survives. This file pins both numbers so
-// the gap between the law and the route is a fact the next reader inherits, not a surprise.
+// Read the last four tests together. The solver still bounds every per-contact momentum exchange
+// to `min(mass) x MAX_CONTACT_DV` before the kernel sees it (`sg02DynamicBodyOwner.js`,
+// `design/FEEL_CONTRACT.md` A6), and that bound is untouched: it is a rate limit on the solver.
+// What changed on 2026-09-12 is that craft contact with a mass-150+ hull no longer reads its
+// DAMAGE off that bound. `HEAVY_AS_TERRAIN_MASS` routes it through the same pre-solve
+// closing-speed crumple law PQ-137.06 gave rock, so "a light thrown into a heavy dies" is now true
+// at the bound, on the route, without a second damage rule and without touching hull points. The
+// legacy no-closing-speed receipt is pinned below unchanged, so nothing that never measured a
+// closing speed moved.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { ManeuverKind } from '../src/ai/contracts.js';
-import { resolveCollisionConsequence, resolveHitstunLaw } from '../src/combat/impulseKernel.js';
+import {
+  HEAVY_AS_TERRAIN_MASS,
+  resolveCollisionConsequence,
+  resolveHitstunLaw,
+} from '../src/combat/impulseKernel.js';
 import { SHIPS } from '../src/data/ships.js';
 import { WEAPONS } from '../src/data/weapons.js';
 import { shapeHeavyManeuverRequest } from '../src/systems/tacticalAI.js';
@@ -42,8 +50,9 @@ function turnRequest(entityId, forward = 0, brake = false) {
   });
 }
 
-function directContactReceipt(target, other, exchangedMomentum) {
+function directContactReceipt(target, other, exchangedMomentum, preSolveClosingSpeed = undefined) {
   return resolveCollisionConsequence({
+    preSolveClosingSpeed,
     target: {
       id: target.id,
       type: 'ship',
@@ -185,14 +194,11 @@ test('at a constructed above-bound momentum the collision law kills a light and 
   assert.ok(heavyReceipt.deltaV < 15, `heavy contact Δv stays small (${heavyReceipt.deltaV})`);
 });
 
-// The route number. The heavy half of B11 holds here — a heavy is genuinely unmoved by contact with
-// a light. The light half of B6 does not: at the bound the thrown light keeps most of its
-// durability, so "a light that hits one dies" is not yet true on the live path through this law.
-// `TERRAIN_CRUMPLE_LAW` does not rescue it either — the kernel gates the crumple bypass on
-// `worldSurface` (terrain/structure), so craft-vs-craft contact stays on the bounded-Δv energy
-// proxy. Both assertions below hold at either authored `energyDamageScale` (HEAD 0.007 -> 34.4
-// damage, working tree 0.011 -> 54.1), so this test does not pin the dirty constant.
-test('at the live contact bound the same throw does not kill the light', () => {
+// The legacy receipt, unchanged. A contact that never measured a closing speed still reads its
+// damage off the bounded Δv, so every manual/legacy caller is bit-stable. Both assertions hold at
+// either authored `energyDamageScale` (HEAD 0.007 -> 34.4 damage, working tree 0.011 -> 54.1), so
+// this test does not pin the dirty constant.
+test('with no measured closing speed the bounded contact still leaves the light alive', () => {
   const wasp = ship('ship_wasp');
   const heavy = ship('ship_warden');
   const boundedMomentum = Math.min(wasp.mass, heavy.mass) * MAX_CONTACT_DV;
@@ -206,4 +212,50 @@ test('at the live contact bound the same throw does not kill the light', () => {
   assert.equal(heavyReceipt.impactDamage, 0,
     'the same contact does not scratch the heavy: its Δv sits under the damage threshold');
   assert.equal(heavyReceipt.control, 'none', 'the heavy never loses the helm to a light');
+});
+
+// THE ROUTE NUMBER. "A heavy is moving terrain... the player can throw lights into it" — PQ-140.01,
+// and B6's "if it meets a rock at speed it dies" now means the same thing when the rock has engines.
+// The momentum handed to the kernel is exactly the live solver bound; only the measured closing
+// speed is added, which is what every real `physics:impact` receipt already carries.
+test('at the live contact bound a light thrown into a heavy at cruise dies, and the heavy shrugs', () => {
+  const wasp = ship('ship_wasp');
+  const heavy = ship('ship_warden');
+  assert.ok(heavy.mass >= HEAVY_AS_TERRAIN_MASS, 'the Warden is on the heavy side of the boundary');
+  const boundedMomentum = Math.min(wasp.mass, heavy.mass) * MAX_CONTACT_DV;
+  const closingSpeed = 105; // Wasp governed cruise (pinned by test/pq-026-02-inertial-shunt.test.mjs)
+
+  const lightReceipt = directContactReceipt(wasp, heavy, boundedMomentum, closingSpeed);
+  const heavyReceipt = directContactReceipt(heavy, wasp, boundedMomentum, closingSpeed);
+
+  assert.equal(lightReceipt.deltaV, MAX_CONTACT_DV,
+    'the solver bound is untouched: it is still a rate limit, not the damage input');
+  assert.ok(lightReceipt.impactDamage > wasp.hull + wasp.shield,
+    `a light committed into a heavy at cruise dies (${lightReceipt.impactDamage} against ${wasp.hull + wasp.shield})`);
+  assert.ok(lightReceipt.debrisCount > 0, 'and it leaves wreckage');
+  assert.equal(heavyReceipt.impactDamage, 0,
+    'the heavy on the other side of the same contact is not scratched: a light is not terrain');
+  assert.equal(heavyReceipt.control, 'none', 'the heavy never loses the helm to a light');
+});
+
+// The boundary is mass, and only mass. Two lights meeting at the same speed stay on the old path,
+// so ordinary craft-on-craft bumping did not become lethal.
+test('a sub-150 hull is not terrain: light-on-light at the same closing speed stays survivable', () => {
+  const wasp = ship('ship_wasp');
+  const hornet = ship('ship_hornet');
+  assert.ok(hornet.mass < HEAVY_AS_TERRAIN_MASS, 'the Hornet is a light');
+  const boundedMomentum = Math.min(wasp.mass, hornet.mass) * MAX_CONTACT_DV;
+  const receipt = directContactReceipt(wasp, hornet, boundedMomentum, 105);
+  assert.ok(receipt.impactDamage < wasp.hull + wasp.shield,
+    `a Hornet is not a wall (${receipt.impactDamage} against ${wasp.hull + wasp.shield})`);
+});
+
+// A scrape is still a scrape. Below the crumple threshold the heavy does nothing to a light that
+// brushes it, which is what keeps "hide behind it" and "swing around it" playable.
+test('brushing a heavy under the crumple threshold costs the light nothing', () => {
+  const wasp = ship('ship_wasp');
+  const heavy = ship('ship_warden');
+  const boundedMomentum = Math.min(wasp.mass, heavy.mass) * MAX_CONTACT_DV;
+  const receipt = directContactReceipt(wasp, heavy, boundedMomentum, 12);
+  assert.equal(receipt.impactDamage, 0, 'a brush is not a throw');
 });

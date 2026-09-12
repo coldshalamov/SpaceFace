@@ -145,7 +145,7 @@ export const COLLISION_CONSEQUENCE_LIMITS = Object.freeze({
   // U11 WF-15: light (mass ~16) at a committed concussion-stack deltaV (~50) is near-lethal on terrain.
   // Medium first slam at ~28 wu/s needs ~0.011 so post-softener remaining hull dies on the wall
   // rather than on the next concussion tick. Impulse stays at the siege-lance budget (420).
-  energyDamageScale: 0.007,
+  energyDamageScale: 0.011,
   maxDebris: 18,
 });
 
@@ -158,6 +158,20 @@ export const TERRAIN_CRUMPLE_LAW = Object.freeze({
   maxDamage: 400,
   massFloor: 0.27,
 });
+
+// PQ-140.01 — "a heavy is moving terrain". A hull this massive IS the wall for anything that meets
+// it, so the same pre-solve closing-speed law decides what a light loses when it is thrown into
+// one. 150 is the roster's own heavy boundary: `src/data/ships.js` gives every mass-150+ hull a
+// `heavyMotion` turn-carry profile and nothing lighter has one.
+//
+// This is not a second damage rule and it is not hit-point scaling. Before it, craft contact used
+// the exchanged-momentum energy proxy, and the solver's per-contact bound
+// (`sg02DynamicBodyOwner.MAX_CONTACT_DV`) capped the input at 40 WU/s no matter how hard the throw
+// was — the identical erasure PQ-137.06 removed for rock. The bound stays exactly what it was, a
+// rate limit on the solver; only the DAMAGE reads the speed the hulls actually met at. The law is
+// inverse in the victim's mass, so the heavy on the other side of the same contact still takes
+// almost nothing: it is terrain, not a mutual grinder.
+export const HEAVY_AS_TERRAIN_MASS = 150;
 
 const SURFACE_DAMAGE_MULTIPLIER = Object.freeze({
   terrain: 1.15,
@@ -279,7 +293,10 @@ export function resolveCollisionConsequence(input = {}) {
     COLLISION_CONSEQUENCE_LIMITS.maxDamageMassBoost,
   );
   const worldSurface = surface === 'terrain' || surface === 'structure';
-  const useCrumple = worldSurface && Number.isFinite(input.preSolveClosingSpeed);
+  // PQ-140.01: a mass-150+ craft is terrain for whatever hits it (see HEAVY_AS_TERRAIN_MASS).
+  const heavyAsTerrain = surface === 'craft'
+    && positive(other.mass, 0) >= HEAVY_AS_TERRAIN_MASS;
+  const useCrumple = (worldSurface || heavyAsTerrain) && Number.isFinite(input.preSolveClosingSpeed);
   let impactDamage;
   let damageCap = massRelativeCap;
   if (useCrumple) {

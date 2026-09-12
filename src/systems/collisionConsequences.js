@@ -6,6 +6,7 @@
 // transient episode/control state stays outside the entity graph.
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import {
+  HEAVY_AS_TERRAIN_MASS,
   hitstunAttackerMassForCollision,
   isWorldHitstunBody,
   publishHitstunImpulse,
@@ -119,7 +120,19 @@ export const collisionConsequences = {
     // The authoritative observer has now claimed this exact tick + mass + victim contact. Resolve
     // its control/presentation receipt immediately, before the downstream victim/recoil consumers,
     // while leaving baseline craft damage at zero so there are exactly two authored damage packets.
-    this._resolveDeferredCraftContact(pending, true);
+    //
+    // PQ-140.01 — EXCEPT when one of the two bodies is a heavy. A mass-150+ hull is terrain
+    // (`HEAVY_AS_TERRAIN_MASS`), and terrain contact is never a suppression case: a hull that meets
+    // rock at speed dies whether or not a rope put it there, and a whip-thrown light meeting an
+    // Atlas must mean the same thing. Suppressing here is what made the packet's own headline verb
+    // — "the player can throw lights into it" — the one route where a heavy stayed soft: the whip's
+    // recoil packet on the thrown hull is `momentum x 0.65 / 250`, about 2.5 points on a 260-point
+    // Wasp. The two authored whip packets are untouched; the heavy's own side of this contact still
+    // computes zero because its Δv sits under the damage threshold, so the only thing this admits is
+    // the thrown light's crumple.
+    const heavyInvolved = positiveMass(pending.a) >= HEAVY_AS_TERRAIN_MASS
+      || positiveMass(pending.b) >= HEAVY_AS_TERRAIN_MASS;
+    this._resolveDeferredCraftContact(pending, !heavyInvolved);
   },
 
   _resolvePendingCraftContact(payload) {
