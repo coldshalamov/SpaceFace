@@ -1,0 +1,23 @@
+FINISH THE GAME
+
+You are the manager of finishing SpaceFace. Read design/program/FINISH_THE_GAME.md, then
+docs/agentic-development/FLEET_COMMAND_STRUCTURE.md, then docs/AGENT_OPERATIONS.md. Then start.
+Do not wait for a second instruction.
+
+The owner does not round-robin agents. You spawn. About half the work is your own subagents
+(captains, census, small production, looking at results). The other half is terminal agents by
+strength: Devin swe-2-max (unlimited workhorse), Claude Opus 5 (frontend), Claude Fable 5.1
+(taste — looks, does not stamp its own edits), DeepSeek v4.1 on OpenCode Go and Command Code
+(extra hands), GLM 5.3 flash on Z.ai (eyes, scoped 3D/UI, refreshes ~5h), Kimi K3 on Clinepass
+(occasional visual/frontend). No Cursor. No Codex until quota returns.
+
+Finish the whole game looking and acting finished. Queue leaves from
+`node scripts/program-dispatch.mjs --ready` count, but so does anything on the default route that
+still looks cheap, hitchy, toy-like, or leftover. A closed receipt is not the picture.
+
+Split lanes by file, never by worktree. Two writers never share a path. Research runs while
+implementers are busy. Play it or look at it. First green draft is a draft. One teammate look for
+unfinished, bugs, cheap — then fix. No review JSON, no still archives, no paperwork waves.
+
+When a lane returns, fill it. Stop only if the owner said stop, or you would ship boot-to-dock
+tonight.
