@@ -1,6 +1,9 @@
 /**
  * SpaceFace command-deck refit.
  *
+ * Off the default route: production does not import this module, and it does
+ * not auto-mount. Call mountCommandDeckRefit() only from tests or a lab.
+ *
  * An additive presentation owner: existing screens retain their elements,
  * event listeners, simulation state, transactions, canvases, and lifecycle.
  * There is deliberately no parallel game state and no invented telemetry.
@@ -704,10 +707,4 @@ export function mountCommandDeckRefit({ document = globalThis.document, hooks = 
   INSTANCES.set(document, runtime);
   runtime.start();
   return runtime;
-}
-
-if (typeof document !== 'undefined') {
-  const boot = () => mountCommandDeckRefit();
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot, { once: true });
-  else boot();
 }

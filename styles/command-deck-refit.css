@@ -1,3 +1,4 @@
+/* Off the default route: not linked from index.html. Tests still read this sheet. */
 /* SpaceFace / command-deck refit. Every rule is scoped to an identified game
    surface or an explicitly owned enhancement. No simulation or canvas layout
    is owned here. Artwork is static, local, and shipped with the game. */

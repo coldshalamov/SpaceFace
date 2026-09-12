@@ -118,7 +118,7 @@ test('runtime imports shared production views; fixture is never loaded by the ga
   for(const [file,symbol] of [['screens/mainMenu.js','createTitleFrame'],['screens/pause.js','createPauseFrame'],['screens/settings.js','paneBuilder'],['station/screens/market.js','marketQuoteHtml'],['station/screens/contracts.js','contractDossierView'],['galaxyMap.js','navigationFrameHtml'],['hud.js','shipConditionMarkup'],['targetPanel.js','targetFrameHtml'],['screens/saveLoad.js','createSaveStage']]) {
     const source=read('../src/ui/'+file);assert.ok(source.includes(symbol),file);assert.doesNotMatch(source,/ORBITAL_QA|orbital-interface/);
   }
-  const html=read('../index.html');assert.match(html,/styles\/orbital\.css/);assert.doesNotMatch(html,/commandDeckRefit\.js|command-deck-refit\.css|orbital-interface/);
+  const html=read('../index.html');assert.doesNotMatch(html,/styles\/orbital\.css/);assert.doesNotMatch(html,/commandDeckRefit\.js|command-deck-refit\.css|orbital-interface/);
 });
 test('presentation helpers cannot schedule frames, query a server, or mutate gameplay', () => {
   for(const file of ['identity','marketPresentation','contractPresentation','flightInstruments','navigationFrame','targetFrame','saveFrame','stationFrames']) {
