@@ -144,7 +144,10 @@ button.sx-ct-row { width: 100%; background: none; border-left: 0; border-right: 
 /* The stage: the dossier reads top-down; the corner column (credits + vitals) stays clear. */
 .sx-ct__dossier { min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; padding-right: calc(420px * var(--k-s)); }
 .sx-dossier > * + * { margin-top: calc(16px * var(--k-s)); }
-.sx-dossier__title { margin: calc(8px * var(--k-s)) 0 0; }
+/* The dossier headline is a contract title ("First trade: 8u Fuel Cells to Ceres"), not a hero
+   marking: at the kit's title size it wrapped to four lines at 1280x800 and the fourth line fell
+   below the dossier's clip. The size follows the width and stays under the kit title size. */
+.sx-dossier__title { margin: calc(8px * var(--k-s)) 0 0; font-size: clamp(26px, 2.4vw, var(--k-fs-title)); line-height: 1.02; max-width: 26ch; }
 .sx-dossier__reward { margin-top: calc(24px * var(--k-s)); }
 .sx-dossier__terms { max-width: var(--k-measure); margin-top: calc(24px * var(--k-s)); }
 .sx-term__v { display: flex; flex-direction: column; align-items: flex-end; }
