@@ -1185,33 +1185,150 @@ export function injectHudCss() {
   .sf-schematic.sf-sch-warning .sf-sch-ship--fill .sf-sch-hull { stroke:var(--k-signal); fill:color-mix(in srgb, var(--k-signal) 18%, transparent); }
   .sf-schematic.sf-sch-warning .sf-sch-fill-line { background:var(--k-signal); }
   .sf-schematic.sf-sch-critical .sf-sch-fill-line { background:var(--k-red); }
-  /* the Power Rail: slots become words. Key glyph at fine 38 % before the word; armed = live word with
-     a 2 px signal rule beneath (as .k-word); ready 62 %; cooling/unaffordable/locked 38 %; empty hides
-     its name; the sweep ring stays as the one permitted animation; band labels as .k-caps. */
-  .sf-prail { gap:calc(28px * var(--k-s)); align-items:flex-end; padding-bottom:0; }
-  .sf-prail__band { align-items:flex-start; gap:4px; }
-  .sf-prail__label { font-family:var(--k-text); font-size:var(--k-fs-fine); font-weight:400; text-transform:uppercase; letter-spacing:0.08em; color:var(--k-bone-38); opacity:1; }
-  .sf-prail__slots { gap:calc(14px * var(--k-s)); align-items:baseline; }
-  .sf-pslot { width:auto; height:auto; background:none; border:0; box-shadow:none; padding:0 0 .15em; position:relative;
-    display:inline-flex; flex-direction:row; align-items:baseline; gap:.4em; opacity:1; }
-  .sf-pslot::after { content:''; position:absolute; left:0; bottom:0; height:2px; width:2.5em; background:var(--k-signal); transform:scaleX(0); transform-origin:left; transition:transform var(--k-d-focus) var(--k-ease), background-color var(--k-d-temp) var(--k-ease); }
-  .sf-pslot__key { position:static; font-family:var(--k-text); font-size:var(--k-fs-fine); line-height:1; color:var(--k-bone-38); opacity:1; }
-  .sf-pslot__art { display:none; }
-  .sf-pslot__name { position:static; bottom:auto; font:500 var(--k-fs-body) var(--k-text); color:var(--k-bone-62); white-space:nowrap; }
-  .sf-pslot__sweep { position:static; inset:auto; width:10px; height:10px; align-self:center; transform:rotate(-90deg); }
-  .sf-pslot__sweep circle { stroke:var(--k-signal); stroke-width:3; }
-  .sf-pslot[data-state="ready"] .sf-pslot__name { color:var(--k-bone-62); }
-  .sf-pslot[data-state="armed"] { border-color:transparent; }
+  /* ══ THE POWER RAIL AS MACHINED SOCKETS ═══════════════════════════════════════════════════════
+     What stood here: .sf-pslot { background:none; border:0 } with __art { display:none } — nine
+     powers rendered as three columns of words under a 2 px underline. That was the "slots become
+     words" reading of Cinematic Minimal, which FIELD_HARDWARE_PROGRAM §8 voids on aesthetics.
+
+     The kit had already produced the exact hardware this widget is: assets/ui/kit/assets/sockets/
+     holds a machined recess in five states plus a 240x72 9-slice band bracket, and the kit's own
+     reference sheet says in as many words "a socket is a machined recess that holds a verb icon —
+     the action bar is sockets, not buttons". Nothing in the game referenced any of it. The icons
+     match too: the produced family carries seed, well, repel, cone, skim and line, which are the
+     rail's own verb names and appear nowhere else — see src/ui/views/fhGlyphs.js.
+
+     Sprite per state. The kit ships five recesses for six rail states, so one is deliberate reuse:
+       ready         socket.rest      a bay with a verb in it, waiting
+       armed         socket.lit       the warm backlit bay — the only state that glows
+       cooling       socket.cooling   dimmed bay, with the sweep ring running over it
+       unaffordable  socket.rest      rest with the mark dropped: the bay is fine, the magazine is
+                                      empty. socket.locked would lie about why the key is dead.
+       locked        socket.locked
+       empty         socket.empty     an authored gap that still reads as a bay you could fill
+
+     Every sprite is the @2x file drawn at half size, so the rail stays crisp when the media query
+     below shrinks it and on high-DPI displays. State is carried by the sprite, so the base block's
+     opacity dimming above is reset — stacking both turned a locked bay into a grey smear. */
+  .sf-prail {
+    --sf-socket:48px; --sf-lip:18px; --sf-socket-gap:6px;
+    gap:calc(16px * var(--k-s)); align-items:flex-end; padding-bottom:0;
+  }
+  /* The band legend is stencilled ON the bracket's top lip rather than floating above it: the lip is
+     18 px of machined metal with its own edge light, which is where a real rack prints its legend,
+     and it keeps the whole rail one object instead of a label and a frame that happen to line up. */
+  .sf-prail__band { position:relative; align-items:stretch; gap:0; }
+  .sf-prail__label {
+    position:absolute; left:0; right:0; top:0; z-index:2; pointer-events:none;
+    height:var(--sf-lip); line-height:var(--sf-lip); text-align:center;
+    font-family:var(--k-display, var(--hud-display));
+    font-variation-settings:"wght" 700, "wdth" 62;
+    font-size:var(--k-fs-fine); letter-spacing:.16em; text-transform:uppercase;
+    color:var(--k-signal, var(--hud-amber)); opacity:1;
+  }
+  .sf-prail__slots {
+    box-sizing:border-box; justify-content:center; align-items:flex-end;
+    gap:var(--sf-socket-gap); padding:2px var(--sf-socket-gap) 0;
+    border-style:solid; border-width:var(--sf-lip);
+    border-image-source:url("assets/ui/kit/assets/sockets/socket.bracket@2x.png");
+    border-image-slice:36 fill; border-image-width:var(--sf-lip);
+  }
+  .sf-pslot {
+    position:relative; box-sizing:border-box;
+    flex:0 0 var(--sf-socket); width:var(--sf-socket); height:var(--sf-socket);
+    display:grid; place-items:center; padding:0; border:0; box-shadow:none; opacity:1;
+    background:url("assets/ui/kit/assets/sockets/socket.rest@2x.png")
+      center / var(--sf-socket) var(--sf-socket) no-repeat;
+    color:var(--k-bone-62);
+    transition:color var(--k-d-focus) var(--k-ease);
+  }
+  .sf-pslot::after { display:none; }
+  /* The key numeral is engraved on the bay's top-left bezel, clear of the 24 px mark in the middle.
+     It stays at 62 % bone in every state including locked: the number is how you find the socket,
+     and a key you cannot read is worse than a power you cannot fire. */
+  .sf-pslot__key {
+    position:absolute; top:1px; left:4px; z-index:1;
+    font-family:var(--k-text); font-size:var(--k-fs-fine); line-height:1.1;
+    color:var(--k-bone-62); opacity:1;
+  }
+  .sf-pslot__art { display:grid; place-items:center; }
+  .sf-pslot__art .fh-glyph { display:block; }
+  /* Verb names sit in the bracket's bottom lip — the same engraving logic as the band legend, and it
+     is why this rail is no taller than the word list it replaces despite carrying real hardware. */
+  .sf-pslot__name {
+    position:absolute; left:50%; transform:translateX(-50%); bottom:calc(2px - var(--sf-lip));
+    /* The display face's width axis, not a smaller size: 12 px is the type floor (check-type-floor)
+       and the names have to fit a 48 px pitch, so the only axis left is wdth. Condensed also reads
+       as the stencilled marking the direction asks for rather than a caption under an icon. */
+    font-family:var(--k-display, var(--hud-display));
+    font-variation-settings:"wght" 600, "wdth" 62;
+    font-size:var(--k-fs-fine); line-height:1.2; letter-spacing:.04em;
+    color:var(--k-bone-62); white-space:nowrap;
+  }
+  .sf-pslot__sweep {
+    position:absolute; inset:4px; width:auto; height:auto;
+    transform:rotate(-90deg); pointer-events:none; z-index:1;
+  }
+  .sf-pslot__sweep circle { stroke:var(--k-signal, var(--hud-amber)); stroke-width:2.6; }
+
+  .sf-pslot[data-state="armed"] {
+    background-image:url("assets/ui/kit/assets/sockets/socket.lit@2x.png");
+    color:var(--k-text-live);
+  }
+  /* Every produced glyph carries a second .accent path. Lighting only that path is what makes an
+     armed socket read as backlit hardware rather than a brighter copy of the resting one. */
+  .sf-pslot[data-state="armed"] .fh-glyph .accent { fill:var(--k-signal, var(--hud-amber)); }
   .sf-pslot[data-state="armed"] .sf-pslot__name { color:var(--k-text-live); }
-  .sf-pslot[data-state="armed"]::after { transform:scaleX(1); }
-  .sf-pslot[data-state="cooling"], .sf-pslot[data-state="unaffordable"], .sf-pslot[data-state="locked"] { opacity:1; border-color:transparent; }
-  .sf-pslot[data-state="cooling"] .sf-pslot__name, .sf-pslot[data-state="unaffordable"] .sf-pslot__name, .sf-pslot[data-state="locked"] .sf-pslot__name { color:var(--k-bone-38); }
-  .sf-pslot[data-state="locked"] .sf-pslot__key, .sf-pslot[data-state="empty"] .sf-pslot__key { opacity:1; }
-  .sf-pslot[data-state="empty"] { opacity:1; border-color:transparent; }
+  .sf-pslot[data-state="cooling"] {
+    background-image:url("assets/ui/kit/assets/sockets/socket.cooling@2x.png"); opacity:1;
+  }
+  .sf-pslot[data-state="cooling"] .sf-pslot__art { opacity:.55; }
+  .sf-pslot[data-state="unaffordable"] { opacity:1; }
+  .sf-pslot[data-state="unaffordable"] .sf-pslot__art { opacity:.38; }
+  .sf-pslot[data-state="locked"] {
+    background-image:url("assets/ui/kit/assets/sockets/socket.locked@2x.png"); opacity:1;
+  }
+  .sf-pslot[data-state="locked"] .sf-pslot__art { opacity:.42; }
+  .sf-pslot[data-state="locked"] .sf-pslot__key { opacity:1; }
+  .sf-pslot[data-state="empty"] {
+    background-image:url("assets/ui/kit/assets/sockets/socket.empty@2x.png"); opacity:1;
+  }
+  .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.28; }
+  .sf-pslot[data-state="empty"] .sf-pslot__key { opacity:1; }
+  .sf-pslot[data-state="cooling"] .sf-pslot__name,
+  .sf-pslot[data-state="unaffordable"] .sf-pslot__name,
+  .sf-pslot[data-state="locked"] .sf-pslot__name { color:var(--k-bone-62); }
   .sf-pslot[data-state="empty"] .sf-pslot__name { display:none; }
-  .sf-prail[data-claimed] .sf-pslot__name { color:var(--k-signal); }
+  .sf-prail[data-claimed] .sf-pslot__name { color:var(--k-signal, var(--hud-amber)); }
   .sf-prail[data-claimed="FULL"] .sf-prail__label { opacity:.5; }
-  @media (max-width:1180px) { .sf-pslot { width:auto; height:auto; } }
+
+  /* Clearance, measured from the box rather than guessed. The rail is now lip(18) + pad(2) +
+     socket(48) + lip(18) = 86 px tall on bottom:10px, so it occupies 10-96. The slot names hang
+     into the lower lip rather than below the frame, which is why a rail carrying real hardware ends
+     up only ~19 px taller than the word list it replaces — and why .sf-prail needs no
+     padding-bottom reserve any more. The instrument deck's 88 px would have dropped the speed gauge
+     across the RIG bracket's top lip.
+
+     The breakpoints resize by token: --sf-lip drives border-width AND border-image-width together,
+     so the bracket art always scales as a whole. border-image-slice must stay 36 at every size —
+     it names the authored corner region of the @2x source, not a display size, and retuning it
+     would cut the bracket apart at a seam the artwork never had.
+
+     The socket gap GROWS as the sockets shrink, which looks backwards until you notice what sets
+     the pitch: the verb name under each bay is pinned at the 12 px floor and cannot shrink with the
+     hardware. Below ~40 px the name, not the socket, is the wide element — at a 4 px gap the
+     FIELDWORK band read "SEED WELLREPEL" in the capture. */
+  .sf-command-deck { bottom:104px; }
+  @media (max-width:1180px) {
+    .sf-prail { --sf-socket:40px; --sf-lip:14px; --sf-socket-gap:9px; gap:calc(12px * var(--k-s)); }
+    .sf-pslot__art .fh-glyph { width:22px; height:22px; }
+    .sf-command-deck { bottom:88px; }
+  }
+  @media (max-width:900px), (max-height:650px) {
+    .sf-prail { --sf-socket:34px; --sf-lip:12px; --sf-socket-gap:12px; }
+    .sf-pslot__art .fh-glyph { width:19px; height:19px; }
+    .sf-pslot__key { left:3px; }
+    .sf-command-deck { bottom:78px; }
+  }
   /* target panel: no plate; name emph 100 %, faction and distance data 62 %; tier as a word */
   .sf-target { padding:0; gap:3px; }
   .sf-target__name { font-family:var(--k-text); font-size:var(--k-fs-emph); font-weight:500; color:var(--k-text-live); }
@@ -1336,7 +1453,9 @@ export function injectHudCss() {
   .sf-command-deck.k-in, .sf-prail.k-in { transform:translate(calc(-50% + var(--k-in-x, 0px)), var(--k-in-y, 0px)); }
   .sf-command-deck.k-in.k-in--go, .sf-prail.k-in.k-in--go { transform:translateX(-50%); }
   @media (prefers-reduced-motion:reduce) {
-    .sf-pslot::after { transition:none; }
+    /* The rail's only transition is the socket's text/mark colour as a power arms. The 2 px
+       underline this used to guard went with the word-list skin; the sprite swap is instant. */
+    .sf-pslot { transition:none; }
   }
 
   /* ===== Field Hardware instruments — produced bezels/faces, not CSS hairlines ===== */
@@ -1489,6 +1608,41 @@ export function injectHudCss() {
     .sf-kit-gauge__needle { color:CanvasText; }
     .sf-kit-radar__bezel, .sf-kit-radar__face, .sf-kit-radar__n { display:none; }
     .sf-kit-radar .sf-radar { margin-top:0; }
+    /* The Power Rail's sockets are PNG recesses, and forced colours repaints the surface behind a
+       background image without repainting the image — a bay drawn on Canvas goes invisible or, on a
+       light theme, black-on-white. Drop the sprites and redraw the same six states in system
+       colours. The verb marks need nothing: they are inline SVG on currentColor, so the UA maps
+       them to CanvasText for free (which is why they are inlined rather than mask-images). */
+    /* The band legend and the verb names are engraved INTO the bracket's 18 px lips, so dropping the
+       border-image would collapse those lips to 1 px and land both on top of the sockets. Give the
+       margins back exactly what the border gave up, and the two negative offsets still point at
+       empty space. Measured against the forced-colours capture, not assumed. */
+    .sf-prail__slots {
+      border-image:none; border:1px solid CanvasText; background:Canvas;
+      margin:var(--sf-lip) 0; padding:2px var(--sf-socket-gap);
+    }
+    .sf-prail__label { color:CanvasText; }
+    /* Bays are outlined with border, NOT box-shadow: forced colours drops shadows outright, and the
+       first pass here lost every socket edge because of it. box-sizing is border-box, so the outline
+       costs no width. */
+    .sf-pslot {
+      background:Canvas; border:1px solid CanvasText; box-shadow:none; color:CanvasText;
+    }
+    .sf-pslot[data-state="armed"] {
+      background:Highlight; border:2px solid Highlight; color:HighlightText;
+    }
+    .sf-pslot[data-state="cooling"], .sf-pslot[data-state="unaffordable"],
+    .sf-pslot[data-state="locked"], .sf-pslot[data-state="empty"] {
+      background:Canvas; border:1px solid GrayText;
+    }
+    .sf-pslot__sweep circle { stroke:CanvasText; }
+    /* State must not be opacity alone here: forced colours flattens the palette, so a 28 % mark and
+       a 42 % mark become the same grey. The border weight and colour above carry the difference. */
+    .sf-pslot .sf-pslot__art { opacity:1; }
+    .sf-pslot[data-state="empty"] .sf-pslot__art, .sf-pslot[data-state="locked"] .sf-pslot__art {
+      color:GrayText;
+    }
+    .sf-pslot__key, .sf-pslot__name { color:CanvasText; }
   }
   `;
   document.head.appendChild(s);

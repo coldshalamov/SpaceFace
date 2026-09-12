@@ -1,4 +1,4 @@
-// src/ui/powerRail.js — J06 The Power Rail (CANONICAL_BUILD_MAP §11.12).
+// src/ui/powerRail.js — J06 The Power Rail (build_map §11.12).
 //
 // The permanent bottom-centre 1–9 rank, in three bands of three. This is the direct answer to the
 // owner's complaint that they "can't look at the HUD and see the big game": today `Digit4`–`Digit8`
@@ -40,7 +40,7 @@
 // underneath. A claim with a past `expiresAt` is dropped on the next render rather than trusted, so
 // a prompt that dies without releasing cannot wedge the rail permanently.
 
-import { icon } from './station/icons.js';
+import { fhGlyph } from './views/fhGlyphs.js';
 import { repulsionTrapFitted } from '../systems/impulseCharges.js';
 
 export const BAND_ORDNANCE = 'ORDNANCE';
@@ -57,20 +57,25 @@ export const SLOT_STATES = ['ready', 'armed', 'cooling', 'unaffordable', 'locked
 // The rank. `action` names an entry in the input binding table; `null` is an authored empty socket
 // (a slot the design reserves but nothing fills yet) — deliberately visible, because a gap the
 // player can SEE reads as "this fills in later", while a hidden gap reads as "there is nothing".
+// Glyphs name the kit's produced filled family (`src/ui/views/fhGlyphs.js`, drawn from
+// `assets/ui/kit/icons/24/`). That family carries a mark for every verb here — seed, well, repel,
+// cone, skim and line exist nowhere else in the game — because it was drawn for these sockets. The
+// old values borrowed generic menu line-icons (`danger` twice, `target` for Seed, `boost` for
+// Repel); two slots wearing the same outline is precisely what made the rail unreadable at a glance.
 export const RAIL_SLOTS = Object.freeze([
   // Reserved sockets 1–3 stay nameless under their band pill: the band label twelve pixels above
   // already says ORDNANCE, and three stacked "Ordnance" micro-labels truncated to "ORD_" junk.
-  { index: 1, band: BAND_ORDNANCE, action: 'chargeThrow', name: 'Charge', glyph: 'slot_weapon' },
-  { index: 2, band: BAND_ORDNANCE, action: 'chargeDetonate', name: 'Blast', glyph: 'danger' },
-  { index: 3, band: BAND_ORDNANCE, action: 'tether', name: 'Line', glyph: 'slot_utility' },
-  { index: 4, band: BAND_FIELDWORK, action: 'deployMassSeed', name: 'Seed', glyph: 'target' },
-  { index: 5, band: BAND_FIELDWORK, action: 'deployWell', name: 'Well', glyph: 'danger' },
+  { index: 1, band: BAND_ORDNANCE, action: 'chargeThrow', name: 'Charge', glyph: 'weapon' },
+  { index: 2, band: BAND_ORDNANCE, action: 'chargeDetonate', name: 'Blast', glyph: 'blast' },
+  { index: 3, band: BAND_ORDNANCE, action: 'tether', name: 'Line', glyph: 'line' },
+  { index: 4, band: BAND_FIELDWORK, action: 'deployMassSeed', name: 'Seed', glyph: 'seed' },
+  { index: 5, band: BAND_FIELDWORK, action: 'deployWell', name: 'Well', glyph: 'well' },
   // Display name shortened to fit the slot's 38px label row untruncated; the verb family
   // (deployRepulsor, help text) keeps the full "Repulsor" name.
-  { index: 6, band: BAND_FIELDWORK, action: 'deployRepulsor', name: 'Repel', glyph: 'boost' },
-  { index: 7, band: BAND_RIG, action: 'toggleClearingCone', name: 'Cone', glyph: 'slot_mining' },
-  { index: 8, band: BAND_RIG, action: 'toggleSkimCollector', name: 'Skim', glyph: 'slot_cargo' },
-  { index: 9, band: BAND_RIG, action: null, name: 'Rig', glyph: 'slot_utility' },
+  { index: 6, band: BAND_FIELDWORK, action: 'deployRepulsor', name: 'Repel', glyph: 'repel' },
+  { index: 7, band: BAND_RIG, action: 'toggleClearingCone', name: 'Cone', glyph: 'cone' },
+  { index: 8, band: BAND_RIG, action: 'toggleSkimCollector', name: 'Skim', glyph: 'skim' },
+  { index: 9, band: BAND_RIG, action: null, name: 'Rig', glyph: 'rig' },
 ]);
 
 const BANDS = [BAND_ORDNANCE, BAND_FIELDWORK, BAND_RIG];
@@ -231,7 +236,9 @@ function sweepSvg() {
 
 function slotMarkup(slot, label) {
   const name = slot.answer != null ? slot.answer : slot.name;
-  const art = slot.answer != null ? '' : icon(slot.glyph, 18);
+  // A claimed socket is answering a prompt, so it shows the answer word and no verb mark: a glyph
+  // under a borrowed key would advertise a power the press will not fire.
+  const art = slot.answer != null ? '' : fhGlyph(slot.glyph, 24);
   const described = name
     ? `${name}${label ? `, key ${label}` : ''}, ${slot.state}`
     : `${label ? `key ${label}` : 'unbound socket'}, ${slot.state}`;
