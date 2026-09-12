@@ -9,8 +9,17 @@ import { buildMeridianTrader } from './ships/meridianTrader.js';
 import { buildDriftBarge } from './ships/driftBarge.js';
 import { buildQuietRaider } from './ships/quietRaider.js';
 import { buildVaelSniper } from './ships/vaelSniper.js';
+import { loadAuthoredPart } from './assetLoader.js';
+import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import { build47aScenarioProp } from './scenarioProps47a.js';
-import { batchScenarioPropOpaqueMeshes } from './scenarioPropBatching.js';
+import {
+  batchPackagedPropOpaqueMeshes,
+  batchScenarioPropOpaqueMeshes,
+} from './scenarioPropBatching.js';
+import {
+  GENERIC_TOW_PACKAGED_PROP,
+  SCENARIO_47A_PACKAGED_PROPS,
+} from '../data/scenarios/47aLiveScene.js';
 import {
   buildAuthoredCargoCapsule,
   buildAuthoredPlaceProp,
@@ -155,6 +164,198 @@ const SCENARIO_47A_SHIP_BUILDERS = {
   'asset.slice.meridian_recovery_tug': { build: buildConcordPatrol, label: '47-A Concord recovery tug' },
 };
 
+const RELEASE_PART_ROOT = 'assets/ships/release/parts/';
+const PACKAGED_PRIMITIVE_MATRIX = new THREE.Matrix4();
+const PACKAGED_FIT_CENTER = new THREE.Vector3();
+const PACKAGED_FIT_SIZE = new THREE.Vector3();
+const SCENARIO_PROP_KEEP_VISIBLE = new Set(['HandoffBeacon_Zone_Disc']);
+
+function packagedPartUrl(relativeFile) {
+  return `${RELEASE_PART_ROOT}${String(relativeFile || '').replace(/^[\\/]+/, '')}`;
+}
+
+function slotForPackagedFile(file) {
+  return String(file || '').replace(/\\/g, '/').startsWith('pods/') ? 'pod' : 'place';
+}
+
+function packagedPropSpec(entity) {
+  if (!entity || entity.alive === false) return null;
+  const data = entity.data || {};
+  if (data.authoredPayloadAssetId) return null;
+  if (data.precompileProbe === true) return null;
+  if (typeof data.packagedPropFile === 'string' && data.packagedPropFile) {
+    return {
+      file: data.packagedPropFile.replace(/^[\\/]+/, ''),
+      slot: data.packagedPropSlot || slotForPackagedFile(data.packagedPropFile),
+      radius: data.packagedPropRadius,
+      hideImmediately: true,
+    };
+  }
+  const mapped = SCENARIO_47A_PACKAGED_PROPS[data.assetRef];
+  if (mapped) {
+    return {
+      file: mapped.file,
+      slot: mapped.slot || slotForPackagedFile(mapped.file),
+      radius: mapped.visualRadius,
+      hideImmediately: true,
+    };
+  }
+  if (entity.type === 'payload' && !data.distressBeacon && !data.rescuePriority) {
+    return {
+      file: GENERIC_TOW_PACKAGED_PROP.file,
+      slot: GENERIC_TOW_PACKAGED_PROP.slot,
+      hideImmediately: false,
+    };
+  }
+  return null;
+}
+
+function isLod0Primitive(primitive) {
+  const lod = primitive && primitive.tags && primitive.tags.lod;
+  if (lod && String(lod).toLowerCase() !== 'lod0') return false;
+  const name = String(primitive && primitive.name || '');
+  if (/LOD[12][_-]/i.test(name)) return false;
+  return true;
+}
+
+function instantiatePackagedPrimitives(record, parent) {
+  for (const primitive of record && record.primitives || []) {
+    if (!primitive || !primitive.geometry || !primitive.material) continue;
+    if (!isLod0Primitive(primitive)) continue;
+    const mesh = new THREE.Mesh(primitive.geometry, primitive.material);
+    mesh.name = primitive.name || 'PackagedPrimitive';
+    if (primitive.matrix && primitive.matrix.isMatrix4) PACKAGED_PRIMITIVE_MATRIX.copy(primitive.matrix);
+    else if (Array.isArray(primitive.matrix) && primitive.matrix.length === 16) {
+      PACKAGED_PRIMITIVE_MATRIX.fromArray(primitive.matrix);
+    } else PACKAGED_PRIMITIVE_MATRIX.identity();
+    mesh.applyMatrix4(PACKAGED_PRIMITIVE_MATRIX);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    parent.add(mesh);
+  }
+}
+
+function fitPackagedGroup(group, targetRadius) {
+  if (!group) return;
+  group.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(group);
+  if (box.isEmpty()) return;
+  box.getCenter(PACKAGED_FIT_CENTER);
+  box.getSize(PACKAGED_FIT_SIZE);
+  const envelope = Math.max(PACKAGED_FIT_SIZE.x, PACKAGED_FIT_SIZE.y, PACKAGED_FIT_SIZE.z, 1e-6);
+  group.position.sub(PACKAGED_FIT_CENTER);
+  const radius = Number(targetRadius);
+  if (Number.isFinite(radius) && radius > 0) group.scale.setScalar((radius * 2) / envelope);
+}
+
+function isPackagedBodyDescendant(object, root) {
+  let current = object;
+  while (current && current !== root) {
+    if (current.userData && current.userData.scenarioPackagedBody) return true;
+    current = current.parent;
+  }
+  return false;
+}
+
+function hideProceduralPropDrawables(root) {
+  if (!root || typeof root.traverse !== 'function') return;
+  root.traverse((object) => {
+    if (object === root) return;
+    if (object.userData && object.userData.spacefaceSocket) return;
+    if (isPackagedBodyDescendant(object, root)) return;
+    if (SCENARIO_PROP_KEEP_VISIBLE.has(object.name)) return;
+    if (!(object.isMesh || object.isLine || object.isPoints)) return;
+    object.visible = false;
+    object.userData = object.userData || {};
+    object.userData.authoredReadableFallbackLayer = true;
+  });
+}
+
+function packagedFitRadius(entity, spec) {
+  const data = entity && entity.data || {};
+  const stamped = Number(data.packagedPropRadius);
+  if (Number.isFinite(stamped) && stamped > 0) return stamped;
+  const mapped = Number(spec && spec.radius);
+  if (Number.isFinite(mapped) && mapped > 0) return mapped;
+  return Number(entity && entity.radius) || 1;
+}
+
+function attachPackagedScenarioProp(root, entity, options = {}) {
+  if (!root || !root.userData) return root;
+  if (root.userData.authoredPackageUrl) return root;
+  if (root.userData.visualBuildFailed || root.userData.authoredAdmissionSubstrate) return root;
+  const spec = packagedPropSpec(entity);
+  if (!spec || !spec.file) return root;
+  const url = packagedPartUrl(spec.file);
+  const hideImmediately = spec.hideImmediately !== false;
+  if (hideImmediately) hideProceduralPropDrawables(root);
+  root.userData.authoredPackageUrl = url;
+  root.userData.authoredPackageSlot = spec.slot || slotForPackagedFile(spec.file);
+  if (hideImmediately) {
+    root.userData.authoredAssetState = 'awaiting-authored-admission';
+    root.userData.authoredVisualRoot = 'none-pending-admission';
+  }
+  root.userData.renderContract = {
+    ...(root.userData.renderContract || {}),
+    assetBoundary: 'packaged 47-A / TOW body',
+    gracefulFallback: hideImmediately !== true,
+  };
+  const start = (renderer, scene, requestOptions = {}) => {
+    const existing = root.userData.authoredUpgradePromise;
+    if (existing) return existing;
+    if (!renderer) return null;
+    if (root.userData.authoredAssetState === 'authored') return Promise.resolve(true);
+    root.userData.authoredAssetState = 'loading';
+    const loadPart = typeof requestOptions.loadAuthoredPart === 'function'
+      ? requestOptions.loadAuthoredPart
+      : loadAuthoredPart;
+    const completion = loadPart(url, {
+      renderer,
+      slot: spec.slot || slotForPackagedFile(spec.file),
+      optional: true,
+      ...requestOptions,
+    }).then((record) => {
+      if (!record || !root.parent) {
+        root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
+        return false;
+      }
+      const packaged = new THREE.Group();
+      packaged.name = `${root.userData.kind || entity.type || 'prop'}_PackagedBody`;
+      packaged.userData.scenarioPackagedBody = true;
+      instantiatePackagedPrimitives(record, packaged);
+      if (!packaged.children.length) {
+        root.userData.authoredAssetState = 'unavailable';
+        return false;
+      }
+      fitPackagedGroup(packaged, packagedFitRadius(entity, spec));
+      batchPackagedPropOpaqueMeshes(packaged);
+      freezeStaticChildMatrices(packaged);
+      hideProceduralPropDrawables(root);
+      root.add(packaged);
+      root.userData.hull = packaged;
+      root.userData.authoredAssetState = 'authored';
+      root.userData.authoredVisualRoot = record.assetId || url;
+      if (spec.file === GENERIC_TOW_PACKAGED_PROP.file) {
+        root.userData.authoredPayloadAssetId = 'pod_cargo_container';
+      }
+      settleIndustrialSurfacing({
+        authoredRoot: packaged,
+        entity,
+        boundary: root,
+      }, options);
+      return true;
+    }).catch((error) => {
+      root.userData.authoredAssetState = 'unavailable';
+      reportVisualWarning(options, '[visualOverrides] packaged 47-A / TOW body failed closed', error);
+      return false;
+    });
+    root.userData.authoredUpgradePromise = completion;
+    return completion;
+  };
+  root.userData.requestAuthoredUpgrade = start;
+  return root;
+}
+
 /**
  * Install the hero-asset registry and authored-part boundary on a live visual factory.
  * Mutating the existing factory object is intentional: renderer event closures, rebuild paths,
@@ -265,6 +466,7 @@ export function installVisualOverrides(factory, options = {}) {
     }
 
     if (!visual) visual = fallbackBuild(entity);
+    visual = attachPackagedScenarioProp(visual, entity, options);
     assertReleaseHeroVisual(entity, visual, releaseMode);
     if (!visual || !entity || entity.type !== 'ship') return visual;
     configureTransparentSinglePassSurfaces(visual);

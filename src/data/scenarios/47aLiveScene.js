@@ -4,6 +4,42 @@ import { CombatDoctrineId } from '../../ai/combatDoctrine.js';
 export const SCENARIO_47A_ID = 'scenario.47a.mass-discrepancy';
 export const SCENARIO_47A_CONTRACT_PATH = 'src/data/scenarios/47a.scenario.json';
 
+// PQ-193.04 — same-slot packaged bodies already on disk. Do not invent a parallel prop.
+export const SCENARIO_47A_PACKAGED_PROPS = Object.freeze({
+  'asset.slice.47a_spindle': Object.freeze({
+    file: 'pods/pod_cargo_container.glb',
+    slot: 'pod',
+  }),
+  'asset.slice.civilian_pod': Object.freeze({
+    file: 'places/place_habitat_pod.glb',
+    slot: 'place',
+  }),
+  'asset.slice.kessler_handoff_beacon': Object.freeze({
+    file: 'places/place_sensor_mast.glb',
+    slot: 'place',
+    // Entity radius is the covert zone disc, not the mast envelope.
+    visualRadius: 22,
+  }),
+  'asset.slice.bourse_carrier_wreck': Object.freeze({
+    file: 'places/place_aftermath_wreck_liner_bow.glb',
+    slot: 'place',
+  }),
+});
+
+export const GENERIC_TOW_PACKAGED_PROP = Object.freeze({
+  file: 'pods/pod_cargo_container.glb',
+  slot: 'pod',
+});
+
+function stampPackagedProp(data) {
+  const spec = data && SCENARIO_47A_PACKAGED_PROPS[data.assetRef];
+  if (!spec) return data;
+  data.packagedPropFile = spec.file;
+  data.packagedPropSlot = spec.slot;
+  if (Number.isFinite(spec.visualRadius)) data.packagedPropRadius = spec.visualRadius;
+  return data;
+}
+
 export function mark47aPlayerActor(player) {
   if (!player) return null;
   player.data = Object.assign({}, player.data, {
@@ -38,7 +74,7 @@ export function makeEvidenceSpindleSpec({ pos, rot = 0 } = {}) {
     capMax: 0,
     capRegen: 0,
     flags: { persistent: true },
-    data: {
+    data: stampPackagedProp({
       scenarioActorId: 'evidence_spindle_47a',
       scenarioRole: 'tether_payload',
       assetRef: 'asset.slice.47a_spindle',
@@ -51,7 +87,7 @@ export function makeEvidenceSpindleSpec({ pos, rot = 0 } = {}) {
       masslineBreakPolicy: 'extreme_overload',
       derived: { damageReductionMult: 1 },
       combatProfileId: 'combat_profile_tether_payload',
-    },
+    }),
     physicsBody: {
       schemaVersion: 1,
       radius: 10,
@@ -312,11 +348,11 @@ function makePassiveScenarioSpec({ type, actorId, role, assetRef, pos, rot = 0, 
     capMax: 0,
     capRegen: 0,
     flags: { persistent: true },
-    data: Object.assign({
+    data: stampPackagedProp(Object.assign({
       scenarioActorId: actorId,
       scenarioRole: role,
       assetRef,
-    }, data),
+    }, data)),
   };
 }
 
