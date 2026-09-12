@@ -293,6 +293,7 @@ export function buildDockArrival(state = {}, station = {}) {
   const patch = leftoverStructurePatch(state, station);
   const serviceCount = Array.isArray(station.services) ? station.services.length : 0;
   const identity = String(station.name || stationId || 'Station');
+  const ident = [station.typeLabel, station.factionName].filter(Boolean).join(' · ') || null;
   const patchText = patch && patch.text ? patch.text : null;
   const ledgerLine = ledger && ledger.body ? ledger.body : null;
   const mechanicLine = mechanic && mechanic.body ? mechanic.body : null;
@@ -301,6 +302,7 @@ export function buildDockArrival(state = {}, station = {}) {
     .slice(0, 7);
   return {
     identity,
+    ident,
     primaryAction: action.label,
     primaryTarget: action.target,
     news,

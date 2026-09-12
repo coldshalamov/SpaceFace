@@ -1,12 +1,9 @@
 import { stationFrameHtml } from '../views/stationFrames.js';
-// src/ui/station/stationApp.js — the station as a place (Frontend Task C §1.2).
-// Docking is an arrival, not a menu: the berth with the player's hull in it (the world canvas is
-// frozen while docked, so the hull rig is the picture), the station's name at hero size, one line of
-// local news plus the leftover event card when this berth is under a leftover event, leftover
-// story ledger when leftover receipts can retell the campaign, the destinations
-// as words along the bottom edge with Undock as the one primary word, credits and the vitals with
-// their service verbs as a quiet column top-right. Every destination sits over that berth on the
-// kit grid; no plates, no fascia, no operation rail.
+// src/ui/station/stationApp.js — Field Hardware berth chrome (PQ-194 / P33 shell).
+// Docking is an arrival on the lit 3D berth: stencil station name, authority legend, one news
+// strip, leftover event/ledger/mechanic cards, destination keys along the bottom edge, Undock as
+// the primary key with a readiness light, credits and vitals on a quiet engraved plate. The
+// Orbital Command website chrome (opaque header, Facilities sidebar, word-underlines) is retired.
 //
 // Behaviours carried over unchanged (same exported logic, new surface):
 //   · Departure readiness  → Undock reads Ready/Check/Risk; launching while not ready opens a
@@ -69,10 +66,11 @@ function resolveTarget(tab) {
   return action ? { action } : {};
 }
 
-// One sheet. It holds the station's layout rules (kit tokens only) and the shared ship stage's;
-// the kit (styles/kit.css) carries everything else. station-workbench.css and station-berth.css
-// are gone (Task C §1.2).
+// Field Hardware tokens + component layer first, then the station layout sheet.
+// tokens/fh live under assets/ui/kit so nine-slice urls resolve; station.css beats orbital.css.
 const STATION_STYLES = [
+  { id: 'sx-fh-tokens', href: '/assets/ui/kit/tokens/tokens.css' },
+  { id: 'sx-fh-css', href: '/assets/ui/kit/kit/fh.css' },
   { id: 'sx-station-css', href: '/styles/station.css' },
 ];
 // Also called by the in-flight THE SHIP screen (src/ui/ship/shipScreen.js): the shared shipworks
@@ -173,7 +171,7 @@ function resolveStation(ctx) {
   }
   const id = ctx && ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId;
   const rec = id && STATION_REC.get(id);
-  if (!rec) return { name: 'Station', typeLabel: 'Orbital Berth', factionName: '', services: [] };
+  if (!rec) return { name: 'Station', typeLabel: 'Berth', factionName: '', services: [] };
   const s = rec.station;
   const fac = FACTION_REC.get(s.factionId);
   return {
@@ -214,7 +212,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   // The host `.screen` is the kit screen; `.sx-app` is a plain wrapper (display: contents) so the
   // regions below sit directly on the kit grid. `app.className` is seeded exactly once (the hub-
   // classes check reads that) and never wiped.
-  if (rootEl && rootEl.classList) rootEl.classList.add('k-screen');
+  if (rootEl && rootEl.classList) rootEl.classList.add('k-screen', 'sx-berth');
   const app = document.createElement('div');
   app.className = 'sx-app';
   app.innerHTML = stationFrameHtml();
@@ -223,6 +221,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   const berthCanvas = app.querySelector('.sxb-berth__world');
   const berth = createBerth(berthCanvas, ctx);
   const crestName = app.querySelector('.sxb-berth__name');
+  const identEl = app.querySelector('.sxb-berth__ident');
   const newsEl = app.querySelector('.sxb-berth__news');
   const eventEl = app.querySelector('.sxb-event');
   const titleBlock = app.querySelector('.sxb-berth');
@@ -306,7 +305,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     stopFloating();
     popAnchor = anchorEl || null;
     popKind = cls || '';
-    popEl.className = 'sx-pop' + (cls ? ' ' + cls : '');
+    popEl.className = 'sx-pop fh-plate fh-plate--raised' + (cls ? ' ' + cls : '');
     popEl.innerHTML = html;
     popEl.hidden = false;
     positionPop(anchorEl);
@@ -329,7 +328,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     popCloseTimer = setTimeout(() => {
       popEl.hidden = true;
       popEl.innerHTML = '';
-      popEl.className = 'sx-pop';
+      popEl.className = 'sx-pop fh-plate fh-plate--raised';
       popCloseTimer = 0;
     }, 150);
   }
@@ -397,7 +396,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     openPop(
       `<div class="sx-pop__head k-t-emph">Departure check · <em class="is-${dep.state} ${stateCls}">${escapeHtml(dep.status)}</em></div>` +
       `<ul class="k-rows sx-pop__chips">${rows}</ul>` +
-      `<button type="button" class="k-word k-word--emph k-word--primary sx-btn-primary" data-pop-launch>Launch anyway</button>`,
+      `<button type="button" class="k-word k-word--emph k-word--primary fh-key fh-key--primary sx-btn-primary" data-pop-launch>Launch anyway</button>`,
       anchor, 'sx-pop--dep');
   }
 
@@ -496,7 +495,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
           ? ` data-handoff="${escapeHtml(target.destination)}"`
           : (target.action ? ` data-handoff-act="${escapeHtml(target.action)}"` : '');
         if (!attr) return '';
-        return `<button type="button" class="k-word k-word--fine sxb-hstep ${cls}"${attr}` +
+        return `<button type="button" class="k-word k-word--fine fh-key fh-key--small sxb-hstep ${cls}"${attr}` +
           (mode ? ` data-handoff-mode="${mode}"` : '') +
           ` data-why="${escapeHtml(st.text)}" aria-label="${escapeHtml(st.title + '. ' + st.text)}">` +
           `<span class="sxb-hstep__n">${i + 1}</span> ` +
@@ -579,6 +578,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const hero = !TITLE_SIZED.has(id) || (arriving && !arrivedOnce);
     crestName.classList.toggle('k-t-hero', hero);
     crestName.classList.toggle('k-t-title', !hero);
+    crestName.classList.toggle('fh-hero', hero);
+    crestName.classList.toggle('fh-title', !hero);
     titleBlock.classList.toggle('sxb-berth--clear', TITLE_SIZED.has(id));
     berth.setActive(id !== 'shipworks');
   }
@@ -872,7 +873,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     if (cost.disabled) {
       return ghost ? '' : `<span class="sxb-vital__ok k-t-fine k-38">${escapeHtml(text)}</span>`;
     }
-    const cls = 'k-word k-word--fine sxb-vital__act' + (ghost ? ' sxb-vital__act--ghost' : '');
+    const cls = 'k-word k-word--fine fh-key fh-key--small sxb-vital__act' + (ghost ? ' sxb-vital__act--ghost' : '');
     const why = cost.title ? ` data-why="${escapeHtml(cost.title)}"` : '';
     const copy = ghost ? label : `${label} · ${text}`;
     return `<button type="button" class="${cls}" data-vital-act="${id}"${why}` +
@@ -932,7 +933,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         value: `${fmtCr(cargo.usedVolume)} / ${fmtCr(cargo.capVolume)} u`,
         aria: `Cargo hold ${fmtCr(cargo.usedVolume)} of ${fmtCr(cargo.capVolume)} units`,
         acts: [carrying
-          ? `<button type="button" class="sxb-vital__act" data-vital-act="sell"` +
+          ? `<button type="button" class="k-word k-word--fine fh-key fh-key--small sxb-vital__act" data-vital-act="sell"` +
             ` aria-label="Sell cargo at this station">Sell</button>`
           : ''],
       },
@@ -956,6 +957,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const dep = costs.undock || {};
     const depState = dep.tone === 'gain' ? 'ready' : (dep.tone === 'warn' ? 'check' : 'risk');
     launchEl.setAttribute('data-state', depState);
+    launchEl.classList.toggle('fh-key--hazard', depState === 'risk');
+    launchEl.classList.toggle('fh-key--primary', depState !== 'risk');
     if (dep.title) {
       launchEl.setAttribute('title', dep.title);
       launchEl.setAttribute('aria-label', `Undock. ${dep.title}`);
@@ -965,15 +968,16 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
     const st = resolveStation(ctx);
     setTextIfChanged(crestName, st.name || 'Station');
+    setTextIfChanged(identEl, [st.typeLabel, st.factionName].filter(Boolean).join(' · '));
     // Ticker line stays under the name. Leftover event card (badge/title/body/eventId) paints
     // beside it when this berth has a stored leftover card or a live leftover event. Leftover
     // story ledger paints on .sxb-berth__ledger through the same leftover writer.
     let arrival = { news: null, eventCard: null };
-    try { arrival = buildDockArrival(s, { id: stationId(), name: st.name, services: st.services }); } catch (_) { /* keep empty arrival */ }
+    try { arrival = buildDockArrival(s, { id: stationId(), name: st.name, services: st.services, typeLabel: st.typeLabel, factionName: st.factionName }); } catch (_) { /* keep empty arrival */ }
     writeBerthArrival(
       { newsEl, cardEl: eventEl },
       arrival,
-      [st.factionName, st.typeLabel].filter(Boolean).join(' · '),
+      '',
     );
     renderHandoff();
   }

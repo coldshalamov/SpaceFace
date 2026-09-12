@@ -2,26 +2,26 @@
 // These exact functions also power the isolated presentation fixture; no game systems are substituted.
 
 export function stationFrameHtml() {
-  // The berth: the hull mount stays owned by the station renderer.
+  // Field Hardware chrome over the live berth: stencil name, authority legend, news strip,
+  // leftover cards, engraved vitals plate, destination keys along the bottom edge, Undock key.
   return `<canvas class="k-world sxb-berth__world" aria-hidden="true"></canvas>` +
-    // The title block: the station's name at hero size, the news line, leftover event card,
-    // leftover story ledger, leftover mechanic hull lines, handoff.
     `<header class="k-title sxb-berth">` +
-      `<span class="of-port-mark" aria-hidden="true"></span>` +
-      `<h1 class="k-display k-t-hero sxb-berth__name"></h1>` +
-      `<p class="k-t-emph k-62 sxb-berth__news"></p>` +
+      `<span class="of-port-mark sxb-berth__lamp" aria-hidden="true"></span>` +
+      `<p class="sxb-berth__ident fh-legend"></p>` +
+      `<h1 class="k-display k-t-hero fh-hero sxb-berth__name"></h1>` +
+      `<p class="k-t-emph k-62 fh-legend sxb-berth__news"></p>` +
       `<article class="sxb-event" hidden>` +
-        `<span class="sxb-event__badge k-caps"></span>` +
+        `<span class="sxb-event__badge k-caps fh-legend"></span>` +
         `<strong class="sxb-event__title"></strong>` +
         `<p class="sxb-event__body"></p>` +
       `</article>` +
       `<article class="sxb-event sxb-berth__ledger" hidden>` +
-        `<span class="sxb-event__badge k-caps"></span>` +
+        `<span class="sxb-event__badge k-caps fh-legend"></span>` +
         `<strong class="sxb-event__title"></strong>` +
         `<p class="sxb-event__body"></p>` +
       `</article>` +
       `<article class="sxb-event sxb-berth__mechanic" hidden>` +
-        `<span class="sxb-event__badge k-caps"></span>` +
+        `<span class="sxb-event__badge k-caps fh-legend"></span>` +
         `<strong class="sxb-event__title"></strong>` +
         `<p class="sxb-event__body"></p>` +
       `</article>` +
@@ -29,35 +29,37 @@ export function stationFrameHtml() {
       `<p class="k-t-fine k-62 sxb-berth__route" hidden></p>` +
       `<div class="sxb-handoff" hidden></div>` +
     `</header>` +
-    // The quiet column top-right: credits as the hero number, the vitals as rows with their verbs.
-    `<aside class="k-corner sxb-crown" aria-label="Credits and ship vitals">` +
-      `<div class="k-hero sxb-purse"><div class="k-hero__n sxb-purse__value">0</div><div class="k-hero__w sxb-purse__label">credits</div></div>` +
+    `<aside class="k-corner sxb-crown fh-plate fh-plate--edge" aria-label="Credits and ship vitals">` +
+      `<div class="k-hero sxb-purse"><div class="k-hero__n fh-heronum sxb-purse__value">0</div><div class="k-hero__w sxb-purse__label">credits</div></div>` +
       `<ul class="k-rows sxb-vitals" style="--k-row-cols: 1fr auto auto"></ul>` +
     `</aside>` +
-    // The destination's panel spans both columns of the grid; each destination is a .k-panel.
     `<div class="k-span sx-screen__body" id="sx-panel" role="tabpanel" tabindex="0"></div>` +
-    // The foot: the destinations as words, the receipts line, Undock at the row's end.
-    `<nav class="of-facility-rail" aria-label="Station facilities"><div class="of-rail-label">Facilities</div><div class="sxb-ops__dock"></div></nav>` +
     `<footer class="k-foot sxb-ops">` +
-      
+      `<nav class="of-facility-rail" aria-label="Station facilities">` +
+        `<div class="of-rail-label">Facilities</div>` +
+        `<div class="sxb-ops__dock"></div>` +
+      `</nav>` +
       `<aside class="sx-comms" aria-label="Station communications">` +
         `<div class="sx-receipt" role="status" aria-live="polite" aria-atomic="true" hidden>` +
           `<span class="sx-receipt__kind k-caps"></span> <strong class="sx-receipt__title"></strong> <span class="sx-receipt__delta k-62"></span>` +
         `</div>` +
-        `<button type="button" class="k-word k-word--fine sx-comms__toggle" aria-expanded="false" aria-controls="sx-comms-history" aria-label="Open station communications history">` +
+        `<button type="button" class="k-word k-word--fine fh-key fh-key--small sx-comms__toggle" aria-expanded="false" aria-controls="sx-comms-history" aria-label="Open station communications history">` +
           `<span>Comms</span><span class="sx-comms__count" hidden>0</span>` +
         `</button>` +
-        `<button type="button" class="k-word k-word--fine sxb-help" aria-expanded="false" aria-label="Explain the active station operation" data-why="Context help">Help</button>` +
-        `<div class="sx-comms__history" id="sx-comms-history" aria-label="Berth session log" hidden></div>` +
+        `<button type="button" class="k-word k-word--fine fh-key fh-key--small sxb-help" aria-expanded="false" aria-label="Explain the active station operation" data-why="Context help">Help</button>` +
+        `<div class="sx-comms__history fh-plate fh-plate--sunk" id="sx-comms-history" aria-label="Berth session log" hidden></div>` +
       `</aside>` +
       `<div class="sxb-launch-seat">` +
-          `<button type="button" class="k-word k-word--emph k-word--primary sxb-launch" data-act="undock" data-pop-owner>` +
-            `<span class="sxb-launch__label">Undock</span>` +
-            `<span class="k-word-sub sxb-launch__state"></span>` +
+          `<button type="button" class="k-word k-word--emph k-word--primary fh-key fh-key--primary sxb-launch" data-act="undock" data-pop-owner>` +
+            `<span class="sxb-launch__light" aria-hidden="true"></span>` +
+            `<span class="sxb-launch__copy">` +
+              `<span class="sxb-launch__label">Undock</span>` +
+              `<span class="k-word-sub sxb-launch__state"></span>` +
+            `</span>` +
           `</button>` +
       `</div>` +
     `</footer>` +
-    `<div class="sx-pop" hidden></div>`;
+    `<div class="sx-pop fh-plate fh-plate--raised" hidden></div>`;
 }
 
 export function marketFrameHtml() {

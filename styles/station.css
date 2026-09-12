@@ -1,59 +1,51 @@
-/* styles/station.css — the station as a place (design/frontend/direction/tasks/TASK_C_STATION_INSTRUMENTS_CHART.md).
-   One sheet, kit tokens only (styles/kit.css owns every colour, face, size and motion). This file holds only
-   the layout the kit's classes cannot express: where the station's regions sit on the kit grid, the shared
-   ship stage's canvas and pins, and a few inert hooks the checks query. No plates, borders, radii, gradients,
-   glows or shadows anywhere (DIRECTION_SHEET.md §11, KIT_SPEC.md §12). */
+/* styles/station.css — Field Hardware berth chrome over the live 3D berth.
+   Shell materials are produced kit assets (plates, keys, lights, legend strips). Destination
+   panels keep their layout contracts below. This sheet loads after orbital.css and must beat
+   the leftover Orbital Command website walls (opaque header, Facilities sidebar, 48px title). */
 
-/* ───────────── the shell (§1.2) ───────────── */
+/* ───────────── the shell ───────────── */
 
-/* The host .screen is the kit screen; .sx-app is a plain wrapper so the regions sit on the kit grid. */
 .k-screen > .sx-app { display: contents; }
 
-/* The berth: the player's hull in the station's dock interior fills the frame behind the words. */
 .sxb-berth__world { left: 0; width: 100%; }
 .sxb-berth__world[hidden] { display: none; }
 
-/* The title block: the station's name (hero → title where the stage needs the room), the news line,
-   the first-dock handoff as a row of fine words. */
-.sxb-berth__name { max-width: 12ch; }
+.sxb-berth__name { max-width: 14ch; }
 .sxb-berth__name .sxb-berth__word { display: inline-block; }
-.sxb-berth__news { margin: calc(16px * var(--k-s)) 0 0; max-width: var(--k-measure); }
-/* On market / shipworks / missions the corner column needs its room: the title block stops short of it. */
-.sxb-berth--clear { padding-right: calc(420px * var(--k-s)); }
-.sxb-handoff { display: flex; flex-wrap: wrap; align-items: baseline; gap: calc(8px * var(--k-s)) calc(32px * var(--k-s)); margin-top: calc(16px * var(--k-s)); }
+.sxb-berth__ident { margin: 0; }
+.sxb-berth__news { margin: calc(12px * var(--k-s)) 0 0; max-width: var(--k-measure); }
+.sxb-berth--clear { padding-right: calc(380px * var(--k-s)); }
+.sxb-handoff { display: flex; flex-wrap: wrap; align-items: center; gap: calc(8px * var(--k-s)) calc(12px * var(--k-s)); margin-top: calc(16px * var(--k-s)); }
 .sxb-handoff[hidden] { display: none; }
 .sxb-handoff__k { margin-right: calc(8px * var(--k-s)); }
 .sxb-hstep__n { color: var(--k-bone-38); }
 
-/* The corner: credits as the hero number, the vitals as static rows (label · value · verb). */
-.sxb-crown { width: calc(400px * var(--k-s)); text-align: left; }
+.sxb-crown { width: calc(340px * var(--k-s)); text-align: left; }
 .sxb-crown .k-hero { align-items: flex-end; text-align: right; }
-.sxb-vitals { margin-top: calc(24px * var(--k-s)); }
+.sxb-vitals { margin-top: calc(12px * var(--k-s)); }
 .sxb-vitals .k-row { column-gap: var(--k-gap); }
 .sxb-vital__head { all: unset; display: block; cursor: default; }
 .sxb-vital__head[data-hold] { cursor: pointer; }
 .sxb-vital__head[data-hold]:hover .sxb-vital__label { color: var(--k-text-live); }
 .sxb-vital__track { display: block; width: calc(120px * var(--k-s)); margin-top: calc(6px * var(--k-s)); }
 .sxb-vital__value { text-align: right; white-space: nowrap; color: var(--k-text-live); }
-.sxb-vital__acts { display: flex; gap: calc(16px * var(--k-s)); justify-content: flex-end; min-width: calc(96px * var(--k-s)); }
+.sxb-vital__acts { display: flex; gap: calc(8px * var(--k-s)); justify-content: flex-end; min-width: calc(96px * var(--k-s)); flex-wrap: wrap; }
 .sxb-vital__ok { white-space: nowrap; }
 
-/* The panel spans the grid's middle row; each destination is a .k-panel (or --split). */
-#sx-panel { min-height: 0; margin-top: calc(24px * var(--k-s)); outline: none; }
+#sx-panel { min-height: 0; margin-top: calc(8px * var(--k-s)); outline: none; }
 #sx-panel > * { height: 100%; min-height: 0; }
 
-/* The foot: the destinations as words, the receipts line in the middle, Undock at the row's end. */
 .sxb-ops { justify-content: space-between; align-items: flex-end; }
 .sx-dock { min-width: 0; }
-.sx-dock__group--nav { gap: calc(32px * var(--k-s)); }
-.sx-tile__seat { display: none; }              /* inert hook: the tab check asks for a seat element */
+.sx-dock__group--nav { gap: calc(8px * var(--k-s)); }
+.sx-tile__seat { display: none; }
 .sx-tile__badge { margin-right: 0.4em; }
 .sx-tile__badge[hidden] { display: none; }
-.sx-comms { display: flex; flex-direction: column; align-items: center; gap: calc(8px * var(--k-s)); min-width: 0; position: relative; }
+.sx-comms { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: calc(8px * var(--k-s)); min-width: 0; position: relative; }
 .sx-receipt { font-size: var(--k-fs-body); color: var(--k-text-live); white-space: nowrap; transition: opacity var(--k-d-settle) var(--k-ease); }
 .sx-receipt[hidden] { display: none; }
 .sx-receipt__title { font-weight: 500; }
-.sx-comms__toggle, .sxb-help { margin: 0 calc(12px * var(--k-s)); }
+.sx-comms__toggle, .sxb-help { margin: 0; }
 .sx-comms__count { margin-left: 0.4em; color: var(--k-signal); }
 .sx-comms__count[hidden] { display: none; }
 .sx-comms__history { position: absolute; bottom: calc(100% + 12px * var(--k-s)); left: 50%; transform: translateX(-50%);
@@ -65,10 +57,8 @@
 .sxb-launch[data-state="check"] .sxb-launch__state { color: var(--k-signal); }
 .sxb-launch[data-state="risk"]  .sxb-launch__state { color: var(--k-red); }
 
-/* Popovers (departure check, hold manifest, help): floating-ui positions them; a transparent block
-   with a hairline top rule holding rows and words. */
 .sx-pop { position: fixed; z-index: 30; width: max-content; max-width: min(90vw, calc(560px * var(--k-s)));
-  padding: calc(16px * var(--k-s)) 0 0; border-top: 1px solid var(--k-hair); background: none;
+  padding: calc(16px * var(--k-s)); background: none;
   font-family: var(--k-text); color: var(--k-text-live); opacity: 0; transition: opacity var(--k-d-settle) var(--k-ease); }
 .sx-pop.is-open { opacity: 1; }
 .sx-pop[hidden] { display: none; }
@@ -413,4 +403,488 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
 .sf-ship.k-screen > .sx-sw { grid-row: 1 / -1; grid-column: 1 / -1; grid-template-columns: var(--k-hang) minmax(0, 1fr); }
 .sf-ship.k-screen::before { background: rgb(26 20 16 / 0.35); }
 
-/* Forced colours / high contrast come from the kit's tokens; nothing to add here. */
+/* ───────────── Field Hardware chrome vs Orbital Command walls ─────────────
+   orbital.css paints an opaque header, a 190px Facilities sidebar and a 48px website title.
+   Prefix `#screens .sx-berth` beats those rules without touching orbital.css. Materials are
+   nine-sliced kit PNGs (keys, plates, lights, legend strips) — not CSS borders standing in. */
+
+#screens .sx-berth.k-screen {
+  inset: 0;
+  padding: calc(22px * var(--k-s)) calc(32px * var(--k-s)) calc(14px * var(--k-s));
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "title" "stage" "foot";
+  gap: 0;
+  column-gap: 0;
+  row-gap: 0;
+}
+#screens .sx-berth.k-screen::before { background: var(--k-scrim); }
+#screens .sx-berth.k-screen.k-screen--dense::before { background: rgb(26 20 16 / 0.38); }
+
+#screens .sx-berth .sxb-berth {
+  position: relative;
+  grid-area: title;
+  min-height: 0;
+  padding: 0 calc(360px * var(--k-s)) calc(12px * var(--k-s)) 0;
+  border: 0;
+  background: none;
+}
+#screens .sx-berth .sxb-berth--clear { padding-right: calc(360px * var(--k-s)); }
+#screens .sx-berth .of-port-mark,
+#screens .sx-berth .sxb-berth__lamp {
+  position: absolute;
+  left: 0;
+  top: calc(8px * var(--k-s));
+  width: 12px;
+  height: 12px;
+  background: url("../assets/ui/kit/assets/lights/light.dot.legend.on.png") center / contain no-repeat;
+}
+html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__lamp {
+  background-image: url("../assets/ui/kit/assets/lights/light.dot.wanted.on.png");
+}
+
+#screens .sx-berth .sxb-berth__ident {
+  margin: 0 0 calc(6px * var(--k-s)) calc(20px * var(--k-s));
+  max-width: 42ch;
+  font-family: var(--fh-face-display, var(--k-display));
+  font-variation-settings: "wght" 600, "wdth" 62;
+  font-size: var(--k-fs-fine);
+  letter-spacing: var(--fh-track-legend, 0.06em);
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--k-signal);
+}
+#screens .sx-berth .sxb-berth__ident:empty { display: none; }
+
+#screens .sx-berth .sxb-berth__name,
+#screens .sx-berth .sxb-berth__name.k-t-hero,
+#screens .sx-berth .sxb-berth__name.fh-hero {
+  max-width: 14ch;
+  margin: 0 0 0 calc(20px * var(--k-s));
+  font-family: var(--fh-face-display, var(--k-display));
+  font-weight: 900;
+  font-stretch: 125%;
+  font-variation-settings: "wght" 900, "wdth" 125;
+  font-size: var(--fh-size-hero, var(--k-fs-hero));
+  letter-spacing: var(--fh-track-display, 0.02em);
+  line-height: 0.9;
+  text-transform: uppercase;
+  color: var(--k-text-live);
+}
+#screens .sx-berth .sxb-berth__name.k-t-title,
+#screens .sx-berth .sxb-berth__name.fh-title {
+  font-size: var(--fh-size-screenTitle, var(--k-fs-title));
+  font-variation-settings: "wght" 800, "wdth" 125;
+}
+
+#screens .sx-berth .sxb-berth__news {
+  display: inline-block;
+  margin: calc(14px * var(--k-s)) 0 0 calc(20px * var(--k-s));
+  max-width: 56ch;
+  padding: 0;
+  border-style: solid;
+  border-width: 12px 16px;
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip.png");
+  border-image-slice: 12 16 12 16 fill;
+  border-image-repeat: stretch;
+  border-image-width: 12px 16px;
+  font-family: var(--fh-face-display, var(--k-display));
+  font-variation-settings: "wght" 600, "wdth" 62;
+  font-size: var(--k-fs-fine);
+  letter-spacing: var(--fh-track-legend, 0.06em);
+  line-height: 1.2;
+  text-transform: uppercase;
+  color: var(--k-signal);
+}
+#screens .sx-berth .sxb-berth__news:empty { display: none; }
+
+#screens .sx-berth .sxb-event {
+  display: inline-block;
+  margin: calc(10px * var(--k-s)) 0 0 calc(20px * var(--k-s));
+  max-width: 56ch;
+  padding: 0;
+  background: none;
+  border-style: solid;
+  border-width: 12px 16px;
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip.png");
+  border-image-slice: 12 16 12 16 fill;
+  border-image-repeat: stretch;
+  border-image-width: 12px 16px;
+}
+#screens .sx-berth .sxb-event[hidden] { display: none; }
+#screens .sx-berth .sxb-event[data-tone="danger"] {
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-red.png");
+}
+#screens .sx-berth .sxb-event__badge {
+  display: block;
+  color: var(--k-signal);
+}
+#screens .sx-berth .sxb-event[data-tone="danger"] .sxb-event__badge { color: var(--k-red); }
+#screens .sx-berth .sxb-event__title {
+  display: block;
+  margin: 2px 0 4px;
+  font-family: var(--k-text);
+  font-size: var(--k-fs-body);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--k-text-live);
+}
+#screens .sx-berth .sxb-event__body {
+  margin: 0;
+  font-size: var(--k-fs-data);
+  line-height: 1.4;
+  color: var(--k-bone-62);
+}
+#screens .sx-berth .sxb-berth__patch,
+#screens .sx-berth .sxb-berth__route {
+  margin: calc(8px * var(--k-s)) 0 0 calc(20px * var(--k-s));
+  max-width: 56ch;
+  font-size: var(--k-fs-data);
+  line-height: 1.4;
+  color: var(--k-bone-62);
+}
+#screens .sx-berth .sxb-handoff { margin: calc(12px * var(--k-s)) 0 0 calc(20px * var(--k-s)); }
+
+/* Vitals: one machined plate, not a website header strip. */
+#screens .sx-berth .sxb-crown {
+  top: calc(18px * var(--k-s));
+  right: calc(24px * var(--k-s));
+  width: calc(320px * var(--k-s));
+  z-index: 1;
+  display: block;
+  align-items: stretch;
+  gap: 0;
+  text-align: right;
+}
+#screens .sx-berth .sxb-purse { order: 0; flex: none; }
+#screens .sx-berth .sxb-purse__value,
+#screens [data-screen="station"] .sxb-purse__value {
+  font-family: var(--fh-face-display, var(--k-display));
+  font-variation-settings: "wght" 800, "wdth" 125;
+  font-size: var(--fh-size-heroNum, var(--k-fs-num));
+  letter-spacing: 0.02em;
+  color: var(--k-text-live);
+}
+#screens .sx-berth .sxb-purse__label {
+  font-family: var(--fh-face-display, var(--k-display));
+  font-variation-settings: "wght" 600, "wdth" 62;
+  font-size: var(--k-fs-fine);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--k-bone-38);
+}
+#screens .sx-berth .sxb-vitals { flex: none; margin: calc(8px * var(--k-s)) 0 0; --k-row-cols: 1fr auto auto; }
+#screens .sx-berth .sxb-vitals .k-row {
+  min-height: calc(32px * var(--k-s));
+  padding: calc(4px * var(--k-s)) 0;
+  column-gap: calc(10px * var(--k-s));
+  border-color: var(--k-hair);
+}
+#screens .sx-berth .sxb-vital__label,
+#screens .sx-berth .sxb-vital__value { font-size: var(--k-fs-data); }
+#screens .sx-berth .sxb-vital__track { width: calc(88px * var(--k-s)); height: 4px; margin-top: 4px; }
+#screens .sx-berth .sxb-vital__acts { min-width: 0; gap: 4px; }
+#screens .sx-berth .sxb-vital__acts .k-word,
+#screens .sx-berth .sxb-vital__act {
+  min-height: 36px;
+  padding: 0 calc(8px * var(--k-s));
+  background: none;
+  border-style: solid;
+  border-width: 12px;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.rest.png");
+  border-image-slice: 12 fill;
+  border-image-repeat: stretch;
+  border-image-width: 12px;
+  font-size: var(--k-fs-fine);
+  color: var(--k-text-live);
+}
+#screens .sx-berth .sxb-vital__acts .k-word:hover,
+#screens .sx-berth .sxb-vital__act:hover {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.small.hover.png");
+}
+#screens .sx-berth .sxb-vital__ok { font-size: var(--k-fs-fine); color: var(--k-bone-38); }
+
+/* Workspace sits on the berth — no opaque stage fill. */
+#screens .sx-berth #sx-panel {
+  grid-area: stage;
+  padding: calc(8px * var(--k-s)) 0 calc(12px * var(--k-s));
+  margin: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: none;
+}
+#screens .sx-berth #sx-panel > .k-panel { height: 100%; min-height: 0; padding: 0; gap: calc(28px * var(--k-s)); }
+#screens .sx-berth :is(.sx-clear-corner,.sx-mkt__quote,.sx-ct__dossier,.sx-fab,.sx-fac-overview,.sx-ledger .st-ledger-detail,.sx-ledger__read) { padding-right: 0; }
+
+/* Destination keys along the bottom edge — not a Facilities website rail. */
+#screens .sx-berth .sxb-ops {
+  grid-area: foot;
+  min-height: 0;
+  padding: calc(8px * var(--k-s)) 0 0;
+  margin: 0;
+  border: 0;
+  background: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: calc(12px * var(--k-s)) calc(16px * var(--k-s));
+}
+#screens .sx-berth .of-facility-rail {
+  grid-area: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  overflow: visible;
+}
+#screens .sx-berth .of-rail-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+#screens .sx-berth .sx-dock__group--nav {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: calc(6px * var(--k-s));
+}
+#screens .sx-berth .sx-dock__group--nav > li { width: auto; flex: 0 0 auto; }
+
+#screens .sx-berth .sx-tile.k-word {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  gap: calc(6px * var(--k-s));
+  min-height: 40px;
+  min-width: calc(96px * var(--k-s));
+  padding: 0 calc(10px * var(--k-s));
+  background: none;
+  border-style: solid;
+  border-width: 14px;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.rest.png");
+  border-image-slice: 14 fill;
+  border-image-repeat: stretch;
+  border-image-width: 14px;
+  box-shadow: none;
+  font-family: var(--fh-face-display, var(--k-display));
+  font-variation-settings: "wght" 600, "wdth" 62;
+  font-size: var(--k-fs-fine);
+  letter-spacing: var(--fh-track-legend, 0.06em);
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--k-bone-62);
+}
+#screens .sx-berth .sx-tile.k-word::after { display: none; }
+#screens .sx-berth .sx-tile.k-word:hover {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.hover.png");
+  color: var(--k-text-live);
+}
+#screens .sx-berth .sx-tile.k-word:focus-visible {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.focus.png");
+  color: var(--k-text-live);
+}
+#screens .sx-berth .sx-tile.k-word[aria-selected="true"],
+#screens .sx-berth .sx-tile.k-word.is-active {
+  background: none;
+  border-color: transparent;
+  box-shadow: none;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.legend.lit.png");
+  color: var(--k-text-live);
+}
+#screens .sx-berth .sx-tile__seat { display: none; }
+#screens .sx-berth .sx-tile__badge { margin: 0; font-size: var(--k-fs-fine); color: var(--k-signal); }
+#screens .sx-berth .sx-tile__label { flex: 0 1 auto; }
+
+#screens .sx-berth .sx-comms { flex: 1 1 12rem; flex-direction: row; justify-content: flex-start; gap: calc(8px * var(--k-s)); }
+#screens .sx-berth .sx-receipt { font-size: var(--k-fs-data); white-space: normal; }
+#screens .sx-berth .sx-comms__history {
+  left: 0;
+  transform: none;
+  width: min(540px, 80vw);
+  padding: calc(12px * var(--k-s));
+  background: none;
+  box-shadow: none;
+}
+#screens .sx-berth .sx-comms__toggle.k-word::after,
+#screens .sx-berth .sxb-help.k-word::after,
+#screens .sx-berth .sxb-launch.k-word::after { display: none; }
+
+#screens .sx-berth .sxb-launch.k-word,
+#screens .sx-berth .sxb-launch.fh-key {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: calc(12px * var(--k-s));
+  min-height: 56px;
+  min-width: calc(140px * var(--k-s));
+  padding: 0 calc(16px * var(--k-s));
+  background: none;
+  border-style: solid;
+  border-width: 18px;
+  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.rest.png");
+  border-image-slice: 18 fill;
+  border-image-repeat: stretch;
+  border-image-width: 18px;
+  font-family: var(--fh-face-display, var(--k-display));
+  font-variation-settings: "wght" 600, "wdth" 62;
+  font-size: var(--k-fs-data);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--k-text-live);
+}
+#screens .sx-berth .sxb-launch.k-word:hover {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.hover.png");
+}
+#screens .sx-berth .sxb-launch.k-word:focus-visible {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.primary.focus.png");
+}
+#screens .sx-berth .sxb-launch[data-state="risk"] {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.hazard.rest.png");
+}
+#screens .sx-berth .sxb-launch[data-state="risk"]:hover {
+  border-image-source: url("../assets/ui/kit/assets/keys/key.hazard.hover.png");
+}
+#screens .sx-berth .sxb-launch__copy { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+#screens .sx-berth .sxb-launch .sxb-launch__state { color: var(--k-bone-38); margin: 2px 0 0; font-size: var(--k-fs-fine); letter-spacing: 0.08em; }
+#screens .sx-berth .sxb-launch[data-state="ready"] .sxb-launch__state { color: var(--k-good); }
+#screens .sx-berth .sxb-launch[data-state="check"] .sxb-launch__state { color: var(--k-signal); }
+#screens .sx-berth .sxb-launch[data-state="risk"] .sxb-launch__state { color: var(--k-red); }
+#screens .sx-berth .sxb-launch__light {
+  flex: 0 0 12px;
+  width: 12px;
+  height: 12px;
+  background: url("../assets/ui/kit/assets/lights/light.dot.good.on.png") center / contain no-repeat;
+}
+#screens .sx-berth .sxb-launch[data-state="check"] .sxb-launch__light {
+  background-image: url("../assets/ui/kit/assets/lights/light.dot.legend.on.png");
+}
+#screens .sx-berth .sxb-launch[data-state="risk"] .sxb-launch__light {
+  background-image: url("../assets/ui/kit/assets/lights/light.dot.wanted.on.png");
+}
+
+#screens .sx-berth .sx-pop {
+  padding: calc(18px * var(--k-s));
+  background: none;
+  box-shadow: none;
+  color: var(--k-text-live);
+}
+
+html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__ident,
+html[data-k-temp="wanted"] #screens .sx-berth .sxb-berth__news {
+  color: var(--k-text-live);
+  border-image-source: url("../assets/ui/kit/assets/plates/plate.legend.strip-white.png");
+}
+
+@media (max-height: 780px) and (min-width: 900px) {
+  #screens .sx-berth .sxb-berth { min-height: 0; padding-top: 0; padding-bottom: calc(8px * var(--k-s)); }
+  #screens .sx-berth #sx-panel { padding: calc(6px * var(--k-s)) 0; }
+}
+@media (min-width: 2200px) {
+  #screens .sx-berth.k-screen { grid-template-columns: minmax(0, 1fr); }
+  #screens .sx-berth #sx-panel { padding-inline: 0; }
+}
+@media (max-width: 1100px) {
+  #screens .sx-berth.k-screen { grid-template-columns: minmax(0, 1fr); }
+  #screens .sx-berth .sxb-berth { padding-left: 0; padding-right: calc(280px * var(--k-s)); }
+  #screens .sx-berth .sxb-berth__lamp { left: 0; width: 12px; }
+  #screens .sx-berth .sxb-crown { width: calc(260px * var(--k-s)); gap: 0; right: calc(16px * var(--k-s)); }
+  #screens .sx-berth .sxb-purse { flex-basis: auto; }
+  #screens .sx-berth .sx-tile.k-word { padding: 0 calc(8px * var(--k-s)); gap: 4px; font-size: var(--k-fs-fine); }
+  #screens .sx-berth #sx-panel { padding: calc(8px * var(--k-s)) 0; }
+}
+@media (max-width: 899px) {
+  #screens .sx-berth.k-screen {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "title" "stage" "foot";
+  }
+  #screens .sx-berth .of-facility-rail { padding: 0; border: 0; overflow: visible; }
+  #screens .sx-berth .sx-dock__group--nav { flex-direction: row; flex-wrap: wrap; gap: 4px; }
+  #screens .sx-berth .sx-dock__group--nav > li { width: auto; flex: 0 0 auto; }
+  #screens .sx-berth .sx-tile.k-word { min-height: 40px; justify-content: center; padding: 0 8px; }
+  #screens .sx-berth .sxb-berth { min-height: 0; padding: 0 calc(220px * var(--k-s)) 8px 0; }
+  #screens .sx-berth .sxb-berth__name,
+  #screens .sx-berth .sxb-berth__name.k-t-hero,
+  #screens .sx-berth .sxb-berth__name.fh-hero { font-size: var(--fh-size-screenTitle, var(--k-fs-title)); }
+  #screens .sx-berth .sxb-berth__news { font-size: var(--k-fs-fine); }
+  #screens .sx-berth .sxb-berth__patch,
+  #screens .sx-berth .sxb-berth__route { font-size: var(--k-fs-fine); }
+  #screens .sx-berth .sxb-berth__lamp { left: 0; top: 4px; }
+  #screens .sx-berth .sxb-crown { width: calc(200px * var(--k-s)); gap: 0; top: 12px; right: 12px; position: absolute; background: none; }
+  #screens .sx-berth .sxb-purse { flex-basis: auto; }
+  #screens [data-screen="station"] .sxb-purse__value { font-size: var(--k-fs-title); }
+  #screens .sx-berth .sxb-vital__track { width: 52px; }
+  #screens .sx-berth .sxb-ops { padding: 8px 0 0; min-height: 0; }
+}
+@media (max-width: 650px) {
+  #screens .sx-berth.k-screen {
+    overflow: hidden;
+    padding: calc(12px * var(--k-s));
+    grid-template-areas: "title" "stage" "foot";
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #screens .sx-berth .sxb-berth { padding: 0 0 8px; min-height: 0; }
+  #screens .sx-berth .sxb-berth__name,
+  #screens .sx-berth .sxb-berth__name.k-t-hero,
+  #screens .sx-berth .sxb-berth__name.fh-hero { font-size: var(--k-fs-sub); }
+  #screens .sx-berth .sxb-berth__news { padding-right: 0; max-height: none; overflow: visible; }
+  #screens .sx-berth .sxb-berth__patch,
+  #screens .sx-berth .sxb-berth__route { padding-right: 0; }
+  #screens .sx-berth .sxb-crown {
+    position: absolute;
+    grid-area: auto;
+    width: min(100%, 220px);
+    margin: 0;
+    background: none;
+    top: 8px;
+    right: 8px;
+  }
+  #screens .sx-berth .sxb-vitals { display: block; }
+  #screens .sx-berth .sxb-vitals .k-row { display: grid; min-height: 28px; flex: none; }
+  #screens .sx-berth .sxb-vital__acts .k-word { min-height: 36px; }
+  #screens [data-screen="station"] .sxb-purse__value { font-size: var(--k-fs-menu); }
+  #screens .sx-berth .sxb-purse { flex-basis: auto; }
+  #screens .sx-berth .sxb-purse__label { font-size: var(--k-fs-fine); }
+  #screens .sx-berth .sx-dock__group--nav { width: auto; }
+  #screens .sx-berth .sx-tile.k-word { font-size: var(--k-fs-fine); }
+  #screens .sx-berth .sx-tile__seat { display: none; }
+  #screens .sx-berth #sx-panel { padding: 8px 0; overflow: auto; }
+  #screens .sx-berth .sxb-launch.k-word { min-height: 48px; font-size: var(--k-fs-data); padding: 0 12px; }
+  #screens .sx-berth .sxb-ops { gap: 8px; flex-wrap: wrap; background: none; }
+  #screens .sx-berth .sx-comms { min-width: 120px; }
+  #screens .sx-berth .sx-receipt { font-size: var(--k-fs-fine); }
+}
+
+@media (forced-colors: active) {
+  #screens .sx-berth .sx-tile.k-word,
+  #screens .sx-berth .sxb-launch.k-word,
+  #screens .sx-berth .sxb-vital__act,
+  #screens .sx-berth .sx-comms__toggle,
+  #screens .sx-berth .sxb-help {
+    border: 1px solid ButtonText;
+    background: Canvas;
+    color: CanvasText;
+    border-image: none;
+  }
+  #screens .sx-berth .sx-tile.k-word[aria-selected="true"],
+  #screens .sx-berth .sxb-launch.k-word {
+    border: 2px solid Highlight;
+    color: Highlight;
+  }
+  #screens .sx-berth .sxb-crown,
+  #screens .sx-berth .sxb-berth__news,
+  #screens .sx-berth .sxb-event,
+  #screens .sx-berth .sx-pop { border: 1px solid CanvasText; border-image: none; }
+  #screens .sx-berth .sxb-berth__lamp,
+  #screens .sx-berth .sxb-launch__light { forced-color-adjust: none; }
+}
