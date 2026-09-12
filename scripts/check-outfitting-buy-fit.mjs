@@ -15,10 +15,13 @@ import {
   statSnippet,
 } from '../src/ui/station/outfittingGuidance.js';
 import {
+  MASS_LOAD_LAW,
   buildSlotList,
+  designMassForHull,
   findMasslineHeadConflict,
   fittingsFromDefaultModules,
   getDerivedStats,
+  massLoadFactor,
   outfitBudgetBlocker,
   outfitBudgetForFittings,
   ships,
@@ -406,5 +409,63 @@ assert.equal(capacityState.player.credits, 10000, 'a rejected capacity Buy & Fit
 assert.equal(capacityState.player.moduleInventory.length, 1, 'a rejected capacity Buy & Fit does not add inventory');
 assert.equal(capacityBus.events.some((entry) => entry.name === 'economy:chargeCredits'), false);
 assert.equal(capacityBus.events.some((entry) => entry.name === 'module:purchased'), false);
+
+// ---------------------------------------------------------------------------------------------
+// PQ-176.00 — mass is the law. The migration clause of the leaf's done-when: adding a drive rating
+// to every hull may not invalidate a single fit that was legal before it, and may not silently move
+// a ship that was already at or under its rating (that is what keeps every bare-hull bench, every
+// unfitted NPC and every default-fit golden tape bit-identical).
+for (const hull of SHIPS) {
+  const design = designMassForHull(hull);
+  assert.ok(Number.isFinite(hull.designMass) && hull.designMass > 0,
+    hull.id + ' authors a positive designMass (the operational mass its drive is rated for)');
+  assert.ok(design >= hull.mass,
+    hull.id + ' cannot be rated below its own dry hull: an empty hull would fly worse than new');
+  assert.ok(design <= hull.mass + hull.outfitSpace,
+    hull.id + ' rating must be reachable and exceedable — a rating above hull + full outfit space '
+    + 'would make module mass free forever');
+
+  // The empty hull and the hull loaded exactly to its rating keep 100 % of the authored drive.
+  assert.equal(massLoadFactor(hull, hull.mass), 1,
+    hull.id + ' bare hull must keep its authored acceleration exactly (no golden may move for this law)');
+  assert.equal(massLoadFactor(hull, design), 1,
+    hull.id + ' at its design rating must keep its authored acceleration exactly');
+
+  // One tonne over the rating already costs something, and the loss is monotone in mass and floored.
+  const overOne = massLoadFactor(hull, design + 1);
+  const overTen = massLoadFactor(hull, design * 10);
+  assert.ok(overOne < 1, hull.id + ' must lose acceleration the moment it is heavier than its rating');
+  assert.ok(overTen < overOne, hull.id + ' overload loss must be monotone in operational mass');
+  assert.ok(overTen >= MASS_LOAD_LAW.floor,
+    hull.id + ' can never be loaded into being unsteerable — the floor is the safety net');
+
+  // Every hull can still be filled to its own outfit space and remain a legal, flyable fit.
+  const maxLoad = massLoadFactor(hull, hull.mass + hull.outfitSpace);
+  assert.ok(maxLoad > MASS_LOAD_LAW.floor,
+    hull.id + ' fully outfitted with an empty hold must stay well above the acceleration floor');
+}
+
+// The shipped starter fit is exactly what the Hitch is rated for: a new game flies bit-identically.
+const starterDerived = getDerivedStats('ship_kestrel', starterFittings, null);
+assert.equal(starterDerived.massLoadFactor, 1,
+  'the shipped starter fit must sit at or under the Hitch rating — a new game may not fly slower for this law');
+assert.equal(
+  starterDerived.propulsion.mainAccel,
+  getDerivedStats('ship_kestrel', [], null).propulsion.mainAccel,
+  'the shipped starter fit and the bare hull must publish the same main acceleration',
+);
+
+// A loaded hold reaches the propulsion profile — the one thing that was broken before this leaf.
+const loadedStarter = getDerivedStats('ship_kestrel', starterFittings, {
+  cargo: { usedMass: 400 },
+});
+assert.ok(loadedStarter.operationalMass > starterDerived.operationalMass,
+  'cargo mass must reach the derived operational mass');
+assert.ok(loadedStarter.propulsion.mainAccel < starterDerived.propulsion.mainAccel,
+  'a loaded hold must cost main acceleration — mass enters through the propulsion profile, never a drag write');
+assert.equal(loadedStarter.propulsion.combatSpeed, starterDerived.propulsion.combatSpeed,
+  'mass costs acceleration, never the governed speed the pilot is allowed to reach');
+assert.ok(!('drag' in loadedStarter.propulsion),
+  'the mass law may never introduce a drag term into the propulsion profile');
 
 console.log('Outfitting buy-and-fit checks OK');

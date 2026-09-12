@@ -131,11 +131,16 @@ export function realPathProof(runtime) {
  * @param {Array<object>} [options.hulls] Ships to spawn at boot:
  *   `{ hullId, pos: {x,z}, rot?, isPlayer?, team?, factionId?, fittings? }`. Exactly one may be
  *   `isPlayer: true`; that entity becomes `state.playerId` and the returned `player`.
+ * @param {function} [options.prepareState] `({ state })` — runs after the runtime exists and BEFORE
+ *   any hull spawns, for the rare scenario whose subject is player state the spawn itself reads
+ *   (cargo mass is the one that matters: `getDerivedStats` folds `player.cargo.usedMass` into the
+ *   ship's operational mass, so a hold filled after the spawn would be measured on the wrong fit).
+ *   Omitted, boot is byte-for-byte what it always was.
  * @param {string} [options.profileId] Runtime profile (default `'production'`).
  * @returns {Promise<object>} `{ runtime, state, bus, dt, player, hulls, spawnShip, spawnObstacle,
  *   step, proof, dispose }`
  */
-export async function bootRealPath({ seed, systems, hulls = [], profileId = 'production' } = {}) {
+export async function bootRealPath({ seed, systems, hulls = [], prepareState = null, profileId = 'production' } = {}) {
   if (!Number.isFinite(seed)) throw new Error('bootRealPath: `seed` must be a finite number (fixed seeds or it did not happen)');
   const resolved = resolveSystems(systems);
   if (!resolved.some((s) => s && s.name === 'physics')) resolved.push(physics);
@@ -278,6 +283,10 @@ export async function bootRealPath({ seed, systems, hulls = [], profileId = 'pro
       runtime.dispose();
     },
   };
+
+  // The spawn reads player state (fittings + cargo mass) through getDerivedStats, so anything a
+  // scenario wants folded into the hull's operational mass has to be written before this line.
+  if (typeof prepareState === 'function') prepareState({ state, runtime });
 
   // Spawn before the backend is prepared so every hull gets a body on the first sync.
   for (const spawn of hulls) host.hulls.push(host.spawnShip(spawn));

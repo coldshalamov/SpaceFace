@@ -559,9 +559,79 @@ function engineMods(def) {
   };
 }
 
+// PQ-176.00 — MASS IS THE LAW.
+//
+// A drive makes FORCE. The propulsion catalog authors accelerations because that is what the
+// kernel's solver consumes (`makeResult` turns them back into force with `acceleration * body.mass`),
+// so before this law a hull's accelerations were the same whether its hold was empty or carrying
+// three hundred tonnes: mass cancelled out and a gun boat flew exactly like a scout.
+//
+// The fix is one division in the one place that already owns derived flight state. Every
+// acceleration in the derived profile is divided by the overload ratio (operational mass ÷ the
+// hull's authored `designMass`). Nothing writes velocity, nothing adds drag, no cap is placed on
+// momentum the ship was GIVEN: the hull's own motor simply pushes a heavier ship less hard, which
+// is the only honest way for cargo and hardware to be felt in the hands.
+//
+// Three deliberate boundaries:
+//   * `ceiling: 1` — being LIGHTER than the rating buys nothing. A hull at or under its design mass
+//     flies bit-identically to how it flew before this law, which keeps every bare-hull bench, every
+//     NPC (they spawn unfitted) and every default-fit tape exactly where it was.
+//   * `exponent` below 1 — the raw a = F/m curve makes a full hold a two-hundred-tonne brick on an
+//     eighteen-tonne scout. Softening the exponent keeps the whole load range legible in the hands
+//     instead of saturating at the floor after the first few tonnes.
+//   * `floor` — no fit can ever make a hull unsteerable. Same shape, and the same reason, as
+//     TERRAIN_CRUMPLE_LAW.massFloor.
+//
+// Speeds are NOT scaled. Mass costs you acceleration — how long you take to get there and how long
+// you take to stop — never the ceiling you are governed to. That is the FEEL_CONTRACT §C reading of
+// "a controllable mass, not a cursor".
+export const MASS_LOAD_LAW = Object.freeze({
+  exponent: 0.65,
+  floor: 0.30,
+  ceiling: 1,
+});
+
+// Every acceleration-shaped key a propulsion profile may carry, across all five drive families.
+// Speeds (`combatSpeed`, `precisionSpeed`, `maxSpeed`, `boostMaxSpeed`, `travelCeiling`), rate caps
+// (`maxYawRate`) and solver instructions are deliberately absent.
+const MASS_SCALED_PROFILE_KEYS = Object.freeze([
+  'mainAccel', 'reverseAccel', 'strafeAccel',
+  'maxAccel', 'maxBrakeAccel',
+  'rcsForwardAccel', 'rcsReverseAccel', 'rcsStrafeAccel',
+  'fieldAccel', 'trimAccel',
+  'yawAccel', 'yawBrake',
+  'baseImpulseDv', 'maxImpulseDv',
+]);
+
+/** The hull's authored drive rating, in operational tonnes. Hulls without one fall back to the dry
+ *  hull mass so a hand-authored or legacy def is never divided by zero or silently over-rated. */
+export function designMassForHull(shipDefOrId) {
+  const shipDef = typeof shipDefOrId === 'string' ? SHIP_BY_ID.get(shipDefOrId) : shipDefOrId;
+  if (!shipDef) return 0;
+  const authored = Number(shipDef.designMass);
+  if (Number.isFinite(authored) && authored > 0) return authored;
+  const dry = Number(shipDef.mass);
+  return Number.isFinite(dry) && dry > 0 ? dry : 0;
+}
+
+/**
+ * How much of its authored acceleration this hull keeps at `operationalMass`.
+ * 1 at or under the rating, falling toward MASS_LOAD_LAW.floor as the ship is loaded past it.
+ */
+export function massLoadFactor(shipDefOrId, operationalMass) {
+  const design = designMassForHull(shipDefOrId);
+  const mass = Number(operationalMass);
+  if (!(design > 0) || !Number.isFinite(mass) || !(mass > 0)) return MASS_LOAD_LAW.ceiling;
+  if (mass <= design) return MASS_LOAD_LAW.ceiling;
+  const raw = Math.pow(design / mass, MASS_LOAD_LAW.exponent);
+  if (!Number.isFinite(raw)) return MASS_LOAD_LAW.floor;
+  return Math.max(MASS_LOAD_LAW.floor, Math.min(MASS_LOAD_LAW.ceiling, raw));
+}
+
 /** Build the complete propulsion profile once per derived-stat recompute. The underlying profile is
  * the hull's authored drive, with class/mass retained for legacy fallback. Only Travel Burn V-MAX
- * is tier-scaled, so fitting an engine cannot silently rewrite thrust, handling or drive-family behavior. */
+ * is tier-scaled, so fitting an engine cannot silently rewrite top speed or drive-family behavior;
+ * the ship's own operational mass is the one thing that moves its accelerations (MASS_LOAD_LAW). */
 function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine) {
   const base = resolvePropulsionProfile({ driveId: shipDef.driveId, flightClass, mass: totalMass });
   const mult = engineMods(engine).travelCeilingMult;
@@ -569,6 +639,16 @@ function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine) {
     ...base,
     travelCeiling: resolveTravelCeiling(base) * mult,
   };
+  const load = massLoadFactor(shipDef, totalMass);
+  if (load < 1) {
+    for (let i = 0; i < MASS_SCALED_PROFILE_KEYS.length; i += 1) {
+      const key = MASS_SCALED_PROFILE_KEYS[i];
+      const authored = base[key];
+      if (Number.isFinite(authored)) derived[key] = authored * load;
+    }
+  }
+  derived.designMass = designMassForHull(shipDef);
+  derived.massLoadFactor = load;
   // Infinity is a runtime solver instruction, not authoritative entity state. Keep finite envelope
   // limits in the descriptor; an omitted limit is hydrated back to Infinity by the profile owner.
   if (!Number.isFinite(derived.solverSpeedLimit)) delete derived.solverSpeedLimit;
@@ -763,9 +843,16 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const turnRate = BASE_TURN * eng.turnMult * handling * turnMass * biases.turnBias;
 
   // (4) health / energy / cargo — hull/shield stay catalog-truthful (no fake tank currency).
+  // Resilient Self-Recharging Shields (docs/GAMEPLAY_QOL_OVERHAUL.md §4):
+  // Across all player hulls, shields act as a generous regenerative buffer (3x capacity, 3.5x regen).
+  const isPlayerHull = Boolean(player && (player.isPlayer !== false && (player.isPlayer || player.id === 'player' || player.efficiencyMods != null || player.stats != null)));
+  const adventureShieldAssist = isPlayerHull && player.combatProfile !== 'crucible';
+  const playerShieldMult = adventureShieldAssist ? 3.0 : 1.0;
+  const playerShieldRegenMult = adventureShieldAssist ? 3.5 : 1.0;
+
   const hullMax = shipDef.hull + hullFlat;
-  const shieldMax = shipDef.shield + shieldFlat;
-  const shieldRegenRate = (shipDef.baseShieldRegen + shieldRegenFlat) * shieldRegenMult;
+  const shieldMax = (shipDef.shield + shieldFlat) * playerShieldMult;
+  const shieldRegenRate = ((shipDef.baseShieldRegen * playerShieldRegenMult) + shieldRegenFlat) * shieldRegenMult;
   const capMax = shipDef.energyCap;
   const capRegen = shipDef.energyRegen * energyRegenMult;
   const cargoCap = Math.floor((shipDef.cargo + cargoFlat) * (1 + cargoCapPct) * cargoCapMult);
@@ -830,6 +917,10 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     propulsion,
     dryMass, cargoMass, operationalMass: totalMass,
     operationalFeelMass: feelMass,
+    // PQ-176.00: the hull's drive rating and how much of its authored acceleration this fit keeps.
+    // The fit screen reads these to say, in words, what loading the ship costs you.
+    designMass: propulsion.designMass,
+    massLoadFactor: propulsion.massLoadFactor,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     tetherSpoolMult, tetherReelRateMult, masslineHeadId, magnetRange,
     weaponRangePct,
@@ -1123,16 +1214,16 @@ export const ships = {
         this._reduceLivingHull((hull, now) => livingHullWithGraffiti(hull, p, now), 'bulkhead_graffiti');
       }
     });
+    bus.on('game:started', () => {
+      this._resetScarAdmission();
+      this.reconcileLivingHull({ announce: false });
+    });
     bus.on('run:loadoutReady', () => {
       if (this.state.run?.kind !== 'survival') return;
       // Arena survival uses the hull's authored shield, with the same fitting bonuses.
       // Adventure's generous recovery assist would erase the first packs' entire damage.
       this.state.player.combatProfile = 'crucible';
       this.recomputeEntity(this.state.playerId);
-    });
-    bus.on('game:started', () => {
-      this._resetScarAdmission();
-      this.reconcileLivingHull({ announce: false });
     });
   },
 

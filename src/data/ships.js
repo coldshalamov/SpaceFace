@@ -2,6 +2,13 @@
 // IDs use ship_ prefix per ARCHITECTURE §0.4. requiresTech refs use tech_ prefix.
 // Pure data, no imports.
 //
+// designMass (PQ-176.00, "mass is the law"): the operational mass the hull's drive is RATED for —
+// the dry hull plus about seventy percent of its outfit space, which is what a hull carries when
+// it is sensibly fitted and its hold is empty. Acceleration is force over mass, so the derived
+// propulsion profile divides its accelerations by (operational mass / designMass) whenever the
+// ship is heavier than its rating (see MASS_LOAD_LAW in src/systems/ships.js). A hull at or under
+// its rating flies exactly as it always did; a loaded hauler is a pig because it IS one.
+//
 // WEAPON HARDPOINTS (Phase 2): each weapon-slot entry may be a bare size ('S') — defaults to
 // 'front' — OR {size, facing} where facing ∈ 'front'|'left'|'right'|'rear'|'turret'. A fixed
 // hardpoint fires along (nose + facing offset) and gimbal-assists toward the mouse within an arc;
@@ -32,8 +39,8 @@ export const SHIPS = [
     // Player-facing name is ALWAYS "Hitch". Internal id ship_kestrel is legacy (saves/assets/CI);
     // never surface "Kestrel" in UI copy — grep player strings for Hitch only.
     id: 'ship_kestrel', name: 'Hitch', role: 'starter', tier: 0,
-    hull: 140, shield: 55, baseShieldRegen: 7, cargo: 40, mass: 18, handling: 1.05,
-    outfitSpace: 20, weaponCapacity: 4, engineCapacity: 9,
+    hull: 140, shield: 55, baseShieldRegen: 7, cargo: 250, mass: 18, handling: 1.05,
+    outfitSpace: 20, weaponCapacity: 4, engineCapacity: 9, designMass: 32,
     bankFactor: 0.55,   // how aggressively the hull rolls into a turn (0..1.2) — lower = less pin-spin
     driveId: 'drive_reaction_m',  // baseline vector reaction drive — momentum-conserving, no hidden drag
     energyCap: 80, energyRegen: 12, collisionRadius: 14, price: 0, buyback: 8000,
@@ -61,8 +68,8 @@ export const SHIPS = [
   // ---------- T1 ----------
   {
     id: 'ship_pelican', name: 'Pelican', role: 'mining', tier: 1,
-    hull: 180, shield: 60, baseShieldRegen: 8, cargo: 60, mass: 32, handling: 0.8,
-    outfitSpace: 30, weaponCapacity: 4, engineCapacity: 9,
+    hull: 180, shield: 60, baseShieldRegen: 8, cargo: 600, mass: 32, handling: 0.8,
+    outfitSpace: 30, weaponCapacity: 4, engineCapacity: 9, designMass: 53,
     bankFactor: 0.45,
     driveId: 'drive_reaction_m',  // medium reaction drive — steady miner thrust + RCS
     energyCap: 110, energyRegen: 16, collisionRadius: 16, price: 15000,
@@ -89,8 +96,8 @@ export const SHIPS = [
   },
   {
     id: 'ship_wasp', name: 'Wasp', role: 'fighter', tier: 1, requiresTech: 'tech_combat_basics',
-    hull: 150, shield: 110, baseShieldRegen: 10, cargo: 15, mass: 16, handling: 1.4,
-    outfitSpace: 22, weaponCapacity: 7, engineCapacity: 9,
+    hull: 150, shield: 110, baseShieldRegen: 10, cargo: 120, mass: 16, handling: 1.4,
+    outfitSpace: 22, weaponCapacity: 7, engineCapacity: 9, designMass: 31,
     bankFactor: 1.00,
     driveId: 'drive_reaction_s',  // hot reaction drive — high thrust-to-mass for twitchy combat bursts
     energyCap: 140, energyRegen: 22, collisionRadius: 14, price: 28000,
@@ -118,8 +125,8 @@ export const SHIPS = [
   },
   {
     id: 'ship_mule', name: 'Mule', role: 'freighter', tier: 1,
-    hull: 200, shield: 70, baseShieldRegen: 8, cargo: 140, mass: 55, handling: 0.6,
-    outfitSpace: 30, weaponCapacity: 4, engineCapacity: 9,
+    hull: 200, shield: 70, baseShieldRegen: 8, cargo: 1500, mass: 55, handling: 0.6,
+    outfitSpace: 30, weaponCapacity: 4, engineCapacity: 9, designMass: 76,
     bankFactor: 0.35,
     driveId: 'drive_reaction_l',  // large reaction drive — long burns for the loaded hauler
     energyCap: 100, energyRegen: 14, collisionRadius: 18, price: 35000,
@@ -148,8 +155,8 @@ export const SHIPS = [
   // ---------- T2 ----------
   {
     id: 'ship_drifter', name: 'Drifter', role: 'multirole', tier: 2,
-    hull: 320, shield: 180, baseShieldRegen: 12, cargo: 90, mass: 48, handling: 1.0,
-    outfitSpace: 50, weaponCapacity: 16, engineCapacity: 9,
+    hull: 320, shield: 180, baseShieldRegen: 12, cargo: 500, mass: 48, handling: 1.0,
+    outfitSpace: 50, weaponCapacity: 16, engineCapacity: 9, designMass: 83,
     bankFactor: 0.70,
     driveId: 'drive_reaction_m',  // medium reaction drive — the all-rounder
     energyCap: 200, energyRegen: 28, collisionRadius: 18, price: 95000,
@@ -178,8 +185,8 @@ export const SHIPS = [
   },
   {
     id: 'ship_hornet', name: 'Hornet', role: 'interceptor', tier: 2, requiresTech: 'tech_strike_craft',
-    hull: 260, shield: 240, baseShieldRegen: 16, cargo: 20, mass: 24, handling: 1.7,
-    outfitSpace: 46, weaponCapacity: 24, engineCapacity: 18,
+    hull: 260, shield: 240, baseShieldRegen: 16, cargo: 150, mass: 24, handling: 1.7,
+    outfitSpace: 46, weaponCapacity: 24, engineCapacity: 18, designMass: 56,
     bankFactor: 1.15,
     driveId: 'drive_gravimetric_s',  // gravimetric field drive — snaps into obedience, bounded envelope for dueling
     energyCap: 260, energyRegen: 38, collisionRadius: 16, price: 110000,
@@ -208,8 +215,8 @@ export const SHIPS = [
   },
   {
     id: 'ship_ironback', name: 'Ironback', role: 'mining_barge', tier: 2, requiresTech: 'tech_industrial_mining',
-    hull: 480, shield: 160, baseShieldRegen: 10, cargo: 200, mass: 90, handling: 0.5,
-    outfitSpace: 96, weaponCapacity: 9, engineCapacity: 9,
+    hull: 480, shield: 160, baseShieldRegen: 10, cargo: 1400, mass: 90, handling: 0.5,
+    outfitSpace: 96, weaponCapacity: 9, engineCapacity: 9, designMass: 157,
     bankFactor: 0.30,
     driveId: 'drive_pulse_plate_m',  // pulse-plate drive — discrete high-impulse burns move the armored barge
     energyCap: 240, energyRegen: 26, collisionRadius: 24, price: 130000,
@@ -238,8 +245,8 @@ export const SHIPS = [
   // ---------- T3 ----------
   {
     id: 'ship_bastion', name: 'Bastion', role: 'corvette', tier: 3, requiresTech: 'tech_warship_license',
-    hull: 640, shield: 460, baseShieldRegen: 18, cargo: 70, mass: 80, handling: 1.1,
-    outfitSpace: 132, weaponCapacity: 72, engineCapacity: 18,
+    hull: 640, shield: 460, baseShieldRegen: 18, cargo: 450, mass: 80, handling: 1.1,
+    outfitSpace: 132, weaponCapacity: 72, engineCapacity: 18, designMass: 172,
     bankFactor: 0.55,
     driveId: 'drive_torch_l',  // open-cycle torch drive — high sustained axial acceleration for the warship
     energyCap: 420, energyRegen: 52, collisionRadius: 22, price: 320000,
@@ -270,8 +277,8 @@ export const SHIPS = [
   },
   {
     id: 'ship_atlas', name: 'Atlas', role: 'heavy_hauler', tier: 3, requiresTech: 'tech_bulk_logistics',
-    hull: 720, shield: 300, baseShieldRegen: 12, cargo: 480, mass: 200, handling: 0.45,
-    outfitSpace: 130, weaponCapacity: 18, engineCapacity: 18,
+    hull: 720, shield: 300, baseShieldRegen: 12, cargo: 3500, mass: 200, handling: 0.45,
+    outfitSpace: 130, weaponCapacity: 18, engineCapacity: 18, designMass: 291,
     bankFactor: 0.25,
     driveId: 'drive_reaction_l',  // large reaction drive — the ponderous bulk hauler's long-burn motor
     energyCap: 360, energyRegen: 40, collisionRadius: 30, price: 380000,
@@ -304,8 +311,8 @@ export const SHIPS = [
   },
   {
     id: 'ship_ranger', name: 'Ranger', role: 'explorer', tier: 3, requiresTech: 'tech_long_range_survey',
-    hull: 480, shield: 380, baseShieldRegen: 16, cargo: 110, mass: 60, handling: 1.3,
-    outfitSpace: 116, weaponCapacity: 24, engineCapacity: 18,
+    hull: 480, shield: 380, baseShieldRegen: 16, cargo: 600, mass: 60, handling: 1.3,
+    outfitSpace: 116, weaponCapacity: 24, engineCapacity: 18, designMass: 141,
     bankFactor: 0.90,
     driveId: 'drive_field_sail_m',  // magnetoplasma field sail — quiet, efficient long-range cruise for deep survey
     energyCap: 500, energyRegen: 64, collisionRadius: 18, price: 290000,
@@ -336,8 +343,8 @@ export const SHIPS = [
   // ---------- T4 ----------
   {
     id: 'ship_warden', name: 'Warden', role: 'gunship', tier: 4, requiresTech: 'tech_capital_weapons',
-    hull: 1100, shield: 820, baseShieldRegen: 22, cargo: 90, mass: 150, handling: 0.95,
-    outfitSpace: 188, weaponCapacity: 84, engineCapacity: 18,
+    hull: 1100, shield: 820, baseShieldRegen: 22, cargo: 550, mass: 150, handling: 0.95,
+    outfitSpace: 188, weaponCapacity: 84, engineCapacity: 18, designMass: 282,
     bankFactor: 0.40,
     driveId: 'drive_torch_l',  // torch drive — the wall of guns advances under sustained thrust
     energyCap: 720, energyRegen: 84, collisionRadius: 26, price: 950000,
@@ -371,8 +378,8 @@ export const SHIPS = [
   },
   {
     id: 'ship_colossus', name: 'Colossus', role: 'battlecruiser', tier: 4, requiresTech: 'tech_capital_hulls',
-    hull: 1600, shield: 1100, baseShieldRegen: 26, cargo: 200, mass: 300, handling: 0.7,
-    outfitSpace: 248, weaponCapacity: 108, engineCapacity: 18,
+    hull: 1600, shield: 1100, baseShieldRegen: 26, cargo: 1200, mass: 300, handling: 0.7,
+    outfitSpace: 248, weaponCapacity: 108, engineCapacity: 18, designMass: 474,
     bankFactor: 0.30,
     driveId: 'drive_torch_l',  // torch drive — high-acceleration axial thrust for the capital battlecruiser
     energyCap: 900, energyRegen: 100, collisionRadius: 32, price: 1400000,
@@ -409,8 +416,8 @@ export const SHIPS = [
   // ---------- T5 ----------
   {
     id: 'ship_leviathan', name: 'Leviathan', role: 'flagship', tier: 5, requiresTech: 'tech_flagship_command',
-    hull: 3200, shield: 2600, baseShieldRegen: 32, cargo: 350, mass: 600, handling: 0.6,
-    outfitSpace: 360, weaponCapacity: 150, engineCapacity: 18,
+    hull: 3200, shield: 2600, baseShieldRegen: 32, cargo: 2500, mass: 600, handling: 0.6,
+    outfitSpace: 360, weaponCapacity: 150, engineCapacity: 18, designMass: 852,
     bankFactor: 0.22,
     driveId: 'drive_torch_l',  // torch drive — the flagship's enormous axial motor
     energyCap: 1600, energyRegen: 160, collisionRadius: 45, price: 4500000,
