@@ -1584,17 +1584,129 @@ export function injectHudCss() {
   .sf-radar-wrap.sf-kit-radar:has(.sf-radar--expanded) .sf-kit-radar__bezel { height:420px; }
   .sf-radar-wrap.sf-kit-radar:has(.sf-radar--expanded) .sf-kit-radar__face { width:340px; height:340px; }
 
-  @media (max-width:1180px), (max-height:700px) {
-    .sf-kit-gauge { width:270px; height:150px; }
-    .sf-kit-gauge__face { left:75px; top:81px; width:120px; height:54px; }
-    .sf-kit-gauge__num { font-size:max(36px, calc(48px * var(--k-s, 1))); }
-    .sf-command-deck { width:min(270px, calc(100vw - 24px)); min-width:0; }
-  }
   @media (max-width:760px), (max-height:620px) {
     .sf-bars { grid-template-rows:auto 64px repeat(3, 28px); }
-    .sf-kit-gauge { width:220px; height:122px; }
-    .sf-kit-gauge__face { left:61px; top:66px; width:98px; height:44px; }
   }
+
+  /* ═══ The resting HUD, measured against approved/frames/frame-hud-resting.png ═══════════════
+     Boot evidence, default route, 2026-09-12: the speed gauge rendered at 468,396 344x200 at
+     1280x800 and 788,654 at 1920x1080 — horizontally dead centre, vertically 50-75 % down the
+     screen, i.e. squarely over the player's hull at the chase camera. The frame never does that:
+     the gauge is a plate in the BOTTOM band, left of the ORDNANCE bracket (its numeral window at
+     471-631 x 950-1034 of 1920x1080), and the hull is large and unobstructed at centre.
+
+     Two independent defects produced it.
+
+     1. .sf-command-deck was centred (left:50% + translateX(-50%)) and then lifted to
+        bottom:104px so it would clear the Power Rail. A 200 px instrument on a centred anchor
+        that has to clear a 95 px rail can only climb into the middle of the picture.
+     2. Nothing in the gauge scaled. The bezel was a hard 360x200 at every viewport while the
+        numeral inside it already scaled by --k-s (which resolves to exactly 0.75 / 1 / 1.25 at
+        1280x800 / 1920x1080 / 2560x1440). Measured numerals: 43 / 58 / 72 px tall into a window
+        that stayed 72 px tall, so at 2560 the hero number filled its own smoked window lip to lip.
+        The two px breakpoints that used to resize the bezel (1180 / 760) never fire at 1280 —
+        which is why the largest slab of all was the one at the smallest default viewport.
+
+     So: the whole gauge scales by --k-s, and the deck is anchored to the same floor band as the
+     rail. left: keeps var(--sf-safe-inset-x) — check-responsive requires every anchored edge to
+     carry the token, and it is a genuine anchor now rather than the old centring no-op that
+     multiplied the token by zero.
+
+     Why the arrangement changes at 1760 px. Side by side with the rail — the frame's composition —
+     needs the numeral window to clear the rail's left edge:
+         deckLeft + 260px*--k-s + clearance  <=  50vw - railWidth/2
+     The rail is ~640 px wide at every width (nine fixed sockets; its own breakpoints are 1180/900),
+     and the left column is a fixed 272 px, so that inequality only holds above about 1760 px.
+     Below it the deck takes the bottom-left corner and the left column stacks above it. The hull
+     stays clear either way, which is the law the frame is expressing. */
+  .sf-command-deck {
+    left:calc(var(--sf-safe-inset-x, 0px) + var(--sf-deck-inset, 12px));
+    bottom:10px;
+    transform:none;
+    width:auto; min-width:0; max-width:calc(100vw - 24px);
+    padding:0;
+  }
+  /* Left-aligned under the plate, like the frame's "weapons Pulse Laser S / class Hitch" block. */
+  .sf-cluster { align-items:flex-start; }
+  .sf-kit-gauge {
+    width:calc(360px * var(--k-s, 1)); height:calc(200px * var(--k-s, 1));
+    margin:0;
+  }
+  .sf-kit-gauge__face {
+    left:calc(100px * var(--k-s, 1)); top:calc(108px * var(--k-s, 1));
+    width:calc(160px * var(--k-s, 1)); height:calc(72px * var(--k-s, 1));
+  }
+  .sf-kit-gauge__needle {
+    width:calc(24px * var(--k-s, 1)); height:calc(100px * var(--k-s, 1));
+    margin-left:calc(-12px * var(--k-s, 1)); margin-top:calc(-80px * var(--k-s, 1));
+    transform-origin:calc(12px * var(--k-s, 1)) calc(80px * var(--k-s, 1));
+  }
+  /* The kit's arrival settle is shared with the rail, which is still centred. A deck that no longer
+     carries translateX(-50%) must not inherit the rail's version of the rule or it lands half its
+     own width to the left and slides back. */
+  .sf-command-deck.k-in { transform:translate(var(--k-in-x, 0px), var(--k-in-y, 0px)); }
+  .sf-command-deck.k-in.k-in--go { transform:none; }
+
+  /* Below the side-by-side threshold the deck owns the bottom-left corner, so the left column has
+     to end above it. The reserve is the deck's measured box (gauge + the weapon/tether/cargo rows
+     under it), not a guess: 289 px at 1280x800, which is 385 px unscaled. */
+  @media (max-width:1759px) {
+    .sf-leftstack { bottom:calc(22px + 385px * var(--k-s, 1)); }
+  }
+  @media (min-width:1760px) {
+    /* The frame puts the plate's left edge at 19.3 % of the width (371 px of 1920). Below that it
+       must still clear the left column's 284 px right edge. */
+    .sf-command-deck { --sf-deck-inset:clamp(296px, 18.6vw, 520px); }
+  }
+
+  /* The plate is allowed to tuck its right edge under the rail's left bracket — the frame composes
+     exactly that overlap, and the rail sits above on z:6. The READING under it is not: at 1920 the
+     weapon/tether/cargo rows ran to 671 against a rail whose bracket starts at 639. Cap the reading
+     to the gap that is actually there and let the bezel overhang it. The rail is at most ~660 px
+     wide (nine sockets plus three brackets, measured 634-650 across the three default viewports),
+     so its left edge never starts before 50vw - 330px. */
+  .sf-command-deck {
+    max-width:min(calc(320px * var(--k-s, 1)), calc(50vw - 338px - var(--sf-deck-inset, 12px)));
+  }
+  .sf-kit-gauge { max-width:none; }
+  /* Frame: the readout under the plate is two short 12 px lines sitting on the floor. Ours was four
+     full-width rows at a 27 px pitch — 108 px of column that lifted the plate back off the floor
+     band toward the hull. Same four readings, flowed instead of stacked. */
+  .sf-cluster { flex-flow:row wrap; align-items:flex-end; justify-content:flex-start; gap:2px 14px; }
+  .sf-cluster > .sf-kit-gauge { flex:0 0 auto; width:calc(360px * var(--k-s, 1)); }
+  .sf-cluster > .sf-stat { min-height:0; line-height:1.25; }
+
+  /* The vitals rows overflowed their own plate: .sf-barrow budgeted 54 + bar + 34 inside a 174 px
+     track while .sf-kit-bar carries a 88 px minimum, so the numeral column was pushed 18 px past
+     the left column's right edge and the "80" sat half under whatever was beside it. Give the bar
+     the slack and let the ten light wells share whatever width the row really has, so the row is
+     correct at any column size instead of only at the one it was authored against. */
+  .sf-barrow { grid-template-columns:48px minmax(0, 1fr) 30px; gap:6px; }
+  .sf-bars .sf-bar.sf-kit-bar, .sf-kit-bar { min-width:0; }
+  .sf-kit-seg { flex:1 1 0; min-width:0; max-width:12px; background-size:contain; }
+
+  /* The kit radar is a 220 px face inside a 28 px machined rim, so its box is 276 px — but the dock
+     column it lives in was still the pre-kit 220 px, and the wrap is left-aligned in it. Measured on
+     the default route: the bezel's right edge landed at 1964 in a 1920 viewport, so the dial was cut
+     off by the screen edge at every default size. The column owns the width (J07), so the column is
+     what moves; --sf-radar-size stays pinned to radar.js COMPACT_SIZE. */
+  #hud { --sf-dock-w:276px; }
+  @media (max-width:900px), (max-height:650px) {
+    #hud { --sf-dock-w:256px; }
+  }
+  @media (max-width:760px), (max-height:620px) {
+    .sf-radar-wrap.sf-kit-radar { --sf-kit-radar-rim:18px; }
+    #hud { --sf-dock-w:168px; }
+  }
+
+  /* The Band chip floated at top:150px, unattached, halfway down the sky. The frame keeps it in the
+     top band with the rest of the top-edge instruments. */
+  #hud .sf-band-hud { top:calc(62px * var(--k-s, 1)); }
+
+  /* The one-voice floor line ("Light ships are ammunition. Swing a rock. Keep the speed.") sat at
+     top:13% — 140 px down a 1080 picture, floating in open sky with nothing to belong to. The frame
+     runs the same sentence as a header line hard against the top edge. */
+  #alerts { top:22px; }
   @media (forced-colors: active) {
     .sf-kit-bar {
       border:1px solid CanvasText; border-image:none; background:Canvas;
