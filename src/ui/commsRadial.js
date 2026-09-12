@@ -341,7 +341,7 @@ export function createCommsRadial(ctx) {
       <div class="sf-drawer__crest sf-haildeck__crest">
         <span class="sf-haildeck__crestmark" data-k="deck-crest"></span>
         <span class="sf-haildeck__header">
-          <span class="sf-drawer__kicker" data-k="deck-kicker">TACTICAL HAIL</span>
+          <span class="sf-drawer__kicker" data-k="deck-kicker">HAIL</span>
           <h2 class="sf-drawer__title" data-k="deck-title">NO CONTACT</h2>
           <span class="sf-haildeck__sub" data-k="deck-sub">Channel idle</span>
         </span>
@@ -621,7 +621,7 @@ export function createCommsRadial(ctx) {
     );
     deckCrestEl.innerHTML = factionId ? factionIcon(factionId, 22) : stationIcon('target', 22);
     deckTitleEl.textContent = visual.pilot;
-    deckKickerEl.textContent = `TACTICAL HAIL · ${visual.classWord}`;
+    deckKickerEl.textContent = visual.classWord;
     deckSubEl.textContent = payload && payload.lines && payload.lines[0] ? payload.lines[0] : 'Channel active';
     const rows = [
       { k: 'Standing', v: `${tier.name} (${Math.round(repValue)})`, tone: repValue < -149 ? 'foe' : repValue > 149 ? 'you' : 'calm', num: true },
