@@ -6,6 +6,7 @@ import { createPauseFrame } from '../views/menuFrames.js';
 // the HUD dims to 38 % rather than disappearing. Photo mode (§1.7) is a sub-state of this screen:
 // the pause root goes invisible under body.k-photo while the stack (and the sim pause) is unchanged.
 // Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS.
+// Actions are produced fh-key sprites down the left (EDGE), not a leftover word column.
 // ScreenManager owns aggregate pause/resume events and the time-effects request. This screen owns
 // only pause-mode presentation and navigation intents.
 
@@ -512,6 +513,59 @@ function runPhotoCapture(ctx) {
   });
 }
 
+const PAUSE_KEY_KIND = {
+  primary: { file: 'key.primary', width: '18px' },
+  hazard: { file: 'key.hazard', width: '18px' },
+  legend: { file: 'key.legend', width: '14px' },
+};
+
+function pauseKeyUrl(file, state) {
+  return new URL(`../../../assets/ui/kit/assets/keys/${file}.${state}.png`, import.meta.url).href;
+}
+
+/** Paint a pause action as a produced kit key.
+ *  The button keeps `.k-word` (roving list + checks) and `.fh-key` (the hardware). Kit
+ *  `.k-word { all: unset }` and `#screens .of-pause .k-word { border: 0 }` would otherwise
+ *  wipe the nine-slice, so the sprite is pinned on the element. */
+function paintPauseKey(button, { primary = false, danger = false, dev = false } = {}) {
+  if (!button) return button;
+  const kind = primary ? 'primary' : danger ? 'hazard' : 'legend';
+  const spec = PAUSE_KEY_KIND[kind];
+  button.classList.add('k-word', 'fh-key', `fh-key--${kind}`);
+  if (dev) button.classList.add('k-38');
+  const style = button.style;
+  if (!style || typeof style.setProperty !== 'function') return button;
+  const apply = (state) => {
+    const slice = `${parseInt(spec.width, 10)} fill`;
+    const compact = kind !== 'primary';
+    style.setProperty('display', 'inline-flex', 'important');
+    style.setProperty('width', 'max-content', 'important');
+    style.setProperty('max-width', '100%', 'important');
+    style.setProperty('min-width', compact ? '112px' : '148px', 'important');
+    style.setProperty('min-height', compact ? '32px' : '44px', 'important');
+    style.setProperty('padding', compact ? '0 12px' : '0 18px', 'important');
+    style.setProperty('font-size', compact ? '12px' : '16px', 'important');
+    style.setProperty('justify-content', 'flex-start', 'important');
+    style.setProperty('align-items', 'center', 'important');
+    style.setProperty('box-sizing', 'border-box', 'important');
+    style.setProperty('background', 'transparent', 'important');
+    style.setProperty('border-style', 'solid', 'important');
+    style.setProperty('border-width', spec.width, 'important');
+    style.setProperty('border-image-source', `url("${pauseKeyUrl(spec.file, state)}")`, 'important');
+    style.setProperty('border-image-slice', slice, 'important');
+    style.setProperty('border-image-repeat', 'stretch', 'important');
+    style.setProperty('border-image-width', spec.width, 'important');
+  };
+  apply('rest');
+  button.addEventListener('pointerenter', () => apply('hover'));
+  button.addEventListener('pointerleave', () => apply('rest'));
+  button.addEventListener('pointerdown', () => apply('pressed'));
+  button.addEventListener('pointerup', () => apply('rest'));
+  button.addEventListener('focus', () => apply('hover'));
+  button.addEventListener('blur', () => apply('rest'));
+  return button;
+}
+
 function bindPhotoKeys(photoState) {
   return (ev) => {
     if (!photo || !photoState) return;
@@ -554,7 +608,7 @@ function enterPhoto(rootEl, ctx) {
   exposure.value = String(PHOTO_EXPOSURE_DEFAULT);
   exposure.setAttribute('aria-label', 'Exposure');
   exposure.addEventListener('input', () => syncPhotoExposure(ctx, exposure.value));
-  const captureBtn = el('button', 'k-word k-word--fine', PHOTO_CAPTURE_LABEL);
+  const captureBtn = el('button', 'k-word k-word--fine fh-key fh-key--small', PHOTO_CAPTURE_LABEL);
   captureBtn.type = 'button';
   captureBtn.addEventListener('click', () => runPhotoCapture(ctx));
   bar.appendChild(el('span', 'k-fine', 'Exposure'));
@@ -622,9 +676,12 @@ export const pauseScreen = {
     const { title, briefObjective, briefNext, briefSave } = createPauseFrame(rootEl, {
       titleText: coreText('paused'), briefLabel: coreText('flightBrief'),
     });
+    const titleWord = title && title.querySelector('h1');
+    if (titleWord) titleWord.classList.add('fh-title');
 
-    // .k-stage — the actions as one column of words. `mk` keeps the legacy shape the checks read
-    // (label, handler) and appends a kit word to the column; `words()` is built once at the end.
+    // .k-stage — EDGE keys down the left over the held world. `mk` keeps the legacy shape the
+    // checks read (label, handler); `words()` is built once at the end, then each button is
+    // painted as an fh-key so this is not a leftover word column.
     const stage = el('section', 'k-stage');
     const items = [];
     const handlers = new Map();
@@ -691,17 +748,17 @@ export const pauseScreen = {
       if (ok) requestQuit(ctx);
     }, { danger: true });
 
-    // Recorded choice: the task table says menu size, but thirteen menu-size words under the title
-    // and the three-line brief run past a 1080-tall frame (Main menu and Quit fell below the fold in
-    // the 1920x1080 capture). Emph is the next size down on the words scale; every word stays in
-    // frame at every width.
     const list = words(items, {
-      size: 'emph',
+      size: 'fine',
       ariaLabel: 'Pause',
       onPick: (action) => { const h = handlers.get(action); if (h) h.fn(); },
     });
+    list.classList.add('sf-pause-keys');
+    if (list.style && typeof list.style.setProperty === 'function') {
+      list.style.setProperty('gap', '2px');
+    }
     for (const [action, h] of handlers) {
-      if (h.dev) list.querySelector(`[data-action="${action}"]`)?.classList.add('k-38');
+      paintPauseKey(list.querySelector(`[data-action="${action}"]`), h);
     }
     stage.appendChild(list);
     rootEl.appendChild(stage);
@@ -711,9 +768,7 @@ export const pauseScreen = {
     const versionText = el('span', '', leftoverVersionLabel(CREDITS));
     version.appendChild(versionText);
     rootEl.appendChild(version);
-
-    // .k-fine — the resume key. check-ui-screen-imports allows the literal on this screen.
-    rootEl.appendChild(el('p', 'k-fine', 'Esc resumes'));
+    rootEl.setAttribute('aria-keyshortcuts', 'Escape');
 
     const bResume = list.querySelector(`[data-action="${resumeAction}"]`);
     els = { bResume, title, stage, briefObjective, briefNext, briefSave, versionText };

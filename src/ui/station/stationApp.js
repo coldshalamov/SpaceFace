@@ -1,7 +1,7 @@
 import { stationFrameHtml } from '../views/stationFrames.js';
 // src/ui/station/stationApp.js — Field Hardware berth chrome (PQ-194 / P33 shell).
 // Docking is an arrival on the lit 3D berth: stencil station name, authority legend, one news
-// strip, leftover event/ledger/mechanic cards, destination keys along the bottom edge, Undock as
+// tape, leftover event/ledger/mechanic strips, destination keys along the bottom edge, Undock as
 // the primary key with a readiness light, credits and vitals on a quiet engraved plate. The
 // Orbital Command website chrome (opaque header, Facilities sidebar, word-underlines) is retired.
 //
@@ -135,14 +135,14 @@ function createBerth(canvas, ctx) {
 }
 
 const DESTINATIONS = [
-  { id: 'market', label: 'Market', icon: 'market', tagline: 'Live prices · demand · trade', create: createMarketScreen },
-  { id: 'shipworks', label: 'Shipworks', icon: 'shipworks', tagline: 'Buy ships · fit modules · compare', create: createShipworksScreen },
-  { id: 'industry', label: 'Industry', icon: 'industry', tagline: 'Refine ore · fabricate modules', create: createIndustryScreen },
+  { id: 'market', label: 'Market', icon: 'market', create: createMarketScreen },
+  { id: 'shipworks', label: 'Shipworks', icon: 'shipworks', create: createShipworksScreen },
+  { id: 'industry', label: 'Industry', icon: 'industry', create: createIndustryScreen },
   // Player-facing label is Missions (contracts is the stable internal rail id + TARGET_MAP alias).
-  { id: 'contracts', label: 'Missions', icon: 'contracts', tagline: 'Jobs · turn-ins · station leads', create: createContractsScreen },
-  { id: 'factions', label: 'Factions', icon: 'factions', tagline: 'Standing & relations', create: createFactionsScreen },
-  { id: 'bar', label: 'Bar', icon: 'bar', tagline: 'Rumors · contacts · leads', create: createBarScreen },
-  { id: 'ledger', label: 'Ledger', icon: 'ledger', tagline: "The Tessera's record · evidence", create: createLedgerScreen },
+  { id: 'contracts', label: 'Missions', icon: 'contracts', create: createContractsScreen },
+  { id: 'factions', label: 'Factions', icon: 'factions', create: createFactionsScreen },
+  { id: 'bar', label: 'Bar', icon: 'bar', create: createBarScreen },
+  { id: 'ledger', label: 'Ledger', icon: 'ledger', create: createLedgerScreen },
 ];
 
 // The service verbs used to be dock tiles declared here. They now live on the vital they change
@@ -249,6 +249,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     actions: [],
     onNavigate: (id) => navigate(id),
     onAction: (id) => runAction(id),
+  });
+  dock.el.querySelectorAll('.sx-tile').forEach((tile) => {
+    tile.classList.add('fh-key', 'fh-key--legend');
   });
   app.querySelector('.sxb-ops__dock').appendChild(dock.el);
 

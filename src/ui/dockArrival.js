@@ -255,9 +255,14 @@ export function writeBerthArrival(targets, view, fallbackNews = '') {
   const host = leftoverTraceHost(targets);
   const news = (view && view.news) || fallbackNews || '';
   setNodeText(newsEl, news);
+  const eventCard = paintBerthEventCard(cardEl, view && view.eventCard);
+  if (newsEl) {
+    const duplicate = !!(eventCard && news && (news === eventCard.body || news === eventCard.title));
+    newsEl.hidden = !news || duplicate;
+  }
   return {
     news,
-    eventCard: paintBerthEventCard(cardEl, view && view.eventCard),
+    eventCard,
     patch: paintLeftoverLine(host.patchEl, view && view.patch),
     route: paintLeftoverLine(host.routeEl, view && view.route),
     ledger: paintBerthEventCard(host.ledgerEl, view && view.ledger),

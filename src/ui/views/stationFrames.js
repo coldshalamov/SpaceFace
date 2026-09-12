@@ -2,38 +2,42 @@
 // These exact functions also power the isolated presentation fixture; no game systems are substituted.
 
 export function stationFrameHtml() {
-  // Field Hardware chrome over the live berth: stencil name, authority legend, news strip,
-  // leftover cards, engraved vitals plate, destination keys along the bottom edge, Undock key.
-  return `<canvas class="k-world sxb-berth__world" aria-hidden="true"></canvas>` +
+  // Field Hardware chrome over the live berth: stencil name, authority legend, one news tape,
+  // leftover strips (not website cards), engraved vitals plate, destination keys along the
+  // bottom edge, Undock key. The work panel is a smoked window onto the hull.
+  return `<div class="k-world k-world--plate sxb-berth__plate" aria-hidden="true"></div>` +
+    `<canvas class="k-world sxb-berth__world" aria-hidden="true"></canvas>` +
     `<header class="k-title sxb-berth">` +
       `<span class="of-port-mark sxb-berth__lamp" aria-hidden="true"></span>` +
       `<p class="sxb-berth__ident fh-legend"></p>` +
       `<h1 class="k-display k-t-hero fh-hero sxb-berth__name"></h1>` +
-      `<p class="k-t-emph k-62 fh-legend sxb-berth__news"></p>` +
-      `<article class="sxb-event" hidden>` +
-        `<span class="sxb-event__badge k-caps fh-legend"></span>` +
-        `<strong class="sxb-event__title"></strong>` +
-        `<p class="sxb-event__body"></p>` +
-      `</article>` +
-      `<article class="sxb-event sxb-berth__ledger" hidden>` +
-        `<span class="sxb-event__badge k-caps fh-legend"></span>` +
-        `<strong class="sxb-event__title"></strong>` +
-        `<p class="sxb-event__body"></p>` +
-      `</article>` +
-      `<article class="sxb-event sxb-berth__mechanic" hidden>` +
-        `<span class="sxb-event__badge k-caps fh-legend"></span>` +
-        `<strong class="sxb-event__title"></strong>` +
-        `<p class="sxb-event__body"></p>` +
-      `</article>` +
-      `<p class="k-t-fine k-62 sxb-berth__patch" hidden></p>` +
-      `<p class="k-t-fine k-62 sxb-berth__route" hidden></p>` +
+      `<div class="sxb-tape">` +
+        `<p class="k-t-emph k-62 fh-legend sxb-berth__news"></p>` +
+        `<article class="sxb-event" hidden>` +
+          `<span class="sxb-event__badge k-caps fh-legend"></span>` +
+          `<strong class="sxb-event__title"></strong>` +
+          `<p class="sxb-event__body"></p>` +
+        `</article>` +
+        `<article class="sxb-event sxb-berth__ledger" hidden>` +
+          `<span class="sxb-event__badge k-caps fh-legend"></span>` +
+          `<strong class="sxb-event__title"></strong>` +
+          `<p class="sxb-event__body"></p>` +
+        `</article>` +
+        `<article class="sxb-event sxb-berth__mechanic" hidden>` +
+          `<span class="sxb-event__badge k-caps fh-legend"></span>` +
+          `<strong class="sxb-event__title"></strong>` +
+          `<p class="sxb-event__body"></p>` +
+        `</article>` +
+        `<p class="k-t-fine k-62 sxb-berth__patch" hidden></p>` +
+        `<p class="k-t-fine k-62 sxb-berth__route" hidden></p>` +
+      `</div>` +
       `<div class="sxb-handoff" hidden></div>` +
     `</header>` +
     `<aside class="k-corner sxb-crown fh-plate fh-plate--edge" aria-label="Credits and ship vitals">` +
       `<div class="k-hero sxb-purse"><div class="k-hero__n fh-heronum sxb-purse__value">0</div><div class="k-hero__w sxb-purse__label">credits</div></div>` +
       `<ul class="k-rows sxb-vitals" style="--k-row-cols: 1fr auto auto"></ul>` +
     `</aside>` +
-    `<div class="k-span sx-screen__body" id="sx-panel" role="tabpanel" tabindex="0"></div>` +
+    `<div class="k-span sx-screen__body fh-window fh-window--deep" id="sx-panel" role="tabpanel" tabindex="0"></div>` +
     `<footer class="k-foot sxb-ops">` +
       `<nav class="of-facility-rail" aria-label="Station facilities">` +
         `<div class="of-rail-label">Facilities</div>` +
