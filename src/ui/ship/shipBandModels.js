@@ -348,17 +348,21 @@ function topSpeedWhy(profile, derived, dryDerived, shipDef) {
   const loadedFactor = speedMassForRatio(loadedRatio);
   const dryFactor = speedMassForRatio(dryRatio);
   const massLoss = (1 - (loadedFactor / Math.max(0.001, dryFactor))) * 100;
-  // PQ-176.01: a fitted drive is the biggest single thing that moves this ceiling, so it gets the
-  // sentence before the mass note does.
+  // PQ-176.01: a fitted drive buys speed ABOVE the fight cap, never at it (FEEL_CONTRACT B3 is
+  // measured at the cap). So the sentence has to name the burn, not the fight: saying "holds you
+  // at 84 in a fight, 86 % over this hull's own motor" was a straight lie once the cap stopped
+  // being for sale, because the hull's own motor already holds you at 84.
   const driveSpeed = finite(derived && derived.propulsion && derived.propulsion.driveSpeedMult, 1);
   if (driveSpeed !== 1) {
-    const shift = Math.round((driveSpeed - 1) * 100);
+    const travelMult = finite(derived.propulsion.driveTravelMult, driveSpeed);
+    const shift = Math.round((travelMult - 1) * 100);
     const governed = Math.round(finite(
       derived.propulsion.combatSpeed != null ? derived.propulsion.combatSpeed : derived.propulsion.maxSpeed,
       0,
     ));
-    return `The drive you fitted holds you at ${governed} in a fight, ${signedPercent(shift)} `
-      + `${shift >= 0 ? 'over' : 'under'} this hull's own motor.`;
+    const burn = Math.round(finite(derived.propulsion.travelCeiling, 0));
+    return `You still fight at ${governed}. The drive you fitted buys the run: ${burn} on the burn, `
+      + `${signedPercent(shift)} ${shift >= 0 ? 'over' : 'under'} this hull's own motor.`;
   }
   if (massLoss > 1) return `Mass costs you ${Math.round(massLoss)}% of your ceiling.`;
   if (profile && profile.driveLabel) return `The ${profile.driveLabel} sets your ceiling.`;

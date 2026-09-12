@@ -743,6 +743,9 @@ function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equippe
   derived.massLoadFactor = load;
   derived.driveAccelMult = drive.accel;
   derived.driveSpeedMult = drive.speed;
+  // The travel ceiling is where a fitted drive's speed actually lands, so the screen needs the
+  // multiplier that moved IT -- quoting the boost ratio next to a travel number reads as a lie.
+  derived.driveTravelMult = mult;
   derived.thrusterTurnMult = thruster.turn;
   derived.thrusterStrafeMult = thruster.strafe;
   derived.thrusterBrakeMult = thruster.brake;
