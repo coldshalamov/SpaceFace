@@ -8,7 +8,7 @@
 // (save/newGame, render previews, UI stat readouts) can call them without going through the bus.
 import { SHIPS } from '../data/ships.js';
 import { FLIGHT_TUNING } from '../data/flightTuning.js';
-import { HARDPOINT_ACCEPTS, TURRET_RING_OUTPUT, WEAPONS } from '../data/weapons.js';
+import { HARDPOINT_ACCEPTS, TURRET_RING_OUTPUT, WEAPONS, WEAPON_MOUNT_CLASSES } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { TECH_NODES, techDisplayName } from '../data/tech.js';
 import { BEAMS } from '../data/mining.js';
@@ -308,7 +308,7 @@ export function sizeFits(slot, def) {
 /** A weapon's mount class. Authored `mount` wins; otherwise the tracking mode says it. */
 export function mountClassOf(def) {
   if (!def || def.slotType !== 'weapon') return null;
-  if (typeof def.mount === 'string' && HARDPOINT_ACCEPTS.fixed.includes(def.mount)) return def.mount;
+  if (typeof def.mount === 'string' && WEAPON_MOUNT_CLASSES.includes(def.mount)) return def.mount;
   const tracking = def.tracking || 'fixed';
   if (tracking === 'auto_turret') return 'turret';
   if (tracking === 'homing' || tracking === 'deploy') return 'launcher';
@@ -338,7 +338,9 @@ export function mountRefusal(slot, def) {
   return `${def.name} does not fit a ${where}: it is ${MOUNT_CLASS_WORD[mount] || 'the wrong class'}, and a ring carries only guns and turrets. Fit it on a fixed hardpoint.`;
 }
 
-/** Output an aimed gun keeps on this slot: TURRET_RING_OUTPUT on a ring, 1 everywhere else. */
+/** Output an aimed gun keeps on this slot: TURRET_RING_OUTPUT on a ring, 1 everywhere else. "Output"
+ *  is everything the round delivers — damage, splash, knock and tumble — so a concussion cannon on a
+ *  ring shoves a third less too; the pilot who aims it keeps the whole hit. */
 export function mountOutputFactor(def, slot) {
   if (!def || !slot) return 1;
   return hardpointClassOf(slot) === 'ring' && mountClassOf(def) === 'gun' ? TURRET_RING_OUTPUT : 1;
@@ -1184,6 +1186,13 @@ function makeWeaponRuntime(def, slot, slotIndex, isPlayer = false, derivedStats 
     dmg: scaleWeaponRuntimeStat(def.dmg, dmgMult), rof: def.rof, energyCost: def.energyCost,
     ...(def.splashDmg != null ? {
       splashDmg: scaleWeaponRuntimeStat(def.splashDmg, dmgMult),
+    } : {}),
+    // Knock pays the mount margin (not the fit's damage multiplier — fire control is a damage stat).
+    ...(mountOutput !== 1 && Number.isFinite(Number(def.impulsePerHit)) ? {
+      impulsePerHit: scaleWeaponRuntimeStat(def.impulsePerHit, mountOutput),
+    } : {}),
+    ...(mountOutput !== 1 && Number.isFinite(Number(def.tumbleTorque)) ? {
+      tumbleTorque: scaleWeaponRuntimeStat(def.tumbleTorque, mountOutput),
     } : {}),
     heat: def.heatPerShot || def.heatPerSec || 0, heatMax: def.heatMax || 100,
     heatDissip: scaleWeaponRuntimeStat(def.heatDissip, derivedStats && derivedStats.weaponHeatDissipMult),

@@ -82,6 +82,12 @@ test('an aimed gun on the ring aims itself and pays the authored margin on the f
   assert.ok(Math.abs(fixed.dmg / ring.dmg - 1 / TURRET_RING_OUTPUT) < 1e-9,
     `fixed ${fixed.dmg} vs ring ${ring.dmg}: the fixed twin out-damages the ring by the authored margin`);
   assert.equal(fixed.rof, ring.rof, 'the margin is output, not rate');
+  const shoveFixed = runtime('wpn_concussion_cannon_m', FRONT);
+  const shoveRing = runtime('wpn_concussion_cannon_m', RING);
+  const shove = weapon('wpn_concussion_cannon_m');
+  assert.equal(shoveFixed.impulsePerHit, undefined, 'a fixed mount keeps the authored knock (weapons.js reads the def)');
+  assert.ok(Math.abs(shoveRing.impulsePerHit / shove.impulsePerHit - TURRET_RING_OUTPUT) < 1e-9, 'knock pays the margin on the ring');
+  assert.ok(Math.abs(shoveRing.tumbleTorque / shove.tumbleTorque - TURRET_RING_OUTPUT) < 1e-9, 'tumble pays the margin on the ring');
   // weapons.js: a `facing: turret` mount is lead-solved at the target; a fixed mount gimbals toward the aim.
   assert.equal(ring.facing, 'turret', 'the ring tracks the target itself');
   assert.notEqual(fixed.facing, 'turret');

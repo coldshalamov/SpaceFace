@@ -130,6 +130,16 @@ for (const gunId of ['wpn_autocannon_m', 'wpn_pulse_laser_m', 'wpn_plasma_cannon
   const marginPct = Math.round((ratio - 1) * 1000) / 10;
   log(`  C ${gunId.padEnd(22)} fixed ${fixed.dmg} dmg × ${fixed.rof}/s = ${(fixed.dmg * fixed.rof).toFixed(1)} dps · ring ${ring.dmg} dmg = ${(ring.dmg * ring.rof).toFixed(1)} dps · fixed out-damages ring by ${marginPct} %`);
 }
+// Knock is output too: the concussion cannon (the gun shipped on a ring in web_weaver) shoves less there.
+{
+  const def = weaponById('wpn_concussion_cannon_m');
+  const fixed = runtimeWeapon(def.id, fixedIndex);
+  const ring = runtimeWeapon(def.id, ringIndex);
+  assert.equal(fixed.impulsePerHit, undefined, 'a fixed mount leaves the authored impulse to the weapons system');
+  assert.ok(Math.abs(ring.impulsePerHit / def.impulsePerHit - TURRET_RING_OUTPUT) < 1e-9, 'ring knock pays the margin');
+  assert.ok(Math.abs(ring.tumbleTorque / def.tumbleTorque - TURRET_RING_OUTPUT) < 1e-9, 'ring tumble pays the margin');
+  log(`  C ${def.id.padEnd(22)} knock fixed ${def.impulsePerHit} · ring ${ring.impulsePerHit} · tumble fixed ${def.tumbleTorque} · ring ${ring.tumbleTorque}`);
+}
 const flakOnRing = runtimeWeapon('wpn_flak_turret_s', ringIndex);
 assert.equal(flakOnRing.mountOutput, 1, 'a dedicated turret is authored for the ring and pays nothing');
 const rackOnFixed = runtimeWeapon('wpn_missile_rack_m', fixedIndex);
