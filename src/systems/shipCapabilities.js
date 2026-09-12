@@ -274,7 +274,7 @@ export function shipCapabilityVerbs({ derived, fittings = [] } = {}) {
     sub: towHull ? `${round(towMassT, 0)} t on the line` : 'no tow',
     why: towHull
       ? `Your drive gets ${round(towMassT, 0)} t under way on the line — ${CAPABILITY_LAW.towUnderWaySpeed} WU/s in `
-        + `${CAPABILITY_LAW.towUnderWaySeconds} s with the load attached. ${withArticle(towHull.name)} weighs `
+        + `${CAPABILITY_LAW.towUnderWaySeconds} s with the load attached. The ${towHull.name} weighs `
         + `${round(towHull.mass, 0)} t.`
       : `At ${round(finite(derived.operationalMass, 0), 0)} t you cannot get anything else moving as well as yourself. `
         + 'Drop cargo or fit a stronger drive.',

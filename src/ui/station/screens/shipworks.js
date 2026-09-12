@@ -1280,7 +1280,15 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         heroHtml('handling', topSpeed ? barValueText(topSpeed) : fmt(model.derived.maxSpeed), 'top speed', { selected: selectedBand === 'handling', why: topSpeed && topSpeed.why }) +
         heroHtml('power', `${plusMinus(headroom, 1)}/s`, 'power', { tone: powerTone, selected: selectedBand === 'power', why: headroomLabel }) +
         heroHtml('condition', conditionVerb, 'condition', { selected: selectedBand === 'condition', why: model.condition && model.condition.why }) +
-        heroHtml('capability', fmt(model.derived.cargoCap), 'hold', { selected: selectedBand === 'capability' }) +
+        heroHtml(
+          'capability',
+          (model.capability && model.capability.lead && model.capability.lead.value) || fmt(model.derived.cargoCap),
+          (model.capability && model.capability.lead && model.capability.lead.word) || 'hold',
+          {
+            selected: selectedBand === 'capability',
+            why: (model.capability && model.capability.lead && model.capability.lead.why) || '',
+          },
+        ) +
         `<ul class="k-words k-words--row sx-sw-verbs">` +
           `<li><button type="button" class="k-word k-word--body sx-sw-verb" data-verb="range">Take it to the range</button></li>` +
           `<li><button type="button" class="k-word k-word--body sx-sw-verb${recordOpen ? ' is-active' : ''}" data-verb="record" aria-pressed="${recordOpen ? 'true' : 'false'}">Record</button></li>` +

@@ -571,8 +571,7 @@ function pickNextNode(state) {
  * always carry a number, and the number moves when the fit moves — including when the only thing
  * that changed is what is in the hold. `depth` puts them ahead of the module chips in the rack.
  */
-function physicalVerbChips(derived, fittings) {
-  const verbs = shipCapabilityVerbs({ derived, fittings });
+function physicalVerbChips(verbs) {
   const rows = Array.isArray(verbs.rows) ? verbs.rows : [];
   return rows.map((row, index) => ({
     id: row.id,
@@ -586,7 +585,8 @@ function physicalVerbChips(derived, fittings) {
 
 export function capabilityBandModel({ derived, state, fittings = [] }) {
   if (!derived) return { chips: [], next: null };
-  const verbChips = physicalVerbChips(derived, fittings);
+  const verbs = shipCapabilityVerbs({ derived, fittings });
+  const verbChips = physicalVerbChips(verbs);
   const baseChips = capabilityDefinitions(derived).map((row) => {
     const source = row.id;
     let depth = 0;
@@ -623,7 +623,22 @@ export function capabilityBandModel({ derived, state, fittings = [] }) {
     : null;
   return {
     chips: verbChips.concat(baseChips),
+    // The hero that opens this band has to advertise what is behind it. It used to read the cargo
+    // cap ("250 / hold") while the band underneath held four capability sentences, so nothing on
+    // the screen gave the player a reason to open it. The lead is the tow verb, because it is the
+    // one capability that names another SHIP -- the most legible thing this rack can say.
+    lead: leadFromTow(verbs.tow),
     next,
+  };
+}
+
+/** The capability band's hero: what this hull can pick up, in one noun and two words. */
+function leadFromTow(tow) {
+  const hullName = tow && tow.hullName ? String(tow.hullName) : null;
+  return {
+    value: hullName || 'nothing',
+    word: 'can tow',
+    why: (tow && tow.why) || (tow && tow.verb) || '',
   };
 }
 
