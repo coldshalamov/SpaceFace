@@ -43,7 +43,7 @@ CHECKS
 | `node --test test/check-ci-report.test.mjs` | PASS 30/30 |
 | `node scripts/check-ci-report.mjs --list-groups` | 0 unclassified; the new check lands in the `browser` group |
 | `node --test test/presentation-world.test.mjs test/opening-mesh-defer.test.mjs test/opening-gpu-admission.test.mjs test/first-flight-gpu-hold.test.mjs test/authored-software-renderer-readiness-gate.test.mjs test/live-whole-ship-admission.test.mjs test/compile-present-slice.test.mjs` (with the new test) | PASS 99/99 |
-| `npm run check:baseline` | 14/15 green. The one red is `massline`, and inside it only `check:47a:physical-branches`, which TIMED OUT at 150.6 s against a 150 s budget under headed-probe contention. Run on its own: `npm run check:47a:physical-branches` → `47-A physical branches OK`. No assertion failed; nothing in this change touches sim or the massline |
+| `npm run check:baseline` | **15/15 green** on a clean machine (148 s). An earlier run taken while a headed probe was live showed 14/15, with `check:47a:physical-branches` TIMED OUT at 150.6 s against a 150 s budget; run on its own it printed `47-A physical branches OK`. Contention, not an assertion |
 | `node scripts/probe-sector-arrival-admission.mjs` (gate) | PASS, published at +60 s / +90 s / +90 s across three runs |
 | `node scripts/probe-sector-arrival-admission.mjs --teleport` | PASS, published at +45 s |
 | `node scripts/probe-sector-arrival-admission.mjs --continue` | PASS, published at +5 s (the quick save was asserted written in `sector_ceres_belt` before the reload) |
