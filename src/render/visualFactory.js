@@ -1847,7 +1847,17 @@ const AST_TYPE = {
 // library, leaving a plain white 0xffffff standard material) AND their place in the instanced
 // asteroid pool. Canonicalising once, at the single point where the id enters the visual layer,
 // fixes both without touching spawn data or save payloads.
-const AST_TYPE_ALIASES = { ast_rock: 'ast_common_rock' };
+// The opening's rescue rock (`ast_rescue_rock`, the mass you swing and throw lights into) and the
+// rescue wall (`ast_rescue_wall`, the rock the light hulls die against) are common rock in the
+// fiction and in every gameplay law, but their type ids were not aliases, so `AST_TYPE` fell to the
+// common-rock NUMBERS while every path gated on the literal `'ast_common_rock'` (the PBR surface
+// library, the UV transform, the vertex colours) opted out: the first two rocks a new player meets
+// were flat white icospheres for the whole session (seen at the shipping camera 2026-09-12).
+const AST_TYPE_ALIASES = {
+  ast_rock: 'ast_common_rock',
+  ast_rescue_rock: 'ast_common_rock',
+  ast_rescue_wall: 'ast_common_rock',
+};
 
 function canonicalAstTypeId(typeId) {
   const id = typeId || 'ast_common_rock';
@@ -2088,12 +2098,22 @@ function configureCommonRockPbr(material) {
   return material;
 }
 
+/**
+ * A common rock built before its surface library has decoded gets a BARE material (white base
+ * colour, procedural roughness noise) — and that material used to be cached under the final key,
+ * so the first rock a new player meets (the onboarding rescue rock spawns 118 WU off the bow the
+ * moment flight starts) stayed a flat white icosphere for the whole session whenever the opening's
+ * 4 s wait for the library lost the race on a slow decode (seen on the Intel laptop 2026-09-12).
+ * The bare material is keyed apart and tagged, and `upgradeBareRockMaterials` re-skins every live
+ * rock the moment the library publishes.
+ */
 function astMaterial(typeId, def, tint) {
-  const key = `astmat:${typeId}:${tint || 'def'}`;
+  const wantsCommonSurface = typeId === 'ast_common_rock' && tint == null;
+  const commonSurfaceReady = wantsCommonSurface ? getReadyRockSurfaceTextures() : null;
+  const bare = wantsCommonSurface && !commonSurfaceReady;
+  const key = `astmat:${typeId}:${tint || 'def'}${bare ? ':bare' : ''}`;
   return getMaterial(key, () => {
-    const commonSurface = typeId === 'ast_common_rock' && tint == null
-      ? getReadyRockSurfaceTextures()
-      : null;
+    const commonSurface = commonSurfaceReady;
     const color = tint != null ? new THREE.Color(tint) : new THREE.Color(def.color);
     const skipRoughNoise = !!commonSurface || def.variant === 'crystal' || def.variant === 'ice';
     const rough = skipRoughNoise
@@ -2145,10 +2165,35 @@ function astMaterial(typeId, def, tint) {
       emissive: new THREE.Color(def.emissive), emissiveIntensity: eiBoost,
       flatShading: def.flat,
     });
+    if (bare) {
+      material.userData = { ...(material.userData || {}), spacefaceBareRock: { typeId, tint: tint == null ? null : tint } };
+    }
     return commonSurface
       ? configureCommonRockPbr(material)
       : stampSharedMaterialRole(material, SHARED_MATERIAL_ROLE.ROCK);
   });
+}
+
+/**
+ * Re-skin every common rock under `root` that was built before the rock surface library decoded.
+ * Returns how many meshes changed material. Safe to call any time; a no-op until the library is
+ * ready and for roots that carry no bare rock.
+ */
+export function upgradeBareRockMaterials(root) {
+  if (!root || typeof root.traverse !== 'function' || !getReadyRockSurfaceTextures()) return 0;
+  let count = 0;
+  root.traverse((node) => {
+    const tag = node && node.material && node.material.userData && node.material.userData.spacefaceBareRock;
+    if (!tag) return;
+    const typeId = canonicalAstTypeId(tag.typeId);
+    const def = AST_TYPE[typeId] || AST_TYPE.ast_common_rock;
+    const next = astMaterial(typeId, def, tag.tint == null ? undefined : tag.tint);
+    if (next && next !== node.material) {
+      node.material = next;
+      count += 1;
+    }
+  });
+  return count;
 }
 
 function buildAsteroid(e) {

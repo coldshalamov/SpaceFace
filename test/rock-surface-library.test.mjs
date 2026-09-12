@@ -217,11 +217,22 @@ test('authored world bounds expand render culling without changing gameplay radi
   assert.equal(entityVisualCullRadius({ radius: 72 }, new THREE.Group()), 72);
 });
 
-test('opening GPU admission resolves the rock maps before streamed asteroids publish', () => {
+// 2ca4bc8e5 (2026-09-11, "Wait for the opening cook on this Intel laptop") made the opening's wait
+// for the rock maps a 4 s race so a slow decode cannot hold the boot past its bar — and left this
+// test red, because a rock streamed after a lost race published the bare white material and kept
+// it. 2026-09-12: the race stays (the boot bar wins), and the bare material is now keyed apart and
+// re-skinned in place the moment the library lands. This test pins both halves of that contract.
+test('opening GPU admission waits for the rock maps, and rocks that went out bare are re-skinned when they land', () => {
   const source = readFileSync(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   assert.match(source, /import \{ preloadRockSurfaceLibrary \} from '\.\/rockSurfaceLibrary\.js'/);
   assert.match(source, /this\.rockSurfaceLibraryReady = preloadRockSurfaceLibrary\(renderer\)/);
   assert.match(source, /state\.render\.rockSurfaceLibraryReady = this\.rockSurfaceLibraryReady/);
-  assert.match(source, /prepareOpeningGpuResources = async \(\) => \{[\s\S]{0,500}?await this\.rockSurfaceLibraryReady/,
-    'the loading presenter must retain control until common-rock maps are ready for first publication');
+  assert.match(source, /prepareOpeningGpuResources = async \(\) => \{[\s\S]{0,600}?await Promise\.race\(\[\s*this\.rockSurfaceLibraryReady/,
+    'the loading presenter waits for common-rock maps up to its opening budget before first publication');
+  assert.match(source, /upgradeBareRockMaterials/, 'the renderer imports the bare-rock re-skin');
+  assert.match(source, /this\.rockSurfaceLibraryReady\.then\(\(\) => \{[\s\S]{0,400}?upgradeBareRockMaterials\(mesh\)/,
+    'every live rock that published bare is re-skinned when the library lands');
+  const factory = readFileSync(new URL('../src/render/visualFactory.js', import.meta.url), 'utf8');
+  assert.match(factory, /astmat:\$\{typeId\}:\$\{tint \|\| 'def'\}\$\{bare \? ':bare' : ''\}/,
+    'a bare common-rock material is cached under its own key so the textured one can still be built');
 });

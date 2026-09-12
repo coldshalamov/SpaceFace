@@ -14,7 +14,7 @@ import {
   createSpaceReflectionEnvironment,
   SPACE_REFLECTION_PMREM_SIGMA_RADIANS,
 } from './spaceReflectionEnvironment.js';
-import { createVisualFactory, setEnvMapForShips } from './visualFactory.js';
+import { createVisualFactory, setEnvMapForShips, upgradeBareRockMaterials } from './visualFactory.js';
 import { installVisualOverrides } from './visualOverrides.js';
 import {
   beginScenePipelineReadinessBatch,
@@ -761,6 +761,11 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   if (holdFirstFlightStreaming(owner.state)) {
     // Do not bank a full reconcile for the hold end — that dump TDR'd Intel.
     owner._meshReconcileDirty = false;
+    // The opening's rescue set piece (the rock you swing, the wall the lights die against, the pod)
+    // spawns the moment flight starts and the tutorial line points at it — it must be on the glass
+    // now, not after the 20 s residency hold. Measured 2026-09-12: both rescue rocks sat queued
+    // from +1 s and were built at +20.3 s. Everything else keeps the hold.
+    if (typeof owner._drainProtectedFirstFlightBuilds === 'function') owner._drainProtectedFirstFlightBuilds();
     return 'held-first-flight';
   }
   owner._renderResidencyPollS -= dt;
@@ -782,6 +787,12 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     return 'drain';
   }
   return 'idle';
+}
+
+/** The opening's rescue set piece: the rock, the wall, the pod, the trainer. Built and shown at once. */
+function isFirstFlightProtectedEntity(entity) {
+  const data = entity && entity.alive !== false ? entity.data : null;
+  return !!(data && (data.rescue === true || data.onboardingTraining === true));
 }
 
 function canRequestAuthoredUpgrade(entity, state, pendingSectorId = null) {
@@ -3689,6 +3700,20 @@ export const render = {
     // publishing the old flat/clay material and then changing identity a few frames later.
     this.rockSurfaceLibraryReady = preloadRockSurfaceLibrary(renderer);
     state.render.rockSurfaceLibraryReady = this.rockSurfaceLibraryReady;
+    // The opening only waits 4 s for these maps (prepareOpeningGpuResources races them against a
+    // timeout), and the onboarding rescue rock spawns the moment flight starts. On a slow decode
+    // that rock used to publish the bare white material and keep it for the session. When the
+    // library lands, every rock that went out bare is re-skinned in place.
+    if (this.rockSurfaceLibraryReady && typeof this.rockSurfaceLibraryReady.then === 'function') {
+      const liveScene = scene;
+      this.rockSurfaceLibraryReady.then(() => {
+        // A torn-down renderer has no mesh map and a different scene; do nothing then.
+        if (!this._meshes || this.scene !== liveScene) return;
+        let count = 0;
+        for (const mesh of this._meshes.values()) count += upgradeBareRockMaterials(mesh);
+        if (count > 0) console.info(`[render] rock surface library ready; re-skinned ${count} bare rock mesh(es)`);
+      }).catch(() => {});
+    }
     this._sectorPaletteRig = createSectorPaletteRig(scene, ambient, key, rim, fill);
     this._sectorPaletteTarget = corePalette;
     this._sectorLightingTarget = null; // no authored rig applied yet; see _beginSectorPaletteTransition
@@ -7004,6 +7029,28 @@ export const render = {
     return built;
   },
 
+  /**
+   * Build the opening's rescue set piece out of the queue while the first-flight residency hold
+   * keeps every other build waiting. Hoists the protected ids to the head and drains exactly that
+   * many, so nothing else slips through the hold.
+   */
+  _drainProtectedFirstFlightBuilds() {
+    const queue = this._meshBuildQueue;
+    if (!queue || this._meshBuildQueueHead >= queue.length) return 0;
+    let moved = 0;
+    for (let i = this._meshBuildQueueHead; i < queue.length; i++) {
+      const entity = resolveWorldPresentationEntity(this.state, queue[i]);
+      if (!isFirstFlightProtectedEntity(entity)) continue;
+      const slot = this._meshBuildQueueHead + moved;
+      if (i !== slot) {
+        const [id] = queue.splice(i, 1);
+        queue.splice(slot, 0, id);
+      }
+      moved += 1;
+    }
+    return moved > 0 ? this._drainMeshBuildQueue(moved) : 0;
+  },
+
   _drainMeshBuildQueue(buildBudget) {
     let built = 0;
     if (buildBudget !== Infinity && this._initialMeshReconcileComplete) {
@@ -7057,7 +7104,8 @@ export const render = {
       this.scene.add(m);
       this._bindPresentationMesh(e, m);
       const holdFirstFlightBuffers = (e.type === 'asteroid' || e.type === 'payload')
-        && !(m.userData && m.userData.spacefaceGeometryResident === true);
+        && !(m.userData && m.userData.spacefaceGeometryResident === true)
+        && !isFirstFlightProtectedEntity(e);
       if (holdFirstFlightBuffers) {
         const data = m.userData || (m.userData = {});
         data.geometryPending = true;
