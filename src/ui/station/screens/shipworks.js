@@ -399,7 +399,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       paintHeroNum(hero.querySelector('.k-hero__n'));
       paintLegend(hero.querySelector('.k-hero__w'), hero.classList.contains('is-selected'));
     }
-    pinKeyrack(statsEl.querySelector('.sx-sw-verbs'));
+    // The verbs (Take it to the range · Record · Select a slot) are the screen's actions; they used
+    // to sit at the end of the hero row, which wrapped them onto a third line inside the stats
+    // scroll at 1280x800 and 1080p, where they were out of sight under the side plate. They live
+    // at the foot of the stats block now, sticky, so they are on the glass at every scroll.
+    const verbsRack = statsEl.querySelector('.sx-sw-verbs');
+    if (verbsRack && verbsRack.parentElement !== statsEl) statsEl.appendChild(verbsRack);
+    pinKeyrack(verbsRack);
     for (const btn of statsEl.querySelectorAll('[data-verb]')) {
       paintKey(btn, btn.getAttribute('data-verb') === 'fit' || btn.getAttribute('data-verb') === 'activate' ? 'primary' : 'legend');
     }
@@ -1497,7 +1503,14 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   function updateSpatialProjection() {
-    if (!mount || !stageEl.isConnected) return;
+    if (!stageEl.isConnected) return;
+    // No preview mount (secondaryPreviewWebGlBlocked: a second hangar compile TDRs Intel/ANGLE, the
+    // owner's own laptop) means no hull to pin the systems to. The pins used to stay at the
+    // slotfield origin — seven "PHYSICAL / S" callouts piled on one point above the hull's name,
+    // and no way to choose a system at all. They lay out as a systems board instead: the same
+    // buttons, the same copy, as a wrapped row of chips at the foot of the stage.
+    if (slotfieldEl) slotfieldEl.classList.toggle('is-board', !mount);
+    if (!mount) return;
     const stageRect = stageEl.getBoundingClientRect();
     if (stageRect.width <= 0 || stageRect.height <= 0) return;
     const focusLine = el.querySelector('.sx-sw__focusline');

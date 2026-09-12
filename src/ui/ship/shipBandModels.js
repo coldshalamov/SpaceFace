@@ -636,12 +636,18 @@ export function capabilityBandModel({ derived, state, fittings = [] }) {
   };
 }
 
-/** The capability band's hero: what this hull can pick up, in one noun and two words. */
+/**
+ * The capability band's hero: what this hull can pick up, as a verb at hero size and the object as
+ * its word. The first cut put the hull NAME at hero size with "can tow" underneath, and on the live
+ * screen (2026-09-12, Helios, 1280x800) "PELICAN / can tow" read as the player's own ship being a
+ * Pelican, next to a nameplate that said Hitch. The verb is the thing that changes with the fit,
+ * so it is the thing that gets the size; the noun reads under it like every other hero's word.
+ */
 function leadFromTow(tow) {
   const hullName = tow && tow.hullName ? String(tow.hullName) : null;
   return {
-    value: hullName || 'nothing',
-    word: 'can tow',
+    value: hullName ? 'can tow' : 'no tow',
+    word: hullName ? `a ${hullName}` : 'too loaded',
     why: (tow && tow.why) || (tow && tow.verb) || '',
   };
 }

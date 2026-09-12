@@ -275,7 +275,11 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 
 /* The corner: six compact static rows, the value at emphasis, a ghost value at 38 % beside it. */
 /* In the station the shell's corner (credits + vitals) reaches into the panel's top-right: the rows start under it. */
-.sx-sw__gauges { position: absolute; right: 0; top: calc(var(--k-row) * 2); width: calc(400px * var(--k-s)); --k-row-cols: minmax(0, 1fr) auto; }
+/* Measured 2026-09-12 on the live route at 1280x800 and 1920x1080: the shell's corner plate ends
+   above the panel at both sizes, so the two-row offset only pushed the gauges down into the side
+   plate. The right column is gauges on top, the sunk side plate anchored to the panel floor, and
+   the stats block keeps clear of that column instead of running under it. */
+.sx-sw__gauges { position: absolute; right: 0; top: 0; width: calc(400px * var(--k-s)); --k-row-cols: minmax(0, 1fr) auto; }
 .sx-sw--flight .sx-sw__gauges { top: 0; }
 .sx-sw__gauges .k-row { min-height: calc(var(--k-row) * 0.8); }
 .sx-sw__gauges .k-row:focus-visible { outline: none; box-shadow: inset 2px 0 0 var(--k-signal); }
@@ -299,6 +303,23 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 .sx-hardpoint.is-empty .sx-hardpoint__copy b { color: var(--k-bone-38); }
 .sx-hardpoint:focus-visible { outline: none; }
 .sx-sw__slotfield.is-focusing .sx-hardpoint:not(.is-selected) { opacity: 0.38; }
+/* The systems board: the same hardpoint buttons laid out as chips when there is no hull preview to
+   pin them to (secondaryPreviewWebGlBlocked on Intel/ANGLE — a second hangar compile TDRs the
+   flight context there). Without this the pins piled on one point above the name and no system
+   could be chosen on the owner's own laptop. */
+.sx-sw__slotfield.is-board { inset: auto 0 0 0; top: auto; display: flex; flex-wrap: wrap; align-content: flex-end; gap: calc(6px * var(--k-s)) calc(8px * var(--k-s)); padding-right: calc(400px * var(--k-s) + var(--k-gap)); }
+.sx-sw__slotfield.is-board .sx-hardpoint { position: static; width: auto; height: auto; display: inline-flex; align-items: center; gap: calc(8px * var(--k-s)); padding: calc(5px * var(--k-s)) calc(10px * var(--k-s)); border: 1px solid var(--k-hair); background: rgb(8 10 14 / 78%); }
+.sx-sw__slotfield.is-board .sx-hardpoint__leader { display: none; }
+.sx-sw__slotfield.is-board .sx-hardpoint__reticle { position: static; flex: 0 0 auto; }
+.sx-sw__slotfield.is-board .sx-hardpoint__copy { position: static; transform: none; text-align: left; }
+.sx-sw__slotfield.is-board .sx-hardpoint.is-selected { border-color: var(--k-signal); }
+.sx-sw__slotfield.is-board .sx-hardpoint:focus-visible { box-shadow: inset 0 0 0 1px var(--k-signal); }
+/* With no hull preview the stage is the nameplate plus the systems board: tall enough for both,
+   no orbit words or drag cue (there is nothing to orbit), and the stats take the rest and scroll. */
+.sx-sw__stage:has(> .sx-sw__canvas[data-preview-blocked]) { min-height: calc(var(--k-row) * 7.2); }
+.sx-sw__stage:has(> .sx-sw__canvas[data-preview-blocked]) .sx-sw__camera,
+.sx-sw__stage:has(> .sx-sw__canvas[data-preview-blocked]) .sx-sw__dragcue { display: none; }
+.sx-sw__main:has(.sx-sw__canvas[data-preview-blocked]) > .sx-sw__stats { max-height: none; flex: 1 1 auto; }
 .sx-sw-scar__dot { position: absolute; left: -2px; top: -2px; width: 4px; height: 4px; background: var(--k-bone-38); }
 .sx-sw-scar__copy { position: absolute; left: 12px; top: -10px; font-size: var(--k-fs-fine); color: var(--k-bone-62); white-space: nowrap; line-height: 1.2; }
 .sx-sw-scar__copy b { font-weight: 500; display: block; }
@@ -317,19 +338,27 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 /* The stage: the title block above, the foot below; the stage's absolute children hang off it. */
 .sx-sw__main { display: flex; flex-direction: column; min-height: 0; }
 .sx-sw__main > .sx-sw__stage { position: relative; flex: 1 1 auto; min-height: calc(var(--k-row) * 6); }
-.sx-sw__stats { flex: 0 0 auto; margin-top: calc(16px * var(--k-s)); max-height: 50%; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+/* The stats keep clear of the right column (gauges + side plate, 400 px at 1920): before this the
+   four heroes and the verbs row ran under the sunk plate and "Take it to the range / Record /
+   Select a slot" were hidden behind it at every default viewport. */
+.sx-sw__stats { flex: 0 0 auto; margin-top: calc(16px * var(--k-s)); margin-right: calc(400px * var(--k-s) + var(--k-gap)); max-height: 50%; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
 .sx-sw__stats:empty { display: none; }
 
 /* The foot: the four bands as hero numbers with a word each; the verbs as words at the row's end. */
-.sx-sw-bands { display: flex; align-items: flex-end; gap: calc(64px * var(--k-s)); flex-wrap: wrap; }
+.sx-sw-bands { display: flex; align-items: flex-end; gap: calc(40px * var(--k-s)); flex-wrap: wrap; }
 .sx-sw-hero { all: unset; display: flex; flex-direction: column; cursor: pointer; }
-.sx-sw-hero .k-hero__n { font-size: var(--k-fs-title); color: var(--k-text-live); transition: color var(--k-d-focus) linear; }
+/* Four heroes must share the stats width (868 px at 1920, 475 px at 1280): the title size only fit
+   three. The number size keeps them on one line at 1080p and on two clean lines at 1280x800. */
+.sx-sw-hero .k-hero__n { font-size: var(--k-fs-num); color: var(--k-text-live); transition: color var(--k-d-focus) linear; }
 .sx-sw-hero .k-hero__w { color: var(--k-bone-38); }
 .sx-sw-hero:hover .k-hero__w, .sx-sw-hero:focus-visible .k-hero__w, .sx-sw-hero.is-selected .k-hero__w { color: var(--k-signal); }
 .sx-sw-hero:focus-visible { outline: none; }
 .sx-sw-power__state--you .k-hero__n { color: var(--k-good); }
 .sx-sw-power__state--foe .k-hero__n { color: var(--k-bad); }
-.sx-sw-verbs { margin-left: auto; align-self: flex-end; gap: calc(32px * var(--k-s)); }
+/* The verbs are moved to the foot of the stats block by shipworks.js (dressApron) and stick to the
+   bottom of its scroll, so the actions are always on the glass. */
+.sx-sw-verbs { margin-left: auto; align-self: flex-end; gap: calc(24px * var(--k-s)); }
+.sx-sw__stats > .sx-sw-verbs { position: sticky; bottom: 0; z-index: 2; display: flex; justify-content: flex-end; margin: calc(8px * var(--k-s)) 0 0; padding: calc(6px * var(--k-s)) 0 calc(2px * var(--k-s)); background: linear-gradient(to top, rgb(6 8 12 / 94%) 0%, rgb(6 8 12 / 82%) 70%, rgb(6 8 12 / 0%) 100%); }
 .sx-sw-verb[disabled] { color: var(--k-bone-38); cursor: default; }
 .sx-sw-band { margin-top: calc(16px * var(--k-s)); max-width: var(--k-measure); }
 .sx-sw-band__label { margin: 0 0 calc(8px * var(--k-s)); }
@@ -391,8 +420,13 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
 .sx-modrow__buy small { font-size: var(--k-fs-fine); }
 
 /* The stage-right column, under the corner rows: the selected hull's identity (buy) or the build's circuit (fleet). */
-.sx-sw__side { position: absolute; right: 0; top: calc(var(--k-row) * 7.5); width: calc(400px * var(--k-s)); z-index: 1; max-height: calc(100% - var(--k-row) * 7.5); overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
-.sx-sw--flight .sx-sw__side { top: calc(var(--k-row) * 5.5); max-height: calc(100% - var(--k-row) * 5.5); }
+/* Anchored to the panel floor and capped to the room under the gauges (about 7.5 rows tall), so it
+   can never cover the gauges above it or the verbs/heroes to its left. */
+.sx-sw__side { position: absolute; right: 0; bottom: 0; width: calc(400px * var(--k-s)); z-index: 1; max-height: calc(100% - var(--k-row) * 7.75); overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+.sx-sw--flight .sx-sw__side { max-height: calc(100% - var(--k-row) * 5.5); }
+/* The energy-core figure in the side plate at number size, not title size: at 1280x800 the plate
+   has about four rows under the gauges and a title-size "80" was cut in half by its own scroll. */
+.sx-sw__side .sx-sw-circuit__core .k-hero__n { font-size: var(--k-fs-num); }
 .sx-sw__side:empty { display: none; }
 .sx-sw__side > * + *, .sx-sw-circuit > * + * { margin-top: calc(12px * var(--k-s)); }
 .sx-sw-side__name, .sx-sw-circuit__identity { margin: 0; }
