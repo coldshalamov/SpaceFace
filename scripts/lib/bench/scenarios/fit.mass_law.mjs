@@ -76,6 +76,20 @@ export const scenario = {
       proof = proof || measured.proof;
     }
 
+    // ISOLATION. The two fits above differ in guns, pods AND drive tier, because that is what a
+    // player actually builds. This control changes ONE thing: the same full-gun fit, hold empty
+    // and hold full. Whatever gap survives here is mass and nothing else.
+    const gunFit = FITS.find((f) => f.key === 'gun');
+    const controlEmpty = await measureFit(seed, { ...gunFit, key: 'controlEmpty', label: 'control, gun fit, hold empty', fillHold: false }, eventTrace);
+    const controlLoaded = await measureFit(seed, { ...gunFit, key: 'controlLoaded', label: 'control, gun fit, hold full', fillHold: true }, eventTrace);
+    fits.controlEmpty = controlEmpty.metrics;
+    fits.controlLoaded = controlLoaded.metrics;
+    const controlDeltaPct = Number.isFinite(controlEmpty.metrics.velocity180TimeS)
+      && Number.isFinite(controlLoaded.metrics.velocity180TimeS)
+      && controlEmpty.metrics.velocity180TimeS > 0
+      ? ((controlLoaded.metrics.velocity180TimeS - controlEmpty.metrics.velocity180TimeS) / controlEmpty.metrics.velocity180TimeS) * 100
+      : null;
+
     const gun = fits.gun;
     const cargo = fits.cargo;
     const deltaPct = Number.isFinite(gun.velocity180TimeS) && Number.isFinite(cargo.velocity180TimeS)
@@ -97,6 +111,14 @@ export const scenario = {
       },
       {
         bar: 'PQ-176.00',
+        label: 'isolation control — ONE fit, hold empty vs hold full, nothing else changed',
+        value: round(controlDeltaPct, 1),
+        unit: '% longer to reverse',
+        met: Number.isFinite(controlDeltaPct) && controlDeltaPct >= DELTA_BAR_PCT,
+        note: `the same full-gun fit reverses in ${round(fits.controlEmpty.velocity180TimeS, 3)} s at ${round(fits.controlEmpty.operationalMass, 1)} t and ${round(fits.controlLoaded.velocity180TimeS, 3)} s at ${round(fits.controlLoaded.operationalMass, 1)} t — same guns, same drive, same bay, only the hold is different.`,
+      },
+      {
+        bar: 'PQ-176.00',
         label: 'both fits are legal loadouts of the same hull',
         value: (gun.budgetFits ? 1 : 0) + (cargo.budgetFits ? 1 : 0),
         unit: 'of 2 fits inside the nested budgets',
@@ -111,6 +133,7 @@ export const scenario = {
         hullId: HULL_ID,
         fits,
         reversalDeltaPct: round(deltaPct, 1),
+        controlDeltaPct: round(controlDeltaPct, 1),
         deltaBarPct: DELTA_BAR_PCT,
         realPathProof: proof,
         bars,
@@ -131,7 +154,9 @@ async function measureFit(seed, fit, eventTrace) {
       cargo.usedMass = holdMass;
       cargo.usedVolume = holdMass > 0 ? holdMass / massPerVolume() : 0;
     },
-    hulls: [{ hullId: HULL_ID, pos: { x: 0, z: 0 }, rot: 0, isPlayer: true, factionId: 'faction_free' }],
+    // The FIT has to reach the sim, not just the printout. Without this the spawn flies a bare
+    // hull and the reported mainAccel/operationalMass describe a ship the bench never flew.
+    hulls: [{ hullId: HULL_ID, pos: { x: 0, z: 0 }, rot: 0, isPlayer: true, factionId: 'faction_free', fittings: fittings.slice() }],
   });
 
   try {
