@@ -832,6 +832,19 @@
       "integration": "live",
       "commit": "b05df66ed6f4fd3a1ca2488a9945693a5fc7d898",
       "verification": "focused_green"
+    },
+    {
+      "id": "leftover-hail-kicker-slogan",
+      "date": "2026-09-12",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Hail drawer no longer shouts TACTICAL HAIL; idle kicker is Hail and a live contact shows only the class word.",
+      "fingerprint": "verb=hail,subject=deck-kicker,sector=helios,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "a3f4cd6cd0b2d8bc6c57c22c34e37af2613423c1",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
