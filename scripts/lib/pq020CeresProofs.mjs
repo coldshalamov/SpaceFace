@@ -700,6 +700,7 @@ export function buildReentryIdempotenceReport() {
 function staticContentSnapshot(state) {
   let beaconEntities = 0;
   let cathedralEntities = 0;
+  let cathedralShelved = 0;
   const beaconIds = [];
   for (const entity of state.entities.values()) {
     if (entity?.alive === false) continue;
@@ -709,6 +710,20 @@ function staticContentSnapshot(state) {
     }
     if (String(entity?.data?.worldRecordId || '').startsWith(`${PQ020_CATHEDRAL_SITE_ID}/`)) {
       cathedralEntities += 1;
+    }
+  }
+  // Since the far shelf (9c4509ff1) the cathedral's static bodies beyond the player's bubble are
+  // far-actor rows until approach. They are still the site's one materialization (same
+  // worldRecordId, pose, mass, collides) — "exactly once" is about that identity, not about which
+  // list holds it — so count live + shelved and keep the shelved count visible.
+  const farRows = state.world && state.world.farActors && Array.isArray(state.world.farActors.rows)
+    ? state.world.farActors.rows
+    : [];
+  for (const row of farRows) {
+    if (!row || row.alive === false) continue;
+    if (String(row.data?.worldRecordId || '').startsWith(`${PQ020_CATHEDRAL_SITE_ID}/`)) {
+      cathedralEntities += 1;
+      cathedralShelved += 1;
     }
   }
   const zones = zonesForSector(PQ020_SECTOR_ID);
@@ -733,6 +748,7 @@ function staticContentSnapshot(state) {
     beaconEntities,
     beaconEntityIds: [...beaconIds].sort((left, right) => left - right),
     cathedralEntities,
+    cathedralShelved,
     zoneCount: zones.length,
     zoneIds: zones.map((zone) => zone.id).sort(),
     mapPointIds: model.points.map((point) => String(point.id)).sort(),

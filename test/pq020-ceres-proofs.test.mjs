@@ -6,6 +6,7 @@
 // Held-out seeds 90731 / 90737 / 90743 were fixed BEFORE any run and are never swapped; a seed that
 // produced no industrial role would be reported, not replaced.
 
+import { CURRENT_VERSION } from '../src/data/saveVersion.js';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -152,7 +153,11 @@ test('PQ-020 static content materializes exactly once across re-entry and save -
   const report = buildReentryIdempotenceReport();
 
   assert.equal(report.saveAvailable, true);
-  assert.equal(report.envelopeVersion, 12);
+  // The envelope carries whatever the live save schema version is (src/data/saveVersion.js);
+  // this proof is about re-entry idempotence, not about pinning the schema, so it follows the
+  // constant instead of a literal that goes stale on every migration (it sat at 12 while the
+  // schema was already 14).
+  assert.equal(report.envelopeVersion, CURRENT_VERSION);
   assert.equal(report.continueAccepted, true);
   assert.equal(report.secondContinueAccepted, true);
 
