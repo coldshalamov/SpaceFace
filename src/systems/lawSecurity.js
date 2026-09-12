@@ -972,6 +972,17 @@ export const lawSecurity = {
         jurisdictionRadius: incident.radius,
         seed: state.meta && state.meta.seed || 1,
         incidentId: `${incident.id}:${reserveOrdinal}`,
+        // PQ-138.00: reserves launch from the jurisdiction's own station when it is in the world,
+        // so the pursuing half of the witness choice is on camera instead of 2000 WU out.
+        station: station && station.pos
+          ? {
+            pos: station.pos,
+            launchRadius: Math.max(
+              Number(station.data && station.data.dockRadius) || 0,
+              Number(station.radius) || 0,
+            ),
+          }
+          : null,
       });
       const spec = makeEnemySpawnSpec('patrol_lawman', 3, pos, {
         factionId: incident.factionId || 'faction_scn',
@@ -1424,11 +1435,45 @@ export const lawSecurity = {
     const holderData = holder.data || (holder.data = {});
     const holderAi = holderData.ai || (holderData.ai = {});
 
+    // PQ-138.00: the holder's job is to stand over the body, and LOITER is a HOLD maneuver — a
+    // holder chosen 300 WU away would hold position out there and never arrive (measured on the
+    // live route 2026-09-12: reserve holder launched at the dock ring, 344 WU from the wreck, still
+    // 450 WU away 22 s later). Until it is within the standoff it SCAN_APPROACHes the wreck itself
+    // (an INTERCEPT that closes to preferredRange at speed; TRANSIT would be a formation crawl a
+    // drifting wreck outruns); once there it loiters.
+    const WITNESS_HOLD_STANDOFF_WU = 90;
+    const holdTargetId = anchor.wreckEntityId != null ? anchor.wreckEntityId : anchor.podEntityId;
+    const holdTarget = holdTargetId != null ? entityById(state, holdTargetId) : null;
+    const holderDistance = Math.hypot(holder.pos.x - anchorPos.x, holder.pos.z - anchorPos.z);
+    const holderApproaches = holderDistance > WITNESS_HOLD_STANDOFF_WU
+      && !!holdTarget && holdTarget.alive !== false;
+    const holderActivityKind = holderApproaches ? ActivityKind.SCAN_APPROACH : ActivityKind.LOITER;
+    const holderActivityFor = (startedTick) => normalizeActivity(holderApproaches
+      ? {
+        kind: ActivityKind.SCAN_APPROACH,
+        reason: `security_witness:hold:approach:${incident.id}`,
+        anchor: { x: anchorPos.x, z: anchorPos.z },
+        leashRadius: 400,
+        startedTick,
+        targetId: holdTargetId,
+        preferredRange: 60,
+        encounterId: incident.id,
+      }
+      : {
+        kind: ActivityKind.LOITER,
+        reason: `security_witness:hold:${incident.id}`,
+        anchor: { x: anchorPos.x, z: anchorPos.z },
+        leashRadius: 400,
+        startedTick,
+        targetId: null,
+        encounterId: incident.id,
+      });
+
     if (!isMateriallyUnchanged) {
       const priorRole = holderAi.witnessRole;
       const priorActivity = holderAi.activity;
       const existingStartedTick = (priorRole === 'hold'
-        && priorActivity?.kind === ActivityKind.LOITER
+        && (priorActivity?.kind === ActivityKind.LOITER || priorActivity?.kind === ActivityKind.SCAN_APPROACH)
         && Number.isInteger(priorActivity.startedTick))
         ? priorActivity.startedTick
         : (state.tick | 0);
@@ -1440,15 +1485,7 @@ export const lawSecurity = {
       holderAi.witnessIncidentId = incident.id;
       holderAi.motive = 'jurisdiction_enforcement';
       holderAi.roe = RulesOfEngagement.DEFENSIVE;
-      holderAi.activity = normalizeActivity({
-        kind: ActivityKind.LOITER,
-        reason: `security_witness:hold:${incident.id}`,
-        anchor: { x: anchorPos.x, z: anchorPos.z },
-        leashRadius: 400,
-        startedTick: existingStartedTick,
-        targetId: null,
-        encounterId: incident.id,
-      });
+      holderAi.activity = holderActivityFor(existingStartedTick);
       clearTarget(holder, null);
 
       for (const chaser of chasers) {
@@ -1490,7 +1527,12 @@ export const lawSecurity = {
       }
       if (holderAi.activity) {
         const currentAnchor = holderAi.activity.anchor;
-        if (!currentAnchor || currentAnchor.x !== anchorPos.x || currentAnchor.z !== anchorPos.z) {
+        if (holderAi.activity.kind !== holderActivityKind) {
+          // Arrived at (or drifted off) the body: swap approach <-> hold, keeping the clock.
+          holderAi.activity = holderActivityFor(Number.isInteger(holderAi.activity.startedTick)
+            ? holderAi.activity.startedTick
+            : (state.tick | 0));
+        } else if (!currentAnchor || currentAnchor.x !== anchorPos.x || currentAnchor.z !== anchorPos.z) {
           holderAi.activity = normalizeActivity({
             ...holderAi.activity,
             anchor: { x: anchorPos.x, z: anchorPos.z },

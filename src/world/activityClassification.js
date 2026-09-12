@@ -120,7 +120,12 @@ export function resolvePins(entity, context = {}) {
     || d.predationRole || (d.ai && (d.ai.predationRole || d.ai.predationStatus))
     || d.freightCustodyPersistence || d.freightCustody
     || (d.ai && typeof d.ai.spawnContext === 'string'
-      && d.ai.spawnContext.includes('zone_hostile'))) {
+      && d.ai.spawnContext.includes('zone_hostile'))
+    // PQ-138.00: a lawful ship answering an incident — pursuing an aggressor or holding at a
+    // witnessed wreck — is the world reacting to the player. Measured 2026-09-12 on the live route:
+    // reserves launched 800 WU out were classified far, shelved, and crawled at 5 WU/s for twenty
+    // seconds, so "nobody comes after you". A live response stays exact until it is cleared.
+    || (d.ai && (d.ai.securityTargetId != null || d.ai.witnessRole != null))) {
     pins.push(PIN_REASON.MISSION_CRITICAL);
   }
   if (flags.tethered || d.tethered) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);

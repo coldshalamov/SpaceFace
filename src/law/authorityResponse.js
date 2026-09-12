@@ -33,15 +33,46 @@ export function rankLawfulResponders(candidates, anchor, {
     .slice(0, Math.max(0, Math.floor(Number(cap) || 0)));
 }
 
+// A reserve unit launching from its own station clears the dock ring by this much before it turns
+// toward the incident, and never starts closer than this to the aggressor it is answering.
+export const RESERVE_STATION_LAUNCH_CLEARANCE_WU = 40;
+export const RESERVE_STATION_LAUNCH_MIN_LEG_WU = 150;
+
 export function reserveArrivalPoint({
   anchor,
   aggressorPos,
   jurisdictionRadius,
   seed = 1,
   incidentId = 'law:incident',
+  station = null,
 } = {}) {
   const origin = finitePoint(anchor);
   const aggressor = finitePoint(aggressorPos, origin);
+  // PQ-138.00 (the witness has a choice): reserves launch from the jurisdiction's own station when
+  // that station is a real body in the world and the incident is inside its reach. The sector law
+  // card promises "reserve units available"; those units live at the port, and a kill witnessed
+  // near the port gets a pursuer the player can see within the ten seconds B10a allows. Before
+  // this, every reserve entered on a ring of at least 2000 WU — ten camera widths out — so the
+  // chase half of the choice always happened off-stage. Nothing still pops onto the fight: the
+  // launch point sits on the dock ring's far side from the aggressor whenever the aggressor is
+  // close, and a station that is not in the world (or is out of reach) keeps the ring below.
+  const stationOrigin = station && station.pos
+    && Number.isFinite(station.pos.x) && Number.isFinite(station.pos.z)
+    ? { x: station.pos.x, z: station.pos.z }
+    : null;
+  if (stationOrigin) {
+    const reach = Math.max(0, Number(jurisdictionRadius) || 0) + 700;
+    if (distanceSq(stationOrigin, origin) <= reach * reach) {
+      const launch = Math.max(60, Number(station.launchRadius) || 0) + RESERVE_STATION_LAUNCH_CLEARANCE_WU;
+      const spread = (hash32(seed, incidentId, 'law_reserve_launch') / 0xffffffff - 0.5) * (Math.PI / 3);
+      const toward = Math.atan2(origin.z - stationOrigin.z, origin.x - stationOrigin.x) + spread;
+      const near = pointAt(stationOrigin, toward, launch);
+      const far = pointAt(stationOrigin, toward + Math.PI, launch);
+      const minLeg = RESERVE_STATION_LAUNCH_MIN_LEG_WU;
+      if (distanceSq(near, aggressor) >= minLeg * minLeg) return Object.freeze(near);
+      if (distanceSq(far, aggressor) >= minLeg * minLeg) return Object.freeze(far);
+    }
+  }
   const radius = Math.max(2000, Math.max(0, Number(jurisdictionRadius) || 0) + 700);
   const angle = hash32(seed, incidentId, 'law_reserve_arrival') / 0xffffffff * Math.PI * 2;
   const first = pointAt(origin, angle, radius);

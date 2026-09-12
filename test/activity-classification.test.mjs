@@ -6,6 +6,7 @@ import {
   PRESENTATION_TIER,
   SIM_TIER,
   classifyActivity,
+  normalizePinReasons,
   physicsReachWu,
   resolvePins,
   resolvePresentationTier,
@@ -87,6 +88,63 @@ test('mission pin is explicit data not a guessed radius', () => {
   assert.ok(pins.includes(PIN_REASON.MISSION_CRITICAL));
   const job = resolvePins({ id: 6, data: { jobId: 'job_1' }, pos: { x: 9999, z: 0 } }, { playerId: 1 });
   assert.ok(job.includes(PIN_REASON.MISSION_CRITICAL));
+});
+
+// PQ-138.00 (the witness has a choice): a lawful ship answering an incident is the world reacting
+// to the player, so it stays exact wherever it is. Measured 2026-09-12 on the live route: reserves
+// launched 800 WU out were classified far, shelved on the far ledger, and crawled at 5 WU/s for
+// twenty seconds while the choice happened off-stage.
+test('a lawful ship answering an incident is pinned exact, far or near', () => {
+  const pursuer = resolvePins(
+    { id: 7, type: 'ship', data: { ai: { lawful: true, securityTargetId: 1 } }, pos: { x: 9999, z: 0 } },
+    { playerId: 1 },
+  );
+  assert.ok(pursuer.includes(PIN_REASON.MISSION_CRITICAL), 'a pursuer with a security target is pinned');
+  const holder = resolvePins(
+    { id: 8, type: 'ship', data: { ai: { lawful: true, witnessRole: 'hold' } }, pos: { x: 9999, z: 0 } },
+    { playerId: 1 },
+  );
+  assert.ok(holder.includes(PIN_REASON.MISSION_CRITICAL), 'a holder standing at a witnessed wreck is pinned');
+  const idle = resolvePins(
+    { id: 9, type: 'ship', data: { ai: { lawful: true, securityTargetId: null, witnessRole: null } }, pos: { x: 9999, z: 0 } },
+    { playerId: 1 },
+  );
+  assert.ok(!idle.includes(PIN_REASON.MISSION_CRITICAL), 'an idle patrol far away is not pinned by this rule');
+  assert.equal(resolveSimTier({ id: 7, pos: { x: 9999, z: 0 } }, pursuer, { origin: { x: 0, z: 0 }, physicsReachWu: 400 }), SIM_TIER.S0_EXACT);
+});
+
+test('classifyActivity skips a second pin normalize when pins are already normalized', () => {
+  const player = { id: 1, isPlayer: true, pos: { x: 0, z: 0 } };
+  const classified = classifyActivity(player, {
+    playerId: 1,
+    visibleOnGlass: true,
+    onGlass: true,
+    pinsNormalized: false,
+  });
+  assert.equal(classified.simTier, SIM_TIER.S0_EXACT);
+  assert.ok(classified.pins.includes(PIN_REASON.PLAYER));
+  const reused = { pins: null, simTier: null, presentationTier: null, pinnedExact: false };
+  const second = classifyActivity(player, {
+    playerId: 1,
+    visibleOnGlass: true,
+    onGlass: true,
+    classifiedOut: reused,
+  });
+  assert.equal(second, reused);
+  assert.equal(second.simTier, SIM_TIER.S0_EXACT);
+});
+
+test('pin normalize scratch reuses the same buffers without changing reasons', () => {
+  const scratch = { out: [], seen: new Set() };
+  const first = normalizePinReasons([PIN_REASON.PLAYER, PIN_REASON.VISIBLE_ON_GLASS, PIN_REASON.PLAYER], scratch);
+  assert.deepEqual([...first], [PIN_REASON.PLAYER, PIN_REASON.VISIBLE_ON_GLASS].sort());
+  const identity = first;
+  const second = normalizePinReasons([PIN_REASON.HOSTILE_AGGRO], scratch);
+  assert.equal(second, identity);
+  assert.deepEqual([...second], [PIN_REASON.HOSTILE_AGGRO]);
+  const fresh = normalizePinReasons([PIN_REASON.HOSTILE_AGGRO]);
+  assert.deepEqual([...fresh], [PIN_REASON.HOSTILE_AGGRO]);
+  assert.notEqual(fresh, identity);
 });
 
 test('tether flag on the entity is an explicit pin', () => {
