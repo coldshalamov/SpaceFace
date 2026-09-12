@@ -317,7 +317,10 @@ export function shipCapabilityVerbs({ derived, fittings = [] } = {}) {
     verb: reachable
       ? `Line holds a ${round(lineLoad.speedWuPerS, 0)} WU/s swing`
       : 'Line holds any swing you can build',
-    sub: `${round(lineLoad.speedWuPerS, 0)} WU/s on a 100 m line`,
+    // When the rating is past anything the hull can reach, printing the figure beside a verb that
+    // already says "any swing" only draws the eye to a number that means nothing. The figure stays
+    // in the why, where a player who wants it can read it with its geometry.
+    sub: reachable ? `${round(lineLoad.speedWuPerS, 0)} WU/s on a 100 m line` : 'past anything you can fly',
     why: `On a ${CAPABILITY_LAW.lineSwingRadiusWu} m line around a heavy anchor your line reaches its rated load at `
       + `${round(lineLoad.speedWuPerS, 0)} WU/s. Everything you carry pulls that number down; a bigger spool pushes it up.`,
   };

@@ -239,12 +239,29 @@ function handlingSentence(profile, derived, emptyDerived) {
   if (brakeAxis) clauses.push(brakeAxis.bar >= 55 ? 'Stops clean.' : 'Stops badly.');
   const cargoMass = finite(derived && derived.cargoMass, 0);
   if (cargoMass > 0) {
-    const loadedStop = stopDistanceEstimate(derived && derived.flightModel);
-    const emptyStop = stopDistanceEstimate(emptyDerived && emptyDerived.flightModel);
-    const extra = Math.max(0, Math.round(loadedStop - emptyStop));
+    const extra = Math.max(0, Math.round(liveStopDistance(derived) - liveStopDistance(emptyDerived)));
     if (extra > 0) clauses.push(`Loaded, it stops ${extra} m later.`);
   }
   return clauses.join(' ');
+}
+
+/**
+ * Stop distance from the LIVE propulsion profile the kernel resolves: governed speed squared over
+ * twice the braking acceleration.
+ *
+ * The compatibility flight model's own estimate reads its legacy `maxSpeed` and `reverseAccel`,
+ * both of which move with the old drag term — so it says a nine-hundred-tonne freighter pulls up in
+ * two metres, which is the opposite of what the ship does and the opposite of what the sentence
+ * beside it says. `stopDistanceEstimate` stays exactly as it is for the mass-delta readout that
+ * pins it; the words a player reads come off the profile they actually fly.
+ */
+function liveStopDistance(derived) {
+  const p = derived && derived.propulsion;
+  if (!p) return Math.max(0, stopDistanceEstimate(derived && derived.flightModel));
+  const speed = finite(p.combatSpeed, finite(p.maxSpeed, 0));
+  const brake = finite(p.reverseAccel, finite(p.maxBrakeAccel, finite(p.rcsReverseAccel, 0)));
+  if (!(speed > 0) || !(brake > 0)) return Math.max(0, stopDistanceEstimate(derived && derived.flightModel));
+  return (speed * speed) / (2 * brake);
 }
 
 function agilityWhy({ shipDef, derived, dryDerived, bareDerived }) {
@@ -349,7 +366,7 @@ function topSpeedWhy(profile, derived, dryDerived, shipDef) {
 }
 
 function brakeWhy(derived) {
-  const stop = Math.round(stopDistanceEstimate(derived && derived.flightModel));
+  const stop = Math.round(liveStopDistance(derived));
   const bay = bayFor(derived);
   if (bay && bay.brake !== 1) {
     const shift = Math.round((bay.brake - 1) * 100);
