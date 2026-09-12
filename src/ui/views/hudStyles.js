@@ -1628,18 +1628,22 @@ export function injectHudCss() {
   }
   /* Left-aligned under the plate, like the frame's "weapons Pulse Laser S / class Hitch" block. */
   .sf-cluster { align-items:flex-start; }
+  /* One factor drives the whole instrument, so the bezel, the smoked window and the needle's pivot
+     can never come apart the way they did when only the numeral scaled. --sf-gauge-compact is the
+     small-viewport step; --k-s is the kit's own 0.75 / 1 / 1.25. */
   .sf-kit-gauge {
-    width:calc(360px * var(--k-s, 1)); height:calc(200px * var(--k-s, 1));
+    --sf-gauge-f:calc(var(--k-s, 1) * var(--sf-gauge-compact, 1));
+    width:calc(360px * var(--sf-gauge-f)); height:calc(200px * var(--sf-gauge-f));
     margin:0;
   }
   .sf-kit-gauge__face {
-    left:calc(100px * var(--k-s, 1)); top:calc(108px * var(--k-s, 1));
-    width:calc(160px * var(--k-s, 1)); height:calc(72px * var(--k-s, 1));
+    left:calc(100px * var(--sf-gauge-f)); top:calc(108px * var(--sf-gauge-f));
+    width:calc(160px * var(--sf-gauge-f)); height:calc(72px * var(--sf-gauge-f));
   }
   .sf-kit-gauge__needle {
-    width:calc(24px * var(--k-s, 1)); height:calc(100px * var(--k-s, 1));
-    margin-left:calc(-12px * var(--k-s, 1)); margin-top:calc(-80px * var(--k-s, 1));
-    transform-origin:calc(12px * var(--k-s, 1)) calc(80px * var(--k-s, 1));
+    width:calc(24px * var(--sf-gauge-f)); height:calc(100px * var(--sf-gauge-f));
+    margin-left:calc(-12px * var(--sf-gauge-f)); margin-top:calc(-80px * var(--sf-gauge-f));
+    transform-origin:calc(12px * var(--sf-gauge-f)) calc(80px * var(--sf-gauge-f));
   }
   /* The kit's arrival settle is shared with the rail, which is still centred. A deck that no longer
      carries translateX(-50%) must not inherit the rail's version of the rule or it lands half its
@@ -1651,7 +1655,10 @@ export function injectHudCss() {
      to end above it. The reserve is the deck's measured box (gauge + the weapon/tether/cargo rows
      under it), not a guess: 289 px at 1280x800, which is 385 px unscaled. */
   @media (max-width:1759px) {
-    .sf-leftstack { bottom:calc(22px + 385px * var(--k-s, 1)); }
+    /* The reserve is the deck's measured box (gauge + the readout under it): 289 px at 1280x800,
+       385 px unscaled. Capped against the viewport as well, because --k-s floors at 0.75 and a
+       fixed 311 px reserve inside a 600 px-tall window would push the left column off the top. */
+    .sf-leftstack { bottom:min(calc(22px + 385px * var(--k-s, 1)), 38vh); }
   }
   @media (min-width:1760px) {
     /* The frame puts the plate's left edge at 19.3 % of the width (371 px of 1920). Below that it
@@ -1673,7 +1680,7 @@ export function injectHudCss() {
      full-width rows at a 27 px pitch — 108 px of column that lifted the plate back off the floor
      band toward the hull. Same four readings, flowed instead of stacked. */
   .sf-cluster { flex-flow:row wrap; align-items:flex-end; justify-content:flex-start; gap:2px 14px; }
-  .sf-cluster > .sf-kit-gauge { flex:0 0 auto; width:calc(360px * var(--k-s, 1)); }
+  .sf-cluster > .sf-kit-gauge { flex:0 0 auto; width:calc(360px * var(--sf-gauge-f)); }
   .sf-cluster > .sf-stat { min-height:0; line-height:1.25; }
 
   /* The vitals rows overflowed their own plate: .sf-barrow budgeted 54 + bar + 34 inside a 174 px
@@ -1691,12 +1698,24 @@ export function injectHudCss() {
      off by the screen edge at every default size. The column owns the width (J07), so the column is
      what moves; --sf-radar-size stays pinned to radar.js COMPACT_SIZE. */
   #hud { --sf-dock-w:276px; }
+  /* Small viewports. The instrument keeps its whole box — bezel, window, needle pivot — and only
+     the factor moves, so nothing can come apart. The reserve the left column has to clear comes
+     down with it. These replace the retired 1180/760 breakpoints that resized the bezel alone. */
   @media (max-width:900px), (max-height:650px) {
     #hud { --sf-dock-w:256px; }
+    .sf-kit-gauge { --sf-gauge-compact:0.72; }
+    .sf-command-deck { max-width:calc(240px * var(--k-s, 1)); }
+    .sf-leftstack { bottom:min(calc(18px + 290px * var(--k-s, 1)), 34vh); }
   }
   @media (max-width:760px), (max-height:620px) {
+    /* --sf-radar-size is still 200 here: the (max-width:900px) block above declares it and wins on
+       source order, so the wrap is 200 + 2x18. Measured at 800x600 before this line, the dial hung
+       58px past the right edge. */
     .sf-radar-wrap.sf-kit-radar { --sf-kit-radar-rim:18px; }
-    #hud { --sf-dock-w:168px; }
+    #hud { --sf-dock-w:236px; }
+    .sf-kit-gauge { --sf-gauge-compact:0.6; }
+    .sf-command-deck { max-width:calc(210px * var(--k-s, 1)); }
+    .sf-leftstack { bottom:min(calc(20px + 245px * var(--k-s, 1)), 36vh); }
   }
 
   /* The Band chip floated at top:150px, unattached, halfway down the sky. The frame keeps it in the
