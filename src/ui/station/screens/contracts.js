@@ -4,9 +4,8 @@ import { contractsFrameHtml } from '../../views/stationFrames.js';
 // A kit panel (Frontend Task C §1.5): the posted jobs and the player's own missions as rows down
 // the hang column, the open job's dossier on the stage — its title, client, payout at hero size,
 // the route and the risk each as one sentence, the terms as static rows, Accept as a word. Emits
-// ui:acceptMission / ui:trackMission {missionId}; the trade of words for plates changes nothing
-// about what the board does (the readiness authority is missionPreflight, the map opens through
-// mapAuthority, final-disposition filings still go through their separate confirmation).
+// ui:acceptMission / ui:trackMission {missionId}; Field Hardware chrome (kit plates, keys, quiet
+// type) is pinned from this module. Accept stays the same verb.
 //
 // When the station shell passes attention / missionId (from missionDockAttention), that job is
 // sorted first and selected so turn-in / accept is not a scavenger hunt.
@@ -33,6 +32,19 @@ import { mountDataState } from '../../uiPrimitives.js';
 import { factionIcon, icon } from '../icons.js';
 import { missionBoardReadiness } from '../stationHubModel.js';
 import { recommendMissionBoardOffer } from '../stationMissionModel.js';
+import {
+  dressState,
+  ensureInteriorStyle,
+  paintCap,
+  paintHero,
+  paintKey,
+  paintLegend,
+  paintMarking,
+  paintPlate,
+  paintRow,
+  pinKeyrack,
+  syncKeys,
+} from './fhChrome.js';
 
 const CMDTY = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FAC = new Map(FACTION_META.map((f) => [f.id, f]));
@@ -379,6 +391,47 @@ export function createContractsScreen(ctx) {
   let attention = null;
   boardEl.setAttribute('role', 'tablist');
 
+  function dressHangLabels() {
+    ensureInteriorStyle();
+    for (const cap of el.querySelectorAll('.sx-ct__hang > .k-caps')) paintLegend(cap, true);
+    paintLegend(dispatchEl);
+  }
+
+  function dressBoard() {
+    ensureInteriorStyle();
+    if (boardEl.querySelector('.sf-state')) { dressState(boardEl); return; }
+    for (const row of boardEl.querySelectorAll('.sx-ct-row')) {
+      paintRow(row, row.classList.contains('is-active') || row.getAttribute('aria-selected') === 'true');
+    }
+  }
+
+  function dressDossier() {
+    ensureInteriorStyle();
+    if (dossierEl.querySelector('.sf-state')) { dressState(dossierEl); return; }
+    const dossier = dossierEl.querySelector('.sx-dossier') || dossierEl;
+    paintPlate(dossier, 'sunk');
+    paintLegend(dossier.querySelector('.k-caps'), true);
+    paintMarking(dossier.querySelector('.sx-dossier__title, .k-t-title'));
+    paintHero(dossier.querySelector('.k-hero__n'));
+    paintLegend(dossier.querySelector('.k-hero__w'));
+    for (const row of dossier.querySelectorAll('.k-row')) paintRow(row, false);
+    pinKeyrack(dossier.querySelector('.sx-dossier__foot'));
+    pinKeyrack(dossier.querySelector('.sx-dossier__clauses'));
+    const accept = dossier.querySelector('.sx-ct-commit[data-accept]');
+    if (accept) paintKey(accept, 'primary');
+    for (const tag of dossier.querySelectorAll('.sx-tag')) paintCap(tag);
+    syncKeys(dossier);
+  }
+
+  function dressActive() {
+    ensureInteriorStyle();
+    for (const job of activeEl.querySelectorAll('.sx-job')) paintRow(job, job.classList.contains('is-tracked'));
+    for (const btn of activeEl.querySelectorAll('[data-track]')) paintKey(btn, 'small');
+    syncKeys(activeEl);
+  }
+
+  dressHangLabels();
+
   function offers(state) {
     const sid = state && state.ui && state.ui.dockedStationId;
     const boards = state && state.missions && state.missions.boards;
@@ -414,6 +467,7 @@ export function createContractsScreen(ctx) {
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'contracts-empty' }),
         },
       });
+      dressBoard();
       return;
     }
     const recommended = boardRecommendedOfferId(list, state);
@@ -449,6 +503,7 @@ export function createContractsScreen(ctx) {
         );
       }).join('') +
       `</ul>`;
+    dressBoard();
   }
 
   function renderDossier(state) {
@@ -464,6 +519,7 @@ export function createContractsScreen(ctx) {
           onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'contracts-brief' }),
         },
       });
+      dressDossier();
       return;
     }
     const focusAccept = attention && attention.kind === 'accept'
@@ -475,12 +531,14 @@ export function createContractsScreen(ctx) {
         focusAccept,
         blockedReason: m.requirementUnmet || m.lockedReason || null,
       });
+      dressDossier();
       return;
     }
     dossierEl.innerHTML = missionDossierHtml(m, state, {
       origin: (ctx.station && ctx.station.name) || 'This station',
       focusAccept,
     });
+    dressDossier();
   }
 
   function renderActive(state) {
@@ -508,6 +566,7 @@ export function createContractsScreen(ctx) {
           );
         }).join('') + `</ul>`
       : `<p class="k-sentence sx-ct__none">No active missions. Accept a job from the board to begin.</p>`;
+    dressActive();
   }
 
   function renderAll(state) {

@@ -7,6 +7,8 @@ import { shipworksFrameHtml } from '../../views/stationFrames.js';
 // numbers along the foot, the selected one explaining itself in rows beneath; the verbs as words.
 // Slots are clickable — choosing one puts the compatible modules in the hang column in place of the
 // hulls (no modal). One reused preview mount (createShipPreviewMount) serves both hosts.
+// Field Hardware chrome (kit plates, keys, quiet type) is pinned from this module; Buy / Fit /
+// Make active stay the same verbs.
 // Emits ui:buyShip / ui:setActiveShip / ui:sellShip / ui:buyModule / ui:fitModule / ui:unfitModule.
 //
 // Engineering numbers come only from presenters/engineeringPreview.js → ships.getDerivedStats.
@@ -35,6 +37,7 @@ import { describeOutfittingPurchase, masslineHeadOutcome } from '../outfittingGu
 import {
   createShipPreviewMount,
   dockInteriorIdForArchetype,
+  secondaryPreviewWebGlBlocked,
 } from '../../shipPreviewMount.js';
 import { createRouteBeam } from '../../effects/index.js';
 import { prefersReducedMotion } from '../../effects/effectRuntime.js';
@@ -58,6 +61,19 @@ import {
   buildLoadoutPresetRailModel,
   sanitizePresetSelectionMap,
 } from '../../ship/loadoutPresets.js';
+import {
+  dressState,
+  ensureInteriorStyle,
+  paintHero,
+  paintHeroNum,
+  paintKey,
+  paintLegend,
+  paintMarking,
+  paintPlate,
+  paintRow,
+  pinKeyrack,
+  syncKeys,
+} from './fhChrome.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const STATION_ARCHETYPE_BY_ID = new Map();
@@ -346,6 +362,94 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   const deltaEl = el.querySelector('.sx-sw__delta');
   const acquiringEl = el.querySelector('.sx-sw__acquiring');
 
+  function dressFrame() {
+    ensureInteriorStyle();
+    pinKeyrack(el.querySelector('.sx-seg'));
+    for (const btn of el.querySelectorAll('.sx-seg__btn[data-mode]')) paintKey(btn, 'legend');
+    pinKeyrack(el.querySelector('.sx-sw__camera'));
+    for (const btn of el.querySelectorAll('[data-camera]')) paintKey(btn, 'small');
+    for (const btn of el.querySelectorAll('[data-rail-step]')) paintKey(btn, 'small');
+  }
+
+  function dressRail() {
+    ensureInteriorStyle();
+    for (const row of railListEl.querySelectorAll('.sx-sw-row')) {
+      paintRow(row, row.classList.contains('is-active') || row.getAttribute('aria-selected') === 'true');
+    }
+    syncKeys(el.querySelector('.sx-seg'));
+  }
+
+  function dressCrest() {
+    ensureInteriorStyle();
+    paintMarking(nameplateEl.querySelector('.sx-sw__name'));
+    paintLegend(nameplateEl.querySelector('.sx-sw__conditionVerb'), true);
+  }
+
+  function dressGauges() {
+    ensureInteriorStyle();
+    for (const tile of gaugeRackEl.querySelectorAll('.sx-sw-gauge')) {
+      paintRow(tile, false);
+      paintLegend(tile.querySelector('.sx-sw-gauge__k'));
+    }
+  }
+
+  function dressApron() {
+    ensureInteriorStyle();
+    for (const hero of statsEl.querySelectorAll('.sx-sw-hero')) {
+      paintHeroNum(hero.querySelector('.k-hero__n'));
+      paintLegend(hero.querySelector('.k-hero__w'), hero.classList.contains('is-selected'));
+    }
+    pinKeyrack(statsEl.querySelector('.sx-sw-verbs'));
+    for (const btn of statsEl.querySelectorAll('[data-verb]')) {
+      paintKey(btn, btn.getAttribute('data-verb') === 'fit' || btn.getAttribute('data-verb') === 'activate' ? 'primary' : 'legend');
+    }
+    for (const label of statsEl.querySelectorAll('.sx-sw-band__label, .k-caps')) paintLegend(label, true);
+    for (const row of statsEl.querySelectorAll('.k-row')) paintRow(row, false);
+    pinKeyrack(statsEl.querySelector('.sx-sw-chiprow'));
+    pinKeyrack(statsEl.querySelector('.sx-sw-presetrow'));
+    pinKeyrack(statsEl.querySelector('.sx-sw-presetdrawer__actions'));
+    for (const btn of statsEl.querySelectorAll('.sx-sw-chip, .sx-sw-preset, [data-loadout-preset-delete]')) {
+      const kind = btn.hasAttribute('data-loadout-preset-delete') ? 'legend' : 'small';
+      paintKey(btn, kind);
+    }
+    syncKeys(statsEl);
+  }
+
+  function dressSide() {
+    ensureInteriorStyle();
+    if (!sideEl.firstChild) return;
+    paintPlate(sideEl, 'sunk');
+    paintLegend(sideEl.querySelector('.sx-sw-side__name, .sx-sw-circuit__identity'), true);
+    paintHero(sideEl.querySelector('.k-hero__n'));
+    paintLegend(sideEl.querySelector('.k-hero__w'));
+    for (const row of sideEl.querySelectorAll('.k-row')) paintRow(row, false);
+    pinKeyrack(sideEl.querySelector('.sx-buybar, .sx-sw-circuit__acts'));
+    const buy = sideEl.querySelector('[data-buyship]');
+    if (buy) paintKey(buy, 'primary');
+    const activate = sideEl.querySelector('[data-activate-ship]');
+    if (activate) paintKey(activate, 'primary');
+    syncKeys(sideEl);
+  }
+
+  function dressChooser() {
+    ensureInteriorStyle();
+    if (chooserEl.querySelector('.sf-state')) { dressState(chooserEl); return; }
+    for (const label of chooserEl.querySelectorAll('.sx-chooser__kicker, .k-caps, h3')) paintLegend(label, true);
+    pinKeyrack(chooserEl.querySelector('.sx-chooser__head .k-words'));
+    for (const btn of chooserEl.querySelectorAll('[data-close], [data-unfit]')) {
+      paintKey(btn, btn.hasAttribute('data-unfit') ? 'legend' : 'small');
+    }
+    for (const row of chooserEl.querySelectorAll('.sx-modrow')) {
+      paintRow(row, row.classList.contains('is-eq'));
+    }
+    for (const btn of chooserEl.querySelectorAll('[data-buyfit]')) {
+      paintKey(btn, btn.hasAttribute('data-fit-slot') ? 'primary' : 'small');
+    }
+    syncKeys(chooserEl);
+  }
+
+  dressFrame();
+
   // Authored mesh required — never treat box-LOD / false warmup as primary truth.
   canvas.dataset.authoredRequired = 'true';
   canvas.dataset.fallbackAllowed = 'false';
@@ -423,6 +527,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       };
     }
     gaugeReady = true;
+    dressGauges();
   }
 
   function owned() { return (ctx.state.player && ctx.state.player.ownedShips) || []; }
@@ -634,6 +739,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       syncShipworksDockForState(mount, ctx.state);
       return mount;
     }
+    if (secondaryPreviewWebGlBlocked(ctx && ctx.state)) {
+      canvas.dataset.previewReady = 'false';
+      canvas.dataset.previewBlocked = 'secondary-webgl';
+      return null;
+    }
     canvas.dataset.authoredRequired = 'true';
     canvas.dataset.fallbackAllowed = 'false';
     canvas.dataset.previewReady = 'false';
@@ -676,6 +786,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     ensureMount();
     writeCanvasPreviewMeta(defId, fittings, meta);
     expectedPreviewDefId = defId || null;
+    if (!mount) {
+      canvas.dataset.previewReady = 'false';
+      canvas.dataset.previewBlocked = 'secondary-webgl';
+      return;
+    }
     const sameHull = mount.getDefId && mount.getDefId() === defId;
     // Gate on ASSET READINESS, not hull identity alone. The stage is a shared singleton built for
     // the dock host, so a flight-first F2 open can match the hull id while that hull's GLB is
@@ -940,6 +1055,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `</span>` +
       `</div>` +
       `<p class="k-sentence k-sentence--emph sx-sw__blurb">${escapeHtml(sentence || fittedIdentityLine(model.def) || model.def.role || '')}</p>`;
+    dressCrest();
   }
 
   // The capability band's detail: the chips as static body words (tier-2 carriers keep data-why +
@@ -1177,6 +1293,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       (recordOpen
         ? `<section class="sx-sw-record"><p class="k-caps sx-sw-band__label">Record</p><ul class="k-rows sx-sw-record__grid">${recordRowsHtml(model)}</ul></section>`
         : '');
+    dressApron();
   }
 
   function restoreCurrentPreview() {
@@ -1532,6 +1649,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         );
       }).join('');
     }
+    dressRail();
     requestAnimationFrame(updateRailControls);
   }
 
@@ -1605,6 +1723,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
             ? `<li><span class="k-word k-word--emph k-38 sx-btn-ghost">In your fleet</span></li>`
             : `<li><button type="button" class="k-word k-word--emph k-word--primary sx-btn-primary" data-buyship="${escapeHtml(def.id)}" ${afford && availability.hullEnabled ? '' : 'disabled'} aria-label="${escapeHtml(buyLabel)}">${escapeHtml(buyLabel)}</button></li>`) +
         `</ul>`;
+      dressSide();
       return;
     }
     // Fleet: the projected nodes on the hull own selection. This lower circuit makes the loadout
@@ -1651,6 +1770,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         `<p class="k-sentence sx-sw-circuit__instruction">Choose a system on the hull to preview compatible hardware.</p>` +
         (activeControl ? `<ul class="k-words k-words--row sx-sw-circuit__acts">${activeControl}</ul>` : '') +
       `</div>`;
+    dressSide();
   }
 
   function specRow(k, v) { return `<li class="k-row k-row--static sx-kv"><span class="k-row__name k-62">${k}</span><span class="k-row__num">${v}</span></li>`; }
@@ -1858,6 +1978,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         (fittedId ? `<ul class="k-words k-words--row"><li><button type="button" class="k-word k-word--emph sx-chooser__unfit" data-unfit="${slotIndex}" ${availability.outfitEnabled ? '' : `disabled aria-label="${escapeHtml(availability.outfitLabel)}"`}>${availability.outfitEnabled ? `Remove ${escapeHtml(fittedName)}` : 'Dock to remove'}</button></li></ul>` : '') +
         `<ul class="k-rows sx-chooser__list">${list || '<li class="k-sentence sx-muted">No compatible modules.</li>'}</ul>` +
       `</div>`;
+    dressChooser();
     chooserEl.hidden = false;
     el.classList.add('is-choosing');
     requestAnimationFrame(() => {

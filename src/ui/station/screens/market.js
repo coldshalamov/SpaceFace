@@ -5,7 +5,8 @@ import { marketFrameHtml } from '../../views/stationFrames.js';
 // the selected row marked by a gold rule on its left edge. Right half: the selected commodity's name
 // at screen-title size and its price at hero size, one sentence of why, and Buy and Sell as two
 // words with a quantity beside them. Emits ui:buy / ui:sell {commodityId, qty}; the trade math, the
-// quotes and the route logic are untouched. Styled by styles/kit.css + styles/station.css only.
+// quotes and the route logic are untouched. Field Hardware chrome (kit plates, keys, quiet type)
+// is pinned from this module; buy/sell stay the same verbs.
 import { COMMODITIES } from '../../../data/commodities.js';
 import { SECTORS } from '../../../data/sectors.js';
 import { isUnsellableCargo } from '../../../systems/cargo.js';
@@ -20,6 +21,21 @@ import { presentCommodityIntel, presentInspectorRows } from '../../marketIntelPr
 // Trade-route intel + course plotting reuse the canonical market logic (same waypoint/ui:setCourse
 // contract the legacy panel used) — never re-derive routes or nav here.
 import { computeBestTrades, applyTradeNavigation } from '../../market/tradeLogic.js';
+import {
+  dressState,
+  ensureInteriorStyle,
+  paintHero,
+  paintInput,
+  paintKey,
+  paintLegend,
+  paintMarking,
+  paintPlate,
+  paintRow,
+  paintSelectedTableRow,
+  paintWindow,
+  pinKeyrack,
+  syncKeys,
+} from './fhChrome.js';
 
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const STATION_NAME = new Map();
@@ -226,6 +242,60 @@ export function createMarketScreen(ctx) {
   let filterEls = null;
   let tbodyEl = null;
 
+  function dressBrowser() {
+    ensureInteriorStyle();
+    pinKeyrack(listEl.querySelector('.sx-mkt-browser__filters'));
+    for (const btn of listEl.querySelectorAll('[data-market-filter]')) paintKey(btn, 'legend');
+    paintInput(searchEl);
+    paintLegend(modeEl);
+    for (const th of listEl.querySelectorAll('th')) paintLegend(th);
+    dressRows();
+  }
+
+  function dressRows() {
+    for (const row of rowEls()) {
+      paintSelectedTableRow(row, row.classList.contains('is-active') || row.getAttribute('aria-selected') === 'true');
+    }
+    syncKeys(listEl);
+  }
+
+  function dressStage() {
+    ensureInteriorStyle();
+    if (quoteEl.querySelector('.sf-state')) { dressState(quoteEl); return; }
+    paintLegend(quoteEl.querySelector('.sx-mkt-cat-inline'), true);
+    paintMarking(quoteEl.querySelector('.sx-mkt-title'));
+    paintHero(quoteEl.querySelector('.k-hero__n'));
+    paintLegend(quoteEl.querySelector('.k-hero__w'));
+    const chart = quoteEl.querySelector('.sx-mkt-chart');
+    if (chart) paintWindow(chart);
+    for (const row of quoteEl.querySelectorAll('.k-row')) paintRow(row, false);
+  }
+
+  function dressConsole() {
+    ensureInteriorStyle();
+    const trade = tradeEl.querySelector('.sx-trade') || tradeEl;
+    paintPlate(trade, 'sunk');
+    paintLegend(tradeEl.querySelector('.sx-qty__k'));
+    paintInput(tradeEl.querySelector('.sx-qty__in'));
+    pinKeyrack(tradeEl.querySelector('.sx-qty__words'));
+    pinKeyrack(tradeEl.querySelector('.sx-trade__words, .sx-seg'));
+    for (const btn of tradeEl.querySelectorAll('[data-q]')) paintKey(btn, 'small');
+    const buy = tradeEl.querySelector('.sx-trade__go--buy, [data-mode="buy"]');
+    const sell = tradeEl.querySelector('.sx-trade__go--sell, [data-mode="sell"]');
+    if (buy) paintKey(buy, buy.hasAttribute('data-go') ? 'primary' : 'legend');
+    if (sell) paintKey(sell, sell.hasAttribute('data-go') ? 'primary' : 'legend');
+    for (const row of tradeEl.querySelectorAll('.k-row')) paintRow(row, false);
+    dressState(tradeEl);
+    syncKeys(tradeEl);
+  }
+
+  function dressRoutes() {
+    ensureInteriorStyle();
+    paintLegend(routesEl.querySelector('.sx-mkt__routes-head'), true);
+    for (const row of routesEl.querySelectorAll('.sx-route-row')) paintRow(row, false);
+    for (const btn of routesEl.querySelectorAll('[data-course]')) paintKey(btn, 'small');
+  }
+
   // The commodity your tracked contract wants loaded. Market flags it so the accept→buy→deliver loop
   // is legible ("buy this here for your job"). Prefer an explicit trade waypoint; else fall back to
   // the tracked mission's own cargo commodity (works even when nav points elsewhere).
@@ -373,6 +443,7 @@ export function createMarketScreen(ctx) {
     for (const btn of listEl.querySelectorAll('[data-market-filter]')) {
       filterEls.set(btn.getAttribute('data-market-filter'), btn);
     }
+    dressBrowser();
   }
 
   // The register's rows (the fake DOM in tests has no HTMLTableSectionElement.rows).
@@ -391,6 +462,7 @@ export function createMarketScreen(ctx) {
       row.setAttribute('tabindex', on ? '0' : '-1');
       if (on && focus) { try { row.focus({ preventScroll: false }); } catch (_) {} }
     }
+    dressRows();
     if (!changed) return;
     qty = mode === 'sell' ? heldQty(ctx.state || {}, id) : 1;
     const state = ctx.state || {};
@@ -439,6 +511,7 @@ export function createMarketScreen(ctx) {
       const emptyEl = listEl.querySelector('.sx-mkt-browser__empty');
       emptyEl.hidden = visible.length > 0;
       emptyEl.textContent = visible.length ? '' : `No commodities match ${emptyFilterLabel()}.`;
+      dressRows();
       if (focused) {
         const active = tbodyEl.querySelector('.is-active');
         if (active) { try { active.focus({ preventScroll: true }); } catch (_) {} }
@@ -482,6 +555,7 @@ export function createMarketScreen(ctx) {
             onActivate: () => openGalaxyMap(ctx, { focus: MAP_FOCUS.SYSTEM, source: 'market-empty' }),
           },
       });
+      dressStage();
       return;
     }
     consoleEl.hidden = false;
@@ -505,6 +579,7 @@ export function createMarketScreen(ctx) {
       producedBy: def.producedBy, consumedBy: def.consumedBy, stationType: resolveDockStationType(state),
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
       quoteAge: quoteAgeWord(state, sid, r.id), saleQty: qty });
+    dressStage();
   }
 
   function renderConsole(state, { receiptOnly = false } = {}) {
@@ -519,6 +594,7 @@ export function createMarketScreen(ctx) {
           `</ul>` +
           `<p class="k-empty sx-trade-empty">Nothing in the hold. Switch to Buy to load cargo.</p>` +
         `</div>`;
+      dressConsole();
       return;
     }
     const def = r.def, entry = r.entry;
@@ -562,11 +638,14 @@ export function createMarketScreen(ctx) {
       const noteEl = tradeEl.querySelector('.sx-trade__note');
       noteEl.textContent = note;
       noteEl.hidden = !note;
+      for (const row of tradeEl.querySelectorAll('.k-row')) paintRow(row, false);
+      syncKeys(tradeEl);
       return;
     }
 
     // Preserve the native event contract: the live side commits, the other side switches mode.
     tradeEl.innerHTML = marketTradeHtml({ mode, qty, canAct, receiptHtml, note });
+    dressConsole();
   }
 
   // Best trade runs from here + one-click course plotting (canonical logic, same nav contract).
@@ -593,6 +672,7 @@ export function createMarketScreen(ctx) {
       `<p class="k-caps sx-mkt__routes-head">Best routes from here</p>` +
       (rows ? `<ul class="k-rows" style="--k-row-cols: minmax(0,1fr) auto auto">${rows}</ul>`
         : `<p class="k-sentence sx-muted">No profitable runs known from here yet — visit more stations to learn their prices.</p>`);
+    dressRoutes();
   }
 
   function renderAll(state) {
