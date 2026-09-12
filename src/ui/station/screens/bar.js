@@ -6,6 +6,8 @@ import { barFrameHtml } from '../../views/stationFrames.js';
 // sentence, what you can ask as words, and any offer their reply produced as sentences and a word.
 // Reuses the existing contact engine in ../barContacts.js — no gameplay reinvented.
 // Emits ui:talkContact / ui:purchaseSurveyData / ui:acceptMission / ui:pushScreen.
+// Field Hardware chrome (kit plates, keys, quiet type) is pinned from this module. Ask, accept,
+// buy rumor, inspect, and map verbs stay the same.
 // `.sx-bar`, `.sx-bar-row[data-contact]`, `.sx-bar-row__role`, `.sx-talk`, `.sx-talk__reply`,
 // `.sx-choice[data-choice]`, `.sx-bar-offer*`, `[data-inspect]`, `[data-bigpic]` are hooks.
 import {
@@ -33,6 +35,34 @@ import {
 import { DOSS_ARCHIVE_CONTACT_ID, dossArchiveMapOffer } from '../../../data/dossArchive.js';
 import { VONN_FREIGHT_CONTACT_ID, vonnFreightLossMapOffer } from '../../../data/vonnFreightLoss.js';
 import { MAP_FOCUS, openGalaxyMap } from '../../mapAuthority.js';
+import { dressComms, watchComms } from './comms.js';
+import { dressEvents, watchEvents } from './events.js';
+import {
+  ensureInteriorStyle,
+  paintCap,
+  paintKey,
+  paintLegend,
+  paintMarking,
+  paintPlate,
+  paintRow,
+  pin,
+  pinKeyrack,
+  syncKeys,
+} from './fhChrome.js';
+
+const STYLE_ID = 'sf-station-bar-fh';
+function ensureBarStyle() {
+  ensureInteriorStyle();
+  if (typeof document === 'undefined' || !document.head) return;
+  if (document.getElementById(STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent =
+    '.sx-bar .k-word.fh-key::after{display:none!important}' +
+    '.sx-bar .fh-keyrack{gap:6px!important;align-items:center!important;flex-wrap:wrap!important}' +
+    '.sx-bar .sx-lead.fh-row,.sx-bar .sx-intel.fh-row,.sx-bar .sx-bar-offer__stake.fh-row{box-shadow:none!important;background-color:transparent!important}';
+  document.head.appendChild(style);
+}
 
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 const roleLabel = (r) => String(r || 'contact').replace(/_/g, ' ');
@@ -86,6 +116,67 @@ export function createBarScreen(ctx) {
   let pendingFrontierRumorOffer = null;
   let acceptedMissionId = null;
   let pinnedContact = null;
+
+  function dressShell() {
+    const shell = (el.closest && el.closest('.sx-berth, .sx-app, .k-screen'))
+      || (typeof document !== 'undefined' ? document : el);
+    dressEvents(shell);
+    dressComms(shell);
+  }
+
+  function dressRail() {
+    ensureBarStyle();
+    paintLegend(railEl.querySelector('.k-caps'), true);
+    pinKeyrack(railEl.querySelector('.sx-bar__rows'));
+    for (const btn of railEl.querySelectorAll('[data-contact]')) {
+      paintKey(btn, 'legend');
+      pin(btn, {
+        'min-height': '44px',
+        'flex-direction': 'column',
+        'align-items': 'flex-start',
+        'justify-content': 'center',
+        width: '100%',
+      });
+    }
+    syncKeys(railEl);
+  }
+
+  function dressStage() {
+    ensureBarStyle();
+    if (stageEl.querySelector('.sx-empty')) {
+      paintLegend(stageEl.querySelector('.sx-empty'), true);
+      return;
+    }
+    const talk = stageEl.querySelector('.sx-talk') || stageEl;
+    paintPlate(talk, 'sunk');
+    paintLegend(stageEl.querySelector('.sx-talk__role'), true);
+    paintMarking(stageEl.querySelector('.sx-talk__name'));
+    pinKeyrack(stageEl.querySelector('.sx-talk__choices'));
+    for (const btn of stageEl.querySelectorAll('[data-choice]')) paintKey(btn, 'legend');
+    for (const offer of stageEl.querySelectorAll('.sx-bar-offer')) {
+      paintPlate(offer, 'edge');
+      pinKeyrack(offer.querySelector('.sx-bar-offer__chips'));
+      pinKeyrack(offer.querySelector('.sx-bar-offer__foot'));
+      for (const chip of offer.querySelectorAll('.sx-bar-offer__chip')) paintCap(chip);
+      for (const row of offer.querySelectorAll('.sx-bar-offer__stake')) paintRow(row, false);
+      const verb = offer.querySelector('.sx-bar-offer__verb');
+      if (verb) paintKey(verb, 'primary');
+    }
+    syncKeys(stageEl);
+  }
+
+  function dressLeads() {
+    ensureBarStyle();
+    for (const cap of leadsEl.querySelectorAll('.k-caps')) paintLegend(cap, true);
+    for (const row of leadsEl.querySelectorAll('.sx-lead, .sx-intel')) paintRow(row, false);
+    pinKeyrack(leadsEl.querySelector('.sx-bar__foot'));
+    pinKeyrack(leadsEl.querySelector('.sx-lead__rows'));
+    for (const btn of leadsEl.querySelectorAll('[data-survey], [data-inspect], [data-log]')) {
+      paintKey(btn, btn.hasAttribute('data-log') ? 'legend' : 'small');
+    }
+    syncKeys(leadsEl);
+    dressShell();
+  }
 
   const sid = () => (ctx.state && ctx.state.ui && ctx.state.ui.dockedStationId) || null;
   function contacts(state) {
@@ -201,6 +292,7 @@ export function createBarScreen(ctx) {
     const list = contacts(state);
     if (!list.length) {
       railEl.innerHTML = `<p class="k-caps">Here tonight</p><p class="k-empty sx-empty">Nobody here.</p>`;
+      dressRail();
       return;
     }
     if (!selectedId) selectedId = list[0].id;
@@ -217,12 +309,17 @@ export function createBarScreen(ctx) {
         );
       }).join('') +
       `</ul>`;
+    dressRail();
   }
 
   // ---------- stage: the conversation ----------
   function renderStage(state) {
     const c = selected(state);
-    if (!c) { stageEl.innerHTML = `<p class="k-empty sx-empty">The bar is empty. Try a larger station.</p>`; return; }
+    if (!c) {
+      stageEl.innerHTML = `<p class="k-empty sx-empty">The bar is empty. Try a larger station.</p>`;
+      dressStage();
+      return;
+    }
     const memory = stationContactMemoryFor(state, c.id);
     let memLine = '';
     try { memLine = stationContactMemoryLine(memory, c.line) || c.line || ''; } catch (_) { memLine = c.line || ''; }
@@ -252,6 +349,7 @@ export function createBarScreen(ctx) {
 
     const big = stageEl.querySelector('[data-bigpic]');
     if (big) { try { mountContactPortrait(big, c, { className: 'sx-portrait sx-portrait--lg', size: 240 }); } catch (_) {} }
+    dressStage();
   }
 
   // ---------- leads: intel + survey + board jobs ----------
@@ -293,6 +391,7 @@ export function createBarScreen(ctx) {
       `<ul class="k-words k-words--row sx-bar__foot"><li><button type="button" class="k-word k-word--fine sx-bar__log" data-log>Open the board</button></li></ul>` +
       `<p class="k-caps sx-intel__head">Intel</p>` +
       intelHtml;
+    dressLeads();
   }
 
   function renderAll(state) { renderRail(state); renderStage(state); renderLeads(state); }
@@ -444,6 +543,9 @@ export function createBarScreen(ctx) {
     }
     if (ev.target.closest('[data-log]') && ctx.bus) ctx.bus.emit('station:navigate', { destination: 'contracts' });
   });
+
+  watchEvents();
+  watchComms();
 
   return {
     el,
