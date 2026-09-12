@@ -3700,6 +3700,13 @@ export const traffic = {
         activeTrafficIds.add(e.id);
       }
     }
+    const player = hasLivePlayer ? state.entities.get(state.playerId) : null;
+    const trafficPlanOpts = {
+      playerId: state.playerId,
+      playerTeam: player && player.team,
+      authorityRadius: tableSimAuthorityWuFromState(state),
+      origin: player && player.pos,
+    };
     for (const e of activeTraffic) {
       const rec = recordById.get(e.id);
       if (!rec) continue;
@@ -3747,16 +3754,10 @@ export const traffic = {
       // Role-specific behavior dispatch (spec §12.1). Each role has a distinct, readable behavior.
       if (role.orbits) { this._stepOrbit(e, rec, stations, dt); continue; }       // patrol
       if (role.flees) { this._stepFlee(e, rec, stations, state); continue; }       // pirate/raider
+      // Miners/escorts/haulers keep last intent on skipped ticks. Hostiles still plan every tick.
+      if (!shouldAmbientHaulerPlan(state.tick, e, trafficPlanOpts)) continue;
       if (role.seeks === 'asteroid') { this._stepMiner(e, rec, stations, state); continue; } // miner
       if (role.escorts) { this._stepEscort(e, rec, list, state); continue; }       // convoy escort
-
-      const player = state.playerId != null ? state.entities.get(state.playerId) : null;
-      if (!shouldAmbientHaulerPlan(state.tick, e, {
-        playerId: state.playerId,
-        playerTeam: player && player.team,
-        authorityRadius: tableSimAuthorityWuFromState(state),
-        origin: player && player.pos,
-      })) continue;
 
       // resolve current target (it may have despawned)
       let target = state.entities.get(rec.targetId);

@@ -91,10 +91,15 @@ export function shouldAmbientHaulerPlan(tick, owner, options = {}) {
     && team !== options.playerTeam
     && ai && ai.passive !== true);
   if (combat || hostile) return true;
+  // Ambient planning is never 60 Hz. Sleep at least as slow as the AI stack (8), not faster.
+  const active = Math.max(2, Math.floor(Number(options.activePeriodTicks) || 2));
+  const sleep = Math.max(8, Math.floor(Number(options.sleepPeriodTicks) || 8));
+  const near = Math.max(2, Math.floor(Number(options.nearPeriodTicks) || 2));
   return shouldOwnerThink(tick, owner, {
-    activePeriodTicks: 2,
-    sleepPeriodTicks: 4,
     ...options,
+    activePeriodTicks: active,
+    sleepPeriodTicks: sleep,
+    nearPeriodTicks: near,
   });
 }
 
@@ -105,7 +110,9 @@ export function shouldOwnerThink(tick, owner, options = {}) {
     if (!(activity && activity.pinnedExact)) return false;
   }
   if (tier === SIM_TIER.S1_NEAR && !(activity && activity.pinnedExact)) {
-    const period = Math.max(1, Math.floor(Number(options.nearPeriodTicks) || Number(options.activePeriodTicks) || 2));
+    // Own period only. Glass callers pass activePeriodTicks: 1; inheriting that made S1 60 Hz.
+    const named = Number(options.nearPeriodTicks);
+    const period = Math.max(1, Math.floor(Number.isFinite(named) && named >= 1 ? named : 2));
     const key = owner && (owner.id != null ? `near:${owner.id}` : `near:${options.ownerKey || 'anon'}`);
     return shouldRunOnTick(tick, key, period);
   }
