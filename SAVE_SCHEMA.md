@@ -305,6 +305,7 @@ Current save version: `14`
 | `$.sectorSim` | object | {} |
 | `$.settings` | object | {} |
 | `$.settings.accessibility` | object | {} |
+| `$.settings.accessibility.audioCues` | boolean | true |
 | `$.settings.accessibility.captionBackground` | boolean | true |
 | `$.settings.accessibility.captions` | boolean | true |
 | `$.settings.accessibility.captionSize` | string | medium |
@@ -350,9 +351,11 @@ Current save version: `14`
 | `$.settings.video.energyMaterials` | boolean | true |
 | `$.settings.video.engineTrails` | boolean | true |
 | `$.settings.video.fov` | number | 50 |
+| `$.settings.video.frameCap` | number | 0 |
 | `$.settings.video.motionReduce` | boolean | false |
 | `$.settings.video.particleQuality` | string | medium |
 | `$.settings.video.pixelRatioCap` | number | 2 |
+| `$.settings.video.qualityPreset` | string | medium |
 | `$.settings.video.renderGraph` | boolean | false |
 | `$.settings.video.renderScale` | number | 1 |
 | `$.settings.video.shadows` | boolean | true |
