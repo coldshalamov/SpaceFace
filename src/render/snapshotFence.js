@@ -46,6 +46,10 @@ export function createSnapshotFence(options = {}) {
       sealed: true,
       simTime: 0,
       sequence: 0,
+      // Interpolation epoch. Two packs may only be interpolated against each other when the pose
+      // stream between them is continuous; a sector jump or a mirror rebuild reassigns slots and
+      // teleports every body, so packs on either side of one are not comparable.
+      poseEpoch: 0,
     };
     const writable = {
       get schema() { return snapshot.schema; },
@@ -84,6 +88,7 @@ export function createSnapshotFence(options = {}) {
       get journalDropped() { return snapshot.journalDropped; },
       get simTime() { return state.simTime; },
       get sequence() { return state.sequence; },
+      get poseEpoch() { return state.poseEpoch; },
       get indexByEntityId() { return state.publishedIndexByEntityId; },
     });
     state.writable = Object.freeze(writable);
@@ -97,11 +102,12 @@ export function createSnapshotFence(options = {}) {
   let packCount = 0;
 
   return {
-    beginPack(expectedCount, simTime = 0) {
+    beginPack(expectedCount, simTime = 0, poseEpoch = 0) {
       const buffer = buffers[write];
       buffer.writable.beginFrame(expectedCount);
       buffer.simTime = Number.isFinite(simTime) ? simTime : 0;
       buffer.sequence = sequence + 1;
+      buffer.poseEpoch = Number.isFinite(poseEpoch) ? poseEpoch : 0;
       return buffer.writable;
     },
     commit() {
@@ -120,8 +126,18 @@ export function createSnapshotFence(options = {}) {
       if (latest < 0) return null;
       return buffers[latest].published;
     },
+    /**
+     * The interpolation source for the latest pack, or null when there is none.
+     *
+     * A sector jump teleports every body thousands of world units and reassigns mirror slots, so
+     * the pack taken before the jump is not a pose the pack after it may be blended against.
+     * Blending them anyway drew the player's own hull partway between the two sectors and, because
+     * a standing-still root is neither dirty nor pose-delta, that wrong pose then froze for the
+     * rest of the session. Packs only interpolate inside one continuous pose epoch.
+     */
     previousSnapshot() {
-      if (packCount < 2 || previous < 0) return null;
+      if (packCount < 2 || previous < 0 || latest < 0) return null;
+      if (buffers[previous].poseEpoch !== buffers[latest].poseEpoch) return null;
       return buffers[previous].published;
     },
     get sequence() { return sequence; },
@@ -175,11 +191,11 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   return true;
 }
 
-export function packPresentationWorldToFence(world, fence, simTime = 0) {
+export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoch = 0) {
   if (!world || !fence) return 0;
   const diagnostics = typeof world.getDiagnostics === 'function' ? world.getDiagnostics() : null;
   const active = diagnostics && Number.isInteger(diagnostics.active) ? diagnostics.active : 0;
-  const snapshot = fence.beginPack(Math.max(1, active), simTime);
+  const snapshot = fence.beginPack(Math.max(1, active), simTime, poseEpoch);
   let packed = 0;
   for (let index = 0; index < active; index++) {
     const slot = world.activeSlots[index];

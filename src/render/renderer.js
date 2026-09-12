@@ -3148,6 +3148,8 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._perfFrameOrigin = null;
   owner._presentationFrame = null;
   owner._snapshotSourceTick = null;
+  owner._posePackEpoch = 0;
+  owner._posePackSectorId = null;
   owner._activityFrame = null;
   owner._activityFrameTick = null;
   owner._frameMembrane = null;
@@ -3717,6 +3719,8 @@ export const render = {
     this._presentationQueries = createPresentationQueries(this._presentationWorld);
     this._snapshotFence = createSnapshotFence();
     this._snapshotSourceTick = null;
+    this._posePackEpoch = 0;
+    this._posePackSectorId = null;
     this._persistentSubmitLanes = createPersistentSubmitLanes();
     this._activityFrame = null;
     this._activityFrameTick = null;
@@ -7117,6 +7121,27 @@ export const render = {
     } catch (_) { /* optional */ }
   },
 
+  /**
+   * Stamp the pose-interpolation epoch the next snapshot pack belongs to.
+   *
+   * Interpolation between two packs is only meaningful while the pose stream between them is
+   * continuous. A sector jump teleports every body to another part of the galaxy, and a mirror
+   * rebuild reassigns slots (and can hand a recycled id to a different body), so the pack before
+   * one of those is not a blend source for the pack after it. Blending across a jump drew the
+   * player's own hull thousands of world units from its camera, and — because a standing-still
+   * root is neither dirty nor pose-delta — that wrong pose then never got rewritten.
+   */
+  _advancePosePackEpoch(publication) {
+    const sectorId = String((this.state && this.state.world && this.state.world.currentSectorId) || '');
+    if (publication && publication.rebuilt === true) {
+      this._posePackEpoch = (this._posePackEpoch | 0) + 1;
+    } else if (this._posePackSectorId !== sectorId) {
+      this._posePackEpoch = (this._posePackEpoch | 0) + 1;
+    }
+    this._posePackSectorId = sectorId;
+    return this._posePackEpoch;
+  },
+
   _applyPresentationPose(slot, mesh, alpha, currentOnly = false) {
     if (!mesh || !mesh.position) return false;
     const world = this._presentationWorld;
@@ -7652,6 +7677,7 @@ export const render = {
         this._presentationWorld,
         this._snapshotFence,
         state && state.simTime,
+        this._advancePosePackEpoch(publication),
       );
       this._snapshotSourceTick = state && Number.isInteger(state.tick) ? state.tick : 0;
       if (state && state.render) {
@@ -7920,6 +7946,7 @@ export const render = {
         this._presentationWorld,
         this._snapshotFence,
         this.state && this.state.simTime,
+        this._advancePosePackEpoch(publication),
       );
       this._snapshotSourceTick = completedTick;
       if (this.state && this.state.render) {
