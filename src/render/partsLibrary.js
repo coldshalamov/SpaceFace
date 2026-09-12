@@ -20,6 +20,7 @@ import {
   isOpeningStoryActor,
   tableInstanceFarCullWu,
   tableOpeningCompositionWu,
+  tableTravelSpeed,
 } from './tabletopPolicy.js';
 import { isReleaseAssetMode } from './releaseMode.js';
 import * as kit from './ships/shipKit.js';
@@ -62,6 +63,7 @@ import {
 } from './flightReadySet.js';
 import { PRESENTATION_TIER } from '../world/activityClassification.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
+import { sharedMaterialRoleFromAuthored, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 
 const flightRenderPackages = createFlightRenderPackageCache();
 // A composed root is reusable only when it has no renderer-owned package/instance slots. Those
@@ -173,6 +175,14 @@ const STATION_ARCHETYPE_FILES = Object.freeze([
   'places/place_station_research.glb',
   'places/place_gate_jump_ring.glb',
 ]);
+// PQ-193.09: existing foundry trade-hub overlay identities. Garnish on the live hub, never a
+// replacement body and never a new faction system.
+const TRADE_HUB_OVERLAY_FILE_BY_FACTION = Object.freeze({
+  faction_free: 'places/var_station_trade_hub_free_overlay_v01.glb',
+  faction_mts: 'places/var_station_trade_hub_mts_overlay_v01.glb',
+  faction_scn: 'places/var_station_trade_hub_scn_overlay_v01.glb',
+});
+const TRADE_HUB_OVERLAY_FILES = Object.freeze(Object.values(TRADE_HUB_OVERLAY_FILE_BY_FACTION));
 const CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID = Object.freeze({
   spec_refinery: 'places/place_claim_outpost_refinery.glb',
   spec_relay: 'places/place_claim_outpost_relay.glb',
@@ -216,6 +226,7 @@ const PLACE_FILES = Object.freeze([
   'places/place_landmark_wreck_cathedral.glb',
   ...Object.values(CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID),
   ...STATION_ARCHETYPE_FILES,
+  ...TRADE_HUB_OVERLAY_FILES,
 ]);
 const PLACE_FILE_BY_ID = Object.freeze(Object.fromEntries(PLACE_FILES.map((file) => [
   file.replace(/^places\//, '').replace(/\.glb$/, ''),
@@ -768,6 +779,89 @@ export function isInitialAuthoredCompositionEntity(entity, state) {
   return radius > 0 && dx * dx + dz * dz <= radius * radius;
 }
 
+/**
+ * First-flight cook set. Opening composition is ships and places only, so a nearby
+ * 47-A payload (the evidence spindle) has no mesh until mode becomes flight — then
+ * its untextured env-mapped standard program is a 100 ms+ bloom brick.
+ */
+export function isFirstFlightCookEntity(entity, state) {
+  if (isInitialAuthoredCompositionEntity(entity, state)) return true;
+  if (!entity || entity.alive === false || !state) return false;
+  if (!entityOnOpeningTable(entity, state)) return false;
+  const data = entity.data || {};
+  const ref = typeof data.assetRef === 'string' ? data.assetRef : '';
+  return ref === 'asset.slice.47a_spindle'
+    || data.scenarioActorId === 'evidence_spindle_47a';
+}
+
+const FIRST_FLIGHT_ROCK_TRAVEL_SECONDS = 3;
+export const FIRST_FLIGHT_ROCK_COOK_CAP = 8;
+// Must match visualFactory.hashId(id) % ASTEROID_INSTANCE_VARIANT_COUNT.
+const FIRST_FLIGHT_ASTEROID_VARIANT_COUNT = 5;
+
+function asteroidVariantHash(id) {
+  let h = 2166136261;
+  const s = String(id);
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0);
+}
+
+export function asteroidFirstFlightTypeKey(entity) {
+  const data = entity && entity.data || {};
+  return `${data.typeId || 'ast_common_rock'}|${data.tint || ''}`;
+}
+
+export function asteroidFirstFlightCookKey(entity) {
+  const variant = asteroidVariantHash(entity && entity.id) % FIRST_FLIGHT_ASTEROID_VARIANT_COUNT;
+  return `${asteroidFirstFlightTypeKey(entity)}|${variant}`;
+}
+
+function playerPlanarDistanceSq(entity, state) {
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : (state && state.entityList || []).find((candidate) => candidate && candidate.id === state.playerId);
+  if (!player || !player.pos || !entity || !entity.pos) return Infinity;
+  const dx = Number(entity.pos.x) - Number(player.pos.x);
+  const dz = Number(entity.pos.z) - Number(player.pos.z);
+  if (!Number.isFinite(dx) || !Number.isFinite(dz)) return Infinity;
+  return dx * dx + dz * dz;
+}
+
+export function firstFlightRockCookRadiusWu(state) {
+  return tableOpeningCompositionWu(state) + Math.max(0, tableTravelSpeed(state)) * FIRST_FLIGHT_ROCK_TRAVEL_SECONDS;
+}
+
+/** Opening ships/places, the 47-A spindle, and the nearest inbound rock variants. */
+export function collectFirstFlightCookEntities(state) {
+  const list = Array.isArray(state && state.entityList) ? state.entityList : [];
+  const selected = [];
+  const asteroids = [];
+  const rockRadius = firstFlightRockCookRadiusWu(state);
+  const rockRadiusSq = rockRadius * rockRadius;
+  for (const entity of list) {
+    if (!entity || entity.alive === false) continue;
+    if (isFirstFlightCookEntity(entity, state)) {
+      selected.push(entity);
+      continue;
+    }
+    if (entity.type !== 'asteroid') continue;
+    const distanceSq = playerPlanarDistanceSq(entity, state);
+    if (distanceSq <= rockRadiusSq) asteroids.push(entity);
+  }
+  asteroids.sort((left, right) => playerPlanarDistanceSq(left, state) - playerPlanarDistanceSq(right, state));
+  const seenKeys = new Set();
+  for (const entity of asteroids) {
+    const key = asteroidFirstFlightCookKey(entity);
+    if (seenKeys.has(key) || seenKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) continue;
+    seenKeys.add(key);
+    selected.push(entity);
+  }
+  return selected;
+}
+
 /** Pure per-entity residency plan. Complete authored bodies need one GLB. Modular ships predict the
  * exact deterministic records consumed by live assembly before any decode/upload begins. */
 export function authoredPreloadPlanForEntity(entity, options = {}) {
@@ -968,7 +1062,10 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
       plan = { pod: [AUTHORED_CARGO_CAPSULE_FILE] };
     } else {
       const placeFile = placeFileForEntity(entity);
-      if (placeFile) plan = { place: [placeFile] };
+      if (placeFile) {
+        const overlay = tradeHubOverlayFileForEntity(entity);
+        plan = { place: overlay ? [placeFile, overlay] : [placeFile] };
+      }
     }
     pushPlan(plan);
   }
@@ -1179,7 +1276,13 @@ const PACKAGED_LIVE_WHOLE_SHIP_FILES = Object.freeze(new Set([
   'wholeships/helios_lark.glb',
   'wholeships/helios_cradle.glb',
   'wholeships/helios_span.glb',
+  'wholeships/helios_span_dmc.glb',
+  'wholeships/helios_span_mts.glb',
+  'wholeships/helios_span_reach.glb',
   'wholeships/helios_arclight.glb',
+  'wholeships/wasp_free_militia.glb',
+  'wholeships/wasp_mts_escort.glb',
+  'wholeships/wasp_scn_patrol.glb',
   'wholeships/ore_barge.glb',
   'wholeships/repair_tender.glb',
   'wholeships/salvage_cutter.glb',
@@ -1319,9 +1422,11 @@ const WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE = Object.freeze({
   // PQ-193.08: rare Helios extras. Additive keys — do not remap Span, Atlas, or Arclight.
   tanker: 'wholeships/volatiles_tanker.glb',
   customs: 'wholeships/inspection_cutter.glb',
-  // PQ-193.01: opening smuggler / pirate traffic publish complete roster hulls, not modular kit.
+  // PQ-193.01: opening smuggler / pirate publish complete Hitch-world hulls, never modular kit.
+  // Chase stills vs Hitch (play_chase / close): Drifter is a complete dark hull; factory Hornet
+  // reads as a pale toy (Hitch-plus fail). Pirate uses the accepted Wasp of the same combat role.
   smuggler: 'wholeships/drifter_production_v1.glb',
-  pirate: 'wholeships/hornet_production_v1.glb',
+  pirate: 'wholeships/wasp_production_v1.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   // Must match the asset identity embedded in each packaged traffic body above; the record
@@ -1344,14 +1449,58 @@ const WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE = Object.freeze({
   tanker: 'SF_WHOLESHIP_VOLATILES_TANKER',
   customs: 'SF_WHOLESHIP_INSPECTION_CUTTER',
   smuggler: 'SF_DRIFTER_PRODUCTION_V1',
-  pirate: 'SF_HORNET_PRODUCTION_V1',
+  pirate: 'SF_WASP_PRODUCTION_V1',
 });
+// PQ-193.09: live Span/Wasp carry existing foundry faction kits. Unknown factions keep the
+// unskinned body. Pirate Wasp and the player Wasp stay the accepted production hull.
+const SPAN_FACTION_KIT_BY_FACTION = Object.freeze({
+  faction_dmc: Object.freeze({ file: 'wholeships/helios_span_dmc.glb', assetId: 'SF_WHOLESHIP_HELIOS_SPAN_DMC' }),
+  faction_mts: Object.freeze({ file: 'wholeships/helios_span_mts.glb', assetId: 'SF_WHOLESHIP_HELIOS_SPAN_MTS' }),
+  faction_reach: Object.freeze({ file: 'wholeships/helios_span_reach.glb', assetId: 'SF_WHOLESHIP_HELIOS_SPAN_REACH' }),
+});
+const WASP_FACTION_KIT_BY_FACTION = Object.freeze({
+  faction_free: Object.freeze({ file: 'wholeships/wasp_free_militia.glb', assetId: 'SF_WASP_FREE_MILITIA' }),
+  faction_mts: Object.freeze({ file: 'wholeships/wasp_mts_escort.glb', assetId: 'SF_WASP_MTS_ESCORT' }),
+  faction_scn: Object.freeze({ file: 'wholeships/wasp_scn_patrol.glb', assetId: 'SF_WASP_SCN_PATROL' }),
+});
+const WASP_FACTION_KIT_ROLES = Object.freeze(new Set(['patrol', 'escort']));
+const LIVE_SPAN_FILE = 'wholeships/helios_span.glb';
+const LIVE_WASP_FILE = 'wholeships/wasp_production_v1.glb';
+const LIVE_TRADE_HUB_FILE = 'places/place_station_trade_hub.glb';
+/** Helios / Kessler opening-flyby NPC slots. Each must resolve a packaged complete hull. */
+export const OPENING_FLYBY_NPC_SLOTS = Object.freeze([
+  Object.freeze({ id: 'smuggler', data: Object.freeze({ defId: 'ship_drifter', trafficRole: 'smuggler' }) }),
+  Object.freeze({ id: 'pirate', data: Object.freeze({ defId: 'ship_hornet', trafficRole: 'pirate' }) }),
+  Object.freeze({ id: 'courier', data: Object.freeze({ defId: 'ship_kestrel', trafficRole: 'courier' }) }),
+  Object.freeze({ id: 'hauler', data: Object.freeze({ defId: 'ship_mule', trafficRole: 'hauler' }) }),
+  Object.freeze({ id: 'miner', data: Object.freeze({ defId: 'ship_pelican', trafficRole: 'miner' }) }),
+  Object.freeze({ id: 'tug', data: Object.freeze({ defId: 'ship_mule', trafficRole: 'tug' }) }),
+  Object.freeze({
+    id: 'recovery_tug',
+    data: Object.freeze({ defId: 'ship_mule', assetRef: 'asset.slice.meridian_recovery_tug' }),
+  }),
+]);
 const WHOLE_SHIP_URLS = Object.freeze([
   ...Object.values(WHOLE_SHIP_FILE_BY_DEF_ID),
   ...Object.values(WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID).flatMap((family) => Object.values(family)),
   ...Object.values(WHOLE_SHIP_FILE_BY_HOSTILE_ID),
   ...Object.values(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE),
+  ...Object.values(SPAN_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+  ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
 ]);
+// Retail-routable release paths so check:asset-reachability counts the kits as live.
+const FACTION_KIT_RELEASE_URLS = Object.freeze([
+  'assets/ships/release/parts/wholeships/helios_span_dmc.glb',
+  'assets/ships/release/parts/wholeships/helios_span_mts.glb',
+  'assets/ships/release/parts/wholeships/helios_span_reach.glb',
+  'assets/ships/release/parts/wholeships/wasp_free_militia.glb',
+  'assets/ships/release/parts/wholeships/wasp_mts_escort.glb',
+  'assets/ships/release/parts/wholeships/wasp_scn_patrol.glb',
+  'assets/ships/release/parts/places/var_station_trade_hub_free_overlay_v01.glb',
+  'assets/ships/release/parts/places/var_station_trade_hub_mts_overlay_v01.glb',
+  'assets/ships/release/parts/places/var_station_trade_hub_scn_overlay_v01.glb',
+]);
+void FACTION_KIT_RELEASE_URLS;
 const isWholeShipUrl = (url) => WHOLE_SHIP_URLS.some((w) => String(url || '').endsWith(w));
 const PRECOMPILE_SHIP_ARCHETYPES = Object.freeze(Object.keys(HULL_FILE_BY_DEF_ID).map((defId) => Object.freeze({
   defId,
@@ -1386,50 +1535,109 @@ function liveWholeShipSelection(file, assetId, roleId, lodFamily = null) {
   return wholeShipSelection(file, assetId, roleId, lodFamily);
 }
 
+function factionIdForVisual(entity) {
+  const data = entity && entity.data || {};
+  return String(entity && entity.factionId || data.factionId || '');
+}
+
+function applyFactionWholeShipKit(entity, selection) {
+  if (!selection || !selection.file) return selection;
+  const factionId = factionIdForVisual(entity);
+  if (!factionId) return selection;
+  if (selection.file === LIVE_SPAN_FILE) {
+    const kit = SPAN_FACTION_KIT_BY_FACTION[factionId];
+    if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
+    return selection;
+  }
+  if (selection.file === LIVE_WASP_FILE) {
+    const role = String(entity && entity.data && entity.data.trafficRole || '');
+    if (!WASP_FACTION_KIT_ROLES.has(role)) return selection;
+    const kit = WASP_FACTION_KIT_BY_FACTION[factionId];
+    if (kit) return liveWholeShipSelection(kit.file, kit.assetId, selection.roleId);
+  }
+  return selection;
+}
+
+export function tradeHubOverlayFileForEntity(entity) {
+  if (!entity || entity.type !== 'station') return null;
+  const placeFile = placeFileForEntity(entity);
+  if (placeFile !== LIVE_TRADE_HUB_FILE) return null;
+  const overlay = TRADE_HUB_OVERLAY_FILE_BY_FACTION[factionIdForVisual(entity)];
+  return overlay || null;
+}
+
 /** Pure presentation selection hook used by composition and focused asset checks. */
 export function wholeShipVisualForEntity(entity, options = {}) {
   const data = entity && entity.data || {};
   const hostileId = String(data.lootTableId || '');
   const hostileFile = WHOLE_SHIP_FILE_BY_HOSTILE_ID[hostileId];
   if (hostileFile) {
-    return liveWholeShipSelection(hostileFile, WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID[hostileId], hostileId);
+    return applyFactionWholeShipKit(entity, liveWholeShipSelection(
+      hostileFile, WHOLE_SHIP_ASSET_ID_BY_HOSTILE_ID[hostileId], hostileId,
+    ));
   }
   const silhouette = String(data.silhouette || '');
   const silhouetteFile = WHOLE_SHIP_FILE_BY_SILHOUETTE[silhouette];
   if (silhouetteFile) {
-    return liveWholeShipSelection(
+    return applyFactionWholeShipKit(entity, liveWholeShipSelection(
       silhouetteFile,
       WHOLE_SHIP_ASSET_ID_BY_SILHOUETTE[silhouette],
       silhouette,
-    );
+    ));
   }
   const assetRef = String(data.assetRef || '');
   const assetRefFile = WHOLE_SHIP_FILE_BY_ASSET_REF[assetRef];
   if (assetRefFile) {
-    return liveWholeShipSelection(
+    return applyFactionWholeShipKit(entity, liveWholeShipSelection(
       assetRefFile,
       WHOLE_SHIP_ASSET_ID_BY_ASSET_REF[assetRef],
       assetRef,
-    );
+    ));
   }
   const trafficRole = String(data.trafficRole || '');
   const trafficFile = WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE[trafficRole];
   if (trafficFile) {
-    return liveWholeShipSelection(
+    return applyFactionWholeShipKit(entity, liveWholeShipSelection(
       trafficFile,
       WHOLE_SHIP_ASSET_ID_BY_TRAFFIC_ROLE[trafficRole],
       trafficRole,
-    );
+    ));
   }
   if (options.requiredWholeShip !== true && !requiresProductionWholeShipForEntity(entity)) return null;
   const defId = data.defId;
   const file = WHOLE_SHIP_FILE_BY_DEF_ID[defId];
-  return file ? liveWholeShipSelection(
+  return applyFactionWholeShipKit(entity, file ? liveWholeShipSelection(
     file,
     WHOLE_SHIP_ASSET_ID_BY_DEF_ID[defId],
     defId,
     WHOLE_SHIP_LOD_FAMILY_BY_DEF_ID[defId] || null,
-  ) : null;
+  ) : null);
+}
+
+export function openingFlybyNpcEntity(slot) {
+  return {
+    id: `opening:${slot && slot.id || 'npc'}`,
+    type: 'ship',
+    alive: true,
+    data: { ...(slot && slot.data || {}) },
+  };
+}
+
+/** Packaged complete body for one opening-flyby NPC slot. Accessory-only maps fail closed. */
+export function openingFlybyNpcBody(slot) {
+  return wholeShipVisualForEntity(openingFlybyNpcEntity(slot), { requiredWholeShip: true });
+}
+
+/** Seed-stable catalog of opening-flyby NPC bodies. Hitch / Kestrel is never an NPC row. */
+export function openingFlybyNpcCatalog() {
+  return OPENING_FLYBY_NPC_SLOTS.map((slot) => {
+    const visual = openingFlybyNpcBody(slot);
+    return Object.freeze({
+      id: slot.id,
+      file: visual && visual.file || null,
+      assetId: visual && visual.assetId || null,
+    });
+  });
 }
 
 /** LOD0 stays the cold-start admit file. Unpackaged remaster siblings never leave the live path. */
@@ -1456,6 +1664,8 @@ export function spawnableShipArchetypePrewarmUrls() {
   return Object.freeze([
     ...Object.values(WHOLE_SHIP_FILE_BY_HOSTILE_ID),
     ...Object.values(WHOLE_SHIP_FILE_BY_TRAFFIC_ROLE),
+    ...Object.values(SPAN_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
+    ...Object.values(WASP_FACTION_KIT_BY_FACTION).map((kit) => kit.file),
     WHOLE_SHIP_FILE_BY_DEF_ID.ship_wasp,
   ]);
 }
@@ -1542,11 +1752,19 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
   const trigger = firstRenderable(fallbackRoot);
   const previousBeforeRender = trigger && trigger.onBeforeRender;
   let armed = true;
+  function authoredAssetTrigger(renderer, scene, ...rest) {
+    if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
+    if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
+    startAuthoredUpgrade(renderer, scene);
+  }
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
     const existing = boundary.userData.authoredUpgradePromise;
     if (existing) return existing;
     if (!armed) return null;
     if (!renderer || !scene) return;
+    if (!boundaryBelongsToScene(boundary, scene)) {
+      return Promise.resolve({ status: 'cancelled-before-queue' });
+    }
     armed = false;
     if (trigger) trigger.onBeforeRender = previousBeforeRender;
     const upgradeOptions = {
@@ -1561,7 +1779,7 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
       ...requestOptions,
     };
     boundary.userData.authoredAssetState = 'loading';
-    const completion = enqueueBoundaryUpgrade(scene, {
+    const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
       boundary,
       fallbackRoot,
       entity,
@@ -1572,18 +1790,22 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
         active = next;
         syncActiveSurface(boundary, active);
       },
+    })).then((result) => {
+      if (result && result.status === 'cancelled-before-queue') {
+        delete boundary.userData.authoredUpgradePromise;
+        if (boundary.userData.authoredAssetState === 'loading') {
+          boundary.userData.authoredAssetState = 'awaiting-authored-admission';
+        }
+        armed = true;
+        if (trigger) trigger.onBeforeRender = authoredAssetTrigger;
+      }
+      return result;
     });
     boundary.userData.authoredUpgradePromise = completion;
     return completion;
   };
   boundary.userData.requestAuthoredUpgrade = startAuthoredUpgrade;
-  if (trigger) {
-    trigger.onBeforeRender = function authoredAssetTrigger(renderer, scene, ...rest) {
-      if (typeof previousBeforeRender === 'function') previousBeforeRender.call(this, renderer, scene, ...rest);
-      if (!shouldAutoTriggerAuthoredUpgrade(entity, scene)) return;
-      startAuthoredUpgrade(renderer, scene);
-    };
-  }
+  if (trigger) trigger.onBeforeRender = authoredAssetTrigger;
 
   return boundary;
 }
@@ -2322,9 +2544,28 @@ async function upgradePlaceBoundary(boundary, fallbackRoot, entity, placeFile, r
     return false;
   }
 
+  let overlayRecord = null;
+  const overlayFile = tradeHubOverlayFileForEntity(options.admissionEntity || entity);
+  if (overlayFile) {
+    try {
+      overlayRecord = await loadPart(`${partRoot}${overlayFile}`, {
+        renderer,
+        slot: 'place',
+        optional: true,
+        residencyOwner: options.residencyOwner,
+        residencyRole: options.residencyRole,
+        sectorId: options.sectorId,
+        isResidencyOwnerActive: options.isResidencyOwnerActive,
+      });
+    } catch (error) {
+      overlayRecord = null;
+      console.warn('[partsLibrary] trade-hub overlay unavailable; hub still publishes', error);
+    }
+  }
+
   let authored = null;
   try {
-    authored = buildPlacePropRoot(entity, record, scene, boundary);
+    authored = buildPlacePropRoot(entity, record, scene, boundary, { overlayRecord });
   } catch (error) {
     return failAuthoredPlaceAdmission(
       boundary, fallbackRoot, entity, renderer, options, setActive,
@@ -2497,7 +2738,7 @@ function commitAuthoredPlaceBoundary(
   return true;
 }
 
-function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
+function buildPlacePropRoot(entity, record, scene, ownerBoundary, options = {}) {
   const palette = paletteFor(entity || {});
   const root = new THREE.Group();
   const data = entity && entity.data || {};
@@ -2537,6 +2778,19 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
     targetLength: authoredLength * scale,
     label: 'Place',
   }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
+  const overlayRecord = options.overlayRecord;
+  if (overlayRecord) {
+    const overlayLength = Math.max(
+      overlayRecord.bounds && overlayRecord.bounds.size && overlayRecord.bounds.size[0] || 1,
+      1e-6,
+    );
+    instantiatePart(overlayRecord, root, {
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      targetLength: overlayLength * scale,
+      label: 'FactionOverlay',
+    }, palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
+  }
   if (record.flightStaticV3 === true) {
     root.userData.spacefaceFlightStaticV3 = true;
     root.userData.flightRenderPackage = {
@@ -2567,16 +2821,24 @@ function buildPlacePropRoot(entity, record, scene, ownerBoundary) {
   root.userData.renderContract = {
     version: 1,
     coordinateSystem: '+X forward, +Y up, +Z starboard; authored world scale',
-    authoredParts: [record.url],
-    authoredSlots: { place: [record.url] },
+    authoredParts: options.overlayRecord
+      ? [record.url, options.overlayRecord.url]
+      : [record.url],
+    authoredSlots: {
+      place: options.overlayRecord ? [record.url, options.overlayRecord.url] : [record.url],
+    },
     hookBinding: hasExplicitAuthoredGeologyPresentation(entity)
       ? 'SOCKET_* markers remain available; authored mesh is presentation over a simulation-owned asteroid'
       : 'SOCKET_* markers remain available for debug/probes; world-place props are non-sim scenery',
   };
   return {
     root,
-    authoredParts: [record.url],
-    authoredSlots: { place: [record.url] },
+    authoredParts: options.overlayRecord
+      ? [record.url, options.overlayRecord.url]
+      : [record.url],
+    authoredSlots: {
+      place: options.overlayRecord ? [record.url, options.overlayRecord.url] : [record.url],
+    },
   };
 }
 
@@ -3313,14 +3575,44 @@ export async function prepareFirstQueuedAuthoredBoundaryForOpening(scene) {
   return { prepared: true, source: 'queued', result };
 }
 
+function isLoadingHullUpgradeJob(job) {
+  const entity = job && job.entity;
+  if (!entity) return false;
+  if (entity.isPlayer === true) return true;
+  return entity.type === 'ship' || entity.type === 'place';
+}
+
 /** Release the bounded handoff hold after the first playable picture has painted or startup aborts. */
 export function resumeAuthoredUpgradeQueueAfterOpening(scene) {
   const state = scene && upgradeQueuesByScene.get(scene);
   if (!state) return false;
-  const held = state.openingHandoffHold === true;
+  const held = state.openingHandoffHold === true || state.firstFlightHandoffHold === true;
   state.openingHandoffHold = false;
+  state.firstFlightHandoffHold = false;
+  state.loadingHullsOnly = false;
   scheduleNextUpgradeFrame(state);
   return held;
+}
+
+/** F9 / Continue: admit restored hulls, keep leftover entity:fx compiles held. */
+export function resumeAuthoredUpgradeQueueForLoadingHulls(scene) {
+  const state = scene && upgradeQueuesByScene.get(scene);
+  if (!state) return false;
+  state.openingHandoffHold = false;
+  state.firstFlightHandoffHold = false;
+  state.loadingHullsOnly = true;
+  scheduleNextUpgradeFrame(state);
+  return true;
+}
+
+/** Stop leftover FX upgrades from publishing during the first flight presents. */
+export function holdAuthoredUpgradeQueueForFirstFlight(scene) {
+  const state = scene && upgradeQueuesByScene.get(scene);
+  if (!state) return false;
+  state.firstFlightHandoffHold = true;
+  state.loadingHullsOnly = false;
+  invalidateScheduledUpgradeFrame(state);
+  return true;
 }
 
 function upgradeQueueState(scene) {
@@ -3334,6 +3626,8 @@ function upgradeQueueState(scene) {
       frameScheduled: false,
       frameScheduleToken: 0,
       openingHandoffHold: false,
+      firstFlightHandoffHold: false,
+      loadingHullsOnly: false,
       lateSkips: 0,
       byBoundary: new Map(),
       byKey: new Map(),
@@ -3648,7 +3942,8 @@ function processUpgradeQueue(state) {
 }
 
 function scheduleNextUpgradeFrame(state) {
-  if (!state || state.frameScheduled || state.openingHandoffHold === true) return;
+  if (!state || state.frameScheduled || state.openingHandoffHold === true
+      || state.firstFlightHandoffHold === true) return;
   if (state.jobs.length === 0) {
     state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
     publishUpgradeDiagnostics(state);
@@ -3661,7 +3956,8 @@ function scheduleNextUpgradeFrame(state) {
   const token = (Number(state.frameScheduleToken) || 0) + 1;
   state.frameScheduleToken = token;
   scheduleUpgradeFrame(() => {
-    if (state.frameScheduleToken !== token || state.openingHandoffHold === true) return;
+    if (state.frameScheduleToken !== token || state.openingHandoffHold === true
+        || state.firstFlightHandoffHold === true) return;
     admitNextUpgradeJob(state);
   });
 }
@@ -3684,6 +3980,18 @@ function admitNextUpgradeJob(state) {
     const priorityDelta = authoredUpgradePriority(a) - authoredUpgradePriority(b);
     return priorityDelta || a.sequence - b.sequence;
   });
+  if (state.loadingHullsOnly === true) {
+    const hullIndex = state.jobs.findIndex(isLoadingHullUpgradeJob);
+    if (hullIndex < 0) {
+      state.running = state.inFlight > 0 || state.diagnostics.activeJobs > 0;
+      publishUpgradeDiagnostics(state);
+      return null;
+    }
+    if (hullIndex > 0) {
+      const [hull] = state.jobs.splice(hullIndex, 1);
+      state.jobs.unshift(hull);
+    }
+  }
   primeNextAuthoredAssetPlan(state);
   const job = state.jobs.shift();
   if (!job) {
@@ -3956,6 +4264,256 @@ export function getAuthoredUpgradeQueueStats(scene) {
   };
 }
 
+export function describeAuthoredUpgradeQueue(scene) {
+  const state = scene && upgradeQueuesByScene.get(scene);
+  if (!state) return { present: false, pending: 0, inFlight: 0, running: false, held: false, jobs: [] };
+  const jobs = [];
+  const seen = new Set();
+  for (const job of [...state.jobs, ...state.byBoundary.values()]) {
+    if (!job || seen.has(job)) continue;
+    seen.add(job);
+    jobs.push({
+      key: job.key || null,
+      lifecycle: job.lifecycle || null,
+      status: job.boundary && job.boundary.userData
+        ? job.boundary.userData.authoredAssetState
+        : null,
+    });
+    if (jobs.length >= 8) break;
+  }
+  return {
+    present: true,
+    pending: state.jobs.length,
+    inFlight: state.inFlight,
+    running: !!state.running,
+    held: state.openingHandoffHold === true || state.firstFlightHandoffHold === true,
+    jobs,
+  };
+}
+
+/** Admit queued upgrades without waiting for a display rAF. Loading-shell only. */
+export function pumpAuthoredUpgradeQueue(scene, options = {}) {
+  const state = scene && upgradeQueuesByScene.get(scene);
+  if (!state) return { pumped: 0, pending: 0, inFlight: 0, held: false };
+  if (state.firstFlightHandoffHold === true && options.force !== true) {
+    return { pumped: 0, pending: state.jobs.length, inFlight: state.inFlight, held: true };
+  }
+  if (state.openingHandoffHold === true) {
+    state.openingHandoffHold = false;
+  }
+  const only = typeof options.only === 'function' ? options.only : null;
+  if (only) {
+    const preferred = [];
+    const deferred = [];
+    for (const job of state.jobs) {
+      if (only(job)) preferred.push(job);
+      else deferred.push(job);
+    }
+    if (preferred.length) state.jobs = preferred.concat(deferred);
+  }
+  let pumped = 0;
+  const limit = Math.max(1, authoredUpgradeConcurrencyLimit());
+  while (state.jobs.length > 0 && state.inFlight < limit && pumped < limit) {
+    if (only && !only(state.jobs[0])) break;
+    const pendingBefore = state.jobs.length;
+    const inFlightBefore = state.inFlight;
+    admitNextUpgradeJob(state);
+    if (state.jobs.length >= pendingBefore && state.inFlight <= inFlightBefore) break;
+    pumped += 1;
+  }
+  return {
+    pumped,
+    pending: state.jobs.length,
+    inFlight: state.inFlight,
+    held: false,
+  };
+}
+
+/** Detached authored roots that have compiled but not yet swapped into the live graph. */
+export function collectPreparedAuthoredCompileRoots(scene) {
+  const roots = [];
+  const seen = new Set();
+  const state = scene && sceneStates.get(scene);
+  if (!state || !state.preparedAuthoredRoots) return roots;
+  for (const prepared of state.preparedAuthoredRoots.values()) {
+    for (const root of prepared) {
+      if (!root || seen.has(root)) continue;
+      if (root.isObject3D !== true && typeof root.traverse !== 'function') continue;
+      seen.add(root);
+      roots.push(root);
+    }
+  }
+  return roots;
+}
+
+/** Loading-shell wait only. Does not change the flight-start readiness gate. */
+export async function waitForAuthoredUpgradeQueueIdle(scene, options = {}) {
+  const timeoutMs = Math.max(0, Number(options.timeoutMs) || 6000);
+  const yieldToMain = typeof options.yieldToMain === 'function'
+    ? options.yieldToMain
+    : () => new Promise((resolve) => setTimeout(resolve, 16));
+  const started = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+  const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now());
+  const snapshot = () => {
+    const described = describeAuthoredUpgradeQueue(scene);
+    return {
+      pending: described.pending,
+      inFlight: described.inFlight,
+      running: described.running,
+      compiling: (described.jobs || []).some((job) => (
+        job.lifecycle === 'in-flight' || job.status === 'compiling-pipelines'
+      )),
+    };
+  };
+  const pump = () => {
+    if (typeof options.pump === 'function') return options.pump();
+    return pumpAuthoredUpgradeQueue(scene);
+  };
+  while (now() - started < timeoutMs) {
+    pump();
+    const stats = snapshot();
+    if (stats.pending === 0 && stats.inFlight === 0 && stats.running !== true
+        && stats.compiling !== true) {
+      return { idle: true, waitedMs: now() - started, ...stats };
+    }
+    await yieldToMain();
+  }
+  return { idle: false, waitedMs: now() - started, ...snapshot() };
+}
+
+function openingAssetRoot(entry, state, meshes) {
+  const entity = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(entry && entry.id)
+    : (state && state.entityList || []).find((item) => item && item.id === (entry && entry.id));
+  return (meshes && typeof meshes.get === 'function' && meshes.get(entry && entry.id))
+    || (entity && entity.mesh)
+    || null;
+}
+
+function openingAssetCanStillSettle(entry, state, meshes) {
+  if (!entry) return false;
+  if (isFlightReadyStatus(entry.status) || authoredOpeningFailedClosed(entry.status)) return false;
+  const root = openingAssetRoot(entry, state, meshes);
+  const promise = root && root.userData && root.userData.authoredUpgradePromise;
+  if ((entry.status === 'loading' || entry.status === 'compiling-pipelines') && promise) return true;
+  return typeof (root && root.userData && root.userData.requestAuthoredUpgrade) === 'function';
+}
+
+/** Kick nearby opening-composition upgrades that are still waiting for a first draw. */
+export function requestOpeningCompositionUpgrades(state, renderer, scene, meshes) {
+  if (!state || !renderer || !scene) return { requested: 0, ids: [] };
+  const ids = [];
+  const list = Array.isArray(state.entityList) ? state.entityList : [];
+  for (const entity of list) {
+    if (!isInitialAuthoredCompositionEntity(entity, state)) continue;
+    const root = (meshes && typeof meshes.get === 'function' && meshes.get(entity.id))
+      || (entity && entity.mesh)
+      || null;
+    const request = root && root.userData && root.userData.requestAuthoredUpgrade;
+    if (typeof request !== 'function') continue;
+    const status = (root.userData && root.userData.authoredAssetState) || authoredAssetState(entity);
+    if (authoredOpeningFailedClosed(status) || isFlightReadyStatus(status)) continue;
+    if (authoredAdmissionStarted(status) && root.userData.authoredUpgradePromise) continue;
+    request(renderer, scene);
+    ids.push(entity.id);
+  }
+  return { requested: ids.length, ids };
+}
+
+/** Loading-shell wait only. Nearby opening actors settle before the live-scene cook, not the flight gate. */
+export async function waitForOpeningCompositionSettled(state, options = {}) {
+  const timeoutMs = Math.max(0, Number(options.timeoutMs) || 8000);
+  const yieldToMain = typeof options.yieldToMain === 'function'
+    ? options.yieldToMain
+    : () => new Promise((resolve) => setTimeout(resolve, 16));
+  const started = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+  const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now());
+  const request = () => {
+    if (typeof options.request === 'function') return options.request();
+    return requestOpeningCompositionUpgrades(state, options.renderer, options.scene, options.meshes);
+  };
+  const pump = () => {
+    if (typeof options.pump === 'function') return options.pump();
+    const live = options.state || state;
+    return pumpAuthoredUpgradeQueue(options.scene, {
+      only: (job) => !!(job && job.entity && isInitialAuthoredCompositionEntity(job.entity, live)),
+    });
+  };
+  let lastRequest = { requested: 0, ids: [] };
+  while (now() - started < timeoutMs) {
+    lastRequest = request();
+    pump();
+    const readiness = authoredCriticalVisualReadiness(state);
+    const pending = (readiness && readiness.openingPending) || [];
+    if (pending.length === 0) {
+      return {
+        settled: true,
+        waitedMs: now() - started,
+        pending: 0,
+        ids: [],
+        requested: lastRequest,
+        queue: describeAuthoredUpgradeQueue(options.scene),
+      };
+    }
+    const stillOpen = pending.filter((entry) => (
+      openingAssetCanStillSettle(entry, state, options.meshes)
+    ));
+    if (stillOpen.length === 0) {
+      return {
+        settled: false,
+        reason: 'unstartable',
+        waitedMs: now() - started,
+        pending: pending.length,
+        ids: pending.map((entry) => entry && entry.id).filter(Boolean),
+        statuses: pending.map((entry) => describeOpeningPending(entry)),
+        requested: lastRequest,
+        queue: describeAuthoredUpgradeQueue(options.scene),
+      };
+    }
+    const promises = stillOpen
+      .map((entry) => {
+        const root = openingAssetRoot(entry, state, options.meshes);
+        return root && root.userData && root.userData.authoredUpgradePromise;
+      })
+      .filter((promise) => promise && typeof promise.then === 'function');
+    if (promises.length) {
+      await Promise.race([
+        Promise.allSettled(promises),
+        Promise.resolve().then(() => yieldToMain()),
+      ]);
+    }
+    await yieldToMain();
+  }
+  const readiness = authoredCriticalVisualReadiness(state);
+  const pending = (readiness && readiness.openingPending) || [];
+  return {
+    settled: false,
+    reason: 'timeout',
+    waitedMs: now() - started,
+    pending: pending.length,
+    ids: pending.map((entry) => entry && entry.id).filter(Boolean),
+    statuses: pending.map((entry) => describeOpeningPending(entry)),
+    requested: lastRequest,
+    queue: describeAuthoredUpgradeQueue(options.scene),
+  };
+}
+
+function describeOpeningPending(entry) {
+  if (!entry) return '';
+  const bits = [entry.id, entry.status, entry.type, entry.defId];
+  if (entry.hook === false) bits.push('no-hook');
+  if (entry.promised === false) bits.push('no-promise');
+  return bits.filter((bit) => bit !== undefined && bit !== null && bit !== '').join(':');
+}
+
 export function preloadAuthoredPartLibrary(renderer, options = {}) {
   return loadCanonicalLibrary(renderer, options);
 }
@@ -3979,7 +4537,18 @@ export function authoredCriticalVisualReadiness(state) {
   const hubStatus = hub ? authoredAssetState(hub) : 'not-present';
   const openingAssets = entityList
     .filter((entity) => isInitialAuthoredCompositionEntity(entity, state))
-    .map((entity) => ({ id: entity.id, type: entity.type, status: authoredAssetState(entity) }));
+    .map((entity) => {
+      const root = entity && entity.mesh;
+      const data = entity && entity.data || {};
+      return {
+        id: entity.id,
+        type: entity.type,
+        defId: data.defId || data.actorId || data.assetRef || null,
+        status: authoredAssetState(entity),
+        hook: typeof (root && root.userData && root.userData.requestAuthoredUpgrade) === 'function',
+        promised: !!(root && root.userData && root.userData.authoredUpgradePromise),
+      };
+    });
   const openingPending = openingAssets.filter((entry) => (
     !isFlightReadyStatus(entry.status)
     && !authoredOpeningFailedClosed(entry.status)
@@ -7491,7 +8060,8 @@ function admitRenderPackageShipPoolCandidate(
   if (!hasPackageSlots && first?.owner === owner) return object;
 
   const live = authoredRuntimeState();
-  const deferNewChunkPublication = !live || live.mode === 'loading';
+  const deferNewChunkPublication = !(live && live.render && live.render.liveSectorGpuAdmission === true)
+    && (!live || live.mode === 'loading');
   const allocations = [];
   try {
     if (!hasPackageSlots && first) {
@@ -9031,6 +9601,7 @@ function sharedMaterialFor(base, tags, palette) {
     const tintToken = hullMaterialSuffix(tint);
     const canonical = resolveCanonicalHullMaterial(material, tintToken);
     if (canonical !== material) {
+      stampSharedMaterialRole(canonical, sharedMaterialRoleFromAuthored(tags, base));
       sharedMaterialVariants.set(key, canonical);
       return canonical;
     }
@@ -9042,6 +9613,7 @@ function sharedMaterialFor(base, tags, palette) {
       spacefacePaletteTint: tintToken,
       spacefaceHullTint: role === 'hull' ? tintToken : undefined,
     };
+    stampSharedMaterialRole(material, sharedMaterialRoleFromAuthored(tags, base));
     material.dispose = () => {};
     sharedMaterialVariants.set(key, material);
   }
@@ -9077,6 +9649,7 @@ function mutableMaterialFor(base, tags, palette, cache, instanceKey) {
       spacefaceProgramFamily: authoredMaterialProgramFamily(base, tags, role, true),
       spacefacePaletteTint: hullMaterialSuffix(tint),
     };
+    stampSharedMaterialRole(material, sharedMaterialRoleFromAuthored(tags, base));
     cache.set(key, material);
   }
   return material;
@@ -9798,5 +10371,9 @@ export function runMaterialSharingContractProbe(THREE_NS = THREE) {
     mechanicalProgramFamilyShared: mechanical.name === mechanicalAlt.name
       && mechanical.name === 'SF_Shared_mechanical_dark'
       && mechanical !== mechanicalAlt,
+    authoredHullRoleStamped: texturedHull.userData.spacefaceSharedMaterialRole === 'hull'
+      && texturedHullAlt.userData.spacefaceSharedMaterialRole === 'hull',
+    authoredPaintSharesProgramFamily: texturedHull.userData.spacefaceProgramFamily
+      === texturedHullAlt.userData.spacefaceProgramFamily,
   };
 }
