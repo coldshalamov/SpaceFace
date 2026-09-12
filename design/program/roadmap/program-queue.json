@@ -9222,7 +9222,7 @@
       "priority": 181,
       "title": "Flows on the fit screen",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9247,8 +9247,10 @@
         "npm run check:save-schema",
         "npm run check:sim:v3"
       ],
-      "receiptRefs": [],
-      "brief": "Energy draw, heat and cooling as sustained-fire margin; the screen predicts turn radius, reversal time, top speed and tow class before commit; every module has a one-line sentence. DONE WHEN: Blind test: a player predicts handling from the screen and is right within 20 % on the bench."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-176.03-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED (partial) 2026-09-12: the four handling bars and the predictions read the live propulsion profile (fit moves the bars; check proves it). Open: energy/heat as sustained-fire margin, one-line sentence per module, turn-radius sentence, the blind within-20% bench test. Data question surfaced: Hornet interceptor travel ceiling 252 vs Ironback barge 715. Energy draw, heat and cooling as sustained-fire margin; the screen predicts turn radius, reversal time, top speed and tow class before commit; every module has a one-line sentence. DONE WHEN: Blind test: a player predicts handling from the screen and is right within 20 % on the bench."
     },
     {
       "id": "PQ-176.04",
