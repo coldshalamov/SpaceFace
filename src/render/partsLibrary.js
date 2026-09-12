@@ -1933,8 +1933,19 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
 }
 
 export function buildAuthoredStationArchetype(entity, options = {}) {
+  if (!entity || entity.type !== 'station') return null;
   const placeFile = placeFileForEntity(entity);
-  if (!placeFile || !entity || entity.type !== 'station') return null;
+  if (!placeFile) {
+    // PQ-193.12: fail closed. A station with no resolvable authored archetype publishes nothing —
+    // the procedural fat-cylinder-plus-hoops body is a defect, not a style, and must never reach
+    // the glass as a silent substitute for a designed station.
+    const data = entity.data || {};
+    throw new Error(
+      `[partsLibrary] station ${data.stationId || entity.id || 'unknown'} has no resolvable`
+      + ` authored archetype (archetypeGlb=${data.archetypeGlb || 'none'},`
+      + ` stationTypeId=${data.stationTypeId || 'none'}); procedural station fallback retired`,
+    );
+  }
   const placeId = placeFile.replace(/^places\//, '').replace(/\.glb$/, '');
   const loadEntity = {
     ...entity,
@@ -2132,7 +2143,12 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   }
 
   const stationed = attachStationHlod(boundary, entity);
-  optimizeStaticBatchesForRoot(stationed);
+  // PQ-193.12: the boundary's only child at wrap time is the hidden diagnostic substrate, so a
+  // static-batch pass here could only ever merge invisible placeholder meshes. That merge
+  // fabricated a fresh non-shared BufferGeometry out of shared station primitives — geometry the
+  // authored-commit cleanup then disposed, corrupting the shared fallback set every other station
+  // still relies on for failure controls. The authored GLB root batches itself inside
+  // buildPlacePropRoot when it arrives; the hidden substrate keeps its shared primitives intact.
   freezeStaticChildMatrices(stationed);
   return stationed;
 }
@@ -3130,6 +3146,20 @@ function fallbackPlaceColor(placeId, paletteClass) {
   return 0x39d0ff;
 }
 
+const warnedUnresolvedStationPlaceIds = new Set();
+
+function warnUnresolvedStationPlaceId(entity, id, rescue) {
+  const key = String(id);
+  if (warnedUnresolvedStationPlaceIds.has(key)) return;
+  warnedUnresolvedStationPlaceIds.add(key);
+  const data = entity && entity.data || {};
+  const label = data.stationId || data.name || (entity && entity.id) || 'station';
+  console.warn(
+    `[partsLibrary] station place id '${key}' is not in the place registry (${label});`
+    + ` resolving ${rescue} instead`,
+  );
+}
+
 function placeFileForEntity(entity) {
   const data = entity && entity.data || {};
   if (entity && entity.type === 'asteroid' && !hasExplicitAuthoredGeologyPresentation(entity)) return null;
@@ -3139,16 +3169,35 @@ function placeFileForEntity(entity) {
   const id = String(
     data.archetypeGlb || data.landmarkGlb || data.placeId || data.assetId || '',
   ).replace(/^places\//, '').replace(/\.glb$/, '');
-  if (!id) return null;
-  if (data.everydaySpaceKit === true) {
-    const kitFile = EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[id];
-    if (kitFile) return kitFile;
+  if (id) {
+    if (data.everydaySpaceKit === true) {
+      const kitFile = EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID[id];
+      if (kitFile) return kitFile;
+    }
+    if (data.wreckAftermath === true) {
+      const wreckFile = WRECK_AFTERMATH_PLACE_FILE_BY_ID[id];
+      if (wreckFile) return wreckFile;
+    }
+    const explicitFile = PLACE_FILE_BY_ID[id]
+      || (PLACE_FILES.includes(`places/${id}.glb`) ? `places/${id}.glb` : null);
+    if (explicitFile) return explicitFile;
   }
-  if (data.wreckAftermath === true) {
-    const wreckFile = WRECK_AFTERMATH_PLACE_FILE_BY_ID[id];
-    if (wreckFile) return wreckFile;
+  // PQ-193.12: a station the player can reach must never fall through to the procedural
+  // fat-cylinder-plus-hoops body. The station catalog type vocabulary is total over
+  // STATION_TYPES -> places/place_station_<type>.glb and every gate/wormhole ring is the authored
+  // jump ring, so resolution is total even when a record forgets or mistypes its archetype tag.
+  if (entity && entity.type === 'station') {
+    if (data.isGate === true || data.isWormhole === true) {
+      if (id) warnUnresolvedStationPlaceId(entity, id, 'the authored jump ring');
+      return 'places/place_gate_jump_ring.glb';
+    }
+    const typeId = String(data.stationTypeId || '');
+    if (typeId && PLACE_FILE_BY_ID[`place_station_${typeId}`]) {
+      if (id) warnUnresolvedStationPlaceId(entity, id, 'the authored station family body');
+      return `places/place_station_${typeId}.glb`;
+    }
   }
-  return PLACE_FILE_BY_ID[id] || (PLACE_FILES.includes(`places/${id}.glb`) ? `places/${id}.glb` : null);
+  return null;
 }
 
 export function enqueueBoundaryUpgrade(scene, job) {
