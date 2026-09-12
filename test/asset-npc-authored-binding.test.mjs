@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import * as rendererModule from '../src/render/renderer.js';
 import { shouldAutoTriggerAuthoredUpgrade } from '../src/render/partsLibrary.js';
+import { AUTHORED_ASSET_PREFETCH_RADIUS } from '../src/render/authoredAdmissionPolicy.js';
 
 const enqueueMissingMeshBuilds = rendererModule.enqueueMissingMeshBuilds;
 const isEntityRenderRelevant = rendererModule.isEntityRenderRelevant;
@@ -146,7 +147,15 @@ test('authored assets preload ahead of visibility without decoding the whole act
   };
   const immediate = { id: 2, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 150, z: 0 } };
   const approaching = { id: 3, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 500, z: 0 } };
-  const offAxis = { id: 4, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 0, z: 500 } };
+  // The 4 s authored decode circle (AUTHORED_ASSET_PREFETCH_RADIUS) admits everything inside it,
+  // including a body the player is sliding past with no closing speed: skipping those was a
+  // late-pop hole for crossing traffic, and hulls already decode that way (isInboundDecodeHull).
+  // Off-axis content OUTSIDE the circle with no closing speed is what must not decode speculatively.
+  const offAxisInside = { id: 4, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 0, z: 500 } };
+  const offAxisOutside = {
+    id: 8, type: 'station', homeSectorId: 'sector_helios_prime',
+    pos: { x: 0, z: AUTHORED_ASSET_PREFETCH_RADIUS + 60 },
+  };
   const far = { id: 5, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 2100, z: 0 } };
   const inboundTraffic = {
     id: 6,
@@ -155,9 +164,13 @@ test('authored assets preload ahead of visibility without decoding the whole act
     pos: { x: 500, z: 0 },
     vel: { x: -160, z: 0 },
   };
+  assert.ok(AUTHORED_ASSET_PREFETCH_RADIUS > 500, 'fixture assumes the 500 WU subjects sit inside the decode circle');
   assert.equal(isEntityAuthoredUpgradeRelevant(immediate, state), true, 'near content gets an immediate quality runway');
   assert.equal(isEntityAuthoredUpgradeRelevant(approaching, state), true, 'approaching content preloads before entry');
-  assert.equal(isEntityAuthoredUpgradeRelevant(offAxis, state), false, 'stationary/off-axis content does not decode speculatively');
+  assert.equal(isEntityAuthoredUpgradeRelevant(offAxisInside, state), true,
+    'content already inside the decode circle preloads even while sliding along the rim');
+  assert.equal(isEntityAuthoredUpgradeRelevant(offAxisOutside, state), false,
+    'stationary/off-axis content outside the decode circle does not decode speculatively');
   assert.equal(isEntityAuthoredUpgradeRelevant(far, state), false, 'offscreen current-sector content stays dormant');
   state.entities.get(1).vel.x = 0;
   assert.equal(isEntityAuthoredUpgradeRelevant(inboundTraffic, state), true,

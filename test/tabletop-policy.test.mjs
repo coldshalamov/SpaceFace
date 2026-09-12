@@ -257,7 +257,12 @@ test('authored decode follows the table, not a 2400-unit horizon', () => {
   };
   const immediate = { id: 2, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 150, z: 0 } };
   const approaching = { id: 3, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 500, z: 0 } };
-  const offAxis = { id: 4, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 0, z: 500 } };
+  // Inside the 4 s decode circle a body decodes even with zero closing speed (crossing traffic
+  // otherwise popped late); the speculative-decode rule bites only outside that circle.
+  const offAxisInside = { id: 4, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 0, z: 500 } };
+  const offAxisOutside = {
+    id: 11, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 0, z: authoredPrefetchRadius(160) + 60 },
+  };
   const far = { id: 5, type: 'station', homeSectorId: 'sector_helios_prime', pos: { x: 2100, z: 0 } };
   const inboundTraffic = {
     id: 6,
@@ -268,7 +273,8 @@ test('authored decode follows the table, not a 2400-unit horizon', () => {
   };
   assert.equal(isEntityAuthoredUpgradeRelevant(immediate, state), true);
   assert.equal(isEntityAuthoredUpgradeRelevant(approaching, state), true);
-  assert.equal(isEntityAuthoredUpgradeRelevant(offAxis, state), false);
+  assert.equal(isEntityAuthoredUpgradeRelevant(offAxisInside, state), true);
+  assert.equal(isEntityAuthoredUpgradeRelevant(offAxisOutside, state), false);
   assert.equal(isEntityAuthoredUpgradeRelevant(far, state), false);
   state.entities.get(1).vel.x = 0;
   assert.equal(isEntityAuthoredUpgradeRelevant(inboundTraffic, state), true);

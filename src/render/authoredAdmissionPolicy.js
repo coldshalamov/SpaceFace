@@ -78,6 +78,9 @@ export function willEntityEnterAuthoredUpgradeRunway(entity, state, {
   const relativeX = (Number(player.vel?.x) || 0) - (Number(entity.vel?.x) || 0);
   const relativeZ = (Number(player.vel?.z) || 0) - (Number(entity.vel?.z) || 0);
   const closingSpeed = (dx * relativeX + dz * relativeZ) / distance;
+  // Already inside the 4s authored decode radius: start decode even if the contact is sliding
+  // along the rim (closing speed <= 1). That skip was a late-pop hole for crossing traffic.
+  if (surface <= prefetch) return true;
   if (closingSpeed <= 1) return false;
 
   const horizon = Math.max(0, Number(horizonSeconds) || 0);
