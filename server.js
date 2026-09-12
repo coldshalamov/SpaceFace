@@ -63,6 +63,20 @@ const server = createGameServer({
       stateChanging: true,
       handle: handleShot,
     },
+    {
+      // A dev tree has no release receipt: scripts/build-bundle.mjs writes
+      // spaceface-release-build.json into build/web for packaged builds only. The title and pause
+      // version fine print fetch it on every boot (src/ui/screens/mainMenu.js), so the raw browser
+      // route logged a 404 on every launch — harmless to the player (the fine print falls back to
+      // the compiled version) but it failed every "no console errors" walk, e.g.
+      // check:crucible:route CLEAN. Answer with an empty receipt so dev boots are clean and the
+      // fine print falls back exactly as it does on a packaged build without a digest.
+      test: (method, url) => method === 'GET' && url.split('?')[0] === '/spaceface-release-build.json',
+      handle: (req, res) => {
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+        res.end('{"dev":true,"output":{}}');
+      },
+    },
   ],
 });
 
