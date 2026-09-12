@@ -273,7 +273,7 @@ export const mainMenuScreen = {
     rootEl.classList.add('k-screen', 'k-screen--stage');
     rootEl.dataset.kReady = '0';
 
-    const { backdrop, title, stage } = createTitleFrame(rootEl);
+    const { backdrop, title, stage, status } = createTitleFrame(rootEl);
 
     // The words. Visible words follow the sheet; the accessible names keep the game's core copy
     // (coreText) so every route that finds "New Game" / "Continue" / "Quit Game" still does.
@@ -292,6 +292,15 @@ export const mainMenuScreen = {
     // an hour. Stripped from production builds via IS_DEV. See src/ui/screens/sandbox.js.
     if (IS_DEV) items.push({ action: 'sandbox', label: 'Sandbox' });
     items.push({ action: 'quit', label: 'Quit', danger: true });
+
+    // THE LEGEND RAIL — the one piece of hardware the POSTER register carries
+    // (approved/frames/frame-title-v2.png; approved/kit-notes.md §7). `.fh-rail` is the kit's own
+    // class and its material is the produced `plate.poster.rail` nine-slice, so this is a rendered
+    // object with thickness and a lit edge rather than a styled div. Decorative: the words in
+    // front of it carry every name and every route.
+    const rail = el('div', 'of-title-rail fh-rail');
+    rail.setAttribute('aria-hidden', 'true');
+    stage.appendChild(rail);
 
     const list = words(items, {
       ariaLabel: 'Title menu',
@@ -321,6 +330,12 @@ export const mainMenuScreen = {
     // lives in its own span so _loadVersion can rewrite it without touching the word.
     const version = el('div', 'k-fine');
     version.dataset.role = 'version';
+    // The build light: the produced `light.dot.good.on` render, the frame's own corner detail.
+    // Decorative — the build string beside it is the information.
+    const buildLight = el('span', 'fh-light');
+    buildLight.dataset.colour = 'good';
+    buildLight.setAttribute('aria-hidden', 'true');
+    version.appendChild(buildLight);
     const versionText = el('span', '', leftoverVersionLabel(CREDITS));
     version.appendChild(versionText);
     version.appendChild(el('span', '', ' · '));
@@ -332,7 +347,7 @@ export const mainMenuScreen = {
     rootEl.appendChild(version);
 
     refs = {
-      root: rootEl, backdrop, title, list, version, versionText, bCredits, saveSummary,
+      root: rootEl, backdrop, title, list, version, versionText, bCredits, saveSummary, status,
       bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive,
       buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bSettings, bSandbox, bQuit].filter(Boolean),
     };
@@ -410,9 +425,11 @@ export const mainMenuScreen = {
       const summary = saveSummaryText(latest.slot, latest.meta);
       refs.saveSummary.textContent = coreText('continueSummary', { summary });
       setDisabled(refs.bContinue, false, 'Load ' + summary);
+      if (refs.status) refs.status.textContent = 'Save ready';
     } else {
       refs.saveSummary.textContent = coreText('noSave');
       setDisabled(refs.bContinue, true, 'No save found yet');
+      if (refs.status) refs.status.textContent = 'No save';
     }
     this._syncCurrent();
   },

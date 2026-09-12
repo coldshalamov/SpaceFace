@@ -18,14 +18,14 @@ export function createTitleFrame(root) {
   const title = el('header', 'k-title');
   const brand = el('div', 'of-brand-mark'); brand.setAttribute('aria-hidden', 'true');
   title.appendChild(brand); title.appendChild(el('h1', 'k-display k-t-name', 'SpaceFace'));
-  title.appendChild(el('p', 'of-title-line', 'Make a living. Leave a mark.'));
+  // Frame status strip — produced legend plate, not a slogan under the wordmark.
+  const status = el('p', 'of-title-line');
+  status.dataset.role = 'title-status';
+  title.appendChild(status);
   const stage = el('nav', 'k-stage of-title-actions');
   stage.setAttribute('aria-label', 'Main menu');
-  const signature = el('div', 'of-title-caption');
-  signature.setAttribute('aria-hidden', 'true');
-  signature.appendChild(el('span', '', 'Trade. Fight. Build.')); signature.appendChild(el('span', '', 'The belt is yours to cross.'));
-  for (const node of [backdrop, title, stage, signature]) root.appendChild(node);
-  return { backdrop, title, stage };
+  for (const node of [backdrop, title, stage]) root.appendChild(node);
+  return { backdrop, title, stage, status };
 }
 
 export function createPauseFrame(root, { titleText = 'Paused', briefLabel = 'Flight brief' } = {}) {
