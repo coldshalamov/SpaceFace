@@ -875,9 +875,19 @@ export function createAttachmentService(context) {
       }
 
       if (state.tick - attachment.createdTick < grace) continue;
-      if (!masslinePolicy && ((breakPolicy && attachment.lastTension > breakPolicy.maxTension) || (breakPolicy && attachment.lastImpulse > breakPolicy.maxImpulse))) {
-        breakAttachment(attachment, 'threshold', attachment.ownerId, telemetry);
+      const thresholdExceeded = (breakPolicy && attachment.lastTension > breakPolicy.maxTension)
+        || (breakPolicy && attachment.lastImpulse > breakPolicy.maxImpulse);
+      if (!thresholdExceeded) continue;
+      // Controller-backed ordinary Masslines stay fail-closed. Extreme endpoints that opted
+      // into automatic break still snap on the authored envelope after the ordered warning
+      // lease, even when oscillating load never reaches the controller's catastrophic cut.
+      if (masslinePolicy && !automaticBreak) continue;
+      if (masslinePolicy
+        && Number.isFinite(attachment.breakWarningUntilTick)
+        && state.tick < attachment.breakWarningUntilTick) {
+        continue;
       }
+      breakAttachment(attachment, 'threshold', attachment.ownerId, telemetry);
     }
   }
 

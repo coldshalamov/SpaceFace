@@ -171,7 +171,12 @@ export function resolveTravelCeiling(profileLike) {
  */
 function normalizeTravelDrive(raw) {
   const d = raw && typeof raw === 'object' ? raw : {};
-  const state = TRAVEL_DRIVE_STATES.includes(d.state) ? d.state : 'off';
+  let state = TRAVEL_DRIVE_STATES.includes(d.state) ? d.state : 'off';
+  // A disruption is a forced drop off the burn. The latch usually publishes cooldown already;
+  // if a caller forwards the level flag on this block, do not keep ramping an engaged burn.
+  if (d.disrupted === true && (state === 'engaged' || state === 'spooling')) {
+    state = 'cooldown';
+  }
   return {
     state,
     // Carried ramp state. 0 means "no travel cap in flight"; the first engaged tick seeds it.
@@ -267,6 +272,7 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
   const yaw = computeYawControl(body, input, profile, dt);
   const demand = resourceDemand(profile, accel, input.boost, dt);
   const nextRuntime = coolRuntime({ ...runtime, family: profile.family }, profile, demand, dt);
+  accel = applyTravelCapSpend(accel, body, governor, dt);
 
   return makeResult({
     body,
@@ -319,14 +325,7 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
   const boostMult = input.boost ? positive(profile.boostSpeedMult, 1.55) : 1;
   const baseCap = commandFraction * governedSpeed * boostMult;
   const speed = Math.hypot(localVelocity.forward, localVelocity.lateral);
-  // The tag is supplied only for a real tether/self-sling exit. It cannot create overspeed:
-  // from below the ordinary cap, baseCap remains the target. From above it, the moving target
-  // decays exponentially, preserving the spectacle while still spending the earned velocity.
-  const physicsEarned = !!input.physicsEarnedMomentum && speed > baseCap;
-  const decayTauS = positive(input.earnedMomentumDecayTauS, 6);
-  const earnedCap = physicsEarned
-    ? speed * Math.exp(-Math.max(0, finite(dt, 0)) / decayTauS)
-    : baseCap;
+  const step = Math.max(0, finite(dt, 0));
   // Travel drive (D5). A third axis, orthogonal to the assist regime and to who is holding the
   // stick: it raises the *cap* along a ramp and never touches thruster authority, so assisted /
   // drift / newtonian keep their existing meanings and `route-follower + assisted + engaged` is
@@ -340,7 +339,22 @@ function applySpeedGovernor(manualLocal, input, limits, localVelocity, profile, 
   const burn = travelFlag('travelBurn')
     ? advanceTravelDrive(normalizeTravelDrive(input.travelDrive), profile, baseCap, speed, dt)
     : null;
-  const cap = Math.max(baseCap, earnedCap, burn ? burn.cap : 0);
+  // `input.physicsEarnedMomentum` is the tether/self-sling tag. A disengaged travel burn reports
+  // the same contract on `burn` so leftover cruise is a falling ceiling, not a thrust target.
+  const travelEarned = !!(burn && burn.physicsEarnedMomentum);
+  const physicsEarned = (!!input.physicsEarnedMomentum || travelEarned) && speed > baseCap;
+  const decayTauS = travelEarned
+    ? TRAVEL_DISENGAGE_DECAY_TAU_S
+    : positive(input.earnedMomentumDecayTauS, 6);
+  const earnedCap = physicsEarned
+    ? speed * Math.exp(-step / decayTauS)
+    : baseCap;
+  // Engaged burns raise the cap. Once the burn is down, leftover boosted `burn.cap` is only a
+  // falling ceiling: throttle chases the decaying earned speed so the excess is spent rather
+  // than held at the old travel target. RC-4 still floors commanded reverse at coast.
+  const cap = travelEarned
+    ? Math.max(baseCap, Math.min(earnedCap, burn.cap > 0 ? burn.cap : earnedCap))
+    : Math.max(baseCap, earnedCap, burn ? burn.cap : 0);
   // A positive-forward command must still be allowed to reverse motion carried opposite the
   // nose. Comparing only scalar speed makes the exact cap a dead equilibrium for a ship travelling
   // backward: `err` becomes zero, the governor removes all forward thrust, and the ship can never
@@ -406,6 +420,24 @@ function controlMadeSpeedLimit(governor, profile) {
   const cap = finite(governor.cap, 0);
   if (!(cap > 0)) return solver;
   return Number.isFinite(solver) ? Math.min(cap, solver) : cap;
+}
+
+/**
+ * Follow a disengaged travel cap by bleeding planar speed one exponential step toward it.
+ * The governor's brake floor stays 0 (held throttle never commands reverse). This is the
+ * decaying-ceiling spend: at most one `TRAVEL_DISENGAGE_DECAY_TAU_S` step from current speed,
+ * so a stale leftover ceiling cannot slam the ship to combat speed in a tick.
+ */
+function applyTravelCapSpend(accel, body, governor, dt) {
+  if (!governor || !governor.travel || !governor.travel.earned) return accel;
+  const speed = length2(body.vel);
+  const cap = finite(governor.cap, 0);
+  const step = Math.max(0, finite(dt, 0));
+  if (!(speed > cap + EPS) || !(step > 0)) return accel;
+  const decayed = speed * Math.exp(-step / TRAVEL_DISENGAGE_DECAY_TAU_S);
+  const target = Math.max(cap, decayed);
+  if (!(target < speed - EPS)) return accel;
+  return add2(accel, scale2(body.vel, (target / speed - 1) / step));
 }
 
 function stepGravimetric(body, input, profile, runtime, environment, dt) {
@@ -629,6 +661,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
   const yaw = computeYawControl(body, input, profile, dt);
   const demand = resourceDemand(profile, accel, input.boost, dt, spool > 0 ? positive(profile.resources && profile.resources.idleFuelPerS, 0) : 0);
   const nextRuntime = coolRuntime({ ...runtime, family: profile.family, spool }, profile, demand, dt);
+  accel = applyTravelCapSpend(accel, body, governor, dt);
 
   return makeResult({
     body,

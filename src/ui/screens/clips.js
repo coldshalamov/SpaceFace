@@ -152,19 +152,47 @@ function stopPlayback() {
   openState.raf = null;
 }
 
+function suppressPauseRoot(rootEl, on) {
+  if (!rootEl) return;
+  if (on) {
+    rootEl.style.visibility = 'hidden';
+    rootEl.setAttribute('aria-hidden', 'true');
+    rootEl.inert = true;
+  } else {
+    rootEl.style.removeProperty('visibility');
+    rootEl.removeAttribute('aria-hidden');
+    rootEl.inert = false;
+  }
+  // Gamepad focus walks stop before the screen root, so children must be inert too.
+  const kids = rootEl.children;
+  if (!kids) return;
+  for (let i = 0; i < kids.length; i++) kids[i].inert = !!on;
+}
+
+function focusFirstOverlayControl(overlay) {
+  if (!overlay || typeof overlay.querySelector !== 'function') return;
+  const first = overlay.querySelector('button');
+  if (!first || typeof first.focus !== 'function') return;
+  try { first.focus({ preventScroll: true }); } catch (_) {
+    try { first.focus(); } catch (_) { /* pointer still reaches the overlay */ }
+  }
+}
+
 function closeClips() {
   if (!openState) return;
   stopPlayback();
   const { overlay, rootEl, onKey } = openState;
   window.removeEventListener('keydown', onKey, true);
   if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-  if (rootEl) {
-    rootEl.style.removeProperty('visibility');
-    rootEl.removeAttribute('aria-hidden');
-  }
+  suppressPauseRoot(rootEl, false);
   document.body.classList.remove(CLIPS_PRESENTATION_CLASS);
   openState = null;
   cue('close');
+}
+
+/** Safe to call when Clips is not open (Pause onHide, stack pop). */
+export function forceCloseClips() {
+  closeClips();
 }
 
 function clipRow(clip) {
@@ -252,10 +280,7 @@ export function openClips(rootEl, ctx) {
 
   const parent = (rootEl && rootEl.parentElement) || document.body;
   parent.appendChild(container);
-  if (rootEl) {
-    rootEl.style.visibility = 'hidden';
-    rootEl.setAttribute('aria-hidden', 'true');
-  }
+  suppressPauseRoot(rootEl, true);
   document.body.classList.add(CLIPS_PRESENTATION_CLASS);
 
   const onKey = (ev) => {
@@ -268,6 +293,7 @@ export function openClips(rootEl, ctx) {
 
   openState = { overlay: container, rootEl, onKey, raf: null };
   settle(container, { from: 'bottom', state: 'clips-open' });
+  focusFirstOverlayControl(container);
   cue('open');
 }
 

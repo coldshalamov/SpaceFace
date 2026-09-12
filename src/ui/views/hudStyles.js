@@ -12,6 +12,7 @@ export function injectHudCss() {
   #hud { font-size:calc(var(--k-fs-data) * var(--ui-scale, 1)); }
   #hud > * { pointer-events:none; }
   #hud > .sf-cargo-panel { pointer-events:auto; }
+  #hud > .sf-rightdock, #hud > .sf-command-deck, #hud > .sf-overview { pointer-events:auto; }
   body.ui-modal-open #aim-reticle,
   body.ui-modal-open #pilot-portrait { display:none !important; }
   body.ui-modal-open #alerts,
@@ -126,7 +127,7 @@ export function injectHudCss() {
   /* Contextual chips: hidden at rest, surface on value change, fade out. Nothing glows at rest. */
   .sf-stat--chip { opacity:0; transform:translateY(5px); pointer-events:none;
     transition:opacity .28s var(--ease, ease), transform .28s var(--ease, ease); }
-  .sf-stat--chip.sf-chip-show { opacity:1; transform:translateY(0); }
+  .sf-stat--chip.sf-chip-show { opacity:1; transform:translateY(0); pointer-events:auto; }
   /* Hover-affordance: these are readouts; underline the key to hint at the tooltip. */
   .sf-stat--info { cursor:default; user-select:none; }
   /* Line-control key hint. Sits under the tether readout only while a line is attached, which is

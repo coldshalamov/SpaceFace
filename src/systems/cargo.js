@@ -430,6 +430,7 @@ export const cargo = {
 
   /** Dump up to `qty` units of `commodityId` as a colliding persistent cargo pod. Returns amount dumped. */
   jettison(commodityId, qty) {
+    if (isUnsellableCargo(this.state, commodityId)) return 0;
     const state = this.state;
     const richSources = richLotSourcesForQty(state.player.cargo, commodityId, qty);
     const dumped = removeCargo(state, commodityId, qty);

@@ -19,8 +19,9 @@
 // Determinism (§0.5): sector content uses mulberry32(hash32(meta.seed, sectorId, epoch));
 //   epoch is first materialization and does not change on membership jitter. Never Math.random().
 // Single-writer (§0.6): world owns world.*/jump/fuel/nav; it emits economy:chargeCredits for
-//   gate tolls and never writes credits/cargo/rep directly. (Radiation hull drain is an
-//   environmental effect applied to the entity hull, which has no separate combat owner.)
+//   gate tolls and never writes credits/cargo/rep directly. Radiation is environmental damage
+//   routed through the combat kernel (shield then hull); isolated ticks fall back to the same
+//   vitals order and may kill.
 import { SECTORS, SECTOR_PALETTE_CLASSES, dangerIndex, surveyDataPrice } from '../data/sectors.js';
 import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six texture one-offs
 import {
@@ -57,6 +58,7 @@ import { collisionProxyIdForStation } from '../data/collisionProxyManifests.js';
 import { effectiveSectorFor } from './sectorSim.js';   // V2 §33 — live (drifted) hazard for spawn sizing
 import { regionalEcologyReadout, regionalResourceYieldMultiplier } from './regionalEcology.js';
 import { ASTEROIDS, FIELDS, deriveAsteroidSeams } from '../data/mining.js';
+import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { planZoneSpawns, zoneAt, zoneThreat } from '../data/sectorZones.js'; // named-zone purposeful spawning (WORLD_OVERHAUL_2_1)
 import {
@@ -298,6 +300,22 @@ function ceresActivityCollisionAnchorBinding(fieldId, sourceIndex, toGlobal) {
       z: binding.pocket.activityAnchor.localPos.z + binding.slot.offset.z,
     }),
   };
+}
+
+function poiMustStayLiveActor(poi, activityObjectSlotId) {
+  if (activityObjectSlotId) return true;
+  if (!poi || typeof poi !== 'object') return false;
+  if (poi.collides === true) return true;
+  if (poi.scannerSignalKind) return true;
+  if (poi.flavorTargetRef) return true;
+  if (poi.requiresActiveScan === true) return true;
+  if (poi.landmark === true) return true;
+  if (poi.discoveryPlate) return true;
+  if (poi.survivorPod === true) return true;
+  if (poi.recoveryEncounter === true) return true;
+  if (poi.claimable === true) return true;
+  if (poi.hidden === true) return true;
+  return false;
 }
 
 export const world = {
@@ -1837,7 +1855,7 @@ export const world = {
         ? poi.activityObjectSlotId
         : null;
       if (activityObjectSlotId) poiData.activityObjectSlotId = activityObjectSlotId;
-      const keepLive = !!activityObjectSlotId || poi.collides === true;
+      const keepLive = poiMustStayLiveActor(poi, activityObjectSlotId);
       const ent = keepLive
         ? this.helpers.spawnEntity({
           type: 'fx', factionId: poi.factionId || null, pos,
@@ -1873,13 +1891,17 @@ export const world = {
         for (let shipIndex = 1; shipIndex <= fleetCount; shipIndex += 1) {
           const angle = (shipIndex / fleetCount) * Math.PI * 2;
           const ring = 120 + (shipIndex % 5) * 28;
-          const hull = insertDressingRow(this.state, {
+          const hull = this.helpers.spawnEntity({
+            type: 'fx',
             pos: {
               x: pos.x + Math.cos(angle) * ring,
               z: pos.z + Math.sin(angle) * ring,
             },
             radius: 14,
-            homeSectorId: sector.id,
+            mass: 0,
+            collides: false,
+            physicsBody: false,
+            ttl: Infinity,
             data: {
               poi: true,
               poiId: `${poi.id}_hull_${shipIndex}`,
@@ -3487,7 +3509,7 @@ export const world = {
   // =========================================================================================
   _tickHazards(dt, state) {
     const player = state.entities.get(state.playerId);
-    if (!player) return;
+    if (!player || player.alive === false) return;
     const zones = state.world.activeSector.hazards || [];
     const inside = this._hazardSet || (this._hazardSet = new Set());
     let nowInside = this._hazardNextSet;
@@ -3499,10 +3521,7 @@ export const world = {
       if (dx * dx + dz * dz <= z.radius * z.radius) {
         nowInside.add(i);
         if (!inside.has(i)) this.bus.emit('hazard:enter', { entityId: player.id, zoneType: z.type, intensity: z.intensity });
-        // radiation drains hull over time (design 05 hazardHullDrain).
-        if (z.type === 'radiation') {
-          player.hull = Math.max(1, player.hull - z.intensity * 6 * dt);
-        }
+        if (z.type === 'radiation') this._applyRadiationTick(player, z, dt, state);
       }
     }
     for (const i of inside) {
@@ -3514,6 +3533,74 @@ export const world = {
     inside.clear();
     this._hazardSet = nowInside;
     this._hazardNextSet = inside;
+  },
+
+  _applyRadiationTick(player, zone, dt, state) {
+    const damage = (Number(zone && zone.intensity) || 0) * 6 * dt;
+    if (!(damage > 0) || !player || player.alive === false) return;
+    const packet = scalarHitToDamagePacket({
+      damage,
+      damageType: 'thermal',
+      pos: player.pos,
+      source: { kind: 'hazard_radiation', hazardId: zone && zone.id || null },
+    });
+    packet.flags = { ignoreFriendlyFire: true, allowAnyTarget: true };
+    const request = {
+      attackerId: null,
+      targetId: player.id,
+      packet,
+      origin: { kind: 'hazard_radiation', id: (zone && zone.id) || (zone && zone.type) },
+    };
+    const live = state || this.state;
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    if (combat && combat.state === live && typeof combat.ensureKernel === 'function') {
+      combat.ensureKernel().routeDamage(request);
+      return;
+    }
+    if (combat && combat.state === live && combat.kernel && typeof combat.kernel.routeDamage === 'function') {
+      combat.kernel.routeDamage(request);
+      return;
+    }
+    if (this.helpers && typeof this.helpers.routeCombatDamage === 'function' && combat && combat.state === live) {
+      this.helpers.routeCombatDamage(request);
+      return;
+    }
+    this._applyRadiationVitalsFallback(player, zone, damage, live);
+  },
+
+  _applyRadiationVitalsFallback(player, zone, damage, state) {
+    if (player.flags && (player.flags.invuln || player.flags.docked)) return;
+    if (state && state.ui && state.ui.docked) return;
+    const shield = Math.max(0, Number(player.shield) || 0);
+    let remaining = damage;
+    if (shield > 0) {
+      const absorbed = Math.min(shield, remaining);
+      player.shield = shield - absorbed;
+      remaining -= absorbed;
+    }
+    if (remaining > 0) {
+      player.hull = Math.max(0, (Number(player.hull) || 0) - remaining);
+    }
+    if ((Number(player.hull) || 0) > 0) return;
+    player.hull = 0;
+    if (player.alive === false) return;
+    const live = state || this.state;
+    const combat = this.registry && this.registry.get && this.registry.get('combat');
+    if (combat && combat.state === live && typeof combat.kill === 'function') {
+      combat.kill(player, null, { origin: { kind: 'hazard_radiation', id: zone && zone.id } });
+      return;
+    }
+    player.alive = false;
+    player.flags = player.flags || {};
+    player.flags.defeated = true;
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('combat:kill', {
+        targetId: player.id,
+        killerId: null,
+        origin: { kind: 'hazard_radiation' },
+      });
+      this.bus.emit('player:death', { recoverable: true, origin: { kind: 'hazard_radiation' } });
+    }
   },
 
   _spendFuel(amount) {

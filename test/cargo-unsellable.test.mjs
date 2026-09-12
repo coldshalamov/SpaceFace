@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isUnsellableCargo } from '../src/systems/cargo.js';
+import { cargo, isUnsellableCargo } from '../src/systems/cargo.js';
 import { economy } from '../src/systems/economy.js';
 
 function stateWith(active = [], persistentCargo = []) {
@@ -112,6 +112,26 @@ test('economy still sells ordinary mission haul cargo', () => {
   assert.equal(result.qty, 2);
   assert.equal(state.player.cargo.items[commodityId], 2);
   assert.equal(state.player.credits, 120);
+});
+
+test('player jettison refuses sealed contract cargo', () => {
+  const commodityId = 'cmdty_microchips';
+  const { state } = tradeHarness({ preloadedCargo: true });
+  state.playerId = 1;
+  state.simTime = 0;
+  state.entities = new Map([[1, {
+    id: 1, pos: { x: 0, z: 0 }, rot: 0, vel: { x: 0, z: 0 }, radius: 6,
+  }]]);
+  const holdBefore = structuredClone(state.player.cargo.items);
+  const system = Object.create(cargo);
+  system.init({
+    state,
+    bus: { on() { return () => {}; }, emit() {} },
+    helpers: { spawnEntity() { throw new Error('sealed cargo must not spawn a pod'); } },
+  });
+
+  assert.equal(system.jettison(commodityId, 2), 0);
+  assert.deepEqual(state.player.cargo.items, holdBefore);
 });
 
 test('live sell intent explains the sealed-cargo rejection', () => {

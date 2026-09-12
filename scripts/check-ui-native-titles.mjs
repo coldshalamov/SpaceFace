@@ -92,7 +92,7 @@ export const WIRED_SITES = [
     forbids: ["${a.available ? '' : 'disabled'}"],
   },
   {
-    file: 'src/ui/targetPanel.js',
+    file: 'src/ui/views/targetFrame.js',
     label: 'VULN triangle E/K/X — focusable segments, enumerated one-word whys',
     needles: [
       ['aria-label="Vulnerability to energy weapons" data-why="Energy"', 1],
@@ -101,10 +101,16 @@ export const WIRED_SITES = [
     ],
   },
   {
-    file: 'src/ui/station/stationApp.js',
-    label: 'station shell — help glyph, handoff steps, vital-act quote reasons',
+    file: 'src/ui/views/stationFrames.js',
+    label: 'station shell — help glyph (frame markup injected by stationApp)',
     needles: [
       ['data-why="Context help"', 1],
+    ],
+  },
+  {
+    file: 'src/ui/station/stationApp.js',
+    label: 'station shell — handoff steps, vital-act quote reasons',
+    needles: [
       ['` data-why="${escapeHtml(st.text)}" aria-label=', 1],
       ['cost.title ? ` data-why="${escapeHtml(cost.title)}"` : \'\'', 1],
     ],

@@ -19,8 +19,8 @@ import { IS_DEV } from '../../core/devMode.js';
 import { CREDITS } from '../../data/credits.js';
 import { leftoverVersionLabel, paintLeftoverVersion } from './mainMenu.js';
 import { el, words, settle, cue } from '../kit/index.js';
-import { openReplay, REPLAY_LABEL } from './replay.js';
-import { openClips, CLIPS_LABEL } from './clips.js';
+import { openReplay, forceCloseReplay, REPLAY_LABEL } from './replay.js';
+import { openClips, forceCloseClips, CLIPS_LABEL } from './clips.js';
 import {
   PHOTO_EXPOSURE_DEFAULT,
   PHOTO_EXPOSURE_MAX,
@@ -766,6 +766,9 @@ export const pauseScreen = {
   onHide(ctx) {
     // Leaving the stack while in photo mode (a bus-driven exit) must not strand body.k-photo.
     if (photo) exitPhoto(photo.rootEl, ctx);
+    // Replay/Clips are sibling overlays, not stacked screens — they must close with pause.
+    forceCloseReplay();
+    forceCloseClips();
     cue('close');
   },
   refresh(ctx) { renderFlightBrief(ctx); },

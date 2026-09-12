@@ -88,6 +88,23 @@ test('flags off: every swept case is byte-identical to the pre-Travel-Burn kerne
   });
 });
 
+test('flags off: a disrupted leftover cap on the input is ignored completely', () => {
+  withFlags({ travelBurn: false, boostNeverBrakes: false }, () => {
+    const bodyAtSpeed = { vel: { x: 700, z: 0 } };
+    const plain = step('drive_reaction_m', { throttle: 1 }, bodyAtSpeed);
+    const withDrive = step(
+      'drive_reaction_m',
+      { throttle: 1, travelDrive: { state: 'cooldown', cap: 700, disrupted: true } },
+      bodyAtSpeed
+    );
+    assert.deepEqual(
+      normalizeResult(withDrive),
+      normalizeResult(plain),
+      'disrupted leftover travelCap leaked into the result while travelBurn was off'
+    );
+  });
+});
+
 test('flags off: an engaged travel drive on the input is ignored completely', () => {
   // Proves the gate is the FLAG and not merely the absence of travel input — a caller that always
   // populates `input.travelDrive` (which the latch owner will) must not perturb the kernel.
@@ -237,6 +254,46 @@ test('disengaging sets physicsEarnedMomentum instead of snapping the velocity do
       result.telemetry.governor.cap > confiscated.telemetry.governor.cap,
       'the disengage cap should decay from the earned speed, not snap to the ordinary governed cap'
     );
+  });
+});
+
+test('disengaging spends leftover travel speed along the decaying cap over ~10s', () => {
+  withFlags({ travelBurn: true, boostNeverBrakes: true }, () => {
+    const profile = PROPULSION_PROFILES.drive_reaction_m;
+    const mass = 20;
+    let drive = { state: 'cooldown', cap: 700 };
+    let vel = { x: 700, z: 0 };
+    let runtime = createPropulsionRuntime(profile);
+    const samples = [];
+    for (let i = 0; i < 600; i += 1) {
+      const result = stepPropulsion({
+        dt: DT,
+        body: body({ vel: { ...vel } }),
+        input: { assistMode: 'assisted', throttle: 1, travelDrive: drive },
+        profile,
+        runtime,
+        environment: {},
+      });
+      runtime = result.runtime;
+      assert.ok(
+        result.telemetry.manualLocal.forward >= 0,
+        `tick ${i}: held throttle commanded reverse (forward = ${result.telemetry.manualLocal.forward})`
+      );
+      vel.x += (result.force.x / mass) * DT;
+      vel.z += (result.force.z / mass) * DT;
+      if (Number.isFinite(result.telemetry.travelCap)) {
+        drive = { ...drive, cap: result.telemetry.travelCap };
+      }
+      if (i % 60 === 0) samples.push(Math.hypot(vel.x, vel.z));
+    }
+    const finalSpeed = Math.hypot(vel.x, vel.z);
+    assert.ok(finalSpeed < 700 * 0.85, `velocity should be spent (700 -> ${finalSpeed.toFixed(1)})`);
+    for (let i = 1; i < samples.length; i += 1) {
+      assert.ok(
+        samples[i] > samples[i - 1] * 0.55,
+        `speed collapsed too abruptly at sample ${i} — that is confiscation, not spending`
+      );
+    }
   });
 });
 

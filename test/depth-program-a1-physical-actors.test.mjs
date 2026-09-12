@@ -77,7 +77,8 @@ test('Helios Candle Fleet turns a plinth scan into authored lore and a durable P
   const candleFleet = FLAVOR_PACKS.landmark_lore.entries.find((entry) => entry.programSlot === 'C3');
   assert.ok(candleFleet.lines.some((line) => line.text === messages[0]?.text),
     'the ordinary scanner must surface one authored Candle Fleet line');
-  const archiveSignal = state.signalInvestigation.records[`signal:entity:${memorial.id}`];
+  const archiveSignal = state.signalInvestigation.records[`signal:poi:poi_memorial`]
+    || state.signalInvestigation.records[`signal:entity:${memorial.id}`];
   assert.equal(archiveSignal.sourceKind, 'archive');
   assert.equal(archiveSignal.classification, 'ARCHIVE TELEMETRY');
 

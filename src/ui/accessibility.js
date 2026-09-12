@@ -20,6 +20,8 @@
 //     This is genuinely NEW — grep confirms nothing reads a flash flag today — so it is our net-new
 //     field (settings.accessibility.flashReduce), surfaced via getFlashReduced() for vfx to honor.
 
+import { currentGameLocale, setGameLocale } from '../localization/gameLocalization.js';
+
 // ---------------------------------------------------------------------------------------------------
 // Runtime-readable state (other systems poll these every frame; keep them plain module-scope booleans).
 // ---------------------------------------------------------------------------------------------------
@@ -310,6 +312,7 @@ function pick(settings, path, fallback) {
  *   - settings.accessibility.{colorblindMode,highContrast,flashReduce,dyslexiaFont}  (NEW subtree)
  *   - settings.video.motionReduce                                                    (existing)
  *   - settings.uiScale                                                               (existing, root)
+ *   - settings.locale                                                                (existing, root)
  *
  * @param {object} settings  state.settings (or any object with the same shape)
  * @param {Document|HTMLElement} [target=document.documentElement]  root to toggle classes/vars on
@@ -321,6 +324,7 @@ export function applyAccessibility(settings, target) {
   // are correct even on a headless path (no document) or if the early-return below fires. vfx/feel poll
   // these regardless of the DOM.
   _flashReduced = !!a.flashReduce;
+  applyLocaleFromSettings(settings);
 
   let mode = a.colorblindMode || 'none';
   if (COLORBLIND_MODES.indexOf(mode) < 0) mode = 'none';
@@ -358,12 +362,31 @@ export function applyAccessibility(settings, target) {
   for (const c of CAPTION_SIZE_CLASSES) root.classList.remove(c);
   root.classList.add(`sf-caption-size-${captionSize}`);
 
-  // UI scale is intentionally NOT managed here — it is owned by the shipped `--ui-scale` path
-  // (ui.css #ui-root + uiRoot.js #hud), driven by the Video > UI scale slider. Managing a second
-  // scale var here would double-scale the HUD. See styles/accessibility.css UI SCALE note.
+  // Same `--ui-scale` property the Video/Access sliders write on live drag. Applying it here is
+  // what makes a saved scale survive boot and Continue; it does not introduce a second scale var.
+  applyUiScaleFromSettings(settings, root);
 
   return { motionReduced: motion.reduced, motionPreference: motion.preference, flashReduced: _flashReduced,
     forcedColorsActive, colorblindMode: mode, highContrast, dyslexia, captions, captionSize, captionBackground };
+}
+
+function applyLocaleFromSettings(settings) {
+  const next = settings && typeof settings.locale === 'string' ? settings.locale.trim() : '';
+  if (!next || next === currentGameLocale()) return;
+  setGameLocale(next);
+}
+
+function applyUiScaleFromSettings(settings, fallbackRoot) {
+  const raw = Number(settings && settings.uiScale);
+  const uiScale = Number.isFinite(raw) ? Math.min(2, Math.max(0.75, raw)) : 1;
+  let el = null;
+  if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+    el = document.getElementById('ui-root') || document.documentElement;
+  }
+  if (!el) el = fallbackRoot;
+  if (el && el.style && typeof el.style.setProperty === 'function') {
+    el.style.setProperty('--ui-scale', String(uiScale));
+  }
 }
 
 /** Resolve a semantic state ('hostile'|'shield'|'danger'|…) to its active color, honoring the current

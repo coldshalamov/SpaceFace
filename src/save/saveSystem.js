@@ -4166,6 +4166,7 @@ function profileSettingsSnapshot(settings) {
   const s = sanitizeRestoredSettings(clonePlain(settings || {}));
   return {
     uiScale: s.uiScale,
+    locale: s.locale,
     showDamageNumbers: s.showDamageNumbers,
     audio: clonePlain(s.audio || {}),
     video: clonePlain(s.video || {}),

@@ -85,19 +85,47 @@ function stopPlayback() {
   openState.playing = false;
 }
 
+function suppressPauseRoot(rootEl, on) {
+  if (!rootEl) return;
+  if (on) {
+    rootEl.style.visibility = 'hidden';
+    rootEl.setAttribute('aria-hidden', 'true');
+    rootEl.inert = true;
+  } else {
+    rootEl.style.removeProperty('visibility');
+    rootEl.removeAttribute('aria-hidden');
+    rootEl.inert = false;
+  }
+  // Gamepad focus walks stop before the screen root, so children must be inert too.
+  const kids = rootEl.children;
+  if (!kids) return;
+  for (let i = 0; i < kids.length; i++) kids[i].inert = !!on;
+}
+
+function focusFirstOverlayControl(overlay) {
+  if (!overlay || typeof overlay.querySelector !== 'function') return;
+  const first = overlay.querySelector('button');
+  if (!first || typeof first.focus !== 'function') return;
+  try { first.focus({ preventScroll: true }); } catch (_) {
+    try { first.focus(); } catch (_) { /* pointer still reaches the overlay */ }
+  }
+}
+
 function closeReplay() {
   if (!openState) return;
   stopPlayback();
   const { overlay, rootEl, onKey } = openState;
   window.removeEventListener('keydown', onKey, true);
   if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-  if (rootEl) {
-    rootEl.style.removeProperty('visibility');
-    rootEl.removeAttribute('aria-hidden');
-  }
+  suppressPauseRoot(rootEl, false);
   document.body.classList.remove(PHOTO_PRESENTATION_CLASS);
   openState = null;
   cue('close');
+}
+
+/** Safe to call when Replay is not open (Pause onHide, stack pop). */
+export function forceCloseReplay() {
+  closeReplay();
 }
 
 function buildContent(container, recording, ctx) {
@@ -183,10 +211,7 @@ export function openReplay(rootEl, ctx) {
 
   const parent = (rootEl && rootEl.parentElement) || document.body;
   parent.appendChild(container);
-  if (rootEl) {
-    rootEl.style.visibility = 'hidden';
-    rootEl.setAttribute('aria-hidden', 'true');
-  }
+  suppressPauseRoot(rootEl, true);
   document.body.classList.add(PHOTO_PRESENTATION_CLASS);
 
   const onKey = (ev) => {
@@ -199,6 +224,7 @@ export function openReplay(rootEl, ctx) {
 
   openState = { overlay: container, rootEl, onKey, playing: false, raf: null, elapsed: 0, startedAt: 0 };
   settle(container, { from: 'bottom', state: 'replay-open' });
+  focusFirstOverlayControl(container);
   cue('open');
 }
 

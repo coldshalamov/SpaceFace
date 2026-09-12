@@ -13,7 +13,7 @@ import { getCombatKernel } from '../combat/kernel.js';
 import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/damage.js';
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
-import { combatFlag } from '../data/featureFlags.js';
+import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
 import { buildDefeatReceipt, buildRecoveryPlan } from '../combat/playerDefeat.js';
 import { normalizeActivity, normalizeRoe, roeForActivity } from '../ai/doctrine.js';
@@ -603,10 +603,14 @@ export const combat = {
     // player-scoped by construction (player hit, player death, respawn) and correctly send none.
     bus.emit('camera:shake', { amount: 0.5, position: { x: t.pos.x, z: t.pos.z } });
     const bounty = Math.max(0, Math.round(d.bountyCr || 0));
-    if (bounty > 0 && authoredRewardEligible) {
+    // lootShards owns the physical kill burst (chips + materials) for player-authored hostile
+    // kills. Granting bounty/loot here, spawning authored pickups, or emitting a second loot:drop
+    // would pay the same hull twice (AC-01: death does not grant; collection does).
+    const shardsOwnKillBurst = massline2Flag('lootShards') && authoredRewardEligible && targetHostileToPlayer;
+    if (bounty > 0 && authoredRewardEligible && !shardsOwnKillBurst) {
       bus.emit('economy:grantCredits', { amount: bounty, reason: 'bounty' });
     }
-    if (d.loot && !missionOwns) {
+    if (d.loot && !missionOwns && !shardsOwnKillBurst) {
       // Current run seed + durable victim identity makes authored rewards stable across entity-id
       // rematerialization and save/load without a private combat cursor to serialize or reset.
       const rewardRng = createVictimRewardRng(

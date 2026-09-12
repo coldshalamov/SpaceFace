@@ -337,9 +337,18 @@ section('the slowdown is confiscation-free: velocity decays, it is not slammed',
   const rig = makeRig({ startAlong: dead.a.alongWU - 3000 });
   rig.pressLatch();
 
-  // Build real speed in the lane.
-  for (let i = 0; i < 1500; i++) rig.tick();
-  const entrySpeed = rig.speed();
+  // Build real speed in the lane, and sample at the moment of dropout. A fixed 1500-tick
+  // cruise overshoots into the dead segment, so measuring at the end of that loop would
+  // already include the spend under test.
+  let entrySpeed = 0;
+  for (let i = 0; i < 1500; i++) {
+    rig.tick();
+    if (rig.state.travelLanes && rig.state.travelLanes.disrupted) {
+      entrySpeed = rig.speed();
+      break;
+    }
+  }
+  if (!(entrySpeed > 0)) entrySpeed = rig.speed();
   assert.ok(entrySpeed > 300, `should be travelling fast on entry, got ${entrySpeed.toFixed(1)}`);
 
   // Now park inside the dead segment and watch the decay.

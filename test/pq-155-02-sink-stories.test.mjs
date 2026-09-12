@@ -69,6 +69,9 @@ function citedSinks(state) {
 
 function fireFiveSinks(ctx) {
   const { bus, state, sys } = ctx;
+  state.ui.docked = true;
+  state.ui.dockedStationId = 'station_helios';
+  sys._lastDockedStation = 'station_helios';
   state.simTime = 10;
   sys.handleService({ type: 'repair' });
   state.simTime = 20;

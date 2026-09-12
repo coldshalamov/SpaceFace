@@ -1180,7 +1180,11 @@ function settleBank(entity, dt) {
   if (Math.abs(entity.bank) < 0.0005) entity.bank = 0;
 }
 function neutralInput() { return NEUTRAL_INPUT; }
-function playerFlightSimActive(state, player) { return !!player && state.mode === 'flight' && !(player.flags && player.flags.docked); }
+function playerFlightSimActive(state, player) {
+  if (!player || player.alive === false) return false;
+  if (player.flags && player.flags.defeated) return false;
+  return state.mode === 'flight' && !(player.flags && player.flags.docked);
+}
 function playerFlightControlsActive(state, player) { return playerFlightSimActive(state, player) && !(state.ui && state.ui.screenStack && state.ui.screenStack.length); }
 function flightCraftCandidates(state) {
   const index = state && state.entityIndex;

@@ -708,6 +708,7 @@ export const economy = {
     this.helpers = ctx.helpers;
     this._registry = ctx.registry || null;
     this._lastDockedStation = null;
+    this._stationServiceBerth = null;
     this._syntheticHistoryKeys = new Set();
     economy._instance = this; // so exported quote()/execute() reach the live system
 
@@ -779,9 +780,17 @@ export const economy = {
 
     // ---- station markets populated on dock + sector entry ---------------------------------
     bus.on('dock:docked', (p) => {
-      if (p && p.stationId) { this._lastDockedStation = p.stationId; this.ensureStationMarkets(p.stationId); this.snapshotIntel(p.stationId); }
+      if (p && p.stationId) {
+        this._lastDockedStation = p.stationId;
+        this._stationServiceBerth = p.stationId;
+        this.ensureStationMarkets(p.stationId);
+        this.snapshotIntel(p.stationId);
+      }
     });
-    bus.on('dock:undocked', () => { this._lastDockedStation = null; });
+    bus.on('dock:undocked', () => {
+      this._lastDockedStation = null;
+      this._stationServiceBerth = null;
+    });
     bus.on('sector:enter', (p) => this.populateSector(p));
 
     // ---- services (refuel / repair / ammo) ------------------------------------------------
@@ -1786,7 +1795,12 @@ export const economy = {
   // -------------------------------------------------------------------------------------------
   handleService(p) {
     const state = this.state;
-    const type = p.type;
+    const type = p && p.type;
+    if (!type) return;
+    if (!this._stationServicesDocked()) {
+      this.bus.emit('toast', { text: 'Dock first', kind: 'error', ttl: 2 });
+      return;
+    }
     if (type === 'refuel') {
       const fuel = state.fuel || (state.fuel = { current: 0, max: 100 });
       const want = p.amount != null ? p.amount : (fuel.max - fuel.current);
@@ -2188,6 +2202,26 @@ export const economy = {
     if (state.ui && state.ui.dockedStationId) return state.ui.dockedStationId;
     if (this._lastDockedStation) return this._lastDockedStation;
     return null;
+  },
+
+  /** Fail closed unless the player is at a live berth (ships.js shipworksStationAccess pattern). */
+  _stationServicesDocked() {
+    const ui = this.state && this.state.ui;
+    // Isolated service-math harnesses have no UI bag; production GameState always does.
+    if (!ui) return true;
+    if (typeof ui.dockedStationId === 'string' && ui.dockedStationId && ui.docked !== false) {
+      // Production GameState defaults docked to false. Career/sandbox and living-hull
+      // harnesses often stamp a berth id without uiRoot flipping the bool.
+      return true;
+    }
+    // Career/sandbox emit dock:docked without uiRoot; honor that live latch, not a
+    // remembered station id left over after undock.
+    if (this._stationServiceBerth) return true;
+    const player = this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    if (player && player.flags && player.flags.docked) return true;
+    return false;
   },
 
   /** registry lookup (set lazily; some builds expose ctx.registry). */

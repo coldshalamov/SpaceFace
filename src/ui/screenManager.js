@@ -96,13 +96,15 @@ export function createScreenManager(ctx) {
       if (el.style && el.style.visibility === 'hidden') return false;
       const t = el.getAttribute('tabindex');
       if (t != null && Number(t) < 0) return false;
-      // skip elements in a hidden subtree
+      // Include the screen root: Pause → Replay/Clips sets visibility:hidden + inert on it,
+      // and a walk that stops before the root still tabs hidden Resume.
       let parent = el.parentNode;
-      while (parent && parent !== root) {
+      while (parent) {
         if (parent.inert) return false;
         if (parent.hidden) return false;
-        if (parent.style && parent.style.display === 'none') return false;
+        if (parent.style && (parent.style.display === 'none' || parent.style.visibility === 'hidden')) return false;
         if (parent.getAttribute && parent.getAttribute('aria-hidden') === 'true') return false;
+        if (parent === root) break;
         parent = parent.parentNode;
       }
       return true;

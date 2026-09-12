@@ -5041,19 +5041,33 @@ export const galaxyMapScreen = {
   /**
    * OVERVIEW — never empty, and never a wall.
    *
-   * With a selection it shows that selection's detail. With NO selection it keeps only what the
-   * on-canvas cartouche does not already say: the pocket-careers line and the click hint. The four
-   * navigation answers (POSITION / TRACKING / DESTINATION / NEXT LEG) used to be repeated here
-   * verbatim from `resolveMapNavContext` — the same object `drawNavCartouche` renders onto the
-   * chart itself — so the panel read as a duplicated readout glued next to its own copy.
+   * With a selection it shows that selection's detail. With NO selection it answers the four
+   * navigation questions from the same `_navContext` object the on-canvas cartouche reads, then
+   * the pocket-careers line and a short click hint. All four rows live in one section so the
+   * default panel stays compact.
    */
   _overviewTabHtml(state, selectionHtml) {
     if (selectionHtml) return selectionHtml;
+    const nav = this._navContext(state);
+    const rows = (nav && Array.isArray(nav.rows)) ? nav.rows : [];
+    const navHtml = rows.map((row) => {
+      const detail = row.detail
+        ? `<div class="gm-nav-row-d">${escapeMapHtml(row.detail)}</div>`
+        : '';
+      return `<div class="gm-nav-row" data-tone="${escapeMapHtml(row.tone || '')}">
+        <span class="gm-nav-row-k">${escapeMapHtml(row.label)}</span>
+        <span class="gm-nav-row-v">${escapeMapHtml(row.value)}</span>
+        ${detail}
+      </div>`;
+    }).join('');
     // The pocket's trades appear the moment the Chart opens — §11.11 #1 is a surfacing problem, and
     // the roster is one tab deeper. Rendered only when careers are actually on record here, so the
     // no-selection panel never grows a block that says nothing.
     const careersHtml = careersOverviewLineHtml(state, currentSectorId(state));
     return `
+      <div class="gm-ins-section">
+        ${navHtml}
+      </div>
       ${careersHtml}
       <div class="gm-ins-section">
         <div class="gm-ins-note">Click a sector, station or contact to inspect it. <b>Double-click</b> any mark to lay a course. Other tabs hold trade, threat, careers and survey depth.</div>
