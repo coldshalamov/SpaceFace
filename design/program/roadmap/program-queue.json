@@ -9116,7 +9116,7 @@
       "priority": 178,
       "title": "Nested budgets and mass as the law",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9141,8 +9141,10 @@
         "npm run check:save-schema",
         "npm run check:sim:v3"
       ],
-      "receiptRefs": [],
-      "brief": "Master pool plus weapon and engine sub-pools per hull; ship mass = hull + modules + current cargo, fed to the propulsion profile; a migration check proves every current default fit still fits. DONE WHEN: A full-gun fit and a full-cargo fit of the same hull differ in reversal time by ≥ 25 % on the flight bench; migration check green."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-176.00-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-12 (899f5ab3a, 51d5a541c): every hull authors a design mass; the derived profile divides accelerations by (design/mass)^0.65 floored at 0.30, mass never costs the ceiling; full-gun vs full-cargo reversal 2.133 s vs 4.483 s (110 %), one fit empty vs full 99 %; migration green, no golden moved (orchestrator re-verified sim 5/5 and baseline). Note: this commit also adopted the docs/GAMEPLAY_QOL_OVERHAUL.md section 4 shield buffer hunk (player x3 shield, x3.5 regen outside the Crucible) that a stale lane left uncommitted. Master pool plus weapon and engine sub-pools per hull; ship mass = hull + modules + current cargo, fed to the propulsion profile; a migration check proves every current default fit still fits. DONE WHEN: A full-gun fit and a full-cargo fit of the same hull differ in reversal time by ≥ 25 % on the flight bench; migration check green."
     },
     {
       "id": "PQ-176.01",
@@ -9150,7 +9152,7 @@
       "priority": 179,
       "title": "Drive and thruster split",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9175,8 +9177,10 @@
         "npm run check:save-schema",
         "npm run check:sim:v3"
       ],
-      "receiptRefs": [],
-      "brief": "Drive owns forward thrust and top speed; manoeuvring thrusters own turn torque, strafe and brake; each hull gets a default thruster part. DONE WHEN: Two builds of one hull: fast-clumsy and nimble-slow, both viable on the Crucible bench; numbers printed."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-176.01-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-12 (aefce8147, 6a71df760, 12329d21a): the drive owns everything above the fight cap, a manoeuvring bay owns turn/strafe/brake with a neutral stock part on every hull; Bolt vs Hinge builds on the Crucible bench: burn speed +92 %, reversal 29.7 % quicker, turn radius 29.2 % tighter, same governed cap, both viable; catalog guard + bench bar ship with it. Drive owns forward thrust and top speed; manoeuvring thrusters own turn torque, strafe and brake; each hull gets a default thruster part. DONE WHEN: Two builds of one hull: fast-clumsy and nimble-slow, both viable on the Crucible bench; numbers printed."
     },
     {
       "id": "PQ-176.02",
@@ -9482,7 +9486,7 @@
       "priority": 189,
       "title": "Capabilities, not percentages",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-137.06",
         "PQ-137.07"
@@ -9499,8 +9503,10 @@
         "npm run check:baseline",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
-      "brief": "Four unlocks expressed as physical verbs (tow class, slam survival, line load, field deploy), each shown in the fitting UI as a sentence and each with a before/after scenario where the verb was impossible."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-142.00-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-12 (1a0c5a6e1, dfa587424, 69d5b5c9d): four capability verbs (tow class, slam survival, line load, field deploy) solved from the live laws and falsified on the real path; fit screen states them as sentences, zero percent signs; orchestrator re-ran 17/17 + outfitting-buy-fit + handling-profile. Follow-up owned by the Shipworks layout pass: the capability hero reads as a hull name (PELICAN / can tow) and the screen has overlap defects at 1280x800. Four unlocks expressed as physical verbs (tow class, slam survival, line load, field deploy), each shown in the fitting UI as a sentence and each with a before/after scenario where the verb was impossible."
     },
     {
       "id": "PQ-142.01",
