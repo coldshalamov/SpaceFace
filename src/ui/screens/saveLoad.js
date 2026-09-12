@@ -1,12 +1,10 @@
 import { createSaveStage } from '../views/saveFrame.js';
 // Load screen (ARCHITECTURE §4.5, §5; design/specs/09).
-// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, load, amended by Task B §1.2):
-// saves as portraits — the focused save's hull on the stage as it is in that save, its name huge,
-// the sector and date in fine print, the credits as a hero number; the saves as hairline rows down
-// the left. Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS.
-// UI emits game:save/game:load {slot}; the save system owns persistence. Slot index is read
-// defensively from the save system's public API if present, else from localStorage (manifest:
-// SaveLoadScreen reads sf.save.index).
+// BENCH register: saves as engraved rows on a plate; the focused save's hull on the stage; kit
+// keys for Load / Save here / Delete / Export / Import / Back. Every slot and confirm stays
+// reachable. UI emits game:save/game:load {slot}; the save system owns persistence. Slot index
+// is read defensively from the save system's public API if present, else from localStorage
+// (manifest: SaveLoadScreen reads sf.save.index).
 
 import { livingHullScars } from '../../core/livingHull.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
@@ -25,6 +23,171 @@ const ACE_MEMORY_META = new Set([
 ]);
 const TITLE_BY_ID = new Map(TITLES.map((title) => [title.id, title]));
 const PORTRAIT_SCAR_MAX = 3;
+
+const FH_KEY = {
+  primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
+  hazard: { file: 'key.hazard', width: '18px', minW: '96px', minH: '32px', pad: '0 12px', font: '12px' },
+  legend: { file: 'key.legend', width: '14px', minW: '72px', minH: '32px', pad: '0 10px', font: '12px' },
+  small: { file: 'key.small', width: '12px', minW: '72px', minH: '28px', pad: '0 8px', font: '12px' },
+};
+const FH_PLATE = {
+  sunk: { file: 'plate.bench.sunk.png', width: '24px', slice: '24 fill' },
+  edge: { file: 'plate.edge.small.png', width: '16px', slice: '16 fill' },
+};
+
+function fhUrl(rel) {
+  return new URL(`../../../assets/ui/kit/assets/${rel}`, import.meta.url).href;
+}
+function forcedColorsActive() {
+  return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
+}
+function pin(node, props) {
+  if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
+  for (const name of Object.keys(props)) node.style.setProperty(name, props[name], 'important');
+  return node;
+}
+function installShell(root) {
+  root.classList.add('fh-shell');
+  pin(root, { background: 'transparent', 'border-width': '0', 'box-shadow': 'none' });
+}
+function paintMarking(node) {
+  if (!node) return node;
+  node.classList.add('fh-title');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 900, 'wdth' 125",
+    'letter-spacing': 'var(--fh-track-display)',
+    'text-transform': 'uppercase',
+    'line-height': '0.9',
+    color: 'var(--fh-text)',
+  });
+}
+function paintLegend(node, lit = false) {
+  if (!node) return node;
+  node.classList.add('fh-legend');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 600, 'wdth' 62",
+    'letter-spacing': 'var(--fh-track-legend)',
+    'text-transform': 'uppercase',
+    'font-size': 'var(--fh-size-fine)',
+    color: lit ? 'var(--fh-legend-lit)' : 'var(--fh-legend-rest)',
+    margin: '0',
+  });
+}
+function paintPlate(node, variant = 'sunk', extra = {}) {
+  if (!node) return node;
+  const spec = FH_PLATE[variant] || FH_PLATE.sunk;
+  node.classList.add('fh-plate', variant === 'edge' ? 'fh-plate--edge' : 'fh-plate--sunk');
+  if (forcedColorsActive()) {
+    return pin(node, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', ...extra,
+    });
+  }
+  return pin(node, {
+    'border-style': 'solid',
+    'border-width': spec.width,
+    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
+    'border-image-slice': spec.slice,
+    'border-image-repeat': 'stretch',
+    'border-image-width': spec.width,
+    background: 'transparent',
+    'box-sizing': 'border-box',
+    padding: '8px 12px',
+    ...extra,
+  });
+}
+function paintKey(button, kind = 'legend') {
+  if (!button) return button;
+  const spec = FH_KEY[kind] || FH_KEY.legend;
+  button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(button, {
+        'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+        background: 'transparent', color: 'CanvasText',
+      });
+      return;
+    }
+    pin(button, {
+      display: 'inline-flex',
+      width: 'max-content',
+      'max-width': '100%',
+      'min-width': spec.minW,
+      'min-height': spec.minH,
+      padding: spec.pad,
+      'font-size': spec.font,
+      'font-family': 'var(--fh-face-display)',
+      'font-variation-settings': "'wght' 600, 'wdth' 62",
+      'letter-spacing': 'var(--fh-track-legend)',
+      'text-transform': 'uppercase',
+      'justify-content': 'center',
+      'align-items': 'center',
+      'box-sizing': 'border-box',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'border-style': 'solid',
+      'border-width': spec.width,
+      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
+      'border-image-slice': parseInt(spec.width, 10) + ' fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': spec.width,
+    });
+  };
+  const sync = () => {
+    const disabled = button.getAttribute('aria-disabled') === 'true' || button.disabled;
+    const lit = button.getAttribute('aria-pressed') === 'true' || button.getAttribute('aria-selected') === 'true';
+    apply(disabled ? 'disabled' : (kind === 'legend' && lit ? 'lit' : 'rest'));
+  };
+  button._fhSync = sync;
+  if (button.dataset.fhBound !== '1') {
+    button.dataset.fhBound = '1';
+    button.addEventListener('pointerenter', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' && button.getAttribute('aria-pressed') === 'true' ? 'lit' : 'hover');
+    });
+    button.addEventListener('pointerleave', sync);
+    button.addEventListener('pointerdown', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' ? 'hover' : 'pressed');
+    });
+    button.addEventListener('pointerup', sync);
+    button.addEventListener('focus', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply('hover');
+    });
+    button.addEventListener('blur', sync);
+  }
+  sync();
+  return button;
+}
+function paintSlotRow(row, selected) {
+  if (!row) return row;
+  row.classList.add('fh-row');
+  row.classList.toggle('is-selected', !!selected);
+  if (selected && !forcedColorsActive()) {
+    return pin(row, {
+      'border-style': 'solid',
+      'border-width': '8px 16px',
+      'border-image-source': 'url("' + fhUrl('plates/plate.row.selected.png') + '")',
+      'border-image-slice': '8 16 8 16 fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': '8px 16px',
+      'box-shadow': 'none',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+    });
+  }
+  return pin(row, {
+    'border-image-source': 'none',
+    'border-width': '1px 0 0 0',
+    'border-style': 'solid',
+    'border-color': 'var(--k-hair)',
+    'box-shadow': 'none',
+    background: 'transparent',
+  });
+}
 
 export const SAVE_PORTRAIT_SEED = 15610;
 export const SAVE_PORTRAIT_FIELDS = Object.freeze(['hull', 'scars', 'titles', 'rapSheet', 'grudge']);
@@ -523,24 +686,42 @@ export const saveLoadScreen = {
     rootEl.classList.add('k-screen');
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('aria-label', 'Load');
+    installShell(rootEl);
 
     // Title: "Load" and the count.
     const title = el('header', 'k-title');
-    title.appendChild(el('h1', 'k-display k-t-title', 'Load'));
+    pin(title, { 'border-bottom': '0' });
+    const heading = el('h1', 'k-display k-t-title fh-title', 'Load');
+    paintMarking(heading);
+    title.appendChild(heading);
     const sub = el('p', 'k-t-emph k-62', '');
+    paintLegend(sub);
     title.appendChild(sub);
     rootEl.appendChild(title);
 
-    // The saves as hairline rows down the left; rebuilt by _render.
+    // The saves as engraved rows on a plate down the left; rebuilt by _render.
     const hang = el('div', 'k-hang');
+    paintPlate(hang, 'sunk', { padding: '4px', overflow: 'hidden auto' });
     rootEl.appendChild(hang);
 
     const { stage, caption, shipName, portrait, scars, titles, rapSheet, grudge, objective, credits, fine, actions } = createSaveStage();
+    pin(stage, { background: 'transparent', 'border-width': '0' });
+    paintPlate(caption, 'edge', { 'max-width': '100%', background: 'transparent' });
+    paintMarking(shipName);
+    shipName.classList.add('fh-title');
+    if (portrait) pin(portrait, { 'border-left': '0' });
+    if (objective) objective.classList.add('sf-slot-detail');
+    if (fine) fine.classList.add('sf-slot-context');
+    if (credits && credits.querySelector) {
+      const heroN = credits.querySelector('.k-hero__n');
+      if (heroN) heroN.classList.add('fh-heronum');
+    }
     rootEl.appendChild(stage);
     this.hull = createStageHull(stage, { rootEl });
 
     // Foot: Export, Import (the hidden file input stays), Back.
-    const foot = el('footer', 'k-foot');
+    const foot = el('footer', 'k-foot of-pause');
+    pin(foot, { 'border-top': '0' });
     const footWord = (label) => {
       const b = el('button', 'k-word k-word--emph', label);
       b.type = 'button'; b.dataset.action = label.toLowerCase();
@@ -548,10 +729,13 @@ export const saveLoadScreen = {
       return b;
     };
     const bExport = footWord('Export');
+    paintKey(bExport, 'small');
     const bImport = footWord('Import');
+    paintKey(bImport, 'small');
     const fileIn = el('input'); fileIn.type = 'file'; fileIn.accept = '.json,application/json'; fileIn.hidden = true;
     foot.appendChild(fileIn);
     const back = footWord('Back');
+    paintKey(back, 'legend');
     rootEl.appendChild(foot);
 
     bExport.addEventListener('click', () => { cue('confirm'); this._export(ctx); });
@@ -621,6 +805,7 @@ export const saveLoadScreen = {
       const item = items.find((entry) => entry.id === row.dataset.id);
       row.classList.add('sf-slot');
       if (!item.occupied) row.classList.add('empty');
+      paintSlotRow(row, item.selected);
       const name = row.querySelector('.k-row__name');
       if (name) { name.classList.add('sf-slot-name'); if (!item.occupied) name.classList.add('k-38'); }
       const subLine = row.querySelector('.k-row__sub');
@@ -647,7 +832,11 @@ export const saveLoadScreen = {
     if (!refs || !refs.ids.includes(id)) return;
     refs.selected = id;
     if (refs.list) {
-      for (const row of refs.list.querySelectorAll('.k-row')) row.setAttribute('aria-selected', String(row.dataset.id === id));
+      for (const row of refs.list.querySelectorAll('.k-row')) {
+        const live = row.dataset.id === id;
+        row.setAttribute('aria-selected', String(live));
+        paintSlotRow(row, live);
+      }
     }
     if (!quiet) cue('move');
     this._renderStage(ctx);
@@ -723,6 +912,14 @@ export const saveLoadScreen = {
       row: true, size: 'emph', ariaLabel: slotLabel(id) + ' actions',
       onPick: (action) => this._act(ctx, action, id, meta, occupied),
     });
+    list.classList.add('of-pause');
+    for (const button of list.querySelectorAll('.k-word')) {
+      const action = button.dataset.action;
+      const kind = action === 'delete' ? 'hazard'
+        : button.classList.contains('k-word--primary') ? 'primary'
+        : 'legend';
+      paintKey(button, kind);
+    }
     refs.actions.appendChild(list);
   },
 

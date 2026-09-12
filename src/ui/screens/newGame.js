@@ -1,12 +1,8 @@
 // New Game screen (ARCHITECTURE §1.3 step 7, §5; design/specs/09).
-// The sheet's line (design/frontend/direction/DIRECTION_SHEET.md, new game): the sky; the starter
-// hull lit in its rig on the stage with its name and one sentence saying how it plays; the
-// difficulty as four words in a row with the live one bright and its sentence beneath; the pilot's
-// name as an underlined field; the seed in fine print; New Run+ as a two-word toggle when it applies;
-// the loadout as four quiet words; one primary word at the bottom: Launch.
-// Built on the frontend kit (styles/kit.css, src/ui/kit/); this file owns no CSS.
-// Pilot name + starter ship (Hitch / id ship_kestrel) + difficulty -> emit game:new. The save system
-// handles game:new (newGame()), seeds GameState and switches to flight.
+// POSTER register: the starter hull on the stage, stencil title, one nameplate, kit keys for
+// the verbs. Pilot / difficulty / seed / Launch stay the same controls — painted as produced
+// Field Hardware, not leftover underlined words. Pilot name + Hitch (ship_kestrel) + difficulty
+// emit game:new. The save system owns newGame() and the switch to flight.
 import { leftoverNewRunLine } from '../../core/newGamePlus.js';
 import { MODULES } from '../../data/modules.js';
 import { NEW_GAME } from '../../data/newGameDefaults.js';
@@ -30,6 +26,191 @@ const DEFAULT_DIFFICULTY = 'standard';
 const STARTER_BLURB = 'Turns wide. Sluggish under load. Stops badly.';
 // The sheet's stage zoom for the new-game hull (Task B §1.1).
 const STAGE_ZOOM = 1.1;
+
+const FH_KEY = {
+  primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
+  hazard: { file: 'key.hazard', width: '18px', minW: '96px', minH: '32px', pad: '0 12px', font: '12px' },
+  legend: { file: 'key.legend', width: '14px', minW: '72px', minH: '32px', pad: '0 10px', font: '12px' },
+  small: { file: 'key.small', width: '12px', minW: '72px', minH: '28px', pad: '0 8px', font: '12px' },
+};
+const FH_PLATE = {
+  sunk: { file: 'plate.bench.sunk.png', width: '24px', slice: '24 fill' },
+  edge: { file: 'plate.edge.small.png', width: '16px', slice: '16 fill' },
+};
+
+function fhUrl(rel) {
+  return new URL(`../../../assets/ui/kit/assets/${rel}`, import.meta.url).href;
+}
+function forcedColorsActive() {
+  return typeof matchMedia === 'function' && matchMedia('(forced-colors: active)').matches;
+}
+function pin(node, props) {
+  if (!node || !node.style || typeof node.style.setProperty !== 'function') return node;
+  for (const name of Object.keys(props)) node.style.setProperty(name, props[name], 'important');
+  return node;
+}
+function installShell(root) {
+  root.classList.add('fh-shell');
+  pin(root, { background: 'transparent', 'border-width': '0', 'box-shadow': 'none' });
+}
+function hairline() {
+  const rule = el('hr', 'k-rule fh-hairline');
+  return pin(rule, {
+    border: '0',
+    height: '4px',
+    background: 'url("' + fhUrl('tiles/tile.etch.hairline.png') + '") repeat-x left center',
+    'background-color': 'transparent',
+    margin: '12px 0',
+  });
+}
+function paintMarking(node) {
+  if (!node) return node;
+  node.classList.add('fh-title');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 900, 'wdth' 125",
+    'letter-spacing': 'var(--fh-track-display)',
+    'text-transform': 'uppercase',
+    'line-height': '0.9',
+    color: 'var(--fh-text)',
+  });
+}
+function paintLegend(node, lit = false) {
+  if (!node) return node;
+  node.classList.add('fh-legend');
+  return pin(node, {
+    'font-family': 'var(--fh-face-display)',
+    'font-variation-settings': "'wght' 600, 'wdth' 62",
+    'letter-spacing': 'var(--fh-track-legend)',
+    'text-transform': 'uppercase',
+    'font-size': 'var(--fh-size-fine)',
+    color: lit ? 'var(--fh-legend-lit)' : 'var(--fh-legend-rest)',
+    margin: '0',
+  });
+}
+function paintPlate(node, variant = 'sunk', extra = {}) {
+  if (!node) return node;
+  const spec = FH_PLATE[variant] || FH_PLATE.sunk;
+  node.classList.add('fh-plate', variant === 'edge' ? 'fh-plate--edge' : 'fh-plate--sunk');
+  if (forcedColorsActive()) {
+    return pin(node, {
+      'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+      background: 'transparent', ...extra,
+    });
+  }
+  return pin(node, {
+    'border-style': 'solid',
+    'border-width': spec.width,
+    'border-image-source': 'url("' + fhUrl('plates/' + spec.file) + '")',
+    'border-image-slice': spec.slice,
+    'border-image-repeat': 'stretch',
+    'border-image-width': spec.width,
+    background: 'transparent',
+    'box-sizing': 'border-box',
+    padding: '8px 12px',
+    ...extra,
+  });
+}
+function paintInput(input) {
+  if (!input) return input;
+  input.classList.add('fh-input');
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(input, { 'border-image-source': 'none', 'border-bottom': '1px solid CanvasText', background: 'transparent' });
+      return;
+    }
+    pin(input, {
+      'border-style': 'solid',
+      'border-width': '12px',
+      'border-image-source': 'url("' + fhUrl('controls/input.underline.' + state + '.png') + '")',
+      'border-image-slice': '12 fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': '12px',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'min-height': '40px',
+      padding: '0 8px',
+      'box-sizing': 'border-box',
+    });
+  };
+  apply('rest');
+  if (input.dataset.fhBound !== '1') {
+    input.dataset.fhBound = '1';
+    input.addEventListener('focus', () => apply('focus'));
+    input.addEventListener('blur', () => apply('rest'));
+  }
+  return input;
+}
+function paintKey(button, kind = 'legend') {
+  if (!button) return button;
+  const spec = FH_KEY[kind] || FH_KEY.legend;
+  button.classList.add('k-word', 'fh-key', 'fh-key--' + kind);
+  const apply = (state) => {
+    if (forcedColorsActive()) {
+      pin(button, {
+        'border-image-source': 'none', 'border-width': '1px', 'border-style': 'solid',
+        background: 'transparent', color: 'CanvasText',
+      });
+      return;
+    }
+    pin(button, {
+      display: 'inline-flex',
+      width: 'max-content',
+      'max-width': '100%',
+      'min-width': spec.minW,
+      'min-height': spec.minH,
+      padding: spec.pad,
+      'font-size': spec.font,
+      'font-family': 'var(--fh-face-display)',
+      'font-variation-settings': "'wght' 600, 'wdth' 62",
+      'letter-spacing': 'var(--fh-track-legend)',
+      'text-transform': 'uppercase',
+      'justify-content': 'center',
+      'align-items': 'center',
+      'box-sizing': 'border-box',
+      background: 'transparent',
+      color: 'var(--fh-text)',
+      'border-style': 'solid',
+      'border-width': spec.width,
+      'border-image-source': 'url("' + fhUrl('keys/' + spec.file + '.' + state + '.png') + '")',
+      'border-image-slice': parseInt(spec.width, 10) + ' fill',
+      'border-image-repeat': 'stretch',
+      'border-image-width': spec.width,
+    });
+  };
+  const sync = () => {
+    const disabled = button.getAttribute('aria-disabled') === 'true' || button.disabled;
+    const lit = button.getAttribute('aria-pressed') === 'true' || button.getAttribute('aria-selected') === 'true';
+    apply(disabled ? 'disabled' : (kind === 'legend' && lit ? 'lit' : 'rest'));
+  };
+  button._fhSync = sync;
+  if (button.dataset.fhBound !== '1') {
+    button.dataset.fhBound = '1';
+    button.addEventListener('pointerenter', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' && button.getAttribute('aria-pressed') === 'true' ? 'lit' : 'hover');
+    });
+    button.addEventListener('pointerleave', sync);
+    button.addEventListener('pointerdown', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply(kind === 'legend' ? 'hover' : 'pressed');
+    });
+    button.addEventListener('pointerup', sync);
+    button.addEventListener('focus', () => {
+      if (button.getAttribute('aria-disabled') === 'true' || button.disabled) return;
+      apply('hover');
+    });
+    button.addEventListener('blur', sync);
+  }
+  sync();
+  return button;
+}
+function syncKeys(root) {
+  if (!root || !root.querySelectorAll) return;
+  for (const button of root.querySelectorAll('.fh-key')) {
+    if (typeof button._fhSync === 'function') button._fhSync();
+  }
+}
 
 export function parseUniverseSeed(value) {
   const text = String(value ?? '').trim();
@@ -141,8 +322,9 @@ const FIRST_MINUTES = [
 function field(labelText, htmlFor) {
   const wrap = el('div');
   // A <label> only where it labels one control; a group of words gets a plain heading it points at.
-  const label = el(htmlFor ? 'label' : 'div', 'k-t-body k-62', labelText);
+  const label = el(htmlFor ? 'label' : 'div', 'k-t-body k-62 fh-legend', labelText);
   if (htmlFor) label.htmlFor = htmlFor;
+  paintLegend(label);
   // The label sits on its own line above the control (a block wrapper; the kit's inputs are inline).
   const line = el('div');
   line.appendChild(label);
@@ -163,15 +345,20 @@ export const newGameScreen = {
     rootEl.classList.add('k-screen');
     rootEl.dataset.kReady = '0';
     rootEl.setAttribute('aria-label', coreText('newGame'));
+    installShell(rootEl);
 
     // Title. `.sf-ng-header` is an inert hook the layout probe measures.
     const title = el('header', 'k-title sf-ng-header');
-    title.appendChild(el('h1', 'k-display k-t-title', 'New game'));
+    pin(title, { 'border-bottom': '0' });
+    const heading = el('h1', 'k-display k-t-title fh-title', 'New game');
+    paintMarking(heading);
+    title.appendChild(heading);
     title.appendChild(el('p', 'k-t-emph k-62', 'One hull, one contract, the whole sky.'));
     rootEl.appendChild(title);
 
     // The form hangs on the left. `.sf-ng-body` is the scrolling region the layout probe measures.
     const body = el('div', 'k-hang sf-ng-body');
+    pin(body, { 'border-right': '0', background: 'transparent' });
     rootEl.appendChild(body);
     // Launch guard (spec2/03 §3): one async start at a time. Set by setLaunching below.
     let launching = false;
@@ -181,9 +368,10 @@ export const newGameScreen = {
     const pilot = field(coreText('pilotName'), 'sf-ng-pilot-name');
     const name = el('input', 'k-input'); name.id = 'sf-ng-pilot-name'; name.type = 'text'; name.maxLength = 20; name.value = 'Wren';
     name.spellcheck = false; name.autocapitalize = 'off'; name.autocomplete = 'off';
+    paintInput(name);
     pilot.wrap.appendChild(name);
     body.appendChild(pilot.wrap);
-    body.appendChild(el('hr', 'k-rule'));
+    body.appendChild(hairline());
 
     // Difficulty: four words in a row, the live one bright, its sentence beneath. A hidden <select>
     // (#sf-ng-difficulty) mirrors the choice for the checks and probes that read it.
@@ -198,6 +386,8 @@ export const newGameScreen = {
       onPick: (action) => this._setDifficulty(action.slice('difficulty:'.length)),
     });
     diffWords.setAttribute('aria-labelledby', diffField.label.id);
+    diffWords.classList.add('of-pause');
+    for (const b of diffWords.querySelectorAll('.k-word')) paintKey(b, 'legend');
     const diffDesc = el('p', 'k-sentence', '');
     diffDesc.id = 'sf-ng-difficulty-desc';
     diffWords.setAttribute('aria-describedby', diffDesc.id);
@@ -205,7 +395,7 @@ export const newGameScreen = {
     diffField.wrap.appendChild(diff);
     diffField.wrap.appendChild(diffDesc);
     body.appendChild(diffField.wrap);
-    body.appendChild(el('hr', 'k-rule'));
+    body.appendChild(hairline());
 
     // Seed. A real player feature — a shareable, reproducible universe — and the ONLY way to make
     // the run's procedural content repeatable. Board offers are drawn from
@@ -213,7 +403,7 @@ export const newGameScreen = {
     // which contracts, commodities and destinations a save will ever see. Blank means "surprise me"
     // and keeps the random behaviour; `game:new` carries opts and `resetRunState` honours `opts.seed`.
     const seedField = field('Universe seed', 'sf-ng-seed');
-    const seedRow = el('div', 'k-words k-words--row');
+    const seedRow = el('div', 'k-words k-words--row of-pause');
     const seed = el('input', 'k-input k-t-fine');
     seed.id = 'sf-ng-seed';
     seed.type = 'text';
@@ -222,8 +412,10 @@ export const newGameScreen = {
     seed.placeholder = 'Random';
     seed.spellcheck = false; seed.autocomplete = 'off';
     seed.setAttribute('aria-describedby', 'sf-ng-seed-desc');
+    paintInput(seed);
     const newSeed = el('button', 'k-word k-word--fine', 'New seed');
     newSeed.type = 'button'; newSeed.dataset.action = 'newSeed';
+    paintKey(newSeed, 'small');
     newSeed.addEventListener('click', () => { if (launching) return; seed.value = randomSeedText(ctx); cue('confirm'); });
     seedRow.appendChild(seed); seedRow.appendChild(newSeed);
     seedField.wrap.appendChild(seedRow);
@@ -231,7 +423,7 @@ export const newGameScreen = {
     seedDesc.id = 'sf-ng-seed-desc';
     seedField.wrap.appendChild(seedDesc);
     body.appendChild(seedField.wrap);
-    body.appendChild(el('hr', 'k-rule'));
+    body.appendChild(hairline());
 
     // New Run+ is opt-in and read-only until Launch. The save owner revalidates this exact slot and
     // selection at the transition boundary; the UI never copies a whole prior run into the event.
@@ -251,10 +443,15 @@ export const newGameScreen = {
           legacyOn = action === 'legacy:on';
           for (const b of legacyWords.querySelectorAll('.k-word')) b.setAttribute('aria-pressed', String((b.dataset.action === 'legacy:on') === legacyOn));
           legacySelect.disabled = !legacyOn || launching;
+          syncKeys(legacyWords);
         },
       });
       legacyWords.setAttribute('aria-labelledby', legacyField.label.id);
-      for (const b of legacyWords.querySelectorAll('.k-word')) b.setAttribute('aria-pressed', String(b.dataset.action === 'legacy:off'));
+      legacyWords.classList.add('of-pause');
+      for (const b of legacyWords.querySelectorAll('.k-word')) {
+        b.setAttribute('aria-pressed', String(b.dataset.action === 'legacy:off'));
+        paintKey(b, 'legend');
+      }
       legacyField.wrap.appendChild(legacyWords);
       const meta = el('p', 'k-t-fine k-38', leftoverNewRunLine(newGamePlusCandidate));
       meta.id = 'sf-ng-legacy-desc';
@@ -266,6 +463,7 @@ export const newGameScreen = {
       legacySelect.id = 'sf-ng-legacy-keepsake';
       legacySelect.disabled = true;
       legacySelect.setAttribute('aria-describedby', 'sf-ng-legacy-desc');
+      paintInput(legacySelect);
       for (const item of newGamePlusCandidate.keepsakes || []) {
         const option = el('option', '', `${item.unique ? 'Relic · ' : ''}${item.name} · ${item.size || '?'} ${item.slotType}`);
         option.value = item.defId;
@@ -273,7 +471,7 @@ export const newGameScreen = {
       }
       legacyField.wrap.appendChild(legacySelect);
       body.appendChild(legacyField.wrap);
-      body.appendChild(el('hr', 'k-rule'));
+      body.appendChild(hairline());
     }
 
     // Loadout: four quiet words (the module names). Not buttons — nothing here is chosen.
@@ -282,15 +480,16 @@ export const newGameScreen = {
     loadout.setAttribute('aria-label', 'Loadout');
     for (const [slot, moduleName] of starterLoadoutRows()) {
       const li = el('li');
-      const word = el('span', 'k-t-body k-62', moduleName);
+      const word = el('span', 'k-t-body k-62 fh-legend', moduleName);
       word.setAttribute('aria-disabled', 'true');
       word.title = slot;
+      paintLegend(word);
       li.appendChild(word);
       loadout.appendChild(li);
     }
     loadoutField.wrap.appendChild(loadout);
     body.appendChild(loadoutField.wrap);
-    body.appendChild(el('hr', 'k-rule'));
+    body.appendChild(hairline());
 
     // The first fifteen minutes: four static rows under the loadout.
     const route = el('div', 'sf-ng-route');
@@ -300,6 +499,7 @@ export const newGameScreen = {
     steps.style.setProperty('--k-row-cols', 'minmax(0, 1fr)');
     for (const [beat, verb] of FIRST_MINUTES) {
       const row = el('li', 'k-row k-row--static sf-ng-route__step');
+      pin(row, { 'box-shadow': 'none' });
       const cell = el('div');
       cell.appendChild(el('span', 'k-row__name', beat));
       cell.appendChild(el('div', 'k-row__sub', verb));
@@ -311,9 +511,13 @@ export const newGameScreen = {
 
     // The stage: the hull in its rig, its name and its one sentence bottom-left.
     const stage = el('div', 'k-stage');
+    pin(stage, { background: 'transparent', 'border-width': '0' });
     const caption = el('div', 'k-stage__foot');
+    paintPlate(caption, 'edge', { 'max-width': '100%' });
     const ship = starterShip(ctx);
-    caption.appendChild(el('h2', 'k-display k-t-sub', (ship && ship.name) || 'Hitch'));
+    const hullName = el('h2', 'k-display k-t-sub fh-title', (ship && ship.name) || 'Hitch');
+    paintMarking(hullName);
+    caption.appendChild(hullName);
     caption.appendChild(el('p', 'k-sentence', STARTER_BLURB));
     stage.appendChild(caption);
     rootEl.appendChild(stage);
@@ -323,7 +527,10 @@ export const newGameScreen = {
     // the capture matrix, the atlas, the review probe and the localization check all reach it as
     // `.sf-ng-footer button:last`. Each is its own Tab stop. `.sf-ng-footer` / `.sf-ng-launch` are
     // inert hooks.
-    const foot = el('footer', 'k-foot sf-ng-footer');
+    // of-pause: kit.css only strips leftover k-word underlines on pause/title descendants,
+    // and this write set cannot edit kit.css.
+    const foot = el('footer', 'k-foot sf-ng-footer of-pause');
+    pin(foot, { 'border-top': '0' });
     const footWord = (action, label, extra) => {
       const b = el('button', 'k-word k-word--emph' + (extra ? ' ' + extra : ''), label);
       b.type = 'button'; b.dataset.action = action;
@@ -331,7 +538,9 @@ export const newGameScreen = {
       return b;
     };
     const back = footWord('back', coreText('back'));
+    paintKey(back, 'legend');
     const launch = footWord('launch', coreText('launch'), 'k-word--primary sf-ng-launch');
+    paintKey(launch, 'primary');
     launch.addEventListener('click', () => {
       if (launch.getAttribute('aria-disabled') === 'true') { cue('deny'); return; }
       cue('confirm'); this._launch(ctx);
@@ -357,6 +566,7 @@ export const newGameScreen = {
       if (legacyWords) for (const b of legacyWords.querySelectorAll('.k-word')) setWord(b, launching);
       if (legacySelect) legacySelect.disabled = launching || !legacyOn;
       launch.textContent = launching ? coreText('launching') : coreText('launch');
+      syncKeys(rootEl);
     };
     const restoreLaunch = () => setLaunching(false);
     const unsubStartFailed = ctx.bus.on('game:startFailed', restoreLaunch);
@@ -382,6 +592,7 @@ export const newGameScreen = {
       b.tabIndex = live ? 0 : -1;
     }
     if (!silent) refs.diff.dispatchEvent(new Event('change', { bubbles: true }));
+    syncKeys(refs.diffWords);
   },
 
   _launch(ctx) {
