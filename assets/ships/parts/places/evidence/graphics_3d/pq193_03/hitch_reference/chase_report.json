@@ -1,0 +1,250 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\wholeships\\kestrel.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\hitch_reference",
+  "focus": [
+    -0.2052,
+    0.0,
+    0.7987
+  ],
+  "boundsMin": [
+    -14.3162,
+    -7.0153,
+    -2.7664
+  ],
+  "boundsMax": [
+    13.9057,
+    7.0153,
+    4.3638
+  ],
+  "size": [
+    28.2219,
+    14.0307,
+    7.1302
+  ],
+  "lightScale": 2.6131,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "LOD0_hook_HOOK_ARMOR_PORT_ArmorDark",
+      "triangles": 116,
+      "materials": [
+        "Material_ArmorDark"
+      ]
+    },
+    {
+      "name": "LOD0_hook_HOOK_DRIVE_CORE_Emissive_DriveCore",
+      "triangles": 116,
+      "materials": [
+        "Material_Emissive_DriveCore"
+      ]
+    },
+    {
+      "name": "LOD0_hook_HOOK_NAV_PORT_Emissive_Cyan",
+      "triangles": 116,
+      "materials": [
+        "Material_Emissive_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_hook_HOOK_NAV_STARBOARD_Emissive_Cyan",
+      "triangles": 116,
+      "materials": [
+        "Material_Emissive_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_hook_HOOK_SECONDARY_POD_RepairGreen",
+      "triangles": 116,
+      "materials": [
+        "Material_RepairGreen"
+      ]
+    },
+    {
+      "name": "LOD0_hook_HOOK_SENSOR_DISH_Emissive_Cyan",
+      "triangles": 116,
+      "materials": [
+        "Material_Emissive_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_static_Accent_FrontierCyan",
+      "triangles": 74,
+      "materials": [
+        "Material_Accent_FrontierCyan"
+      ]
+    },
+    {
+      "name": "LOD0_static_Accent_WarningOrange",
+      "triangles": 672,
+      "materials": [
+        "Material_Accent_WarningOrange"
+      ]
+    },
+    {
+      "name": "LOD0_static_ArmorDark",
+      "triangles": 2338,
+      "materials": [
+        "Material_ArmorDark"
+      ]
+    },
+    {
+      "name": "LOD0_static_BrushedMetal",
+      "triangles": 23876,
+      "materials": [
+        "Material_BrushedMetal"
+      ]
+    },
+    {
+      "name": "LOD0_static_CANOPY",
+      "triangles": 176,
+      "materials": [
+        "Material_Glass_Canopy"
+      ]
+    },
+    {
+      "name": "LOD0_static_Decal_Hazard",
+      "triangles": 2,
+      "materials": [
+        "Material_Decal_Hazard"
+      ]
+    },
+    {
+      "name": "LOD0_static_Decal_Stencils",
+      "triangles": 2,
+      "materials": [
+        "Material_Decal_Stencils"
+      ]
+    },
+    {
+      "name": "LOD0_static_Emissive_Cyan",
+      "triangles": 758,
+      "materials": [
+        "Material_Emissive_Cyan"
+      ]
+    },
+    {
+      "name": "LOD0_static_Emissive_DriveCore",
+      "triangles": 188,
+      "materials": [
+        "Material_Emissive_DriveCore"
+      ]
+    },
+    {
+      "name": "LOD0_static_EngineCeramic",
+      "triangles": 1594,
+      "materials": [
+        "Material_EngineCeramic"
+      ]
+    },
+    {
+      "name": "LOD0_static_Hull",
+      "triangles": 856,
+      "materials": [
+        "Material_Hull"
+      ]
+    },
+    {
+      "name": "LOD0_static_Mechanical",
+      "triangles": 1622,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_static_Radiator",
+      "triangles": 1174,
+      "materials": [
+        "Material_Radiator"
+      ]
+    },
+    {
+      "name": "LOD0_static_RepairGreen",
+      "triangles": 264,
+      "materials": [
+        "Material_RepairGreen"
+      ]
+    },
+    {
+      "name": "LOD0_static_Rubber",
+      "triangles": 908,
+      "materials": [
+        "Material_Rubber"
+      ]
+    },
+    {
+      "name": "LOD0_static_V6_MarkingIvory",
+      "triangles": 290,
+      "materials": [
+        "Material_V6_MarkingIvory"
+      ]
+    },
+    {
+      "name": "LOD0_engine_fan_BrushedMetal",
+      "triangles": 604,
+      "materials": [
+        "Material_BrushedMetal"
+      ]
+    },
+    {
+      "name": "LOD0_engine_fan_Mechanical",
+      "triangles": 176,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_mining_head_Accent_WarningOrange",
+      "triangles": 224,
+      "materials": [
+        "Material_Accent_WarningOrange"
+      ]
+    },
+    {
+      "name": "LOD0_mining_head_BrushedMetal",
+      "triangles": 176,
+      "materials": [
+        "Material_BrushedMetal"
+      ]
+    },
+    {
+      "name": "LOD0_mining_head_Emissive_Orange",
+      "triangles": 176,
+      "materials": [
+        "Material_Emissive_Orange"
+      ]
+    },
+    {
+      "name": "LOD0_mining_head_Mechanical",
+      "triangles": 350,
+      "materials": [
+        "Material_Mechanical"
+      ]
+    },
+    {
+      "name": "LOD0_pulse_gimbal_ArmorDark",
+      "triangles": 252,
+      "materials": [
+        "Material_ArmorDark"
+      ]
+    },
+    {
+      "name": "LOD0_pulse_gimbal_BrushedMetal",
+      "triangles": 504,
+      "materials": [
+        "Material_BrushedMetal"
+      ]
+    }
+  ],
+  "triangles": 37952,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\hitch_reference\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\hitch_reference\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\hitch_reference\\play_chase_close.png"
+  },
+  "clay": null,
+  "clayClose": null
+}

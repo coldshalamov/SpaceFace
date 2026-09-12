@@ -6,83 +6,83 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "5005eefbc4ed07ebca4b13832495571734ab5a1338aa90cf4fea43b374e12f22",
+  "contentHash": "1adc5e056c9e2523d525f0f8f0ea43110fcfa7b52ad4163b7e8a540c0b9105ad",
   "dynamicGroups": [],
   "geometry": [
     {
       "bounds": {
         "max": [
-          4.524999618530273,
-          2.3000826835632324,
-          1.455133080482483
+          4.449999809265137,
+          1.289981484413147,
+          1.5000842809677124
         ],
         "min": [
-          -0.3250000476837158,
-          0.8399172425270081,
-          -1.455133080482483
+          -0.25,
+          0.345018595457077,
+          -1.5100842714309692
         ]
       },
       "drawMode": 4,
-      "geometryHash": "c3de713d457de5a5877050fdcd671e1a5569c0176036cdcf16462fce34dc7ebe",
+      "geometryHash": "3596d52db19490a92b74160167286a36ccfb26c6053557d3414d5d37b9d05924",
       "id": "sf.render.pod-cargo-container.mesh.cargo-id-plate.primitive.0",
-      "indexCount": 216,
+      "indexCount": 972,
       "indexed": true,
-      "materialHash": "5f3fec6aad96a11dea89c3a12e2de88262efcd2302c92c7549b278567302ac66",
+      "materialHash": "c492239b7f77596c5684548c84f673c982c2a2e93ff0f9e38e648489e0e36628",
       "materialPipelineKey": "opaque",
-      "meshName": "Cargo_ID_Plate",
+      "meshName": "Cargo_ID_Plate_Mesh",
       "nodeId": "sf.render.pod-cargo-container.mesh.cargo-id-plate",
       "primitiveIndex": 0,
-      "vertexCount": 102
+      "vertexCount": 288
     },
     {
       "bounds": {
         "max": [
-          4.699999809265137,
-          2.234874963760376,
-          1.400177001953125
+          4.809999942779541,
+          2.2100000381469727,
+          1.5000849962234497
         ],
         "min": [
-          -0.5,
-          -0.04987482354044914,
-          -1.400177001953125
+          -0.4599999785423279,
+          6.850208222886067e-8,
+          -1.5000849962234497
         ]
       },
       "drawMode": 4,
-      "geometryHash": "96bf8099a1932bdf4d7d01edcf2a40a8a5beaa0606b72b39a92305dcbd1f37dc",
+      "geometryHash": "c8b1e4d24f52ac9c20fd1569ea7f92f4cdc976cc59d4759ada585312929dbca5",
       "id": "sf.render.pod-cargo-container.mesh.cargo-shell.primitive.0",
-      "indexCount": 672,
+      "indexCount": 6192,
       "indexed": true,
-      "materialHash": "41756d73679628e0615d3e4a5a0fdd85a6224b6596ad6a46127cb477812260cf",
+      "materialHash": "5442258be2e4c48eda58b3587465ae65db8d3622fbe8719206aeaf5b09605016",
       "materialPipelineKey": "opaque",
-      "meshName": "Cargo_Shell",
+      "meshName": "Cargo_Shell_Mesh",
       "nodeId": "sf.render.pod-cargo-container.mesh.cargo-shell",
       "primitiveIndex": 0,
-      "vertexCount": 214
+      "vertexCount": 1848
     },
     {
       "bounds": {
         "max": [
           4.699999809265137,
-          2.1399877071380615,
-          1.5001784563064575
+          2.2849769592285156,
+          1.499872088432312
         ],
         "min": [
-          -0.5099999904632568,
-          -0.12498772889375687,
-          -1.5001784563064575
+          -0.5299999713897705,
+          -0.019976917654275894,
+          -1.499872088432312
         ]
       },
       "drawMode": 4,
-      "geometryHash": "aa5184073ba644797a4d0d7bd218af610a50752169aaa3a5b231d4e8836453e1",
+      "geometryHash": "acb9a5c3e41225f50bc707715070436f89f95ffbf5cd69b5fedd4ed9e5cf524d",
       "id": "sf.render.pod-cargo-container.mesh.pod-cargo-container-material-mechanical-merged.primitive.0",
-      "indexCount": 11040,
+      "indexCount": 6492,
       "indexed": true,
-      "materialHash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
+      "materialHash": "b9c38514bdb8e5408a984a4ef56baae4def1ed4f58dd85fd97db284067cb44f9",
       "materialPipelineKey": "opaque",
-      "meshName": "pod_cargo_container_Material_Mechanical_Merged",
+      "meshName": "pod_cargo_container_Material_Mechanical_Merged_Mesh",
       "nodeId": "sf.render.pod-cargo-container.mesh.pod-cargo-container-material-mechanical-merged",
       "primitiveIndex": 0,
-      "vertexCount": 3366
+      "vertexCount": 2016
     }
   ],
   "hlods": [],
@@ -90,50 +90,100 @@
   "lods": [],
   "materials": [
     {
-      "hash": "0d612528a03bab333df5b88aae8ccb024556b565a4c3510d36bb5c7577608cd2",
-      "id": "material:0d612528a03bab333df5b88a",
-      "name": "Material_Mechanical",
-      "pipelineKey": "opaque:front",
-      "textures": []
-    },
-    {
-      "hash": "41756d73679628e0615d3e4a5a0fdd85a6224b6596ad6a46127cb477812260cf",
-      "id": "material:41756d73679628e0615d3e4a",
+      "hash": "5442258be2e4c48eda58b3587465ae65db8d3622fbe8719206aeaf5b09605016",
+      "id": "material:5442258be2e4c48eda58b358",
       "name": "Material_Hull",
-      "pipelineKey": "opaque:front",
+      "pipelineKey": "opaque:double",
       "textures": [
         {
           "colorSpace": "srgb",
-          "name": "baseColor",
+          "name": "Material_Hull_basecolor",
           "slot": "baseColor",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "orm",
+          "name": "Material_Hull_orm",
           "slot": "metallicRoughness",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "normal",
+          "name": "Material_Hull_normal",
           "slot": "normal",
           "uri": null
         },
         {
           "colorSpace": "linear",
-          "name": "orm",
+          "name": "Material_Hull_orm",
           "slot": "occlusion",
           "uri": null
         }
       ]
     },
     {
-      "hash": "5f3fec6aad96a11dea89c3a12e2de88262efcd2302c92c7549b278567302ac66",
-      "id": "material:5f3fec6aad96a11dea89c3a1",
+      "hash": "b9c38514bdb8e5408a984a4ef56baae4def1ed4f58dd85fd97db284067cb44f9",
+      "id": "material:b9c38514bdb8e5408a984a4e",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Mechanical_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Mechanical_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "c492239b7f77596c5684548c84f673c982c2a2e93ff0f9e38e648489e0e36628",
+      "id": "material:c492239b7f77596c5684548c",
       "name": "Material_Accent",
-      "pipelineKey": "opaque:front",
-      "textures": []
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "Material_Accent_basecolor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "Material_Accent_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
     }
   ],
   "nodes": [
@@ -211,7 +261,7 @@
       "nodeName": "Cargo_Shell",
       "nodePath": [
         0,
-        8
+        1
       ],
       "parentId": "sf.render.pod-cargo-container.root",
       "role": "immutable",
@@ -260,7 +310,7 @@
       "nodeName": "pod_cargo_container_Material_Mechanical_Merged",
       "nodePath": [
         0,
-        18
+        3
       ],
       "parentId": "sf.render.pod-cargo-container.root",
       "role": "immutable",
@@ -338,42 +388,42 @@
       "sha256": "109c42896188b595066c707c11e374738f7ed99b471b64eace59a19d66b4a3c3"
     },
     "sourceGlb": {
-      "bytes": 283748,
-      "sha256": "1bd99864be12a7909ffca950b33733765dd6fce0ce9f213ff8d83383aeff3b9b",
+      "bytes": 164924,
+      "sha256": "894809bf29d0a096e4722c7ca7df9b752c84403f07872513856c55a517be32c4",
       "uri": "pod_cargo_container.glb"
     },
     "sourceManifest": {
-      "bytes": 76590,
-      "sha256": "f6ce19830cdf3635feb8cb1e4dbdb39a57b0a92f99ccdf41600c547fac74d5a4",
+      "bytes": 160165,
+      "sha256": "de1f6d1d0eba31d4b828c8c9104fca8a891173ae9859d126878836ccfabd1d90",
       "uri": "pilots.json"
     }
   },
   "render": {
-    "bytes": 352936,
-    "sha256": "75333c85719d322ca51d4c0d1dbb66d3561dcdb6ffe07a99c667e56115b3a1da",
+    "bytes": 241360,
+    "sha256": "bf3cc396b1de4930dfc7521c34b6c7e14cc039be4f98bf28da96ecbafe21958e",
     "uri": "render.glb"
   },
   "runtime": {
     "bounds": {
       "center": [
-        2.09499990940094,
-        1.0875474773347378,
-        0
+        2.1399999856948853,
+        1.1325000207871199,
+        -0.004999637603759766
       ],
       "max": [
-        4.699999809265137,
-        2.3000826835632324,
-        1.5001784563064575
+        4.809999942779541,
+        2.2849769592285156,
+        1.5000849962234497
       ],
       "min": [
-        -0.5099999904632568,
-        -0.12498772889375687,
-        -1.5001784563064575
+        -0.5299999713897705,
+        -0.019976917654275894,
+        -1.5100842714309692
       ],
       "size": [
-        5.2099997997283936,
-        2.4250704124569893,
-        3.000356912612915
+        5.3399999141693115,
+        2.3049538768827915,
+        3.010169267654419
       ]
     },
     "hidden": [],
@@ -399,7 +449,7 @@
           1
         ],
         "name": "MOUNT_Child",
-        "planIndex": 11,
+        "planIndex": 4,
         "tags": {
           "mountKey": "true",
           "socketForward": [
@@ -434,16 +484,16 @@
       },
       {
         "allowTextures": true,
-        "planIndex": 10,
+        "planIndex": 3,
         "role": "hull"
       },
       {
         "allowTextures": true,
-        "planIndex": 20,
+        "planIndex": 5,
         "role": "mechanical"
       }
     ],
-    "nodeCount": 21,
+    "nodeCount": 6,
     "primitives": [
       {
         "canopy": false,
@@ -492,7 +542,7 @@
           1
         ],
         "name": "Cargo_Shell",
-        "planIndex": 10,
+        "planIndex": 3,
         "tags": {
           "canopy": false
         }
@@ -518,7 +568,7 @@
           1
         ],
         "name": "pod_cargo_container_Material_Mechanical_Merged",
-        "planIndex": 20,
+        "planIndex": 5,
         "tags": {
           "canopy": false
         }
@@ -528,20 +578,20 @@
     "slot": "pod",
     "url": "assets/ships/release/parts/pods/pod_cargo_container.glb"
   },
-  "runtimeHash": "93b155ceeb2b2c53088e7b7e98d56eac81bf524e255f4da453285421b082bf7b",
+  "runtimeHash": "9b3fd9d08309288e4592abcc228cb7eaec86abdcf29d0b5568137681bce3fbf8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
       "bounds": {
         "max": [
-          4.699999809265137,
-          2.3000826835632324,
-          1.5001784563064575
+          4.809999942779541,
+          2.2849769592285156,
+          1.5000849962234497
         ],
         "min": [
-          -0.5099999904632568,
-          -0.12498772889375687,
-          -1.5001784563064575
+          -0.5299999713897705,
+          -0.019976917654275894,
+          -1.5100842714309692
         ]
       },
       "id": "sf.render.pod-cargo-container.body",

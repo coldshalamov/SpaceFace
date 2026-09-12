@@ -704,12 +704,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.lane-beacon",
-    "expectedContentHash": "d1fad4b1faf6d178925e2ba2a0d7df326e72dd4cf745992f6800452afba5e71a",
+    "expectedContentHash": "cb46e2411ec11fd6f71b1eff0828f1076502f59a54829ae2402a5e1dc7c5bc3f",
     "key": "lane-beacon",
     "metadataUrl": "assets/ships/release/render-packages/lane-beacon/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_SUPPORT_GANTRY",
     "slot": "place",
-    "sourceSha256": "0310ccbb236a7c6b52db7a60d763cab927c8ca9d1800da62b20c88b71b07b7c5",
+    "sourceSha256": "7e68ba3711324a6c6440a7d97ca8205fd1e99c0cad6f3a10a62df91952324197",
     "sourceUrl": "assets/ships/release/parts/places/place_lane_beacon.glb"
   },
   {
@@ -784,12 +784,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.nav-buoy",
-    "expectedContentHash": "ba9929ce6f6d9d401a2c6d1757aa0211d9fbafe2bb7fd25314f923ff86e046ef",
+    "expectedContentHash": "d9fa4a711f060e98b36152a3c3ef34aac9106ccbc590ee24ce01ca1c9ac3b438",
     "key": "nav-buoy",
     "metadataUrl": "assets/ships/release/render-packages/nav-buoy/render-package.json",
     "runtimeAssetId": "SF_PLACE_HELIOS_NAV_SPIRE",
     "slot": "place",
-    "sourceSha256": "d39f5b42d5b790c12546cb395629ff79c82b607296e1b0b555eed6b25f7a2dcd",
+    "sourceSha256": "e7d41985b76e4c02394dd39e84997e478cc3b9f8016eb93cbd1d74206cc226f2",
     "sourceUrl": "assets/ships/release/parts/places/place_nav_buoy.glb"
   },
   {
@@ -814,12 +814,12 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.pod-cargo-container",
-    "expectedContentHash": "5005eefbc4ed07ebca4b13832495571734ab5a1338aa90cf4fea43b374e12f22",
+    "expectedContentHash": "1adc5e056c9e2523d525f0f8f0ea43110fcfa7b52ad4163b7e8a540c0b9105ad",
     "key": "pod-cargo-container",
     "metadataUrl": "assets/ships/release/render-packages/pod-cargo-container/render-package.json",
     "runtimeAssetId": "SF_POD_CARGO_CONTAINER",
     "slot": "pod",
-    "sourceSha256": "1bd99864be12a7909ffca950b33733765dd6fce0ce9f213ff8d83383aeff3b9b",
+    "sourceSha256": "894809bf29d0a096e4722c7ca7df9b752c84403f07872513856c55a517be32c4",
     "sourceUrl": "assets/ships/release/parts/pods/pod_cargo_container.glb"
   },
   {

@@ -1,0 +1,13 @@
+{
+  "asset": "pod_cargo_container",
+  "output": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\pods\\evidence\\graphics_3d\\pq193_03\\candidates\\pod_cargo_container.glb",
+  "bytes": 262856,
+  "groups": [
+    "Cargo_Shell",
+    "pod_cargo_container_Material_Mechanical_Merged",
+    "Cargo_ID_Plate"
+  ],
+  "helpers": [
+    "MOUNT_Child"
+  ]
+}

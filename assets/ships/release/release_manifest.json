@@ -2075,25 +2075,6 @@
       "contractNodeCount": 30
     },
     {
-      "id": "place_lane_beacon",
-      "kind": "part:places",
-      "source": "assets/ships/parts/places/place_lane_beacon.glb",
-      "release": "assets/ships/release/parts/places/place_lane_beacon.glb",
-      "sourceSha256": "28f3d7466845bdde94b155d4c1ab3622830db6b1b8a30fcea0bc902523470836",
-      "releaseSha256": "0310ccbb236a7c6b52db7a60d763cab927c8ca9d1800da62b20c88b71b07b7c5",
-      "sourceBytes": 3817260,
-      "releaseBytes": 1695696,
-      "textures": 12,
-      "ktx2Textures": 12,
-      "meshoptBufferViews": 48,
-      "contractNodeCount": 13,
-      "textureProfiles": {
-        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
-        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
-        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
-      }
-    },
-    {
       "id": "place_lane_pin",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_lane_pin.glb",
@@ -3147,20 +3128,6 @@
       }
     },
     {
-      "id": "pod_cargo_container",
-      "kind": "part:pods",
-      "source": "assets/ships/parts/pods/pod_cargo_container.glb",
-      "release": "assets/ships/release/parts/pods/pod_cargo_container.glb",
-      "sourceSha256": "27691f904e7e13586fc6c5e2d3f937a8668f8e3243f934d5ca3612be28aff940",
-      "releaseSha256": "1bd99864be12a7909ffca950b33733765dd6fce0ce9f213ff8d83383aeff3b9b",
-      "sourceBytes": 372488,
-      "releaseBytes": 283748,
-      "textures": 3,
-      "ktx2Textures": 3,
-      "meshoptBufferViews": 16,
-      "contractNodeCount": 1
-    },
-    {
       "id": "pod_repair_patch",
       "kind": "part:pods",
       "source": "assets/ships/parts/pods/pod_repair_patch.glb",
@@ -3898,6 +3865,48 @@
       "ktx2Textures": 27,
       "meshoptBufferViews": 48,
       "contractNodeCount": 22
+    },
+    {
+      "id": "pod_cargo_container",
+      "kind": "part:pods",
+      "source": "assets/ships/parts/pods/pod_cargo_container.glb",
+      "release": "assets/ships/release/parts/pods/pod_cargo_container.glb",
+      "sourceSha256": "158832e4ec600c59b7f0d845ff1882d7abc3b85a9a8ce3ae448f44853bca02a9",
+      "releaseSha256": "894809bf29d0a096e4722c7ca7df9b752c84403f07872513856c55a517be32c4",
+      "sourceBytes": 263268,
+      "releaseBytes": 164924,
+      "textures": 9,
+      "ktx2Textures": 9,
+      "meshoptBufferViews": 13,
+      "contractNodeCount": 1
+    },
+    {
+      "id": "place_lane_beacon",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_lane_beacon.glb",
+      "release": "assets/ships/release/parts/places/place_lane_beacon.glb",
+      "sourceSha256": "632ff55e840ac42e6832d9856f680b85e8403822d1d651ed13be5f062bab2b68",
+      "releaseSha256": "7e68ba3711324a6c6440a7d97ca8205fd1e99c0cad6f3a10a62df91952324197",
+      "sourceBytes": 742760,
+      "releaseBytes": 344840,
+      "textures": 12,
+      "ktx2Textures": 12,
+      "meshoptBufferViews": 49,
+      "contractNodeCount": 13
+    },
+    {
+      "id": "wholeship_ashline_rig_corsair_blade",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/ashline_rig_corsair_blade.glb",
+      "release": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb",
+      "sourceSha256": "062b6cac12a574fcb326b72bb9fd130e2a9eb97edd884531737cb7d013859849",
+      "releaseSha256": "60f62c948c3060f2ea63b3f28033d600f947b084cef8a227f445aedbad5dfa7a",
+      "sourceBytes": 18598504,
+      "releaseBytes": 7909452,
+      "textures": 13,
+      "ktx2Textures": 13,
+      "meshoptBufferViews": 153,
+      "contractNodeCount": 58
     }
   ]
 }

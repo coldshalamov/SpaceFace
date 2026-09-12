@@ -122,3 +122,12 @@ closed hull.
 RESULT: DONE for the campaign only when units 1–4 are on master and unit 5 has a
 chase-camera Hornet candidate (wired or honestly unwired). Unit 3 may stay unwired if
 hitch is still mutating `scenarioProps47a.js`.
+
+### PQ-193.03 status (2026-09-11, grok-pq-193-03)
+
+Chase stills of the old live files failed the Hitch bar: the beacon was still a beige
+post-plus-two-tubes, the cargo pod a pale Lego can. Same-slot remaster landed for those two
+(dark manufactured L-gantry with lattice deck, hatch plinth, recessed lamp, transponder well;
+dark ISO can with hatch well, corrugation, corner castings, door bar). The nav buoy already
+read as a lantern from the 2026-09-10 material-truth pass and was kept. Sockets, collision,
+roots, and filenames unchanged. Packaged before any selector edit. Units 3–5 unchanged.

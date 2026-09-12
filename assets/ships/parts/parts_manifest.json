@@ -3121,8 +3121,8 @@
       "category": "places",
       "priority": "P1",
       "file": "places/place_lane_beacon.glb",
-      "tris": 1488,
-      "bytes": 3817260,
+      "tris": 7268,
+      "bytes": 742760,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -3154,19 +3154,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -1.75,
-          -5.1,
-          -1.75
+          -1.575,
+          -5.13,
+          -1.575
         ],
         "max": [
-          9.1,
-          9.4,
-          1.75
+          9.025,
+          9.23,
+          1.575
         ],
         "dimensionsM": [
-          10.85,
-          14.5,
-          3.5
+          10.6,
+          14.36,
+          3.15
         ]
       },
       "triangleMetric": "lod0"
@@ -3341,7 +3341,8 @@
           15.300000190734863,
           2.799999952316284
         ]
-      }
+      },
+      "triangleMetric": "lod0"
     },
     {
       "id": "place_radiator_bank",
@@ -4784,8 +4785,8 @@
       "category": "pods",
       "priority": "P2",
       "file": "pods/pod_cargo_container.glb",
-      "tris": 3976,
-      "bytes": 372488,
+      "tris": 4552,
+      "bytes": 263268,
       "textureSize": 1024,
       "tintable": {
         "hull": "Material_Hull",
@@ -4817,19 +4818,19 @@
       "mount": "origin",
       "bounds": {
         "min": [
-          -0.51,
-          -0.125,
-          -1.5
+          -0.53,
+          -0.02,
+          -1.51
         ],
         "max": [
-          4.7,
-          2.3,
+          4.81,
+          2.285,
           1.5
         ],
         "dimensionsM": [
-          5.21,
-          2.425,
-          3
+          5.34,
+          2.305,
+          3.01
         ]
       }
     },
@@ -6983,6 +6984,7 @@
       "wholeships/ashline_dart.glb",
       "wholeships/ashline_lode.glb",
       "wholeships/ashline_rig.glb",
+      "wholeships/ashline_rig_corsair_blade.glb",
       "wholeships/helios_lark.glb",
       "wholeships/helios_cradle.glb",
       "wholeships/helios_span.glb",
