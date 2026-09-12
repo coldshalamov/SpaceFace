@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-06",
+  "updated": "2026-09-12",
   "runs": [
     {
       "date": "2026-08-12",
@@ -818,6 +818,19 @@
       "references": [],
       "integration": "live",
       "commit": "752da2f6",
+      "verification": "focused_green"
+    },
+    {
+      "id": "leftover-contact-roster-title",
+      "date": "2026-09-12",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Flight contact strip no longer wears a leftover Local contacts title; the count and rows are the instrument.",
+      "fingerprint": "verb=strip,subject=contact-roster-title,sector=helios,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "b05df66ed6f4fd3a1ca2488a9945693a5fc7d898",
       "verification": "focused_green"
     }
   ],
