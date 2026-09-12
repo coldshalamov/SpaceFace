@@ -5350,7 +5350,7 @@
       "priority": 46,
       "title": "Terrain is lethal: damage from pre-solve closing speed",
       "kind": "implementation",
-      "state": "implemented",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "flight-physics-feel"
@@ -5367,7 +5367,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-137.06-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-04: terrain and structure damage now use real pre-solve radial closing speed while physical contact dV stays bounded at 40. Seed 4242: Wasp-50 loses 86.96% hull and helm, Wasp-76 dies, Atlas loses 0% hull and keeps helm. B6 is numerically met; headed crash acceptance remains open. See receipt."
+      "brief": "DONE 2026-09-12: acceptance review appended to the receipt (lane A, orchestrator re-verified). All five B6 clauses re-measured on seed 4242 today incl. heavy keeps helm; a headed shipping-camera crash driver (scripts/capture-terrain-lethality.mjs) exists and the orchestrator reproduced and looked at the frames: the light dies on the rock with a flash, hull 0/150, helm lost; the heavy takes 0% and keeps helm. Terrain benches 14/14. IMPLEMENTED 2026-09-04: terrain and structure damage now use real pre-solve radial closing speed while physical contact dV stays bounded at 40. Seed 4242: Wasp-50 loses 86.96% hull and helm, Wasp-76 dies, Atlas loses 0% hull and keeps helm. B6 is numerically met; headed crash acceptance remains open. See receipt."
     },
     {
       "id": "PQ-137.07",
@@ -6136,7 +6136,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-138.00-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-04: lawSecurity consumes the live wreck and survivor-pod events, then deterministically assigns one responder to LOITER defensively at the victim anchor while the others pursue. Real-path seeds 4242 and 8008 split in 1.2 s with one material choice event; headed shipping capture remains open. See receipt."
+      "brief": "IMPLEMENTED (still): B10a met on the live route (choice at +1.63 s, one holds, two chase) but the chasers were reserves spawned on a 2000 WU ring and never reached the camera. 2026-09-12 orchestrator fix in progress: reserves launch from the jurisdiction station dock ring (authorityResponse.reserveArrivalPoint station option). IMPLEMENTED 2026-09-04: lawSecurity consumes the live wreck and survivor-pod events, then deterministically assigns one responder to LOITER defensively at the victim anchor while the others pursue. Real-path seeds 4242 and 8008 split in 1.2 s with one material choice event; headed shipping capture remains open. See receipt."
     },
     {
       "id": "PQ-138.01",
@@ -6291,7 +6291,7 @@
       "priority": 79,
       "title": "Heavy is moving terrain",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.04",
         "PQ-137.06"
@@ -6307,8 +6307,10 @@
         "npm run check:baseline",
         "npm run check:combat"
       ],
-      "receiptRefs": [],
-      "brief": "Mass >= 150; gun-scale impulses do nothing; the player can swing around it, hide behind it, throw lights into it; a light thrown into it dies."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-140.01-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-12 (6f5beb184): a mass-150+ hull is terrain for whatever meets it (pre-solve closing-speed crumple law, HEAVY_AS_TERRAIN_MASS) and the massline whip no longer suppresses craft damage when a heavy is involved; a light thrown into a heavy dies at 76%+ cruise (before: identical 54 damage at any speed). Open: the rope-swing-around-a-heavy clause (no bench anchors on a hull; the massline anchor floor is 1800 mass). Mass >= 150; gun-scale impulses do nothing; the player can swing around it, hide behind it, throw lights into it; a light thrown into it dies."
     },
     {
       "id": "PQ-140.02",
@@ -12146,7 +12148,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-143-00-REPORT.md"
       ],
-      "brief": "IMPLEMENTED 2026-09-05 (not done): Ceres workers kept their jobs because a lawful patrol is no longer treated as a pirate; 6 of 8 identity columns differ on seed 4242 (bar >= 4); rhythm and crime still read the same; no committed 30 s strip and no blind naming, so the packet done-when stays open for PQ-143.01. DONE WHEN: a blind reviewer names the sector from a 30 s capture with labels hidden."
+      "brief": "IMPLEMENTED (still): blind naming 2/2 but Ceres was named from rock only because nothing authored at Ceres draws after an in-flight sector change (presentationAdmission stays pending; verified by the orchestrator on the real GPU via the real gate jump). Lane R owns that defect (receipt SECTOR-ARRIVAL-ADMISSION-2026-09-12.md). Re-run scripts/capture-sector-identity.mjs after. IMPLEMENTED 2026-09-05 (not done): Ceres workers kept their jobs because a lawful patrol is no longer treated as a pirate; 6 of 8 identity columns differ on seed 4242 (bar >= 4); rhythm and crime still read the same; no committed 30 s strip and no blind naming, so the packet done-when stays open for PQ-143.01. DONE WHEN: a blind reviewer names the sector from a 30 s capture with labels hidden."
     },
     {
       "id": "PQ-143.01",
