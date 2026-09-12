@@ -86,6 +86,37 @@ export const COMBAT_LAB_STARTER_PACKAGES = freezeDeep([
       { slotIndex: 7, defId: 'mod_elastic_whip_m' },
     ],
   },
+  // PQ-176.01 — the drive/thruster split, as two kits you can actually launch.
+  //
+  // Same hull. Same gun. The ONLY difference is which half of the propulsion the credits went to,
+  // and the two ships do not feel remotely alike: one arrives first and cannot turn when it gets
+  // there, the other cannot run away from anything and never loses a knife fight. If a player can
+  // pick between these two and mean it, the split is real.
+  //
+  // Hornet slot order: weapon M x3 (0,1,2) | shield M (3) | engine L (4) | utility S x2 (5,6) |
+  // thruster M (7).
+  {
+    id: 'hornet_fast_clumsy',
+    label: 'Bolt (fast, clumsy)',
+    blurb: 'Everything in the drive, nothing in the bells. Crosses the room first and regrets it.',
+    hullId: 'ship_hornet',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_concussion_cannon_m' },
+      { slotIndex: 4, defId: 'mod_engine_warp_l' },
+      { slotIndex: 7, defId: 'mod_thruster_stripped_s' },
+    ],
+  },
+  {
+    id: 'hornet_nimble_slow',
+    label: 'Hinge (nimble, slow)',
+    blurb: 'Stock drive, every credit in the manoeuvring bay. Cannot run; does not need to.',
+    hullId: 'ship_hornet',
+    loadout: [
+      { slotIndex: 0, defId: 'wpn_concussion_cannon_m' },
+      { slotIndex: 4, defId: 'mod_engine_ion_m' },
+      { slotIndex: 7, defId: 'mod_thruster_vernier_m' },
+    ],
+  },
 ]);
 
 export const COMBAT_LAB_ENEMY_PACKAGES = freezeDeep([

@@ -2,6 +2,14 @@
 // IDs use ship_ prefix per ARCHITECTURE §0.4. requiresTech refs use tech_ prefix.
 // Pure data, no imports.
 //
+// thrusterId + slots.thruster (PQ-176.01, "drive and thruster split"): the DRIVE (the hull's own
+// driveId, scaled by a fitted engine module) owns forward thrust and top speed; the MANOEUVRING
+// THRUSTERS own turn torque, strafe and brake. Every hull ships a stock set that is exactly
+// neutral, so an empty thruster bay flies the hull precisely as it always did; refitting the bay is
+// how "fast but clumsy" and "nimble but slow" become two real builds of the same ship. The thruster
+// bay is the LAST slot in buildSlotList order, so an older save's shorter fittings array still
+// lines up and simply pads to the stock set.
+//
 // designMass (PQ-176.00, "mass is the law"): the operational mass the hull's drive is RATED for —
 // the dry hull plus about seventy percent of its outfit space, which is what a hull carries when
 // it is sensibly fitted and its hold is empty. Acceleration is force over mass, so the derived
@@ -46,7 +54,8 @@ export const SHIPS = [
     energyCap: 80, energyRegen: 12, collisionRadius: 14, price: 0, buyback: 8000,
     // boost: {max, drainRate (while boosting), regenRate (idle), dashImpulse (units), dashCooldown (s)}
     boost: { max: 100, drainRate: 38, regenRate: 22, dashImpulse: 150, dashCooldown: 2.0 },
-    slots: { weapon: ['S'], shield: ['S'], engine: ['M'], cargo: ['S'], mining: ['S'], utility: ['S'] },
+    slots: { weapon: ['S'], shield: ['S'], engine: ['M'], cargo: ['S'], mining: ['S'], utility: ['S'], thruster: ['S'] },
+    thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'scout',
       proportions: { length: 1.35, halfWidth: 0.42, height: 0.30 },
@@ -74,7 +83,8 @@ export const SHIPS = [
     driveId: 'drive_reaction_m',  // medium reaction drive — steady miner thrust + RCS
     energyCap: 110, energyRegen: 16, collisionRadius: 16, price: 15000,
     boost: { max: 70, drainRate: 44, regenRate: 16, dashImpulse: 80, dashCooldown: 3.0 },  // miners barely boost — sturdy, not nimble
-    slots: { weapon: ['S'], shield: ['S'], engine: ['M'], cargo: ['M'], mining: ['M','M'], utility: ['S'] },
+    slots: { weapon: ['S'], shield: ['S'], engine: ['M'], cargo: ['M'], mining: ['M','M'], utility: ['S'], thruster: ['S'] },
+    thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'miner',
       proportions: { length: 1.30, halfWidth: 0.55, height: 0.42 },
@@ -103,7 +113,8 @@ export const SHIPS = [
     energyCap: 140, energyRegen: 22, collisionRadius: 14, price: 28000,
     boost: { max: 110, drainRate: 36, regenRate: 28, dashImpulse: 170, dashCooldown: 1.8 },  // twitchy combat bursts
     // twin fixed guns: one straight-front, one slightly off for a wider gimbal envelope
-    slots: { weapon: ['S', { size:'S', facing:'front' }], shield: ['M'], engine: ['M'], cargo: [], mining: [], utility: ['S'] },
+    slots: { weapon: ['S', { size:'S', facing:'front' }], shield: ['M'], engine: ['M'], cargo: [], mining: [], utility: ['S'], thruster: ['S'] },
+    thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'fighter',
       proportions: { length: 1.40, halfWidth: 0.58, height: 0.26 },
@@ -132,7 +143,8 @@ export const SHIPS = [
     energyCap: 100, energyRegen: 14, collisionRadius: 18, price: 35000,
     boost: { max: 130, drainRate: 30, regenRate: 30, dashImpulse: 240, dashCooldown: 2.2 },  // strong escape-dash, quick recharge (the archetype)
     // hauler: a rear-facing gun to discourage pursuit while it runs
-    slots: { weapon: [{ size:'S', facing:'rear' }], shield: ['M'], engine: ['M'], cargo: ['M','M','M'], mining: [], utility: ['S'] },
+    slots: { weapon: [{ size:'S', facing:'rear' }], shield: ['M'], engine: ['M'], cargo: ['M','M','M'], mining: [], utility: ['S'], thruster: ['S'] },
+    thrusterId: 'mod_thruster_stock_s',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'freighter',
       proportions: { length: 1.55, halfWidth: 0.50, height: 0.46 },
@@ -162,7 +174,8 @@ export const SHIPS = [
     energyCap: 200, energyRegen: 28, collisionRadius: 18, price: 95000,
     boost: { max: 110, drainRate: 34, regenRate: 26, dashImpulse: 160, dashCooldown: 2.0 },
     // multirole: one front + one rear = defend itself coming and going
-    slots: { weapon: ['M', { size:'M', facing:'rear' }], shield: ['M'], engine: ['M'], cargo: ['M','M'], mining: ['M'], utility: ['M','M'] },
+    slots: { weapon: ['M', { size:'M', facing:'rear' }], shield: ['M'], engine: ['M'], cargo: ['M','M'], mining: ['M'], utility: ['M','M'], thruster: ['M'] },
+    thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'multirole',
       proportions: { length: 1.50, halfWidth: 0.50, height: 0.38 },
@@ -192,7 +205,8 @@ export const SHIPS = [
     energyCap: 260, energyRegen: 38, collisionRadius: 16, price: 110000,
     boost: { max: 130, drainRate: 32, regenRate: 32, dashImpulse: 200, dashCooldown: 1.6 },  // best burst+dash in class
     // interceptor: 2 front + 1 turret for all-aspect coverage on the attack run
-    slots: { weapon: ['M', 'M', { size:'M', facing:'turret' }], shield: ['M'], engine: ['L'], cargo: [], mining: [], utility: ['S','S'] },
+    slots: { weapon: ['M', 'M', { size:'M', facing:'turret' }], shield: ['M'], engine: ['L'], cargo: [], mining: [], utility: ['S','S'], thruster: ['M'] },
+    thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'fighter',
       proportions: { length: 1.45, halfWidth: 0.70, height: 0.30 },
@@ -222,7 +236,8 @@ export const SHIPS = [
     energyCap: 240, energyRegen: 26, collisionRadius: 24, price: 130000,
     boost: { max: 60, drainRate: 50, regenRate: 12, dashImpulse: 60, dashCooldown: 4.0 },  // a brick — barely moves, doesn't run
     // slow barge: a turret so it can swat pests while its drill works
-    slots: { weapon: [{ size:'M', facing:'turret' }], shield: ['M','M'], engine: ['M'], cargo: ['M','M','M'], mining: ['L','L','L','L'], utility: ['M','M'] },
+    slots: { weapon: [{ size:'M', facing:'turret' }], shield: ['M','M'], engine: ['M'], cargo: ['M','M','M'], mining: ['L','L','L','L'], utility: ['M','M'], thruster: ['M'] },
+    thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'miner',
       proportions: { length: 1.40, halfWidth: 0.72, height: 0.56 },
@@ -252,7 +267,8 @@ export const SHIPS = [
     energyCap: 420, energyRegen: 52, collisionRadius: 22, price: 320000,
     boost: { max: 100, drainRate: 36, regenRate: 30, dashImpulse: 120, dashCooldown: 2.4 },  // warship: steady, not flashy
     // corvette: 2 front + 1 broadside gun each side
-    slots: { weapon: ['L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['M','M','M'] },
+    slots: { weapon: ['L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['M','M','M'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'frigate',
       proportions: { length: 1.55, halfWidth: 0.62, height: 0.42 },
@@ -286,7 +302,8 @@ export const SHIPS = [
     // PQ-140.01: keep carrying speed while turning; mass and the real flight solver supply the radius.
     heavyMotion: { minTurnSpeed: 16, turnStartAngle: 0.60, turnCarryForward: 0.15 },
     // ponderous hauler: front + rear PD guns — survive, don't win fights
-    slots: { weapon: ['M', { size:'M', facing:'rear' }], shield: ['L','L'], engine: ['L'], cargo: ['L','L','L','L','L','L'], mining: [], utility: ['M','M','M'] },
+    slots: { weapon: ['M', { size:'M', facing:'rear' }], shield: ['L','L'], engine: ['L'], cargo: ['L','L','L','L','L','L'], mining: [], utility: ['M','M','M'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'freighter',
       proportions: { length: 1.75, halfWidth: 0.62, height: 0.62 },
@@ -318,7 +335,8 @@ export const SHIPS = [
     energyCap: 500, energyRegen: 64, collisionRadius: 18, price: 290000,
     boost: { max: 140, drainRate: 28, regenRate: 34, dashImpulse: 180, dashCooldown: 1.8 },  // long-endurance cruise boost
     // explorer: twin front + a turret for self-defense deep in hostile space
-    slots: { weapon: ['M', 'M', { size:'M', facing:'turret' }], shield: ['M','M'], engine: ['L'], cargo: ['M','M'], mining: [], utility: ['L','L','L','L'] },
+    slots: { weapon: ['M', 'M', { size:'M', facing:'turret' }], shield: ['M','M'], engine: ['L'], cargo: ['M','M'], mining: [], utility: ['L','L','L','L'], thruster: ['M'] },
+    thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'multirole',
       proportions: { length: 1.65, halfWidth: 0.52, height: 0.40 },
@@ -352,7 +370,8 @@ export const SHIPS = [
     // PQ-140.01: a gunship banks through a line change instead of pinning in place.
     heavyMotion: { minTurnSpeed: 18, turnStartAngle: 0.66, turnCarryForward: 0.13 },
     // gunship: 2 front heavies + 1 broadside each side = a weapons platform
-    slots: { weapon: ['L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L','L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['L','L','L','L'] },
+    slots: { weapon: ['L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L','L'], engine: ['L'], cargo: ['M'], mining: [], utility: ['L','L','L','L'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'frigate',
       proportions: { length: 1.70, halfWidth: 0.78, height: 0.52 },
@@ -387,7 +406,8 @@ export const SHIPS = [
     // PQ-140.01: broad turn commitment makes this hull a navigable obstacle, not a turret.
     heavyMotion: { minTurnSpeed: 20, turnStartAngle: 0.72, turnCarryForward: 0.11 },
     // battlecruiser: 3 front + broadside batteries both sides
-    slots: { weapon: ['L', 'L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L','L','L'], engine: ['L'], cargo: ['L','L'], mining: [], utility: ['L','L','L','L','L'] },
+    slots: { weapon: ['L', 'L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'right' }], shield: ['L','L','L','L'], engine: ['L'], cargo: ['L','L'], mining: [], utility: ['L','L','L','L','L'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'capital',
       proportions: { length: 1.85, halfWidth: 0.82, height: 0.60 },
@@ -425,7 +445,8 @@ export const SHIPS = [
     // PQ-140.01: the flagship takes the longest line to change and keeps its wake through it.
     heavyMotion: { minTurnSpeed: 22, turnStartAngle: 0.78, turnCarryForward: 0.09 },
     // flagship: 3 front + 2 broadside each side — a broadside duel monster
-    slots: { weapon: ['L', 'L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'left' }, { size:'L', facing:'right' }, { size:'L', facing:'right' }], shield: ['L','L','L','L','L'], engine: ['L'], cargo: ['L','L','L'], mining: [], utility: ['L','L','L','L','L','L','L','L'] },
+    slots: { weapon: ['L', 'L', 'L', { size:'L', facing:'left' }, { size:'L', facing:'left' }, { size:'L', facing:'right' }, { size:'L', facing:'right' }], shield: ['L','L','L','L','L'], engine: ['L'], cargo: ['L','L','L'], mining: [], utility: ['L','L','L','L','L','L','L','L'], thruster: ['L'] },
+    thrusterId: 'mod_thruster_stock_l',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
     visuals: {
       family: 'capital',
       proportions: { length: 2.00, halfWidth: 0.92, height: 0.72 },

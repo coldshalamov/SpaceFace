@@ -138,7 +138,10 @@ export function findMasslineHeadConflict(fittings, slotIndex, requestedDef) {
 }
 
 const SIZE_RANK = { S: 1, M: 2, L: 3 };
-const SLOT_TYPES = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
+// PQ-176.01: `thruster` is LAST on purpose. `buildSlotList` numbers slots in this order, so a new
+// bay anywhere else would renumber every saved `fittings` array and need a migration; appended, an
+// older save is simply one entry short and `asFittingsArray` pads it to the hull's stock set.
+const SLOT_TYPES = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility', 'thruster'];
 
 function fmtCr(value) {
   return Math.max(0, Math.round(Number(value) || 0)).toLocaleString('en-US');
@@ -538,6 +541,75 @@ function pickEngine(equipped) {
   return null;
 }
 
+function pickThruster(equipped) {
+  for (const d of equipped) if (d && d.slotType === 'thruster') return d;
+  return null;
+}
+
+// PQ-176.01 — DRIVE AND THRUSTER SPLIT.
+//
+// The drive owns forward thrust and top speed; the manoeuvring thrusters own turn torque, strafe
+// and brake. Before this, a fitted engine changed only the legacy stat block and the Travel Burn
+// ceiling, and NOTHING a player could fit changed how a V3 hull turned — the two halves of "how
+// does my ship handle" were one authored drive profile with no player input at all.
+//
+// Both references are the baseline tier-1 parts, and both are neutral. An unfitted hull (every NPC,
+// every bench spawn) and the shipped starter fit therefore multiply by exactly one, which is why
+// this split moves no golden: only a deliberately refitted bay changes anything.
+const REFERENCE_DRIVE_ACCEL_MULT = 1.0;   // mod_engine_ion_m
+const REFERENCE_DRIVE_TOP_SPEED = 70;     // mod_engine_ion_m
+const DRIVE_SCALED_ACCEL_KEYS = Object.freeze(['mainAccel', 'maxAccel', 'rcsForwardAccel', 'fieldAccel']);
+const DRIVE_SCALED_SPEED_KEYS = Object.freeze(['combatSpeed', 'maxSpeed', 'boostMaxSpeed', 'precisionSpeed']);
+const THRUSTER_TURN_KEYS = Object.freeze(['yawAccel', 'yawBrake']);
+// The bay owns TORQUE. The yaw-rate ceiling is the balance between that torque and the hull's own
+// damping, so it follows on the square root: a bay with twice the authority does not give the hull
+// twice the top rotation rate, it gets there far sooner and holds a tighter arc. Scaling it
+// linearly turned an interceptor into a cursor (FEEL_CONTRACT §C: "a controllable mass").
+const THRUSTER_RATE_KEYS = Object.freeze(['maxYawRate']);
+const THRUSTER_STRAFE_KEYS = Object.freeze(['strafeAccel', 'rcsStrafeAccel', 'brakeStrafeAccel', 'trimAccel']);
+const THRUSTER_BRAKE_KEYS = Object.freeze(['reverseAccel', 'brakeAccel', 'maxBrakeAccel', 'rcsReverseAccel']);
+
+function positiveMult(value, fallback = 1) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+/** Scale a set of profile keys off the AUTHORED base, so repeated recomputes never compound. */
+function scaleProfileKeys(target, base, keys, mult) {
+  if (!(mult > 0) || mult === 1) return;
+  for (let i = 0; i < keys.length; i += 1) {
+    const key = keys[i];
+    const authored = base[key];
+    if (Number.isFinite(authored)) target[key] = authored * mult;
+  }
+}
+
+/** How a fitted engine module advances the hull's authored drive. Neutral with nothing fitted. */
+function driveScaling(engine) {
+  if (!engine || engine === FALLBACK_ENGINE) return { accel: 1, speed: 1 };
+  const mods = engine.mods || {};
+  return {
+    accel: positiveMult(mods.accelMult) / REFERENCE_DRIVE_ACCEL_MULT,
+    speed: positiveMult(mods.topSpeed, REFERENCE_DRIVE_TOP_SPEED) / REFERENCE_DRIVE_TOP_SPEED,
+  };
+}
+
+/** The manoeuvring set in the bay, or the hull's authored stock set. Stock is exactly neutral. */
+export function thrusterScaling(shipDef, equipped) {
+  const fitted = pickThruster(equipped || []);
+  const stock = fitted ? null : (shipDef && shipDef.thrusterId ? MODULE_BY_ID.get(shipDef.thrusterId) : null);
+  const def = fitted || stock;
+  const mods = (def && def.mods) || {};
+  return {
+    id: def ? def.id : null,
+    name: def ? def.name : null,
+    fitted: !!fitted,
+    turn: positiveMult(mods.turnMult),
+    strafe: positiveMult(mods.strafeMult),
+    brake: positiveMult(mods.brakeMult),
+  };
+}
+
 // Default engine modifiers when no engine module is fitted (a ship must still move). Mirrors the
 // Ion Thruster M baseline so an un-outfitted hull is sluggish but functional.
 const FALLBACK_ENGINE = {
@@ -632,23 +704,43 @@ export function massLoadFactor(shipDefOrId, operationalMass) {
  * the hull's authored drive, with class/mass retained for legacy fallback. Only Travel Burn V-MAX
  * is tier-scaled, so fitting an engine cannot silently rewrite top speed or drive-family behavior;
  * the ship's own operational mass is the one thing that moves its accelerations (MASS_LOAD_LAW). */
-function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine) {
+function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped) {
   const base = resolvePropulsionProfile({ driveId: shipDef.driveId, flightClass, mass: totalMass });
   const mult = engineMods(engine).travelCeilingMult;
   const derived = {
     ...base,
     travelCeiling: resolveTravelCeiling(base) * mult,
   };
+
+  // PQ-176.01, in order: the drive advances forward thrust and top speed, the thruster bay advances
+  // turning, strafe and brake, and then PQ-176.00's mass law divides every acceleration by what the
+  // ship is actually carrying. Applied in that order, "I fitted a bigger drive" and "I loaded the
+  // hold" compose instead of overwriting each other.
+  const drive = driveScaling(engine);
+  const thruster = thrusterScaling(shipDef, equipped);
+  scaleProfileKeys(derived, base, DRIVE_SCALED_ACCEL_KEYS, drive.accel);
+  scaleProfileKeys(derived, base, DRIVE_SCALED_SPEED_KEYS, drive.speed);
+  scaleProfileKeys(derived, base, THRUSTER_TURN_KEYS, thruster.turn);
+  scaleProfileKeys(derived, base, THRUSTER_RATE_KEYS, Math.sqrt(thruster.turn));
+  scaleProfileKeys(derived, base, THRUSTER_STRAFE_KEYS, thruster.strafe);
+  scaleProfileKeys(derived, base, THRUSTER_BRAKE_KEYS, thruster.brake);
+
   const load = massLoadFactor(shipDef, totalMass);
   if (load < 1) {
     for (let i = 0; i < MASS_SCALED_PROFILE_KEYS.length; i += 1) {
       const key = MASS_SCALED_PROFILE_KEYS[i];
-      const authored = base[key];
-      if (Number.isFinite(authored)) derived[key] = authored * load;
+      const current = derived[key];
+      if (Number.isFinite(current)) derived[key] = current * load;
     }
   }
   derived.designMass = designMassForHull(shipDef);
   derived.massLoadFactor = load;
+  derived.driveAccelMult = drive.accel;
+  derived.driveSpeedMult = drive.speed;
+  derived.thrusterTurnMult = thruster.turn;
+  derived.thrusterStrafeMult = thruster.strafe;
+  derived.thrusterBrakeMult = thruster.brake;
+  derived.thrusterId = thruster.id;
   // Infinity is a runtime solver instruction, not authoritative entity state. Keep finite envelope
   // limits in the descriptor; an omitted limit is hydrated back to Infinity by the profile owner.
   if (!Number.isFinite(derived.solverSpeedLimit)) delete derived.solverSpeedLimit;
@@ -841,6 +933,14 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const cruise = maxSpeed * cruiseFrac;
   const thrust = cruise * drag * THRUST_SCALE * biases.thrustBias;      // terminal velocity ≈ cruise
   const turnRate = BASE_TURN * eng.turnMult * handling * turnMass * biases.turnBias;
+  // PQ-176.01: the compatibility flight model and every screen that reads it see the SAME split the
+  // V3 profile sees, so a Vernier Cluster moves the fit screen's agility bar and a Warp Coil moves
+  // its top-speed bar. Both references are neutral, so an unfitted hull is bit-identical here.
+  const splitThruster = thrusterScaling(shipDef, equipped);
+  const splitDrive = driveScaling(engine);
+  const legacyTurnRate = turnRate * splitThruster.turn;
+  const legacyThrust = thrust * splitDrive.accel;
+  const legacyMaxSpeed = maxSpeed * splitDrive.speed;
 
   // (4) health / energy / cargo — hull/shield stay catalog-truthful (no fake tank currency).
   // Resilient Self-Recharging Shields (docs/GAMEPLAY_QOL_OVERHAUL.md §4):
@@ -877,16 +977,16 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   const bdef = shipDef.boost || {};
   const boostRegen = (bdef.regenRate || 18) * energyRegenMult;
   const flightClass = flightClassForShip(shipDef);
-  const propulsion = buildDerivedPropulsion(shipDef, flightClass, totalMass, engine);
+  const propulsion = buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped);
   const flightModel = buildFlightModel({
     shipDef,
     flightClass,
     totalMass,
     massRatio,
     handling,
-    thrust,
-    turnRate,
-    maxSpeed,
+    thrust: legacyThrust,
+    turnRate: legacyTurnRate,
+    maxSpeed: legacyMaxSpeed,
     drag,
     bankFactor,
   });
@@ -910,7 +1010,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     shield: shieldMax, shieldMax,
     shieldRegenRate, shieldRegenDelay: 3,
     cap: capMax, capMax, capRegen,
-    thrust, turnRate, maxSpeed, drag,
+    thrust: legacyThrust, turnRate: legacyTurnRate, maxSpeed: legacyMaxSpeed, drag,
     bankFactor,
     flightClass,
     flightModel,

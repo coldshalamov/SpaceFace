@@ -43,6 +43,44 @@ export const MODULES = [
     variantBonuses: { topSpeedPct: 0.15, microJumpBlinkUsesPerEncounter: 1 },
   },
 
+  // ===================== MANOEUVRING THRUSTERS (PQ-176.01) =====================
+  // The drive owns going somewhere: forward thrust, and the speed the governor lets you hold.
+  // These own everything else — turning, strafing and stopping — so "fast but clumsy" and "nimble
+  // but slow" are two real builds of one hull instead of two words for the same ship.
+  //
+  // Every hull ships with a stock set (its authored `thrusterId`), and the stock set is exactly
+  // neutral: one point on every axis. A ship with an empty thruster bay therefore flies precisely
+  // as it always did, and every number below is a deliberate trade the player made.
+  //
+  // `mods.turnMult` scales yaw acceleration, yaw braking and the yaw-rate ceiling.
+  // `mods.strafeMult` scales lateral thrust. `mods.brakeMult` scales reverse and braking thrust.
+  {
+    id: 'mod_thruster_stock_s', name: 'Stock RCS Cluster S', slotType: 'thruster', size: 'S', tier: 0, mass: 0, price: 0,
+    purchasable: false, energyDraw: 0, mods: { turnMult: 1.0, strafeMult: 1.0, brakeMult: 1.0 },
+  },
+  {
+    id: 'mod_thruster_stock_m', name: 'Stock RCS Cluster M', slotType: 'thruster', size: 'M', tier: 0, mass: 0, price: 0,
+    purchasable: false, energyDraw: 0, mods: { turnMult: 1.0, strafeMult: 1.0, brakeMult: 1.0 },
+  },
+  {
+    id: 'mod_thruster_stock_l', name: 'Stock RCS Cluster L', slotType: 'thruster', size: 'L', tier: 0, mass: 0, price: 0,
+    purchasable: false, energyDraw: 0, mods: { turnMult: 1.0, strafeMult: 1.0, brakeMult: 1.0 },
+  },
+  {
+    // The racer's choice: strip the manoeuvring bells off, keep the mass, point the nose and pray.
+    // Pairs with a big drive to make a hull that arrives first and cannot do anything when it does.
+    id: 'mod_thruster_stripped_s', name: 'Stripped RCS S', slotType: 'thruster', size: 'S', tier: 1, mass: 1, price: 4000,
+    energyDraw: 0, mods: { turnMult: 0.68, strafeMult: 0.62, brakeMult: 0.78 },
+  },
+  {
+    id: 'mod_thruster_vernier_m', name: 'Vernier Cluster M', slotType: 'thruster', size: 'M', tier: 2, mass: 7, price: 21000,
+    requiresTech: 'tech_drive_tuning', energyDraw: 3, mods: { turnMult: 1.42, strafeMult: 1.50, brakeMult: 1.34 },
+  },
+  {
+    id: 'mod_thruster_gimbal_l', name: 'Gimbal Thruster Array L', slotType: 'thruster', size: 'L', tier: 3, mass: 16, price: 58000,
+    requiresTech: 'tech_graviton_drives', energyDraw: 6, mods: { turnMult: 1.70, strafeMult: 1.85, brakeMult: 1.52 },
+  },
+
   // ===================== CARGO =====================
   {
     id: 'mod_cargo_pod_m', name: 'Cargo Pod M', slotType: 'cargo', size: 'M', tier: 1, mass: 4, price: 5000,

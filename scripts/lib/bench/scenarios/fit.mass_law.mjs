@@ -27,8 +27,8 @@ const REVERSAL_TICKS = 1800;
 const REVERSAL_TARGET_RAD = Math.PI * 0.88;
 const DELTA_BAR_PCT = 25;
 
-// Slot order is SLOT_TYPES: weapon, shield, engine, cargo, mining, utility.
-// ship_drifter: weapon M x2 | shield M | engine M | cargo M x2 | mining M | utility M x2.
+// Slot order is SLOT_TYPES: weapon, shield, engine, cargo, mining, utility, thruster.
+// ship_drifter: weapon M x2 | shield M | engine M | cargo M x2 | mining M | utility M x2 | thruster M.
 const FITS = Object.freeze([
   Object.freeze({
     key: 'gun',
@@ -41,6 +41,7 @@ const FITS = Object.freeze([
       null, null,
       null,
       'mod_targeting_computer_m', 'mod_thermal_sink_m',
+      null,
     ]),
     fillHold: false,
   }),
@@ -55,6 +56,7 @@ const FITS = Object.freeze([
       'mod_cargo_pod_m', 'mod_cargo_pod_m',
       null,
       null, null,
+      null,
     ]),
     fillHold: true,
   }),
