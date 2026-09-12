@@ -157,6 +157,14 @@ test('the swarm threshold has exactly one owner', () => {
   assert.match(radarSrc, /export const SWARM_DENSITY_THRESHOLD\s*=\s*8\b/);
 });
 
+test('the contact roster does not wear a leftover instrument title', () => {
+  // HUD attention: a title on an instrument means the instrument failed. Collapsed roster is the
+  // count line; expanded roster is the rows. A "Local contacts" / "LOCAL CONTACTS" ::before was
+  // leftover chrome sitting on both.
+  assert.equal(/content\s*:\s*['"][^'"]*contacts[^'"]*['"]/i.test(hudCssSrc), false);
+  assert.match(hudCssSrc, /\.sf-overview::before\s*\{[^}]*content\s*:\s*none/);
+});
+
 test('the radar threat pulse is gated in JS, not by a CSS media query', () => {
   // A canvas cannot answer prefers-reduced-motion. Gating it in CSS looks correct and does nothing.
   assert.match(radarSrc, /import \{ prefersReducedMotion \}/);

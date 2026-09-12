@@ -861,11 +861,8 @@ export function injectHudCss() {
     border:1px solid var(--hud-line);
     font-family:var(--hud-data); font-size:var(--k-fs-data); overflow:hidden;
   }
-  .sf-overview::before {
-    content:'LOCAL CONTACTS'; display:block; padding:3px 10px 6px; color:var(--hud-muted);
-    font-family:var(--hud-display); font-size:var(--k-fs-data); font-weight:700;
-    border-bottom:1px solid var(--hud-cyan);
-  }
+  /* Roster identity is the rows / collapsed count, not a leftover instrument title. */
+  .sf-overview::before { content:none; display:none; }
   .sf-overview-row {
     min-height:26px; padding:3px 8px; background:transparent; border-left:0; border-bottom:1px solid var(--hud-cyan);
   }
@@ -891,7 +888,7 @@ export function injectHudCss() {
      lit gas giant fills this corner in the reference sector — it disappears. Captured, not
      assumed: the range readout was unreadable over the planet limb at 1440x900. De-boxing raises
      the floor for every muted token in the dock. */
-  .sf-overview::before, .sf-overview-row__right, .sf-overview-row__detail,
+  .sf-overview-row__right, .sf-overview-row__detail,
   .sf-overview-row__state, .sf-overview-row__tier, .sf-overview-footer,
   .sf-target__meta { color:var(--hud-paper); }
   .sf-overview-row__name, .sf-target__name { color:var(--hud-paper); }
@@ -939,7 +936,7 @@ export function injectHudCss() {
   #hud .sf-ob-kicker, #hud .sf-ob-count,
   #hud .sf-law__head, #hud .sf-law__meta, #hud .sf-law__jurisdiction,
   #hud .sf-target__meta, #hud .sf-target__range, #hud .sf-target__closing,
-  #hud .sf-overview, #hud .sf-overview::before, #hud .sf-overview-row,
+  #hud .sf-overview, #hud .sf-overview-row,
   #hud .sf-overview-row__left, #hud .sf-overview-row__name, #hud .sf-overview-row__right,
   #hud .sf-overview-row__state, #hud .sf-overview-row__tier, #hud .sf-overview-row__detail,
   #hud .sf-overview-footer,
@@ -1227,13 +1224,13 @@ export function injectHudCss() {
   .sf-target__threat[data-tier="2"] .sf-target__threat-word { color:var(--k-signal); }
   .sf-target__threat[data-tier="3"] .sf-target__threat-word { color:var(--k-red); font-weight:700; }
   .sf-tri.best .sf-tri__k { color:var(--k-text-live); }
-  /* contact roster: hairline rows at data size; the header a caps line, not a plate */
+  /* contact roster: hairline rows at data size; no leftover instrument title */
   .sf-overview { border:0; font-family:var(--k-text); font-size:var(--k-fs-data); padding:0; }
-  .sf-overview::before { content:'Local contacts'; font-family:var(--k-text); font-size:var(--k-fs-data); font-weight:400; color:var(--k-bone-62); padding:0 0 3px; border-bottom:1px solid var(--k-hair); }
+  .sf-overview::before { content:none; display:none; }
   .sf-overview-row { padding:3px 0; border-bottom:1px solid var(--k-hair); }
   .sf-overview-row:hover { background:none; }
   .sf-overview-row__name { color:var(--k-text-live); }
-  .sf-overview::before, .sf-overview-row__right, .sf-overview-row__detail, .sf-overview-row__state, .sf-overview-row__tier, .sf-overview-footer { color:var(--k-bone-62); }
+  .sf-overview-row__right, .sf-overview-row__detail, .sf-overview-row__state, .sf-overview-row__tier, .sf-overview-footer { color:var(--k-bone-62); }
   /* radar: the drawing only */
   .sf-radar { border:0; background:none; }
   /* comms tape: one line at data size 62 %, no band */
