@@ -3213,13 +3213,20 @@ function buildMine(e) {
   }), SHARED_MATERIAL_ROLE.HULL));
 
   const hull = new THREE.Mesh(
-    getGeometry('mine:disc-hull', () => new THREE.CylinderGeometry(0.5, 0.56, 0.24, 16)),
+    getGeometry('mine:canister-hull', () => new THREE.CylinderGeometry(0.48, 0.52, 0.42, 6)),
     casing,
   );
   hull.name = 'MinePressureHull';
   g.add(hull);
+  const cap = new THREE.Mesh(
+    getGeometry('mine:canister-cap', () => new THREE.CylinderGeometry(0.36, 0.40, 0.08, 6)),
+    exposed,
+  );
+  cap.name = 'MineAccessCap';
+  cap.position.y = 0.22;
+  g.add(cap);
   const armorRing = new THREE.Mesh(
-    getGeometry('mine:armor-ring', () => new THREE.TorusGeometry(0.48, 0.065, 6, 18).rotateX(Math.PI / 2)),
+    getGeometry('mine:armor-ring', () => new THREE.TorusGeometry(0.46, 0.05, 6, 12).rotateX(Math.PI / 2)),
     exposed,
   );
   armorRing.name = 'MineArmorRing';
@@ -3417,7 +3424,7 @@ function buildMassSeed(e) {
     color: 0x6fb7d8, emissive: 0x1f7ea8, emissiveIntensity: 0.8, roughness: 0.4, metalness: 0.25,
   }), SHARED_MATERIAL_ROLE.HULL));
 
-  const core = new THREE.Mesh(getGeometry('mseed:core', () => new THREE.OctahedronGeometry(0.42, 0)), coreMat);
+  const core = new THREE.Mesh(getGeometry('mseed:core', () => new THREE.BoxGeometry(0.52, 0.38, 0.52)), coreMat);
   core.name = 'MassSeedContainmentCore';
   g.add(core);
 

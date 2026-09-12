@@ -374,10 +374,18 @@ export const asteroidScreen = {
     hudEls.holdFill = holdFill;
     const leaveBtn = document.createElement('button');
     leaveBtn.type = 'button';
-    // The kit's produced legend key carries this verb (assets/ui/kit/assets/keys/key.legend.*):
-    // a nine-sliced render with real thickness, a lit top edge and an under-shadow in the image.
-    // `aw-leave` keeps the law's geometry and sentence case; the plate is the kit's.
-    leaveBtn.className = 'aw-leave fh-key fh-key--legend';
+    // ---- the `fh-*` classes on this screen are MARKERS, not painters ----
+    // They record which produced kit part each element is, so the DOM and
+    // styles/asteroid-ops.css name the same hardware. The paint itself is entirely in that
+    // stylesheet, scoped under `.ast-screen`. Do NOT route these through
+    // src/ui/station/screens/fhChrome.js: its `paintKey`/`paintLegend` pin
+    // `text-transform: uppercase !important`, which law §3.3 bans on this screen and
+    // scripts/check-asteroid-theater.mjs fails on every visible element.
+    //
+    // Leave wears the kit's SMALL key (assets/ui/kit/assets/keys/key.small.*) through its five
+    // authored states: a nine-sliced render with real thickness, a lit top edge and an
+    // under-shadow in the image. `aw-leave` keeps the law's geometry and sentence case.
+    leaveBtn.className = 'aw-leave fh-key fh-key--small';
     const leaveLabel = document.createElement('span');
     leaveLabel.textContent = 'Leave';
     const leaveKey = document.createElement('span');
@@ -390,9 +398,9 @@ export const asteroidScreen = {
     // mode and would leave a blank square.
     const drawerBtn = document.createElement('button');
     drawerBtn.type = 'button';
-    // A machined recess holding a verb glyph is what the kit calls a socket, and it is exactly
-    // what this affordance is (fh.css §controls: "the action bar is sockets, not buttons").
-    drawerBtn.className = 'aw-drawer-key fh-socket';
+    // The one icon on this screen sits on the kit's small key too, so the glyph reads as a
+    // labelled cap rather than a bare SVG floating on the crest.
+    drawerBtn.className = 'aw-drawer-key fh-key fh-key--small';
     drawerBtn.setAttribute('aria-label', 'Ledger, site and help drawers');
     drawerBtn.setAttribute('aria-expanded', 'false');
     drawerBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">'
@@ -415,10 +423,11 @@ export const asteroidScreen = {
     stage.appendChild(canvas);
 
     const rig = document.createElement('div');
-    // The instrument cluster stands on a produced plate (plate.edge.small — the kit's small-surface
-    // nine-slice) instead of a flat fill with a CSS shadow under it. The gauges inside keep the
-    // law's own chunky geometry (§6.2, 132×12px): the plate is the hardware, not the instrument.
-    rig.className = 'aw-rig fh-plate fh-plate--edge';
+    // The instrument cluster stands in the kit's SUNK bench plate — the recessed well the design
+    // system reserves for instruments — instead of a flat fill with a CSS shadow under it. The
+    // gauges inside are the kit's own segmented bar (bar.seg.bezel + bar.seg.off): the plate is
+    // the hardware, the bezel is the instrument.
+    rig.className = 'aw-rig fh-plate fh-plate--sunk';
     rig.setAttribute('aria-label', 'Rig instruments');
     function buildGauge(kind, label) {
       const row = document.createElement('div');
@@ -955,9 +964,10 @@ export const asteroidScreen = {
     // budget on bookkeeping. The stylesheet carries the `[hidden]` override at !important for the
     // same reason `.aw-lens[hidden]` does — a plain class rule outranks the UA sheet.
     const drawer = document.createElement('section');
-    // The bottom sheet is a bench plate (plate.bench.primary), not a rounded rectangle with a
-    // shadow: the stylesheet paints its top and sides only, since the bottom edge is off-glass.
-    drawer.className = 'aw-drawer fh-plate';
+    // The bottom sheet is the kit's RAISED bench plate — one step lighter, the surface the system
+    // reserves for the active panel — not a rounded rectangle with a hand-rolled shadow. The law's
+    // r10 top corners stay declared in the stylesheet as the fallback if the sprite never arrives.
+    drawer.className = 'aw-drawer fh-plate fh-plate--raised';
     drawer.hidden = true;
     drawer.setAttribute('aria-label', 'Site drawers');
     const drawerGrab = document.createElement('div');
@@ -1109,7 +1119,9 @@ export const asteroidScreen = {
     function actionBtn(host, label) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'aw-verb-btn fh-key fh-key--small';
+      // An acting verb ("To site" / "To rover") is a legend key; only the ± steppers beside it
+      // are small caps, so the thing that MOVES cargo is visibly the larger control.
+      b.className = 'aw-verb-btn fh-key fh-key--legend';
       b.textContent = label;
       host.appendChild(b);
       return b;

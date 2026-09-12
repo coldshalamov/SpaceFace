@@ -256,7 +256,12 @@
   font: 500 var(--fh-size-fine)/1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
   letter-spacing: var(--fh-track-legend);
-  color: var(--fh-legend-rest);
+  /* NOT --fh-legend-rest. The kit's resting legend is amber at 45% alpha, which composites to
+     2.9:1 on these plates — under the 4.5:1 floor, and this screen's labels are text, not
+     decoration. The Field Hardware voice here is the TRACKING and the size step; the ink stays
+     the law's own §3.2 ramp, which measures 8.9:1 (ink-2) and 4.6:1 (ink-3) on the sunk plate.
+     Amber is reserved for LIT state, where it arrives as the key's own authored `.lit` face. */
+  color: var(--aw-ink-3);
   background: none;
   padding: 0;
 }
@@ -283,7 +288,13 @@
 /* The rig is a SUNK BENCH PLATE — the kit's recessed well, the surface the whole
    design system reserves for instruments. It replaces a flat fill plus a generic
    0 2px 8px drop shadow. */
-.aw-rig {
+/* Scoped under `.ast-screen`, not left bare, because asteroidScreen.js marks this element with
+   the kit's own `fh-plate` family and index.html loads kit.css AFTER this sheet: at a bare
+   (0,1,0) this rule TIES `.fh-plate` and loses the tie, so the cluster would silently take the
+   kit's 24px border and 16px padding instead of the 16px/4px geometry chosen here — whichever
+   `--raised/--sunk/--edge` variant the marker names. Same for `.aw-drawer` and `.aw-site-block`
+   below. Keep all three selectors scoped if the markers are ever re-pointed. */
+.ast-screen .aw-rig {
   position: absolute;
   right: 16px;
   bottom: 16px;
@@ -308,7 +319,7 @@
   width: 56px;
   font: 500 var(--fh-size-fine)/1 var(--aw-font);
   letter-spacing: var(--fh-track-legend);
-  color: var(--fh-legend-rest);
+  color: var(--aw-ink-2); /* 8.9:1 on the sunk plate — see the note on .aw-key */
 }
 .aw-gauge-track { width: 148px; }
 /* Meaning by colour on the shared well built above; `background-color` (not the
@@ -336,7 +347,13 @@
    padding, no background behind them — and it stops 16px clear of the §6.2 rig cluster. */
 .aw-palette {
   position: absolute;
-  right: 306px; /* rig cluster = 16px margin + ~274px card; this clears it by 16px */
+  /* The rig cluster grew when its gauges became the kit's own 28px segmented bezels, so this
+     offset is re-derived rather than inherited: 16px right margin + the rig's real width
+     (16+16 plate border, 6+6 padding, then 56 label + 10 + 148 track + 10 + 42 value = 266)
+     = 326px, plus 26px of clear air. The check in scripts/check-asteroid-theater.mjs asserts
+     these two boxes never intersect; re-derive this if either the rig's plate border, its
+     gauge track width or the --fh type step changes. */
+  right: 352px;
   bottom: 16px;
   z-index: 5;   /* under the §6.4 lens (6), over the board */
   display: flex;
@@ -389,7 +406,7 @@
   right: 5px;
   font: 500 var(--fh-size-fine)/1 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--fh-legend-rest);
+  color: var(--aw-ink-2); /* legible over the socket cap — see the note on .aw-key */
   pointer-events: none;
 }
 
@@ -808,7 +825,11 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   .ast-screen .sf-btn,
   .ast-summary-box,
   .ast-summary-box .sf-btn,
-  .aw-chip, .aw-rig, .aw-drawer, .aw-site-block, .aw-rate-chip, .aw-help-keys,
+  /* these three carry `.ast-screen` for the same reason their base rules do: a bare class here
+     would tie their (0,2,0) base rule and lose, leaving a 12-16px nine-slice frame standing in
+     the user's own palette */
+  .ast-screen .aw-rig, .ast-screen .aw-drawer, .ast-screen .aw-site-block,
+  .aw-chip, .aw-rate-chip, .aw-help-keys,
   .aw-lens, .aw-lens-chip, .aw-build-tip,
   .aw-hold-track, .aw-gauge-track {
     border-image-source: none;
@@ -841,6 +862,16 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   .aw-lens-swatch, .aw-lens-ring-cell { border: 1px solid CanvasText; }
   .aw-lens-hp i { background: Highlight; }
   .aw-key { color: CanvasText; }
+  /* The resets above clear the RESTING sprite, but fh.css owns the STATE sprites — `.fh-key:hover`,
+     `.fh-key--primary:hover/:active` and `.fh-key--legend[aria-selected='true']` are all (0,2,0),
+     exactly the weight of the rules here, and styles/kit.css loads later, so each of them wins the
+     tie and paints its nine-slice straight back. The selected drawer tab is the bad one: it carries
+     `aria-selected`, so it leaks its lit plate AT REST, not just under the pointer, and the
+     Highlight outline that is supposed to say "this tab is open" lands on top of a sprite the mode
+     exists to remove. `!important` is how the produced kit's own forced-colours block settles the
+     same tie (styles/kit.css, FORCED COLOURS section). */
+  .ast-screen .fh-key,
+  .ast-summary-box .fh-key { border-image-source: none !important; }
 }
 
 /* ---------------------------------------------------------------- §6.6 drawers
@@ -857,7 +888,7 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
 /* The sheet is a RAISED BENCH PLATE: the kit's one-step-lighter surface, the one
    the system reserves for the active panel. It replaces a flat fill with rounded
    top corners and a hand-rolled 20px shadow. */
-.aw-drawer {
+.ast-screen .aw-drawer {
   position: absolute;
   left: 0;
   right: 0;
@@ -1017,7 +1048,7 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   flex: 0 0 auto;
   font: 500 var(--fh-size-fine)/1.35 var(--aw-mono);
   font-variant-numeric: tabular-nums;
-  color: var(--fh-legend-rest);
+  color: var(--aw-ink-3); /* 4.6:1 on the raised sheet — see the note on .aw-key */
 }
 .aw-ledger-text { color: var(--aw-ink); }
 .aw-ledger-empty {
@@ -1070,7 +1101,7 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
 }
 /* each block is a sunk well on the sheet — the kit's recessed surface for rows
    and readouts, drawn at 12px so a 230px column keeps its measure */
-.aw-site-block {
+.ast-screen .aw-site-block {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1090,7 +1121,7 @@ html.sf-reduce-motion .ast-summary-box .sf-btn:hover { transform: none; }
   margin: 0 0 2px;
   font: 600 var(--fh-size-fine)/1.2 var(--aw-font);
   letter-spacing: var(--fh-track-legend);
-  color: var(--fh-legend-rest);
+  color: var(--aw-ink); /* a block heading is read, not glanced — see the note on .aw-key */
 }
 .aw-site-stat {
   display: flex;
@@ -1284,3 +1315,60 @@ html.sf-reduce-motion .aw-verb-step:hover { transform: none; }
   .aw-drawer-key svg { stroke: CanvasText; }
   .aw-site-reason, .aw-ledger-empty { color: GrayText; }
 }
+
+/* ============================================================================================
+   THE KIT'S CLASSES, IN THIS SCREEN'S VOICE.
+
+   `src/ui/asteroid/asteroidScreen.js` marks these controls with the kit's own `fh-key` and
+   `fh-plate` families, so the markup names the hardware it is wearing and the programme's
+   asset-coverage grep (FIELD_HARDWARE_PROGRAM.md §3 rule 4) finds this screen. That module calls
+   the classes MARKERS, not painters — true of the JS painters in
+   `src/ui/station/screens/fhChrome.js`, but NOT of `assets/ui/kit/kit/fh.css`, which really does
+   style `.fh-key`. Almost every property it attaches there is out-ranked by the
+   `.ast-screen .aw-*` rules above — deliberately, because those rules ARE the kit, applied at
+   this screen's law: the same produced sprites, at law §6.1-§6.3's geometry, in sentence case.
+
+   TWO properties are not, and they are the whole reason this block exists. Both are load-order
+   traps, not taste:
+
+   1. `text-transform`. fh.css sets `uppercase` on `.fh-key`, because a kit key is a POSTER/BENCH
+      register control and those are stencilled hull markings. `.ast-screen *` at the top of this
+      file already says `none` — but at (0,1,0) it merely TIES `.fh-key`, and index.html loads
+      styles/kit.css AFTER styles/asteroid-ops.css, so the tie goes to the kit and every verb on
+      this screen SHOUTS. That is ASTEROID_WORKS_DESIGN_LAW §3.3's deleted voice returning
+      ("harsh fonts ... everything about it is lame" is the owner on exactly this), and law §11.4
+      fails the screen on one uppercase computed style — scripts/check-asteroid-theater.mjs walks
+      every visible element and counts them. Naming the element's own class as well makes this
+      (0,2,0) and settles it.
+
+   2. `min-width`. fh.css floors a key at 120px (88px small, 96px legend) because it is sized for
+      a bench at 1920. This screen's controls are a 30px stepper, a 30px icon button and a crest key inside
+      a 40px strip; the small key's 88px floor alone would treble the icon button and push the
+      crest's right cluster off the end of its own strip. `width` does not beat `min-width`, so
+      zeroing the floor is what lets the `width: 30px` above mean 30px.
+
+   `font-variation-settings` is a third, quieter one. fh.css pins `'wght' 600, 'wdth' 62` for
+   Archivo's width axis; the faces here are Instrument Sans and Spline Sans Mono, which have no
+   width axis but ARE variable in weight, so the `wght` half lands and outranks the `font: 500`
+   the rules above authored — every verb on the screen would come back one step heavier than it
+   was drawn. `normal` hands the weight back to the shorthand.
+
+   Nothing else is neutralised here. The kit keeps the sprite states, the focus ring, the cursor
+   and the transparent ground — those agree with the law already. */
+.ast-screen .fh-key,
+.ast-summary-box .fh-key {
+  text-transform: none;
+  font-variation-settings: normal;
+}
+/* The width floor is released for the SCREEN only. The extraction report's one verb is the one
+   control here that genuinely wants a wide key — `.ast-summary-box .sf-btn { min-width: 150px }`
+   above — and that 150px already out-ranks fh.css's 120px on specificity, so it needs no help.
+   Zeroing it in the shared rule would instead out-rank the 150px from further down the file and
+   shrink-wrap the button to the word "Acknowledge". */
+.ast-screen .fh-key { min-width: 0; }
+/* Every other control declares its own `min-height: 30px` at (0,2,0), which beats the kit's
+   floors. The drawer key declares `height` and no `min-height`, so `.fh-key--small`'s 36px still
+   binds — used height is the LARGER of the two — and the crest's one icon would stand 6px taller
+   than the leave key beside it. Released here and nowhere else: in the shared rule above, a
+   `min-height: 0` would tie those 30px floors and beat them on order. */
+.ast-screen .aw-drawer-key.fh-key { min-height: 0; }
