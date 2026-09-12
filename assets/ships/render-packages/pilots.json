@@ -721,6 +721,23 @@
       "metadataUrl": "assets/ships/release/render-packages/greeble-vents/render-package.json"
     },
     {
+      "key": "helios-arclight",
+      "assetId": "sf.render.helios-arclight",
+      "runtimeAssetId": "SF_WHOLESHIP_HELIOS_ARCLIGHT",
+      "kind": "ship",
+      "slot": "hull",
+      "releaseAssetId": "wholeship_helios_arclight",
+      "sourceUrl": "assets/ships/release/parts/wholeships/helios_arclight.glb",
+      "releaseSha256": "86ba9cd1d6e4e1a242f6648b49ccf92cd80df8cc6ada97fa961f2fd9d3c71fc6",
+      "releaseBytes": 6466444,
+      "rootNode": "SF_M4_HELIOS_ARCLIGHT_ROOT",
+      "dynamicNameIncludes": [
+        "HOOK_DRIVE"
+      ],
+      "outputDir": "assets/ships/release/render-packages/helios-arclight",
+      "metadataUrl": "assets/ships/release/render-packages/helios-arclight/render-package.json"
+    },
+    {
       "key": "helios-cradle",
       "assetId": "sf.render.helios-cradle",
       "runtimeAssetId": "SF_WHOLESHIP_HELIOS_CRADLE",

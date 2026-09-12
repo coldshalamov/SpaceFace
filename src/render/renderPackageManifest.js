@@ -471,6 +471,16 @@ const PILOTS = [
     "sourceUrl": "assets/ships/release/parts/greebles/greeble_vents.glb"
   },
   {
+    "assetId": "sf.render.helios-arclight",
+    "expectedContentHash": "908b3f94bfffb7162ef59ddcfd44b93df6cd8c285e21bdb97db8f863deb3c6b9",
+    "key": "helios-arclight",
+    "metadataUrl": "assets/ships/release/render-packages/helios-arclight/render-package.json",
+    "runtimeAssetId": "SF_WHOLESHIP_HELIOS_ARCLIGHT",
+    "slot": "hull",
+    "sourceSha256": "86ba9cd1d6e4e1a242f6648b49ccf92cd80df8cc6ada97fa961f2fd9d3c71fc6",
+    "sourceUrl": "assets/ships/release/parts/wholeships/helios_arclight.glb"
+  },
+  {
     "assetId": "sf.render.helios-cradle",
     "expectedContentHash": "94e6f677a99a29f90347889ce4e6df3191a6caa5be9401288abf904ba12e535b",
     "key": "helios-cradle",
@@ -724,7 +734,7 @@ const PILOTS = [
   },
   {
     "assetId": "sf.render.lane-pin",
-    "expectedContentHash": "5fb656fc524b2458b0cde237dfc5a91f0faa0dfc541914ef4852abb640558978",
+    "expectedContentHash": "cc7e607b13425305a055cc823a6ecb3279766cab7ca837cc9ce5bff1ceee9eef",
     "key": "lane-pin",
     "metadataUrl": "assets/ships/release/render-packages/lane-pin/render-package.json",
     "runtimeAssetId": "SF_PLACE_LANE_PIN",

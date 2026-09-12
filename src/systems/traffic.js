@@ -344,6 +344,10 @@ const TRAFFIC_ROLES = {
   // real attached load.
   tug:        { ship: 'ship_mule',     team: 2, speed: 20, archetype: 'passive', weight: 4,
               label: 'Yard Tug', docks: true, trades: true },
+  // PQ-193.07: rare Helios heavy. Own role and body — never remaps hauler/Span or Atlas.
+  // Ambient mix weight is zeroed below so the seeded hauler draw stays Span.
+  arclight:   { ship: 'ship_mule',     team: 2, speed: 22, archetype: 'fleeing_trader', weight: 2,
+              label: 'Helios Arclight', docks: true, trades: true },
 };
 
 function lawPresenceRole(role) {
@@ -375,6 +379,7 @@ const HEAVE_TO_COMPLIANT_ROLES = new Set([
   'sweeper',
   'shuttle',
   'tug',
+  'arclight',
 ]);
 
 function trafficHeaveToComplies(role, entity) {
@@ -1058,6 +1063,9 @@ export function trafficRoleMixForSector(sector, state = null) {
   // This also keeps the weighted draw byte-identical to the pre-tug distribution, which is why the
   // sim/massline goldens are untouched by fielding the role.
   out.tug = 0;
+  // PQ-193.07: the Arclight is a dedicated Helios fixture, not a mix roll. Zero here keeps
+  // every seeded hauler as Span and leaves goldens byte-identical.
+  out.arclight = 0;
   return state ? regionalTrafficRoleWeights(state, sec.id, out) : out;
 }
 function pickRole(roleWeights, rng) {
@@ -2362,7 +2370,7 @@ export const traffic = {
         },
       };
     }
-    if (role === 'hauler' || occupationalJobKind(role) === 'hauler') {
+    if (role === 'hauler' || role === 'arclight' || occupationalJobKind(role) === 'hauler') {
       // The ambient stepper's target is deliberately random. Reusing it here can turn a local
       // terminal run into an express-scale crossing, so durable working freight chooses the nearest
       // other berth from its actual spawn/home station instead. Express liners keep their separate
@@ -3245,6 +3253,7 @@ export const traffic = {
     // single-named-contact rule below ignores her slot, so the sector's picked contact (Mira or
     // Kess) still appears alongside her.
     this._ensureCinderRunCourierFixture(sectorId, sector, stations, list);
+    this._ensureHeliosArclightFixture(sectorId, sector, stations, list);
     // Already have a live named contact? (The courier's dedicated fixture slot does not count.)
     for (const rec of list) {
       const e = this.state.entities && this.state.entities.get(rec.id);
@@ -3376,6 +3385,61 @@ export const traffic = {
       list.push(rec);
     }
     this._stampNamedLaneContact(ent, contact);
+  },
+
+  // PQ-193.07: one Helios Arclight on the start sector so the player can find the rare heavy.
+  // Own traffic role and body. Never remaps hauler/Span or Atlas. Position is hash-stable so
+  // this fixture does not consume the ambient traffic RNG stream.
+  _ensureHeliosArclightFixture(sectorId, sector, stations, list) {
+    if (sectorId !== 'sector_helios_prime') return;
+    const def = TRAFFIC_ROLES.arclight;
+    if (!def) return;
+    for (const rec of list) {
+      if (rec && rec.role === 'arclight') return;
+      const entity = liveEntity(this.state, rec && rec.id);
+      if (entity && entity.data && entity.data.trafficRole === 'arclight') return;
+    }
+    if (!this.helpers || !this.helpers.spawnEntity || !stations || !stations.length) return;
+    const station = this._pocketStation(stations, sectorId) || stations[0];
+    if (!station || !station.pos) return;
+    const seed = (this.state.meta && this.state.meta.seed) || 1;
+    const ang = ((hash32(seed, 'helios_arclight_spawn', sectorId) >>> 0) / 0xffffffff) * Math.PI * 2;
+    const r = 168;
+    const pos = { x: station.pos.x + Math.cos(ang) * r, z: station.pos.z + Math.sin(ang) * r };
+    const laneFaction = (sector && sector.factionId) || 'faction_free';
+    const spec = makeShipEntitySpec(def.ship, {
+      team: def.team,
+      factionId: laneFaction,
+      pos,
+      ai: {
+        archetype: def.archetype,
+        passive: true,
+        spawnContext: 'convoy_civilian',
+      },
+    });
+    const ent = this.helpers.spawnEntity(spec);
+    if (!ent) return;
+    this._stampTrafficDurableIdentity(ent, sectorId, 'arclight', def, 700);
+    ent.data.trafficRole = 'arclight';
+    ent.data.role = 'arclight';
+    ent.data.trafficLabel = def.label;
+    ent.data.scanLabel = 'HELIOS ARCLIGHT';
+    ent.flags = Object.assign({}, ent.flags, { persistent: true });
+    const target = this._nearestStationTo(stations, station) || station;
+    const manifest = this._assignManifest(ent, 'arclight', target, sectorId);
+    this._active.push(ent.id);
+    const rec = {
+      id: ent.id,
+      role: 'arclight',
+      targetId: target.id,
+      waitT: 0,
+      nextTradeT: 3,
+      orbitPhase: ang,
+      dockSeq: 0,
+      manifest,
+    };
+    list.push(rec);
+    this._maybeAssignJob(ent, 'arclight', station, target, stations, sectorId);
   },
 
   /**

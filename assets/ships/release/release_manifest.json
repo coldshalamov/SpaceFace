@@ -3907,6 +3907,20 @@
       "ktx2Textures": 13,
       "meshoptBufferViews": 153,
       "contractNodeCount": 58
+    },
+    {
+      "id": "wholeship_helios_arclight",
+      "kind": "part:wholeships",
+      "source": "assets/ships/parts/wholeships/helios_arclight.glb",
+      "release": "assets/ships/release/parts/wholeships/helios_arclight.glb",
+      "sourceSha256": "5344a5a31a6fb6947d763b9a6715ad6ba291772dc737ab163f85bf8bc50082b0",
+      "releaseSha256": "86ba9cd1d6e4e1a242f6648b49ccf92cd80df8cc6ada97fa961f2fd9d3c71fc6",
+      "sourceBytes": 5015548,
+      "releaseBytes": 6466444,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 101,
+      "contractNodeCount": 33
     }
   ]
 }

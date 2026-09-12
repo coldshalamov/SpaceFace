@@ -5806,6 +5806,56 @@
       "note": "Fleet remaster production Colossus. Live player battlecruiser. Authored LOD0/1/2 on disk; LOD0 is the packaged live body. Not self-accepted."
     },
     {
+      "id": "wholeship_helios_arclight",
+      "assetId": "SF_WHOLESHIP_HELIOS_ARCLIGHT",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/helios_arclight.glb",
+      "tris": 20837,
+      "bytes": 5015548,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "Gun_Assembly"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -16.1114,
+          -4.1,
+          -5.886
+        ],
+        "max": [
+          16.8,
+          4.55,
+          5.87
+        ],
+        "dimensionsM": [
+          32.9114,
+          8.65,
+          11.756
+        ]
+      },
+      "note": "PQ-193.07 — Helios Arclight, rare heavy hauler. Distinct body from live Span/Atlas slots. Provenance: assets/ships/m4_hero_hauler/."
+    },
+    {
       "id": "wholeship_helios_cradle",
       "category": "wholeships",
       "priority": "P1",
@@ -7040,6 +7090,7 @@
       "wholeships/helios_lark.glb",
       "wholeships/helios_cradle.glb",
       "wholeships/helios_span.glb",
+      "wholeships/helios_arclight.glb",
       "wholeships/ore_barge.glb",
       "wholeships/repair_tender.glb",
       "wholeships/salvage_cutter.glb",
