@@ -90,11 +90,21 @@ function spawnSector(sectorId) {
   });
   sim.state.playerId = player.id;
   sim.registry.get('world').enterSector(sectorId, { placePlayer: false });
+  // b4b5b1476 ("Fix the player-facing bugs the sweep actually proved") moved every POI marker that
+  // is not a combat/interaction actor off state.entityList and onto the presenter's dressing table
+  // (world.js `poiMustStayLiveActor` -> `insertDressingRow`). Both lists are drawn: the presenter
+  // collects them together (world/presentationSources.js collectJournalPresentationEntities) and
+  // the renderer poses them together (_syncWorldPresentationTableMeshes). A scan of entityList
+  // alone therefore reports a quiet landmark as MISSING when it is on screen — which is exactly
+  // what it did for Helios's lane pin and Ceres's survey-cache debris.
   const placeIds = [];
-  for (const ent of sim.state.entityList || []) {
-    const id = ent && ent.data && (ent.data.placeId || ent.data.landmarkGlb);
+  const collect = (row) => {
+    const id = row && row.data && (row.data.placeId || row.data.landmarkGlb);
     if (id) placeIds.push(String(id).replace(/^places\//, '').replace(/\.glb$/, ''));
-  }
+  };
+  for (const ent of sim.state.entityList || []) collect(ent);
+  const dressing = sim.state.world && sim.state.world.dressing;
+  for (const row of (dressing && dressing.rows) || []) collect(row);
   sim.dispose();
   return placeIds;
 }
