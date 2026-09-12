@@ -48,9 +48,11 @@ export function runRenderUpdatePhase({
     return false;
   }
 
-  // Flight: one boolean read. A stage that outlived its screen (Launch replaces the stack without
-  // routing every screen through onHide) gives its GPU memory back on the first flight frame.
-  if (uiStageResident()) releaseUiStage('flight-resumed');
+  // Flight or loading: a stage that outlived its screen must not keep a second
+  // picture in the one GL context while the cook or first present runs.
+  if (uiStageResident() && state && (state.mode === 'flight' || state.mode === 'loading')) {
+    releaseUiStage(state.mode === 'loading' ? 'loading-started' : 'flight-resumed');
+  }
 
   let t = clock();
   let renderMs = 0;

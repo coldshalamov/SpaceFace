@@ -199,6 +199,12 @@ function ensureRuntime(state) {
       classifyMode: 'full',
       radiusScratch: [],
       classifyEmptyFallback: [],
+      unstampedScratch: [],
+      classifyOutScratch: [],
+      classifySeenScratch: new Set(),
+      lastLiveCount: 0,
+      pinResolveScratch: [],
+      pinNormalizeScratch: { out: [], seen: new Set() },
     };
     RUNTIMES.set(state, runtime);
   }
@@ -554,6 +560,54 @@ function pushActivityIds(runtime, entity, stamp) {
   else if (stamp.presentationTier === PRESENTATION_TIER.R1_RUNWAY) runtime.runwayIds.push(id);
 }
 
+/**
+ * Sanctioned membership is the entity-index version. When it is unchanged,
+ * no new ids exist and the incremental classifier must not rescan the fat
+ * list just to prove that. A missing index cannot skip — raw entityList
+ * edits have no cheap change signal.
+ */
+export function skipUnstampedRescan(membershipVersion, lastMembershipVersion) {
+  return Number.isFinite(membershipVersion)
+    && membershipVersion === lastMembershipVersion;
+}
+
+/**
+ * Weapons fire mid-tick and bump the entity-index version. Re-running classifyWorld
+ * for those shots is the crowded-combat hitch. Projectiles always need physics
+ * without an activity stamp; append them to this tick's dynamics and keep the
+ * already-classified world. Any non-projectile spawn or a shrink of the live
+ * list still takes the full classify.
+ */
+export function admitSameTickProjectiles(state, runtime, membership) {
+  if (!state || !runtime || !runtime.ready) return false;
+  if (runtime.classifiedTick !== (state.tick | 0)) return false;
+  const list = state.entityList || [];
+  const lastN = runtime.lastLiveCount | 0;
+  if (list.length < lastN) return false;
+  const unseen = runtime.unstampedScratch || (runtime.unstampedScratch = []);
+  unseen.length = 0;
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false) continue;
+    if (runtime.seenEntityIds.has(entity.id)) continue;
+    if (entity.type !== 'projectile') return false;
+    unseen.push(entity);
+  }
+  if (unseen.length === 0) return false;
+  if (unseen.length !== list.length - lastN) return false;
+  for (let i = 0; i < unseen.length; i++) {
+    const entity = unseen[i];
+    runtime.seenEntityIds.add(entity.id);
+    runtime.currentEntityIds.add(entity.id);
+    runtime.physicsDynamics.push(entity);
+    runtime.counts.physics += 1;
+  }
+  runtime.classifiedMembership = membership;
+  runtime.lastLiveCount = list.length;
+  runtime.classifyMode = 'projectile-append';
+  return true;
+}
+
 function selectClassifyEntities(state, runtime, list, origin, reach) {
   if (!runtime.ready || runtime.seenEntityIds.size === 0) {
     return { mode: 'full', entities: list };
@@ -561,17 +615,22 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
   if (!(state && state.runtime && state.runtime.profileId === 'production')) {
     return { mode: 'full', entities: list };
   }
-  const unstamped = [];
-  for (let i = 0; i < list.length; i++) {
-    const entity = list[i];
-    if (entity && entity.alive !== false && !runtime.seenEntityIds.has(entity.id)) {
-      unstamped.push(entity);
+  const unstamped = runtime.unstampedScratch || (runtime.unstampedScratch = []);
+  unstamped.length = 0;
+  if (!skipUnstampedRescan(entityIndexVersion(state), runtime.classifiedMembership)) {
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (entity && entity.alive !== false && !runtime.seenEntityIds.has(entity.id)) {
+        unstamped.push(entity);
+      }
     }
+    if (unstamped.length > 48) return { mode: 'full', entities: list };
   }
-  if (unstamped.length > 48) return { mode: 'full', entities: list };
 
-  const out = [];
-  const seen = new Set();
+  const out = runtime.classifyOutScratch || (runtime.classifyOutScratch = []);
+  out.length = 0;
+  const seen = runtime.classifySeenScratch || (runtime.classifySeenScratch = new Set());
+  seen.clear();
   const add = (entity) => {
     if (!entity || entity.alive === false || seen.has(entity.id)) return;
     seen.add(entity.id);
@@ -671,6 +730,15 @@ function classifyWorld(state, runtime) {
   ctx.origin = origin;
   ctx.physicsReachWu = reach;
   ctx.currentTargetId = facts.targetId;
+  ctx.pinScratch = runtime.pinResolveScratch;
+  ctx.pinNormalizeScratch = runtime.pinNormalizeScratch;
+  ctx.classifiedOut = runtime.classifiedOut || (runtime.classifiedOut = {
+    pins: null,
+    simTier: null,
+    presentationTier: null,
+    pinnedExact: false,
+  });
+  ctx.pinsNormalized = false;
 
   const visit = selection.entities;
   for (let i = 0; i < visit.length; i++) {
@@ -811,6 +879,7 @@ function classifyWorld(state, runtime) {
     runtime.seenEntityIds.delete(id);
   }
   counts.physics = statics.length + dynamics.length;
+  runtime.lastLiveCount = (state.entityList || []).length;
   const priorStatics = runtime._staticEntities;
   let staticMembershipChanged = runtime._staticMembershipDirty
     || priorStatics.length !== statics.length;
@@ -847,6 +916,13 @@ export function ensureActivityClassified(state) {
   if (membership != null && runtime.ready && runtime.classifiedTick === tick
     && runtime.classifiedMembership === membership
     && runtime.classifiedStaticAuthority === staticAuthority) {
+    return runtime;
+  }
+  if (admitSameTickProjectiles(state, runtime, membership)) {
+    runtime.classifiedTick = tick;
+    runtime.classifiedStaticAuthority = staticAuthority;
+    runtime.ready = true;
+    publishScalars(state, runtime);
     return runtime;
   }
   classifyWorld(state, runtime);

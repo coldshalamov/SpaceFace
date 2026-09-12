@@ -23,7 +23,7 @@ export async function compileSubjectsAcrossPresents(subjects, compileOne, yieldF
   if (typeof compileOne !== 'function') {
     throw new TypeError('compileSubjectsAcrossPresents requires compileOne()');
   }
-  const list = Array.isArray(subjects) ? subjects.filter(Boolean) : [];
+  const list = Array.isArray(subjects) ? subjects : [];
   const budgetMs = Number.isFinite(Number(options.budgetMs))
     ? Math.max(0, Number(options.budgetMs))
     : COMPILE_PRESENT_SLICE_MS;
@@ -35,6 +35,7 @@ export async function compileSubjectsAcrossPresents(subjects, compileOne, yieldF
   const results = [];
   let sliceStarted = now();
   for (let i = 0; i < list.length; i++) {
+    if (!list[i]) continue;
     results.push(await compileOne(list[i]));
     const spent = now() - sliceStarted;
     if (i < list.length - 1 && typeof yieldFn === 'function' && spent >= budgetMs) {
@@ -56,10 +57,24 @@ export function shouldSliceCompileAcrossPresents(options = {}) {
  * hidden until publication. Color compile() still visits those objects; the depth pass does not.
  * Force a drawable pose for admission, then restore.
  */
+function drawableRangeCount(geometry) {
+  if (!geometry) return 3;
+  const index = geometry.index;
+  if (index && Number(index.count) > 0) return Number(index.count);
+  const position = geometry.attributes && geometry.attributes.position;
+  if (position && Number(position.count) > 0) return Number(position.count);
+  if (typeof geometry.getAttribute === 'function') {
+    const attr = geometry.getAttribute('position');
+    if (attr && Number(attr.count) > 0) return Number(attr.count);
+  }
+  return 3;
+}
+
 export function revealSubjectForCompile(subject) {
   if (!subject) return () => {};
   const objectState = [];
   const seen = new Set();
+  const drawRangeGeometries = new Set();
   const visit = (object) => {
     if (!object || seen.has(object)) return;
     seen.add(object);
@@ -69,6 +84,17 @@ export function revealSubjectForCompile(subject) {
       frustumCulled: object.frustumCulled,
     };
     if (object.isInstancedMesh === true) entry.count = object.count;
+    const geometry = object.geometry;
+    if (geometry && geometry.drawRange && !drawRangeGeometries.has(geometry)) {
+      drawRangeGeometries.add(geometry);
+      entry.drawRange = geometry.drawRange;
+      entry.drawRangeStart = geometry.drawRange.start;
+      entry.drawRangeCount = geometry.drawRange.count;
+      if (!(Number(geometry.drawRange.count) > 0)) {
+        geometry.drawRange.start = 0;
+        geometry.drawRange.count = drawableRangeCount(geometry);
+      }
+    }
     objectState.push(entry);
     object.visible = true;
     if ('frustumCulled' in object) object.frustumCulled = false;
@@ -81,6 +107,10 @@ export function revealSubjectForCompile(subject) {
       entry.object.visible = entry.visible;
       if ('frustumCulled' in entry.object) entry.object.frustumCulled = entry.frustumCulled;
       if (entry.count !== undefined) entry.object.count = entry.count;
+      if (entry.drawRange) {
+        entry.drawRange.start = entry.drawRangeStart;
+        entry.drawRange.count = entry.drawRangeCount;
+      }
     }
   };
 }

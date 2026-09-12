@@ -62,9 +62,11 @@ export function physicsReachWu(options = {}) {
   return glassDiag + speed * (look || COLLISION_LOOKAHEAD_S) + collider + pad;
 }
 
-export function normalizePinReasons(list) {
-  const out = [];
-  const seen = new Set();
+export function normalizePinReasons(list, scratch = null) {
+  const out = scratch && Array.isArray(scratch.out) ? scratch.out : [];
+  if (scratch && Array.isArray(scratch.out)) out.length = 0;
+  const seen = scratch && scratch.seen instanceof Set ? scratch.seen : new Set();
+  if (scratch && scratch.seen instanceof Set) seen.clear();
   const src = Array.isArray(list) ? list : [];
   for (let i = 0; i < src.length; i++) {
     const reason = src[i];
@@ -81,8 +83,9 @@ export function normalizePinReasons(list) {
  * callers pass the facts they already own.
  */
 export function resolvePins(entity, context = {}) {
-  const pins = [];
-  if (!entity) return pins;
+  const pins = context.pinScratch || [];
+  if (context.pinScratch) pins.length = 0;
+  if (!entity) return normalizePinReasons(pins, context.pinNormalizeScratch);
   const playerId = context.playerId;
   if (entity.isPlayer === true || entity.id === playerId) pins.push(PIN_REASON.PLAYER);
   if (context.currentTargetId != null && entity.id === context.currentTargetId) {
@@ -121,7 +124,7 @@ export function resolvePins(entity, context = {}) {
     pins.push(PIN_REASON.MISSION_CRITICAL);
   }
   if (flags.tethered || d.tethered) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
-  return normalizePinReasons(pins);
+  return normalizePinReasons(pins, context.pinNormalizeScratch);
 }
 
 export function resolvePresentationTier(options = {}) {
@@ -132,7 +135,9 @@ export function resolvePresentationTier(options = {}) {
 }
 
 export function resolveSimTier(entity, pins, context = {}) {
-  const reasons = normalizePinReasons(pins);
+  const reasons = context.pinsNormalized === true && Array.isArray(pins)
+    ? pins
+    : normalizePinReasons(pins);
   if (reasons.length > 0) return SIM_TIER.S0_EXACT;
   if (entity && entity.isPlayer === true) return SIM_TIER.S0_EXACT;
   if (context.aggregateOnly === true) return SIM_TIER.S4_AGGREGATE;
@@ -158,12 +163,18 @@ export function resolveSimTier(entity, pins, context = {}) {
 
 export function classifyActivity(entity, context = {}) {
   const pins = resolvePins(entity, context);
+  if (context) context.pinsNormalized = true;
   const simTier = resolveSimTier(entity, pins, context);
   const presentationTier = resolvePresentationTier(context);
-  return {
-    pins,
-    simTier,
-    presentationTier,
-    pinnedExact: pins.length > 0,
+  const out = context && context.classifiedOut ? context.classifiedOut : {
+    pins: null,
+    simTier: null,
+    presentationTier: null,
+    pinnedExact: false,
   };
+  out.pins = pins;
+  out.simTier = simTier;
+  out.presentationTier = presentationTier;
+  out.pinnedExact = pins.length > 0;
+  return out;
 }

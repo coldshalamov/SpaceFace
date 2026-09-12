@@ -31,6 +31,8 @@ import {
   waitForCurrentRenderPipelines as waitForRenderPipelineWarmup,
   waitForOpeningGpuResources,
 } from './render/pipelineReadiness.js';
+import { shouldAwaitOpeningGpuCook } from './render/renderCapabilityProfile.js';
+import { releaseUiStage } from './render/uiStage.js';
 import {
   SCENARIO_47A_CONTRACT_PATH,
   mark47aPlayerActor,
@@ -418,22 +420,41 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       () => runTransitionGuard.isCurrent(transitionToken),
     ),
     waitForWarmup: async () => {
-      // Same class of stall as the opening GPU cook: software WebGL links
-      // programs on the main thread. Awaiting warmup here keeps Launch on
-      // render-pipelines until the 90s playable gate expires.
+      // Hardware+KHR awaits the 20s live-sector cook next. Do not also start
+      // the 180s first-picture warmup on the same Intel context.
+      if (shouldAwaitOpeningGpuCook({
+        gpu: state.render && state.render.gpu,
+        renderer: state.render && state.render.renderer,
+      })) {
+        return true;
+      }
+      // Software WebGL links programs on the main thread. Awaiting warmup here
+      // keeps Launch on render-pipelines until the playable gate expires.
       void waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS).catch((error) => {
         console.warn('[startup] render pipeline warmup failed', error);
       });
       return true;
     },
     waitForGpuResources: async () => {
-      // Do not await the opening cook. Software WebGL links one program per
-      // bloomScene (1.3s+) with no KHR_parallel_shader_compile, so an awaited
-      // cook holds Launch on gpu-resources past the 90s playable gate.
-      void waitForOpeningGpuResources(state, 20000).catch((error) => {
+      // Hardware with KHR_parallel_shader_compile can link behind the loading
+      // shell. Software WebGL links one program per bloomScene (1.3s+) with no
+      // parallel compile, so an awaited cook holds Launch past the playable gate.
+      const cook = waitForOpeningGpuResources(state, 20000);
+      if (!shouldAwaitOpeningGpuCook({
+        gpu: state.render && state.render.gpu,
+        renderer: state.render && state.render.renderer,
+      })) {
+        void cook.catch((error) => {
+          console.warn('[startup] opening GPU cook failed', error);
+        });
+        return true;
+      }
+      try {
+        return await cook;
+      } catch (error) {
         console.warn('[startup] opening GPU cook failed', error);
-      });
-      return true;
+        return false;
+      }
     },
     reportProgress: (stage) => bus.emit('game:loadingProgress', {
       ...stage,
@@ -528,9 +549,14 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       detail: 'Warming the current render path to avoid first-use stalls',
       transition: 'continue',
     });
-    void waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS).catch((error) => {
-      console.warn('[startup] continue pipeline warmup failed', error);
-    });
+    if (!shouldAwaitOpeningGpuCook({
+      gpu: state.render && state.render.gpu,
+      renderer: state.render && state.render.renderer,
+    })) {
+      void waitForRenderPipelineWarmup(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS).catch((error) => {
+        console.warn('[startup] continue pipeline warmup failed', error);
+      });
+    }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     bus.emit('game:loadingProgress', {
       id: 'gpu-resources',
@@ -539,9 +565,23 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       detail: 'Uploading opening materials in responsive batches',
       transition: 'continue',
     });
-    void waitForOpeningGpuResources(state, 20000).catch((error) => {
-      console.warn('[startup] continue GPU cook failed', error);
-    });
+    {
+      const cook = waitForOpeningGpuResources(state, 20000);
+      if (!shouldAwaitOpeningGpuCook({
+        gpu: state.render && state.render.gpu,
+        renderer: state.render && state.render.renderer,
+      })) {
+        void cook.catch((error) => {
+          console.warn('[startup] continue GPU cook failed', error);
+        });
+      } else {
+        try {
+          await cook;
+        } catch (error) {
+          console.warn('[startup] continue GPU cook failed', error);
+        }
+      }
+    }
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     bus.emit('game:loadingProgress', {
       id: 'entering-flight',
@@ -592,6 +632,7 @@ function enterLoadingMode(state, bus) {
   timeEffects.set('runtime:loading', { scale: 0 });
   const previousMode = state.mode;
   state.mode = 'loading';
+  try { releaseUiStage('loading-started'); } catch (_) { /* stage may not be mounted */ }
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
 }
 

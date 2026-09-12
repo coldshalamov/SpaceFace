@@ -7,9 +7,11 @@ import { shouldOwnerThink } from '../src/core/activityScheduler.js';
 import { SpatialHash } from '../src/core/spatialHash.js';
 import { spatialHashLayersFromState } from '../src/core/physics.js';
 import {
+  admitSameTickProjectiles,
   ensureActivityClassified,
   entityNeedsAiThink,
   entityNeedsPhysics,
+  skipUnstampedRescan,
 } from '../src/world/activityRuntime.js';
 import { getActivityFrame } from '../src/core/worldActivityManager.js';
 
@@ -118,6 +120,81 @@ test('later ticks do not reclassify the full live list', () => {
   assert.equal(farRocks[0].activity.simTier, SIM_TIER.S3_DORMANT);
   assert.equal(entityNeedsPhysics(farRocks[0]), false);
 });
+
+test('stable entity-index membership skips the fat unstamped rescan', () => {
+  assert.equal(skipUnstampedRescan(7, 7), true);
+  assert.equal(skipUnstampedRescan(8, 7), false);
+  assert.equal(skipUnstampedRescan(null, 7), false);
+  assert.equal(skipUnstampedRescan(undefined, undefined), false);
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const nearRock = rock(2, 20);
+  const farRocks = [];
+  for (let i = 0; i < 40; i++) farRocks.push(rock(100 + i, 4000 + i * 10));
+  const list = [player, nearRock, ...farRocks];
+  const state = makeState(list, {
+    runtime: { profileId: 'production' },
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      version: 3,
+      ready: true,
+      shipLike: [player],
+      asteroids: [nearRock, ...farRocks],
+    },
+  });
+  const first = ensureActivityClassified(state);
+  assert.equal(first.classifyMode, 'full');
+  assert.equal(first.classifiedMembership, 3);
+  state.tick = (state.tick | 0) + 1;
+  state.simTime = (state.simTime || 0) + 1 / 60;
+  const second = ensureActivityClassified(state);
+  assert.equal(second.classifyMode, 'incremental');
+  assert.equal(second.classifiedMembership, 3);
+  assert.ok(second.classifyVisits < list.length / 2,
+    `expected neighborhood classify after membership-stable skip, got ${second.classifyVisits}`);
+  assert.equal(skipUnstampedRescan(second.classifiedMembership, first.classifiedMembership), true);
+});
+
+test('same-tick projectile spawns append without reclassifying the world', () => {
+  const player = ship(1, 0, { isPlayer: true, team: 0 });
+  const farRocks = [];
+  for (let i = 0; i < 24; i++) farRocks.push(rock(100 + i, 4000 + i * 10));
+  const list = [player, ...farRocks];
+  const state = makeState(list, {
+    runtime: { profileId: 'production' },
+    entityIndex: {
+      __spacefaceEntityIndexV1: true,
+      version: 4,
+      ready: true,
+      shipLike: [player],
+      asteroids: farRocks,
+      projectiles: [],
+    },
+  });
+  const first = ensureActivityClassified(state);
+  const visits = first.classifyVisits;
+  const shot = {
+    id: 9001,
+    type: 'projectile',
+    alive: true,
+    collides: true,
+    radius: 1,
+    pos: { x: 2, z: 0 },
+    vel: { x: 40, z: 0 },
+    data: {},
+    flags: {},
+  };
+  state.entityList.push(shot);
+  state.entities.set(shot.id, shot);
+  state.entityIndex.projectiles.push(shot);
+  state.entityIndex.version = 5;
+  const afterShot = ensureActivityClassified(state);
+  assert.equal(afterShot.classifyMode, 'projectile-append');
+  assert.equal(afterShot.classifyVisits, visits, 'world visits must not rerun for a shot');
+  assert.equal(entityNeedsPhysics(shot), true);
+  assert.equal(afterShot.physicsDynamics.includes(shot), true);
+  assert.equal(admitSameTickProjectiles(state, first, 5), false, 'already admitted this membership');
+});
+
 
 test('off-glass pursuer stays exact and in physics', () => {
   const player = ship(1, 0, { isPlayer: true, team: 0 });

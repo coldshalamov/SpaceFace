@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   classifyRenderCapabilityProfile,
+  shouldAwaitOpeningGpuCook,
   shouldEagerlyWarmPipelines,
 } from '../src/render/renderCapabilityProfile.js';
 
@@ -32,6 +33,33 @@ test('hardware WebGL retains exact render-target pipeline warm-up', () => {
   assert.equal(profile.visualTier, 'full');
   assert.equal(profile.pipelineWarmup, 'eager');
   assert.equal(shouldEagerlyWarmPipelines(profile), true);
+});
+
+test('opening cook is awaited only on hardware with parallel shader compile', () => {
+  const khrRenderer = {
+    extensions: {
+      get(name) {
+        return name === 'KHR_parallel_shader_compile' ? {} : null;
+      },
+    },
+  };
+  assert.equal(shouldAwaitOpeningGpuCook({
+    gpu: { software: false, tier: 'integrated' },
+    renderer: khrRenderer,
+  }), true);
+  assert.equal(shouldAwaitOpeningGpuCook({
+    gpu: { software: false, tier: 'discrete' },
+    renderer: khrRenderer,
+  }), true);
+  assert.equal(shouldAwaitOpeningGpuCook({
+    gpu: { software: true, tier: 'software' },
+    renderer: khrRenderer,
+  }), false);
+  assert.equal(shouldAwaitOpeningGpuCook({
+    gpu: { software: false, tier: 'integrated' },
+    renderer: { extensions: { get: () => null } },
+  }), false);
+  assert.equal(shouldAwaitOpeningGpuCook({ gpu: { software: false, tier: 'integrated' } }), false);
 });
 
 test('unknown renderers default to conservative lazy warm-up without reducing visuals', () => {

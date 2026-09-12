@@ -49,6 +49,38 @@ test('loading Infinity budget never time-slices', () => {
   }), true);
 });
 
+test('finite loading drain is clocked so New Game can leave gpu-resources', () => {
+  assert.equal(shouldContinueAdmissionSlice({
+    buildBudget: 6,
+    startedAtMs: 0,
+    nowMs: 50,
+    itemsDone: 8,
+    targetMs: ADMISSION_SLICE_TARGET_MS,
+  }), false);
+});
+
+test('live-sector cook drains meshes in yielded slices, not an Infinity block', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  assert.match(renderer, /drainMeshBuildsBehindShell/);
+  assert.match(renderer, /await drainMeshBuildsBehindShell\(\)/);
+  assert.match(renderer, /_drainMeshBuildQueue\(1\)/);
+  assert.match(renderer, /PREPARE_BUDGET_MS = 20000/);
+  assert.match(renderer, /deadlineMs: Math.min\(20000, remainingMs\(\)\)/);
+  assert.match(renderer, /holdLeftoverFx: true/);
+  assert.match(renderer, /if \(cookOverBudget\(\)\) break;/);
+  assert.match(renderer, /\.\.\.openingRoots,/);
+  assert.match(renderer, /deadlineMs: 8000/);
+  assert.match(renderer, /reason: 'loading-budget'/);
+  assert.match(renderer, /console\.warn\('\[render\] opening submission post-submit validation failed'/);
+  const main = await readFile(new URL('../src/main.js', import.meta.url), 'utf8');
+  assert.match(main, /shouldAwaitOpeningGpuCook/);
+  assert.match(main, /waitForOpeningGpuResources\(state, 20000\)/);
+  assert.match(main, /void cook\.catch/);
+  assert.match(main, /Do not also start/);
+  assert.match(main, /void waitForRenderPipelineWarmup/);
+});
+
 test('late presents do not start another heavy admission', () => {
   assert.equal(shouldStartHeavyAdmission(16.7), true);
   assert.equal(shouldStartHeavyAdmission(21), true);

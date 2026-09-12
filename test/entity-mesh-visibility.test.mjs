@@ -32,6 +32,16 @@ test('uncompiled ordinary roots stay off the submit list; the player still submi
   assert.equal(shouldSubmitEntityMesh({ forceRender: true, pipelinesPending: true }), true);
 });
 
+test('ordinary roots still decoding an authored body stay off the submit list', () => {
+  assert.equal(shouldSubmitEntityMesh({ authoredPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, authoredPending: true }), true);
+});
+
+test('ordinary roots wait for 1x1 geometry residency before the first bloom submit', () => {
+  assert.equal(shouldSubmitEntityMesh({ geometryPending: true }), false);
+  assert.equal(shouldSubmitEntityMesh({ isPlayer: true, geometryPending: true }), true);
+});
+
 test('missing fenced poses retain protected roots but fail closed for ordinary roots', () => {
   assert.equal(shouldSubmitEntityMesh({ isPlayer: true, snapshotMissing: true }), true);
   assert.equal(shouldSubmitEntityMesh({ forceRender: true, snapshotMissing: true }), true);
@@ -92,4 +102,5 @@ test('live entity view sync hides off-runway roots through the helper', async ()
     'ordinary roots fail closed when the completed fence has no matching identity');
   assert.match(source, /middleBand:\s*viewBand === 'middle'/);
   assert.match(source, /pipelinesPending:\s*!!\(mesh\.userData && mesh\.userData\.pipelinesPending\)/);
+  assert.match(source, /authoredPending:\s*isAuthoredPendingStatus\(mesh\.userData && mesh\.userData\.authoredAssetState\)/);
 });

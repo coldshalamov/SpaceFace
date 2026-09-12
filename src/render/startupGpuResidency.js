@@ -96,6 +96,9 @@ function createGeometryWorkItems(drawables) {
     // Ordinary meshes sharing one BufferGeometry need one upload. InstancedMesh owns additional
     // per-object instanceMatrix / instanceColor buffers, so every live instanced object remains work.
     if (!firstGeometryUse && !object.isInstancedMesh) continue;
+    // F9 recook must not 1x1 ordinary geos the first cook already stamped.
+    if (geometry.userData && geometry.userData.spacefaceGpuResident === true
+        && !object.isInstancedMesh) continue;
     let estimatedBytes = firstGeometryUse ? geometryByteLength(geometry) : 0;
     if (object.isInstancedMesh) {
       estimatedBytes += attributeByteLength(object.instanceMatrix);
@@ -342,7 +345,16 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
           estimatedBytes: batch.estimatedBytes,
           success,
         };
-        if (success) results.push(receipt);
+        if (success) {
+          for (const item of batch.work) {
+            const geometry = item.geometry;
+            if (geometry) {
+              const data = geometry.userData || (geometry.userData = {});
+              data.spacefaceGpuResident = true;
+            }
+          }
+          results.push(receipt);
+        }
         reportBlockingSlice(onBlockingSlice, receipt);
       }
     }

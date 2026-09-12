@@ -40,6 +40,22 @@ function hasEntityIndex(state) {
   return !!(state && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1);
 }
 
+const EMPTY_SHIP_LIKE = [];
+
+/**
+ * Compact AI/traffic scan. Production indexes ships+drones on `shipLike`;
+ * the fat `entityList` (rocks, FX, wrecks) is the fallback only.
+ * Returns the live array — callers must not store or mutate it.
+ */
+export function indexedShipLikeScan(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.shipLike)) {
+    return index.shipLike;
+  }
+  return (state && state.entityList) || EMPTY_SHIP_LIKE;
+}
+
 /**
  * Call `fn` for every living-world actor. Never yields asteroids or dressing FX.
  * Returns the source used so tests can assert the fat list was not the iterator.

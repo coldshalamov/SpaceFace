@@ -25,6 +25,24 @@ export function shouldEagerlyWarmPipelines(profile) {
   return !!profile && profile.pipelineWarmup === 'eager';
 }
 
+/**
+ * Await the 20s first-flight cook only when the driver can link in parallel.
+ * Software WebGL (and any context without KHR_parallel_shader_compile) must
+ * keep the cook fire-and-forget so Launch is not held past the playable gate.
+ */
+export function shouldAwaitOpeningGpuCook({ gpu, renderer } = {}) {
+  if (!gpu || gpu.software === true || gpu.tier === 'software') return false;
+  try {
+    const extensions = renderer && renderer.extensions;
+    const ext = extensions && typeof extensions.get === 'function'
+      ? extensions.get('KHR_parallel_shader_compile')
+      : null;
+    return !!ext;
+  } catch {
+    return false;
+  }
+}
+
 export function detectRenderCapabilityProfile(renderer) {
   const gl = renderer && typeof renderer.getContext === 'function' ? renderer.getContext() : null;
   if (!gl) return classifyRenderCapabilityProfile();

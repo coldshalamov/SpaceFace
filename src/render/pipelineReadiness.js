@@ -369,6 +369,14 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
     if (!result.ok) return false;
   }
   if (gpuContextIsLost(state)) return false;
+  // Same-sector F9 recook: the opening receipt and GPU programs are already
+  // resident. Recapturing first-picture compiled 37 extra programs on the next
+  // present (~4s stall / TDR, headed skip-cook run65).
+  if (state.mode === 'loading'
+      && render.sessionLiveSectorCookedId
+      && render.sessionLiveSectorCookedId === (state.world && state.world.currentSectorId)) {
+    return true;
+  }
 
   const capturePipelines = render.captureOpeningPipelinePlan;
   const drainPipelines = render.drainOpeningPipelinePlan;
@@ -443,9 +451,13 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
     if (gpuContextIsLost(state)) return false;
   }
 
-  // After predicted probes, cook the actual live scene (programs + buffers) while
-  // the loading shell still owns the frame. Dummy catalog prewarm is not this step.
-  if (loadingOwnsOpeningSubmission) {
+  // The live-sector cook (programs + buffers) belongs in
+  // prepareLiveSectorBeforeFlight / prepareLiveSectorAfterJump. A second
+  // cookLiveSceneGpu here 1x1s the whole scene (skipBuffers defaults off).
+  // On F9 that re-uploaded the previous flight's VFX/hulls and TDR'd Intel
+  // during gpu-resources. Dummy catalog prewarm is not this step.
+  if (loadingOwnsOpeningSubmission
+      && typeof render.prepareLiveSectorBeforeFlight !== 'function') {
     const liveCook = Promise.resolve().then(() => cookLiveSceneGpu(state));
     render.liveSceneCookReady = liveCook;
     const liveResult = await settleWithin(liveCook, timeoutMs);
@@ -470,10 +482,33 @@ export async function waitForCurrentRenderPipelines(state, timeoutMs = 20000) {
 
 export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
   const render = state && state.render;
+  const sectorId = state && state.world && state.world.currentSectorId;
+  const recook = !!(render
+    && render.sessionLiveSectorCookedId
+    && render.sessionLiveSectorCookedId === sectorId
+    && gpuContextIsLost(state) !== true);
   const prepare = render && render.prepareOpeningGpuResources;
-  if (typeof prepare !== 'function') return true;
-  const readiness = Promise.resolve().then(() => prepare());
-  render.openingGpuResidencyReady = readiness;
-  const result = await settleWithin(readiness, timeoutMs);
-  return result.ok && gpuContextIsLost(state) !== true;
+  if (!recook && typeof prepare === 'function') {
+    const readiness = Promise.resolve().then(() => prepare());
+    render.openingGpuResidencyReady = readiness;
+    const result = await settleWithin(readiness, timeoutMs);
+    if (gpuContextIsLost(state)) return false;
+    // Prepare timeout still runs the live-sector cook while loading owns the frame.
+    void result;
+  }
+  // Maps and geometries just landed. Publish the held next-sector upgrades,
+  // drain their compiles, and touch the live materials so first flight bloom
+  // is not the first ANGLE draw of those keys.
+  // Same-sector F9 recook skips the opening 1x1; programs/buffers are resident.
+  if (state && state.mode === 'loading') {
+    const presentCook = Promise.resolve().then(() => (
+      typeof render.prepareLiveSectorBeforeFlight === 'function'
+        ? render.prepareLiveSectorBeforeFlight()
+        : cookLiveSceneGpu(state, { present: true, skipBuffers: true })
+    ));
+    render.liveScenePresentReady = presentCook;
+    const presentResult = await settleWithin(presentCook, timeoutMs);
+    if (!presentResult.ok || gpuContextIsLost(state)) return false;
+  }
+  return gpuContextIsLost(state) !== true;
 }

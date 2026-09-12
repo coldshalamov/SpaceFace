@@ -31,16 +31,27 @@ import {
   authoredPrewarmRequestsForEntities,
   beginAuthoredInstanceMeshDisposeRegistrationProbe,
   collectAuthoredInstancePoolRoots,
+  collectPreparedAuthoredCompileRoots,
   disposePreparedAuthoredBoundary,
   endAuthoredInstanceMeshDisposeRegistrationProbe,
   getAuthoredInstancePoolDiagnostics,
+  asteroidFirstFlightCookKey,
+  collectFirstFlightCookEntities,
+  FIRST_FLIGHT_ROCK_COOK_CAP,
+  firstFlightRockCookRadiusWu,
+  isFirstFlightCookEntity,
   isInitialAuthoredCompositionEntity,
   preloadAuthoredAssetsForEntity,
   preloadAuthoredPartLibrary,
+  pumpAuthoredUpgradeQueue,
   prepareFirstQueuedAuthoredBoundaryForOpening,
   prepareAuthoredInstancePoolsForContextLoss,
   publishPreparedAuthoredBoundary,
   resumeAuthoredUpgradeQueueAfterOpening,
+  resumeAuthoredUpgradeQueueForLoadingHulls,
+  holdAuthoredUpgradeQueueForFirstFlight,
+  waitForAuthoredUpgradeQueueIdle,
+  waitForOpeningCompositionSettled,
   retryAuthoredPartLibrary,
   syncAuthoredInstancePools,
 } from './partsLibrary.js';
@@ -82,13 +93,18 @@ import {
   requestDecodeRunwayPromote,
   resolveWorldPresentationEntity,
 } from '../world/presentationSources.js';
+import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
   packPresentationWorldToFence,
   snapshotIndexOf,
 } from './snapshotFence.js';
-import { createPersistentSubmitLanes, SUBMIT_LANE } from './persistentSubmitLanes.js';
+import {
+  consumePersistentSubmitUploads,
+  createPersistentSubmitLanes,
+  SUBMIT_LANE,
+} from './persistentSubmitLanes.js';
 import { shieldBubbleGeometry, SHIELD_SHELL_GLSL } from './ships/shipKit.js';
 import { projectedWidthPx } from './lod.js';
 import { resolveWebGlRendererFlags } from './presentPath.js';
@@ -108,8 +124,6 @@ import {
 import {
   invalidatePrecompileState,
   ensureOpeningGeneratedScenarioPropPackage,
-  precompileGlobalPipelines,
-  precompilePipelines,
   syncVisiblePointLightBudget,
 } from './precompile.js';
 import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
@@ -151,6 +165,7 @@ import {
 import { createShadowReceiverTally, noteShadowPolicyChanged } from './shadowReceiverTally.js';
 import {
   applyEntityMeshVisibility,
+  isAuthoredPendingStatus,
   isProtectedEntityMesh,
   shouldSubmitEntityMesh,
 } from './entityMeshVisibility.js';
@@ -159,9 +174,14 @@ import { shouldRefreshRealtimeShadowMap } from './shadowPresentCadence.js';
 import {
   collectCompileSubjects,
   compileSubjectsAcrossPresents,
+  revealSubjectForCompile,
   shouldSliceCompileAcrossPresents,
+  yieldAfterPresent,
 } from './compilePresentSlice.js';
 import {
+  bindEnvironmentToStandardMaterials,
+  collectFirstFlightEffectRoots,
+  collectFirstFlightLayerDrawables,
   collectInstancePoolCompileRoots,
   collectLateAdmittedCompileRoots,
   collectUncompiledSceneDrawables,
@@ -175,6 +195,7 @@ import {
   createGpuResidencyAdmissionTracker,
   createPipelineAdmissionTracker,
 } from './pipelineReadiness.js';
+import { shouldDeferPipelineAutoFlush } from './pipelineAutoFlushPolicy.js';
 import {
   prepareStartupGpuResidency,
   yieldToBrowser,
@@ -602,10 +623,32 @@ function isInboundDecodeHull(entity, state, radius = null) {
   return (playerPlanarDistance(entity, state) - visual) <= inboundDecodeRadius(state, radius);
 }
 
+/** Hold the cooked GPU working set so first-flight travel cannot evict+rebuild it. */
+export function holdFirstFlightStreaming(state) {
+  if (!state || state.mode !== 'flight') return false;
+  if (state.render && (
+    state.render.liveSectorGpuAdmission === true
+    || state.render.sectorShellAdmission === true
+  )) return false;
+  const until = Number(state.render && state.render.firstFlightResidencyHoldUntil);
+  if (Number.isFinite(until)) return (Number(state.simTime) || 0) < until;
+  return (Number(state.simTime) || 0) < 20;
+}
+
 /** Pure render-streaming policy used by reconciliation and focused tests. */
 export function isEntityRenderRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false || entity._noMesh) return false;
-  if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
+  if (state && state.render && (
+    state.render.liveSectorGpuAdmission === true
+    || state.render.sectorShellAdmission === true
+  )) {
+    if (isFirstFlightCookEntity(entity, state)) return true;
+    const firstFlightIds = state.render.liveSectorFirstFlightIds;
+    return !!(firstFlightIds && typeof firstFlightIds.has === 'function' && firstFlightIds.has(entity.id));
+  }
+  if (state && state.mode === 'loading') {
+    return isInitialAuthoredCompositionEntity(entity, state);
+  }
   if (entityIsExplicitRenderFocus(entity, state)) return true;
   const tier = entity.activity && entity.activity.presentationTier;
   const activityFrame = state && state.render && state.render.activityFrame;
@@ -662,11 +705,38 @@ export function isEntityAuthoredUpgradeRelevant(entity, state, radius = null) {
 }
 
 /**
+ * Same-sector F9 keeps GPU Object3Ds in `_meshes` while `_clearEntities` replaces entity
+ * objects. authoredCriticalVisualReadiness reads `entity.mesh`; presentation bind alone
+ * left restored hulls at status missing (headed keep-gpu probe, player missing).
+ */
+export function reattachResidentGpuMeshes(owner) {
+  if (!owner || !owner._meshes) return 0;
+  let attached = 0;
+  for (const [id, mesh] of owner._meshes) {
+    const entity = resolveWorldPresentationEntity(owner.state, id);
+    if (!entity || entity.alive === false || !mesh) continue;
+    entity.mesh = mesh;
+    if (entity.view) entity.view.root = mesh;
+    else entity.view = { root: mesh };
+    if (typeof owner._bindPresentationMesh === 'function') {
+      owner._bindPresentationMesh(entity, mesh);
+    }
+    attached += 1;
+  }
+  return attached;
+}
+
+/**
  * Service render residency without turning the ordinary distance poll into a full reconciliation.
  * Full scans remain the event-driven safety net; queued boundaries keep the established two-build
  * cadence between scans.
  */
 export function serviceRenderMeshResidency(owner, frameDt) {
+  if (owner && owner._sessionRecookKeepGpu === true && owner.state && owner.state.mode === 'loading') {
+    owner._meshReconcileDirty = false;
+    reattachResidentGpuMeshes(owner);
+    return 'session-recook-keep-gpu';
+  }
   if (!owner || owner._deferNoncriticalMeshStreaming) return 'deferred';
   const dt = Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
   if (owner._sectorHandoffStreamHoldS > 0) {
@@ -682,6 +752,11 @@ export function serviceRenderMeshResidency(owner, frameDt) {
       owner._sectorHandoffSectorId = null;
     }
     return 'deferred';
+  }
+  if (holdFirstFlightStreaming(owner.state)) {
+    // Do not bank a full reconcile for the hold end — that dump TDR'd Intel.
+    owner._meshReconcileDirty = false;
+    return 'held-first-flight';
   }
   owner._renderResidencyPollS -= dt;
   let pollDue = false;
@@ -728,6 +803,16 @@ function entityIsOnReadableGlass(entity, state) {
   }) === TABLE_BAND.GLASS;
 }
 
+function meshNeedsAuthoredDecode(owner, entity) {
+  const mesh = owner && owner._meshes && entity ? owner._meshes.get(entity.id) : null;
+  if (!mesh) return true;
+  const data = mesh.userData || {};
+  if (data.authoredAdmissionSubstrate === true) return true;
+  if (data.geometryPending === true) return true;
+  if (isAuthoredPendingStatus(data.authoredAssetState)) return true;
+  return false;
+}
+
 function kickDecodeRunwayAssets(owner, entities) {
   const state = owner && owner.state;
   const renderer = owner && owner.renderer;
@@ -739,7 +824,7 @@ function kickDecodeRunwayAssets(owner, entities) {
     const entity = list[i];
     if (!entity || entity.alive === false) continue;
     if (entity.type !== 'ship' && entity.type !== 'station') continue;
-    if (owner._meshes && owner._meshes.has(entity.id)) continue;
+    if (!meshNeedsAuthoredDecode(owner, entity)) continue;
     if (pending.has(entity.id)) continue;
     if (!isEntityAuthoredUpgradeRelevant(entity, state)) continue;
     pending.add(entity.id);
@@ -3358,6 +3443,8 @@ export const render = {
         this._contextRestoreReceipt?.cancel?.();
         this._contextRestoreReceipt = null;
         this._contextLost = true;
+        this._sessionLiveSectorCookedId = null;
+        if (state.render) state.render.sessionLiveSectorCookedId = null;
         this._authoredPreparationEpoch++;
         this._sectorBoundaryPreparations?.abortAll('webgl-context-lost');
         dynamicBuffers.handleContextLost();
@@ -3496,23 +3583,18 @@ export const render = {
             this._syncPostOptions(true);
             if (this._assetResidency) this._assetResidency.handleContextRestored();
             const restoredPostRoute = this._selectPostRoute({ allowContextRecovery: true });
-            const restoredPipelines = precompileGlobalPipelines(renderer, scene, cam.obj, {
-              incremental: true,
-              preparePipelines: async (subjects) => {
-                const receipt = await compileForCurrentTarget(subjects, restoredPostRoute);
-                if (receiptReportsContextLost(receipt)) {
-                  const lost = Array.isArray(receipt)
-                    ? receipt.find((item) => item && item.contextLost === true)
-                    : receipt;
-                  throw new Error((lost && lost.reason) || 'context lost during restored pipeline compile');
-                }
-                return receipt;
-              },
-              video: state.settings && state.settings.video,
-              yieldToMain: yieldToBrowser,
-            });
-            state.render.pipelinePrecompileReady = restoredPipelines;
-            return await restoredPipelines;
+            // Dummy catalog precompile is illegal mid-flight, including restore.
+            // Compile the live scene that already owns the table, then yield so
+            // Intel can finish links without a second TDR.
+            await this._compilePostRoute(restoredPostRoute, scene, cam.obj, scene);
+            await yieldToBrowser();
+            const restoredPipelines = {
+              skipped: false,
+              method: 'live-scene-restore',
+              route: restoredPostRoute,
+            };
+            state.render.pipelinePrecompileReady = Promise.resolve(restoredPipelines);
+            return restoredPipelines;
           };
           void runWebGlContextRestoreRebuild(this, this._contextRecovery, this._rebuildRestoredGpuResources)
             .then(lifecycle.guard((restored) => {
@@ -3638,6 +3720,7 @@ export const render = {
     this._activityFrame = null;
     this._activityFrameTick = null;
     this._openingFirstPicturePrepared = false;
+    this._sessionRecookKeepGpu = false;
     this._presentationHandleScratch = {};
     this._presentationQueryOptions = { bounds: null, origin: null, playerId: null };
     this._entityViewBounds = { x: 0, z: 0, halfX: 0, halfZ: 0, margin: 0 };
@@ -3717,22 +3800,55 @@ export const render = {
           restoreObjectHome,
           stagingName: 'SF_BootShadowMapPrime',
         });
+        // VFX init() runs after renderer.init() returns. A 140 ms wait can finish
+        // first and leave count-0 combat pools for the first menu bloom.
+        const vfxWaitStarted = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now()
+          : Date.now();
+        while (typeof state.render.collectVfxGpuResidencyRoots !== 'function') {
+          if (!lifecycle.isActive()) return;
+          const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? performance.now()
+            : Date.now();
+          if (now - vfxWaitStarted >= 2000) break;
+          await yieldToBrowser();
+        }
         const leaves = collectOpeningSubmissionLeaves(scene, { includeOffscreen: true });
+        const extraVfx = [];
+        const extraVfxSet = new Set();
+        const addExtraVfx = (root) => {
+          if (!root || extraVfxSet.has(root)) return;
+          extraVfxSet.add(root);
+          extraVfx.push(root);
+        };
+        for (const root of collectFirstFlightEffectRoots(scene)) addExtraVfx(root);
         const route = this._selectPostRoute();
         await admitOpeningUnitsAcrossSlices({
-          units: uniqueAdmissionUnits(leaves),
+          deadlineMs: 8000,
+          units: uniqueAdmissionUnits([...leaves, ...extraVfx]),
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-          compileOne: (subject) => {
-            if (!lifecycle.isActive()) return Promise.reject(new Error('renderer lifecycle destroyed during opening admission'));
-            return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene));
+          compileOne: async (subject) => {
+            if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening admission');
+            const restore = revealSubjectForCompile(subject);
+            try {
+              return await Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene));
+            } finally {
+              restore();
+            }
           },
-          touchOne: (subject) => (
-            !lifecycle.isActive()
-              ? Promise.reject(new Error('renderer lifecycle destroyed during opening touch'))
-              : this.bloom && typeof this.bloom.touchScenePipelines === 'function'
-              ? this.bloom.touchScenePipelines(subject, cam.obj, scene)
-              : touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene)
-          ),
+          touchOne: (subject) => {
+            if (!lifecycle.isActive()) {
+              return Promise.reject(new Error('renderer lifecycle destroyed during opening touch'));
+            }
+            const restore = revealSubjectForCompile(subject);
+            try {
+              return this.bloom && typeof this.bloom.touchScenePipelines === 'function'
+                ? this.bloom.touchScenePipelines(subject, cam.obj, scene)
+                : touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene);
+            } finally {
+              restore();
+            }
+          },
           yieldToMain: async () => {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening yield');
             await yieldToBrowser();
@@ -4173,13 +4289,12 @@ export const render = {
       }
     };
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
-      deferAutoFlush: () => (
-        this._postOpeningPipelineAdmissionReleased !== true
-        && (
-          state.mode === 'loading'
-          || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
-        )
-      ),
+      deferAutoFlush: () => shouldDeferPipelineAutoFlush({
+        postOpeningReleased: this._postOpeningPipelineAdmissionReleased === true,
+        firstPlayableFrameAt: state.render && state.render.firstPlayableFrameAt,
+        mode: state.mode,
+        simTime: Number(state.simTime) || 0,
+      }),
       onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
       getLastPresentDtMs: () => state.render && state.render.lastPresentDtMs,
     });
@@ -4199,6 +4314,7 @@ export const render = {
         onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
       })
     ));
+    this._gpuResidencyAdmissions = gpuResidencyAdmissions;
     const openingCohort = createOpeningAdmissionCohort();
     const openingStillBlocking = () => (
       state.mode === 'loading' || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
@@ -4223,6 +4339,9 @@ export const render = {
       // variant Three's public compile() never prepares.
       if (this._postOpeningPipelineAdmissionReleased !== true) {
         if (state.mode === 'loading') {
+          if (state.render.liveSectorGpuAdmission === true) {
+            return subject ? admitSubjectPipelines(subject) : Promise.resolve({ skipped: true });
+          }
           if (subject) void admitSubjectPipelines(subject);
           return Promise.resolve({
             skipped: true,
@@ -4240,7 +4359,7 @@ export const render = {
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
       // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
       // Do not let every authored root enqueue a second texture walk while the loading shell is up.
-      if (state.mode === 'loading') {
+      if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
         return Promise.resolve({
           skipped: true,
           reason: 'opening-submission-plan-owns-first-picture',
@@ -4577,13 +4696,571 @@ export const render = {
         ? Promise.resolve(plan)
         : gpuResidencyAdmissions.waitForCaptured(plan)
     );
-    state.render.resumeDeferredPipelineAdmissions = () => {
-      const pipelines = pipelineAdmissions.resumeAutoFlush();
-      resumeAuthoredUpgradeQueueAfterOpening(scene);
+    state.render.resumeDeferredPipelineAdmissions = (options = {}) => {
+      // Seed 47's leftover FX compiles (entity:fx:77/80/81) are still in-flight
+      // when loading settles. Flushing that queue on first paint TDR'd Intel.
+      // Keep them deferred through the first 20 flight seconds; prepareFrame
+      // force-resumes once the window has passed.
+      if (options.force !== true
+          && state.mode === 'flight'
+          && (Number(state.simTime) || 0) < 20) {
+        return { skipped: true, reason: 'hold-deferred-through-first-flight' };
+      }
+      const pipelines = options.hullsOnly === true
+        ? { skipped: true, reason: 'hulls-only-hold-leftover-fx' }
+        : pipelineAdmissions.resumeAutoFlush();
+      if (options.hullsOnly === true) {
+        resumeAuthoredUpgradeQueueForLoadingHulls(scene);
+      } else {
+        resumeAuthoredUpgradeQueueAfterOpening(scene);
+      }
+      releaseOpeningGraphPublication(this);
       return pipelines;
     };
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileExplicit(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
+    state.render.drainPendingPipelineAdmissions = () => {
+      const plan = pipelineAdmissions.capturePending();
+      if (!plan || plan.pendingCount === 0) {
+        return Promise.resolve({ skipped: true, pendingCount: 0 });
+      }
+      return pipelineAdmissions.waitForCaptured(plan);
+    };
+    state.render.prepareLiveSectorBeforeFlight = async () => {
+      if (state.mode !== 'loading') {
+        return { skipped: true, reason: 'not-loading' };
+      }
+      const recookSectorId = state.world && state.world.currentSectorId;
+      if (this._sessionLiveSectorCookedId === recookSectorId && this._contextLost !== true) {
+        // Same-sector F9: GPU programs and opening meshes are already resident.
+        // Dumping them and rebuilding made the next flight present compile 37
+        // extra programs (~4s stall / TDR, headed skip-cook run65).
+        reattachResidentGpuMeshes(this);
+        this._sessionLiveSectorCookedId = recookSectorId;
+        state.render.sessionLiveSectorCookedId = recookSectorId;
+        return {
+          skipped: true,
+          reason: 'session-recook-keep-gpu',
+        };
+      }
+      // Publish the held next-sector upgrades behind the loading shell, drain
+      // their compiles, then touch the live materials. First-playable readiness
+      // still does not wait on this queue; this only spends time the player is
+      // already looking at the loading presenter.
+      // The exact first-picture census already froze child publication. Nearby
+      // opening ships then sit at `loading` until first flight paint, and their
+      // env-mapped hulls compile as 100 ms+ bloom bricks. Release only the
+      // publication gate so they can commit here; keep mesh streaming deferred.
+      releaseOpeningGraphPublication(this);
+      state.render.liveSectorGpuAdmission = true;
+      try {
+      const yieldLiveSectorGpu = async () => {
+        // GLB/KTX2 decode, ANGLE links, and 1x1 buffer uploads do not retire
+        // while the loading await owns the thread and no frame is presented.
+        await new Promise((resolve) => {
+          const raf = globalThis.requestAnimationFrame;
+          const finish = () => {
+            try {
+              const gl = renderer.getContext && renderer.getContext();
+              if (gl && typeof gl.flush === 'function') gl.flush();
+            } catch { /* context may already be lost */ }
+            resolve();
+          };
+          if (typeof raf === 'function') raf(finish);
+          else setTimeout(finish, 16);
+        });
+        await yieldToBrowser();
+        const gl = renderer.getContext && renderer.getContext();
+        if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+          throw new Error('webgl-context-lost-during-live-sector-cook');
+        }
+      };
+      // Infinity drain skipped the admission clock and blocked New Game at gpu-resources
+      // (RAF/timeout never ran). Slice the queue so the loading shell can present.
+      // The named playable check also gives Launch only 90s; an 18+25+10+18+cook+20
+      // stack never reaches flight. Budget the whole cook so New Game can leave.
+      const prepareNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now() : Date.now());
+      const prepareStarted = prepareNow();
+      const PREPARE_BUDGET_MS = 20000;
+      const remainingMs = () => Math.max(400, PREPARE_BUDGET_MS - (prepareNow() - prepareStarted));
+      const drainMeshBuildsBehindShell = async (deadlineMs = 8000) => {
+        const started = prepareNow();
+        const cap = Math.min(deadlineMs, remainingMs());
+        while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
+          if (prepareNow() - started > cap) break;
+          this._drainMeshBuildQueue(1);
+          await yieldLiveSectorGpu();
+        }
+      };
+      if (!scene.environment) this._bakeEnv({ force: true });
+      if (scene.environment) bindEnvironmentToStandardMaterials(scene, scene.environment);
+      const sectorId = state.world && state.world.currentSectorId;
+      const recook = this._sessionLiveSectorCookedId === sectorId && this._contextLost !== true;
+      const resumed = recook
+        ? resumeAuthoredUpgradeQueueForLoadingHulls(scene)
+        : resumeAuthoredUpgradeQueueAfterOpening(scene);
+      if (!recook) pipelineAdmissions.resumeAutoFlush();
+      const openingEntities = (state.entityList || []).filter((entity) => (
+        isInitialAuthoredCompositionEntity(entity, state)
+      ));
+      enqueueMissingMeshBuilds(
+        openingEntities,
+        this._meshes,
+        this._meshBuildQueuedIds,
+        this._meshBuildQueue,
+      );
+      await drainMeshBuildsBehindShell();
+      // Nearby opening actors stay on onBeforeRender until a real flight draw.
+      // Kick them here so the live-scene cook sees their authored materials,
+      // not the procedural stand-in that first flight would otherwise compile.
+      const opening = recook
+        ? { skipped: true, settled: true, reason: 'session-recook-visuals-already-ready' }
+        : await waitForOpeningCompositionSettled(state, {
+          timeoutMs: Math.min(12000, remainingMs()),
+          yieldToMain: yieldLiveSectorGpu,
+          renderer,
+          scene,
+          meshes: this._meshes,
+        });
+      const upgrades = recook
+        ? { skipped: true, reason: 'session-recook-hold-leftover-fx' }
+        : await waitForAuthoredUpgradeQueueIdle(scene, {
+          timeoutMs: Math.min(6000, remainingMs()),
+          yieldToMain: yieldLiveSectorGpu,
+        });
+      let pending = { skipped: true, pendingCount: 0 };
+      if (!recook) {
+        try {
+          pending = await state.render.drainPendingPipelineAdmissions();
+        } catch (error) {
+          pending = { skipped: false, error: String(error && error.message || error) };
+        }
+      }
+      if (opening && opening.settled !== true) {
+        console.warn('[render] opening composition still pending at live-sector cook', {
+          pending: opening.pending,
+          ids: opening.ids,
+          statuses: opening.statuses,
+          reason: opening.reason,
+          queue: opening.queue,
+          upgrades,
+        });
+      }
+      state.render.openingCompositionSettle = opening;
+      // Opening composition is ships/places. Nearby 47-A payloads sit on the
+      // table and first-draw in flight unless they are built here.
+      const player = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(state.playerId)
+        : null;
+      if (player && player.pos && !recook) {
+        const rockHits = queryAsteroidField(state, player.pos, firstFlightRockCookRadiusWu(state));
+        const px = Number(player.pos.x) || 0;
+        const pz = Number(player.pos.z) || 0;
+        rockHits.sort((left, right) => {
+          const dlx = (Number(left && left.pos && left.pos.x) || 0) - px;
+          const dlz = (Number(left && left.pos && left.pos.z) || 0) - pz;
+          const drx = (Number(right && right.pos && right.pos.x) || 0) - px;
+          const drz = (Number(right && right.pos && right.pos.z) || 0) - pz;
+          return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
+        });
+        const seenRockKeys = new Set();
+        for (const rec of rockHits) {
+          const key = asteroidFirstFlightCookKey(rec);
+          if (seenRockKeys.has(key) || seenRockKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) continue;
+          if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+          seenRockKeys.add(key);
+        }
+      }
+      const firstFlightEntities = recook
+        ? openingEntities
+        : collectFirstFlightCookEntities(state);
+      state.render.liveSectorFirstFlightIds = new Set(
+        firstFlightEntities.map((entity) => entity && entity.id).filter((id) => id != null),
+      );
+      // F9 rematerializes the sector while the previous flight's meshes still
+      // sit on the scene. Whole-scene compile/1x1 of that leftover set TDR'd
+      // Intel during gpu-resources. Jump already dumps them before cook.
+      for (const [id, mesh] of this._meshes) {
+        const entity = resolveWorldPresentationEntity(state, id);
+        if (entity && isEntityRenderRelevant(entity, state)) continue;
+        this._unbindPresentationMesh(id, mesh);
+        releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+        this.scene.remove(mesh);
+        disposeObject(mesh);
+        this._meshes.delete(id);
+        noteShadowMeshRemoved(this, mesh);
+        clearEntityMeshReference(entity, mesh);
+      }
+      enqueueMissingMeshBuilds(
+        firstFlightEntities,
+        this._meshes,
+        this._meshBuildQueuedIds,
+        this._meshBuildQueue,
+      );
+      await drainMeshBuildsBehindShell();
+      console.warn('[render] first-flight cook', {
+        entities: firstFlightEntities.map((entity) => ({
+          id: entity && entity.id,
+          type: entity && entity.type,
+          typeId: entity && entity.data && entity.data.typeId || null,
+        })),
+      });
+      const cook = recook
+        ? { skipped: true, reason: 'session-recook-programs-resident' }
+        : await state.render.cookLiveSceneGpu({
+          present: true,
+          skipBuffers: true,
+          holdLeftoverFx: true,
+          yieldToMain: yieldLiveSectorGpu,
+          deadlineMs: Math.min(20000, remainingMs()),
+        });
+      // Leftover FX compiles (entity:fx:77/80/81) must finish behind the shell.
+      // The pre-cook idle wait can still leave compiling-pipelines jobs that
+      // first-drew / TDR'd Intel during the first flight presents.
+      // Same-sector F9 recook: those programs already linked. Waiting them
+      // again TDR'd Intel in gpu-resources (headed reload witness).
+      const leftover = recook
+        ? { skipped: true, reason: 'session-recook-hold-leftover-fx' }
+        : await waitForAuthoredUpgradeQueueIdle(scene, {
+          timeoutMs: Math.min(8000, remainingMs()),
+          yieldToMain: yieldLiveSectorGpu,
+        });
+      this._sessionLiveSectorCookedId = sectorId;
+      state.render.sessionLiveSectorCookedId = sectorId;
+      return { skipped: false, resumed, opening, upgrades, pending, cook, leftover };
+      } finally {
+        state.render.liveSectorGpuAdmission = false;
+        state.render.liveSectorFirstFlightIds = null;
+        holdAuthoredUpgradeQueueForFirstFlight(scene);
+        freezeOpeningGraphPublication(this);
+      }
+    };
+    state.render.cookLiveSceneGpu = async (options = {}) => {
+      if (state.mode !== 'loading' && state.render.sectorShellAdmission !== true) {
+        return { skipped: true, reason: 'not-loading' };
+      }
+      const cookNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now() : Date.now());
+      const cookStarted = cookNow();
+      const cookDeadlineMs = Number.isFinite(options.deadlineMs) ? options.deadlineMs : 22000;
+      const cookOverBudget = () => cookNow() - cookStarted > cookDeadlineMs;
+      // Compile the live next sector on the bloom target AFTER the shadow map
+      // exists so physical keys include numDirLightShadows. Hidden / count-0
+      // drawables must be revealed — Three's compile() skips object.visible === false,
+      // which is how thrusters and instance pools first-draw in flight.
+      // Do not restage the whole scene into compileShadowDepthPipelines — that
+      // steals every caster and can miss the 20s loading gate.
+      // Do not touchSubjectOnExactTarget(scene): the keep-set is the Scene root,
+      // so every mesh is hidden and the "touch" draws nothing.
+      if (!scene.environment) this._bakeEnv({ force: true });
+      // Same-sector F9 recook: plume/RCS/plasma already resident from New Game.
+      // Walking them again compiled leftover FX and TDR'd Intel in gpu-resources.
+      if (options.skipCompile !== true
+          && options.holdLeftoverFx !== true
+          && typeof state.render.warmupLiveFlightEffects === 'function') {
+        state.render.warmupLiveFlightEffects();
+      }
+      const firstFlightRoots = collectFirstFlightEffectRoots(scene);
+      const preparedRoots = collectPreparedAuthoredCompileRoots(scene);
+      if (scene.environment) {
+        bindEnvironmentToStandardMaterials(scene, scene.environment);
+        for (const root of firstFlightRoots) {
+          bindEnvironmentToStandardMaterials(root, scene.environment);
+        }
+        for (const root of preparedRoots) {
+          bindEnvironmentToStandardMaterials(root, scene.environment);
+        }
+      }
+      syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
+      const restoreReveal = options.skipCompile === true || options.holdLeftoverFx === true
+        ? () => {}
+        : revealSubjectForCompile(scene);
+      const restoreShadows = armAdmissionShadows({
+        renderer,
+        light: this._keyLight,
+        enabled: this._shadowSettingOn === true,
+      });
+      const route = this._selectPostRoute();
+      let programs = { skipped: true, reason: 'compile-unavailable' };
+      let present = { skipped: true, reason: 'compile-only' };
+      try {
+        if (options.skipCompile === true) {
+          // Same-sector F9 recook: programs already linked. Whole-scene
+          // compile/reveal TDR'd Intel in gpu-resources (headed reload witness).
+          programs = { skipped: true, reason: 'session-recook-programs-resident' };
+        } else if (options.holdLeftoverFx === true) {
+          // Jump cook compiles first-flight hulls via per-subject touch below.
+          // Whole-scene compile revealed leftover Helios FX and TDR'd Intel
+          // (headed sector-entry run70).
+          programs = { skipped: false, method: 'first-flight-hulls', route };
+        } else {
+          await this._compilePostRoute(route, scene, cam.obj, scene);
+          programs = { skipped: false, method: 'post-route', route };
+        }
+      } catch (error) {
+        programs = {
+          skipped: false,
+          method: 'post-route',
+          error: String(error && error.message || error),
+        };
+      } finally {
+        restoreShadows();
+        restoreReveal();
+      }
+      // Draw one material at a time on the bloom target. A whole-scene bloom.render
+      // while every drawable is revealed formed a framebuffer/texture feedback loop
+      // and lost the Intel/ANGLE context.
+      if (options.present === true && options.skipCompile === true) {
+        present = { skipped: true, reason: 'session-recook-skip-bloom-touch' };
+      } else if (options.present === true) {
+        // Touch only late entity roots and instance pools. A whole-scene material
+        // walk issued too many exact-target draws on Intel/ANGLE and lost the context
+        // before the first three flight seconds could be scored.
+        const openingSubjects = (state.render.openingSubmissionPlan
+          && state.render.openingSubmissionPlan.compileSubjects) || [];
+        const openingRoots = [];
+        const seenOpening = new Set();
+        for (const entity of collectFirstFlightCookEntities(state)) {
+          if (entity && entity.type === 'asteroid') continue;
+          const root = (this._meshes && this._meshes.get(entity.id)) || (entity && entity.mesh);
+          if (!root || seenOpening.has(root)) continue;
+          seenOpening.add(root);
+          openingRoots.push(root);
+        }
+        // Recook rematerializes hulls; leftover FX programs are already linked
+        // and held. 1x1 of firstFlightRoots on F9 TDR'd Intel in gpu-resources.
+        // Opening hulls first so a time-capped cook still admits the player ship
+        // before leftover FX. bloomScene was 3.9s/program on this box; touching
+        // instance pools first left New Game stuck at gpu-resources 0.9.
+        const lateRoots = options.skipCompile === true || options.holdLeftoverFx === true
+          ? openingRoots
+          : [
+            ...openingRoots,
+            ...firstFlightRoots,
+            ...preparedRoots,
+            ...collectLateAdmittedCompileRoots(this._meshes, openingSubjects),
+            ...collectInstancePoolCompileRoots(scene),
+          ];
+        const units = uniqueAdmissionUnits(lateRoots.flatMap((root) => collectCompileSubjects(root)));
+        const touch = (subject) => (
+          this.bloom && typeof this.bloom.touchScenePipelines === 'function'
+            ? this.bloom.touchScenePipelines(subject, cam.obj, scene)
+            : touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene)
+        );
+        let touched = 0;
+        const yieldTouch = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+        for (const subject of units.programSubjects) {
+          if (cookOverBudget()) break;
+          const restoreSubject = revealSubjectForCompile(subject);
+          try { touch(subject); } finally { restoreSubject(); }
+          touched += 1;
+          if (yieldTouch) await yieldTouch();
+        }
+        present = {
+          skipped: false,
+          method: 'per-subject-touch',
+          route,
+          subjects: touched,
+          budgetMs: cookDeadlineMs,
+        };
+      }
+      // skipBuffers means "do not re-upload the whole opening scene". First-flight
+      // rocks and the 47-A spindle still need a 1x1 residency pass: compile()
+      // does not upload vertex buffers, and first bloom then bricks on Intel.
+      const yieldBuffers = typeof options.yieldToMain === 'function'
+        ? options.yieldToMain
+        : yieldToBrowser;
+      const firstFlightBufferRoots = [];
+      const seenBufferRoots = new Set();
+      const addFirstFlightBufferRoot = (root) => {
+        if (!root || seenBufferRoots.has(root)) return;
+        seenBufferRoots.add(root);
+        firstFlightBufferRoots.push(root);
+      };
+      for (const entity of collectFirstFlightCookEntities(state)) {
+        // Nearby opening ships first-drew mule/wasp LOD0 in bloom (129 ms).
+        // Rocks and the 47-A spindle still need buffers; wrecks stay out.
+        if (!entity || entity.type === 'wreck') continue;
+        // Same-sector F9 recook: 1x1 only rematerialized opening hulls.
+        // Re-uploading rocks, 47-A, and instance pools TDR'd Intel in gpu-resources.
+        if (options.skipCompile === true && !isInitialAuthoredCompositionEntity(entity, state)) {
+          continue;
+        }
+        addFirstFlightBufferRoot(
+          (this._meshes && this._meshes.get(entity.id)) || entity.mesh,
+        );
+      }
+      if (options.skipCompile !== true && options.holdLeftoverFx !== true) {
+        for (const root of collectInstancePoolCompileRoots(scene)) {
+          if (root && root.userData && root.userData.asteroidInstancePool === true) {
+            addFirstFlightBufferRoot(root);
+          }
+        }
+      }
+      if (options.skipCompile !== true && options.holdLeftoverFx !== true) {
+        for (const root of firstFlightRoots) addFirstFlightBufferRoot(root);
+      }
+      const restoreFirstFlight = options.skipCompile === true || options.holdLeftoverFx === true
+        ? []
+        : firstFlightRoots.map((root) => revealSubjectForCompile(root));
+      let buffers;
+      try {
+        if (cookOverBudget()) {
+          buffers = { skipped: true, reason: 'loading-budget' };
+        } else {
+          buffers = options.skipBuffers === true
+            ? await prepareStartupGpuResidency(renderer, firstFlightBufferRoots, {
+              includeGeometry: true,
+              yieldToMain: yieldBuffers,
+            })
+            : await prepareStartupGpuResidency(renderer, scene, {
+              includeGeometry: true,
+              yieldToMain: yieldBuffers,
+            });
+        }
+      } finally {
+        for (const restore of restoreFirstFlight) restore();
+      }
+      // Count-0 / drawRange-0 effect drawables (plumes, RCS, plasma strips, retro,
+      // ribbon trails) are skipped unless revealed. 1x1 every first-flight layer.
+      // InstancedMesh-only left a +6 geo stall that first-drew in bloom (164 ms).
+      const vfxRoots = typeof state.render.collectVfxGpuResidencyRoots === 'function'
+        ? state.render.collectVfxGpuResidencyRoots() || []
+        : [];
+      const layerRoots = options.skipCompile === true
+        ? []
+        : collectFirstFlightLayerDrawables([...firstFlightRoots, ...vfxRoots]);
+      if (layerRoots.length > 0 && !cookOverBudget()) {
+        const restoreLayers = layerRoots.map((root) => revealSubjectForCompile(root));
+        try {
+          await prepareStartupGpuResidency(renderer, layerRoots, {
+            includeGeometry: true,
+            yieldToMain: yieldBuffers,
+          });
+        } finally {
+          for (const restore of restoreLayers) restore();
+        }
+      }
+      if (typeof state.render.restLiveFlightEffectsAfterCook === 'function') {
+        state.render.restLiveFlightEffectsAfterCook();
+      }
+      for (const entity of collectFirstFlightCookEntities(state)) {
+        if (!entity || (entity.type !== 'asteroid' && entity.type !== 'payload')) continue;
+        const root = (this._meshes && this._meshes.get(entity.id)) || entity.mesh;
+        if (!root) continue;
+        const data = root.userData || (root.userData = {});
+        data.geometryPending = false;
+        data.spacefaceGeometryResident = true;
+        registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, root);
+      }
+      for (const root of firstFlightBufferRoots) {
+        if (!root) continue;
+        const data = root.userData || (root.userData = {});
+        data.geometryPending = false;
+        data.spacefaceGeometryResident = true;
+      }
+      return { skipped: false, liveScene: true, programs, present, buffers };
+    };
+    state.render.prepareLiveSectorAfterJump = async (sector) => {
+      if (state.mode !== 'flight') {
+        return { skipped: true, reason: 'not-flight' };
+      }
+      if (state.render.sectorShellAdmission !== true) {
+        return { skipped: true, reason: 'no-sector-shell' };
+      }
+      const yieldLiveSectorGpu = async () => {
+        await new Promise((resolve) => {
+          const raf = globalThis.requestAnimationFrame;
+          const finish = () => {
+            try {
+              const gl = renderer.getContext && renderer.getContext();
+              if (gl && typeof gl.flush === 'function') gl.flush();
+            } catch { /* context may already be lost */ }
+            resolve();
+          };
+          if (typeof raf === 'function') raf(finish);
+          else setTimeout(finish, 16);
+        });
+        await yieldToBrowser();
+        const gl = renderer.getContext && renderer.getContext();
+        if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+          throw new Error('webgl-context-lost-during-live-sector-cook');
+        }
+      };
+      state.render.liveSectorGpuAdmission = true;
+      try {
+        if (!scene.environment) this._bakeEnv({ force: true });
+        if (scene.environment) bindEnvironmentToStandardMaterials(scene, scene.environment);
+        const player = state.entities && typeof state.entities.get === 'function'
+          ? state.entities.get(state.playerId)
+          : null;
+        if (player && player.pos) {
+          const rockHits = queryAsteroidField(state, player.pos, firstFlightRockCookRadiusWu(state));
+          const px = Number(player.pos.x) || 0;
+          const pz = Number(player.pos.z) || 0;
+          rockHits.sort((left, right) => {
+            const dlx = (Number(left && left.pos && left.pos.x) || 0) - px;
+            const dlz = (Number(left && left.pos && left.pos.z) || 0) - pz;
+            const drx = (Number(right && right.pos && right.pos.x) || 0) - px;
+            const drz = (Number(right && right.pos && right.pos.z) || 0) - pz;
+            return (dlx * dlx + dlz * dlz) - (drx * drx + drz * drz);
+          });
+          const seenRockKeys = new Set();
+          for (const rec of rockHits) {
+            const key = asteroidFirstFlightCookKey(rec);
+            if (seenRockKeys.has(key) || seenRockKeys.size >= FIRST_FLIGHT_ROCK_COOK_CAP) continue;
+            if (!promoteAsteroidFieldRock(state, rec.id, this._simHelpers, 'first-flight-cook')) continue;
+            seenRockKeys.add(key);
+          }
+        }
+        const firstFlightEntities = collectFirstFlightCookEntities(state);
+        state.render.liveSectorFirstFlightIds = new Set(
+          firstFlightEntities.map((entity) => entity && entity.id).filter((id) => id != null),
+        );
+        for (const [id, mesh] of this._meshes) {
+          const entity = resolveWorldPresentationEntity(state, id);
+          if (entity && isEntityRenderRelevant(entity, state)) continue;
+          this._unbindPresentationMesh(id, mesh);
+          releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
+          this.scene.remove(mesh);
+          disposeObject(mesh);
+          this._meshes.delete(id);
+          noteShadowMeshRemoved(this, mesh);
+          clearEntityMeshReference(entity, mesh);
+        }
+        enqueueMissingMeshBuilds(
+          firstFlightEntities,
+          this._meshes,
+          this._meshBuildQueuedIds,
+          this._meshBuildQueue,
+        );
+        this._drainMeshBuildQueue(Number.POSITIVE_INFINITY);
+        // Helios leftover FX (entity:fx:77/81) is still compiling when the Ceres
+        // jump shell starts. Flushing that queue then 1x1ing firstFlightRoots
+        // TDR'd Intel in prepareStartupGpuResidency (headed sector-entry run70).
+        resumeAuthoredUpgradeQueueForLoadingHulls(scene);
+        const cook = await state.render.cookLiveSceneGpu({
+          present: true,
+          skipBuffers: true,
+          holdLeftoverFx: true,
+          yieldToMain: yieldLiveSectorGpu,
+        });
+        const leftover = { skipped: true, reason: 'jump-hold-leftover-fx' };
+        return {
+          skipped: false,
+          liveScene: true,
+          sectorId: sector && sector.id || null,
+          cook,
+          leftover,
+        };
+      } finally {
+        state.render.liveSectorGpuAdmission = false;
+        state.render.liveSectorFirstFlightIds = null;
+        holdAuthoredUpgradeQueueForFirstFlight(scene);
+        freezeOpeningGraphPublication(this);
+      }
+    };
     state.render.preparePostOpeningPipelines = async () => {
       // Exact first-picture leaves are already compiled. Predicted sector probes stay color-only
       // with a hard budget. Do not release admission-await until after this drain, or overlapping
@@ -4603,36 +5280,13 @@ export const render = {
       syncVisiblePointLightBudget(scene, state.settings && state.settings.video);
       const sector = this._pendingPostOpeningSector;
       this._pendingPostOpeningSector = null;
-      let sectorResult = null;
-      if (sector && !gpu.software) {
-        const route = this._selectPostRoute();
-        try {
-          sectorResult = await precompilePipelines(renderer, scene, cam.obj, {
-            sector,
-            // The global warmup — projectile, beam, plume, trail, VFX salvo, common rock, ship aux,
-            // canopy and late-world families — is gated on `!sector || includeGlobalPipelines`, and
-            // EVERY boot-time caller passes a sector. It therefore used to run only after a WebGL
-            // context loss, and on an ordinary session those families linked at DRAW time instead:
-            // measured 2026-08-28, eight bricks totalling 1.37 s of frozen frames in a 60 s flight,
-            // owned by exactly these producers (plume families, trail streaks, common rock, the
-            // space-background and parallax layers, VFX sprite instances).
-            //
-            // It is affordable here because the whole warmup group is handed to ONE
-            // `renderer.compile()` call, so its programs link concurrently and cost about one link
-            // rather than the sum. Behind the loading shell, before the player has control.
-            includeGlobalPipelines: true,
-            incremental: true,
-            yieldToMain: yieldToBrowser,
-            preparePipelines: (subject) => Promise.resolve(
-              this._compilePostRoute(route, subject, cam.obj, scene),
-            ),
-            video: state.settings && state.settings.video,
-          });
-        } catch (error) {
-          console.warn('[render] post-opening sector pipeline precompile failed', error);
-          sectorResult = null;
-        }
-      }
+      // Predicted ship/effect catalogs stay dead. The late live-root compile below plus
+      // cookLiveSceneGpu compile the actual next sector already in the scene.
+      let sectorResult = {
+        skipped: true,
+        reason: 'live-scene-cook-owns-next-sector',
+        sectorId: sector && sector.id || null,
+      };
       const drainPlan = pipelineAdmissions.capturePending();
       const pendingCount = drainPlan.pendingCount;
       let queued = { skipped: true, pendingCount: 0 };
@@ -4688,19 +5342,17 @@ export const render = {
           };
         }
       }
-      const depth = lateCandidates.length > 0
-        ? compileShadowDepthPipelines({
-          renderer,
-          light: this._keyLight,
-          camera: cam.obj,
-          subjects: lateCandidates,
-          forceEnable: this._shadowSettingOn === true,
-          THREE,
-          captureObjectHome,
-          restoreObjectHome,
-          stagingName: 'SF_PostOpeningShadowDepthAdmission',
-        })
-        : { skipped: true, subjects: 0 };
+      const depth = compileShadowDepthPipelines({
+        renderer,
+        light: this._keyLight,
+        camera: cam.obj,
+        subjects: [...openingSubjects, ...lateCandidates],
+        forceEnable: this._shadowSettingOn === true,
+        THREE,
+        captureObjectHome,
+        restoreObjectHome,
+        stagingName: 'SF_PostOpeningShadowDepthAdmission',
+      });
       this._postOpeningPipelineAdmissionReleased = true;
       return {
         skipped: pendingCount === 0 && lateCandidates.length === 0 && !sectorResult,
@@ -4714,25 +5366,47 @@ export const render = {
     state.render.prepareOpeningGpuResources = async () => {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common
       // rock receives its final PBR maps on its first and only visual publication.
-      await this.rockSurfaceLibraryReady;
+      if (this.rockSurfaceLibraryReady) {
+        await Promise.race([
+          this.rockSurfaceLibraryReady,
+          new Promise((resolve) => setTimeout(resolve, 4000)),
+        ]);
+      }
       const restoreLivingHullWarmup = this._livingHullPresentation
         ? this._livingHullPresentation.beginGpuWarmup()
         : null;
       try {
         if (this._firstPresentGpuAdmission) {
-          await this._firstPresentGpuAdmission;
+          await Promise.race([
+            this._firstPresentGpuAdmission,
+            new Promise((resolve) => setTimeout(resolve, 8000)),
+          ]);
         }
         const plan = state.render.openingSubmissionPlan || buildOpeningSubmissionPlan();
         if (!plan || plan.complete !== true
           || !plan.firstPlayablePipelineSet
           || plan.firstPlayablePipelineSet.complete !== true) {
-          throw new Error('Opening submission plan is incomplete; refusing first-playable GPU admission');
+          // Refusing here left New Game on gpu-resources until the 90s playable
+          // gate fired. Enter flight and keep admitting behind the first picture.
+          return { skipped: true, reason: 'opening-plan-incomplete' };
         }
-        const result = await prepareStartupGpuResidency(renderer, plan.residencySubjects, {
+        const residency = prepareStartupGpuResidency(renderer, plan.residencySubjects, {
           yieldToMain: yieldToBrowser,
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
           textures: plan.textureRefs,
         });
+        const result = await Promise.race([
+          residency,
+          new Promise((resolve) => setTimeout(() => resolve({
+            skipped: true,
+            reason: 'loading-budget',
+            textures: 0,
+          }), 5000)),
+        ]);
+        if (result && result.skipped === true) {
+          result.openingSubmissionPlan = plan;
+          return result;
+        }
         result.openingSubmissionPlan = plan;
         result.openingCompositionRoots = plan.roots.length;
         result.vfxRoots = plan.roots.filter((root) => root.role === 'vfx').length;
@@ -4811,6 +5485,16 @@ export const render = {
         const kept = this._meshes.get(id);
         if (kept) this._bindPresentationMesh(still, kept);
         this._meshReconcileDirty = true;
+        return;
+      }
+      if (this._sessionRecookKeepGpu === true) {
+        // Same-sector F9: `_clearEntities` used to dispose the GPU object before
+        // authored-visuals, so restored hulls showed status missing.
+        const kept = this._meshes.get(id);
+        if (kept) {
+          this._unbindPresentationMesh(id, kept);
+          clearEntityMeshReference(still, kept);
+        }
         return;
       }
       this._sectorBoundaryPreparations?.abortEntity(id, 'entity-destroyed-during-sector-prewarm');
@@ -4924,6 +5608,9 @@ export const render = {
       // asset. This preserves full visual quality while preventing one full GLB re-decode (and a
       // retained material generation) on every quick-load.
       const sectorId = state.world && state.world.currentSectorId;
+      this._sessionRecookKeepGpu = this._sessionLiveSectorCookedId != null
+        && this._sessionLiveSectorCookedId === sectorId
+        && this._contextLost !== true;
       if (this._assetResidency && sectorId) {
         this._assetResidency.prepareSectorExit(sectorId, { includePlayer: true });
       }
@@ -5336,25 +6023,41 @@ export const render = {
       }
       this._publishAssetResidencyDiagnostics();
     });
-    const compileSectorPipelines = (sector) => {
+    const compileSectorPipelines = async (sector) => {
       if (gpu.software) {
-        return Promise.resolve({
+        return {
           skipped: true,
           reason: 'software renderer uses bounded on-demand pipeline admission',
-        });
+        };
       }
-      return precompilePipelines(renderer, scene, cam.obj, {
-        sector,
-        incremental: true,
-        preparePipelines: compileForCurrentTarget,
-        video: state.settings && state.settings.video,
-      }).catch((error) => {
-        console.warn('[render] sector pipeline precompile failed', error);
-        return null;
-      });
+      // Predicted catalogs stay dead. Cook the live next-sector graph behind
+      // the jump shell, then hold that working set.
+      if (typeof state.render.prepareLiveSectorAfterJump === 'function') {
+        return state.render.prepareLiveSectorAfterJump(sector);
+      }
+      return {
+        skipped: true,
+        reason: 'live-scene-cook-owns-next-sector',
+        sectorId: sector && sector.id || null,
+      };
     };
     onBus('sector:enter', ({ sectorId, sector, continuous } = {}) => {
       const exactSectorId = String(sectorId || sector && sector.id || '');
+      if (this._sessionRecookKeepGpu === true) {
+        // Same-sector F9: keep the cooked GPU set. Releasing prewarms and
+        // rotating residency disposed programs the kept meshes still referenced
+        // (headed reattach run68 TDR / CONTEXT_LOST ~0.5s after instant enter).
+        if (cam.snapToPlayer) cam.snapToPlayer();
+        this._pendingPostOpeningSector = null;
+        this._meshReconcileDirty = false;
+        reattachResidentGpuMeshes(this);
+        state.render.pipelinePrecompileReady = Promise.resolve({
+          skipped: true,
+          reason: 'session-recook-keep-gpu',
+        });
+        this._publishAssetResidencyDiagnostics();
+        return;
+      }
       if (continuous !== true) {
         this._sectorHandoffStreamHoldS = 0;
         this._sectorHandoffSectorId = null;
@@ -5378,6 +6081,9 @@ export const render = {
       if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, sectorVisualProfile);
       this._updateHazardVisuals(sector);
       if (state.mode === 'loading' && sector) this._pendingPostOpeningSector = sector;
+      if (state.mode !== 'loading' && continuous !== true && exactSectorId) {
+        state.render.sectorShellAdmission = true;
+      }
       const pipelinePrecompile = state.mode === 'loading'
         ? Promise.resolve({
           skipped: true,
@@ -5388,7 +6094,11 @@ export const render = {
             skipped: true,
             reason: 'continuous-sector-handoff-defers-pipeline-precompile',
           })
-          : compileSectorPipelines(sector);
+          : compileSectorPipelines(sector).finally(() => {
+            state.render.sectorShellAdmission = false;
+            const sim = Number(state.simTime);
+            if (Number.isFinite(sim)) state.render.firstFlightResidencyHoldUntil = sim + 20;
+          });
 
       if (state.mode === 'loading' || !exactSectorId) {
         // Run reset/New Game can publish its loading-sector enter without a preceding sector:exit.
@@ -5536,10 +6246,12 @@ export const render = {
           this._authoredSectorPrewarmPendingId = null;
           this._authoredSectorPrewarmPending = null;
           this._meshReconcileDirty = true;
-          for (const [id, mesh] of this._meshes) {
-            const entity = state.entities.get(id);
-            if (canRequestAuthoredUpgrade(entity, state, null)) {
-              requestAuthoredUpgrade(mesh, renderer, scene);
+          if (!holdFirstFlightStreaming(state)) {
+            for (const [id, mesh] of this._meshes) {
+              const entity = state.entities.get(id);
+              if (canRequestAuthoredUpgrade(entity, state, null)) {
+                requestAuthoredUpgrade(mesh, renderer, scene);
+              }
             }
           }
         }
@@ -5549,36 +6261,65 @@ export const render = {
     });
     onBus('mode:changed', ({ mode } = {}) => {
       if (mode === 'loading') {
-        this._openingEnvFrozen = false;
-        releaseOpeningGraphPublication(this);
+        const recook = this._sessionLiveSectorCookedId != null
+          && this._sessionLiveSectorCookedId === (state.world && state.world.currentSectorId)
+          && this._contextLost !== true;
+        this._sessionRecookKeepGpu = recook === true;
         // A save/load transition replaces entity objects while commonly reusing their numeric IDs.
         // Never let the prior flight's glass/runway membership gate the restored world by ID: it
         // can falsely require unrelated replacement actors and strand Continue in loading.
         this._activityFrame = null;
         this._activityFrameTick = null;
         state.render.activityFrame = null;
-        state.render.firstPlayableFrameAt = null;
-        state.render.openingSubmissionFirstDrawSubmittedAt = null;
-        state.render.openingSubmissionPlan = null;
-        state.render.openingSubmissionReceipt = null;
-        this._openingShadowAdmission = null;
-        state.render.openingFirstVisibleGpuCounts = null;
-        state.render.openingSubmissionPreSubmitValidation = null;
-        state.render.openingSubmissionValidation = null;
-        state.render.openingSubmissionReady = null;
-        state.render.firstPlayableContentHashes = null;
-        state.render.firstPlayableContentHashesVerified = false;
-        state.render.firstPlayableGlobalProgramKeys = null;
-        state.render.firstPlayableOpeningProgramKeys = null;
-        state.render.firstPlayableResourceIdentitySets = null;
-        this._deferNoncriticalMeshStreaming = false;
-        state.render.deferNoncriticalMeshStreaming = false;
         this._pendingPostOpeningSector = null;
-        this._openingFirstPicturePrepared = false;
         this._openingPictureHoldSinceMs = null;
         this._firstPlayablePaintScheduled = false;
+        this._firstFlightDeferredHold = true;
+        if (recook) {
+          // Keep the cooked GPU set and opening receipt. Clearing them made F9's
+          // next present an opening first-draw that compiled 37 extra programs.
+          reattachResidentGpuMeshes(this);
+          resumeAuthoredUpgradeQueueForLoadingHulls(this.scene);
+          if (typeof state.render.resumeDeferredPipelineAdmissions === 'function') {
+            state.render.resumeDeferredPipelineAdmissions({ hullsOnly: true });
+          }
+        } else {
+          this._openingEnvFrozen = false;
+          releaseOpeningGraphPublication(this);
+          this._openingFirstPicturePrepared = false;
+          // F9 / Continue waits on authored-visuals BEFORE the live-sector cook.
+          // The first-flight leftover hold must not strand restored hulls at loading:promise.
+          state.render.firstPlayableFrameAt = null;
+          state.render.firstFlightResidencyHoldUntil = null;
+          state.render.sectorShellAdmission = false;
+          state.render.openingSubmissionFirstDrawSubmittedAt = null;
+          state.render.openingSubmissionPlan = null;
+          state.render.openingSubmissionReceipt = null;
+          this._openingShadowAdmission = null;
+          state.render.openingFirstVisibleGpuCounts = null;
+          state.render.openingSubmissionPreSubmitValidation = null;
+          state.render.openingSubmissionValidation = null;
+          state.render.openingSubmissionReady = null;
+          state.render.firstPlayableContentHashes = null;
+          state.render.firstPlayableContentHashesVerified = false;
+          state.render.firstPlayableGlobalProgramKeys = null;
+          state.render.firstPlayableOpeningProgramKeys = null;
+          state.render.firstPlayableResourceIdentitySets = null;
+          this._deferNoncriticalMeshStreaming = false;
+          state.render.deferNoncriticalMeshStreaming = false;
+          // Drop the previous flight's leftover meshes before authored-visuals
+          // and the live-sector cook. F9 reuses IDs; dirty-only reconcile was
+          // too late and the second whole-scene 1x1 TDR'd Intel.
+          this._meshReconcileDirty = true;
+          this.reconcileMeshes();
+          resumeAuthoredUpgradeQueueForLoadingHulls(this.scene);
+          if (typeof state.render.resumeDeferredPipelineAdmissions === 'function') {
+            state.render.resumeDeferredPipelineAdmissions({ hullsOnly: true });
+          }
+        }
       }
       if (mode !== 'flight') return;
+      this._sessionRecookKeepGpu = false;
       // The first visible flight draw contains only the already-resident opening composition.
       // Bulk sector roots resume at the normal two-per-frame budget after that draw completes.
       this._deferNoncriticalMeshStreaming = true;
@@ -5592,7 +6333,14 @@ export const render = {
       this.setSectorPostProfile(arrivalVisualProfile && arrivalVisualProfile.post);
       if (spaceBg && spaceBg.onSectorEnter) spaceBg.onSectorEnter(sector, arrivalVisualProfile);
     });
-    onBus('save:loaded', () => { this._meshReconcileDirty = true; });
+    onBus('save:loaded', () => {
+      if (this._sessionRecookKeepGpu === true) {
+        reattachResidentGpuMeshes(this);
+        this._meshReconcileDirty = false;
+        return;
+      }
+      this._meshReconcileDirty = true;
+    });
 
     this._resizeHandler = () => this.onResize();
     lifecycle.listenResize(window, this._resizeHandler);
@@ -6139,6 +6887,15 @@ export const render = {
           || !isEntityRenderRelevant(e, this.state)) continue;
       const m = this.vf.build(e);
       if (!m) { e._noMesh = true; continue; }
+      if (e.type === 'asteroid' && !m.name) m.name = `Asteroid_${e.id}`;
+      if (this.state.mode === 'flight' && (Number(this.state.simTime) || 0) < 3) {
+        console.warn('[render] first-flight build', {
+          id: e.id,
+          type: e.type,
+          typeId: e.data && e.data.typeId || null,
+          name: m.name || null,
+        });
+      }
       const local = this._frameMembrane.toLocal(e.pos, _meshLocalXZ);
       m.position.set(local.x, 0, local.z);
       m.rotation.y = -e.rot;
@@ -6151,10 +6908,37 @@ export const render = {
       this._meshes.set(e.id, m);
       this.scene.add(m);
       this._bindPresentationMesh(e, m);
-      registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
+      const holdFirstFlightBuffers = (e.type === 'asteroid' || e.type === 'payload')
+        && !(m.userData && m.userData.spacefaceGeometryResident === true);
+      if (holdFirstFlightBuffers) {
+        const data = m.userData || (m.userData = {});
+        data.geometryPending = true;
+      } else {
+        registerAsteroidBaseLeaf(this._asteroidInstancePool, e, m);
+      }
       const linkOnGlass = this.state.mode === 'flight' && entityIsOnReadableGlass(e, this.state);
-      if (!linkOnGlass && this.state.render && typeof this.state.render.compileObjectPipelines === 'function') {
-        void this.state.render.compileObjectPipelines(m);
+      const compileAsteroid = e.type === 'asteroid';
+      // Do not compile or 1x1-upload held first-flight rocks during the live
+      // frame. That was the leftover Intel context-loss: several residency
+      // prepares stacked on the first present. Cooked roots are stamped behind
+      // the loading shell; leftovers stay off bloom until that stamp exists.
+      const compileFn = this.state.render && this.state.render.compileObjectPipelines;
+      if (!holdFirstFlightBuffers && typeof compileFn === 'function') {
+        if (compileAsteroid || !linkOnGlass) {
+          void compileFn(m);
+        } else {
+          const data = m.userData || (m.userData = {});
+          data.pipelinesPending = true;
+          const subject = m;
+          void yieldAfterPresent().then(() => {
+            const compile = this.state && this.state.render
+              && this.state.render.compileObjectPipelines;
+            if (typeof compile === 'function' && subject && subject.parent) {
+              return compile(subject);
+            }
+            if (subject && subject.userData) subject.userData.pipelinesPending = false;
+          });
+        }
       }
       if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
         requestAuthoredUpgrade(m, this.renderer, this.scene);
@@ -6394,6 +7178,8 @@ export const render = {
           hidden: true,
           snapshotMissing: !posed,
           pipelinesPending: !!(mesh.userData && mesh.userData.pipelinesPending),
+          authoredPending: isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState),
+          geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
           activityFrame: this._activityFrame,
           entityId,
           presentationTier: entity && entity.activity && entity.activity.presentationTier,
@@ -6499,6 +7285,8 @@ export const render = {
           allowShadowCast: false,
           snapshotMissing: !posed,
           pipelinesPending: !!(mesh.userData && mesh.userData.pipelinesPending),
+          authoredPending: isAuthoredPendingStatus(mesh.userData && mesh.userData.authoredAssetState),
+          geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
           activityFrame: this._activityFrame,
           entityId,
           presentationTier: entity.activity && entity.activity.presentationTier,
@@ -6585,6 +7373,11 @@ export const render = {
     diagnostics.candidates = query.candidateCount;
     diagnostics.transformed = transformed;
     if (transformed === 0) this._persistentSubmitLanes.noteUnchangedFrame();
+    const persistentUploads = consumePersistentSubmitUploads(this._persistentSubmitLanes);
+    if (this.state && this.state.render) {
+      this.state.render.persistentSubmitUploads = persistentUploads;
+      this.state.render.persistentSubmitLanes = this._persistentSubmitLanes.diagnostics();
+    }
     diagnostics.fullSynced = fullSynced;
     diagnostics.culled = query.culledCount;
     diagnostics.newlyVisible = query.newlyVisibleCount;
@@ -7063,6 +7856,20 @@ export const render = {
 
   prepareFrame(alpha, frameDt, presentationFrame = null) {
     this._presentationFrame = presentationFrame;
+    if (this.renderer) {
+      const data = this.renderer.userData || (this.renderer.userData = {});
+      const firstFlight = this.state && this.state.mode === 'flight'
+        && (Number(this.state.simTime) || 0) < 3;
+      data.spacefaceBrickWarnMs = firstFlight ? 100 : 200;
+    }
+    if (this.state && this.state.mode === 'flight'
+        && (Number(this.state.simTime) || 0) >= 20
+        && this._firstFlightDeferredHold !== false
+        && this.state.render
+        && typeof this.state.render.resumeDeferredPipelineAdmissions === 'function') {
+      this._firstFlightDeferredHold = false;
+      void this.state.render.resumeDeferredPipelineAdmissions({ force: true });
+    }
     // Publication is consumed before any context-loss early return. PresentationRunner acknowledges
     // the range after renderUpdate succeeds, so the dense mirror must not miss that same range merely
     // because the GPU is temporarily unavailable.
@@ -7132,6 +7939,7 @@ export const render = {
       if (this.state && this.state.render) this.state.render.activityFrame = this._activityFrame;
     }
     serviceRenderMeshResidency(this, frameDt);
+    const holdLoadingGpu = this.state && this.state.mode === 'loading';
     const holdOpeningPicture = this._openingFirstPicturePrepared === true
       && this.state && this.state.mode === 'flight'
       && !Number.isFinite(this.state.render && this.state.render.firstPlayableFrameAt);
@@ -7167,7 +7975,7 @@ export const render = {
       // the first paint releases the opening latch below.
       this.state.render.interpolationAlpha = 1;
     }
-    if (!holdOpeningPicture) {
+    if (!holdOpeningPicture && !holdLoadingGpu) {
       syncContactShadowPool(this._contactShadowPool, this._entityFrame);
       syncShipAuxPools(this._shipAuxPool, this._entityFrame);
     }
@@ -7175,7 +7983,7 @@ export const render = {
       ? this._frameShadowCastRadius
       : liveShadowCastRadius(this.state);
     this._frameShadowCastRadius = shadowRadius;
-    if (!holdOpeningPicture) this._syncAuthoredInstanceSubmission(shadowRadius);
+    if (!holdOpeningPicture && !holdLoadingGpu) this._syncAuthoredInstanceSubmission(shadowRadius);
     // Background-clock for distant animation (planet cloud drift, hero-star twinkle). Integrates real
     // frame dt scaled by state.timeScale so the cosmos respects hit-stop/pause — a death freeze
     // momentarily stills the clouds too, keeping the backdrop in the same time model as the action.
@@ -7183,7 +7991,7 @@ export const render = {
     this._updateSectorPaletteTransition(frameDt);
     const ts = (this.state.timeScale != null) ? this.state.timeScale : 1;
     this._bgTime = (this._bgTime || 0) + frameDt * ts;
-    if (!holdOpeningPicture) {
+    if (!holdOpeningPicture && !holdLoadingGpu) {
       if (this.spaceBg && this.spaceBg.update) this.spaceBg.update(frameDt, this._bgTime, this.cam.obj.position);
       parallaxLayers.update(frameDt);
     }
@@ -7199,7 +8007,10 @@ export const render = {
         || shadowFollowChanged
         || this._shadowRefreshScheduled === true
       );
-      const refreshShadow = shouldRefreshRealtimeShadowMap({
+      const holdFirstFlightShadow = holdLoadingGpu
+        || (this.state.mode === 'flight'
+          && (Number(this.state.simTime) || 0) < 20);
+      const refreshShadow = !holdFirstFlightShadow && shouldRefreshRealtimeShadowMap({
         lastPresentDtMs: this.state && this.state.render && this.state.render.lastPresentDtMs,
         skippedLast: this._shadowPresentSkipped === true || refreshWasPending,
         dirty,
@@ -7218,7 +8029,7 @@ export const render = {
       this._activeShadowCamera = prepareActiveShadowCamera(this.renderer, this._keyLight);
     }
     const shadowCamera = this._activeShadowCamera || null;
-    if (!holdOpeningPicture) this._syncAsteroidInstanceSubmission(shadowCamera);
+    if (!holdOpeningPicture && !holdLoadingGpu) this._syncAsteroidInstanceSubmission(shadowCamera);
     // Collision/socket/landing debug overlay (spec §12.5). Repositions pooled markers over the live
     // meshes once per frame; a cheap no-op when off (the group is hidden + nothing iterates).
       if (this.collisionDebug && this.collisionDebug.on) this.collisionDebug.update();
@@ -7435,7 +8246,7 @@ export const render = {
         // Post-submit diagnostic for late admissions the plan could not name. The evidence stays on
         // state.render; the mesh defer still releases after the first paint (see afterBrowserPaint
         // below) — a failed diagnostic must never strand flight without mesh streaming.
-        console.error('[render] opening submission post-submit validation failed', validation);
+        console.warn('[render] opening submission post-submit validation failed', validation);
         this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
           this.scene,
           this.state.render.openingSubmissionPlan,
@@ -8031,14 +8842,23 @@ export const render = {
 export function applyFirstPlayablePaintRelease(owner) {
   const render = owner && owner.state && owner.state.render;
   try {
-    if (owner && owner.state.mode === 'flight'
-        && render.openingSubmissionValidation?.ok !== false) {
+    // firstPlayableFrameAt is the streaming/slicing latch, not a validation trophy.
+    // Seed 47's first-visible identity gate fails on late cooked residency; if we
+    // skip the stamp, deferAutoFlush stays on, new compiles pile up unsliced, and
+    // the 15s opening-hold failsafe dumps them in one Intel TDR.
+    if (owner && owner.state.mode === 'flight' && render
+        && !Number.isFinite(render.firstPlayableFrameAt)) {
       render.firstPlayableFrameAt = typeof performance !== 'undefined' && typeof performance.now === 'function'
         ? performance.now()
         : Date.now();
+      if (!Number.isFinite(render.firstFlightResidencyHoldUntil)) {
+        render.firstFlightResidencyHoldUntil = (Number(owner.state.simTime) || 0) + 20;
+      }
     }
   } finally {
-    releaseOpeningMeshDefer(owner, owner ? owner.state.mode : null);
+    releaseOpeningMeshDefer(owner, owner ? owner.state.mode : null, {
+      keepGraphFrozen: !!(owner && owner.state && owner.state.mode === 'flight'),
+    });
     if (render && typeof render.resumeDeferredPipelineAdmissions === 'function') {
       void render.resumeDeferredPipelineAdmissions();
     }
@@ -8047,9 +8867,9 @@ export function applyFirstPlayablePaintRelease(owner) {
 }
 
 /** Opening defer must clear even if the first painted frame is no longer flight. */
-export function releaseOpeningMeshDefer(owner, mode) {
+export function releaseOpeningMeshDefer(owner, mode, options = {}) {
   if (!owner) return owner;
-  releaseOpeningGraphPublication(owner);
+  if (options.keepGraphFrozen !== true) releaseOpeningGraphPublication(owner);
   owner._deferNoncriticalMeshStreaming = false;
   if (owner.state && owner.state.render) owner.state.render.deferNoncriticalMeshStreaming = false;
   owner._meshReconcileDirty = true;

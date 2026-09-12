@@ -118,18 +118,17 @@ export function createLoadingPresenter({ document, bus, hideDelayMs = 600 } = {}
     overlay.setAttribute('aria-busy', 'false');
     const retiring = terminalArt || NO_ART;
     retiring.stop();
+    // Kill the boot WebGL2 worker immediately so the first flight present is
+    // not racing a second context. Overlay fade can still wait hideDelayMs.
+    if (retiring === terminalArt) {
+      retiring.destroy();
+      terminalArt = null;
+    }
     if (hideTimer != null) clearTimeout(hideTimer);
     hideTimer = setTimeout(() => {
       hideTimer = null;
       if (!overlay.classList.contains('hidden')) return;
       overlay.style.display = 'none';
-      // Full GPU release only once nobody can see the fade: destroy terminates the artwork's
-      // worker (its WebGL2 context dies with it) and detaches the dead canvas, so flight is left
-      // holding no boot-terminal context. show() rebuilds both when loading is next needed.
-      if (retiring === terminalArt) {
-        retiring.destroy();
-        terminalArt = null;
-      }
     }, hideDelayMs);
   };
   const unsubs = [
