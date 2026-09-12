@@ -67,7 +67,7 @@ export const RAIL_SLOTS = Object.freeze([
   // already says ORDNANCE, and three stacked "Ordnance" micro-labels truncated to "ORD_" junk.
   { index: 1, band: BAND_ORDNANCE, action: 'chargeThrow', name: 'Charge', glyph: 'weapon' },
   { index: 2, band: BAND_ORDNANCE, action: 'chargeDetonate', name: 'Blast', glyph: 'blast' },
-  { index: 3, band: BAND_ORDNANCE, action: 'tether', name: 'Line', glyph: 'line' },
+  { index: 3, band: BAND_ORDNANCE, action: 'tether', name: 'Line', glyph: 'tether' },
   { index: 4, band: BAND_FIELDWORK, action: 'deployMassSeed', name: 'Seed', glyph: 'seed' },
   { index: 5, band: BAND_FIELDWORK, action: 'deployWell', name: 'Well', glyph: 'well' },
   // Display name shortened to fit the slot's 38px label row untruncated; the verb family
