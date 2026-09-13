@@ -247,6 +247,7 @@ export function createMarketNews(ctx) {
         ttl: 4,
       });
     }
+    tickerIndex = 0;
     renderTicker();
     if (bus) bus.emit('news:headline', metadata
       ? { ...metadata, headline, kind: rec.kind, stationId: rec.stationId }
@@ -377,6 +378,39 @@ export function createMarketNews(ctx) {
 
   // ---- DOM ticker (cosmetic; fully guarded) -----------------------------------------------
   let tickerEl = null;
+  let tickerHost = null;
+  let tickerIndex = 0;
+  let tickerTimer = null;
+
+  function setTickerHostVisible(visible) {
+    if (!tickerHost) return;
+    tickerHost.hidden = !visible;
+    const tape = tickerHost.closest && tickerHost.closest('.sf-commtape');
+    if (!tape) return;
+    if (visible) {
+      tape.hidden = false;
+      return;
+    }
+    const slots = tape.querySelector && tape.querySelector('.sf-commtape__slots');
+    if (!slots || !slots.childElementCount) tape.hidden = true;
+  }
+
+  function clearTickerTimer() {
+    if (tickerTimer == null || typeof window === 'undefined') return;
+    window.clearTimeout(tickerTimer);
+    tickerTimer = null;
+  }
+
+  function scheduleTicker(items) {
+    clearTickerTimer();
+    if (items.length < 2 || typeof window === 'undefined' || typeof window.setTimeout !== 'function') return;
+    tickerTimer = window.setTimeout(() => {
+      tickerTimer = null;
+      tickerIndex = (tickerIndex + 1) % items.length;
+      renderTicker();
+    }, 7000);
+  }
+
   function ensureTicker() {
     if (typeof document === 'undefined') return null;
     if (tickerEl && tickerEl.isConnected) return tickerEl;
@@ -384,14 +418,17 @@ export function createMarketNews(ctx) {
     // ticker is only allowed on screens that deliberately provide this host.
     const host = document.getElementById('news-ticker');
     if (!host) return null;
+    tickerHost = host;
     let el = document.getElementById('sf-news-ticker');
     if (!el) {
       el = document.createElement('div');
       el.id = 'sf-news-ticker';
       el.className = 'sf-news-ticker';
       el.setAttribute('role', 'status');
-      el.setAttribute('aria-live', 'polite');
-      el.setAttribute('aria-label', 'Market news');
+      // The one-voice alert floor announces a new event. This durable history tape must not
+      // re-announce every rotation to assistive technology.
+      el.setAttribute('aria-live', 'off');
+      el.setAttribute('aria-label', 'Market news feed');
       host.appendChild(el);
     }
     tickerEl = el;
@@ -403,23 +440,28 @@ export function createMarketNews(ctx) {
     const el = ensureTicker();
     if (!el) return;
     const items = model.log.slice(0, MAX_TICKER_ITEMS);
+    clearTickerTimer();
     el.textContent = '';
-    for (let i = 0; i < items.length; i++) {
-      const span = document.createElement('span');
-      span.className = 'sf-news-ticker__item sf-news-ticker__item--' + (items[i].kind || 'event');
-      span.textContent = items[i].text;
-      el.appendChild(span);
-      if (i < items.length - 1) {
-        const sep = document.createElement('span');
-        sep.className = 'sf-news-ticker__sep';
-        sep.textContent = ' • ';
-        el.appendChild(sep);
-      }
+    if (!items.length) {
+      tickerIndex = 0;
+      setTickerHostVisible(false);
+      return;
     }
+    tickerIndex %= items.length;
+    const item = items[tickerIndex];
+    const span = document.createElement('span');
+    span.className = 'sf-news-ticker__item sf-news-ticker__item--' + (item.kind || 'event');
+    span.textContent = item.text;
+    el.appendChild(span);
+    setTickerHostVisible(true);
+    scheduleTicker(items);
   }
 
   // initial paint (no-op headless)
   renderTicker();
+  // HUD construction can replace its BAND tape after this UI system initialized. Repaint the
+  // existing cited log into the new host instead of waiting for the next market event.
+  on('news:render', renderTicker);
 
   return {
     name: 'marketNews',
@@ -434,8 +476,10 @@ export function createMarketNews(ctx) {
     destroy() {
       for (const [evt, fn] of subs) { if (bus && bus.off) bus.off(evt, fn); }
       subs.length = 0;
+      clearTickerTimer();
       if (tickerEl && tickerEl.parentNode) tickerEl.parentNode.removeChild(tickerEl);
       tickerEl = null;
+      tickerHost = null;
     },
   };
 }

@@ -1122,7 +1122,9 @@ export function createHud(ctx, alerts) {
   const commsTape = document.createElement('div');
   commsTape.className = 'sf-commtape';
   commsTape.innerHTML = '<span class="sf-commtape__band">BAND</span>'
+    + '<span id="news-ticker" class="sf-commtape__news" hidden></span>'
     + '<span class="sf-commtape__slots"></span>';
+  const newsTickerHost = commsTape.querySelector('#news-ticker');
   const commsTapeSlots = commsTape.querySelector('.sf-commtape__slots');
   // Both modules mount into #ui-root during boot. If either has not arrived yet, adopt it on the
   // next frame rather than leaving an empty housing behind (SCREENS_A 1.4: contextual surfaces
@@ -1132,7 +1134,7 @@ export function createHud(ctx, alerts) {
       const node = document.getElementById(id) || document.querySelector('.' + id);
       if (node && node.parentNode !== commsTapeSlots) commsTapeSlots.appendChild(node);
     }
-    if (!commsTapeSlots.childElementCount) commsTape.setAttribute('hidden', '');
+    if (!commsTapeSlots.childElementCount && (!newsTickerHost || newsTickerHost.hidden)) commsTape.setAttribute('hidden', '');
     else commsTape.removeAttribute('hidden');
   };
   adoptCommsChrome();
@@ -1145,6 +1147,8 @@ export function createHud(ctx, alerts) {
     ? requestAnimationFrame(adoptCommsChrome)
     : null;
   leftContext.prepend(commsTape);
+  // marketNews owns the feed and may have initialized before this HUD rebuilt its tape host.
+  if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('news:render');
   // Shield ring: dasharray = full circumference, dashoffset grows as shields drop (erasing the ring).
   // Measured after mount so getTotalLength() reads the live geometry (the fallback equals 2πr anyway).
   const SHIELD_RING_LEN = (() => { try { return schShield.getTotalLength() || 2 * Math.PI * 46; } catch (e) { return 2 * Math.PI * 46; } })();

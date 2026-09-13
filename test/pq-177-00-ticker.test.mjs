@@ -355,3 +355,26 @@ test('the second leftover source paints too: a live event with no stored card fo
     dispose(t);
   }
 });
+
+test('the live HUD BAND tape mounts one silent rotating ticker without duplicating alerts', () => {
+  const marketSrc = readFileSync(join(ROOT, 'src/ui/marketNews.js'), 'utf8');
+  const hudSrc = readFileSync(join(ROOT, 'src/ui/hud.js'), 'utf8');
+  const hudStyles = readFileSync(join(ROOT, 'src/ui/views/hudStyles.js'), 'utf8');
+
+  assert.match(hudSrc, /id="news-ticker" class="sf-commtape__news" hidden/,
+    'the persistent flight HUD owns a real ticker host inside the existing BAND tape');
+  assert.match(hudSrc, /ctx\.bus\.emit\('news:render'\)/,
+    'a rebuilt HUD asks marketNews to repaint the already-cited log instead of waiting for a new event');
+  assert.match(marketSrc, /on\('news:render', renderTicker\)/,
+    'marketNews listens for that host-ready handoff');
+  assert.match(marketSrc, /el\.setAttribute\('aria-live', 'off'\)/,
+    'the durable feed does not re-announce the one-voice alert floor');
+  assert.match(marketSrc, /window\.setTimeout\([\s\S]*?7000\)/,
+    'multiple cited lines rotate at a bounded cadence');
+  assert.doesNotMatch(marketSrc, /setInterval\(/,
+    'the feed owns no permanent interval loop');
+  assert.match(hudStyles, /\.sf-commtape__news \{ min-width:0; flex:1 1 auto; overflow:hidden; \}/,
+    'the tape gives the long headline bounded horizontal space');
+  assert.match(hudStyles, /\.sf-news-ticker \{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap;/,
+    'a long headline stays one readable HUD line rather than obscuring flight instruments');
+});
