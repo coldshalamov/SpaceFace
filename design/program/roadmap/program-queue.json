@@ -9546,7 +9546,7 @@
       "priority": 191,
       "title": "The ticker and event cards",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
