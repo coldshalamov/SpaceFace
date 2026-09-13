@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   forEachJobInteractable,
   forEachLivingWorldActor,
+  indexedShipLikeScan,
   isLivingWorldActor,
   livingWorldActorSeenTypes,
 } from '../src/world/livingWorldViews.js';
@@ -97,4 +98,42 @@ test('bark director update does not walk rocks or dressing', () => {
   });
   barkDirector.update(1 / 60, state);
   assert.deepEqual(visited, []);
+});
+
+test('indexed ship-like scan prefers the compact bucket over the fat master list', () => {
+  const state = fatState();
+  const npc = {
+    id: 9, type: 'ship', alive: true, team: 1,
+    pos: { x: 8, z: 0 }, data: { ai: { combatant: true } }, flags: {},
+  };
+  state.entityList.push(npc);
+  state.entities.set(npc.id, npc);
+  state.entityIndex = {
+    __spacefaceEntityIndexV1: true,
+    ready: true,
+    shipLike: [state.ship, npc],
+    stations: [state.station],
+    wrecks: [state.wreck],
+    asteroids: [state.rock],
+  };
+  const scan = indexedShipLikeScan(state);
+  assert.equal(scan, state.entityIndex.shipLike);
+  assert.equal(scan.includes(state.rock), false);
+  assert.equal(scan.includes(state.fx), false);
+  assert.deepEqual(indexedShipLikeScan({ entityList: state.entityList }), state.entityList);
+
+  let masterReads = 0;
+  const list = state.entityList;
+  Object.defineProperty(state, 'entityList', {
+    configurable: true,
+    get() { masterReads += 1; return list; },
+  });
+  barkDirector.init({
+    state,
+    bus: { on() { return () => {}; }, emit() {} },
+    helpers: {},
+  });
+  const witness = barkDirector._nearestWitness();
+  assert.equal(witness && witness.id, npc.id);
+  assert.equal(masterReads, 0, 'witness search must not read the fat entityList');
 });

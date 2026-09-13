@@ -11,6 +11,7 @@ import { hash32 } from '../core/rng.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { effectiveLawSecurity } from './lawSecurity.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const SCAN_TO_DEMAND_S = 2.0;
 // Eight seconds is long enough to read a concrete demand and make one deliberate flight decision,
@@ -287,7 +288,7 @@ function eligiblePlan(entity) {
 
 function collectParleySquads(state) {
   const out = new Map();
-  const list = Array.isArray(state.entityList) ? state.entityList : [];
+  const list = indexedShipLikeScan(state);
   for (const e of list) {
     if (!e || e.alive === false || (e.type !== 'ship' && e.type !== 'drone')) continue;
     const plan = eligiblePlan(e);

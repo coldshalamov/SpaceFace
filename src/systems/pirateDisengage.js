@@ -8,6 +8,7 @@ import { pirateDoctrineForEntity } from '../data/pirateDoctrines.js';
 import { hash32 } from '../core/rng.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const PATROL_RADIUS = 900;
 const NERVE_DELAY_S = 1.0;
@@ -172,7 +173,8 @@ function ensureState(state) {
 
 function lawfulPatrols(state) {
   const out = [];
-  for (const entity of state.entityList || []) {
+  const list = indexedShipLikeScan(state);
+  for (const entity of list) {
     if (!entity || entity.alive === false || (entity.type !== 'ship' && entity.type !== 'drone')) continue;
     const ai = entity.data && entity.data.ai || {};
     const context = String(ai.spawnContext || ai.context || '').toLowerCase();
@@ -186,7 +188,8 @@ function lawfulPatrols(state) {
 
 function combatantSquads(state) {
   const out = new Map();
-  for (const entity of state.entityList || []) {
+  const list = indexedShipLikeScan(state);
+  for (const entity of list) {
     if (!isActiveCombatant(entity, state)) continue;
     const ai = entity.data && entity.data.ai || {};
     if (ai.pirateDisengaged === true) continue;

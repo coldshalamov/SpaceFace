@@ -13,6 +13,7 @@
 // The chase camera's own damped composition already frames player + attacker continuously.
 import { createTimeEffects } from '../core/timeEffects.js';
 import { isHostileToPlayer } from './scanner.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const FOCUS_DURATION_S = 3.0;
 const FOCUS_SCALE = 0.5;
@@ -381,9 +382,7 @@ export const flybyFocus = {
     if (now < focus.cooldownUntil) return;
     if (st.player && st.player.tether && st.player.tether.active) return;
 
-    const list = st.entityList || (st.entities && typeof st.entities.values === 'function'
-      ? [...st.entities.values()]
-      : []);
+    const list = indexedShipLikeScan(st);
     this._expireTargetCooldowns(now);
     this._cooldownNow = now;
     const pick = pickFlybyTarget(st, player, list, this._isTargetCoolingDown);

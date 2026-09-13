@@ -152,10 +152,13 @@ export class FodderCohortDirector {
       live.add(group.id);
       this._stepCohort(tick | 0, dt, group, targetLookup, state);
     }
-    for (const id of [...this.cohorts.keys()]) {
+    const retire = this.retireScratch || (this.retireScratch = []);
+    retire.length = 0;
+    for (const id of this.cohorts.keys()) {
       if (live.has(id)) continue;
-      this._retire(id);
+      retire.push(id);
     }
+    for (let i = 0; i < retire.length; i++) this._retire(retire[i]);
   }
 
   _retire(cohortId) {

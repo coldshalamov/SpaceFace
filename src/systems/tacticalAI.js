@@ -20,6 +20,7 @@ import {
   createFodderCohortDirector,
 } from '../ai/fodderCohort.js';
 import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityRuntime.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
 import { applyNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
@@ -509,14 +510,15 @@ function stepSquadFrames(liveStack, state, tick, dt) {
   ));
 }
 
-function markCheapCohortMembers(state) {
-  const list = state && state.entityList;
-  if (!list) return;
+export function markCheapCohortMembers(state) {
+  const list = indexedShipLikeScan(state);
+  if (!list || !list.length) return;
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
     if (!cohortRecipeFromEntity(entity)) continue;
     const ai = entity.data && entity.data.ai;
     if (!ai) continue;
+    if (ai.passive === true && ai.allowPassiveManeuver === false) continue;
     ai.passive = true;
     ai.allowPassiveManeuver = false;
   }
@@ -537,10 +539,17 @@ function stepFodderCohorts(liveStack, state, tick, dt) {
   );
 }
 
-function gatherCohorts(state) {
-  const list = state && state.entityList;
-  if (!list || !list.length) return [];
-  const byId = new Map();
+const EMPTY_GROUPS = Object.freeze([]);
+const cohortGatherById = new Map();
+const cohortGatherOut = [];
+const squadGatherById = new Map();
+const squadGatherOut = [];
+
+export function gatherCohorts(state) {
+  const list = indexedShipLikeScan(state);
+  if (!list || !list.length) return EMPTY_GROUPS;
+  const byId = cohortGatherById;
+  byId.clear();
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
     const recipeId = cohortRecipeFromEntity(entity);
@@ -563,15 +572,18 @@ function gatherCohorts(state) {
       if (combat && combat.targetId != null) group.targetId = combat.targetId;
     }
   }
-  return [...byId.values()];
+  if (byId.size === 0) return EMPTY_GROUPS;
+  cohortGatherOut.length = 0;
+  for (const group of byId.values()) cohortGatherOut.push(group);
+  return cohortGatherOut;
 }
 
 function driveCohortMembers(liveStack, state, tick) {
   const director = liveStack && liveStack.fodderCohorts;
   if (!director || director.activeCohortCount() === 0) return;
   const maneuverPort = liveStack.ports && liveStack.ports.maneuver;
-  const list = state && state.entityList;
-  if (!list) return;
+  const list = indexedShipLikeScan(state);
+  if (!list || !list.length) return;
   // Cohort stepAll has already published immutable-for-this-tick plans. Reuse the read-only
   // inspection snapshot for every member, while each member keeps its original maneuver lookup
   // and submission on every fixed tick.
@@ -626,10 +638,11 @@ function stampFodder(entity, plan, inspection = null) {
   stamp.laneId = plan ? plan.laneId : null;
 }
 
-function gatherRecipeSquads(state) {
-  const list = state && state.entityList;
-  if (!list || !list.length) return [];
-  const byId = new Map();
+export function gatherRecipeSquads(state) {
+  const list = indexedShipLikeScan(state);
+  if (!list || !list.length) return EMPTY_GROUPS;
+  const byId = squadGatherById;
+  byId.clear();
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
     const recipeId = recipeIdFromEntity(entity);
@@ -652,7 +665,10 @@ function gatherRecipeSquads(state) {
       if (combat && combat.targetId != null) squad.targetId = combat.targetId;
     }
   }
-  return [...byId.values()];
+  if (byId.size === 0) return EMPTY_GROUPS;
+  squadGatherOut.length = 0;
+  for (const squad of byId.values()) squadGatherOut.push(squad);
+  return squadGatherOut;
 }
 
 function driveChoreographyMembers(liveStack, state, tick, decisions) {
@@ -665,8 +681,8 @@ function driveChoreographyMembers(liveStack, state, tick, decisions) {
     }
   }
   const maneuverPort = liveStack.ports && liveStack.ports.maneuver;
-  const list = state && state.entityList;
-  if (!list) return;
+  const list = indexedShipLikeScan(state);
+  if (!list || !list.length) return;
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
     if (!entity || entity.alive === false) continue;
@@ -784,8 +800,8 @@ function applyChoreographyFireWindow(liveStack, decision) {
 function applySquadTokenFireGate(liveStack, state) {
   const director = liveStack && liveStack.maneuver && liveStack.maneuver.squadFrames;
   if (!director || director.activeSquadCount() === 0) return;
-  const list = state && state.entityList;
-  if (!list) return;
+  const list = indexedShipLikeScan(state);
+  if (!list || !list.length) return;
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
     if (!recipeIdFromEntity(entity)) continue;

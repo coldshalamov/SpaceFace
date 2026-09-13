@@ -11,6 +11,7 @@ import {
   PD_SCREEN_DEFAULT_RADIUS,
 } from '../ai/pdScreen.js';
 import { isPlayerWanted } from './heat.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
 const FIRE_WINDOW_ADMISSION = new WeakMap();
@@ -174,9 +175,18 @@ export function applyPdScreenTargetPolicy(entity, state, decision = null) {
 
 function collectPdContacts(self, state, charge) {
   const out = [];
-  const list = state.entityList || [];
+  const index = state.entityIndex;
+  const ships = indexedShipLikeScan(state);
+  const projectiles = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)
+    ? index.projectiles
+    : (state.entityList || []);
   const selfTeam = self.team;
-  for (const e of list) {
+  const lists = [projectiles, ships];
+  for (let b = 0; b < lists.length; b++) {
+    const list = lists[b];
+    if (!list) continue;
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
     if (!e || !e.alive || e.id === self.id) continue;
     if (charge && e.id === charge.id) continue;
     if (e.type === 'projectile') {
@@ -212,6 +222,7 @@ function collectPdContacts(self, state, charge) {
       hostile: true,
       threat: 0.6,
     });
+    }
   }
   return out;
 }

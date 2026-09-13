@@ -12,6 +12,7 @@ import {
   hunterTrickById,
   hunterTrickForContract,
 } from '../data/hunterTricks.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 export {
   BOUNTY_HUNTER_NEUTRAL_CONTEXT,
@@ -47,7 +48,7 @@ export const bountyHunt = {
     if (!state || (state.mode && state.mode !== 'flight')) return;
     this.state = state;
     ensureState(state);
-    for (const entity of state.entityList || []) {
+    for (const entity of indexedShipLikeScan(state)) {
       if (isBountyHunter(entity)) {
         normalizeHunter(entity, state);
         tickHunterTrick(entity, state, this.bus, this.helpers);
@@ -288,7 +289,7 @@ function isBountyHunter(entity) {
 }
 
 function contractIdForQuarryKill(state, quarryId) {
-  for (const entity of state.entityList || []) {
+  for (const entity of indexedShipLikeScan(state)) {
     const data = entity && entity.data;
     if (!data || !data.bountyHunt || data.bountyHunt.role !== 'hunter') continue;
     if (data.contractTargetId === quarryId) return data.bountyHunt.contractId || data.contractId;

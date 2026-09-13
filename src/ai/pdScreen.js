@@ -10,6 +10,7 @@
 // contacts, when present in the sensor frame, score highest inside the screen.
 
 import { ContactKind, distance2, finite, stableId } from './contracts.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 export const PD_SCREEN_DEFAULT_RADIUS = 320;
 export const PD_SCREEN_MAX_INTERCEPTS = 2;
@@ -51,9 +52,10 @@ export function resolvePdCharge(self, state, perception = null) {
   }
   // Squad leader (if this member is not the leader).
   const squadId = ai.squadId;
-  if (squadId != null && state && state.entityList) {
+  if (squadId != null && state) {
     let leader = null;
-    for (const e of state.entityList) {
+    const list = indexedShipLikeScan(state);
+    for (const e of list) {
       if (!e || !e.alive || e.id === self.id) continue;
       const eAi = e.data && e.data.ai;
       if (!eAi || eAi.squadId !== squadId) continue;

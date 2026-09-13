@@ -4,6 +4,7 @@
 // loss-ledger state are read-only.
 
 import { hash32 } from '../core/rng.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { buildSlotList, makeShipEntitySpec } from './ships.js';
@@ -572,7 +573,7 @@ export const factionPresence = {
   },
 
   _boundPitbornConcordIsGone() {
-    for (const entity of this.state.entityList || []) {
+    for (const entity of indexedShipLikeScan(this.state)) {
       if (!entity || entity.alive === false) continue;
       const marker = entity.data && entity.data.factionPresence;
       const ai = entity.data && entity.data.ai;
@@ -887,7 +888,7 @@ export const factionPresence = {
 
   _updateFulfillmentRoutes() {
     const simTime = Number(this.state.simTime) || 0;
-    for (const entity of this.state.entityList || []) {
+    for (const entity of indexedShipLikeScan(this.state)) {
       const marker = entity && entity.data && entity.data.factionPresence;
       const ai = entity && entity.data && entity.data.ai;
       const profile = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);

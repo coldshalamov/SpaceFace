@@ -41,6 +41,7 @@
 // factionId is READABILITY only; hostility is team/passive/lawful/context (scanner + aiPorts).
 
 import { hash32, mulberry32 } from '../core/rng.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { zonesForSector, zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { ZONE_CERES_THROUGHLINE } from '../data/authoredPlaces.js';
 import {
@@ -1619,18 +1620,23 @@ export const encounterDirector = {
   },
 
   _ceresActivityAmbushCohort() {
-    const list = this.state && this.state.entityList;
-    if (!Array.isArray(list)) return [];
-    return list.filter((entity) => {
-      if (!entity || entity.alive === false || entity.type !== 'ship') return false;
+    const list = indexedShipLikeScan(this.state);
+    const out = this._ceresAmbushCohortScratch || (this._ceresAmbushCohortScratch = []);
+    out.length = 0;
+    if (!list || !list.length) return out;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (!entity || entity.alive === false || entity.type !== 'ship') continue;
       const data = entity.data;
       const ai = data && data.ai;
-      return !!(ai
+      if (!(ai
         && ai.zoneId === CERES_ACTIVITY_AMBUSH_ZONE_ID
         && ai.squadId === CERES_ACTIVITY_AMBUSH_ZONE_ID
         && typeof data.worldRecordId === 'string'
-        && data.worldRecordId.length > 0);
-    });
+        && data.worldRecordId.length > 0)) continue;
+      out.push(entity);
+    }
+    return out;
   },
 
   _seedCeresActivityAmbush(sectorId, options = {}) {
@@ -1823,9 +1829,9 @@ function ceresActivityAmbushAnchorGlobal() {
 }
 
 function findCeresLoadedHauler(state) {
-  const list = state && state.entityList;
-  if (!Array.isArray(list)) return null;
-  for (const entity of list) {
+  const list = indexedShipLikeScan(state);
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
     if (!entity || entity.alive === false || entity.type !== 'ship') continue;
     if (entity.data && entity.data.activityActorSlotId === CERES_ACTIVITY_AMBUSH_HAULER_SLOT) {
       return entity;

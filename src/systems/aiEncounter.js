@@ -2,6 +2,7 @@ import { AI_CONTRACT_VERSION } from '../ai/contracts.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import { hash32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const HISTORY_CAPACITY = 128;
 
@@ -96,7 +97,7 @@ export const aiEncounter = {
   },
 
   _queueAuthoredReinforcements(encounter, state) {
-    for (const entity of Array.isArray(state.entityList) ? state.entityList : []) {
+    for (const entity of indexedShipLikeScan(state)) {
       if (!entity || entity.alive === false || entity.type !== 'ship') continue;
       const data = entity.data || {};
       const ai = data.ai || (data.ai = {});
