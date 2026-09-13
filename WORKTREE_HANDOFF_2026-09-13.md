@@ -22,5 +22,6 @@ The committed canonical source is
 by the builder and authoring manifest.
 
 The empty `SpaceFace-pq019-reconcile` directory had no Git worktree registration or artifact and
-was removed separately. `C:\Users\93rob\AppData\Local\Temp\sf-head-check` is not part of this
-campaign checkpoint and was left untouched.
+was removed separately. The detached `C:\Users\93rob\AppData\Local\Temp\sf-head-check` checkout
+was clean, its commit was already an ancestor of `master`, and it was removed as an unneeded 6 GB
+temporary worktree.
