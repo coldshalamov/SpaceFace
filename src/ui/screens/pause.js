@@ -638,21 +638,22 @@ export const pauseScreen = {
     const titleWord = title && title.querySelector('h1');
     if (titleWord) titleWord.classList.add('fh-title');
 
-    // .k-stage — EDGE keys down the left over the held world. `mk` keeps the legacy shape the
-    // checks read (label, handler); `words()` is built once at the end, then each button is
-    // painted as an fh-key so this is not a leftover word column.
+    // .k-stage — EDGE keys down the left over the held world. Four decisions that actually pause
+    // a run lead the sheet; the long-tail instruments are one deliberate Operations reveal rather
+    // than a windshield-length list. Each list keeps the kit's native roving keyboard model.
     const stage = el('section', 'k-stage');
-    const items = [];
+    const primaryItems = [];
+    const operationsItems = [];
     const handlers = new Map();
-    const mk = (label, fn, opts = {}) => {
-      const action = 'pause-' + items.length;
-      items.push({ label, action, primary: !!opts.primary, danger: !!opts.danger });
-      handlers.set(action, { fn, dev: !!opts.dev });
+    const mk = (label, fn, { primary = false, danger = false, dev = false, core = false } = {}) => {
+      const action = 'pause-' + (primaryItems.length + operationsItems.length);
+      const item = { label, action, primary, danger };
+      (core ? primaryItems : operationsItems).push(item);
+      handlers.set(action, { fn, dev });
       return action;
     };
-    const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true });
-    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'));
-    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'));
+    const resumeAction = mk(coreText('resume'), () => this._resume(ctx), { primary: true, core: true });
+    mk(coreText('save'), () => nav(ctx, 'pushScreen', 'saveLoad'), { core: true });
     // Load discards unsaved current progress after a slot is chosen — confirm with the live run context first.
     mk(coreText('load'), async () => {
       const ok = await confirm({
@@ -661,7 +662,8 @@ export const pauseScreen = {
         confirmLabel: 'Open Load', danger: true,
       });
       if (ok) nav(ctx, 'pushScreen', 'saveLoad');
-    });
+    }, { core: true });
+    mk(coreText('settings'), () => nav(ctx, 'pushScreen', 'settings'), { core: true });
     mk(coreText('missionLog', { key: BINDINGS.missionLog.label }), () => nav(ctx, 'pushScreen', 'missionLog'));
     // THE SHIP (F2 in flight; SCREENS_B §1.2 route wiring). From pause the same instrument opens
     // with its pause-menu entry; the key case lives in the flight-only key router.
@@ -707,15 +709,52 @@ export const pauseScreen = {
       if (ok) requestQuit(ctx);
     }, { danger: true });
 
-    const list = words(items, {
-      ariaLabel: 'Pause',
-      onPick: (action) => { const h = handlers.get(action); if (h) h.fn(); },
+    const makeActionList = (items, ariaLabel, { core = false } = {}) => {
+      const list = words(items, {
+        ariaLabel,
+        onPick: (action) => { const h = handlers.get(action); if (h) h.fn(); },
+      });
+      list.classList.add('sf-pause-keys');
+      if (core) list.classList.add('sf-pause-keys--core');
+      for (const item of items) {
+        const handler = handlers.get(item.action);
+        paintPauseKey(list.querySelector(`[data-action="${item.action}"]`), handler);
+      }
+      return list;
+    };
+    const list = makeActionList(primaryItems, 'Pause', { core: true });
+    const operationsControl = words([{ label: 'Operations', action: 'pause-operations' }], {
+      ariaLabel: 'Pause operations',
+      onPick: () => toggleOperations(),
     });
-    list.classList.add('sf-pause-keys');
-    for (const [action, h] of handlers) {
-      paintPauseKey(list.querySelector(`[data-action="${action}"]`), h);
-    }
-    stage.appendChild(list);
+    operationsControl.classList.add('sf-pause-keys', 'sf-pause-operations__control');
+    const operationsButton = operationsControl.querySelector('[data-action="pause-operations"]');
+    paintPauseKey(operationsButton);
+    operationsButton.setAttribute('aria-label', 'Show more pause actions');
+    operationsButton.setAttribute('aria-expanded', 'false');
+
+    const operationsRegion = el('div', 'sf-pause-operations');
+    operationsRegion.id = 'pause-operations-list';
+    operationsRegion.hidden = true;
+    operationsButton.setAttribute('aria-controls', operationsRegion.id);
+    // Keep the known controls mounted under the hidden disclosure: screen probes and Photo's
+    // existing contract enumerate pause actions from the mounted tree, while `hidden` keeps them
+    // out of both the viewport and tab order until the player asks for them.
+    const operationsList = makeActionList(operationsItems, 'More pause actions');
+    operationsRegion.appendChild(operationsList);
+    const toggleOperations = () => {
+      const open = operationsRegion.hidden;
+      operationsRegion.hidden = !open;
+      operationsButton.setAttribute('aria-expanded', String(open));
+      if (open) {
+        const firstAction = operationsList.querySelector('[data-action]');
+        if (firstAction) firstAction.focus();
+      } else if (operationsButton) {
+        operationsButton.focus();
+      }
+    };
+
+    stage.append(list, operationsControl, operationsRegion);
     rootEl.appendChild(stage);
 
     const version = el('p', 'k-fine');

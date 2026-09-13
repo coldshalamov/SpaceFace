@@ -329,11 +329,9 @@ html.sf-high-contrast .k-screen { --k-bone-62: var(--k-bone); --k-bone-38: var(-
 .k-stage > .k-world--stage { left: 0; width: 100%; height: 100%; z-index: -1; }
 /* §1.1/§1.2: the stage's caption block (the hull's name and sentence; the save portrait) hangs from the stage's bottom-left. */
 .k-stage__foot { position: absolute; left: 0; bottom: 0; max-width: 100%; }
-/* §1.4: the HUD dims to 38 % under the pause instead of hiding (ui.css body.ui-modal-open #hud).
-   `:has` covers the live route when data-k-screen is late or missing — otherwise the energy
-   bars and contact list read straight through the bulkhead. */
-body.k-screen-top[data-k-screen="pause"] #hud,
-body:has(#screens .of-pause) #hud { opacity: 0.38; pointer-events: none; }
+/* §1.4: the HUD dims to 38 % only while Pause is the exposed screen. Pause is eagerly mounted,
+   so a selector based on its mere DOM presence also dimmed New Game and station screens. */
+body.k-screen-top[data-k-screen="pause"] #hud { opacity: 0.38; pointer-events: none; }
 /* §1.5: game over is the one screen that deepens its scrim to the wanted blue. */
 .k-screen--cold::before { background: rgb(6 8 15 / 0.35); }
 /* §1.7: photo mode - everything gone but the world. !important outranks the pause 38 % above. */
@@ -679,6 +677,16 @@ body.k-screen-top #modal-backdrop { background: none; }
 #screens .of-pause .k-words,
 #screens .of-pause .sf-pause-keys {
   display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%;
+}
+#screens .of-pause .sf-pause-operations__control { margin-top: 8px; }
+#screens .of-pause .sf-pause-operations { margin-top: 4px; }
+#screens .of-pause .sf-pause-operations[hidden] { display: none; }
+/* At 720px high the held-world brief leaves just enough room for the five interruption choices.
+   Compact those alone; the expanded operations rack keeps its normal touch target geometry. */
+@media (max-height: 760px) {
+  #screens .of-pause .sf-pause-keys--core .k-word.fh-key { min-height: 30px; }
+  #screens .of-pause .sf-pause-keys--core .k-word.fh-key--primary { min-height: 36px; }
+  #screens .of-pause .sf-pause-operations__control .k-word.fh-key { min-height: 30px; }
 }
 #screens .of-pause .k-words > li { width: 100%; }
 #screens .of-pause .k-word::after { display: none; }
