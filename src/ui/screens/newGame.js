@@ -33,6 +33,9 @@ const DIFFICULTIES = [
 const DEFAULT_DIFFICULTY = 'standard';
 // The sheet's stage zoom for the new-game hull (Task B §1.1).
 const STAGE_ZOOM = 1.1;
+// The loading shell fades in over 0.8 s (#boot-overlay in styles/intro.css); after Launch the stage
+// hull's WebGL context is freed once the shell covers the stage.
+const STAGE_HULL_RELEASE_MS = 900;
 
 const FH_KEY = {
   primary: { file: 'key.primary', width: '18px', minW: '132px', minH: '44px', pad: '0 16px', font: '16px' },
@@ -651,14 +654,38 @@ export const newGameScreen = {
       launch.textContent = launching ? coreText('launching') : coreText('launch');
       syncKeys(rootEl);
     };
-    const restoreLaunch = () => setLaunching(false);
+    // Launch stops the stage hull at once (_launch) and frees its WebGL context once the loading
+    // shell has faded in over the stage; freeing it earlier would pop the hull out through the
+    // fading shell. A failed start hands the screen back with the hull rebuilt.
+    let hullRelease = null;
+    const cancelHullRelease = () => {
+      if (hullRelease !== null) clearTimeout(hullRelease);
+      hullRelease = null;
+    };
+    const restoreLaunch = () => {
+      const wasLaunching = launching;
+      cancelHullRelease();
+      setLaunching(false);
+      const hull = this.hull;
+      if (!wasLaunching || !hull) return;
+      const rebuilt = hull.restore();
+      if (!hull.hasMount()) return;
+      hull.activate(ctx);
+      if (rebuilt && refs) hull.show(refs.starter.shipId, { fittings: starterStageFittings(refs.starter) });
+    };
     const unsubStartFailed = ctx.bus.on('game:startFailed', restoreLaunch);
+    const unsubLoading = ctx.bus.on('game:loadingProgress', () => {
+      if (!launching || hullRelease !== null) return;
+      hullRelease = setTimeout(() => {
+        if (launching && this.hull) this.hull.release();
+      }, STAGE_HULL_RELEASE_MS);
+    });
 
     refs = {
       root: rootEl, title, body, stage, foot, name, seed, diff, diffWords, diffDesc, launch, back,
       starterWords, starterDesc, hullName, hullBlurb, renderLoadout,
       starter: DEFAULT_STARTER,
-      setLaunching, unsubStartFailed, ctx,
+      setLaunching, unsubStartFailed, unsubLoading, cancelHullRelease, ctx,
       isLaunching: () => launching,
       legacy: () => ({ on: legacyOn, select: legacySelect, candidate: newGamePlusCandidate }),
     };
@@ -707,6 +734,9 @@ export const newGameScreen = {
     const launching = refs.isLaunching();
     if (launching) return;
     refs.setLaunching(true);
+    // The loading shell is about to cover the stage: stop the hull drifting now. mount() frees its
+    // WebGL context once the shell is opaque.
+    if (this.hull) this.hull.deactivate();
     const pilot = (refs.name.value || '').trim() || 'Pilot';
     // Only forward a seed when the player actually supplied a usable one. `resetRunState`
     // requires a finite positive number and otherwise randomises, so passing NaN or 0 through
@@ -733,6 +763,8 @@ export const newGameScreen = {
     if (!refs) return;
     cue('open');
     refs.setLaunching(false);
+    refs.cancelHullRelease();
+    if (this.hull) this.hull.restore();
     try {
       settle(refs.title, { from: 'top', state: 'newGame:open' });
       settle(refs.body, { from: 'left', state: 'newGame:open' });
@@ -751,8 +783,10 @@ export const newGameScreen = {
   },
   refresh() {},
   dispose() {
+    if (refs && refs.cancelHullRelease) refs.cancelHullRelease();
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     if (refs && refs.unsubStartFailed) { try { refs.unsubStartFailed(); } catch (e) {} }
+    if (refs && refs.unsubLoading) { try { refs.unsubLoading(); } catch (e) {} }
     refs = null;
   },
 };

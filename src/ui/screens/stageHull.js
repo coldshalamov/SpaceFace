@@ -22,17 +22,18 @@ function motionReduced(ctx) {
  * @param {HTMLElement} o.rootEl   the screen root; receives data-k-ready
  * @param {number} [o.zoom]
  * @param {() => void} [o.onReady]  fires once the authored hull has drawn (the arrival moment)
+ * @param {Function} [o.mountFactory]  the preview mount constructor; tests substitute a fake
  */
-export function createStageHull(stageEl, { rootEl, zoom = STAGE_HULL_ZOOM, onReady } = {}) {
-  const canvas = el('canvas', 'k-world k-world--stage');
-  canvas.setAttribute('aria-hidden', 'true');
-  stageEl.prepend(canvas);
-
+export function createStageHull(stageEl, {
+  rootEl, zoom = STAGE_HULL_ZOOM, onReady, mountFactory = createShipPreviewMount,
+} = {}) {
+  let canvas = null;
   let mount = null;
   let framed = false;
   let readyFired = false;
   let driftRaf = 0;
   let ctxRef = null;
+  let released = false;
 
   const ready = () => {
     if (rootEl) rootEl.dataset.kReady = '1';
@@ -41,23 +42,29 @@ export function createStageHull(stageEl, { rootEl, zoom = STAGE_HULL_ZOOM, onRea
     if (typeof onReady === 'function') onReady();
   };
 
-  try {
-    mount = createShipPreviewMount(canvas, {
-      dockId: dockInteriorIdForArchetype(null),
-      authoredShips: true,
-      authoredWarmup: true,
-      fastPreview: false,
-      allowFastFallback: false,
-      onFirstFrame: () => {
-        framed = true;
-        if (mount && mount.getAssetState() === 'authored') ready();
-      },
-      onAssetSettled: ({ state }) => { if (state === 'authored') ready(); },
-    });
-  } catch (e) {
-    mount = null;
-    console.warn('[stageHull] hull mount unavailable; the screen renders without it', e);
+  function mountHull() {
+    canvas = el('canvas', 'k-world k-world--stage');
+    canvas.setAttribute('aria-hidden', 'true');
+    stageEl.prepend(canvas);
+    try {
+      mount = mountFactory(canvas, {
+        dockId: dockInteriorIdForArchetype(null),
+        authoredShips: true,
+        authoredWarmup: true,
+        fastPreview: false,
+        allowFastFallback: false,
+        onFirstFrame: () => {
+          framed = true;
+          if (mount && mount.getAssetState() === 'authored') ready();
+        },
+        onAssetSettled: ({ state }) => { if (state === 'authored') ready(); },
+      });
+    } catch (e) {
+      mount = null;
+      console.warn('[stageHull] hull mount unavailable; the screen renders without it', e);
+    }
   }
+  mountHull();
 
   function show(defId, o = {}) {
     if (!mount) return;
@@ -122,14 +129,33 @@ export function createStageHull(stageEl, { rootEl, zoom = STAGE_HULL_ZOOM, onRea
     if (mount) { try { mount.dispose(); } catch (_) {} mount = null; }
     if (canvas.parentNode) canvas.remove();
   }
+  // Launch hands the stage to the loading shell for the whole load, but the mount's WebGL context
+  // kept drifting, linking and uploading behind it until flight (profiled: 2.4 s of main thread in
+  // the drift renders alone during gpu-resources). release() disposes the mount, which force-loses
+  // the context, and takes its canvas off the stage. A lost context cannot be revived on the same
+  // canvas, so restore() builds a fresh canvas and mount when a failed start hands the screen back.
+  function release() {
+    if (released) return false;
+    released = true;
+    dispose();
+    return true;
+  }
+  function restore() {
+    if (!released) return false;
+    released = false;
+    mountHull();
+    return true;
+  }
 
   return {
-    canvas,
+    get canvas() { return canvas; },
     hasMount: () => !!mount,
     isReady: () => readyFired,
     show,
     activate,
     deactivate,
+    release,
+    restore,
     dispose,
   };
 }
