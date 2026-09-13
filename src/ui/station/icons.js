@@ -3,7 +3,7 @@
 // inherits tile/text color and stays visually consistent (no emoji, no mixed weights).
 // Each entry is the INNER svg markup; wrap() adds the <svg> frame.
 //
-// J05 (CANONICAL_BUILD_MAP §11.12) folded three scattered icon vocabularies into this one file:
+// J05 (build_map §11.12) folded three scattered icon vocabularies into this one file:
 // the station set below, the fit-tree slot glyphs (were Unicode, incl. a ⛴ ferry boat standing in
 // for a starship hull), and the 14 faction crests (were `<rect><text>S</text>`).
 //

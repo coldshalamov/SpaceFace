@@ -1,4 +1,4 @@
-// entityResolver.js — J5 "Everything is a link" (CANONICAL_BUILD_MAP §11.12).
+// entityResolver.js — J5 "Everything is a link" (build_map §11.12).
 //
 // ONE resolver mapping `type:id` to a dossier, for every noun the game renders: faction, commodity,
 // station, hull, module, captain, sector, contract. This is what makes twelve menus stop being

@@ -1,4 +1,4 @@
-// entityLinks.js — J5 "Everything is a link", the delivery half (CANONICAL_BUILD_MAP §11.12).
+// entityLinks.js — J5 "Everything is a link", the delivery half (build_map §11.12).
 //
 // ONE delegated handler turns every `[data-entity="<type>:<id>"]` in any screen into a door, opening
 // that entity's dossier in a tier-3 DRAWER. entityResolver.js owns what a dossier SAYS; this owns

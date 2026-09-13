@@ -1,4 +1,4 @@
-// screenMemory.js — J4 "Screen state memory" (CANONICAL_BUILD_MAP §11.12).
+// screenMemory.js — J4 "Screen state memory" (build_map §11.12).
 //
 // A per-screen state bag, persisted per save: active tab, filters, sort order, layer set, zoom,
 // selection, scroll position. Invisible when present, infuriating when absent — inhibitor #7 is

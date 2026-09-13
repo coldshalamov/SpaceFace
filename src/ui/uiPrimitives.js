@@ -366,7 +366,7 @@ export function enhanceSelects(root) {
 }
 
 // ---------------------------------------------------------------------------------------------------
-// dataState — the FOUR REQUIRED DATA STATES (J3; CANONICAL_BUILD_MAP §11.12, grammar §12 item 9).
+// dataState — the FOUR REQUIRED DATA STATES (J3; build_map §11.12, grammar §12 item 9).
 //
 // "A correct-but-blank screen reads as broken." Every pane must be able to render EMPTY / LOADING /
 // ERROR / DENIED, and each state must name WHAT WOULD FILL IT and carry a VERB. Supersedes the dead
