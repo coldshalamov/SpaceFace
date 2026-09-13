@@ -43,6 +43,23 @@ export function makeBountyHunterSpec({
   };
 }
 
+export function makePlayerWarrantHunterSpec({
+  contractId = 'wanted-warrant',
+  playerId = null,
+  pos = { x: 0, z: 0 },
+  factionId = 'faction_scn',
+} = {}) {
+  const spec = makeBountyHunterSpec({
+    contractId,
+    contractTargetId: playerId,
+    pos,
+    factionId,
+  });
+  spec.data.wantedWarrant = true;
+  spec.data.wantedTier = 'bounty';
+  return spec;
+}
+
 export function makeBountyQuarrySpec({
   contractId = 'bounty-contract',
   pos = { x: 0, z: 0 },

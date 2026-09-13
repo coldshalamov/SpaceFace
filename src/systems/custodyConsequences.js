@@ -3,7 +3,14 @@
 // surrenderRecovery owns the physical capture and payout. This listener records what was captured
 // beneath the already-saved player blob, then projects the arrest into the canonical sector field.
 // It never writes sector danger, credits, or reputation directly.
+//
+// PQ-151.03 — the same ledger also holds the player's impound bill (insurance deductible +
+// restitution). Law posts the yard; this file is the only writer of the bill. Heat and economy
+// stay behind their events.
 import { hash32 } from '../core/rng.js';
+
+export const IMPOUND_RESTITUTION_CR = 700;
+export const IMPOUND_WORK_S = 4;
 
 const CAPTURE_HISTORY_CAP = 24;
 const SETTLED_ID_CAP = 128;
@@ -25,9 +32,15 @@ export const custodyConsequences = {
     for (const profile of Object.values(ledger.profiles)) scheduleIntel(profile, currentDay(this.state));
     this._onCustody = (payload) => this._record(payload || {});
     this._onDayTick = (payload) => this._matureIntel(payload || {});
+    this._onImpoundPosted = (payload) => openImpoundBill(this.state, payload || {});
+    this._onImpoundWorked = (payload) => applyImpoundWork(this.state, payload || {});
+    this._onImpoundRecovered = (payload) => closeImpoundBill(this.state, payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('law:custodyTransfer', this._onCustody);
       this.bus.on('day:tick', this._onDayTick);
+      this.bus.on('law:impoundPosted', this._onImpoundPosted);
+      this.bus.on('law:impoundWorked', this._onImpoundWorked);
+      this.bus.on('law:impoundRecovered', this._onImpoundRecovered);
     }
   },
 
@@ -202,13 +215,17 @@ export const custodyConsequences = {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onCustody) this.bus.off('law:custodyTransfer', this._onCustody);
       if (this._onDayTick) this.bus.off('day:tick', this._onDayTick);
+      if (this._onImpoundPosted) this.bus.off('law:impoundPosted', this._onImpoundPosted);
+      if (this._onImpoundWorked) this.bus.off('law:impoundWorked', this._onImpoundWorked);
+      if (this._onImpoundRecovered) this.bus.off('law:impoundRecovered', this._onImpoundRecovered);
     }
     this._onCustody = this._onDayTick = null;
+    this._onImpoundPosted = this._onImpoundWorked = this._onImpoundRecovered = null;
   },
 };
 
 function freshLedger() {
-  return { totalCaptured: 0, captures: [], profiles: {}, settledIds: [] };
+  return { totalCaptured: 0, captures: [], profiles: {}, settledIds: [], impound: null };
 }
 
 function ensureLedger(state) {
@@ -220,7 +237,104 @@ function ensureLedger(state) {
   if (!ledger.profiles || typeof ledger.profiles !== 'object' || Array.isArray(ledger.profiles)) ledger.profiles = {};
   for (const profile of Object.values(ledger.profiles)) normalizeProfile(profile);
   if (!Array.isArray(ledger.settledIds)) ledger.settledIds = [];
+  ledger.impound = normalizeImpoundBill(ledger.impound);
   return ledger;
+}
+
+export function quoteImpoundBill(player) {
+  const ins = player && player.insurance && typeof player.insurance === 'object' ? player.insurance : {};
+  const deductible = Math.max(0, Math.round(Number(ins.deductibleCr) || 500));
+  const restitution = ins.insuredModules ? 0 : IMPOUND_RESTITUTION_CR;
+  return deductible + restitution;
+}
+
+export function impoundBillFor(state) {
+  const ledger = state && state.player && state.player.custodyLedger;
+  return ledger && ledger.impound && typeof ledger.impound === 'object' ? ledger.impound : null;
+}
+
+export function isImpoundWorkComplete(bill) {
+  return !!(bill && bill.status === 'open' && bill.workS >= bill.workNeedS);
+}
+
+export function openImpoundBill(state, payload) {
+  if (!state || !payload) return null;
+  const ledger = ensureLedger(state);
+  const existing = normalizeImpoundBill(ledger.impound);
+  const billId = typeof payload.billId === 'string' && payload.billId ? payload.billId : null;
+  if (existing && existing.status === 'open') {
+    if (billId && existing.billId && existing.billId !== billId) return existing;
+    if (payload.yard) existing.yard = posOf(payload.yard);
+    if (payload.lock) existing.lock = posOf(payload.lock);
+    if (payload.work) existing.work = posOf(payload.work);
+    if (payload.yardId != null) existing.yardId = payload.yardId;
+    if (payload.lockId != null) existing.lockId = payload.lockId;
+    if (payload.clerkId != null) existing.clerkId = payload.clerkId;
+    ledger.impound = existing;
+    return existing;
+  }
+  const owedCr = Math.max(0, Math.round(Number(payload.owedCr) || quoteImpoundBill(state.player)));
+  const bill = {
+    billId: billId || `impound:${state.meta && state.meta.seed || 1}`,
+    status: 'open',
+    owedCr,
+    remainingCr: owedCr,
+    workS: 0,
+    workNeedS: IMPOUND_WORK_S,
+    yard: posOf(payload.yard),
+    lock: posOf(payload.lock),
+    work: posOf(payload.work),
+    yardId: payload.yardId != null ? payload.yardId : null,
+    lockId: payload.lockId != null ? payload.lockId : null,
+    clerkId: payload.clerkId != null ? payload.clerkId : null,
+    sectorId: payload.sectorId || (state.world && state.world.currentSectorId) || null,
+    postedAt: Number(payload.postedAt != null ? payload.postedAt : state.simTime) || 0,
+    method: null,
+  };
+  ledger.impound = bill;
+  return bill;
+}
+
+export function applyImpoundWork(state, payload) {
+  const bill = impoundBillFor(state);
+  if (!bill || bill.status !== 'open') return null;
+  const dt = Number(payload && payload.dt);
+  if (!(dt > 0)) return bill;
+  bill.workS = Math.min(bill.workNeedS, (Number(bill.workS) || 0) + dt);
+  if (bill.workS >= bill.workNeedS) bill.remainingCr = 0;
+  return bill;
+}
+
+export function closeImpoundBill(state, payload) {
+  const bill = impoundBillFor(state);
+  if (!bill || bill.status !== 'open') return bill;
+  if (!payload || payload.accepted !== true || payload.source !== 'lawSecurity') return bill;
+  const method = payload.method;
+  if (method !== 'pay' && method !== 'work' && method !== 'steal') return bill;
+  bill.status = method === 'pay' ? 'paid' : method === 'work' ? 'worked' : 'stolen';
+  bill.method = method;
+  bill.remainingCr = method === 'steal' ? bill.owedCr : 0;
+  bill.closedAt = Number(payload.t != null ? payload.t : state && state.simTime) || 0;
+  return bill;
+}
+
+function normalizeImpoundBill(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  value.owedCr = Math.max(0, Math.round(Number(value.owedCr) || 0));
+  value.remainingCr = Math.max(0, Math.round(Number(value.remainingCr) || 0));
+  value.workS = Math.max(0, Number(value.workS) || 0);
+  value.workNeedS = Math.max(0, Number(value.workNeedS) || IMPOUND_WORK_S);
+  value.yard = posOf(value.yard);
+  value.lock = posOf(value.lock);
+  value.work = posOf(value.work);
+  if (value.status !== 'open' && value.status !== 'paid' && value.status !== 'worked' && value.status !== 'stolen') {
+    value.status = 'open';
+  }
+  return value;
+}
+
+function posOf(value) {
+  return { x: Number(value && value.x) || 0, z: Number(value && value.z) || 0 };
 }
 
 function normalizeProfile(profile) {

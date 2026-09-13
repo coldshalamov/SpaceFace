@@ -51,6 +51,44 @@ const HEAT_LEVEL_COUNT = 5;
 const HEAT_RADIUS_BY_LEVEL = [0, 1200, 1700, 2300, 3000, 3700];
 const HEAT_CLEAR_SECONDS_BY_LEVEL = [0, 5, 6, 7, 8, 10];
 
+// PQ-151.00 — four player-facing WANTED worlds derived from the existing 0..5 heat levels.
+// Levels stay the scalar bands heat already owns; the tier is the name the chart/HUD/world key.
+// Scan/bounty escape is leave the search zone. Nets escape is a physical checkpoint break
+// (lawSecurity emits law:wantedCheckpointBroken). Impound escape is steal the hull back
+// (or pay / work the bill at the yard). This file is still the only heat writer.
+export const WANTED_TIER = Object.freeze({
+  NONE: 'none',
+  SCAN: 'scan',
+  BOUNTY: 'bounty',
+  NETS: 'nets',
+  IMPOUND: 'impound',
+});
+const WANTED_TIER_BY_LEVEL = Object.freeze([
+  WANTED_TIER.NONE,
+  WANTED_TIER.SCAN,
+  WANTED_TIER.BOUNTY,
+  WANTED_TIER.NETS,
+  WANTED_TIER.NETS,
+  WANTED_TIER.IMPOUND,
+]);
+export const WANTED_TIER_INFO = Object.freeze({
+  [WANTED_TIER.NONE]: Object.freeze({
+    id: WANTED_TIER.NONE, label: 'clean', escape: null, playable: true,
+  }),
+  [WANTED_TIER.SCAN]: Object.freeze({
+    id: WANTED_TIER.SCAN, label: 'fine/scan', escape: 'leave_search_zone', playable: true,
+  }),
+  [WANTED_TIER.BOUNTY]: Object.freeze({
+    id: WANTED_TIER.BOUNTY, label: 'bounty/hunters', escape: 'leave_search_zone', playable: true,
+  }),
+  [WANTED_TIER.NETS]: Object.freeze({
+    id: WANTED_TIER.NETS, label: 'nets/wedges', escape: 'break_net', playable: true,
+  }),
+  [WANTED_TIER.IMPOUND]: Object.freeze({
+    id: WANTED_TIER.IMPOUND, label: 'impound/heist', escape: 'steal_ship_back', playable: true,
+  }),
+});
+
 // PQ-019B — validated law incidents, priced on the same scale as every other crime above. A
 // witnessed cargo theft sits between a contraband bust (0.16: passive smuggling, caught on a scan)
 // and a piracy kill (0.28: someone died). Openly taking lawful cargo in front of witnesses is the
@@ -152,7 +190,10 @@ export const heat = {
     this.bus = ctx.bus;
     const player = this.state.player;
     if (player && typeof player.heat !== 'number') player.heat = 0;
-    if (player) ensureHeatZone(player);
+    if (player) {
+      ensureHeatZone(player);
+      publishWantedTier(player);
+    }
     this._resetTransientTiming();
 
     const bus = this.bus;
@@ -186,6 +227,14 @@ export const heat = {
     bus.on('heat:clear', (p) => {
       this._setHeat(0, (p && p.reason) || 'heat:clear');
     });
+
+    // PQ-151.01 — breaking a posted nets-band checkpoint is the escape verb. Law names the
+    // physical fact; this listener is the only path that writes player.heat for that fact.
+    bus.on('law:wantedCheckpointBroken', (p) => this._onCheckpointBroken(p));
+
+    // PQ-151.03 — recovering the hull at the pound is the only way out of impound.
+    // Law names the physical fact; this listener is the only path that writes player.heat.
+    bus.on('law:impoundRecovered', (p) => this._onImpoundRecovered(p));
 
     // PQ-019B: validated law incidents. Heat listens; it is never told what to write. A mission that
     // wants a thief to become WANTED reports the crime to lawSecurity, lawSecurity validates
@@ -312,6 +361,7 @@ export const heat = {
     const before = player.heat || 0;
     const after = clamp01(before + delta);
     player.heat = after;
+    publishWantedTier(player);
     if (after >= WANTED_THRESHOLD) this._refreshZone(true);
     if (player.heat !== before) {
       // emit immediately on every edge — threshold crossings (WANTED appearing/disappearing) and
@@ -333,7 +383,11 @@ export const heat = {
     const player = state.player;
     if (!player) return;
     const zone = ensureHeatZone(player);
-    if (!player.heat) { this._clearZone(); return; }
+    if (!player.heat) {
+      publishWantedTier(player);
+      this._clearZone();
+      return;
+    }
     const level = heatLevelFor(player.heat);
     if (level <= 0) {
       this._setHeat(0, 'heat cleared');
@@ -346,6 +400,11 @@ export const heat = {
     if (docked) return;
     this._refreshZone(false);
     if (!outsideHeatZone(entity, zone)) {
+      zone.outsideS = 0;
+      return;
+    }
+    // The pound is a place, not a cone. Flying away does not drop the impound band.
+    if (wantedTierFor(player.heat) === WANTED_TIER.IMPOUND) {
       zone.outsideS = 0;
       return;
     }
@@ -374,13 +433,32 @@ export const heat = {
     if (!Number.isFinite(zone.outsideS) || recenter) zone.outsideS = 0;
   },
 
-  _dropOneLevel() {
+  _onCheckpointBroken(payload) {
+    if (!payload || payload.accepted !== true || payload.source !== 'lawSecurity') return;
+    const method = payload.method;
+    if (method !== 'mass' && method !== 'speed' && method !== 'decoy') return;
+    const player = this.state && this.state.player;
+    if (!player || wantedTierFor(player.heat) !== WANTED_TIER.NETS) return;
+    this._dropOneLevel('broke wanted net');
+  },
+
+  _onImpoundRecovered(payload) {
+    if (!payload || payload.accepted !== true || payload.source !== 'lawSecurity') return;
+    const method = payload.method;
+    if (method !== 'pay' && method !== 'work' && method !== 'steal') return;
+    const player = this.state && this.state.player;
+    if (!player || wantedTierFor(player.heat) !== WANTED_TIER.IMPOUND) return;
+    if (method === 'steal') this._dropOneLevel('stole ship back');
+    else this._setHeat(0, 'impound bill settled');
+  },
+
+  _dropOneLevel(reason = 'escaped heat radius') {
     const player = this.state.player;
     if (!player) return;
     const before = player.heat || 0;
     const beforeLevel = heatLevelFor(before);
     const after = beforeLevel <= 1 ? 0 : heatValueForLevel(beforeLevel - 1);
-    this._setHeat(after, 'escaped heat radius');
+    this._setHeat(after, reason);
   },
 
   _setHeat(value, reason) {
@@ -391,6 +469,7 @@ export const heat = {
     if (isRunSealed(this.state)) return;
     const before = player.heat || 0;
     player.heat = clamp01(value);
+    publishWantedTier(player);
     if (player.heat > 0) this._refreshZone(false);
     else this._clearZone();
     if (player.heat !== before) this._emitChanged(reason, true, before);
@@ -421,10 +500,13 @@ export const heat = {
     const prev = previousValue != null && Number.isFinite(previousValue) ? previousValue : value;
     const wanted = value >= WANTED_THRESHOLD;
     const wasWanted = prev >= WANTED_THRESHOLD;
+    const tierInfo = wantedTierInfo(value);
     const packet = {
       value,
       previousValue: prev,
       level: heatLevelFor(value),
+      tier: tierInfo.id,
+      escape: tierInfo.escape,
       zone: heatZoneSnapshot(ensureHeatZone(player)),
       reason,
       wanted,
@@ -451,6 +533,19 @@ export function isPlayerWanted(state) {
 export function heatLevelFor(value) {
   if (!Number.isFinite(value) || value < WANTED_THRESHOLD) return 0;
   return Math.max(1, Math.min(HEAT_LEVEL_COUNT, Math.ceil(value * HEAT_LEVEL_COUNT)));
+}
+export function wantedTierFor(value) {
+  return WANTED_TIER_BY_LEVEL[heatLevelFor(value)] || WANTED_TIER.NONE;
+}
+export function wantedTierInfo(valueOrId) {
+  const id = WANTED_TIER_INFO[valueOrId] ? valueOrId : wantedTierFor(valueOrId);
+  return WANTED_TIER_INFO[id] || WANTED_TIER_INFO[WANTED_TIER.NONE];
+}
+function publishWantedTier(player) {
+  if (!player) return WANTED_TIER.NONE;
+  const info = wantedTierInfo(player.heat);
+  player.wantedTier = info.id;
+  return info.id;
 }
 export function heatRadiusForLevel(level) {
   const i = Math.max(0, Math.min(HEAT_LEVEL_COUNT, Math.round(level || 0)));

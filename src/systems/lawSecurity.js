@@ -20,7 +20,16 @@ import {
   protectedStationAt,
 } from '../ai/engagementAuthority.js';
 import { hotUntilActive } from '../economy/customsRisk.js';
-import { isPlayerWanted } from './heat.js';
+import {
+  impoundBillFor,
+  isImpoundWorkComplete,
+  quoteImpoundBill,
+} from './custodyConsequences.js';
+import { isPlayerWanted, wantedTierFor, WANTED_TIER } from './heat.js';
+import {
+  BOUNTY_HUNTER_PLAYER_CONTEXT,
+  makePlayerWarrantHunterSpec,
+} from '../data/bountyHunters.js';
 import {
   commodityLegality,
   isJettisonedCargoPod,
@@ -37,7 +46,6 @@ import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import {
   collectLivingWorldActors,
   findLivingWorldActor,
-  forEachExplicitWitnessMarker,
   forEachJobInteractable,
   forEachLivingWorldActor,
 } from '../world/livingWorldViews.js';
@@ -49,6 +57,17 @@ export const AMBIENT_TOLL_VALUE_FLOOR = 120;
 export const CUSTOMS_SCAN_RANGE = 90;
 export const CUSTOMS_SCAN_HALF_ANGLE = 0.55;
 export const CUSTOMS_SCAN_DWELL_S = 0.70;
+
+/** PQ-151.01 — nets-band tether-net roadblock on a lane. Reuses the customs cone + a span. */
+export const WANTED_NET_STANDOFF = 320;
+export const WANTED_NET_RADIUS = 22;
+export const WANTED_NET_BREAK_MASS = 80;
+export const WANTED_NET_BREAK_SPEED = 70;
+
+/** PQ-151.03 — impound yard ahead of the player; clerk flies from a reserve. */
+export const WANTED_IMPOUND_STANDOFF = 360;
+export const WANTED_IMPOUND_YARD_RADIUS = 36;
+export const WANTED_IMPOUND_PAD_RADIUS = 14;
 
 const RESPONSE_GRACE_S = 6;
 const RESPONSE_CLEARANCE = 320;
@@ -144,6 +163,12 @@ export const lawSecurity = {
     this._onSurvivorPodEjected = (payload) => this._handleSurvivorPodEjected(payload);
     this._onStolenCargoPodCollect = (payload) => this._handleStolenCargoPodCollect(payload);
     this._onStolenCargoPodLatch = (payload) => this._handleStolenCargoPodLatch(payload);
+    this._onHeatChanged = () => {
+      this._syncWantedWarrant(this.state);
+      this._syncWantedCheckpoint(this.state);
+      this._syncWantedImpound(this.state);
+    };
+    this._onImpoundPay = (payload) => this._payWantedImpound(this.state, payload || {});
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('combat:damage', this._onDamage);
       this.bus.on('combat:fire', this._onFire);
@@ -160,6 +185,8 @@ export const lawSecurity = {
       this.bus.on('player:death', this._onPlayerDeath);
       this.bus.on('pickup:collected', this._onStolenCargoPodCollect);
       this.bus.on('tether:latched', this._onStolenCargoPodLatch);
+      this.bus.on('heat:changed', this._onHeatChanged);
+      this.bus.on('law:impoundPay', this._onImpoundPay);
     }
   },
 
@@ -174,6 +201,11 @@ export const lawSecurity = {
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') return;
     this._reconcileJobResponses();
     if (state.mode && state.mode !== 'flight') return;
+    this._syncWantedWarrant(state);
+    this._syncWantedCheckpoint(state);
+    this._syncWantedImpound(state);
+    this._updateWantedCheckpoint(_dt, state);
+    this._updateWantedImpound(_dt, state);
     const own = ensureState(state);
     this._enforceSanctuaryWithdrawals(state);
     this._updateLawfulInspection(state);
@@ -1438,15 +1470,17 @@ export const lawSecurity = {
     // PQ-138.00: the holder's job is to stand over the body, and LOITER is a HOLD maneuver — a
     // holder chosen 300 WU away would hold position out there and never arrive (measured on the
     // live route 2026-09-12: reserve holder launched at the dock ring, 344 WU from the wreck, still
-    // 450 WU away 22 s later). Until it is within the standoff it SCAN_APPROACHes the wreck itself
-    // (an INTERCEPT that closes to preferredRange at speed; TRANSIT would be a formation crawl a
-    // drifting wreck outruns); once there it loiters.
+    // 450 WU away 22 s later). Until it is within the standoff it TRANSITs to the wreck itself (a
+    // concrete target, so the formation seek closes on the drifting body); once there it loiters.
     const WITNESS_HOLD_STANDOFF_WU = 90;
     const holdTargetId = anchor.wreckEntityId != null ? anchor.wreckEntityId : anchor.podEntityId;
     const holdTarget = holdTargetId != null ? entityById(state, holdTargetId) : null;
     const holderDistance = Math.hypot(holder.pos.x - anchorPos.x, holder.pos.z - anchorPos.z);
     const holderApproaches = holderDistance > WITNESS_HOLD_STANDOFF_WU
       && !!holdTarget && holdTarget.alive !== false;
+    // SCAN_APPROACH is the lawful approach maneuver (an INTERCEPT that closes to preferredRange at
+    // speed); TRANSIT would be a formation crawl that a wreck still carrying its victim's momentum
+    // outruns (measured: holder at 7–47 WU/s while the wreck receded 683 → 986 WU over 20 s).
     const holderActivityKind = holderApproaches ? ActivityKind.SCAN_APPROACH : ActivityKind.LOITER;
     const holderActivityFor = (startedTick) => normalizeActivity(holderApproaches
       ? {
@@ -1835,6 +1869,754 @@ export const lawSecurity = {
     if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
   },
 
+  // PQ-151.00 — bounty-band warrant. Posts one contract hunter at a reserve arrival
+  // point (never on the player). Scan-band crimes stay a search-zone slip. Nets post a
+  // lane checkpoint instead of a hunter (see _syncWantedCheckpoint). Impound posts a yard
+  // and a clerk from reserve (see _syncWantedImpound).
+  _syncWantedWarrant(state) {
+    if (!state || (state.mode && state.mode !== 'flight')) return;
+    const own = ensureState(state);
+    const tier = wantedTierFor(state.player && state.player.heat);
+    const warrant = own.wantedWarrant && typeof own.wantedWarrant === 'object'
+      ? own.wantedWarrant
+      : null;
+    const hunter = warrant ? entityById(state, warrant.hunterId) : null;
+    const liveHunter = !!(hunter && hunter.alive !== false);
+
+    if (tier !== WANTED_TIER.BOUNTY) {
+      if (warrant) this._releaseWantedWarrant(state, warrant, liveHunter ? hunter : null);
+      return;
+    }
+    if (warrant && (liveHunter || warrant.postedAt != null)) return;
+    if (Number.isInteger(own.wantedWarrantRetryTick) && (state.tick | 0) < own.wantedWarrantRetryTick) return;
+    this._postWantedWarrant(state);
+  },
+
+  _postWantedWarrant(state) {
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const own = ensureState(state);
+    const zone = state.player && state.player.heatZone;
+    const seed = state.meta && state.meta.seed || 1;
+    const contractId = `wanted-warrant:${seed}`;
+    const anchor = zone && zone.active && zone.center ? zone.center : player.pos;
+    const arrival = reserveArrivalPoint({
+      anchor,
+      aggressorPos: player.pos,
+      jurisdictionRadius: zone && Number.isFinite(zone.radius) ? zone.radius : 1700,
+      seed,
+      incidentId: contractId,
+    });
+    if (distance2(arrival, player.pos) < 900 * 900) return;
+
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${contractId}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    if (grant < 1) {
+      own.wantedWarrantRetryTick = (state.tick | 0) + 15;
+      this._emit('law:wantedWarrantDeferred', {
+        contractId, reason: 'spawn_cap', requested: 1, granted: grant,
+      });
+      return;
+    }
+
+    const huntSpec = makePlayerWarrantHunterSpec({
+      contractId,
+      playerId: state.playerId,
+      pos: arrival,
+      factionId: 'faction_scn',
+    });
+    const hull = makeEnemySpawnSpec('patrol_lawman', 3, arrival, {
+      factionId: 'faction_scn',
+      motive: 'wanted_warrant',
+      engagementTrigger: 'wanted_bounty',
+      zoneId: 'wanted_warrant',
+      approachTelegraph: 'hunter_inbound',
+      startedTick: state.tick,
+    });
+    hull.team = huntSpec.team;
+    hull.pos = { x: arrival.x, z: arrival.z };
+    hull.vel = { x: 0, z: 0 };
+    hull.rot = Math.atan2(player.pos.z - arrival.z, player.pos.x - arrival.x);
+    hull.data = { ...(hull.data || {}), ...(huntSpec.data || {}) };
+    hull.data.missionTag = 'wanted_warrant';
+    hull.data.missionPinned = true;
+    const ai = hull.data.ai || (hull.data.ai = {});
+    Object.assign(ai, huntSpec.data.ai || {});
+    ai.spawnContext = BOUNTY_HUNTER_PLAYER_CONTEXT;
+    ai.forcePlayerTarget = true;
+    ai.hostileTeams = [0];
+    ai.lawful = false;
+    ai.passive = false;
+    // Reserve arrival is ≥ 2000 wu; default sensors are 1600. The hunter has to see the
+    // contract target from the arrival point or it sits there instead of flying in.
+    ai.sensorRange = 8000;
+    hull.sensorRange = 8000;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: `wanted_warrant:${contractId}`,
+      anchor: { x: player.pos.x, z: player.pos.z },
+      leashRadius: 9000,
+      startedTick: state.tick | 0,
+      targetId: state.playerId,
+      encounterId: contractId,
+    });
+    const combat = hull.data.combat || (hull.data.combat = {});
+    combat.targetId = state.playerId;
+    const intent = hull.data.intent || (hull.data.intent = {});
+    intent.targetId = state.playerId;
+    intent.mode = 'bounty_player';
+
+    if (typeof this.helpers.spawnEntity !== 'function') {
+      own.wantedWarrantRetryTick = (state.tick | 0) + 15;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return;
+    }
+    let spawned;
+    try {
+      spawned = this.helpers.spawnEntity(hull);
+    } catch (error) {
+      own.wantedWarrantRetryTick = (state.tick | 0) + 15;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!spawned) {
+      own.wantedWarrantRetryTick = (state.tick | 0) + 15;
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(spawned.id, requester);
+
+    delete own.wantedWarrantRetryTick;
+    own.wantedWarrant = {
+      contractId,
+      hunterId: spawned.id,
+      targetId: state.playerId,
+      tier: WANTED_TIER.BOUNTY,
+      postedAt: state.simTime || 0,
+      arrival: { x: arrival.x, z: arrival.z },
+    };
+    this._emit('law:wantedWarrantPosted', publicWantedWarrant(own.wantedWarrant));
+  },
+
+  _releaseWantedWarrant(state, warrant, hunter) {
+    const own = ensureState(state);
+    if (hunter && hunter.alive !== false) {
+      if (hunter.data && hunter.data.bountyHunt) {
+        hunter.data.bountyHunt.pursuing = false;
+        hunter.data.bountyHunt.targetId = null;
+      }
+      if (hunter.data) {
+        hunter.data.wantedWarrant = false;
+        hunter.data.missionPinned = false;
+        hunter.data.contractTargetId = null;
+      }
+      const ai = hunter.data && hunter.data.ai;
+      if (ai) {
+        ai.forcePlayerTarget = false;
+        ai.passive = true;
+      }
+    }
+    own.wantedWarrant = null;
+    this._emit('law:wantedWarrantReleased', {
+      contractId: warrant && warrant.contractId,
+      hunterId: warrant && warrant.hunterId,
+      targetId: warrant && warrant.targetId,
+    });
+  },
+
+  // PQ-151.01 — nets-band checkpoint. A tether-net + scan cone sits on the lane ahead
+  // of the player (never on their nose). A customs cutter staffs it from a reserve
+  // arrival. Break by mass, by speed, or by a thrown decoy occupying the cone.
+  _syncWantedCheckpoint(state) {
+    if (!state || (state.mode && state.mode !== 'flight')) return;
+    const own = ensureState(state);
+    const tier = wantedTierFor(state.player && state.player.heat);
+    const checkpoint = own.wantedCheckpoint && typeof own.wantedCheckpoint === 'object'
+      ? own.wantedCheckpoint
+      : null;
+    const net = checkpoint ? entityById(state, checkpoint.netId) : null;
+    const liveNet = !!(net && net.alive !== false);
+
+    if (tier !== WANTED_TIER.NETS) {
+      if (checkpoint) {
+        this._releaseWantedCheckpoint(state, checkpoint, liveNet ? net : null);
+      }
+      return;
+    }
+    if (checkpoint && (liveNet || checkpoint.postedAt != null)) return;
+    if (Number.isInteger(own.wantedCheckpointRetryTick)
+      && (state.tick | 0) < own.wantedCheckpointRetryTick) return;
+    this._postWantedCheckpoint(state);
+  },
+
+  _postWantedCheckpoint(state) {
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const own = ensureState(state);
+    const seed = state.meta && state.meta.seed || 1;
+    const checkpointId = `wanted-checkpoint:${seed}`;
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const lane = {
+      x: player.pos.x + Math.cos(heading) * WANTED_NET_STANDOFF,
+      z: player.pos.z + Math.sin(heading) * WANTED_NET_STANDOFF,
+    };
+    if (distance2(lane, player.pos) < 200 * 200) return;
+
+    const zone = state.player && state.player.heatZone;
+    const arrival = reserveArrivalPoint({
+      anchor: zone && zone.active && zone.center ? zone.center : player.pos,
+      aggressorPos: player.pos,
+      jurisdictionRadius: zone && Number.isFinite(zone.radius) ? zone.radius : 2300,
+      seed,
+      incidentId: checkpointId,
+    });
+    if (distance2(arrival, player.pos) < 900 * 900) return;
+
+    if (typeof this.helpers.spawnEntity !== 'function') {
+      own.wantedCheckpointRetryTick = (state.tick | 0) + 15;
+      return;
+    }
+
+    const coneHeading = Math.atan2(player.pos.z - lane.z, player.pos.x - lane.x);
+    let net;
+    try {
+      net = this.helpers.spawnEntity({
+        type: 'ship',
+        team: 2,
+        pos: { x: lane.x, z: lane.z },
+        vel: { x: 0, z: 0 },
+        rot: coneHeading,
+        radius: WANTED_NET_RADIUS,
+        mass: 4000,
+        hull: 240,
+        hullMax: 240,
+        collides: true,
+        factionId: 'faction_scn',
+        data: {
+          wantedCheckpointNet: true,
+          customsScanner: true,
+          customsScanCone: {
+            heading: coneHeading,
+            halfAngle: CUSTOMS_SCAN_HALF_ANGLE,
+            range: CUSTOMS_SCAN_RANGE,
+            dwellS: CUSTOMS_SCAN_DWELL_S,
+          },
+          role: 'customs',
+          defId: 'wanted_tether_net',
+          missionTag: 'wanted_checkpoint',
+          missionPinned: true,
+        },
+      });
+    } catch (error) {
+      own.wantedCheckpointRetryTick = (state.tick | 0) + 15;
+      throw error;
+    }
+    if (!net) {
+      own.wantedCheckpointRetryTick = (state.tick | 0) + 15;
+      return;
+    }
+
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${checkpointId}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    let cutter = null;
+    if (grant >= 1) {
+      cutter = this._spawnCheckpointCutter(state, arrival, lane, checkpointId, requester, budget);
+    } else {
+      own.wantedCheckpointRetryTick = (state.tick | 0) + 15;
+    }
+
+    delete own.wantedCheckpointRetryTick;
+    own.wantedCheckpoint = {
+      checkpointId,
+      netId: net.id,
+      cutterId: cutter && cutter.id || null,
+      targetId: state.playerId,
+      tier: WANTED_TIER.NETS,
+      postedAt: state.simTime || 0,
+      lane: { x: lane.x, z: lane.z },
+      arrival: { x: arrival.x, z: arrival.z },
+      intact: true,
+      held: false,
+      brokenBy: null,
+    };
+    this._emit('law:wantedCheckpointPosted', publicWantedCheckpoint(own.wantedCheckpoint));
+  },
+
+  _spawnCheckpointCutter(state, arrival, lane, checkpointId, requester, budget) {
+    const hull = makeEnemySpawnSpec('customs_cutter', 3, arrival, {
+      factionId: 'faction_scn',
+      motive: 'wanted_checkpoint',
+      engagementTrigger: 'wanted_checkpoint',
+      zoneId: 'wanted_checkpoint',
+      approachTelegraph: 'checkpoint_inbound',
+      startedTick: state.tick,
+    });
+    hull.team = 2;
+    hull.pos = { x: arrival.x, z: arrival.z };
+    hull.vel = { x: 0, z: 0 };
+    hull.rot = Math.atan2(lane.z - arrival.z, lane.x - arrival.x);
+    hull.data = { ...(hull.data || {}) };
+    hull.data.missionTag = 'wanted_checkpoint';
+    hull.data.missionPinned = true;
+    hull.data.wantedCheckpointCutter = true;
+    hull.data.customsScanner = true;
+    const ai = hull.data.ai || (hull.data.ai = {});
+    ai.spawnContext = 'wanted_checkpoint';
+    ai.forcePlayerTarget = false;
+    ai.lawful = true;
+    ai.passive = false;
+    ai.roe = RulesOfEngagement.HOLD_FIRE;
+    ai.sensorRange = 8000;
+    hull.sensorRange = 8000;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.TRANSIT,
+      reason: `wanted_checkpoint:${checkpointId}`,
+      anchor: { x: lane.x, z: lane.z },
+      leashRadius: 9000,
+      startedTick: state.tick | 0,
+      encounterId: checkpointId,
+    });
+    const combat = hull.data.combat || (hull.data.combat = {});
+    combat.targetId = null;
+    const intent = hull.data.intent || (hull.data.intent = {});
+    intent.fire = false;
+    intent.mode = 'wanted_checkpoint';
+
+    let spawned = null;
+    try {
+      spawned = this.helpers.spawnEntity(hull);
+    } catch (error) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!spawned) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return null;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(spawned.id, requester);
+    return spawned;
+  },
+
+  _updateWantedCheckpoint(_dt, state) {
+    const own = state && state.lawSecurity;
+    const checkpoint = own && own.wantedCheckpoint;
+    if (!checkpoint || checkpoint.intact === false) return;
+    const net = entityById(state, checkpoint.netId);
+    if (!net || net.alive === false || !net.pos) return;
+    const player = entityById(state, state.playerId);
+    const decoy = findDecoyInCheckpointCone(state, net, player);
+    if (decoy) {
+      this._breakWantedCheckpoint(state, checkpoint, 'decoy', decoy);
+      return;
+    }
+    if (!player || player.alive === false || !player.pos) return;
+    if (!overlapsWantedNet(player, net)) {
+      checkpoint.held = false;
+      return;
+    }
+    const mass = Number(player.mass) || 0;
+    const speed = entitySpeed(player);
+    if (mass >= WANTED_NET_BREAK_MASS) {
+      this._breakWantedCheckpoint(state, checkpoint, 'mass', player);
+      return;
+    }
+    if (speed >= WANTED_NET_BREAK_SPEED) {
+      this._breakWantedCheckpoint(state, checkpoint, 'speed', player);
+      return;
+    }
+    checkpoint.held = true;
+  },
+
+  _breakWantedCheckpoint(state, checkpoint, method, byEntity) {
+    if (!checkpoint || checkpoint.intact === false) return;
+    checkpoint.intact = false;
+    checkpoint.held = false;
+    checkpoint.brokenBy = method;
+    checkpoint.brokenAt = state.simTime || 0;
+    const net = entityById(state, checkpoint.netId);
+    if (net && net.data) {
+      net.data.wantedNetBroken = true;
+      net.data.customsScanner = false;
+      net.data.role = 'broken_checkpoint';
+      delete net.data.customsScanCone;
+    }
+    this._emit('law:wantedCheckpointBroken', {
+      accepted: true,
+      source: 'lawSecurity',
+      checkpointId: checkpoint.checkpointId,
+      method,
+      netId: checkpoint.netId,
+      cutterId: checkpoint.cutterId,
+      targetId: checkpoint.targetId,
+      byId: byEntity && byEntity.id != null ? byEntity.id : null,
+    });
+  },
+
+  _releaseWantedCheckpoint(state, checkpoint, net) {
+    const own = ensureState(state);
+    const liveNet = net && net.alive !== false ? net : entityById(state, checkpoint && checkpoint.netId);
+    if (liveNet && liveNet.data) {
+      liveNet.data.missionPinned = false;
+      liveNet.data.customsScanner = false;
+      if (liveNet.data.role === 'customs') liveNet.data.role = 'broken_checkpoint';
+      delete liveNet.data.customsScanCone;
+    }
+    const cutter = checkpoint ? entityById(state, checkpoint.cutterId) : null;
+    if (cutter && cutter.alive !== false && cutter.data) {
+      cutter.data.missionPinned = false;
+      cutter.data.wantedCheckpointCutter = false;
+      const ai = cutter.data.ai;
+      if (ai) {
+        ai.forcePlayerTarget = false;
+        ai.passive = true;
+      }
+    }
+    own.wantedCheckpoint = null;
+    this._emit('law:wantedCheckpointReleased', {
+      checkpointId: checkpoint && checkpoint.checkpointId,
+      netId: checkpoint && checkpoint.netId,
+      cutterId: checkpoint && checkpoint.cutterId,
+      targetId: checkpoint && checkpoint.targetId,
+      brokenBy: checkpoint && checkpoint.brokenBy,
+    });
+  },
+
+  // PQ-151.03 — impound-band yard. A berth sits on the lane ahead of the player
+  // (never on their nose). A clerk staffs it from a reserve arrival. Pay at the
+  // clerk, work the shift in the yard, or cut the lock. No teleport police.
+  _syncWantedImpound(state) {
+    if (!state || (state.mode && state.mode !== 'flight')) return;
+    const own = ensureState(state);
+    const tier = wantedTierFor(state.player && state.player.heat);
+    const pound = own.wantedImpound && typeof own.wantedImpound === 'object'
+      ? own.wantedImpound
+      : null;
+    const yard = pound ? entityById(state, pound.yardId) : null;
+    const liveYard = !!(yard && yard.alive !== false);
+    const bill = impoundBillFor(state);
+
+    if (tier !== WANTED_TIER.IMPOUND || (bill && bill.status && bill.status !== 'open')) {
+      if (pound) this._releaseWantedImpound(state, pound);
+      return;
+    }
+    if (pound && (liveYard || pound.postedAt != null)) return;
+    if (Number.isInteger(own.wantedImpoundRetryTick)
+      && (state.tick | 0) < own.wantedImpoundRetryTick) return;
+    this._postWantedImpound(state);
+  },
+
+  _postWantedImpound(state) {
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) return;
+    const own = ensureState(state);
+    const seed = state.meta && state.meta.seed || 1;
+    const poundId = `wanted-impound:${seed}`;
+    const billId = `impound:${seed}`;
+    const existing = impoundBillFor(state);
+    const heading = Number.isFinite(player.rot) ? player.rot : 0;
+    const savedYard = existing && existing.status === 'open' && existing.yard;
+    const yardPos = savedYard && (savedYard.x || savedYard.z)
+      ? { x: savedYard.x, z: savedYard.z }
+      : {
+        x: player.pos.x + Math.cos(heading) * WANTED_IMPOUND_STANDOFF,
+        z: player.pos.z + Math.sin(heading) * WANTED_IMPOUND_STANDOFF,
+      };
+    if (distance2(yardPos, player.pos) < 200 * 200 && !(savedYard && (savedYard.x || savedYard.z))) return;
+
+    const sideX = -Math.sin(heading);
+    const sideZ = Math.cos(heading);
+    const savedLock = existing && existing.status === 'open' && existing.lock;
+    const lockPos = savedLock && (savedLock.x || savedLock.z)
+      ? { x: savedLock.x, z: savedLock.z }
+      : {
+        x: yardPos.x + sideX * (WANTED_IMPOUND_YARD_RADIUS + WANTED_IMPOUND_PAD_RADIUS),
+        z: yardPos.z + sideZ * (WANTED_IMPOUND_YARD_RADIUS + WANTED_IMPOUND_PAD_RADIUS),
+      };
+    const workPos = existing && existing.status === 'open' && existing.work
+      ? { x: existing.work.x, z: existing.work.z }
+      : { x: yardPos.x, z: yardPos.z };
+
+    const zone = state.player && state.player.heatZone;
+    const arrival = reserveArrivalPoint({
+      anchor: zone && zone.active && zone.center ? zone.center : player.pos,
+      aggressorPos: player.pos,
+      jurisdictionRadius: zone && Number.isFinite(zone.radius) ? zone.radius : 3700,
+      seed,
+      incidentId: poundId,
+    });
+    if (distance2(arrival, player.pos) < 900 * 900) return;
+
+    if (typeof this.helpers.spawnEntity !== 'function') {
+      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+      return;
+    }
+
+    let yard;
+    try {
+      yard = this.helpers.spawnEntity({
+        type: 'ship',
+        team: 2,
+        pos: { x: yardPos.x, z: yardPos.z },
+        vel: { x: 0, z: 0 },
+        rot: heading,
+        radius: WANTED_IMPOUND_YARD_RADIUS,
+        mass: 8000,
+        hull: 400,
+        hullMax: 400,
+        collides: true,
+        factionId: 'faction_scn',
+        data: {
+          wantedImpoundYard: true,
+          role: 'impound_yard',
+          defId: 'wanted_impound_yard',
+          missionTag: 'wanted_impound',
+          missionPinned: true,
+        },
+      });
+    } catch (error) {
+      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+      throw error;
+    }
+    if (!yard) {
+      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+      return;
+    }
+
+    let lock = null;
+    try {
+      lock = this.helpers.spawnEntity({
+        type: 'ship',
+        team: 2,
+        pos: { x: lockPos.x, z: lockPos.z },
+        vel: { x: 0, z: 0 },
+        rot: heading,
+        radius: WANTED_IMPOUND_PAD_RADIUS,
+        mass: 200,
+        hull: 80,
+        hullMax: 80,
+        collides: true,
+        factionId: 'faction_scn',
+        data: {
+          wantedImpoundLock: true,
+          role: 'impound_lock',
+          defId: 'wanted_impound_lock',
+          missionTag: 'wanted_impound',
+          missionPinned: true,
+        },
+      });
+    } catch (error) {
+      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+      throw error;
+    }
+    if (!lock) {
+      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+      return;
+    }
+
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requester = `law:${poundId}`;
+    const grant = budget && typeof budget.request === 'function' ? budget.request(1, requester) : 1;
+    let clerk = null;
+    if (grant >= 1) {
+      clerk = this._spawnImpoundClerk(state, arrival, yardPos, poundId, requester, budget);
+    } else {
+      own.wantedImpoundRetryTick = (state.tick | 0) + 15;
+    }
+
+    delete own.wantedImpoundRetryTick;
+    own.wantedImpound = {
+      poundId,
+      billId,
+      yardId: yard.id,
+      lockId: lock.id,
+      clerkId: clerk && clerk.id || null,
+      targetId: state.playerId,
+      tier: WANTED_TIER.IMPOUND,
+      postedAt: state.simTime || 0,
+      yard: { x: yardPos.x, z: yardPos.z },
+      lock: { x: lockPos.x, z: lockPos.z },
+      work: { x: workPos.x, z: workPos.z },
+      arrival: { x: arrival.x, z: arrival.z },
+      held: false,
+      open: true,
+    };
+    this._emit('law:impoundPosted', {
+      ...publicWantedImpound(own.wantedImpound),
+      billId,
+      owedCr: existing && existing.status === 'open' ? existing.owedCr : quoteImpoundBill(state.player),
+      sectorId: currentSectorId(state),
+    });
+  },
+
+  _spawnImpoundClerk(state, arrival, yard, poundId, requester, budget) {
+    const hull = makeEnemySpawnSpec('customs_cutter', 3, arrival, {
+      factionId: 'faction_scn',
+      motive: 'wanted_impound',
+      engagementTrigger: 'wanted_impound',
+      zoneId: 'wanted_impound',
+      approachTelegraph: 'impound_inbound',
+      startedTick: state.tick,
+    });
+    hull.team = 2;
+    hull.pos = { x: arrival.x, z: arrival.z };
+    hull.vel = { x: 0, z: 0 };
+    hull.rot = Math.atan2(yard.z - arrival.z, yard.x - arrival.x);
+    hull.data = { ...(hull.data || {}) };
+    hull.data.missionTag = 'wanted_impound';
+    hull.data.missionPinned = true;
+    hull.data.wantedImpoundClerk = true;
+    const ai = hull.data.ai || (hull.data.ai = {});
+    ai.spawnContext = 'wanted_impound';
+    ai.forcePlayerTarget = false;
+    ai.lawful = true;
+    ai.passive = false;
+    ai.roe = RulesOfEngagement.HOLD_FIRE;
+    ai.sensorRange = 8000;
+    hull.sensorRange = 8000;
+    ai.activity = normalizeActivity({
+      kind: ActivityKind.TRANSIT,
+      reason: `wanted_impound:${poundId}`,
+      anchor: { x: yard.x, z: yard.z },
+      leashRadius: 9000,
+      startedTick: state.tick | 0,
+      encounterId: poundId,
+    });
+    const combat = hull.data.combat || (hull.data.combat = {});
+    combat.targetId = null;
+    const intent = hull.data.intent || (hull.data.intent = {});
+    intent.fire = false;
+    intent.mode = 'wanted_impound';
+
+    let spawned = null;
+    try {
+      spawned = this.helpers.spawnEntity(hull);
+    } catch (error) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      throw error;
+    }
+    if (!spawned) {
+      if (budget && typeof budget.releaseSome === 'function') budget.releaseSome(requester, 1);
+      return null;
+    }
+    if (budget && typeof budget.bindEntity === 'function') budget.bindEntity(spawned.id, requester);
+    return spawned;
+  },
+
+  _updateWantedImpound(dt, state) {
+    const own = state && state.lawSecurity;
+    const pound = own && own.wantedImpound;
+    if (!pound || pound.open === false) return;
+    const bill = impoundBillFor(state);
+    if (!bill || bill.status !== 'open') return;
+    const player = entityById(state, state.playerId);
+    if (!player || player.alive === false || !player.pos) {
+      pound.held = false;
+      return;
+    }
+    const yard = entityById(state, pound.yardId);
+    const lock = entityById(state, pound.lockId);
+    pound.held = !!(yard && yard.alive !== false && overlapsImpoundPad(player, yard));
+    if (lock && lock.alive !== false && overlapsImpoundPad(player, lock)) {
+      this._recoverWantedImpound(state, pound, 'steal', player);
+      return;
+    }
+    if (!pound.held || !(dt > 0)) return;
+    this._emit('law:impoundWorked', {
+      accepted: true,
+      source: 'lawSecurity',
+      poundId: pound.poundId,
+      billId: bill.billId,
+      dt,
+    });
+    if (isImpoundWorkComplete(impoundBillFor(state))) {
+      this._recoverWantedImpound(state, pound, 'work', player);
+    }
+  },
+
+  _payWantedImpound(state, _payload) {
+    const own = state && state.lawSecurity;
+    const pound = own && own.wantedImpound;
+    if (!pound || pound.open === false) return;
+    const bill = impoundBillFor(state);
+    if (!bill || bill.status !== 'open') return;
+    const player = entityById(state, state.playerId);
+    const clerk = entityById(state, pound.clerkId);
+    if (!player || !clerk || clerk.alive === false || !overlapsImpoundPad(player, clerk)) {
+      this._emit('law:impoundPayRefused', {
+        reason: 'not_at_clerk',
+        poundId: pound.poundId,
+        billId: bill.billId,
+      });
+      return;
+    }
+    const owed = Math.max(0, Math.round(Number(bill.remainingCr != null ? bill.remainingCr : bill.owedCr) || 0));
+    const credits = Math.max(0, Math.round(Number(state.player && state.player.credits) || 0));
+    if (credits < owed) {
+      this._emit('law:impoundPayRefused', {
+        reason: 'short',
+        poundId: pound.poundId,
+        billId: bill.billId,
+        owedCr: owed,
+        credits,
+      });
+      return;
+    }
+    if (owed > 0) {
+      this._emit('economy:chargeCredits', { amount: owed, reason: 'impound:pay' });
+    }
+    this._recoverWantedImpound(state, pound, 'pay', player);
+  },
+
+  _recoverWantedImpound(state, pound, method, byEntity) {
+    if (!pound || pound.open === false) return;
+    pound.open = false;
+    pound.held = false;
+    pound.recoveredBy = method;
+    pound.recoveredAt = state.simTime || 0;
+    this._emit('law:impoundRecovered', {
+      accepted: true,
+      source: 'lawSecurity',
+      poundId: pound.poundId,
+      billId: pound.billId,
+      method,
+      yardId: pound.yardId,
+      lockId: pound.lockId,
+      clerkId: pound.clerkId,
+      targetId: pound.targetId,
+      byId: byEntity && byEntity.id != null ? byEntity.id : null,
+      t: state.simTime || 0,
+    });
+  },
+
+  _releaseWantedImpound(state, pound) {
+    const own = ensureState(state);
+    const unpin = (entity, flag) => {
+      if (!entity || entity.alive === false || !entity.data) return;
+      entity.data.missionPinned = false;
+      if (flag) entity.data[flag] = false;
+      const ai = entity.data.ai;
+      if (ai) {
+        ai.forcePlayerTarget = false;
+        ai.passive = true;
+      }
+    };
+    unpin(pound ? entityById(state, pound.yardId) : null, 'wantedImpoundYard');
+    unpin(pound ? entityById(state, pound.lockId) : null, 'wantedImpoundLock');
+    unpin(pound ? entityById(state, pound.clerkId) : null, 'wantedImpoundClerk');
+    own.wantedImpound = null;
+    this._emit('law:impoundReleased', {
+      poundId: pound && pound.poundId,
+      billId: pound && pound.billId,
+      yardId: pound && pound.yardId,
+      lockId: pound && pound.lockId,
+      clerkId: pound && pound.clerkId,
+      targetId: pound && pound.targetId,
+      recoveredBy: pound && pound.recoveredBy,
+    });
+  },
+
   destroy() {
     this._releaseAllJobResponses('destroy');
     if (this.bus && typeof this.bus.off === 'function') {
@@ -1851,6 +2633,8 @@ export const lawSecurity = {
       if (this._onSaveRestoring) this.bus.off('save:restoring', this._onSaveRestoring);
       if (this._onStolenCargoPodCollect) this.bus.off('pickup:collected', this._onStolenCargoPodCollect);
       if (this._onStolenCargoPodLatch) this.bus.off('tether:latched', this._onStolenCargoPodLatch);
+      if (this._onHeatChanged) this.bus.off('heat:changed', this._onHeatChanged);
+      if (this._onImpoundPay) this.bus.off('law:impoundPay', this._onImpoundPay);
     }
     this._onDamage = null;
     this._onFire = null;
@@ -1862,6 +2646,8 @@ export const lawSecurity = {
     this._onSaveRestoring = null;
     this._onStolenCargoPodCollect = null;
     this._onStolenCargoPodLatch = null;
+    this._onHeatChanged = null;
+    this._onImpoundPay = null;
     if (this._podConeDwell) this._podConeDwell.clear();
   },
 };
@@ -2209,16 +2995,14 @@ function isEligibleHeliosInspectionPatrol(state, patrol, player) {
 function inspectionPatrolByWorldRecord(state, worldRecordId) {
   if (!durableInspectionWorldRecordId(worldRecordId)) return null;
   let match = null;
-  let duplicate = false;
-  forEachLivingWorldActor(state, (entity) => {
-    if (duplicate || entity.type !== 'ship' || entity.data?.worldRecordId !== worldRecordId) return;
-    if (match) {
-      duplicate = true;
-      return;
-    }
+  for (const entity of state?.entityList || []) {
+    if (!entity || entity.alive === false || entity.type !== 'ship'
+      || entity.data?.worldRecordId !== worldRecordId) continue;
+    // A duplicate stable record is a corrupted/ambiguous rebind, never permission to inspect an
+    // arbitrary numeric entity. Wait for the small restore pass and then terminate cleanly.
+    if (match) return null;
     match = entity;
-  });
-  if (duplicate) return null;
+  }
   return match;
 }
 
@@ -2243,7 +3027,16 @@ function publicLawfulInspection(activeCase) {
 }
 
 function freshState() {
-  return { version: LAW_SECURITY_VERSION, incidents: {}, receipts: [], nextAmbientScanTick: 0, nextIncidentTick: 0 };
+  return {
+    version: LAW_SECURITY_VERSION,
+    incidents: {},
+    receipts: [],
+    nextAmbientScanTick: 0,
+    nextIncidentTick: 0,
+    wantedWarrant: null,
+    wantedCheckpoint: null,
+    wantedImpound: null,
+  };
 }
 
 function ensureState(state) {
@@ -2254,6 +3047,15 @@ function ensureState(state) {
   if (!Array.isArray(own.receipts)) own.receipts = [];
   if (!Number.isInteger(own.nextAmbientScanTick)) own.nextAmbientScanTick = 0;
   if (!Number.isInteger(own.nextIncidentTick)) own.nextIncidentTick = 0;
+  if (own.wantedWarrant != null && (typeof own.wantedWarrant !== 'object' || Array.isArray(own.wantedWarrant))) {
+    own.wantedWarrant = null;
+  }
+  if (own.wantedCheckpoint != null && (typeof own.wantedCheckpoint !== 'object' || Array.isArray(own.wantedCheckpoint))) {
+    own.wantedCheckpoint = null;
+  }
+  if (own.wantedImpound != null && (typeof own.wantedImpound !== 'object' || Array.isArray(own.wantedImpound))) {
+    own.wantedImpound = null;
+  }
   return own;
 }
 
@@ -2441,6 +3243,108 @@ function distance2(a, b) {
   return dx * dx + dz * dz;
 }
 
+export function wantedWarrantFor(state) {
+  const own = state && state.lawSecurity;
+  return own && own.wantedWarrant ? publicWantedWarrant(own.wantedWarrant) : null;
+}
+
+export function wantedCheckpointFor(state) {
+  const own = state && state.lawSecurity;
+  return own && own.wantedCheckpoint ? publicWantedCheckpoint(own.wantedCheckpoint) : null;
+}
+
+export function wantedImpoundFor(state) {
+  const own = state && state.lawSecurity;
+  return own && own.wantedImpound ? publicWantedImpound(own.wantedImpound) : null;
+}
+
+function publicWantedImpound(pound) {
+  if (!pound) return null;
+  return {
+    poundId: pound.poundId,
+    billId: pound.billId,
+    yardId: pound.yardId,
+    lockId: pound.lockId,
+    clerkId: pound.clerkId,
+    targetId: pound.targetId,
+    tier: pound.tier,
+    postedAt: pound.postedAt,
+    open: pound.open !== false,
+    held: !!pound.held,
+    recoveredBy: pound.recoveredBy || null,
+    yard: pound.yard ? { x: pound.yard.x, z: pound.yard.z } : null,
+    lock: pound.lock ? { x: pound.lock.x, z: pound.lock.z } : null,
+    arrival: pound.arrival ? { x: pound.arrival.x, z: pound.arrival.z } : null,
+  };
+}
+
+function overlapsImpoundPad(entity, pad) {
+  if (!entity || !entity.pos || !pad || !pad.pos) return false;
+  const reach = (Number(entity.radius) || 8) + (Number(pad.radius) || WANTED_IMPOUND_PAD_RADIUS);
+  return distance2(entity.pos, pad.pos) <= reach * reach;
+}
+
+function publicWantedCheckpoint(checkpoint) {
+  if (!checkpoint) return null;
+  return {
+    checkpointId: checkpoint.checkpointId,
+    netId: checkpoint.netId,
+    cutterId: checkpoint.cutterId,
+    targetId: checkpoint.targetId,
+    tier: checkpoint.tier,
+    postedAt: checkpoint.postedAt,
+    intact: checkpoint.intact !== false,
+    held: !!checkpoint.held,
+    brokenBy: checkpoint.brokenBy || null,
+    lane: checkpoint.lane ? { x: checkpoint.lane.x, z: checkpoint.lane.z } : null,
+    arrival: checkpoint.arrival ? { x: checkpoint.arrival.x, z: checkpoint.arrival.z } : null,
+  };
+}
+
+function isWantedNetDecoy(entity) {
+  if (!entity || entity.alive === false || !entity.pos) return false;
+  if (isJettisonedCargoPod(entity)) return true;
+  const data = entity.data;
+  return !!(data && (data.thrownDecoy === true || data.wantedDecoy === true));
+}
+
+function findDecoyInCheckpointCone(state, net, player) {
+  const cone = customsScanConeOf(net);
+  if (!cone) return null;
+  const playerId = player && player.id;
+  let found = null;
+  forEachJobInteractable(state, (entity) => {
+    if (found || !isWantedNetDecoy(entity) || entity.id === playerId || entity.id === net.id) return;
+    if (pointInScanCone(cone.origin, cone.heading, cone.range, cone.halfAngle, entity.pos)) {
+      found = entity;
+    }
+  });
+  return found;
+}
+
+function overlapsWantedNet(entity, net) {
+  if (!entity || !entity.pos || !net || !net.pos) return false;
+  const reach = (Number(entity.radius) || 8) + (Number(net.radius) || WANTED_NET_RADIUS);
+  return distance2(entity.pos, net.pos) <= reach * reach;
+}
+
+function entitySpeed(entity) {
+  const vel = entity && entity.vel;
+  return Math.hypot(Number(vel && vel.x) || 0, Number(vel && vel.z) || 0);
+}
+
+function publicWantedWarrant(warrant) {
+  if (!warrant) return null;
+  return {
+    contractId: warrant.contractId,
+    hunterId: warrant.hunterId,
+    targetId: warrant.targetId,
+    tier: warrant.tier,
+    postedAt: warrant.postedAt,
+    arrival: warrant.arrival ? { x: warrant.arrival.x, z: warrant.arrival.z } : null,
+  };
+}
+
 function publicIncident(incident) {
   return {
     id: incident.id,
@@ -2542,7 +3446,7 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
   if (!state || !anchor) return [];
   const limitSq = Math.max(0, Number(radius) || 0) ** 2;
   const out = [];
-  const consider = (entity) => {
+  forEachLivingWorldActor(state, (entity) => {
     if (!entity.pos) return;
     if (offenderEntityId != null && entity.id === offenderEntityId) return;
     if (entity.id === state.playerId) return;
@@ -2558,9 +3462,7 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
       distanceSq: d2,
       lawful: isLawful(entity),
     });
-  };
-  forEachLivingWorldActor(state, consider);
-  forEachExplicitWitnessMarker(state, consider);
+  });
   return out
     .sort((a, b) => a.distanceSq - b.distanceSq || a.stableId.localeCompare(b.stableId))
     .slice(0, LAW_INCIDENT_WITNESS_CAP);
