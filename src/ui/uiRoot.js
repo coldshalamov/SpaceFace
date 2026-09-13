@@ -19,7 +19,10 @@ import { isConfirmOpen } from './confirm.js';
 import { setPromptScheme, setPromptBindings } from './controlPrompts.js';
 import { injectHudCss } from './views/hudStyles.js';
 import { isHostileToPlayer, SCANNER_CONTACT_RANGE } from '../systems/scanner.js';
-import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import {
+  presentationAllowsPlayerFacingAction,
+  presentationAllowsTargetLock,
+} from '../core/presentationAdmission.js';
 import { verbAcceptsType, stableEntityKey } from '../data/interactionDescriptorCatalog.js';
 import { listSelectableComponents, nextComponentSelection } from '../systems/interactionDescriptors.js';
 import { createCinematicInputFence } from './cinematicInputFence.js';
@@ -1257,6 +1260,7 @@ function cycleTarget(state, dir, bus) {
     if (explicitWorldSiteTarget && !presentationAllowsPlayerFacingAction(e, state)) continue;
     if (!explicitWorldSiteTarget && !verbAcceptsType('target', e.type)) continue; // PQ-015 membership + explicit site exception
     if (!explicitWorldSiteTarget && !isHostileToPlayer(e, player.team, state)) continue;
+    if (!presentationAllowsTargetLock(e, state)) continue;
     const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
     const d = Math.hypot(dx, dz);
     if (d > SCANNER_CONTACT_RANGE) continue;
@@ -1318,6 +1322,7 @@ function isScannerHostileLock(player, state, entity) {
   if (!player || !entity || entity.alive === false || !entity.pos) return false;
   if (!verbAcceptsType('target', entity.type)) return false; // PQ-015: shared target membership
   if (!isHostileToPlayer(entity, player.team, state)) return false;
+  if (!presentationAllowsTargetLock(entity, state)) return false;
   const dx = entity.pos.x - player.pos.x;
   const dz = entity.pos.z - player.pos.z;
   return (dx * dx + dz * dz) <= SCANNER_CONTACT_RANGE * SCANNER_CONTACT_RANGE;
@@ -1381,6 +1386,7 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
     if (!e || e.alive === false || e === player || !e.pos) continue;
     if (e.type !== 'ship' && e.type !== 'drone') continue;
     if (!isHostileToPlayer(e, player.team, state)) continue;
+    if (!presentationAllowsTargetLock(e, state)) continue;
     const dx = e.pos.x - player.pos.x;
     const dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;

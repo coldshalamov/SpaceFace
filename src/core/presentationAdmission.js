@@ -111,3 +111,19 @@ export function presentationAllowsPlayerFacingAction(entity, state) {
   const owner = resolvePresentationAdmissionOwner(entity, state);
   return !!owner && owner.presentationAdmission === PRESENTATION_ADMISSION.ready;
 }
+
+/**
+ * Targeting must not sit on empty air. A required hull whose authored identity is still pending
+ * stays off the lock until that same complete body publishes. Headless sim and contacts that never
+ * entered the authored path remain lockable.
+ */
+export function presentationAllowsTargetLock(entity, state) {
+  if (!entity || entity.alive === false) return false;
+  if (!state || !state.render || !state.render.scene) return true;
+  const indirect = entity.data && entity.data.presentationOwnerWorldRecordId;
+  if (indirect) return presentationAllowsPlayerFacingAction(entity, state);
+  if (entity.type !== 'ship') return true;
+  const admission = entity.presentationAdmission;
+  if (admission == null) return true;
+  return admission === PRESENTATION_ADMISSION.ready;
+}

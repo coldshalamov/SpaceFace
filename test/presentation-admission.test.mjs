@@ -6,6 +6,7 @@ import {
   hasExplicitAuthoredGeologyPresentation,
   initializePresentationAdmission,
   presentationAllowsPlayerFacingAction,
+  presentationAllowsTargetLock,
   presentationOwnerAdmissionForWorldRecord,
   PRESENTATION_OWNER_ADMISSION,
   resolvePresentationAdmissionOwner,
@@ -17,8 +18,10 @@ test('browser-facing authored entities cannot act before their exact identity is
   const browserState = { render: { scene: {} } };
   assert.equal(ship.presentationAdmission, PRESENTATION_ADMISSION.pending);
   assert.equal(presentationAllowsPlayerFacingAction(ship, browserState), false);
+  assert.equal(presentationAllowsTargetLock(ship, browserState), false);
   setPresentationAdmission(ship, PRESENTATION_ADMISSION.ready);
   assert.equal(presentationAllowsPlayerFacingAction(ship, browserState), true);
+  assert.equal(presentationAllowsTargetLock(ship, browserState), true);
 });
 
 test('headless simulation remains independent of render admission', () => {
