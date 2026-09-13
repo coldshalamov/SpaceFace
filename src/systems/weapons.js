@@ -29,10 +29,15 @@ import {
   compileAttackSpec,
   mergeWeaponView,
 } from '../combat/attackSpec.js';
-import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
-import { tryApplyInertialShuntFromImpact } from '../combat/inertialShunt.js';
+import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
+import {
+  fillInertialShuntImpulses,
+  hullCarriesInertialShunt,
+} from '../combat/inertialShunt.js';
 import {
   GRAVITY_MARK_STATUS_ID,
+  INERTIAL_SHUNT_TUNING,
+  INERTIAL_SHUNT_WEAPON_ID,
   MOMENTUM_SINK_BUNGEE,
   MOMENTUM_SINK_STATUS_ID,
   MOMENTUM_SINK_WEAPON_ID,
@@ -186,6 +191,7 @@ export const weapons = {
     this._momentumSinkImpulse = { x: 0, y: 0, z: 0 };
     this._shuntImpulseA = { x: 0, y: 0, z: 0 };
     this._shuntImpulseB = { x: 0, y: 0, z: 0 };
+    this._shuntTorque = { x: 0, y: 0, z: 0 };
     this._shuntCooldown = new Map();
     this._entityGetter = (id) => {
       if (id == null) return null;
@@ -209,13 +215,15 @@ export const weapons = {
       this._onAttackHit(payload);
     });
     ctx.bus.on('physics:impact', (payload) => {
-      const applied = tryApplyInertialShuntFromImpact(
+      const applied = applyInertialShuntFromImpact(
         this.state,
         payload,
         this._entityGetter,
         this._shuntImpulseA,
         this._shuntImpulseB,
+        this._shuntTorque,
         this._shuntCooldown,
+        this.bus,
       );
       if (applied && this.bus) {
         this.bus.emit('weapons:inertialShunt', applied);
@@ -1929,4 +1937,180 @@ function authoredMass(entity) {
 function positiveNumber(value, fallback) {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+const SHUNT_BODY_TYPES = new Set(['ship', 'drone']);
+const INERTIAL_SHUNT_LIVE_TUNING = Object.freeze({
+  minClosingSpeed: INERTIAL_SHUNT_TUNING.minClosingSpeed,
+  dumpVsLight: INERTIAL_SHUNT_TUNING.liveDumpVsLight,
+  refMass: INERTIAL_SHUNT_TUNING.refMass,
+  cooldownTicks: INERTIAL_SHUNT_TUNING.cooldownTicks,
+});
+
+function shuntPairKey(aId, bId) {
+  return String(aId) < String(bId) ? `${aId}|${bId}` : `${bId}|${aId}`;
+}
+
+function finiteShunt(value, fallback = 0) {
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function orientShuntNormal(payload, shunter, target, shunterIsA) {
+  const rawNx = finiteShunt(payload && payload.normal && payload.normal.x);
+  const rawNz = finiteShunt(payload && payload.normal && payload.normal.z);
+  let length = Math.hypot(rawNx, rawNz);
+  if (length > 1e-6) {
+    const orientation = shunterIsA === false ? -1 : 1;
+    return { x: orientation * rawNx / length, z: orientation * rawNz / length };
+  }
+  const dx = finiteShunt(target && target.pos && target.pos.x) - finiteShunt(shunter && shunter.pos && shunter.pos.x);
+  const dz = finiteShunt(target && target.pos && target.pos.z) - finiteShunt(shunter && shunter.pos && shunter.pos.z);
+  length = Math.hypot(dx, dz);
+  if (!(length > 1e-6)) return null;
+  return { x: dx / length, z: dz / length };
+}
+
+/**
+ * Live ram-plate path. Relative closing is the ram floor. The dump is the shunter's own
+ * speed along the contact normal, fully redirected, equal-and-opposite. That is a momentum
+ * swap with the light, not a thruster and not a reverse-throw into an oncoming hull.
+ */
+export function applyInertialShuntFromImpact(
+  state,
+  payload,
+  getEntity,
+  shunterOut,
+  targetOut,
+  torqueOut,
+  cooldown,
+  bus,
+) {
+  if (!payload || !getEntity || !shunterOut || !targetOut) return null;
+  const getter = resolveEntityGetter(state, getEntity);
+  const a = getter(payload.aId);
+  const b = getter(payload.bId);
+  if (!a || !b || a === b || a.alive === false || b.alive === false) return null;
+  if (!SHUNT_BODY_TYPES.has(a.type) || !SHUNT_BODY_TYPES.has(b.type)) return null;
+
+  let shunter = null;
+  let target = null;
+  if (hullCarriesInertialShunt(a) && !hullCarriesInertialShunt(b)) {
+    shunter = a;
+    target = b;
+  } else if (hullCarriesInertialShunt(b) && !hullCarriesInertialShunt(a)) {
+    shunter = b;
+    target = a;
+  } else if (hullCarriesInertialShunt(a) && hullCarriesInertialShunt(b)) {
+    const playerId = state && state.playerId;
+    shunter = a.id === playerId ? a : b;
+    target = shunter === a ? b : a;
+  } else {
+    return null;
+  }
+
+  const tick = Number.isInteger(payload.tick)
+    ? payload.tick
+    : (state && Number.isInteger(state.tick) ? state.tick : 0);
+  const key = shuntPairKey(a.id, b.id);
+  if (cooldown && typeof cooldown.get === 'function') {
+    const until = cooldown.get(key);
+    if (Number.isInteger(until) && tick < until) return null;
+    if (Number.isInteger(until)) cooldown.delete(key);
+  }
+
+  const axis = orientShuntNormal(payload, shunter, target, shunter === a);
+  if (!axis) return null;
+  const relativeClosing = Number.isFinite(payload.preSolveClosingSpeed)
+    ? Math.max(0, payload.preSolveClosingSpeed)
+    : Math.max(
+      0,
+      (finiteShunt(shunter.vel && shunter.vel.x) - finiteShunt(target.vel && target.vel.x)) * axis.x
+      + (finiteShunt(shunter.vel && shunter.vel.z) - finiteShunt(target.vel && target.vel.z)) * axis.z,
+    );
+  if (!(relativeClosing >= INERTIAL_SHUNT_LIVE_TUNING.minClosingSpeed)) return null;
+
+  const shunterAlong = Math.max(
+    0,
+    finiteShunt(shunter.vel && shunter.vel.x) * axis.x
+    + finiteShunt(shunter.vel && shunter.vel.z) * axis.z,
+  );
+  const contact = {
+    normal: axis,
+    closingSpeed: shunterAlong,
+    shunterIsA: true,
+  };
+  if (!fillInertialShuntImpulses(shunterOut, targetOut, shunter, target, INERTIAL_SHUNT_LIVE_TUNING, contact)) {
+    return null;
+  }
+
+  queuePhysicsImpulse(shunter, shunterOut);
+  queuePhysicsImpulse(target, targetOut);
+  const mT = authoredMass(target);
+  const mS = authoredMass(shunter);
+  const couple = Math.max(0.08, Math.min(1, INERTIAL_SHUNT_LIVE_TUNING.refMass / Math.max(mT, INERTIAL_SHUNT_LIVE_TUNING.refMass)));
+  if (torqueOut) {
+    torqueOut.x = 0;
+    torqueOut.y = finiteShunt(INERTIAL_SHUNT_TUNING.tumbleTorque) * couple;
+    torqueOut.z = 0;
+    queuePhysicsTorqueImpulse(target, torqueOut);
+  }
+  const transferred = Math.hypot(targetOut.x, targetOut.z);
+  const residual = Math.hypot(shunterOut.x + targetOut.x, shunterOut.z + targetOut.z);
+  const targetDeltaV = transferred / mT;
+  const shunterDeltaV = Math.hypot(shunterOut.x, shunterOut.z) / mS;
+  const provenance = {
+    actorId: shunter.id,
+    weaponId: INERTIAL_SHUNT_WEAPON_ID,
+    tag: 'inertial_shunt',
+    appliedTick: tick,
+    magnitude: transferred,
+  };
+  recordImpulseProvenance(shunter, provenance);
+  recordImpulseProvenance(target, provenance);
+  if (bus && typeof bus.emit === 'function') {
+    publishHitstunImpulse(bus, {
+      source: 'weapon',
+      victimId: target.id,
+      attackerId: shunter.id,
+      attackerMass: mS,
+      victimMass: mT,
+      deltaV: targetDeltaV,
+      dirX: axis.x,
+      dirZ: axis.z,
+      hitSide: signedHitSide(target, targetOut, null, target.id),
+      provenance,
+      tick,
+    });
+    const pos = payload.pos || target.pos || shunter.pos;
+    bus.emit('presentation:vfxCue', {
+      id: 'combat.inertialShunt.contact',
+      lane: 'combat',
+      particles: 14,
+      lights: 1,
+      magnitude: Math.min(1.6, targetDeltaV / INERTIAL_SHUNT_TUNING.screenDepthWu),
+      position: pos,
+      direction: { x: axis.x, z: axis.z },
+      material: 'impulse',
+      sourceId: shunter.id,
+      targetId: target.id,
+      flashReduced: false,
+    });
+  }
+  if (cooldown && typeof cooldown.set === 'function') {
+    const hold = Number.isInteger(INERTIAL_SHUNT_LIVE_TUNING.cooldownTicks)
+      ? INERTIAL_SHUNT_LIVE_TUNING.cooldownTicks
+      : 45;
+    cooldown.set(key, tick + hold);
+  }
+  return {
+    shunterId: shunter.id,
+    targetId: target.id,
+    targetDeltaV,
+    shunterDeltaV,
+    momentumTransferred: transferred,
+    momentumResidual: residual,
+    axisX: axis.x,
+    axisZ: axis.z,
+    tumbled: !!(torqueOut && torqueOut.y > 0),
+  };
 }
