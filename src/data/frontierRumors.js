@@ -23,6 +23,44 @@ export const TETHYS_BLACK_MARKET_DISCOVERY = Object.freeze({
   opportunityType: 'heist_intercept',
 });
 
+export const TETHYS_BLACK_MARKET_RUN = Object.freeze({
+  runId: 'tethys:pallas-entrance:1',
+  parcelId: 'tethys:pallas-entrance:parcel',
+  scannerId: 'tethys:pallas-entrance:customs',
+  receiverId: 'tethys:pallas-entrance:receiver',
+  sectorId: 'sector_pallas_drift',
+  stationId: 'station_smuggler',
+  commodityId: 'cmdty_narcotics',
+  amount: 8,
+});
+
+export function tethysBlackMarketRun(state) {
+  const record = state?.world?.frontierRumors?.byId?.[TETHYS_BLACK_MARKET_DISCOVERY.rumorId];
+  return record?.phase === 'contacted' && record.contactId === TETHYS_BLACK_MARKET_DISCOVERY.contactId
+    ? record.entranceRun || null : null;
+}
+
+export function hasTethysBlackMarketAccess(state) {
+  const run = tethysBlackMarketRun(state);
+  return run?.runId === TETHYS_BLACK_MARKET_RUN.runId && run.phase === 'delivered';
+}
+
+function normalizeEntranceRun(value) {
+  const row = value && typeof value === 'object' ? value : {};
+  const phase = row.phase === 'in_progress' || row.phase === 'delivered' ? row.phase : 'available';
+  const parcel = row.parcel && finitePoint(row.parcel.pos) ? {
+    pos: finitePoint(row.parcel.pos),
+    vel: finitePoint(row.parcel.vel) || { x: 0, z: 0 },
+    hull: Math.max(0, finite(row.parcel.hull, 100)),
+    data: clonePlain(row.parcel.data || {}),
+  } : null;
+  return {
+    ...TETHYS_BLACK_MARKET_RUN, phase, parcel,
+    suppliedAt: Math.max(0, finite(row.suppliedAt)),
+    deliveredAt: Math.max(0, finite(row.deliveredAt)),
+  };
+}
+
 export const FRONTIER_RUMOR_KINDS = Object.freeze([
   Object.freeze({ id: 'hunter', label: 'Hunter Location', price: 260 }),
   Object.freeze({ id: 'vein', label: 'Vein Whisper', price: 220 }),
@@ -203,6 +241,10 @@ export function normalizeFrontierRumorState(value) {
       radius,
       phase: row.phase === 'resolved' || row.phase === 'contacted' ? row.phase : 'rumored',
     };
+    if (id === TETHYS_BLACK_MARKET_DISCOVERY.rumorId && row.phase === 'contacted'
+        && row.contactId === TETHYS_BLACK_MARKET_DISCOVERY.contactId) {
+      out.byId[id].entranceRun = normalizeEntranceRun(row.entranceRun);
+    }
   }
   if (Array.isArray(input.receipts)) {
     out.receipts = input.receipts.slice(-FRONTIER_RUMOR_RECEIPT_LIMIT).map(clonePlain);

@@ -7,6 +7,7 @@ import test from 'node:test';
 import { createBus } from '../src/core/eventBus.js';
 import { createSimulation, SIM_DT } from '../src/core/sim.js';
 import { COMMODITIES } from '../src/data/commodities.js';
+import { frontierRumorOffer, TETHYS_BLACK_MARKET_DISCOVERY, TETHYS_BLACK_MARKET_RUN } from '../src/data/frontierRumors.js';
 import {
   canLaunderSalvageAtStation,
   CLASSIFIED_SALVAGE_COMMODITY_ID,
@@ -64,6 +65,14 @@ function boot(seed, extra = {}) {
   });
   const { state } = sim;
   state.mode = 'flight';
+  // This laundering subsystem fixture starts after the entrance delivery. The actual physical
+  // unlock and pre-delivery denials are exercised in pq-177-04-black-market.test.mjs.
+  const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
+  const lead = frontierRumorOffer(state, discovery.stationId);
+  state.world.frontierRumors.byId[discovery.rumorId] = {
+    ...lead, phase: 'contacted', contactId: discovery.contactId,
+    entranceRun: { ...TETHYS_BLACK_MARKET_RUN, phase: 'delivered', deliveredAt: 1, parcel: null },
+  };
   state.player.credits = extra.credits != null ? extra.credits : START_CREDITS;
   state.player.heat = extra.heat != null ? extra.heat : 0;
   if (extra.quietRep != null) {

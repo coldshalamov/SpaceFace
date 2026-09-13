@@ -27,10 +27,14 @@ import { WORLD_ONE_OFFS } from '../data/worldOneOffs.js'; // PQ-143.02 six textu
 import {
   FRONTIER_RUMOR_RECEIPT_LIMIT,
   frontierRumorOffer,
+  hasTethysBlackMarketAccess,
   normalizeFrontierRumorState,
   sensorPostRumorOffer,
   TETHYS_BLACK_MARKET_DISCOVERY,
+  TETHYS_BLACK_MARKET_RUN,
+  tethysBlackMarketRun,
 } from '../data/frontierRumors.js';
+import { isJettisonedCargoPod, spawnJettisonedCargoPod } from './lootShards.js';
 import {
   VESTA_ORE_CACHE,
   VESTA_ORE_CACHE_CHOICES,
@@ -357,6 +361,7 @@ export const world = {
     this._scanning = false;
     this._driveTierId = null;     // resolved from equipped jump-drive module (null → T1 default)
     this._sectorSeq = 0;          // legacy counter (kept for compat; residency epoch owns content RNG)
+    this._tethysRunEntities = {};
     this._nextCriticalSpawnTick = 0;
     this._vestaDecisionSignature = null;
     this._vestaDecisionNeedsRebind = false;
@@ -391,6 +396,7 @@ export const world = {
     bus.on('field:depletedChanged', (p) => this._onFieldDepleted(p || {}));
     bus.on('anomaly:triangulated', (p) => this._onAnomalyTriangulated(p || {}));
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p || {}));
+    bus.on('cargo:caughtByNet', (p) => this._onTethysEntranceCaught(p || {}));
     bus.on('orrinWitness:ensureEvidence', (p) => this._ensureOrrinWitnessEvidence(p || {}));
     bus.on('vestaOreCache:choose', (p) => this._onVestaOreCacheChoice(p || {}));
     bus.on('pallasHiddenCache:choose', (p) => this._onPallasHiddenCacheChoice(p || {}));
@@ -409,6 +415,7 @@ export const world = {
       this._presentVestaOreCacheDecision('save-loaded');
       this._spawnPallasHiddenCachePickup(this.state.world.currentSectorId);
       this._presentPallasHiddenCacheDecision('save-loaded');
+      this._ensureTethysEntranceRun(this.state.world.currentSectorId);
     });
     bus.on('dock:docked', (p) => this._presentPallasHiddenCacheDecision('dock:docked', p && p.stationId));
     bus.on('dock:undocked', () => { this._pallasDecisionSignature = null; });
@@ -451,6 +458,7 @@ export const world = {
     const e = this.state.entities.get(p.id);
     if (!e) return;
     const d = e.data || (e.data = {});
+    if (d.tethysEntranceRunId === TETHYS_BLACK_MARKET_RUN.runId) return;
     // Boss path already recorded outcome:defeated — do not clobber with destroyed.
     if (d.isBoss) return;
     const state = this.state;
@@ -670,6 +678,7 @@ export const world = {
     this._presentVestaOreCacheDecision('sector-enter');
     this._spawnPallasHiddenCachePickup(sectorId);
     this._presentPallasHiddenCacheDecision('sector-enter');
+    this._ensureTethysEntranceRun(sectorId);
     if (!this._hazardSet) this._hazardSet = new Set();
     if (!this._hazardNextSet) this._hazardNextSet = new Set();
     this._hazardSet.clear();
@@ -885,6 +894,7 @@ export const world = {
     rec.tier = tier;
     rec.epoch = epoch;
     rec.materializedAtTick = state.tick | 0;
+    this._ensureTethysEntranceRun(sectorId);
     this.helpers.requestPresentationRebuild?.('sector-materialize');
   },
 
@@ -964,6 +974,7 @@ export const world = {
   _demoteSectorToRecordOnly(sectorId) {
     // Write epoch-stable durable records before scoped despawn (identity must not reroll).
     this._captureSectorDurableRecords(sectorId, { reason: 'evict' });
+    if (sectorId === TETHYS_BLACK_MARKET_RUN.sectorId) this._tethysRunEntities = {};
     this._despawnEntitiesForSector(sectorId);
     if (this.state.world.sectorContents) {
       this.state.world.sectorContents[sectorId] = this._emptySectorBag();
@@ -981,6 +992,7 @@ export const world = {
    */
   _captureSectorDurableRecords(sectorId, opts = {}) {
     const state = this.state;
+    if (sectorId === TETHYS_BLACK_MARKET_RUN.sectorId) this._captureTethysEntranceParcel();
     const bag = ensureWorldRecords(state.world);
     const recMeta = state.world.residentSectors && state.world.residentSectors[sectorId];
     const epoch = recMeta && Number.isFinite(recMeta.epoch) ? recMeta.epoch : 0;
@@ -1002,6 +1014,8 @@ export const world = {
       }
     }
     forEachLivingWorldActor(state, (e) => {
+      // The bounded entrance run lives under its rumor record, never in two save owners.
+      if (e.data?.tethysEntranceRunId === TETHYS_BLACK_MARKET_RUN.runId) return;
       const home = e.homeSectorId || (e.data && e.data.homeSectorId);
       const dataSector = e.data && e.data.sectorId;
       // Require explicit sector ownership — never attach homeless traffic to the wrong bag.
@@ -1494,6 +1508,8 @@ export const world = {
         radius: collisionRadius, mass: 1e6, hull: 1e6, hullMax: 1e6, collides: true,
         data: {
           stationId: st.id, stationTypeId: st.type, dockRadius,
+          ...(st.id === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(this.state)
+            ? { dockDeny: 'private' } : {}),
           placeScale: dockRadius / 14,
           collisionRadius,
           ...(collisionProxyId ? { collisionProxy: collisionProxyId, corridorBearingDeg } : {}),
@@ -4215,6 +4231,7 @@ export const world = {
       status: 'available',
     };
     record.risk = 'Quiet capsule work can draw law attention; loss means no payout.';
+    record.entranceRun = { ...TETHYS_BLACK_MARKET_RUN, phase: 'available', parcel: null, suppliedAt: 0, deliveredAt: 0 };
     const receipt = {
       type: 'contacted', rumorId: record.id, contactId: record.contactId,
       sectorId, poiId, opportunityType: discovery.opportunityType, t: contactedAt,
@@ -4222,6 +4239,111 @@ export const world = {
     own.receipts.push(receipt);
     while (own.receipts.length > FRONTIER_RUMOR_RECEIPT_LIMIT) own.receipts.shift();
     this.bus.emit('frontierRumor:contacted', { ...receipt, opportunity: { ...record.opportunity } });
+    this._ensureTethysEntranceRun(TETHYS_BLACK_MARKET_RUN.sectorId);
+    return true;
+  },
+
+  _captureTethysEntranceParcel() {
+    const run = tethysBlackMarketRun(this.state);
+    if (!run || run.phase === 'available') return;
+    const id = this._tethysRunEntities.parcel;
+    if (id == null) return; // RECORD_ONLY keeps its last snapshot until rematerialization.
+    const pod = this.state.entities.get(id);
+    run.parcel = isJettisonedCargoPod(pod) ? {
+      pos: { x: pod.pos.x, z: pod.pos.z }, vel: { x: pod.vel.x, z: pod.vel.z },
+      hull: pod.hull, data: cloneSaveTree(pod.data),
+    } : null;
+    const resident = this.state.world.residentSectors?.[run.sectorId];
+    if (!pod?.alive && resident?.tier === RESIDENCY_TIER.RECORD_ONLY) delete this._tethysRunEntities.parcel;
+  },
+
+  _ensureTethysEntranceRun(sectorId) {
+    const run = tethysBlackMarketRun(this.state);
+    if (!run || sectorId !== run.sectorId) return;
+    const active = this.state.world.sectorContents?.[sectorId];
+    const station = active?.stations?.find((row) => row.stationId === run.stationId);
+    if (!station) return; // Bodies exist only in actual sector residency.
+    const members = this._tethysRunEntities;
+    const live = (role) => this.state.entities.get(members[role])?.alive;
+    const tag = (entity, role) => {
+      if (!entity) return null;
+      this._stampHomeSector(entity, sectorId);
+      entity.flags = { ...entity.flags, persistent: false };
+      entity.data.tethysEntranceRunId = run.runId;
+      entity.data.tethysEntranceMemberId = run[`${role}Id`];
+      members[role] = entity.id;
+      return entity;
+    };
+    // The cutter points east across the parcel's route; the receiver sits beyond its 90 WU cone.
+    const start = { x: station.pos.x - 240, z: station.pos.z + 80 };
+    for (const [role, dx, dz, defId, name] of [
+      ['scanner', 19, -28, 'ship_hornet', 'Customs cutter — east-facing scan'],
+      ['receiver', 144, 0, 'ship_mule', 'Quiet receiving barge'],
+    ]) {
+      if (live(role) || run.phase === 'delivered') continue;
+      const radius = role === 'scanner' ? 14 : 18;
+      tag(this.helpers.spawnEntity({
+        type: 'ship', team: 2, factionId: role === 'scanner' ? 'faction_scn' : 'faction_quiet',
+        pos: { x: start.x + dx, z: start.z + dz }, vel: { x: 0, z: 0 }, rot: 0,
+        radius, mass: 8000, hull: 10000, hullMax: 10000, collides: true,
+        physicsBody: { schemaVersion: 1, radius, mass: 8000, inertiaY: 8000, dynamic: false, material: 'ship', revision: 0 },
+        data: {
+          defId, name, ai: { passive: true }, customsScanner: role === 'scanner',
+          outlawCatchNet: role === 'receiver', trafficRole: 'outlaw',
+          ...(role === 'scanner' ? { customsScanCone: { heading: 0, range: 90, halfAngle: 0.55, dwellS: 0.7 } } : {}),
+        },
+      }), role);
+    }
+    if (live('parcel')) return;
+    // Available supplies exactly once. Missing/collected/destroyed cargo is never replaced.
+    if (members.parcel != null || (run.phase !== 'available' && !run.parcel)) return;
+    const saved = run.parcel;
+    const pod = tag(spawnJettisonedCargoPod(this.state, {
+      commodityId: saved?.data.commodityId || run.commodityId,
+      amount: saved ? saved.data.amount : run.amount,
+      pos: saved?.pos || start, vel: saved?.vel || { x: 0, z: 0 },
+      radius: 5, ownerId: this.state.playerId,
+      originId: TETHYS_BLACK_MARKET_DISCOVERY.stationId, destinationId: run.stationId,
+      pickupEmbargoUntil: saved?.data.pickupEmbargoUntil ?? Number.MAX_SAFE_INTEGER,
+    }, this.helpers), 'parcel');
+    if (!pod) return;
+    if (saved) {
+      Object.assign(pod.data, saved.data);
+      pod.hull = saved.hull;
+    }
+    pod.data.name = 'Quiet entrance parcel';
+    if (run.phase === 'available') {
+      run.phase = 'in_progress';
+      run.suppliedAt = this.state.simTime;
+    }
+    this._captureTethysEntranceParcel();
+  },
+
+  _onTethysEntranceCaught(payload) {
+    const run = tethysBlackMarketRun(this.state);
+    if (!run || run.phase !== 'in_progress' || this.state.world.currentSectorId !== run.sectorId) return false;
+    const members = this._tethysRunEntities;
+    if (payload.podId !== members.parcel || payload.netId !== members.receiver) return false;
+    const pod = this.state.entities.get(payload.podId);
+    const net = this.state.entities.get(payload.netId);
+    if (!isJettisonedCargoPod(pod) || !net?.alive || net.data?.outlawCatchNet !== true
+        || pod.data.tethysEntranceRunId !== run.runId || net.data.tethysEntranceRunId !== run.runId
+        || pod.data.tethysEntranceMemberId !== run.parcelId || net.data.tethysEntranceMemberId !== run.receiverId
+        || pod.data.commodityId !== run.commodityId || pod.data.amount !== run.amount
+        || pod.data.legality !== 'contraband' || pod.data.customsConeEntered !== true
+        || pod.data.customsScanned === true || pod.data.caughtByNet !== true
+        || pod.data.caughtByNetId !== net.id) return false;
+    const reach = (pod.radius || 3) + (net.radius || 18);
+    if (Math.hypot(pod.pos.x - net.pos.x, pod.pos.z - net.pos.z) > reach + 1) return false;
+    run.phase = 'delivered';
+    run.deliveredAt = Math.max(0, this.state.simTime || 0);
+    const station = this.state.world.sectorContents?.[run.sectorId]?.stations?.find((row) => row.stationId === run.stationId);
+    const berth = station && this.state.entities.get(station.id);
+    if (berth?.data.dockDeny === 'private') delete berth.data.dockDeny;
+    pod.data.pickupEmbargoUntil = 0;
+    this._captureTethysEntranceParcel();
+    this.bus.emit('frontierRumor:blackMarketAccess', { rumorId: TETHYS_BLACK_MARKET_DISCOVERY.rumorId, runId: run.runId, stationId: run.stationId });
+    this.bus.emit('toast', { text: 'Quiet parcel delivered. Smuggler Den market and papers wash are open.', kind: 'success', ttl: 5 });
     return true;
   },
 
@@ -4365,6 +4487,7 @@ export const world = {
     state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};
     state.world.frontierRumors = normalizeFrontierRumorState(data.frontierRumors);
+    this._tethysRunEntities = {};
     state.world.vestaOreCache = normalizeVestaOreCacheState(data.vestaOreCache);
     state.world.pallasHiddenCache = normalizePallasHiddenCacheState(data.pallasHiddenCache);
     this._vestaDecisionSignature = null;
@@ -4425,6 +4548,7 @@ export const world = {
     state.world.scanPings = {};
     state.world.pendingSpawns = {};
     state.world.frontierRumors = normalizeFrontierRumorState(null);
+    this._tethysRunEntities = {};
     state.world.vestaOreCache = freshVestaOreCacheState();
     state.world.pallasHiddenCache = freshPallasHiddenCacheState();
     state.world.records = createEmptyRecordsBag();

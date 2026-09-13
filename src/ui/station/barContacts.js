@@ -744,14 +744,20 @@ export function buildReply(role, choiceId, ctx, stationId, contact = null) {
         const quietContact = tethysBlackMarketContact(state, stationId);
         if (quietContact) {
           const capsuleRun = tethysCapsuleRunOffer(state, stationId);
+          const run = quietContact.entranceRun;
+          const entranceLead = run?.phase === 'delivered'
+            ? 'Your entrance parcel arrived clean. Smuggler Den in Pallas Drift now trades with you and washes hot cargo for a cut.'
+            : run?.phase === 'in_progress' && !run.parcel
+              ? 'The one supplied entrance parcel is gone. Smuggler Den access is still closed.'
+              : 'One entrance run waits just west of Smuggler Den in Pallas Drift: Massline the supplied parcel east past the customs cutter into the Quiet receiving barge. Its scanner faces east; move the contraband through before the scan finishes. A scanned or lost parcel will not open the market.';
           if (capsuleRun) {
             return {
-              text: 'Your Quiet contact confirms the Capsule Run is real: intercept a lawful cargo capsule and carry it to their fence. Law response, confiscation, heat, or a lost capsule can leave you with no payout. The contact does not make it safe.',
+              text: `${entranceLead} The separate Capsule Run remains available: law response, confiscation, heat, or a lost capsule can leave you with no payout.`,
               missionOffer: capsuleRun,
             };
           }
           return {
-            text: 'Your Quiet contact is remembered, but no Capsule Run packet is live on the Tethys board. There is no off-book promise to accept today.',
+            text: `${entranceLead} No Capsule Run packet is live on the Tethys board.`,
           };
         }
         const rumor = frontierRumorOffer(state, stationId);

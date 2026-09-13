@@ -168,6 +168,9 @@ test('PQ-048.11 requires a purchased approximate rumor, physical pulse, and inve
     stationId: DISCOVERY.stationId,
     status: 'available',
   });
+  assert.equal(remembered.entranceRun.phase, 'available', 'contact offers a separate physical entrance run');
+  assert.equal(remembered.entranceRun.stationId, 'station_smuggler');
+  assert.equal(remembered.entranceRun.parcel, null, 'Tethys cannot materialize cargo in nonresident Pallas');
   assert.match(remembered.risk, /law attention/i);
   assert.equal(t.log.filter((entry) => entry.event === 'poi:discovered'
     && entry.payload.poiId === DISCOVERY.poiId).length, 1, 'physical completion emits the normal POI seam once');
@@ -179,6 +182,7 @@ test('PQ-048.11 requires a purchased approximate rumor, physical pulse, and inve
   const reply = buildReply('barkeep', 'rumors', { state: t.state, bus: t.bus }, DISCOVERY.stationId);
   assert.equal(reply.missionOffer?.type, 'heist_intercept', 'the remembered contact points to the existing PQ019C offer');
   assert.match(reply.text, /law response, confiscation, heat, or a lost capsule/i);
+  assert.match(reply.text, /Massline the supplied parcel east past the customs cutter into the Quiet receiving barge/);
   const existingOffer = t.state.missions.boards[DISCOVERY.stationId].slots[0];
   assert.equal(reply.missionOffer, existingOffer, 'the Bar presents rather than creates or accepts the mission');
 
@@ -196,6 +200,7 @@ test('PQ-048.11 requires a purchased approximate rumor, physical pulse, and inve
   assert.equal(restored.state.world.frontierRumors.byId[DISCOVERY.rumorId].phase, 'contacted',
     'Continue keeps the remembered contact');
   assert.equal(restored.state.world.frontierRumors.byId[DISCOVERY.rumorId].contactId, DISCOVERY.contactId);
+  assert.equal(restored.state.world.frontierRumors.byId[DISCOVERY.rumorId].entranceRun.phase, 'available');
   assert.ok(restored.state.signalInvestigation.completed[signal.id], 'scanner completion also survives Continue');
 
   restored.world._onSignalInvestigated({

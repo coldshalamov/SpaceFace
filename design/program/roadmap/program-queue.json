@@ -9683,7 +9683,7 @@
       "priority": 195,
       "title": "The black market",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-148.02",
         "PQ-151.02",
@@ -9711,7 +9711,7 @@
         "npm run check:price-memory"
       ],
       "receiptRefs": [],
-      "brief": "Reached by a smuggling run (PQ-148.02 physics), sells what stations refuse, launders heat for a cut (PQ-151.02); prices move with your own supply. DONE WHEN: A seeded smuggling loop completes; laundering shows in the ledger."
+      "brief": "IMPLEMENTED 2026-09-13: Tethys contact supplies one persistent Pallas parcel; an unscanned physical customs-and-catch run opens Smuggler Den docking, trade, and laundering exactly once. The seeded loop washes cargo, shows the ledger receipt, and shifts its next quote; focused save/residency and independent review pass. Full headed player-route acceptance remains open."
     },
     {
       "id": "PQ-177.05",

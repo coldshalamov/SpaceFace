@@ -19,6 +19,7 @@ import {
   stationRecordById,
 } from '../data/salvageLegality.js';
 import { isJettisonedCargoPod } from './lootShards.js';
+import { hasTethysBlackMarketAccess, TETHYS_BLACK_MARKET_RUN } from '../data/frontierRumors.js';
 
 export const pirateDisguise = {
   name: 'pirateDisguise',
@@ -70,6 +71,11 @@ export const pirateDisguise = {
         factionId: payload.factionId,
       });
     const stationKey = station.id || stationId;
+    if (stationKey === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state)) {
+      const denial = { accepted: false, reason: 'black_market_locked', stationId: stationKey };
+      this._emit('cargo:laundered', denial);
+      return denial;
+    }
     if (!canLaunderSalvageAtStation(station) && !canLaunderSalvageAtStation(stationKey)) {
       return null;
     }

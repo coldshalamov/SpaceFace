@@ -23,6 +23,7 @@
 //   stock target. We honor the schema field names (equilibrium = role-modified drift target,
 //   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
+import { hasTethysBlackMarketAccess, TETHYS_BLACK_MARKET_RUN } from '../data/frontierRumors.js';
 import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
 import { SECTORS } from '../data/sectors.js';
 import {
@@ -1240,6 +1241,9 @@ export const economy = {
    *  legalityWarning, reason } — pure (does not mutate). side = 'buy' | 'sell'. */
   quote(stationId, commodityId, side, qty) {
     const state = this.state;
+    if (stationId === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state)) {
+      return { ok: false, reason: 'black_market_locked', unitAvg: 0, total: 0, priceImpactPct: 0, stockAfter: 0 };
+    }
     qty = Math.max(0, Math.floor(qty || 0));
     const market = state.economy.markets[stationId] || this.ensureMarket(stationId);
     const entry = market && market[commodityId];
@@ -1375,6 +1379,9 @@ export const economy = {
    *  prior receipt instead of paying twice. */
   execute(stationId, commodityId, side, qty, opts = null) {
     const state = this.state;
+    if (stationId === TETHYS_BLACK_MARKET_RUN.stationId && !hasTethysBlackMarketAccess(state)) {
+      return { ok: false, reason: 'black_market_locked' };
+    }
     qty = Math.max(0, Math.floor(qty || 0));
     const intentId = opts && typeof opts.intentId === 'string' && opts.intentId
       ? opts.intentId
@@ -1606,6 +1613,7 @@ export const economy = {
         : res.reason === 'cargo_full' ? 'Cargo hold full'
         : res.reason === 'no_cargo' ? 'Nothing to sell'
         : res.reason === 'mission_cargo_locked' ? 'Sealed contract cargo cannot be sold'
+        : res.reason === 'black_market_locked' ? 'Smuggler Den requires the Quiet entrance delivery. Follow the Tethys contact.'
         : res.reason === 'no_stock' ? 'Station out of stock'
         : 'Trade failed';
       this.bus.emit('toast', { text: msg, kind: 'error', ttl: 2 });
