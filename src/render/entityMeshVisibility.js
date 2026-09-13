@@ -6,6 +6,12 @@
 // sync band and small-but-authored ships — stays submitted. The inner/middle
 // split only changes how often closures run.
 
+export function isAuthoredPendingStatus(status) {
+  return status === 'loading'
+    || status === 'awaiting-authored-admission'
+    || status === 'compiling-pipelines';
+}
+
 export function shouldSubmitEntityMesh(options = {}) {
   // A missing fenced pose is a fail-closed condition for ordinary roots, but the player and
   // renderer-forced roots retain their last safe mesh state until the next completed publication.
@@ -17,6 +23,12 @@ export function shouldSubmitEntityMesh(options = {}) {
   // First draw of an uncompiled material links the driver program inside bloomScene.
   // Hold ordinary roots until compileObjectPipelines has actually linked them.
   if (options.pipelinesPending === true) return false;
+  // Nearby opening extras that are still decoding must not enter bloomScene.
+  // Their first authored draw is the 100 ms+ Intel compile brick.
+  if (options.authoredPending === true && !protectedRoot) return false;
+  // compile() does not upload vertex buffers. Hold ordinary rocks/props until the
+  // 1x1 residency pass has registered those geometries.
+  if (options.geometryPending === true && !protectedRoot) return false;
   if (options.hidden === true) return false;
   const frame = options.activityFrame;
   const entityId = options.entityId;

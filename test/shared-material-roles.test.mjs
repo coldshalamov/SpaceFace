@@ -6,8 +6,10 @@ import { materialBatchFingerprint, materialBatchProgramKey } from '../src/render
 import {
   SHARED_MATERIAL_ROLE,
   sharedMaterialAbiRole,
+  sharedMaterialRoleFromAuthored,
   stampSharedMaterialRole,
 } from '../src/render/sharedMaterialRoles.js';
+import { runMaterialSharingContractProbe } from '../src/render/partsLibrary.js';
 
 function fakeStandard(hex, mapId) {
   return {
@@ -50,4 +52,20 @@ test('stamping a role does not write a batch-collapse key', () => {
   const hull = stampSharedMaterialRole(fakeStandard('cccccc', 'hull-a'), SHARED_MATERIAL_ROLE.HULL);
   assert.equal(hull.userData.spacefaceBatchKey, undefined);
   assert.equal(hull.userData.spacefaceSharedRole, undefined);
+});
+
+test('authored GLB tags map onto the shared roles', () => {
+  assert.equal(sharedMaterialRoleFromAuthored({ canopy: true }), SHARED_MATERIAL_ROLE.CANOPY);
+  assert.equal(sharedMaterialRoleFromAuthored({ drive: 'plume' }), SHARED_MATERIAL_ROLE.PLUME);
+  assert.equal(sharedMaterialRoleFromAuthored({}, {
+    userData: { spacefaceMaterialRole: 'geology' },
+  }), SHARED_MATERIAL_ROLE.ROCK);
+  assert.equal(sharedMaterialRoleFromAuthored({}, { name: 'Hull_Primary' }), SHARED_MATERIAL_ROLE.HULL);
+});
+
+test('a new painted authored hull shares the program family', () => {
+  const probe = runMaterialSharingContractProbe();
+  assert.equal(probe.authoredHullRoleStamped, true);
+  assert.equal(probe.authoredPaintSharesProgramFamily, true);
+  assert.equal(probe.hullProgramFamilyShared, true);
 });

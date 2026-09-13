@@ -29,6 +29,30 @@ export function sharedMaterialAbiRole(role) {
 }
 
 /**
+ * Map an authored GLB leaf onto the handful of shared roles. Paint/tint stays a
+ * uniform or texture bind; it must not mint a new program family.
+ */
+export function sharedMaterialRoleFromAuthored(tags = {}, material = null) {
+  if (tags && tags.canopy) return SHARED_MATERIAL_ROLE.CANOPY;
+  if (tags && tags.drive === 'plume') return SHARED_MATERIAL_ROLE.PLUME;
+  const semantic = String(material?.userData?.spacefaceMaterialRole || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+  if (semantic === 'glass' || semantic === 'canopy_glass' || semantic === 'sensor_lens') {
+    return SHARED_MATERIAL_ROLE.GLASS;
+  }
+  if (semantic === 'geology') return SHARED_MATERIAL_ROLE.ROCK;
+  if (semantic === 'station' || semantic === 'docking') return SHARED_MATERIAL_ROLE.STATION;
+  const name = String(material && material.name || '').toLowerCase();
+  if (/(?:glass|canopy|windscreen)/.test(name)) return SHARED_MATERIAL_ROLE.CANOPY;
+  if (/(?:plume|thruster|drive)/.test(name)) return SHARED_MATERIAL_ROLE.PLUME;
+  if (/(?:station|dock)/.test(name)) return SHARED_MATERIAL_ROLE.STATION;
+  if (/(?:rock|asteroid|geology)/.test(name)) return SHARED_MATERIAL_ROLE.ROCK;
+  return SHARED_MATERIAL_ROLE.HULL;
+}
+
+/**
  * Stamp ABI metadata only. Do not write spacefaceBatchKey / spacefaceSharedRole —
  * those collapse unlike hulls into one BatchedMesh. Do not set customProgramCacheKey
  * here; Three appends that string and would create extra variants.

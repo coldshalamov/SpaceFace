@@ -52,6 +52,16 @@ export function readShieldContacts(entityId, out) {
   return record.dirs;
 }
 
+export function hasShieldContact(entityId) {
+  if (entityId == null) return false;
+  const record = hits.get(entityId);
+  if (!record) return false;
+  for (let i = 0; i < SHIELD_HIT_SLOTS; i++) {
+    if (record.dirs[i * 4 + 3] > 0.01) return true;
+  }
+  return false;
+}
+
 export function clearShieldContacts(entityId) {
   if (entityId == null) hits.clear();
   else hits.delete(entityId);
