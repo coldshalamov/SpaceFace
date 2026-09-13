@@ -95,6 +95,14 @@
 
     const params = new URLSearchParams(location.search);
     if (params.has('risk')) { state.fuel.current = 8; state.ui.trackedMissionId = null; } // exercise Departure Check
+    // ?fit=heavy — load the active hull with a big-budget build so Shipworks stills exercise the
+    // PQ-176.04 visible-fit contract (pods/greebles on the authored fit sockets + drive glow).
+    if (params.get('fit') === 'heavy') {
+      state.player.ownedShips[0].fittings = [
+        'wpn_railgun_m', 'mod_shield_aegis_l', 'mod_engine_warp_l',
+        'mod_cargo_expander_l', 'mod_mining_pulverizer_l', 'mod_sensor_array_l', 'mod_thruster_vernier_m',
+      ];
+    }
     const app = createStationApp(document.getElementById('lab'), ctx);
     const screen = params.get('screen');
     if (screen) app.navigate(screen);

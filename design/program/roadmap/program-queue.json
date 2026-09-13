@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-10",
+  "updatedAt": "2026-09-12",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -9261,7 +9261,7 @@
       "priority": 182,
       "title": "Visible builds",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
@@ -9286,8 +9286,10 @@
         "npm run check:save-schema",
         "npm run check:sim:v3"
       ],
-      "receiptRefs": [],
-      "brief": "Any module ≥ 15 % of the budget is visible on the hull (parts hot-swap); drives change nacelle glow; big guns bristle. DONE WHEN: Stills at the shipping camera show the build; the asset reachability check stays green."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-176.04-REPORT.md"
+      ],
+      "brief": "IMPLEMENTED 2026-09-12: modules ≥ 15 % of the outfit budget mount authored parts on the fit sockets (pods/greebles), the fitted drive re-tints nacelle glow, fitted weapons bristle on whole-ship hulls too; shipping-camera stills show light vs heavy builds, all referenced files in the authored contract. Any module ≥ 15 % of the budget is visible on the hull (parts hot-swap); drives change nacelle glow; big guns bristle. DONE WHEN: Stills at the shipping camera show the build; the asset reachability check stays green."
     },
     {
       "id": "PQ-155.00",

@@ -10,6 +10,7 @@ import { FACTION_PALETTES, TEAM_FALLBACK_PALETTES } from '../data/palettes.js';
 import { paletteWithShipAppearance, shipAppearanceSignature } from '../core/shipAppearance.js';
 import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
+import { MODULES } from '../data/modules.js';
 import { EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDressing.js';
 import { WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '../data/wreckAftermathDressing.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
@@ -159,6 +160,7 @@ const authoredInstancedMeshDisposeProbeByRenderer = new WeakMap();
 const contractRecordsBySlot = new Map();
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
+const MODULE_BY_ID = new Map(MODULES.map((module) => [module.id, module]));
 const IDENTITY_MATRIX = new THREE.Matrix4();
 const BATCH_INVERSE = new THREE.Matrix4();
 const BATCH_LOCAL = new THREE.Matrix4();
@@ -876,7 +878,21 @@ export function authoredPreloadPlanForEntity(entity, options = {}) {
       || (options.lodLevel
         ? wholeShipLodFileForEntity(entity, options.lodLevel, options)
         : whole.file);
-    return { hull: [file] };
+    // The body bakes the silhouette, not the fit: fitted guns and budget-heavy modules still
+    // mount on its authored SOCKET_* contract, so cook exactly the parts the live build reads.
+    const plan = { hull: [file] };
+    const fitSeed = hashString(`${entity.id}|${entity.data && entity.data.defId}|${entity.factionId || ''}`);
+    const fitDef = SHIP_BY_ID.get(entity.data && entity.data.defId);
+    addPlanFiles(plan, 'weapon', authoredWeaponMounts(entity, fitDef, contractRecords('weapon'), fitSeed, { fittedOnly: true })
+      .map((mount) => mount.record && mount.record.url));
+    const moduleMounts = fittedModuleMounts(entity, contractRecords('pod'), contractRecords('greeble'), fitSeed);
+    addPlanFiles(plan, 'pod', moduleMounts
+      .filter((mount) => String(mount.file).startsWith('pods/'))
+      .map((mount) => mount.record && mount.record.url));
+    addPlanFiles(plan, 'greeble', moduleMounts
+      .filter((mount) => !String(mount.file).startsWith('pods/'))
+      .map((mount) => mount.record && mount.record.url));
+    return plan;
   }
 
   // A required body without a packaged-live selection stays empty. Never request a modular kit
@@ -897,11 +913,20 @@ export function authoredPreloadPlanForEntity(entity, options = {}) {
   addPlanFiles(plan, 'fin', [seededContractFile('fin', seed)]);
   addPlanFiles(plan, 'weapon', authoredWeaponMounts(entity, shipDef, contractRecords('weapon'), seed)
     .map((mount) => mount.record && mount.record.url));
-  addPlanFiles(plan, 'pod', authoredPodMounts(entity, shipDef, contractRecords('pod'), seed)
-    .map((mount) => mount.record && mount.record.url));
+  const moduleMounts = fittedModuleMounts(entity, contractRecords('pod'), contractRecords('greeble'), seed);
+  addPlanFiles(plan, 'pod', [
+    ...authoredPodMounts(entity, shipDef, contractRecords('pod'), seed)
+      .map((mount) => mount.record && mount.record.url),
+    ...moduleMounts.filter((mount) => String(mount.file).startsWith('pods/'))
+      .map((mount) => mount.record && mount.record.url),
+  ]);
   addPlanFiles(plan, 'gear', [authoredGearMount(entity, shipDef, contractRecords('gear'), seed)?.record?.url]);
-  addPlanFiles(plan, 'greeble', authoredGreebleMounts(entity, shipDef, contractRecords('greeble'), seed)
-    .map((mount) => mount.record && mount.record.url));
+  addPlanFiles(plan, 'greeble', [
+    ...authoredGreebleMounts(entity, shipDef, contractRecords('greeble'), seed)
+      .map((mount) => mount.record && mount.record.url),
+    ...moduleMounts.filter((mount) => !String(mount.file).startsWith('pods/'))
+      .map((mount) => mount.record && mount.record.url),
+  ]);
   return plan;
 }
 
@@ -5829,11 +5854,63 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
     ownerLocalFallbackRoots.push(buildFallbackNavLights(hull, materials, bindings));
   }
   ensureStandardSockets(hull);
+
+  // PQ-176.04 — VISIBLE BUILDS. Fitted hardware rides the authored SOCKET_* contract so a refit
+  // reads on the hull: budget-heavy modules bolt on, whole-ship bodies sprout the guns actually
+  // fitted, and the drive speaks through nacelle glow below. ships.js emits
+  // ship:appearanceChanged on any loadout change, which rebuilds this composition — the parts
+  // hot-swap with the fit.
+  {
+    const podRecordsForFit = library.get('pod') || [];
+    const greebleRecordsForFit = library.get('greeble') || [];
+    for (const mount of fittedModuleMounts(entity, podRecordsForFit, greebleRecordsForFit, assemblySeed)) {
+      if (!mount.record) continue;
+      const placement = mount.placement;
+      const socketPos = hullLocalPositionForSocket(hull, mount.socket);
+      if (socketPos) {
+        placement.position = [
+          socketPos[0] + mount.ordinal * 0.14,
+          socketPos[1] + mount.ordinal * 0.02,
+          socketPos[2] + mount.ordinal * 0.10,
+        ];
+      }
+      const partRoot = instantiatePart(mount.record, hull, placement,
+        palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
+      bindings.secondary.push(partRoot);
+      noteUsed(String(mount.file).startsWith('pods/') ? 'pod' : 'greeble', mount.record);
+    }
+  }
+
+  if (wholeShip) {
+    const fitWeaponMounts = authoredWeaponMounts(entity, shipDef, library.get('weapon') || [], assemblySeed, { fittedOnly: true });
+    const weaponSocketPos = hullLocalPositionForSocket(hull, 'SOCKET_Weapon_Front');
+    for (let index = 0; index < fitWeaponMounts.length; index += 1) {
+      const mount = fitWeaponMounts[index];
+      if (!mount.record) continue;
+      if (weaponSocketPos) {
+        const side = index === 0 ? 0 : (index % 2 === 0 ? -1 : 1);
+        const row = Math.ceil(index / 2);
+        mount.placement.position = [
+          weaponSocketPos[0] - row * 0.06,
+          weaponSocketPos[1],
+          weaponSocketPos[2] + side * (0.08 + row * 0.05),
+        ];
+      }
+      instantiatePart(mount.record, hull, mount.placement,
+        palette, scene, ownerBoundary, bindings, mutableMaterials, staticBatches);
+      noteUsed('weapon', mount.record);
+    }
+  }
+
   staticBatches.flush();
   reconcileMaplessHullMaterialAliases(palette);
   canonicalizeMaplessHullMaterials(root, palette);
 
   const primaryDrive = completeDriveBinding(bindings);
+  // A fitted drive is read through the nacelle it powers: tint the bound core + plume so a
+  // Fusion or Warp fit visibly re-colors the exact glow the flight VFX pulse each frame.
+  const fittedDriveGlow = visibleFittingsForEntity(entity).driveGlow;
+  if (fittedDriveGlow) applyFittedDriveGlow(bindings, mutableMaterials, fittedDriveGlow);
   normalizeWaspDomeGlass(root, entity);
   const navLightBase = bindings.navLights.map((mesh) => (
     mesh && mesh.material && Number.isFinite(mesh.material.emissiveIntensity)
@@ -7026,7 +7103,120 @@ function uniqueSlotMap(slots) {
   return Object.fromEntries(Object.entries(slots).map(([slot, urls]) => [slot, [...new Set(urls)]]));
 }
 
-function authoredWeaponMounts(entity, shipDef, records, seed) {
+// PQ-176.04 — VISIBLE BUILDS.
+// A fitted module worth at least 15% of the hull's outfit budget is bolted on where the authored
+// SOCKET_* contract says that kind of hardware lives (whole-ship bodies expose the same sockets;
+// modular hulls fall back to the anchors below, matching what ensureStandardSockets plants). The
+// drive is the one module every hull already shows — a fitted engine changes nacelle glow instead
+// of adding geometry — and weapons already mount per hardpoint, so this table covers the rest.
+const VISIBLE_MODULE_BUDGET_FRACTION = 0.15;
+
+const MODULE_FIT_PART_BY_SLOT = Object.freeze({
+  shield:   { file: 'greebles/greeble_antennas.glb', sockets: [['SOCKET_Utility_Dorsal', [0.04, 0.40, 0.08]]], targetLength: 0.26 },
+  cargo:    { file: 'pods/pod_cargo_container.glb',  sockets: [['SOCKET_Cargo_Ventral', [-0.08, -0.36, 0.12]]], targetLength: 0.34 },
+  mining:   { file: 'greebles/greeble_pipes.glb',    sockets: [['SOCKET_Mining_Front', [0.70, -0.12, 0.16]]], targetLength: 0.30 },
+  utility:  { file: 'pods/pod_utility.glb',          sockets: [['SOCKET_Utility_Dorsal', [-0.16, 0.40, -0.10]]], targetLength: 0.26 },
+  thruster: { file: 'greebles/greeble_rcs.glb',      sockets: [['SOCKET_RCS_Port', [-0.30, 0.04, -0.44]], ['SOCKET_RCS_Starboard', [-0.30, 0.04, 0.44]]], targetLength: 0.22 },
+});
+
+/** Describe how an entity's fitted loadout must read on the hull. Pure data — the live assembly
+ *  and the preload plan both consume it, so the cooked part set always matches the mounted set. */
+export function visibleFittingsForEntity(entity) {
+  const data = entity && entity.data || {};
+  const fittings = Array.isArray(data.fittings) ? data.fittings : [];
+  const shipDef = SHIP_BY_ID.get(data.defId) || null;
+  const outfitSpace = Number(shipDef && shipDef.outfitSpace);
+  const threshold = Number.isFinite(outfitSpace) && outfitSpace > 0
+    ? VISIBLE_MODULE_BUDGET_FRACTION * outfitSpace - 1e-9
+    : Infinity;
+  const modules = [];
+  let driveGlow = null;
+  const fittedWeaponIds = [];
+  for (const fittedId of fittings) {
+    if (!fittedId) continue;
+    const weapon = WEAPON_BY_ID.get(String(fittedId));
+    if (weapon) { fittedWeaponIds.push(weapon.id); continue; }
+    const def = MODULE_BY_ID.get(String(fittedId));
+    if (!def) continue;
+    if (def.slotType === 'engine') {
+      if (!driveGlow && def.visuals && def.visuals.glow) driveGlow = def.visuals.glow;
+      continue;
+    }
+    const spec = MODULE_FIT_PART_BY_SLOT[def.slotType];
+    if (!spec) continue;
+    if ((Number(def.mass) || 0) < threshold) continue;
+    modules.push({
+      id: def.id,
+      slotType: def.slotType,
+      file: (def.visuals && def.visuals.part) || spec.file,
+      sockets: spec.sockets.map(([name, anchor]) => ({ name, anchor })),
+      targetLength: spec.targetLength,
+    });
+  }
+  return { modules, driveGlow, fittedWeaponIds };
+}
+
+/** Resolve a standard/authored fit socket to a placement position in normalized hull space. */
+function hullLocalPositionForSocket(hull, socketName) {
+  const socket = hull && typeof hull.getObjectByName === 'function' ? hull.getObjectByName(socketName) : null;
+  if (!socket) return null;
+  const local = hull.worldToLocal(socket.getWorldPosition(new THREE.Vector3()));
+  return [local.x, local.y, local.z];
+}
+
+/** Budget-heavy fitted modules → mount descriptors (record + preferred socket + anchor fallback). */
+function fittedModuleMounts(entity, podRecords, greebleRecords, seed) {
+  const { modules } = visibleFittingsForEntity(entity);
+  const mounts = [];
+  const socketUse = new Map();
+  for (const mod of modules) {
+    const records = String(mod.file).startsWith('pods/') ? podRecords : greebleRecords;
+    const record = recordForFile(records, mod.file) || hashedRecord(records, seed, `module:${mod.id}`);
+    for (const socket of mod.sockets) {
+      const ordinal = socketUse.get(socket.name) || 0;
+      socketUse.set(socket.name, ordinal + 1);
+      mounts.push({
+        record,
+        file: mod.file,
+        socket: socket.name,
+        ordinal,
+        placement: {
+          position: socket.anchor.slice(),
+          targetLength: mod.targetLength,
+          label: `Module_${mod.id}_${socket.name}`,
+        },
+      });
+    }
+  }
+  return mounts;
+}
+
+/** Clone-on-write glow tint: drive core/plume materials may be shared cache entries, so the
+ *  fitted drive's color lands on a per-ship clone tracked in mutableMaterials for disposal. */
+function applyFittedDriveGlow(bindings, mutableMaterials, glowHex) {
+  const tint = new THREE.Color(glowHex);
+  const meshes = [...(bindings.driveCores || []), ...(bindings.drivePlumes || [])];
+  for (const mesh of meshes) {
+    if (!mesh || !mesh.material) continue;
+    const source = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    const tinted = source.map((material, index) => {
+      if (!material || !material.isMaterial) return material;
+      let owned = material;
+      if (!material.userData || material.userData.spacefaceDriveGlowTint !== true) {
+        owned = material.clone();
+        owned.userData = { ...(material.userData || {}), spacefaceDriveGlowTint: true };
+        mutableMaterials.set(`driveGlow|${mesh.name || 'mesh'}|${index}|${mutableMaterials.size}`, owned);
+      }
+      if (owned.color) owned.color.copy(tint);
+      if (owned.emissive) owned.emissive.copy(tint);
+      owned.needsUpdate = true;
+      return owned;
+    });
+    mesh.material = Array.isArray(mesh.material) ? tinted : tinted[0];
+  }
+}
+
+function authoredWeaponMounts(entity, shipDef, records, seed, options = {}) {
   const data = entity.data || {};
   const runtimeWeapons = Array.isArray(data.weapons) ? data.weapons : [];
   const fittedWeaponIds = Array.isArray(data.fittings)
@@ -7036,7 +7226,11 @@ function authoredWeaponMounts(entity, shipDef, records, seed) {
     ? shipDef.visuals.hardpoints
     : [];
   const slotEntries = shipSlotEntries(shipDef, 'weapon');
-  const count = Math.min(6, Math.max(runtimeWeapons.length, fittedWeaponIds.length, hardpoints.length, slotEntries.length));
+  // fittedOnly: whole-ship bodies bake their ambient dressing — only guns actually fitted may
+  // sprout on their sockets, never a seed pick for an empty hardpoint.
+  const count = options.fittedOnly === true
+    ? Math.min(6, Math.max(runtimeWeapons.length, fittedWeaponIds.length))
+    : Math.min(6, Math.max(runtimeWeapons.length, fittedWeaponIds.length, hardpoints.length, slotEntries.length));
   const mounts = [];
   for (let i = 0; i < count; i++) {
     const runtime = runtimeWeapons[i] || {};
