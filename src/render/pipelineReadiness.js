@@ -29,6 +29,89 @@ async function settleWithin(promise, timeoutMs) {
   ]);
 }
 
+function ledgerNow() {
+  return typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+}
+
+function settleOutcome(result) {
+  if (result && result.ok === true) return 'resolved';
+  return result && result.timeout === true ? 'timeout' : 'error';
+}
+
+/**
+ * Loading-shell cook ledger (state.render.openingCookLedger). Every awaited step of the opening and
+ * jump cooks pushes one row: its wall milliseconds and whether it resolved, timed out, or was skipped.
+ * The gpu-resources stage is bounded by waits, not work, so the only honest way to shorten it is to
+ * know which wait owns the time and why it ended. Diagnostic only; nothing reads the rows back.
+ */
+export function beginOpeningCookLedger(render, kind) {
+  if (!render || typeof render !== 'object') return null;
+  const ledger = [{
+    step: 'begin', ms: 0, outcome: 'resolved', t: 0, kind: String(kind || 'cook'),
+    wallMs: Date.now(), startedAt: ledgerNow(),
+  }];
+  render.openingCookLedger = ledger;
+  return ledger;
+}
+
+export function recordOpeningCookStep(render, step, startedMs, outcome, detail = null) {
+  if (!render || typeof render !== 'object') return null;
+  let ledger = render.openingCookLedger;
+  if (!Array.isArray(ledger) || ledger.length === 0) ledger = beginOpeningCookLedger(render, 'implicit');
+  const at = ledgerNow();
+  const origin = Number(ledger[0] && ledger[0].startedAt);
+  const row = {
+    step: String(step),
+    ms: Math.round(at - (Number.isFinite(startedMs) ? startedMs : at)),
+    outcome: String(outcome || 'resolved'),
+    t: Number.isFinite(origin) ? Math.round(at - origin) : 0,
+  };
+  if (detail && typeof detail === 'object') {
+    for (const [key, value] of Object.entries(detail)) {
+      if (value !== undefined && !(key in row)) row[key] = value;
+    }
+  }
+  ledger.push(row);
+  return row;
+}
+
+/** One compact console line for a finished cook ledger. */
+export function formatOpeningCookLedger(ledger) {
+  const rows = Array.isArray(ledger) ? ledger.filter(Boolean) : [];
+  const head = rows[0] && rows[0].step === 'begin' ? rows[0] : null;
+  const total = rows.reduce((max, row) => Math.max(max, Number(row.t) || 0), 0);
+  // 1 Hz lane samples stay in the ledger array for probes; the console line keeps only their count.
+  const samples = rows.filter((row) => row.step === 'lane').length;
+  const parts = rows.filter((row) => row !== head && row.step !== 'lane').map((row) => {
+    const detail = Object.entries(row)
+      .filter(([key]) => key !== 'step' && key !== 'ms' && key !== 'outcome' && key !== 't')
+      .map(([key, value]) => `${key}=${value !== null && typeof value === 'object' ? JSON.stringify(value) : value}`)
+      .join(',');
+    return `${row.step} ${row.ms}ms ${row.outcome}${detail ? ` (${detail})` : ''}`;
+  });
+  if (samples > 0) parts.push(`lane samples ${samples}`);
+  return `[render] ${head ? head.kind : 'cook'} ledger ${total} ms: ${parts.join(' | ')}`;
+}
+
+function logOpeningCookLedger(ledger) {
+  if (!Array.isArray(ledger)) return;
+  try { console.info(formatOpeningCookLedger(ledger)); } catch { /* diagnostics must not throw */ }
+}
+
+/** 1 Hz `lane` rows while a cook runs, from the renderer's sampler when it has one. */
+function startOpeningCookLaneSampler(render) {
+  const sample = render && typeof render.sampleOpeningCookLane === 'function'
+    ? render.sampleOpeningCookLane
+    : null;
+  if (!sample || typeof setInterval !== 'function') return () => {};
+  const timer = setInterval(() => {
+    try { recordOpeningCookStep(render, 'lane', NaN, 'sample', sample()); } catch { /* diagnostics only */ }
+  }, 1000);
+  return () => clearInterval(timer);
+}
+
 /**
  * Coalesce authored-material subjects into one driver admission pass and expose one aggregate gate.
  * compileAsync() polls driver program status; invoking it once per ship multiplied those synchronous
@@ -64,6 +147,7 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   let maxTimer = null;
   let compileTail = Promise.resolve();
   let nextAdmissionId = 0;
+  let settledAdmissions = 0;
   let boundedResume = false;
   let resumeScheduled = false;
   let skippedResumeForLatePresent = false;
@@ -248,7 +332,10 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
         reject,
         completion: null,
       };
-      entry.completion = compilation.finally(() => pending.delete(entry));
+      entry.completion = compilation.finally(() => {
+        pending.delete(entry);
+        settledAdmissions += 1;
+      });
       pending.add(entry);
       queued.push(entry);
       scheduleFlush();
@@ -278,6 +365,9 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     },
     waitForPending,
     get pendingCount() { return pending.size; },
+    /** Admissions not yet handed to compileBatch (the rest of pendingCount is linking). */
+    get queuedCount() { return queued.length; },
+    get settledCount() { return settledAdmissions; },
   };
 }
 
@@ -507,19 +597,38 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
     && render.sessionLiveSectorCookedId === sectorId
     && gpuContextIsLost(state) !== true);
   const prepare = render && render.prepareOpeningGpuResources;
+  const ledger = beginOpeningCookLedger(render, recook ? 'opening-recook' : 'opening');
+  const stopLaneSampler = startOpeningCookLaneSampler(render);
+  let ledgerFinished = false;
+  const finishLedger = () => {
+    if (ledgerFinished) return;
+    ledgerFinished = true;
+    stopLaneSampler();
+    logOpeningCookLedger(ledger);
+  };
   if (!recook && typeof prepare === 'function') {
+    const prepareStarted = ledgerNow();
     const readiness = Promise.resolve().then(() => prepare());
     render.openingGpuResidencyReady = readiness;
     const result = await settleWithin(readiness, timeoutMs);
-    if (gpuContextIsLost(state)) return false;
+    recordOpeningCookStep(render, 'wait.prepareOpeningGpuResources', prepareStarted, settleOutcome(result));
+    if (gpuContextIsLost(state)) {
+      finishLedger();
+      return false;
+    }
     // Prepare timeout still runs the live-sector cook while loading owns the frame.
     void result;
+  } else {
+    recordOpeningCookStep(render, 'wait.prepareOpeningGpuResources', ledgerNow(), 'skipped', {
+      reason: recook ? 'session-recook' : 'unavailable',
+    });
   }
   // Maps and geometries just landed. Publish the held next-sector upgrades,
   // drain their compiles, and touch the live materials so first flight bloom
   // is not the first ANGLE draw of those keys.
   // Same-sector F9 recook skips the opening 1x1; programs/buffers are resident.
   if (state && state.mode === 'loading') {
+    const presentStarted = ledgerNow();
     const presentCook = Promise.resolve().then(() => (
       typeof render.prepareLiveSectorBeforeFlight === 'function'
         ? render.prepareLiveSectorBeforeFlight()
@@ -527,7 +636,17 @@ export async function waitForOpeningGpuResources(state, timeoutMs = 20000) {
     ));
     render.liveScenePresentReady = presentCook;
     const presentResult = await settleWithin(presentCook, timeoutMs);
+    const presentOutcome = settleOutcome(presentResult);
+    recordOpeningCookStep(render, 'wait.prepareLiveSectorBeforeFlight', presentStarted, presentOutcome);
+    if (presentOutcome === 'timeout') {
+      // The gate stopped waiting but the cook keeps running into flight; log it when it really ends.
+      presentCook.then(finishLedger, finishLedger);
+    } else {
+      finishLedger();
+    }
     if (!presentResult.ok || gpuContextIsLost(state)) return false;
+  } else {
+    finishLedger();
   }
   return gpuContextIsLost(state) !== true;
 }

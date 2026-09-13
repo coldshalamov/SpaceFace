@@ -37,6 +37,7 @@ import {
   getAuthoredInstancePoolDiagnostics,
   asteroidFirstFlightCookKey,
   collectFirstFlightCookEntities,
+  describeAuthoredUpgradeQueue,
   FIRST_FLIGHT_ROCK_COOK_CAP,
   firstFlightRockCookRadiusWu,
   isFirstFlightCookEntity,
@@ -196,8 +197,11 @@ import {
 } from './shadowDepthAdmission.js';
 import { preloadRockSurfaceLibrary } from './rockSurfaceLibrary.js';
 import {
+  beginOpeningCookLedger,
   createGpuResidencyAdmissionTracker,
   createPipelineAdmissionTracker,
+  formatOpeningCookLedger,
+  recordOpeningCookStep,
 } from './pipelineReadiness.js';
 import { FIRST_FLIGHT_PIPELINE_HOLD_S, shouldDeferPipelineAutoFlush } from './pipelineAutoFlushPolicy.js';
 import {
@@ -4798,6 +4802,21 @@ export const render = {
     };
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileExplicit(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
+    // Cook-ledger sampler (1 Hz while the opening cook runs): the admission lane and the upgrade queue.
+    state.render.sampleOpeningCookLane = () => {
+      const upgrades = describeAuthoredUpgradeQueue(scene);
+      return {
+        queued: pipelineAdmissions.queuedCount,
+        flushed: pipelineAdmissions.pendingCount - pipelineAdmissions.queuedCount,
+        settled: pipelineAdmissions.settledCount,
+        upgradeJobs: upgrades.pending,
+        upgradeInFlight: upgrades.inFlight,
+        upgradeCompiling: (upgrades.jobs || []).filter((job) => (
+          job.lifecycle === 'in-flight' || job.status === 'compiling-pipelines'
+        )).length,
+        meshBuilds: this._meshBuildQueue.length - this._meshBuildQueueHead,
+      };
+    };
     state.render.drainPendingPipelineAdmissions = () => {
       const plan = pipelineAdmissions.capturePending();
       if (!plan || plan.pendingCount === 0) {
@@ -4817,6 +4836,7 @@ export const render = {
         reattachResidentGpuMeshes(this);
         this._sessionLiveSectorCookedId = recookSectorId;
         state.render.sessionLiveSectorCookedId = recookSectorId;
+        recordOpeningCookStep(state.render, 'live.sessionRecook', NaN, 'skipped');
         return {
           skipped: true,
           reason: 'session-recook-keep-gpu',
@@ -4863,14 +4883,34 @@ export const render = {
       const prepareStarted = prepareNow();
       const PREPARE_BUDGET_MS = 20000;
       const remainingMs = () => Math.max(400, PREPARE_BUDGET_MS - (prepareNow() - prepareStarted));
+      let meshBuildDrains = 0;
       const drainMeshBuildsBehindShell = async (deadlineMs = 8000) => {
+        const step = `live.meshBuilds${++meshBuildDrains}`;
         const started = prepareNow();
         const cap = Math.min(deadlineMs, remainingMs());
+        const queued = this._meshBuildQueue.length - this._meshBuildQueueHead;
+        let passes = 0;
+        let built = 0;
+        let buildMs = 0;
+        let capped = false;
         while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
-          if (prepareNow() - started > cap) break;
-          this._drainMeshBuildQueue(1);
+          if (prepareNow() - started > cap) {
+            capped = true;
+            break;
+          }
+          const buildStarted = prepareNow();
+          built += Number(this._drainMeshBuildQueue(1)) || 0;
+          buildMs += prepareNow() - buildStarted;
+          passes += 1;
           await yieldLiveSectorGpu();
         }
+        recordOpeningCookStep(state.render, step, started, capped ? 'timeout' : 'resolved', {
+          queued,
+          passes,
+          built,
+          buildMs: Math.round(buildMs),
+          left: this._meshBuildQueue.length - this._meshBuildQueueHead,
+        });
       };
       if (!scene.environment) this._bakeEnv({ force: true });
       if (scene.environment) bindEnvironmentToStandardMaterials(scene, scene.environment);
@@ -4880,6 +4920,35 @@ export const render = {
         ? resumeAuthoredUpgradeQueueForLoadingHulls(scene)
         : resumeAuthoredUpgradeQueueAfterOpening(scene);
       if (!recook) pipelineAdmissions.resumeAutoFlush();
+      // Loading defers the admission lane's auto-flush for the whole opening: the post-opening
+      // release (preparePostOpeningPipelines) never runs on KHR hardware, and resumeAutoFlush() above
+      // only re-polls that hold. A compile that an opening upgrade starts inside this cook awaits the
+      // lane, so the composition and idle waits below could only end by timeout. Measured 2026-09-13
+      // (laneB-ledger): four nearby ships sat at compiling-pipelines through the whole 12 s + 6 s, the
+      // 20 s gate released loading, and the 31 queued compiles drained in the first flight second.
+      // Flush the lane while the cook waits, one cohort at a time, so every compile that queues while
+      // a cohort links leaves together (issue all, drain once). Same-sector F9 never flushes here.
+      let liveSectorPipelineFlush = null;
+      const flushPipelinesBehindShell = () => {
+        if (recook || liveSectorPipelineFlush || pipelineAdmissions.pendingCount === 0) {
+          return liveSectorPipelineFlush;
+        }
+        let drained;
+        try {
+          drained = state.render.drainPendingPipelineAdmissions();
+        } catch (error) {
+          drained = Promise.reject(error);
+        }
+        liveSectorPipelineFlush = Promise.resolve(drained)
+          .catch(() => null)
+          .finally(() => { liveSectorPipelineFlush = null; });
+        return liveSectorPipelineFlush;
+      };
+      const yieldAndFlushLiveSectorGpu = async () => {
+        flushPipelinesBehindShell();
+        await yieldLiveSectorGpu();
+      };
+      flushPipelinesBehindShell();
       const openingEntities = (state.entityList || []).filter((entity) => (
         isInitialAuthoredCompositionEntity(entity, state)
       ));
@@ -4893,21 +4962,38 @@ export const render = {
       // Nearby opening actors stay on onBeforeRender until a real flight draw.
       // Kick them here so the live-scene cook sees their authored materials,
       // not the procedural stand-in that first flight would otherwise compile.
+      let liveStepStarted = prepareNow();
       const opening = recook
         ? { skipped: true, settled: true, reason: 'session-recook-visuals-already-ready' }
         : await waitForOpeningCompositionSettled(state, {
           timeoutMs: Math.min(12000, remainingMs()),
-          yieldToMain: yieldLiveSectorGpu,
+          yieldToMain: yieldAndFlushLiveSectorGpu,
           renderer,
           scene,
           meshes: this._meshes,
         });
+      recordOpeningCookStep(state.render, 'live.openingComposition', liveStepStarted,
+        recook ? 'skipped' : (opening && opening.reason === 'timeout' ? 'timeout' : 'resolved'), {
+          reason: opening && opening.reason || undefined,
+          pending: opening ? opening.pending : undefined,
+          ids: opening && Array.isArray(opening.ids) && opening.ids.length ? opening.ids.join('/') : undefined,
+          statuses: opening && Array.isArray(opening.statuses) && opening.statuses.length
+            ? opening.statuses.slice(0, 6).join('/') : undefined,
+        });
+      liveStepStarted = prepareNow();
       const upgrades = recook
         ? { skipped: true, reason: 'session-recook-hold-leftover-fx' }
         : await waitForAuthoredUpgradeQueueIdle(scene, {
           timeoutMs: Math.min(6000, remainingMs()),
-          yieldToMain: yieldLiveSectorGpu,
+          yieldToMain: yieldAndFlushLiveSectorGpu,
         });
+      recordOpeningCookStep(state.render, 'live.upgradeQueueIdle', liveStepStarted,
+        recook ? 'skipped' : (upgrades && upgrades.idle === true ? 'resolved' : 'timeout'), {
+          pending: upgrades ? upgrades.pending : undefined,
+          inFlight: upgrades ? upgrades.inFlight : undefined,
+          compiling: upgrades ? upgrades.compiling : undefined,
+        });
+      liveStepStarted = prepareNow();
       let pending = { skipped: true, pendingCount: 0 };
       if (!recook) {
         try {
@@ -4916,6 +5002,12 @@ export const render = {
           pending = { skipped: false, error: String(error && error.message || error) };
         }
       }
+      recordOpeningCookStep(state.render, 'live.pendingPipelines', liveStepStarted,
+        pending && pending.skipped === true ? 'skipped' : (pending && pending.error ? 'error' : 'resolved'), {
+          captured: pending ? (pending.capturedCount ?? pending.pendingCount) : undefined,
+          remaining: pending ? pending.remainingCount : undefined,
+        });
+      liveStepStarted = prepareNow();
       if (opening && opening.settled !== true) {
         console.warn('[render] opening composition still pending at live-sector cook', {
           pending: opening.pending,
@@ -4977,7 +5069,11 @@ export const render = {
         this._meshBuildQueuedIds,
         this._meshBuildQueue,
       );
+      recordOpeningCookStep(state.render, 'live.rocksAndLeftoverMeshes', liveStepStarted, 'resolved', {
+        firstFlightEntities: firstFlightEntities.length,
+      });
       await drainMeshBuildsBehindShell();
+      liveStepStarted = prepareNow();
       console.warn('[render] first-flight cook', {
         entities: firstFlightEntities.map((entity) => ({
           id: entity && entity.id,
@@ -4994,16 +5090,24 @@ export const render = {
           yieldToMain: yieldLiveSectorGpu,
           deadlineMs: Math.min(20000, remainingMs()),
         });
+      recordOpeningCookStep(state.render, 'live.cook', liveStepStarted, recook ? 'skipped' : 'resolved');
       // Leftover FX compiles (entity:fx:77/80/81) must finish behind the shell.
       // The pre-cook idle wait can still leave compiling-pipelines jobs that
       // first-drew / TDR'd Intel during the first flight presents.
       // Same-sector F9 recook: those programs already linked. Waiting them
       // again TDR'd Intel in gpu-resources (headed reload witness).
+      liveStepStarted = prepareNow();
       const leftover = recook
         ? { skipped: true, reason: 'session-recook-hold-leftover-fx' }
         : await waitForAuthoredUpgradeQueueIdle(scene, {
           timeoutMs: Math.min(8000, remainingMs()),
-          yieldToMain: yieldLiveSectorGpu,
+          yieldToMain: yieldAndFlushLiveSectorGpu,
+        });
+      recordOpeningCookStep(state.render, 'live.leftoverUpgradeIdle', liveStepStarted,
+        recook ? 'skipped' : (leftover && leftover.idle === true ? 'resolved' : 'timeout'), {
+          pending: leftover ? leftover.pending : undefined,
+          inFlight: leftover ? leftover.inFlight : undefined,
+          compiling: leftover ? leftover.compiling : undefined,
         });
       this._sessionLiveSectorCookedId = sectorId;
       state.render.sessionLiveSectorCookedId = sectorId;
@@ -5063,6 +5167,7 @@ export const render = {
       const route = this._selectPostRoute();
       let programs = { skipped: true, reason: 'compile-unavailable' };
       let present = { skipped: true, reason: 'compile-only' };
+      const programsStarted = cookNow();
       try {
         if (options.skipCompile === true) {
           // Same-sector F9 recook: programs already linked. Whole-scene
@@ -5087,6 +5192,10 @@ export const render = {
         restoreShadows();
         restoreReveal();
       }
+      recordOpeningCookStep(state.render, 'cook.programs', programsStarted,
+        programs.skipped === true ? 'skipped' : (programs.error ? 'error' : 'resolved'), {
+          method: programs.method || programs.reason || undefined,
+        });
       // Draw one material at a time on the bloom target. A whole-scene bloom.render
       // while every drawable is revealed formed a framebuffer/texture feedback loop
       // and lost the Intel/ANGLE context.
@@ -5127,15 +5236,75 @@ export const render = {
             ? this.bloom.touchScenePipelines(subject, cam.obj, scene)
             : touchSubjectOnExactTarget(renderer, null, subject, cam.obj, scene)
         );
+        // Ledger only: whether each subject's program had finished linking when it was drawn. A draw
+        // against an unlinked program blocks the main thread in onFirstUse until ANGLE completes it.
+        const subjectProgramAtTouch = (subject) => {
+          const materials = Array.isArray(subject && subject.material)
+            ? subject.material
+            : [subject && subject.material];
+          let status = 'ready';
+          let first;
+          for (const material of materials) {
+            if (!material) continue;
+            let program = null;
+            try { program = renderer.properties.get(material).currentProgram || null; } catch { program = null; }
+            if (first === undefined) first = program;
+            if (!program) {
+              status = 'none';
+              continue;
+            }
+            if (status === 'ready' && !(typeof program.isReady === 'function' && program.isReady() === true)) {
+              status = 'linking';
+            }
+          }
+          return { status, program: first === undefined ? null : first };
+        };
         let touched = 0;
+        let notReady = 0;
+        let noProgram = 0;
+        let switched = 0;
+        let touchMs = 0;
+        let maxTouchMs = 0;
+        const touchStarted = cookNow();
         const yieldTouch = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+        // Names of subjects that still had no compiled program at touch time — they are the
+        // programs the first presented frame will link synchronously. Counts alone never said
+        // which objects escaped every admission gate.
+        const noProgramNames = [];
+        const subjectName = (subject) => String(
+          subject && (subject.name || (subject.userData && subject.userData.assetId)
+            || (subject.material && subject.material.name))
+          || (subject && subject.type) || 'subject'
+        );
         for (const subject of units.programSubjects) {
           if (cookOverBudget()) break;
+          const before = subjectProgramAtTouch(subject);
+          if (before.status !== 'ready') notReady += 1;
+          if (before.status === 'none') {
+            noProgram += 1;
+            if (noProgramNames.length < 12) noProgramNames.push(subjectName(subject));
+          }
           const restoreSubject = revealSubjectForCompile(subject);
+          const drawStarted = cookNow();
           try { touch(subject); } finally { restoreSubject(); }
+          const drawMs = cookNow() - drawStarted;
+          touchMs += drawMs;
+          if (drawMs > maxTouchMs) maxTouchMs = drawMs;
+          if (subjectProgramAtTouch(subject).program !== before.program) switched += 1;
           touched += 1;
           if (yieldTouch) await yieldTouch();
         }
+        recordOpeningCookStep(state.render, 'cook.touch', touchStarted,
+          touched < units.programSubjects.length ? 'timeout' : 'resolved', {
+          subjects: units.programSubjects.length,
+          touched,
+          notReady,
+          noProgram,
+          noProgramNames: noProgramNames.length ? noProgramNames : undefined,
+          switched,
+          touchMs: Math.round(touchMs),
+          maxTouchMs: Math.round(maxTouchMs),
+        });
         present = {
           skipped: false,
           method: 'per-subject-touch',
@@ -5183,6 +5352,7 @@ export const render = {
       const restoreFirstFlight = options.skipCompile === true || options.holdLeftoverFx === true
         ? []
         : firstFlightRoots.map((root) => revealSubjectForCompile(root));
+      const buffersStarted = cookNow();
       let buffers;
       try {
         if (cookOverBudget()) {
@@ -5201,6 +5371,12 @@ export const render = {
       } finally {
         for (const restore of restoreFirstFlight) restore();
       }
+      recordOpeningCookStep(state.render, 'cook.buffers', buffersStarted,
+        buffers && buffers.reason === 'loading-budget' ? 'timeout' : 'resolved', {
+          roots: firstFlightBufferRoots.length,
+          textures: buffers ? buffers.textures : undefined,
+        });
+      const layersStarted = cookNow();
       // Count-0 / drawRange-0 effect drawables (plumes, RCS, plasma strips, retro,
       // ribbon trails) are skipped unless revealed. 1x1 every first-flight layer.
       // InstancedMesh-only left a +6 geo stall that first-drew in bloom (164 ms).
@@ -5221,6 +5397,8 @@ export const render = {
           for (const restore of restoreLayers) restore();
         }
       }
+      recordOpeningCookStep(state.render, 'cook.layers', layersStarted,
+        layerRoots.length === 0 ? 'skipped' : 'resolved', { roots: layerRoots.length });
       if (typeof state.render.restLiveFlightEffectsAfterCook === 'function') {
         state.render.restLiveFlightEffectsAfterCook();
       }
@@ -5268,6 +5446,7 @@ export const render = {
         }
       };
       state.render.liveSectorGpuAdmission = true;
+      const jumpLedger = beginOpeningCookLedger(state.render, 'jump');
       try {
         if (!scene.environment) this._bakeEnv({ force: true });
         if (scene.environment) bindEnvironmentToStandardMaterials(scene, scene.environment);
@@ -5314,7 +5493,13 @@ export const render = {
           this._meshBuildQueuedIds,
           this._meshBuildQueue,
         );
-        this._drainMeshBuildQueue(Number.POSITIVE_INFINITY);
+        const jumpBuildsStarted = typeof performance !== 'undefined' && typeof performance.now === 'function'
+          ? performance.now() : Date.now();
+        const jumpBuilt = this._drainMeshBuildQueue(Number.POSITIVE_INFINITY);
+        recordOpeningCookStep(state.render, 'jump.meshBuilds', jumpBuildsStarted, 'resolved', {
+          built: jumpBuilt,
+          firstFlightEntities: firstFlightEntities.length,
+        });
         // Helios leftover FX (entity:fx:77/81) is still compiling when the Ceres
         // jump shell starts. Flushing that queue then 1x1ing firstFlightRoots
         // TDR'd Intel in prepareStartupGpuResidency (headed sector-entry run70).
@@ -5338,6 +5523,7 @@ export const render = {
         state.render.liveSectorFirstFlightIds = null;
         holdAuthoredUpgradeQueueForFirstFlight(scene);
         freezeOpeningGraphPublication(this);
+        try { console.info(formatOpeningCookLedger(jumpLedger)); } catch { /* diagnostics only */ }
         // Both guards above are the OPENING's, and the only thing that ever lifts them is the
         // opening's one-shot latch (`_firstFlightDeferredHold`, armed by mode:changed -> loading
         // and fired once by prepareFrame). A gate jump never returns to loading, so without this
@@ -5451,21 +5637,34 @@ export const render = {
     state.render.prepareOpeningGpuResources = async () => {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common
       // rock receives its final PBR maps on its first and only visual publication.
+      const rockWaitStarted = performance.now();
       if (this.rockSurfaceLibraryReady) {
+        let rockTimedOut = false;
         await Promise.race([
           this.rockSurfaceLibraryReady,
-          new Promise((resolve) => setTimeout(resolve, 4000)),
+          new Promise((resolve) => setTimeout(() => { rockTimedOut = true; resolve(); }, 4000)),
         ]);
+        recordOpeningCookStep(state.render, 'opening.rockSurfaceLibrary', rockWaitStarted,
+          rockTimedOut ? 'timeout' : 'resolved');
+      } else {
+        recordOpeningCookStep(state.render, 'opening.rockSurfaceLibrary', rockWaitStarted, 'skipped');
       }
+      const openingNow = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now() : Date.now());
+      let openingStepStarted = openingNow();
       const restoreLivingHullWarmup = this._livingHullPresentation
         ? this._livingHullPresentation.beginGpuWarmup()
         : null;
       try {
+        openingStepStarted = openingNow();
         if (this._firstPresentGpuAdmission) {
-          await Promise.race([
-            this._firstPresentGpuAdmission,
-            new Promise((resolve) => setTimeout(resolve, 8000)),
+          const admissionOutcome = await Promise.race([
+            Promise.resolve(this._firstPresentGpuAdmission).then(() => 'resolved'),
+            new Promise((resolve) => setTimeout(() => resolve('timeout'), 8000)),
           ]);
+          recordOpeningCookStep(state.render, 'opening.firstPresentAdmission', openingStepStarted, admissionOutcome);
+        } else {
+          recordOpeningCookStep(state.render, 'opening.firstPresentAdmission', openingStepStarted, 'skipped');
         }
         const plan = state.render.openingSubmissionPlan || buildOpeningSubmissionPlan();
         if (!plan || plan.complete !== true
@@ -5473,8 +5672,12 @@ export const render = {
           || plan.firstPlayablePipelineSet.complete !== true) {
           // Refusing here left New Game on gpu-resources until the 90s playable
           // gate fired. Enter flight and keep admitting behind the first picture.
+          recordOpeningCookStep(state.render, 'opening.plan', openingNow(), 'skipped', {
+            reason: 'opening-plan-incomplete',
+          });
           return { skipped: true, reason: 'opening-plan-incomplete' };
         }
+        openingStepStarted = openingNow();
         const residency = prepareStartupGpuResidency(renderer, plan.residencySubjects, {
           yieldToMain: yieldToBrowser,
           onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
@@ -5488,6 +5691,12 @@ export const render = {
             textures: 0,
           }), 5000)),
         ]);
+        recordOpeningCookStep(state.render, 'opening.residency', openingStepStarted,
+          result && result.reason === 'loading-budget' ? 'timeout' : 'resolved', {
+            subjects: Array.isArray(plan.residencySubjects) ? plan.residencySubjects.length : undefined,
+            textureRefs: Array.isArray(plan.textureRefs) ? plan.textureRefs.length : undefined,
+            textures: result ? result.textures : undefined,
+          });
         if (result && result.skipped === true) {
           result.openingSubmissionPlan = plan;
           return result;
@@ -5496,6 +5705,7 @@ export const render = {
         result.openingCompositionRoots = plan.roots.length;
         result.vfxRoots = plan.roots.filter((root) => root.role === 'vfx').length;
         result.vfxTextures = plan.textures.length;
+        openingStepStarted = openingNow();
         const postRoute = this._selectPostRoute();
         let openingPostMaterials = [];
         if (postRoute === POST_PROCESS_ROUTE.BLOOM
@@ -5518,21 +5728,33 @@ export const render = {
           });
           openingPostMaterials = this._renderGraph.openingProgramMaterials();
         }
+        recordOpeningCookStep(state.render, 'opening.postResources', openingStepStarted, 'resolved', {
+          route: postRoute,
+        });
         // Ship pipeline compiles queued during authored-visuals keep landing through this stage.
         // Flush the captured queue before the binding snapshot so the receipt measures resident
         // programs rather than freezing an in-flight compile as a permanent first-draw refusal.
+        openingStepStarted = openingNow();
         const pendingPipelinePlan = pipelineAdmissions.capturePending();
+        let pipelineDrainOutcome = 'skipped';
         if (pendingPipelinePlan && pendingPipelinePlan.pendingCount > 0) {
           let pipelineDrainTimeout = null;
           try {
-            await Promise.race([
-              pipelineAdmissions.waitForCaptured(pendingPipelinePlan).catch(() => null),
-              new Promise((resolve) => { pipelineDrainTimeout = setTimeout(resolve, 3000); }),
+            pipelineDrainOutcome = await Promise.race([
+              pipelineAdmissions.waitForCaptured(pendingPipelinePlan).then(() => 'resolved', () => 'error'),
+              new Promise((resolve) => {
+                pipelineDrainTimeout = setTimeout(() => resolve('timeout'), 3000);
+              }),
             ]);
           } finally {
             if (pipelineDrainTimeout !== null) clearTimeout(pipelineDrainTimeout);
           }
         }
+        recordOpeningCookStep(state.render, 'opening.capturedPipelineDrain', openingStepStarted, pipelineDrainOutcome, {
+          captured: pendingPipelinePlan ? pendingPipelinePlan.pendingCount : 0,
+          stillPending: pipelineAdmissions.pendingCount,
+        });
+        openingStepStarted = openingNow();
         // The first visible frame is the only submission. Capture its resource baseline now that
         // exact leaves, textures, and post targets are admitted; drawPreparedFrame validates that
         // no program/geometry/texture appears outside this frozen plan.
@@ -5543,6 +5765,7 @@ export const render = {
           shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
         });
         await yieldToBrowser();
+        recordOpeningCookStep(state.render, 'opening.receipt', openingStepStarted, 'resolved');
         state.render.startupGpuResidency = result;
         return result;
       } finally {

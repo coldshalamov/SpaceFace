@@ -121,7 +121,38 @@ function readGpuAndOpeningInPage() {
         [entry.id, entry.status, entry.type, entry.defId].filter((bit) => bit != null && bit !== '').join(':')
       ))
       : null,
+    // The loading-shell cook ledger (src/render/pipelineReadiness.js): one row per awaited step.
+    openingCookLedger: (() => {
+      try {
+        const ledger = window.SF?.state?.render?.openingCookLedger
+          ?? window.SF?.registry?.get?.('render')?.state?.render?.openingCookLedger;
+        return Array.isArray(ledger) ? JSON.parse(JSON.stringify(ledger)) : null;
+      } catch { return null; }
+    })(),
   };
+}
+
+/** The cook ledger as a table: which awaited step owned the loading time and how each one ended. */
+function cookLedgerLines(ledger, timeline) {
+  if (!Array.isArray(ledger) || ledger.length < 2) return [];
+  const head = ledger[0]?.step === 'begin' ? ledger[0] : null;
+  const lines = ['## Opening cook ledger', ''];
+  const afterLaunch = (wallMs) => ((wallMs - timeline.launchWallMs) / 1000).toFixed(1);
+  if (head && Number.isFinite(head.wallMs)) {
+    lines.push(`The ${head.kind} cook began ${afterLaunch(head.wallMs)} s after Launch; flight began at ${afterLaunch(timeline.flightWallMs)} s. \`t\` is ms from the cook's start to the end of the step.`, '');
+  }
+  lines.push('| step | ms | outcome | t ms | detail |', '|---|---:|---|---:|---|');
+  for (const row of ledger) {
+    if (row === head) continue;
+    const { step, ms, outcome, t, ...detail } = row;
+    const text = Object.entries(detail)
+      .map(([key, value]) => `${key}=${value !== null && typeof value === 'object' ? JSON.stringify(value) : value}`)
+      .join(' ')
+      .replace(/\|/g, '/');
+    lines.push(`| ${step} | ${ms} | ${outcome} | ${t} | ${text} |`);
+  }
+  lines.push('');
+  return lines;
 }
 
 const NATIVE_BUCKETS = new Set(['(program)', '(idle)', '(garbage collector)', '(root)']);
@@ -424,6 +455,11 @@ function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, 
   lines.push('');
   if (atFlight?.openingPending?.length) {
     lines.push(`Opening work still pending when flight began: ${atFlight.openingPending.map((id) => `\`${id}\``).join(', ')}.`, '');
+  }
+  try {
+    lines.push(...cookLedgerLines(atEnd?.openingCookLedger || atFlight?.openingCookLedger, timeline));
+  } catch (error) {
+    lines.push(`Opening cook ledger could not be formatted: ${error?.message}`, '');
   }
 
   lines.push(...entryTable(summarizeProfile(profile, index), 12));
