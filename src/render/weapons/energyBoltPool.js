@@ -7,6 +7,7 @@ import {
 } from '../dynamicBufferRanges.js';
 import { BOLT_VARIANT } from './recipes.js';
 import { DEFAULT_BOLT_MIN_LENGTH_PIXELS, DEFAULT_BOLT_MIN_PIXELS, tanHalfFov } from './pixelFloor.js';
+import { createSpindleGeometry } from './projectileGeometries.js';
 
 export const ENERGY_BOLT_CAPACITY = 256;
 
@@ -67,14 +68,15 @@ const VERTEX_SHADER = /* glsl */`
     float width = max(aBoltSize.y, worldPerPx * minPixels);
     float dash = max(aBoltSize.x + smear, worldPerPx * uMinLengthPixels);
 
-    vec3 toCam = cameraPosition - mid;
-    vec3 side = cross(axis, toCam);
-    float sideLen = length(side);
-    side = sideLen > 1e-5 ? side / sideLen : vec3(0.0, 1.0, 0.0);
+    // Stable 3D orthonormal frame around velocity axis (no camera-facing billboarding)
+    vec3 up = abs(axis.y) < 0.99 ? vec3(0.0, 1.0, 0.0) : vec3(1.0, 0.0, 0.0);
+    vec3 r1 = normalize(cross(axis, up));
+    vec3 r2 = cross(axis, r1);
 
+    // True volumetric 3D orientation: position.x along flight axis, position.y & position.z are radial
     vec3 world = mid
-      + axis * (uv.x - 0.5) * dash
-      + side * (uv.y - 0.5) * width;
+      + axis * position.x * dash
+      + (r1 * position.y + r2 * position.z) * width;
     gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
   }
 `;
@@ -110,18 +112,50 @@ const FRAGMENT_SHADER = /* glsl */`
     if (body < 0.004) discard;
 
     vec3 col = mix(vSheath, vColor, clamp(core * 1.15, 0.0, 1.0));
-    // Rail / siege may go white-hot. Pulse and kinetic keep authored hue.
-    float whiteHot = step(2.5, vVariant) * (1.0 - step(3.5, vVariant));
-    col = mix(col, vec3(1.0, 0.97, 0.93), core * whiteHot * 0.82);
-    col.r *= 1.0 + (vUv.y - 0.5) * 0.18;
-    col.b *= 1.0 - (vUv.y - 0.5) * 0.16;
 
+    // Variant 0: Pulse - laser dielectric dart with brilliant electric-cyan punch
+    float pulse = 1.0 - step(0.5, vVariant);
+    float pulseTip = smoothstep(0.0, 0.1, vAlong) * smoothstep(1.0, 0.88, vAlong);
+    body = mix(body, (sheath * 0.4 + core * 1.2) * pulseTip, pulse);
+    col = mix(col, vec3(0.92, 0.98, 1.0), core * pulse * 0.7);
+
+    // Variant 1: Plasma - superheated incandescent convection with boiling edges
+    float plasma = step(0.5, vVariant) * (1.0 - step(1.5, vVariant));
+    float plasmaBulb = sin(clamp(vAlong, 0.0, 1.0) * 3.14159);
+    float plasmaCore = pow(max(0.0, 1.0 - across), 3.2);
+    body = mix(body, (plasmaCore * 1.1 + sheath * 0.7) * (0.6 + plasmaBulb * 0.5), plasma);
+    col = mix(col, vec3(1.0, 0.95, 0.75), plasmaCore * plasma * 0.85);
+
+    // Variant 2: Kinetic - solid metal sabot core with incandescent rear tracer flare
+    float kinetic = step(1.5, vVariant) * (1.0 - step(2.5, vVariant));
+    float tracerGlow = smoothstep(0.45, 0.0, vAlong);
+    float sabotSolid = pow(max(0.0, 1.0 - across), 8.0);
+    body = mix(body, (sabotSolid * 0.75 + sheath * 0.35) * (0.8 + tracerGlow * 1.4), kinetic);
+    col = mix(col, vec3(1.0, 0.65, 0.25), tracerGlow * kinetic * 0.9);
+
+    // Variant 3: Rail / Siege - hypersonic relativistic needle with white-hot core & shock rings
+    float rail = step(2.5, vVariant) * (1.0 - step(3.5, vVariant));
+    float railRings = 0.85 + 0.15 * sin(vAlong * 38.0);
+    body = mix(body, (core * 1.35 + sheath * 0.5) * railRings, rail);
+    col = mix(col, vec3(1.0, 0.98, 0.95), core * rail * 0.92);
+
+    // Variant 4: EMP - bifurcated electric arcs crackling across fins
     float emp = step(3.5, vVariant) * (1.0 - step(4.5, vVariant));
     float fork = abs(vUv.y - 0.5) * 2.0;
-    body *= mix(1.0, 0.55 + 0.45 * step(0.35, fork) * (1.0 - smoothstep(0.55, 0.95, fork)), emp);
+    float empArc = step(0.32, fork) * (1.0 - smoothstep(0.55, 0.95, fork));
+    body *= mix(1.0, 0.55 + 0.55 * empArc, emp);
+    col = mix(col, vec3(0.75, 0.88, 1.0), empArc * emp * 0.8);
 
+    // Variant 5: Concussion - dense shockwave compression slug
     float concussion = step(4.5, vVariant) * (1.0 - step(5.5, vVariant));
-    body *= mix(1.0, 0.72 + core * 0.4, concussion);
+    float concShock = smoothstep(0.65, 0.98, vAlong);
+    body = mix(body, (core * 0.85 + sheath * 0.7) * (0.8 + concShock * 0.6), concussion);
+    col = mix(col, vec3(1.0, 0.8, 0.45), concShock * concussion * 0.65);
+
+    // Variant 6: Flak - fragmentation fleck with incendiary spark jacket
+    float flak = step(5.5, vVariant);
+    body = mix(body, (core * 1.1 + sheath * 0.6) * (0.7 + 0.3 * sin(vAlong * 25.0)), flak);
+    col = mix(col, vec3(1.0, 0.9, 0.6), core * flak * 0.8);
 
     float radiance = body * vIntensity;
     float alpha = body;
@@ -149,7 +183,7 @@ export class EnergyBoltPool {
   constructor(scene, options = {}) {
     this.capacity = Math.max(1, options.capacity || ENERGY_BOLT_CAPACITY);
     this.scene = scene;
-    this.geometry = new THREE.PlaneGeometry(1, 1);
+    this.geometry = createSpindleGeometry(3);
     this.pos = dynamicAttribute(this.capacity * 3, 3);
     this.prev = dynamicAttribute(this.capacity * 3, 3);
     this.axis = dynamicAttribute(this.capacity * 3, 3);
