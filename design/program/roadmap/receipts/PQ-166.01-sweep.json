@@ -1,6 +1,13 @@
 {
   "clipCount": 0,
+  "canvasClipCount": 0,
+  "canvasClips": [],
   "screens": [
+    {
+      "id": "hud",
+      "clipCount": 0,
+      "clips": []
+    },
     {
       "id": "mainMenu",
       "clipCount": 0,

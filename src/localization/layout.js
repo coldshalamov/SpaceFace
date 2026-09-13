@@ -337,6 +337,111 @@ export function sweepGrowthClips(messages, translate = pseudoLocalize) {
   });
 }
 
+/** Tech-tree canvas node box. English keeps two name lines; growth locales get a third so a long word wraps instead of taking an ellipsis. */
+export const TECH_TREE_NODE_W = 168;
+export const TECH_TREE_NAME_LINE_H = 20;
+export const TECH_TREE_COST_LINE = 18;
+export const TECH_TREE_NAME_LINES_EN = 2;
+export const TECH_TREE_NAME_LINES_GROWTH = 3;
+
+export function techTreeNameLineBudget(locale) {
+  const loc = locale
+    || (typeof document !== 'undefined' && document.documentElement && document.documentElement.dataset.locale)
+    || 'en-US';
+  return loc && loc !== 'en-US' ? TECH_TREE_NAME_LINES_GROWTH : TECH_TREE_NAME_LINES_EN;
+}
+
+export function techTreeNodeHeight(locale) {
+  return TECH_TREE_COST_LINE + techTreeNameLineBudget(locale) * TECH_TREE_NAME_LINE_H;
+}
+
+/**
+ * Wrap a canvas label on spaces, then on characters if a word is wider than the box.
+ * Never inserts an ellipsis — extra lines are a taller box, not a clip.
+ */
+export function wrapCanvasLines(measureWidth, text, maxW) {
+  const raw = String(text == null ? '' : text);
+  if (!raw) return [];
+  const width = Math.max(8, Number(maxW) || 8);
+  const measure = typeof measureWidth === 'function'
+    ? measureWidth
+    : (value) => measureStringWidth(value, 16);
+  const words = raw.split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = '';
+  const flush = () => {
+    if (line) {
+      lines.push(line);
+      line = '';
+    }
+  };
+  const emitFit = (chunk) => {
+    if (!chunk) return;
+    if (measure(chunk) <= width) {
+      lines.push(chunk);
+      return;
+    }
+    let rest = chunk;
+    while (rest) {
+      if (measure(rest) <= width) {
+        lines.push(rest);
+        return;
+      }
+      let lo = 1;
+      let hi = rest.length;
+      let fit = 1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (measure(rest.slice(0, mid)) <= width) {
+          fit = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
+        }
+      }
+      lines.push(rest.slice(0, fit));
+      rest = rest.slice(fit);
+    }
+  };
+  for (const word of words) {
+    const test = line ? `${line} ${word}` : word;
+    if (measure(test) <= width) {
+      line = test;
+      continue;
+    }
+    flush();
+    if (measure(word) <= width) line = word;
+    else emitFit(word);
+  }
+  flush();
+  return lines;
+}
+
+/** True when wrapping the label still needs more lines than the node budget. */
+export function canvasLabelClips(text, options = {}) {
+  const maxW = options.maxW == null ? TECH_TREE_NODE_W : Number(options.maxW);
+  const maxLines = options.maxLines == null
+    ? techTreeNameLineBudget(options.locale)
+    : Number(options.maxLines);
+  const fontSize = options.fontSize == null ? 16 : Number(options.fontSize);
+  const measure = options.measureWidth || ((value) => measureStringWidth(value, fontSize));
+  return wrapCanvasLines(measure, text, maxW).length > maxLines;
+}
+
+export function collectCanvasLabelClips(labels, options = {}) {
+  const clips = [];
+  for (const row of labels || []) {
+    const text = row && row.text;
+    if (text == null || text === '') continue;
+    if (!canvasLabelClips(text, options)) continue;
+    clips.push(Object.freeze({
+      id: row.id || '',
+      text: String(text).slice(0, 80),
+    }));
+  }
+  return Object.freeze({ clipCount: clips.length, clips: Object.freeze(clips) });
+}
+
 export default {
   isScreenCatalogKey,
   isHudCatalogKey,
@@ -347,5 +452,10 @@ export default {
   isElementClipped,
   collectDomClips,
   captureSweepReport,
+  wrapCanvasLines,
+  canvasLabelClips,
+  collectCanvasLabelClips,
+  techTreeNameLineBudget,
+  techTreeNodeHeight,
   CLIP_SWEEP_SEED,
 };

@@ -1,6 +1,19 @@
-import { messages as englishMessages } from './catalogs/en-US.generated.js';
+import { messages as englishExtracted } from './catalogs/en-US.generated.js';
+import { messages as spanishMessages } from './catalogs/es-ES.js';
+import { messages as frenchMessages } from './catalogs/fr-FR.js';
+import { messages as germanMessages } from './catalogs/de-DE.js';
+import { messages as portugueseMessages } from './catalogs/pt-BR.js';
 import { createLocalizationRuntime, DEFAULT_LOCALE, PSEUDO_LOCALE } from './runtime.js';
 import { installLocalizedDocumentBridge, localizationBridgeStats } from './domBridge.js';
+import { STORE_COPY } from './storeCopy.js';
+import { barkMessagesFor } from './barks.js';
+import { SHIPPED_LOCALES } from './pipeline.js';
+
+const englishMessages = Object.freeze({
+  ...englishExtracted,
+  ...barkMessagesFor(DEFAULT_LOCALE),
+  ...STORE_COPY[DEFAULT_LOCALE],
+});
 
 const LOCALE_TOKEN_RE = /^[A-Za-z]{2,3}(?:[-_][A-Za-z0-9]{2,8})*$/;
 const keyByEnglishMessage = new Map();
@@ -13,8 +26,26 @@ for (const [key, entry] of Object.entries(englishMessages).sort(([a], [b]) => a.
 /** The locales the Settings picker offers. English is first: it is the default unless chosen. */
 export const LANGUAGE_OPTIONS = Object.freeze([
   Object.freeze({ id: DEFAULT_LOCALE, label: 'English' }),
+  Object.freeze({ id: 'es-ES', label: 'Español' }),
+  Object.freeze({ id: 'fr-FR', label: 'Français' }),
+  Object.freeze({ id: 'de-DE', label: 'Deutsch' }),
+  Object.freeze({ id: 'pt-BR', label: 'Português (Brasil)' }),
   Object.freeze({ id: PSEUDO_LOCALE, label: 'Pseudo-locale (layout check)' }),
 ]);
+
+export { SHIPPED_LOCALES };
+
+export const CATALOGS = Object.freeze({
+  [DEFAULT_LOCALE]: englishMessages,
+  'es-ES': spanishMessages,
+  es: spanishMessages,
+  'fr-FR': frenchMessages,
+  fr: frenchMessages,
+  'de-DE': germanMessages,
+  de: germanMessages,
+  'pt-BR': portugueseMessages,
+  pt: portugueseMessages,
+});
 
 /** Default route stays English. Any well-formed locale may be chosen via `?locale=` or Settings. */
 export function resolveStartupLocale(search = '') {
@@ -29,7 +60,7 @@ export const startupLocale = resolveStartupLocale(
 
 export const gameLocalization = createLocalizationRuntime({
   locale: startupLocale,
-  catalogs: { [DEFAULT_LOCALE]: englishMessages },
+  catalogs: CATALOGS,
 });
 
 /** Translate generated English inventory copy through the canonical runtime.

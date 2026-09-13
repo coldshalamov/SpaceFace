@@ -22,12 +22,18 @@ import {
 } from '../src/localization/runtime.js';
 import {
   GROWTH_VIEWPORT,
+  TECH_TREE_NODE_W,
+  canvasLabelClips,
+  collectCanvasLabelClips,
   isHudCatalogKey,
   isScreenCatalogKey,
   layoutBoxForKey,
   measureStringWidth,
   sweepGrowthClips,
+  techTreeNameLineBudget,
+  wrapCanvasLines,
 } from '../src/localization/layout.js';
+import { TECH_NODES } from '../src/data/tech.js';
 import { GROWTH_LAYOUT_CSS } from '../src/localization/domBridge.js';
 import { LOCALIZED_CORE_COPY } from '../src/ui/localizedCoreCopy.js';
 
@@ -77,6 +83,7 @@ test('layout helpers expose wrap-safe boxes for screens and the HUD', () => {
   assert.ok(wide > narrow, 'pseudo string is wider than English at the same face size');
   assert.match(GROWTH_LAYOUT_CSS, /#hud/);
   assert.match(GROWTH_LAYOUT_CSS, /sf-barrow__label/);
+  assert.match(GROWTH_LAYOUT_CSS, /sf-overview-row__name/);
   assert.match(GROWTH_LAYOUT_CSS, /overflow-wrap:anywhere/);
   assert.match(GROWTH_LAYOUT_CSS, /white-space:normal/);
   assert.doesNotMatch(GROWTH_LAYOUT_CSS, /font-size:\s*\d/, 'do not cheat clips by shrinking type');
@@ -96,7 +103,12 @@ test('headed capture sweep of every screen reports zero clips', () => {
   const report = JSON.parse(readFileSync(reportPath, 'utf8'));
   assert.equal(report.clipCount, 0, JSON.stringify(report.screens.filter((s) => s.clipCount)));
   assert.ok(report.screens.length >= 10, `sweep covered ${report.screens.length} screens`);
-  console.log(`PQ-166.01 capture-sweep screens=${report.screens.length} clipCount=${report.clipCount}`);
+  assert.ok(
+    report.screens.some((row) => row.id === 'hud'),
+    'headed sweep must include the HUD, not only menus',
+  );
+  assert.equal(report.canvasClipCount ?? 0, 0, JSON.stringify(report.canvasClips || []));
+  console.log(`PQ-166.01 capture-sweep screens=${report.screens.length} clipCount=${report.clipCount} canvas=${report.canvasClipCount ?? 0}`);
 });
 
 test('growth CSS lives on the shipped document bridge, not a test double', () => {
@@ -105,4 +117,23 @@ test('growth CSS lives on the shipped document bridge, not a test double', () =>
   assert.match(source, /#hud/);
   assert.match(source, /html:not\(\[data-locale="en-US"\]\)/);
   assert.doesNotMatch(source, /font-size:\s*[0-9.]+px/, 'layout fix is wrap/box, not type shrink');
+});
+
+test('tech-tree canvas wraps long growth names without an ellipsis', () => {
+  const treeSource = readFileSync(new URL('../src/ui/screens/techTree.js', import.meta.url), 'utf8');
+  assert.match(treeSource, /wrapCanvasLines/);
+  assert.doesNotMatch(treeSource, /rest \+ '…'|'\u2026'/, 'canvas wrap must not insert an ellipsis');
+  assert.equal(techTreeNameLineBudget('qps-ploc'), 3);
+  assert.equal(techTreeNameLineBudget('en-US'), 2);
+  const grown = pseudoLocalize('Matter Compression');
+  assert.equal(grown.includes('…'), false);
+  const lines = wrapCanvasLines((value) => measureStringWidth(value, 16), grown, TECH_TREE_NODE_W);
+  assert.ok(lines.length >= 1);
+  assert.ok(lines.length <= 3, `Matter Compression grew onto ${lines.length} lines`);
+  assert.equal(lines.some((line) => line.includes('…')), false);
+  assert.equal(canvasLabelClips(grown, { locale: 'qps-ploc' }), false);
+  const labels = TECH_NODES.map((node) => ({ id: node.id, text: pseudoLocalize(node.name) }));
+  const canvas = collectCanvasLabelClips(labels, { locale: 'qps-ploc' });
+  assert.equal(canvas.clipCount, 0, JSON.stringify(canvas.clips.slice(0, 5)));
+  console.log(`PQ-166.01 canvas-wrap nodes=${labels.length} clipCount=${canvas.clipCount}`);
 });
