@@ -399,7 +399,6 @@ export const barkDirector = {
     const state = this.state;
     if (!state) return null;
     const player = (state.entities && typeof state.entities.get === 'function' ? state.entities.get(state.playerId) : null)
-      || (Array.isArray(state.entityList) ? state.entityList.find((e) => e && e.id === state.playerId) : null)
       || (state.entities && typeof state.entities === 'object' ? state.entities[state.playerId] : null);
     if (!player || !player.pos) return null;
     let radius = Number(tableSimAuthorityWuFromState(state));
@@ -407,22 +406,17 @@ export const barkDirector = {
     const limit = radius * radius;
     let best = null;
     let bestDistance = Infinity;
-    const entities = Array.isArray(state.entityList) && state.entityList.length
-      ? state.entityList
-      : (state.entities && typeof state.entities.values === 'function'
-        ? [...state.entities.values()]
-        : (state.entities && typeof state.entities === 'object' ? Object.values(state.entities) : []));
-    for (const entity of entities) {
-      if (!eligibleShip(entity, state) || !entity.pos) continue;
+    forEachLivingWorldActor(state, (entity) => {
+      if (!eligibleShip(entity, state) || !entity.pos) return;
       const dx = Number(entity.pos.x) - Number(player.pos.x);
       const dz = Number(entity.pos.z) - Number(player.pos.z);
       const distance = dx * dx + dz * dz;
-      if (!Number.isFinite(distance) || distance > limit) continue;
+      if (!Number.isFinite(distance) || distance > limit) return;
       if (distance < bestDistance || (distance === bestDistance && best && entity.id < best.id)) {
         best = entity;
         bestDistance = distance;
       }
-    }
+    });
     return best;
   },
 

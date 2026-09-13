@@ -402,10 +402,15 @@ export function createThreatHalo(root, busOrOpts) {
   }
 
   function harvestLeftoverTelegraphs(state, tick) {
-    const list = state && state.entityList;
-    if (!Array.isArray(list)) return;
-    for (let i = 0; i < list.length; i++) {
-      const entity = list[i];
+    const index = state && state.entityIndex;
+    const buckets = index && index.__spacefaceEntityIndexV1
+      ? [index.mines, index.vectorMines, index.snares, index.shipLike, index.projectiles]
+      : [state && state.entityList];
+    for (let b = 0; b < buckets.length; b++) {
+      const list = buckets[b];
+      if (!Array.isArray(list)) continue;
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
       if (!entity || entity.alive === false) continue;
       const data = entity.data || {};
       if (entity.type === 'mine' || data.kind === 'mine' || data.mine === true) {
@@ -441,6 +446,7 @@ export function createThreatHalo(root, busOrOpts) {
           durationTicks: TELEGRAPH_CUE_TICKS,
           tick,
         }, tick);
+      }
       }
     }
   }

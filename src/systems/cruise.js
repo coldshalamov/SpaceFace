@@ -3,6 +3,8 @@
 // firing or mass-lock (any entity radius ≥ 60 within 180 wu).
 // The system owns state.player.cruise and emits cruise:charging/engaged/dropped{reason}.
 
+import { queryNearbyEntities } from '../core/spatialQuery.js';
+
 const CHARGE_NEEDED = 3.0;          // s (spec §1)
 const MASS_LOCK_RADIUS = 180;       // wu
 const MASS_LOCK_ENTITY_RADIUS = 60; // wu
@@ -105,10 +107,16 @@ export const cruise = {
   },
 
   _massLocked(player, state) {
-    const list = state.entityList || [];
-    for (const e of list) {
+    const hits = this._massLockScratch || (this._massLockScratch = []);
+    const fallback = (state.entityIndex && Array.isArray(state.entityIndex.collidables)
+      ? state.entityIndex.collidables
+      : state.entityList) || [];
+    const list = queryNearbyEntities(state, player.pos, MASS_LOCK_RADIUS, hits, fallback);
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
       if (!e || e === player || !e.alive) continue;
       if ((e.radius || 0) < MASS_LOCK_ENTITY_RADIUS) continue;
+      if (!e.pos) continue;
       const dx = e.pos.x - player.pos.x;
       const dz = e.pos.z - player.pos.z;
       if (dx * dx + dz * dz <= MASS_LOCK_RADIUS * MASS_LOCK_RADIUS) return true;
