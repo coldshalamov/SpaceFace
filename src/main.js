@@ -338,7 +338,7 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
   return runNewGameStartTransition({
     guard: runTransitionGuard,
     token: transitionToken,
-    prepareRun() {
+    async prepareRun() {
       for (const e of [...state.entityList]) {
         bus.emit('entity:destroyed', { id: e.id, type: e.type, pos: { x: e.pos.x, z: e.pos.z }, radius: e.radius, factionId: e.factionId });
         if (!runTransitionGuard.isCurrent(transitionToken)) return;
@@ -348,6 +348,10 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       resetRunState(state, opts || {});
       resetCombatInputMode(state, registry);
       enterLoadingMode(state, bus);
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      // Let the loading shell paint the "preparing" stage between the synchronous chunks —
+      // the bar's smoothing loop only moves when the compositor gets a frame.
+      await nextPaint();
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
       const resetCompleted = resetFreshRunSystems(registry, {
@@ -372,6 +376,8 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       // before bootstrapScene spawns the player entity. Absent/unknown ids keep the legacy
       // defaults byte-for-byte; nothing about the pick is saved as a class or lock.
       applyStarterPick(state, ships, opts);
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      await nextPaint();
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
       if (newGamePlus) {
@@ -401,6 +407,8 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
           }
         }
       }
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+      await nextPaint();
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
       // Create the canonical player and starting sector before readiness waits. This gives the
@@ -551,6 +559,10 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       detail: 'Keeping authored visuals intact while the saved sector returns',
       transition: 'continue',
     });
+    // Paint the stage boundary before the wait's synchronous prefix — the loader's easing
+    // loop only moves when the compositor gets a frame.
+    await nextPaint();
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     const libraryReady = await waitForAuthoredPartLibrary(state, INITIAL_AUTHORED_VISUAL_TIMEOUT_MS);
     if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!libraryReady) {
@@ -563,6 +575,8 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       detail: 'Committing authored objects before the first playable frame',
       transition: 'continue',
     });
+    await nextPaint();
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     const visualsReady = await waitForInitialAuthoredVisuals(
       state,
       INITIAL_AUTHORED_VISUAL_TIMEOUT_MS,
@@ -579,6 +593,8 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       detail: 'Warming the current render path to avoid first-use stalls',
       transition: 'continue',
     });
+    await nextPaint();
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     if (!shouldAwaitOpeningGpuCook({
       gpu: state.render && state.render.gpu,
       renderer: state.render && state.render.renderer,
@@ -595,6 +611,8 @@ async function finalizeLoadedGame(state, bus, registry, runTransitionGuard, payl
       detail: 'Uploading opening materials in responsive batches',
       transition: 'continue',
     });
+    await nextPaint();
+    if (!runTransitionGuard.isCurrent(transitionToken)) return { stale: true };
     {
       const cook = waitForOpeningGpuResources(state, 20000);
       if (!shouldAwaitOpeningGpuCook({

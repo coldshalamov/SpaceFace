@@ -151,7 +151,8 @@
   width: 0;
   background: #4ec3e6;
   box-shadow: 0 0 8px rgba(78, 195, 230, .55);
-  transition: width .25s ease-out;
+  /* Motion is owned by loadingPresenter's rAF model — a CSS width transition here would
+     double-smooth every per-frame write into visible lag. */
 }
 .boot-progress-pct {
   font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;

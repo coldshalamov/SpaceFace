@@ -1462,6 +1462,10 @@ export function createTerminalArtwork({
   let startTime = 0;
   let currentProgress = 0.05;
   let currentStageId = 'loading';
+  // The presenter streams smoothed progress every frame; only forward to the engine when the
+  // value actually moved so a parked stage cannot queue a backlog of identical messages.
+  let lastPostedProgress = -1;
+  let lastPostedStageId = '';
 
   function isReducedMotion() {
     if (!doc) return false;
@@ -1628,6 +1632,13 @@ export function createTerminalArtwork({
   }
 
   let lastDomTime = 0;
+  // DOM writes below allocate (innerHTML rebuilds, string repeat); skip any write whose
+  // rendered output would be identical to the last one so the loading tick stays cheap.
+  let lastDiagAct = -1;
+  let lastSubsysKey = -1;
+  let lastSegsText = '';
+  let lastPctText = '';
+  let lastStageName = '';
   const actTitles = [
     'SIGNAL_GENESIS // CONDENSATION',
     'DEEP_CURRENTS // FLOW STATE',
@@ -1661,7 +1672,8 @@ export function createTerminalArtwork({
     const actIdx = Math.floor((elapsed % LOOP_SECONDS) / ACT_SECONDS) % ACT_COUNT;
 
     const diagStreamEl = overlay.querySelector('[data-loading-diag-stream]');
-    if (diagStreamEl) {
+    if (diagStreamEl && actIdx !== lastDiagAct) {
+      lastDiagAct = actIdx;
       let html = '';
       for (let i = 0; i < actLogs.length; i++) {
         if (i < actIdx) {
@@ -1691,24 +1703,27 @@ export function createTerminalArtwork({
       const opt = Math.round(Math.min(100, 30 + p * 70));
       const nav = Math.round(Math.min(100, 40 + p * 60));
 
-      const renderLedBar = (pct) => {
-        const segs = 14;
-        const activeCount = Math.round((pct / 100) * segs);
-        let barHtml = '<div class="subsys-led-bar">';
-        for (let s = 0; s < segs; s++) {
-          const cls = s < activeCount ? 'subsys-seg active' : 'subsys-seg';
-          barHtml += `<span class="${cls}"></span>`;
-        }
-        barHtml += '</div>';
-        return barHtml;
-      };
-
-      subsysEl.innerHTML = `
-        <div class="boot-subsys-row"><span class="subsys-name">PWR_CORE</span>${renderLedBar(pwr)}<span class="subsys-val">${pwr}%</span></div>
-        <div class="boot-subsys-row"><span class="subsys-name">AVIONICS</span>${renderLedBar(ion)}<span class="subsys-val">${ion}%</span></div>
-        <div class="boot-subsys-row"><span class="subsys-name">OPT_ARRAY</span>${renderLedBar(opt)}<span class="subsys-val">${opt}%</span></div>
-        <div class="boot-subsys-row"><span class="subsys-name">NAV_LINK</span>${renderLedBar(nav)}<span class="subsys-val">${nav}%</span></div>
-      `;
+      const subsysKey = (pwr << 21) | (ion << 14) | (opt << 7) | nav;
+      if (subsysKey !== lastSubsysKey) {
+        lastSubsysKey = subsysKey;
+        const renderLedBar = (pct) => {
+          const segs = 14;
+          const activeCount = Math.round((pct / 100) * segs);
+          let barHtml = '<div class="subsys-led-bar">';
+          for (let s = 0; s < segs; s++) {
+            const cls = s < activeCount ? 'subsys-seg active' : 'subsys-seg';
+            barHtml += `<span class="${cls}"></span>`;
+          }
+          barHtml += '</div>';
+          return barHtml;
+        };
+        subsysEl.innerHTML = `
+          <div class="boot-subsys-row"><span class="subsys-name">PWR_CORE</span>${renderLedBar(pwr)}<span class="subsys-val">${pwr}%</span></div>
+          <div class="boot-subsys-row"><span class="subsys-name">AVIONICS</span>${renderLedBar(ion)}<span class="subsys-val">${ion}%</span></div>
+          <div class="boot-subsys-row"><span class="subsys-name">OPT_ARRAY</span>${renderLedBar(opt)}<span class="subsys-val">${opt}%</span></div>
+          <div class="boot-subsys-row"><span class="subsys-name">NAV_LINK</span>${renderLedBar(nav)}<span class="subsys-val">${nav}%</span></div>
+        `;
+      }
     }
 
     const segsEl = overlay.querySelector('[data-loading-segments]');
@@ -1717,10 +1732,23 @@ export function createTerminalArtwork({
     if (segsEl) {
       const count = 28;
       const filled = Math.round(currentProgress * count);
-      segsEl.textContent = `[${'█'.repeat(filled)}${'·'.repeat(Math.max(0, count - filled))}]`;
+      const text = `[${'█'.repeat(filled)}${'·'.repeat(Math.max(0, count - filled))}]`;
+      if (text !== lastSegsText) {
+        lastSegsText = text;
+        segsEl.textContent = text;
+      }
     }
-    if (pctEl) pctEl.textContent = `${Math.round(currentProgress * 100)}%`;
-    if (stageNameEl) stageNameEl.textContent = actTitles[actIdx];
+    if (pctEl) {
+      const text = `${Math.round(currentProgress * 100)}%`;
+      if (text !== lastPctText) {
+        lastPctText = text;
+        pctEl.textContent = text;
+      }
+    }
+    if (stageNameEl && actTitles[actIdx] !== lastStageName) {
+      lastStageName = actTitles[actIdx];
+      stageNameEl.textContent = actTitles[actIdx];
+    }
   }
 
   const safeRaf = typeof globalThis.requestAnimationFrame === 'function'
@@ -1774,8 +1802,12 @@ export function createTerminalArtwork({
       const amount = Math.max(0, Math.min(1, Number(stage.progress) || 0));
       currentProgress = amount;
       currentStageId = String(stage.id || 'loading');
-      if (worker) worker.postMessage({ type: 'progress', progress: amount, id: currentStageId });
-      else if (mainEngine) mainEngine.receive({ type: 'progress', progress: amount });
+      if (Math.abs(amount - lastPostedProgress) >= 0.0035 || currentStageId !== lastPostedStageId) {
+        lastPostedProgress = amount;
+        lastPostedStageId = currentStageId;
+        if (worker) worker.postMessage({ type: 'progress', progress: amount, id: currentStageId });
+        else if (mainEngine) mainEngine.receive({ type: 'progress', progress: amount });
+      }
     },
     destroy() {
       this.stop();

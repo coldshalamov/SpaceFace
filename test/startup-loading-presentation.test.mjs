@@ -85,6 +85,73 @@ test('Continue restore errors always release the loading shell', () => {
   presenter.destroy();
 });
 
+test('loading bar eases into each stage and keeps creeping while a stage runs', () => {
+  // A pumpable rAF: the presenter's smoothing loop only exists when an animation clock does.
+  let rafQueue = [];
+  const prevRaf = globalThis.requestAnimationFrame;
+  const prevCancel = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = (fn) => { rafQueue.push(fn); return rafQueue.length; };
+  globalThis.cancelAnimationFrame = () => { rafQueue = []; };
+  try {
+    const bus = createBus();
+    const overlay = fakeElement();
+    const progress = fakeElement();
+    const pct = fakeElement();
+    const document = {
+      getElementById(id) { return id === 'boot-overlay' ? overlay : null; },
+      querySelector(selector) {
+        return new Map([
+          ['[data-loading-progress]', progress],
+          ['[data-loading-pct]', pct],
+        ]).get(selector) || null;
+      },
+    };
+    overlay.classList.add('hidden');
+    overlay.style.display = 'none';
+
+    const presenter = createLoadingPresenter({ document, bus });
+    const width = () => parseFloat(progress.style.width) || 0;
+    // Drain one queued frame per pump step, handing the loop a deterministic clock.
+    let clock = 0;
+    const pump = (frames, stepMs = 16.7) => {
+      const seen = [];
+      for (let i = 0; i < frames; i++) {
+        const q = rafQueue; rafQueue = [];
+        clock += stepMs;
+        for (const fn of q) fn(clock);
+        seen.push(width());
+      }
+      return seen;
+    };
+
+    bus.emit('game:loadingProgress', { id: 'preparing-run', progress: 0.08, label: 'Preparing' });
+    assert.equal(width(), 8, 'a fresh session snaps the bar to the first reported step');
+
+    bus.emit('game:loadingProgress', { id: 'authored-library', progress: 0.25 });
+    const ramp = pump(4);
+    assert.ok(ramp[0] < 12, `the step must ease, not click — first frames still near 8%, got ${ramp[0]}`);
+    assert.ok(ramp.every((v, i) => i === 0 || v >= ramp[i - 1]), 'the bar must never regress mid-stage');
+
+    const approach = pump(60); // ~1s — most of the gap closes, creep already opening headroom
+    const settled = approach[approach.length - 1];
+    assert.ok(settled > 20 && settled < 30, `should be most of the way to 25% + creep, got ${settled}`);
+
+    const creep = pump(180); // ~3s waiting inside the stage — the bar keeps inching forward
+    assert.ok(creep[creep.length - 1] > settled, 'a running stage must keep creeping, not park');
+    assert.ok(creep[creep.length - 1] <= 31.5, 'creep stays inside a small overhang past the stage');
+
+    bus.emit('game:loadingProgress', { id: 'authored-visuals', progress: 0.5 });
+    const next = pump(30);
+    assert.ok(next[next.length - 1] > creep[creep.length - 1] + 2,
+      'the next stage accelerates off the step again');
+    assert.match(pct.textContent, /%$/, 'the pct readout tracks the smoothed value');
+    presenter.destroy();
+  } finally {
+    globalThis.requestAnimationFrame = prevRaf;
+    globalThis.cancelAnimationFrame = prevCancel;
+  }
+});
+
 test('canonical game shell and transition wire the shared staged loading presenter', () => {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
