@@ -3524,6 +3524,8 @@ function buildMassSeed(e) {
   // time); all STATE comes from entity.data.massSeedState. No per-frame allocation.
   let lastPhase = null;
   let phaseWallT = 0;
+  let phaseStartDeploy = 0;
+  let deploy = 0;
   const ease = (t) => { const u = t < 0 ? 0 : t > 1 ? 1 : t; return u * u * (3 - 2 * u); };
   g.userData.updateRuntimeState = (entity, now) => {
     const seedState = entity && entity.data && entity.data.massSeedState;
@@ -3531,6 +3533,7 @@ function buildMassSeed(e) {
     if (phase !== lastPhase) {
       lastPhase = phase;
       phaseWallT = Number.isFinite(now) ? now : 0;
+      phaseStartDeploy = deploy;
     }
     const t = Number.isFinite(now) ? Math.max(0, now - phaseWallT) : 1;
     // Strut deployment target per phase: 0 folded (travel/collapse), 1 deployed (locked anchor),
@@ -3541,7 +3544,11 @@ function buildMassSeed(e) {
     if (phase === 'locking') { deployTarget = 1; beaconMat = beaconDim; gyroSpin = 6; }
     else if (phase === 'active') { deployTarget = 1; beaconMat = beaconActive; }
     else if (phase === 'warning') { deployTarget = 0.82; beaconMat = beaconWarning; }
-    const deploy = phase === 'travel' || phase === 'collapsing' ? 0 : ease(t / 0.35) * deployTarget;
+    // Continue from the last rendered pose, including an unfinished lock ease. Restarting from
+    // zero folds the live anchor on activation and makes the warning retract then reopen.
+    deploy = phase === 'travel' || phase === 'collapsing'
+      ? 0
+      : phaseStartDeploy + (deployTarget - phaseStartDeploy) * ease(t / 0.35);
     for (const strut of struts) {
       const a = strut.userData.anchorAngle;
       const radius = 0.34 + deploy * 0.44;
