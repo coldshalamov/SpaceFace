@@ -9463,7 +9463,7 @@
       "priority": 188,
       "title": "The save portrait",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
