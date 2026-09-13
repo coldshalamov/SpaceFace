@@ -934,6 +934,17 @@ async function attachRuntimeDecoders(gltf, renderer, decoders, disposableDecoder
     } catch (error) {
       warnOnce('ktx2-loader', '[assetLoader] KTX2/BasisU decoder unavailable; release-compressed textures will fail', error);
     }
+    // Embedded KTX2 images go straight to the transcoder instead of three's Blob -> object URL -> fetch
+    // round trip (src/render/embeddedKtx2Textures.js). GLTFLoader keys plugins by extension name, so this
+    // replaces the built-in KHR_texture_basisu handler; images referenced by URI keep the stock path.
+    if (decoders.ktx2 === true && typeof gltf.register === 'function') {
+      try {
+        const { registerEmbeddedKtx2Textures } = await import('./embeddedKtx2Textures.js');
+        gltf.register(registerEmbeddedKtx2Textures);
+      } catch (error) {
+        warnOnce('embedded-ktx2', '[assetLoader] embedded KTX2 fast path unavailable; using the stock GLTF texture path', error);
+      }
+    }
   }
 
   if (typeof gltf.setDRACOLoader === 'function') {
