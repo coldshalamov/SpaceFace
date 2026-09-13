@@ -16,15 +16,11 @@ the wrong moment** (building and checking graphics shaders while you watch), **w
 screen, stuck test programs eating three CPU cores), and **bookkeeping repeated far more often than
 it changes** (a combat label rewritten for every ship on every tick).
 
-**Where it stands (evening of 2026-09-13).** On the owner's laptop, Launch to flying went from 32.2 s to
-7.5 s, the multi-second freeze as flight begins is gone (no long freeze in the first 10 s of flight),
-and charging a jump went from 8.3 s with 34 hitches and blocks up to 4.8 s to 3.4 s with 6 hitches and
-nothing over 81 ms. Warm loading now mostly waits on the graphics driver to build shaders, so more
-main-thread savings no longer shorten it much. Still open, and being worked: a ~1 s freeze the first time a new
-kind of engine plume is drawn (backlog item 2), a 0.4 s freeze opening the galaxy map (item 45), about 1 s of
-loading still spent asking the driver whether shaders are valid, and a graphics error in flight that makes the
-driver skip a draw every frame (item 20). Busy-sector frame times have not improved yet (presentation p95 12.7 ms
-against 10.6 ms this morning, on a run that shared the laptop with other work).
+**Where it stands (end of 2026-09-13).** On the owner's laptop, with nothing else running, Launch to flying takes 4.2 s (2.9 s on the other quiet run) against 32.2 s this morning,
+no single freeze while loading is longer than 198 ms, and the first 10 s of flight have no long task. A jump to Ceres runs with nothing over 77 ms, and 8 s of
+busy flight there had no long task with the main thread 56 % busy. A rendering bug found on the way is fixed: while the renderer held shadow refreshes in the first 20 s of flight, the graphics driver rejected every lit draw that needed the not-yet-created shadow map, so the player's own ship was not drawn. Drawing those objects costs real frame time in early flight (main thread 47 % -> 83 % busy in the first 10 s, still with no freeze), the same cost every frame already paid once the hold ended. Preparing engine-plume shaders when a ship spawns did not remove the one-time freeze on a cold shader cache, so it was not kept; it remains backlog item 2.
+Earlier timings in this document were taken while other agents' tests shared the laptop; the final ones were taken after those
+processes were stopped, and on a 15 W chip that alone is a large part of the difference.
 
 ## How every change is judged (the scoreboard)
 
@@ -33,12 +29,12 @@ and after, one headed run at a time on a quiet machine. Headless or software-GPU
 
 | What you feel | Instrument | Morning | Final |
 |---|---|---|---|
-| Launch click to flying (second launch) | `node scripts/probe-main-thread-profile.mjs --from-launch --keep-profile=p0913a` | 32.2 s | 7.5 s |
+| Launch click to flying (second launch) | `node scripts/probe-main-thread-profile.mjs --from-launch --keep-profile=p0913a` | 32.2 s | 4.2 s (other quiet run 2.9 s) |
 | Launch click to flying (first launch) | same, fresh `--keep-profile` name | 34.7 s | not re-measured |
-| Long freezes while loading | same report, long tasks from Launch to flight | 24 tasks, 7.4 s in gpu-resources | 9 tasks, 1.5 s in total, longest 406 ms |
+| Long freezes while loading | same report, long tasks from Launch to flight | 24 tasks, 7.4 s in gpu-resources | 6 tasks, 667 ms in total, longest 198 ms |
 | Freeze as flight begins | same report, first 10 s of flight + `[GPU brick]` console line | 1.6-4.8 s, three ships still compiling | none in the first 10 s; no GPU brick at flight start |
-| Jump charge | `node scripts/probe-runtime-witness.mjs --sector-entry --no-sample-shots` | 8.3 s, 34 hitches, blocks up to 4.8 s | 3.4 s, 6 hitches, longest block during the jump 81 ms |
-| Busy scene (Ceres after the jump) | same witness, frame breakdown | presentation p95 10.6 ms | presentation p95 12.7 ms; one 1.2 s freeze 15 s after arrival, when a new kind of engine plume was first drawn (cold shader cache) |
+| Jump charge | `node scripts/probe-runtime-witness.mjs --sector-entry --no-sample-shots` | 8.3 s, 34 hitches, blocks up to 4.8 s | map to arrival 6 s, nothing over 77 ms (jump profile: the witness cannot click through uncommitted chart panels) |
+| Busy scene (Ceres after the jump) | same witness, frame breakdown | presentation p95 10.6 ms | 0 long tasks in 8.1 s, main thread 56 % busy (jump profile) |
 
 ## What the measurements showed
 
@@ -59,7 +55,7 @@ and after, one headed run at a time on a quiet machine. Headless or software-GPU
    upload and mesh build.
 8. **In a busy sector nothing large is left on the main thread.** On a quiet machine, over a jump to
    Ceres and 8 s there, the biggest items were the texture copies fixed in item 10 (~0.44 s),
-   verifying streamed models (SHA-256, ~0.27 s) and opening the galaxy map (one 0.4 s freeze). An
+   verifying streamed models (SHA-256, ~0.22-0.27 s; moved to a worker in `5332d0dac`) and opening the galaxy map (one 0.4 s freeze). An
    earlier profile ranked a combat digest (~0.9 s), residency tables on sector exit (445 ms) and a
    status-sample sort (~0.67 s) as the poles; it was taken beside another agent's browser soak test,
    and on a quiet machine those three cost 24 ms, 3 ms and 3 ms. Contention does not slow a run
@@ -80,9 +76,15 @@ printed in the launch profile report). Read it first when loading regresses.
 | 5 | Hidden ship preview kept a second WebGL context busy while loading | `stageHull` drift renders 2.2 s, preview uploads and compiles after Launch; disposed only at enterFlight | Stop on Launch or Load, free the context once the shell covers it, rebuild if the start fails (`newGame.js`, `saveLoad.js`, `stageHull.js`) | 2.2 s -> 0; opening ships' compiles no longer starved | `0262999c8`, `ef8cb83cf` |
 | 6 | Shader builds queued but never dispatched during loading | Ledger: `live.openingComposition` 12,023 ms and `live.upgradeQueueIdle` 6,001 ms timeouts, 24 compiles still queued | Flush the admission lane one cohort at a time while the cook waits (`renderer.js`, `pipelineReadiness.js`) | 24.4 s -> 11.8 s | `c1669a4c4` |
 | 7 | Shaders drawn before built; a frame per loading item | 5 of 89 touch subjects had no program at their draw; 1.3 s of per-touch frame yields | Compile the touch set as one readiness cohort, drain, then touch; 8 ms shared-frame slices while loading; final sweep for late-published materials | 11.8 s -> 5.8 s; nothing drawn unbuilt | `37f5072f1`, `cb460b021` |
-| 8 | Every new shader's first draw asked the graphics driver for three error logs | three's `onFirstUse` reads `getProgramInfoLog` and two `getShaderInfoLog` per program, each a blocking round trip: 2.2 s of main thread from Launch to flight | Three's check off; link failures still reported from the program info the first draw fetches anyway (`src/render/shaderLinkReporter.js`; `?shaderChecks=1` restores the full check); the late-materials sweep shares frames | Log reads 2.2 s -> 0; loading busy 4.25 s -> 3.07 s; no long task in the first 10 s of flight | `66132abbe` |
+| 8 | Every new shader's first draw asked the graphics driver for three error logs | three's `onFirstUse` reads `getProgramInfoLog` and two `getShaderInfoLog` per program, each a blocking round trip: 2.2 s of main thread from Launch to flight | Three's check off; link failures still reported from the program info the first draw fetches anyway (`src/render/shaderLinkReporter.js`; `?shaderChecks=1` restores the full check) | Log reads 2.2 s -> 0; loading busy 4.25 s -> 3.07 s; no long task in the first 10 s of flight | `66132abbe` |
 | 9 | Bookkeeping repeated far more often than it changes | Combat digest re-formatted per ship per tick, two `diagnostics()` tables per sector exit, a stats sort with a script comparator: 24 ms, 3 ms and 3 ms over a jump and 8 s at Ceres on a quiet machine (a contended profile had shown ~0.9 s, 445 ms and 0.67 s) | Re-format only when `hashU32` changes; sum memory units directly; native `Float64Array#sort` (`trace.js`, `assetResidency.js`, `perfRuntime.js`) | Small: ~30 ms per jump window -> ~0 | `c3335e0d3` |
 | 10 | Streamed models copied each embedded texture through a Blob, an object URL and a fetch | GLTFLoader `Blob` 268 ms + `createObjectURL` 170 ms over a jump to Ceres and 8 s there (quiet) | Replace the built-in `KHR_texture_basisu` handler with one that hands the bytes straight to `KTX2Loader.parse` (`src/render/embeddedKtx2Textures.js`) | 438 ms -> ~1 ms (the plugin's own copy ~38 ms); every texture identical | `26b02e46f` |
+
+## Also fixed today
+
+- **Streamed render packages are verified in a worker** (`5332d0dac`): main-thread SHA-256 over a jump to Ceres and 8 s there, 218 ms -> 1 ms.
+- **The late-materials settle sweep shares frames while loading** (`66132abbe`): with shader log reads off, 49 stragglers settled in 260 ms instead of a frame per item.
+- **Lit objects draw while no shadow map exists yet** (vendored three, `2d4c8845c`): during the first 20 s of flight the renderer holds shadow refreshes, three bound its never-uploaded empty shadow texture (so the generic colour texture) to shadow samplers, and the driver rejected 3,811 of 5,612 draws, including every part of the player's ship; after the fix, 0 of 3,148 draws were rejected and the ship is drawn.
 
 ## Answers to the owner's questions
 
@@ -118,13 +120,12 @@ owner-facing report page. None repeat the top 10.
 1. **Collapse ship-part shader variants.** Bind neutral 1x1 maps for missing texture slots so every
    authored hull part compiles to one or two programs; the Atlas and Mule compiled five variants that
    differ only in which maps exist. (`partsLibrary.js` packed-ORM path, `authoredMaterialProfiles.js`)
-2. **Warm the destination's engine effects during the jump charge.** Plume shaders exist once per engine
-   family and are shared by every ship of that family, plus one set for the player's plasma drive.
-   Loading and the jump cook both skip `warmupLiveFlightEffects` (`holdLeftoverFx`, after whole-scene
-   warmups hung the Intel GPU), so a family's programs link when its first ship is drawn: 1,036 ms about
-   15 s after arriving at Ceres on a cold shader cache (`plume:family_industrial_main_plume` and
-   `sf-liquid-plasma-root`). `jump:chargeStart` already carries the target sector; compile only the
-   predicted families' plume materials in a readiness cohort, without drawing them.
+2. **Find what still links at first draw after a jump on a cold shader cache.** One ~0.3 s freeze
+   remains 13-20 s after arriving at Ceres (a `[GPU brick]` in bloomScene linking a depth program and
+   effect programs). Queuing every engine family's plume materials for compilation when its ships spawn
+   did not change it (272 ms with, 289 ms without, 2026-09-13), so capture the brick's owners before
+   choosing what to warm; loading and the jump cook still skip `warmupLiveFlightEffects`
+   (`holdLeftoverFx`).
 3. **Bake the ship when you refit it:** compose the template on `ship:appearanceChanged` while docked.
 4. **Persist baked ship templates between launches** (merged geometry in IndexedDB, keyed by loadout
    hash plus part-library and material ABI versions).
@@ -154,8 +155,8 @@ owner-facing report page. None repeat the top 10.
     `spaceBackground.js`, `plasmaRibbons.js`, `plasmaStream.js`, `volumetricPlume.js`, `visualFactory.js`).
 20. **Fix the GL_INVALID_OPERATION flood** ("texture format and sampler type") in flight; capture it
     with `npm run perf:spector`.
-21. **Verify streamed models off the main thread:** every arriving render package is SHA-256 hashed on
-    the main thread (`renderPackageLoader.js` `sha256Hex`, ~0.27 s over a jump to Ceres and 8 s there).
+21. **Done: streamed models are verified in a worker** (`src/render/renderPackageDigest.js`,
+    `5332d0dac`): main-thread `digest` over a jump to Ceres and 8 s there went from 218 ms to 1 ms.
 22. **Spread jump arrival's remaining synchronous work over frames** (`world.enterSector` 57 ms,
     `sector:enter` listeners 35 ms).
 23. **Stop submitting the 3D world under full-screen UI** (map, station, pause).
@@ -187,10 +188,10 @@ owner-facing report page. None repeat the top 10.
 43. **HUD:** reuse projection objects, avoid per-frame layout reads (`hud.js`), replace the command
     bar's per-frame JSON signature with a revision counter (`commandBar.js`).
 44. **Build HUD effects on first use** (flicker grid, route beam, hex pattern are built at boot).
-45. **Open the galaxy map without a freeze:** opening it is the one freeze left in a jump (0.4 s on a
-    quiet machine): 137 ms of forced page layout read in `_resize` from `onShow`, 40 ms measuring
-    label text (`makeMapLabelCandidate`); measure layout once, cache label widths, and compute each
-    route alternative once, not twice per render (`galaxyMap.js`).
+45. **Cache galaxy map label widths and route alternatives** (`makeMapLabelCandidate` measures every
+    label on every draw; each route alternative is computed twice per render). Small: a dedicated probe
+    opened the map five times in flight and measured 59 ms on the first open and no long task on the
+    next four; the 0.4 s in the jump profile came from opening it right after launch and searching.
 46. **Stop recomputing galaxy-map selectors and the ETA ribbon** every frame while the map is open.
 47. **Reuse market and bar rows** instead of rebuilding HTML and listeners on every open.
 48. **Save once, not several times** (repeated stringify/parse/checksum; confirm the save worker path).
@@ -279,6 +280,14 @@ owner-facing report page. None repeat the top 10.
   witness sample is on, and its sort is fixed in `c3335e0d3`).
 - **Exact-key dummy shader prewarm, stand-in material warmup, gating `scheduleUpgradeFrame` on flight
   mode:** each measured worse in earlier campaigns.
+- **Removing the last shared `gl.isProgram` recheck from shader readiness** (`bloom.js`, 2026-09-13):
+  it took ~1.5 s of blocking calls out of loading, but Launch to flying did not get shorter (6.6 s with
+  the recheck; 7.9 s and 12.7 s without it, all on a shared laptop) and both runs without it had more
+  long tasks in the first seconds of flight. The blocking calls appear to pace the driver's links.
+- **The galaxy map as a freeze:** 59 ms on first open, nothing on re-opens (probe, 2026-09-13).
+- **Queuing engine-plume materials for compilation when ships of a new engine family spawn**
+  (2026-09-13): the one-time bloomScene brick after a jump on a cold cache stayed (272 ms with, 289 ms
+  without).
 
 ## Instruments
 
