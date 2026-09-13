@@ -2,6 +2,13 @@ const FNV_OFFSET = 0x811c9dc5;
 const FNV_PRIME = 0x01000193;
 const DEFAULT_CAPACITY = 4096;
 
+// ensureCombatTrace runs for every combatant on every tick (kernel prePhysics -> ensureCombatant ->
+// ensureCombatState). Re-formatting the digest string on each call was ~0.9 s of main thread per 21 s
+// of a busy Ceres scene (2026-09-13 profile). The digest is a pure function of hashU32, so it is only
+// re-derived when hashU32 changed since this trace object last formatted it. The cache lives outside
+// the trace, so serialized combat state is byte-identical.
+const formattedDigestHash = new WeakMap();
+
 export function ensureCombatTrace(combat, capacity = DEFAULT_CAPACITY) {
   if (!combat.trace || typeof combat.trace !== 'object') combat.trace = {};
   const trace = combat.trace;
@@ -10,7 +17,10 @@ export function ensureCombatTrace(combat, capacity = DEFAULT_CAPACITY) {
   if (!Array.isArray(trace.events)) trace.events = [];
   if (!Number.isInteger(trace.dropped) || trace.dropped < 0) trace.dropped = 0;
   if (!Number.isInteger(trace.hashU32)) trace.hashU32 = FNV_OFFSET;
-  trace.digest = hex32(trace.hashU32);
+  if (typeof trace.digest !== 'string' || formattedDigestHash.get(trace) !== trace.hashU32) {
+    trace.digest = hex32(trace.hashU32);
+    formattedDigestHash.set(trace, trace.hashU32);
+  }
   return trace;
 }
 
@@ -20,6 +30,7 @@ export function appendCombatTrace(combat, tick, kind, fields = {}) {
   const encoded = stableStringify(event) + '\n';
   trace.hashU32 = fnv1a(encoded, trace.hashU32);
   trace.digest = hex32(trace.hashU32);
+  formattedDigestHash.set(trace, trace.hashU32);
   event.digest = trace.digest;
   trace.events.push(event);
   if (trace.events.length > trace.capacity) {

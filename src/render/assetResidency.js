@@ -368,7 +368,10 @@ export function createAssetResidencyRegistry(options = {}) {
    * governor budget. This explicit boundary cleanup is the release point for that soft cache lease.
    */
   function releaseUnreferencedCacheOwners(reason = 'cache-only-residency-cleanup') {
-    const before = diagnostics({ includeEvents: false });
+    // Only the GPU byte totals are needed. Building two full diagnostics() tables here (a frozen,
+    // sorted row per asset with owner-role sets) was a 445 ms freeze on every jump's sector exit
+    // (2026-09-13 profile); the totals are the same sum over memory units diagnostics() reports.
+    const bytesBefore = totalGpuResidentBytes();
     const evicted = [];
     let releasedOwners = 0;
 
@@ -384,14 +387,21 @@ export function createAssetResidencyRegistry(options = {}) {
       if (!assets.has(entry.key)) evicted.push(entry.key);
     }
 
-    const after = diagnostics({ includeEvents: false });
+    const bytesAfter = totalGpuResidentBytes();
     return Object.freeze({
       reason,
       evicted: Object.freeze(evicted),
       releasedOwners,
-      evictedBytes: Math.max(0, Number(before.gpuResidentBytes) - Number(after.gpuResidentBytes)),
-      remainingBytes: after.gpuResidentBytes,
+      evictedBytes: Math.max(0, bytesBefore - bytesAfter),
+      remainingBytes: bytesAfter,
     });
+  }
+
+  /** The gpuResidentBytes total diagnostics() reports, without building its per-asset rows. */
+  function totalGpuResidentBytes() {
+    let bytes = 0;
+    for (const unit of memoryUnits.values()) bytes += unit.bytes;
+    return bytes;
   }
 
   function evictIfUnowned(entry, reason) {

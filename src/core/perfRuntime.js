@@ -117,7 +117,10 @@ function reportStat(stat) {
   let p99 = 0;
   if (stat.count > 0) {
     const sub = stat.scratch.subarray(0, stat.count);
-    Array.prototype.sort.call(sub, (a, b) => a - b);
+    // Float64Array#sort orders numerically in native code. The generic Array sort with a JS comparator
+    // on this typed array cost ~0.67 s per 22 s of flight, landing as a stall inside the 1 Hz runtime
+    // witness sample on the presentation frame (2026-09-13 profile); the ordering is the same.
+    sub.sort();
     p50 = sub[Math.min(stat.count - 1, Math.floor(0.50 * (stat.count - 1)))];
     p95 = sub[Math.min(stat.count - 1, Math.floor(0.95 * (stat.count - 1)))];
     p99 = sub[Math.min(stat.count - 1, Math.floor(0.99 * (stat.count - 1)))];
