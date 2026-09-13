@@ -144,6 +144,28 @@ function holdFree(state) {
 }
 function fmt(n) { return Math.round(n).toLocaleString('en-US'); }
 
+/** The corrupt dock owns the wash; the register only reads its durable receipt. */
+export function marketLaunderLedgerHtml(state) {
+  const sid = stationId(state);
+  const ledger = state && state.player && state.player.launderLedger;
+  const receipt = sid && Array.isArray(ledger)
+    ? ledger.find((entry) => entry && entry.stationId === sid && entry.side === 'launder')
+    : null;
+  if (!receipt) return '';
+  const pods = Array.isArray(receipt.pods) ? receipt.pods : [];
+  const units = pods.reduce((sum, pod) => sum + Math.max(0, Math.floor(Number(pod.amount) || 0)), 0);
+  const names = [...new Set(pods.map((pod) => {
+    const def = CMDTY_BY_ID.get(pod.fromId);
+    return def ? def.name : 'Cargo';
+  }))];
+  return `<section data-launder-ledger aria-label="Laundering ledger">` +
+    `<p class="k-caps">Laundering ledger · last wash here</p>` +
+    `<ul class="k-rows sx-mkt-stats">` +
+      rowKV('Papers washed', `${fmt(units)} u · ${names.join(', ')}`) +
+      rowKV(`Cut paid (${fmt((Number(receipt.cutFrac) || 0) * 100)}%)`, `${fmt(receipt.cut)} cr`, 'loss') +
+    `</ul></section>`;
+}
+
 // unit prices — station BUY (what you pay) / SELL (what station pays you)
 function unitBuy(entry, def) { return marketQuoteValue(entry, def, 'buy'); }
 function unitSell(entry, def) { return marketQuoteValue(entry, def, 'sell'); }
@@ -269,6 +291,15 @@ export function createMarketScreen(ctx) {
     const chart = quoteEl.querySelector('.sx-mkt-chart');
     if (chart) paintWindow(chart);
     for (const row of quoteEl.querySelectorAll('.k-row')) paintRow(row, false);
+  }
+
+  function renderLaunderLedger(state) {
+    const html = marketLaunderLedgerHtml(state);
+    if (!html) return;
+    quoteEl.insertAdjacentHTML('beforeend', html);
+    const ledger = quoteEl.querySelector('[data-launder-ledger]');
+    paintLegend(ledger.querySelector('.k-caps'), true);
+    for (const row of ledger.querySelectorAll('.k-row')) paintRow(row, false);
   }
 
   function dressConsole() {
@@ -556,6 +587,7 @@ export function createMarketScreen(ctx) {
           },
       });
       dressStage();
+      renderLaunderLedger(state);
       return;
     }
     consoleEl.hidden = false;
@@ -580,6 +612,7 @@ export function createMarketScreen(ctx) {
       forecast, now: state && state.simTime, regime: liveRegimeWord(state, sid, r.id),
       quoteAge: quoteAgeWord(state, sid, r.id), saleQty: qty });
     dressStage();
+    renderLaunderLedger(state);
   }
 
   function renderConsole(state, { receiptOnly = false } = {}) {
