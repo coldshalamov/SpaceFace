@@ -9433,7 +9433,7 @@
       "priority": 187,
       "title": "Three starters",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-137.03",
         "PQ-137.04",
