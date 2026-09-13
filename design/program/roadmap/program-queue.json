@@ -9546,7 +9546,7 @@
       "priority": 191,
       "title": "The ticker and event cards",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -9580,7 +9580,7 @@
       "priority": 192,
       "title": "Charts with a forecast cone",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -9614,7 +9614,7 @@
       "priority": 193,
       "title": "Supply-chain glyphs",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-138.00",
         "PQ-138.01",
@@ -9648,7 +9648,7 @@
       "priority": 194,
       "title": "Contracts that twist",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-138.04",
         "PQ-138.00",
