@@ -4220,6 +4220,7 @@ export const render = {
           return 'gpu ' + tier + (g && g.software ? ' (SOFTWARE!)' : '') +
             '  dynScale ' + scaleTxt + '  buf ' + bw + 'x' + bh + ' @' + pr.toFixed(2);
         },
+        onSample: (info, dt, r) => state.render?.onDiagnosticsSample?.(info, dt, r),
       });
       state.render.diagnostics = this.diag;
       state.render.resetPostTelemetrySample = resetPostRenderTargetSampleCounter;

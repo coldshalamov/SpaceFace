@@ -13,6 +13,12 @@
     "electron": "node scripts/launch-electron.mjs",
     "dist": "npm run build:bundle && electron-builder",
     "sf": "node scripts/sf.mjs",
+    "perf:spector": "node scripts/capture-spector-frame.mjs",
+    "perf:renderer-info": "node scripts/probe-renderer-info.mjs",
+    "perf:gltf": "node scripts/audit-gltf-assets.mjs",
+    "perf:gltf:inspect": "node scripts/audit-gltf-assets.mjs",
+    "perf:memlab": "node scripts/run-memlab.mjs",
+    "perf:audit": "npm run perf:gltf && npm run perf:renderer-info",
     "jules:next": "node scripts/jules-dispatch.mjs --next",
     "jules:validate": "node scripts/jules-dispatch.mjs --validate",
     "check:jules-task-bank": "node scripts/jules-dispatch.mjs --validate && node --test test/jules-task-bank.test.mjs",
@@ -597,6 +603,7 @@
   },
   "private": true,
   "devDependencies": {
+    "@gltf-transform/cli": "^4.5.0",
     "@gltf-transform/core": "^4.4.1",
     "@gltf-transform/extensions": "^4.4.1",
     "@gltf-transform/functions": "^4.4.1",
@@ -605,9 +612,12 @@
     "esbuild": "^0.28.1",
     "jpeg-js": "^0.4.4",
     "ktx2-encoder": "^0.5.3",
+    "memlab": "^2.0.5",
     "meshoptimizer": "^1.2.0",
     "playwright": "^1.61.1",
-    "pngjs": "^7.0.0"
+    "pngjs": "^7.0.0",
+    "spectorjs": "^0.9.30",
+    "stats-gl": "^4.2.3"
   },
   "build": {
     "appId": "com.spaceface.game",

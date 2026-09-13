@@ -153,6 +153,9 @@ export function installDiagnostics(renderer, opts = {}) {
       info.programs = ri.programs ? ri.programs.length : 0;
       // We own the reset (autoReset disabled): clear render.* now so NEXT frame starts at zero and
       // accumulates afresh across its passes.
+      if (typeof opts.onSample === 'function') {
+        try { opts.onSample(info, dt, renderer); } catch (_) {}
+      }
       if (typeof ri.reset === 'function') ri.reset();
     }
 

@@ -39,7 +39,7 @@ Do not sweep `design/`, `.campaign/`, assets, transcripts, or screenshots for an
 | UI/HUD | `src/ui/AGENTS.md` and `styles/AGENTS.md` |
 | Asteroid Works / mining minigame unreadable or undrivable | **`build_map.md`** door → [`ASTEROID_WORKS_PLAYFIELD.md`](../design/program/ASTEROID_WORKS_PLAYFIELD.md) → `PQ-130` |
 | Flight HUD attention pass (quiet instruments, receipts, no windshield keys) | **`design/HUD_FLIGHT_ATTENTION.md`** (goal prompt: `design/HUD_FLIGHT_ATTENTION_GOAL.txt`) |
-| Render/performance | `src/render/AGENTS.md` and `design/PERF_BUDGET.md` |
+| Render/performance / audit flow | [`PERFORMANCE_AUDIT_PLAYBOOK.md`](./PERFORMANCE_AUDIT_PLAYBOOK.md), `src/render/AGENTS.md`, and `design/PERF_BUDGET.md` |
 | Feature validation, deterministic lab, Browser/Electron acceptance | `docs/VALIDATION_WORKFLOW.md` → `src/testing/lab/AGENTS.md` when changing the lab |
 | Tests/checks/tooling | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
 | Search/archaeology | `docs/SEARCH_CONTEXT.md` |

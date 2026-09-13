@@ -114,7 +114,7 @@ async function boot() {
       tickOf: () => state && state.tick,
     });
     const presentationJournal = createPresentationJournal();
-    const loadingPresenter = createLoadingPresenter({ document, bus });
+    const loadingPresenter = createLoadingPresenter({ document, bus, state });
     const contract = await loadScenarioContract(new URL('./data/scenarios/47a.scenario.json', import.meta.url), SCENARIO_47A_CONTRACT_PATH);
     const helpers = {
       scenarioContract: contract.document,
@@ -243,7 +243,10 @@ async function boot() {
     // renderer.js once a run exists; running the all-archetype precompile here competes with the
     // New Game authored-visual queue and can strand Launch in loading on software WebGL.
     state.render.pipelinePrecompileReady = Promise.resolve({ skipped: true, reason: 'deferred until first sector' });
-    hideBootOverlay();
+    // Route through the presenter, not a direct DOM toggle: it owns the overlay's lifecycle —
+    // on hide it also stops and destroys the boot artwork's worker/WebGL2 context, which
+    // otherwise kept rendering into the hidden canvas for the rest of the session.
+    loadingPresenter.hide();
 
     // expose for debugging and the dev observe loop (dev/browser only — stripped from packaged builds)
     SF_DEBUG_ONLY: if (SF_DEBUG) {
@@ -267,6 +270,14 @@ async function boot() {
           console.error('[SpaceFace] labBridge install failed', err);
         }
       }).catch((err) => console.error('[SpaceFace] labBridge import failed', err));
+      // Comprehensive performance tools bootstrap (stats-gl, spector.js, renderer.info).
+      import('./testing/perf/perfToolsBootstrap.js').then((mod) => {
+        try {
+          mod.bootstrapPerfTools(window.SF);
+        } catch (err) {
+          console.error('[SpaceFace] perfToolsBootstrap install failed', err);
+        }
+      }).catch((err) => console.error('[SpaceFace] perfToolsBootstrap import failed', err));
       console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
     }
 
@@ -675,12 +686,29 @@ function resetCombatInputMode(state, registry) {
   }
 }
 
+const _loadingClearColor = new THREE.Color();
+
 function enterLoadingMode(state, bus) {
   const timeEffects = createTimeEffects(state);
   timeEffects.set('runtime:loading', { scale: 0 });
   const previousMode = state.mode;
   state.mode = 'loading';
   try { releaseUiStage('loading-started'); } catch (_) { /* stage may not be mounted */ }
+  // The frozen canvas holds its last presented frame for the whole load. If any cover lifts a
+  // beat before the first flight present, that frame is what shows — so make the held frame a
+  // deliberate black, matching the veil, instead of whatever the menu era last drew.
+  try {
+    const renderer = state.render && state.render.renderer;
+    if (renderer && typeof renderer.clear === 'function'
+        && typeof renderer.getClearColor === 'function') {
+      const prevAlpha = renderer.getClearAlpha();
+      renderer.getClearColor(_loadingClearColor);
+      renderer.setRenderTarget(null);
+      renderer.setClearColor(0x000000, 1);
+      renderer.clear(true, true, false);
+      renderer.setClearColor(_loadingClearColor, prevAlpha);
+    }
+  } catch (_) { /* best effort — the shell still covers the handoff */ }
   if (previousMode !== state.mode) bus.emit('mode:changed', { mode: state.mode, previousMode });
 }
 
@@ -849,16 +877,6 @@ function resetRunState(state, opts = {}) {
   state.save = fresh.save;
 }
 
-function hideBootOverlay() {
-  const o = document.getElementById('boot-overlay');
-  if (!o) return;
-  o.classList.add('hidden');
-  // Matches the .8s fade in styles/intro.css so the console settles out fully
-  // before the node leaves the compositor.
-  setTimeout(() => {
-    if (o.classList.contains('hidden')) o.style.display = 'none';
-  }, 850);
-}
 function showBootError(err) {
   const o = document.getElementById('boot-overlay');
   if (o) o.innerHTML = '<div class="boot-error">BOOT ERROR\n\n' + ((err && err.stack) || err) + '</div>';
