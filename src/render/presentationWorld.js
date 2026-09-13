@@ -688,6 +688,11 @@ export function createPresentationWorld(options = {}) {
     clear();
     for (const entity of entities) {
       if (!entity || entity.alive === false) continue;
+      const entityId = sourceEntityId(entity);
+      if (entityId !== 0 && byId.has(entityId)) {
+        diagnostics.duplicateIdRejects++;
+        continue;
+      }
       const generation = typeof generationForEntity === 'function'
         ? generationForEntity(entity)
         : 0;

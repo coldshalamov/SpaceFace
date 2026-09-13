@@ -63,6 +63,18 @@ test('flight after first paint yields between compile subjects; loading does not
   );
   assert.deepEqual(cheap, ['compile:a', 'compile:b', 'compile:c'],
     'cheap compiles stay on one present');
+
+  const holes = [];
+  await compileSubjectsAcrossPresents(
+    [null, { id: 'kept' }, undefined],
+    async (subject) => {
+      holes.push(subject.id);
+      return subject.id;
+    },
+    async () => { holes.push('yield'); },
+    { budgetMs: 4, now: () => 0 },
+  );
+  assert.deepEqual(holes, ['kept'], 'null compile holes are skipped without a filter copy');
 });
 
 test('live flight compile uses the present-sliced helper', async () => {
@@ -86,4 +98,24 @@ test('reveal for compile shows hidden instanced meshes and restores count', () =
   assert.equal(mesh.visible, false);
   assert.equal(mesh.frustumCulled, true);
   assert.equal(mesh.count, 0);
+});
+
+test('reveal for compile opens a zero drawRange so residency can upload the buffer', () => {
+  const geometry = {
+    drawRange: { start: 0, count: 0 },
+    index: { count: 12 },
+    attributes: { position: { count: 8 } },
+  };
+  const mesh = {
+    isMesh: true,
+    visible: false,
+    frustumCulled: true,
+    geometry,
+  };
+  const restore = revealSubjectForCompile(mesh);
+  assert.equal(mesh.visible, true);
+  assert.equal(geometry.drawRange.count, 12);
+  restore();
+  assert.equal(mesh.visible, false);
+  assert.equal(geometry.drawRange.count, 0);
 });

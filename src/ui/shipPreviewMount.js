@@ -16,6 +16,7 @@ import { SHIPS } from '../data/ships.js';
 import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { disposeAuthoredAssetRuntime, loadAuthoredPart } from '../render/assetLoader.js';
+import { compileScenePipelinesSafely } from '../render/compilePipelinesSafely.js';
 import { preloadAuthoredPartLibrary } from '../render/partsLibrary.js';
 import { isReleaseAssetMode } from '../render/releaseMode.js';
 import { yieldToBrowser } from '../render/startupGpuResidency.js';
@@ -391,11 +392,11 @@ function makeEntity(defId, seedId, loadout = null) {
     weapons = Array.isArray(loadout.weapons) ? loadout.weapons.slice() : [];
   } else {
     // Stock catalog demo loadout — parallel to visualFactory slot order:
-    // weapon → shield → engine → cargo → mining → utility.
+    // weapon → shield → engine → cargo → mining → utility → thruster (SLOT_TYPES order).
     fittings = [];
     weapons = [];
     const slots = def.slots || {};
-    const order = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility'];
+    const order = ['weapon', 'shield', 'engine', 'cargo', 'mining', 'utility', 'thruster'];
     let slotIndex = 0;
     for (const type of order) {
       const arr = slots[type] || [];
@@ -779,8 +780,13 @@ export function createShipPreviewMount(canvas, opts) {
       const materials = Array.isArray(leaf.material) ? leaf.material : [leaf.material];
       if (materials.every((material) => seen.has(material))) continue;
       for (const material of materials) seen.add(material);
-      if (typeof renderer.compileAsync === 'function') await renderer.compileAsync(leaf, cam, scene);
-      else renderer.compile(leaf, cam, scene);
+      if (typeof renderer.compileAsync === 'function') {
+        // Own the readiness timer: Three's compileAsync() poll throws and strands its promise when
+        // the preview is disposed mid-link, which is the ordinary hover-away case.
+        await compileScenePipelinesSafely(renderer, leaf, cam, scene);
+      } else {
+        renderer.compile(leaf, cam, scene);
+      }
       compiled += 1;
       await yieldToBrowser();
     }

@@ -219,6 +219,18 @@ test('PresentationQueries return deterministic visible handles and exact transit
   );
 });
 
+test('PresentationWorld rebuild skips duplicate ids instead of freezing the canvas', () => {
+  const world = createPresentationWorld({ capacity: 16 });
+  const first = entity(311, { x: 4 });
+  const dressingTwin = entity(311, { x: 8, type: 'fx' });
+  const other = entity(312, { x: -2 });
+  assert.equal(world.rebuildFromEntities([first, dressingTwin, other]), true);
+  assert.equal(world.activeCount, 2);
+  assert.ok(world.handleForEntityId(311));
+  assert.ok(world.handleForEntityId(312));
+  assert.equal(world.getDiagnostics().duplicateIdRejects >= 1, true);
+});
+
 test('PresentationWorld drops stale maximum radius after large-root churn', () => {
   const world = createPresentationWorld({ capacity: 16, cellSize: 64 });
   const near = entity(1, { x: 0, radius: 4 });

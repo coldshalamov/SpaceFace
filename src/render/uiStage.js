@@ -22,6 +22,7 @@ import { canvasIsProtectedDuringFreeze } from '../core/presentationFreeze.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import { wholeShipVisualForEntity } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
+import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 import { yieldToBrowser } from './startupGpuResidency.js';
 
 const PART_ROOT = 'assets/ships/parts/';
@@ -755,7 +756,9 @@ async function prepareForFirstDraw(roots, renderer, built) {
   let programs = 0;
   try {
     if (typeof renderer.compileAsync === 'function') {
-      await renderer.compileAsync(built.scene, built.camera);
+      // The owned-timer wait aborts cleanly when the stage is disposed mid-link; Three's own poll
+      // throws on the disposed materials and never resolves, which is the New Game teardown case.
+      await compileScenePipelinesSafely(renderer, built.scene, built.camera, built.scene);
     } else {
       renderer.compile(built.scene, built.camera);
     }

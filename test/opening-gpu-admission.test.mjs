@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import { openingProgramSubjectKey } from '../src/render/openingSubmissionPlan.js';
 import {
   admitOpeningUnitsAcrossSlices,
+  materialHasCompiledProgram,
   touchSubjectOnExactTarget,
   uniqueAdmissionUnits,
   withOnlySubjectsDrawable,
@@ -35,6 +36,15 @@ test('unique admission units keep one subject per material and per geometry', ()
   assert.equal(units.geometryCount, 2);
   assert.equal(units.programSubjects.length, 2);
   assert.equal(units.geometrySubjects.length, 2);
+
+  const ready = new Set([shared]);
+  const skipped = uniqueAdmissionUnits([hull, wing, canopy], {
+    skipReadyMaterial: (material) => ready.has(material),
+  });
+  assert.equal(skipped.programSubjects.length, 1);
+  assert.equal(skipped.programSubjects[0], canopy);
+  assert.equal(materialHasCompiledProgram(shared, () => ({ currentProgram: { id: 1 } })), true);
+  assert.equal(materialHasCompiledProgram(shared, () => ({})), false);
 });
 
 test('opening GPU admission compiles and touches one unique subject per yield', async () => {

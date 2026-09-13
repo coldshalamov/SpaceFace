@@ -219,16 +219,30 @@ export function describeOpeningAdmissionIdentityDelta(
   };
 }
 
-export function uniqueAdmissionUnits(subjects) {
+export function materialHasCompiledProgram(material, getProperties) {
+  if (!material || typeof getProperties !== 'function') return false;
+  try {
+    const rec = getProperties(material);
+    return !!(rec && rec.currentProgram);
+  } catch {
+    return false;
+  }
+}
+
+export function uniqueAdmissionUnits(subjects, options = {}) {
   const programSubjects = [];
   const geometrySubjects = [];
   const seenMaterials = new Set();
   const seenGeometries = new Set();
+  const skipReady = typeof options.skipReadyMaterial === 'function'
+    ? options.skipReadyMaterial
+    : null;
   const list = Array.isArray(subjects) ? subjects : [subjects];
   for (const object of list) {
     if (!object) continue;
     let addedProgram = false;
     for (const material of materialList(object)) {
+      if (skipReady && skipReady(material)) continue;
       if (seenMaterials.has(material)) continue;
       seenMaterials.add(material);
       if (!addedProgram) {
@@ -300,6 +314,11 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   const compileOne = typeof options.compileOne === 'function' ? options.compileOne : null;
   const touchOne = typeof options.touchOne === 'function' ? options.touchOne : null;
   const yieldToMain = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+  const now = () => (typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now() : Date.now());
+  const started = now();
+  const deadlineMs = Number.isFinite(options.deadlineMs) ? options.deadlineMs : 0;
+  const overBudget = () => deadlineMs > 0 && (now() - started) > deadlineMs;
   const seen = new Set();
   const ordered = [];
   for (const subject of [...(units.programSubjects || []), ...(units.geometrySubjects || [])]) {
@@ -345,6 +364,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
     // executor and then suspends on the batch, so the whole cohort reaches the driver before the
     // first wait begins. Awaiting here instead would deadlock: nothing settles until drain().
     for (let index = 0; index < ordered.length; index++) {
+      if (overBudget()) break;
       issued.push(compileOne ? compileOne(ordered[index]) : null);
       if (yieldToMain && index < ordered.length - 1) await yieldToMain();
     }
@@ -360,6 +380,7 @@ export async function admitOpeningUnitsAcrossSlices(options = {}) {
   }
   const results = [];
   for (let index = 0; index < ordered.length; index++) {
+    if (overBudget()) break;
     results.push({
       compiled: compiled[index] ?? null,
       touched: touchOne ? touchOne(ordered[index]) : null,

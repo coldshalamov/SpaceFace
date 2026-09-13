@@ -17,6 +17,7 @@ import { createVfxPrecompileSalvo, visiblePointLightBudget } from './vfx.js';
 export { visiblePointLightBudget };
 import { waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
 import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
+import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -195,7 +196,6 @@ export async function precompilePipelines(renderer, scene, camera, options = {})
 async function precompileNow(
   renderer, scene, camera, shipSpecs, includeGlobalPipelines, compiledShipKeys, generation, options = {},
 ) {
-  if (includeGlobalPipelines) await waitForRockSurfaceLibraryReady();
   const staging = new THREE.Group();
   staging.name = 'SF_Precompile_Staging';
   staging.userData.precompileStaging = true;
@@ -251,6 +251,9 @@ async function precompileNow(
       canopyPipelineWarmup = addAuthoredCanopyPipelineWarmup(globalWarmup);
       addAuthoredOpaquePipelineWarmup(canopyPipelineWarmup);
       addLateWorldPipelineWarmup(canopyPipelineWarmup);
+      // Only the common-rock probe needs decoded rock maps. Awaiting them here overlaps the texture
+      // load with every ship/global compile above instead of idling the driver before any work.
+      await waitForRockSurfaceLibraryReady();
       const commonRockWarmup = addCommonRockPipelineWarmup(canopyPipelineWarmup, vf);
       const vfxWarmup = createVfxPrecompileSalvo();
       globalWarmup.add(vfxWarmup);
@@ -275,7 +278,7 @@ async function precompileNow(
       if (typeof options.preparePipelines === 'function') {
         await options.preparePipelines(staging);
       } else {
-        await renderer.compileAsync(staging, camera, scene);
+        await compileScenePipelinesSafely(renderer, staging, camera, scene);
       }
     }
 
@@ -334,7 +337,7 @@ async function warmResidentSceneGpuBuffers(renderer, scene, camera, options = {}
   // subsequent draw does not also pay first-use program links on the same frame as bufferData.
   if (typeof options.preparePipelines !== 'function' && typeof renderer.compileAsync === 'function') {
     try {
-      await renderer.compileAsync(scene, camera, scene);
+      await compileScenePipelinesSafely(renderer, scene, camera, scene);
     } catch (_) { /* best-effort; buffer warm below still runs */ }
   }
 

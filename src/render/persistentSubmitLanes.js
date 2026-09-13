@@ -10,10 +10,9 @@ export const SUBMIT_LANE = Object.freeze({
   VFX: 'vfx',
 });
 
-// The reservation/range model is ready for the renderer-owned GPU upload path, but no live buffer
-// uploader consumes these ranges yet. Keep the production default off until that ownership seam is
-// real; tests and an explicitly integrated caller can opt in with `{ force: true }`.
-export const PERSISTENT_LANES_ENABLED = false;
+// Production uses reserved slots + dirty ranges. Rocks stay InstancedMesh. Mixed mega-batch
+// and per-frame mesh packing stay off; this flag only arms the reservation/upload seam.
+export const PERSISTENT_LANES_ENABLED = true;
 
 let liveLanes = null;
 
@@ -116,4 +115,26 @@ export function createPersistentSubmitLanes(options = {}) {
       });
     },
   };
+}
+
+/**
+ * Drain dirty ranges into a renderer-owned uploader. Callers must upload only those
+ * ranges in place. Do not pack a mixed mega-batch or rebuild meshes every frame.
+ */
+export function consumePersistentSubmitUploads(lanes, uploadRange) {
+  if (!lanes || lanes.enabled !== true || typeof lanes.drainDirtyRanges !== 'function') {
+    return Object.freeze({ enabled: false, uploaded: 0, lanes: 0, dirty: Object.freeze({}) });
+  }
+  const dirty = lanes.drainDirtyRanges() || {};
+  let uploaded = 0;
+  let laneCount = 0;
+  for (const [lane, ranges] of Object.entries(dirty)) {
+    if (!Array.isArray(ranges) || ranges.length === 0) continue;
+    laneCount += 1;
+    for (const range of ranges) {
+      if (typeof uploadRange === 'function') uploadRange(lane, range);
+      uploaded += 1;
+    }
+  }
+  return Object.freeze({ enabled: true, uploaded, lanes: laneCount, dirty });
 }

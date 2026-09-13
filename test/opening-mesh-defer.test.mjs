@@ -34,6 +34,32 @@ test('first-playable-paint keeps the scheduled flag only while flight continues'
   assert.equal(owner._firstPlayablePaintScheduled, true);
 });
 
+test('first-playable paint keeps leftover authored publications frozen through first flight', async () => {
+  const owner = {
+    state: {
+      mode: 'flight',
+      simTime: 0,
+      render: {
+        resumeDeferredPipelineAdmissions: () => ({ skipped: true }),
+      },
+    },
+    _deferNoncriticalMeshStreaming: true,
+    _meshReconcileDirty: false,
+    _openingFirstPicturePrepared: true,
+  };
+  assert.equal(freezeOpeningGraphPublication(owner), true);
+  let released = false;
+  const waiting = owner.state.render.waitForOpeningGraphPublicationRelease().then(() => { released = true; });
+  await Promise.resolve();
+  applyFirstPlayablePaintRelease(owner);
+  await Promise.resolve();
+  assert.equal(released, false, 'leftover FX must not publish on first paint');
+  assert.equal(owner.state.render.openingGraphPublicationFrozen, true);
+  releaseOpeningMeshDefer(owner, 'flight');
+  await waiting;
+  assert.equal(released, true);
+});
+
 test('first-playable paint releases authored child publications frozen at the exact census', async () => {
   const owner = {
     state: { render: {} },
@@ -73,8 +99,8 @@ test('a failed opening submission validation still releases the mesh streaming d
     _firstPlayablePaintScheduled: true,
   };
   applyFirstPlayablePaintRelease(owner);
-  assert.equal(owner.state.render.firstPlayableFrameAt, undefined,
-    'a failed validation is evidence only; it must not fake a first-playable frame');
+  assert.equal(Number.isFinite(owner.state.render.firstPlayableFrameAt), true,
+    'the streaming latch must stamp even when the opening diagnostic failed');
   assert.equal(owner._deferNoncriticalMeshStreaming, false,
     'mesh streaming must resume even when the opening diagnostic failed');
   assert.equal(owner._openingFirstPicturePrepared, false,

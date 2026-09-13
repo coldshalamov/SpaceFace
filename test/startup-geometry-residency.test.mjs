@@ -269,6 +269,19 @@ test('startup residency uploads exact geometry through an isolated 1x1 pass and 
   assert.equal(harness.renderer.shadowMap.needsUpdate, true);
 });
 
+test('already-resident ordinary geometry is not 1x1 uploaded again', async () => {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
+  mesh.geometry.userData.spacefaceGpuResident = true;
+  const harness = createRendererHarness({
+    render() { throw new Error('must not re-upload resident geometry'); },
+  });
+  const result = await prepareStartupGeometryResidency(harness.renderer, mesh, {
+    yieldToMain: async () => {},
+  });
+  assert.equal(result.skipped, true);
+  assert.equal(result.reason, 'no drawable geometry');
+});
+
 test('startup geometry residency slices admission into bounded batches with a browser yield before each', async () => {
   const subjects = Array.from({ length: 5 }, (_, index) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());

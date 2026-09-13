@@ -26,6 +26,7 @@ import {
 } from '../src/render/materialAbi.js';
 import {
   PERSISTENT_LANES_ENABLED,
+  consumePersistentSubmitUploads,
   createPersistentSubmitLanes,
 } from '../src/render/persistentSubmitLanes.js';
 import {
@@ -114,9 +115,8 @@ test('material ABI collapses library roles onto program families', () => {
 });
 
 test('persistent submit lanes reserve once and skip unchanged frames', () => {
-  // The range model is opt-in until a renderer-owned GPU uploader consumes its drained ranges.
-  assert.equal(PERSISTENT_LANES_ENABLED, false);
-  const lanes = createPersistentSubmitLanes({ force: true });
+  assert.equal(PERSISTENT_LANES_ENABLED, true);
+  const lanes = createPersistentSubmitLanes();
   const slot = lanes.reserve('ship_1');
   assert.equal(slot.id, 'ship_1');
   assert.equal(lanes.reserve('ship_1').index, slot.index);
@@ -125,6 +125,23 @@ test('persistent submit lanes reserve once and skip unchanged frames', () => {
   assert.equal(lanes.diagnostics().unchangedFrames, 1);
   const off = createPersistentSubmitLanes({ enabled: false });
   assert.equal(off.reserve('ship_2'), null);
+});
+
+test('persistent dirty ranges upload in place without a mega-batch pack', () => {
+  const lanes = createPersistentSubmitLanes();
+  lanes.reserve('rock_1', 'opaque');
+  lanes.markDirty('rock_1', 'transform');
+  const uploaded = [];
+  const first = consumePersistentSubmitUploads(lanes, (lane, range) => {
+    uploaded.push([lane, range.start, range.count]);
+  });
+  assert.equal(first.enabled, true);
+  assert.equal(first.uploaded, 1);
+  assert.deepEqual(uploaded, [['opaque', 0, 1]]);
+  const second = consumePersistentSubmitUploads(lanes, () => {
+    throw new Error('clean frame must not pack');
+  });
+  assert.equal(second.uploaded, 0);
 });
 
 test('snapshot fence publishes a complete packed frame the present path can read', () => {

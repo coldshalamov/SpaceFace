@@ -1,6 +1,7 @@
 // Cook the REAL live scene behind the loading shell: compile its programs and
 // upload its buffers. Dummy catalog prewarm is not this path.
 
+import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
 import { prepareStartupGpuResidency } from './startupGpuResidency.js';
 
 function remember(render, result) {
@@ -15,7 +16,7 @@ export async function cookLiveSceneGpu(state, options = {}) {
   const render = state.render;
   if (!render) return { skipped: true, reason: 'no-render' };
   if (typeof render.cookLiveSceneGpu === 'function') {
-    return remember(render, await render.cookLiveSceneGpu());
+    return remember(render, await render.cookLiveSceneGpu(options));
   }
 
   const renderer = render.renderer;
@@ -26,12 +27,11 @@ export async function cookLiveSceneGpu(state, options = {}) {
   }
 
   let programs = { skipped: true, reason: 'compile-unavailable' };
-  if (typeof renderer.compileAsync === 'function') {
-    await renderer.compileAsync(scene, camera);
-    programs = { skipped: false, method: 'compileAsync' };
-  } else if (typeof renderer.compile === 'function') {
-    renderer.compile(scene, camera);
-    programs = { skipped: false, method: 'compile' };
+  if (typeof renderer.compileAsync === 'function' || typeof renderer.compile === 'function') {
+    const compiled = await compileScenePipelinesSafely(renderer, scene, camera, scene);
+    programs = compiled && compiled.skipped === false
+      ? { skipped: false, method: compiled.method || 'compile-pipelines-safe' }
+      : { skipped: true, reason: (compiled && compiled.reason) || 'compile-unavailable' };
   }
 
   const prepare = typeof options.prepareResidency === 'function'

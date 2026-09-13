@@ -45,16 +45,23 @@ test('instance pool compile roots include zero-count pending chunks', () => {
     name: 'pool-live',
     count: 3,
   };
+  const rocks = {
+    userData: { asteroidInstancePool: true },
+    name: 'SF_CommonRockInstances_v0',
+    count: 0,
+  };
   const scene = {
     traverse(fn) {
       fn(this);
       fn(pending);
       fn(live);
+      fn(rocks);
     },
   };
   assert.deepEqual(collectInstancePoolCompileRoots(scene).map((item) => item.name), [
     'pool-pending',
     'pool-live',
+    'SF_CommonRockInstances_v0',
   ]);
 });
 
