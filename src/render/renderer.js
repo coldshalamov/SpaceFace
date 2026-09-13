@@ -2,6 +2,7 @@
 // lifecycle. Exposes worldToScreen / raycastToPlane via ctx.helpers and a renderFrame() the loop
 // calls each animation frame. Sim never touches this; it's all in renderFrame (ARCHITECTURE §1,§2.4).
 import * as THREE from 'three';
+import { installShaderLinkReporter } from './shaderLinkReporter.js';
 import { createLiveGeometryAdmissionQueue } from './liveGeometryAdmission.js';
 import { applyMasslineReleaseCameraCue, createChaseCamera, shakeDistanceAttenuation } from './camera.js';
 import { createSpaceBackground } from './spaceBackground.js';
@@ -3329,6 +3330,10 @@ export const render = {
       powerPreference: glFlags.powerPreference,
       preserveDrawingBuffer: glFlags.preserveDrawingBuffer,
     });
+    // three's first use of every program reads three shader logs, each a blocking round trip to the GPU
+    // process. Link failures are still reported, from the program info that first use fetches anyway
+    // (shaderLinkReporter.js); ?shaderChecks=1 keeps three's full check with the failing source lines.
+    if (!(query && query.get('shaderChecks') === '1')) installShaderLinkReporter(renderer);
     // Opaque order is depth-tested. Skipping the default painter sort saves a
     // full scene comparison on the iGPU thread; transparent objects still sort.
     if (typeof renderer.setOpaqueSort === 'function') {
@@ -5155,7 +5160,12 @@ export const render = {
               beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
               compileOne: (subject) => compileSubjectColorAndDepth(subject, this._selectPostRoute()),
               touchOne: touchExactTargetSubject,
-              yieldToMain: yieldAndFlushLiveSectorGpu,
+              // Loading shell: issues and touches share a frame until ~8 ms of work, as the cook's touches
+              // do. A frame-plus-flush yield after each one spent 26 frames on the 14 stragglers found on
+              // the owner's laptop. The jump shell keeps one item per frame.
+              yieldToMain: state.mode === 'loading'
+                ? createSlicedYield(yieldAndFlushLiveSectorGpu)
+                : yieldAndFlushLiveSectorGpu,
             });
             materialSettle.unbound = staleSubjects.length;
           } catch (error) {
