@@ -11,6 +11,16 @@ import { SEED } from './lib/pq16400-gamepad-screens.mjs';
 
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 
+// A hung walk (a page that never reports, a screen that never closes) must fail instead of idling
+// forever: orphaned runs of this check once sat on a CPU core each for two days.
+const WATCHDOG_MS = 10 * 60_000;
+let serverChild = null;
+setTimeout(() => {
+  console.log(`FAIL harness: watchdog — no result after ${WATCHDOG_MS / 60_000} min`);
+  try { serverChild?.kill(); } catch { /* already gone */ }
+  process.exit(2);
+}, WATCHDOG_MS).unref();
+
 function printReport(label, report) {
   if (report.error) {
     console.log(`${label} error: ${report.error}`);
@@ -57,6 +67,7 @@ async function runChromiumWalk() {
     stdio: 'ignore',
     windowsHide: true,
   });
+  serverChild = child;
   const baseUrl = `http://127.0.0.1:${port}/`;
   try {
     let up = false;

@@ -127,7 +127,9 @@ export function runDeckSettingsCapture({
   const screenManager = createScreenManager(ctx);
   ctx.screenManager = screenManager;
   screenManager.register(settingsScreen);
-  while (screenManager.isOpen && screenManager.isOpen()) {
+  // Bounded: a screen that refuses to close makes popScreen() a silent no-op, and an unbounded drain
+  // then spins a CPU core forever (orphaned pad walks once did exactly that for two days).
+  for (let i = 0; i < 32 && screenManager.isOpen && screenManager.isOpen(); i++) {
     try { screenManager.popScreen(); } catch { break; }
   }
   screenManager.pushScreen('settings');

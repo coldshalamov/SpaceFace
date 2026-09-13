@@ -12,27 +12,85 @@
 // slower than the sum of everything you can measure. It is a diagnosis instrument, not a gate.
 //
 //   node scripts/probe-main-thread-profile.mjs [--ms=20000]
+//     A held-thrust window of steady flight.
+//   node scripts/probe-main-thread-profile.mjs --from-launch [--flight-ms=10000]
+//     From the New Game click through every loading stage and into the first seconds of flight: the
+//     stage timeline, main-thread time per stage (busy JavaScript vs native vs idle), every long
+//     task, and the bytes fetched before flight. This is the window a player calls "it takes
+//     forever to load". A stage that is mostly idle is waiting on something off the main thread.
+//   --label=NAME          write under .devshots/main-thread-profile/NAME/ instead of the root
+//   --keep-profile=NAME   reuse one named evidence profile instead of a fresh temporary one. The
+//                         first run is a cold start; a later run with the same NAME starts with the
+//                         GPU program cache and HTTP cache a returning player has.
+//   --drop-profile=NAME   delete that kept profile and exit
 //
-// Writes .devshots/main-thread-profile/{profile.cpuprofile,report.md,canvas-census.json}.
+// Writes .devshots/main-thread-profile/[NAME/]{profile.cpuprofile,report.md,canvas-census.json}.
 // The .cpuprofile opens directly in Chrome DevTools' Performance panel (Load profile...).
 //
 // Conventions: isolated evidence Electron (never the player profile), writes only under the ignored
-// .devshots tree, and always closes the app and removes its temporary profile directory.
+// .devshots tree, and always closes the app. Temporary profiles are removed; kept profiles only on
+// --drop-profile.
 
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createIsolatedElectronLaunch } from './lib/electronTestIsolation.mjs';
+import launchProtocol from './lib/electronLaunchProtocol.cjs';
+import { buildIsolatedElectronEnv, createIsolatedElectronLaunch } from './lib/electronTestIsolation.mjs';
 import { loadPlaywright } from './lib/load-playwright.mjs';
 
+const { electronEvidenceProfileRoot, inspectElectronEvidenceProfilePath } = launchProtocol;
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const OUT_DIR = path.join(ROOT, '.devshots', 'main-thread-profile');
-const WINDOW_MS = Number(
-  process.argv.find((a) => a.startsWith('--ms='))?.slice(5) || process.env.SPACEFACE_PROFILE_MS || 20_000,
-);
+const argValue = (name) => {
+  const hit = process.argv.find((arg) => arg.startsWith(`${name}=`));
+  return hit ? hit.slice(name.length + 1) : null;
+};
+const safeName = (value, max) => String(value || '')
+  .toLowerCase()
+  .replace(/[^a-z0-9_-]+/g, '-')
+  .replace(/^[-_]+/, '')
+  .slice(0, max);
+
+const FROM_LAUNCH = process.argv.includes('--from-launch');
+const WINDOW_MS = Number(argValue('--ms') || process.env.SPACEFACE_PROFILE_MS || 20_000);
+const FLIGHT_TAIL_MS = Number(argValue('--flight-ms') || 10_000);
+const LABEL = safeName(argValue('--label'), 48);
+const KEEP_PROFILE = safeName(argValue('--keep-profile'), 40);
+const DROP_PROFILE = safeName(argValue('--drop-profile'), 40);
+const OUT_DIR = path.join(ROOT, '.devshots', 'main-thread-profile', ...(LABEL ? [LABEL] : []));
 const FIXED_SEED = 47;
 
 const log = (message) => console.log(`[main-thread-profile ${new Date().toISOString().slice(11, 19)}] ${message}`);
+
+function keptProfileDir(name) {
+  // The evidence-profile contract only accepts creator-issued names: probe-<task>-<6 chars>.
+  return path.join(electronEvidenceProfileRoot(os.tmpdir()), `probe-keep-${name}-000000`);
+}
+
+if (DROP_PROFILE) {
+  const dir = keptProfileDir(DROP_PROFILE);
+  const inspected = inspectElectronEvidenceProfilePath(dir);
+  if (inspected.pass) {
+    fs.rmSync(dir, { recursive: true, force: true });
+    log(`dropped kept profile ${dir}`);
+  } else {
+    log(`nothing to drop at ${dir}: ${inspected.failures.join('; ')}`);
+  }
+  process.exit(0);
+}
+
+function createKeptElectronLaunch(name, baseEnv) {
+  const userDataDir = keptProfileDir(name);
+  const existed = fs.existsSync(userDataDir);
+  fs.mkdirSync(userDataDir, { recursive: true });
+  return {
+    options: { args: ['.'], cwd: ROOT, timeout: 180_000, env: buildIsolatedElectronEnv({ baseEnv, userDataDir }) },
+    userDataDir,
+    existed,
+    cleanup: () => true, // kept on purpose; --drop-profile removes it
+  };
+}
 
 /** Every canvas in the document, with the two facts that expose an orphaned render surface. */
 function canvasCensusInPage() {
@@ -48,34 +106,74 @@ function canvasCensusInPage() {
   }));
 }
 
-/**
- * Self time per call frame and inclusive time per top-level entry point.
- * The second table is the one that names an owner: a parasite shows up as a top-level entry that
- * is not the game's own presentation frame.
- */
-function summarizeProfile(profile) {
+/** Renderer resource counts plus whatever the opening is still waiting on. */
+function readGpuAndOpeningInPage() {
+  const info = window.SF?.registry?.get?.('render')?.renderer?.info;
+  let authored = null;
+  try { authored = window.SF?.authoredVisualReadiness?.() || null; } catch { /* optional surface */ }
+  return {
+    programs: Array.isArray(info?.programs) ? info.programs.length : null,
+    geometries: info?.memory?.geometries ?? null,
+    textures: info?.memory?.textures ?? null,
+    heapMb: performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : null,
+    openingPending: Array.isArray(authored?.openingPending)
+      ? authored.openingPending.slice(0, 12).map((entry) => (
+        [entry.id, entry.status, entry.type, entry.defId].filter((bit) => bit != null && bit !== '').join(':')
+      ))
+      : null,
+  };
+}
+
+const NATIVE_BUCKETS = new Set(['(program)', '(idle)', '(garbage collector)', '(root)']);
+
+function profileIndex(profile) {
   const nodesById = new Map(profile.nodes.map((node) => [node.id, node]));
   const parentOf = new Map();
   for (const node of profile.nodes) {
     for (const childId of node.children || []) parentOf.set(childId, node.id);
   }
+  // Microseconds from the profile start at which each sample was taken.
+  const offsets = new Float64Array(profile.samples.length);
+  let elapsed = 0;
+  for (let i = 0; i < profile.samples.length; i++) {
+    elapsed += Math.max(0, profile.timeDeltas?.[i] || 0);
+    offsets[i] = elapsed;
+  }
+  return { nodesById, parentOf, offsets };
+}
 
+function nodeLabel(node) {
+  const frame = node.callFrame;
+  const url = String(frame.url || '')
+    .replace(/^https?:\/\/[^/]+\//, '')
+    .replace(/^file:\/\/.*?([^/\\]+)$/, '$1');
+  return `${frame.functionName || '(anonymous)'} @ ${url || 'native'}:${frame.lineNumber + 1}`;
+}
+
+function nodeFile(node) {
+  const frame = node.callFrame;
+  const url = String(frame.url || '').replace(/^https?:\/\/[^/]+\//, '').replace(/[?#].*$/, '');
+  if (url) return url;
+  return NATIVE_BUCKETS.has(frame.functionName) ? frame.functionName : '(native)';
+}
+
+/**
+ * Self time per call frame, inclusive time per top-level entry point, and self time per source
+ * file, optionally restricted to samples taken in [fromMicros, toMicros) of the profile.
+ * The entry table is the one that names an owner: a parasite shows up as a top-level entry that is
+ * not the game's own presentation frame.
+ */
+function summarizeProfile(profile, index, fromMicros = 0, toMicros = Infinity) {
+  const { nodesById, parentOf, offsets } = index;
   const selfMicros = new Map();
   let totalMicros = 0;
   for (let i = 0; i < profile.samples.length; i++) {
+    if (offsets[i] < fromMicros || offsets[i] >= toMicros) continue;
     const delta = Math.max(0, profile.timeDeltas?.[i] || 0);
     totalMicros += delta;
     const id = profile.samples[i];
     selfMicros.set(id, (selfMicros.get(id) || 0) + delta);
   }
-
-  const label = (node) => {
-    const frame = node.callFrame;
-    const url = String(frame.url || '')
-      .replace(/^https?:\/\/[^/]+\//, '')
-      .replace(/^file:\/\/.*?([^/\\]+)$/, '$1');
-    return `${frame.functionName || '(anonymous)'} @ ${url || 'native'}:${frame.lineNumber + 1}`;
-  };
 
   const self = [...selfMicros.entries()]
     .map(([id, micros]) => ({ micros, node: nodesById.get(id) }))
@@ -83,26 +181,41 @@ function summarizeProfile(profile) {
     .sort((a, b) => b.micros - a.micros);
 
   const entryMicros = new Map();
+  const fileMicros = new Map();
+  const buckets = { program: 0, idle: 0, gc: 0 };
   for (const [id, micros] of selfMicros) {
+    const node = nodesById.get(id);
+    const name = node?.callFrame?.functionName;
+    if (name === '(program)') buckets.program += micros;
+    else if (name === '(idle)') buckets.idle += micros;
+    else if (name === '(garbage collector)') buckets.gc += micros;
+    if (node) {
+      const file = nodeFile(node);
+      fileMicros.set(file, (fileMicros.get(file) || 0) + micros);
+    }
     const chain = [];
     for (let cursor = id; cursor != null; cursor = parentOf.get(cursor)) chain.push(cursor);
     const entryId = chain.length >= 2 ? chain[chain.length - 2] : chain[chain.length - 1];
     const entryNode = nodesById.get(entryId);
-    const key = entryNode ? label(entryNode) : '(root)';
+    const key = entryNode ? nodeLabel(entryNode) : '(root)';
     entryMicros.set(key, (entryMicros.get(key) || 0) + micros);
   }
 
-  return { totalMicros, self, label, entries: [...entryMicros.entries()].sort((a, b) => b[1] - a[1]) };
+  return {
+    totalMicros,
+    self,
+    buckets,
+    entries: [...entryMicros.entries()].sort((a, b) => b[1] - a[1]),
+    files: [...fileMicros.entries()].sort((a, b) => b[1] - a[1]),
+  };
 }
 
-function writeReport({ totalMicros, self, label, entries }, census, longTasks) {
-  const pct = (micros) => `${((100 * micros) / (totalMicros || 1)).toFixed(1)}%`;
-  const ms = (micros) => (micros / 1000).toFixed(1);
-  const lines = [
-    '# Main-thread profile',
-    '',
-    `Window: ${ms(totalMicros)} ms of flight. Long tasks recorded in the window: **${longTasks.length}**.`,
-    '',
+const pct = (micros, total) => `${((100 * micros) / (total || 1)).toFixed(1)}%`;
+const msOf = (micros) => (micros / 1000).toFixed(1);
+const sOf = (micros) => (micros / 1e6).toFixed(2);
+
+function entryTable(summary, limit) {
+  return [
     '## Top-level entry points (inclusive)',
     '',
     'The owner of the frame. Anything here that is not the game\'s own presentation frame is work',
@@ -110,15 +223,39 @@ function writeReport({ totalMicros, self, label, entries }, census, longTasks) {
     '',
     '| ms | share | entry |',
     '|---:|---:|---|',
-    ...entries.slice(0, 15).map(([key, micros]) => `| ${ms(micros)} | ${pct(micros)} | \`${key}\` |`),
+    ...summary.entries.slice(0, limit)
+      .map(([key, micros]) => `| ${msOf(micros)} | ${pct(micros, summary.totalMicros)} | \`${key}\` |`),
     '',
-    '## Top self time',
+  ];
+}
+
+function selfTable(summary, rows, limit, heading) {
+  return [
+    heading,
     '',
     '| ms | share | function |',
     '|---:|---:|---|',
-    ...self.slice(0, 25).map((row) => `| ${ms(row.micros)} | ${pct(row.micros)} | \`${label(row.node)}\` |`),
+    ...rows.slice(0, limit)
+      .map((row) => `| ${msOf(row.micros)} | ${pct(row.micros, summary.totalMicros)} | \`${nodeLabel(row.node)}\` |`),
     '',
-    '## Canvas census during flight',
+  ];
+}
+
+function fileTable(summary, limit, heading) {
+  return [
+    heading,
+    '',
+    '| ms | share | source |',
+    '|---:|---:|---|',
+    ...summary.files.slice(0, limit)
+      .map(([file, micros]) => `| ${msOf(micros)} | ${pct(micros, summary.totalMicros)} | \`${file}\` |`),
+    '',
+  ];
+}
+
+function censusLines(census, heading) {
+  return [
+    heading,
     '',
     'A canvas that is still `connected` with a zero client size is not in layout and cannot be seen.',
     'If its backing store is large, or grows between runs, it is an orphaned render surface.',
@@ -129,6 +266,20 @@ function writeReport({ totalMicros, self, label, entries }, census, longTasks) {
       + `| ${row.clientWidth}x${row.clientHeight} | ${row.display} | ${row.connected} |`),
     '',
   ];
+}
+
+function writeSteadyReport(profile, census, longTasks) {
+  const summary = summarizeProfile(profile, profileIndex(profile));
+  const lines = [
+    '# Main-thread profile',
+    '',
+    `Window: ${msOf(summary.totalMicros)} ms of flight. Long tasks recorded in the window: **${longTasks.length}**.`,
+    '',
+    ...entryTable(summary, 15),
+    ...selfTable(summary, summary.self, 25, '## Top self time'),
+    ...fileTable(summary, 15, '## Self time by source'),
+    ...censusLines(census, '## Canvas census during flight'),
+  ];
   if (longTasks.length) {
     lines.push('## Long tasks in the window', '', '| start ms | duration ms |', '|---:|---:|');
     for (const task of longTasks.slice(0, 20)) {
@@ -137,30 +288,204 @@ function writeReport({ totalMicros, self, label, entries }, census, longTasks) {
     lines.push('');
   }
   fs.writeFileSync(path.join(OUT_DIR, 'report.md'), lines.join('\n'), 'utf8');
+  return summary;
 }
 
-fs.mkdirSync(OUT_DIR, { recursive: true });
+/** Launch -> each loading stage -> flight -> end, as contiguous wall-clock phases. */
+function buildLaunchPhases(timeline, stages) {
+  const phases = [{ name: 'New Game screen (to Launch click)', from: timeline.newGameWallMs, to: timeline.launchWallMs }];
+  const loading = stages.filter((stage) => stage.wallMs >= timeline.launchWallMs && stage.wallMs < timeline.flightWallMs);
+  if (loading.length && loading[0].wallMs - timeline.launchWallMs > 50) {
+    phases.push({ name: 'Launch click to first loading stage', from: timeline.launchWallMs, to: loading[0].wallMs });
+  }
+  loading.forEach((stage, i) => {
+    phases.push({
+      name: `loading: ${stage.id || '(unnamed)'}`,
+      from: stage.wallMs,
+      to: i + 1 < loading.length ? loading[i + 1].wallMs : timeline.flightWallMs,
+    });
+  });
+  if (!loading.length) phases.push({ name: 'loading (no stage events seen)', from: timeline.launchWallMs, to: timeline.flightWallMs });
+  phases.push({ name: 'first seconds of flight', from: timeline.flightWallMs, to: timeline.endWallMs });
+  return phases.filter((phase) => Number.isFinite(phase.from) && Number.isFinite(phase.to) && phase.to > phase.from);
+}
 
-const { _electron: electron } = await loadPlaywright();
-const launch = createIsolatedElectronLaunch({
-  root: ROOT,
-  taskId: 'main-thread-profile',
-  timeout: 180_000,
-  baseEnv: { ...process.env, SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' },
-});
+function resourceLines(resources, from, to) {
+  const inWindow = resources.filter((entry) => entry.wallMs >= from && entry.wallMs < to);
+  const heading = '## Fetched between Launch and flight';
+  if (!inWindow.length) return [heading, '', 'No resource entries were observed in the loading window.', ''];
+  const mb = (bytes) => (bytes / 1048576).toFixed(2);
+  const extOf = (name) => {
+    const match = /\.([a-z0-9]+)$/i.exec(String(name).replace(/[?#].*$/, ''));
+    return match ? match[1].toLowerCase() : '(none)';
+  };
+  const groups = new Map();
+  const delivery = { cache: 0, revalidated: 0, network: 0 };
+  for (const entry of inWindow) {
+    const ext = extOf(entry.name);
+    const group = groups.get(ext) || { count: 0, encoded: 0, transfer: 0 };
+    group.count += 1;
+    group.encoded += entry.encodedBodySize || 0;
+    group.transfer += entry.transferSize || 0;
+    groups.set(ext, group);
+    const transfer = entry.transferSize || 0;
+    const encoded = entry.encodedBodySize || 0;
+    if (transfer === 0 && encoded > 0) delivery.cache += 1;
+    else if (transfer > 0 && transfer < encoded) delivery.revalidated += 1;
+    else delivery.network += 1;
+  }
+  const totalEncoded = inWindow.reduce((sum, entry) => sum + (entry.encodedBodySize || 0), 0);
+  const totalTransfer = inWindow.reduce((sum, entry) => sum + (entry.transferSize || 0), 0);
+  const lines = [
+    heading,
+    '',
+    `${inWindow.length} requests; ${mb(totalEncoded)} MB of bodies; ${mb(totalTransfer)} MB actually transferred. `
+      + `Delivery: ${delivery.network} over the network, ${delivery.revalidated} revalidated (304), ${delivery.cache} straight from cache.`,
+    '',
+    '| type | requests | body MB | transferred MB |',
+    '|---|---:|---:|---:|',
+    ...[...groups.entries()].sort((a, b) => b[1].encoded - a[1].encoded)
+      .map(([ext, group]) => `| ${ext} | ${group.count} | ${mb(group.encoded)} | ${mb(group.transfer)} |`),
+    '',
+    '| largest bodies | MB | transferred MB | fetch ms |',
+    '|---|---:|---:|---:|',
+    ...[...inWindow].sort((a, b) => (b.encodedBodySize || 0) - (a.encodedBodySize || 0)).slice(0, 15)
+      .map((entry) => `| \`${String(entry.name).replace(/^https?:\/\/[^/]+\//, '')}\` | ${mb(entry.encodedBodySize || 0)} `
+        + `| ${mb(entry.transferSize || 0)} | ${Math.round(entry.duration || 0)} |`),
+    '',
+  ];
+  return lines;
+}
 
-let app = null;
-let runtimeClosed = false;
-try {
-  log('launching isolated Electron');
-  app = await electron.launch(launch.options);
-  const page = await app.firstWindow({ timeout: 180_000 });
-  await page.waitForLoadState('domcontentloaded');
+function writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, profileNote }) {
+  const index = profileIndex(profile);
+  const toMicros = (wallMs) => Math.max(0, (wallMs - timeline.profileStartWallMs) * 1000);
+  const phases = buildLaunchPhases(timeline, trace.stages);
+  const secondsBetween = (a, b) => ((b - a) / 1000).toFixed(1);
+  const lines = [
+    '# Launch-to-flight main-thread profile',
+    '',
+    `Profile: ${profileNote}. New Game seed ${FIXED_SEED}.`,
+    '',
+    `**Launch click to flight: ${secondsBetween(timeline.launchWallMs, timeline.flightWallMs)} s.** `
+      + `New Game click to flight: ${secondsBetween(timeline.newGameWallMs, timeline.flightWallMs)} s. `
+      + `The profile continues ${secondsBetween(timeline.flightWallMs, timeline.endWallMs)} s into held-thrust flight.`,
+    '',
+    '## Where the time went, by phase',
+    '',
+    'Busy is sampled main-thread time that is not idle. `(program)` is native work outside JavaScript',
+    '(Blink, GPU command submission, compositor hand-off). A phase that is mostly idle is waiting on',
+    'something off the main thread: driver shader compiles, network, decoding workers, timers.',
+    '',
+    '| phase | wall s | busy s | JS s | (program) s | idle s | GC s | long tasks (n / ms) |',
+    '|---|---:|---:|---:|---:|---:|---:|---|',
+  ];
+  for (const phase of phases) {
+    const summary = summarizeProfile(profile, index, toMicros(phase.from), toMicros(phase.to));
+    phase.summary = summary;
+    const busy = summary.totalMicros - summary.buckets.idle;
+    const js = busy - summary.buckets.program - summary.buckets.gc;
+    const tasks = trace.longTasks.filter((task) => task.wallMs >= phase.from && task.wallMs < phase.to);
+    const taskMs = tasks.reduce((sum, task) => sum + task.duration, 0);
+    lines.push(`| ${phase.name} | ${((phase.to - phase.from) / 1000).toFixed(2)} | ${sOf(busy)} | ${sOf(js)} `
+      + `| ${sOf(summary.buckets.program)} | ${sOf(summary.buckets.idle)} | ${sOf(summary.buckets.gc)} `
+      + `| ${tasks.length} / ${Math.round(taskMs)} |`);
+  }
+  lines.push('');
 
-  const cdp = await page.context().newCDPSession(page);
-  await cdp.send('Profiler.enable');
-  await cdp.send('Profiler.setSamplingInterval', { interval: 200 });
+  for (const phase of phases) {
+    if (phase.to - phase.from < 400) continue;
+    const summary = phase.summary;
+    const busyRows = summary.self.filter((row) => row.node.callFrame.functionName !== '(idle)');
+    lines.push(`## ${phase.name} — ${((phase.to - phase.from) / 1000).toFixed(2)} s`, '');
+    lines.push(...selfTable(summary, busyRows, 14, '### Top self time (idle excluded)'));
+    lines.push(...fileTable(summary, 10, '### Self time by source'));
+  }
 
+  const phaseOf = (wallMs) => phases.find((phase) => wallMs >= phase.from && wallMs < phase.to)?.name || 'outside the profile';
+  const tasks = [...trace.longTasks].sort((a, b) => a.wallMs - b.wallMs);
+  lines.push('## Long tasks from New Game to the end of the profile', '');
+  if (tasks.length) {
+    lines.push('| at s (after Launch) | duration ms | during |', '|---:|---:|---|');
+    for (const task of tasks.filter((entry) => entry.wallMs >= timeline.newGameWallMs).slice(0, 60)) {
+      lines.push(`| ${secondsBetween(timeline.launchWallMs, task.wallMs)} | ${Math.round(task.duration)} | ${phaseOf(task.wallMs)} |`);
+    }
+  } else {
+    lines.push('None observed.');
+  }
+  lines.push('');
+
+  lines.push(...resourceLines(trace.resources, timeline.launchWallMs, timeline.flightWallMs));
+
+  lines.push('## Renderer resources', '', '| moment | programs | geometries | textures | JS heap MB |', '|---|---:|---:|---:|---:|');
+  for (const [moment, snapshot] of [['entering flight', atFlight], ['end of profile', atEnd]]) {
+    lines.push(`| ${moment} | ${snapshot?.programs ?? '?'} | ${snapshot?.geometries ?? '?'} | ${snapshot?.textures ?? '?'} | ${snapshot?.heapMb ?? '?'} |`);
+  }
+  lines.push('');
+  if (atFlight?.openingPending?.length) {
+    lines.push(`Opening work still pending when flight began: ${atFlight.openingPending.map((id) => `\`${id}\``).join(', ')}.`, '');
+  }
+
+  lines.push(...entryTable(summarizeProfile(profile, index), 12));
+  lines.push(...censusLines(census, '## Canvas census at the end of the profile'));
+  fs.writeFileSync(path.join(OUT_DIR, 'report.md'), lines.join('\n'), 'utf8');
+}
+
+async function installLaunchObservers(page) {
+  await page.evaluate(() => {
+    const trace = { stages: [], longTasks: [], resources: [], observers: [], unsubscribe: null };
+    try {
+      const longTaskObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          trace.longTasks.push({ startTime: entry.startTime, duration: entry.duration, wallMs: performance.timeOrigin + entry.startTime });
+        }
+      });
+      longTaskObserver.observe({ type: 'longtask', buffered: true });
+      trace.observers.push(longTaskObserver);
+    } catch { /* long-task observation is best-effort */ }
+    try {
+      // An observer, not getEntriesByType: the resource timing buffer holds only 250 entries.
+      const resourceObserver = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries()) {
+          trace.resources.push({
+            name: entry.name,
+            initiatorType: entry.initiatorType,
+            transferSize: entry.transferSize,
+            encodedBodySize: entry.encodedBodySize,
+            duration: entry.duration,
+            wallMs: performance.timeOrigin + entry.startTime,
+          });
+        }
+      });
+      resourceObserver.observe({ type: 'resource' });
+      trace.observers.push(resourceObserver);
+    } catch { /* resource observation is best-effort */ }
+    const bus = window.SF?.bus;
+    if (bus && typeof bus.on === 'function') {
+      trace.unsubscribe = bus.on('game:loadingProgress', (payload = {}) => {
+        const id = String(payload.id || '');
+        const last = trace.stages[trace.stages.length - 1];
+        if (!last || last.id !== id) trace.stages.push({ id, wallMs: Date.now() });
+      });
+    }
+    window.__SF_PROFILE_LAUNCH__ = trace;
+  });
+}
+
+async function collectLaunchObservers(page) {
+  return page.evaluate(() => {
+    const trace = window.__SF_PROFILE_LAUNCH__;
+    if (!trace) return { stages: [], longTasks: [], resources: [] };
+    for (const observer of trace.observers) {
+      try { observer.disconnect(); } catch { /* already gone */ }
+    }
+    try { trace.unsubscribe?.(); } catch { /* bus already torn down */ }
+    delete window.__SF_PROFILE_LAUNCH__;
+    return { stages: trace.stages, longTasks: trace.longTasks, resources: trace.resources };
+  }).catch(() => ({ stages: [], longTasks: [], resources: [] }));
+}
+
+async function clickNewGameAndLaunch(page) {
   await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 60_000 });
   log(`New Game seed ${FIXED_SEED}`);
   try {
@@ -168,8 +493,10 @@ try {
   } catch {
     log('no Launch button on this route; continuing');
   }
+}
 
-  const deadline = Date.now() + 180_000;
+async function waitForFlight(page, timeoutMs, pollMs) {
+  const deadline = Date.now() + timeoutMs;
   let mode = null;
   while (Date.now() < deadline) {
     mode = await page
@@ -177,10 +504,15 @@ try {
         try { return window.__SF_WITNESS__?.verdict?.()?.facts?.mode ?? null; } catch { return null; }
       })
       .catch(() => null);
-    if (mode === 'flight') break;
-    await page.waitForTimeout(1000);
+    if (mode === 'flight') return Date.now();
+    await page.waitForTimeout(pollMs);
   }
-  if (mode !== 'flight') throw new Error(`never entered flight (mode=${mode})`);
+  throw new Error(`never entered flight (mode=${mode})`);
+}
+
+async function runSteadyFlightProfile(page, cdp) {
+  await clickNewGameAndLaunch(page);
+  await waitForFlight(page, 180_000, 1000);
 
   await page.evaluate(() => {
     window.__SF_PROFILE_LONGTASKS__ = [];
@@ -212,14 +544,84 @@ try {
     })
     .catch(() => {});
 
-  const summary = summarizeProfile(profile);
+  const summary = writeSteadyReport(profile, census, longTasks);
   fs.writeFileSync(path.join(OUT_DIR, 'profile.cpuprofile'), JSON.stringify(profile), 'utf8');
   fs.writeFileSync(path.join(OUT_DIR, 'canvas-census.json'), JSON.stringify(census, null, 1), 'utf8');
-  writeReport(summary, census, longTasks);
 
   const top = summary.entries[0];
   log(`top-level owner: ${top ? `${top[0]} (${((100 * top[1]) / summary.totalMicros).toFixed(1)}%)` : 'none'}`);
   log(`long tasks in window: ${longTasks.length}`);
+}
+
+async function runLaunchProfile(page, cdp, profileNote) {
+  // window.SF and its bus exist only once boot finishes; the title screen's New Game button is the
+  // public signal. Subscribing at domcontentloaded silently misses every loading stage.
+  await page.getByRole('button', { name: 'New Game', exact: true }).waitFor({ state: 'visible', timeout: 120_000 });
+  await page.waitForFunction(() => typeof window.SF?.bus?.on === 'function', null, { timeout: 60_000 })
+    .catch(() => log('window.SF.bus never appeared; the loading-stage timeline will be empty'));
+  await installLaunchObservers(page);
+  await cdp.send('Profiler.start');
+  const profileStartWallMs = Date.now();
+
+  const newGameWallMs = Date.now();
+  await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 60_000 });
+  log(`New Game seed ${FIXED_SEED}`);
+  try {
+    await page.getByRole('button', { name: /^Launch$/i }).click({ timeout: 60_000 });
+  } catch {
+    log('no Launch button on this route; continuing');
+  }
+  const launchWallMs = Date.now();
+
+  const flightWallMs = await waitForFlight(page, 240_000, 250);
+  const atFlight = await page.evaluate(readGpuAndOpeningInPage).catch(() => null);
+  log(`entered flight ${((flightWallMs - launchWallMs) / 1000).toFixed(1)} s after Launch; holding thrust ${FLIGHT_TAIL_MS} ms`);
+
+  await page.keyboard.down('KeyW');
+  await page.waitForTimeout(FLIGHT_TAIL_MS);
+  await page.keyboard.up('KeyW').catch(() => {});
+  const { profile } = await cdp.send('Profiler.stop');
+  const endWallMs = Date.now();
+
+  const atEnd = await page.evaluate(readGpuAndOpeningInPage).catch(() => null);
+  const census = await page.evaluate(canvasCensusInPage).catch(() => []);
+  const trace = await collectLaunchObservers(page);
+  const timeline = { profileStartWallMs, newGameWallMs, launchWallMs, flightWallMs, endWallMs };
+
+  writeLaunchReport({ profile, trace, timeline, atFlight, atEnd, census, profileNote });
+  fs.writeFileSync(path.join(OUT_DIR, 'profile.cpuprofile'), JSON.stringify(profile), 'utf8');
+  fs.writeFileSync(path.join(OUT_DIR, 'canvas-census.json'), JSON.stringify(census, null, 1), 'utf8');
+  fs.writeFileSync(path.join(OUT_DIR, 'launch-trace.json'), JSON.stringify({ timeline, stages: trace.stages, longTasks: trace.longTasks, atFlight, atEnd }, null, 1), 'utf8');
+  log(`stages: ${trace.stages.map((stage) => `${stage.id}@${((stage.wallMs - launchWallMs) / 1000).toFixed(1)}s`).join(' ')}`);
+  log(`long tasks: ${trace.longTasks.length}; resources observed: ${trace.resources.length}`);
+}
+
+fs.mkdirSync(OUT_DIR, { recursive: true });
+
+const { _electron: electron } = await loadPlaywright();
+const baseEnv = { ...process.env, SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' };
+const launch = KEEP_PROFILE
+  ? createKeptElectronLaunch(KEEP_PROFILE, baseEnv)
+  : createIsolatedElectronLaunch({ root: ROOT, taskId: 'main-thread-profile', timeout: 180_000, baseEnv });
+const profileNote = KEEP_PROFILE
+  ? `kept evidence profile \`${path.basename(launch.userDataDir)}\` (${launch.existed ? 'reused: warm GPU program and HTTP caches' : 'new: cold start'})`
+  : 'fresh temporary evidence profile (cold GPU program cache and HTTP cache)';
+
+let app = null;
+let runtimeClosed = false;
+try {
+  log(`launching isolated Electron; ${profileNote}`);
+  app = await electron.launch(launch.options);
+  const page = await app.firstWindow({ timeout: 180_000 });
+  await page.waitForLoadState('domcontentloaded');
+
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Profiler.enable');
+  // A launch window runs ~60 s; half-millisecond sampling keeps the profile a manageable size.
+  await cdp.send('Profiler.setSamplingInterval', { interval: FROM_LAUNCH ? 500 : 200 });
+
+  if (FROM_LAUNCH) await runLaunchProfile(page, cdp, profileNote);
+  else await runSteadyFlightProfile(page, cdp);
   log(`report ${path.join(OUT_DIR, 'report.md')}`);
 } finally {
   try {

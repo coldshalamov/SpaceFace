@@ -128,7 +128,9 @@ export function ensurePadWalkDocument() {
   }
   if (!globalThis.window) globalThis.window = globalThis;
   if (!globalThis.requestAnimationFrame) {
-    globalThis.requestAnimationFrame = (fn) => setTimeout(() => fn(Date.now()), 0);
+    // ~60 Hz like a display. A 0 ms timeout turns any screen's animation loop into a busy spin that
+    // pins a core and keeps the process alive after the walk returns.
+    globalThis.requestAnimationFrame = (fn) => setTimeout(() => fn(Date.now()), 16);
   }
   if (!globalThis.cancelAnimationFrame) {
     globalThis.cancelAnimationFrame = (id) => clearTimeout(id);
@@ -159,6 +161,17 @@ export function ensurePadWalkDocument() {
   ensureMountNode('hud');
   ensureMountNode('sf-confirm-root');
   if (document.body && document.body.style) document.body.style.display = '';
+}
+
+// A screen that refuses to close (a locked route, the station exit gate) turns popScreen() into a
+// no-op that neither throws nor shrinks the stack, so an unbounded drain spins forever — orphaned
+// walks once burned a CPU core each for two days. No real screen stack is anywhere near this deep.
+const MAX_SCREEN_DRAIN = 32;
+
+function closeAllScreens(screenManager) {
+  for (let i = 0; i < MAX_SCREEN_DRAIN && screenManager.isOpen(); i++) {
+    try { screenManager.popScreen(); } catch { break; }
+  }
 }
 
 function pressPad(pad, input, idx) {
@@ -311,9 +324,7 @@ export async function runGamepadScreenWalk({ seed = SEED, only = null } = {}) {
   const results = [];
   for (const id of ids) {
     try {
-      while (screenManager.isOpen()) {
-        try { screenManager.popScreen(); } catch { break; }
-      }
+      closeAllScreens(screenManager);
       state.ui.docked = id === 'station';
       state.ui.dockedStationId = id === 'station' ? 'st_pad_walk' : null;
       // Drill onShow pops unless a rock is pending (same gate as the live tether entry).
@@ -339,9 +350,7 @@ export async function runGamepadScreenWalk({ seed = SEED, only = null } = {}) {
       const dpad = probeDpad(id, pad, input);
       const accept = probeAccept(id, pad, input, screenManager);
       if (screenManager.top() !== id) {
-        while (screenManager.isOpen()) {
-          try { screenManager.popScreen(); } catch { break; }
-        }
+        closeAllScreens(screenManager);
         state.ui.docked = id === 'station';
         state.ui.pendingDrillAsteroidId = id === 'drill' ? 3 : null;
         try { screenManager.pushScreen(id); } catch { /* reopen */ }
