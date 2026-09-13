@@ -10,6 +10,9 @@ import { el, reducedMotion } from '../kit/index.js';
 // The title's drift: ≈ 3.4° per second. The sheet says the hull turns very slowly, never spins.
 const DRIFT_RAD_PER_S = 0.06;
 export const STAGE_HULL_ZOOM = 1.1;
+// The loading shell fades in over 0.8 s (#boot-overlay in styles/intro.css). A screen that hands its
+// stage to the shell frees the hull's WebGL context with release() once the shell covers it.
+export const STAGE_HULL_RELEASE_MS = 900;
 
 function motionReduced(ctx) {
   const video = ctx && ctx.state && ctx.state.settings && ctx.state.settings.video;

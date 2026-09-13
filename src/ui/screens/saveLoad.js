@@ -13,7 +13,7 @@ import { SAVE_IMPORT_MAX_BYTES, saveImportByteLength } from '../../save/saveSyst
 import { WANTED_TIER, wantedTierInfo } from '../../systems/heat.js';
 import { confirm } from '../confirm.js';
 import { el, rows, words, hero, settle, cue } from '../kit/index.js';
-import { createStageHull } from './stageHull.js';
+import { createStageHull, STAGE_HULL_RELEASE_MS } from './stageHull.js';
 
 const SLOT_COUNT = 5;        // quick + 4 manual slots shown
 const LS_PREFIX = 'sf.save.';
@@ -718,6 +718,32 @@ export const saveLoadScreen = {
     }
     rootEl.appendChild(stage);
     this.hull = createStageHull(stage, { rootEl });
+    // Loading a save hands the stage to the loading shell for the whole load, and this screen stays
+    // laid out underneath it, so the hull kept drifting, linking and uploading on its own WebGL
+    // context until flight: the waste the New Game stage had (2.2 s of drift renders, and a second
+    // context competing with the flight context's shader compiles). Load stops the drift at once and
+    // frees the context once the shell covers the stage; a failed start brings back a fresh hull.
+    let loadRequested = false;
+    let hullRelease = null;
+    const cancelHullRelease = () => {
+      if (hullRelease !== null) clearTimeout(hullRelease);
+      hullRelease = null;
+    };
+    const unsubLoading = ctx.bus.on('game:loadingProgress', () => {
+      if (!loadRequested || hullRelease !== null) return;
+      hullRelease = setTimeout(() => {
+        if (loadRequested && this.hull) this.hull.release();
+      }, STAGE_HULL_RELEASE_MS);
+    });
+    const unsubStartFailed = ctx.bus.on('game:startFailed', () => {
+      if (!loadRequested) return;
+      loadRequested = false;
+      cancelHullRelease();
+      if (!this.hull) return;
+      if (this.hull.restore() && refs) refs.shownShipId = null;
+      if (refs) this._render(ctx);
+      if (this.hull.hasMount()) this.hull.activate(ctx);
+    });
 
     // Foot: Export, Import (the hidden file input stays), Back.
     const foot = el('footer', 'k-foot of-pause');
@@ -748,6 +774,9 @@ export const saveLoadScreen = {
       caption, shipName, portrait, scars, titles, rapSheet, grudge,
       objective, credits, fine, actions,
       selected: null, shownShipId: null, ids: [], slots: {},
+      cancelHullRelease, unsubLoading, unsubStartFailed,
+      markLoadRequested: () => { loadRequested = true; },
+      clearLoadRequest: () => { loadRequested = false; },
     };
     this._render(ctx);
   },
@@ -933,6 +962,9 @@ export const saveLoadScreen = {
       });
       if (!ok) return;
       refs.selected = id;
+      // The loading shell is about to cover the stage: stop the hull now; mount() frees its context.
+      refs.markLoadRequested();
+      if (this.hull) this.hull.deactivate();
       ctx.bus.emit('game:load', { slot: id });
       return;
     }
@@ -1066,6 +1098,9 @@ export const saveLoadScreen = {
   onShow(ctx) {
     if (!refs) return;
     cue('open');
+    refs.cancelHullRelease();
+    refs.clearLoadRequest();
+    if (this.hull && this.hull.restore()) refs.shownShipId = null;
     this._render(ctx);
     try {
       settle(refs.title, { from: 'top', state: 'saveLoad:open' });
@@ -1088,6 +1123,11 @@ export const saveLoadScreen = {
   },
   refresh(ctx) { this._render(ctx); },
   dispose() {
+    if (refs) {
+      refs.cancelHullRelease();
+      try { refs.unsubLoading(); } catch (e) { /* bus already gone */ }
+      try { refs.unsubStartFailed(); } catch (e) { /* bus already gone */ }
+    }
     if (this.hull) { this.hull.dispose(); this.hull = null; }
     refs = null;
   },
