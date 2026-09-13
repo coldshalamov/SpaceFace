@@ -293,6 +293,51 @@ export async function compileScenePipelinesForRenderTarget(
  */
 let pipelineReadinessBatch = null;
 
+// gl.isProgram() is a synchronous round trip to the GPU process. Asked for every pending program on
+// every readiness poll, it was ~9 s of main thread during New Game loading (2026-09-13 launch profile,
+// warm caches); rate-limited per waiter it was still 2.5 s, because dozens of waits were live at once.
+// COMPLETION_STATUS_KHR (program.isReady) is answered without that wait, so the hot loop keeps it.
+// Handle validity comes from the context-loss event, three's destroy(), and one native recheck budget
+// that every waiter on a context shares: at most one isProgram() per gap, never one per program per poll.
+const PROGRAM_HANDLE_RECHECK_DELAY_MS = 1000;
+const PROGRAM_HANDLE_RECHECK_GAP_MS = 250;
+const programHandleContexts = new WeakMap();
+
+function programHandleContext(gl) {
+  let record = programHandleContexts.get(gl);
+  if (!record) {
+    record = { generation: 0, nextNativeCheckAt: Date.now() + PROGRAM_HANDLE_RECHECK_DELAY_MS };
+    programHandleContexts.set(gl, record);
+    const canvas = gl.canvas;
+    if (canvas && typeof canvas.addEventListener === 'function') {
+      // Bumped by the canvas's own event, so a context lost and restored between polls is still seen.
+      canvas.addEventListener('webglcontextlost', () => { record.generation += 1; }, false);
+    }
+  }
+  return record;
+}
+
+function contextLossGeneration(gl) {
+  return gl && typeof gl === 'object' ? programHandleContext(gl).generation : 0;
+}
+
+/**
+ * A pending program that can no longer be queried: its handle was released (three's
+ * WebGLProgram.destroy clears it), the context was lost since `generation`, or the driver no longer
+ * recognises the handle when this context's shared native recheck is due.
+ */
+function programHandleInvalid(gl, program, generation) {
+  if (!program.program) return true;
+  if (!gl || typeof gl !== 'object') return false;
+  const record = programHandleContext(gl);
+  if (record.generation !== generation) return true;
+  if (typeof gl.isProgram !== 'function') return false;
+  const now = Date.now();
+  if (now < record.nextNativeCheckAt) return false;
+  record.nextNativeCheckAt = now + PROGRAM_HANDLE_RECHECK_GAP_MS;
+  return !gl.isProgram(program.program);
+}
+
 export function beginScenePipelineReadinessBatch(renderer = null) {
   if (pipelineReadinessBatch) {
     pipelineReadinessBatch.depth += 1;
@@ -304,6 +349,7 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
     programs: new Set(),
     waiters: [],
     gl: null,
+    generation: 0,
     renderer: renderer || null,
     entryTarget: renderer && typeof renderer.getRenderTarget === 'function'
       ? renderer.getRenderTarget()
@@ -319,7 +365,10 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
   batch.handle = {
     join(gl, programs, settle) {
       if (!batch.accepting) return false;
-      if (gl && !batch.gl) batch.gl = gl;
+      if (gl && !batch.gl) {
+        batch.gl = gl;
+        batch.generation = contextLossGeneration(gl);
+      }
       for (const program of programs) batch.programs.add(program);
       batch.waiters.push(settle);
       return true;
@@ -339,8 +388,7 @@ export function beginScenePipelineReadinessBatch(renderer = null) {
         for (const program of batch.programs) {
           // Same guard the single-unit path carries: after a restore an old-context WebGLProgram is
           // not a valid query target even though its JS wrapper still exists.
-          if (!program.program
-            || (gl && typeof gl.isProgram === 'function' && !gl.isProgram(program.program))) {
+          if (programHandleInvalid(gl, program, batch.generation)) {
             settleAll({
               contextLost: true,
               reason: 'WebGL program invalidated during shader compilation',
@@ -460,6 +508,7 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
       return;
     }
 
+    const generation = contextLossGeneration(gl);
     const checkProgramsReady = () => {
       if (settled) return;
       try {
@@ -468,9 +517,9 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
           return;
         }
         for (const program of programs) {
-          // isProgram() is the guard Three's unowned timer lacks: after a restore, an old-context
+          // The handle guard Three's unowned timer lacks: after a restore, an old-context
           // WebGLProgram is not a valid query target even though its JS wrapper still exists.
-          if (!program.program || (typeof gl.isProgram === 'function' && !gl.isProgram(program.program))) {
+          if (programHandleInvalid(gl, program, generation)) {
             finish({
               contextLost: true,
               reason: 'WebGL program invalidated during shader compilation',

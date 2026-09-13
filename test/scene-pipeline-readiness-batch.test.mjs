@@ -106,3 +106,89 @@ test('nested opens share one cohort and only the outermost close retires it', as
   outer.close();
   assert.equal(settled.length, 1);
 });
+
+function fakeCanvas() {
+  const listeners = new Map();
+  return {
+    addEventListener(type, fn) {
+      if (!listeners.has(type)) listeners.set(type, new Set());
+      listeners.get(type).add(fn);
+    },
+    removeEventListener(type, fn) { listeners.get(type)?.delete(fn); },
+    fire(type) { for (const fn of listeners.get(type) || []) fn(); },
+  };
+}
+
+test('the readiness poll never makes a synchronous isProgram round trip on every beat', async () => {
+  // 2026-09-13 launch profile: gl.isProgram() per pending program per poll was ~9 s of main thread
+  // while New Game loaded. Readiness is still polled every beat; handle validity is not.
+  let isProgramCalls = 0;
+  const gl = { isContextLost: () => false, isProgram: () => { isProgramCalls += 1; return true; } };
+  const linking = fakeProgram('linking', 5);
+  const batch = beginScenePipelineReadinessBatch(null);
+  try {
+    batch.join(gl, [linking], () => {});
+    const result = await batch.drain();
+    assert.equal(result.programs, 0, 'the cohort drained rather than timing out');
+  } finally {
+    batch.close();
+  }
+  assert.equal(linking.polls() > 5, true, 'COMPLETION_STATUS readiness is still polled to completion');
+  assert.equal(isProgramCalls, 0, 'a sub-second link must not issue any synchronous isProgram call');
+});
+
+test('many long links share one native handle recheck budget instead of one each', async () => {
+  let isProgramCalls = 0;
+  const gl = { isContextLost: () => false, isProgram: () => { isProgramCalls += 1; return true; } };
+  const readyAt = Date.now() + 1400;
+  const programs = Array.from({ length: 100 }, (_, i) => ({
+    program: { name: `p${i}` },
+    isReady: () => Date.now() >= readyAt,
+  }));
+  const batch = beginScenePipelineReadinessBatch(null);
+  try {
+    batch.join(gl, programs, () => {});
+    const result = await batch.drain();
+    assert.equal(result.programs, 0, 'the cohort drained rather than timing out');
+  } finally {
+    batch.close();
+  }
+  // ~1.4 s of polling 100 programs is tens of thousands of handle checks; the shared budget allows a few.
+  assert.equal(isProgramCalls <= 4, true, `isProgram calls: ${isProgramCalls}`);
+  assert.equal(isProgramCalls >= 1, true, 'the native recheck still runs for links that outlive its delay');
+});
+
+test('a context lost and restored between two polls still settles the cohort as lost', async () => {
+  const canvas = fakeCanvas();
+  const gl = { canvas, isContextLost: () => false, isProgram: () => true };
+  const settled = [];
+  const batch = beginScenePipelineReadinessBatch(null);
+  let result;
+  try {
+    batch.join(gl, [fakeProgram('stale-after-restore', 1e9)], (r) => settled.push(r));
+    // Lost, and already restored by the next poll: isContextLost() alone would miss it.
+    canvas.fire('webglcontextlost');
+    result = await batch.drain();
+  } finally {
+    batch.close();
+  }
+  assert.equal(result.contextLost, true);
+  assert.equal(settled.length, 1);
+  assert.equal(settled[0].contextLost, true);
+});
+
+test('a program released while it links settles the cohort instead of polling a dead handle', async () => {
+  const released = fakeProgram('released', 1e9);
+  const settled = [];
+  const batch = beginScenePipelineReadinessBatch(null);
+  let result;
+  try {
+    batch.join(liveGl, [released], (r) => settled.push(r));
+    released.program = undefined; // what three's WebGLProgram.destroy() does to the handle
+    result = await batch.drain();
+  } finally {
+    batch.close();
+  }
+  assert.equal(result.contextLost, true);
+  assert.equal(settled[0].reason, 'WebGL program invalidated during shader compilation');
+});

@@ -617,6 +617,17 @@ export const feel = {
     // band-0 signal the background needs in order to stop streaming.
     publishVelocityLanguage(this.state, drive, region);
 
+    // Nothing is drawn behind the loading shell: overlay work there cost 1.8 s of main thread during
+    // New Game loading (2026-09-13 launch profile). The publish above still runs, so the background
+    // keeps receiving its velocity-language record.
+    if (this.state.mode === 'loading') {
+      if (this._streaks) this._streaks.length = 0;
+      this._slOpacity = 0;
+      this._slGrain = 0;
+      if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
+      return;
+    }
+
     if (photoModeFeelPresentation(this.state).hideSpeedLines) {
       if (this._streaks) this._streaks.length = 0;
       if (cvs.style.opacity !== '0') cvs.style.opacity = '0';
