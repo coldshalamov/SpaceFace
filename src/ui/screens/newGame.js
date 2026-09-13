@@ -1,17 +1,27 @@
 // New Game screen (ARCHITECTURE §1.3 step 7, §5; design/specs/09).
 // POSTER register: the starter hull on the stage, stencil title, one nameplate, kit keys for
 // the verbs. Pilot / difficulty / seed / Launch stay the same controls — painted as produced
-// Field Hardware, not leftover underlined words. Pilot name + Hitch (ship_kestrel) + difficulty
-// emit game:new. The save system owns newGame() and the switch to flight.
+// Field Hardware, not leftover underlined words. Pilot name + a picked starter (defaulting to
+// Hitch / ship_kestrel) + difficulty emit game:new. The save system owns newGame() and the
+// switch to flight.
 import { leftoverNewRunLine } from '../../core/newGamePlus.js';
 import { MODULES } from '../../data/modules.js';
-import { NEW_GAME } from '../../data/newGameDefaults.js';
+import {
+  DEFAULT_STARTER_ID,
+  NEW_GAME_STARTERS,
+  starterById,
+} from '../../data/newGameDefaults.js';
+import { SHIPS } from '../../data/ships.js';
 import { WEAPONS } from '../../data/weapons.js';
+import { fittingsFromDefaultModules } from '../../systems/ships.js';
 import { coreText } from '../localizedCoreCopy.js';
 import { el, words, settle, cue } from '../kit/index.js';
 import { createStageHull } from './stageHull.js';
 
-const STARTER_SHIP = 'ship_kestrel';
+// PQ-156.00: the catalog owns the three starter hulls; Hitch stays the default pick so a
+// Launch with no interaction emits the exact legacy ship_kestrel payload.
+const DEFAULT_STARTER = starterById(DEFAULT_STARTER_ID) || NEW_GAME_STARTERS[0];
+const SHIP_BY_ID = new Map(SHIPS.map((def) => [def.id, def]));
 const FITTABLE_BY_ID = new Map();
 for (const item of [...WEAPONS, ...MODULES]) FITTABLE_BY_ID.set(item.id, item);
 const DIFFICULTIES = [
@@ -21,9 +31,6 @@ const DIFFICULTIES = [
   ['ironman', 'Ironman', 'Veteran combat. Death ends the run.'],
 ];
 const DEFAULT_DIFFICULTY = 'standard';
-// The hull's one sentence. No ship def carries a blurb or tagline today (audited 2026-09-07), so the
-// task file's literal stands until the ship data grows one.
-const STARTER_BLURB = 'Turns wide. Sluggish under load. Stops badly.';
 // The sheet's stage zoom for the new-game hull (Task B §1.1).
 const STAGE_ZOOM = 1.1;
 
@@ -287,14 +294,20 @@ function showFirstRunSplash(ctx) {
   }, 2500);
 }
 
-function starterShip(ctx) {
-  const ships = ctx.state.content && ctx.state.content.ships;
-  if (Array.isArray(ships)) return ships.find((s) => s.id === STARTER_SHIP) || null;
-  if (ships && typeof ships === 'object') return ships[STARTER_SHIP] || null;
-  return null;
+function shipDefFor(ctx, shipId) {
+  const ships = ctx && ctx.state && ctx.state.content && ctx.state.content.ships;
+  if (Array.isArray(ships)) return ships.find((s) => s.id === shipId) || SHIP_BY_ID.get(shipId) || null;
+  if (ships && typeof ships === 'object') return ships[shipId] || SHIP_BY_ID.get(shipId) || null;
+  return SHIP_BY_ID.get(shipId) || null;
 }
 
-function starterLoadoutRows() {
+// The stage shows the slot-parallel fittings array the render track consumes (a raw id list
+// would place modules in the wrong slot positions), resolved by the same fit rule the run uses.
+function starterStageFittings(starter) {
+  return starter ? fittingsFromDefaultModules(starter.shipId, starter.fittedModules || []) : null;
+}
+
+function starterLoadoutRows(starter) {
   const labels = {
     weapon: 'Primary',
     mining: 'Mining',
@@ -303,7 +316,7 @@ function starterLoadoutRows() {
     cargo: 'Cargo',
     utility: 'Utility',
   };
-  return (NEW_GAME.fittedModules || [])
+  return ((starter && starter.fittedModules) || [])
     .map((id) => FITTABLE_BY_ID.get(id))
     .filter(Boolean)
     .map((def) => [labels[def.slotType] || def.slotType, def.name]);
@@ -373,6 +386,32 @@ export const newGameScreen = {
     body.appendChild(pilot.wrap);
     body.appendChild(hairline());
 
+    // Starter (PQ-156.00): three hulls, three first mornings. A roving arrow-key words row like
+    // difficulty — but it owns NO Tab stop, because the launch layout probe pins an exact six-stop
+    // traversal (pilot → difficulty → seed → New seed → Back → Launch). Up/Down arrows carry focus
+    // between the name field, this row, and the difficulty row; click works too. Picking a word
+    // updates the stage hull, the loadout, the caption and the launch payload together.
+    const starterField = field('Start as');
+    starterField.label.id = 'sf-ng-starter-label';
+    const starterWords = words(NEW_GAME_STARTERS.map((s) => ({
+      action: 'starter:' + s.id,
+      label: s.name,
+      sub: s.tag,
+    })), {
+      row: true, size: 'body', ariaLabel: 'Start as',
+      onPick: (action) => this._setStarter(action.slice('starter:'.length)),
+    });
+    starterWords.setAttribute('aria-labelledby', starterField.label.id);
+    starterWords.classList.add('of-pause');
+    for (const b of starterWords.querySelectorAll('.k-word')) paintKey(b, 'legend');
+    const starterDesc = el('p', 'k-sentence', '');
+    starterDesc.id = 'sf-ng-starter-desc';
+    starterWords.setAttribute('aria-describedby', starterDesc.id);
+    starterField.wrap.appendChild(starterWords);
+    starterField.wrap.appendChild(starterDesc);
+    body.appendChild(starterField.wrap);
+    body.appendChild(hairline());
+
     // Difficulty: four words in a row, the live one bright, its sentence beneath. A hidden <select>
     // (#sf-ng-difficulty) mirrors the choice for the checks and probes that read it.
     const diffField = field(coreText('difficulty'));
@@ -396,6 +435,44 @@ export const newGameScreen = {
     diffField.wrap.appendChild(diffDesc);
     body.appendChild(diffField.wrap);
     body.appendChild(hairline());
+
+    // Arrow bridges for the Tab-invisible starter row: Down from the pilot name or Up from the
+    // difficulty row lands on the live starter word, and the row's own Up/Down steps back out.
+    const liveWordIn = (list) => {
+      const all = list ? Array.from(list.querySelectorAll('.k-word')) : [];
+      return all.find((b) => b.getAttribute('aria-pressed') === 'true') || all[0] || null;
+    };
+    name.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowDown' || e.altKey || e.ctrlKey || e.metaKey) return;
+      const target = liveWordIn(starterWords);
+      if (!target) return;
+      e.preventDefault();
+      target.focus();
+    });
+    starterWords.addEventListener('keydown', (e) => {
+      if (e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key === 'ArrowUp') { e.preventDefault(); name.focus(); }
+      else if (e.key === 'ArrowDown') {
+        const target = liveWordIn(diffWords);
+        if (!target) return;
+        e.preventDefault();
+        target.focus();
+      }
+    });
+    diffWords.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowUp' || e.altKey || e.ctrlKey || e.metaKey) return;
+      const target = liveWordIn(starterWords);
+      if (!target) return;
+      e.preventDefault();
+      target.focus();
+    });
+    // Once focus leaves the starter row, park every word's Tab stop again — the row's roving
+    // focusin marks the entered word tabbable, and the six-stop launch traversal must stay
+    // exact even after someone has visited the picker.
+    starterWords.addEventListener('focusout', (e) => {
+      if (e.relatedTarget && starterWords.contains(e.relatedTarget)) return;
+      for (const b of starterWords.querySelectorAll('.k-word')) b.tabIndex = -1;
+    });
 
     // Seed. A real player feature — a shareable, reproducible universe — and the ONLY way to make
     // the run's procedural content repeatable. Board offers are drawn from
@@ -474,19 +551,23 @@ export const newGameScreen = {
       body.appendChild(hairline());
     }
 
-    // Loadout: four quiet words (the module names). Not buttons — nothing here is chosen.
+    // Loadout: the picked starter's fitted modules as quiet words. Not buttons — nothing here
+    // is chosen; the starter row above is the picker and rewrites this list on every pick.
     const loadoutField = field('Loadout');
     const loadout = el('ul', 'k-words k-words--row');
     loadout.setAttribute('aria-label', 'Loadout');
-    for (const [slot, moduleName] of starterLoadoutRows()) {
-      const li = el('li');
-      const word = el('span', 'k-t-body k-62 fh-legend', moduleName);
-      word.setAttribute('aria-disabled', 'true');
-      word.title = slot;
-      paintLegend(word);
-      li.appendChild(word);
-      loadout.appendChild(li);
-    }
+    const renderLoadout = (starter) => {
+      loadout.innerHTML = '';
+      for (const [slot, moduleName] of starterLoadoutRows(starter)) {
+        const li = el('li');
+        const word = el('span', 'k-t-body k-62 fh-legend', moduleName);
+        word.setAttribute('aria-disabled', 'true');
+        word.title = slot;
+        paintLegend(word);
+        li.appendChild(word);
+        loadout.appendChild(li);
+      }
+    };
     loadoutField.wrap.appendChild(loadout);
     body.appendChild(loadoutField.wrap);
     body.appendChild(hairline());
@@ -514,11 +595,12 @@ export const newGameScreen = {
     pin(stage, { background: 'transparent', 'border-width': '0' });
     const caption = el('div', 'k-stage__foot');
     paintPlate(caption, 'edge', { 'max-width': '100%' });
-    const ship = starterShip(ctx);
-    const hullName = el('h2', 'k-display k-t-sub fh-title', (ship && ship.name) || 'Hitch');
+    const ship = shipDefFor(ctx, DEFAULT_STARTER.shipId);
+    const hullName = el('h2', 'k-display k-t-sub fh-title', (ship && ship.name) || DEFAULT_STARTER.name);
     paintMarking(hullName);
+    const hullBlurb = el('p', 'k-sentence', DEFAULT_STARTER.blurb);
     caption.appendChild(hullName);
-    caption.appendChild(el('p', 'k-sentence', STARTER_BLURB));
+    caption.appendChild(hullBlurb);
     stage.appendChild(caption);
     rootEl.appendChild(stage);
     this.hull = createStageHull(stage, { rootEl, zoom: STAGE_ZOOM });
@@ -562,6 +644,7 @@ export const newGameScreen = {
       setWord(newSeed, launching);
       name.disabled = launching;
       seed.disabled = launching;
+      for (const b of starterWords.querySelectorAll('.k-word')) setWord(b, launching);
       for (const b of diffWords.querySelectorAll('.k-word')) setWord(b, launching);
       if (legacyWords) for (const b of legacyWords.querySelectorAll('.k-word')) setWord(b, launching);
       if (legacySelect) legacySelect.disabled = launching || !legacyOn;
@@ -573,11 +656,35 @@ export const newGameScreen = {
 
     refs = {
       root: rootEl, title, body, stage, foot, name, seed, diff, diffWords, diffDesc, launch, back,
+      starterWords, starterDesc, hullName, hullBlurb, renderLoadout,
+      starter: DEFAULT_STARTER,
       setLaunching, unsubStartFailed, ctx,
       isLaunching: () => launching,
       legacy: () => ({ on: legacyOn, select: legacySelect, candidate: newGamePlusCandidate }),
     };
+    this._setStarter(DEFAULT_STARTER.id, { silent: true });
     this._setDifficulty(DEFAULT_DIFFICULTY, { silent: true });
+  },
+
+  _setStarter(id, { silent = false } = {}) {
+    if (!refs) return;
+    const starter = starterById(id) || DEFAULT_STARTER;
+    refs.starter = starter;
+    for (const b of refs.starterWords.querySelectorAll('.k-word')) {
+      b.setAttribute('aria-pressed', String(b.dataset.action === 'starter:' + starter.id));
+      // Never a Tab stop: the launch traversal contract is an exact six stops, and the row is
+      // reached by the Up/Down arrow bridges (or pointer) instead.
+      b.tabIndex = -1;
+    }
+    refs.starterDesc.textContent = starter.line;
+    const ship = shipDefFor(refs.ctx, starter.shipId);
+    refs.hullName.textContent = (ship && ship.name) || starter.name;
+    refs.hullBlurb.textContent = starter.blurb;
+    refs.renderLoadout(starter);
+    if (this.hull && this.hull.hasMount()) {
+      this.hull.show(starter.shipId, { fittings: starterStageFittings(starter) });
+    }
+    syncKeys(refs.starterWords);
   },
 
   _setDifficulty(value, { silent = false } = {}) {
@@ -614,7 +721,8 @@ export const newGameScreen = {
     try { showFirstRunSplash(ctx); } catch (e) { /* non-blocking */ }
     ctx.bus.emit('game:new', {
       name: pilot,
-      shipId: STARTER_SHIP,
+      shipId: refs.starter.shipId,
+      starter: refs.starter.id,
       difficulty: refs.diff.value,
       ...seedOpt,
       ...newGamePlusOpt,
@@ -633,7 +741,7 @@ export const newGameScreen = {
     } catch (e) { /* motion is cosmetic */ }
     if (this.hull && this.hull.hasMount()) {
       this.hull.activate(ctx);
-      this.hull.show(STARTER_SHIP, { fittings: NEW_GAME.fittedModules });
+      this.hull.show(refs.starter.shipId, { fittings: starterStageFittings(refs.starter) });
     }
     try { refs.name.focus(); refs.name.select(); } catch (e) {}
   },

@@ -13,7 +13,7 @@ import { canonicalStringify } from './core/simSnapshot.js';
 import { installLiveClipDirector } from './ui/screens/clips.js';
 import { makeShipEntitySpec } from './systems/ships.js';
 import { makeEnemySpawnSpec } from './systems/combat.js';
-import { NEW_GAME } from './data/newGameDefaults.js';
+import { NEW_GAME, resolveNewGameStarter } from './data/newGameDefaults.js';
 import { createTelemetry } from './systems/telemetry.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { createTimeEffects } from './core/timeEffects.js';
@@ -38,6 +38,7 @@ import {
   mark47aPlayerActor,
   spawn47aOpeningScene,
 } from './data/scenarios/47aLiveScene.js';
+import { defaultShipAppearance } from './core/shipAppearance.js';
 
 // Debug surfaces (the mutable window.SF handle + boot logs) are exposed outside production bundles.
 // Launcher URLs stay identical for browser/Electron; release/debug behavior must not fork gameplay.
@@ -366,6 +367,13 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       }
       if (!runTransitionGuard.isCurrent(transitionToken)) return;
 
+      // PQ-156.00 — a starter pick rides game:new as opts.starter. ships.newGame() always
+      // installs the legacy NEW_GAME ship, so the pick rewrites the active owned ship here,
+      // before bootstrapScene spawns the player entity. Absent/unknown ids keep the legacy
+      // defaults byte-for-byte; nothing about the pick is saved as a class or lock.
+      applyStarterPick(state, ships, opts);
+      if (!runTransitionGuard.isCurrent(transitionToken)) return;
+
       if (newGamePlus) {
         if (!ships || typeof ships.grantModule !== 'function'
             || !ships.grantModule({
@@ -469,6 +477,28 @@ async function startNewGame(state, helpers, bus, registry, runTransitionGuard, t
       SF_DEBUG_ONLY: if (SF_DEBUG) console.log('[SpaceFace] new game started. entities=%d', state.entityList.length);
     },
   });
+}
+
+// PQ-156.00 — apply a New Game starter pick to the run's first owned ship. Runs inside
+// startNewGame's prepareRun after ships.newGame() and before bootstrapScene, so the spawned
+// player entity is the hull the player picked rather than a quick swap of it after spawn.
+// The Hitch starter (or no pick) resolves to the legacy NEW_GAME hull and is left untouched.
+function applyStarterPick(state, ships, opts) {
+  const starter = resolveNewGameStarter(opts);
+  if (!starter || starter.shipId === NEW_GAME.shipId) return;
+  const p = state.player;
+  const owned = p && Array.isArray(p.ownedShips) && p.ownedShips[p.activeShipIndex || 0];
+  if (!owned) return;
+  owned.defId = starter.shipId;
+  owned.fittings = ships && typeof ships.fittingsFromDefaults === 'function'
+    ? ships.fittingsFromDefaults(starter.shipId, starter.fittedModules || [])
+    : [];
+  owned.appearance = defaultShipAppearance(starter.shipId);
+  // ships.newGame() already published a role packet for the legacy hull while the run is in
+  // loading; the held briefing is replaced by this republish naming the hull actually picked.
+  if (ships && typeof ships.publishActiveRoleContext === 'function') {
+    ships.publishActiveRoleContext({ source: 'new_game', announce: true });
+  }
 }
 
 function resolveNewGamePlusOverlay(registry, opts = {}) {
