@@ -13,6 +13,7 @@ import {
   getAssetResidency,
 } from './assetResidency.js';
 import * as THREE from 'three';
+import { createRenderPackageDigester } from './renderPackageDigest.js';
 
 const ABSOLUTE_URL_RE = /^[a-z][a-z\d+.-]*:/i;
 const SHA256_RE = /^[a-f0-9]{64}$/;
@@ -1021,8 +1022,10 @@ function resourceBaseUrl(url) {
   }
 }
 
-async function sha256Hex(bytes) {
-  if (!globalThis.crypto?.subtle) throw new Error('Web Crypto SHA-256 is required to verify render packages.');
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(digest)].map((value) => value.toString(16).padStart(2, '0')).join('');
+// GLB bytes are hashed in a worker so verification never runs on the main thread; the calling thread is
+// the fallback (renderPackageDigest.js).
+let renderPackageDigester = null;
+function sha256Hex(bytes) {
+  renderPackageDigester ||= createRenderPackageDigester();
+  return renderPackageDigester.sha256Hex(bytes);
 }
