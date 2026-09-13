@@ -5695,7 +5695,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   root.add(hull);
   root.userData.hull = hull;
 
-  const materials = fallbackMaterials(palette, visualSeed);
+  const { materials, built: builtFallbackMaterials } = fallbackMaterials(palette, visualSeed);
   const bindings = createBindings();
   const mutableMaterials = new Map();
   const staticBatches = createStaticBatchCollector(hull, bindings);
@@ -5958,7 +5958,7 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
 
   const ownerLocalGeometries = new Set([boundsProxy.geometry]);
   const ownerLocalMaterials = new Set([
-    ...Object.values(materials),
+    ...builtFallbackMaterials,
     ...mutableMaterials.values(),
     shieldBubble.material,
     boundsProxy.material,
@@ -10191,14 +10191,34 @@ function materialShareSignature(material, tags = {}) {
 // Procedural slot fallbacks. These are emergency continuity pieces, not substitutes for authored
 // maps: once a conforming GLB appears at the canonical path the slot replaces itself without code.
 // -------------------------------------------------------------------------------------------------
-function fallbackMaterials(palette, seed) {
-  const hull = kit.pbrHullMaterial({
+// Each fallback material is built on first use. kit.pbrHullMaterial paints three 1024px canvas
+// textures per palette/seed key, and an authored composition (a whole-ship body, or authored
+// cockpit/engine/fin parts) never mounts a piece that reads materials.hull: building it up front
+// cost the New Game load 1.3 s of main thread for hulls that drew none of it. A procedural piece
+// gets the identical material (pbrHullMaterial is memoized by key; the others take the same
+// arguments). `built` holds only what was constructed, for the composition's disposal set.
+export function fallbackMaterials(palette, seed) {
+  const materials = {};
+  const built = new Set();
+  const lazy = (name, build) => {
+    let material = null;
+    Object.defineProperty(materials, name, {
+      get() {
+        if (!material) {
+          material = build();
+          built.add(material);
+        }
+        return material;
+      },
+    });
+  };
+  lazy('hull', () => kit.pbrHullMaterial({
     hull: palette.hull, accent: palette.accent, seed: seed & 0xffff,
     panelCount: 10, metalness: 0.18, roughness: 0.58,
-  });
-  const dark = kit.machineryMaterial(palette.dark, 0.48, 0.76);
-  const accent = kit.emissiveMaterial(palette.accent, 2.6);
-  const glass = new THREE.MeshPhysicalMaterial({
+  }));
+  lazy('dark', () => kit.machineryMaterial(palette.dark, 0.48, 0.76));
+  lazy('accent', () => kit.emissiveMaterial(palette.accent, 2.6));
+  lazy('glass', () => new THREE.MeshPhysicalMaterial({
     color: new THREE.Color(palette.accent).multiplyScalar(0.18),
     roughness: 0.10,
     metalness: 0,
@@ -10210,8 +10230,8 @@ function fallbackMaterials(palette, seed) {
     transparent: true,
     opacity: 1,
     depthWrite: false,
-  });
-  return { hull, dark, accent, glass };
+  }));
+  return { materials, built };
 }
 
 function buildSafetyCore(hull, materials, palette) {
