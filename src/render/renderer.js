@@ -5115,6 +5115,70 @@ export const render = {
           inFlight: leftover ? leftover.inFlight : undefined,
           compiling: leftover ? leftover.compiling : undefined,
         });
+      // Upgrade boundaries, the env rebind above, and pool activation keep publishing new
+      // material objects through the whole cook — after the opening plan receipt froze. Any
+      // live drawable still missing a program (or holding a stale material version) is exactly
+      // what the first bloomScene links in the player's face — measured 5.3 s on Intel/ANGLE.
+      // Compile and touch the stragglers now, under the shell, while the queue is drained.
+      liveStepStarted = prepareNow();
+      let materialSettle = { skipped: true, reason: recook ? 'session-recook' : 'no-unbound' };
+      const staleNames = [];
+      if (!recook) {
+        const staleSubjects = [];
+        const seenStale = new Set();
+        scene.traverse((object) => {
+          if (!object || !object.geometry || !object.material || seenStale.has(object)) return;
+          for (let p = object; p; p = p.parent) {
+            if (p.visible === false) return;
+          }
+          const materials = Array.isArray(object.material) ? object.material : [object.material];
+          for (const material of materials) {
+            if (!material) continue;
+            let prepared = false;
+            try {
+              const props = renderer.properties.get(material);
+              prepared = !!(props && props.currentProgram) && props.__version === material.version;
+            } catch { prepared = false; }
+            if (!prepared) {
+              seenStale.add(object);
+              staleSubjects.push(object);
+              if (staleNames.length < 12) staleNames.push(String(object.name || object.type || 'drawable'));
+              break;
+            }
+          }
+        });
+        if (staleSubjects.length > 0 && prepareNow() - prepareStarted < PREPARE_BUDGET_MS) {
+          try {
+            materialSettle = await admitOpeningUnitsAcrossSlices({
+              deadlineMs: Math.min(6000, remainingMs()),
+              units: uniqueAdmissionUnits(staleSubjects),
+              beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
+              compileOne: (subject) => compileSubjectColorAndDepth(subject, this._selectPostRoute()),
+              touchOne: touchExactTargetSubject,
+              yieldToMain: yieldAndFlushLiveSectorGpu,
+            });
+            materialSettle.unbound = staleSubjects.length;
+          } catch (error) {
+            materialSettle = {
+              skipped: false,
+              unbound: staleSubjects.length,
+              error: String(error && error.message || error),
+            };
+          }
+        } else {
+          materialSettle = {
+            skipped: staleSubjects.length === 0,
+            reason: staleSubjects.length === 0 ? 'no-unbound' : 'budget',
+            unbound: staleSubjects.length,
+          };
+        }
+      }
+      recordOpeningCookStep(state.render, 'live.materialSettle', liveStepStarted,
+        recook ? 'skipped' : (materialSettle && materialSettle.error ? 'error' : 'resolved'), {
+          unbound: materialSettle ? materialSettle.unbound : undefined,
+          names: staleNames.length ? staleNames.join('/') : undefined,
+          error: materialSettle ? materialSettle.error : undefined,
+        });
       this._sessionLiveSectorCookedId = sectorId;
       state.render.sessionLiveSectorCookedId = sectorId;
       return { skipped: false, resumed, opening, upgrades, pending, cook, leftover };

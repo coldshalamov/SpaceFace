@@ -4935,7 +4935,13 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
     boundary.userData.authoredAssetState = 'unavailable';
     boundary.userData.authoredVisualRoot = 'none-build-failed';
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
-    console.warn('[partsLibrary] authored composition failed; no substitute visual published', error);
+    console.warn('[partsLibrary] authored composition failed; no substitute visual published', {
+      entity: entity && entity.id,
+      message: String(error && error.message || error),
+      causes: error && Array.isArray(error.errors)
+        ? error.errors.map((cause) => String(cause && (cause.message || cause.reason || cause))).slice(0, 8)
+        : undefined,
+    });
     if (cleanupErrors.length) {
       throw new AggregateError([error, ...cleanupErrors], 'Authored composition failure cleanup failed', {
         cause: error,
