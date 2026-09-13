@@ -702,12 +702,12 @@ export const ui = {
           <div class="cine-signal__s">Reach corridor — channel open</div>
         </div>
       `;
-      document.getElementById('ui-root').appendChild(cinematic);
 
       let dismissed = false;
       let autoDismissTimer = null;
       let fadeRemovalTimer = null;
       let inputFence = null;
+      let bootOverlayWatcher = null;
       const finalizeCinematic = () => {
         if (dismissed) return;
         dismissed = true;
@@ -728,6 +728,7 @@ export const ui = {
         const wasActive = !dismissed;
         dismissed = true;
         this._cinematicActive = false;
+        if (bootOverlayWatcher) { bootOverlayWatcher.disconnect(); bootOverlayWatcher = null; }
         if (inputFence) inputFence.teardown();
         cinematic.removeEventListener('click', requestPointerDismissal);
         if (autoDismissTimer) clearTimeout(autoDismissTimer);
@@ -738,24 +739,52 @@ export const ui = {
         if (this._cinematicTeardown === teardownCinematic) this._cinematicTeardown = null;
         return wasActive;
       };
-      inputFence = createCinematicInputFence({
-        keyboardTarget: window,
-        visibilityTarget: document,
-        focusOwner: () => {
-          if (!dismissed && cinematic.isConnected && document.activeElement !== cinematic) {
-            try { cinematic.focus({ preventScroll: true }); } catch (_) { cinematic.focus(); }
-          }
-        },
-        onFinalize: finalizeCinematic,
-      });
-      this._cinematicInputFence = inputFence;
+
+      // Mount the splash only once the loading shell has handed off. Mounting it during boot put
+      // a "press any key" surface over a still-running loader: dismissing it early stepped the
+      // player BACK to the loading screen, which is what read as the keypress doing nothing.
+      const mountCinematic = () => {
+        if (dismissed || cinematic.isConnected) return;
+        const host = document.getElementById('ui-root');
+        // No mount point means there is no surface to gate — release the menu instead of
+        // sitting between it and the player forever.
+        if (!host) { this._cinematicActive = false; showMainMenuWhenReady(); return; }
+        host.appendChild(cinematic);
+        inputFence = createCinematicInputFence({
+          keyboardTarget: window,
+          visibilityTarget: document,
+          focusOwner: () => {
+            if (!dismissed && cinematic.isConnected && document.activeElement !== cinematic) {
+              try { cinematic.focus({ preventScroll: true }); } catch (_) { cinematic.focus(); }
+            }
+          },
+          onFinalize: finalizeCinematic,
+        });
+        this._cinematicInputFence = inputFence;
+        cinematic.addEventListener('click', requestPointerDismissal);
+        // Auto-dismiss safety after long time. A held keyboard chord defers this request until the
+        // release fence is complete; blur/visibility loss cancels that incomplete gesture safely.
+        autoDismissTimer = setTimeout(() => {
+          if (cinematic.parentNode && inputFence) inputFence.requestDismiss('timer');
+        }, 18000);
+      };
       this._cinematicTeardown = teardownCinematic;
-      cinematic.addEventListener('click', requestPointerDismissal);
-      // Auto-dismiss safety after long time. A held keyboard chord defers this request until the
-      // release fence is complete; blur/visibility loss cancels that incomplete gesture safely.
-      autoDismissTimer = setTimeout(() => {
-        if (cinematic.parentNode && inputFence) inputFence.requestDismiss('timer');
-      }, 18000);
+
+      const bootOverlay = document.getElementById('boot-overlay');
+      const bootOverlayGone = () => {
+        const o = document.getElementById('boot-overlay');
+        return !o || o.classList.contains('hidden') || o.style.display === 'none';
+      };
+      if (bootOverlayGone() || !bootOverlay || typeof MutationObserver !== 'function') {
+        mountCinematic();
+      } else {
+        bootOverlayWatcher = new MutationObserver(() => {
+          if (!bootOverlayGone()) return;
+          if (bootOverlayWatcher) { bootOverlayWatcher.disconnect(); bootOverlayWatcher = null; }
+          mountCinematic();
+        });
+        bootOverlayWatcher.observe(bootOverlay, { attributes: true });
+      }
     } else {
       // If already seen this session, ensure we land on the menu
       setTimeout(() => {

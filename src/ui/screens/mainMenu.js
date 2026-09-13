@@ -6,9 +6,10 @@ import { createTitleFrame, TITLE_PLATE_SRC } from '../views/menuFrames.js';
 // this file owns no CSS. Continue is enabled iff a save exists, shows the exact latest slot metadata,
 // and loads that displayed slot so players trust resume before committing to a load.
 // Browser, Electron dev, and packaged desktop all arrive here through the same player route.
-// The hangar picture is an authored still (assets/cinematics/menu_hangar_bg.jpg): the same bay and
-// hull the old live preview framed, pre-rendered at cutscene quality. A photograph that never
-// changes should not own a render loop.
+// The title picture is an authored still (assets/ui/backdrops/backdrop-title.jpg): the approved
+// "Field at dusk" shot, pre-rendered at cutscene quality. A photograph that never changes should
+// not own a render loop — and a still this good should not pay a live 3D scene's load and compile
+// cost to approximate itself.
 
 import { CREDITS } from '../../data/credits.js';
 import { requestCodexTab } from './codex.js';
@@ -19,6 +20,8 @@ import { el, words, settle, stamp, reducedMotion, cue } from '../kit/index.js';
 
 const LS_PREFIX = 'sf.save.';
 const MENU_BACKDROP_SRC = TITLE_PLATE_SRC;
+// spec2/03 §3: the still begins its slow drift after this much idle time. Input re-arms the window.
+const ATTRACT_IDLE_MS = 12_000;
 
 function getManager(ctx) {
   if (ctx && ctx.screenManager) return ctx.screenManager;
@@ -263,10 +266,13 @@ let refs = null;
 export const mainMenuScreen = {
   id: 'mainMenu',
 
-  // The lit world the title stands on: the approved "Field at dusk" shot, assembled from authored
-  // geometry by src/render/uiStage.js on the game's own renderer. The ScreenManager turns this into
-  // state.ui.stageRequest while this screen is on top, and owns this root's data-k-ready with it.
-  stage: { scene: 'title-field' },
+  // The title stands on the authored "Field at dusk" still — it declares no `stage`, so the
+  // ScreenManager never writes state.ui.stageRequest and no second scene is assembled on the
+  // renderer. The live title-field stage this replaced loaded eight place GLBs plus the hull and
+  // compiled its own pipelines while the menu was already open, then faded the plate out: the
+  // menu stall and the "same scene rendered twice" pop both came from that path, and its held
+  // brown frame is what flashed during Continue's handoff. The pre-rendered still is the same
+  // approved picture at zero frame cost.
 
   mount(rootEl, ctx) {
     rootEl.innerHTML = '';
@@ -352,17 +358,18 @@ export const mainMenuScreen = {
       buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bSettings, bSandbox, bQuit].filter(Boolean),
     };
 
-    // data-k-ready is the capture seam's "photograph me" signal, and it now reports on the WORLD.
-    // It used to flip the moment a background image decoded, which is why every title capture ever
-    // taken was a photograph of a photograph: the flag said "ready" before anything three-
-    // dimensional existed. The ScreenManager owns it for a screen that declares `stage` and raises
-    // it only when the lit scene is on the canvas (or when the stage cannot run and the authored
-    // plate is the final picture). The plate is still fetched here so it is warm in cache and the
-    // screen is never blank while the scene assembles.
+    // data-k-ready is the capture seam's "photograph me" signal. With no `stage` on this screen
+    // the authored still IS the picture the title was designed around, so this root raises it when
+    // that still has decoded — and also when it cannot load, because a missing backdrop is the
+    // final picture then, not a pending stage.
     rootEl.dataset.kReady = '0';
     const plate = new Image();
     plate.decoding = 'async';
+    const markReady = () => { rootEl.dataset.kReady = '1'; };
+    plate.onload = markReady;
+    plate.onerror = markReady;
     plate.src = MENU_BACKDROP_SRC;
+    if (plate.complete && plate.naturalWidth > 0) markReady();
 
     // Continue follows the save store the moment it settles, not the next periodic refresh: the
     // shared-store sync and a completed save both re-read the index.
@@ -459,14 +466,87 @@ export const mainMenuScreen = {
       if (target) try { target.focus(); } catch (e) {}
     }
     this._loadVersion();
+    this._startIdleAttract({ state: ctx && ctx.state, rootEl: refs && refs.root });
   },
-  onHide() {},
+  onHide() { this._stopIdleAttract(); },
   refresh(ctx) { this._render(ctx); },
 
   dispose() {
+    this._stopIdleAttract();
     for (const off of this._offBus || []) { try { off(); } catch (_) {} }
     this._offBus = [];
     refs = null;
+  },
+
+  // The idle attract (spec2/03 §3, MAP_OVERHAUL_BRIEF "cinematic still + idle drift"): after
+  // ATTRACT_IDLE_MS without input the authored still itself begins a slow drift — `data-attract`
+  // on the screen root arms a compositor-cheap transform on `.k-world--plate` (kit.css). This is
+  // the still breathing, not a second scene: no renderer, no stage, no camera. Any input re-arms
+  // the idle window; reduced motion never lets it arm at all.
+  _startIdleAttract({ state, rootEl } = {}) {
+    this._stopIdleAttract();
+    if (!rootEl || !rootEl.dataset) return;
+    const motionReduced = () => !!(
+      (state && state.settings && state.settings.video && state.settings.video.motionReduce)
+      || reducedMotion()
+    );
+    let idleStartedAtMs = null;
+    let drifting = false;
+    const setDrift = (on) => {
+      drifting = on;
+      if (on) rootEl.dataset.attract = '1'; else delete rootEl.dataset.attract;
+    };
+    const reset = () => { idleStartedAtMs = null; if (drifting) setDrift(false); };
+    this._attractRoot = rootEl;
+    this._attractReset = reset;
+    const session = (this._attractSession = {});
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener('keydown', reset);
+      window.addEventListener('pointerdown', reset);
+      window.addEventListener('mousemove', reset);
+      window.addEventListener('wheel', reset);
+    }
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      this._attractVisibilityReset = reset;
+      document.addEventListener('visibilitychange', reset);
+    }
+    this._attractRaf = (typeof requestAnimationFrame === 'function')
+      ? requestAnimationFrame(function tick(frameNowMs) {
+          // A dispatched tick can outlive a stop() — refuse to re-arm from a dead session.
+          if (mainMenuScreen._attractSession !== session) return;
+          const nowMs = Number.isFinite(frameNowMs) ? frameNowMs : Date.now();
+          if (idleStartedAtMs == null) idleStartedAtMs = nowMs;
+          if (motionReduced()) {
+            idleStartedAtMs = nowMs;
+            if (drifting) setDrift(false);
+          } else if (nowMs - idleStartedAtMs >= ATTRACT_IDLE_MS && !drifting) {
+            setDrift(true);
+          }
+          mainMenuScreen._attractRaf = requestAnimationFrame(tick);
+        })
+      : null;
+  },
+  _stopIdleAttract() {
+    const reset = this._attractReset;
+    this._attractReset = null;
+    if (this._attractRaf && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this._attractRaf);
+      this._attractRaf = null;
+    }
+    if (reset && typeof window !== 'undefined' && window.removeEventListener) {
+      window.removeEventListener('keydown', reset);
+      window.removeEventListener('pointerdown', reset);
+      window.removeEventListener('mousemove', reset);
+      window.removeEventListener('wheel', reset);
+    }
+    if (this._attractVisibilityReset && typeof document !== 'undefined' && document.removeEventListener) {
+      document.removeEventListener('visibilitychange', this._attractVisibilityReset);
+      this._attractVisibilityReset = null;
+    }
+    const root = this._attractRoot;
+    this._attractRoot = null;
+    this._attractSession = null;
+    if (root && root.dataset && root.dataset.attract) delete root.dataset.attract;
   },
 
   // Arrival (sheet: "the menu arrives after the hull"): the title settles from the top, then the
@@ -514,11 +594,23 @@ export const mainMenuScreen = {
     // Force reflow so the transition runs from 0 → 1.
     void fade.offsetWidth;
     fade.classList.add('open');
-    // Lift the veil once the sector is live (mode === flight) or after a hard 4s cap.
+    // Lift the veil once the sector is live — that means a real flight frame has been presented,
+    // not just mode === 'flight': the mode flag lands one commit before the first draw, and the
+    // canvas still holds the frozen menu-era picture then. Lifting on the flag alone was the
+    // "brown frame" flash. The 4s cap stays as the failsafe if no present ever arrives.
+    const frameCount = () => {
+      const info = ctx && ctx.state && ctx.state.render
+        && ctx.state.render.renderer && ctx.state.render.renderer.info;
+      // Three's presented-frame counter lives at info.render.frame (info.frame does not exist).
+      const frame = info && info.render && info.render.frame;
+      return Number.isFinite(frame) ? frame : null;
+    };
+    const frameAtClick = frameCount();
     const start = Date.now();
     const lift = () => {
       const live = ctx && ctx.state && ctx.state.mode === 'flight';
-      if (live || Date.now() - start > 4000) {
+      const presented = frameAtClick == null || (frameCount() != null && frameCount() > frameAtClick);
+      if ((live && presented) || Date.now() - start > 4000) {
         fade.classList.remove('open');
         setTimeout(() => { if (fade.parentNode) fade.remove(); }, 1100);
         return;

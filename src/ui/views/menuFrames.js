@@ -4,15 +4,15 @@ import { el } from '../kit/dom.js';
 /**
  * The title's authored backdrop plate: the approved "Field at dusk" shot
  * (design/frontend/direction/approved/DECISIONS.md, 2026-09-10), rendered from the same geometry
- * the live stage assembles. It is the FALLBACK, not the picture — `src/render/uiStage.js` draws
- * that world in three dimensions on the game's own context, and `styles/kit.css` fades this plate
- * out the moment the stage reports live. A screen is never black and never *only* a photograph.
+ * the live stage used to assemble. On the title this still IS the picture — the screen declares
+ * no `stage`, so nothing fades it out and no second scene is built on the renderer to approximate
+ * it. (Screens that do declare `stage` still treat their plate as the assemble-time fallback.)
  */
 export const TITLE_PLATE_SRC = new URL('../../../assets/ui/backdrops/backdrop-title.jpg', import.meta.url).href;
 export function createTitleFrame(root) {
   root.classList.add('of-title');
-  // The old title art was a rotated PNG of a scout hull on a flat ground — the exact fake this
-  // packet names. The world behind the words is now a lit scene in the renderer.
+  // The world behind the words is the authored still below — there is no live scene on this
+  // screen for it to hold the frame for; it is the frame.
   const backdrop = el('div', 'k-world k-world--plate');
   backdrop.setAttribute('aria-hidden', 'true');
   const title = el('header', 'k-title');

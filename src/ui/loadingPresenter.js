@@ -23,7 +23,7 @@ const PROGRESS_CAP = 0.985;      // 100% is only ever shown when a stage actuall
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 /** DOM-only loading presenter shared by browser and Electron's one game route. */
-export function createLoadingPresenter({ document, bus, hideDelayMs = 600 } = {}) {
+export function createLoadingPresenter({ document, bus, state, hideDelayMs = 600 } = {}) {
   if (!document || !bus || typeof bus.on !== 'function') {
     return { show() {}, hide() {}, destroy() {} };
   }
@@ -140,28 +140,30 @@ export function createLoadingPresenter({ document, bus, hideDelayMs = 600 } = {}
     if (progressRaf != null && cancelRaf) cancelRaf(progressRaf);
     progressRaf = null;
   };
-  let initialBoot = !overlay.classList?.contains?.('hidden');
-  let initialBootStartTime = Date.now();
-  const MIN_BOOT_DISPLAY_MS = 9500; // ~10s full music video loop on initial launch
 
-  // Allow clicking or pressing any key to skip initial boot at any time
-  const handleUserSkip = () => {
-    if (initialBoot) {
-      initialBoot = false;
-      if (pendingHide) {
-        const fn = pendingHide;
-        pendingHide = null;
-        fn();
-      }
-    }
+  // ---- first-presented-frame gate ---------------------------------------------------------
+  // `mode:changed` -> 'flight' lands one commit before the first real flight draw; the canvas is
+  // still holding the frozen menu-era picture at that instant, and lifting the shell on the flag
+  // alone was the "brown frame" flash players saw on Continue. The shell instead stays up — bar
+  // run out to 100%, so it reads as finishing, not stalled — until the renderer has presented
+  // again, and only then fades. A bounded deadline keeps a broken renderer from hanging the shell.
+  const FLIGHT_REVEAL_TIMEOUT_MS = 20000;
+  let revealRaf = null;
+  let revealDeadlineTimer = null;
+
+  const flightFrameNow = () => {
+    const info = state && state.render && state.render.renderer && state.render.renderer.info;
+    // Three's presented-frame counter lives at info.render.frame (info.frame does not exist).
+    const frame = info && info.render && info.render.frame;
+    return Number.isFinite(frame) ? frame : null;
   };
 
-  if (document && typeof document.addEventListener === 'function') {
-    document.addEventListener('keydown', handleUserSkip, { passive: true, once: true });
-    document.addEventListener('pointerdown', handleUserSkip, { passive: true, once: true });
-  }
-
-  let pendingHide = null;
+  const cancelRevealWait = () => {
+    if (revealRaf != null && cancelRaf) cancelRaf(revealRaf);
+    revealRaf = null;
+    if (revealDeadlineTimer != null) clearTimeout(revealDeadlineTimer);
+    revealDeadlineTimer = null;
+  };
 
   // If overlay is initially visible, start terminal artwork immediately
   if (!overlay.classList?.contains?.('hidden')) {
@@ -174,6 +176,7 @@ export function createLoadingPresenter({ document, bus, hideDelayMs = 600 } = {}
   }
 
   const show = (stage = DEFAULT_STAGE) => {
+    cancelRevealWait();
     if (hideTimer != null) {
       clearTimeout(hideTimer);
       hideTimer = null;
@@ -212,22 +215,8 @@ export function createLoadingPresenter({ document, bus, hideDelayMs = 600 } = {}
     art.updateProgress(raf ? { ...stage, progress: clamp01(displayProgress) } : stage);
   };
 
-  const hide = (force = false) => {
-    if (initialBoot && !force) {
-      const elapsed = Date.now() - initialBootStartTime;
-      if (elapsed < MIN_BOOT_DISPLAY_MS) {
-        pendingHide = () => hide(true);
-        setTimeout(() => {
-          if (pendingHide) {
-            const fn = pendingHide;
-            pendingHide = null;
-            fn();
-          }
-        }, MIN_BOOT_DISPLAY_MS - elapsed);
-        return;
-      }
-    }
-    initialBoot = false;
+  const hide = () => {
+    cancelRevealWait();
     overlay.classList.add('hidden');
     overlay.setAttribute('aria-busy', 'false');
     // Let the bar run out to 100% while the shell fades; the loop stops when display:none lands.
@@ -249,11 +238,38 @@ export function createLoadingPresenter({ document, bus, hideDelayMs = 600 } = {}
       stopProgressLoop();
     }, hideDelayMs);
   };
+
+  // The 'flight' handoff: keep the shell up until the renderer has presented a frame past the
+  // mode change — the first real world picture — so the held menu-era canvas never shows through.
+  const hideAfterFirstFlightFrame = () => {
+    const baseline = flightFrameNow();
+    if (baseline == null || overlay.classList.contains('hidden')) { hide(); return; }
+    targetProgress = 1;
+    targetAt = null;
+    const deadline = Date.now() + FLIGHT_REVEAL_TIMEOUT_MS;
+    const poll = () => {
+      revealRaf = null;
+      const frame = flightFrameNow();
+      if ((frame != null && frame > baseline) || Date.now() >= deadline) { hide(); return; }
+      revealRaf = raf ? raf(poll) : null;
+      if (revealRaf == null) hide();
+    };
+    if (raf) {
+      revealRaf = raf(poll);
+      revealDeadlineTimer = setTimeout(() => { cancelRevealWait(); hide(); }, FLIGHT_REVEAL_TIMEOUT_MS + 500);
+    } else {
+      // No animation clock (probes, unit tests): there is no frame to observe — hide now.
+      hide();
+    }
+  };
   const unsubs = [
     bus.on('game:loadingProgress', show),
     bus.on('mode:changed', ({ mode } = {}) => {
       if (mode === 'loading') show(activeStage || DEFAULT_STAGE);
-      else if (mode === 'flight' || mode === 'menu') {
+      else if (mode === 'flight') {
+        activeStage = null;
+        hideAfterFirstFlightFrame();
+      } else if (mode === 'menu') {
         activeStage = null;
         hide();
       }
@@ -267,6 +283,7 @@ export function createLoadingPresenter({ document, bus, hideDelayMs = 600 } = {}
     hide,
     destroy() {
       for (const unsub of unsubs) if (typeof unsub === 'function') unsub();
+      cancelRevealWait();
       if (hideTimer != null) clearTimeout(hideTimer);
       hideTimer = null;
       stopProgressLoop();

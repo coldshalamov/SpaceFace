@@ -331,7 +331,7 @@ for (const id of [
 
 // ── §3 menu polish ───────────────────────────────────────────────────────────────────────────
 assert.match(mainMenuSrc, /_startIdleAttract/, 'main menu must start a 12s idle attract (spec2/03 §3)');
-assert.match(mainMenuSrc, /idleS >= 12/, 'idle attract must trigger after 12s of no input');
+assert.match(mainMenuSrc, /ATTRACT_IDLE_MS = 12_000/, 'idle attract must trigger after 12s of no input');
 assert.match(mainMenuSrc, /sf-stagger/, 'main menu items must stagger-in 90ms on first show');
 assert.match(mainMenuSrc, /sf-continue-fade/, 'CONTINUE must fade to game with a location label');
 assert.match(newGameSrc, /showFirstRunSplash/, 'NEW GAME first-run must show the splash line');

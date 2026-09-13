@@ -192,6 +192,13 @@ async function waitForUsableMenu(cdp) {
   let emptySince = 0;
   while (Date.now() - start < 12000) {
     snap = await evalJson(cdp, snapshotExpression());
+    // The splash now mounts only after the boot overlay hands off, so it can appear (or still be
+    // fading in) inside this window rather than before it — keep offering the dismissal click.
+    if (snap.cinematicVisible) {
+      await cdp.send('Runtime.evaluate', { expression: `document.getElementById('cinematic-splash')?.click()` });
+      await sleep(200);
+      continue;
+    }
     if (snap.mainMenuVisible || snap.flightPlayable) return snap;
     if (snap.emptyPreGameHud) {
       if (!emptySince) emptySince = Date.now();

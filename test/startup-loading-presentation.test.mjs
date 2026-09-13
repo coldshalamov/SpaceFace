@@ -167,10 +167,12 @@ test('canonical game shell and transition wire the shared staged loading present
   assert.match(html, /data-loading-label/);
   assert.match(html, /data-loading-detail/);
   assert.match(html, /data-loading-progress/);
-  assert.match(main, /createLoadingPresenter\(\{ document, bus \}\)/);
+  assert.match(main, /createLoadingPresenter\(\{ document, bus, state \}\)/,
+    'main wires the presenter with state so the flight handoff can wait for a real presented frame');
   assert.match(main, /reportProgress:\s*\(stage\)\s*=>\s*bus\.emit\('game:loadingProgress'/);
   assert.match(main, /yieldForPresentation:\s*nextPaint/);
-  assert.match(newGame, /assets\/ships\/release\/ui\/kestrel_v5_starter_portrait\.png/);
+  assert.match(newGame, /createStageHull.*'\.\/stageHull\.js'/,
+    'New Game must show the authored starter hull via the shared kit-stage mount');
   assert.doesNotMatch(newGame, /\/evidence\//,
     'packaged New Game must not depend on authoring evidence excluded from the retail bundle');
   assert.doesNotMatch(newGame, /createShipPreviewMount/,
@@ -208,6 +210,48 @@ test('canonical game shell and transition wire the shared staged loading present
     'software renderers must not pay a multi-second speculative sector compile');
   assert.match(renderer, /gpu\.software[\s\S]{0,900}?state\.render\.dynResScale = dynFloor[\s\S]{0,120}?this\._applySize\(\)/,
     'software renderers must begin at their emergency scale instead of freezing the first full-size frame');
+});
+
+test('flight handoff keeps the shell up until the renderer presents past the mode change', () => {
+  // The held-canvas bug: mode -> flight used to drop the shell while the canvas still showed the
+  // frozen menu-era picture. With a state wired in, the hide must wait for info.render.frame
+  // (three's presented-frame counter — info.frame does not exist) to advance.
+  let rafQueue = [];
+  const prevRaf = globalThis.requestAnimationFrame;
+  const prevCancel = globalThis.cancelAnimationFrame;
+  globalThis.requestAnimationFrame = (fn) => { rafQueue.push(fn); return rafQueue.length; };
+  globalThis.cancelAnimationFrame = () => { rafQueue = []; };
+  try {
+    const bus = createBus();
+    const overlay = fakeElement();
+    const document = { getElementById: () => overlay, querySelector: () => null };
+    const info = { render: { frame: 10 } };
+    const state = { render: { renderer: { info } } };
+    const presenter = createLoadingPresenter({ document, bus, state });
+    const pump = (frames) => {
+      for (let i = 0; i < frames; i++) {
+        const q = rafQueue; rafQueue = [];
+        for (const fn of q) fn(i * 16.7);
+      }
+    };
+
+    bus.emit('game:loadingProgress', { id: 'entering-flight', progress: 0.96 });
+    assert.equal(overlay.classList.contains('hidden'), false);
+
+    bus.emit('mode:changed', { mode: 'flight', previousMode: 'loading' });
+    pump(3);
+    assert.equal(overlay.classList.contains('hidden'), false,
+      'the mode flag alone must not drop the shell — the canvas still holds the old picture');
+
+    info.render.frame = 11; // the first real flight present
+    pump(2);
+    assert.equal(overlay.classList.contains('hidden'), true,
+      'the shell lifts once a real frame has been presented');
+    presenter.destroy();
+  } finally {
+    globalThis.requestAnimationFrame = prevRaf;
+    globalThis.cancelAnimationFrame = prevCancel;
+  }
 });
 
 test('Continue yields its destructive restore until the loading shell can paint', () => {

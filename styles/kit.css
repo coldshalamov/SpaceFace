@@ -151,6 +151,18 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
 [data-screen="station"]  .k-world--plate { background-image: url('../assets/cinematics/menu_hangar_bg.jpg'); }
 /* The stage is live: the still steps aside and the renderer's world is the picture. */
 .k-screen[data-k-stage="live"] .k-world--plate { opacity: 0; }
+/* spec2/03 §3 idle attract, carried by the still itself (MAP_OVERHAUL_BRIEF "cinematic still +
+   idle drift"): after 12s without input mainMenu sets data-attract on the screen root and the
+   photograph breathes — a slow push-in/pan on the authored shot, not a second scene. Transform
+   only, so it stays on the compositor; the JS gate never arms it under reduced motion, and the
+   media query below refuses it anyway. */
+@keyframes k-plate-drift {
+  from { transform: scale(1.04) translate3d(0.8%, 0.5%, 0); }
+  to   { transform: scale(1.1) translate3d(-1.4%, -1%, 0); }
+}
+[data-screen="mainMenu"][data-attract="1"] .k-world--plate {
+  animation: k-plate-drift 36s var(--k-ease) alternate infinite;
+}
 /* A staged screen keeps its ground clear so the canvas below can be seen at all.
    The attribute pair is load-bearing, not decoration: the legacy title ground
    (`#screens .of-title.k-screen { background: #111817 }`, styles/orbital.css) is an ID rule that
@@ -169,7 +181,7 @@ html[data-k-temp="works"]    { /* Asteroid Works keeps its own law; the kit sets
    back here, and only while it is standing on a stage. */
 #screens .k-screen[data-screen="crucible"][data-k-stage]::before { background: rgb(7 9 15 / 0.46); }
 @media (prefers-reduced-motion: reduce) {
-  .k-world--plate { transition: none; }
+  .k-world--plate { transition: none; animation: none; }
 }
 
 /* A kit screen replaces the legacy screen ground and the screen manager's fade (§11.1). */

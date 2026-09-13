@@ -61,47 +61,39 @@ function installAttractHost() {
   };
 }
 
-function makeState({ reducedMotion = false } = {}) {
-  const transitions = [];
-  const cameraCtrl = {
-    attract: false,
-    setAttract(on) {
-      this.attract = !!on;
-      transitions.push(!!on);
-    },
-  };
+function makeFixture({ reducedMotion = false } = {}) {
+  // The attract breathes the authored still, not a camera: `data-attract` on the screen root arms
+  // the kit plate-drift animation. The fixture observes that DOM seam directly.
+  const rootEl = { dataset: {} };
   return {
-    state: {
-      settings: { video: { motionReduce: reducedMotion } },
-      render: { cameraCtrl },
-    },
-    cameraCtrl,
-    transitions,
+    rootEl,
+    state: { settings: { video: { motionReduce: reducedMotion } } },
+    drifting: () => rootEl.dataset.attract === '1',
   };
 }
 
-test('title attract uses elapsed idle time, resets on input, and tears down its own camera', () => {
+test('title attract uses elapsed idle time, resets on input, and tears down its own drift', () => {
   const host = installAttractHost();
-  const fixture = makeState();
+  const fixture = makeFixture();
   try {
-    mainMenuScreen._startIdleAttract({ state: fixture.state });
+    mainMenuScreen._startIdleAttract({ state: fixture.state, rootEl: fixture.rootEl });
     host.frame(1_000);
     host.frame(12_999);
-    assert.equal(fixture.cameraCtrl.attract, false, '11.999 seconds must remain still');
+    assert.equal(fixture.drifting(), false, '11.999 seconds must remain still');
     host.frame(13_000);
-    assert.equal(fixture.cameraCtrl.attract, true, '12 elapsed seconds must start the attract drift');
+    assert.equal(fixture.drifting(), true, '12 elapsed seconds must start the attract drift');
 
     host.emitWindow('keydown');
-    assert.equal(fixture.cameraCtrl.attract, false, 'player input must stop the attract drift immediately');
+    assert.equal(fixture.drifting(), false, 'player input must stop the attract drift immediately');
     host.frame(25_000);
     host.frame(36_999);
-    assert.equal(fixture.cameraCtrl.attract, false, 'the input reset starts a fresh idle window');
+    assert.equal(fixture.drifting(), false, 'the input reset starts a fresh idle window');
     host.frame(37_000);
-    assert.equal(fixture.cameraCtrl.attract, true);
+    assert.equal(fixture.drifting(), true);
 
     mainMenuScreen._stopIdleAttract();
-    assert.equal(fixture.cameraCtrl.attract, false,
-      'screen teardown must clear the camera it activated even without window.SF');
+    assert.equal(fixture.drifting(), false,
+      'screen teardown must clear the drift it armed');
   } finally {
     host.restore();
   }
@@ -109,14 +101,13 @@ test('title attract uses elapsed idle time, resets on input, and tears down its 
 
 test('title attract remains still when reduced motion is active', () => {
   const host = installAttractHost();
-  const fixture = makeState({ reducedMotion: true });
+  const fixture = makeFixture({ reducedMotion: true });
   try {
-    mainMenuScreen._startIdleAttract({ state: fixture.state });
+    mainMenuScreen._startIdleAttract({ state: fixture.state, rootEl: fixture.rootEl });
     host.frame(2_000);
     host.frame(22_000);
-    assert.equal(fixture.cameraCtrl.attract, false);
-    assert.equal(fixture.transitions.includes(true), false,
-      'reduced-motion title route must never start camera drift');
+    assert.equal(fixture.drifting(), false,
+      'reduced-motion title route must never start the drift');
   } finally {
     host.restore();
   }

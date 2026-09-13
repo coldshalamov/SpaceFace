@@ -163,27 +163,6 @@
   text-align: left;
 }
 
-/* Skip hint — honest (loadingPresenter skips the min-display on any key), and
-   deliberately late: it appears only once the boot has had its first moment. */
-.boot-skip {
-  position: absolute;
-  right: clamp(18px, 2.8vw, 38px);
-  bottom: clamp(14px, 2.4vh, 26px);
-  z-index: 2;
-  font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
-  font-weight: 600;
-  font-size: 12px;
-  letter-spacing:.06em;
-  text-transform: uppercase;
-  color: var(--ink-dim);
-  /* The glitch-art field behind it is loud; without a scrim the hint drowned. */
-  text-shadow: 0 1px 3px color-mix(in srgb, var(--bg) 95%, transparent), 0 0 8px color-mix(in srgb, var(--bg) 90%, transparent);
-  opacity: 0;
-  animation: boot-skip-in .6s ease-out 4s forwards;
-  pointer-events: none;
-}
-@keyframes boot-skip-in { to { opacity: 1; } }
-
 .boot-error {
   max-width: 70ch;
   font-family: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
@@ -416,18 +395,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   #boot-overlay, .boot-progress > span, #cinematic-splash { transition: none; }
-  .boot-skip,
   .cine-contract::before,
   .cine-signal__k::before { animation: none; }
-  .boot-skip { opacity: 1; }
   .cine-bg { animation: none; opacity: .94; transform: none; }
   .cine-tag, .cine-eyebrow, .cine-title, .cine-rule,
   .cine-contract, .cine-begin, .cine-signal { animation: none; opacity: 1; transform: none; }
 }
-html.sf-reduce-motion .boot-skip,
 html.sf-reduce-motion .cine-contract::before,
 html.sf-reduce-motion .cine-signal__k::before { animation: none !important; }
-html.sf-reduce-motion .boot-skip { opacity: 1; }
 html.sf-reduce-motion .cine-bg { animation: none !important; opacity: .94; transform: none; }
 html.sf-reduce-motion .cine-tag,
 html.sf-reduce-motion .cine-eyebrow,
