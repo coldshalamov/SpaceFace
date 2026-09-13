@@ -6100,10 +6100,10 @@ function flightRootTemplateKey({
       finish: palette && palette.finish,
       wear: palette && palette.wear,
     },
-    ...(wholeShip ? {} : {
-      weapons: data.weapons || [],
-      fittings: data.fittings || [],
-    }),
+    // Whole-ship bodies also mount fitted weapons/modules on their sockets (PQ-176.04), so the
+    // loadout must key the template for every body — otherwise a refit reuses a stale composition.
+    weapons: data.weapons || [],
+    fittings: data.fittings || [],
   });
 }
 

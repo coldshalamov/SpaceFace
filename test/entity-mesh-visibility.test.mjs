@@ -76,9 +76,19 @@ test('visibility helper only writes when the flag changes', () => {
 
 test('authored station and place commits merge static plates before freeze', async () => {
   const source = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
-  assert.match(source, /optimizeStaticBatchesForRoot\(stationed\)/);
+  // Place-prop HLOD substrate is unique per place: safe to merge before freeze.
   assert.match(source, /optimizeStaticBatchesForRoot\(placed\)/);
-  assert.match(source, /optimizeStaticBatchesForRoot\(authored\.root\)/);
+  assert.match(source, /freezeStaticChildMatrices\(placed\)/);
+  // Station HLOD substrate shares fallback primitives across stations: merging it would fabricate
+  // non-shared geometry whose later disposal corrupts the shared set (PQ-193.12), so it freezes only.
+  assert.match(source, /freezeStaticChildMatrices\(stationed\)/);
+  assert.doesNotMatch(source, /optimizeStaticBatchesForRoot\(stationed\)/);
+  // The authored place root merges inside buildPlacePropRoot via the static batch collector before
+  // LOD/material binding; the commit freezes it. Re-batching at commit would orphan LOD bindings.
+  const builder = source.match(/function buildPlacePropRoot[\s\S]*?staticBatches\.flush\(\);/);
+  assert.ok(builder, 'buildPlacePropRoot flushes the static batch collector on the authored root');
+  assert.match(source, /freezeStaticChildMatrices\(authored\.root\)/);
+  assert.doesNotMatch(source, /optimizeStaticBatchesForRoot\(authored\.root\)/);
 });
 
 test('default video settings still request full picture quality', async () => {

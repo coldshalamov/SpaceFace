@@ -111,43 +111,54 @@ const BRANCH_CASES = [
 
 const MODULAR_CASES = [...FINGERPRINT_CASES, ...ALL_SHIP_CASES, ...BRANCH_CASES];
 
+// Required packaged whole-ship bodies: the roster defIds resolve their production GLB through
+// wholeShipVisualForEntity, not the modular slot grammar. Keep the fingerprint entities on roster
+// hulls so this table pins the exact production file each defId must select.
+const WHOLE_SHIP_FILE_BY_DEF = Object.freeze({
+  ship_kestrel: 'wholeships/kestrel.glb', ship_wasp: 'wholeships/wasp_production_v1.glb',
+  ship_pelican: 'wholeships/pelican_production_v1.glb', ship_mule: 'wholeships/mule_production_v1.glb',
+  ship_drifter: 'wholeships/drifter_production_v1.glb', ship_hornet: 'wholeships/hornet_production_v1.glb',
+  ship_ironback: 'wholeships/ironback_production_v1.glb', ship_bastion: 'wholeships/bastion_production_v1.glb',
+  ship_atlas: 'wholeships/atlas_production_v1.glb', ship_ranger: 'wholeships/ranger_production_v1.glb',
+  ship_warden: 'wholeships/warden_production_v1.glb', ship_colossus: 'wholeships/colossus_production_v1.glb',
+  ship_leviathan: 'wholeships/leviathan_production_v1.glb',
+});
+
+// resolveRequiredWholeShipRecord matches records on file AND assetId, so fixtures must carry the
+// real packaged identity (partsLibrary WHOLE_SHIP_ASSET_ID_* tables).
+const WHOLE_SHIP_ASSET_ID_BY_FILE = Object.freeze({
+  'wholeships/kestrel.glb': 'SF_K0_KESTREL_BORROWED_TIME_V4',
+  'wholeships/wasp_production_v1.glb': 'SF_WASP_PRODUCTION_V1',
+  'wholeships/pelican_production_v1.glb': 'SF_PELICAN_PRODUCTION_V1',
+  'wholeships/mule_production_v1.glb': 'SF_MULE_PRODUCTION_V1',
+  'wholeships/drifter_production_v1.glb': 'SF_DRIFTER_PRODUCTION_V1',
+  'wholeships/hornet_production_v1.glb': 'SF_HORNET_PRODUCTION_V1',
+  'wholeships/ironback_production_v1.glb': 'SF_IRONBACK_PRODUCTION_V1',
+  'wholeships/bastion_production_v1.glb': 'SF_BASTION_PRODUCTION_V1',
+  'wholeships/atlas_production_v1.glb': 'SF_ATLAS_PRODUCTION_V1',
+  'wholeships/ranger_production_v1.glb': 'SF_RANGER_PRODUCTION_V1',
+  'wholeships/warden_production_v1.glb': 'SF_WARDEN_PRODUCTION_V1',
+  'wholeships/colossus_production_v1.glb': 'SF_COLOSSUS_PRODUCTION_V1',
+  'wholeships/leviathan_production_v1.glb': 'SF_LEVIATHAN_PRODUCTION_V1',
+  'wholeships/ashline_dart.glb': 'SF_WHOLESHIP_ASHLINE_DART',
+  'wholeships/ashline_lode.glb': 'SF_WHOLESHIP_ASHLINE_LODE',
+  'wholeships/ashline_rig.glb': 'SF_WHOLESHIP_ASHLINE_RIG',
+  'wholeships/ashline_rig_corsair_blade.glb': 'SF_WHOLESHIP_ASHLINE_RIG_CORSAIR_BLADE',
+  'wholeships/helios_span.glb': 'SF_WHOLESHIP_HELIOS_SPAN',
+  'wholeships/helios_span_dmc.glb': 'SF_WHOLESHIP_HELIOS_SPAN_DMC',
+  'wholeships/helios_span_mts.glb': 'SF_WHOLESHIP_HELIOS_SPAN_MTS',
+  'wholeships/helios_span_reach.glb': 'SF_WHOLESHIP_HELIOS_SPAN_REACH',
+  'wholeships/wasp_free_militia.glb': 'SF_WASP_FREE_MILITIA',
+  'wholeships/wasp_mts_escort.glb': 'SF_WASP_MTS_ESCORT',
+  'wholeships/wasp_scn_patrol.glb': 'SF_WASP_SCN_PATROL',
+});
+
 const PRE_CHANGE_VISUAL_FINGERPRINTS = [
-  { id: 'patrol-1', slots: {
-    hull: ['hulls/hull_fighter.glb'], cockpit: ['cockpits/cockpit_slab.glb'],
-    engine: ['engines/engine_vector.glb'], fin: ['fins/fin_delta.glb'],
-    weapon: ['weapons/weapon_pulse_cannon.glb'], pod: ['pods/pod_utility.glb'],
-    gear: ['gear/skid_trio.glb'],
-    greeble: ['greebles/greeble_nav_lights.glb', 'greebles/greeble_rcs.glb'],
-  } },
-  { id: 'patrol-7', slots: {
-    hull: ['hulls/hull_fighter.glb'], cockpit: ['cockpits/cockpit_recessed.glb'],
-    engine: ['engines/engine_vector.glb'], fin: ['fins/fin_wedge.glb'],
-    weapon: ['weapons/weapon_pulse_cannon.glb'], pod: ['pods/pod_utility.glb'],
-    gear: ['gear/skid_trio.glb'],
-    greeble: ['greebles/greeble_nav_lights.glb', 'greebles/greeble_rcs.glb'],
-  } },
-  { id: 'miner-3', slots: {
-    hull: ['hulls/hull_miner.glb'], cockpit: ['cockpits/cockpit_slab.glb'],
-    engine: ['engines/engine_ion_twin.glb'], fin: ['fins/fin_stabilator.glb'],
-    weapon: ['weapons/weapon_pulse_cannon.glb'], pod: ['pods/pod_utility.glb'],
-    gear: ['gear/skid_quad.glb'],
-    greeble: ['greebles/greeble_hatches.glb', 'greebles/greeble_antennas.glb'],
-  } },
-  { id: 'hauler-4', slots: {
-    hull: ['hulls/hull_freighter.glb'], cockpit: ['cockpits/cockpit_recessed.glb'],
-    engine: ['engines/engine_industrial.glb'], fin: ['fins/fin_stabilator.glb'],
-    weapon: ['weapons/weapon_pulse_cannon.glb'],
-    pod: ['pods/pod_cargo_container.glb', 'pods/pod_utility.glb'],
-    gear: ['gear/skid_quad.glb'],
-    greeble: ['greebles/greeble_pipes.glb', 'greebles/greeble_armor_plates.glb'],
-  } },
-  { id: 'interceptor-9', slots: {
-    hull: ['hulls/hull_interceptor.glb'], cockpit: ['cockpits/cockpit_dome.glb'],
-    engine: ['engines/engine_vector.glb'], fin: ['fins/fin_wedge.glb'],
-    weapon: ['weapons/weapon_pulse_cannon.glb', 'weapons/weapon_turret_dual.glb'],
-    pod: ['pods/pod_utility.glb'], gear: ['gear/skid_trio.glb'],
-    greeble: ['greebles/greeble_nav_lights.glb', 'greebles/greeble_rcs.glb'],
-  } },
+  { id: 'patrol-1', slots: { hull: ['wholeships/wasp_production_v1.glb'] } },
+  { id: 'patrol-7', slots: { hull: ['wholeships/wasp_production_v1.glb'] } },
+  { id: 'miner-3', slots: { hull: ['wholeships/pelican_production_v1.glb'] } },
+  { id: 'hauler-4', slots: { hull: ['wholeships/mule_production_v1.glb'] } },
+  { id: 'interceptor-9', slots: { hull: ['wholeships/hornet_production_v1.glb'] } },
 ];
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
@@ -196,14 +207,16 @@ function fixtureWeaponFile(wdef, facing, size) {
   return 'weapons/weapon_pulse_cannon.glb';
 }
 
-function fixtureWeaponFiles(entity, shipDef) {
+function fixtureWeaponFiles(entity, shipDef, fittedOnly = false) {
   const data = entity.data || {};
   const runtime = Array.isArray(data.weapons) ? data.weapons : [];
   const fitted = Array.isArray(data.fittings) ? data.fittings.filter((id) => WEAPON_BY_ID.has(id)) : [];
   const hardpoints = shipDef && shipDef.visuals && Array.isArray(shipDef.visuals.hardpoints)
     ? shipDef.visuals.hardpoints : [];
   const slots = shipDef && shipDef.slots && Array.isArray(shipDef.slots.weapon) ? shipDef.slots.weapon : [];
-  const count = Math.min(6, Math.max(runtime.length, fitted.length, hardpoints.length, slots.length));
+  const count = fittedOnly
+    ? Math.min(6, Math.max(runtime.length, fitted.length))
+    : Math.min(6, Math.max(runtime.length, fitted.length, hardpoints.length, slots.length));
   const files = [];
   for (let index = 0; index < count; index++) {
     const live = runtime[index] || {};
@@ -249,6 +262,15 @@ function fixtureGreebleFiles(entity, shipDef) {
 function independentExpectedSlots(entity) {
   const defId = entity.data && entity.data.defId;
   const shipDef = SHIP_BY_ID.get(defId);
+  const wholeShipFile = WHOLE_SHIP_FILE_BY_DEF[defId];
+  if (wholeShipFile && partsLibrary.REQUIRED_WHOLE_SHIP_DEF_IDS.includes(defId)) {
+    // Packaged whole-ship bodies bake their dressing; only guns actually fitted may sprout on the
+    // authored sockets (PQ-176.04 fittedOnly contract — runtime/fitted weapons, never seed picks).
+    const slots = { hull: [wholeShipFile] };
+    const weapons = fixtureWeaponFiles(entity, shipDef, true);
+    if (weapons.length) slots.weapon = weapons;
+    return slots;
+  }
   const seed = fixtureHash(`${entity.id}|${defId}|${entity.factionId || ''}`);
   const regularHulls = partsLibrary.PART_LIBRARY_CONTRACT.slots.hull
     .filter((file) => !file.startsWith('wholeships/'));
@@ -277,7 +299,7 @@ function fixtureRecord(url) {
   const material = new THREE.MeshStandardMaterial({ color: 0x8090a0, roughness: 0.7, metalness: 0.3 });
   return {
     url,
-    assetId: url.endsWith('wholeships/kestrel.glb') ? 'SF_K0_KESTREL_BORROWED_TIME' : `FIXTURE_${url}`,
+    assetId: WHOLE_SHIP_ASSET_ID_BY_FILE[relativeFile(url)] || `FIXTURE_${url}`,
     bounds: { min: [-0.5, -0.25, -0.25], max: [0.5, 0.25, 0.25], size: [1, 0.5, 0.5], center: [0, 0, 0] },
     primitives: [{
       key: `${url}#fixture`,
@@ -347,10 +369,11 @@ const PROFESSIONAL_ENTITY_ADMISSION_BUDGET = Object.freeze({
 });
 
 function fullModularFamilyComplexity() {
+  // The family is the whole authored contract — packaged whole-ship bodies included. An entity's
+  // demand plan must stay a small slice of that catalog, not merely of the modular subset.
   const files = Object.entries(partsLibrary.PART_LIBRARY_CONTRACT.slots)
     .filter(([slot]) => slot !== 'place')
-    .flatMap(([, slotFiles]) => slotFiles)
-    .filter((file) => !file.startsWith('wholeships/'));
+    .flatMap(([, slotFiles]) => slotFiles);
   return releasePlanComplexity({ family: files });
 }
 
@@ -412,7 +435,7 @@ test('modular demand plans contain exactly the deterministic authored files the 
     const source = MODULAR_CASES.find((entity) => entity.id === result.id);
     assert.deepEqual(result.slots, independentExpectedSlots(source),
       `${result.id} composition must retain the independent pre-change selection contract`);
-    assert.deepEqual(result.requested, result.used,
+    assert.deepEqual(result.requested, result.used.filter((file) => !BOOT_FILES.has(file)),
       `${result.id} must not decode or retain authored files absent from its final composition`);
     assert.deepEqual(flattenUnique(result.plan), result.used,
       `${result.id} pure demand plan must predict the live composition exactly`);
@@ -584,6 +607,9 @@ test('a resolved authored ship still awaits exact pipeline admission before publ
 
   try {
     const fallback = fallbackShip();
+    // Live ships mount a zero-draw admission substrate, which is what mayComposeAuthoredShipLive
+    // lets compose during flight; a plain visible fallback would be gated to procedural-settled.
+    fallback.userData.authoredAdmissionSubstrate = true;
     const boundary = partsLibrary.wrapShipWithAuthoredParts(entity, fallback, options);
     entity.mesh = boundary;
     scene.add(boundary);

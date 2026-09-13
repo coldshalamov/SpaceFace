@@ -91,23 +91,30 @@ test('ship on-demand plans request only the exact body or one modular family', (
   });
   assert.deepEqual(hostile, { hull: ['wholeships/ashline_dart.glb'] });
 
-  const modular = partsLibrary.authoredPreloadPlanForEntity({
+  // Roster hulls are required packaged bodies: a plain Wasp demands its one production file.
+  const packaged = partsLibrary.authoredPreloadPlanForEntity({
     id: 'patrol-1',
     type: 'ship',
     data: { defId: 'ship_wasp' },
   });
-  assert.deepEqual(modular, {
-    hull: ['hulls/hull_fighter.glb'],
-    cockpit: ['cockpits/cockpit_recessed.glb'],
-    engine: ['engines/engine_vector.glb'],
-    fin: ['fins/fin_radiator_grid.glb'],
-    weapon: ['weapons/weapon_pulse_cannon.glb'],
-    pod: ['pods/pod_utility.glb'],
-    gear: ['gear/skid_trio.glb'],
-    greeble: ['greebles/greeble_nav_lights.glb', 'greebles/greeble_rcs.glb'],
+  assert.deepEqual(packaged, { hull: ['wholeships/wasp_production_v1.glb'] });
+
+  // Non-roster hulls still demand exactly one seeded modular family — never the whole catalog.
+  const modular = partsLibrary.authoredPreloadPlanForEntity({
+    id: 'survey-2',
+    type: 'ship',
+    data: { defId: 'ship_survey_sloop' },
   });
-  assert.equal(Object.values(modular).flat().length, 9,
-    'ordinary modular demand must decode only its exact live composition, not all 34 family files');
+  assert.deepEqual(modular, {
+    hull: ['hulls/hull_capital.glb'],
+    cockpit: ['cockpits/cockpit_recessed.glb'],
+    engine: ['engines/engine_ion_small.glb'],
+    fin: ['fins/fin_radiator_grid.glb'],
+    gear: ['gear/skid_trio.glb'],
+    greeble: ['greebles/greeble_hatches.glb', 'greebles/greeble_antennas.glb'],
+  });
+  assert.equal(Object.values(modular).flat().length, 7,
+    'ordinary modular demand must decode only its exact live composition, not the whole family');
 });
 
 test('world-place upgrades share the same bounded authored admission queue', () => {
