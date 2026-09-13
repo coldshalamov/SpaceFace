@@ -38,12 +38,6 @@ export const MASSLINE_PITCH_RATE_MIN = 0.82;
 export const MASSLINE_PITCH_RATE_SPAN = 0.70;
 export const MASSLINE_REEL_COOLDOWN_TICKS = 12;
 
-const EXISTING_ONE_SHOT = Object.freeze({
-  attach: true,
-  strain: true,
-  break: true,
-});
-
 function clamp(v, lo, hi) {
   const n = Number(v);
   if (!Number.isFinite(n)) return lo;
@@ -110,8 +104,8 @@ function reelDelta(input) {
 
 /**
  * Resolve a Massline presentation event to recipe, pitch, grit, and a caption that names it.
- * `play` is false when an older first-hour / 158.06 one-shot already owns the voice, so this
- * module never doubles attach/strain/break. Reel, clean release, and bridle always speak.
+ * All six events play here. Messy release stays on the 158.06 snap so the two leaves do not
+ * double. Juice cues for attach/strain/break skip playback when this voice fires.
  */
 export function resolveMasslineInstrument(input = {}) {
   let event = eventName(input);
@@ -136,7 +130,7 @@ export function resolveMasslineInstrument(input = {}) {
         : event === 'bridle' ? 1.0
           : 1.0;
   const grit = event === 'strain' || event === 'reel' ? masslineGrit(strain) : event === 'break' ? 0.85 : 0;
-  const owned = !!EXISTING_ONE_SHOT[event] || messyRelease;
+  const owned = messyRelease;
   const audible = true;
 
   return Object.freeze({

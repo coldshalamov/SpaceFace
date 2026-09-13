@@ -123,6 +123,17 @@ export function renderEnvironmentIr(classId, sampleRate = 48000) {
   return { sampleRate: rate, seconds: n / rate, pcm: data, mix: cfg.mix, classId: cfg.id };
 }
 
+/** Blind listen of an IR PCM: hangar still has energy after 0.3 s; void does not. */
+export function nameRoomFromIrPcm(pcm, sampleRate = 16000) {
+  const rate = Math.max(1, Number(sampleRate) || 16000);
+  const samples = pcm && pcm.length ? pcm : [];
+  const start = Math.min(samples.length, Math.floor(0.3 * rate));
+  let energy = 0;
+  for (let i = start; i < samples.length; i++) energy += samples[i] * samples[i];
+  const rms = Math.sqrt(energy / Math.max(1, samples.length - start));
+  return rms > 0.02 ? 'hangar' : 'void';
+}
+
 /**
  * Weight-first duck in dB. Mass and closing speed, not speech priority. Music ducks under
  * weight; critical / comms / UI do not.

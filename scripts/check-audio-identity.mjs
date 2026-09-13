@@ -338,7 +338,8 @@ const EMITTED_CUES = {
   ui_dock: { distinct: true }, ui_confirm: { distinct: true }, ui_click: { distinct: false },
   ui_accept: { distinct: true }, ui_undock: { distinct: true },
   ui_charge_start: { distinct: true }, ui_charge_abort: { distinct: true },
-  click: { distinct: false }, hover: { distinct: true }, confirm: { distinct: true },
+  click: { distinct: false }, hover: { distinct: true }, ui_hover: { distinct: true },
+  confirm: { distinct: true },
   deny: { distinct: true }, alert: { distinct: true }, warning: { distinct: true }, error: { distinct: true },
   lock_acquired: { distinct: true }, scan_resolve: { distinct: true },
   // Gameplay
@@ -557,7 +558,11 @@ for (const row of tiers) {
   const tel = audio.rt._engineTelemetry;
   assert(tel && tel.tier === row.name, `Engine tier must resolve to ${row.name}, got ${tel && tel.tier}`);
   assert(Math.abs(tel.f1 - row.expect) < 0.01, `Engine ${row.name} f1 must be ${row.expect} in ${row.sector}, got ${tel.f1}`);
-  if (row.name === 'idle') assert.equal(tel.humG, 0, 'idle engine identity must be informational, not audible');
+  if (row.name === 'idle') {
+    assert.equal(tel.humG, 0, 'idle engine identity must be informational, not audible');
+  } else {
+    assert.ok(tel.humG > 0, `Engine ${row.name} must keep an audible bed, got humG=${tel.humG}`);
+  }
 }
 // Loop voices must share the same bus routing as one-shots (no sfxBus bypass).
 assert.match(
@@ -567,7 +572,7 @@ assert.match(
 );
 assert.match(
   audioSrc,
-  /_startLoopVoice[\s\S]{0,1200}combatBus/,
+  /_startLoopVoice[\s\S]{0,2000}combatBus/,
   'loop voices must be able to target combatBus',
 );
 

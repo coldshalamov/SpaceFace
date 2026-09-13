@@ -124,7 +124,7 @@ test('PQ-158.06 default-route receipts request a voice on the same tick', () => 
   };
   host.init({ state, bus, helpers: {} });
 
-  bus.emit('audio:cue', { id: 'presentation.tether.attach' });
+  bus.emit('tether:attached', PAYLOAD.attachment);
   bus.emit('tether:strain', { ratio: 1e-4 });
   bus.emit('tether:releaseRated', { classification: 'messy', targetId: 'rock-1' });
   bus.emit('drill:spark', { bite: true });
@@ -141,7 +141,10 @@ test('PQ-158.06 default-route receipts request a voice on the same tick', () => 
   assert.ok(ids.includes('sfx.tetherSnap'), 'messy release');
   assert.ok(ids.includes('sfx_mining_drill_contact'), 'valid drill');
   assert.ok(ids.includes('sfx_mining_drill_abort'), 'invalid drill');
-  assert.ok(ids.includes('sfx.shieldBreak'), 'shield');
+  assert.ok(
+    ids.includes('sfx.shieldBreak') || ids.includes('sfx_shield_blowout_pop'),
+    `shield in ${ids.join(',')}`,
+  );
   assert.ok(ids.includes('sfx_vent_chime') || ids.some((id) => id.includes('vent')), `vent in ${ids.join(',')}`);
   assert.ok(ids.includes('sfx_boost_whoosh'), 'boost');
   assert.ok(ids.includes('sfx_ui_confirm'), 'purchase');

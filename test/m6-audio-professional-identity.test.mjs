@@ -57,6 +57,59 @@ test('five authored propulsion families and three mass classes have stable audib
   assert.equal(first, second, 'unchanged engine identity must not allocate in the frame loop');
 });
 
+test('thrust, boost, and cruise keep distinct audible engine beds; idle stays silent', () => {
+  const ctx = fakeAudioContext();
+  const harness = Object.create(audio);
+  const player = ship({ driveId: 'drive_reaction_m', mass: 80 });
+  player.flags.boosting = false;
+  harness.state = {
+    playerId: player.id,
+    entities: new Map([[player.id, player]]),
+    player: { cruise: { phase: 'idle' } },
+    input: { moveX: 0, moveZ: 0 },
+    settings: { audio: {}, video: { motionReduce: true } },
+  };
+  harness.play = () => null;
+  harness.rt = {
+    ctx,
+    engineOsc1: ctx.createOscillator(),
+    engineOsc2: ctx.createOscillator(),
+    engineSub: ctx.createOscillator(),
+    engineSubGain: ctx.createGain(),
+    engineNoiseGain: ctx.createGain(),
+    engineNoiseFilter: ctx.createBiquadFilter(),
+    engineHumGain: ctx.createGain(),
+    engineBus: ctx.createGain(),
+    _paused: false,
+    _priorityDuckEngine: 1,
+    _engineTelemetry: {
+      tier: 'idle', f1: 55, f2: 55, noiseG: 0, humG: 0, massNorm: 1, duck: 1,
+    },
+  };
+
+  const cases = [
+    { name: 'idle', moveZ: 0, boosting: false, cruise: 'idle', f1: 55, audible: false },
+    { name: 'thrust', moveZ: 1, boosting: false, cruise: 'idle', f1: 78, audible: true },
+    { name: 'boost', moveZ: 1, boosting: true, cruise: 'idle', f1: 110, audible: true },
+    { name: 'cruise', moveZ: 0, boosting: false, cruise: 'cruising', f1: 65, audible: true },
+  ];
+  for (const row of cases) {
+    harness.state.input.moveZ = row.moveZ;
+    player.flags.boosting = row.boosting;
+    harness.state.player.cruise = { phase: row.cruise };
+    harness._updateEngineHum();
+    const tel = harness.rt._engineTelemetry;
+    assert.equal(tel.tier, row.name, `expected tier ${row.name}, got ${tel.tier}`);
+    assert.equal(tel.f1, row.f1, `${row.name} f1 must be ${row.f1}, got ${tel.f1}`);
+    if (row.audible) {
+      assert.ok(tel.humG > 0, `${row.name} must keep an audible engine bed, got humG=${tel.humG}`);
+    } else {
+      assert.equal(tel.humG, 0, 'idle propulsion must stay silent');
+    }
+  }
+  assert.equal(harness.rt._engineTelemetry.f2, 65 * 1.5, 'cruise keeps the clean fifth');
+});
+
 test('doctrine identities alter the same weapon without changing combat state', () => {
   const doctrines = Object.values(CombatDoctrineId);
   assert.equal(Object.keys(DOCTRINE_AUDIO_SIGNATURES).length, doctrines.length);

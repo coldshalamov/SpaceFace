@@ -8,7 +8,7 @@
 //     baseFreq, freqMod?, freqSweep?[from,to], sweepTimeS?, noiseColor?, wave?,
 //     gainEnvelope:{attack,sustain,release}, filterType?, filterFreq?, filterQ?,
 //     lfoRate?, lfoDepth?, pitchRange?[lo,hi], layers?[ids], gainMult?, filterFreqMult?,
-//     distortionAmount?, dopplerEnabled? }
+//     distortionAmount?, distortionCurve?:'softclip'|'tanh', dopplerEnabled? }
 
 import { RECIPES } from '../data/audioRecipes.js';
 
@@ -52,12 +52,13 @@ export function applyEnvelope(param, t0, peak, env, sustainHold) {
   const a = Math.max(0.001, env.attack || 0.005);
   const s = env.sustain == null ? 0 : env.sustain;
   const r = Math.max(0.01, env.release || 0.05);
+  const d = Math.max(0.005, env.decay || 0.04);
   const decayTo = peak * (s > 0 ? s : 0.0001);
   param.cancelScheduledValues(t0);
   param.setValueAtTime(0.0001, t0);
   param.linearRampToValueAtTime(peak, t0 + a);
   // decay toward sustain (or toward release if no sustain)
-  const dEnd = t0 + a + 0.04;
+  const dEnd = t0 + a + d;
   param.linearRampToValueAtTime(Math.max(0.0001, decayTo), dEnd);
   if (sustainHold) {
     // hold at sustain level; release handled later by releaseVoice()
@@ -89,22 +90,56 @@ function makeFilter(ctx, recipe, freqMult) {
   return f;
 }
 
-// Cheap soft-clip waveshaper curve, cached by amount.
-function makeDistortion(ctx, amount, cache) {
+export const DISTORTION_CURVE_SOFTCLIP = 'softclip';
+export const DISTORTION_CURVE_TANH = 'tanh';
+
+/**
+ * Amounts are authored against a named curve. Untagged recipes keep the pre-QoL
+ * cheap soft-clip so existing `distortionAmount` values do not silently remap.
+ */
+export function resolveDistortionCurve(kind) {
+  return kind === DISTORTION_CURVE_TANH ? DISTORTION_CURVE_TANH : DISTORTION_CURVE_SOFTCLIP;
+}
+
+/** Pre-QoL cheap soft-clip: k = clamp(amount,0,1)*50, y = (1+k)x / (1+k|x|). */
+export function sampleSoftclip(x, amount) {
   const k = Math.max(0, Math.min(1, amount)) * 50;
-  const key = 'dist_' + k.toFixed(2);
+  return (1 + k) * x / (1 + k * Math.abs(x));
+}
+
+/** Analog tanh saturation: drive = 1 + clamp(amount,0,2)*4, peak-normalized. */
+export function sampleTanhSaturation(x, amount) {
+  const k = Math.max(0, Math.min(2, amount));
+  const drive = 1 + k * 4;
+  const norm = Math.tanh(drive);
+  return Math.tanh(x * drive) / norm;
+}
+
+export function buildDistortionCurve(amount, curveKind) {
+  const kind = resolveDistortionCurve(curveKind);
+  const n = 1024;
+  const curve = new Float32Array(n);
+  const sample = kind === DISTORTION_CURVE_TANH ? sampleTanhSaturation : sampleSoftclip;
+  for (let i = 0; i < n; i++) {
+    const x = (i / (n - 1)) * 2 - 1;
+    curve[i] = sample(x, amount);
+  }
+  return curve;
+}
+
+function makeDistortion(ctx, amount, cache, curveKind) {
+  const kind = resolveDistortionCurve(curveKind);
+  const k = kind === DISTORTION_CURVE_TANH
+    ? Math.max(0, Math.min(2, amount))
+    : Math.max(0, Math.min(1, amount));
+  const key = 'dist_' + kind + '_' + k.toFixed(2);
   if (cache[key]) {
     const ws = ctx.createWaveShaper();
     ws.curve = cache[key];
     ws.oversample = '2x';
     return ws;
   }
-  const n = 1024;
-  const curve = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    const x = (i / (n - 1)) * 2 - 1;
-    curve[i] = (1 + k) * x / (1 + k * Math.abs(x));
-  }
+  const curve = buildDistortionCurve(amount, kind);
   cache[key] = curve;
   const ws = ctx.createWaveShaper();
   ws.curve = curve;
@@ -135,6 +170,7 @@ function mergeLayerRecipe(parent, layer) {
     filterFreq: parent.filterFreq != null ? parent.filterFreq : layer.filterFreq,
     filterQ: parent.filterQ != null ? parent.filterQ : layer.filterQ,
     distortionAmount: parent.distortionAmount != null ? parent.distortionAmount : layer.distortionAmount,
+    distortionCurve: parent.distortionCurve || layer.distortionCurve,
     pitchRange: layer.pitchRange || parent.pitchRange,
   };
 }
@@ -154,7 +190,9 @@ function buildRecipeVoice(ctx, recipe, dest, t0, rate, detune, peak, freqMult, c
   const tail = applyEnvelope(vGain.gain, t0, peak, env, isLoop);
 
   const filter = makeFilter(ctx, recipe, freqMult);
-  const dist = recipe.distortionAmount ? makeDistortion(ctx, recipe.distortionAmount, caches) : null;
+  const dist = recipe.distortionAmount
+    ? makeDistortion(ctx, recipe.distortionAmount, caches, recipe.distortionCurve)
+    : null;
 
   // chain: sources -> (dist) -> (filter) -> vGain -> dest
   let chainIn = vGain;
@@ -221,6 +259,47 @@ function buildRecipeVoice(ctx, recipe, dest, t0, rate, detune, peak, freqMult, c
       lfo.start(t0); extra.push(lfo, lg);
       nodes.push(lfo, lg);
     }
+  }
+
+  // Sub-bass pitch drop for physical weight (explosions, heavy cannons, kinetic impacts)
+  if (recipe.subBass) {
+    const sub = typeof recipe.subBass === 'object' ? recipe.subBass : {};
+    const startF = (sub.startFreq || 140) * rate;
+    const endF = (sub.endFreq || 30) * rate;
+    const dur = Math.max(0.06, sub.dur || (env.attack || 0.005) + (env.decay || 0.04) + (env.release || 0.3));
+    const subOsc = ctx.createOscillator();
+    const subGain = ctx.createGain();
+    subOsc.type = sub.wave || 'sine';
+    subOsc.frequency.setValueAtTime(Math.max(1, startF), t0);
+    subOsc.frequency.exponentialRampToValueAtTime(Math.max(1, endF), t0 + dur);
+
+    const subPeak = peak * (sub.gain || 0.85);
+    subGain.gain.setValueAtTime(0.0001, t0);
+    subGain.gain.linearRampToValueAtTime(subPeak, t0 + Math.min(0.02, dur * 0.08));
+    subGain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+
+    subOsc.connect(subGain);
+    subGain.connect(vGain);
+    sources.push(subOsc);
+    nodes.push(subOsc, subGain);
+  }
+
+  // Mechanical transient attack click (adds bite to kinetic cannons and impacts)
+  if (recipe.transientClick) {
+    const clickSrc = makeNoiseSource(ctx, caches, false);
+    const clickGain = ctx.createGain();
+    const clickFilter = ctx.createBiquadFilter();
+    clickFilter.type = 'highpass';
+    clickFilter.frequency.value = 1600;
+    const clickPeak = peak * (typeof recipe.transientClick === 'object' ? recipe.transientClick.gain || 0.5 : 0.5);
+    clickGain.gain.setValueAtTime(0.0001, t0);
+    clickGain.gain.linearRampToValueAtTime(clickPeak, t0 + 0.002);
+    clickGain.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.015);
+    clickSrc.connect(clickFilter);
+    clickFilter.connect(clickGain);
+    clickGain.connect(vGain);
+    sources.push(clickSrc);
+    nodes.push(clickSrc, clickFilter, clickGain);
   }
 
   // start all sources

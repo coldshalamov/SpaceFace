@@ -19,6 +19,7 @@ import {
   VISUAL_EVENT_CUES,
   VISUAL_EVENT_BUS,
   LIVE_VFX_ALIASES,
+  nameRoomFromIrPcm,
   resolveEnvironmentClass,
   environmentIr,
   hangarVersusVoidDifference,
@@ -107,6 +108,22 @@ test('IR render: hangar energy lasts; void is a short tick — same seed, stable
   const hangarTail = rms(hangarIr.pcm, hangarIr.pcm.length * 0.35, hangarIr.pcm.length * 0.7);
   assert.ok(hangarTail > voidTail, `hangar tail ${hangarTail} must outlive void tail ${voidTail}`);
   assert.equal(ENVIRONMENT_IR.void.id, 'void');
+});
+
+test('seed 15805: unlabeled IR PCM names hangar vs void from the tail', () => {
+  const voidIr = renderEnvironmentIr('void', 16000);
+  const hangarIr = renderEnvironmentIr('hangar', 16000);
+  const unlabeled = [
+    { id: 'A', pcm: hangarIr.pcm, rate: hangarIr.sampleRate },
+    { id: 'B', pcm: voidIr.pcm, rate: voidIr.sampleRate },
+  ];
+  const named = unlabeled.map((row) => ({
+    id: row.id,
+    room: nameRoomFromIrPcm(row.pcm, row.rate),
+  }));
+  assert.equal(named.find((row) => row.id === 'A').room, 'hangar');
+  assert.equal(named.find((row) => row.id === 'B').room, 'void');
+  console.log(`[pq-158.05 listen] seed=${MEASURE_SEED} A=${named[0].room} B=${named[1].room}`);
 });
 
 test('weight-first ducking table: scout-on-rock light vs freighter-on-station heavy', () => {

@@ -80,7 +80,7 @@ test('release snap is distinct from break: recipe, caption, and pitch contour', 
   assert.ok(release.rate > broken.rate, 'release is the higher taut let-go; break is the lower failure');
   assert.equal(release.play, true);
   assert.equal(messy.play, false, 'messy release stays on the 158.06 snap so the two leaves do not double');
-  assert.equal(broken.play, false, 'break one-shot is already on the first-hour route');
+  assert.equal(broken.play, true, 'break is audible on the instrument');
   const releaseRecipe = RECIPES.find((r) => r.id === 'sfx_massline_release');
   const breakRecipe = RECIPES.find((r) => r.id === 'sfx.tetherSnap');
   assert.equal(releaseRecipe.type, 'oscillator');
@@ -90,19 +90,23 @@ test('release snap is distinct from break: recipe, caption, and pitch contour', 
   assert.ok(AUDIO_CUE_TO_RECIPE['massline.bridle'] === 'sfx_massline_bridle_chord');
 });
 
-test('reel and bridle speak; attach/strain/break stay owned by the existing first-hour voices', () => {
+test('reel, bridle, attach, strain, and break all speak on the instrument', () => {
   const reel = resolveMasslineInstrument({ event: 'reel', before: 40, after: 28, tension: 0.6, strain: 0.5 });
   const bridle = resolveMasslineInstrument({ event: 'bridle' });
   const attach = resolveMasslineInstrument({ event: 'attach' });
+  const strain = resolveMasslineInstrument({ event: 'strain', tension: 0.7, strain: 0.7 });
+  const broken = resolveMasslineInstrument({ event: 'break' });
   assert.equal(reel.play, true);
   assert.equal(bridle.play, true);
-  assert.equal(attach.play, false);
+  assert.equal(attach.play, true);
+  assert.equal(strain.play, true);
+  assert.equal(broken.play, true);
   assert.equal(reel.caption, 'Massline reel.');
   assert.equal(bridle.caption, 'Twin bridle chord.');
   assert.ok(reel.rate > 1, 'a real winch-in is a rising whine');
 });
 
-test('_onMasslineInstrument plays reel/release/bridle and captions them; it does not double break', () => {
+test('_onMasslineInstrument plays all six events and captions them', () => {
   const plays = [];
   const captions = [];
   const host = Object.create(audio);
@@ -110,18 +114,46 @@ test('_onMasslineInstrument plays reel/release/bridle and captions them; it does
   host.bus = { emit(ev, p) { captions.push({ ev, p }); } };
   host.state = { tick: 40, player: { tether: { active: true, load: 0.6, strain: 0.4 } } };
   host.rt = { _masslineReelLastTick: -1e9 };
+  host._onMasslineInstrument('attach', {});
+  host._onMasslineInstrument('strain', {});
   host._onMasslineInstrument('reel', { before: 50, after: 30 });
   host._onMasslineInstrument('release', { classification: 'clean' });
   host._onMasslineInstrument('bridle', { headId: 'twin_bridle' });
   host._onMasslineInstrument('break', {});
   const recipes = plays.map((p) => p.recipeId);
+  assert.ok(recipes.includes('sfx.tetherLatch'));
+  assert.ok(recipes.includes('sfx_tether_strain_creak'));
   assert.ok(recipes.includes('sfx_massline_reel_whine'));
   assert.ok(recipes.includes('sfx_massline_release'));
   assert.ok(recipes.includes('sfx_massline_bridle_chord'));
-  assert.equal(recipes.includes('sfx.tetherSnap'), false, 'break stays on the first-hour voice');
+  assert.ok(recipes.includes('sfx.tetherSnap'), 'break plays on the instrument');
   const texts = captions.filter((c) => c.ev === 'presentation:caption').map((c) => c.p.text);
+  assert.ok(texts.includes('Massline attached.'));
+  assert.ok(texts.includes('Massline strain.'));
   assert.ok(texts.includes('Massline reel.'));
   assert.ok(texts.includes('Massline release.'));
   assert.ok(texts.includes('Twin bridle chord.'));
+  assert.ok(texts.includes('Massline break.'));
   console.log(`[pq-158.02 wiring] plays=${recipes.join(',')} captions=${texts.join(' | ')}`);
+});
+
+test('a player cut is not voiced as a cable break', () => {
+  const plays = [];
+  const host = Object.create(audio);
+  host.play = (recipeId, opts) => { plays.push({ recipeId, opts }); return { recipeId }; };
+  host.bus = { emit() {} };
+  host.state = { tick: 40, player: { tether: { active: true, load: 0.6, strain: 0.4 } } };
+  host.rt = { _masslineReelLastTick: -1e9 };
+  const bus = {
+    handlers: Object.create(null),
+    on(ev, fn) { (this.handlers[ev] ||= []).push(fn); },
+    emit(ev, p) { for (const fn of this.handlers[ev] || []) fn(p); },
+  };
+  host.init({ state: host.state, bus, helpers: {} });
+  host.play = (recipeId, opts) => { plays.push({ recipeId, opts }); return { recipeId }; };
+  plays.length = 0;
+  bus.emit('tether:broken', { reason: 'tether_cut' });
+  assert.equal(plays.some((p) => p.recipeId === 'sfx.tetherSnap'), false, 'player cut must not play break');
+  bus.emit('tether:broken', { reason: 'physics_break' });
+  assert.equal(plays.some((p) => p.recipeId === 'sfx.tetherSnap'), true, 'a failed line still snaps');
 });

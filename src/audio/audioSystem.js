@@ -1290,13 +1290,27 @@ export const audio = {
     bus.on('audio:cue', (p) => this._onCue(p));
     bus.on('tether:reel', (p) => this._onMasslineInstrument('reel', p));
     bus.on('tether:releaseRated', (p) => this._onMasslineInstrument('release', p));
-    bus.on('tether:broken', (p) => this._onMasslineInstrument('break', p));
+    bus.on('tether:broken', (p) => {
+      const reason = String((p && p.reason) || '').toLowerCase();
+      // A player cut is a let-go, not a cable failure. 158.02 break is the snap of a line that failed.
+      if (reason === 'tether_cut' || reason === 'cut' || reason === 'release') {
+        if (this.rt) this.rt._masslinePlayerCutTick = Number(this.state && this.state.tick);
+        return;
+      }
+      this._onMasslineInstrument('break', p);
+    });
     bus.on('tether:attached', (p) => {
       this._onMasslineInstrument('attach', p);
       const head = p && (p.headId || p.attachmentDefId || p.defId || p.masslineHeadId);
       if (head && String(head).toLowerCase().includes('bridle')) this._onMasslineInstrument('bridle', p);
     });
-    bus.on('tether:strain', (p) => this._onMasslineInstrument('strain', p));
+    bus.on('tether:strain', (p) => {
+      const tether = this.state && this.state.player && this.state.player.tether;
+      const load = Number(tether && tether.load);
+      const phase = tether && tether.phase;
+      if (phase !== 'loaded' && phase !== 'overload' && !(load >= 0.55)) return;
+      this._onMasslineInstrument('strain', p);
+    });
     bus.on('tether:nearBreak', (p) => this._onMasslineInstrument('strain', p));
     bus.on('barkDirector:voice', (p) => this._onBarkVoice(p));
     bus.on('fields:deployed', (p) => {
@@ -3180,6 +3194,8 @@ export const audio = {
         critical: voice.critical,
         position: payload && payload.pos,
       });
+    }
+    if (voice.caption) {
       this._emitPresentationCaption(voice.caption, { assertive: voice.warning, shape: 'arc' });
     }
   },
@@ -3328,6 +3344,13 @@ export const audio = {
     // Some presentation receipts must remain visible on the semantic bus even though an earlier
     // raw event owns their physical sound. Do not turn that observability contract into a double hit.
     if (opts.playbackOwnedByRaw) return;
+    // PQ-158.02 owns attach/strain/break on the instrument. Juice still emits the semantic
+    // cue; do not play the same latch/creak/snap a second time.
+    if (id === 'presentation.tether.attach'
+      || id === 'presentation.tether.near_break'
+      || id === 'presentation.tether.break') {
+      return;
+    }
     const suppliedImportance = Number.isFinite(opts.importance)
       ? opts.importance
       : (opts.duck ? Math.max(PRIORITY_DUCK_THRESHOLD, 0.85) : 0);

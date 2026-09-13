@@ -68,8 +68,10 @@ export const MINIMAL_ACTION_AUDIO = Object.freeze([
     importance: 0.92,
     cooldownTicks: 8,
     bind: true,
-    when: (payload) => {
+    when: (payload, host) => {
       const klass = payload && payload.classification;
+      const tick = host && host.state && host.state.tick;
+      if (host && host.rt && host.rt._masslinePlayerCutTick === tick) return false;
       return !klass || klass === 'messy';
     },
   }),
@@ -199,6 +201,9 @@ export function bindMinimalActionAudio(host, bus) {
   if (!host || !bus || typeof bus.on !== 'function') return;
   for (const spec of MINIMAL_ACTION_AUDIO) {
     if (spec.bind !== true) continue;
+    // PQ-158.02 owns loaded-line strain on the instrument. Isolated 158.06 hosts without
+    // that method still bind the first-hour creak.
+    if (spec.id === 'loadedLine' && typeof host._onMasslineInstrument === 'function') continue;
     bus.on(spec.sourceEvent, (payload) => {
       const tick = host.state && host.state.tick;
       requestMinimalActionAudio(host, spec.id, payload, tick);
