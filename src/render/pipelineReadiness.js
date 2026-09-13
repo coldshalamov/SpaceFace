@@ -100,6 +100,27 @@ function logOpeningCookLedger(ledger) {
   try { console.info(formatOpeningCookLedger(ledger)); } catch { /* diagnostics must not throw */ }
 }
 
+/**
+ * A yield that only yields once `sliceMs` of work has run since the last real yield, so several small
+ * loading-shell items (touches, texture uploads, mesh builds) share one frame instead of each paying a
+ * whole frame. `await sliced(true)` always yields. `sliced.yields` counts real yields for the ledger.
+ */
+export function createSlicedYield(yieldFn, options = {}) {
+  if (typeof yieldFn !== 'function') throw new TypeError('createSlicedYield requires a yield function');
+  const sliceMs = Number.isFinite(Number(options.sliceMs)) ? Math.max(0, Number(options.sliceMs)) : 8;
+  const now = typeof options.now === 'function' ? options.now : ledgerNow;
+  let sliceStarted = now();
+  const sliced = async (force = false) => {
+    if (force !== true && now() - sliceStarted < sliceMs) return false;
+    sliced.yields += 1;
+    await yieldFn();
+    sliceStarted = now();
+    return true;
+  };
+  sliced.yields = 0;
+  return sliced;
+}
+
 /** 1 Hz `lane` rows while a cook runs, from the renderer's sampler when it has one. */
 function startOpeningCookLaneSampler(render) {
   const sample = render && typeof render.sampleOpeningCookLane === 'function'

@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import {
   beginOpeningCookLedger,
   createPipelineAdmissionTracker,
+  createSlicedYield,
   formatOpeningCookLedger,
   recordOpeningCookStep,
   waitForOpeningGpuResources,
@@ -105,6 +106,35 @@ test('the opening wait records how each gate ended', async () => {
   ]);
   // A cook that outlives the gate logs only when it really ends.
   assert.deepEqual(lines, []);
+});
+
+test('a sliced yield lets small items share a frame and always yields when forced', async () => {
+  let clock = 0;
+  let frames = 0;
+  const sliced = createSlicedYield(async () => { frames += 1; }, { sliceMs: 8, now: () => clock });
+  clock = 3;
+  assert.equal(await sliced(), false);
+  clock = 7;
+  assert.equal(await sliced(), false);
+  clock = 9;
+  assert.equal(await sliced(), true);
+  assert.equal(frames, 1);
+  clock = 10;
+  assert.equal(await sliced(), false, 'a new slice starts after the real yield');
+  assert.equal(await sliced(true), true);
+  assert.equal(frames, 2);
+  assert.equal(sliced.yields, 2);
+});
+
+test('the live cook compiles its touch subjects as one cohort before drawing them', async () => {
+  const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
+  const start = renderer.indexOf('state.render.cookLiveSceneGpu = async');
+  const end = renderer.indexOf('state.render.prepareLiveSectorAfterJump = async', start);
+  assert.ok(start >= 0 && end > start);
+  const cook = renderer.slice(start, end);
+  assert.match(cook,
+    /beginScenePipelineReadinessBatch\(renderer\)[\s\S]*?await cohort\.drain\([\s\S]*?cohort\.close\(\);\s*await Promise\.allSettled\(issued\);\s*cohort\.restoreEntryTarget\(\);[\s\S]*?touch\(subject\)/);
+  assert.doesNotMatch(cook, /issued\.push\(await /, 'never await a compile inside the cohort issue loop');
 });
 
 test('the live-sector cook flushes the admission lane while it waits', async () => {

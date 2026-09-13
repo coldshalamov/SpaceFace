@@ -200,6 +200,7 @@ import {
   beginOpeningCookLedger,
   createGpuResidencyAdmissionTracker,
   createPipelineAdmissionTracker,
+  createSlicedYield,
   formatOpeningCookLedger,
   recordOpeningCookStep,
 } from './pipelineReadiness.js';
@@ -4893,22 +4894,27 @@ export const render = {
         let built = 0;
         let buildMs = 0;
         let capped = false;
+        // Several builds share a frame until ~8 ms is spent instead of one build per frame. A pass the
+        // late-present gate held (the queue head did not move) still waits for a real frame.
+        const buildYield = createSlicedYield(yieldLiveSectorGpu);
         while (this._meshBuildQueueHead < this._meshBuildQueue.length) {
           if (prepareNow() - started > cap) {
             capped = true;
             break;
           }
+          const headBefore = this._meshBuildQueueHead;
           const buildStarted = prepareNow();
           built += Number(this._drainMeshBuildQueue(1)) || 0;
           buildMs += prepareNow() - buildStarted;
           passes += 1;
-          await yieldLiveSectorGpu();
+          await buildYield(this._meshBuildQueueHead === headBefore);
         }
         recordOpeningCookStep(state.render, step, started, capped ? 'timeout' : 'resolved', {
           queued,
           passes,
           built,
           buildMs: Math.round(buildMs),
+          yields: buildYield.yields,
           left: this._meshBuildQueue.length - this._meshBuildQueueHead,
         });
       };
@@ -5265,8 +5271,53 @@ export const render = {
         let switched = 0;
         let touchMs = 0;
         let maxTouchMs = 0;
-        const touchStarted = cookNow();
         const yieldTouch = typeof options.yieldToMain === 'function' ? options.yieldToMain : null;
+        // Issue every touch subject's compile as one readiness cohort on the exact post target, drain
+        // once, then touch: a draw against an unlinked program blocks the main thread in onFirstUse
+        // until ANGLE finishes the link (laneB-fixA: 5 of 89 touch subjects had no program at their
+        // draw and 7 drew another variant than the one compiled). Issue all without awaiting a compile
+        // (joined compiles settle only at drain) and restore the render target only after every issued
+        // compile has unwound.
+        const touchCompileStarted = cookNow();
+        const compileYield = yieldTouch ? createSlicedYield(yieldTouch) : null;
+        const cohort = units.programSubjects.length > 0 ? beginScenePipelineReadinessBatch(renderer) : null;
+        const issued = [];
+        let cohortDrain = null;
+        if (cohort) {
+          try {
+            for (const subject of units.programSubjects) {
+              if (cookOverBudget()) break;
+              const restoreSubject = revealSubjectForCompile(subject);
+              try {
+                issued.push(Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene)).catch(() => null));
+              } catch {
+                // One subject's synchronous compile failure must not strand the cohort.
+              } finally {
+                restoreSubject();
+              }
+              if (compileYield) await compileYield();
+            }
+            cohortDrain = await cohort.drain({
+              timeoutMs: Math.max(0, cookDeadlineMs - (cookNow() - cookStarted)),
+            });
+          } finally {
+            cohort.close();
+            await Promise.allSettled(issued);
+            cohort.restoreEntryTarget();
+          }
+        }
+        recordOpeningCookStep(state.render, 'cook.touchCompile', touchCompileStarted,
+          !cohort ? 'skipped' : (issued.length < units.programSubjects.length ? 'timeout' : 'resolved'), {
+            issued: issued.length,
+            unlinked: cohortDrain ? cohortDrain.programs : undefined,
+            contextLost: cohortDrain && cohortDrain.contextLost === true ? true : undefined,
+            yields: compileYield ? compileYield.yields : undefined,
+          });
+        // Loading shell: several touches share a frame until ~8 ms of touch work, then yield
+        // (laneB-fixA: 89 touches drew for 1261 ms and spent ~1.3 s more yielding a whole frame after
+        // every one). The jump shell keeps one touch per frame.
+        const touchYield = yieldTouch && state.mode === 'loading' ? createSlicedYield(yieldTouch) : yieldTouch;
+        const touchStarted = cookNow();
         // Names of subjects that still had no compiled program at touch time — they are the
         // programs the first presented frame will link synchronously. Counts alone never said
         // which objects escaped every admission gate.
@@ -5292,7 +5343,7 @@ export const render = {
           if (drawMs > maxTouchMs) maxTouchMs = drawMs;
           if (subjectProgramAtTouch(subject).program !== before.program) switched += 1;
           touched += 1;
-          if (yieldTouch) await yieldTouch();
+          if (touchYield) await touchYield();
         }
         recordOpeningCookStep(state.render, 'cook.touch', touchStarted,
           touched < units.programSubjects.length ? 'timeout' : 'resolved', {
@@ -5304,6 +5355,7 @@ export const render = {
           switched,
           touchMs: Math.round(touchMs),
           maxTouchMs: Math.round(maxTouchMs),
+          yields: touchYield && typeof touchYield.yields === 'number' ? touchYield.yields : undefined,
         });
         present = {
           skipped: false,
@@ -5316,9 +5368,12 @@ export const render = {
       // skipBuffers means "do not re-upload the whole opening scene". First-flight
       // rocks and the 47-A spindle still need a 1x1 residency pass: compile()
       // does not upload vertex buffers, and first bloom then bricks on Intel.
-      const yieldBuffers = typeof options.yieldToMain === 'function'
+      const yieldBufferFrame = typeof options.yieldToMain === 'function'
         ? options.yieldToMain
         : yieldToBrowser;
+      // Loading shell: texture and geometry uploads share a frame until ~8 ms of upload work
+      // (laneB-fixA: 123 opening textures, one whole frame each). The jump shell keeps its cadence.
+      const yieldBuffers = state.mode === 'loading' ? createSlicedYield(yieldBufferFrame) : yieldBufferFrame;
       const firstFlightBufferRoots = [];
       const seenBufferRoots = new Set();
       const addFirstFlightBufferRoot = (root) => {
@@ -5375,6 +5430,7 @@ export const render = {
         buffers && buffers.reason === 'loading-budget' ? 'timeout' : 'resolved', {
           roots: firstFlightBufferRoots.length,
           textures: buffers ? buffers.textures : undefined,
+          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : undefined,
         });
       const layersStarted = cookNow();
       // Count-0 / drawRange-0 effect drawables (plumes, RCS, plasma strips, retro,
@@ -5398,7 +5454,10 @@ export const render = {
         }
       }
       recordOpeningCookStep(state.render, 'cook.layers', layersStarted,
-        layerRoots.length === 0 ? 'skipped' : 'resolved', { roots: layerRoots.length });
+        layerRoots.length === 0 ? 'skipped' : 'resolved', {
+          roots: layerRoots.length,
+          yields: typeof yieldBuffers.yields === 'number' ? yieldBuffers.yields : undefined,
+        });
       if (typeof state.render.restLiveFlightEffectsAfterCook === 'function') {
         state.render.restLiveFlightEffectsAfterCook();
       }
