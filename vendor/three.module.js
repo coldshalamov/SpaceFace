@@ -5079,6 +5079,26 @@ const emptyTexture = /*@__PURE__*/ new Texture();
 
 const emptyShadowTexture = /*@__PURE__*/ new DepthTexture( 1, 1 );
 
+// SpaceFace: a shadow sampler with no shadow map yet (the renderer holds shadow refreshes in early flight)
+// must still get a depth texture with a comparison mode, or ANGLE rejects the draw ("Mismatch between texture
+// format and sampler type"). setTexture2D only uploads textures whose version moved, and binds the generic
+// empty colour texture otherwise, so upload the shared empty shadow texture once, and again if the depth
+// convention (and with it the comparison function) changes.
+function getEmptyShadowTexture( textures ) {
+
+	const compareFunction = textures.isReversedDepthBuffer() ? GreaterEqualCompare : LessEqualCompare;
+
+	if ( emptyShadowTexture.version === 0 || emptyShadowTexture.compareFunction !== compareFunction ) {
+
+		emptyShadowTexture.compareFunction = compareFunction;
+		emptyShadowTexture.needsUpdate = true;
+
+	}
+
+	return emptyShadowTexture;
+
+}
+
 const emptyArrayTexture = /*@__PURE__*/ new DataArrayTexture();
 const empty3dTexture = /*@__PURE__*/ new Data3DTexture();
 const emptyCubeTexture = /*@__PURE__*/ new CubeTexture();
@@ -5599,8 +5619,7 @@ function setValueT1( gl, v, textures ) {
 
 	if ( this.type === gl.SAMPLER_2D_SHADOW ) {
 
-		emptyShadowTexture.compareFunction = textures.isReversedDepthBuffer() ? GreaterEqualCompare : LessEqualCompare;
-		emptyTexture2D = emptyShadowTexture;
+		emptyTexture2D = getEmptyShadowTexture( textures );
 
 	} else {
 
@@ -5853,7 +5872,7 @@ function setValueT1Array( gl, v, textures ) {
 
 	if ( this.type === gl.SAMPLER_2D_SHADOW ) {
 
-		emptyTexture2D = emptyShadowTexture;
+		emptyTexture2D = getEmptyShadowTexture( textures );
 
 	} else {
 
