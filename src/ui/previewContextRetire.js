@@ -34,12 +34,20 @@ export function retireWhenProgramsReady({
   now = () => Date.now(),
   pollMs = RETIRE_POLL_MS,
   maxWaitMs = RETIRE_MAX_WAIT_MS,
+  isContextLost = null,
 }) {
   const pending = parallelCompile === true && programs ? Array.from(programs) : [];
+  const contextGone = () => {
+    try { return typeof isContextLost === 'function' && isContextLost() === true; }
+    catch (_) { return false; }
+  };
   // Every readiness query is a synchronous round trip to a GPU process busy with the loading cook, so
   // a check stops at the first program still linking. A lost context answers null and a destroyed
-  // program throws; neither can finish linking, so both count as settled.
+  // program throws; neither can finish linking, so both count as settled. Querying a lost context
+  // warns GL_INVALID_VALUE per program handle, so a dead context short-circuits before the first
+  // isReady() call instead of emitting one console warning per pending program.
   const settled = () => {
+    if (contextGone()) return true;
     while (pending.length > 0) {
       let linking = false;
       try { linking = pending[pending.length - 1].isReady() === false; } catch (_) { linking = false; }

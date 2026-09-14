@@ -646,6 +646,7 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
         // deleted / dead-context / foreign handles with the caller stack.
         const liveByContext = new WeakMap();
         const lostByContext = new WeakMap();
+        const mintedDeadByContext = new WeakMap();
         const deleted = new WeakSet();
         const liveSetFor = (ctx) => {
           let set = liveByContext.get(ctx);
@@ -657,6 +658,8 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
           if (deleted.has(program)) return 'deleted';
           if (typeof program === 'object' && typeof globalThis.WebGLProgram === 'function'
             && !(program instanceof globalThis.WebGLProgram)) return 'not-a-program';
+          const mintedDead = mintedDeadByContext.get(ctx);
+          if (mintedDead && mintedDead.has(program)) return 'minted-during-lost-context';
           const live = liveByContext.get(ctx);
           if (live && live.has(program)) return null;
           for (const set of lostByContext.get(ctx) || []) if (set.has(program)) return 'dead-context';
@@ -688,7 +691,16 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
           const origCreate = proto.createProgram;
           proto.createProgram = function createProgramTraced() {
             const program = origCreate.call(this);
-            if (program) liveSetFor(this).add(program);
+            if (program) {
+              liveSetFor(this).add(program);
+              // createProgram during the lost window returns a JS handle the driver never
+              // registers — it stays in the live set but is an invalid query target forever.
+              if (typeof this.isContextLost === 'function' && this.isContextLost()) {
+                let dead = mintedDeadByContext.get(this);
+                if (!dead) { dead = new WeakSet(); mintedDeadByContext.set(this, dead); }
+                dead.add(program);
+              }
+            }
             return program;
           };
           proto.deleteProgram = function deleteProgramTraced(program) {
@@ -697,10 +709,14 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
           };
           proto.getProgramParameter = function getProgramParameterTraced(program, pname) {
             const kind = classify(this, program);
-            if (kind !== null) {
+            // A live-set handle can still fail driver-side: programs minted (or polled) while the
+            // context sits inside its lost window are JS objects the driver never registered.
+            // isContextLost() has no GL side effects, so it is safe to check per call.
+            const lostNow = typeof this.isContextLost === 'function' && this.isContextLost() === true;
+            if (kind !== null || lostNow) {
               console.warn('[gl-trace] getProgramParameter on invalid handle', {
                 t: Math.round(performance.now()),
-                kind,
+                kind: kind || 'live-handle-during-lost-context',
                 pname,
                 stack: (new Error().stack || '').split('\n').slice(2, 10).join(' | '),
               });

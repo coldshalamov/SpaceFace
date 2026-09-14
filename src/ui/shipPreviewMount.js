@@ -1183,6 +1183,12 @@ export function createShipPreviewMount(canvas, opts) {
       programs: renderer.info && renderer.info.programs,
       parallelCompile: !!(renderer.extensions && renderer.extensions.has('KHR_parallel_shader_compile')),
       finish: releaseGpu,
+      isContextLost: () => {
+        try {
+          const gl = renderer.getContext && renderer.getContext();
+          return !gl || (typeof gl.isContextLost === 'function' && gl.isContextLost() === true);
+        } catch (_) { return true; }
+      },
     });
   }
 
