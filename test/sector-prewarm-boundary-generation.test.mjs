@@ -938,6 +938,44 @@ test('post-settle reconciliation drops a safely retired generation only after it
     'successful supersession does not poison the otherwise-ready sector generation');
 });
 
+test('a staged reservation folded into a concurrent live admission is redundant coverage, not a failure', async () => {
+  const liveBoundary = { userData: { authoredAssetState: 'authored' } };
+  const { manager } = preparedManager({
+    async requestPreparation() {
+      // The serial authored-upgrade lane dedups by entity key: this reservation resolves with
+      // the live owner's receipt, so its own boundary never reaches prepared state.
+      return { status: 'authored-prepared', boundary: liveBoundary };
+    },
+    isPrepared() {
+      return false;
+    },
+    isAdmissionCoveredElsewhere(record) {
+      return record.receipt?.boundary === liveBoundary;
+    },
+    disposeBoundary(record) {
+      record.boundary.parent = null;
+      record.boundary.visible = false;
+    },
+  });
+  const spec = reservation(77, 1);
+  const record = manager.reserve(spec);
+  await record.settled;
+  await record.cleanupPromise;
+  assert.equal(record.state, SECTOR_BOUNDARY_PREPARATION_STATE.disposed);
+  assert.equal(record.abortReason, 'entity-covered-by-live-admission');
+  assert.equal(record.error ?? null, null,
+    'coverage folded into the live admission is not a reservation failure');
+
+  const records = new Set([record]);
+  reconcileSettledSectorBoundaryRecords(records, {
+    entities: new Map([[spec.entity.id, spec.entity]]),
+    sectorId: spec.sectorId,
+    currentRecordForId: (id) => manager.get(id),
+  });
+  assert.equal(records.size, 0,
+    'the redundant reservation leaves the settled population instead of failing it closed');
+});
+
 test('live sector boundaries must finish exact authored admission before rotation', async () => {
   const entity = {
     id: 95,

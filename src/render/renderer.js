@@ -1849,7 +1849,8 @@ export function reconcileSettledSectorBoundaryRecords(records, options = {}) {
         && String(entitySectorId(current) || '') !== String(options.sectorId))
       || prepared?.abortReason === 'entity-destroyed-during-sector-prewarm'
       || prepared?.abortReason === 'ship-appearance-changed-during-sector-prewarm'
-      || prepared?.abortReason === 'ship-rebuild-during-sector-prewarm';
+      || prepared?.abortReason === 'ship-rebuild-during-sector-prewarm'
+      || prepared?.abortReason === 'entity-covered-by-live-admission';
     const currentPreparation = typeof options.currentRecordForId === 'function'
       ? options.currentRecordForId(prepared?.id)
       : null;
@@ -2175,6 +2176,20 @@ const ACCEPTED_LIVE_AUTHORED_STATES = new Set([
   'same-semantic-fallback',
 ]);
 
+// Authored-admission states that prove a live boundary already owns (or is landing) the entity's
+// authored content through a different admission owner. A staged record that loses that race is
+// redundant work to discard, not a failed reservation.
+const LIVE_ADMISSION_COVERING_STATES = new Set([
+  'awaiting-authored-admission',
+  'loading',
+  'compiling-pipelines',
+  'authored-prepared',
+  'same-semantic-fallback-prepared',
+  'authored',
+  'authored-with-cleanup-error',
+  'same-semantic-fallback',
+]);
+
 /** Assert that the stable preparation population is an exact cover of the authoritative live
  * target-sector census. This rejects both omissions and stale LIVE supersets: a previously
  * published record is evidence only while its exact entity, boundary, fingerprint, and mesh map
@@ -2395,6 +2410,13 @@ export function createSectorBoundaryGenerationManager(options = {}) {
       record.receipt = await record.preparation;
       if (!record.active) return disposeRecord(record);
       if (options.isPrepared && options.isPrepared(record) !== true) {
+        // The authored-upgrade lane dedups by entity key: a staged reservation that loses that
+        // race resolves with the live owner's receipt — redundant coverage, not a failed boundary.
+        if (options.isAdmissionCoveredElsewhere && options.isAdmissionCoveredElsewhere(record) === true) {
+          record.abortReason = 'entity-covered-by-live-admission';
+          record.active = false;
+          return disposeRecord(record);
+        }
         throw new Error(`Authored boundary ${record.id} did not reach prepared admission`);
       }
       record.state = states.ready;
@@ -2498,7 +2520,10 @@ export function createSectorBoundaryGenerationManager(options = {}) {
     await record.settled;
     if (record.state === states.live) return true;
     if (!record.active || record.state !== states.ready || options.validate?.(record) !== true) {
-      await abort(record, record.abortReason || 'sector-boundary-stale-before-publish');
+      await abort(record, record.abortReason
+        || (options.isAdmissionCoveredElsewhere?.(record) === true
+          ? 'entity-covered-by-live-admission'
+          : 'sector-boundary-stale-before-publish'));
       return false;
     }
     record.state = states.publishing;
@@ -4201,6 +4226,19 @@ export const render = {
         return authoredState === 'authored-prepared'
           || authoredState === 'same-semantic-fallback-prepared';
       },
+      isAdmissionCoveredElsewhere: (record) => {
+        // The serial authored-upgrade lane dedups by entity key: a staged reservation whose
+        // resolved receipt names a different boundary was folded into that owner's admission.
+        const receiptBoundary = record && record.receipt && record.receipt.boundary;
+        if (receiptBoundary && receiptBoundary !== record.boundary) return true;
+        const liveBoundary = this._meshes.get(record.id)
+          || (record.entity && record.entity.mesh)
+          || null;
+        if (!liveBoundary || liveBoundary === record.boundary) return false;
+        const liveState = liveBoundary.userData && liveBoundary.userData.authoredAssetState;
+        return LIVE_ADMISSION_COVERING_STATES.has(liveState)
+          || !!(liveBoundary.userData && liveBoundary.userData.authoredUpgradePromise);
+      },
       validate: (record) => rendererGenerationIsActive()
         && record.prewarm?.active === true
         && record.generation === record.prewarm.generation
@@ -4799,6 +4837,30 @@ export const render = {
         pooledResourceSubjects,
       });
     };
+    // Re-freeze the opening manifest once the plan can name everything the live scene and program
+    // cache actually hold. Runs at the end of the bounded cook — the post-submit gate compares the
+    // receipt's frozen identity sets against the live renderer, so a receipt taken while authored
+    // composition was still in flight would report planned admissions as uncaptured.
+    const captureSettledOpeningSubmissionReceipt = () => {
+      const settledPlan = buildOpeningSubmissionPlan();
+      if (!settledPlan || settledPlan.complete !== true) return false;
+      state.render.openingSubmissionPlan = settledPlan;
+      const settledRoute = this._selectPostRoute();
+      const settledPostMaterials = settledRoute === POST_PROCESS_ROUTE.BLOOM
+        && this.bloom && typeof this.bloom.openingProgramMaterials === 'function'
+        ? this.bloom.openingProgramMaterials()
+        : settledRoute === POST_PROCESS_ROUTE.GRAPH
+          && this._renderGraph && typeof this._renderGraph.openingProgramMaterials === 'function'
+          ? this._renderGraph.openingProgramMaterials()
+          : [];
+      state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(renderer, settledPlan, {
+        scene,
+        programMaterials: settledPostMaterials,
+        shadowProgramKeys: this._openingShadowAdmission?.programCacheKeys,
+        shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
+      });
+      return true;
+    };
     state.render.prepareOpeningFirstPicture = (timeoutMs) => (
       this.prepareOpeningFirstPicture(timeoutMs)
     );
@@ -5014,6 +5076,10 @@ export const render = {
       // publication gate so they can commit here; keep mesh streaming deferred.
       releaseOpeningGraphPublication(this);
       state.render.liveSectorGpuAdmission = true;
+      // The opening receipt is re-frozen at the end of this cook; until then it is
+      // intermediate. On the timeout path this function keeps running after flight
+      // entry, so hold the post-submit gate until the settled receipt is captured.
+      state.render.openingSubmissionReceiptPending = true;
       try {
       const yieldLiveSectorGpu = async () => {
         // GLB/KTX2 decode, ANGLE links, and 1x1 buffer uploads do not retire
@@ -5126,59 +5192,6 @@ export const render = {
         this._meshBuildQueue,
       );
       await drainMeshBuildsBehindShell();
-      // The incoming-sector census has only ever run for jump destinations; the sector the
-      // player wakes into staged nothing, so its authored places/dressing composed lazily on
-      // approach — first-touch program links inside measured soak frames (PQ-033.02). Run the
-      // same census for the current sector now: prefetch, hidden boundary preparation, then
-      // publish — sliced behind the loading shell and into early flight like an arrival.
-      if (!recook && sectorId) {
-        const prewarm = beginIncomingSectorPrewarm(sectorId, { stageBoundaries: true });
-        if (prewarm) {
-          this._authoredSectorPrewarmPendingId = sectorId;
-          this._authoredSectorPrewarmPending = prewarm;
-          const currentSectorSettle = (async () => {
-            try {
-              const settled = await settleSectorPrewarmRequests(prewarm);
-              if (!settled) {
-                if (prewarm.active === true) {
-                  releaseSectorPrewarm(prewarm, 'current-sector-prewarm-generation-invalidated');
-                }
-                return null;
-              }
-              await settleSectorBoundaryPreparations(prewarm, {
-                includePrefetch: true,
-                publish: true,
-              });
-              if (prewarm.active === true) {
-                if (this._currentSectorPrewarm && this._currentSectorPrewarm !== prewarm) {
-                  releaseSectorPrewarm(this._currentSectorPrewarm, 'sector-prewarm-replaced');
-                }
-                this._currentSectorPrewarm = prewarm;
-                if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
-              }
-              return prewarm;
-            } finally {
-              if (this._authoredSectorPrewarmPending === prewarm) {
-                this._authoredSectorPrewarmPendingId = null;
-                this._authoredSectorPrewarmPending = null;
-                this._meshReconcileDirty = true;
-              }
-            }
-          })();
-          currentSectorSettle.catch((error) => {
-            if (prewarm.active === true) {
-              releaseSectorPrewarm(prewarm, 'current-sector-prewarm-settle-failed');
-            }
-            if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
-            console.warn(
-              '[render] current-sector authored prewarm failed; retaining procedural boundaries',
-              error,
-            );
-            return null;
-          });
-          state.render.currentSectorPrewarmSettle = currentSectorSettle;
-        }
-      }
       // Nearby opening actors stay on onBeforeRender until a real flight draw.
       // Kick them here so the live-scene cook sees their authored materials,
       // not the procedural stand-in that first flight would otherwise compile.
@@ -5464,24 +5477,7 @@ export const render = {
       // post-submit gate compares a stale plan against the live scene and reports every authored
       // hull (and every grown pool mesh, e.g. ContactShadow_Pool) as an uncaptured admission.
       if (!recook && state.render.openingSubmissionReceipt) {
-        const settledPlan = buildOpeningSubmissionPlan();
-        if (settledPlan && settledPlan.complete === true) {
-          state.render.openingSubmissionPlan = settledPlan;
-          const settledRoute = this._selectPostRoute();
-          const settledPostMaterials = settledRoute === POST_PROCESS_ROUTE.BLOOM
-            && this.bloom && typeof this.bloom.openingProgramMaterials === 'function'
-            ? this.bloom.openingProgramMaterials()
-            : settledRoute === POST_PROCESS_ROUTE.GRAPH
-              && this._renderGraph && typeof this._renderGraph.openingProgramMaterials === 'function'
-              ? this._renderGraph.openingProgramMaterials()
-              : [];
-          state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(renderer, settledPlan, {
-            scene,
-            programMaterials: settledPostMaterials,
-            shadowProgramKeys: this._openingShadowAdmission?.programCacheKeys,
-            shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
-          });
-        }
+        captureSettledOpeningSubmissionReceipt();
       }
       this._sessionLiveSectorCookedId = sectorId;
       state.render.sessionLiveSectorCookedId = sectorId;
@@ -5489,6 +5485,7 @@ export const render = {
       } finally {
         state.render.liveSectorGpuAdmission = false;
         state.render.liveSectorFirstFlightIds = null;
+        state.render.openingSubmissionReceiptPending = false;
         holdAuthoredUpgradeQueueForFirstFlight(scene);
         freezeOpeningGraphPublication(this);
       }
@@ -6928,6 +6925,72 @@ export const render = {
     const settleSectorPrewarmRequests = (record) => settleSectorBoundaryPreparations(record, {
       includePrefetch: true,
     });
+    // The incoming-sector census only ever ran for jump destinations; the sector the player wakes
+    // into staged nothing, so its authored places/dressing composed lazily on approach — first-touch
+    // program links inside measured soak frames (PQ-033.02). Run the same census for the current
+    // sector at flight entry: prefetch, hidden boundary preparation, then publish — sliced through
+    // early flight exactly like an arrival. It stays out of the bounded opening cook on purpose:
+    // its serial-lane jobs would otherwise starve the 20s launch budget.
+    const kickCurrentSectorAuthoredCensus = () => {
+      const sectorId = String(state.world?.currentSectorId || '');
+      if (!sectorId) return null;
+      const pending = this._authoredSectorPrewarmPending;
+      if (pending?.active === true) {
+        return pending.sectorId === sectorId ? pending : null;
+      }
+      const current = this._currentSectorPrewarm;
+      if (current?.active === true && current.sectorId === sectorId) return current;
+      const incoming = this._incomingSectorPrewarm;
+      if (incoming?.active === true && incoming.sectorId !== sectorId) {
+        // A real destination prewarm owns the incoming slot; never supersede it.
+        return null;
+      }
+      const prewarm = beginIncomingSectorPrewarm(sectorId, { stageBoundaries: true });
+      if (!prewarm || prewarm.active !== true) return null;
+      this._authoredSectorPrewarmPendingId = sectorId;
+      this._authoredSectorPrewarmPending = prewarm;
+      const settle = (async () => {
+        try {
+          const settled = await settleSectorPrewarmRequests(prewarm);
+          if (!settled) {
+            if (prewarm.active === true) {
+              releaseSectorPrewarm(prewarm, 'current-sector-prewarm-generation-invalidated');
+            }
+            return null;
+          }
+          await settleSectorBoundaryPreparations(prewarm, {
+            includePrefetch: true,
+            publish: true,
+          });
+          if (prewarm.active === true) {
+            if (this._currentSectorPrewarm && this._currentSectorPrewarm !== prewarm) {
+              releaseSectorPrewarm(this._currentSectorPrewarm, 'sector-prewarm-replaced');
+            }
+            this._currentSectorPrewarm = prewarm;
+            if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
+          }
+          return prewarm;
+        } finally {
+          if (this._authoredSectorPrewarmPending === prewarm) {
+            this._authoredSectorPrewarmPendingId = null;
+            this._authoredSectorPrewarmPending = null;
+            this._meshReconcileDirty = true;
+          }
+        }
+      })();
+      state.render.currentSectorPrewarmSettle = settle.catch((error) => {
+        if (prewarm.active === true) {
+          releaseSectorPrewarm(prewarm, 'current-sector-prewarm-settle-failed');
+        }
+        if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
+        console.warn(
+          '[render] current-sector authored prewarm failed; retaining procedural boundaries',
+          error,
+        );
+        return null;
+      });
+      return prewarm;
+    };
     onBus('jump:chargeStart', ({ targetSectorId } = {}) => {
       beginIncomingSectorPrewarm(targetSectorId);
     });
@@ -7272,6 +7335,7 @@ export const render = {
           state.render.openingSubmissionFirstDrawSubmittedAt = null;
           state.render.openingSubmissionPlan = null;
           state.render.openingSubmissionReceipt = null;
+          state.render.openingSubmissionReceiptPending = false;
           this._openingShadowAdmission = null;
           this._openingPreSubmitRefusals = 0;
           state.render.openingFirstVisibleGpuCounts = null;
@@ -7304,10 +7368,34 @@ export const render = {
         this._deferNoncriticalMeshStreaming = true;
         state.render.deferNoncriticalMeshStreaming = true;
       }
-      // Spawnable-archetype warm runs in early flight, sliced per file — loading mode must not
-      // wait on it (playable-launch budget), and the measured-soak warmup cycle still exposes
-      // every program variant before the window opens.
-      void startSpawnableArchetypeWarm('flight-entry');
+      // The opening sector never ran the jump-path authored census — run it now, sliced through
+      // early flight like an arrival instead of inside the bounded opening cook. The producers
+      // wait for the live-sector cook to release the admission lane (otherwise warm pool chunks
+      // queue deferred compiles nothing drains), then for the first post-submit validation —
+      // it enumerates every live program against the settled receipt, so anything linked
+      // earlier reads as an uncaptured admission.
+      void (async () => {
+        const presentReady = state.render.liveScenePresentReady;
+        if (presentReady && typeof presentReady.then === 'function') {
+          try { await presentReady; } catch (_) { /* prepare failure must not stall the warm */ }
+        }
+        for (let i = 0; i < 240; i += 1) {
+          if (!rendererGenerationIsActive() || this._contextLost === true) return;
+          if (state.render.openingSubmissionValidation) break;
+          if (state.render.openingSubmissionReceiptPending !== true
+              && !state.render.openingSubmissionReceipt) break;
+          try {
+            await (typeof state.render.yieldToNextPresent === 'function'
+              ? state.render.yieldToNextPresent()
+              : yieldToBrowser());
+          } catch (_) {
+            return;
+          }
+        }
+        if (!rendererGenerationIsActive() || this._contextLost === true) return;
+        kickCurrentSectorAuthoredCensus();
+        startSpawnableArchetypeWarm('flight-entry');
+      })();
     });
     onBus('jump:arrive', ({ sectorId } = {}) => {
       const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;
@@ -9274,7 +9362,8 @@ export const render = {
     }
     if (this.state.mode === 'flight'
         && !this.state.render.openingSubmissionValidation
-        && this.state.render.openingSubmissionReceipt) {
+        && this.state.render.openingSubmissionReceipt
+        && this.state.render.openingSubmissionReceiptPending !== true) {
       const receiptValidation = validateOpeningSubmissionReceipt(
         this.state.render.openingSubmissionReceipt,
         this.renderer,
