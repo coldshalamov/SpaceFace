@@ -11330,10 +11330,9 @@ export const vfx = {
           continue;
         }
         const width = Math.max(1.45, (entity.radius || 14) * 0.095);
-        this._ribbonTrails.set(
-          entity.id,
-          createRibbonTrail(this._scene, this._engineColor(entity), NPC_RIBBON_SEGMENTS, width),
-        );
+        const trail = createRibbonTrail(this._scene, this._engineColor(entity), NPC_RIBBON_SEGMENTS, width);
+        this._admitRibbonTrail(trail);
+        this._ribbonTrails.set(entity.id, trail);
         ribbons += 1;
       }
     }
@@ -12918,6 +12917,20 @@ export const vfx = {
   // Ribbon trails for medium-large ships: maintained per entity, updated each trail tick
   _ribbonTrails: null,
   _initRibbonTrails() { this._ribbonTrails = new Map(); },
+  _admitRibbonTrail(trail) {
+    // A fresh trail carries a fresh ShaderMaterial whose program links at first bloomScene
+    // draw (~140-260 ms on the Intel/ANGLE baseline). Queue the new mesh through the same
+    // deferred admission channel authored assets use so the link happens off the draw path.
+    const compile = this.state && this.state.render && this.state.render.compileObjectPipelines;
+    const mesh = trail && typeof trail.getMesh === 'function' ? trail.getMesh() : null;
+    if (typeof compile !== 'function' || !mesh) return;
+    try {
+      const pending = compile(mesh);
+      if (pending && typeof pending.catch === 'function') {
+        pending.catch(() => { /* admission failures surface through the pipeline reporter */ });
+      }
+    } catch (_) { /* admission failures surface through the pipeline reporter */ }
+  },
 
   _retireRibbonTrail(entityId, dispose = false) {
     if (!this._ribbonTrails) return;
@@ -13011,6 +13024,7 @@ export const vfx = {
           isPlayer ? PLAYER_RIBBON_SEGMENTS : NPC_RIBBON_SEGMENTS,
           w,
         );
+        this._admitRibbonTrail(trail);
         this._ribbonTrails.set(e.id, trail);
       }
       // sample from engine nozzle (rear of ship); socket/entity XZ are galactic-global → frame-local

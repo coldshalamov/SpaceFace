@@ -2721,7 +2721,19 @@ function failAuthoredPlaceAdmission(
     ? 'none-pipeline-failed'
     : (reason.includes('build') ? 'none-build-failed' : 'none-load-failed');
   setPresentationAdmission(admissionEntity, PRESENTATION_ADMISSION.unavailable);
-  if (error) console.warn('[partsLibrary] authored place admission failed; no substitute visual published', error);
+  if (error) {
+    // Same benign class as handleAuthoredBoundaryAdmissionError: an entity that died or
+    // a boundary torn down mid-admission rejects the in-flight compile/upload by design
+    // (the save/load rematerialization case), so it must not pollute release warnings.
+    const failureCauses = Array.isArray(error.errors) && error.errors.length ? error.errors : [error];
+    const benignTeardownOnly = failureCauses.every(
+      (cause) => cause && (cause.previewDisposed === true || cause.admissionOwnerReleased === true),
+    );
+    const log = benignTeardownOnly ? console.info : console.warn;
+    log.call(console, benignTeardownOnly
+      ? '[partsLibrary] authored place admission released by owner teardown'
+      : '[partsLibrary] authored place admission failed; no substitute visual published', error);
+  }
   return false;
 }
 

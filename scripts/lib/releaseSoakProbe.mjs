@@ -618,6 +618,37 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
     // install so any replacement page inherits the immutable measurement authority; the causal
     // New Game failure was a product-side counter-owner swap, not Playwright injection ordering.
     if (enableTier1Counters) await installTier1CountersInitScript(context);
+    // DIAG (worktree-only): SF_SOAK_GL_TRACE=1 traps getProgramParameter calls on deleted or
+    // non-program handles and logs the caller stack into the console — the 24-warning bursts
+    // at load-restored otherwise carry no attribution. Deleted handles are tracked via a
+    // deleteProgram WeakSet so the per-call check costs no GL round trip.
+    if (process.env.SF_SOAK_GL_TRACE === '1') {
+      await context.addInitScript(() => {
+        const deleted = new WeakSet();
+        for (const protoName of ['WebGL2RenderingContext', 'WebGLRenderingContext']) {
+          const proto = globalThis[protoName] && globalThis[protoName].prototype;
+          if (!proto || typeof proto.getProgramParameter !== 'function') continue;
+          const origGet = proto.getProgramParameter;
+          const origDel = proto.deleteProgram;
+          proto.deleteProgram = function deleteProgramTraced(program) {
+            if (program) deleted.add(program);
+            return origDel.call(this, program);
+          };
+          proto.getProgramParameter = function getProgramParameterTraced(program, pname) {
+            if (program == null || deleted.has(program)
+              || (typeof program === 'object' && typeof globalThis.WebGLProgram === 'function'
+                && !(program instanceof globalThis.WebGLProgram))) {
+              console.warn('[gl-trace] getProgramParameter on invalid handle', {
+                t: Math.round(performance.now()),
+                deleted: program ? deleted.has(program) : null,
+                stack: (new Error().stack || '').split('\n').slice(2, 10).join(' | '),
+              });
+            }
+            return origGet.call(this, program, pname);
+          };
+        }
+      });
+    }
     const page = await context.newPage();
     return { browserServer, browserChildProcess, browser, context, page };
   } catch (error) {
