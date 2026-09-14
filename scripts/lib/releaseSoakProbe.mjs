@@ -2891,11 +2891,16 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
       textures: finiteOrNull(report?.memory?.textures),
       programs: finiteOrNull(report?.memory?.programs),
       // Identity detail so a nonzero programs delta names the exact variants that linked
-      // mid-cycle instead of only counting them.
+      // mid-cycle instead of only counting them. The tail-80 slice collided on generic flag
+      // lists (two distinct keys read identical); hash the FULL key so variants are distinct
+      // and keep the tail for human readability.
       programIdentities: Array.isArray(state?.render?.renderer?.info?.programs)
-        ? state.render.renderer.info.programs.map((program) => (
-          `${String(program?.name || '?')}|${String(program?.cacheKey || '').slice(-80)}`
-        ))
+        ? state.render.renderer.info.programs.map((program) => {
+          const key = String(program?.cacheKey || '');
+          let h = 0x811c9dc5;
+          for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+          return `${String(program?.name || '?')}|${h.toString(36)}|${key.slice(-80)}`;
+        })
         : null,
       entities: finiteOrNull(state?.entityList?.length),
       assetResidency: state?.render?.assetResidency || null,
