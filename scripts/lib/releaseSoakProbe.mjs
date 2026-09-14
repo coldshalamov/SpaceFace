@@ -603,7 +603,12 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
     browserServer = await chromium.launchServer({
       headless: false,
       executablePath,
-      args: ['--incognito', '--no-first-run', '--no-default-browser-check', '--disable-extensions', `--window-size=${viewport.width},${viewport.height}`, '--force-device-scale-factor=1'],
+      args: ['--incognito', '--no-first-run', '--no-default-browser-check', '--disable-extensions', `--window-size=${viewport.width},${viewport.height}`, '--force-device-scale-factor=1',
+        // The steady windows measure the game's frame production, not Chrome's occlusion
+        // policy: a foreign window crossing the probe browser throttles rAF to a hard 30 Hz
+        // and would be billed to the game as double-vsync hitches. Same apparatus trio the
+        // other capture probes in scripts/ already pass.
+        '--disable-background-timer-throttling', '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding'],
     });
     const browserChildProcess = browserServer.process();
     assert(browserChildProcess, 'browser launch server must expose its owned child process');
@@ -630,7 +635,14 @@ async function launchElectron(
 ) {
   const runtimeProvisioning = provisionPerformanceAttributionElectronRuntime(root);
   const { _electron: electron } = await loadPlaywright();
-  const isolatedLaunch = createIsolatedElectronLaunch({ root, taskId });
+  const isolatedLaunch = createIsolatedElectronLaunch({
+    root,
+    taskId,
+    // Evidence windows must measure the game's frame production, not Chromium's occlusion
+    // policy — a foreign window over the probe throttles rAF to 30 Hz and bills double-vsync
+    // hitches to the game. The flag is dual-gated to isolated evidence profiles only.
+    baseEnv: { ...process.env, SPACEFACE_EVIDENCE_ALLOW_BACKGROUND_EXECUTION: '1' },
+  });
   // Omit executablePath intentionally. Playwright resolves this already-verified package and,
   // only on that package-resolution path, installs its Electron readiness loader before app
   // startup. Supplying the same binary path explicitly bypasses that loader in Playwright 1.61.
