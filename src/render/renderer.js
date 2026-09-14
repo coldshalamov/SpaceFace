@@ -1850,7 +1850,8 @@ export function reconcileSettledSectorBoundaryRecords(records, options = {}) {
       || prepared?.abortReason === 'entity-destroyed-during-sector-prewarm'
       || prepared?.abortReason === 'ship-appearance-changed-during-sector-prewarm'
       || prepared?.abortReason === 'ship-rebuild-during-sector-prewarm'
-      || prepared?.abortReason === 'entity-covered-by-live-admission';
+      || prepared?.abortReason === 'entity-covered-by-live-admission'
+      || prepared?.abortReason === 'admission-owner-released';
     const currentPreparation = typeof options.currentRecordForId === 'function'
       ? options.currentRecordForId(prepared?.id)
       : null;
@@ -2338,6 +2339,9 @@ export async function settleLiveSectorBoundaryAdmissions(entries, options = {}) 
         || receiptStatus === 'no-authored-upgrade'
         // The authored contract ran and closed without content (missing/failed GLB).
         || receiptStatus === 'unavailable'
+        // The admission owner was torn down while this entry's compile/upload was in
+        // flight — the designed abort, and coverage is whatever the replacement owns.
+        || receiptStatus === 'owner-released'
         // The live mount moved under this entry: the replacement boundary's own
         // admission state carries coverage, an authored-incapable mount is terminal,
         // and a swept mount is re-staged through the prepared-boundary path on the
@@ -2458,6 +2462,13 @@ export function createSectorBoundaryGenerationManager(options = {}) {
       record.receipt = await record.preparation;
       if (!record.active) return disposeRecord(record);
       if (options.isPrepared && options.isPrepared(record) !== true) {
+        // An admission still in flight when its owner was torn down (sector rematerialization,
+        // prewarm release) is the designed abort — never a failed reservation.
+        if (record.receipt && record.receipt.status === 'owner-released') {
+          record.abortReason = 'admission-owner-released';
+          record.active = false;
+          return disposeRecord(record);
+        }
         // The authored-upgrade lane dedups by entity key: a staged reservation that loses that
         // race resolves with the live owner's receipt — redundant coverage, not a failed boundary.
         if (options.isAdmissionCoveredElsewhere && options.isAdmissionCoveredElsewhere(record) === true) {
@@ -5093,6 +5104,11 @@ export const render = {
     };
     state.render.compileCurrentPipelines = () => pipelineAdmissions.compileExplicit(scene);
     state.render.pendingPipelineAdmissions = () => pipelineAdmissions.pendingCount;
+    // One-time post-cook producers (sector authored census + spawnable archetype warm) keep
+    // composing, compiling, and uploading after flight entry by design. Measured windows must
+    // see them pending or they would read one-time warm work as steady-state frame cost.
+    state.render.sectorPrewarmSettlePending = () => this._authoredSectorPrewarmPending?.active === true;
+    state.render.archetypeWarmPending = () => this._archetypeWarm?.running === true;
     // Cook-ledger sampler (1 Hz while the opening cook runs): the admission lane and the upgrade queue.
     state.render.sampleOpeningCookLane = () => {
       const upgrades = describeAuthoredUpgradeQueue(scene);

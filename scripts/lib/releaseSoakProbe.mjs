@@ -304,6 +304,19 @@ export async function runReleaseSoakProbe({
     // baseline tag names. Re-driving ensureMarketOpen here would race the
     // post-trade button state, so just confirm docked and settle.
     assert.equal(await isDocked(page), true, 'warm-up cycle must finish docked for the baseline snapshot');
+    // The renderer's one-time post-cook producers (current-sector authored census and the
+    // spawnable archetype warm set) keep compiling and uploading into early flight by design.
+    // They are the same first-touch residency class as the warm-up cycle: the measured window
+    // opens only once they finish, so their GL work cannot read as steady-state frame cost.
+    // Bounded and recorded — a producer that never settles is itself a finding.
+    const producerDrainStartedAt = Date.now();
+    const producerDrain = await page.waitForFunction(() => {
+      const render = window.SF?.state?.render;
+      if (!render) return true;
+      const pending = (value) => (typeof value === 'function' ? value() : value) === true;
+      return !pending(render.sectorPrewarmSettlePending) && !pending(render.archetypeWarmPending);
+    }, null, { timeout: 180_000, polling: 500 }).then(() => 'settled').catch(() => 'timed-out');
+    doLog(`producer drain before soak window: ${producerDrain} (${((Date.now() - producerDrainStartedAt) / 1000).toFixed(1)}s)`);
     await page.waitForTimeout(1_500);
     const baselineMemory = await withTimeout(
       readPostGcMemorySnapshot(page, 'docked-market-start'),

@@ -94,6 +94,26 @@ function reportVisualWarning(options, message, error) {
   else console.warn(message);
 }
 
+// Same benign class as the partsLibrary admission catches: an entity that died or a boundary
+// torn down mid-admission (save/load rematerialization) rejects the in-flight compile/upload
+// by design. It is not a composition defect, so it stays off the warning channel.
+function isBenignAdmissionTeardown(error) {
+  const causes = error && Array.isArray(error.errors) && error.errors.length
+    ? error.errors
+    : [error];
+  return causes.every(
+    (cause) => cause && (cause.previewDisposed === true || cause.admissionOwnerReleased === true),
+  );
+}
+
+function reportAdmissionFailure(options, message, error, teardownMessage) {
+  if (isBenignAdmissionTeardown(error)) {
+    console.info(teardownMessage, error);
+    return;
+  }
+  reportVisualWarning(options, message, error);
+}
+
 function unavailableVisual(entity, reason, error) {
   const root = new THREE.Group();
   const kind = entity && entity.type ? entity.type : 'entity';
@@ -348,7 +368,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed');
         root.userData.authoredAssetState = 'unavailable';
-        reportVisualWarning(options, '[visualOverrides] packaged 47-A / TOW pipeline admission failed', error);
+        reportAdmissionFailure(options,
+          '[visualOverrides] packaged 47-A / TOW pipeline admission failed', error,
+          '[visualOverrides] packaged 47-A / TOW pipeline admission released by owner teardown');
         return false;
       }
       if (!root.parent) {
@@ -379,7 +401,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       return true;
     }).catch((error) => {
       root.userData.authoredAssetState = 'unavailable';
-      reportVisualWarning(options, '[visualOverrides] packaged 47-A / TOW body failed closed', error);
+      reportAdmissionFailure(options,
+        '[visualOverrides] packaged 47-A / TOW body failed closed', error,
+        '[visualOverrides] packaged 47-A / TOW body admission released by owner teardown');
       return false;
     });
     root.userData.authoredUpgradePromise = completion;

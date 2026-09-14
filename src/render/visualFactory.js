@@ -48,6 +48,9 @@ import * as kit from './ships/shipKit.js';
 import { applyProjectedDetailLod, attachStationHlod, isFarDetailSurface } from './hlod.js';
 import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
+import { getAssetResidency } from './assetResidency.js';
+import { prepareAuthoredVisualPipelines } from './authoredVisualAdmission.js';
+import { batchPackagedPropOpaqueMeshes } from './scenarioPropBatching.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 
@@ -2890,6 +2893,55 @@ function hideProceduralChildren(root) {
   }
 }
 
+// Pipeline/GPU admission for a still-detached packaged body. Callers that stage a boundary (sector
+// prewarm) pass their residency options through requestOptions; live-mount callers pass nothing, so
+// the compile/upload hooks resolve from the live render facade the same way partsLibrary's
+// residencyOptionsForBoundary resolves them.
+function packagedBodyAdmissionOptions(root, entity, requestOptions = {}) {
+  const live = globalThis && globalThis.window && globalThis.window.SF
+    ? globalThis.window.SF.state || null
+    : null;
+  const render = live && live.render ? live.render : null;
+  const admission = { ...requestOptions };
+  if (typeof admission.isResidencyOwnerActive !== 'function') {
+    admission.isResidencyOwnerActive = () => !!root.parent && (!entity || entity.alive !== false);
+  }
+  if (typeof admission.prepareAuthoredPipelines !== 'function') {
+    admission.prepareAuthoredPipelines = render && typeof render.compileObjectPipelines === 'function'
+      ? (subject) => render.compileObjectPipelines(subject)
+      : null;
+  }
+  if (typeof admission.prepareAuthoredGpuResidency !== 'function') {
+    admission.prepareAuthoredGpuResidency = render && typeof render.prepareAuthoredGpuResidency === 'function'
+      ? (subject, options = {}) => render.prepareAuthoredGpuResidency(subject, {
+        isActive: options.isResidencyOwnerActive,
+      })
+      : null;
+  }
+  if (typeof admission.yieldToNextPresent !== 'function') {
+    admission.yieldToNextPresent = render && typeof render.yieldToNextPresent === 'function'
+      ? () => render.yieldToNextPresent()
+      : null;
+  }
+  if (admission.yieldBetweenGpuStages !== true && admission.yieldBetweenGpuStages !== false) {
+    admission.yieldBetweenGpuStages = !!(live && live.mode === 'flight');
+  }
+  return admission;
+}
+
+function disposeDetachedPackagedBody(packaged) {
+  if (!packaged || typeof packaged.traverse !== 'function') return;
+  packaged.traverse((child) => {
+    // Only the welded batch geometry is owned here. Unmerged leaves still reference the cached
+    // record's geometry, which other live packaged bodies may be drawing right now.
+    if (child && child.userData && child.userData.scenarioStaticBatch === true
+        && child.geometry && typeof child.geometry.dispose === 'function') {
+      child.geometry.dispose();
+    }
+  });
+  packaged.clear();
+}
+
 function attachPackagedBody(root, relativeFile, entity) {
   if (!root || !relativeFile) return root;
   const url = packagedPartUrl(relativeFile);
@@ -2906,35 +2958,71 @@ function attachPackagedBody(root, relativeFile, entity) {
     const existing = root.userData.authoredUpgradePromise;
     if (existing) return existing;
     if (!renderer) return null;
-    if (root.userData.authoredAssetState === 'authored') return Promise.resolve(true);
+    if (root.userData.authoredAssetState === 'authored') {
+      return Promise.resolve({ status: 'authored', boundary: root });
+    }
     root.userData.authoredAssetState = 'loading';
-    const completion = loadAuthoredPart(url, {
+    const residencyOwner = requestOptions.residencyOwner || root;
+    const admission = packagedBodyAdmissionOptions(root, entity, requestOptions);
+    // Retention keys on this boundary so renderer disposal releases the package pin through the
+    // releaseAuthoredAssetResidency hook disposeObject invokes on every node.
+    root.userData.releaseAuthoredAssetResidency = (reason = 'packaged-body-disposed') => {
+      const residency = getAssetResidency(renderer);
+      return residency ? residency.releaseOwner(residencyOwner, reason) : 0;
+    };
+    const loadPart = typeof requestOptions.loadAuthoredPart === 'function'
+      ? requestOptions.loadAuthoredPart
+      : loadAuthoredPart;
+    const completion = loadPart(url, {
       renderer,
       slot: 'place',
       optional: true,
       ...requestOptions,
-    }).then((record) => {
+      residencyOwner,
+    }).then(async (record) => {
       if (!record || !root.parent) {
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
-        return false;
+        return { status: record ? 'owner-released' : 'unavailable', boundary: root };
       }
       const packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
       instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
         root.userData.authoredAssetState = 'unavailable';
-        return false;
+        return { status: 'unavailable', boundary: root };
       }
       fitPackagedGroup(packaged, entity && entity.radius);
+      // Same contract as the authored 47-A packaged props: weld same-material opaque leaves into
+      // one draw each while the group is still detached, then compile/upload its exact pipelines
+      // before the boundary can submit a first visible draw that would link them in-frame.
+      batchPackagedPropOpaqueMeshes(packaged);
       freezeStaticChildMatrices(packaged);
+      try {
+        await prepareAuthoredVisualPipelines(packaged, admission);
+      } catch (error) {
+        disposeDetachedPackagedBody(packaged);
+        root.userData.authoredAssetState = error && error.admissionOwnerReleased === true
+          ? 'orphaned-before-swap'
+          : 'unavailable';
+        return {
+          status: error && error.admissionOwnerReleased === true ? 'owner-released' : 'unavailable',
+          boundary: root,
+          error: error || null,
+        };
+      }
+      if (!root.parent) {
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        disposeDetachedPackagedBody(packaged);
+        return { status: 'owner-released', boundary: root };
+      }
       root.add(packaged);
       root.userData.hull = packaged;
       root.userData.authoredAssetState = 'authored';
       root.userData.authoredVisualRoot = record.assetId || url;
-      return true;
+      return { status: 'authored', boundary: root };
     }).catch(() => {
       root.userData.authoredAssetState = 'unavailable';
-      return false;
+      return { status: 'unavailable', boundary: root };
     });
     root.userData.authoredUpgradePromise = completion;
     return completion;

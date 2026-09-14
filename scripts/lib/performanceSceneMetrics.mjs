@@ -279,6 +279,14 @@ export function collectPerformancePipelineReadiness({
     meshBuildQueueRemaining: queueRemaining,
     meshReconcileDirty: renderSystem?._meshReconcileDirty === true,
     pipelineCompilePending: finiteOrNull(renderState.pipelineAdmissions?.pending),
+    // One-time post-cook producers keep composing/compiling/uploading after flight entry by
+    // design; a measured window opened while either runs reads warm work as steady-state cost.
+    sectorPrewarmSettlePending: typeof renderState.sectorPrewarmSettlePending === 'function'
+      ? renderState.sectorPrewarmSettlePending() === true
+      : false,
+    archetypeWarmPending: typeof renderState.archetypeWarmPending === 'function'
+      ? renderState.archetypeWarmPending() === true
+      : false,
     programCount: finiteOrNull(diagnostics?.memory?.programs),
     geometryCount: finiteOrNull(diagnostics?.memory?.geometries),
     textureCount: finiteOrNull(diagnostics?.memory?.textures),
@@ -339,6 +347,8 @@ export function performancePipelineFingerprint(readiness = {}) {
     meshBuildQueueRemaining: finiteOrNull(readiness?.meshBuildQueueRemaining),
     meshReconcileDirty: readiness?.meshReconcileDirty === true,
     pipelineCompilePending: finiteOrNull(readiness?.pipelineCompilePending),
+    sectorPrewarmSettlePending: readiness?.sectorPrewarmSettlePending === true,
+    archetypeWarmPending: readiness?.archetypeWarmPending === true,
     authoredPendingCount: finiteOrNull(readiness?.authoredPendingCount),
     authoredPendingAdmissionRiskCount: finiteOrNull(readiness?.authoredPendingAdmissionRiskCount),
     residentAssets: finiteOrNull(residency?.residentAssets),
@@ -354,6 +364,8 @@ export function isPerformancePipelineSettled(readiness = {}) {
     && fingerprint.activeAdmissionJobs === 0
     && fingerprint.meshBuildQueueRemaining === 0
     && fingerprint.meshReconcileDirty === false
+    && fingerprint.sectorPrewarmSettlePending === false
+    && fingerprint.archetypeWarmPending === false
     && fingerprint.authoredPendingAdmissionRiskCount === 0
     && (fingerprint.pipelineCompilePending == null || fingerprint.pipelineCompilePending === 0);
 }

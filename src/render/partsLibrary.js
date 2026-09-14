@@ -15,7 +15,11 @@ import { EVERYDAY_SPACE_KIT_PLACE_FILE_BY_ID } from '../data/everydaySpaceKitDre
 import { WRECK_AFTERMATH_PLACE_FILE_BY_ID } from '../data/wreckAftermathDressing.js';
 import { invalidateFailedAuthoredAssets, loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
-import { configureRealtimeCanopyMaterials } from './canopyMaterialPolicy.js';
+import {
+  authoredRuntimeState,
+  prepareAuthoredVisualPipelines,
+  tier1CausalCounters,
+} from './authoredVisualAdmission.js';
 import {
   isCriticalStartingHub as isTableCriticalStartingHub,
   isOpeningStoryActor,
@@ -99,7 +103,6 @@ import {
   staticBatchGeometryCacheKey,
   takeCachedStaticBatchGeometry,
 } from './staticBatchGeometryCache.js';
-import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
   entityRequiresAuthoredPresentation,
@@ -3832,12 +3835,6 @@ function backgroundUpgradePriority(job) {
   return 10;
 }
 
-function authoredRuntimeState() {
-  return globalThis && globalThis.window && globalThis.window.SF
-    ? globalThis.window.SF.state || null
-    : null;
-}
-
 export function waitForOpeningGraphPublicationRelease() {
   const render = authoredRuntimeState()?.render;
   if (!render || render.openingGraphPublicationFrozen !== true) return null;
@@ -3853,13 +3850,6 @@ export function waitForOpeningGraphPublicationRelease() {
  * recordAdmissionSlice: probes and the deterministic harness expose state there; production bundles
  * without window.SF simply never count. Counters themselves still default to disabled.
  */
-function tier1CausalCounters() {
-  const live = authoredRuntimeState();
-  const perf = live && live.perfRuntime;
-  const tier1 = perf && perf.tier1;
-  return tier1 && typeof tier1.isEnabled === 'function' && tier1.isEnabled() ? tier1 : null;
-}
-
 /**
  * First-render is a useful demand signal for isolated previews, but the main scene is rendered and
  * precompiled while a run is still loading. Main-scene auto-demand is therefore limited to startup
@@ -4862,56 +4852,7 @@ export function preloadAuthoredAssetsForEntity(renderer, entity, options = {}) {
  * while the driver's exact HDR material programs or hidden-LOD textures are still absent; do not
  * publish that object until both preparations settle. Preview/test harnesses without live GPU
  * preparation hooks remain supported. */
-export async function prepareAuthoredVisualPipelines(root, options = {}) {
-  const preparePipelines = options && options.prepareAuthoredPipelines;
-  const prepareResidency = options && options.prepareAuthoredGpuResidency;
-  if (typeof preparePipelines !== 'function' && typeof prepareResidency !== 'function') {
-    return { skipped: true, reason: 'GPU preparation unavailable' };
-  }
-  // Admission must compile the exact material state used by the first visible draw. These same
-  // idempotent policies also run at the presentation boundary, but applying them only after this
-  // detached-root compile changes the program key and leaves the first draw to link synchronously.
-  assertAuthoredVisualPreparationActive(options, 'before-material-policy');
-  configureRealtimeCanopyMaterials(root);
-  configureTransparentSinglePassSurfaces(root);
-  const tier1 = tier1CausalCounters();
-  if (tier1) {
-    tier1.countPipelinePreparation('material-policies', 1);
-    if (typeof preparePipelines === 'function') tier1.countPipelinePreparation('compile-pipelines', 1);
-    if (typeof prepareResidency === 'function') tier1.countPipelinePreparation('gpu-residency', 1);
-  }
-  const pipelines = typeof preparePipelines === 'function'
-    ? await preparePipelines(root)
-    : { skipped: true, reason: 'pipeline compiler unavailable' };
-  assertAuthoredVisualPreparationActive(options, 'after-pipeline-compile');
-  if (options.yieldBetweenGpuStages === true && typeof options.yieldToNextPresent === 'function') {
-    await options.yieldToNextPresent();
-    assertAuthoredVisualPreparationActive(options, 'after-present-yield');
-  }
-  const gpuResidency = typeof prepareResidency === 'function'
-    ? await prepareResidency(root, {
-        isResidencyOwnerActive: options.isResidencyOwnerActive,
-      })
-    : { skipped: true, reason: 'GPU residency uploader unavailable' };
-  assertAuthoredVisualPreparationActive(options, 'after-gpu-residency');
-  return {
-    skipped: pipelines?.skipped === true && gpuResidency?.skipped === true,
-    pipelines,
-    gpuResidency,
-  };
-}
-
-function assertAuthoredVisualPreparationActive(options, phase) {
-  const isActive = options && options.isResidencyOwnerActive;
-  if (typeof isActive === 'function' && isActive() !== true) {
-    // Same benign class as previewDisposed: the entity died or its boundary was torn
-    // down (save/load sector rematerialization) while compile/upload was in flight —
-    // aborting the admission is the designed response, not a composition defect.
-    const error = new Error(`Authored visual preparation owner became inactive ${phase}`);
-    error.admissionOwnerReleased = true;
-    throw error;
-  }
-}
+export { prepareAuthoredVisualPipelines };
 
 async function prepareAuthoredShipVisualPipelines(authored, options = {}) {
   const poolAdmissions = Array.isArray(authored?.packagePoolAdmissions)

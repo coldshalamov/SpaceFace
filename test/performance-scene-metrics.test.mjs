@@ -201,6 +201,8 @@ test('pipeline warmup fingerprint tracks compile, admission, queue, and residenc
     meshBuildQueueRemaining: 0,
     meshReconcileDirty: false,
     pipelineCompilePending: 0,
+    sectorPrewarmSettlePending: false,
+    archetypeWarmPending: false,
     authoredPendingCount: 4,
     authoredPendingAdmissionRiskCount: 0,
     residentAssets: 27,
@@ -213,6 +215,8 @@ test('pipeline warmup fingerprint tracks compile, admission, queue, and residenc
     { meshBuildQueueRemaining: 1 },
     { meshReconcileDirty: true },
     { pipelineCompilePending: 1 },
+    { sectorPrewarmSettlePending: true },
+    { archetypeWarmPending: true },
     { authoredPendingAdmissionRiskCount: 1 },
     { programCount: null },
     { geometryCount: null },
@@ -237,7 +241,9 @@ test('pipeline warmup predicts inbound authored admission across the measured ho
     id: 2,
     type: 'ship',
     alive: true,
-    pos: { x: 2488, z: 0 },
+    // Inside the 5 s horizon's reach against the 4 s decode runway (640 WU at reference speed):
+    // 1500 - 190*5 = 550 <= 640, and 550 - 190*4 <= the 200 WU immediate radius.
+    pos: { x: 1500, z: 0 },
     vel: { x: -190, z: 0 },
     presentationAdmission: 'pending',
     mesh: { userData: { authoredAssetState: 'awaiting-authored-admission' } },
@@ -269,7 +275,7 @@ test('pipeline warmup predicts inbound authored admission across the measured ho
 
   const now = collectPerformancePipelineReadiness(options);
   assert.equal(now.authoredPendingAdmissionRiskCount, 0,
-    'the live zero-horizon predicate must not start the 2488-unit boundary yet');
+    'the live zero-horizon predicate must not start the 1500-unit boundary yet');
 
   const measured = collectPerformancePipelineReadiness({ ...options, measurementHorizonMs: 5_000 });
   assert.deepEqual(measured.authoredPendingAdmissionRiskEntities.map((entity) => entity.id), [2]);
