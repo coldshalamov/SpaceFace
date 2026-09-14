@@ -95,6 +95,10 @@ const TRAIL_VERT = /* glsl */`
   uniform float uStrandCount;
   uniform float uLive;
   uniform float uTrailSeconds;
+  // The history's own clock: advanced only by update(dt), so a paused game pauses the fade.
+  // path.a stores each sample's birth on this clock; age is derived on the GPU so the texture
+  // contents do not change as time passes.
+  uniform float uNow;
 
   uniform float uRadiusHead;
   uniform float uRadiusTail;
@@ -138,7 +142,7 @@ const TRAIL_VERT = /* glsl */`
     vec4 path = texture2D(uPathTex, vec2(u, 0.5));
     vec4 state = texture2D(uStateTex, vec2(u, 0.5));
     posOut = path.rgb;
-    ageOut = clamp(path.a / max(uTrailSeconds, 0.001), 0.0, 1.0);
+    ageOut = clamp((uNow - path.a) / max(uTrailSeconds, 0.001), 0.0, 1.0);
     driveOut = state.r;
     boostOut = state.g;
     dashOut = state.b;
@@ -147,11 +151,6 @@ const TRAIL_VERT = /* glsl */`
 
   float sameSegment(float a, float b) {
     return 1.0 - step(0.25, abs(a - b));
-  }
-
-  /** Slots outside the live sample range carry no area. */
-  float liveMask(float slot) {
-    return 1.0 - step(uLive - 0.5, slot);
   }
 
   void main() {
@@ -208,17 +207,16 @@ const TRAIL_VERT = /* glsl */`
       + (worldSeed - 0.5) * 0.42;
 
     // Collapse both rows surrounding a segment break. This prevents the fixed index buffer from
-    // drawing a bridge across a teleport or a period when the engine was not emitting.
+    // drawing a bridge across a teleport or a period when the engine was not emitting. Rows beyond
+    // the live range never reach the shader: the draw range covers live sample boundaries only.
     float segmentEdge = 1.0 - max(1.0 - prevSame, 1.0 - nextSame);
-    // "active" is a reserved word in GLSL ES; a driver may refuse to compile it.
-    float liveFactor = liveMask(aSample) * segmentEdge;
-    radius *= liveFactor;
+    radius *= segmentEdge;
 
     vec3 center = p + ref * (cos(theta) * radius) + up * (sin(theta) * radius);
 
     float halfWidth = mix(uWidthHead, uWidthTail, 0.18 + staticTexture * 0.66) * 0.5;
     halfWidth *= 0.68 + sheetSeed * 0.64;
-    halfWidth *= liveFactor;
+    halfWidth *= segmentEdge;
 
     float twist = aStrand * 2.399 + worldSeed * 1.3 + segment * 0.071;
     vec3 wide = normalize(ref * cos(twist) + up * sin(twist));
@@ -320,11 +318,14 @@ function buildTrailGeometry(T, sheets, samples, across) {
     }
   }
 
+  // Quads are grouped by sample boundary, not by sheet: every quad joining rows s and s + 1 sits in
+  // one contiguous block, so drawRange can limit the draw to the live prefix's boundaries and dead
+  // sample rows never reach the vertex shader at all.
   const quads = sheets * (samples - 1) * (across - 1);
   const index = new Uint32Array(quads * 6);
   let i = 0;
-  for (let r = 0; r < sheets; r++) {
-    for (let s = 0; s < samples - 1; s++) {
+  for (let s = 0; s < samples - 1; s++) {
+    for (let r = 0; r < sheets; r++) {
       const rowA = (r * samples + s) * across;
       const rowB = (r * samples + s + 1) * across;
       for (let k = 0; k < across - 1; k++) {
@@ -370,6 +371,7 @@ export function createContrailMaterial(T, opts = {}) {
       uStrandCount: { value: SHEET_COUNT },
       uLive: { value: 0 },
       uTrailSeconds: { value: TRAIL_SECONDS },
+      uNow: { value: 0 },
 
       uRadiusHead: { value: opts.radiusHead != null ? opts.radiusHead : 1.42 },
       uRadiusTail: { value: opts.radiusTail != null ? opts.radiusTail : 2.15 },
@@ -421,11 +423,13 @@ export class ContrailTrail {
     this.mesh.renderOrder = 5;
     this.mesh.visible = false;
 
-    // path: x, y, z, age seconds
+    // path: x, y, z, birth time on the trail's own clock (see uNow)
     this._path = new Float32Array(this.samples * 4);
     // state: birth drive, birth boost, birth dash, immutable segment id
     this._state = new Float32Array(this.samples * 4);
     this._live = 0;
+    this._now = 0;
+    this._dirty = false;
     this._isEmitting = false;
     this._segmentId = 0;
     this._capacitySkips = 0;
@@ -440,6 +444,7 @@ export class ContrailTrail {
     this._stateTex = makePathTexture(T, this._state, this.samples);
     this.material.uniforms.uPathTex.value = this._pathTex;
     this.material.uniforms.uStateTex.value = this._stateTex;
+    this.geometry.setDrawRange(0, 0);
   }
 
   attach(parent) {
@@ -450,10 +455,12 @@ export class ContrailTrail {
     this._helixPhase = 0;
     this._gateX = 0; this._gateY = 0; this._gateZ = 0;
     this._live = 0;
+    this._dirty = false;
     this._isEmitting = false;
     this._segmentId = 0;
     this._capacitySkips = 0;
     this.material.uniforms.uLive.value = 0;
+    this.geometry.setDrawRange(0, 0);
     this.mesh.visible = false;
   }
 
@@ -461,29 +468,16 @@ export class ContrailTrail {
     return this._live;
   }
 
-  _copySample(dst, src) {
-    this._path[dst] = this._path[src];
-    this._path[dst + 1] = this._path[src + 1];
-    this._path[dst + 2] = this._path[src + 2];
-    this._path[dst + 3] = this._path[src + 3];
-    this._state[dst] = this._state[src];
-    this._state[dst + 1] = this._state[src + 1];
-    this._state[dst + 2] = this._state[src + 2];
-    this._state[dst + 3] = this._state[src + 3];
-  }
-
-  /** Ages every sample and retires it only when its own lifetime expires. */
+  /**
+   * Advances the history clock and retires samples whose own lifetime expired. Samples are stored
+   * newest-first, so expiry is a contiguous suffix trim: no surviving fact is ever moved or aged in
+   * place — the GPU derives age from uNow.
+   */
   _age(dt) {
-    let kept = 0;
-    for (let i = 0; i < this._live; i++) {
-      const src = i * 4;
-      const age = this._path[src + 3] + dt;
-      if (age >= this.trailSeconds) continue;
-      if (kept !== i) this._copySample(kept * 4, src);
-      this._path[kept * 4 + 3] = age;
-      kept++;
-    }
-    this._live = kept;
+    this._now += dt;
+    let live = this._live;
+    while (live > 0 && this._now - this._path[(live - 1) * 4 + 3] >= this.trailSeconds) live--;
+    this._live = live;
   }
 
   /**
@@ -495,44 +489,36 @@ export class ContrailTrail {
       this._capacitySkips++;
       return false;
     }
-    const n = this._live + 1;
-    for (let i = n - 1; i > 0; i--) this._copySample(i * 4, (i - 1) * 4);
+    if (this._live > 0) {
+      this._path.copyWithin(4, 0, this._live * 4);
+      this._state.copyWithin(4, 0, this._live * 4);
+    }
     this._path[0] = x;
     this._path[1] = y;
     this._path[2] = z;
-    this._path[3] = 0;
+    this._path[3] = this._now;
     this._state[0] = drive;
     this._state[1] = boost;
     this._state[2] = dash;
     this._state[3] = segment;
-    this._live = n;
+    this._live++;
+    this._dirty = true;
     return true;
-  }
-
-  _fillUnused() {
-    if (this._live <= 0) return;
-    const last = (this._live - 1) * 4;
-    for (let i = this._live; i < this.samples; i++) {
-      const s = i * 4;
-      this._path[s] = this._path[last];
-      this._path[s + 1] = this._path[last + 1];
-      this._path[s + 2] = this._path[last + 2];
-      this._path[s + 3] = this.trailSeconds;
-      this._state[s] = 0;
-      this._state[s + 1] = 0;
-      this._state[s + 2] = 0;
-      this._state[s + 3] = this._state[last + 3];
-    }
   }
 
   _publish(env) {
     const u = this.material.uniforms;
-    if (this._live > 0) {
-      this._fillUnused();
+    // Texture bytes change only when a fact is recorded or reset. Aging and expiry move only the
+    // uNow/uLive uniforms and the draw range — a fading trail uploads nothing.
+    if (this._dirty) {
       this._pathTex.needsUpdate = true;
       this._stateTex.needsUpdate = true;
+      this._dirty = false;
     }
     u.uLive.value = this._live;
+    u.uNow.value = this._now;
+    this.geometry.setDrawRange(0,
+      Math.max(0, this._live - 1) * this.strands * (this.across - 1) * 6);
 
     const throat = env && env.throatRadius != null ? env.throatRadius : 0;
     if (throat > 0.05) {
@@ -666,7 +652,7 @@ export class ContrailTrail {
         x: this._path[s],
         y: this._path[s + 1],
         z: this._path[s + 2],
-        age: this._path[s + 3],
+        age: Math.max(0, this._now - this._path[s + 3]),
         drive: this._state[s],
         boost: this._state[s + 1],
         dash: this._state[s + 2],
