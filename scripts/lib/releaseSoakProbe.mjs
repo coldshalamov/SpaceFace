@@ -294,7 +294,10 @@ export async function runReleaseSoakProbe({
     // would fail on intended one-time residency, not on a leak.
     doLog('warming first-touch residency (one unmeasured public cycle)');
     await runSoakCycle(page, { index: 'warmup', outputDir, log: doLog, screenshots: false });
-    await ensureMarketOpen(page);
+    // The cycle finishes docked on the market screen — the same state the
+    // baseline tag names. Re-driving ensureMarketOpen here would race the
+    // post-trade button state, so just confirm docked and settle.
+    assert.equal(await isDocked(page), true, 'warm-up cycle must finish docked for the baseline snapshot');
     await page.waitForTimeout(1_500);
     const baselineMemory = await withTimeout(
       readPostGcMemorySnapshot(page, 'docked-market-start'),
