@@ -2417,7 +2417,14 @@ export function createSectorBoundaryGenerationManager(options = {}) {
           record.active = false;
           return disposeRecord(record);
         }
-        throw new Error(`Authored boundary ${record.id} did not reach prepared admission`);
+        throw new Error(`Authored boundary ${record.id} did not reach prepared admission`
+          + ` (type=${record.entity?.type || '?'}`
+          + ` def=${record.entity?.data?.defId || record.entity?.data?.placeId || '-'}`
+          + ` state=${record.boundary?.userData?.authoredAssetState || '-'}`
+          + ` receipt=${record.receipt && record.receipt.boundary === record.boundary
+            ? 'own'
+            : record.receipt?.boundary ? 'other' : 'none'}`
+          + ` status=${record.receipt?.status || '-'})`);
       }
       record.state = states.ready;
       return record;
@@ -4223,8 +4230,13 @@ export const render = {
       isPrepared: (record) => {
         if (!rendererGenerationIsActive()) return false;
         const authoredState = record.boundary?.userData?.authoredAssetState;
+        // A staged boundary can arrive already composed when its part is cached (e.g. a
+        // wreck aftermath prop rebuilt after F9) — 'authored'/'same-semantic-fallback' are
+        // terminal authored-equivalent states, so the record is prepared, not failed.
         return authoredState === 'authored-prepared'
-          || authoredState === 'same-semantic-fallback-prepared';
+          || authoredState === 'same-semantic-fallback-prepared'
+          || ACCEPTED_LIVE_AUTHORED_STATES.has(authoredState)
+          || authoredState === 'authored-with-cleanup-error';
       },
       isAdmissionCoveredElsewhere: (record) => {
         // The serial authored-upgrade lane dedups by entity key: a staged reservation whose
@@ -4236,8 +4248,15 @@ export const render = {
           || null;
         if (!liveBoundary || liveBoundary === record.boundary) return false;
         const liveState = liveBoundary.userData && liveBoundary.userData.authoredAssetState;
-        return LIVE_ADMISSION_COVERING_STATES.has(liveState)
-          || !!(liveBoundary.userData && liveBoundary.userData.authoredUpgradePromise);
+        if (LIVE_ADMISSION_COVERING_STATES.has(liveState)
+            || !!(liveBoundary.userData && liveBoundary.userData.authoredUpgradePromise)) {
+          return true;
+        }
+        // The lane drops a queued staged job only when the entity's live mesh superseded it
+        // (jobStillNeeded). The settle fixpoint then re-admits that entity through the
+        // liveBoundaryPromises path and coverage validation still proves it — so the staged
+        // record is redundant coverage even before the live admission's state is readable.
+        return record.receipt && record.receipt.status === 'cancelled-before-load';
       },
       validate: (record) => rendererGenerationIsActive()
         && record.prewarm?.active === true
