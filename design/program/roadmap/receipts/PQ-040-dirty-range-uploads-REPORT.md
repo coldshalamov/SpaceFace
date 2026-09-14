@@ -7,8 +7,9 @@ implementationBranch: claude/perf00-20260727
 implementationParent: ef0f79ec
 implementationCommit: this_receipt_commit
 routeClaim: integrated_structural_green
-acceptanceClaim: focused_buffer_lifecycle_green_native_broker_pending
+acceptanceClaim: historical_focused_buffer_lifecycle_green_native_unproven
 disposition: PARTIAL
+nativeAttemptDisposition: BLOCKED
 qualityInvariant: preserved
 ```
 
@@ -32,6 +33,113 @@ lifetime, materials, and visual output remain unchanged.
 This is an **implementation and focused buffer-lifecycle claim**, not terminal PQ-040 acceptance. It does not claim an
 FPS, frame-time, CPU/driver-time, GPU, compositor, GC, or resource improvement from this contended workstation.
 Matched Browser and packaged Electron performance evidence remains broker-owned on an uncontended evidence machine.
+
+## Native acceptance attempt — 2026-09-14
+
+The bounded native workflow stopped at Browser broker admission. **Numeric
+acceptance is UNPROVEN; this is not a Browser/Electron performance FAIL or PASS.**
+The implementation receipt remains PARTIAL and parent PQ-040 is not accepted.
+
+```yaml
+unit: PQ-040.native-acceptance
+candidateBranch: master
+candidateHead: a382c4af3ffb27e158f2cd2d9c224527010e4b7b
+cleanSourceCandidate: false
+preExistingChangedFileCount: 410
+browserManifestInvocations: 1
+browserAcceptanceRuntimeLaunches: 0
+browserBrokerResult: fast-gate-failed
+browserCommandExitCode: 1
+electronManifestInvocations: 0
+electronAcceptanceRuntimeLaunches: 0
+electronResult: not_run_after_browser_broker_failure
+numericAcceptance: unproven
+pairedRuntimeSourceBinding: not_established
+headedMediaProduced: false
+```
+
+Exact command invoked once:
+
+```text
+node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-browser
+```
+
+The broker's printed result and failing command were:
+
+```text
+[validation-broker] fail: fast-gate-failed
+[validation-broker] failed command: node --test test/dynamic-buffer-ranges.test.mjs test/electron-shell-lifecycle.test.mjs test/performance-dirty-ranges.test.mjs
+tests 51; pass 34; fail 17; cancelled 0; skipped 0; todo 0
+```
+
+The printed failures reduce to four distinct signatures:
+
+| Failing contract | Observed result |
+|---|---|
+| `test/dynamic-buffer-ranges.test.mjs:652`, dense one-times/five-times fanout | `31 !== 23` range records |
+| `test/electron-shell-lifecycle.test.mjs:211`, main-process fixture | 14 tests throw `Error: unexpected require: fs` at `electron/main.cjs:13` |
+| `test/electron-shell-lifecycle.test.mjs:585`, preload API | actual `['quit', 'saveClip', 'buildInfo']`; expected `['quit']` |
+| `test/performance-dirty-ranges.test.mjs:317`, Electron launch ownership | `page and canonical tracker ownership must publish before each later page setup seam`; actual false, expected true |
+
+The two remaining manifest fast-gate commands did not run. The broker produced no
+runtime evidence, comparison JSON, frame percentiles, requested/driver upload-byte
+metrics, GC measurements, claim, or printed failure fingerprint. Its artifact root
+contained only an empty `browser/` directory after cleanup. No headed media existed
+to analyze or delete. Test timings and the 34 passing tests are not native metrics.
+
+The required Electron command was **not invoked** because the user explicitly
+required stopping after an environment/broker failure:
+
+```text
+node scripts/validation-broker-cli.mjs --manifest performance-dirty-ranges-electron
+```
+
+### Source identity and limits
+
+Both tracked manifests exist and declare seed 47, profile
+`default-tier1-dynamic-buffer`, acceptance mode, one launch per candidate,
+broker-required claims, and `kill-tree` cleanup. Their presence does not resolve
+the failed gate. Exact owned paths were clean at entry and immediately before
+the receipt edit. HEAD and the Git status path list were unchanged across the
+attempt, but pre-existing changes included these explicit manifest inputs:
+
+- `src/render/engineTrailSurfaces.js`
+- `src/render/renderer.js`
+- `scripts/lib/alphaLiveBaselineRoute.mjs`
+- `scripts/lib/releaseSoakProbe.mjs`
+
+For source identification only, the existing broker's `computeGateDigests()` was
+read once after failure and before packet/receipt edits. This is a **post-failure
+working-tree observation**, not a persisted run claim or proof of byte stability
+during the failed gate:
+
+```yaml
+sourceCandidateDigest: 615f9fe3139cfbfeaec5da33571840e6560d41dfa8e82a8addb79907b8ebcaab
+browserCandidateDigest: 05b49816a74eb3536f324d99c7e00a03265c6012d231b75b7929c8b86982fc91
+worktreeDigest: aba7cd9698fa500a8a3d039320914c082fd4878b340fd62afd0f1e9f82c66441
+productionDigest: 1b750d74308073520673918a43e342bb6627216b25961a7202a5930d4c9da644
+harnessDigest: 4560055964405f50b5725d33694ee94d5db210167213f05192992c94d33e9bee
+regressionDigest: c02903866804c1faa30abbd18ba73bc54db330474379b7943c7a5e4c785a457c
+```
+
+The observed source candidate is dirty. No clean Browser/Electron pair was bound,
+and no paired-runtime acceptance digest is claimed.
+
+### Disposition and next action
+
+The direct blocker is the manifest's first fast gate. Whether each assertion
+reflects a product defect or stale fixture is unresolved; the failure output
+does not justify changing production or weakening expectations. Separately, the
+clean-candidate requirement remains unmet. Resolve those failing contracts and
+settle the foreign source changes under separate ownership before another
+authorized acceptance workflow. Then use the existing Browser and packaged
+Electron manifests on the same clean source candidate.
+
+No source, tests, manifests, assets, queue JSON, NOW, or build map were edited.
+No unchanged retry, Electron invocation, focused rerun, broad baseline/playable
+run, new probe, comparator, or evidence framework was opened after the stop.
+The numeric gain, GC behavior, presentation parity, and keep/remove ruling remain
+unproven; no abstraction removal is authorized by this acceptance-only write set.
 
 ## Implemented architecture
 
