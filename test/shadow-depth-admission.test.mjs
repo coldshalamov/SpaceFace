@@ -7,6 +7,42 @@ import {
   compileShadowDepthPipelines,
 } from '../src/render/shadowDepthAdmission.js';
 
+// The implementation stages casters into a real THREE.Scene and calls
+// renderer.render() so WebGLShadowMap runs under a live render state. The mocks
+// below emulate that contract: render() drives shadowMap.render() over the
+// staged scene's shadow-casting light, and the Scene/RT/material doubles carry
+// the surface the implementation touches.
+function fakeThree() {
+  class Scene {
+    constructor() { this.children = []; this.name = ''; this.isScene = true; }
+    add(child) { this.children.push(child); }
+    remove(child) {
+      const index = this.children.indexOf(child);
+      if (index >= 0) this.children.splice(index, 1);
+    }
+    clear() { this.children.length = 0; }
+    updateMatrixWorld() {}
+    traverse(fn) { fn(this); for (const child of this.children) fn(child); }
+  }
+  class WebGLRenderTarget {
+    constructor() { this.disposed = false; }
+    dispose() { this.disposed = true; }
+  }
+  class MeshBasicMaterial {
+    constructor(options = {}) { Object.assign(this, options); this.isMeshBasicMaterial = true; }
+  }
+  return { Scene, WebGLRenderTarget, MeshBasicMaterial };
+}
+
+// Emulates the production render() -> WebGLShadowMap.render() hop so tests keep
+// observing the same (lights, stagedScene, camera) triple the real pass sees.
+function emulateSceneRender(renderer, shadowRender) {
+  renderer.render = function render(staging, camera) {
+    const lights = (staging && staging.children || []).filter((child) => child && child.shadow);
+    return shadowRender.call(renderer.shadowMap, lights, staging, camera);
+  };
+}
+
 test('collects mesh casters from a root and skips non-casters', () => {
   const hull = { isMesh: true, castShadow: true, name: 'hull' };
   const glass = { isMesh: true, castShadow: false, name: 'glass' };
@@ -46,6 +82,7 @@ test('shadow depth compile runs the real shadow pass on exact casters and restor
     properties: { get: (material) => material && material.properties || {} },
     renderBufferDirect() {},
   };
+  emulateSceneRender(renderer, renderer.shadowMap.render);
   const light = { name: 'key', castShadow: false, shadow: { needsUpdate: false } };
   const result = compileShadowDepthPipelines({
     renderer,
@@ -53,14 +90,7 @@ test('shadow depth compile runs the real shadow pass on exact casters and restor
     camera: { name: 'chase' },
     subjects: [hull],
     forceEnable: true,
-    THREE: {
-      Group: class {
-        constructor() { this.children = []; this.name = ''; }
-        add(child) { this.children.push(child); }
-        clear() { this.children.length = 0; }
-        updateMatrixWorld() {}
-      },
-    },
+    THREE: fakeThree(),
     captureObjectHome(object) {
       homes.push(object.name);
       return { object };
@@ -69,10 +99,10 @@ test('shadow depth compile runs the real shadow pass on exact casters and restor
   });
   assert.equal(result.skipped, false);
   assert.equal(result.subjects, 1);
-  assert.deepEqual(homes, ['hull']);
-  assert.deepEqual(restored, ['hull']);
+  assert.deepEqual(homes, ['hull', 'key']);
+  assert.deepEqual(restored, ['hull', 'key']);
   assert.equal(renders.length, 1);
-  assert.deepEqual(renders[0].children, ['hull']);
+  assert.deepEqual(renders[0].children, ['hull', 'key']);
   assert.equal(light.castShadow, false);
   assert.equal(renderer.shadowMap.enabled, false);
   assert.equal(light.shadow.needsUpdate, true);
@@ -96,12 +126,13 @@ test('shadow depth admission records the actual generated depth binding and rest
     getRenderTarget() { return null; },
     setRenderTarget() {},
   };
+  emulateSceneRender(renderer, renderer.shadowMap.render);
   const result = compileShadowDepthPipelines({
     renderer,
     light: { castShadow: true, shadow: {} },
     camera: {},
     subjects: [hull],
-    THREE: { Group: class { constructor() { this.children = []; } add(child) { this.children.push(child); } clear() {} updateMatrixWorld() {} } },
+    THREE: fakeThree(),
     captureObjectHome: (object) => ({ object }),
     restoreObjectHome() {},
   });
@@ -121,12 +152,13 @@ test('shadow depth admission fails closed when its actual depth draw has no prog
     getRenderTarget() { return null; },
     setRenderTarget() {},
   };
+  emulateSceneRender(renderer, renderer.shadowMap.render);
   const result = compileShadowDepthPipelines({
     renderer,
     light: { castShadow: true, shadow: {} },
     camera: {},
     subjects: [hull],
-    THREE: { Group: class { constructor() { this.children = []; } add(child) { this.children.push(child); } clear() {} updateMatrixWorld() {} } },
+    THREE: fakeThree(),
     captureObjectHome: (object) => ({ object }),
     restoreObjectHome() {},
   });
@@ -144,12 +176,13 @@ test('shadow depth admission restores the prior renderBufferDirect hook when the
     getRenderTarget() { return null; },
     setRenderTarget() {},
   };
+  emulateSceneRender(renderer, renderer.shadowMap.render);
   assert.throws(() => compileShadowDepthPipelines({
     renderer,
     light: { castShadow: true, shadow: {} },
     camera: {},
     subjects: [hull],
-    THREE: { Group: class { constructor() { this.children = []; } add(child) { this.children.push(child); } clear() {} updateMatrixWorld() {} } },
+    THREE: fakeThree(),
     captureObjectHome: (object) => ({ object }),
     restoreObjectHome() {},
   }), /shadow draw failed/);
@@ -183,20 +216,14 @@ test('hidden zero-count instanced casters are revealed for the shadow pass', () 
     getRenderTarget() { return null; },
     setRenderTarget() {},
   };
+  emulateSceneRender(renderer, renderer.shadowMap.render);
   const result = compileShadowDepthPipelines({
     renderer,
     light: { name: 'key', castShadow: false, shadow: { needsUpdate: false } },
     camera: { name: 'chase' },
     subjects: [hull],
     forceEnable: true,
-    THREE: {
-      Group: class {
-        constructor() { this.children = []; this.name = ''; }
-        add(child) { this.children.push(child); }
-        clear() { this.children.length = 0; }
-        updateMatrixWorld() {}
-      },
-    },
+    THREE: fakeThree(),
     captureObjectHome(object) { return { object }; },
     restoreObjectHome() {},
   });
