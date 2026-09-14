@@ -745,6 +745,19 @@ export function reattachResidentGpuMeshes(owner) {
  * Full scans remain the event-driven safety net; queued boundaries keep the established two-build
  * cadence between scans.
  */
+/**
+ * Whether entering flight may hold bulk mesh streaming for its first draw. The defer is
+ * released only by the first-playable paint latch (drawPreparedFrame schedules it when
+ * firstPlayableFrameAt is unset) or by the loading-path live-sector cook. A session recook
+ * keeps firstPlayableFrameAt from the boot picture and skips the cook, so arming the defer
+ * there would park mesh streaming — and every spawned/queued mesh — for the rest of the
+ * flight.
+ */
+export function shouldDeferMeshStreamingOnFlightEntry(owner) {
+  const render = owner && owner.state && owner.state.render;
+  return !Number.isFinite(render && render.firstPlayableFrameAt);
+}
+
 export function serviceRenderMeshResidency(owner, frameDt) {
   if (owner && owner._sessionRecookKeepGpu === true && owner.state && owner.state.mode === 'loading') {
     owner._meshReconcileDirty = false;
@@ -7146,8 +7159,10 @@ export const render = {
       this._sessionRecookKeepGpu = false;
       // The first visible flight draw contains only the already-resident opening composition.
       // Bulk sector roots resume at the normal two-per-frame budget after that draw completes.
-      this._deferNoncriticalMeshStreaming = true;
-      state.render.deferNoncriticalMeshStreaming = true;
+      if (shouldDeferMeshStreamingOnFlightEntry(this)) {
+        this._deferNoncriticalMeshStreaming = true;
+        state.render.deferNoncriticalMeshStreaming = true;
+      }
     });
     onBus('jump:arrive', ({ sectorId } = {}) => {
       const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;

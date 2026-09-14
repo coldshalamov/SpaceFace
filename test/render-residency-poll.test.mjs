@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import {
   render,
   serviceRenderMeshResidency,
+  shouldDeferMeshStreamingOnFlightEntry,
 } from '../src/render/renderer.js';
 import {
   residencyEvictRadius,
@@ -163,6 +164,23 @@ test('residency service runs full recovery once, then drains without repeating s
   owner._renderResidencyPollS = 0;
   assert.equal(serviceRenderMeshResidency(owner, 1 / 60), 'poll');
   assert.deepEqual(calls, ['full', 'drain', 'drain', 'poll']);
+});
+
+test('session-recook flight entry leaves mesh streaming un-deferred', () => {
+  // A same-sector F9 keeps firstPlayableFrameAt from the boot picture: no paint latch
+  // will fire to release the streaming defer, so arming it would park every queued and
+  // spawned mesh for the rest of the flight.
+  assert.equal(shouldDeferMeshStreamingOnFlightEntry({
+    state: { mode: 'flight', render: { firstPlayableFrameAt: 4123.5 } },
+  }), false);
+  // A fresh opening or non-recook load nulls the latch so the first draw can release it.
+  assert.equal(shouldDeferMeshStreamingOnFlightEntry({
+    state: { mode: 'flight', render: { firstPlayableFrameAt: null } },
+  }), true);
+  assert.equal(shouldDeferMeshStreamingOnFlightEntry({
+    state: { mode: 'flight', render: {} },
+  }), true);
+  assert.equal(shouldDeferMeshStreamingOnFlightEntry({ state: { mode: 'flight' } }), true);
 });
 
 test('continuous sector handoff defers the seam recovery scan through the visual blend', () => {
