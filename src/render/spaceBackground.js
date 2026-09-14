@@ -46,6 +46,59 @@ import {
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { PaintedPlanets } from './paintedPlanets.js';
 
+// The sky uses authored colour images rather than lit hull materials. Shape their value response
+// in the existing sprite pass so the painted sky and illustrated solids share cool shadows and
+// broad light planes. Keep chroma, fine cloud/rock detail, transparency and every source image.
+const PLANET_STYLE_GLSL = /* glsl */`
+  float sfSkyValue = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+  float sfSkyBands = 0.035
+    + 0.15 * smoothstep(0.09, 0.14, sfSkyValue)
+    + 0.26 * smoothstep(0.27, 0.35, sfSkyValue)
+    + 0.38 * smoothstep(0.55, 0.66, sfSkyValue);
+  // No positive floor on black pixels: atmosphere gutters and the night side remain dark.
+  float sfSkyShaped = mix(sfSkyValue, sfSkyBands, 0.34 * smoothstep(0.015, 0.06, sfSkyValue));
+  vec3 sfSkyTint = mix(vec3(0.86, 0.94, 1.10), vec3(1.035, 1.01, 0.96), smoothstep(0.08, 0.48, sfSkyValue));
+  outgoingLight = diffuseColor.rgb * (sfSkyShaped / max(sfSkyValue, 0.0001)) * sfSkyTint;
+`;
+
+function stylePlanetMaterial(material) {
+  material.onBeforeCompile = (shader) => {
+    const needle = 'outgoingLight = diffuseColor.rgb;';
+    if (!shader.fragmentShader.includes(needle)) throw new Error('[background] planet style shader contract changed');
+    shader.fragmentShader = shader.fragmentShader.replace(needle, PLANET_STYLE_GLSL);
+  };
+  material.customProgramCacheKey = () => 'spaceface-illustrated-planet-v1';
+}
+
+function styleStructureMaterial(material, geometry) {
+  geometry.computeBoundingBox();
+  const bounds = geometry.boundingBox;
+  const region = new THREE.Vector4(bounds.min.x, bounds.min.z,
+    Math.max(0.001, bounds.max.x - bounds.min.x), Math.max(0.001, bounds.max.z - bounds.min.z));
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.sfStructureRegion = { value: region };
+    shader.vertexShader = shader.vertexShader.replace('#include <common>',
+      '#include <common>\nuniform vec4 sfStructureRegion;\nvarying vec2 sfStructurePlane;');
+    shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
+      '#include <begin_vertex>\nsfStructurePlane = (position.xz - sfStructureRegion.xy) / sfStructureRegion.zw;');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+      '#include <common>\nvarying vec2 sfStructurePlane;');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <color_fragment>', /* glsl */`
+      #include <color_fragment>
+      // Broad sloping armour planes and a recessed axial spine, rather than an unlit flat plate.
+      // All detail follows the retained silhouette; no random triangles, extra geometry or draws.
+      float sfSpine = abs(sfStructurePlane.y - (0.49 + 0.055 * sfStructurePlane.x));
+      float sfPanel = smoothstep(0.035, 0.065, sfSpine);
+      float sfCrown = smoothstep(0.44, 0.53, sfStructurePlane.y);
+      float sfBay = smoothstep(0.24, 0.26, sfStructurePlane.x)
+        * (1.0 - smoothstep(0.70, 0.72, sfStructurePlane.x));
+      diffuseColor.rgb *= (0.48 + sfPanel * 0.38 + sfCrown * 0.45) * (1.0 - sfBay * 0.16);
+      diffuseColor.rgb *= mix(vec3(0.78, 0.89, 1.10), vec3(1.04, 1.01, 0.95), sfCrown);
+    `);
+  };
+  material.customProgramCacheKey = () => 'spaceface-illustrated-deep-structure-v1';
+}
+
 // ----------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) + string hash — ~15 lines, no deps.
 // ----------------------------------------------------------------------------
@@ -2170,6 +2223,7 @@ export class SpaceBackground {
         fog: false,
       });
       mat.dispose = () => {}; // cache-owned; the hero-clear path must not release the program
+      stylePlanetMaterial(mat);
       this._spriteMatCache.set(tex, mat);
     }
     return mat;
@@ -2391,6 +2445,7 @@ export class SpaceBackground {
         fog: false,
       });
       mat.name = `SF_DeepFieldStructure_${recipe.id}_${st2.id}`;
+      styleStructureMaterial(mat, geo);
       mat.userData.deepFieldRecipeId = recipe.id;
       materials.push(mat);
       const mesh = new THREE.Mesh(geo, mat);
