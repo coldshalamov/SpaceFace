@@ -1,0 +1,49 @@
+{
+  "schema": "spaceface.minSpec.v1",
+  "id": "min-spec-v1",
+  "namedAt": "2026-09-13",
+  "hardware": {
+    "gpu": {
+      "name": "Intel Graphics (Core Ultra 7 155U, Meteor Lake integrated)",
+      "tier": "integrated",
+      "matchAny": [
+        "0x00007D[0-9A-F]{2}",
+        "Intel\\(R\\) Iris\\(R\\) Xe",
+        "Intel\\(R\\) Arc"
+      ],
+      "equivalents": [
+        "Intel Iris Xe (Tiger Lake+) or newer Intel integrated graphics",
+        "NVIDIA GeForce GTX 1050 or better",
+        "AMD Radeon RX 560 or better"
+      ],
+      "requiresHardwareWebGl2": true,
+      "rejectsSoftwareRasterizer": true
+    },
+    "cpu": "Modern 4-core/8-thread x86-64 (reference: Intel Core Ultra 7 155U)",
+    "memoryGb": 8,
+    "storage": "SSD, ~2 GB free"
+  },
+  "floors": {
+    "medianFps": 60,
+    "medianFrameMs": 16.7,
+    "hitchThresholdMs": 50,
+    "maxHitchesPerMinute": 1,
+    "maxTransitionHitchMs": 2000,
+    "bootToMenuMs": 10000,
+    "maxHeapGrowthBytesPer30Min": 31457280,
+    "maxHeapGrowthMbPer30Min": 30
+  },
+  "soak": {
+    "durationMinutes": 120,
+    "minSaveLoadCycles": 200,
+    "hosts": ["browser", "electron"]
+  },
+  "notes": [
+    "Floors are measured on the named reference GPU via scripts/check-release-soak-{browser,electron}.mjs and verified by scripts/check-min-spec-floors.mjs.",
+    "Each soak cycle performs one public save (F5) and one public load (F9) plus an undock/dock/trade round-trip; 200 cycles bound both the cycle count and the two-hour wall duration.",
+    "Hitch accounting counts every requestAnimationFrame gap above 50 ms across the whole soak window, normalized per minute.",
+    "Player-initiated loading spans (save-write, load-restore, undock, dock-mount, waypoint map toggle, market mount+trade) are transitions: a hitch inside one is a transition cost bounded per event at maxTransitionHitchMs and still fully recorded. The <=1/minute floor applies to gameplay hitches (steady flight, docked idle UI); both counts are reported.",
+    "The game's own hitch classifier (PQ-129.02) attributes each gap to an owner. A hitch it attributes to externalScheduling is a gap the page did not consume — shared-machine noise, not product work. Those events are recorded per-event, reported as externalSchedulingHitchCount, and excluded from the gameplay floor; hitches attributed to game work, or left unknown/ambiguous, always count against it.",
+    "Boot anchors at page navigation -> menu for the browser host and process launch -> menu for Electron; the harness-inclusive launch->menu figure is recorded alongside for attribution."
+  ]
+}
