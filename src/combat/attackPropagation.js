@@ -176,6 +176,26 @@ export function trySplit(parent, spec, contact = {}) {
 export function tryBounce(runtime) {
   if (!runtime) return { ok: false, reason: 'no_lineage' };
   if (!canAct(runtime, 'ricochet')) return { ok: false, reason: 'not_inherited', suppressed: true };
+  // NaN passes both <= 0 and the budget's affordability comparison; Infinity never
+  // counts down. Refuse corrupt continuation state before spending or writing it.
+  const bounces = runtime.remaining && runtime.remaining.bounces;
+  if (!Number.isSafeInteger(bounces) || bounces < 0) {
+    return { ok: false, reason: 'invalid_bounce_count', suppressed: true };
+  }
+  const budget = runtime.budget;
+  if (!budget) return { ok: false, reason: 'no_budget', suppressed: true };
+  if (!Number.isSafeInteger(budget.remaining) || budget.remaining < 0
+    || !Number.isSafeInteger(budget.initial) || budget.initial < 0
+    || !Number.isSafeInteger(budget.consumed) || budget.consumed < 0
+    || budget.remaining > budget.initial - budget.consumed) {
+    return { ok: false, reason: 'invalid_proc_budget', suppressed: true };
+  }
+  const generationMax = budget.constraints && budget.constraints.generationMax;
+  if (!Number.isSafeInteger(generationMax) || generationMax < 0
+    || !Number.isSafeInteger(runtime.generation) || runtime.generation < 0
+    || runtime.generation > generationMax) {
+    return { ok: false, reason: 'generation_max', suppressed: true };
+  }
   if (runtime.remaining.bounces <= 0) return { ok: false, reason: 'no_remaining_bounces' };
   const paid = tryConsumeProc(runtime, PROC_COSTS.bounce, 'bounce');
   if (!paid.ok) return paid;

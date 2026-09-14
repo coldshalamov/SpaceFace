@@ -2,7 +2,8 @@
 // Data only: no runtime writes, no imports from src/systems/**.
 // Recipe field names follow design/vision/CRUCIBLE_SURVIVAL_MASTER_PLAN.md Appendix A.2.
 // Waves 1–10 per arena are the template block for the thirty-wave Foundry arc
-// (survivalActs.js). Do not change recipe bodies: waves 1, 5 and 10 are pinned.
+// (survivalActs.js). PQ-133.04 replaces only Foundry's placeholder wave-ten boss;
+// the old Iron Maw snapshot needs its owning test's explicit content review.
 
 import { COMBAT_LAB_ARENAS } from './combatLabSetups.js';
 import { ENEMY_TYPES } from './enemies.js';
@@ -630,7 +631,11 @@ function waveRecipe({
   xp,
   credits,
 }) {
-  const asked = SURVIVAL_TEMPLATE_QUESTIONS[wave];
+  const asked = arenaId === 'helios_core' && wave === 10 ? {
+    id: 'foundry_foreman_commit',
+    question: 'Cross the Foreman\'s committed pass and punish its slow turn. Throw the escort screen into its hull.',
+    answerVerb: 'throw',
+  } : SURVIVAL_TEMPLATE_QUESTIONS[wave];
   return {
     id: `${arenaId}_w${String(wave).padStart(2, '0')}_${shape}`,
     schemaVersion: SURVIVAL_WAVE_SCHEMA_VERSION,
@@ -675,7 +680,8 @@ function waveRecipe({
 //    never sets: they spawn INERT, and as a blocking role they would stall the run forever.
 //    mule_trader is a fleeing_trader (alwaysFlee, defensiveOnly) marked illegalToKill.
 //
-// Waves 1, 5 and 10 are held byte-identical on every field the PLAN can see. Question
+// Waves 1 and 5 retain their existing plan content. PQ-133.04 deliberately replaces
+// the Foundry wave-10 enemy with Mirrorjaw; other arenas retain Iron Maw. Question
 // fields are authoring records the planner does not copy. Their content is asserted in
 // three files this lane does not own: the seed-47 snapshot in test/crucible-wave-planner.js
 // (waves 1/5/10), the wave-1 body count and roles in test/crucible-wave-materialization.js,
@@ -808,14 +814,13 @@ function tenWaveBlock(arenaId, gateA, gateB) {
       blockingRoles: ['support', 'reach', 'elite', 'mass'], cleanupTicks: 180,
       xp: 148, credits: 44,
     }),
-    // Q: Can you hold a firing line on a slow fortress while its screen keeps arriving behind you?
-    // The dreadnought is a system, not a health bar — it telegraphs a broadside you cross the bow
-    // to beat, and the escort refreshes in threes so you never get a clean uninterrupted pass.
+    // Foundry's committed ram arrives ahead of six staggered escorts. Other arenas
+    // retain their fortress. The budget, arrival cadence and completion roles stay shared.
     waveRecipe({
       arenaId, wave: 10, shape: 'boss',
       objectiveKind: 'boss', threatBudget: 28,
       packages: [
-        pkg(0, gateA, 'elite', 'dreadnought_boss', 1),
+        pkg(0, gateA, 'elite', arenaId === 'helios_core' ? 'mirrorjaw_foreman' : 'dreadnought_boss', 1),
         pkg(90, gateB, 'mass', 'wasp_swarmer', 6, 3, 90),
       ],
       arenaPhase: 'boss', blockingRoles: ['elite', 'mass'], cleanupTicks: 240,
@@ -860,7 +865,8 @@ export const SURVIVAL_BOSS_CIRCUIT = freezeDeep(
     step: index + 1,
     arenaId,
     templateWave: 10,
-    bossEnemyId: 'dreadnought_boss',
+    bossEnemyId: SURVIVAL_WAVES.find(recipe => recipe.arenaId === arenaId && recipe.wave === 10)
+      .packages.find(entry => entry.role === 'elite').enemyId,
   })),
 );
 

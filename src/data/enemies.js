@@ -384,4 +384,30 @@ export const ENEMY_TYPES = [
       ],
     },
   },
+  // PQ-133.04: Foundry wave-ten ram. Reuses the live committed-brawler doctrine,
+  // Bastion body and weapon/kill owners. Support comes from the wave's six budgeted
+  // swarmers, never an unbudgeted reinforcement hook. Directional reflective armor
+  // and external rear machinery require the shared surface/subsystem owners.
+  {
+    id: 'mirrorjaw_foreman', name: 'Mirrorjaw Foreman', shipId: 'ship_bastion',
+    silhouette: 'bruiser_armor', factionId: 'faction_reach',
+    aiArchetype: 'brawler', levelRange: [4, 4],
+    combatDoctrineId: 'brawler_commit',
+    hull: 720, armor: 120, armorFlat: 2, shield: 160, shieldRegen: 0,
+    cap: 240, capRegen: 26,
+    maxSpeed: 84, accel: 52, turnRate: 0.55, collisionRadius: 32, mass: 420,
+    weapons: [
+      { id: 'wpn_concussion_cannon_m' },
+      { id: 'wpn_pulse_laser_s', dmgOverride: 6, rofOverride: 2.4 },
+    ],
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 220, leashRadius: 2400 },
+    telegraph: {
+      bark: 'warn', cue: 'engine_flare',
+      line: 'Foreman committing. Cross its charge and work the slow turn.',
+    },
+    counterHint: 'Cross its committed pass; shoot through the slow turn or throw a swarmer into the hull.',
+    behavior: 'heavy committed ram; slow recovery turn, concussion pressure and six wave-owned escorts',
+    bountyCr: 0, shipClass: 'gunship',
+    loot: null,
+  },
 ];
