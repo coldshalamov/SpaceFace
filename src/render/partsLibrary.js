@@ -1700,6 +1700,113 @@ export function spawnableShipArchetypePrewarmUrls() {
   ]);
 }
 
+/**
+ * PQ-033.02: every packaged-live whole-ship file can compose on the live empty-admission
+ * path, and an archetype's first in-window spawn used to link its complete program set
+ * inside a drawn frame. Compose each file once so later real spawns reuse resident
+ * programs instead of linking during measured flight.
+ *
+ * Two detached owners per file: the render-package pool only engages on the second
+ * owner of a (geometry, material) pair — the same thing a second live spawn of one
+ * archetype does. Phantom owners never join the scene, so their pool slots never submit
+ * a matrix (visibleProxyChainReachesOwner requires owner.parent): chunks publish
+ * prepared at zero count and pin the instanced variant that real spawns draw through.
+ *
+ * The returned owners must stay referenced for the programs to stay resident; release
+ * them through releaseArchetypeWarmOwners on context loss or full teardown.
+ */
+export async function warmSpawnableArchetypePipelines(renderer, scene, options = {}) {
+  const owners = [];
+  const warmed = [];
+  const failures = [];
+  let interrupted = false;
+  const isActive = typeof options.isActive === 'function' ? options.isActive : null;
+  const yieldBetween = typeof options.yieldBetween === 'function' ? options.yieldBetween : null;
+  const files = Array.isArray(options.files) && options.files.length
+    ? options.files
+    : PACKAGED_LIVE_WHOLE_SHIP_FILES;
+  const ownersPerFile = Number.isFinite(options.ownersPerFile)
+    ? Math.max(1, options.ownersPerFile | 0)
+    : 2;
+  for (const file of files) {
+    if (isActive && !isActive()) { interrupted = true; break; }
+    let fileOwners = 0;
+    for (let ordinal = 0; ordinal < ownersPerFile; ordinal += 1) {
+      if (isActive && !isActive()) { interrupted = true; break; }
+      const entity = {
+        id: `archetype-warm:${file}:${ordinal}`,
+        type: 'ship',
+        alive: true,
+        factionId: '',
+        data: { defId: 'ship_wasp' },
+      };
+      const boundary = new THREE.Group();
+      boundary.name = `ArchetypeWarm_${String(file).split('/').pop()}_${ordinal}`;
+      boundary.userData.kind = 'ship';
+      const admissionOptions = {
+        ...residencyOptionsForBoundary(entity, boundary, renderer),
+        loadAuthoredPart: options.loadAuthoredPart,
+        releaseMode: options.releaseMode,
+        libraryScope: options.libraryScope,
+        requiredWholeShip: true,
+        forceWholeShipFile: file,
+        residencyRole: 'archetype-warm',
+      };
+      try {
+        const library = await preloadAuthoredAssetsForEntity(renderer, entity, admissionOptions);
+        const composed = buildComposedShip(entity, library, scene, boundary, admissionOptions);
+        if (!composed || !composed.root) {
+          throw new Error(`spawnable archetype warm compose returned no root for ${file}`);
+        }
+        registerPreparedAuthoredAdmission(scene, boundary, composed);
+        boundary.userData.authoredAssetState = 'compiling-pipelines';
+        installPreparedBoundaryDisposer(boundary, () => (
+          disposePreparedShipBoundaryResources(boundary, composed)
+        ));
+        await prepareAuthoredShipVisualPipelines(composed, admissionOptions);
+        boundary.userData.authoredAssetState = 'authored-prepared';
+        owners.push({ entity, boundary, composed });
+        fileOwners += 1;
+      } catch (error) {
+        failures.push({
+          file,
+          ordinal,
+          ownerReleased: error && error.admissionOwnerReleased === true,
+          message: String(error && error.message || error),
+        });
+      }
+    }
+    if (fileOwners > 0) warmed.push(file);
+    if (yieldBetween) await yieldBetween();
+  }
+  return { owners, warmed, failures, interrupted };
+}
+
+/**
+ * Release one phantom archetype-warm owner: free its pool slots, dispose owner-local
+ * preparation resources, and drop its residency claims. Shared/cached materials and
+ * their compiled programs stay resident — that is the point of the warm set.
+ */
+export async function releaseArchetypeWarmOwners(renderer, owners, reason = 'archetype-warm-release') {
+  const errors = [];
+  for (const warm of owners || []) {
+    if (!warm) continue;
+    if (warm.entity) warm.entity.alive = false;
+    try {
+      const disposed = disposePreparedAuthoredBoundary(warm.boundary);
+      if (disposed === false) {
+        await disposePreparedShipBoundaryResources(warm.boundary, warm.composed);
+      } else {
+        await disposed;
+      }
+    } catch (error) { errors.push(error); }
+    try { releaseBoundaryResidency(renderer, warm.boundary, reason); }
+    catch (error) { errors.push(error); }
+  }
+  if (errors.length) throw new AggregateError(errors, 'Archetype warm owner release failed');
+  return true;
+}
+
 function normalizePartUrl(url) {
   return String(url || '').replace(/\\/g, '/').split(/[?#]/, 1)[0];
 }

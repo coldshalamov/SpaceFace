@@ -50,6 +50,7 @@ import {
   prepareFirstQueuedAuthoredBoundaryForOpening,
   prepareAuthoredInstancePoolsForContextLoss,
   publishPreparedAuthoredBoundary,
+  releaseArchetypeWarmOwners,
   resumeAuthoredUpgradeQueueAfterOpening,
   resumeAuthoredUpgradeQueueForLoadingHulls,
   holdAuthoredUpgradeQueueForFirstFlight,
@@ -57,6 +58,7 @@ import {
   waitForOpeningCompositionSettled,
   retryAuthoredPartLibrary,
   syncAuthoredInstancePools,
+  warmSpawnableArchetypePipelines,
 } from './partsLibrary.js';
 import {
   bindAuthoredAssetPerfCounters,
@@ -3122,6 +3124,17 @@ export function disposeRendererOwnedResources(owner, options = {}) {
       try { residency.releaseOwner(residencyOwner, 'renderer-destroyed'); } catch (_) { /* best effort */ }
     }
   }
+  // Phantom archetype-warm owners are detached roots — nothing else retires their pool slots
+  // or boundary preparation resources.
+  const archetypeWarm = owner._archetypeWarm;
+  owner._archetypeWarm = null;
+  if (archetypeWarm && Array.isArray(archetypeWarm.owners) && archetypeWarm.owners.length) {
+    archetypeWarm.running = false;
+    try {
+      void releaseArchetypeWarmOwners(owner.renderer, archetypeWarm.owners, 'renderer-destroyed')
+        .catch(() => {});
+    } catch (_) { /* best effort */ }
+  }
   if (owner._adaptive?.setEnabled) {
     try { owner._adaptive.setEnabled(false); } catch (_) { /* best effort */ }
   }
@@ -3756,6 +3769,9 @@ export const render = {
                 return;
               }
               this._publishAssetResidencyDiagnostics();
+              // Re-run an archetype warm that the loss interrupted; a completed warm returns
+              // early because its published chunks already rode the live-scene rebuild.
+              void startSpawnableArchetypeWarm('context-restore');
               bus.emit('toast', { text: 'Graphics recovered.', kind: 'good', ttl: 3 });
             }));
         }));
@@ -5110,6 +5126,59 @@ export const render = {
         this._meshBuildQueue,
       );
       await drainMeshBuildsBehindShell();
+      // The incoming-sector census has only ever run for jump destinations; the sector the
+      // player wakes into staged nothing, so its authored places/dressing composed lazily on
+      // approach — first-touch program links inside measured soak frames (PQ-033.02). Run the
+      // same census for the current sector now: prefetch, hidden boundary preparation, then
+      // publish — sliced behind the loading shell and into early flight like an arrival.
+      if (!recook && sectorId) {
+        const prewarm = beginIncomingSectorPrewarm(sectorId, { stageBoundaries: true });
+        if (prewarm) {
+          this._authoredSectorPrewarmPendingId = sectorId;
+          this._authoredSectorPrewarmPending = prewarm;
+          const currentSectorSettle = (async () => {
+            try {
+              const settled = await settleSectorPrewarmRequests(prewarm);
+              if (!settled) {
+                if (prewarm.active === true) {
+                  releaseSectorPrewarm(prewarm, 'current-sector-prewarm-generation-invalidated');
+                }
+                return null;
+              }
+              await settleSectorBoundaryPreparations(prewarm, {
+                includePrefetch: true,
+                publish: true,
+              });
+              if (prewarm.active === true) {
+                if (this._currentSectorPrewarm && this._currentSectorPrewarm !== prewarm) {
+                  releaseSectorPrewarm(this._currentSectorPrewarm, 'sector-prewarm-replaced');
+                }
+                this._currentSectorPrewarm = prewarm;
+                if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
+              }
+              return prewarm;
+            } finally {
+              if (this._authoredSectorPrewarmPending === prewarm) {
+                this._authoredSectorPrewarmPendingId = null;
+                this._authoredSectorPrewarmPending = null;
+                this._meshReconcileDirty = true;
+              }
+            }
+          })();
+          currentSectorSettle.catch((error) => {
+            if (prewarm.active === true) {
+              releaseSectorPrewarm(prewarm, 'current-sector-prewarm-settle-failed');
+            }
+            if (this._incomingSectorPrewarm === prewarm) this._incomingSectorPrewarm = null;
+            console.warn(
+              '[render] current-sector authored prewarm failed; retaining procedural boundaries',
+              error,
+            );
+            return null;
+          });
+          state.render.currentSectorPrewarmSettle = currentSectorSettle;
+        }
+      }
       // Nearby opening actors stay on onBeforeRender until a real flight draw.
       // Kick them here so the live-scene cook sees their authored materials,
       // not the procedural stand-in that first flight would otherwise compile.
@@ -6696,6 +6765,70 @@ export const render = {
         ? this._assetResidency.releaseOwner(record.owner, reason)
         : 0;
     };
+    // PQ-033.02: phantom-compose every packaged-live whole-ship file so an archetype's first
+    // in-window spawn reuses resident programs instead of linking inside a measured frame.
+    // Detached owners keep pool chunks published at zero submitted matrices; the shared
+    // material records they pin are the same records real spawns resolve, so the compiled
+    // program variants stay warm for the session. A completed warm survives context restore:
+    // its published chunks ride the same live-scene rebuild as every other root. An
+    // interrupted warm (context loss, teardown) re-runs on the next flight entry.
+    const startSpawnableArchetypeWarm = (reason = 'flight-entry') => {
+      const existing = this._archetypeWarm;
+      const generation = this._contextRecovery && this._contextRecovery.generation;
+      if (existing && existing.complete === true) return existing.promise;
+      if (existing && existing.running === true && existing.generation === generation) {
+        return existing.promise;
+      }
+      const warm = {
+        running: true,
+        complete: false,
+        owners: [],
+        generation,
+        reason,
+        promise: null,
+      };
+      this._archetypeWarm = warm;
+      const staleOwners = existing && Array.isArray(existing.owners) ? existing.owners : [];
+      warm.promise = (async () => {
+        if (staleOwners.length) {
+          try {
+            await releaseArchetypeWarmOwners(
+              renderer,
+              staleOwners,
+              `archetype-warm-superseded-${reason}`,
+            );
+          } catch (error) {
+            console.info('[render] stale archetype warm owner release failed', error);
+          }
+        }
+        return warmSpawnableArchetypePipelines(renderer, scene, {
+          isActive: () => rendererGenerationIsActive()
+            && this._contextLost !== true
+            && this._archetypeWarm === warm
+            && !!this._contextRecovery
+            && this._contextRecovery.generation === warm.generation,
+          yieldBetween: () => (typeof state.render.yieldToNextPresent === 'function'
+            ? state.render.yieldToNextPresent()
+            : yieldToBrowser()),
+        });
+      })().then((result) => {
+        warm.running = false;
+        warm.owners = (result && result.owners) || [];
+        warm.complete = !!result && result.interrupted !== true;
+        if (result && result.failures && result.failures.length) {
+          console.info(
+            `[render] archetype warm finished with ${result.failures.length} partial failure(s)`,
+            result.failures,
+          );
+        }
+        return result;
+      }).catch((error) => {
+        warm.running = false;
+        console.warn('[render] spawnable archetype warm failed', error);
+        return { owners: [], warmed: [], failures: [{ message: String(error && error.message || error) }] };
+      });
+      return warm.promise;
+    };
     const appendSectorPrewarmRequests = (record, requests) => {
       if (!record || record.active !== true) return Promise.resolve([]);
       const additions = [];
@@ -7171,6 +7304,10 @@ export const render = {
         this._deferNoncriticalMeshStreaming = true;
         state.render.deferNoncriticalMeshStreaming = true;
       }
+      // Spawnable-archetype warm runs in early flight, sliced per file — loading mode must not
+      // wait on it (playable-launch budget), and the measured-soak warmup cycle still exposes
+      // every program variant before the window opens.
+      void startSpawnableArchetypeWarm('flight-entry');
     });
     onBus('jump:arrive', ({ sectorId } = {}) => {
       const sector = sectorId && state.world && state.world.sectors ? state.world.sectors[sectorId] : null;
