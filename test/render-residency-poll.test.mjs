@@ -7,6 +7,8 @@ import {
   serviceRenderMeshResidency,
 } from '../src/render/renderer.js';
 import {
+  authoredPrefetchRadius,
+  authoredResidencyEvictRadius,
   residencyEvictRadius,
   residencyPrefetchRadius,
 } from '../src/render/tabletopPolicy.js';
@@ -36,6 +38,48 @@ function mesh(name) {
   root.name = name;
   return root;
 }
+
+test('inbound hulls retain their cooked roots across repeated outer decode runway polls', () => {
+  for (const method of ['reconcileMeshResidency', 'reconcileMeshes']) {
+    for (const type of ['ship', 'wreck']) {
+      const player = entity(1, { type: 'ship' });
+      player.isPlayer = true;
+      player.maxSpeed = 160;
+      const inbound = entity(2, { type, x: authoredPrefetchRadius() - 10 });
+      const root = mesh('cooked-inbound');
+      inbound.mesh = root;
+      const removed = [];
+      const context = {
+        state: {
+          mode: 'flight', playerId: 1, player: {},
+          entities: new Map([[1, player], [2, inbound]]), entityList: [player, inbound],
+          world: {}, camera: { zoom: 144, fov: 50, aspect: 16 / 9, tilt: 60 },
+          render: { activityFrame: {
+            complete: true, renderGlassIds: new Set([1]), renderRunwayIds: new Set(),
+          } },
+        },
+        renderer: {}, scene: { remove: (value) => removed.push(value) },
+        _meshes: new Map([[1, mesh('player')], [2, root]]),
+        _meshBuildQueue: [], _meshBuildQueueHead: 0, _meshBuildQueuedIds: new Set(),
+        _meshResidencyShipCandidates: [], _meshResidencyOtherCandidates: [],
+        _meshResidencySweep: {}, _initialMeshReconcileComplete: true,
+        _unbindPresentationMesh() {}, _bindPresentationMesh() {},
+        _drainMeshBuildQueue() { return 0; }, _publishAssetResidencyDiagnostics() {},
+      };
+      for (const x of [630, 650, 635, 660]) {
+        inbound.pos.x = x;
+        render[method].call(context);
+        assert.equal(context._meshes.get(2), root, `${method} retains ${type} at ${x} WU`);
+        assert.equal(context._meshBuildQueue.includes(2), false, 'no repeated build/compile/upload');
+      }
+      assert.equal(removed.length, 0);
+      inbound.pos.x = authoredResidencyEvictRadius() + inbound.radius + 1;
+      render[method].call(context);
+      assert.equal(context._meshes.has(2), false, 'leaving the hysteresis band still releases residency');
+      assert.deepEqual(removed, [root]);
+    }
+  }
+});
 
 test('ordinary residency poll keeps exact runway semantics in two retained collection passes', () => {
   const prefetch = residencyPrefetchRadius();

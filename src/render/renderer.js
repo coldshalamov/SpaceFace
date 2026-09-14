@@ -253,6 +253,7 @@ import {
 } from './authoredAdmissionPolicy.js';
 import {
   authoredPrefetchRadius,
+  authoredResidencyEvictRadius,
   censusTableBands,
   classifyTableBand,
   glassHalfExtents,
@@ -593,12 +594,17 @@ function liveShadowCastRadius(state) {
   return tableShadowCasterRadius(cam.zoom, cam.fov, cam.aspect, cam.tilt, SHADOW_ORTHO_EXTENT);
 }
 
-function renderResidencyRadius(state, kind = 'prefetch') {
+function renderResidencyRadius(state, kind = 'prefetch', entity = null) {
   const speed = tableTravelSpeed(state);
   const cam = liveTableCamera(state);
-  return kind === 'evict'
+  const radius = kind === 'evict'
     ? residencyEvictRadius(speed, cam.zoom, cam.fov, cam.aspect, cam.tilt)
     : residencyPrefetchRadius(speed, cam.prefetchZoom, cam.fov, cam.aspect, cam.tilt);
+  // Ships/wrecks admit at the longer decode runway. Evicting at the ordinary mesh
+  // runway removed and rebuilt the same hull on every poll in that outer annulus.
+  return kind === 'evict' && (entity?.type === 'ship' || entity?.type === 'wreck')
+    ? Math.max(radius, authoredResidencyEvictRadius(speed))
+    : radius;
 }
 
 /** True once an entity's visual root carries a finished authored identity — i.e. the decode and
@@ -7534,7 +7540,7 @@ export const render = {
     // untouched; only the render-owned Object3D boundary and its authored residency are released.
     for (const [id, m] of this._meshes) {
       const e = resolveWorldPresentationEntity(state, id);
-      if (!e || e.alive === false || !isEntityRenderRelevant(e, state, renderResidencyRadius(state, 'evict'))) {
+      if (!e || e.alive === false || !isEntityRenderRelevant(e, state, renderResidencyRadius(state, 'evict', e))) {
         this._unbindPresentationMesh(id, m);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(m); disposeObject(m); this._meshes.delete(id); noteShadowMeshRemoved(this, m);
@@ -7598,7 +7604,7 @@ export const render = {
       stats.meshVisits++;
       const entity = resolveWorldPresentationEntity(state, id);
       if (!entity || entity.alive === false
-          || !isEntityRenderRelevant(entity, state, renderResidencyRadius(state, 'evict'))) {
+          || !isEntityRenderRelevant(entity, state, renderResidencyRadius(state, 'evict', entity))) {
         this._unbindPresentationMesh(id, mesh);
         releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id);
         this.scene.remove(mesh);
