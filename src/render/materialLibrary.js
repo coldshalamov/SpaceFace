@@ -16,6 +16,7 @@
 // a given palette and get back a cached THREE material.
 
 import * as THREE from 'three';
+import { installIllustratedSurface } from './illustratedSurface.js';
 import { normalizeMaterialAbi } from './materialAbi.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 
@@ -202,6 +203,7 @@ function _matGet(key, build) {
     stampMaterialAbi(m, role);
     const sharedRole = LIBRARY_SHARED_ROLE[role];
     if (sharedRole) stampSharedMaterialRole(m, sharedRole);
+    if (role !== 'glass' && role !== 'emissiveSignal') installIllustratedSurface(m);
     _mat.set(key, m);
   }
   return m;

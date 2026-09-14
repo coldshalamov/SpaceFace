@@ -202,7 +202,7 @@ const COMPOSITE_FRAG = /* glsl */`
     vec2 warp = (distortion.xy * 2.0 - 1.0)
       * step(1e-5, distortion.z) * uDistortion;
     vec2 uv = clamp(vUv + warp, vec2(0.0), vec2(1.0));
-    vec3 scene = texture2D(tScene, uv).rgb;
+    vec3 scene = sampleSpaceIllustratedScene(tScene, uv);
     float ao = texture2D(tAo, vUv).r;
     vec3 bloom = texture2D(tBloom0,vUv).rgb * 0.50 +
                  texture2D(tBloom1,vUv).rgb * 0.28 +
