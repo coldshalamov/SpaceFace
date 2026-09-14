@@ -143,7 +143,10 @@ owner-facing report page. None repeat the top 10.
    stream and retro jets did not exist until the release frame, which created them and linked their
    programs at once: 7 programs, 600 ms the first time on a profile and 50-67 ms once cached. The
    shadow refresh on that frame took 4-6 ms. Fixed in `7cac23426` and `09a54187f`. The fresh-install
-   freeze when the first rocks come into view was a separate first draw, now compiled while loading.
+   freeze when the first rocks come into view was a separate first draw, now compiled while loading
+   (`cook.rockPools`). A rock variant's instance pool exists only once its first rock has registered, so
+   the ledger's `roots` count depends on build order (5 in three runs, 4 in two fresh installs, with no
+   rock freeze in either); if that freeze returns, check the count first.
    The field marker meshes that a Crucible arena lights in its first half second now compile while
    loading as well; one 50 ms frame remains there, on the frame the first picture appears, with no
    shader built in it. The 1.9 s freeze on a fresh install's loading screen was `forceContextLoss()` on
