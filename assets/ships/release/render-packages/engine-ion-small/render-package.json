@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "b8b27dcb73736f907b4dfa37c5a7f376c7ab2c989c778dd823c97579a42276e9",
+  "contentHash": "0fd4b82632790a672e28b43293774a4bcb782034abbb87f34515a0ffe7aa5d56",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -981,14 +981,14 @@
       "uri": "engine_ion_small.glb"
     },
     "sourceManifest": {
-      "bytes": 76590,
-      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
+      "bytes": 168394,
+      "sha256": "d7200721c99b6069204d939589aae9e55ccae5861bee5f7dcc97060e59e43d68",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 599368,
-    "sha256": "474de71a66b64befdb010b07b70cb04ee5e7dd5a485337b8fe739431a63e0a13",
+    "sha256": "ee4299e973cfb4ff4706e2838de1a99037e5c8d39430a64c8dc223a98f812502",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1463,6 +1463,7 @@
     "slot": "engine",
     "url": "assets/ships/release/parts/engines/engine_ion_small.glb"
   },
+  "runtimeHash": "ee8ef740aa31fb4e01918c5818c68e5b8a259244802641b31019c8f2e945fdce",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

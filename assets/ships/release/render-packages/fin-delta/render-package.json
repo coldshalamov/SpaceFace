@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "48acf2b3ae59c47acdfc0059e204b5ca40a37fffe146b0285a9b20260ef2e461",
+  "contentHash": "c2c8480db5fcda91d5703bbf3bcf40a5af0b7f972867ab91835a4b835c2a121d",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -344,14 +344,14 @@
       "uri": "fin_delta.glb"
     },
     "sourceManifest": {
-      "bytes": 76590,
-      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
+      "bytes": 168394,
+      "sha256": "d7200721c99b6069204d939589aae9e55ccae5861bee5f7dcc97060e59e43d68",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 377244,
-    "sha256": "80b81c031f1b764209ba1c059d6eeb70a4f4d08f11d2e914aa19ff47ae80ff93",
+    "sha256": "8de6e3b3372ccf51c833e39bc42167432c04bcee36cb0d40064397a200230f73",
     "uri": "render.glb"
   },
   "runtime": {
@@ -515,6 +515,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_delta.glb"
   },
+  "runtimeHash": "697be02a131987bb0d82151724979bf2f9fe6cfd3b92397ff6d02fa4a926931b",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

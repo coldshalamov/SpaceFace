@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "6c78c0fd94cbb9e1b8e2e67f92858dcd5e70ecd236fa832e6b3df2d12b28ce6b",
+  "contentHash": "0fbb986ef954bd0f93c5c1bf04e9baaa1c67027f154fab4592ce5aa9ee3eb449",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -418,14 +418,14 @@
       "uri": "greeble_antennas.glb"
     },
     "sourceManifest": {
-      "bytes": 76590,
-      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
+      "bytes": 168394,
+      "sha256": "d7200721c99b6069204d939589aae9e55ccae5861bee5f7dcc97060e59e43d68",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 307048,
-    "sha256": "10c83288c17f67bcc2f9edfaacc3e4044043fcb23191fdb31846972a31569582",
+    "sha256": "567160746b7e80631cca12527f139a0e9ed46fe00f5e536afebb719eca06117d",
     "uri": "render.glb"
   },
   "runtime": {
@@ -620,6 +620,7 @@
     "slot": "greeble",
     "url": "assets/ships/release/parts/greebles/greeble_antennas.glb"
   },
+  "runtimeHash": "a16abd58d6a22d85c5bd3df9fd91670165f2a45aa0c80c879b79157cbad7cbd8",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

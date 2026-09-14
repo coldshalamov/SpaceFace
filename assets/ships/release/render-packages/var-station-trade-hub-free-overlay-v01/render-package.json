@@ -1,0 +1,4978 @@
+{
+  "anchors": [],
+  "assetId": "sf.render.var-station-trade-hub-free-overlay-v01",
+  "collisions": [],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "7b3695c0533a8991dd02346793da02e060eb6d54d5b137bf7ecc60328d43f6d8",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          4.674560070037842,
+          37.05446243286133,
+          63.203704833984375
+        ],
+        "min": [
+          -7.972426891326904,
+          26.204540252685547,
+          61.7972412109375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1db7343a2922910ce7007e00d7fcef16f9dad58efa7537339ef9a2e70d211866",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod00-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod00_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod00-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          6.2823100090026855,
+          36.70404052734375,
+          72.6036148071289
+        ],
+        "min": [
+          -9.580177307128906,
+          26.554960250854492,
+          52.397335052490234
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "22cecfa643b81923bdcab9642e9c2401cffa8cbf62bc7688d1b33819831a1db3",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod00.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod00",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod00",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          49.92109298706055,
+          39.514652252197266,
+          53.945640563964844
+        ],
+        "min": [
+          40.5944938659668,
+          29.918628692626953,
+          46.955162048339844
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8d4accb3c6fd719ee35af5960d384fd8f6eca82b018d81ac618c6e728c72471a",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod01-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod01_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod01-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          54.2896614074707,
+          39.16494369506836,
+          61.84394073486328
+        ],
+        "min": [
+          36.22592544555664,
+          30.268335342407227,
+          39.056861877441406
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ae08eba5a0e66c461b6a9bbea987d2ce7c85a8dba9f08435d03f079ee72de17d",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod01.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod01",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod01",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -6.020748615264893,
+          32.78883743286133,
+          54.147430419921875
+        ],
+        "min": [
+          -10.540974617004395,
+          26.079933166503906,
+          47.26287841796875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4f63b7c8d107bab570e4111bd792b5e68fa465f2dacb3a5ac3938c5228581220",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod02-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod02_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod02-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.5337200164794922,
+          32.4382438659668,
+          58.163848876953125
+        ],
+        "min": [
+          -16.028003692626953,
+          26.430526733398438,
+          43.2464599609375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fca2eb4786fa3487926d957335d70dadf36041f58318ee3f30e2e1faae35793c",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod02.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod02",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod02",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          63.34596252441406,
+          39.69186782836914,
+          -22.2614688873291
+        ],
+        "min": [
+          54.6966552734375,
+          31.37832260131836,
+          -27.49376106262207
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "965a56faffd797dfe09d3cb40640dbb9e18c30147e30e5dde49964ac9af9c642",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod03-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod03_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod03-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          65.43116760253906,
+          39.34221267700195,
+          -16.333831787109375
+        ],
+        "min": [
+          52.611454010009766,
+          31.72797966003418,
+          -33.4213981628418
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f186fd0dcb978cd1371fc0c6796aa8079a56af2aca0b4cd00dbb791bcd88c2ee",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod03.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod03",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod03",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          3.186265468597412,
+          38.42266845703125,
+          -38.7169303894043
+        ],
+        "min": [
+          -6.0738749504089355,
+          30.444427490234375,
+          -40.333431243896484
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a9e2e350317653dc0c1839e8e95f561c51132293add10a8eaec4c611e5f1860e",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod04-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod04_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod04-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          2.8840034008026123,
+          38.07252883911133,
+          -31.776885986328125
+        ],
+        "min": [
+          -5.771613121032715,
+          30.794567108154297,
+          -47.273475646972656
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bab8c314a3be1e7eed454e63f02a5f1dd64f7eac3087a6ed9da9eed86108df44",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod04.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod04",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod04",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          48.72153091430664,
+          34.22392654418945,
+          -0.140228271484375
+        ],
+        "min": [
+          44.66547775268555,
+          25.63418197631836,
+          -9.654480934143066
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "da44a462dfe28260d73a845347030ba5e7b4baf9b4156c8c1918ae04814cd1fa",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod05-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod05_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod05-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          54.55934524536133,
+          34.12471389770508,
+          1.987146258354187
+        ],
+        "min": [
+          38.82766342163086,
+          25.733394622802734,
+          -11.781856536865234
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "915b15649d63266f32c03a153130bb6d5a69f1c3e0683951c566ef1fadd3cba1",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod05.primitive.0",
+      "indexCount": 2880,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod05",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod05",
+      "primitiveIndex": 0,
+      "vertexCount": 1536
+    },
+    {
+      "bounds": {
+        "max": [
+          34.53660202026367,
+          36.03647232055664,
+          -49.96439743041992
+        ],
+        "min": [
+          30.610912322998047,
+          28.990283966064453,
+          -57.58755111694336
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2a2380bad9a06b1abcb5b18387814f7fdedf01d82194593c07d6a2741ed747b0",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod06-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod06_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod06-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          41.168418884277344,
+          35.68637466430664,
+          -47.96611022949219
+        ],
+        "min": [
+          23.979093551635742,
+          29.34037971496582,
+          -59.585838317871094
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "875bdaebef65c45b15941048d7329fdb465360d20755a78f3665b34805311547",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod06.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod06",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod06",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          47.64563751220703,
+          35.440216064453125,
+          21.655916213989258
+        ],
+        "min": [
+          38.91925048828125,
+          27.92823028564453,
+          20.732332229614258
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1e28aa8fd83bb610ee6122720b9f8a3da21dae912b7b2509f041b954dcb37c0f",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod07-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod07_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod07-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          47.732688903808594,
+          35.089839935302734,
+          28.936569213867188
+        ],
+        "min": [
+          38.83219909667969,
+          28.278606414794922,
+          13.451680183410645
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d49e3a9aeefcae16be0004c34255185a870410de50025ef5eeed8ec6e6ac77ae",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod07.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod07",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod07",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -46.618568420410156,
+          34.298057556152344,
+          10.816015243530273
+        ],
+        "min": [
+          -52.86726379394531,
+          26.672605514526367,
+          3.8607895374298096
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "da3983b417bc24d73d00ecdfbda76af24b93954be0b92c6fb7f11b9f0379f0dd",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod08-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod08_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod08-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -40.02457046508789,
+          33.9486083984375,
+          15.405338287353516
+        ],
+        "min": [
+          -59.46126174926758,
+          27.022058486938477,
+          -0.7285329699516296
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4fe9f675826430dad27ff42eb9014057c0a0f4d066b4255a160f28635f3d3568",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod08.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod08",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod08",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.112991333007812,
+          31.676877975463867,
+          31.18379783630371
+        ],
+        "min": [
+          -18.236324310302734,
+          24.8558292388916,
+          23.33902931213379
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9f97305ddb5a539cf1241248af03b0c9e087c8a163f754693fb5a43f32874606",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod09-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod09_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod09-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.46849536895752,
+          31.326759338378906,
+          31.29570198059082
+        ],
+        "min": [
+          -24.880821228027344,
+          25.205947875976562,
+          23.22712516784668
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "2d8995ac2c6e0e8568bacd775e1e30216f525119f4e551197c4dff1297ce3950",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod09.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod09",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod09",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -37.53238296508789,
+          38.469688415527344,
+          14.861528396606445
+        ],
+        "min": [
+          -45.37807083129883,
+          30.863439559936523,
+          9.896049499511719
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ffc38142467155403a815dd074a12dbd9eb0309ce185e5bf398f565005e7370a",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod10-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod10_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod10-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -33.315673828125,
+          38.11967086791992,
+          20.494495391845703
+        ],
+        "min": [
+          -49.59477996826172,
+          31.213459014892578,
+          4.263083457946777
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1cc59c7551a7812d4c35e18e67a2f2b254cef8eac31883db0ab1145bc681acea",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod10.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod10",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod10",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          24.139108657836914,
+          34.121177673339844,
+          53.10467529296875
+        ],
+        "min": [
+          17.086763381958008,
+          26.026309967041016,
+          46.15509796142578
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aa06d311710a8854d58e62ae3cb198ed3f4262460ccd939f58c1492dc901714b",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod11-collar.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod11_collar",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod11-collar",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          30.063997268676758,
+          33.77058029174805,
+          57.75415802001953
+        ],
+        "min": [
+          11.161874771118164,
+          26.376907348632812,
+          41.505615234375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "92545052c8273fa019ef4528a7d8383ddf6fd07315ea374d1d412276eef8dc5a",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod11.primitive.0",
+      "indexCount": 132,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod11",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod11",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -58.05896759033203,
+          31.7756290435791,
+          7.0004706382751465
+        ],
+        "min": [
+          -66.74203491210938,
+          20.73200035095215,
+          -6.133956432342529
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fae3bf950baa3998e778b4979c514280348674d5d7ef1dd5a0a04009b9b9b3e7",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx0.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "9852cfa051e20a3bc1bf95f67f0943e0607a6309180bc99d9ccc7bf11527472c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_skirtX0",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx0",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -57.99979782104492,
+          30.696760177612305,
+          -5.306638717651367
+        ],
+        "min": [
+          -66.80120086669922,
+          22.57651710510254,
+          -17.358274459838867
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1fd51c2a8c86c1b8e0144b71f3532200e0101d6f08ec883546dfa03e2fe41d96",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx1.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "9852cfa051e20a3bc1bf95f67f0943e0607a6309180bc99d9ccc7bf11527472c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_skirtX1",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx1",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -57.66407012939453,
+          31.815032958984375,
+          26.983028411865234
+        ],
+        "min": [
+          -67.13693237304688,
+          19.4090576171875,
+          10.838360786437988
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "bbe1cb617d7484efc3f1320d2119b68c39fe2e5b20048114d58efe7961a49344",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx2.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_skirtX2",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx2",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -58.30984878540039,
+          27.21055030822754,
+          -7.565740585327148
+        ],
+        "min": [
+          -66.49114990234375,
+          14.60466194152832,
+          -17.19702911376953
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c4a9cdc8c1eecffa6428d0f671af86c423f658766aca466006e0cda8291ff2aa",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx3.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "9852cfa051e20a3bc1bf95f67f0943e0607a6309180bc99d9ccc7bf11527472c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_skirtX3",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx3",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -57.086204528808594,
+          27.019575119018555,
+          26.395174026489258
+        ],
+        "min": [
+          -67.71479797363281,
+          17.131147384643555,
+          11.606760025024414
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "ba827a083ec227c2c9f07d380feff2d6734c7df37cee375e5101e958445fc94b",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx4.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_skirtX4",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx4",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -57.771759033203125,
+          25.853229522705078,
+          35.43297576904297
+        ],
+        "min": [
+          -67.02924346923828,
+          15.10678482055664,
+          24.79804039001465
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "f7ce8491ee60edc5a12c4fbab4754a3793531e4a3aa04cfd4c2078d8c343dc0f",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx5.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "9852cfa051e20a3bc1bf95f67f0943e0607a6309180bc99d9ccc7bf11527472c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_skirtX5",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx5",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -40.2970085144043,
+          24.88117027282715,
+          61.74408721923828
+        ],
+        "min": [
+          -55.727535247802734,
+          14.535131454467773,
+          53.051910400390625
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c6b080bf7bbd8bedc1158229341ae3576f4ead1ddd363f4f495df6c1a999cd55",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty0.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "9852cfa051e20a3bc1bf95f67f0943e0607a6309180bc99d9ccc7bf11527472c",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_skirtY0",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty0",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          50.258399963378906,
+          32.296630859375,
+          61.8331298828125
+        ],
+        "min": [
+          40.378379821777344,
+          19.899980545043945,
+          52.962867736816406
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "fa34e6e198f2b43e212924ddbb65e96704054dabf315d2c7d6564a222c4cc8c1",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty1.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_skirtY1",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty1",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          37.203651428222656,
+          28.236677169799805,
+          62.66800308227539
+        ],
+        "min": [
+          19.461715698242188,
+          16.11128044128418,
+          52.127994537353516
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "22b5b6b065ff924e0f412769fdcec2be58aaeea98b9c5d36640d7efcee87103c",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty2.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_skirtY2",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty2",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -41.574867248535156,
+          31.531461715698242,
+          61.846439361572266
+        ],
+        "min": [
+          -52.534645080566406,
+          20.182374954223633,
+          52.94955825805664
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a564e305aca2523e8dd95774279576bd806f29e517b20bd19e2734e18063ee9f",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty3.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_skirtY3",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty3",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -15.114888191223145,
+          25.653392791748047,
+          63.05225372314453
+        ],
+        "min": [
+          -31.950233459472656,
+          17.327430725097656,
+          51.743743896484375
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "1c349b082adbe7f21c457827dc72200c50d82a561484b5ca178e661c87fbf6dc",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty4.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_skirtY4",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty4",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          45.529808044433594,
+          35.875274658203125,
+          63.63569641113281
+        ],
+        "min": [
+          -1.9209461212158203,
+          30.470869064331055,
+          49.31517791748047
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "4fc240532784f4f76ce322fb15dcbd9dd9abe732b2e5f48390a07fcf04ff0c0b",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss00.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_truss00",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss00",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          45.34916687011719,
+          35.616825103759766,
+          51.74837875366211
+        ],
+        "min": [
+          -8.372232437133789,
+          28.534198760986328,
+          49.40717697143555
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "55954acc6f34132e29a4b225158325f0e82f99c0e072b9b8dd2d039c9aa05a6d",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss01.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_truss01",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss01",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          59.816749572753906,
+          36.552886962890625,
+          51.39555740356445
+        ],
+        "min": [
+          -9.076301574707031,
+          28.416595458984375,
+          -25.56801986694336
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "8594e6bdcb1732aa6df95e2c5475c714063aba07fd1c1219f08f383bdcb5a924",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss02.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_truss02",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss02",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          59.32638931274414,
+          36.79233169555664,
+          -23.641315460205078
+        ],
+        "min": [
+          -1.7488861083984375,
+          33.17631149291992,
+          -40.761478424072266
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "80db049deeca3857a56c6853a070ed611b21f98fc904e1c97d98a5b72f26c264",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss03.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_truss03",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss03",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          47.786441802978516,
+          33.64022445678711,
+          -4.566776275634766
+        ],
+        "min": [
+          31.480815887451172,
+          28.802207946777344,
+          -54.10655212402344
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "064583c97f3c9a82fa4baeee02488912000c34c7de9180a1580820a778f7f42e",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss05.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_truss05",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss05",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          44.430564880371094,
+          33.75313949584961,
+          21.35329818725586
+        ],
+        "min": [
+          31.425634384155273,
+          30.4444637298584,
+          -53.93514633178711
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6cdcd1aeed43d37efdb819a8b78ac0a4f2a90740bcc05c3a1ebd97c03317564f",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss06.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_truss06",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss06",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          43.48805236816406,
+          32.97820281982422,
+          22.558557510375977
+        ],
+        "min": [
+          -49.948524475097656,
+          29.19135284423828,
+          5.973970413208008
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "210c42d3449b1d2273f1a135f6d36398eaac0042f049383cf3d57be6a08b8806",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss07.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_truss07",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss07",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.479900360107422,
+          31.956331253051758,
+          28.38771629333496
+        ],
+        "min": [
+          -50.43767166137695,
+          26.79535484313965,
+          6.212100982666016
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b7103a3e5cec6485bf323841525e73fe1c6a61b414867ffef6cbb0503e8ff5cf",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss08.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_truss08",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss08",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          -16.514928817749023,
+          35.840423583984375,
+          28.207082748413086
+        ],
+        "min": [
+          -42.114952087402344,
+          27.092493057250977,
+          11.433119773864746
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "0d3a0ce91ea4e0df79f8b6855a6c4a107e8018a15632db0b1f6eb089f691c843",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss09.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_truss09",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss09",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    },
+    {
+      "bounds": {
+        "max": [
+          21.217041015625,
+          35.950416564941406,
+          50.614662170410156
+        ],
+        "min": [
+          -42.059329986572266,
+          28.789894104003906,
+          11.394012451171875
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "a64ae4639234f46c663d16a5933160bb9cc21507bc8683dcaff74b5f4eb447c7",
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss10.primitive.0",
+      "indexCount": 60,
+      "indexed": true,
+      "materialHash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_truss10",
+      "nodeId": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss10",
+      "primitiveIndex": 0,
+      "vertexCount": 12
+    }
+  ],
+  "hlods": [],
+  "kind": "place",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "6c73bce54d43c8c054dab167eb5aea0ce4234870a077a47049961a9dfa86fbaf",
+      "id": "material:6c73bce54d43c8c054dab167",
+      "name": "SF_Machinery_K0PBR",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    },
+    {
+      "hash": "9852cfa051e20a3bc1bf95f67f0943e0607a6309180bc99d9ccc7bf11527472c",
+      "id": "material:9852cfa051e20a3bc1bf95f6",
+      "name": "SF_HullMid_K0PBR",
+      "pipelineKey": "opaque:front",
+      "textures": []
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod00",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod00",
+      "nodeName": "LOD0_VAR_FREE_pod00",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod00-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod00_collar",
+      "nodeName": "LOD0_VAR_FREE_pod00_collar",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod01",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod01",
+      "nodeName": "LOD0_VAR_FREE_pod01",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod01-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod01_collar",
+      "nodeName": "LOD0_VAR_FREE_pod01_collar",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod02",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod02",
+      "nodeName": "LOD0_VAR_FREE_pod02",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod02-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod02_collar",
+      "nodeName": "LOD0_VAR_FREE_pod02_collar",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod03",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod03",
+      "nodeName": "LOD0_VAR_FREE_pod03",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod03-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod03_collar",
+      "nodeName": "LOD0_VAR_FREE_pod03_collar",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod04",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod04",
+      "nodeName": "LOD0_VAR_FREE_pod04",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod04-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod04_collar",
+      "nodeName": "LOD0_VAR_FREE_pod04_collar",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod05",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod05",
+      "nodeName": "LOD0_VAR_FREE_pod05",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod05-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod05_collar",
+      "nodeName": "LOD0_VAR_FREE_pod05_collar",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod06",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod06",
+      "nodeName": "LOD0_VAR_FREE_pod06",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod06-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod06_collar",
+      "nodeName": "LOD0_VAR_FREE_pod06_collar",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod07",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod07",
+      "nodeName": "LOD0_VAR_FREE_pod07",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod07-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod07_collar",
+      "nodeName": "LOD0_VAR_FREE_pod07_collar",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod08",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod08",
+      "nodeName": "LOD0_VAR_FREE_pod08",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod08-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod08_collar",
+      "nodeName": "LOD0_VAR_FREE_pod08_collar",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod09",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod09",
+      "nodeName": "LOD0_VAR_FREE_pod09",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod09-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod09_collar",
+      "nodeName": "LOD0_VAR_FREE_pod09_collar",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod10",
+      "nodeName": "LOD0_VAR_FREE_pod10",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod10-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod10_collar",
+      "nodeName": "LOD0_VAR_FREE_pod10_collar",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod11",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod11",
+      "nodeName": "LOD0_VAR_FREE_pod11",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod11-collar",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod11_collar",
+      "nodeName": "LOD0_VAR_FREE_pod11_collar",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_skirtX0",
+      "nodeName": "LOD0_VAR_FREE_skirtX0",
+      "nodePath": [
+        0,
+        34
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_skirtX1",
+      "nodeName": "LOD0_VAR_FREE_skirtX1",
+      "nodePath": [
+        0,
+        35
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_skirtX2",
+      "nodeName": "LOD0_VAR_FREE_skirtX2",
+      "nodePath": [
+        0,
+        36
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_skirtX3",
+      "nodeName": "LOD0_VAR_FREE_skirtX3",
+      "nodePath": [
+        0,
+        37
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_skirtX4",
+      "nodeName": "LOD0_VAR_FREE_skirtX4",
+      "nodePath": [
+        0,
+        38
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_skirtX5",
+      "nodeName": "LOD0_VAR_FREE_skirtX5",
+      "nodePath": [
+        0,
+        39
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_skirtY0",
+      "nodeName": "LOD0_VAR_FREE_skirtY0",
+      "nodePath": [
+        0,
+        40
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_skirtY1",
+      "nodeName": "LOD0_VAR_FREE_skirtY1",
+      "nodePath": [
+        0,
+        41
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_skirtY2",
+      "nodeName": "LOD0_VAR_FREE_skirtY2",
+      "nodePath": [
+        0,
+        42
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_skirtY3",
+      "nodeName": "LOD0_VAR_FREE_skirtY3",
+      "nodePath": [
+        0,
+        43
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_skirtY4",
+      "nodeName": "LOD0_VAR_FREE_skirtY4",
+      "nodePath": [
+        0,
+        44
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss00",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_truss00",
+      "nodeName": "LOD0_VAR_FREE_truss00",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss01",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_truss01",
+      "nodeName": "LOD0_VAR_FREE_truss01",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss02",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_truss02",
+      "nodeName": "LOD0_VAR_FREE_truss02",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss03",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_truss03",
+      "nodeName": "LOD0_VAR_FREE_truss03",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss05",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_truss05",
+      "nodeName": "LOD0_VAR_FREE_truss05",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss06",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_truss06",
+      "nodeName": "LOD0_VAR_FREE_truss06",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss07",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_truss07",
+      "nodeName": "LOD0_VAR_FREE_truss07",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss08",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_truss08",
+      "nodeName": "LOD0_VAR_FREE_truss08",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss09",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_truss09",
+      "nodeName": "LOD0_VAR_FREE_truss09",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss10",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_truss10",
+      "nodeName": "LOD0_VAR_FREE_truss10",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "SF_TRADE_HUB_FREE_OVERLAY_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "96201e416395732de965ab79aef750f2daf17149948a64e0b41e7e0d0a420417"
+    },
+    "sourceGlb": {
+      "bytes": 155952,
+      "sha256": "c4a0e40718e09baca24198a0e2260fbd42384e8bf8ed527b409046aab8ec24d8",
+      "uri": "var_station_trade_hub_free_overlay_v01.glb"
+    },
+    "sourceManifest": {
+      "bytes": 168394,
+      "sha256": "d7200721c99b6069204d939589aae9e55ccae5861bee5f7dcc97060e59e43d68",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 211408,
+    "sha256": "3af7d2203ecd95d2fcf2787307e1b1cecc451639e50dee0060c53b1e4bdb5d15",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        -1.141815185546875,
+        27.113499641418457,
+        6.508888244628906
+      ],
+      "max": [
+        65.43116760253906,
+        39.69186782836914,
+        72.6036148071289
+      ],
+      "min": [
+        -67.71479797363281,
+        14.535131454467773,
+        -59.585838317871094
+      ],
+      "size": [
+        133.14596557617188,
+        25.156736373901367,
+        132.189453125
+      ]
+    },
+    "hidden": [],
+    "legacyPart": false,
+    "markers": [],
+    "materialProfileRoles": {
+      "hull": 5,
+      "mechanical": 40
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": true,
+        "planIndex": 2,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 10,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 11,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 12,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 13,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 14,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 15,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 16,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 17,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 18,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 19,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 20,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 21,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 25,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 28,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 31,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 34,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 43,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 44,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 45,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 46,
+        "role": "mechanical"
+      }
+    ],
+    "nodeCount": 47,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod00",
+        "planIndex": 2,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod00_collar",
+        "planIndex": 3,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod01",
+        "planIndex": 4,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod01_collar",
+        "planIndex": 5,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod02",
+        "planIndex": 6,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod02_collar",
+        "planIndex": 7,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod03",
+        "planIndex": 8,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod03_collar",
+        "planIndex": 9,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod04",
+        "planIndex": 10,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod04_collar",
+        "planIndex": 11,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod05",
+        "planIndex": 12,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod05_collar",
+        "planIndex": 13,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod06",
+        "planIndex": 14,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod06_collar",
+        "planIndex": 15,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod07",
+        "planIndex": 16,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod07_collar",
+        "planIndex": 17,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod08",
+        "planIndex": 18,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod08_collar",
+        "planIndex": 19,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod09",
+        "planIndex": 20,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod09_collar",
+        "planIndex": 21,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod10",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod10_collar",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod11",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod11_collar",
+        "planIndex": 25,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_truss00",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_truss01",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_truss02",
+        "planIndex": 28,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_truss03",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_truss05",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_truss06",
+        "planIndex": 31,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_truss07",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_truss08",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_truss09",
+        "planIndex": 34,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_truss10",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_skirtX0",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_skirtX1",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_skirtX2",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_skirtX3",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_skirtX4",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_skirtX5",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_skirtY0",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_skirtY1",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_skirtY2",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_skirtY3",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_skirtY4",
+        "planIndex": 46,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "place",
+    "url": "assets/ships/release/parts/places/var_station_trade_hub_free_overlay_v01.glb"
+  },
+  "runtimeHash": "62fe7fdc6c5eb6e528df07a99d50ff0d1ad06f9deb1c46344f7e53428a4a149e",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          65.43116760253906,
+          39.69186782836914,
+          72.6036148071289
+        ],
+        "min": [
+          -67.71479797363281,
+          14.535131454467773,
+          -59.585838317871094
+        ]
+      },
+      "id": "sf.render.var-station-trade-hub-free-overlay-v01.body",
+      "nodeIds": [
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod00",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod00-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod01",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod01-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod02",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod02-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod03",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod03-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod04",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod04-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod05",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod05-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod06",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod06-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod07",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod07-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod08",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod08-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod09",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod09-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod10",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod10-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod11",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-pod11-collar",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx0",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx1",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx2",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx3",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx4",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirtx5",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty0",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty1",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty2",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty3",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-skirty4",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss00",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss01",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss02",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss03",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss05",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss06",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss07",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss08",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss09",
+        "sf.render.var-station-trade-hub-free-overlay-v01.mesh.lod0-var-free-truss10",
+        "sf.render.var-station-trade-hub-free-overlay-v01.root"
+      ]
+    }
+  ]
+}

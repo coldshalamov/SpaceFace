@@ -6,7 +6,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "9d1b4eb6531594a17e3cf8469db02be0ce2955477eb17a42fdff706b38be4aac",
+  "contentHash": "9e3b37e77e8cbdbb4c100a32593f482fc3e26d3a9deb5459d47ef873c7997fb1",
   "dynamicGroups": [],
   "geometry": [
     {
@@ -1073,14 +1073,14 @@
       "uri": "fin_wedge.glb"
     },
     "sourceManifest": {
-      "bytes": 76590,
-      "sha256": "8ba4982f6c2f892e5db93e36155681813d7ca0c75780b2103007ecf1900a111a",
+      "bytes": 168394,
+      "sha256": "d7200721c99b6069204d939589aae9e55ccae5861bee5f7dcc97060e59e43d68",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 4895956,
-    "sha256": "9bced14ce3970b391bdc1bd0c9afaadfcb5a869da28e9d32102924f96bd9c98e",
+    "sha256": "72fd2456bde59b925cf11a715edc725a77e510e28d4631fde319adca98d49867",
     "uri": "render.glb"
   },
   "runtime": {
@@ -1344,6 +1344,7 @@
     "slot": "fin",
     "url": "assets/ships/release/parts/fins/fin_wedge.glb"
   },
+  "runtimeHash": "97a140874cef72e4b0e1fa807976fe16ac5402f04f291b6c361de420f72f7269",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {

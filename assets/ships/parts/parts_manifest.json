@@ -3914,6 +3914,75 @@
       }
     },
     {
+      "id": "var_station_trade_hub_free_overlay_v01",
+      "assetId": "SF_PLACE_STATION_TRADE_HUB_FREE_OVERLAY",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_trade_hub_free_overlay_v01.glb",
+      "tris": 3024,
+      "bytes": 297116,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "SF_HullMid_K0PBR",
+        "mechanical": "SF_Machinery_K0PBR"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [-67.7152, 14.535, -59.5856],
+        "max": [65.4314, 39.6919, 72.6036],
+        "dimensionsM": [133.1466, 25.1569, 132.1893]
+      },
+      "note": "PQ-193.09 — Free-ports trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_free_overlay_v01.glb."
+    },
+    {
+      "id": "var_station_trade_hub_mts_overlay_v01",
+      "assetId": "SF_PLACE_STATION_TRADE_HUB_MTS_OVERLAY",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_trade_hub_mts_overlay_v01.glb",
+      "tris": 4800,
+      "bytes": 220688,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "SF_HullMid_K0PBR",
+        "mechanical": "SF_Machinery_K0PBR"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [-73.3576, 26.677, -66.2221],
+        "max": [79.3566, 49.227, 66.2181],
+        "dimensionsM": [152.7142, 22.55, 132.4401]
+      },
+      "note": "PQ-193.09 — MTS trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_mts_overlay_v01.glb."
+    },
+    {
+      "id": "var_station_trade_hub_scn_overlay_v01",
+      "assetId": "SF_PLACE_STATION_TRADE_HUB_SCN_OVERLAY",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/var_station_trade_hub_scn_overlay_v01.glb",
+      "tris": 2756,
+      "bytes": 219728,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "SF_HullMid_K0PBR",
+        "mechanical": "SF_Machinery_K0PBR"
+      },
+      "hooks": [],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [-94.4005, 11.2307, -65.402],
+        "max": [76.3995, 56.177, 65.398],
+        "dimensionsM": [170.8, 44.9463, 130.8]
+      },
+      "note": "PQ-193.09 — SCN trade-hub overlay at donor origin on place_station_trade_hub. Existing overlay identity. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_station_trade_hub_scn_overlay_v01.glb."
+    },
+    {
       "id": "place_tally_post",
       "category": "places",
       "priority": "P2",
@@ -6004,6 +6073,120 @@
       "note": "M4-HELIOS-CIVILIAN-FLEET-BLENDER-001 — Helios Span, live Helios traffic role hauler; explicit LOD0/1/2, 8/8/8 draws, semantic 1K PBR maps, damageable drive/gun roles, stable sockets, no embedded plume. Project-original provenance: assets/ships/m4_helios_civilian/PROVENANCE.json."
     },
     {
+      "id": "wholeship_helios_span_dmc",
+      "assetId": "SF_WHOLESHIP_HELIOS_SPAN_DMC",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/helios_span_dmc.glb",
+      "tris": 50418,
+      "bytes": 26444624,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "Gun_Assembly"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-14.325, -2.3, -4.625],
+        "max": [14.15, 3.5606, 4.625],
+        "dimensionsM": [28.475, 5.8606, 9.25]
+      },
+      "note": "PQ-193.09 — live Helios Span carrying the DMC orebox faction kit. Donor hull is the accepted Span. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_helios_span_dmc_orebox_v01.glb."
+    },
+    {
+      "id": "wholeship_helios_span_mts",
+      "assetId": "SF_WHOLESHIP_HELIOS_SPAN_MTS",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/helios_span_mts.glb",
+      "tris": 47886,
+      "bytes": 26158436,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "Gun_Assembly"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-14.325, -2.3, -4.46],
+        "max": [14.15, 3.96, 4.46],
+        "dimensionsM": [28.475, 6.26, 8.92]
+      },
+      "note": "PQ-193.09 — live Helios Span carrying the MTS sealed faction kit. Donor hull is the accepted Span. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_helios_span_mts_sealed_v01.glb."
+    },
+    {
+      "id": "wholeship_helios_span_reach",
+      "assetId": "SF_WHOLESHIP_HELIOS_SPAN_REACH",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/helios_span_reach.glb",
+      "tris": 48154,
+      "bytes": 26226316,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Cyan",
+        "warm": "Material_Warm"
+      },
+      "hooks": [
+        "HOOK_DRIVE_CORE",
+        "HOOK_DRIVE_FAN",
+        "Gun_Assembly"
+      ],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-14.6625, -2.3, -4.46],
+        "max": [14.15, 3.2522, 4.46],
+        "dimensionsM": [28.8125, 5.5522, 8.92]
+      },
+      "note": "PQ-193.09 — live Helios Span carrying the Reach scrap faction kit. Donor hull is the accepted Span. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_helios_span_reach_scrap_v01.glb."
+    },
+    {
       "id": "wholeship_hornet_production_v1",
       "assetId": "SF_HORNET_PRODUCTION_V1",
       "category": "wholeships",
@@ -6992,6 +7175,126 @@
       "note": "Accepted production Wasp. New SpaceFace-authored fighter body with seven semantic material draws, authored 11.5k/7.7k/5.4k LODs, compact dark canopy, bounded tone-mapped twin drive apertures, no embedded plume, and exact first-party provenance at assets/ships/wasp_production_v1/PROVENANCE.json. Canonical public Shipyard -> Undock -> save -> Continue visual acceptance passed 2026-07-14; receipt: .devshots/alpha/m5-role-public-route-v2/evidence.json."
     },
     {
+      "id": "wholeship_wasp_free_militia",
+      "assetId": "SF_WASP_FREE_MILITIA",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/wasp_free_militia.glb",
+      "tris": 12994,
+      "bytes": 12916012,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-10, -1.38, -8.0818],
+        "max": [12, 2.3247, 8.0818],
+        "dimensionsM": [22, 3.7047, 16.1637]
+      },
+      "note": "PQ-193.09 — live Wasp carrying the Free militia faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_free_militia_v01.glb."
+    },
+    {
+      "id": "wholeship_wasp_mts_escort",
+      "assetId": "SF_WASP_MTS_ESCORT",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/wasp_mts_escort.glb",
+      "tris": 12974,
+      "bytes": 12851440,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-10, -1.38, -8.0818],
+        "max": [12, 4.8603, 8.0818],
+        "dimensionsM": [22, 6.2403, 16.1637]
+      },
+      "note": "PQ-193.09 — live Wasp carrying the MTS escort faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_mts_escort_v01.glb."
+    },
+    {
+      "id": "wholeship_wasp_scn_patrol",
+      "assetId": "SF_WASP_SCN_PATROL",
+      "category": "wholeships",
+      "priority": "P1",
+      "file": "wholeships/wasp_scn_patrol.glb",
+      "tris": 12126,
+      "bytes": 12846548,
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "dark": "Material_Armor",
+        "mechanical": "Material_Mechanical",
+        "accent": "Material_Accent",
+        "warning": "Material_Warning",
+        "canopy": "Material_Canopy",
+        "thruster": "Material_Thruster"
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Weapon_Front",
+        "SOCKET_Mining_Front",
+        "SOCKET_Engine_Main",
+        "SOCKET_Trail_Main",
+        "SOCKET_Trail_Port",
+        "SOCKET_Trail_Starboard",
+        "SOCKET_Utility_Dorsal",
+        "SOCKET_Cargo_Ventral",
+        "SOCKET_Camera_Focus",
+        "SOCKET_RCS_Port",
+        "SOCKET_RCS_Starboard"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [-10, -1.38, -8.0818],
+        "max": [12, 2.38, 8.0818],
+        "dimensionsM": [22, 3.76, 16.1637]
+      },
+      "note": "PQ-193.09 — live Wasp carrying the SCN patrol faction kit. Pirate Wasp slot untouched. Provenance: assets/ships/foundry/fleet_breadth_20260720/variants/var_wasp_scn_patrol_v01.glb."
+    },
+    {
       "id": "wholeship_yard_tug",
       "category": "wholeships",
       "priority": "P2",
@@ -7090,6 +7393,9 @@
       "wholeships/helios_lark.glb",
       "wholeships/helios_cradle.glb",
       "wholeships/helios_span.glb",
+      "wholeships/helios_span_dmc.glb",
+      "wholeships/helios_span_mts.glb",
+      "wholeships/helios_span_reach.glb",
       "wholeships/helios_arclight.glb",
       "wholeships/ore_barge.glb",
       "wholeships/repair_tender.glb",
@@ -7101,7 +7407,10 @@
       "wholeships/scrap_sweeper.glb",
       "wholeships/yard_tug.glb",
       "wholeships/inspection_cutter.glb",
-      "wholeships/apron_shuttle.glb"
+      "wholeships/apron_shuttle.glb",
+      "wholeships/wasp_free_militia.glb",
+      "wholeships/wasp_mts_escort.glb",
+      "wholeships/wasp_scn_patrol.glb"
     ],
     "cockpit": [
       "cockpits/cockpit_dome.glb",
@@ -7167,6 +7476,9 @@
       "places/place_asteroid_rock_c.glb",
       "places/place_asteroid_graffiti.glb",
       "places/place_station_trade_hub.glb",
+      "places/var_station_trade_hub_free_overlay_v01.glb",
+      "places/var_station_trade_hub_mts_overlay_v01.glb",
+      "places/var_station_trade_hub_scn_overlay_v01.glb",
       "places/place_station_refinery.glb",
       "places/place_station_military.glb",
       "places/place_station_blackmarket.glb",

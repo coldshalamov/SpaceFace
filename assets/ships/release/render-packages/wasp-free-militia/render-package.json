@@ -1,0 +1,4030 @@
+{
+  "anchors": [
+    {
+      "id": "sf.render.wasp-free-militia.anchor.socket-camera-focus",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.20000000298023224,
+        0.3499999940395355,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Camera_Focus",
+      "nodePath": [
+        0,
+        8
+      ],
+      "parentNodeId": "sf.render.wasp-free-militia.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0.20000000298023224,
+        0.3499999940395355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.anchor.socket-cargo-ventral",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.200000047683716,
+        -1.149999976158142,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Cargo_Ventral",
+      "nodePath": [
+        0,
+        9
+      ],
+      "parentNodeId": "sf.render.wasp-free-militia.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -2.200000047683716,
+        -1.149999976158142,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.anchor.socket-engine-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.699999809265137,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Engine_Main",
+      "nodePath": [
+        0,
+        10
+      ],
+      "parentNodeId": "sf.render.wasp-free-militia.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.699999809265137,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.anchor.socket-mining-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.3499999940395355,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Mining_Front",
+      "nodePath": [
+        0,
+        11
+      ],
+      "parentNodeId": "sf.render.wasp-free-militia.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.199999809265137,
+        -0.3499999940395355,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.anchor.socket-rcs-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.05000000074505806,
+        7,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Port",
+      "nodePath": [
+        0,
+        12
+      ],
+      "parentNodeId": "sf.render.wasp-free-militia.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.05000000074505806,
+        7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.anchor.socket-rcs-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.05000000074505806,
+        -7,
+        1
+      ],
+      "nodeName": "SOCKET_RCS_Starboard",
+      "nodePath": [
+        0,
+        13
+      ],
+      "parentNodeId": "sf.render.wasp-free-militia.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.7999999523162842,
+        0.05000000074505806,
+        -7,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.anchor.socket-trail-main",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10,
+        0,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Main",
+      "nodePath": [
+        0,
+        14
+      ],
+      "parentNodeId": "sf.render.wasp-free-militia.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -10,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.anchor.socket-trail-port",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.800000190734863,
+        0,
+        5.550000190734863,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Port",
+      "nodePath": [
+        0,
+        15
+      ],
+      "parentNodeId": "sf.render.wasp-free-militia.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.800000190734863,
+        0,
+        5.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.anchor.socket-trail-starboard",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.800000190734863,
+        0,
+        -5.550000190734863,
+        1
+      ],
+      "nodeName": "SOCKET_Trail_Starboard",
+      "nodePath": [
+        0,
+        16
+      ],
+      "parentNodeId": "sf.render.wasp-free-militia.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -9.800000190734863,
+        0,
+        -5.550000190734863,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.anchor.socket-utility-dorsal",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        1.5,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Utility_Dorsal",
+      "nodePath": [
+        0,
+        17
+      ],
+      "parentNodeId": "sf.render.wasp-free-militia.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        -1.100000023841858,
+        1.5,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.anchor.socket-weapon-front",
+      "kind": "socket",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.600000381469727,
+        0.10000000149011612,
+        0,
+        1
+      ],
+      "nodeName": "SOCKET_Weapon_Front",
+      "nodePath": [
+        0,
+        18
+      ],
+      "parentNodeId": "sf.render.wasp-free-militia.root",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        10.600000381469727,
+        0.10000000149011612,
+        0,
+        1
+      ]
+    }
+  ],
+  "assetId": "sf.render.wasp-free-militia",
+  "collisions": [
+    {
+      "id": "sf.render.wasp-free-militia.collision",
+      "nodeId": "sf.render.wasp-free-militia.mesh.collision-hull",
+      "reference": "COLLISION_HULL"
+    }
+  ],
+  "compiler": {
+    "name": "spaceface-render-package-compiler",
+    "version": "1.0.0"
+  },
+  "contentHash": "a20a0d7848c4ebad6675982f7f7d7bed51f2711823f8b4f9f82446fe20ccec3d",
+  "dynamicGroups": [],
+  "geometry": [
+    {
+      "bounds": {
+        "max": [
+          11.199999809265137,
+          1.1504791975021362,
+          7.500567436218262
+        ],
+        "min": [
+          -9.5,
+          -1.0504791736602783,
+          -7.500567436218262
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "b20f9ef691434fcb120b40aa73fa7e1112a87b0ffdcbf97b1c6ab28266985381",
+      "id": "sf.render.wasp-free-militia.mesh.collision-hull.primitive.0",
+      "indexCount": 66,
+      "indexed": true,
+      "materialHash": null,
+      "materialPipelineKey": "non-render",
+      "meshName": "COLLISION_HULL_MESH",
+      "nodeId": "sf.render.wasp-free-militia.mesh.collision-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 60
+    },
+    {
+      "bounds": {
+        "max": [
+          8.585378646850586,
+          1.459858775138855,
+          7.980170249938965
+        ],
+        "min": [
+          -8.07669448852539,
+          0.40014126896858215,
+          -7.980170249938965
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "62f37efb55a1e85080c66af4a55526d636d3586f81f5735d6fab1b71099ecba7",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-accent.primitive.0",
+      "indexCount": 2748,
+      "indexed": true,
+      "materialHash": "4d64569f5c61852ac37a98e25d81d08e5ae875111c151707218ac0249d0c0d68",
+      "materialPipelineKey": "opaque",
+      "meshName": "Nacelle_Strake_Port_Mesh",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-accent",
+      "primitiveIndex": 0,
+      "vertexCount": 732
+    },
+    {
+      "bounds": {
+        "max": [
+          7.800000190734863,
+          1.67002534866333,
+          1.1320704221725464
+        ],
+        "min": [
+          1.100000023841858,
+          0.6828247308731079,
+          -1.1320704221725464
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "dd0fb0dd05b62611e640d390b4a77209c0bf983f4ea1cb67aa90548f1f8ea97d",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-canopy.primitive.0",
+      "indexCount": 804,
+      "indexed": true,
+      "materialHash": "26b2563a632dabf7aaf34bb35246dc9d3a533731c3527b640fe000eccd1a6cac",
+      "materialPipelineKey": "blend",
+      "meshName": "Cockpit_Canopy_Mesh",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-canopy",
+      "primitiveIndex": 0,
+      "vertexCount": 206
+    },
+    {
+      "bounds": {
+        "max": [
+          8.939602851867676,
+          2.3196752071380615,
+          6.987220287322998
+        ],
+        "min": [
+          -9.699999809265137,
+          -1.0502092838287354,
+          -6.987220287322998
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "28bddfeacbc9bc7af681b44298e02299dacdf441a550d18a21419a5d851d81cf",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-hull-armor.primitive.0",
+      "indexCount": 9804,
+      "indexed": true,
+      "materialHash": "f3b706457d9e983795985b9fb8747a3e660482b805dddf7b60b047de12717515",
+      "materialPipelineKey": "opaque",
+      "meshName": "Dorsal_Hull_Armor_Spine_Mesh",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-hull-armor",
+      "primitiveIndex": 0,
+      "vertexCount": 2680
+    },
+    {
+      "bounds": {
+        "max": [
+          12,
+          1.2367321252822876,
+          8.081727981567383
+        ],
+        "min": [
+          -10,
+          -1.2367321252822876,
+          -8.081727981567383
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "5f55b25611868128e49f31b86ffaee0728c0d23d400fc109acaad92a85dd9714",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-hull.primitive.0",
+      "indexCount": 1956,
+      "indexed": true,
+      "materialHash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
+      "materialPipelineKey": "opaque",
+      "meshName": "Fuselage_Core_Mesh",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-hull",
+      "primitiveIndex": 0,
+      "vertexCount": 508
+    },
+    {
+      "bounds": {
+        "max": [
+          6.954329490661621,
+          1.650251030921936,
+          7.179970741271973
+        ],
+        "min": [
+          -9.639999389648438,
+          -1.3802510499954224,
+          -7.179970741271973
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c289a7d80fb317c71599433a5e3e07ebc878cb1085c6bfe65ce650ea2c6d1aa3",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-mechanical.primitive.0",
+      "indexCount": 16272,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "Ventral_Keel_Mesh",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-mechanical",
+      "primitiveIndex": 0,
+      "vertexCount": 4568
+    },
+    {
+      "bounds": {
+        "max": [
+          -9.629646301269531,
+          0.6299387812614441,
+          6.180000305175781
+        ],
+        "min": [
+          -9.75035285949707,
+          -0.6299387812614441,
+          -6.180000305175781
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e2291a3a57f07e247bf0ad7d36b96f77946c34907a2ac0ff6806b66152ff7cc1",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-thruster.primitive.0",
+      "indexCount": 2280,
+      "indexed": true,
+      "materialHash": "0f72a97d1a1da1a300b71938a46f30718907478ac1c010d1506bbecf0e22aee8",
+      "materialPipelineKey": "opaque",
+      "meshName": "Cylinder.001",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-thruster",
+      "primitiveIndex": 0,
+      "vertexCount": 544
+    },
+    {
+      "bounds": {
+        "max": [
+          -1.6499935388565063,
+          1.5624682903289795,
+          -2.3899998664855957
+        ],
+        "min": [
+          -1.950006365776062,
+          1.3024468421936035,
+          -2.809999942779541
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "85e90a6bb97000421862d65824cfc70b2bfd4d454baee2764268a12a1cef52d4",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp0.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_clamp0",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp0",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.049993570894002914,
+          2.3247478008270264,
+          -2.990000009536743
+        ],
+        "min": [
+          -0.35000646114349365,
+          2.0647265911102295,
+          -3.4100000858306885
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7ad4f8b9eb9869c21322b7fb77b5a086fda0ca7cd0ddd0c526bedb6a6d29ce8d",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp1.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_clamp1",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp1",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          2.350006341934204,
+          2.10156512260437,
+          -0.1900000125169754
+        ],
+        "min": [
+          2.0499937534332275,
+          1.8415436744689941,
+          -0.6100000143051147
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "3b1df3343e6b923c9221736d97ba5d6be5e7cbe127ba36b0525b145385904014",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp2.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_clamp2",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp2",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          5.691464424133301,
+          2.2722766399383545,
+          1.3958406448364258
+        ],
+        "min": [
+          -4.481604099273682,
+          0.8217752575874329,
+          -3.406771421432495
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "75df852fb338c131fc683cb80177b798878903ec0aa205efb5fd7b474bc5ee33",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-conduit.primitive.0",
+      "indexCount": 432,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_conduit",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-conduit",
+      "primitiveIndex": 0,
+      "vertexCount": 80
+    },
+    {
+      "bounds": {
+        "max": [
+          4.77755069732666,
+          1.4507029056549072,
+          -1.6429839134216309
+        ],
+        "min": [
+          4.022449493408203,
+          1.3306868076324463,
+          -2.1570160388946533
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "063e8849719b2f3f7fbb1fcebc70a97ee90e2a17b6a8d1d50ca5a0a0afdce0d8",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-light0.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_light0",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-light0",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.9438868165016174,
+          1.195072889328003,
+          2.548898696899414
+        ],
+        "min": [
+          -1.456113338470459,
+          1.0750787258148193,
+          2.251101493835449
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "afb70d74f5ce2a6551e439c45951b3faddf19d02fdc534831c1f349502863eb3",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-light1.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_light1",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-light1",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.306918144226074,
+          1.6999996900558472,
+          -0.8979814052581787
+        ],
+        "min": [
+          -3.8930816650390625,
+          1.5800014734268188,
+          -1.302018642425537
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "aaf2c34816b847ae87172769cbd649eda1142ef63ae5824043feac86cc9e2ae7",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-light2.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_light2",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-light2",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          3.2510342597961426,
+          1.2965126037597656,
+          -1.3732924461364746
+        ],
+        "min": [
+          1.1489659547805786,
+          0.8915851712226868,
+          -3.2267074584960938
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "c930ef304791dc74437b04fb2cdb4517244ea12263b7431db385587741d38a57",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-patch.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_patch",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-patch",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          6.188310146331787,
+          1.5240899324417114,
+          -0.7920610308647156
+        ],
+        "min": [
+          4.54169225692749,
+          0.8802424073219299,
+          -2.1190803050994873
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "173c2c6ae0142a5e4d60f0c92845c869bc207ff9ff156cb5c073301df0aaf4da",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate0.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_plate0",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate0",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          6.329477310180664,
+          0.9552706480026245,
+          -0.65086430311203
+        ],
+        "min": [
+          4.400525093078613,
+          0.8651720285415649,
+          -2.260277032852173
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "57cad6d07c39ca2283a1ea5bae66bcd00d4bba071ba4770a756b18ab6aa3606e",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate0.primitive.1",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_plate0",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate0",
+      "primitiveIndex": 1,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          4.223425388336182,
+          1.3763293027877808,
+          2.357513666152954
+        ],
+        "min": [
+          2.7544307708740234,
+          0.9143404364585876,
+          0.9432135224342346
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "43944576959534b345b0d931f78ac498c2233e79e1f305d1a0fe76c10b5af617",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate1.primitive.0",
+      "indexCount": 360,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_plate1",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate1",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    },
+    {
+      "bounds": {
+        "max": [
+          2.1259567737579346,
+          1.8345310688018799,
+          -0.010869883932173252
+        ],
+        "min": [
+          0.5387803912162781,
+          1.1507645845413208,
+          -1.5592823028564453
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9aec4f687005ac403093491bf042c00c34b3d128d1543a513014d0ec3f105aa8",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate2.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_plate2",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate2",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          2.283101797103882,
+          1.2257392406463623,
+          0.14627516269683838
+        ],
+        "min": [
+          0.3816353678703308,
+          1.135792851448059,
+          -1.7164273262023926
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9b33e0c303d076ff938c2c859f858b22c812d638cea9292d04b94d1a937274df",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate2.primitive.1",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_plate2",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate2",
+      "primitiveIndex": 1,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.13240693509578705,
+          1.583851933479309,
+          1.6047533750534058
+        ],
+        "min": [
+          -1.3572598695755005,
+          1.1496031284332275,
+          0.3189060389995575
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "7334f3b717253d8046067eba27aeb0a8d4409d4d116f2deb9e310f7aa522ab48",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate3.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_plate3",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate3",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          0.2763879895210266,
+          1.2245774269104004,
+          1.7488701343536377
+        ],
+        "min": [
+          -1.5012409687042236,
+          1.1346027851104736,
+          0.17478936910629272
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "9ca4c4557b7689373d6f0d57cbddd30f7e2ddcfbd5b69debfbbee5e74531c9df",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate3.primitive.1",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_plate3",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate3",
+      "primitiveIndex": 1,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.2176854610443115,
+          1.639523983001709,
+          -0.9455973505973816
+        ],
+        "min": [
+          -3.4972970485687256,
+          1.2284754514694214,
+          -2.05879282951355
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "66d7070be1df9ec2a9acad72ddd6f383cfe02efc5065d0d086d8e30adfebdd8f",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate4.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_plate4",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate4",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -2.0822622776031494,
+          1.3034502267837524,
+          -0.8101505637168884
+        ],
+        "min": [
+          -3.6327202320098877,
+          1.2134283781051636,
+          -2.194239616394043
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "d6774805cad4523595226d0294598e2fc2228fb782be72385576dff0639cf0da",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate4.primitive.1",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_plate4",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate4",
+      "primitiveIndex": 1,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.4280002117156982,
+          1.8615590333938599,
+          1.907548189163208
+        ],
+        "min": [
+          -5.131526947021484,
+          1.1657522916793823,
+          0.33076465129852295
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "e4f9ddb31c5b4748f648e820fdcf33bedcda0428279857632184581de55dee9a",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate5.primitive.0",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_plate5",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate5",
+      "primitiveIndex": 0,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          -3.27952241897583,
+          1.2408459186553955,
+          2.056025981903076
+        ],
+        "min": [
+          -5.280004978179932,
+          1.1508556604385376,
+          0.18228679895401
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "64e081a8738d415c17cb69c786f95b05328ca51a266fb01382df9ab11d362e8f",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate5.primitive.1",
+      "indexCount": 180,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_plate5",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate5",
+      "primitiveIndex": 1,
+      "vertexCount": 96
+    },
+    {
+      "bounds": {
+        "max": [
+          1.923081874847412,
+          1.8883179426193237,
+          -2.850008487701416
+        ],
+        "min": [
+          -1.7999999523162842,
+          0.7883344888687134,
+          -3.9499917030334473
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "6bf177d88b3da09dc7ed6a21666bf226b76bec2e96c57f7b153791fb9d86db62",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-pod.primitive.0",
+      "indexCount": 372,
+      "indexed": true,
+      "materialHash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "materialPipelineKey": "opaque",
+      "meshName": "LOD0_VAR_FREE_pod",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-var-free-pod",
+      "primitiveIndex": 0,
+      "vertexCount": 66
+    },
+    {
+      "bounds": {
+        "max": [
+          -0.610701322555542,
+          0.7798612713813782,
+          6.695919513702393
+        ],
+        "min": [
+          -2.4367682933807373,
+          0.6801387071609497,
+          -6.695919513702393
+        ]
+      },
+      "drawMode": 4,
+      "geometryHash": "128f297af86ea3a8927e09f7bf8306e1c78e297bd812be1e65f5747465dc791b",
+      "id": "sf.render.wasp-free-militia.mesh.lod0-warning.primitive.0",
+      "indexCount": 648,
+      "indexed": true,
+      "materialHash": "9149d0049faf5b8c879f41a334c2c0b982eb325d087c655e363dae44b3a4556c",
+      "materialPipelineKey": "opaque",
+      "meshName": "Wing_Warning_Port_Mesh",
+      "nodeId": "sf.render.wasp-free-militia.mesh.lod0-warning",
+      "primitiveIndex": 0,
+      "vertexCount": 192
+    }
+  ],
+  "hlods": [],
+  "kind": "ship",
+  "lods": [],
+  "materials": [
+    {
+      "hash": "0f72a97d1a1da1a300b71938a46f30718907478ac1c010d1506bbecf0e22aee8",
+      "id": "material:0f72a97d1a1da1a300b71938",
+      "name": "Material_Thruster",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "1afd8d4eb395d278d3722b9501c0900d63d3a577b3ed89a23442d397504aa923",
+      "id": "material:1afd8d4eb395d278d3722b95",
+      "name": "Material_Mechanical",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "mechanical_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mechanical_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mechanical_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "mechanical_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "26b2563a632dabf7aaf34bb35246dc9d3a533731c3527b640fe000eccd1a6cac",
+      "id": "material:26b2563a632dabf7aaf34bb3",
+      "name": "Material_Canopy",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "4d64569f5c61852ac37a98e25d81d08e5ae875111c151707218ac0249d0c0d68",
+      "id": "material:4d64569f5c61852ac37a98e2",
+      "name": "Material_Accent",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "frontier_cyan_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "frontier_cyan_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "frontier_cyan_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "frontier_cyan_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "9149d0049faf5b8c879f41a334c2c0b982eb325d087c655e363dae44b3a4556c",
+      "id": "material:9149d0049faf5b8c879f41a3",
+      "name": "Material_Warning",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "warning_orange_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warning_orange_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warning_orange_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "warning_orange_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "a4ce347ab65b87d412bb5b7650d3cfbc5a4e38ba63d073c96f233106a603a83a",
+      "id": "material:a4ce347ab65b87d412bb5b76",
+      "name": "Material_Hull",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "hull_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "hull_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    },
+    {
+      "hash": "ae1ee81b0e0eb81a22cf6f2db5fc2a360283fbbdd9515400ceb3e16a1567921e",
+      "id": "material:ae1ee81b0e0eb81a22cf6f2d",
+      "name": "KitMat_Emissive",
+      "pipelineKey": "opaque:double",
+      "textures": []
+    },
+    {
+      "hash": "f3b706457d9e983795985b9fb8747a3e660482b805dddf7b60b047de12717515",
+      "id": "material:f3b706457d9e983795985b9f",
+      "name": "Material_Armor",
+      "pipelineKey": "opaque:double",
+      "textures": [
+        {
+          "colorSpace": "srgb",
+          "name": "armor_dark_baseColor",
+          "slot": "baseColor",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "armor_dark_orm",
+          "slot": "metallicRoughness",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "armor_dark_normal",
+          "slot": "normal",
+          "uri": null
+        },
+        {
+          "colorSpace": "linear",
+          "name": "armor_dark_orm",
+          "slot": "occlusion",
+          "uri": null
+        }
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sf.render.wasp-free-militia.mesh.collision-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "non-render",
+      "mergeBoundary": "COLLISION_HULL",
+      "nodeName": "COLLISION_HULL",
+      "nodePath": [
+        0,
+        0
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-accent",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Accent",
+      "nodeName": "LOD0_Accent",
+      "nodePath": [
+        0,
+        1
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-canopy",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "blend",
+      "mergeBoundary": "LOD0_Canopy",
+      "nodeName": "LOD0_Canopy",
+      "nodePath": [
+        0,
+        3
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-hull",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull",
+      "nodeName": "LOD0_Hull",
+      "nodePath": [
+        0,
+        4
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-hull-armor",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Hull_Armor",
+      "nodeName": "LOD0_Hull_Armor",
+      "nodePath": [
+        0,
+        2
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-mechanical",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Mechanical",
+      "nodeName": "LOD0_Mechanical",
+      "nodePath": [
+        0,
+        5
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-thruster",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Thruster",
+      "nodeName": "LOD0_Thruster",
+      "nodePath": [
+        0,
+        6
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_clamp0",
+      "nodeName": "LOD0_VAR_FREE_clamp0",
+      "nodePath": [
+        0,
+        27
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_clamp1",
+      "nodeName": "LOD0_VAR_FREE_clamp1",
+      "nodePath": [
+        0,
+        28
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_clamp2",
+      "nodeName": "LOD0_VAR_FREE_clamp2",
+      "nodePath": [
+        0,
+        29
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-conduit",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_conduit",
+      "nodeName": "LOD0_VAR_FREE_conduit",
+      "nodePath": [
+        0,
+        26
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-light0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_light0",
+      "nodeName": "LOD0_VAR_FREE_light0",
+      "nodePath": [
+        0,
+        31
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-light1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_light1",
+      "nodeName": "LOD0_VAR_FREE_light1",
+      "nodePath": [
+        0,
+        32
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-light2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_light2",
+      "nodeName": "LOD0_VAR_FREE_light2",
+      "nodePath": [
+        0,
+        33
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-patch",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_patch",
+      "nodeName": "LOD0_VAR_FREE_patch",
+      "nodePath": [
+        0,
+        30
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate0",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_plate0",
+      "nodeName": "LOD0_VAR_FREE_plate0",
+      "nodePath": [
+        0,
+        19
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate1",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_plate1",
+      "nodeName": "LOD0_VAR_FREE_plate1",
+      "nodePath": [
+        0,
+        20
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate2",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_plate2",
+      "nodeName": "LOD0_VAR_FREE_plate2",
+      "nodePath": [
+        0,
+        21
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate3",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_plate3",
+      "nodeName": "LOD0_VAR_FREE_plate3",
+      "nodePath": [
+        0,
+        22
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate4",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_plate4",
+      "nodeName": "LOD0_VAR_FREE_plate4",
+      "nodePath": [
+        0,
+        23
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-plate5",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_plate5",
+      "nodeName": "LOD0_VAR_FREE_plate5",
+      "nodePath": [
+        0,
+        24
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-var-free-pod",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_VAR_FREE_pod",
+      "nodeName": "LOD0_VAR_FREE_pod",
+      "nodePath": [
+        0,
+        25
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.mesh.lod0-warning",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "opaque",
+      "mergeBoundary": "LOD0_Warning",
+      "nodeName": "LOD0_Warning",
+      "nodePath": [
+        0,
+        7
+      ],
+      "parentId": "sf.render.wasp-free-militia.root",
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "id": "sf.render.wasp-free-militia.root",
+      "localTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      "materialPipelineKey": "root",
+      "mergeBoundary": "asset-root",
+      "nodeName": "WASP_FREE_MILITIA_ROOT",
+      "nodePath": [
+        0
+      ],
+      "parentId": null,
+      "role": "immutable",
+      "spatialClusterId": "sf.render.wasp-free-militia.body",
+      "worldTransform": [
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        1
+      ]
+    }
+  ],
+  "provenance": {
+    "semantics": {
+      "sha256": "c098f01d7974af1a3412dd100564761fe676318b1641c65d5f7afe3f3cfe8393"
+    },
+    "sourceGlb": {
+      "bytes": 13522868,
+      "sha256": "41e2a9ebc42a22a1772e8999262bde7aeb7c8fa41a669a469062dcf029cac235",
+      "uri": "wasp_free_militia.glb"
+    },
+    "sourceManifest": {
+      "bytes": 168394,
+      "sha256": "d7200721c99b6069204d939589aae9e55ccae5861bee5f7dcc97060e59e43d68",
+      "uri": "pilots.json"
+    }
+  },
+  "render": {
+    "bytes": 13755028,
+    "sha256": "0eec0d434ffe82fe9c18719f2ba751ac8eb32a5f6694019943ed0fc2f54bad71",
+    "uri": "render.glb"
+  },
+  "runtime": {
+    "bounds": {
+      "center": [
+        1,
+        0.472248375415802,
+        0
+      ],
+      "max": [
+        12,
+        2.3247478008270264,
+        8.081727981567383
+      ],
+      "min": [
+        -10,
+        -1.3802510499954224,
+        -8.081727981567383
+      ],
+      "size": [
+        22,
+        3.7049988508224487,
+        16.163455963134766
+      ]
+    },
+    "hidden": [
+      2
+    ],
+    "legacyPart": false,
+    "markers": [
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0.20000000298023224,
+          0.3499999940395355,
+          0,
+          1
+        ],
+        "name": "SOCKET_Camera_Focus",
+        "planIndex": 10,
+        "tags": {
+          "socket": true,
+          "socketRole": "camera"
+        },
+        "userData": {
+          "name": "SOCKET_Camera_Focus",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Camera_Focus",
+            "recordIds": [
+              "sf.render.wasp-free-militia.anchor.socket-camera-focus"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -2.200000047683716,
+          -1.149999976158142,
+          0,
+          1
+        ],
+        "name": "SOCKET_Cargo_Ventral",
+        "planIndex": 11,
+        "tags": {
+          "socket": true,
+          "socketRole": "cargo"
+        },
+        "userData": {
+          "name": "SOCKET_Cargo_Ventral",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Cargo_Ventral",
+            "recordIds": [
+              "sf.render.wasp-free-militia.anchor.socket-cargo-ventral"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -9.699999809265137,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Engine_Main",
+        "planIndex": 12,
+        "tags": {
+          "socket": true,
+          "socketRole": "engine"
+        },
+        "userData": {
+          "name": "SOCKET_Engine_Main",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Engine_Main",
+            "recordIds": [
+              "sf.render.wasp-free-militia.anchor.socket-engine-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.199999809265137,
+          -0.3499999940395355,
+          0,
+          1
+        ],
+        "name": "SOCKET_Mining_Front",
+        "planIndex": 13,
+        "tags": {
+          "socket": true,
+          "socketRole": "mining"
+        },
+        "userData": {
+          "name": "SOCKET_Mining_Front",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Mining_Front",
+            "recordIds": [
+              "sf.render.wasp-free-militia.anchor.socket-mining-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.7999999523162842,
+          0.05000000074505806,
+          7,
+          1
+        ],
+        "name": "SOCKET_RCS_Port",
+        "planIndex": 14,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Port",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Port",
+            "recordIds": [
+              "sf.render.wasp-free-militia.anchor.socket-rcs-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.7999999523162842,
+          0.05000000074505806,
+          -7,
+          1
+        ],
+        "name": "SOCKET_RCS_Starboard",
+        "planIndex": 15,
+        "tags": {
+          "socket": true,
+          "socketRole": "attachment"
+        },
+        "userData": {
+          "name": "SOCKET_RCS_Starboard",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_RCS_Starboard",
+            "recordIds": [
+              "sf.render.wasp-free-militia.anchor.socket-rcs-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -10,
+          0,
+          0,
+          1
+        ],
+        "name": "SOCKET_Trail_Main",
+        "planIndex": 16,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Main",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Main",
+            "recordIds": [
+              "sf.render.wasp-free-militia.anchor.socket-trail-main"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -9.800000190734863,
+          0,
+          5.550000190734863,
+          1
+        ],
+        "name": "SOCKET_Trail_Port",
+        "planIndex": 17,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Port",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Port",
+            "recordIds": [
+              "sf.render.wasp-free-militia.anchor.socket-trail-port"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -9.800000190734863,
+          0,
+          -5.550000190734863,
+          1
+        ],
+        "name": "SOCKET_Trail_Starboard",
+        "planIndex": 18,
+        "tags": {
+          "socket": true,
+          "socketRole": "vfx"
+        },
+        "userData": {
+          "name": "SOCKET_Trail_Starboard",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Trail_Starboard",
+            "recordIds": [
+              "sf.render.wasp-free-militia.anchor.socket-trail-starboard"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          -1.100000023841858,
+          1.5,
+          0,
+          1
+        ],
+        "name": "SOCKET_Utility_Dorsal",
+        "planIndex": 19,
+        "tags": {
+          "socket": true,
+          "socketRole": "utility"
+        },
+        "userData": {
+          "name": "SOCKET_Utility_Dorsal",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Utility_Dorsal",
+            "recordIds": [
+              "sf.render.wasp-free-militia.anchor.socket-utility-dorsal"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      },
+      {
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          10.600000381469727,
+          0.10000000149011612,
+          0,
+          1
+        ],
+        "name": "SOCKET_Weapon_Front",
+        "planIndex": 20,
+        "tags": {
+          "socket": true,
+          "socketRole": "weapon"
+        },
+        "userData": {
+          "name": "SOCKET_Weapon_Front",
+          "socket": true,
+          "spaceface": {
+            "socket": true
+          },
+          "spacefaceRenderPackageSemantic": {
+            "rawNodeName": "SOCKET_Weapon_Front",
+            "recordIds": [
+              "sf.render.wasp-free-militia.anchor.socket-weapon-front"
+            ],
+            "schema": "spaceface.renderPackageSemantic.v1"
+          }
+        }
+      }
+    ],
+    "materialProfileRoles": {
+      "accent": 1,
+      "drive": 1,
+      "glass": 1,
+      "hull": 11,
+      "mechanical": 13,
+      "warning": 1
+    },
+    "materialProfiles": [
+      {
+        "allowTextures": false,
+        "planIndex": 2,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 3,
+        "role": "accent"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 4,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 5,
+        "role": "glass"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 6,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 7,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 8,
+        "role": "drive"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 9,
+        "role": "warning"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 22,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 23,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 24,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 26,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 27,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 29,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 30,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 32,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 33,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 35,
+        "role": "hull"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 36,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 37,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 38,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 39,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 40,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 41,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": true,
+        "planIndex": 42,
+        "role": "mechanical"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 43,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 44,
+        "role": "hull"
+      },
+      {
+        "allowTextures": false,
+        "planIndex": 45,
+        "role": "hull"
+      }
+    ],
+    "nodeCount": 46,
+    "primitives": [
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Accent",
+        "planIndex": 3,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull_Armor",
+        "planIndex": 4,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": true,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Canopy",
+        "planIndex": 5,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": true,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "none"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Hull",
+        "planIndex": 6,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "hull"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Mechanical",
+        "planIndex": 7,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "dark"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Thruster",
+        "planIndex": 8,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "thruster"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_Warning",
+        "planIndex": 9,
+        "tags": {
+          "bevelRadiusM": 0.025,
+          "canopy": false,
+          "chamfered": true,
+          "lod": "lod0",
+          "tint": "accent"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_plate0_1",
+        "planIndex": 22,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_plate0_2",
+        "planIndex": 23,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_plate1",
+        "planIndex": 24,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_plate2_1",
+        "planIndex": 26,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_plate2_2",
+        "planIndex": 27,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_plate3_1",
+        "planIndex": 29,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_plate3_2",
+        "planIndex": 30,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_plate4_1",
+        "planIndex": 32,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_plate4_2",
+        "planIndex": 33,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_plate5_1",
+        "planIndex": 35,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_plate5_2",
+        "planIndex": 36,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_pod",
+        "planIndex": 37,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_conduit",
+        "planIndex": 38,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_clamp0",
+        "planIndex": 39,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_clamp1",
+        "planIndex": 40,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_clamp2",
+        "planIndex": 41,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_patch",
+        "planIndex": 42,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_light0",
+        "planIndex": 43,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_light1",
+        "planIndex": 44,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      },
+      {
+        "canopy": false,
+        "matrix": [
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+          0,
+          0,
+          0,
+          1
+        ],
+        "name": "LOD0_VAR_FREE_light2",
+        "planIndex": 45,
+        "tags": {
+          "canopy": false,
+          "lod": "lod0"
+        }
+      }
+    ],
+    "schema": "spaceface.renderPackageRuntime.v1",
+    "slot": "hull",
+    "url": "assets/ships/release/parts/wholeships/wasp_free_militia.glb"
+  },
+  "runtimeHash": "977cd41c641c7cc731d754bf6120ef020fde167c8831b06fbd866511127c975f",
+  "schema": "spaceface.renderPackage.v1",
+  "spatialClusters": [
+    {
+      "bounds": {
+        "max": [
+          12,
+          2.3247478008270264,
+          8.081727981567383
+        ],
+        "min": [
+          -10,
+          -1.3802510499954224,
+          -8.081727981567383
+        ]
+      },
+      "id": "sf.render.wasp-free-militia.body",
+      "nodeIds": [
+        "sf.render.wasp-free-militia.mesh.collision-hull",
+        "sf.render.wasp-free-militia.mesh.lod0-accent",
+        "sf.render.wasp-free-militia.mesh.lod0-canopy",
+        "sf.render.wasp-free-militia.mesh.lod0-hull",
+        "sf.render.wasp-free-militia.mesh.lod0-hull-armor",
+        "sf.render.wasp-free-militia.mesh.lod0-mechanical",
+        "sf.render.wasp-free-militia.mesh.lod0-thruster",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp0",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp1",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-clamp2",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-conduit",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-light0",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-light1",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-light2",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-patch",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-plate0",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-plate1",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-plate2",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-plate3",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-plate4",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-plate5",
+        "sf.render.wasp-free-militia.mesh.lod0-var-free-pod",
+        "sf.render.wasp-free-militia.mesh.lod0-warning",
+        "sf.render.wasp-free-militia.root"
+      ]
+    }
+  ]
+}

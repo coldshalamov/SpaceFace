@@ -473,7 +473,7 @@
     "name": "spaceface-render-package-compiler",
     "version": "1.0.0"
   },
-  "contentHash": "a1da8a57ffe45715b1dcaebef05006c16493a8b65a87315f80f4ead7bcb26d78",
+  "contentHash": "f969670af37f2434deb1125eba12e68b745e94d4dfeff3f3facc27db851b609f",
   "dynamicGroups": [
     {
       "id": "sf.render.ashline-rig-corsair-blade.mesh.lod0-hook-drive-core.dynamic",
@@ -4369,14 +4369,14 @@
       "uri": "ashline_rig_corsair_blade.glb"
     },
     "sourceManifest": {
-      "bytes": 160994,
-      "sha256": "b4f172993c8061ef61618ebd0c95f2b932982ead09442a880d19be1da8aa2e15",
+      "bytes": 168394,
+      "sha256": "d7200721c99b6069204d939589aae9e55ccae5861bee5f7dcc97060e59e43d68",
       "uri": "pilots.json"
     }
   },
   "render": {
     "bytes": 8153892,
-    "sha256": "298f89f83c3e56ef4685e3751c40a25c028f96f0bee895cf90755abfa9b62140",
+    "sha256": "2fcdbaaa4cc7c9e101cca06d9bceb96ecfedb5be829cae52ffd73b8b92d8dbbe",
     "uri": "render.glb"
   },
   "runtime": {
@@ -6437,7 +6437,7 @@
     "slot": "hull",
     "url": "assets/ships/release/parts/wholeships/ashline_rig_corsair_blade.glb"
   },
-  "runtimeHash": "a01169fc57cad6eea326f11fc75e8bdeaac8d55bef9f318790919f71ec0e6f73",
+  "runtimeHash": "9fb460d85ba1dc4ca2f3bd4041e352dbb224c566eca8e98fd3b66dcf91ade2b6",
   "schema": "spaceface.renderPackage.v1",
   "spatialClusters": [
     {
