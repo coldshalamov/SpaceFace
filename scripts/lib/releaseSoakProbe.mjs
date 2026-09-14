@@ -304,17 +304,28 @@ export async function runReleaseSoakProbe({
     // baseline tag names. Re-driving ensureMarketOpen here would race the
     // post-trade button state, so just confirm docked and settle.
     assert.equal(await isDocked(page), true, 'warm-up cycle must finish docked for the baseline snapshot');
-    // The renderer's one-time post-cook producers (current-sector authored census and the
-    // spawnable archetype warm set) keep compiling and uploading into early flight by design.
-    // They are the same first-touch residency class as the warm-up cycle: the measured window
-    // opens only once they finish, so their GL work cannot read as steady-state frame cost.
+    // The renderer's post-cook producers keep compiling and uploading into early flight by
+    // design: the current-sector authored census, the spawnable archetype warm set, the
+    // authored-upgrade queue (boundary fetch+compile), the pipeline-admission lane, and the
+    // GPU-residency uploader. They are the same first-touch residency class as the warm-up
+    // cycle: the measured window opens only once they finish, so their GL work cannot read
+    // as steady-state frame cost — and a body still mid-admission at the baseline snapshot
+    // would otherwise land its programs between the retained-heap endpoints.
     // Bounded and recorded — a producer that never settles is itself a finding.
     const producerDrainStartedAt = Date.now();
     const producerDrain = await page.waitForFunction(() => {
       const render = window.SF?.state?.render;
       if (!render) return true;
       const pending = (value) => (typeof value === 'function' ? value() : value) === true;
-      return !pending(render.sectorPrewarmSettlePending) && !pending(render.archetypeWarmPending);
+      const positive = (value) => {
+        const read = typeof value === 'function' ? value() : value;
+        return Number.isFinite(read) && read > 0;
+      };
+      if (pending(render.sectorPrewarmSettlePending) || pending(render.archetypeWarmPending)) return false;
+      if (positive(render.pendingPipelineAdmissions) || positive(render.pendingAuthoredGpuResidency)) return false;
+      const lane = typeof render.sampleOpeningCookLane === 'function' ? render.sampleOpeningCookLane() : null;
+      if (lane && (lane.upgradeJobs > 0 || lane.upgradeInFlight > 0)) return false;
+      return true;
     }, null, { timeout: 180_000, polling: 500 }).then(() => 'settled').catch(() => 'timed-out');
     doLog(`producer drain before soak window: ${producerDrain} (${((Date.now() - producerDrainStartedAt) / 1000).toFixed(1)}s)`);
     await page.waitForTimeout(1_500);
@@ -713,15 +724,20 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
             // context sits inside its lost window are JS objects the driver never registered.
             // isContextLost() has no GL side effects, so it is safe to check per call.
             const lostNow = typeof this.isContextLost === 'function' && this.isContextLost() === true;
-            if (kind !== null || lostNow) {
+            const result = origGet.call(this, program, pname);
+            // Catch-all independent of handle bookkeeping: a successful getProgramParameter
+            // never returns undefined, so an undefined result IS the driver rejection —
+            // whatever classification the provenance sets missed.
+            if (kind !== null || lostNow || result === undefined) {
               console.warn('[gl-trace] getProgramParameter on invalid handle', {
                 t: Math.round(performance.now()),
-                kind: kind || 'live-handle-during-lost-context',
+                kind: kind || (lostNow ? 'live-handle-during-lost-context' : 'rejected-by-driver'),
                 pname,
+                resultUndefined: result === undefined,
                 stack: (new Error().stack || '').split('\n').slice(2, 10).join(' | '),
               });
             }
-            return origGet.call(this, program, pname);
+            return result;
           };
         }
       });
