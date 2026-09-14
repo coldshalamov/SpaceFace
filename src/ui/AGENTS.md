@@ -28,6 +28,14 @@ element is assembled from the produced kit under `assets/ui/kit/` (packet P21). 
 DOM layering (ARCHITECTURE §1.2): canvas z0 < vignette z5 < hud+receipts z10–11 < modal-backdrop z90
 < screens z100 < alerts z1100. `#ui-root` is `pointer-events:none`; interactive children opt in.
 
+## Seeing the UI before changing it
+
+`npm run ui:stills` captures the title, pause, HUD and other screens as PNGs into
+`.devshots/ui-stills/` in one boot (~2 min) with an index and a labeled contact sheet; `--set=` picks
+groups, `--only=` picks exact surfaces, `--world --headed` shoots over the live 3D picture. Look at
+the stills before judging or restyling a screen — the full matrix is `npm run capture:ui-matrix`, and
+layout measurement is `npm run check:ui:layout`.
+
 ## Verification
 
 `check:ui-a11y`, `check:wcag-contrast`, `check:ui:perf`, `check:player-facing-labels`,
