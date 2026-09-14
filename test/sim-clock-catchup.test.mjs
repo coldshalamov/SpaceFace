@@ -41,6 +41,27 @@ test('clock membership: table / near / calendar / glass', () => {
   assert.ok(CALENDAR_CLOCK_IDS.includes('barkDirector'));
 });
 
+test('selected AI backends retain their slot clock on catch-up steps', () => {
+  for (const name of ['ai', 'tacticalAI']) {
+    const ran = [];
+    const sim = createSimulation({
+      seed: 1,
+      systems: [stub(name, ran), stub('physics', ran), stub('flight', ran)],
+    });
+    sim.state.runtime = { profileId: 'production' };
+    sim.state.simCatchupIndex = 0;
+    sim.step(1 / 60);
+    assert.deepEqual(ran.map((row) => row.name), [name, 'physics', 'flight']);
+    ran.length = 0;
+    sim.state.simCatchupIndex = 1;
+    sim.step(1 / 60);
+    assert.deepEqual(ran.map((row) => row.name), ['physics', 'flight'], name);
+    assert.equal(getSystemClock(name), getSystemClock('aiSlot'));
+    assert.equal(shouldSkipSystemThisStep(name, sim.state), true);
+    sim.dispose();
+  }
+});
+
 test('createSimulation extra catch-up steps invoke table only', () => {
   const ran = [];
   const sim = createSimulation({

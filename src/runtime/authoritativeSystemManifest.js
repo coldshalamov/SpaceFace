@@ -172,7 +172,10 @@ for (const id of CALENDAR_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.CALENDAR);
 for (const id of NEAR_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.NEAR);
 
 export function getSystemClock(id) {
-  const mapped = CLOCK_BY_ID.get(id);
+  // Hosts partition instantiated systems by name, after resolving manifest slots. Both AI
+  // backends must retain aiSlot's near clock or every extra catch-up step repeats full AI.
+  const clockId = id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id;
+  const mapped = CLOCK_BY_ID.get(clockId);
   if (mapped) return mapped;
   const cap = SYSTEM_CAPABILITIES[id];
   const kind = cap && cap.capability;
