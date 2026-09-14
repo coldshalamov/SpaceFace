@@ -2899,7 +2899,7 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
           const key = String(program?.cacheKey || '');
           let h = 0x811c9dc5;
           for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
-          return `${String(program?.name || '?')}|${h.toString(36)}|${key.slice(-80)}`;
+          return `${String(program?.name || '?')}|${h.toString(36)}|${key.slice(0, 48)}|${key.slice(-80)}`;
         })
         : null,
       entities: finiteOrNull(state?.entityList?.length),
