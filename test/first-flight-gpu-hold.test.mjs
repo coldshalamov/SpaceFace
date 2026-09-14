@@ -113,6 +113,8 @@ test('intentional sector enter cooks the live next scene behind the jump shell',
   assert.match(renderer, /live-scene-cook-owns-next-sector/);
   assert.match(renderer, /collectFirstFlightLayerDrawables/);
   assert.match(renderer, /restLiveFlightEffectsAfterCook/);
+  // Rock instance pools are created by the post-cook registration loop; the cook admits them after it.
+  assert.match(renderer, /cook\.rockPools/);
   assert.match(renderer, /Nearby opening ships first-drew mule\/wasp LOD0/);
   assert.match(renderer, /entity.type === 'wreck'/);
   assert.match(renderer, /Leftover FX compiles \(entity:fx:77\/80\/81\) must finish behind the shell/);

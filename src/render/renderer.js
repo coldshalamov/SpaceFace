@@ -5568,7 +5568,39 @@ export const render = {
         data.geometryPending = false;
         data.spacefaceGeometryResident = true;
       }
-      return { skipped: false, liveScene: true, programs, present, buffers };
+      // Common rocks join their instance pools only in the registration loop above, after the compile
+      // and touch steps, so the pools did not exist when those steps ran and the instanced rock program
+      // linked on its first flight draw (2026-09-13, fresh install: 433-550 ms in the first seconds of
+      // flight). Admit the pools now, still behind the loading shell.
+      let rockPools = { skipped: true, reason: 'not-warming-first-flight-fx' };
+      if (warmFirstFlightFx && !cookOverBudget()) {
+        const rockPoolRoots = collectInstancePoolCompileRoots(scene).filter(isAsteroidInstancePoolRoot);
+        const rockPoolsStarted = cookNow();
+        if (rockPoolRoots.length > 0) {
+          const whileRevealed = (subject, run) => {
+            const restoreSubject = revealSubjectForCompile(subject);
+            try { return run(); } finally { restoreSubject(); }
+          };
+          try {
+            rockPools = await admitOpeningUnitsAcrossSlices({
+              units: uniqueAdmissionUnits(rockPoolRoots.flatMap((root) => collectCompileSubjects(root))),
+              beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
+              compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
+              touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
+              yieldToMain: typeof options.yieldToMain === 'function' ? options.yieldToMain : yieldToBrowser,
+            });
+          } catch (error) {
+            rockPools = { skipped: false, error: String(error && error.message || error) };
+          }
+        } else {
+          rockPools = { skipped: true, reason: 'no-asteroid-instance-pools' };
+        }
+        recordOpeningCookStep(state.render, 'cook.rockPools', rockPoolsStarted,
+          rockPools.skipped === true ? 'skipped' : (rockPools.error ? 'error' : 'resolved'), {
+            roots: rockPoolRoots.length,
+          });
+      }
+      return { skipped: false, liveScene: true, programs, present, buffers, rockPools };
     };
     state.render.prepareLiveSectorAfterJump = async (sector) => {
       if (state.mode !== 'flight') {

@@ -30,11 +30,11 @@ and after, one headed run at a time on a quiet machine. Headless or software-GPU
 | What you feel | Instrument | Morning | Final |
 |---|---|---|---|
 | Launch click to flying (second launch) | `node scripts/probe-main-thread-profile.mjs --from-launch --keep-profile=p0913a` | 32.2 s | 4.2 s (other quiet run 2.9 s); 5.6 s once the engine effects are built while loading (one run; cook 1.19 s -> 1.77 s) |
-| Launch click to flying (first launch) | same, fresh `--keep-profile` name | 34.7 s | not re-measured |
+| Launch click to flying (first launch) | same, fresh `--keep-profile` name | 34.7 s | 12.1 s with engine effects and rocks built while loading (fresh-install jump probe 12.4 s and 14.4 s; before those two changes 10.8-10.9 s) |
 | Long freezes while loading | same report, long tasks from Launch to flight | 24 tasks, 7.4 s in gpu-resources | 6 tasks, 667 ms in total, longest 198 ms |
-| Freeze as flight begins | same report, first 10 s of flight + `[GPU brick]` console line | 1.6-4.8 s, three ships still compiling | none in the first 10 s of a New Game, now with effects running (the earlier "none" was measured while effects were frozen). Crucible swarm: two or three 50-117 ms frames in the first half second (field markers and one material still build on first draw). Fresh install: one 433-550 ms freeze when the first rocks come into view |
+| Freeze as flight begins | same report, first 10 s of flight + `[GPU brick]` console line | 1.6-4.8 s, three ships still compiling | none in the first 10 s of a New Game, now with effects running (the earlier "none" was measured while effects were frozen). Crucible swarm: two or three 50-117 ms frames in the first half second (field markers and one material still build on first draw). Fresh install: the 433-550 ms freeze when the first rocks came into view is gone (the rock material now compiles while loading); opening flight 60 fps, worst frame 17-18 ms in two fresh-install runs |
 | Jump charge | `node scripts/probe-runtime-witness.mjs --sector-entry --no-sample-shots` | 8.3 s, 34 hitches, blocks up to 4.8 s | map to arrival 6 s, nothing over 77 ms (jump profile: the witness cannot click through uncommitted chart panels) |
-| Freeze 20 s into every run | instrumented jump and swarm probes (game time, hold flags and new programs per frame) | 600 ms the first time on a profile, 50-67 ms cached, 330-373 ms on a fresh install; no exhaust or tracers before it | none on a warm cache (no frame over 34 ms at the release); 67-100 ms frames on a fresh install; effects run from the first second |
+| Freeze 20 s into every run | instrumented jump and swarm probes (game time, hold flags and new programs per frame) | 600 ms the first time on a profile, 50-67 ms cached, 330-373 ms on a fresh install; no exhaust or tracers before it | none on a warm cache (no frame over 34 ms at the release); on a fresh install at most 83 ms, and no frame over 34 ms in the second run; effects run from the first second |
 | Busy scene (Ceres after the jump) | same witness, frame breakdown | presentation p95 10.6 ms | 0 long tasks in 8.1 s, main thread 56 % busy (jump profile); worst frame 67 ms with effects running (was 100 ms) |
 
 ## What the measurements showed
@@ -90,7 +90,10 @@ printed in the launch profile report). Read it first when loading regresses.
   building the engine effects while loading): effects had been frozen for the first 20 s of every New
   Game and Crucible run since `2ca4bc8e5`, and their release linked every lazily built effect program on
   one frame. After: no frame over 34 ms at the release on a warm cache, 67-100 ms frames on a fresh
-  install (was 330-373 ms), about half a second more loading behind the loading screen.
+  install (was 330-373 ms), about half a second more loading behind the loading screen. The instanced
+  rock material now compiles after the first rocks join their pools, still behind the loading screen:
+  the 433-550 ms freeze a few seconds into a fresh install's first flight is gone, for about 0.8 s more
+  loading on a fresh install.
 
 ## Answers to the owner's questions
 
@@ -139,7 +142,11 @@ owner-facing report page. None repeat the top 10.
    window (`2ca4bc8e5`). No exhaust, bolt tracers or particles were drawn. The engine fleet, plasma
    stream and retro jets did not exist until the release frame, which created them and linked their
    programs at once: 7 programs, 600 ms the first time on a profile and 50-67 ms once cached. The
-   shadow refresh on that frame took 4-6 ms.
+   shadow refresh on that frame took 4-6 ms. Fixed in `7cac23426` and `09a54187f`. The fresh-install
+   freeze when the first rocks come into view was a separate first draw, now compiled while loading.
+   Still open: the field marker meshes and one material in a Crucible run's first half second, and a
+   1.9 s stall on the loading screen of a fresh install. That stall is `forceContextLoss()` on the New Game
+   preview's WebGL context (`shipPreviewMount.js` dispose; about 0.2 s once the shader cache is warm).
 3. **Bake the ship when you refit it:** compose the template on `ship:appearanceChanged` while docked.
 4. **Persist baked ship templates between launches** (merged geometry in IndexedDB, keyed by loadout
    hash plus part-library and material ABI versions).
