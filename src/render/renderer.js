@@ -67,6 +67,7 @@ import {
   collectAsteroidInstancePoolRoots,
   createAsteroidInstancePool,
   disposeAsteroidInstancePool,
+  drainAsteroidInstancePoolAdmissions,
   invalidateAsteroidInstancePool,
   isBorrowedAsteroidInstanceResource,
   registerAsteroidBaseLeaf,
@@ -3673,6 +3674,7 @@ export const render = {
                 renderer,
                 light: this._keyLight,
                 camera: cam.obj,
+                scene,
                 subjects: [scene],
                 forceEnable: this._shadowSettingOn === true,
                 THREE,
@@ -3945,6 +3947,7 @@ export const render = {
           renderer,
           light: this._keyLight,
           camera: cam.obj,
+          scene,
           subjects: [],
           forceEnable: this._shadowSettingOn === true,
           THREE,
@@ -4198,9 +4201,11 @@ export const render = {
           meshes: this._meshes,
           bindPresentationMesh: (entity, boundary) => this._bindPresentationMesh(entity, boundary),
           unbindPresentationMesh: (id, boundary) => this._unbindPresentationMesh(id, boundary),
-          registerAsteroid: (entity, boundary) => (
-            registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, boundary)
-          ),
+          registerAsteroid: (entity, boundary) => {
+            const registered = registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, boundary);
+            if (registered) admitMintedAsteroidPoolChunks();
+            return registered;
+          },
           releaseAsteroid: (id) => releaseAsteroidInstancesForEntity(this._asteroidInstancePool, id),
           markShadowReceiversDirty: () => { this._markShadowReceiversDirty(); },
         });
@@ -4416,6 +4421,7 @@ export const render = {
             renderer,
             light: this._keyLight,
             camera: cam.obj,
+            scene,
             subjects: batch,
             forceEnable: false,
             THREE,
@@ -4539,6 +4545,16 @@ export const render = {
       if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
       return admitSubjectPipelines(subject);
     };
+    // A bucket mesh minted mid-flight is a scene-level InstancedMesh outside the entity root
+    // that triggered it — nothing compiles its instanced surface/depth variants unless we
+    // route it through the same admission the owner root just went through.
+    const admitMintedAsteroidPoolChunks = () => {
+      const minted = drainAsteroidInstancePoolAdmissions(this._asteroidInstancePool);
+      if (minted.length === 0) return;
+      const compile = state.render && state.render.compileObjectPipelines;
+      if (typeof compile !== 'function') return;
+      for (const mesh of minted) void compile(mesh);
+    };
     state.render.prepareAuthoredGpuResidency = (subject, options = {}) => {
       // Exact opening residency is prepared from the same flat leaves as exact pipeline admission.
       // Do not let every authored root enqueue a second texture walk while the loading shell is up.
@@ -4567,6 +4583,7 @@ export const render = {
         root.userData.geometryPending = false;
         root.userData.spacefaceGeometryResident = true;
         registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, root);
+        admitMintedAsteroidPoolChunks();
         this._persistentSubmitLanes.markDirty(entity.id, 'geometry-ready');
       },
       onError: (error, entity) => console.warn('[render] live geometry admission failed', entity.id, error),
@@ -4758,6 +4775,7 @@ export const render = {
       renderer,
       light: this._keyLight,
       camera: cam.obj,
+      scene,
       subjects,
       forceEnable: this._shadowSettingOn === true,
       THREE,
@@ -4778,6 +4796,7 @@ export const render = {
         renderer,
         light: this._keyLight,
         camera: cam.obj,
+        scene,
         subjects: [],
         forceEnable: this._shadowSettingOn === true,
         THREE,
@@ -5752,6 +5771,7 @@ export const render = {
         data.spacefaceGeometryResident = true;
         registerAsteroidBaseLeaf(this._asteroidInstancePool, entity, root);
       }
+      admitMintedAsteroidPoolChunks();
       for (const root of firstFlightBufferRoots) {
         if (!root) continue;
         const data = root.userData || (root.userData = {});
@@ -5914,6 +5934,7 @@ export const render = {
         renderer,
         light: this._keyLight,
         camera: cam.obj,
+        scene,
         subjects: [],
         forceEnable: this._shadowSettingOn === true,
         THREE,
@@ -6004,6 +6025,7 @@ export const render = {
         renderer,
         light: this._keyLight,
         camera: cam.obj,
+        scene,
         subjects: [...openingSubjects, ...lateCandidates],
         forceEnable: this._shadowSettingOn === true,
         THREE,
@@ -7761,6 +7783,13 @@ export const render = {
             }
             if (subject && subject.userData) subject.userData.pipelinesPending = false;
           });
+        }
+      }
+      if (typeof compileFn === 'function') {
+        // Bucket chunks minted by registerAsteroidBaseLeaf live on the scene outside `m`:
+        // without admission their first populated draw links the instanced depth variant.
+        for (const minted of drainAsteroidInstancePoolAdmissions(this._asteroidInstancePool)) {
+          void compileFn(minted);
         }
       }
       if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {

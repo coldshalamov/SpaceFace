@@ -47,6 +47,10 @@ export function createAsteroidInstancePool(scene) {
     scene,
     variants,
     byEntity: new Map(),
+    // Bucket meshes minted since the last drain. The renderer compiles each once so a
+    // variant that first registers mid-flight never links its instanced depth program
+    // inside a measured frame.
+    pendingAdmission: [],
     stats: {
       registered: 0,
       submitted: 0,
@@ -72,6 +76,13 @@ export function collectAsteroidInstancePoolRoots(pool) {
   return pool.variants
     .map((bucket) => bucket && bucket.mesh)
     .filter((mesh) => mesh && mesh.visible !== false && mesh.count > 0);
+}
+
+// Bucket meshes minted since the last drain — a new (geometry, material) instanced combo
+// needs its surface + shadow-depth variants compiled before its first populated draw.
+export function drainAsteroidInstancePoolAdmissions(pool) {
+  if (!pool || !Array.isArray(pool.pendingAdmission) || pool.pendingAdmission.length === 0) return [];
+  return pool.pendingAdmission.splice(0);
 }
 
 export function registerAsteroidBaseLeaf(pool, entity, ownerRoot) {
@@ -396,6 +407,7 @@ function ensureCapacity(pool, bucket, required) {
   bucket.capacity = capacity;
   pool.dirty = true;
   if (pool.scene) pool.scene.add(mesh);
+  if (Array.isArray(pool.pendingAdmission)) pool.pendingAdmission.push(mesh);
   bucket.dynamicBufferOwner = registerDynamicBufferOwner(pool.scene, {
     id: `common-rock-instances-v${bucket.variant}`,
     mesh,
