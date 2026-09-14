@@ -928,6 +928,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   const UNREADY_SCENE_CAP = 512;
   const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
   let unreadySceneCount = 0;
+  let unreadySceneGl = null;
+  let unreadySceneGeneration = 0;
 
   function hideUnreadySceneDrawables(scene) {
     unreadySceneCount = 0;
@@ -935,6 +937,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
       return;
     }
+    unreadySceneGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+    unreadySceneGeneration = contextLossGeneration(unreadySceneGl);
     scene.traverse(hideOneUnreadySceneDrawable);
   }
 
@@ -967,6 +971,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       return false;
     }
     if (!program || typeof program.isReady !== 'function') return false;
+    // A destroyed or dead-context program handle is not a valid isReady() target: the
+    // query lands on glGetProgramiv with an object the driver no longer recognises and
+    // logs a GL_INVALID_VALUE console warning per material per frame. Three recreates
+    // the program on the material's next real draw, so there is nothing to hide for.
+    if (programHandleInvalid(unreadySceneGl, program, unreadySceneGeneration)) return false;
     let ready = true;
     try { ready = program.isReady() === true; } catch (_) { ready = false; }
     if (ready) return false;
