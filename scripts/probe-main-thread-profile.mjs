@@ -22,6 +22,11 @@
 //   --keep-profile=NAME   reuse one named evidence profile instead of a fresh temporary one. The
 //                         first run is a cold start; a later run with the same NAME starts with the
 //                         GPU program cache and HTTP cache a returning player has.
+//   --launch-dwell-ms=N   with --from-launch, stay N ms on the New Game screen before clicking Launch,
+//                         as a player picking a ship does. Without it Launch is clicked at once, while
+//                         the stage hull may still be building its shaders. A diagnosis switch (it told
+//                         the preview's own shader links apart from the loading cook), never the
+//                         baseline for a before/after comparison.
 //   --drop-profile=NAME   delete that kept profile and exit
 //
 // Writes .devshots/main-thread-profile/[NAME/]{profile.cpuprofile,report.md,canvas-census.json}.
@@ -55,6 +60,7 @@ const safeName = (value, max) => String(value || '')
 const FROM_LAUNCH = process.argv.includes('--from-launch');
 const WINDOW_MS = Number(argValue('--ms') || process.env.SPACEFACE_PROFILE_MS || 20_000);
 const FLIGHT_TAIL_MS = Number(argValue('--flight-ms') || 10_000);
+const LAUNCH_DWELL_MS = Math.max(0, Number(argValue('--launch-dwell-ms')) || 0);
 const LABEL = safeName(argValue('--label'), 48);
 const KEEP_PROFILE = safeName(argValue('--keep-profile'), 40);
 const DROP_PROFILE = safeName(argValue('--drop-profile'), 40);
@@ -602,6 +608,11 @@ async function runLaunchProfile(page, cdp, profileNote) {
   const newGameWallMs = Date.now();
   await page.getByRole('button', { name: 'New Game', exact: true }).click({ timeout: 60_000 });
   log(`New Game seed ${FIXED_SEED}`);
+  if (LAUNCH_DWELL_MS > 0) {
+    await page.getByRole('button', { name: /^Launch$/i }).waitFor({ state: 'visible', timeout: 60_000 }).catch(() => {});
+    log(`staying ${LAUNCH_DWELL_MS} ms on the New Game screen before Launch`);
+    await page.waitForTimeout(LAUNCH_DWELL_MS);
+  }
   try {
     await page.getByRole('button', { name: /^Launch$/i }).click({ timeout: 60_000 });
   } catch {
