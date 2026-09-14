@@ -137,6 +137,7 @@ test('first-flight effect roots are the live plume, plasma, combat pools, and 47
       fn({ name: 'rcs-system:hitch_kestrel_rcs_impulse', userData: {} });
       fn({ name: 'sf-liquid-plasma-root', userData: {} });
       fn({ name: 'sf-retro-volume-root', userData: {} });
+      fn({ name: 'sf-retro-jets-root', userData: {} });
       fn({ name: 'SF_RibbonTrail', userData: {} });
       fn({ name: 'Evidence_Spindle_47A', userData: {} });
       fn({ name: 'SF_VFX_ParticleShardStreaks', userData: {} });
@@ -158,6 +159,7 @@ test('first-flight effect roots are the live plume, plasma, combat pools, and 47
     'rcs-system:hitch_kestrel_rcs_impulse',
     'sf-liquid-plasma-root',
     'sf-retro-volume-root',
+    'sf-retro-jets-root',
     'SF_RibbonTrail',
     'Evidence_Spindle_47A',
     'SF_VFX_ParticleShardStreaks',

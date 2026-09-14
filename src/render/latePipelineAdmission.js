@@ -74,6 +74,9 @@ function isLiveFirstFlightEffect(object) {
   if (data.continuousPlume === true) return true;
   if (name === 'sf-liquid-plasma-root') return true;
   if (name === 'sf-retro-volume-root' || name.startsWith('sf-retro-volume')) return true;
+  // PlayerRetroJets (the bow retro pair) roots as `sf-retro-jets-root`. The name test above missed it,
+  // so its two ShaderMaterial programs first linked mid-flight (swarm GPU brick, 2026-09-13).
+  if (name === 'sf-retro-jets-root') return true;
   if (name === 'SF_RibbonTrail') return true;
   if (name === 'Evidence_Spindle_47A') return true;
   if (name.startsWith('plume-system:')) return true;

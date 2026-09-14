@@ -5098,6 +5098,7 @@ export const render = {
           present: true,
           skipBuffers: true,
           holdLeftoverFx: true,
+          warmFirstFlightFx: true,
           yieldToMain: yieldLiveSectorGpu,
           deadlineMs: Math.min(20000, remainingMs()),
         });
@@ -5219,12 +5220,21 @@ export const render = {
       if (!scene.environment) this._bakeEnv({ force: true });
       // Same-sector F9 recook: plume/RCS/plasma already resident from New Game.
       // Walking them again compiled leftover FX and TDR'd Intel in gpu-resources.
+      // warmFirstFlightFx (New Game / Continue): keep the whole-scene compile and reveal held, but still
+      // build and compile the player's engine effects, retro jets and instanced rocks here. Held, they
+      // were first created in flight and linked synchronously on their first draw (2026-09-13: every
+      // run's first thrust, 330-600 ms per brick on a cold shader cache).
+      const warmFirstFlightFx = options.skipCompile !== true
+        && options.holdLeftoverFx === true
+        && options.warmFirstFlightFx === true;
       if (options.skipCompile !== true
-          && options.holdLeftoverFx !== true
+          && (options.holdLeftoverFx !== true || warmFirstFlightFx)
           && typeof state.render.warmupLiveFlightEffects === 'function') {
         state.render.warmupLiveFlightEffects();
       }
       const firstFlightRoots = collectFirstFlightEffectRoots(scene);
+      const isAsteroidInstancePoolRoot = (root) => !!(root && root.userData
+        && root.userData.asteroidInstancePool === true);
       const preparedRoots = collectPreparedAuthoredCompileRoots(scene);
       if (scene.environment) {
         bindEnvironmentToStandardMaterials(scene, scene.environment);
@@ -5301,15 +5311,21 @@ export const render = {
         // Opening hulls first so a time-capped cook still admits the player ship
         // before leftover FX. bloomScene was 3.9s/program on this box; touching
         // instance pools first left New Game stuck at gpu-resources 0.9.
-        const lateRoots = options.skipCompile === true || options.holdLeftoverFx === true
+        const lateRoots = options.skipCompile === true || (options.holdLeftoverFx === true && !warmFirstFlightFx)
           ? openingRoots
-          : [
-            ...openingRoots,
-            ...firstFlightRoots,
-            ...preparedRoots,
-            ...collectLateAdmittedCompileRoots(this._meshes, openingSubjects),
-            ...collectInstancePoolCompileRoots(scene),
-          ];
+          : warmFirstFlightFx
+            ? [
+              ...openingRoots,
+              ...firstFlightRoots,
+              ...collectInstancePoolCompileRoots(scene).filter(isAsteroidInstancePoolRoot),
+            ]
+            : [
+              ...openingRoots,
+              ...firstFlightRoots,
+              ...preparedRoots,
+              ...collectLateAdmittedCompileRoots(this._meshes, openingSubjects),
+              ...collectInstancePoolCompileRoots(scene),
+            ];
         const units = uniqueAdmissionUnits(lateRoots.flatMap((root) => collectCompileSubjects(root)));
         const touch = (subject) => (
           this.bloom && typeof this.bloom.touchScenePipelines === 'function'
@@ -5468,17 +5484,19 @@ export const render = {
           (this._meshes && this._meshes.get(entity.id)) || entity.mesh,
         );
       }
-      if (options.skipCompile !== true && options.holdLeftoverFx !== true) {
+      const bufferFirstFlightFx = options.skipCompile !== true
+        && (options.holdLeftoverFx !== true || warmFirstFlightFx);
+      if (bufferFirstFlightFx) {
         for (const root of collectInstancePoolCompileRoots(scene)) {
-          if (root && root.userData && root.userData.asteroidInstancePool === true) {
+          if (isAsteroidInstancePoolRoot(root)) {
             addFirstFlightBufferRoot(root);
           }
         }
       }
-      if (options.skipCompile !== true && options.holdLeftoverFx !== true) {
+      if (bufferFirstFlightFx) {
         for (const root of firstFlightRoots) addFirstFlightBufferRoot(root);
       }
-      const restoreFirstFlight = options.skipCompile === true || options.holdLeftoverFx === true
+      const restoreFirstFlight = !bufferFirstFlightFx
         ? []
         : firstFlightRoots.map((root) => revealSubjectForCompile(root));
       const buffersStarted = cookNow();

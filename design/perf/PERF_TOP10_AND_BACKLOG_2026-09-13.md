@@ -29,12 +29,13 @@ and after, one headed run at a time on a quiet machine. Headless or software-GPU
 
 | What you feel | Instrument | Morning | Final |
 |---|---|---|---|
-| Launch click to flying (second launch) | `node scripts/probe-main-thread-profile.mjs --from-launch --keep-profile=p0913a` | 32.2 s | 4.2 s (other quiet run 2.9 s) |
+| Launch click to flying (second launch) | `node scripts/probe-main-thread-profile.mjs --from-launch --keep-profile=p0913a` | 32.2 s | 4.2 s (other quiet run 2.9 s); 5.6 s once the engine effects are built while loading (one run; cook 1.19 s -> 1.77 s) |
 | Launch click to flying (first launch) | same, fresh `--keep-profile` name | 34.7 s | not re-measured |
 | Long freezes while loading | same report, long tasks from Launch to flight | 24 tasks, 7.4 s in gpu-resources | 6 tasks, 667 ms in total, longest 198 ms |
-| Freeze as flight begins | same report, first 10 s of flight + `[GPU brick]` console line | 1.6-4.8 s, three ships still compiling | none in the first 10 s; no GPU brick at flight start |
+| Freeze as flight begins | same report, first 10 s of flight + `[GPU brick]` console line | 1.6-4.8 s, three ships still compiling | none in the first 10 s of a New Game, now with effects running (the earlier "none" was measured while effects were frozen). Crucible swarm: two or three 50-117 ms frames in the first half second (field markers and one material still build on first draw). Fresh install: one 433-550 ms freeze when the first rocks come into view |
 | Jump charge | `node scripts/probe-runtime-witness.mjs --sector-entry --no-sample-shots` | 8.3 s, 34 hitches, blocks up to 4.8 s | map to arrival 6 s, nothing over 77 ms (jump profile: the witness cannot click through uncommitted chart panels) |
-| Busy scene (Ceres after the jump) | same witness, frame breakdown | presentation p95 10.6 ms | 0 long tasks in 8.1 s, main thread 56 % busy (jump profile) |
+| Freeze 20 s into every run | instrumented jump and swarm probes (game time, hold flags and new programs per frame) | 600 ms the first time on a profile, 50-67 ms cached, 330-373 ms on a fresh install; no exhaust or tracers before it | none on a warm cache (no frame over 34 ms at the release); 67-100 ms frames on a fresh install; effects run from the first second |
+| Busy scene (Ceres after the jump) | same witness, frame breakdown | presentation p95 10.6 ms | 0 long tasks in 8.1 s, main thread 56 % busy (jump profile); worst frame 67 ms with effects running (was 100 ms) |
 
 ## What the measurements showed
 
@@ -85,6 +86,11 @@ printed in the launch profile report). Read it first when loading regresses.
 - **Streamed render packages are verified in a worker** (`5332d0dac`): main-thread SHA-256 over a jump to Ceres and 8 s there, 218 ms -> 1 ms.
 - **The late-materials settle sweep shares frames while loading** (`66132abbe`): with shader log reads off, 49 stragglers settled in 260 ms instead of a frame per item.
 - **Lit objects draw while no shadow map exists yet** (vendored three, `2d4c8845c`): during the first 20 s of flight the renderer holds shadow refreshes, three bound its never-uploaded empty shadow texture (so the generic colour texture) to shadow samplers, and the driver rejected 3,811 of 5,612 draws, including every part of the player's ship; after the fix, 0 of 3,148 draws were rejected and the ship is drawn.
+- **Engine exhaust, weapon fire and particles run from the first second of flight** (`7cac23426`, and
+  building the engine effects while loading): effects had been frozen for the first 20 s of every New
+  Game and Crucible run since `2ca4bc8e5`, and their release linked every lazily built effect program on
+  one frame. After: no frame over 34 ms at the release on a warm cache, 67-100 ms frames on a fresh
+  install (was 330-373 ms), about half a second more loading behind the loading screen.
 
 ## Answers to the owner's questions
 
@@ -126,6 +132,14 @@ owner-facing report page. None repeat the top 10.
    did not change it (272 ms with, 289 ms without, 2026-09-13), so capture the brick's owners before
    choosing what to warm; loading and the jump cook still skip `warmupLiveFlightEffects`
    (`holdLeftoverFx`).
+   **Cause found (2026-09-13, late).** In the jump profile (arrival at game time 14.6 s) and in a
+   Crucible swarm, the freeze lands on the frame where game time reaches 20.00 s. Effects were frozen for the
+   first 20 s of every run: `vfx.update` and every effect spawn path read
+   `openingGraphPublicationFrozen`, which the first paint in flight keeps held through the first-flight
+   window (`2ca4bc8e5`). No exhaust, bolt tracers or particles were drawn. The engine fleet, plasma
+   stream and retro jets did not exist until the release frame, which created them and linked their
+   programs at once: 7 programs, 600 ms the first time on a profile and 50-67 ms once cached. The
+   shadow refresh on that frame took 4-6 ms.
 3. **Bake the ship when you refit it:** compose the template on `ship:appearanceChanged` while docked.
 4. **Persist baked ship templates between launches** (merged geometry in IndexedDB, keyed by loadout
    hash plus part-library and material ABI versions).
@@ -171,7 +185,8 @@ owner-facing report page. None repeat the top 10.
 31. **Free transcoded texture bytes from JavaScript memory** after upload.
 32. **Confirm KTX2 transcodes to BC7 on this GPU** (an RGBA32 fallback costs 4x memory and upload).
 33. **Stop deep-copying world records every simulation tick** (`ensureWorldRecords` renormalizes the
-    whole bag from `world.js`; grows with every sector visited).
+    whole bag from `world.js`; grows with every sector visited). Measured 174 ms of main thread in the
+    first 21 s of a run (about 0.14 ms per tick), before any sector visits add to the bag.
 34. **Remove the closure allocated on every event emit** (`eventBus.js`, ~1,700 emit sites).
 35. **Cache subsystem ordering** in `recomputeCombatantModifiers`.
 36. **Draw the radar cheaply in busy sectors:** two passes and a sort over every contact and asteroid
@@ -216,7 +231,10 @@ owner-facing report page. None repeat the top 10.
 67. **Remember the reduced-motion setting** instead of asking the browser for it on every HUD gauge
     animation step (`prefersReducedMotion` in `src/ui/effects/effectRuntime.js`, called from
     `gaugeSettle.js`; ~34 ms per 8 s at Ceres).
-68. **A/B the ANGLE backends on this GPU** (D3D11, D3D11-on-12, Vulkan) and ship the fastest.
+68. **A/B the ANGLE backends on this GPU** (D3D11, D3D11-on-12, Vulkan) and ship the fastest. A
+    standalone link probe (fresh browser profile, one standard material, 3 directional and 22 point
+    lights) measured programs ready in 329 ms on D3D11, 452 ms on D3D11-on-12 and 2 ms on Vulkan,
+    where the cost moves to the first draw (16 ms). The whole game on Vulkan is not measured yet.
 69. **Match Electron frame pacing to the browser route** (background throttling, vsync switches).
 70. **Guard the wins:** a zero-shader-links-after-first-frame check (from `perf:renderer-info`'s
     mid-flight compile detector), the scoreboard as one command, and a 20-minute soak whose resource
@@ -231,7 +249,14 @@ owner-facing report page. None repeat the top 10.
 75. Standard instead of physical (transmission, clearcoat) canopy material on distant NPCs.
 76. Single-sided effect quads where the winding is proven.
 77. An overdraw cap for screen-filling additive smoke and shards beyond the view.
-78. Fewer always-on effect point lights (six are baked into every lit shader).
+78. Fewer always-on effect point lights. Twenty-two are baked into every lit shader: 6 event lights in
+    `vfx.js` plus the 16-slot weapon light pool in `weapons/weaponLights.js`. A standalone link probe on
+    this GPU (D3D11, one standard material) measured 77 ms with 0 point lights, 119 ms with 6 and 329 ms
+    with 22. In a wave-1 Crucible swarm with effects running, the weapon pool used 0 lights at the median,
+    2 at the 90th percentile and 5 at most. An earlier "16 of 16 busy" reading was lights stuck on while
+    effects were frozen. Only standard and physical materials get cheaper; effect shaders do not. Next:
+    an occupancy check in a denser fight (wave 3+), then the owner's call on muzzle and impact lights
+    in big fights.
 79. A cheaper HDR bloom buffer format at half resolution where it looks identical.
 80. Far background planet impostors at 256².
 81. Speed lines drawn into a half-resolution canvas.
@@ -288,6 +313,9 @@ owner-facing report page. None repeat the top 10.
 - **Queuing engine-plume materials for compilation when ships of a new engine family spawn**
   (2026-09-13): the one-time bloomScene brick after a jump on a cold cache stayed (272 ms with, 289 ms
   without).
+- **The shadow map as the 20 s freeze** (2026-09-13): the first real shadow refresh after the
+  first-flight hold took 4-6 ms on the freeze frame. The freeze was effect programs created on that
+  frame (backlog item 2).
 
 ## Instruments
 

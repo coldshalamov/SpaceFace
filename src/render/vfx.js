@@ -11379,12 +11379,11 @@ export const vfx = {
   },
 
   restLiveFlightEffectsAfterCook() {
-    if (this._energy && this._energy.plasmaStream && typeof this._energy.plasmaStream.reset === 'function') {
-      this._energy.plasmaStream.reset();
-    }
-    if (this._energy && this._energy.retroVolume && typeof this._energy.retroVolume.reset === 'function') {
-      this._energy.retroVolume.reset();
-    }
+    // The loading warmup drives every family plume at full drive, fires each RCS family and walks the
+    // plasma nozzle so every layer has real buffers and programs. Return all of it (plasma, retro jets,
+    // every fleet plume and RCS family) to the hidden idle state before the first picture; flight
+    // re-lights whatever the ship actually commands.
+    if (this._energy) this._hideEnergyPlumes();
     return { skipped: false };
   },
 
