@@ -137,8 +137,8 @@ export function validateStationFrameSequence(frames, { minFrames = STATION_FRAME
     const undockAction = frame.undockAction && typeof frame.undockAction === 'object'
       ? frame.undockAction
       : {};
-    if (cleanText(undockAction.selector) !== 'button.st-undock') {
-      failures.push(`${label} did not retain the canonical Undock action identity button.st-undock`);
+    if (cleanText(undockAction.selector) !== 'button[data-act="undock"]') {
+      failures.push(`${label} did not retain the canonical Undock action identity button[data-act="undock"]`);
     }
     validateCountField(undockAction, 'canonicalMatchCount', `${label} canonical match count`, failures);
     if (Number.isInteger(undockAction.canonicalMatchCount) && undockAction.canonicalMatchCount !== 1) {
@@ -238,7 +238,7 @@ export function validateComputedUndockRoleProofs(proofs) {
   for (let index = 0; index < sequence.length; index += 1) {
     const proof = sequence[index];
     const label = `computed Undock proof ${index + 1} (${cleanText(proof.boundary) || 'missing boundary'})`;
-    if (cleanText(proof.selector) !== 'button.st-undock') failures.push(`${label} lost the canonical selector`);
+    if (cleanText(proof.selector) !== 'button[data-act="undock"]') failures.push(`${label} lost the canonical selector`);
     validateCountField(proof, 'canonicalCount', `${label} document-wide canonical count`, failures);
     validateCountField(proof, 'computedRoleCount', `${label} global computed role/name count`, failures);
     validateCountField(proof, 'identityBoundCount', `${label} identity-bound canonical role/name count`, failures);

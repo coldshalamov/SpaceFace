@@ -688,13 +688,13 @@ async function readApproachSnapshot(page) {
 export function observeStableStationFramesInPage({ maximumFrames }) {
   return new Promise((resolve) => {
     const frames = [];
-    const canonicalUndockSelector = 'button.st-undock';
+    const canonicalUndockSelector = 'button[data-act="undock"]';
     const sample = (frameTimestampMs) => {
       const state = window.SF?.state;
       const screen = document.querySelector('[data-screen="station"]');
       const overlay = document.querySelector('#sf-dock-overlay');
       const screenVisibility = visibilityOf(screen);
-      const visibleTabs = Array.from(screen?.querySelectorAll('[role="tab"][data-tab]') || [])
+      const visibleTabs = Array.from(screen?.querySelectorAll('[role="tab"][data-tab], [role="tab"][data-nav]') || [])
         .filter((tab) => visibilityOf(tab).visible);
       const undockMatches = Array.from(document.querySelectorAll(canonicalUndockSelector));
       const visibleUndockMatches = undockMatches.filter((candidate) => visibilityOf(candidate).visible);
@@ -714,7 +714,7 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
         stationId: state?.ui?.dockedStationId || null,
         screenVisible: screenVisibility.visible,
         screenRect: visibilityDiagnosticsOf(screenVisibility),
-        visibleTabLabels: visibleTabs.map((tab) => String(tab.textContent || tab.getAttribute('data-tab') || '').trim()),
+        visibleTabLabels: visibleTabs.map((tab) => String(tab.getAttribute('data-tab') || tab.getAttribute('data-nav') || tab.textContent || '').trim()),
         contentFingerprint: fingerprint(content),
         contentLength: content.length,
         contentPreview: content.slice(0, 240),
@@ -910,7 +910,7 @@ async function waitForStableStationHub(page, requiredObservations) {
 }
 
 async function readComputedUndockRoleProof(page, boundary) {
-  const canonicalUndock = page.locator('button.st-undock');
+  const canonicalUndock = page.locator('button[data-act="undock"]');
   const computedUndockRole = page.getByRole('button', { name: /\bundock\b/i });
   const identityBoundUndock = canonicalUndock.and(computedUndockRole);
   const [canonicalCount, computedRoleCount, identityBoundCount] = await Promise.all([
@@ -929,7 +929,7 @@ async function readComputedUndockRoleProof(page, boundary) {
     : '';
   return {
     boundary,
-    selector: 'button.st-undock',
+    selector: 'button[data-act="undock"]',
     canonicalCount,
     computedRoleCount,
     identityBoundCount,
@@ -943,6 +943,11 @@ async function clickWaypointWithPointer(page, locator) {
   const deadline = Date.now() + 10_000;
   let lastBox = null;
   while (Date.now() < deadline) {
+    // The inspector renders the button below the fold under the chart layer:
+    // Playwright reports it visible while elementFromPoint returns the overlay.
+    // scrollIntoViewIfNeeded lifts it into the inspector's clear band before we
+    // read the box, otherwise every pointer click lands on the covering screen.
+    await locator.scrollIntoViewIfNeeded().catch(() => {});
     lastBox = await locator.boundingBox().catch(() => null);
     if (lastBox && lastBox.width > 2 && lastBox.height > 2) {
       const x = Math.round(lastBox.x + lastBox.width / 2);
