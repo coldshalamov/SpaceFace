@@ -31,7 +31,7 @@ and after, one headed run at a time on a quiet machine. Headless or software-GPU
 |---|---|---|---|
 | Launch click to flying (second launch) | `node scripts/probe-main-thread-profile.mjs --from-launch --keep-profile=p0913a` | 32.2 s | 4.2 s (other quiet run 2.9 s); 5.6 s once the engine effects are built while loading (one run; cook 1.19 s -> 1.77 s) |
 | Launch click to flying (first launch) | same, fresh `--keep-profile` name | 34.7 s | 12.1 s with engine effects and rocks built while loading (fresh-install jump probe 12.4 s and 14.4 s; before those two changes 10.8-10.9 s) |
-| Long freezes while loading | same report, long tasks from Launch to flight | 24 tasks, 7.4 s in gpu-resources | 6 tasks, 667 ms in total, longest 198 ms |
+| Long freezes while loading | same report, long tasks from Launch to flight | 24 tasks, 7.4 s in gpu-resources | 6 tasks, 667 ms in total, longest 198 ms (second launch). First launch: longest 0.9 s and 2.7 s in total, from 1.9 s and 2.9 s, now that the New Game preview no longer loses its graphics context mid-link |
 | Freeze as flight begins | same report, first 10 s of flight + `[GPU brick]` console line | 1.6-4.8 s, three ships still compiling | none in the first 10 s of a New Game, now with effects running (the earlier "none" was measured while effects were frozen). Fresh install: the 433-550 ms freeze when the first rocks came into view is gone (the rock material now compiles while loading); opening flight 60 fps, worst frame 17-18 ms in two runs. Crucible: one 50 ms frame as the first picture appears, then 60 fps with a worst frame of 18 ms (was two or three 50-117 ms frames while the field markers compiled on first draw) |
 | Jump charge | `node scripts/probe-runtime-witness.mjs --sector-entry --no-sample-shots` | 8.3 s, 34 hitches, blocks up to 4.8 s | map to arrival 6 s, nothing over 77 ms (jump profile: the witness cannot click through uncommitted chart panels) |
 | Freeze 20 s into every run | instrumented jump and swarm probes (game time, hold flags and new programs per frame) | 600 ms the first time on a profile, 50-67 ms cached, 330-373 ms on a fresh install; no exhaust or tracers before it | none on a warm cache (no frame over 34 ms at the release); on a fresh install at most 83 ms, and no frame over 34 ms in the second run; effects run from the first second |
@@ -146,9 +146,12 @@ owner-facing report page. None repeat the top 10.
    freeze when the first rocks come into view was a separate first draw, now compiled while loading.
    The field marker meshes that a Crucible arena lights in its first half second now compile while
    loading as well; one 50 ms frame remains there, on the frame the first picture appears, with no
-   shader built in it. Still open: a 1.9 s stall on the loading screen of a fresh install. That stall is
-   `forceContextLoss()` on the New Game preview's WebGL context (`shipPreviewMount.js` dispose; about
-   0.2 s once the shader cache is warm).
+   shader built in it. The 1.9 s freeze on a fresh install's loading screen was `forceContextLoss()` on
+   the New Game preview's WebGL context while that context's own hull shaders were still linking: after a
+   15 s stay on New Game (`--launch-dwell-ms=15000`) the same release took 24 ms. The preview now stops
+   drawing at once and loses its context when its programs report ready (`previewContextRetire.js`).
+   On a fresh install that teardown took 11 ms and the longest freeze while loading went from 1.9 s to
+   0.9 s; on a warm cache it still costs about 0.2 s, later in loading.
 3. **Bake the ship when you refit it:** compose the template on `ship:appearanceChanged` while docked.
 4. **Persist baked ship templates between launches** (merged geometry in IndexedDB, keyed by loadout
    hash plus part-library and material ABI versions).
@@ -245,7 +248,8 @@ owner-facing report page. None repeat the top 10.
 68. **A/B the ANGLE backends on this GPU** (D3D11, D3D11-on-12, Vulkan) and ship the fastest. A
     standalone link probe (fresh browser profile, one standard material, 3 directional and 22 point
     lights) measured programs ready in 329 ms on D3D11, 452 ms on D3D11-on-12 and 2 ms on Vulkan,
-    where the cost moves to the first draw (16 ms). The whole game on Vulkan is not measured yet.
+    where the cost moves to the first draw (16 ms). The whole game on Vulkan measured worse; see
+    "Measured and ruled out".
 69. **Match Electron frame pacing to the browser route** (background throttling, vsync switches).
 70. **Guard the wins:** a zero-shader-links-after-first-frame check (from `perf:renderer-info`'s
     mid-flight compile detector), the scoreboard as one command, and a 20-minute soak whose resource
@@ -327,6 +331,15 @@ owner-facing report page. None repeat the top 10.
 - **The shadow map as the 20 s freeze** (2026-09-13): the first real shadow refresh after the
   first-flight hold took 4-6 ms on the freeze frame. The freeze was effect programs created on that
   frame (backlog item 2).
+- **Running the game on ANGLE's Vulkan backend** (backlog item 68; Crucible swarm probe, 2026-09-13).
+  With the driver's pipeline cache warm it was no better than D3D11: 59.8 fps, 5 dropped frames and a
+  worst frame of 33 ms, against 60.0 fps, none dropped and 18 ms. The first run on a profile was far
+  worse: 53.8 fps, 186 dropped frames, and freezes of 1.4 s, 617 ms and 533 ms while three ship hull
+  programs were built at their first draw, where no compile call made ahead of time reaches on
+  Vulkan. Startup also skipped the awaited shader cook on Vulkan (103 programs against 120, engine
+  effects absent when flight began), so a fair load comparison would first need that cook built for
+  a GPU path without parallel compile. The standalone probe's 2 ms program readiness on Vulkan only
+  moves the cost to the first draw.
 
 ## Instruments
 

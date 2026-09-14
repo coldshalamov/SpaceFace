@@ -17,6 +17,7 @@ import { WEAPONS } from '../data/weapons.js';
 import { MODULES } from '../data/modules.js';
 import { disposeAuthoredAssetRuntime, loadAuthoredPart } from '../render/assetLoader.js';
 import { compileScenePipelinesSafely } from '../render/compilePipelinesSafely.js';
+import { retireWhenProgramsReady } from './previewContextRetire.js';
 import { preloadAuthoredPartLibrary } from '../render/partsLibrary.js';
 import { isReleaseAssetMode } from '../render/releaseMode.js';
 import { yieldToBrowser } from '../render/startupGpuResidency.js';
@@ -1138,20 +1139,21 @@ export function createShipPreviewMount(canvas, opts) {
     }
   }
 
-  function dispose() {
-    disposed = true;
-    if (resizeObserver) resizeObserver.disconnect();
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = 0;
-    dockLoadGen++;
-    if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
-    dockBlueprint = null;
-    if (current) { scene.remove(current); current = null; }
-    for (const mesh of meshCache.values()) disposePreviewMesh(mesh);
-    meshCache.clear();
-    meshCacheOrder.length = 0;
-    disposeAuthoredAssetRuntime(renderer);
-    renderer.dispose();
+  // GPU teardown of a retired preview. Every draw path checks `disposed`, so the scene can stay
+  // assembled until the context's own shader links have finished.
+  function releaseGpu() {
+    try {
+      if (dockRoot) { scene.remove(dockRoot); dockRoot = null; }
+      dockBlueprint = null;
+      if (current) { scene.remove(current); current = null; }
+      for (const mesh of meshCache.values()) disposePreviewMesh(mesh);
+      meshCache.clear();
+      meshCacheOrder.length = 0;
+      disposeAuthoredAssetRuntime(renderer);
+      renderer.dispose();
+    } catch (error) {
+      console.warn('[shipPreview] teardown failed; losing the context anyway', error);
+    }
     // renderer.dispose() frees three's caches but leaves the WebGL context itself live on the
     // canvas. A cached screen keeps its element (and so the context) forever, which is how the
     // New Game stage measured hasGL:true five seconds into flight — exactly the second context
@@ -1159,6 +1161,24 @@ export function createShipPreviewMount(canvas, opts) {
     // reliable kill; every GPU resource of this context (hangar GLB upload included) dies with it.
     try { renderer.forceContextLoss(); } catch (_) {}
     try { canvas.width = 0; canvas.height = 0; } catch (_) {}
+  }
+
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    if (resizeObserver) resizeObserver.disconnect();
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0;
+    dockLoadGen++;
+    // Destroying programs or the context while this context's own links are still running waits for
+    // those links on the main thread (1.9 s on a fresh install's New Game loading screen), so the
+    // teardown runs when they report ready (previewContextRetire.js caps the wait). The programs are
+    // captured before any material disposal, which would destroy them.
+    retireWhenProgramsReady({
+      programs: renderer.info && renderer.info.programs,
+      parallelCompile: !!(renderer.extensions && renderer.extensions.has('KHR_parallel_shader_compile')),
+      finish: releaseGpu,
+    });
   }
 
   return {

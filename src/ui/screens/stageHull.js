@@ -134,9 +134,11 @@ export function createStageHull(stageEl, {
   }
   // Launch hands the stage to the loading shell for the whole load, but the mount's WebGL context
   // kept drifting, linking and uploading behind it until flight (profiled: 2.4 s of main thread in
-  // the drift renders alone during gpu-resources). release() disposes the mount, which force-loses
-  // the context, and takes its canvas off the stage. A lost context cannot be revived on the same
-  // canvas, so restore() builds a fresh canvas and mount when a failed start hands the screen back.
+  // the drift renders alone during gpu-resources). release() disposes the mount and takes its canvas
+  // off the stage; the mount stops drawing at once and force-loses the context when the context's own
+  // shaders have finished linking (losing it mid-link froze a fresh install's loading screen 1.9 s).
+  // A lost context cannot be revived on the same canvas, so restore() builds a fresh canvas and mount
+  // when a failed start hands the screen back.
   function release() {
     if (released) return false;
     released = true;
