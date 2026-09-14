@@ -2901,7 +2901,7 @@ const RENDER_STATE_REFERENCE_KEYS = Object.freeze([
   'openingSubmissionReady', 'openingSubmissionValidation', 'pipelinePrecompileReady',
   'firstPlayableContentHashes', 'firstPlayableContentHashesVerified',
   'firstPlayableGlobalProgramKeys', 'firstPlayableOpeningProgramKeys',
-  'firstPlayableResourceIdentitySets', 'openingGraphPublicationFrozen',
+  'firstPlayableResourceIdentitySets', 'openingGraphPublicationFrozen', 'openingVfxFrozen',
   'waitForOpeningGraphPublicationRelease', 'resetPostTelemetrySample',
 ]);
 
@@ -9541,6 +9541,11 @@ export function applyFirstPlayablePaintRelease(owner) {
 export function releaseOpeningMeshDefer(owner, mode, options = {}) {
   if (!owner) return owner;
   if (options.keepGraphFrozen !== true) releaseOpeningGraphPublication(owner);
+  // The VFX hold covers census -> first submit only. keepGraphFrozen keeps leftover authored
+  // publications held through the first-flight window; it must not also hold exhaust, weapon fire
+  // and particles (measured 2026-09-13: no plume or bolt tracers for 20 s, then every lazily built
+  // VFX resource created and linked on the single release frame).
+  if (owner.state && owner.state.render) owner.state.render.openingVfxFrozen = false;
   owner._deferNoncriticalMeshStreaming = false;
   if (owner.state && owner.state.render) owner.state.render.deferNoncriticalMeshStreaming = false;
   owner._meshReconcileDirty = true;
@@ -9560,6 +9565,7 @@ export function freezeOpeningGraphPublication(owner) {
   const gate = { promise, resolveRelease };
   owner._openingGraphPublicationGate = gate;
   owner.state.render.openingGraphPublicationFrozen = true;
+  owner.state.render.openingVfxFrozen = true;
   owner.state.render.waitForOpeningGraphPublicationRelease = () => gate.promise;
   return true;
 }
@@ -9571,6 +9577,7 @@ export function releaseOpeningGraphPublication(owner) {
   owner._openingGraphPublicationGate = null;
   if (owner.state && owner.state.render) {
     owner.state.render.openingGraphPublicationFrozen = false;
+    owner.state.render.openingVfxFrozen = false;
     owner.state.render.waitForOpeningGraphPublicationRelease = null;
   }
   if (!gate) return false;

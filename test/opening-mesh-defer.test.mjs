@@ -51,10 +51,13 @@ test('first-playable paint keeps leftover authored publications frozen through f
   let released = false;
   const waiting = owner.state.render.waitForOpeningGraphPublicationRelease().then(() => { released = true; });
   await Promise.resolve();
+  assert.equal(owner.state.render.openingVfxFrozen, true, 'VFX hold the exact census until first paint');
   applyFirstPlayablePaintRelease(owner);
   await Promise.resolve();
   assert.equal(released, false, 'leftover FX must not publish on first paint');
   assert.equal(owner.state.render.openingGraphPublicationFrozen, true);
+  assert.equal(owner.state.render.openingVfxFrozen, false,
+    'exhaust, weapon fire and particles resume at first paint while authored publication stays held');
   releaseOpeningMeshDefer(owner, 'flight');
   await waiting;
   assert.equal(released, true);
@@ -77,6 +80,7 @@ test('first-playable paint releases authored child publications frozen at the ex
   await waiting;
   assert.equal(released, true);
   assert.equal(owner.state.render.openingGraphPublicationFrozen, false);
+  assert.equal(owner.state.render.openingVfxFrozen, false);
   assert.equal(owner.state.render.waitForOpeningGraphPublicationRelease, null);
 });
 

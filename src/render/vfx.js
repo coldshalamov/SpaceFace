@@ -2214,7 +2214,7 @@ export const vfx = {
     x, z, vx, vz, life, size0, size1, c0, c1, drag, y, vy, trailAxis, trailStretch,
     admissionPriority,
   ) {
-    if (this.state?.render?.openingGraphPublicationFrozen === true) return null;
+    if (this.state?.render?.openingVfxFrozen === true) return null;
     if (!this._scene) return;
     assertDynamicBufferOwnerWritable(this._particleDynamicBufferOwner);
     const cap = this._cap;
@@ -2265,7 +2265,7 @@ export const vfx = {
     kind, x, y, z, life, size0, size1, op0, op1, color, vx, vz, aspect = 1, roll = null,
     admissionPriority,
   ) {
-    if (this.state?.render?.openingGraphPublicationFrozen === true) return null;
+    if (this.state?.render?.openingVfxFrozen === true) return null;
     if (!this._scene) return null;
     if (kind === SPR_FLASH || kind === SPR_COMBUSTION) {
       const authored = this._flashAccessibilityScratch;
@@ -2361,7 +2361,7 @@ export const vfx = {
   },
 
   _spawnTrailStreak(x, y, z, life, size0, size1, op0, color, vx, vz, admissionPriority) {
-    if (this.state?.render?.openingGraphPublicationFrozen === true) return null;
+    if (this.state?.render?.openingVfxFrozen === true) return null;
     if (!richEngineTrailsEnabled(this.state && this.state.settings && this.state.settings.video)) return null;
     if (!this._scene || !this._trailStreakPool) return null;
     const i = this._claimTrailStreak(admissionPriority);
@@ -2404,7 +2404,7 @@ export const vfx = {
     x, y, z, life, width, length, op0, color, vx, vz, axisX = null, axisZ = null,
     admissionPriority,
   ) {
-    if (this.state?.render?.openingGraphPublicationFrozen === true) return null;
+    if (this.state?.render?.openingVfxFrozen === true) return null;
     if (!this._scene || !this._trailStreakPool) return null;
     const i = this._claimTrailStreak(admissionPriority);
     if (i < 0) return null;
@@ -4634,7 +4634,7 @@ export const vfx = {
   _spawnArcadeStructuralBurst(req) {
     this._initArcadeStructural();
     if (!this._arcadeStructural || !req) return false;
-    if (this.state?.render?.openingGraphPublicationFrozen === true) return false;
+    if (this.state?.render?.openingVfxFrozen === true) return false;
     const x = req.x;
     const z = req.z;
     if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
@@ -10309,10 +10309,13 @@ export const vfx = {
       this._reassertPerfVfxRoots();
       return;
     }
-    if (this.state && this.state.render && this.state.render.openingGraphPublicationFrozen === true) {
+    if (this.state && this.state.render && this.state.render.openingVfxFrozen === true) {
       // The loading boundary already captured every VFX leaf active in the exact first picture.
       // Do not activate a motion/weapon/drive pool between that census and its first submit; the
-      // publication latch releases after paint and normal VFX cadence resumes on the next frame.
+      // VFX hold releases at first paint and normal VFX cadence resumes on the next frame.
+      // This is deliberately NOT openingGraphPublicationFrozen: that flag holds leftover authored
+      // publications through the whole first-flight window, and reading it here froze exhaust,
+      // bolt tracers and particles for the first 20 s of every run.
       // Exception: the Massline cable is already in the scene from init and is the taut-line
       // picture. Skipping it here left TWO_BODY swings with a live tether and a dark chord.
       this._syncFrameMembrane();
