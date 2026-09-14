@@ -3,6 +3,11 @@
 // bloomScene draw still links a depth program (~460 ms on Intel/ANGLE without parallel compile).
 import { revealSubjectForCompile } from './compilePresentSlice.js';
 
+// One shared scratch color-pass material for every staged shadow-depth render. A per-call material
+// would still link its (harmless, wrong-census) program once per context; sharing it keeps that to
+// one program for the renderer's lifetime — and it can never carry a caster's surface state.
+let shadowDepthColorOverride = null;
+
 export function collectShadowCastSubjects(roots) {
   const list = Array.isArray(roots) ? roots : [roots];
   const casting = [];
@@ -56,9 +61,11 @@ export function compileShadowDepthPipelines(options = {}) {
   // dereferences the renderer's CURRENT render state — null outside a live
   // renderer.render() call. Staging therefore has to be a real Scene rendered
   // through render(): that runs the exact same shadow pass production frames run
-  // (lights collected -> shadowMap.render -> depth programs) with valid state,
-  // and the staged color pass doubles as surface-variant admission for the
-  // casters under the real shadow-armed light key.
+  // (lights collected -> shadowMap.render -> depth programs) with valid state.
+  // The staged color pass must NOT draw caster materials: this staging scene's
+  // census (1 dir light, 0 point, no environment) differs from the live scene,
+  // so it would link surface variants no live draw ever uses — programs the
+  // soak's zero-growth contract then counts as late links.
   const staging = THREE && typeof THREE.Scene === 'function'
     ? new THREE.Scene()
     : null;
@@ -66,6 +73,15 @@ export function compileShadowDepthPipelines(options = {}) {
     return { skipped: true, reason: 'shadow depth compiler requires THREE.Scene staging', subjects: 0 };
   }
   staging.name = options.stagingName || 'SF_AdmissionShadowDepthPipelines';
+  // The staged render exists for WebGLShadowMap's depth/distance variants only. Its color pass
+  // would otherwise link every caster's surface material against the staging scene's light census
+  // (1 dir, 0 point, no environment) — variants the live scene never draws — adding programs the
+  // soak's zero-growth contract then counts. An override material confines the color pass to one
+  // shared scratch program; shadow depth materials still come from each caster's own material.
+  if (typeof THREE.MeshBasicMaterial === 'function') {
+    if (!shadowDepthColorOverride) shadowDepthColorOverride = new THREE.MeshBasicMaterial({ colorWrite: false });
+    staging.overrideMaterial = shadowDepthColorOverride;
+  }
   const homes = casting.map((root) => captureObjectHome(root));
   homes.push(captureObjectHome(light));
   if (light.target && typeof light.target === 'object') homes.push(captureObjectHome(light.target));
