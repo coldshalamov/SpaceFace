@@ -34,7 +34,8 @@ DOM layering (ARCHITECTURE §1.2): canvas z0 < vignette z5 < hud+receipts z10–
 `.devshots/ui-stills/` in one boot (~2 min) with an index and a labeled contact sheet; `--set=` picks
 groups, `--only=` picks exact surfaces, `--world --headed` shoots over the live 3D picture. Look at
 the stills before judging or restyling a screen — the full matrix is `npm run capture:ui-matrix`, and
-layout measurement is `npm run check:ui:layout`.
+layout measurement is `npm run check:ui:layout`. The look-first loop (judge, fix, re-shoot, three
+independent reviewers) is [`../../docs/UI_VISUAL_ITERATION.md`](../../docs/UI_VISUAL_ITERATION.md).
 
 ## Verification
 

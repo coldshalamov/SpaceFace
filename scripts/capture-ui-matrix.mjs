@@ -372,6 +372,11 @@ export async function captureUiMatrix(options = {}) {
   const fillMissingOnly = options.fillMissingOnly === true;
   const printTable = options.printTable !== false;
   const quiet = options.quiet === true;
+  // Capture hygiene: the dev route mounts its own tooling into <body> (the fixed stats-gl panel a
+  // few seconds after boot). A frame of the GAME must not photograph a probe's overlay as if it were
+  // player UI, so a caller can name selectors that are hidden for the whole capture. The reference
+  // matrix passes nothing and is unchanged.
+  const hideSelectors = options.hideSelectors || null;
   const filter = normalizeFrameFilter(options.filter || null);
   // The REST TWIN: a second screenshot of the same surface, taken one settle beat after the first,
   // through the same open. It is how this harness measures whether a surface was actually AT REST
@@ -443,6 +448,7 @@ export async function captureUiMatrix(options = {}) {
             baseUrl: server.baseUrl,
             viewport,
             locale: null,
+            hideSelectors,
             menuPhase: makeMenuPhaseCapture({ modes, outputDir, captures, failures, viewport, filter, restTwinDir, promoteReference, provenance }),
           });
         } catch (error) {
@@ -485,6 +491,7 @@ export async function captureUiMatrix(options = {}) {
             baseUrl: server.baseUrl,
             viewport,
             locale: PSEUDO_MODE.locale,
+            hideSelectors,
             menuPhase: makeMenuPhaseCapture({ modes: [PSEUDO_MODE], outputDir, captures, failures, viewport, filter, restTwinDir, promoteReference, provenance }),
           });
         } catch (error) {
@@ -546,7 +553,7 @@ export async function captureUiMatrix(options = {}) {
           const locale = needed[0].locale || null;
           let isolated = null;
           try {
-            isolated = await openBootWithRetry({ browser, baseUrl: server.baseUrl, viewport, locale });
+            isolated = await openBootWithRetry({ browser, baseUrl: server.baseUrl, viewport, locale, hideSelectors });
           } catch (error) {
             for (const mode of needed) {
               failures.push({ surface: surface.id, mode: mode.id, viewport, reason: `isolated boot failed: ${error.message}` });
@@ -1682,7 +1689,7 @@ async function firstVisibleHandle(page, selectors) {
  * and the new-game screens are on screen — that is the only moment those two surfaces exist, so
  * pre-launch capture and measurement hook in there rather than trying to reach them from flight.
  */
-export async function openBoot({ browser, baseUrl, viewport, locale = null, menuPhase = null }) {
+export async function openBoot({ browser, baseUrl, viewport, locale = null, menuPhase = null, hideSelectors = null }) {
   const context = await browser.newContext({
     viewport: { width: viewport.width, height: viewport.height },
     screen: { width: viewport.width, height: viewport.height },
@@ -1939,6 +1946,14 @@ export async function openBoot({ browser, baseUrl, viewport, locale = null, menu
     // established at the top of the boot rather than per surface. A `--world` review run keeps
     // the live picture: the hull, berth, chart or arena is the thing being reviewed.
     if (!WORLD_CAPTURE) await applyNeutralGround(page);
+    // Dev tooling that mounts into the document after boot (src/testing/perf/perfToolsBootstrap.js
+    // owns the fixed `#sf-stats-gl` panel). A named selector is hidden for the whole capture so a
+    // still shows the game, never the probe's own chrome.
+    if (Array.isArray(hideSelectors) && hideSelectors.length) {
+      await page.addStyleTag({
+        content: hideSelectors.map((selector) => `${selector} { display: none !important; }`).join('\n'),
+      });
+    }
     await page.waitForFunction(
       () => !!(window.SF && window.SF.state && window.SF.bus && window.SF.registry),
       null,

@@ -1577,6 +1577,11 @@ export function injectHudCss() {
   .sf-kit-radar .sf-radar {
     z-index:2; background:none; margin-top:var(--sf-kit-radar-rim);
   }
+  /* The objective key is an in-flow line under the dial, but the bezel and face are absolutely
+     positioned over the whole wrap and painted it out: only the two ends of the route readout
+     cleared the circle and the middle of the line was erased under the rim. It is the
+     instrument's bottom-lip legend, so it takes the dial's layer. */
+  .sf-radar-wrap.sf-kit-radar .sf-radar-objective-key { position:relative; z-index:2; }
   .sf-kit-radar__n {
     left:50%; top:8px; width:16px; height:10px; transform:translateX(-50%);
     background:url("assets/ui/kit/assets/radar/radar.n-lit.png") center / contain no-repeat;

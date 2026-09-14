@@ -93,6 +93,9 @@ try {
     world: args.world,
     quiet: false,
     printTable: false,
+    // The dev route installs its own stats panel into <body> a few seconds after boot; a review
+    // still is a picture of the game, so it is hidden for the whole capture.
+    hideSelectors: ['#sf-stats-gl'],
     filter: {
       surfaces: surfaceIds,
       modes: ['default'],
