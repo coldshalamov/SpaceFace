@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   DEFAULT_CYCLES,
   DEFAULT_VIEWPORT,
+  MAX_MIN_DURATION_MS,
   runReleaseSoakProbe,
 } from './releaseSoakProbe.mjs';
 import {
@@ -46,6 +47,8 @@ export function parseReleaseSoakArgs(argv, { runtime, root } = {}) {
     'flight-timeout-ms',
     'dock-timeout-ms',
     'cycle-timeout-ms',
+    'min-duration-ms',
+    'cycle-screenshots',
   ]);
   for (const name of values.keys()) {
     if (!supported.has(name)) throw new Error(`unknown argument: --${name}`);
@@ -71,7 +74,9 @@ export function parseReleaseSoakArgs(argv, { runtime, root } = {}) {
     taskIdExplicit: values.has('task-id'),
     flightTimeoutMs: readPositiveInteger(values, 'flight-timeout-ms', 150_000),
     dockTimeoutMs: readPositiveInteger(values, 'dock-timeout-ms', 90_000),
-    cycleTimeoutMs: readPositiveInteger(values, 'cycle-timeout-ms', 120_000),
+    cycleTimeoutMs: readPositiveInteger(values, 'cycle-timeout-ms', 300_000),
+    minDurationMs: readBoundedInteger(values, 'min-duration-ms', 0, MAX_MIN_DURATION_MS),
+    cycleScreenshots: readBoolean(values, 'cycle-screenshots', true),
   };
 }
 
@@ -406,6 +411,27 @@ function readPositiveInteger(values, name, fallback) {
   const value = Number(values.get(name));
   if (!Number.isSafeInteger(value) || value <= 0) throw new Error(`--${name} must be a positive integer`);
   return value;
+}
+
+function readNonNegativeInteger(values, name, fallback) {
+  if (!values.has(name)) return fallback;
+  const value = Number(values.get(name));
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`--${name} must be a non-negative integer`);
+  return value;
+}
+
+function readBoundedInteger(values, name, fallback, max) {
+  const value = readNonNegativeInteger(values, name, fallback);
+  if (value > max) throw new Error(`--${name} must be <= ${max}`);
+  return value;
+}
+
+function readBoolean(values, name, fallback) {
+  if (!values.has(name)) return fallback;
+  const value = String(values.get(name)).toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(value)) return true;
+  if (['0', 'false', 'no', 'off'].includes(value)) return false;
+  throw new Error(`--${name} must be 0/1 or true/false`);
 }
 
 function resolveContainedPath(root, candidate, label) {

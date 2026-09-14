@@ -68,12 +68,19 @@ import {
 } from './performanceScenarioDriver.mjs';
 import { PERFORMANCE_CLOSURE_ACCEPTANCE_SCHEMA } from './performanceFinalAcceptance.mjs';
 import {
+  evaluateMinSpecFloors,
+  loadMinSpec,
+} from './minSpecFloors.mjs';
+import {
   readConsumedClaimLedgerEntry,
   requireBrokerClaimOrDiagnostic,
 } from './validationBroker.mjs';
 
 export const DEFAULT_VIEWPORT = Object.freeze({ width: 1440, height: 900 });
 export const DEFAULT_CYCLES = Object.freeze({ browser: 2, electron: 2, local: 6 });
+// Six hours — the acceptance soak is two hours; the bound catches a dropped
+// or doubled digit in --min-duration-ms without forbidding a longer diagnostic.
+export const MAX_MIN_DURATION_MS = 6 * 60 * 60 * 1000;
 export const DYNAMIC_BUFFER_FULL_SPAN_VARIANT = 'dynamic_buffer_full_span';
 // Get-Process CPU time advances in scheduler-sized quanta on Windows, so a near-zero threshold
 // mistakes ordinary dormant desktop roots for foreground work. Sample long enough to average those
@@ -155,11 +162,20 @@ export async function runReleaseSoakProbe({
   taskId = `release-soak-${runtime}`,
   flightTimeoutMs = 150_000,
   dockTimeoutMs = 90_000,
-  cycleTimeoutMs = 120_000,
+  cycleTimeoutMs = 300_000,
+  minDurationMs = 0,
+  cycleScreenshots = true,
   log = () => {},
 } = {}) {
   assert(['browser', 'electron'].includes(runtime), 'runtime must be browser or electron');
   assert(Number.isInteger(cycles) && cycles > 0, 'cycles must be a positive integer');
+  assert(
+    Number.isInteger(minDurationMs) && minDurationMs >= 0 && minDurationMs <= MAX_MIN_DURATION_MS,
+    `minDurationMs must be an integer in [0, ${MAX_MIN_DURATION_MS}]`,
+  );
+  // Direct callers may pass 0/'0'/'false'; normalize so only an explicit
+  // off-value suppresses per-cycle screenshots.
+  const takeCycleScreenshots = ![false, 0, '0', 'false'].includes(cycleScreenshots);
   const authority = await authorizeReleaseSoak({
     root,
     runtime,
@@ -211,6 +227,13 @@ export async function runReleaseSoakProbe({
       doLog(`packaged startup ${packagedStartup.report.path} sha256=${packagedStartup.report.sha256}`);
     }
 
+    // Boot floor (PQ-033.02): player-visible launch -> main-menu wall time.
+    // Electron: host process launch -> menu. Browser: page navigation -> menu
+    // (navigationStartedAt below); the full harness-inclusive number is still
+    // emitted as bootToMenuMs for attribution.
+    const runtimeLaunchAt = Date.now();
+    let navigationStartedAt = null;
+
     if (runtime === 'browser') {
       ownedServer = await acquireVisualProbeServer({ root });
       assert.equal(ownedServer.ownsServer, true, 'browser soak must own its canonical in-process server');
@@ -219,6 +242,10 @@ export async function runReleaseSoakProbe({
       pageIssueTracker = collectPageIssues(page, { includeWarnings: true, ignoreProbeWarnings: true });
       canonicalUrlTracker = createCanonicalUrlTracker(page, rootUrl);
       await page.goto(rootUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
+      // Browser boot floor anchors at navigation start, not harness start: a web
+      // player's boot is page-load -> menu; the harness's own server spin-up and
+      // cold Chromium launch are measurement apparatus, not the game's boot.
+      navigationStartedAt = await page.evaluate(() => new Date(performance.timeOrigin).toISOString()).catch(() => null);
     } else {
       const launched = await launchElectron(root, (owned) => {
         electronApp = owned.electronApp;
@@ -260,25 +287,89 @@ export async function runReleaseSoakProbe({
     assert.equal(await isDocked(page), true, 'public route must finish docked for comparable retained-heap baseline');
     await ensureMarketOpen(page);
     await page.waitForTimeout(1_500);
-    const baselineMemory = await readPostGcMemorySnapshot(page, 'docked-market-start');
+    const baselineMemory = await withTimeout(
+      readPostGcMemorySnapshot(page, 'docked-market-start'),
+      30_000,
+      'release-soak baseline memory snapshot',
+    );
+
+    // The soak window opens after the public route lands docked on the market: every
+    // frame gap >50 ms from here to the controlled context loss is recorded with its
+    // transition tag so the floors checker can separate gameplay hitches from
+    // save/load rebuild spans without discarding either count.
+    const soakStartedAt = Date.now();
+    const soakThreshold = readMinSpecHitchThreshold(root);
+    await installSoakRecorder(page, { hitchThresholdMs: soakThreshold });
+    doLog(`soak window opened (hitch threshold ${soakThreshold} ms; cycles >=${cycles}${minDurationMs > 0 ? `, wall >=${minDurationMs} ms` : ''})`);
 
     const cycleResults = [];
     const memoryCheckpoints = [];
-    for (let index = 0; index < cycles; index += 1) {
-      const cycle = await withTimeout(
-        runSoakCycle(page, { index, outputDir, log: doLog }),
-        cycleTimeoutMs,
-        `release-soak cycle ${index}`,
-      );
-      cycleResults.push(cycle);
-      memoryCheckpoints.push(await readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`));
+    let index = 0;
+    while (index < cycles || Date.now() - soakStartedAt < minDurationMs) {
+      try {
+        const cycle = await withTimeout(
+          runSoakCycle(page, { index, outputDir, log: doLog, screenshots: takeCycleScreenshots }),
+          cycleTimeoutMs,
+          `release-soak cycle ${index}`,
+        );
+        cycleResults.push(cycle);
+      } catch (cycleError) {
+        // A dead cycle must carry the live state that killed it — a waitForFunction
+        // timeout alone says nothing about whether the world restored, the ship is
+        // wedged, or the page froze.
+        const diag = await page.evaluate(() => {
+          const state = window.SF?.state;
+          const player = (state?.entityList || []).find((e) => e?.id === state.playerId);
+          const stations = (state?.entityList || []).filter((e) => e?.type === 'station').map((e) => e?.data?.stationId || e?.id);
+          return {
+            mode: state?.mode || null,
+            sectorId: state?.world?.currentSectorId || null,
+            docked: state?.ui?.docked ?? null,
+            playerPos: player?.pos ? { x: Number(player.pos.x.toFixed(0)), z: Number(player.pos.z.toFixed(0)) } : null,
+            entityCount: state?.entityList?.length ?? null,
+            stations,
+            loadedSlot: window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot ?? null,
+            savedSlotWritten: !!localStorage.getItem('sf.save.quick'),
+            saveErrors: window.__M6_RELEASE_SOAK_EVENTS__?.errors || [],
+            dockInRange: state?.ui?.dockInRange ?? null,
+            dockDeny: state?.ui?.dockDeny || null,
+            fulfillmentBlackout: state?.ui?.fulfillmentBlackoutActive ?? null,
+            dockEvents: window.__M6_RELEASE_SOAK_EVENTS__?.dock || [],
+            activeElement: typeof document !== 'undefined' ? (document.activeElement?.tagName + '.' + (document.activeElement?.className || '')).slice(0, 120) : null,
+            navAutopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status } : null,
+            dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
+          };
+        }).catch(() => null);
+        cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)}`;
+        throw cycleError;
+      } finally {
+        // A cycle that throws mid-transition must not leave the tag armed — later
+        // gameplay hitches would be misfiled as transition spans and pass leniently.
+        await setSoakTransition(page, null);
+      }
+      memoryCheckpoints.push(await withTimeout(
+        readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`),
+        30_000,
+        `release-soak memory checkpoint ${index + 1}`,
+      ));
+      index += 1;
     }
+    doLog(`soak cycles complete: ${cycleResults.length} cycles in ${((Date.now() - soakStartedAt) / 60_000).toFixed(1)} min`);
 
     assert.equal(await isDocked(page), true, 'release-soak cycles must finish docked for comparable retained-heap evidence');
     await page.waitForTimeout(1_500);
-    const finalMemory = await readPostGcMemorySnapshot(page, 'docked-market-end');
+    const finalMemory = await withTimeout(
+      readPostGcMemorySnapshot(page, 'docked-market-end'),
+      30_000,
+      'release-soak final memory snapshot',
+    );
 
-    await undockForRecovery(page, doLog);
+    await setSoakTransition(page, 'undock');
+    try {
+      await undockForRecovery(page, doLog);
+    } finally {
+      await setSoakTransition(page, null, { settleMs: 3_000 });
+    }
     const flightWindow = await sampleRafWindow(page, {
       phaseTag: 'flight_steady',
       warmupMs: 5_000,
@@ -286,6 +377,9 @@ export async function runReleaseSoakProbe({
       enableGpuTimers: true,
     });
     const flightSamples = flightWindow.samples;
+    // Stop the soak recorder before the induced context loss so the deliberate
+    // WebGL teardown gap is not charged to the game.
+    const soakWindow = await stopSoakRecorder(page, { startedAt: soakStartedAt });
     const contextLoss = await probeWebGlContextLoss(page, { outputDir, log: doLog });
     const recoveryWindow = await sampleRafWindow(page, {
       phaseTag: 'context_recover_steady',
@@ -332,6 +426,7 @@ export async function runReleaseSoakProbe({
         'Rich attribution is one end-of-window snapshot (reset at window start) — not per-frame object churn.',
         'Save/load/dock/trade and the controlled context fault are lifecycle evidence, not steady-state frame samples.',
         'No quality settings or authored assets were changed.',
+        'Soak-window frames carry the hitch-attribution instrumentation tax (system timing, render work, and per-frame owner bookkeeping enabled for the whole window).',
       ],
     };
     const memory = buildMemoryEvidence(baselineMemory, finalMemory, memoryCheckpoints);
@@ -373,6 +468,34 @@ export async function runReleaseSoakProbe({
     const artifactValidation = await validateArtifactFiles(root, artifactDescriptors);
     checks.push({ name: 'artifact content integrity', status: artifactValidation.pass ? 'pass' : 'fail' });
 
+    const menuMark = routeResult?.steps?.find((step) => step?.name === 'main-menu-visible') || null;
+    const flightMark = routeResult?.steps?.find((step) => step?.name === 'authored-flight-ready') || null;
+    const bootStartAt = runtime === 'browser' && navigationStartedAt
+      ? Date.parse(navigationStartedAt)
+      : runtimeLaunchAt;
+    const boot = {
+      launchedAt: new Date(runtimeLaunchAt).toISOString(),
+      navigationStartedAt: navigationStartedAt ?? null,
+      menuVisibleAt: menuMark?.at ?? null,
+      bootToMenuMs: menuMark ? Date.parse(menuMark.at) - runtimeLaunchAt : null,
+      gameBootToMenuMs: menuMark ? Date.parse(menuMark.at) - bootStartAt : null,
+      flightReadyAt: flightMark?.at ?? null,
+      launchToFlightMs: flightMark ? Date.parse(flightMark.at) - runtimeLaunchAt : null,
+    };
+    const routeGpu = routeResult?.gpu || null;
+    const hardware = {
+      gpu: routeGpu ? {
+        vendor: routeGpu.runtimeGpu?.vendor || routeGpu.unmaskedVendor || null,
+        renderer: routeGpu.runtimeGpu?.renderer || routeGpu.unmaskedRenderer || null,
+        unmaskedVendor: routeGpu.unmaskedVendor || null,
+        unmaskedRenderer: routeGpu.unmaskedRenderer || null,
+        tier: routeGpu.runtimeGpu?.tier || null,
+        software: routeGpu.runtimeGpu?.software ?? null,
+        identity: routeGpu.identity || null,
+        classificationPass: routeGpu.classification?.pass === true,
+      } : null,
+    };
+
     const evidence = {
       schema: RELEASE_SOAK_SCHEMA,
       taskId,
@@ -381,7 +504,10 @@ export async function runReleaseSoakProbe({
       worktreeDigest: startFingerprint.digest,
       runtimeKind: runtime,
       mode,
-      cycles: { count: cycles, results: cycleResults.map((cycle) => cycle.summary) },
+      cycles: { count: cycleResults.length, results: cycleResults.map((cycle) => cycle.summary) },
+      boot,
+      hardware,
+      soakWindow,
       pass: false,
       primaryAcceptance: authority.primaryAcceptance,
       manifestId: authority.manifestId,
@@ -410,6 +536,9 @@ export async function runReleaseSoakProbe({
     validation.pass = validation.failures.length === 0;
     evidence.validation = { pass: validation.pass, failures: [...new Set(validation.failures)] };
     evidence.pass = evidence.validation.pass;
+    // Advisory only: check-min-spec-floors.mjs recomputes the floors from the raw
+    // fields above and never trusts this block.
+    evidence.floors = evaluateFloorsSafely(root, evidence);
     const evidencePath = path.join(outputDir, 'evidence.json');
     await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`, 'utf8');
     return {
@@ -688,17 +817,20 @@ export function cleanupIsolatedElectronProfile(isolatedLaunch, cleanupReport) {
   return true;
 }
 
-async function runSoakCycle(page, { index, outputDir, log }) {
+async function runSoakCycle(page, { index, outputDir, log, screenshots = true }) {
   const marks = [];
   const samples = [];
   const mark = (name, detail = {}) => {
     marks.push({ name, at: new Date().toISOString(), ...detail });
     log(`[cycle ${index}] ${name}`);
   };
+  const transition = async (name, opts) => setSoakTransition(page, name, opts);
 
   assert.equal(await isDocked(page), true, `cycle ${index} must start docked`);
+  await transition('undock');
   await publicUndockFromStation(page);
   mark('undock');
+  await transition(null, { settleMs: 2_500 });
 
   const beforeInput = await readPlayerSnapshot(page);
   await page.keyboard.down('KeyW');
@@ -711,11 +843,32 @@ async function runSoakCycle(page, { index, outputDir, log }) {
   await sampleDiagnostics(page, samples);
 
   await armSaveLoadObservers(page);
-  const savedEconomy = await readEconomySnapshot(page);
+  await transition('save-write');
   await page.keyboard.press('F5');
-  await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.saved === true && !!localStorage.getItem('sf.save.quick'), null, { timeout: 20_000 });
+  try {
+    await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.saved === true && !!localStorage.getItem('sf.save.quick'), null, { timeout: 20_000 });
+  } catch (saveWaitError) {
+    const diag = await page.evaluate(() => {
+      let storageBytes = 0;
+      try { for (let i = 0; i < localStorage.length; i += 1) storageBytes += (localStorage.getItem(localStorage.key(i)) || '').length; } catch { /* ignore */ }
+      const state = window.SF?.state;
+      return {
+        errors: window.__M6_RELEASE_SOAK_EVENTS__?.errors || [],
+        startedSnapshotCaptured: !!window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot,
+        storageBytes,
+        mode: state?.mode || null,
+        run: state?.run ? { kind: state.run.kind, phase: state.run.phase } : null,
+        docked: state?.ui?.docked ?? null,
+        playerId: state?.playerId || null,
+        hasPlayerEntity: !!(state?.entities?.get?.(state.playerId)),
+      };
+    }).catch(() => null);
+    throw new Error(`quick-save wait timed out: ${JSON.stringify(diag)} (cause: ${saveWaitError?.message || saveWaitError})`);
+  }
+  await transition(null);
   const saved = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null);
   assert(saved?.pos, 'save:started observer must capture the exact serialized player pose');
+  assert(saved?.economy, 'save:started observer must capture the serialized economy state');
   const saveCompletedPose = await readPlayerSnapshot(page);
   const savedStorage = await page.evaluate(() => ({ bytes: localStorage.getItem('sf.save.quick')?.length || 0, slot: window.SF?.state?.save?.currentSlot || null }));
   assert(savedStorage.bytes > 100, 'quick-save payload was not persisted');
@@ -726,23 +879,53 @@ async function runSoakCycle(page, { index, outputDir, log }) {
   await page.keyboard.up('KeyW');
   const diverged = await readPlayerSnapshot(page);
   assert(distance(saved.pos, diverged.pos) > 0.05 || Math.abs(saved.speed - diverged.speed) > 0.05, 'post-save state must diverge before load');
+  await transition('load-restore');
   await page.keyboard.press('F9');
   await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 90_000 });
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
+  const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);
   assert(loadedAtEvent?.pos, 'save:loaded observer must capture the exact restored player pose');
+  // F9 resolves 'latest' — a docking-triggered chunked autosave can land between the quick
+  // save and the quick load, and the public load then legitimately restores the autosave.
+  // The honest invariant is restore fidelity against the envelope that was actually loaded,
+  // not the quick slot specifically.
+  const loadedEnvelope = await page.evaluate((slot) => {
+    const raw = slot ? localStorage.getItem('sf.save.' + slot) : null;
+    if (!raw) return null;
+    try {
+      const env = JSON.parse(raw);
+      const player = env?.data?.entities?.player;
+      const items = env?.data?.cargo?.items || {};
+      return {
+        pos: player?.pos ? { x: Number(player.pos.x), z: Number(player.pos.z) } : null,
+        speed: Math.hypot(Number(player?.vel?.x || 0), Number(player?.vel?.z || 0)),
+        economy: {
+          credits: Number(env?.data?.player?.credits),
+          cargoItems: Object.fromEntries(Object.entries(items).sort(([a], [b]) => a.localeCompare(b))),
+        },
+      };
+    } catch { return null; }
+  }, loadedSlot);
+  const restoreReference = loadedSlot === 'quick' ? saved : loadedEnvelope;
+  assert(restoreReference?.pos, `loaded slot envelope must carry the restored pose (slot ${loadedSlot || 'unknown'})`);
   const loadedEconomy = await readEconomySnapshot(page);
   const divergedDistance = distance(saved.pos, diverged.pos);
-  const restoredDistance = distance(saved.pos, loadedAtEvent.pos);
+  const restoredDistance = distance(restoreReference.pos, loadedAtEvent.pos);
   const postLoadAdvanceDistance = distance(loadedAtEvent.pos, loaded.pos);
-  mark('load-observed', { saved, diverged, loadedAtEvent, loaded, divergedDistance, restoredDistance, postLoadAdvanceDistance });
+  mark('load-observed', { saved, loadedSlot, diverged, loadedAtEvent, loaded, divergedDistance, restoredDistance, postLoadAdvanceDistance });
   assert(
-    restoredDistance <= Math.max(1, divergedDistance * 0.25),
-    `load position restore exceeded tolerance: ${JSON.stringify({ restoredDistance, divergedDistance, saved, diverged, loaded })}`,
+    restoredDistance <= (loadedSlot === 'quick' ? Math.max(1, divergedDistance * 0.25) : 1),
+    `load position restore exceeded tolerance: ${JSON.stringify({ loadedSlot, restoredDistance, divergedDistance, saved, diverged, loaded })}`,
   );
-  assert(Math.abs(saved.speed - loadedAtEvent.speed) <= 2, `load speed restore exceeded tolerance: ${saved.speed} -> ${loadedAtEvent.speed}`);
-  mark('load-restored', { saved, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance });
-  assert.deepEqual(loadedEconomy, savedEconomy, 'credits and cargo must round-trip exactly through save/load');
+  assert(Math.abs(restoreReference.speed - loadedAtEvent.speed) <= 2, `load speed restore exceeded tolerance: ${restoreReference.speed} -> ${loadedAtEvent.speed}`);
+  mark('load-restored', { saved, loadedSlot, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance });
+  // The honest roundtrip check: live economy at the save:loaded event instant must equal
+  // the envelope that was loaded. The later readEconomySnapshot stays diagnostic-only —
+  // gameplay keeps running after restore and can legitimately grant cargo before it.
+  assert.deepEqual(loadedAtEvent.economy, restoreReference.economy, `credits and cargo must round-trip exactly through save/load (slot ${loadedSlot || 'unknown'})`);
+  const postEventDrift = { credits: loadedEconomy.credits - loadedAtEvent.economy.credits, cargoDelta: Object.keys(loadedEconomy.cargoItems).filter((k) => loadedEconomy.cargoItems[k] !== loadedAtEvent.economy.cargoItems[k]).map((k) => `${k}:${loadedAtEvent.economy.cargoItems[k] || 0}->${loadedEconomy.cargoItems[k]}`) };
+  if (postEventDrift.credits !== 0 || postEventDrift.cargoDelta.length) mark('post-load-economy-drift', postEventDrift);
   mark('economy-restored', { credits: loadedEconomy.credits, cargoKinds: Object.keys(loadedEconomy.cargoItems).length });
   await page.waitForFunction(() => {
     const state = window.SF?.state;
@@ -752,6 +935,7 @@ async function runSoakCycle(page, { index, outputDir, log }) {
       && state.entityList.some((entity) => entity?.type === 'station' && entity?.data?.stationId === 'station_helios');
   }, null, { timeout: 90_000 });
   mark('loaded-world-ready');
+  await transition(null, { settleMs: 3_000 });
   await sampleDiagnostics(page, samples);
 
   const dockPrompt = page.locator('.sf-alert--dock');
@@ -762,25 +946,91 @@ async function runSoakCycle(page, { index, outputDir, log }) {
   if (alreadyAtDockPrompt) {
     mark('redock-already-in-range');
   } else {
+    await transition('waypoint');
     await armHeliosWaypoint(page);
+    // 'Set Waypoint' must arm the local autopilot; if the click missed, the ship drifts
+    // on restored velocity and can wedge inside the station silhouette with no prompt.
+    const navArmed = await page.waitForFunction(() => {
+      const nav = window.SF?.state?.nav;
+      return nav?.autopilot?.active === true || nav?.waypoint != null;
+    }, null, { timeout: 8_000 }).then(() => true).catch(() => false);
+    assert(navArmed, 'redock waypoint did not arm nav.waypoint/autopilot — the ship would drift unpowered');
     mark('redock-waypoint');
+    await transition(null, { settleMs: 1_500 });
   }
-  await dockPrompt.waitFor({ state: 'visible', timeout: 90_000 });
+  const readDockDiag = () => page.evaluate(() => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId);
+    const dc = state?.dockingCorridor || null;
+    return {
+      pos: player?.pos ? { x: Number(player.pos.x.toFixed(1)), z: Number(player.pos.z.toFixed(1)) } : null,
+      speed: player?.vel ? Number(Math.hypot(player.vel.x, player.vel.z).toFixed(1)) : null,
+      autopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status, label: state.nav.autopilot.label } : null,
+      waypoint: state?.nav?.waypoint ? { kind: state.nav.waypoint.kind, label: state.nav.waypoint.label } : null,
+      corridor: dc ? { phase: dc.phase, distToBerth: dc.distToBerth, distCenter: dc.distCenter, inCorridor: dc.inCorridor, inCapture: dc.inCapture, headingOk: dc.headingOk } : null,
+    };
+  }).catch(() => null);
+  let dockPromptVisible = await dockPrompt.waitFor({ state: 'visible', timeout: 60_000 })
+    .then(() => true).catch(() => false);
+  if (!dockPromptVisible) {
+    const firstDiag = await readDockDiag();
+    // A player whose approach stalls re-issues the command. If the autopilot is not
+    // actively driving (disengaged to 'manual', or the arm click missed), re-arm the
+    // waypoint once and give the approach another window. A still-driving autopilot
+    // that never reaches the berth is a real wedge — fail with diagnostics.
+    if (firstDiag?.autopilot?.active !== true) {
+      mark('redock-rearm', firstDiag);
+      await armHeliosWaypoint(page);
+      dockPromptVisible = await dockPrompt.waitFor({ state: 'visible', timeout: 45_000 })
+        .then(() => true).catch(() => false);
+    }
+    if (!dockPromptVisible) {
+      const diag = await readDockDiag();
+      throw new Error(`dock prompt never appeared: ${JSON.stringify({ first: firstDiag, final: diag })}`);
+    }
+  }
+  // Docking is a player-initiated loading span (station interior mount) — tag it like
+  // save/load so the gameplay-hitch count stays honest about steady-state frames.
+  await transition('dock-mount');
   await page.keyboard.press('KeyE');
-  await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 });
+  let docked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 })
+    .then(() => true).catch(() => false);
+  if (!docked && await dockPrompt.isVisible().catch(() => false)) {
+    // A player with a live dock prompt and no response presses E again — one bounded
+    // retry, then the cycle fails with the gate state already captured upstream.
+    mark('dock-key-retry');
+    await page.keyboard.press('KeyE');
+    docked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 15_000 })
+      .then(() => true).catch(() => false);
+  }
+  assert(docked, 'dock key did not dock within the retry window');
   await page.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
   mark('docked');
 
   const marketTab = page.locator('[role="tab"]', { hasText: /market/i }).first();
   await marketTab.waitFor({ state: 'visible', timeout: 20_000 });
+  await transition('market');
   await marketTab.click();
   mark('market-opened');
   await page.waitForTimeout(500);
   const trade = await exerciseMarketRoundtrip(page);
   mark('trade-roundtrip', trade);
+  await transition(null, { settleMs: 1_500 });
   await sampleDiagnostics(page, samples);
-  const screenshot = `cycle-${String(index + 1).padStart(2, '0')}-market.png`;
-  await page.screenshot({ path: path.join(outputDir, screenshot), type: 'png', animations: 'disabled' });
+  // Per-cycle screenshots stall rAF for seconds on integrated GPUs (Playwright
+  // readback is measurement apparatus, not game work). Pause the hitch register
+  // around the readback so the stall is never billed to the game; floors runs
+  // additionally pass cycleScreenshots=false so the register sees game frames only.
+  let screenshot = null;
+  if (screenshots !== false) {
+    screenshot = `cycle-${String(index + 1).padStart(2, '0')}-market.png`;
+    await setSoakPaused(page, true);
+    try {
+      await page.screenshot({ path: path.join(outputDir, screenshot), type: 'png', animations: 'disabled' });
+    } finally {
+      await setSoakPaused(page, false);
+    }
+  }
 
   const markNames = marks.map((entry) => entry.name);
   return {
@@ -858,27 +1108,78 @@ async function armSaveLoadObservers(page) {
       loaded: false,
       saveStartedSnapshot: null,
       loadedSnapshot: null,
+      loadedSlot: null,
+      errors: [],
+      dock: [],
     };
-    window.SF.bus.once('save:started', () => {
+    // Persistent error tap (installed once): a save that fails never emits
+    // save:completed, so the cycle's wait would otherwise time out with no
+    // recorded reason.
+    if (!window.__M6_RELEASE_SOAK_ERROR_TAP__) {
+      window.__M6_RELEASE_SOAK_ERROR_TAP__ = true;
+      window.SF.bus.on('save:error', (payload) => {
+        const ev = window.__M6_RELEASE_SOAK_EVENTS__;
+        if (ev && ev.errors.length < 32) ev.errors.push({ slot: payload?.slot, reason: payload?.reason || payload?.failure || 'unknown', ok: payload?.ok });
+      });
+      // Dock seam taps: a berthed ship that refuses E is only diagnosable if the attempt
+      // and any denial were seen on the bus. The register is re-created each cycle, so the
+      // array is created lazily here.
+      const pushDock = (entry) => {
+        const ev = window.__M6_RELEASE_SOAK_EVENTS__;
+        if (!ev) return;
+        if (!Array.isArray(ev.dock)) ev.dock = [];
+        if (ev.dock.length < 32) ev.dock.push(entry);
+      };
+      window.SF.bus.on('dock:attempt', (p) => pushDock({ kind: 'attempt', stationId: p?.stationId || null }));
+      window.SF.bus.on('dock:denied', (p) => pushDock({ kind: 'denied', stationId: p?.stationId || null, reason: p?.reason || null }));
+      window.SF.bus.on('dock:range', (p) => pushDock({ kind: 'range', stationId: p?.stationId || null, inRange: !!p?.inRange }));
+    }
+    // Autosaves fire on the sim clock every 120 s and will interleave over a long
+    // soak; a one-shot observer bound to an autosave would snapshot the wrong write.
+    // Handlers re-arm until the manual (non-autosave) event arrives.
+    const onSaveStarted = (payload) => {
+      if (payload?.autosave === true) { window.SF.bus.once('save:started', onSaveStarted); return; }
       const state = window.SF?.state;
       const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
+      const items = state?.player?.cargo?.items || {};
       window.__M6_RELEASE_SOAK_EVENTS__.saveStartedSnapshot = player ? {
         tick: Number(state.tick),
         simTime: Number(state.simTime),
         pos: { x: Number(player.pos.x), z: Number(player.pos.z) },
         speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+        // The economy captured at save:started is what the save actually serializes;
+        // comparing load output to a pre-save snapshot races legitimate mid-flight
+        // cargo grants (deliveries, resupply) and produces false divergence.
+        economy: {
+          credits: Number(state?.player?.credits),
+          cargoItems: Object.fromEntries(Object.entries(items).sort(([a], [b]) => a.localeCompare(b))),
+        },
       } : null;
-    });
-    window.SF.bus.once('save:completed', () => { window.__M6_RELEASE_SOAK_EVENTS__.saved = true; });
-    window.SF.bus.once('save:loaded', () => {
+    };
+    window.SF.bus.once('save:started', onSaveStarted);
+    const onSaveCompleted = (payload) => {
+      if (payload?.autosave === true) { window.SF.bus.once('save:completed', onSaveCompleted); return; }
+      window.__M6_RELEASE_SOAK_EVENTS__.saved = true;
+    };
+    window.SF.bus.once('save:completed', onSaveCompleted);
+    window.SF.bus.once('save:loaded', (payload) => {
       const state = window.SF?.state;
       const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
+      const items = state?.player?.cargo?.items || {};
       window.__M6_RELEASE_SOAK_EVENTS__.loadedSnapshot = player ? {
         tick: Number(state.tick),
         simTime: Number(state.simTime),
         pos: { x: Number(player.pos.x), z: Number(player.pos.z) },
         speed: Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0)),
+        // Economy at the event instant — grants that land after restore but before the
+        // next probe read (resuming salvage drains, pickups, restore settlements) are
+        // legitimate in-flight mutations, not envelope corruption.
+        economy: {
+          credits: Number(state?.player?.credits),
+          cargoItems: Object.fromEntries(Object.entries(items).sort(([a], [b]) => a.localeCompare(b))),
+        },
       } : null;
+      window.__M6_RELEASE_SOAK_EVENTS__.loadedSlot = payload?.slot || null;
       window.__M6_RELEASE_SOAK_EVENTS__.loaded = true;
     });
   });
@@ -907,6 +1208,10 @@ async function clickWaypointWithPointer(page, locator) {
   const deadline = Date.now() + 10_000;
   let lastBox = null;
   while (Date.now() < deadline) {
+    // Same fix as alphaLiveBaselineRoute.clickWaypointWithPointer: the button is
+    // rendered under the chart layer until scrolled into the inspector's clear
+    // band; without this the raw pointer click hits the covering screen.
+    await locator.scrollIntoViewIfNeeded().catch(() => {});
     lastBox = await locator.boundingBox().catch(() => null);
     if (lastBox && lastBox.width > 2 && lastBox.height > 2) {
       const x = Math.round(lastBox.x + lastBox.width / 2);
@@ -926,76 +1231,114 @@ async function clickWaypointWithPointer(page, locator) {
 }
 
 async function exerciseMarketRoundtrip(page) {
+  // The live market is the orbital-command trade console (.sx-trade + data-mode segment buttons).
+  // The legacy .st-buy-btn/[data-trade-mode] shell no longer exists — one current-UI path only.
+  // Each roundtrip ends in Sell mode, which narrows the register to held cargo ("IN HOLD").
+  // After the load+redock the hold can be empty, which collapses the console into the
+  // HOLD_EMPTY data state — its public "Switch to Buy" verb is the designed way out.
+  const holdEmptyVerb = page.locator('.sf-state[data-sf-state="empty"] .sf-state__verb', { hasText: /switch to buy/i }).first();
+  if (await holdEmptyVerb.isVisible().catch(() => false)) await holdEmptyVerb.click();
   const activeTradeShell = page.locator('.sx-trade:visible').first();
-  const activeTradeAction = activeTradeShell.locator('.sx-trade__go[data-go]').first();
-  if (await activeTradeAction.isVisible().catch(() => false)) {
-    const buyMode = activeTradeShell.locator('button[data-mode="buy"]').first();
+  // Reset the public trade-mode control explicitly so cycle 2+ cannot time out looking for
+  // a hidden Buy action.
+  const buyMode = activeTradeShell.locator('button[data-mode="buy"]').first();
+  await buyMode.waitFor({ state: 'visible', timeout: 20_000 });
+  const ensureBuyMode = async () => {
     if (await buyMode.getAttribute('class').then((value) => !String(value || '').includes('is-on')).catch(() => true)) {
       await buyMode.click();
     }
-    const selectedCommodity = activeTradeShell.locator('[data-cmdty][role="tab"][aria-selected="true"]').first();
-    const commodityId = await selectedCommodity.getAttribute('data-cmdty');
-    assert(commodityId, 'active market selection must identify its commodity');
-    const before = await readTradeSnapshot(page, commodityId);
-    const buyButton = activeTradeShell.locator('.sx-trade__go[data-go]:not([disabled])').first();
-    await buyButton.waitFor({ state: 'visible', timeout: 20_000 });
-    await buyButton.click();
-    await page.waitForFunction(({ commodityId, credits, owned }) => {
-      const state = window.SF?.state;
-      return Number(state?.player?.credits) < credits
-        && Number(state?.player?.cargo?.items?.[commodityId] || 0) > owned;
-    }, before, { timeout: 20_000 });
-    const bought = await readTradeSnapshot(page, commodityId);
-
-    await activeTradeShell.locator('button[data-mode="sell"]').first().click();
-    const sellButton = activeTradeShell.locator('.sx-trade__go[data-go]:not([disabled])').first();
-    await sellButton.waitFor({ state: 'visible', timeout: 20_000 });
-    await sellButton.click();
-    await page.waitForFunction(({ commodityId, owned }) => Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) <= owned,
-      before, { timeout: 20_000 });
-    const sold = await readTradeSnapshot(page, commodityId);
-    assert.equal(sold.owned, before.owned, 'active market roundtrip must sell the purchased unit');
-    return { shell: 'orbital-command', commodityId, before, bought, sold };
+  };
+  await ensureBuyMode();
+  const sellMode = activeTradeShell.locator('button[data-mode="sell"]').first();
+  const tradeGo = activeTradeShell.locator('.sx-trade__go[data-go]:not([disabled])').first();
+  const qtyInput = activeTradeShell.locator('input.sx-qty__in').first();
+  const rows = page.locator('[data-cmdty][role="tab"]');
+  const selectRow = async (id) => {
+    const row = page.locator(`[data-cmdty="${id}"]`).first();
+    await row.waitFor({ state: 'visible', timeout: 10_000 });
+    if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') await row.click();
+  };
+  // Bound every trade to exactly one unit: the hold can carry freight of the same
+  // commodity, and Sell mode defaults qty to the whole held stack — selling the stack
+  // is not a roundtrip of the traded unit.
+  const commitTrade = async () => {
+    await qtyInput.fill('1');
+    await tradeGo.waitFor({ state: 'visible', timeout: 20_000 });
+    await tradeGo.click();
+  };
+  // market.js execute() emits ui:buy/ui:sell directly — there is no .sf-confirm
+  // dialog in the trade path, so waiting for one is dead time inside the tag.
+  // The commodity rows (.sx-mkt-row[data-cmdty]) live in the market table, not inside the
+  // .sx-trade trade panel — scope the query to the page. Not every row is buyable here
+  // (stock, credits, and hold space gate the live quote), so walk the register through
+  // public row clicks until the console offers an enabled buy action.
+  const rowCount = await rows.count().catch(() => 0);
+  let commodityId = null;
+  for (let i = 0; i < Math.min(rowCount, 12) && !commodityId; i++) {
+    const row = rows.nth(i);
+    if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') {
+      await row.click().catch(() => {});
+    }
+    const id = await row.getAttribute('data-cmdty').catch(() => null);
+    if (!id) continue;
+    const actionable = await tradeGo.waitFor({ state: 'visible', timeout: 1_500 }).then(() => true, () => false);
+    if (actionable) commodityId = id;
   }
-
-  // Each cycle leaves the market on Sell after completing the roundtrip. Reset the public
-  // trade-mode control explicitly so cycle 2+ cannot time out looking for a hidden Buy button.
-  const buyMode = page.locator('[data-trade-mode="buy"]').first();
-  await buyMode.waitFor({ state: 'visible', timeout: 20_000 });
-  await buyMode.click();
-  const buyButton = page.locator('.st-buy-btn:not([disabled])').first();
-  await buyButton.waitFor({ state: 'visible', timeout: 20_000 });
-  const commodityId = await buyButton.evaluate((button) => button.closest('[data-cmdty]')?.getAttribute('data-cmdty') || null);
-  assert(commodityId, 'market buy row must identify its commodity');
+  if (!commodityId) {
+    // In-flight pickups can run the hold full, leaving no buyable register row. Sell one
+    // unit of held cargo through Sell mode first, then buy the same unit back — still one
+    // public buy/sell roundtrip ending at the pre-cycle quantity.
+    await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
+    await sellMode.click();
+    const heldRow = rows.first();
+    await heldRow.waitFor({ state: 'visible', timeout: 10_000 });
+    commodityId = await heldRow.getAttribute('data-cmdty');
+    assert(commodityId, 'market register must offer a buyable row or held cargo to sell');
+    const before = await readTradeSnapshot(page, commodityId);
+    assert(before.owned > 0, 'sell-first roundtrip requires held cargo');
+    await commitTrade();
+    await page.waitForFunction(({ commodityId, owned }) =>
+      Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) < owned,
+      before, { timeout: 20_000 });
+    const mid = await readTradeSnapshot(page, commodityId);
+    assert.equal(mid.owned, before.owned - 1, 'sell-first roundtrip must sell exactly one unit');
+    await ensureBuyMode();
+    await selectRow(commodityId);
+    await commitTrade();
+    await page.waitForFunction(({ commodityId, owned }) =>
+      Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) >= owned,
+      before, { timeout: 20_000 });
+    const after = await readTradeSnapshot(page, commodityId);
+    assert.equal(after.owned, before.owned, 'market roundtrip must restore the sold unit');
+    return { shell: 'orbital-command', direction: 'sell-first', commodityId, before, mid, after };
+  }
   const before = await readTradeSnapshot(page, commodityId);
-  await buyButton.click();
-  const confirmBuy = page.locator('.sf-confirm__ok', { hasText: /^Buy$/ }).first();
-  const confirmAppeared = await confirmBuy.waitFor({ state: 'visible', timeout: 1_500 }).then(() => true, () => false);
-  if (confirmAppeared) await confirmBuy.click();
+  await commitTrade();
   await page.waitForFunction(({ commodityId, credits, owned }) => {
     const state = window.SF?.state;
     return Number(state?.player?.credits) < credits
       && Number(state?.player?.cargo?.items?.[commodityId] || 0) > owned;
   }, before, { timeout: 20_000 });
   const bought = await readTradeSnapshot(page, commodityId);
+  assert.equal(bought.owned, before.owned + 1, 'market roundtrip must buy exactly one unit');
 
-  await page.locator('[data-trade-mode="sell"]').click();
-  const row = page.locator(`[data-cmdty="${commodityId}"]`).first();
-  const sellButton = row.locator('.st-sell-btn:not([disabled])');
-  await sellButton.waitFor({ state: 'visible', timeout: 20_000 });
-  await sellButton.click();
+  await sellMode.click();
+  // Sell mode auto-selects the first held row and qty=heldQty — reselect the bought
+  // row through the public register and reset the quantity to the purchased unit.
+  await selectRow(commodityId);
+  await commitTrade();
   await page.waitForFunction(({ commodityId, owned }) => Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) <= owned,
     before, { timeout: 20_000 });
   const sold = await readTradeSnapshot(page, commodityId);
   assert.equal(sold.owned, before.owned, 'market roundtrip must sell the purchased unit');
-  return { commodityId, before, bought, sold };
+  return { shell: 'orbital-command', direction: 'buy-first', commodityId, before, bought, sold };
 }
 
 async function ensureMarketOpen(page) {
   const marketTab = page.locator('[role="tab"]', { hasText: /market/i }).first();
   await marketTab.waitFor({ state: 'visible', timeout: 20_000 });
   if (await marketTab.getAttribute('aria-selected') !== 'true') await marketTab.click();
-  await page.locator('.sx-trade:visible .sx-trade__go[data-go], .st-buy-btn').first().waitFor({ state: 'visible', timeout: 20_000 });
+  await page.locator('.sx-trade:visible .sx-trade__go').first().waitFor({ state: 'visible', timeout: 20_000 });
 }
 
 async function readTradeSnapshot(page, commodityId) {
@@ -1052,7 +1395,12 @@ async function probeWebGlContextLoss(page, { outputDir, log }) {
       && gl?.isContextLost?.() === false
       && data.authoredAssetState === 'authored'
       && data.authoredVisualRoot === 'authored-root'
-      && data.authoredReadableFallbackRetained === false;
+      && data.authoredReadableFallbackRetained === false
+      // The async restore rebuild (post-route recompile, PMREM re-bake) must be
+      // done too — sampling while contextRecovery.pending is still true would
+      // record the rebuild's own stalls as post-recovery steady-state.
+      && state?.render?.contextRecovery?.pending === false
+      && Number(state?.render?.contextRecovery?.restores) >= 1;
   }, null, { timeout: 90_000 });
   const end = await page.evaluate((beforeMeshUuid) => {
     const state = window.SF.state;
@@ -2436,13 +2784,20 @@ async function readPlayerSnapshot(page) {
 }
 
 async function readPostGcMemorySnapshot(page, phaseTag) {
-  const cdp = await page.context().newCDPSession(page);
+  // The forced GC is measurement apparatus: pause the soak-window hitch register so a
+  // stop-the-world collect is not billed to the game as a gameplay hitch.
+  await setSoakPaused(page, true);
+  let cdp = null;
   try {
+    cdp = await page.context().newCDPSession(page);
     await cdp.send('HeapProfiler.enable');
     await cdp.send('HeapProfiler.collectGarbage');
     await cdp.send('HeapProfiler.collectGarbage');
   } finally {
-    await cdp.detach().catch(() => {});
+    // The recorder must unpause even if the CDP attach failed — a leaked pause would
+    // starve the frame counter and quietly void the rest of the soak window.
+    await cdp?.detach().catch(() => {});
+    await setSoakPaused(page, false);
   }
   return page.evaluate((tag) => {
     const report = window.__THREE_GAME_DIAGNOSTICS__?.getReport?.();
@@ -2450,6 +2805,7 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
     const state = window.SF?.state;
     return {
       phaseTag: tag,
+      at: new Date().toISOString(),
       mode: state?.mode || null,
       docked: state?.ui?.docked === true,
       heapBytes: Number.isFinite(heap?.usedJSHeapSize) ? heap.usedJSHeapSize : null,
@@ -2458,6 +2814,13 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
       geometries: finiteOrNull(report?.memory?.geometries),
       textures: finiteOrNull(report?.memory?.textures),
       programs: finiteOrNull(report?.memory?.programs),
+      // Identity detail so a nonzero programs delta names the exact variants that linked
+      // mid-cycle instead of only counting them.
+      programIdentities: Array.isArray(state?.render?.renderer?.info?.programs)
+        ? state.render.renderer.info.programs.map((program) => (
+          `${String(program?.name || '?')}|${String(program?.cacheKey || '').slice(-80)}`
+        ))
+        : null,
       entities: finiteOrNull(state?.entityList?.length),
       assetResidency: state?.render?.assetResidency || null,
     };
@@ -2485,6 +2848,295 @@ async function sampleDiagnostics(page, samples) {
     const sample = await readDiagnosticsSample(page);
     if (Number.isFinite(sample?.frameMs) && sample.frameMs > 0) samples.push(sample);
   } catch { /* transitions and cleanup can temporarily invalidate the page */ }
+}
+
+// ── PQ-033.02 soak-window recorder ──────────────────────────────────────────
+// An in-page rAF register counts every frame gap over the threshold and buckets
+// all deltas, so the floors checker can recompute the whole-window median and
+// the per-minute hitch count instead of trusting steady-state windows alone.
+// Hitches ending inside a marked save/load transition carry that tag; nothing
+// is dropped from the raw event list.
+
+async function installSoakRecorder(page, { hitchThresholdMs = 50 } = {}) {
+  await page.evaluate((threshold) => {
+    const register = {
+      active: true,
+      startedAt: performance.now(),
+      frames: 0,
+      last: null,
+      paused: false,
+      thresholdMs: threshold,
+      hitches: [],
+      // Bounded log: the register stays window-reachable for the whole soak, so an
+      // unbounded hitch array would grow the page heap the probe itself measures.
+      // Counters stay authoritative when the log saturates.
+      maxHitchEvents: 4000,
+      hitchCount: 0,
+      hitchGameplayCount: 0,
+      hitchTransitionCount: 0,
+      hitchExternalCount: 0,
+      hitchUnattributedCount: 0,
+      hitchMaxDeltaMs: 0,
+      hitchMaxTransitionDeltaMs: 0,
+      hitchOwnerCounts: {},
+      pausedMs: 0,
+      // Quarter-ms buckets keep the median source honest: a 1 ms floor(delta)
+      // grid reads a true 16.9 ms median as 16.5 and would pass the 16.7 ms
+      // floor on rounding alone.
+      frameBucketScaleMs: 0.25,
+      frameBuckets: {},
+    };
+    window.__SF_MIN_SPEC_SOAK__ = register;
+    // The game's own hitch classifier (PQ-129.02) attributes each classified frame
+    // to an owner — sim, presentation, compile, upload, admission, externalScheduling,
+    // or unknown. The recorder diffs the histogram only on frames that could have been
+    // classified (delta above the game threshold), so each read shows exactly one grown
+    // owner for the frame that just elapsed. externalScheduling means the gap was not
+    // consumed by in-page work — machine noise, recorded but not a product stall.
+    const perf = window.__SPACEFACE_PERF__ || null;
+    const attribution = {
+      enabled: false,
+      lastCounts: null,
+    };
+    if (perf && typeof perf.getHitchHistogram === 'function'
+      && typeof perf.setHitchAttributionEnabled === 'function') {
+      try {
+        register.attributionWasEnabled = perf.hitchAttributionEnabled === true;
+        register.renderWorkWasEnabled = typeof perf.isRenderWorkEnabled === 'function'
+          ? perf.isRenderWorkEnabled() === true : false;
+        register.systemTimingWasEnabled = typeof perf.isSystemTimingEnabled === 'function'
+          ? perf.isSystemTimingEnabled() === true : false;
+        if (typeof perf.setRenderWorkEnabled === 'function') perf.setRenderWorkEnabled(true);
+        if (typeof perf.setSystemTimingEnabled === 'function') perf.setSystemTimingEnabled(true);
+        perf.setHitchAttributionEnabled(true);
+        attribution.lastCounts = { ...perf.getHitchHistogram().counts };
+        attribution.enabled = true;
+      } catch (_) { attribution.enabled = false; }
+    }
+    register.hitchAttributionEnabled = attribution.enabled;
+    // If the page hides/shows, the game's rAF chain can die and re-register — the
+    // recorder's read then runs before the game's classify for a frame, so an
+    // externalScheduling verdict could attach one frame late and launder a real
+    // hitch. For a bounded window after any visibility change, no hitch may claim
+    // the external exemption.
+    register.orderUncertainUntil = 0;
+    register.onVisibilityChange = () => { register.orderUncertainUntil = performance.now() + 3_000; };
+    try { document.addEventListener('visibilitychange', register.onVisibilityChange); } catch (_) { /* optional */ }
+    const tick = (t) => {
+      const current = window.__SF_MIN_SPEC_SOAK__;
+      if (current !== register || !current.active) return;
+      // While paused (measurement apparatus forcing GC pauses), keep the rAF chain
+      // alive and rebase `last` so the stall is not charged to the game. The first
+      // tick after the flag clears also rebases — the unpause evaluate resolves
+      // before that tick, so without this the GC gap would still be recorded.
+      if (current.paused) {
+        if (current.last != null) current.pausedMs += t - current.last;
+        current.last = t;
+        current.wasPaused = true;
+        requestAnimationFrame(tick);
+        return;
+      }
+      if (current.wasPaused) {
+        current.wasPaused = false;
+        current.last = t;
+        // The game's classifier kept accumulating through the pause; rebase the diff
+        // baseline so paused-period owners cannot bleed into the next frame's verdict.
+        if (attribution.enabled) {
+          try { attribution.lastCounts = { ...perf.getHitchHistogram().counts }; } catch (_) { /* keep prior baseline */ }
+        }
+        requestAnimationFrame(tick);
+        return;
+      }
+      if (current.last != null) {
+        const delta = t - current.last;
+        current.frames += 1;
+        const scale = current.frameBucketScaleMs || 1;
+        const bucket = delta < 10_000 ? Math.floor(delta / scale) : Math.floor(10_000 / scale);
+        current.frameBuckets[bucket] = (current.frameBuckets[bucket] || 0) + 1;
+        // A transition tag can carry a bounded settle expiry: the tag stays armed
+        // for settleMs after the probe marks the transition complete, covering the
+        // teardown/rebind tail the transition caused, then self-clears so chronic
+        // hitches cannot hide inside an open-ended transition span.
+        let tag = window.__SF_MIN_SPEC_TRANSITION__ || null;
+        if (tag) {
+          const clearAt = window.__SF_MIN_SPEC_TRANSITION_CLEAR__;
+          if (clearAt != null && t >= clearAt) {
+            delete window.__SF_MIN_SPEC_TRANSITION__;
+            delete window.__SF_MIN_SPEC_TRANSITION_CLEAR__;
+            tag = null;
+          }
+        }
+        // pendingPipelines is recorded on every event for audit, but a positive
+        // count never reclasses the hitch: the deferred-flush hold can keep the
+        // queue non-empty for ~20 s after each load, which would launder real
+        // gameplay stalls into the transition class without bound.
+        let pendingPipelines = 0;
+        try {
+          pendingPipelines = Number(window.SF?.state?.render?.pendingPipelineAdmissions?.()) || 0;
+        } catch { pendingPipelines = 0; }
+        // Read the game's classifier only on frames it could have classified
+        // (its threshold is 32 ms). Between reads, at most one such frame elapsed,
+        // so a single grown owner names this frame's cause. A total count that
+        // dropped since the last read means a measurement window called
+        // perf.reset() mid-soak — re-baseline instead of attributing.
+        let hitchOwner = null;
+        if (attribution.enabled && delta > 30) {
+          try {
+            const counts = perf.getHitchHistogram().counts;
+            let countTotal = 0;
+            let lastTotal = 0;
+            const grown = [];
+            for (const owner of Object.keys(counts)) {
+              const value = counts[owner] || 0;
+              countTotal += value;
+              lastTotal += attribution.lastCounts[owner] || 0;
+              if (value - (attribution.lastCounts[owner] || 0) > 0) grown.push(owner);
+            }
+            attribution.lastCounts = counts;
+            if (countTotal < lastTotal) {
+              attribution.resets = (attribution.resets || 0) + 1;
+            } else if (grown.length === 1) hitchOwner = grown[0];
+            else if (grown.length > 1) hitchOwner = 'ambiguous';
+          } catch (_) { /* attribution stays null */ }
+        }
+        if (delta > current.thresholdMs) {
+          current.hitchCount += 1;
+          if (delta > current.hitchMaxDeltaMs) current.hitchMaxDeltaMs = delta;
+          if (hitchOwner) {
+            current.hitchOwnerCounts[hitchOwner] = (current.hitchOwnerCounts[hitchOwner] || 0) + 1;
+          }
+          if (tag) {
+            current.hitchTransitionCount += 1;
+            if (delta > current.hitchMaxTransitionDeltaMs) current.hitchMaxTransitionDeltaMs = delta;
+          } else if (hitchOwner === 'externalScheduling' && t >= current.orderUncertainUntil) {
+            current.hitchExternalCount += 1;
+          } else {
+            current.hitchGameplayCount += 1;
+            if (!hitchOwner) current.hitchUnattributedCount += 1;
+          }
+          if (current.hitches.length < current.maxHitchEvents) {
+            current.hitches.push({
+              atMs: t - current.startedAt,
+              deltaMs: delta,
+              transition: tag,
+              pendingPipelines,
+              owner: hitchOwner,
+            });
+          } else {
+            current.hitchEventsTruncated = true;
+          }
+        }
+      }
+      current.last = t;
+      requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }, hitchThresholdMs);
+}
+
+async function setSoakTransition(page, name, { settleMs = 0 } = {}) {
+  try {
+    await page.evaluate(({ value, settle }) => {
+      if (value == null) {
+        if (settle > 0 && window.__SF_MIN_SPEC_TRANSITION__) {
+          // Keep the current tag armed for the bounded settle window; the recorder
+          // clears it in-page when the deadline passes.
+          window.__SF_MIN_SPEC_TRANSITION_CLEAR__ = performance.now() + settle;
+          return;
+        }
+        delete window.__SF_MIN_SPEC_TRANSITION__;
+        delete window.__SF_MIN_SPEC_TRANSITION_CLEAR__;
+        return;
+      }
+      window.__SF_MIN_SPEC_TRANSITION__ = value;
+      delete window.__SF_MIN_SPEC_TRANSITION_CLEAR__;
+    }, { value: name, settle: settleMs });
+  } catch { /* page may be mid-navigation; transition tagging is best-effort */ }
+}
+
+async function setSoakPaused(page, paused) {
+  try {
+    await page.evaluate((value) => {
+      const register = window.__SF_MIN_SPEC_SOAK__;
+      if (!register) return;
+      register.paused = value === true;
+      if (value !== true) {
+        // Arm the rebase unconditionally: if the apparatus stall resolved before
+        // any tick observed `paused`, the gap would otherwise still be recorded.
+        register.wasPaused = true;
+      }
+    }, paused);
+  } catch { /* recorder absent is fine — nothing to pause */ }
+}
+
+async function stopSoakRecorder(page, { startedAt } = {}) {
+  const snapshot = await page.evaluate(() => {
+    const register = window.__SF_MIN_SPEC_SOAK__;
+    if (!register) return null;
+    register.active = false;
+    const snapshot = {
+      durationMs: performance.now() - register.startedAt,
+      frameCount: register.frames,
+      hitchThresholdMs: register.thresholdMs,
+      hitchEvents: register.hitches,
+      hitchCount: register.hitchCount,
+      hitchGameplayCount: register.hitchGameplayCount,
+      hitchTransitionCount: register.hitchTransitionCount,
+      hitchExternalCount: register.hitchExternalCount,
+      hitchUnattributedCount: register.hitchUnattributedCount,
+      hitchMaxDeltaMs: register.hitchMaxDeltaMs,
+      hitchMaxTransitionDeltaMs: register.hitchMaxTransitionDeltaMs,
+      hitchEventsTruncated: register.hitchEventsTruncated === true,
+      hitchOwnerCounts: register.hitchOwnerCounts,
+      pausedMs: register.pausedMs,
+      frameBucketScaleMs: register.frameBucketScaleMs,
+      frameBuckets: register.frameBuckets,
+      hitchAttributionEnabled: register.hitchAttributionEnabled === true,
+    };
+    // Soak-level owner totals from the game's own classifier, for audit. The
+    // register's per-event owner counts are the authoritative soak totals — the
+    // histogram may have been reset by measurement windows mid-soak.
+    try {
+      const perf = window.__SPACEFACE_PERF__;
+      if (snapshot.hitchAttributionEnabled && perf?.getHitchHistogram) {
+        snapshot.hitchAttribution = perf.getHitchHistogram();
+      }
+      if (perf?.setHitchAttributionEnabled) {
+        perf.setHitchAttributionEnabled(register.attributionWasEnabled === true);
+      }
+      if (perf?.setRenderWorkEnabled) perf.setRenderWorkEnabled(register.renderWorkWasEnabled === true);
+      if (perf?.setSystemTimingEnabled) perf.setSystemTimingEnabled(register.systemTimingWasEnabled === true);
+    } catch (_) { /* attribution stays absent */ }
+    if (register.onVisibilityChange) {
+      try { document.removeEventListener('visibilitychange', register.onVisibilityChange); } catch (_) { /* ignore */ }
+    }
+    // Release the register so it cannot linger in post-soak heap evidence.
+    delete window.__SF_MIN_SPEC_SOAK__;
+    return snapshot;
+  }).catch(() => null);
+  if (!snapshot) return null;
+  return {
+    ...snapshot,
+    startedAt: startedAt ? new Date(startedAt).toISOString() : null,
+    endedAt: new Date().toISOString(),
+  };
+}
+
+function readMinSpecHitchThreshold(root) {
+  try {
+    const threshold = Number(loadMinSpec(root)?.floors?.hitchThresholdMs);
+    return Number.isFinite(threshold) && threshold > 0 ? threshold : 50;
+  } catch {
+    return 50;
+  }
+}
+
+function evaluateFloorsSafely(root, evidence) {
+  try {
+    return evaluateMinSpecFloors(evidence, loadMinSpec(root));
+  } catch (error) {
+    return { pass: false, failures: [`min-spec floor evaluation unavailable: ${error?.message || error}`], floors: {} };
+  }
 }
 
 function buildMemoryEvidence(start, end, checkpoints = []) {
@@ -2530,6 +3182,7 @@ function buildErrorEvidence(runtime, tracker) {
     type: issue.type || issue.level || 'unknown',
     source: issue.source || 'console',
     text: String(issue.text || ''),
+    at: issue.at || undefined,
   }));
   const expectedWarnings = normalized.filter((issue) => issue.type === 'warning' && /WebGL context (?:lost|restored)/i.test(issue.text));
   // These two ANGLE translator diagnostics are stable Chromium/vendor compiler noise on this
@@ -2699,7 +3352,7 @@ function buildArtifactDescriptors(root, outputDir, routeResult, cycleResults, pa
     ['screenshot', 'context-restored.png'],
     ...(packagedStartup ? [['packaged-startup', path.basename(packagedStartup.report.path)]] : []),
     ...(routeResult?.screenshots || []).map((name) => ['screenshot', name]),
-    ...cycleResults.map((cycle) => ['screenshot', cycle.screenshot]),
+    ...cycleResults.filter((cycle) => cycle.screenshot).map((cycle) => ['screenshot', cycle.screenshot]),
   ];
   return entries.map(([kind, name]) => ({ kind, path: relativeTo(root, path.join(outputDir, name)) }));
 }
@@ -2862,6 +3515,7 @@ async function runPackagedStartupSubroute({ root, outputDir, authority, log = ()
     }),
     packageIdentity: report.artifactIdentity,
     runtimeIdentity: report.mainIdentity,
+    timing: report.timing || null,
     cleanup: report.cleanup,
   });
 }

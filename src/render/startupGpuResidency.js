@@ -86,9 +86,12 @@ function geometryByteLength(geometry) {
   return bytes;
 }
 
-function createGeometryWorkItems(drawables) {
+function createGeometryWorkItems(drawables, options = {}) {
   const work = [];
   const seenGeometries = new Set();
+  // Context restore leaves the stamps on the CPU-side objects while every GPU-side buffer died
+  // with the old context; the restore pass must ignore them or nothing is re-uploaded.
+  const ignoreStamps = options.ignoreResidentStamps === true;
   for (const object of drawables) {
     const geometry = object.geometry;
     const firstGeometryUse = !seenGeometries.has(geometry);
@@ -97,7 +100,8 @@ function createGeometryWorkItems(drawables) {
     // per-object instanceMatrix / instanceColor buffers, so every live instanced object remains work.
     if (!firstGeometryUse && !object.isInstancedMesh) continue;
     // F9 recook must not 1x1 ordinary geos the first cook already stamped.
-    if (geometry.userData && geometry.userData.spacefaceGpuResident === true
+    if (!ignoreStamps
+        && geometry.userData && geometry.userData.spacefaceGpuResident === true
         && !object.isInstancedMesh) continue;
     let estimatedBytes = firstGeometryUse ? geometryByteLength(geometry) : 0;
     if (object.isInstancedMesh) {
@@ -267,7 +271,7 @@ function restoreRendererState(renderer, state) {
  */
 export async function prepareStartupGeometryResidency(renderer, subjects, options = {}) {
   const drawables = collectStartupGeometryDrawables(subjects);
-  const { work, uniqueGeometries } = createGeometryWorkItems(drawables);
+  const { work, uniqueGeometries } = createGeometryWorkItems(drawables, options);
   if (!renderer || typeof renderer.render !== 'function'
       || typeof renderer.setRenderTarget !== 'function'
       || typeof renderer.getRenderTarget !== 'function') {

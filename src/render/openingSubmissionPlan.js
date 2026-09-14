@@ -939,6 +939,15 @@ export function createOpeningSubmissionPlan(options = {}) {
     route,
     textureList,
   );
+  // Declared pool-owned resources. Pooled VFX/instance batches keep a full-capacity buffer alive
+  // while their draw range is empty, so the contributing-leaf census cannot observe them at plan
+  // time — yet the first emission submits that same preallocated buffer inside the measured frame.
+  // Their identities are declared here (allowed, never required) so a pool's 0->N growth reads as a
+  // captured producer while a genuinely new mid-flight object still fails the gate.
+  const pooledResourceSubjects = arrayFrom(options.pooledResourceSubjects);
+  const pooledResourceIdentitySets = pooledResourceSubjects.length > 0
+    ? collectResourceIdentitySets(pooledResourceSubjects, route, [])
+    : null;
   const producerResourceIdentitySets = options.producerResourceIdentitySets
     || options.producerCensus && options.producerCensus.resourceIdentitySets
     || null;
@@ -974,6 +983,13 @@ export function createOpeningSubmissionPlan(options = {}) {
     materials: [...materials.values()],
     textures: textureList.map(textureDescriptor),
     resourceIdentitySets,
+    pooledResourceIdentitySets: pooledResourceIdentitySets
+      ? Object.freeze({
+        geometryBufferIds: Object.freeze([...pooledResourceIdentitySets.geometryBufferIds]),
+        blockingTextureIds: Object.freeze([...pooledResourceIdentitySets.blockingTextureIds]),
+        shadowResourceIds: Object.freeze([...pooledResourceIdentitySets.shadowResourceIds]),
+      })
+      : null,
     producerResourceIdentitySets: producerResourceIdentityCensus,
     resourceIdentityCensusMatches,
     shadowResources,
@@ -1048,11 +1064,21 @@ export function createOpeningSubmissionReceipt(renderer, plan, options = {}) {
     && Array.isArray(plan.firstPlayablePipelineSet.admittedProgramKeys)
     ? plan.firstPlayablePipelineSet.admittedProgramKeys.map((entry) => String(entry.key || '')).filter(Boolean)
     : [];
+  const pooled = plan && plan.pooledResourceIdentitySets || {};
   const before = {
     programCacheKeys: rendererProgramKeys(renderer),
-    geometryBufferIds: [...resourceIdentitySets.geometryBufferIds],
-    blockingTextureIds: [...resourceIdentitySets.blockingTextureIds],
-    shadowResourceIds: [...resourceIdentitySets.shadowResourceIds],
+    geometryBufferIds: [...unionSet(
+      resourceIdentitySets.geometryBufferIds,
+      pooled.geometryBufferIds,
+    )].sort(),
+    blockingTextureIds: [...unionSet(
+      resourceIdentitySets.blockingTextureIds,
+      pooled.blockingTextureIds,
+    )].sort(),
+    shadowResourceIds: [...unionSet(
+      resourceIdentitySets.shadowResourceIds,
+      pooled.shadowResourceIds,
+    )].sort(),
   };
   const programBindings = requiredProgramBindings(renderer, plan, options);
   const required = {

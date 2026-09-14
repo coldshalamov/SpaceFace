@@ -102,6 +102,7 @@ import {
 import { configureTransparentSinglePassSurfaces } from './transparentSinglePassPolicy.js';
 import { installWorldSitePresentation } from './worldSitePresentation.js';
 import {
+  entityRequiresAuthoredPresentation,
   hasExplicitAuthoredGeologyPresentation,
   hasExplicitAuthoredPayloadPresentation,
   PRESENTATION_ADMISSION,
@@ -3718,7 +3719,7 @@ function authoredRuntimeState() {
     : null;
 }
 
-function waitForOpeningGraphPublicationRelease() {
+export function waitForOpeningGraphPublicationRelease() {
   const render = authoredRuntimeState()?.render;
   if (!render || render.openingGraphPublicationFrozen !== true) return null;
   const wait = render.waitForOpeningGraphPublicationRelease;
@@ -3819,7 +3820,7 @@ export function settleAuthoredShipToProceduralFallback(
   return true;
 }
 
-function residencyOptionsForBoundary(entity, boundary, renderer) {
+export function residencyOptionsForBoundary(entity, boundary, renderer) {
   const liveState = authoredRuntimeState();
   const data = entity && entity.data || {};
   const sectorId = data.sectorId || entity && entity.homeSectorId
@@ -4651,11 +4652,19 @@ export function authoredCriticalVisualReadiness(state) {
         ? frameGlassIds.has(entity.id)
         : Array.isArray(frameGlassIds) && frameGlassIds.includes(entity.id)
     );
+    // The glass auto-role only binds entities that can ever be authored. A
+    // procedural-native body on the glass — an instanced asteroid is the
+    // canonical case — has no authored variant to wait for, so requiring it
+    // makes ready permanently unreachable near any rock. Explicit
+    // flightReadyRole pins still apply regardless of pipeline eligibility.
+    const autoGlassRole = entityRequiresAuthoredPresentation(entity)
+      ? FLIGHT_READY_ROLE.GLASS_ACTORS
+      : null;
     const role = entity && (entity.flightReadyRole || data.flightReadyRole
       || data.renderFlightReadyRole || data.render && data.render.flightReadyRole
-      || (isCurrentGlass || (allowRuntimeActivityGate
-        && entity.activity?.presentationTier === PRESENTATION_TIER.R0_GLASS)
-        ? FLIGHT_READY_ROLE.GLASS_ACTORS : null));
+      || ((isCurrentGlass || (allowRuntimeActivityGate
+        && entity.activity?.presentationTier === PRESENTATION_TIER.R0_GLASS))
+        ? autoGlassRole : null));
     if (!role || role === FLIGHT_READY_ROLE.PLAYER_GAMEPLAY
         || role === FLIGHT_READY_ROLE.PLAYER_FLIGHT_PACKAGE) continue;
     const status = authoredAssetState(entity);
@@ -4935,7 +4944,19 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
     boundary.userData.authoredAssetState = 'unavailable';
     boundary.userData.authoredVisualRoot = 'none-build-failed';
     setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
-    console.warn('[partsLibrary] authored composition failed; no substitute visual published', {
+    const failureCauses = error && Array.isArray(error.errors) && error.errors.length
+      ? error.errors
+      : [error];
+    const previewTeardownOnly = failureCauses.every(
+      (cause) => cause && cause.previewDisposed === true,
+    );
+    // A disposed preview rejects its in-flight compile/upload on teardown — the ordinary
+    // hover-away case, not a composition defect. Keep the breadcrumb off the warning channel
+    // so release evidence only counts real admission failures.
+    const log = previewTeardownOnly ? console.info : console.warn;
+    log.call(console, previewTeardownOnly
+      ? '[partsLibrary] authored preview admission released by disposal'
+      : '[partsLibrary] authored composition failed; no substitute visual published', {
       entity: entity && entity.id,
       message: String(error && error.message || error),
       causes: error && Array.isArray(error.errors)
@@ -5145,6 +5166,12 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
         });
         if (!composed || !composed.root) return;
         composed.root.visible = false;
+        // The demoted root never went through the boundary's admission pipeline: without this its
+        // programs link and its buffers upload inside the first frame it is drawn — a measured
+        // bloomScene brick. Compile and upload it while still hidden, then swap. Compile uses the
+        // shared flight admission path, which slices across presents in flight.
+        await prepareAuthoredShipVisualPipelines(composed, options);
+        if (!shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) return;
         roots[requested] = composed.root;
         if (shouldCommitWholeShipLodLoad(pendingLevel, requested, !!boundary.parent)) swapTo(requested);
       } catch (error) {
@@ -5568,7 +5595,7 @@ function handoffBootstrapIfCovered(renderer, residency = null) {
   return handedOff;
 }
 
-function releaseBoundaryResidency(renderer, boundary, reason) {
+export function releaseBoundaryResidency(renderer, boundary, reason) {
   const residency = renderer && getAssetResidency(renderer);
   return residency && boundary ? residency.releaseOwner(boundary, reason) : 0;
 }
@@ -8068,7 +8095,22 @@ function instantiatePart(record, parent, placement, palette, scene, owner, bindi
       object = new THREE.Object3D();
       object.userData.spacefaceInstanceProxy = true;
       primitive.matrix.decompose(object.position, object.quaternion, object.scale);
-      allocateInstance(scene, owner, object, primitive.geometry, material, primitive.name);
+      // A chunk that publishes outside liveSectorGpuAdmission must pass through exact GPU
+      // admission first: the pooled InstancedMesh is this proxy's only draw path, so an
+      // immediate publish links its instanced variant inside the first visible frame.
+      const poolAdmissionOptions = livePoolAdmissionOptions();
+      const deferChunk = !(authoredRuntimeState()?.render?.liveSectorGpuAdmission === true)
+        && !!poolAdmissionOptions;
+      const allocation = allocateInstance(scene, owner, object, primitive.geometry, material, primitive.name, {
+        deferNewChunkPublication: deferChunk,
+        deferProxyActivation: deferChunk,
+      });
+      if (allocation && allocation.admission) {
+        if (bindings && bindings.packagePoolAdmissions instanceof Set) {
+          bindings.packagePoolAdmissions.add(allocation.admission);
+        }
+        drivePoolAdmissionIfUnclaimed(allocation.admission, poolAdmissionOptions);
+      }
       partRoot.add(object);
     }
     object.name = `${placement.label}_${primitive.name}`;
@@ -8280,8 +8322,11 @@ function admitRenderPackageShipPoolCandidate(
   if (!hasPackageSlots && first?.owner === owner) return object;
 
   const live = authoredRuntimeState();
-  const deferNewChunkPublication = !(live && live.render && live.render.liveSectorGpuAdmission === true)
-    && (!live || live.mode === 'loading');
+  // New chunks wait for exact GPU admission in every mode: publishing one mid-flight used to skip
+  // the compile, and the pooled InstancedMesh then linked its instanced variant inside the first
+  // visible draw (station-approach bloomScene brick). During liveSectorGpuAdmission the in-scene
+  // census compiles immediate publications, so only that window may publish before admission.
+  const deferNewChunkPublication = !(live && live.render && live.render.liveSectorGpuAdmission === true);
   const allocations = [];
   try {
     if (!hasPackageSlots && first) {
@@ -8335,6 +8380,60 @@ function admitRenderPackageShipPoolCandidate(
     if (allocation?.admission) poolAdmissions?.add(allocation.admission);
   }
   return object;
+}
+
+/**
+ * The renderer's compile/residency seam for pool chunks created outside a boundary admission —
+ * e.g. package-instance primitives pooled by instantiatePart. Returns null when no live renderer
+ * can compile, in which case the chunk must publish immediately (the loading census admits it).
+ */
+function livePoolAdmissionOptions() {
+  const live = authoredRuntimeState();
+  const render = live && live.render;
+  if (!render || typeof render.compileObjectPipelines !== 'function') return null;
+  return {
+    prepareAuthoredPipelines: (root) => render.compileObjectPipelines(root),
+    prepareAuthoredGpuResidency: typeof render.prepareAuthoredGpuResidency === 'function'
+      ? (root) => render.prepareAuthoredGpuResidency(root, {})
+      : null,
+    yieldBetweenGpuStages: live.mode === 'flight',
+    yieldToNextPresent: typeof render.yieldToNextPresent === 'function'
+      ? () => render.yieldToNextPresent()
+      : null,
+  };
+}
+
+/**
+ * Drive an admission to activation when the caller's boundary prepare may never run. Safe to race
+ * with a boundary prepare: prepareRenderPackagePoolAdmission memoizes on admission.preparation.
+ * Orphan drives run one at a time behind a present yield so a burst of same-type compositions
+ * cannot stack several compile+touch passes into a single frame, and a still-pending boundary
+ * prepare gets a full present to claim the admission before the orphan lane spends the work.
+ */
+let poolAdmissionOrphanPump = Promise.resolve();
+let poolAdmissionLateSkips = 0;
+function drivePoolAdmissionIfUnclaimed(admission, options) {
+  if (!admission || !options || admission.prepared || admission.activated || admission.cancelled) return;
+  poolAdmissionOrphanPump = poolAdmissionOrphanPump.then(async () => {
+    if (typeof options.yieldToNextPresent === 'function') {
+      try { await options.yieldToNextPresent(); } catch { /* present wait is pacing only */ }
+    }
+    if (admission.preparation || admission.prepared || admission.activated || admission.cancelled) return;
+    const live = authoredRuntimeState();
+    const gate = shouldStartHeavyAdmissionEventually(
+      live && live.render && live.render.lastPresentDtMs,
+      poolAdmissionLateSkips,
+    );
+    poolAdmissionLateSkips = gate.skippedCount;
+    if (!gate.start) {
+      drivePoolAdmissionIfUnclaimed(admission, options);
+      return;
+    }
+    await prepareRenderPackagePoolAdmission(admission, options);
+    activateRenderPackagePoolAdmission(admission);
+  }).catch((error) => {
+    try { console.warn('[partsLibrary] pooled chunk admission failed', error); } catch { /* diagnostics only */ }
+  });
 }
 
 function createPackagePoolCandidate(key, owner, object, geometry, material, label) {

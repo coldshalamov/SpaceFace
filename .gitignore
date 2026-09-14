@@ -1,6 +1,7 @@
 .devshots/
 node_modules/
-build/
+build/*
+!build/min-spec.json
 dist/
 /nul
 .campaign/
@@ -41,6 +42,7 @@ tools/blender/_patch_*.py
 
 # Local worktree recovery / triage (do not commit bulky exports)
 _recovery/
+/.worktrees/
 
 # Cursor editor hook state — per-machine mutable bookkeeping (session ids, timestamps).
 .cursor/

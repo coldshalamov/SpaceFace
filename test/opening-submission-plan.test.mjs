@@ -599,6 +599,71 @@ test('opening submission receipt fails closed on an uncaptured first-draw resour
   assert.ok(shadowFailure.uncapturedShadowResourceIds.length > 0);
 });
 
+test('declared pooled resources cover a 0-to-N first-draw growth but stay fail-closed', () => {
+  const scene = new THREE.Scene();
+  const root = new THREE.Group();
+  productionMetadata(root);
+  const material = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  material.customProgramCacheKey = () => 'opening';
+  const leaf = mesh('background', material);
+  root.add(leaf);
+  scene.add(root);
+
+  // A pooled batch holds a full-capacity buffer while its draw range is still empty, so the
+  // contributing-leaf census cannot observe it — the same gap a Quarks TrailBatch hits.
+  const pooled = mesh('VFXBatch', new THREE.MeshBasicMaterial());
+  pooled.geometry.setDrawRange(0, 0);
+  const poolRoot = new THREE.Group();
+  poolRoot.name = 'SF_QuarksBatchedRenderer';
+  poolRoot.add(pooled);
+  scene.add(poolRoot);
+
+  const plan = createOpeningSubmissionPlan({
+    ...planOptions(root, 'opening', { route: 'bloom' }),
+    route: 'bloom',
+    scene,
+    candidates: [{ root, role: 'firstFrameBackground' }],
+    pooledResourceSubjects: [pooled],
+  });
+  const pooledGeometryId = `uuid:${pooled.geometry.uuid}`;
+  assert.equal(plan.complete, true);
+  assert.ok(plan.pooledResourceIdentitySets.geometryBufferIds.includes(pooledGeometryId));
+  assert.ok(!plan.resourceIdentitySets.geometryBufferIds.includes(pooledGeometryId),
+    'a pooled buffer is declared, not required — it may legitimately still be empty at first draw');
+
+  const bindings = new WeakMap([[material, {
+    programs: new Map([['opening', {}]]),
+    currentProgram: { cacheKey: 'opening' },
+  }]]);
+  const renderer = {
+    info: {
+      programs: [{ cacheKey: 'opening' }],
+      memory: { geometries: 4, textures: 3 },
+    },
+    properties: { get: (value) => bindings.get(value) || {} },
+  };
+  const receipt = createOpeningSubmissionReceipt(renderer, plan, {});
+  assert.ok(receipt.before.geometryBufferIds.includes(pooledGeometryId));
+  assert.ok(!receipt.required.geometryBufferIds.includes(pooledGeometryId));
+  assert.equal(validateOpeningSubmissionReceipt(receipt, renderer).ok, true);
+
+  // First emission grows the draw range inside the measured frame: the same buffer is now a
+  // submitted leaf, and the declaration keeps the receipt captured.
+  pooled.geometry.setDrawRange(0, Infinity);
+  const grown = validateOpeningSubmissionReceipt(receipt, renderer);
+  assert.equal(grown.ok, true, 'a declared pooled buffer may start drawing inside the first frame');
+  assert.deepEqual(grown.uncaptured, []);
+
+  // An object the pools did not already own still fails the gate.
+  const surprise = mesh('late-arrival', new THREE.MeshBasicMaterial());
+  scene.add(surprise);
+  const failed = validateOpeningSubmissionReceipt(receipt, renderer);
+  assert.equal(failed.ok, false);
+  assert.deepEqual(failed.uncaptured, ['geometries']);
+  assert.deepEqual(failed.uncapturedGeometryBufferIds, [`uuid:${surprise.geometry.uuid}`]);
+  scene.remove(surprise);
+});
+
 test('opening submission receipt fails closed when an exact material has no live Three program binding', () => {
   const root = new THREE.Group();
   productionMetadata(root);

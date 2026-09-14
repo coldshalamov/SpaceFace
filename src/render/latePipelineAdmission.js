@@ -13,13 +13,17 @@ function isDrawable(object) {
   ));
 }
 
-/** Scene drawables that the opening leaf set never compiled. */
+/**
+ * Scene drawables that the opening leaf set never compiled. Hidden drawables are included:
+ * LOD buckets and zero-count pools sit at visible === false until approach/activation, and their
+ * first reveal used to be the first draw that linked their program.
+ */
 export function collectUncompiledSceneDrawables(scene, openingSubjects = []) {
   const opening = new Set(Array.isArray(openingSubjects) ? openingSubjects.filter(Boolean) : []);
   const late = [];
   if (!scene || typeof scene.traverse !== 'function') return late;
   scene.traverse((object) => {
-    if (!isDrawable(object) || opening.has(object) || object.visible === false) return;
+    if (!isDrawable(object) || opening.has(object)) return;
     late.push(object);
   });
   return late;

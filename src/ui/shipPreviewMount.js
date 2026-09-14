@@ -767,6 +767,11 @@ export function createShipPreviewMount(canvas, opts) {
   // compileAsync(root) read them all in a single multi-second main-thread stall that starved
   // requestAnimationFrame - the title's arrival motion, its save summary and every rAF-polled
   // check froze while the hull compiled. A yield between leaves keeps each stall to one program.
+  const previewDisposedError = (phase) => {
+    const error = new Error(`preview disposed during ${phase}`);
+    error.previewDisposed = true;
+    return error;
+  };
   async function compilePreviewPipelines(root) {
     const leaves = [];
     root.traverse((object) => {
@@ -777,7 +782,7 @@ export function createShipPreviewMount(canvas, opts) {
     const seen = new Set();
     let compiled = 0;
     for (const leaf of leaves) {
-      if (disposed) throw new Error('preview disposed during pipeline compile');
+      if (disposed) throw previewDisposedError('pipeline compile');
       const materials = Array.isArray(leaf.material) ? leaf.material : [leaf.material];
       if (materials.every((material) => seen.has(material))) continue;
       for (const material of materials) seen.add(material);
@@ -808,7 +813,7 @@ export function createShipPreviewMount(canvas, opts) {
     });
     let uploaded = 0;
     for (const texture of textures) {
-      if (disposed) throw new Error('preview disposed during texture upload');
+      if (disposed) throw previewDisposedError('texture upload');
       renderer.initTexture(texture);
       uploaded += 1;
       await yieldToBrowser();

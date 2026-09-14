@@ -21,6 +21,7 @@ import {
   beginScenePipelineReadinessBatch,
   createBloom,
   compileScenePipelinesForRenderTarget,
+  warmScenePipelinesForRenderTarget,
   DEFAULT_BLOOM_STRENGTH,
   DEFAULT_CINEMATIC_TOE,
   resolveEffectiveSectorPost,
@@ -206,6 +207,7 @@ import {
   recordOpeningCookStep,
 } from './pipelineReadiness.js';
 import { FIRST_FLIGHT_PIPELINE_HOLD_S, shouldDeferPipelineAutoFlush } from './pipelineAutoFlushPolicy.js';
+import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
 import {
   prepareStartupGpuResidency,
   yieldToBrowser,
@@ -3655,8 +3657,73 @@ export const render = {
             // Dummy catalog precompile is illegal mid-flight, including restore.
             // Compile the live scene that already owns the table, then yield so
             // Intel can finish links without a second TDR.
-            await this._compilePostRoute(restoredPostRoute, scene, cam.obj, scene);
-            await yieldToBrowser();
+            // Shadows must be armed for the compile: line above disables shadowMap.enabled and
+            // _syncShadowMapEnabled re-gates it on the next frame, so a shadowless compile leaves
+            // every lit material one numDirLightShadows variant short at the first post-restore
+            // draw (~12 s of synchronous links inside bloomScene).
+            const restoreAdmissionShadows = armAdmissionShadows({
+              renderer,
+              light: this._keyLight,
+              enabled: this._shadowSettingOn === true,
+            });
+            try {
+              // Prime the shadow map and the casters' depth programs first: the color program key
+              // carries numDirLightShadows, which stays 0 until the light owns a map again.
+              compileShadowDepthPipelines({
+                renderer,
+                light: this._keyLight,
+                camera: cam.obj,
+                subjects: [scene],
+                forceEnable: this._shadowSettingOn === true,
+                THREE,
+                captureObjectHome,
+                restoreObjectHome,
+                stagingName: 'SF_ContextRestoreShadowDepth',
+              });
+              await this._compilePostRoute(restoredPostRoute, scene, cam.obj, scene);
+              await yieldToBrowser();
+              // compile() only STARTS the KHR links. One forced scene render onto the exact post
+              // target finishes every link (and uploads every visible buffer/texture) while
+              // recovery.pending still gates presented frames.
+              try {
+                if (restoredPostRoute === POST_PROCESS_ROUTE.BLOOM
+                    && this.bloom && typeof this.bloom.warmScenePipelines === 'function') {
+                  await this.bloom.warmScenePipelines(scene, cam.obj, scene);
+                } else {
+                  await warmScenePipelinesForRenderTarget(
+                    renderer,
+                    restoredPostRoute === POST_PROCESS_ROUTE.GRAPH && this._renderGraph
+                      ? this._renderGraph.sceneTarget
+                      : null,
+                    scene,
+                    cam.obj,
+                    scene,
+                  );
+                }
+              } catch (warmError) {
+                if (typeof console !== 'undefined') {
+                  console.warn('[render] context-restore link force failed', warmError);
+                }
+              }
+              await yieldToBrowser();
+              // Compile only relinks programs — vertex/index buffers and textures all died with the
+              // old context and WebGLObjects.update() only runs inside render(), so the first
+              // post-restore bloomScene used to pay a single ~13 s upload brick. Re-admit the live
+              // scene through the bounded residency pass now, while recovery.pending still gates
+              // every draw; the stamps are stale, so re-upload everything.
+              try {
+                await prepareStartupGpuResidency(renderer, scene, {
+                  yieldToMain: yieldToBrowser,
+                  ignoreResidentStamps: true,
+                  onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+                });
+              } catch (error) {
+                if (typeof console !== 'undefined') console.warn('[render] context-restore residency failed', error);
+              }
+              await yieldToBrowser();
+            } finally {
+              restoreAdmissionShadows();
+            }
             const restoredPipelines = {
               skipped: false,
               method: 'live-scene-restore',
@@ -4337,7 +4404,35 @@ export const render = {
         light: this._keyLight,
         enabled: this._shadowSettingOn === true,
       });
-      const finish = (promise) => Promise.resolve(promise).finally(restoreShadows);
+      const admitFlightShadowDepth = () => {
+        // Color-only compile leaves each new caster's shadow-depth variant unlinked; the next
+        // scheduled shadow refresh would link it inside a measured frame. One batched pass per
+        // admission (post-opening's pattern) keeps depth links off the draw path. The earlier
+        // failure ran shadowMap.render per subject inside the sliced loop; this runs once per
+        // call after all color compiles, inside the armed-shadow window.
+        if (state.mode !== 'flight' || this._shadowSettingOn !== true) return;
+        try {
+          compileShadowDepthPipelines({
+            renderer,
+            light: this._keyLight,
+            camera: cam.obj,
+            subjects: batch,
+            forceEnable: false,
+            THREE,
+            captureObjectHome,
+            restoreObjectHome,
+            stagingName: 'SF_FlightShadowDepthAdmission',
+          });
+        } catch (error) {
+          console.warn('[render] flight shadow-depth admission failed', error);
+        }
+      };
+      const finish = (promise) => Promise.resolve(promise)
+        .then((result) => {
+          admitFlightShadowDepth();
+          return result;
+        })
+        .finally(restoreShadows);
       if (shouldSliceCompileAcrossPresents({
         mode: state.mode,
         firstPlayable: Number.isFinite(state.render && state.render.firstPlayableFrameAt),
@@ -4596,6 +4691,16 @@ export const render = {
       const textures = [];
       if (scene.background && scene.background.isTexture === true) textures.push(scene.background);
       if (scene.environment && scene.environment.isTexture === true) textures.push(scene.environment);
+      // Pool-owned resources exist at full capacity while their draw range is still empty, so the
+      // leaf census cannot name them — yet their buffers upload during cook.layers and the first
+      // emission submits that same geometry inside the measured frame. Declare every drawable the
+      // pools/first-flight effect roots already own so the receipt's allowed set covers the 0->N
+      // growth without weakening the gate for objects that do not exist yet.
+      const pooledResourceSubjects = collectFirstFlightLayerDrawables([
+        ...derivedPoolRoots,
+        ...vfxRoots,
+        ...collectFirstFlightEffectRoots(scene),
+      ]);
       const openingRoute = this._selectPostRoute();
       for (const candidate of candidates) {
         ensureOpeningGeneratedScenarioPropPackage(candidate.root);
@@ -4643,6 +4748,7 @@ export const render = {
         contentHashVerified: state.render.firstPlayableContentHashesVerified === true,
         producerCensus,
         producerResourceIdentitySets: state.render.firstPlayableResourceIdentitySets || undefined,
+        pooledResourceSubjects,
       });
     };
     state.render.prepareOpeningFirstPicture = (timeoutMs) => (
@@ -5085,7 +5191,9 @@ export const render = {
       });
       await drainMeshBuildsBehindShell();
       liveStepStarted = prepareNow();
-      console.warn('[render] first-flight cook', {
+      // Routine telemetry, not a defect: every New Game cooks the first-flight set behind the
+      // loading shell. console.warn would fail release evidence's zero-warning contract.
+      console.info('[render] first-flight cook', {
         entities: firstFlightEntities.map((entity) => ({
           id: entity && entity.id,
           type: entity && entity.type,
@@ -5190,6 +5298,88 @@ export const render = {
           names: staleNames.length ? staleNames.join('/') : undefined,
           error: materialSettle ? materialSettle.error : undefined,
         });
+      if (!recook) {
+        // On KHR hardware waitForCurrentRenderPipelines is never scheduled, so its
+        // prepareOpeningFirstPicture -> submission drain -> preparePostOpeningPipelines chain
+        // never runs. Without the barrier, the first measured frame's prepareFrame attaches the
+        // derived pools and the authored/asteroid instance batches itself (ContactShadow_Pool is
+        // count-0 at every earlier census; the *_Packaged_Batch opaque merges do not exist until
+        // _syncAuthoredInstanceSubmission publishes them), so their buffers and programs were
+        // admitted inside a measured bloomScene — the first-draw validation delta and the
+        // station-approach brick. Run the same first-picture barrier here, still behind the
+        // loading shell, then let post-opening compile+touch everything it just attached before
+        // the plan/receipt recapture below freezes the final identities. The software route owns
+        // this barrier inside waitForRenderPipelineWarmup; there only the lane release remains.
+        const ownsFirstPictureBarrier = shouldAwaitOpeningGpuCook({
+          gpu: state.render && state.render.gpu,
+          renderer,
+        });
+        const censusStarted = prepareNow();
+        let firstPictureError = null;
+        if (ownsFirstPictureBarrier) {
+          try {
+            await this.prepareOpeningFirstPicture(remainingMs());
+          } catch (error) {
+            firstPictureError = String(error && error.message || error);
+          }
+        }
+        if (this._postOpeningPipelineAdmissionReleased !== true
+            && typeof state.render.preparePostOpeningPipelines === 'function') {
+          const postStarted = prepareNow();
+          let postOutcome = 'resolved';
+          try {
+            await state.render.preparePostOpeningPipelines();
+          } catch (error) {
+            postOutcome = 'error';
+            console.warn('[render] post-opening pipeline admission failed', error);
+          }
+          recordOpeningCookStep(state.render, 'live.postOpeningPipelines', postStarted, postOutcome);
+        }
+        if (ownsFirstPictureBarrier) {
+          let firstFrameResidency = null;
+          if (prepareNow() - prepareStarted < PREPARE_BUDGET_MS) {
+            try {
+              firstFrameResidency = await prepareStartupGpuResidency(renderer, scene, {
+                yieldToMain: yieldToBrowser,
+                onBlockingSlice: recordAuthoredAdmissionBlockingSlice,
+              });
+            } catch (error) {
+              firstFrameResidency = { skipped: true, reason: String(error && error.message || error) };
+            }
+          }
+          recordOpeningCookStep(state.render, 'live.firstFramePoolCensus', censusStarted,
+            firstPictureError ? 'error' : (firstFrameResidency && firstFrameResidency.skipped === true ? 'skipped' : 'resolved'), {
+              error: firstPictureError || undefined,
+              reason: firstFrameResidency && firstFrameResidency.reason,
+            });
+        }
+      }
+      // The opening receipt froze inside prepareOpeningGpuResources while authored upgrades were
+      // still in flight — the capturedPipelineDrain above can only wait on the queue it captured.
+      // Composition, cook, and material settle have all resolved now, so the exact leaf and
+      // resource identities the first draw submits are final. Recapture plan + receipt here or the
+      // post-submit gate compares a stale plan against the live scene and reports every authored
+      // hull (and every grown pool mesh, e.g. ContactShadow_Pool) as an uncaptured admission.
+      if (!recook && state.render.openingSubmissionReceipt) {
+        const settledPlan = buildOpeningSubmissionPlan();
+        if (settledPlan && settledPlan.complete === true) {
+          state.render.openingSubmissionPlan = settledPlan;
+          const settledRoute = this._selectPostRoute();
+          const settledPostMaterials = settledRoute === POST_PROCESS_ROUTE.BLOOM
+            && this.bloom && typeof this.bloom.openingProgramMaterials === 'function'
+            ? this.bloom.openingProgramMaterials()
+            : settledRoute === POST_PROCESS_ROUTE.GRAPH
+              && this._renderGraph && typeof this._renderGraph.openingProgramMaterials === 'function'
+              ? this._renderGraph.openingProgramMaterials()
+              : [];
+          state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(renderer, settledPlan, {
+            scene,
+            programMaterials: settledPostMaterials,
+            shadowProgramKeys: this._openingShadowAdmission?.programCacheKeys,
+            shadowProgramBindingFailures: this._openingShadowAdmission?.programBindingFailures,
+          });
+        }
+      }
       this._sessionLiveSectorCookedId = sectorId;
       state.render.sessionLiveSectorCookedId = sectorId;
       return { skipped: false, resumed, opening, upgrades, pending, cook, leftover };
@@ -5715,7 +5905,7 @@ export const render = {
         armSectorArrivalPublishRelease(this);
       }
     };
-    state.render.preparePostOpeningPipelines = async () => {
+    const runPostOpeningPipelines = async () => {
       // Exact first-picture leaves are already compiled. Predicted sector probes stay color-only
       // with a hard budget. Do not release admission-await until after this drain, or overlapping
       // authored compiles keep the pending set non-empty and the startup gate times out.
@@ -5781,11 +5971,25 @@ export const render = {
       if (lateCompileRoots.length > 0) {
         try {
           const route = this._selectPostRoute();
+          // Late candidates include hidden LOD buckets and zero-count pools: the exact-target
+          // touch renders the subject, so reveal it plus any hidden ancestors for the draw.
+          const whileRevealed = (subject, run) => {
+            const restoreSubject = revealSubjectForCompile(subject);
+            const savedAncestors = [];
+            for (let p = subject && subject.parent; p; p = p.parent) {
+              if (p.visible === false) { savedAncestors.push(p); p.visible = true; }
+            }
+            try { return run(); }
+            finally {
+              for (const p of savedAncestors) p.visible = false;
+              restoreSubject();
+            }
+          };
           lateColor = await admitOpeningUnitsAcrossSlices({
             units: uniqueAdmissionUnits(lateCompileRoots.flatMap((root) => collectCompileSubjects(root))),
             beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-            compileOne: (subject) => compileSubjectColorAndDepth(subject, route),
-            touchOne: touchExactTargetSubject,
+            compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
+            touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
             yieldToMain: yieldToBrowser,
           });
         } catch (error) {
@@ -5816,6 +6020,22 @@ export const render = {
         lateColor,
         depth,
       };
+    };
+    state.render.preparePostOpeningPipelines = () => {
+      // Both the software warmup chain and the KHR live-sector barrier can reach this pass in
+      // the same loading window; the released flag only lands at the end, so a second caller
+      // must join the in-flight run rather than double the shadow-map prime and compiles.
+      if (this._postOpeningPipelineAdmissionReleased === true) {
+        return Promise.resolve({ skipped: true, reason: 'already-released' });
+      }
+      if (this._postOpeningPipelinesInFlight) return this._postOpeningPipelinesInFlight;
+      const inFlight = runPostOpeningPipelines();
+      this._postOpeningPipelinesInFlight = inFlight;
+      const clear = () => {
+        if (this._postOpeningPipelinesInFlight === inFlight) this._postOpeningPipelinesInFlight = null;
+      };
+      inFlight.then(clear, clear);
+      return inFlight;
     };
     state.render.prepareOpeningGpuResources = async () => {
       // Flight admission waits behind the loading presenter, so every subsequently streamed common
@@ -8745,8 +8965,10 @@ export const render = {
           if (missingCount > 0) {
             this.state.render.openingSubmissionValidation = preSubmitValidation;
             // The gate re-probes the same bindings against the live renderer on every refused
-            // frame and reopens the moment deferred compiles land. Log the full identity list
-            // once, then a compact heartbeat — a 10KB console.error per frame is its own stall.
+            // frame and reopens the moment deferred compiles land. A first refusal is the designed
+            // recovery path (drain below) and resolves within a frame or two, so it warns rather
+            // than errors; a persistent refusal still errors via the compact heartbeat — a 10KB
+            // console.error per frame is its own stall.
             const refusals = (this._openingPreSubmitRefusals || 0) + 1;
             this._openingPreSubmitRefusals = refusals;
             if (refusals === 1 || refusals % 120 === 0) {
@@ -8764,7 +8986,9 @@ export const render = {
                 missingShadowResourceIds: preSubmitValidation.missingShadowResourceIds || [],
                 refusedFrames: refusals,
               };
-              console.error(`[render] opening submission pre-submit gate failed closed ${JSON.stringify(failure)}`);
+              (refusals === 1 ? console.warn : console.error)(
+                `[render] opening submission pre-submit gate failed closed ${JSON.stringify(failure)}`,
+              );
             }
             // The deferred compile queue holds the very bindings this gate waits on, but its
             // rAF auto-flush stays held until the first playable stamp — which only a submitted

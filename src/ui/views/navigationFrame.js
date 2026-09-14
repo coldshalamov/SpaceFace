@@ -114,6 +114,11 @@ export function navigationFrameHtml({ hintRowsHtml = '', layerButtonsHtml = '', 
             <div class="gm-inspector-details" id="gm-tabpanel" role="tabpanel" tabindex="0">
               <div class="gm-inspector-empty">No target selected. <b>Click</b> a sector, station or contact to inspect it — <b>double-click</b> to lay a course.</div>
             </div>
+          </div>
+          <!-- The action cluster is a pinned band under the scrollable detail, never part of its
+               overflow: the whole point of the inspector is that "Set Waypoint" / "Engage Route"
+               stays on the glass no matter how tall the tab strip or the selection body runs. -->
+          <div class="gm-inspector-actions">
             <button class="gm-ins-btn k-word k-word--emph" id="gm-set-course-btn" type="button" hidden disabled>Set Waypoint</button>
             <!-- SECONDARY PLOT (ADR D6). Contextual, never permanent: it reveals ONLY when the
                  primary action is a commitment — "Set Course & Jump" for an adjacent sector — and

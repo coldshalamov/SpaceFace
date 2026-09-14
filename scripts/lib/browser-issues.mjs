@@ -21,7 +21,7 @@ export function collectPageIssues(page, options = {}) {
     expectedNavigationAborts.delete(request);
   });
   page.on('console', (msg) => {
-    const issue = { type: msg.type(), text: msg.text() };
+    const issue = { type: msg.type(), text: msg.text(), at: new Date().toISOString() };
     if (isGenericResourceLoadConsoleError(issue)) return;
     if (isIgnorableWebglValidation(issue) || (ignoreProbeWarnings && isProbeInducedWarning(issue))) {
       ignoredIssues.push(issue);
@@ -35,7 +35,7 @@ export function collectPageIssues(page, options = {}) {
       // The shared Browser/Electron player save store is an optional route: dev servers
       // without the store backend 404 it by design (see check-game-playable OPTIONAL_ROUTES).
       if (status === 404 && response.url().endsWith('/__spaceface_player_store')) return;
-      issues.push({ type: 'error', text: `HTTP ${status} ${response.url()}` });
+      issues.push({ type: 'error', text: `HTTP ${status} ${response.url()}`, at: new Date().toISOString() });
     }
   });
   page.on('requestfailed', (request) => {
@@ -46,6 +46,7 @@ export function collectPageIssues(page, options = {}) {
     const issue = {
       type: 'error',
       text: `Request failed ${request.url()}${failure && failure.errorText ? `: ${failure.errorText}` : ''}`,
+      at: new Date().toISOString(),
     };
     if (expectedNavigation && isNavigationCancelledRequest(failure)) {
       ignoredIssues.push({
@@ -57,7 +58,7 @@ export function collectPageIssues(page, options = {}) {
     issues.push(issue);
   });
   page.on('pageerror', (err) => {
-    issues.push({ type: 'pageerror', text: String(err && err.message || err) });
+    issues.push({ type: 'pageerror', text: String(err && err.message || err), at: new Date().toISOString() });
   });
 
   return {

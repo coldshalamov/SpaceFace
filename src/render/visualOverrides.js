@@ -24,6 +24,12 @@ import {
   buildAuthoredCargoCapsule,
   buildAuthoredPlaceProp,
   buildAuthoredStationArchetype,
+  enqueueBoundaryUpgrade,
+  prepareAuthoredVisualPipelines,
+  releaseBoundaryResidency,
+  requiresProductionWholeShipForEntity,
+  residencyOptionsForBoundary,
+  waitForOpeningGraphPublicationRelease,
   wrapShipWithAuthoredParts,
 } from './partsLibrary.js';
 import { isReleaseAssetMode } from './releaseMode.js';
@@ -47,12 +53,9 @@ export function isPlayerKestrel(entity) {
 }
 
 function requiresProductionWholeShip(entity) {
-  if (!entity || entity.type !== 'ship' || !entity.data) return false;
-  // The active-hull rebuild uses a short-lived render entity that does not retain `isPlayer`, even
-  // though its authoritative defId has already changed. Keep the Kestrel's strict player-only boot
-  // rule, while selecting the production Wasp for every Wasp render entity so ship switching cannot
-  // silently reconstruct the older modular body.
-  return isPlayerKestrel(entity) || entity.data.defId === 'ship_wasp';
+  // One required-body gate with the parts library. Traffic-role maps keep Helios civilians on
+  // Lark/Span/Cradle; roster defs, the liner, smuggler/pirate, and the recovery tug stay complete.
+  return requiresProductionWholeShipForEntity(entity);
 }
 
 function isWorldPlaceProp(entity) {
@@ -303,18 +306,27 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
   const start = (renderer, scene, requestOptions = {}) => {
     const existing = root.userData.authoredUpgradePromise;
     if (existing) return existing;
-    if (!renderer) return null;
+    if (!renderer || !scene) return null;
     if (root.userData.authoredAssetState === 'authored') return Promise.resolve(true);
     root.userData.authoredAssetState = 'loading';
     const loadPart = typeof requestOptions.loadAuthoredPart === 'function'
       ? requestOptions.loadAuthoredPart
       : loadAuthoredPart;
+    const admissionOptions = () => ({
+      ...residencyOptionsForBoundary(entity, root, renderer),
+      ...requestOptions,
+    });
+    // Same admission barrier as ship/capsule boundaries, without the serial upgrade queue: the
+    // packaged body is compiled and its buffers uploaded while still detached, and publication
+    // waits on the opening-graph release. Adding the group straight to the live scene left its
+    // materials to link inside the first bloomScene draw (the wrk_glass_shattered / lnb_* brick);
+    // routing through the queue instead delayed mounts into measured flight windows.
     const completion = loadPart(url, {
       renderer,
       slot: spec.slot || slotForPackagedFile(spec.file),
       optional: true,
       ...requestOptions,
-    }).then((record) => {
+    }).then(async (record) => {
       if (!record || !root.parent) {
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
         return false;
@@ -330,6 +342,27 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       fitPackagedGroup(packaged, packagedFitRadius(entity, spec));
       batchPackagedPropOpaqueMeshes(packaged);
       freezeStaticChildMatrices(packaged);
+      root.userData.authoredAssetState = 'compiling-pipelines';
+      try {
+        await prepareAuthoredVisualPipelines(packaged, admissionOptions());
+      } catch (error) {
+        releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed');
+        root.userData.authoredAssetState = 'unavailable';
+        reportVisualWarning(options, '[visualOverrides] packaged 47-A / TOW pipeline admission failed', error);
+        return false;
+      }
+      if (!root.parent) {
+        releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-after-compile');
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        return false;
+      }
+      const publicationWait = waitForOpeningGraphPublicationRelease();
+      if (publicationWait) await publicationWait;
+      if (!root.parent) {
+        releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-before-publication');
+        root.userData.authoredAssetState = 'orphaned-before-swap';
+        return false;
+      }
       hideProceduralPropDrawables(root);
       root.add(packaged);
       root.userData.hull = packaged;

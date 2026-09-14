@@ -277,10 +277,33 @@ export const CSS = `
 #sf-galaxymap .gm-hint-text { max-width: var(--k-measure); }
 
 /* ---- The stage-right column (.gm-right-inspector): fine words in a row, then rows ------------ */
-#sf-galaxymap .gm-tabs { flex: 0 0 auto; gap: calc(12px * var(--k-s)) var(--k-gap); }
+#sf-galaxymap .gm-tabs { flex: 0 0 auto; gap: calc(12px * var(--k-s)) var(--k-gap); flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+#sf-galaxymap .gm-tab { flex: 0 0 auto; }
 #sf-galaxymap .gm-tab[aria-selected="true"] { color: var(--k-text-live); }
 #sf-galaxymap .gm-tab[aria-selected="true"]::after { transform: scaleX(1); }
-#sf-galaxymap .gm-inspector-content { display: flex; flex-direction: column; gap: var(--k-pad); flex: 1 1 auto; min-height: 0; }
+#sf-galaxymap .gm-inspector-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--k-pad);
+  flex: 1 1 auto;
+  min-height: 80px;
+  overflow: hidden auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--k-hair) transparent;
+}
+/* The action band stays out of the detail overflow: when the tab strip and the symbol key spend
+   the column, the primary action must still be on the glass rather than clipped to zero height. */
+#sf-galaxymap .gm-inspector-actions {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 50%;
+  display: flex;
+  flex-direction: column;
+  gap: calc(8px * var(--k-s));
+  overflow: hidden auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--k-hair) transparent;
+}
 #sf-galaxymap .gm-frame-group { display: flex; flex-wrap: wrap; align-items: baseline; gap: calc(8px * var(--k-s)) var(--k-gap); }
 #sf-galaxymap .gm-frame-reason, #sf-galaxymap .gm-plot-reason, #sf-galaxymap .gm-engage-reason, #sf-galaxymap .gm-ribbon-reason { flex-basis: 100%; max-width: var(--k-measure); }
 #sf-galaxymap .gm-frame-reason:empty, #sf-galaxymap .gm-plot-reason:empty, #sf-galaxymap .gm-engage-reason:empty, #sf-galaxymap .gm-ribbon-reason:empty { display: none; }

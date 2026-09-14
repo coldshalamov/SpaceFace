@@ -21,6 +21,37 @@ function isOpaqueStaticMesh(mesh, materialName) {
     && !Object.hasOwn(mesh, 'onBeforeRender');
 }
 
+// Packaged GLBs arrive with whatever buffer layout the exporter chose — interleaved attributes,
+// normalized integer uvs, Uint16 vs Uint32 indices — and mergeGeometries refuses to weld mixed
+// array types. Rebuild every stream as a plain Float32 BufferAttribute (and every index as
+// Uint32) so a batch can never fail on representation alone. Values are read through getX/Y/Z/W,
+// which already de-normalize, so normalized uvs keep their real coordinates.
+function flattenAttributeForMerge(attribute) {
+  const itemSize = attribute.itemSize;
+  const count = attribute.count;
+  const array = new Float32Array(count * itemSize);
+  for (let i = 0; i < count; i += 1) {
+    array[i * itemSize] = attribute.getX(i);
+    if (itemSize > 1) array[i * itemSize + 1] = attribute.getY(i);
+    if (itemSize > 2) array[i * itemSize + 2] = attribute.getZ(i);
+    if (itemSize > 3) array[i * itemSize + 3] = attribute.getW(i);
+  }
+  return new THREE.BufferAttribute(array, itemSize);
+}
+
+function normalizeGeometryForMerge(geometry) {
+  for (const name of Object.keys(geometry.attributes)) {
+    geometry.setAttribute(name, flattenAttributeForMerge(geometry.getAttribute(name)));
+  }
+  if (geometry.index) {
+    const index = geometry.index;
+    const array = new Uint32Array(index.count);
+    for (let i = 0; i < index.count; i += 1) array[i] = index.getX(i);
+    geometry.setIndex(new THREE.BufferAttribute(array, 1));
+  }
+  return geometry;
+}
+
 function mergeOpaqueMeshes(root, meshes, batchName, { disposeSourceGeometry = true } = {}) {
   if (!root || !Array.isArray(meshes) || meshes.length < 2) return null;
   root.updateMatrixWorld(true);
@@ -28,7 +59,7 @@ function mergeOpaqueMeshes(root, meshes, batchName, { disposeSourceGeometry = tr
   const transformed = [];
   for (const mesh of meshes) {
     RELATIVE.multiplyMatrices(ROOT_INVERSE, mesh.matrixWorld);
-    const geometry = mesh.geometry.clone();
+    const geometry = normalizeGeometryForMerge(mesh.geometry.clone());
     geometry.applyMatrix4(RELATIVE);
     transformed.push(geometry);
   }
