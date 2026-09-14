@@ -1277,8 +1277,15 @@ async function clickWaypointWithPointer(page, locator) {
       await page.mouse.down({ button: 'left' });
       await page.mouse.up({ button: 'left' });
       const armed = await page.waitForFunction(() => {
-        const autopilot = window.SF?.state?.nav?.autopilot;
-        return autopilot?.active === true && /Helios Station/i.test(String(autopilot.label || ''));
+        const nav = window.SF?.state?.nav;
+        const autopilot = nav?.autopilot;
+        if (!/Helios Station/i.test(String(autopilot?.label || ''))) return false;
+        if (autopilot.active === true) return true;
+        // Point-blank arm: inside the 90 u arrival radius the follower can report 'arrived'
+        // (active:false) within one sim tick — before a rAF poll ever sees armed. The fresh
+        // waypoint slot proves this click landed rather than a stale autopilot label.
+        return autopilot.status === 'arrived'
+          && /Helios Station/i.test(String(nav?.waypoint?.label || ''));
       }, null, { timeout: 750 }).then(() => true, () => false);
       if (armed) return;
     }
