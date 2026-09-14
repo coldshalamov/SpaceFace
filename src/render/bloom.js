@@ -1021,6 +1021,34 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       .filter(Boolean);
   }
 
+  // For each late-linked key, name the closest already-resident key and the exact segment where
+  // they diverge. "the canopy re-linked" is not actionable; "numPointLights 4 -> 0" is.
+  function describeProgramKeyDivergence(before) {
+    const programs = renderer && renderer.info && renderer.info.programs;
+    if (!Array.isArray(programs) || !Number.isFinite(before)) return [];
+    const prior = programs.slice(0, before)
+      .map((prog) => String(prog && (prog.cacheKey || prog.name) || ''));
+    return programs.slice(before)
+      .map((prog) => String(prog && (prog.cacheKey || prog.name) || ''))
+      .filter(Boolean)
+      .map((key) => {
+        let best = null;
+        for (const existing of prior) {
+          let i = 0;
+          while (i < key.length && i < existing.length && key[i] === existing[i]) i++;
+          if (!best || i > best.prefix) best = { key: existing, prefix: i };
+        }
+        if (!best) return { newKey: key.slice(0, 900), nearest: null };
+        const d = best.prefix;
+        return {
+          newKey: key.slice(0, 900),
+          nearestPrefix: d,
+          newSegment: key.slice(Math.max(0, d - 24), d + 40),
+          priorSegment: best.key.slice(Math.max(0, d - 24), d + 40),
+        };
+      });
+  }
+
   // Map each newly-linked program key back to the live object using it.
   // A cache key names a program, not a producer, and "+3 programs" is not actionable until you know
   // WHICH object dragged them in — this is what turned an unattributed 498 ms freeze into
@@ -1132,6 +1160,17 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             key: key.slice(0, 40),
             object: String(object.name || object.type || 'unnamed'),
             material: String(material.name || material.type || 'unnamed'),
+            materialType: String(material.type || '?'),
+            transparent: material.transparent === true,
+            transmission: Number(material.transmission) || 0,
+            side: Number(material.side),
+            envMapBound: material.envMap != null,
+            vertexColors: material.vertexColors === true,
+            skinning: object.isSkinnedMesh === true,
+            morph: !!(object.geometry && object.geometry.morphAttributes
+              && Object.keys(object.geometry.morphAttributes).length),
+            instanced: object.isInstancedMesh === true,
+            defines: material.defines ? Object.keys(material.defines).length : 0,
             root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed'),
             visible: object.visible === true,
           });
@@ -1194,7 +1233,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
             // previous-brick set reported every program acquired since the last brick — dozens of
             // legitimately warm ones — which made the payload unusable for naming a producer.
-            newPrograms: exactNewProgramKeys(programsBefore).map((key) => key.slice(0, 120)),
+            newPrograms: exactNewProgramKeys(programsBefore).map((key) => key.slice(0, 900)),
+            programKeyDivergence: describeProgramKeyDivergence(programsBefore),
             owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
             newGeometries: grewGeometries
               ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
