@@ -287,6 +287,15 @@ export async function runReleaseSoakProbe({
     assert.equal(await isDocked(page), true, 'public route must finish docked for comparable retained-heap baseline');
     await ensureMarketOpen(page);
     await page.waitForTimeout(1_500);
+    // Warm bounded first-touch residency before the measured baseline: the first
+    // public save/load populates the warm-sector hold and mounts deferred sector
+    // packages exactly once, then stays flat (per-cycle checkpoints prove it).
+    // The resource ceilings are written for that steady state — measuring it in
+    // would fail on intended one-time residency, not on a leak.
+    doLog('warming first-touch residency (one unmeasured public cycle)');
+    await runSoakCycle(page, { index: 'warmup', outputDir, log: doLog, screenshots: false });
+    await ensureMarketOpen(page);
+    await page.waitForTimeout(1_500);
     const baselineMemory = await withTimeout(
       readPostGcMemorySnapshot(page, 'docked-market-start'),
       30_000,
@@ -338,6 +347,7 @@ export async function runReleaseSoakProbe({
             activeElement: typeof document !== 'undefined' ? (document.activeElement?.tagName + '.' + (document.activeElement?.className || '')).slice(0, 120) : null,
             navAutopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status } : null,
             dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
+            sectorEvents: window.__PQ033_SECTOR_EVENTS__ || [],
           };
         }).catch(() => null);
         cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)}`;
@@ -824,12 +834,37 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
     marks.push({ name, at: new Date().toISOString(), ...detail });
     log(`[cycle ${index}] ${name}`);
   };
+  // DIAG (worktree-only): record sector + player pos at every mark so a mid-cycle
+  // sector flip can be localized to the exact step that observed it last.
+  const markState = () => page.evaluate(() => {
+    const s = window.SF?.state;
+    const p = (s?.entityList || []).find((e) => e?.id === s?.playerId) || s?.entities?.get?.(s?.playerId);
+    return {
+      sector: s?.world?.currentSectorId || null,
+      pos: p?.pos ? { x: Math.round(p.pos.x), z: Math.round(p.pos.z) } : null,
+      docked: s?.ui?.docked === true,
+      heliosPresent: (s?.entityList || []).some((e) => e?.type === 'station' && e?.data?.stationId === 'station_helios'),
+      tetheredToPlayer: (s?.entityList || []).some((e) => e?.tether?.targetId === s?.playerId || (e?.data?.tetherTargetId === s?.playerId)),
+    };
+  }).catch(() => null);
+  const markWithState = async (name, detail = {}) => { mark(name, { ...detail, atState: await markState() }); };
+  // Sector-transition tap: any enterSector during the cycle is recorded with its provenance.
+  await page.evaluate(() => {
+    if (window.__PQ033_SECTOR_TAP__) return;
+    window.__PQ033_SECTOR_TAP__ = true;
+    window.__PQ033_SECTOR_EVENTS__ = [];
+    window.SF?.bus?.on?.('sector:enter', (p) => {
+      if (window.__PQ033_SECTOR_EVENTS__.length < 32) {
+        window.__PQ033_SECTOR_EVENTS__.push({ sectorId: p?.sectorId, continuous: p?.continuous, noTeleport: p?.noTeleport, via: p?.via, t: Date.now() });
+      }
+    });
+  }).catch(() => {});
   const transition = async (name, opts) => setSoakTransition(page, name, opts);
 
   assert.equal(await isDocked(page), true, `cycle ${index} must start docked`);
   await transition('undock');
   await publicUndockFromStation(page);
-  mark('undock');
+  await markWithState('undock');
   await transition(null, { settleMs: 2_500 });
 
   const beforeInput = await readPlayerSnapshot(page);
@@ -839,7 +874,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   const afterInput = await readPlayerSnapshot(page);
   assert(afterInput.tick > beforeInput.tick, 'flight input must advance simulation ticks');
   assert(distance(beforeInput.pos, afterInput.pos) > 0.05 || Math.abs(afterInput.speed - beforeInput.speed) > 0.05, 'flight input must cause motion');
-  mark('flight-input', { before: beforeInput, after: afterInput });
+  await markWithState('flight-input', { before: beforeInput, after: afterInput });
   await sampleDiagnostics(page, samples);
 
   await armSaveLoadObservers(page);
@@ -872,7 +907,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   const saveCompletedPose = await readPlayerSnapshot(page);
   const savedStorage = await page.evaluate(() => ({ bytes: localStorage.getItem('sf.save.quick')?.length || 0, slot: window.SF?.state?.save?.currentSlot || null }));
   assert(savedStorage.bytes > 100, 'quick-save payload was not persisted');
-  mark('save-written', { ...savedStorage, saved, saveCompletedPose, completionAdvanceDistance: distance(saved.pos, saveCompletedPose.pos) });
+  await markWithState('save-written', { ...savedStorage, saved, saveCompletedPose, completionAdvanceDistance: distance(saved.pos, saveCompletedPose.pos) });
 
   await page.keyboard.down('KeyW');
   await page.waitForTimeout(650);
@@ -913,13 +948,13 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   const divergedDistance = distance(saved.pos, diverged.pos);
   const restoredDistance = distance(restoreReference.pos, loadedAtEvent.pos);
   const postLoadAdvanceDistance = distance(loadedAtEvent.pos, loaded.pos);
-  mark('load-observed', { saved, loadedSlot, diverged, loadedAtEvent, loaded, divergedDistance, restoredDistance, postLoadAdvanceDistance });
+  await markWithState('load-observed', { saved, loadedSlot, diverged, loadedAtEvent, loaded, divergedDistance, restoredDistance, postLoadAdvanceDistance });
   assert(
     restoredDistance <= (loadedSlot === 'quick' ? Math.max(1, divergedDistance * 0.25) : 1),
     `load position restore exceeded tolerance: ${JSON.stringify({ loadedSlot, restoredDistance, divergedDistance, saved, diverged, loaded })}`,
   );
   assert(Math.abs(restoreReference.speed - loadedAtEvent.speed) <= 2, `load speed restore exceeded tolerance: ${restoreReference.speed} -> ${loadedAtEvent.speed}`);
-  mark('load-restored', { saved, loadedSlot, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance });
+  await markWithState('load-restored', { saved, loadedSlot, diverged, loadedAtEvent, loaded, postLoadAdvanceDistance });
   // The honest roundtrip check: live economy at the save:loaded event instant must equal
   // the envelope that was loaded. The later readEconomySnapshot stays diagnostic-only —
   // gameplay keeps running after restore and can legitimately grant cargo before it.
@@ -934,7 +969,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       && player?.mesh?.userData?.authoredAssetState === 'authored'
       && state.entityList.some((entity) => entity?.type === 'station' && entity?.data?.stationId === 'station_helios');
   }, null, { timeout: 90_000 });
-  mark('loaded-world-ready');
+  await markWithState('loaded-world-ready');
   await transition(null, { settleMs: 3_000 });
   await sampleDiagnostics(page, samples);
 
@@ -944,7 +979,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   // map detail panel. Exercise the public waypoint route only when navigation is actually needed.
   const alreadyAtDockPrompt = await dockPrompt.isVisible().catch(() => false);
   if (alreadyAtDockPrompt) {
-    mark('redock-already-in-range');
+    await markWithState('redock-already-in-range');
   } else {
     await transition('waypoint');
     await armHeliosWaypoint(page);
@@ -955,7 +990,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       return nav?.autopilot?.active === true || nav?.waypoint != null;
     }, null, { timeout: 8_000 }).then(() => true).catch(() => false);
     assert(navArmed, 'redock waypoint did not arm nav.waypoint/autopilot — the ship would drift unpowered');
-    mark('redock-waypoint');
+    await markWithState('redock-waypoint');
     await transition(null, { settleMs: 1_500 });
   }
   const readDockDiag = () => page.evaluate(() => {
@@ -1005,7 +1040,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   }
   assert(docked, 'dock key did not dock within the retry window');
   await page.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
-  mark('docked');
+  await markWithState('docked');
 
   const marketTab = page.locator('[role="tab"]', { hasText: /market/i }).first();
   await marketTab.waitFor({ state: 'visible', timeout: 20_000 });

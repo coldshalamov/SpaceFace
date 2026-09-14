@@ -52,14 +52,29 @@ export function compileShadowDepthPipelines(options = {}) {
   }
 
   const THREE = options.THREE;
-  const staging = THREE && typeof THREE.Group === 'function'
-    ? new THREE.Group()
-    : { name: '', children: [], add(child) { this.children.push(child); }, clear() { this.children.length = 0; }, updateMatrixWorld() {} };
+  // WebGLShadowMap.render() calls renderer.renderBufferDirect(), whose setProgram
+  // dereferences the renderer's CURRENT render state — null outside a live
+  // renderer.render() call. Staging therefore has to be a real Scene rendered
+  // through render(): that runs the exact same shadow pass production frames run
+  // (lights collected -> shadowMap.render -> depth programs) with valid state,
+  // and the staged color pass doubles as surface-variant admission for the
+  // casters under the real shadow-armed light key.
+  const staging = THREE && typeof THREE.Scene === 'function'
+    ? new THREE.Scene()
+    : null;
+  if (!staging) {
+    return { skipped: true, reason: 'shadow depth compiler requires THREE.Scene staging', subjects: 0 };
+  }
   staging.name = options.stagingName || 'SF_AdmissionShadowDepthPipelines';
   const homes = casting.map((root) => captureObjectHome(root));
+  homes.push(captureObjectHome(light));
+  if (light.target && typeof light.target === 'object') homes.push(captureObjectHome(light.target));
   const previousTarget = typeof renderer.getRenderTarget === 'function'
     ? renderer.getRenderTarget()
     : null;
+  const scratchTarget = options.renderTarget !== undefined
+    ? options.renderTarget
+    : new THREE.WebGLRenderTarget(8, 8);
   const restoreVisibility = revealSubjectForCompile(staging);
   const restoreCasters = casting.map((root) => revealSubjectForCompile(root));
   const programCacheKeys = new Set();
@@ -85,6 +100,7 @@ export function compileShadowDepthPipelines(options = {}) {
       return result;
     };
   }
+  const previousAutoUpdate = light.shadow ? light.shadow.autoUpdate : undefined;
   try {
     if (forceEnable) {
       shadowMap.enabled = true;
@@ -93,12 +109,24 @@ export function compileShadowDepthPipelines(options = {}) {
     for (const root of casting) {
       if (typeof staging.add === 'function') staging.add(root);
     }
+    // The light (and its target) must belong to the rendered scene for the real
+    // shadow pass to collect it; render() updates the staging graph itself.
+    staging.add(light);
+    if (light.target && typeof light.target === 'object') staging.add(light.target);
+    // Force exactly one shadow refresh inside this render regardless of the
+    // frame-time cadence gate; restore autoUpdate afterwards.
+    if (light.shadow) {
+      light.shadow.autoUpdate = false;
+      light.shadow.needsUpdate = true;
+    }
     if (typeof staging.updateMatrixWorld === 'function') staging.updateMatrixWorld(true);
     // Targeted pipeline admission, not a hidden scene discovery render. Only the admitted
-    // casters are in `staging`; WebGLShadowMap generates their depth programs here.
+    // casters are in `staging`; the live render drives WebGLShadowMap through its normal
+    // path so depth programs compile under a valid render state.
     // An empty caster list still runs so light.shadow.map exists before color compile —
     // otherwise numDirLightShadows stays 0 and the first shadowed draw relinks physical.
-    shadowMap.render([light], staging, camera);
+    renderer.setRenderTarget(scratchTarget || null);
+    renderer.render(staging, camera);
     const programBindingFailures = [];
     if (casting.length > 0 && !originalRenderBufferDirect) {
       programBindingFailures.push(`shadow-depth:${casting.length}:render-buffer-direct-unavailable`);
@@ -113,6 +141,7 @@ export function compileShadowDepthPipelines(options = {}) {
     };
   } finally {
     if (originalRenderBufferDirect) renderer.renderBufferDirect = originalRenderBufferDirect;
+    if (light.shadow && previousAutoUpdate !== undefined) light.shadow.autoUpdate = previousAutoUpdate;
     if (forceEnable) {
       shadowMap.enabled = previousEnabled;
       light.castShadow = previousCastShadow;
@@ -122,6 +151,9 @@ export function compileShadowDepthPipelines(options = {}) {
     for (const home of homes) restoreObjectHome(home);
     if (typeof staging.clear === 'function') staging.clear();
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
+    if (scratchTarget && options.renderTarget === undefined && typeof scratchTarget.dispose === 'function') {
+      scratchTarget.dispose();
+    }
     if (light.shadow) light.shadow.needsUpdate = true;
   }
 }
