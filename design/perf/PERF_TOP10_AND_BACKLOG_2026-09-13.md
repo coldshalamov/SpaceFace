@@ -32,7 +32,7 @@ and after, one headed run at a time on a quiet machine. Headless or software-GPU
 | Launch click to flying (second launch) | `node scripts/probe-main-thread-profile.mjs --from-launch --keep-profile=p0913a` | 32.2 s | 4.2 s (other quiet run 2.9 s); 5.6 s once the engine effects are built while loading (one run; cook 1.19 s -> 1.77 s) |
 | Launch click to flying (first launch) | same, fresh `--keep-profile` name | 34.7 s | 12.1 s with engine effects and rocks built while loading (fresh-install jump probe 12.4 s and 14.4 s; before those two changes 10.8-10.9 s) |
 | Long freezes while loading | same report, long tasks from Launch to flight | 24 tasks, 7.4 s in gpu-resources | 6 tasks, 667 ms in total, longest 198 ms |
-| Freeze as flight begins | same report, first 10 s of flight + `[GPU brick]` console line | 1.6-4.8 s, three ships still compiling | none in the first 10 s of a New Game, now with effects running (the earlier "none" was measured while effects were frozen). Crucible swarm: two or three 50-117 ms frames in the first half second (field markers and one material still build on first draw). Fresh install: the 433-550 ms freeze when the first rocks came into view is gone (the rock material now compiles while loading); opening flight 60 fps, worst frame 17-18 ms in two fresh-install runs |
+| Freeze as flight begins | same report, first 10 s of flight + `[GPU brick]` console line | 1.6-4.8 s, three ships still compiling | none in the first 10 s of a New Game, now with effects running (the earlier "none" was measured while effects were frozen). Fresh install: the 433-550 ms freeze when the first rocks came into view is gone (the rock material now compiles while loading); opening flight 60 fps, worst frame 17-18 ms in two runs. Crucible: one 50 ms frame as the first picture appears, then 60 fps with a worst frame of 18 ms (was two or three 50-117 ms frames while the field markers compiled on first draw) |
 | Jump charge | `node scripts/probe-runtime-witness.mjs --sector-entry --no-sample-shots` | 8.3 s, 34 hitches, blocks up to 4.8 s | map to arrival 6 s, nothing over 77 ms (jump profile: the witness cannot click through uncommitted chart panels) |
 | Freeze 20 s into every run | instrumented jump and swarm probes (game time, hold flags and new programs per frame) | 600 ms the first time on a profile, 50-67 ms cached, 330-373 ms on a fresh install; no exhaust or tracers before it | none on a warm cache (no frame over 34 ms at the release); on a fresh install at most 83 ms, and no frame over 34 ms in the second run; effects run from the first second |
 | Busy scene (Ceres after the jump) | same witness, frame breakdown | presentation p95 10.6 ms | 0 long tasks in 8.1 s, main thread 56 % busy (jump profile); worst frame 67 ms with effects running (was 100 ms) |
@@ -144,9 +144,11 @@ owner-facing report page. None repeat the top 10.
    programs at once: 7 programs, 600 ms the first time on a profile and 50-67 ms once cached. The
    shadow refresh on that frame took 4-6 ms. Fixed in `7cac23426` and `09a54187f`. The fresh-install
    freeze when the first rocks come into view was a separate first draw, now compiled while loading.
-   Still open: the field marker meshes and one material in a Crucible run's first half second, and a
-   1.9 s stall on the loading screen of a fresh install. That stall is `forceContextLoss()` on the New Game
-   preview's WebGL context (`shipPreviewMount.js` dispose; about 0.2 s once the shader cache is warm).
+   The field marker meshes that a Crucible arena lights in its first half second now compile while
+   loading as well; one 50 ms frame remains there, on the frame the first picture appears, with no
+   shader built in it. Still open: a 1.9 s stall on the loading screen of a fresh install. That stall is
+   `forceContextLoss()` on the New Game preview's WebGL context (`shipPreviewMount.js` dispose; about
+   0.2 s once the shader cache is warm).
 3. **Bake the ship when you refit it:** compose the template on `ship:appearanceChanged` while docked.
 4. **Persist baked ship templates between launches** (merged geometry in IndexedDB, keyed by loadout
    hash plus part-library and material ABI versions).
@@ -193,7 +195,8 @@ owner-facing report page. None repeat the top 10.
 32. **Confirm KTX2 transcodes to BC7 on this GPU** (an RGBA32 fallback costs 4x memory and upload).
 33. **Stop deep-copying world records every simulation tick** (`ensureWorldRecords` renormalizes the
     whole bag from `world.js`; grows with every sector visited). Measured 174 ms of main thread in the
-    first 21 s of a run (about 0.14 ms per tick), before any sector visits add to the bag.
+    first 21 s of a run (about 0.14 ms per tick), before any sector visits add to the bag. Not a felt
+    number on its own; the simulation goldens must stay byte-identical.
 34. **Remove the closure allocated on every event emit** (`eventBus.js`, ~1,700 emit sites).
 35. **Cache subsystem ordering** in `recomputeCombatantModifiers`.
 36. **Draw the radar cheaply in busy sectors:** two passes and a sort over every contact and asteroid
@@ -237,7 +240,8 @@ owner-facing report page. None repeat the top 10.
 66. **Keep off-view station landmarks as map facts** until you approach.
 67. **Remember the reduced-motion setting** instead of asking the browser for it on every HUD gauge
     animation step (`prefersReducedMotion` in `src/ui/effects/effectRuntime.js`, called from
-    `gaugeSettle.js`; ~34 ms per 8 s at Ceres).
+    `gaugeSettle.js` and every radar draw; ~34 ms per 8 s at Ceres, 82 ms per 21 s of opening flight).
+    Not a felt number; cheap if wanted.
 68. **A/B the ANGLE backends on this GPU** (D3D11, D3D11-on-12, Vulkan) and ship the fastest. A
     standalone link probe (fresh browser profile, one standard material, 3 directional and 22 point
     lights) measured programs ready in 329 ms on D3D11, 452 ms on D3D11-on-12 and 2 ms on Vulkan,

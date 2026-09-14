@@ -148,6 +148,7 @@ test('first-flight effect roots are the live plume, plasma, combat pools, and 47
       fn({ name: 'SF_ArcadeBladePool', userData: {} });
       fn({ name: 'sf-combat-beam-core-pool', userData: {} });
       fn({ name: 'SF_QuarksBatchedRenderer', userData: {} });
+      fn({ name: 'SF_FieldPipInstances', userData: {} });
       fn({ name: 'SF_Precompile_Hitch_Main_Plume', userData: { precompileStaging: true } });
       fn({ name: 'SF_Precompile_TrailStreak', userData: { precompileStaging: true } });
       fn({ name: 'SF_Precompile_WeaponEnergyBolts', userData: { precompileStaging: true } });
@@ -170,6 +171,7 @@ test('first-flight effect roots are the live plume, plasma, combat pools, and 47
     'SF_ArcadeBladePool',
     'sf-combat-beam-core-pool',
     'SF_QuarksBatchedRenderer',
+    'SF_FieldPipInstances',
   ]);
 });
 

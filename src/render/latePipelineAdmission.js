@@ -98,6 +98,10 @@ function isLiveFirstFlightEffect(object) {
     || name === 'SF_ArcadeBrokenArcPool' || name === 'SF_ArcadePhysicalShardPool') return true;
   if (name === 'SF_QuarksEmittersRoot' || name === 'SF_QuarksBatchedRenderer') return true;
   if (name === 'SF_SnarlBraidedCables') return true;
+  // Field device strand (pips, chevrons, banks, vanes, ribs, berms, knots, domes): instanced meshes built
+  // once at effects init at count 0. A Crucible arena's fields light them in the first half second of
+  // flight, where the pip program still linked on first draw (swarm probe, 2026-09-13).
+  if (name.startsWith('SF_Field') && name.endsWith('Instances')) return true;
   return false;
 }
 
