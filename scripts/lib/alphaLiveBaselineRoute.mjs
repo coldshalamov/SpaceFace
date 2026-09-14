@@ -254,16 +254,21 @@ export async function runBrowserPublicRoute({
 
     phase = 'autopilot-dock-approach';
     const dockPrompt = page.locator('.sf-alert--dock');
+    // The prompt fires for ANY station envelope the ship crosses en route — a nearer
+    // station would silently absorb the dock and the whole route would continue from
+    // the wrong berth. Only Helios' corridor identity may release the dock press.
+    const heliosPromptVisible = async () => (await dockPrompt.isVisible().catch(() => false))
+      && await page.evaluate(() => window.SF?.state?.dockingCorridor?.stationId === 'station_helios').catch(() => false);
     const dockDeadline = Date.now() + dockTimeoutMs;
     let approachSnapshot = null;
     while (Date.now() < dockDeadline) {
       approachSnapshot = await readApproachSnapshot(page);
       assert.equal(approachSnapshot.playerAlive, true, `player died during public autopilot approach: ${JSON.stringify(approachSnapshot)}`);
-      if (await dockPrompt.isVisible().catch(() => false)) break;
+      if (await heliosPromptVisible()) break;
       await page.waitForTimeout(250);
     }
-    assert.equal(await dockPrompt.isVisible().catch(() => false), true,
-      `public autopilot did not reach a physical dock prompt within ${dockTimeoutMs} ms; last=${JSON.stringify(approachSnapshot)}`);
+    assert.equal(await heliosPromptVisible(), true,
+      `public autopilot did not reach the Helios dock prompt within ${dockTimeoutMs} ms; last=${JSON.stringify(approachSnapshot)}`);
     const dockPromptText = (await dockPrompt.innerText()).trim();
     assert.match(dockPromptText, /\bE\b.*\bDOCK\b|\bDOCK\b.*\bE\b/i,
       `physical dock prompt must expose the public E binding, got ${JSON.stringify(dockPromptText)}`);
@@ -322,6 +327,9 @@ export async function runBrowserPublicRoute({
         `visible dock prompt rejected ordinary held E taps: ${JSON.stringify(attempts.slice(-6))}`);
     }
     await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 });
+    const dockedStationId = await page.evaluate(() => window.SF?.state?.ui?.dockedStationId || null);
+    assert.equal(dockedStationId, 'station_helios',
+      `route must dock at Helios Station; docked at ${JSON.stringify(dockedStationId)}`);
     await waitForVisible(page, '[data-screen="station"]', 20_000, 'station hub');
     // Product-specific acceptance routes may validate the current station shell themselves. The
     // shared M0 baseline keeps its stricter historical station contract by default.

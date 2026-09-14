@@ -293,7 +293,13 @@ export async function runReleaseSoakProbe({
     // The resource ceilings are written for that steady state — measuring it in
     // would fail on intended one-time residency, not on a leak.
     doLog('warming first-touch residency (one unmeasured public cycle)');
-    await runSoakCycle(page, { index: 'warmup', outputDir, log: doLog, screenshots: false });
+    const warmupMarks = [];
+    try {
+      await runSoakCycle(page, { index: 'warmup', outputDir, log: doLog, screenshots: false, marksSink: warmupMarks });
+    } catch (warmupError) {
+      warmupError.message = `${warmupError.message} | warmup-marks: ${JSON.stringify(warmupMarks)}`;
+      throw warmupError;
+    }
     // The cycle finishes docked on the market screen — the same state the
     // baseline tag names. Re-driving ensureMarketOpen here would race the
     // post-trade button state, so just confirm docked and settle.
@@ -318,9 +324,10 @@ export async function runReleaseSoakProbe({
     const memoryCheckpoints = [];
     let index = 0;
     while (index < cycles || Date.now() - soakStartedAt < minDurationMs) {
+      const cycleMarks = [];
       try {
         const cycle = await withTimeout(
-          runSoakCycle(page, { index, outputDir, log: doLog, screenshots: takeCycleScreenshots }),
+          runSoakCycle(page, { index, outputDir, log: doLog, screenshots: takeCycleScreenshots, marksSink: cycleMarks }),
           cycleTimeoutMs,
           `release-soak cycle ${index}`,
         );
@@ -353,7 +360,7 @@ export async function runReleaseSoakProbe({
             sectorEvents: window.__PQ033_SECTOR_EVENTS__ || [],
           };
         }).catch(() => null);
-        cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)}`;
+        cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)} | cycle-marks: ${JSON.stringify(cycleMarks)}`;
         throw cycleError;
       } finally {
         // A cycle that throws mid-transition must not leave the tag armed — later
@@ -830,8 +837,10 @@ export function cleanupIsolatedElectronProfile(isolatedLaunch, cleanupReport) {
   return true;
 }
 
-async function runSoakCycle(page, { index, outputDir, log, screenshots = true }) {
-  const marks = [];
+async function runSoakCycle(page, { index, outputDir, log, screenshots = true, marksSink = null }) {
+  // marksSink lets the caller read per-step marks even when the cycle throws —
+  // the failure diag needs the last-observed sector/pos, not just the timeout.
+  const marks = Array.isArray(marksSink) ? marksSink : [];
   const samples = [];
   const mark = (name, detail = {}) => {
     marks.push({ name, at: new Date().toISOString(), ...detail });
@@ -980,7 +989,8 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   // A restored save can already be physically inside Helios' docking envelope. In that case
   // reopening the map is redundant and can race the live flight screen replacing the cached
   // map detail panel. Exercise the public waypoint route only when navigation is actually needed.
-  const alreadyAtDockPrompt = await dockPrompt.isVisible().catch(() => false);
+  const alreadyAtDockPrompt = (await dockPrompt.isVisible().catch(() => false))
+    && await page.evaluate(() => window.SF?.state?.dockingCorridor?.stationId === 'station_helios').catch(() => false);
   if (alreadyAtDockPrompt) {
     await markWithState('redock-already-in-range');
   } else {
@@ -1005,11 +1015,18 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       speed: player?.vel ? Number(Math.hypot(player.vel.x, player.vel.z).toFixed(1)) : null,
       autopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status, label: state.nav.autopilot.label } : null,
       waypoint: state?.nav?.waypoint ? { kind: state.nav.waypoint.kind, label: state.nav.waypoint.label } : null,
-      corridor: dc ? { phase: dc.phase, distToBerth: dc.distToBerth, distCenter: dc.distCenter, inCorridor: dc.inCorridor, inCapture: dc.inCapture, headingOk: dc.headingOk } : null,
+      corridor: dc ? { stationId: dc.stationId ?? null, phase: dc.phase, distToBerth: dc.distToBerth, distCenter: dc.distCenter, inCorridor: dc.inCorridor, inCapture: dc.inCapture, headingOk: dc.headingOk } : null,
     };
   }).catch(() => null);
-  let dockPromptVisible = await dockPrompt.waitFor({ state: 'visible', timeout: 60_000 })
-    .then(() => true).catch(() => false);
+  // The prompt fires for ANY station envelope crossed en route. Only Helios' corridor
+  // identity may release the dock press — docking at a nearer non-Helios station shifts
+  // the berth the next cycle undocks from and can carry the save across a sector line.
+  const waitHeliosDockPrompt = (timeoutMs) => page.waitForFunction(() => {
+    const el = document.querySelector('.sf-alert--dock');
+    const visible = !!el && !el.hidden && getComputedStyle(el).display !== 'none';
+    return visible === true && window.SF?.state?.dockingCorridor?.stationId === 'station_helios';
+  }, null, { timeout: timeoutMs }).then(() => true).catch(() => false);
+  let dockPromptVisible = await waitHeliosDockPrompt(60_000);
   if (!dockPromptVisible) {
     const firstDiag = await readDockDiag();
     // A player whose approach stalls re-issues the command. If the autopilot is not
@@ -1019,12 +1036,11 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
     if (firstDiag?.autopilot?.active !== true) {
       mark('redock-rearm', firstDiag);
       await armHeliosWaypoint(page);
-      dockPromptVisible = await dockPrompt.waitFor({ state: 'visible', timeout: 45_000 })
-        .then(() => true).catch(() => false);
+      dockPromptVisible = await waitHeliosDockPrompt(45_000);
     }
     if (!dockPromptVisible) {
       const diag = await readDockDiag();
-      throw new Error(`dock prompt never appeared: ${JSON.stringify({ first: firstDiag, final: diag })}`);
+      throw new Error(`Helios dock prompt never appeared: ${JSON.stringify({ first: firstDiag, final: diag })}`);
     }
   }
   // Docking is a player-initiated loading span (station interior mount) — tag it like
@@ -1042,6 +1058,9 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       .then(() => true).catch(() => false);
   }
   assert(docked, 'dock key did not dock within the retry window');
+  const dockedStationId = await page.evaluate(() => window.SF?.state?.ui?.dockedStationId || null);
+  assert.equal(dockedStationId, 'station_helios',
+    `release-soak cycle must redock at Helios Station; docked at ${JSON.stringify(dockedStationId)}`);
   await page.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
   await markWithState('docked');
 
