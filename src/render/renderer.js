@@ -6555,6 +6555,10 @@ export const render = {
       return authoredPrewarmRequestsForEntities([entity], {
         sectorId: record.sectorId,
         playerId: state.playerId,
+        // The spawnable-archetype hull set is sector-level residency, not entity
+        // coverage: with it included every entity reads as eligible and the census
+        // stages boundaries for mounts that can never admit authored content.
+        includeSpawnableArchetypes: false,
       }).length > 0;
     };
     const sectorPrewarmCoverageOptions = (record) => ({
