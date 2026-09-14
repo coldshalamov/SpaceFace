@@ -4497,7 +4497,9 @@ export const render = {
             await yieldToBrowser();
           }
           if (typeof admissionOptions.isActive === 'function' && admissionOptions.isActive() !== true) {
-            throw new Error('Authored GPU residency owner became inactive before texture upload');
+            const error = new Error('Authored GPU residency owner became inactive before texture upload');
+            error.admissionOwnerReleased = true;
+            throw error;
           }
         },
         onBlockingSlice: recordAuthoredAdmissionBlockingSlice,

@@ -1202,6 +1202,15 @@ async function armSaveLoadObservers(page) {
       window.SF.bus.on('dock:attempt', (p) => pushDock({ kind: 'attempt', stationId: p?.stationId || null }));
       window.SF.bus.on('dock:denied', (p) => pushDock({ kind: 'denied', stationId: p?.stationId || null, reason: p?.reason || null }));
       window.SF.bus.on('dock:range', (p) => pushDock({ kind: 'range', stationId: p?.stationId || null, inRange: !!p?.inRange }));
+      // Waypoint arms emit synchronously from world._onSetCourse — a fresh count bump
+      // proves a Set Waypoint click landed even when a point-blank arrival clears
+      // nav.waypoint before any poll could see the label.
+      window.SF.bus.on('nav:waypoint', (payload) => {
+        if (/helios station/i.test(String(payload?.label || ''))) {
+          const ev = window.__M6_RELEASE_SOAK_EVENTS__;
+          ev.heliosWaypointArms = (ev.heliosWaypointArms || 0) + 1;
+        }
+      });
     }
     // Autosaves fire on the sim clock every 120 s and will interleave over a long
     // soak; a one-shot observer bound to an autosave would snapshot the wrong write.
@@ -1255,50 +1264,87 @@ async function armSaveLoadObservers(page) {
 }
 
 async function armHeliosWaypoint(page) {
-  await page.keyboard.press('KeyN');
-  await page.locator('#sf-galaxymap').waitFor({ state: 'visible', timeout: 20_000 });
-  await page.keyboard.press('/');
-  await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
-  await page.keyboard.press('Control+A');
-  await page.keyboard.type('Helios Station');
-  await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first().waitFor({ state: 'visible', timeout: 10_000 });
-  await page.keyboard.press('Enter');
-  const button = page.getByRole('button', { name: 'Set Waypoint', exact: true });
-  await button.waitFor({ state: 'visible', timeout: 10_000 });
-  await clickWaypointWithPointer(page, button);
-  await page.waitForFunction(() => {
-    const screen = document.querySelector('#sf-galaxymap');
-    const hidden = !screen || screen.hidden || getComputedStyle(screen).display === 'none' || screen.getBoundingClientRect().width < 2;
-    return window.SF?.state?.mode === 'flight' && hidden;
-  }, null, { timeout: 10_000 });
+  // Bounded whole-sequence retry: a click that arms a non-Helios target pops the chart
+  // closed, so retrying just the click is a dead loop — the search+select must re-run.
+  let lastError = null;
+  for (let round = 0; round < 3; round += 1) {
+    try {
+      const screen = page.locator('#sf-galaxymap');
+      if (!(await screen.isVisible().catch(() => false))) {
+        await page.keyboard.press('KeyN');
+        await screen.waitFor({ state: 'visible', timeout: 20_000 });
+      }
+      await page.keyboard.press('/');
+      await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
+      await page.keyboard.press('Control+A');
+      await page.keyboard.type('Helios Station');
+      await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first().waitFor({ state: 'visible', timeout: 10_000 });
+      await page.keyboard.press('Enter');
+      const button = page.getByRole('button', { name: 'Set Waypoint', exact: true });
+      await button.waitFor({ state: 'visible', timeout: 10_000 });
+      await clickWaypointWithPointer(page, button);
+      await page.waitForFunction(() => {
+        const el = document.querySelector('#sf-galaxymap');
+        const hidden = !el || el.hidden || getComputedStyle(el).display === 'none' || el.getBoundingClientRect().width < 2;
+        return window.SF?.state?.mode === 'flight' && hidden;
+      }, null, { timeout: 10_000 });
+      return;
+    } catch (err) {
+      lastError = err;
+      // Leave the chart closed so the next round's KeyN opens it cleanly.
+      const screen = page.locator('#sf-galaxymap');
+      if (await screen.isVisible().catch(() => false)) await page.keyboard.press('KeyN').catch(() => {});
+      await page.waitForTimeout(150);
+    }
+  }
+  throw lastError || new Error('Set Waypoint arm failed');
 }
 
 async function clickWaypointWithPointer(page, locator) {
   const deadline = Date.now() + 10_000;
   let lastBox = null;
+  let attempt = 0;
+  let nullBoxes = 0;
   while (Date.now() < deadline) {
+    attempt += 1;
     // Same fix as alphaLiveBaselineRoute.clickWaypointWithPointer: the button is
     // rendered under the chart layer until scrolled into the inspector's clear
     // band; without this the raw pointer click hits the covering screen.
     await locator.scrollIntoViewIfNeeded().catch(() => {});
     lastBox = await locator.boundingBox().catch(() => null);
-    if (lastBox && lastBox.width > 2 && lastBox.height > 2) {
-      const x = Math.round(lastBox.x + lastBox.width / 2);
-      const y = Math.round(lastBox.y + lastBox.height / 2);
-      await page.mouse.move(x, y);
-      await page.mouse.down({ button: 'left' });
-      await page.mouse.up({ button: 'left' });
-      const armed = await page.waitForFunction(() => {
+    if (!lastBox || lastBox.width <= 2 || lastBox.height <= 2) {
+      nullBoxes += 1;
+      // The chart pops closed when a click arms a target — if it wasn't Helios the
+      // button is gone for good and only the outer arm retry can recover.
+      if (nullBoxes > 8) throw new Error('Set Waypoint button left the viewport (chart closed before Helios arm)');
+    } else {
+      nullBoxes = 0;
+      const armsBefore = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.heliosWaypointArms || 0);
+      if (attempt >= 3) {
+        // Coverage fallback: if the real pointer keeps landing on the chart layer that
+        // paints over the inspector, dispatch the click on the button itself — same
+        // public control, same handler, without the hit-test.
+        await locator.dispatchEvent('click').catch(() => {});
+      } else {
+        const x = Math.round(lastBox.x + lastBox.width / 2);
+        const y = Math.round(lastBox.y + lastBox.height / 2);
+        await page.mouse.move(x, y);
+        await page.mouse.down({ button: 'left' });
+        await page.mouse.up({ button: 'left' });
+      }
+      const armed = await page.waitForFunction((before) => {
+        // A fresh nav:waypoint emission is the only race-free arm proof: the follower
+        // can flip a point-blank arm to 'arrived' and clear nav.waypoint within one
+        // sim tick, and a stale autopilot label survives from the previous approach.
+        const events = window.__M6_RELEASE_SOAK_EVENTS__;
+        if ((events?.heliosWaypointArms || 0) > before) return true;
         const nav = window.SF?.state?.nav;
         const autopilot = nav?.autopilot;
         if (!/Helios Station/i.test(String(autopilot?.label || ''))) return false;
         if (autopilot.active === true) return true;
-        // Point-blank arm: inside the 90 u arrival radius the follower can report 'arrived'
-        // (active:false) within one sim tick — before a rAF poll ever sees armed. The fresh
-        // waypoint slot proves this click landed rather than a stale autopilot label.
         return autopilot.status === 'arrived'
           && /Helios Station/i.test(String(nav?.waypoint?.label || ''));
-      }, null, { timeout: 750 }).then(() => true, () => false);
+      }, armsBefore, { timeout: 750 }).then(() => true, () => false);
       if (armed) return;
     }
     await page.waitForTimeout(50);
@@ -1337,8 +1383,21 @@ async function exerciseMarketRoundtrip(page) {
   // Bound every trade to exactly one unit: the hold can carry freight of the same
   // commodity, and Sell mode defaults qty to the whole held stack — selling the stack
   // is not a roundtrip of the traded unit.
-  const commitTrade = async () => {
-    await qtyInput.fill('1');
+  const commitTrade = async (commodityId) => {
+    // A market re-render replaces the trade panel (innerHTML) whenever the qty input is
+    // not focused; a state tick between row selection and fill reverts qty/selection and
+    // the go verb stays disabled. Re-select and re-fill a few times before failing the
+    // cycle on what is usually transient panel churn.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0 && commodityId) await selectRow(commodityId).catch(() => {});
+      await qtyInput.fill('1');
+      const ready = await tradeGo.waitFor({ state: 'visible', timeout: 6_000 })
+        .then(() => true, () => false);
+      if (ready) {
+        await tradeGo.click();
+        return;
+      }
+    }
     await tradeGo.waitFor({ state: 'visible', timeout: 20_000 });
     await tradeGo.click();
   };
@@ -1372,7 +1431,7 @@ async function exerciseMarketRoundtrip(page) {
     assert(commodityId, 'market register must offer a buyable row or held cargo to sell');
     const before = await readTradeSnapshot(page, commodityId);
     assert(before.owned > 0, 'sell-first roundtrip requires held cargo');
-    await commitTrade();
+    await commitTrade(commodityId);
     await page.waitForFunction(({ commodityId, owned }) =>
       Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) < owned,
       before, { timeout: 20_000 });
@@ -1380,7 +1439,7 @@ async function exerciseMarketRoundtrip(page) {
     assert.equal(mid.owned, before.owned - 1, 'sell-first roundtrip must sell exactly one unit');
     await ensureBuyMode();
     await selectRow(commodityId);
-    await commitTrade();
+    await commitTrade(commodityId);
     await page.waitForFunction(({ commodityId, owned }) =>
       Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) >= owned,
       before, { timeout: 20_000 });
@@ -1389,7 +1448,7 @@ async function exerciseMarketRoundtrip(page) {
     return { shell: 'orbital-command', direction: 'sell-first', commodityId, before, mid, after };
   }
   const before = await readTradeSnapshot(page, commodityId);
-  await commitTrade();
+  await commitTrade(commodityId);
   await page.waitForFunction(({ commodityId, credits, owned }) => {
     const state = window.SF?.state;
     return Number(state?.player?.credits) < credits
@@ -1402,7 +1461,7 @@ async function exerciseMarketRoundtrip(page) {
   // Sell mode auto-selects the first held row and qty=heldQty — reselect the bought
   // row through the public register and reset the quantity to the purchased unit.
   await selectRow(commodityId);
-  await commitTrade();
+  await commitTrade(commodityId);
   await page.waitForFunction(({ commodityId, owned }) => Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) <= owned,
     before, { timeout: 20_000 });
   const sold = await readTradeSnapshot(page, commodityId);

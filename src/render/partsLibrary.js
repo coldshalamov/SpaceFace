@@ -4785,7 +4785,12 @@ export async function prepareAuthoredVisualPipelines(root, options = {}) {
 function assertAuthoredVisualPreparationActive(options, phase) {
   const isActive = options && options.isResidencyOwnerActive;
   if (typeof isActive === 'function' && isActive() !== true) {
-    throw new Error(`Authored visual preparation owner became inactive ${phase}`);
+    // Same benign class as previewDisposed: the entity died or its boundary was torn
+    // down (save/load sector rematerialization) while compile/upload was in flight —
+    // aborting the admission is the designed response, not a composition defect.
+    const error = new Error(`Authored visual preparation owner became inactive ${phase}`);
+    error.admissionOwnerReleased = true;
+    throw error;
   }
 }
 
@@ -4947,15 +4952,16 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
     const failureCauses = error && Array.isArray(error.errors) && error.errors.length
       ? error.errors
       : [error];
-    const previewTeardownOnly = failureCauses.every(
-      (cause) => cause && cause.previewDisposed === true,
+    const benignTeardownOnly = failureCauses.every(
+      (cause) => cause && (cause.previewDisposed === true || cause.admissionOwnerReleased === true),
     );
-    // A disposed preview rejects its in-flight compile/upload on teardown — the ordinary
-    // hover-away case, not a composition defect. Keep the breadcrumb off the warning channel
-    // so release evidence only counts real admission failures.
-    const log = previewTeardownOnly ? console.info : console.warn;
-    log.call(console, previewTeardownOnly
-      ? '[partsLibrary] authored preview admission released by disposal'
+    // A disposed preview or a dead/torn-down owner rejects its in-flight compile/upload on
+    // teardown — the ordinary hover-away and save/load rematerialization cases, not a
+    // composition defect. Keep the breadcrumb off the warning channel so release evidence
+    // only counts real admission failures.
+    const log = benignTeardownOnly ? console.info : console.warn;
+    log.call(console, benignTeardownOnly
+      ? '[partsLibrary] authored admission released by owner teardown'
       : '[partsLibrary] authored composition failed; no substitute visual published', {
       entity: entity && entity.id,
       message: String(error && error.message || error),

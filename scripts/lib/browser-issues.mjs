@@ -27,7 +27,13 @@ export function collectPageIssues(page, options = {}) {
       ignoredIssues.push(issue);
       return;
     }
-    if (issue.type === 'error' || (includeWarnings && issue.type === 'warning')) issues.push(issue);
+    if (issue.type === 'error' || (includeWarnings && issue.type === 'warning')) {
+      issues.push(issue);
+      // msg.text() flattens structured args ("causes: Array(1)"), hiding exactly the
+      // failure detail the warning was built to carry. Re-serialize the args in page;
+      // the issue object is patched in place before evidence is written at run end.
+      if (msg.args().length > 1) void expandConsoleArgs(msg, issue);
+    }
   });
   page.on('response', (response) => {
     const status = response.status();
@@ -85,6 +91,31 @@ export function collectPageIssues(page, options = {}) {
       return expectedNavigationTokens.delete(token);
     },
   };
+}
+
+async function expandConsoleArgs(msg, issue) {
+  try {
+    const parts = await Promise.all(msg.args().map((arg) => arg.evaluate((v) => {
+      const ser = (x, d) => {
+        if (x == null || typeof x !== 'object') return x;
+        if (x instanceof Error) {
+          const out = { name: x.name, message: x.message };
+          if (Array.isArray(x.errors)) out.errors = x.errors.map((e) => ser(e, d + 1));
+          if (x.cause) out.cause = ser(x.cause, d + 1);
+          return out;
+        }
+        if (d > 4) return Object.prototype.toString.call(x);
+        if (Array.isArray(x)) return x.map((e) => ser(e, d + 1));
+        const out = {};
+        for (const k of Object.keys(x)) out[k] = ser(x[k], d + 1);
+        return out;
+      };
+      return ser(v, 0);
+    }).catch(() => undefined)));
+    const detail = parts.filter((p) => p !== undefined)
+      .map((p) => (typeof p === 'string' ? p : JSON.stringify(p)));
+    if (detail.length) issue.text = detail.join(' ');
+  } catch (_) { /* keep msg.text() */ }
 }
 
 export function isNavigationCancelledRequest(failure) {
