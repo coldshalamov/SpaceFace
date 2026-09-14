@@ -5558,6 +5558,7 @@ export const render = {
         );
         // Ledger only: whether each subject's program had finished linking when it was drawn. A draw
         // against an unlinked program blocks the main thread in onFirstUse until ANGLE completes it.
+        const touchGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
         const subjectProgramAtTouch = (subject) => {
           const materials = Array.isArray(subject && subject.material)
             ? subject.material
@@ -5573,7 +5574,14 @@ export const render = {
               status = 'none';
               continue;
             }
-            if (status === 'ready' && !(typeof program.isReady === 'function' && program.isReady() === true)) {
+            // isReady() polls glGetProgramiv on the program's handle. A handle minted
+            // on a dead context (an admission that ran inside the loseContext()->event
+            // gap) warns INVALID_VALUE on every poll and never reports ready; an
+            // isContextLost() pre-check is cheap and covers both that and a live loss.
+            const deadHandle = !program.program
+              || (touchGl && typeof touchGl.isContextLost === 'function' && touchGl.isContextLost());
+            if (status === 'ready' && !deadHandle
+                && !(typeof program.isReady === 'function' && program.isReady() === true)) {
               status = 'linking';
             }
           }

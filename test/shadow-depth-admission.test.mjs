@@ -392,3 +392,30 @@ test('armAdmissionShadows toggles live shadow state only when enabled', () => {
   assert.equal(renderer.shadowMap.enabled, false);
   idle();
 });
+
+test('shadow depth admission short-circuits on a lost context instead of compiling dead handles', () => {
+  const hull = { isMesh: true, castShadow: true };
+  let rendered = 0;
+  let rtBuilt = 0;
+  class CountingRT { constructor() { rtBuilt += 1; this.disposed = false; } dispose() { this.disposed = true; } }
+  const THREE = fakeThree();
+  const renderer = {
+    shadowMap: { enabled: true, render() { rendered += 1; } },
+    getContext() { return { isContextLost: () => true }; },
+    render() { rendered += 1; },
+  };
+  const result = compileShadowDepthPipelines({
+    renderer,
+    light: { castShadow: true, shadow: {} },
+    camera: {},
+    subjects: [hull],
+    forceEnable: true,
+    THREE: { ...THREE, WebGLRenderTarget: CountingRT },
+    captureObjectHome: (object) => ({ object }),
+    restoreObjectHome() {},
+  });
+  assert.equal(result.skipped, true);
+  assert.equal(result.contextLost, true);
+  assert.equal(rendered, 0, 'no staged render on a dead context');
+  assert.equal(rtBuilt, 0, 'no scratch target allocated on a dead context');
+});

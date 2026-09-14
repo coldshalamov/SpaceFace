@@ -289,6 +289,15 @@ export function touchSubjectOnExactTarget(renderer, renderTarget, subject, camer
   if (!renderer || typeof renderer.render !== 'function' || !subject || !lightingScene) {
     return { skipped: true, reason: 'touch unavailable' };
   }
+  // Between WEBGL_lose_context.loseContext() and three's async webglcontextlost
+  // handler, render() still runs on the dead context — linking programs whose
+  // handles stay invalid forever and warning per first-use poll.
+  try {
+    const gl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+    if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+      return { skipped: true, reason: 'WebGL context lost', contextLost: true };
+    }
+  } catch (_) { /* fall through to the render */ }
   const previousTarget = typeof renderer.getRenderTarget === 'function'
     ? renderer.getRenderTarget()
     : null;

@@ -474,6 +474,16 @@ function compilePipelinesContextSafe(renderer, subject, camera, lightingScene) {
 
     canvas.addEventListener('webglcontextlost', onContextLost, false);
 
+    // loseContext() kills the context before the async webglcontextlost event ever
+    // reaches three's _isContextLost flag; a compile in that gap builds programs on
+    // dead handles (permanent INVALID_VALUE at every later isReady/first-use poll).
+    try {
+      if (typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+        onContextLost();
+        return;
+      }
+    } catch (_) { /* fall through to compile */ }
+
     let materials;
     try {
       materials = renderer.compile(subject, camera, lightingScene);
@@ -560,6 +570,14 @@ export async function warmScenePipelinesForRenderTarget(
   if (!subject || !lightingScene || typeof lightingScene.add !== 'function') {
     return { skipped: true, reason: 'pipeline staging scene unavailable' };
   }
+  // Same dead-context gap as the compile path: a forced render between
+  // loseContext() and three's webglcontextlost handler draws dead-handle programs.
+  try {
+    const gl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+    if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+      return { skipped: true, reason: 'WebGL context lost', contextLost: true };
+    }
+  } catch (_) { /* fall through to the render */ }
   const previousTarget = typeof renderer.getRenderTarget === 'function'
     ? renderer.getRenderTarget()
     : null;

@@ -122,6 +122,16 @@ export function compileShadowDepthPipelines(options = {}) {
   if (!shadowMap || typeof shadowMap.render !== 'function' || !light || !camera) {
     return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
   }
+  // WEBGL_lose_context kills the context the instant loseContext() runs; three's
+  // _isContextLost flag and the app's own gate only flip when the async
+  // webglcontextlost event dispatches. A staged render inside that gap compiles
+  // and draws programs on the dead context — their handles stay invalid forever,
+  // and onFirstUse logs GL_INVALID_VALUE per program. gl.isContextLost() is the
+  // synchronous check that already answers correctly in the gap.
+  const gl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
+  if (gl && typeof gl.isContextLost === 'function' && gl.isContextLost()) {
+    return { skipped: true, reason: 'WebGL context lost', contextLost: true, subjects: 0 };
+  }
   if (typeof captureObjectHome !== 'function' || typeof restoreObjectHome !== 'function') {
     return { skipped: true, reason: 'shadow depth compiler requires object home capture', subjects: 0 };
   }
