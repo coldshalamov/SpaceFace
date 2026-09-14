@@ -11,8 +11,8 @@ const FH_KEY = {
 };
 
 export function fhUrl(rel) {
-  try { return new URL('../../../assets/ui/kit/assets/' + rel, import.meta.url).href; }
-  catch { return 'assets/ui/kit/assets/' + rel; }
+  try { return new URL('../../../../assets/ui/kit/assets/' + rel, import.meta.url).href; }
+  catch { return '/assets/ui/kit/assets/' + rel; }
 }
 
 function forcedColorsActive() {
