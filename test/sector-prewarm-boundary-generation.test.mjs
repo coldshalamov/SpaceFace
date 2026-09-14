@@ -1041,9 +1041,20 @@ test('live sector boundaries must finish exact authored admission before rotatio
   replacement.userData.authoredAssetState = 'authored';
   entity.mesh = replacement;
   meshes.set(entity.id, replacement);
-  await assert.rejects(settleLiveSectorBoundaryAdmissions([liveEntry()], options),
-    /did not finish exact admission/,
-    'a settled promise for an older same-id boundary cannot certify its replacement');
+  // A snapshot entry whose live mount was superseded is covered elsewhere — the
+  // replacement's own admission state is the coverage proof — but the stale entry
+  // must retire from the promise map so validation re-evaluates the current mount.
+  const liveMap = new Map();
+  const supersededEntry = liveEntry();
+  liveMap.set(entity.id, supersededEntry);
+  let retired = 0;
+  assert.equal(await settleLiveSectorBoundaryAdmissions([supersededEntry], {
+    ...options,
+    liveBoundaryEntries: liveMap,
+    onLiveBoundaryEntryRetired: () => { retired += 1; },
+  }), true);
+  assert.equal(retired, 1, 'the superseded entry retires so coverage re-evaluates the current mount');
+  assert.equal(liveMap.has(entity.id), false);
   entity.mesh = boundary;
   meshes.set(entity.id, boundary);
 

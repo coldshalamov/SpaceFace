@@ -624,23 +624,58 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
     // deleteProgram WeakSet so the per-call check costs no GL round trip.
     if (process.env.SF_SOAK_GL_TRACE === '1') {
       await context.addInitScript(() => {
+        // Handle provenance: every handle minted by createProgram joins `livePrograms`; a
+        // webglcontextlost event retires the whole set into `lostSets` (old-context handles stay
+        // instanceof WebGLProgram but are invalid query targets post-restore). The trap then
+        // attributes every bad getProgramParameter to deleted / dead-context / foreign handles
+        // with the caller stack — no GL round trip needed for the classification.
+        let livePrograms = new WeakSet();
+        const lostSets = [];
         const deleted = new WeakSet();
+        const classify = (program) => {
+          if (program == null) return 'null';
+          if (deleted.has(program)) return 'deleted';
+          if (typeof program === 'object' && typeof globalThis.WebGLProgram === 'function'
+            && !(program instanceof globalThis.WebGLProgram)) return 'not-a-program';
+          if (livePrograms.has(program)) return null;
+          for (const set of lostSets) if (set.has(program)) return 'dead-context';
+          return 'never-created';
+        };
+        const origGetContext = HTMLCanvasElement.prototype.getContext;
+        HTMLCanvasElement.prototype.getContext = function getContextTraced(kind, ...rest) {
+          const ctx = origGetContext.call(this, kind, ...rest);
+          if (ctx && !this.__glTraceLostHooked
+            && (kind === 'webgl2' || kind === 'webgl' || kind === 'experimental-webgl')) {
+            this.__glTraceLostHooked = true;
+            this.addEventListener('webglcontextlost', () => {
+              lostSets.push(livePrograms);
+              livePrograms = new WeakSet();
+            }, false);
+          }
+          return ctx;
+        };
         for (const protoName of ['WebGL2RenderingContext', 'WebGLRenderingContext']) {
           const proto = globalThis[protoName] && globalThis[protoName].prototype;
           if (!proto || typeof proto.getProgramParameter !== 'function') continue;
           const origGet = proto.getProgramParameter;
           const origDel = proto.deleteProgram;
+          const origCreate = proto.createProgram;
+          proto.createProgram = function createProgramTraced() {
+            const program = origCreate.call(this);
+            if (program) livePrograms.add(program);
+            return program;
+          };
           proto.deleteProgram = function deleteProgramTraced(program) {
-            if (program) deleted.add(program);
+            if (program) { deleted.add(program); livePrograms.delete(program); }
             return origDel.call(this, program);
           };
           proto.getProgramParameter = function getProgramParameterTraced(program, pname) {
-            if (program == null || deleted.has(program)
-              || (typeof program === 'object' && typeof globalThis.WebGLProgram === 'function'
-                && !(program instanceof globalThis.WebGLProgram))) {
+            const kind = classify(program);
+            if (kind !== null) {
               console.warn('[gl-trace] getProgramParameter on invalid handle', {
                 t: Math.round(performance.now()),
-                deleted: program ? deleted.has(program) : null,
+                kind,
+                pname,
                 stack: (new Error().stack || '').split('\n').slice(2, 10).join(' | '),
               });
             }

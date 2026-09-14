@@ -2190,6 +2190,19 @@ const LIVE_ADMISSION_COVERING_STATES = new Set([
   'same-semantic-fallback',
 ]);
 
+// States a live mount can carry after its authored-admission contract has already closed
+// without authored content. The mount is terminal procedural for this census: its requests
+// still prefetch GLBs for residency, but no boundary can be pending for coverage.
+const UNADMITTED_LIVE_MOUNT_STATES = new Set([
+  'unavailable',
+  'procedural-settled',
+  'fallback-after-error',
+  'cancelled-before-load',
+  'orphaned-before-swap',
+  'orphaned-after-pipeline-compile',
+  'orphaned-before-publication',
+]);
+
 /** Assert that the stable preparation population is an exact cover of the authoritative live
  * target-sector census. This rejects both omissions and stale LIVE supersets: a previously
  * published record is evidence only while its exact entity, boundary, fingerprint, and mesh map
@@ -2304,9 +2317,44 @@ export async function settleLiveSectorBoundaryAdmissions(entries, options = {}) 
         || entry.preparationSignature !== options.preparationSignature
         || options.contextLost === true
         || !ACCEPTED_LIVE_AUTHORED_STATES.has(authoredState)) {
+      // Before failing, classify entries that are covered or terminal elsewhere —
+      // but only when the admission envelope itself still proves current: an epoch,
+      // generation, signature, context, or fingerprint drift must stay fail-closed.
+      const receiptStatus = entry.receipt && entry.receipt.status;
+      const liveMap = options.liveBoundaryEntries instanceof Map
+        ? options.liveBoundaryEntries : null;
+      const envelopeClean = envelopeComplete
+        && fingerprint === entry.fingerprint
+        && entry.preparationEpoch === options.preparationEpoch
+        && entry.contextGeneration === options.contextGeneration
+        && entry.preparationSignature === options.preparationSignature
+        && options.contextLost !== true;
+      const coveredOrTerminal = envelopeClean && (
+        // The promise map already carries a fresher entry for the entity's current
+        // mount; this snapshot entry is stale and its successor carries coverage.
+        (liveMap && liveMap.get(entry.id) !== entry)
+        // The mount is authored-incapable (no upgrade hook): nothing authored can
+        // be pending for the entity — it is terminal procedural, not a census gap.
+        || receiptStatus === 'no-authored-upgrade'
+        // The authored contract ran and closed without content (missing/failed GLB).
+        || receiptStatus === 'unavailable'
+        // The live mount moved under this entry: the replacement boundary's own
+        // admission state carries coverage, an authored-incapable mount is terminal,
+        // and a swept mount is re-staged through the prepared-boundary path on the
+        // next fixpoint refresh.
+        || boundary !== entry.boundary);
+      if (coveredOrTerminal) {
+        if (liveMap && liveMap.get(entry.id) === entry) {
+          liveMap.delete(entry.id);
+          options.onLiveBoundaryEntryRetired?.(entry);
+        }
+        continue;
+      }
       failures.push(entry.receipt?.error || new Error(
         `Live authored boundary ${entry.id} did not finish exact admission `
-          + `(receipt=${entry.receipt?.status || 'missing'}, state=${authoredState || 'missing'})`,
+          + `(receipt=${receiptStatus || 'missing'}, state=${authoredState || 'missing'}`
+          + `, type=${current.type || '?'}`
+          + `, def=${current.data?.defId || current.data?.placeId || '-'})`,
       ));
     }
   }
@@ -6486,15 +6534,29 @@ export const render = {
       record.boundaryRevision = (Number(record.boundaryRevision) || 0) + count;
       record.certification = null;
     };
-    const sectorPrewarmEntityIsEligible = (record, entity) => !!record
-      && !!entity
-      && entity.alive !== false
-      && entity.id !== state.playerId
-      && String(entitySectorId(entity) || '') === record.sectorId
-      && authoredPrewarmRequestsForEntities([entity], {
+    const sectorPrewarmEntityIsEligible = (record, entity) => {
+      if (!record
+          || !entity
+          || entity.alive === false
+          || entity.id === state.playerId
+          || String(entitySectorId(entity) || '') !== record.sectorId) {
+        return false;
+      }
+      const liveMesh = this._meshes.get(entity.id);
+      if (liveMesh) {
+        const ud = liveMesh.userData || {};
+        // A live mount that cannot admit authored content — no upgrade hook, or an
+        // admission contract that already closed without it — is terminal procedural.
+        // Its requests still prefetch for residency, but nothing can be pending for
+        // boundary coverage; counting it would make every current-sector census fail.
+        if (typeof ud.requestAuthoredUpgrade !== 'function') return false;
+        if (UNADMITTED_LIVE_MOUNT_STATES.has(ud.authoredAssetState)) return false;
+      }
+      return authoredPrewarmRequestsForEntities([entity], {
         sectorId: record.sectorId,
         playerId: state.playerId,
       }).length > 0;
+    };
     const sectorPrewarmCoverageOptions = (record) => ({
       entities: state.entities,
       entityList: state.entityList,
@@ -6741,6 +6803,8 @@ export const render = {
         settleLiveBoundaryEntries: (liveEntries) => settleLiveSectorBoundaryAdmissions(liveEntries, {
           entities: state.entities,
           meshes: this._meshes,
+          liveBoundaryEntries: record.liveBoundaryPromises,
+          onLiveBoundaryEntryRetired: () => reviseSectorPrewarmPopulation(record),
           fingerprintForEntity: authoredCompositionFingerprintForEntity,
           preparationEpoch: this._authoredPreparationEpoch,
           contextGeneration: this._contextRecovery.generation,
