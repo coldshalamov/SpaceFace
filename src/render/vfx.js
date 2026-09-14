@@ -43,6 +43,7 @@ import {
   SHARD_BUFFER_BINDINGS,
 } from './particleShards.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
@@ -202,6 +203,20 @@ import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
 const EMPTY_VIDEO_SETTINGS = Object.freeze({});
+// Entity `type` → entityIndex bucket name, for indexed contact-target lookup.
+const INDEX_BUCKET_BY_TYPE = {
+  ship: 'ships',
+  drone: 'drones',
+  station: 'stations',
+  asteroid: 'asteroids',
+  wreck: 'wrecks',
+  payload: 'payloads',
+  pickup: 'pickups',
+  projectile: 'projectiles',
+  mine: 'mines',
+  vectormine: 'vectorMines',
+  charge: 'charges',
+};
 const PROJECTILE_TRAIL_DIAG_CLASSES = Object.freeze([
   'kinetic', 'rail', 'missile', 'plasma', 'pulse', 'emp', 'other',
 ]);
@@ -2629,8 +2644,12 @@ export const vfx = {
   },
 
   _refreshTrailCandidates() {
-    const list = this.state.entityList || [];
-    if (!this._trailCacheDirty && this._trailListRef === list && this._trailListLength === list.length) return;
+    const list = indexedShipLikeScan(this.state);
+    // Index membership can churn in place at a stable length (swap-remove + append), so the
+    // version watch catches same-length changes that the ref/length pair would miss.
+    const version = entityIndexVersion(this.state);
+    if (!this._trailCacheDirty && this._trailListRef === list
+      && this._trailListLength === list.length && this._trailListVersion === version) return;
     this._trailCandidates.length = 0;
     this._ribbonCandidates.length = 0;
     for (let i = 0; i < list.length; i++) {
@@ -2643,6 +2662,7 @@ export const vfx = {
     }
     this._trailListRef = list;
     this._trailListLength = list.length;
+    this._trailListVersion = version;
     this._trailCacheDirty = false;
   },
 
@@ -6410,8 +6430,10 @@ export const vfx = {
       return slot.contactTarget;
     }
     if (!field) return null;
-    const list = this.state.entityList;
-    for (let i = 0; list && i < list.length; i++) {
+    // Indexed type bucket when available — the predicate below still re-checks `body.type`,
+    // so an unknown type simply falls back to the full entity list.
+    const list = indexedTypeScan(this.state, INDEX_BUCKET_BY_TYPE[type]);
+    for (let i = 0; i < list.length; i++) {
       const body = list[i];
       if (body === ent || body.alive === false || body.type !== type
         || !body.data || body.data[field] !== value || !body.pos) continue;
@@ -6710,9 +6732,9 @@ export const vfx = {
   },
 
   _emitNpcPirateIntercepts(player, drawWu, reducedMotion) {
-    const list = this.state && this.state.entityList;
     const scratch = this._pirateInterceptScratch;
-    if (!list || !scratch) return 0;
+    if (!scratch || !this.state) return 0;
+    const list = indexedTypeScan(this.state, 'ships');
     scratch.elapsed = this.state.simTime || 0;
     const job = scratch.job || (scratch.job = { kind: 'pirate', phase: 'hold', routeIndex: 0, route: null });
     const profile = scratch.cadence || (scratch.cadence = { cadenceHz: 3.2, reducedCadenceHz: 1.2 });
@@ -8209,7 +8231,7 @@ export const vfx = {
     const pulse = 0.82 + 0.18 * Math.sin(this._t * 4.2);
     const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     let n = 0;
-    const list = state.entityList || [];
+    const list = indexedTypeScan(state, 'asteroids');
     for (let i = 0; i < list.length && n < sm.CAP; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'asteroid') continue;
@@ -10557,17 +10579,23 @@ export const vfx = {
     if (!state) return false;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
     if (!player || !player.alive || !player.pos) return false;
-    const list = state.entityList;
-    if (!list || !list.length) return false;
+    const pickups = indexedTypeScan(state, 'pickups');
+    const payloads = indexedTypeScan(state, 'payloads');
+    if (!pickups.length && !payloads.length) return false;
     const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e || !e.alive || (e.type !== 'pickup' && e.type !== 'payload') || !e.pos) continue;
-      const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
-      const focus = lootMagnetFocusDelta(state, player.pos, e.pos, _lootMagnetFocusScratch);
-      if (!shouldDrawLootMagnetTrail(pdx, pdz, focus.x, focus.z, tableWu)) continue;
-      const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
-      if (vx * vx + vz * vz >= LOOT_MAGNET_MIN_SPEED * LOOT_MAGNET_MIN_SPEED) return true;
+    for (let pass = 0; pass < 2; pass++) {
+      const list = pass === 0 ? pickups : payloads;
+      // Unindexed fallback returns the same entityList for both buckets — one pass covers it.
+      if (list === pickups && pass === 1) break;
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e || !e.alive || (e.type !== 'pickup' && e.type !== 'payload') || !e.pos) continue;
+        const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
+        const focus = lootMagnetFocusDelta(state, player.pos, e.pos, _lootMagnetFocusScratch);
+        if (!shouldDrawLootMagnetTrail(pdx, pdz, focus.x, focus.z, tableWu)) continue;
+        const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
+        if (vx * vx + vz * vz >= LOOT_MAGNET_MIN_SPEED * LOOT_MAGNET_MIN_SPEED) return true;
+      }
     }
     return false;
   },
@@ -10576,11 +10604,16 @@ export const vfx = {
     const state = this.state;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
     if (!player || !player.pos) { this._lootMagnetLive = 0; return 0; }
-    const list = state.entityList || [];
+    const pickups = indexedTypeScan(state, 'pickups');
+    const payloads = indexedTypeScan(state, 'payloads');
     const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     const burst = this._burst || 1;
     let drawn = 0;
-    for (let i = 0; i < list.length && drawn < LOOT_MAGNET_MAX_TRAILED; i++) {
+    for (let pass = 0; pass < 2 && drawn < LOOT_MAGNET_MAX_TRAILED; pass++) {
+      const list = pass === 0 ? pickups : payloads;
+      // Unindexed fallback returns the same entityList for both buckets — one pass covers it.
+      if (list === pickups && pass === 1) break;
+      for (let i = 0; i < list.length && drawn < LOOT_MAGNET_MAX_TRAILED; i++) {
       const e = list[i];
       if (!e || !e.alive || (e.type !== 'pickup' && e.type !== 'payload') || !e.pos) continue;
       const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
@@ -10620,6 +10653,7 @@ export const vfx = {
           0.22 + Math.random() * 0.16, 0.9 + rush * 0.7, 0.0,
           this._c0, this._c1, 2.4, 1.1, 0, roll, 0.7 + rush * 0.5,
         );
+      }
       }
     }
     this._lootMagnetLive = drawn;
@@ -10782,6 +10816,22 @@ export const vfx = {
       this._momentumSinkCandidateCount = 0;
       return 0;
     }
+    // Whole-subsystem sleep: a momentum-sink trail can only exist on an entity holding the
+    // combat status, so scan the (small) combat-runtime table first — a plain object keyed by
+    // String(id), not a Map — and skip the entity sweep entirely on frames with no sink
+    // candidate — the common case outside massline combat.
+    const runtimes = this.state.combat && this.state.combat.entities;
+    let anySinkStatus = false;
+    if (runtimes && typeof runtimes === 'object') {
+      for (const id in runtimes) {
+        const rt = runtimes[id];
+        if (rt && rt.statuses && rt.statuses[MOMENTUM_SINK_STATUS_ID]) { anySinkStatus = true; break; }
+      }
+    }
+    if (!anySinkStatus) {
+      this._momentumSinkCandidateCount = 0;
+      return 0;
+    }
     const candidates = this._momentumSinkCandidates;
     const statuses = this._momentumSinkCandidateStatuses;
     const priorities = this._momentumSinkCandidatePriorities;
@@ -10932,7 +10982,7 @@ export const vfx = {
     const pz = player.pos.z || 0;
     const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     const range2 = drawWu * drawWu;
-    const list = state.entityList || [];
+    const list = indexedTypeScan(state, 'asteroids');
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'asteroid') continue;
@@ -12697,8 +12747,11 @@ export const vfx = {
   },
 
   _refreshProjectileCandidates() {
-    const list = this.state.entityList || [];
-    if (!this._projectileCacheDirty && this._projectileListRef === list && this._projectileListLength === list.length) return;
+    const list = indexedTypeScan(this.state, 'projectiles');
+    const version = entityIndexVersion(this.state);
+    if (!this._projectileCacheDirty && this._projectileListRef === list
+      && this._projectileListLength === list.length
+      && this._projectileListVersion === version) return;
     this._projectileCandidates.length = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
@@ -12707,6 +12760,7 @@ export const vfx = {
     }
     this._projectileListRef = list;
     this._projectileListLength = list.length;
+    this._projectileListVersion = version;
     this._projectileCacheDirty = false;
   },
 

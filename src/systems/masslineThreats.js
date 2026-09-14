@@ -22,6 +22,8 @@
 import { isHostileToPlayer } from './scanner.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { readTautHostileSweepCrossing } from './tetherGameplay.js';
+import { hasActiveSpatialHash } from '../core/spatialQuery.js';
+import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
 
 export const HOSTILE_SWEEP_THREAT_KIND = 'hostile-sweep';
 
@@ -110,31 +112,48 @@ export const masslineThreats = {
     const swinging = !!(telemetry && telemetry.active)
       && Math.abs(finite(telemetry.tangentialSpeed, 0)) >= THREAT_SWING_MIN_TANGENTIAL;
 
-    // 2 + 3. Single entity pass: hostiles closing on the swing, bodies on a predicted impact.
+    // 2 + 3. Hostiles closing on the swing, bodies on a predicted impact. Hostiles
+    // come from the complete shipLike bucket (collides:false scripted hulls still
+    // count); collision candidates are physical bodies inside THREAT_SCAN_RADIUS
+    // via the live spatial hash — a body that cannot collide cannot be a collision
+    // course. The unindexed fallback keeps the original full sweep.
     const entities = state.entities;
     if (!entities || typeof entities.values !== 'function') return;
     const playerTeam = player.team;
-    for (const e of entities.values()) {
-      if (!e || !e.alive || e.id === player.id || !e.pos) continue;
+    const hashOn = hasActiveSpatialHash(state.spatialHash);
 
-      if (swinging && !this._warnedHostiles.has(e.id)
-          && (e.type === 'ship' || e.type === 'drone')
-          && isHostileToPlayer(e, playerTeam, state)) {
+    if (swinging) {
+      for (const e of indexedShipLikeOrEntitiesScan(state)) {
+        if (!e || !e.alive || e.id === player.id || !e.pos) continue;
+        if (this._warnedHostiles.has(e.id)) continue;
+        if (e.type !== 'ship' && e.type !== 'drone') continue;
+        if (!isHostileToPlayer(e, playerTeam, state)) continue;
         const severity = hostileClosingSeverity(player, e);
         if (severity != null) {
           this._warnedHostiles.add(e.id);
           this._emitThreat(runtime, state, 'hostile-on-arc', e.id, severity);
         }
       }
+    }
 
-      if (!this._warnedCollisions.has(e.id)
-          && COLLIDABLE_TYPES.has(e.type) && Number.isFinite(e.radius)) {
-        const t = timeToImpact(player, e);
-        if (t != null && t <= THREAT_COLLISION_HORIZON_S) {
-          this._warnedCollisions.add(e.id);
-          const severity = Math.max(THREAT_SEVERITY_FLOOR, clamp01(1 - t / THREAT_COLLISION_HORIZON_S));
-          this._emitThreat(runtime, state, 'collision-course', e.id, severity);
-        }
+    if (hashOn) {
+      const scratch = this._threatScanScratch || (this._threatScanScratch = []);
+      scratch.length = 0;
+      state.spatialHash.queryRadius(player.pos.x, player.pos.z, THREAT_SCAN_RADIUS, scratch);
+      for (const e of scratch) {
+        this._checkCollisionCourse(e, player, runtime, state);
+      }
+      // The hash only holds colliding bodies — collides:false ships/drones (automation
+      // pickups, site couriers) are still collision-course candidates under the original
+      // full sweep, so the shipLike bucket supplements them here. A colliding entity spawned
+      // mid-tick after the hash sync is warned on the next tick instead — same latency class
+      // as any other index consumer.
+      for (const e of indexedShipLikeOrEntitiesScan(state)) {
+        if (e && e.collides === false) this._checkCollisionCourse(e, player, runtime, state);
+      }
+    } else {
+      for (const e of entities.values()) {
+        this._checkCollisionCourse(e, player, runtime, state);
       }
     }
 
@@ -144,6 +163,18 @@ export const masslineThreats = {
         this._warnedSweep.add(crossing.cutterId);
         this._emitThreat(runtime, state, HOSTILE_SWEEP_THREAT_KIND, crossing.cutterId, 1);
       }
+    }
+  },
+
+  _checkCollisionCourse(e, player, runtime, state) {
+    if (!e || !e.alive || e.id === player.id || !e.pos) return;
+    if (this._warnedCollisions.has(e.id)) return;
+    if (!COLLIDABLE_TYPES.has(e.type) || !Number.isFinite(e.radius)) return;
+    const t = timeToImpact(player, e);
+    if (t != null && t <= THREAT_COLLISION_HORIZON_S) {
+      this._warnedCollisions.add(e.id);
+      const severity = Math.max(THREAT_SEVERITY_FLOOR, clamp01(1 - t / THREAT_COLLISION_HORIZON_S));
+      this._emitThreat(runtime, state, 'collision-course', e.id, severity);
     }
   },
 

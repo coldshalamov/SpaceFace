@@ -1262,6 +1262,9 @@ export async function runAsteroidInteriorLab(SF) {
     key.target.position.set(0, 0, 0); rim.target.position.set(0, 0, 0);
     for (const p of pulseTargets) p.mat.emissiveIntensity = p.base + Math.sin(t * 1.6 + p.base * 3) * p.amp;
     for (const c of group.children) if (c.userData && c.userData.spin) c.userData.spin.rotation.z = t * 0.6;
+    // The live scene has matrixWorldAutoUpdate=false (one walk per game frame in
+    // _renderPostRoute); this off-loop tool refreshes it before its own renders.
+    scene.updateMatrixWorld();
     try { composer.render(); } catch (e) { if (!ready) console.warn('[astlab] composer render failed, falling back', e); renderer.render(scene, cam); }
   };
   const loop = () => {

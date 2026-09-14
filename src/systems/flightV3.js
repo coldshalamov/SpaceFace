@@ -11,6 +11,7 @@
 // intent.boost (no resource model), exactly as in the legacy controller — AI never used e.boost.
 
 import { queuePhysicsImpulse, writePhysicsControl } from '../core/physicsAuthority.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
 import {
   cryoLockStickLive,
   helmControlScaleFromCombat,
@@ -934,7 +935,7 @@ function computeAutopilotGuidance(state, player, target, distance, arrivalRadius
   let avoiding = false;
   const maxProjection = Math.max(0, Math.min(distance - arrivalRadius, lookAhead));
   if (maxProjection > 0) {
-    const obstacles = autopilotObstacles(state, player, target);
+    const obstacles = autopilotObstacles(state, player, target, baseX, baseZ, maxProjection);
     let weightedLateral = 0;
     let totalStrength = 0;
     for (const obstacle of obstacles) {
@@ -1021,11 +1022,30 @@ function deterministicAvoidanceSide(baseX, baseZ) {
 // array per call was steady GC churn. Callers consume it before the next tick, and nothing
 // downstream retains the array or its entries.
 const AUTOPILOT_OBSTACLE_SCRATCH = [];
+const AUTOPILOT_OBSTACLE_QUERY_SCRATCH = [];
+const AUTOPILOT_OBSTACLE_QUERY_POS = { x: 0, z: 0 };
 
-function autopilotObstacles(state, player, target) {
+// An obstacle only matters when its center sits inside the lookahead capsule: projection within
+// (0, maxProjection] of the player along the steer direction and |lateral| below its clearance
+// (player radius + obstacle radius + ≤128 WU slack). One circle covering that capsule returns
+// every possible contributor — the hash buckets entities by their full radius coverage, so even
+// a huge-radius station whose center lies off-axis is captured. The unchanged per-entity
+// predicate keeps semantics exact on the returned superset.
+function autopilotObstacles(state, player, target, baseX, baseZ, maxProjection) {
   const out = AUTOPILOT_OBSTACLE_SCRATCH;
   out.length = 0;
-  const list = state && state.entityList ? state.entityList : [];
+  const px = finite(player.pos && player.pos.x);
+  const pz = finite(player.pos && player.pos.z);
+  const halfProjection = Math.max(0, maxProjection) * 0.5;
+  const clearanceSlack = positive(player.radius, 0) + 58 + 70;
+  AUTOPILOT_OBSTACLE_QUERY_POS.x = px + baseX * halfProjection;
+  AUTOPILOT_OBSTACLE_QUERY_POS.z = pz + baseZ * halfProjection;
+  const list = queryNearbyEntities(
+    state,
+    AUTOPILOT_OBSTACLE_QUERY_POS,
+    halfProjection + clearanceSlack,
+    AUTOPILOT_OBSTACLE_QUERY_SCRATCH,
+  );
   for (const e of list) {
     if (!e || e === player || e === target.entity || e.alive === false || e.collides === false || !e.pos) continue;
     if (e.type === 'projectile' || e.type === 'fx' || e.type === 'pickup') continue;

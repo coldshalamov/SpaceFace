@@ -74,13 +74,23 @@ export function mountRadarKit(wrap) {
 
 export function setKitBar(barEl, frac, kind) {
   if (!barEl) return;
-  const segs = barEl.querySelectorAll('.sf-kit-seg');
-  if (!segs.length) return;
-  const n = segs.length;
+  // Seg markup is fixed at mount (KIT_BAR_SEGS spans) — cache the NodeList so the unchanged
+  // early-out never pays querySelectorAll, four bars a frame.
+  let segs = barEl._sfKitSegs;
   const t = Number(frac);
   const bounded = Number.isFinite(t) ? (t < 0 ? 0 : t > 1 ? 1 : t) : 0;
-  const on = Math.round(bounded * n);
   const tone = kind === 'hot' || kind === 'cold' ? kind : 'on';
+  if (segs) {
+    const on = Math.round(bounded * segs.length);
+    if (barEl._sfKitOn === on && barEl._sfKitKind === tone) return;
+  }
+  if (!segs) {
+    segs = barEl.querySelectorAll('.sf-kit-seg');
+    if (!segs.length) return;
+    barEl._sfKitSegs = segs;
+  }
+  const n = segs.length;
+  const on = Math.round(bounded * n);
   if (barEl._sfKitOn === on && barEl._sfKitKind === tone) return;
   barEl._sfKitOn = on;
   barEl._sfKitKind = tone;

@@ -52,6 +52,32 @@ let observer = null;
 let watching = null;
 let scheduled = false;
 
+// dressEvents also applies when event markup appears outside a station shell (host falls back
+// to the document), so the relevance filter covers the content selectors as well.
+const STATION_HOST_SELECTOR = '.sx-berth, .sx-app, .sxb-tape, .sxb-event';
+
+// While the observer is still document-wide (no station host found yet), only mutations that
+// could carry the station subtree are worth a re-dress — HUD childList churn elsewhere must
+// not schedule work.
+function recordsMayCarryStationHost(records) {
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    if (record.type !== 'childList') continue;
+    const target = record.target;
+    if (target && target.nodeType === 1 && target.closest && target.closest(STATION_HOST_SELECTOR)) {
+      return true;
+    }
+    const added = record.addedNodes;
+    for (let j = 0; j < added.length; j++) {
+      const node = added[j];
+      if (node.nodeType !== 1) continue;
+      if ((node.matches && node.matches(STATION_HOST_SELECTOR))
+        || (node.querySelector && node.querySelector(STATION_HOST_SELECTOR))) return true;
+    }
+  }
+  return false;
+}
+
 function kick(doc) {
   const host = (doc.querySelector && (doc.querySelector('.sx-berth') || doc.querySelector('.sx-app'))) || doc;
   if (observer && host && host !== watching && host.querySelector && host.querySelector('.sxb-tape, .sxb-event')) {
@@ -74,8 +100,9 @@ export function watchEvents(root) {
     kick(doc);
     return;
   }
-  const onMut = () => {
+  const onMut = (records) => {
     if (scheduled) return;
+    if (!watching && !recordsMayCarryStationHost(records)) return;
     scheduled = true;
     const run = () => { scheduled = false; kick(doc); };
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);

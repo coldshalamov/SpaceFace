@@ -286,6 +286,7 @@ function ensureEntityIndex(state) {
     mines: [],
     vectorMines: [],
     snares: [],
+    charges: [],
     statics: [],
     damageables: [],
     aiShips: [],
@@ -332,6 +333,10 @@ function repairEntityIndex(index) {
     index.ready = false;
   }
   if (!Array.isArray(index.snares)) index.snares = [];
+  if (!Array.isArray(index.charges)) {
+    index.charges = [];
+    index.ready = false;
+  }
   if (!Array.isArray(index.statics)) index.statics = [];
   if (!Array.isArray(index.damageables)) index.damageables = [];
   if (!Array.isArray(index.aiShips)) index.aiShips = [];
@@ -375,6 +380,7 @@ function clearEntityIndex(index) {
   index.mines.length = 0;
   index.vectorMines.length = 0;
   index.snares.length = 0;
+  index.charges.length = 0;
   index.statics.length = 0;
   index.damageables.length = 0;
   index.aiShips.length = 0;
@@ -475,6 +481,9 @@ function appendEntityIndex(index, e) {
     case 'masslineSnare':
       index.snares.push(e);
       break;
+    case 'charge':
+      index.charges.push(e);
+      break;
     case 'massSeed':
       // PQ-011 anchor seeds: damageable in every phase (counterplay — hostile fire and stray
       // blasts can destroy the anchor; there is no protected window).
@@ -523,6 +532,7 @@ function removeEntityIndex(index, e) {
   removeFromIndexArray(index.mines, e);
   removeFromIndexArray(index.vectorMines, e);
   removeFromIndexArray(index.snares, e);
+  removeFromIndexArray(index.charges, e);
   removeFromIndexArray(index.statics, e);
   removeFromIndexArray(index.damageables, e);
   removeFromIndexArray(index.aiShips, e);

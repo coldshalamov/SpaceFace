@@ -57,6 +57,48 @@ export function indexedShipLikeScan(state) {
 }
 
 /**
+ * Same as indexedShipLikeScan but for systems whose fallback domain is the entity Map
+ * (`state.entities.values()`), not `entityList` — e.g. minimal states that populate only the
+ * Map. May return an array or a Map iterator: consume with for..of only. Ship/drone predicates
+ * still apply on the fallback path, so callers keep their per-entity filter in both modes.
+ */
+export function indexedShipLikeOrEntitiesScan(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.shipLike)) {
+    return index.shipLike;
+  }
+  const entities = state && state.entities;
+  if (entities && typeof entities.values === 'function') return entities.values();
+  return (state && state.entityList) || EMPTY_SHIP_LIKE;
+}
+
+const EMPTY_TYPE_SCAN = [];
+
+/**
+ * Compact type-bucket scan. When the entity index is ready, returns its named bucket
+ * (`ships`, `asteroids`, `pickups`, `projectiles`, …); otherwise the fat `entityList`,
+ * so callers must keep their per-entity predicate in both modes. The returned array is
+ * live — callers must not store or mutate it.
+ */
+export function indexedTypeScan(state, bucket) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && typeof bucket === 'string' && Array.isArray(index[bucket])) {
+    return index[bucket];
+  }
+  return (state && state.entityList) || EMPTY_TYPE_SCAN;
+}
+
+/** Incremented on every indexed spawn/remove; a cheap "membership changed" watch for caches. */
+export function entityIndexVersion(state) {
+  const index = state && state.entityIndex;
+  return index && index.__spacefaceEntityIndexV1 && Number.isFinite(index.version)
+    ? index.version
+    : null;
+}
+
+/**
  * Call `fn` for every living-world actor. Never yields asteroids or dressing FX.
  * Returns the source used so tests can assert the fat list was not the iterator.
  */

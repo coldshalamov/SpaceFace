@@ -28,6 +28,7 @@ import {
 } from '../combat/impulseKernel.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
 
@@ -552,7 +553,12 @@ export const impulseCharges = {
   },
 
   _tickCharges(dt, state) {
-    for (const e of state.entityList) {
+    const index = state.entityIndex;
+    const charges = (index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.charges))
+      ? index.charges
+      : state.entityList;
+    for (const e of charges) {
       if (!e.alive || e.type !== 'charge') continue;
       const d = e.data;
       if (!d) continue;
@@ -566,10 +572,20 @@ export const impulseCharges = {
           this.bus.emit('charge:armed', { chargeId: e.id, pos: { x: e.pos.x, z: e.pos.z } });
         }
         if (d.armed) {
-          // Deployment caps bound this scan; actors keep their real bodies and collision response.
-          const intruder = state.entityList.find(target => target.alive && target.id !== d.ownerId
-            && (target.type === 'ship' || target.type === 'drone') && target.team !== e.team
-            && Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z) <= def.triggerRadius + (target.radius || 0));
+          // Deployment caps bound this probe; actors keep their real bodies and collision response.
+          // Ships+drones are the only intruder types, so the compact shipLike bucket is the scan —
+          // the result is an existence check only, so bucket order cannot change the outcome.
+          const shipLike = indexedShipLikeScan(state);
+          let intruder = false;
+          for (let i = 0; i < shipLike.length; i++) {
+            const target = shipLike[i];
+            if (target.alive && target.id !== d.ownerId
+              && (target.type === 'ship' || target.type === 'drone') && target.team !== e.team
+              && Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z) <= def.triggerRadius + (target.radius || 0)) {
+              intruder = true;
+              break;
+            }
+          }
           if (intruder) this._detonateOne(e, d, d.ownerId, state, 'proximity');
         }
         continue;

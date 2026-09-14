@@ -3399,6 +3399,10 @@ export const render = {
     const drawSize = applyRendererSize(renderer, state);
 
     const scene = new THREE.Scene();
+    // PERF item 18: the scene graph is refreshed exactly once per frame in _renderPostRoute,
+    // before whichever post route draws. RenderGraph's AO path renders this scene twice per
+    // frame; with the flag on, every render pass re-walked every Object3D.
+    scene.matrixWorldAutoUpdate = false;
     const dynamicBuffers = createDynamicBufferCoordinator(scene);
     this._dynamicBuffers = dynamicBuffers;
     state.render.dynamicBufferRanges = dynamicBuffers.getDiagnostics();
@@ -9573,6 +9577,12 @@ export const render = {
   },
 
   _renderPostRoute(route, scene, camera, time = 0) {
+    // All transform writes for the frame are complete before this dispatch. One explicit walk
+    // here replaces the per-pass walk every renderer.render(scene, …) would otherwise repeat
+    // (scene.matrixWorldAutoUpdate is false; bloom, graph scene+normal passes, and the internal
+    // shadow-map pass all reuse this result). No force flag: clean subtrees keep their
+    // matrixWorldNeedsUpdate skip, matching the old per-pass call's multiply work.
+    if (scene && typeof scene.updateMatrixWorld === 'function') scene.updateMatrixWorld();
     if (route === POST_PROCESS_ROUTE.GRAPH) {
       const frame = this._postFrameOptions || (this._postFrameOptions = { time: 0 });
       frame.time = Number.isFinite(time) ? time : 0;

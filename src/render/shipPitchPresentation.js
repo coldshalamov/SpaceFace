@@ -10,6 +10,20 @@ import {
   resolveTumbleRecoverPose,
 } from './masslinePresentation.js';
 
+const CONTROL_LOSS_SCRATCH = {
+  mode: 'idle',
+  tumbling: false,
+  drifting: false,
+  startedAt: null,
+  until: null,
+  spin: 0,
+  elapsedS: 0,
+  remainS: 0,
+  cause: null,
+  attackerId: null,
+  playerCaused: false,
+};
+
 const THROWN_TRAIL_INPUT = {
   mode: 'idle',
   cause: null,
@@ -23,6 +37,9 @@ const THROWN_TRAIL_INPUT = {
   targetRelevant: false,
 };
 
+// Deliberately does NOT gate on `index.ready`: presentation only needs the marker+bucket, and
+// test fixtures (and boot-window states before the first reconcile) supply shipLike without a
+// ready flag. Callers keep their per-entity type predicate in both modes.
 export function shipPitchCandidates(state) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.shipLike)) {
@@ -97,7 +114,7 @@ export function updateShipPitchPresentation(state, frameDt) {
     if (entity.pitch == null) entity.pitch = 0;
     if (entity.bank == null) entity.bank = 0;
 
-    const loss = readControlLossPresentation(state, entity);
+    const loss = readControlLossPresentation(state, entity, CONTROL_LOSS_SCRATCH);
     const pres = ensurePresentation(entity);
     const recover = pres.tumbleRecover;
     const existingThrownTrail = pres.thrownTrail;

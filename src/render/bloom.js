@@ -928,6 +928,14 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   const UNREADY_SCENE_CAP = 512;
   const unreadySceneScratch = new Array(UNREADY_SCENE_CAP);
   let unreadySceneCount = 0;
+  // Pending-programs latch: the ONLY producers of hideable drawables are still-linking programs.
+  // Poll the program set instead of the scene: while a link is pending the traverse runs (and
+  // keeps running until it drains, so a mesh that binds to a mid-link program is still caught);
+  // once every program reports ready and the set stops growing, steady-state frames skip both
+  // the poll and the scene walk entirely.
+  let unreadyProgramsPending = true;
+  let unreadyProgramCount = -1;
+  let unreadyProgramTail = null;
 
   function hideUnreadySceneDrawables(scene) {
     unreadySceneCount = 0;
@@ -935,6 +943,26 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
       return;
     }
+    const programs = renderer.info && renderer.info.programs;
+    if (!Array.isArray(programs)) {
+      scene.traverse(hideOneUnreadySceneDrawable);
+      return;
+    }
+    // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
+    // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
+    if (unreadyProgramsPending !== true && programs.length === unreadyProgramCount
+      && programs[programs.length - 1] === unreadyProgramTail) return;
+    unreadyProgramsPending = false;
+    unreadyProgramCount = programs.length;
+    unreadyProgramTail = programs[programs.length - 1] || null;
+    for (let i = 0; i < programs.length; i++) {
+      const program = programs[i];
+      if (!program || typeof program.isReady !== 'function') continue;
+      let ready = true;
+      try { ready = program.isReady() === true; } catch (_) { ready = false; }
+      if (!ready) { unreadyProgramsPending = true; break; }
+    }
+    if (!unreadyProgramsPending) return;
     scene.traverse(hideOneUnreadySceneDrawable);
   }
 

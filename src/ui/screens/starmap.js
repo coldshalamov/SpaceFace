@@ -806,7 +806,14 @@ export const starmapScreen = {
     const tick = () => {
       if (!this._visible) { this._animFrame = null; return; }
       const now = Date.now();
-      if (now - this._lastDrawTime >= 64) { this._lastDrawTime = now; this._draw(); }
+      if (now - this._lastDrawTime >= 64) {
+        this._lastDrawTime = now;
+        // Animated content (route march, commodity flow) still redraws every beat; a static
+        // frame — reduced motion or a map with no live animation — only repaints when the
+        // data signature moves.
+        const still = prefersReducedMotion() || !this._animates;
+        if (!still || this._drawSignature() !== this._drawSig) this._draw();
+      }
       this._animFrame = requestAnimationFrame(tick);
     };
     this._animFrame = requestAnimationFrame(tick);
@@ -964,10 +971,13 @@ export const starmapScreen = {
     g.translate(w / 2, h / 2);
     g.scale(this._cam.zoom, this._cam.zoom);
     g.translate(-this._cam.cx, -this._cam.cy);
-    this._drawEdges(g, nodes, byId, now, roles);
+    const flows = this._drawEdges(g, nodes, byId, now, roles);
     this._drawWormholes(g, nodes, byId, roles);
     const route = this._route();
-    if (route) this._drawRoute(g, route, byId, now, roles, reduced);
+    const routed = route ? this._drawRoute(g, route, byId, now, roles, reduced) : false;
+    // The anim loop consults this: frames carrying live motion redraw every beat; static
+    // frames repaint only when the signature changes.
+    this._animates = !!(flows || routed);
     this._drawNodes(g, nodes, this._currentId(), roles);
     g.restore();
     if (this._hoverInfo && this._hoverId) this._drawTooltip(g, w, h, roles);
@@ -975,6 +985,7 @@ export const starmapScreen = {
 
   _drawEdges(g, nodes, byId, now, roles) {
     const zoom = this._cam.zoom;
+    let animated = false;
     for (const n of nodes) {
       const a = n.sector;
       for (const id of (a.neighbors || [])) {
@@ -999,6 +1010,7 @@ export const starmapScreen = {
         const from = gradient > 0 ? n : b;
         const to = gradient > 0 ? b : n;
         const phase = (hashText(`${a.id}|${id}`) % 1000) / 1000;
+        animated = true;
         for (let k = 0; k < 2; k++) {
           const t = ((now / 2600 + phase + k * 0.5) % 1 + 1) % 1;
           const p = pointOnLine(from, to, t);
@@ -1009,6 +1021,7 @@ export const starmapScreen = {
         }
       }
     }
+    return animated;
   },
 
   _drawWormholes(g, nodes, byId, roles) {
@@ -1025,14 +1038,14 @@ export const starmapScreen = {
   },
 
   _drawRoute(g, route, byId, now, roles, reduced) {
-    if (!route.legs || !route.legs.length) return;
+    if (!route.legs || !route.legs.length) return false;
     const points = [];
     for (let i = 0; i < route.legs.length; i++) {
       const leg = route.legs[i];
       if (i === 0 && byId[leg.from]) points.push(byId[leg.from]);
       if (byId[leg.to]) points.push(byId[leg.to]);
     }
-    if (points.length < 2) return;
+    if (points.length < 2) return false;
     const z = this._cam.zoom;
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
     g.beginPath(); g.moveTo(points[0].x, points[0].y); for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y);
@@ -1045,6 +1058,7 @@ export const starmapScreen = {
     g.restore();
     const p = pointOnPolyline(points, reduced ? 0 : (now % 3000) / 3000);
     g.beginPath(); g.arc(p.x, p.y, 4 / z, 0, Math.PI * 2); g.fillStyle = roles.paper; g.fill();
+    return !reduced;
   },
 
   _drawNodes(g, nodes, currentId, roles) {
@@ -1416,6 +1430,9 @@ export const starmapScreen = {
 
   _drawSignature() {
     const parts = [this._currentId() || '', this._selectedId || '', this._hoverId || '', this._dpr, this._commodityId || ''];
+    // A live tooltip follows the cursor — the signature must move with it or the gated anim
+    // loop freezes the box at the hover-entry position.
+    if (this._hoverInfo) parts.push((this._mouseX | 0) + ',' + (this._mouseY | 0));
     const route = this._route();
     if (route) parts.push(route.legs.map((l) => `${l.from}>${l.to}`).join(','));
     for (const s of this._sectors()) {

@@ -17,6 +17,14 @@ import { wrapShipWithAuthoredParts } from './partsLibrary.js';
 // the textured authored hulls, not the procedural fallback. Default stays procedural for back-compat.
 const PREVIEW_AUTHORED = typeof location !== 'undefined'
   && new URLSearchParams(location.search).get('authored') === '1';
+
+// The live scene has matrixWorldAutoUpdate=false (one walk per game frame in _renderPostRoute);
+// this off-loop tool refreshes it before its own renders.
+function renderScene(renderer, scene, cam) {
+  if (scene && typeof scene.updateMatrixWorld === 'function') scene.updateMatrixWorld();
+  renderer.render(scene, cam);
+}
+
 export function prepareShipForPreview(ent, mesh, authored = PREVIEW_AUTHORED) {
   if (!authored || !mesh) return mesh;
   let boundary = mesh;
@@ -40,7 +48,7 @@ export function requestPreviewAuthoredAdmission(boundary, renderer, scene, autho
 async function awaitAuthoredSwap(renderer, scene, cam) {
   if (!PREVIEW_AUTHORED) return;
   for (let i = 0; i < 80; i++) {
-    renderer.render(scene, cam);
+    renderScene(renderer, scene, cam);
     await new Promise((r) => setTimeout(r, 60));
     // any ship boundary still loading?
     let pending = false;
@@ -182,11 +190,11 @@ export async function runShipPreview(SF) {
         const maps = [m.map, m.normalMap, m.roughnessMap, m.emissiveMap];
         for (const t of maps) { if (t && renderer.initTexture) { try { renderer.initTexture(t); } catch (_) {} } }
       });
-      renderer.render(scene, cam);
+      renderScene(renderer, scene, cam);
       await new Promise((res) => setTimeout(res, 80));
-      renderer.render(scene, cam);
+      renderScene(renderer, scene, cam);
       await new Promise((res) => setTimeout(res, 60));
-      renderer.render(scene, cam);
+      renderScene(renderer, scene, cam);
       const name = `${shipDef.id.replace('ship_', '')}_${tierRow.name.replace('.', '')}`;
       try {
         const url = renderer.domElement.toDataURL('image/jpeg', 0.85);
@@ -236,9 +244,9 @@ export async function runShipPreview(SF) {
           if (t && renderer.initTexture) { try { renderer.initTexture(t); } catch (_) {} }
         }
       });
-      renderer.render(scene, cam); await new Promise((res) => setTimeout(res, 80));
-      renderer.render(scene, cam); await new Promise((res) => setTimeout(res, 60));
-      renderer.render(scene, cam);
+      renderScene(renderer, scene, cam); await new Promise((res) => setTimeout(res, 80));
+      renderScene(renderer, scene, cam); await new Promise((res) => setTimeout(res, 60));
+      renderScene(renderer, scene, cam);
       const baseName = defId.replace('ship_', '');
       const name = `${baseName}_${fv.tag}_${topTier.name.replace('.', '')}`;
       try {
@@ -294,9 +302,9 @@ export async function runShipPreview(SF) {
         if (t && renderer.initTexture) { try { renderer.initTexture(t); } catch (_) {} }
       }
     });
-    renderer.render(scene, cam); await new Promise((res) => setTimeout(res, 80));
-    renderer.render(scene, cam); await new Promise((res) => setTimeout(res, 60));
-    renderer.render(scene, cam);
+    renderScene(renderer, scene, cam); await new Promise((res) => setTimeout(res, 80));
+    renderScene(renderer, scene, cam); await new Promise((res) => setTimeout(res, 60));
+    renderScene(renderer, scene, cam);
     try {
       const url = renderer.domElement.toDataURL('image/jpeg', 0.85);
       await fetch('/__shot?name=' + ws.name, { method: 'POST', body: url });
@@ -327,9 +335,9 @@ export async function runShipPreview(SF) {
       mesh.rotation.y = Math.PI * 0.55;
       const D = ps.radius * 3.0;
       cam.position.set(-D * 0.5, D * 0.45, -D * 0.9); cam.lookAt(0, 0, 0); cam.updateProjectionMatrix();
-      renderer.render(scene, cam); await new Promise((res) => setTimeout(res, 80));
-      renderer.render(scene, cam); await new Promise((res) => setTimeout(res, 60));
-      renderer.render(scene, cam);
+      renderScene(renderer, scene, cam); await new Promise((res) => setTimeout(res, 80));
+      renderScene(renderer, scene, cam); await new Promise((res) => setTimeout(res, 60));
+      renderScene(renderer, scene, cam);
       try {
         const url = renderer.domElement.toDataURL('image/jpeg', 0.85);
         await fetch('/__shot?name=' + ps.name, { method: 'POST', body: url });
@@ -358,9 +366,9 @@ export async function runShipPreview(SF) {
         if (t && renderer.initTexture) { try { renderer.initTexture(t); } catch (_) {} }
       }
     });
-    renderer.render(scene, cam); await new Promise((res) => setTimeout(res, 80));
-    renderer.render(scene, cam); await new Promise((res) => setTimeout(res, 60));
-    renderer.render(scene, cam);
+    renderScene(renderer, scene, cam); await new Promise((res) => setTimeout(res, 80));
+    renderScene(renderer, scene, cam); await new Promise((res) => setTimeout(res, 60));
+    renderScene(renderer, scene, cam);
     try {
       const url = renderer.domElement.toDataURL('image/jpeg', 0.85);
       await fetch('/__shot?name=' + bv.name, { method: 'POST', body: url });

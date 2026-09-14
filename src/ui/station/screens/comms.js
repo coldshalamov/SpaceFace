@@ -62,6 +62,32 @@ let observer = null;
 let watching = null;
 let scheduled = false;
 
+// dressComms also applies when comms markup appears outside a station shell (host falls back
+// to the document), so the relevance filter covers the content selector as well.
+const STATION_HOST_SELECTOR = '.sx-berth, .sx-app, .sx-comms';
+
+// While the observer is still document-wide (no station host found yet), only mutations that
+// could carry comms markup are worth a re-dress — HUD childList churn elsewhere must not
+// schedule work.
+function recordsMayCarryComms(records) {
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    if (record.type !== 'childList') continue;
+    const target = record.target;
+    if (target && target.nodeType === 1 && target.closest && target.closest(STATION_HOST_SELECTOR)) {
+      return true;
+    }
+    const added = record.addedNodes;
+    for (let j = 0; j < added.length; j++) {
+      const node = added[j];
+      if (node.nodeType !== 1) continue;
+      if ((node.matches && node.matches(STATION_HOST_SELECTOR))
+        || (node.querySelector && node.querySelector(STATION_HOST_SELECTOR))) return true;
+    }
+  }
+  return false;
+}
+
 function kick(doc) {
   const host = (doc.querySelector && (doc.querySelector('.sx-berth') || doc.querySelector('.sx-app'))) || doc;
   if (observer && host && host !== watching && host.querySelector && host.querySelector('.sx-comms')) {
@@ -84,8 +110,9 @@ export function watchComms(root) {
     kick(doc);
     return;
   }
-  const onMut = () => {
+  const onMut = (records) => {
     if (scheduled) return;
+    if (!watching && !recordsMayCarryComms(records)) return;
     scheduled = true;
     const run = () => { scheduled = false; kick(doc); };
     if (typeof requestAnimationFrame === 'function') requestAnimationFrame(run);

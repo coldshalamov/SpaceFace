@@ -7,6 +7,14 @@
 //
 // Entry: ?dev=shipshot  (see main.js). Captures: kestrel_hero_live.jpg.
 import * as THREE from 'three';
+
+// The live scene has matrixWorldAutoUpdate=false (one walk per game frame in _renderPostRoute);
+// this off-loop tool refreshes it before its own renders.
+function renderScene(renderer, scene, cam) {
+  if (scene && typeof scene.updateMatrixWorld === 'function') scene.updateMatrixWorld();
+  renderer.render(scene, cam);
+}
+
 export async function runShipShot(SF) {
   const state = SF.state;
   const renderer = state.render && state.render.renderer;
@@ -41,7 +49,7 @@ export async function runShipShot(SF) {
   cam.lookAt(0, 1.5, 0);
 
   // Render once and capture. preserveDrawingBuffer is on in dev (renderer.js) so toDataURL reads back.
-  renderer.render(scene, cam);
+  renderScene(renderer, scene, cam);
   await new Promise((r) => setTimeout(r, 30)); // let the GPU finish
   try {
     const url = renderer.domElement.toDataURL('image/jpeg', 0.88);
@@ -54,7 +62,7 @@ export async function runShipShot(SF) {
   if (typeof mesh.userData.updateDamageState === 'function') {
     const damaged = { id: 'shot_kestrel', hull: 80, hullMax: 1000 }; // ~8% -> critical
     for (let i = 0; i < 3; i++) mesh.userData.updateDamageState(damaged, performance.now() * 0.001 + i);
-    renderer.render(scene, cam);
+    renderScene(renderer, scene, cam);
     await new Promise((r) => setTimeout(r, 30));
     try {
       const url2 = renderer.domElement.toDataURL('image/jpeg', 0.88);
@@ -71,7 +79,7 @@ export async function runShipShot(SF) {
   const captureAt = async (name, camPos) => {
     cam.position.set(camPos[0], camPos[1], camPos[2]);
     cam.lookAt(0, 1.5, 0);
-    renderer.render(scene, cam);
+    renderScene(renderer, scene, cam);
     await new Promise((r) => setTimeout(r, 30));
     try {
       const url = renderer.domElement.toDataURL('image/jpeg', 0.88);
@@ -111,7 +119,7 @@ export async function runShipShot(SF) {
   // lower than the flight view, no wide-angle distortion. ----
   try {
     cam.position.set(22, 14, 22); cam.lookAt(0, 1.2, 0);
-    renderer.render(scene, cam); await new Promise((r) => setTimeout(r, 30));
+    renderScene(renderer, scene, cam); await new Promise((r) => setTimeout(r, 30));
     const url = renderer.domElement.toDataURL('image/jpeg', 0.9);
     const res = await fetch('/__shot?name=kestrel_shipyard', { method: 'POST', body: url });
     console.log('[shipShot] captured kestrel_shipyard.jpg ->', (await res.json()).file);
@@ -129,7 +137,7 @@ export async function runShipShot(SF) {
       const hidden2 = [];
       for (const child of scene.children) { if (child !== tmp2 && child.userData && child.userData.kind) { child.visible = false; hidden2.push(child); } }
       const p2 = cam.position.clone(); cam.position.set(38, 28, 38); cam.lookAt(0, 1.5, 0);
-      renderer.render(scene, cam); await new Promise((r) => setTimeout(r, 30));
+      renderScene(renderer, scene, cam); await new Promise((r) => setTimeout(r, 30));
       try {
         const url = renderer.domElement.toDataURL('image/jpeg', 0.88);
         const res = await fetch('/__shot?name=concord_patrol_live', { method: 'POST', body: url });
@@ -150,7 +158,7 @@ export async function runShipShot(SF) {
       const hidden3 = [];
       for (const child of scene.children) { if (child !== tmp3 && child.userData && child.userData.kind) { child.visible = false; hidden3.push(child); } }
       const p3 = cam.position.clone(); cam.position.set(36, 26, 36); cam.lookAt(0, 1.2, 0);
-      renderer.render(scene, cam); await new Promise((r) => setTimeout(r, 30));
+      renderScene(renderer, scene, cam); await new Promise((r) => setTimeout(r, 30));
       try {
         const url = renderer.domElement.toDataURL('image/jpeg', 0.88);
         const res = await fetch('/__shot?name=reaver_pirate_live', { method: 'POST', body: url });
@@ -178,7 +186,7 @@ export async function runShipShot(SF) {
       const hid = [];
       for (const child of scene.children) { if (child !== tg && child.userData && child.userData.kind) { child.visible = false; hid.push(child); } }
       const pc = cam.position.clone(); cam.position.set(38, 28, 38); cam.lookAt(0, 1.2, 0);
-      renderer.render(scene, cam); await new Promise((rr) => setTimeout(rr, 30));
+      renderScene(renderer, scene, cam); await new Promise((rr) => setTimeout(rr, 30));
       try {
         const url = renderer.domElement.toDataURL('image/jpeg', 0.88);
         const res = await fetch('/__shot?name=' + r.name, { method: 'POST', body: url });

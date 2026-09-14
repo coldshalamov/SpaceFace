@@ -3322,7 +3322,7 @@ export function createHud(ctx, alerts) {
   // ---------------------------------------------------------------------------
   // Combat HUD update — lock ring + weapon heat bars + target lock diamond
   // ---------------------------------------------------------------------------
-  function updateCombatHud(p, slow) {
+  function updateCombatHud(p, slow, overlayTick) {
     if (!p) {
       setClass(lockRing, 'active', false);
       setClass(lockRing, 'locked', false);
@@ -3449,7 +3449,9 @@ export function createHud(ctx, alerts) {
     } else {
       setClass(leadPip, 'visible', false);
     }
-    threatHalo.update(p, state, helpers.worldToScreen);
+    // Edge-of-screen threat indicators live on the overlay cadence: their inputs (hostile set,
+    // projected edge placement) are refreshed at 30 Hz alongside the other world-anchored DOM.
+    if (overlayTick) threatHalo.update(p, state, helpers.worldToScreen);
   }
 
   // ---------------------------------------------------------------------------
@@ -4408,7 +4410,7 @@ export function createHud(ctx, alerts) {
     }
 
     // --- combat HUD: lock ring, weapon heat bars, target diamond (every frame for heat reactivity) ---
-    updateCombatHud(p, slow);
+    updateCombatHud(p, slow, overlayTick);
 
     // --- world-space DOM overlays: batch transform/opacity writes ---
     if (overlayTick) floatingText.update(overlayDt || frameDt);

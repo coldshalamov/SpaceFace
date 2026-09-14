@@ -232,8 +232,29 @@ export function installMapParityBridge() {
   ) {
     if (observer) observer.disconnect();
     observerDocument = documentRef;
-    observer = new MutationObserver(() => {
-      enhanceCurrentRoot(documentRef);
+    observer = new MutationObserver((records) => {
+      // The map root is only re-enhanced when a mutation could have added it or changed its
+      // internals — unrelated HUD childList churn must not run a document lookup per batch.
+      for (let i = 0; i < records.length; i++) {
+        const record = records[i];
+        if (record.type !== 'childList') continue;
+        const target = record.target;
+        if (target && target.nodeType === 1 && target.closest
+          && target.closest('#sf-galaxymap')) {
+          enhanceCurrentRoot(documentRef);
+          return;
+        }
+        const added = record.addedNodes;
+        for (let j = 0; j < added.length; j++) {
+          const node = added[j];
+          if (node.nodeType !== 1) continue;
+          if (node.id === 'sf-galaxymap'
+            || (node.querySelector && node.querySelector('#sf-galaxymap'))) {
+            enhanceCurrentRoot(documentRef);
+            return;
+          }
+        }
+      }
     });
     observer.observe(documentRef.body || documentRef.documentElement, {
       childList: true,

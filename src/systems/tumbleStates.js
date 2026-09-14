@@ -28,6 +28,7 @@ import {
   readRecentImpulseProvenance,
   resolveHitstunLaw,
 } from '../combat/impulseKernel.js';
+import { indexedShipLikeOrEntitiesScan } from '../world/livingWorldViews.js';
 
 const RCS_TRIGGER_MAXAGE_TICKS = 8;
 const RCS_DEFAULT_S = 1.6;
@@ -73,12 +74,14 @@ export const tumbleStates = {
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
-    const entities = state.entities;
-    if (!entities || typeof entities.values !== 'function') return;
     const now = finite(state.simTime, state.tick / 60);
     this._tickRcsLatches(state);
 
-    for (const e of entities.values()) {
+    // Tumble/drift/RCS-disrupt state can only exist on ships and drones (the begin paths gate on
+    // those types), so the compact shipLike bucket is the whole reachable set. Dead hulls remain
+    // bucketed until the lifetime sweep, so the entity_dead cleanup below still runs for them.
+    const actors = indexedShipLikeOrEntitiesScan(state);
+    for (const e of actors) {
       const tumble = e ? readTumbleStatus(state, e) : null;
       const drifting = isNpcDrifting(state, e);
       const rcs = e ? this._rcsDisrupt.get(e) : null;

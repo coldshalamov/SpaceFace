@@ -14,13 +14,11 @@ const EMPTY_THROWN_TRAIL_INPUT = Object.freeze({});
  * Read presentation-only control-loss flags from combat runtime. Pure over state snapshot.
  * Player is always idle (product rule: player never tumbles / never gets this body language).
  */
-export function readControlLossPresentation(state, entity) {
-  if (!entity || !state) {
-    return idleControlLossPresentation();
-  }
-  if (entity.id != null && entity.id === state.playerId) {
-    return idleControlLossPresentation();
-  }
+export function readControlLossPresentation(state, entity, out = null) {
+  const result = out || {};
+  const idle = !entity || !state
+    || (entity.id != null && entity.id === state.playerId);
+  if (idle) return writeIdleControlLossPresentation(result);
   const runtime = state.combat && state.combat.entities
     ? state.combat.entities[String(entity.id)]
     : null;
@@ -44,35 +42,37 @@ export function readControlLossPresentation(state, entity) {
   let mode = 'idle';
   if (tumbling) mode = 'tumbling';
   else if (drifting) mode = 'drifting';
-  return {
-    mode,
-    tumbling,
-    drifting,
-    startedAt,
-    until,
-    spin,
-    elapsedS,
-    remainS,
-    cause,
-    attackerId,
-    playerCaused,
-  };
+  result.mode = mode;
+  result.tumbling = tumbling;
+  result.drifting = drifting;
+  result.startedAt = startedAt;
+  result.until = until;
+  result.spin = spin;
+  result.elapsedS = elapsedS;
+  result.remainS = remainS;
+  result.cause = cause;
+  result.attackerId = attackerId;
+  result.playerCaused = playerCaused;
+  return result;
+}
+
+function writeIdleControlLossPresentation(result) {
+  result.mode = 'idle';
+  result.tumbling = false;
+  result.drifting = false;
+  result.startedAt = null;
+  result.until = null;
+  result.spin = 0;
+  result.elapsedS = 0;
+  result.remainS = 0;
+  result.cause = null;
+  result.attackerId = null;
+  result.playerCaused = false;
+  return result;
 }
 
 function idleControlLossPresentation() {
-  return {
-    mode: 'idle',
-    tumbling: false,
-    drifting: false,
-    startedAt: null,
-    until: null,
-    spin: 0,
-    elapsedS: 0,
-    remainS: 0,
-    cause: null,
-    attackerId: null,
-    playerCaused: false,
-  };
+  return writeIdleControlLossPresentation({});
 }
 
 /**
