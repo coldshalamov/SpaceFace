@@ -113,7 +113,35 @@ export async function runBrowserPublicRoute({
     phase = 'launch';
     const launchButton = page.getByRole('button', { name: 'Launch', exact: true });
     await launchButton.click({ timeout: 30_000 });
-    await page.waitForFunction(flightReadyInPage, null, { timeout: flightTimeoutMs });
+    try {
+      await page.waitForFunction(flightReadyInPage, null, { timeout: flightTimeoutMs });
+    } catch (waitError) {
+      const stuck = await page.evaluate(() => {
+        const state = window.SF?.state;
+        const player = state?.entities?.get(state.playerId);
+        const r = typeof window.SF?.authoredVisualReadiness === 'function' ? window.SF.authoredVisualReadiness() : null;
+        const splash = document.getElementById('cinematic-splash');
+        const ss = splash ? getComputedStyle(splash) : null;
+        const firstRun = document.querySelector('[data-screen="firstRun"], .sf-first-run, [data-first-run]');
+        const fs = firstRun ? getComputedStyle(firstRun) : null;
+        return {
+          mode: state?.mode,
+          playerAlive: player?.alive,
+          hull: player?.hull,
+          ready: r?.ready,
+          blockers: r?.flightReadyBlockers,
+          pending: (r?.openingPending || []).map((e) => `${e.id}:${e.status}:${e.defId || ''}:hook=${e.hook}:promised=${e.promised}`),
+          modal: document.body.classList.contains('ui-modal-open'),
+          splash: !!(splash && !splash.hidden && ss?.display !== 'none' && ss?.visibility !== 'hidden'),
+          firstRun: !!(firstRun && !firstRun.hidden && fs?.display !== 'none' && fs?.visibility !== 'hidden'),
+          shipScan: (Array.isArray(state?.entityList) ? state.entityList : [])
+            .filter((item) => item?.type === 'ship' && item.alive !== false)
+            .map((ship) => `${ship.id}:${ship.defId || ship.archetype || ''}:${ship?.mesh?.userData?.authoredAssetState || 'missing'}:${ship?.presentationAdmission || 'null'}`),
+        };
+      }).catch((e) => ({ evalError: String(e) }));
+      log(`[route] flight-ready timeout state: ${JSON.stringify(stuck)}`);
+      throw waitError;
+    }
     const launchSnapshot = await readFlightSnapshot(page);
     assert.equal(launchSnapshot.mode, 'flight', 'Launch must enter flight');
     assert.equal(launchSnapshot.player?.alive, true, 'Launch must leave the player alive');
@@ -578,10 +606,12 @@ async function readFlightSnapshot(page) {
         )) result.pendingShipCount++;
         else result.fallbackShipCount++;
       }
-      const playerStatus = livePlayer?.mesh?.userData?.authoredAssetState || 'missing';
-      const playerReady = (playerStatus === 'authored' || playerStatus === 'authored-with-cleanup-error')
-        && (livePlayer?.presentationAdmission === 'ready' || livePlayer?.presentationAdmission == null);
-      result.ready = result.shipCount > 0 && playerReady && result.fallbackShipCount === 0;
+      // Same correction as flightReadyInPage: the engine's own readiness contract is the
+      // verdict; the per-ship counts stay as receipt diagnostics, not a pass condition.
+      const readiness = typeof window.SF?.authoredVisualReadiness === 'function'
+        ? window.SF.authoredVisualReadiness()
+        : null;
+      result.ready = !!(readiness && readiness.ready);
       return result;
     }
   });
@@ -590,27 +620,18 @@ async function readFlightSnapshot(page) {
 export function flightReadyInPage() {
   const state = window.SF?.state;
   const player = state?.entities?.get(state.playerId);
-  const ships = Array.isArray(state?.entityList)
-    ? state.entityList.filter((item) => item?.type === 'ship' && item.alive !== false)
-    : [];
-  let presentedShipCount = 0;
-  let fallbackShipCount = 0;
-  for (const ship of ships) {
-    const status = ship?.mesh?.userData?.authoredAssetState || 'missing';
-    const admission = ship?.presentationAdmission || null;
-    if ((status === 'authored' || status === 'authored-with-cleanup-error')
-        && (admission === 'ready' || admission == null)) presentedShipCount++;
-    else if (!(admission === 'pending' && (
-      status === 'awaiting-authored-admission'
-      || status === 'loading'
-      || status === 'compiling-pipelines'
-    ))) fallbackShipCount++;
-  }
-  const playerStatus = player?.mesh?.userData?.authoredAssetState || 'missing';
-  const playerReady = (playerStatus === 'authored' || playerStatus === 'authored-with-cleanup-error')
-    && (player?.presentationAdmission === 'ready' || player?.presentationAdmission == null);
-  const authoredPresentationReady = ships.length > 0 && presentedShipCount > 0
-    && playerReady && fallbackShipCount === 0;
+  // Ask the engine its own question: authoredCriticalVisualReadiness().ready covers the
+  // player flight package, the starting hub, the opening authored composition, and the
+  // glass/runway role set — everything the player can actually see on the first frame.
+  // Requiring EVERY ship in the sector to hold an authored mesh is unsatisfiable by
+  // construction: distant NPCs stay dormant on purpose (asset-npc-authored-binding.test
+  // pins that), so meshless residency-deferred ships are not fallback presentations.
+  // See the same correction in professionalTravelPublicRoute.flightReadyInPage.
+  const readiness = typeof window.SF?.authoredVisualReadiness === 'function'
+    ? window.SF.authoredVisualReadiness()
+    : null;
+  // Fail closed: if the contract is unavailable the route must not pass on mode alone.
+  const authoredPresentationReady = !!(readiness && readiness.ready);
   const modalOpen = document.body.classList.contains('ui-modal-open');
   const splash = document.getElementById('cinematic-splash');
   const splashStyle = splash ? getComputedStyle(splash) : null;
