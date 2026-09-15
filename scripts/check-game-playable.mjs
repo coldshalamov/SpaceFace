@@ -107,7 +107,12 @@ async function findFreePort(start) {
 async function startServer() {
   const port = await findFreePort(8360);
   const url = `http://127.0.0.1:${port}/`;
-  const child = spawn(process.execPath, ['server.js', String(port)], { cwd: ROOT, stdio: ['ignore', 'ignore', 'ignore'], windowsHide: true });
+  const child = spawn(process.execPath, ['server.js', String(port)], {
+    cwd: ROOT,
+    env: { ...process.env, SPACEFACE_PLAYER_STORE_DIR: '' },
+    stdio: ['ignore', 'ignore', 'ignore'],
+    windowsHide: true,
+  });
   for (let i = 0; i < 80; i++) {
     if (child.exitCode != null) throw new Error('dev server exited before it was reachable');
     try { if ((await fetch(url)).ok) return { baseUrl: url, kill: () => child.kill() }; } catch (_) {}
