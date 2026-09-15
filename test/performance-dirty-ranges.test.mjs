@@ -422,6 +422,52 @@ test('dirty-range comparator requires causal owner and driver byte reduction at 
   );
 });
 
+test('dirty-range comparator refuses missing and contaminated capture windows', () => {
+  // The 2026-09-15 electron launch reached its route but the capture tore before
+  // either variant window closed: the comparator emitted the whole missing/contaminated
+  // surface at once. Pin each distinct failure so a torn capture stays loud.
+  const healthy = () => [
+    windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 }),
+    windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, { requestedBytes: 12_000_000, driverBytes: 12_200_000 }),
+  ];
+
+  const missing = evaluateDirtyRangeComparison({ windows: [] }, { runtimeKind: 'electron' });
+  assert.equal(missing.pass, false);
+  const missingFailures = missing.failures.join(' ');
+  assert.match(missingFailures, /ranged baseline combat_vfx_burst window is missing/);
+  assert.match(missingFailures, /full-span control combat_vfx_burst window is missing/);
+  assert.match(missingFailures, /did not retain the shipped partial-upload mode/);
+  assert.match(missingFailures, /full-span control was not active during its measurement window/);
+
+  const unrestored = healthy();
+  unrestored[0].restoration = { restored: false };
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: unrestored }, { runtimeKind: 'electron' }).failures.join(' '),
+    /ranged scenario or probe control did not restore exactly/,
+  );
+
+  const noTier1 = healthy();
+  noTier1[1].tier1 = { enabled: false, postBootFrames: 0 };
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: noTier1 }, { runtimeKind: 'electron' }).failures.join(' '),
+    /full-span Tier-1 GL counters are not live post-boot evidence/,
+  );
+
+  const contaminated = healthy();
+  contaminated[0].tier1.postBoot.shaderLinks = 2;
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: contaminated }, { runtimeKind: 'electron' }).failures.join(' '),
+    /ranged window was contaminated by post-boot shaderLinks/,
+  );
+
+  const noBuffers = healthy();
+  noBuffers[0].dynamicBuffers = { available: false };
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: noBuffers }, { runtimeKind: 'electron' }).failures.join(' '),
+    /ranged dynamic-buffer owner diagnostics are unavailable/,
+  );
+});
+
 test('dirty-range comparator refuses windows whose settings drifted mid-capture', () => {
   // 2026-09-15 run: a contended host let adaptive quality mutate renderScale inside
   // both windows; the numbers still compared, but a shifted quality baseline is not
