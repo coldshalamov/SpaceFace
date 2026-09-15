@@ -404,13 +404,29 @@ export async function prepareStartupGpuResidency(renderer, subjects, options = {
   }
   const uploads = [];
   const count = textures.length;
+  // GPU storage lives per texture.source: a second Texture sharing one source gets its own
+  // textureProperties record, so initTexture force-uploads into the SAME handle — texStorage2D
+  // on live immutable storage logs GL_INVALID_OPERATION per shared source. Upload each source
+  // once; a distinct sampler-parameter variant costs only a setTextureParameters at draw.
+  const seenSources = new Set();
+  const props = renderer.properties && typeof renderer.properties.get === 'function'
+    ? renderer.properties : null;
   for (let index = 0; index < count; index++) {
     const texture = textures[index];
     await yieldToMain();
     const started = now();
     let success = false;
     try {
-      renderer.initTexture(texture);
+      const source = texture && texture.source;
+      let resident = source != null && seenSources.has(source);
+      if (!resident && source && props) {
+        try {
+          const sourceProps = props.get(source);
+          resident = !!sourceProps && sourceProps.__version === source.version;
+        } catch (_) { resident = false; }
+      }
+      if (!resident) renderer.initTexture(texture);
+      if (source != null) seenSources.add(source);
       success = true;
     } finally {
       const durationMs = now() - started;
