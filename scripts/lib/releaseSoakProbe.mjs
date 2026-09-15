@@ -736,7 +736,7 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
         // so the blob realm gets the same liveness authority the page realm has.
         try {
           const workerTrapSrc = `(() => {
-            const wState = { calls: 0, nullish: 0, creates: 0, links: 0, ctxLost: 0 };
+            const wState = { calls: 0, nullish: 0, creates: 0, links: 0, deletes: 0, ctxLost: 0 };
             const wT = () => Math.round(performance.now());
             try {
               setInterval(() => {
@@ -772,6 +772,10 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
               if (typeof p.linkProgram === 'function') {
                 const o = p.linkProgram;
                 p.linkProgram = function (prog) { wState.links += 1; return o.call(this, prog); };
+              }
+              if (typeof p.deleteProgram === 'function') {
+                const o = p.deleteProgram;
+                p.deleteProgram = function (prog) { wState.deletes += 1; return o.call(this, prog); };
               }
               if (typeof p.getProgramParameter === 'function') {
                 const o = p.getProgramParameter;
@@ -851,6 +855,24 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
           };
           proto.deleteProgram = function deleteProgramTraced(program) {
             if (program) { deleted.add(program); liveByContext.get(this)?.delete(program); }
+            // Delete census: the service-side GL_INVALID_VALUE batches fire when Chromium's
+            // pending post-link introspection lands on a program that was deleted mid-link.
+            // Attributing who issues deletes pins the churn source the warnings race with.
+            traceState.deletes = (traceState.deletes || 0) + 1;
+            const dStack = (new Error().stack || '').split('\n').slice(2, 8).join(' | ');
+            const dSeen = callerCensus.get('del:' + dStack) || 0;
+            if (dSeen < 4) {
+              callerCensus.set('del:' + dStack, dSeen + 1);
+              console.warn(`[gl-trace] deleteProgram #${dSeen + 1}`, {
+                t: Math.round(performance.now()),
+                deletes: traceState.deletes,
+                lostNow: forcedLost.has(this)
+                  || (typeof this.isContextLost === 'function' && this.isContextLost() === true),
+                stack: dStack,
+              });
+            } else {
+              callerCensus.set('del:' + dStack, dSeen + 1);
+            }
             return origDel.call(this, program);
           };
           proto.getProgramParameter = function getProgramParameterTraced(program, pname) {
