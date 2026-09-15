@@ -380,6 +380,34 @@ export async function runReleaseSoakProbe({
           .map(([stack, count]) => ({ count, stack }));
         window.__SF_GEO_CENSUS__ = state;
       }).catch(() => {});
+      // DIAG (worktree-only): texture census on the very counter the memory gate reads.
+      // three bumps info.memory.textures at first upload (uploadTexture/uploadCubeTexture) and
+      // at render-target setup, and decrements on dispose; an accessor on the counter records
+      // the caller stack of each net increment. verify61: +3 textures per cycle, monotonic.
+      await page.evaluate(() => {
+        const memory = window.SF?.state?.render?.renderer?.info?.memory;
+        if (!memory || window.__SF_TEX_CENSUS__) return;
+        let value = memory.textures;
+        const byStack = new Map();
+        const state = { increments: 0, decrements: 0 };
+        Object.defineProperty(memory, 'textures', {
+          configurable: true,
+          enumerable: true,
+          get: () => value,
+          set: (next) => {
+            if (next > value) {
+              state.increments += next - value;
+              const stack = (new Error().stack || '').split('\n').slice(2, 9)
+                .map((l) => l.trim().replace(/^at\s+/, '').replace(/https?:\/\/[^/]+\//, '')).join(' < ');
+              byStack.set(stack, (byStack.get(stack) || 0) + (next - value));
+            } else if (next < value) state.decrements += value - next;
+            value = next;
+          },
+        });
+        state.topStacks = () => [...byStack.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8)
+          .map(([stack, count]) => ({ count, stack }));
+        window.__SF_TEX_CENSUS__ = state;
+      }).catch(() => {});
     }
     doLog(`soak window opened (hitch threshold ${soakThreshold} ms; cycles >=${cycles}${minDurationMs > 0 ? `, wall >=${minDurationMs} ms` : ''})`);
 
@@ -3448,11 +3476,28 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
         }, {})
         : null,
       assetResidency: state?.render?.assetResidency || null,
+      // Ledger vs live ships: verify61 grew ships 20->36 over 10 cycles against a 24 budget.
+      spawnBudget: state?.spawnBudget ? {
+        used: state.spawnBudget.used, max: state.spawnBudget.max,
+        reservations: state.spawnBudget.reservations instanceof Map
+          ? [...state.spawnBudget.reservations.entries()].map(([k, r]) => `${k}:${r.count}/${r.ids?.size ?? 0}`)
+          : null,
+        liveShips: Array.isArray(state.entityList) ? state.entityList.filter((e) => e?.type === 'ship' && e.id !== state.playerId).length : null,
+        unbudgetedShips: Array.isArray(state.entityList) && state.spawnBudget.entityOwners instanceof Map
+          ? state.entityList.filter((e) => e?.type === 'ship' && e.id !== state.playerId && !state.spawnBudget.entityOwners.has(String(e.id)))
+            .reduce((acc, e) => { const k = `${e.data?.defId || '?'}|${e.data?.role || e.data?.behavior || e.ai?.role || ''}|${e.data?.spawnSource || e.data?.origin || ''}`; acc[k] = (acc[k] || 0) + 1; return acc; }, {})
+          : null,
+      } : null,
       geoCensus: window.__SF_GEO_CENSUS__ ? {
         live: window.__SF_GEO_CENSUS__.live.size,
         created: window.__SF_GEO_CENSUS__.created,
         disposed: window.__SF_GEO_CENSUS__.disposed,
         topStacks: window.__SF_GEO_CENSUS__.topStacks(),
+      } : null,
+      texCensus: window.__SF_TEX_CENSUS__ ? {
+        increments: window.__SF_TEX_CENSUS__.increments,
+        decrements: window.__SF_TEX_CENSUS__.decrements,
+        topStacks: window.__SF_TEX_CENSUS__.topStacks(),
       } : null,
     };
     function finiteOrNull(value) { const number = Number(value); return Number.isFinite(number) ? number : null; }
