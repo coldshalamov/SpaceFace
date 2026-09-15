@@ -1295,14 +1295,19 @@ async function armHeliosWaypoint(page) {
     await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
     await page.keyboard.press('Control+A');
     await page.keyboard.type('Helios Station');
+    // Require the STATION-kind row, not just a name match: search rows whose text merely
+    // contains "Helios Station" include courseDisabled targets (frontier rumor rings,
+    // hidden-cache readouts, goal markers). Selecting one resolves to no course payload and
+    // _activateSelectedCourse drops the click silently — zero nav:autopilot events, which
+    // is exactly the cycle-12/22 failure signature. The detail line is "KIND · faction".
     const row = page.locator('.gm-search-item', {
       has: page.locator('.gm-search-item-name', { hasText: 'Helios Station' }),
+      has: page.locator('.gm-search-item-detail', { hasText: 'STATION' }),
     }).first();
     await row.waitFor({ state: 'visible', timeout: 10_000 });
     // Click the named row rather than pressing Enter. _searchSelectedIdx always resolves
     // filtered[0], and results sort by live-state priority — a mission marker or gate
-    // matching "Helios" can sit above the station, so Enter arms the wrong target (or a
-    // target with no course payload, which _activateSelectedCourse drops silently).
+    // matching "Helios" can sit above the station, so Enter arms the wrong target.
     await row.click();
     // Verify the selection actually resolved to the Helios station before clicking the
     // button — _activateSelectedCourse no-ops silently on a null _selectedTarget, and a
@@ -1312,7 +1317,7 @@ async function armHeliosWaypoint(page) {
       const target = def && def._selectedTarget;
       return target ? { name: target.name || target.label || '', kind: target.kind || null } : null;
     }).catch(() => null);
-    if (!selected || !/Helios/i.test(String(selected.name))) {
+    if (!selected || selected.kind !== 'station' || !/Helios/i.test(String(selected.name))) {
       lastError = new Error(`search row selected ${JSON.stringify(selected)} instead of Helios Station`);
       continue;
     }
