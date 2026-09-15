@@ -10518,7 +10518,7 @@
       "priority": 220,
       "title": "Matched corridor-asset performance and cleanup",
       "kind": "performance",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-034.native-closure",
         "PQ-022.relay-reauthor-review",
@@ -10531,12 +10531,19 @@
         "performance-evidence",
         "validation-broker"
       ],
-      "paths": [],
+      "paths": [
+        "scripts/capture-pq022-h3-performance.mjs",
+        "scripts/lib/pq022CorridorH3Performance.mjs",
+        "scripts/lib/pq022CorridorH3Route.mjs",
+        "scripts/validation-manifests/pq022-h3-performance.mjs",
+        "test/pq022-h3-performance.test.mjs"
+      ],
       "checks": [
+        "node --test test/pq022-h3-performance.test.mjs",
         "npm run check:pq022:corridor-assets"
       ],
       "receiptRefs": [],
-      "brief": "Capture matched resource, residency, LOD, and cleanup evidence for the accepted exact corridor identities.",
+      "brief": "IMPLEMENTED 2026-09-15, capture not run: the brokered H3 harness is on master (capture script, lib, route, broker manifest and focused test; budgets are declared in the lib before any capture) and its focused test and broker fast gate are green. The owner cancelled the roughly 50-minute three-cycle run in-session, so no performance verdict exists; run it later on a quiet host with `node scripts/validation-broker-cli.mjs --manifest pq022-h3-performance`. Diagnostic runs found and fixed two player-facing defects: the accepted billboard, nav buoy and relay collar were resident on the GPU but never drawn (c3b4599b5), and far-actor ids were recycled while still held, so the relay beacon wore a wreck or Mule body and never loaded its own release (ee9ac4580). Open for the real run: the relay release was still pending at 180 s under an 8-10-core foreign load (cause unproven); loaded geometry count grew 645 to 955 between cycle ends while GPU bytes stayed flat; the billboard reauthor receipt table lists release 1a780be0 while the live release is f94ce276.",
       "blocker": null
     },
     {
