@@ -534,7 +534,9 @@ test('live sprite and trail owners publish only their packed prefixes after init
   let epoch = coordinator.arm();
   scene.onBeforeRender({}, scene, camera, null);
   for (const bucket of [sprites.glow, sprites.ring, sprites.smoke, sprites.combustion]) {
-    for (const attribute of [bucket.position, bucket.scale, bucket.roll, bucket.color, bucket.opacity]) {
+    for (const attribute of [
+      bucket.position, bucket.scale, bucket.roll, bucket.color, bucket.opacity, bucket.phase, bucket.axis,
+    ]) {
       acknowledgeInitial(attribute);
     }
   }
@@ -567,6 +569,8 @@ test('live sprite and trail owners publish only their packed prefixes after init
   assert.deepEqual(sprites.combustion.roll.updateRanges, [{ start: 0, count: 2 }]);
   assert.deepEqual(sprites.combustion.color.updateRanges, [{ start: 0, count: 6 }]);
   assert.deepEqual(sprites.combustion.opacity.updateRanges, [{ start: 0, count: 2 }]);
+  assert.deepEqual(sprites.combustion.phase.updateRanges, [{ start: 0, count: 4 }]);
+  assert.deepEqual(sprites.combustion.axis.updateRanges, [{ start: 0, count: 2 }]);
   assert.deepEqual(trails.mesh.instanceMatrix.updateRanges, [{ start: 0, count: 32 }]);
   assert.deepEqual(trails.colorAttribute.updateRanges, [{ start: 0, count: 6 }]);
   assert.deepEqual(trails.opacityAttribute.updateRanges, [{ start: 0, count: 2 }]);
@@ -578,6 +582,8 @@ test('live sprite and trail owners publish only their packed prefixes after init
     sprites.combustion.roll,
     sprites.combustion.color,
     sprites.combustion.opacity,
+    sprites.combustion.phase,
+    sprites.combustion.axis,
     trails.mesh.instanceMatrix,
     trails.colorAttribute,
     trails.opacityAttribute,
@@ -585,7 +591,7 @@ test('live sprite and trail owners publish only their packed prefixes after init
   coordinator.disarm(epoch);
 });
 
-test('dense one-times and five-times fanout stays at 23 ranges and charges packed bytes', () => {
+test('dense one-times and five-times fanout stays at 31 ranges and charges packed bytes', () => {
   const capacity = 96;
   const scene = new THREE.Scene();
   const coordinator = createDynamicBufferCoordinator(scene);
@@ -601,6 +607,8 @@ test('dense one-times and five-times fanout stays at 23 ranges and charges packe
       bucket.roll,
       bucket.color,
       bucket.opacity,
+      bucket.phase,
+      bucket.axis,
     ]),
     trails.mesh.instanceMatrix,
     trails.colorAttribute,
@@ -651,16 +659,16 @@ test('dense one-times and five-times fanout stays at 23 ranges and charges packe
     );
     assert.equal(
       coordinator.getDiagnostics().updateRangePublications - publicationsBefore,
-      23,
-      'four five-attribute sprite buckets plus one three-attribute trail pool still publish once each',
+      31,
+      'four seven-attribute sprite buckets plus one three-attribute trail pool still publish once each',
     );
-    assert.equal(allAttributes.reduce((sum, attribute) => sum + attribute.updateRanges.length, 0), 23);
+    assert.equal(allAttributes.reduce((sum, attribute) => sum + attribute.updateRanges.length, 0), 31);
 
-    const expectedBytes = (4 * (3 + 2 + 1 + 3 + 1) + population * (16 + 3 + 1))
+    const expectedBytes = (4 * (3 + 2 + 1 + 3 + 1 + 2 + 1) + population * (16 + 3 + 1))
       * Float32Array.BYTES_PER_ELEMENT;
     assert.equal(requestedBytes() - requestedBefore, expectedBytes,
       'requested upload bytes must follow the packed active prefix, not allocated capacity');
-    assert.ok(expectedBytes < capacity * (4 * 10 + 20) * Float32Array.BYTES_PER_ELEMENT,
+    assert.ok(expectedBytes < capacity * (4 * 13 + 20) * Float32Array.BYTES_PER_ELEMENT,
       'the fixture must distinguish dirty bytes from a complete-capacity upload');
     assert.equal(trails.mesh.count, population, 'active draw count stays independent of capacity');
 

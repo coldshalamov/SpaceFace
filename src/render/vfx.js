@@ -13697,7 +13697,8 @@ export function runProjectileTrailEmissionSelfCheck() {
   }
 
   const railSystem = _makeProjectileTrailSelfCheckHarness([
-    _selfCheckProjectile(20, 'wpn_railgun_m', { damageType: 'kinetic' }),
+    // On-table only: off-table non-priority bolts are culled by the live envelope.
+    _selfCheckProjectile(20, 'wpn_railgun_m', { damageType: 'kinetic' }, { x: 280, z: 50 }),
   ]);
   railSystem._markProjectileCacheDirty();
   for (let f = 0; f < 3; f++) railSystem.update(1 / 60);

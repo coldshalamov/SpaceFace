@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import fs, { readFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -57,6 +57,20 @@ async function loadMain({
   };
   const powerMonitor = emitter();
   const ipcMain = emitter();
+  const ipcHandlers = new Map();
+  ipcMain.handle = (channel, handler) => { ipcHandlers.set(channel, handler); };
+  ipcMain.handlerCount = (channel) => (ipcHandlers.has(channel) ? 1 : 0);
+  ipcMain.invokeHandler = (channel, ...args) => {
+    if (!ipcHandlers.has(channel)) throw new Error(`no ipcMain handler for ${channel}`);
+    return ipcHandlers.get(channel)(...args);
+  };
+  const dialog = {
+    saveCalls: [],
+    showSaveDialog(parent, options) {
+      this.saveCalls.push({ parent, options });
+      return Promise.resolve({ canceled: true, filePath: '' });
+    },
+  };
   const app = emitter({
     isPackaged: false,
     commandLine: { appendSwitch() {} },
@@ -180,9 +194,50 @@ async function loadMain({
       },
     },
     require(specifier) {
-      if (specifier === 'electron') return { app, BrowserWindow: FakeBrowserWindow, powerMonitor, ipcMain };
+      if (specifier === 'electron') return { app, BrowserWindow: FakeBrowserWindow, powerMonitor, ipcMain, dialog };
       if (specifier === 'http') return { get() { throw new Error('unexpected HTTP probe'); } };
       if (specifier === 'path') return path;
+      if (specifier === 'fs') return fs;
+      if (specifier === './releaseIdentity.cjs') {
+        return {
+          resolveReleaseIdentity() {
+            return Object.freeze({ version: '0.0.0-test', build: 'test-build', packaged: false, source: 'dev' });
+          },
+          publicBuildInfo(identity) {
+            return Object.freeze({
+              version: identity.version,
+              build: identity.build,
+              packaged: !!identity.packaged,
+              channel: 'dev',
+            });
+          },
+        };
+      }
+      if (specifier === './autoUpdate.cjs') {
+        return { configureAutoUpdate() { return { enabled: false, reason: 'test-disabled' }; } };
+      }
+      if (specifier === './steamworks.cjs') {
+        return {
+          ACHIEVEMENT_UNLOCK_CHANNEL: 'spaceface:achievement-unlock',
+          STEAM_STATUS_CHANNEL: 'spaceface:steam-status',
+          DISTRIBUTION_STEAM: 'steam',
+          DISTRIBUTION_DIRECT: 'direct',
+          resolveDistribution() { return 'direct'; },
+          createSteamworksAdapter() {
+            return Object.freeze({
+              distribution: 'direct',
+              init() { return Object.freeze({ available: false, reason: 'test-no-steam' }); },
+              enableOverlay() { return { enabled: false, reason: 'not-steam-distribution' }; },
+              unlockAchievement(payload) {
+                return { ok: false, available: false, reason: 'test-no-steam', id: payload && payload.id };
+              },
+              publicStatus() {
+                return { available: false, reason: 'test-no-steam', distribution: 'direct', achievements: 0, cloud: null };
+              },
+            });
+          },
+        };
+      }
       if (specifier === '../scripts/lib/gameServer.cjs') return { createGameServer };
       if (specifier === '../scripts/lib/playerSaveStore.cjs') {
         return {
@@ -221,7 +276,7 @@ async function loadMain({
   }
   await settle();
   assert.equal(windows.length, 1);
-  return { app, powerMonitor, ipcMain, win: windows[0], windows, commands, receipts, security, serverStats };
+  return { app, powerMonitor, ipcMain, ipcHandlers, dialog, win: windows[0], windows, commands, receipts, security, serverStats };
 }
 
 function loadPreload() {
@@ -229,6 +284,7 @@ function loadPreload() {
   const exposed = new Map();
   let outboundCalls = 0;
   const outboundChannels = [];
+  const invocations = [];
   const contextBridge = {
     exposeInMainWorld(name, value) { exposed.set(name, value); },
   };
@@ -241,7 +297,11 @@ function loadPreload() {
       outboundCalls++;
       outboundChannels.push(channel);
     },
-    invoke() { outboundCalls++; },
+    invoke(channel, payload) {
+      outboundCalls++;
+      invocations.push([channel, payload]);
+      return Promise.resolve(null);
+    },
   };
   vm.runInNewContext(readFileSync(PRELOAD_PATH, 'utf8'), {
     console,
@@ -257,6 +317,10 @@ function loadPreload() {
     ipcListeners,
     outboundCalls: () => outboundCalls,
     outboundChannels: () => [...outboundChannels],
+    invocations: () => invocations.map(([channel, payload]) => [
+      channel,
+      payload === undefined ? undefined : plain(payload),
+    ]),
     emit(command) {
       for (const listener of [...(ipcListeners.get(CHANNEL) || [])]) listener({}, command);
     },
@@ -563,10 +627,16 @@ test('power suspend and screen lock publish system suspension through one listen
   );
 });
 
-test('main accepts only the documented quit IPC channel', async () => {
+test('main accepts only the documented quit send channel and invoke IPC set', async () => {
   const h = await loadMain();
   assert.equal(h.ipcMain.listenerCount('spaceface:quit'), 1);
   assert.equal(h.ipcMain.listenerCount('spaceface:shell-lifecycle'), 0);
+  assert.deepEqual([...h.ipcHandlers.keys()].sort(), [
+    'spaceface:achievement-unlock',
+    'spaceface:build-info',
+    'spaceface:save-clip',
+    'spaceface:steam-status',
+  ]);
 
   h.ipcMain.emit('spaceface:shell-lifecycle');
   assert.equal(h.serverStats.quits, 0);
@@ -574,6 +644,21 @@ test('main accepts only the documented quit IPC channel', async () => {
   assert.equal(h.serverStats.quits, 1);
   h.ipcMain.emit('spaceface:quit-extra');
   assert.equal(h.serverStats.quits, 1);
+
+  // save-clip rejects a non-clip basename before any dialog or disk write.
+  const rejected = await h.ipcMain.invokeHandler('spaceface:save-clip', {}, {
+    filename: 'notes.txt', bytesB64: 'QUJD',
+  });
+  assert.equal(rejected.ok, false);
+  assert.equal(h.dialog.saveCalls.length, 0);
+  const info = await h.ipcMain.invokeHandler('spaceface:build-info', {});
+  assert.deepEqual(info, { version: '0.0.0-test', build: 'test-build', packaged: false, channel: 'dev' });
+  const unlock = await h.ipcMain.invokeHandler('spaceface:achievement-unlock', {}, { id: 'ace_pilot' });
+  assert.deepEqual(unlock, { ok: false, available: false, reason: 'test-no-steam', id: 'ace_pilot' });
+  const status = await h.ipcMain.invokeHandler('spaceface:steam-status', {});
+  assert.deepEqual(status, {
+    available: false, reason: 'test-no-steam', distribution: 'direct', achievements: 0, cloud: null,
+  });
 });
 
 test('preload exposes one monotonic one-way subscription and replays the latest command', () => {
@@ -582,7 +667,10 @@ test('preload exposes one monotonic one-way subscription and replays the latest 
   assert.deepEqual([...h.ipcListeners.keys()], [CHANNEL]);
   const lifecycle = h.exposed.get('spacefaceLifecycle');
   assert.deepEqual(Object.keys(lifecycle), ['subscribe', 'quit']);
-  assert.deepEqual(Object.keys(h.exposed.get('spacefaceShell')), ['quit']);
+  assert.deepEqual(
+    Object.keys(h.exposed.get('spacefaceShell')),
+    ['quit', 'saveClip', 'buildInfo', 'unlockAchievement', 'steamStatus'],
+  );
   assert.equal(typeof h.exposed.get('spacefaceQuit'), 'function');
 
   h.emit({ state: 'hidden-or-minimized', sequence: 4, reason: 'hide' });
@@ -607,4 +695,18 @@ test('preload exposes one monotonic one-way subscription and replays the latest 
   h.exposed.get('spacefaceShell').quit();
   h.exposed.get('spacefaceQuit')();
   assert.deepEqual(h.outboundChannels(), ['spaceface:quit', 'spaceface:quit', 'spaceface:quit']);
+
+  // The remaining bridge methods each invoke exactly their own allowlisted channel; the
+  // achievement id is wrapped to { id } and truncated at 64 chars before it crosses.
+  const shell = h.exposed.get('spacefaceShell');
+  shell.saveClip({ filename: 'clip.gif', bytesB64: 'QUJD' });
+  shell.buildInfo();
+  shell.unlockAchievement('x'.repeat(80));
+  shell.steamStatus();
+  assert.deepEqual(h.invocations(), [
+    ['spaceface:save-clip', { filename: 'clip.gif', bytesB64: 'QUJD' }],
+    ['spaceface:build-info', undefined],
+    ['spaceface:achievement-unlock', { id: 'x'.repeat(64) }],
+    ['spaceface:steam-status', undefined],
+  ]);
 });
