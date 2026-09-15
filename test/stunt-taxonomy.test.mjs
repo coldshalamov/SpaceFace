@@ -35,10 +35,10 @@ test('stunt taxonomy exports and schema constants', () => {
   }
 });
 
-test('detects Razor Release with verified cause chain', () => {
+test('razor release modifies the consequential primary, never stands alone', () => {
   const detector = createStuntDetector({ playerId: 'player' });
 
-  const tricks = detector.processEvent('tether:releaseRated', {
+  const releaseTricks = detector.processEvent('tether:releaseRated', {
     tick: 120,
     sourceId: 'player',
     targetId: 'rock_99',
@@ -47,23 +47,46 @@ test('detects Razor Release with verified cause chain', () => {
     angularSpeed: 4.5,
     tangentialSpeed: 42.0,
   });
+  assert.equal(releaseTricks.length, 0);
+
+  const tricks = detector.processEvent('combat:collisionConsequence', {
+    tick: 140,
+    targetId: 'raider_wasp',
+    otherId: 'rock_99',
+    surface: 'craft',
+    deltaV: 30.0,
+    exchangedMomentum: 1400,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 0,
+    targetHullMax: 100,
+    provenance: { actorId: 'player' },
+  });
 
   assert.equal(tricks.length, 1);
   const trick = tricks[0];
-  assert.equal(trick.trickId, 'razor_release');
+  assert.notEqual(trick.trickId, 'razor_release');
   assert.equal(trick.actorId, 'player');
-  assert.equal(trick.targetId, 'rock_99');
-  assert.equal(trick.metrics.releaseScore, 0.92);
-  assert.ok(trick.causeChain.length >= 2);
-  assert.equal(trick.causeChain[0].type, 'tether_spin');
-  assert.equal(trick.causeChain[1].type, 'razor_timing');
+  assert.ok(trick.modifiers.includes('razor_release'));
+  assert.equal(trick.releaseGrade, 'razor');
+  assert.equal(trick.name, `Razor ${TRICK_DEFINITIONS[trick.trickId].name}`);
+  assert.ok(typeof trick.episodeId === 'string' && trick.episodeId.length > 0);
   assert.ok(Object.isFrozen(trick));
 });
 
 test('detects Wrecking Ball when slung mass impacts hostile', () => {
   const detector = createStuntDetector({ playerId: 'player' });
 
-  const tricks = detector.processEvent('tether:whipImpact', {
+  detector.processEvent('tether:attached', {
+    tick: 230,
+    sourceId: 'player',
+    targetId: 'heavy_asteroid_1',
+    isTow: true,
+    relSpeed: 10,
+  });
+
+  const whipTricks = detector.processEvent('tether:whipImpact', {
     tick: 240,
     sourceId: 'player',
     targetId: 'heavy_asteroid_1', // slung mass
@@ -71,6 +94,22 @@ test('detects Wrecking Ball when slung mass impacts hostile', () => {
     relSpeed: 58.5,
     mass: 45.0,
     momentum: 2632.5,
+  });
+  assert.equal(whipTricks.length, 0);
+
+  const tricks = detector.processEvent('combat:collisionConsequence', {
+    tick: 245,
+    targetId: 'pirate_corvette',
+    otherId: 'heavy_asteroid_1',
+    surface: 'craft',
+    deltaV: 40.0,
+    exchangedMomentum: 1800,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 0,
+    targetHullMax: 200,
+    provenance: { actorId: 'player' },
   });
 
   assert.equal(tricks.length, 1);
@@ -96,6 +135,9 @@ test('detects Clothesline when hostile crosses taut line', () => {
     victimId: 'scout_interceptor',
     anchorId: 'buoy_station',
     deltaV: 34.0,
+    provenance: { actorId: 'player', appliedTick: 290 },
+    lineIntercepted: true,
+    followOnConsequence: true,
   });
 
   assert.equal(tricks.length, 1);
@@ -132,6 +174,11 @@ test('detects Rock Discovery when player-concussed enemy hits terrain', () => {
     deltaV: 32.5,
     exchangedMomentum: 1250,
     impactDamage: 85,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 0,
+    targetHullMax: 100,
     provenance: { actorId: 'player', tag: 'weapon_shove' },
   });
 
@@ -167,6 +214,11 @@ test('detects Bolas when slung projectile entangles multiple targets', () => {
     surface: 'craft',
     deltaV: 22.0,
     exchangedMomentum: 800,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 0,
+    targetHullMax: 80,
     provenance: { actorId: 'player' },
   });
 
@@ -198,6 +250,11 @@ test('detects Collateral when launched hostile strikes another craft', () => {
     surface: 'craft',
     deltaV: 18.0,
     exchangedMomentum: 950,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 0,
+    targetHullMax: 90,
     provenance: { actorId: 'player' },
   });
 
@@ -210,7 +267,7 @@ test('detects Collateral when launched hostile strikes another craft', () => {
   assert.equal(trick.causeChain[1].type, 'secondary_collision');
 });
 
-test('detects Tow Kill when trailing towed mass eliminates enemy', () => {
+test('detects Tow Kill when the actively towed mass dies in a collision', () => {
   const detector = createStuntDetector({ playerId: 'player' });
 
   // 1. Establish active tow
@@ -223,21 +280,36 @@ test('detects Tow Kill when trailing towed mass eliminates enemy', () => {
   });
 
   // 2. Kill entity while towing
-  const tricks = detector.processEvent('entity:killed', {
+  const tricks = detector.processEvent('combat:collisionConsequence', {
     tick: 540,
-    id: 'pursuer_scout',
-    killerId: 'player',
-    cause: 'ship_collision',
+    targetId: 'heavy_ore_pod',
+    otherId: 'asteroid_face',
+    surface: 'terrain',
+    deltaV: 24.0,
+    exchangedMomentum: 700,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 0,
+    targetHullMax: 60,
+    provenance: { actorId: 'player' },
   });
 
   assert.equal(tricks.length, 1);
   const trick = tricks[0];
   assert.equal(trick.trickId, 'tow_kill');
   assert.equal(trick.actorId, 'player');
-  assert.equal(trick.targetId, 'pursuer_scout');
-  assert.deepEqual(trick.secondaryIds, ['heavy_ore_pod']);
+  assert.equal(trick.targetId, 'heavy_ore_pod');
   assert.equal(trick.causeChain[0].type, 'active_tow');
   assert.equal(trick.causeChain[1].type, 'tow_destruction');
+
+  const unrelated = detector.processEvent('entity:killed', {
+    tick: 560,
+    id: 'pursuer_scout',
+    killerId: 'player',
+    cause: 'kinetic',
+  });
+  assert.equal(unrelated.length, 0);
 });
 
 test('detects Dead Mans Mass when propelled wreck crushes living enemy', () => {
@@ -261,6 +333,11 @@ test('detects Dead Mans Mass when propelled wreck crushes living enemy', () => {
     otherType: 'wreck',
     deltaV: 26.0,
     exchangedMomentum: 1800,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 0,
+    targetHullMax: 220,
     provenance: { actorId: 'player' },
   });
 
@@ -292,6 +369,11 @@ test('detects Well Golf when gravity singularity hurls entity into target', () =
     surface: 'craft',
     deltaV: 35.0,
     exchangedMomentum: 2100,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 0,
+    targetHullMax: 260,
     provenance: { actorId: 'player' },
   });
 
@@ -313,6 +395,11 @@ test('detects Near Miss on high speed close obstacle pass', () => {
     obstacleId: 'station_spindle',
     speed: 72.0,
     clearance: 3.2,
+    provenance: { actorId: 'player', appliedTick: 780 },
+    threatId: 'raider_dart',
+    threatHostile: true,
+    avoidedInterception: true,
+    escapeResolved: true,
   });
 
   assert.equal(tricks.length, 1);
@@ -334,6 +421,9 @@ test('detects Snap Catch on high speed reactive latch', () => {
     sourceId: 'player',
     targetId: 'incoming_missile_hull',
     relSpeed: 48.0,
+    arrestDeltaV: 48.0,
+    provenance: { actorId: 'player', appliedTick: 840 },
+    materialConsequence: true,
   });
 
   assert.equal(tricks.length, 1);
@@ -365,6 +455,11 @@ test('detects Shove Bowling when concussion weapon launches enemy into another',
     surface: 'craft',
     deltaV: 24.0,
     exchangedMomentum: 1100,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 0,
+    targetHullMax: 140,
     provenance: { actorId: 'player', weaponId: 'hornet_concussion_shove' },
   });
 
@@ -381,13 +476,12 @@ test('detects Bank Shot when slung projectile ricochets off terrain into enemy',
   const detector = createStuntDetector({ playerId: 'player' });
 
   // 1. Launch projectile
-  detector.processEvent('tether:releaseRated', {
+  detector.processEvent('combat:hitstunImpulse', {
     tick: 1000,
-    sourceId: 'player',
-    targetId: 'dense_iron_slug',
-    classification: 'clean',
-    releaseScore: 0.7,
-    tangentialSpeed: 40.0,
+    actorId: 'player',
+    victimId: 'dense_iron_slug',
+    weaponId: 'wpn_autocannon_m',
+    deltaV: 40.0,
   });
 
   // 2. Slug bounces off terrain
@@ -398,6 +492,12 @@ test('detects Bank Shot when slung projectile ricochets off terrain into enemy',
     surface: 'terrain',
     deltaV: 18.0,
     exchangedMomentum: 900,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: false,
+    hullDamage: 40,
+    targetHullMax: 100,
+    helmLossSeconds: 2,
     provenance: { actorId: 'player' },
   });
 
@@ -409,6 +509,11 @@ test('detects Bank Shot when slung projectile ricochets off terrain into enemy',
     surface: 'craft',
     deltaV: 22.0,
     exchangedMomentum: 1100,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 0,
+    targetHullMax: 120,
     provenance: { actorId: 'player' },
   });
 
@@ -426,10 +531,30 @@ test('deterministic reproduction across repeat trace processing', () => {
   const sampleTrace = [
     { type: 'tether:releaseRated', tick: 50, sourceId: 'player', targetId: 'rock_A', classification: 'razor', releaseScore: 0.95, angularSpeed: 5.0, tangentialSpeed: 50.0 },
     { type: 'tether:whipImpact', tick: 70, sourceId: 'player', targetId: 'rock_A', victimId: 'enemy_1', relSpeed: 60.0, mass: 30.0, momentum: 1800.0 },
-    { type: 'flight:nearMiss', tick: 120, actorId: 'player', obstacleId: 'asteroid_mega', speed: 80.0, clearance: 2.5 },
-    { type: 'tether:snapCatch', tick: 180, sourceId: 'player', targetId: 'flung_pod', relSpeed: 35.0 },
+    {
+      type: 'combat:collisionConsequence', tick: 90, targetId: 'enemy_1', otherId: 'rock_A',
+      surface: 'craft', deltaV: 40.0, exchangedMomentum: 1800,
+      targetHostile: true, damageApplied: true, targetKilled: true,
+      hullDamage: 0, targetHullMax: 150, provenance: { actorId: 'player' },
+    },
+    {
+      type: 'flight:nearMiss', tick: 120, actorId: 'player', obstacleId: 'asteroid_mega',
+      speed: 80.0, clearance: 2.5, threatId: 'raider_interceptor', threatHostile: true,
+      avoidedInterception: true, escapeResolved: true,
+      provenance: { actorId: 'player', appliedTick: 100 },
+    },
+    {
+      type: 'tether:snapCatch', tick: 180, sourceId: 'player', targetId: 'flung_pod',
+      relSpeed: 35.0, arrestDeltaV: 35.0, materialConsequence: true,
+      provenance: { actorId: 'player', appliedTick: 170 },
+    },
     { type: 'combat:hitstunImpulse', tick: 240, actorId: 'player', victimId: 'enemy_2', weaponId: 'shove', deltaV: 25.0 },
-    { type: 'combat:collisionConsequence', tick: 260, targetId: 'enemy_2', otherId: 'asteroid_wall', surface: 'terrain', deltaV: 28.0, exchangedMomentum: 1000, provenance: { actorId: 'player' } },
+    {
+      type: 'combat:collisionConsequence', tick: 260, targetId: 'enemy_2', otherId: 'asteroid_wall',
+      surface: 'terrain', deltaV: 28.0, exchangedMomentum: 1000,
+      targetHostile: true, damageApplied: true, targetKilled: true,
+      hullDamage: 0, targetHullMax: 110, provenance: { actorId: 'player' },
+    },
   ];
 
   const detector1 = createStuntDetector({ playerId: 'player' });
@@ -533,10 +658,12 @@ test('stuntGrammar system observes bus events and records recent tricks', () => 
   const state = {
     playerId: 'player_hero',
     stunts: null,
+    mode: 'flight',
+    tick: 0,
   };
 
   stuntGrammar.init({ bus, state });
-  stuntGrammar.update(state, 0.016);
+  stuntGrammar.update(0.016, state);
 
   assert.ok(state.stunts);
   assert.equal(state.stunts.totalTricksDetected, 0);
@@ -548,22 +675,34 @@ test('stuntGrammar system observes bus events and records recent tricks', () => 
   });
 
   // Emit a razor release on the bus
-  bus.emit('tether:releaseRated', {
+  bus.emit('combat:hitstunImpulse', {
+    tick: 55,
+    actorId: 'player_hero',
+    victimId: 'raider_scout',
+    weaponId: 'wpn_concussion_cannon_m',
+    deltaV: 28.0,
+  });
+  bus.emit('combat:collisionConsequence', {
     tick: 60,
-    sourceId: 'player_hero',
-    targetId: 'asteroid_gem',
-    classification: 'razor',
-    releaseScore: 0.90,
-    angularSpeed: 4.2,
-    tangentialSpeed: 45.0,
+    targetId: 'raider_scout',
+    otherId: 'asteroid_gem',
+    surface: 'terrain',
+    deltaV: 30.0,
+    exchangedMomentum: 1100,
+    targetHostile: true,
+    damageApplied: true,
+    targetKilled: true,
+    hullDamage: 0,
+    targetHullMax: 90,
+    provenance: { actorId: 'player_hero' },
   });
 
   assert.ok(busEmitReceived);
-  assert.equal(busEmitReceived.trickId, 'razor_release');
+  assert.equal(busEmitReceived.trickId, 'rock_discovery');
   assert.equal(busEmitReceived.actorId, 'player_hero');
   assert.equal(state.stunts.totalTricksDetected, 1);
   assert.equal(state.stunts.recentTricks.length, 1);
-  assert.equal(state.stunts.recentTricks[0].trickId, 'razor_release');
+  assert.equal(state.stunts.recentTricks[0].trickId, 'rock_discovery');
 
   stuntGrammar.destroy();
 });

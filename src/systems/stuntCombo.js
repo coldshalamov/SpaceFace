@@ -265,6 +265,7 @@ export function recordTrick(comboState, trick) {
     trickId: trick.trickId || 'unknown',
     name: trick.name || trick.trickId || 'Unknown stunt',
     rarity: trick.rarity || 'common',
+    episodeId: trick.episodeId ?? null,
     points,
     tick,
   });
@@ -289,7 +290,8 @@ export function recordKill(comboState, kill = {}) {
 export function recordTrickKill(comboState) {
   const combo = ensureCombo(comboState);
   combo.trickKills += 1;
-  return 0;
+  combo.banked += GUN_KILL_SCORE;
+  return GUN_KILL_SCORE;
 }
 
 /** Move the active chain into the banked total. Idempotent. Returns the amount banked. */

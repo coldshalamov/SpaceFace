@@ -171,7 +171,18 @@ const SCENARIO_SEED = 14601;
 
 function driveTape(kind) {
   const bus = createBus();
-  const state = { playerId: 'player', stunts: null, tick: 0, simTime: 0, mode: 'flight' };
+  const entities = new Map();
+  for (const id of ['raider_0', 'raider_1', 'raider_2', 'raider_3', 'ore_pod']) {
+    entities.set(id, {
+      id, type: 'ship', team: 1, alive: true, pos: { x: 40, z: 0 },
+      data: { level: 1, runWave: 1, runCohort: 'survival' },
+    });
+  }
+  const state = {
+    playerId: 'player', stunts: null, tick: 0, simTime: 0, mode: 'flight',
+    run: { kind: 'survival', phase: 'active' },
+    entities,
+  };
   stuntGrammar.init({ bus, state });
   try {
     bus.emit('run:started', {});
@@ -184,20 +195,34 @@ function driveTape(kind) {
         tick: 160, sourceId: 'player', targetId: 'rock_A', victimId: 'raider_1',
         relSpeed: 58.5, mass: 45.0, momentum: 2632.5,
       });
+      bus.emit('combat:collisionConsequence', {
+        tick: 165, targetId: 'raider_1', otherId: 'rock_A', surface: 'craft',
+        deltaV: 40.0, exchangedMomentum: 2632.5,
+        targetHostile: true, damageApplied: true, targetKilled: true,
+        hullDamage: 0, targetHullMax: 120, provenance: { actorId: 'player' },
+      });
       bus.emit('combat:hitstunImpulse', {
         tick: 220, actorId: 'player', victimId: 'raider_2',
         weaponId: 'wpn_concussion_cannon_m', deltaV: 25.0,
       });
       bus.emit('combat:collisionConsequence', {
         tick: 240, targetId: 'raider_3', otherId: 'raider_2', surface: 'craft',
-        deltaV: 18.0, exchangedMomentum: 950, provenance: { actorId: 'player' },
+        deltaV: 18.0, exchangedMomentum: 950,
+        targetHostile: true, damageApplied: true, targetKilled: true,
+        hullDamage: 0, targetHullMax: 90, provenance: { actorId: 'player' },
       });
       // 4 kills: two plain concussion kills, two trick-adjacent (tow-kill + crush).
       bus.emit('entity:killed', { tick: 300, id: 'raider_1', killerId: 'player', weaponId: 'wpn_concussion_cannon_m' });
       bus.emit('tether:attached', { tick: 320, sourceId: 'player', targetId: 'ore_pod', isTow: true, relSpeed: 10 });
       bus.emit('entity:killed', { tick: 340, id: 'raider_2', killerId: 'player', cause: 'ship_collision' });
       bus.emit('entity:killed', { tick: 360, id: 'raider_3', killerId: 'player', weaponId: 'wpn_concussion_cannon_m' });
-      bus.emit('entity:killed', { tick: 380, id: 'raider_4', killerId: 'player', weaponId: 'wpn_concussion_cannon_m' });
+      bus.emit('combat:collisionConsequence', {
+        tick: 375, targetId: 'ore_pod', otherId: 'asteroid_face', surface: 'terrain',
+        deltaV: 26.0, exchangedMomentum: 800,
+        targetHostile: true, damageApplied: true, targetKilled: true,
+        hullDamage: 0, targetHullMax: 60, provenance: { actorId: 'player' },
+      });
+      bus.emit('entity:killed', { tick: 380, id: 'ore_pod', killerId: 'player', cause: 'ship_collision' });
     } else if (kind === 'gun') {
       for (let i = 0; i < 4; i += 1) {
         bus.emit('entity:killed', { tick: 300 + i * 20, id: `raider_${i}`, killerId: 'player', weaponId: 'wpn_autocannon_m' });
@@ -208,7 +233,7 @@ function driveTape(kind) {
       }
     }
     state.tick = 100000;
-    stuntGrammar.update(state, 1 / 60);
+    stuntGrammar.update(1 / 60, state);
     const combo = state.stunts.combo;
     bankActive(combo);
     return { score: comboTotal(combo), kills: comboKills(combo), bestChain: combo.bestChain };

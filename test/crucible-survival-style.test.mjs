@@ -115,16 +115,16 @@ function spawnAndKill(harness, cause) {
   return entity;
 }
 
-test('the first kill still pays base score; variety then lifts later kills', () => {
+test('the first kill still pays base score; cause history is still tracked', () => {
   const harness = boot();
   beginSurvival(harness);
   spawnAndKill(harness, 'kinetic');
   const base = killScoreFor(1);
-  assert.equal(harness.state.run.score, base, 'first direct kill uses multiplier 1');
+  assert.equal(harness.state.run.score, base, 'first direct kill pays flat base');
   assert.ok(harness.state.run.style.multiplier > 1);
 
   spawnAndKill(harness, 'explosive');
-  assert.ok(harness.state.run.score > base * 2, 'a second distinct cause is worth more than two base kills');
+  assert.equal(harness.state.run.score, base * 2, 'every owned kill pays the same flat base');
   assert.ok(harness.state.run.style.recentCauses.includes('direct'));
   assert.ok(harness.state.run.style.recentCauses.includes('explosive'));
 });

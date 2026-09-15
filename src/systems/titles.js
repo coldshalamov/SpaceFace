@@ -16,6 +16,7 @@ import {
   TITLES_SEEN_LIMIT,
 } from '../data/titles.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { KNOWN_TRICK_IDS } from '../combat/stuntTaxonomy.js';
 
 function finiteInteger(value, fallback = 0) {
   const number = Number(value);
@@ -203,6 +204,26 @@ function entityFor(state, id) {
     if (entity) return entity;
   }
   return Array.isArray(state.entityList) ? state.entityList.find((entity) => entity && entity.id === id) || null : null;
+}
+
+const KNOWN_TRICK_ID_SET = new Set(KNOWN_TRICK_IDS);
+const STUNT_INCIDENT_LIMIT = 240;
+const STUNT_SETTLEMENT_TICK_MAX = 128;
+
+export function qualifiedStuntWitnesses(state, trick) {
+  if (!Array.isArray(trick?.witnesses)) return [];
+  const ids = new Set();
+  return trick.witnesses.filter((w) => {
+    if (!w || w.id == null || ids.has(w.id) || w.id === state?.playerId
+      || !Number.isFinite(w.sourceTicks) || w.sourceTicks < 6
+      || !Number.isFinite(w.transferTicks) || w.transferTicks < 6
+      || !Number.isFinite(w.payoffTicks) || w.payoffTicks < 6 || w.lineOfSight !== true) return false;
+    const e = entityFor(state, w.id);
+    if (!e || e.alive !== true || e.type !== 'ship' || e.ownerId === state.playerId
+      || e.data?.ownerId === state.playerId || e.data?.playerOwned === true) return false;
+    ids.add(w.id);
+    return true;
+  }).slice(0, 8);
 }
 
 function entityForHolder(state, holderKey) {
@@ -775,61 +796,107 @@ export function createTitlesSystem() {
 
     _onStuntTrick(trick) {
       if (!trick || typeof trick !== 'object') return null;
+      const state = this.state;
+      const playerId = state && state.playerId;
+      if (playerId == null || trick.actorId !== playerId) return null;
       const trickId = cleanText(trick.trickId);
-      if (!trickId) return null;
-
-      const playerId = this.state && this.state.playerId;
-      const isPlayer = trick.actorId === 'player'
-        || (playerId != null && trick.actorId === playerId);
-      if (!isPlayer) return null;
-
+      if (!trickId || !KNOWN_TRICK_ID_SET.has(trickId)) return null;
+      if (typeof trick.episodeId !== 'string' || !trick.episodeId.length || trick.episodeId.length > 512) return null;
+      if (typeof trick.rootId !== 'string' || !trick.rootId.length || trick.rootId.length > 512) return null;
       if (!Array.isArray(trick.causeChain) || trick.causeChain.length === 0) return null;
+      const consequence = trick.consequence;
+      if (!consequence || typeof consequence !== 'object' || consequence.victimId !== trick.targetId) return null;
+      if (consequence.killed !== true
+        && !(consequence.hullMax > 0 && consequence.hullDamage >= 0.25 * consequence.hullMax
+          && consequence.helmLossSeconds >= 1)) return null;
+      const run = state.run;
+      if (run && typeof run === 'object' && !Array.isArray(run) && run.kind && run.phase !== 'inactive') return null;
 
-      const titleId = `title_${trickId}`;
-      const titleName = cleanText(trick.name || humanizeId(trickId, 'Stunt'));
-      const tick = finiteInteger(trick.tick != null ? trick.tick : (this.state && this.state.tick));
-
-      const playerEntity = entityFor(this.state, playerId) || entityFor(this.state, 'player');
-      const holderKey = holderKeyOf(playerEntity) || 'player';
-
-      ensureState(this.state);
-      const story = this.state.story;
+      const tick = finiteInteger(trick.tick != null ? trick.tick : state.tick);
+      ensureState(state);
+      const story = state.story;
       const titles = story.titles;
-
-      const titleRecord = {
-        schemaVersion: TITLES_SCHEMA_VERSION,
-        titleId,
-        trickId,
-        title: titleName,
-        status: 'held',
-        holderKey,
-        earnedTick: tick,
-      };
-      titles.byId[titleId] = titleRecord;
-
-      const seenId = `${titleId}:${holderKey}:${tick}`;
-      appendBounded(story.titlesSeen, {
-        id: seenId,
-        title: titleName,
-        seenAt: tick,
-        holderKey,
-        trickId,
-      }, TITLES_SEEN_LIMIT);
-
-      if (playerEntity) {
-        playerEntity.data = playerEntity.data || {};
-        playerEntity.data.titleId = titleId;
-        playerEntity.data.titleName = titleName;
+      if (!Array.isArray(titles.stuntIncidents)) titles.stuntIncidents = [];
+      const settlement = titles.stuntSettlement && typeof titles.stuntSettlement === 'object'
+        ? titles.stuntSettlement
+        : { tick: -1, ids: [] };
+      if (!Array.isArray(settlement.ids)) settlement.ids = [];
+      if (tick < settlement.tick) return null;
+      if (titles.stuntIncidents.some((record) => record && record.id === trick.episodeId)) return null;
+      if (tick === settlement.tick) {
+        if (settlement.ids.includes(trick.episodeId)) return null;
+        if (settlement.ids.length >= STUNT_SETTLEMENT_TICK_MAX) return null;
+        settlement.ids.push(trick.episodeId);
+      } else {
+        settlement.tick = tick;
+        settlement.ids = [trick.episodeId];
       }
+      titles.stuntSettlement = settlement;
 
-      const event = {
-        titleId,
+      const witnesses = qualifiedStuntWitnesses(state, trick);
+      const playerEntity = entityFor(state, playerId);
+      const target = entityFor(state, trick.targetId);
+      const incident = {
+        id: trick.episodeId,
+        rootId: trick.rootId,
         trickId,
-        title: titleName,
-        holderKey,
+        name: cleanText(trick.name || humanizeId(trickId, 'Stunt')).slice(0, 100),
         tick,
+        sectorId: cleanText(state.world && state.world.currentSectorId, 'unknown').slice(0, 256),
+        shipName: cleanText(playerEntity && playerEntity.data && playerEntity.data.displayName, 'Player ship').slice(0, 256),
+        targetName: cleanText(target && target.data && target.data.displayName, String(trick.targetId)).slice(0, 256),
+        outcome: consequence.killed === true ? 'destroyed' : 'disabled',
+        chain: trick.causeChain.slice(0, 32).map((s) => ({
+          type: String(s && s.type).slice(0, 64),
+          actor: String(s && s.entityId != null ? s.entityId : '').slice(0, 256),
+          target: String(s && s.targetId != null ? s.targetId : '').slice(0, 256),
+        })),
+        visibility: witnesses.length > 0 ? 'witnessed' : 'black-box',
+        witnessIds: witnesses.map((w) => String(w.id)),
       };
-      emit(this.bus, 'title:earned', event);
+      appendBounded(titles.stuntIncidents, incident, STUNT_INCIDENT_LIMIT);
+
+      const holderKey = holderKeyOf(playerEntity) || 'player';
+      let event = null;
+      if (witnesses.length > 0 && (trickId !== 'bolas' || consequence.killed === true)) {
+        const titleId = `title_${trickId}`;
+        const held = titles.byId[titleId];
+        if (!(held && held.status === 'held')) {
+          const titleName = titleId === 'title_bolas' ? 'Knotmaker' : incident.name;
+          titles.byId[titleId] = {
+            schemaVersion: TITLES_SCHEMA_VERSION,
+            titleId,
+            trickId,
+            title: titleName,
+            status: 'held',
+            holderKey,
+            earnedTick: tick,
+          };
+          const seenId = `${titleId}:${holderKey}:${tick}`;
+          appendBounded(story.titlesSeen, {
+            id: seenId,
+            title: titleName,
+            seenAt: tick,
+            holderKey,
+            trickId,
+          }, TITLES_SEEN_LIMIT);
+          if (playerEntity) {
+            playerEntity.data = playerEntity.data || {};
+            playerEntity.data.titleId = titleId;
+            playerEntity.data.titleName = titleName;
+          }
+          event = {
+            titleId,
+            trickId,
+            title: titleName,
+            holderKey,
+            tick,
+            incidentId: incident.id,
+          };
+          emit(this.bus, 'title:earned', event);
+        }
+      }
+      emit(this.bus, 'story:stuntIncidentRecorded', { incident, trick });
       return event;
     },
 

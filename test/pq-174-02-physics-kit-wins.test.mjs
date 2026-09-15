@@ -187,7 +187,7 @@ test('seed 17402 equal-kill tapes: shove-and-rock ≥ 2× gun; Pulse cannot top 
   spawnAndKill(physics, { cause: 'terrain_collision', tick: 280 });
   spawnAndKill(physics, { cause: 'kinetic', weaponId: SHOVE_WEAPON_ID, tick: 320 });
   physics.state.tick = 1000;
-  stuntGrammar.update(physics.state, 1 / 60);
+  stuntGrammar.update(1 / 60, physics.state);
 
   const gun = boot();
   beginSurvival(gun);

@@ -21,11 +21,9 @@ import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { validateRunState } from '../core/runState.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
 import { peakConcurrentDemand } from '../data/survivalWaves.js';
-import { trickPoints } from './stuntCombo.js';
 import {
   SHOVE_WEAPON_ID,
   applyStyleKill,
-  scoreWithStyle,
   styleCauseFromKill,
 } from './survivalStyle.js';
 
@@ -117,16 +115,8 @@ export function estimateBoardScore({
   level = 1,
 } = {}) {
   const base = killScoreFor(level);
-  const gunPay = shoveGun
-    ? scoreWithStyle(base, 1, 'direct', SHOVE_WEAPON_ID)
-    : scoreWithStyle(base, 1, 'direct');
-  const physicsPay = playerPhysics
-    ? scoreWithStyle(base, 1, 'terrain', SHOVE_WEAPON_ID, true)
-    : scoreWithStyle(base, 1, 'direct');
   const stunts = Number.isFinite(stuntPoints) ? Math.max(0, Math.round(stuntPoints)) : 0;
-  return Math.max(0, Math.trunc(gunKills)) * gunPay
-    + Math.max(0, Math.trunc(physicsKills)) * physicsPay
-    + stunts;
+  return (Math.max(0, Math.trunc(gunKills)) + (playerPhysics ? Math.max(0, Math.trunc(physicsKills)) : 0)) * base + stunts;
 }
 
 export const survivalRewards = {
@@ -143,6 +133,7 @@ export const survivalRewards = {
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
+    this._unsubs.push(this.bus.on('combat:kill', (p) => this._onEntityKilled(p)));
     this._unsubs.push(this.bus.on('stunt:trickDetected', (p) => this._onStuntTrick(p)));
     this._unsubs.push(this.bus.on('combat:hitstunImpulse', (p) => this._onHitstun(p)));
     this._unsubs.push(this.bus.on('weapon:shove', (p) => this._onHitstun(p)));
@@ -172,13 +163,21 @@ export const survivalRewards = {
     this._chipValue = 0;
     this._liveChips = new Map();
     this._recentShove = new Map();
+    this._settledKills = new Set();
+    this._settledStunts = new Set();
   },
 
   _onHitstun(payload) {
-    const victimId = payload && (payload.victimId != null ? payload.victimId : payload.targetId);
+    if (!payload || typeof payload !== 'object') return;
+    if (payload.source === 'collision') return;
+    const playerId = this.state && this.state.playerId;
+    const actorId = payload?.provenance?.actorId ?? payload?.actorId ?? payload?.attackerId;
+    if (playerId == null || actorId !== playerId) return;
+    if (!(Number(payload.deltaV) > 0)) return;
+    const victimId = payload.victimId != null ? payload.victimId : payload.targetId;
     if (victimId == null) return;
     const weaponId = weaponIdFromKill(payload) || SHOVE_WEAPON_ID;
-    const tick = Number.isInteger(payload && payload.tick)
+    const tick = Number.isInteger(payload.tick)
       ? payload.tick
       : (this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0);
     this._recentShove.set(victimId, { weaponId, tick });
@@ -202,23 +201,17 @@ export const survivalRewards = {
    */
   _onStuntTrick(trick) {
     const run = liveSurvivalRun(this.state);
-    if (!run) return;
-    const combo = this.state && this.state.stunts && this.state.stunts.combo;
-    const last = combo && Array.isArray(combo.lastTricks) && combo.lastTricks.length
-      ? combo.lastTricks[combo.lastTricks.length - 1]
-      : null;
-    const chainLength = combo && Number.isInteger(combo.activeCount) && combo.activeCount > 0
-      ? combo.activeCount
-      : 1;
-    const score = last && trick && last.trickId === trick.trickId && Number.isInteger(last.points)
-      ? last.points
-      : trickPoints(trick, chainLength);
-    if (!(score > 0)) return;
-    this._emit('run:awardRequested', {
-      score,
-      reason: 'stunt',
-      wave: run.wave,
-    });
+    if (!run || run.phase !== 'active' || this.state.playerId == null || trick?.actorId !== this.state.playerId) return;
+    if (typeof trick.episodeId !== 'string' || !trick.consequence || trick.consequence.victimId !== trick.targetId) return;
+    const victim = this._entity(trick.targetId);
+    if (!runOwnsReward(victim)) return;
+    if (!this._settledStunts) this._settledStunts = new Set();
+    if (this._settledStunts.has(trick.episodeId)) return;
+    const combo = this.state.stunts?.combo;
+    const last = combo?.lastTricks?.[combo.lastTricks.length - 1];
+    if (!last || last.episodeId !== trick.episodeId || !(last.points > 0)) return;
+    this._settledStunts.add(trick.episodeId);
+    this._emit('run:awardRequested', { score: last.points, reason: 'stunt', wave: run.wave });
   },
 
   _onWavePlanned(payload) {
@@ -232,12 +225,16 @@ export const survivalRewards = {
   _onEntityKilled(payload) {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
-    const id = payload && payload.id;
+    const id = payload?.id ?? payload?.targetId ?? payload?.victimId;
     if (id == null) return;
     const victim = this._entity(id);
     // The marker rides on the victim, so ambient traffic the player happens to shoot inside an
     // arena still settles through the campaign path and never pays the run.
     if (!runOwnsReward(victim)) return;
+    if (victim.alive !== false) return;
+    if (!this._settledKills) this._settledKills = new Set();
+    if (this._settledKills.has(id)) return;
+    this._settledKills.add(id);
     // THE ROOM'S KILLS PAY TOO.
     //
     // This used to require `killerId === playerId`, which quietly made the environment the WORST
@@ -252,22 +249,16 @@ export const survivalRewards = {
     // carries no cohort mark and is untouched.
     const level = this._levelOf(victim);
     const cause = styleCauseFromKill(payload);
-    const nowTick = this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0;
-    const remembered = this._rememberedShove(id, nowTick);
-    const weaponId = weaponIdFromKill(payload) || remembered;
-    const presentation = payload && payload.presentation;
-    const playerCaused = !!(presentation && presentation.playerCaused)
-      || !!(this.state && payload && payload.killerId === this.state.playerId)
-      || !!remembered;
+    const killerId = payload.killerId ?? payload.provenance?.actorId;
+    const playerCaused = this.state.playerId != null && killerId === this.state.playerId;
     const style = run.style && typeof run.style === 'object'
       ? run.style
       : { multiplier: 1, recentCauses: [] };
-    const multiplier = Number.isFinite(style.multiplier) ? style.multiplier : 1;
     const base = killScoreFor(level);
     run.style = applyStyleKill(style, cause);
     this._emit('run:awardRequested', {
       xp: killXpFor(level),
-      score: scoreWithStyle(base, multiplier, cause, weaponId, playerCaused),
+      score: playerCaused ? base : 0,
       reason: 'kill',
       wave: run.wave,
     });
@@ -305,6 +296,8 @@ export const survivalRewards = {
   },
 
   _onEntitySpawned(payload) {
+    const spawned = payload?.entity ?? this.state?.entities?.get?.(payload?.id);
+    if (this._settledKills && spawned?.alive === true) this._settledKills.delete(spawned.id);
     const entity = payload && payload.entity;
     if (!entity || entity.type !== 'pickup') return;
     const data = entity.data;

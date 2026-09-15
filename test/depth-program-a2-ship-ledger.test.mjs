@@ -198,7 +198,7 @@ test('A2 prose bank has at least four distinct variants for every ledger entry t
   // Eight archive families plus the three PQ-142.01 hull-history families (scar / patch / renown).
   // design/VISION.md Part II: "The ship accumulates history — scars, repairs, odd fittings, a
   // reputation by hull — until it is my fucking ship."
-  assert.equal(SHIP_LEDGER_ENTRY_TYPES.length, 11);
+  assert.equal(SHIP_LEDGER_ENTRY_TYPES.length, 12);
   for (const type of SHIP_LEDGER_ENTRY_TYPES) {
     assert.ok(SHIP_LEDGER_TEMPLATES[type].length >= 4, `${type} must have four variants`);
     assert.equal(new Set(SHIP_LEDGER_TEMPLATES[type].map((entry) => entry.text)).size,
@@ -209,11 +209,16 @@ test('A2 prose bank has at least four distinct variants for every ledger entry t
 
 test('played state projects at least six source types deterministically without mutating any writer', () => {
   const state = playedState();
+  state.story.titles = { stuntIncidents: [{
+    id: 'stunt_01', rootId: 'root_01', trickId: 'bolas', name: 'Bolas',
+    tick: 144000, sectorId: 'sector_helios_prime', shipName: 'Tessera',
+    targetName: 'Raider', outcome: 'destroyed', visibility: 'black-box',
+  }] };
   const before = JSON.stringify(state);
   deepFreeze(state);
 
-  const first = buildShipLedger(state);
-  const replay = buildShipLedger(state);
+  const first = buildShipLedger(state, { pageSize: SHIP_LEDGER_MAX_PAGE_SIZE });
+  const replay = buildShipLedger(state, { pageSize: SHIP_LEDGER_MAX_PAGE_SIZE });
   assert.deepEqual(first, replay);
   assert.equal(JSON.stringify(state), before, 'projection must be byte-identical over every source slice');
   assert.ok(first.total >= 9);

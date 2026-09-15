@@ -19,6 +19,7 @@ import { ensureActivityClassified } from '../world/activityRuntime.js';
 import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
+import { qualifiedStuntWitnesses } from './titles.js';
 
 const BARK_SET = new Set(BARK_SITUATIONS);
 const VOICE_TTL_S = 1.2;
@@ -167,7 +168,7 @@ export const barkDirector = {
     // republishes it whenever a witnessed act attaches to the hull. Listening to that receipt keeps
     // this observer independent of system init order.
     this._onHullHistory = (payload) => this._speakHullRecognition(payload || {});
-    this._onStuntTrick = (payload) => this._speakStunt(payload || {});
+    this._onStuntTrick = (payload) => this._speakStunt(payload && payload.trick ? payload.trick : payload || {});
     this._onCargoSpilled = (payload) => this._speakCargoSpill(payload || {}, 'freight:cargoSpilled');
     this._onCargoJettisoned = (payload) => this._speakCargoSpill(payload || {}, 'cargo:jettisoned');
     this._onCargoKilled = (payload) => this._speakCargoSpill(payload || {}, 'entity:killed');
@@ -177,6 +178,7 @@ export const barkDirector = {
       this.bus.on('combat:outcome', this._onCombatOutcome);
       this.bus.on('ship:livingHullChanged', this._onHullHistory);
       this.bus.on('stunt:trickDetected', this._onStuntTrick);
+      this.bus.on('story:stuntIncidentRecorded', this._onStuntTrick);
       this.bus.on('freight:cargoSpilled', this._onCargoSpilled);
       this.bus.on('cargo:jettisoned', this._onCargoJettisoned);
       this.bus.on('entity:killed', this._onCargoKilled);
@@ -329,48 +331,65 @@ export const barkDirector = {
     if (state.mode && state.mode !== 'flight') return null;
 
     const playerId = state.playerId;
-    const isPlayer = payload.actorId === 'player'
-      || (playerId != null && payload.actorId === playerId);
-    if (!isPlayer) return null;
+    if (playerId == null || payload.actorId !== playerId) return null;
 
-    if (!Array.isArray(payload.causeChain) || payload.causeChain.length === 0) return null;
+    const run = state.run;
+    if (run && typeof run === 'object' && !Array.isArray(run) && run.kind && run.phase !== 'inactive') return null;
+
+    const consequence = payload.consequence;
+    if (!consequence || typeof consequence !== 'object' || consequence.victimId !== payload.targetId) return null;
+    if (consequence.killed !== true
+      && !(consequence.hullMax > 0 && consequence.hullDamage >= 0.25 * consequence.hullMax
+        && consequence.helmLossSeconds >= 1)) return null;
+    if (typeof payload.episodeId !== 'string' || payload.episodeId.length === 0) return null;
 
     const own = ensureState(state);
     const now = Number(state.simTime) || 0;
     const record = stuntRecognitionRecord(own);
     if (Number(record.nextAt) > now) return null;
 
-    const witness = this._nearestWitness();
+    const incident = findStuntIncident(state, payload.episodeId);
+    if (!incident || incident.barkDelivered === true) return null;
+
+    const witnesses = qualifiedStuntWitnesses(state, payload)
+      .slice()
+      .sort((a, b) => (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0));
+    const witnessId = witnesses.length > 0 ? witnesses[0].id : null;
+    const witness = witnessId != null && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(witnessId)
+      : null;
     if (!witness) return null;
 
+    const voice = this.helpers && this.helpers.voice;
+    if (!voice || typeof voice.say !== 'function') return null;
+
     const factionId = factionFor(witness);
-    const trickId = String(payload.trickId || payload.id || 'bolas');
-    const title = String(payload.title || payload.name || humanizeId(trickId, 'Stunt'));
+    const trickId = String(payload.trickId || 'stunt');
+    const titles = state.story && state.story.titles;
+    const held = titles && titles.byId && titles.byId[`title_${trickId}`];
+    const title = held && held.status === 'held' && held.title
+      ? String(held.title)
+      : String(payload.title || payload.name || humanizeId(trickId, 'Stunt'));
 
     const seed = state.meta && state.meta.seed;
-    const rng = typeof state.rng === 'function'
-      ? state.rng
-      : hash32(seed == null ? 0 : seed, 'stuntRecognition', String(witness.id), trickId);
-    const text = stuntRecognitionBarkFor(factionId, rng, { title });
+    const index = hash32(seed == null ? 0 : seed, 'stuntRecognition', String(witness.id), String(payload.episodeId));
+    const text = stuntRecognitionBarkFor(factionId, index, { title });
 
-    const voice = this.helpers && this.helpers.voice;
-    let accepted = true;
-    if (voice && typeof voice.say === 'function') {
-      accepted = voice.say({
-        channel: 'bark',
-        text,
-        kind: 'stuntRecognition',
-        ttl: STUNT_RECOGNITION_TTL_S,
-        id: `stuntRecognition:${witness.id}:${trickId}:${now}`,
-        factionId,
-      });
-    }
+    const accepted = voice.say({
+      channel: 'bark',
+      text,
+      kind: 'stuntRecognition',
+      ttl: STUNT_RECOGNITION_TTL_S,
+      id: `stuntRecognition:${witness.id}:${trickId}:${now}`,
+      factionId,
+    });
     if (!accepted) return null;
 
     record.lastAt = now;
     record.nextAt = now + STUNT_RECOGNITION_GAP_S;
     record.lastEntityId = witness.id;
     record.count = Math.min(Number.MAX_SAFE_INTEGER, (Number(record.count) || 0) + 1);
+    incident.barkDelivered = true;
 
     const receipt = {
       entityId: witness.id,
@@ -540,6 +559,7 @@ export const barkDirector = {
       if (this._onCombatOutcome) this.bus.off('combat:outcome', this._onCombatOutcome);
       if (this._onHullHistory) this.bus.off('ship:livingHullChanged', this._onHullHistory);
       if (this._onStuntTrick) this.bus.off('stunt:trickDetected', this._onStuntTrick);
+      if (this._onStuntTrick) this.bus.off('story:stuntIncidentRecorded', this._onStuntTrick);
       if (this._onCargoSpilled) this.bus.off('freight:cargoSpilled', this._onCargoSpilled);
       if (this._onCargoJettisoned) this.bus.off('cargo:jettisoned', this._onCargoJettisoned);
       if (this._onCargoKilled) this.bus.off('entity:killed', this._onCargoKilled);
@@ -753,6 +773,12 @@ function hullRecognitionRecord(own) {
 
 function freshStuntRecognition() {
   return { lastAt: 0, nextAt: 0, lastEntityId: null, count: 0 };
+}
+
+function findStuntIncident(state, episodeId) {
+  const list = state && state.story && state.story.titles && state.story.titles.stuntIncidents;
+  if (!Array.isArray(list) || typeof episodeId !== 'string') return null;
+  return list.find((record) => record && record.id === episodeId) || null;
 }
 
 function stuntRecognitionRecord(own) {

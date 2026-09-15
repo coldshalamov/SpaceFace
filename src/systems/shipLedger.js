@@ -631,6 +631,29 @@ function collectCandidates(state) {
     });
   }
 
+  const stuntIncidents = sourceArray(state && state.story && state.story.titles
+    && state.story.titles.stuntIncidents);
+  for (const record of stuntIncidents) {
+    if (!record || record.id == null) continue;
+    add({
+      type: 'stunt',
+      sourceId: `stunt:${record.id}`,
+      sourceKind: 'story.titles.stuntIncidents',
+      at: record.tick != null ? record.tick / 60 : record.at,
+      trickId: record.trickId,
+      tokens: {
+        ship: text(record.shipName, 'the ship'),
+        trick: text(record.name || record.trickId, 'a stunt'),
+        target: text(record.targetName, 'the target'),
+        outcome: text(record.outcome, 'faced the consequences'),
+        sector: sectorName(record.sectorId),
+        evidence: record.visibility === 'witnessed'
+          ? 'independently witnessed'
+          : 'private recording; no independent witness',
+      },
+    });
+  }
+
   for (const record of titleRecords(state)) {
     const title = typeof record === 'string' ? record : record && (record.title || record.name);
     if (!title) continue;

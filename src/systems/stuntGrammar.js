@@ -12,6 +12,7 @@
 //     stunt:salvageRights. Never economy:grantCredits.
 
 import { createStuntDetector } from '../combat/stuntTaxonomy.js';
+import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { makeSalvageRightsItem } from '../data/killRewards.js';
 import {
   bankIfQuiet,
@@ -19,7 +20,6 @@ import {
   recordKill,
   recordTrick,
   recordTrickKill,
-  trickPay,
 } from './stuntCombo.js';
 
 export const STUNT_SYSTEM_SCHEMA_VERSION = 1;
@@ -29,6 +29,15 @@ export const MAX_RECENT_TRICKS = 64;
 // (a tow-kill, a wreck crush, ...) arrive WITH a trick on the same event and are counted
 // as trick kills instead — never double-paid.
 const KILL_EVENTS = Object.freeze(['entity:killed', 'combat:kill']);
+
+function entityFor(state, id) {
+  if (id == null || !state) return null;
+  if (state.entities && typeof state.entities.get === 'function') {
+    const entity = state.entities.get(id);
+    if (entity) return entity;
+  }
+  return Array.isArray(state.entityList) ? state.entityList.find((entity) => entity && entity.id === id) || null : null;
+}
 
 function ensureState(state) {
   if (!state || typeof state !== 'object') return null;
@@ -89,6 +98,7 @@ export const stuntGrammar = {
   name: 'stuntGrammar',
 
   init(ctx) {
+    this.destroy();
     this.bus = ctx && ctx.bus ? ctx.bus : null;
     this.detector = createStuntDetector({
       playerId: ctx && ctx.state ? ctx.state.playerId : null,
@@ -107,6 +117,7 @@ export const stuntGrammar = {
       listen('tether:releaseRated');
       listen('tether:cut');
       listen('tether:released');
+      listen('tether:broke');
       listen('tether:whipImpact');
       listen('tether:snapCatch');
       listen('massline:sweepImpact');
@@ -124,14 +135,18 @@ export const stuntGrammar = {
       // results surface can still read it; the next run:started opens a fresh meter.
       listen('run:started');
       listen('game:started');
+      listen('game:newGame');
+      listen('save:restoring');
+      listen('save:loaded');
     }
   },
 
-  update(state, dt) {
-    if (!state) return;
+  update(dt, state) {
+    if (!state || typeof state !== 'object') return;
+    if (state.mode !== 'flight') return;
     ensureState(state);
-    if (this.detector && state.playerId != null) {
-      this.detector.setPlayerId(state.playerId);
+    if (this.detector) {
+      this.detector.setPlayerId(state.playerId ?? null);
     }
     // Bank a live chain once it has gone quiet. One cheap branch when no chain is live;
     // no per-tick allocation.
@@ -144,45 +159,55 @@ export const stuntGrammar = {
   },
 
   destroy() {
-    for (const unsub of this._unsubs) {
+    for (const unsub of this._unsubs || []) {
       if (typeof unsub === 'function') unsub();
     }
     this._unsubs = [];
+    if (this._countedKills) this._countedKills.clear();
     this.detector = null;
     this.bus = null;
   },
 
   _onEvent(evt, payload, state) {
     if (evt === 'entity:spawned') {
-      this._countedKills.delete(payload?.id);
+      const spawned = payload?.entity ?? state?.entities?.get?.(payload?.id);
+      if (this._countedKills && spawned?.alive === true) this._countedKills.delete(spawned.id);
       return;
     }
     // Fresh meter per run. Reset is idempotent: game:started then run:started just opens
     // two fresh meters in a row.
-    if (evt === 'run:started' || evt === 'game:started') {
-      const stuntsState = ensureState(state);
-      if (stuntsState) stuntsState.combo = createComboState();
-      this._countedKills.clear();
+    if (evt === 'run:started' || evt === 'game:started' || evt === 'game:newGame'
+      || evt === 'save:restoring' || evt === 'save:loaded') {
+      if (state && typeof state === 'object') state.stunts = null;
+      ensureState(state);
+      if (this._countedKills) this._countedKills.clear();
       this.detector = createStuntDetector({ playerId: state?.playerId });
       return;
     }
     if (!this.detector) return;
-    if (state && state.playerId != null) {
-      this.detector.setPlayerId(state.playerId);
-    }
+    if (!payload || typeof payload !== 'object') return;
+    if (!state || typeof state !== 'object') return;
+    if (state.playerId == null) return;
+    this.detector.setPlayerId(state.playerId ?? null);
 
     const isKill = KILL_EVENTS.includes(evt);
-    const victimId = payload?.id ?? payload?.targetId ?? payload?.victimId;
-    const killerId = payload?.killerId ?? payload?.actorId ?? payload?.ownerId ?? payload?.provenance?.actorId;
-    if (isKill && victimId != null && this._countedKills.has(victimId)) return;
-    const tricks = this.detector.processEvent(evt, payload).filter(trick => trick.actorId === state.playerId);
-    if (isKill && (tricks.length > 0 || killerId === state.playerId) && victimId != null) {
+    const data = {
+      ...payload,
+      tick: Number.isFinite(payload.tick) ? payload.tick : (Number.isFinite(state.tick) ? state.tick : 0),
+    };
+    const victimId = data.id ?? data.targetId ?? data.victimId;
+    const killerId = data.killerId ?? data.provenance?.actorId;
+    if (isKill) {
+      if (victimId == null) return;
+      if (this._countedKills.has(victimId)) return;
       this._countedKills.add(victimId);
     }
+    const survivalLive = !!(state.run && state.run.kind === 'survival'
+      && state.run.phase !== 'inactive');
+    const tricks = this.detector.processEvent(evt, data).filter(trick => trick.actorId === state.playerId);
     if (tricks.length > 0) {
       const stuntsState = ensureState(state);
       for (const trick of tricks) {
-        const pay = trickPay(trick);
         if (stuntsState) {
           stuntsState.recentTricks.push(trick);
           if (stuntsState.recentTricks.length > MAX_RECENT_TRICKS) {
@@ -195,33 +220,32 @@ export const stuntGrammar = {
           }
           // Combo meter: the single writer for combo/score feeds on the same receipt.
           // Scoring never alters the trick itself and never touches moment:holyShit.
-          if (stuntsState.combo) recordTrick(stuntsState.combo, trick);
-          applySessionPay(stuntsState, pay);
+          if (survivalLive && stuntsState.combo
+            && runOwnsReward(entityFor(state, trick.targetId))) {
+            recordTrick(stuntsState.combo, trick);
+          }
         }
         if (this.bus && typeof this.bus.emit === 'function') {
           this.bus.emit('stunt:trickDetected', trick);
-          emitStuntPay(this.bus, trick, pay);
         }
       }
-      // A kill that arrives WITH a trick is a trick kill, not a gun kill.
-      if (KILL_EVENTS.includes(evt)) {
-        const stuntsState = ensureState(state);
-        if (stuntsState && stuntsState.combo) {
-          recordTrickKill(stuntsState.combo);
-          bankIfQuiet(stuntsState.combo, Number.isFinite(Number(payload && payload.tick)) ? Number(payload.tick) : 0);
-        }
-      }
-    } else if (isKill && killerId === state.playerId) {
-      // A trickless kill is flat gun pay: no chain, no multiplier. The free Pulse pays
-      // less than any other gun (scoring only — damage untouched).
+    }
+    if (survivalLive && isKill && runOwnsReward(entityFor(state, victimId))
+      && (tricks.length > 0 || killerId === state.playerId)) {
       const stuntsState = ensureState(state);
       if (stuntsState && stuntsState.combo) {
-        const data = payload && typeof payload === 'object' ? payload : {};
-        recordKill(stuntsState.combo, {
-          weaponId: data.weaponId || data.weapon || (data.provenance && data.provenance.weaponId),
-          tick: data.tick,
-        });
-        bankIfQuiet(stuntsState.combo, Number.isFinite(Number(data.tick)) ? Number(data.tick) : 0);
+        if (tricks.length > 0) {
+          // A kill that arrives WITH a trick is a trick kill, not a gun kill.
+          recordTrickKill(stuntsState.combo);
+        } else {
+          // A trickless kill is flat gun pay: no chain, no multiplier. The free Pulse pays
+          // less than any other gun (scoring only — damage untouched).
+          recordKill(stuntsState.combo, {
+            weaponId: data.weaponId || data.weapon || (data.provenance && data.provenance.weaponId),
+            tick: data.tick,
+          });
+        }
+        bankIfQuiet(stuntsState.combo, data.tick);
       }
     }
   },

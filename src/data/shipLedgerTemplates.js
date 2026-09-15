@@ -28,6 +28,7 @@ export const SHIP_LEDGER_ENTRY_TYPES = Object.freeze([
   'scar',
   'patch',
   'renown',
+  'stunt',
 ]);
 
 export const SHIP_LEDGER_TEMPLATES = deepFreeze({
@@ -100,6 +101,12 @@ export const SHIP_LEDGER_TEMPLATES = deepFreeze({
     '{faction} logged the {ship} at work over {sector}.',
     'They said the name out loud in {sector}: the {ship}.',
     '{sector} now knows the {ship} by hull, not by transponder. {faction} saw to that.',
+  ]),
+  stunt: variants('stunt', [
+    '{ship}: {trick} — {target} {outcome}. {evidence}.',
+    '{trick} at {sector}. {target} {outcome}; {evidence}.',
+    'Black box: {ship} used {trick}; {target} {outcome}. {evidence}.',
+    '{target} {outcome} during {trick}. Filed aboard {ship}: {evidence}.',
   ]),
 });
 

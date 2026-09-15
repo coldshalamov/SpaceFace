@@ -102,9 +102,17 @@ function proofAt(tick) {
         tick, sourceId: 'player', targetId: 'rock_A', victimId: 'pirate_corvette',
         relSpeed: 58, mass: 45, momentum: 2610,
       }]];
+    case 320:
+      return [['combat:collisionConsequence', {
+        tick, targetId: 'pirate_corvette', otherId: 'rock_A', surface: 'craft',
+        deltaV: 40, exchangedMomentum: 1800,
+        targetHostile: true, damageApplied: true, targetKilled: true,
+        hullDamage: 0, targetHullMax: 200, provenance: { actorId: 'player' },
+      }]];
     case 720:
       return [['massline:clothesline', {
         tick, sourceId: 'player', victimId: 'scout_interceptor', anchorId: 'buoy_station', deltaV: 34,
+        lineIntercepted: true, followOnConsequence: true,
       }]];
     case 1200:
       return [['combat:hitstunImpulse', {
@@ -114,29 +122,39 @@ function proofAt(tick) {
     case 1225:
       return [['combat:collisionConsequence', {
         tick, targetId: 'raider_wasp', otherId: 'asteroid_titan_04', surface: 'terrain',
-        deltaV: 28, exchangedMomentum: 1000, provenance: { actorId: 'player', tag: 'weapon_shove' },
+        deltaV: 28, exchangedMomentum: 1000,
+        targetHostile: true, damageApplied: true, targetKilled: true,
+        hullDamage: 0, targetHullMax: 100, provenance: { actorId: 'player', tag: 'weapon_shove' },
       }]];
-    case 1800:
+    case 2040:
       return [['well:fling', {
         tick, actorId: 'player', wellId: 'singularity_vortex_1', targetId: 'propelled_rock',
       }]];
-    case 1830:
+    case 2070:
       return [['combat:collisionConsequence', {
         tick, targetId: 'hostile_frigate', otherId: 'propelled_rock', surface: 'craft',
-        deltaV: 35, exchangedMomentum: 2100, provenance: { actorId: 'player' },
+        deltaV: 35, exchangedMomentum: 2100,
+        targetHostile: true, damageApplied: true, targetKilled: true,
+        hullDamage: 0, targetHullMax: 260, provenance: { actorId: 'player' },
       }]];
     case 2400:
       return [['tether:attached', {
         tick, sourceId: 'player', targetId: 'heavy_ore_pod', isTow: true, relSpeed: 22,
       }]];
     case 2430:
-      return [['entity:killed', {
-        tick, id: 'pursuer_scout', killerId: 'player', cause: 'ship_collision',
+      return [['combat:collisionConsequence', {
+        tick, targetId: 'heavy_ore_pod', otherId: 'asteroid_face', surface: 'terrain',
+        deltaV: 26, exchangedMomentum: 800,
+        targetHostile: true, damageApplied: true, targetKilled: true,
+        hullDamage: 0, targetHullMax: 80, provenance: { actorId: 'player' },
       }]];
     case 3000:
       // Fast clean pass: a real trick, but a common one — never a moment.
       return [['flight:nearMiss', {
         tick, actorId: 'player', obstacleId: 'station_spindle', speed: 80, clearance: 2.5,
+        threatId: 'raider_dart', threatHostile: true,
+        avoidedInterception: true, escapeResolved: true,
+        provenance: { actorId: 'player', appliedTick: tick - 20 },
       }]];
     default:
       return [];
@@ -146,11 +164,12 @@ function proofAt(tick) {
 function runTape(h, withProof) {
   for (let tick = 0; tick <= PROOF_TICKS; tick++) {
     h.state.simTime = tick / 60;
+    h.state.tick = tick;
     for (const [event, payload] of ordinaryAt(tick)) h.bus.emit(event, payload);
     if (withProof) {
       for (const [event, payload] of proofAt(tick)) h.bus.emit(event, payload);
     }
-    h.stuntSys.update(h.state, DT);
+    h.stuntSys.update(DT, h.state);
     h.bulletSys.update(DT, h.state);
   }
 }
@@ -212,8 +231,10 @@ test('60s proof on fixed seed: >= 3 distinct moments, never on ordinary traffic'
     }
 
     // Commons happened (razor release, fast pass) but never became moments.
-    assert.ok(trickIds.has('razor_release'), 'proof must include a common trick');
+    assert.ok(tricks.some((t) => Array.isArray(t.modifiers) && t.modifiers.includes('razor_release')),
+      'proof must include a razor-linked primary');
     assert.ok(trickIds.has('near_miss'), 'proof must include a common near-miss');
+    assert.ok(!trickIds.has('razor_release'), 'razor release is a modifier, never a standalone trick');
     assert.ok(!momentTrickIds.has('razor_release'), 'razor release must never be a moment');
     assert.ok(!momentTrickIds.has('near_miss'), 'lone near-miss must never be a moment');
 
@@ -248,9 +269,19 @@ test('moment pulse min-wins with the held meter and never drains it', () => {
   try {
     // Fire one qualifying trick straight at the bus.
     h.state.simTime = 10;
+    h.state.tick = 605;
+    h.bus.emit('tether:attached', {
+      tick: 590, sourceId: 'player', targetId: 'rock_A', isTow: true, relSpeed: 12,
+    });
     h.bus.emit('tether:whipImpact', {
       tick: 600, sourceId: 'player', targetId: 'rock_A', victimId: 'pirate_corvette',
       relSpeed: 58, mass: 45, momentum: 2610,
+    });
+    h.bus.emit('combat:collisionConsequence', {
+      tick: 605, targetId: 'pirate_corvette', otherId: 'rock_A', surface: 'craft',
+      deltaV: 40, exchangedMomentum: 1800,
+      targetHostile: true, damageApplied: true, targetKilled: true,
+      hullDamage: 0, targetHullMax: 200, provenance: { actorId: 'player' },
     });
     h.bulletSys.update(DT, h.state);
     assert.equal(h.seen.moments.length, 1);

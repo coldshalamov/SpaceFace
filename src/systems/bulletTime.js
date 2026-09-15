@@ -35,10 +35,15 @@ const BT_REQUEST = Object.freeze({ scale: BT_SCALE });
 export const MOMENT_EVENT = 'moment:holyShit';
 const MOMENT_TIME_SOURCE = 'moment:slow-mo';
 export const MOMENT_THRESHOLD = 6;        // minimum rated score that counts as a moment
-export const MOMENT_SLOWMO_SCALE = 0.45;  // moment pulse bound (shallower than the held 0.35)
-export const MOMENT_SLOWMO_DUR_S = 0.7;   // pulse length in SIM seconds (deterministic)
-export const MOMENT_COOLDOWN_S = 2.0;     // pulse re-arm gap; bus events still fire inside it
+export const MOMENT_SLOWMO_SCALE = 0.80;  // moment pulse bound (shallower than the held 0.35)
+export const MOMENT_SLOWMO_DUR_S = 0.20;  // pulse length in SIM seconds (deterministic)
+export const MOMENT_COOLDOWN_S = 12.0;    // pulse re-arm gap; bus events still fire inside it
 const MOMENT_RECENT_MAX = 16;
+const MOMENT_PRIMARY_WINDOW_S = 30;
+const MOMENT_PER_MINUTE_MAX = 3;
+const MOMENT_PER_MINUTE_WINDOW_S = 60;
+const MOMENT_EPISODE_MAX = 128;
+const MOMENT_EPISODE_AGE_TICKS = 480;
 const MOMENT_AUDIO_CUE = 'moment.stinger';
 const RARITY_WEIGHT = Object.freeze({ common: 1, uncommon: 2, rare: 4, legendary: 8 });
 
@@ -103,17 +108,19 @@ export const bulletTime = {
     // again — otherwise a held key stutters on/off around the engage floor.
     this._requireRelease = false;
     this._unsubs = [];
-    const clearOn = (event) => {
+    const clearOn = (event, resetHistory) => {
       if (!this.bus || typeof this.bus.on !== 'function') return;
-      this._unsubs.push(this.bus.on(event, () => { this._disengage(true); this._clearMoment(); }));
+      this._unsubs.push(this.bus.on(event, () => { this._disengage(true); this._clearMoment(resetHistory); }));
     };
     // Same lease-safety set flybyFocus uses: a restore/new-game/death/dock must never leave a
     // stale slow-time request behind.
-    clearOn('save:restoring');
-    clearOn('save:loaded');
-    clearOn('game:started');
-    clearOn('dock:docked');
-    clearOn('player:death');
+    clearOn('save:restoring', true);
+    clearOn('save:loaded', true);
+    clearOn('game:started', true);
+    clearOn('game:newGame', true);
+    clearOn('run:started', true);
+    clearOn('dock:docked', false);
+    clearOn('player:death', false);
     // The moment detector consumes physics receipts, never button presses.
     if (this.bus && typeof this.bus.on === 'function') {
       this._onTrickBound = (trick) => this._onTrickDetected(trick);
@@ -195,13 +202,41 @@ export const bulletTime = {
   _onTrickDetected(trick) {
     const state = this.state;
     if (!state || state.mode !== 'flight' || !trick) return;
+    if (state.playerId == null || trick.actorId !== state.playerId) return;
+    if (typeof trick.episodeId !== 'string' || trick.episodeId.length === 0) return;
+    if (typeof trick.rootId !== 'string' || trick.rootId.length === 0) return;
+    if (!Array.isArray(trick.causeChain) || trick.causeChain.length < 2) return;
+    const consequence = trick.consequence;
+    const material = consequence != null && typeof consequence === 'object'
+      && (consequence.killed === true
+        || (consequence.hullMax > 0 && consequence.hullDamage >= 0.25 * consequence.hullMax
+          && consequence.helmLossSeconds >= 1));
+    if (!material) return;
+    if (!Number.isFinite(trick.rootTick)) return;
+    const now = Math.max(0, finiteNum(state.simTime));
+    const tick = Number.isFinite(Number(trick.tick)) ? Number(trick.tick) : Math.floor(now * 60);
+    if (tick < trick.rootTick || tick - trick.rootTick > MOMENT_EPISODE_AGE_TICKS) return;
+    const stateTick = Number.isInteger(state.tick) ? state.tick : Math.floor(now * 60);
+    if (Math.abs(stateTick - tick) > 1) return;
     const rating = rateMoment(trick);
     if (!rating.qualifies) return;
-    const now = Math.max(0, finiteNum(state.simTime));
     const moment = ensureMoment(state);
+    for (const [seenRootId, seenTick] of moment.seenEpisodes) {
+      if (tick - seenTick > MOMENT_EPISODE_AGE_TICKS) moment.seenEpisodes.delete(seenRootId);
+    }
+    if (moment.seenEpisodes.has(trick.rootId)) return;
+    if (now < moment.cooldownUntil) return;
+    const trickId = trick.trickId || 'unknown';
+    const perMinute = moment.recentMoments.filter((m) => now >= m.simTime && now - m.simTime < MOMENT_PER_MINUTE_WINDOW_S);
+    if (perMinute.length >= MOMENT_PER_MINUTE_MAX) return;
+    if (perMinute.some((m) => m.trickId === trickId && now - m.simTime < MOMENT_PRIMARY_WINDOW_S)) return;
+    if (!moment.seenEpisodes.has(trick.rootId) && moment.seenEpisodes.size >= MOMENT_EPISODE_MAX) {
+      moment.seenEpisodes.delete(moment.seenEpisodes.keys().next().value);
+    }
+    moment.seenEpisodes.set(trick.rootId, trick.rootTick);
     moment.totalMoments += 1;
     const record = Object.freeze({
-      trickId: trick.trickId || 'unknown',
+      trickId,
       name: trick.name || trick.trickId || 'Unknown stunt',
       rarity: trick.rarity || 'common',
       score: rating.score,
@@ -211,21 +246,23 @@ export const bulletTime = {
       actorId: trick.actorId != null ? trick.actorId : null,
       targetId: trick.targetId != null ? trick.targetId : null,
       secondaryIds: Array.isArray(trick.secondaryIds) ? [...trick.secondaryIds] : [],
-      tick: Number.isFinite(Number(trick.tick)) ? Number(trick.tick) : Math.floor(now * 60),
+      episodeId: trick.episodeId,
+      rootId: trick.rootId,
+      tick,
       simTime: now,
     });
     moment.recentMoments.push(record);
     if (moment.recentMoments.length > MOMENT_RECENT_MAX) moment.recentMoments.shift();
+    moment.pulseUntil = now + MOMENT_SLOWMO_DUR_S;
+    moment.cooldownUntil = now + MOMENT_COOLDOWN_S;
     if (this.bus) {
       this.bus.emit(MOMENT_EVENT, record);
       this.bus.emit('audio:cue', { id: MOMENT_AUDIO_CUE, importance: 0.9 });
     }
     // Arm (or extend) the pulse only outside the cooldown — inside it the running pulse and
     // the bus record already carry the burst.
-    if (now >= moment.cooldownUntil) {
-      moment.pulseUntil = now + MOMENT_SLOWMO_DUR_S;
-      moment.cooldownUntil = now + MOMENT_COOLDOWN_S;
-      if (this.timeEffects) this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
+    if (!motionReduced(state) && this.timeEffects) {
+      this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
     }
   },
 
@@ -235,7 +272,7 @@ export const bulletTime = {
   _updateMomentPulse(state) {
     const moment = ensureMoment(state);
     const now = Math.max(0, finiteNum(state && state.simTime));
-    if (state && state.mode === 'flight' && now < moment.pulseUntil) {
+    if (state && state.mode === 'flight' && now < moment.pulseUntil && !motionReduced(state)) {
       if (this.timeEffects) this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
     } else if (this.timeEffects) {
       this.timeEffects.clear(MOMENT_TIME_SOURCE);
@@ -243,16 +280,26 @@ export const bulletTime = {
     }
   },
 
-  _clearMoment() {
+  _clearMoment(resetHistory) {
     const state = this.state;
     if (state) {
       const moment = ensureMoment(state);
       moment.pulseUntil = 0;
-      moment.cooldownUntil = 0;
+      if (resetHistory === true) {
+        moment.cooldownUntil = 0;
+        moment.totalMoments = 0;
+        moment.recentMoments = [];
+        moment.seenEpisodes = new Map();
+      }
     }
     if (this.timeEffects) this.timeEffects.clear(MOMENT_TIME_SOURCE);
   },
 };
+
+function motionReduced(state) {
+  const settings = state && state.settings;
+  return !!(settings && (settings.video?.motionReduce || settings.accessibility?.flashReduce));
+}
 
 function ensureBulletTime(state) {
   const root = state.massline2 || (state.massline2 = {});
@@ -263,10 +310,11 @@ function ensureBulletTime(state) {
 function ensureMoment(state) {
   const root = state.massline2 || (state.massline2 = {});
   if (!root.moment || typeof root.moment !== 'object') {
-    root.moment = { totalMoments: 0, recentMoments: [], pulseUntil: 0, cooldownUntil: 0 };
+    root.moment = { totalMoments: 0, recentMoments: [], pulseUntil: 0, cooldownUntil: 0, seenEpisodes: new Map() };
   }
   const moment = root.moment;
   if (!Array.isArray(moment.recentMoments)) moment.recentMoments = [];
+  if (!(moment.seenEpisodes instanceof Map)) moment.seenEpisodes = new Map();
   if (!Number.isFinite(Number(moment.pulseUntil))) moment.pulseUntil = 0;
   if (!Number.isFinite(Number(moment.cooldownUntil))) moment.cooldownUntil = 0;
   if (!Number.isFinite(Number(moment.totalMoments))) moment.totalMoments = 0;

@@ -53,13 +53,21 @@ function drive(kind) {
   const grammar = registry.get('stuntGrammar');
   state.mode = 'flight';
   state.playerId = 1;
+  state.run = { kind: 'survival', phase: 'active' };
+  for (const id of [101, 102, 103, 104, 'ore_pod']) {
+    state.entities.set(id, {
+      id, alive: true, type: 'ship', data: { runCohort: 'survival' },
+    });
+  }
 
   const grants = [];
   const repChanged = [];
+  const repDelta = [];
   const salvage = [];
   const tricks = [];
   bus.on('economy:grantCredits', (p) => grants.push(p));
   bus.on('faction:repChanged', (p) => repChanged.push(p));
+  bus.on('faction:repDelta', (p) => repDelta.push(p));
   bus.on('stunt:salvageRights', (p) => salvage.push(p));
   bus.on('stunt:trickDetected', (p) => tricks.push({ id: p.trickId, rarity: p.rarity }));
 
@@ -89,17 +97,31 @@ function drive(kind) {
       tick: 160, sourceId: 1, targetId: 'rock_A', victimId: 101,
       relSpeed: 58.5, mass: 45.0, momentum: 2632.5,
     });
+    bus.emit('combat:collisionConsequence', {
+      tick: 180, targetId: 101, otherId: 'rock_A', surface: 'craft',
+      deltaV: 40.0, exchangedMomentum: 1800,
+      targetHostile: true, damageApplied: true, targetKilled: true,
+      hullDamage: 0, targetHullMax: 120, provenance: { actorId: 1 },
+    });
     bus.emit('combat:hitstunImpulse', {
       tick: 220, actorId: 1, victimId: 102,
       weaponId: 'wpn_concussion_cannon_m', deltaV: 25.0,
     });
     bus.emit('combat:collisionConsequence', {
       tick: 240, targetId: 103, otherId: 102, surface: 'craft',
-      deltaV: 18.0, exchangedMomentum: 950, provenance: { actorId: 1 },
+      deltaV: 18.0, exchangedMomentum: 950,
+      targetHostile: true, damageApplied: true, targetKilled: true,
+      hullDamage: 0, targetHullMax: 110, provenance: { actorId: 1 },
     });
     kill(300, 101, 'wpn_concussion_cannon_m');
     bus.emit('tether:attached', { tick: 320, sourceId: 1, targetId: 'ore_pod', isTow: true, relSpeed: 10 });
-    kill(340, 102, undefined, { cause: 'ship_collision' });
+    bus.emit('combat:collisionConsequence', {
+      tick: 335, targetId: 'ore_pod', otherId: 'asteroid_face', surface: 'terrain',
+      deltaV: 26.0, exchangedMomentum: 800,
+      targetHostile: true, damageApplied: true, targetKilled: true,
+      hullDamage: 0, targetHullMax: 60, provenance: { actorId: 1 },
+    });
+    kill(340, 'ore_pod', undefined, { cause: 'ship_collision' });
     kill(360, 103, 'wpn_concussion_cannon_m');
     kill(380, 104, 'wpn_concussion_cannon_m');
   } else {
@@ -109,7 +131,7 @@ function drive(kind) {
   }
 
   state.tick = 100000;
-  grammar.update(state, 1 / 60);
+  grammar.update(1 / 60, state);
 
   const pay = comboPay(state.stunts && state.stunts.combo);
   const session = state.stunts && state.stunts.pay
@@ -129,6 +151,7 @@ function drive(kind) {
     tricks: tricks.length,
     trickList: tricks,
     positiveRep,
+    repDelta,
     pitborn,
     credits: killBurstCredits(),
     pay,
@@ -180,7 +203,7 @@ test('kill burst credits ignore style; salvage rights are not chips', () => {
   assert.equal(salvageRightsItemsOf(b).length, 0);
 });
 
-test('seed 15530: physics run earns ≥ gun reputation; credits equal; stunts never pay credits', () => {
+test('seed 15530: physics tape earns trick score; credits equal; stunts never pay credits', () => {
   const physics = drive('physics');
   const gun = drive('gun');
 
@@ -188,23 +211,26 @@ test('seed 15530: physics run earns ≥ gun reputation; credits equal; stunts ne
   console.log(`[PQ-155.03 seed ${SEED}] gun     rep=${gun.positiveRep} pitborn=${gun.pitborn} credits=${gun.credits} rights=${gun.pay.salvageRights} tricks=${gun.tricks}`);
   console.log(`[PQ-155.03 seed ${SEED}] combo pay physics=${JSON.stringify(physics.pay)} gun=${JSON.stringify(gun.pay)}`);
 
-  assert.equal(physics.tricks, 6);
+  assert.equal(physics.tricks, 3);
   assert.equal(gun.tricks, 0);
   assert.equal(physics.credits, gun.credits, 'kill credits must stay equal');
   assert.ok(physics.credits > 0, 'the gun path still pays its chips');
-  assert.ok(
-    physics.positiveRep >= gun.positiveRep,
-    `physics reputation (${physics.positiveRep}) must be ≥ gun (${gun.positiveRep})`,
-  );
-  assert.ok(physics.pitborn > gun.pitborn, 'Pitborn yards pay the physics tape');
-  assert.ok(physics.pay.reputation > 0);
+  assert.equal(physics.positiveRep, 0, 'stunt labels never move faction reputation');
+  assert.equal(gun.positiveRep, 0);
+  assert.equal(physics.repDelta.filter((p) => p && p.reason === 'stunt_trick').length, 0,
+    'no faction:repDelta from stunt pay');
+  assert.equal(physics.pitborn, gun.pitborn, 'faction standing is identical across tapes');
+  assert.ok(physics.pay.reputation > 0, 'combo meter accrues stunt reputation points');
   assert.ok(physics.pay.salvageRights > 0);
   assert.equal(physics.pay.credits, 0);
   assert.equal(gun.pay.reputation, 0);
   assert.equal(gun.pay.salvageRights, 0);
   assert.equal(gun.pay.credits, 0);
+  assert.equal(physics.session.reputation, 0);
+  assert.equal(physics.session.salvageRights, 0);
   assert.equal(physics.session.credits, 0);
-  assert.equal(physics.rightsFromEvents, physics.pay.salvageRights);
+  assert.equal(physics.salvageEvents, 0);
+  assert.equal(physics.rightsFromEvents, 0);
   assert.equal(physics.grants, 0);
   assert.equal(gun.grants, 0);
   assert.equal(physics.grantCredits, 0);
