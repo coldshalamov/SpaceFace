@@ -197,7 +197,14 @@ export function normalizeRecordsBag(input) {
   const ids = Object.keys(src).sort();
   for (const id of ids) {
     const rec = normalizeRecord(src[id], id);
-    if (rec) bag.byId[rec.recordId] = rec;
+    if (rec) {
+      // Runtime-only marker (never serialized): a same-tick capture pass must be able to tell a
+      // just-rematerialized body from a genuinely re-observed one even after bag re-normalize.
+      if (src[id] && src[id].rematerializedTick !== undefined) {
+        rec.rematerializedTick = src[id].rematerializedTick;
+      }
+      bag.byId[rec.recordId] = rec;
+    }
   }
   const sectors = new Set();
   for (const rec of Object.values(bag.byId)) {
@@ -827,6 +834,12 @@ export function upsertRecord(bag, record) {
     : record;
   const rec = normalizeRecord(merged);
   if (!rec) return null;
+  // Runtime-only marker (never serialized): a record rematerialized at tick T must not be
+  // re-captured at tick T as if it were a fresh observation. Upserts normalize ad-hoc fields
+  // away, so carry it across the merge explicitly.
+  if (merged && merged.rematerializedTick !== undefined) {
+    rec.rematerializedTick = merged.rematerializedTick;
+  }
   b.byId[rec.recordId] = rec;
   enforceSectorBound(b, rec.homeSectorId || rec.sectorId, { source: 'upsert' });
   return rec;

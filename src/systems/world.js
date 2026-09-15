@@ -1022,6 +1022,10 @@ export const world = {
       const ownedHere = home === sectorId || dataSector === sectorId;
       if (!ownedHere) return;
       if (!entityIsDurableCandidate(e, state.playerId)) return;
+      // A body rematerialized this tick contributes nothing its record does not already
+      // state; re-capturing it would stamp fresh observation fields into the payload.
+      const linked = e.data && e.data.worldRecordId ? bag.byId[e.data.worldRecordId] : null;
+      if (linked && linked.rematerializedTick === tick) return;
       // Protected mission-pinned still get a durable record for Continue rematerialize,
       // even though live despawn skips them.
       const captured = captureEntityRecord(e, {
@@ -1082,7 +1086,7 @@ export const world = {
         }
         continue;
       }
-      const ent = this._spawnFromDurableRecord(rec, sectorId);
+      const ent = this._spawnFromDurableRecord(rec, sectorId, opts);
       if (!ent) continue;
       spawned++;
       if (ent.data && ent.data.isBoss) {
@@ -1139,7 +1143,7 @@ export const world = {
   /**
    * Spawn one live entity from a durable record. Prefers makeEnemySpawnSpec for NPC archetypes.
    */
-  _spawnFromDurableRecord(rec, sectorId) {
+  _spawnFromDurableRecord(rec, sectorId, opts = {}) {
     if (!rec || !this.helpers || typeof this.helpers.spawnEntity !== 'function') return null;
     const state = this.state;
     let spec = null;
@@ -1204,7 +1208,12 @@ export const world = {
     const fromT = Number.isFinite(rec.lastExactT)
       ? Math.min(rec.lastExactT, simTime)
       : simTime;
-    const advanced = advanceWorldRecord(rec, fromT, simTime) || rec;
+    // A restored envelope is already the authoritative world state at simTime: the live sim
+    // applied catch-up while the record sat in the bag, so re-advancing here would stamp
+    // observation fields the serialized payload never carried.
+    const advanced = opts.restoreDurableRecords === true
+      ? rec
+      : advanceWorldRecord(rec, fromT, simTime) || rec;
     applyRecordVitals(ent, advanced);
     bindEntityToRecord(ent, advanced);
     this._decorateOrrinWitnessRecorder(ent, advanced);
@@ -1218,6 +1227,11 @@ export const world = {
       const bag = ensureWorldRecords(state.world);
       upsertRecord(bag, advanced);
     }
+    // Mark the stored record so a same-tick capture pass does not rewrite identity and
+    // observation fields into an envelope that was just restored (or a record that has
+    // not been observed since materialization).
+    const stored = ensureWorldRecords(state.world).byId[rec.recordId];
+    if (stored) stored.rematerializedTick = state.tick | 0;
     return ent;
   },
 
@@ -1233,6 +1247,8 @@ export const world = {
     if (input && input.id != null) {
       const e = state.entities.get(input.id) || input;
       const sectorId = e.homeSectorId || (e.data && e.data.homeSectorId) || state.world.currentSectorId;
+      const linked = e.data && e.data.worldRecordId ? bag.byId[e.data.worldRecordId] : null;
+      if (linked && linked.rematerializedTick === (state.tick | 0)) return linked;
       const captured = captureEntityRecord(e, {
         sectorId,
         seed: (state.meta && state.meta.seed) || 1,

@@ -981,6 +981,12 @@ function runSaveReload(sim, errors, failInject) {
     const afterAgain = readDataHash();
     result.observedAfterHash = afterLive;
     result.divergentPaths = diffPayloadPaths(beforePayload, afterPayload);
+    if (process.env.SF_SOAK_DUMP_DIVERGENT) {
+      for (const p of result.divergentPaths.slice(0, 12)) {
+        const get = (o, path) => path.slice(2).split('.').reduce((a, k) => (a == null ? a : a[k]), o);
+        console.log('DIV', p, '| before=', JSON.stringify(get(beforePayload, p)), '| after=', JSON.stringify(get(afterPayload, p)));
+      }
+    }
     result.stableSerialize = result.beforeHash === again && afterLive === afterAgain;
 
     // Equivalence is observed, never normalized: the stable durable payload after load must be
