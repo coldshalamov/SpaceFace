@@ -80,19 +80,25 @@ test('background root starts behind the play plane before its first update', () 
 
 test('comet material follows the same depth contract', () => {
   const previousDocument = globalThis.document;
+  // The comet's authored art uses the full 2D path API. Enumerate it rather than hand-listing the
+  // handful of calls the art happened to use, so a change to the art cannot silently break this
+  // depth-contract check with a missing-method TypeError.
+  const noop = () => {};
+  const gradient = { addColorStop: noop };
+  const ctx2d = new Proxy({
+    createLinearGradient: () => gradient,
+    createRadialGradient: () => gradient,
+  }, {
+    get(target, prop) {
+      if (prop in target) return target[prop];
+      if (typeof prop === 'symbol') return undefined;
+      return noop;
+    },
+    set() { return true; },
+  });
   globalThis.document = {
     createElement() {
-      return {
-        width: 0,
-        height: 0,
-        getContext() {
-          return {
-            createLinearGradient() { return { addColorStop() {} }; },
-            fillRect() {},
-            set fillStyle(_) {},
-          };
-        },
-      };
+      return { width: 0, height: 0, getContext: () => ctx2d };
     },
   };
   try {

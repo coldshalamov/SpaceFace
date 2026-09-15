@@ -28,11 +28,22 @@ const state = {
   camera: { obj: camera, focus, zoom: 144, liveZoom: 144, tilt: 60, fov: 50 },
   world: { frameOrigin: { x: 0, z: 0 } }, entities: new Map(),
 };
-function pose(distance = 144) {
+// pose(zoom) is the canonical framing. poseAt() adds an azimuth around the focus and an elevation
+// so a deep-field composition can be judged from more than one hero angle — a backdrop element that
+// only reads from a single camera position has not been verified.
+function poseAt(distance = 144, azimuth = 0, tiltDeg = 60) {
   state.camera.zoom = state.camera.liveZoom = distance;
-  camera.position.set(focus.x, distance * Math.sin(Math.PI / 3), focus.z - distance * 0.5);
+  const tilt = tiltDeg * Math.PI / 180;
+  camera.position.set(
+    focus.x + distance * Math.cos(tilt) * Math.sin(azimuth),
+    distance * Math.sin(tilt),
+    focus.z - distance * Math.cos(tilt) * Math.cos(azimuth),
+  );
   camera.lookAt(focus);
   camera.updateMatrixWorld(true);
+}
+function pose(distance = 144) {
+  poseAt(distance, 0, 60);
 }
 pose();
 // Fixed neutral diagnostic rig; identical for every region and candidate. Shared rock textures
@@ -62,6 +73,20 @@ window.deepFieldProbe = {
       triangles: renderer.info.render.triangles, geometries: renderer.info.memory.geometries,
       width: innerWidth, height: innerHeight, zoom, tilt: 60, fov: 50,
       componentOnly: true, authoredRockTexturesLoaded: false };
+  },
+  // Same composition, different camera: used to prove a sector's authored structures stay legible
+  // and stay inside their intended screen placement across zooms and travel angles.
+  angle(id, { zoom = 144, azimuth = 0, tilt = 60 } = {}) {
+    const sector = SECTORS.find(s => s.id === id);
+    if (!sector) throw new Error(`Unknown canonical sector: ${id}`);
+    state.render.sectorPalette = sector.palette;
+    poseAt(zoom, azimuth, tilt);
+    bg._sectorId = null;
+    bg.onSectorEnter(sector, resolveSectorVisualProfile(sector));
+    for (let i = 0; i < 100; i++) frame(1 / 60);
+    return { ...bg.stats(), calls: renderer.info.render.calls,
+      triangles: renderer.info.render.triangles, zoom, azimuth, tilt,
+      width: innerWidth, height: innerHeight, componentOnly: true };
   },
   motion() {
     const versions = bands.groups.map(g => g.children[0].instanceMatrix.version);

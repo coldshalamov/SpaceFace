@@ -50,6 +50,9 @@ function frameHarness(smear = 0) {
     wormhole: null,
     structureMacro: null,
     structureCard: null,
+    // The shipping update() latches the sector-transition state before advancing it, so the frame
+    // harness must carry the same field the constructor installs. Without it every frame threw.
+    _sectorTransition: { active: false },
     _computePerspScale: () => 500,
     _updateRegionTint() {},
     _updateComet() {},
