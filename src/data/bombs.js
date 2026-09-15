@@ -18,18 +18,22 @@
 export const BOMB_DRIFT = Object.freeze({
   // Exponential velocity decay per second: v(t) = v0 · e^(−drag·t). 0.14/s means a dropped bomb
   // still carries 66% of release speed after 3 s and 50% after ~5 s — "floats, falls behind
-  // slowly". The player (still thrusting) walks away from it; a coasting player keeps pace.
-  // This is the single knob for "how fast do bombs slow down".
+  // slowly". Even a constant-speed coasting player gradually pulls ahead.
+  // This is the capsule drift knob; ruptured goo has a separate medium drag.
   dragPerS: 0.14,
   // Release standoff behind the hull, along the current velocity heading (or the nose when
   // nearly stationary). Just enough clearance that the bay door does not spawn inside the hull.
   dropStandoffWu: 7,
-  // Global bay cap across all payloads. Bounds the per-tick bucket scan and the worst-case
-  // simultaneous field effects; the bay evicts the OLDEST live bomb past this count.
+  // Per-owner bay cap. A full bay rejects a release; existing ordnance NEVER vanishes.
+  // A separate world cap bounds future NPC adoption and the presentation batch.
   maxActive: 6,
+  maxWorldActive: 24,
+  // Proximity and command triggers commit to a short visible, non-flashing warning.
+  warningS: 0.18,
+  releaseIntervalS: 0.35, // shared mechanical latch; each payload also has its own cooldown
   // Seconds after release before the proximity fuze goes live. Gives the bomb time to clear
   // friendly hulls flying in formation with the dropper; the owner is excluded from the trigger
-  // scan regardless, so this is about wingmen and pursuers, not self-defence.
+  // scan regardless, as are same-team wingmen; pursuers can trigger after arming.
   armS: 0.5,
   // Authored tumble rate (rad/s) — the drift read. Sign is fixed per entity id so two bombs from
   // one salvo tumble opposite ways without rng (determinism: no Math.random in sim).
@@ -39,7 +43,7 @@ export const BOMB_DRIFT = Object.freeze({
 // Payload catalog. Eight combat verbs, one bay. `impulse` is total radial impulse at falloff 1
 // (linear falloff to the radius); `damage` is the routed scalar before falloff; `statuses` ride
 // the damage packet through the one damage router. `field` payloads persist as a volume instead
-// of resolving instantly — see src/systems/bombs.js `_beginField`/`_tickField`.
+// of resolving instantly — see src/systems/bombs.js `_detonate`/`_tickField`.
 //
 // Cooldown scale: bay-rhythm numbers (1.2-3.5 s). The verb's fantasy is laying a TRAIL during a
 // chase — drop at speed, veer off, let them cook behind you — so a drop must cost meaningfully
@@ -50,6 +54,7 @@ export const BOMB_DEFS = Object.freeze({
   // with enough impulse to hurl the wreck it makes.
   bomb_frag: Object.freeze({
     id: 'bomb_frag',
+    shortName: 'Frag',
     name: 'Frag cassette',
     sentence: 'A drifting frag cassette: proximity or fuze, then a clean killing blast.',
     cooldownS: 1.2,
@@ -67,11 +72,12 @@ export const BOMB_DEFS = Object.freeze({
   // 2. The pure shove. Zero damage by design (the vector-mine law: an impulse payload whose
   // damage is a bug, not a feature). FEEL_CONTRACT's radial-mine bar is 45% of light cruise at
   // centre (~24 wu/s on the pelican reference); the drum pays ~56 wu/s — the room-clearing
-  // mobility/comedy verb, balanced by the longest cooldown in the bay.
+  // mobility/comedy verb, priced as a frequent displacement tool rather than a damage upgrade.
   bomb_concussion: Object.freeze({
     id: 'bomb_concussion',
+    shortName: 'Shove',
     name: 'Concussion drum',
-    sentence: 'A pure shove: hurls hulls and debris, hurts nothing.',
+    sentence: 'A pure shove: hurls hulls and debris; the collisions can still hurt.',
     cooldownS: 1.6,
     fuzeS: 5,
     triggerRadius: 52,
@@ -91,6 +97,7 @@ export const BOMB_DEFS = Object.freeze({
   // curve as the field kernel (a·mass·dt through queuePhysicsImpulse — never a velocity write).
   bomb_singularity: Object.freeze({
     id: 'bomb_singularity',
+    shortName: 'Pull',
     name: 'Neutron slug',
     sentence: 'A moving, decaying gravity source: drags a room into a clump and crushes it.',
     cooldownS: 3.5,
@@ -103,11 +110,12 @@ export const BOMB_DEFS = Object.freeze({
     statuses: [],
     field: Object.freeze({
       kind: 'singularity',
-      durationS: 2.8,       // the leaf's "decaying" — short, legible, escape-priced
+      durationS: 2.8,
+      endStrength: 0.25,   // actual temporal decay to 25% just before collapse
       // Peak pull acceleration at the source before coupling (wu/s^2), linear falloff to radius.
       strength: 300,
-      // Crush tick cadence (ticks, 60 Hz) and per-tick damage inside the inner band. 8 × 6 = 48
-      // total plasma at full residence — the kill comes from the clump, not the slug.
+      // Five 0.5-second crush ticks fit before the 2.8-second expiry: 5 × 6 = 30.
+      // The kill comes from gathering a clump for a follow-up, not an invisible damage bonus.
       tickEveryTicks: 30,
       crushDamage: 6,
       crushInnerRadius: 60,
@@ -124,6 +132,7 @@ export const BOMB_DEFS = Object.freeze({
   // periodic damage. The volume is the bomb entity persisting through its field phase.
   bomb_goo: Object.freeze({
     id: 'bomb_goo',
+    shortName: 'Tar',
     name: 'Tarburst bladder',
     sentence: 'Bursts into clinging tar: thrust dies, hull corrodes.',
     cooldownS: 2.5,
@@ -136,6 +145,8 @@ export const BOMB_DEFS = Object.freeze({
     statuses: [{ id: 'status_goo', stacks: 2 }],
     field: Object.freeze({
       kind: 'goo',
+      dragPerS: 2.4,       // central relative speed: 9% after 1s; edge resistance tapers
+      driftDragPerS: 0.9, // after rupture the cloud slows; the released capsule still uses 0.14
       durationS: 5,
       tickEveryTicks: 30,   // re-apply cadence while inside: refresh duration, build stacks
       applyStacks: 1,
@@ -149,6 +160,7 @@ export const BOMB_DEFS = Object.freeze({
   // cap regen. The direct-fire EMP disruptor's delivered cousin.
   bomb_emp: Object.freeze({
     id: 'bomb_emp',
+    shortName: 'EMP',
     name: 'Static bomb',
     sentence: 'A pure ion pulse through the shields: subsystems dark, capacitors flat.',
     cooldownS: 1.5,
@@ -170,6 +182,7 @@ export const BOMB_DEFS = Object.freeze({
   // attrition payload with a different clock.
   bomb_thermite: Object.freeze({
     id: 'bomb_thermite',
+    shortName: 'Burn',
     name: 'Thermite starter',
     sentence: 'Splashes burning thermite: everything in the splash keeps burning.',
     cooldownS: 1.5,
@@ -185,10 +198,11 @@ export const BOMB_DEFS = Object.freeze({
   }),
 
   // 7. The destabilize verb. A wild impulse plus the standing tumbling status — the target's
-  // own drive becomes the weapon (dash/tether/weapon verbs lock out while it tumbles). The
-  // cheapest control payload; the shove is the setup, the tumble is the payoff.
+  // own drive becomes the weapon (dash/tether/weapon verbs lock out while it tumbles). This is a
+  // control-heavy payload; the shove is the setup, the tumble is the payoff.
   bomb_scrambler: Object.freeze({
     id: 'bomb_scrambler',
+    shortName: 'Spin',
     name: 'Havoc pod',
     sentence: 'A wild impulse and a scramble: drives tumble, verbs lock out.',
     cooldownS: 3.0,
@@ -196,6 +210,7 @@ export const BOMB_DEFS = Object.freeze({
     triggerRadius: 46,
     radius: 82,
     impulse: 520,
+    tangentRatio: 0.8,     // rotate the shove vector, preserving its magnitude
     damage: 4,
     damageType: 'kinetic',
     statuses: [{ id: 'status_tumbling', stacks: 1 }],
@@ -205,9 +220,10 @@ export const BOMB_DEFS = Object.freeze({
 
   // 8. The pin verb. Applies the standing PINNED physicsResponse (massScale ×6): the caught hull
   // becomes six times the mass to every force that touches it — thrust, fields, impacts — while
-  // its momentum is preserved. It does not stop; it WALLLOWS. The counter-mobility verb.
+  // its current velocity is preserved. It does not stop; it WALLLOWS. The counter-mobility verb.
   bomb_anchor: Object.freeze({
     id: 'bomb_anchor',
+    shortName: 'Mass',
     name: 'Ballast slug',
     sentence: 'Welds a hull to its own inertia: six times the mass, half the ship.',
     cooldownS: 2.0,
