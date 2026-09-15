@@ -840,6 +840,7 @@ export const input = {
       countermeasure: true,
       travelBurn: true,
       autoTarget: true,
+      chargeDetonate: true,
     };
     if (this._edgePrev) {
       for (const action in this._edgePrev) this._edgePrev[action] = false;
@@ -882,7 +883,7 @@ export const input = {
     const quarantine = this._gamepadLifecycleQuarantine;
     if (!quarantine || !gamepad || typeof gamepad.isConnected !== 'function'
       || !gamepad.isConnected()) return;
-    for (const action of ['massline', 'countermeasure', 'travelBurn', 'autoTarget']) {
+    for (const action of ['massline', 'countermeasure', 'travelBurn', 'autoTarget', 'chargeDetonate']) {
       const sample = gamepad.actions && gamepad.actions[action];
       if (quarantine[action] && sample && sample.held === false) quarantine[action] = false;
     }
