@@ -749,15 +749,33 @@ export function reattachResidentGpuMeshes(owner) {
  */
 /**
  * Whether entering flight may hold bulk mesh streaming for its first draw. The defer is
- * released only by the first-playable paint latch (drawPreparedFrame schedules it when
- * firstPlayableFrameAt is unset) or by the loading-path live-sector cook. A session recook
- * keeps firstPlayableFrameAt from the boot picture and skips the cook, so arming the defer
- * there would park mesh streaming — and every spawned/queued mesh — for the rest of the
- * flight.
+ * released by the first-playable paint latch (drawPreparedFrame schedules it when
+ * firstPlayableFrameAt is unset), by the loading-path live-sector cook, or — if those
+ * one-shots already fired — by shouldReleaseOpeningMeshDeferAfterFirstPlayable once
+ * firstPlayableFrameAt is latched in flight. A session recook keeps firstPlayableFrameAt
+ * from the boot picture and skips the cook, so arming the defer there would park mesh
+ * streaming — and every spawned/queued mesh — for the rest of the flight.
  */
 export function shouldDeferMeshStreamingOnFlightEntry(owner) {
   const render = owner && owner.state && owner.state.render;
   return !Number.isFinite(render && render.firstPlayableFrameAt);
+}
+
+/**
+ * The opening first-picture barrier arms `_deferNoncriticalMeshStreaming` and the paint
+ * latch is the only scheduled release. That latch is a one-shot: it requires
+ * `firstPlayableFrameAt` unset. A later prepareOpeningFirstPicture success (the live-sector
+ * cook can still be running after flight entry) or a recook that skipped the latch re-arms
+ * the defer after the stamp, and the residency hold never sees it — ownerDefer short-circuits
+ * first. verify62: firstPlayable set, hold expired at 20.05, simTime 66.5, queue 0/0, 14
+ * ships missing:pending:mesh=false. Once the first picture is latched in flight, the defer
+ * has done its job; the first-flight residency hold is the remaining gate.
+ */
+export function shouldReleaseOpeningMeshDeferAfterFirstPlayable(owner) {
+  if (!owner || owner._deferNoncriticalMeshStreaming !== true) return false;
+  const state = owner.state;
+  if (!state || state.mode !== 'flight') return false;
+  return Number.isFinite(state.render && state.render.firstPlayableFrameAt);
 }
 
 /**
@@ -795,6 +813,9 @@ export function serviceRenderMeshResidency(owner, frameDt) {
     owner._deferNoncriticalMeshStreaming = false;
     if (owner.state.render) owner.state.render.deferNoncriticalMeshStreaming = false;
     owner._meshReconcileDirty = true;
+  }
+  if (shouldReleaseOpeningMeshDeferAfterFirstPlayable(owner)) {
+    releaseOpeningMeshDefer(owner, owner.state && owner.state.mode);
   }
   if (!owner || owner._deferNoncriticalMeshStreaming) return 'deferred';
   const dt = Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;
@@ -9130,6 +9151,11 @@ export const render = {
         this._activityFrame = null;
         this._activityFrameTick = null;
         if (this.state && this.state.render) this.state.render.activityFrame = null;
+      } else if (shouldReleaseOpeningMeshDeferAfterFirstPlayable(this)) {
+        // The paint latch already stamped firstPlayableFrameAt (cook still running after
+        // flight entry, or a recook that skipped the one-shot). Do not leave the defer
+        // we armed at the start of this barrier parked for the rest of the session.
+        releaseOpeningMeshDefer(this, this.state && this.state.mode);
       }
     }
   },

@@ -5,6 +5,7 @@ import {
   applyFirstPlayablePaintRelease,
   freezeOpeningGraphPublication,
   releaseOpeningMeshDefer,
+  shouldReleaseOpeningMeshDeferAfterFirstPlayable,
 } from '../src/render/renderer.js';
 
 test('first-playable-paint always clears mesh streaming defer even off the flight mode', () => {
@@ -130,6 +131,20 @@ test('a passing opening validation stamps firstPlayableFrameAt and releases the 
   assert.equal(Number.isFinite(owner.state.render.firstPlayableFrameAt), true);
   assert.equal(owner._deferNoncriticalMeshStreaming, false);
   assert.equal(owner._openingFirstPicturePrepared, false);
+});
+
+test('a first-picture success after the paint latch must not keep mesh streaming deferred', () => {
+  // The live-sector cook can still be inside prepareOpeningFirstPicture after flight entry
+  // (timeout path). Success used to leave _deferNoncriticalMeshStreaming true after the
+  // one-shot paint latch had already stamped firstPlayableFrameAt, parking every later mesh.
+  const owner = {
+    state: {
+      mode: 'flight',
+      render: { firstPlayableFrameAt: 88 },
+    },
+    _deferNoncriticalMeshStreaming: true,
+  };
+  assert.equal(shouldReleaseOpeningMeshDeferAfterFirstPlayable(owner), true);
 });
 
 test('the paint release keeps working when the first painted frame is no longer flight', () => {

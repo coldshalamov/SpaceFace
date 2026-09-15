@@ -9,6 +9,7 @@ import {
   keepGpuCoversOpeningComposition,
   reattachResidentGpuMeshes,
   serviceRenderMeshResidency,
+  shouldReleaseOpeningMeshDeferAfterFirstPlayable,
 } from '../src/render/renderer.js';
 
 test('dock, screen stack, and sector-shell cook freeze 3D submit', () => {
@@ -74,6 +75,83 @@ test('residency service reports the first-flight hold and clears a banked full s
   };
   assert.equal(serviceRenderMeshResidency(owner, 0.5), 'held-first-flight');
   assert.equal(owner._meshReconcileDirty, false);
+});
+
+test('ownerDefer stays armed in flight until the first-playable latch exists', () => {
+  const owner = {
+    state: { mode: 'flight', simTime: 1, render: { deferNoncriticalMeshStreaming: true } },
+    _deferNoncriticalMeshStreaming: true,
+    _sectorHandoffStreamHoldS: 0,
+    _meshReconcileDirty: true,
+  };
+  assert.equal(shouldReleaseOpeningMeshDeferAfterFirstPlayable(owner), false);
+  assert.equal(serviceRenderMeshResidency(owner, 0.016), 'deferred');
+  assert.equal(owner._deferNoncriticalMeshStreaming, true);
+});
+
+test('ownerDefer stays armed while the opening picture is still loading', () => {
+  const owner = {
+    state: { mode: 'loading', simTime: 2, render: { deferNoncriticalMeshStreaming: true } },
+    _deferNoncriticalMeshStreaming: true,
+    _sectorHandoffStreamHoldS: 0,
+    _meshReconcileDirty: true,
+  };
+  assert.equal(shouldReleaseOpeningMeshDeferAfterFirstPlayable(owner), false);
+  assert.equal(serviceRenderMeshResidency(owner, 0.016), 'deferred');
+  assert.equal(owner._deferNoncriticalMeshStreaming, true);
+});
+
+test('ownerDefer releases after firstPlayable even when the paint one-shot already fired', () => {
+  // Acceptance run #3 / verify62: firstPlayableFrameAt latched, hold expired 46 s of sim ago,
+  // ownerDefer still true, reconcile dirty, queue 0/0, 14 ships missing:pending:mesh=false.
+  // prepareOpeningFirstPicture had re-armed the defer after the paint latch; nothing cleared it.
+  const owner = {
+    state: {
+      mode: 'flight',
+      simTime: 66.5,
+      render: {
+        firstPlayableFrameAt: 1234,
+        firstFlightResidencyHoldUntil: 20.05,
+        deferNoncriticalMeshStreaming: true,
+      },
+    },
+    _deferNoncriticalMeshStreaming: true,
+    _sectorHandoffStreamHoldS: 0,
+    _meshReconcileDirty: true,
+    _renderResidencyPollS: 0,
+    _openingFirstPicturePrepared: true,
+    _firstPlayablePaintScheduled: true,
+    reconciled: 0,
+    reconcileMeshes() { this.reconciled += 1; },
+  };
+  assert.equal(shouldReleaseOpeningMeshDeferAfterFirstPlayable(owner), true);
+  assert.equal(serviceRenderMeshResidency(owner, 0.016), 'full');
+  assert.equal(owner._deferNoncriticalMeshStreaming, false);
+  assert.equal(owner.state.render.deferNoncriticalMeshStreaming, false);
+  assert.equal(owner.reconciled, 1, 'the parked recovery scan must run once the defer lifts');
+});
+
+test('ownerDefer release after firstPlayable still honors the first-flight residency hold', () => {
+  const owner = {
+    state: {
+      mode: 'flight',
+      simTime: 8,
+      render: {
+        firstPlayableFrameAt: 100,
+        firstFlightResidencyHoldUntil: 20,
+        deferNoncriticalMeshStreaming: true,
+      },
+    },
+    _deferNoncriticalMeshStreaming: true,
+    _sectorHandoffStreamHoldS: 0,
+    _meshReconcileDirty: true,
+    _renderResidencyPollS: 1,
+    _drainProtectedFirstFlightBuilds() { this.protectedDrained = true; },
+  };
+  assert.equal(serviceRenderMeshResidency(owner, 0.016), 'held-first-flight');
+  assert.equal(owner._deferNoncriticalMeshStreaming, false);
+  assert.equal(owner._meshReconcileDirty, false);
+  assert.equal(owner.protectedDrained, true);
 });
 
 test('same-sector F9 recook keeps resident GPU meshes', () => {
