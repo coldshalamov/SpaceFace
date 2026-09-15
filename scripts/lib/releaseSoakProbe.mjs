@@ -321,11 +321,13 @@ export async function runReleaseSoakProbe({
           const state = window.SF?.state;
           const player = (state?.entityList || []).find((e) => e?.id === state.playerId);
           const stations = (state?.entityList || []).filter((e) => e?.type === 'station').map((e) => e?.data?.stationId || e?.id);
+          const trail = window.__M6_RELEASE_SOAK_TRAIL__ || [];
           return {
             mode: state?.mode || null,
             sectorId: state?.world?.currentSectorId || null,
             docked: state?.ui?.docked ?? null,
             playerPos: player?.pos ? { x: Number(player.pos.x.toFixed(0)), z: Number(player.pos.z.toFixed(0)) } : null,
+            playerVel: player?.vel ? Number(Math.hypot(player.vel.x, player.vel.z).toFixed(1)) : null,
             entityCount: state?.entityList?.length ?? null,
             stations,
             loadedSlot: window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot ?? null,
@@ -334,14 +336,35 @@ export async function runReleaseSoakProbe({
             dockInRange: state?.ui?.dockInRange ?? null,
             dockDeny: state?.ui?.dockDeny || null,
             fulfillmentBlackout: state?.ui?.fulfillmentBlackoutActive ?? null,
+            boarding: state?.factionPresence?.boarding ? { phase: state.factionPresence.boarding.phase, holdingPos: state.factionPresence.boarding.holdingPos || null } : null,
             dockEvents: window.__M6_RELEASE_SOAK_EVENTS__?.dock || [],
             activeElement: typeof document !== 'undefined' ? (document.activeElement?.tagName + '.' + (document.activeElement?.className || '')).slice(0, 120) : null,
             navAutopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status } : null,
+            navWaypoint: state?.nav?.waypoint ? { kind: state.nav.waypoint.kind, label: state.nav.waypoint.label, pos: state.nav.waypoint.pos || null, targetSectorId: state.nav.waypoint.targetSectorId || null } : null,
+            navExecutor: state?.nav?.executor ? { status: state.nav.executor.status, engaged: state.nav.executor.engaged === true, legIndex: state.nav.executor.legIndex, destinationSectorId: state.nav.executor.destinationSectorId || null } : null,
             navEvents: (window.__M6_RELEASE_SOAK_EVENTS__?.nav || []).slice(-12),
+            jump: state?.jump ? { state: state.jump.state, targetSectorId: state.jump.targetSectorId || null, via: state.jump.via || null } : null,
+            bounds: state?.bounds ? { radius: state.bounds.radius, hardRadius: state.bounds.hardRadius, center: state.bounds.center || null } : null,
+            frameOrigin: state?.world?.frameOrigin ? { x: state.world.frameOrigin.x, z: state.world.frameOrigin.z, seq: state.world.frameOriginSeq } : null,
             dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
+            saveStartedSnapshot: window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null,
+            trailTail: trail.slice(-60),
+            posTrapEvents: (window.__M6_POS_TRAP_EVENTS__ || []).slice(-32),
           };
         }).catch(() => null);
         cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)}`;
+        // The position trail is the only witness that names the tick a far-field excursion
+        // began; the cycle-state tail alone reads end state. Persist the whole ring plus
+        // the writer-trap events, whose stacks name the exact write that moved the ship.
+        try {
+          const fullTrail = await page.evaluate(() => ({
+            trail: window.__M6_RELEASE_SOAK_TRAIL__ || [],
+            posTrapEvents: window.__M6_POS_TRAP_EVENTS__ || [],
+          }));
+          if (outputDir && fullTrail && (fullTrail.trail.length || fullTrail.posTrapEvents.length)) {
+            await writeFile(path.join(outputDir, 'failure-trail.json'), JSON.stringify(fullTrail));
+          }
+        } catch { /* trail dump is best-effort over the primary diag */ }
         throw cycleError;
       } finally {
         // A cycle that throws mid-transition must not leave the tag armed — later
@@ -988,6 +1011,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       corridor: dc ? { phase: dc.phase, distToBerth: dc.distToBerth, distCenter: dc.distCenter, inCorridor: dc.inCorridor, inCapture: dc.inCapture, headingOk: dc.headingOk } : null,
       sectorId: state?.world?.currentSectorId || null,
       trail: (window.__M6_RELEASE_SOAK_TRAIL__ || []).slice(-40),
+      posTrapEvents: (window.__M6_POS_TRAP_EVENTS__ || []).slice(-16),
     };
   }).catch(() => null);
   // Bounded approach loop. A still-driving autopilot can hold the ship in a tangential limit
@@ -1220,6 +1244,63 @@ async function armSaveLoadObservers(page) {
       // The FAIL dump only saw the end state; a bounded trail names the tick the
       // position jumped and the jump/executor state that owned it.
       window.__M6_RELEASE_SOAK_TRAIL__ = [];
+      // Write-trap on the player entity's pos/vel components. Every far-field
+      // excursion theory ends at a writer; this names it. A per-instance accessor
+      // shadows the own data property, so all writes (including SimVector3's own
+      // set/copy/addScaledVector internals) funnel through it. When a single write
+      // moves a pos component by more than POS_JUMP_WU — or a vel component by more
+      // than VEL_JUMP_WU_S — the trap records the write AND the caller's stack.
+      // Restore replaces the player object each cycle, so the sampler re-arms on
+      // whichever pos/vel objects the live entity currently holds.
+      window.__M6_POS_TRAP_EVENTS__ = [];
+      const POS_JUMP_WU = 300;
+      const VEL_JUMP_WU_S = 1500;
+      const trapField = (owner, field, threshold, label, state) => {
+        if (!owner || typeof owner !== 'object') return;
+        const desc = Object.getOwnPropertyDescriptor(owner, field);
+        if (!desc || desc.configurable === false) return;
+        if (desc.set && desc.get && desc.get.__posTrap === true) return; // already armed
+        let backing = Number(desc.value) || 0;
+        Object.defineProperty(owner, field, {
+          configurable: true,
+          enumerable: true,
+          get: Object.assign(function trappedGet() { return backing; }, { __posTrap: true }),
+          set: function trappedSet(v) {
+            const next = Number(v) || 0;
+            const delta = next - backing;
+            if (Math.abs(delta) > threshold) {
+              const events = window.__M6_POS_TRAP_EVENTS__;
+              if (events && events.length < 64) {
+                const s = state && state();
+                events.push({
+                  t: Math.round(performance.now()),
+                  tick: s ? Number(s.tick) : null,
+                  simTime: s ? Number(s.simTime) : null,
+                  field: label,
+                  from: backing,
+                  to: next,
+                  mode: s?.mode || null,
+                  sector: s?.world?.currentSectorId || null,
+                  jump: s?.jump?.state || null,
+                  exec: s?.nav?.executor ? `${s.nav.executor.status}:${s.nav.executor.engaged}` : null,
+                  ap: s?.nav?.autopilot ? `${s.nav.autopilot.status}:${s.nav.autopilot.active}` : null,
+                  stack: (new Error('pos-trap')).stack || null,
+                });
+              }
+            }
+            backing = next;
+          },
+        });
+      };
+      const armPosTrap = () => {
+        const s = window.SF?.state;
+        const p = s?.entities?.get?.(s.playerId);
+        if (!p) return;
+        const getState = () => window.SF?.state;
+        for (const f of ['x', 'z']) trapField(p.pos, f, POS_JUMP_WU, `pos.${f}`, getState);
+        for (const f of ['x', 'z']) trapField(p.vel, f, VEL_JUMP_WU_S, `vel.${f}`, getState);
+      };
+      armPosTrap();
       setInterval(() => {
         const trail = window.__M6_RELEASE_SOAK_TRAIL__;
         if (!trail) return;
@@ -1227,6 +1308,7 @@ async function armSaveLoadObservers(page) {
         const s = window.SF?.state;
         const p = s?.entities?.get?.(s.playerId);
         if (!s || !p || !p.pos) return;
+        armPosTrap(); // re-arm: restore/respawn replaces the pos object or the entity
         trail.push({
           t: Math.round(performance.now()),
           sector: s.world?.currentSectorId || null,
