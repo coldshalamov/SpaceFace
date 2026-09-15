@@ -3371,6 +3371,13 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
         })
         : null,
       entities: finiteOrNull(state?.entityList?.length),
+      entityTypes: Array.isArray(state?.entityList)
+        ? state.entityList.reduce((acc, entity) => {
+          const key = `${entity?.type || '?'}:${entity?.data?.defId || entity?.data?.stationId || entity?.data?.assetRef || ''}`;
+          acc[key] = (acc[key] || 0) + 1;
+          return acc;
+        }, {})
+        : null,
       assetResidency: state?.render?.assetResidency || null,
       geoCensus: window.__SF_GEO_CENSUS__ ? {
         live: window.__SF_GEO_CENSUS__.live.size,
