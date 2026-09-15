@@ -4597,19 +4597,56 @@ export const render = {
     if (this.renderer) {
       const rendererData = this.renderer.userData || (this.renderer.userData = {});
       rendererData.spacefacePendingPipelineSubjects = pendingPipelineSubjects;
+      // Bloom's unready-drawable pass routes never-compiled drawables through
+      // this lane so a missed admission hides + queues instead of linking
+      // inside the presented frame.
+      rendererData.spacefaceQueuePipelineAdmission = (subject) => (
+        subject ? admitSubjectPipelines(subject) : Promise.resolve({ skipped: true })
+      );
     }
+    const pendingSubjectHolds = new Map();
     const markSubjectPipelinesPending = (subject, pending) => {
       if (!subject) return;
       const data = subject.userData || (subject.userData = {});
-      data.pipelinesPending = pending === true;
-      if (pending === true) pendingPipelineSubjects.add(subject);
-      else pendingPipelineSubjects.delete(subject);
+      if (pending === true) {
+        pendingSubjectHolds.set(subject, (pendingSubjectHolds.get(subject) || 0) + 1);
+        data.pipelinesPending = true;
+        pendingPipelineSubjects.add(subject);
+        return;
+      }
+      const holds = (pendingSubjectHolds.get(subject) || 0) - 1;
+      if (holds > 0) {
+        // Another admission lane still holds this root (e.g. residency queued
+        // while its pipeline compile is outstanding) — keep it hidden.
+        pendingSubjectHolds.set(subject, holds);
+        return;
+      }
+      pendingSubjectHolds.delete(subject);
+      data.pipelinesPending = false;
+      pendingPipelineSubjects.delete(subject);
     };
     const admitSubjectPipelines = (subject) => {
       markSubjectPipelinesPending(subject, true);
-      return pipelineAdmissions.compile(subject).finally(() => {
-        markSubjectPipelinesPending(subject, false);
-      });
+      return pipelineAdmissions.compile(subject)
+        .then((result) => {
+          // A linked program still stalls inside the presented frame while its
+          // textures/geometry upload. Run the residency pass behind the same
+          // pending latch; the mode check runs at settle time so entries queued
+          // during loading pick up residency once the compile drain lands in
+          // flight. While the loading shell is up the opening plan's scene sweep
+          // owns mounted uploads, so the extra walk is skipped there.
+          if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
+            return result;
+          }
+          const outstanding = gpuResidencyAdmissions.pendingFor(subject);
+          return (outstanding || gpuResidencyAdmissions.prepare(subject)).then(
+            () => result,
+            () => result,
+          );
+        })
+        .finally(() => {
+          markSubjectPipelinesPending(subject, false);
+        });
     };
     state.render.compileObjectPipelines = (subject) => {
       // Loading first-picture wait must not join this queue: captureOpeningPipelinePlan still
@@ -4647,9 +4684,24 @@ export const render = {
         });
       }
       if (openingCohort.frozen && openingStillBlocking() && !shouldAdmitOpeningSubject(openingCohort, subject)) {
+        // Late roots used to lose residency entirely: their programs recompiled via the
+        // deferred pipeline queue, but the first presented draw still paid the texture/
+        // geometry upload inside the measured pass. Queue the upload on the residency
+        // lane and hold the pending latch so the subject stays hidden until resident.
+        if (subject) {
+          markSubjectPipelinesPending(subject, true);
+          const outstanding = gpuResidencyAdmissions.pendingFor(subject);
+          void (outstanding || gpuResidencyAdmissions.prepare(subject, {
+            isActive: options.isActive,
+          }))
+            .catch(() => null)
+            .finally(() => markSubjectPipelinesPending(subject, false));
+        }
         return Promise.resolve({ skipped: true, reason: 'late-opening-root' });
       }
       if (!openingCohort.frozen) openingCohort.extendBlocked(openingSubjectIdentity(subject));
+      const outstandingResidency = gpuResidencyAdmissions.pendingFor(subject);
+      if (outstandingResidency) return outstandingResidency;
       return gpuResidencyAdmissions.prepare(subject, {
         isActive: options.isActive,
       });

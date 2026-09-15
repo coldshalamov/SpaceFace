@@ -982,7 +982,11 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     }
     const programs = renderer.info && renderer.info.programs;
     if (!Array.isArray(programs)) {
+      admissionScene = scene;
+      admissionPendingSubjects = pendingSubjects;
       scene.traverse(hideOneUnreadySceneDrawable);
+      admissionScene = null;
+      admissionPendingSubjects = null;
       return;
     }
     // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
@@ -999,8 +1003,12 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       try { ready = program.isReady() === true; } catch (_) { ready = false; }
       if (!ready) { unreadyProgramsPending = true; break; }
     }
-    if (!unreadyProgramsPending) return;
+    if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)) return;
+    admissionScene = scene;
+    admissionPendingSubjects = pendingSubjects;
     scene.traverse(hideOneUnreadySceneDrawable);
+    admissionScene = null;
+    admissionPendingSubjects = null;
   }
 
   function hideOneUnreadySceneDrawable(object) {
@@ -1022,6 +1030,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     hideIfProgramUnready(object, list, props);
   }
 
+  let admissionScene = null;
+  let admissionPendingSubjects = null;
+
   function hideIfProgramUnready(object, material, props) {
     if (!material || unreadySceneCount >= UNREADY_SCENE_CAP) return false;
     let program = null;
@@ -1031,7 +1042,35 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     } catch (_) {
       return false;
     }
-    if (!program || typeof program.isReady !== 'function') return false;
+    if (!program) {
+      // Never compiled: drawing would link the driver program inside this
+      // presented pass. Hide the drawable and route its scene root through the
+      // pipeline admission lane; the pending latch keeps it hidden until
+      // compile + residency settle. The material stamp dedupes re-queues across
+      // sibling meshes and successive scans while one admission is in flight.
+      const materialData = material.userData || (material.userData = {});
+      const queueAdmission = renderer && renderer.userData
+        ? renderer.userData.spacefaceQueuePipelineAdmission : null;
+      if (materialData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+        materialData.__sfPipelineAdmission = true;
+        let root = object;
+        while (admissionScene && root.parent && root.parent !== admissionScene) root = root.parent;
+        // A root already latched pending has an admission in flight that will
+        // compile this subtree — queueing another would only duplicate it.
+        if (admissionPendingSubjects && admissionPendingSubjects.has(root)) {
+          materialData.__sfPipelineAdmission = false;
+        } else {
+          Promise.resolve(queueAdmission(root))
+            .catch(() => null)
+            .finally(() => { materialData.__sfPipelineAdmission = false; });
+        }
+      }
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneCount += 1;
+      object.visible = false;
+      return true;
+    }
+    if (typeof program.isReady !== 'function') return false;
     let ready = true;
     try { ready = program.isReady() === true; } catch (_) { ready = false; }
     if (ready) return false;
