@@ -46,6 +46,14 @@ const MOMENT_PER_MINUTE_WINDOW_S = 60;
 const MOMENT_EPISODE_MAX = 128;
 const MOMENT_EPISODE_AGE_TICKS = 480;
 const MOMENT_AUDIO_CUE = 'moment.stinger';
+// Clip markers (design §6.5): root-linked, 8 s before + 4 s after, overlapping windows merge,
+// five automatic markers retained. No recorder is wired, so a marker is truthfully unavailable
+// video with its causal window retained; recognition never depends on encoder completion.
+export const CLIP_BEFORE_TICKS = 480;
+export const CLIP_AFTER_TICKS = 240;
+export const CLIP_RETAIN_MAX = 5;
+export const CLIP_RETAIN_BYTES = 64 * 1024 * 1024;
+export const CLIP_PLAYBACK = Object.freeze({ slowScale: 0.35, slowSourceSeconds: 0.70 });
 const RARITY_WEIGHT = Object.freeze({ common: 1, uncommon: 1.4, rare: 1.8, legendary: 2.2 });
 
 function finiteNum(value, fallback = 0) {
@@ -224,6 +232,8 @@ export const bulletTime = {
       const i=moment.recentMoments.findIndex(m=>m.rootId===trick.rootId);
       if(i>=0&&rating.score>moment.recentMoments[i].peakScore){
         moment.recentMoments[i]={...moment.recentMoments[i],peakScore:rating.score,name:trick.name,latestTick:tick};
+        const clip=moment.clips.find(c=>c.rootIds.includes(trick.rootId));
+        if(clip){clip.peakScore=Math.max(clip.peakScore,rating.score);clip.collateralCount=Math.max(clip.collateralCount,finiteNum(trick.modifiers?.collateralCount,1));clip.latestTick=tick;}
         this.bus?.emit('moment:amended',moment.recentMoments[i]);
       }
       return;
@@ -232,14 +242,8 @@ export const bulletTime = {
     if(Object.keys(moment.seenEpisodes).length>=MOMENT_EPISODE_MAX)delete moment.seenEpisodes[Object.keys(moment.seenEpisodes)[0]];
     moment.seenEpisodes[trick.rootId]=trick.rootTick;
     if(!this._visibleMoment(trick))return;
-    if (now < moment.cooldownUntil) return;
-    const trickId = trick.trickId || 'unknown';
-    const perMinute = moment.recentMoments.filter((m) => now >= m.simTime && now - m.simTime < MOMENT_PER_MINUTE_WINDOW_S);
-    if (perMinute.length >= MOMENT_PER_MINUTE_MAX) return;
-    if (perMinute.some((m) => m.trickId === trickId && now - m.simTime < MOMENT_PRIMARY_WINDOW_S)) return;
-    moment.totalMoments += 1;
     const record = Object.freeze({
-      trickId,
+      trickId: trick.trickId || 'unknown',
       name: trick.name || trick.trickId || 'Unknown stunt',
       rarity: trick.rarity || 'common',
       score: rating.score,
@@ -255,13 +259,22 @@ export const bulletTime = {
       tick,
       simTime: now,
     });
+    // The clip recorder sees every qualifying visible trick, including ones the presentation
+    // gates below suppress — a collateral burst inside the cooldown still merges its footage.
+    const clip = markMomentClip(moment, record, trick);
+    if (this.bus) this.bus.emit(clip.merged ? 'moment:clipMerged' : 'moment:clipMarked', clip.marker);
+    if (now < moment.cooldownUntil) return;
+    const perMinute = moment.recentMoments.filter((m) => now >= m.simTime && now - m.simTime < MOMENT_PER_MINUTE_WINDOW_S);
+    if (perMinute.length >= MOMENT_PER_MINUTE_MAX) return;
+    if (perMinute.some((m) => m.trickId === record.trickId && now - m.simTime < MOMENT_PRIMARY_WINDOW_S)) return;
+    moment.totalMoments += 1;
     moment.recentMoments.push(record);
     if (moment.recentMoments.length > MOMENT_RECENT_MAX) moment.recentMoments.shift();
     moment.pulseUntil = now + MOMENT_SLOWMO_DUR_S;
     moment.cooldownUntil = now + MOMENT_COOLDOWN_S;
     if (this.bus) {
       this.bus.emit(MOMENT_EVENT, record);
-      this.bus.emit('audio:cue', { id: MOMENT_AUDIO_CUE, importance: 0.9 });
+      this.bus.emit('audio:cue', { id: MOMENT_AUDIO_CUE, importance: 0.9, duck: true });
     }
     // Arm (or extend) the pulse only outside the cooldown — inside it the running pulse and
     // the bus record already carry the burst.
@@ -335,6 +348,37 @@ function ensureBulletTime(state) {
   return root.bulletTime;
 }
 
+/**
+ * Root-linked clip marker. Overlapping windows merge into one marker that keeps the earliest
+ * causal start and the union of roots; the newest five markers are retained. Video is reported
+ * unavailable until a recorder actually captured the window.
+ */
+export function markMomentClip(moment, record, trick = {}) {
+  const start = record.tick - CLIP_BEFORE_TICKS, end = record.tick + CLIP_AFTER_TICKS;
+  const existing = moment.clips.find(c => start <= c.endTick && end >= c.startTick);
+  if (existing) {
+    existing.startTick = Math.min(existing.startTick, start);
+    existing.endTick = Math.max(existing.endTick, end);
+    if (!existing.rootIds.includes(record.rootId)) existing.rootIds.push(record.rootId);
+    existing.names = [...new Set([...existing.names, record.name])].slice(0, 8);
+    existing.peakScore = Math.max(existing.peakScore, record.peakScore);
+    existing.keyTicks = [...new Set([...existing.keyTicks, record.tick])].slice(0, 8);
+    existing.latestTick = record.tick;
+    return { marker: existing, merged: true };
+  }
+  const marker = { id: `clip:${record.rootId}:${record.tick}`, rootIds: [record.rootId], trickId: record.trickId, names: [record.name],
+    startTick: start, endTick: end, keyTicks: [record.tick], latestTick: record.tick, peakScore: record.peakScore,
+    collateralCount: finiteNum(trick.modifiers?.collateralCount, 1), episodeId: record.episodeId,
+    videoStatus: 'unavailable', videoBytes: 0, playback: CLIP_PLAYBACK, pinned: false,
+    retention: { clips: CLIP_RETAIN_MAX, bytes: CLIP_RETAIN_BYTES } };
+  moment.clips.push(marker);
+  while (moment.clips.filter(c => !c.pinned).length > CLIP_RETAIN_MAX) {
+    const oldest = moment.clips.findIndex(c => !c.pinned);
+    moment.clips.splice(oldest, 1);
+  }
+  return { marker, merged: false };
+}
+
 function ensureMoment(state) {
   const root = state.stunts || (state.stunts = {});
   if (!root.moment || typeof root.moment !== 'object') {
@@ -342,6 +386,7 @@ function ensureMoment(state) {
   }
   const moment = root.moment;
   if (!Array.isArray(moment.recentMoments)) moment.recentMoments = [];
+  if (!Array.isArray(moment.clips)) moment.clips = [];
   if (!moment.seenEpisodes || moment.seenEpisodes instanceof Map) moment.seenEpisodes = {};
   (state.massline2 ||= {}).moment=moment;
   if (!Number.isFinite(Number(moment.pulseUntil))) moment.pulseUntil = 0;

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {createBus} from '../src/core/eventBus.js';
 import {createGameState} from '../src/core/gameState.js';
 import {createTimeEffects} from '../src/core/timeEffects.js';
-import {bulletTime,rateMoment,MOMENT_EVENT} from '../src/systems/bulletTime.js';
+import {bulletTime,rateMoment,MOMENT_EVENT,markMomentClip,CLIP_BEFORE_TICKS,CLIP_AFTER_TICKS,CLIP_RETAIN_MAX} from '../src/systems/bulletTime.js';
 function receipt(id='one_two',time=13,changes={}) {
   return {trickId:id,name:id,rarity:'rare',actorId:0,targetId:1,secondaryIds:[2],
     episodeId:`root:${id}:${time}`,rootId:`root:${id}:${time}`,rootTick:time*60-120,tick:time*60,
@@ -57,6 +57,37 @@ test('twelve second cooldown, thirty second primary quiet and three per minute l
     for(const [id,time] of [['one_two',13],['bolas',14],['one_two',26],['bolas',28],['kickstart',49],['well_golf',62]])h.emit(receipt(id,time));
     assert.deepEqual(h.seen.moments.map(r=>r.simTime),[13,28,49]);
   }finally{h.close();}
+});
+test('clip markers: the recorder sees suppressed tricks, overlaps merge, video is truthfully unavailable',()=>{
+  const h=boot();try{
+    const marked=[],merged=[];
+    h.bus.on('moment:clipMarked',m=>marked.push(m));h.bus.on('moment:clipMerged',m=>merged.push(m));
+    h.emit(receipt('one_two',13));
+    // Two seconds later: inside the 12 s presentation cooldown — no moment, no stinger — but the
+    // recorder still gets the footage by merging into the overlapping window.
+    h.emit(receipt('bolas',15,{rarity:'uncommon',metrics:{availableMomentum:960,referenceMomentum:400},modifiers:{collateralCount:2}}));
+    assert.equal(h.seen.moments.length,1);assert.equal(h.seen.cues.length,1);
+    assert.equal(marked.length,1);assert.equal(merged.length,1);
+    const clip=marked[0];
+    assert.equal(clip.startTick,13*60-CLIP_BEFORE_TICKS);
+    assert.equal(clip.endTick,15*60+CLIP_AFTER_TICKS);
+    assert.equal(clip.rootIds.length,2);
+    assert.equal(clip.videoStatus,'unavailable');assert.equal(clip.videoBytes,0);
+    assert.equal(clip.playback.slowScale,0.35);assert.equal(clip.playback.slowSourceSeconds,0.70);
+    assert.equal(h.state.stunts.moment.clips.length,1);
+  }finally{h.close();}
+});
+test('clip retention keeps the newest five automatic markers and never evicts pinned footage',()=>{
+  const moment={clips:[]};
+  const base={trickId:'one_two',name:'One-Two',episodeId:'e',peakScore:4};
+  for(let i=0;i<7;i++)markMomentClip(moment,{...base,rootId:`r${i}`,tick:1000+i*900});
+  assert.equal(moment.clips.length,CLIP_RETAIN_MAX);
+  assert.deepEqual(moment.clips.map(c=>c.rootIds[0]),['r2','r3','r4','r5','r6']);
+  moment.clips[0].pinned=true;
+  for(let i=7;i<13;i++)markMomentClip(moment,{...base,rootId:`r${i}`,tick:1000+i*900});
+  assert.equal(moment.clips.length,CLIP_RETAIN_MAX+1);
+  assert.equal(moment.clips[0].rootIds[0],'r2');
+  assert.deepEqual(moment.clips.slice(1).map(c=>c.rootIds[0]),['r8','r9','r10','r11','r12']);
 });
 test('serialized moment history prevents an already delivered root firing after restore',()=>{
   const h=boot();try{
