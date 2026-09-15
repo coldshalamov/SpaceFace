@@ -825,10 +825,27 @@ export const save = {
       localStorage.setItem(primaryKey, json);
       storageMs = nowMs() - t;
     } catch (err) {
-      // QuotaExceeded or storage disabled — suggest export-to-file fallback.
-      const reason = (err && err.name === 'QuotaExceededError') ? 'quota' : 'write_failed';
-      console.error('[save] write failed', err);
-      return { ok: false, reason, bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
+      if (err && err.name === 'QuotaExceededError' && previousRaw) {
+        // The recovery rotation above doubled this slot's footprint. The previous primary is
+        // still intact underneath, so sacrifice the just-written recovery copy and retry once —
+        // a lost backup beats a lost save (release soak hit this at 5MB localStorage quota).
+        try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep retrying anyway */ }
+        try {
+          const t = nowMs();
+          localStorage.setItem(primaryKey, json);
+          storageMs = nowMs() - t;
+        } catch (retryErr) {
+          try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ }
+          const reason = (retryErr && retryErr.name === 'QuotaExceededError') ? 'quota' : 'write_failed';
+          console.error('[save] write failed', retryErr);
+          return { ok: false, reason, bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
+        }
+      } else {
+        // QuotaExceeded or storage disabled — suggest export-to-file fallback.
+        const reason = (err && err.name === 'QuotaExceededError') ? 'quota' : 'write_failed';
+        console.error('[save] write failed', err);
+        return { ok: false, reason, bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
+      }
     }
 
     // localStorage.setItem is normally atomic, but read-back validation catches storage shims,
@@ -3113,6 +3130,20 @@ export const save = {
       throw new Error('persistent_entity_limit');
     }
     const state = this.state;
+    // Sector regen deliberately keeps flags.persistent actors alive, so on load they are still
+    // standing when the saved copies arrive. The envelope is authoritative: clear the survivors
+    // first or every save→load roundtrip spawns a duplicate generation (save size grew ~+40KB
+    // per quick-load in the release soak until the 5MB localStorage quota refused writes).
+    const removeEntity = this.helpers && this.helpers.removeEntity;
+    if (typeof removeEntity === 'function') {
+      const staleIds = [];
+      for (const e of state.entityList) {
+        if (!e || e.id === state.playerId || e.isPlayer) continue;
+        const persistent = (e.flags && e.flags.persistent) || (e.data && e.data.persistent);
+        if (persistent) staleIds.push(e.id);
+      }
+      for (const id of staleIds) removeEntity(id, { immediate: true });
+    }
     for (const saved of savedList) {
       if (!saved || typeof saved !== 'object') continue;
       const spec = clonePlain(saved);
