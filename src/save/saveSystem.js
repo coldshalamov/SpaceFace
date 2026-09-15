@@ -812,11 +812,26 @@ export const save = {
     // Refuse to destroy the last known-good generation when storage cannot preserve it. A corrupt
     // primary is never rotated over an existing good recovery copy.
     if (previousRaw) previousPrepared = this._prepareEnvelopeString(previousRaw);
+    let backupCreated = false;
     if (previousPrepared && previousPrepared.ok) {
-      try { localStorage.setItem(recoveryKey, previousRaw); }
+      try {
+        localStorage.setItem(recoveryKey, previousRaw);
+        backupCreated = true;
+      }
       catch (err) {
-        const reason = (err && err.name === 'QuotaExceededError') ? 'backup_quota' : 'backup_write_failed';
-        return { ok: false, reason, bytes: json.length, stringifyMs, storageMs, indexMs };
+        if (err && err.name === 'QuotaExceededError') {
+          // The rotation doubles this slot's footprint only transiently; the stale recovery
+          // copy is the cheapest thing to free. Sacrifice it and retry once — a lost backup
+          // beats a lost save. If it still will not fit, proceed to the primary write: the
+          // read-back verify + rollback below protects the previous primary either way.
+          try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep going */ }
+          try {
+            localStorage.setItem(recoveryKey, previousRaw);
+            backupCreated = true;
+          } catch (_) { /* recovery sacrificed; primary still owns the save */ }
+        } else {
+          return { ok: false, reason: 'backup_write_failed', bytes: json.length, stringifyMs, storageMs, indexMs };
+        }
       }
     }
 
@@ -876,8 +891,8 @@ export const save = {
       stringifyMs,
       storageMs,
       indexMs,
-      backupCreated: !!(previousPrepared && previousPrepared.ok),
-      backupSavedAt: previousPrepared && previousPrepared.ok ? previousPrepared.env.savedAt || null : null,
+      backupCreated,
+      backupSavedAt: backupCreated && previousPrepared.ok ? previousPrepared.env.savedAt || null : null,
     };
   },
 
@@ -2167,13 +2182,22 @@ export const save = {
     if (!this._autosaveTransactionCurrent(job, snapshot, tx)) return false;
     const started = workNowMs();
     if (tx.previousRaw && tx.previousValid) {
-      try { localStorage.setItem(RECOVERY_PREFIX + AUTOSAVE_SLOT, tx.previousRaw); }
-      catch (error) {
-        const failureMs = workNowMs() - started;
-        tx.backupMs += failureMs;
-        this._pushAutosaveSlice(tx, 'storage_write_backup_error', failureMs);
-        const reason = error && error.name === 'QuotaExceededError' ? 'backup_quota' : 'backup_write_failed';
-        return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason });
+      const recoveryKey = RECOVERY_PREFIX + AUTOSAVE_SLOT;
+      try {
+        localStorage.setItem(recoveryKey, tx.previousRaw);
+      } catch (error) {
+        if (error && error.name === 'QuotaExceededError') {
+          // Sacrifice the stale recovery copy and retry once — a lost backup beats a lost
+          // save. If it still will not fit, continue to the primary write; the read-back
+          // verify + rollback in _autosaveReadback protects the previous primary either way.
+          try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep going */ }
+          try { localStorage.setItem(recoveryKey, tx.previousRaw); } catch (_) { /* sacrificed */ }
+        } else {
+          const failureMs = workNowMs() - started;
+          tx.backupMs += failureMs;
+          this._pushAutosaveSlice(tx, 'storage_write_backup_error', failureMs);
+          return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: 'backup_write_failed' });
+        }
       }
     }
     const sliceMs = workNowMs() - started;

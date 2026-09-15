@@ -37,6 +37,13 @@ const DURABLE_KINDS = new Set(Object.values(RECORD_KIND));
 
 /** Max durable records retained per sector (evict oldest by lastSeenTick). */
 export const MAX_RECORDS_PER_SECTOR = 48;
+// Ambient convoy churn is bounded separately from the shared per-sector ceiling: the ledger
+// keeps at most this many ALIVE convoy records per sector. Existing identities always
+// refresh; only first-time convoy captures count against the cap, so excess live haulers
+// stay ambient and simply do not persist. (Release soak: top-up stamped a fresh
+// worldRecordId for every load's replacement batch — ~+8 records/roundtrip — until the
+// 5MB localStorage quota refused writes around cycle ~94.)
+export const MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR = 24;
 
 /** Generic observed actors stay as recent-memory this long (simTime seconds). */
 export const RECENT_MEMORY_WINDOW_S = 180;

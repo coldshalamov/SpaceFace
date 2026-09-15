@@ -100,6 +100,7 @@ import {
   sectorMembershipAtGlobal,
 } from '../data/sectorCoordinates.js';
 import {
+  MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR,
   RECORD_KIND,
   applyRecordVitals,
   bindEntityToRecord,
@@ -1013,6 +1014,23 @@ export const world = {
         }
       }
     }
+    // Alive-convoy ledger bound (MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR). Counted lazily once
+    // per capture pass; an existing record id always refreshes, only first-time convoy
+    // captures spend slots. A hull skipped by the cap stays live ambience — it is not
+    // persisted and must not keep the phantom record id it was stamped with.
+    let aliveConvoyRecords = -1;
+    const countAliveConvoyRecords = () => {
+      if (aliveConvoyRecords < 0) {
+        aliveConvoyRecords = 0;
+        for (const r of recordsForSector(bag, sectorId)) {
+          if (r && r.kind === RECORD_KIND.CONVOY && r.alive !== false
+            && r.outcome !== 'destroyed' && r.outcome !== 'defeated') {
+            aliveConvoyRecords++;
+          }
+        }
+      }
+      return aliveConvoyRecords;
+    };
     forEachLivingWorldActor(state, (e) => {
       // The bounded entrance run lives under its rumor record, never in two save owners.
       if (e.data?.tethysEntranceRunId === TETHYS_BLACK_MARKET_RUN.runId) return;
@@ -1040,6 +1058,13 @@ export const world = {
           : null,
       });
       if (!captured) return;
+      if (captured.kind === RECORD_KIND.CONVOY && !bag.byId[captured.recordId]) {
+        if (countAliveConvoyRecords() >= MAX_ALIVE_CONVOY_RECORDS_PER_SECTOR) {
+          if (e.data && e.data.worldRecordId === captured.recordId) delete e.data.worldRecordId;
+          return;
+        }
+        aliveConvoyRecords++;
+      }
       upsertRecord(bag, captured);
       if (e.data) e.data.worldRecordId = captured.recordId;
     });

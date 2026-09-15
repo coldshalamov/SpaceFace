@@ -63,6 +63,7 @@ function makeStorage() {
   const operations = [];
   let corruptNextPrimary = false;
   let failNextRecovery = false;
+  let failAllRecovery = false;
   return {
     get length() { return values.size; },
     key(index) { return Array.from(values.keys())[index] ?? null; },
@@ -71,6 +72,11 @@ function makeStorage() {
       key = String(key);
       value = String(value);
       operations.push(['set', key]);
+      if (failAllRecovery && key.startsWith('sf.recovery.')) {
+        const error = new Error('quota');
+        error.name = 'QuotaExceededError';
+        throw error;
+      }
       if (failNextRecovery && key.startsWith('sf.recovery.')) {
         failNextRecovery = false;
         const error = new Error('quota');
@@ -88,6 +94,7 @@ function makeStorage() {
     clear() { values.clear(); },
     corruptNextPrimaryWrite() { corruptNextPrimary = true; },
     failNextRecoveryWrite() { failNextRecovery = true; },
+    failAllRecoveryWrites() { failAllRecovery = true; },
     operations() { return operations.slice(); },
     clearOperations() { operations.length = 0; },
   };
@@ -279,17 +286,38 @@ test('read-back verification rolls a truncated primary write back to the previou
   } finally { h.restore(); }
 });
 
-test('backup quota failure refuses to overwrite the current playable generation', () => {
+test('backup quota failure retries once and still lands the save', () => {
   const storage = makeStorage();
   const h = installHarness(storage);
   try {
     const oldRaw = JSON.stringify(makeEnvelope({ savedAt: '2026-07-12T00:00:00.000Z' }));
     storage.setItem('sf.save.quick', oldRaw);
     storage.failNextRecoveryWrite();
-    const result = save._writeSlot('quick', makeEnvelope({ savedAt: '2026-07-12T00:20:00.000Z' }));
-    assert.equal(result.ok, false);
-    assert.equal(result.reason, 'backup_quota');
-    assert.equal(storage.getItem('sf.save.quick'), oldRaw);
+    const next = makeEnvelope({ savedAt: '2026-07-12T00:20:00.000Z' });
+    const result = save._writeSlot('quick', next);
+    // A transient quota refusal frees the stale recovery and retries: the backup still
+    // lands, and the new primary is written — a lost backup must never cost the save.
+    assert.equal(result.ok, true);
+    assert.equal(result.backupCreated, true);
+    assert.equal(storage.getItem('sf.recovery.quick'), oldRaw);
+    assert.equal(storage.getItem('sf.save.quick'), JSON.stringify(next));
+  } finally { h.restore(); }
+});
+
+test('persistent backup quota sacrifices the recovery copy but never the save', () => {
+  const storage = makeStorage();
+  const h = installHarness(storage);
+  try {
+    const oldRaw = JSON.stringify(makeEnvelope({ savedAt: '2026-07-12T00:00:00.000Z' }));
+    storage.setItem('sf.save.quick', oldRaw);
+    storage.setItem('sf.recovery.quick', oldRaw);
+    storage.failAllRecoveryWrites();
+    const next = makeEnvelope({ savedAt: '2026-07-12T00:20:00.000Z' });
+    const result = save._writeSlot('quick', next);
+    assert.equal(result.ok, true);
+    assert.equal(result.backupCreated, false);
+    assert.equal(storage.getItem('sf.recovery.quick'), null);
+    assert.equal(storage.getItem('sf.save.quick'), JSON.stringify(next));
   } finally { h.restore(); }
 });
 
