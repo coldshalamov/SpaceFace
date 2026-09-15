@@ -659,6 +659,20 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
         const lostByContext = new WeakMap();
         const mintedDeadByContext = new WeakMap();
         const deleted = new WeakSet();
+        // Liveness authority: if warnings fire while `calls` stays flat the hits never reach this
+        // realm's prototypes (worker/isolated-world bypass), which no amount of handle bookkeeping
+        // can attribute. The heartbeat keeps the distinction provable from the console stream.
+        const traceState = { calls: 0, nullish: 0, logged: 0 };
+        const callerCensus = new Map();
+        try { globalThis.__SF_GL_TRACE__ = traceState; } catch (_) { /* read-only globalThis */ }
+        try {
+          setInterval(() => {
+            if (traceState.calls !== traceState.logged) {
+              traceState.logged = traceState.calls;
+              console.warn(`[gl-trace] heartbeat calls=${traceState.calls} nullish=${traceState.nullish}`);
+            }
+          }, 5000);
+        } catch (_) { /* heartbeat is best-effort */ }
         const liveSetFor = (ctx) => {
           let set = liveByContext.get(ctx);
           if (!set) { set = new WeakSet(); liveByContext.set(ctx, set); }
@@ -736,12 +750,14 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
             return origDel.call(this, program);
           };
           proto.getProgramParameter = function getProgramParameterTraced(program, pname) {
+            traceState.calls += 1;
             const kind = classify(this, program);
             // A live-set handle can still fail driver-side: programs minted (or polled) while the
             // context sits inside its lost window are JS objects the driver never registered.
             // isContextLost() has no GL side effects, so it is safe to check per call.
             const lostNow = typeof this.isContextLost === 'function' && this.isContextLost() === true;
             const result = origGet.call(this, program, pname);
+            if (result == null) traceState.nullish += 1;
             // Catch-all independent of handle bookkeeping: Chrome returns null (not
             // undefined) for getProgramParameter on an invalid object, so a nullish result
             // IS the driver rejection — whatever the provenance sets missed. Every pname
@@ -754,6 +770,23 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
                 result: result === null ? 'null' : result === undefined ? 'undefined' : typeof result,
                 stack: (new Error().stack || '').split('\n').slice(2, 10).join(' | '),
               });
+            } else if (pname === 0x8B82 /* LINK_STATUS */ || pname === 0x82B4 /* COMPLETION_STATUS_KHR */
+                || pname === 0x8B89 /* ACTIVE_ATTRIBUTES */ || pname === 0x8B86 /* ACTIVE_UNIFORMS */) {
+              // Caller census: every program-status query gets logged once per unique stack, so a
+              // warn-emitting call site can never hide behind a successful-looking return value.
+              const stack = (new Error().stack || '').split('\n').slice(2, 8).join(' | ');
+              const seen = callerCensus.get(stack) || 0;
+              if (seen < 3) {
+                callerCensus.set(stack, seen + 1);
+                console.warn(`[gl-trace] program-status query #${seen + 1}`, {
+                  t: Math.round(performance.now()),
+                  pname: '0x' + pname.toString(16),
+                  kind: kind || 'live',
+                  stack,
+                });
+              } else {
+                callerCensus.set(stack, seen + 1);
+              }
             }
             return result;
           };

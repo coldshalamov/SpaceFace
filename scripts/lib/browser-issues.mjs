@@ -22,6 +22,12 @@ export function collectPageIssues(page, options = {}) {
   });
   page.on('console', (msg) => {
     const issue = { type: msg.type(), text: msg.text(), at: new Date().toISOString() };
+    try {
+      const loc = typeof msg.location === 'function' ? msg.location() : null;
+      if (loc && (loc.url || loc.lineNumber > 0)) {
+        issue.loc = `${loc.url || ''}:${loc.lineNumber | 0}:${loc.columnNumber | 0}`;
+      }
+    } catch (_) { /* location is best-effort attribution only */ }
     if (isGenericResourceLoadConsoleError(issue)) return;
     if (isIgnorableWebglValidation(issue) || (ignoreProbeWarnings && isProbeInducedWarning(issue))) {
       ignoredIssues.push(issue);
