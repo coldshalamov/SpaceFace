@@ -55,10 +55,11 @@ function guardFirstUse(program, gl, report) {
   guardedPrograms.add(program);
   const getUniforms = program.getUniforms;
   const getAttributes = program.getAttributes;
+  const generation = contextLossGeneration(gl);
   const beforeFirstUse = (self) => {
     self.getUniforms = getUniforms;
     self.getAttributes = getAttributes;
-    checkLinkStatus(self, gl, report);
+    checkLinkStatus(self, gl, report, generation);
   };
   program.getUniforms = function getUniformsAfterLinkCheck() {
     beforeFirstUse(this);
@@ -76,7 +77,6 @@ function guardFirstUse(program, gl, report) {
   // real draw, and no waiter should keep polling a handle that cannot finish.
   const isReady = program.isReady;
   if (typeof isReady === 'function') {
-    const generation = contextLossGeneration(gl);
     program.isReady = function isReadyContextSafe() {
       try {
         if (typeof gl.isContextLost === 'function' && gl.isContextLost()) return true;
@@ -87,11 +87,15 @@ function guardFirstUse(program, gl, report) {
   }
 }
 
-function checkLinkStatus(program, gl, report) {
+function checkLinkStatus(program, gl, report, generation) {
   if (!program.program) return;
   let linked = true;
   try {
     if (typeof gl.isContextLost === 'function' && gl.isContextLost()) return;
+    // A handle minted before a context loss is never a valid query target after it: the restored
+    // driver no longer recognises the object and glGetProgramiv warns GL_INVALID_VALUE. The program
+    // is rebuilt from the material's next real draw; there is no link status left to read.
+    if (programHandleContext(gl).generation !== generation) return;
     linked = gl.getProgramParameter(program.program, gl.LINK_STATUS) !== false;
   } catch (_) {
     return;
