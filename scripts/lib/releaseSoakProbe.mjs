@@ -355,6 +355,34 @@ export async function runReleaseSoakProbe({
       await page.evaluate(async () => {
         if (window.__SF_GEO_CENSUS__) return;
         const T = await import('three');
+        // DIAG: template-cache churn sample — is the flight-root template keyspace growing
+        // across F9 cycles (cache misses) or are hits reusing entries?
+        try {
+          const plib = await import('/src/render/partsLibrary.js');
+          const seenKeys = new Set();
+          const keyTextByHash = new Map();
+          window.__SF_TEMPLATE_CENSUS__ = {
+            sample() {
+              const diag = plib.getFlightRootTemplateCacheDiagnostics?.();
+              if (!diag) return null;
+              const hash = (s) => {
+                let h = 0x811c9dc5;
+                for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+                return h.toString(36);
+              };
+              const freshKeys = [];
+              for (const key of diag.keys || []) {
+                const kh = hash(key);
+                if (!seenKeys.has(kh)) {
+                  seenKeys.add(kh);
+                  keyTextByHash.set(kh, key);
+                  if (freshKeys.length < 6) freshKeys.push(key);
+                }
+              }
+              return { size: diag.size, uniqueKeysSeen: seenKeys.size, freshKeys };
+            },
+          };
+        } catch (_) { /* best effort */ }
         const live = new Map();
         const liveByStack = new Map();
         const state = { created: 0, disposed: 0, live };
@@ -465,11 +493,18 @@ export async function runReleaseSoakProbe({
         // gameplay hitches would be misfiled as transition spans and pass leniently.
         await setSoakTransition(page, null);
       }
-      memoryCheckpoints.push(await withTimeout(
+      const checkpoint = await withTimeout(
         readPostGcMemorySnapshot(page, `docked-market-cycle-${index + 1}`),
         30_000,
         `release-soak memory checkpoint ${index + 1}`,
-      ));
+      );
+      memoryCheckpoints.push(checkpoint);
+      if (checkpoint && checkpoint.templateCache) {
+        doLog(`[template-cache] cycle ${index + 1} size=${checkpoint.templateCache.size} uniqueKeysSeen=${checkpoint.templateCache.uniqueKeysSeen} geoLive=${checkpoint.geoCensus ? checkpoint.geoCensus.live : '?'}`);
+        for (const key of checkpoint.templateCache.freshKeys || []) {
+          doLog(`[template-cache] fresh-key: ${key}`);
+        }
+      }
       index += 1;
     }
     doLog(`soak cycles complete: ${cycleResults.length} cycles in ${((Date.now() - soakStartedAt) / 60_000).toFixed(1)} min`);
@@ -3567,6 +3602,7 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
         disposed: window.__SF_GEO_CENSUS__.disposed,
         topStacks: window.__SF_GEO_CENSUS__.topStacks(),
       } : null,
+      templateCache: window.__SF_TEMPLATE_CENSUS__ ? window.__SF_TEMPLATE_CENSUS__.sample() : null,
       texCensus: window.__SF_TEX_CENSUS__ ? {
         increments: window.__SF_TEX_CENSUS__.increments,
         decrements: window.__SF_TEX_CENSUS__.decrements,
@@ -5381,6 +5417,41 @@ async function runPerformanceAttributionProbe({
     const failureMessage = error?.message || String(error);
     doLog(`FAIL ${error?.routePhase || 'probe'}: ${failureMessage}`);
     doLog(`cleanup pass=${cleanupValidation.pass} measurementDisabled=${measurementDisabled}`);
+    // The collected page issues are the only place a route-time mount failure leaves its
+    // console trail; the failure JSON below can itself die on artifact validation, so log
+    // them unconditionally here before anything else can throw.
+    for (const issue of (errors?.pageErrors || []).concat(errors?.consoleErrors || [], errors?.warnings || []).slice(-40)) {
+      doLog(`page-issue: ${String(issue).slice(0, 500)}`);
+    }
+    // DIAG (worktree-only): a "screen never mounted" failure carries no console trail. Dump the
+    // live screen-stack picture so we can tell never-pushed from pushed-then-hidden.
+    if (page && !page.isClosed()) {
+      const screenState = await page.evaluate(() => {
+        const st = window.SF?.state;
+        const screens = [...document.querySelectorAll('[data-screen]')].map((el) => ({
+          id: el.getAttribute('data-screen'),
+          display: el.style.display || null,
+          visible: !!(el.offsetWidth || el.offsetHeight),
+          ariaHidden: el.getAttribute('aria-hidden'),
+        }));
+        return {
+          docked: st?.ui?.docked ?? null,
+          dockedStationId: st?.ui?.dockedStationId ?? null,
+          mode: st?.mode ?? null,
+          dockInRange: st?.ui?.dockInRange ?? null,
+          dockDeny: st?.ui?.dockDeny ?? null,
+          confirmOpen: !!document.querySelector('.sf-confirm, [data-confirm]'),
+          blackout: st?.ui?.fulfillmentBlackoutActive ?? null,
+          stageRequest: st?.ui?.stageRequest ? { scene: st.ui.stageRequest.scene } : null,
+          stage: window.__SF_UI_STAGE__ ? window.__SF_UI_STAGE__() : null,
+          corridor: st?.dockingCorridor ? { phase: st.dockingCorridor.phase, stationId: st.dockingCorridor.stationId, distToBerth: st.dockingCorridor.distToBerth } : null,
+          screens,
+          screensRootDisplay: document.getElementById('screens')?.style?.display ?? null,
+          activeElement: document.activeElement?.tagName + '.' + (document.activeElement?.className || ''),
+        };
+      }).catch((e) => ({ evalError: String(e && e.message || e) }));
+      doLog(`screen-state: ${JSON.stringify(screenState)}`);
+    }
     await writeFile(path.join(outputDir, 'run.log'), `${logLines.join('\n')}\n`, 'utf8');
     const artifactValidation = await validateArtifactFiles(
       root,
