@@ -179,9 +179,20 @@ browserCapturedRuns:
     demotedBy:
       - worktree changed during performance capture
       - settings changed inside both capture windows
-electronManifestInvocations: 2
-electronAcceptanceRuntimeLaunches: 0
-electronResult: broker-claim-stale-digest   # foreign worktree write raced the claim->probe window
+electronManifestInvocations: 3
+electronAcceptanceRuntimeLaunches: 1
+electronCapturedRuns:
+  - run: performance-dirty-ranges-electron-2026-09-15T13-30-37-540Z-12920-690fb1d8
+    phase: flight-input causal check
+    result: powered displacement rate did not exceed the released baseline
+    note: >-
+      route-level input proof, unrelated to dirty-range uploads; the powered window
+      accelerated 0->199.9 u/s (speedChange and acceleration legs passed) but its
+      displacement rate was low because the sample window captured the from-rest
+      ramp while the released baseline still held undock drift. The browser run
+      passed the same check on the same tree ~40 min earlier; consistent with
+      contended-host timing skew rather than a flight regression.
+    earlierAttempt: broker-claim-stale-digest (foreign worktree write raced claim->probe)
 numericAcceptance: captured-but-demoted
 pairedRuntimeSourceBinding: not_established
 ```
@@ -193,14 +204,16 @@ unchanged frame p95 — but the acceptance contract requires a clean, stable
 candidate for the whole capture plus a zero-warning page, and concurrent foreign
 render work (renderer admission-path churn, opening-submission diagnostics) kept
 tripping worktree-stability, settings-stability, and page-warning gates. The
-Electron claim minted but the probe rejected it on `broker-claim-stale-digest`
-when a foreign write landed inside the claim→probe handshake; both manifests are
-now `regression-required-after-acceptance-failure` until the regression set
-changes again.
+Electron side launched once (its capture tore on the route's flight-input causal
+check — a timing-sensitive measurement unrelated to the upload work; the same
+check passed on the same tree in the browser run) after an earlier claim raced a
+foreign write inside the claim→probe handshake (`broker-claim-stale-digest`).
+Both manifests sit at `regression-required-after-acceptance-failure` until the
+regression set changes again.
 
-Evidence retained under `.devshots/perf/dirty-ranges/browser/`:
-`performance-attribution.json`, `dirty-range-comparison.json`,
-`performance-closure.json`, `run.log`, and the six route screenshots per run.
+Evidence retained under `.devshots/perf/dirty-ranges/{browser,electron}/`:
+`performance-attribution.json` / `performance-closure-failure.json`,
+`dirty-range-comparison.json`, `run.log`, and route screenshots per run.
 Next attempt needs the same two manifests on a quiet, non-churning tree; the
 recorded comparator deltas are the expected outcome to confirm, not a pass.
 

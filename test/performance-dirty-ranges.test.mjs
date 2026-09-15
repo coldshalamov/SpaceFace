@@ -516,12 +516,20 @@ test('paired dirty-range manifests bind one scenario and source candidate to dis
     const registered = await loadValidationManifestById({ root: ROOT, id });
     assert.equal(registered.id, id);
   }
-  const [browser, electron] = await Promise.all([
-    computeGateDigestsFromManifest({ root: ROOT, manifest: browserManifest }),
-    computeGateDigestsFromManifest({ root: ROOT, manifest: electronManifest }),
-  ]);
-  assert.equal(browser.sourceCandidateDigest, electron.sourceCandidateDigest);
-  assert.equal(browser.worktreeDigest, electron.worktreeDigest);
+  // The candidate/worktree digests hash the live tree, so a foreign write landing between
+  // the two manifest computations flakes an otherwise-static pairing contract. Retry the
+  // pair until one stable read shows them equal; only the persistent identity fields must
+  // differ (runtimeKind, manifest).
+  let browser = null;
+  let electron = null;
+  let stable = false;
+  for (let attempt = 0; attempt < 6 && !stable; attempt++) {
+    browser = await computeGateDigestsFromManifest({ root: ROOT, manifest: browserManifest });
+    electron = await computeGateDigestsFromManifest({ root: ROOT, manifest: electronManifest });
+    stable = browser.sourceCandidateDigest === electron.sourceCandidateDigest
+      && browser.worktreeDigest === electron.worktreeDigest;
+  }
+  assert.ok(stable, 'browser and electron manifests never bound the same source candidate within 6 reads');
   assert.notEqual(browser.candidateDigest, electron.candidateDigest);
   assert.notEqual(browser.manifestDigest, electron.manifestDigest);
 });
