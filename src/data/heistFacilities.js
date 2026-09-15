@@ -94,6 +94,106 @@ export const PQ019_CAPSULE = Object.freeze({
   launchSpeed: 100,
 });
 
+// ── BREAKAWAY: the SP-07 flywheel assembly and its capture fork ─────────────────────────────────
+//
+// A configured VARIANT of the scheduled launch above — not a second launcher and not a second
+// mission engine. The same Tethys launcher throws a heavier industrial load OFF the catcher line
+// (the "breakaway"), and the lawful catcher's dock approach becomes a physical capture fork: the
+// load must be brought through the fork's open end under its speed limit, braked by bounded force,
+// and settled before custody can pass. Candidate values come from the BREAKAWAY packet (the mass is
+// inherited from the capsule's confirmed tuning); scale and visual review against the shipping
+// camera remain open.
+export const BREAKAWAY_SP07 = Object.freeze({
+  stableId: 'payload_sp07',
+  name: 'SP-07 flywheel assembly',
+  radius: 16,
+  mass: 180,
+  // A durable cage, three times the capsule: using the load as a tool must not destroy the job.
+  hull: 480,
+  // Interim released visual. The authored SP-07 GLB is a source candidate pending asset review.
+  authoredPayloadAssetId: 'pod_cargo_container',
+  legalOwnerFactionId: 'faction_mts',
+  ownerId: 'facility:heist_launcher',
+  launchSpeed: 60,
+  // Radians off the launcher→catcher line. The load passes the catcher more than a kilometre wide,
+  // so it can never deliver itself: every delivery is a recovery somebody flew.
+  launchHeadingOffsetRad: 0.6,
+  // Physical Y spin at release (rad/s): above the fork's settle limit, so a tumbling load cannot
+  // count as settled until something takes the spin out of it.
+  launchSpinRadS: 0.5,
+});
+
+export const BREAKAWAY_CAPTURE_FORK = Object.freeze({
+  id: 'breakaway_fork_lawful_catcher',
+  facilityId: 'lawful_catcher',
+  // Inner rail half-width and usable bay depth. A 16 WU load has 22 WU of total lateral clearance.
+  halfWidth: 27,
+  depth: 72,
+  maxEntrySpeed: 100,
+  maxLateralSpeed: 50,
+  settleSpeed: 8,
+  settleOmega: 0.45,
+  settleTicks: 21,
+  maxForce: 36000,
+  dampingRate: 5,
+  maxTorque: 180000,
+  angularDampingRate: 6,
+  // Gap between the bay's rear face and the catcher's static custody head, which is the physical
+  // rear stop. The mouth itself is never a wall.
+  rearClearanceWu: 4,
+});
+
+export const HEIST_CAPSULE_RUN_VARIANT_ID = 'capsule_run';
+export const BREAKAWAY_THIRD_SHIFT_VARIANT_ID = 'breakaway_third_shift';
+
+export const HEIST_LAUNCH_VARIANTS = Object.freeze({
+  [HEIST_CAPSULE_RUN_VARIANT_ID]: Object.freeze({
+    id: HEIST_CAPSULE_RUN_VARIANT_ID,
+    payload: PQ019_CAPSULE,
+    custody: 'contact',
+    fork: null,
+  }),
+  [BREAKAWAY_THIRD_SHIFT_VARIANT_ID]: Object.freeze({
+    id: BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
+    payload: BREAKAWAY_SP07,
+    custody: 'capture_fork',
+    fork: BREAKAWAY_CAPTURE_FORK,
+  }),
+});
+
+/** The launch variant for a schedule. Absent or unknown ids are the historical Capsule Run. */
+export function heistLaunchVariant(variantId) {
+  return (typeof variantId === 'string' && HEIST_LAUNCH_VARIANTS[variantId])
+    || HEIST_LAUNCH_VARIANTS[HEIST_CAPSULE_RUN_VARIANT_ID];
+}
+
+export function isKnownHeistLaunchVariantId(variantId) {
+  return typeof variantId === 'string'
+    && Object.prototype.hasOwnProperty.call(HEIST_LAUNCH_VARIANTS, variantId);
+}
+
+export function isHeistPayloadStableId(stableId) {
+  return Object.values(HEIST_LAUNCH_VARIANTS).some((variant) => variant.payload.stableId === stableId);
+}
+
+/**
+ * Sector-local mouth origin and INWARD normal of a capture fork.
+ *
+ * Derived from the same socket projection the facility's custody head uses, so the fork, the head
+ * that acts as its rear stop, and the navigation marker cannot disagree. Every PQ-019 receiver's
+ * authored yaw points its dock approach back out along the launch line (the catcher faces the
+ * launcher), so the fork's inward normal is the reverse of that yaw.
+ */
+export function projectBreakawayForkMouth(fork = BREAKAWAY_CAPTURE_FORK) {
+  const facility = PQ019_FACILITIES[fork.facilityId];
+  if (!facility) throw new Error(`Unknown capture fork facility ${fork.facilityId}`);
+  const socket = projectPq019FacilitySocket(facility);
+  const nx = -Math.cos(facility.rot);
+  const nz = -Math.sin(facility.rot);
+  const back = fork.depth + facility.headRadius + fork.rearClearanceWu;
+  return { x: socket.x - nx * back, z: socket.z - nz * back, nx, nz };
+}
+
 export const PQ019_FACILITY_POIS = Object.freeze(
   Object.values(PQ019_FACILITIES).map((facility) => Object.freeze({
     id: facility.id,
