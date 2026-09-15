@@ -188,6 +188,8 @@ let lastStatus = 'idle';
 let lastScene = null;
 let lastError = null;
 let idleFrames = 0;
+let stageScene = null;
+let stageCamera = null;
 
 /** How long a requested-nothing stage is kept alive before its GPU memory goes back. */
 const IDLE_RELEASE_FRAMES = 90;
@@ -293,6 +295,8 @@ export function releaseUiStage(reason = 'release') {
     });
     dying.scene.clear();
     if (dying.rig && dying.rig.depthMaterial) dying.rig.depthMaterial.dispose();
+    // The key light's shadow map is a render target owned by this stage; Light.dispose() releases it.
+    for (const light of (dying.rig && dying.rig.lights) || []) if (light && typeof light.dispose === 'function') light.dispose();
   } catch (error) {
     console.warn('[uiStage] release failed', error);
   }
@@ -387,8 +391,21 @@ function buildStage(id, renderer, request, hullFile) {
   const spec = SCENES[id];
   if (!spec) throw new Error(`unknown ui stage "${id}"`);
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(spec.camera.fov, 16 / 9, 0.5, SKY_RADIUS * 1.6);
+  // One Scene and one Camera for the life of the renderer. Three keys its per-scene render state
+  // (and the transmission render target inside it, per camera id) on these object identities and
+  // only ever frees them with renderer.dispose(); a fresh pair per mount left one transmission
+  // target plus its depth texture on the GPU every time the market opened (+3 textures per dock,
+  // release soak 2026-09-15). Reuse keeps the count flat; releaseUiStage still clears the graph.
+  const scene = stageScene || (stageScene = new THREE.Scene());
+  scene.fog = null;
+  scene.background = null;
+  scene.environment = null;
+  const camera = stageCamera || (stageCamera = new THREE.PerspectiveCamera(spec.camera.fov, 16 / 9, 0.5, SKY_RADIUS * 1.6));
+  camera.fov = spec.camera.fov;
+  camera.aspect = 16 / 9;
+  camera.near = 0.5;
+  camera.far = SKY_RADIUS * 1.6;
+  camera.updateProjectionMatrix();
 
   const sky = buildSky(spec.sky);
   scene.add(sky);
