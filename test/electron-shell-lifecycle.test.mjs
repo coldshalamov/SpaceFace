@@ -56,6 +56,10 @@ async function loadMain({
     permissionRequestHandler: null,
   };
   const powerMonitor = emitter();
+  const crashReporter = {
+    starts: [],
+    start(options) { this.starts.push(options); },
+  };
   const ipcMain = emitter();
   const ipcHandlers = new Map();
   ipcMain.handle = (channel, handler) => { ipcHandlers.set(channel, handler); };
@@ -75,7 +79,9 @@ async function loadMain({
     isPackaged: false,
     commandLine: { appendSwitch() {} },
     getPath(name) { return path.join(ROOT, `.electron-${name}`); },
-    setPath() {},
+    setPath(name, value) { this.pathSets.push([name, value]); },
+    getVersion() { return '0.0.0-test'; },
+    pathSets: [],
     requestSingleInstanceLock() { return true; },
     whenReady() { return Promise.resolve(); },
     quit() { serverStats.quits += 1; this.emit('before-quit'); },
@@ -194,7 +200,7 @@ async function loadMain({
       },
     },
     require(specifier) {
-      if (specifier === 'electron') return { app, BrowserWindow: FakeBrowserWindow, powerMonitor, ipcMain, dialog };
+      if (specifier === 'electron') return { app, BrowserWindow: FakeBrowserWindow, powerMonitor, ipcMain, dialog, crashReporter };
       if (specifier === 'http') return { get() { throw new Error('unexpected HTTP probe'); } };
       if (specifier === 'path') return path;
       if (specifier === 'fs') return fs;
@@ -276,7 +282,7 @@ async function loadMain({
   }
   await settle();
   assert.equal(windows.length, 1);
-  return { app, powerMonitor, ipcMain, ipcHandlers, dialog, win: windows[0], windows, commands, receipts, security, serverStats };
+  return { app, powerMonitor, crashReporter, ipcMain, ipcHandlers, dialog, win: windows[0], windows, commands, receipts, security, serverStats };
 }
 
 function loadPreload() {
@@ -420,6 +426,20 @@ test('desktop shell denies popups, foreign navigation, and every permission exce
   assert(h.receipts.some((entry) => entry.status === 'window-open-blocked'));
   assert(h.receipts.some((entry) => entry.status === 'navigation-blocked'));
   assert(h.receipts.some((entry) => entry.status === 'permission-denied'));
+});
+
+test('shell starts the local crash reporter with build identity and an owned dumps dir', async () => {
+  const h = await loadMain();
+  assert.equal(h.crashReporter.starts.length, 1, 'main process starts the crash reporter once at boot');
+  const options = h.crashReporter.starts[0];
+  assert.equal(options.productName, 'SpaceFace');
+  assert.equal(options.uploadToServer, false, 'crash reports stay local — no silent upload');
+  assert.equal(options.extra.build, 'test-build', 'report extra carries the resolved build id');
+  assert.equal(options.extra.version, '0.0.0-test', 'report extra carries the app version');
+  assert.deepEqual(options.extra, options.globalExtra, 'globalExtra mirrors the report identity');
+  const crashDumps = h.app.pathSets.find(([name]) => name === 'crashDumps');
+  assert.deepEqual(crashDumps, ['crashDumps', path.join(ROOT, '.electron-userData', 'crashes')],
+    'dumps land under the owned userData crashes dir');
 });
 
 test('Electron 43 console details and runtime identity remain diagnostic-only receipts', async () => {
