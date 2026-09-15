@@ -1363,7 +1363,40 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
   assert(distance(saved.pos, diverged.pos) > 0.05 || Math.abs(saved.speed - diverged.speed) > 0.05, 'post-save state must diverge before load');
   await transition('load-restore');
   await page.keyboard.press('F9');
-  await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 90_000 });
+  try {
+    await page.waitForFunction(() => window.__M6_RELEASE_SOAK_EVENTS__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 90_000 });
+  } catch (loadWaitError) {
+    // verify54/verify64: the load shell sat at "Committing authored objects" (56%) for the full
+    // 90s. The app's own gate fails closed at 180s; name what the readiness contract is waiting on.
+    const stuck = await page.evaluate(() => {
+      const state = window.SF?.state;
+      const r = typeof window.SF?.authoredVisualReadiness === 'function' ? window.SF.authoredVisualReadiness() : null;
+      const owner = window.SF?.registry?.get?.('render') || null;
+      const rd = state?.render || {};
+      return {
+        mode: state?.mode, loaded: window.__M6_RELEASE_SOAK_EVENTS__?.loaded ?? null, simTime: state?.simTime ?? null,
+        ready: r?.ready, pipelineReady: r?.pipelineReady, blockers: r?.flightReadyBlockers,
+        pending: (r?.openingPending || []).map((e) => `${e.id}:${e.status}:${e.type}:${e.defId || ''}:hook=${e.hook}:promised=${e.promised}`),
+        pipelinePending: (r?.openingPipelinePending || []).map((e) => `${e.id}:${e.status}:${e.defId || ''}`),
+        gatePending: (r?.openingGatePending || []).map((e) => `${e.id}:${e.status}`),
+        startingHub: { id: r?.startingHubId, status: r?.startingHubStatus, required: r?.startingHubRequired, layer: r?.startingHubLayer },
+        queue: r?.queue || null,
+        meshStreaming: {
+          deferNoncriticalMeshStreaming: rd.deferNoncriticalMeshStreaming ?? null,
+          firstPlayableFrameAt: rd.firstPlayableFrameAt ?? null,
+          openingSubmissionReceiptPending: rd.openingSubmissionReceiptPending ?? null,
+          openingSubmissionValidation: !!rd.openingSubmissionValidation,
+          ownerDefer: owner?._deferNoncriticalMeshStreaming ?? null,
+          ownerReconcileDirty: owner?._meshReconcileDirty ?? null,
+          ownerQueue: owner?._meshBuildQueue ? `${owner._meshBuildQueueHead}/${owner._meshBuildQueue.length}` : null,
+          contextLost: owner?._contextLost ?? null,
+        },
+        loadingStage: document.querySelector('.sf-loading__stage, [data-loading-stage]')?.textContent?.slice(0, 120) || null,
+      };
+    }).catch((e) => ({ evalError: String(e) }));
+    loadWaitError.message = `${loadWaitError.message} | load-stuck: ${JSON.stringify(stuck)}`;
+    throw loadWaitError;
+  }
   const loaded = await readPlayerSnapshot(page);
   const loadedAtEvent = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSnapshot || null);
   const loadedSlot = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot || null);
