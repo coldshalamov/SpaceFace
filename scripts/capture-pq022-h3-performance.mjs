@@ -61,6 +61,12 @@ import {
   sampleRafWindow,
   waitForOwnedProcessTreeExit,
 } from './lib/releaseSoakProbe.mjs';
+import {
+  collectGpuResourceCensus,
+  diffGpuResourceCensus,
+  gpuCensusVerdict,
+  installGpuResourceCensus,
+} from './lib/gpuResourceCensus.mjs';
 import { requireBrokerClaimOrDiagnostic } from './lib/validationBroker.mjs';
 import { acquireVisualProbeServer } from './lib/visualProbeServer.mjs';
 import manifest, { createPq022H3PerformanceManifest } from './validation-manifests/pq022-h3-performance.mjs';
@@ -166,6 +172,12 @@ const bootAttempts = [];
 const issuedTrafficRecordIds = new Set();
 let trafficIssuance = 0;
 const processTrees = [];
+// Per-uuid GPU resource census (see scripts/lib/gpuResourceCensus.mjs): the residency ledger
+// counts assets, but the diagnostic receipts' geometry growth lives outside it. Cycle-end
+// censuses diff uuid-by-uuid and name the accumulating builders instead of only counting.
+let gpuCensusInstall = null;
+let gpuCensusPrevious = null;
+const gpuCycleCensus = [];
 
 try {
   server = await acquireVisualProbeServer({ root: ROOT });
@@ -247,6 +259,12 @@ try {
     releaseFile: row.releaseFile,
     slot: row.slot,
   })));
+  gpuCensusInstall = await installGpuResourceCensus(page)
+    .then((result) => ({ ...result, error: null }))
+    .catch((error) => ({ installed: false, alreadyInstalled: false, error: String(error && error.message || error) }));
+  if (gpuCensusInstall.error) {
+    await progress({ event: 'gpu-census-install-failed', error: gpuCensusInstall.error });
+  }
   await recordProcessTree('boot');
   snapshots.push(await resourceSnapshot('boot', 0));
 
@@ -355,6 +373,24 @@ try {
     endSnapshot.settle = endSettle;
     snapshots.push(endSnapshot);
     cycleEnds.push({ cycle, snapshot: endSnapshot });
+    if (gpuCensusInstall && gpuCensusInstall.installed) {
+      const census = await collectGpuResourceCensus(page).catch(() => null);
+      if (census) {
+        const diff = diffGpuResourceCensus(gpuCensusPrevious, census);
+        gpuCycleCensus.push({ cycle, sectorId: census.sectorId, census, diff });
+        gpuCensusPrevious = census;
+        if (diff) {
+          await progress({
+            event: 'gpu-census-cycle-end',
+            cycle,
+            netGeometries: diff.geometry.net,
+            addedGeometries: diff.geometry.added,
+            disposedGeometries: diff.geometry.disposed,
+            duplicateGenerations: diff.geometry.duplicateGenerations,
+          });
+        }
+      }
+    }
     await recordProcessTree(`c${cycle}:cycle-end`);
     await progress({ event: 'cycle-end', cycle, snapshot: pickSnapshot(endSnapshot) });
   }
@@ -397,7 +433,7 @@ try {
     identities: identityInputs,
     windows,
     identityFacts,
-    resources: { snapshots, cycleEnds },
+    resources: { snapshots, cycleEnds, gpuCensus: gpuCensusReceipt() },
     pageIssues,
     cleanup: { browserClosed: false, serverClosed: false, hostSamplerStopped: false },
   };
@@ -448,7 +484,7 @@ try {
       relayObservations,
     },
     identityFacts,
-    resources: { snapshots, cycleEnds },
+    resources: { snapshots, cycleEnds, gpuCensus: gpuCensusReceipt() },
     pageIssues: issueTracker ? summarizeIssues(issueTracker.errorIssues()) : [],
   };
 } finally {
@@ -1481,6 +1517,18 @@ async function progress(row) {
   const line = JSON.stringify({ atS: Math.round((Date.now() - startedAtEpochMs) / 100) / 10, ...row });
   console.log(`[pq022-h3] ${line}`);
   await appendFile(PROGRESS_PATH, `${line}\n`, 'utf8').catch(() => {});
+}
+
+// Receipt block for the per-uuid GPU resource census. `verdict` is judgement, not proof: the
+// per-cluster diffs are the evidence; it only says which way the numbers point (leak-suspected /
+// warm-up / stable / inconclusive — see gpuCensusVerdict in scripts/lib/gpuResourceCensus.mjs).
+function gpuCensusReceipt() {
+  const diffs = gpuCycleCensus.map((row) => row.diff).filter(Boolean);
+  return {
+    install: gpuCensusInstall,
+    cycleEnds: gpuCycleCensus,
+    verdict: gpuCensusVerdict(diffs),
+  };
 }
 
 function pickSnapshot(snapshot) {
