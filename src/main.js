@@ -15,6 +15,7 @@ import { makeShipEntitySpec } from './systems/ships.js';
 import { makeEnemySpawnSpec } from './systems/combat.js';
 import { NEW_GAME, resolveNewGameStarter } from './data/newGameDefaults.js';
 import { createTelemetry } from './systems/telemetry.js';
+import { installAchievements } from './systems/achievements.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
 import { createTimeEffects } from './core/timeEffects.js';
 import { resetFreshRunSystems } from './core/runReset.js';
@@ -191,6 +192,11 @@ async function boot() {
     // death heatmap. Subscribes to the live bus; mirrored to window.__SF_TELEMETRY__ for dev.
     const telemetry = createTelemetry(bus, state);
     ctx.telemetry = telemetry;
+    // PQ-033.03 achievements: a META ledger on the same live bus — never a registry system and never
+    // a GameState write, so the deterministic sim cannot see it. It unlocks from real gameplay events
+    // and the settled Crucible records, speaks through the one-voice arbiter, and mirrors unlocks to
+    // Steam when the desktop shell exposes it.
+    ctx.achievements = installAchievements({ bus, state, telemetry });
     const eventTrace = createDeterministicEventTrace(bus, state);
     // Apply accessibility settings (colorblind palette, motion/flash, UI scale) on boot + on change/load.
     applyAccessibility(state.settings);

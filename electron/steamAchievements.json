@@ -1,0 +1,70 @@
+{
+  "schema": "spaceface.steamAchievements.v1",
+  "source": "src/data/achievements.js",
+  "achievements": [
+    {
+      "id": "berth_assigned",
+      "apiName": "SF_BERTH_ASSIGNED"
+    },
+    {
+      "id": "rock_has_a_price",
+      "apiName": "SF_ROCK_HAS_A_PRICE"
+    },
+    {
+      "id": "paper_trail",
+      "apiName": "SF_PAPER_TRAIL"
+    },
+    {
+      "id": "signed_and_delivered",
+      "apiName": "SF_SIGNED_AND_DELIVERED"
+    },
+    {
+      "id": "out_of_the_pocket",
+      "apiName": "SF_OUT_OF_THE_POCKET"
+    },
+    {
+      "id": "made_contact",
+      "apiName": "SF_MADE_CONTACT"
+    },
+    {
+      "id": "light_ships_are_ammunition",
+      "apiName": "SF_LIGHT_SHIPS_ARE_AMMUNITION"
+    },
+    {
+      "id": "razor_release",
+      "apiName": "SF_RAZOR_RELEASE"
+    },
+    {
+      "id": "keep_the_speed",
+      "apiName": "SF_KEEP_THE_SPEED"
+    },
+    {
+      "id": "into_the_crucible",
+      "apiName": "SF_INTO_THE_CRUCIBLE"
+    },
+    {
+      "id": "tenth_wave",
+      "apiName": "SF_TENTH_WAVE"
+    },
+    {
+      "id": "better_than_last_time",
+      "apiName": "SF_BETTER_THAN_LAST_TIME"
+    },
+    {
+      "id": "same_seed_same_day",
+      "apiName": "SF_SAME_SEED_SAME_DAY"
+    },
+    {
+      "id": "walked_out",
+      "apiName": "SF_WALKED_OUT"
+    },
+    {
+      "id": "paperwork_filed",
+      "apiName": "SF_PAPERWORK_FILED"
+    },
+    {
+      "id": "six_figures",
+      "apiName": "SF_SIX_FIGURES"
+    }
+  ]
+}

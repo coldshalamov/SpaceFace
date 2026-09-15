@@ -1,0 +1,13 @@
+"DepotBuild"
+{
+	"DepotID"		"{{DEPOT_ID_WINDOWS}}"
+	"ContentRoot"		"{{CONTENT_ROOT}}"
+	"FileMapping"
+	{
+		"LocalPath"		"*"
+		"DepotPath"		"."
+		"Recursive"		"1"
+	}
+	"FileExclusion"		"*.pdb"
+	"FileExclusion"		"steam_appid.txt"
+}

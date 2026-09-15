@@ -37,6 +37,7 @@ export const SCREEN_LOADERS = Object.freeze([
   { load: () => import('../../src/ui/screens/saveLoad.js'), name: 'saveLoadScreen' },
   { load: () => import('../../src/ui/screens/help.js'), name: 'helpScreen' },
   { load: () => import('../../src/ui/screens/credits.js'), name: 'creditsScreen' },
+  { load: () => import('../../src/ui/screens/achievements.js'), name: 'achievementsScreen' },
   { load: () => import('../../src/ui/screens/codex.js'), name: 'codexScreen' },
   { load: () => import('../../src/ui/screens/missionLog.js'), name: 'missionLogScreen' },
   { load: () => import('../../src/ui/screens/sandbox.js'), name: 'sandboxScreen' },

@@ -2,6 +2,10 @@
 node_modules/
 build/*
 !build/min-spec.json
+# PQ-033.03 SteamPipe templates, Auto-Cloud notes and the generated achievement paste list are source;
+# rendered VDFs with a real app id and SteamPipe logs are per-machine output.
+!build/steam/
+build/steam/output/
 dist/
 /nul
 .campaign/

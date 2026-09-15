@@ -1,6 +1,7 @@
 // Narrow bridge for the context-isolated game renderer.
 // The renderer may subscribe to allowlisted shell state and invoke the few named request channels
-// exposed below (quit, save-clip, build-info); there is no generic send/invoke surface.
+// exposed below (quit, save-clip, build-info, achievement-unlock, steam-status); there is no generic
+// send/invoke surface.
 const { contextBridge, ipcRenderer } = require('electron');
 
 const SHELL_LIFECYCLE_CHANNEL = 'spaceface:shell-lifecycle';
@@ -69,6 +70,8 @@ contextBridge.exposeInMainWorld('spacefaceLifecycle', Object.freeze({
 // Also expose a minimal shell bridge for quit callers that prefer window.spacefaceShell
 const SHELL_SAVE_CLIP_CHANNEL = 'spaceface:save-clip';
 const SHELL_BUILD_INFO_CHANNEL = 'spaceface:build-info';
+const SHELL_ACHIEVEMENT_UNLOCK_CHANNEL = 'spaceface:achievement-unlock';
+const SHELL_STEAM_STATUS_CHANNEL = 'spaceface:steam-status';
 try {
   contextBridge.exposeInMainWorld('spacefaceShell', Object.freeze({
     quit() {
@@ -80,6 +83,15 @@ try {
     // {version, build, packaged, channel} — the same build id crash reports carry.
     buildInfo() {
       return ipcRenderer.invoke(SHELL_BUILD_INFO_CHANNEL);
+    },
+    // PQ-033.03: mirror a local achievement unlock to Steam. Exactly { id } crosses the bridge; the
+    // shell validates it against its generated id table. Resolves {ok, available, reason?, id}.
+    unlockAchievement(id) {
+      return ipcRenderer.invoke(SHELL_ACHIEVEMENT_UNLOCK_CHANNEL, { id: typeof id === 'string' ? id.slice(0, 64) : '' });
+    },
+    // {available, reason, distribution, achievements, cloud} — no paths, no app internals.
+    steamStatus() {
+      return ipcRenderer.invoke(SHELL_STEAM_STATUS_CHANNEL);
     },
   }));
 } catch (e) {}

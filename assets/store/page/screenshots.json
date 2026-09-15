@@ -1,0 +1,66 @@
+{
+  "schema": "spaceface.storeScreenshots.v1",
+  "note": "Real gameplay stills for the Steam store page, in upload order. Every file is an unmodified capture from the game itself (photo mode or a recorded play route); scripts/build-store-assets.mjs refuses to upscale. Replace or add stills through Pause -> Photo -> Capture, then list them here.",
+  "screenshots": [
+    {
+      "file": "spaceface-store-massline-cut.png",
+      "caption": "Cut the Massline mid-swing and the rock keeps the speed.",
+      "shows": "A Massline cut burst between the player hull and a tethered asteroid, with a ringed planet and a station behind.",
+      "hud": false,
+      "source": ".devshots/pq-030-02/burst1-cut.png",
+      "capturedFor": "PQ-030.02 Massline cut evidence",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "4c88b1c78ba8033cb3054caba0138d7a404cce8aafd530ef9bd4acc060a266b1",
+      "capturedAt": "2026-09-11"
+    },
+    {
+      "file": "spaceface-store-massline-swing.png",
+      "caption": "Latch a buoy, swing the hull, keep the momentum.",
+      "shows": "The Massline drawn taut from a nav buoy to the player hull in open space.",
+      "hud": false,
+      "source": ".devshots/pq-159-01/swing-r5.png",
+      "capturedFor": "PQ-159.01 swing capture",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "ae38f2626b755c075014fd0250bcc7877e301e899df427a95f6d01718660d80b",
+      "capturedAt": "2026-09-11"
+    },
+    {
+      "file": "spaceface-store-headed.png",
+      "caption": "One ship, real momentum.",
+      "shows": "The Kestrel under full burn over the belt dust, photo mode with the HUD off.",
+      "hud": false,
+      "source": "photo mode Capture (PQ-159.03 store-page slot)",
+      "capturedFor": "PQ-159.03 photo mode",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "e608ffbe8cd62694edb845ff2b4be9a04711011b477f67d4983b1e34317e9203",
+      "capturedAt": "2026-09-11"
+    },
+    {
+      "file": "spaceface-store-outpost-field.png",
+      "caption": "A working outpost inside a live asteroid field.",
+      "shows": "Flight HUD over an automation outpost, a dense asteroid field and a ringed gas giant.",
+      "hud": true,
+      "source": ".devshots/acceptance/automation-outpost/03-outpost-world-authored-1920x1080.png",
+      "capturedFor": "automation outpost acceptance run",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "790fc98d4214af94702eaf64161da8200ac5098cfc619cfe46ff2d36d20d77e3",
+      "capturedAt": "2026-09-06"
+    },
+    {
+      "file": "spaceface-store-salvage-rock.png",
+      "caption": "The belt is busy without you.",
+      "shows": "A scavenger crew cutting ore off an asteroid with twin beams.",
+      "hud": false,
+      "source": ".devshots/pq-141.02/scavenger-burst-3.png",
+      "capturedFor": "PQ-141.02 NPC work signatures",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "d18d323bc1c4b2976aff1aad0d493c9424e92afa335a855ccdb479e5b9163373",
+      "capturedAt": "2026-09-11"
+    }
+  ]
+}
