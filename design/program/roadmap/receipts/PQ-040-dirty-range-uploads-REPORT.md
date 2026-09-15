@@ -285,6 +285,27 @@ Evidence retained under `.devshots/perf/dirty-ranges/{browser,electron}/`:
 Next attempt needs the same two manifests on a quiet, non-churning tree; the
 recorded comparator deltas are the expected outcome to confirm, not a pass.
 
+### Isolated-candidate path (16:10Z)
+
+Four demotions traced to one structural cause: the shared worktree cannot stay
+stable while other agents write, and each probe-reaching failure re-locks the
+manifest behind a regression-set change. The certification path was therefore
+moved to `.worktrees/pq040-acceptance` — a detached worktree at `07f724ffb`
+with a junctioned `node_modules` and its own `.devshots` broker state. A
+dedicated checkout *is* a stable candidate by construction: no foreign writer
+knows it, `strictWorktreeFingerprint` reads clean start=end, the in-flight
+readiness/admission rewrite is absent at this HEAD (the post-submit-validation
+warning cannot fire), and the fresh broker state carries no regression lock.
+Remaining demoters are the machine process census (shared-host Chrome churn)
+and any pre-existing page warnings. The certified candidate is the clean HEAD
+snapshot, which is the honest interpretation of a stable acceptance candidate
+on a moving shared tree.
+
+Also corrected here: the earlier energy-card culling pin (adc7ab7a7) asserted
+a contract that lives in a still-uncommitted `presenter.js` diff — it failed
+on any clean checkout and was reverted (07f724ffb). The coverage now rides the
+shared working tree until the presenter change lands.
+
 ## Implemented architecture
 
 ### Scene-scoped publication coordinator
