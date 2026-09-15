@@ -783,7 +783,14 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   const captureSpeed = Math.max(42, positive(profile.precisionSpeed, 72) * AUTOPILOT_CAPTURE_SPEED_FRACTION);
   const guidanceMisaligned = guidanceClosingSpeed < speed * AUTOPILOT_CAPTURE_ALIGNMENT;
   const headingCapture = speed > captureSpeed && guidanceMisaligned;
-  const shouldBrake = terminalBrake || headingCapture;
+  // Dock-envelope overshoot guard: once the corridor resolution owns the berth, the ship must
+  // never carry more than the berth's dock-legal speed. Avoidance can hold a fast hull on a
+  // tangential orbit inside the capture volume — aligned with the avoidance vector, so neither
+  // terminalBrake (approach-half only) nor headingCapture (needs misalignment) sustains the
+  // stop. Sustain the counter-burn until under the berth gate instead of flickering at it.
+  const dockEnvelopeBrake = target && target.dockingProxyId && target.dockingStage === 'berth'
+    && speed > positive(target.dockSpeedGate, 12);
+  const shouldBrake = terminalBrake || headingCapture || dockEnvelopeBrake;
 
   let throttle = 0;
   let strafe = 0;
@@ -933,6 +940,7 @@ export function resolveAutopilotTarget(state, autopilot) {
         arrivalRadius: dockingArrivalRadius,
         dockingProxyId: manifest.id || null,
         dockingStage: berthStage ? 'berth' : 'corridor-mouth',
+        dockSpeedGate: positive(manifest.docking.berth && manifest.docking.berth.speedGate, 12),
         approachPoint: approach,
         entity,
         label: autopilot.label || entity.name || (entity.data && entity.data.name) || 'Station berth',

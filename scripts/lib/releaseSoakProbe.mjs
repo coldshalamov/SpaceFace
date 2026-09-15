@@ -984,8 +984,40 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       trail: (window.__M6_RELEASE_SOAK_TRAIL__ || []).slice(-40),
     };
   }).catch(() => null);
-  let dockPromptVisible = await dockPrompt.waitFor({ state: 'visible', timeout: 60_000 })
-    .then(() => true).catch(() => false);
+  let dockPromptVisible = false;
+  {
+    // A still-driving autopilot can hold the ship in a tangential limit cycle inside the capture
+    // volume — inside the corridor but too fast for the berth's speed gate, so the prompt never
+    // shows. A pilot whose autopilot can't park takes the brake themselves: pulse the public
+    // brake once (it also disengages the autopilot) and keep waiting for the prompt.
+    const waitDeadline = Date.now() + 60_000;
+    let brakePulsed = false;
+    while (Date.now() < waitDeadline) {
+      dockPromptVisible = await dockPrompt.isVisible().catch(() => false);
+      if (dockPromptVisible) break;
+      if (!brakePulsed) {
+        const stuckFast = await page.evaluate(() => {
+          const s = window.SF?.state;
+          const dc = s?.dockingCorridor;
+          const p = s?.entities?.get?.(s.playerId);
+          const v = p?.vel ? Math.hypot(p.vel.x, p.vel.z) : 0;
+          return !!(dc && (dc.inCapture === true || dc.inCorridor === true)
+            && s?.nav?.autopilot?.active === true && v > 26);
+        }).catch(() => false);
+        if (stuckFast) {
+          brakePulsed = true;
+          mark('dock-corridor-brake');
+          try {
+            await page.keyboard.down('Digit0');
+            await page.waitForTimeout(900);
+          } finally {
+            await page.keyboard.up('Digit0').catch(() => {});
+          }
+        }
+      }
+      await page.waitForTimeout(250);
+    }
+  }
   if (!dockPromptVisible) {
     const firstDiag = await readDockDiag();
     // A player whose approach stalls re-issues the command. If the autopilot is not
