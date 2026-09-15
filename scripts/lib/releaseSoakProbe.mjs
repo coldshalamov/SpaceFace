@@ -1006,6 +1006,16 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   // Docking is a player-initiated loading span (station interior mount) — tag it like
   // save/load so the gameplay-hitch count stays honest about steady-state frames.
   await transition('dock-mount');
+  // The berth prompt gates on proximity AND a speed gate; a still-driving autopilot can carry
+  // the ship back out between the prompt wait and the key tap. Pulse the public brake to
+  // disengage it and shed speed, then release so the corridor capture assist (suppressed
+  // while any input is held) can pull an edge-parked ship back onto the berth.
+  try {
+    await page.keyboard.down('Digit0');
+    await page.waitForTimeout(900);
+  } finally {
+    await page.keyboard.up('Digit0').catch(() => {});
+  }
   await page.keyboard.press('KeyE');
   let docked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 })
     .then(() => true).catch(() => false);
