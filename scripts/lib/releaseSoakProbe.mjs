@@ -1593,34 +1593,49 @@ async function armSaveLoadObservers(page) {
 async function armHeliosWaypoint(page) {
   // Bounded whole-sequence retry: a click that arms a non-Helios target pops the chart
   // closed, so retrying just the click is a dead loop — the search+select must re-run.
+  const step = async (name, fn) => {
+    try { return await fn(); }
+    catch (err) { throw new Error(`arm:${name} — ${err.message}`); }
+  };
   let lastError = null;
   for (let round = 0; round < 3; round += 1) {
     try {
       const screen = page.locator('#sf-galaxymap');
       if (!(await screen.isVisible().catch(() => false))) {
         await page.keyboard.press('KeyN');
-        await screen.waitFor({ state: 'visible', timeout: 20_000 });
+        await step('open-map', () => screen.waitFor({ state: 'visible', timeout: 20_000 }));
       }
       await page.keyboard.press('/');
-      await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
-      await page.keyboard.press('Control+A');
-      await page.keyboard.type('Helios Station');
-      await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first().waitFor({ state: 'visible', timeout: 10_000 });
-      await page.keyboard.press('Enter');
+      await step('focus-search', () => page.waitForFunction(
+        () => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 }));
+      // Type can drop keys on a contended host — confirm the field holds the query
+      // before spending the item-visibility wait on a mangled string.
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        await page.keyboard.press('Control+A');
+        await page.keyboard.type('Helios Station');
+        const typed = await page.evaluate(() => document.activeElement?.value ?? null);
+        if (typed === 'Helios Station') break;
+        assert(attempt < 2, `query field never held 'Helios Station' (got ${JSON.stringify(typed)})`);
+      }
+      const item = page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first();
+      await step('search-item', () => item.waitFor({ state: 'visible', timeout: 10_000 }));
+      // Pointer select mirrors the results click handler — no reliance on Enter focus.
+      await step('select-item', () => item.click({ timeout: 10_000 }));
       const button = page.getByRole('button', { name: 'Set Waypoint', exact: true });
-      await button.waitFor({ state: 'visible', timeout: 10_000 });
+      await step('waypoint-button', () => button.waitFor({ state: 'visible', timeout: 10_000 }));
       await clickWaypointWithPointer(page, button);
-      await page.waitForFunction(() => {
+      await step('map-closed', () => page.waitForFunction(() => {
         const el = document.querySelector('#sf-galaxymap');
         const hidden = !el || el.hidden || getComputedStyle(el).display === 'none' || el.getBoundingClientRect().width < 2;
         return window.SF?.state?.mode === 'flight' && hidden;
-      }, null, { timeout: 10_000 });
+      }, null, { timeout: 10_000 }));
       return;
     } catch (err) {
       lastError = err;
-      // Leave the chart closed so the next round's KeyN opens it cleanly.
+      // Escape is the chart's close key and works from inside the search input; KeyN is
+      // swallowed by the map's text-entry guard and would leave the screen open for retries.
       const screen = page.locator('#sf-galaxymap');
-      if (await screen.isVisible().catch(() => false)) await page.keyboard.press('KeyN').catch(() => {});
+      if (await screen.isVisible().catch(() => false)) await page.keyboard.press('Escape').catch(() => {});
       await page.waitForTimeout(150);
     }
   }
