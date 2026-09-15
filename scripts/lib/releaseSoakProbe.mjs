@@ -1753,6 +1753,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
   let dockPromptVisible = false;
   let sawCorridor = false;
   let closestBerth = Infinity;
+  let berthImproveAt = Date.now();
   let recedingPolls = 0;
   let captureStallPolls = 0;
   let rearms = 0;
@@ -1771,7 +1772,10 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     // (verify60 re-armed 0.46s after arming at 58 wu from the berth). A flythrough is a ship
     // that left the corridor AND is receding from its closest approach, on consecutive polls.
     const dist = Number.isFinite(s?.distToBerth) ? s.distToBerth : null;
-    if (dist != null && dist < closestBerth) closestBerth = dist;
+    if (dist != null && dist < closestBerth) {
+      closestBerth = dist;
+      berthImproveAt = Date.now();
+    }
     const receding = sawCorridor && corridorNow === false && dist != null && dist > closestBerth + 25;
     recedingPolls = receding ? recedingPolls + 1 : 0;
     const overshot = recedingPolls >= 2;
@@ -1791,13 +1795,24 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
       ? captureStallPolls + 1
       : 0;
     const captureStalled = captureStallPolls >= 16;
-    if ((overshot || dropped || captureStalled) && rearms < 3 && s != null) {
+    // The 'avoiding' wedge: a ship can also circle OUTSIDE the corridor at approach
+    // cruise (a min-spec soak cycle held ~55 wu/s 124 wu off the berth for 90 s in
+    // 'avoiding' without ever entering the corridor). Distance-to-berth is the honest
+    // discriminator: a healthy approach shrinks it every poll; only a non-converging
+    // loop holds it flat while speed stays above the capture gate. Same player remedy —
+    // brake below the gate, then a fresh re-armed approach brakes on plan.
+    const berthStalled = s?.autopilotActive === true
+      && dist != null && dist < 250
+      && aboveCaptureGate
+      && Date.now() - berthImproveAt > 8000;
+    const needsBrake = captureStalled || berthStalled;
+    if ((overshot || dropped || needsBrake) && rearms < 3 && s != null) {
       rearms += 1;
       mark(
-        captureStalled ? 'redock-capture-stall-brake' : (overshot ? 'redock-overshoot-rearm' : 'redock-rearm'),
+        captureStalled ? 'redock-capture-stall-brake' : (berthStalled ? 'redock-berth-stall-brake' : (overshot ? 'redock-overshoot-rearm' : 'redock-rearm')),
         await readDockDiag(),
       );
-      if (captureStalled) {
+      if (needsBrake) {
         // The wedge is a speed-gate chicken-and-egg: above 26 wu/s the capture assist
         // stays out and the berth prompt can't fire. A player's remedy is the brake —
         // a manual press also disengages the autopilot for the same tick — so hold the
@@ -1815,6 +1830,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
       await armHeliosWaypoint(page);
       sawCorridor = false;
       closestBerth = Infinity;
+      berthImproveAt = Date.now();
       recedingPolls = 0;
       captureStallPolls = 0;
     }
