@@ -609,6 +609,8 @@ export const heistMissionRuntime = {
     const tick = intTick(ctx?.state?.tick);
 
     if (!record.scheduleRequested) this.requestSchedule(ctx, record);
+    // Before any absence rule can read a missing capsule id as a lost load.
+    if (record.reconciled === 'readopt_load') this._readoptRestoredLoad(ctx, record, tick);
 
     if (record.launchTick == null) {
       // BOUNDED EVEN IF NOTHING EVER FLIES. `heistFacilities.update` returns early outside Tethys
@@ -669,6 +671,32 @@ export const heistMissionRuntime = {
     // outranks it. Nothing here weakens selection; it only closes the window on time.
     const stepped = stepArbiter(record.arbiter, decisionTick == null ? tick : intTick(decisionTick));
     return stepped.receipt || null;
+  },
+
+  /**
+   * One attempt, on the first drive after a reload, to re-adopt the durable load the save kept.
+   * The facility owner matches the restored body by stable schedule and payload identity and rebuilds
+   * its launched schedule around it. Anything else is the ordinary bounded absence.
+   */
+  _readoptRestoredLoad(ctx, record, tick) {
+    const facilities = ownerOf(ctx, 'heistFacilities');
+    const reply = facilities && typeof facilities.adoptRestoredLoad === 'function'
+      ? facilities.adoptRestoredLoad({ scheduleId: record.scheduleId, variantId: record.variantId })
+      : { adopted: false, reason: 'no_facility_owner' };
+    if (reply && reply.adopted) {
+      record.capsuleEntityId = reply.entityId;
+      record.capsuleSeen = true;
+      record.reconciled = 'readopted';
+      return true;
+    }
+    record.reconciled = 'absent_after_reload';
+    submitHeistCandidate(record, {
+      kind: 'unresolved_absent',
+      causalTick: Math.max(tick, intTick(record.arbiter?.decidedThroughTick) + 1),
+      sourceStableId: 'heistMissionRuntime:readopt',
+      proof: { reason: String(reply?.reason || 'readopt_failed') },
+    });
+    return false;
   },
 
   /**
@@ -981,6 +1009,16 @@ export const heistMissionRuntime = {
       // Never launched. A pending window may legitimately be re-requested.
       restored.reconciled = 'reschedule';
       restored.scheduleRequested = false;
+      restored.settled = false;
+      return restored;
+    }
+
+    // BREAKAWAY: a DURABLE load's body is saved by the save owner itself, so a launched run is not
+    // absent after a reload — its mission re-adopts that exact body on the next drive. If the body
+    // is not there, or the launcher refuses, that drive falls through to the same bounded
+    // `unresolved_absent` rule below. Never a respawn and never a payout.
+    if (heistLaunchVariant(restored.variantId).durableLoad) {
+      restored.reconciled = 'readopt_load';
       restored.settled = false;
       return restored;
     }

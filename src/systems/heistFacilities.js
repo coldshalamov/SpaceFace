@@ -24,6 +24,7 @@ import {
   createCaptureOutput,
   createCaptureState,
   defineReceiver,
+  restoreCaptureState,
   stepCapture,
   validateCaptureProof,
 } from '../physicalCargo/breakaway/captureKernel.js';
@@ -209,6 +210,7 @@ export const heistFacilities = {
     this.bus.on('heist:requestLaunchSchedule', (request = {}) => {
       this.requestLaunchSchedule(request);
     });
+    this.bus.on('save:loaded', () => this._resetForRestore());
 
     if (this.state.world?.currentSectorId === PQ019_HEIST_SECTOR_ID) {
       this.materializeForSector(PQ019_HEIST_SECTOR_ID);
@@ -547,7 +549,9 @@ export const heistFacilities = {
       hullMax: payload.hull,
       collides: true,
       ttl: Infinity,
-      flags: { missionPinned: true },
+      // A durable load is a physical obligation the save owner carries across a reload; the
+      // historical capsule stays transient.
+      flags: variant.durableLoad ? { missionPinned: true, persistent: true } : { missionPinned: true },
       homeSectorId: PQ019_HEIST_SECTOR_ID,
       physicsBody: {
         dynamic: true,
@@ -789,6 +793,8 @@ export const heistFacilities = {
     if (!capture || capture.payloadId !== variant.payload.stableId || capture.receiverId !== receiver.id) {
       capture = owned.capture = createCaptureState(variant.payload.stableId, receiver.id);
     }
+    // The mechanical state rides on the load's own data, so the save owner persists it with the body.
+    if (variant.durableLoad && load.data.breakawayCapture !== capture) load.data.breakawayCapture = capture;
     const tick = state.tick | 0;
     // At most one mechanical sample per fixed tick: dwell must never double-count.
     if (tick <= capture.lastTick) return null;
@@ -833,27 +839,31 @@ export const heistFacilities = {
     }
 
     if (out.event === 'capture_ready') {
-      const candidate = captureCandidate(capture, sample, receiver, {
-        authorized: true, scheduleId: schedule.scheduleId,
-      });
-      if (candidate.ok) {
-        this._pushCandidateReceipt(Object.freeze({
-          receiptId: candidate.receipt.receiptId,
-          kind: CAPTURE_SETTLED_KIND,
-          source: candidate.receipt.source,
-          scheduleId: schedule.scheduleId,
-          payloadEntityId: load.id,
-          payloadStableId: variant.payload.stableId,
-          facilityId: variant.fork.facilityId,
-          receiverId: receiver.id,
-          entryTick: candidate.receipt.entryTick,
-          entryCount: candidate.receipt.entryCount,
-          tick,
-          pos: Object.freeze({ x: stableNumber(sample.x), z: stableNumber(sample.z) }),
-        }));
-      }
+      this._recordSettledCapture(schedule, load, variant, receiver, capture, sample);
     }
     return out;
+  },
+
+  /** Journal the settled-capture custody receipt for the current sample, if proof holds right now. */
+  _recordSettledCapture(schedule, load, variant, receiver, capture, sample) {
+    const candidate = captureCandidate(capture, sample, receiver, {
+      authorized: true, scheduleId: schedule.scheduleId,
+    });
+    if (!candidate.ok) return false;
+    return this._pushCandidateReceipt(Object.freeze({
+      receiptId: candidate.receipt.receiptId,
+      kind: CAPTURE_SETTLED_KIND,
+      source: candidate.receipt.source,
+      scheduleId: schedule.scheduleId,
+      payloadEntityId: load.id,
+      payloadStableId: variant.payload.stableId,
+      facilityId: variant.fork.facilityId,
+      receiverId: receiver.id,
+      entryTick: candidate.receipt.entryTick,
+      entryCount: candidate.receipt.entryCount,
+      tick: sample.tick,
+      pos: Object.freeze({ x: stableNumber(sample.x), z: stableNumber(sample.z) }),
+    }));
   },
 
   /**
@@ -871,6 +881,96 @@ export const heistFacilities = {
   _clearCaptureFork(owned) {
     if (owned.capture !== undefined) delete owned.capture;
     if (owned.capturePrev !== undefined) delete owned.capturePrev;
+  },
+
+  // ── Save boundary ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * `save:loaded`. This owner's schedule, custody receipts, handoff and fork state are NOT in the
+   * save capture plan, so after a load they describe the session BEFORE it. Kept, a stale schedule
+   * would deny the restored contract's own launch request (`active_schedule`) and a stale handoff
+   * would refuse its prepare. The re-materialized facility records are current and stay. A durable
+   * load restored by the save owner waits, unowned, until its mission re-adopts it.
+   */
+  _resetForRestore() {
+    const owned = this.state?.heistFacilities;
+    if (!owned) return;
+    owned.schedule = null;
+    owned.capsuleEntityId = null;
+    owned.candidateReceipts = [];
+    owned.candidateIds = {};
+    if (owned.receiverHandoff !== undefined) delete owned.receiverHandoff;
+    this._clearCaptureFork(owned);
+  },
+
+  /**
+   * Re-adopt a DURABLE load that the save owner restored (its `flags.persistent` body) for the
+   * mission whose saved record names this schedule.
+   *
+   * Rebuilds the one launched schedule around the SAME body — no respawn, no new launch, no pose
+   * write — restores the fork's mechanical state from the body's own data, and re-steps the fork for
+   * the current tick so custody can be proven fresh immediately. A load that is still settled in the
+   * fork re-derives its custody receipt, because the receipt journal belonged to the old session.
+   */
+  adoptRestoredLoad(request = {}) {
+    const scheduleId = cleanScheduleId(request.scheduleId);
+    const variant = heistLaunchVariant(request.variantId);
+    const owned = this.state.heistFacilities;
+    if (!scheduleId || !variant.durableLoad) return { adopted: false, reason: 'not_durable' };
+    if (owned.schedule && owned.schedule.scheduleId !== scheduleId) {
+      return { adopted: false, reason: 'active_schedule', activeScheduleId: owned.schedule.scheduleId };
+    }
+    const load = this._findRestoredLoad(scheduleId, variant);
+    if (!load) return { adopted: false, reason: 'payload_absent' };
+    if (owned.schedule && owned.schedule.capsuleEntityId === load.id) {
+      return { adopted: true, entityId: load.id, resumed: true };
+    }
+
+    const receipt = scheduleReceipt(scheduleId, Number(this.state.simTime) || 0, variant.id);
+    owned.schedule = {
+      scheduleId,
+      launchAtSimT: receipt.launchAtSimT,
+      status: 'launched',
+      receipt,
+      capsuleEntityId: load.id,
+      launchedAtTick: this.state.tick | 0,
+      variantId: variant.id,
+    };
+    owned.capsuleEntityId = load.id;
+
+    if (variant.custody === 'capture_fork') {
+      const receiver = this._forkReceiver(variant);
+      let capture = null;
+      try {
+        capture = load.data.breakawayCapture ? restoreCaptureState(load.data.breakawayCapture) : null;
+      } catch {
+        capture = null; // a corrupt mechanical record restarts the approach; custody is never assumed
+      }
+      if (!capture || capture.payloadId !== variant.payload.stableId || capture.receiverId !== receiver.id) {
+        capture = createCaptureState(variant.payload.stableId, receiver.id);
+      }
+      owned.capture = capture;
+      load.data.breakawayCapture = capture;
+      owned.capturePrev = null;
+      if (this.state.world?.currentSectorId === PQ019_HEIST_SECTOR_ID) {
+        this._stepCaptureFork(owned.schedule, this.state);
+        if (owned.capture.phase === 'ready' && this._forkSampleScratch) {
+          this._recordSettledCapture(owned.schedule, load, variant, receiver, owned.capture, this._forkSampleScratch);
+        }
+      }
+    }
+    return { adopted: true, entityId: load.id };
+  },
+
+  /** The restored body for a schedule, matched by stable data — never by a recycled entity id. */
+  _findRestoredLoad(scheduleId, variant) {
+    for (const entity of this.state.entityList || []) {
+      if (!entity || entity.alive === false || !this._isOwnedCapsule(entity)) continue;
+      if (entity.data.launchScheduleId !== scheduleId) continue;
+      if (entity.data.heistPayloadStableId !== variant.payload.stableId) continue;
+      return entity;
+    }
+    return null;
   },
 
   // ── PQ-019B: receiver prepare / commit / abort ────────────────────────────────────────────────

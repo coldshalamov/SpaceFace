@@ -152,12 +152,17 @@ export const HEIST_LAUNCH_VARIANTS = Object.freeze({
     payload: PQ019_CAPSULE,
     custody: 'contact',
     fork: null,
+    // The capsule is a transient entity: a reload reconciles a launched run to `unresolved_absent`.
+    durableLoad: false,
   }),
   [BREAKAWAY_THIRD_SHIFT_VARIANT_ID]: Object.freeze({
     id: BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
     payload: BREAKAWAY_SP07,
     custody: 'capture_fork',
     fork: BREAKAWAY_CAPTURE_FORK,
+    // The SP-07 is a physical obligation: its body is saved by the save owner (`flags.persistent`)
+    // and its mission re-adopts that exact body after a reload.
+    durableLoad: true,
   }),
 });
 
