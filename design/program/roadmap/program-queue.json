@@ -17998,7 +17998,7 @@
       "priority": 476,
       "title": "47-A code-built family and the generic TOW can become designed objects",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-193.03"
       ],
@@ -18018,7 +18018,7 @@
       "receiptRefs": [
         "design/program/roadmap/receipts/PQ-193.04-REPORT.md"
       ],
-      "brief": "READY (partial, 1b4673305 2026-09-12): the Kessler handoff beacon no longer publishes a blocked toy (place_sensor_mast) and the yard checkpoint now guards the packaged-prop file route; census rows corrected. Three leaves open: the rescue capsule is a faceted white blockout, the carrier hulk is untextured blockout, and the 47-A hero can is the identical body to an ordinary tow can (the object the story is about has no tell). The white-icosphere rescue rock from the 2026-09-12 capture is RESOLVED (b2c346b93: ast_rescue_rock/ast_rescue_wall aliased to common rock, bare material re-skinned when the surface library lands, rescue set piece built during the first-flight hold; headed probe shows both rocks with SF_CommonRock_GeologicalPBR_v4 at T=1 s). Spindle, rescue capsule, Kessler beacon, Bourse wreck, and the ordinary TOW can. Model first if hitch still owns the 47-A wiring file; hook when that row is idle. Upgrade the existing object. No parallel prop."
+      "brief": "DONE 2026-09-14: all five 47-A slots publish designed bodies at the chase camera. The evidence spindle is its own authored can (the tow can body under custody: seal straps, evidence chevrons, bolted cover, ledger case with a recessed lamp, padlocked door) and is the one a stranger picks out beside an ordinary tow can; the rescue capsule is an authored lifeboat (ceramic pressure hull, distress band, beacon, docking collar, aft skirt) replacing the faceted white pill; the Bourse wreck publishes the chase-reviewed PQ-193.10 carrier hulk instead of a 724-triangle blockout blown up 8x; the Kessler beacon (lane beacon) and the ordinary tow can were already manufactured. Builder tools/blender/build_pq193_04_47a_bodies.py; both new bodies are packaged (release + render package) and reached only through SCENARIO_47A_PACKAGED_PROPS."
     },
     {
       "id": "PQ-193.05",

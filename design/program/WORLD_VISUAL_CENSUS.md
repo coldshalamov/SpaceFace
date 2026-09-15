@@ -17,10 +17,10 @@ These are live world objects, not effects and not menu toys.
 
 | What you see | Same object, every time | Notes |
 |---|---|---|
-| 47-A sample can with hoops (Payload / TOW) | evidence spindle | **Live file:** `pods/pod_cargo_container.glb` (`SCENARIO_47A_PACKAGED_PROPS`, f580852a9). The cylinder stack is hidden while it publishes. Reads as real hardware. Same body as an ordinary tow can, so the hero can has no tell. |
-| 47-A white rescue capsule | civilian pod | **Live file:** `places/place_habitat_pod.glb`. Publishes, but at 58 WU it is a faceted white blockout with a flat navy decal — packaged, not finished. |
+| 47-A sample can with hoops (Payload / TOW) | evidence spindle | **Live file:** `pods/pod_47a_evidence_spindle.glb` (PQ-193.04, 2026-09-14). The tow can's ISO body under custody: red/white seal straps, yellow-black evidence chevrons, bolted cover, ledger case with a recessed amber lamp, padlocked door. Beside an ordinary tow can at 58 and 144 WU the evidence can is the one you pick out. |
+| 47-A white rescue capsule | civilian pod | **Live file:** `places/place_47a_rescue_capsule.glb` (PQ-193.04, 2026-09-14). A civilian lifeboat: seamed ceramic pressure hull, red distress band, dorsal beacon with a recessed strobe, docking collar, aft skirt with bells. Replaced the faceted white `place_habitat_pod` pill. |
 | 47-A violet handoff marker + floor disc | Kessler beacon | **Live file:** `places/place_lane_beacon.glb` (2026-09-12). Was `place_sensor_mast`, a checkpointed toy/open-cage yard prop reached by naming its file path around PLACE_FILES; `test/unused-model-live-wire.test.mjs` now guards that table. |
-| 47-A broken carrier hulk | Bourse wreck | **Live file:** `places/place_aftermath_wreck_liner_bow.glb`. A modelled bow rather than boxes and ribs, still in untextured blockout language at 58 WU. |
+| 47-A broken carrier hulk | Bourse wreck | **Live file:** `places/place_dead_hulk.glb` (PQ-193.04, 2026-09-14). The remastered commercial carrier from PQ-193.10: pointed bow, dorsal house, rooted rupture with longerons, aft collar, semantic PBR. Replaced `place_aftermath_wreck_liner_bow`, a 724-triangle flat-colour blockout that the 92 WU arena radius blew up about 8x. |
 | Other towed cargo cans | generic payload | **Live file:** `pods/pod_cargo_container.glb` (`GENERIC_TOW_PACKAGED_PROP`). Not hidden while it publishes, so the code can is still the first frame. |
 | Ore / loot gems floating in space | pickup | Spinning diamond. Freight-custody pickups reuse the cargo can. |
 | Credit chips | credit chip | Small code mesh. |
