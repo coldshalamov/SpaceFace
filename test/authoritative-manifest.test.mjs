@@ -28,10 +28,12 @@ test('production init + update order lengths match the live browser baseline', (
   // that joined the update order), so the two figures move by different amounts on purpose.
   // 142 -> 146 (PQ-135). swarmArena maintains the debris field and swarmSupply drops repair cells;
   // both are event-driven and never tick. crucibleFocus watches the run phase to hide campaign
-  // chrome, and swarmChain ticks only to notice a kill chain lapsing — so those two are the ones
+  // chrome, and swarmChain ticks only to notice a kill chain lapsing — so those are the ones
   // in the update order, and the two figures move by different amounts on purpose.
-  assert.equal(PRODUCTION_INIT_ORDER.length, 147);
-  assert.equal(PRODUCTION_UPDATE_ORDER.length, 109);
+  // 147 -> 148: the drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md) joins both orders as one
+  // input-gated deployable owner, so init and update move together this time.
+  assert.equal(PRODUCTION_INIT_ORDER.length, 148);
+  assert.equal(PRODUCTION_UPDATE_ORDER.length, 110);
   assert.equal(PRODUCTION_UPDATE_ORDER[PRODUCTION_UPDATE_ORDER.length - 1], 'save');
   assert.ok(PRODUCTION_UPDATE_ORDER.includes('save'));
   assert.equal(PRODUCTION_INIT_ORDER[0], 'core');
@@ -147,8 +149,9 @@ test('browser production system set is unchanged vs production manifest constant
   const registry = createRegistry({ state, bus: createBus(), helpers: {} });
 
   // Full init list length and terminal platform systems preserved. 147 since PQ-146.02 registered
-  // the existing stuntGrammar observer so trick receipts reach titles and barks.
-  assert.equal(registry.systems.length, 147);
+  // the existing stuntGrammar observer so trick receipts reach titles and barks; 148 with the
+  // drift-bomb bay (one system, both orders).
+  assert.equal(registry.systems.length, 148);
   const names = registry.systems.map((s) => s.name);
   assert.ok(names.includes('render') || registry.runtimeManifest.authoritativeSystemIds.includes('render'));
   assert.ok(registry.runtimeManifest.authoritativeSystemIds.includes('ui'));

@@ -66,6 +66,11 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   // is the throttle hand, so "press the throttle stick in" reads as committing to a long burn.
   // It is an edge (`.pressed`), never a hold — the latch owns the state, not the button.
   travelBurn: Object.freeze(['l3']),
+  // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). D-right releases the selected bomb; d-left
+  // cycles the payload. Both are edges; the bombs system owns cooldown/fuze/lifecycle. dUp stays
+  // auto-target; the free d-pad wings are exactly the deployable-shaped pair.
+  dropBomb: Object.freeze(['dRight']),
+  cycleBomb: Object.freeze(['dLeft']),
 });
 const ACTION_MAP = GAMEPAD_DEFAULT_BINDINGS;
 
@@ -109,6 +114,8 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   autoTarget: 'flight',
   countermeasure: 'flight',
   travelBurn: 'flight',
+  dropBomb: 'flight',
+  cycleBomb: 'flight',
   massline: 'flight',
   cancel: 'modal',
   tabPrev: 'modal',

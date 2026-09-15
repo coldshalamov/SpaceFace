@@ -30,7 +30,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'scanner', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
   'aiPorts', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
-  'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
+  'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'bombs', 'massSeed',
   'uniqueLootAbilities', 'fields', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
   'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
   'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
@@ -63,7 +63,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'scanReveal', 'buildIdentity', 'pirateDisguise', 'pirateParley', 'pirateDisengage',
   'aceMemory', 'factionPresence', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
   'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
-  'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
+  'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'bombs', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   'survivalArena', 'fields', 'planetRuntime', 'physics', 'combat',

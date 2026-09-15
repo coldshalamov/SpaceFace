@@ -60,7 +60,8 @@ export const COMBAT_CUE_IDS = Object.freeze([
   'combat.subsystem.power.disabled', 'combat.subsystem.restored',
   'combat.status.ionized', 'combat.status.burning', 'combat.status.overheated',
   'combat.status.scrambled', 'combat.status.gravity_marked', 'combat.status.momentum_sink',
-  'combat.status.cryo_lock',
+  'combat.status.cryo_lock', 'combat.status.goo',
+  'combat.attachment.created', 'combat.attachment.broken',
   'combat.attachment.created', 'combat.attachment.broken',
 ]);
 
@@ -228,6 +229,22 @@ export const STATUS_DEFS = Object.freeze([
     effects: {},
     interactions: [],
     periodic: null, cueId: 'combat.status.cryo_lock',
+  },
+  {
+    // Drift-bomb tarburst (src/data/bombs.js bomb_goo). The slow is PHYSICAL, not a velocity
+    // write: each stack multiplies the body's effective mass/inertia (the PINNED pipeline), so
+    // thrust degrades while momentum is preserved — the hull wallows, it never teleports slow.
+    // massScale 1.8^3 ≈ 5.8 at full stacks; a light hull under a full tarbursh handles like a
+    // heavy one. The movement multiplier additionally degrades combat-action movement, and the
+    // periodic packet is the corrosive DoT (kinetic channel: the tar abrades).
+    id: 'status_goo', version: 1, tags: ['corrosive', 'slow', 'damage_over_time'], durationTicks: 240,
+    stacking: { mode: 'stack', maxStacks: 3 }, immunityTags: [],
+    effects: { multipliers: { movement: 0.72 }, physicsResponse: { massScale: 1.8, inertiaScale: 1.8 } },
+    interactions: [], periodic: {
+      everyTicks: 30,
+      packet: { channels: { kinetic: 3, thermal: 0, ion: 0, plasma: 0, phase: 0 }, penetration: 0, heat: 0, statuses: [] },
+    },
+    cueId: 'combat.status.goo',
   },
   {
     id: 'status_overheated', version: 1, tags: ['thermal'], durationTicks: 60,

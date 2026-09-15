@@ -257,6 +257,13 @@ const VERB_BINDINGS = {
   // tables and ui/bindings.js, same audit as Digit4-7) and sits with the deployable family. The
   // planetRuntime system owns the collector state; yield is path x density, never a hold timer.
   toggleSkimCollector: ['Digit8'], // edge: toggle the atmospheric skim collector (The Anvil bands)
+  // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). Digit9 is free repo-wide (same audit as
+  // Digit4-8; Digit1-3 remain modal-prompt answers only) and completes the deployable row.
+  // Comma is free repo-wide (checked against both scheme tables and ui/bindings.js) and sits
+  // next to the deployable row as the bay's cycle key. The bombs system owns
+  // lifecycle/fuze/payload; both are ordinary rebindable edge verbs.
+  dropBomb:  ['Digit9'], // edge: release the selected drift bomb at current ship velocity
+  cycleBomb: ['Comma'],  // edge: cycle the bomb bay's selected payload
   // Travel Burn latch (atlas D5, W1-5). Num Lock is the authored default: it is a genuine latch
   // key on a full keyboard, it is never used for anything else in this game, and it carries a
   // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
@@ -974,7 +981,7 @@ export const input = {
       chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
-      siteBeam: false, aimedMine: false,
+      siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     if (shouldNeutralizeFlightInput(state, modalInputActive())) {
@@ -992,6 +999,7 @@ export const input = {
       acts.deployMassSeed = false;
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
+      acts.dropBomb = false; acts.cycleBomb = false;
       const masslineHeldThroughModal = this._held(state, 'tether')
         || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
@@ -1263,6 +1271,15 @@ export const input = {
     acts.toggleClearingCone = edge('toggleClearingCone');
     // PQ-013 skim collector: ordinary edge verb (Digit8 default, rebindable like every flight verb).
     acts.toggleSkimCollector = edge('toggleSkimCollector');
+    // Drift-bomb bay: two ordinary edge verbs (Digit9/Comma default, rebindable like every flight
+    // verb), OR-ed with the pad edges (dRight/dLeft default) behind the same lifecycle gate as
+    // travelBurn. The bombs system consumes them; input only reports the edges.
+    acts.dropBomb = edge('dropBomb') || !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed('dropBomb')
+      && gp.actions.dropBomb && gp.actions.dropBomb.pressed);
+    acts.cycleBomb = edge('cycleBomb') || !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed('cycleBomb')
+      && gp.actions.cycleBomb && gp.actions.cycleBomb.pressed);
     // Massline Wave M2 verbs. bulletTime is a LEVEL (hold-to-dilate; the system owns the meter and
     // may refuse when empty); cloakToggle is an edge; throwArm was resolved above where the mining
     // beam routing is decided (single owner for the RMB arbitration).

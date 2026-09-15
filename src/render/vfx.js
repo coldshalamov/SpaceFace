@@ -2056,6 +2056,9 @@ export const vfx = {
     add('cruise:engaged', (p) => this._onCruiseEngaged(p));
     add('cruise:dropped', (p) => this._onCruiseDropped(p));
     add('charge:detonated', (p) => this._onChargeDetonated(p));
+    // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md): per-payload reads, never one generic ball.
+    add('bombs:detonated', (p) => this._onBombDetonated(p));
+    add('bombs:fieldEnded', (p) => this._onBombFieldEnded(p));
     add('ai:telegraph', (p) => this._onAiTelegraph(p));
     add('ai:flee', (p) => this._onAiFlee(p));
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
@@ -8692,6 +8695,193 @@ export const vfx = {
     if (acc.eventLightPeakScale > 0) {
       this._flashLight({ x: pos.x, z: pos.z }, profile.accentColor || '#39d0ff',
         4.2 * neon.lightPeak * acc.eventLightPeakScale, 8, 180);
+    }
+  },
+
+  // Drift-bomb detonations (design/ORDNANCE_BOMBS_SPEC.md). One handler, eight payloads, one
+  // law: the read is the CONSEQUENCE the payload authored (shove / pull / splat / pulse), never
+  // a generic glow ball — same B-list rejects as every heavy-impact effect in this file. Real
+  // shove directions come from the causal receipt (p.shoves); a payload with no shoves builds
+  // its own directional geometry (spokes, convergence) instead of inventing an axis.
+  _onBombDetonated(p) {
+    if (!this._scene || !p || !p.pos) return;
+    const payloadId = String(p.payloadId || 'bomb_frag');
+    const pos = p.pos;
+    const r = Math.max(4, Number(p.radius) || 12);
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = acc.flashOpacityScale < 1;
+    const neon = resolveForceNeonScale('impulse', this._forceNeonMetrics());
+    const baseProfile = resolveImpactPresentationProfile('wpn_vector_mine_m');
+    const shoves = (Array.isArray(p.shoves) && p.shoves.length)
+      ? p.shoves
+      : [{ dx: 1, dz: 0, mag: 1 }, { dx: -1, dz: 0, mag: 1 }];
+    const scaleOf = (frac) => Math.max(1.0, Math.min(4.2, r * frac)) * neon.energy * 0.7;
+    const tinted = (core, accent) => ({ ...baseProfile, coreColor: core, accentColor: accent });
+
+    switch (payloadId) {
+      case 'bomb_concussion': {
+        // Pure shove: cool twin shock sheets along every real direction, no hot core, no
+        // fragments — the read is "the room emptied", not "something burned".
+        const scale = scaleOf(0.028);
+        this._emitDirectionalShoveSheets(pos, shoves, tinted('#eaf4ff', '#39d0ff'), reduced, scale);
+        if (!reduced) {
+          for (let i = 0; i < 3; i++) {
+            const a = Math.random() * Math.PI * 2;
+            this._spawnSprite(SPR_PUFF, pos.x + Math.cos(a) * 0.2 * scale, 0.1, pos.z + Math.sin(a) * 0.2 * scale,
+              1.6 + Math.random(), 0.55 * scale, 2.6 * scale, 0.3, 0, '#8fb2d8',
+              Math.cos(a) * 6, Math.sin(a) * 6, 2.2, a);
+          }
+        }
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#9fd4ff', 5.4 * neon.lightPeak * acc.eventLightPeakScale, 10, 240);
+        }
+        break;
+      }
+      case 'bomb_singularity': {
+        if (p.trigger === 'collapse') {
+          // The clump answers: compact outward snap, smaller than any opening read. The causal
+          // receipt (shoves) travels on this same detonated event.
+          const profile = { ...baseProfile, coreColor: '#eaffff', accentColor: '#39d0ff' };
+          this._emitDirectionalShoveSheets(pos, shoves, profile, reduced, 0.9);
+          this._spawnSprite(SPR_FLASH, pos.x, 0.16, pos.z, 0.09,
+            1.9, 0.7, 0.9, 0, '#d7f6ff', 0, 0, 0.8, 0);
+          if (acc.eventLightPeakScale > 0) {
+            this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 3.0 * neon.lightPeak * acc.eventLightPeakScale, 6, 120);
+          }
+          break;
+        }
+        // The field OPENS: streaks converge off the ring onto the source (the inward read the
+        // pull will continue), a dim core that darkens rather than flares. No outward blast —
+        // there is none in the sim either.
+        const spokes = reduced ? 8 : 14;
+        const ring = Math.min(26, r * 0.5);
+        for (let i = 0; i < spokes; i++) {
+          const a = (i / spokes) * Math.PI * 2 + 0.35;
+          const sx = pos.x + Math.cos(a) * ring;
+          const sz = pos.z + Math.sin(a) * ring;
+          this._spawnProjectileTrailStreak(sx, 0.2, sz,
+            0.3, 0.2, 3.8, 0.8, i % 2 ? '#a6f0ff' : '#39d0ff',
+            -Math.cos(a) * 46, -Math.sin(a) * 46, -Math.cos(a), -Math.sin(a));
+        }
+        this._spawnSprite(SPR_FLASH, pos.x, 0.14, pos.z, 0.16,
+          1.8, 0.7, 0.5, 0, '#0e2836', 0, 0, 1.6, 0);
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 2.2 * neon.lightPeak * acc.eventLightPeakScale, 14, 200);
+        }
+        break;
+      }
+      case 'bomb_goo': {
+        // Splatter: tar flung along the real shove lines, then a lingering puddle. Deliberately
+        // dull — no bright flash, the read is weight and stick, not heat.
+        const scale = scaleOf(0.016);
+        for (let i = 0; i < (reduced ? 4 : 9); i++) {
+          const row = shoves[i % Math.min(shoves.length, 4)];
+          const jitter = (Math.random() - 0.5) * 0.9;
+          const a = Math.atan2(row.dz, row.dx) + jitter;
+          const reach = 1.4 + Math.random() * 2.4;
+          this._spawnSprite(SPR_PUFF, pos.x + Math.cos(a) * reach, 0.1, pos.z + Math.sin(a) * reach,
+            1.2 + Math.random() * 1.4, 0.5 * scale, 2.4 * scale, 0.55, 0,
+            i % 2 ? '#b8e356' : '#7ac043', Math.cos(a) * 14, Math.sin(a) * 14, 2.6, a);
+        }
+        this._spawnSprite(SPR_PUFF, pos.x, 0.06, pos.z,
+          2.8, 0.9 * scale, 5.2 * scale, 0.42, 0, '#6f8f3a', 0, 0, 4.6, 0);
+        break;
+      }
+      case 'bomb_emp': {
+        // Ion pulse: hard violet spokes OUTWARD from the source (the inverse of the slug's
+        // convergence — this payload radiates), a cold light, no combustion products.
+        const spokes = reduced ? 6 : 10;
+        const ring = Math.min(18, r * 0.4);
+        for (let i = 0; i < spokes; i++) {
+          const a = (i / spokes) * Math.PI * 2;
+          const sx = pos.x + Math.cos(a) * 2;
+          const sz = pos.z + Math.sin(a) * 2;
+          this._spawnProjectileTrailStreak(sx, 0.18, sz,
+            0.26, 0.16, ring * 0.3, 0.85, i % 2 ? '#b48cff' : '#6f8dff',
+            Math.cos(a) * 52, Math.sin(a) * 52, Math.cos(a), Math.sin(a));
+        }
+        this._spawnSprite(SPR_FLASH, pos.x, 0.15, pos.z, 0.08,
+          1.9, 0.8, 0.9, 0, '#e6dcff', 0, 0, 0.9, 0);
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#8f8dff', 3.6 * neon.lightPeak * acc.eventLightPeakScale, 6, 140);
+        }
+        break;
+      }
+      case 'bomb_thermite': {
+        // The starter: a modest directional splash of burning paste — embers that KEEP glowing
+        // on the shove lines (the DoT read: what it sticks to keeps paying).
+        const scale = scaleOf(0.018);
+        this._emitDirectionalShoveSheets(pos, shoves, tinted('#ffd9a8', '#ff5a2a'), reduced, Math.max(0.8, scale));
+        for (let i = 0; i < (reduced ? 3 : 7); i++) {
+          const row = shoves[i % Math.min(shoves.length, 4)];
+          const a = Math.atan2(row.dz, row.dx) + (Math.random() - 0.5) * 0.8;
+          const reach = 1.2 + Math.random() * 2.2;
+          this._spawnSprite(SPR_PUFF, pos.x + Math.cos(a) * reach, 0.12, pos.z + Math.sin(a) * reach,
+            1.1 + Math.random() * 1.2, 0.55 * scale, 3.4 * scale, 0.6, 0,
+            i % 2 ? '#ffb35c' : '#ff5a2a', Math.cos(a) * 8, Math.sin(a) * 8, 3.2, a);
+        }
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#ff7a3a', 3.8 * neon.lightPeak * acc.eventLightPeakScale, 12, 260);
+        }
+        break;
+      }
+      case 'bomb_scrambler': {
+        // Havoc: spiral streaks — outward thrust with a tangential lie, the tumble made visible.
+        const spokes = reduced ? 5 : 9;
+        for (let i = 0; i < spokes; i++) {
+          const a = (i / spokes) * Math.PI * 2;
+          const sx = pos.x + Math.cos(a) * 2.2;
+          const sz = pos.z + Math.sin(a) * 2.2;
+          const vx = Math.cos(a) * 34 - Math.sin(a) * 26;
+          const vz = Math.sin(a) * 34 + Math.cos(a) * 26;
+          this._spawnProjectileTrailStreak(sx, 0.18, sz,
+            0.3, 0.18, 3.2, 0.8, i % 2 ? '#ff8ad8' : '#d86fff', vx, vz, vx / 42, vz / 42);
+        }
+        this._emitDirectionalShoveSheets(pos, shoves, tinted('#ffd8f0', '#d86fff'), reduced, 0.9);
+        break;
+      }
+      case 'bomb_anchor': {
+        // Ballast: a heavy compact slug-flash and a brief dense streak ONTO each victim (the
+        // "welded to your own inertia" read — mass arriving, not energy leaving).
+        this._spawnSprite(SPR_FLASH, pos.x, 0.16, pos.z, 0.1,
+          1.6, 0.75, 0.95, 0, '#bff2ec', 0, 0, 1.0, 0);
+        const victims = Array.isArray(p.hits) ? p.hits.length : 0;
+        for (let i = 0; i < Math.min(victims, 4); i++) {
+          const a = (i / Math.max(1, Math.min(victims, 4))) * Math.PI * 2 + 0.7;
+          this._spawnProjectileTrailStreak(pos.x + Math.cos(a) * 3, 0.5, pos.z + Math.sin(a) * 3,
+            0.34, 0.24, 3.0, 0.9, '#2fa898', 0, 0, Math.cos(a) * 0.2, Math.sin(a) * 0.2);
+        }
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#2fa898', 2.8 * neon.lightPeak * acc.eventLightPeakScale, 8, 150);
+        }
+        break;
+      }
+      default: {
+        // bomb_frag: the killing blast — compact structural core + real-direction shock sheets +
+        // a fragment fan. Same law as the impulse charge, warmer and hungrier.
+        const profile = tinted('#fff1d8', '#ff8a3a');
+        const coreScale = scaleOf(0.02);
+        this._spawnSprite(SPR_FLASH, pos.x, 0.16, pos.z, 0.11,
+          2.6 * coreScale, 0.9 * coreScale, 0.95, 0, '#ffffff', 0, 0, 1.15, 0);
+        this._emitDirectionalShoveSheets(pos, shoves, profile, reduced, Math.max(0.85, coreScale));
+        this._impactParticleCone(pos.x, pos.z, Math.atan2(shoves[0].dz, shoves[0].dx), 0.9, 30, 80,
+          reduced ? 6 : 16, 0.5, 1.4, '#fff2d4', '#ff8a3a', 2.4);
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#ff8a3a', 4.6 * neon.lightPeak * acc.eventLightPeakScale, 8, 190);
+        }
+        break;
+      }
+    }
+  },
+
+  // Persistent field payloads end quietly. The singularity's collapse renders from its own
+  // bombs:detonated receipt (trigger 'collapse', above); this handler owns only the goo settle.
+  _onBombFieldEnded(p) {
+    if (!this._scene || !p || !p.pos) return;
+    const payloadId = String(p.payloadId || '');
+    if (payloadId === 'bomb_goo') {
+      // The tar settles: one last dull puff, nothing bright.
+      this._spawnSprite(SPR_PUFF, p.pos.x, 0.06, p.pos.z, 1.8, 0.6, 2.4, 0.3, 0, '#6f8f3a', 0, 0, 2.4, 0);
     }
   },
 

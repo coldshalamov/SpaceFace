@@ -3572,6 +3572,320 @@ function buildMassSeed(e) {
   return g;
 }
 
+// Payload accent colors for the drift-bomb family — mirrors src/data/bombs.js `visual` fields
+// (hex there, integer here). Kept local so visualFactory stays import-light.
+const BOMB_ACCENTS = Object.freeze({
+  bomb_frag: 0xff8a3a,
+  bomb_concussion: 0x39d0ff,
+  bomb_singularity: 0x7de8ff,
+  bomb_goo: 0x8ac043,
+  bomb_emp: 0x8f8dff,
+  bomb_thermite: 0xff5a2a,
+  bomb_scrambler: 0xd86fff,
+  bomb_anchor: 0x2fa898,
+});
+
+// Drift-bomb bay (type 'bomb', src/systems/bombs.js). Eight payloads, eight silhouettes —
+// color is always redundant with form (the family law: a bomb's job must read from its shape
+// before its paint). All share one chassis grammar (dark ordnance shell + payload accent +
+// arming pip that lights when the fuze goes live) so the bay reads as one manufacturer:
+//   frag        studded drum + nose cone + tail fins      — the classic killing cassette
+//   concussion  wide shove drum + heavy rim torus         — the pure-impulse plate
+//   singularity dense core + twin counter-gyros           — the neutron slug (gyros spin live)
+//   goo         squashed bladder + bands + nozzles        — the tarburst (bladder pulses live)
+//   emp         slim spool + stacked coils + whip antenna — the static bomb
+//   thermite    vented canister + hot warning band        — the starter
+//   scrambler   irregular polyhedron + wild vanes         — the havoc pod
+//   anchor      dense box slug + collar rings + pylons    — the ballast
+function buildBomb(e) {
+  const payloadId = String(e && e.data && e.data.bombId || 'bomb_frag');
+  const R = Math.max(0.6, Number(e && e.radius) || 1.4);
+  const g = new THREE.Group();
+
+  const shell = getMaterial('bomb:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x272e33, roughness: 0.6, metalness: 0.62,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const alloy = getMaterial('bomb:alloy', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x6d7478, roughness: 0.42, metalness: 0.8,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const dim = getMaterial('bomb:pip:dim', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    name: 'BombPipDim',
+    color: 0x2a3336, emissive: 0x0a1418, emissiveIntensity: 0.18, roughness: 0.5, metalness: 0.2,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const accentColor = BOMB_ACCENTS[payloadId] || 0xff8a3a;
+  const accentKey = `bomb:pip:armed:${payloadId}`;
+  const armed = getMaterial(accentKey, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    name: `BombPipArmed_${payloadId}`,
+    color: accentColor, emissive: accentColor, emissiveIntensity: 1.6, roughness: 0.26, metalness: 0.2,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const accentMat = getMaterial(`bomb:accent:${payloadId}`, () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    name: `BombAccent_${payloadId}`,
+    color: accentColor, emissive: accentColor, emissiveIntensity: 0.55, roughness: 0.34, metalness: 0.3,
+  }), SHARED_MATERIAL_ROLE.HULL));
+
+  let pip = null;
+  let animate = null;
+
+  switch (payloadId) {
+    case 'bomb_concussion': {
+      const drum = new THREE.Mesh(
+        getGeometry('bomb:conc:drum', () => new THREE.CylinderGeometry(0.58, 0.58, 0.42, 14).rotateZ(Math.PI / 2)),
+        shell,
+      );
+      drum.name = 'ConcussionDrum';
+      g.add(drum);
+      const rim = new THREE.Mesh(
+        getGeometry('bomb:conc:rim', () => new THREE.TorusGeometry(0.56, 0.1, 8, 18).rotateY(Math.PI / 2)),
+        alloy,
+      );
+      rim.name = 'ConcussionRim';
+      g.add(rim);
+      const hub = new THREE.Mesh(
+        getGeometry('bomb:conc:hub', () => new THREE.CylinderGeometry(0.2, 0.2, 0.5, 10).rotateZ(Math.PI / 2)),
+        accentMat,
+      );
+      hub.name = 'ConcussionHub';
+      g.add(hub);
+      pip = hub;
+      break;
+    }
+    case 'bomb_singularity': {
+      const core = new THREE.Mesh(
+        getGeometry('bomb:sing:core', () => new THREE.OctahedronGeometry(0.34, 0)),
+        getMaterial('bomb:sing:coremat', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+          name: 'NeutronSlugCore',
+          color: 0x14202e, emissive: 0x123a52, emissiveIntensity: 0.8, roughness: 0.25, metalness: 0.85,
+        }), SHARED_MATERIAL_ROLE.HULL)),
+      );
+      core.name = 'NeutronSlugCore';
+      g.add(core);
+      const gyroGeo = getGeometry('bomb:sing:gyro', () => new THREE.TorusGeometry(0.52, 0.035, 6, 20));
+      const gyroA = new THREE.Mesh(gyroGeo, alloy);
+      gyroA.name = 'NeutronSlugGyroA';
+      gyroA.rotation.x = Math.PI / 2;
+      g.add(gyroA);
+      const gyroB = new THREE.Mesh(gyroGeo, alloy);
+      gyroB.name = 'NeutronSlugGyroB';
+      g.add(gyroB);
+      pip = new THREE.Mesh(getGeometry('bomb:sing:pip', () => new THREE.OctahedronGeometry(0.12, 0)), dim);
+      pip.name = 'NeutronSlugPip';
+      pip.position.y = 0.62;
+      g.add(pip);
+      animate = (now) => {
+        const t = Number.isFinite(now) ? now * 0.001 : 0;
+        gyroA.rotation.z = t * 3.1;
+        gyroB.rotation.x = Math.PI / 2 + t * 2.2;
+        core.rotation.y = t * 1.4;
+      };
+      break;
+    }
+    case 'bomb_goo': {
+      const bladder = new THREE.Mesh(
+        getGeometry('bomb:goo:bladder', () => new THREE.SphereGeometry(0.42, 14, 10)),
+        getMaterial('bomb:goo:shell', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+          color: 0x3d4a2c, roughness: 0.72, metalness: 0.08,
+        }), SHARED_MATERIAL_ROLE.HULL)),
+      );
+      bladder.name = 'TarburstBladder';
+      bladder.scale.set(1.15, 0.8, 1.15);
+      g.add(bladder);
+      const bandGeo = getGeometry('bomb:goo:band', () => new THREE.TorusGeometry(0.44, 0.05, 6, 16).rotateX(Math.PI / 2));
+      for (const y of [-0.16, 0.16]) {
+        const band = new THREE.Mesh(bandGeo, alloy);
+        band.name = 'TarburstBand';
+        band.position.y = y;
+        band.scale.setScalar(1.08 - Math.abs(y));
+        g.add(band);
+      }
+      const nozzleGeo = getGeometry('bomb:goo:nozzle', () => new THREE.ConeGeometry(0.09, 0.24, 6));
+      for (let i = 0; i < 3; i++) {
+        const a = (i * Math.PI * 2) / 3 + 0.5;
+        const nozzle = new THREE.Mesh(nozzleGeo, accentMat);
+        nozzle.name = `TarburstNozzle_${i + 1}`;
+        nozzle.position.set(Math.cos(a) * 0.38, -0.42, Math.sin(a) * 0.38);
+        nozzle.rotation.x = Math.PI;
+        g.add(nozzle);
+      }
+      pip = new THREE.Mesh(getGeometry('bomb:goo:pip', () => new THREE.SphereGeometry(0.1, 8, 6)), dim);
+      pip.name = 'TarburstPip';
+      pip.position.y = 0.4;
+      g.add(pip);
+      animate = (now) => {
+        const t = Number.isFinite(now) ? now * 0.001 : 0;
+        bladder.scale.set(1.15 + Math.sin(t * 5) * 0.05, 0.8 - Math.sin(t * 5) * 0.04, 1.15 + Math.sin(t * 5) * 0.05);
+      };
+      break;
+    }
+    case 'bomb_emp': {
+      const spool = new THREE.Mesh(
+        getGeometry('bomb:emp:spool', () => new THREE.CylinderGeometry(0.22, 0.22, 1.0, 10).rotateZ(Math.PI / 2)),
+        shell,
+      );
+      spool.name = 'StaticBombSpool';
+      g.add(spool);
+      const coilGeo = getGeometry('bomb:emp:coil', () => new THREE.TorusGeometry(0.3, 0.05, 6, 16).rotateY(Math.PI / 2));
+      for (const x of [-0.28, 0, 0.28]) {
+        const coil = new THREE.Mesh(coilGeo, accentMat);
+        coil.name = 'StaticBombCoil';
+        coil.position.x = x;
+        g.add(coil);
+      }
+      const whip = new THREE.Mesh(
+        getGeometry('bomb:emp:whip', () => new THREE.CylinderGeometry(0.018, 0.018, 0.6, 5)),
+        alloy,
+      );
+      whip.name = 'StaticBombWhip';
+      whip.position.y = 0.5;
+      g.add(whip);
+      const tip = new THREE.Mesh(getGeometry('bomb:emp:tip', () => new THREE.SphereGeometry(0.07, 8, 6)), dim);
+      tip.name = 'StaticBombTip';
+      tip.position.y = 0.82;
+      g.add(tip);
+      pip = tip;
+      break;
+    }
+    case 'bomb_thermite': {
+      const can = new THREE.Mesh(
+        getGeometry('bomb:therm:can', () => new THREE.CylinderGeometry(0.34, 0.34, 0.9, 12).rotateZ(Math.PI / 2)),
+        shell,
+      );
+      can.name = 'ThermiteCanister';
+      g.add(can);
+      const band = new THREE.Mesh(
+        getGeometry('bomb:therm:band', () => new THREE.TorusGeometry(0.36, 0.06, 6, 16).rotateY(Math.PI / 2)),
+        accentMat,
+      );
+      band.name = 'ThermiteWarningBand';
+      g.add(band);
+      const ventGeo = getGeometry('bomb:therm:vent', () => new THREE.BoxGeometry(0.34, 0.05, 0.2));
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2 + Math.PI / 4;
+        const vent = new THREE.Mesh(ventGeo, alloy);
+        vent.name = `ThermiteVentFin_${i + 1}`;
+        vent.position.set(0, Math.sin(a) * 0.4, Math.cos(a) * 0.4);
+        vent.rotation.x = -a;
+        g.add(vent);
+      }
+      pip = new THREE.Mesh(getGeometry('bomb:therm:pip', () => new THREE.BoxGeometry(0.14, 0.05, 0.14)), dim);
+      pip.name = 'ThermitePip';
+      pip.position.x = 0.52;
+      g.add(pip);
+      break;
+    }
+    case 'bomb_scrambler': {
+      const body = new THREE.Mesh(
+        getGeometry('bomb:scr:body', () => new THREE.IcosahedronGeometry(0.36, 0)),
+        shell,
+      );
+      body.name = 'HavocPodBody';
+      g.add(body);
+      const vaneGeo = getGeometry('bomb:scr:vane', () => new THREE.BoxGeometry(0.52, 0.05, 0.16));
+      const angles = [0.4, 2.4, 4.3];
+      for (let i = 0; i < 3; i++) {
+        const a = angles[i];
+        const vane = new THREE.Mesh(vaneGeo, accentMat);
+        vane.name = `HavocVane_${i + 1}`;
+        vane.position.set(Math.cos(a) * 0.42, Math.sin(a * 1.7) * 0.3, Math.sin(a) * 0.42);
+        vane.rotation.set(a * 0.6, -a, a * 0.3);
+        g.add(vane);
+      }
+      pip = new THREE.Mesh(getGeometry('bomb:scr:pip', () => new THREE.TetrahedronGeometry(0.12, 0)), dim);
+      pip.name = 'HavocPip';
+      pip.position.y = 0.48;
+      g.add(pip);
+      break;
+    }
+    case 'bomb_anchor': {
+      const slug = new THREE.Mesh(
+        getGeometry('bomb:anch:slug', () => new THREE.BoxGeometry(0.62, 0.5, 0.62)),
+        getMaterial('bomb:anch:mat', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+          color: 0x1b2426, roughness: 0.38, metalness: 0.9,
+        }), SHARED_MATERIAL_ROLE.HULL)),
+      );
+      slug.name = 'BallastSlug';
+      g.add(slug);
+      const collarGeo = getGeometry('bomb:anch:collar', () => new THREE.TorusGeometry(0.4, 0.07, 6, 14).rotateX(Math.PI / 2));
+      for (const y of [-0.18, 0.18]) {
+        const collar = new THREE.Mesh(collarGeo, alloy);
+        collar.name = 'BallastCollar';
+        collar.position.y = y;
+        g.add(collar);
+      }
+      const pylonGeo = getGeometry('bomb:anch:pylon', () => new THREE.ConeGeometry(0.11, 0.3, 4));
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2;
+        const pylon = new THREE.Mesh(pylonGeo, accentMat);
+        pylon.name = `BallastPylon_${i + 1}`;
+        pylon.position.set(Math.cos(a) * 0.5, -0.34, Math.sin(a) * 0.5);
+        pylon.rotation.x = Math.PI;
+        g.add(pylon);
+      }
+      pip = new THREE.Mesh(getGeometry('bomb:anch:pip', () => new THREE.BoxGeometry(0.16, 0.07, 0.16)), dim);
+      pip.name = 'BallastPip';
+      pip.position.y = 0.36;
+      g.add(pip);
+      break;
+    }
+    default: {
+      // bomb_frag — the classic studded drum.
+      const drum = new THREE.Mesh(
+        getGeometry('bomb:frag:drum', () => new THREE.CylinderGeometry(0.32, 0.32, 0.95, 12).rotateZ(Math.PI / 2)),
+        shell,
+      );
+      drum.name = 'FragCassetteDrum';
+      g.add(drum);
+      const nose = new THREE.Mesh(
+        getGeometry('bomb:frag:nose', () => new THREE.ConeGeometry(0.32, 0.34, 12).rotateZ(-Math.PI / 2)),
+        alloy,
+      );
+      nose.name = 'FragCassetteNose';
+      nose.position.x = 0.64;
+      g.add(nose);
+      const studGeo = getGeometry('bomb:frag:stud', () => new THREE.BoxGeometry(0.1, 0.09, 0.09));
+      for (let i = 0; i < 6; i++) {
+        const a = (i * Math.PI) / 3;
+        const stud = new THREE.Mesh(studGeo, accentMat);
+        stud.name = `FragStud_${i + 1}`;
+        stud.position.set(Math.sin(a * 2) * 0.2, Math.sin(a) * 0.34, Math.cos(a) * 0.34);
+        stud.rotation.y = -a;
+        g.add(stud);
+      }
+      const finGeo = getGeometry('bomb:frag:fin', () => new THREE.BoxGeometry(0.26, 0.04, 0.2));
+      for (let i = 0; i < 4; i++) {
+        const a = i * Math.PI / 2;
+        const fin = new THREE.Mesh(finGeo, alloy);
+        fin.name = `FragTailFin_${i + 1}`;
+        fin.position.set(-0.5, Math.sin(a) * 0.3, Math.cos(a) * 0.3);
+        fin.rotation.x = -a;
+        g.add(fin);
+      }
+      pip = new THREE.Mesh(getGeometry('bomb:frag:pip', () => new THREE.CylinderGeometry(0.09, 0.09, 0.08, 8)), dim);
+      pip.name = 'FragPip';
+      pip.position.set(-0.3, 0.38, 0);
+      g.add(pip);
+      break;
+    }
+  }
+
+  g.scale.setScalar(R);
+  g.userData.kind = 'bomb';
+  g.userData.interactionKind = 'drift-bomb';
+  g.userData.payloadId = payloadId;
+  g.userData.visualLanguage = `drift-bomb-${payloadId}`;
+  let visualArmed = null;
+  g.userData.updateRuntimeState = (entity, now) => {
+    if (animate) animate(now);
+    const nextArmed = entity?.data?.armed === true;
+    if (nextArmed === visualArmed) return;
+    visualArmed = nextArmed;
+    if (pip) pip.material = nextArmed ? armed : dim;
+    if (pip) pip.scale.setScalar(nextArmed ? 1.18 : 1);
+    g.userData.visualArmed = nextArmed;
+  };
+  g.userData.updateRuntimeState(e, 0);
+  return g;
+}
+
 // PQ-030 Transverse Snare endpoint. The two compact forged brackets use both hue and silhouette
 // (square A / diamond B) so the line remains parseable under color-vision deficiency and reduced
 // effects. The cable itself is rendered by the existing Massline ribbon owner.
@@ -3698,6 +4012,7 @@ export function createVisualFactory() {
           case 'mine': return buildMine(e);
           case 'vectormine': return buildVectorMine(e);
           case 'charge': return buildImpulseCharge(e);
+          case 'bomb': return buildBomb(e);
           case 'massSeed': return buildMassSeed(e);
           case 'masslineSnareAnchor': return buildMasslineSnareAnchor(e);
           case 'wreck': return attachPackagedBody(freezeStaticPresentation(buildWreck(e)), wreckPackagedFile(e), e);
