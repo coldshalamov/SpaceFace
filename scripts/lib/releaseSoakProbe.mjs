@@ -1572,6 +1572,8 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
       inCorridor: dc?.inCorridor === true,
       inCapture: dc?.inCapture === true,
       distToBerth: Number.isFinite(dc?.distToBerth) ? dc.distToBerth : null,
+      speed: Number.isFinite(dc?.speed) ? dc.speed : null,
+      headingOk: dc?.headingOk === true,
       autopilotActive: window.SF?.state?.nav?.autopilot?.active === true,
     };
   }).catch(() => null);
@@ -1585,6 +1587,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
   let sawCorridor = false;
   let closestBerth = Infinity;
   let recedingPolls = 0;
+  let captureStallPolls = 0;
   let rearms = 0;
   const dockDeadline = Date.now() + 105_000;
   while (Date.now() < dockDeadline && !dockPromptVisible) {
@@ -1601,13 +1604,25 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     recedingPolls = receding ? recedingPolls + 1 : 0;
     const overshot = recedingPolls >= 2;
     const dropped = s != null && s.autopilotActive === false;
-    if ((overshot || dropped) && rearms < 3 && s != null) {
+    // A ship can also wedge INSIDE the capture bubble above the berth speed gate: the
+    // capture assist is speed-gated so it never engages, the autopilot keeps cruising
+    // through, and the berth prompt (proximity + speed) never fires — neither the
+    // overshot nor the dropped trigger covers that hold (a min-spec soak cycle sat the
+    // full 105 s inCapture at ~42 wu/s). A re-arm re-drives the approach from a fresh
+    // braking plan — the same remedy as a player circling back for another pass.
+    captureStallPolls = s != null && s.inCapture === true ? captureStallPolls + 1 : 0;
+    const captureStalled = captureStallPolls >= 12;
+    if ((overshot || dropped || captureStalled) && rearms < 3 && s != null) {
       rearms += 1;
-      mark(overshot ? 'redock-overshoot-rearm' : 'redock-rearm', await readDockDiag());
+      mark(
+        captureStalled ? 'redock-capture-stall-rearm' : (overshot ? 'redock-overshoot-rearm' : 'redock-rearm'),
+        await readDockDiag(),
+      );
       await armHeliosWaypoint(page);
       sawCorridor = false;
       closestBerth = Infinity;
       recedingPolls = 0;
+      captureStallPolls = 0;
     }
     await page.waitForTimeout(300);
   }
