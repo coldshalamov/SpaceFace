@@ -8036,6 +8036,7 @@ export const render = {
           geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
           activityFrame: this._activityFrame,
           entityId,
+          ledgerRow: isPresentationLedgerRow(entity),
           presentationTier: entity && entity.activity && entity.activity.presentationTier,
         }));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
@@ -8143,6 +8144,7 @@ export const render = {
           geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
           activityFrame: this._activityFrame,
           entityId,
+          ledgerRow: isPresentationLedgerRow(entity),
           presentationTier: entity.activity && entity.activity.presentationTier,
         }));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
