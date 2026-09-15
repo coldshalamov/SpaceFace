@@ -21,6 +21,7 @@ import { planWave } from './survivalWavePlanner.js';
 import {
   compileChallenge,
   consumeQueuedGhostHash,
+  consumeQueuedPractice,
   consumeQueuedWeeklyMutatorId,
   lastQueuedGhostHash,
   normalizeMutators,
@@ -200,6 +201,7 @@ export const survivalRun = {
       armGhostPlayback(lastQueuedGhostHash());
       consumeQueuedGhostHash();
       consumeQueuedWeeklyMutatorId();
+      if (consumeQueuedPractice()) run.practice = true;
     }
     if (payload && payload.kind === 'survival' && payload.phase === 'loadout') {
       this._phaseTicks = 0;

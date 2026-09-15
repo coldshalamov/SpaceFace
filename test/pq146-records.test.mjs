@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { compareRunRecords, compactRunResult, recordKey, recordRulesFor, roundProgress, settleCrucibleRun, emptyCrucibleProfile, parseCrucibleMeta, normalizeBestLine, bestLineRows, useCrucibleMetaStorage } from '../src/systems/survivalRecords.js';
 import { bestLineReviewRows, resultRows } from '../src/ui/screens/crucible.js';
+import { practiceLaunchFor } from '../src/ui/crucibleLaunch.js';
+import { clearQueuedChallenge, consumeQueuedPractice, lastQueuedPractice, queuePracticeRun } from '../src/systems/survivalMutators.js';
+import { currentStuntRunRules } from '../src/combat/stuntRunRules.js';
 const rules = { mode: 'swarm', arenaId: 'helios_core', balanceRevision: 'test-balance-1', physicsRevision: 'test-physics-1', scoringRevision: 2,
   difficulty: 'standard', loadoutRules: 'open', simulationAssistProfile: 'flow' };
 const result = (overrides = {}) => ({ outcome: 'defeat', seed: 146, recordRules: rules, ruleset: 'swarm', arenaId: 'helios_core',
@@ -68,6 +71,32 @@ test('practice and live assist profiles cannot silently share main comparison', 
   const cinematic = result({ recordRules: { ...rules, simulationAssistProfile: 'cinematic' } });
   assert.equal(compareRunRecords(practice, result()), null);
   assert.equal(compareRunRecords(cinematic, result()), null);
+});
+test("a stored Best Line stages same-seed practice filed outside the main comparison", () => {
+  const launch = practiceLaunchFor(line(460));
+  assert.equal(launch.seed, 146);
+  assert.equal(launch.ruleset, 'swarm');
+  assert.equal(launch.arenaId, 'helios_core');
+  assert.equal(practiceLaunchFor({ points: 0 }), null);
+  assert.equal(practiceLaunchFor(null), null);
+
+  queuePracticeRun();
+  assert.equal(lastQueuedPractice(), true);
+  assert.equal(consumeQueuedPractice(), true);
+  assert.equal(consumeQueuedPractice(), false, 'the flag is consumed exactly once');
+  queuePracticeRun();
+  clearQueuedChallenge();
+  assert.equal(lastQueuedPractice(), false, 'challenge clearing drops a staged practice launch');
+
+  // The rules stamped at run start and the comparison rules derived at settlement both file
+  // the run under 'practice' — even when provided rules carried the live ruleset name first.
+  const stamped = currentStuntRunRules({ run: { ruleset: 'swarm', arenaId: 'helios_core', practice: true } }, 'swarm');
+  assert.equal(stamped.mode, 'practice');
+  const practiceRules = recordRulesFor(result(), { practice: true, ruleset: 'swarm' });
+  assert.equal(practiceRules.mode, 'practice');
+  assert.notEqual(recordKey({ recordRules: practiceRules }), recordKey(result()));
+  const settled = settleCrucibleRun({ result: result({ recordRules: practiceRules }), storage: store() });
+  assert.equal(settled.result.recordRules.mode, 'practice');
 });
 test('reachable Crucible text presents clear/remaining honestly and Best Line account without claiming video', () => {
   const rows = resultRows(result());

@@ -20,6 +20,7 @@ import {
   lastCrucibleRuleset,
   lastCrucibleSetup,
   normalizeSeed,
+  practiceLaunchFor,
   requestCrucibleRun,
 } from '../crucibleLaunch.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
@@ -53,7 +54,7 @@ import {
   shareTextHref,
 } from './shareCode.js';
 import { SURVIVAL_MUTATOR_BY_ID } from '../../data/survivalMutators.js';
-import { clearQueuedChallenge, queueGhostPlayback, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
+import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
@@ -473,7 +474,7 @@ function renderRecordCorner(profile, dateKey) {
  * The unlock ladder and the recent runs, as kit rows under the three settings. Closed first — the
  * band exists to show what is still ahead, so the answer sits at the top.
  */
-function renderRecordRows(profile) {
+function renderRecordRows(profile, hooks = {}) {
   const band = el('div', 'sf-crd-rec__rows');
   const bests = Object.values(profile?.records?.byKey || {}).filter(row => row.bestResult?.recordRules?.complete).slice(-5);
   if (bests.length) {
@@ -489,7 +490,7 @@ function renderRecordRows(profile) {
     }
     band.appendChild(records);
   }
-  for (const line of bestLineRows(profile)) band.appendChild(renderBestLineReview(line));
+  for (const line of bestLineRows(profile)) band.appendChild(renderBestLineReview(line, hooks));
   const rows = unlockLadderRows(profile);
   const openCount = rows.filter((r) => r.open).length;
   // The heading and the figure must count the same thing. "Still to open" beside "1 / 14" read as
@@ -608,6 +609,9 @@ export const crucibleScreen = {
     let raceGhost = !!(previous && previous.ghostHash);
     // PQ-160.02: a pasted run code's challenge terms ride to launch through here.
     let pendingShare = null;
+    // PQ-146: a Best Line's "Practice this line" stages the same seed, the recorded ruleset and
+    // your own ghost — flagged so the launch files under the 'practice' record mode.
+    let practiceQueued = false;
 
     // .k-title — stencil marking and the live mode's blurb (syncMode writes it).
     const title = el('header', 'k-title');
@@ -668,6 +672,7 @@ export const crucibleScreen = {
           daily = false;
           if (freeSeed) seedInput.value = freeSeed;
         }
+        practiceQueued = false;
         ruleset = entry.ruleset;
         for (const other of modeButtons) syncChoice(other, other.dataset.ruleset === ruleset);
         if (dailyButton) syncChoice(dailyButton, false);
@@ -681,6 +686,7 @@ export const crucibleScreen = {
     syncChoice(dailyButton, daily);
     dailyButton.addEventListener('click', () => {
       if (!daily) freeSeed = seedInput.value;
+      practiceQueued = false;
       daily = true;
       ruleset = SWARM_RULESET;
       for (const other of modeButtons) syncChoice(other, false);
@@ -695,6 +701,7 @@ export const crucibleScreen = {
     syncChoice(weeklyButton, weekly);
     weeklyButton.addEventListener('click', () => {
       weekly = !weekly;
+      if (weekly) practiceQueued = false;
       syncChoice(weeklyButton, weekly);
       cue('confirm');
       syncMode();
@@ -731,6 +738,27 @@ export const crucibleScreen = {
       ghostBlurb.textContent = offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff;
       syncChoice(ghostButton, !!(raceGhost && offer.available));
       ghostButton.setAttribute('aria-disabled', String(!offer.available));
+    }
+
+    function practiceFromLine(line) {
+      const launch = practiceLaunchFor(line);
+      if (!launch) { cue('deny'); return; }
+      daily = false; weekly = false; pendingShare = null;
+      ruleset = launch.ruleset;
+      if (launch.arenaId && arenaDescriptions[launch.arenaId]) arenaId = launch.arenaId;
+      seedInput.value = String(launch.seed);
+      freeSeed = seedInput.value;
+      raceGhost = true;
+      practiceQueued = true;
+      syncMode();
+      syncArena();
+      syncGhost();
+      const offer = currentGhostOffer();
+      sub.textContent = `Practice — seed ${launch.seed}. ${offer.available ? 'Your ghost for this seed is loaded.' : 'No ghost was recorded for this seed.'}`;
+      cue('confirm');
+      if (enterButton && typeof enterButton.focus === 'function') {
+        try { enterButton.focus({ preventScroll: true }); } catch { try { enterButton.focus(); } catch { /* best-effort */ } }
+      }
     }
 
     function syncMode() {
@@ -898,6 +926,7 @@ export const crucibleScreen = {
       ruleset = res.ruleset;
       daily = false;
       weekly = false;
+      practiceQueued = false;
       freeSeed = String(res.seed);
       seedInput.value = freeSeed;
       seedInput.readOnly = false;
@@ -966,7 +995,7 @@ export const crucibleScreen = {
         const recSum = el('summary', 'k-t-fine fh-legend', 'Records & challenges');
         paintLegend(recSum, false);
         records.appendChild(recSum);
-        records.appendChild(renderRecordRows(doorProfile));
+        records.appendChild(renderRecordRows(doorProfile, { onPractice: practiceFromLine }));
         stage.appendChild(records);
       }
     } catch (err) {
@@ -1025,11 +1054,10 @@ export const crucibleScreen = {
           weeklyMutatorId,
           ghostHash,
         });
-      } else if (ghostHash != null) {
-        clearQueuedChallenge();
-        queueGhostPlayback(ghostHash);
       } else {
         clearQueuedChallenge();
+        if (ghostHash != null) queueGhostPlayback(ghostHash);
+        if (practiceQueued) queuePracticeRun();
       }
       requestCrucibleRun(ctx.bus, payload, ruleset);
     });
@@ -1509,7 +1537,7 @@ export function bestLineReviewRows(line) {
   ];
 }
 
-function renderBestLineReview(line) {
+function renderBestLineReview(line, hooks = {}) {
   const review = el('details', 'sf-crres__band');
   const summary = el('summary', 'k-caps', `Best Line · ${line.points} banked style`);
   review.appendChild(summary);
@@ -1524,6 +1552,13 @@ function renderBestLineReview(line) {
   }
   review.appendChild(acts);
   review.appendChild(el('p', 'k-sentence', 'This account preserves the observed force route. Video is unavailable.'));
+  // Same-seed practice with your own ghost when the tape exists. Practice runs file under the
+  // 'practice' record mode — they can never enter the Swarm/Gauntlet comparisons.
+  if (hooks && typeof hooks.onPractice === 'function') {
+    const practice = word('Practice this line', 'k-word--fine');
+    practice.addEventListener('click', () => hooks.onPractice(line));
+    review.appendChild(practice);
+  }
   return review;
 }
 
