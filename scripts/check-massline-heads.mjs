@@ -14,6 +14,16 @@ const result = spawnSync(process.execPath, [
   // Twin Bridle NPC counterplay: an ace cuts the line and a heavy shrugs it by mass. The
   // twin-bridle head test's heavy census leans on this proof, so it runs with the heads.
   'test/pq-031-02-npc-counterplay.test.mjs',
+  // The PQ-030/031 seed-fixed head proofs: sweep cut, snare catch, bolas throw, coupled pair,
+  // plus the PQ-030.02 counterplay trio (cutter clock, silhouette, visible read) — the same
+  // program as the sibling NPC-counterplay proof above.
+  'test/pq-030-00-sweep.test.mjs',
+  'test/pq-030-01-snare.test.mjs',
+  'test/pq-030-02-counter-first.test.mjs',
+  'test/pq-030-02-silhouette.test.mjs',
+  'test/pq-030-02-visible-read.test.mjs',
+  'test/pq-031-00-bolas-throw.test.mjs',
+  'test/pq-031-01-coupled-pair.test.mjs',
 ], { cwd: root, stdio: 'inherit', windowsHide: true });
 
 process.exitCode = Number.isInteger(result.status) ? result.status : 1;

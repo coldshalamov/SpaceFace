@@ -171,7 +171,7 @@
     "check:massline:whip-feedback": "node scripts/check-massline-whip-feedback.mjs",
     "check:mass-seed": "node --test test/mass-seed.test.mjs test/mass-seed-adversarial.test.mjs test/mass-seed-findings.test.mjs test/mass-seed-forensic.test.mjs test/mass-seed-forensic-findings.test.mjs",
     "check:planet": "node --test test/planet-vertical.test.mjs",
-    "check:fields": "node --test test/fields-kernel.test.mjs test/fields-integration.test.mjs test/fields-predictor.test.mjs",
+    "check:fields": "node --test test/fields-kernel.test.mjs test/fields-integration.test.mjs test/fields-predictor.test.mjs test/pq-147-02-counterplay.test.mjs test/pq-147-02-field-counterplay.test.mjs",
     "check:interactions": "node --test test/interaction-characterization.test.mjs test/interaction-descriptors.test.mjs test/interaction-descriptors-component.test.mjs",
     "check:beam-verbs": "node scripts/check-beam-verbs.mjs",
     "check:pq017:world-site:fast": "node scripts/check-pq017-world-site-fast.mjs",
