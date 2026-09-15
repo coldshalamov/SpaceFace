@@ -110,6 +110,13 @@ const MAX_CONTACT_DV = 40;       // wu/s of contact-sourced linear delta-v per t
 const MAX_CONTACT_DW = 2.0;      // rad/s of contact-sourced yaw-rate delta per tick (debris/rocks)
 const CRAFT_CONTACT_YAW_EPS = 0.05;     // leftover contact spin; above damping/solver noise
 const SANE_MAX_YAW_RATE = 6.0;   // absolute yaw-rate ceiling, above every legit tether clamp
+// Absolute linear sanity ceilings, same family as SANE_MAX_YAW_RATE. The fastest authored body is
+// a projectile (~700 wu/s) carrying launch-ship speed (~1000 total); 2000 leaves that a 2x margin.
+// At 2000 wu/s a fixed step integrates ~33 wu, so a 100 wu per-step displacement bound only ever
+// sees solver anomalies: containing-collider depenetration, joint projection, or a corrupted
+// pre-step scalar — never ordinary play. Both counters are telemetry, not gameplay gates.
+const SANE_MAX_BODY_SPEED = 2000;    // wu/s absolute linvel ceiling
+const MAX_STEP_DISPLACEMENT_WU = 100; // wu absolute single-step translation ceiling
 const HELM_LOCKED_TYPES = new Set(['ship', 'drone']);
 
 export const PLAYER_CONTACT_RESPONSE_FRACTION = 0.25;
@@ -646,6 +653,13 @@ export class Sg02DynamicBodyOwner {
       this.world.step();
     }
     this.tick++;
+    // The displacement sanity net runs on raw solver output, before any publish or restore pass:
+    // depenetration from a containing collider, a solver joint projection, or a corrupted
+    // pre-step velocity can otherwise relocate a hull across the galaxy in one tick while the
+    // player structural give restores the predicted velocity — a teleport with no velocity
+    // signature. Nothing authored moves more than ~17 wu per step; restore the pre-step pose so
+    // the anomaly costs one frame of motion, not a one-way trip.
+    for (const rec of this.dynamicRecords) this._rejectImplausibleStep(rec);
     // Bound solver contact spikes before publishing the authoritative motion snapshot.
     this._stepContactReceipts = stepReceipts;
     for (const rec of this.dynamicRecords) this._applyStructuralGive(rec);
@@ -695,10 +709,29 @@ export class Sg02DynamicBodyOwner {
   _captureExpectedKinematics(rec) {
     const v = rec.body.linvel();
     const w = rec.body.angvel();
-    const e = rec.expected || (rec.expected = { vx: 0, vz: 0, wy: 0 });
+    const t = rec.body.translation();
+    const e = rec.expected || (rec.expected = { vx: 0, vz: 0, wy: 0, x: 0, z: 0 });
     const dt = this.fixedDt;
-    e.vx = finite(v.x) + rec.controlForce.x / positive(rec.effectiveMass, rec.spec.mass) * dt;
-    e.vz = finite(v.z) + rec.controlForce.z / positive(rec.effectiveMass, rec.spec.mass) * dt;
+    // The linear-velocity sanity net, the SANE_MAX_YAW_RATE analog for translation. A corrupted
+    // pre-step linvel (a cross-space scalar, a stale-body read) integrates inside world.step()
+    // while the player branch of _applyStructuralGive restores this same prediction afterward —
+    // laundering a teleport's velocity signature into an ordinary-looking cruise. Nothing
+    // authored exceeds ~1000 wu/s; clamp before predicting so the restore cannot re-arm one.
+    let vx = finite(v.x);
+    let vz = finite(v.z);
+    const speed = Math.hypot(vx, vz);
+    if (speed > SANE_MAX_BODY_SPEED) {
+      const s = SANE_MAX_BODY_SPEED / speed;
+      vx *= s;
+      vz *= s;
+      rec.body.setLinvel({ x: vx, y: 0, z: vz }, true);
+      this._diagnostics.velocitySanityClamps = (this._diagnostics.velocitySanityClamps || 0) + 1;
+    }
+    // Pre-step pose for the displacement sanity net (_rejectImplausibleStep).
+    e.x = finite(t.x);
+    e.z = finite(t.z);
+    e.vx = vx + rec.controlForce.x / positive(rec.effectiveMass, rec.spec.mass) * dt;
+    e.vz = vz + rec.controlForce.z / positive(rec.effectiveMass, rec.spec.mass) * dt;
     const wyUndamped = finite(w.y)
       + rec.controlTorque.y / positive(rec.effectiveInertiaY, rec.spec.inertiaY) * dt;
     const damping = contactAngularDamping(rec);
@@ -894,6 +927,23 @@ export class Sg02DynamicBodyOwner {
         }
       }
     }
+  }
+
+  // Reject a physically impossible single-step translation. Legitimate teleports never come
+  // through world.step() — dock/undock, sector jumps, and load resyncs all write the pose
+  // explicitly outside the solver — so a >MAX_STEP_DISPLACEMENT_WU move inside one step is
+  // always a solver anomaly, never gameplay. The pre-step pose captured by
+  // _captureExpectedKinematics is the last known-good state; restoring it drops one frame of
+  // motion instead of publishing a galaxy-scale relocation. The counter is telemetry.
+  _rejectImplausibleStep(rec) {
+    const e = rec.expected;
+    if (!e || !Number.isFinite(e.x) || !Number.isFinite(e.z)) return;
+    const p = rec.body.translation();
+    const dx = finite(p.x) - e.x;
+    const dz = finite(p.z) - e.z;
+    if (dx * dx + dz * dz <= MAX_STEP_DISPLACEMENT_WU * MAX_STEP_DISPLACEMENT_WU) return;
+    rec.body.setTranslation({ x: e.x, y: 0, z: e.z }, true);
+    this._diagnostics.stepDisplacementRejects = (this._diagnostics.stepDisplacementRejects || 0) + 1;
   }
 
   // Clamp the solver-contact contribution to this tick's velocity change (see MAX_CONTACT_DV).
