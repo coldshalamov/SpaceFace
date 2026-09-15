@@ -48,7 +48,7 @@ import {
 import { addCargo } from './cargo.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
 import {
-  CONFLICT_REACTION_SURFACES,
+  conflictReactionPackId,
   conflictReactionSurfaceForStation,
   normalizeConflictFlipFact,
   selectConflictReaction,
@@ -1136,11 +1136,12 @@ export const story = {
     return true;
   },
 
-  // Sker uses the already-mounted station airlock wall. Helios consumes the same saved fact from
-  // the existing Market ad-board renderer, so neither response creates a new presentation lane.
+  // Graffiti-surface factions answer a saved conflict:flip fact on the dock wall; ad-board
+  // factions consume the same fact through the Market renderer. Either way the reaction reads
+  // from the factions-owned fact — the wall and the board are presentation, never a war writer.
   _surfaceConflictReaction(stationId) {
     const surface = conflictReactionSurfaceForStation(stationId);
-    if (surface !== CONFLICT_REACTION_SURFACES.SKER_GRAFFITI) return false;
+    if (!surface || conflictReactionPackId(surface) !== 'graffiti') return false;
     const s = this.state.story;
     const reaction = selectConflictReaction({
       surface,
@@ -1150,13 +1151,13 @@ export const story = {
     if (!reaction) return false;
     s.graffitiShown = s.graffitiShown || {};
     s.graffitiShown[`airlock:${reaction.text}`] = true;
-    // Re-emit on each Sker dock so Continue can rebuild the UI-only wall stash. comms.js dedupes
+    // Re-emit on each dock so Continue can rebuild the UI-only wall stash. comms.js dedupes
     // line+location inside that stash, so repeated refreshes never stack duplicate DOM rows.
     this.bus.emit('graffiti:show', {
       line: reaction.text,
       where: 'airlock',
       beat: s.beatIndex,
-      author: reaction.author || 'Sker wall',
+      author: reaction.author || 'station wall',
       dockedStationId: stationId,
       source: 'conflict_flip',
       reactionId: reaction.id,

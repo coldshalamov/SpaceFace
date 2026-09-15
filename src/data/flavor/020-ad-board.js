@@ -47,5 +47,19 @@ export default defineFlavorPack({
     { id: 'war_helios_04', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Concord Transit', text: 'TRANSIT THROUGH {sector} REMAINS STABLE. CASUALTY FIGURES ARE NOT A TRANSIT METRIC.' },
     { id: 'war_helios_05', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Helios Claims Bureau', text: '{winner} HAS ASSUMED TEMPORARY SERVICE LIABILITY FOR {sector}. OPERATIONS CONTINUE.' },
     { id: 'war_helios_06', set: 'war_helios_denial', reactsTo: 'conflict_flip', sponsor: 'Concord Records', text: 'NO FRONT MOVED. {sector} RECORDS WERE REFILED UNDER {winner}.' },
+    // war_mts_manifest — the Syndicate reads every flip as a bookkeeping event.
+    { id: 'war_mts_01', set: 'war_mts_manifest', reactsTo: 'conflict_flip', sponsor: 'Meridian Manifest Desk', text: 'MTS MANIFEST UPDATE: {sector} NOW CLEARS UNDER {winner} SEALS. RATES UNCHANGED.' },
+    { id: 'war_mts_02', set: 'war_mts_manifest', reactsTo: 'conflict_flip', sponsor: 'Meridian Bond Office', text: '{sector} TRANSIT BONDS REISSUED TO {winner}. PRIOR {loser} PAPER HONORED AT DISCOUNT.' },
+    { id: 'war_mts_03', set: 'war_mts_manifest', reactsTo: 'conflict_flip', sponsor: 'Syndicate Throughput', text: 'SYNDICATE NOTICE: {sector} TRAFFIC CONTINUES UNDER NEW FLAG. DELAYS BILLABLE TO {loser}.' },
+    { id: 'war_mts_04', set: 'war_mts_manifest', reactsTo: 'conflict_flip', sponsor: 'Meridian Customs', text: '{winner} CUSTOMS CODES NOW APPLY AT {sector}. RE-MANIFEST BEFORE UNDOCK.' },
+    { id: 'war_mts_05', set: 'war_mts_manifest', reactsTo: 'conflict_flip', sponsor: 'Collections Division', text: 'THE {sector} BOOKS BALANCE. {loser} ARREARS TRANSFER TO {winner} COLLECTIONS.' },
+    { id: 'war_mts_06', set: 'war_mts_manifest', reactsTo: 'conflict_flip', sponsor: 'Meridian Warranty Desk', text: 'HOLD HARMLESS: {sector} FLAG CHANGE DOES NOT VOID MERIDIAN WARRANTIES.' },
+    // war_dmc_tally — the Collective reads every flip as a shift notice: new flag, same shaft.
+    { id: 'war_dmc_01', set: 'war_dmc_tally', reactsTo: 'conflict_flip', sponsor: 'Shift Tally Board', text: 'SHIFT TALLY: {sector} FLIPPED TO {winner}. THE ROCK DOES NOT CARE WHO SIGNS.' },
+    { id: 'war_dmc_02', set: 'war_dmc_tally', reactsTo: 'conflict_flip', sponsor: 'DMC Labor Desk', text: '{sector} CREWS STILL CLOCK IN. {winner} PAYS THE SAME DEBT {loser} OWED.' },
+    { id: 'war_dmc_03', set: 'war_dmc_tally', reactsTo: 'conflict_flip', sponsor: 'Shaft Foreman', text: 'NEW FLAG, SAME SHAFTS. {sector} ORE MOVES WHEN THE BELT MOVES.' },
+    { id: 'war_dmc_04', set: 'war_dmc_tally', reactsTo: 'conflict_flip', sponsor: 'Tally Keeper', text: 'THE TALLY REMEMBERS: {loser} PRICED {sector} LIKE THEY OWNED THE DARK.' },
+    { id: 'war_dmc_05', set: 'war_dmc_tally', reactsTo: 'conflict_flip', sponsor: 'Survey Union Local', text: '{winner} SURVEYORS ASKED FOR OUR MAPS. WE CHARGED DOUBLE. {sector} RATE.' },
+    { id: 'war_dmc_06', set: 'war_dmc_tally', reactsTo: 'conflict_flip', sponsor: 'Berth Count', text: 'COUNT THE BERTHS, NOT THE FLAGS. {sector} STILL FEEDS THE SAME TABLES.' },
   ],
 });

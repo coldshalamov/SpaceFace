@@ -11,8 +11,17 @@ import { FLAVOR_PACKS } from './flavor/index.generated.js';
 export const CONFLICT_REACTION_SURFACES = Object.freeze({
   SKER_GRAFFITI: 'sker_graffiti',
   HELIOS_AD: 'helios_ad',
+  DMC_TALLY: 'dmc_tally',
+  MTS_MANIFEST: 'mts_manifest',
+  QUIET_WHISPER: 'quiet_whisper',
+  VAEL_KEEL: 'vael_keel',
+  FREE_DOCKLINE: 'free_dockline',
+  CHOIR_LITANY: 'choir_litany',
 });
 
+// One authored reaction register per station-owning faction (PQ-170.00): the same saved
+// conflict:flip fact reads in the local voice wherever the player docks. Graffiti surfaces ride
+// the comms wall on dock; board surfaces ride the market's dockside notice.
 const SURFACE_CONFIG = Object.freeze({
   [CONFLICT_REACTION_SURFACES.SKER_GRAFFITI]: Object.freeze({
     packId: 'graffiti',
@@ -22,7 +31,54 @@ const SURFACE_CONFIG = Object.freeze({
     packId: 'ad_board',
     set: 'war_helios_denial',
   }),
+  [CONFLICT_REACTION_SURFACES.DMC_TALLY]: Object.freeze({
+    packId: 'ad_board',
+    set: 'war_dmc_tally',
+  }),
+  [CONFLICT_REACTION_SURFACES.MTS_MANIFEST]: Object.freeze({
+    packId: 'ad_board',
+    set: 'war_mts_manifest',
+  }),
+  [CONFLICT_REACTION_SURFACES.QUIET_WHISPER]: Object.freeze({
+    packId: 'graffiti',
+    set: 'war_quiet_whisper',
+  }),
+  [CONFLICT_REACTION_SURFACES.VAEL_KEEL]: Object.freeze({
+    packId: 'graffiti',
+    set: 'war_vael_keel',
+  }),
+  [CONFLICT_REACTION_SURFACES.FREE_DOCKLINE]: Object.freeze({
+    packId: 'graffiti',
+    set: 'war_free_dockline',
+  }),
+  [CONFLICT_REACTION_SURFACES.CHOIR_LITANY]: Object.freeze({
+    packId: 'graffiti',
+    set: 'war_choir_litany',
+  }),
 });
+
+// Which faction's voice a station carries. Reach mourns on the Sker wall; the other seven
+// station-holding factions answer a flip in their own register on their own docks.
+const SURFACE_BY_FACTION = Object.freeze({
+  faction_reach: CONFLICT_REACTION_SURFACES.SKER_GRAFFITI,
+  faction_scn: CONFLICT_REACTION_SURFACES.HELIOS_AD,
+  faction_dmc: CONFLICT_REACTION_SURFACES.DMC_TALLY,
+  faction_mts: CONFLICT_REACTION_SURFACES.MTS_MANIFEST,
+  faction_quiet: CONFLICT_REACTION_SURFACES.QUIET_WHISPER,
+  faction_vael: CONFLICT_REACTION_SURFACES.VAEL_KEEL,
+  faction_free: CONFLICT_REACTION_SURFACES.FREE_DOCKLINE,
+  faction_choir: CONFLICT_REACTION_SURFACES.CHOIR_LITANY,
+});
+
+const STATION_FACTION_BY_ID = (() => {
+  const map = new Map();
+  for (const sector of SECTORS) {
+    for (const station of sector.stations || []) {
+      map.set(station.id, station.factionId || sector.factionId || null);
+    }
+  }
+  return map;
+})();
 
 const FACTION_BY_ID = new Map(FACTION_META.map((faction) => [faction.id, faction]));
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
@@ -40,11 +96,14 @@ const ENTRIES_BY_SURFACE = Object.freeze(Object.fromEntries(
 ));
 
 export function conflictReactionSurfaceForStation(stationId) {
-  if (stationId === 'station_sker') return CONFLICT_REACTION_SURFACES.SKER_GRAFFITI;
-  if (stationId === 'station_helios' || stationId === 'station_coalition') {
-    return CONFLICT_REACTION_SURFACES.HELIOS_AD;
-  }
-  return null;
+  const factionId = STATION_FACTION_BY_ID.get(stationId);
+  return factionId ? SURFACE_BY_FACTION[factionId] || null : null;
+}
+
+/** The flavor pack that physically renders a surface — 'graffiti' walls vs 'ad_board' notices. */
+export function conflictReactionPackId(surface) {
+  const config = SURFACE_CONFIG[surface];
+  return config ? config.packId : null;
 }
 
 export function conflictReactionEntries(surface) {

@@ -11,6 +11,8 @@ import { isRunSealed } from '../core/runSeal.js';
 import { FACTION_META } from '../data/factions.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { CONTESTED_SECTOR_BY_PAIR, contestedSectorForPair } from '../data/conflictZones.js';
+import { SECTORS } from '../data/sectors.js';
+import { KillCause, compactKillCausality } from '../combat/killCausality.js';
 import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 
 // ── Tiers (§0.9 / spec): 9 named bands across -1000..+1000, evaluated high→low. ──────────────
@@ -44,6 +46,21 @@ const PLAYER_WEIGHT = 25;     // playerLean contribution to war momentum
 const POWER_WEIGHT = 0.9;
 const DECAY_POSITIVE = false; // default: only negative rep decays toward neutral (spec)
 
+// PQ-170.00 — fronts you can tilt. A kill ON the contested sector of a warring pair is a front
+// action, not background noise: it leans harder than a remote gank and banks real momentum that
+// resolves on the next war tick (or immediately, while the front is already hot). Blockade kills
+// strangle a lane's logistics hulls; siege kills break bastion-class hulls; a thrown mass or a
+// slam the player caused reads as the wrecking-ball verb the packet names.
+const FRONT_KILL_LEAN = 0.15;     // contested-sector kill lean gain (remote kills stay at 0.1)
+const FRONT_KILL_TENSION = 0.5;   // a front action keeps the front hot
+const FRONT_KILL_MOMENTUM = 6;    // base momentum banked per contested-sector kill
+const BLOCKADE_MOMENTUM = 4;      // extra momentum for killing the lane's logistics hulls
+const SIEGE_MOMENTUM = 10;        // extra momentum for breaking a bastion/heavy hull
+const WRECKING_BALL_MOMENTUM = 5; // extra momentum when the kill was thrown mass / a caused slam
+const SIEGE_CLASSES = new Set(['capital', 'guardian', 'frigate']);
+const SIEGE_HULLS = new Set(['ship_bastion', 'ship_warden', 'ship_colossus', 'ship_leviathan']);
+const LOGISTICS_ARCHETYPES = new Set(['passive', 'fleeing_trader']);
+
 // Contested sectors flippable in war: pairKey → sectorId (spec CONTESTED SECTORS, sector_ ids).
 const CONTESTED = CONTESTED_SECTOR_BY_PAIR;
 
@@ -53,6 +70,22 @@ const FACTION_IDS = [];
 for (const f of FACTION_META) { META_BY_ID[f.id] = f; FACTION_IDS.push(f.id); }
 
 function sortedPairKey(a, b) { return a < b ? `${a}:${b}` : `${b}:${a}`; }
+
+const SECTOR_NAME_BY_ID = Object.create(null);
+for (const s of SECTORS) SECTOR_NAME_BY_ID[s.id] = s.name || s.id;
+
+function freshFrontRecord() {
+  return { frontKills: 0, blockade: 0, siege: 0, thrown: 0 };
+}
+
+function factionLabel(id) {
+  const meta = META_BY_ID[id];
+  return String((meta && (meta.short || meta.name)) || id || 'unknown').toUpperCase();
+}
+
+function sectorLabel(id) {
+  return String(SECTOR_NAME_BY_ID[id] || id || 'unknown sector').toUpperCase();
+}
 
 /** Spillover weight from faction `a` onto faction `b` (relations matrix, symmetric fallback). */
 function spilloverWeight(a, b) {
@@ -189,6 +222,22 @@ export const factions = {
       }
       // Pirate/law kills feed inter-faction tension around contested space.
       this._feedTensionForKill(victim, p.pos);
+      // PQ-170.00: the same kill ON a contested front is a physical tilt of the war — blockade
+      // lanes, siege kills and wrecking-ball throws bank momentum toward the flip.
+      this._feedFrontForKill(victim, p);
+    });
+
+    // Wrecking-ball clause: a thrown mass or a caused slam can kill with no conventional
+    // killerId (missionConditions documents the slung-rock case), so the rep-gated listener
+    // above never sees it. The compact causality receipt still says the player caused it —
+    // honor the front tilt (and front tension) without touching reputation.
+    bus.on('entity:killed', (p) => {
+      if (!p || p.type !== 'ship' || !p.factionId) return;
+      if (p.killerId === state.playerId) return; // handled by the rep listener above
+      const causality = compactKillCausality(p, state.playerId);
+      if (!causality.playerCaused) return;
+      this._feedTensionForKill(p.factionId, p.pos);
+      this._feedFrontForKill(p.factionId, p, causality);
     });
 
     // Trade at a faction station: small standing gain scaled by net trade value, capped per docking.
@@ -359,6 +408,7 @@ export const factions = {
     const state = this.state || _state;
     let c = state.conflicts[key];
     if (!c) c = state.conflicts[key] = { tension: 0, state: 'cold', playerLean: 0, momentum: 0 };
+    if (!c.front || typeof c.front !== 'object') c.front = freshFrontRecord();
     return c;
   },
 
@@ -370,10 +420,85 @@ export const factions = {
       if (victim !== a && victim !== b) continue;
       const c = this._ensureConflict(key);
       c.tension = Math.max(0, Math.min(100, c.tension + 1.5));
-      const lean = victim === a ? -1 : 1; // shooting A leans the player toward B
+      const lean = victim === a ? 1 : -1; // shooting A banks momentum for B (positive favors B)
       c.playerLean = Math.max(-1, Math.min(1, c.playerLean + lean * 0.1));
       this._refreshConflictState(key, c);
     }
+  },
+
+  // PQ-170.00 — the front is a physical situation. A kill that happens inside the pair's
+  // contested sector banks momentum immediately (it resolves on the next war tick, and
+  // immediately while the front is already at war): ordinary line kills count, hauler/logistics
+  // kills read as a lane blockade, bastion/heavy hulls read as siege, and a kill the player
+  // caused with thrown mass or a slam counts as the wrecking-ball verb. The bounded `front`
+  // ledger rides the saved conflict record so a map or log can show who actually did the work.
+  _feedFrontForKill(victim, payload, causality) {
+    const state = this.state || _state;
+    const sectorId = state && state.world && state.world.currentSectorId;
+    if (!sectorId) return;
+    const victimEntity = this._entityById(payload && payload.id);
+    for (const key in CONTESTED) {
+      const [a, b] = key.split(':');
+      if (victim !== a && victim !== b) continue;
+      if (CONTESTED[key] !== sectorId) continue;
+      const c = this._ensureConflict(key);
+      const lean = victim === a ? 1 : -1; // killing A's hulls on the front favors B
+      c.playerLean = Math.max(-1, Math.min(1, c.playerLean + lean * FRONT_KILL_LEAN));
+      c.tension = Math.max(0, Math.min(100, c.tension + FRONT_KILL_TENSION));
+      const front = c.front;
+      front.frontKills += 1;
+      let kick = FRONT_KILL_MOMENTUM;
+      const cls = String(payload && payload.victimClass || '').toLowerCase();
+      if (SIEGE_CLASSES.has(cls) || SIEGE_HULLS.has(this._victimHullId(victimEntity))) {
+        kick += SIEGE_MOMENTUM;
+        front.siege += 1;
+      }
+      if (this._victimWasLogistics(victimEntity, payload)) {
+        kick += BLOCKADE_MOMENTUM;
+        front.blockade += 1;
+      }
+      const causal = causality || compactKillCausality(payload, state.playerId);
+      if (causal.playerCaused === true
+          && (causal.cause === KillCause.TERRAIN_COLLISION || causal.cause === KillCause.SHIP_COLLISION)) {
+        kick += WRECKING_BALL_MOMENTUM;
+        front.thrown += 1;
+      }
+      c.momentum = (c.momentum || 0) + lean * kick;
+      this._refreshConflictState(key, c);
+      if (this.bus) {
+        this.bus.emit('conflict:frontAction', {
+          pairKey: key,
+          sectorId,
+          lean,
+          momentum: c.momentum,
+          front: { ...front },
+        });
+      }
+      // A live war resolves the banked tilt mid-fight; a colder front keeps the momentum banked
+      // until the next war tick (or until the action itself boils the front over).
+      this._resolveFlip(key, c);
+    }
+  },
+
+  _entityById(id) {
+    const state = this.state || _state;
+    if (id == null || !state || !state.entities) return null;
+    const entities = state.entities;
+    if (typeof entities.get === 'function') return entities.get(id) || null;
+    return null;
+  },
+
+  _victimHullId(entity) {
+    const data = entity && entity.data;
+    return String((data && (data.defId || data.shipId)) || (entity && entity.shipId) || '');
+  },
+
+  _victimWasLogistics(entity, payload) {
+    const ai = entity && entity.data && entity.data.ai;
+    if (ai && (ai.passive === true || LOGISTICS_ARCHETYPES.has(String(ai.archetype || '')))) {
+      return true;
+    }
+    return /hauler|freight|convoy|trader|miner/.test(String(payload && payload.victimClass || '').toLowerCase());
   },
 
   // Offscreen tension injection (ADR-0002 / V2 §33). sectorSim owns no conflict state; it calls this
@@ -435,26 +560,43 @@ export const factions = {
         // either the player leaned toward B OR B is simply stronger. This replaces the "symmetric
         // baseStrength → momentum is player-driven" placeholder (audit #24).
         c.momentum = (c.momentum || 0) + c.playerLean * PLAYER_WEIGHT + (pb - pa) * POWER_WEIGHT;
-        if (Math.abs(c.momentum) >= FLIP_THRESHOLD) {
-          const winner = c.momentum > 0 ? b : a; // positive lean/power favors side B
-          const loser = winner === a ? b : a;
-          const sectorId = CONTESTED[key];
-          if (sectorId && state.world && state.world.sectors && state.world.sectors[sectorId]) {
-            state.world.sectors[sectorId].owner = winner; // §0.6: factions writes sector owner
-            if (this.bus) this.bus.emit('conflict:flip', { pairKey: key, sectorId, newOwner: winner });
-          }
-          // Reward the side the player favored; penalize the other (spec warResolve). Only apply the
-          // rep swing if the player actually leaned (a pure NPC-power flip shouldn't credit the player).
-          const leanMag = Math.abs(c.playerLean);
-          if (leanMag > 0) {
-            this.applyRep(winner, 20 * leanMag, 'war_won');
-            this.applyRep(loser, -30 * leanMag, 'war_lost');
-          }
-          c.tension = 50; c.momentum = 0;
-          this._refreshConflictState(key, c);
-        }
+        this._resolveFlip(key, c);
       }
     }
+  },
+
+  // Resolve one contested-sector flip when momentum runs away during a live war. Called from the
+  // day tick and from the front-action feed, so a committed siege can turn the map mid-fight
+  // instead of waiting for a boundary the player never sees.
+  _resolveFlip(key, c) {
+    const state = this.state || _state;
+    if (!state || !c || c.state !== 'war') return false;
+    if (Math.abs(c.momentum) < FLIP_THRESHOLD) return false;
+    const [a, b] = key.split(':');
+    const winner = c.momentum > 0 ? b : a; // positive lean/power favors side B
+    const loser = winner === a ? b : a;
+    const sectorId = CONTESTED[key];
+    if (sectorId && state.world && state.world.sectors && state.world.sectors[sectorId]) {
+      state.world.sectors[sectorId].owner = winner; // §0.6: factions writes sector owner
+      if (this.bus) {
+        this.bus.emit('conflict:flip', { pairKey: key, sectorId, newOwner: winner });
+        this.bus.emit('toast', {
+          text: `${sectorLabel(sectorId)} changes hands — ${factionLabel(winner)} takes it from ${factionLabel(loser)}`,
+          kind: 'warn',
+          ttl: 7,
+        });
+      }
+    }
+    // Reward the side the player favored; penalize the other (spec warResolve). Only apply the
+    // rep swing if the player actually leaned (a pure NPC-power flip shouldn't credit the player).
+    const leanMag = Math.abs(c.playerLean);
+    if (leanMag > 0) {
+      this.applyRep(winner, 20 * leanMag, 'war_won');
+      this.applyRep(loser, -30 * leanMag, 'war_lost');
+    }
+    c.tension = 50; c.momentum = 0;
+    this._refreshConflictState(key, c);
+    return true;
   },
 
   // Recompute each faction's `power` from world state: sector ownership (territory = power base),

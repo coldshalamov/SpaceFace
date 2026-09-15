@@ -133,7 +133,7 @@ function testStarmapWarOverlayReadsSectorSignal() {
       'starmap imports the shared sector signal contract'],
     [/const DRIVER_LABEL = Object\.freeze\(\{[\s\S]*contested_influence: 'contested influence'[\s\S]*territorial_shift: 'territorial shift'[\s\S]*territory_flip: 'resolved territory flip'/,
       'war and influence drivers have player-facing labels'],
-    [/signal && signal\.contestMargin < 0\.16[\s\S]*rgba\(192,139,255,\.78\)/,
+    [/signal && signal\.contestMargin < 0\.16[\s\S]*(?:rgba\(192,139,255,\.78\)|paint\(roles\.foe,\s*0?\.78\))/,
       'canvas marks contested low-margin sectors'],
     [/const dominant = signal && signal\.dominantFactionId \|\| s\.factionId;[\s\S]*const core = factionColor\(dominant\);/,
       'node color follows modeled dominant influence'],
