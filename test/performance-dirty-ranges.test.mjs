@@ -460,3 +460,17 @@ test('paired dirty-range manifests bind one scenario and source candidate to dis
   assert.notEqual(browser.candidateDigest, electron.candidateDigest);
   assert.notEqual(browser.manifestDigest, electron.manifestDigest);
 });
+
+test('the acceptance route keeps whole-ship LOD demotion on a scoped library plan', async () => {
+  // The 2026-09-15 browser acceptance run failed on page warnings: every whole-ship
+  // LOD demotion threw because its custom per-level bootstrapPlan still rode the
+  // canonical libraryScope, which bootstrapPlanForOptions refuses by contract. Pin
+  // the call-site pairing so the demotion path cannot regress to that throw.
+  const partsSource = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  const planIndex = partsSource.indexOf('authoredPreloadPlanForEntityAtLod(entity, requested, options)');
+  assert.notEqual(planIndex, -1, 'demotion preload must request a per-level authored plan');
+  const callSite = partsSource.slice(Math.max(0, planIndex - 600), planIndex + 600);
+  assert.match(callSite, /bootstrapPlan:\s*authoredPreloadPlanForEntityAtLod\(entity, requested, options\)/);
+  assert.match(callSite, /libraryScope:\s*['"]whole-ship-lod-family['"]/,
+    'a custom demotion bootstrapPlan requires a non-canonical libraryScope');
+});
