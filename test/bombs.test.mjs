@@ -80,7 +80,7 @@ function bootBombs({ playerVel = { x: 0, z: 0 }, selectedId = 'bomb_frag' } = {}
   };
 }
 
-test('a dropped bomb inherits the full ship velocity and falls behind under low drag', () => {
+ test('a dropped bomb inherits the full ship velocity and falls behind under low drag', () => {
   const t = bootBombs({ playerVel: { x: 60, z: 0 } });
   try {
     t.press('dropBomb');
@@ -109,7 +109,7 @@ test('a dropped bomb inherits the full ship velocity and falls behind under low 
   }
 });
 
-test('the fuze arms on sim time and detonates on a hostile through the damage router', () => {
+ test('the fuze arms on sim time and detonates on a hostile through the damage router', () => {
   const t = bootBombs();
   try {
     const victim = t.spawnShip(2, -13 + 30, 0); // 30 WU ahead of the resting bomb
@@ -122,7 +122,8 @@ test('the fuze arms on sim time and detonates on a hostile through the damage ro
     t.tick(3); // crosses armS = 0.5s
     assert.equal(t.armed.length, 1);
 
-    t.tick(1); // next scan trips the proximity fuze
+    assert.equal(t.detonated.length, 0, 'arming commits a visible warning, never an instant hidden blast');
+    t.tick(Math.ceil(BOMB_DRIFT.warningS / DT)); // warning finishes
     assert.equal(t.detonated.length, 1);
     const det = t.detonated[0];
     assert.equal(det.payloadId, 'bomb_frag');
@@ -146,7 +147,7 @@ test('the fuze arms on sim time and detonates on a hostile through the damage ro
   }
 });
 
-test('friendly hulls and the owner never trip the fuze; a lonely bomb pops on its fuze', () => {
+ test('friendly hulls and the owner never trip the fuze; a lonely bomb pops on its fuze', () => {
   const t = bootBombs();
   try {
     t.spawnShip(2, -10, 0, { team: 0 }); // wingman parked on the bomb
@@ -165,13 +166,13 @@ test('friendly hulls and the owner never trip the fuze; a lonely bomb pops on it
   }
 });
 
-test('the concussion drum shoves through the physics authority and routes no damage', () => {
+ test('the concussion drum shoves through the physics authority and routes no damage', () => {
   const t = bootBombs({ selectedId: 'bomb_concussion' });
   try {
     t.spawnShip(2, -13 + 30, 0, { mass: 32 });
     t.press('dropBomb');
     t.tick(1);
-    t.tick(32); // arm + scan
+    t.tick(42); // arm + visible warning
     assert.equal(t.detonated.length, 1);
     assert.equal(t.detonated[0].payloadId, 'bomb_concussion');
     assert.equal(t.routed.length, 0, 'a pure-shove payload never routes damage');
@@ -184,13 +185,13 @@ test('the concussion drum shoves through the physics authority and routes no dam
   }
 });
 
-test('the neutron slug opens a moving pull field, crushes, and collapses', () => {
+ test('the neutron slug opens a moving pull field, crushes, and collapses', () => {
   const t = bootBombs({ selectedId: 'bomb_singularity' });
   try {
     const victim = t.spawnShip(2, -13 + 30, 0, { mass: 32 });
     t.press('dropBomb');
     t.tick(1);
-    t.tick(32); // arm + proximity trip
+    t.tick(42); // arm + visible warning
     const bombId = t.dropped[0].bombId;
     const bomb = t.state.entities.get(bombId);
 
@@ -232,13 +233,13 @@ test('the neutron slug opens a moving pull field, crushes, and collapses', () =>
   }
 });
 
-test('the tarburst sticks status_goo on the burst and re-applies it inside the volume', () => {
+ test('the tarburst sticks status_goo on the burst and re-applies it inside the volume', () => {
   const t = bootBombs({ selectedId: 'bomb_goo' });
   try {
     t.spawnShip(2, -13 + 30, 0);
     t.press('dropBomb');
     t.tick(1);
-    t.tick(32);
+    t.tick(42);
     assert.equal(t.detonated[0].payloadId, 'bomb_goo');
 
     const burst = t.routed.find((r) => r.targetId === 2);
@@ -260,7 +261,7 @@ test('the tarburst sticks status_goo on the burst and re-applies it inside the v
   }
 });
 
-test('the bay cycles payloads on the cycle verb and wraps', () => {
+ test('the bay cycles payloads on the cycle verb and wraps', () => {
   const t = bootBombs();
   try {
     for (let i = 0; i < BOMB_IDS.length; i++) {
@@ -275,7 +276,7 @@ test('the bay cycles payloads on the cycle verb and wraps', () => {
   }
 });
 
-test('the bay respects its cooldown, and the cap evicts the oldest live bomb', () => {
+ test('the bay respects its payload cooldown, and a full bay preserves deployed traps', () => {
   const t = bootBombs();
   try {
     t.press('dropBomb');
@@ -304,9 +305,9 @@ test('the bay respects its cooldown, and the cap evicts the oldest live bomb', (
     t.tick(Math.ceil((cooldownS + 0.1) / DT));
     t.press('dropBomb');
     t.tick(1);
-    assert.equal(t.dropped.length, 2, 'drop past the cooldown lands');
+    assert.equal(t.dropped.length, 1, 'full bay rejects the release even after cooldown');
     const oldest = synthetic[synthetic.length - 1]; // most negative spawnedAt
-    assert.equal(oldest.alive, false, 'the OLDEST live bomb is evicted at the cap');
+    assert.equal(oldest.alive, true, 'the oldest deployed trap remains alive at the cap');
     const live = t.state.entityList.filter((e) => e.alive && e.type === 'bomb').length;
     assert.equal(live, BOMB_DRIFT.maxActive, 'the bay holds at most maxActive live bombs');
   } finally {
@@ -314,7 +315,7 @@ test('the bay respects its cooldown, and the cap evicts the oldest live bomb', (
   }
 });
 
-test('sector exit releases every live bomb', () => {
+ test('sector exit releases every live bomb', () => {
   const t = bootBombs();
   try {
     t.press('dropBomb');

@@ -210,6 +210,7 @@ test('input lifecycle owner releases keyboard, pointer, gamepad, and touch holds
     countermeasure: true,
     travelBurn: true,
     autoTarget: true,
+    chargeDetonate: true,
   });
   assert.deepEqual(host._edgePrev, { cruise: false, tether: false });
   assert.deepEqual(grammarResetBlocks, [undefined]);
@@ -269,6 +270,33 @@ test('gamepad lifecycle quarantine waits for a connected neutral sample without 
   assert.equal(host._gamepadLifecycleActionAllowed('countermeasure'), true);
   assert.equal(host._gamepadLifecycleActionAllowed('travelBurn'), true);
   assert.equal(host._gamepadLifecycleActionAllowed('autoTarget'), true);
+});
+
+test('gamepad lifecycle quarantine protects the detonation edge after resume', () => {
+  const host = Object.create(input);
+  host._keys = {};
+  host._edgePrev = {};
+  host.gamepad = null;
+  host.touch = null;
+
+  host.releaseHeldControls('hidden');
+  assert.equal(host._gamepadLifecycleActionAllowed('chargeDetonate'), false,
+    'a resumed held D-pad-down must not detonate ordnance');
+
+  const connected = { isConnected: () => true };
+  host._refreshGamepadLifecycleQuarantine(connected);
+  assert.equal(host._gamepadLifecycleActionAllowed('chargeDetonate'), false,
+    'a missing action sample is not proof that the detonation button was released');
+
+  connected.actions = { chargeDetonate: { held: true } };
+  host._refreshGamepadLifecycleQuarantine(connected);
+  assert.equal(host._gamepadLifecycleActionAllowed('chargeDetonate'), false,
+    'a reconnected held detonation button remains quarantined');
+
+  connected.actions.chargeDetonate.held = false;
+  host._refreshGamepadLifecycleQuarantine(connected);
+  assert.equal(host._gamepadLifecycleActionAllowed('chargeDetonate'), true,
+    'a connected neutral sample releases the detonation quarantine');
 });
 
 test('input release preserves the committed Massline packet before resetting grammar state', () => {

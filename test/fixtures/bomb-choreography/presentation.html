@@ -1,0 +1,32 @@
+<!doctype html><meta charset="utf-8"><title>SpaceFace · bomb presentation inspection</title>
+<style>body{margin:0;background:#0a1015;color:#becbcf;font:14px system-ui}canvas{display:block;width:100vw;height:calc(100vh - 80px)}header{height:48px;display:flex;align-items:center;gap:28px;padding:0 28px}strong{letter-spacing:.13em;font-size:12px}small{color:#78868d}footer{height:32px;padding:0 28px;font:12px monospace}button{color:inherit;background:#1b2830;border:1px solid #46535a;padding:6px 12px;cursor:pointer}</style>
+<script type="importmap">{"imports":{"three":"/vendor/three.module.js","three/addons/":"/vendor/addons/"}}</script>
+<header><strong>ORDNANCE / PRESENTATION INSPECTION</strong><small>Production mesh + existing bomb bodies · not the full game route</small><button id="fields">Fields</button><button id="warning">Warning</button><button id="drift">Drift</button></header>
+<script type="module">
+import * as THREE from 'three';
+import { updateBombPresentation, bombPresentationStats, releaseBombPresentation } from '/src/render/bombPresentation.js';
+import { createVisualFactory } from '/src/render/visualFactory.js';
+import { BOMB_IDS } from '/src/data/bombs.js';
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#0a1015');
+const camera = new THREE.OrthographicCamera(-410,410,235,-235,0.1,2000); camera.position.set(0,800,0); camera.up.set(0,0,-1);camera.lookAt(0,0,0);camera.updateMatrixWorld();
+const renderer = new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true}); renderer.setSize(innerWidth,innerHeight-80); renderer.setPixelRatio(1);document.body.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xc8dce5,2));const key=new THREE.DirectionalLight(0xe7ecdf,3);key.position.set(-100,400,200);scene.add(key);
+const state={mode:'flight',simTime:1,settings:{video:{}},world:{frameOrigin:{x:0,z:0}},entityList:[],render:{scene,camera}};
+const factory=createVisualFactory();let bodies=[];
+const footer=document.createElement('footer'); document.body.appendChild(footer);
+function draw(mode='fields',video={}) {
+ releaseBombPresentation(state);for(const body of bodies)scene.remove(body); bodies=[]; state.entityList=[];state.settings.video=video;
+ const ids=mode==='fields'?['bomb_singularity','bomb_goo']:BOMB_IDS;
+ ids.forEach((id,i)=>{
+ const x=mode==='fields'?(i===0?-200:200):(i%4-1.5)*195,z=mode==='fields'?0:(Math.floor(i/4)-.5)*225;
+ const e={id:i+1,type:'bomb',alive:true,pos:{x,z},prevPos:{x,z},vel:{x:90,z:0},rot:0,radius:1.4,data:{bombId:id,kind:'bomb',phase:mode==='fields'?'field':mode==='warning'?'warning':'drift',armed:true,spawnedAt:0,fieldStartedAt:0,fieldEndsAt:5,warningAt:.9,resolveAt:1.08}};
+ state.entityList.push(e);const body=factory.build(e);body.position.set(x,1,z);body.scale.setScalar(3);bodies.push(body);scene.add(body);
+ });
+ updateBombPresentation(state,1);renderer.info.reset();renderer.render(scene,camera);
+ const stats={...bombPresentationStats(state),totalDrawCalls:renderer.info.render.calls,triangles:renderer.info.render.triangles};
+ footer.textContent=`${mode==='fields'?'PULL / Neutron slug                                  TAR / Tarburst bladder':BOMB_IDS.map(x=>x.replace('bomb_','')).join('   ·   ')} | field batch ${stats.drawCalls} draw, ${stats.vertices} vertices; ${stats.totalDrawCalls} total draws including original bodies`;
+ window.probeResult=stats;return stats;
+}
+window.drawProbe=draw;window.inspectState=state; for(const id of ['fields','warning','drift'])document.querySelector('#'+id).onclick=()=>draw(id);
+draw();window.probeReady=true;
+</script>
