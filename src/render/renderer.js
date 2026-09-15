@@ -4762,9 +4762,6 @@ export const render = {
     const recordAuthoredAdmissionBlockingSlice = (slice) => {
       const durationMs = Number(slice && slice.durationMs);
       if (!(durationMs > 0) || !Number.isFinite(durationMs)) return;
-      if (durationMs > 40 && typeof console !== 'undefined') {
-        console.warn('[admission-slice]', JSON.stringify(slice));
-      }
       const perf = state.perfRuntime;
       if (perf && typeof perf.recordAdmissionWork === 'function') {
         perf.recordAdmissionWork(durationMs);
