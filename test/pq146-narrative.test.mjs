@@ -1,7 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { bindStuntEvidence, bodyLife, observeConstraint, observeRelease, journalFor } from "../src/combat/stuntEvidence.js";
-import { boundStuntNarrative, observeStuntWitnesses, sampledStuntWitnesses, observerProfile, witnessLineOfSight, qualifyStuntTitles, sendWitnessReports, deliverWitnessReports, knownStuntTitles, STUNT_TITLE_RULES } from "../src/combat/stuntWitnesses.js";
+import { boundStuntNarrative, observeStuntWitnesses, sampledStuntWitnesses, observerProfile, witnessLineOfSight, qualifyStuntTitles, sendWitnessReports, deliverWitnessReports, knownStuntTitles, stuntDossierForNetwork, STUNT_TITLE_RULES } from "../src/combat/stuntWitnesses.js";
+import { resolveEntity } from "../src/ui/entityResolver.js";
 import { createTitlesSystem } from "../src/systems/titles.js";
 import { barkDirector } from "../src/systems/barkDirector.js";
 import { voiceArbiter } from "../src/ui/voiceArbiter.js";
@@ -169,6 +170,30 @@ test("public network knowledge requires a real delivered report, surviving sende
   assert.equal(knownStuntTitles(s.state, newcomer)[0].title, "Knotmaker");
   deliverWitnessReports(s.state, s.bus);
   assert.equal(incident.reports.length, 1);
+});
+test("a delivered report opens the faction and port dossier; other networks stay ignorant", () => {
+  const s = scene(), trick = evidence(s);
+  s.witness.factionId = "faction_scn";
+  s.bus.emit("stunt:trickDetected", trick);
+  const incident = s.state.story.titles.stuntIncidents[0];
+  s.state.entities.set(8, hull(8, 100, 100, { type: "station", factionId: "faction_scn", data: { stationId: "station_helios", displayName: "Helios Station" } }));
+  assert.equal(stuntDossierForNetwork(s.state, "faction_scn"), null, "witnessed-only is not a public file");
+  sendWitnessReports(s.state, incident, s.bus);
+  s.state.tick = 100;
+  deliverWitnessReports(s.state, s.bus);
+  const rap = stuntDossierForNetwork(s.state, "faction_scn");
+  assert.equal(rap.titles[0].title, "Knotmaker");
+  assert.equal(rap.incidents[0].id, incident.id);
+  assert.match(rap.incidents[0].account, /under load/);
+  assert.match(rap.incidents[0].harm, /destroyed/);
+  assert.equal(rap.incidents[0].disposition, "reported");
+  assert.equal(stuntDossierForNetwork(s.state, "faction_dmc"), null, "a network with no report learns nothing");
+  const faction = resolveEntity(s.state, "faction:faction_scn");
+  assert.ok(faction.facts.some((f) => f.k === "Pilot on file" && /Knotmaker/.test(f.v)));
+  assert.ok(faction.lines.some((l) => l.label === "Incident" && /under load/.test(l.text)));
+  assert.ok(faction.lines.some((l) => l.label === "On file" && /delivered report/.test(l.text)));
+  const station = resolveEntity(s.state, "station:station_helios");
+  assert.ok(station.lines.some((l) => l.label === "Incident" && /under load/.test(l.text)));
 });
 test("failed receiver life and unsupported unrelated knowledge do not propagate", () => {
   const s = scene(), trick = evidence(s);

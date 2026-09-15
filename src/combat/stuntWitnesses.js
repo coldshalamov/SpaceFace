@@ -217,6 +217,63 @@ export const STUNT_SITUATION_LINES = Object.freeze({
 export function completeWitness(witness) {
   return witness?.provenance==='live-physical-samples'&&witness.sourceTicks>=6&&witness.transferTicks>=6&&witness.payoffTicks>=6;
 }
+const cleanName=(value,fallback)=>{const out=String(value==null?fallback:value).replace(/\s+/g,' ').trim();return out||fallback;};
+/** §5.2 one-sentence physical account, shared by the ship ledger and the port dossier. */
+export function stuntAccountFor(record) {
+  const source=cleanName(record?.sourceName,'the released body'),target=cleanName(record?.targetName,'the target');
+  return ({
+    bolas:`released ${source} under load into ${target}`,
+    wrecking_ball:`swung the attached ${source} into ${target}`,
+    clothesline:`loaded a tether across ${target}'s path`,
+    tow_kill:`towed ${source} into a fatal collision`,
+    rock_discovery:`redirected ${source} into terrain`,
+    well_golf:`sent ${source} through a gravity field into ${target}`,
+    dead_mans_mass:`put the wreck ${source} back in motion against ${target}`,
+    bank_job:`banked a shot around cover into ${target}`,
+    return_to_sender:`returned hostile ordnance to its attacker ${target}`,
+    kickstart:record?.escaped?'rode an explosion clear of an incoming threat':`spent blast momentum against ${target}`,
+    needle_thread:'escaped an incoming threat through a moving gap',
+    one_two:`corrected ${source}'s path with a second intervention into ${target}`,
+    slingshot_golf:`passed ${source} from a loaded tether through gravity into ${target}`,
+    near_miss:'changed course and cleared an incoming threat',
+  })[record?.trickId]||`completed ${cleanName(record?.name||record?.trickId,'a stunt')}`;
+}
+/** §6 harm row: actual recorded outcomes only; unknown values stay unknown. */
+export function stuntHarmFor(incident) {
+  const dead=(incident?.victimLives||[]).filter(v=>v&&v.dead===true).length;
+  if(dead>0)return `${dead} ship${dead===1?'':'s'} destroyed`;
+  if(incident?.consequence?.killed===true)return '1 ship destroyed';
+  if(incident?.escaped===true)return 'no recorded harm';
+  const c=incident?.consequence;
+  if(c&&c.hullMax>0&&c.hullDamage>=0.25*c.hullMax)return 'disablement recorded';
+  return 'harm not established';
+}
+/**
+ * §6 rap sheet: what one information network actually knows about the pilot. Only DELIVERED
+ * reports create dossier knowledge — black-box records and witnessed-only talk stay local.
+ * `networkIds` is one id or a list the viewing body legitimately holds (faction id, the port's
+ * own networkId or station alias). Bounded: three titles, three most recent incidents.
+ */
+export function stuntDossierForNetwork(state, networkIds) {
+  const keys=new Set((Array.isArray(networkIds)?networkIds:[networkIds]).filter(v=>v!=null&&v!=='').map(String));
+  const titles=state?.story?.titles;
+  if(!keys.size||!titles)return null;
+  const knownTitles=Object.values(titles.byId||{})
+    .filter(t=>t&&t.status==='held'&&(t.knownNetworks||[]).some(n=>keys.has(n)))
+    .slice(0,3)
+    .map(t=>({titleId:t.titleId,title:t.title,trickId:t.trickId}));
+  const incidents=(titles.stuntIncidents||[])
+    .filter(i=>i&&(i.reportedNetworks||[]).some(n=>keys.has(n)))
+    .slice(-3)
+    .map(i=>{
+      const sender=(i.reports||[]).filter(r=>keys.has(r.networkId)).map(r=>r.source?.name).find(v=>typeof v==='string'&&v)||null;
+      return { id:i.id,trickId:i.trickId,name:i.name,tick:i.tick,sectorId:i.sectorId??null,
+        shipName:cleanName(i.shipName,'the ship'),account:stuntAccountFor(i),harm:stuntHarmFor(i),
+        evidence:sender?`delivered report from ${sender}`:'delivered report',disposition:'reported' };
+    });
+  if(!knownTitles.length&&!incidents.length)return null;
+  return { titles:knownTitles, incidents };
+}
 function citationEvidence(incident) {
   return { revision:incident.evidenceRevision,consequence:{...incident.consequence},
     chain:copy((incident.chain||[]).slice(0,32)),
