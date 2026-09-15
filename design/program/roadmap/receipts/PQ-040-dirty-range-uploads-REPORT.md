@@ -230,10 +230,23 @@ electronCapturedRuns:
     routeFixApplied: >-
       The flight-input phase now waits for the hull to actually settle — speed
       <= 0.5 AND position stable within 0.25u across >= 0.75 sim-seconds —
-      before sampling the released baseline (alphaLiveBaselineRoute.mjs, hunk
-      rides uncommitted atop the foreign readiness rewrite; stale PQ-033.02
-      checkpoint on the file made it adoptable). This tightens the measurement:
-      the powered-vs-released contract itself is unchanged.
+      and then verifies the sampled baseline still sits at that settled anchor
+      (bounded re-anchor loop), so a positional correction that begins between
+      the gate and the read cannot land inside the measured window unobserved
+      (alphaLiveBaselineRoute.mjs, hunk rides uncommitted atop the foreign
+      readiness rewrite; stale PQ-033.02 checkpoint on the file made it
+      adoptable). This tightens the measurement: the powered-vs-released
+      contract itself is unchanged.
+    independentVerdict: >-
+      A read-only subagent trace confirmed the root cause: the drift is a
+      solver positional-correction transient — the SG-02 structural-contact
+      path restores linear velocity but never translation, so entity.pos moves
+      while entity.vel reads ~0, and flight is inactive during 'loading' while
+      physics still ticks. It ruled out an Electron flight-rules difference
+      (same rapier-dynamic/v3 backends on both runtimes) and a flight-physics
+      regression (no per-tick mover targets the player at spawn; flightV3 and
+      core/flight diffs are empty). Recommended fix — a sim-time-anchored,
+      settle-confirmed baseline — is what routeFixApplied implements.
     earlierAttempt: broker-claim-stale-digest (foreign worktree write raced claim->probe)
   - run: performance-dirty-ranges-electron-2026-09-15T15-01-37-348Z-28004-c06a81d4
     failedAt: launch
