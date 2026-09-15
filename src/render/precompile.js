@@ -826,13 +826,17 @@ function addLateWorldPipelineWarmup(root) {
     name: 'SF_Precompile_L5b_Wormhole',
   });
   root.add(wormhole);
-  const spindle = build47aScenarioProp({
-    radius: 10,
-    data: { assetRef: 'asset.slice.47a_spindle' },
-  });
-  if (spindle) {
-    spindle.name = 'SF_Precompile_47A_Evidence_Spindle';
-    root.add(spindle);
+  const late47aProps = [
+    ['asset.slice.47a_spindle', 'SF_Precompile_47A_Evidence_Spindle', 10],
+    ['asset.slice.bourse_carrier_wreck', 'SF_Precompile_47A_Bourse_Wreck', 40],
+    ['asset.slice.civilian_pod', 'SF_Precompile_47A_Civilian_Pod', 8],
+    ['asset.slice.kessler_handoff_beacon', 'SF_Precompile_47A_Handoff_Beacon', 80],
+  ];
+  for (const [assetRef, name, radius] of late47aProps) {
+    const prop = build47aScenarioProp({ radius, data: { assetRef } });
+    if (!prop) continue;
+    prop.name = name;
+    root.add(prop);
   }
 }
 

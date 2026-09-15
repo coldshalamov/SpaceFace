@@ -287,14 +287,18 @@ export function releaseUiStage(reason = 'release') {
     dying.scene.traverse((node) => {
       // Only what this module created: the sky shell, the star field and the arena floor. Authored
       // GLB geometry and materials are shared with the asset cache and outlive every stage.
-      if (node.userData && node.userData.uiStageOwned === true) {
+      // uiStageShared resources (sky shell, shadow depth material) are module-owned singletons:
+      // disposing them per mount evicts their shader-cache stage and relinks a program next dock.
+      if (node.userData && node.userData.uiStageOwned === true && node.userData.uiStageShared !== true) {
         if (node.geometry) node.geometry.dispose();
         const materials = Array.isArray(node.material) ? node.material : [node.material];
         for (const material of materials) if (material && material.dispose) material.dispose();
       }
     });
     dying.scene.clear();
-    if (dying.rig && dying.rig.depthMaterial) dying.rig.depthMaterial.dispose();
+    if (dying.rig && dying.rig.depthMaterial && dying.rig.depthMaterial !== sharedStageDepthMaterial) {
+      dying.rig.depthMaterial.dispose();
+    }
     // The key light's shadow map is a render target owned by this stage; Light.dispose() releases it.
     for (const light of (dying.rig && dying.rig.lights) || []) if (light && typeof light.dispose === 'function') light.dispose();
   } catch (error) {
@@ -567,9 +571,27 @@ function placeByBounds(group, placement) {
   );
 }
 
+// Module-owned stage resources shared across mounts. The sky shell geometry/material and the
+// shadow depth material carry no per-scene state (palette lives in uniforms, rebound below), so
+// recreating them per mount only re-mints shader-cache entries and relinks programs every time a
+// stage opens — the release soak saw that as +1 depth program per dock.
+let sharedSkyGeometry = null;
+let sharedSkyMaterial = null;
+let sharedStageDepthMaterial = null;
+
+function stageDepthMaterial() {
+  if (!sharedStageDepthMaterial) {
+    sharedStageDepthMaterial = new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking });
+    sharedStageDepthMaterial.name = 'UiStage_SharedDepth';
+  }
+  return sharedStageDepthMaterial;
+}
+
 function buildSky(sky) {
-  const geometry = new THREE.SphereGeometry(SKY_RADIUS, 48, 32);
-  const material = new THREE.ShaderMaterial({
+  if (!sharedSkyGeometry) sharedSkyGeometry = new THREE.SphereGeometry(SKY_RADIUS, 48, 32);
+  const geometry = sharedSkyGeometry;
+  if (!sharedSkyMaterial) {
+    sharedSkyMaterial = new THREE.ShaderMaterial({
     side: THREE.BackSide,
     depthWrite: false,
     fog: false,
@@ -616,7 +638,14 @@ function buildSky(sky) {
         #include <colorspace_fragment>
       }
     `,
-  });
+    });
+    sharedSkyMaterial.name = 'UiStage_SkyShared';
+  }
+  const material = sharedSkyMaterial;
+  material.uniforms.uZenith.value.set(sky.zenith);
+  material.uniforms.uHorizon.value.set(sky.horizon);
+  material.uniforms.uGround.value.set(sky.ground);
+  material.uniforms.uSoftness.value = sky.horizonSoftness;
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = 'UiStageSky';
   mesh.frustumCulled = false;
@@ -627,6 +656,7 @@ function buildSky(sky) {
   // which is where a horizon is.
   mesh.userData.uiStageFollowsCamera = true;
   mesh.userData.uiStageOwned = true;
+  mesh.userData.uiStageShared = true;
   return mesh;
 }
 
@@ -715,9 +745,9 @@ function buildLights(spec) {
     point.position.set(...practical.at);
     lights.push(point);
   }
-  const depthMaterial = key.castShadow
-    ? new THREE.MeshDepthMaterial({ depthPacking: THREE.RGBADepthPacking })
-    : null;
+  // Shared module singleton: the depth program is identical for every stage, so a per-mount
+  // material only evicted and relinked the same program on every screen open.
+  const depthMaterial = key.castShadow ? stageDepthMaterial() : null;
   return { lights, shadows: key.castShadow, depthMaterial };
 }
 
