@@ -300,6 +300,7 @@ export async function runReleaseSoakProbe({
       const taps = await page.evaluate(() => ({
         posJumps: window.__PQ033_POS_JUMPS__ || [],
         posWrites: window.__PQ033_POS_WRITES__ || [],
+        bodyWrites: window.__PQ033_BODY_WRITES__ || [],
         sectorEvents: window.__PQ033_SECTOR_EVENTS__ || [],
       })).catch(() => null);
       warmupError.message = `${warmupError.message} | warmup-marks: ${JSON.stringify(warmupMarks)} | warmup-taps: ${JSON.stringify(taps)}`;
@@ -484,6 +485,7 @@ export async function runReleaseSoakProbe({
             sectorEvents: window.__PQ033_SECTOR_EVENTS__ || [],
             posJumps: window.__PQ033_POS_JUMPS__ || [],
             posWrites: window.__PQ033_POS_WRITES__ || [],
+            bodyWrites: window.__PQ033_BODY_WRITES__ || [],
           };
         }).catch(() => null);
         cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)} | cycle-marks: ${JSON.stringify(cycleMarks)}`;
@@ -1342,6 +1344,9 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
               const s = window.SF?.state;
               window.__PQ033_POS_WRITES__.push({
                 axis, from: value, to: next, tick: s?.tick ?? null, mode: s?.mode ?? null,
+                frameOrigin: s?.world?.frameOrigin ? { ...s.world.frameOrigin } : null,
+                frameOriginSeq: s?.world?.frameOriginSeq ?? null,
+                sector: s?.world?.currentSectorId || null,
                 stack: String(new Error().stack || '').split('\n').slice(2, 12)
                   .map((l) => l.trim().replace(/^at\s+/, '').replace(/https?:\/\/[^/]+\//, '')).join(' < '),
               });
@@ -1351,12 +1356,66 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
         });
       }
     };
+    // Body-side trap: the 13115-tick jump reached the entity through the kinematics sync, so the
+    // Rapier body held the bad local first. Wrap the player record's setTranslation plus the
+    // owner's setTranslation callsites, and bracket world.step to separate an explicit teleport
+    // write from a solver depenetration (which moves translation without leaving linvel).
+    const finiteNum = (v) => (Number.isFinite(v) ? v : 0);
+    window.__PQ033_BODY_WRITES__ = [];
+    const bodyWrite = (kind, detail) => {
+      if (window.__PQ033_BODY_WRITES__.length < 8) {
+        const s = window.SF?.state;
+        window.__PQ033_BODY_WRITES__.push({
+          kind, detail, t: Date.now(), tick: s?.tick ?? null,
+          frameOrigin: s?.world?.frameOrigin ? { ...s.world.frameOrigin } : null,
+          stack: String(new Error().stack || '').split('\n').slice(2, 14)
+            .map((l) => l.trim().replace(/^at\s+/, '').replace(/https?:\/\/[^/]+\//, '')).join(' < '),
+        });
+      }
+    };
+    let trappedBody = null;
+    let stepWrapped = false;
+    const trapBody = () => {
+      const sg02 = window.SF?.registry?.get?.('physics')?._sg02;
+      const rec = sg02?.records?.get?.(window.SF?.state?.playerId);
+      if (!sg02 || !rec) return;
+      if (rec.body && rec.body !== trappedBody) {
+        trappedBody = rec.body;
+        const orig = trappedBody.setTranslation.bind(trappedBody);
+        trappedBody.setTranslation = (t, wake) => {
+          const before = trappedBody.translation();
+          const dx = Math.abs(finiteNum(t?.x) - finiteNum(before?.x));
+          const dz = Math.abs(finiteNum(t?.z) - finiteNum(before?.z));
+          if (Math.max(dx, dz) > 2000) bodyWrite('setTranslation', { to: { x: t?.x, z: t?.z }, from: { x: before?.x, z: before?.z } });
+          return orig(t, wake);
+        };
+      }
+      if (!stepWrapped && sg02.world && typeof sg02.world.step === 'function') {
+        stepWrapped = true;
+        const origStep = sg02.world.step.bind(sg02.world);
+        sg02.world.step = (...args) => {
+          const b = trappedBody;
+          const pre = b ? { x: b.translation().x, z: b.translation().z, vx: b.linvel().x, vz: b.linvel().z } : null;
+          const out = origStep(...args);
+          if (b && pre && sg02.records.get(window.SF?.state?.playerId)?.body === b) {
+            const post = b.translation();
+            const moved = Math.hypot(post.x - pre.x, post.z - pre.z);
+            if (moved > 2000) {
+              const v = b.linvel();
+              bodyWrite('solverStep', { from: pre, to: { x: post.x, z: post.z }, moved, postVel: { x: v.x, z: v.z } });
+            }
+          }
+          return out;
+        };
+      }
+    };
     const ring = [];
     const sample = () => {
       const s = window.SF?.state;
       const p = s?.entities?.get?.(s?.playerId);
       if (p?.pos) {
         trapPos(p.pos);
+        trapBody();
         const cur = {
           t: Date.now(), tick: s.tick ?? null, simTime: s.simTime ?? null, mode: s.mode,
           x: Number(p.pos.x.toFixed(1)), z: Number(p.pos.z.toFixed(1)),
