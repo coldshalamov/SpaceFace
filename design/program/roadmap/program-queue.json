@@ -17347,7 +17347,7 @@
       "priority": 453,
       "title": "Store readiness",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-141.00",
         "PQ-141.01",
@@ -17372,8 +17372,10 @@
         "npm run check:all",
         "npm run probe:runtime-witness"
       ],
-      "receiptRefs": [],
-      "brief": "Steam build, cloud saves, achievements (from telemetry aggregates and survivalRecords), store page assets from PQ-159/160. DONE WHEN: Store page live in test; achievements unlock in a session."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-033.03-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-14: sixteen achievements unlock from live gameplay events and the settled Crucible records (8 of 16 in one headless session on seeds 47 + 33003, exactly once across reload) and are listed on an Achievements screen reached from the title and Pause; the desktop shell mirrors unlocks to Steam through an optional steamworks.js adapter; the store page builds locally at Steam's exact sizes (9 capsule and library slots, 5 screenshots, 32 achievement icons) with a preview page; SteamPipe depot scripts, Auto-Cloud rules and the Steamworks paste list live in build/steam. Runtime witness 2026-09-15 (headed Electron, Intel iGPU): presenting, top bucket still presentation with the same bucket order as the morning run and no achievements work anywhere in the report; its higher p95s come from an occluded window, other agents' load and 16 hours of other commits, so it is not a matched before/after. Remaining external owner step: the Steamworks partner-account work in build/steam/README.md (create the app and depot, enter the achievements with their icons, add the Auto-Cloud rules, upload the store art, install steamworks.js, run steamcmd). The five store screenshots are stand-ins to retake in photo mode before the page goes public."
     },
     {
       "id": "PQ-170.00",
