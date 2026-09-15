@@ -1204,7 +1204,11 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
   const samples = [];
   const mark = (name, detail = {}) => {
     marks.push({ name, at: new Date().toISOString(), ...detail });
-    log(`[cycle ${index}] ${name}`);
+    // Economy marks carry their detail into the log: cycle marks are not persisted in evidence,
+    // and a failed run has only run.log to explain what the hold/credits looked like.
+    const { atState, ...rest } = detail;
+    const logged = /economy|trade/.test(name) && Object.keys(rest).length ? ` ${JSON.stringify(rest).slice(0, 400)}` : '';
+    log(`[cycle ${index}] ${name}${logged}`);
   };
   // DIAG (worktree-only): record sector + player pos at every mark so a mid-cycle
   // sector flip can be localized to the exact step that observed it last.
@@ -1804,12 +1808,21 @@ async function exerciseMarketRoundtrip(page) {
     // In-flight pickups can run the hold full, leaving no buyable register row. Sell one
     // unit of held cargo through Sell mode first, then buy the same unit back — still one
     // public buy/sell roundtrip ending at the pre-cycle quantity.
+    // Only cargo this port both buys and sells back qualifies: rare finds (marketTier above
+    // the station tier) sell here but never quote a buy, so their roundtrip can never close.
     await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
     await sellMode.click();
-    const heldRow = rows.first();
-    await heldRow.waitFor({ state: 'visible', timeout: 10_000 });
-    commodityId = await heldRow.getAttribute('data-cmdty');
-    assert(commodityId, 'market register must offer a buyable row or held cargo to sell');
+    await rows.first().waitFor({ state: 'visible', timeout: 10_000 });
+    const heldIds = (await rows.evaluateAll((els) => els.map((el) => el.getAttribute('data-cmdty')))).filter(Boolean);
+    commodityId = await page.evaluate((ids) => {
+      const sf = window.SF;
+      const economy = sf?.registry?.get?.('economy');
+      const sid = sf?.state?.ui?.dockedStationId || null;
+      if (!economy || !sid) return ids[0] || null;
+      return ids.find((id) => economy.quote(sid, id, 'sell', 1)?.ok && economy.quote(sid, id, 'buy', 1)?.ok) || null;
+    }, heldIds);
+    assert(commodityId, `market register must offer a buyable row or held cargo this port sells back (held: ${heldIds.join(',')})`);
+    await selectRow(commodityId);
     const before = await readTradeSnapshot(page, commodityId);
     assert(before.owned > 0, 'sell-first roundtrip requires held cargo');
     await commitTrade(commodityId);
