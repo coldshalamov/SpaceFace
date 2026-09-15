@@ -753,7 +753,8 @@ export function createRegistry(ctx) {
             input.update(dt, state);
           }
           if (tickBoundary && typeof tickBoundary.publishInputCommand === 'function') {
-            tickBoundary.publishInputCommand(state.input, state.tick);
+            tickBoundary.publishInputCommand(state.input, state.tick,
+              typeof input.inputActivityStamp === 'function' ? input.inputActivityStamp() : null);
           }
           for (const s of updateQueueForThisStep(postInputPartitions, state)) {
             if (countSystems) tier1.countSystemInvocation(s.name);
@@ -778,7 +779,8 @@ export function createRegistry(ctx) {
         finally { perf.recordSystem(input.name, perfNow() - t); }
       }
       if (tickBoundary && typeof tickBoundary.publishInputCommand === 'function') {
-        tickBoundary.publishInputCommand(state.input, state.tick);
+        tickBoundary.publishInputCommand(state.input, state.tick,
+          typeof input.inputActivityStamp === 'function' ? input.inputActivityStamp() : null);
       }
       for (const s of updateQueueForThisStep(postInputPartitions, state)) {
         if (countSystems) tier1.countSystemInvocation(s.name);

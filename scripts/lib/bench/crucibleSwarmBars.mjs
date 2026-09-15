@@ -30,6 +30,7 @@ export const SWARM_BAR_LINE_KEYS = Object.freeze([
   'verbs=',
   'moments=',
   'quietAfterW1=',
+  'inFrame=',
   'deaths=',
   'waves=',
   'menus=',
@@ -61,6 +62,7 @@ export function serializeSwarmBarCell(swarm, extra = {}) {
     cleanupDurations: measured.cleanupDurations ?? [],
     menus: measured.menus ?? null,
     firstDeath: measured.firstDeath ?? null,
+    hostileInFrame: measured.hostileInFrame ?? null,
     kills: measured.kills ?? null,
     barsLine: extra.barsLine ?? formatSwarmBars(measured),
   };
@@ -182,6 +184,18 @@ export function missingSwarmBars(swarm) {
     gaps.push('menus has no available flag');
   }
 
+  const hif = swarm.hostileInFrame;
+  if (!hif || typeof hif !== 'object') {
+    gaps.push('hostileInFrame missing');
+  } else if (hif.available === true) {
+    if (!Number.isFinite(hif.fraction)) gaps.push('hostileInFrame available without a fraction');
+  } else if (hif.available === false) {
+    if (hif.fraction != null) gaps.push('hostileInFrame unavailable with a fake fraction');
+    if (!hif.reason) gaps.push('hostileInFrame unavailable without a reason');
+  } else {
+    gaps.push('hostileInFrame has no available flag');
+  }
+
   const death = swarm.firstDeath;
   if (!death || typeof death !== 'object') {
     gaps.push('firstDeath missing');
@@ -230,6 +244,7 @@ export async function runOneSwarmBarCell({
     arenaId,
     hullId: run.fitReceipt && run.fitReceipt.hullId,
     swarmTelemetry: { firstHostile: true, menus: true, deathTelegraph: true },
+    hostileInFrame: run.metrics ? run.metrics.hostileInFrame : null,
   });
   const cell = serializeSwarmBarCell(swarm, {
     loadoutId,

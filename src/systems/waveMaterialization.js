@@ -14,8 +14,8 @@
 import { mulberry32 } from '../core/rng.js';
 import { makeEnemySpawnSpec } from './combat.js';
 
-/** Ring radius for a gate. Enemies arrive just off the chase-camera bubble and fly in. */
-export const SURVIVAL_SPAWN_DISTANCE = 220;
+/** Ring radius for a gate. C1 engagement scale: enemies arrive inside the frame envelope. */
+export const SURVIVAL_SPAWN_DISTANCE = 260;
 
 /** Marker written onto every hostile this module creates. Reward owners branch on it. */
 export const SURVIVAL_COHORT_TAG = 'survival';

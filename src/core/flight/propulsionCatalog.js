@@ -22,10 +22,17 @@ const PLAYER_TRANSLATION_PROFILE_CACHE = new WeakMap();
 
 /**
  * Player-only translation feel. The ship reaches its existing speed ceiling sooner and
- * kills speed sooner; yaw and top speed stay on the authored drive. Cached per frozen
+ * kills speed sooner; top speed stays on the authored drive. Cached per frozen
  * profile so a flight tick does not allocate.
  */
 export const PLAYER_TRANSLATION_RESPONSIVENESS = 1.15;
+
+/**
+ * Player-only yaw authority (Gap Report F3): acceleration and braking double so the nose
+ * answers the stick, while the yaw-rate ceiling stays authored — a nimble helm, not a
+ * faster spin. Applied to player craft only; NPCs keep the authored drive values.
+ */
+export const PLAYER_YAW_AUTHORITY = 2;
 
 const TRANSLATION_ACCEL_KEYS = Object.freeze([
   'mainAccel',
@@ -42,9 +49,10 @@ const TRANSLATION_ACCEL_KEYS = Object.freeze([
   'trimAccel',
 ]);
 
+// Responsiveness shrinks RESPONSE horizons only (governor catch-up, pilot brake bite).
+// The settle horizons (stopHorizonS / driftStopHorizonS) stay authored: shrinking them is
+// what turned an off-throttle release into braking (Gap Report F1).
 const ASSIST_HORIZON_KEYS = Object.freeze([
-  'stopHorizonS',
-  'driftStopHorizonS',
   'governorResponseS',
   'pilotBrakeHorizonS',
 ]);
@@ -110,10 +118,10 @@ export const PROPULSION_PROFILES = Object.freeze({
     combatSpeed: 95,
     travelCeiling: 438.75,
     assist: {
-      neutralBrakeFraction: 0.44,
+      neutralBrakeFraction: 0.10,
       lateralKillFraction: 0.32,
       commandedAxisDamping: 0.07,
-      stopHorizonS: 2.35,
+      stopHorizonS: 4.0,
       driftStopHorizonS: 8.5,
       deadSpeed: 0.20,
       deadInput: 0.025,
@@ -471,9 +479,19 @@ function withPlayerTranslationFeel(profile) {
   if (!profile) return profile;
   let felt = PLAYER_TRANSLATION_PROFILE_CACHE.get(profile);
   if (felt) return felt;
-  felt = freezeProfile(applyTranslationResponsiveness(profile));
+  felt = freezeProfile(applyPlayerYawAuthority(applyTranslationResponsiveness(profile)));
   PLAYER_TRANSLATION_PROFILE_CACHE.set(profile, felt);
   return felt;
+}
+
+/** Double yaw acceleration and braking for player craft; the rate ceiling is untouched. */
+export function applyPlayerYawAuthority(profile, scale = PLAYER_YAW_AUTHORITY) {
+  if (!profile || !(scale > 0) || scale === 1) return profile;
+  const next = { ...profile };
+  for (const key of ['yawAccel', 'yawBrake', 'angularAccel', 'angularBrake']) {
+    if (Number.isFinite(next[key])) next[key] *= scale;
+  }
+  return next;
 }
 
 /** Scale translation authority and shrink stop horizons by the same factor. */

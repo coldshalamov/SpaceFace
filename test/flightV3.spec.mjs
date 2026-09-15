@@ -314,15 +314,19 @@ function simulate({ profile, b, input, ticks, runtime }) {
   simulate({ profile, b: braked, input: { throttle: 0, brake: true, assistMode: 'assisted' }, ticks: 60 });
   assert.ok(braked.vel.x < 390,
     `the pilot brake still spends earned speed with real reverse authority (got ${braked.vel.x.toFixed(1)})`);
-  // Must sit under the post-rescale Wasp combatSpeed (105). At 120 this would be
-  // overspeed and would coast — the earned-speed rule, not the nimble settle.
-  // The bar is the same one this case always asserted: one second hands-off below the cap sheds a
-  // clear fraction of speed (it was 120 -> under 110, an 8 % settle; the rescaled drive sheds ~20 %,
-  // and 63 keeps the assertion at "at least 10 %" rather than pinning today's exact number).
+  // Gap Report F1: below the cap the hands-off assist is a SETTLE, not a stop — a capped
+  // deceleration (neutralBrakeFraction WU/s^2, fading under the stop horizon), so a released
+  // stick keeps essentially all of the speed it earned. "Drift when I choose to" is the vision;
+  // the brake is how you stop.
   const nimble = body({ vel: { x: 70, z: 0 } });
   simulate({ profile, b: nimble, input: { throttle: 0, assistMode: 'assisted' }, ticks: 60 });
-  assert.ok(nimble.vel.x < 63,
-    `"Nimble in a fight. Zip around, stay in control of the combat area, turn NOW when I twitch, stop when I brake, drift when I choose to. Response starts instantly. The ship feels like a controllable mass, not a cursor." — below the cap the hands-off settle is untouched (got ${nimble.vel.x.toFixed(1)})`);
+  assert.ok(nimble.vel.x > 69 && nimble.vel.x < 70,
+    `"Nimble in a fight. Zip around, stay in control of the combat area, turn NOW when I twitch, stop when I brake, drift when I choose to." — below the cap the hands-off settle is a gentle coast, not braking (got ${nimble.vel.x.toFixed(2)})`);
+  // B1b: hands-off from governed cruise keeps ≥ 90 WU/s at 10 s on the starter drive.
+  const coast = body({ vel: { x: 95, z: 0 } });
+  simulate({ profile: PROPULSION_PROFILES.drive_reaction_m, b: coast, input: { throttle: 0, assistMode: 'assisted' }, ticks: 600 });
+  assert.ok(coast.vel.x >= 90,
+    `B1b below-cap coast: hands-off from 95 must keep ≥ 90 WU/s at 10 s (got ${coast.vel.x.toFixed(1)})`);
 }
 
 // 12d. The physics-earned tag is telemetry: it cannot raise thrust's cap, and it is no longer

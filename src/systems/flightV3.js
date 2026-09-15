@@ -88,8 +88,12 @@ export const MASSLINE_FLIGHT_TUNING = Object.freeze({
 });
 export const FLIGHT_V3_TRAVEL_TUNING = Object.freeze({ TRAVEL_BURN_DRAIN_MULT });
 
-// Boost/dash tuning — mirrors src/systems/flight.js so player feel is identical under V3.
-const DASH_TAP_WINDOW = 0.32;  // Shift taps up to this duration become dash; longer holds boost.
+// Boost/dash tuning. The dash IS the press — the impulse fires on the keydown tick, and an
+// 80 ms pre-kick window (FOV / plume / audio) plus a 1.35x acceleration overshoot give the
+// onset its anticipation-and-punch envelope. Holding the key past the press is just boost.
+const BOOST_PREKICK_S = 0.08;
+const BOOST_ACCEL_OVERSHOOT = 1.35;
+const BOOST_ACCEL_OVERSHOOT_S = 0.2;
 const DEFAULT_BOOST_RESOURCE = Object.freeze({
   energy: 0,
   max: 0,
@@ -251,6 +255,10 @@ export const flightV3 = {
         suppressRegen: requestedTravelBurn,
       });
       input.boost = boosting;
+      if (boosting && finite(state && state.simTime, 0) < finite(entity.boost && entity.boost._overshootUntil, 0)) {
+        // F6: boost onset overshoots its accel mult for ~0.2 s — the kick after the dash impulse.
+        profile = { ...profile, boostAccelMult: positive(profile.boostAccelMult, 1) * BOOST_ACCEL_OVERSHOOT };
+      }
       applyMasslineFlightModifiers(input, state, this._masslineSlingUntil, this._dashEarnedUntil);
       if (travelFlag('travelBurn') && input.travelDrive && input.travelDrive.state === 'engaged') {
         const energyBefore = finiteNonNeg(entity.boost && entity.boost.energy, 0);
@@ -296,7 +304,13 @@ export const flightV3 = {
           && state.settings.gameplay.orbitAssistStrength,
         controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
       });
-      if (orbitAssist.active) input = orbitAssist.input;
+      if (orbitAssist.active) {
+        input = orbitAssist.input;
+        // M1: orbit assist rewrites `turn` as a yaw-rate request — reapply the taut-line mass
+        // drag so a heavy catch still slows the nose during an assisted orbit.
+        const massScale = tautLineMassScale(state);
+        if (massScale < 1) input.turn = clamp(finite(input.turn, 0) * massScale, -1, 1);
+      }
     }
     const result = stepPropulsion({
       dt,
@@ -345,8 +359,9 @@ export const flightV3 = {
   },
 
   // Player boost/dash state machine. Returns the resource-gated boosting flag to feed back into
-  // propulsion. Handles tap=dash / hold=boost, energy drain+regen, hysteresis arming, and the dash
-  // impulse (queued via physics authority). Mirrors src/systems/flight.js:118-188 exactly.
+  // propulsion. The dash IS the press: the impulse fires on the keydown edge and holding the key
+  // cancels any further dash from that gesture (the hold itself is boost). Also owns energy
+  // drain+regen, hysteresis arming, and the boost pre-kick/overshoot windows.
   _stepPlayerBoost(e, rawBoostHeld, dt, state, opts = {}) {
     const boost = normalizeBoostResource(e);
     if (boost.dashCdT > 0) boost.dashCdT = Math.max(0, boost.dashCdT - dt);
@@ -355,20 +370,18 @@ export const flightV3 = {
     const suppressBoost = !!this._suppressBoostUntilRelease;
     const boostHeld = !!rawBoostHeld && !suppressBoost;
     const boostWasHeld = !!this._prevBoost;
-    const boostGestureActive = boostWasHeld || !!boost._dashCandidate || (boost._boostHoldT > 0);
-    if (boostHeld && (!boostWasHeld || !(boost._boostHoldT > 0))) {
-      boost._boostHoldT = 0;
-      boost._dashCandidate = !opts.suppressDash;
-    }
-    if (boostHeld) {
-      boost._boostHoldT = (boost._boostHoldT || 0) + dt;
-      if (opts.suppressDash) boost._dashCandidate = false;
-      if (boost._boostHoldT > DASH_TAP_WINDOW) boost._dashCandidate = false;   // held too long → boost, not dash
-    } else if (boostGestureActive) {
-      const heldT = boost._boostHoldT || 0;
-      if (!opts.suppressDash && boost._dashCandidate && heldT <= DASH_TAP_WINDOW) this._triggerDash(e, boost, state);
-      boost._boostHoldT = 0;
-      boost._dashCandidate = false;
+    if (boostHeld && !boostWasHeld && !opts.suppressDash) {
+      // Press edge: fire the dash immediately and arm the acceleration-overshoot window (~0.2 s).
+      // Holding past this point is just boost. The pre-kick event carries the 80 ms anticipation
+      // beat to presentation (FOV/plume/audio) only when the press can actually produce thrust —
+      // an empty capacitor stays silent rather than mimicking the success cue.
+      if (boost.energy > 1) {
+        boost._overshootUntil = finite(state && state.simTime, 0) + BOOST_ACCEL_OVERSHOOT_S;
+        if (this.bus && typeof this.bus.emit === 'function') {
+          this.bus.emit('ship:boostPreKick', { shipId: e.id, windowS: BOOST_PREKICK_S });
+        }
+      }
+      this._triggerDash(e, boost, state);
     }
     if (!rawBoostHeld && suppressBoost && !controlsBlocked) this._suppressBoostUntilRelease = false;
     this._prevBoost = boostHeld;
@@ -418,8 +431,7 @@ export const flightV3 = {
   _cancelPlayerBoost(e) {
     if (!e || !e.boost) { this._prevBoost = false; return; }
     const boost = e.boost;
-    const hadGesture = !!(this._prevBoost || (boost._dashCandidate) || (boost._boostHoldT > 0)
-      || (e.flags && e.flags.boosting));
+    const hadGesture = !!(this._prevBoost || (e.flags && e.flags.boosting));
     if (hadGesture) this._suppressBoostUntilRelease = true;
     this._prevBoost = false;
     boost._boostHoldT = 0;
@@ -542,6 +554,16 @@ export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, 
   input.earnedMomentumDecayTauS = MASSLINE_SLING_DECAY_TAU_S;
   input.earnedMomentumAssistScale = input.physicsEarnedMomentum ? MASSLINE_EARNED_ASSIST_SCALE : 1;
 
+  // M1: a taut line couples the catch's mass into the helm — yaw and lateral authority scale
+  // down by 1/(1 + 0.35·attached/hull), so a heavy load visibly drags the nose and the strafe
+  // plates. Scaling the commanded axes (not the accel table) leaves yaw braking full-authority:
+  // you turn slower under load, but you can still kill rotation.
+  const massScale = tautLineMassScale(state);
+  if (massScale < 1) {
+    input.strafe = clamp(finite(input.strafe, 0) * massScale, -1, 1);
+    input.turn = clamp(finite(input.turn, 0) * massScale, -1, 1);
+  }
+
   const cloak = state && state.massline2 && state.massline2.cloak;
   const coasting = Math.abs(finite(input.throttle, 0)) <= 0.025
     && Math.abs(finite(input.strafe, 0)) <= 0.025
@@ -568,6 +590,28 @@ export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, 
     if (drive && typeof drive === 'object') input.travelDrive = drive;
   }
   return input;
+}
+
+/** M1: while the player's line is taut (phase loaded/overload), the catch's mass scales yaw and
+ * lateral authority by 1/(1 + 0.35·attached/hull). Returns 1 when no taut line or no mass data —
+ * the caller then skips scaling, keeping the expression identical to its pre-M1 form. */
+export function tautLineMassScale(state) {
+  const tether = state && state.player && state.player.tether;
+  if (!tether || tether.targetId == null) return 1;
+  const phase = tether.phase;
+  if (phase !== 'loaded' && phase !== 'overload') return 1;
+  const entities = state.entities;
+  if (!entities || typeof entities.get !== 'function') return 1;
+  const anchor = entities.get(tether.targetId);
+  const hull = entities.get(state.playerId);
+  const attachedMass = positive(
+    anchor && anchor.physicsBody && anchor.physicsBody.mass,
+    positive(anchor && anchor.mass, 0));
+  const hullMass = positive(
+    hull && hull.physicsBody && hull.physicsBody.mass,
+    positive(hull && hull.mass, 0));
+  if (!(attachedMass > 0) || !(hullMass > 0)) return 1;
+  return 1 / (1 + 0.35 * (attachedMass / hullMass));
 }
 
 // Idempotent boost-resource normalizer (port of src/systems/flight.js:306-329). Guarantees the

@@ -269,9 +269,11 @@ test('PQ-006 HUD declares static reduced-flash and forced-color release states',
     'the open window keeps a shape boundary when pulse/color are unavailable');
 });
 
-test('PQ-006 new games declare Arm as the release-assist profile default', () => {
+test('PQ-006 new games declare Snap as the release-assist profile default', () => {
+  // M5: the throw releases on the player's press (90 ms forgiveness), not on the first
+  // solution frame — 'arm' remains an authored choice, never the default.
   const state = createGameState(47);
-  assert.equal(state.settings.gameplay.masslineReleaseAssist, 'arm');
+  assert.equal(state.settings.gameplay.masslineReleaseAssist, 'snap');
 });
 
 test('PQ-006 profile snapshots retain release assist across fresh runtime initialization', () => {
@@ -292,7 +294,7 @@ test('PQ-006 profile snapshots retain release assist across fresh runtime initia
   });
 });
 
-test('PQ-006 corrupt release-assist profile values fail closed to Arm', () => {
+test('PQ-006 corrupt release-assist profile values fail closed to Snap', () => {
   withLocalStorage((storage) => {
     storage.setItem(PROFILE_SETTINGS_KEY, JSON.stringify({
       version: 1,
@@ -300,7 +302,7 @@ test('PQ-006 corrupt release-assist profile values fail closed to Arm', () => {
     }));
     const state = createGameState(49);
     save.init({ state, bus: makeBus(), helpers: {}, registry: { get: () => null } });
-    assert.equal(state.settings.gameplay.masslineReleaseAssist, 'arm');
+    assert.equal(state.settings.gameplay.masslineReleaseAssist, 'snap');
   });
 });
 

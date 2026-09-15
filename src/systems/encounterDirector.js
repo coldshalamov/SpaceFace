@@ -3196,8 +3196,9 @@ function placeFarFromPlayer(state, payload, sectorId) {
   const seed = (state && state.meta && state.meta.seed) || 1;
   const angle = (hash32(seed, sectorId || 'no-sector', 'escalation-place') % 360) * (Math.PI / 180);
   return {
-    x: px + Math.cos(angle) * 900,
-    z: pz + Math.sin(angle) * 900,
+    // C1 engagement scale: adventure escalation spawns inside the fight envelope, not 900 WU out.
+    x: px + Math.cos(angle) * 520,
+    z: pz + Math.sin(angle) * 520,
     sectorId: sectorId || null,
     zoneId: null,
     stationId: escalationText(payload && payload.stationId),

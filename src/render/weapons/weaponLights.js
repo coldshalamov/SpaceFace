@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 
-export const WEAPON_LIGHT_POOL_SIZE = 16;
+// P1: pool sized to measured p90 occupancy — 6 event + 2 weapon = 8 visible point lights total,
+// so NUM_POINT_LIGHTS stops burning a 22-wide unrolled loop on every lit fragment. The constant
+// count stays (toggling `visible` caused the 2026-07 recompile storm); priority eviction at
+// admission keeps the two weapon slots honest.
+export const WEAPON_LIGHT_POOL_SIZE = 2;
 
 export function visiblePointLightBudget(eventLightCount) {
   return (Number(eventLightCount) || 0) + WEAPON_LIGHT_POOL_SIZE;

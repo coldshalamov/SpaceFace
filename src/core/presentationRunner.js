@@ -44,6 +44,8 @@ function createCompletedTickRecord() {
     simTime: 0,
     stateDigestMarker: 0,
     inputSequence: 0,
+    inputCommandSeq: 0,
+    inputWallMs: 0,
     lifecycleGeneration: 0,
     journalStart: 0,
     journalEnd: 0,
@@ -218,6 +220,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   let unsubscribeLifecycle = null;
   let lifecycleGeneration = 0;
   let hasCompletedTick = false;
+  // P7 input-to-photon: highest input-command sequence a presented frame has reflected so far.
+  let lastPhotonInputSeq = 0;
   let hasPendingJournal = false;
   let pendingJournalStart = 0;
   let pendingJournalEnd = 0;
@@ -701,6 +705,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       diagnostics.lastPresentMs = presentationMs;
       perf.recordPresentationFrame?.(presentationMs);
       previousPresentationOverrun = !restoring && presentationMs > fixedDt * 2000;
+    }
+    // P7: the first presented frame whose completed tick consumed a newer input command is that
+    // command's photon. The stamp arrived wall-timed at the input boundary; the subtraction is
+    // measurement only and never enters sim state.
+    if (presentationAccepted && completedTickCount > 0
+      && latestCompletedTick.inputCommandSeq > lastPhotonInputSeq
+      && latestCompletedTick.inputWallMs > 0) {
+      perf.recordInputToPhoton?.(Math.max(0, measureNow() - latestCompletedTick.inputWallMs),
+        latestCompletedTick.inputWallMs);
+      lastPhotonInputSeq = latestCompletedTick.inputCommandSeq;
     }
     diagnostics.renderUpdates++;
     diagnostics.consecutiveFrameErrors = 0;

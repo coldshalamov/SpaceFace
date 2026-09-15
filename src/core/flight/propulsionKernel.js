@@ -515,7 +515,7 @@ function stepPulsePlate(body, input, profile, runtime, environment, dt) {
     : null;
 
   const manualInput = autoFlipBurn
-    ? { ...input, throttle: 0, strafe: 0 }
+    ? { ...input, throttle: 0, strafe: 0, turn: 0 }
     : input;
 
   const rcsProfile = {
@@ -738,7 +738,11 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
   const mode = normalizeAssistMode(input.assistMode);
   const settings = profile.assist || {};
   const deadInput = positive(settings.deadInput, 0.025);
-  const hasManual = Math.abs(input.throttle) > deadInput || Math.abs(input.strafe) > deadInput;
+  // Steering counts as flying: holding a turn with the throttle released takes the slip-assist
+  // branch, not neutral counterthrust, so carving a line never reads as braking (Gap Report F1).
+  const hasManual = Math.abs(input.throttle) > deadInput
+    || Math.abs(input.strafe) > deadInput
+    || Math.abs(finite(input.turn, 0)) > deadInput;
   const localVelocity = worldToLocal(body.vel, axes);
   const limits = (forceBrake || input.brake) ? reactionBrakeLimits(profile) : reactionLimits(profile, 1);
   const earnedAssistScale = input.physicsEarnedMomentum && !input.brake && !forceBrake
@@ -771,8 +775,18 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
     if (input.brake || forceBrake) fraction = 1;
     else fraction *= Math.min(clamp(finite(input.coastAssistScale, 1), 0, 1), earnedAssistScale) * overCapScale;
 
-    forward = -localVelocity.forward / horizon * fraction;
-    lateral = -localVelocity.lateral / horizon * fraction;
+    if (input.brake || forceBrake) {
+      forward = -localVelocity.forward / horizon;
+      lateral = -localVelocity.lateral / horizon;
+    } else {
+      // A settle is a capped deceleration, not a proportional brake: the assist eases the ship
+      // down at `fraction` WU/s^2 and fades to zero inside the horizon, so letting go of the
+      // stick at cruise is a coast that settles — never a stop (Gap Report F1, D3 "never add
+      // drag"). Stopping on purpose is the pilot brake's job above.
+      const settle = (v) => -Math.sign(v) * Math.min(Math.abs(v) / horizon, 1) * fraction;
+      forward = settle(localVelocity.forward);
+      lateral = settle(localVelocity.lateral);
+    }
     reason = input.brake || forceBrake ? 'pilot-brake' : 'neutral-counterthrust';
   } else if (mode !== 'newtonian') {
     const lateralFraction = (mode === 'drift'

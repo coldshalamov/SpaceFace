@@ -146,18 +146,20 @@ test('W1-4: a partial final tick pays remaining energy without an engaged kernel
   });
 });
 
-test('W1-4: held boost and an accepted tap-dash debit the same drive pool as burn', () => {
+test('W1-4: held boost and an accepted press-dash debit the same drive pool as burn', () => {
   withTravelBurn(() => {
     const rig = makeRig(100);
     rig.entity.boost.dashImpulse = 5;
     rig.entity.boost.dashCost = 10;
 
-    // Held boost spends its fitted drain and Travel Burn spends the same amount again.
+    // F6: the dash IS the press — its cost lands on the keydown tick alongside held-boost
+    // drain and the Travel Burn debit.
     stepPlayer(rig, DT, { moveZ: 1, boost: true });
     assert.equal(rig.entity.flags.boosting, true);
-    assert.equal(rig.entity.boost.energy, 100 - 2 * rig.entity.boost.drainRate * DT);
+    assert.equal(rig.entity.boost.energy,
+      100 - 2 * rig.entity.boost.drainRate * DT - rig.entity.boost.dashCost);
 
-    // Release within the tap window: the dash cost and the burn debit both land on p.boost.
+    // Release debits nothing extra; the next tick still pays the burn.
     stepPlayer(rig, DT, { moveZ: 1, boost: false });
     assert.equal(rig.entity.boost.energy,
       100 - 2 * rig.entity.boost.drainRate * DT - rig.entity.boost.dashCost

@@ -207,6 +207,9 @@ export const VISUAL_EVENT_CUES = Object.freeze({
   'vfx.explosion': Object.freeze({ recipeId: 'sfx_explosion_small', caption: 'Explosion.', importance: 0.88 }),
   'vfx.shieldHit': Object.freeze({ recipeId: 'sfx.shieldHit', caption: 'Shield hit.', importance: 0.7 }),
   'vfx.shieldBreak': Object.freeze({ recipeId: 'sfx.shieldBreak', caption: 'Shields down.', importance: 0.94 }),
+  // C3: armor gets its own surface — the hit receipt (shield/armor/hull), not the gun family,
+  // owns which recipe plays.
+  'vfx.armorHit': Object.freeze({ recipeId: 'sfx.armorHit', caption: 'Armor hit.', importance: 0.75 }),
   'vfx.hullHit': Object.freeze({ recipeId: 'sfx.hullHit', caption: 'Hull hit.', importance: 0.8 }),
   'vfx.dock': Object.freeze({ recipeId: 'sfx_dock_clunk', caption: 'Docking clamp.', importance: 0.6 }),
   'vfx.boost': Object.freeze({ recipeId: 'sfx_boost_whoosh', caption: 'Boost.', importance: 0.5 }),
@@ -219,7 +222,7 @@ export const VISUAL_EVENT_CUES = Object.freeze({
 export const LIVE_VFX_ALIASES = Object.freeze({
   'combat.damage.shield': 'vfx.shieldHit',
   'combat.damage.hull': 'vfx.hullHit',
-  'combat.damage.armor': 'vfx.hullHit',
+  'combat.damage.armor': 'vfx.armorHit',
   'combat.damage.kill': 'vfx.kill',
   'combat.damage.charge': 'vfx.explosion',
   'combat.weakPoint': 'vfx.explosion',

@@ -650,6 +650,7 @@ export const input = {
     this._lastKbmSeq = -1;
     this._kbmActivityPending = false;
     this._inputActivitySeq = 0;
+    this._lastInputWallMs = 0;
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
 
     this.gamepad = createGamepad(ctx);
@@ -916,7 +917,20 @@ export const input = {
     const tick = state && Number.isFinite(state.tick) ? (state.tick | 0) : 0;
     this._inputActivitySeq = (this._inputActivitySeq | 0) + 1;
     if (state && state.input) state.input._activitySeq = this._inputActivitySeq;
+    // P7 input-to-photon telemetry: the wall stamp is measurement-only. It lives on the
+    // system instance and travels to the runner through publishInputCommand's stamp arg —
+    // never inside state.input, which is serialized and hashed (a wall-clock field would
+    // break save/load hash continuity). Device arbitration stays on the deterministic
+    // (tick, seq) pair, and no gameplay path may read this stamp.
+    this._lastInputWallMs = (typeof performance !== 'undefined'
+      && typeof performance.now === 'function') ? performance.now() : 0;
     return { tick, seq: this._inputActivitySeq };
+  },
+
+  // P7: the stamp the simulation runner copies onto the completed-tick record so the
+  // presentation side can measure input-command -> first-presented-frame latency.
+  inputActivityStamp() {
+    return { seq: this._inputActivitySeq | 0, wallMs: this._lastInputWallMs || 0 };
   },
 
   update(dt, state) {
@@ -1264,6 +1278,10 @@ export const input = {
     acts.travelBurn = travelPressed;
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
     acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
+    // M6: while line control owns the forward axis (W reels in, S pays out), the same key must
+    // not also fire full thrust against the reel. Scale the flight channel to 25 % so the line
+    // grammar wins the axis and the ship keeps a finesse whisper instead of a second opposed force.
+    if (masslineCommand.lineControl) inp.moveZ *= 0.25;
     // The Massline key adds reel/orbit intent; it does not replace the flight controls. The same
     // forward/turn chord remains ordinary thrust and yaw, which lets the orbit detector observe
     // what the pilot is actually doing instead of manufacturing a second control mode.

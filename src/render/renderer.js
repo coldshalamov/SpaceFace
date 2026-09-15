@@ -8860,9 +8860,9 @@ export const render = {
         || shadowFollowChanged
         || this._shadowRefreshScheduled === true
       );
-      const holdFirstFlightShadow = holdLoadingGpu
-        || (this.state.mode === 'flight'
-          && (Number(this.state.simTime) || 0) < 20);
+      // P5: the first-20 s shadow hold is deleted — it dodged a stall the refresh gate below
+      // already removed, and it blinded shadows through exactly the first-encounter window.
+      const holdFirstFlightShadow = holdLoadingGpu;
       const refreshShadow = !holdFirstFlightShadow && shouldRefreshRealtimeShadowMap({
         lastPresentDtMs: this.state && this.state.render && this.state.render.lastPresentDtMs,
         skippedLast: this._shadowPresentSkipped === true || refreshWasPending,

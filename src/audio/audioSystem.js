@@ -523,7 +523,7 @@ export const AUDIO_CUE_TO_RECIPE = Object.freeze({
   hover: 'sfx_ui_hover', ui_hover: 'sfx_ui_hover', uiHover: 'sfx_ui_hover',
   confirm: 'sfx_ui_confirm', ui_confirm: 'sfx_ui_confirm', buy: 'sfx_ui_confirm', sell: 'sfx_ui_confirm',
   deny: 'sfx_ui_error', error: 'sfx_ui_error', alert: 'sfx_ui_alert', warning: 'sfx_ui_alert',
-  pickup: 'sfx_mining_impact', cash: 'sfx_ui_confirm',
+  pickup: 'sfx_loot_collect', cash: 'sfx_ui_confirm',
   lock_acquired: 'sfx_lock_acquired', lock: 'sfx_lock_acquired',
   // UI navigation + feedback cues emitted with the ui_* prefix (hud.js, input.js, stationHub.js).
   // Without these they collapse to the generic sfx_ui_click; each now maps to its own SPEC2/07 recipe.
@@ -3344,13 +3344,14 @@ export const audio = {
     // Some presentation receipts must remain visible on the semantic bus even though an earlier
     // raw event owns their physical sound. Do not turn that observability contract into a double hit.
     if (opts.playbackOwnedByRaw) return;
-    // PQ-158.02 owns attach/strain/break on the instrument. Juice still emits the semantic
-    // cue; do not play the same latch/creak/snap a second time.
-    if (id === 'presentation.tether.attach'
+    // PQ-158.02 owns attach/strain/release/break on the instrument. Juice still emits the
+    // semantic cue; do not play the same latch/creak/snap/release a second time. The cue keeps
+    // its priority duck — a near_break warning must still cut through the mix — so the early
+    // out lands after the duck, on the duplicated voice only.
+    const instrumentOwned = id === 'presentation.tether.attach'
       || id === 'presentation.tether.near_break'
-      || id === 'presentation.tether.break') {
-      return;
-    }
+      || id === 'presentation.tether.release'
+      || id === 'presentation.tether.break';
     const suppliedImportance = Number.isFinite(opts.importance)
       ? opts.importance
       : (opts.duck ? Math.max(PRIORITY_DUCK_THRESHOLD, 0.85) : 0);
@@ -3365,6 +3366,7 @@ export const audio = {
       });
     }
     if (opts.duck) this._duckMusic(opts.duckSeconds || 0.8);
+    if (instrumentOwned) return;
     const isCritical = importance >= PRIORITY_DUCK_THRESHOLD || !!opts.duck || !!(signature && signature.warning);
     const voice = this.play(rid, {
       gain: opts.gain == null ? 0.8 : opts.gain,
@@ -4436,6 +4438,12 @@ export const audio = {
     const speed = player && player.vel ? Math.hypot(player.vel.x, player.vel.z) : 0;
     const actions = this.state.input && this.state.input.actions;
     const braking = !!(actions && actions.brake) || !!(this.state.input && this.state.input.brake);
+    // U7: the brake's rising edge gets a one-shot bite — the bed below is the sustain, this is
+    // the onset. Exactly one cue per press.
+    if (braking && !rt._brakeWasHeld) {
+      this.play('sfx_brake_bite', { gain: 0.7 });
+    }
+    rt._brakeWasHeld = braking;
 
     let decel = 0;
     if (rt._prevSpeed !== undefined) {

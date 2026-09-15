@@ -40,7 +40,7 @@ function defaultSettings() {
       controlScheme: 'pilot',
       controlSchemeV2: true,
       orbitAssistStrength: 'standard',
-      masslineReleaseAssist: 'arm',
+      masslineReleaseAssist: 'snap',
     },
     controls: {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind
@@ -52,7 +52,7 @@ function defaultSettings() {
     // root field above. These are the net-new a11y fields driven by src/ui/accessibility.js.
     accessibility: {
       colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
-      motionPreference: 'system', captions: true, audioCues: true, captionSize: 'medium', captionBackground: true,
+      motionPreference: 'system', captions: false, audioCues: true, captionSize: 'medium', captionBackground: true,
     },
   };
 }
@@ -121,7 +121,7 @@ export function createGameState(seed) {
     rng: mulberry32(seed),
     input: { moveX: 0, moveZ: 0, turnIntent: 0, boost: false, brake: false, fire: false, fireGroup: null, autoFire: false, deployCountermeasure: false, aimWorld: { x: 0, z: 0 }, aimAngle: 0, mouseNdc: { x: 0, y: 0 }, pointerScreen: { x: 0, y: 0, active: false }, autoTargetVector: { active: false, screenX: 0, screenY: 0, worldX: 0, worldZ: 0, magnitude: 0 }, autoTargetPath: { active: false, drawing: false, cursorX: 0, cursorY: 0, pointIndex: 1, points: [] } },
     flight: { mode: 'manual', previousMode: 'manual', modeReason: 'boot', modeChangedTick: 0 },
-    camera: { obj: null, tilt: 60, zoom: 144, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: 26 },
+    camera: { obj: null, tilt: 60, zoom: 144, trauma: 0, shakeOffset: null, focus: null, lerp: 6.0, lookAhead: null },
     bounds: { radius: 2600, hardRadius: 3000, center: { x: 0, z: 0 } },
 
     // --- meta records ---

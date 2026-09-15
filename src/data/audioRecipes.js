@@ -667,6 +667,18 @@ export const RECIPES = [
     filterType: 'lowpass', filterFreq: 900,
     gainMult: 0.85,
   },
+  // --- Brake bite: a short traction chirp on the brake's rising edge (U7: an onset, not a bed). ---
+  {
+    id: 'sfx_brake_bite',
+    category: 'engine',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 1400, filterQ: 1.2,
+    subBass: { startFreq: 220, endFreq: 110, dur: 0.08, gain: 0.5 },
+    transientClick: { gain: 0.5 },
+    gainMult: 0.55,
+  },
   // --- Loot collected: a bright ascending pickup chime (positive reward feedback). ---
   {
     id: 'sfx_loot_collect',

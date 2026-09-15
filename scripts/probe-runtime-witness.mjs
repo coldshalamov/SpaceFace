@@ -2393,7 +2393,13 @@ async function installProductionMatrixRecorder(targetPage) {
       stopped: false,
       inputTimestampKeys: ['lastInputWallMs', 'lastInputAtMs', 'lastActionWallMs', 'lastActionAtMs'],
     };
-    const readInputAge = (state) => {
+    // P7: input wall stamps live on the input system (never in serialized state.input).
+    // perfRuntime surfaces the latest presented stamp as frame.inputStampMs; legacy
+    // state.input keys remain as a fallback for older builds.
+    const readInputAge = (state, frameSample, now) => {
+      if (Number.isFinite(frameSample?.inputStampMs)) {
+        return Math.max(0, now - frameSample.inputStampMs);
+      }
       const input = state?.input;
       for (const key of trace.inputTimestampKeys) {
         const value = Number(input?.[key]);
@@ -2410,7 +2416,7 @@ async function installProductionMatrixRecorder(targetPage) {
         trace.samples.push({
           elapsedMs: Math.max(0, now - trace.startedAt),
           intervalMs: trace.lastAt == null ? null : Math.max(0, now - trace.lastAt),
-          inputAgeMs: readInputAge(state),
+          inputAgeMs: readInputAge(state, sample, now),
           frame: sample,
         });
       }
@@ -2423,7 +2429,13 @@ async function installProductionMatrixRecorder(targetPage) {
       const timers = window.SF?.state?.render?.gpuTimers;
       let gpuReport = null;
       try { gpuReport = typeof timers?.getReport === 'function' ? timers.getReport() : null; } catch (_) {}
-      return { samples: trace.samples.slice(), gpuReport };
+      let inputToPhotonReport = null;
+      const perfApi = window.SF?.state?.perfRuntime;
+      try {
+        inputToPhotonReport = typeof perfApi?.getInputToPhotonReport === 'function'
+          ? perfApi.getInputToPhotonReport() : null;
+      } catch (_) {}
+      return { samples: trace.samples.slice(), gpuReport, inputToPhotonReport };
     };
     window.__SF_PRODUCTION_MATRIX_RECORDER__ = trace;
     trace.raf = requestAnimationFrame(frame);
@@ -3556,6 +3568,7 @@ const productionMatrix = PRODUCTION_ROUTE
       route: PRODUCTION_ROUTE,
       samples: productionRecorder?.samples || [],
       gpuReport: productionRecorder?.gpuReport || null,
+      inputToPhotonReport: productionRecorder?.inputToPhotonReport || null,
       manifest: productionRouteManifest || productionManifest(PRODUCTION_ROUTE),
     })
     : {

@@ -22,13 +22,14 @@ const _playerLocalScratch = { x: 0, z: 0 };
 const _playerLocalProxy = { pos: _playerLocalScratch };
 
 const THREAT_COMPOSE_RANGE = 600;
-const THREAT_COMPOSE_MAX_BIAS = 42;
+const THREAT_COMPOSE_MAX_BIAS = 70;
 const THREAT_COMPOSE_FRACTION = 0.08;
 const TETHER_COMPOSE_MAX_BIAS = 64;
 const TETHER_COMPOSE_FRACTION = 0.12;
-export const CONTEXT_ZOOM_MAX = 0.14;
-const THREAT_ZOOM_BASE = 0.04;
-const THREAT_ZOOM_RANGE = 0.08;
+// C1: the threat zoom needs real range — a 0.14 ceiling flattened the 0.10/0.30 curve to a step.
+export const CONTEXT_ZOOM_MAX = 0.42;
+const THREAT_ZOOM_BASE = 0.10;
+const THREAT_ZOOM_RANGE = 0.30;
 const TETHER_ZOOM_BASE = 0.03;
 const TETHER_ZOOM_RANGE = 0.06;
 // U13: slightly tighter than the 0.80 pair contract so an active attacker stays readable inside the
@@ -39,13 +40,15 @@ const COMPOSITION_BIAS_SLEW = 90;
 const CONTEXT_ZOOM_LERP = 1.2;
 const SAFE_VIEW_X = 0.52;
 const SAFE_VIEW_Z = 0.46;
-const LOOKAHEAD_MAX = 18;           // wu — normal cap
-const LOOKAHEAD_MAX_CRUISE = 26;    // wu — cruise-only cap (spec2/02 §2)
-const LOOKAHEAD_SPEED_SCALE = 0.35; // velocity bias multiplier
+// F4: lead is measured in SECONDS of velocity, not a world-unit cap — a WU cap shrank the lead
+// to ~0.1 s of velocity at speed. `camera.lookAhead` (when a finite WU number is authored) remains
+// an absolute sanity bound; the 400 WU default only binds at extreme speed.
+const LOOKAHEAD_LEAD_S = 0.5;        // seconds of velocity carried as camera lead
+const LOOKAHEAD_LEAD_MAX_WU = 400;   // wu — absolute sanity bound when no authored cap exists
 // U13 (WF-15): when an active attacker owns combat framing, velocity look-ahead must not yank the
-// pair out of the safe frame during a dodge. Full look-ahead remains for travel/cruise; combat only
-// keeps a fraction so the pilot's dodge still reads without the camera abandoning the threat.
-export const ACTIVE_ATTACKER_LOOKAHEAD_SCALE = 0.32;
+// pair out of the safe frame during a dodge. Combat keeps 0.6 of the lead — 0.30 s of velocity —
+// so the pilot's dodge still reads without the camera abandoning the threat.
+export const ACTIVE_ATTACKER_LOOKAHEAD_SCALE = 0.6;
 // Sticky composed-threat hold: dense furballs thrash nearest/active identity every few frames and
 // the composition bias slews between anchors. Hold the current anchor briefly unless a challenger
 // is meaningfully closer or a new active attacker appears.
@@ -250,11 +253,13 @@ export const SPEED_ZOOM_MIN = 0.88;  // slowest / idle factor (spec2/02 §2)
 export const SPEED_ZOOM_MAX = 1.35;               // was 1.18 — the at-cruise frame widens ~14 %
 export const PHYSICS_EARNED_SPEED_ZOOM_MAX = 3.5; // was 1.55 — "max ~3x at ~550" (FEEL_CONTRACT §C)
 export const PHYSICS_EARNED_SPEED_RATIO_MAX = VL_EXCEPTIONAL_SPEED_RATIO_MAX;
-const ZOOM_LERP = 1.4;              // /s — speed-zoom ease (spec2/02 §2)
-// Boost framing is a sustained state cue, not an ignition impulse. A short Shift tap should barely
-// move the view; held boost can still earn a small amount of extra breathing room.
-export const BOOST_CAMERA_ZOOM_TARGET = 1.025;
-export const BOOST_CAMERA_ZOOM_LERP = 0.8; // /s — deliberately slower than ordinary speed zoom
+const ZOOM_LERP = 4.0;              // /s — F5: the frame must open while the speed is still arriving
+// Boost framing is asymmetric (F5): the world opens fast on keydown so the press reads as "the
+// world opened", then relaxes back slowly enough that release never snaps.
+export const BOOST_CAMERA_ZOOM_TARGET = 1.10;
+export const BOOST_CAMERA_ZOOM_RISE = 9.5; // /s — ~90% of the target in ~0.24 s
+export const BOOST_CAMERA_ZOOM_FALL = 1.2; // /s — a slow, readable return
+export const BOOST_CAMERA_ZOOM_LERP = BOOST_CAMERA_ZOOM_RISE; // compat alias
 // U13: single-frame outward zoom cap. The Focus-lease continuity contract forbids a cut larger
 // than 6 wu/frame; stay under that while still letting active-attacker minZoom open the frame.
 const ZOOM_OUT_STEP_MAX_WU = 5.5;
@@ -386,11 +391,6 @@ export function applyMasslineReleaseCameraCue(cameraController, state, payload =
   return receipt;
 }
 
-function isCruising(state) {
-  const c = state && state.player && state.player.cruise;
-  return !!(c && c.phase === 'cruising');
-}
-
 function resolveAimLead(input, player, out = null) {
   const result = out || {};
   if (!input || !input.aimWorld || !player || !player.pos) {
@@ -487,7 +487,8 @@ export function stepBoostZoomFactor(current, boosting, dt, motionReduced = false
   const value = Number.isFinite(current) ? current : 1;
   const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
   const target = boosting && !motionReduced ? BOOST_CAMERA_ZOOM_TARGET : 1;
-  return damp(value, target, BOOST_CAMERA_ZOOM_LERP, step);
+  const rate = target > value ? BOOST_CAMERA_ZOOM_RISE : BOOST_CAMERA_ZOOM_FALL;
+  return damp(value, target, rate, step);
 }
 
 export function resolveInitialChaseZoom(zoom) {
@@ -1103,8 +1104,8 @@ export function createChaseCamera(state) {
           : 1;
 
         if (playerSpeed > 1) {
-          const laCap = isCruising(state) ? LOOKAHEAD_MAX_CRUISE : LOOKAHEAD_MAX;
-          const la = Math.min(c.lookAhead, laCap, playerSpeed * LOOKAHEAD_SPEED_SCALE) * combatLookaheadScale;
+          const laCap = Number.isFinite(c.lookAhead) ? Math.max(0, c.lookAhead) : LOOKAHEAD_LEAD_MAX_WU;
+          const la = Math.min(laCap, playerSpeed * LOOKAHEAD_LEAD_S) * combatLookaheadScale;
           fx += (vx / playerSpeed) * la; fz += (vz / playerSpeed) * la;
           // Band-3 velocity lead (ADR D7): at >5x combat speed a few WU of camera lead along the
           // velocity vector read as terrifying speed. READ, never re-derived — `readVelocityLanguage`

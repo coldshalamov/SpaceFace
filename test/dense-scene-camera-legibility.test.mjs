@@ -104,20 +104,23 @@ test('H1: dense recoil+hit stacking never exceeds FOV_PUNCH_RISE_RATE on the cam
   assert.ok(app > 0 || env >= 0, 'integrator remains well-defined under dense fire');
 });
 
-test('H1b: boost framing ignores a tap and eases back after a held boost', () => {
+test('H1b: boost framing opens on keydown and eases back slowly (F5 asymmetric zoom)', () => {
+  // F5: the world must OPEN while the speed is still arriving — ~90% of the 1.10 target inside
+  // 0.25 s — then relax slowly enough that release never reads as a cut.
   let factor = 1;
-  for (let i = 0; i < 6; i++) factor = stepBoostZoomFactor(factor, true, DT);
-  assert.ok(factor - 1 < 0.005, `a 100ms boost tap should barely move zoom (factor=${factor.toFixed(4)})`);
+  for (let i = 0; i < 15; i++) factor = stepBoostZoomFactor(factor, true, DT);
+  assert.ok(factor >= 1.09,
+    `0.25 s of held boost must open ~90% of the boost zoom (factor=${factor.toFixed(4)})`);
 
   for (let i = 0; i < 120; i++) factor = stepBoostZoomFactor(factor, true, DT);
-  assert.ok(factor > 1.015 && factor < BOOST_CAMERA_ZOOM_TARGET,
-    `held boost should ease toward the small framing target (factor=${factor.toFixed(4)})`);
+  assert.ok(factor > 1.09 && factor <= BOOST_CAMERA_ZOOM_TARGET + 1e-9,
+    `held boost settles at the boost framing target (factor=${factor.toFixed(4)})`);
   const held = factor;
 
-  for (let i = 0; i < 6; i++) factor = stepBoostZoomFactor(factor, false, DT);
-  assert.ok(factor < held && factor > 1,
-    `release should ease out instead of reversing into a second pulse (factor=${factor.toFixed(4)})`);
-  for (let i = 0; i < 180; i++) factor = stepBoostZoomFactor(factor, false, DT);
+  for (let i = 0; i < 48; i++) factor = stepBoostZoomFactor(factor, false, DT);
+  assert.ok(factor < held && factor > 1.03,
+    `release eases for >= 0.8 s instead of snapping back (factor=${factor.toFixed(4)})`);
+  for (let i = 0; i < 300; i++) factor = stepBoostZoomFactor(factor, false, DT);
   assert.ok(Math.abs(factor - 1) < 0.005, `camera should settle back to neutral (factor=${factor.toFixed(4)})`);
 });
 

@@ -29,6 +29,10 @@ import {
 // slower real-time cadence when bullet time reduces sim updates to ~21 Hz.
 const MARK_PREDICTION_S = 1 / 120;
 
+// M3: denied latches get a 1.2 s floor pill — long enough to read the reason, short enough not
+// to outlive the next attempt.
+const MASSLINE_DENIAL_PILL_S = 1.2;
+
 export const MASSLINE_HUD_CSS = `
 #sf-ml2 { position:absolute; inset:0; pointer-events:none; z-index:6; }
 #sf-ml2 .ml2-mark { position:absolute; left:0; top:0; will-change:transform;
@@ -275,6 +279,12 @@ function writeMasslineHudFields(fields, state, player) {
   fields[index++] = bridle.sourceReceiptId;
   fields[index++] = bridle.lastDenial;
   fields[index++] = bridle.lastDenialTargetId;
+  // M3 denial pill: the remaining-time field is quantized so the signature rolls over as the
+  // pill ages out — a stale pill never survives its 1.2 s floor because inputs "didn't change".
+  const denial = state.masslineDenial;
+  fields[index++] = denial ? denial.reason : null;
+  fields[index++] = denial ? denial.targetId : null;
+  fields[index++] = denial ? Math.max(0, Math.ceil((finite(denial.untilSimTime) - finite(state.simTime)) * 4)) : 0;
   fields[index++] = selected.status;
   fields[index++] = selected.reason;
   fields[index++] = selected.targetId;
@@ -318,6 +328,18 @@ export const masslineHud = {
     this.state = ctx.state;
     this.helpers = ctx.helpers;
     this._dom = null;
+    // M3: every denied latch gets words — the bus event is the one seam all six emit sites share.
+    // The denial lands on a state field so it joins the HUD signature and redraws on arrival/expiry.
+    if (ctx.bus && typeof ctx.bus.on === 'function') {
+      ctx.bus.on('tether:latchDenied', (p) => {
+        if (!this.state) return;
+        this.state.masslineDenial = {
+          reason: p && p.reason,
+          targetId: p && p.targetId,
+          untilSimTime: finite(this.state.simTime) + MASSLINE_DENIAL_PILL_S,
+        };
+      });
+    }
   },
 
   destroy() {
@@ -325,6 +347,7 @@ export const masslineHud = {
       this._dom.root.parentNode.removeChild(this._dom.root);
     }
     this._dom = null;
+    if (this.state) this.state.masslineDenial = null;
     clearHudSignatures(this.state);
   },
 
@@ -361,6 +384,12 @@ export const masslineHud = {
   // that does not exist yet — only the real rendered Massline may connect the player to an object.
   // The mark is what makes the caption world-anchored, so no connector is needed.
   _updateAcquisitionPreview(dom, state, player, w2s) {
+    // M3: a live latch denial wins the slot for its full 1.2 s floor — a press that grabbed
+    // nothing must still say so, in words, at the spot it was aimed.
+    const denial = state.masslineDenial;
+    if (denial && finite(state.simTime) < finite(denial.untilSimTime)) {
+      return this._renderDenialPill(dom, state, player, w2s, denial);
+    }
     const snarePreview = state.player && state.player.masslineSnarePreview;
     const remoteActive = !!(state.player && state.player.remoteMassline && state.player.remoteMassline.active);
     const bridleSetup = state.masslineBridle;
@@ -391,11 +420,15 @@ export const masslineHud = {
     const cueX = offscreen ? clampRange(targetScreen.x, 30, viewportWidth - 30) : targetScreen.x;
     const cueY = offscreen ? clampRange(targetScreen.y, 30, viewportHeight - 30) : targetScreen.y;
     const ready = selected.status === 'ready';
-    const confidence = Math.round(clamp01(selected.confidence) * 100);
+    // M4: print the body's mass, not the disambiguation confidence — "640 t" reads as the load
+    // the line will couple into the helm; the old floored percent never meant that.
+    const targetMass = Math.round(finite(target.physicsBody && target.physicsBody.mass)
+      || finite(target.mass));
+    const massText = targetMass > 0 ? `${targetMass} t` : '— t';
     const status = previewStatusCopy(selected.status, selected.reason);
     const intent = String(selected.intentLabel || selected.context || 'PICK').toUpperCase();
     const label = String(selected.targetLabel || selected.targetType || 'Target');
-    const text = `${label} · ${intent} · ${confidence}% · ${status}`;
+    const text = `${label} · ${intent} · ${massText} · ${status}`;
 
     // Keep the caption beside the mark and inside the frame. The estimate only decides which SIDE
     // of the mark it sits on; a wrong guess shifts the caption, it never hides information.
@@ -419,12 +452,57 @@ export const masslineHud = {
     setStyle(dom.previewSvg, 'display', 'none');
     setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
     if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
-    setAttr(dom.previewEl, 'aria-label', `Massline ${intent} ${label}, ${confidence} percent, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
+    setAttr(dom.previewEl, 'aria-label', `Massline ${intent} ${label}, ${targetMass > 0 ? `${targetMass} tonnes` : 'unknown mass'}, ${status.toLowerCase()}${offscreen ? ', offscreen' : ''}`);
     setAttr(dom.previewEl, 'data-receipt-id', String(receipt.id || ''));
     setAttr(dom.previewEl, 'data-target-id', String(selected.targetId));
     setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
     for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
       setClass(dom.previewEl, `ml2-preview-${name}`, selected.status === name);
+    }
+  },
+
+  // M3 denial pill: a 1.2 s floor caption at the denied target (or just under the ship when the
+  // latch had no target at all). Reuses the preview caption DOM — the denial replaces, never
+  // stacks on, the acquisition preview.
+  _renderDenialPill(dom, state, player, w2s, denial) {
+    const denied = denial.targetId != null && state.entities && state.entities.get
+      ? state.entities.get(denial.targetId) : null;
+    const anchor = denied && denied.pos ? denied.pos : player.pos;
+    const screen = w2s({ x: anchor.x, y: 0, z: anchor.z });
+    if (!finiteProjection(screen)) return this._hideAcquisitionPreview(dom);
+    const viewportWidth = viewportExtent('innerWidth', 'clientWidth', 1440);
+    const viewportHeight = viewportExtent('innerHeight', 'clientHeight', 900);
+    const offscreen = !screen.onScreen
+      || screen.x < 0 || screen.x > viewportWidth
+      || screen.y < 0 || screen.y > viewportHeight;
+    const cueX = offscreen ? clampRange(screen.x, 30, viewportWidth - 30) : screen.x;
+    const cueY = offscreen ? clampRange(screen.y, 30, viewportHeight - 30) : screen.y;
+    const status = previewStatusCopy('invalid', denial.reason);
+    const text = `MASSLINE · ${status}`;
+    const captionWidth = estimateCaptionWidth(text);
+    const preferLeft = cueX + 20 + captionWidth > viewportWidth - 12;
+    const labelX = clampRange(preferLeft ? cueX - 20 - captionWidth : cueX + 20, 8, Math.max(8, viewportWidth - 12 - captionWidth));
+    const labelY = clampRange(cueY - 14, 8, viewportHeight - 40);
+    setStyle(dom.previewMark, 'display', denied ? 'block' : 'none');
+    if (denied) {
+      setStyle(dom.previewMark, 'transform', `translate3d(${Math.round(cueX)}px, ${Math.round(cueY)}px, 0)`);
+      setClass(dom.previewMark, 'ml2-bridle-target', false);
+      setClass(dom.previewMark, 'ml2-offscreen', offscreen);
+      setClass(dom.previewMark, 'ml2-mark-protected', false);
+      setClass(dom.previewMark, 'ml2-mark-unavailable', true);
+    }
+    setStyle(dom.previewSourceMark, 'display', 'none');
+    setStyle(dom.previewSvg, 'display', 'none');
+    setStyle(dom.previewEl, 'display', 'block');
+    setClass(dom.previewEl, 'ml2-preview-snare', false);
+    setStyle(dom.previewEl, 'transform', `translate3d(${Math.round(labelX)}px, ${Math.round(labelY)}px, 0)`);
+    if (dom.previewEl.textContent !== text) dom.previewEl.textContent = text;
+    setAttr(dom.previewEl, 'aria-label', `Massline denied, ${status.toLowerCase()}`);
+    setAttr(dom.previewEl, 'data-receipt-id', '');
+    setAttr(dom.previewEl, 'data-target-id', String(denial.targetId ?? ''));
+    setClass(dom.previewEl, 'ml2-preview-offscreen', offscreen);
+    for (const name of ['ready', 'blocked', 'protected', 'out-of-range', 'cooldown', 'invalid']) {
+      setClass(dom.previewEl, `ml2-preview-${name}`, name === 'invalid');
     }
   },
 
@@ -808,16 +886,27 @@ function rampColor(errorRad, tolRad, hot) {
 
 function previewStatusCopy(status, reason) {
   if (status === 'ready') return 'READY';
-  if (status === 'protected' || reason === 'protected') return 'PROTECTED';
-  if (status === 'blocked' || reason === 'blocked') return 'LINE BLOCKED';
-  if (status === 'out-of-range' || reason === 'out-of-range') return 'OUT OF RANGE';
-  if (status === 'cooldown' || reason === 'cooldown') return 'COOLDOWN';
-  if (reason === 'target-lost' || reason === 'endpoint_lost') return 'ENDPOINT LOST';
-  if (reason === 'preview-stale') return 'REACQUIRE';
-  if (reason === 'pair_out_of_range') return 'PAIR OUT OF RANGE';
-  if (reason === 'two_heavy_endpoints') return 'ONE HEAVY ENDPOINT MAX';
-  if (reason === 'attachment_cycle') return 'WOULD FORM LOOP';
-  if (reason === 'controller_attachment_limit') return 'CUT ACTIVE BRIDLE';
+  // M3: snare_/bridle_ denial reasons carry their inner cause after the prefix — strip it so a
+  // denied remote latch reads with the same words as a denied ordinary latch.
+  const r = typeof reason === 'string'
+    ? reason.replace(/^(snare|bridle)_/, '')
+    : reason;
+  if (status === 'protected' || r === 'protected') return 'PROTECTED';
+  if (status === 'blocked' || r === 'blocked') return 'LINE BLOCKED';
+  if (status === 'out-of-range' || r === 'out-of-range' || r === 'out_of_range') return 'OUT OF RANGE';
+  if (status === 'cooldown' || r === 'cooldown') return 'COOLDOWN';
+  if (r === 'target-lost' || r === 'endpoint_lost' || r === 'target_lost') return 'ENDPOINT LOST';
+  if (r === 'preview-stale' || r === 'preview_stale') return 'REACQUIRE';
+  if (r === 'pair_out_of_range') return 'PAIR OUT OF RANGE';
+  if (r === 'two_heavy_endpoints') return 'ONE HEAVY ENDPOINT MAX';
+  if (r === 'attachment_cycle') return 'WOULD FORM LOOP';
+  if (r === 'controller_attachment_limit' || r === 'owner_attachment_limit') return 'CUT ACTIVE LINE';
+  // M3: the previously-silent denials. "no words" was the bug — never fall through to nothing.
+  if (r === 'no-target' || r === 'no_target') return 'NO TARGET';
+  if (r === 'create_failed' || r === 'unknown_attachment_def'
+    || r === 'attachment_authority_unavailable' || r === 'authority_unavailable') {
+    return 'LINE FAILED';
+  }
   return 'UNAVAILABLE';
 }
 

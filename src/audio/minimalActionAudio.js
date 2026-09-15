@@ -71,7 +71,12 @@ export const MINIMAL_ACTION_AUDIO = Object.freeze([
     when: (payload, host) => {
       const klass = payload && payload.classification;
       const tick = host && host.state && host.state.tick;
-      if (host && host.rt && host.rt._masslinePlayerCutTick === tick) return false;
+      // The cut flag is set on the tether:broken tick, but reconcile-path cuts emit
+      // releaseRated a tick or more later — a strict === would let the snap through.
+      const cut = host && host.rt && host.rt._masslinePlayerCutTick;
+      if (Number.isFinite(cut) && Number.isFinite(tick) && tick - cut >= 0 && tick - cut <= 4) {
+        return false;
+      }
       return !klass || klass === 'messy';
     },
   }),
@@ -110,6 +115,16 @@ export const MINIMAL_ACTION_AUDIO = Object.freeze([
     cooldownTicks: 12,
     bind: false,
     when: (payload) => payload && payload.phase === 'end',
+  }),
+  Object.freeze({
+    // M3: every denied latch gets a sound — one short error blip, rate-limited so a held key
+    // does not machine-gun the cue.
+    id: 'latchDenied',
+    sourceEvent: 'tether:latchDenied',
+    recipeId: 'sfx_ui_error',
+    importance: 0.72,
+    cooldownTicks: 10,
+    bind: false,
   }),
   Object.freeze({
     id: 'engineMode',
