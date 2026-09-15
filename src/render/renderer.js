@@ -760,11 +760,41 @@ export function shouldDeferMeshStreamingOnFlightEntry(owner) {
   return !Number.isFinite(render && render.firstPlayableFrameAt);
 }
 
+/**
+ * Keep-GPU is only valid while every entity the loading gate waits on already owns a kept mesh.
+ * `_meshes` is keyed by entity id; when a same-sector restore re-keys the hub or a nearby hull
+ * (traffic spawn order shifted the id sequence), reattach finds nothing for them, and the
+ * keep-gpu branch used to return before any build could queue — the load shell sat at
+ * "Committing authored objects" until the 180 s fail-closed (release soak 2026-09-15: station 2
+ * and six ships `missing`, build queue 0/0, reconcile not dirty).
+ */
+export function keepGpuCoversOpeningComposition(owner) {
+  const state = owner && owner.state;
+  const list = state && state.entityList;
+  if (!Array.isArray(list)) return true;
+  for (const entity of list) {
+    if (!entity || entity.alive === false) continue;
+    if (!isInitialAuthoredCompositionEntity(entity, state)) continue;
+    if (!entity.mesh) return false;
+  }
+  return true;
+}
+
 export function serviceRenderMeshResidency(owner, frameDt) {
   if (owner && owner._sessionRecookKeepGpu === true && owner.state && owner.state.mode === 'loading') {
-    owner._meshReconcileDirty = false;
     reattachResidentGpuMeshes(owner);
-    return 'session-recook-keep-gpu';
+    if (keepGpuCoversOpeningComposition(owner)) {
+      owner._meshReconcileDirty = false;
+      return 'session-recook-keep-gpu';
+    }
+    // The kept set cannot cover this load: release keep-gpu so the ordinary reconcile builds the
+    // missing hulls (and retires the orphaned kept meshes) instead of parking the loading gate.
+    owner._sessionRecookKeepGpu = false;
+    // Mirror the ordinary loading entry (mode:changed -> loading), which drops the previous
+    // flight's defer before its reconcile.
+    owner._deferNoncriticalMeshStreaming = false;
+    if (owner.state.render) owner.state.render.deferNoncriticalMeshStreaming = false;
+    owner._meshReconcileDirty = true;
   }
   if (!owner || owner._deferNoncriticalMeshStreaming) return 'deferred';
   const dt = Number.isFinite(frameDt) ? Math.max(0, frameDt) : 0;

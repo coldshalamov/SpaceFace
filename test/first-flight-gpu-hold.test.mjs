@@ -6,6 +6,7 @@ import { shouldFreezeFlightSubmit } from '../src/core/presentationFreeze.js';
 import {
   holdFirstFlightStreaming,
   isEntityRenderRelevant,
+  keepGpuCoversOpeningComposition,
   reattachResidentGpuMeshes,
   serviceRenderMeshResidency,
 } from '../src/render/renderer.js';
@@ -84,6 +85,41 @@ test('same-sector F9 recook keeps resident GPU meshes', () => {
   };
   assert.equal(serviceRenderMeshResidency(owner, 0.5), 'session-recook-keep-gpu');
   assert.equal(owner._meshReconcileDirty, false);
+});
+
+test('same-sector F9 recook releases keep-gpu when the kept set cannot cover the loading gate', () => {
+  // Release soak 2026-09-15: a restore re-keyed the hub and six nearby hulls; reattach found no
+  // kept mesh for them and the keep-gpu branch returned before any build could queue, so the load
+  // shell sat at 'Committing authored objects' until the 180 s fail-closed.
+  const player = { id: 1, alive: true, isPlayer: true, pos: { x: 0, z: 0 }, mesh: { userData: {} } };
+  const restoredHub = { id: 2, type: 'station', alive: true, data: { stationId: 'station_helios' } };
+  const state = {
+    mode: 'loading', playerId: 1, render: { deferNoncriticalMeshStreaming: true },
+    entities: new Map([[1, player], [2, restoredHub]]), entityList: [player, restoredHub],
+  };
+  const owner = {
+    _sessionRecookKeepGpu: true,
+    _deferNoncriticalMeshStreaming: true,
+    _meshReconcileDirty: false,
+    _meshes: new Map([[1, player.mesh], [77, { userData: {} }]]),
+    _renderResidencyPollS: 1,
+    _meshBuildQueue: [], _meshBuildQueueHead: 0,
+    state,
+    reconciled: 0,
+    reconcileMeshes() { this.reconciled += 1; },
+    _bindPresentationMesh() {},
+  };
+  assert.equal(keepGpuCoversOpeningComposition(owner), false, 'the hub owns no kept mesh');
+  assert.equal(serviceRenderMeshResidency(owner, 0.016), 'full');
+  assert.equal(owner._sessionRecookKeepGpu, false);
+  assert.equal(owner._deferNoncriticalMeshStreaming, false);
+  assert.equal(state.render.deferNoncriticalMeshStreaming, false);
+  assert.equal(owner.reconciled, 1, 'the ordinary reconcile builds the missing hull');
+  // Once every composition entity owns a mesh, keep-gpu is a valid short-circuit again.
+  restoredHub.mesh = { userData: {} };
+  owner._sessionRecookKeepGpu = true;
+  assert.equal(keepGpuCoversOpeningComposition(owner), true);
+  assert.equal(serviceRenderMeshResidency(owner, 0.016), 'session-recook-keep-gpu');
 });
 
 test('same-sector F9 recook reattaches GPU meshes onto restored entities', () => {
