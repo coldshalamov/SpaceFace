@@ -334,6 +334,12 @@ export function resolveCollisionConsequence(input = {}) {
     debrisCount,
     pos: freezePoint(input.pos),
     normal: freezeDirection(input.normal),
+    // C2 (Gap Report): presentation-only channel — the pre-solve closing speed, never the
+    // solver-clamped receipt deltaV. feel.js's hitstop/FOV/trauma curve reads this; damage and
+    // control semantics keep `deltaV` exactly as before.
+    feelDeltaV: Number.isFinite(input.preSolveClosingSpeed)
+      ? Math.max(0, input.preSolveClosingSpeed)
+      : null,
     provenance,
   });
 }

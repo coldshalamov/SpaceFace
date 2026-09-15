@@ -75,6 +75,9 @@ export function scaleCombatant(def, level) {
   return { hull: Math.round((def.hull || 100) * f), armor: Math.round((def.armor || 0) * f), shield: Math.round((def.shield || 0) * f), dmgMult: f };
 }
 
+// C1: floor for enemy direct-fire projectile speed (WU/s) — keeps shots readable on screen.
+const ENEMY_PROJ_SPEED_FLOOR = 380;
+
 function resolveEnemyWeapon(w, slotIndex) {
   const base = WPN.get(w.id);
   if (!base) return null;
@@ -92,7 +95,11 @@ function resolveEnemyWeapon(w, slotIndex) {
     muzzleOffset: [0.8, 0],
     dmg: w.dmgOverride ?? base.dmg,
     rof: w.rofOverride ?? base.rof,
-    projSpeed: w.projSpeedOverride ?? base.projSpeed,
+    // C1 engagement scale: enemy direct-fire projectiles fly at >= 380 WU/s so a shot crosses the
+    // visible frame in well under a second. Homing and deployed ordnance keep authored speeds.
+    projSpeed: (isHoming || base.tracking === 'deploy')
+      ? (w.projSpeedOverride ?? base.projSpeed)
+      : Math.max(ENEMY_PROJ_SPEED_FLOOR, w.projSpeedOverride ?? base.projSpeed),
     range: w.rangeOverride ?? base.range,
     spread: base.spreadDeg ?? 0,
     tracking: isTurret ? 'auto_turret' : (base.tracking || 'fixed'),

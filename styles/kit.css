@@ -598,7 +598,10 @@ body.k-screen-top #modal-backdrop { background: none; }
    stays a laid-out, legible box in every save state — the boot and title-continue checks measure
    it, so `display:none` here would be a green-to-red change, not a tidy-up. */
 #screens .of-title .k-word-sub {
-  margin: 0 0 clamp(6px, 1vh, 14px); padding: 0 0 0 var(--fht-indent); background: none;
+  /* The lit plate's bottom edge is a bright rule; with margin-top 0 the caption's cap-height sat
+     against it and read as a line struck through the save sentence. A few pixels of air is the
+     whole fix — the column still sets inside its frame. */
+  margin: clamp(4px, 0.6vh, 8px) 0 clamp(6px, 1vh, 14px); padding: 0 0 0 var(--fht-indent); background: none;
   font-family: var(--fh-face-text); font-size: var(--fh-size-data);
   color: var(--fh-text-resting); max-width: 58ch; white-space: normal;
 }

@@ -1,3 +1,5 @@
+import { installIllustratedSurface } from './illustratedSurface.js';
+
 const ROLE_RULES = Object.freeze([
   ['glass', /canopy|cockpit.?glass|material_glass|window/i],
   ['geology', /geolog|regolith|asteroid|rock|ore.?matrix/i],
@@ -252,6 +254,7 @@ export function applyAuthoredMaterialProfile(material, explicitRole = null, opti
   if (options.roughnessBreakup !== false && ROUGHNESS_BREAKUP_ROLES.has(role)) {
     installRoughnessBreakup(material);
   }
+  if (role !== 'glass' && role !== 'drive' && role !== 'signal') installIllustratedSurface(material);
   material.needsUpdate = true;
   return true;
 }
@@ -295,6 +298,9 @@ export function configureAuthoredMaterialProfiles(root, { assetId = null, record
       if (!material || configured.has(material)) continue;
       const correctionRole = applyAssetSpecificCorrection(material, assetId, uvMaterials.has(material));
       if (correctionRole) {
+        if (correctionRole !== 'glass' && correctionRole !== 'drive' && correctionRole !== 'signal') {
+          installIllustratedSurface(material);
+        }
         configured.add(material);
         roles[correctionRole] = (roles[correctionRole] || 0) + 1;
         if (record) record(material, correctionRole, uvMaterials.has(material));

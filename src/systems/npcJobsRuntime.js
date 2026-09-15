@@ -650,6 +650,7 @@ export const npcJobsRuntime = {
         const payload = p || {};
         this._threatQueries.recordSpawn(payload);
         this._threatQueryDirty = true;
+        this._ceresSweepDirty = true;
         this._onCeresRealTargetSpawn(payload);
       });
       // Ecology has stamped its role and field by this event. Adopt the existing pair before
@@ -664,6 +665,7 @@ export const npcJobsRuntime = {
         const payload = p || {};
         this._threatQueries.recordDestroy(payload);
         this._threatQueryDirty = true;
+        this._ceresSweepDirty = true;
         this._onCeresRealTargetGone(payload);
         this._onEntityGone(payload);
       });
@@ -671,6 +673,7 @@ export const npcJobsRuntime = {
         const payload = p || {};
         this._threatQueries.recordDestroy(payload);
         this._threatQueryDirty = true;
+        this._ceresSweepDirty = true;
         this._onCeresRealTargetGone(payload);
         this._onEntityGone(payload);
       });
@@ -2090,7 +2093,11 @@ export const npcJobsRuntime = {
 
     // Save/reload may restore the combat attachment before this runtime has re-linked its transient
     // sidecar. Adopt only an active line owned by this hull and explicitly created for NPC towing.
-    if (typeof attachments.listForEntity === 'function') {
+    // The adoption probe runs once per entry — npc_tow lines are created by this runtime (which
+    // stamps towAttachmentId directly) or restored at load (which recreates the entry), so a
+    // per-tick re-list never finds anything new.
+    if (entry.towAdoptChecked !== true && typeof attachments.listForEntity === 'function') {
+      entry.towAdoptChecked = true;
       const restored = attachments.listForEntity(entity.id, true)
         .find((candidate) => candidate.ownerId === entity.id
           && candidate.controlMode === NPC_LINE_CONTROL_MODE);
@@ -2573,8 +2580,21 @@ export const npcJobsRuntime = {
       this._threatQueryDirty = true;
       return; // scenery only matters in flight (mirrors traffic)
     }
-    this._adoptCeresScavengerTractors();
-    this._stampCeresPirateInterceptCues();
+    // The Ceres discovery sweeps poll the whole living-actor set. Latency-sensitive arrivals already
+    // trigger adoption through wreckEcology:spawned directly, and entity spawn/kill events dirty the
+    // sweep, so between events a 60 Hz poll only re-confirms an unchanged answer. Poll on the
+    // deterministic sim clock at the tow-scan cadence instead.
+    const ceresSweepT = finite(this.state.simTime, 0);
+    const lastCeresSweepT = this._ceresSweepLastSimT;
+    if (this._ceresSweepDirty === true
+      || !Number.isFinite(lastCeresSweepT)
+      || ceresSweepT < lastCeresSweepT
+      || ceresSweepT - lastCeresSweepT >= NPC_TOW_SCAN_INTERVAL_S) {
+      this._ceresSweepDirty = false;
+      this._ceresSweepLastSimT = ceresSweepT;
+      this._adoptCeresScavengerTractors();
+      this._stampCeresPirateInterceptCues();
+    }
     const byId = this._byId();
     const ids = Object.keys(byId);
     const step = Math.max(0, finite(dt, 0));
@@ -3347,6 +3367,9 @@ export const npcJobsRuntime = {
   _onSectorEnter(p) {
     const sectorId = p && p.sectorId;
     if (!sectorId) return;
+    // A sector handoff is exactly when scavenger/pirate rosters change — sweep on the next update
+    // instead of waiting out the poll cadence.
+    this._ceresSweepDirty = true;
     // Exit, deserialize/newGame, and seed changes own hard cache resets. Enter is a bounded
     // revalidation seam, including same-sector continuous handoffs; resetting here would erase a
     // previously admitted terminal identity before a persistent actor ambiguity can preserve it.

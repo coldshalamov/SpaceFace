@@ -642,7 +642,8 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       maneuverKind = ManeuverKind.ORBIT;
       faceTarget = true;
     } else maneuverKind = ManeuverKind.INTERCEPT;
-    preferredRange = phase === 'extend' || phase === 'breakaway' ? 620
+    // C1 engagement scale: egress holds inside the camera envelope, not off-screen.
+    preferredRange = phase === 'extend' || phase === 'breakaway' ? 300
       : (brawler && phase === 'commit' ? 140 : (brawler ? 190 : 150));
     if (phase === 'strike' || phase === 'commit') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
@@ -671,7 +672,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       preferredRange = 500;
     } else if (phase === 'anchor_hold' || phase === 'field_spool') {
       maneuverKind = ManeuverKind.HOLD;
-      preferredRange = 460;
+      preferredRange = 300;   // C1 engagement scale: controller hold stays inside the frame
     } else {
       maneuverKind = ManeuverKind.INTERCEPT;
       preferredRange = 500;
@@ -679,7 +680,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     if (phase === 'anchor_hold') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
     maneuverKind = ManeuverKind.ORBIT;
-    preferredRange = 620;
+    preferredRange = 380;   // C1 engagement scale: the broadside ring fits the fight on screen
     lateralSign = record.side;
     faceTarget = true;
     formationLocked = true;
@@ -705,7 +706,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
   } else {
     maneuverKind = phase === 'retreat' ? ManeuverKind.RETREAT
       : (phase === 'outer_standoff' || phase === 'reset' ? ManeuverKind.ORBIT : ManeuverKind.HOLD);
-    preferredRange = 620;
+    preferredRange = 330;   // C1 engagement scale: default standoff orbits inside the frame
     // The standoff orbit is translational: fixed-gun ships keep their nose on the target while
     // sliding around the engagement ring, so even high-inertia hulls are aligned before the cue.
     faceTarget = phase !== 'retreat';

@@ -1588,40 +1588,55 @@ export const tetherGameplay = {
     if (!byId || typeof byId !== 'object') return;
     const playerId = state.playerId;
     const playerTeam = player.team;
-    for (const blade of Object.values(byId)) {
-      if (!blade || blade.state !== 'active') continue;
-      const owner = state.entities && state.entities.get && state.entities.get(blade.ownerId);
-      if (!owner || owner.alive === false || owner.id === playerId) continue;
-      if (!hostileSweepCutter(owner, state, playerTeam)) continue;
-      ensureCutterSweepHead(owner);
-      const mass = state.entities.get(blade.targetId);
-      if (!mass || !mass.pos || !owner.pos) continue;
-      const span = Math.hypot(mass.pos.x - owner.pos.x, mass.pos.z - owner.pos.z);
-      const rest = Number.isFinite(blade.restLength) && blade.restLength > 0 ? blade.restLength : span;
-      if (!(span >= rest * NPC_LINE_CUT_TAUT_RATIO)) continue;
-      for (const other of Object.values(byId)) {
-        if (!other || other.state !== 'active' || other.id === blade.id) continue;
+    const tick = Number.isFinite(state.tick) ? state.tick : null;
+    const entities = state.entities;
+    // One pass over the attachment map materializes both sides; the cross below is
+    // O(cutters × player lines) over scratch rows instead of an O(A²) map re-walk.
+    const blades = this._hostileSweepBladeScratch || (this._hostileSweepBladeScratch = []);
+    const lines = this._hostileSweepLineScratch || (this._hostileSweepLineScratch = []);
+    collectHostileSweepRows(byId, entities, playerId, playerTeam, state, tick, blades, lines);
+    const read = { cutterId: null, bladeId: null, playerLineId: null, taut: false };
+    for (const row of blades) {
+      ensureCutterSweepHead(row.owner);
+      if (!row.taut) continue;
+      for (const line of lines) {
+        const other = line.attachment;
+        if (other.id === row.blade.id) continue;
+        if (line.justCut) {
+          if (read.cutterId == null) {
+            read.cutterId = row.owner.id;
+            read.bladeId = row.blade.id;
+            read.playerLineId = other.id;
+            read.taut = true;
+          }
+          continue;
+        }
+        if (!line.source || !line.target) continue;
+        // The published read mirrors the observer, which knows nothing about
+        // _hostileSweepCutIds — evaluate the crossing before the cut-side skip.
+        if (!segmentsProperlyCross(row.owner.pos, row.mass.pos, line.source.pos, line.target.pos)) continue;
+        if (read.cutterId == null) {
+          read.cutterId = row.owner.id;
+          read.bladeId = row.blade.id;
+          read.playerLineId = other.id;
+          read.taut = true;
+        }
         if (this._hostileSweepCutIds.has(other.id)) continue;
-        const playerOwned = other.ownerId === playerId
-          || other.targetId === playerId
-          || (other.controllerId != null && String(other.controllerId) === String(playerId));
-        if (!playerOwned) continue;
-        const source = state.entities.get(other.ownerId);
-        const target = state.entities.get(other.targetId);
-        if (!source || !source.pos || !target || !target.pos) continue;
-        if (!segmentsProperlyCross(owner.pos, mass.pos, source.pos, target.pos)) continue;
         if (typeof attachments.breakAttachment !== 'function') continue;
         this._hostileSweepCutIds.add(other.id);
-        const result = attachments.breakAttachment(other, 'monofilament_sweep', owner.id);
+        const result = attachments.breakAttachment(other, 'monofilament_sweep', row.owner.id);
         if (result && result.ok) {
-          const integrity = spendMonofilamentIntegrity(blade, MONOFILAMENT_CUT_INTEGRITY_COST);
+          // Severed lines read as justCut for any later blade this tick, matching the
+          // observer's broken-this-tick predicate.
+          line.justCut = true;
+          const integrity = spendMonofilamentIntegrity(row.blade, MONOFILAMENT_CUT_INTEGRITY_COST);
           if (this.bus && typeof this.bus.emit === 'function') {
             this.bus.emit('massline:playerLineCut', {
               schemaVersion: 1,
               headId: MONOFILAMENT_HEAD_ID,
-              bladeId: blade.id,
+              bladeId: row.blade.id,
               attachmentId: other.id,
-              cutterId: owner.id,
+              cutterId: row.owner.id,
               ownerId: other.ownerId,
               targetId: other.targetId,
               integrity,
@@ -1630,6 +1645,7 @@ export const tetherGameplay = {
         }
       }
     }
+    publishHostileSweepRead(state, read);
   },
 
   _cutActive(attachments, state, player, now) {
@@ -2963,6 +2979,70 @@ function playerOwnedMassline(attachment, playerId) {
     || (attachment.controllerId != null && String(attachment.controllerId) === String(playerId));
 }
 
+// One O(A) materialization of the hostile sweep: taut (or slack) cutter blades in
+// `blades`, player-relevant lines in `lines` — both in byId order so the nested
+// cross keeps the original first-match ordering. `lines` mixes severed-this-tick
+// rows (justCut) with still-active rows exactly as the old inline loops saw them.
+function collectHostileSweepRows(byId, entities, playerId, playerTeam, state, tick, blades, lines) {
+  blades.length = 0;
+  lines.length = 0;
+  const canGet = entities && typeof entities.get === 'function';
+  for (const id in byId) {
+    if (!Object.prototype.hasOwnProperty.call(byId, id)) continue;
+    const a = byId[id];
+    if (!a) continue;
+    if (a.state === 'active') {
+      if (canGet) {
+        const owner = entities.get(a.ownerId);
+        if (owner && owner.alive !== false && owner.id !== playerId
+            && hostileSweepCutter(owner, state, playerTeam)) {
+          const mass = entities.get(a.targetId);
+          let taut = false;
+          if (mass && mass.pos && owner.pos) {
+            const span = Math.hypot(mass.pos.x - owner.pos.x, mass.pos.z - owner.pos.z);
+            const rest = Number.isFinite(a.restLength) && a.restLength > 0 ? a.restLength : span;
+            taut = span >= rest * NPC_LINE_CUT_TAUT_RATIO;
+          }
+          blades.push({ blade: a, owner, mass: taut ? mass : null, taut });
+        }
+        if (playerOwnedMassline(a, playerId)) {
+          const source = entities.get(a.ownerId);
+          const target = entities.get(a.targetId);
+          lines.push({
+            attachment: a,
+            source: source && source.pos ? source : null,
+            target: target && target.pos ? target : null,
+            justCut: false,
+          });
+        }
+      }
+    } else if (a.state === 'broken'
+        && a.breakReason === 'monofilament_sweep'
+        && a.brokenTick === tick
+        && playerOwnedMassline(a, playerId)) {
+      lines.push({ attachment: a, source: null, target: null, justCut: true });
+    }
+  }
+}
+
+// Published once per tick by _cutPlayerLinesWithHostileSweep so the threat observer
+// reads the sweep the cutter already computed instead of re-walking the map.
+const hostileSweepReads = new WeakMap();
+
+function publishHostileSweepRead(state, read) {
+  if (!state) return;
+  let slot = hostileSweepReads.get(state);
+  if (!slot) {
+    slot = { tick: null, cutterId: null, bladeId: null, playerLineId: null, taut: false };
+    hostileSweepReads.set(state, slot);
+  }
+  slot.tick = Number.isFinite(state.tick) ? state.tick : null;
+  slot.cutterId = read.cutterId;
+  slot.bladeId = read.bladeId;
+  slot.playerLineId = read.playerLineId;
+  slot.taut = read.taut;
+}
+
 // Read-only: a taut hostile sweep is crossing (or just severed) a player Massline.
 // Writes into `out` when provided so the threat observer allocates nothing per tick.
 export function readTautHostileSweepCrossing(state, player, out) {
@@ -2979,41 +3059,35 @@ export function readTautHostileSweepCrossing(state, player, out) {
   if (!player || !state) return null;
   const byId = state.combat && state.combat.attachments && state.combat.attachments.byId;
   if (!byId || typeof byId !== 'object') return null;
+  const tick = Number.isFinite(state.tick) ? state.tick : null;
+  const published = hostileSweepReads.get(state);
+  if (published && published.tick === tick) {
+    if (!published.taut) return null;
+    result.cutterId = published.cutterId;
+    result.bladeId = published.bladeId;
+    result.playerLineId = published.playerLineId;
+    result.taut = true;
+    return result;
+  }
+  // No published read this tick (the cutter path did not run) — compute directly.
   const playerId = state.playerId;
   const playerTeam = player.team;
-  const tick = Number.isFinite(state.tick) ? state.tick : null;
   const entities = state.entities;
   if (!entities || typeof entities.get !== 'function') return null;
-  for (const id in byId) {
-    if (!Object.prototype.hasOwnProperty.call(byId, id)) continue;
-    const blade = byId[id];
-    if (!blade || blade.state !== 'active') continue;
-    const owner = entities.get(blade.ownerId);
-    if (!owner || owner.alive === false || owner.id === playerId) continue;
-    if (!hostileSweepCutter(owner, state, playerTeam)) continue;
-    const mass = entities.get(blade.targetId);
-    if (!mass || !mass.pos || !owner.pos) continue;
-    const span = Math.hypot(mass.pos.x - owner.pos.x, mass.pos.z - owner.pos.z);
-    const rest = Number.isFinite(blade.restLength) && blade.restLength > 0 ? blade.restLength : span;
-    if (!(span >= rest * NPC_LINE_CUT_TAUT_RATIO)) continue;
-    for (const otherId in byId) {
-      if (!Object.prototype.hasOwnProperty.call(byId, otherId)) continue;
-      const other = byId[otherId];
-      if (!other || other.id === blade.id) continue;
-      if (!playerOwnedMassline(other, playerId)) continue;
-      const justCut = other.state === 'broken'
-        && other.breakReason === 'monofilament_sweep'
-        && other.brokenTick === tick;
-      let crossing = justCut;
-      if (!crossing && other.state === 'active') {
-        const source = entities.get(other.ownerId);
-        const target = entities.get(other.targetId);
-        if (!source || !source.pos || !target || !target.pos) continue;
-        crossing = segmentsProperlyCross(owner.pos, mass.pos, source.pos, target.pos);
-      }
+  const blades = [];
+  const lines = [];
+  collectHostileSweepRows(byId, entities, playerId, playerTeam, state, tick, blades, lines);
+  for (const row of blades) {
+    if (!row.taut) continue;
+    for (const line of lines) {
+      const other = line.attachment;
+      if (other.id === row.blade.id) continue;
+      const crossing = line.justCut
+        || (line.source && line.target
+          && segmentsProperlyCross(row.owner.pos, row.mass.pos, line.source.pos, line.target.pos));
       if (!crossing) continue;
-      result.cutterId = owner.id;
-      result.bladeId = blade.id;
+      result.cutterId = row.owner.id;
+      result.bladeId = row.blade.id;
       result.playerLineId = other.id;
       result.taut = true;
       return result;

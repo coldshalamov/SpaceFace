@@ -480,6 +480,13 @@ export function createGpuResidencyAdmissionTracker(prepare) {
     captureSubjects,
     waitForCaptured,
     waitForPending,
+    // Outstanding upload for a subject, if one is queued or running. Callers that
+    // would queue a second walk for the same root join the existing entry instead.
+    pendingFor(subject) {
+      const entries = pendingBySubject.get(subject);
+      if (!entries || entries.size === 0) return null;
+      return Promise.all([...entries].map((entry) => entry.completion));
+    },
     get pendingCount() { return pending.size; },
   };
 }

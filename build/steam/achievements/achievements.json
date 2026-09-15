@@ -1,0 +1,327 @@
+{
+  "schema": "spaceface.steamAchievements.v1",
+  "source": "src/data/achievements.js",
+  "count": 16,
+  "achievements": [
+    {
+      "order": 1,
+      "id": "berth_assigned",
+      "apiName": "SF_BERTH_ASSIGNED",
+      "name": "Berth Assigned",
+      "description": "Dock at a station.",
+      "hidden": false,
+      "category": "adventure",
+      "rule": {
+        "source": "counter",
+        "key": "docks",
+        "target": 1
+      },
+      "ruleText": "docks >= 1 (dock:docked: the player confirms a dock at a station)",
+      "icon": "icon-dock",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_BERTH_ASSIGNED_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_BERTH_ASSIGNED_unachieved.jpg"
+      }
+    },
+    {
+      "order": 2,
+      "id": "rock_has_a_price",
+      "apiName": "SF_ROCK_HAS_A_PRICE",
+      "name": "Rock Has a Price",
+      "description": "Mine ore from an asteroid or salvage it from a wreck.",
+      "hidden": false,
+      "category": "adventure",
+      "rule": {
+        "source": "counter",
+        "key": "oreUnits",
+        "target": 1
+      },
+      "ruleText": "oreUnits >= 1 (mining:yield: ore or salvage released to the player (other miners excluded))",
+      "icon": "icon-ore",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_ROCK_HAS_A_PRICE_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_ROCK_HAS_A_PRICE_unachieved.jpg"
+      }
+    },
+    {
+      "order": 3,
+      "id": "paper_trail",
+      "apiName": "SF_PAPER_TRAIL",
+      "name": "Paper Trail",
+      "description": "Buy or sell cargo at a station market.",
+      "hidden": false,
+      "category": "adventure",
+      "rule": {
+        "source": "counter",
+        "key": "trades",
+        "target": 1
+      },
+      "ruleText": "trades >= 1 (economy:tradeCompleted: a buy or a sell settles at a station market)",
+      "icon": "icon-market",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_PAPER_TRAIL_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_PAPER_TRAIL_unachieved.jpg"
+      }
+    },
+    {
+      "order": 4,
+      "id": "signed_and_delivered",
+      "apiName": "SF_SIGNED_AND_DELIVERED",
+      "name": "Signed and Delivered",
+      "description": "Complete a contract.",
+      "hidden": false,
+      "category": "adventure",
+      "rule": {
+        "source": "counter",
+        "key": "contracts",
+        "target": 1
+      },
+      "ruleText": "contracts >= 1 (mission:completed: a contract settles as completed)",
+      "icon": "icon-missions",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_SIGNED_AND_DELIVERED_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_SIGNED_AND_DELIVERED_unachieved.jpg"
+      }
+    },
+    {
+      "order": 5,
+      "id": "out_of_the_pocket",
+      "apiName": "SF_OUT_OF_THE_POCKET",
+      "name": "Out of the Pocket",
+      "description": "Jump to another system.",
+      "hidden": false,
+      "category": "adventure",
+      "rule": {
+        "source": "counter",
+        "key": "jumps",
+        "target": 1
+      },
+      "ruleText": "jumps >= 1 (jump:arrive: the player arrives in another system)",
+      "icon": "icon-gate",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_OUT_OF_THE_POCKET_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_OUT_OF_THE_POCKET_unachieved.jpg"
+      }
+    },
+    {
+      "order": 6,
+      "id": "made_contact",
+      "apiName": "SF_MADE_CONTACT",
+      "name": "Made Contact",
+      "description": "Latch the Massline onto another body.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "counter",
+        "key": "latches",
+        "target": 1
+      },
+      "ruleText": "latches >= 1 (tether:latched: the Massline latches a body)",
+      "icon": "icon-line",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_MADE_CONTACT_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_MADE_CONTACT_unachieved.jpg"
+      }
+    },
+    {
+      "order": 7,
+      "id": "light_ships_are_ammunition",
+      "apiName": "SF_LIGHT_SHIPS_ARE_AMMUNITION",
+      "name": "Light Ships Are Ammunition",
+      "description": "Throw a body with the Massline.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "counter",
+        "key": "throws",
+        "target": 1
+      },
+      "ruleText": "throws >= 1 (massline:throw: an armed Massline throw releases its payload)",
+      "icon": "icon-fighter",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_LIGHT_SHIPS_ARE_AMMUNITION_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_LIGHT_SHIPS_ARE_AMMUNITION_unachieved.jpg"
+      }
+    },
+    {
+      "order": 8,
+      "id": "razor_release",
+      "apiName": "SF_RAZOR_RELEASE",
+      "name": "Razor Release",
+      "description": "Let go of a swing at the exact moment: a razor-rated release.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "counter",
+        "key": "razorReleases",
+        "target": 1
+      },
+      "ruleText": "razorReleases >= 1 (tether:releaseRated: a swing release is rated razor)",
+      "icon": "icon-spark",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_RAZOR_RELEASE_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_RAZOR_RELEASE_unachieved.jpg"
+      }
+    },
+    {
+      "order": 9,
+      "id": "keep_the_speed",
+      "apiName": "SF_KEEP_THE_SPEED",
+      "name": "Keep the Speed",
+      "description": "Whip a tethered mass into something at crushing speed.",
+      "hidden": false,
+      "category": "massline",
+      "rule": {
+        "source": "counter",
+        "key": "crushingImpacts",
+        "target": 1
+      },
+      "ruleText": "crushingImpacts >= 1 (tether:whipImpact: a whipped mass strikes a body at crushing speed)",
+      "icon": "icon-boost",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_KEEP_THE_SPEED_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_KEEP_THE_SPEED_unachieved.jpg"
+      }
+    },
+    {
+      "order": 10,
+      "id": "into_the_crucible",
+      "apiName": "SF_INTO_THE_CRUCIBLE",
+      "name": "Into the Crucible",
+      "description": "Finish a Crucible run, however it ends.",
+      "hidden": false,
+      "category": "crucible",
+      "rule": {
+        "source": "crucible",
+        "key": "runs",
+        "target": 1
+      },
+      "ruleText": "crucible.runs >= 1 (records.lifetime.runs: settled Crucible runs)",
+      "icon": "icon-danger",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_INTO_THE_CRUCIBLE_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_INTO_THE_CRUCIBLE_unachieved.jpg"
+      }
+    },
+    {
+      "order": 11,
+      "id": "tenth_wave",
+      "apiName": "SF_TENTH_WAVE",
+      "name": "Tenth Wave",
+      "description": "Reach wave 10 in the Crucible.",
+      "hidden": false,
+      "category": "crucible",
+      "rule": {
+        "source": "crucible",
+        "key": "deepestWave",
+        "target": 10
+      },
+      "ruleText": "crucible.deepestWave >= 10 (records.lifetime.deepestWave: deepest Crucible wave reached)",
+      "icon": "icon-scan",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_TENTH_WAVE_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_TENTH_WAVE_unachieved.jpg"
+      }
+    },
+    {
+      "order": 12,
+      "id": "better_than_last_time",
+      "apiName": "SF_BETTER_THAN_LAST_TIME",
+      "name": "Better Than Last Time",
+      "description": "Beat your own best score in a Crucible challenge.",
+      "hidden": false,
+      "category": "crucible",
+      "rule": {
+        "source": "counter",
+        "key": "crucibleBests",
+        "target": 1
+      },
+      "ruleText": "crucibleBests >= 1 (run:resultsReady: a settled Crucible run beats the best score its challenge held before it)",
+      "icon": "icon-record",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_BETTER_THAN_LAST_TIME_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_BETTER_THAN_LAST_TIME_unachieved.jpg"
+      }
+    },
+    {
+      "order": 13,
+      "id": "same_seed_same_day",
+      "apiName": "SF_SAME_SEED_SAME_DAY",
+      "name": "Same Seed, Same Day",
+      "description": "Finish a Crucible daily run.",
+      "hidden": false,
+      "category": "crucible",
+      "rule": {
+        "source": "crucible",
+        "key": "dailyDays",
+        "target": 1
+      },
+      "ruleText": "crucible.dailyDays >= 1 (daily.byDate: days with a settled Crucible daily run)",
+      "icon": "icon-clock",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_SAME_SEED_SAME_DAY_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_SAME_SEED_SAME_DAY_unachieved.jpg"
+      }
+    },
+    {
+      "order": 14,
+      "id": "walked_out",
+      "apiName": "SF_WALKED_OUT",
+      "name": "Walked Out",
+      "description": "Extract from a Crucible swarm at the refit bench instead of dying in it.",
+      "hidden": false,
+      "category": "crucible",
+      "rule": {
+        "source": "counter",
+        "key": "crucibleExtractions",
+        "target": 1
+      },
+      "ruleText": "crucibleExtractions >= 1 (run:resultsReady: a settled Crucible run ends by extraction)",
+      "icon": "icon-undock",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_WALKED_OUT_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_WALKED_OUT_unachieved.jpg"
+      }
+    },
+    {
+      "order": 15,
+      "id": "paperwork_filed",
+      "apiName": "SF_PAPERWORK_FILED",
+      "name": "Paperwork Filed",
+      "description": "Get yourself declared WANTED.",
+      "hidden": true,
+      "category": "career",
+      "rule": {
+        "source": "counter",
+        "key": "wantedTimes",
+        "target": 1
+      },
+      "ruleText": "wantedTimes >= 1 (heat:changed: heat crosses the WANTED threshold)",
+      "icon": "icon-ledger",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_PAPERWORK_FILED_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_PAPERWORK_FILED_unachieved.jpg"
+      }
+    },
+    {
+      "order": 16,
+      "id": "six_figures",
+      "apiName": "SF_SIX_FIGURES",
+      "name": "Six Figures",
+      "description": "Earn 100,000 credits over your career.",
+      "hidden": false,
+      "category": "career",
+      "rule": {
+        "source": "counter",
+        "key": "creditsEarned",
+        "target": 100000
+      },
+      "ruleText": "creditsEarned >= 100000 (credits:changed: credits granted to the player (sum of positive deltas))",
+      "icon": "icon-credits",
+      "iconFiles": {
+        "achieved": "build/store/steam/achievements/SF_SIX_FIGURES_achieved.jpg",
+        "unachieved": "build/store/steam/achievements/SF_SIX_FIGURES_unachieved.jpg"
+      }
+    }
+  ]
+}

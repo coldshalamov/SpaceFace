@@ -229,6 +229,45 @@ function masslineDefFor(def, tetherPolicy = null, automaticBreak = true) {
 export function createAttachmentService(context) {
   const { state, catalog, helpers, bus } = context;
 
+  // Ordered attachment view. The byId map is materialized + re-sorted in several
+  // per-tick passes; keep one sorted array instead. Rebuilt when a service write
+  // marks it dirty, when the combat.attachments container is replaced (save
+  // restore), or when an external poke changes the key count.
+  let orderedCache = null;
+  let orderedFor = null;
+  let orderedMap = null;
+  let orderedKeys = -1;
+  let orderedDirty = true;
+
+  function markOrderedDirty() {
+    orderedDirty = true;
+  }
+
+  function orderedAttachments() {
+    const container = state.combat && state.combat.attachments;
+    const map = container && container.byId;
+    if (!map || typeof map !== 'object') return EMPTY_ATTACHMENTS;
+    let count = 0;
+    for (const id in map) {
+      if (Object.prototype.hasOwnProperty.call(map, id)) count++;
+    }
+    if (orderedCache && !orderedDirty && orderedFor === container
+      && orderedMap === map && orderedKeys === count) {
+      return orderedCache;
+    }
+    orderedCache = Object.values(map).sort(byId);
+    orderedFor = container;
+    orderedMap = map;
+    orderedKeys = count;
+    orderedDirty = false;
+    return orderedCache;
+  }
+
+  // Telemetry probed by reconcilePhysics is reused by updateTelemetryAndBreak so a
+  // healthy attachment pays one physics query per tick, not two.
+  const tickTelemetry = new Map();
+  let telemetryTick = -1;
+
   function get(attachmentId) {
     return state.combat.attachments.byId[String(attachmentId)] || null;
   }
@@ -269,7 +308,7 @@ export function createAttachmentService(context) {
     if (!sourceSocket) return fail('source_socket_unavailable');
     if (!targetSocket) return fail('target_socket_unavailable');
 
-    const activeOwned = Object.values(state.combat.attachments.byId)
+    const activeOwned = orderedAttachments()
       .filter((attachment) => attachment.state === 'active' && attachment.ownerId === owner.id && attachment.defId === def.id).length;
     if (def.limits && Number.isInteger(def.limits.maxPerOwner) && activeOwned >= def.limits.maxPerOwner) return fail('owner_attachment_limit');
 
@@ -310,6 +349,7 @@ export function createAttachmentService(context) {
     if (!physicsResult.ok) return fail(physicsResult.reason, physicsResult.error);
     attachment.physicsHandle = serializableHandle(physicsResult.physicsHandle);
     state.combat.attachments.byId[id] = attachment;
+    markOrderedDirty();
     appendCombatTrace(state.combat, state.tick, 'attachment.created', {
       actorId: owner.id,
       ...(controller ? { controllerId: controller.id } : {}),
@@ -450,12 +490,13 @@ export function createAttachmentService(context) {
       cueId: def && def.cues && def.cues.broken,
     });
     pruneBrokenAttachmentHistory(state.combat.attachments.byId);
+    markOrderedDirty();
     return { ok: true, attachment };
   }
 
   function breakOwnedBy(ownerId, reason = 'owner_disabled') {
     const broken = [];
-    for (const attachment of Object.values(state.combat.attachments.byId).sort(byId)) {
+    for (const attachment of orderedAttachments()) {
       if (attachment.state !== 'active'
           || (attachment.ownerId !== ownerId && attachment.controllerId !== ownerId)) continue;
       const result = breakAttachment(attachment, reason, ownerId);
@@ -469,7 +510,7 @@ export function createAttachmentService(context) {
   // before physics reconcile so a dead-ended joint is cut instead of resurrected.
   function breakOrphans() {
     let broken = 0;
-    for (const attachment of Object.values(state.combat.attachments.byId).sort(byId)) {
+    for (const attachment of orderedAttachments()) {
       if (!attachment || attachment.state !== 'active') continue;
       const owner = entity(attachment.ownerId);
       const target = entity(attachment.targetId);
@@ -494,9 +535,11 @@ export function createAttachmentService(context) {
       return { recreated: 0, pending: 0 };
     }
     breakOrphans();
+    tickTelemetry.clear();
+    telemetryTick = state.tick;
     let recreated = 0;
     let pending = 0;
-    for (const attachment of Object.values(state.combat.attachments.byId).sort(byId)) {
+    for (const attachment of orderedAttachments()) {
       if (!attachment || attachment.state !== 'active') continue;
       let telemetry = null;
       try {
@@ -508,6 +551,9 @@ export function createAttachmentService(context) {
       } catch (_) {
         telemetry = null;
       }
+      // Only live reads are shared: a null probe means reconcile may recreate the
+      // joint, and the new joint must be queried fresh by updateTelemetryAndBreak.
+      if (telemetry) tickTelemetry.set(attachment.id, telemetry);
       if (telemetry) continue;
       const def = catalog.attachments.get(attachment.defId);
       if (!def) { pending++; continue; }
@@ -630,7 +676,7 @@ export function createAttachmentService(context) {
     if (!sourceSocket) return fail('source_socket_unavailable');
     if (!targetSocket) return fail('target_socket_unavailable');
 
-    const activeOwned = Object.values(state.combat.attachments.byId)
+    const activeOwned = orderedAttachments()
       .filter((candidate) => candidate.id !== attachment.id
         && candidate.state === 'active'
         && candidate.ownerId === nextOwner.id
@@ -730,7 +776,7 @@ export function createAttachmentService(context) {
   function updateTelemetryAndBreak() {
     const physics = combatPhysics();
     if (!physics || typeof physics.getAttachmentTelemetry !== 'function') return;
-    for (const attachment of Object.values(state.combat.attachments.byId).sort(byId)) {
+    for (const attachment of orderedAttachments()) {
       if (attachment.state !== 'active') continue;
       const def = catalog.attachments.get(attachment.defId);
       if (!def) continue;
@@ -738,10 +784,17 @@ export function createAttachmentService(context) {
       const target = entity(attachment.targetId);
       const breakPolicy = breakForAttachment(def, owner, target, attachment);
       let telemetry;
-      try {
-        telemetry = physics.getAttachmentTelemetry({ attachmentId: attachment.id, physicsHandle: attachment.physicsHandle, tick: state.tick });
-      } catch (_) {
-        continue;
+      const probed = telemetryTick === state.tick && tickTelemetry.has(attachment.id)
+        ? tickTelemetry.get(attachment.id)
+        : undefined;
+      if (probed !== undefined) {
+        telemetry = probed;
+      } else {
+        try {
+          telemetry = physics.getAttachmentTelemetry({ attachmentId: attachment.id, physicsHandle: attachment.physicsHandle, tick: state.tick });
+        } catch (_) {
+          continue;
+        }
       }
       if (!telemetry) continue;
       attachment.lastTension = finiteOrZero(telemetry.tension);
@@ -899,16 +952,14 @@ export function createAttachmentService(context) {
   }
 
   function listForEntity(entityId, activeOnly = true) {
-    return Object.values(state.combat.attachments.byId)
-      .filter((attachment) => (!activeOnly || attachment.state === 'active') && (attachment.ownerId === entityId || attachment.targetId === entityId))
-      .sort(byId);
+    return orderedAttachments()
+      .filter((attachment) => (!activeOnly || attachment.state === 'active') && (attachment.ownerId === entityId || attachment.targetId === entityId));
   }
 
   function listControlledBy(controllerId, activeOnly = true) {
-    return Object.values(state.combat.attachments.byId)
+    return orderedAttachments()
       .filter((attachment) => (!activeOnly || attachment.state === 'active')
-        && attachment.controllerId === controllerId)
-      .sort(byId);
+        && attachment.controllerId === controllerId);
   }
 
   return Object.freeze({ get, breakPolicy, reelPolicy, create, reel, cut, breakAttachment, breakOwnedBy, breakOrphans, reconcilePhysics, transfer, rebind, updateTelemetryAndBreak, onPhysicsBreak, listForEntity, listControlledBy });
@@ -1107,6 +1158,8 @@ function serializableHandle(handle) {
   if (typeof handle === 'object' && (typeof handle.id === 'string' || typeof handle.id === 'number')) return { id: handle.id };
   return { external: true };
 }
+
+const EMPTY_ATTACHMENTS = Object.freeze([]);
 
 function byId(a, b) {
   return compareText(String(a.id), String(b.id));

@@ -329,8 +329,9 @@ function scaleProfile(profile, env) {
     if (Number.isFinite(assist.lateralKillFraction)) {
       assist.lateralKillFraction = clamp(assist.lateralKillFraction * env.lateralKill, 0, 0.85);
     }
-    if (Number.isFinite(assist.neutralBrakeFraction)) {
-      assist.neutralBrakeFraction = clamp(assist.neutralBrakeFraction * env.neutralBrake, 0, 0.85);
+    if (Number.isFinite(assist.settleFloorAccel)) assist.settleFloorAccel *= env.neutralBrake;
+    if (Number.isFinite(assist.settleTimeConstantS) && env.neutralBrake > 0) {
+      assist.settleTimeConstantS /= env.neutralBrake;
     }
     next.assist = assist;
   }

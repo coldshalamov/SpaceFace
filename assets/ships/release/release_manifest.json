@@ -4047,6 +4047,34 @@
       "ktx2Textures": 15,
       "meshoptBufferViews": 44,
       "contractNodeCount": 28
+    },
+    {
+      "id": "pod_47a_evidence_spindle",
+      "kind": "part:pods",
+      "source": "assets/ships/parts/pods/pod_47a_evidence_spindle.glb",
+      "release": "assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb",
+      "sourceSha256": "5bdf06745186d54166471d17098904ec2181b2d0b84bdf7bc6e4d6199da88499",
+      "releaseSha256": "d77f5d877eb3033d094cf39ccbbbf3b4b60f71fb480aa724aa8dff13d2be887e",
+      "sourceBytes": 369260,
+      "releaseBytes": 252716,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 2
+    },
+    {
+      "id": "place_47a_rescue_capsule",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_47a_rescue_capsule.glb",
+      "release": "assets/ships/release/parts/places/place_47a_rescue_capsule.glb",
+      "sourceSha256": "19dbe30b8bcfe6d234cd4d919c293ef9b4183174d960407b9148dd9b385a6144",
+      "releaseSha256": "507e6d6576e077d7645fe531b013b1fb31fbd03c0e49350fb330299097d97129",
+      "sourceBytes": 305824,
+      "releaseBytes": 255476,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 21,
+      "contractNodeCount": 2
     }
   ]
 }

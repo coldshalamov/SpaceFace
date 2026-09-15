@@ -257,6 +257,13 @@ const VERB_BINDINGS = {
   // tables and ui/bindings.js, same audit as Digit4-7) and sits with the deployable family. The
   // planetRuntime system owns the collector state; yield is path x density, never a hold timer.
   toggleSkimCollector: ['Digit8'], // edge: toggle the atmospheric skim collector (The Anvil bands)
+  // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md). Digit9 is free repo-wide (same audit as
+  // Digit4-8; Digit1-3 remain modal-prompt answers only) and completes the deployable row.
+  // Comma is free repo-wide (checked against both scheme tables and ui/bindings.js) and sits
+  // next to the deployable row as the bay's cycle key. The bombs system owns
+  // lifecycle/fuze/payload; both are ordinary rebindable edge verbs.
+  dropBomb:  ['Digit9'], // edge: release the selected drift bomb at current ship velocity
+  cycleBomb: ['Comma'],  // edge: cycle the bomb bay's selected payload
   // Travel Burn latch (atlas D5, W1-5). Num Lock is the authored default: it is a genuine latch
   // key on a full keyboard, it is never used for anything else in this game, and it carries a
   // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
@@ -650,6 +657,7 @@ export const input = {
     this._lastKbmSeq = -1;
     this._kbmActivityPending = false;
     this._inputActivitySeq = 0;
+    this._lastInputWallMs = 0;
     this._canvas = (typeof document !== 'undefined') ? document.getElementById('gl-canvas') : null;
 
     this.gamepad = createGamepad(ctx);
@@ -916,7 +924,20 @@ export const input = {
     const tick = state && Number.isFinite(state.tick) ? (state.tick | 0) : 0;
     this._inputActivitySeq = (this._inputActivitySeq | 0) + 1;
     if (state && state.input) state.input._activitySeq = this._inputActivitySeq;
+    // P7 input-to-photon telemetry: the wall stamp is measurement-only. It lives on the
+    // system instance and travels to the runner through publishInputCommand's stamp arg —
+    // never inside state.input, which is serialized and hashed (a wall-clock field would
+    // break save/load hash continuity). Device arbitration stays on the deterministic
+    // (tick, seq) pair, and no gameplay path may read this stamp.
+    this._lastInputWallMs = (typeof performance !== 'undefined'
+      && typeof performance.now === 'function') ? performance.now() : 0;
     return { tick, seq: this._inputActivitySeq };
+  },
+
+  // P7: the stamp the simulation runner copies onto the completed-tick record so the
+  // presentation side can measure input-command -> first-presented-frame latency.
+  inputActivityStamp() {
+    return { seq: this._inputActivitySeq | 0, wallMs: this._lastInputWallMs || 0 };
   },
 
   update(dt, state) {
@@ -960,7 +981,7 @@ export const input = {
       chargeThrow: false, chargeDetonate: false, scanPulse: false, autopursuit: false, deployBeacon: false,
       bulletTime: false, cloakToggle: false, throwArm: false, travelBurn: false, deployMassSeed: false,
       deployWell: false, deployRepulsor: false, toggleClearingCone: false, toggleSkimCollector: false,
-      siteBeam: false, aimedMine: false,
+      siteBeam: false, aimedMine: false, dropBomb: false, cycleBomb: false,
     });
     const masslineGrammar = this._masslineGrammar || (this._masslineGrammar = createMasslineInputGrammar());
     if (shouldNeutralizeFlightInput(state, modalInputActive())) {
@@ -978,6 +999,7 @@ export const input = {
       acts.deployMassSeed = false;
       acts.deployWell = false; acts.deployRepulsor = false; acts.toggleClearingCone = false;
       acts.toggleSkimCollector = false;
+      acts.dropBomb = false; acts.cycleBomb = false;
       const masslineHeldThroughModal = this._held(state, 'tether')
         || !!(gp && gp.isConnected() && gp.actions.massline && gp.actions.massline.held);
       acts.massline = masslineGrammar.reset(masslineHeldThroughModal);
@@ -1249,6 +1271,15 @@ export const input = {
     acts.toggleClearingCone = edge('toggleClearingCone');
     // PQ-013 skim collector: ordinary edge verb (Digit8 default, rebindable like every flight verb).
     acts.toggleSkimCollector = edge('toggleSkimCollector');
+    // Drift-bomb bay: two ordinary edge verbs (Digit9/Comma default, rebindable like every flight
+    // verb), OR-ed with the pad edges (dRight/dLeft default) behind the same lifecycle gate as
+    // travelBurn. The bombs system consumes them; input only reports the edges.
+    acts.dropBomb = edge('dropBomb') || !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed('dropBomb')
+      && gp.actions.dropBomb && gp.actions.dropBomb.pressed);
+    acts.cycleBomb = edge('cycleBomb') || !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed('cycleBomb')
+      && gp.actions.cycleBomb && gp.actions.cycleBomb.pressed);
     // Massline Wave M2 verbs. bulletTime is a LEVEL (hold-to-dilate; the system owns the meter and
     // may refuse when empty); cloakToggle is an edge; throwArm was resolved above where the mining
     // beam routing is decided (single owner for the RMB arbitration).
@@ -1264,6 +1295,10 @@ export const input = {
     acts.travelBurn = travelPressed;
     // Positive reelDelta lengthens the authoritative line; line-control uses ship-local axes.
     acts.reelDelta = masslineCommand.lineControl ? masslineCommand.lineLength : dedicatedLineLength;
+    // M6: while line control owns the forward axis (W reels in, S pays out), the same key must
+    // not also fire full thrust against the reel. Scale the flight channel to 25 % so the line
+    // grammar wins the axis and the ship keeps a finesse whisper instead of a second opposed force.
+    if (masslineCommand.lineControl) inp.moveZ *= 0.25;
     // The Massline key adds reel/orbit intent; it does not replace the flight controls. The same
     // forward/turn chord remains ordinary thrust and yaw, which lets the orbit detector observe
     // what the pilot is actually doing instead of manufacturing a second control mode.

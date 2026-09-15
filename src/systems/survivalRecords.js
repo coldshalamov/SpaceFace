@@ -47,6 +47,8 @@ export const CRUCIBLE_GHOST_SAMPLE_STRIDE = 6;
 export const CRUCIBLE_GHOST_FRAME_CAP = 3600;
 export const CRUCIBLE_GHOST_RETAIN_CAP = 20;
 export const CRUCIBLE_GHOST_VERSION = 1;
+export const BEST_LINE_RETAIN_CAP = 5;
+export const RECORD_RULE_FIELDS = Object.freeze(['mode', 'arenaId', 'balanceRevision', 'physicsRevision', 'scoringRevision', 'difficulty', 'loadoutRules', 'simulationAssistProfile']);
 
 const memoryStore = new Map();
 
@@ -501,6 +503,7 @@ export function emptyCrucibleProfile() {
     history: [],
     daily: emptyDaily(),
     ghosts: emptyGhosts(),
+    bestLines: [],
   };
 }
 
@@ -544,6 +547,8 @@ function migrateProfile(raw) {
     history: history.slice(-CRUCIBLE_HISTORY_LIMIT),
     daily: migrateDaily(src.daily),
     ghosts: migrateGhosts(src.ghosts),
+    // Historical rows keep their absent metadata. Never promote a v1 pose tape into a causal line.
+    bestLines: Array.isArray(src.bestLines) ? src.bestLines.map(normalizeBestLine).filter(Boolean).slice(0, BEST_LINE_RETAIN_CAP) : [],
   };
   if (version > CRUCIBLE_META_SCHEMA_VERSION) {
     for (const key of Object.keys(src)) {
@@ -554,6 +559,7 @@ function migrateProfile(raw) {
         || key === 'history'
         || key === 'daily'
         || key === 'ghosts'
+        || key === 'bestLines'
       ) continue;
       profile[key] = cloneJson(src[key]);
     }
@@ -745,10 +751,83 @@ export function saveCrucibleMeta(profile, storage = liveStorage()) {
   return true;
 }
 
-export function recordKey({ arenaId, ruleset, mutators } = {}) {
-  const arena = typeof arenaId === 'string' && arenaId ? arenaId : 'none';
-  const set = typeof ruleset === 'string' && ruleset ? ruleset : 'scored';
-  return `${arena}|${set}|${normalizeMutators(mutators).join(',')}`;
+export function recordRulesFor(result = {}, run = {}) {
+  const provided = result.recordRules || run.recordRules || {};
+  const rules = {};
+  for (const key of RECORD_RULE_FIELDS) {
+    const value = provided[key] ?? result[key] ?? run[key];
+    rules[key] = (typeof value === 'string' && value) || Number.isFinite(value) ? value : null;
+  }
+  rules.mode ??= result.practice === true || run.practice === true ? 'practice' : result.ruleset ?? run.ruleset ?? run.kind ?? null;
+  rules.arenaId ??= result.arenaId ?? run.arenaId ?? null;
+  rules.mutators = normalizeMutators(provided.mutators ?? result.mutators ?? run.mutators);
+  rules.complete = RECORD_RULE_FIELDS.every(key => rules[key] != null);
+  return rules;
+}
+
+export function recordKey(result = {}) {
+  const rules = recordRulesFor(result);
+  return `pq146:${stableStringify(rules)}`;
+}
+
+/** null means unknown evidence, never an assumed zero-percent round. */
+export function roundProgress(result = {}) {
+  const entered = result.highestRoundEntered ?? result.deepestWave ?? result.wave;
+  const cleared = result.lastRoundCleared ?? result.wavesCleared;
+  const budget = result.roundThreatBudget;
+  const resolved = result.roundThreatResolved;
+  return {
+    highestRoundEntered: Number.isInteger(entered) && entered >= 0 ? entered : null,
+    lastRoundCleared: Number.isInteger(cleared) && cleared >= 0 ? cleared : null,
+    roundThreatBudget: Number.isFinite(budget) && budget > 0 ? budget : null,
+    roundThreatResolved: Number.isFinite(resolved) && resolved >= 0 && Number.isFinite(budget) && resolved <= budget ? resolved : null,
+    remainingEnemies: Number.isInteger(result.remainingEnemies) && result.remainingEnemies >= 0 ? result.remainingEnemies : null,
+  };
+}
+
+/** Descending survival tuple. Unknown same-round progress is incomparable, not a score tiebreak. */
+export function compareRunRecords(a, b) {
+  if (!a || !b) return a ? 1 : b ? -1 : 0;
+  if (!recordRulesFor(a).complete || !recordRulesFor(b).complete) return null;
+  if (recordKey(a) !== recordKey(b)) return null;
+  const x = roundProgress(a), y = roundProgress(b);
+  if (x.highestRoundEntered == null || y.highestRoundEntered == null) return null;
+  if (x.highestRoundEntered !== y.highestRoundEntered) return Math.sign(x.highestRoundEntered - y.highestRoundEntered);
+  if (x.roundThreatResolved == null || y.roundThreatResolved == null || x.roundThreatBudget == null || y.roundThreatBudget == null) return null;
+  const progress = x.roundThreatResolved * y.roundThreatBudget - y.roundThreatResolved * x.roundThreatBudget;
+  if (progress) return Math.sign(progress);
+  return Math.sign((a.score || 0) - (b.score || 0));
+}
+
+export function normalizeBestLine(line) {
+  if (!line || !(line.points > 0) || !Number.isInteger(line.seed)) return null;
+  const incoming = Array.isArray(line.acts) ? line.acts : [];
+  if (!incoming.length || incoming.length > 32 || incoming.some(a => a?.episodeId == null || !a.trickId || !Array.isArray(a.evidence) || !a.evidence.length)) return null;
+  const acts = incoming
+    .map(a => ({ episodeId: a.episodeId, trickId: a.trickId, name: a.name || a.trickId, family: a.family ?? null,
+      tick: a.tick, rootTick: a.rootTick, rootId: a.rootId ?? null, points: a.points,
+      evidence: cloneJson(a.evidence.slice(0, 8)), modifiers: cloneJson(a.modifiers || {}) }));
+  if (acts.some(a => !a.evidence)) return null;
+  const recordRules = recordRulesFor(line);
+  const canonical = { version: 1, points: Math.floor(line.points), multiplier: line.multiplier ?? 1,
+    raw: line.raw ?? null, bankId: line.bankId ?? null, tick: line.tick ?? null,
+    seed: line.seed, recordRules, acts, videoAvailable: false, replayKind: 'causal_account' };
+  canonical.id = `line:${hash32('pq146-best-line-v1', stableStringify(canonical))}`;
+  return canonical;
+}
+
+export function bestLineRows(profile) {
+  return (profile?.bestLines || []).map(line => ({ ...line, rulesComplete: line.recordRules?.complete === true,
+    namedLine: line.acts.map(a => a.name).join(' → '),
+    videoStatus: line.videoAvailable ? 'Video available' : 'Video unavailable · causal account retained' }));
+}
+
+function retainBestLine(lines, incoming) {
+  const line = normalizeBestLine(incoming);
+  const prior = (lines || []).filter(Boolean);
+  if (!line || prior.some(x => x.id === line.id)) return prior;
+  // Stable sort preserves exact point ties; this is a secondary record, never the Swarm ranking.
+  return [...prior, line].sort((a, b) => b.points - a.points).slice(0, BEST_LINE_RETAIN_CAP);
 }
 
 function emptyRecord() {
@@ -759,6 +838,9 @@ function emptyRecord() {
     deepestWave: 0,
     bestKills: 0,
     bestSeed: 0,
+    bestResult: null,
+    tiedResults: [],
+    tieCount: 0,
   };
 }
 
@@ -768,10 +850,18 @@ function applyRecord(row, compact) {
   const score = Number.isInteger(compact.score) ? compact.score : 0;
   const deepest = Number.isInteger(compact.deepestWave) ? compact.deepestWave : 0;
   const kills = Number.isInteger(compact.kills) ? compact.kills : 0;
-  if (score >= next.bestScore) {
-    next.bestScore = score;
-    next.bestSeed = Number.isInteger(compact.seed) ? compact.seed : next.bestSeed;
+  const order = next.bestResult ? compareRunRecords(compact, next.bestResult) : 1;
+  if (order > 0) {
+    next.bestResult = cloneJson(compact);
+    next.bestSeed = compact.seed;
+    next.tiedResults = [cloneJson(compact)];
+    next.tieCount = 1;
+  } else if (order === 0) {
+    next.tieCount += 1;
+    next.tiedResults = [...next.tiedResults, cloneJson(compact)].slice(-CRUCIBLE_HISTORY_LIMIT);
   }
+  // Independent historical maxima are labelled as such; neither chooses the primary seed.
+  if (score > next.bestScore) next.bestScore = score;
   if (deepest > next.deepestWave) next.deepestWave = deepest;
   if (kills > next.bestKills) next.bestKills = kills;
   if (compact.outcome === 'victory') next.victories += 1;
@@ -822,6 +912,9 @@ export function compactRunResult(result, run, newly) {
   if (typeof (result && result.kitId) === 'string' && result.kitId) compact.kitId = result.kitId;
   if (Number.isInteger(result && result.stuntScore) && result.stuntScore >= 0) compact.stuntScore = result.stuntScore;
   if (Number.isInteger(result && result.physicsKills) && result.physicsKills >= 0) compact.physicsKills = result.physicsKills;
+  compact.recordRules = recordRulesFor(result || {}, run || {});
+  Object.assign(compact, roundProgress({ ...run, ...result }));
+  compact.bestLine = normalizeBestLine({ ...result?.bestLine, seed: compact.seed, recordRules: compact.recordRules });
   return compact;
 }
 
@@ -865,6 +958,9 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
   const loaded = profile ? migrateProfile(profile) : loadCrucibleMeta(storage);
   const evaluated = evaluateUnlocks(loaded, result || {});
   const compact = compactRunResult(result || {}, run || {}, evaluated.newly);
+  const line = compact.bestLine;
+  delete compact.bestLine;
+  if (line) compact.bestLineId = line.id;
   const key = recordKey(compact);
   const records = loaded.records || { byKey: {}, lifetime: emptyLifetime() };
   const byKey = { ...(records.byKey || {}) };
@@ -887,6 +983,7 @@ export function settleCrucibleRun({ result, run, profile = null, storage = liveS
     history: [...(Array.isArray(loaded.history) ? loaded.history : []), compact].slice(-CRUCIBLE_HISTORY_LIMIT),
     daily: applyDailyBoard(loaded.daily, compact, recordedAt),
     ghosts,
+    bestLines: retainBestLine(loaded.bestLines, line),
   };
   saveCrucibleMeta(next, storage);
   consumeQueuedDailyDateKey();

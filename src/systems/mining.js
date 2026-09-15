@@ -302,7 +302,13 @@ export const mining = {
       });
       return { ok: false, duplicate: false, reason: 'presentation-unavailable', moved: 0 };
     }
-    if (component && component.active === false) {
+    // A completed component advertises no verb or operation (its authored work is a durable
+    // receipt), but the site kernel owns the request cursor for that finished operation. Route
+    // rather than deny so a same-tick replay settles as an exact no-op instead of announcing a
+    // denial the site record cannot act on.
+    const completedOffer = component && component.active === false
+      && component.inactiveReason === 'complete';
+    if (component && component.active === false && !completedOffer) {
       const reason = component.inactiveReason || 'operation-unavailable';
       this.bus.emit('beam:denied', {
         minerId: player.id,
@@ -312,7 +318,7 @@ export const mining = {
       });
       return { ok: false, duplicate: false, reason, moved: 0 };
     }
-    if (!component || !component.verb || !component.operationId
+    if (!completedOffer && (!component || !component.verb || !component.operationId)
       || !sites || typeof sites.applyWorldSiteBeamOperation !== 'function') {
       this.bus.emit('beam:denied', {
         minerId: player.id,
@@ -1235,6 +1241,7 @@ export const mining = {
           amount: credits,
           credits,
           grantReason: typeof it.grantReason === 'string' ? it.grantReason : null,
+          entitlementId: it.entitlementId ?? null,
           // The chip carries which wallet it belongs to (PQ-133 CRU-015). A Survival chip settles
           // into state.run.credits; everything else keeps the ordinary campaign route.
           wallet: typeof it.wallet === 'string' ? it.wallet : null,
@@ -1279,6 +1286,7 @@ export const mining = {
       data.credits = amount;
       if (opts.grantReason) data.grantReason = opts.grantReason;
       if (opts.wallet) data.wallet = opts.wallet;
+      if (opts.entitlementId != null) data.entitlementId = opts.entitlementId;
     }
     this.helpers.spawnEntity({
       type: 'pickup',

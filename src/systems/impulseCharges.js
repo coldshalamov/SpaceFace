@@ -28,6 +28,7 @@ import {
 } from '../combat/impulseKernel.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
 
@@ -552,7 +553,12 @@ export const impulseCharges = {
   },
 
   _tickCharges(dt, state) {
-    for (const e of state.entityList) {
+    const index = state.entityIndex;
+    const charges = (index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.charges))
+      ? index.charges
+      : state.entityList;
+    for (const e of charges) {
       if (!e.alive || e.type !== 'charge') continue;
       const d = e.data;
       if (!d) continue;
@@ -566,10 +572,20 @@ export const impulseCharges = {
           this.bus.emit('charge:armed', { chargeId: e.id, pos: { x: e.pos.x, z: e.pos.z } });
         }
         if (d.armed) {
-          // Deployment caps bound this scan; actors keep their real bodies and collision response.
-          const intruder = state.entityList.find(target => target.alive && target.id !== d.ownerId
-            && (target.type === 'ship' || target.type === 'drone') && target.team !== e.team
-            && Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z) <= def.triggerRadius + (target.radius || 0));
+          // Deployment caps bound this probe; actors keep their real bodies and collision response.
+          // Ships+drones are the only intruder types, so the compact shipLike bucket is the scan —
+          // the result is an existence check only, so bucket order cannot change the outcome.
+          const shipLike = indexedShipLikeScan(state);
+          let intruder = false;
+          for (let i = 0; i < shipLike.length; i++) {
+            const target = shipLike[i];
+            if (target.alive && target.id !== d.ownerId
+              && (target.type === 'ship' || target.type === 'drone') && target.team !== e.team
+              && Math.hypot(target.pos.x - e.pos.x, target.pos.z - e.pos.z) <= def.triggerRadius + (target.radius || 0)) {
+              intruder = true;
+              break;
+            }
+          }
           if (intruder) this._detonateOne(e, d, d.ownerId, state, 'proximity');
         }
         continue;
@@ -751,7 +767,7 @@ export const impulseCharges = {
           dirZ = -Math.sin(player.rot || 0);
         }
         const magnitude = MASSLINE_COMBOS.tailPop.impulse;
-        this._applyBlastImpulse(player, dirX * magnitude, dirZ * magnitude, state);
+        this._applyBlastImpulse(player, dirX * magnitude, dirZ * magnitude, state, state.playerId);
         this.bus.emit('charge:combo', {
           combo: 'tailPop',
           ownerId: player.id,
@@ -902,7 +918,7 @@ export const impulseCharges = {
       // of mass. Magnitude impulse × falloff is the old per-entity Δv × mass — same physics,
       // different owner of the mutation. A rejected request (no rigid body / no port) is skipped,
       // never forced with a direct vel write.
-      this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state);
+      this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state, ownerId, opts.chargeId);
       hits.push(ent.id);
       considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);
       this._publishBlastHitstun(state, ent, {
@@ -1005,7 +1021,7 @@ export const impulseCharges = {
   // Physics-authority impulse (rung 15). Same port + call shape as combat/actions.js:185 and
   // combat/damage.js:201: helpers.combatPhysics.applyImpulse({entityId, impulse, point, reason,
   // tick}). Returns true only if the backend accepted the impulse.
-  _applyBlastImpulse(ent, impulseX, impulseZ, state) {
+  _applyBlastImpulse(ent, impulseX, impulseZ, state, ownerId, chargeId) {
     const physics = this.helpers && this.helpers.combatPhysics;
     if (!physics || typeof physics.applyImpulse !== 'function') return false;
     const accepted = physics.applyImpulse({
@@ -1014,6 +1030,7 @@ export const impulseCharges = {
       point: null,
       reason: 'impulse_charge',
       tick: state.tick,
+      provenance: { actorId: ownerId, weaponId: chargeId ?? 'impulse_charge', tag: 'impulse_charge_blast' },
     });
     return accepted !== false;
   },

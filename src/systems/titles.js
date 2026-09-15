@@ -16,6 +16,9 @@ import {
   TITLES_SEEN_LIMIT,
 } from '../data/titles.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { KNOWN_TRICK_IDS } from '../combat/stuntTaxonomy.js';
+import { journalFor } from '../combat/stuntEvidence.js';
+import { adventureStunts, boundStuntNarrative, completeWitness, deliverWitnessReports, incidentIdentity, observeStuntWitnesses, qualifyStuntTitles, sampledStuntWitnesses, sendWitnessReports } from '../combat/stuntWitnesses.js';
 
 function finiteInteger(value, fallback = 0) {
   const number = Number(value);
@@ -205,6 +208,13 @@ function entityFor(state, id) {
   return Array.isArray(state.entityList) ? state.entityList.find((entity) => entity && entity.id === id) || null : null;
 }
 
+const KNOWN_TRICK_ID_SET = new Set(KNOWN_TRICK_IDS);
+const STUNT_INCIDENT_LIMIT = 240;
+
+export function qualifiedStuntWitnesses(state, trick) {
+  return sampledStuntWitnesses(state, trick).filter(completeWitness);
+}
+
 function entityForHolder(state, holderKey) {
   if (!holderKey || !state) return null;
   const entities = Array.isArray(state.entityList)
@@ -366,6 +376,7 @@ export function createTitlesSystem() {
     name: 'titles',
 
     init(ctx) {
+      this.destroy();
       this.state = ctx && ctx.state;
       this.bus = ctx && ctx.bus;
       this._holderEntityId = null;
@@ -387,6 +398,7 @@ export function createTitlesSystem() {
         this.bus.on('save:loaded', this._onSaveLoaded);
         this.bus.on('game:newGame', this._onNewGame);
         this.bus.on('stunt:trickDetected', this._onTrickDetected);
+        this.bus.on('stunt:trickAmended', this._onTrickDetected);
         this.bus.on('story:newGamePlusStarted', this._onNewGamePlus);
       }
       this._rebindSilently();
@@ -401,7 +413,7 @@ export function createTitlesSystem() {
       };
       this.state.story.titlesSeen = [];
       this._holderEntityId = null;
-      this._activeEntityIds.clear();
+      this._activeEntityIds?.clear();
       syncTitleStamp(this.state, ensureState(this.state));
     },
 
@@ -459,6 +471,8 @@ export function createTitlesSystem() {
 
     update(_dt, state = this.state) {
       if (state) this.state = state;
+      observeStuntWitnesses(this.state);
+      deliverWitnessReports(this.state, this.bus);
       if (!this._activeEntityIds.size) return;
       const own = currentThunderchildState(this.state);
       const tick = finiteInteger(this.state && this.state.tick);
@@ -499,7 +513,7 @@ export function createTitlesSystem() {
       const own = ensureState(this.state);
       const entity = own.status === 'held' ? entityForHolder(this.state, own.holderKey) : null;
       this._holderEntityId = entity ? entity.id : null;
-      this._activeEntityIds.clear();
+      this._activeEntityIds?.clear();
       for (const candidate of liveEntities(this.state)) {
         const holderKey = holderKeyOf(candidate);
         if (holderKey && own.activeHolds[holderKey] && candidate.alive !== false) {
@@ -774,63 +788,63 @@ export function createTitlesSystem() {
     },
 
     _onStuntTrick(trick) {
-      if (!trick || typeof trick !== 'object') return null;
-      const trickId = cleanText(trick.trickId);
-      if (!trickId) return null;
-
-      const playerId = this.state && this.state.playerId;
-      const isPlayer = trick.actorId === 'player'
-        || (playerId != null && trick.actorId === playerId);
-      if (!isPlayer) return null;
-
-      if (!Array.isArray(trick.causeChain) || trick.causeChain.length === 0) return null;
-
-      const titleId = `title_${trickId}`;
-      const titleName = cleanText(trick.name || humanizeId(trickId, 'Stunt'));
-      const tick = finiteInteger(trick.tick != null ? trick.tick : (this.state && this.state.tick));
-
-      const playerEntity = entityFor(this.state, playerId) || entityFor(this.state, 'player');
-      const holderKey = holderKeyOf(playerEntity) || 'player';
-
-      ensureState(this.state);
-      const story = this.state.story;
-      const titles = story.titles;
-
-      const titleRecord = {
-        schemaVersion: TITLES_SCHEMA_VERSION,
-        titleId,
-        trickId,
-        title: titleName,
-        status: 'held',
-        holderKey,
-        earnedTick: tick,
-      };
-      titles.byId[titleId] = titleRecord;
-
-      const seenId = `${titleId}:${holderKey}:${tick}`;
-      appendBounded(story.titlesSeen, {
-        id: seenId,
-        title: titleName,
-        seenAt: tick,
-        holderKey,
-        trickId,
-      }, TITLES_SEEN_LIMIT);
-
-      if (playerEntity) {
-        playerEntity.data = playerEntity.data || {};
-        playerEntity.data.titleId = titleId;
-        playerEntity.data.titleName = titleName;
+      const state = this.state;
+      if (!state || !adventureStunts(state) || trick?.actorId !== state.playerId || !KNOWN_TRICK_ID_SET.has(trick?.trickId)) return null;
+      if(typeof trick.episodeId!=='string'||!trick.episodeId||trick.episodeId.length>512)return null;
+      const root = journalFor(state)?.roots.get(trick.rootId);
+      if (!root || root.truncated || root.actorId !== state.playerId || !Array.isArray(trick.causeChain) || !trick.causeChain.length
+        || !Number.isSafeInteger(trick.tick)||trick.tick<root.tick||trick.tick>state.tick||trick.tick-root.tick>480) return null;
+      const consequence = trick.consequence;
+      if (!consequence || !(consequence.killed || trick.pureEscape || consequence.escaped
+        || consequence.hullMax > 0 && consequence.hullDamage >= .25 * consequence.hullMax && consequence.helmLossSeconds >= 1)) return null;
+      ensureState(state);
+      const titles = state.story.titles;
+      titles.stuntIncidents ||= [];
+      const tick = finiteInteger(trick.tick ?? state.tick);
+      const settlement = titles.stuntSettlement ||= { tick: -1, ids: [], watermark: -1 };
+      let incident = titles.stuntIncidents.find(record => record.id === trick.episodeId);
+      if (!incident && (tick < (settlement.watermark ?? -1) || settlement.ids?.includes(trick.episodeId))) return null;
+      if (incident && tick > (incident.amendmentDeadline ?? incident.tick + 180)) return null;
+      observeStuntWitnesses(state);
+      const sampled = sampledStuntWitnesses(state, trick, { partial: true });
+      const identity = incident || incidentIdentity(state, trick);
+      const target = entityFor(state, trick.targetId);
+      const fresh = !incident;
+      if (!incident) {
+        incident = { id: trick.episodeId, rootId: trick.rootId, tick, ...identity,
+          sectorId: state.world?.currentSectorId ?? null, sourceName: trick.sourceName ?? root.sourceName ?? String(root.sourceId),
+          targetName: trick.targetName ?? target?.data?.displayName ?? target?.name ?? String(trick.targetId),
+          titleIds: [], witnessIds: [], witnesses: [], reportedNetworks: [], reports: [], barkStatus: 'unqualified',
+          amendmentDeadline: trick.amendmentDeadline ?? Math.min(tick + 180, root.tick + 480) };
+        appendBounded(titles.stuntIncidents, incident, STUNT_INCIDENT_LIMIT);
+        settlement.ids ||= []; settlement.ids.push(trick.episodeId);
+        if (settlement.ids.length > 128) settlement.ids.shift();
+        settlement.tick = Math.max(settlement.tick, tick); settlement.watermark = Math.max(settlement.watermark ?? -1, tick - 480);
       }
-
-      const event = {
-        titleId,
-        trickId,
-        title: titleName,
-        holderKey,
-        tick,
-      };
-      emit(this.bus, 'title:earned', event);
-      return event;
+      Object.assign(incident, { trickId: trick.trickId, name: cleanText(trick.name, humanizeId(trick.trickId)),
+        consequence: { ...consequence }, modifiers: { ...trick.modifiers }, victimLives: (trick.victimLives || []).map(v => ({ ...v })).slice(0, 8),
+        escaped: trick.pureEscape === true || consequence.escaped === true, materialCombat: !trick.pureEscape,
+        threatEpisodeId: trick.threatEpisodeId ?? null, bankCorridorId: trick.bankCorridorId ?? trick.metrics?.bankCorridorId ?? null,
+        chain: trick.causeChain.slice(0, 32).map(node => ({ ...node })), evidenceRevision: trick.evidenceRevision ?? null,
+        outcome: consequence.killed ? 'destroyed' : trick.pureEscape || consequence.escaped ? 'escaped' : 'disabled' });
+      for (const witness of sampled) {
+        const prior = incident.witnesses.findIndex(w => w.identity === witness.identity);
+        if (prior >= 0) {
+          const old=incident.witnesses[prior];
+          incident.witnesses[prior]={...witness,sourceTicks:Math.max(old.sourceTicks,witness.sourceTicks),
+            transferTicks:Math.max(old.transferTicks,witness.transferTicks),payoffTicks:Math.max(old.payoffTicks,witness.payoffTicks),
+            terminalLives:[...new Set([...(old.terminalLives||[]),...(witness.terminalLives||[])])].slice(0,8),
+            transferCoverage:{...old.transferCoverage,...Object.fromEntries(Object.entries(witness.transferCoverage||{}).map(([id,n])=>[id,Math.max(n,old.transferCoverage?.[id]||0)]))}};
+        }
+        else if (incident.witnesses.length < 8) incident.witnesses.push(witness);
+      }
+      incident.witnessIds = incident.witnesses.filter(completeWitness).map(w => String(w.id));
+      incident.visibility = incident.reportedNetworks.length ? 'reported' : incident.witnessIds.length ? 'witnessed' : 'black-box';
+      const acquired = qualifyStuntTitles(state, incident, this.bus);
+      sendWitnessReports(state, incident, this.bus);
+      emit(this.bus, fresh ? 'story:stuntIncidentRecorded' : 'story:stuntIncidentUpdated', { incident, trick, acquired });
+      boundStuntNarrative(state);
+      return acquired[0] || null;
     },
 
     destroy() {
@@ -842,10 +856,11 @@ export function createTitlesSystem() {
         if (this._onSaveLoaded) this.bus.off('save:loaded', this._onSaveLoaded);
         if (this._onNewGame) this.bus.off('game:newGame', this._onNewGame);
         if (this._onTrickDetected) this.bus.off('stunt:trickDetected', this._onTrickDetected);
+        if (this._onTrickDetected) this.bus.off('stunt:trickAmended', this._onTrickDetected);
         if (this._onNewGamePlus) this.bus.off('story:newGamePlusStarted', this._onNewGamePlus);
       }
       this._onHold = this._onDamage = this._onKilled = this._onSpawned = this._onSaveLoaded = this._onNewGame = this._onTrickDetected = this._onNewGamePlus = null;
-      this._activeEntityIds.clear();
+      this._activeEntityIds?.clear();
     },
   };
 }

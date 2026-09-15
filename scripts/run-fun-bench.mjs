@@ -91,6 +91,10 @@ async function main() {
     });
 
     report.benches.crucible = crucibleResult;
+    // §3.6: a measured bar reading RED fails the bench. UNMEASURED is reported, not greenwashed.
+    for (const r of crucibleResult.runs) {
+      if (classifyRunStatus(r) === 'RED') report.passed = false;
+    }
 
     // Verify determinism across duplicate run
     if (VERIFY_DETERMINISM) {
@@ -130,6 +134,9 @@ async function main() {
       verbose: VERBOSE,
     });
     report.benches.flight = flightResult;
+    for (const r of flightResult.runs) {
+      if (classifyRunStatus(r) === 'RED') report.passed = false;
+    }
 
     if (VERIFY_DETERMINISM) {
       const verifyFlight = await runFlightBench({ seeds: [13502], verbose: false });
@@ -156,6 +163,9 @@ async function main() {
       verbose: VERBOSE,
     });
     report.benches.verbs = verbResult;
+    for (const r of verbResult.runs) {
+      if (classifyRunStatus(r) === 'RED') report.passed = false;
+    }
 
     if (VERIFY_DETERMINISM) {
       const verifyVerbs = await runVerbBench({ seeds: [4242], verbose: false });
@@ -233,6 +243,40 @@ async function main() {
   }
 }
 
+// §3.6 — every run reads MET, RED, or UNMEASURED off its inner bars. A measured clause that
+// failed is RED and fails the whole bench; a clause this harness cannot measure is UNMEASURED,
+// never silently green. A run that threw before producing metrics is a failure, not an unknown.
+function classifyRunStatus(run) {
+  if (run && (run.runError || run.error)) return 'RED';
+  const m = run && typeof run.metrics === 'object' ? run.metrics : {};
+  if (Array.isArray(m.bars) && m.bars.length) {
+    // A bar the scenario could not measure carries met:false + unmeasured:true — that is
+    // UNMEASURED, not a failed clause. RED is reserved for measured-and-failed.
+    if (m.bars.some((b) => b && b.met === false && b.unmeasured !== true)) return 'RED';
+    if (m.bars.some((b) => !b || b.met !== true)) return 'UNMEASURED';
+    return 'MET';
+  }
+  if (m.unmeasured === true) return 'UNMEASURED';
+  const flags = Object.entries(m)
+    .filter(([k, v]) => /met$/i.test(k) && typeof v === 'boolean');
+  // B13 full contract includes headless-unmeasurable jitter; RED is reserved for the measured
+  // clauses (b13ComponentsMet), and B3b rides its own nested record.
+  const b13Components = typeof m.b13ComponentsMet === 'boolean' ? m.b13ComponentsMet : null;
+  const b3b = m.hostileInFrame && typeof m.hostileInFrame === 'object' ? m.hostileInFrame.met : null;
+  const measured = flags.filter(([k]) => k !== 'b13Met');
+  if (b13Components === false || b3b === false
+    || measured.some(([, v]) => v === false)) return 'RED';
+  if (b13Components === true || measured.length > 0 || b3b === true) {
+    // Full B13 can only be MET headed; a components-green headless run still has an unmeasured
+    // clause (jitter) and reads UNMEASURED, not MET.
+    if (b13Components === true && m.b13Met === false) return 'UNMEASURED';
+    if (b3b === null && b13Components === null && measured.length === 0) return 'UNMEASURED';
+    if (b3b === null && m.hostileInFrame != null) return 'UNMEASURED';
+    return 'MET';
+  }
+  return 'UNMEASURED';
+}
+
 function formatMarkdownReport(report) {
   const lines = [];
   lines.push(`# SpaceFace Fun Convergence Bench Report — ${report.timestamp.slice(0, 10)}`);
@@ -242,16 +286,20 @@ function formatMarkdownReport(report) {
 
   if (report.benches.crucible) {
     lines.push('### Crucible Feel Bench (3 Arenas × 3 Loadouts × 3 Seeds × 3 Waves)');
-    lines.push('| Arena | Loadout | Seed | Waves | Run Hash | Kills | VPM | Knock Budget Met |');
-    lines.push('|---|---|---|---|---|---|---|---|');
+    lines.push('| Arena | Loadout | Seed | Waves | Run Hash | Kills | VPM | Knock Budget | Hostile In-Frame (B3b) | Status |');
+    lines.push('|---|---|---|---|---|---|---|---|---|---|');
     for (const r of report.benches.crucible.runs.slice(0, 9)) {
       const m = r.metrics;
+      const hif = m.hostileInFrame;
+      const hifText = hif && hif.fraction != null
+        ? `${(hif.fraction * 100).toFixed(1)}%`
+        : 'unmeasured';
       lines.push(
-        `| \`${r.arenaId}\` | \`${r.loadoutId}\` | ${r.seed} | ${r.waveCount} | \`${r.runHash.slice(0, 8)}...\` | ${m.totalKills} | ${m.verbsPerMinute.toFixed(1)} | ${m.b13Met ? 'YES' : 'NO'} |`
+        `| \`${r.arenaId}\` | \`${r.loadoutId}\` | ${r.seed} | ${r.waveCount} | \`${r.runHash.slice(0, 8)}...\` | ${m.totalKills} | ${m.verbsPerMinute.toFixed(1)} | ${m.b13ComponentsMet ? 'MET' : 'RED'} | ${hifText} | ${classifyRunStatus(r)} |`
       );
     }
     if (report.benches.crucible.runs.length > 9) {
-      lines.push(`| ... (${report.benches.crucible.runs.length - 9} more runs) | | | | | | | |`);
+      lines.push(`| ... (${report.benches.crucible.runs.length - 9} more runs) | | | | | | | | | |`);
     }
     lines.push('');
   }
@@ -261,18 +309,19 @@ function formatMarkdownReport(report) {
     lines.push('| Scenario | Seed | Duration | Run Hash | Status |');
     lines.push('|---|---|---|---|---|');
     for (const r of report.benches.flight.runs) {
-      lines.push(`| ${r.label} | ${r.seed} | ${r.durationMs}ms | \`${r.runHash.slice(0, 8)}...\` | PASS |`);
+      const hash = r.runHash ? `\`${r.runHash.slice(0, 8)}...\`` : 'n/a';
+      lines.push(`| ${r.label} | ${r.seed} | ${r.durationMs}ms | ${hash} | ${classifyRunStatus(r)} |`);
     }
     lines.push('');
   }
 
   if (report.benches.verbs) {
     lines.push('### Verb Benches');
-    lines.push('| Verb Bar | Seed | Duration | Run Hash | Bar Met |');
+    lines.push('| Verb Bar | Seed | Duration | Run Hash | Bar Status |');
     lines.push('|---|---|---|---|---|');
     for (const r of report.benches.verbs.runs) {
-      const barMet = Object.entries(r.metrics).some(([k, v]) => k.toLowerCase().includes('met') && v === true);
-      lines.push(`| ${r.label} | ${r.seed} | ${r.durationMs}ms | \`${r.runHash.slice(0, 8)}...\` | ${barMet ? 'MET' : 'OPEN'} |`);
+      const hash = r.runHash ? `\`${r.runHash.slice(0, 8)}...\`` : 'n/a';
+      lines.push(`| ${r.label} | ${r.seed} | ${r.durationMs}ms | ${hash} | ${classifyRunStatus(r)} |`);
     }
     lines.push('');
   }

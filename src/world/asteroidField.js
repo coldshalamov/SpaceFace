@@ -73,6 +73,18 @@ function allocatePresentationId(state, occupied, reserved = 0) {
   if (Number.isSafeInteger(reserved) && reserved > 0
     && !occupied.has(reserved)
     && !(state && state.entities && state.entities.has(reserved))) {
+    // A caller-supplied id still claims the authoritative allocator slot. Without this,
+    // the next automatic allocation can return the same id and overwrite `byId`.
+    if (Array.isArray(state && state.freeIds)) {
+      for (let i = state.freeIds.length - 1; i >= 0; i--) {
+        if (state.freeIds[i] === reserved) state.freeIds.splice(i, 1);
+      }
+    }
+    if (Number.isSafeInteger(state && state.nextEntityId)
+      && state.nextEntityId <= reserved
+      && reserved < Number.MAX_SAFE_INTEGER) {
+      state.nextEntityId = reserved + 1;
+    }
     return reserved;
   }
   if (Number.isSafeInteger(state && state.nextEntityId) && state.nextEntityId >= 1) {

@@ -78,6 +78,13 @@ function b64urlEncode(bytes) {
 }
 
 function b64urlDecode(text) {
+  const remainder = text.length % 4;
+  if (remainder === 1) return null;
+  const lastValue = text.length ? B64_LOOKUP.get(text.at(-1)) : 0;
+  const unusedBits = remainder === 2 ? 4 : remainder === 3 ? 2 : 0;
+  if (unusedBits && (lastValue === undefined || (lastValue & ((1 << unusedBits) - 1)) !== 0)) {
+    return null;
+  }
   const out = [];
   let acc = 0;
   let bits = 0;

@@ -53,6 +53,7 @@ import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { SHIPS } from '../src/data/ships.js';
 import {
   PLAYER_TRANSLATION_RESPONSIVENESS,
+  PLAYER_YAW_AUTHORITY,
   PROPULSION_PROFILES,
   resolvePropulsionProfile,
 } from '../src/core/flight/propulsionCatalog.js';
@@ -208,7 +209,12 @@ test('the player ship accelerates and stops 15% faster than its catalogue drive'
   approxEqual(profile.mainAccel, catalog.mainAccel * scale, 'player mainAccel');
   approxEqual(profile.reverseAccel, catalog.reverseAccel * scale, 'player reverseAccel');
   approxEqual(profile.strafeAccel, catalog.strafeAccel * scale, 'player strafeAccel');
-  approxEqual(profile.assist.stopHorizonS, catalog.assist.stopHorizonS / scale, 'player stop horizon');
+  approxEqual(profile.yawAccel, catalog.yawAccel * PLAYER_YAW_AUTHORITY, 'player yaw accel authority');
+  approxEqual(profile.yawBrake, catalog.yawBrake * PLAYER_YAW_AUTHORITY, 'player yaw brake authority');
+  // Gap Report F1: the settle horizons are no longer shrunk by the player factor — a shorter
+  // player horizon is what turned an off-throttle release into braking.
+  approxEqual(profile.assist.stopHorizonS, catalog.assist.stopHorizonS, 'player stop horizon stays authored');
+  approxEqual(profile.assist.driftStopHorizonS, catalog.assist.driftStopHorizonS, 'player drift horizon stays authored');
 
   const npc = resolvePropulsionProfile(
     { id: 99, isPlayer: false, driveId: 'drive_reaction_m' },

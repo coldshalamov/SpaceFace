@@ -40,7 +40,7 @@ export const ENEMY_TYPES = [
     hull: 70, armor: 12, armorFlat: 1, shield: 50, shieldRegen: 6, cap: 120, capRegen: 22,
     maxSpeed: 126, accel: 84, turnRate: 1.5, collisionRadius: 14, mass: 24,
     weapons: [{ id: 'wpn_railgun_m', dmgOverride: 40, rofOverride: 0.7, projSpeedOverride: 700, rangeOverride: 1100 }],
-    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 760, leashRadius: 3000 },
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 420, leashRadius: 3000 },
     behavior: 'kite at max range, retreat when closed',
     bountyCr: 260, shipClass: 'fighter',
     loot: {
@@ -159,7 +159,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_autocannon_m',   count: 6, turret: true },
       { id: 'wpn_flak_turret_s',  count: 4, turret: true },
     ],
-    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 620, leashRadius: 3400 },
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 380, leashRadius: 3400 },
     telegraph: {
       bark: 'warn',
       line: 'Iron Maw is rolling broadside. Cross its bow before the batteries align.',
@@ -289,7 +289,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_railgun_m', dmgOverride: 36, rofOverride: 0.65, projSpeedOverride: 720, rangeOverride: 1050 },
       { id: 'wpn_emp_disruptor_m', occasional: true },
     ],
-    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 780, leashRadius: 3200 },
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 420, leashRadius: 3200 },
     telegraph: { bark: 'scan', line: 'Ghost already has the shot.', cue: 'sensor_ghost' },
     counterHint: 'break_lock_close_under_cover',
     behavior: 'low-signature sniper; disengages after first alpha, returns from a new bearing',

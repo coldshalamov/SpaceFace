@@ -2361,6 +2361,26 @@ const PILOTS = [
     "slot": "hull",
     "sourceSha256": "36e4f378bfee6d152c8a2b2c7d195ec3ec0e334ffb7a0c19075cf39d69e1389a",
     "sourceUrl": "assets/ships/release/parts/wholeships/wasp_scn_patrol.glb"
+  },
+  {
+    "assetId": "sf.render.pod-47a-evidence-spindle",
+    "expectedContentHash": "379f89880d6c90e07932e51865edc5b7a571e81d541bf0ac902e58f5631043e8",
+    "key": "pod-47a-evidence-spindle",
+    "metadataUrl": "assets/ships/release/render-packages/pod-47a-evidence-spindle/render-package.json",
+    "runtimeAssetId": "SF_POD_47A_EVIDENCE_SPINDLE",
+    "slot": "pod",
+    "sourceSha256": "d77f5d877eb3033d094cf39ccbbbf3b4b60f71fb480aa724aa8dff13d2be887e",
+    "sourceUrl": "assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb"
+  },
+  {
+    "assetId": "sf.render.47a-rescue-capsule",
+    "expectedContentHash": "b4455eae265721cd37c64c7742549d69abccfdc29ada4fc4b6b654994c9bb183",
+    "key": "47a-rescue-capsule",
+    "metadataUrl": "assets/ships/release/render-packages/47a-rescue-capsule/render-package.json",
+    "runtimeAssetId": "SF_PLACE_47A_RESCUE_CAPSULE",
+    "slot": "place",
+    "sourceSha256": "507e6d6576e077d7645fe531b013b1fb31fbd03c0e49350fb330299097d97129",
+    "sourceUrl": "assets/ships/release/parts/places/place_47a_rescue_capsule.glb"
   }
 ];
 

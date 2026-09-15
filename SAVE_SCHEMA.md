@@ -16,6 +16,8 @@ Current save version: `14`
 - `world`
 - `entities`
 - `combat`
+- `stunts`
+- `fields`
 - `missions`
 - `careerOrigins`
 - `careerLadders`
@@ -180,6 +182,7 @@ Current save version: `14`
 | `$.factionPresence` | object | {} |
 | `$.factions` | object | {} |
 | `$.fieldDepletion` | object | {} |
+| `$.fields` | null | null |
 | `$.flight` | object | {} |
 | `$.flight.mode` | string | manual |
 | `$.flight.modeChangedTick` | number | 0 |
@@ -307,7 +310,7 @@ Current save version: `14`
 | `$.settings.accessibility` | object | {} |
 | `$.settings.accessibility.audioCues` | boolean | true |
 | `$.settings.accessibility.captionBackground` | boolean | true |
-| `$.settings.accessibility.captions` | boolean | true |
+| `$.settings.accessibility.captions` | boolean | false |
 | `$.settings.accessibility.captionSize` | string | medium |
 | `$.settings.accessibility.colorblindMode` | string | none |
 | `$.settings.accessibility.dyslexiaFont` | boolean | false |
@@ -335,9 +338,10 @@ Current save version: `14`
 | `$.settings.gameplay.controlSchemeV2` | boolean | true |
 | `$.settings.gameplay.difficulty` | string | standard |
 | `$.settings.gameplay.flightBackend` | string | v3 |
-| `$.settings.gameplay.masslineReleaseAssist` | string | arm |
+| `$.settings.gameplay.masslineReleaseAssist` | string | snap |
 | `$.settings.gameplay.orbitAssistStrength` | string | standard |
 | `$.settings.gameplay.physicsBackend` | string | rapier-dynamic |
+| `$.settings.gameplay.stuntMoments` | string | cinematic |
 | `$.settings.gameplay.tutorialHints` | boolean | true |
 | `$.settings.keybinds` | object | {} |
 | `$.settings.showDamageNumbers` | boolean | true |
@@ -362,6 +366,7 @@ Current save version: `14`
 | `$.settings.video.vsync` | boolean | true |
 | `$.signalInvestigation` | object | {} |
 | `$.sites` | object | {} |
+| `$.stunts` | null | null |
 | `$.traffic` | object | {} |
 | `$.uiScreenMemory` | object | {} |
 | `$.uiScreenMemory.bags` | object | {} |

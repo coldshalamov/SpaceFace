@@ -1,0 +1,10 @@
+{
+  "$comment": "PQ-033.03. Paste the Steamworks App ID and the Windows depot ID (both from partner.steamgames.com), then run `npm run dist:steam`. See build/steam/README.md.",
+  "appId": "",
+  "depots": {
+    "windows": ""
+  },
+  "buildDescription": "SpaceFace {version} ({build})",
+  "setLiveBranch": "",
+  "preview": false
+}

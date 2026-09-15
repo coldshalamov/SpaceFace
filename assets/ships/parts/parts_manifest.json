@@ -4904,6 +4904,112 @@
       }
     },
     {
+      "id": "pod_47a_evidence_spindle",
+      "category": "pods",
+      "priority": "P1",
+      "file": "pods/pod_47a_evidence_spindle.glb",
+      "tris": 6088,
+      "bytes": 369260,
+      "textureSize": 256,
+      "tintable": {
+        "hull": "Material_Hull"
+      },
+      "note": "PQ-193.04 2026-09-14 — the 47-A evidence can: the ordinary tow can's ISO body under custody (seal straps, evidence chevrons, bolted cover, ledger case with a recessed lamp, padlocked door). Scenario-only: reached through SCENARIO_47A_PACKAGED_PROPS, deliberately not in runtimeSlots. Built by tools/blender/build_pq193_04_47a_bodies.py.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [
+        "MOUNT_Child"
+      ],
+      "sockets": [],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -0.71,
+          -0.02,
+          -1.625
+        ],
+        "max": [
+          4.81,
+          3.61,
+          1.555
+        ],
+        "dimensionsM": [
+          5.52,
+          3.63,
+          3.18
+        ]
+      }
+    },
+    {
+      "id": "place_47a_rescue_capsule",
+      "category": "places",
+      "priority": "P1",
+      "file": "places/place_47a_rescue_capsule.glb",
+      "tris": 4492,
+      "bytes": 305824,
+      "textureSize": 256,
+      "tintable": {
+        "hull": "Material_Ceramic"
+      },
+      "note": "PQ-193.04 2026-09-14 — the 47-A civilian lifeboat: lofted ceramic pressure hull, painted distress band, recessed viewports with cabin light, dorsal beacon with a recessed strobe, docking collar with clamps, keel skids, RCS quads, aft skirt with heat shield and bells. Scenario-only: reached through SCENARIO_47A_PACKAGED_PROPS, deliberately not in PLACE_FILES. Built by tools/blender/build_pq193_04_47a_bodies.py.",
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Airlock"
+      ],
+      "mount": "origin",
+      "bounds": {
+        "min": [
+          -3.62,
+          -1.52,
+          -1.57
+        ],
+        "max": [
+          3.91,
+          1.85,
+          1.57
+        ],
+        "dimensionsM": [
+          7.53,
+          3.37,
+          3.14
+        ]
+      }
+    },
+    {
       "id": "pod_repair_patch",
       "category": "pods",
       "priority": "P2",

@@ -7,17 +7,22 @@ export const MAX_CATCHUP_STEPS = 4;
 // After a late present, leftover sim may take at most one extra TABLE catch-up step.
 // This is a per-call leftover cap. It does not lower MAX_CATCHUP_STEPS or 60 Hz flight.
 export const LATE_PRESENT_CATCHUP_STEPS = 1;
+// A long frame from any cause (GC, long task, compositor scheduling) caps catch-up at two steps.
+// Four steps of sim inside an already-late callback is what turns one hitch into the next one.
+export const LONG_FRAME_CATCHUP_STEPS = 2;
 
 /**
- * Step cap for leftover simulation after the last snapshot has already been presented.
- * A late present sheds extra catch-up; a healthy present keeps the 60 Hz ceiling.
+ * Step cap for leftover simulation on this callback.
+ * A late present sheds to one step, a long frame to two; a healthy frame keeps the 60 Hz ceiling.
  */
 export function leftoverSimStepCap({
   latePresent = false,
+  longFrame = false,
   maxSteps = MAX_CATCHUP_STEPS,
 } = {}) {
   const configured = Math.max(1, Math.floor(Number.isFinite(maxSteps) ? maxSteps : MAX_CATCHUP_STEPS));
   if (latePresent) return Math.min(configured, LATE_PRESENT_CATCHUP_STEPS);
+  if (longFrame) return Math.min(configured, LONG_FRAME_CATCHUP_STEPS);
   return configured;
 }
 
@@ -74,6 +79,8 @@ function createCompletedTickRecord() {
     simTime: 0,
     stateDigestMarker: 0,
     inputSequence: 0,
+    inputCommandSeq: 0,
+    inputWallMs: 0,
     lifecycleGeneration: 0,
     journalStart: 0,
     journalEnd: 0,
@@ -86,6 +93,8 @@ function copyCompletedTick(target, source) {
   target.simTime = source.simTime;
   target.stateDigestMarker = source.stateDigestMarker;
   target.inputSequence = source.inputSequence;
+  target.inputCommandSeq = source.inputCommandSeq;
+  target.inputWallMs = source.inputWallMs;
   target.lifecycleGeneration = source.lifecycleGeneration;
   target.journalStart = source.journalStart;
   target.journalEnd = source.journalEnd;
@@ -142,6 +151,11 @@ export function createSimulationRunner(state, registry, deps = {}) {
   let completedCount = 0;
   let completedSequence = 0;
   let inputSequence = 0;
+  // P7: wall-clock stamp of the newest player input command the current tick consumed, copied
+  // verbatim from the input boundary onto the completed tick so presentation can name the first
+  // frame that reflects it. Telemetry only — never read by gameplay.
+  let pendingInputCommandSeq = 0;
+  let pendingInputWallMs = 0;
   let lifecycleGeneration = 0;
   let overflowCount = 0;
   let consumedTickCount = 0;
@@ -176,12 +190,19 @@ export function createSimulationRunner(state, registry, deps = {}) {
     sequence: 0,
     targetTick: 0,
     publishedSequence: 0,
-    publishInputCommand(input, actualTick) {
+    publishInputCommand(input, actualTick, activityStamp) {
       assertOpen();
       if (this.publishedSequence !== 0) {
         inputBoundaryErrorCount++;
         throw new Error(`InputCommandSnapshot ${this.sequence} published more than once`);
       }
+      // seq mirrors the deterministic device-arbitration sequence (_activitySeq), which
+      // save/load already restores. wallMs arrives out-of-band from the input system —
+      // wall-clock fields may never live inside state.input (serialized + hashed).
+      pendingInputCommandSeq = Number.isSafeInteger(input && input._activitySeq)
+        ? input._activitySeq : 0;
+      pendingInputWallMs = Number.isFinite(activityStamp && activityStamp.wallMs)
+        ? activityStamp.wallMs : 0;
       inputCommandSnapshots.capture(this.sequence, input, actualTick);
       this.publishedSequence = this.sequence;
       inputBoundaryCaptureCount++;
@@ -224,6 +245,8 @@ export function createSimulationRunner(state, registry, deps = {}) {
     // This is a cheap boundary marker, not an acceptance digest. PQ-034 remains the hash authority.
     slot.stateDigestMarker = slot.tick;
     slot.inputSequence = inputSequence;
+    slot.inputCommandSeq = pendingInputCommandSeq;
+    slot.inputWallMs = pendingInputWallMs;
     slot.lifecycleGeneration = lifecycleGeneration;
     slot.journalStart = journalStart;
     slot.journalEnd = journalEnd;

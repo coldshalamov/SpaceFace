@@ -18,7 +18,9 @@ import {
   PALLAS_REEF_SITE_ID,
   APERTURE_FIELDS,
   APERTURE_ID,
+  APERTURE_MOUTH,
   APERTURE_PLUG,
+  aperturePoint,
   WEATHER_SECTOR_IDS,
   WEATHER_VOLUMES,
   aperturePhase,
@@ -36,8 +38,22 @@ import {
   weatherPhase,
   weatherVolumesForSector,
 } from '../data/environmentalMachinery.js';
+import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { NEAR_EXIT_PAD_WU } from '../world/activityClassification.js';
 
 const HAZARD_TYPE = 'debris_current';
+
+// The jam occupancy read only needs entities whose centers sit inside the small mouth rectangle.
+// One circle covering that rectangle is the whole candidate set; the spatial hash answers it
+// without walking the sector list, and the unchanged predicate keeps the exact semantics.
+const APERTURE_MOUTH_QUERY = (() => {
+  const alongMid = (APERTURE_MOUTH.alongMin + APERTURE_MOUTH.alongMax) * 0.5;
+  const center = aperturePoint(alongMid, 0);
+  const radius = Math.hypot((APERTURE_MOUTH.alongMax - APERTURE_MOUTH.alongMin) * 0.5, APERTURE_MOUTH.halfWidth) + 4;
+  return Object.freeze({ x: center.x, z: center.z, radius });
+})();
+const APERTURE_OCCUPANT_SCRATCH = [];
+const EMPTY_LIST = [];
 
 function simTimeOf(state) {
   return Number.isFinite(state && state.simTime)
@@ -273,7 +289,28 @@ export const environmentalMachinery = {
   },
 
   _apertureOccupied(state) {
-    const list = state && state.entityList || [];
+    // The hash only holds activity-classified bodies, and the mouth is a fixed world point:
+    // when the player is far enough away that the mouth lies outside the classify bubble, a
+    // parked occupant is dormant and absent from the hash. Gate the query on coverage —
+    // mouth circle inside the classify circle — and scan entityList when it is not.
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    const reach = state && state.activityRuntime && Number.isFinite(state.activityRuntime.physicsReachWu)
+      ? state.activityRuntime.physicsReachWu + NEAR_EXIT_PAD_WU
+      : 0;
+    const mouthDist = player && player.pos
+      ? Math.hypot(player.pos.x - APERTURE_MOUTH_QUERY.x, player.pos.z - APERTURE_MOUTH_QUERY.z)
+      : Infinity;
+    const covered = mouthDist + APERTURE_MOUTH_QUERY.radius <= reach;
+    const list = covered
+      ? queryNearbyEntities(
+        state,
+        APERTURE_MOUTH_QUERY,
+        APERTURE_MOUTH_QUERY.radius,
+        APERTURE_OCCUPANT_SCRATCH,
+      )
+      : (state && state.entityList) || EMPTY_LIST;
     for (const entity of list) {
       if (isApertureOccupant(entity)) return true;
     }

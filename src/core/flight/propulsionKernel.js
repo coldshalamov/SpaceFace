@@ -271,7 +271,7 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
 
   const yaw = computeYawControl(body, input, profile, dt);
   const demand = resourceDemand(profile, accel, input.boost, dt);
-  const nextRuntime = coolRuntime({ ...runtime, family: profile.family }, profile, demand, dt);
+  const nextRuntime = coolRuntime(runtime, profile, demand, dt);
   accel = applyTravelCapSpend(accel, body, governor, dt);
 
   return makeResult({
@@ -515,7 +515,7 @@ function stepPulsePlate(body, input, profile, runtime, environment, dt) {
     : null;
 
   const manualInput = autoFlipBurn
-    ? { ...input, throttle: 0, strafe: 0 }
+    ? { ...input, throttle: 0, strafe: 0, turn: 0 }
     : input;
 
   const rcsProfile = {
@@ -525,7 +525,8 @@ function stepPulsePlate(body, input, profile, runtime, environment, dt) {
     strafeAccel: positive(profile.rcsStrafeAccel, 6),
     boostAccelMult: 1,
     assist: {
-      neutralBrakeFraction: input.assistMode === 'assisted' ? 0.16 : 0,
+      settleTimeConstantS: 8,
+      settleFloorAccel: input.assistMode === 'assisted' ? 1.0 : 0,
       lateralKillFraction: input.assistMode === 'assisted' ? 0.12 : 0,
       commandedAxisDamping: 0,
       stopHorizonS: 7,
@@ -636,7 +637,8 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
     strafeAccel: positive(profile.strafeAccel, 5),
     boostAccelMult: input.boost ? positive(profile.boostAccelMult, 1.5) : 1,
     assist: profile.assist || {
-      neutralBrakeFraction: 0.20,
+      settleTimeConstantS: 15,
+      settleFloorAccel: 1.0,
       lateralKillFraction: 0.12,
       commandedAxisDamping: 0.02,
       stopHorizonS: 6.5,
@@ -738,7 +740,11 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
   const mode = normalizeAssistMode(input.assistMode);
   const settings = profile.assist || {};
   const deadInput = positive(settings.deadInput, 0.025);
-  const hasManual = Math.abs(input.throttle) > deadInput || Math.abs(input.strafe) > deadInput;
+  // Steering counts as flying: holding a turn with the throttle released takes the slip-assist
+  // branch, not neutral counterthrust, so carving a line never reads as braking (Gap Report F1).
+  const hasManual = Math.abs(input.throttle) > deadInput
+    || Math.abs(input.strafe) > deadInput
+    || Math.abs(finite(input.turn, 0)) > deadInput;
   const localVelocity = worldToLocal(body.vel, axes);
   const limits = (forceBrake || input.brake) ? reactionBrakeLimits(profile) : reactionLimits(profile, 1);
   const earnedAssistScale = input.physicsEarnedMomentum && !input.brake && !forceBrake
@@ -763,16 +769,23 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
       : mode === 'drift'
         ? positive(settings.driftStopHorizonS, 8)
         : positive(settings.stopHorizonS, 2.8);
-    let fraction = mode === 'newtonian'
-      ? 1
-      : mode === 'drift'
-        ? Math.min(positive(settings.neutralBrakeFraction, 0.4), 0.18)
-        : positive(settings.neutralBrakeFraction, 0.4);
-    if (input.brake || forceBrake) fraction = 1;
-    else fraction *= Math.min(clamp(finite(input.coastAssistScale, 1), 0, 1), earnedAssistScale) * overCapScale;
-
-    forward = -localVelocity.forward / horizon * fraction;
-    lateral = -localVelocity.lateral / horizon * fraction;
+    if (input.brake || forceBrake) {
+      forward = -localVelocity.forward / horizon;
+      lateral = -localVelocity.lateral / horizon;
+    } else {
+      // A settle is a proportional coast with a floor: the assist eases the ship down at
+      // max(|v| / settleTimeConstantS, settleFloorAccel) WU/s^2. From cruise that is a long,
+      // readable coast (starter: 95 -> ~41 WU/s at 10 s), and the floor means a released ship
+      // eventually rests instead of drifting forever. Drift mode coasts 2.5x longer with half
+      // the floor. Stopping fast on purpose is the pilot brake's job above.
+      const baseTau = positive(settings.settleTimeConstantS, 12);
+      const tau = mode === 'drift' ? positive(settings.driftSettleTimeConstantS, baseTau * 2.5) : baseTau;
+      const floor = (mode === 'drift' ? 0.5 : 1) * positive(settings.settleFloorAccel, 1.5);
+      const scale = Math.min(clamp(finite(input.coastAssistScale, 1), 0, 1), earnedAssistScale) * overCapScale;
+      const settle = (v) => -Math.sign(v) * Math.max(Math.abs(v) / tau, floor) * scale;
+      forward = settle(localVelocity.forward);
+      lateral = settle(localVelocity.lateral);
+    }
     reason = input.brake || forceBrake ? 'pilot-brake' : 'neutral-counterthrust';
   } else if (mode !== 'newtonian') {
     const lateralFraction = (mode === 'drift'
@@ -959,6 +972,7 @@ function makeResult({ body, profile, input, runtime, acceleration, angularAccele
     y: finite(angularAcceleration, 0) * body.inertia,
     z: 0,
   };
+  const cosRot = Math.cos(body.rot), sinRot = Math.sin(body.rot);
   const result = {
     schemaVersion: PROPULSION_RUNTIME_SCHEMA_VERSION,
     driveId: profile.id,
@@ -983,8 +997,8 @@ function makeResult({ body, profile, input, runtime, acceleration, angularAccele
       force,
       torque,
       speed: length2(body.vel),
-      forwardSpeed: dot2(body.vel, { x: Math.cos(body.rot), z: Math.sin(body.rot) }),
-      lateralSpeed: dot2(body.vel, { x: -Math.sin(body.rot), z: Math.cos(body.rot) }),
+      forwardSpeed: finite(body.vel && body.vel.x) * cosRot + finite(body.vel && body.vel.z) * sinRot,
+      lateralSpeed: finite(body.vel && body.vel.x) * -sinRot + finite(body.vel && body.vel.z) * cosRot,
       ...telemetry,
     },
   };

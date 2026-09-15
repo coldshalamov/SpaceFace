@@ -31,6 +31,18 @@ function allocateDressingId(state, table, reserved = 0) {
   if (Number.isSafeInteger(reserved) && reserved > 0
     && !table.byId.has(reserved)
     && !(state && state.entities && state.entities.has(reserved))) {
+    // A caller-supplied id claims the authoritative allocator slot, just like a live entity id.
+    // Otherwise the next automatic presentation row can collide with this reserved row.
+    if (Array.isArray(state && state.freeIds)) {
+      for (let i = state.freeIds.length - 1; i >= 0; i--) {
+        if (state.freeIds[i] === reserved) state.freeIds.splice(i, 1);
+      }
+    }
+    if (Number.isSafeInteger(state && state.nextEntityId)
+      && state.nextEntityId <= reserved
+      && reserved < Number.MAX_SAFE_INTEGER) {
+      state.nextEntityId = reserved + 1;
+    }
     return reserved;
   }
   if (Number.isSafeInteger(state && state.nextEntityId) && state.nextEntityId >= 1) {

@@ -69,6 +69,16 @@ export function resolvePostToeFloorSrgb(toe = DEFAULT_CINEMATIC_TOE) {
 // be claimed when AO and bloom are neutralized. Grade and vignette are multiplicative, so black stays
 // black until the one explicit, calibrated toe operation.
 export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
+  // Derivative ink treatment, fused into the existing composite. The GPU already has
+  // neighbouring fragments for derivatives: no extra HDR texture reads or outline pass.
+  vec3 sampleSpaceIllustratedScene(sampler2D sceneTexture, vec2 uv) {
+    vec3 c = texture2D(sceneTexture, uv).rgb;
+    float y = dot(c, vec3(0.2126, 0.7152, 0.0722));
+    float ink = smoothstep(0.28, 0.85, fwidth(y) / (0.08 + y));
+    float solid = smoothstep(0.008, 0.045, y) * (1.0 - smoothstep(0.8, 1.8, y));
+    return c * (1.0 - ink * solid * 0.24);
+  }
+
   vec3 spaceAcesFilmic(vec3 x) {
     const float a = 2.51;
     const float b = 0.03;
@@ -134,6 +144,16 @@ export const SPACE_POST_PRESENTATION_GLSL = /* glsl */`
   ) {
     vec3 hdr = max(scene, vec3(0.0)) * exposure;
     vec3 color = mix(clamp(hdr, 0.0, 1.0), spaceAcesFilmic(hdr), acesAmount);
+    // Broad perceptual value steps unify photographed sky and authored 3D. Blend the
+    // shoulders so movement does not turn into flickering hard posterization. Do this
+    // before additive bloom, keeping the luminous history continuous and the void black.
+    float inkY = dot(color, vec3(0.2126, 0.7152, 0.0722));
+    float inkValue = sqrt(max(inkY, 0.0));
+    float inkStep = inkValue * 7.0;
+    float inkBand = (floor(inkStep) + smoothstep(0.28, 0.72, fract(inkStep))) / 7.0;
+    float inkMix = 0.48 * smoothstep(0.035, 0.12, inkValue);
+    float inkPaint = mix(inkValue, inkBand, inkMix);
+    color *= (inkY > 0.00001 ? inkPaint * inkPaint / inkY : 1.0);
     color = applySpacePostPresentation(max(color + max(bloom, vec3(0.0)), vec3(0.0)),
       uv, gradeAmount, toeAmount, vignetteAmount);
     vec3 srgb = spaceLinearToSrgb(color);
@@ -726,7 +746,7 @@ const COMPOSITE_FRAG = /* glsl */`
   ${SPACE_POST_PRESENTATION_GLSL}
 
   void main() {
-    vec3 scene = texture2D(tScene, vUv).rgb;
+    vec3 scene = sampleSpaceIllustratedScene(tScene, vUv);
     // Multi-scale bloom: fine local brights + hardware-bilinear coarse halo (no upsample RT).
     vec3 bloom = texture2D(tBloom0, vUv).rgb * uBloomW0
                + texture2D(tBloom1, vUv).rgb * uBloomW1;
@@ -934,16 +954,69 @@ export function createBloom(renderer, width, height, instrumentation = null) {
   let unreadySceneCount = 0;
   let unreadySceneGl = null;
   let unreadySceneGeneration = 0;
+  // Pending-programs latch: the ONLY producers of hideable drawables are still-linking programs.
+  // Poll the program set instead of the scene: while a link is pending the traverse runs (and
+  // keeps running until it drains, so a mesh that binds to a mid-link program is still caught);
+  // once every program reports ready and the set stops growing, steady-state frames skip both
+  // the poll and the scene walk entirely.
+  let unreadyProgramsPending = true;
+  let unreadyProgramCount = -1;
+  let unreadyProgramTail = null;
 
   function hideUnreadySceneDrawables(scene) {
     unreadySceneCount = 0;
+    // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
+    // drivers, so the program-readiness scan below can never see them — drawing one would link
+    // its variants synchronously inside this presented frame. Hide the root (subtree included)
+    // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
+    const pendingSubjects = renderer && renderer.userData
+      ? renderer.userData.spacefacePendingPipelineSubjects
+      : null;
+    if (pendingSubjects && pendingSubjects.size > 0) {
+      for (const subject of pendingSubjects) {
+        if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
+        if (subject && subject.visible === true) {
+          unreadySceneScratch[unreadySceneCount] = subject;
+          unreadySceneCount += 1;
+          subject.visible = false;
+        }
+      }
+    }
     const props = renderer && renderer.properties;
     if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
       return;
     }
     unreadySceneGl = typeof renderer.getContext === 'function' ? renderer.getContext() : null;
     unreadySceneGeneration = contextLossGeneration(unreadySceneGl);
+    const programs = renderer.info && renderer.info.programs;
+    if (!Array.isArray(programs)) {
+      admissionScene = scene;
+      admissionPendingSubjects = pendingSubjects;
+      scene.traverse(hideOneUnreadySceneDrawable);
+      admissionScene = null;
+      admissionPendingSubjects = null;
+      return;
+    }
+    // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
+    // swap-removes (tail moves into the gap). Same length + same tail ⇒ the set is unchanged.
+    if (unreadyProgramsPending !== true && programs.length === unreadyProgramCount
+      && programs[programs.length - 1] === unreadyProgramTail) return;
+    unreadyProgramsPending = false;
+    unreadyProgramCount = programs.length;
+    unreadyProgramTail = programs[programs.length - 1] || null;
+    for (let i = 0; i < programs.length; i++) {
+      const program = programs[i];
+      if (!program || typeof program.isReady !== 'function') continue;
+      let ready = true;
+      try { ready = program.isReady() === true; } catch (_) { ready = false; }
+      if (!ready) { unreadyProgramsPending = true; break; }
+    }
+    if (!unreadyProgramsPending && !(pendingSubjects && pendingSubjects.size > 0)) return;
+    admissionScene = scene;
+    admissionPendingSubjects = pendingSubjects;
     scene.traverse(hideOneUnreadySceneDrawable);
+    admissionScene = null;
+    admissionPendingSubjects = null;
   }
 
   function hideOneUnreadySceneDrawable(object) {
@@ -965,6 +1038,9 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     hideIfProgramUnready(object, list, props);
   }
 
+  let admissionScene = null;
+  let admissionPendingSubjects = null;
+
   function hideIfProgramUnready(object, material, props) {
     if (!material || unreadySceneCount >= UNREADY_SCENE_CAP) return false;
     let program = null;
@@ -974,7 +1050,35 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     } catch (_) {
       return false;
     }
-    if (!program || typeof program.isReady !== 'function') return false;
+    if (!program) {
+      // Never compiled: drawing would link the driver program inside this
+      // presented pass. Hide the drawable and route its scene root through the
+      // pipeline admission lane; the pending latch keeps it hidden until
+      // compile + residency settle. The material stamp dedupes re-queues across
+      // sibling meshes and successive scans while one admission is in flight.
+      const materialData = material.userData || (material.userData = {});
+      const queueAdmission = renderer && renderer.userData
+        ? renderer.userData.spacefaceQueuePipelineAdmission : null;
+      if (materialData.__sfPipelineAdmission !== true && typeof queueAdmission === 'function') {
+        materialData.__sfPipelineAdmission = true;
+        let root = object;
+        while (admissionScene && root.parent && root.parent !== admissionScene) root = root.parent;
+        // A root already latched pending has an admission in flight that will
+        // compile this subtree — queueing another would only duplicate it.
+        if (admissionPendingSubjects && admissionPendingSubjects.has(root)) {
+          materialData.__sfPipelineAdmission = false;
+        } else {
+          Promise.resolve(queueAdmission(root))
+            .catch(() => null)
+            .finally(() => { materialData.__sfPipelineAdmission = false; });
+        }
+      }
+      unreadySceneScratch[unreadySceneCount] = object;
+      unreadySceneCount += 1;
+      object.visible = false;
+      return true;
+    }
+    if (typeof program.isReady !== 'function') return false;
     // A destroyed or dead-context program handle is not a valid isReady() target: the
     // query lands on glGetProgramiv with an object the driver no longer recognises and
     // logs a GL_INVALID_VALUE console warning per material per frame. Three recreates
@@ -1171,8 +1275,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
           if (!key || !seenKeys.has(key)) continue;
           rows.push({
             key: key.slice(0, 40),
-            object: String(object.name || object.type || 'unnamed'),
-            material: String(material.name || material.type || 'unnamed'),
+            object: String(object.name || object.type || 'unnamed').slice(0, 48),
+            material: String(material.name || material.type || 'unnamed').slice(0, 32),
             materialType: String(material.type || '?'),
             transparent: material.transparent === true,
             transmission: Number(material.transmission) || 0,
@@ -1184,7 +1288,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
               && Object.keys(object.geometry.morphAttributes).length),
             instanced: object.isInstancedMesh === true,
             defines: material.defines ? Object.keys(material.defines).length : 0,
-            root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed'),
+            root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed').slice(0, 48),
             visible: object.visible === true,
           });
         }
@@ -1236,6 +1340,13 @@ export function createBloom(renderer, width, height, instrumentation = null) {
           && geometriesAfter > geometriesBefore;
         if (brick) {
           console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify({
+            // Owners first: probe collectors truncate long warning payloads, so the fields that
+            // NAME the producer must precede the bulky key lists.
+            owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
+            newGeometries: grewGeometries
+              ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
+              : [],
+            unstampedVisible: describeUnstampedVisibleGeometries(scene),
             programsBefore,
             programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
             geometriesBefore,
@@ -1246,17 +1357,40 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
             // previous-brick set reported every program acquired since the last brick — dozens of
             // legitimately warm ones — which made the payload unusable for naming a producer.
-            newPrograms: exactNewProgramKeys(programsBefore).map((key) => key.slice(0, 900)),
+            newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 64)),
             programKeyDivergence: describeProgramKeyDivergence(programsBefore),
-            owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
-            newGeometries: grewGeometries
-              ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
-              : [],
-            unstampedVisible: describeUnstampedVisibleGeometries(scene),
           })}`);
         }
         if (brick || grewGeometries) rememberBloomGeometries(scene);
       }
+    }
+  }
+
+  // One real scene pass into rtScene with no brick telemetry: the opening first-draw gate runs
+  // this while it is already holding the frame, so depth variants for late-armed casters (and any
+  // straggler color program or buffer upload) link here instead of inside the presented frame.
+  // Mirrors renderScenePass exactly — same samplers release, same unready-drawable hiding, same
+  // target — so the produced program keys are identical to the pass the frame is about to run.
+  function rehearseScenePass(scene, camera) {
+    const prevAutoClear = renderer.autoClear;
+    const prevTarget = renderer.getRenderTarget ? renderer.getRenderTarget() : null;
+    renderer.autoClear = false;
+    try {
+      releaseBloomSceneSamplers();
+      hideUnreadySceneDrawables(scene);
+      renderer.setRenderTarget(rtScene);
+      renderer.clear();
+      renderer.render(scene, camera);
+      rememberBloomGeometries(scene);
+      // The rehearsal's GL work sits in the driver's queue until something forces the flush —
+      // without a drain here the deferred cost lands inside the presented frame it exists to
+      // protect. gl.finish() moves that drain into the held gate.
+      const gl = renderer.getContext ? renderer.getContext() : null;
+      if (gl && typeof gl.finish === 'function') gl.finish();
+    } finally {
+      restoreUnreadySceneDrawables();
+      renderer.autoClear = prevAutoClear;
+      renderer.setRenderTarget(prevTarget || null);
     }
   }
 
@@ -1535,6 +1669,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compileScenePipelines,
     warmScenePipelines,
     touchScenePipelines,
+    rehearseScenePass,
     prepareResources,
     openingProgramMaterials,
     contextLossResources,

@@ -387,6 +387,12 @@ export function authoredPrefetchRadius(speed = TABLE_REFERENCE_SPEED_WU) {
   return approachDistanceWu(TABLE_AUTHORED_DECODE_SECONDS, speed);
 }
 
+/** Cooked inbound hulls need the same hysteresis outside their longer decode runway. */
+export function authoredResidencyEvictRadius(speed = TABLE_REFERENCE_SPEED_WU) {
+  return authoredPrefetchRadius(speed)
+    + approachDistanceWu(TABLE_RESIDENCY_EVICT_SECONDS - TABLE_RESIDENCY_PREFETCH_SECONDS, speed);
+}
+
 export function authoredImmediateRadius(speed = TABLE_REFERENCE_SPEED_WU) {
   return approachDistanceWu(TABLE_AUTHORED_IMMEDIATE_SECONDS, speed);
 }

@@ -82,6 +82,30 @@ test('dormant rocks stay off the combat list until promoted', () => {
   assert.equal(asteroidFieldCensus(state).liveAsteroids, 1);
 });
 
+test('reserved presentation ids advance the allocator and stay unique', () => {
+  const state = { nextEntityId: 1, freeIds: [1], entities: new Map(), world: {}, simTime: 0 };
+  const reserved = insertAsteroidFieldRock(state, { id: 1, pos: { x: 0, z: 0 } });
+  const automatic = insertAsteroidFieldRock(state, { pos: { x: 10, z: 0 } });
+
+  assert.equal(reserved.id, 1);
+  assert.notEqual(automatic.id, reserved.id);
+  assert.deepEqual(state.freeIds, []);
+  assert.equal(new Set(state.world.asteroidField.rocks.map((rock) => rock.id)).size, 2);
+  assert.equal(state.world.asteroidField.byId.size, 2);
+});
+
+test('reserved dressing ids also stay unique with automatic row allocation', () => {
+  const state = { nextEntityId: 1, freeIds: [1], entities: new Map(), world: {} };
+  const reserved = insertDressingRow(state, { id: 1, pos: { x: 0, z: 0 } });
+  const automatic = insertDressingRow(state, { pos: { x: 10, z: 0 } });
+
+  assert.equal(reserved.id, 1);
+  assert.notEqual(automatic.id, reserved.id);
+  assert.deepEqual(state.freeIds, []);
+  assert.equal(new Set(state.world.dressing.rows.map((row) => row.id)).size, 2);
+  assert.equal(state.world.dressing.byId.size, 2);
+});
+
 test('activity and geology rocks stay live entities', () => {
   assert.equal(shouldKeepLiveAsteroid({ activityBinding: { id: 'slot_a' } }), true);
   assert.equal(shouldKeepLiveAsteroid({ collisionAnchorBinding: { id: 'anchor' } }), true);

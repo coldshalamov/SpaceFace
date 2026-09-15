@@ -200,6 +200,8 @@ export function ensurePerfRuntime(state) {
   };
   const systemStats = Object.create(null);
   const frameStats = createStat();
+  const inputToPhotonStats = createStat();
+  let lastInputStampWallMs = 0;
   const frameCallbackStats = createStat();
   const frameUntrackedStats = createStat();
   const frameCallbackIntervalStats = createStat();
@@ -805,6 +807,17 @@ export function ensurePerfRuntime(state) {
       if (Number.isFinite(ms) && ms >= 0) framePhaseMs.presentation = ms;
       sample(phaseStats.presentation, ms);
     },
+    recordInputToPhoton(ms, stampMs) {
+      sample(inputToPhotonStats, ms);
+      if (Number.isFinite(stampMs) && stampMs > 0) lastInputStampWallMs = stampMs;
+    },
+    getInputToPhotonReport() {
+      return {
+        schema: 'spaceface.inputToPhoton.v1',
+        source: 'input boundary wall stamp -> first presented frame whose completed tick consumed the command',
+        ...reportStat(inputToPhotonStats),
+      };
+    },
     recordAdmissionWork(ms) {
       // Carry measured synchronous admission slices into the next game frame. Keep slices that ran
       // between callbacks separate so only those are removed from the external callback gap.
@@ -877,6 +890,8 @@ export function ensurePerfRuntime(state) {
       out.feelMs = framePhaseMs.feel;
       out.uiMs = framePhaseMs.ui;
       out.admissionMs = loop.admissionMs;
+      out.inputToPhotonMs = inputToPhotonStats.count > 0 ? inputToPhotonStats.last : null;
+      out.inputStampMs = lastInputStampWallMs > 0 ? lastInputStampWallMs : null;
       return out;
     },
     recordSpatialHash({

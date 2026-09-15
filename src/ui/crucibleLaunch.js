@@ -13,6 +13,7 @@ import { COMBAT_LAB_STARTER_PACKAGES } from '../data/combatLabSetups.js';
 import { applyWeaponsColdLoadout } from '../systems/survivalMutators.js';
 import { buildSandboxLaunchConfig, requestSandboxGame } from './sandbox/sandboxSetup.js';
 import { SWARM_RULESET } from '../data/swarmMode.js';
+import { normalizeBestLine } from '../systems/survivalRecords.js';
 
 /** v1 ships one authored arena. The other two Combat Lab arenas are wave-authored but unpolished. */
 export const CRUCIBLE_ARENA_ID = 'helios_core';
@@ -121,6 +122,25 @@ export function requestCrucibleRun(bus, setup, ruleset = CRUCIBLE_DEFAULT_RULESE
   if (ghostHash != null) lastSetup.ghostHash = ghostHash;
   requestSandboxGame(bus, crucibleLaunchConfig(launchSetup, resolved));
   return true;
+}
+
+/**
+ * PQ-146 Best Line practice: map a stored causal line back to the run it was earned on. Same
+ * seed, the recorded ruleset's underlying mode ('practice' lines relaunch under their parent
+ * ruleset — the practice flag rides separately), and the recorded arena when it still exists.
+ * Returns null for a line that cannot name its seed — never a guessed launch.
+ */
+export function practiceLaunchFor(line) {
+  const normalized = normalizeBestLine(line);
+  if (!normalized || !Number.isInteger(normalized.seed)) return null;
+  const rules = normalized.recordRules && typeof normalized.recordRules === 'object'
+    ? normalized.recordRules : {};
+  const ruleset = rules.mode === 'scored' ? 'scored' : SWARM_RULESET;
+  return {
+    seed: normalized.seed,
+    ruleset,
+    arenaId: typeof rules.arenaId === 'string' && rules.arenaId ? rules.arenaId : null,
+  };
 }
 
 /** The setup the live (or most recent) run launched with, or null before the first launch. */

@@ -126,10 +126,18 @@ export function yieldAfterPresent() {
 export function armCallbackAfterPresent(callback) {
   if (typeof callback !== 'function') return;
   let fired = false;
+  // P2: resume admission at background priority — setTimeout(0) after rAF lands the job in the
+  // compositor beat and was the largest named hitch owner (externalScheduling). postTask keeps
+  // it off the frame's critical path; the timeout remains the headless/legacy fallback.
+  const postTask = typeof globalThis.scheduler === 'object' && globalThis.scheduler
+    && typeof globalThis.scheduler.postTask === 'function'
+    ? globalThis.scheduler.postTask.bind(globalThis.scheduler)
+    : null;
   const fire = () => {
     if (fired) return;
     fired = true;
-    setTimeout(callback, 0);
+    if (postTask) postTask(callback, { priority: 'background' });
+    else setTimeout(callback, 0);
   };
   const raf = typeof globalThis.requestAnimationFrame === 'function'
     ? globalThis.requestAnimationFrame.bind(globalThis)

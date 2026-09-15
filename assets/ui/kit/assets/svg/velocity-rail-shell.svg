@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 284 116" fill="none">
+  <title>Velocity rail — smoked-glass carrier</title>
+  <defs>
+    <linearGradient id="edge" x1="14" y1="0" x2="264" y2="116" gradientUnits="userSpaceOnUse"><stop stop-color="#91b4cd"/><stop offset=".36" stop-color="#354b5c"/><stop offset=".7" stop-color="#203343"/><stop offset="1" stop-color="#60839a"/></linearGradient>
+    <linearGradient id="body" x1="48" y1="2" x2="97" y2="116" gradientUnits="userSpaceOnUse"><stop stop-color="#22303f"/><stop offset=".18" stop-color="#162331"/><stop offset="1" stop-color="#0c141d"/></linearGradient>
+    <linearGradient id="glass" x1="36" y1="22" x2="54" y2="82" gradientUnits="userSpaceOnUse"><stop stop-color="#101c27"/><stop offset="1" stop-color="#080f17"/></linearGradient>
+  </defs>
+  <path d="M13 0H260L284 24V104L272 116H0V13Z" fill="url(#edge)"/>
+  <path d="M13.5 1H259.5L283 24.5V103.5L271.5 115H1V13.5Z" fill="url(#body)"/>
+  <path d="M1 100H265L282 83V104L271 115H1Z" fill="#080f17"/>
+  <path d="M14 2H258L279 23" stroke="#d3ecff" stroke-opacity=".22"/>
+  <path d="M11 30L19 22H265L273 30V74L265 82H11Z" fill="url(#glass)"/>
+  <path d="M19 22H265L273 30" stroke="#99c6e4" stroke-opacity=".22"/>
+  <path d="M12 82H265L273 74" stroke="#99c6e4" stroke-opacity=".17"/>
+  <path d="M5 33V63" stroke="#a0dfff" stroke-opacity=".65"/>
+  <path d="M16 114H64M247 114H271L280 105" stroke="#a1cde9" stroke-opacity=".2"/>
+  <path d="M14 89H267V96H14Z" fill="#080e12"/>
+  <path d="M15 89.5H267" stroke="#a0dfff" stroke-opacity=".26"/>
+</svg>

@@ -60,7 +60,8 @@ export const COMBAT_CUE_IDS = Object.freeze([
   'combat.subsystem.power.disabled', 'combat.subsystem.restored',
   'combat.status.ionized', 'combat.status.burning', 'combat.status.overheated',
   'combat.status.scrambled', 'combat.status.gravity_marked', 'combat.status.momentum_sink',
-  'combat.status.cryo_lock',
+  'combat.status.cryo_lock', 'combat.status.goo',
+  'combat.attachment.created', 'combat.attachment.broken',
   'combat.attachment.created', 'combat.attachment.broken',
 ]);
 
@@ -228,6 +229,22 @@ export const STATUS_DEFS = Object.freeze([
     effects: {},
     interactions: [],
     periodic: null, cueId: 'combat.status.cryo_lock',
+  },
+  {
+    // Drift-bomb tarburst (src/data/bombs.js bomb_goo). The slow is PHYSICAL, not a velocity
+    // write: each stack multiplies the body's effective mass/inertia (the PINNED pipeline), so
+    // thrust degrades while momentum is preserved — the hull wallows, it never teleports slow.
+    // massScale 1.8^3 ≈ 5.8 at full stacks; a light hull under a full tarbursh handles like a
+    // heavy one. The movement multiplier additionally degrades combat-action movement, and the
+    // periodic packet is the corrosive DoT (kinetic channel: the tar abrades).
+    id: 'status_goo', version: 1, tags: ['corrosive', 'slow', 'damage_over_time'], durationTicks: 240,
+    stacking: { mode: 'stack', maxStacks: 3 }, immunityTags: [],
+    effects: { multipliers: { movement: 0.72 }, physicsResponse: { massScale: 1.8, inertiaScale: 1.8 } },
+    interactions: [], periodic: {
+      everyTicks: 30,
+      packet: { channels: { kinetic: 3, thermal: 0, ion: 0, plasma: 0, phase: 0 }, penetration: 0, heat: 0, statuses: [] },
+    },
+    cueId: 'combat.status.goo',
   },
   {
     id: 'status_overheated', version: 1, tags: ['thermal'], durationTicks: 60,
@@ -426,15 +443,17 @@ export const DEFAULT_COMBAT_PROFILE_BY_TYPE = Object.freeze({
 
 // Spec2/02 §3 juice-stack: canonical cue ids per weapon family/size so VFX/audio can map
 // player/NPC fire events to the right muzzle, projectile, and impact vocabulary.
+// C3: hit-surface audio is keyed by the surface-keyed damage receipt (vfx.js shield/armor/hull
+// branches), not by the firing gun's family — cueId is deliberately absent from these tables.
 export const WEAPON_CUE_TABLES = Object.freeze({
-  kinetic_s: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_s', projectile: 'vfx.proj.kinetic_s', impact: 'vfx.impact.kinetic_s', cueId: 'combat.damage.hull' }),
-  kinetic_m: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_m', projectile: 'vfx.proj.kinetic_m', impact: 'vfx.impact.kinetic_m', cueId: 'combat.damage.hull' }),
-  kinetic_l: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_l', projectile: 'vfx.proj.kinetic_l', impact: 'vfx.impact.kinetic_l', cueId: 'combat.damage.hull' }),
-  energy_s: Object.freeze({ muzzle: 'vfx.muzzle.energy_s', projectile: 'vfx.proj.energy_s', impact: 'vfx.impact.energy_s', cueId: 'combat.damage.shield' }),
-  energy_m: Object.freeze({ muzzle: 'vfx.muzzle.energy_m', projectile: 'vfx.proj.energy_m', impact: 'vfx.impact.energy_m', cueId: 'combat.damage.shield' }),
-  energy_l: Object.freeze({ muzzle: 'vfx.muzzle.energy_l', projectile: 'vfx.proj.energy_l', impact: 'vfx.impact.energy_l', cueId: 'combat.damage.shield' }),
-  explosive_m: Object.freeze({ muzzle: 'vfx.muzzle.explosive_m', projectile: 'vfx.proj.explosive_m', impact: 'vfx.impact.explosive_m', cueId: 'combat.damage.armor' }),
-  missile: Object.freeze({ muzzle: 'vfx.muzzle.missile', projectile: 'vfx.proj.missile', impact: 'vfx.impact.missile', cueId: 'combat.damage.armor' }),
+  kinetic_s: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_s', projectile: 'vfx.proj.kinetic_s', impact: 'vfx.impact.kinetic_s' }),
+  kinetic_m: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_m', projectile: 'vfx.proj.kinetic_m', impact: 'vfx.impact.kinetic_m' }),
+  kinetic_l: Object.freeze({ muzzle: 'vfx.muzzle.kinetic_l', projectile: 'vfx.proj.kinetic_l', impact: 'vfx.impact.kinetic_l' }),
+  energy_s: Object.freeze({ muzzle: 'vfx.muzzle.energy_s', projectile: 'vfx.proj.energy_s', impact: 'vfx.impact.energy_s' }),
+  energy_m: Object.freeze({ muzzle: 'vfx.muzzle.energy_m', projectile: 'vfx.proj.energy_m', impact: 'vfx.impact.energy_m' }),
+  energy_l: Object.freeze({ muzzle: 'vfx.muzzle.energy_l', projectile: 'vfx.proj.energy_l', impact: 'vfx.impact.energy_l' }),
+  explosive_m: Object.freeze({ muzzle: 'vfx.muzzle.explosive_m', projectile: 'vfx.proj.explosive_m', impact: 'vfx.impact.explosive_m' }),
+  missile: Object.freeze({ muzzle: 'vfx.muzzle.missile', projectile: 'vfx.proj.missile', impact: 'vfx.impact.missile' }),
 });
 
 export function resolveWeaponCueTable(weaponId, weaponsArray = []) {

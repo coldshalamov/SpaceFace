@@ -122,7 +122,11 @@ export function resolveCollisionFeel(impact, context = {}, out = null) {
   if (context.motionReduce) return null;
   if (context.photoMode || photoModeFeelPresentation(context.state).silencePunch) return null;
   if (context.mode !== 'flight') return null;
-  const deltaV = context.deltaV;
+  // C2: the curve reads the pre-solve closing speed (context.feelDeltaV) when the receipt carries
+  // it — the solver's per-tick clamp must not flatten a 400 WU/s ram into a 40 WU/s nudge.
+  const deltaV = Number.isFinite(context.feelDeltaV) && context.feelDeltaV > 0
+    ? context.feelDeltaV
+    : context.deltaV;
   if (!Number.isFinite(deltaV) || deltaV < COLLISION_DELTA_V_FLOOR) return null;
 
   // Normalise against the reference slam. sqrt so a scrape is a tick and a slam is a beat.
@@ -216,11 +220,11 @@ export function resolveMomentBeat(eventName, payload = {}, context = {}) {
   const score = Number.isFinite(Number(payload && payload.score)) ? Number(payload.score) : 0;
   const fov = Math.min(MOMENT_FOV_MAX, MOMENT_FOV_BASE + Math.max(0, score) * MOMENT_FOV_PER_SCORE);
   return Object.freeze({
-    dipMs: BEAT_DIP_MS,
-    dipS: BEAT_DIP_S,
+    dipMs: payload.presentationOwner==='stuntGrammar'?0:BEAT_DIP_MS,
+    dipS: payload.presentationOwner==='stuntGrammar'?0:BEAT_DIP_S,
     holdS: BEAT_HOLD_S,
     scale: BEAT_SCALE,
-    stinger: BEAT_STINGER,
+    stinger: payload.presentationOwner==='stuntGrammar'?null:BEAT_STINGER,
     source: BEAT_TIME_SOURCE,
     fov,
     trauma: MOMENT_TRAUMA,
@@ -231,7 +235,7 @@ export function resolveMomentBeat(eventName, payload = {}, context = {}) {
 export function applyMomentBeat(host, beat) {
   if (!host || !beat) return false;
   const timeEffects = host.timeEffects;
-  if (timeEffects && typeof timeEffects.set === 'function') {
+  if (beat.dipS>0 && timeEffects && typeof timeEffects.set === 'function') {
     if (!host._hsRequest) host._hsRequest = { scale: beat.scale };
     else host._hsRequest.scale = beat.scale;
     timeEffects.set(beat.source || BEAT_TIME_SOURCE, host._hsRequest);
@@ -969,6 +973,18 @@ export const feel = {
       if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(w * 0.4);
     });
 
+    // Boost pre-kick (F6): the dash fires on the press edge now, so the camera needs its
+    // anticipation beat on that same edge — a small forward fov kick that leads the accel
+    // overshoot, mirroring the jump chargeStart pattern. The plume/audio halves ride the
+    // ship:dash and ship:boostStart events that land on the same tick.
+    bus.on('ship:boostPreKick', (p) => {
+      if (!p || p.shipId !== state.playerId) return;
+      if (this.state.mode !== 'flight' || !this._modalClear()) return;
+      const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+      if (mr) return;
+      this._fovPunch = addFovPunch(this._fovPunch, 2.0);
+    });
+
     // Jump / warp camera response. The warp particle VFX + audio already fire on charge→start→arrive,
     // but the camera is completely inert through the signature traversal moment — the single biggest
     // spectacle in the game reads as "particles, no camera". We add a 3-beat fov arc:
@@ -1126,7 +1142,8 @@ export const feel = {
       ? playerId
       : (dvB != null && (dvA == null || dvB > dvA) ? p.bId : p.aId);
     const otherId = knockId === p.bId ? p.aId : p.bId;
-    this._queueCollisionFeel(p, deltaV, p.playerInvolved, p.aId, p.bId, p.dp, knockId, otherId);
+    this._queueCollisionFeel(p, deltaV, p.playerInvolved, p.aId, p.bId, p.dp, knockId, otherId,
+      p.preSolveClosingSpeed);
   },
 
   _onCollisionConsequence(p) {
@@ -1145,10 +1162,10 @@ export const feel = {
     const knockId = playerIsContact ? playerId : p.targetId;
     const otherId = knockId === p.targetId ? p.otherId : p.targetId;
     this._queueCollisionFeel(p, p.deltaV, playerInvolved, p.targetId, p.otherId,
-      p.exchangedMomentum, knockId, otherId);
+      p.exchangedMomentum, knockId, otherId, p.feelDeltaV);
   },
 
-  _queueCollisionFeel(p, deltaV, playerInvolved, aId, bId, momentum, knockId, otherId) {
+  _queueCollisionFeel(p, deltaV, playerInvolved, aId, bId, momentum, knockId, otherId, feelDeltaV = null) {
     const state = this.state;
     if (!state || state.mode !== 'flight' || !this._modalClear()) return;
     const mr = !!(state.settings && state.settings.video && state.settings.video.motionReduce);
@@ -1158,8 +1175,9 @@ export const feel = {
       && ((aId === this._armedCollisionAId && bId === this._armedCollisionBId)
         || (aId === this._armedCollisionBId && bId === this._armedCollisionAId))) return;
 
+    const presentedDeltaV = Number.isFinite(feelDeltaV) && feelDeltaV > 0 ? feelDeltaV : deltaV;
     const pending = this._pendingCollisionFeel;
-    if (pending && !(deltaV > pending.deltaV)) return;
+    if (pending && !(presentedDeltaV > pending.deltaV)) return;
     const ents = state.entities;
     let playerDistance = 0;
     if (!playerInvolved) {
@@ -1210,6 +1228,7 @@ export const feel = {
 
     const context = this._collisionFeelContext;
     context.deltaV = deltaV;
+    context.feelDeltaV = presentedDeltaV;
     context.playerDistance = playerDistance;
     context.motionReduce = mr;
     context.mode = state.mode;
@@ -1256,6 +1275,12 @@ export const feel = {
     if (!p) return;
     if (this.state.mode !== 'flight' || !this._modalClear()) return;
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+    if(p.presentationOwner==='stuntGrammar') {
+      // The physical impact already owns trauma; grammar owns the sole time/audio accent.
+      const ctrl=this.state.render?.cameraCtrl;
+      if(!mr&&p.framingSafe&&typeof ctrl?.pushZoom==='function')ctrl.pushZoom(-.04,.55);
+      return;
+    }
     const beat = resolveMomentBeat(MOMENT_DETECTOR_EVENT, p, {
       motionReduce: !!mr,
       mode: this.state.mode,

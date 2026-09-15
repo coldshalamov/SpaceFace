@@ -5236,6 +5236,7 @@ function installWholeShipLodFamilyController(boundary, entity, setActive, option
           requiredWholeShip: true,
           forceWholeShipFile: file,
           bootstrapPlan: authoredPreloadPlanForEntityAtLod(entity, requested, options),
+          libraryScope: 'whole-ship-lod-family',
           residencyRole: 'whole-ship-lod-family',
         });
         const publicationWait = waitForOpeningGraphPublicationRelease();

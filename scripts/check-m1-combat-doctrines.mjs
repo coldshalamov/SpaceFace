@@ -17,6 +17,9 @@ const result = spawnSync(process.execPath, [
   'test/professional-enemy-maneuvers.test.mjs',
   'test/ai-engagement-authority.test.mjs',
   'test/ai-engagement-sg03.test.mjs',
+  // PQ-140.02 specialist counterplay and the tether-control contest are doctrine-runtime proofs.
+  'test/pq-140-02-specialists.test.mjs',
+  'test/tether-control-raider.test.mjs',
 ], {
   cwd: new URL('..', import.meta.url),
   stdio: 'inherit',

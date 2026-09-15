@@ -23,6 +23,7 @@ const checks = [
   ['../src/ui/screens/help.js', 'helpScreen'],
   ['../src/ui/screens/codex.js', 'codexScreen'],
   ['../src/ui/screens/missionLog.js', 'missionLogScreen'],
+  ['../src/ui/screens/achievements.js', 'achievementsScreen'],
   // DEV ONLY — Sandbox harness. The check loads it like any other screen so a broken import fails
   // fast here rather than silently skipping registration in dev builds. (The module self-guards on
   // IS_DEV and is only registered when IS_DEV is true; this assertion is dev-tooling only.)

@@ -44,6 +44,8 @@ function createCompletedTickRecord() {
     simTime: 0,
     stateDigestMarker: 0,
     inputSequence: 0,
+    inputCommandSeq: 0,
+    inputWallMs: 0,
     lifecycleGeneration: 0,
     journalStart: 0,
     journalEnd: 0,
@@ -218,6 +220,8 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   let unsubscribeLifecycle = null;
   let lifecycleGeneration = 0;
   let hasCompletedTick = false;
+  // P7 input-to-photon: highest input-command sequence a presented frame has reflected so far.
+  let lastPhotonInputSeq = 0;
   let hasPendingJournal = false;
   let pendingJournalStart = 0;
   let pendingJournalEnd = 0;
@@ -279,7 +283,7 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
     maxStepsObserved: 0,
     shedBacklogFrames: 0,
     recoveryCappedFrameCount: 0,
-    presentFirst: true,
+    presentFirst: 'late-only',
     lastPresentMs: 0,
     frameCapSkips: 0,
     frameCapDebt: 0,
@@ -702,6 +706,16 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       perf.recordPresentationFrame?.(presentationMs);
       previousPresentationOverrun = !restoring && presentationMs > fixedDt * 2000;
     }
+    // P7: the first presented frame whose completed tick consumed a newer input command is that
+    // command's photon. The stamp arrived wall-timed at the input boundary; the subtraction is
+    // measurement only and never enters sim state.
+    if (presentationAccepted && completedTickCount > 0
+      && latestCompletedTick.inputCommandSeq > lastPhotonInputSeq
+      && latestCompletedTick.inputWallMs > 0) {
+      perf.recordInputToPhoton?.(Math.max(0, measureNow() - latestCompletedTick.inputWallMs),
+        latestCompletedTick.inputWallMs);
+      lastPhotonInputSeq = latestCompletedTick.inputCommandSeq;
+    }
     diagnostics.renderUpdates++;
     diagnostics.consecutiveFrameErrors = 0;
     if (diagnostics.presentationStalled) {
@@ -784,11 +798,22 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         frameBudgetMs,
       );
 
-      // Present the last completed snapshot first so a hitch does not spend 2–4 ticks before
-      // the next picture. Leftover callback time then goes to simulation. A draw throw must
-      // not skip leftover sim or the 60 Hz clock stalls while the HUD keeps moving.
+      // Ordering policy (Gap Report F2). On a healthy frame the sim advances FIRST and the
+      // picture presents the tick it just completed, so a keypress reaches the photon one
+      // frame sooner than present-then-simulate. On a long frame (any cause: GC, long task,
+      // compositor lag) or right after a late present, the last completed snapshot goes out
+      // first so the hitch does not spend 2–4 ticks before the next picture, and leftover
+      // catch-up is shed (one step after a late present, two after a long frame). A draw
+      // throw must not skip leftover sim or the 60 Hz clock stalls while the HUD keeps moving.
       let presentationMs = 0;
       let presentationError = null;
+      const longFrame = !restoring && frameDt > fixedDt * 2;
+      // A restore frame keeps present-first: its picture must go out before the clock restarts.
+      const presentFirst = restoring || longFrame || recoverFromPresentationOverrun;
+      let leftoverStepCap;
+      if (!presentFirst && !destroyed && !suspended) {
+        advanceLeftoverSimulation(frameDt, restoring, undefined, perf);
+      }
       const skipPresentation = destroyed || suspended
         || (!restoring && lifecycleState === LOOP_LIFECYCLE_STATES.RESTORING);
       // Player frame-cap (Settings → Video). Sim keeps its 60 Hz leftover; only the GPU present
@@ -837,22 +862,17 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         }
       }
 
-      const latePresent = !restoring && (
-        (recoverFromPresentationOverrun && frameDt > fixedDt * 2)
-        || presentationMs > fixedDt * 2000
-      );
-      const leftoverStepCap = latePresent
-        ? leftoverSimStepCap({ latePresent: true })
-        : undefined;
       diagnostics.lastLeftoverMs = Math.max(0, frameBudgetMs - presentationMs);
-      diagnostics.lastLeftoverStepCap = leftoverStepCap
-        ?? leftoverSimStepCap({ latePresent: false });
-
-      // Leftover sim may still fire a lifecycle event. The picture already went out; do not
-      // present again in this callback.
-      if (!destroyed && !suspended) {
-        advanceLeftoverSimulation(frameDt, restoring, leftoverStepCap, perf);
+      if (presentFirst) {
+        const latePresent = recoverFromPresentationOverrun || presentationMs > fixedDt * 2000;
+        leftoverStepCap = restoring ? undefined : leftoverSimStepCap({ latePresent, longFrame: true });
+        // Leftover sim may still fire a lifecycle event. The picture already went out; do not
+        // present again in this callback.
+        if (!destroyed && !suspended) {
+          advanceLeftoverSimulation(frameDt, restoring, leftoverStepCap, perf);
+        }
       }
+      diagnostics.lastLeftoverStepCap = leftoverStepCap ?? leftoverSimStepCap({});
       if (presentationError) throw presentationError;
     } catch (err) {
       if (hasPendingJournal) diagnostics.journalRetainedFrameCount++;

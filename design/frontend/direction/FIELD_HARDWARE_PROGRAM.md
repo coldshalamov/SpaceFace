@@ -16,6 +16,20 @@ style we use for UI' which is just poisoning the frontend development … I need
 advanced A-list idea … plan out the development … try not to one-shot it … make packets of files
 and instructions in a zip for different steps."*
 
+**Owner directive, 2026-09-14 — the flight layer goes glass.** Looking at the live flight HUD, the
+owner rejected the built amber/machined reading: *"a strange wood look that's not visible against the
+backdrop and also doesn't fit with this game; it would have to be more sleek and glass … maybe some
+slight neon look"*, comparing the bar to *"claude desktop and chatgpt apps … sleek and modern"*, and
+singled out the speed dial as *"like a car dashboard … anything like that should at least resemble an
+instrument in an advanced spaceship and maintain the illusion."* The flight layer has been re-skinned
+in the **glass register** carried at the end of `src/ui/views/hudStyles.js`: smoked translucent panels
+under a faint sheen with one cool edge and a soft drop, neon cyan reserved for live state, amber kept
+only for the objective/warning signal, the warm socket/bracket/bezel/gauge renders retired on the HUD,
+and the speed instrument redrawn as a glass ring gauge on the existing pivot and meter contract. This
+is the dated aesthetic direction for the remaining screens and for the next HUD frame round; the §7
+floors (12 px, WCAG AA, reduced motion, no backdrop-filter in flight, offline effects) still bind, and
+the produced-kit process stands for screens that have not been through this register yet.
+
 ---
 
 ## 1. Why ten passes converged on the same cheap screen

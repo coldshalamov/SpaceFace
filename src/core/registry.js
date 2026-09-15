@@ -20,6 +20,7 @@ import { autoTargetAssist } from '../systems/autoTargetAssist.js';
 import { flybyFocus } from '../systems/flybyFocus.js';
 import { scanner } from '../systems/scanner.js';
 import { mines } from '../systems/mines.js';
+import { bombs } from '../systems/bombs.js';
 import { dockingCorridor } from '../systems/dockingCorridor.js'; // PQ-008: truthful exterior corridor/capture docking (assist via physics membrane)
 import { scanReveal } from '../systems/scanReveal.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
@@ -377,6 +378,7 @@ function buildRegistrySystemLookup(aiSlot, flightSlot) {
     ['countermeasures', countermeasures],
     ['impulseCharges', impulseCharges],
     ['mines', mines],
+    ['bombs', bombs],
     ['massSeed', massSeed],
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],
@@ -753,7 +755,8 @@ export function createRegistry(ctx) {
             input.update(dt, state);
           }
           if (tickBoundary && typeof tickBoundary.publishInputCommand === 'function') {
-            tickBoundary.publishInputCommand(state.input, state.tick);
+            tickBoundary.publishInputCommand(state.input, state.tick,
+              typeof input.inputActivityStamp === 'function' ? input.inputActivityStamp() : null);
           }
           for (const s of updateQueueForThisStep(postInputPartitions, state)) {
             if (countSystems) tier1.countSystemInvocation(s.name);
@@ -778,7 +781,8 @@ export function createRegistry(ctx) {
         finally { perf.recordSystem(input.name, perfNow() - t); }
       }
       if (tickBoundary && typeof tickBoundary.publishInputCommand === 'function') {
-        tickBoundary.publishInputCommand(state.input, state.tick);
+        tickBoundary.publishInputCommand(state.input, state.tick,
+          typeof input.inputActivityStamp === 'function' ? input.inputActivityStamp() : null);
       }
       for (const s of updateQueueForThisStep(postInputPartitions, state)) {
         if (countSystems) tier1.countSystemInvocation(s.name);

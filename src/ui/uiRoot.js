@@ -107,6 +107,9 @@ const SCREEN_MODULES = [
   // CREDITS (Frontend Task B §1.6): who made SpaceFace and what it is built on; the third-party
   // notices from PQ-033.00. Reached from the title's fine line.
   { path: './screens/credits.js', load: () => import('./screens/credits.js'), name: 'creditsScreen' },
+  // ACHIEVEMENTS (PQ-033.03): the local achievement ledger, reached from the title's fine line and
+  // from Pause. Reads the same ledger the Steam mirror sends from.
+  { path: './screens/achievements.js', load: () => import('./screens/achievements.js'), name: 'achievementsScreen' },
   { path: './screens/codex.js', load: () => import('./screens/codex.js'), name: 'codexScreen' },
   { path: './screens/missionLog.js', load: () => import('./screens/missionLog.js'), name: 'missionLogScreen' },
   // DEV ONLY — Sandbox testing harness (src/ui/screens/sandbox.js). Conditionally spread so the

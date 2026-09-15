@@ -3582,6 +3582,36 @@
       "dynamicNameIncludes": [],
       "outputDir": "assets/ships/release/render-packages/wasp-scn-patrol",
       "metadataUrl": "assets/ships/release/render-packages/wasp-scn-patrol/render-package.json"
+    },
+    {
+      "key": "pod-47a-evidence-spindle",
+      "assetId": "sf.render.pod-47a-evidence-spindle",
+      "runtimeAssetId": "SF_POD_47A_EVIDENCE_SPINDLE",
+      "kind": "part",
+      "slot": "pod",
+      "releaseAssetId": "pod_47a_evidence_spindle",
+      "sourceUrl": "assets/ships/release/parts/pods/pod_47a_evidence_spindle.glb",
+      "releaseSha256": "d77f5d877eb3033d094cf39ccbbbf3b4b60f71fb480aa724aa8dff13d2be887e",
+      "releaseBytes": 252716,
+      "rootNode": "pod_47a_evidence_spindle",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/pod-47a-evidence-spindle",
+      "metadataUrl": "assets/ships/release/render-packages/pod-47a-evidence-spindle/render-package.json"
+    },
+    {
+      "key": "47a-rescue-capsule",
+      "assetId": "sf.render.47a-rescue-capsule",
+      "runtimeAssetId": "SF_PLACE_47A_RESCUE_CAPSULE",
+      "kind": "place",
+      "slot": "place",
+      "releaseAssetId": "place_47a_rescue_capsule",
+      "sourceUrl": "assets/ships/release/parts/places/place_47a_rescue_capsule.glb",
+      "releaseSha256": "507e6d6576e077d7645fe531b013b1fb31fbd03c0e49350fb330299097d97129",
+      "releaseBytes": 255476,
+      "rootNode": "SF_PLACE_47A_RESCUE_CAPSULE_ROOT",
+      "dynamicNameIncludes": [],
+      "outputDir": "assets/ships/release/render-packages/47a-rescue-capsule",
+      "metadataUrl": "assets/ships/release/render-packages/47a-rescue-capsule/render-package.json"
     }
   ]
 }

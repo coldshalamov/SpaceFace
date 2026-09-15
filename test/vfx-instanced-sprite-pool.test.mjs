@@ -115,7 +115,7 @@ test('allocation-free instance writes degrade safely when a dense bucket is satu
   resetInstancedSpriteBuckets(buckets);
 
   assert.equal(writeInstancedSpriteFields(
-    buckets, 'combustion', 0, 0, 0, 1, 2, 1, 0, 1, 0.5, 0.2, 0.8,
+    buckets, 'combustion', 0, 0, 0, 1, 2, 1, 0, 1, 0.5, 0.2, 0.8, 0.6, 3.25, 1.4,
   ), true);
   assert.equal(writeInstancedSpriteFields(
     buckets, 'combustion', 1, 0, 0, 1, 2, 1, 0, 1, 0.5, 0.2, 0.8,
@@ -126,4 +126,11 @@ test('allocation-free instance writes degrade safely when a dense bucket is satu
   commitInstancedSpriteBuckets(buckets);
   assert.equal(buckets.combustion.writeCount, 2);
   assert.equal(buckets.combustion.mesh.count, 2);
+  const phase = buckets.combustion.mesh.geometry.getAttribute('aSpritePhase');
+  const axis = buckets.combustion.mesh.geometry.getAttribute('aSpriteAxis');
+  assert.equal(phase.itemSize, 2, 'sprite phase carries progress and seed fraction');
+  assert.equal(axis.itemSize, 1, 'sprite axis carries the authored roll axis');
+  assert.equal(phase.getX(0), Math.fround(0.6));
+  assert.equal(phase.getY(0), Math.fround(0.25));
+  assert.equal(axis.getX(0), Math.fround(1.4));
 });

@@ -12,6 +12,7 @@ import {
   performanceAdmissionHorizonMs,
   performancePipelineFingerprint,
 } from '../scripts/lib/performanceSceneMetrics.mjs';
+import { authoredPrefetchRadius, tableTravelSpeed } from '../src/render/tabletopPolicy.js';
 
 test('performance warmup settles terminal fallbacks but the strict fallback budget remains', () => {
   const source = readFileSync(new URL('../scripts/probe-performance-profile.mjs', import.meta.url), 'utf8');
@@ -241,9 +242,7 @@ test('pipeline warmup predicts inbound authored admission across the measured ho
     id: 2,
     type: 'ship',
     alive: true,
-    // Inside the 5 s horizon's reach against the 4 s decode runway (640 WU at reference speed):
-    // 1500 - 190*5 = 550 <= 640, and 550 - 190*4 <= the 200 WU immediate radius.
-    pos: { x: 1500, z: 0 },
+    pos: { x: 0, z: 0 }, // placed below, just outside the live authored decode radius
     vel: { x: -190, z: 0 },
     presentationAdmission: 'pending',
     mesh: { userData: { authoredAssetState: 'awaiting-authored-admission' } },
@@ -266,6 +265,11 @@ test('pipeline warmup predicts inbound authored admission across the measured ho
     entityList: [player, inbound, outbound],
     render: { scene: { userData: { authoredUpgradeDiagnostics: { activeJobs: 0, jobs: [] } } } },
   };
+  // Derive the boundary from the tabletop policy instead of a fixed distance: the inbound hull starts
+  // outside the authored decode radius and closes at 190 WU/s, crossing it four seconds into the
+  // five-second measured horizon. (A fixed 2488 WU start stopped crossing when the radius became 4 s.)
+  const decodeRadius = authoredPrefetchRadius(tableTravelSpeed(state));
+  inbound.pos.x = decodeRadius + 190 * 4;
   const renderSystem = { _meshBuildQueue: [], _meshBuildQueueHead: 0, _meshReconcileDirty: false };
   const options = {
     state,
@@ -275,7 +279,7 @@ test('pipeline warmup predicts inbound authored admission across the measured ho
 
   const now = collectPerformancePipelineReadiness(options);
   assert.equal(now.authoredPendingAdmissionRiskCount, 0,
-    'the live zero-horizon predicate must not start the 1500-unit boundary yet');
+    'the live zero-horizon predicate must not start a boundary still outside the decode radius');
 
   const measured = collectPerformancePipelineReadiness({ ...options, measurementHorizonMs: 5_000 });
   assert.deepEqual(measured.authoredPendingAdmissionRiskEntities.map((entity) => entity.id), [2]);

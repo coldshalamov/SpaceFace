@@ -702,7 +702,7 @@ test('the fresh Crucible route starts with a shove and preserves deliberate kit 
   const fresh = crucibleSetupFor({ seed: 4242 });
   assert.equal(fresh.ok, true);
   assert.ok(fresh.value.loadout.some(slot => slot.defId === 'wpn_concussion_cannon_m'), 'The Crucible starts with a shove (PQ-137.05)');
-  assert.equal(crucibleStarterIdForSetup(null), 'physics_toolkit');
+  assert.equal(crucibleStarterIdForSetup(null), 'ricochet_runner');
   for (const starterId of ['energy_baseline', 'kinetic_baseline', 'physics_toolkit', 'massline_rig']) {
     const choice = crucibleSetupFor({ seed: 4242, starterId });
     assert.equal(choice.ok, true);

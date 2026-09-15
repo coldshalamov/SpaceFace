@@ -8,6 +8,17 @@ import { initializePresentationAdmission } from './presentationAdmission.js';
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
+// Far actor, dressing and field rows keep their id while they exist; see _removeEntityAtIndex.
+function ledgerTableHoldsId(table, id) {
+  return !!(table && table.byId instanceof Map && table.byId.has(id));
+}
+
+function worldLedgerHoldsId(world, id) {
+  return !!world && (ledgerTableHoldsId(world.farActors, id)
+    || ledgerTableHoldsId(world.dressing, id)
+    || ledgerTableHoldsId(world.asteroidField, id));
+}
+
 export const core = {
   name: 'core',
   init(ctx) {
@@ -207,7 +218,10 @@ export const core = {
     if (opts && opts.reason) destroyed.reason = opts.reason;
     this.bus.queue('entity:destroyed', destroyed);
     state.entities.delete(e.id);
-    state.freeIds.push(e.id);
+    // Far shelving writes its row before removing the body, and dressing/field rows can hold an
+    // id too. Recycling a held id let the next spawn or row take it, so two world objects shared
+    // one mesh and presentation slot. The id comes back once that row promotes and the body dies.
+    if (!worldLedgerHoldsId(state.world, e.id)) state.freeIds.push(e.id);
     const last = list.pop();
     if (i < list.length) list[i] = last;
     if (opts && opts.immediate === true) markEntityIndexSourceSynced(state.entityIndex, list);
@@ -286,6 +300,8 @@ function ensureEntityIndex(state) {
     mines: [],
     vectorMines: [],
     snares: [],
+    charges: [],
+    bombs: [],
     statics: [],
     damageables: [],
     aiShips: [],
@@ -332,6 +348,14 @@ function repairEntityIndex(index) {
     index.ready = false;
   }
   if (!Array.isArray(index.snares)) index.snares = [];
+  if (!Array.isArray(index.charges)) {
+    index.charges = [];
+    index.ready = false;
+  }
+  if (!Array.isArray(index.bombs)) {
+    index.bombs = [];
+    index.ready = false;
+  }
   if (!Array.isArray(index.statics)) index.statics = [];
   if (!Array.isArray(index.damageables)) index.damageables = [];
   if (!Array.isArray(index.aiShips)) index.aiShips = [];
@@ -375,6 +399,8 @@ function clearEntityIndex(index) {
   index.mines.length = 0;
   index.vectorMines.length = 0;
   index.snares.length = 0;
+  index.charges.length = 0;
+  index.bombs.length = 0;
   index.statics.length = 0;
   index.damageables.length = 0;
   index.aiShips.length = 0;
@@ -475,6 +501,13 @@ function appendEntityIndex(index, e) {
     case 'masslineSnare':
       index.snares.push(e);
       break;
+    case 'charge':
+      index.charges.push(e);
+      break;
+    case 'bomb':
+      // Drift bombs (src/systems/bombs.js): logical fuze entities — not shootable, not colliders.
+      index.bombs.push(e);
+      break;
     case 'massSeed':
       // PQ-011 anchor seeds: damageable in every phase (counterplay — hostile fire and stray
       // blasts can destroy the anchor; there is no protected window).
@@ -523,6 +556,8 @@ function removeEntityIndex(index, e) {
   removeFromIndexArray(index.mines, e);
   removeFromIndexArray(index.vectorMines, e);
   removeFromIndexArray(index.snares, e);
+  removeFromIndexArray(index.charges, e);
+  removeFromIndexArray(index.bombs, e);
   removeFromIndexArray(index.statics, e);
   removeFromIndexArray(index.damageables, e);
   removeFromIndexArray(index.aiShips, e);

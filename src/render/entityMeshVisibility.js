@@ -42,7 +42,10 @@ export function shouldSubmitEntityMesh(options = {}) {
     // Runway roots remain resident for approach-time warmup but are not submitted
     // until the activity frame promotes them onto the readable glass.
     if (has(runway)) return false;
-    if (frame.complete === true) return false;
+    // Ledger rows (far, field and dressing tables) are not combat-list members, so a complete
+    // frame never names them. isEntityRenderRelevant keeps their mesh under distance policy; hiding
+    // them here left accepted props resident on the GPU but never drawn. Their tier still decides.
+    if (frame.complete === true && options.ledgerRow !== true) return false;
   }
   const tier = options.presentationTier;
   if (tier === 'R2_METADATA' || tier === 'R3_UNLOADED' || tier === 'R1_RUNWAY') return false;

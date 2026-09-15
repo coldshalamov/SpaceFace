@@ -1,5 +1,6 @@
 // CRU-014 — the run wallet and run XP. Campaign credits are never involved.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { test } from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
@@ -97,6 +98,27 @@ test('the run XP curve is monotone and starts at level 1', () => {
     assert.equal(runLevelForXp(cost - 1), Math.max(1, level - 1));
     previous = cost;
   }
+});
+
+test('very large XP resolves without walking one level at a time', { timeout: 250 }, () => {
+  const total = 1e18;
+  const level = runLevelForXp(total);
+  assert.ok(level > 100_000_000);
+  assert.ok(runXpForLevel(level) <= total);
+  assert.ok(runXpForLevel(level + 1) > total);
+});
+
+test('extreme finite XP does not enter a non-progressing correction loop', () => {
+  const moduleUrl = new URL('../src/core/runState.js', import.meta.url).href;
+  const child = spawnSync(process.execPath, [
+    '--input-type=module',
+    '-e',
+    `import { runLevelForXp } from ${JSON.stringify(moduleUrl)}; console.log(runLevelForXp(Number.MAX_VALUE));`,
+  ], { encoding: 'utf8', timeout: 5000 });
+
+  assert.equal(child.error, undefined, child.error && child.error.message);
+  assert.equal(child.status, 0, child.stderr);
+  assert.ok(Number.isFinite(Number(child.stdout.trim())));
 });
 
 test('an award lands in the run wallet, recomputes the level, and emits a receipt', () => {

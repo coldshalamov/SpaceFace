@@ -9,7 +9,7 @@ implementationCommit: this_receipt_commit
 routeClaim: integrated_structural_green
 acceptanceClaim: historical_focused_buffer_lifecycle_green_native_unproven
 disposition: PARTIAL
-nativeAttemptDisposition: BLOCKED
+nativeAttemptDisposition: CAPTURED_DEMOTED_BY_ENVIRONMENT
 qualityInvariant: preserved
 ```
 
@@ -140,6 +140,171 @@ No unchanged retry, Electron invocation, focused rerun, broad baseline/playable
 run, new probe, comparator, or evidence framework was opened after the stop.
 The numeric gain, GC behavior, presentation parity, and keep/remove ruling remain
 unproven; no abstraction removal is authorized by this acceptance-only write set.
+
+## Native acceptance attempt — 2026-09-15
+
+The fast gate that blocked the 2026-09-14 attempt was repaired and verified green;
+the Browser probe then **launched and captured both variants twice** with real
+comparator output. **Numeric primary acceptance remains UNPROVEN** — both captures
+were demoted by shared-worktree churn and environment signals, not by the
+dirty-range implementation. Parent PQ-040 is still not accepted.
+
+```yaml
+unit: PQ-040.native-acceptance
+candidateBranch: master
+gateRepairCommits:
+  - b5f7e9b4b   # three stale fast-gate fixtures (7-attr sprite contract, fs mock, preload surface)
+  - ba8878e21   # phase/axis write-path coverage in vfx-instanced-sprite-pool
+defectFoundByAcceptance:
+  commit: f94a8a849   # partsLibrary whole-ship LOD demotion TypeError (custom plan + canonical scope)
+  regressionPin: a14e9ef2f
+fastGateResult: 51 pass / 0 fail (all three manifest gates)
+browserManifestInvocations: 6
+browserAcceptanceRuntimeLaunches: 2
+browserCapturedRuns:
+  - run: performance-dirty-ranges-browser-2026-09-15T12-34-44-837Z-26184-1cf6f18b
+    comparatorPass: true
+    ownerRequestedByteReductionFraction: 0.9584   # 2.56 MB ranged vs 58.1 MB full-span
+    driverUploadByteReductionFraction: 0.4657     # 71.5 MB ranged vs 126.7 MB full-span
+    frameP95DeltaMs: -0.1                          # 33.4 vs 33.5
+    demotedBy:
+      - worktree changed during performance capture   # concurrent foreign writes mid-capture
+      - 6,937 page warnings (6,936 = the partsLibrary demotion TypeError fixed in f94a8a849)
+  - run: performance-dirty-ranges-browser-2026-09-15T13-16-17-666Z-26416-173ee699
+    comparatorPass: false   # quality/settings changed inside both capture windows
+    ownerRequestedByteReductionFraction: 0.9119
+    driverUploadByteReductionFraction: 0.3804
+    frameP95DeltaMs: 0.1                           # 50.0 vs 49.9
+    warnings: 3   # opening-submission diagnostics + bloomScene GPU brick (foreign in-flight render work)
+    demotedBy:
+      - worktree changed during performance capture
+      - settings changed inside both capture windows
+  - run: performance-dirty-ranges-browser-2026-09-15T14-58-43-970Z-6892-1b72a703
+    comparatorPass: true
+    ownerRequestedByteReductionFraction: 0.9035
+    driverUploadByteReductionFraction: 0.4618
+    frameP95DeltaMs: 0                             # 50.1 vs 50.1
+    warnings: 0   # clean page — partsLibrary fix held, foreign renderer warnings absent
+    demotedBy:
+      - worktree changed during performance capture   # only demotion; primaryAcceptance flag set
+  - run: performance-dirty-ranges-browser-2026-09-15T15-25-04-278Z-9092-07910076
+    comparatorPass: true
+    ownerRequestedByteReductionFraction: 0.8635
+    driverUploadByteReductionFraction: 0.4051
+    frameP95DeltaMs: 0                             # 50.1 vs 50.1
+    warnings: 2   # bloomScene GPU-compile bricks (260/275ms) from foreign in-flight renderer work
+    demotedBy:
+      - worktree changed during performance capture
+      - contaminating process/authoring activity at end census
+      - the two bloom warnings
+electronManifestInvocations: 5
+electronAcceptanceRuntimeLaunches: 3
+electronCapturedRuns:
+  - run: >-
+      3 launches (13:30, 13:39, 13:46) all failed identically at route phase
+      flight-input: powered displacement rate did not exceed the released baseline
+      (baseline ~70-95 u/s undock drift vs powered ~18-28 u/s ramp; speed and
+      acceleration legs passed, ship reached ~200 u/s)
+    note: >-
+      route-level input proof, unrelated to dirty-range uploads — the run dies
+      before either attribution variant executes. On the passing browser run the
+      released baseline displaced 0 (ship at rest); on all three electron runs the
+      baseline window caught a still-drifting ship (~24u at ~70-95 u/s while
+      |vel| read 0 at both ends — residual undock motion decaying inside the
+      window), so the powered-vs-released comparison is structurally unwinnable
+      regardless of powered response. That is a route timing/window assumption
+      upstream of the comparator, worth its own packet; not caused by the
+      dirty-range implementation.
+    rootCauseFound: >-
+      The route gates flight-input sampling on authored-flight-ready, which used
+      to take ~1400 ticks on this machine (the old contract required every
+      sector ship authored + zero fallbacks). The in-flight rewrite of
+      alphaLiveBaselineRoute.mjs replaced that with the engine's own
+      authoredVisualReadiness() verdict, which resolves at tick ~1 on Electron —
+      so the released baseline samples the ship while berth placement /
+      depenetration is still writing player.pos directly (vel stays 0 through
+      positional correction, matching the observed speed-0-at-both-ends drift).
+      Browser still saw ~24 sim-seconds of incidental settle time; Electron saw
+      ~0. The check's powered-vs-baseline comparison was therefore
+      structurally unpassable on Electron independent of machine load.
+    routeFixApplied: >-
+      The flight-input phase now waits for the hull to actually settle — speed
+      <= 0.5 AND position stable within 0.25u across >= 0.75 sim-seconds —
+      and then verifies the sampled baseline still sits at that settled anchor
+      (bounded re-anchor loop), so a positional correction that begins between
+      the gate and the read cannot land inside the measured window unobserved
+      (alphaLiveBaselineRoute.mjs, hunk rides uncommitted atop the foreign
+      readiness rewrite; stale PQ-033.02 checkpoint on the file made it
+      adoptable). This tightens the measurement: the powered-vs-released
+      contract itself is unchanged.
+    independentVerdict: >-
+      A read-only subagent trace confirmed the root cause: the drift is a
+      solver positional-correction transient — the SG-02 structural-contact
+      path restores linear velocity but never translation, so entity.pos moves
+      while entity.vel reads ~0, and flight is inactive during 'loading' while
+      physics still ticks. It ruled out an Electron flight-rules difference
+      (same rapier-dynamic/v3 backends on both runtimes) and a flight-physics
+      regression (no per-tick mover targets the player at spawn; flightV3 and
+      core/flight diffs are empty). Recommended fix — a sim-time-anchored,
+      settle-confirmed baseline — is what routeFixApplied implements.
+    earlierAttempt: broker-claim-stale-digest (foreign worktree write raced claim->probe)
+  - run: performance-dirty-ranges-electron-2026-09-15T15-01-37-348Z-28004-c06a81d4
+    failedAt: launch
+    note: >-
+      New failure mode, upstream of the settle fix: the 150s authored-flight-ready
+      wait timed out on Electron this run (earlier launches resolved it at tick ~1).
+      The in-flight readiness contract's resolve time varies with asset/machine
+      state; this run caught a slow path. Never reached flight-input or attribution.
+numericAcceptance: captured-but-demoted
+pairedRuntimeSourceBinding: not_established
+```
+
+The exact blocker is the shared-worktree environment, not the mechanism: both
+captured runs agree on direction and scale — owner-requested upload bytes drop
+86–96% and driver upload bytes drop 38–46% versus the causal full-span control at
+unchanged frame p95 across four comparator passes — but the acceptance contract
+requires a clean, stable candidate for the whole capture plus a zero-warning
+page, and concurrent foreign render work (renderer admission-path churn,
+bloomScene GPU-compile bricks) plus a contended host kept tripping
+worktree-stability, census, and page-warning gates. The cleanest run so far
+(14:58) produced a zero-warning page and `primaryAcceptance: true`, demoted
+solely by mid-capture worktree churn. The Electron side launched three times
+and failed identically at the route's flight-input causal check — root-caused
+to a settle-timing defect surfaced by the in-flight readiness-contract rewrite
+(see `rootCauseFound` in the YAML) and fixed with a settle gate ahead of the
+released baseline in `alphaLiveBaselineRoute.mjs`; a fourth Electron launch
+then timed out inside the authored-readiness wait itself (150s), an upstream
+flaky symptom of the same in-flight contract rather than the flight-input
+phase. The Electron attribution stage has not yet exercised. Both manifests
+sit at `regression-required-after-acceptance-failure` until the regression set
+changes again.
+
+Evidence retained under `.devshots/perf/dirty-ranges/{browser,electron}/`:
+`performance-attribution.json` / `performance-closure-failure.json`,
+`dirty-range-comparison.json`, `run.log`, and route screenshots per run.
+Next attempt needs the same two manifests on a quiet, non-churning tree; the
+recorded comparator deltas are the expected outcome to confirm, not a pass.
+
+### Isolated-candidate path (16:10Z)
+
+Four demotions traced to one structural cause: the shared worktree cannot stay
+stable while other agents write, and each probe-reaching failure re-locks the
+manifest behind a regression-set change. The certification path was therefore
+moved to `.worktrees/pq040-acceptance` — a detached worktree at `07f724ffb`
+with a junctioned `node_modules` and its own `.devshots` broker state. A
+dedicated checkout *is* a stable candidate by construction: no foreign writer
+knows it, `strictWorktreeFingerprint` reads clean start=end, the in-flight
+readiness/admission rewrite is absent at this HEAD (the post-submit-validation
+warning cannot fire), and the fresh broker state carries no regression lock.
+Remaining demoters are the machine process census (shared-host Chrome churn)
+and any pre-existing page warnings. The certified candidate is the clean HEAD
+snapshot, which is the honest interpretation of a stable acceptance candidate
+on a moving shared tree.
+
+Also corrected here: the earlier energy-card culling pin (adc7ab7a7) asserted
+a contract that lives in a still-uncommitted `presenter.js` diff — it failed
+on any clean checkout and was reverted (07f724ffb). The coverage now rides the
+shared working tree until the presenter change lands.
 
 ## Implemented architecture
 

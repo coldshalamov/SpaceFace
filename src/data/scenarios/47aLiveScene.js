@@ -4,14 +4,19 @@ import { CombatDoctrineId } from '../../ai/combatDoctrine.js';
 export const SCENARIO_47A_ID = 'scenario.47a.mass-discrepancy';
 export const SCENARIO_47A_CONTRACT_PATH = 'src/data/scenarios/47a.scenario.json';
 
-// PQ-193.04 — same-slot packaged bodies already on disk. Do not invent a parallel prop.
+// PQ-193.04 — packaged bodies for the 47-A story props. Each is the authored upgrade of that prop's
+// code-built stand-in (tools/blender/build_pq193_04_47a_bodies.py), or an already-reviewed body.
 export const SCENARIO_47A_PACKAGED_PROPS = Object.freeze({
   'asset.slice.47a_spindle': Object.freeze({
-    file: 'pods/pod_cargo_container.glb',
+    // The ordinary tow can's ISO body under custody — seal straps, evidence chevrons, a bolted
+    // cover, a ledger case with a status lamp, a padlocked door — so the can the mission is about
+    // no longer looks like any other freight (GENERIC_TOW_PACKAGED_PROP below).
+    file: 'pods/pod_47a_evidence_spindle.glb',
     slot: 'pod',
   }),
   'asset.slice.civilian_pod': Object.freeze({
-    file: 'places/place_habitat_pod.glb',
+    // A civilian lifeboat with a distress band and beacon, replacing the crew-habitat pill.
+    file: 'places/place_47a_rescue_capsule.glb',
     slot: 'place',
   }),
   'asset.slice.kessler_handoff_beacon': Object.freeze({
@@ -28,7 +33,10 @@ export const SCENARIO_47A_PACKAGED_PROPS = Object.freeze({
     visualRadius: 22,
   }),
   'asset.slice.bourse_carrier_wreck': Object.freeze({
-    file: 'places/place_aftermath_wreck_liner_bow.glb',
+    // The remastered commercial carrier hulk (PQ-193.10): rooted rupture, semantic PBR, authored
+    // LODs, chase-reviewed. The liner bow it replaces was a 724-triangle flat-colour blockout that
+    // this 92 WU arena radius blew up about 8x into a grey cone, a brown band and a black drum.
+    file: 'places/place_dead_hulk.glb',
     slot: 'place',
   }),
 });

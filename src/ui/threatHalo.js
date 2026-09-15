@@ -62,6 +62,7 @@ export const TELEGRAPH_PAIR_MAX_TICKS = 60;
 export const CONTINUOUS_TELEGRAPH_KINDS = new Set(['wake_mines', 'attach_spool']);
 
 const TELEGRAPH_KIND_SET = new Set(LEFTOVER_TELEGRAPH_KINDS);
+const HARVEST_HEARTBEAT_S = 0.2;
 const COMPAT_ATTACK_KINDS = new Set(['attackRun', 'alphaStrike']);
 const SLOT_TELEGRAPH_CLASS = 'sf-threat-halo__slot--telegraph';
 
@@ -248,6 +249,16 @@ function setEdge(el, edge) {
   el.setAttribute('data-edge', edge);
 }
 
+// Cached data-* writer: identical values skip the DOM mutation entirely.
+function setAttr(el, name, value) {
+  const next = value == null ? null : String(value);
+  const cache = el._sfAttrs || (el._sfAttrs = {});
+  if (cache[name] === next) return;
+  cache[name] = next;
+  if (next === null) el.removeAttribute(name);
+  else el.setAttribute(name, next);
+}
+
 function createSlot(className, innerHtml) {
   const el = document.createElement('div');
   el.className = className;
@@ -300,6 +311,8 @@ export function createThreatHalo(root, busOrOpts) {
   let hostileCount = 0;
   const telegraphCues = [];
   let busUnsub = null;
+  let lastHarvestIndexVersion = null;
+  let lastHarvestAtS = -Infinity;
 
 
   const missileX = new Float64Array(MISSILE_LIMIT);
@@ -403,7 +416,10 @@ export function createThreatHalo(root, busOrOpts) {
 
   function harvestLeftoverTelegraphs(state, tick) {
     const index = state && state.entityIndex;
-    const buckets = index && index.__spacefaceEntityIndexV1
+    // Gate on ready: ensureEntityIndex sets the version flag with empty buckets before the first
+    // reconcile, and repairEntityIndex can reset ready mid-run — scanning those empty buckets
+    // would drop live hazards entityList still holds.
+    const buckets = index && index.__spacefaceEntityIndexV1 && index.ready === true
       ? [index.mines, index.vectorMines, index.snares, index.shipLike, index.projectiles]
       : [state && state.entityList];
     for (let b = 0; b < buckets.length; b++) {
@@ -643,8 +659,8 @@ export function createThreatHalo(root, busOrOpts) {
 
   function clearSlotTelegraph(slot) {
     if (!slot) return;
-    slot.removeAttribute('data-telegraph-kind');
-    slot.removeAttribute('data-entity-id');
+    setAttr(slot, 'data-telegraph-kind', null);
+    setAttr(slot, 'data-entity-id', null);
     if (slot.className && slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
       slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
     }
@@ -873,31 +889,26 @@ export function createThreatHalo(root, busOrOpts) {
       setDisplay(slot, true, 'block');
       setEdge(slot, placement.edge);
       setHudTransform(slot, placement.x, placement.y);
-      slot.setAttribute('data-role', hostileRole[i] || 'unknown');
-      slot.setAttribute('data-silhouette-token', hostileToken[i] || 'token_silhouette_standard');
-      if (hostileId[i] != null) slot.setAttribute('data-entity-id', String(hostileId[i]));
-      else slot.removeAttribute('data-entity-id');
+      setAttr(slot, 'data-role', hostileRole[i] || 'unknown');
+      setAttr(slot, 'data-silhouette-token', hostileToken[i] || 'token_silhouette_standard');
+      setAttr(slot, 'data-entity-id', hostileId[i] != null ? hostileId[i] : null);
       const cue = cueForIds(hostileId[i], null);
       setOpacity(slot, cue ? '1' : hostileOpacity[i].toFixed(2));
       if (cue) {
-        slot.setAttribute('data-telegraph-kind', cue.kind);
+        setAttr(slot, 'data-telegraph-kind', cue.kind);
         if (slot.className.indexOf(SLOT_TELEGRAPH_CLASS) === -1) {
           slot.className = `${slot.className} ${SLOT_TELEGRAPH_CLASS}`;
         }
         const channel = forceChannelForTelegraphKind(cue.kind);
         setForceHue(slot, slot._sfArc, channel, channel ? getForcePaletteHex(channel) : null);
       } else {
-        slot.removeAttribute('data-telegraph-kind');
+        setAttr(slot, 'data-telegraph-kind', null);
         if (slot.className.indexOf(SLOT_TELEGRAPH_CLASS) !== -1) {
           slot.className = slot.className.replace(` ${SLOT_TELEGRAPH_CLASS}`, '').replace(SLOT_TELEGRAPH_CLASS, '');
         }
         setForceHue(slot, slot._sfArc, null, null);
       }
-      if (hostileFaction[i]) {
-        slot.setAttribute('data-faction', hostileFaction[i]);
-      } else {
-        slot.removeAttribute('data-faction');
-      }
+      setAttr(slot, 'data-faction', hostileFaction[i] || null);
       shown++;
     }
 
@@ -926,7 +937,20 @@ export function createThreatHalo(root, busOrOpts) {
       }
       const tick = Number.isInteger(state.tick) ? state.tick : 0;
       expireTelegraphCues(tick);
-      harvestLeftoverTelegraphs(state, tick);
+      // Hazard harvest is a fallback for silently-stamped telegraph data, so it only needs to
+      // run when entity membership changed or on a slow heartbeat (in-place _attackTelegraph
+      // stamps do not bump the index version). Skipping it between those moments removes a
+      // five-bucket entity scan from the steady overlay cadence.
+      const index = state.entityIndex;
+      const version = index && index.__spacefaceEntityIndexV1 ? index.version : null;
+      const simT = Number.isFinite(state.simTime) ? state.simTime : tick / 60;
+      if (version !== lastHarvestIndexVersion
+        || simT - lastHarvestAtS >= HARVEST_HEARTBEAT_S
+        || simT < lastHarvestAtS) {
+        harvestLeftoverTelegraphs(state, tick);
+        lastHarvestIndexVersion = version;
+        lastHarvestAtS = simT;
+      }
       expireTelegraphCues(tick);
       const width = (typeof window !== 'undefined' && Number.isFinite(window.innerWidth))
         ? window.innerWidth

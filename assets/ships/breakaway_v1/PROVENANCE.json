@@ -1,0 +1,46 @@
+{
+  "schema": "spaceface.asset-provenance.v1",
+  "program": "BREAKAWAY — The Third Shift",
+  "folder": "assets/ships/breakaway_v1",
+  "status": "blockout",
+  "runtimeWiring": "none — not referenced by src/ or styles/, not in parts_manifest.json, not in the release build",
+  "origin": {
+    "packet": "SpaceFace_BREAKAWAY_Implementation_Packet.zip (owner-supplied, 2026-09-15)",
+    "packetBaselineCommit": "3bd28815e924a85cf3b952284b7fa6934ef4c487",
+    "author": "External assistant-authored packet; original geometry built from primitive shapes by the included script",
+    "borrowedContent": "none declared by the packet: no third-party meshes, textures, fonts or captured game art",
+    "license": "Owner project asset (authored for SpaceFace on request)"
+  },
+  "files": [
+    {
+      "path": "source_candidates/sp07-spindle.glb",
+      "sha256": "49e2d5b91ae439a4dbe313cf3d68f9c9dc0622214a2319b3a5c5b305e50dc9f4",
+      "role": "SP-07 flywheel assembly — the moving industrial load",
+      "state": "blockout",
+      "notes": "3780 triangles, 6 flat PBR factor materials, no UVs or textures, no bevels. +X long axis, +Y up, WU scale. Sockets socket_tow_front/aft, socket_service."
+    },
+    {
+      "path": "source_candidates/capture-fork.glb",
+      "sha256": "c5e0ded99119502202a051a612194e0f13fb4c71e87a8fc4b50545df2fea40b1",
+      "role": "Capture fork receiver — two rails, rear arrestor, energy sinks",
+      "state": "blockout",
+      "notes": "552 triangles, box primitives, flat PBR factors. Origin = mouth plane, inward +X, inner half-width 27 WU, usable depth 72 WU — matches BREAKAWAY_CAPTURE_FORK in src/data/heistFacilities.js."
+    },
+    {
+      "path": "source_candidates/manifest.json",
+      "role": "Packet-generated geometry/socket/hash manifest for the two GLBs"
+    },
+    {
+      "path": "source_candidates/build_breakaway_candidates.py",
+      "role": "Editable authoring source (Python + numpy + trimesh) that regenerates both GLBs",
+      "notes": "Copied from the packet's tools/build-assets.py. Its OUT path assumes the packet layout; adjust before re-running here."
+    }
+  ],
+  "gates": {
+    "G0_identity_brief": "open — fiction/role recorded in DESIGN.md; no approved brief yet",
+    "material_truth_preflight": "not started (required before any form or surfacing change)",
+    "G1_G2_G4_visual": "open — no hash-bound review at the shipping camera",
+    "G7_independent_review": "open",
+    "runtimePresentation": "open — in game the SP-07 renders with the released pod_cargo_container visual and the capture fork has no visual"
+  }
+}

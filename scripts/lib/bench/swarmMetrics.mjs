@@ -219,6 +219,7 @@ export function measureSwarmRun(run = {}) {
     censored: censoredAtCap,
     firstHostile,
     firstKill,
+    hostileInFrame: readHostileInFrame(run.hostileInFrame),
     verbs: {
       used: verbSet,
       diversity: verbSet.length,
@@ -295,6 +296,36 @@ export function isHostileKill(event) {
   if (d.archetype === 'player') return false;
   if (d.faction === 'player' && d.role === 'player') return false;
   return true;
+}
+
+// B3b (Gap Report C1): per-tick attacker visibility measured live inside the Crucible loop and
+// handed in on the run record. Historical traces never sampled it — unmeasured stays null with
+// a reason, exactly like firstHostile/death telemetry.
+function readHostileInFrame(raw) {
+  if (!raw || typeof raw !== 'object' || !Number.isFinite(raw.fraction)) {
+    return {
+      available: false,
+      fraction: null,
+      met: null,
+      attackingTicks: Number.isSafeInteger(raw && raw.attackingTicks) ? raw.attackingTicks : 0,
+      inFrameTicks: Number.isSafeInteger(raw && raw.inFrameTicks) ? raw.inFrameTicks : 0,
+      reason: (raw && typeof raw.reason === 'string' && raw.reason)
+        || 'hostile-in-frame was not sampled on this trace',
+    };
+  }
+  return {
+    available: true,
+    fraction: raw.fraction,
+    met: raw.met === true,
+    attackingTicks: raw.attackingTicks,
+    inFrameTicks: raw.inFrameTicks,
+    reason: null,
+  };
+}
+
+function formatInFrameBar(h) {
+  if (!h || h.available !== true) return `n/a(${shortReason(h && h.reason, 'not sampled')})`;
+  return `${Math.round(h.fraction * 100)}%[${h.inFrameTicks}/${h.attackingTicks}t]${h.met ? ' MET' : ' RED'}`;
 }
 
 function normalizeEvent(raw) {
@@ -1169,6 +1200,7 @@ export function formatSwarmBars(swarm) {
     `[swarm-bars] loadout=${loadout} build=${build} seed=${swarm.seed ?? '?'} `
     + `firstHostile=${fmtObs(swarm.firstHostile)} firstKill=${fmtObs(swarm.firstKill)} `
     + `verbs=${formatVerbBar(swarm.verbs)} `
+    + `inFrame=${formatInFrameBar(swarm.hostileInFrame)} `
     + `moments=${formatMomentBar(swarm)} `
     + `quietAfterW1=${formatQuietBar(swarm.quietSecondsAfterWave1)} `
     + `deaths=${pd.length}(${formatCauseBits(pd)}) `

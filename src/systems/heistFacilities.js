@@ -6,13 +6,28 @@
 //   WANTED heat, missions, patrols, or saves.
 
 import { Masks } from '../core/entity.js';
+import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import {
   PQ019_CAPSULE,
   PQ019_FACILITIES,
   PQ019_HEIST_SECTOR_ID,
+  HEIST_CAPSULE_RUN_VARIANT_ID,
+  heistLaunchVariant,
+  isHeistPayloadStableId,
+  isKnownHeistLaunchVariantId,
+  projectBreakawayForkMouth,
   projectPq019FacilitySocket,
 } from '../data/heistFacilities.js';
+import {
+  captureCandidate,
+  createCaptureOutput,
+  createCaptureState,
+  defineReceiver,
+  restoreCaptureState,
+  stepCapture,
+  validateCaptureProof,
+} from '../physicalCargo/breakaway/captureKernel.js';
 import {
   dropDressingRow,
   forEachDressingRow,
@@ -81,9 +96,26 @@ export function launchCueTextForTMinus(tMinus) {
 }
 
 /** Player-facing line for the moment the capsule is physically away. */
-export function launchCueAwayText() {
+export function launchCueAwayText(variantId = HEIST_CAPSULE_RUN_VARIANT_ID) {
+  const variant = heistLaunchVariant(variantId);
+  if (variant.custody === 'capture_fork') {
+    return `${variant.payload.name} broke away off the ${PQ019_FACILITIES.lawful_catcher.name} line`;
+  }
   return `Cargo capsule away — outbound to ${PQ019_FACILITIES.lawful_catcher.name}`;
 }
+
+// ── BREAKAWAY capture fork ───────────────────────────────────────────────────────────────────────
+//
+// A launch variant whose custody is `capture_fork` never takes custody from a touch. Its receiver is
+// sampled once per fixed tick AFTER physics (registry: physics 177 < heistFacilities 222), the pure
+// kernel decides the mechanical phase, and the only thing this owner does to the body is queue a
+// bounded dissipative impulse through the physics authority for the NEXT step. Refusals the player
+// can act on (too fast, too sideways, off-centre) are published only when the load actually crosses
+// the mouth plane, so the event stream is bounded by real attempts rather than per-frame.
+const CAPTURE_REFUSAL_REASONS = new Set(['too_fast', 'too_sideways', 'outside_mouth', 'wrong_direction']);
+// A refused crossing is narrated only within this many rail half-widths of the fork's centre line.
+const CAPTURE_REFUSAL_LATERAL_REACH = 2;
+const CAPTURE_SETTLED_KIND = 'capture_settled';
 
 function makeState() {
   return {
@@ -123,12 +155,14 @@ function stableNumber(value) {
   return Number(finite(value).toFixed(6));
 }
 
-function scheduleReceipt(scheduleId, launchAtSimT) {
+function scheduleReceipt(scheduleId, launchAtSimT, variantId = null) {
   return Object.freeze({
     accepted: true,
     receiptId: `pq019a:schedule:${scheduleId}:${stableNumber(launchAtSimT).toFixed(6)}`,
     scheduleId,
     launchAtSimT: stableNumber(launchAtSimT),
+    // Conditional, so the historical Capsule Run receipt keeps its exact shape.
+    ...(variantId ? { variantId } : {}),
     source: 'heistFacilities',
   });
 }
@@ -176,6 +210,7 @@ export const heistFacilities = {
     this.bus.on('heist:requestLaunchSchedule', (request = {}) => {
       this.requestLaunchSchedule(request);
     });
+    this.bus.on('save:loaded', () => this._resetForRestore());
 
     if (this.state.world?.currentSectorId === PQ019_HEIST_SECTOR_ID) {
       this.materializeForSector(PQ019_HEIST_SECTOR_ID);
@@ -192,7 +227,15 @@ export const heistFacilities = {
   update(dt, state) {
     const owned = state.heistFacilities;
     const schedule = owned?.schedule;
-    if (!schedule || schedule.status !== 'scheduled') return;
+    if (!schedule) return;
+    if (schedule.status === 'launched') {
+      if (state.world?.currentSectorId !== PQ019_HEIST_SECTOR_ID) return;
+      if (heistLaunchVariant(schedule.variantId).custody === 'capture_fork') {
+        this._stepCaptureFork(schedule, state);
+      }
+      return;
+    }
+    if (schedule.status !== 'scheduled') return;
     if (state.world?.currentSectorId !== PQ019_HEIST_SECTOR_ID) return;
     // Announce before launching: a countdown that speaks only after the capsule is away is not a cue.
     this._publishLaunchCue(schedule, state, dt);
@@ -284,7 +327,13 @@ export const heistFacilities = {
   requestLaunchSchedule(request = {}) {
     const scheduleId = cleanScheduleId(request.scheduleId);
     const launchAtSimT = Number(request.launchAtSimT);
-    if (!scheduleId || !Number.isFinite(launchAtSimT) || launchAtSimT < 0) {
+    // A configured launch variant. Absent means the historical Capsule Run; an unknown id is refused
+    // rather than silently launching a different payload than the contract promised.
+    const requestedVariant = request.variantId == null ? null : cleanScheduleId(request.variantId);
+    const variantId = requestedVariant && requestedVariant !== HEIST_CAPSULE_RUN_VARIANT_ID
+      ? requestedVariant : null;
+    if (!scheduleId || !Number.isFinite(launchAtSimT) || launchAtSimT < 0
+      || (request.variantId != null && !isKnownHeistLaunchVariantId(requestedVariant))) {
       const denied = Object.freeze({
         accepted: false,
         reason: 'invalid_schedule',
@@ -309,7 +358,7 @@ export const heistFacilities = {
       return denied;
     }
 
-    const receipt = scheduleReceipt(scheduleId, launchAtSimT);
+    const receipt = scheduleReceipt(scheduleId, launchAtSimT, variantId);
     owned.schedule = {
       scheduleId,
       launchAtSimT: receipt.launchAtSimT,
@@ -317,6 +366,7 @@ export const heistFacilities = {
       receipt,
       capsuleEntityId: null,
       launchedAtTick: null,
+      ...(variantId ? { variantId } : {}),
     };
     this.bus.emit('heist:launchScheduleReceipt', receipt);
     return receipt;
@@ -434,6 +484,7 @@ export const heistFacilities = {
     if (activeCapsule) this.helpers.removeEntity(activeCapsule.id);
     owned.capsuleEntityId = null;
     if (owned.schedule) owned.schedule.capsuleEntityId = null;
+    this._clearCaptureFork(owned);
 
     for (const facility of Object.values(PQ019_FACILITIES)) {
       const record = this._facilityRecord(facility.id);
@@ -465,53 +516,70 @@ export const heistFacilities = {
     const dz = catcher.pos.z - launcher.pos.z;
     const length = Math.hypot(dx, dz);
     if (!(length > 0) || !Number.isFinite(length)) return null;
-    const nx = dx / length;
-    const nz = dz / length;
-    const clearance = launcher.radius + PQ019_CAPSULE.radius + 2;
+    const variant = heistLaunchVariant(schedule.variantId);
+    const payload = variant.payload;
+    let nx = dx / length;
+    let nz = dz / length;
+    // A breakaway variant leaves the launcher OFF the catcher line. The historical capsule keeps its
+    // exact unit vector (no atan2 round-trip), so its arc is bit-identical to before variants existed.
+    const headingOffset = Number(payload.launchHeadingOffsetRad) || 0;
+    if (headingOffset !== 0) {
+      const heading = Math.atan2(nz, nx) + headingOffset;
+      nx = Math.cos(heading);
+      nz = Math.sin(heading);
+    }
+    const clearance = launcher.radius + payload.radius + 2;
     const capsule = this.helpers.spawnEntity({
       type: 'payload',
-      factionId: PQ019_CAPSULE.legalOwnerFactionId,
-      ownerId: PQ019_CAPSULE.ownerId,
+      factionId: payload.legalOwnerFactionId,
+      ownerId: payload.ownerId,
       team: 2,
       pos: {
         x: launcher.pos.x + nx * clearance,
         z: launcher.pos.z + nz * clearance,
       },
       vel: {
-        x: nx * PQ019_CAPSULE.launchSpeed,
-        z: nz * PQ019_CAPSULE.launchSpeed,
+        x: nx * payload.launchSpeed,
+        z: nz * payload.launchSpeed,
       },
       rot: Math.atan2(nz, nx),
-      radius: PQ019_CAPSULE.radius,
-      mass: PQ019_CAPSULE.mass,
-      hull: PQ019_CAPSULE.hull,
-      hullMax: PQ019_CAPSULE.hull,
+      radius: payload.radius,
+      mass: payload.mass,
+      hull: payload.hull,
+      hullMax: payload.hull,
       collides: true,
       ttl: Infinity,
-      flags: { missionPinned: true },
+      // A durable load is a physical obligation the save owner carries across a reload; the
+      // historical capsule stays transient.
+      flags: variant.durableLoad ? { missionPinned: true, persistent: true } : { missionPinned: true },
       homeSectorId: PQ019_HEIST_SECTOR_ID,
       physicsBody: {
         dynamic: true,
-        radius: PQ019_CAPSULE.radius,
-        mass: PQ019_CAPSULE.mass,
-        inertiaY: 0.5 * PQ019_CAPSULE.mass * PQ019_CAPSULE.radius * PQ019_CAPSULE.radius,
+        radius: payload.radius,
+        mass: payload.mass,
+        inertiaY: 0.5 * payload.mass * payload.radius * payload.radius,
         ccd: true,
         material: 'payload',
       },
       data: {
         heistFacilityRole: 'cargo_capsule',
-        heistPayloadStableId: PQ019_CAPSULE.stableId,
-        authoredPayloadAssetId: PQ019_CAPSULE.authoredPayloadAssetId,
-        legalOwnerFactionId: PQ019_CAPSULE.legalOwnerFactionId,
-        ownerId: PQ019_CAPSULE.ownerId,
+        heistPayloadStableId: payload.stableId,
+        authoredPayloadAssetId: payload.authoredPayloadAssetId,
+        legalOwnerFactionId: payload.legalOwnerFactionId,
+        ownerId: payload.ownerId,
         launchScheduleId: schedule.scheduleId,
         missionPinned: true,
         runtimeOwner: 'heistFacilities',
         sectorId: PQ019_HEIST_SECTOR_ID,
         homeSectorId: PQ019_HEIST_SECTOR_ID,
         transientSector: true,
+        ...(variant.id !== HEIST_CAPSULE_RUN_VARIANT_ID ? { heistVariantId: variant.id } : {}),
       },
     });
+    // Release spin is written by the owner that created the body, before its first physics step —
+    // an initial condition of a new body, not a write to one already in flight.
+    const spin = Number(payload.launchSpinRadS) || 0;
+    if (spin !== 0) capsule.angVel = spin;
 
     owned.capsuleEntityId = capsule.id;
     schedule.capsuleEntityId = capsule.id;
@@ -520,8 +588,9 @@ export const heistFacilities = {
     this.bus.emit('heist:capsuleLaunched', Object.freeze({
       scheduleId: schedule.scheduleId,
       capsuleEntityId: capsule.id,
-      payloadStableId: PQ019_CAPSULE.stableId,
+      payloadStableId: payload.stableId,
       launchedAtTick: schedule.launchedAtTick,
+      ...(schedule.variantId ? { variantId: schedule.variantId } : {}),
       source: 'heistFacilities',
     }));
     // Closes the countdown on the same stable voice id, so the last thing the player heard about
@@ -531,7 +600,7 @@ export const heistFacilities = {
       scheduleId: schedule.scheduleId,
       moment: 'away',
       tMinusS: 0,
-      text: launchCueAwayText(),
+      text: launchCueAwayText(schedule.variantId),
     });
     return capsule;
   },
@@ -590,6 +659,9 @@ export const heistFacilities = {
       ? a
       : (b.id === activeCapsule.id ? b : null);
     if (!capsule) return;
+    // A capture-fork variant never takes custody from a touch: bumping the catcher head (which is
+    // the fork's rear stop) or the fence is a collision, not a delivery.
+    if (heistLaunchVariant(schedule.variantId).custody !== 'contact') return;
     const head = capsule === a ? b : a;
     const facilityId = head.data?.heistFacilityId;
     if (!facilityId || head.data?.heistFacilityRole !== `${facilityId}_head`) return;
@@ -626,13 +698,21 @@ export const heistFacilities = {
         z: stableNumber(impact.pos?.z),
       }),
     });
-    owned.candidateIds[receiptId] = true;
+    this._pushCandidateReceipt(receipt);
+  },
+
+  /** Journal one custody receipt (bounded) and publish it. The only emitter of facility candidates. */
+  _pushCandidateReceipt(receipt) {
+    const owned = this.state.heistFacilities;
+    if (owned.candidateIds[receipt.receiptId]) return false;
+    owned.candidateIds[receipt.receiptId] = true;
     owned.candidateReceipts.push(receipt);
     while (owned.candidateReceipts.length > MAX_CANDIDATE_RECEIPTS) {
       const removed = owned.candidateReceipts.shift();
       if (removed) delete owned.candidateIds[removed.receiptId];
     }
     this.bus.emit('heist:facilityCandidate', receipt);
+    return true;
   },
 
   _activeScheduleCapsule(schedule) {
@@ -642,6 +722,9 @@ export const heistFacilities = {
     const capsule = entityIsAlive(this.state, capsuleId);
     if (!this._isOwnedCapsule(capsule)) return null;
     if (capsule.data.launchScheduleId !== schedule.scheduleId) return null;
+    if (capsule.data.heistPayloadStableId !== heistLaunchVariant(schedule.variantId).payload.stableId) {
+      return null;
+    }
     return capsule;
   },
 
@@ -649,8 +732,257 @@ export const heistFacilities = {
     return !!entity
       && entity.type === 'payload'
       && entity.data?.heistFacilityRole === 'cargo_capsule'
-      && entity.data?.heistPayloadStableId === PQ019_CAPSULE.stableId
+      && isHeistPayloadStableId(entity.data?.heistPayloadStableId)
       && entity.data?.runtimeOwner === 'heistFacilities';
+  },
+
+  // ── BREAKAWAY capture fork ─────────────────────────────────────────────────────────────────────
+
+  /** World-space receiver for a fork variant. Authored geometry is immutable, so it is built once. */
+  _forkReceiver(variant) {
+    const fork = variant.fork;
+    if (this._forkReceiverCache && this._forkReceiverCache.id === fork.id) return this._forkReceiverCache;
+    const mouth = projectBreakawayForkMouth(fork);
+    const world = this._global({ x: mouth.x, z: mouth.z });
+    this._forkReceiverCache = defineReceiver({
+      ...fork, id: fork.id, x: world.x, z: world.z, nx: mouth.nx, nz: mouth.nz,
+    });
+    return this._forkReceiverCache;
+  },
+
+  /** Post-physics sample of the live load into one reused scratch object. */
+  _forkSample(load, state) {
+    const s = this._forkSampleScratch || (this._forkSampleScratch = {
+      payloadId: '', x: 0, z: 0, prevX: 0, prevZ: 0, vx: 0, vz: 0, omegaY: 0,
+      radius: 1, mass: 1, inertiaY: 1, tick: 0, alive: true,
+    });
+    const body = load.physicsBody || {};
+    const mass = body.mass > 0 ? body.mass : load.mass;
+    const radius = load.radius;
+    const tick = state.tick | 0;
+    const prev = state.heistFacilities.capturePrev;
+    const contiguous = !!prev && prev.entityId === load.id && prev.tick === tick - 1;
+    s.payloadId = load.data.heistPayloadStableId;
+    s.x = load.pos.x;
+    s.z = load.pos.z;
+    s.prevX = contiguous ? prev.x : s.x;
+    s.prevZ = contiguous ? prev.z : s.z;
+    s.vx = load.vel.x;
+    s.vz = load.vel.z;
+    // The SG-02 owner's physical Y angular velocity — never a display bank or a heading rate.
+    s.omegaY = Number.isFinite(load.angVel) ? load.angVel : 0;
+    s.radius = radius;
+    s.mass = mass;
+    s.inertiaY = body.inertiaY > 0 ? body.inertiaY : 0.5 * mass * radius * radius;
+    s.tick = tick;
+    s.alive = load.alive !== false;
+    return s;
+  },
+
+  /** One mechanical tick of the fork for the active load. Queues impulses; never moves the body. */
+  _stepCaptureFork(schedule, state) {
+    const owned = state.heistFacilities;
+    const load = this._activeScheduleCapsule(schedule);
+    if (!load) {
+      owned.capturePrev = null;
+      return null;
+    }
+    const variant = heistLaunchVariant(schedule.variantId);
+    const receiver = this._forkReceiver(variant);
+    let capture = owned.capture;
+    if (!capture || capture.payloadId !== variant.payload.stableId || capture.receiverId !== receiver.id) {
+      capture = owned.capture = createCaptureState(variant.payload.stableId, receiver.id);
+    }
+    // The mechanical state rides on the load's own data, so the save owner persists it with the body.
+    if (variant.durableLoad && load.data.breakawayCapture !== capture) load.data.breakawayCapture = capture;
+    const tick = state.tick | 0;
+    // At most one mechanical sample per fixed tick: dwell must never double-count.
+    if (tick <= capture.lastTick) return null;
+    const sample = this._forkSample(load, state);
+    const out = this._forkOut || (this._forkOut = createCaptureOutput());
+    const before = capture.phase;
+    stepCapture(capture, sample, receiver, { authorized: true, open: true }, out);
+    const prev = owned.capturePrev || (owned.capturePrev = { entityId: null, x: 0, z: 0, tick: -1 });
+    prev.entityId = load.id;
+    prev.x = sample.x;
+    prev.z = sample.z;
+    prev.tick = tick;
+
+    if (out.impulse.x !== 0 || out.impulse.z !== 0 || out.torqueY !== 0) {
+      const evidence = this._forkEvidence || (this._forkEvidence = {
+        provenance: 'breakaway:captureFork', tick: 0, kind: 'receiver_brake',
+      });
+      evidence.tick = tick;
+      if (out.impulse.x !== 0 || out.impulse.z !== 0) {
+        queuePhysicsImpulse(load, { x: out.impulse.x, y: 0, z: out.impulse.z }, evidence);
+      }
+      if (out.torqueY !== 0) queuePhysicsTorqueImpulse(load, { x: 0, y: out.torqueY, z: 0 }, evidence);
+    }
+
+    // The mouth PLANE is infinite; the mouth is not. A load crossing that plane a kilometre wide of
+    // the rails (the breakaway launch arc does exactly that) made no attempt worth narrating.
+    const refused = before === 'outside' && out.phase === 'outside' && CAPTURE_REFUSAL_REASONS.has(out.reason)
+      && Math.abs(out.lateral) <= receiver.halfWidth * CAPTURE_REFUSAL_LATERAL_REACH;
+    if (out.event || refused) {
+      this.bus.emit('heist:captureFork', Object.freeze({
+        scheduleId: schedule.scheduleId,
+        payloadStableId: variant.payload.stableId,
+        facilityId: variant.fork.facilityId,
+        receiverId: receiver.id,
+        event: out.event || 'capture_refused',
+        phase: out.phase,
+        reason: out.reason,
+        speed: stableNumber(Math.hypot(sample.vx, sample.vz)),
+        tick,
+        source: 'heistFacilities',
+      }));
+    }
+
+    if (out.event === 'capture_ready') {
+      this._recordSettledCapture(schedule, load, variant, receiver, capture, sample);
+    }
+    return out;
+  },
+
+  /** Journal the settled-capture custody receipt for the current sample, if proof holds right now. */
+  _recordSettledCapture(schedule, load, variant, receiver, capture, sample) {
+    const candidate = captureCandidate(capture, sample, receiver, {
+      authorized: true, scheduleId: schedule.scheduleId,
+    });
+    if (!candidate.ok) return false;
+    return this._pushCandidateReceipt(Object.freeze({
+      receiptId: candidate.receipt.receiptId,
+      kind: CAPTURE_SETTLED_KIND,
+      source: candidate.receipt.source,
+      scheduleId: schedule.scheduleId,
+      payloadEntityId: load.id,
+      payloadStableId: variant.payload.stableId,
+      facilityId: variant.fork.facilityId,
+      receiverId: receiver.id,
+      entryTick: candidate.receipt.entryTick,
+      entryCount: candidate.receipt.entryCount,
+      tick: sample.tick,
+      pos: Object.freeze({ x: stableNumber(sample.x), z: stableNumber(sample.z) }),
+    }));
+  },
+
+  /**
+   * FRESH custody for a fork variant, evaluated now. Called at prepare AND at commit: a load that
+   * settled once and was then dragged, shot or knocked out of the bay has no custody left to pass.
+   */
+  _forkCustodyProof(schedule, load) {
+    const variant = heistLaunchVariant(schedule?.variantId);
+    if (variant.custody !== 'capture_fork') return { ok: true, reason: 'contact_custody' };
+    const capture = this.state.heistFacilities.capture;
+    if (!capture || !load) return { ok: false, reason: 'not_ready_or_stale' };
+    return validateCaptureProof(capture, this._forkSample(load, this.state), this._forkReceiver(variant), true);
+  },
+
+  _clearCaptureFork(owned) {
+    if (owned.capture !== undefined) delete owned.capture;
+    if (owned.capturePrev !== undefined) delete owned.capturePrev;
+  },
+
+  // ── Save boundary ─────────────────────────────────────────────────────────────────────────────
+
+  /**
+   * `save:loaded`. This owner's schedule, custody receipts, handoff and fork state are NOT in the
+   * save capture plan, so after a load they describe the session BEFORE it. Kept, a stale schedule
+   * would deny the restored contract's own launch request (`active_schedule`) and a stale handoff
+   * would refuse its prepare. The re-materialized facility records are current and stay. A durable
+   * load restored by the save owner waits, unowned, until its mission re-adopts it.
+   */
+  _resetForRestore() {
+    const owned = this.state?.heistFacilities;
+    if (!owned) return;
+    owned.schedule = null;
+    owned.capsuleEntityId = null;
+    owned.candidateReceipts = [];
+    owned.candidateIds = {};
+    if (owned.receiverHandoff !== undefined) delete owned.receiverHandoff;
+    this._clearCaptureFork(owned);
+  },
+
+  /**
+   * Re-adopt a DURABLE load that the save owner restored (its `flags.persistent` body) for the
+   * mission whose saved record names this schedule.
+   *
+   * Rebuilds the one launched schedule around the SAME body — no respawn, no new launch, no pose
+   * write — restores the fork's mechanical state from the body's own data, and re-steps the fork for
+   * the current tick so custody can be proven fresh immediately. A load that is still settled in the
+   * fork re-derives its custody receipt, because the receipt journal belonged to the old session.
+   */
+  adoptRestoredLoad(request = {}) {
+    const scheduleId = cleanScheduleId(request.scheduleId);
+    const variant = heistLaunchVariant(request.variantId);
+    const owned = this.state.heistFacilities;
+    if (!scheduleId || !variant.durableLoad) return { adopted: false, reason: 'not_durable' };
+    if (owned.schedule && owned.schedule.scheduleId !== scheduleId) {
+      return { adopted: false, reason: 'active_schedule', activeScheduleId: owned.schedule.scheduleId };
+    }
+    const load = this._findRestoredLoad(scheduleId, variant);
+    if (!load) return { adopted: false, reason: 'payload_absent' };
+    if (owned.schedule && owned.schedule.capsuleEntityId === load.id) {
+      return { adopted: true, entityId: load.id, resumed: true };
+    }
+
+    const receipt = scheduleReceipt(scheduleId, Number(this.state.simTime) || 0, variant.id);
+    owned.schedule = {
+      scheduleId,
+      launchAtSimT: receipt.launchAtSimT,
+      status: 'launched',
+      receipt,
+      capsuleEntityId: load.id,
+      launchedAtTick: this.state.tick | 0,
+      variantId: variant.id,
+    };
+    owned.capsuleEntityId = load.id;
+
+    if (variant.custody === 'capture_fork') {
+      const receiver = this._forkReceiver(variant);
+      let capture = null;
+      try {
+        capture = load.data.breakawayCapture ? restoreCaptureState(load.data.breakawayCapture) : null;
+      } catch {
+        capture = null; // a corrupt mechanical record restarts the approach; custody is never assumed
+      }
+      if (!capture || capture.payloadId !== variant.payload.stableId || capture.receiverId !== receiver.id) {
+        capture = createCaptureState(variant.payload.stableId, receiver.id);
+      }
+      owned.capture = capture;
+      load.data.breakawayCapture = capture;
+      owned.capturePrev = null;
+      if (this.state.world?.currentSectorId === PQ019_HEIST_SECTOR_ID) {
+        this._stepCaptureFork(owned.schedule, this.state);
+        if (owned.capture.phase === 'ready' && this._forkSampleScratch) {
+          this._recordSettledCapture(owned.schedule, load, variant, receiver, owned.capture, this._forkSampleScratch);
+        }
+      }
+    }
+    return { adopted: true, entityId: load.id };
+  },
+
+  /** Remove every owned load body stamped with `scheduleId`. Used only for a run that is over. */
+  _removeUnadoptedLoads(scheduleId) {
+    let removed = 0;
+    for (const entity of this.state.entityList || []) {
+      if (!entity || entity.alive === false || !this._isOwnedCapsule(entity)) continue;
+      if (entity.data.launchScheduleId !== scheduleId) continue;
+      this.helpers.removeEntity(entity.id);
+      removed++;
+    }
+    return removed;
+  },
+
+  /** The restored body for a schedule, matched by stable data — never by a recycled entity id. */
+  _findRestoredLoad(scheduleId, variant) {
+    for (const entity of this.state.entityList || []) {
+      if (!entity || entity.alive === false || !this._isOwnedCapsule(entity)) continue;
+      if (entity.data.launchScheduleId !== scheduleId) continue;
+      if (entity.data.heistPayloadStableId !== variant.payload.stableId) continue;
+      return entity;
+    }
+    return null;
   },
 
   // ── PQ-019B: receiver prepare / commit / abort ────────────────────────────────────────────────
@@ -682,7 +1014,7 @@ export const heistFacilities = {
     const facilityId = cleanScheduleId(request.facilityId);
     const payloadStableId = cleanScheduleId(request.payloadStableId);
     if (!receiptId || !RECEIVER_FACILITY_IDS.has(facilityId)
-      || payloadStableId !== PQ019_CAPSULE.stableId) {
+      || !isHeistPayloadStableId(payloadStableId)) {
       return receiverDenial('invalid_handoff', receiptId);
     }
 
@@ -699,13 +1031,23 @@ export const heistFacilities = {
     const schedule = owned.schedule;
     const capsule = this._activeScheduleCapsule(schedule);
     if (!capsule) return receiverDenial('payload_absent', receiptId);
+    const variant = heistLaunchVariant(schedule.variantId);
+    if (payloadStableId !== variant.payload.stableId) return receiverDenial('invalid_handoff', receiptId);
 
-    // Physical proof: this facility must already own a custody candidate for this capsule.
+    // Physical proof: this facility must already own a custody candidate for this capsule. A fork
+    // variant accepts only its own settled-capture receipt, never a touch.
+    const forkCustody = variant.custody === 'capture_fork';
     const contact = owned.candidateReceipts.find((row) => (
       row && row.facilityId === facilityId && row.payloadStableId === payloadStableId
       && row.scheduleId === schedule.scheduleId
+      && (!forkCustody || row.kind === CAPTURE_SETTLED_KIND)
     ));
     if (!contact) return receiverDenial('no_custody_contact', receiptId);
+    // ...and a fork's custody must still be physically true NOW, not merely have been true once.
+    if (forkCustody) {
+      const proof = this._forkCustodyProof(schedule, capsule);
+      if (!proof.ok) return receiverDenial(proof.reason, receiptId);
+    }
 
     const handoff = {
       receiptId,
@@ -751,6 +1093,22 @@ export const heistFacilities = {
       handoff.status = 'aborted';
       handoff.abortReason = 'payload_absent';
       return { committed: false, reason: 'payload_absent', handoff };
+    }
+    // Fresh custody is re-proven immediately before consumption: listeners of `receiverPrepared`
+    // run synchronously and may have moved the load since prepare checked it.
+    const proof = this._forkCustodyProof(owned.schedule, capsule);
+    if (!proof.ok) {
+      handoff.status = 'aborted';
+      handoff.abortReason = proof.reason;
+      return { committed: false, reason: proof.reason, handoff };
+    }
+    // A fork delivery records the load's condition at the instant custody passes, before the body
+    // is consumed — the mission's quality quote reads this, never a later guess.
+    if (heistLaunchVariant(owned.schedule?.variantId).custody === 'capture_fork') {
+      const hullMax = Number(capsule.hullMax);
+      handoff.condition01 = hullMax > 0
+        ? Math.max(0, Math.min(1, Number(capsule.hull) / hullMax))
+        : 1;
     }
 
     handoff.status = 'committed';
@@ -822,15 +1180,28 @@ export const heistFacilities = {
     const id = cleanScheduleId(scheduleId);
     const owned = this.state.heistFacilities;
     const schedule = owned?.schedule;
-    if (!schedule) return { released: false, reason: 'no_schedule' };
+    // A durable load the save owner restored but no mission re-adopted (its run settled from a
+    // refused or already-decided record) hangs off no schedule. Left alone it would be an orphan body
+    // that every later save respawns — a duplicate of cargo whose contract is over.
+    if (!schedule) {
+      const orphans = id ? this._removeUnadoptedLoads(id) : 0;
+      return { released: false, reason: 'no_schedule', ...(orphans ? { removedOrphanLoads: orphans } : {}) };
+    }
     if (id && schedule.scheduleId !== id) {
-      return { released: false, reason: 'schedule_mismatch', activeScheduleId: schedule.scheduleId };
+      const orphans = this._removeUnadoptedLoads(id);
+      return {
+        released: false,
+        reason: 'schedule_mismatch',
+        activeScheduleId: schedule.scheduleId,
+        ...(orphans ? { removedOrphanLoads: orphans } : {}),
+      };
     }
     const capsule = this._activeScheduleCapsule(schedule);
     if (capsule) this.helpers.removeEntity(capsule.id);
     owned.capsuleEntityId = null;
     owned.schedule = null;
     owned.receiverHandoff = null;
+    this._clearCaptureFork(owned);
     this.bus.emit('heist:launchScheduleReleased', Object.freeze({
       scheduleId: schedule.scheduleId,
       removedCapsuleEntityId: capsule ? capsule.id : null,

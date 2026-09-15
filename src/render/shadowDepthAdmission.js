@@ -8,6 +8,19 @@ import { revealSubjectForCompile } from './compilePresentSlice.js';
 // one program for the renderer's lifetime — and it can never carry a caster's surface state.
 let shadowDepthColorOverride = null;
 
+// Scratch color target for staged depth admission: the real renderer.render needs somewhere
+// valid to present the trivial staging scene; 8x8 keeps the color pass near-free while the
+// shadow pass writes its own light.shadow.map. Lazily created once per context lifetime so
+// repeated admission passes do not churn render-target/texture objects.
+let _admissionScratchTarget = null;
+function admissionScratchTarget(THREE) {
+  if (!_admissionScratchTarget && THREE && typeof THREE.WebGLRenderTarget === 'function') {
+    _admissionScratchTarget = new THREE.WebGLRenderTarget(8, 8, { depthBuffer: false });
+    _admissionScratchTarget.name = 'SF_AdmissionShadowDepthScratch';
+  }
+  return _admissionScratchTarget;
+}
+
 export function collectShadowCastSubjects(roots) {
   const list = Array.isArray(roots) ? roots : [roots];
   const casting = [];
@@ -119,7 +132,7 @@ export function compileShadowDepthPipelines(options = {}) {
   const latent = collectLatentShadowCastSubjects(subjects, casting);
   const stagedCasters = casting.concat(latent);
   const forceEnable = options.forceEnable === true;
-  if (!shadowMap || typeof shadowMap.render !== 'function' || !light || !camera) {
+  if (!shadowMap || typeof renderer.render !== 'function' || !light || !camera) {
     return { skipped: true, reason: 'shadow depth compiler unavailable', subjects: 0 };
   }
   // WEBGL_lose_context kills the context the instant loseContext() runs; three's
@@ -241,7 +254,7 @@ export function compileShadowDepthPipelines(options = {}) {
     : null;
   const scratchTarget = options.renderTarget !== undefined
     ? options.renderTarget
-    : new THREE.WebGLRenderTarget(8, 8);
+    : admissionScratchTarget(THREE);
   const restoreCasters = stagedCasters.map((root) => revealSubjectForCompile(root));
   // Latent casters are policy-off right now; the staged pass must see them as casters or
   // WebGLShadowMap skips them and the first in-radius live draw links the variant late.
@@ -319,7 +332,8 @@ export function compileShadowDepthPipelines(options = {}) {
     for (const home of homes) restoreObjectHome(home);
     if (!liveScene && renderScene && typeof renderScene.clear === 'function') renderScene.clear();
     if (typeof renderer.setRenderTarget === 'function') renderer.setRenderTarget(previousTarget || null);
-    if (scratchTarget && options.renderTarget === undefined && typeof scratchTarget.dispose === 'function') {
+    if (scratchTarget && scratchTarget !== _admissionScratchTarget
+      && options.renderTarget === undefined && typeof scratchTarget.dispose === 'function') {
       scratchTarget.dispose();
     }
     if (light.shadow) light.shadow.needsUpdate = true;

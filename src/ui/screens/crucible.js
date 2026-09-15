@@ -20,6 +20,7 @@ import {
   lastCrucibleRuleset,
   lastCrucibleSetup,
   normalizeSeed,
+  practiceLaunchFor,
   requestCrucibleRun,
 } from '../crucibleLaunch.js';
 import { SURVIVAL_UNLOCK_CATALOG } from '../../data/survivalUnlocks.js';
@@ -41,6 +42,9 @@ import {
   loadCrucibleMeta,
   utcDateKeyNow,
   weeklyMutatorForNow,
+  bestLineRows,
+  normalizeBestLine,
+  roundProgress,
 } from '../../systems/survivalRecords.js';
 import {
   applyRunShareCode,
@@ -50,7 +54,7 @@ import {
   shareTextHref,
 } from './shareCode.js';
 import { SURVIVAL_MUTATOR_BY_ID } from '../../data/survivalMutators.js';
-import { clearQueuedChallenge, queueGhostPlayback, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
+import { clearQueuedChallenge, queueGhostPlayback, queuePracticeRun, queueSurvivalChallenge } from '../../systems/survivalMutators.js';
 import { meetsUnlockCondition } from '../../systems/survivalUnlocks.js';
 import { compileAttackSpec } from '../../combat/attackSpec.js';
 import { causalKindsFromSpec } from '../../systems/adventureMigration.js';
@@ -470,8 +474,23 @@ function renderRecordCorner(profile, dateKey) {
  * The unlock ladder and the recent runs, as kit rows under the three settings. Closed first — the
  * band exists to show what is still ahead, so the answer sits at the top.
  */
-function renderRecordRows(profile) {
+function renderRecordRows(profile, hooks = {}) {
   const band = el('div', 'sf-crd-rec__rows');
+  const bests = Object.values(profile?.records?.byKey || {}).filter(row => row.bestResult?.recordRules?.complete).slice(-5);
+  if (bests.length) {
+    band.appendChild(el('p', 'k-caps', 'Survival records'));
+    const records = el('ul', 'k-rows');
+    for (const row of bests) {
+      const best = row.bestResult, progress = roundProgress(best);
+      const fraction = progress.roundThreatBudget != null && progress.roundThreatResolved != null
+        ? `${Math.floor(progress.roundThreatResolved / progress.roundThreatBudget * 100)}% resolved` : 'progress unknown';
+      records.appendChild(staticRow(`${best.recordRules?.mode || 'Unclassified'} · ${best.arenaId || 'arena unknown'}`,
+        `Round ${progress.highestRoundEntered ?? '?'} · ${fraction} · ${best.score} points`,
+        { sub: `Last cleared ${progress.lastRoundCleared ?? '?'} · ${progress.remainingEnemies ?? '?'} enemies remain${row.tieCount > 1 ? ` · ${row.tieCount} tied runs` : ''}` }));
+    }
+    band.appendChild(records);
+  }
+  for (const line of bestLineRows(profile)) band.appendChild(renderBestLineReview(line, hooks));
   const rows = unlockLadderRows(profile);
   const openCount = rows.filter((r) => r.open).length;
   // The heading and the figure must count the same thing. "Still to open" beside "1 / 14" read as
@@ -590,6 +609,9 @@ export const crucibleScreen = {
     let raceGhost = !!(previous && previous.ghostHash);
     // PQ-160.02: a pasted run code's challenge terms ride to launch through here.
     let pendingShare = null;
+    // PQ-146: a Best Line's "Practice this line" stages the same seed, the recorded ruleset and
+    // your own ghost — flagged so the launch files under the 'practice' record mode.
+    let practiceQueued = false;
 
     // .k-title — stencil marking and the live mode's blurb (syncMode writes it).
     const title = el('header', 'k-title');
@@ -650,6 +672,7 @@ export const crucibleScreen = {
           daily = false;
           if (freeSeed) seedInput.value = freeSeed;
         }
+        practiceQueued = false;
         ruleset = entry.ruleset;
         for (const other of modeButtons) syncChoice(other, other.dataset.ruleset === ruleset);
         if (dailyButton) syncChoice(dailyButton, false);
@@ -663,6 +686,7 @@ export const crucibleScreen = {
     syncChoice(dailyButton, daily);
     dailyButton.addEventListener('click', () => {
       if (!daily) freeSeed = seedInput.value;
+      practiceQueued = false;
       daily = true;
       ruleset = SWARM_RULESET;
       for (const other of modeButtons) syncChoice(other, false);
@@ -677,6 +701,7 @@ export const crucibleScreen = {
     syncChoice(weeklyButton, weekly);
     weeklyButton.addEventListener('click', () => {
       weekly = !weekly;
+      if (weekly) practiceQueued = false;
       syncChoice(weeklyButton, weekly);
       cue('confirm');
       syncMode();
@@ -713,6 +738,27 @@ export const crucibleScreen = {
       ghostBlurb.textContent = offer.available ? GHOST_CARD.blurbOn : GHOST_CARD.blurbOff;
       syncChoice(ghostButton, !!(raceGhost && offer.available));
       ghostButton.setAttribute('aria-disabled', String(!offer.available));
+    }
+
+    function practiceFromLine(line) {
+      const launch = practiceLaunchFor(line);
+      if (!launch) { cue('deny'); return; }
+      daily = false; weekly = false; pendingShare = null;
+      ruleset = launch.ruleset;
+      if (launch.arenaId && arenaDescriptions[launch.arenaId]) arenaId = launch.arenaId;
+      seedInput.value = String(launch.seed);
+      freeSeed = seedInput.value;
+      raceGhost = true;
+      practiceQueued = true;
+      syncMode();
+      syncArena();
+      syncGhost();
+      const offer = currentGhostOffer();
+      sub.textContent = `Practice — seed ${launch.seed}. ${offer.available ? 'Your ghost for this seed is loaded.' : 'No ghost was recorded for this seed.'}`;
+      cue('confirm');
+      if (enterButton && typeof enterButton.focus === 'function') {
+        try { enterButton.focus({ preventScroll: true }); } catch { try { enterButton.focus(); } catch { /* best-effort */ } }
+      }
     }
 
     function syncMode() {
@@ -880,6 +926,7 @@ export const crucibleScreen = {
       ruleset = res.ruleset;
       daily = false;
       weekly = false;
+      practiceQueued = false;
       freeSeed = String(res.seed);
       seedInput.value = freeSeed;
       seedInput.readOnly = false;
@@ -948,7 +995,7 @@ export const crucibleScreen = {
         const recSum = el('summary', 'k-t-fine fh-legend', 'Records & challenges');
         paintLegend(recSum, false);
         records.appendChild(recSum);
-        records.appendChild(renderRecordRows(doorProfile));
+        records.appendChild(renderRecordRows(doorProfile, { onPractice: practiceFromLine }));
         stage.appendChild(records);
       }
     } catch (err) {
@@ -1007,11 +1054,10 @@ export const crucibleScreen = {
           weeklyMutatorId,
           ghostHash,
         });
-      } else if (ghostHash != null) {
-        clearQueuedChallenge();
-        queueGhostPlayback(ghostHash);
       } else {
         clearQueuedChallenge();
+        if (ghostHash != null) queueGhostPlayback(ghostHash);
+        if (practiceQueued) queuePracticeRun();
       }
       requestCrucibleRun(ctx.bus, payload, ruleset);
     });
@@ -1072,9 +1118,14 @@ export function reachedRow(result) {
 
 export function resultRows(result) {
   if (!result) return [];
+  const progress = roundProgress(result);
   return [
     ['Outcome', result.outcome === 'victory' ? 'Survived' : (result.outcome === 'extracted' ? 'Extracted' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost'))],
     ['Reached', reachedRow(result)],
+    ['Last round cleared', progress.lastRoundCleared == null ? 'Not recorded' : String(progress.lastRoundCleared)],
+    ['Enemies remaining', progress.remainingEnemies == null ? 'Not recorded' : String(progress.remainingEnemies)],
+    ['Round threat resolved', progress.roundThreatBudget != null && progress.roundThreatResolved != null
+      ? `${progress.roundThreatResolved} / ${progress.roundThreatBudget}` : 'Not recorded'],
     ['Kills', String(result.kills || 0)],
     // The chain only exists in a swarm run, so the row only exists there — an arc plate must not
     // carry a figure that is always zero.
@@ -1470,6 +1521,47 @@ function renderCombo(band, summary) {
   }
 }
 
+/** A truthful causal account. A pose tape or unavailable video is never labelled replay. */
+export function bestLineReviewRows(line) {
+  const normalized = normalizeBestLine(line);
+  if (!normalized) return [];
+  const rules = normalized.recordRules;
+  return [
+    ['Banked style', String(normalized.points)], ['Seed', String(normalized.seed)],
+    ['Mode', rules.mode ?? 'Not recorded'], ['Arena', rules.arenaId ?? 'Not recorded'],
+    ['Difficulty', rules.difficulty ?? 'Not recorded'], ['Loadout rules', rules.loadoutRules ?? 'Not recorded'],
+    ['Simulation assist', rules.simulationAssistProfile ?? 'Not recorded'],
+    ['Physics revision', rules.physicsRevision ?? 'Not recorded'], ['Balance revision', rules.balanceRevision ?? 'Not recorded'],
+    ['Scoring revision', rules.scoringRevision == null ? 'Not recorded' : String(rules.scoringRevision)],
+    ['Video', 'Unavailable · causal account retained'],
+  ];
+}
+
+function renderBestLineReview(line, hooks = {}) {
+  const review = el('details', 'sf-crres__band');
+  const summary = el('summary', 'k-caps', `Best Line · ${line.points} banked style`);
+  review.appendChild(summary);
+  review.appendChild(el('p', 'k-sentence', (line.acts || []).map(a => a.name || a.trickId).join(' → ')));
+  review.appendChild(pairRows(bestLineReviewRows(line), 'sf-crd-grid'));
+  const acts = el('ol', 'k-rows');
+  for (const act of line.acts || []) {
+    const evidence = (act.evidence || []).map(e => String(e.kind || e.type || e.step || 'physical transfer').replaceAll('_', ' '));
+    acts.appendChild(staticRow(act.name || act.trickId,
+      Number.isFinite(act.tick) ? `${(act.tick / 60).toFixed(2)} simulation seconds` : 'Time not recorded',
+      { sub: evidence.join(' → ') }));
+  }
+  review.appendChild(acts);
+  review.appendChild(el('p', 'k-sentence', 'This account preserves the observed force route. Video is unavailable.'));
+  // Same-seed practice with your own ghost when the tape exists. Practice runs file under the
+  // 'practice' record mode — they can never enter the Swarm/Gauntlet comparisons.
+  if (hooks && typeof hooks.onPractice === 'function') {
+    const practice = word('Practice this line', 'k-word--fine');
+    practice.addEventListener('click', () => hooks.onPractice(line));
+    review.appendChild(practice);
+  }
+  return review;
+}
+
 function renderKillChain(band, defeat) {
   // Threat colour on the two rows that name the enemy. The label beside each is the channel that
   // survives forced-colors and colour blindness; the tint is never the only one.
@@ -1758,6 +1850,10 @@ export const crucibleResultsScreen = {
     } catch {
       // A combo read failure must never take down the results plate.
     }
+
+    const bestLine = normalizeBestLine({ ...(result?.bestLine || ctx?.state?.stunts?.combo?.bestLine),
+      seed: result?.seed, recordRules: result?.recordRules });
+    if (bestLine) story.appendChild(renderBestLineReview(bestLine));
 
     // PQ-160.02: the run as a code, its ghost as a block. Sharing must never take the plate down.
     try {

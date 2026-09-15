@@ -297,6 +297,9 @@ test('the static Atlas POI delegates runtime materialization to the World Site o
       return { id: spawned.length, ...spec };
     },
   };
+  // Quiet POIs publish presenter dressing rows into state.world.dressing rather than live entities,
+  // so a second representation can appear on either path.
+  system.state = { tick: 0, world: {}, entities: new Map() };
   system._toGlobal = (point) => ({ ...point });
   const active = { pois: [] };
   const discovery = { pois: {} };
@@ -305,6 +308,11 @@ test('the static Atlas POI delegates runtime materialization to the World Site o
     spawned.some((entity) => entity.data?.poiId === SITE_ID),
     false,
     'world must not create a second fx representation of the World Site POI',
+  );
+  assert.equal(
+    (system.state.world.dressing?.rows ?? []).some((row) => row.data?.poiId === SITE_ID),
+    false,
+    'world must not create a second dressing representation of the World Site POI',
   );
   assert.ok(discovery.pois[SITE_ID], 'the static Atlas row still owns discovery identity');
 });
@@ -337,7 +345,10 @@ test('Cathedral has exactly one Atlas node and one normal system-map waypoint', 
   assert.ok(Array.isArray(markers[0].history?.rows));
   assert.equal(resolveInspectorTabAvailability(state, markers[0]).history.available, true);
   const route = resolveCourseTarget(markers[0]);
-  assert.deepEqual(route?.pos, GLOBAL_POS);
+  // The marker stays on the physical wreck centre, but autopilot flies to the authored safe approach
+  // outside the hull (world-site-map-traffic.test.mjs pins its 440 WU bearing and proxy clearance).
+  assert.deepEqual(route?.pos, definition.mapAnnotation.coursePos);
+  assert.equal(route?.arrivalRadius, definition.mapAnnotation.courseArrivalRadius);
   assert.equal(route?.type, 'poi');
   assert.equal(route?.autopilot, true);
 });

@@ -30,7 +30,7 @@ export const PRODUCTION_INIT_ORDER = Object.freeze([
   'scanner', 'scanReveal', 'buildIdentity', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aceMemory', 'barkDirector', 'aiSlot', 'dockingCorridor', 'physics',
   'aiPorts', 'tumbleStates', 'collisionConsequences', 'stuntGrammar', 'aiEncounter', 'actions', 'flightSlot',
-  'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
+  'cruise', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'bombs', 'massSeed',
   'uniqueLootAbilities', 'fields', 'environmentalMachinery', 'planetRuntime', 'combat', 'combatOutcome', 'aftermathWrecks',
   'uniqueWrecks', 'titles', 'wingMorale', 'tetherGameplay', 'surrenderRecovery', 'custodyConsequences',
   'masslineTelemetry', 'masslineThreats', 'masslineImpacts', 'masslineSnares', 'masslineThrow',
@@ -63,7 +63,7 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'scanReveal', 'buildIdentity', 'pirateDisguise', 'pirateParley', 'pirateDisengage',
   'aceMemory', 'factionPresence', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
   'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
-  'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'massSeed',
+  'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'bombs', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   'survivalArena', 'fields', 'planetRuntime', 'physics', 'combat',
@@ -172,7 +172,10 @@ for (const id of CALENDAR_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.CALENDAR);
 for (const id of NEAR_CLOCK_IDS) CLOCK_BY_ID.set(id, SYSTEM_CLOCK.NEAR);
 
 export function getSystemClock(id) {
-  const mapped = CLOCK_BY_ID.get(id);
+  // Hosts partition instantiated systems by name, after resolving manifest slots. Both AI
+  // backends must retain aiSlot's near clock or every extra catch-up step repeats full AI.
+  const clockId = id === 'ai' || id === 'tacticalAI' ? 'aiSlot' : id;
+  const mapped = CLOCK_BY_ID.get(clockId);
   if (mapped) return mapped;
   const cap = SYSTEM_CAPABILITIES[id];
   const kind = cap && cap.capability;

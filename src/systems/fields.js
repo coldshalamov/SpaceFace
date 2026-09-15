@@ -17,10 +17,8 @@
 // OFF under node), it is absent from sf-sim.mjs's curated list, and nothing auto-spawns a field —
 // deploy is player input only. The 47a golden therefore never executes a field.
 //
-// Save policy: transient. The kernel + runtime mirror + emitter entities NORMALIZE AWAY on load
-// (massSeed pattern). Deploy cooldowns are runtime-only (state.fields.cooldowns) — non-serialized,
-// cleared on save:loaded/sector:exit/game:new — which deliberately sidesteps the save-schema mutex
-// (a save/reload legitimately clears an in-flight field cooldown).
+// Save policy: PQ-146 preserves deployed force geometry, emitter identity, expiry and cooldown.
+// Old saves without field data still normalize away; sector changes and new games clear fields.
 
 import { FIELD_DEFS, FIELD_KINDS, FIELD_MAX_ACTIVE, FIELD_END_REASONS, FIELD_PALETTE, WELL_CLUSTER, WELL_GRIND, fieldsFlag, fieldVolumeOf } from '../data/fields.js';
 import { createFieldKernel, fieldAffectsBody, fieldRawAcceleration, sampleFieldAcceleration, wellUsesVelocityTerm } from '../core/fields/fieldKernel.js';
@@ -30,6 +28,7 @@ import {
   rateClusterMoment,
 } from '../core/fields/clusterDetonate.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { fieldEvidenceInput } from '../combat/stuntEvidence.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
 import { getCombatKernel } from '../combat/kernel.js';
@@ -299,7 +298,8 @@ export const fields = {
         this.bus.on('sector:enter', () => this._clearAll(FIELD_END_REASONS.cleared, 'sector_enter')),
         this.bus.on('game:new', () => this._clearAll(FIELD_END_REASONS.cleared, 'new_game')),
         this.bus.on('save:loaded', () => {
-          this._clearAll(FIELD_END_REASONS.cleared, 'save_loaded');
+          if(!this._restoredOnLoad)this._clearAll(FIELD_END_REASONS.cleared, 'save_loaded');
+          this._restoredOnLoad=false;
           this._rebuildAnchoredFieldsFromEntities();
         }),
         this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload)),
@@ -316,6 +316,32 @@ export const fields = {
 
   newGame() {
     this._clearAll(FIELD_END_REASONS.cleared, 'new_game');
+  },
+
+  serialize() {
+    const rt=ensureRuntime(this.state);
+    return {revision:1,fields:this._kernel.list().filter(f=>f.tag!=='external').slice(0,32).map(f=>({...f,
+      durationS:Number.isFinite(f.durationS)?f.durationS:null,expireAt:Number.isFinite(f.expireAt)?f.expireAt:null})),
+      deployed:rt.deployed,anchored:rt.anchored,npcFields:rt.npcFields,hitches:rt.hitches,cooldowns:rt.cooldowns};
+  },
+  deserialize(raw,remap=new Map()) {
+    this._restoredOnLoad=false;
+    if(raw?.revision!==1||!Array.isArray(raw.fields))return;
+    const mapped=id=>id==null?id:remap.get(String(id))??id,rt=defaultRuntime();
+    this._kernel.clear();
+    for(const saved of raw.fields.slice(0,32)) {
+      const f=structuredClone(saved),sourceId=mapped(f.sourceId),ownerId=mapped(f.ownerId);
+      if(sourceId!=null&&!this.state.entities.get(sourceId))continue;
+      if(f.expireAt!=null&&f.expireAt<=nowOf(this.state))continue;
+      const record=this._kernel.register({...f,sourceId,ownerId,durationS:f.durationS??Infinity});
+      if(f.expireAt!=null)record.expireAt=f.expireAt;
+      const d=raw.deployed?.[f.id];
+      if(d&&this.state.entities.get(mapped(d.emitterId)))rt.deployed[f.id]={...d,emitterId:mapped(d.emitterId),expireAt:d.expireAt??Infinity};
+      const a=raw.anchored?.[f.id];if(a)rt.anchored[f.id]={...a,sourceId:mapped(a.sourceId)};
+    }
+    for(const [id,h] of Object.entries(raw.hitches??{}))if(this.state.entities.get(mapped(id))&&this._kernel.has(h.fieldId))rt.hitches[mapped(id)]={...h,sourceId:mapped(h.sourceId)};
+    rt.cooldowns=raw.cooldowns??rt.cooldowns;
+    this.state.fields=rt;this._restoredOnLoad=true;
   },
 
   /**
@@ -1226,7 +1252,7 @@ export const fields = {
       // Same seam momentumSink.js uses for effective mass; still one additive membrane write.
       const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1))
         * positive(profile.physicsMassScale, 1);
-      queuePhysicsImpulse(e, { x: accel.ax * mass * dt, y: 0, z: accel.az * mass * dt });
+      queuePhysicsImpulse(e, { x: accel.ax * mass * dt, y: 0, z: accel.az * mass * dt }, fieldEvidenceInput(e,fieldsList,state,profile));
       this._accumulateWellDelta(e, fieldsList, profile, accel, dt, state);
       this._noteWellClusterBody(e, fieldsList, profile, accel, state);
       affectedCount++;

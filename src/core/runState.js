@@ -100,8 +100,25 @@ export function runXpForLevel(level) {
 /** Level earned by a total XP figure. Monotone, starts at 1, never returns 0 or a fraction. */
 export function runLevelForXp(xp) {
   const total = Number.isFinite(xp) && xp > 0 ? Math.floor(xp) : 0;
-  let level = 1;
-  while (runXpForLevel(level + 1) <= total) level += 1;
+  if (total <= 0) return 1;
+
+  // runXpForLevel(level) is a quadratic in steps = level - 1. Solve that quadratic first,
+  // then correct the at-most-one-step floating-point rounding error. This keeps large imported
+  // run scores from spending millions of iterations walking the level table.
+  const quadratic = RUN_XP_LEVEL_STEP / 2;
+  const linear = RUN_XP_LEVEL_BASE - quadratic;
+  const halfLinearOverQuadratic = linear / (2 * quadratic);
+  const steps = Math.max(0, Math.floor(
+    Math.sqrt(total / quadratic + halfLinearOverQuadratic ** 2) - halfLinearOverQuadratic,
+  ));
+  let level = steps + 1;
+
+  // For values so large that the level cost itself overflows, the finite quadratic estimate is
+  // still the only useful answer; avoid an unbounded correction loop in that regime.
+  if (Number.isSafeInteger(level) && Number.isFinite(runXpForLevel(level))) {
+    while (level > 1 && runXpForLevel(level) > total) level -= 1;
+    while (level + 1 !== level && runXpForLevel(level + 1) <= total) level += 1;
+  }
   return level;
 }
 
@@ -319,24 +336,30 @@ function collectNonJsonIssues(value, path, issues, visited = new WeakSet(), dept
     return;
   }
   visited.add(value);
-  if (value instanceof Map || value instanceof Set) {
-    issues.push(`${path || '(root)'}: ${value.constructor.name}`);
-    return;
-  }
-  if (Array.isArray(value)) {
-    for (let i = 0; i < value.length; i++) {
-      collectNonJsonIssues(value[i], `${path}[${i}]`, issues, visited, depth + 1);
+  try {
+    if (value instanceof Map || value instanceof Set) {
+      issues.push(`${path || '(root)'}: ${value.constructor.name}`);
+      return;
     }
-    return;
-  }
-  const proto = Object.getPrototypeOf(value);
-  if (proto !== Object.prototype && proto !== null) {
-    issues.push(`${path || '(root)'}: non-json object`);
-    return;
-  }
-  for (const key of Object.keys(value)) {
-    const nextPath = path ? `${path}.${key}` : key;
-    collectNonJsonIssues(value[key], nextPath, issues, visited, depth + 1);
+    if (Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        collectNonJsonIssues(value[i], `${path}[${i}]`, issues, visited, depth + 1);
+      }
+      return;
+    }
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) {
+      issues.push(`${path || '(root)'}: non-json object`);
+      return;
+    }
+    for (const key of Object.keys(value)) {
+      const nextPath = path ? `${path}.${key}` : key;
+      collectNonJsonIssues(value[key], nextPath, issues, visited, depth + 1);
+    }
+  } finally {
+    // `visited` tracks the current ancestry, not every object seen. Reusing a JSON object in two
+    // fields is valid; only an edge back into the active ancestry is a circular reference.
+    visited.delete(value);
   }
 }
 

@@ -350,10 +350,17 @@ export const mainMenuScreen = {
     bCredits.dataset.action = 'credits';
     bCredits.addEventListener('click', () => { cue('confirm'); this._pick(ctx, 'credits'); });
     version.appendChild(bCredits);
+    // PQ-033.03: Achievements rides the same fine line as Credits — a quiet word, not a menu row.
+    version.appendChild(el('span', '', ' · '));
+    const bAchievements = el('button', 'k-word k-word--fine', 'Achievements');
+    bAchievements.type = 'button';
+    bAchievements.dataset.action = 'achievements';
+    bAchievements.addEventListener('click', () => { cue('confirm'); this._pick(ctx, 'achievements'); });
+    version.appendChild(bAchievements);
     rootEl.appendChild(version);
 
     refs = {
-      root: rootEl, backdrop, title, list, version, versionText, bCredits, saveSummary, status,
+      root: rootEl, backdrop, title, list, version, versionText, bCredits, bAchievements, saveSummary, status,
       bNew, bContinue, bLoad, bSettings, bSandbox, bQuit, bCrucible, bArchive,
       buttons: [bContinue, bNew, bLoad, bCrucible, bArchive, bSettings, bSandbox, bQuit].filter(Boolean),
     };
@@ -405,6 +412,7 @@ export const mainMenuScreen = {
       case 'archive': requestCodexTab('Archive'); pushWhenReady(ctx, 'codex', 'Signal Archive'); return;
       case 'settings': pushWhenReady(ctx, 'settings', 'Settings'); return;
       case 'credits': pushWhenReady(ctx, 'credits', 'Credits'); return;
+      case 'achievements': pushWhenReady(ctx, 'achievements', 'Achievements'); return;
       case 'sandbox': pushWhenReady(ctx, 'sandbox', 'Sandbox'); return;
       case 'quit': requestQuit(ctx); return;
       default: return;

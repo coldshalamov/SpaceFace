@@ -251,7 +251,10 @@ test('NPC sweep path is the leftover cutter; corsair_blade is unique among cut_l
   const gameplay = loadSource('src/systems/tetherGameplay.js');
   assert.match(gameplay, /this\._cutPlayerLinesWithHostileSweep\(attachments, state, player\)/);
   assert.match(gameplay, /_cutPlayerLinesWithHostileSweep\(attachments, state, player\) \{/);
-  assert.match(gameplay, /if \(!hostileSweepCutter\(owner, state, playerTeam\)\) continue;/);
+  // Since the 60 Hz iteration cut (8f022738d) the blade gate lives in collectHostileSweepRows'
+  // compound condition rather than a guard clause; the pinned fact is that the shared cutter
+  // predicate with these canonical args gates which blades count, in this file.
+  assert.match(gameplay, /&& hostileSweepCutter\(owner, state, playerTeam\)\) \{/);
   assert.match(gameplay, /span >= rest \* NPC_LINE_CUT_TAUT_RATIO/);
   assert.match(gameplay, /plan && plan\.verb === 'cut_line'/);
   const leftoverMentions = gameplay.match(/_cutPlayerLinesWithHostileSweep/g) || [];

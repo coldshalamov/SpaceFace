@@ -52,6 +52,20 @@ try {
     await page.screenshot({ path: path.join(output, file) });
     captures.push({ id, file, ...result });
   }
+  // Helios is the sector whose authored structures this harness exists to judge. Capture them at
+  // several zooms and travel angles: a backdrop object that only reads from one hero frame has not
+  // been verified, and the lower-left play corridor must stay clear from all of them.
+  const structureAngles = [];
+  for (const [zoom, azimuth] of [[144, 0], [144, 0.5], [96, 0.28], [330, 0.34], [144, -0.55]]) {
+    const result = await page.evaluate(
+      ([z, a]) => window.deepFieldProbe.angle('sector_helios_prime', { zoom: z, azimuth: a }),
+      [zoom, azimuth],
+    );
+    assert.ok(result.calls < 32, `unexpected background submission growth: ${result.calls}`);
+    const file = `helios-z${zoom}-a${String(azimuth).replace('.', 'p')}.png`;
+    await page.screenshot({ path: path.join(output, file) });
+    structureAngles.push({ file, ...result });
+  }
   const motion = await page.evaluate(() => window.deepFieldProbe.motion());
   assert.deepEqual(motion.after, motion.before, 'movement must not upload instance matrices');
   assert.equal(motion.starAfter, motion.starBefore);
@@ -70,7 +84,7 @@ try {
   assert.deepEqual(errors, []);
   await writeFile(path.join(output, 'report.json'), JSON.stringify({
     scope: 'Real Three.js background components; canonical camera; neutral fixture lighting; not full game/Electron',
-    captures, motion, low, errors,
+    captures, structureAngles, motion, low, errors,
   }, null, 2));
   await page.evaluate(() => window.deepFieldProbe.dispose());
   console.log(`Deep-field GPU component probe passed; evidence: ${output}`);

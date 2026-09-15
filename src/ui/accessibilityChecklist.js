@@ -31,7 +31,7 @@ export const CHECKLIST_ITEMS = Object.freeze([
 /** Registered player screens that inherit documentElement a11y classes via #screens / #hud. */
 export const CHECKLIST_SCREENS = Object.freeze([
   'hud', 'settings', 'pause', 'mainMenu', 'help', 'station', 'galaxyMap',
-  'crucible', 'codex', 'missionLog', 'saveLoad', 'gameOver', 'newGame', 'credits',
+  'crucible', 'codex', 'missionLog', 'saveLoad', 'gameOver', 'newGame', 'credits', 'achievements',
 ]);
 
 function readPath(settings, dotted) {

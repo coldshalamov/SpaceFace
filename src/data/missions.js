@@ -1,5 +1,5 @@
 // src/data/missions.js – mission system canonical data.
-// Exports: MISSION_TYPES (16), SET_PIECE_MISSIONS (5), AUTHORED_SET_PIECES (10),
+// Exports: MISSION_TYPES (17), SET_PIECE_MISSIONS (5), AUTHORED_SET_PIECES (10),
 // STORY_BEATS (8), OFFER_MIX, MISSION_TUNING. Capital boss is its own type, not an 11th authored row.
 // PQ-152.03 twist clauses live in missionConditions.js and stamp onto these types; they do not
 // add an 11th authored row or a second capital type.
@@ -266,6 +266,19 @@ export const MISSION_TYPES = [
     timeFormula: 'round((distance/140 + 80) * slack)', taskTime: 80,
     failureCondition: 'timer OR the capital hull is lost without a player kill',
     constraints: { authoredOnly: true, physicalVerb: 'throw' },
+  },
+  {
+    // BREAKAWAY — The Third Shift: lawful recovery of the SP-07 flywheel assembly through the Tethys
+    // launcher schedule and the physical capture fork. AUTHORED-ONLY, structural zero weight exactly
+    // like the heist, and deliberately placed BEFORE heist_intercept so "heist stays last" holds and
+    // `_pickType` reads `weights[15] || 0` = 0. `missions._syncBreakawayOffer` is the only poster.
+    type: 'breakaway_recovery', riskTierRange: [2, 2], chainable: false, proceduralWeight: 0,
+    completionEvent: 'heist terminal receipt (lawful_arrival_observed) from a settled capture-fork custody commit',
+    rewardFormula: 'authored flat payout (src/data/heistMission.js BREAKAWAY_HEIST_TUNING.rewardCr) + bounded condition bonus',
+    timeFormula: 'none — the run window is an arbitrated `expired` candidate, not a mission deadline',
+    taskTime: 0,
+    failureCondition: 'any terminal outcome other than a settled lawful delivery into the fork',
+    constraints: { authoredOnly: true },
   },
   {
     // PQ-019C — the authored physical capsule heist. AUTHORED-ONLY, never procedurally rolled.

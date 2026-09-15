@@ -211,6 +211,7 @@ export function createSampleRuntime(options = {}) {
   const pinned = new Set();   // tier-0 ids: never evicted
   let residentBytes = 0;
   let inFlight = 0;
+  let disposed = false;
   const queue = [];
   const stats = {
     requests: 0, hits: 0, misses: 0, fetches: 0, decodes: 0,
@@ -243,6 +244,7 @@ export function createSampleRuntime(options = {}) {
   }
 
   function pump() {
+    if (disposed) return;
     while (inFlight < maxInFlight && queue.length) {
       const id = queue.shift();
       if (resident.has(id) || pending.has(id)) continue;
@@ -263,6 +265,7 @@ export function createSampleRuntime(options = {}) {
       pending.set(id, run);
       inFlight++;
       run.then((buffer) => {
+        if (disposed) return;
         resident.delete(id);
         resident.set(id, buffer);
         residentBytes += bufferBytes(buffer);
@@ -270,7 +273,7 @@ export function createSampleRuntime(options = {}) {
         if (SAMPLE_MANIFEST.get(id)?.tier !== SAMPLE_TIER.CORE) pinned.delete(id);
         evictLRU();
       }).catch(() => {
-        stats.decodeFailures++;
+        if (!disposed) stats.decodeFailures++;
       }).finally(() => {
         pending.delete(id);
         inFlight--;
@@ -283,7 +286,7 @@ export function createSampleRuntime(options = {}) {
     stats,
     setContext(ctx) { ctxRef.ctx = ctx; },
     prefetchTier(tier) {
-      if (!ctxRef.ctx) return;
+      if (disposed || !ctxRef.ctx) return;
       for (const [id, entry] of SAMPLE_MANIFEST) {
         if (entry.tier === tier && !resident.has(id)) queue.push(id);
       }
@@ -291,6 +294,7 @@ export function createSampleRuntime(options = {}) {
     },
     /** Resident buffer or null; a miss schedules the async fetch+decode for next time. */
     acquire(id) {
+      if (disposed) return null;
       stats.requests++;
       const buf = resident.get(id);
       if (buf) {
@@ -308,7 +312,10 @@ export function createSampleRuntime(options = {}) {
       return null;
     },
     dispose() {
+      if (disposed) return;
+      disposed = true;
       queue.length = 0;
+      pending.clear();
       resident.clear();
       pinned.clear();
       residentBytes = 0;

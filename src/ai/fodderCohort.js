@@ -18,7 +18,7 @@ import {
   getCohortRecipe,
   hullClearanceSpacing,
 } from '../data/squadChoreography.js';
-import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
+import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 
 export {
   COHORT_PHASE,
@@ -147,6 +147,9 @@ export class FodderCohortDirector {
     this.lastTick = tick | 0;
     const live = new Set();
     resetCost(this.lastCost);
+    // The mass list is cohort-independent (per-cohort exclusions are applied at
+    // consumption), so it is built once per tick and shared by every cohort.
+    if (groups && groups.length) collectMassBodies(this, state);
     for (const group of groups || []) {
       if (!group || group.id == null) continue;
       live.add(group.id);
@@ -524,7 +527,6 @@ function stepCohort(director, cohort, recipe, target, tick, dt, state, mutation)
   const step = Number.isFinite(dt) && dt > 0 ? dt : 1 / 60;
   writeShapeSlots(cohort, recipe, target);
   updateIntegrity(cohort);
-  collectMassBodies(director, cohort, state);
   detectDisruption(cohort, recipe, tick, step, mutation, director.massScratch);
   advancePhase(cohort, recipe, target, tick, step);
   integrateFrame(cohort, recipe, target, step);
@@ -604,20 +606,23 @@ function updateIntegrity(cohort) {
   cohort.disruption.count = disrupted;
 }
 
-function collectMassBodies(director, cohort, state) {
+// The mass list is cohort-independent: per-cohort exclusions (own members, the
+// cohort target) are applied where the shared list is consumed, so it is built
+// once per stepAll instead of once per cohort.
+function collectMassBodies(director, state) {
   const scratch = director.massScratch;
   let n = 0;
   const list = state && state.entityList;
   for (let i = 0; i < (list ? list.length : 0); i++) {
     const entity = list[i];
     if (!entity || !entity.pos || entity.alive === false) continue;
-    if (cohort.members.has(entity.id)) continue;
-    if (!isHazard(entity, cohort.targetId)) continue;
+    if (!isHazard(entity)) continue;
     const slot = massSlot(scratch, n++);
     slot.x = finite(entity.pos.x);
     slot.z = finite(entity.pos.z);
     slot.radius = Math.max(4, finite(entity.radius, 8));
     slot.well = false;
+    slot.id = entity.id;
   }
   const fields = state && state.fields;
   const snap = fields && (Array.isArray(fields.active) && fields.active.length
@@ -633,6 +638,7 @@ function collectMassBodies(director, cohort, state) {
     slot.z = center.z;
     slot.radius = Math.max(8, finite(field.radius, 0));
     slot.well = true;
+    slot.id = null;
   }
   scratch.length = n;
 }
@@ -640,10 +646,15 @@ function collectMassBodies(director, cohort, state) {
 function massSlot(scratch, index) {
   let slot = scratch[index];
   if (!slot) {
-    slot = { x: 0, z: 0, radius: 8, well: false };
+    slot = { x: 0, z: 0, radius: 8, well: false, id: null };
     scratch[index] = slot;
   }
   return slot;
+}
+
+function massAppliesToCohort(mass, cohort) {
+  const id = mass.id;
+  return id == null || (id !== cohort.targetId && !cohort.members.has(id));
 }
 
 function detectDisruption(cohort, recipe, tick, dt, mutation, masses) {
@@ -688,7 +699,7 @@ function detectDisruption(cohort, recipe, tick, dt, mutation, masses) {
   if (!cancel) {
     for (const rec of cohort.members.values()) {
       if (!rec.alive || !rec.slotReady) continue;
-      if (rec.disrupted && massOnCourseOrWell(rec, massList)) {
+      if (rec.disrupted && massOnCourseOrWell(rec, cohort, massList)) {
         rec.ammunition = true;
         rec.coast = true;
         rec.breakFormation = true;
@@ -726,10 +737,11 @@ function detectDisruption(cohort, recipe, tick, dt, mutation, masses) {
   cohort.disruption.until = until;
 }
 
-function massOnCourseOrWell(rec, masses) {
+function massOnCourseOrWell(rec, cohort, masses) {
   if (isInsideWell(rec.pos, masses)) return true;
   for (let i = 0; i < masses.length; i++) {
     const mass = masses[i];
+    if (!massAppliesToCohort(mass, cohort)) continue;
     if (isAmmunitionCourse(rec.pos, rec.vel, rec.radius, mass, mass.radius)) return true;
   }
   return false;
@@ -743,6 +755,7 @@ function incomingAmmunitionTowardMass(rec, cohort, masses) {
     if (isInsideWell(rec.pos, masses)) return true;
     for (let i = 0; i < masses.length; i++) {
       const mass = masses[i];
+      if (!massAppliesToCohort(mass, cohort)) continue;
       if (isAmmunitionCourse(other.pos, other.vel, other.radius, mass, mass.radius, AMMUNITION_LOOKAHEAD_S * 1.35)) {
         return true;
       }
@@ -888,10 +901,35 @@ function steerMembers(director, cohort, recipe, target, tick, dt, state, mutatio
   const hashOn = hasActiveSpatialHash(state && state.spatialHash);
   const fallback = director.fallbackScratch;
   fallback.length = 0;
+  // One cohort-level radius query covers every member's neighborhood: any entity
+  // within queryR of a member is within queryR + maxMemberDist of the centroid.
+  // The per-member radius filter below then yields exactly the neighbor set a
+  // per-member query would have returned.
+  let cx = 0;
+  let cz = 0;
+  let cn = 0;
   for (const rec of cohort.members.values()) {
     if (rec.alive && rec.entity) fallback.push(rec.entity);
+    if (rec.alive && !rec.coast && rec.pos) {
+      cx += rec.pos.x;
+      cz += rec.pos.z;
+      cn++;
+    }
   }
   const queryR = recipe.queryRadius;
+  const shared = director.queryScratch;
+  shared.length = 0;
+  if (hashOn && cn > 0) {
+    cx /= cn;
+    cz /= cn;
+    let extent = 0;
+    for (const rec of cohort.members.values()) {
+      if (!rec.alive || rec.coast || !rec.pos) continue;
+      const d = Math.hypot(rec.pos.x - cx, rec.pos.z - cz);
+      if (d > extent) extent = d;
+    }
+    state.spatialHash.queryRadius(cx, cz, queryR + extent, shared);
+  }
   const sepR = Math.max(recipe.separationRadius, cohort.spacing || recipe.densityTarget);
   const speedCap = recipe.speedBand.max;
   const cost = director.lastCost;
@@ -900,6 +938,21 @@ function steerMembers(director, cohort, recipe, target, tick, dt, state, mutatio
   const noSep = !!(mutation && mutation.disableSeparation);
   const cancel = !!(mutation && mutation.cancelImpulses);
   const weights = weightsFor(cohort.phase, mutation);
+
+  if (cn > 0) {
+    cost.neighborQueries++;
+    local.neighborQueries++;
+  }
+  if (hashOn && cn > 0) {
+    cost.usedSpatialHash = true;
+    local.usedSpatialHash = true;
+    cost.queryMode = 'spatial_hash';
+    local.queryMode = 'spatial_hash';
+  } else if (cn > 0) {
+    if (cost.queryMode === 'none') cost.queryMode = 'cohort_radius';
+    if (local.queryMode === 'none') local.queryMode = 'cohort_radius';
+  }
+  const source = hashOn ? shared : fallback;
 
   for (const rec of cohort.members.values()) {
     if (!rec.alive) continue;
@@ -922,24 +975,8 @@ function steerMembers(director, cohort, recipe, target, tick, dt, state, mutatio
       continue;
     }
 
-    const query = director.queryScratch;
-    query.length = 0;
-    const found = queryNearbyEntities(state, rec.pos, queryR, query, fallback);
-    cost.neighborQueries++;
-    local.neighborQueries++;
-    if (hashOn) {
-      cost.usedSpatialHash = true;
-      local.usedSpatialHash = true;
-      cost.queryMode = 'spatial_hash';
-      local.queryMode = 'spatial_hash';
-    } else {
-      if (cost.queryMode === 'none') cost.queryMode = 'cohort_radius';
-      if (local.queryMode === 'none') local.queryMode = 'cohort_radius';
-    }
-
     const neighbors = director.neighborScratch;
     let visits = 0;
-    const source = found || query;
     for (let i = 0; i < source.length; i++) {
       const other = source[i];
       if (!other || other.id === rec.id || !other.pos) continue;
@@ -962,7 +999,7 @@ function steerMembers(director, cohort, recipe, target, tick, dt, state, mutatio
       slot.radius = Math.max(4, finite(other.radius, 8));
       slot.member = inCohort;
       slot.coast = !!(memberRec && (memberRec.coast || memberRec.ammunition));
-      slot.hazard = !inCohort && isHazard(other, cohort.targetId);
+      slot.hazard = !inCohort && other.id !== cohort.targetId && isHazard(other);
       visits++;
     }
     neighbors.length = visits;
@@ -999,13 +1036,16 @@ function steerMembers(director, cohort, recipe, target, tick, dt, state, mutatio
   local.allPairs = false;
 }
 
-function isHazard(entity, targetId) {
-  if (!entity || entity.id === targetId) return false;
+// Cohort-independent hazard test. Ships are never hazards — the old
+// team-branched check returned false for every ship — so the branch folds away.
+// Per-cohort exclusions (target id, member ids) are applied by
+// massAppliesToCohort where the shared list is consumed.
+function isHazard(entity) {
   if (entity.alive === false) return false;
   if (entity.collides === false) return false;
   if (entity.type === 'asteroid' || entity.type === 'station' || entity.type === 'prop') return true;
-  if (entity.type === 'ship' && entity.team !== 1) return false;
-  return !!(entity.collides && entity.type !== 'ship');
+  if (entity.type === 'ship') return false;
+  return !!entity.collides;
 }
 
 function skipBallisticSeparation(self, other) {

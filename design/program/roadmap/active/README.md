@@ -53,8 +53,8 @@ PQ-034 through PQ-041 accepted
         └─> PQ-044 PERF-10 WebGPU/TSL slice (deferred unless triggered)
 ```
 
-PQ-007, PQ-021, and PQ-034 are checked off and retained under `../retired/`. PQ-018,
-PQ-019, PQ-020, PQ-022, and PQ-024 have their headless implementation layers integrated. Current corridor
+PQ-007, PQ-019, PQ-020, PQ-021, and PQ-034 are checked off and retained under `../retired/`. PQ-018,
+PQ-022, and PQ-024 have their headless implementation layers integrated. Current corridor
 work is exact acceptance repair, headed capture, evidence-bound review, performance
 evidence, and promotion;
 run `node scripts/program-dispatch.mjs --ready` and claim the returned unit rather than redispatching
@@ -74,9 +74,9 @@ evidence triggers are proved.
 | Packet | Executable interpretation | Entry summary |
 |---|---|---|
 | [`PHYSICS_AS_SPECTACLE_PROGRAM.md`](./PHYSICS_AS_SPECTACLE_PROGRAM.md) | integrate causal physics spectacle in the accepted Ceres route; scale out to five scene cells, four asset waves, and technical finish only after showcase acceptance | R0→R5 plus five-minute Ceres gate before R8; exact Browser/Electron G0 remains unproven |
-| [`PQ-018.md`](./PQ-018.md) | release, register, place, wire, and accept the Wreck Cathedral through the integrated World Site substrate | PQ-017 current contract; next exact Cathedral leaf selected |
-| [`PQ-019.md`](./PQ-019.md) | split the heist into physical facilities, owner seams, and one authored route | stable ID correction; facility phase precedes mission phase |
-| [`PQ-020.md`](./PQ-020.md) | bounded Ceres topology/data slice, one existing-owner local condition, and route proof | consume PQ-018 placement without relocation; Atlas/data lease |
+| [`PQ-018.md`](./PQ-018.md) | release, register, place, wire, and accept the Wreck Cathedral through the integrated World Site substrate | relocated Phase 4 closed 2026-09-14; the ready leaf is `PQ-018.cathedral-chase-read` |
+| [`PQ-019.md`](../retired/PQ-019.md) | RETIRED 2026-09-14 — the physical heist loop is integrated; its identity is `SURFACE-HEIST-LOOP` | the catcher/fence bodies continue as `PQ-022.heist-receivers-promote` |
+| [`PQ-020.md`](../retired/PQ-020.md) | RETIRED 2026-09-14 — Ceres topology is integrated with its Cathedral-keyed route, presence review, and matched performance | — |
 | [`PQ-022.md`](./PQ-022.md) | run asset/family leaf packets through source→release→route→perf | exact leaf selected from the queue |
 | [`PQ-023.md`](./PQ-023.md) | finish the broader physics-readable presentation umbrella through exact leaves | Gold Corridor-required cue subslice accepted at `93c76f65`; broader propulsion/environment/HUD/camera/dense-scene work remains TODO |
 | [`PQ-024.md`](./PQ-024.md) | one transient survey target, Core commitment, real-output producing receipt, one exterior consequence | PQ-017 seam rebound; one accepted exterior visual |
@@ -96,7 +96,7 @@ evidence triggers are proved.
 | [`PQ-050.md`](./PQ-050.md) | remaster every live flyable ship except Hitch, one ship per leaf, under the MTX technique contract | Hitch frozen; ledger required; factory loft+boxes cannot close a leaf; first ready is Hornet |
 | [`PQ-129.md`](./PQ-129.md) | name every hitch on the live path, then remove compose/compile/upload/admission bricks without quality cuts | `--id PQ-129`; Wave A measure; Wave B ready after the classifier; Wave C planned |
 | [`PQ-130.md`](./PQ-130.md) | put the player inside the asteroid; HUD is ugly and too big | `--id PQ-130`; theater/dashboard first; vanilla CSS shrink is a fail |
-| [`PQ-191.md`](./PQ-191.md) | independent play pass over the 2026-09-06 landings for taste, improvements, and bugs | `--id PQ-191`; first ready leaf; a report with defects still visible is not done |
+| [`PQ-191.md`](../retired/PQ-191.md) | RETIRED 2026-09-10 — standing review ceremony removed by owner direction; play-and-fix happens on request, inside the asking unit | — |
 | [`PQ-193.md`](./PQ-193.md) | the 3D picture never looks broken: complete bodies, opening flyby, tubes, shelf hulls, places | `--id PQ-193`; first ready leaf `.00`; flyable remaster stays PQ-050; Hitch frozen |
 
 PQ-043 and PQ-044 are admitted queue identities but remain deferred and packet-less until their

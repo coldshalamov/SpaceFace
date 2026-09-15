@@ -96,6 +96,8 @@ test('SimulationRunner publishes ordered completed ticks and presentation may co
     simTime: LOOP_FIXED_DT * 3,
     stateDigestMarker: 3,
     inputSequence: 3,
+    inputCommandSeq: 0,
+    inputWallMs: 0,
     lifecycleGeneration: 3,
     journalStart: 0,
     journalEnd: 0,

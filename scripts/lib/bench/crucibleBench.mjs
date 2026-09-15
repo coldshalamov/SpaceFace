@@ -17,9 +17,18 @@ import { createAuthoritativeRuntime } from '../../../src/runtime/createAuthorita
 import { createBus } from '../../../src/core/eventBus.js';
 import { SIM_DT } from '../../../src/core/sim.js';
 import { mulberry32, wrapAngle } from '../../../src/core/rng.js';
+import { damp } from '../../../src/core/math.js';
 import { readPhysicsTelemetry } from '../../../src/core/physicsAuthority.js';
 import { PLAYER_CONTACT_EVENT_BRIDGE_TICKS } from '../../../src/core/sg02DynamicBodyOwner.js';
 import { resolveGovernedCombatSpeed } from '../../../src/core/flight/propulsionCatalog.js';
+import {
+  CAMERA_ZOOM_MAX,
+  CHASE_ZOOM_DEFAULT,
+  clampFocusToPlayerSafeRect,
+  resolveChaseComposition,
+  resolveSpeedZoomFactor,
+} from '../../../src/render/camera.js';
+import { isHostileToPlayer } from '../../../src/systems/scanner.js';
 import { makeShipEntitySpec } from '../../../src/systems/ships.js';
 import { applyCombatLabSetup } from '../../../src/ui/sandbox/sandboxSetup.js';
 import { COMBAT_LAB_STARTER_PACKAGES, COMBAT_LAB_ARENAS } from '../../../src/data/combatLabSetups.js';
@@ -399,6 +408,7 @@ export async function simulateCrucibleSwarm({
     const lastActionOn = new Map();
     const cohortSeen = new Set();
     const firstHostile = { captured: false };
+    const resultsBox = { summary: null };
     // Latest AI intent per actor at ingest time. Classification snapshots this onto each knock
     // receipt as it happens so a later map.set cannot rewrite an earlier collision.
     const aiIntent = { phase: new Map(), telegraph: new Map() };
@@ -412,6 +422,7 @@ export async function simulateCrucibleSwarm({
     // ever admitted". Sampled, recorded, and reported as a gap — never thrown, because a hostile
     // legitimately spawns far and flies in.
     const bodyAdmission = { samples: 0, worst: null, final: null };
+    const hostileInFrame = createHostileInFrameSampler();
 
     const t0 = wallNow();
     let t = 0;
@@ -464,6 +475,7 @@ export async function simulateCrucibleSwarm({
           dt: SIM_DT,
         }));
       }
+      sampleHostileInFrame(state, playerAfter, hostileInFrame, SIM_DT);
 
       const newEvents = log.slice(logCursor);
       logCursor = log.length;
@@ -482,6 +494,7 @@ export async function simulateCrucibleSwarm({
           aiIntent,
           tether,
           playerTick: playerTickByTick.get(tick) || null,
+          resultsBox,
         });
         if (ev.ev === 'physics:impact' && ev.payload && ev.payload.playerInvolved === true) {
           sawPlayerKnock = true;
@@ -517,6 +530,11 @@ export async function simulateCrucibleSwarm({
       }
 
       if (t % 60 === 0) recordBodyAdmission(bodyAdmission, state, physicsSys, tick);
+
+      // A scripted chase-bot cannot click a draft or close a refit. Without this, a 20-minute
+      // cell stalls on wave 5 forever and the death bar stays unmeasured. Direct owner calls,
+      // not harness bus emits — the two runSession protocol receipts stay the only harness emits.
+      advanceOpenMenus(runtime, state);
 
       if (state.run && state.run.wave > waveTarget) { stopReason = 'waves_done'; break; }
       if (!playerAfter || playerAfter.alive === false) { stopReason = 'player_dead'; break; }
@@ -556,6 +574,10 @@ export async function simulateCrucibleSwarm({
     }
     const witnessFloors = measureWitnessFloors(playerTickByTick, receiptTicks);
     applyKnockWitness(eventTrace, playerTickByTick);
+    const resultsSys = runtime.getSystem('survivalResults');
+    if (!resultsBox.summary && resultsSys && typeof resultsSys.lastResult === 'function') {
+      resultsBox.summary = resultsSys.lastResult();
+    }
     // The player's spin, on the record. The player branch of `_applyStructuralGive` returns before
     // the SANE_MAX_YAW_RATE net every other body passes through, so the player is the one hull with
     // no absolute yaw ceiling — worth a number rather than an assumption.
@@ -572,6 +594,7 @@ export async function simulateCrucibleSwarm({
       legacyCruiseSpeed,
       witnessFloors,
       spin,
+      hostileInFrame,
     });
     finalizeCombatCounts(metrics, log, state.playerId);
 
@@ -587,6 +610,9 @@ export async function simulateCrucibleSwarm({
       arenaId,
       hullId: starter.hullId,
       swarmTelemetry,
+      resultsSummary: resultsBox.summary,
+      censorSeconds: cap / 60,
+      hostileInFrame: metrics.hostileInFrame,
     });
 
     const hashPayload = {
@@ -635,6 +661,7 @@ export async function simulateCrucibleSwarm({
       phase: state.run && state.run.phase,
       wave: state.run && state.run.wave,
       swarm,
+      resultsSummary: resultsBox.summary,
     };
   } finally {
     FIELD_FLAGS.enabled = prevFieldsEnabled;
@@ -705,6 +732,29 @@ function unlockAllTech(player, shipsSys, economySys) {
 function harnessEmit(bus, harnessBusEmits, ev, payload) {
   harnessBusEmits.push(ev);
   bus.emit(ev, payload);
+}
+
+/**
+ * Keep a long swarm cell moving through the draft/refit surfaces the chase-bot cannot click.
+ * Skip-draft swarm waves already auto-resolve; this only fires when a real surface is open.
+ * Picks the first seeded offer (deterministic, not skilled). Closes refit without changing fittings.
+ */
+function advanceOpenMenus(runtime, state) {
+  const run = state && state.run;
+  if (!run || run.kind !== 'survival') return;
+  const draft = runtime && typeof runtime.getSystem === 'function'
+    ? runtime.getSystem('survivalDraft')
+    : null;
+  if (!draft) return;
+  if (run.phase === 'draft' && typeof draft.resolvePick === 'function') {
+    const offers = typeof draft.currentOffers === 'function' ? (draft.currentOffers() || []) : [];
+    const first = offers[0];
+    draft.resolvePick({ offerId: first && first.id != null ? first.id : null });
+    return;
+  }
+  if (run.phase === 'refit' && typeof draft.closeRefit === 'function') {
+    draft.closeRefit();
+  }
 }
 
 // ── scripted pilot (drives the REAL input device state, never state.input) ──────
@@ -966,7 +1016,7 @@ function sampleFirstHostile(state, eventTrace, firstHostile) {
 function ingestLiveEvent(ev, ctx) {
   const {
     state, playerId, lastAction, lastActionOn, collisionVictims, cohortSeen, eventTrace, aiIntent,
-    tether, playerTick,
+    tether, playerTick, resultsBox,
   } = ctx;
   const tick = ev.tick | 0;
   const p = ev.payload || {};
@@ -1202,6 +1252,11 @@ function ingestLiveEvent(ev, ctx) {
         kind: ev.ev === 'run:refitOffered' ? 'refit' : 'draft',
       },
     });
+    return;
+  }
+
+  if (ev.ev === 'run:resultsReady' && resultsBox) {
+    resultsBox.summary = p && typeof p === 'object' ? p : resultsBox.summary;
   }
 }
 
@@ -1733,9 +1788,104 @@ function applyKnockHeadings(eventTrace, knockHeadingByTick) {
   }
 }
 
+// ── B3b hostile-in-frame (Gap Report C1) ─────────────────────────────────────
+// Per sim tick, rebuild the chase camera's composed focus and ease a modeled zoom through the
+// same rules follow() applies (context bias damp, minZoom floor, outward step cap). A hostile
+// counts as "actively attacking" under the camera's own predicate — combat.targetId/lockTarget
+// naming the player — so the bar measures the framing the player actually gets. In-frame is the
+// safe-rect's own frame math: halfV = tan(fov/2) * zoom * 0.72, halfH = halfV * aspect.
+export const B3B_FRAME_FRACTION_TARGET = 0.80;
+const B3B_FRAME_ASPECT = 16 / 9;
+const B3B_ZOOM_LERP = 4.0;             // mirrors camera.js ZOOM_LERP
+const B3B_CONTEXT_ZOOM_LERP = 1.2;     // mirrors camera.js CONTEXT_ZOOM_LERP
+const B3B_ZOOM_OUT_STEP_MAX_WU = 5.5;  // mirrors camera.js ZOOM_OUT_STEP_MAX_WU
+const B3B_FRAME_DEPTH_FACTOR = 0.72;   // mirrors camera.js clampFocusToPlayerSafeRect halfV factor
+
+function createHostileInFrameSampler() {
+  return {
+    attackingTicks: 0,
+    inFrameTicks: 0,
+    zoom: CHASE_ZOOM_DEFAULT,
+    zoomBias: 0,
+    sticky: { id: null, remainS: 0, wasActive: false },
+    focus: { x: 0, z: 0 },
+    compScratch: {
+      x: 0, z: 0, nearbyEnemies: 0, hasThreatFocus: false, hasActiveAttacker: false,
+      hasTetherFocus: false, zoomBias: 0, minZoom: 0, composedThreatId: null,
+    },
+    tetherScratch: {},
+    safeScratch: {},
+  };
+}
+
+function sampleHostileInFrame(state, player, s, dt) {
+  if (!state || !player || !player.pos || !state.entities
+    || typeof state.entities.values !== 'function') return;
+  const tiltDeg = state.camera && Number.isFinite(state.camera.tilt) ? state.camera.tilt : 60;
+  const fov = state.settings && state.settings.video && Number.isFinite(state.settings.video.fov)
+    ? state.settings.video.fov : 50;
+  s.focus.x = player.pos.x;
+  s.focus.z = player.pos.z;
+  const comp = resolveChaseComposition(state, player, s.focus, {
+    baseFov: fov,
+    aspect: B3B_FRAME_ASPECT,
+    tiltDeg,
+    dt,
+  }, s.compScratch, s.tetherScratch, s.sticky);
+  s.zoomBias = damp(s.zoomBias, comp.zoomBias || 0, B3B_CONTEXT_ZOOM_LERP, dt);
+  const speed = player.vel ? Math.hypot(player.vel.x || 0, player.vel.z || 0) : 0;
+  const governedCap = resolveGovernedCombatSpeed(player, state, player.maxSpeed || 120);
+  let target = CHASE_ZOOM_DEFAULT * resolveSpeedZoomFactor(speed, governedCap, false)
+    * (1 + s.zoomBias);
+  target = Math.max(target, comp.minZoom || 0);
+  let next = damp(s.zoom, target, B3B_ZOOM_LERP, dt);
+  if (comp.minZoom > s.zoom + 0.5 && target >= comp.minZoom - 1e-6) {
+    next = Math.max(next, Math.min(comp.minZoom, s.zoom + B3B_ZOOM_OUT_STEP_MAX_WU));
+  }
+  if (next > s.zoom) next = Math.min(next, s.zoom + B3B_ZOOM_OUT_STEP_MAX_WU);
+  s.zoom = Math.min(CAMERA_ZOOM_MAX, next);
+  const safe = clampFocusToPlayerSafeRect(
+    comp, player, { zoom: s.zoom, fov, aspect: B3B_FRAME_ASPECT }, s.safeScratch,
+  );
+  const halfV = Math.tan((fov * Math.PI / 180) * 0.5) * s.zoom * B3B_FRAME_DEPTH_FACTOR;
+  const halfH = halfV * B3B_FRAME_ASPECT;
+  for (const e of state.entities.values()) {
+    if (e === player || !e.pos || e.alive === false || e.hull <= 0) continue;
+    if (e.type !== 'ship' && e.type !== 'drone') continue;
+    if (!isHostileToPlayer(e, player.team, state)) continue;
+    const combat = e.data && e.data.combat;
+    if (!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))) continue;
+    s.attackingTicks++;
+    if (Math.abs(e.pos.x - safe.x) <= halfH && Math.abs(e.pos.z - safe.z) <= halfV) {
+      s.inFrameTicks++;
+    }
+  }
+}
+
+function summarizeHostileInFrame(s) {
+  if (!s || !(s.attackingTicks > 0)) {
+    return {
+      attackingTicks: 0,
+      inFrameTicks: 0,
+      fraction: null,
+      met: null,
+      reason: 'no hostile ever held the camera\'s attacking predicate on this run; '
+        + 'the bar stays unmeasured rather than reading 100 %',
+    };
+  }
+  const fraction = s.inFrameTicks / s.attackingTicks;
+  return {
+    attackingTicks: s.attackingTicks,
+    inFrameTicks: s.inFrameTicks,
+    fraction: round6(fraction),
+    met: fraction >= B3B_FRAME_FRACTION_TARGET,
+    reason: null,
+  };
+}
+
 function summarizeMetrics({
   eventTrace, knockEvents, ticks, wavesCleared, cruiseSpeed,
-  legacyCruiseSpeed = null, witnessFloors = null, spin = null,
+  legacyCruiseSpeed = null, witnessFloors = null, spin = null, hostileInFrame = null,
 }) {
   const simSeconds = ticks / 60;
   const simMinutes = Math.max(1 / 60, simSeconds / 60);
@@ -1926,6 +2076,9 @@ function summarizeMetrics({
     hostileKnocksIllegible: hostile.length - hostileLegible,
     b13ComponentsMet,
     b13Met,
+    // B3b: the attacker-visibility clause from the Gap Report C1 row — measured per sim tick
+    // against the camera's own composition math, never inferred from kill ranges.
+    hostileInFrame: summarizeHostileInFrame(hostileInFrame),
     knockGap: gapParts.length ? gapParts.join('; ') : null,
     knocksMissingDeltaV,
     knocksMissingAppliedDeltaV,
@@ -2066,6 +2219,7 @@ function hashableMetrics(metrics, extra) {
     hostileKnocksLegible: metrics.hostileKnocksLegible,
     b13ComponentsMet: metrics.b13ComponentsMet,
     b13Met: metrics.b13Met,
+    hostileInFrameFraction: metrics.hostileInFrame ? metrics.hostileInFrame.fraction : null,
     jitterMeasured: metrics.jitterMeasured === true,
     wavesCleared: metrics.wavesCleared,
     stopReason: extra.stopReason,
@@ -2114,6 +2268,7 @@ function toRunRecord(runData, ids) {
       seed: ids.seed,
       arenaId: ids.arenaId,
       hullId: runData.fitReceipt && runData.fitReceipt.hullId,
+      hostileInFrame: runData.metrics ? runData.metrics.hostileInFrame : null,
     }),
   };
 }
@@ -2394,6 +2549,13 @@ function finiteOrNull(value) {
 
 function round2(value) {
   return Number.isFinite(value) ? Math.round(value * 100) / 100 : 0;
+}
+
+/** Null stays null: an unmeasured fraction must not round to a confident 0. */
+function round6(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n * 1e6) / 1e6;
 }
 
 /** Null stays null: an unmeasured dot must not round to a confident 0. */

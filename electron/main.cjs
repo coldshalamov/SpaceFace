@@ -28,6 +28,7 @@ const {
 } = require('../scripts/lib/playerSaveStore.cjs');
 const { publicBuildInfo, resolveReleaseIdentity } = require('./releaseIdentity.cjs');
 const { configureAutoUpdate } = require('./autoUpdate.cjs');
+const steamworks = require('./steamworks.cjs');
 
 // WEB ROOT: packaged desktop serves the bundled release output in build/web/. Electron dev serves
 // the project root so `npm run electron` and `node server.js 8123` run the same source route even
@@ -129,6 +130,21 @@ const releaseIdentity = resolveReleaseIdentity({ appApi: app, projectRoot: PROJE
 // public view only — never paths, env, or process internals.
 const SHELL_BUILD_INFO_CHANNEL = 'spaceface:build-info';
 ipcMain.handle(SHELL_BUILD_INFO_CHANNEL, () => publicBuildInfo(releaseIdentity));
+
+// PQ-033.03 Steam: the optional steamworks.js binding (absent unless a Steam build adds it) behind two
+// allowlisted channels. Unlock requests carry only a known achievement id; status is the public view.
+// A direct (non-Steam) build reports available:false, and isolated evidence launches never touch
+// Steam. The overlay needs its Chromium switches before app 'ready', so it is armed here.
+const steamDistribution = steamworks.resolveDistribution({ env: process.env });
+const steamAdapter = steamworks.createSteamworksAdapter({
+  env: process.env,
+  distribution: steamDistribution,
+  disabledReason: launchConfig.isolatedEvidence ? 'isolated-evidence' : null,
+  receipt,
+});
+steamAdapter.enableOverlay();
+ipcMain.handle(steamworks.ACHIEVEMENT_UNLOCK_CHANNEL, (_event, payload) => steamAdapter.unlockAchievement(payload));
+ipcMain.handle(steamworks.STEAM_STATUS_CHANNEL, () => steamAdapter.publicStatus());
 
 // PQ-033.01 crash reports: Crashpad dumps under userData/crashes carry version+build in extras;
 // human-readable JSON reports land alongside them on renderer/child-process/uncaught faults. Local
@@ -728,13 +744,20 @@ if (!app.requestSingleInstanceLock()) {
       // offer Restart-or-Later when a build lands. Fail-closed everywhere else, and isolated
       // evidence launches (including packaged-startup probes) never touch the feed at all.
       if (!launchConfig.isolatedEvidence) {
-        const update = configureAutoUpdate({
-          appApi: app,
-          receipt,
-          dialogApi: dialog,
-          browserWindowApi: BrowserWindow,
-        });
-        if (update && update.enabled === false) receipt('update-skipped', { reason: update.reason });
+        if (steamDistribution === steamworks.DISTRIBUTION_STEAM) {
+          // PQ-033.03: Steam delivers Steam builds, so a Steam depot never self-updates from the
+          // GitHub feed. Steam initializes eagerly instead, so achievements are live at the title.
+          receipt('update-skipped', { reason: 'steam-distribution' });
+          steamAdapter.init();
+        } else {
+          const update = configureAutoUpdate({
+            appApi: app,
+            receipt,
+            dialogApi: dialog,
+            browserWindowApi: BrowserWindow,
+          });
+          if (update && update.enabled === false) receipt('update-skipped', { reason: update.reason });
+        }
       }
     })
     .catch(handleWindowCreationFailure);

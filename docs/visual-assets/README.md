@@ -4,6 +4,9 @@ This directory is the front door for every player-facing graphics task. It route
 to one compatible quality contract so an agent cannot bypass professional craft by entering through
 a dated sprint prompt, an old automation script, or a runtime folder.
 
+Current rendering direction and asset tutorial: [Illustrated industrial space](ILLUSTRATED_GRAPHICS_STANDARD.md).
+Use its shared lighting treatment while preserving each model's construction, textures and identity.
+
 | Visual work | Mandatory route |
 |---|---|
 | Blender/glTF/GLB ship, station, place, prop, or VFX-support geometry | `VISUAL_ASSET_PRODUCTION_STANDARD.md`, then `.grok/skills/spaceface-blender-material-truth/SKILL.md` and `ADVANCED_MODEL_TECHNIQUE_CONTRACT.md` for every form or surfacing change. Flyable remasters use `FLYABLE_SHIP_WORKFLOW.md` (one ship, chase camera, reference handoff, no cabin kits). When the activated packet cites `MODEL_ADVERSARIAL_REVIEW_WORKFLOW.md` (including PQ-050), its chase-camera cycles, still reviews, and cleanup are mandatory. Tier C/D may group a repeated manufactured family |

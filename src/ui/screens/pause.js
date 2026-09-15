@@ -37,6 +37,7 @@ const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 /** The photo-mode hint fades after this long (Task B §1.7: two seconds). */
 const PHOTO_HINT_MS = 2000;
 export const PHOTO_LABEL = 'Photo';
+export const ACHIEVEMENTS_LABEL = 'Achievements';
 export const PHOTO_CAPTURE_LABEL = 'Capture';
 export const PHOTO_STORE_KIND = 'store';
 /** Live store-page stills land here so PQ-159.03 captures are used for the store page. */
@@ -686,6 +687,8 @@ export const pauseScreen = {
     // Clips (PQ-160.01): the auto-clip clip list from the moment detector. Opens over this sheet;
     // Esc or Exit returns. This screen owns presentation only, not export encoding.
     mk(CLIPS_LABEL, () => openClips(rootEl, ctx));
+    // Achievements (PQ-033.03): the local ledger — the same screen the title's fine line opens.
+    mk(ACHIEVEMENTS_LABEL, () => nav(ctx, 'pushScreen', 'achievements'));
     // DEV ONLY — Sandbox testing harness (grant weapon now, spawn enemy now, etc.). IS_DEV-gated so
     // it never appears in packaged builds. Same screen as the main-menu Sandbox button.
     if (IS_DEV) mk('Sandbox', () => nav(ctx, 'pushScreen', 'sandbox'), { dev: true });

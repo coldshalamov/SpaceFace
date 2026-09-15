@@ -1,0 +1,114 @@
+{
+  "schema": "breakaway.authored-assets.v1",
+  "source": "tools/build-assets.py",
+  "status": "new authored candidates; live-game camera and asset-pipeline acceptance still required",
+  "assets": [
+    {
+      "file": "sp07-spindle.glb",
+      "sha256": "49e2d5b91ae439a4dbe313cf3d68f9c9dc0622214a2319b3a5c5b305e50dc9f4",
+      "bytes": 74336,
+      "triangles": 3780,
+      "primitives": 6,
+      "trianglesByMaterial": {
+        "paint_bone": 276,
+        "graphite": 588,
+        "machined": 2224,
+        "copper": 504,
+        "signal_amber": 60,
+        "ceramic_dark": 128
+      },
+      "bounds": [
+        [
+          -13.9,
+          -9.3,
+          -9.3
+        ],
+        [
+          13.9,
+          13.05,
+          9.3
+        ]
+      ],
+      "xzCircumradius": 15.024313628249379,
+      "sockets": {
+        "socket_tow_front": [
+          14,
+          0,
+          0
+        ],
+        "socket_tow_aft": [
+          -14,
+          0,
+          0
+        ],
+        "socket_service": [
+          3,
+          11,
+          0
+        ]
+      },
+      "contract": {
+        "units": "WU",
+        "up": "+Y",
+        "forward": "+X",
+        "physics": "single conservative dynamic proxy",
+        "mass": 180,
+        "purpose": "moving industrial load and improvised kinetic tool"
+      }
+    },
+    {
+      "file": "capture-fork.glb",
+      "sha256": "c5e0ded99119502202a051a612194e0f13fb4c71e87a8fc4b50545df2fea40b1",
+      "bytes": 13324,
+      "triangles": 552,
+      "primitives": 6,
+      "trianglesByMaterial": {
+        "paint_bone": 60,
+        "graphite": 60,
+        "machined": 96,
+        "copper": 132,
+        "signal_amber": 132,
+        "ceramic_dark": 72
+      },
+      "bounds": [
+        [
+          -3.5,
+          -9.5,
+          -37.5
+        ],
+        [
+          89.5,
+          5.65,
+          37.5
+        ]
+      ],
+      "xzCircumradius": 91.93068040648889,
+      "sockets": {
+        "socket_mouth": [
+          0,
+          0,
+          0
+        ],
+        "socket_seat": [
+          44,
+          0,
+          0
+        ],
+        "socket_service": [
+          77,
+          5.5,
+          0
+        ]
+      },
+      "contract": {
+        "units": "WU",
+        "up": "+Y",
+        "inward": "+X",
+        "origin": "mouth plane",
+        "innerHalfWidth": 27,
+        "usableDepth": 72,
+        "physics": "three static colliders; mouth is a sensor, never a solid door"
+      }
+    }
+  ]
+}

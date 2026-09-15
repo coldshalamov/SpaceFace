@@ -78,14 +78,14 @@ test('a late present caps leftover sim on this callback and the next hitch', () 
   raf.flushOne(1000 + LOOP_FIXED_DT * 1000 + 100);
 
   assert.deepEqual(order, [
+    'advance', 'render',
     'render', 'advance',
     'render', 'advance',
-    'render', 'advance',
-  ], 'each callback must present the last snapshot before leftover sim');
-  assert.deepEqual(caps, [1, 1, undefined],
-    'a late present caps leftover sim now; external lateness alone cannot keep the fuse armed');
-  assert.equal(controller.getDiagnostics().recoveryCappedFrameCount, 2);
-  assert.equal(controller.getDiagnostics().presentFirst, true);
+  ], 'a healthy frame simulates then presents; a long frame or one after a late present presents first');
+  assert.deepEqual(caps, [undefined, 1, 2],
+    'a late present caps leftover sim to one step on the next callback; a long frame alone caps it to two');
+  assert.equal(controller.getDiagnostics().recoveryCappedFrameCount, 1);
+  assert.equal(controller.getDiagnostics().presentFirst, 'late-only');
   controller.destroy();
 });
 
@@ -135,22 +135,25 @@ test('PresentationRunner consumes completed ticks without owning simulation orde
   });
 
   raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 3.25);
-  assert.deepEqual(order, ['render:0', 'step:1', 'step:2', 'step:3'],
-    'a hitch must present the last snapshot before leftover catch-up');
+  assert.deepEqual(order, ['render:0', 'step:1', 'step:2'],
+    'a long frame must present the last snapshot first and shed catch-up to two steps');
   assert.equal(frames[0].completedTickCount, 0);
   assert.equal(frames[0].completedTick, null);
   assert.equal(controller.getDiagnostics().skippedPresentationTicks, 0);
-  assert.equal(controller.getDiagnostics().stepsThisFrame, 3);
-  assert.equal(controller.getDiagnostics().lastLeftoverStepCap, 4);
+  assert.equal(controller.getDiagnostics().stepsThisFrame, 2);
+  assert.equal(controller.getDiagnostics().lastLeftoverStepCap, 2);
 
   order.length = 0;
   raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 3.25 + 4);
-  assert.deepEqual(order, ['render:3']);
-  assert.equal(frames[1].completedTickCount, 3);
-  assert.equal(frames[1].completedTick.tick, 3);
-  assert.equal(frames[1].completedTick.inputSequence, 3,
-    'the next picture presents leftover ticks from the previous callback');
-  assert.equal(controller.getDiagnostics().skippedPresentationTicks, 2);
+  // The shed third tick is gone for good (whole-step debt beyond the cap is dropped, the
+  // sub-step remainder kept), so this healthy 4 ms frame has no step to run before it presents.
+  assert.deepEqual(order, ['render:2'],
+    'a healthy frame simulates first (nothing due here) and presents the newest completed tick');
+  assert.equal(frames[1].completedTickCount, 2);
+  assert.equal(frames[1].completedTick.tick, 2);
+  assert.equal(frames[1].completedTick.inputSequence, 2,
+    'the picture presents leftover ticks completed by the previous callback');
+  assert.equal(controller.getDiagnostics().skippedPresentationTicks, 1);
   assert.equal(raf.count(), 1);
   controller.destroy();
 });
@@ -256,7 +259,7 @@ test('PresentationRunner retains an unacknowledged journal range across render f
         records: presentationFrame.journalRecordCount,
         valid: presentationFrame.journalValid,
       });
-      if (renderCalls === 2) throw new Error('intentional render failure');
+      if (renderCalls === 1) throw new Error('intentional render failure');
     },
     get() { return null; },
   };
@@ -269,22 +272,21 @@ test('PresentationRunner retains an unacknowledged journal range across render f
     lifecyclePort: null,
   });
 
-  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1);
-  assert.equal(frames.length, 1, 'the first picture is the last snapshot before leftover sim');
-  assert.equal(journal.getPendingCount(), 1);
-
+  // A healthy frame simulates first, so tick 1 commits the spawn record before the (failing)
+  // present offers it; the range must stay pending for the next picture.
   const originalError = console.error;
   console.error = () => {};
   try {
-    raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1 + 4);
+    raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1);
   } finally {
     console.error = originalError;
   }
+  assert.equal(frames.length, 1, 'a healthy frame presents once, after its leftover sim');
   assert.equal(journal.getPendingCount(), 1);
-  assert.deepEqual(frames[1], { start: 0, end: 1, records: 1, valid: true });
+  assert.deepEqual(frames[0], { start: 0, end: 1, records: 1, valid: true });
 
-  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1 + 8);
-  assert.deepEqual(frames[2], frames[1]);
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 * 1.1 + 4);
+  assert.deepEqual(frames[1], frames[0]);
   assert.equal(journal.getPendingCount(), 0);
   assert.equal(controller.getDiagnostics().journalRetainedFrameCount, 1);
   assert.equal(controller.getDiagnostics().journalAcknowledgementCount, 1);

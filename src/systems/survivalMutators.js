@@ -32,6 +32,7 @@ let queued = null;
 let queuedDailyDateKey = null;
 let queuedGhostHash = null;
 let queuedWeeklyMutatorId = null;
+let queuedPractice = false;
 
 const WEEKLY_SET = new Set(CRUCIBLE_WEEKLY_ROTATION);
 const HEAVY_ROLES = new Set(['anchor', 'elite']);
@@ -178,6 +179,7 @@ export function queueSurvivalChallenge(spec) {
   const compiled = compileChallenge(src.seed, incoming, src.ruleset || src.trialId || 'scored');
   queuedDailyDateKey = readDailyDateKey(src.dailyDateKey);
   queuedGhostHash = readGhostHash(src.ghostHash);
+  queuedPractice = src.practice === true;
   queued = {
     mutators: compiled.mutators.slice(),
     ruleset: compiled.ruleset,
@@ -250,11 +252,31 @@ export function queueGhostPlayback(hash) {
   return queuedGhostHash;
 }
 
+/**
+ * Queue a Best Line practice run (PQ-146): same seed, own ghost, no challenge terms. The run is
+ * flagged `practice` at start so its record mode is 'practice' and it can never enter the main
+ * Swarm/Gauntlet comparisons. Survives takeQueuedChallenge the way the ghost stamp does.
+ */
+export function queuePracticeRun() {
+  queuedPractice = true;
+  return true;
+}
+export function lastQueuedPractice() {
+  return queuedPractice;
+}
+/** Consume on survival start so a later free run cannot inherit the practice flag. */
+export function consumeQueuedPractice() {
+  const was = queuedPractice;
+  queuedPractice = false;
+  return was;
+}
+
 export function clearQueuedChallenge() {
   queued = null;
   queuedDailyDateKey = null;
   queuedGhostHash = null;
   queuedWeeklyMutatorId = null;
+  queuedPractice = false;
 }
 
 export function filterDraftOffers(offers, challenge) {

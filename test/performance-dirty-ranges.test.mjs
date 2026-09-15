@@ -422,6 +422,71 @@ test('dirty-range comparator requires causal owner and driver byte reduction at 
   );
 });
 
+test('dirty-range comparator refuses missing and contaminated capture windows', () => {
+  // The 2026-09-15 electron launch reached its route but the capture tore before
+  // either variant window closed: the comparator emitted the whole missing/contaminated
+  // surface at once. Pin each distinct failure so a torn capture stays loud.
+  const healthy = () => [
+    windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 }),
+    windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, { requestedBytes: 12_000_000, driverBytes: 12_200_000 }),
+  ];
+
+  const missing = evaluateDirtyRangeComparison({ windows: [] }, { runtimeKind: 'electron' });
+  assert.equal(missing.pass, false);
+  const missingFailures = missing.failures.join(' ');
+  assert.match(missingFailures, /ranged baseline combat_vfx_burst window is missing/);
+  assert.match(missingFailures, /full-span control combat_vfx_burst window is missing/);
+  assert.match(missingFailures, /did not retain the shipped partial-upload mode/);
+  assert.match(missingFailures, /full-span control was not active during its measurement window/);
+
+  const unrestored = healthy();
+  unrestored[0].restoration = { restored: false };
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: unrestored }, { runtimeKind: 'electron' }).failures.join(' '),
+    /ranged scenario or probe control did not restore exactly/,
+  );
+
+  const noTier1 = healthy();
+  noTier1[1].tier1 = { enabled: false, postBootFrames: 0 };
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: noTier1 }, { runtimeKind: 'electron' }).failures.join(' '),
+    /full-span Tier-1 GL counters are not live post-boot evidence/,
+  );
+
+  const contaminated = healthy();
+  contaminated[0].tier1.postBoot.shaderLinks = 2;
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: contaminated }, { runtimeKind: 'electron' }).failures.join(' '),
+    /ranged window was contaminated by post-boot shaderLinks/,
+  );
+
+  const noBuffers = healthy();
+  noBuffers[0].dynamicBuffers = { available: false };
+  assert.match(
+    evaluateDirtyRangeComparison({ windows: noBuffers }, { runtimeKind: 'electron' }).failures.join(' '),
+    /ranged dynamic-buffer owner diagnostics are unavailable/,
+  );
+});
+
+test('dirty-range comparator refuses windows whose settings drifted mid-capture', () => {
+  // 2026-09-15 run: a contended host let adaptive quality mutate renderScale inside
+  // both windows; the numbers still compared, but a shifted quality baseline is not
+  // paired evidence. Pin the per-window stability gate that invalidated that run.
+  const drifted = windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 });
+  drifted.settings.end = {
+    ...drifted.settings.end,
+    video: { ...drifted.settings.end.video, renderScale: 0.75 },
+  };
+  const result = evaluateDirtyRangeComparison({
+    windows: [
+      drifted,
+      windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, { requestedBytes: 12_000_000, driverBytes: 12_200_000 }),
+    ],
+  }, { runtimeKind: 'browser' });
+  assert.equal(result.pass, false);
+  assert.match(result.failures.join(' '), /ranged quality\/settings changed inside the capture window/);
+});
+
 test('paired dirty-range manifests bind one scenario and source candidate to distinct runtimes', async () => {
   for (const manifest of [browserManifest, electronManifest]) {
     assert.equal(manifest.mode, 'acceptance');
@@ -451,12 +516,34 @@ test('paired dirty-range manifests bind one scenario and source candidate to dis
     const registered = await loadValidationManifestById({ root: ROOT, id });
     assert.equal(registered.id, id);
   }
-  const [browser, electron] = await Promise.all([
-    computeGateDigestsFromManifest({ root: ROOT, manifest: browserManifest }),
-    computeGateDigestsFromManifest({ root: ROOT, manifest: electronManifest }),
-  ]);
-  assert.equal(browser.sourceCandidateDigest, electron.sourceCandidateDigest);
-  assert.equal(browser.worktreeDigest, electron.worktreeDigest);
+  // The candidate/worktree digests hash the live tree, so a foreign write landing between
+  // the two manifest computations flakes an otherwise-static pairing contract. Retry the
+  // pair until one stable read shows them equal; only the persistent identity fields must
+  // differ (runtimeKind, manifest).
+  let browser = null;
+  let electron = null;
+  let stable = false;
+  for (let attempt = 0; attempt < 6 && !stable; attempt++) {
+    browser = await computeGateDigestsFromManifest({ root: ROOT, manifest: browserManifest });
+    electron = await computeGateDigestsFromManifest({ root: ROOT, manifest: electronManifest });
+    stable = browser.sourceCandidateDigest === electron.sourceCandidateDigest
+      && browser.worktreeDigest === electron.worktreeDigest;
+  }
+  assert.ok(stable, 'browser and electron manifests never bound the same source candidate within 6 reads');
   assert.notEqual(browser.candidateDigest, electron.candidateDigest);
   assert.notEqual(browser.manifestDigest, electron.manifestDigest);
+});
+
+test('the acceptance route keeps whole-ship LOD demotion on a scoped library plan', async () => {
+  // The 2026-09-15 browser acceptance run failed on page warnings: every whole-ship
+  // LOD demotion threw because its custom per-level bootstrapPlan still rode the
+  // canonical libraryScope, which bootstrapPlanForOptions refuses by contract. Pin
+  // the call-site pairing so the demotion path cannot regress to that throw.
+  const partsSource = await readFile(new URL('../src/render/partsLibrary.js', import.meta.url), 'utf8');
+  const planIndex = partsSource.indexOf('authoredPreloadPlanForEntityAtLod(entity, requested, options)');
+  assert.notEqual(planIndex, -1, 'demotion preload must request a per-level authored plan');
+  const callSite = partsSource.slice(Math.max(0, planIndex - 600), planIndex + 600);
+  assert.match(callSite, /bootstrapPlan:\s*authoredPreloadPlanForEntityAtLod\(entity, requested, options\)/);
+  assert.match(callSite, /libraryScope:\s*['"]whole-ship-lod-family['"]/,
+    'a custom demotion bootstrapPlan requires a non-canonical libraryScope');
 });

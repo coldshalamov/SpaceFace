@@ -39,9 +39,13 @@ export function collectStartupTextures(subjects) {
   return [...textures];
 }
 
-function drawableHasWork(object) {
+function drawableHasWork(object, options = {}) {
   if (!object || !object.geometry) return false;
   if (!(object.isMesh || object.isPoints || object.isLine || object.isSprite)) return false;
+  // includeEmpty admits count-0 pools and not-yet-ranged buffers: the upload is what matters,
+  // and an empty submission still uploads the backing buffers so a later 0->N growth does not
+  // first-land inside a presented frame.
+  if (options.includeEmpty === true) return true;
   if (object.isInstancedMesh && Number.isFinite(Number(object.count)) && Number(object.count) <= 0) {
     return false;
   }
@@ -53,13 +57,13 @@ function drawableHasWork(object) {
 }
 
 /** Exact drawable objects whose vertex/index/instance buffers can reach a later submission. */
-export function collectStartupGeometryDrawables(subjects) {
+export function collectStartupGeometryDrawables(subjects, options = {}) {
   const drawables = [];
   const seen = new Set();
   for (const root of subjectRoots(subjects)) {
     if (!root) continue;
     const visit = (object) => {
-      if (!drawableHasWork(object) || seen.has(object)) return;
+      if (!drawableHasWork(object, options) || seen.has(object)) return;
       seen.add(object);
       drawables.push(object);
     };
@@ -270,7 +274,7 @@ function restoreRendererState(renderer, state) {
  * attaching them to the visible scene or changing their production materials.
  */
 export async function prepareStartupGeometryResidency(renderer, subjects, options = {}) {
-  const drawables = collectStartupGeometryDrawables(subjects);
+  const drawables = collectStartupGeometryDrawables(subjects, options);
   const { work, uniqueGeometries } = createGeometryWorkItems(drawables, options);
   if (!renderer || typeof renderer.render !== 'function'
       || typeof renderer.setRenderTarget !== 'function'

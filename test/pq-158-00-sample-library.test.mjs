@@ -207,6 +207,36 @@ test('sample pipeline work is zero on idle frames — the frame-sleep counter mu
   rt.dispose();
 });
 
+test('dispose prevents a late decode from resurrecting resident audio', async () => {
+  let releaseDecode;
+  let decodeStarted = false;
+  const decodeGate = new Promise((resolve) => { releaseDecode = resolve; });
+  const ctx = {
+    ...fakeCtxForRuntime(),
+    decodeAudioData: async () => {
+      decodeStarted = true;
+      return decodeGate;
+    },
+  };
+  const cannonFile = SAMPLE_MANIFEST.get('wpn_cannon').file;
+  const rt = createSampleRuntime({
+    ctx,
+    fetchImpl: makeFakeFetch(new Map([[cannonFile, new ArrayBuffer(8)]])),
+    byteBudget: 1024 * 1024,
+  });
+
+  assert.equal(rt.acquire('wpn_cannon'), null);
+  await drainQueue(4);
+  assert.equal(decodeStarted, true);
+
+  rt.dispose();
+  releaseDecode(fakeDecodedBuffer(0.5));
+  await drainQueue(8);
+
+  assert.equal(rt.stats.residentCount, 0);
+  assert.equal(rt.stats.residentBytes, 0);
+});
+
 // ---------------------------------------------------------------------------
 // 4. Hybrid playback — sample body + ducked synth, one-shot and loop lifecycles
 // ---------------------------------------------------------------------------

@@ -18,6 +18,8 @@ import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
+import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
+import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import {
@@ -101,7 +103,7 @@ const DEFAULT_PHYSICS_BACKEND = 'rapier-dynamic';
 const DEFAULT_AI_BACKEND = 'sg06-tactical';
 const DEFAULT_FLIGHT_BACKEND = 'v3';
 const DEFAULT_CONTROL_SCHEME = 'pilot';
-const DEFAULT_MASSLINE_RELEASE_ASSIST = 'arm';
+const DEFAULT_MASSLINE_RELEASE_ASSIST = 'snap';
 const VALID_FLIGHT_MODES = new Set(['assisted', 'drift', 'newtonian']);
 const VALID_CONTROL_SCHEMES = new Set(['pilot', 'helm-assist', 'classic']);
 const VALID_MASSLINE_RELEASE_ASSISTS = new Set(['arm', 'snap', 'off']);
@@ -373,6 +375,8 @@ export const save = {
       ['world', () => this._callSerialize('world') || {}],
       ['entities', () => this._serializeEntities()],
       ['combat', () => serializeCombatState(state)],
+      ['stunts', () => this._callSerialize('stuntGrammar')],
+      ['fields', () => this._callSerialize('fields')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
       ['careerOrigins', () => this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {})],
       ['careerLadders', () => this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {})],
@@ -423,6 +427,8 @@ export const save = {
     data.world = this._callSerialize('world') || {};
     data.entities = this._serializeEntities();
     data.combat = serializeCombatState(state);
+    data.stunts = this._callSerialize('stuntGrammar');
+    data.fields = this._callSerialize('fields');
     data.missions = this._callSerialize('missions') || this._serializeMissions();
     data.careerOrigins = this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {});
     data.careerLadders = this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {});
@@ -685,11 +691,13 @@ export const save = {
   _serializeEntities() {
     const state = this.state;
     const out = [];
+    const stuntBodies = pendingStuntBodyIds(state);
+    for(const id of pendingProjectileBodyIds(state))stuntBodies.add(id);
     for (const e of state.entityList) {
       const isPlayer = e.id === state.playerId;
       // A defeated wreck must still serialize. Skipping it writes player:null and poisons the slot.
-      if (!isPlayer && !e.alive) continue;
-      if (!isPlayer && !(e.flags && e.flags.persistent)) continue;
+      if (!isPlayer && !e.alive && !stuntBodies.has(e.id)) continue;
+      if (!isPlayer && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id)) continue;
       out.push(plainEntity(e, isPlayer));
     }
     return {
@@ -817,10 +825,27 @@ export const save = {
       localStorage.setItem(primaryKey, json);
       storageMs = nowMs() - t;
     } catch (err) {
-      // QuotaExceeded or storage disabled — suggest export-to-file fallback.
-      const reason = (err && err.name === 'QuotaExceededError') ? 'quota' : 'write_failed';
-      console.error('[save] write failed', err);
-      return { ok: false, reason, bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
+      if (err && err.name === 'QuotaExceededError' && previousRaw) {
+        // The recovery rotation above doubled this slot's footprint. The previous primary is
+        // still intact underneath, so sacrifice the just-written recovery copy and retry once —
+        // a lost backup beats a lost save (release soak hit this at 5MB localStorage quota).
+        try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep retrying anyway */ }
+        try {
+          const t = nowMs();
+          localStorage.setItem(primaryKey, json);
+          storageMs = nowMs() - t;
+        } catch (retryErr) {
+          try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ }
+          const reason = (retryErr && retryErr.name === 'QuotaExceededError') ? 'quota' : 'write_failed';
+          console.error('[save] write failed', retryErr);
+          return { ok: false, reason, bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
+        }
+      } else {
+        // QuotaExceeded or storage disabled — suggest export-to-file fallback.
+        const reason = (err && err.name === 'QuotaExceededError') ? 'quota' : 'write_failed';
+        console.error('[save] write failed', err);
+        return { ok: false, reason, bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
+      }
     }
 
     // localStorage.setItem is normally atomic, but read-back validation catches storage shims,
@@ -2797,6 +2822,9 @@ export const save = {
       // 14. rebuild master RNG from serialized CONTINUATION (H9), not seed alone.
       // simTime/tick were restored before spawn so sector rebuild sees the saved clock.
       this._restoreEntropy(data.entropy);
+      this.registry?.get?.('fields')?.deserialize?.(data.fields,entityIdRemap);
+      const stuntOwner = this.registry?.get?.('stuntGrammar');
+      stuntOwner?.deserialize?.(data.stunts, entityIdRemap);
 
       // 15. finalize.
       state.meta.version = CURRENT_VERSION;
@@ -3111,6 +3139,24 @@ export const save = {
     for (const e of state.entityList || []) {
       const recordId = e && e.alive !== false && e.data && e.data.worldRecordId;
       if (recordId && !liveByRecord.has(recordId)) liveByRecord.set(recordId, e.id);
+    }
+    // Sector regen deliberately keeps flags.persistent actors alive, so on load they are still
+    // standing when the saved copies arrive. The envelope is authoritative: clear the survivors
+    // first or every save→load roundtrip spawns a duplicate generation (save size grew ~+40KB
+    // per quick-load in the release soak until the 5MB localStorage quota refused writes).
+    // Record-backed live bodies are the dedupe case above — removing them would orphan the
+    // durable record linkage; only non-record survivors are stale.
+    const liveRecordEntityIds = new Set(liveByRecord.values());
+    const removeEntity = this.helpers && this.helpers.removeEntity;
+    if (typeof removeEntity === 'function') {
+      const staleIds = [];
+      for (const e of state.entityList) {
+        if (!e || e.id === state.playerId || e.isPlayer) continue;
+        if (liveRecordEntityIds.has(e.id)) continue;
+        const persistent = (e.flags && e.flags.persistent) || (e.data && e.data.persistent);
+        if (persistent) staleIds.push(e.id);
+      }
+      for (const id of staleIds) removeEntity(id, { immediate: true });
     }
     for (const saved of savedList) {
       if (!saved || typeof saved !== 'object') continue;
@@ -4193,6 +4239,7 @@ function profileSettingsSnapshot(settings) {
       controlScheme: s.gameplay && s.gameplay.controlScheme,
       controlSchemeV2: s.gameplay && s.gameplay.controlSchemeV2,
       masslineReleaseAssist: s.gameplay && s.gameplay.masslineReleaseAssist,
+      stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
     },
   };
 }

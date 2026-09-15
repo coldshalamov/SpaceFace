@@ -1,0 +1,312 @@
+"SpaceFaceAchievements"
+{
+	"schema"		"spaceface.steamAchievements.v1"
+	"source"		"src/data/achievements.js"
+	"achievements"
+	{
+		"1"
+		{
+			"api_name"		"SF_BERTH_ASSIGNED"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Berth Assigned"
+				}
+				"desc"
+				{
+					"english"		"Dock at a station."
+				}
+				"icon"		"SF_BERTH_ASSIGNED_achieved.jpg"
+				"icon_gray"		"SF_BERTH_ASSIGNED_unachieved.jpg"
+			}
+		}
+		"2"
+		{
+			"api_name"		"SF_ROCK_HAS_A_PRICE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Rock Has a Price"
+				}
+				"desc"
+				{
+					"english"		"Mine ore from an asteroid or salvage it from a wreck."
+				}
+				"icon"		"SF_ROCK_HAS_A_PRICE_achieved.jpg"
+				"icon_gray"		"SF_ROCK_HAS_A_PRICE_unachieved.jpg"
+			}
+		}
+		"3"
+		{
+			"api_name"		"SF_PAPER_TRAIL"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Paper Trail"
+				}
+				"desc"
+				{
+					"english"		"Buy or sell cargo at a station market."
+				}
+				"icon"		"SF_PAPER_TRAIL_achieved.jpg"
+				"icon_gray"		"SF_PAPER_TRAIL_unachieved.jpg"
+			}
+		}
+		"4"
+		{
+			"api_name"		"SF_SIGNED_AND_DELIVERED"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Signed and Delivered"
+				}
+				"desc"
+				{
+					"english"		"Complete a contract."
+				}
+				"icon"		"SF_SIGNED_AND_DELIVERED_achieved.jpg"
+				"icon_gray"		"SF_SIGNED_AND_DELIVERED_unachieved.jpg"
+			}
+		}
+		"5"
+		{
+			"api_name"		"SF_OUT_OF_THE_POCKET"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Out of the Pocket"
+				}
+				"desc"
+				{
+					"english"		"Jump to another system."
+				}
+				"icon"		"SF_OUT_OF_THE_POCKET_achieved.jpg"
+				"icon_gray"		"SF_OUT_OF_THE_POCKET_unachieved.jpg"
+			}
+		}
+		"6"
+		{
+			"api_name"		"SF_MADE_CONTACT"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Made Contact"
+				}
+				"desc"
+				{
+					"english"		"Latch the Massline onto another body."
+				}
+				"icon"		"SF_MADE_CONTACT_achieved.jpg"
+				"icon_gray"		"SF_MADE_CONTACT_unachieved.jpg"
+			}
+		}
+		"7"
+		{
+			"api_name"		"SF_LIGHT_SHIPS_ARE_AMMUNITION"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Light Ships Are Ammunition"
+				}
+				"desc"
+				{
+					"english"		"Throw a body with the Massline."
+				}
+				"icon"		"SF_LIGHT_SHIPS_ARE_AMMUNITION_achieved.jpg"
+				"icon_gray"		"SF_LIGHT_SHIPS_ARE_AMMUNITION_unachieved.jpg"
+			}
+		}
+		"8"
+		{
+			"api_name"		"SF_RAZOR_RELEASE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Razor Release"
+				}
+				"desc"
+				{
+					"english"		"Let go of a swing at the exact moment: a razor-rated release."
+				}
+				"icon"		"SF_RAZOR_RELEASE_achieved.jpg"
+				"icon_gray"		"SF_RAZOR_RELEASE_unachieved.jpg"
+			}
+		}
+		"9"
+		{
+			"api_name"		"SF_KEEP_THE_SPEED"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Keep the Speed"
+				}
+				"desc"
+				{
+					"english"		"Whip a tethered mass into something at crushing speed."
+				}
+				"icon"		"SF_KEEP_THE_SPEED_achieved.jpg"
+				"icon_gray"		"SF_KEEP_THE_SPEED_unachieved.jpg"
+			}
+		}
+		"10"
+		{
+			"api_name"		"SF_INTO_THE_CRUCIBLE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Into the Crucible"
+				}
+				"desc"
+				{
+					"english"		"Finish a Crucible run, however it ends."
+				}
+				"icon"		"SF_INTO_THE_CRUCIBLE_achieved.jpg"
+				"icon_gray"		"SF_INTO_THE_CRUCIBLE_unachieved.jpg"
+			}
+		}
+		"11"
+		{
+			"api_name"		"SF_TENTH_WAVE"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Tenth Wave"
+				}
+				"desc"
+				{
+					"english"		"Reach wave 10 in the Crucible."
+				}
+				"icon"		"SF_TENTH_WAVE_achieved.jpg"
+				"icon_gray"		"SF_TENTH_WAVE_unachieved.jpg"
+			}
+		}
+		"12"
+		{
+			"api_name"		"SF_BETTER_THAN_LAST_TIME"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Better Than Last Time"
+				}
+				"desc"
+				{
+					"english"		"Beat your own best score in a Crucible challenge."
+				}
+				"icon"		"SF_BETTER_THAN_LAST_TIME_achieved.jpg"
+				"icon_gray"		"SF_BETTER_THAN_LAST_TIME_unachieved.jpg"
+			}
+		}
+		"13"
+		{
+			"api_name"		"SF_SAME_SEED_SAME_DAY"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Same Seed, Same Day"
+				}
+				"desc"
+				{
+					"english"		"Finish a Crucible daily run."
+				}
+				"icon"		"SF_SAME_SEED_SAME_DAY_achieved.jpg"
+				"icon_gray"		"SF_SAME_SEED_SAME_DAY_unachieved.jpg"
+			}
+		}
+		"14"
+		{
+			"api_name"		"SF_WALKED_OUT"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Walked Out"
+				}
+				"desc"
+				{
+					"english"		"Extract from a Crucible swarm at the refit bench instead of dying in it."
+				}
+				"icon"		"SF_WALKED_OUT_achieved.jpg"
+				"icon_gray"		"SF_WALKED_OUT_unachieved.jpg"
+			}
+		}
+		"15"
+		{
+			"api_name"		"SF_PAPERWORK_FILED"
+			"hidden"		"1"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Paperwork Filed"
+				}
+				"desc"
+				{
+					"english"		"Get yourself declared WANTED."
+				}
+				"icon"		"SF_PAPERWORK_FILED_achieved.jpg"
+				"icon_gray"		"SF_PAPERWORK_FILED_unachieved.jpg"
+			}
+		}
+		"16"
+		{
+			"api_name"		"SF_SIX_FIGURES"
+			"hidden"		"0"
+			"set_by"		"client"
+			"display"
+			{
+				"name"
+				{
+					"english"		"Six Figures"
+				}
+				"desc"
+				{
+					"english"		"Earn 100,000 credits over your career."
+				}
+				"icon"		"SF_SIX_FIGURES_achieved.jpg"
+				"icon_gray"		"SF_SIX_FIGURES_unachieved.jpg"
+			}
+		}
+	}
+}

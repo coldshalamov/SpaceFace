@@ -481,6 +481,7 @@ export async function runReleaseSoakProbe({
             dockEvents: window.__M6_RELEASE_SOAK_EVENTS__?.dock || [],
             activeElement: typeof document !== 'undefined' ? (document.activeElement?.tagName + '.' + (document.activeElement?.className || '')).slice(0, 120) : null,
             navAutopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status } : null,
+            navEvents: (window.__M6_RELEASE_SOAK_EVENTS__?.nav || []).slice(-12),
             dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
             sectorEvents: window.__PQ033_SECTOR_EVENTS__ || [],
             posJumps: window.__PQ033_POS_JUMPS__ || [],
@@ -1708,7 +1709,18 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     // on restored velocity and can wedge inside the station silhouette with no prompt.
     const navArmed = await page.waitForFunction(() => {
       const nav = window.SF?.state?.nav;
-      return nav?.autopilot?.active === true || nav?.waypoint != null;
+      // Transition evidence only — 'arrived' status and a persisted waypoint can
+      // both be stale survivors of the previous cycle's approach, and the waypoint
+      // can be retired after an instant arm→arrive, so neither a bare status read
+      // nor waypoint!=null proves THIS arm landed. The nav tap's armed event is
+      // the witness: it was emitted synchronously when the click ran setCourse.
+      const mark = window.__M6_NAV_MARK__ || 0;
+      const events = window.__M6_RELEASE_SOAK_EVENTS__?.nav || [];
+      const freshArmed = events.some((e) => e.seq > mark && e.status === 'armed' && /Helios Station/i.test(String(e.label || '')));
+      if (nav?.autopilot?.active === true) return true;
+      // A fresh arm that already arrived leaves the ship at the berth — the dock
+      // prompt path owns the rest. A fresh arm with a live waypoint still drives.
+      return freshArmed && (nav?.autopilot?.status === 'arrived' || nav?.waypoint != null);
     }, null, { timeout: 8_000 }).then(() => true).catch(() => false);
     assert(navArmed, 'redock waypoint did not arm nav.waypoint/autopilot — the ship would drift unpowered');
     await markWithState('redock-waypoint');
@@ -1724,6 +1736,8 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
       autopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status, label: state.nav.autopilot.label } : null,
       waypoint: state?.nav?.waypoint ? { kind: state.nav.waypoint.kind, label: state.nav.waypoint.label } : null,
       corridor: dc ? { stationId: dc.stationId ?? null, phase: dc.phase, distToBerth: dc.distToBerth, distCenter: dc.distCenter, inCorridor: dc.inCorridor, inCapture: dc.inCapture, headingOk: dc.headingOk } : null,
+      sectorId: state?.world?.currentSectorId || null,
+      trail: (window.__M6_RELEASE_SOAK_TRAIL__ || []).slice(-40),
     };
   }).catch(() => null);
   // The prompt fires for ANY station envelope crossed en route. Only Helios' corridor
@@ -1845,6 +1859,16 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
   await transition('dock-mount');
   let docked = alreadyDocked;
   if (!alreadyDocked) {
+    // The berth prompt gates on proximity AND a speed gate; a still-driving autopilot can carry
+    // the ship back out between the prompt wait and the key tap. Pulse the public brake to
+    // disengage it and shed speed, then release so the corridor capture assist (suppressed
+    // while any input is held) can pull an edge-parked ship back onto the berth.
+    try {
+      await page.keyboard.down('Digit0');
+      await page.waitForTimeout(900);
+    } finally {
+      await page.keyboard.up('Digit0').catch(() => {});
+    }
     await page.keyboard.press('KeyE');
     docked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 })
       .then(() => true).catch(() => false);
@@ -1987,6 +2011,21 @@ async function armSaveLoadObservers(page) {
         if (!Array.isArray(ev.dock)) ev.dock = [];
         if (ev.dock.length < 32) ev.dock.push(entry);
       };
+      // Nav arm tap: _onSetCourse emits nav:autopilot {status:'armed'} synchronously when a
+      // waypoint click lands. When the ship is already inside the arrival radius the whole
+      // arm->arrive round-trip completes inside one sim tick, so post-click nav state can be
+      // indistinguishable from a missed click (status 'arrived' survives; the waypoint can be
+      // retired by corridor/mission cleanup). The event stream is the only honest witness —
+      // entries carry a monotonic seq so a pre-click mark survives the ring splice.
+      window.__M6_NAV_SEQ__ = window.__M6_NAV_SEQ__ || 0;
+      window.SF.bus.on('nav:autopilot', (p) => {
+        const seq = ++window.__M6_NAV_SEQ__;
+        const ev = window.__M6_RELEASE_SOAK_EVENTS__;
+        if (!ev) return;
+        if (!Array.isArray(ev.nav)) ev.nav = [];
+        if (ev.nav.length >= 64) ev.nav.splice(0, 32);
+        ev.nav.push({ seq, t: Math.round(performance.now()), status: p?.status || null, active: p?.active === true, label: p?.label || '' });
+      });
       window.SF.bus.on('dock:attempt', (p) => pushDock({ kind: 'attempt', stationId: p?.stationId || null }));
       window.SF.bus.on('dock:denied', (p) => pushDock({ kind: 'denied', stationId: p?.stationId || null, reason: p?.reason || null }));
       window.SF.bus.on('dock:range', (p) => pushDock({ kind: 'range', stationId: p?.stationId || null, inRange: !!p?.inRange }));
@@ -1999,6 +2038,30 @@ async function armSaveLoadObservers(page) {
           ev.heliosWaypointArms = (ev.heliosWaypointArms || 0) + 1;
         }
       });
+      // Position/sector trail: a once-observed anomaly restored a clean pose then
+      // later read the player at -1.1M in sector_kepler_scar during the dock wait.
+      // The FAIL dump only saw the end state; a bounded trail names the tick the
+      // position jumped and the jump/executor state that owned it.
+      window.__M6_RELEASE_SOAK_TRAIL__ = [];
+      setInterval(() => {
+        const trail = window.__M6_RELEASE_SOAK_TRAIL__;
+        if (!trail) return;
+        if (trail.length >= 4000) trail.splice(0, 2000); // ring: keep the recent half
+        const s = window.SF?.state;
+        const p = s?.entities?.get?.(s.playerId);
+        if (!s || !p || !p.pos) return;
+        trail.push({
+          t: Math.round(performance.now()),
+          sector: s.world?.currentSectorId || null,
+          x: Math.round(p.pos.x), z: Math.round(p.pos.z),
+          v: Math.round(Math.hypot(Number(p.vel?.x || 0), Number(p.vel?.z || 0))),
+          mode: s.mode,
+          jump: s.jump?.state || null,
+          jumpTarget: s.jump?.targetSectorId || null,
+          exec: s.nav?.executor ? `${s.nav.executor.status}:${s.nav.executor.engaged}` : null,
+          ap: s.nav?.autopilot ? `${s.nav.autopilot.status}:${s.nav.autopilot.active}` : null,
+        });
+      }, 200);
     }
     // Autosaves fire on the sim clock every 120 s and will interleave over a long
     // soak; a one-shot observer bound to an autosave would snapshot the wrong write.
@@ -2111,6 +2174,14 @@ async function clickWaypointWithPointer(page, locator) {
   let lastBox = null;
   let attempt = 0;
   let nullBoxes = 0;
+  // arm evidence must be a TRANSITION, not a state: autopilot status/label persist
+  // 'arrived'+'Helios Station' from the previous cycle's approach, and an instant
+  // arm→arrive (ship already inside the arrival radius) mutates the new autopilot
+  // back to identical values within one tick while the waypoint can be retired by
+  // corridor/mission cleanup. The synchronous nav:autopilot 'armed' emit is the
+  // only witness that survives that round-trip — mark the stream, then require a
+  // fresh Helios arm event after the mark.
+  await page.evaluate(() => { window.__M6_NAV_MARK__ = window.__M6_NAV_SEQ__ || 0; });
   while (Date.now() < deadline) {
     attempt += 1;
     // Same fix as alphaLiveBaselineRoute.clickWaypointWithPointer: the button is
@@ -2148,12 +2219,15 @@ async function clickWaypointWithPointer(page, locator) {
       }
       const armed = await page.waitForFunction(([before, staleArm]) => {
         // Proof needs BOTH sides of a landed Helios arm: a fresh Helios-labelled
-        // nav:waypoint (the counter, or the not-stale label checks) AND the chart
-        // actually closing. _activateSelectedCourse pops the chart on every non-route
-        // arm, so a landed click hides it; but the counter alone cannot be trusted —
-        // claims/sync re-emit the currently-held waypoint and the save restore re-emits
-        // the saved one, so a Helios bump can arrive while a click that missed leaves
-        // the chart open (map-closed then timed out behind it at soak cycle 57).
+        // arm witness (waypoint counter or the seq-marked nav:autopilot stream —
+        // the stream survives the arm→arrive→retire round-trip that erases the
+        // waypoint and every post-state) AND the chart actually closing.
+        // _activateSelectedCourse pops the chart on every non-route arm, so a
+        // landed click hides it; but no counter alone can be trusted — claims/sync
+        // re-emit the currently-held waypoint and the save restore re-arms the
+        // saved autopilot, so fresh-looking bumps can arrive while a click that
+        // missed leaves the chart open (map-closed then timed out behind it at
+        // soak cycle 57).
         const events = window.__M6_RELEASE_SOAK_EVENTS__;
         const el = document.querySelector('#sf-galaxymap');
         const chartHidden = !el || el.hidden || getComputedStyle(el).display === 'none'
@@ -2162,6 +2236,10 @@ async function clickWaypointWithPointer(page, locator) {
         if (docked) return true;
         if (!chartHidden) return false;
         if ((events?.heliosWaypointArms || 0) > before) return true;
+        const navEvents = events?.nav || [];
+        const navMark = window.__M6_NAV_MARK__ || 0;
+        if (navEvents.some((e) => e.seq > navMark
+          && e.status === 'armed' && /Helios Station/i.test(String(e.label || '')))) return true;
         if (staleArm) return false;
         const nav = window.SF?.state?.nav;
         const autopilot = nav?.autopilot;

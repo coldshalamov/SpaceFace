@@ -139,6 +139,8 @@ export function resolveLiveAttackHit(input = {}) {
     const receipt = receiptForContact(projectile, target, payload, tick);
     const bounced = resolveRicochet(runtime, spec, receipt, projectile, {
       hostiles: input.hostiles,
+      state: input.state,
+      surface: target,
     });
     if (bounced.ok) {
       requestAttackContinue(projectile);

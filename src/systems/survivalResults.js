@@ -13,6 +13,7 @@ import { SWARM_RULESET } from '../data/swarmMode.js';
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
 import { settleCrucibleRun } from './survivalRecords.js';
 import { challengeFromRun } from './survivalMutators.js';
+import { currentStuntRunRules, stuntAssistProfile } from '../combat/stuntRunRules.js';
 
 /** How many recent hits on the player the summary keeps. Bounded: this is a ring, not a log. */
 export const DAMAGE_TRAIL_LENGTH = 8;
@@ -263,15 +264,16 @@ export function resolveDeathTelegraph({
  * order, bounded length. A run with nothing tracked tells nothing — null-safe throughout.
  */
 export function storyMomentsFor(summary = {}) {
+  const input = summary && typeof summary === 'object' ? summary : {};
   const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
   const moments = [];
-  const best = num(summary.bestChain);
+  const best = num(input.bestChain);
   if (best > 0) {
-    const wave = Number.isInteger(summary.chainWave) && summary.chainWave > 0
-      ? ` on wave ${summary.chainWave}` : '';
+    const wave = Number.isInteger(input.chainWave) && input.chainWave > 0
+      ? ` on wave ${input.chainWave}` : '';
     moments.push(`Best chain ${best}${wave}`);
   }
-  const waves = Array.isArray(summary.waveStats) ? summary.waveStats : [];
+  const waves = Array.isArray(input.waveStats) ? input.waveStats : [];
   let top = null;
   for (const entry of waves) {
     if (!entry || typeof entry !== 'object') continue;
@@ -280,16 +282,16 @@ export function storyMomentsFor(summary = {}) {
   if (top && num(top.kills) > 0) {
     moments.push(`Wave ${num(top.wave)} did the heavy lifting — ${num(top.kills)} kills`);
   }
-  const hit = summary.heaviestHit;
+  const hit = input.heaviestHit;
   if (hit && typeof hit === 'object' && num(hit.amount) > 0) {
     moments.push(`Hardest hit: ${Math.round(num(hit.amount))} from ${hit.weapon || 'unidentified fire'}`);
   }
-  if (Number.isFinite(summary.firstKillInS) && summary.firstKillInS >= 0) {
-    const seconds = Math.round(summary.firstKillInS * 10) / 10;
+  if (Number.isFinite(input.firstKillInS) && input.firstKillInS >= 0) {
+    const seconds = Math.round(input.firstKillInS * 10) / 10;
     moments.push(`First kill ${seconds}s in`);
   }
-  if (num(summary.stylePeak) > 1) {
-    moments.push(`Style peaked at ${num(summary.stylePeak).toFixed(1)}x`);
+  if (num(input.stylePeak) > 1) {
+    moments.push(`Style peaked at ${num(input.stylePeak).toFixed(1)}x`);
   }
   return moments.slice(0, DEATH_MOMENT_LIMIT).map((text) => ({ text }));
 }
@@ -397,6 +399,7 @@ export const survivalResults = {
   },
 
   _reset() {
+    this._highestEntered=0;this._stuntRules=null;
     this._planFailure = null;
     this._stopReason = null;
     this._result = null;
@@ -431,6 +434,9 @@ export const survivalResults = {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    this._highestEntered=Math.max(this._highestEntered,wave);
+    if(!this._stuntRules)this._stuntRules=currentStuntRunRules(this.state,run.ruleset===SWARM_RULESET?'swarm':run.ruleset??'arc');
+    else if(this._stuntRules.simulationAssistProfile!==stuntAssistProfile(this.state))this._stuntRules.simulationAssistProfile='mixed';
     this._waveStartSimTime = this._simNow();
     this._waveStartWave = Number.isInteger(wave) ? wave : 0;
     if (this._runStartSimTime == null) this._runStartSimTime = this._simNow();
@@ -680,6 +686,13 @@ export const survivalResults = {
       ? challenge.ruleset
       : 'arc';
     result.unlocksEarned = [];
+    result.highestRoundEntered=this._highestEntered;
+    result.lastRoundCleared=this._deepestWave;
+    result.roundThreatBudget=run.threatBudget;
+    result.roundThreatResolved=run.resolvedThreat;
+    result.remainingEnemies=Math.max(0,(run.threatBudget??0)-(run.resolvedThreat??0));
+    result.recordRules=this._stuntRules;
+    result.bestLine=this.state.stunts?.combo?.bestLine?structuredClone(this.state.stunts.combo.bestLine):null;
     try {
       const settled = settleCrucibleRun({ result, run });
       result.unlocksEarned = settled.unlocksEarned.slice();

@@ -43,5 +43,33 @@ export default defineFlavorPack({
     { id: 'war_sker_04', set: 'war_sker_mourning', reactsTo: 'conflict_flip', author: 'Sker wall', text: 'NEW FLAG OVER {sector}. SAME COLD BUNKS BELOW IT.' },
     { id: 'war_sker_05', set: 'war_sker_mourning', reactsTo: 'conflict_flip', author: 'Sker wall', text: '{loser} LOST THE LANE. THE WALL LOST SIX MORE NAMES.' },
     { id: 'war_sker_06', set: 'war_sker_mourning', reactsTo: 'conflict_flip', author: 'Sker wall', text: 'THE DESK CALLS {sector} SETTLED. SKER CALLS THE DEAD BY NAME.' },
+    // war_quiet_whisper — the Quiet treat a flag change as a rumor; the real route never moved.
+    { id: 'war_quiet_01', set: 'war_quiet_whisper', reactsTo: 'conflict_flip', author: 'Quiet channel', text: 'THE {sector} HANDOFF CHANGED HANDS. THE REAL ROUTE DID NOT.' },
+    { id: 'war_quiet_02', set: 'war_quiet_whisper', reactsTo: 'conflict_flip', author: 'Quiet channel', text: '{winner} CHECKPOINTS ASK NEW QUESTIONS AT {sector}. OLD ANSWERS STILL WORK.' },
+    { id: 'war_quiet_03', set: 'war_quiet_whisper', reactsTo: 'conflict_flip', author: 'Quiet channel', text: '{loser} NEVER HELD {sector}. THEY ONLY PAID THE TOLL.' },
+    { id: 'war_quiet_04', set: 'war_quiet_whisper', reactsTo: 'conflict_flip', author: 'Quiet channel', text: 'SAY NOTHING AT {sector}. {winner} LISTENS HARDER THAN {loser} DID.' },
+    { id: 'war_quiet_05', set: 'war_quiet_whisper', reactsTo: 'conflict_flip', author: 'Quiet channel', text: '{sector} FLIPPED. THE QUIET ALREADY HAD THE NEXT DOOR.' },
+    { id: 'war_quiet_06', set: 'war_quiet_whisper', reactsTo: 'conflict_flip', author: 'Quiet channel', text: 'A FLAG IS A RUMOR. {sector} MOVED WHEN THE CARGO DID.' },
+    // war_vael_keel — the Vael read every ownership line as a countdown on fresh ground.
+    { id: 'war_vael_01', set: 'war_vael_keel', reactsTo: 'conflict_flip', author: 'Vael keel-mark', text: '{sector} WAS ALWAYS VAEL GROUND. THE INTRUDER FLAG WAS A LEASE OF BONES.' },
+    { id: 'war_vael_02', set: 'war_vael_keel', reactsTo: 'conflict_flip', author: 'Vael keel-mark', text: 'THE {loser} CARCASS MARKS {sector} NOW. {winner} WILL ROT THE SAME.' },
+    { id: 'war_vael_03', set: 'war_vael_keel', reactsTo: 'conflict_flip', author: 'Vael keel-mark', text: 'KEEL OVER {sector}. THE VOID KEEPS NO FLAG LONG.' },
+    { id: 'war_vael_04', set: 'war_vael_keel', reactsTo: 'conflict_flip', author: 'Vael keel-mark', text: '{winner} COUNTS {sector} A VICTORY. WE COUNT IT A FEEDING GROUND.' },
+    { id: 'war_vael_05', set: 'war_vael_keel', reactsTo: 'conflict_flip', author: 'Vael keel-mark', text: 'BLOOD MARKS {sector} BETTER THAN {winner} PAINT.' },
+    { id: 'war_vael_06', set: 'war_vael_keel', reactsTo: 'conflict_flip', author: 'Vael keel-mark', text: '{loser} FLED {sector}. THE HUNGER DID NOT.' },
+    // war_free_dockline — the Free Frontier refuses to call any flag an owner.
+    { id: 'war_free_01', set: 'war_free_dockline', reactsTo: 'conflict_flip', author: 'Free dockline', text: '{sector} FLIPPED FREE OF {loser}. {winner} IS JUST THE NEXT HOLD.' },
+    { id: 'war_free_02', set: 'war_free_dockline', reactsTo: 'conflict_flip', author: 'Free dockline', text: 'NO FLAG ASKED US AT {sector}. WE KEEP OUR OWN CHARTS.' },
+    { id: 'war_free_03', set: 'war_free_dockline', reactsTo: 'conflict_flip', author: 'Free dockline', text: '{winner} TOOK {sector}. THE DRIFT TAKES EVERYTHING BACK.' },
+    { id: 'war_free_04', set: 'war_free_dockline', reactsTo: 'conflict_flip', author: 'Free dockline', text: '{sector} UNDER {winner}: SAME THIN AIR, NEW LANDING FEE.' },
+    { id: 'war_free_05', set: 'war_free_dockline', reactsTo: 'conflict_flip', author: 'Free dockline', text: 'WE RAN {sector} BEFORE {loser} NAMED IT. WE RUN IT STILL.' },
+    { id: 'war_free_06', set: 'war_free_dockline', reactsTo: 'conflict_flip', author: 'Free dockline', text: 'A NEW OWNER FOR {sector}. THE FREEBOARD STAYS UNPAINTED.' },
+    // war_choir_litany — the Ascendant Choir folds a flip into liturgy: a verse, not a verdict.
+    { id: 'war_choir_01', set: 'war_choir_litany', reactsTo: 'conflict_flip', author: 'Choir litany', text: 'THE CHOIR COUNTS {sector} AMONG ITS VERSES. {winner} HOLDS A LINE, NOT THE SONG.' },
+    { id: 'war_choir_02', set: 'war_choir_litany', reactsTo: 'conflict_flip', author: 'Choir litany', text: '{sector} CHANGED HANDS. NOTHING CHANGES THE RESONANCE.' },
+    { id: 'war_choir_03', set: 'war_choir_litany', reactsTo: 'conflict_flip', author: 'Choir litany', text: 'PRAY FOR {loser}: THEIR SIGNAL FADES FROM {sector}.' },
+    { id: 'war_choir_04', set: 'war_choir_litany', reactsTo: 'conflict_flip', author: 'Choir litany', text: 'THE ASCENDANCY SEES THE NEW FLAG OVER {sector} AND HUMS THE OLD HYMN.' },
+    { id: 'war_choir_05', set: 'war_choir_litany', reactsTo: 'conflict_flip', author: 'Choir litany', text: '{winner} ADMINISTERS {sector}. THE CHOIR REMEMBERS IT ETERNAL.' },
+    { id: 'war_choir_06', set: 'war_choir_litany', reactsTo: 'conflict_flip', author: 'Choir litany', text: 'EVERY FLAG OVER {sector} IS A VERSE. THE SONG OUTLASTS THE VERSE.' },
   ],
 });

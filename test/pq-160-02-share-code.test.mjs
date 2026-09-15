@@ -107,6 +107,21 @@ test('PQ-160.02 run share code round-trips and fails closed on tamper', () => {
   assert.match(denied.error, /not in this version/);
 });
 
+test('share-code decoder rejects non-zero unused base64url tail bits', () => {
+  const code = encodeShareBlock('SFC1', { s: 1 });
+  const firstDash = code.indexOf('-');
+  const lastDash = code.lastIndexOf('-');
+  const body = code.slice(firstDash + 1, lastDash);
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  assert.equal(body.length % 4, 2, 'fixture must leave four unused tail bits');
+
+  const lastValue = alphabet.indexOf(body.at(-1));
+  const mutatedBody = body.slice(0, -1) + alphabet[lastValue ^ 1];
+  const mutated = `${code.slice(0, firstDash + 1)}${mutatedBody}${code.slice(lastDash)}`;
+
+  assert.equal(decodeShareBlock(mutated, 'SFC1').ok, false);
+});
+
 test('PQ-160.02 ghost share block round-trips and lands in a fresh profile', () => {
   takeGhostTape(); // drop any leftover recording in this process
   sampleGhostPose({ tick: 0, x: 0, z: 0, r: 0, seed: SEED, hullId: 'ship_hornet' });

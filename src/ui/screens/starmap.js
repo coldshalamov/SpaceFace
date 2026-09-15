@@ -17,11 +17,13 @@ import { MAP_FOCUS, openGalaxyMap } from '../mapAuthority.js';
 import { canvasFont, canvasFontScaled, invalidateCanvasFonts } from '../canvasFonts.js';
 
 const FACTION_NAME = Object.create(null);
+const FACTION_COLOR = Object.create(null);
 const SECTOR_NAME = new Map(SECTORS.map((s) => [s.id, s.name]));
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const DEFAULT_MEMORY_COMMODITY = 'cmdty_ore_iron';
 for (const f of FACTION_META) {
   FACTION_NAME[f.id] = f.short || f.name || f.id;
+  FACTION_COLOR[f.id] = f.color || '#9aa8bc';
 }
 
 // Canvas 2D cannot resolve CSS variables. Same seven grammar hexes as localmap / drill.
@@ -103,7 +105,10 @@ const STYLE_ID = 'sf-starmap-style';
 const CSS = `
 #sf-starmap {
   width: min(94vw, 1120px); height: min(90vh, 760px); display: flex; flex-direction: column;
-  background: var(--sf-surface); border: 1px solid var(--sf-edge); border-radius: 2px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--sf-surface) 96%, black) 0%, color-mix(in srgb, var(--sf-surface) 90%, black) 100%);
+  border: 1px solid var(--sf-edge); border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   overflow: hidden; pointer-events: auto; font-family: var(--sf-body-face); font-size: 14px; color: var(--sf-paper);
 }
 #sf-starmap .sf-fig,
@@ -119,11 +124,17 @@ const CSS = `
 }
 #sf-starmap .sm-head {
   display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge); background: var(--sf-surface);
+  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge);
+  background: color-mix(in srgb, var(--sf-surface) 92%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
 #sf-starmap .sm-title {
   font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
   letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+  display: flex; align-items: center; gap: 8px;
+}
+#sf-starmap .sm-title::before {
+  content: ''; display: inline-block; width: 3px; height: 12px; background: var(--sf-calm); border-radius: 1px;
 }
 #sf-starmap .sm-head-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--sp-3); flex-wrap: wrap; }
 #sf-starmap .sm-commodity {
@@ -142,20 +153,27 @@ const CSS = `
 #sf-starmap .sm-stats { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); display: flex; gap: var(--sp-4); flex-wrap: wrap; }
 #sf-starmap .sm-stats b { color: var(--sf-paper); }
 #sf-starmap .sm-close {
-  background: transparent; border: 1px solid var(--sf-edge); color: var(--sf-paper);
-  padding: var(--sp-1) var(--sp-3); border-radius: 2px; cursor: pointer;
-  font-family: var(--sf-body-face); font-size: 13px; letter-spacing: 0;
+  background: color-mix(in srgb, var(--sf-calm) 8%, transparent); border: 1px solid var(--sf-edge); color: var(--sf-paper);
+  padding: var(--sp-1) var(--sp-3); border-radius: 4px; cursor: pointer;
+  font-family: var(--sf-body-face); font-size: 13px; font-weight: 500; letter-spacing: 0;
+  transition: all 0.15s ease;
 }
 #sf-starmap .sm-close:hover, #sf-starmap .sm-close:focus-visible {
-  border-color: var(--sf-you); color: var(--sf-you); box-shadow: none;
+  border-color: var(--sf-you); color: var(--sf-you); background: color-mix(in srgb, var(--sf-you) 12%, transparent);
+  translate: 0 -1px; box-shadow: none;
+}
+#sf-starmap .sm-close:active {
+  translate: 0 1px;
 }
 #sf-starmap .sm-body { flex: 1; display: flex; min-height: 0; }
 #sf-starmap .sm-canvas-wrap { flex: 1; position: relative; min-width: 0; }
 #sf-starmap canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; display: block; }
 #sf-starmap .sm-side {
   width: 316px; border-left: 1px solid var(--sf-edge);
-  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  background: color-mix(in srgb, var(--sf-surface) 84%, transparent);
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
   padding: var(--sp-3); display: flex; flex-direction: column; gap: var(--sp-2); overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--sf-calm) 25%, transparent) transparent;
 }
 #sf-starmap .sm-sel-head { border-left: var(--sf-rail-w) solid var(--sf-calm); padding-left: var(--sp-2); }
 #sf-starmap .sm-sel-head.is-here { border-left-color: var(--sf-you); }
@@ -182,8 +200,9 @@ const CSS = `
 #sf-starmap .sm-hint { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.45; }
 #sf-starmap .sm-objective {
   border: 1px solid var(--sf-edge); border-left: var(--sf-rail-w) solid var(--sf-goal);
-  border-radius: 2px; padding: var(--sp-2) var(--sp-3);
+  border-radius: 4px; padding: var(--sp-2) var(--sp-3);
   background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05), -2px 0 12px color-mix(in srgb, var(--sf-goal) 20%, transparent);
 }
 #sf-starmap .sm-objective[hidden] { display: none; }
 #sf-starmap .sm-objective-k {
@@ -205,11 +224,16 @@ const CSS = `
 #sf-starmap .sm-objective-meta .hot { color: var(--sf-goal); border-color: var(--sf-goal-edge); }
 #sf-starmap .sm-objective button {
   width: 100%; margin-top: var(--sp-2); padding: var(--sp-2);
-  border-color: var(--sf-goal-edge); color: var(--sf-goal);
+  border: 1px solid var(--sf-goal-edge); border-radius: 4px; color: var(--sf-goal);
   background: color-mix(in srgb, var(--sf-goal) 8%, transparent);
+  font-weight: 600; cursor: pointer; transition: all 0.15s ease;
 }
 #sf-starmap .sm-objective button:hover, #sf-starmap .sm-objective button:focus-visible {
-  border-color: var(--sf-goal); color: var(--sf-paper); box-shadow: none;
+  border-color: var(--sf-goal); color: var(--sf-paper); background: color-mix(in srgb, var(--sf-goal) 20%, transparent);
+  translate: 0 -1px; box-shadow: none;
+}
+#sf-starmap .sm-objective button:active {
+  translate: 0 1px;
 }
 #sf-starmap .sm-route {
   font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
@@ -234,8 +258,9 @@ const CSS = `
 }
 #sf-starmap .sm-influence-row b { text-align: right; color: var(--sf-paper); }
 #sf-starmap .sm-risk {
-  border: 1px solid var(--sf-edge); border-radius: 2px; padding: var(--sp-2); margin-top: var(--sp-1);
+  border: 1px solid var(--sf-edge); border-radius: 4px; padding: var(--sp-2); margin-top: var(--sp-1);
   background: color-mix(in srgb, var(--sf-surface) 80%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 #sf-starmap .sm-risk-head { display: flex; justify-content: space-between; font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); }
 #sf-starmap .sm-risk-note { font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); line-height: 1.35; margin-top: var(--sp-1); }
@@ -257,15 +282,28 @@ const CSS = `
 #sf-starmap .sm-market-row.mid { color: var(--sf-paper); }
 #sf-starmap .sm-market-row.old { color: var(--sf-calm); font-style: italic; }
 #sf-starmap .sm-actions { margin-top: auto; display: flex; flex-direction: column; gap: var(--sp-2); padding-top: var(--sp-2); }
-#sf-starmap .sm-actions button { width: 100%; padding: var(--sp-2); }
-#sf-starmap .sm-course {
-  background: color-mix(in srgb, var(--sf-goal) 10%, transparent);
-  border-color: var(--sf-goal); color: var(--sf-goal);
+#sf-starmap .sm-actions button {
+  width: 100%; padding: var(--sp-2); border-radius: 4px; cursor: pointer; font-weight: 600; transition: all 0.15s ease;
 }
-#sf-starmap .sm-course:hover, #sf-starmap .sm-course:focus-visible { color: var(--sf-paper); }
+#sf-starmap .sm-actions button:hover {
+  translate: 0 -1px;
+}
+#sf-starmap .sm-actions button:active {
+  translate: 0 1px;
+}
+#sf-starmap .sm-course {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--sf-goal) 25%, transparent) 0%, color-mix(in srgb, var(--sf-goal) 12%, transparent) 100%);
+  border: 1px solid var(--sf-goal); color: var(--sf-goal);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--sf-goal) 20%, transparent);
+}
+#sf-starmap .sm-course:hover, #sf-starmap .sm-course:focus-visible {
+  color: var(--sf-paper); border-color: var(--sf-paper); filter: brightness(1.15);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--sf-goal) 35%, transparent);
+}
 #sf-starmap .sm-foot {
   display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
   padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--sf-edge);
+  background: color-mix(in srgb, var(--sf-surface) 92%, transparent);
   font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm);
 }
 #sf-starmap .sm-legend { display: flex; gap: var(--sp-3); flex-wrap: wrap; }
@@ -309,6 +347,7 @@ function escapeHtml(value) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 function factionName(id) { return FACTION_NAME[id] || (id ? id.replace(/^faction_/, '') : 'Unaffiliated'); }
+function factionColor(id) { return FACTION_COLOR[id] || '#9aa8bc'; }
 
 /** Three meaning bands: a gain (safe), what you are heading into, against you. */
 export function dangerRole(v) {
@@ -806,7 +845,14 @@ export const starmapScreen = {
     const tick = () => {
       if (!this._visible) { this._animFrame = null; return; }
       const now = Date.now();
-      if (now - this._lastDrawTime >= 64) { this._lastDrawTime = now; this._draw(); }
+      if (now - this._lastDrawTime >= 64) {
+        this._lastDrawTime = now;
+        // Animated content (route march, commodity flow) still redraws every beat; a static
+        // frame — reduced motion or a map with no live animation — only repaints when the
+        // data signature moves.
+        const still = prefersReducedMotion() || !this._animates;
+        if (!still || this._drawSignature() !== this._drawSig) this._draw();
+      }
       this._animFrame = requestAnimationFrame(tick);
     };
     this._animFrame = requestAnimationFrame(tick);
@@ -964,10 +1010,13 @@ export const starmapScreen = {
     g.translate(w / 2, h / 2);
     g.scale(this._cam.zoom, this._cam.zoom);
     g.translate(-this._cam.cx, -this._cam.cy);
-    this._drawEdges(g, nodes, byId, now, roles);
+    const flows = this._drawEdges(g, nodes, byId, now, roles);
     this._drawWormholes(g, nodes, byId, roles);
     const route = this._route();
-    if (route) this._drawRoute(g, route, byId, now, roles, reduced);
+    const routed = route ? this._drawRoute(g, route, byId, now, roles, reduced) : false;
+    // The anim loop consults this: frames carrying live motion redraw every beat; static
+    // frames repaint only when the signature changes.
+    this._animates = !!(flows || routed);
     this._drawNodes(g, nodes, this._currentId(), roles);
     g.restore();
     if (this._hoverInfo && this._hoverId) this._drawTooltip(g, w, h, roles);
@@ -975,6 +1024,7 @@ export const starmapScreen = {
 
   _drawEdges(g, nodes, byId, now, roles) {
     const zoom = this._cam.zoom;
+    let animated = false;
     for (const n of nodes) {
       const a = n.sector;
       for (const id of (a.neighbors || [])) {
@@ -999,6 +1049,7 @@ export const starmapScreen = {
         const from = gradient > 0 ? n : b;
         const to = gradient > 0 ? b : n;
         const phase = (hashText(`${a.id}|${id}`) % 1000) / 1000;
+        animated = true;
         for (let k = 0; k < 2; k++) {
           const t = ((now / 2600 + phase + k * 0.5) % 1 + 1) % 1;
           const p = pointOnLine(from, to, t);
@@ -1009,6 +1060,7 @@ export const starmapScreen = {
         }
       }
     }
+    return animated;
   },
 
   _drawWormholes(g, nodes, byId, roles) {
@@ -1025,14 +1077,14 @@ export const starmapScreen = {
   },
 
   _drawRoute(g, route, byId, now, roles, reduced) {
-    if (!route.legs || !route.legs.length) return;
+    if (!route.legs || !route.legs.length) return false;
     const points = [];
     for (let i = 0; i < route.legs.length; i++) {
       const leg = route.legs[i];
       if (i === 0 && byId[leg.from]) points.push(byId[leg.from]);
       if (byId[leg.to]) points.push(byId[leg.to]);
     }
-    if (points.length < 2) return;
+    if (points.length < 2) return false;
     const z = this._cam.zoom;
     g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
     g.beginPath(); g.moveTo(points[0].x, points[0].y); for (let i = 1; i < points.length; i++) g.lineTo(points[i].x, points[i].y);
@@ -1045,6 +1097,7 @@ export const starmapScreen = {
     g.restore();
     const p = pointOnPolyline(points, reduced ? 0 : (now % 3000) / 3000);
     g.beginPath(); g.arc(p.x, p.y, 4 / z, 0, Math.PI * 2); g.fillStyle = roles.paper; g.fill();
+    return !reduced;
   },
 
   _drawNodes(g, nodes, currentId, roles) {
@@ -1062,6 +1115,8 @@ export const starmapScreen = {
       const signal = this._signal(s.id);
       const danger = signal ? signal.danger : 0;
       const pressure = signal ? signal.pricePressure : 0;
+      const dominant = signal && signal.dominantFactionId || s.factionId;
+      const core = factionColor(dominant);
       const selected = s.id === this._selectedId;
       const hover = s.id === this._hoverId;
       const current = s.id === currentId;
@@ -1082,7 +1137,7 @@ export const starmapScreen = {
       drawHexPath(g, n.x, n.y, n.r + 2.8 / z);
       g.lineWidth = (2.2 + danger * 1.2) / z; g.strokeStyle = roles[dangerRole(danger)]; g.stroke();
       drawHexPath(g, n.x, n.y, n.r);
-      g.fillStyle = current ? roles.you : selected ? roles.paper : roles.calm; g.fill();
+      g.fillStyle = current ? roles.you : selected ? roles.paper : paint(core, 0.62); g.fill();
       g.lineWidth = 1 / z; g.strokeStyle = paint(roles.paper, 0.25); g.stroke();
 
       if (Math.abs(pressure) > 0.035) {
@@ -1234,7 +1289,7 @@ export const starmapScreen = {
         <div>${securityPips(eff.security)}</div>
       </div>
       <div class="sm-sel-fac">
-        ${escapeHtml(factionName(signal.dominantFactionId))} field · owner ${escapeHtml(factionName(signal.ownerId))}
+        ${escapeHtml(factionName(signal.dominantFactionId))} field · <i class="sm-dot" style="background:${factionColor(signal.ownerId)}"></i> owner ${escapeHtml(factionName(signal.ownerId))}
       </div>
       </div>
 
@@ -1416,6 +1471,9 @@ export const starmapScreen = {
 
   _drawSignature() {
     const parts = [this._currentId() || '', this._selectedId || '', this._hoverId || '', this._dpr, this._commodityId || ''];
+    // A live tooltip follows the cursor — the signature must move with it or the gated anim
+    // loop freezes the box at the hover-entry position.
+    if (this._hoverInfo) parts.push((this._mouseX | 0) + ',' + (this._mouseY | 0));
     const route = this._route();
     if (route) parts.push(route.legs.map((l) => `${l.from}>${l.to}`).join(','));
     for (const s of this._sectors()) {

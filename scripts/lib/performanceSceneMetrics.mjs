@@ -281,12 +281,12 @@ export function collectPerformancePipelineReadiness({
     pipelineCompilePending: finiteOrNull(renderState.pipelineAdmissions?.pending),
     // One-time post-cook producers keep composing/compiling/uploading after flight entry by
     // design; a measured window opened while either runs reads warm work as steady-state cost.
-    sectorPrewarmSettlePending: typeof renderState.sectorPrewarmSettlePending === 'function'
-      ? renderState.sectorPrewarmSettlePending() === true
-      : false,
-    archetypeWarmPending: typeof renderState.archetypeWarmPending === 'function'
-      ? renderState.archetypeWarmPending() === true
-      : false,
+    sectorPrewarmSettlePending: renderState.sectorPrewarmSettlePending === true
+      || (typeof renderState.sectorPrewarmSettlePending === 'function'
+        && renderState.sectorPrewarmSettlePending() === true),
+    archetypeWarmPending: renderState.archetypeWarmPending === true
+      || (typeof renderState.archetypeWarmPending === 'function'
+        && renderState.archetypeWarmPending() === true),
     programCount: finiteOrNull(diagnostics?.memory?.programs),
     geometryCount: finiteOrNull(diagnostics?.memory?.geometries),
     textureCount: finiteOrNull(diagnostics?.memory?.textures),
@@ -367,7 +367,9 @@ export function isPerformancePipelineSettled(readiness = {}) {
     && fingerprint.sectorPrewarmSettlePending === false
     && fingerprint.archetypeWarmPending === false
     && fingerprint.authoredPendingAdmissionRiskCount === 0
-    && (fingerprint.pipelineCompilePending == null || fingerprint.pipelineCompilePending === 0);
+    && (fingerprint.pipelineCompilePending == null || fingerprint.pipelineCompilePending === 0)
+    && fingerprint.sectorPrewarmSettlePending !== true
+    && fingerprint.archetypeWarmPending !== true;
 }
 
 function pendingAdmissionRiskEntities(state, measurementHorizonMs) {

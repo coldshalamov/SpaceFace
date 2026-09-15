@@ -1001,6 +1001,9 @@ export function createOpeningSubmissionPlan(options = {}) {
     compileSubjects,
     residencySubjects: compileSubjects,
     textureRefs: textureList,
+    // Live refs like compileSubjects/textureRefs: the submission drain admits these drawables so
+    // their buffers and shadow-state program variants never first-land inside the measured frame.
+    pooledResourceSubjects,
     scene: options.scene || null,
     camera: options.camera || null,
     blockingReasons: roots.filter((root) => root.blocking).map((root) => ({
@@ -1039,6 +1042,7 @@ export function createOpeningSubmissionPlan(options = {}) {
   const liveReferences = new Set([
     ...compileSubjects,
     ...textureList,
+    ...pooledResourceSubjects,
     options.scene,
     options.camera,
   ].filter(Boolean));

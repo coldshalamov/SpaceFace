@@ -143,6 +143,10 @@ Run the checks the change actually needs. Fast gate first; do not loop on verifi
 perf work starts at the runtime witness. Do not rerun the same command against the same candidate
 after the same failure fingerprint without a relevant change.
 
+Browser test servers must set `SPACEFACE_PLAYER_STORE_DIR=''` explicitly, or use
+`createGameServer` without `playerStoreDir`. An unset variable mounts the real shared save drawer;
+a fresh browser profile or alternate port alone does not isolate player saves.
+
 Full ladder: [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md).
 
 ## 11. Depth docs (read by need, not by default)

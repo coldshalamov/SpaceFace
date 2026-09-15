@@ -59,11 +59,17 @@ import {
   arbiterInvariants,
   applyTransition,
 } from './heistArbiter.js';
-import { PQ019_CAPSULE, PQ019_HEIST_SECTOR_ID } from '../data/heistFacilities.js';
+import {
+  HEIST_CAPSULE_RUN_VARIANT_ID,
+  PQ019_CAPSULE,
+  PQ019_HEIST_SECTOR_ID,
+  heistLaunchVariant,
+} from '../data/heistFacilities.js';
+import { receiverCommitGate } from '../physicalCargo/breakaway/settlementGate.js';
 import {
   PQ019C_HEIST_TUNING,
-  PQ019C_TERMINAL_SETTLEMENT,
   PQ019C_RECOVERABLE_OUTCOMES,
+  heistMissionPolicy,
 } from '../data/heistMission.js';
 
 export const HEIST_RECORD_SCHEMA = 'spaceface.heistMission.v1';
@@ -88,9 +94,22 @@ const HEIST_TERMINAL_CUE_MOMENTS = new Set([
   'abandoned',
   'denied',
   'recovery',
+  'receiver_refused',
 ]);
 
 const RECOVERABLE = new Set(PQ019C_RECOVERABLE_OUTCOMES);
+
+/** The payload identity a run arbitrates. Records without one are the historical Capsule Run. */
+export function heistPayloadStableIdFor(record) {
+  return (record && typeof record.payloadStableId === 'string' && record.payloadStableId)
+    || PQ019_CAPSULE.stableId;
+}
+
+/** A run's spoken line for one moment: its variant's copy where authored, else the capsule's. */
+export function heistCueTextFor(record, moment) {
+  const variantText = heistMissionPolicy(record?.variantId).cueText;
+  return (variantText && variantText[moment]) || HEIST_CUE_TEXT[moment] || null;
+}
 
 function intTick(value) {
   const n = Math.trunc(Number(value));
@@ -110,10 +129,16 @@ export function createHeistRecord({
   runWindowTicks = PQ019C_HEIST_TUNING.runWindowTicks,
   unlaunchedWindowTicks = PQ019C_HEIST_TUNING.unlaunchedWindowTicks,
   recoveryAllowed = PQ019C_HEIST_TUNING.recoveryEnabled,
+  variantId = null,
 } = {}) {
+  const variant = heistLaunchVariant(variantId);
+  const scoped = variant.id !== HEIST_CAPSULE_RUN_VARIANT_ID;
   return {
     schema: HEIST_RECORD_SCHEMA,
     missionId: String(missionId),
+    // The launch variant travels with the accepted contract. Conditional, so a Capsule Run record —
+    // and every save that carries one — keeps its exact historical shape.
+    ...(scoped ? { variantId: variant.id, payloadStableId: variant.payload.stableId } : {}),
     attempt: attempt | 0,
     scheduleId: heistScheduleIdFor(missionId),
     acceptTick: intTick(tick),
@@ -145,7 +170,7 @@ export function createHeistRecord({
     reconciled: null,
     arbiter: createArbiter({
       missionId: String(missionId),
-      payloadStableId: PQ019_CAPSULE.stableId,
+      payloadStableId: variant.payload.stableId,
       createdAtTick: intTick(tick),
     }),
   };
@@ -193,6 +218,7 @@ export const HEIST_CUE_TEXT = Object.freeze({
   abandoned: 'Capsule run abandoned',
   denied: 'Launcher refused the schedule — no capsule run is available',
   recovery: 'The Quiet will fund one more pass at a reduced rate — check the Tethys board',
+  receiver_refused: 'Receiver could not take the capsule — no delivery, so nothing is paid',
 });
 
 /**
@@ -201,11 +227,22 @@ export const HEIST_CUE_TEXT = Object.freeze({
  */
 export function sayHeistCue(ctx, record, moment, textOverride = null) {
   if (!record || record.cues[moment]) return null;
-  const text = textOverride || HEIST_CUE_TEXT[moment];
+  const text = textOverride || heistCueTextFor(record, moment);
   if (!text) return null;
   record.cues[moment] = true;
+  return speakHeistLine(ctx, record, {
+    cueId: `pq019c:cue:${record.missionId}:${moment}`, moment, text,
+  });
+}
+
+/**
+ * The single exit for every spoken heist line: one owner receipt, one stable voice id, one channel.
+ * Callers decide WHETHER to speak (at most once per run, or once per physical attempt); this decides
+ * only how.
+ */
+function speakHeistLine(ctx, record, { cueId, moment, text }) {
   const receipt = Object.freeze({
-    cueId: `pq019c:cue:${record.missionId}:${moment}`,
+    cueId,
     missionId: record.missionId,
     moment,
     text,
@@ -239,7 +276,7 @@ export function submitHeistCandidate(record, { kind, causalTick, sourceStableId,
   if (!record?.arbiter) return { accepted: false, reason: 'no_record' };
   return submitCandidate(record.arbiter, {
     missionId: record.missionId,
-    payloadStableId: PQ019_CAPSULE.stableId,
+    payloadStableId: heistPayloadStableIdFor(record),
     kind,
     causalTick: intTick(causalTick),
     sourceStableId,
@@ -276,11 +313,16 @@ export const heistMissionRuntime = {
     const launchAtSimT = simT + record.launchWindowS;
     record.scheduleRequested = true;
     let receipt = null;
+    // The contract's launch variant rides the request, so the launcher throws the payload the player
+    // actually accepted. Absent for the Capsule Run, whose request keeps its historical shape.
+    const variantField = record.variantId ? { variantId: record.variantId } : {};
     if (facilities && typeof facilities.requestLaunchSchedule === 'function') {
-      receipt = facilities.requestLaunchSchedule({ scheduleId: record.scheduleId, launchAtSimT });
+      receipt = facilities.requestLaunchSchedule({
+        scheduleId: record.scheduleId, launchAtSimT, ...variantField,
+      });
     } else {
       ctx?.bus?.emit?.('heist:requestLaunchSchedule', {
-        scheduleId: record.scheduleId, launchAtSimT,
+        scheduleId: record.scheduleId, launchAtSimT, ...variantField,
       });
     }
     if (receipt && receipt.accepted === false) {
@@ -318,7 +360,7 @@ export const heistMissionRuntime = {
   onTetherLatched(ctx, record, payload = {}) {
     if (!record || record.settled) return false;
     const capsule = liveEntity(ctx, payload.targetId);
-    if (!capsule || capsule.data?.heistPayloadStableId !== PQ019_CAPSULE.stableId) return false;
+    if (!capsule || capsule.data?.heistPayloadStableId !== heistPayloadStableIdFor(record)) return false;
     if (capsule.data?.launchScheduleId !== record.scheduleId) return false;
     const tick = intTick(ctx?.state?.tick);
     record.capsuleEntityId = capsule.id;
@@ -333,7 +375,10 @@ export const heistMissionRuntime = {
     });
     if (first) {
       sayHeistCue(ctx, record, 'possessed');
-      this.reportTheft(ctx, record, capsule, tick);
+      // PERMISSION IS NOT POSSESSION. A lawful recovery contract IS the permission to take the load,
+      // so its latch is never a reportable theft and can never raise WANTED. Only a policy that
+      // says the take is a crime asks the law owner to judge it.
+      if (heistMissionPolicy(record.variantId).reportsTheft) this.reportTheft(ctx, record, capsule, tick);
     }
     return true;
   },
@@ -365,7 +410,7 @@ export const heistMissionRuntime = {
       kind: HEIST_LAW_KIND,
       offenderStableId: HEIST_OFFENDER_STABLE_ID,
       offenderEntityId: ctx?.state?.playerId,
-      payloadStableId: PQ019_CAPSULE.stableId,
+      payloadStableId: heistPayloadStableIdFor(record),
       causalTick: intTick(causalTick),
       pos: { x: capsule.pos.x, z: capsule.pos.z },
     });
@@ -432,8 +477,22 @@ export const heistMissionRuntime = {
   onFacilityCandidate(ctx, record, receipt = {}) {
     if (!record || record.settled) return false;
     if (receipt.scheduleId !== record.scheduleId) return false;
-    if (receipt.payloadStableId !== PQ019_CAPSULE.stableId) return false;
+    if (receipt.payloadStableId !== heistPayloadStableIdFor(record)) return false;
     const causalTick = intTick(receipt.tick);
+    // BREAKAWAY: a settled capture-fork receipt is the physical owner's proof that the load entered
+    // the receiver correctly and came to rest there. It is a lawful ARRIVAL whoever brought it — a
+    // Massline tow, a clean release and a hull shove are all the player's own flying, and the load
+    // cannot reach the fork on its launch arc. Whether an arrival PAYS is the variant's settlement
+    // table's decision, not this mapping's.
+    if (receipt.kind === 'capture_settled') {
+      submitHeistCandidate(record, {
+        kind: 'lawful_arrival_observed',
+        causalTick,
+        sourceStableId: `heistFacilities:${receipt.facilityId}:capture`,
+        proof: { custodyReceiptId: receipt.receiptId, possessionEver: !!record.possessionEver },
+      });
+      return true;
+    }
     // MISSION POLICY, deliberately not the arbiter's: mapping a physical contact to a legal outcome
     // is exactly what the arbiter refuses to know. `lawful_catch_contact` is a lawful ARRIVAL if
     // nobody ever took the capsule, and a CONFISCATION if somebody did and lost it there.
@@ -459,6 +518,28 @@ export const heistMissionRuntime = {
       return true;
     }
     return false;
+  },
+
+  /**
+   * `heist:captureFork` — the fork's own mechanical truth (rails engaged, load slipped out, entry too
+   * fast / too sideways / off-centre), spoken so the player learns WHY the receiver took or refused
+   * the load. Bounded by physical attempts, not frames: the facility owner publishes these only when
+   * the load actually crosses the mouth near the rails. Never a candidate and never a settlement.
+   */
+  onCaptureFork(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    if (payload.scheduleId !== record.scheduleId) return false;
+    if (payload.payloadStableId !== heistPayloadStableIdFor(record)) return false;
+    const moment = payload.event === 'capture_refused'
+      ? `capture_refused_${payload.reason}`
+      : String(payload.event || '');
+    // Only a variant that authored the fork's copy speaks it; there is no capsule fallback line.
+    const text = heistMissionPolicy(record.variantId).cueText?.[moment];
+    if (!text) return false;
+    speakHeistLine(ctx, record, {
+      cueId: `pq019c:cue:${record.missionId}:${moment}:${intTick(payload.tick)}`, moment, text,
+    });
+    return true;
   },
 
   /**
@@ -528,6 +609,15 @@ export const heistMissionRuntime = {
     const tick = intTick(ctx?.state?.tick);
 
     if (!record.scheduleRequested) this.requestSchedule(ctx, record);
+    // Before any absence rule can read a missing capsule id as a lost load. A durable load is
+    // re-adopted for an undecided run AND for a decided-but-unconsumed one: unlike the transient
+    // capsule, its body is still there to hand over.
+    if (record.reconciled === 'readopt_load'
+      || (record.reconciled === 'resumed_receipt'
+        && heistLaunchVariant(record.variantId).durableLoad
+        && !effectApplied(record.arbiter, record.arbiter?.receipt?.effectKeys?.receiverCommit))) {
+      this._readoptRestoredLoad(ctx, record, tick);
+    }
 
     if (record.launchTick == null) {
       // BOUNDED EVEN IF NOTHING EVER FLIES. `heistFacilities.update` returns early outside Tethys
@@ -591,6 +681,32 @@ export const heistMissionRuntime = {
   },
 
   /**
+   * One attempt, on the first drive after a reload, to re-adopt the durable load the save kept.
+   * The facility owner matches the restored body by stable schedule and payload identity and rebuilds
+   * its launched schedule around it. Anything else is the ordinary bounded absence.
+   */
+  _readoptRestoredLoad(ctx, record, tick) {
+    const facilities = ownerOf(ctx, 'heistFacilities');
+    const reply = facilities && typeof facilities.adoptRestoredLoad === 'function'
+      ? facilities.adoptRestoredLoad({ scheduleId: record.scheduleId, variantId: record.variantId })
+      : { adopted: false, reason: 'no_facility_owner' };
+    if (reply && reply.adopted) {
+      record.capsuleEntityId = reply.entityId;
+      record.capsuleSeen = true;
+      record.reconciled = 'readopted';
+      return true;
+    }
+    record.reconciled = 'absent_after_reload';
+    submitHeistCandidate(record, {
+      kind: 'unresolved_absent',
+      causalTick: Math.max(tick, intTick(record.arbiter?.decidedThroughTick) + 1),
+      sourceStableId: 'heistMissionRuntime:readopt',
+      proof: { reason: String(reply?.reason || 'readopt_failed') },
+    });
+    return false;
+  },
+
+  /**
    * Leash and escape bookkeeping. Reads positions; writes nothing to any hull. The tactical AI owns
    * the intercept, so "escape" here is an observation about distance, not a state it imposes.
    */
@@ -649,34 +765,67 @@ export const heistMissionRuntime = {
     const keys = receipt.effectKeys;
     const tick = intTick(ctx?.state?.tick);
     const outcome = receipt.outcome;
+    const settlementTable = heistMissionPolicy(record.variantId).settlement;
+    const decidedPlan = settlementTable[outcome] || settlementTable.unresolved_absent;
+    // A paying outcome is a DELIVERY: something physical must actually change hands.
+    const delivery = decidedPlan.settlement === 'complete';
 
     // 1. The physical receiver. PREPARE reserves and proves; COMMIT consumes. A prepare that cannot
     //    be earned (no custody contact for this capsule and schedule) fails closed and the capsule
     //    is left exactly where it is.
+    //
+    //    BREAKAWAY BW-01: a refusal is no longer ignored. The old path went on to release the
+    //    launcher and `settle('complete')` regardless, so a capsule destroyed the tick after it
+    //    touched the fence was paid for (test/pq019c-heist-receiver-refusal.test.mjs). The reply is
+    //    now run through the fail-closed gate: only a matching fresh commit, or the owner's own
+    //    matching committed record on an idempotent replay, lets a delivery settle.
+    let receiverRefusal = null;
     if (!effectApplied(arbiter, keys.receiverCommit)) {
       const facilityId = outcome === 'fenced_success' ? 'fence_receiver'
         : (outcome === 'lawful_confiscation' || outcome === 'lawful_arrival_observed'
           ? 'lawful_catcher' : null);
       const facilities = facilityId ? ownerOf(ctx, 'heistFacilities') : null;
       if (facilities && typeof facilities.prepareReceiverHandoff === 'function') {
-        const prepared = facilities.prepareReceiverHandoff({
+        const expected = {
           receiptId: receipt.receiptId,
           facilityId,
-          payloadStableId: PQ019_CAPSULE.stableId,
-        });
-        if (prepared && prepared.prepared) {
-          const committed = facilities.commitReceiverHandoff(receipt.receiptId);
-          if (committed && committed.committed) {
-            recordEffect(arbiter, keys.receiverCommit, {
-              effectId: committed.receipt?.effectId || null, tick,
-            });
-            recordEffect(arbiter, keys.capsuleProjection, { tick, note: 'consumed' });
-          } else {
+          payloadStableId: heistPayloadStableIdFor(record),
+        };
+        const prepared = facilities.prepareReceiverHandoff(expected);
+        const reply = prepared && prepared.prepared
+          ? facilities.commitReceiverHandoff(receipt.receiptId)
+          : prepared;
+        const ownerCommittedRecord = prepared?.reason === 'already_committed' ? prepared.handoff : null;
+        const gate = receiverCommitGate(expected, reply, ownerCommittedRecord);
+        if (gate.maySettle) {
+          // The load's condition at the instant custody passed, for the variant's bounded quality
+          // quote. Measured by the physical owner before consumption; never inferred afterwards.
+          if (Number.isFinite(reply?.handoff?.condition01)) {
+            record.deliveredCondition = reply.handoff.condition01;
+          }
+          recordEffect(arbiter, keys.receiverCommit, {
+            effectId: reply?.receipt?.effectId || `pq019b:receiverCommit:${receipt.receiptId}`, tick,
+          });
+          recordEffect(arbiter, keys.capsuleProjection, { tick, note: 'consumed' });
+        } else {
+          if (prepared && prepared.prepared) {
             facilities.abortReceiverHandoff(receipt.receiptId, 'commit_failed');
           }
+          receiverRefusal = String(reply?.reason || 'receiver_refused');
         }
+      } else if (delivery) {
+        receiverRefusal = 'no_receiver_owner';
       }
     }
+
+    // THE DOCUMENTED RELOAD RULE is the one exception. The Capsule Run's capsule and this owner's
+    // facility memory are not in the save capture plan, so a delivery DECIDED before a save cannot
+    // find its capsule after the load; `restore` resumes that receipt as decided (save point 6).
+    // That cut point is only reachable across a reload — in a live session the decision and the
+    // handoff happen inside one call. A DURABLE load never takes the exception: its body is saved
+    // and re-adopted, so it can still earn a physical commit, and a refusal means no delivery.
+    const refusedDelivery = delivery && receiverRefusal !== null
+      && (record.reconciled !== 'resumed_receipt' || heistLaunchVariant(record.variantId).durableLoad);
 
     // 2. Law and heat already happened during the run, through their own owners. Journalling them
     //    against the terminal receipt is what makes them COUNTABLE — the effect keys only exist
@@ -704,8 +853,14 @@ export const heistMissionRuntime = {
 
     // 4. Mission settlement — exactly once, recorded BEFORE the call so a synchronous listener that
     //    re-enters this path finds the key already taken and cannot settle a second time.
-    const plan = PQ019C_TERMINAL_SETTLEMENT[outcome]
-      || PQ019C_TERMINAL_SETTLEMENT.unresolved_absent;
+    //
+    //    A refused delivery settles as a bounded FAILURE carrying the receiver's reason: no reward
+    //    key, no success cue, and no soft-lock waiting on a handoff that can no longer be earned.
+    //    The terminal receipt itself stays immutable — the arbiter decided the earliest physical
+    //    fact correctly; it is the physical world that could not honour it.
+    const plan = refusedDelivery
+      ? { settlement: 'fail', reason: 'receiver_refused' }
+      : decidedPlan;
     let settlement = null;
     if (!effectApplied(arbiter, keys.missionSettlement)) {
       recordEffect(arbiter, keys.missionSettlement, { effectId: receipt.receiptId, tick });
@@ -719,8 +874,10 @@ export const heistMissionRuntime = {
       }
       record.settled = true;
       record.settledOutcome = outcome;
+      if (refusedDelivery) record.receiverRefusal = receiverRefusal;
       commitTerminal(arbiter, receipt.receiptId);
-      this.sayOutcomeCue(ctx, record, outcome);
+      if (refusedDelivery) sayHeistCue(ctx, record, 'receiver_refused');
+      else this.sayOutcomeCue(ctx, record, outcome);
       settlement = typeof settle === 'function' ? settle(plan.settlement, plan.reason, outcome) : null;
     }
     return settlement;
@@ -836,7 +993,7 @@ export const heistMissionRuntime = {
       // absence rule below decide — there is no safe half-decided record.
       restored.arbiter = createArbiter({
         missionId: String(record.missionId),
-        payloadStableId: PQ019_CAPSULE.stableId,
+        payloadStableId: heistPayloadStableIdFor(record),
         createdAtTick: intTick(tick),
       });
       restored.reconciled = 'arbiter_refused';
@@ -860,6 +1017,16 @@ export const heistMissionRuntime = {
       // Never launched. A pending window may legitimately be re-requested.
       restored.reconciled = 'reschedule';
       restored.scheduleRequested = false;
+      restored.settled = false;
+      return restored;
+    }
+
+    // BREAKAWAY: a DURABLE load's body is saved by the save owner itself, so a launched run is not
+    // absent after a reload — its mission re-adopts that exact body on the next drive. If the body
+    // is not there, or the launcher refuses, that drive falls through to the same bounded
+    // `unresolved_absent` rule below. Never a respawn and never a payout.
+    if (heistLaunchVariant(restored.variantId).durableLoad) {
+      restored.reconciled = 'readopt_load';
       restored.settled = false;
       return restored;
     }

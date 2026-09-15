@@ -2239,7 +2239,7 @@ const CHART_HARDWARE = `
   font-variation-settings: 'wght' 900, 'wdth' 125 !important;
   letter-spacing: var(--fh-track-display, 0.02em) !important;
   text-transform: uppercase !important;
-  line-height: 0.9 !important;
+  line-height: 1.1 !important;
   font-size: clamp(40px, 5vw, 96px) !important;
   color: var(--fh-text, var(--k-bone)) !important;
 }
@@ -7034,6 +7034,7 @@ export const galaxyMapScreen = {
       this._routeAnimTime = 1500;
     }
 
+    const routeScreenSegs = [];
     if (route && route.legs && this._layers.route) {
       const pts = [];
       for (const leg of route.legs) {
@@ -7042,6 +7043,9 @@ export const galaxyMapScreen = {
         if (!fromNode || !toNode) continue;
         if (!pts.length) pts.push({ x: sx(fromNode.x), y: sy(fromNode.y) });
         pts.push({ x: sx(toNode.x), y: sy(toNode.y) });
+      }
+      for (let i = 1; i < pts.length; i += 1) {
+        routeScreenSegs.push({ x1: pts[i - 1].x, y1: pts[i - 1].y, x2: pts[i].x, y2: pts[i].y });
       }
       if (pts.length > 1) {
         g.save();
@@ -7436,16 +7440,26 @@ export const galaxyMapScreen = {
       goalNode = model.nodes.find((n) => n.id === goal.sectorId && n.charted) || null;
     }
     const galaxyReserved = [];
+    this._goalLabelPlacement = null;
     if (goalNode) {
       // The goal plate is drawn by drawMapGoalMarker at a fixed offset from its node; block that
       // rectangle so the solver routes the sector's own name around it instead of under it.
       const gx = sx(goalNode.x), gy = sy(goalNode.y);
       const goalText = `GOAL · ${String(goal.label || 'OBJECTIVE').toUpperCase().slice(0, 22)}`;
       g.save();
-      g.font = FONT_MONO(700, 9);
-      const goalWidth = g.measureText(goalText).width + 16;
+      g.font = FONT_MONO(700, 10);
+      const goalTextWidth = g.measureText(goalText).width;
       g.restore();
-      galaxyReserved.push({ x: gx + 10, y: gy - 9, width: goalWidth, height: 18 });
+      // The plotted route terminates at (or may pass straight through) this node — the label must
+      // not lie on any drawn segment, so each candidate side is scored against the polyline.
+      const goalLabelPos = goalLabelPlacement(goalTextWidth, gx, gy, w, h, routeScreenSegs);
+      galaxyReserved.push({
+        x: goalLabelPos.rectX - 4,
+        y: goalLabelPos.rectY - 3,
+        width: goalTextWidth + 8,
+        height: 18,
+      });
+      this._goalLabelPlacement = goalLabelPos;
     }
     const galaxyLabelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
       reserved: this._reservedLabelRects(w, h, galaxyReserved),
@@ -7461,7 +7475,7 @@ export const galaxyMapScreen = {
       const node = goalNode;
       {
         const gx = sx(node.x), gy = sy(node.y);
-        drawMapGoalMarker(g, gx, gy, goal.label, w);
+        drawMapGoalMarker(g, gx, gy, goal.label, w, this._goalLabelPlacement || null);
         this._clickTargets.push({
           sx: gx,
           sy: gy,
@@ -7903,8 +7917,16 @@ export const galaxyMapScreen = {
       if (target) this._clickTargets.push(target);
     }
     const headerWidth = Math.min(w - 24, Math.max(80, model.sectorName.length * 8 + 26));
+    const systemReserved = [{ x: 8, y: 8, width: headerWidth, height: 40 }];
+    if (wpDraw && this._layers.route && model.player && model.player.drawPos) {
+      // The tether runs player→waypoint along a straight line; reserve a stub of it just off the
+      // pin so the objective label cannot settle flat on the amber dashes it annotates.
+      const stub = waypointTetherReserveRect(
+        sx(model.player.drawPos.x), sz(model.player.drawPos.z), sx(wpDraw.x), sz(wpDraw.z));
+      if (stub) systemReserved.push(stub);
+    }
     const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
-      reserved: this._reservedLabelRects(w, h, [{ x: 8, y: 8, width: headerWidth, height: 40 }]),
+      reserved: this._reservedLabelRects(w, h, systemReserved),
     });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {
@@ -8440,8 +8462,13 @@ export const galaxyMapScreen = {
       const target = waypointClickTarget(wp, wpPos, wx, wy);
       if (target && !offView(wx, wy)) this._clickTargets.push(target);
     }
+    const localReserved = [{ x: w / 2 - 15, y: h / 2 - 15, width: 30, height: 30 }];
+    if (wpPos && this._layers.route) {
+      const stub = waypointTetherReserveRect(sx(px), sz(pz), sx(wpPos.x), sz(wpPos.z));
+      if (stub) localReserved.push(stub);
+    }
     const labelLayout = layoutMapLabels(labelCandidates, { width: w, height: h }, {
-      reserved: this._reservedLabelRects(w, h, [{ x: w / 2 - 15, y: h / 2 - 15, width: 30, height: 30 }]),
+      reserved: this._reservedLabelRects(w, h, localReserved),
     });
     this._lastLabelLayout = labelLayout;
     for (const placement of labelLayout) {
@@ -9403,7 +9430,7 @@ function drawMissionPoint(g, x, y, kind, done) {
   g.restore();
 }
 
-function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity) {
+function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity, labelPos = null) {
   if (!Number.isFinite(x) || !Number.isFinite(y)) return;
   const text = `GOAL · ${String(label || 'OBJECTIVE').toUpperCase().slice(0, 22)}`;
   g.save();
@@ -9445,18 +9472,117 @@ function drawMapGoalMarker(g, x, y, label, viewportWidth = Infinity) {
   g.fill();
   g.stroke();
   g.font = FONT_MONO(700, 10);
-  g.textAlign = 'left';
-  g.textBaseline = 'middle';
   const width = g.measureText ? g.measureText(text).width : 0;
-  const labelX = Number.isFinite(viewportWidth)
-    ? clampMapLabelX(width, x + 21, viewportWidth, 8)
-    : x + 21;
+  const pos = labelPos || edgeAwareMarkerLabelX(width, x, viewportWidth, 21, 8);
+  const drawY = pos.y != null ? pos.y : y;
+  g.textAlign = pos.align;
+  g.textBaseline = pos.baseline || 'middle';
   g.strokeStyle = INK.plateHard;
   g.lineWidth = 4;
-  g.strokeText(text, labelX, y);
+  g.strokeText(text, pos.x, drawY);
   g.fillStyle = INK.amberHot;
-  g.fillText(text, labelX, y);
+  g.fillText(text, pos.x, drawY);
   g.restore();
+}
+
+/**
+ * Right-side label placement for a marker, flipping to the left of the marker when the right side
+ * would run off the viewport. Clamping the left edge back over the marker (the old behaviour) put
+ * the text straight through the ring the label was annotating.
+ */
+function edgeAwareMarkerLabelX(textWidth, x, viewportWidth, offset, padding = 8) {
+  const rightX = x + offset;
+  if (!Number.isFinite(viewportWidth) || rightX + textWidth <= viewportWidth - padding) {
+    return { x: rightX, align: 'left' };
+  }
+  if (x - offset - textWidth >= padding) {
+    return { x: x - offset, align: 'right' };
+  }
+  return { x: clampMapLabelX(textWidth, rightX, viewportWidth, padding), align: 'left' };
+}
+
+const GOAL_LABEL_SIDES = Object.freeze([
+  Object.freeze({ dx: 1, dy: 0, align: 'left', baseline: 'middle' }),
+  Object.freeze({ dx: 0, dy: 1, align: 'center', baseline: 'top' }),
+  Object.freeze({ dx: 0, dy: -1, align: 'center', baseline: 'bottom' }),
+  Object.freeze({ dx: -1, dy: 0, align: 'right', baseline: 'middle' }),
+]);
+
+/**
+ * A thin reserved rect along the first `stub` px of the player→waypoint tether, measured back from
+ * the waypoint. Reserving only the stub near the pin (not the whole line) is enough to push the
+ * objective's own label off the dashes without blacking out a corridor other labels could use.
+ */
+function waypointTetherReserveRect(x1, y1, x2, y2, stub = 90) {
+  const ax = x1 - x2;
+  const ay = y1 - y2;
+  const al = Math.hypot(ax, ay);
+  if (al <= 1) return null;
+  const len = Math.min(stub, al);
+  const ex = x2 + (ax / al) * len;
+  const ey = y2 + (ay / al) * len;
+  return {
+    x: Math.min(x2, ex) - 3,
+    y: Math.min(y2, ey) - 3,
+    width: Math.abs(ex - x2) + 6,
+    height: Math.abs(ey - y2) + 6,
+  };
+}
+
+/** Liang–Barsky segment/rect test — is any part of the segment inside the rect. */
+function segmentHitsRect(x1, y1, x2, y2, rx, ry, rw, rh) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const p = [-dx, dx, -dy, dy];
+  const q = [x1 - rx, rx + rw - x1, y1 - ry, ry + rh - y1];
+  let t0 = 0;
+  let t1 = 1;
+  for (let i = 0; i < 4; i += 1) {
+    if (p[i] === 0) {
+      if (q[i] < 0) return false;
+    } else {
+      const r = q[i] / p[i];
+      if (p[i] < 0) {
+        if (r > t1) return false;
+        if (r > t0) t0 = r;
+      } else {
+        if (r < t0) return false;
+        if (r < t1) t1 = r;
+      }
+    }
+  }
+  return true;
+}
+
+/**
+ * Goal-label placement. The label must clear its own marker AND the plotted route — the old fixed
+ * right-side label lay flat on a route arriving from the right, amber dashes threading amber text.
+ * Each candidate side is scored by how many drawn route segments cross its rect; out-of-viewport
+ * sides are penalised harder. Ties keep the classic right-side placement (first entry).
+ */
+function goalLabelPlacement(textWidth, x, y, viewportWidth, viewportHeight, routeSegs, offset = 21, padding = 8) {
+  const textHeight = 12;
+  const segs = Array.isArray(routeSegs) ? routeSegs : [];
+  let best = null;
+  for (const side of GOAL_LABEL_SIDES) {
+    const tx = x + side.dx * offset;
+    const ty = y + side.dy * offset;
+    const rectX = side.align === 'left' ? tx : side.align === 'right' ? tx - textWidth : tx - textWidth / 2;
+    const rectY = side.baseline === 'middle' ? ty - textHeight / 2
+      : side.baseline === 'bottom' ? ty - textHeight : ty;
+    let score = 0;
+    for (const seg of segs) {
+      if (segmentHitsRect(seg.x1, seg.y1, seg.x2, seg.y2, rectX, rectY, textWidth, textHeight)) score += 2;
+    }
+    if (Number.isFinite(viewportWidth)
+      && (rectX < padding || rectX + textWidth > viewportWidth - padding)) score += 5;
+    if (Number.isFinite(viewportHeight)
+      && (rectY < padding || rectY + textHeight > viewportHeight - padding)) score += 5;
+    if (!best || score < best.score) {
+      best = { x: tx, y: ty, align: side.align, baseline: side.baseline, rectX, rectY, score };
+    }
+  }
+  return best;
 }
 
 function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacement = null) {
@@ -9487,13 +9613,12 @@ function drawWaypointPin(g, x, y, label, viewportWidth = Infinity, labelPlacemen
   g.textBaseline = 'middle';
   if (!labelPlacement) {
     const textWidth = g.measureText ? g.measureText(label).width : 0;
-    const labelX = Number.isFinite(viewportWidth)
-      ? clampMapLabelX(textWidth, x + 12, viewportWidth, 8)
-      : x + 12;
+    const labelPos = edgeAwareMarkerLabelX(textWidth, x, viewportWidth, 12, 8);
+    g.textAlign = labelPos.align;
     g.strokeStyle = INK.plateHard;
     g.lineWidth = 3;
-    g.strokeText(label, labelX, y);
-    g.fillText(label, labelX, y);
+    g.strokeText(label, labelPos.x, y);
+    g.fillText(label, labelPos.x, y);
   }
   g.restore();
   if (labelPlacement) drawMapLabelBlock(g, labelPlacement);

@@ -68,7 +68,12 @@ export function createBandHud(ctx, options = {}) {
 
   let status = null;
   let destroyed = false;
-  let lastRenderSignature = null;
+  let lastHidden = null;
+  let lastText = null;
+  let lastDataOff = null;
+  let lastDataSilence = null;
+  let lastAriaLabel = null;
+  let lastEffectiveChannel = null;
   const unsubscribers = [];
   const onClick = (event) => {
     if (event && typeof event.preventDefault === 'function') event.preventDefault();
@@ -112,9 +117,15 @@ export function createBandHud(ctx, options = {}) {
     // Signal strength is published at 5 Hz, but the chip renders four threshold buckets. Key the
     // cache to the exact DOM projection so within-bucket strength changes do not repaint identical
     // text and attributes while every visible/accessibility transition still invalidates it.
-    const renderSignature = JSON.stringify([hidden, text, dataOff, dataSilence, ariaLabel, effectiveChannel]);
-    if (renderSignature === lastRenderSignature) return;
-    lastRenderSignature = renderSignature;
+    if (hidden === lastHidden && text === lastText && dataOff === lastDataOff
+      && dataSilence === lastDataSilence && ariaLabel === lastAriaLabel
+      && effectiveChannel === lastEffectiveChannel) return;
+    lastHidden = hidden;
+    lastText = text;
+    lastDataOff = dataOff;
+    lastDataSilence = dataSilence;
+    lastAriaLabel = ariaLabel;
+    lastEffectiveChannel = effectiveChannel;
     root.hidden = hidden;
     button.textContent = text;
     button.setAttribute('data-off', dataOff);

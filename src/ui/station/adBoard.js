@@ -6,7 +6,7 @@
 
 import { hash32 } from '../../core/rng.js';
 import {
-  CONFLICT_REACTION_SURFACES,
+  conflictReactionPackId,
   conflictReactionSurfaceForStation,
   selectConflictReaction,
 } from '../../data/conflictReactions.js';
@@ -31,7 +31,7 @@ export function selectAdBoardNotice({ seed = 0, stationId = null, simTime = 0, c
   const runSeed = Number.isFinite(Number(seed)) ? Number(seed) >>> 0 : 0;
   const cycle = Math.max(0, Math.floor((Number(simTime) || 0) / ROTATION_SECONDS));
   const surface = conflictReactionSurfaceForStation(berth);
-  if (surface === CONFLICT_REACTION_SURFACES.HELIOS_AD && conflictFlip) {
+  if (surface && conflictReactionPackId(surface) === PACK.id && conflictFlip) {
     const reaction = selectConflictReaction({ surface, seed: runSeed, flip: conflictFlip, cycle });
     if (reaction) {
       return {

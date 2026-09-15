@@ -98,35 +98,37 @@ export const DEEP_FIELD_STRUCTURE_RECIPES = deepFreeze({
     // its reference frames build one from wrecks, hulls and station structure — objects with a
     // SILHOUETTE. Ribbons are dust and cannot supply that.
     //
-    // Each is an authored outline drawn as a plate slightly LIGHTER than the void. A dark plate was
-    // tried first and is invisible: occlusion only reads as depth when there is something bright
-    // behind it, and this sector's field is dark. Reference frames sell distant wrecks by having them
-    // CATCH LIGHT, so these sit just above the background value. Helios is a civilized orbital lane, so the fiction is derelict traffic
-    // and an old relay mast rather than a debris field — the sector's contact list already reports
-    // derelicts and wrecks nearby, so this is the far-field view of something the sim already says is
-    // there. All sit high in the frame (positive z), leaving the lower-left play corridor clear.
+    // Helios is a civilized orbital lane, so the fiction is derelict traffic and an old relay mast
+    // rather than a debris field — the sector's contact list already reports derelicts and wrecks
+    // nearby, so this is the far-field view of something the sim already says is there. All sit high
+    // in the frame (positive z), leaving the lower-left play corridor clear.
+    //
+    // `art.kind` selects an authored painter from `deepFieldStructureArt.js`. Each structure is
+    // rasterized ONCE into an offscreen canvas at load and submitted as one textured quad — the same
+    // bake-once direction the painted planets and the L1 nebula already take. The previous 12-vertex
+    // `silhouette` plate is retired: a uniform flat plate with bounding-box-normalized shading washed
+    // out to one value on a thin shape and could not depict anything a passerby could name. See that
+    // module for why the value ramp is deliberately compressed (contrast between planes reads at
+    // distance; absolute brightness only makes the object foreground-loud).
+    //
+    // `scale` is the baked quad's world HEIGHT as a fraction of the macro scale; the width follows
+    // the painter's authored aspect. `color` is the object's mid value — keep it near the void, not
+    // above it.
     structures: [
       {
-        // Long-hauler hull, broken amidships, seen almost edge-on and well off to the left where the
-        // frame was previously empty.
+        // Long-hauler hull, broken amidships, in profile so its length, bridge, cargo modules,
+        // engine bells and severed midsection are all legible at distance.
         id: 'helios-derelict-hauler',
-        scale: 0.34, offset: [0.86, 0.10], opacity: 0.85, color: '#2b3647',
-        silhouette: [
-          [-1.00, -0.055], [-0.62, -0.085], [-0.20, -0.095], [0.18, -0.080],
-          [0.46, -0.052], [0.62, -0.020], [0.66, 0.016], [0.44, 0.050],
-          [0.06, 0.072], [-0.34, 0.078], [-0.72, 0.062], [-1.00, 0.030],
-        ],
+        art: { kind: 'derelict_hauler' },
+        scale: 0.215, offset: [0.84, 0.11], opacity: 0.9, color: '#1b212b',
       },
       {
-        // Relay mast + dish, small and higher up: a second, much smaller silhouette at a different
-        // apparent distance is what turns one object into a sense of depth.
+        // Relay mast: a tapering lattice tower with cross-arms, a parabolic dish and an apex beacon.
+        // A second, much smaller object at a different apparent distance is what turns one silhouette
+        // into a sense of depth.
         id: 'helios-relay-mast',
-        scale: 0.16, offset: [0.52, 0.24], opacity: 0.80, color: '#333f52',
-        silhouette: [
-          [-0.10, -0.60], [0.10, -0.60], [0.10, 0.06], [0.42, 0.20],
-          [0.46, 0.40], [0.10, 0.34], [0.10, 0.62], [-0.10, 0.62],
-          [-0.10, 0.28], [-0.44, 0.38], [-0.46, 0.18], [-0.10, 0.04],
-        ],
+        art: { kind: 'relay_mast' },
+        scale: 0.30, offset: [0.52, 0.26], opacity: 0.9, color: '#1d242e',
       },
     ],
   }),

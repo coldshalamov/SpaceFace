@@ -21,6 +21,11 @@
 // fenced success. The contract's stake is physical (the capsule, the heat, the patrol) rather than
 // a deposit.
 
+import {
+  BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
+  HEIST_CAPSULE_RUN_VARIANT_ID,
+} from './heistFacilities.js';
+
 export const PQ019C_HEIST_TYPE = 'heist_intercept';
 export const PQ019C_HEIST_SOURCE = 'heistContract';
 export const PQ019C_HEIST_TAG = 'pq019c:tethys-capsule-run';
@@ -211,6 +216,159 @@ export function buildHeistOffer({ epoch = 0, attempt = 0, sourceMissionId = null
     epochPosted: epoch,
     ...(sourceMissionId ? { recoveryFromMissionId: sourceMissionId } : {}),
   };
+}
+
+// ── BREAKAWAY: The Third Shift ──────────────────────────────────────────────────────────────────
+//
+// A second POLICY over the same launcher, arbiter and receiver machinery — not a second mission
+// engine. The Tethys launcher throws the SP-07 flywheel assembly off the catcher line; Concord pays
+// for its lawful recovery into the catcher's capture fork. Possession is not theft here: the contract
+// is the permission, so a latch never reports an incident and never raises WANTED.
+//
+// The Capsule Run's matrix-selected tuning above is untouched and still pinned by its own test.
+// Every number below is a CANDIDATE, not a matrix selection, and says why it was chosen.
+
+export const BREAKAWAY_RECOVERY_TYPE = 'breakaway_recovery';
+export const BREAKAWAY_RECOVERY_SOURCE = 'breakawayContract';
+export const BREAKAWAY_THIRD_SHIFT_TAG = 'breakaway:tethys-third-shift';
+/** Concord runs the receiving catcher and logs the recovery, so Concord pays and owns the rep. */
+export const BREAKAWAY_THIRD_SHIFT_FACTION_ID = 'faction_scn';
+
+export const BREAKAWAY_HEIST_TUNING = Object.freeze({
+  /** Same measured station-to-launcher leg as the capsule run, so the same selected window. */
+  launchWindowS: PQ019C_HEIST_TUNING.launchWindowS,
+  /**
+   * CANDIDATE 4 minutes. The capsule's 100 s window was selected for a 100 WU/s capsule on a
+   * straight 2 km line. The SP-07 leaves at 60 WU/s off-line and keeps drifting; the player must
+   * catch it, bring roughly 2 km of heavy load back, enter the fork under 100 WU/s and let it
+   * settle. A shorter window would be a soft-lock wearing a timer.
+   */
+  runWindowTicks: 14400,
+  /** Derived from the launch window exactly as the capsule run's is. */
+  unlaunchedWindowTicks: PQ019C_HEIST_TUNING.unlaunchedWindowTicks,
+  /**
+   * CANDIDATE 960 cr. Below the best honest tier-3 board contract (1320 cr) because this job carries
+   * no heat, no WANTED and no patrol; well above an ordinary tier-2 tow at this distance (~580 cr)
+   * because the load is heavy, tumbling and must be delivered into a machine, not merely docked.
+   */
+  rewardCr: 960,
+  /** Packet ceiling for the careful-handling bonus: at most 15% of base, scaled by condition. */
+  qualityBonusFraction: 0.15,
+  riskTier: 2,
+  /** Concord will not hand a logged recovery to a pilot it considers hostile. */
+  minRep: -10,
+  /** No reduced-stake retry in this slice: a failed recovery is simply over. */
+  recoveryEnabled: false,
+});
+
+/** Terminal outcome -> settlement for the lawful recovery. A settled arrival is the only payday. */
+export const BREAKAWAY_TERMINAL_SETTLEMENT = Object.freeze({
+  lawful_arrival_observed: Object.freeze({ settlement: 'complete', reason: null }),
+  // Not reachable by construction (a fork load never takes custody at the fence or from a touch);
+  // mapped so an unexpected receipt can never pay.
+  fenced_success: Object.freeze({ settlement: 'fail', reason: 'wrong_receiver' }),
+  lawful_confiscation: Object.freeze({ settlement: 'fail', reason: 'confiscated' }),
+  payload_destroyed: Object.freeze({ settlement: 'fail', reason: 'payload_destroyed' }),
+  expired: Object.freeze({ settlement: 'fail', reason: 'window_expired' }),
+  unresolved_absent: Object.freeze({ settlement: 'fail', reason: 'payload_absent' }),
+  abandoned: Object.freeze({ settlement: 'fail', reason: 'abandoned' }),
+});
+
+/**
+ * Player-facing lines for the recovery. Same rules as the capsule run's: each line names its subject
+ * and its consequence in words, never a colour, and reads with animation disabled. The `capture_*`
+ * lines are the fork's own truth, spoken on real physical attempts rather than once per run.
+ */
+export const BREAKAWAY_CUE_TEXT = Object.freeze({
+  accepted: 'Third Shift accepted — the SP-07 assembly releases from the Tethys launcher shortly',
+  launched: 'SP-07 assembly broke away off the catcher line — recover it before it drifts out of reach',
+  possessed: 'Assembly on your line — bring it through the Concord catcher fork under 100 WU/s',
+  lawful_arrival: 'Assembly settled in the Concord catcher fork — recovery logged and paid',
+  destroyed: 'SP-07 assembly destroyed — there is nothing left to deliver',
+  expired: 'Recovery window closed — the assembly drifted out of reach',
+  absent: 'Assembly lost from the field — the recovery cannot be settled',
+  abandoned: 'Third Shift recovery abandoned',
+  denied: 'Launcher refused the schedule — the recovery run is not available right now',
+  receiver_refused: 'Catcher fork could not take the assembly — no delivery, so nothing is paid',
+  capture_acquired: 'Fork rails have the assembly — let it come to rest',
+  capture_lost: 'Assembly slipped out of the fork — bring it around again',
+  capture_refused_too_fast: 'Too fast for the catcher fork — come in under 100 WU/s',
+  capture_refused_too_sideways: 'Too much sideways drift for the fork rails — straighten the approach',
+  capture_refused_outside_mouth: 'Off-centre for the fork — line the assembly up with the open end',
+});
+
+/**
+ * Build the Third Shift offer. Deterministic, like `buildHeistOffer`, so a board refresh, a save
+ * round-trip and a fresh boot all agree on its identity.
+ */
+export function buildBreakawayOffer({ epoch = 0 } = {}) {
+  return {
+    id: 'breakaway_tethys_third_shift',
+    type: BREAKAWAY_RECOVERY_TYPE,
+    source: BREAKAWAY_RECOVERY_SOURCE,
+    stationId: PQ019C_HEIST_STATION_ID,
+    factionId: BREAKAWAY_THIRD_SHIFT_FACTION_ID,
+    heistTag: BREAKAWAY_THIRD_SHIFT_TAG,
+    heistAttempt: 0,
+    reward_cr: BREAKAWAY_HEIST_TUNING.rewardCr,
+    // A refunded collateral is a second economy grant; see the capsule run header.
+    collateral_cr: 0,
+    riskTier: BREAKAWAY_HEIST_TUNING.riskTier,
+    minRep: BREAKAWAY_HEIST_TUNING.minRep,
+    destStationId: PQ019C_HEIST_STATION_ID,
+    destSectorId: PQ019C_HEIST_SECTOR_ID,
+    distance: 0,
+    // No `duration_s`: the run window is arbitrated, not expired by the mission clock.
+    params: {
+      heistTag: BREAKAWAY_THIRD_SHIFT_TAG,
+      heistAttempt: 0,
+      heistVariantId: BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
+      launchWindowS: BREAKAWAY_HEIST_TUNING.launchWindowS,
+      runWindowTicks: BREAKAWAY_HEIST_TUNING.runWindowTicks,
+      unlaunchedWindowTicks: BREAKAWAY_HEIST_TUNING.unlaunchedWindowTicks,
+      recoveryEnabled: BREAKAWAY_HEIST_TUNING.recoveryEnabled,
+      fValue: 1,
+    },
+    title: 'The Third Shift — SP-07 Recovery',
+    brief: 'A flywheel assembly broke away from the Tethys launcher. Bring it home through the Concord catcher fork.',
+    summary: 'Recover a drifting industrial flywheel assembly and deliver it into the Concord catcher fork.',
+    description: 'The SP-07 flywheel assembly left the Tethys Surface Launcher off its line and is tumbling '
+      + 'toward open space. Latch it, tow it or shove it home, and bring it through the open end of the '
+      + 'Concord Lawful Catcher fork under 100 WU/s. The fork brakes the load itself; custody passes only '
+      + 'once it comes to rest. Deliver it in good condition and Concord adds a bonus.',
+    authorization: 'CONCORD — LOGGED RECOVERY',
+    adminField: 'MANIFEST SP-07 · LAWFUL SALVAGE',
+    expiresAtEpoch: null,
+    storyTag: null,
+    epochPosted: epoch,
+  };
+}
+
+/**
+ * Mission policy per launch variant: which settlement table applies, whether first possession is a
+ * reportable theft, which copy is spoken, and the bounded quality bonus. Absent or unknown variant
+ * ids are the historical Capsule Run.
+ */
+export const HEIST_MISSION_POLICIES = Object.freeze({
+  [HEIST_CAPSULE_RUN_VARIANT_ID]: Object.freeze({
+    variantId: HEIST_CAPSULE_RUN_VARIANT_ID,
+    settlement: PQ019C_TERMINAL_SETTLEMENT,
+    reportsTheft: true,
+    cueText: null,
+    qualityBonusFraction: 0,
+  }),
+  [BREAKAWAY_THIRD_SHIFT_VARIANT_ID]: Object.freeze({
+    variantId: BREAKAWAY_THIRD_SHIFT_VARIANT_ID,
+    settlement: BREAKAWAY_TERMINAL_SETTLEMENT,
+    reportsTheft: false,
+    cueText: BREAKAWAY_CUE_TEXT,
+    qualityBonusFraction: BREAKAWAY_HEIST_TUNING.qualityBonusFraction,
+  }),
+});
+
+export function heistMissionPolicy(variantId) {
+  return (typeof variantId === 'string' && HEIST_MISSION_POLICIES[variantId])
+    || HEIST_MISSION_POLICIES[HEIST_CAPSULE_RUN_VARIANT_ID];
 }
 
 export default buildHeistOffer;

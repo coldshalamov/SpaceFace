@@ -364,9 +364,13 @@ export function createScreenManager(ctx) {
   function syncHudAccessibility(hidden) {
     const hud = document.getElementById('hud');
     if (!hud) return;
-    if (hidden) hud.setAttribute('aria-hidden', 'true');
+    // Cached on the element so a rebuilt #hud still receives its first write.
+    const next = !!hidden;
+    if (hud._sfAriaHidden === next) return;
+    hud._sfAriaHidden = next;
+    if (next) hud.setAttribute('aria-hidden', 'true');
     else hud.removeAttribute('aria-hidden');
-    if ('inert' in hud) hud.inert = hidden;
+    if ('inert' in hud) hud.inert = next;
   }
 
   function _screenAccessibleName(def, id) {

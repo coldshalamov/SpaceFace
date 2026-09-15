@@ -470,7 +470,8 @@ export const asteroidSites = {
     if (!record || !manifest) return { ok: false, duplicate: false, reason: 'site-missing', moved: 0, intents: [] };
     const operation = operationForWorldSiteComponent(manifest, record, componentId, verb)
       || manifest.operations.find((candidate) => candidate.componentId === componentId
-        && candidate.verb === verb && record.completedOperations && record.completedOperations[candidate.id]);
+        && (!verb || candidate.verb === verb)
+        && record.completedOperations && record.completedOperations[candidate.id]);
     if (!operation) return { ok: false, duplicate: false, reason: 'operation-unavailable', moved: 0, intents: [] };
     const result = applyWorldSiteOperation(manifest, record, {
       operationId: operation.id,

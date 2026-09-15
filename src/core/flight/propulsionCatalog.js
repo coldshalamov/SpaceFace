@@ -19,13 +19,24 @@ export const DRIVE_FAMILIES = Object.freeze({
 const INF = Number.POSITIVE_INFINITY;
 const DERIVED_RUNTIME_PROFILE_CACHE = new WeakMap();
 const PLAYER_TRANSLATION_PROFILE_CACHE = new WeakMap();
+// Cruise-phase derivations are pure functions of the base profile; cached so the player's
+// flight tick does not allocate a fresh profile every step while cruising or stumbling.
+const CRUISE_PROFILE_CACHE = new WeakMap();
+const STUMBLE_PROFILE_CACHE = new WeakMap();
 
 /**
  * Player-only translation feel. The ship reaches its existing speed ceiling sooner and
- * kills speed sooner; yaw and top speed stay on the authored drive. Cached per frozen
+ * kills speed sooner; top speed stays on the authored drive. Cached per frozen
  * profile so a flight tick does not allocate.
  */
 export const PLAYER_TRANSLATION_RESPONSIVENESS = 1.15;
+
+/**
+ * Player-only yaw authority (Gap Report F3): acceleration and braking double so the nose
+ * answers the stick, while the yaw-rate ceiling stays authored — a nimble helm, not a
+ * faster spin. Applied to player craft only; NPCs keep the authored drive values.
+ */
+export const PLAYER_YAW_AUTHORITY = 2;
 
 const TRANSLATION_ACCEL_KEYS = Object.freeze([
   'mainAccel',
@@ -42,9 +53,10 @@ const TRANSLATION_ACCEL_KEYS = Object.freeze([
   'trimAccel',
 ]);
 
+// Responsiveness shrinks RESPONSE horizons only (governor catch-up, pilot brake bite).
+// The settle horizons (stopHorizonS / driftStopHorizonS) stay authored: shrinking them is
+// what turned an off-throttle release into braking (Gap Report F1).
 const ASSIST_HORIZON_KEYS = Object.freeze([
-  'stopHorizonS',
-  'driftStopHorizonS',
   'governorResponseS',
   'pilotBrakeHorizonS',
 ]);
@@ -75,7 +87,8 @@ export const PROPULSION_PROFILES = Object.freeze({
     combatSpeed: 105,
     travelCeiling: 472.5,
     assist: {
-      neutralBrakeFraction: 0.48,
+      settleTimeConstantS: 10,
+      settleFloorAccel: 2.0,
       lateralKillFraction: 0.36,
       commandedAxisDamping: 0.08,
       stopHorizonS: 2.20,
@@ -110,10 +123,11 @@ export const PROPULSION_PROFILES = Object.freeze({
     combatSpeed: 95,
     travelCeiling: 438.75,
     assist: {
-      neutralBrakeFraction: 0.44,
+      settleTimeConstantS: 12,
+      settleFloorAccel: 1.5,
       lateralKillFraction: 0.32,
       commandedAxisDamping: 0.07,
-      stopHorizonS: 2.35,
+      stopHorizonS: 4.0,
       driftStopHorizonS: 8.5,
       deadSpeed: 0.20,
       deadInput: 0.025,
@@ -145,7 +159,8 @@ export const PROPULSION_PROFILES = Object.freeze({
     combatSpeed: 85,
     travelCeiling: 382.5,
     assist: {
-      neutralBrakeFraction: 0.40,
+      settleTimeConstantS: 15,
+      settleFloorAccel: 1.2,
       lateralKillFraction: 0.27,
       commandedAxisDamping: 0.05,
       stopHorizonS: 3.10,
@@ -368,27 +383,40 @@ export function resolvePropulsionProfile(entity, state = null) {
   // Cruise engagement multipliers (spec2/02 §1): player only.
   if (state && entity && entity.id === state.playerId) {
     const c = state.player && state.player.cruise;
-    if (c && c.phase === 'cruising') {
-      return {
-        ...profile,
-        maxSpeed: Number.isFinite(profile.maxSpeed) ? profile.maxSpeed * 4.0 : profile.maxSpeed,
-        mainAccel: Number.isFinite(profile.mainAccel) ? profile.mainAccel * 2.5 : profile.mainAccel,
-        maxAccel: Number.isFinite(profile.maxAccel) ? profile.maxAccel * 2.5 : profile.maxAccel,
-        maxYawRate: Number.isFinite(profile.maxYawRate) ? profile.maxYawRate * 0.25 : profile.maxYawRate,
-        yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * 0.25 : profile.yawAccel,
-        yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * 0.25 : profile.yawBrake,
-      };
-    }
-    if (c && Number.isFinite(c.stumbleT) && c.stumbleT > 0) {
-      return {
-        ...profile,
-        maxYawRate: Number.isFinite(profile.maxYawRate) ? profile.maxYawRate * 0.4 : profile.maxYawRate,
-        yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * 0.4 : profile.yawAccel,
-        yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * 0.4 : profile.yawBrake,
-      };
-    }
+    if (c && c.phase === 'cruising') return cachedDerivedProfile(CRUISE_PROFILE_CACHE, profile, cruisingProfile);
+    if (c && Number.isFinite(c.stumbleT) && c.stumbleT > 0) return cachedDerivedProfile(STUMBLE_PROFILE_CACHE, profile, stumbleProfile);
   }
   return profile;
+}
+
+function cachedDerivedProfile(cache, profile, derive) {
+  let derived = cache.get(profile);
+  if (!derived) {
+    derived = Object.freeze(derive(profile));
+    cache.set(profile, derived);
+  }
+  return derived;
+}
+
+function cruisingProfile(profile) {
+  return {
+    ...profile,
+    maxSpeed: Number.isFinite(profile.maxSpeed) ? profile.maxSpeed * 4.0 : profile.maxSpeed,
+    mainAccel: Number.isFinite(profile.mainAccel) ? profile.mainAccel * 2.5 : profile.mainAccel,
+    maxAccel: Number.isFinite(profile.maxAccel) ? profile.maxAccel * 2.5 : profile.maxAccel,
+    maxYawRate: Number.isFinite(profile.maxYawRate) ? profile.maxYawRate * 0.25 : profile.maxYawRate,
+    yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * 0.25 : profile.yawAccel,
+    yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * 0.25 : profile.yawBrake,
+  };
+}
+
+function stumbleProfile(profile) {
+  return {
+    ...profile,
+    maxYawRate: Number.isFinite(profile.maxYawRate) ? profile.maxYawRate * 0.4 : profile.maxYawRate,
+    yawAccel: Number.isFinite(profile.yawAccel) ? profile.yawAccel * 0.4 : profile.yawAccel,
+    yawBrake: Number.isFinite(profile.yawBrake) ? profile.yawBrake * 0.4 : profile.yawBrake,
+  };
 }
 
 /**
@@ -471,9 +499,19 @@ function withPlayerTranslationFeel(profile) {
   if (!profile) return profile;
   let felt = PLAYER_TRANSLATION_PROFILE_CACHE.get(profile);
   if (felt) return felt;
-  felt = freezeProfile(applyTranslationResponsiveness(profile));
+  felt = freezeProfile(applyPlayerYawAuthority(applyTranslationResponsiveness(profile)));
   PLAYER_TRANSLATION_PROFILE_CACHE.set(profile, felt);
   return felt;
+}
+
+/** Double yaw acceleration and braking for player craft; the rate ceiling is untouched. */
+export function applyPlayerYawAuthority(profile, scale = PLAYER_YAW_AUTHORITY) {
+  if (!profile || !(scale > 0) || scale === 1) return profile;
+  const next = { ...profile };
+  for (const key of ['yawAccel', 'yawBrake', 'angularAccel', 'angularBrake']) {
+    if (Number.isFinite(next[key])) next[key] *= scale;
+  }
+  return next;
 }
 
 /** Scale translation authority and shrink stop horizons by the same factor. */

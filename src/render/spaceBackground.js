@@ -32,6 +32,10 @@ import {
   resolveDeepFieldStructureRecipe,
   sampleAuthoredWidth,
 } from './deepFieldStructureRecipes.js';
+import {
+  bakeDeepFieldStructure,
+  structureArtAspect,
+} from './deepFieldStructureArt.js';
 import { CAMERA_ZOOM_MAX, CONTEXT_ZOOM_MAX, SPEED_ZOOM_MAX } from './camera.js';
 import {
   isPlausibleCameraStep,
@@ -45,6 +49,37 @@ import {
 } from './sectorVisualTransition.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { PaintedPlanets } from './paintedPlanets.js';
+
+// The sky uses authored colour images rather than lit hull materials. Shape their value response
+// in the existing sprite pass so the painted sky and illustrated solids share cool shadows and
+// broad light planes. Keep chroma, fine cloud/rock detail, transparency and every source image.
+const PLANET_STYLE_GLSL = /* glsl */`
+  float sfSkyValue = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+  float sfSkyBands = 0.035
+    + 0.15 * smoothstep(0.09, 0.14, sfSkyValue)
+    + 0.26 * smoothstep(0.27, 0.35, sfSkyValue)
+    + 0.38 * smoothstep(0.55, 0.66, sfSkyValue);
+  // No positive floor on black pixels: atmosphere gutters and the night side remain dark.
+  float sfSkyShaped = mix(sfSkyValue, sfSkyBands, 0.34 * smoothstep(0.015, 0.06, sfSkyValue));
+  vec3 sfSkyTint = mix(vec3(0.86, 0.94, 1.10), vec3(1.035, 1.01, 0.96), smoothstep(0.08, 0.48, sfSkyValue));
+  outgoingLight = diffuseColor.rgb * (sfSkyShaped / max(sfSkyValue, 0.0001)) * sfSkyTint;
+`;
+
+function stylePlanetMaterial(material) {
+  material.onBeforeCompile = (shader) => {
+    const needle = 'outgoingLight = diffuseColor.rgb;';
+    if (!shader.fragmentShader.includes(needle)) throw new Error('[background] planet style shader contract changed');
+    shader.fragmentShader = shader.fragmentShader.replace(needle, PLANET_STYLE_GLSL);
+  };
+  material.customProgramCacheKey = () => 'spaceface-illustrated-planet-v1';
+}
+
+// Retired: the old per-frame plate shader that shaded a 12-vertex outline by normalizing against
+// the shape's bounding box. It is gone because a thin silhouette normalized that way washes out to
+// a single flat value (measured: mast top and mid-body sampled identical RGB) and because a
+// 12-vertex outline cannot depict a recognizable object at all. Structures are now authored art
+// baked once into an offscreen canvas — see `deepFieldStructureArt.js` and `_getStructureTexture`.
+const STRUCTURE_BAKE_HEIGHT = { low: 256, mid: 384, high: 512 };
 
 // ----------------------------------------------------------------------------
 // Seeded PRNG (mulberry32) + string hash — ~15 lines, no deps.
@@ -1133,6 +1168,13 @@ export class SpaceBackground {
     this._dbs = new THREE.Vector2();
     this._smearFit = { stretch: 1, dim: 1 };
 
+    // Authored deep-field structure LRU: one baked CanvasTexture per (recipe, structure, tier).
+    // Same shape as planetCache — bake once, keep while it can still be seen, dispose on eviction.
+    // Structures are static backdrop art, so this replaces per-frame plate shading entirely.
+    this.structureTexCache = new Map();
+    this.structureTexOrder = [];
+    this.maxStructureCache = 8;
+
     // planet texture LRU (render targets, disposed when evicted)
     this.planetCache = new Map();
     this.paintedPlanets = typeof document !== 'undefined' && typeof document.createElementNS === 'function'
@@ -2170,6 +2212,7 @@ export class SpaceBackground {
         fog: false,
       });
       mat.dispose = () => {}; // cache-owned; the hero-clear path must not release the program
+      stylePlanetMaterial(mat);
       this._spriteMatCache.set(tex, mat);
     }
     return mat;
@@ -2354,44 +2397,52 @@ export class SpaceBackground {
       group.add(mesh);
     }
 
-    // ---- authored structure silhouettes ---------------------------------------------------------
+    // ---- authored structure art, baked once ------------------------------------------------------
     // Independent review's background note, in every round, is that the frame has "almost no middle
     // layer", and its reference frames build one from DISTANT SOLID FORMS — wrecks, stations, broken
     // hulls — not from more particulate. Ribbons are thin dust and cannot supply that: a dust lane has
     // no silhouette.
     //
-    // A structure is an authored 2D outline placed in the deep field and rendered as a dark, nearly
-    // opaque plate. It reads as a distant object precisely because it OCCLUDES the starfield behind
-    // it; that occlusion is the depth cue, which is why the material is dark rather than glowing.
-    // Cost is one small ShapeGeometry per structure with no lighting and no texture.
+    // Each structure is authored art (see `deepFieldStructureArt.js`) rasterized ONCE into an
+    // offscreen canvas and submitted as one textured quad. It reads as a distant object because it
+    // OCCLUDES the starfield behind it and because its own lit/shadow planes describe a volume — not
+    // because it glows. Cost is one quad and one cached texture per structure, and no per-frame
+    // shading at all: the previous version shaded every structure pixel every frame.
     for (let ki = 0; ki < (recipe.structures || []).length; ki++) {
       const st2 = recipe.structures[ki];
-      const outline = Array.isArray(st2.silhouette) ? st2.silhouette : null;
-      if (!outline || outline.length < 3) continue;
-      const shape = new THREE.Shape();
+      if (!st2 || !st2.art) continue;
+      const tex = this._getStructureTexture(recipe, st2);
+      if (!tex) continue;                        // headless/unknown art: degrade to ribbons only
       const sScale = scale * (Number.isFinite(st2.scale) ? st2.scale : 0.2);
-      shape.moveTo(outline[0][0] * sScale, outline[0][1] * sScale);
-      for (let pi = 1; pi < outline.length; pi++) {
-        shape.lineTo(outline[pi][0] * sScale, outline[pi][1] * sScale);
-      }
-      shape.closePath();
-      const geo = new THREE.ShapeGeometry(shape);
-      geo.rotateX(-Math.PI / 2);                 // deep field lies in the XZ plane
+      const quadH = sScale;
+      const quadW = sScale * structureArtAspect(st2);
+      const geo = new THREE.PlaneGeometry(quadW, quadH);
+      // Deep field lies in the XZ plane. rotateX(+90) sends the quad's local +y to world +z (high in
+      // frame) so the texture's top row is the object's top; the x mirror puts the canvas's right
+      // edge on the screen's right, because world +x is screen-LEFT in this camera rig.
+      geo.rotateX(Math.PI / 2);
+      geo.scale(-1, 1, 1);
       const off = st2.offset || [0, 0];
       geo.translate(off[0] * scale, 0, off[1] * scale);
       geo.userData.deepFieldRecipeId = recipe.id;
       geo.userData.deepFieldStructureId = st2.id;
       geometries.push(geo);
       const mat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(st2.color || '#0a0d13'),
+        map: tex,
         transparent: true,
         opacity: Number.isFinite(st2.opacity) ? st2.opacity : 0.92,
         depthWrite: false,
         depthTest: true,
+        // The mirrored quad flips face winding; a flat backdrop plate has no back face to hide.
+        side: THREE.DoubleSide,
+        // Double-sided TRANSPARENT materials are otherwise split into a back-face pass and a
+        // front-face pass — two submissions per structure for no visual gain on a flat quad.
+        forceSinglePass: true,
         fog: false,
       });
       mat.name = `SF_DeepFieldStructure_${recipe.id}_${st2.id}`;
       mat.userData.deepFieldRecipeId = recipe.id;
+      mat.userData.deepFieldStructureId = st2.id;
       materials.push(mat);
       const mesh = new THREE.Mesh(geo, mat);
       mesh.name = `DeepFieldStructure_${st2.id}`;
@@ -2428,6 +2479,55 @@ export class SpaceBackground {
       recipeId: recipe.id,
     };
     this.group.add(group);
+  }
+
+  // Bake-once structure art, cached like the planets: one CanvasTexture per (recipe, structure,
+  // tier), disposed when the LRU evicts it. Canvas antialiasing gives the soft edge the old
+  // ShapeGeometry plates never had, and the authored ramp gives internal value structure that a
+  // bounding-box-normalized shader could not hold on a thin shape.
+  _getStructureTexture(recipe, structure) {
+    // Lazy-init: focused tests build this module via Object.create(prototype) with no constructor.
+    if (!this.structureTexCache) {
+      this.structureTexCache = new Map();
+      this.structureTexOrder = [];
+      this.maxStructureCache = this.maxStructureCache || 8;
+    }
+    const key = `${recipe.id}|${structure.id}|${this.tierName}`;
+    const cached = this.structureTexCache.get(key);
+    if (cached) return cached;
+    const height = STRUCTURE_BAKE_HEIGHT[this.tierName] || STRUCTURE_BAKE_HEIGHT.high;
+    const canvas = bakeDeepFieldStructure(structure, height);
+    if (!canvas) return null;
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.name = `SF_DeepFieldStructureArt_${key}`;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.generateMipmaps = true;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    try {
+      const maxAniso = this.renderer && this.renderer.capabilities
+        ? this.renderer.capabilities.getMaxAnisotropy() : 1;
+      tex.anisotropy = Math.min(8, maxAniso || 1);
+    } catch (_) { /* anisotropy optional */ }
+    tex.needsUpdate = true;
+    this.structureTexCache.set(key, tex);
+    this.structureTexOrder.push(key);
+    if (this.structureTexOrder.length > this.maxStructureCache) {
+      const old = this.structureTexOrder.shift();
+      const oldTex = this.structureTexCache.get(old);
+      if (oldTex) oldTex.dispose();
+      this.structureTexCache.delete(old);
+    }
+    return tex;
+  }
+
+  _disposeStructureTextures() {
+    if (!this.structureTexCache) return;
+    for (const [, tex] of this.structureTexCache) tex.dispose();
+    this.structureTexCache.clear();
+    this.structureTexOrder.length = 0;
   }
 
   _getPlanetTexture(spec) {
@@ -3034,6 +3134,7 @@ export class SpaceBackground {
   dispose() {
     this.paintedPlanets?.dispose();
     this._disposeStructureMacro();
+    this._disposeStructureTextures();
     this._disposeBakeTargets();
     if (this.flareAtlas) this.flareAtlas.dispose();
     for (const [, rt] of this.planetCache) rt.dispose();

@@ -1,0 +1,13 @@
+"AppBuild"
+{
+	"AppID"		"{{APP_ID}}"
+	"Desc"		"{{DESCRIPTION}}"
+	"Preview"		"{{PREVIEW}}"
+	"SetLive"		"{{SET_LIVE}}"
+	"ContentRoot"		"{{CONTENT_ROOT}}"
+	"BuildOutput"		"{{BUILD_OUTPUT}}"
+	"Depots"
+	{
+		"{{DEPOT_ID_WINDOWS}}"		"depot_build_{{DEPOT_ID_WINDOWS}}.vdf"
+	}
+}

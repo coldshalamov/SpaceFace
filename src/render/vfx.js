@@ -43,6 +43,7 @@ import {
   SHARD_BUFFER_BINDINGS,
 } from './particleShards.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
+import { indexedShipLikeScan, indexedTypeScan, entityIndexVersion } from '../world/livingWorldViews.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { MOMENTUM_SINK_FRAME_KIND } from '../combat/momentumSink.js';
 import { MOMENTUM_SINK_STATUS_ID } from '../data/combatDefs.js';
@@ -202,6 +203,20 @@ import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 const EMPTY_TRAIL_SOCKETS = Object.freeze([]);
 const EMPTY_PROJECTILE_DATA = Object.freeze({});
 const EMPTY_VIDEO_SETTINGS = Object.freeze({});
+// Entity `type` → entityIndex bucket name, for indexed contact-target lookup.
+const INDEX_BUCKET_BY_TYPE = {
+  ship: 'ships',
+  drone: 'drones',
+  station: 'stations',
+  asteroid: 'asteroids',
+  wreck: 'wrecks',
+  payload: 'payloads',
+  pickup: 'pickups',
+  projectile: 'projectiles',
+  mine: 'mines',
+  vectormine: 'vectorMines',
+  charge: 'charges',
+};
 const PROJECTILE_TRAIL_DIAG_CLASSES = Object.freeze([
   'kinetic', 'rail', 'missile', 'plasma', 'pulse', 'emp', 'other',
 ]);
@@ -2041,6 +2056,9 @@ export const vfx = {
     add('cruise:engaged', (p) => this._onCruiseEngaged(p));
     add('cruise:dropped', (p) => this._onCruiseDropped(p));
     add('charge:detonated', (p) => this._onChargeDetonated(p));
+    // Drift-bomb bay (design/ORDNANCE_BOMBS_SPEC.md): per-payload reads, never one generic ball.
+    add('bombs:detonated', (p) => this._onBombDetonated(p));
+    add('bombs:fieldEnded', (p) => this._onBombFieldEnded(p));
     add('ai:telegraph', (p) => this._onAiTelegraph(p));
     add('ai:flee', (p) => this._onAiFlee(p));
     add('ai:formationBroken', (p) => this._onAiFormationBroken(p));
@@ -2629,8 +2647,12 @@ export const vfx = {
   },
 
   _refreshTrailCandidates() {
-    const list = this.state.entityList || [];
-    if (!this._trailCacheDirty && this._trailListRef === list && this._trailListLength === list.length) return;
+    const list = indexedShipLikeScan(this.state);
+    // Index membership can churn in place at a stable length (swap-remove + append), so the
+    // version watch catches same-length changes that the ref/length pair would miss.
+    const version = entityIndexVersion(this.state);
+    if (!this._trailCacheDirty && this._trailListRef === list
+      && this._trailListLength === list.length && this._trailListVersion === version) return;
     this._trailCandidates.length = 0;
     this._ribbonCandidates.length = 0;
     for (let i = 0; i < list.length; i++) {
@@ -2643,6 +2665,7 @@ export const vfx = {
     }
     this._trailListRef = list;
     this._trailListLength = list.length;
+    this._trailListVersion = version;
     this._trailCacheDirty = false;
   },
 
@@ -6410,8 +6433,10 @@ export const vfx = {
       return slot.contactTarget;
     }
     if (!field) return null;
-    const list = this.state.entityList;
-    for (let i = 0; list && i < list.length; i++) {
+    // Indexed type bucket when available — the predicate below still re-checks `body.type`,
+    // so an unknown type simply falls back to the full entity list.
+    const list = indexedTypeScan(this.state, INDEX_BUCKET_BY_TYPE[type]);
+    for (let i = 0; i < list.length; i++) {
       const body = list[i];
       if (body === ent || body.alive === false || body.type !== type
         || !body.data || body.data[field] !== value || !body.pos) continue;
@@ -6710,9 +6735,9 @@ export const vfx = {
   },
 
   _emitNpcPirateIntercepts(player, drawWu, reducedMotion) {
-    const list = this.state && this.state.entityList;
     const scratch = this._pirateInterceptScratch;
-    if (!list || !scratch) return 0;
+    if (!scratch || !this.state) return 0;
+    const list = indexedTypeScan(this.state, 'ships');
     scratch.elapsed = this.state.simTime || 0;
     const job = scratch.job || (scratch.job = { kind: 'pirate', phase: 'hold', routeIndex: 0, route: null });
     const profile = scratch.cadence || (scratch.cadence = { cadenceHz: 3.2, reducedCadenceHz: 1.2 });
@@ -8209,7 +8234,7 @@ export const vfx = {
     const pulse = 0.82 + 0.18 * Math.sin(this._t * 4.2);
     const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     let n = 0;
-    const list = state.entityList || [];
+    const list = indexedTypeScan(state, 'asteroids');
     for (let i = 0; i < list.length && n < sm.CAP; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'asteroid') continue;
@@ -8670,6 +8695,193 @@ export const vfx = {
     if (acc.eventLightPeakScale > 0) {
       this._flashLight({ x: pos.x, z: pos.z }, profile.accentColor || '#39d0ff',
         4.2 * neon.lightPeak * acc.eventLightPeakScale, 8, 180);
+    }
+  },
+
+  // Drift-bomb detonations (design/ORDNANCE_BOMBS_SPEC.md). One handler, eight payloads, one
+  // law: the read is the CONSEQUENCE the payload authored (shove / pull / splat / pulse), never
+  // a generic glow ball — same B-list rejects as every heavy-impact effect in this file. Real
+  // shove directions come from the causal receipt (p.shoves); a payload with no shoves builds
+  // its own directional geometry (spokes, convergence) instead of inventing an axis.
+  _onBombDetonated(p) {
+    if (!this._scene || !p || !p.pos) return;
+    const payloadId = String(p.payloadId || 'bomb_frag');
+    const pos = p.pos;
+    const r = Math.max(4, Number(p.radius) || 12);
+    const acc = resolveVfxAccessibilityProfile(this.state && this.state.settings);
+    const reduced = acc.flashOpacityScale < 1;
+    const neon = resolveForceNeonScale('impulse', this._forceNeonMetrics());
+    const baseProfile = resolveImpactPresentationProfile('wpn_vector_mine_m');
+    const shoves = (Array.isArray(p.shoves) && p.shoves.length)
+      ? p.shoves
+      : [{ dx: 1, dz: 0, mag: 1 }, { dx: -1, dz: 0, mag: 1 }];
+    const scaleOf = (frac) => Math.max(1.0, Math.min(4.2, r * frac)) * neon.energy * 0.7;
+    const tinted = (core, accent) => ({ ...baseProfile, coreColor: core, accentColor: accent });
+
+    switch (payloadId) {
+      case 'bomb_concussion': {
+        // Pure shove: cool twin shock sheets along every real direction, no hot core, no
+        // fragments — the read is "the room emptied", not "something burned".
+        const scale = scaleOf(0.028);
+        this._emitDirectionalShoveSheets(pos, shoves, tinted('#eaf4ff', '#39d0ff'), reduced, scale);
+        if (!reduced) {
+          for (let i = 0; i < 3; i++) {
+            const a = Math.random() * Math.PI * 2;
+            this._spawnSprite(SPR_PUFF, pos.x + Math.cos(a) * 0.2 * scale, 0.1, pos.z + Math.sin(a) * 0.2 * scale,
+              1.6 + Math.random(), 0.55 * scale, 2.6 * scale, 0.3, 0, '#8fb2d8',
+              Math.cos(a) * 6, Math.sin(a) * 6, 2.2, a);
+          }
+        }
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#9fd4ff', 5.4 * neon.lightPeak * acc.eventLightPeakScale, 10, 240);
+        }
+        break;
+      }
+      case 'bomb_singularity': {
+        if (p.trigger === 'collapse') {
+          // The clump answers: compact outward snap, smaller than any opening read. The causal
+          // receipt (shoves) travels on this same detonated event.
+          const profile = { ...baseProfile, coreColor: '#eaffff', accentColor: '#39d0ff' };
+          this._emitDirectionalShoveSheets(pos, shoves, profile, reduced, 0.9);
+          this._spawnSprite(SPR_FLASH, pos.x, 0.16, pos.z, 0.09,
+            1.9, 0.7, 0.9, 0, '#d7f6ff', 0, 0, 0.8, 0);
+          if (acc.eventLightPeakScale > 0) {
+            this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 3.0 * neon.lightPeak * acc.eventLightPeakScale, 6, 120);
+          }
+          break;
+        }
+        // The field OPENS: streaks converge off the ring onto the source (the inward read the
+        // pull will continue), a dim core that darkens rather than flares. No outward blast —
+        // there is none in the sim either.
+        const spokes = reduced ? 8 : 14;
+        const ring = Math.min(26, r * 0.5);
+        for (let i = 0; i < spokes; i++) {
+          const a = (i / spokes) * Math.PI * 2 + 0.35;
+          const sx = pos.x + Math.cos(a) * ring;
+          const sz = pos.z + Math.sin(a) * ring;
+          this._spawnProjectileTrailStreak(sx, 0.2, sz,
+            0.3, 0.2, 3.8, 0.8, i % 2 ? '#a6f0ff' : '#39d0ff',
+            -Math.cos(a) * 46, -Math.sin(a) * 46, -Math.cos(a), -Math.sin(a));
+        }
+        this._spawnSprite(SPR_FLASH, pos.x, 0.14, pos.z, 0.16,
+          1.8, 0.7, 0.5, 0, '#0e2836', 0, 0, 1.6, 0);
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#39d0ff', 2.2 * neon.lightPeak * acc.eventLightPeakScale, 14, 200);
+        }
+        break;
+      }
+      case 'bomb_goo': {
+        // Splatter: tar flung along the real shove lines, then a lingering puddle. Deliberately
+        // dull — no bright flash, the read is weight and stick, not heat.
+        const scale = scaleOf(0.016);
+        for (let i = 0; i < (reduced ? 4 : 9); i++) {
+          const row = shoves[i % Math.min(shoves.length, 4)];
+          const jitter = (Math.random() - 0.5) * 0.9;
+          const a = Math.atan2(row.dz, row.dx) + jitter;
+          const reach = 1.4 + Math.random() * 2.4;
+          this._spawnSprite(SPR_PUFF, pos.x + Math.cos(a) * reach, 0.1, pos.z + Math.sin(a) * reach,
+            1.2 + Math.random() * 1.4, 0.5 * scale, 2.4 * scale, 0.55, 0,
+            i % 2 ? '#b8e356' : '#7ac043', Math.cos(a) * 14, Math.sin(a) * 14, 2.6, a);
+        }
+        this._spawnSprite(SPR_PUFF, pos.x, 0.06, pos.z,
+          2.8, 0.9 * scale, 5.2 * scale, 0.42, 0, '#6f8f3a', 0, 0, 4.6, 0);
+        break;
+      }
+      case 'bomb_emp': {
+        // Ion pulse: hard violet spokes OUTWARD from the source (the inverse of the slug's
+        // convergence — this payload radiates), a cold light, no combustion products.
+        const spokes = reduced ? 6 : 10;
+        const ring = Math.min(18, r * 0.4);
+        for (let i = 0; i < spokes; i++) {
+          const a = (i / spokes) * Math.PI * 2;
+          const sx = pos.x + Math.cos(a) * 2;
+          const sz = pos.z + Math.sin(a) * 2;
+          this._spawnProjectileTrailStreak(sx, 0.18, sz,
+            0.26, 0.16, ring * 0.3, 0.85, i % 2 ? '#b48cff' : '#6f8dff',
+            Math.cos(a) * 52, Math.sin(a) * 52, Math.cos(a), Math.sin(a));
+        }
+        this._spawnSprite(SPR_FLASH, pos.x, 0.15, pos.z, 0.08,
+          1.9, 0.8, 0.9, 0, '#e6dcff', 0, 0, 0.9, 0);
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#8f8dff', 3.6 * neon.lightPeak * acc.eventLightPeakScale, 6, 140);
+        }
+        break;
+      }
+      case 'bomb_thermite': {
+        // The starter: a modest directional splash of burning paste — embers that KEEP glowing
+        // on the shove lines (the DoT read: what it sticks to keeps paying).
+        const scale = scaleOf(0.018);
+        this._emitDirectionalShoveSheets(pos, shoves, tinted('#ffd9a8', '#ff5a2a'), reduced, Math.max(0.8, scale));
+        for (let i = 0; i < (reduced ? 3 : 7); i++) {
+          const row = shoves[i % Math.min(shoves.length, 4)];
+          const a = Math.atan2(row.dz, row.dx) + (Math.random() - 0.5) * 0.8;
+          const reach = 1.2 + Math.random() * 2.2;
+          this._spawnSprite(SPR_PUFF, pos.x + Math.cos(a) * reach, 0.12, pos.z + Math.sin(a) * reach,
+            1.1 + Math.random() * 1.2, 0.55 * scale, 3.4 * scale, 0.6, 0,
+            i % 2 ? '#ffb35c' : '#ff5a2a', Math.cos(a) * 8, Math.sin(a) * 8, 3.2, a);
+        }
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#ff7a3a', 3.8 * neon.lightPeak * acc.eventLightPeakScale, 12, 260);
+        }
+        break;
+      }
+      case 'bomb_scrambler': {
+        // Havoc: spiral streaks — outward thrust with a tangential lie, the tumble made visible.
+        const spokes = reduced ? 5 : 9;
+        for (let i = 0; i < spokes; i++) {
+          const a = (i / spokes) * Math.PI * 2;
+          const sx = pos.x + Math.cos(a) * 2.2;
+          const sz = pos.z + Math.sin(a) * 2.2;
+          const vx = Math.cos(a) * 34 - Math.sin(a) * 26;
+          const vz = Math.sin(a) * 34 + Math.cos(a) * 26;
+          this._spawnProjectileTrailStreak(sx, 0.18, sz,
+            0.3, 0.18, 3.2, 0.8, i % 2 ? '#ff8ad8' : '#d86fff', vx, vz, vx / 42, vz / 42);
+        }
+        this._emitDirectionalShoveSheets(pos, shoves, tinted('#ffd8f0', '#d86fff'), reduced, 0.9);
+        break;
+      }
+      case 'bomb_anchor': {
+        // Ballast: a heavy compact slug-flash and a brief dense streak ONTO each victim (the
+        // "welded to your own inertia" read — mass arriving, not energy leaving).
+        this._spawnSprite(SPR_FLASH, pos.x, 0.16, pos.z, 0.1,
+          1.6, 0.75, 0.95, 0, '#bff2ec', 0, 0, 1.0, 0);
+        const victims = Array.isArray(p.hits) ? p.hits.length : 0;
+        for (let i = 0; i < Math.min(victims, 4); i++) {
+          const a = (i / Math.max(1, Math.min(victims, 4))) * Math.PI * 2 + 0.7;
+          this._spawnProjectileTrailStreak(pos.x + Math.cos(a) * 3, 0.5, pos.z + Math.sin(a) * 3,
+            0.34, 0.24, 3.0, 0.9, '#2fa898', 0, 0, Math.cos(a) * 0.2, Math.sin(a) * 0.2);
+        }
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#2fa898', 2.8 * neon.lightPeak * acc.eventLightPeakScale, 8, 150);
+        }
+        break;
+      }
+      default: {
+        // bomb_frag: the killing blast — compact structural core + real-direction shock sheets +
+        // a fragment fan. Same law as the impulse charge, warmer and hungrier.
+        const profile = tinted('#fff1d8', '#ff8a3a');
+        const coreScale = scaleOf(0.02);
+        this._spawnSprite(SPR_FLASH, pos.x, 0.16, pos.z, 0.11,
+          2.6 * coreScale, 0.9 * coreScale, 0.95, 0, '#ffffff', 0, 0, 1.15, 0);
+        this._emitDirectionalShoveSheets(pos, shoves, profile, reduced, Math.max(0.85, coreScale));
+        this._impactParticleCone(pos.x, pos.z, Math.atan2(shoves[0].dz, shoves[0].dx), 0.9, 30, 80,
+          reduced ? 6 : 16, 0.5, 1.4, '#fff2d4', '#ff8a3a', 2.4);
+        if (acc.eventLightPeakScale > 0) {
+          this._flashLight({ x: pos.x, z: pos.z }, '#ff8a3a', 4.6 * neon.lightPeak * acc.eventLightPeakScale, 8, 190);
+        }
+        break;
+      }
+    }
+  },
+
+  // Persistent field payloads end quietly. The singularity's collapse renders from its own
+  // bombs:detonated receipt (trigger 'collapse', above); this handler owns only the goo settle.
+  _onBombFieldEnded(p) {
+    if (!this._scene || !p || !p.pos) return;
+    const payloadId = String(p.payloadId || '');
+    if (payloadId === 'bomb_goo') {
+      // The tar settles: one last dull puff, nothing bright.
+      this._spawnSprite(SPR_PUFF, p.pos.x, 0.06, p.pos.z, 1.8, 0.6, 2.4, 0.3, 0, '#6f8f3a', 0, 0, 2.4, 0);
     }
   },
 
@@ -10557,17 +10769,23 @@ export const vfx = {
     if (!state) return false;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
     if (!player || !player.alive || !player.pos) return false;
-    const list = state.entityList;
-    if (!list || !list.length) return false;
+    const pickups = indexedTypeScan(state, 'pickups');
+    const payloads = indexedTypeScan(state, 'payloads');
+    if (!pickups.length && !payloads.length) return false;
     const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (!e || !e.alive || (e.type !== 'pickup' && e.type !== 'payload') || !e.pos) continue;
-      const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
-      const focus = lootMagnetFocusDelta(state, player.pos, e.pos, _lootMagnetFocusScratch);
-      if (!shouldDrawLootMagnetTrail(pdx, pdz, focus.x, focus.z, tableWu)) continue;
-      const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
-      if (vx * vx + vz * vz >= LOOT_MAGNET_MIN_SPEED * LOOT_MAGNET_MIN_SPEED) return true;
+    for (let pass = 0; pass < 2; pass++) {
+      const list = pass === 0 ? pickups : payloads;
+      // Unindexed fallback returns the same entityList for both buckets — one pass covers it.
+      if (list === pickups && pass === 1) break;
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (!e || !e.alive || (e.type !== 'pickup' && e.type !== 'payload') || !e.pos) continue;
+        const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
+        const focus = lootMagnetFocusDelta(state, player.pos, e.pos, _lootMagnetFocusScratch);
+        if (!shouldDrawLootMagnetTrail(pdx, pdz, focus.x, focus.z, tableWu)) continue;
+        const vx = (e.vel && e.vel.x) || 0, vz = (e.vel && e.vel.z) || 0;
+        if (vx * vx + vz * vz >= LOOT_MAGNET_MIN_SPEED * LOOT_MAGNET_MIN_SPEED) return true;
+      }
     }
     return false;
   },
@@ -10576,11 +10794,16 @@ export const vfx = {
     const state = this.state;
     const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(state.playerId);
     if (!player || !player.pos) { this._lootMagnetLive = 0; return 0; }
-    const list = state.entityList || [];
+    const pickups = indexedTypeScan(state, 'pickups');
+    const payloads = indexedTypeScan(state, 'payloads');
     const tableWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     const burst = this._burst || 1;
     let drawn = 0;
-    for (let i = 0; i < list.length && drawn < LOOT_MAGNET_MAX_TRAILED; i++) {
+    for (let pass = 0; pass < 2 && drawn < LOOT_MAGNET_MAX_TRAILED; pass++) {
+      const list = pass === 0 ? pickups : payloads;
+      // Unindexed fallback returns the same entityList for both buckets — one pass covers it.
+      if (list === pickups && pass === 1) break;
+      for (let i = 0; i < list.length && drawn < LOOT_MAGNET_MAX_TRAILED; i++) {
       const e = list[i];
       if (!e || !e.alive || (e.type !== 'pickup' && e.type !== 'payload') || !e.pos) continue;
       const pdx = e.pos.x - player.pos.x, pdz = e.pos.z - player.pos.z;
@@ -10620,6 +10843,7 @@ export const vfx = {
           0.22 + Math.random() * 0.16, 0.9 + rush * 0.7, 0.0,
           this._c0, this._c1, 2.4, 1.1, 0, roll, 0.7 + rush * 0.5,
         );
+      }
       }
     }
     this._lootMagnetLive = drawn;
@@ -10782,6 +11006,22 @@ export const vfx = {
       this._momentumSinkCandidateCount = 0;
       return 0;
     }
+    // Whole-subsystem sleep: a momentum-sink trail can only exist on an entity holding the
+    // combat status, so scan the (small) combat-runtime table first — a plain object keyed by
+    // String(id), not a Map — and skip the entity sweep entirely on frames with no sink
+    // candidate — the common case outside massline combat.
+    const runtimes = this.state.combat && this.state.combat.entities;
+    let anySinkStatus = false;
+    if (runtimes && typeof runtimes === 'object') {
+      for (const id in runtimes) {
+        const rt = runtimes[id];
+        if (rt && rt.statuses && rt.statuses[MOMENTUM_SINK_STATUS_ID]) { anySinkStatus = true; break; }
+      }
+    }
+    if (!anySinkStatus) {
+      this._momentumSinkCandidateCount = 0;
+      return 0;
+    }
     const candidates = this._momentumSinkCandidates;
     const statuses = this._momentumSinkCandidateStatuses;
     const priorities = this._momentumSinkCandidatePriorities;
@@ -10932,7 +11172,7 @@ export const vfx = {
     const pz = player.pos.z || 0;
     const drawWu = this._tableVfxDrawWu || tableVfxDrawWuFromState(state);
     const range2 = drawWu * drawWu;
-    const list = state.entityList || [];
+    const list = indexedTypeScan(state, 'asteroids');
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (!e || !e.alive || e.type !== 'asteroid') continue;
@@ -12696,8 +12936,11 @@ export const vfx = {
   },
 
   _refreshProjectileCandidates() {
-    const list = this.state.entityList || [];
-    if (!this._projectileCacheDirty && this._projectileListRef === list && this._projectileListLength === list.length) return;
+    const list = indexedTypeScan(this.state, 'projectiles');
+    const version = entityIndexVersion(this.state);
+    if (!this._projectileCacheDirty && this._projectileListRef === list
+      && this._projectileListLength === list.length
+      && this._projectileListVersion === version) return;
     this._projectileCandidates.length = 0;
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
@@ -12706,6 +12949,7 @@ export const vfx = {
     }
     this._projectileListRef = list;
     this._projectileListLength = list.length;
+    this._projectileListVersion = version;
     this._projectileCacheDirty = false;
   },
 
@@ -13467,7 +13711,8 @@ export function runProjectileTrailEmissionSelfCheck() {
   }
 
   const railSystem = _makeProjectileTrailSelfCheckHarness([
-    _selfCheckProjectile(20, 'wpn_railgun_m', { damageType: 'kinetic' }),
+    // On-table only: off-table non-priority bolts are culled by the live envelope.
+    _selfCheckProjectile(20, 'wpn_railgun_m', { damageType: 'kinetic' }, { x: 280, z: 50 }),
   ]);
   railSystem._markProjectileCacheDirty();
   for (let f = 0; f < 3; f++) railSystem.update(1 / 60);
