@@ -1380,10 +1380,35 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     let trappedBody = null;
     let trappedRec = null;
     let stepWrapped = false;
+    let worldWrapped = false;
     const trapBody = () => {
       const sg02 = window.SF?.registry?.get?.('physics')?._sg02;
+      if (!sg02) return;
+      // A record created between polls binds a body whose setTranslation was never
+      // wrapped — trap every new body at birth so the writer cannot slip the window.
+      if (!worldWrapped && sg02.world && typeof sg02.world.createRigidBody === 'function') {
+        worldWrapped = true;
+        const origCreate = sg02.world.createRigidBody.bind(sg02.world);
+        sg02.world.createRigidBody = (desc) => {
+          const body = origCreate(desc);
+          const origSet = body.setTranslation.bind(body);
+          body.setTranslation = (t, wake) => {
+            const before = body.translation();
+            const dx = Math.abs(finiteNum(t?.x) - finiteNum(before?.x));
+            const dz = Math.abs(finiteNum(t?.z) - finiteNum(before?.z));
+            if (Math.max(dx, dz) > 2000) {
+              bodyWrite('setTranslation', {
+                to: { x: t?.x, z: t?.z }, from: { x: before?.x, z: before?.z },
+                playerBound: sg02.records.get(window.SF?.state?.playerId)?.body === body,
+              });
+            }
+            return origSet(t, wake);
+          };
+          return body;
+        };
+      }
       const rec = sg02?.records?.get?.(window.SF?.state?.playerId);
-      if (!sg02 || !rec) return;
+      if (!rec) return;
       // A record swap or body rebind mid-tick leaves setTranslation wrapped on the retired body
       // while the sync reads the new one — stamp the identity change so that escape is visible.
       if (rec !== trappedRec) {
