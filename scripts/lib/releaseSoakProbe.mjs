@@ -486,6 +486,10 @@ export async function runReleaseSoakProbe({
             posJumps: window.__PQ033_POS_JUMPS__ || [],
             posWrites: window.__PQ033_POS_WRITES__ || [],
             bodyWrites: window.__PQ033_BODY_WRITES__ || [],
+            sg02Guards: (() => {
+              const d = window.SF?.registry?.get?.('physics')?._sg02?._diagnostics;
+              return d ? { velocitySanityClamps: d.velocitySanityClamps || 0, stepDisplacementRejects: d.stepDisplacementRejects || 0 } : null;
+            })(),
           };
         }).catch(() => null);
         cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)} | cycle-marks: ${JSON.stringify(cycleMarks)}`;
