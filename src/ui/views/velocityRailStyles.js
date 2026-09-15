@@ -1,0 +1,108 @@
+// Component-local styling. The SVG carrier is a produced kit asset, not a rasterized readout.
+// Deliberately more specific than the retired dial's legacy rules; no other HUD surface is restyled.
+const STYLE_ID = 'sf-velocity-rail-style';
+// Inline stylesheet URLs resolve from the game document, identically on the raw-module route
+// and esbuild's relocated production chunks. Do not resolve this asset from import.meta.url.
+const SHELL_URL = 'assets/ui/kit/assets/svg/velocity-rail-shell.svg';
+
+export const VELOCITY_RAIL_CSS = `
+.sf-kit-gauge.sf-speed {
+  --sv-scale:clamp(.86, var(--k-s, 1), 1.15);
+  --sv-ink:#f0eee7; --sv-muted:#c1c6c7; --sv-signal:#eabb77;
+  --sv-track:#68777f; --sv-w:calc(284px * var(--sv-scale));
+  position:relative; box-sizing:border-box; width:var(--sv-w); height:calc(116px * var(--sv-scale));
+  min-width:0; max-width:none; margin:0; padding:0; border:0; border-radius:0;
+  background:#11161a url("${SHELL_URL}") center / 100% 100% no-repeat;
+  color:var(--sv-ink); isolation:isolate; contain:style;
+  font-family:var(--k-text, 'Instrument Sans'), Arial, sans-serif;
+}
+.sf-cluster > .sf-kit-gauge.sf-speed { flex:0 0 auto; width:var(--sv-w); }
+.sf-speed .sf-speed__label, .sf-speed .sf-speed__reference, .sf-speed .sf-speed__unit,
+.sf-speed .sf-speed__extent, .sf-speed .sf-speed__zero {
+  position:absolute; margin:0; font-size:12px; font-weight:600; line-height:1;
+  white-space:nowrap; font-variant-numeric:tabular-nums; letter-spacing:.04em; color:var(--sv-muted);
+}
+.sf-speed .sf-speed__label { left:6.75%; top:6.3%; font-weight:700; letter-spacing:.16em; }
+.sf-speed .sf-speed__reference { right:6.4%; top:6.3%; letter-spacing:.02em; }
+.sf-speed .sf-speed__reference b { font-weight:600; color:var(--sv-ink); }
+.sf-speed .sf-speed__digits {
+  position:absolute; display:block; left:6.75%; top:22.4%; width:68%; height:45%;
+  overflow:visible; fill:currentColor; color:var(--sv-ink); pointer-events:none;
+}
+.sf-speed .sf-speed__unit { right:6.4%; top:51.7%; color:var(--sv-ink); letter-spacing:.075em; }
+.sf-speed .sf-speed__extent { right:6.4%; top:86.3%; color:var(--sv-muted); letter-spacing:.035em; }
+.sf-speed .sf-speed__zero { left:6.75%; top:86.3%; }
+.sf-speed .sf-speed__track { position:absolute; left:6.75%; right:8.1%; top:77.6%; height:4.31%; }
+.sf-speed .sf-speed__bed { position:absolute; inset:0; background:var(--sv-track); }
+.sf-speed .sf-speed__fill {
+  position:absolute; inset:0; background:var(--sv-signal); transform:scaleX(0); transform-origin:left center;
+  transition:none;
+}
+.sf-speed .sf-speed__ticks {
+  position:absolute; inset:0; width:100%; height:100%; color:#101418; pointer-events:none;
+}
+.sf-speed .sf-speed__cursor {
+  position:absolute; inset:0; transform:translateX(0); pointer-events:none; transition:none;
+}
+.sf-speed .sf-speed__cursor svg {
+  display:block; position:absolute; width:8px; height:16px; left:-4px; top:-5px;
+  overflow:visible; fill:var(--sv-ink);
+}
+.sf-speed .sf-speed__runout { position:absolute; right:-12px; top:-3px; width:8px; height:11px; color:var(--sv-signal); opacity:0; }
+.sf-speed[data-over-reference="true"] .sf-speed__runout { opacity:1; }
+.sf-speed[data-over-reference="true"] .sf-speed__extent { color:var(--sv-signal); }
+.sf-speed[data-available="false"] .sf-speed__fill, .sf-speed[data-available="false"] .sf-speed__cursor,
+.sf-speed[data-has-reference="false"] .sf-speed__fill, .sf-speed[data-has-reference="false"] .sf-speed__cursor { visibility:hidden; }
+/* Zero numeric animation or 80ms chase easing: continuous telemetry must not look delayed.
+   Keyboard users can inspect the same braking tooltip as pointer users without stealing game keys. */
+.sf-kit-gauge.sf-speed:focus-visible { outline:2px solid var(--sv-signal); outline-offset:3px; }
+.sf-speed.sf-stat--info:focus-visible .sf-tip { display:block; }
+.sf-speed[data-available="false"] .sf-speed__extent { color:var(--sv-ink); }
+/* The native numeric hook remains the HUD's 10 Hz owner (the meter carries accessibility). SVG figures follow
+   that text; they never schedule a second clock or require a downloaded display font. */
+.sf-speed .sf-speed__source {
+  position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden;
+  clip:rect(0,0,0,0); clip-path:inset(50%); white-space:nowrap; border:0;
+}
+.sf-speed.sf-stat--info .sf-tip {
+  left:0; bottom:calc(100% + 10px); transform:none; width:max-content; max-width:min(340px, calc(100vw - 28px));
+  white-space:pre-line; padding:12px 14px; background:#14191c; color:var(--sv-ink);
+  border:1px solid #5b6367; font-size:12px; line-height:1.5; z-index:12;
+}
+/* Make only this instrument's deck wide enough for its own reading. It no longer relies on the
+   old 360px dial overhanging the weapon rail. Existing user drag transforms are untouched. */
+.sf-command-deck:has(.sf-speed) {
+  width:max-content; max-width:calc(284px * clamp(.86, var(--k-s, 1), 1.15));
+}
+@media (min-width:1760px) {
+  .sf-command-deck:has(.sf-speed) { --sf-deck-inset:clamp(284px, 16vw, 520px); }
+}
+@media (max-width:900px), (max-height:650px) {
+  .sf-kit-gauge.sf-speed { --sv-scale:.86; }
+  .sf-command-deck:has(.sf-speed) { max-width:244.24px; }
+}
+@media (max-width:560px) {
+  .sf-kit-gauge.sf-speed { --sv-scale:.81; }
+  .sf-command-deck:has(.sf-speed) { max-width:230.04px; }
+}
+html.sf-reduce-motion .sf-speed__fill, html.sf-reduce-motion .sf-speed__cursor { transition:none; }
+@media (prefers-reduced-motion:reduce) {
+  .sf-speed .sf-speed__fill, .sf-speed .sf-speed__cursor { transition:none; }
+}
+@media (forced-colors:active) {
+  .sf-kit-gauge.sf-speed {
+    background:Canvas; color:CanvasText; border:1px solid CanvasText; forced-color-adjust:none;
+    --sv-ink:CanvasText; --sv-muted:CanvasText; --sv-signal:Highlight; --sv-track:GrayText;
+  }
+  .sf-speed .sf-speed__ticks { color:Canvas; }
+  .sf-speed.sf-stat--info .sf-tip { background:Canvas; color:CanvasText; border-color:CanvasText; }
+}
+`;
+
+export function mountVelocityRailStyles(doc = globalThis.document) {
+  if (!doc?.head || doc.getElementById(STYLE_ID)) return;
+  const style = doc.createElement('style');
+  style.id = STYLE_ID;
+  style.textContent = VELOCITY_RAIL_CSS;
+  doc.head.appendChild(style);
+}

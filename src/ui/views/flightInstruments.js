@@ -2,10 +2,9 @@
 // Kit gauges/radar are assembled here; no simulation state, event subscriptions or frame loops live here.
 import { SHIP_SILHOUETTES } from '../../data/shipSilhouettes.js';
 import { escapeMarkup } from './identity.js';
+export { speedGaugeMarkup, setKitGauge } from './velocityRail.js';
 
 export const KIT_BAR_SEGS = 10;
-export const KIT_GAUGE_MIN_DEG = -110;
-export const KIT_GAUGE_SPAN_DEG = 220;
 
 export function hullMarkSvg(cls, defId) {
   const body = SHIP_SILHOUETTES[defId] || SHIP_SILHOUETTES.ship_kestrel;
@@ -33,21 +32,6 @@ export function hudBarMarkup(label, mod) {
       `<div class="sf-bar__fill"></div>${kitSegs()}` +
     `</div>` +
     `<span class="sf-barrow__num mono">0</span>`;
-}
-
-export function speedGaugeMarkup() {
-  return '<div class="sf-kit-gauge sf-stat--info" role="meter" aria-label="Speed" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0">' +
-    '<div class="sf-kit-gauge__arc" aria-hidden="true"></div>' +
-    '<svg class="sf-kit-gauge__needle" viewBox="-12 -80 24 100" aria-hidden="true" focusable="false">' +
-      '<path fill="currentColor" d="M-3.2,0 L-1.1,-74 L1.1,-74 L3.2,0 Z"/>' +
-      '<circle cx="0" cy="0" r="6.2" fill="currentColor"/>' +
-      '<circle class="sf-kit-gauge__hub" cx="0" cy="0" r="2.4"/>' +
-    '</svg>' +
-    '<div class="sf-kit-gauge__face">' +
-      '<span class="sf-kit-gauge__num mono" data-k="speed">0</span>' +
-    '</div>' +
-    '<div class="sf-tip" data-tip="speed"></div>' +
-  '</div>';
 }
 
 export function radarKitMarkup() {
@@ -103,32 +87,3 @@ export function setKitBar(barEl, frac, kind) {
   if (barEl.getAttribute('aria-valuenow') !== now) barEl.setAttribute('aria-valuenow', now);
 }
 
-export function setKitGauge(el, value, max) {
-  if (!el) return;
-  const vmax = Number(max) > 0 ? Number(max) : 1;
-  const raw = Number(value);
-  const speed = Number.isFinite(raw) ? (raw < 0 ? 0 : raw) : 0;
-  const t = speed / vmax;
-  const bounded = t < 0 ? 0 : t > 1 ? 1 : t;
-  const deg = KIT_GAUGE_MIN_DEG + bounded * KIT_GAUGE_SPAN_DEG;
-  const degKey = Math.round(deg * 10);
-  const valKey = Math.round(speed);
-  if (el._sfGaugeDeg === degKey && el._sfGaugeVal === valKey && el._sfGaugeMax === vmax) return;
-  el._sfGaugeDeg = degKey;
-  el._sfGaugeVal = valKey;
-  el._sfGaugeMax = vmax;
-  const degText = deg.toFixed(1) + 'deg';
-  const arcText = (bounded * KIT_GAUGE_SPAN_DEG).toFixed(1) + 'deg';
-  if (el.style && typeof el.style.setProperty === 'function') {
-    el.style.setProperty('--sf-gauge-deg', degText);
-    el.style.setProperty('--sf-gauge-arc', arcText);
-  }
-  const needle = el.querySelector('.sf-kit-gauge__needle');
-  if (needle && needle.style && needle.style.transform !== `rotate(${degText})`) {
-    needle.style.transform = `rotate(${degText})`;
-  }
-  const now = String(valKey);
-  const maxText = String(Math.round(vmax));
-  if (el.getAttribute('aria-valuenow') !== now) el.setAttribute('aria-valuenow', now);
-  if (el.getAttribute('aria-valuemax') !== maxText) el.setAttribute('aria-valuemax', maxText);
-}
