@@ -13,6 +13,7 @@ import { FACTION_META } from '../data/factions.js';
 import { SECTORS } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { uniqueWreckById } from '../data/uniqueWrecks.js';
+import { stuntAccountFor } from '../combat/stuntWitnesses.js';
 import {
   SHIP_LEDGER_TEMPLATES,
   VOLS_LEDGER_ANNOTATIONS,
@@ -360,6 +361,7 @@ function makeCandidate(seed, input, gateOpen) {
   };
   if (input.type === 'loss') candidate.playerCaused = input.playerCaused === true;
   if (input.trickId) candidate.trickId = input.trickId;
+  if (input.stuntDetail) candidate.stuntDetail = input.stuntDetail;
   if (input.tokens) candidate.tokens = { ...input.tokens };
   if (input.cause) candidate.cause = text(input.cause, '');
   if (input.beat) candidate.beat = text(input.beat, '');
@@ -635,21 +637,29 @@ function collectCandidates(state) {
     && state.story.titles.stuntIncidents);
   for (const record of stuntIncidents) {
     if (!record || record.id == null) continue;
+    const account=stuntAccountFor(record);
+    const names=record.witnessNames||(record.witnesses||[]).filter(w=>w.sourceTicks>=6&&w.transferTicks>=6&&w.payoffTicks>=6).map(w=>text(w.name,'unnamed observer'));
+    const evidence=record.visibility==='reported'
+      ? `report delivered to ${(record.reportedNetworks||[]).map(n=>text(n)).join(', ') || 'a recorded network'}`
+      : record.visibility==='witnessed'?`locally witnessed${names.length?` by ${names.join(', ')}`:''}; no delivered public report`
+      : 'private recording; no independent witness';
     add({
       type: 'stunt',
       sourceId: `stunt:${record.id}`,
       sourceKind: 'story.titles.stuntIncidents',
       at: record.tick != null ? record.tick / 60 : record.at,
       trickId: record.trickId,
+      stuntDetail: { incidentId:record.id,rootId:record.rootId,pilotId:record.pilotId,shipId:record.shipId,
+        visibility:record.visibility,chain:record.chain||[],witnesses:record.witnesses||[],reports:record.reports||[],
+        titleIds:record.titleIds||[],barkStatus:record.barkStatus||'unqualified',detailRetained:record.detailRetained!==false },
       tokens: {
         ship: text(record.shipName, 'the ship'),
         trick: text(record.name || record.trickId, 'a stunt'),
         target: text(record.targetName, 'the target'),
         outcome: text(record.outcome, 'faced the consequences'),
+        account,
         sector: sectorName(record.sectorId),
-        evidence: record.visibility === 'witnessed'
-          ? 'independently witnessed'
-          : 'private recording; no independent witness',
+        evidence,
       },
     });
   }

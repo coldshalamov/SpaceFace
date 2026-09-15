@@ -25,6 +25,7 @@ import {
   resolveBerthWorld,
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
+import { queuePhysicsImpulse, resolvePhysicsBodySpec } from './physicsAuthority.js';
 
 const DEFAULT_MATERIAL = Object.freeze({
   push: 1,
@@ -376,6 +377,7 @@ export const physics = {
 
     this._sg02.publishTelemetry = shouldPublishSg02Telemetry(state);
     this._syncSg02FrameOrigin(state);
+    this._queueSectorFenceImpulses(dt, state);
     this._syncSg02DynamicAuthorityEntities(state);
     this._reconcileCombatPhysicsBeforeStep();
     const sdiag = this._sg02.step(dt);
@@ -505,20 +507,36 @@ export const physics = {
     if (typeof reconcile === 'function') reconcile();
   },
 
+  /**
+   * Sector soft boundary under SG-02 authority. The legacy `integrate()` path nudged `e.vel`
+   * directly; Rapier owns craft velocity here, so the same inward Δv is queued as an impulse
+   * (mass × Δv) through the command membrane before the body sync. It lands ahead of
+   * `_captureExpectedKinematics`, so structural-give treats the fence as expected motion.
+   */
+  _queueSectorFenceImpulses(dt, state) {
+    const b = state.bounds;
+    if (!b) return;
+    const ships = (state.entityIndex && state.entityIndex.ships) || physicsMovableEntities(state);
+    for (const e of ships) {
+      if (!e.alive || e.type !== 'ship') continue;
+      const dv = sectorFenceDeltaV(b, e, dt, _fenceScratch);
+      if (!dv) continue;
+      const spec = resolvePhysicsBodySpec(e);
+      const mass = spec ? spec.mass : 1;
+      queuePhysicsImpulse(e, { x: dv.x * mass, y: 0, z: dv.z * mass }, {
+        provenance: 'sector-fence', tick: state.tick, kind: 'fence',
+      });
+    }
+  },
+
   integrate(dt, state) {
     const b = state.bounds;
     for (const e of physicsMovableEntities(state)) {
       if (!e.alive) continue;
       // sector soft boundary: gentle inward acceleration past the soft radius
       if (e.type === 'ship' && b) {
-        const dx = e.pos.x - b.center.x, dz = e.pos.z - b.center.z;
-        const d = Math.hypot(dx, dz);
-        if (d > b.radius) {
-          const over = (d - b.radius) / Math.max(1, b.hardRadius - b.radius);
-          const k = 60 * Math.min(1, over);
-          e.vel.x -= (dx / d) * k * dt;
-          e.vel.z -= (dz / d) * k * dt;
-        }
+        const dv = sectorFenceDeltaV(b, e, dt, _fenceScratch);
+        if (dv) { e.vel.x += dv.x; e.vel.z += dv.z; }
       }
       e.pos.x += e.vel.x * dt;
       e.pos.z += e.vel.z * dt;
@@ -978,6 +996,19 @@ function shouldPublishSg02Telemetry(state) {
     || window.__SF_PUBLISH_SG02_TELEMETRY__ === true;
 }
 
+const _fenceScratch = { x: 0, z: 0 };
+/** Inward Δv for a ship past the soft radius; ramps to 60 WU/s² at the hard radius. */
+function sectorFenceDeltaV(b, e, dt, out) {
+  const dx = e.pos.x - b.center.x, dz = e.pos.z - b.center.z;
+  const d = Math.hypot(dx, dz);
+  if (!(d > b.radius)) return null;
+  const over = (d - b.radius) / Math.max(1, b.hardRadius - b.radius);
+  const k = 60 * Math.min(1, over) * dt;
+  out.x = -(dx / d) * k;
+  out.z = -(dz / d) * k;
+  return out;
+}
+
 function physicsMovableEntities(state) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.movables) return index.movables;
@@ -1082,6 +1113,9 @@ export function projectileHitPayload(proj, targetOrId, pos) {
   const normal = { x: nx, z: nz };
   const payload = {
     targetId,
+    projectileId: proj.id,
+    projectileVelocity: { x:vx,z:vz },
+    targetVelocity: target?.vel ? { x:target.vel.x,z:target.vel.z } : null,
     ownerId: proj.ownerId,
     damage: pd.damage || 0,
     damageType: pd.damageType || 'kinetic',

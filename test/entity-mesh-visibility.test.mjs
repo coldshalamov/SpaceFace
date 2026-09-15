@@ -59,6 +59,12 @@ test('the completed activity frame owns glass submission while runway stays resi
   assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8 }), false);
   assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 9 }), false,
     'metadata/unloaded entities outside the frame do not keep an Object3D submitted');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 9, ledgerRow: true }), true,
+    'a far/field/dressing ledger row the frame never names still draws under distance policy');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 9, ledgerRow: true, presentationTier: 'R2_METADATA' }), false,
+    'a ledger row demoted to metadata stays unsubmitted');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, ledgerRow: true }), false,
+    'a ledger row on the runway keeps runway semantics');
   assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 7, snapshotMissing: true }), false,
     'an ordinary stale root stays hidden until the fenced snapshot contains its entity');
   assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 7, isPlayer: true, snapshotMissing: true }), true,
@@ -113,4 +119,6 @@ test('live entity view sync hides off-runway roots through the helper', async ()
   assert.match(source, /middleBand:\s*viewBand === 'middle'/);
   assert.match(source, /pipelinesPending:\s*!!\(mesh\.userData && mesh\.userData\.pipelinesPending\)/);
   assert.match(source, /authoredPending:\s*isAuthoredPendingStatus\(mesh\.userData && mesh\.userData\.authoredAssetState\)/);
+  assert.equal((source.match(/ledgerRow:\s*isPresentationLedgerRow\(entity\)/g) || []).length, 2,
+    'both submit sites tell the visibility rule which roots are far/field/dressing ledger rows');
 });

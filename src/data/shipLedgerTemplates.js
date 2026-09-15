@@ -103,10 +103,10 @@ export const SHIP_LEDGER_TEMPLATES = deepFreeze({
     '{sector} now knows the {ship} by hull, not by transponder. {faction} saw to that.',
   ]),
   stunt: variants('stunt', [
-    '{ship}: {trick} — {target} {outcome}. {evidence}.',
-    '{trick} at {sector}. {target} {outcome}; {evidence}.',
-    'Black box: {ship} used {trick}; {target} {outcome}. {evidence}.',
-    '{target} {outcome} during {trick}. Filed aboard {ship}: {evidence}.',
+    '{ship} {account}. {trick}; outcome: {outcome}. Evidence: {evidence}.',
+    '{trick} at {sector}: {ship} {account}. Outcome: {outcome}. Evidence: {evidence}.',
+    'Black box: {ship} {account}. Filed as {trick}; outcome: {outcome}. Evidence: {evidence}.',
+    'Filed aboard {ship}: {trick}. The pilot {account}. Outcome: {outcome}. Evidence: {evidence}.',
   ]),
 });
 

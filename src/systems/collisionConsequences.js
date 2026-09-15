@@ -7,6 +7,7 @@
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { readTumbleStatus } from '../combat/tumbleStatus.js';
+import { bodyLife, evidenceForConsequence } from '../combat/stuntEvidence.js';
 import {
   HEAVY_AS_TERRAIN_MASS,
   hitstunAttackerMassForCollision,
@@ -36,6 +37,7 @@ export const collisionConsequences = {
   name: 'collisionConsequences',
 
   init(ctx) {
+    this.destroy();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.registry = ctx.registry;
@@ -175,10 +177,14 @@ export const collisionConsequences = {
     if (!DAMAGEABLE_MOTION.has(target.type) || target.id === state.playerId) return;
     const player = entityById(state, state.playerId);
     const targetHostile = isHostileForAI(state, target, player);
-    const targetHullMax = Math.max(0, Number(target.hullMax) || 0);
+    const life = bodyLife(target, state);
+    const targetHullMax = life?.hull ?? Math.max(0, Number(target.hullMax) || 0);
     const targetHullBefore = Math.max(0, Number(target.hull) || 0);
     const ramPlate = playerRamPlateImpact(other, state.playerId, tick, causalProvenance);
-    const provenance = ramPlate?.provenance || causalProvenance;
+    const observed=evidenceForConsequence({tick,targetId:target.id,otherId:other.id,
+      surface:['asteroid','planet'].includes(other.type)?'terrain':other.type==='station'?'structure':'craft',otherMass:positiveMass(other)},state);
+    const provenance = ramPlate?.provenance || (observed?{actorId:observed.root.actorId,weaponId:observed.root.weaponId,
+      tag:observed.root.kind==='constraint'?'massline':'weapon_hit',tick:observed.root.tick,rootId:observed.root.id}:causalProvenance);
     const receipt = resolveCollisionConsequence({
       target,
       other,
@@ -233,6 +239,10 @@ export const collisionConsequences = {
     if (this.bus && typeof this.bus.emit === 'function') {
       this.bus.emit('combat:collisionConsequence', Object.freeze({
         ...receipt,
+        stuntEvidence: evidenceForConsequence(receipt, state),
+        targetName: life?.name,
+        victimLife: { lifeId: target.data?.stuntThreat?.lifeId ?? life?.id,
+          threatClass: target.data?.stuntThreat?.threatClass ?? 'none', dead: target.alive === false },
         targetHostile,
         targetType: target.type,
         otherType: other.type,

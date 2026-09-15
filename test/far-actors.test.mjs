@@ -6,6 +6,8 @@ import { createBus } from '../src/core/eventBus.js';
 import { core } from '../src/core/coreSystem.js';
 import { NEAR_EXIT_PAD_WU, SIM_TIER } from '../src/world/activityClassification.js';
 import { ensureActivityClassified } from '../src/world/activityRuntime.js';
+import { getAsteroidFieldRock, insertAsteroidFieldRock } from '../src/world/asteroidField.js';
+import { getDressingRow, insertDressingRow } from '../src/world/dressingTable.js';
 import {
   farActorCensus,
   farActorTableRadius,
@@ -40,6 +42,7 @@ function boot(seed = 21) {
 
 function spawnShip(helpers, spec) {
   const ent = helpers.spawnEntity({
+    id: spec.id,
     type: 'ship',
     pos: spec.pos,
     radius: 8,
@@ -79,6 +82,96 @@ test('far dormant ships leave the combat list and rematerialize on approach', ()
   assert.ok(restored);
   assert.equal(restored.type, 'ship');
   assert.equal(getFarActor(state, farId), null);
+});
+
+test('a shelved far actor keeps its id until it comes back', () => {
+  const { state, helpers, bus, player } = boot();
+  const far = spawnShip(helpers, { pos: { x: 12000, z: 0 } });
+  const farId = far.id;
+
+  tickFarActors(state, helpers, bus);
+  assert.equal(state.entities.has(farId), false);
+  assert.ok(getFarActor(state, farId));
+  assert.equal(state.freeIds.includes(farId), false, 'the far row still owns its id');
+
+  // The relay capture's collision: a later spawn, dressing prop or field rock took the shelved id.
+  const other = spawnShip(helpers, {
+    pos: { x: 300, z: 0 },
+    activity: { simTier: SIM_TIER.S1_NEAR, pinnedExact: false },
+  });
+  const prop = insertDressingRow(state, { pos: { x: 12040, z: 30 }, radius: 6, homeSectorId: 'sector_ceres_belt' });
+  const rock = insertAsteroidFieldRock(state, { pos: { x: 12080, z: -30 }, radius: 6, homeSectorId: 'sector_ceres_belt' });
+  assert.notEqual(other.id, farId, 'a new ship must not take the shelved id');
+  assert.notEqual(prop.id, farId, 'a dressing prop must not take the shelved id');
+  assert.notEqual(rock.id, farId, 'a field rock must not take the shelved id');
+
+  player.pos.x = 12000;
+  tickFarActors(state, helpers, bus);
+  const restored = state.entities.get(farId);
+  assert.ok(restored, 'the ship comes back under its own id');
+  assert.equal(restored.type, 'ship');
+  assert.equal(getFarActor(state, farId), null);
+  assert.equal(getDressingRow(state, prop.id), prop);
+  assert.equal(getAsteroidFieldRock(state, rock.id), rock);
+
+  helpers.removeEntity(farId, { immediate: true });
+  assert.ok(state.freeIds.includes(farId), 'with no row holding it, the id returns to the pool');
+});
+
+test('a live body forced onto a shelved id evicts the stale far row on approach', () => {
+  const { state, helpers, bus, player } = boot();
+  const far = spawnShip(helpers, { pos: { x: 12000, z: 0 } });
+  const farId = far.id;
+
+  tickFarActors(state, helpers, bus);
+  assert.ok(getFarActor(state, farId));
+
+  const forced = spawnShip(helpers, {
+    id: farId,
+    pos: { x: 12000, z: 0 },
+    activity: { simTier: SIM_TIER.S1_NEAR, pinnedExact: false },
+  });
+  assert.equal(forced.id, farId, 'the fixture builds the alias through an explicit id');
+
+  player.pos.x = 12000;
+  tickFarActors(state, helpers, bus);
+
+  assert.equal(state.entities.get(farId), forced);
+  assert.equal(getFarActor(state, farId), null, 'the stale row must not survive as an alias');
+});
+
+test('a far actor never comes back onto an id a dressing prop or field rock holds', () => {
+  const { state, helpers, bus, player } = boot();
+  const shipA = spawnShip(helpers, { pos: { x: 12000, z: 0 } });
+  const shipB = spawnShip(helpers, { pos: { x: 12100, z: 0 } });
+  const idA = shipA.id;
+  const idB = shipB.id;
+
+  tickFarActors(state, helpers, bus);
+  assert.ok(getFarActor(state, idA));
+  assert.ok(getFarActor(state, idB));
+
+  // Explicit-id inserts check only their own table and live bodies, so build that alias directly.
+  const prop = insertDressingRow(state, { id: idA, pos: { x: 12040, z: 30 }, radius: 6, homeSectorId: 'sector_ceres_belt' });
+  const rock = insertAsteroidFieldRock(state, { id: idB, pos: { x: 12080, z: -30 }, radius: 6, homeSectorId: 'sector_ceres_belt' });
+  assert.equal(prop.id, idA, 'the fixture must alias the prop onto the shelved id');
+  assert.equal(rock.id, idB, 'the fixture must alias the rock onto the shelved id');
+
+  player.pos.x = 12000;
+  tickFarActors(state, helpers, bus);
+
+  const ships = state.entityList.filter((e) => e.alive !== false && e.type === 'ship' && e.id !== player.id);
+  assert.equal(ships.length, 2, 'both ships come back');
+  for (const ship of ships) {
+    assert.notEqual(ship.id, idA);
+    assert.notEqual(ship.id, idB);
+  }
+  assert.equal(state.entities.has(idA), false);
+  assert.equal(state.entities.has(idB), false);
+  assert.equal(getDressingRow(state, idA), prop);
+  assert.equal(getAsteroidFieldRock(state, idB), rock);
+  assert.equal(getFarActor(state, idA), null);
+  assert.equal(getFarActor(state, idB), null);
 });
 
 test('survival/swarm holds every live ship on the table', () => {

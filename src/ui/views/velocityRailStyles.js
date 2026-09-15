@@ -1,22 +1,23 @@
 // Component-local styling. The SVG carrier is a produced kit asset, not a rasterized readout.
-// Deliberately more specific than the retired dial's legacy rules; no other HUD surface is restyled.
+// The #hud selectors intentionally outrank the generic glass dial skin, regardless of mount order.
+// Only this instrument is restyled; the current glass HUD and user drag placement remain intact.
 const STYLE_ID = 'sf-velocity-rail-style';
 // Inline stylesheet URLs resolve from the game document, identically on the raw-module route
 // and esbuild's relocated production chunks. Do not resolve this asset from import.meta.url.
 const SHELL_URL = 'assets/ui/kit/assets/svg/velocity-rail-shell.svg';
 
 export const VELOCITY_RAIL_CSS = `
-.sf-kit-gauge.sf-speed {
+.sf-kit-gauge.sf-speed, #hud .sf-kit-gauge.sf-speed {
   --sv-scale:clamp(.86, var(--k-s, 1), 1.15);
-  --sv-ink:#f0eee7; --sv-muted:#c1c6c7; --sv-signal:#eabb77;
-  --sv-track:#68777f; --sv-w:calc(284px * var(--sv-scale));
+  --sv-ink:#eef7ff; --sv-muted:#c0d0dc; --sv-signal:#a0dfff;
+  --sv-track:#6c8494; --sv-w:calc(284px * var(--sv-scale));
   position:relative; box-sizing:border-box; width:var(--sv-w); height:calc(116px * var(--sv-scale));
-  min-width:0; max-width:none; margin:0; padding:0; border:0; border-radius:0;
-  background:#11161a url("${SHELL_URL}") center / 100% 100% no-repeat;
+  min-width:0; max-width:none; margin:0; padding:0; border:0; border-radius:0; box-shadow:none;
+  background:#0c141d url("${SHELL_URL}") center / 100% 100% no-repeat;
   color:var(--sv-ink); isolation:isolate; contain:style;
   font-family:var(--k-text, 'Instrument Sans'), Arial, sans-serif;
 }
-.sf-cluster > .sf-kit-gauge.sf-speed { flex:0 0 auto; width:var(--sv-w); }
+.sf-cluster > .sf-kit-gauge.sf-speed, #hud .sf-cluster > .sf-kit-gauge.sf-speed { flex:0 0 auto; width:var(--sv-w); }
 .sf-speed .sf-speed__label, .sf-speed .sf-speed__reference, .sf-speed .sf-speed__unit,
 .sf-speed .sf-speed__extent, .sf-speed .sf-speed__zero {
   position:absolute; margin:0; font-size:12px; font-weight:600; line-height:1;
@@ -65,9 +66,10 @@ export const VELOCITY_RAIL_CSS = `
   clip:rect(0,0,0,0); clip-path:inset(50%); white-space:nowrap; border:0;
 }
 .sf-speed.sf-stat--info .sf-tip {
-  left:0; bottom:calc(100% + 10px); transform:none; width:max-content; max-width:min(340px, calc(100vw - 28px));
-  white-space:pre-line; padding:12px 14px; background:#14191c; color:var(--sv-ink);
-  border:1px solid #5b6367; font-size:12px; line-height:1.5; z-index:12;
+  left:0; bottom:calc(100% + 10px); transform:none; width:max-content;
+  box-sizing:border-box; max-width:min(100%, calc(100vw - 28px));
+  white-space:pre-line; overflow-wrap:anywhere; padding:12px 14px; background:#0c141d; color:var(--sv-ink);
+  border:1px solid #6c8494; font-size:12px; line-height:1.5; z-index:12;
 }
 /* Make only this instrument's deck wide enough for its own reading. It no longer relies on the
    old 360px dial overhanging the weapon rail. Existing user drag transforms are untouched. */
@@ -78,19 +80,30 @@ export const VELOCITY_RAIL_CSS = `
   .sf-command-deck:has(.sf-speed) { --sf-deck-inset:clamp(284px, 16vw, 520px); }
 }
 @media (max-width:900px), (max-height:650px) {
-  .sf-kit-gauge.sf-speed { --sv-scale:.86; }
+  .sf-kit-gauge.sf-speed, #hud .sf-kit-gauge.sf-speed { --sv-scale:.86; }
   .sf-command-deck:has(.sf-speed) { max-width:244.24px; }
 }
 @media (max-width:560px) {
-  .sf-kit-gauge.sf-speed { --sv-scale:.81; }
+  .sf-kit-gauge.sf-speed, #hud .sf-kit-gauge.sf-speed { --sv-scale:.81; }
   .sf-command-deck:has(.sf-speed) { max-width:230.04px; }
+}
+/* Below 900px the old side-by-side deck intersects the hotbar. Reserve its strip without
+   resizing/removing other controls. Phone-width whole-HUD layout is owned by the global HUD. */
+@media (min-width:561px) and (max-width:900px) {
+  #hud .sf-command-deck:has(.sf-speed) { bottom:110px; }
+  #hud:has(.sf-speed) .sf-leftstack { bottom:260px; }
 }
 html.sf-reduce-motion .sf-speed__fill, html.sf-reduce-motion .sf-speed__cursor { transition:none; }
 @media (prefers-reduced-motion:reduce) {
   .sf-speed .sf-speed__fill, .sf-speed .sf-speed__cursor { transition:none; }
 }
+html.sf-high-contrast .sf-kit-gauge.sf-speed, html.sf-high-contrast #hud .sf-kit-gauge.sf-speed {
+  background:#000; border:1px solid #eef7ff; box-shadow:none;
+  --sv-muted:#eef7ff; --sv-track:#8fa7b8;
+}
 @media (forced-colors:active) {
-  .sf-kit-gauge.sf-speed {
+  .sf-kit-gauge.sf-speed, #hud .sf-kit-gauge.sf-speed,
+  html.sf-high-contrast .sf-kit-gauge.sf-speed, html.sf-high-contrast #hud .sf-kit-gauge.sf-speed {
     background:Canvas; color:CanvasText; border:1px solid CanvasText; forced-color-adjust:none;
     --sv-ink:CanvasText; --sv-muted:CanvasText; --sv-signal:Highlight; --sv-track:GrayText;
   }

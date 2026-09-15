@@ -3437,6 +3437,9 @@ export const render = {
     // below reads state.render.gpu (the ?perf overlay closure reads it lazily, per frame).
     const gpu = detectGpu(renderer);
     state.render.gpu = gpu;
+    // The tier now bounds the pixel ratio (applyRendererSize); re-apply before the bloom chain
+    // and LOD viewport below are sized from drawSize (the shared _drawSize vector).
+    if (gpu.tier === 'integrated' || gpu.tier === 'software') applyRendererSize(renderer, state);
 
     const cam = createChaseCamera(state);
     const spaceBg = createSpaceBackground(scene, state, { renderer, camera: cam.obj, debug: SF_DEBUG });
@@ -8036,6 +8039,7 @@ export const render = {
           geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
           activityFrame: this._activityFrame,
           entityId,
+          ledgerRow: isPresentationLedgerRow(entity),
           presentationTier: entity && entity.activity && entity.activity.presentationTier,
         }));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
@@ -8143,6 +8147,7 @@ export const render = {
           geometryPending: !!(mesh.userData && mesh.userData.geometryPending),
           activityFrame: this._activityFrame,
           entityId,
+          ledgerRow: isPresentationLedgerRow(entity),
           presentationTier: entity.activity && entity.activity.presentationTier,
         }));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
@@ -9890,7 +9895,13 @@ function afterBrowserPaint(callback, schedule = null) {
 
 function applyRendererSize(renderer, state) {
   const vd = (state.settings && state.settings.video) || {};
-  const cap = finiteInRange(vd.pixelRatioCap, 0.25, 4, 2);
+  // Per-tier ceiling on the device pixel ratio. The renderScale 1.0 A/B that set the default
+  // quality ran at DPR 1; an integrated GPU on a 200 % display would otherwise shade ~4.7x the
+  // validated pixel count, and dynamic resolution is deliberately off on hardware tiers, so
+  // nothing else would rescue that case. The player's own cap still applies beneath this.
+  const tier = state.render && state.render.gpu && state.render.gpu.tier;
+  const tierCap = tier === 'software' ? 1 : tier === 'integrated' ? 1.5 : 4;
+  const cap = Math.min(finiteInRange(vd.pixelRatioCap, 0.25, 4, 2), tierCap);
   // The default bloom route applies renderScale at the drawing buffer. The optional graph needs a
   // native presentation buffer and owns its clamped internal scene scale, so applying the same
   // setting here too would square every downscale (0.7 -> 0.49) and silently overcharge quality.

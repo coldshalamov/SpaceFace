@@ -248,7 +248,12 @@ export function stepPhotoFreeCamera(photo, input, dt) {
 
 export const CAMERA_ZOOM_MIN = 45;
 export const CAMERA_ZOOM_MAX = 330; // 50% more manual zoom-out than the previous 220 wu ceiling.
-export const SPEED_ZOOM_SAMPLE_INTERVAL = 0.125; // seconds — 8 Hz target updates, smoothed per-frame.
+// The speed-zoom target is evaluated every frame from a smoothed speed (time constant below),
+// not from raw per-frame velocity. The old 8 Hz re-sample (kept as a compat constant) stepped
+// the target 6–7 times across the starter's 0.8 s spin-up, which the faster ZOOM_LERP exposed
+// as a pulsing zoom.
+export const SPEED_ZOOM_SPEED_SMOOTHING_S = 0.1;
+export const SPEED_ZOOM_SAMPLE_INTERVAL = 0.125; // legacy: sampling is now per-frame on the smoothed speed.
 export const SPEED_ZOOM_MIN = 0.88;  // slowest / idle factor (spec2/02 §2)
 export const SPEED_ZOOM_MAX = 1.35;               // was 1.18 — the at-cruise frame widens ~14 %
 export const PHYSICS_EARNED_SPEED_ZOOM_MAX = 3.5; // was 1.55 — "max ~3x at ~550" (FEEL_CONTRACT §C)
@@ -260,9 +265,11 @@ export const BOOST_CAMERA_ZOOM_TARGET = 1.10;
 export const BOOST_CAMERA_ZOOM_RISE = 9.5; // /s — ~90% of the target in ~0.24 s
 export const BOOST_CAMERA_ZOOM_FALL = 1.2; // /s — a slow, readable return
 export const BOOST_CAMERA_ZOOM_LERP = BOOST_CAMERA_ZOOM_RISE; // compat alias
-// U13: single-frame outward zoom cap. The Focus-lease continuity contract forbids a cut larger
-// than 6 wu/frame; stay under that while still letting active-attacker minZoom open the frame.
-const ZOOM_OUT_STEP_MAX_WU = 5.5;
+// U13: outward zoom rate cap. The Focus-lease continuity contract forbids a cut larger than
+// 6 wu per 60 Hz frame; 330 wu/s stays under that at 60 Hz and, being a rate, opens the frame
+// in the same wall time at 30 or 144 fps instead of twice as slowly on a struggling machine.
+const ZOOM_OUT_RATE_MAX_WU_PER_S = 330;
+const ZOOM_OUT_STEP_MAX_FRAME_DT = 0.1; // a stall must not turn the rate into an 80 wu cut
 // R1 gameplay-scale reset: 144 WU is the selected normal framing. At 1600×1000 the starter hull
 // occupies ~10.6% of frame width while a nearby structure and three actors can share the view. The
 // GameState schema owns the same fresh-run default; explicit runtime camera:zoom choices remain exact.
@@ -857,7 +864,7 @@ export function createChaseCamera(state) {
   }
   let _dynamicZoom = resolveBaseZoom();
   let _speedZoomFactor = SPEED_ZOOM_MIN;
-  let _speedZoomSampleT = 0;
+  let _speedZoomSpeedEma = 0;
   let _boostZoomFactor = 1;
 
   // Push-zoom: a transient multiplicative nudge to the camera distance for scripted moments (docking
@@ -936,7 +943,7 @@ export function createChaseCamera(state) {
       cam.updateProjectionMatrix();
     }
     _speedZoomFactor = SPEED_ZOOM_MIN;
-    _speedZoomSampleT = 0;
+    _speedZoomSpeedEma = 0;
     // A snap is a teleport; any in-flight kick would read as the world sliding after a cut.
     _kick.envX = 0; _kick.envZ = 0; _kick.x = 0; _kick.z = 0;
     if (c.kickOffset) c.kickOffset.set(0, 0, 0);
@@ -1226,10 +1233,11 @@ export function createChaseCamera(state) {
       const baseZoom = resolveBaseZoom();
       let targetZoom = baseZoom;
       if (p && p.pos) {
-        // Speed zoom target is sampled at a low cadence so the camera does not retarget every frame
-        // from raw velocity noise. The actual distance still eases every frame through _dynamicZoom.
-        _speedZoomSampleT -= frameDt;
-        if (_speedZoomSampleT <= 0) {
+        // The speed-zoom target follows a smoothed speed (SPEED_ZOOM_SPEED_SMOOTHING_S) so the
+        // camera never retargets from raw velocity noise, yet moves continuously instead of in
+        // 8 Hz steps. The actual distance still eases every frame through _dynamicZoom.
+        _speedZoomSpeedEma = damp(_speedZoomSpeedEma, playerSpeed, 1 / SPEED_ZOOM_SPEED_SMOOTHING_S, frameDt);
+        {
           // Reduced motion keeps the ordinary 0.88..1.18 speed framing but suppresses the larger
           // physics-earned pullback, matching the existing Massline release-camera contract.
           // PQ-137.03: the ordinary frame is keyed to the hull's GOVERNED combat speed, not to the
@@ -1238,7 +1246,7 @@ export function createChaseCamera(state) {
           // starter it reads 172 against a governed cruise of 95, so a frame keyed to it would be
           // saturated everywhere the fight actually happens.
           const governedCap = resolveGovernedCombatSpeed(p, state, p.maxSpeed || 120);
-          const ordinarySpeedZoom = resolveSpeedZoomFactor(playerSpeed, governedCap, false);
+          const ordinarySpeedZoom = resolveSpeedZoomFactor(_speedZoomSpeedEma, governedCap, false);
           // The above-cap opening is not computed here. `velocityLanguage`'s owner-bound record is
           // the single writer; the owned exceptional-speed scalar and this ordinary camera curve
           // share the governed combat-speed cap.
@@ -1247,7 +1255,6 @@ export function createChaseCamera(state) {
             exceptionalSpeed,
             ordinarySpeedZoom,
           );
-          _speedZoomSampleT = SPEED_ZOOM_SAMPLE_INTERVAL;
         }
         targetZoom = baseZoom * _speedZoomFactor;
         targetZoom *= (1 + _contextZoomBias);
@@ -1294,14 +1301,16 @@ export function createChaseCamera(state) {
         if (_deathCam && Math.abs(_pushZoom) > 0.0001) _dynamicZoom *= (1 + _pushZoom);
       } else {
         let nextZoom = damp(_dynamicZoom, targetZoom, ZOOM_LERP, frameDt);
+        const zoomOutStep = ZOOM_OUT_RATE_MAX_WU_PER_S
+          * Math.min(Math.max(finiteOr(frameDt, 0), 0), ZOOM_OUT_STEP_MAX_FRAME_DT);
         // When minZoom is demanding more distance than the ease would open this frame, step toward
         // the floor at the continuity cap so a distant active attacker re-enters without a cut.
         if (_contextMinZoom > _dynamicZoom + 0.5 && targetZoom >= _contextMinZoom - 1e-6) {
-          nextZoom = Math.max(nextZoom, Math.min(_contextMinZoom, _dynamicZoom + ZOOM_OUT_STEP_MAX_WU));
+          nextZoom = Math.max(nextZoom, Math.min(_contextMinZoom, _dynamicZoom + zoomOutStep));
         }
         // Hard continuity cap on any outward jump (damp alone can overshoot 6 wu on a large gap).
         if (nextZoom > _dynamicZoom) {
-          nextZoom = Math.min(nextZoom, _dynamicZoom + ZOOM_OUT_STEP_MAX_WU);
+          nextZoom = Math.min(nextZoom, _dynamicZoom + zoomOutStep);
         }
         _dynamicZoom = nextZoom;
       }

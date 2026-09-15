@@ -15,7 +15,12 @@
 
 import { SURVIVAL_RUN_WAVE_COUNT } from '../systems/survivalRun.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
+import {
+  deathCauseText,
+  telegraphWord,
+} from '../systems/survivalResults.js';
 import { runXpForLevel } from '../core/runState.js';
+import { styleMultiplier } from '../systems/stuntCombo.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
@@ -118,6 +123,22 @@ export function earnLine(award) {
   return parts.join('   ');
 }
 
+/**
+ * PQ-174.06: the death line on the glass — the physical cause and, when a tell was seen, the
+ * telegraph missed with its warning time. DOM-free so a check can assert it headlessly.
+ */
+export function deathLineFor(receipt, tell = null, deathSimTime = 0) {
+  const cause = deathCauseText(receipt);
+  if (tell && typeof tell === 'object' && typeof tell.kind === 'string' && tell.kind
+    && tell.attackerId != null && tell.attackerId === (receipt?.killerId ?? receipt?.attackerId)
+    && Number.isFinite(tell.simTime) && Number.isFinite(deathSimTime)
+    && deathSimTime >= tell.simTime && deathSimTime - tell.simTime <= 6) {
+    const lead = Math.max(0, Math.round((deathSimTime - tell.simTime) * 1000));
+    return `${cause} — missed ${telegraphWord(tell.kind)}, ${lead}ms warning.`;
+  }
+  return cause;
+}
+
 function num(value) {
   const n = Number.isFinite(value) ? Math.trunc(value) : 0;
   return n.toLocaleString('en-US');
@@ -139,6 +160,8 @@ export const survivalHud = {
     this._chain = 0;
     this._chainBest = 0;
     this._waveProgress = null;
+    this._death = null;
+    this._lastTells = [];
     this._unsubs = [];
     if (!this.bus || typeof this.bus.on !== 'function') return;
     this._unsubs.push(this.bus.on('run:awarded', (p) => this._onAwarded(p)));
@@ -146,11 +169,17 @@ export const survivalHud = {
     this._unsubs.push(this.bus.on('run:started', () => {
       this._clearEarn();
       this._waveProgress = null;
+      this._death = null;
+      this._lastTells = [];
     }));
     this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
     this._unsubs.push(this.bus.on('run:waveProgress', (p) => this._onWaveProgress(p)));
     this._unsubs.push(this.bus.on('swarm:chain', (p) => this._onChain(p)));
     this._unsubs.push(this.bus.on('swarm:chainBroken', () => this._onChainBroken()));
+    // PQ-174.06: the death line on the glass. Read-only like everything else here — it names
+    // the cause and the missed telegraph, and never emits.
+    this._unsubs.push(this.bus.on('ai:telegraph', (p) => this._onTell(p)));
+    this._unsubs.push(this.bus.on('player:death', (p) => this._onDeath(p)));
   },
 
   destroy() {
@@ -166,6 +195,8 @@ export const survivalHud = {
   newGame() {
     this._clearEarn();
     this._waveProgress = null;
+    this._death = null;
+    this._lastTells = [];
   },
 
   update(dt, state) {
@@ -263,11 +294,14 @@ export const survivalHud = {
 
     // Style is a live figure, not a phase readout: it decays as you repeat yourself and climbs as
     // you vary the cause, so it belongs beside the score it is multiplying.
-    const styleMult = run.style && Number.isFinite(run.style.multiplier) ? run.style.multiplier : 1;
-    const showStyle = !swarm && styleMult > 1.05;
+    const combo=st.stunts?.combo;
+    const styleMult=combo?styleMultiplier(combo):1;
+    const showStyle=!!combo?.activeCount;
     dom.styleWord.hidden = !showStyle;
     dom.styleFig.hidden = !showStyle;
-    if (showStyle) this._setText(dom.styleFig, `${styleMult.toFixed(1)}x`);
+    if (showStyle) this._setText(dom.styleFig, `${Math.floor(combo.activePoints)} pending ×${styleMult.toFixed(2)} · ${2-combo.bridges.length} links`);
+    dom.line.hidden=!showStyle;
+    if(showStyle)this._setText(dom.line,combo.acts.map(a=>a.name).join(' → '));
 
     this._setText(dom.score, num(run.score));
     this._setText(dom.credits, num(run.credits));
@@ -282,9 +316,55 @@ export const survivalHud = {
       if (this._earn) this._clearEarn();
       dom.earn.hidden = true;
     }
+
+    // PQ-174.06: after a death the readout keeps the cause and the missed telegraph on the
+    // glass, beside the LOST word — a death the player cannot read is a bug report.
+    if (this._death && dom.death) {
+      dom.death.hidden = false;
+      this._setText(dom.death, deathLineFor(this._death.receipt, this._killerTell(), this._death.simTime));
+      dom.death.setAttribute('aria-label', 'Cause of death');
+    } else if (dom.death) {
+      dom.death.hidden = true;
+    }
   },
 
   // ---- receipts -------------------------------------------------------------
+
+  // The killer's tell, not just the latest tell: a wave of attackers each open telegraphs, and
+  // the most recent one is rarely the one that killed you. Bounded ring mirrors
+  // resolveDeathTelegraph's backwards scan in survivalResults.js.
+  _killerTell() {
+    const receipt = this._death && this._death.receipt;
+    const killerId = receipt && (receipt.killerId ?? receipt.attackerId);
+    const tells = this._lastTells;
+    for (let i = tells.length - 1; i >= 0; i--) {
+      if (tells[i].attackerId === killerId) return tells[i];
+    }
+    return null;
+  },
+
+  _onTell(payload) {
+    if (!payload || typeof payload !== 'object') return;
+    if (typeof payload.kind !== 'string' || !payload.kind) return;
+    const st = this.state;
+    this._lastTells.push({
+      kind: payload.kind,
+      attackerId: payload.entityId ?? payload.attackerId ?? payload.actorId
+        ?? payload.sourceId ?? payload.mineId ?? payload.ownerId ?? null,
+      simTime: st && Number.isFinite(st.simTime) ? st.simTime : 0,
+    });
+    if (this._lastTells.length > 16) this._lastTells.shift();
+  },
+
+  _onDeath(payload) {
+    const st = this.state;
+    const run = st && st.run;
+    if (!run || run.kind !== 'survival') return;
+    this._death = {
+      receipt: payload && typeof payload === 'object' ? payload : null,
+      simTime: st && Number.isFinite(st.simTime) ? st.simTime : 0,
+    };
+  },
 
   _onChain(payload) {
     this._chain = payload && Number.isFinite(payload.chain) ? payload.chain : 0;
@@ -466,12 +546,18 @@ export const survivalHud = {
 
     const earn = make('div', 'sf-crun__earn', root);
     earn.hidden = true;
+    const line=make('div','sf-crun__earn',root);line.hidden=true;
+
+    // PQ-174.06: the death line. Hidden until a death; the word beside the figure again.
+    const death = make('div', 'sf-crun__death', root);
+    death.hidden = true;
+    death.setAttribute('role', 'status');
 
     host.appendChild(root);
     this._dom = {
       root, label, waveN, phase, threat, threatWord, threatFill, threatFig,
       chainRow, chainFig, chainBest,
-      score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn,
+      score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, death, line,
     };
     return this._dom;
   },
@@ -518,6 +604,8 @@ export const survivalHud = {
     font-variant-numeric:tabular-nums; color:var(--sf-calm); }
   .sf-crun__earn { font-family:var(--sf-data-face); font-weight:500; font-size:12px;
     font-variant-numeric:tabular-nums; color:var(--sf-you); }
+  .sf-crun__death { font-family:var(--sf-data-face); font-weight:500; font-size:12px;
+    font-variant-numeric:tabular-nums; color:var(--sf-foe); }
   /* forced-colors strips the fills; the figure beside each bar is the surviving channel. */
   @media (forced-colors: active) {
     .sf-crun { border-left:1px solid var(--sf-edge); background:Canvas; }

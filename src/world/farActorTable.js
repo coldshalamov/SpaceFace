@@ -5,6 +5,8 @@
 import { authoredPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
 import { SIM_TIER, NEAR_ENTER_PAD_WU, NEAR_EXIT_PAD_WU } from './activityClassification.js';
 import { ensureActivityClassified, physicsReachWuFromState } from './activityRuntime.js';
+import { getAsteroidFieldRock } from './asteroidField.js';
+import { getDressingRow } from './dressingTable.js';
 import { advanceWorldRecord, normalizeIntent } from './worldCatchup.js';
 
 export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
@@ -287,14 +289,26 @@ export function promoteFarActor(state, id, helpers) {
   const live = state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(id)
     : null;
-  if (live && live.alive !== false) return live;
+  if (live && live.alive !== false) {
+    // Core no longer recycles a shelved id, but an explicit-id spawn can still land on one. The
+    // live entity wins; evict the stale row now so it cannot remain an alias in the world ledger.
+    const table = state.world && state.world.farActors;
+    const stale = table && table.byId && table.byId.get(id);
+    if (stale) removeFarRecord(table, stale);
+    return live;
+  }
   const rec = getFarActor(state, id);
   if (!rec || rec.alive === false) return live;
   const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;
   if (!spawn) return null;
   const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
   catchUpFarRecord(rec, simTime);
-  const reserved = Number.isSafeInteger(rec.id) && rec.id > 0 && !(state.entities && state.entities.has(rec.id))
+  // The renderer resolves an id to one presentation row, so never raise a body onto an id a
+  // dressing prop or field rock holds; take a fresh one instead.
+  const reserved = Number.isSafeInteger(rec.id) && rec.id > 0
+    && !(state.entities && state.entities.has(rec.id))
+    && !getDressingRow(state, rec.id)
+    && !getAsteroidFieldRock(state, rec.id)
     ? rec.id
     : 0;
   const data = rec.data && typeof rec.data === 'object' ? { ...rec.data } : {};

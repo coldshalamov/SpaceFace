@@ -570,6 +570,20 @@ export const RECIPES = [
     repeatCount: 3, repeatIntervalS: 0.11,
     gainMult: 0.75,
   },
+  // PQ-146 moment stinger — one material/force accent, 0.45–0.70 s: a low pressure swell that
+  // resolves upward a fifth. It follows the physical impact rather than shouting over it, ducks
+  // music briefly through cue importance, and never escalates the mix.
+  {
+    id: 'sfx_moment_stinger',
+    category: 'combat',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 110, freqSweep: [110, 165], sweepTimeS: 0.28,
+    gainEnvelope: { attack: 0.03, sustain: 0.12, release: 0.42 },
+    filterType: 'lowpass', filterFreq: 720, filterQ: 1.1,
+    gainMult: 0.7,
+    reverbMix: 0.18, reverbDecay: 0.9,
+  },
   // Discovery resolve — a slow, glassy upward fifth. It sits below mission-complete in tempo and
   // gain so finding a place reads as wonder rather than another contract payout.
   {
@@ -1906,6 +1920,7 @@ export const SAMPLE_BINDINGS = {
   sfx_mission_accept: { id: 'ui_mission', share: 0.6 },
   sfx_mission_complete: { id: 'ui_mission', share: 0.6, rate: 0.92 },
   sfx_discovery_reveal: { id: 'ui_respawn', share: 0.5, rate: 1.1 },
+  sfx_moment_stinger: { id: 'ui_mission', share: 0.45, rate: 0.7 },
   sfx_loot_collect: { id: 'ui_loot', share: 0.6 },
   sfx_respawn_chime: { id: 'ui_respawn', share: 0.55 },
   sfx_undock_release: { id: 'ui_undock', share: 0.6 },

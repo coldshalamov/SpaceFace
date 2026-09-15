@@ -24,6 +24,7 @@ import { SECTORS } from '../data/sectors.js';
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
 import { aceById } from '../data/namedAces.js';
+import { stuntDossierForNetwork } from '../combat/stuntWitnesses.js';
 
 export const ENTITY_TYPES = Object.freeze([
   'faction', 'commodity', 'station', 'hull', 'module', 'captain', 'sector', 'contract',
@@ -157,6 +158,18 @@ function factionDossier(state, id) {
   facts.push({ k: 'Temperament', v: String(f.personality || 'unstated'), tone: 'calm' });
 
   const lines = [];
+  // PQ-146 §6 rap sheet: only reports actually DELIVERED to this network appear. A black-box
+  // record or a witnessed-but-unreported incident never leaks into another faction's file.
+  const rap = stuntDossierForNetwork(state, id);
+  if (rap) {
+    if (rap.titles.length) {
+      facts.push({ k: 'Pilot on file', v: rap.titles.map((t) => t.title).join(' · '), tone: 'you' });
+    }
+    for (const inc of rap.incidents) {
+      lines.push({ label: 'Incident', text: `${inc.shipName} ${inc.account} — ${inc.harm}` });
+      lines.push({ label: 'On file', text: `${inc.evidence} · ${inc.disposition} · no case recorded` });
+    }
+  }
   if (Array.isArray(f.controls) && f.controls.length) lines.push({ label: 'Controls', text: f.controls.join(' · ') });
   const doctrine = FACTION_DOCTRINES && FACTION_DOCTRINES[id];
   if (doctrine && doctrine.id) lines.push({ label: 'Doctrine', text: String(doctrine.id).replace(/_/g, ' ') });
@@ -232,6 +245,25 @@ function stationDossier(state, id) {
   if (st.chartNote) lines.push({ label: 'On the chart', text: String(st.chartNote) });
   if (Array.isArray(st.services) && st.services.length) {
     lines.push({ label: 'Services', text: st.services.join(' · ') });
+  }
+  // PQ-146 §6 port dossier: the station's own network keys (its holding faction plus any
+  // networkId the live station entity actually received a report on).
+  const stationKeys = [st.factionId, st.id];
+  for (const e of (state && state.entities && typeof state.entities.values === 'function' ? state.entities.values() : [])) {
+    if (e && e.type === 'station' && e.data && e.data.stationId === st.id) {
+      if (e.data.networkId) stationKeys.push(e.data.networkId);
+      break;
+    }
+  }
+  const stationRap = stuntDossierForNetwork(state, stationKeys);
+  if (stationRap) {
+    if (stationRap.titles.length) {
+      facts.push({ k: 'Pilot on file', v: stationRap.titles.map((t) => t.title).join(' · '), tone: 'you' });
+    }
+    for (const inc of stationRap.incidents) {
+      lines.push({ label: 'Incident', text: `${inc.shipName} ${inc.account} — ${inc.harm}` });
+      lines.push({ label: 'On file', text: `${inc.evidence} · ${inc.disposition} · no case recorded` });
+    }
   }
   const links = [];
   if (st.factionId && FACTION_BY_ID.has(st.factionId)) links.push({ ref: 'faction:' + st.factionId, label: FACTION_BY_ID.get(st.factionId).name });

@@ -163,6 +163,16 @@ test('validateRunState never throws and reports circular', () => {
   assert.equal(validateRunState(undefined).ok, false);
 });
 
+test('validateRunState accepts a shared JSON object referenced by two fields', () => {
+  const run = createRunState();
+  const shared = { source: 'same-record' };
+  run.telemetry.first = shared;
+  run.telemetry.second = shared;
+
+  const result = validateRunState(run);
+  assert.equal(result.ok, true, result.issues.join('; '));
+});
+
 test('every §27.4 legal transition is accepted and six illegal ones are rejected', () => {
   assert.ok(Object.isFrozen(RUN_PHASE_TRANSITIONS));
   for (const from of Object.keys(RUN_PHASE_TRANSITIONS)) {

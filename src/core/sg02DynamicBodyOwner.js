@@ -20,6 +20,8 @@ import { ENEMY_TYPES } from '../data/enemies.js';
 import { frameToGlobal, globalToFrame } from './coordinates.js';
 import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
 import { resolveGovernedCombatSpeed } from './flight/propulsionCatalog.js';
+import { observeAppliedImpulse, observeConstraint, observeRelease, observeContact, journalFor } from '../combat/stuntEvidence.js';
+import { observeAppliedSurfaceTorque } from '../combat/stuntProjectileEvidence.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
@@ -434,6 +436,7 @@ export class Sg02DynamicBodyOwner {
     const rec = this.records.get(input.entityId);
     if (!rec || !rec.spec.dynamic) return false;
     const impulse = planeForce(input.impulse);
+    const evidenceBefore = journalFor() ? rec.body.linvel() : null;
     // PQ-137.11 C. A hit may not spin the player's hull (owner ruling; the player is already
     // excluded from tumble and hitstun in tumbleStates.js / collisionConsequences.js). An impulse
     // applied at a point OFF the centre of mass IS an angular impulse: measured 2026-09-05, one
@@ -447,12 +450,13 @@ export class Sg02DynamicBodyOwner {
       if (input.point) rec._playerOffCentreImpulsesCentred = (rec._playerOffCentreImpulsesCentred || 0) + 1;
       rec.body.applyImpulse(impulse, true);
     }
+    if (evidenceBefore) observeAppliedImpulse(rec.entity, evidenceBefore, rec.body.linvel(), input.provenance, input.tick, input.reason);
     return true;
   }
 
   applyTorqueImpulse(input = {}) {
     const rec = this.records.get(input.entityId);
-    return applyYawTorqueImpulse(rec, input.impulse);
+    return applyYawTorqueImpulse(rec, input.impulse, input);
   }
 
   drainContactImpacts() {
@@ -527,11 +531,15 @@ export class Sg02DynamicBodyOwner {
     const loadBreak = !!(attachment.springState && attachment.springState.breakRequested);
     if (usesElasticWhipSpring(attachment.spring)) {
       if (!loadBreak && PLAYER_WHIP_RELEASE_REASONS.has(reason)) {
+        const evidenceBefore=journalFor()?attachment.target.body.linvel():null;
         this._spendElasticWhipStoredEnergy(attachment);
+        if(evidenceBefore)observeAppliedImpulse(attachment.target.entity,evidenceBefore,attachment.target.body.linvel(),
+          {actorId:attachment.ownerId,weaponId:attachment.defId,attachmentId:attachment.id},input.tick??this.tick,'constraint');
       } else if (attachment.springState) {
         attachment.springState.lastStoredEnergy = 0;
       }
     }
+    observeRelease(attachment.id, input.tick ?? this.tick, loadBreak ? 'break' : reason);
     this._removeAttachmentJoints(attachment);
     this.attachments.delete(attachment.id);
     return true;
@@ -650,6 +658,20 @@ export class Sg02DynamicBodyOwner {
     this._stepContactReceipts = stepReceipts;
     for (const rec of this.dynamicRecords) this._applyStructuralGive(rec);
     this._stepContactReceipts = null;
+
+    if (journalFor()) for (const receipt of stepReceipts) {
+      const a = this.records.get(receipt.aId), b = this.records.get(receipt.bId);
+      if (a && b) {
+        const pa=a.body.translation(),pb=b.body.translation();
+        observeContact(a.entity, b.entity, {
+        ...receipt,
+        positionA:{x:pa.x+this._frameOrigin.x,z:pa.z+this._frameOrigin.z},
+        positionB:{x:pb.x+this._frameOrigin.x,z:pb.z+this._frameOrigin.z},
+        beforeA: { x: a.expected.vx, z: a.expected.vz }, beforeB: { x: b.expected.vx, z: b.expected.vz },
+        afterA: a.body.linvel(), afterB: b.body.linvel(),
+      });
+      }
+    }
 
     if (stepReceipts.length > 0) {
       this._distributeAppliedPlayerDeltaV(stepReceipts);
@@ -1336,10 +1358,12 @@ export class Sg02DynamicBodyOwner {
       rec.maxSpeed = positive(command.control.maxSpeed, Infinity);
     }
     for (const impulse of command.impulses || []) {
+      const before = journalFor() ? rec.body.linvel() : null;
       rec.body.applyImpulse(planeForce(impulse), true);
+      if (before) observeAppliedImpulse(rec.entity, before, rec.body.linvel(), impulse.provenance, impulse.tick ?? this.tick, impulse.kind);
     }
     for (const impulse of command.torqueImpulses || []) {
-      applyYawTorqueImpulse(rec, impulse);
+      applyYawTorqueImpulse(rec, impulse, impulse);
     }
   }
 
@@ -1502,7 +1526,9 @@ export class Sg02DynamicBodyOwner {
   _applyAttachmentSprings() {
     for (const attachment of this.attachments.values()) {
       if (usesLegacyRopeSpring(attachment.spring)) continue;
+      const before = journalFor() ? attachment.target.body.linvel() : null;
       this._applyAttachmentSpring(attachment);
+      if (before) observeConstraint(attachment, before, attachment.target.body.linvel(), this.tick);
     }
     // reelSlip is an edge signal: setAttachmentReel sets it on each tick it actually shortens the
     // line (i.e. the player is still holding G this tick). Clearing it after the spring pass means
@@ -2146,7 +2172,7 @@ function yawTorque(value) {
   return { x: 0, y: v.y, z: 0 };
 }
 
-function applyYawTorqueImpulse(rec, value) {
+function applyYawTorqueImpulse(rec, value, evidence = null) {
   if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body || typeof rec.body.setAngvel !== 'function') return false;
   const impulseY = finite(value && value.y);
   if (impulseY === 0) return true;
@@ -2156,6 +2182,7 @@ function applyYawTorqueImpulse(rec, value) {
   // bodies. The owner is the sanctioned body writer, so apply the identical J = I*deltaOmega
   // relation explicitly rather than leaking an entity.angVel fallback into gameplay systems.
   rec.body.setAngvel({ x: 0, y: current + impulseY / inertiaY, z: 0 }, true);
+  observeAppliedSurfaceTorque(rec.entity,current,rec.body.angvel().y,evidence);
   return true;
 }
 

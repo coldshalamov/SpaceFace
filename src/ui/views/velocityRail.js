@@ -1,5 +1,5 @@
 // Velocity rail: the flight HUD's speed instrument. Presentation only; no sim writes, observers,
-// event subscriptions, layout reads or animation loops. See velocity-rail.test.mjs for the contract.
+// simulation subscriptions, layout reads or animation loops. One focus adapter retains the host tooltip owner. See velocity-rail.test.mjs for the contract.
 import { mountVelocityRailStyles } from './velocityRailStyles.js';
 
 // Original continuous display figures, drawn on a 40 x 64 grid. These are authored SVG paths,
@@ -81,6 +81,15 @@ export function speedGaugeMarkup() {
   '</div>';
 }
 
+// The legacy host lazily calculates braking detail on mouseenter. Route focus to that existing
+// owner rather than copying its physics/formatting or adding another telemetry writer. This local,
+// non-bubbling notification does not simulate pointer movement or steal any game input.
+function refreshTooltipOnFocus(event) {
+  const root = event.currentTarget;
+  const MouseEvent = root.ownerDocument?.defaultView?.MouseEvent;
+  if (MouseEvent) root.dispatchEvent(new MouseEvent('mouseenter'));
+}
+
 function parts(el) {
   let p = CACHE.get(el);
   if (p) return p;
@@ -95,6 +104,7 @@ function parts(el) {
     value: undefined, referenceValue: undefined, sourceText: undefined,
     reading: undefined, hasReference: undefined,
   };
+  el.addEventListener?.('focus', refreshTooltipOnFocus);
   CACHE.set(el, p);
   return p;
 }
