@@ -1363,6 +1363,38 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     // owner's setTranslation callsites, and bracket world.step to separate an explicit teleport
     // write from a solver depenetration (which moves translation without leaving linvel).
     const finiteNum = (v) => (Number.isFinite(v) ? v : 0);
+    // A solver-side teleport means something contained the player (depenetration) or slammed an
+    // impulse through it. Census every record's collider bound against the pre-jump pose: any
+    // collider whose bound covers the player point is a depenetration suspect; a >2000 wu bound
+    // anywhere is itself an anomaly worth recording regardless of overlap.
+    const colliderCensus = (sg02, playerLocal) => {
+      const out = [];
+      try {
+        for (const [id, rec] of sg02.records) {
+          const bp = rec.body && typeof rec.body.translation === 'function' ? rec.body.translation() : null;
+          let bound = rec.spec && rec.spec.radius;
+          for (const c of rec.colliders || []) {
+            const sh = c && c.shape;
+            if (!sh) continue;
+            const r = Number.isFinite(sh.radius) ? sh.radius
+              : (sh.halfExtents ? Math.hypot(sh.halfExtents.x, sh.halfExtents.y, sh.halfExtents.z)
+                : (Number.isFinite(sh.halfHeight) ? sh.halfHeight : null));
+            if (Number.isFinite(r) && r > (bound || 0)) bound = r;
+          }
+          const dx = finiteNum(bp?.x) - finiteNum(playerLocal?.x);
+          const dz = finiteNum(bp?.z) - finiteNum(playerLocal?.z);
+          const dist = Math.hypot(dx, dz);
+          const contained = Number.isFinite(bound) && bound > 0 && dist < bound;
+          if (contained || bound > 2000) {
+            out.push({
+              id, type: rec.entity && rec.entity.type, dyn: !!(rec.spec && rec.spec.dynamic),
+              x: bp && bp.x, z: bp && bp.z, bound, dist, contained,
+            });
+          }
+        }
+      } catch (_) { /* best-effort census */ }
+      return out;
+    };
     window.__PQ033_BODY_WRITES__ = [];
     const bodyWrite = (kind, detail) => {
       if (window.__PQ033_BODY_WRITES__.length < 8) {
@@ -1439,7 +1471,21 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
             const moved = Math.hypot(post.x - pre.x, post.z - pre.z);
             if (moved > 2000) {
               const v = b.linvel();
-              bodyWrite('solverStep', { from: pre, to: { x: post.x, z: post.z }, moved, postVel: { x: v.x, z: v.z } });
+              bodyWrite('solverStep', {
+                from: pre, to: { x: post.x, z: post.z }, moved, postVel: { x: v.x, z: v.z },
+                colliders: colliderCensus(sg02, pre),
+              });
+              // Contact receipts are captured by the owner AFTER world.step returns (same
+              // synchronous _stepFixed), so a microtask sees this step's pair list.
+              Promise.resolve().then(() => {
+                const receipts = (sg02._stepContactReceipts || []).filter((r) => {
+                  const pid = window.SF?.state?.playerId;
+                  return r && (r.aId === pid || r.bId === pid);
+                });
+                if (receipts.length) bodyWrite('solverContacts', receipts.map((r) => ({
+                  aId: r.aId, bId: r.bId, impulse: r.impulse, pos: r.pos, normal: r.normal,
+                })));
+              }).catch(() => {});
             }
           }
           return out;
