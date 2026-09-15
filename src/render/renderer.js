@@ -185,6 +185,7 @@ import {
   shouldSliceCompileAcrossPresents,
   yieldAfterPresent,
 } from './compilePresentSlice.js';
+import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
 import {
   bindEnvironmentToStandardMaterials,
   collectFirstFlightEffectRoots,
@@ -209,6 +210,7 @@ import {
 import { FIRST_FLIGHT_PIPELINE_HOLD_S, shouldDeferPipelineAutoFlush } from './pipelineAutoFlushPolicy.js';
 import { shouldAwaitOpeningGpuCook } from './renderCapabilityProfile.js';
 import {
+  prepareStartupGeometryResidency,
   prepareStartupGpuResidency,
   yieldToBrowser,
   yieldToNextPresent,
@@ -292,6 +294,36 @@ const _worldSiteA11y = { reducedMotion: false, reducedFlash: false };
 // boundary. Future exemptions must name a selector and a non-empty reason; the diagnostic helper
 // ignores reasonless entries so this cannot become a silent allow-list.
 const OPENING_LATE_ADMISSION_EXEMPTIONS = Object.freeze([]);
+
+// state.render promise handles the pipeline-readiness stages record before the mode flips to
+// flight. On runners without KHR_parallel_shader_compile those stages are fire-and-forget, so the
+// first presented flight frame can race ahead of them and link/upload inside the visible pass;
+// the pre-submit gate counts unsettled handles and keeps that frame behind the shell until the
+// recorded admission chain lands (bounded by OPENING_PICTURE_HOLD_FAILSAFE_MS).
+const OPENING_ADMISSION_HANDLE_KEYS = Object.freeze([
+  'pipelinePrecompileReady',
+  'exactPipelineWarmupReady',
+  'openingSubmissionReady',
+  'postOpeningPipelinesReady',
+  'liveSceneCookReady',
+  'authoredGpuAdmissionReady',
+  'openingGpuResidencyReady',
+  'liveScenePresentReady',
+]);
+
+// Materials whose program key carries the shadow fields (numDirLightShadows plus the
+// shadowMapEnabled mask bit). An unlit leftover variant stays valid across the menu->flight
+// shadow transition; a lit one relinks for the armed state on its first flight draw.
+function materialNeedsShadowVariant(material) {
+  return !!(material && (
+    material.isMeshStandardMaterial === true
+    || material.isMeshPhysicalMaterial === true
+    || material.isMeshLambertMaterial === true
+    || material.isMeshPhongMaterial === true
+    || material.isMeshToonMaterial === true
+    || material.lights === true
+  ));
+}
 
 function openingSubmissionCamera(camera) {
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) return null;
@@ -807,6 +839,25 @@ export function serviceRenderMeshResidency(owner, frameDt) {
 function isFirstFlightProtectedEntity(entity) {
   const data = entity && entity.alive !== false ? entity.data : null;
   return !!(data && (data.rescue === true || data.onboardingTraining === true));
+}
+
+function liveFlyDefersOnGlassAuthoredUpgrade(state) {
+  return !!(state && state.mode === 'flight'
+    && Number.isFinite(state.render && state.render.firstPlayableFrameAt));
+}
+
+function queueOrRequestAuthoredUpgrade(owner, entity, mesh, state) {
+  if (!canRequestAuthoredUpgrade(entity, state, owner && owner._authoredSectorPrewarmPendingId)) return;
+  if (liveFlyDefersOnGlassAuthoredUpgrade(state) && entityIsOnReadableGlass(entity, state)) {
+    const subject = mesh;
+    void yieldAfterPresent().then(() => {
+      if (!subject || !subject.parent) return;
+      if (!subject.userData || typeof subject.userData.requestAuthoredUpgrade !== 'function') return;
+      requestAuthoredUpgrade(subject, owner.renderer, owner.scene);
+    });
+    return;
+  }
+  requestAuthoredUpgrade(mesh, owner.renderer, owner.scene);
 }
 
 function canRequestAuthoredUpgrade(entity, state, pendingSectorId = null) {
@@ -2689,11 +2740,25 @@ function noteShadowMeshRemoved(owner, root) {
   if (owner) owner._shadowReceiversDirty = true;
 }
 
+function stampCanonicalSurfaceProgramKeys(root) {
+  if (!root) return root;
+  canonicalizeObjectSurfaceProgramKeys(root);
+  if (!root.userData) root.userData = {};
+  root.userData.spacefaceProgramKeyCanonicalized = true;
+  return root;
+}
+
 function requestAuthoredUpgrade(mesh, renderer, scene, options = {}) {
   const request = mesh && mesh.userData && mesh.userData.requestAuthoredUpgrade;
   if (typeof request !== 'function') return Promise.resolve({ status: 'no-authored-upgrade' });
-  try { return Promise.resolve(request(renderer, scene, options)); }
-  catch (error) {
+  try {
+    return Promise.resolve(request(renderer, scene, options)).then((result) => {
+      // Compose clones packed-ORM materials after the first bind. Re-stamp family keys
+      // so the upgraded hull compiles one program instead of one UUID per paint.
+      stampCanonicalSurfaceProgramKeys(mesh);
+      return result;
+    });
+  } catch (error) {
     console.warn('[render] authored asset upgrade request failed', error);
     return Promise.resolve({ status: 'authored-upgrade-request-threw', error });
   }
@@ -4020,6 +4085,15 @@ export const render = {
             if (!lifecycle.isActive()) throw new Error('renderer lifecycle destroyed during opening yield');
           },
         });
+        // Final residency seal: the leaf census can miss drawables rebuilt or added after the
+        // census (menu deep-field layers, count-0 pools). Upload every scene geometry buffer
+        // behind the shell so the first presented frame admits nothing new.
+        if (lifecycle.isActive()) {
+          await prepareStartupGeometryResidency(renderer, scene, {
+            includeEmpty: true,
+            yieldToMain: yieldToBrowser,
+          });
+        }
       } catch (error) {
         console.warn('[render] first-present GPU admission failed', error);
       } finally {
@@ -4515,10 +4589,21 @@ export const render = {
     const openingStillBlocking = () => (
       state.mode === 'loading' || !Number.isFinite(state.render && state.render.firstPlayableFrameAt)
     );
+    // Roots with a queued pipeline compile. Bloom's unready-drawable pass hides these each frame:
+    // on non-KHR drivers a never-linked material reports no currentProgram, so the program-readiness
+    // scan cannot see them, and drawing one links its variants synchronously inside the presented
+    // frame (the mid-flight physical,STANDARD brick).
+    const pendingPipelineSubjects = new Set();
+    if (this.renderer) {
+      const rendererData = this.renderer.userData || (this.renderer.userData = {});
+      rendererData.spacefacePendingPipelineSubjects = pendingPipelineSubjects;
+    }
     const markSubjectPipelinesPending = (subject, pending) => {
       if (!subject) return;
       const data = subject.userData || (subject.userData = {});
       data.pipelinesPending = pending === true;
+      if (pending === true) pendingPipelineSubjects.add(subject);
+      else pendingPipelineSubjects.delete(subject);
     };
     const admitSubjectPipelines = (subject) => {
       markSubjectPipelinesPending(subject, true);
@@ -4835,17 +4920,31 @@ export const render = {
         subjects.push(subject);
       }
       const route = this._selectPostRoute();
-      const units = uniqueAdmissionUnits(subjects);
-      const result = subjects.length > 0
+      // Pooled/first-flight drawables are declared on the plan for identity only — count-0 pools
+      // and dormant emitters never pass the leaf census — so without this their buffers and
+      // shadow-state program variants land inside the first measured frame (the observed
+      // ContactShadow_Pool upload and the quarks lit-material shadowed relink). Admit them in the
+      // same pass; invisible subjects must be revealed or the touch renders nothing.
+      const leafSubjectSet = new Set(subjects);
+      const pooledSubjects = Array.isArray(plan.pooledResourceSubjects)
+        ? plan.pooledResourceSubjects.filter((subject) => subject && !leafSubjectSet.has(subject))
+        : [];
+      const allSubjects = subjects.concat(pooledSubjects);
+      const units = uniqueAdmissionUnits(allSubjects);
+      const whileRevealed = (subject, run) => {
+        const restoreSubject = revealSubjectForCompile(subject);
+        try { return run(); } finally { restoreSubject(); }
+      };
+      const result = allSubjects.length > 0
         ? await admitOpeningUnitsAcrossSlices({
           units,
           beginReadinessBatch: () => beginScenePipelineReadinessBatch(renderer),
-          compileOne: (subject) => compileSubjectColorAndDepth(subject, route),
-          touchOne: touchExactTargetSubject,
+          compileOne: (subject) => whileRevealed(subject, () => compileSubjectColorAndDepth(subject, route)),
+          touchOne: (subject) => whileRevealed(subject, () => touchExactTargetSubject(subject)),
           yieldToMain: yieldToBrowser,
         })
         : { skipped: true, reason: 'empty opening draw set' };
-      const shadowResult = warmOpeningShadowPipelines(subjects);
+      const shadowResult = warmOpeningShadowPipelines(allSubjects);
       this._openingShadowAdmission = shadowResult;
       this._firstPresentGpuReady = true;
       return {
@@ -5529,7 +5628,35 @@ export const render = {
               ...collectLateAdmittedCompileRoots(this._meshes, openingSubjects),
               ...collectInstancePoolCompileRoots(scene),
             ];
-        const units = uniqueAdmissionUnits(lateRoots.flatMap((root) => collectCompileSubjects(root)));
+        // holdLeftoverFx keeps leftover FX out of the cohort because their menu-linked programs
+        // stay resident — but a lit material's menu variant is shadowless (numDirLightShadows=0)
+        // and relinks inside the first presented bloomScene (the quarks VFXBatch measured +1
+        // program, 11-14 s on this box). The derived pools are count-0/invisible at every earlier
+        // census, so their buffers have never uploaded either. Admit just those subjects under the
+        // armed shadow state below so the first draw finds them already resident.
+        const shadowSensitiveLeftovers = options.skipCompile !== true
+          && options.holdLeftoverFx === true && !warmFirstFlightFx
+          ? firstFlightRoots
+            .flatMap((root) => collectCompileSubjects(root))
+            .filter((subject) => {
+              const materials = Array.isArray(subject && subject.material)
+                ? subject.material
+                : [subject && subject.material];
+              return materials.some(materialNeedsShadowVariant);
+            })
+          : [];
+        const neverDrawnPools = options.skipCompile !== true
+          ? [
+            this._contactShadowPool && this._contactShadowPool.mesh,
+            this._shipAuxPool && this._shipAuxPool.shield && this._shipAuxPool.shield.mesh,
+            this._shipAuxPool && this._shipAuxPool.nav && this._shipAuxPool.nav.mesh,
+          ].filter(Boolean)
+          : [];
+        const units = uniqueAdmissionUnits([
+          ...lateRoots.flatMap((root) => collectCompileSubjects(root)),
+          ...shadowSensitiveLeftovers,
+          ...neverDrawnPools,
+        ]);
         const touch = (subject) => (
           this.bloom && typeof this.bloom.touchScenePipelines === 'function'
             ? this.bloom.touchScenePipelines(subject, cam.obj, scene)
@@ -5573,83 +5700,99 @@ export const render = {
         // compile has unwound.
         const touchCompileStarted = cookNow();
         const compileYield = yieldTouch ? createSlicedYield(yieldTouch) : null;
+        // The cohort compile and per-subject touch run after the cook.programs shadow arm has
+        // already restored the ambient state. During loading that ambient state is shadowless
+        // (no receiver census ran on this scene yet), so a lit subject compiled here keys on
+        // numDirLightShadows=0 — then the first presented frame draws with shadows armed and
+        // relinks the shadowed variant inside bloomScene (11.6 s on Intel/ANGLE, quarks lit
+        // VFXBatch). Arm the same shadow state the first draw will see so compile and touch
+        // build that variant instead.
+        const restoreTouchShadows = armAdmissionShadows({
+          renderer,
+          light: this._keyLight,
+          enabled: this._shadowSettingOn === true,
+        });
         const cohort = units.programSubjects.length > 0 ? beginScenePipelineReadinessBatch(renderer) : null;
         const issued = [];
         let cohortDrain = null;
-        if (cohort) {
-          try {
-            for (const subject of units.programSubjects) {
-              if (cookOverBudget()) break;
-              const restoreSubject = revealSubjectForCompile(subject);
-              try {
-                issued.push(Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene)).catch(() => null));
-              } catch {
-                // One subject's synchronous compile failure must not strand the cohort.
-              } finally {
-                restoreSubject();
+        try {
+          if (cohort) {
+            try {
+              for (const subject of units.programSubjects) {
+                if (cookOverBudget()) break;
+                const restoreSubject = revealSubjectForCompile(subject);
+                try {
+                  issued.push(Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene)).catch(() => null));
+                } catch {
+                  // One subject's synchronous compile failure must not strand the cohort.
+                } finally {
+                  restoreSubject();
+                }
+                if (compileYield) await compileYield();
               }
-              if (compileYield) await compileYield();
+              cohortDrain = await cohort.drain({
+                timeoutMs: Math.max(0, cookDeadlineMs - (cookNow() - cookStarted)),
+              });
+            } finally {
+              cohort.close();
+              await Promise.allSettled(issued);
+              cohort.restoreEntryTarget();
             }
-            cohortDrain = await cohort.drain({
-              timeoutMs: Math.max(0, cookDeadlineMs - (cookNow() - cookStarted)),
+          }
+          recordOpeningCookStep(state.render, 'cook.touchCompile', touchCompileStarted,
+            !cohort ? 'skipped' : (issued.length < units.programSubjects.length ? 'timeout' : 'resolved'), {
+              issued: issued.length,
+              unlinked: cohortDrain ? cohortDrain.programs : undefined,
+              contextLost: cohortDrain && cohortDrain.contextLost === true ? true : undefined,
+              yields: compileYield ? compileYield.yields : undefined,
             });
-          } finally {
-            cohort.close();
-            await Promise.allSettled(issued);
-            cohort.restoreEntryTarget();
+          // Loading shell: several touches share a frame until ~8 ms of touch work, then yield
+          // (laneB-fixA: 89 touches drew for 1261 ms and spent ~1.3 s more yielding a whole frame after
+          // every one). The jump shell keeps one touch per frame.
+          const touchYield = yieldTouch && state.mode === 'loading' ? createSlicedYield(yieldTouch) : yieldTouch;
+          const touchStarted = cookNow();
+          // Names of subjects that still had no compiled program at touch time — they are the
+          // programs the first presented frame will link synchronously. Counts alone never said
+          // which objects escaped every admission gate.
+          const noProgramNames = [];
+          const subjectName = (subject) => String(
+            subject && (subject.name || (subject.userData && subject.userData.assetId)
+              || (subject.material && subject.material.name))
+            || (subject && subject.type) || 'subject'
+          );
+          for (const subject of units.programSubjects) {
+            if (cookOverBudget()) break;
+            const before = subjectProgramAtTouch(subject);
+            if (before.status !== 'ready') notReady += 1;
+            if (before.status === 'none') {
+              noProgram += 1;
+              if (noProgramNames.length < 12) noProgramNames.push(subjectName(subject));
+            }
+            const restoreSubject = revealSubjectForCompile(subject);
+            const drawStarted = cookNow();
+            try { touch(subject); } finally { restoreSubject(); }
+            const drawMs = cookNow() - drawStarted;
+            touchMs += drawMs;
+            if (drawMs > maxTouchMs) maxTouchMs = drawMs;
+            if (subjectProgramAtTouch(subject).program !== before.program) switched += 1;
+            touched += 1;
+            if (touchYield) await touchYield();
           }
-        }
-        recordOpeningCookStep(state.render, 'cook.touchCompile', touchCompileStarted,
-          !cohort ? 'skipped' : (issued.length < units.programSubjects.length ? 'timeout' : 'resolved'), {
-            issued: issued.length,
-            unlinked: cohortDrain ? cohortDrain.programs : undefined,
-            contextLost: cohortDrain && cohortDrain.contextLost === true ? true : undefined,
-            yields: compileYield ? compileYield.yields : undefined,
+          recordOpeningCookStep(state.render, 'cook.touch', touchStarted,
+            touched < units.programSubjects.length ? 'timeout' : 'resolved', {
+            subjects: units.programSubjects.length,
+            touched,
+            notReady,
+            noProgram,
+            noProgramNames: noProgramNames.length ? noProgramNames : undefined,
+            switched,
+            touchMs: Math.round(touchMs),
+            maxTouchMs: Math.round(maxTouchMs),
+            yields: touchYield && typeof touchYield.yields === 'number' ? touchYield.yields : undefined,
           });
-        // Loading shell: several touches share a frame until ~8 ms of touch work, then yield
-        // (laneB-fixA: 89 touches drew for 1261 ms and spent ~1.3 s more yielding a whole frame after
-        // every one). The jump shell keeps one touch per frame.
-        const touchYield = yieldTouch && state.mode === 'loading' ? createSlicedYield(yieldTouch) : yieldTouch;
-        const touchStarted = cookNow();
-        // Names of subjects that still had no compiled program at touch time — they are the
-        // programs the first presented frame will link synchronously. Counts alone never said
-        // which objects escaped every admission gate.
-        const noProgramNames = [];
-        const subjectName = (subject) => String(
-          subject && (subject.name || (subject.userData && subject.userData.assetId)
-            || (subject.material && subject.material.name))
-          || (subject && subject.type) || 'subject'
-        );
-        for (const subject of units.programSubjects) {
-          if (cookOverBudget()) break;
-          const before = subjectProgramAtTouch(subject);
-          if (before.status !== 'ready') notReady += 1;
-          if (before.status === 'none') {
-            noProgram += 1;
-            if (noProgramNames.length < 12) noProgramNames.push(subjectName(subject));
-          }
-          const restoreSubject = revealSubjectForCompile(subject);
-          const drawStarted = cookNow();
-          try { touch(subject); } finally { restoreSubject(); }
-          const drawMs = cookNow() - drawStarted;
-          touchMs += drawMs;
-          if (drawMs > maxTouchMs) maxTouchMs = drawMs;
-          if (subjectProgramAtTouch(subject).program !== before.program) switched += 1;
-          touched += 1;
-          if (touchYield) await touchYield();
+        } finally {
+          restoreTouchShadows();
         }
-        recordOpeningCookStep(state.render, 'cook.touch', touchStarted,
-          touched < units.programSubjects.length ? 'timeout' : 'resolved', {
-          subjects: units.programSubjects.length,
-          touched,
-          notReady,
-          noProgram,
-          noProgramNames: noProgramNames.length ? noProgramNames : undefined,
-          switched,
-          touchMs: Math.round(touchMs),
-          maxTouchMs: Math.round(maxTouchMs),
-          yields: touchYield && typeof touchYield.yields === 'number' ? touchYield.yields : undefined,
-        });
         present = {
           skipped: false,
           method: 'per-subject-touch',
@@ -6082,7 +6225,24 @@ export const render = {
         } else {
           recordOpeningCookStep(state.render, 'opening.firstPresentAdmission', openingStepStarted, 'skipped');
         }
-        const plan = state.render.openingSubmissionPlan || buildOpeningSubmissionPlan();
+        // On runners without KHR_parallel_shader_compile the pipeline warmup publishes the exact
+        // merged-graph plan concurrently (waitForWarmup is fire-and-forget there). Checking once
+        // here snapshots the pre-publication census — usually incomplete — and skips residency and
+        // the receipt entirely. Give the published plan a bounded window first; on KHR runners the
+        // warmup never runs, so self-build immediately.
+        let plan = state.render.openingSubmissionPlan;
+        if (!plan && !shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })) {
+          const planWaitStarted = openingNow();
+          while (!state.render.openingSubmissionPlan
+              && openingNow() - planWaitStarted < 8000
+              && !isWebGlContextUnavailable(this._contextLost, this.renderer)) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+          recordOpeningCookStep(state.render, 'opening.planWait', planWaitStarted,
+            state.render.openingSubmissionPlan ? 'resolved' : 'timeout');
+          plan = state.render.openingSubmissionPlan || null;
+        }
+        if (!plan) plan = buildOpeningSubmissionPlan();
         if (!plan || plan.complete !== true
           || !plan.firstPlayablePipelineSet
           || plan.firstPlayablePipelineSet.complete !== true) {
@@ -6170,10 +6330,35 @@ export const render = {
           captured: pendingPipelinePlan ? pendingPipelinePlan.pendingCount : 0,
           stillPending: pipelineAdmissions.pendingCount,
         });
-        openingStepStarted = openingNow();
+        // The exact-plan drain links the pooled drawables' shadowed variants and uploads their
+        // buffers concurrently with this stage. Freezing the receipt mid-drain omits those keys
+        // from the baseline census, so the same admissions would read as uncaptured at the first
+        // presented frame. Give the published drain a bounded window to settle before the census;
+        // on KHR runners the warmup never runs, so the handle stays unset and this skips.
+        const drainWaitStarted = openingNow();
+        if (!shouldAwaitOpeningGpuCook({ gpu: state.render && state.render.gpu, renderer })) {
+          while (!state.render.openingSubmissionReady
+              && openingNow() - drainWaitStarted < 2000
+              && !isWebGlContextUnavailable(this._contextLost, this.renderer)) {
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+          const submission = state.render.openingSubmissionReady;
+          if (submission && typeof submission.then === 'function') {
+            const drainOutcome = await Promise.race([
+              Promise.resolve(submission).then(() => 'resolved', () => 'error'),
+              new Promise((resolve) => setTimeout(() => resolve('timeout'), 8000)),
+            ]);
+            recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, drainOutcome);
+          } else {
+            recordOpeningCookStep(state.render, 'opening.drainWait', drainWaitStarted, 'skipped', {
+              reason: 'no-submission-handle',
+            });
+          }
+        }
         // The first visible frame is the only submission. Capture its resource baseline now that
         // exact leaves, textures, and post targets are admitted; drawPreparedFrame validates that
         // no program/geometry/texture appears outside this frozen plan.
+        openingStepStarted = openingNow();
         state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(renderer, plan, {
           scene,
           programMaterials: openingPostMaterials,
@@ -7423,6 +7608,9 @@ export const render = {
     const handle = world.handleForEntityId(entity.id, this._presentationHandleScratch);
     if (!handle) return false;
     if (!mesh.userData) mesh.userData = {};
+    if (mesh.userData.spacefaceProgramKeyCanonicalized !== true) {
+      stampCanonicalSurfaceProgramKeys(mesh);
+    }
     mesh.userData.presentationEntityId = entity.id;
     const lanes = this._persistentSubmitLanes;
     const lane = mesh.material && (mesh.material.transparent || mesh.material.transmission > 0)
@@ -7537,6 +7725,9 @@ export const render = {
   // undone by the old sector:enter clear). Cheap: only builds/destroys on a delta.
   reconcileMeshes() {
     const state = this.state;
+    // Safety-net only. Ordinary flight promotes on the sim clock (tickFarActors) and
+    // preloads GLBs from ledger rows (kickDecodeRunwayAssets). Spawning here is for
+    // dirty/full rebuilds, not the 4 Hz residency poll.
     requestDecodeRunwayPromote(state, this._simHelpers);
     const buildBudget = this._initialMeshReconcileComplete ? RUNTIME_MESH_BUILD_BUDGET : Infinity;
     // Remove dead ownership and evict distant reduced-sector views. Simulation residency remains
@@ -7570,9 +7761,7 @@ export const render = {
       const entity = resolveWorldPresentationEntity(state, id);
       if (!entity || entity.alive === false) continue;
       this._bindPresentationMesh(entity, mesh);
-      if (canRequestAuthoredUpgrade(entity, state, this._authoredSectorPrewarmPendingId)) {
-        requestAuthoredUpgrade(mesh, this.renderer, this.scene);
-      }
+      queueOrRequestAuthoredUpgrade(this, entity, mesh, state);
     }
     // This call completed the requested full safety scan. Any remaining queue is a bounded build
     // drain, not a reason to repeat the four collection passes on every following display frame.
@@ -7590,7 +7779,6 @@ export const render = {
   // collect candidates into retained arrays to preserve ship-first build order without allocation.
   reconcileMeshResidency() {
     const state = this.state;
-    requestDecodeRunwayPromote(state, this._simHelpers);
     const shipCandidates = this._meshResidencyShipCandidates;
     const otherCandidates = this._meshResidencyOtherCandidates;
     const stats = this._meshResidencySweep;
@@ -7618,9 +7806,7 @@ export const render = {
         stats.evicted++;
         continue;
       }
-      if (canRequestAuthoredUpgrade(entity, state, this._authoredSectorPrewarmPendingId)) {
-        requestAuthoredUpgrade(mesh, this.renderer, this.scene);
-      }
+      queueOrRequestAuthoredUpgrade(this, entity, mesh, state);
     }
 
     const presentationList = this._presentationMeshScratch || (this._presentationMeshScratch = []);
@@ -7777,7 +7963,7 @@ export const render = {
         }
       }
       if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
-        requestAuthoredUpgrade(m, this.renderer, this.scene);
+        queueOrRequestAuthoredUpgrade(this, e, m, this.state);
       }
       noteShadowMeshAdded(this, m);
       built++;
@@ -7835,7 +8021,7 @@ export const render = {
       void this.state.render.compileObjectPipelines(m);
     }
     if (canRequestAuthoredUpgrade(e, this.state, this._authoredSectorPrewarmPendingId)) {
-      requestAuthoredUpgrade(m, this.renderer, this.scene);
+      queueOrRequestAuthoredUpgrade(this, e, m, this.state);
     }
     noteShadowMeshAdded(this, m);
   },
@@ -8895,6 +9081,27 @@ export const render = {
     return true;
   },
 
+  // Counts recorded opening-admission handles that have not settled yet. Handles are attached
+  // lazily as the stages publish them, so each scan also picks up a handle assigned between gate
+  // evaluations. A rejected or skipped stage still settles its promise and decrements normally.
+  _openingAdmissionPendingCount() {
+    const renderState = this.state && this.state.render;
+    if (!renderState) return 0;
+    const watch = this._openingAdmissionWatch
+      || (this._openingAdmissionWatch = { seen: new Set(), pending: 0 });
+    for (const key of OPENING_ADMISSION_HANDLE_KEYS) {
+      const handle = renderState[key];
+      if (!handle || typeof handle.then !== 'function' || watch.seen.has(handle)) continue;
+      watch.seen.add(handle);
+      watch.pending += 1;
+      Promise.resolve(handle).then(
+        () => { watch.pending -= 1; },
+        () => { watch.pending -= 1; },
+      );
+    }
+    return watch.pending;
+  },
+
   drawPreparedFrame() {
     if (isWebGlContextUnavailable(this._contextLost, this.renderer)) return false;
     // The DOM loading shell completely covers the canvas. Drawing the hidden world here used to
@@ -8959,6 +9166,154 @@ export const render = {
           this.state.render && this.state.render.openingSubmissionFirstDrawSubmittedAt,
         );
       if (openingFirstDraw) {
+        // Non-KHR/software runners fire-and-forget the pipeline-readiness stages, so the first
+        // presented frame can race ahead of the recorded admission handles and link or upload
+        // inside the visible pass — every such row lands as an unexplained late admission (and a
+        // synchronous driver brick). Hold the frame while any handle is unsettled, bounded by the
+        // opening-picture failsafe so a dead chain degrades to the old fail-open instead of
+        // wedging behind a black canvas.
+        const pendingAdmission = this._openingAdmissionPendingCount();
+        if (pendingAdmission > 0) {
+          const nowMs = typeof performance !== 'undefined' && typeof performance.now === 'function'
+            ? performance.now()
+            : Date.now();
+          if (this._openingAdmissionHoldSinceMs == null) this._openingAdmissionHoldSinceMs = nowMs;
+          if (nowMs - this._openingAdmissionHoldSinceMs <= OPENING_PICTURE_HOLD_FAILSAFE_MS) {
+            const refusals = (this._openingPreSubmitRefusals || 0) + 1;
+            this._openingPreSubmitRefusals = refusals;
+            this.state.render.openingSubmissionPreSubmitValidation = {
+              ok: false,
+              reason: 'opening-admission-pending',
+              pendingAdmissionHandles: pendingAdmission,
+              refusedFrames: refusals,
+            };
+            // The bounded hold is the designed path on fire-and-forget runners, so the first
+            // refusal is telemetry (strict-warning gates must not read it as a defect); a hold
+            // still counting at 2-second cadence is the abnormal signal worth warning about.
+            if (refusals === 1 || refusals % 120 === 0) {
+              (refusals === 1 ? console.info : console.warn)(
+                `[render] opening submission pre-submit gate holding pendingAdmissionHandles=${pendingAdmission} refusedFrames=${refusals}`,
+              );
+            }
+            return false;
+          }
+        }
+        this._openingAdmissionHoldSinceMs = null;
+        // Casters can arm late — living-hull patches and merged weapon meshes only get
+        // castShadow once their presentation upgrades commit, after the drain's shadow-depth
+        // warm — so their depth variants would link inside this first presented shadow pass
+        // (~460 ms each on Intel/ANGLE). A depth program key carries the live render-state
+        // light/shadow census, so only a real renderer.render() of the real scene produces the
+        // exact variants the frame is about to need — shadowMap.render() standalone has no
+        // currentRenderState and crashes, and staged/scoped compiles key different variants.
+        // While the gate is already holding the frame, rehearse the scene pass once into the
+        // post route's own scene target under ambient shadow state. Keys this links are opening
+        // admission too: refresh the receipt so they are named in required/before instead of
+        // reading as uncaptured first-draw extras.
+        if (this._openingFirstDrawShadowSweep !== true) {
+          this._openingFirstDrawShadowSweep = true;
+          try {
+            const sweepRenderer = this.renderer;
+            const sweepCamera = (this.state.camera && this.state.camera.obj)
+              || (this.cam && this.cam.obj);
+            const rehearsalTarget = postRoute === POST_PROCESS_ROUTE.GRAPH
+              && this._renderGraph && this._renderGraph.sceneTarget
+              ? this._renderGraph.sceneTarget : null;
+            const canRehearseIntoBloom = postRoute === POST_PROCESS_ROUTE.BLOOM
+              && this.bloom && typeof this.bloom.rehearseScenePass === 'function';
+            if (!sweepRenderer || typeof sweepRenderer.render !== 'function' || !sweepCamera
+              || (postRoute === POST_PROCESS_ROUTE.BLOOM && !canRehearseIntoBloom)) {
+              this.state.render.openingFirstDrawShadowSweep = {
+                skipped: true,
+                reason: !sweepRenderer ? 'no-renderer'
+                  : typeof sweepRenderer.render !== 'function' ? 'no-render'
+                  : !sweepCamera ? 'no-camera' : 'no-scene-target',
+              };
+            } else {
+              const programKeyOf = (program) => (program && program.cacheKey
+                ? String(program.cacheKey)
+                : (program && program.id != null ? `id:${program.id}` : ''));
+              const keysBefore = new Set(
+                (sweepRenderer.info && sweepRenderer.info.programs || [])
+                  .map(programKeyOf).filter(Boolean),
+              );
+              if (canRehearseIntoBloom) {
+                this.bloom.rehearseScenePass(this.scene, sweepCamera);
+              } else {
+                const previousTarget = typeof sweepRenderer.getRenderTarget === 'function'
+                  ? sweepRenderer.getRenderTarget() : null;
+                const previousAutoClear = sweepRenderer.autoClear;
+                try {
+                  sweepRenderer.autoClear = true;
+                  if (typeof sweepRenderer.setRenderTarget === 'function') {
+                    sweepRenderer.setRenderTarget(rehearsalTarget);
+                  }
+                  sweepRenderer.render(this.scene, sweepCamera);
+                  // Drain the driver's queued work inside the held gate — otherwise the
+                  // deferred GPU cost flushes inside the presented frame this protects.
+                  const sweepGl = typeof sweepRenderer.getContext === 'function'
+                    ? sweepRenderer.getContext() : null;
+                  if (sweepGl && typeof sweepGl.finish === 'function') sweepGl.finish();
+                } finally {
+                  sweepRenderer.autoClear = previousAutoClear;
+                  if (typeof sweepRenderer.setRenderTarget === 'function') {
+                    sweepRenderer.setRenderTarget(previousTarget || null);
+                  }
+                }
+              }
+              const sweepKeys = (sweepRenderer.info && sweepRenderer.info.programs || [])
+                .map(programKeyOf).filter((key) => key && !keysBefore.has(key));
+              this.state.render.openingFirstDrawShadowSweep = {
+                at: typeof performance !== 'undefined' && typeof performance.now === 'function'
+                  ? performance.now() : Date.now(),
+                programCacheKeys: sweepKeys,
+              };
+              const priorReceipt = this.state.render.openingSubmissionReceipt;
+              const plan = this.state.render.openingSubmissionPlan;
+              // The rehearsal can also upload geometry/textures without linking a program, so
+              // recapture unconditionally: the refreshed `before` census names every resource
+              // the rehearsal admitted, not just new program keys.
+              if (priorReceipt && plan) {
+                const sweepRoute = this._selectPostRoute();
+                let sweepPostMaterials = [];
+                if (sweepRoute === POST_PROCESS_ROUTE.BLOOM
+                  && this.bloom && typeof this.bloom.openingProgramMaterials === 'function') {
+                  sweepPostMaterials = this.bloom.openingProgramMaterials();
+                } else if (sweepRoute === POST_PROCESS_ROUTE.GRAPH
+                  && this._renderGraph
+                  && typeof this._renderGraph.openingProgramMaterials === 'function') {
+                  sweepPostMaterials = this._renderGraph.openingProgramMaterials();
+                }
+                this.state.render.openingSubmissionReceipt = createOpeningSubmissionReceipt(
+                  this.renderer,
+                  plan,
+                  {
+                    scene: this.scene,
+                    programMaterials: sweepPostMaterials,
+                    shadowProgramKeys: [
+                      ...((this._openingShadowAdmission
+                        && this._openingShadowAdmission.programCacheKeys) || []),
+                      ...sweepKeys,
+                    ],
+                    shadowProgramBindingFailures: [
+                      ...((this._openingShadowAdmission
+                        && this._openingShadowAdmission.programBindingFailures) || []),
+                    ],
+                  },
+                );
+              }
+            }
+          } catch (sweepError) {
+            // Fail-open: the post-submit delta still records any link.
+            try {
+              this.state.render.openingFirstDrawShadowSweep = {
+                skipped: true,
+                reason: `error:${String(sweepError && sweepError.message || sweepError).slice(0, 120)}`,
+                stack: String(sweepError && sweepError.stack || '').slice(0, 400),
+              };
+            } catch (_) { /* diagnostics best-effort */ }
+          }
+        }
         const receipt = this.state.render && this.state.render.openingSubmissionReceipt;
         const preSubmitValidation = receipt
           ? validateOpeningSubmissionReceipt(receipt, this.renderer)
@@ -9137,7 +9492,34 @@ export const render = {
         // Post-submit diagnostic for late admissions the plan could not name. The evidence stays on
         // state.render; the mesh defer still releases after the first paint (see afterBrowserPaint
         // below) — a failed diagnostic must never strand flight without mesh streaming.
-        console.warn('[render] opening submission post-submit validation failed', validation);
+        console.warn(
+          `[render] opening submission post-submit validation failed ${JSON.stringify({
+            reason: validation.reason || null,
+            uncaptured: validation.uncaptured || [],
+            uncapturedProgramKeys: (validation.uncapturedProgramKeys || [])
+              .map((key) => String(key).slice(0, 60)),
+            uncapturedGeometryBufferIds: (validation.uncapturedGeometryBufferIds || [])
+              .map((id) => String(id).slice(0, 60)),
+            uncapturedTextureIds: (validation.uncapturedTextureIds || [])
+              .map((id) => String(id).slice(0, 60)),
+            uncapturedShadowResourceIds: (validation.uncapturedShadowResourceIds || [])
+              .map((id) => String(id).slice(0, 60)),
+            missingProgramKeys: (validation.missingProgramKeys || []).length,
+            missingProgramBindings: validation.missingProgramBindings || [],
+            missingGeometryBufferIds: (validation.missingGeometryBufferIds || [])
+              .map((id) => String(id).slice(0, 60)),
+            delta: validation.delta || null,
+            firstVisibleDelta: validation.firstVisibleGpuCounts
+              && validation.firstVisibleGpuCounts.delta || null,
+            firstVisibleNewPrograms: validation.firstVisibleGpuCounts
+              && validation.firstVisibleGpuCounts.lateAdmissions
+              && validation.firstVisibleGpuCounts.lateAdmissions.newProgramFamilyKeys || null,
+            lateAdmissions: validation.firstVisibleGpuCounts
+              && validation.firstVisibleGpuCounts.lateAdmissions
+              && validation.firstVisibleGpuCounts.lateAdmissions.lateAdmissions || null,
+          })}`,
+          validation,
+        );
         this.state.render.openingSubmissionLateInstancedPbr = describeOpeningInstancedPbrLeaves(
           this.scene,
           this.state.render.openingSubmissionPlan,

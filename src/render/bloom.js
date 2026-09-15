@@ -959,6 +959,23 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   function hideUnreadySceneDrawables(scene) {
     unreadySceneCount = 0;
+    // Roots whose pipeline compile is still queued have no currentProgram at all on non-KHR
+    // drivers, so the program-readiness scan below can never see them — drawing one would link
+    // its variants synchronously inside this presented frame. Hide the root (subtree included)
+    // until its admission resolves; restoreUnreadySceneDrawables re-shows it after the pass.
+    const pendingSubjects = renderer && renderer.userData
+      ? renderer.userData.spacefacePendingPipelineSubjects
+      : null;
+    if (pendingSubjects && pendingSubjects.size > 0) {
+      for (const subject of pendingSubjects) {
+        if (unreadySceneCount >= UNREADY_SCENE_CAP) break;
+        if (subject && subject.visible === true) {
+          unreadySceneScratch[unreadySceneCount] = subject;
+          unreadySceneCount += 1;
+          subject.visible = false;
+        }
+      }
+    }
     const props = renderer && renderer.properties;
     if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
       return;
@@ -1177,10 +1194,10 @@ export function createBloom(renderer, width, height, instrumentation = null) {
           // seenKeys is the set this render just linked. Keep those owners; skip already-warm ones.
           if (!key || !seenKeys.has(key)) continue;
           rows.push({
-            key: key.slice(0, 40),
-            object: String(object.name || object.type || 'unnamed'),
-            material: String(material.name || material.type || 'unnamed'),
-            root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed'),
+            object: String(object.name || object.type || 'unnamed').slice(0, 48),
+            material: String(material.name || material.type || 'unnamed').slice(0, 32),
+            root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed').slice(0, 48),
+            key: key.slice(0, 24),
             visible: object.visible === true,
           });
         }
@@ -1232,6 +1249,13 @@ export function createBloom(renderer, width, height, instrumentation = null) {
           && geometriesAfter > geometriesBefore;
         if (brick) {
           console.warn(`[GPU brick] bloomScene ${elapsedMs.toFixed(1)}ms ${JSON.stringify({
+            // Owners first: probe collectors truncate long warning payloads, so the fields that
+            // NAME the producer must precede the bulky key lists.
+            owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
+            newGeometries: grewGeometries
+              ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
+              : [],
+            unstampedVisible: describeUnstampedVisibleGeometries(scene),
             programsBefore,
             programsAfter: Array.isArray(info?.programs) ? info.programs.length : null,
             geometriesBefore,
@@ -1242,16 +1266,39 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
             // previous-brick set reported every program acquired since the last brick — dozens of
             // legitimately warm ones — which made the payload unusable for naming a producer.
-            newPrograms: exactNewProgramKeys(programsBefore).map((key) => key.slice(0, 120)),
-            owners: describeNewProgramOwners(scene, new Set(exactNewProgramKeys(programsBefore))),
-            newGeometries: grewGeometries
-              ? describeNewGeometryOwners(scene, seenBloomGeometryUuids)
-              : [],
-            unstampedVisible: describeUnstampedVisibleGeometries(scene),
+            newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 64)),
           })}`);
         }
         if (brick || grewGeometries) rememberBloomGeometries(scene);
       }
+    }
+  }
+
+  // One real scene pass into rtScene with no brick telemetry: the opening first-draw gate runs
+  // this while it is already holding the frame, so depth variants for late-armed casters (and any
+  // straggler color program or buffer upload) link here instead of inside the presented frame.
+  // Mirrors renderScenePass exactly — same samplers release, same unready-drawable hiding, same
+  // target — so the produced program keys are identical to the pass the frame is about to run.
+  function rehearseScenePass(scene, camera) {
+    const prevAutoClear = renderer.autoClear;
+    const prevTarget = renderer.getRenderTarget ? renderer.getRenderTarget() : null;
+    renderer.autoClear = false;
+    try {
+      releaseBloomSceneSamplers();
+      hideUnreadySceneDrawables(scene);
+      renderer.setRenderTarget(rtScene);
+      renderer.clear();
+      renderer.render(scene, camera);
+      rememberBloomGeometries(scene);
+      // The rehearsal's GL work sits in the driver's queue until something forces the flush —
+      // without a drain here the deferred cost lands inside the presented frame it exists to
+      // protect. gl.finish() moves that drain into the held gate.
+      const gl = renderer.getContext ? renderer.getContext() : null;
+      if (gl && typeof gl.finish === 'function') gl.finish();
+    } finally {
+      restoreUnreadySceneDrawables();
+      renderer.autoClear = prevAutoClear;
+      renderer.setRenderTarget(prevTarget || null);
     }
   }
 
@@ -1530,6 +1577,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     compileScenePipelines,
     warmScenePipelines,
     touchScenePipelines,
+    rehearseScenePass,
     prepareResources,
     openingProgramMaterials,
     contextLossResources,
