@@ -2141,10 +2141,32 @@ async function armHeliosWaypoint(page) {
         if (typed === 'Helios Station') break;
         assert(attempt < 2, `query field never held 'Helios Station' (got ${JSON.stringify(typed)})`);
       }
-      const item = page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first();
-      await step('search-item', () => item.waitFor({ state: 'visible', timeout: 10_000 }));
-      // Pointer select mirrors the results click handler — no reliance on Enter focus.
-      await step('select-item', () => item.click({ timeout: 10_000 }));
+      // Require the STATION-kind row, not just a name match: search rows whose text merely
+      // contains "Helios Station" include courseDisabled targets (frontier rumor rings,
+      // hidden-cache readouts, goal markers). Selecting one resolves to no course payload and
+      // _activateSelectedCourse drops the click silently — zero nav:autopilot events, which
+      // is exactly the cycle-12/22 failure signature. The detail line is "KIND · faction".
+      const row = page.locator('.gm-search-item', {
+        has: page.locator('.gm-search-item-name', { hasText: 'Helios Station' }),
+        has: page.locator('.gm-search-item-detail', { hasText: 'STATION' }),
+      }).first();
+      await step('search-item', () => row.waitFor({ state: 'visible', timeout: 10_000 }));
+      // Click the named row rather than pressing Enter. _searchSelectedIdx always resolves
+      // filtered[0], and results sort by live-state priority — a mission marker or gate
+      // matching "Helios" can sit above the station, so Enter arms the wrong target.
+      await step('select-item', () => row.click({ timeout: 10_000 }));
+      // Verify the selection actually resolved to the Helios station before clicking the
+      // button — _activateSelectedCourse no-ops silently on a null _selectedTarget, and a
+      // stray canvas click can clear the selection between row click and button click.
+      const selected = await page.evaluate(() => {
+        const def = window.SF?.ctx?.screenManager?.getActiveScreenDef?.();
+        const target = def && def._selectedTarget;
+        return target ? { name: target.name || target.label || '', kind: target.kind || null } : null;
+      }).catch(() => null);
+      assert(
+        selected != null && selected.kind === 'station' && /Helios/i.test(String(selected.name)),
+        `search row selected ${JSON.stringify(selected)} instead of Helios Station`,
+      );
       const button = page.getByRole('button', { name: 'Set Waypoint', exact: true });
       await step('waypoint-button', () => button.waitFor({ state: 'visible', timeout: 10_000 }));
       await clickWaypointWithPointer(page, button);
@@ -2169,8 +2191,8 @@ async function armHeliosWaypoint(page) {
   throw lastError || new Error('Set Waypoint arm failed');
 }
 
-async function clickWaypointWithPointer(page, locator) {
-  const deadline = Date.now() + 10_000;
+async function clickWaypointWithPointer(page, locator, timeoutMs = 10_000) {
+  const deadline = Date.now() + timeoutMs;
   let lastBox = null;
   let attempt = 0;
   let nullBoxes = 0;
@@ -2249,6 +2271,14 @@ async function clickWaypointWithPointer(page, locator) {
           && /Helios Station/i.test(String(nav?.waypoint?.label || ''));
       }, [armsBefore, alreadyArmed], { timeout: 750 }).then(() => true, () => false);
       if (armed) return;
+      // A click that landed on the chart canvas instead of the button clears the map's
+      // _selectedTarget — every later click is then an inert no-op. Bail so the caller
+      // can re-run the search selection instead of burning the rest of the budget.
+      const selectionLost = await page.evaluate(() => {
+        const def = window.SF?.ctx?.screenManager?.getActiveScreenDef?.();
+        return def != null && def._selectedTarget == null;
+      }).catch(() => false);
+      if (selectionLost) throw new Error('Set Waypoint click cleared the map selection (canvas hit)');
     }
     await page.waitForTimeout(50);
   }
