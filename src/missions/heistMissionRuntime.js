@@ -60,6 +60,7 @@ import {
   applyTransition,
 } from './heistArbiter.js';
 import { PQ019_CAPSULE, PQ019_HEIST_SECTOR_ID } from '../data/heistFacilities.js';
+import { receiverCommitGate } from '../physicalCargo/breakaway/settlementGate.js';
 import {
   PQ019C_HEIST_TUNING,
   PQ019C_TERMINAL_SETTLEMENT,
@@ -88,6 +89,7 @@ const HEIST_TERMINAL_CUE_MOMENTS = new Set([
   'abandoned',
   'denied',
   'recovery',
+  'receiver_refused',
 ]);
 
 const RECOVERABLE = new Set(PQ019C_RECOVERABLE_OUTCOMES);
@@ -193,6 +195,7 @@ export const HEIST_CUE_TEXT = Object.freeze({
   abandoned: 'Capsule run abandoned',
   denied: 'Launcher refused the schedule — no capsule run is available',
   recovery: 'The Quiet will fund one more pass at a reduced rate — check the Tethys board',
+  receiver_refused: 'Receiver could not take the capsule — no delivery, so nothing is paid',
 });
 
 /**
@@ -649,34 +652,61 @@ export const heistMissionRuntime = {
     const keys = receipt.effectKeys;
     const tick = intTick(ctx?.state?.tick);
     const outcome = receipt.outcome;
+    const decidedPlan = PQ019C_TERMINAL_SETTLEMENT[outcome]
+      || PQ019C_TERMINAL_SETTLEMENT.unresolved_absent;
+    // A paying outcome is a DELIVERY: something physical must actually change hands.
+    const delivery = decidedPlan.settlement === 'complete';
 
     // 1. The physical receiver. PREPARE reserves and proves; COMMIT consumes. A prepare that cannot
     //    be earned (no custody contact for this capsule and schedule) fails closed and the capsule
     //    is left exactly where it is.
+    //
+    //    BREAKAWAY BW-01: a refusal is no longer ignored. The old path went on to release the
+    //    launcher and `settle('complete')` regardless, so a capsule destroyed the tick after it
+    //    touched the fence was paid for (test/pq019c-heist-receiver-refusal.test.mjs). The reply is
+    //    now run through the fail-closed gate: only a matching fresh commit, or the owner's own
+    //    matching committed record on an idempotent replay, lets a delivery settle.
+    let receiverRefusal = null;
     if (!effectApplied(arbiter, keys.receiverCommit)) {
       const facilityId = outcome === 'fenced_success' ? 'fence_receiver'
         : (outcome === 'lawful_confiscation' || outcome === 'lawful_arrival_observed'
           ? 'lawful_catcher' : null);
       const facilities = facilityId ? ownerOf(ctx, 'heistFacilities') : null;
       if (facilities && typeof facilities.prepareReceiverHandoff === 'function') {
-        const prepared = facilities.prepareReceiverHandoff({
+        const expected = {
           receiptId: receipt.receiptId,
           facilityId,
           payloadStableId: PQ019_CAPSULE.stableId,
-        });
-        if (prepared && prepared.prepared) {
-          const committed = facilities.commitReceiverHandoff(receipt.receiptId);
-          if (committed && committed.committed) {
-            recordEffect(arbiter, keys.receiverCommit, {
-              effectId: committed.receipt?.effectId || null, tick,
-            });
-            recordEffect(arbiter, keys.capsuleProjection, { tick, note: 'consumed' });
-          } else {
+        };
+        const prepared = facilities.prepareReceiverHandoff(expected);
+        const reply = prepared && prepared.prepared
+          ? facilities.commitReceiverHandoff(receipt.receiptId)
+          : prepared;
+        const ownerCommittedRecord = prepared?.reason === 'already_committed' ? prepared.handoff : null;
+        const gate = receiverCommitGate(expected, reply, ownerCommittedRecord);
+        if (gate.maySettle) {
+          recordEffect(arbiter, keys.receiverCommit, {
+            effectId: reply?.receipt?.effectId || `pq019b:receiverCommit:${receipt.receiptId}`, tick,
+          });
+          recordEffect(arbiter, keys.capsuleProjection, { tick, note: 'consumed' });
+        } else {
+          if (prepared && prepared.prepared) {
             facilities.abortReceiverHandoff(receipt.receiptId, 'commit_failed');
           }
+          receiverRefusal = String(reply?.reason || 'receiver_refused');
         }
+      } else if (delivery) {
+        receiverRefusal = 'no_receiver_owner';
       }
     }
+
+    // THE DOCUMENTED RELOAD RULE is the one exception. The Capsule Run's capsule and this owner's
+    // facility memory are not in the save capture plan, so a delivery DECIDED before a save cannot
+    // find its capsule after the load; `restore` resumes that receipt as decided (save point 6).
+    // That cut point is only reachable across a reload — in a live session the decision and the
+    // handoff happen inside one call. A durable physical load retires this exception.
+    const refusedDelivery = delivery && receiverRefusal !== null
+      && record.reconciled !== 'resumed_receipt';
 
     // 2. Law and heat already happened during the run, through their own owners. Journalling them
     //    against the terminal receipt is what makes them COUNTABLE — the effect keys only exist
@@ -704,8 +734,14 @@ export const heistMissionRuntime = {
 
     // 4. Mission settlement — exactly once, recorded BEFORE the call so a synchronous listener that
     //    re-enters this path finds the key already taken and cannot settle a second time.
-    const plan = PQ019C_TERMINAL_SETTLEMENT[outcome]
-      || PQ019C_TERMINAL_SETTLEMENT.unresolved_absent;
+    //
+    //    A refused delivery settles as a bounded FAILURE carrying the receiver's reason: no reward
+    //    key, no success cue, and no soft-lock waiting on a handoff that can no longer be earned.
+    //    The terminal receipt itself stays immutable — the arbiter decided the earliest physical
+    //    fact correctly; it is the physical world that could not honour it.
+    const plan = refusedDelivery
+      ? { settlement: 'fail', reason: 'receiver_refused' }
+      : decidedPlan;
     let settlement = null;
     if (!effectApplied(arbiter, keys.missionSettlement)) {
       recordEffect(arbiter, keys.missionSettlement, { effectId: receipt.receiptId, tick });
@@ -719,8 +755,10 @@ export const heistMissionRuntime = {
       }
       record.settled = true;
       record.settledOutcome = outcome;
+      if (refusedDelivery) record.receiverRefusal = receiverRefusal;
       commitTerminal(arbiter, receipt.receiptId);
-      this.sayOutcomeCue(ctx, record, outcome);
+      if (refusedDelivery) sayHeistCue(ctx, record, 'receiver_refused');
+      else this.sayOutcomeCue(ctx, record, outcome);
       settlement = typeof settle === 'function' ? settle(plan.settlement, plan.reason, outcome) : null;
     }
     return settlement;
