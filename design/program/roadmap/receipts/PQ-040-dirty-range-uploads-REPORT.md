@@ -179,19 +179,21 @@ browserCapturedRuns:
     demotedBy:
       - worktree changed during performance capture
       - settings changed inside both capture windows
-electronManifestInvocations: 3
-electronAcceptanceRuntimeLaunches: 1
+electronManifestInvocations: 5
+electronAcceptanceRuntimeLaunches: 3
 electronCapturedRuns:
-  - run: performance-dirty-ranges-electron-2026-09-15T13-30-37-540Z-12920-690fb1d8
-    phase: flight-input causal check
-    result: powered displacement rate did not exceed the released baseline
+  - run: >-
+      3 launches (13:30, 13:39, 13:46) all failed identically at route phase
+      flight-input: powered displacement rate did not exceed the released baseline
+      (baseline ~70-95 u/s undock drift vs powered ~18-28 u/s ramp; speed and
+      acceleration legs passed, ship reached ~200 u/s)
     note: >-
-      route-level input proof, unrelated to dirty-range uploads; the powered window
-      accelerated 0->199.9 u/s (speedChange and acceleration legs passed) but its
-      displacement rate was low because the sample window captured the from-rest
-      ramp while the released baseline still held undock drift. The browser run
-      passed the same check on the same tree ~40 min earlier; consistent with
-      contended-host timing skew rather than a flight regression.
+      route-level input proof, unrelated to dirty-range uploads — the run dies
+      before either attribution variant executes. Deterministic on electron,
+      passed by the same tree under browser minutes earlier: consistent with
+      electron first-flight pacing skewing the wall-clock-bounded input windows,
+      or a genuine electron input-latency characteristic worth its own packet.
+      Not caused by the dirty-range implementation.
     earlierAttempt: broker-claim-stale-digest (foreign worktree write raced claim->probe)
 numericAcceptance: captured-but-demoted
 pairedRuntimeSourceBinding: not_established
