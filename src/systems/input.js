@@ -230,7 +230,7 @@ function stepTravelLatch(host, state, inp, dt) {
 const VERB_BINDINGS = {
   siteBeam:       ['KeyB'],   // level: contextual beam for an explicitly selected World Site proxy
   tether:         ['Space', 'KeyF'], // PQ-003: Space primary, F retained as a permanent alias
-  chargeDetonate: ['KeyR'],   // edge: detonate all armed impulse charges
+  chargeDetonate: ['KeyR'],   // edge: detonate owned armed drift bombs and impulse charges
   scanPulse:      ['KeyC'],   // edge: scanner pulse (8 s cd owned by scanner system)
   cruise:         ['KeyV'],   // edge: toggle cruise charge (cruise system owns state)
   autopursuit:    [],         // retired; retained as an inert save/input compatibility field.
@@ -264,7 +264,7 @@ const VERB_BINDINGS = {
   // lifecycle/fuze/payload; both are ordinary rebindable edge verbs.
   dropBomb:  ['Digit9'], // edge: release the selected drift bomb at current ship velocity
   cycleBomb: ['Comma'],  // edge: cycle the bomb bay's selected payload
-  // Travel Burn latch (atlas D5, W1-5). Num Lock is the authored default: it is a genuine latch
+  // Travel Burn latch (atlas D5 / W1-5). Num Lock is the authored default: it is a genuine latch
   // key on a full keyboard, it is never used for anything else in this game, and it carries a
   // physical indicator light that matches "the drive is engaged". Many laptops have no Num Lock
   // key at all (or bury it behind Fn), so a second code ships in the SAME array — the existing
@@ -394,7 +394,7 @@ export const MOUSE_ACTION_LABELS = Object.freeze({ fire: 'LMB', mine: 'RMB' });
 export const TAUGHT_FLIGHT_ACTIONS = Object.freeze([
   'forward', 'reverse', 'brake', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight',
   'boost', 'fire', 'autoFire', 'countermeasure', 'tether', 'deployMassSeed',
-  'siteBeam', 'scanPulse', 'cruise',
+  'siteBeam', 'scanPulse', 'cruise', 'dropBomb', 'cycleBomb', 'chargeDetonate',
 ]);
 
 /**
@@ -1258,7 +1258,9 @@ export const input = {
     acts.tetherCut = masslineCommand.cut;
     inp.tetherMode = masslineCommand.latch && nearestTetherMode ? 'nearest' : null;
     acts.chargeThrow = edge('chargeThrow');
-    acts.chargeDetonate = edge('chargeDetonate');
+    acts.chargeDetonate = edge('chargeDetonate') || !!(gp && gp.isConnected()
+      && this._gamepadLifecycleActionAllowed('chargeDetonate')
+      && gp.actions.chargeDetonate && gp.actions.chargeDetonate.pressed);
     acts.scanPulse = edge('scanPulse');
     acts.cruise = edge('cruise');
     acts.autopursuit = false;

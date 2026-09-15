@@ -15,6 +15,7 @@ import {
   BAND_ORDNANCE,
   BAND_FIELDWORK,
   BAND_RIG,
+  BAND_BAY,
   CLAIM_SINGLE,
   CLAIM_PARTIAL,
   CLAIM_FULL,
@@ -37,10 +38,10 @@ function baseSlots(overrides = {}) {
   }));
 }
 
-test('the rank is three bands of three', () => {
+test('the rank keeps nine keys and gives drifting bombs their own bay band', () => {
   assert.equal(RAIL_SLOTS.length, 9);
-  for (const band of [BAND_ORDNANCE, BAND_FIELDWORK, BAND_RIG]) {
-    assert.equal(RAIL_SLOTS.filter((s) => s.band === band).length, 3, `${band} holds three slots`);
+  for (const [band, count] of [[BAND_ORDNANCE, 3], [BAND_FIELDWORK, 3], [BAND_RIG, 2], [BAND_BAY, 1]]) {
+    assert.equal(RAIL_SLOTS.filter((s) => s.band === band).length, count);
   }
   assert.deepEqual(RAIL_SLOTS.map((s) => s.index), [1, 2, 3, 4, 5, 6, 7, 8, 9]);
 });
@@ -49,7 +50,7 @@ test('FIELDWORK and RIG name the physics verbs that are actually bound today', (
   const fieldwork = RAIL_SLOTS.filter((s) => s.band === BAND_FIELDWORK).map((s) => s.action);
   assert.deepEqual(fieldwork, ['deployMassSeed', 'deployWell', 'deployRepulsor']);
   const rig = RAIL_SLOTS.filter((s) => s.band === BAND_RIG).map((s) => s.action);
-  assert.deepEqual(rig, ['toggleClearingCone', 'toggleSkimCollector', null]);
+  assert.deepEqual(rig, ['toggleClearingCone', 'toggleSkimCollector']);
 });
 
 test('codeToLabel renders the key a player recognises, not the DOM code', () => {
