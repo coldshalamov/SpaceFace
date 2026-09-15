@@ -1235,6 +1235,17 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
         window.__PQ033_SECTOR_EVENTS__.push({ sectorId: p?.sectorId, continuous: p?.continuous, noTeleport: p?.noTeleport, via: p?.via, t: Date.now() });
       }
     });
+    // Cargo-mutation tap: verify60 saw the hold grow (alloys 12->16, xenium 3->4) with zero credit
+    // change inside the post-load window, and verify58 amassed 311u of a rare gem over three
+    // loads. The synchronous emit inside addCargo/removeCargo puts the writer on this stack.
+    window.__PQ033_CARGO_CHANGES__ = [];
+    window.SF?.bus?.on?.('cargo:changed', (p) => {
+      if (window.__PQ033_CARGO_CHANGES__.length >= 48) return;
+      const s = window.SF?.state;
+      const stack = String(new Error().stack || '').split('\n').slice(2, 9)
+        .map((l) => l.trim().replace(/^at\s+/, '').replace(/https?:\/\/[^/]+\//, '')).join(' < ');
+      window.__PQ033_CARGO_CHANGES__.push({ t: Date.now(), tick: s?.tick ?? null, mode: s?.mode, items: { ...(p?.cargo?.items || {}) }, stack });
+    });
     // Position-discontinuity tap: verify59 saw the player move 1.25M wu in <2.4s post-load
     // (speed 8.9 afterwards). One rAF sample per frame; a >2000 wu single-frame step records
     // the surrounding ring so the next occurrence says teleport (pos write, vel calm) vs
@@ -1310,6 +1321,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
   const saveCompletedPose = await readPlayerSnapshot(page);
   const savedStorage = await page.evaluate(() => ({ bytes: localStorage.getItem('sf.save.quick')?.length || 0, slot: window.SF?.state?.save?.currentSlot || null }));
   assert(savedStorage.bytes > 100, 'quick-save payload was not persisted');
+  const saveWrittenAt = new Date().toISOString();
   await markWithState('save-written', { ...savedStorage, saved, saveCompletedPose, completionAdvanceDistance: distance(saved.pos, saveCompletedPose.pos) });
 
   await page.keyboard.down('KeyW');
@@ -1363,7 +1375,12 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
   // gameplay keeps running after restore and can legitimately grant cargo before it.
   assert.deepEqual(loadedAtEvent.economy, restoreReference.economy, `credits and cargo must round-trip exactly through save/load (slot ${loadedSlot || 'unknown'})`);
   const postEventDrift = { credits: loadedEconomy.credits - loadedAtEvent.economy.credits, cargoDelta: Object.keys(loadedEconomy.cargoItems).filter((k) => loadedEconomy.cargoItems[k] !== loadedAtEvent.economy.cargoItems[k]).map((k) => `${k}:${loadedAtEvent.economy.cargoItems[k] || 0}->${loadedEconomy.cargoItems[k]}`) };
-  if (postEventDrift.credits !== 0 || postEventDrift.cargoDelta.length) mark('post-load-economy-drift', postEventDrift);
+  if (postEventDrift.credits !== 0 || postEventDrift.cargoDelta.length) {
+    // Writers since the save was written (the tap keeps the last 48 cargo mutations with stacks).
+    const cargoWriters = await page.evaluate((sinceT) => (window.__PQ033_CARGO_CHANGES__ || [])
+      .filter((c) => c.t >= sinceT).slice(-6).map((c) => ({ tick: c.tick, mode: c.mode, stack: c.stack })), Date.parse(saveWrittenAt));
+    mark('post-load-economy-drift', { ...postEventDrift, cargoWriters });
+  }
   mark('economy-restored', { credits: loadedEconomy.credits, cargoKinds: Object.keys(loadedEconomy.cargoItems).length });
   await page.waitForFunction(() => {
     const state = window.SF?.state;
@@ -1420,6 +1437,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
       prompt: visible === true && dc?.stationId === 'station_helios',
       inCorridor: dc?.inCorridor === true,
       inCapture: dc?.inCapture === true,
+      distToBerth: Number.isFinite(dc?.distToBerth) ? dc.distToBerth : null,
       autopilotActive: window.SF?.state?.nav?.autopilot?.active === true,
     };
   }).catch(() => null);
@@ -1431,6 +1449,8 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
   // missing after the retries is a real wedge and fails with diagnostics.
   let dockPromptVisible = false;
   let sawCorridor = false;
+  let closestBerth = Infinity;
+  let recedingPolls = 0;
   let rearms = 0;
   const dockDeadline = Date.now() + 105_000;
   while (Date.now() < dockDeadline && !dockPromptVisible) {
@@ -1438,13 +1458,22 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     if (s?.prompt === true) { dockPromptVisible = true; break; }
     const corridorNow = s != null && (s.inCorridor === true || s.inCapture === true);
     if (corridorNow) sawCorridor = true;
-    const overshot = sawCorridor && s != null && corridorNow === false;
+    // The corridor flag flickers while an 'avoiding' autopilot weaves through approach
+    // (verify60 re-armed 0.46s after arming at 58 wu from the berth). A flythrough is a ship
+    // that left the corridor AND is receding from its closest approach, on consecutive polls.
+    const dist = Number.isFinite(s?.distToBerth) ? s.distToBerth : null;
+    if (dist != null && dist < closestBerth) closestBerth = dist;
+    const receding = sawCorridor && corridorNow === false && dist != null && dist > closestBerth + 25;
+    recedingPolls = receding ? recedingPolls + 1 : 0;
+    const overshot = recedingPolls >= 2;
     const dropped = s != null && s.autopilotActive === false;
     if ((overshot || dropped) && rearms < 3 && s != null) {
       rearms += 1;
       mark(overshot ? 'redock-overshoot-rearm' : 'redock-rearm', await readDockDiag());
       await armHeliosWaypoint(page);
       sawCorridor = false;
+      closestBerth = Infinity;
+      recedingPolls = 0;
     }
     await page.waitForTimeout(300);
   }
