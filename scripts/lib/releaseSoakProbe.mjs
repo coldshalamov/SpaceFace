@@ -421,6 +421,7 @@ export async function runReleaseSoakProbe({
             navAutopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status } : null,
             dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
             sectorEvents: window.__PQ033_SECTOR_EVENTS__ || [],
+            posJumps: window.__PQ033_POS_JUMPS__ || [],
           };
         }).catch(() => null);
         cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)} | cycle-marks: ${JSON.stringify(cycleMarks)}`;
@@ -1234,6 +1235,32 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
         window.__PQ033_SECTOR_EVENTS__.push({ sectorId: p?.sectorId, continuous: p?.continuous, noTeleport: p?.noTeleport, via: p?.via, t: Date.now() });
       }
     });
+    // Position-discontinuity tap: verify59 saw the player move 1.25M wu in <2.4s post-load
+    // (speed 8.9 afterwards). One rAF sample per frame; a >2000 wu single-frame step records
+    // the surrounding ring so the next occurrence says teleport (pos write, vel calm) vs
+    // physics fling (vel spike first).
+    window.__PQ033_POS_JUMPS__ = [];
+    const ring = [];
+    const sample = () => {
+      const s = window.SF?.state;
+      const p = s?.entities?.get?.(s?.playerId);
+      if (p?.pos) {
+        const cur = {
+          t: Date.now(), tick: s.tick ?? null, simTime: s.simTime ?? null, mode: s.mode,
+          x: Number(p.pos.x.toFixed(1)), z: Number(p.pos.z.toFixed(1)),
+          vx: Number((p.vel?.x ?? 0).toFixed(1)), vz: Number((p.vel?.z ?? 0).toFixed(1)),
+          docked: s.ui?.docked === true, jump: s.jump?.state || null, sector: s.world?.currentSectorId || null,
+        };
+        const prev = ring[ring.length - 1];
+        if (prev && Math.hypot(cur.x - prev.x, cur.z - prev.z) > 2000 && window.__PQ033_POS_JUMPS__.length < 4) {
+          window.__PQ033_POS_JUMPS__.push({ before: ring.slice(-8), after: cur });
+        }
+        ring.push(cur);
+        if (ring.length > 16) ring.shift();
+      }
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
   }).catch(() => {});
   const transition = async (name, opts) => setSoakTransition(page, name, opts);
 
