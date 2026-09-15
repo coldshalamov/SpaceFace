@@ -279,6 +279,12 @@ export function collectPerformancePipelineReadiness({
     meshBuildQueueRemaining: queueRemaining,
     meshReconcileDirty: renderSystem?._meshReconcileDirty === true,
     pipelineCompilePending: finiteOrNull(renderState.pipelineAdmissions?.pending),
+    sectorPrewarmSettlePending: renderState.sectorPrewarmSettlePending === true
+      || (typeof renderState.sectorPrewarmSettlePending === 'function'
+        && renderState.sectorPrewarmSettlePending() === true),
+    archetypeWarmPending: renderState.archetypeWarmPending === true
+      || (typeof renderState.archetypeWarmPending === 'function'
+        && renderState.archetypeWarmPending() === true),
     programCount: finiteOrNull(diagnostics?.memory?.programs),
     geometryCount: finiteOrNull(diagnostics?.memory?.geometries),
     textureCount: finiteOrNull(diagnostics?.memory?.textures),
@@ -339,6 +345,8 @@ export function performancePipelineFingerprint(readiness = {}) {
     meshBuildQueueRemaining: finiteOrNull(readiness?.meshBuildQueueRemaining),
     meshReconcileDirty: readiness?.meshReconcileDirty === true,
     pipelineCompilePending: finiteOrNull(readiness?.pipelineCompilePending),
+    sectorPrewarmSettlePending: readiness?.sectorPrewarmSettlePending === true,
+    archetypeWarmPending: readiness?.archetypeWarmPending === true,
     authoredPendingCount: finiteOrNull(readiness?.authoredPendingCount),
     authoredPendingAdmissionRiskCount: finiteOrNull(readiness?.authoredPendingAdmissionRiskCount),
     residentAssets: finiteOrNull(residency?.residentAssets),
@@ -355,7 +363,9 @@ export function isPerformancePipelineSettled(readiness = {}) {
     && fingerprint.meshBuildQueueRemaining === 0
     && fingerprint.meshReconcileDirty === false
     && fingerprint.authoredPendingAdmissionRiskCount === 0
-    && (fingerprint.pipelineCompilePending == null || fingerprint.pipelineCompilePending === 0);
+    && (fingerprint.pipelineCompilePending == null || fingerprint.pipelineCompilePending === 0)
+    && fingerprint.sectorPrewarmSettlePending !== true
+    && fingerprint.archetypeWarmPending !== true;
 }
 
 function pendingAdmissionRiskEntities(state, measurementHorizonMs) {
