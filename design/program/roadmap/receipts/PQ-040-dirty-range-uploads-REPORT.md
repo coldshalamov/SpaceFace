@@ -9,7 +9,7 @@ implementationCommit: this_receipt_commit
 routeClaim: integrated_structural_green
 acceptanceClaim: historical_focused_buffer_lifecycle_green_native_unproven
 disposition: PARTIAL
-nativeAttemptDisposition: BLOCKED
+nativeAttemptDisposition: CAPTURED_DEMOTED_BY_ENVIRONMENT
 qualityInvariant: preserved
 ```
 
@@ -140,6 +140,69 @@ No unchanged retry, Electron invocation, focused rerun, broad baseline/playable
 run, new probe, comparator, or evidence framework was opened after the stop.
 The numeric gain, GC behavior, presentation parity, and keep/remove ruling remain
 unproven; no abstraction removal is authorized by this acceptance-only write set.
+
+## Native acceptance attempt — 2026-09-15
+
+The fast gate that blocked the 2026-09-14 attempt was repaired and verified green;
+the Browser probe then **launched and captured both variants twice** with real
+comparator output. **Numeric primary acceptance remains UNPROVEN** — both captures
+were demoted by shared-worktree churn and environment signals, not by the
+dirty-range implementation. Parent PQ-040 is still not accepted.
+
+```yaml
+unit: PQ-040.native-acceptance
+candidateBranch: master
+gateRepairCommits:
+  - b5f7e9b4b   # three stale fast-gate fixtures (7-attr sprite contract, fs mock, preload surface)
+  - ba8878e21   # phase/axis write-path coverage in vfx-instanced-sprite-pool
+defectFoundByAcceptance:
+  commit: f94a8a849   # partsLibrary whole-ship LOD demotion TypeError (custom plan + canonical scope)
+  regressionPin: a14e9ef2f
+fastGateResult: 51 pass / 0 fail (all three manifest gates)
+browserManifestInvocations: 6
+browserAcceptanceRuntimeLaunches: 2
+browserCapturedRuns:
+  - run: performance-dirty-ranges-browser-2026-09-15T12-34-44-837Z-26184-1cf6f18b
+    comparatorPass: true
+    ownerRequestedByteReductionFraction: 0.9584   # 2.56 MB ranged vs 58.1 MB full-span
+    driverUploadByteReductionFraction: 0.4657     # 71.5 MB ranged vs 126.7 MB full-span
+    frameP95DeltaMs: -0.1                          # 33.4 vs 33.5
+    demotedBy:
+      - worktree changed during performance capture   # concurrent foreign writes mid-capture
+      - 6,937 page warnings (6,936 = the partsLibrary demotion TypeError fixed in f94a8a849)
+  - run: performance-dirty-ranges-browser-2026-09-15T13-16-17-666Z-26416-173ee699
+    comparatorPass: false   # quality/settings changed inside both capture windows
+    ownerRequestedByteReductionFraction: 0.9119
+    driverUploadByteReductionFraction: 0.3804
+    frameP95DeltaMs: 0.1                           # 50.0 vs 49.9
+    warnings: 3   # opening-submission diagnostics + bloomScene GPU brick (foreign in-flight render work)
+    demotedBy:
+      - worktree changed during performance capture
+      - settings changed inside both capture windows
+electronManifestInvocations: 2
+electronAcceptanceRuntimeLaunches: 0
+electronResult: broker-claim-stale-digest   # foreign worktree write raced the claim->probe window
+numericAcceptance: captured-but-demoted
+pairedRuntimeSourceBinding: not_established
+```
+
+The exact blocker is the shared-worktree environment, not the mechanism: both
+captured runs agree on direction and scale — owner-requested upload bytes drop
+91–96% and driver upload bytes drop 38–47% versus the causal full-span control at
+unchanged frame p95 — but the acceptance contract requires a clean, stable
+candidate for the whole capture plus a zero-warning page, and concurrent foreign
+render work (renderer admission-path churn, opening-submission diagnostics) kept
+tripping worktree-stability, settings-stability, and page-warning gates. The
+Electron claim minted but the probe rejected it on `broker-claim-stale-digest`
+when a foreign write landed inside the claim→probe handshake; both manifests are
+now `regression-required-after-acceptance-failure` until the regression set
+changes again.
+
+Evidence retained under `.devshots/perf/dirty-ranges/browser/`:
+`performance-attribution.json`, `dirty-range-comparison.json`,
+`performance-closure.json`, `run.log`, and the six route screenshots per run.
+Next attempt needs the same two manifests on a quiet, non-churning tree; the
+recorded comparator deltas are the expected outcome to confirm, not a pass.
 
 ## Implemented architecture
 
