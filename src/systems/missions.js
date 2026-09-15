@@ -88,8 +88,16 @@ import {
   PQ019C_HEIST_STATION_ID,
   PQ019C_HEIST_SECTOR_ID,
   buildHeistOffer,
+  BREAKAWAY_RECOVERY_TYPE,
+  buildBreakawayOffer,
+  heistMissionPolicy,
 } from '../data/heistMission.js';
-import { PQ019_FACILITIES, projectPq019FacilitySocket } from '../data/heistFacilities.js';
+import {
+  PQ019_FACILITIES,
+  projectBreakawayForkMouth,
+  projectPq019FacilitySocket,
+} from '../data/heistFacilities.js';
+import { deliveryQuote } from '../physicalCargo/breakaway/payloadMath.js';
 import { setPieceFacilityWorldPos } from './heistFacilities.js';
 import {
   heistMissionRuntime,
@@ -837,6 +845,10 @@ export const missions = {
     }));
     bus.on('heist:facilityCandidate', (p) => this._heistEach(
       (h) => heistMissionRuntime.onFacilityCandidate(this._heistCtx(), h, p || {})));
+    // BREAKAWAY: the capture fork's mechanical truth (engaged / slipped out / refused and why) is
+    // spoken to the player; it is never a candidate and never settles anything.
+    bus.on('heist:captureFork', (p) => this._heistEach(
+      (h) => heistMissionRuntime.onCaptureFork(this._heistCtx(), h, p || {})));
     bus.on('tether:latched', (p) => this._heistEach((h, m) => {
       if (heistMissionRuntime.onTetherLatched(this._heistCtx(), h, p || {})) {
         this._refreshTrackedMissionNav(m);
@@ -1118,9 +1130,11 @@ export const missions = {
       const storyChanged = this._syncEmbodiedStoryOffer(info, board, epoch);
       const setPieceChanged = this._syncSetPieceOpeningOffers(info, board, epoch);
       const heistChanged = this._syncHeistOffer(info, board, epoch);
+      const breakawayChanged = this._syncBreakawayOffer(info, board, epoch);
       const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
-      if (storyChanged || setPieceChanged || heistChanged || authoredChanged || capitalChanged) {
+      if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
+        || authoredChanged || capitalChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -1160,6 +1174,10 @@ export const missions = {
     const retainedHeistOffers = previousSlots.filter((offer) => (
       offer && offer.type === PQ019C_HEIST_TYPE
     )).slice(0, 1);
+    // BREAKAWAY: the standing Third Shift row is authored progress for the same reason.
+    const retainedBreakawayOffers = previousSlots.filter((offer) => (
+      offer && offer.type === BREAKAWAY_RECOVERY_TYPE
+    )).slice(0, 1);
     const retainedAuthoredSetPieces = previousSlots.filter((offer) => (
       offer && offer.source === AUTHORED_SET_PIECE_SOURCE
     ));
@@ -1181,6 +1199,7 @@ export const missions = {
         // on a fresh board and on a same-epoch cached board after story advancement. Any retained
         // row placed before the generated block pushes the intro off the head.
         ...retainedHeistOffers,
+        ...retainedBreakawayOffers,
         ...retainedAuthoredSetPieces,
         ...retainedCapitalBoss,
       ],
@@ -1189,6 +1208,7 @@ export const missions = {
     this._syncEmbodiedStoryOffer(info, board, epoch);
     this._syncSetPieceOpeningOffers(info, board, epoch);
     this._syncHeistOffer(info, board, epoch);
+    this._syncBreakawayOffer(info, board, epoch);
     this._syncAuthoredSetPieceOffers(info, board, epoch);
     this._syncCapitalBossOffer(info, board, epoch);
     this.bus.emit('mission:updated', { missionId: null });
@@ -1325,6 +1345,24 @@ export const missions = {
   },
 
   /**
+   * BREAKAWAY — keep exactly one Third Shift row on the Tethys board, beside the capsule run.
+   *
+   * The same structural rules as `_syncHeistOffer`: never while ANY launcher run is active (the
+   * launcher holds one schedule), never a duplicate, and appended so it cannot displace an authored
+   * story row at the head of the board. Its own type keeps every capsule-run board contract intact.
+   */
+  _syncBreakawayOffer(info, board, epoch = this._epoch()) {
+    if (!info || info.id !== PQ019C_HEIST_STATION_ID) return false;
+    if (!board || !Array.isArray(board.slots)) return false;
+    if ((this.state.missions.active || []).some((m) => m && m.status === 'active' && m.heist)) {
+      return false;
+    }
+    if (board.slots.some((offer) => offer && offer.type === BREAKAWAY_RECOVERY_TYPE)) return false;
+    board.slots.push(buildBreakawayOffer({ epoch }));
+    return true;
+  },
+
+  /**
    * Post the ONE authored reduced-stake retry, when policy allows it. Default policy is OFF
    * (`PQ019C_HEIST_TUNING.recoveryEnabled`), so this normally does nothing at all.
    *
@@ -1389,8 +1427,20 @@ export const missions = {
       // (the same ordering `_failMission` already honours for set-piece recovery), and while the
       // mission is still active `_syncHeistOffer` will not re-post the standing contract over it.
       this._boardHeistRecovery(m, outcome);
-      if (settlement === 'complete') this._completeMission(m, index);
-      else this._failMission(m, index, reason || 'heist_failed');
+      if (settlement === 'complete') {
+        // BREAKAWAY: the bounded careful-handling bonus is folded into THIS mission's own reward
+        // before the one ordinary completion pays it — never a second grant, never a new currency.
+        // The condition is the physical owner's measurement at the instant custody passed.
+        const bonusFraction = heistMissionPolicy(m.heist && m.heist.variantId).qualityBonusFraction;
+        const condition = Number(m.heist && m.heist.deliveredCondition);
+        if (bonusFraction > 0 && Number.isFinite(condition)) {
+          const base = Math.max(0, Math.round(Number(m.reward_cr) || 0));
+          m.reward_cr = deliveryQuote(base, Math.max(0, Math.min(1, condition)), bonusFraction).totalCredits;
+        }
+        this._completeMission(m, index);
+      } else {
+        this._failMission(m, index, reason || 'heist_failed');
+      }
       return outcome;
     });
   },
@@ -2334,6 +2384,13 @@ export const missions = {
   },
 
   _acceptPreflight(offer) {
+    // The Tethys launcher holds exactly one schedule. A second launcher contract accepted while one
+    // is live would be denied at schedule time and fail as `unresolved_absent` — refuse it up front,
+    // in words, instead.
+    if (offer && (offer.type === PQ019C_HEIST_TYPE || offer.type === BREAKAWAY_RECOVERY_TYPE)
+      && (this.state.missions.active || []).some((m) => m && m.status === 'active' && m.heist)) {
+      return { ok: false, reason: `${PQ019_FACILITIES.heist_launcher.name} is committed to another run` };
+    }
     if (offer && offer.factionId) {
       const minRep = missionOfferMinRep(offer, this.state);
       const rep = this._repOf(offer.factionId);
@@ -2449,7 +2506,7 @@ export const missions = {
       // wholesale via `{ ...rest }` — durable with NO save-schema change and no new top-level key.
       // Conditional spread on the same precedent as `clauses` above: every non-heist instance gains
       // no key at all, which is what keeps the golden `--reload-at 600` comparison byte-identical.
-      ...(offer.type === PQ019C_HEIST_TYPE
+      ...(offer.type === PQ019C_HEIST_TYPE || offer.type === BREAKAWAY_RECOVERY_TYPE
         ? {
           heist: createHeistRecord({
             missionId: id,
@@ -2459,6 +2516,8 @@ export const missions = {
             runWindowTicks: offer.params && offer.params.runWindowTicks,
             unlaunchedWindowTicks: offer.params && offer.params.unlaunchedWindowTicks,
             recoveryAllowed: offer.params && offer.params.recoveryEnabled,
+            // BREAKAWAY: the launch variant is authored on the offer; absent for the capsule run.
+            variantId: offer.params && offer.params.heistVariantId,
           }),
         }
         : {}),
@@ -2723,6 +2782,45 @@ export const missions = {
     // happens); in flight it points at the capsule itself (the thing to meet); once the capsule is
     // in tow it points at the fence, because that is the only place it can be sold. Each state
     // carries its own words, so the marker says what to do without depending on colour.
+    // BREAKAWAY — The Third Shift. Before release the marker is the launcher; once released it is the
+    // drifting assembly itself; once the assembly is on the player's line it is the fork mouth, with
+    // the fork's one rule in words, because the open end is the only place the load can be delivered.
+    if (m.type === BREAKAWAY_RECOVERY_TYPE && m.heist) {
+      const h = m.heist;
+      const heistBase = { ...base, stationId: null, sectorId: PQ019C_HEIST_SECTOR_ID };
+      const load = h.capsuleEntityId != null && this.state.entities
+        ? this.state.entities.get(h.capsuleEntityId) : null;
+      const liveLoad = load && load.alive !== false && load.pos ? load : null;
+      if (liveLoad && h.possessed) {
+        const mouth = projectBreakawayForkMouth();
+        return {
+          ...heistBase,
+          label: `${PQ019_FACILITIES.lawful_catcher.name} fork`,
+          pos: sectorLocalToGlobalForSector({ x: mouth.x, z: mouth.z }, PQ019C_HEIST_SECTOR_ID),
+          reason: 'Bring the assembly through the open end of the fork under 100 WU/s',
+        };
+      }
+      if (liveLoad) {
+        return {
+          ...heistBase,
+          label: 'SP-07 Assembly',
+          pos: { x: liveLoad.pos.x, z: liveLoad.pos.z },
+          // UI-only live position, exactly as the capsule marker: never a control/throw target.
+          presentationEntityId: liveLoad.id,
+          reason: 'Recover the drifting SP-07 assembly',
+        };
+      }
+      const launcher = PQ019_FACILITIES.heist_launcher;
+      return {
+        ...heistBase,
+        label: launcher.name,
+        pos: sectorLocalToGlobalForSector(
+          projectPq019FacilitySocket(launcher), PQ019C_HEIST_SECTOR_ID,
+        ),
+        reason: `Hold station off ${launcher.name} for the release`,
+      };
+    }
+
     if (m.type === PQ019C_HEIST_TYPE && m.heist) {
       const h = m.heist;
       const capsule = h.capsuleEntityId != null && this.state.entities

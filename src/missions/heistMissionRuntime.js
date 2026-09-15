@@ -59,12 +59,17 @@ import {
   arbiterInvariants,
   applyTransition,
 } from './heistArbiter.js';
-import { PQ019_CAPSULE, PQ019_HEIST_SECTOR_ID } from '../data/heistFacilities.js';
+import {
+  HEIST_CAPSULE_RUN_VARIANT_ID,
+  PQ019_CAPSULE,
+  PQ019_HEIST_SECTOR_ID,
+  heistLaunchVariant,
+} from '../data/heistFacilities.js';
 import { receiverCommitGate } from '../physicalCargo/breakaway/settlementGate.js';
 import {
   PQ019C_HEIST_TUNING,
-  PQ019C_TERMINAL_SETTLEMENT,
   PQ019C_RECOVERABLE_OUTCOMES,
+  heistMissionPolicy,
 } from '../data/heistMission.js';
 
 export const HEIST_RECORD_SCHEMA = 'spaceface.heistMission.v1';
@@ -94,6 +99,18 @@ const HEIST_TERMINAL_CUE_MOMENTS = new Set([
 
 const RECOVERABLE = new Set(PQ019C_RECOVERABLE_OUTCOMES);
 
+/** The payload identity a run arbitrates. Records without one are the historical Capsule Run. */
+export function heistPayloadStableIdFor(record) {
+  return (record && typeof record.payloadStableId === 'string' && record.payloadStableId)
+    || PQ019_CAPSULE.stableId;
+}
+
+/** A run's spoken line for one moment: its variant's copy where authored, else the capsule's. */
+export function heistCueTextFor(record, moment) {
+  const variantText = heistMissionPolicy(record?.variantId).cueText;
+  return (variantText && variantText[moment]) || HEIST_CUE_TEXT[moment] || null;
+}
+
 function intTick(value) {
   const n = Math.trunc(Number(value));
   return Number.isFinite(n) && n >= 0 ? n : 0;
@@ -112,10 +129,16 @@ export function createHeistRecord({
   runWindowTicks = PQ019C_HEIST_TUNING.runWindowTicks,
   unlaunchedWindowTicks = PQ019C_HEIST_TUNING.unlaunchedWindowTicks,
   recoveryAllowed = PQ019C_HEIST_TUNING.recoveryEnabled,
+  variantId = null,
 } = {}) {
+  const variant = heistLaunchVariant(variantId);
+  const scoped = variant.id !== HEIST_CAPSULE_RUN_VARIANT_ID;
   return {
     schema: HEIST_RECORD_SCHEMA,
     missionId: String(missionId),
+    // The launch variant travels with the accepted contract. Conditional, so a Capsule Run record —
+    // and every save that carries one — keeps its exact historical shape.
+    ...(scoped ? { variantId: variant.id, payloadStableId: variant.payload.stableId } : {}),
     attempt: attempt | 0,
     scheduleId: heistScheduleIdFor(missionId),
     acceptTick: intTick(tick),
@@ -147,7 +170,7 @@ export function createHeistRecord({
     reconciled: null,
     arbiter: createArbiter({
       missionId: String(missionId),
-      payloadStableId: PQ019_CAPSULE.stableId,
+      payloadStableId: variant.payload.stableId,
       createdAtTick: intTick(tick),
     }),
   };
@@ -204,11 +227,22 @@ export const HEIST_CUE_TEXT = Object.freeze({
  */
 export function sayHeistCue(ctx, record, moment, textOverride = null) {
   if (!record || record.cues[moment]) return null;
-  const text = textOverride || HEIST_CUE_TEXT[moment];
+  const text = textOverride || heistCueTextFor(record, moment);
   if (!text) return null;
   record.cues[moment] = true;
+  return speakHeistLine(ctx, record, {
+    cueId: `pq019c:cue:${record.missionId}:${moment}`, moment, text,
+  });
+}
+
+/**
+ * The single exit for every spoken heist line: one owner receipt, one stable voice id, one channel.
+ * Callers decide WHETHER to speak (at most once per run, or once per physical attempt); this decides
+ * only how.
+ */
+function speakHeistLine(ctx, record, { cueId, moment, text }) {
   const receipt = Object.freeze({
-    cueId: `pq019c:cue:${record.missionId}:${moment}`,
+    cueId,
     missionId: record.missionId,
     moment,
     text,
@@ -242,7 +276,7 @@ export function submitHeistCandidate(record, { kind, causalTick, sourceStableId,
   if (!record?.arbiter) return { accepted: false, reason: 'no_record' };
   return submitCandidate(record.arbiter, {
     missionId: record.missionId,
-    payloadStableId: PQ019_CAPSULE.stableId,
+    payloadStableId: heistPayloadStableIdFor(record),
     kind,
     causalTick: intTick(causalTick),
     sourceStableId,
@@ -279,11 +313,16 @@ export const heistMissionRuntime = {
     const launchAtSimT = simT + record.launchWindowS;
     record.scheduleRequested = true;
     let receipt = null;
+    // The contract's launch variant rides the request, so the launcher throws the payload the player
+    // actually accepted. Absent for the Capsule Run, whose request keeps its historical shape.
+    const variantField = record.variantId ? { variantId: record.variantId } : {};
     if (facilities && typeof facilities.requestLaunchSchedule === 'function') {
-      receipt = facilities.requestLaunchSchedule({ scheduleId: record.scheduleId, launchAtSimT });
+      receipt = facilities.requestLaunchSchedule({
+        scheduleId: record.scheduleId, launchAtSimT, ...variantField,
+      });
     } else {
       ctx?.bus?.emit?.('heist:requestLaunchSchedule', {
-        scheduleId: record.scheduleId, launchAtSimT,
+        scheduleId: record.scheduleId, launchAtSimT, ...variantField,
       });
     }
     if (receipt && receipt.accepted === false) {
@@ -321,7 +360,7 @@ export const heistMissionRuntime = {
   onTetherLatched(ctx, record, payload = {}) {
     if (!record || record.settled) return false;
     const capsule = liveEntity(ctx, payload.targetId);
-    if (!capsule || capsule.data?.heistPayloadStableId !== PQ019_CAPSULE.stableId) return false;
+    if (!capsule || capsule.data?.heistPayloadStableId !== heistPayloadStableIdFor(record)) return false;
     if (capsule.data?.launchScheduleId !== record.scheduleId) return false;
     const tick = intTick(ctx?.state?.tick);
     record.capsuleEntityId = capsule.id;
@@ -336,7 +375,10 @@ export const heistMissionRuntime = {
     });
     if (first) {
       sayHeistCue(ctx, record, 'possessed');
-      this.reportTheft(ctx, record, capsule, tick);
+      // PERMISSION IS NOT POSSESSION. A lawful recovery contract IS the permission to take the load,
+      // so its latch is never a reportable theft and can never raise WANTED. Only a policy that
+      // says the take is a crime asks the law owner to judge it.
+      if (heistMissionPolicy(record.variantId).reportsTheft) this.reportTheft(ctx, record, capsule, tick);
     }
     return true;
   },
@@ -368,7 +410,7 @@ export const heistMissionRuntime = {
       kind: HEIST_LAW_KIND,
       offenderStableId: HEIST_OFFENDER_STABLE_ID,
       offenderEntityId: ctx?.state?.playerId,
-      payloadStableId: PQ019_CAPSULE.stableId,
+      payloadStableId: heistPayloadStableIdFor(record),
       causalTick: intTick(causalTick),
       pos: { x: capsule.pos.x, z: capsule.pos.z },
     });
@@ -435,8 +477,22 @@ export const heistMissionRuntime = {
   onFacilityCandidate(ctx, record, receipt = {}) {
     if (!record || record.settled) return false;
     if (receipt.scheduleId !== record.scheduleId) return false;
-    if (receipt.payloadStableId !== PQ019_CAPSULE.stableId) return false;
+    if (receipt.payloadStableId !== heistPayloadStableIdFor(record)) return false;
     const causalTick = intTick(receipt.tick);
+    // BREAKAWAY: a settled capture-fork receipt is the physical owner's proof that the load entered
+    // the receiver correctly and came to rest there. It is a lawful ARRIVAL whoever brought it — a
+    // Massline tow, a clean release and a hull shove are all the player's own flying, and the load
+    // cannot reach the fork on its launch arc. Whether an arrival PAYS is the variant's settlement
+    // table's decision, not this mapping's.
+    if (receipt.kind === 'capture_settled') {
+      submitHeistCandidate(record, {
+        kind: 'lawful_arrival_observed',
+        causalTick,
+        sourceStableId: `heistFacilities:${receipt.facilityId}:capture`,
+        proof: { custodyReceiptId: receipt.receiptId, possessionEver: !!record.possessionEver },
+      });
+      return true;
+    }
     // MISSION POLICY, deliberately not the arbiter's: mapping a physical contact to a legal outcome
     // is exactly what the arbiter refuses to know. `lawful_catch_contact` is a lawful ARRIVAL if
     // nobody ever took the capsule, and a CONFISCATION if somebody did and lost it there.
@@ -462,6 +518,28 @@ export const heistMissionRuntime = {
       return true;
     }
     return false;
+  },
+
+  /**
+   * `heist:captureFork` — the fork's own mechanical truth (rails engaged, load slipped out, entry too
+   * fast / too sideways / off-centre), spoken so the player learns WHY the receiver took or refused
+   * the load. Bounded by physical attempts, not frames: the facility owner publishes these only when
+   * the load actually crosses the mouth near the rails. Never a candidate and never a settlement.
+   */
+  onCaptureFork(ctx, record, payload = {}) {
+    if (!record || record.settled) return false;
+    if (payload.scheduleId !== record.scheduleId) return false;
+    if (payload.payloadStableId !== heistPayloadStableIdFor(record)) return false;
+    const moment = payload.event === 'capture_refused'
+      ? `capture_refused_${payload.reason}`
+      : String(payload.event || '');
+    // Only a variant that authored the fork's copy speaks it; there is no capsule fallback line.
+    const text = heistMissionPolicy(record.variantId).cueText?.[moment];
+    if (!text) return false;
+    speakHeistLine(ctx, record, {
+      cueId: `pq019c:cue:${record.missionId}:${moment}:${intTick(payload.tick)}`, moment, text,
+    });
+    return true;
   },
 
   /**
@@ -652,8 +730,8 @@ export const heistMissionRuntime = {
     const keys = receipt.effectKeys;
     const tick = intTick(ctx?.state?.tick);
     const outcome = receipt.outcome;
-    const decidedPlan = PQ019C_TERMINAL_SETTLEMENT[outcome]
-      || PQ019C_TERMINAL_SETTLEMENT.unresolved_absent;
+    const settlementTable = heistMissionPolicy(record.variantId).settlement;
+    const decidedPlan = settlementTable[outcome] || settlementTable.unresolved_absent;
     // A paying outcome is a DELIVERY: something physical must actually change hands.
     const delivery = decidedPlan.settlement === 'complete';
 
@@ -676,7 +754,7 @@ export const heistMissionRuntime = {
         const expected = {
           receiptId: receipt.receiptId,
           facilityId,
-          payloadStableId: PQ019_CAPSULE.stableId,
+          payloadStableId: heistPayloadStableIdFor(record),
         };
         const prepared = facilities.prepareReceiverHandoff(expected);
         const reply = prepared && prepared.prepared
@@ -685,6 +763,11 @@ export const heistMissionRuntime = {
         const ownerCommittedRecord = prepared?.reason === 'already_committed' ? prepared.handoff : null;
         const gate = receiverCommitGate(expected, reply, ownerCommittedRecord);
         if (gate.maySettle) {
+          // The load's condition at the instant custody passed, for the variant's bounded quality
+          // quote. Measured by the physical owner before consumption; never inferred afterwards.
+          if (Number.isFinite(reply?.handoff?.condition01)) {
+            record.deliveredCondition = reply.handoff.condition01;
+          }
           recordEffect(arbiter, keys.receiverCommit, {
             effectId: reply?.receipt?.effectId || `pq019b:receiverCommit:${receipt.receiptId}`, tick,
           });
@@ -874,7 +957,7 @@ export const heistMissionRuntime = {
       // absence rule below decide — there is no safe half-decided record.
       restored.arbiter = createArbiter({
         missionId: String(record.missionId),
-        payloadStableId: PQ019_CAPSULE.stableId,
+        payloadStableId: heistPayloadStableIdFor(record),
         createdAtTick: intTick(tick),
       });
       restored.reconciled = 'arbiter_refused';

@@ -990,6 +990,14 @@ export const heistFacilities = {
       handoff.abortReason = proof.reason;
       return { committed: false, reason: proof.reason, handoff };
     }
+    // A fork delivery records the load's condition at the instant custody passes, before the body
+    // is consumed — the mission's quality quote reads this, never a later guess.
+    if (heistLaunchVariant(owned.schedule?.variantId).custody === 'capture_fork') {
+      const hullMax = Number(capsule.hullMax);
+      handoff.condition01 = hullMax > 0
+        ? Math.max(0, Math.min(1, Number(capsule.hull) / hullMax))
+        : 1;
+    }
 
     handoff.status = 'committed';
     handoff.committedAtTick = this.state.tick | 0;
