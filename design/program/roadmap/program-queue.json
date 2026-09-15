@@ -1100,18 +1100,16 @@
         "public-route"
       ],
       "brief": "Author, place, wire, and accept the Wreck Cathedral as a monumental site with recognizable components, salvage, history, and gameplay.",
-      "partialIntegration": "2026-07-20 closeout: full SOURCE_GLB candidate on master at 6df5a210+a31554fa+6b24baad+7330a85b (blend 9.6MB + GLB 11.2MB + 26 PBR textures + 15 captures + turntable + 11 reports + reproducible authoring scripts; SHA-256 manifest; gltf-validator clean). Recovery tag archive/pq018-wreck-cathedral-source-20260720. PQ-017 dependency is satisfied at 2a9517d8; runtime registration, placement, interaction, save, and route acceptance remain. Handoff at design/graphics-sprints/handoffs/2026-07-20-B-pq018-wreck-cathedral-source.yaml. || 2026-07-26 leaf PQ-018.asset-admission integrated at 8e257745 (release build + manifest/runtime registration; receipt receipts/PQ-018-asset-admission-REPORT.md). || 2026-07-26 leaf PQ-018.world-site integrated at aef540d3 (candidate 09417e98, ported selectively from 136cba98): Ceres placement at local (300,2700)/global (-11988,10892) with 76.632 WU clearance, 7 components, 7 operations, physical black-box payload, and five direct-keyed evidence pages rebuilt from completedOperations so a fabricated save cannot mint one. Gates: 90/90 focused, coordinate reservation PASS, check:sim:compare hashEqual true, atlas-integrity + asset-reachability PASS. Receipt receipts/PQ-018-world-site-REPORT.md. State is 'focused_green', NOT integrated: Phase 4 Browser/Electron route acceptance, game-camera visual review, and matched performance remain unproven, and the independent art verdict on the source is still outstanding."
+      "partialIntegration": "2026-07-20 closeout: full SOURCE_GLB candidate on master at 6df5a210+a31554fa+6b24baad+7330a85b (blend 9.6MB + GLB 11.2MB + 26 PBR textures + 15 captures + turntable + 11 reports + reproducible authoring scripts; SHA-256 manifest; gltf-validator clean). Recovery tag archive/pq018-wreck-cathedral-source-20260720. PQ-017 dependency is satisfied at 2a9517d8; runtime registration, placement, interaction, save, and route acceptance remain. Handoff at design/graphics-sprints/handoffs/2026-07-20-B-pq018-wreck-cathedral-source.yaml. || 2026-07-26 leaf PQ-018.asset-admission integrated at 8e257745 (release build + manifest/runtime registration; receipt receipts/PQ-018-asset-admission-REPORT.md). || 2026-07-26 leaf PQ-018.world-site integrated at aef540d3 (candidate 09417e98, ported selectively from 136cba98): Ceres placement at local (300,2700)/global (-11988,10892) with 76.632 WU clearance, 7 components, 7 operations, physical black-box payload, and five direct-keyed evidence pages rebuilt from completedOperations so a fabricated save cannot mint one. Gates: 90/90 focused, coordinate reservation PASS, check:sim:compare hashEqual true, atlas-integrity + asset-reachability PASS. Receipt receipts/PQ-018-world-site-REPORT.md. State is 'focused_green', NOT integrated: Phase 4 Browser/Electron route acceptance, game-camera visual review, and matched performance remain unproven, and the independent art verdict on the source is still outstanding. || 2026-09-14 PQ-020.promote: the relocated Phase 4 rows are closed — matched Cathedral route/performance by PQ-020 H1 (21/21 frames Browser and Electron) and H3 (Cathedral-keyed PASS), re-confirmed by check:pq020:ceres-topology naming world_site_wreck_cathedral on release 32094bcd; damage/recovery and reduced-motion/non-color cues by PQ-023.gold-corridor-required-cues. Two stale Cathedral tests were repaired to the live contracts (quiet POIs publish dressing rows; autopilot targets the authored 440 WU safe approach). Stays focused_green, NOT retired: a chase-camera look of the re-authored source (7c2f3fcd) from the authored approach shows the hull only as a corner sliver at the default 144 WU frame, and from the cavity it still reads as dark open bars and frames rather than plated hull. Routed to PQ-018.cathedral-chase-read."
     },
     {
       "id": "PQ-019",
       "priority": 19,
       "title": "Surface-launch cargo heist, pursuit, heat, and fence loop",
-      "state": "focused_green",
+      "state": "integrated",
       "partialIntegration": "2026-07-28 leaf PQ-019A implemented on master (not yet accepted): authored cargo-capsule admission at 272e63b4 (pod_cargo_container release-slot presentation, SHA-256-pinned, hidden-until-admitted), Tethys facility/runtime owner at b66f2255 (heistFacilities sole-writes state.heistFacilities: launcher/catcher/fence embodied with Atlas courses, idempotent schedule receipts, radius-6/mass-180 CCD payload with real rapier-dynamic catcher+fence impact candidates, forged/twin/stale/wrong-ship/duplicate custody inputs rejected, sector-exit cleanup without settlement), deterministic receipt recorded in the packet doc at d7a3dcbc. check:pq019a:facility-embodiment 12/12; manifest suites 23/23; atlas-integrity/save-schema/asset-reachability/cargo-conscience/faction-standings/physics-authority/sim:compare/baseline green. State stays planned: player-visible launch schedule cue, normal-route Browser/Electron presentation, facility+capsule game-camera visual acceptance, admission/residency/draw/GPU + representative performance evidence, the accepted PQ-019A receipt file, and W03/W04/W05 parent-alias cleanup remain open; PQ-019B/C unstarted. || 2026-07-28 PQ-019A headless acceptance completed (merge 69918909, receipt receipts/PQ-019A-facility-embodiment-REPORT.md): bounded T-minus launch cue (single one-voice pill, t_minus_30/15/5/away) through the helpers.voice.say seam (deliberately NOT typeof-window gated — weapons.js:58-60 records the opposite repo rule; the seam is inert headless and testable), including a real docked-mode defect found+fixed (cue was entering the flight-HUD alerts slot behind the fullscreen Station OS; launch itself deliberately remains ungated world simulation); focused check grown 12/12->19/19; 13 presentation stills with an honest qualifier (launcher stills are reentry-plasma-dominated: they prove existence/authored admission, NOT a clean art verdict; capsule stills off-centre NDC 0.31-0.68). check:sim:compare hashEqual; check:baseline content-green 10/10 (one wall-budget-only exceedance under concurrent-lane load recorded honestly: 94158ms red then 81413ms green on the same tree). INTEGRATOR RULING (mirrors the PQ-018 Phase-4 relocation): PQ-019B is unblocked on the deterministic facility contract now proven (schedule/custody/contact receipts); PQ-019A's remaining GPU/draw/residency, matched performance, Electron, and independent human art verdict rows stay open under the PQ-034 lease and gate A's route_accepted, not B's start. New inherited red discovered and flagged, not chased: check:one-voice fails on a stale source-string assertion (scripts/check-one-voice.mjs:231 expects a registry.js composition string absent since before c6d83fe4); its 10 behavioural sections pass. || 2026-07-28 leaf PQ-019.owner-seams (PQ-019B) integrated at focused_green/PASS (tip 20a8521e, receipt receipts/PQ-019B-seams-REPORT.md): pure heist outcome arbiter (buffered causal-tick+1 decisions, pinned terminal precedence, compare-and-set receipt, effect journal, crash-resume) + four owner seams — law incident intake on lawSecurity (witness-annulus validated, idempotent receipt, structurally CANNOT reach the responder-spawn path), heat listener with a NEW durable applied-key ledger on state.player (heat owner previously had no ledger of any kind), npcJobsRuntime claimControl/releaseControl leases, receiver prepare/commit/abort on heistFacilities (NOT the worldSiteKernel settlement substrate — different capsule). 91/91 focused; save schema UNTOUCHED v12/274 (durability solved without a version bump: arbiter record nests in missions.active[], heat ledger rides state.player); golden hashEqual before+after; npc-jobs 61/61 unregressed. Live-symbol audit recorded six packet-vs-live deltas including: NO witness owner exists in the codebase (annulus logic added at the seam), law _openIncident keyed on live entity ids (useless across save), lawSecurity/heistFacilities absent from the save capture plan. Three real defects found+fixed: possession candidate suppressed a decided terminal (permutation suite); vacuous witness gate (lawful station was itself a witness, gate could never deny — radius 450 WU with annulus pinned); restoreArbiter FAIL-OPEN (half-decided record restored unfrozen and could mint a second terminal receipt re-applying every owner effect — found by adversarial review after suites were green, seven tampered shapes pinned). Plus one measurement defect: heat invariant counted throttled heat:changed events (vacuous for already-WANTED players) — now reads the durable ledger. INTEGRATOR NOTE for C: settlement counts are proven reachable-exactly-once via a stand-in consumer, NOT yet in missions.js (C's evidence); if C needs law receipts or receiver handoffs durable in their own right, that is a save-capture-plan addition = new top-level key = integrator decision; two module contracts pinned (submit-before-step within a tick; causalTick stamped from the causing event). || 2026-07-28 leaf PQ-019.mission-route (PQ-019C) integrated at focused_green/PASS (tip 7a1c3ce3, candidate 5f2c7137, receipt receipts/PQ-019C-mission-REPORT.md): one authored procedural-weight-zero Tethys capsule-run contract through the ordinary board/accept route; all packet invariants proven INSIDE missions.js as real emissions across all seven terminal outcomes (settlement exactly-once, economy reward only on fenced_success, heat only on witnessed theft; economy/faction proven at the request boundary, same basis as B); nine Phase E save points reconciled to exactly-one-capsule or bounded expired/unresolved_absent; tuning selected ONCE from a pre-committed fixed-seed matrix (launch 120->100, window 45->30, run 9000->6000, escape-hold 180->60, payout 2400->1800, recovery 1100->900; one NaN-contaminated run voided and recorded); L3 manifest pq019-surface-heist authored+registered, never run. Six defects found by running: dead second run (launcher never released its schedule), escaped-unreachable-in-play, unbounded unlaunched contract, clean-despawn-misreported-as-destruction, stale-tick soft-lock + persisted-leases at save boundaries, and C's own board-order regression (heist row displaced the B4 branch intro; caught by the full mission-family sweep, fixed at 5f2c7137). check:pq019c:mission 65/65; B 91/91 and A 19/19 unregressed; all ten touched check:mission-* suites green; hashEqual; save schema untouched v12/274 (the save-capture STOP rule was never reached — the capsule not surviving reload is a reconciled design consequence). Shared-change request recorded: tuning selected witness radius 550 vs the 450 lawSecurity ships (owner: PQ-019B seam constants). New inherited red A/B-attributed: check:mission-log-map:runtime. PQ-019 A+B+C are now ALL headless-complete; parent promotion (incl. W03/W04/W05 alias replacement) rides the headed-acceptance batch H4.",
       "canonical": [
-        "W03",
-        "W04",
-        "W05"
+        "SURFACE-HEIST-LOOP"
       ],
       "aliases": [
         "SF-16"
@@ -1136,13 +1134,17 @@
         "save",
         "recovery"
       ],
-      "brief": "Complete one physical steal, pursuit, escape, heat, and fence loop through existing cargo, economy, faction, and law owners."
+      "brief": "Complete one physical steal, pursuit, escape, heat, and fence loop through existing cargo, economy, faction, and law owners.",
+      "integratedCommit": "7a1c3ce3",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-019-h3-performance-REPORT.md#verdict",
+      "receipt": "design/program/roadmap/receipts/PQ-019C-mission-REPORT.md",
+      "integrationNote": "2026-09-14 CHECKED OFF by PQ-019.promote. The surface heist loop is integrated at 7a1c3ce3: the ordinary Browser route across lawful, heist/fence, confiscation, destruction and recovery is accepted (PQ-019-surface-heist-h1-capture-REPORT.md), H2 keeps the route and the physical capsule, and the matched facility/heist performance cell passes (H3, route_accepted). Identity corrected: W03 is the mine-layer doctrine (owned by PQ-010), W04 the point-defense screen and W05 the sensor-ghost encounter (roadmap/04_WORLD_CONTENT_RELEASE.md); none was ever this packet, so the canonical token is now SURFACE-HEIST-LOOP and W04/W05 return to that plan with no queue owner. Owner ruling 2026-09-10 retired the facility presentation H1/review ceremony and the separate Electron capture (one game path). Residual routed, not dropped: the lawful catcher and covert fence still wear the shared place_claim_outpost_base / place_claim_outpost_refinery bodies (H2 facility REVISE); the KEEP re-authors at 7761327b (archive/pre-squash-2026-09-08) are wired by PQ-022.heist-receivers-promote."
     },
     {
       "id": "PQ-020",
       "priority": 20,
       "title": "Ceres Belt activity-pocket recomposition",
-      "state": "focused_green",
+      "state": "integrated",
       "partialIntegration": "2026-07-28 topology/data slice implemented on master (not yet accepted) at 9b0c1c28: Ceres civic/production/transit/Cathedral pocket data (industrial metadata hauler 30->45 miner 16->40, poi_ceres_throughline beacon, production-zone recenter, no-presence transit zone), deterministic check:pq020:ceres-topology harness identifying world_site_wreck_cathedral (route legs 2074.223/2667.218/4637.893 WU, >=504.223 WU pocket clearance, pinned structural-cost digest, headless World Site residency FULL), deterministic receipt recorded in the packet doc. Supporting gates green: asset-reachability, sector-geography, atlas-integrity/spatial-truth/place-path, map-frames, m2b:sector-graph, m2:sector-embodiment, npc-jobs. State stays planned: matched Ceres baseline, natural jobs across held-out seeds, one bounded existing-owner mechanical condition, offscreen-embodiment determinism, save/materialization/reentry idempotence, Atlas/map/route/physical exact agreement, generic-vs-through-Ceres route distinction, the Cathedral-keyed headed route receipt (p95/p99/hitches, admission/residency, close/default/far/motion/LOD, entity/collider/query/draw/program cost - relocated PQ-018 Phase 4), Browser/Electron + accessibility + final receipt remain open. Dependency bookkeeping corrected this refresh: PQ-018 is consumed as the integrated PQ-018.world-site leaf via a bound evidence dependency; parent PQ-018 route acceptance is intentionally NOT a prerequisite because this packet's matched Ceres route IS that relocated verification. || 2026-07-28 continuation proofs integrated at ece08405..f98367c1 (candidate 6c08de8b, receipt receipts/PQ-020-ceres-topology-REPORT.md, zero src/ files touched): natural industrial jobs on 3/3 held-out seeds (90731/90737/90743) with sector:enter causation gating and no injection; the authored dense_asteroid hazard proven as the production-pocket mechanical condition through existing owners (14.2x rock density, hazardRead counterplay [avoid|time|tether]; honest negatives: playerIsInLaneDanger gated off at Ceres, bypass sides do not reduce exposure); save/re-entry idempotence; exact dual-frame Atlas/map/course/physical agreement; generic Helios-Tethys routing honestly bypasses Ceres with a deliberate through-Ceres itinerary artifact; offscreen digests metadata-sensitive and stable. check:pq020:proofs 14/14, all supporting gates green, sim:compare hashEqual, structural digest b2232d1d unchanged. Still open: headed Cathedral-keyed route receipt (relocated PQ-018 Phase 4), Browser/Electron, accessibility route review, perceptual pocket distinctness, human art verdict (all PQ-034-lease-blocked), and the persisted offscreen-projection-audit-across-save row withdrawn to the sectorSim/embodiment owner.",
       "canonical": [
         "W07",
@@ -1185,7 +1187,11 @@
         "sector-route",
         "performance"
       ],
-      "brief": "Recompose Ceres into two to four distinct activity pockets with jobs, geography, off-lane Cathedral placement, and readable travel topology."
+      "brief": "Recompose Ceres into two to four distinct activity pockets with jobs, geography, off-lane Cathedral placement, and readable travel topology.",
+      "integratedCommit": "f98367c1",
+      "acceptanceRef": "design/program/roadmap/receipts/PQ-020-h3-performance-REPORT.md#verdict",
+      "receipt": "design/program/roadmap/receipts/PQ-020-ceres-topology-REPORT.md",
+      "integrationNote": "2026-09-14 CHECKED OFF by PQ-020.promote. Bound: the Browser and Electron functional route (21/21 frames each, PQ-020-ceres-h1-capture-REPORT.md), Cathedral presence KEEP (H2), and Cathedral-keyed matched performance PASS with zero frames over 32 ms (H3). Re-run 2026-09-14 on master 33d80ac17: check:pq020:ceres-topology PASS naming world_site_wreck_cathedral at local (300,2700) / global (-11988,10892) on the re-authored release 32094bcd; check:pq020:proofs 15/15. The H2 pocket flight-presentation REVISE was answered by the accepted refinery re-author (PQ-022.refinery-reauthor-review); its recapture/review ceremony was retired by owner ruling 2026-09-10. The three supporting gates are red on this tree for causes outside the Cathedral and were not used as evidence: check:asset-reachability (Crucible tile PNGs and a painted planet outside the retail roots), check:assets:live (its provenance gate requires HEAD == origin/master; local master is 18 commits ahead), check:visual-stability (visible-ship-has-no-root-mesh on the ship probe)."
     },
     {
       "id": "PQ-021",
@@ -10352,7 +10358,7 @@
       "priority": 215,
       "title": "Promote PQ-019 and replace W03/W04/W05 aliases",
       "kind": "integration",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-019.h2-verdict",
         "PQ-019.h3-performance"
@@ -10368,7 +10374,12 @@
       "checks": [
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-019-h2-facility-route-REPORT.md",
+        "design/program/roadmap/receipts/PQ-019-h3-performance-REPORT.md",
+        "design/program/roadmap/receipts/PQ-019-surface-heist-h1-capture-REPORT.md",
+        "design/program/roadmap/receipts/PQ-019-receiver-facility-reauthor-REPORT.md"
+      ],
       "brief": "Bind the upgraded receipts, correct the parent aliases, tick the packet, and retire its active document.",
       "blocker": null
     },
@@ -10449,7 +10460,7 @@
       "priority": 218,
       "title": "Promote PQ-020 and close relocated PQ-018 Phase 4",
       "kind": "integration",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-018.art-verdict",
         "PQ-020.h2-verdict",
@@ -10466,7 +10477,12 @@
       "checks": [
         "node scripts/check-program-docs.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-020-h3-performance-REPORT.md",
+        "design/program/roadmap/receipts/PQ-020-ceres-h1-capture-REPORT.md",
+        "design/program/roadmap/receipts/PQ-020-h2-pocket-cathedral-REPORT.md",
+        "design/program/roadmap/receipts/PQ-023-gold-corridor-required-cues-REPORT.md"
+      ],
       "brief": "Bind the matched route receipt, tick both packets' acceptance rows, and retire completed active documents.",
       "blocker": null
     },
@@ -10572,6 +10588,34 @@
       ],
       "receiptRefs": [],
       "brief": "Convert the scoping report plus accepted leaf evidence into the missing milestone_accepted receipt for PQ-025.",
+      "blocker": null
+    },
+    {
+      "id": "PQ-022.heist-receivers-promote",
+      "parentId": "PQ-022",
+      "priority": 493,
+      "title": "Tethys heist catcher and fence read as their roles",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "tools/blender/build_claim_outpost_receiver_facility_material_truth_v1.py",
+        "assets/ships/parts/places/",
+        "assets/ships/release/parts/places/",
+        "src/data/heistFacilities.js",
+        "src/data/worldSiteAssetBindings.js"
+      ],
+      "checks": [
+        "npm run check:pq019a:facility-embodiment",
+        "npm run check:pq019c:mission",
+        "npm run check:asset-reachability"
+      ],
+      "receiptRefs": [],
+      "brief": "The lawful catcher and covert fence on the PQ-019 Tethys heist route still wear the shared place_claim_outpost_base / place_claim_outpost_refinery bodies, so the two receivers read as one generic outpost (PQ-019 H2 facility REVISE). KEEP re-authors exist at 7761327b (tag archive/pre-squash-2026-09-08; builder tools/blender/build_claim_outpost_receiver_facility_material_truth_v1.py): an open-mouth impound fork and an asymmetric shielded-handoff L. Recover them, package release GLBs, and give the two heist facilities their own place ids without changing the World Site stages that also use the base/refinery bodies. DONE WHEN: at the Tethys chase camera (144 WU) a stranger names the catcher as the lawful receiver and the fence as the covert one; sockets, collision hull, AABB and +X approach are unchanged; check:pq019a:facility-embodiment and check:pq019c:mission stay green.",
       "blocker": null
     },
     {
@@ -11238,6 +11282,36 @@
       "brief": "Review only whether the revised exact candidate closes the recorded whole-asset G1, G2 and G4 defects across dominant source and production-runtime views while preserving identity, cavity, components and monumental presence.",
       "blocker": null,
       "deferredNote": "Standing review/capture ceremony retired 2026-09-10 by owner direction: the doing agent reviews its own work and iterates; no separate review/capture unit."
+    },
+    {
+      "id": "PQ-018.cathedral-chase-read",
+      "parentId": "PQ-018",
+      "priority": 494,
+      "title": "The Wreck Cathedral reads as a capital wreck from the chase camera",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "assets/ships/parts/blender/place_landmark_wreck_cathedral.blend",
+        "assets/ships/parts/places/place_landmark_wreck_cathedral.glb",
+        "assets/ships/release/parts/places/place_landmark_wreck_cathedral.glb",
+        "src/data/worldSiteAssetBindings.js",
+        "src/data/worldSiteManifests.js",
+        "test/world-site-map-traffic.test.mjs",
+        "test/pq018-wreck-cathedral-admission.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq018-wreck-cathedral.test.mjs test/pq018-wreck-cathedral-admission.test.mjs test/world-site-map-traffic.test.mjs",
+        "npm run check:pq020:ceres-topology",
+        "npm run check:pq022:corridor-assets"
+      ],
+      "receiptRefs": [],
+      "brief": "Two defects seen 2026-09-14 on the re-authored source (7c2f3fcd) at the live chase camera (60 deg tilt, 50 deg vertical FOV). (1) Arrival: autopilot stops at the authored safe approach 440 WU from the site centre, about 130 WU past the east hull edge, while the default 144 WU frame reaches only about 119 WU to either side, so the player arrives at the monument and sees a corner sliver. (2) Form: from the cavity the hull reads as dark open bars, frames and rails rather than the plated capital-hull shells the art verdict asked for. Fix the read, not the camera: bring the approach inside the frame along a proxy-clear corridor and/or carry plated outer shell onto the faces the chase camera sees, then re-bind source/release/binding hashes in one transaction. DONE WHEN: at the arrival pose at 144 WU the Cathedral covers at least 25% of the frame while every roster hull keeps the world-site-map-traffic proxy clearance; a 144 WU still from the cavity reads as plated hull sections, not lattice; the Cathedral tests, the Ceres topology gate and the corridor asset gate stay green.",
+      "blocker": null
     },
     {
       "id": "PQ-019.receiver-facility-reauthor",
