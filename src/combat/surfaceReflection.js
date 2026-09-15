@@ -12,6 +12,7 @@ import {
 } from '../core/surfaceContact.js';
 import { selectTargets } from './attackTargeting.js';
 import { tryBounce } from './attackPropagation.js';
+import { observeProjectileReflection } from './stuntProjectileEvidence.js';
 
 const DEG = Math.PI / 180;
 
@@ -108,6 +109,7 @@ export function resolveRicochet(runtime, spec, receipt, body, options = {}) {
   );
   const steered = outgoing.x !== reflected.x || outgoing.z !== reflected.z;
   if (body) applyReflectedVelocity(body, outgoing);
+  if(body&&options.state&&options.surface)observeProjectileReflection(options.state,body,options.surface,receipt,reflected,outgoing);
   return {
     ok: true,
     consume: false,

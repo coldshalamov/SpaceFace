@@ -16,6 +16,7 @@
 import { SURVIVAL_RUN_WAVE_COUNT } from '../systems/survivalRun.js';
 import { isSwarmRuleset } from '../systems/survivalSwarm.js';
 import { runXpForLevel } from '../core/runState.js';
+import { styleMultiplier } from '../systems/stuntCombo.js';
 
 const STYLE_ID = 'sf-crun-css';
 /** How long an earn receipt stays on screen, in sim seconds. */
@@ -263,11 +264,14 @@ export const survivalHud = {
 
     // Style is a live figure, not a phase readout: it decays as you repeat yourself and climbs as
     // you vary the cause, so it belongs beside the score it is multiplying.
-    const styleMult = run.style && Number.isFinite(run.style.multiplier) ? run.style.multiplier : 1;
-    const showStyle = !swarm && styleMult > 1.05;
+    const combo=st.stunts?.combo;
+    const styleMult=combo?styleMultiplier(combo):1;
+    const showStyle=!!combo?.activeCount;
     dom.styleWord.hidden = !showStyle;
     dom.styleFig.hidden = !showStyle;
-    if (showStyle) this._setText(dom.styleFig, `${styleMult.toFixed(1)}x`);
+    if (showStyle) this._setText(dom.styleFig, `${Math.floor(combo.activePoints)} pending ×${styleMult.toFixed(2)} · ${2-combo.bridges.length} links`);
+    dom.line.hidden=!showStyle;
+    if(showStyle)this._setText(dom.line,combo.acts.map(a=>a.name).join(' → '));
 
     this._setText(dom.score, num(run.score));
     this._setText(dom.credits, num(run.credits));
@@ -466,12 +470,13 @@ export const survivalHud = {
 
     const earn = make('div', 'sf-crun__earn', root);
     earn.hidden = true;
+    const line=make('div','sf-crun__earn',root);line.hidden=true;
 
     host.appendChild(root);
     this._dom = {
       root, label, waveN, phase, threat, threatWord, threatFill, threatFig,
       chainRow, chainFig, chainBest,
-      score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn,
+      score, killWord, killFig, credits, level, styleWord, styleFig, xpFill, earn, line,
     };
     return this._dom;
   },

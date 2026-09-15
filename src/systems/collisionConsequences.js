@@ -181,7 +181,10 @@ export const collisionConsequences = {
     const targetHullMax = life?.hull ?? Math.max(0, Number(target.hullMax) || 0);
     const targetHullBefore = Math.max(0, Number(target.hull) || 0);
     const ramPlate = playerRamPlateImpact(other, state.playerId, tick, causalProvenance);
-    const provenance = ramPlate?.provenance || causalProvenance;
+    const observed=evidenceForConsequence({tick,targetId:target.id,otherId:other.id,
+      surface:['asteroid','planet'].includes(other.type)?'terrain':other.type==='station'?'structure':'craft',otherMass:positiveMass(other)},state);
+    const provenance = ramPlate?.provenance || (observed?{actorId:observed.root.actorId,weaponId:observed.root.weaponId,
+      tag:observed.root.kind==='constraint'?'massline':'weapon_hit',tick:observed.root.tick,rootId:observed.root.id}:causalProvenance);
     const receipt = resolveCollisionConsequence({
       target,
       other,

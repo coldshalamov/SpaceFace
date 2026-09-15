@@ -21,6 +21,7 @@ import { frameToGlobal, globalToFrame } from './coordinates.js';
 import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
 import { resolveGovernedCombatSpeed } from './flight/propulsionCatalog.js';
 import { observeAppliedImpulse, observeConstraint, observeRelease, observeContact, journalFor } from '../combat/stuntEvidence.js';
+import { observeAppliedSurfaceTorque } from '../combat/stuntProjectileEvidence.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
@@ -455,7 +456,7 @@ export class Sg02DynamicBodyOwner {
 
   applyTorqueImpulse(input = {}) {
     const rec = this.records.get(input.entityId);
-    return applyYawTorqueImpulse(rec, input.impulse);
+    return applyYawTorqueImpulse(rec, input.impulse, input);
   }
 
   drainContactImpacts() {
@@ -533,7 +534,7 @@ export class Sg02DynamicBodyOwner {
         const evidenceBefore=journalFor()?attachment.target.body.linvel():null;
         this._spendElasticWhipStoredEnergy(attachment);
         if(evidenceBefore)observeAppliedImpulse(attachment.target.entity,evidenceBefore,attachment.target.body.linvel(),
-          {actorId:attachment.ownerId,weaponId:attachment.defId},input.tick??this.tick,'constraint');
+          {actorId:attachment.ownerId,weaponId:attachment.defId,attachmentId:attachment.id},input.tick??this.tick,'constraint');
       } else if (attachment.springState) {
         attachment.springState.lastStoredEnergy = 0;
       }
@@ -1362,7 +1363,7 @@ export class Sg02DynamicBodyOwner {
       if (before) observeAppliedImpulse(rec.entity, before, rec.body.linvel(), impulse.provenance, impulse.tick ?? this.tick, impulse.kind);
     }
     for (const impulse of command.torqueImpulses || []) {
-      applyYawTorqueImpulse(rec, impulse);
+      applyYawTorqueImpulse(rec, impulse, impulse);
     }
   }
 
@@ -2171,7 +2172,7 @@ function yawTorque(value) {
   return { x: 0, y: v.y, z: 0 };
 }
 
-function applyYawTorqueImpulse(rec, value) {
+function applyYawTorqueImpulse(rec, value, evidence = null) {
   if (!rec || !rec.spec || !rec.spec.dynamic || !rec.body || typeof rec.body.setAngvel !== 'function') return false;
   const impulseY = finite(value && value.y);
   if (impulseY === 0) return true;
@@ -2181,6 +2182,7 @@ function applyYawTorqueImpulse(rec, value) {
   // bodies. The owner is the sanctioned body writer, so apply the identical J = I*deltaOmega
   // relation explicitly rather than leaking an entity.angVel fallback into gameplay systems.
   rec.body.setAngvel({ x: 0, y: current + impulseY / inertiaY, z: 0 }, true);
+  observeAppliedSurfaceTorque(rec.entity,current,rec.body.angvel().y,evidence);
   return true;
 }
 

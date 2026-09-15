@@ -3,9 +3,16 @@
 import { resolveGovernedCombatSpeed, getPropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { SHIPS } from '../data/ships.js';
 import { fieldAffectsBody, fieldContainsPoint } from '../core/fields/fieldKernel.js';
+import { resolveCollisionConsequence } from './impulseKernel.js';
+import { isHostileForAI } from '../ai/engagementAuthority.js';
 export const EVIDENCE_REVISION = 2;
 export const EVIDENCE_LIMITS = Object.freeze({ episodes: 32, nodes: 32, terminals: 8, edges: 4, horizon: 480, gap: 180 });
 const JOURNALS = new WeakMap();
+const IMPULSE_OBSERVERS=new WeakMap();
+export function registerStuntImpulseObserver(state,fn) {
+  let listeners=IMPULSE_OBSERVERS.get(state);if(!listeners){listeners=new Set();IMPULSE_OBSERVERS.set(state,listeners);}
+  listeners.add(fn);return ()=>listeners.delete(fn);
+}
 let activeState = null;
 const finite = (n) => Number.isFinite(n) ? n : 0;
 const point = (v) => ({ x: finite(v?.x), z: finite(v?.z) });
@@ -69,10 +76,14 @@ export function observeAppliedImpulse(entity, before, after, provenance, tick, k
   const life = bodyLife(entity, state);
   const dv = { x: after.x - before.x, z: after.z - before.z };
   if (!Number.isFinite(dv.x) || !Number.isFinite(dv.z) || Math.hypot(dv.x, dv.z) < 1e-8) return null;
+  const delivered=root=>{
+    for(const fn of IMPULSE_OBSERVERS.get(state)??[])fn({entity,before,after,provenance,tick,kind,root});
+    return root;
+  };
   const existing = j.bodies.get(life.id);
   if(kind==='field') {
     const root=existing&&liveRoot(j,existing.rootId,tick),f=provenance?.field;
-    if(!root||existing.edges>=4)return null;
+    if(!root||existing.edges>=4)return delivered(null);
     if(!f){root.truncated=true;j.withheld++;delete root.fieldActive;return null;}
     let span=root.fieldActive;
     if(span&&span.fieldId!==f.id){root.truncated=true;j.withheld++;return null;}
@@ -86,16 +97,17 @@ export function observeAppliedImpulse(entity, before, after, provenance, tick, k
     }
     span.dv.x+=dv.x;span.dv.z+=dv.z;span.after.x=after.x;span.after.z=after.z;span.lastTick=tick;
     existing.lastTick=tick;
-    return root;
+    return delivered(root);
   }
   const actorId = provenance?.actorId;
   // Unknown force can remove retained useful ownership; it never creates player authorship.
   if (actorId == null || actorId !== state.playerId || kind === 'collision') {
     if (existing) { existing.other.x += dv.x; existing.other.z += dv.z; }
-    return null;
+    return delivered(null);
   }
   const previous = existing && liveRoot(j, existing.rootId, tick);
-  const previousNode = previous?.nodes.at(-1);
+  const continuingConstraint=kind==='constraint'&&previous?.constraint?.attached&&previous.constraint.id===provenance.attachmentId;
+  const previousNode = continuingConstraint?previous.nodes.find(n=>n.kind==='constraint'):previous?.nodes.at(-1);
   const grouped = previous && previousNode?.kind === kind && tick - (previousNode.endTick ?? previousNode.tick) <= 45
     && (kind === 'constraint' || angleBetween(previousNode.dv ?? dv, dv) <= 15) && previous.sourceLife === life.id;
   if (grouped) {
@@ -105,7 +117,7 @@ export function observeAppliedImpulse(entity, before, after, provenance, tick, k
     previousNode.endTick = tick;
     existing.useful.x += dv.x; existing.useful.z += dv.z;
     existing.lastTick=tick;
-    return previous;
+    return delivered(previous);
   }
   pruneEvidence(state, tick);
   if (j.roots.size >= EVIDENCE_LIMITS.episodes) { j.withheld++; return null; }
@@ -115,13 +127,13 @@ export function observeAppliedImpulse(entity, before, after, provenance, tick, k
     playerMass: bodyLife(state.entities?.get?.(state.playerId), state)?.dryMass ?? 0,
     playerLength: bodyLife(state.entities?.get?.(state.playerId), state)?.length ?? 0, encounterId:life.encounterId,
     sourceName: life.name, sceneReferenceMass:j.referenceMass, referenceMomentum:0.2*j.referenceMass*j.referenceCruise,
-    sourceType: entity.type, sourceDeathTick: life.deathTick,
+    sourceType: entity.type, sourceDeathTick: life.deathTick,sourceHostile:isHostileForAI(state,entity,state.entities.get(state.playerId)),
     previousRoot: previous && tick - previous.tick <= 120 ? previous.id : null,
     nodes: [], terminals: [], truncated: false };
   node(j, root, { kind, tick, entityId: entity.id, lifeId: life.id, pos: point(entity.pos), before: point(before), after: point(after), dv: point(dv) });
   j.roots.set(root.id, root);
   j.bodies.set(life.id, { rootId: root.id, lastTick: tick, edges: 0, useful: point(dv), other: { x: 0, z: 0 },origin:{pos:point(entity.pos),before:point(before),tick} });
-  return root;
+  return delivered(root);
 }
 
 export function observeConstraint(attachment, before, after, tick, state = activeState) {
@@ -136,15 +148,15 @@ export function observeConstraint(attachment, before, after, tick, state = activ
   let c = j.constraints.get(attachment.id);
   if (!c) {
     c = { id: attachment.id, actorId: source.id, targetId: target.id, lifeId: life.id, startTick: tick,
-      loadedTicks: 0, sweep: 0, angle, start: point(target.pos), displacement: 0, attached: true, rootId: null };
+      loadedTicks: 0, sweep: 0, angle, start: point(target.pos),sourceStart:point(source.pos),displacement: 0, attached: true, rootId: null };
     j.constraints.set(c.id, c);
   }
   c.attached = true;
   c.lastTick = tick;
   if (!(tension > 0) || !before || !after) {
-    c.loadedTicks = 0; c.sweep = 0; c.angle = angle; c.start.x=target.pos.x; c.start.z=target.pos.z; c.displacement=0; return;
+    c.loadedTicks = 0; c.sweep = 0; c.angle = angle; c.start.x=target.pos.x; c.start.z=target.pos.z;c.sourceStart=point(source.pos);c.startTick=tick;c.displacement=0; return;
   }
-  const root = observeAppliedImpulse(target, before, after, { actorId: source.id, weaponId: attachment.defId }, tick, 'constraint', state);
+  const root = observeAppliedImpulse(target, before, after, { actorId: source.id, weaponId: attachment.defId,attachmentId:attachment.id }, tick, 'constraint', state);
   if (root) c.rootId = root.id;
   c.loadedTicks++;
   c.sweep += Math.abs(Math.atan2(Math.sin(angle - c.angle), Math.cos(angle - c.angle))) * 180 / Math.PI;
@@ -210,13 +222,26 @@ export function observeContact(a, b, contact, state = activeState) {
     const missDistance = Math.hypot(rx + vx * t, rz + vz * t) - radius;
     const changedCorridor = missDistance >= 0.25 * radius;
     const power = helpful >= 0.15 * root.reference.cruise && helpful >= 0.6 * (helpful + otherHelpful);
-    const steering = useful >= 0.1 * root.reference.cruise && angleBetween(root.before, root.after) >= 15 && changedCorridor;
+    const priorMagnitude=Math.hypot(origin.before.x,origin.before.z);
+    const side=priorMagnitude>0?{x:-origin.before.z/priorMagnitude,z:origin.before.x/priorMagnitude}:null;
+    const lateral=side?influence.useful.x*side.x+influence.useful.z*side.z:0;
+    const retainedLateral=side?((influence.useful.x+influence.other.x)*side.x+(influence.useful.z+influence.other.z)*side.z)*Math.sign(lateral):0;
+    const steering = useful >= 0.1 * root.reference.cruise && angleBetween(origin.before,sv) >= 15 && changedCorridor
+      &&retainedLateral>=.1*root.reference.cruise;
     // A negative accumulated other component cancels attribution instead of refreshing it.
     const retained = (influence.useful.x + influence.other.x) * axis.x + (influence.useful.z + influence.other.z) * axis.z;
-    if (!changedCorridor || (!power && !steering) || retained <= 0) continue;
+    const priorSpeed=Math.sqrt(speed2),reducedMass=target.physicsBody?.dynamic===false?sl.mass:sl.mass*tl.mass/(sl.mass+tl.mass);
+    // A conservative upper bound on the unchanged contact uses elastic reversal (2mu*v).
+    // Only a bound below both death and the quarter-hull gate proves sub-material severity;
+    // shields, armor and uncertain helm loss cannot turn this into a permissive fallback.
+    const priorSource=changedCorridor?null:resolveCollisionConsequence({target:source,other:target,exchangedMomentum:2*reducedMass*priorSpeed,preSolveClosingSpeed:priorSpeed,tick});
+    const priorTarget=changedCorridor?null:resolveCollisionConsequence({target,other:source,exchangedMomentum:2*reducedMass*priorSpeed,preSolveClosingSpeed:priorSpeed,tick});
+    const submaterialSource=!!priorSource&&priorSource.impactDamage<Math.min(source.hull,.25*sl.hull);
+    const submaterialTarget=!!priorTarget&&priorTarget.impactDamage<Math.min(target.hull,.25*tl.hull);
+    if ((!changedCorridor&&!submaterialSource&&!submaterialTarget) || (!(power&&retained>0) && !steering)) continue;
     const path = { rootId: root.id, sourceId: source.id, targetId: target.id, sourceLife: sl.id, targetLife: tl.id,
       tick, edges: influence.edges + 1, usefulDeltaV: useful, closingSpeed: Math.max(0, (sv.x-tv.x)*axis.x+(sv.z-tv.z)*axis.z),
-      missDistance, normal: axis, sourceVelocity: point(sv), targetVelocity: point(tv),
+      missDistance,changedCorridor,submaterialSource,submaterialTarget,priorSpeed,normal: axis, sourceVelocity: point(sv), targetVelocity: point(tv),
       momentum: (target.physicsBody?.dynamic === false || ['asteroid','station','planet'].includes(target.type) ? sl.mass : sl.mass*tl.mass/(sl.mass+tl.mass)) * Math.max(0,(sv.x-tv.x)*axis.x+(sv.z-tv.z)*axis.z) };
     record.paths.push(path);
     const ongoing=root.nodes.find(n=>n.kind==='contact'&&n.sourceLife===sl.id&&n.targetLife===tl.id&&tick-(n.endTick??n.tick)<=1);
@@ -225,17 +250,41 @@ export function observeContact(a, b, contact, state = activeState) {
     const transferred = source.id === a.id ? contact.afterB : contact.afterA;
     if (transferred&&target.physicsBody?.dynamic!==false&&!['asteroid','station','planet'].includes(target.type)) {
       const dv = { x: transferred.x-tv.x, z: transferred.z-tv.z };
+      const line=root.constraint,player=line&&state.entities.get(line.actorId);
+      // A rendered rope is not a collider. Only an actual endpoint/body contact can supply
+      // this receipt; the victim must also cross the displaced loaded segment, then have a
+      // separate downstream physical consequence. Damage-only monofilament sweeps never enter.
+      if(line?.attached&&line.loadedTicks>=9&&player&&source.id===line.targetId&&target.id!==line.actorId
+        &&tick-line.startTick<=90&&line.displacement>0&&line.sourceStart) {
+        const lx=sourcePos.x-player.pos.x,lz=sourcePos.z-player.pos.z,ll=lx*lx+lz*lz;
+        const along=ll>0?((targetPos.x-player.pos.x)*lx+(targetPos.z-player.pos.z)*lz)/ll:-1;
+        const transverse=Math.hypot(tv.x,tv.z)>0?Math.abs(dv.x*tv.z-dv.z*tv.x)/Math.hypot(tv.x,tv.z):0;
+        const near=along>0&&along<1&&Math.hypot(targetPos.x-player.pos.x-lx*along,targetPos.z-player.pos.z-lz*along)<=tl.radius;
+        const previousTarget={x:targetPos.x-tv.x*(tick-line.startTick)/60,z:targetPos.z-tv.z*(tick-line.startTick)/60};
+        const oldMiss=segmentSeparation(line.sourceStart,line.start,previousTarget,{x:previousTarget.x+tv.x*1.5,z:previousTarget.z+tv.z*1.5})>tl.radius;
+        if(near&&oldMiss&&transverse>=.3*tl.cruise)node(j,root,{kind:'line_intercept',tick,entityId:target.id,lifeId:tl.id,
+          sourceId:source.id,targetId:target.id,loadedTicks:line.loadedTicks,endpointDisplacement:line.displacement,
+          displacementTick:line.startTick,deltaV:transverse,crossedPriorCorridor:true,normal:point(axis),before:point(tv),after:point(transferred)});
+      }
       j.bodies.set(tl.id, { rootId: root.id, lastTick: tick, edges: path.edges, useful: dv, other: { x:0,z:0 },origin:{pos:point(target.pos),before:point(tv),tick} });
     }
   }
   j.contacts.set(contactKey(tick,a.id,b.id), record);
   if(j.contacts.size>256)j.contacts.delete(j.contacts.keys().next().value);
 }
+function segmentSeparation(a,b,c,d) {
+  const cross=(p,q,r)=>(q.x-p.x)*(r.z-p.z)-(q.z-p.z)*(r.x-p.x);
+  const ab1=cross(a,b,c),ab2=cross(a,b,d),cd1=cross(c,d,a),cd2=cross(c,d,b);
+  if(ab1*ab2<0&&cd1*cd2<0)return 0;
+  const pointSegment=(p,q,r)=>{const x=r.x-q.x,z=r.z-q.z,len=x*x+z*z,t=len?Math.max(0,Math.min(1,((p.x-q.x)*x+(p.z-q.z)*z)/len)):0;return Math.hypot(p.x-q.x-t*x,p.z-q.z-t*z);};
+  return Math.min(pointSegment(a,c,d),pointSegment(b,c,d),pointSegment(c,a,b),pointSegment(d,a,b));
+}
 export function evidenceForConsequence(receipt, state = activeState) {
   const j = journalFor(state);
   const contact = j?.contacts.get(contactKey(receipt.tick,receipt.targetId,receipt.otherId));
   if (!contact) return null;
-  const path = contact.paths.find(p => p.targetId === receipt.targetId || (p.sourceId === receipt.targetId && ['terrain','structure'].includes(receipt.surface)));
+  const path = contact.paths.find(p => (p.targetId === receipt.targetId&&(p.changedCorridor||p.submaterialTarget))
+    || (p.sourceId === receipt.targetId&&(p.changedCorridor||p.submaterialSource)&&(['terrain','structure'].includes(receipt.surface)||receipt.otherMass>=150)));
   const root = path && liveRoot(j,path.rootId,receipt.tick);
   if (!root) return null;
   return structuredClone({ revision:EVIDENCE_REVISION, root, path, contact, previousRoot: root.previousRoot ? liveRoot(j,root.previousRoot,receipt.tick) : null });
@@ -267,24 +316,24 @@ export function closeFieldIntervals(state,tick) {
 }
 export function fieldEvidenceInput(entity,fields,state,profile=null) {
   const j=journalFor(state),life=j?.lives.get(idKey(entity.id));
-  if(!life||!j.bodies.has(life.id))return null;
+  if(!life||(!j.bodies.has(life.id)&&entity.type!=='projectile'))return null;
   let match=null;
   for(const f of fields){
     if(!(f.radius>0)||!f.center||!fieldContainsPoint(f,entity.pos.x,entity.pos.z)||(profile&&!fieldAffectsBody(f,profile)))continue;
     if(match)return {kind:'field',tick:state.tick,provenance:null};
     match=f;
   }
-  return match?{kind:'field',tick:state.tick,provenance:{field:{id:match.id,x:match.center.x,z:match.center.z,radius:match.radius}}}:null;
+  return match?{kind:'field',tick:state.tick,provenance:{actorId:match.ownerId,field:{id:match.id,ownerId:match.ownerId,x:match.center.x,z:match.center.z,radius:match.radius}}}:null;
 }
 
 /** Save only roots whose physical bodies will be restored, and compact facts without live pointers. */
-export function serializeStuntEvidence(state) {
+export function serializeStuntEvidence(state,extraIds=[]) {
   const j=journalFor(state);if(!j)return null;
   pruneEvidence(state,state.tick);
-  const ids=pendingStuntBodyIds(state);ids.add(state.playerId);
+  const ids=pendingStuntBodyIds(state);ids.add(state.playerId);for(const id of extraIds)ids.add(id);
   return {revision:2,sequence:j.sequence,referenceMass:j.referenceMass,referenceCruise:j.referenceCruise,
     lives:[...j.lives].filter(([,l])=>ids.has(l.entity.id)).map(([key,l])=>[key,{...l,entity:undefined,entityId:l.entity.id,
-      position:point(l.entity.pos),velocity:point(l.entity.vel)}]),
+      position:point(l.entity.pos),velocity:point(l.entity.vel),entityType:l.entity.type}]),
     roots:[...j.roots],bodies:[...j.bodies],constraints:[...j.constraints],withheld:j.withheld};
 }
 export function restoreStuntEvidence(state,raw,remap=null) {
@@ -298,7 +347,7 @@ export function restoreStuntEvidence(state,raw,remap=null) {
   j.sequence=raw.sequence;
   for(const [key,saved] of (raw.lives??[])) {
     const e=state.entities?.get?.(mapped(saved.entityId));
-    if(!e || e.type!==saved.type || Math.hypot(e.pos.x-saved.position.x,e.pos.z-saved.position.z)>1e-3
+    if(!e || e.type!==(saved.entityType??saved.type) || Math.hypot(e.pos.x-saved.position.x,e.pos.z-saved.position.z)>1e-3
       || Math.hypot(e.vel.x-saved.velocity.x,e.vel.z-saved.velocity.z)>1e-3)continue;
     j.lives.set(idKey(e.id),{...saved,entity:e});
   }
@@ -312,6 +361,10 @@ export function restoreStuntEvidence(state,raw,remap=null) {
 export function pendingStuntBodyIds(state) {
   const out=new Set(),j=journalFor(state);
   for(const field of Object.values(state.fields?.deployed??{}))if(field.emitterId!=null)out.add(field.emitterId);
+  for(const episode of Object.values(state.story?.titles?.stuntWitnessing?.episodes??{}))
+    for(const observer of Object.values(episode.observers??{}))if(observer.id!=null)out.add(observer.id);
+  for(const report of state.story?.titles?.stuntWitnessing?.reports??[]){out.add(report.senderId);out.add(report.receiverId);}
+  for(const bark of state.barkDirector?.stuntRecognition?.pending??[])if(bark.speakerId!=null)out.add(bark.speakerId);
   for(const life of j?.lives.values()??[]) if(j.bodies.has(life.id))out.add(life.entity.id);
   for(const c of j?.constraints.values()??[])if(j.roots.has(c.rootId)){out.add(c.actorId);out.add(c.targetId);}
   return out;

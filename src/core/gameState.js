@@ -41,6 +41,7 @@ function defaultSettings() {
       controlSchemeV2: true,
       orbitAssistStrength: 'standard',
       masslineReleaseAssist: 'snap',
+      stuntMoments: 'cinematic',
     },
     controls: {
       bindings: null,       // null = use input.js DEFAULT_BINDINGS; populated on first rebind

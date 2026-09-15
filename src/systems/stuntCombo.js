@@ -38,6 +38,8 @@ export function createComboState() {
 }
 function ensureCombo(combo) {
   if (!combo || typeof combo !== 'object' || Array.isArray(combo)) return createComboState();
+  if (combo.schemaVersion === 2 && Array.isArray(combo.acts) && Array.isArray(combo.banks)
+    && combo.victimBudgets && combo.escapeBudgets && combo.finalizedEpisodes && combo.repetition) return combo;
   if (combo.schemaVersion !== 2) {
     // Historical score is retained; missing provenance never becomes a spendable budget.
     const oldBanked = Math.max(0, num(combo.banked));
@@ -49,6 +51,7 @@ function ensureCombo(combo) {
   for (const [key, value] of Object.entries(fresh)) if (combo[key] == null) combo[key] = value;
   return combo;
 }
+export function styleMultiplier(combo) { return multiplier(ensureCombo(combo)); }
 function multiplier(combo) {
   const combat = combo.acts.filter(a => !a.pureEscape && a.points > 0);
   if (!combat.length) return 1;

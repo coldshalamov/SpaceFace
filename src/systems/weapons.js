@@ -52,6 +52,9 @@ import {
   collectAttackCandidates,
   resolveLiveAttackHit,
 } from '../combat/attackHit.js';
+import { registerStuntImpulseObserver } from '../combat/stuntEvidence.js';
+import { observeProjectileEmission, observeProjectileRedirect, prepareProjectileContact,
+  observeProjectileDamage, observeProjectileDeath, sampleProjectileEvidence } from '../combat/stuntProjectileEvidence.js';
 
 const RAD = Math.PI / 180;
 const TWO_PI = Math.PI * 2;
@@ -165,9 +168,15 @@ export const weapons = {
   name: 'weapons',
 
   init(ctx) {
+    this.destroy();
     this.state = ctx.state;
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
+    this._weaponsUnsubs=[];
+    const on=(event,fn)=>{const off=ctx.bus.on(event,fn);this._weaponsUnsubs.push(typeof off==='function'?off:()=>ctx.bus.off?.(event,fn));};
+    this._weaponsUnsubs.push(registerStuntImpulseObserver(ctx.state,event=>observeProjectileRedirect(this.state,event)));
+    on('combat:damage',payload=>observeProjectileDamage(this.state,payload,this.bus));
+    on('entity:killed',payload=>observeProjectileDeath(this.state,payload,this.bus));
 
     // Catalog lookup by weapon def id (instance fields win, def fills the gaps).
     this._byId = new Map(WEAPONS.map((w) => [w.id, w]));
@@ -202,8 +211,9 @@ export const weapons = {
         : null;
     };
 
-    ctx.bus.on('debug:refillPlayer', () => refillLabPlayerHeat(this.state));
-    ctx.bus.on('projectile:hit', (payload) => {
+    on('debug:refillPlayer', () => refillLabPlayerHeat(this.state));
+    on('projectile:hit', (payload) => {
+      prepareProjectileContact(this.state,payload);
       const planted = tryPlantMomentumSinkFromHit(this.state, payload, this._entityGetter);
       if (planted && this.bus) {
         this.bus.emit('weapons:momentumSinkPlanted', {
@@ -214,7 +224,7 @@ export const weapons = {
       }
       this._onAttackHit(payload);
     });
-    ctx.bus.on('physics:impact', (payload) => {
+    on('physics:impact', (payload) => {
       const applied = applyInertialShuntFromImpact(
         this.state,
         payload,
@@ -229,7 +239,7 @@ export const weapons = {
         this.bus.emit('weapons:inertialShunt', applied);
       }
     });
-    ctx.bus.on('sector:enter', () => {
+    on('sector:enter', () => {
       handlePayloadSectorTransition(this.state, this.helpers);
       clearAllMomentumSinkPlants(this.state);
       if (this._shuntCooldown) this._shuntCooldown.clear();
@@ -238,6 +248,7 @@ export const weapons = {
 
   update(dt, state) {
     if (state.mode !== 'flight') return;
+    sampleProjectileEvidence(state,this.bus);
     ensureWeaponRuntime(this);
     pruneAttackLive(this, state);
     resetWeaponDiagnostics(this._diag);
@@ -986,6 +997,7 @@ export const weapons = {
       collides: true,
       data,
     });
+    if(spawned)observeProjectileEmission(state,spawned,e);
     if (spawned && opts && opts.spec) {
       if (!this._attackLive) this._attackLive = new Map();
       const meta = causalMetaForSpec(opts.spec);
@@ -1037,6 +1049,7 @@ export const weapons = {
       ? collectAttackCandidates(state, projectile.pos, steerRange, scratch, projectile.ownerId, projectile.team)
       : null;
     const result = resolveLiveAttackHit({
+      state,
       spec: live.spec,
       runtime: live.runtime,
       projectile,
@@ -1060,6 +1073,11 @@ export const weapons = {
     }
     if (result.consume) this._attackLive.delete(projectile.id);
     stampHitCausal(payload, live, result);
+  },
+
+  destroy() {
+    for(const off of this._weaponsUnsubs||[])off();
+    this._weaponsUnsubs=[];
   },
 
   // --- SF-10 DEPLOY verb: vector mine ------------------------------------------------------------

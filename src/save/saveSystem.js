@@ -19,6 +19,7 @@ import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
 import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
+import { pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import {
@@ -691,6 +692,7 @@ export const save = {
     const state = this.state;
     const out = [];
     const stuntBodies = pendingStuntBodyIds(state);
+    for(const id of pendingProjectileBodyIds(state))stuntBodies.add(id);
     for (const e of state.entityList) {
       const isPlayer = e.id === state.playerId;
       // A defeated wreck must still serialize. Skipping it writes player:null and poisons the slot.

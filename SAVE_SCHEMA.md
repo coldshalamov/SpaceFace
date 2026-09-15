@@ -16,6 +16,8 @@ Current save version: `14`
 - `world`
 - `entities`
 - `combat`
+- `stunts`
+- `fields`
 - `missions`
 - `careerOrigins`
 - `careerLadders`
@@ -180,6 +182,7 @@ Current save version: `14`
 | `$.factionPresence` | object | {} |
 | `$.factions` | object | {} |
 | `$.fieldDepletion` | object | {} |
+| `$.fields` | null | null |
 | `$.flight` | object | {} |
 | `$.flight.mode` | string | manual |
 | `$.flight.modeChangedTick` | number | 0 |
@@ -338,6 +341,7 @@ Current save version: `14`
 | `$.settings.gameplay.masslineReleaseAssist` | string | snap |
 | `$.settings.gameplay.orbitAssistStrength` | string | standard |
 | `$.settings.gameplay.physicsBackend` | string | rapier-dynamic |
+| `$.settings.gameplay.stuntMoments` | string | cinematic |
 | `$.settings.gameplay.tutorialHints` | boolean | true |
 | `$.settings.keybinds` | object | {} |
 | `$.settings.showDamageNumbers` | boolean | true |
@@ -362,6 +366,7 @@ Current save version: `14`
 | `$.settings.video.vsync` | boolean | true |
 | `$.signalInvestigation` | object | {} |
 | `$.sites` | object | {} |
+| `$.stunts` | null | null |
 | `$.traffic` | object | {} |
 | `$.uiScreenMemory` | object | {} |
 | `$.uiScreenMemory.bags` | object | {} |

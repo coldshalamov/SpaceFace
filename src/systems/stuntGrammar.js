@@ -5,6 +5,8 @@ import { admitStuntThreat } from '../combat/stuntScoring.js';
 import { runOwnsReward } from '../combat/rewardEligibility.js';
 import { StuntFlightObserver } from '../combat/stuntFlightEvidence.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { remapStuntReferences } from '../combat/stuntSaveReferences.js';
+import { serializeProjectileEvidence, restoreProjectileEvidence, pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { bankIfQuiet, createComboState, recordKill, recordTrick, recordBridge, resetRound, settleCrash } from './stuntCombo.js';
 export const STUNT_SYSTEM_SCHEMA_VERSION=2;
 export const MAX_RECENT_TRICKS=64;
@@ -18,7 +20,7 @@ export const stuntGrammar={
     this.destroy();this.state=ctx.state;this.bus=ctx.bus;this._unsubs=[];
     bindStuntEvidence(this.state);ensure(this.state);this.detector=createStuntDetector({playerId:this.state.playerId});this.flight=new StuntFlightObserver();
     for(const entity of this.state.entities?.values?.()??[]) this._admit(entity);
-    for(const event of ['combat:collisionConsequence','tether:releaseRated','entity:killed','combat:kill','entity:spawned',
+    for(const event of ['combat:collisionConsequence','combat:projectileConsequence','tether:releaseRated','entity:killed','combat:kill','entity:spawned',
       'run:started','game:started','game:newGame','save:restoring','save:loaded','run:waveCleared','player:death','player:died','combat:damage','physics:impact']) {
       const off=this.bus?.on(event,p=>this._event(event,p??{}));if(typeof off==='function')this._unsubs.push(off);
     }
@@ -26,15 +28,16 @@ export const stuntGrammar={
   destroy() { for(const off of this._unsubs??[])off();this._unsubs=[];unbindStuntEvidence(this.state);this.detector=null; },
   serialize() {
     const s=this.state;if(s.run?.kind==='survival'&&s.run.phase!=='inactive')return null;
-    return structuredClone({revision:2,mode:'adventure',state:ensure(s),evidence:serializeStuntEvidence(s),detector:this.detector.serialize(),flight:this.flight.serialize()});
+    return structuredClone({revision:2,mode:'adventure',state:ensure(s),evidence:serializeStuntEvidence(s,pendingProjectileBodyIds(s)),projectiles:serializeProjectileEvidence(s),detector:this.detector.serialize(),flight:this.flight.serialize()});
   },
   deserialize(raw,remap=null) {
     const s=this.state;
-    if(raw?.revision!==2||raw.mode!=='adventure'){s.stunts=null;ensure(s);resetStuntEvidence(s);this.detector=createStuntDetector({playerId:s.playerId});return;}
-    s.stunts=structuredClone(raw.state);ensure(s);restoreStuntEvidence(s,raw.evidence,remap);
-    this.detector=createStuntDetector({playerId:s.playerId});this.detector.deserialize(raw.detector);this.flight=new StuntFlightObserver();
-    // Histories use entity references; a rematerialized world must resample them.
-    if(!remap||[...remap].every(([old,id])=>String(id)===old))this.flight.restore(raw.flight);
+    if(raw?.revision!==2||raw.mode!=='adventure'){s.stunts=null;ensure(s);resetStuntEvidence(s);this.detector=createStuntDetector({playerId:s.playerId});this.flight=new StuntFlightObserver();return;}
+    s.stunts=remapStuntReferences(structuredClone(raw.state),remap);ensure(s);restoreStuntEvidence(s,raw.evidence,remap);
+    restoreProjectileEvidence(s,raw.projectiles,remap);
+    this.detector=createStuntDetector({playerId:s.playerId});this.detector.deserialize(remapStuntReferences(structuredClone(raw.detector),remap));this.flight=new StuntFlightObserver();
+    this.flight.restore(remapStuntReferences(structuredClone(raw.flight),remap));
+    remapStuntReferences(s.story?.titles,remap);remapStuntReferences(s.barkDirector?.stuntRecognition,remap);
   },
   _admit(entity) {
     if(!entity)return;

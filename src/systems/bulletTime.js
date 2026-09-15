@@ -14,6 +14,7 @@
 // outside the snapshot whitelist).
 import { massline2Flag } from '../data/featureFlags.js';
 import { createTimeEffects } from '../core/timeEffects.js';
+import { stuntAssistProfile } from '../combat/stuntRunRules.js';
 
 const TIME_SOURCE = 'player:bullet-time';
 // --- Dials (design doc §12) -----------------------------------------------------------------
@@ -34,7 +35,7 @@ const BT_REQUEST = Object.freeze({ scale: BT_SCALE });
 // held bullet-time meter (no drain, no engage floor, no require-release latch).
 export const MOMENT_EVENT = 'moment:holyShit';
 const MOMENT_TIME_SOURCE = 'moment:slow-mo';
-export const MOMENT_THRESHOLD = 6;        // minimum rated score that counts as a moment
+export const MOMENT_THRESHOLD = 3.6;
 export const MOMENT_SLOWMO_SCALE = 0.80;  // moment pulse bound (shallower than the held 0.35)
 export const MOMENT_SLOWMO_DUR_S = 0.20;  // pulse length in SIM seconds (deterministic)
 export const MOMENT_COOLDOWN_S = 12.0;    // pulse re-arm gap; bus events still fire inside it
@@ -45,7 +46,7 @@ const MOMENT_PER_MINUTE_WINDOW_S = 60;
 const MOMENT_EPISODE_MAX = 128;
 const MOMENT_EPISODE_AGE_TICKS = 480;
 const MOMENT_AUDIO_CUE = 'moment.stinger';
-const RARITY_WEIGHT = Object.freeze({ common: 1, uncommon: 2, rare: 4, legendary: 8 });
+const RARITY_WEIGHT = Object.freeze({ common: 1, uncommon: 1.4, rare: 1.8, legendary: 2.2 });
 
 function finiteNum(value, fallback = 0) {
   const n = Number(value);
@@ -61,7 +62,9 @@ export function rateMoment(trick) {
   if (!trick || typeof trick !== 'object') {
     return { score: 0, rarityWeight: 0, momentumFactor: 1, collateralFactor: 1, qualifies: false };
   }
-  const rarityWeight = RARITY_WEIGHT[trick.rarity] || 0;
+  const count=finiteNum(trick.modifiers?.collateralCount,1);
+  const rarityWeight = Math.max(RARITY_WEIGHT[trick.rarity] || 0,
+    trick.modifiers?.razorRelease==='razor'?1.8:0,count>=5?2.2:count>=3?1.8:count>=2?1.4:0);
   const metrics = (trick.metrics && typeof trick.metrics === 'object') ? trick.metrics : {};
   const secondaryIds = Array.isArray(trick.secondaryIds) ? trick.secondaryIds : [];
   const causeChain = Array.isArray(trick.causeChain) ? trick.causeChain : [];
@@ -71,21 +74,11 @@ export function rateMoment(trick) {
     return { score: 0, rarityWeight, momentumFactor: 1, collateralFactor: 1, qualifies: false };
   }
 
-  const momentum = Math.max(
-    0,
-    finiteNum(metrics.momentum),
-    finiteNum(metrics.exchangedMomentum),
-  );
-  const speed = Math.max(
-    0,
-    finiteNum(metrics.relSpeed),
-    finiteNum(metrics.deltaV),
-    finiteNum(metrics.speed),
-    finiteNum(metrics.tangentialSpeed),
-  );
-  const momentumFactor = 1 + Math.min(2, momentum / 1500 + speed / 60);
-  const chainBonus = Math.min(0.5, Math.max(0, causeChain.length - 2) * 0.25);
-  const collateralFactor = 1 + 0.75 * Math.min(2, secondaryIds.length) + chainBonus;
+  const momentum = Math.max(0,finiteNum(metrics.availableMomentum));
+  const reference=finiteNum(metrics.referenceMomentum);
+  const momentumFactor = reference>0?Math.min(3,momentum/reference):0;
+  const terminals=Math.max(1,finiteNum(trick.modifiers?.collateralCount,1));
+  const collateralFactor = 1 + .25 * Math.min(terminals-1,3);
   const score = rarityWeight * momentumFactor * collateralFactor;
   return {
     score,
@@ -101,8 +94,10 @@ export const bulletTime = {
   name: 'bulletTime',
 
   init(ctx) {
+    this.destroy();
     this.state = ctx.state;
     this.bus = ctx.bus;
+    this.helpers=ctx.helpers;
     this.timeEffects = ctx.timeEffects || createTimeEffects(ctx.state);
     // Depletion latch: once the meter runs dry the verb must be RELEASED before it can engage
     // again — otherwise a held key stutters on/off around the engage floor.
@@ -114,8 +109,8 @@ export const bulletTime = {
     };
     // Same lease-safety set flybyFocus uses: a restore/new-game/death/dock must never leave a
     // stale slow-time request behind.
-    clearOn('save:restoring', true);
-    clearOn('save:loaded', true);
+    clearOn('save:restoring', false);
+    clearOn('save:loaded', false);
     clearOn('game:started', true);
     clearOn('game:newGame', true);
     clearOn('run:started', true);
@@ -125,6 +120,7 @@ export const bulletTime = {
     if (this.bus && typeof this.bus.on === 'function') {
       this._onTrickBound = (trick) => this._onTrickDetected(trick);
       this._unsubs.push(this.bus.on('stunt:trickDetected', this._onTrickBound));
+      this._unsubs.push(this.bus.on('stunt:trickAmended', this._onTrickBound));
     }
   },
 
@@ -208,7 +204,7 @@ export const bulletTime = {
     if (!Array.isArray(trick.causeChain) || trick.causeChain.length < 2) return;
     const consequence = trick.consequence;
     const material = consequence != null && typeof consequence === 'object'
-      && (consequence.killed === true
+      && (consequence.killed === true || consequence.escaped === true
         || (consequence.hullMax > 0 && consequence.hullDamage >= 0.25 * consequence.hullMax
           && consequence.helmLossSeconds >= 1));
     if (!material) return;
@@ -221,25 +217,33 @@ export const bulletTime = {
     const rating = rateMoment(trick);
     if (!rating.qualifies) return;
     const moment = ensureMoment(state);
-    for (const [seenRootId, seenTick] of moment.seenEpisodes) {
-      if (tick - seenTick > MOMENT_EPISODE_AGE_TICKS) moment.seenEpisodes.delete(seenRootId);
+    for (const [seenRootId, seenTick] of Object.entries(moment.seenEpisodes)) {
+      if (tick - seenTick > MOMENT_EPISODE_AGE_TICKS) delete moment.seenEpisodes[seenRootId];
     }
-    if (moment.seenEpisodes.has(trick.rootId)) return;
+    if (Object.hasOwn(moment.seenEpisodes,trick.rootId)) {
+      const i=moment.recentMoments.findIndex(m=>m.rootId===trick.rootId);
+      if(i>=0&&rating.score>moment.recentMoments[i].peakScore){
+        moment.recentMoments[i]={...moment.recentMoments[i],peakScore:rating.score,name:trick.name,latestTick:tick};
+        this.bus?.emit('moment:amended',moment.recentMoments[i]);
+      }
+      return;
+    }
+    // The first chronological threshold crossing owns the live decision, including suppression.
+    if(Object.keys(moment.seenEpisodes).length>=MOMENT_EPISODE_MAX)delete moment.seenEpisodes[Object.keys(moment.seenEpisodes)[0]];
+    moment.seenEpisodes[trick.rootId]=trick.rootTick;
+    if(!this._visibleMoment(trick))return;
     if (now < moment.cooldownUntil) return;
     const trickId = trick.trickId || 'unknown';
     const perMinute = moment.recentMoments.filter((m) => now >= m.simTime && now - m.simTime < MOMENT_PER_MINUTE_WINDOW_S);
     if (perMinute.length >= MOMENT_PER_MINUTE_MAX) return;
     if (perMinute.some((m) => m.trickId === trickId && now - m.simTime < MOMENT_PRIMARY_WINDOW_S)) return;
-    if (!moment.seenEpisodes.has(trick.rootId) && moment.seenEpisodes.size >= MOMENT_EPISODE_MAX) {
-      moment.seenEpisodes.delete(moment.seenEpisodes.keys().next().value);
-    }
-    moment.seenEpisodes.set(trick.rootId, trick.rootTick);
     moment.totalMoments += 1;
     const record = Object.freeze({
       trickId,
       name: trick.name || trick.trickId || 'Unknown stunt',
       rarity: trick.rarity || 'common',
       score: rating.score,
+      peakScore:rating.score,presentationOwner:'stuntGrammar',profile:stuntAssistProfile(state),framingSafe:this._framingSafe(trick),
       rarityWeight: rating.rarityWeight,
       momentumFactor: rating.momentumFactor,
       collateralFactor: rating.collateralFactor,
@@ -261,9 +265,33 @@ export const bulletTime = {
     }
     // Arm (or extend) the pulse only outside the cooldown — inside it the running pulse and
     // the bus record already carry the burst.
-    if (!motionReduced(state) && this.timeEffects) {
+    if (!motionReduced(state) && stuntAssistProfile(state)==='cinematic' && this.timeEffects) {
       this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
     }
+  },
+
+  _visibleMoment(trick) {
+    const project=this.helpers?.worldToScreen;if(typeof project!=='function')return false;
+    const player=this.state.entities?.get(this.state.playerId);
+    if(!player?.pos||!project(player.pos)?.onScreen)return false;
+    const target=this.state.entities?.get(trick.targetId),terminal=target?.pos??trick.terminalPos;
+    if(!terminal||!project(terminal)?.onScreen)return false;
+    const source=this.state.entities?.get(trick.secondaryIds?.[0]);
+    const pos=source?.pos??trick.causeChain?.find(n=>n.pos)?.pos;
+    if(!pos)return false;
+    const center=project(pos),edge=project({x:pos.x+(source?.radius??trick.sourceRadius??0),z:pos.z});
+    return center?.onScreen===true&&edge&&Math.hypot(edge.x-center.x,edge.y-center.y)>=3;
+  },
+  _framingSafe(trick) {
+    if(typeof window==='undefined'||!this.helpers?.worldToScreen)return false;
+    const player=this.state.entities.get(this.state.playerId);
+    if(Math.hypot(player?.vel?.x??0,player?.vel?.z??0)>=1.25*(trick.metrics?.referenceCruise??0))return false;
+    const w=window.innerWidth,h=window.innerHeight;
+    for(const e of this.state.entities.values())if(e?.pos&&e.collides!==false&&e.alive!==false){
+      const p=this.helpers.worldToScreen(e.pos);
+      if(p?.onScreen&&(p.x<w*.08||p.x>w*.92||p.y<h*.08||p.y>h*.92))return false;
+    }
+    return true;
   },
 
   // Maintains the moment pulse from SIM time only (never wall clock, never the meter).
@@ -272,7 +300,7 @@ export const bulletTime = {
   _updateMomentPulse(state) {
     const moment = ensureMoment(state);
     const now = Math.max(0, finiteNum(state && state.simTime));
-    if (state && state.mode === 'flight' && now < moment.pulseUntil && !motionReduced(state)) {
+    if (state && state.mode === 'flight' && now < moment.pulseUntil && !motionReduced(state) && stuntAssistProfile(state)==='cinematic') {
       if (this.timeEffects) this.timeEffects.set(MOMENT_TIME_SOURCE, { scale: MOMENT_SLOWMO_SCALE });
     } else if (this.timeEffects) {
       this.timeEffects.clear(MOMENT_TIME_SOURCE);
@@ -289,7 +317,7 @@ export const bulletTime = {
         moment.cooldownUntil = 0;
         moment.totalMoments = 0;
         moment.recentMoments = [];
-        moment.seenEpisodes = new Map();
+        moment.seenEpisodes = {};
       }
     }
     if (this.timeEffects) this.timeEffects.clear(MOMENT_TIME_SOURCE);
@@ -308,13 +336,14 @@ function ensureBulletTime(state) {
 }
 
 function ensureMoment(state) {
-  const root = state.massline2 || (state.massline2 = {});
+  const root = state.stunts || (state.stunts = {});
   if (!root.moment || typeof root.moment !== 'object') {
-    root.moment = { totalMoments: 0, recentMoments: [], pulseUntil: 0, cooldownUntil: 0, seenEpisodes: new Map() };
+    root.moment = { totalMoments: 0, recentMoments: [], pulseUntil: 0, cooldownUntil: 0, seenEpisodes: {} };
   }
   const moment = root.moment;
   if (!Array.isArray(moment.recentMoments)) moment.recentMoments = [];
-  if (!(moment.seenEpisodes instanceof Map)) moment.seenEpisodes = new Map();
+  if (!moment.seenEpisodes || moment.seenEpisodes instanceof Map) moment.seenEpisodes = {};
+  (state.massline2 ||= {}).moment=moment;
   if (!Number.isFinite(Number(moment.pulseUntil))) moment.pulseUntil = 0;
   if (!Number.isFinite(Number(moment.cooldownUntil))) moment.cooldownUntil = 0;
   if (!Number.isFinite(Number(moment.totalMoments))) moment.totalMoments = 0;

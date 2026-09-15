@@ -13,6 +13,7 @@ import { SWARM_RULESET } from '../data/swarmMode.js';
 import { SURVIVAL_ARC_LENGTH } from '../data/survivalActs.js';
 import { settleCrucibleRun } from './survivalRecords.js';
 import { challengeFromRun } from './survivalMutators.js';
+import { currentStuntRunRules, stuntAssistProfile } from '../combat/stuntRunRules.js';
 
 /** How many recent hits on the player the summary keeps. Bounded: this is a ring, not a log. */
 export const DAMAGE_TRAIL_LENGTH = 8;
@@ -397,6 +398,7 @@ export const survivalResults = {
   },
 
   _reset() {
+    this._highestEntered=0;this._stuntRules=null;
     this._planFailure = null;
     this._stopReason = null;
     this._result = null;
@@ -431,6 +433,9 @@ export const survivalResults = {
     const run = liveSurvivalRun(this.state);
     if (!run) return;
     const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
+    this._highestEntered=Math.max(this._highestEntered,wave);
+    if(!this._stuntRules)this._stuntRules=currentStuntRunRules(this.state,run.ruleset===SWARM_RULESET?'swarm':run.ruleset??'arc');
+    else if(this._stuntRules.simulationAssistProfile!==stuntAssistProfile(this.state))this._stuntRules.simulationAssistProfile='mixed';
     this._waveStartSimTime = this._simNow();
     this._waveStartWave = Number.isInteger(wave) ? wave : 0;
     if (this._runStartSimTime == null) this._runStartSimTime = this._simNow();
@@ -680,6 +685,13 @@ export const survivalResults = {
       ? challenge.ruleset
       : 'arc';
     result.unlocksEarned = [];
+    result.highestRoundEntered=this._highestEntered;
+    result.lastRoundCleared=this._deepestWave;
+    result.roundThreatBudget=run.threatBudget;
+    result.roundThreatResolved=run.resolvedThreat;
+    result.remainingEnemies=Math.max(0,(run.threatBudget??0)-(run.resolvedThreat??0));
+    result.recordRules=this._stuntRules;
+    result.bestLine=this.state.stunts?.combo?.bestLine?structuredClone(this.state.stunts.combo.bestLine):null;
     try {
       const settled = settleCrucibleRun({ result, run });
       result.unlocksEarned = settled.unlocksEarned.slice();

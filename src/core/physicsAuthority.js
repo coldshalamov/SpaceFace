@@ -48,9 +48,11 @@ export function queuePhysicsImpulse(entity, impulse, evidence = null) {
 }
 
 /** Queue a world-space angular impulse. SpaceFace only uses the Y component physically. */
-export function queuePhysicsTorqueImpulse(entity, impulse) {
+export function queuePhysicsTorqueImpulse(entity, impulse, evidence = null) {
   if (!entity || typeof entity !== 'object') return false;
-  commandFor(entity).torqueImpulses.push(vector3(impulse));
+  const value=vector3(impulse);
+  if(evidence){value.provenance=evidence.provenance;value.tick=evidence.tick;value.kind=evidence.kind;}
+  commandFor(entity).torqueImpulses.push(value);
   return true;
 }
 

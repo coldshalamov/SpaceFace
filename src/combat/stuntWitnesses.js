@@ -153,9 +153,9 @@ export function sampledStuntWitnesses(state,trick,{partial=false}={}) {
     if(!partial&&((row.sourceTicksMax||0)<6||(row.transferTicksMax||0)<6))continue;
     const observed=[];
     for(const life of lives) {
-      const target=row.targets[life.lifeId];
+      const target=life.lifeId===root?.sourceLife?{id:root.sourceId,count:row.transferTicksMax??0,last:row.transferTicksLast??-2}:row.targets[life.lifeId];
       const live=state.entities.get(target?.id);
-      const terminal=root?.nodes?.findLast?.(n=>n.kind==='contact'&&n.targetLife===life.lifeId);
+      const terminal=root?.nodes?.findLast?.(n=>n.kind==='contact'&&(n.targetLife===life.lifeId||n.sourceLife===life.lifeId));
       const pos=live&&bodyLife(live,state)?.id===life.lifeId?live.pos:terminal?.pos;
       if(target?.count>=6&&target.last<=tick&&tick-target.last<=1&&point(pos)&&distance(entity.pos,pos)<=profile.range
         &&witnessLineOfSight(state,entity,pos,[target.id,root?.sourceId]))observed.push(life.lifeId);

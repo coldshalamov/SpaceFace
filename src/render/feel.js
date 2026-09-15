@@ -220,11 +220,11 @@ export function resolveMomentBeat(eventName, payload = {}, context = {}) {
   const score = Number.isFinite(Number(payload && payload.score)) ? Number(payload.score) : 0;
   const fov = Math.min(MOMENT_FOV_MAX, MOMENT_FOV_BASE + Math.max(0, score) * MOMENT_FOV_PER_SCORE);
   return Object.freeze({
-    dipMs: BEAT_DIP_MS,
-    dipS: BEAT_DIP_S,
+    dipMs: payload.presentationOwner==='stuntGrammar'?0:BEAT_DIP_MS,
+    dipS: payload.presentationOwner==='stuntGrammar'?0:BEAT_DIP_S,
     holdS: BEAT_HOLD_S,
     scale: BEAT_SCALE,
-    stinger: BEAT_STINGER,
+    stinger: payload.presentationOwner==='stuntGrammar'?null:BEAT_STINGER,
     source: BEAT_TIME_SOURCE,
     fov,
     trauma: MOMENT_TRAUMA,
@@ -235,7 +235,7 @@ export function resolveMomentBeat(eventName, payload = {}, context = {}) {
 export function applyMomentBeat(host, beat) {
   if (!host || !beat) return false;
   const timeEffects = host.timeEffects;
-  if (timeEffects && typeof timeEffects.set === 'function') {
+  if (beat.dipS>0 && timeEffects && typeof timeEffects.set === 'function') {
     if (!host._hsRequest) host._hsRequest = { scale: beat.scale };
     else host._hsRequest.scale = beat.scale;
     timeEffects.set(beat.source || BEAT_TIME_SOURCE, host._hsRequest);
@@ -1275,6 +1275,12 @@ export const feel = {
     if (!p) return;
     if (this.state.mode !== 'flight' || !this._modalClear()) return;
     const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+    if(p.presentationOwner==='stuntGrammar') {
+      // The physical impact already owns trauma; grammar owns the sole time/audio accent.
+      const ctrl=this.state.render?.cameraCtrl;
+      if(!mr&&p.framingSafe&&typeof ctrl?.pushZoom==='function')ctrl.pushZoom(-.04,.55);
+      return;
+    }
     const beat = resolveMomentBeat(MOMENT_DETECTOR_EVENT, p, {
       motionReduce: !!mr,
       mode: this.state.mode,

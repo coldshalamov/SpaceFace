@@ -1082,6 +1082,9 @@ export function projectileHitPayload(proj, targetOrId, pos) {
   const normal = { x: nx, z: nz };
   const payload = {
     targetId,
+    projectileId: proj.id,
+    projectileVelocity: { x:vx,z:vz },
+    targetVelocity: target?.vel ? { x:target.vel.x,z:target.vel.z } : null,
     ownerId: proj.ownerId,
     damage: pd.damage || 0,
     damageType: pd.damageType || 'kinetic',
