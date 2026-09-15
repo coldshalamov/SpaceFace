@@ -179,6 +179,24 @@ browserCapturedRuns:
     demotedBy:
       - worktree changed during performance capture
       - settings changed inside both capture windows
+  - run: performance-dirty-ranges-browser-2026-09-15T14-58-43-970Z-6892-1b72a703
+    comparatorPass: true
+    ownerRequestedByteReductionFraction: 0.9035
+    driverUploadByteReductionFraction: 0.4618
+    frameP95DeltaMs: 0                             # 50.1 vs 50.1
+    warnings: 0   # clean page — partsLibrary fix held, foreign renderer warnings absent
+    demotedBy:
+      - worktree changed during performance capture   # only demotion; primaryAcceptance flag set
+  - run: performance-dirty-ranges-browser-2026-09-15T15-25-04-278Z-9092-07910076
+    comparatorPass: true
+    ownerRequestedByteReductionFraction: 0.8635
+    driverUploadByteReductionFraction: 0.4051
+    frameP95DeltaMs: 0                             # 50.1 vs 50.1
+    warnings: 2   # bloomScene GPU-compile bricks (260/275ms) from foreign in-flight renderer work
+    demotedBy:
+      - worktree changed during performance capture
+      - contaminating process/authoring activity at end census
+      - the two bloom warnings
 electronManifestInvocations: 5
 electronAcceptanceRuntimeLaunches: 3
 electronCapturedRuns:
@@ -217,24 +235,35 @@ electronCapturedRuns:
       checkpoint on the file made it adoptable). This tightens the measurement:
       the powered-vs-released contract itself is unchanged.
     earlierAttempt: broker-claim-stale-digest (foreign worktree write raced claim->probe)
+  - run: performance-dirty-ranges-electron-2026-09-15T15-01-37-348Z-28004-c06a81d4
+    failedAt: launch
+    note: >-
+      New failure mode, upstream of the settle fix: the 150s authored-flight-ready
+      wait timed out on Electron this run (earlier launches resolved it at tick ~1).
+      The in-flight readiness contract's resolve time varies with asset/machine
+      state; this run caught a slow path. Never reached flight-input or attribution.
 numericAcceptance: captured-but-demoted
 pairedRuntimeSourceBinding: not_established
 ```
 
 The exact blocker is the shared-worktree environment, not the mechanism: both
 captured runs agree on direction and scale — owner-requested upload bytes drop
-91–96% and driver upload bytes drop 38–47% versus the causal full-span control at
-unchanged frame p95 — but the acceptance contract requires a clean, stable
-candidate for the whole capture plus a zero-warning page, and concurrent foreign
-render work (renderer admission-path churn, opening-submission diagnostics) kept
-tripping worktree-stability, settings-stability, and page-warning gates. The
-Electron side launched three times and failed identically at the route's
-flight-input causal check — root-caused to a settle-timing defect surfaced by
-the in-flight readiness-contract rewrite (see `rootCauseFound` in the YAML) and
-fixed with a settle gate ahead of the released baseline in
-`alphaLiveBaselineRoute.mjs`. The next unblocked Electron attempt should pass
-that phase; it has not yet exercised the attribution stage. Both manifests sit
-at `regression-required-after-acceptance-failure` until the regression set
+86–96% and driver upload bytes drop 38–46% versus the causal full-span control at
+unchanged frame p95 across four comparator passes — but the acceptance contract
+requires a clean, stable candidate for the whole capture plus a zero-warning
+page, and concurrent foreign render work (renderer admission-path churn,
+bloomScene GPU-compile bricks) plus a contended host kept tripping
+worktree-stability, census, and page-warning gates. The cleanest run so far
+(14:58) produced a zero-warning page and `primaryAcceptance: true`, demoted
+solely by mid-capture worktree churn. The Electron side launched three times
+and failed identically at the route's flight-input causal check — root-caused
+to a settle-timing defect surfaced by the in-flight readiness-contract rewrite
+(see `rootCauseFound` in the YAML) and fixed with a settle gate ahead of the
+released baseline in `alphaLiveBaselineRoute.mjs`; a fourth Electron launch
+then timed out inside the authored-readiness wait itself (150s), an upstream
+flaky symptom of the same in-flight contract rather than the flight-input
+phase. The Electron attribution stage has not yet exercised. Both manifests
+sit at `regression-required-after-acceptance-failure` until the regression set
 changes again.
 
 Evidence retained under `.devshots/perf/dirty-ranges/{browser,electron}/`:
