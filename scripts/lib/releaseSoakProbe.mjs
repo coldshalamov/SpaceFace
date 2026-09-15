@@ -942,10 +942,16 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   const dockPrompt = page.locator('.sf-alert--dock');
   // A restored save can already be physically inside Helios' docking envelope. In that case
   // reopening the map is redundant and can race the live flight screen replacing the cached
-  // map detail panel. Exercise the public waypoint route only when navigation is actually needed.
+  // map detail panel. Worse, a ship already on the berth resolves the station's primary action
+  // as 'RETURN TO SHIP' rather than 'Set Waypoint', so the arm click has no emit to witness.
+  // Exercise the public waypoint route only when navigation is actually needed.
   const alreadyAtDockPrompt = await dockPrompt.isVisible().catch(() => false);
-  if (alreadyAtDockPrompt) {
-    mark('redock-already-in-range');
+  const insideDockEnvelope = !alreadyAtDockPrompt && await page.evaluate(() => {
+    const dc = window.SF?.state?.dockingCorridor;
+    return !!(dc && (dc.inCapture === true || (Number.isFinite(dc.distToBerth) && dc.distToBerth <= 60)));
+  }).catch(() => false);
+  if (alreadyAtDockPrompt || insideDockEnvelope) {
+    mark(alreadyAtDockPrompt ? 'redock-already-in-range' : 'redock-already-in-envelope');
   } else {
     await transition('waypoint');
     await armHeliosWaypoint(page);
@@ -1012,8 +1018,15 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
           const dc = s?.dockingCorridor;
           const p = s?.entities?.get?.(s.playerId);
           const v = p?.vel ? Math.hypot(p.vel.x, p.vel.z) : 0;
-          return !!(dc && (dc.inCapture === true || dc.inCorridor === true)
-            && s?.nav?.autopilot?.active === true && v > 26);
+          if (!dc) return false;
+          if ((dc.inCapture === true || dc.inCorridor === true)
+              && s?.nav?.autopilot?.active === true && v > 26) return true;
+          // Restored save already inside the dock envelope with no AP driving: a player
+          // drifting across the berth too fast for the gate brakes down to it. The AP-active
+          // case stays above — never disengage a driving approach from outside.
+          return s?.nav?.autopilot?.active !== true
+            && (dc.inCapture === true || (Number.isFinite(dc.distToBerth) && dc.distToBerth <= 60))
+            && v > 12;
         }).catch(() => false);
         if (stuckFast) {
           brakePulsed = true;
