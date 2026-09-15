@@ -8,6 +8,17 @@ import { initializePresentationAdmission } from './presentationAdmission.js';
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
+// Far actor, dressing and field rows keep their id while they exist; see _removeEntityAtIndex.
+function ledgerTableHoldsId(table, id) {
+  return !!(table && table.byId instanceof Map && table.byId.has(id));
+}
+
+function worldLedgerHoldsId(world, id) {
+  return !!world && (ledgerTableHoldsId(world.farActors, id)
+    || ledgerTableHoldsId(world.dressing, id)
+    || ledgerTableHoldsId(world.asteroidField, id));
+}
+
 export const core = {
   name: 'core',
   init(ctx) {
@@ -207,7 +218,10 @@ export const core = {
     if (opts && opts.reason) destroyed.reason = opts.reason;
     this.bus.queue('entity:destroyed', destroyed);
     state.entities.delete(e.id);
-    state.freeIds.push(e.id);
+    // Far shelving writes its row before removing the body, and dressing/field rows can hold an
+    // id too. Recycling a held id let the next spawn or row take it, so two world objects shared
+    // one mesh and presentation slot. The id comes back once that row promotes and the body dies.
+    if (!worldLedgerHoldsId(state.world, e.id)) state.freeIds.push(e.id);
     const last = list.pop();
     if (i < list.length) list[i] = last;
     if (opts && opts.immediate === true) markEntityIndexSourceSynced(state.entityIndex, list);
