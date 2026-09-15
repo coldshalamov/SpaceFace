@@ -15,6 +15,7 @@ import { TITLES } from '../../data/titles.js';
 import { REP_REASON_LABELS } from '../../data/repReasons.js';
 import { bribeCost } from '../../systems/factions.js';
 import { buildShipLedger, formatLedgerCycle, SHIP_LEDGER_PAGE_SIZE } from '../../systems/shipLedger.js';
+import { contractLedgerRows } from '../../combat/stuntContracts.js';
 import { latestLossLine } from '../../systems/lossLedger.js';
 import { isPlayerWanted, heatLevelFor, heatClearSecondsForLevel, heatRadiusForLevel } from '../../systems/heat.js';
 import { aceById } from '../../data/namedAces.js';
@@ -992,6 +993,16 @@ export const footprintScreen = {
         return [meta ? meta.title : row.titleId, row.holderKey || 'vacant', ''];
       })
       : [['No title terminals linked on this run.', '', '']]);
+
+    // PQ-146 §6.2: the three open Line Contracts — physical puzzles derived from causal receipts.
+    // A completed card names the route that proved it; an open one shows the physical goal.
+    appendRecordSection(record, 'Line contracts', contractLedgerRows(state).map((row) => [
+      `${row.name} · ${row.status}`,
+      row.completion
+        ? `Proved by ${row.completion.trickName} · tick ${row.completion.tick}`
+        : row.brief,
+      '',
+    ]));
   },
 
   _rememberMemory() {

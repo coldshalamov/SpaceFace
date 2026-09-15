@@ -116,6 +116,9 @@ export class StuntDetector {
       metrics:{payloadMass:r.reference.mass,playerDryHullMass:r.playerMass,usefulDeltaV:e.path.usefulDeltaV,referenceCruise:r.reference.cruise,
         normalClosingSpeed:e.path.closingSpeed,availableMomentum:Math.max(old?.metrics?.availableMomentum??0,e.path.momentum??0),referenceMomentum:r.referenceMomentum??0,
         mass:r.reference.mass,deltaV:e.path.usefulDeltaV,collateralCount,selfLaunch:r.sourceId===r.actorId,projectileOnly:r.sourceType==='projectile',
+        occludedAtRoot:e.contact?(e.path?.targetLife===terminal?.lifeId?e.path?.playerOccludedAtRoot
+          :e.path?.sourceLife===terminal?.lifeId?e.path?.sourceOccludedAtRoot:null):null,
+        sourceDeadBeforeRoot:r.sourceDeathTick!=null&&r.tick>r.sourceDeathTick,sceneReferenceMass:r.sceneReferenceMass??null,
         bankCorridorId:r.nodes.find(n=>n.kind==='reflection'&&n.unreflectedMiss&&n.directOccluded)?.bankCorridorId??null},
       sourceRadius:r.reference.radius,terminalPos:e.contact?(e.contact.aId===receipt.targetId?e.contact.aPos:e.contact.bPos):null,
       sourceName:r.sourceName??String(r.sourceId),targetName:receipt.targetName??String(receipt.targetId)};

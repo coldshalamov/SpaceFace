@@ -8,6 +8,7 @@ import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { remapStuntReferences } from '../combat/stuntSaveReferences.js';
 import { serializeProjectileEvidence, restoreProjectileEvidence, pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
 import { bankIfQuiet, createComboState, recordKill, recordTrick, recordBridge, resetRound, settleCrash } from './stuntCombo.js';
+import { awardContractCompletion, contractCompletionsFor, heldCargoPodLot, isCivilianEntity } from '../combat/stuntContracts.js';
 export const STUNT_SYSTEM_SCHEMA_VERSION=2;
 export const MAX_RECENT_TRICKS=64;
 /** New saved narrative/provenance payload beyond the world's physical state: at most 512 KiB. */
@@ -39,8 +40,12 @@ export function boundStuntSavePayload(record,limit=STUNT_SAVE_PAYLOAD_LIMIT) {
   return record;
 }
 function ensure(state) {
-  if(!state.stunts || state.stunts.schemaVersion!==2) state.stunts={...state.stunts,schemaVersion:2,recentTricks:[],totalTricksDetected:0,tricksByRarity:{common:0,uncommon:0,rare:0,legendary:0},combo:createComboState(),pay:{credits:0,reputation:0,salvageRights:0}};
-  return state.stunts;
+  if(!state.stunts || state.stunts.schemaVersion!==2) state.stunts={...state.stunts,schemaVersion:2,recentTricks:[],totalTricksDetected:0,tricksByRarity:{common:0,uncommon:0,rare:0,legendary:0},combo:createComboState(),pay:{credits:0,reputation:0,salvageRights:0},contracts:{harm:[]}};
+  const st=state.stunts;st.contracts??={harm:[]};st.contracts.harm??=[];
+  return st;
+}
+function noteContractHarm(st,entry) {
+  const harm=st.contracts.harm;harm.push(entry);if(harm.length>16)harm.shift();
 }
 export const stuntGrammar={
   id:'stuntGrammar',name:'stuntGrammar',
@@ -65,7 +70,7 @@ export const stuntGrammar={
     restoreProjectileEvidence(s,raw.projectiles,remap);
     this.detector=createStuntDetector({playerId:s.playerId});this.detector.deserialize(remapStuntReferences(structuredClone(raw.detector),remap));this.flight=new StuntFlightObserver();
     this.flight.restore(remapStuntReferences(structuredClone(raw.flight),remap));
-    remapStuntReferences(s.story?.titles,remap);remapStuntReferences(s.barkDirector?.stuntRecognition,remap);
+    remapStuntReferences(s.story?.titles,remap);remapStuntReferences(s.story?.lineContracts,remap);remapStuntReferences(s.barkDirector?.stuntRecognition,remap);
   },
   _admit(entity) {
     if(!entity)return;
@@ -81,7 +86,11 @@ export const stuntGrammar={
   },
   _event(event,p) {
     const s=this.state,st=ensure(s),tick=Number.isFinite(p.tick)?p.tick:s.tick;
-    if(event==='combat:damage'){if(p.targetId===s.playerId&&p.attackerId!==s.playerId)this.flight.damage(tick);return;}
+    if(event==='combat:damage'){
+      if(p.targetId===s.playerId&&p.attackerId!==s.playerId)this.flight.damage(tick);
+      else if(p.attackerId===s.playerId&&isCivilianEntity(s.entities?.get?.(p.targetId)))noteContractHarm(st,{tick,targetId:p.targetId});
+      return;
+    }
     if(event==='physics:impact'){if(p.aId===s.playerId||p.bId===s.playerId)this.flight.contact(tick);return;}
     if(event==='save:restoring') { unbindStuntEvidence(s);return; }
     if(event==='save:loaded') { bindStuntEvidence(s);return; }
@@ -106,6 +115,7 @@ export const stuntGrammar={
     if(event==='entity:killed'||event==='combat:kill') {
       const entity=s.entities?.get?.(p.id??p.targetId??p.victimId);if(!entity)return;
       const life=noteBodyDeath(entity,s);
+      if((p.killerId??p.provenance?.actorId)===s.playerId&&isCivilianEntity(entity))noteContractHarm(st,{tick,targetId:entity.id,killed:true});
       if(survival&&runOwnsReward(entity)) {
         const threat=admitStuntThreat(entity);
         recordKill(st.combo,{lifeId:threat.lifeId??life.id,threatClass:threat.threatClass,playerOwned:(p.killerId??p.provenance?.actorId)===s.playerId,weaponId:p.weaponId,tick});
@@ -120,6 +130,10 @@ export const stuntGrammar={
       if(st.recentTricks.length>64)st.recentTricks.shift();
       if(survival)recordTrick(st.combo,trick);
       this.bus?.emit(trick.amendment?'stunt:trickAmended':'stunt:trickDetected',trick);
+      for(const contractId of contractCompletionsFor(trick,{cargoPodHeld:heldCargoPodLot(s)!=null,civilianHarm:st.contracts.harm})) {
+        const card=awardContractCompletion(s,contractId,trick,tick);
+        if(card)this.bus?.emit('stunt:lineContractCompleted',card);
+      }
     }
     this._publishBanks(bankBefore);
   },
@@ -135,6 +149,7 @@ export const stuntGrammar={
       this._event('stunt:escapeConsequence',receipt);
     }
     st.pressure=j?.pressure;
+    if(st.contracts.harm.length)st.contracts.harm=st.contracts.harm.filter(h=>state.tick-h.tick<=480);
     if(!st.combo.activeCount)return;
     // Until trajectory pressure has been observed, missing threat information cannot mean quiet.
     let loaded=false,pending=-1;

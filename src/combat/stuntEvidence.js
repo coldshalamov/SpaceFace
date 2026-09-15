@@ -5,6 +5,7 @@ import { SHIPS } from '../data/ships.js';
 import { fieldAffectsBody, fieldContainsPoint } from '../core/fields/fieldKernel.js';
 import { resolveCollisionConsequence } from './impulseKernel.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
+import { witnessLineOfSight } from './lineOfSight.js';
 export const EVIDENCE_REVISION = 2;
 export const EVIDENCE_LIMITS = Object.freeze({ episodes: 32, nodes: 32, terminals: 8, edges: 4, horizon: 480, gap: 180 });
 const JOURNALS = new WeakMap();
@@ -121,13 +122,19 @@ export function observeAppliedImpulse(entity, before, after, provenance, tick, k
   }
   pruneEvidence(state, tick);
   if (j.roots.size >= EVIDENCE_LIMITS.episodes) { j.withheld++; return null; }
+  const playerBody=state.entities?.get?.(state.playerId);
   const root = { id: `root:${++j.sequence}`, actorId, sourceId: entity.id, sourceLife: life.id, tick,
     kind, weaponId: provenance.weaponId ?? null, pos: point(entity.pos), before: point(before), after: point(after), dv,
     reference: { mass: life.mass, hull: life.hull, cruise: life.cruise, radius: life.radius, length: life.length },
-    playerMass: bodyLife(state.entities?.get?.(state.playerId), state)?.dryMass ?? 0,
-    playerLength: bodyLife(state.entities?.get?.(state.playerId), state)?.length ?? 0, encounterId:life.encounterId,
+    playerMass: bodyLife(playerBody, state)?.dryMass ?? 0,
+    playerLength: bodyLife(playerBody, state)?.length ?? 0, encounterId:life.encounterId,
     sourceName: life.name, sceneReferenceMass:j.referenceMass, referenceMomentum:0.2*j.referenceMass*j.referenceCruise,
-    sourceType: entity.type, sourceDeathTick: life.deathTick,sourceHostile:isHostileForAI(state,entity,state.entities.get(state.playerId)),
+    sourceType: entity.type, sourceDeathTick: life.deathTick,sourceHostile:isHostileForAI(state,entity,playerBody),
+    // PQ-146 §6.2: the player's position and whether the direct player→source line was blocked at
+    // the opening of the proved chain. Line Contracts read these; scoring does not.
+    playerPos: playerBody?.pos ? point(playerBody.pos) : null,
+    sourceOccludedAtRoot: playerBody?.pos && entity.id !== playerBody.id
+      ? !witnessLineOfSight(state, { id: playerBody.id, pos: playerBody.pos }, entity.pos, [playerBody.id, entity.id]) : null,
     previousRoot: previous && tick - previous.tick <= 120 ? previous.id : null,
     nodes: [], terminals: [], truncated: false };
   node(j, root, { kind, tick, entityId: entity.id, lifeId: life.id, pos: point(entity.pos), before: point(before), after: point(after), dv: point(dv) });
@@ -239,7 +246,21 @@ export function observeContact(a, b, contact, state = activeState) {
     const submaterialSource=!!priorSource&&priorSource.impactDamage<Math.min(source.hull,.25*sl.hull);
     const submaterialTarget=!!priorTarget&&priorTarget.impactDamage<Math.min(target.hull,.25*tl.hull);
     if ((!changedCorridor&&!submaterialSource&&!submaterialTarget) || (!(power&&retained>0) && !steering)) continue;
-    const path = { rootId: root.id, sourceId: source.id, targetId: target.id, sourceLife: sl.id, targetLife: tl.id,
+    // PQ-146 §6.2: was the direct player→target line occluded at the opening of the proved chain?
+    // For the chain's own source the root-time measurement is exact. For another victim, only an
+    // unimpelled body can be honestly back-projected to the opening tick — an impelled one reads
+    // as unknown rather than guessed.
+    let playerOccludedAtRoot=null;
+    if(root.playerPos) {
+      if(tl.id===root.sourceLife)playerOccludedAtRoot=root.sourceOccludedAtRoot===true;
+      else if(!j.bodies.has(tl.id)) {
+        const back=(tick-root.tick)/60;
+        const thenPos={x:targetPos.x-tv.x*back,z:targetPos.z-tv.z*back};
+        playerOccludedAtRoot=!witnessLineOfSight(state,{id:state.playerId,pos:root.playerPos},thenPos,[state.playerId,source.id,target.id]);
+      }
+    }
+    const path = { rootId: root.id, sourceId: source.id, targetId: target.id, sourceLife: sl.id, targetLife: tl.id, playerOccludedAtRoot,
+      sourceOccludedAtRoot:sl.id===root.sourceLife?root.sourceOccludedAtRoot:null,
       tick, edges: influence.edges + 1, usefulDeltaV: useful, closingSpeed: Math.max(0, (sv.x-tv.x)*axis.x+(sv.z-tv.z)*axis.z),
       missDistance,changedCorridor,submaterialSource,submaterialTarget,priorSpeed,normal: axis, sourceVelocity: point(sv), targetVelocity: point(tv),
       momentum: (target.physicsBody?.dynamic === false || ['asteroid','station','planet'].includes(target.type) ? sl.mass : sl.mass*tl.mass/(sl.mass+tl.mass)) * Math.max(0,(sv.x-tv.x)*axis.x+(sv.z-tv.z)*axis.z) };
