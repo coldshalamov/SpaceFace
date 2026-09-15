@@ -37,6 +37,7 @@ import {
   PQ019C_HEIST_TYPE,
 } from '../src/data/heistMission.js';
 import { deliveryQuote } from '../src/physicalCargo/breakaway/payloadMath.js';
+import { prepareTerminal } from '../src/missions/heistArbiter.js';
 
 const SYSTEMS = [physics, world, heistFacilities, lawSecurity, heat, npcJobsRuntime, missions];
 
@@ -247,4 +248,49 @@ test('same-session reload of a never-launched capsule run is no longer blocked b
   assert.ok(t.stepToLaunch(600), 'the reloaded contract launches instead of being denied active_schedule');
   assert.equal(t.mission()?.heist.scheduleDenied ?? null, null);
   assert.equal(t.liveLoads().length, 1);
+});
+
+test('reload after the delivery was decided but before the fork consumed the load: re-adopted and paid once', async () => {
+  const t = await scene();
+  t.accept(BREAKAWAY_RECOVERY_TYPE);
+  assert.ok(t.stepToLaunch());
+  t.place(t.load(), { depth: -40, vIn: 50 });
+  t.stepUntil(() => (t.mission()?.heist.arbiter.candidates || []).some((c) => c.kind === 'lawful_arrival_observed'), 900);
+  const record = t.mission().heist;
+  // The decided-but-unconsumed cut point, exactly as the arbiter prepares it on the next tick.
+  prepareTerminal(record.arbiter, (t.state.tick | 0) + 1);
+  assert.equal(record.arbiter.receipt.outcome, 'lawful_arrival_observed');
+  const snapshot = t.capture();
+
+  t.restore(snapshot);
+  assert.equal(t.mission().heist.reconciled, 'resumed_receipt');
+  t.stepUntil(() => !t.mission(), 60);
+  assert.equal(t.mission(), null);
+  assert.equal(t.counts.completed, 1, 'the durable body is re-adopted and handed over, not excused');
+  assert.deepEqual(t.payouts().map((g) => g.amount), [fullQuote()]);
+  t.step(1);
+  assert.equal(t.liveLoads().length, 0, 'the load was consumed by the fork');
+});
+
+test('a corrupt saved run with its SP-07 body present pays nothing and leaves no orphan body behind', async () => {
+  const t = await scene();
+  t.accept(BREAKAWAY_RECOVERY_TYPE);
+  assert.ok(t.stepToLaunch());
+  t.step(5);
+  const snapshot = t.capture();
+  // A phase that claims a decision with no readable receipt: the arbiter refuses the whole record.
+  snapshot.missions.active[0].heist.arbiter.phase = 'resolution_pending';
+  snapshot.missions.active[0].heist.arbiter.receipt = null;
+
+  t.restore(snapshot);
+  assert.equal(t.mission().heist.reconciled, 'arbiter_refused');
+  assert.equal(t.liveLoads().length, 1, 'the save owner did restore the body');
+  t.stepUntil(() => !t.mission(), 30);
+  assert.equal(t.mission(), null, 'the run settles instead of hanging');
+  assert.equal(t.payouts().length, 0);
+  t.step(1);
+  assert.equal(t.liveLoads().length, 0, 'the unadopted body is removed with its finished run');
+  const stillSaved = t.capture().entities.persistent
+    .filter((e) => e.data?.heistPayloadStableId === BREAKAWAY_SP07.stableId);
+  assert.equal(stillSaved.length, 0, 'no later save carries an orphan SP-07');
 });

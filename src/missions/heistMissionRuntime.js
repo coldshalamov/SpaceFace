@@ -609,8 +609,15 @@ export const heistMissionRuntime = {
     const tick = intTick(ctx?.state?.tick);
 
     if (!record.scheduleRequested) this.requestSchedule(ctx, record);
-    // Before any absence rule can read a missing capsule id as a lost load.
-    if (record.reconciled === 'readopt_load') this._readoptRestoredLoad(ctx, record, tick);
+    // Before any absence rule can read a missing capsule id as a lost load. A durable load is
+    // re-adopted for an undecided run AND for a decided-but-unconsumed one: unlike the transient
+    // capsule, its body is still there to hand over.
+    if (record.reconciled === 'readopt_load'
+      || (record.reconciled === 'resumed_receipt'
+        && heistLaunchVariant(record.variantId).durableLoad
+        && !effectApplied(record.arbiter, record.arbiter?.receipt?.effectKeys?.receiverCommit))) {
+      this._readoptRestoredLoad(ctx, record, tick);
+    }
 
     if (record.launchTick == null) {
       // BOUNDED EVEN IF NOTHING EVER FLIES. `heistFacilities.update` returns early outside Tethys
@@ -815,9 +822,10 @@ export const heistMissionRuntime = {
     // facility memory are not in the save capture plan, so a delivery DECIDED before a save cannot
     // find its capsule after the load; `restore` resumes that receipt as decided (save point 6).
     // That cut point is only reachable across a reload — in a live session the decision and the
-    // handoff happen inside one call. A durable physical load retires this exception.
+    // handoff happen inside one call. A DURABLE load never takes the exception: its body is saved
+    // and re-adopted, so it can still earn a physical commit, and a refusal means no delivery.
     const refusedDelivery = delivery && receiverRefusal !== null
-      && record.reconciled !== 'resumed_receipt';
+      && (record.reconciled !== 'resumed_receipt' || heistLaunchVariant(record.variantId).durableLoad);
 
     // 2. Law and heat already happened during the run, through their own owners. Journalling them
     //    against the terminal receipt is what makes them COUNTABLE — the effect keys only exist

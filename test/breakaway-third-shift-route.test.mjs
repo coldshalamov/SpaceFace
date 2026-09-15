@@ -246,3 +246,14 @@ test('the launcher refuses a second contract while a run is live, in words', asy
   assert.ok(t.toasts.some((p) => /committed to another run/.test(p.text || '')),
     'the refusal is told, not silent');
 });
+
+// ── Accessibility properties (parity with the capsule run's cue contract) ──────────────────────
+
+test('every Third Shift line carries its whole meaning in words', () => {
+  for (const [moment, text] of Object.entries(BREAKAWAY_CUE_TEXT)) {
+    assert.ok(typeof text === 'string' && text.length >= 20, `${moment} must read as a sentence, not a token`);
+    assert.ok(/[a-z]/.test(text), `${moment} must not be an all-caps status token`);
+    assert.ok(!/\b(red|green|amber|yellow|blue|orange)\b/i.test(text),
+      `${moment} must not name a colour as its meaning`);
+  }
+});

@@ -962,6 +962,18 @@ export const heistFacilities = {
     return { adopted: true, entityId: load.id };
   },
 
+  /** Remove every owned load body stamped with `scheduleId`. Used only for a run that is over. */
+  _removeUnadoptedLoads(scheduleId) {
+    let removed = 0;
+    for (const entity of this.state.entityList || []) {
+      if (!entity || entity.alive === false || !this._isOwnedCapsule(entity)) continue;
+      if (entity.data.launchScheduleId !== scheduleId) continue;
+      this.helpers.removeEntity(entity.id);
+      removed++;
+    }
+    return removed;
+  },
+
   /** The restored body for a schedule, matched by stable data — never by a recycled entity id. */
   _findRestoredLoad(scheduleId, variant) {
     for (const entity of this.state.entityList || []) {
@@ -1168,9 +1180,21 @@ export const heistFacilities = {
     const id = cleanScheduleId(scheduleId);
     const owned = this.state.heistFacilities;
     const schedule = owned?.schedule;
-    if (!schedule) return { released: false, reason: 'no_schedule' };
+    // A durable load the save owner restored but no mission re-adopted (its run settled from a
+    // refused or already-decided record) hangs off no schedule. Left alone it would be an orphan body
+    // that every later save respawns — a duplicate of cargo whose contract is over.
+    if (!schedule) {
+      const orphans = id ? this._removeUnadoptedLoads(id) : 0;
+      return { released: false, reason: 'no_schedule', ...(orphans ? { removedOrphanLoads: orphans } : {}) };
+    }
     if (id && schedule.scheduleId !== id) {
-      return { released: false, reason: 'schedule_mismatch', activeScheduleId: schedule.scheduleId };
+      const orphans = this._removeUnadoptedLoads(id);
+      return {
+        released: false,
+        reason: 'schedule_mismatch',
+        activeScheduleId: schedule.scheduleId,
+        ...(orphans ? { removedOrphanLoads: orphans } : {}),
+      };
     }
     const capsule = this._activeScheduleCapsule(schedule);
     if (capsule) this.helpers.removeEntity(capsule.id);
