@@ -985,7 +985,11 @@ function computeAutopilotGuidance(state, player, target, distance, arrivalRadius
   let steerX = baseX;
   let steerZ = baseZ;
   let avoiding = false;
-  const maxProjection = Math.max(0, Math.min(distance - arrivalRadius, lookAhead));
+  // On the berth stage the manifest corridor is the authored collision-free lane: lateral
+  // dodging inside it is what steers the hull across a spar or ring primitive and gets it
+  // expelled back out of the dock envelope at speed. A slow straight-in contact is kinder.
+  const berthLaneLocked = target && target.dockingProxyId && target.dockingStage === 'berth';
+  const maxProjection = berthLaneLocked ? 0 : Math.max(0, Math.min(distance - arrivalRadius, lookAhead));
   if (maxProjection > 0) {
     const obstacles = autopilotObstacles(state, player, target, baseX, baseZ, maxProjection);
     let weightedLateral = 0;
