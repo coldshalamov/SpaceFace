@@ -1192,11 +1192,19 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
     /recordAuthoredAdmissionBlockingSlice/,
     'renderer must own one shared blocking-slice observer for authored admission paths');
   const observerWires = source.match(/onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/g);
+  // 206e8b2f5 (PQ-033.02) routed two more GPU residency passes through the same observer: the
+  // context-restore re-upload and the first-picture barrier on the live mount.
   assert.equal(
     observerWires?.length,
-    3,
-    'pipeline tracker, authored residency tracker, and opening residency call must share the observer',
+    5,
+    'pipeline tracker, authored residency tracker, opening residency, context-restore residency, and first-picture residency must share the observer',
   );
+  assert.match(source,
+    /prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[^}]*?ignoreResidentStamps:\s*true,[^}]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'context-restore GPU residency must publish initTexture slices');
+  assert.match(source,
+    /firstFrameResidency = await prepareStartupGpuResidency\(renderer,\s*scene,\s*\{[^}]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
+    'first-picture GPU residency must publish initTexture slices');
   assert.match(source,
     /createPipelineAdmissionTracker\([\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,
     'pipeline admission must publish synchronous compileBatch slices');
