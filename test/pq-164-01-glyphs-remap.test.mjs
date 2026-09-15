@@ -320,3 +320,19 @@ test('PQ-164.01: pad remap persists through the settings profile and an old save
   assert.deepEqual(booted.settings.controls.gamepad.bindings, { fire: ['dDown'], cancel: ['r2'] },
     'profile pad remap survives an old save load');
 });
+
+test('PQ-164.01: a plain mouse click on the flight canvas is not touch-class activity', async () => {
+  const { ingestTrackpadPointer } = await import('../src/systems/touch.js');
+  // verify65 (2026-09-15): a star-chart pick whose pointerup landed on the flight canvas after the
+  // chart closed stamped touch activity, and the dock prompt read "[ Dock ]" instead of "[ E ]".
+  const touch = { trackpad: null, _activityPending: false };
+  const state = { player: { tether: { active: false } }, input: { autoFire: false } };
+  ingestTrackpadPointer(touch, { type: 'pointerdown', clientX: 400, clientY: 300, timeStamp: 1000, button: 0 }, state);
+  ingestTrackpadPointer(touch, { type: 'pointerup', clientX: 400, clientY: 300, timeStamp: 1080, button: 0 }, state);
+  assert.equal(touch._activityPending, false, 'left click without a trackpad verb must not flip the prompt device');
+  // A middle-click tap is the Massline latch — a real trackpad verb — and still counts.
+  ingestTrackpadPointer(touch, { type: 'pointerdown', clientX: 400, clientY: 300, timeStamp: 2000, button: 1 }, state);
+  ingestTrackpadPointer(touch, { type: 'pointerup', clientX: 400, clientY: 300, timeStamp: 2080, button: 1 }, state);
+  assert.equal(touch._activityPending, true, 'a latch tap remains touch-class activity');
+  assert.equal(touch.trackpad.lastVerb, 'latch');
+});

@@ -121,6 +121,7 @@ function isMenuAction(action) {
 }
 
 function noteVerb(tp, verb) {
+  tp._verbNoted = true;
   tp.lastVerb = verb;
   if (tp.verbs[tp.verbs.length - 1] !== verb) tp.verbs.push(verb);
 }
@@ -229,7 +230,16 @@ export function ingestTrackpadPointer(touch, ev, state) {
   const y = Number(ev.clientY) || 0;
   const t = Number.isFinite(ev.timeStamp) ? ev.timeStamp : nowMs();
   const button = Number.isFinite(ev.button) ? ev.button : 0;
-  touch._activityPending = true;
+  // Device arbitration: only a pointer event that produced a trackpad verb counts as touch-class
+  // activity. An ordinary mouse click on the flight canvas (a star-chart pick whose pointerup lands
+  // after the chart closes) is the keyboard/mouse device and must not flip prompts to "[ Dock ]".
+  tp._verbNoted = false;
+  const consumed = ingestTrackpadPointerGesture(tp, type, x, y, t, button, state);
+  if (consumed || tp._verbNoted) touch._activityPending = true;
+  return consumed;
+}
+
+function ingestTrackpadPointerGesture(tp, type, x, y, t, button, state) {
   if (type === 'pointerdown' || type === 'mousedown') {
     tp.pointer = { down: true, x, y, t, moved: 0, button };
     return button === 1;
