@@ -297,7 +297,11 @@ export async function runReleaseSoakProbe({
     try {
       await runSoakCycle(page, { index: 'warmup', outputDir, log: doLog, screenshots: false, marksSink: warmupMarks });
     } catch (warmupError) {
-      warmupError.message = `${warmupError.message} | warmup-marks: ${JSON.stringify(warmupMarks)}`;
+      const taps = await page.evaluate(() => ({
+        posJumps: window.__PQ033_POS_JUMPS__ || [],
+        sectorEvents: window.__PQ033_SECTOR_EVENTS__ || [],
+      })).catch(() => null);
+      warmupError.message = `${warmupError.message} | warmup-marks: ${JSON.stringify(warmupMarks)} | warmup-taps: ${JSON.stringify(taps)}`;
       throw warmupError;
     }
     // The cycle finishes docked on the market screen — the same state the
