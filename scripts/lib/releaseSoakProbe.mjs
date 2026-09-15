@@ -952,7 +952,10 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
     // on restored velocity and can wedge inside the station silhouette with no prompt.
     const navArmed = await page.waitForFunction(() => {
       const nav = window.SF?.state?.nav;
-      return nav?.autopilot?.active === true || nav?.waypoint != null;
+      // Instant arrivals (restored save inside the dock envelope) disarm the
+      // autopilot and can retire the waypoint before this poll runs — 'arrived'
+      // is the surviving receipt that the arm succeeded.
+      return nav?.autopilot?.active === true || nav?.autopilot?.status === 'arrived' || nav?.waypoint != null;
     }, null, { timeout: 8_000 }).then(() => true).catch(() => false);
     assert(navArmed, 'redock waypoint did not arm nav.waypoint/autopilot — the ship would drift unpowered');
     mark('redock-waypoint');
@@ -1221,7 +1224,11 @@ async function clickWaypointWithPointer(page, locator) {
       await page.mouse.up({ button: 'left' });
       const armed = await page.waitForFunction(() => {
         const autopilot = window.SF?.state?.nav?.autopilot;
-        return autopilot?.active === true && /Helios Station/i.test(String(autopilot.label || ''));
+        const label = /Helios Station/i.test(String(autopilot?.label || ''));
+        // A restored save inside the docking envelope can complete the arm→arrive
+        // round-trip in under a frame of polling: accept 'arrived' as arm evidence
+        // or the 750ms window races the instant completion and the click reads as missed.
+        return label && (autopilot?.active === true || autopilot?.status === 'arrived');
       }, null, { timeout: 750 }).then(() => true, () => false);
       if (armed) return;
     }
