@@ -422,6 +422,25 @@ test('dirty-range comparator requires causal owner and driver byte reduction at 
   );
 });
 
+test('dirty-range comparator refuses windows whose settings drifted mid-capture', () => {
+  // 2026-09-15 run: a contended host let adaptive quality mutate renderScale inside
+  // both windows; the numbers still compared, but a shifted quality baseline is not
+  // paired evidence. Pin the per-window stability gate that invalidated that run.
+  const drifted = windowFixture('baseline', { requestedBytes: 600_000, driverBytes: 720_000 });
+  drifted.settings.end = {
+    ...drifted.settings.end,
+    video: { ...drifted.settings.end.video, renderScale: 0.75 },
+  };
+  const result = evaluateDirtyRangeComparison({
+    windows: [
+      drifted,
+      windowFixture(DYNAMIC_BUFFER_FULL_SPAN_VARIANT, { requestedBytes: 12_000_000, driverBytes: 12_200_000 }),
+    ],
+  }, { runtimeKind: 'browser' });
+  assert.equal(result.pass, false);
+  assert.match(result.failures.join(' '), /ranged quality\/settings changed inside the capture window/);
+});
+
 test('paired dirty-range manifests bind one scenario and source candidate to distinct runtimes', async () => {
   for (const manifest of [browserManifest, electronManifest]) {
     assert.equal(manifest.mode, 'acceptance');
