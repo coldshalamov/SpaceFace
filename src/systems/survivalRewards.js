@@ -1,422 +1,209 @@
-// Survival run economy (PQ-133 / CRU-014 + CRU-015).
-//
-// The run has its OWN wallet and its own XP. Nothing here touches the campaign: no
-// economy:grantCredits, no economy:chargeCredits, no write to state.player.*, no station stock,
-// no reputation, no research. Every figure lands in state.run through runSession, which stays the
-// sole writer of that envelope.
-//
-// Credits are PHYSICAL (CRU-015): a cohort kill drops a chip through the shipped `loot:drop` seam,
-// and mining spawns and magnetises it exactly like every other pickup. It is stamped
-// `wallet: 'run'` at the drop, so routing is a property of the ITEM and not of a global "is a run
-// live?" question. Nothing here spawns a second pickup pipeline.
-//
-// Scooping one pays it through mining. Anything else that removes it pays it here, on the destroy
-// receipt — see _onEntityDestroyed for why that seam and not a phase boundary.
-//
-// Init-order only: event-driven, never registered in PRODUCTION_UPDATE_ORDER, never ticks.
-// Strict no-op without a live survival run.
-
-import { IMPULSE_PROVENANCE_MAX_AGE_TICKS } from '../combat/impulseKernel.js';
+// Survival score and salvage are separate entitlements. RunSession owns the wallet.
 import { runOwnsReward } from '../combat/rewardEligibility.js';
+import { admitStuntThreat, threatReward } from '../combat/stuntScoring.js';
+import { bodyLife } from '../combat/stuntEvidence.js';
 import { validateRunState } from '../core/runState.js';
 import { CREDIT_CHIP_KIND } from '../data/killRewards.js';
-import { peakConcurrentDemand } from '../data/survivalWaves.js';
-import {
-  SHOVE_WEAPON_ID,
-  applyStyleKill,
-  styleCauseFromKill,
-} from './survivalStyle.js';
+import { bankActive, resetRound, settleCrash } from './stuntCombo.js';
 
-/** XP a single cohort kill is worth. Small and level-scaled so the bar visibly moves in a fight. */
 export const KILL_XP_BASE = 2;
-/** Score a single cohort kill is worth, before any style multiplier. */
-export const KILL_SCORE_PER_LEVEL = 10;
-/** Score for surviving a wave, on top of the authored XP purse. */
-export const WAVE_CLEAR_SCORE = 25;
-/** Wallet tag stamped on every Survival credit chip. */
+export const KILL_SCORE_PER_LEVEL = 100; // compatibility name; levels do not multiply immutable threat pay
+export const WAVE_CLEAR_SCORE = 0;
 export const RUN_WALLET = 'run';
-
-/**
- * One body's share of a wave's authored credit purse. The purse is split across the bodies the
- * plan actually schedules, so a wave pays out roughly what the recipe says however the fight goes.
- */
-export function chipValueForPlan(plan) {
-  const rewards = plan && plan.rewards;
-  const credits = rewards && Number.isInteger(rewards.credits) ? rewards.credits : 0;
-  if (credits <= 0) return 0;
-  // A swarm wave's packages are only its OPENING burst; the bodies that actually die over the wave
-  // are counted against `rewardReferenceKills` (the old quota curve, kept so one chip is still
-  // worth two credits). Splitting the purse by the burst would pay two or three times the authored
-  // figure. Every actual kill pays, including those past the reference count — there is no
-  // exhausted purse.
-  const swarm = plan && plan.swarm;
-  const bodies = swarm && Number.isInteger(swarm.rewardReferenceKills) && swarm.rewardReferenceKills > 0
-    ? swarm.rewardReferenceKills
-    : (swarm && Number.isInteger(swarm.quota) && swarm.quota > 0
-      ? swarm.quota
-      : peakConcurrentDemand(plan && plan.packages));
-  if (bodies <= 0) return credits;
-  return Math.max(1, Math.round(credits / bodies));
+export const killXpFor = level => KILL_XP_BASE + (Number.isInteger(level) && level >= 1 ? level : 1);
+export const killScoreFor = (_level, threatClass = 'fodder') => threatReward(threatClass).baseScore;
+export const chipValueForPlan = () => 10; // cohort lives use the threat table, never an infinite per-spawn purse
+export function estimateBoardScore({ gunKills = 0, physicsKills = 0, stuntPoints = 0, playerPhysics = true, threatClass = 'fodder' } = {}) {
+  return (Math.max(0, Math.trunc(gunKills)) + (playerPhysics ? Math.max(0, Math.trunc(physicsKills)) : 0)) * threatReward(threatClass).baseScore + Math.max(0, Math.floor(stuntPoints));
 }
-
-function liveSurvivalRun(state) {
-  if (!state) return null;
-  const run = state.run;
-  if (!run || typeof run !== 'object' || Array.isArray(run)) return null;
-  if (run.kind !== 'survival') return null;
-  if (run.phase === 'inactive') return null;
-  if (!validateRunState(run).ok) return null;
-  return run;
+function liveRun(state) {
+  const run = state?.run;
+  return run?.kind === 'survival' && run.phase !== 'inactive' && validateRunState(run).ok ? run : null;
 }
-
-export function killXpFor(level) {
-  const l = Number.isInteger(level) && level >= 1 ? level : 1;
-  return KILL_XP_BASE + l;
+function freshRewards() {
+  return { version: 2, wave: 0, deaths: {}, entitlements: {}, chips: {}, lastBankId: 0,
+    baseCash: 0, roundStyle: 0, stipendPaid: 0, clearedWaves: {}, admissionCounter: 0 };
 }
-
-export function killScoreFor(level) {
-  const l = Number.isInteger(level) && level >= 1 ? level : 1;
-  return KILL_SCORE_PER_LEVEL * l;
-}
-
-function weaponIdFromKill(payload) {
-  if (!payload || typeof payload !== 'object') return null;
-  const origin = payload.origin && typeof payload.origin === 'object' ? payload.origin : null;
-  const provenance = payload.provenance && typeof payload.provenance === 'object' ? payload.provenance : null;
-  const packet = payload.packet && typeof payload.packet === 'object' ? payload.packet : null;
-  const source = packet && packet.source && typeof packet.source === 'object' ? packet.source : null;
-  const presentation = payload.presentation && typeof payload.presentation === 'object' ? payload.presentation : null;
-  const candidates = [
-    payload.weaponId,
-    payload.weapon,
-    origin && origin.weaponId,
-    origin && origin.id,
-    provenance && provenance.weaponId,
-    source && source.weaponId,
-    presentation && presentation.weaponId,
-  ];
-  for (const value of candidates) {
-    if (typeof value === 'string' && value) return value;
-  }
-  return null;
-}
-
-/**
- * Board score from a kill split (gun vs physics-attributed). Used by the kit
- * balance dashboard when a bench trace has causes but not the live run envelope.
- * Live play still goes through scoreWithStyle so style and shove memory apply.
- */
-export function estimateBoardScore({
-  gunKills = 0,
-  physicsKills = 0,
-  stuntPoints = 0,
-  shoveGun = false,
-  playerPhysics = true,
-  level = 1,
-} = {}) {
-  const base = killScoreFor(level);
-  const stunts = Number.isFinite(stuntPoints) ? Math.max(0, Math.round(stuntPoints)) : 0;
-  return (Math.max(0, Math.trunc(gunKills)) + (playerPhysics ? Math.max(0, Math.trunc(physicsKills)) : 0)) * base + stunts;
-}
-
 export const survivalRewards = {
   name: 'survivalRewards',
-
   init(ctx) {
-    this.destroy();
-    this.state = ctx.state;
-    this.bus = ctx.bus || null;
-    this.helpers = ctx.helpers || null;
-    this.ctx = ctx;
-    this._unsubs = [];
-    this._reset();
-    if (!this.bus || typeof this.bus.on !== 'function') return;
-    this._unsubs.push(this.bus.on('run:wavePlanned', (p) => this._onWavePlanned(p)));
-    this._unsubs.push(this.bus.on('entity:killed', (p) => this._onEntityKilled(p)));
-    this._unsubs.push(this.bus.on('combat:kill', (p) => this._onEntityKilled(p)));
-    this._unsubs.push(this.bus.on('stunt:trickDetected', (p) => this._onStuntTrick(p)));
-    this._unsubs.push(this.bus.on('combat:hitstunImpulse', (p) => this._onHitstun(p)));
-    this._unsubs.push(this.bus.on('weapon:shove', (p) => this._onHitstun(p)));
-    this._unsubs.push(this.bus.on('run:waveCleared', (p) => this._onWaveCleared(p)));
-    this._unsubs.push(this.bus.on('entity:spawned', (p) => this._onEntitySpawned(p)));
-    this._unsubs.push(this.bus.on('entity:destroyed', (p) => this._onEntityDestroyed(p)));
-    this._unsubs.push(this.bus.on('pickup:collected', (p) => this._onPickupCollected(p)));
-    this._unsubs.push(this.bus.on('run:transitioned', (p) => this._onTransitioned(p)));
-    this._unsubs.push(this.bus.on('run:ended', () => {
-      this.sweepChips('run_ended');
-      this._reset();
-    }));
+    this.destroy(); this.state = ctx.state; this.bus = ctx.bus; this.helpers = ctx.helpers;
+    this._unsubs = []; this._plan = null; this._planWave = 0;
+    this._ensure();
+    const handlers = {
+      'run:wavePlanned': p => this._onWavePlanned(p),
+      'entity:killed': p => this._onEntityKilled(p), 'combat:kill': p => this._onEntityKilled(p),
+      'stunt:trickDetected': () => this._syncBanks(), 'stunt:styleBanked': () => this._syncBanks(),
+      'run:waveCleared': p => this._onWaveCleared(p), 'entity:spawned': p => this._onEntitySpawned(p),
+      'entity:destroyed': p => this._onEntityDestroyed(p), 'pickup:collected': p => this._onPickupCollected(p),
+      'run:transitioned': p => this._onTransitioned(p), 'run:started': () => this._reset(),
+      'player:death': () => this._onDeath(), 'run:ended': () => { this._onDeath(); this._discardChips(); },
+    };
+    for (const [event, fn] of Object.entries(handlers)) if (this.bus?.on) this._unsubs.push(this.bus.on(event, fn));
+    // Rehydrated actors retain their original immutable admission; missing old-save metadata is
+    // admitted conservatively, without claiming that old money or provenance has been recovered.
+    for (const entity of this.state?.entities?.values?.() || []) if (entity.alive && runOwnsReward(entity)) this._admit(entity);
   },
-
-  destroy() {
-    for (const off of this._unsubs || []) if (typeof off === 'function') off();
-    this._unsubs = [];
+  destroy() { for (const off of this._unsubs || []) if (typeof off === 'function') off(); this._unsubs = []; },
+  newGame() { this._reset(); },
+  _ensure() {
+    this.state.stunts ||= {};
+    if (this.state.stunts.rewards?.version !== 2) this.state.stunts.rewards = freshRewards();
+    return this.state.stunts.rewards;
   },
-
-  newGame() {
-    this._reset();
+  _reset() { if (this.state) { this.state.stunts ||= {}; this.state.stunts.rewards = freshRewards(); } },
+  serialize() { return JSON.parse(JSON.stringify(this._ensure())); },
+  deserialize(data) {
+    if (data?.version === 2 && data.deaths && data.entitlements && data.chips) this.state.stunts.rewards = JSON.parse(JSON.stringify(data));
+    else this._reset();
   },
-
-  _reset() {
-    this._plan = null;
-    this._planWave = 0;
-    this._chipValue = 0;
-    this._liveChips = new Map();
-    this._recentShove = new Map();
-    this._settledKills = new Set();
-    this._settledStunts = new Set();
+  _admit(entity) {
+    const run = liveRun(this.state);
+    const r = this._ensure();
+    const life = bodyLife(entity, this.state);
+    if (life && entity?.data) entity.data.bodyLifeId = life.id;
+    if (!entity?.data?.stuntThreat && entity?.id != null) r.admissionCounter++;
+    return admitStuntThreat(entity, `${run?.seed ?? 'legacy'}:${entity?.data?.runWave ?? run?.wave ?? 0}:${r.admissionCounter}`);
   },
-
-  _onHitstun(payload) {
-    if (!payload || typeof payload !== 'object') return;
-    if (payload.source === 'collision') return;
-    const playerId = this.state && this.state.playerId;
-    const actorId = payload?.provenance?.actorId ?? payload?.actorId ?? payload?.attackerId;
-    if (playerId == null || actorId !== playerId) return;
-    if (!(Number(payload.deltaV) > 0)) return;
-    const victimId = payload.victimId != null ? payload.victimId : payload.targetId;
-    if (victimId == null) return;
-    const weaponId = weaponIdFromKill(payload) || SHOVE_WEAPON_ID;
-    const tick = Number.isInteger(payload.tick)
-      ? payload.tick
-      : (this.state && Number.isInteger(this.state.tick) ? this.state.tick : 0);
-    this._recentShove.set(victimId, { weaponId, tick });
-  },
-
-  _rememberedShove(victimId, nowTick) {
-    if (victimId == null || !this._recentShove) return null;
-    const row = this._recentShove.get(victimId);
-    if (!row) return null;
-    const now = Number.isInteger(nowTick) ? nowTick : 0;
-    if (now - row.tick > IMPULSE_PROVENANCE_MAX_AGE_TICKS) {
-      this._recentShove.delete(victimId);
-      return null;
-    }
-    return row.weaponId || null;
-  },
-
-  /**
-   * PQ-146.01 combo points were a parallel meter. The Crucible board reads run.score.
-   * Bank named tricks into the same award seam so a shove-and-rock chain outscores Pulse grind.
-   */
-  _onStuntTrick(trick) {
-    const run = liveSurvivalRun(this.state);
-    if (!run || run.phase !== 'active' || this.state.playerId == null || trick?.actorId !== this.state.playerId) return;
-    if (typeof trick.episodeId !== 'string' || !trick.consequence || trick.consequence.victimId !== trick.targetId) return;
-    const victim = this._entity(trick.targetId);
-    if (!runOwnsReward(victim)) return;
-    if (!this._settledStunts) this._settledStunts = new Set();
-    if (this._settledStunts.has(trick.episodeId)) return;
-    const combo = this.state.stunts?.combo;
-    const last = combo?.lastTricks?.[combo.lastTricks.length - 1];
-    if (!last || last.episodeId !== trick.episodeId || !(last.points > 0)) return;
-    this._settledStunts.add(trick.episodeId);
-    this._emit('run:awardRequested', { score: last.points, reason: 'stunt', wave: run.wave });
-  },
-
   _onWavePlanned(payload) {
-    const plan = payload && payload.plan;
-    if (!plan || plan.ok === false) return;
-    this._plan = plan;
-    this._planWave = Number.isInteger(payload.wave) ? payload.wave : 0;
-    this._chipValue = chipValueForPlan(plan);
+    if (!payload?.plan || payload.plan.ok === false) return;
+    this._plan = payload.plan; this._planWave = payload.wave || 0;
+    const r = this._ensure();
+    if (r.wave !== this._planWave) {
+      r.wave = this._planWave; r.baseCash = 0; r.roundStyle = 0; r.stipendPaid = 0;
+      // Old pickups are rendered harmless at clear before these bounded per-round ledgers reset.
+      r.deaths = {}; r.entitlements = {}; r.chips = {};
+    }
   },
-
   _onEntityKilled(payload) {
-    const run = liveSurvivalRun(this.state);
+    const run = liveRun(this.state);
     if (!run) return;
     const id = payload?.id ?? payload?.targetId ?? payload?.victimId;
-    if (id == null) return;
     const victim = this._entity(id);
-    // The marker rides on the victim, so ambient traffic the player happens to shoot inside an
-    // arena still settles through the campaign path and never pays the run.
-    if (!runOwnsReward(victim)) return;
-    if (victim.alive !== false) return;
-    if (!this._settledKills) this._settledKills = new Set();
-    if (this._settledKills.has(id)) return;
-    this._settledKills.add(id);
-    // THE ROOM'S KILLS PAY TOO.
-    //
-    // This used to require `killerId === playerId`, which quietly made the environment the WORST
-    // way to kill anything: a hostile that wandered into an arena mine, or that another hostile
-    // shot, or that the room's current put through a rock, dropped no chip, paid no XP and moved
-    // no score. A live browser walk found 7 of 113 kills in that hole. In a mode whose whole
-    // premise is that the arena is a weapon, "the wall got it, so you get nothing" is exactly
-    // backwards — and the style multiplier below is built to reward precisely those causes.
-    //
-    // Everything on the board is here because the run put it here, so everything on the board
-    // pays the run when it dies. `runOwnsReward` above is still the only gate: ambient traffic
-    // carries no cohort mark and is untouched.
-    const level = this._levelOf(victim);
-    const cause = styleCauseFromKill(payload);
+    if (!runOwnsReward(victim) || victim.alive !== false) return;
+    const threat = victim.data?.stuntThreat || this._admit(victim);
+    if (!threat || !threat.credits) return;
+    const r = this._ensure();
+    const lifeId = threat.lifeId;
+    if (r.deaths[lifeId]) return;
+    r.deaths[lifeId] = true;
+    const playerId = this.state.playerId;
     const killerId = payload.killerId ?? payload.provenance?.actorId;
-    const playerCaused = this.state.playerId != null && killerId === this.state.playerId;
-    const style = run.style && typeof run.style === 'object'
-      ? run.style
-      : { multiplier: 1, recentCauses: [] };
-    const base = killScoreFor(level);
-    run.style = applyStyleKill(style, cause);
-    this._emit('run:awardRequested', {
-      xp: killXpFor(level),
-      score: playerCaused ? base : 0,
-      reason: 'kill',
-      wave: run.wave,
-    });
-    this._dropRunChip(victim, payload);
+    const playerOwned = playerId != null && killerId === playerId;
+    this._emit('run:awardRequested', { xp: killXpFor(victim.data?.level), score: playerOwned ? threat.baseScore : 0, reason: 'kill', wave: run.wave });
+    r.baseCash += threat.credits;
+    r.entitlements[lifeId] = { credits: threat.credits, settled: false, wave: run.wave };
+    this._dropRunChip(victim, payload, threat);
+    this._payStipend();
   },
-
-  /**
-   * Drop one physical credit chip for a cohort kill. Goes through the shipped `loot:drop` seam so
-   * mining owns the spawn, the magnet pull and the scoop — there is no Survival pickup pipeline.
-   * Nothing is credited at the moment of death: the chip has to leave the board first.
-   */
-  _dropRunChip(victim, payload) {
-    const credits = this._chipValue;
-    if (!(credits > 0)) return;
-    const pos = (victim && victim.pos) || (payload && payload.pos);
-    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return;
-    const vel = victim && victim.vel && typeof victim.vel === 'object'
-      ? {
-        x: Number.isFinite(victim.vel.x) ? victim.vel.x : 0,
-        z: Number.isFinite(victim.vel.z) ? victim.vel.z : 0,
-      }
-      : { x: 0, z: 0 };
-    this._emit('loot:drop', {
-      pos: { x: pos.x, z: pos.z },
-      vel,
-      source: 'kill_burst',
-      items: [{
-        kind: CREDIT_CHIP_KIND,
-        credits,
-        amount: credits,
-        wallet: RUN_WALLET,
-        grantReason: `crucible:wave${this._planWave}:chip`,
-      }],
-    });
+  _dropRunChip(victim, payload, threat) {
+    const pos = victim.pos || payload.pos;
+    if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return; // entitlement remains collectible at clear
+    const vel = victim.vel || {};
+    this._emit('loot:drop', { pos: { x: pos.x, z: pos.z }, vel: { x: Number(vel.x) || 0, z: Number(vel.z) || 0 }, source: 'kill_burst', items: [{
+      kind: CREDIT_CHIP_KIND, credits: threat.credits, amount: threat.credits, wallet: RUN_WALLET,
+      entitlementId: threat.lifeId, grantReason: `crucible:wave${this._planWave}:chip`,
+    }] });
   },
-
   _onEntitySpawned(payload) {
-    const spawned = payload?.entity ?? this.state?.entities?.get?.(payload?.id);
-    if (this._settledKills && spawned?.alive === true) this._settledKills.delete(spawned.id);
-    const entity = payload && payload.entity;
-    if (!entity || entity.type !== 'pickup') return;
-    const data = entity.data;
-    if (!data || data.wallet !== RUN_WALLET) return;
-    // Remember the VALUE, not just the id: at entity:destroyed the body is already gone from
-    // state.entities, so a ledger of ids alone cannot say what it was worth.
-    const credits = Number.isFinite(data.credits) ? Math.trunc(data.credits) : 0;
-    this._liveChips.set(entity.id, credits > 0 ? credits : 0);
+    const entity = payload?.entity ?? this._entity(payload?.id);
+    if (!entity) return;
+    if (entity.alive && runOwnsReward(entity)) this._admit(entity);
+    if (entity.type !== 'pickup' || entity.data?.wallet !== RUN_WALLET) return;
+    const r = this._ensure();
+    let entitlementId = entity.data.entitlementId;
+    // Older pickup producers may not yet copy the optional receipt field. Match only one
+    // outstanding equal-value entitlement, then stamp the binding on the actual pickup.
+    if (entitlementId == null) entitlementId = Object.keys(r.entitlements).find(id => !r.entitlements[id].settled
+      && r.entitlements[id].credits === entity.data.credits && !Object.values(r.chips).includes(id));
+    if (entitlementId == null) return;
+    entity.data.entitlementId = entitlementId;
+    if (r.entitlements[entitlementId]?.settled) { entity.data.creditGranted = true; return; }
+    r.chips[String(entity.id)] = entitlementId;
   },
-
-  /** The player flew through it. Settle it here — this owner is the only payer of run chips. */
-  _onPickupCollected(payload) {
-    const id = payload && payload.pickupId;
-    if (id == null) return;
-    this._settleChip(id, 'chip_scooped');
+  _settleEntitlement(entitlementId, reason) {
+    const r = this._ensure();
+    const row = r.entitlements[entitlementId];
+    const run = liveRun(this.state);
+    if (!row || row.settled || !run || run.phase === 'ended') return 0;
+    row.settled = true;
+    this._emit('run:awardRequested', { credits: row.credits, reason, wave: row.wave });
+    return row.credits;
   },
-
-  /**
-   * Pay one tracked chip and drop it from the ledger. Every route a chip can leave the board by
-   * funnels through here, so a chip is worth its face value exactly once.
-   *
-   * This being the SOLE payer is the point. Two publishers emit pickup:collected and only one of
-   * them carries a `wallet` field — mining's does, physics' contact-collect does not — so routing
-   * on that field meant a chip the player flew into behaved differently from one the magnet pulled
-   * in. A live route capture showed it: six kills dropped six chips worth twelve credits, the
-   * player was paid eight, and the two the ship physically touched paid nothing at all. No headless
-   * check could ever see it, because a headless player never moves.
-   */
   _settleChip(id, reason) {
-    if (!this._liveChips || !this._liveChips.has(id)) return 0;
-    const credits = this._liveChips.get(id) || 0;
-    this._liveChips.delete(id);
-    if (!(credits > 0)) return 0;
-    const run = liveSurvivalRun(this.state);
-    if (!run) return 0;
-    this._emit('run:awardRequested', { credits, reason, wave: run.wave });
-    return credits;
+    const r = this._ensure();
+    const entitlementId = r.chips[String(id)];
+    if (entitlementId == null) return 0;
+    delete r.chips[String(id)];
+    const entity = this._entity(id);
+    if (entity?.data) entity.data.creditGranted = true;
+    return this._settleEntitlement(entitlementId, reason);
   },
-
-  /**
-   * A tracked chip left the board without being scooped — despawn, cull, or the cleanup sweep.
-   *
-   * This, not a phase boundary, is the seam that guarantees earnings. The first version credited
-   * uncollected chips only on the way out of cleanup, and a live route capture showed two of six
-   * chips already destroyed by that moment: the player killed six enemies and was paid for four.
-   */
+  _onPickupCollected(payload) { if (payload?.pickupId != null) this._settleChip(payload.pickupId, 'chip_scooped'); },
   _onEntityDestroyed(payload) {
-    const id = payload && payload.id;
-    if (id == null) return;
-    this._settleChip(id, 'chip_settled');
+    // Despawn is not collection. Preserve earned entitlement until a real round clear.
+    if (payload?.id != null) delete this._ensure().chips[String(payload.id)];
   },
-
-  _onTransitioned(payload) {
-    // Clear the board on the way out of cleanup so the player is not asked to chase scrap around
-    // an empty arena while the draft waits. Marking a chip dead routes it through the settlement
-    // above, so clearing the board and being paid for it are the same act.
-    if (payload && payload.previousPhase === 'cleanup') this.sweepChips('cleanup');
-  },
-
-  /**
-   * Clear every uncollected run chip off the board and settle it, in one act.
-   *
-   * The settlement is SYNCHRONOUS on purpose. An earlier version marked the bodies dead and let
-   * the destroy receipt pay them — but entity:destroyed is QUEUED and flushed at the end of the
-   * sim step, and on the last wave the refit→victory transition freezes the results inside that
-   * same step. The player who won the run saw a Salvage figure lower than what they had earned.
-   * Paying here and dropping the ledger entry means no ordering between this owner, core's sweep
-   * and the results owner can change the total.
-   */
-  sweepChips(reason) {
-    const run = liveSurvivalRun(this.state);
-    if (!run || !this._liveChips || this._liveChips.size === 0) return 0;
-    let outstanding = 0;
-    for (const [id, credits] of [...this._liveChips.entries()]) {
-      const entity = this._entity(id);
-      // This owner is not the entity lifecycle owner; marking dead hands the body to core's sweep.
-      if (entity && entity.alive) entity.alive = false;
-      if (entity && entity.data) entity.data.creditGranted = true;
-      outstanding += credits || 0;
-      this._liveChips.delete(id);
+  sweepChips(reason = 'round_clear') {
+    const r = this._ensure();
+    let paid = 0;
+    for (const id of Object.keys(r.entitlements)) paid += this._settleEntitlement(id, `sweep:${reason}`);
+    for (const entity of this.state?.entities?.values?.() || []) if (entity.type === 'pickup' && entity.data?.wallet === RUN_WALLET && entity.data?.entitlementId != null) {
+      const row = r.entitlements[entity.data.entitlementId];
+      if (row?.settled) { entity.data.creditGranted = true; entity.alive = false; }
     }
-    if (outstanding > 0) {
-      this._emit('run:awardRequested', {
-        credits: outstanding,
-        reason: `sweep:${reason || 'cleanup'}`,
-        wave: run.wave,
-      });
-    }
-    return outstanding;
+    r.chips = {};
+    return paid;
   },
-
-  _onWaveCleared(payload) {
-    const run = liveSurvivalRun(this.state);
+  _discardChips() {
+    const r = this._ensure();
+    for (const row of Object.values(r.entitlements)) row.settled = true;
+    for (const entity of this.state?.entities?.values?.() || []) if (entity.type === 'pickup' && entity.data?.wallet === RUN_WALLET) {
+      entity.data.creditGranted = true; entity.alive = false;
+    }
+    r.chips = {};
+  },
+  _syncBanks() {
+    const run = liveRun(this.state);
     if (!run) return;
-    const wave = payload && Number.isInteger(payload.wave) ? payload.wave : run.wave;
-    const rewards = this._plan && this._planWave === wave ? this._plan.rewards : null;
-    const xp = rewards && Number.isInteger(rewards.xp) ? rewards.xp : 0;
-    this._emit('run:awardRequested', {
-      xp,
-      score: WAVE_CLEAR_SCORE * wave,
-      reason: 'wave_cleared',
-      wave,
-    });
+    const r = this._ensure();
+    for (const bank of this.state.stunts?.combo?.banks || []) if (bank.bankId > r.lastBankId) {
+      r.lastBankId = bank.bankId;
+      r.roundStyle += bank.points;
+      this._emit('run:awardRequested', { score: bank.points, reason: 'stunt_bank', wave: run.wave });
+    }
+    this._payStipend();
   },
-
-  _levelOf(victim) {
-    const level = victim && victim.data && victim.data.level;
-    if (Number.isInteger(level) && level >= 1) return level;
-    const wave = victim && victim.data && victim.data.runWave;
-    return Number.isInteger(wave) && wave >= 1 ? 1 + Math.floor((wave - 1) / 3) : 1;
+  _payStipend() {
+    const r = this._ensure(); const run = liveRun(this.state);
+    if (!run || run.phase === 'ended') return;
+    const entitled = Math.min(Math.floor(.02 * r.roundStyle), Math.floor(.20 * r.baseCash));
+    const delta = Math.max(0, entitled - r.stipendPaid);
+    if (delta) { r.stipendPaid += delta; this._emit('run:awardRequested', { credits: delta, reason: 'style_stipend', wave: run.wave }); }
   },
-
-  _entity(id) {
-    const state = this.state;
-    if (!state || !state.entities || typeof state.entities.get !== 'function') return null;
-    return state.entities.get(id) || null;
+  _onWaveCleared(payload) {
+    const run = liveRun(this.state); if (!run) return;
+    const r = this._ensure(); const wave = payload?.wave ?? run.wave;
+    if (r.clearedWaves[wave]) return;
+    r.clearedWaves[wave] = true;
+    if (this.state.stunts?.combo) resetRound(this.state.stunts.combo, this.state.tick);
+    this._syncBanks(); this.sweepChips('round_clear');
+    this._emit('run:awardRequested', { xp: this._plan?.rewards?.xp || 0, reason: 'wave_cleared', wave });
   },
-
-  _emit(event, payload) {
-    if (this.bus && typeof this.bus.emit === 'function') this.bus.emit(event, payload);
+  _onDeath() {
+    if (this.state.stunts?.combo) settleCrash(this.state.stunts.combo, { tick: this.state.tick, playerDeath: true });
+    this._syncBanks(); this._discardChips();
   },
+  _onTransitioned(payload) {
+    const phase = payload?.phase ?? payload?.nextPhase;
+    if (phase === 'active' && this.state.stunts?.combo) resetRound(this.state.stunts.combo, this.state.tick, { begin: true });
+    if (phase === 'draft' || phase === 'refit') {
+      if (this.state.stunts?.combo) bankActive(this.state.stunts.combo, { tick: this.state.tick, reason: 'shop' });
+      this._syncBanks();
+    }
+    if (payload?.previousPhase === 'cleanup') this.sweepChips('cleanup');
+  },
+  _onStuntTrick() { this._syncBanks(); },
+  _entity(id) { return this.state?.entities?.get?.(id) || null; },
+  _emit(event, payload) { this.bus?.emit?.(event, payload); },
 };

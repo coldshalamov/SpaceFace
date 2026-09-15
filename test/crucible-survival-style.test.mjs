@@ -115,16 +115,17 @@ function spawnAndKill(harness, cause) {
   return entity;
 }
 
-test('the first kill still pays base score; cause history is still tracked', () => {
+test('actual run kills pay neutral base score without legacy cause-history multiplier', () => {
   const harness = boot();
   beginSurvival(harness);
   spawnAndKill(harness, 'kinetic');
   const base = killScoreFor(1);
   assert.equal(harness.state.run.score, base, 'first direct kill pays flat base');
-  assert.ok(harness.state.run.style.multiplier > 1);
+  assert.equal(harness.state.run.style.multiplier, 1);
 
   spawnAndKill(harness, 'explosive');
   assert.equal(harness.state.run.score, base * 2, 'every owned kill pays the same flat base');
-  assert.ok(harness.state.run.style.recentCauses.includes('direct'));
-  assert.ok(harness.state.run.style.recentCauses.includes('explosive'));
+  assert.deepEqual(harness.state.run.style.recentCauses, []);
+  survivalRewards.destroy();
+  runSession.destroy();
 });

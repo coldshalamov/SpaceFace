@@ -1,365 +1,265 @@
-// src/systems/stuntCombo.js — Combo meter and scoring (PQ-146.01).
-//
-// Pure module: turns the named-trick stream (`stunt:trickDetected` receipts, which already
-// carry a verified cause chain from `src/combat/stuntTaxonomy.js`) plus plain kill receipts
-// into one Crucible score. The live combo state lives in the stunt module (`state.stunts.combo`,
-// owned by `src/systems/stuntGrammar.js`); the Crucible results surface reads it through
-// `comboSummary()` in parallel with survivalResults, which this file never touches.
-//
-// Scoring law:
-//   - Chain window: tricks landing within COMBO_WINDOW_TICKS of the previous trick extend the
-//     active chain; each step raises the chain multiplier by CHAIN_STEP up to MAX_CHAIN_MULT.
-//   - Rarity multiplier: common 1x, uncommon 1.5x, rare 2x, legendary 3x.
-//   - Mass multiplier: heavier hurled masses (and harder momentum exchange) pay up to 2x.
-//   - Banked on quiet: when COMBO_BANK_QUIET_TICKS pass with no new trick, the active chain
-//     banks into the run total. Banking is idempotent and tick-driven (no wall clock, no RNG).
-//   - Gun kills pay flat (GUN_KILL_SCORE) with no multiplier and no chain. The free Pulse
-//     (energy_baseline starter) pays even less (PULSE_KILL_SCORE): a physics run of equal
-//     kills outscores a gun run by a multiple, and Pulse spam can never top a trick board.
-//     Pulse damage itself is NOT nerfed here — scoring only (PQ-174.02 owns damage).
-//
-// All math is deterministic: finite-number coercion, min/max clamps, integer rounding once
-// per trick at record time.
-//
-// PQ-155.03 — stunts pay reputation and salvage rights, never raw credits. Combo score
-// stays a Crucible board figure. Trick pay is a separate ledger on the same combo state.
+// PQ-146 scoring revision 2. Recognitions consume immutable victim-life budgets;
+// only banked style joins personal score. Every clock is a simulation tick.
+import { allocateStyle, candidateStyle, executionFactor, PRIMARY_SCORING, threatReward } from '../combat/stuntScoring.js';
 
-import { TRICK_DEFINITIONS } from '../combat/stuntTaxonomy.js';
-
-/** Pitborn yards buy wrecks and issue the paper. Style standing lands here. */
-export const STUNT_PAY_FACTION_ID = 'faction_pitborn';
-
-export const STUNT_REP_BY_RARITY = Object.freeze({
-  common: 3,
-  uncommon: 6,
-  rare: 9,
-  legendary: 15,
-});
-
-export const STUNT_SALVAGE_RIGHTS_BY_RARITY = Object.freeze({
-  common: 1,
-  uncommon: 1,
-  rare: 2,
-  legendary: 3,
-});
-
-export const STUNT_COMBO_SCHEMA_VERSION = 1;
-
-// Chain window: 5 seconds at 60 Hz. A trick inside the window extends the chain.
+export const STUNT_COMBO_SCHEMA_VERSION = 2;
 export const COMBO_WINDOW_TICKS = 300;
-// Quiet period that banks the active chain into the run total: 6 seconds at 60 Hz.
-export const COMBO_BANK_QUIET_TICKS = 360;
-
-export const RARITY_MULT = Object.freeze({
-  common: 1,
-  uncommon: 1.5,
-  rare: 2,
-  legendary: 3,
-});
-
-export const CHAIN_STEP = 0.25;
-export const MAX_CHAIN_MULT = 4;
-
-// Reference hurled mass in tonnes. At or below it the mass factor is 1x; at 3x the
-// reference (or harder momentum exchange) it caps at 2x.
-export const MASS_REFERENCE_TONNES = 20;
-export const MAX_MASS_MULT = 2;
-
-// Flat kill pay. Deliberately an order of magnitude below a chained trick so that equal
-// kill counts always favor physics play, without touching gun damage anywhere.
-export const GUN_KILL_SCORE = 60;
+export const COMBO_BANK_QUIET_TICKS = 120;
+export const MAX_CHAIN_MULT = 3;
+export const CHAIN_STEP = 0.35;
+export const GUN_KILL_SCORE = 100;
 export const PULSE_KILL_SCORE = GUN_KILL_SCORE;
+export const MASS_REFERENCE_TONNES = 20;
+export const MAX_MASS_MULT = 1.5;
+export const RARITY_MULT = Object.freeze({ common: 1, uncommon: 1.4, rare: 1.8, legendary: 2.2 });
+export const PULSE_WEAPON_IDS = Object.freeze(['wpn_pulse_laser_s', 'wpn_pulse_laser_m', 'unique_mirrorjaw_pulse']);
+export const STUNT_PAY_FACTION_ID = 'faction_pitborn';
+export const STUNT_REP_BY_RARITY = Object.freeze({ common: 0, uncommon: 0, rare: 0, legendary: 0 });
+export const STUNT_SALVAGE_RIGHTS_BY_RARITY = STUNT_REP_BY_RARITY;
+const num = (x, fallback = 0) => Number.isFinite(Number(x)) ? Number(x) : fallback;
+const tickOf = x => Math.max(0, Math.floor(num(x)));
+const keyOf = x => x == null ? null : String(x);
+export const isPulseWeapon = id => PULSE_WEAPON_IDS.includes(id);
+export const killPoints = (_weaponId, threatClass = 'fodder') => threatReward(threatClass).baseScore;
+export const massFactor = executionFactor;
+export const rarityFactor = trick => RARITY_MULT[trick?.rarity] || 1;
+export const chainFactor = (n, d = 1, carry = 0) => Math.min(3, 1 + Math.min(.5, Math.max(0, carry)) + .35 * Math.max(0, Math.min(6, n) - 1) + .15 * Math.max(0, Math.min(6, d) - 1));
+export const trickPoints = trick => candidateStyle(trick);
+export const trickPay = () => ({ reputation: 0, salvageRights: 0, credits: 0, factionId: STUNT_PAY_FACTION_ID });
+export const comboPay = trickPay;
 
-// The free Pulse kit (energy_baseline) and its unique twin. Kills credited to these
-// weapon ids pay PULSE_KILL_SCORE. Anything unknown pays the plain gun rate — never zero,
-// never a trick.
-export const PULSE_WEAPON_IDS = Object.freeze([
-  'wpn_pulse_laser_s',
-  'wpn_pulse_laser_m',
-  'unique_mirrorjaw_pulse',
-]);
-
-const LAST_TRICKS_KEPT = 8;
-
-function finite(value, fallback = 0) {
-  const n = Number(value);
-  return Number.isFinite(n) ? n : fallback;
-}
-
-function tickOf(value, fallback = 0) {
-  const n = Math.floor(finite(value, fallback));
-  return n >= 0 ? n : fallback;
-}
-
-/** True when the killing blow is credited to the free Pulse kit. */
-export function isPulseWeapon(weaponId) {
-  if (typeof weaponId !== 'string' || weaponId.length === 0) return false;
-  return PULSE_WEAPON_IDS.includes(weaponId);
-}
-
-/** Flat score for one plain (trickless) kill. Pulse pays less; nothing else multiplies. */
-export function killPoints(weaponId) {
-  return isPulseWeapon(weaponId) ? PULSE_KILL_SCORE : GUN_KILL_SCORE;
-}
-
-/**
- * Reputation and salvage-rights pay for one named trick. Credits are always 0 —
- * a stunt is never a credit faucet (PQ-155.03).
- */
-export function trickPay(trick) {
-  if (!trick || typeof trick !== 'object') {
-    return { reputation: 0, salvageRights: 0, credits: 0, factionId: STUNT_PAY_FACTION_ID };
-  }
-  const rarity = trick.rarity;
-  const reputation = STUNT_REP_BY_RARITY[rarity] != null
-    ? STUNT_REP_BY_RARITY[rarity]
-    : STUNT_REP_BY_RARITY.common;
-  const salvageRights = STUNT_SALVAGE_RIGHTS_BY_RARITY[rarity] != null
-    ? STUNT_SALVAGE_RIGHTS_BY_RARITY[rarity]
-    : STUNT_SALVAGE_RIGHTS_BY_RARITY.common;
-  return {
-    reputation,
-    salvageRights,
-    credits: 0,
-    factionId: STUNT_PAY_FACTION_ID,
-  };
-}
-
-/** Run pay snapshot. Credits are forced to 0 even if a caller stamped the field. */
-export function comboPay(comboState) {
-  const combo = ensureCombo(comboState);
-  return {
-    reputation: Math.max(0, Math.floor(finite(combo.reputation, 0))),
-    salvageRights: Math.max(0, Math.floor(finite(combo.salvageRights, 0))),
-    credits: 0,
-    factionId: STUNT_PAY_FACTION_ID,
-  };
-}
-
-/**
- * Mass multiplier for one trick receipt: 1x at or below the reference hurled mass,
- * scaling linearly to 2x at 3x reference. Momentum exchange (momentum / exchangedMomentum)
- * contributes the same way when no mass was recorded, so shove-driven chains without a
- * latched mass still pay for the hit. Pure and deterministic.
- */
-export function massFactor(trick) {
-  const metrics = (trick && trick.metrics && typeof trick.metrics === 'object') ? trick.metrics : {};
-  const mass = finite(metrics.mass, 0);
-  const momentum = Math.max(0, finite(metrics.momentum), finite(metrics.exchangedMomentum));
-  let ratio = 0;
-  if (mass > 0) {
-    ratio = mass / MASS_REFERENCE_TONNES;
-  } else if (momentum > 0) {
-    // 1500 kg*m/s of exchange ~ a reference-mass throw; matches the moment rater's scale.
-    ratio = momentum / 1500;
-  } else {
-    const speed = Math.max(
-      0,
-      finite(metrics.relSpeed),
-      finite(metrics.deltaV),
-      finite(metrics.speed),
-      finite(metrics.tangentialSpeed),
-    );
-    ratio = speed / 60;
-  }
-  if (!(ratio > 0)) return 1;
-  const scaled = 1 + (Math.min(ratio, 3) - 1) * (1 / (3 - 1));
-  return Math.min(MAX_MASS_MULT, Math.max(1, scaled));
-}
-
-/** Rarity multiplier for one trick receipt. Unknown rarity pays common. */
-export function rarityFactor(trick) {
-  const rarity = trick && trick.rarity;
-  const mult = RARITY_MULT[rarity];
-  return typeof mult === 'number' ? mult : RARITY_MULT.common;
-}
-
-/** Chain multiplier for the trick at 1-based position `chainLength` in the active chain. */
-export function chainFactor(chainLength) {
-  const len = Math.max(1, Math.floor(finite(chainLength, 1)));
-  return Math.min(MAX_CHAIN_MULT, 1 + CHAIN_STEP * (len - 1));
-}
-
-/**
- * Points for one trick receipt at its position in the active chain.
- * baseScore comes from the taxonomy definition (falls back to the receipt's own
- * baseScore so unknown future tricks still score instead of vanishing).
- */
-export function trickPoints(trick, chainLength) {
-  if (!trick || typeof trick !== 'object') return 0;
-  const def = TRICK_DEFINITIONS[trick.trickId];
-  const base = finite(trick.baseScore, def ? finite(def.baseScore, 100) : 100);
-  if (!(base > 0)) return 0;
-  return Math.max(1, Math.round(base * rarityFactor(trick) * massFactor(trick) * chainFactor(chainLength)));
-}
-
-/** Fresh live combo state. JSON-safe; owned by stuntGrammar under state.stunts.combo. */
 export function createComboState() {
-  return {
-    schemaVersion: STUNT_COMBO_SCHEMA_VERSION,
-    banked: 0,
-    activePoints: 0,
-    activeCount: 0,
-    lastTrickTick: -1,
-    bestChain: 0,
-    bestChainPoints: 0,
-    trickKills: 0,
-    gunKills: 0,
-    pulseKills: 0,
-    reputation: 0,
-    salvageRights: 0,
-    credits: 0,
-    lastTricks: [],
-  };
+  return { schemaVersion: 2, baseScore: 0, bankedStyle: 0, banked: 0, activePoints: 0, activeCount: 0,
+    lastTrickTick: -1, deadlineTick: -1, quietSinceTick: -1, bestChain: 0, bestChainPoints: 0,
+    trickKills: 0, gunKills: 0, pulseKills: 0, reputation: 0, salvageRights: 0, credits: 0,
+    lastTricks: [], acts: [], victimBudgets: {}, escapeBudgets: {}, repetition: {}, settledDeaths: {},
+    finalizedEpisodes: {}, bridges: [], carry: 0, carryUntilTick: 0, carryUpdatedTick: 0,
+    nextRoundProtection: false, postmortem: false, postmortemUntilTick: -1, banks: [], nextBankId: 1, bestLine: null };
 }
-
 function ensureCombo(combo) {
   if (!combo || typeof combo !== 'object' || Array.isArray(combo)) return createComboState();
-  if (typeof combo.banked !== 'number') combo.banked = 0;
-  if (typeof combo.activePoints !== 'number') combo.activePoints = 0;
-  if (typeof combo.activeCount !== 'number') combo.activeCount = 0;
-  if (typeof combo.lastTrickTick !== 'number') combo.lastTrickTick = -1;
-  if (typeof combo.bestChain !== 'number') combo.bestChain = 0;
-  if (typeof combo.bestChainPoints !== 'number') combo.bestChainPoints = 0;
-  if (typeof combo.trickKills !== 'number') combo.trickKills = 0;
-  if (typeof combo.gunKills !== 'number') combo.gunKills = 0;
-  if (typeof combo.pulseKills !== 'number') combo.pulseKills = 0;
-  if (typeof combo.reputation !== 'number') combo.reputation = 0;
-  if (typeof combo.salvageRights !== 'number') combo.salvageRights = 0;
-  combo.credits = 0;
-  if (!Array.isArray(combo.lastTricks)) combo.lastTricks = [];
-  combo.schemaVersion = STUNT_COMBO_SCHEMA_VERSION;
+  if (combo.schemaVersion !== 2) {
+    // Historical score is retained; missing provenance never becomes a spendable budget.
+    const oldBanked = Math.max(0, num(combo.banked));
+    const old = { ...combo };
+    Object.assign(combo, createComboState(), { banked: oldBanked, baseScore: oldBanked,
+      gunKills: num(old.gunKills), pulseKills: num(old.pulseKills), trickKills: num(old.trickKills) });
+  }
+  const fresh = createComboState();
+  for (const [key, value] of Object.entries(fresh)) if (combo[key] == null) combo[key] = value;
   return combo;
 }
-
-function pushLastTrick(combo, entry) {
-  combo.lastTricks.push(entry);
-  if (combo.lastTricks.length > LAST_TRICKS_KEPT) combo.lastTricks.shift();
+function multiplier(combo) {
+  const combat = combo.acts.filter(a => !a.pureEscape && a.points > 0);
+  if (!combat.length) return 1;
+  const paid = [...combat, ...combo.acts.filter(a => a.pureEscape && a.points > 0).slice(0, 1)];
+  return chainFactor(new Set(paid.map(a => a.trickId)).size, new Set(paid.map(a => a.family)).size, combo.activeCarry || 0);
+}
+function recalc(combo) {
+  combo.activePoints = combo.acts.reduce((n, a) => n + a.points, 0);
+  combo.activeCount = combo.acts.filter(a => a.points > 0).length;
+  combo.bestChain = Math.max(combo.bestChain, combo.activeCount);
+}
+function repetitionFor(combo, id) {
+  const row = combo.repetition[id] || { uses: 0, others: [] };
+  return [1, .5, .25, .1][Math.min(3, row.uses)];
+}
+function commitRepetition(combo, id) {
+  for (const [other, row] of Object.entries(combo.repetition)) if (other !== id) {
+    if (!row.others.includes(id)) row.others.push(id);
+    if (row.others.length >= 2) { row.uses = 0; row.others = []; }
+  }
+  const row = combo.repetition[id] ||= { uses: 0, others: [] };
+  row.uses += 1;
+  row.others = [];
+}
+function availableVictims(combo, trick) {
+  const seen = new Set();
+  const result = [];
+  for (const victim of (trick.victimLives || []).slice(0, 8)) {
+    const key = keyOf(victim?.lifeId);
+    if (key == null || seen.has(key)) continue;
+    seen.add(key);
+    const budget = threatReward(victim.threatClass).styleBudget;
+    if (!budget) continue;
+    let row = combo.victimBudgets[key];
+    if (!row) row = combo.victimBudgets[key] = { budget, unlocked: 0, spent: 0, threatClass: victim.threatClass };
+    // A later claimed class cannot change the admission budget.
+    row.unlocked = Math.max(row.unlocked, row.budget * (victim.dead === true ? 1 : .5));
+    result.push({ lifeId: key, available: Math.max(0, row.unlocked - row.spent) });
+  }
+  return result;
+}
+export function advanceCombo(comboState, nowTick, { paused = false, intermission = false } = {}) {
+  const combo = ensureCombo(comboState);
+  const tick = tickOf(nowTick);
+  if (!paused && !intermission && combo.carry > 0) {
+    const elapsed = Math.max(0, tick - Math.max(combo.carryUpdatedTick, combo.carryUntilTick));
+    combo.carry = Math.max(0, combo.carry - elapsed / 60 * .25);
+  }
+  combo.carryUpdatedTick = tick;
 }
 
-/**
- * Record one detected trick. Tricks outside the chain window start a fresh chain
- * (banking the old one first); tricks inside extend it. Kills that arrive WITH a
- * trick on the same event are trick kills, not gun kills — the caller skips recordKill
- * for those events. Returns the points awarded.
- */
+/** Same episode updates an open act. Missing life evidence cannot create raw points. */
 export function recordTrick(comboState, trick) {
   const combo = ensureCombo(comboState);
-  if (!trick || typeof trick !== 'object') return 0;
-  const tick = tickOf(trick.tick, 0);
-  if (combo.activeCount > 0 && combo.lastTrickTick >= 0 && tick - combo.lastTrickTick > COMBO_WINDOW_TICKS) {
-    bankActive(combo);
+  const spec = PRIMARY_SCORING[trick?.trickId];
+  const episodeId = keyOf(trick?.episodeId);
+  if (!spec || episodeId == null || combo.finalizedEpisodes[episodeId]) return 0;
+  const tick = tickOf(trick.tick);
+  if (combo.postmortem && (tick > combo.postmortemUntilTick || num(trick.rootTick, Infinity) > combo.deathTick)) return 0;
+  if (combo.activeCount > 0 && tick > combo.deadlineTick) bankActive(combo, { tick, reason: 'deadline' });
+  if (combo.acts.length >= 32 && !combo.acts.some(a => a.episodeId === episodeId)) bankActive(combo, { tick, reason: 'capacity' });
+  advanceCombo(combo, tick);
+  let act = combo.acts.find(a => a.episodeId === episodeId);
+  if (act && tick > act.amendmentDeadlineTick) return 0;
+  const pureEscape = trick.pureEscape === true;
+  const factor = act?.repetitionFactor ?? repetitionFor(combo, trick.trickId);
+  const candidate = candidateStyle(trick, factor);
+  let points = 0;
+  let allocation = [];
+  if (pureEscape) {
+    const threat = keyOf(trick.threatEpisodeId);
+    if (threat == null) return 0;
+    const spent = combo.escapeBudgets[threat] || 0;
+    points = Math.min(Math.max(0, candidate - (act?.points || 0)), Math.max(0, 40 - spent));
+    combo.escapeBudgets[threat] = spent + points;
+  } else {
+    allocation = allocateStyle(Math.max(0, candidate - (act?.points || 0)), availableVictims(combo, trick));
+    points = allocation.reduce((n, a) => n + a.points, 0);
+    for (const a of allocation) combo.victimBudgets[a.lifeId].spent += a.points;
   }
-  const position = combo.activeCount + 1;
-  const points = trickPoints(trick, position);
-  const pay = trickPay(trick);
-  combo.activeCount = position;
-  combo.activePoints += points;
-  combo.reputation += pay.reputation;
-  combo.salvageRights += pay.salvageRights;
-  combo.credits = 0;
-  combo.lastTrickTick = tick;
-  if (combo.activeCount > combo.bestChain) combo.bestChain = combo.activeCount;
-  if (combo.activePoints > combo.bestChainPoints) combo.bestChainPoints = combo.activePoints;
-  pushLastTrick(combo, {
-    trickId: trick.trickId || 'unknown',
-    name: trick.name || trick.trickId || 'Unknown stunt',
-    rarity: trick.rarity || 'common',
-    episodeId: trick.episodeId ?? null,
-    points,
-    tick,
-  });
+  if (!act && !(points > 0)) return 0;
+  if (!act) {
+    if (!combo.activeCount) { combo.activeCarry = combo.postmortem ? 0 : combo.carry; combo.carry = 0; }
+    act = { episodeId, trickId: trick.trickId, name: trick.name || trick.trickId, family: spec[0],
+      pureEscape, points: 0, tick, repetitionFactor: factor, allocation: [],
+      rootId: trick.rootId ?? null, rootTick: trick.rootTick ?? tick,
+      amendmentDeadlineTick: Math.min(tick + 180, num(trick.rootTick, tick) + 480),
+      evidence: (trick.causeChain || []).slice(0, 8), modifiers: trick.modifiers || {} };
+    combo.acts.push(act);
+    commitRepetition(combo, trick.trickId);
+    combo.lastTrickTick = tick;
+    combo.deadlineTick = tick + 300;
+    combo.quietSinceTick = -1;
+    combo.bridges = [];
+  } else {
+    // Reclassification updates the name/family without adding another act or paid timer.
+    act.trickId = trick.trickId; act.name = trick.name || trick.trickId; act.family = spec[0];
+    act.modifiers = trick.modifiers || act.modifiers;
+  }
+  act.points += points;
+  for (const share of allocation) {
+    const previous = act.allocation.find(a => a.lifeId === share.lifeId);
+    if (previous) previous.points += share.points;
+    else act.allocation.push(share);
+  }
+  combo.lastTricks = combo.acts.slice(-8).map(a => ({ ...a, allocation: [...a.allocation] }));
+  recalc(combo);
   return points;
 }
 
-/**
- * Record one plain kill (no trick on the same event). Pays flat into the banked total
- * immediately — gunfire never builds or extends a chain. Returns the points awarded.
- */
 export function recordKill(comboState, kill = {}) {
   const combo = ensureCombo(comboState);
-  const info = (kill && typeof kill === 'object') ? kill : {};
-  const points = killPoints(info.weaponId);
-  combo.banked += points;
-  if (isPulseWeapon(info.weaponId)) combo.pulseKills += 1;
+  const deathId = keyOf(kill.lifeId ?? kill.deathId);
+  if (deathId != null && combo.settledDeaths[deathId]) return 0;
+  if (kill.playerOwned === false) return 0;
+  const points = killPoints(kill.weaponId, kill.threatClass || 'fodder');
+  if (deathId != null) combo.settledDeaths[deathId] = true;
+  combo.baseScore += points; combo.banked += points;
+  if (kill.trickKill) combo.trickKills += 1;
+  else if (isPulseWeapon(kill.weaponId)) combo.pulseKills += 1;
   else combo.gunKills += 1;
   return points;
 }
+export function recordTrickKill(combo, kill = {}) { return recordKill(combo, { ...kill, trickKill: true }); }
 
-/** Record a kill that arrived with a trick (a tow-kill, a wreck crush, ...): no double pay. */
-export function recordTrickKill(comboState) {
+export function recordBridge(comboState, bridge = {}) {
   const combo = ensureCombo(comboState);
-  combo.trickKills += 1;
-  combo.banked += GUN_KILL_SCORE;
-  return GUN_KILL_SCORE;
+  const tick = tickOf(bridge.tick);
+  const id = keyOf(bridge.setupId ?? bridge.threatEpisodeId);
+  if (!combo.activeCount || tick > combo.deadlineTick || id == null || combo.bridges.includes(id) || combo.bridges.length >= 2) return false;
+  const valid = bridge.kind === 'close_shave' && bridge.preventedInterception === true
+    || bridge.kind === 'loaded_constraint' && bridge.liveHostile === true && (bridge.displacementLengths >= 1 || bridge.usefulDeltaVCruise >= .15)
+    || bridge.kind === 'bank_contact' && bridge.liveDescendant === true && bridge.validTarget === true;
+  if (!valid) return false;
+  combo.bridges.push(id);
+  combo.deadlineTick = Math.min(combo.deadlineTick + 90, combo.lastTrickTick + 480);
+  return true;
 }
 
-/** Move the active chain into the banked total. Idempotent. Returns the amount banked. */
-export function bankActive(comboState) {
+export function bankActive(comboState, { tick = undefined, reason = 'safe', multiplierOverride = null } = {}) {
   const combo = ensureCombo(comboState);
-  if (combo.activeCount <= 0 || combo.activePoints <= 0) {
-    combo.activeCount = 0;
-    combo.activePoints = 0;
-    return 0;
-  }
-  const amount = combo.activePoints;
-  combo.banked += amount;
-  combo.activeCount = 0;
-  combo.activePoints = 0;
+  if (!combo.activeCount) return 0;
+  const now = tickOf(tick ?? combo.lastTrickTick);
+  const combat = combo.acts.filter(a => !a.pureEscape).reduce((n, a) => n + a.points, 0);
+  const escape = combo.acts.filter(a => a.pureEscape).reduce((n, a) => n + a.points, 0);
+  const raw = combat + Math.min(escape, combat > 0 ? combat * .25 : 40);
+  const mult = combo.postmortem ? 1 : multiplierOverride ?? multiplier(combo);
+  const amount = Math.floor(raw * mult + 1e-9);
+  combo.banked += amount; combo.bankedStyle += amount;
+  const bank = { bankId: combo.nextBankId++, tick: now, reason, points: amount, raw, multiplier: mult,
+    acts: combo.acts.map(a => ({ ...a, allocation: a.allocation.map(x => ({ ...x })) })) };
+  combo.banks.push(bank);
+  // Consumers acknowledge bank IDs; keep bounded lightweight history for save/results.
+  if (combo.banks.length > 8) combo.banks.shift();
+  if (amount > combo.bestChainPoints) { combo.bestChainPoints = amount; combo.bestLine = bank; }
+  for (const a of combo.acts) combo.finalizedEpisodes[a.episodeId] = a.amendmentDeadlineTick;
+  for (const [id, deadline] of Object.entries(combo.finalizedEpisodes)) if (now > deadline + 480) delete combo.finalizedEpisodes[id];
+  const safe = !combo.postmortem && multiplierOverride == null;
+  combo.carry = safe ? Math.min(.5, mult - 1) : 0;
+  combo.carryUntilTick = now + 60; combo.carryUpdatedTick = now;
+  combo.acts = []; combo.activeCount = 0; combo.activePoints = 0; combo.activeCarry = 0; combo.bridges = []; combo.quietSinceTick = -1;
   return amount;
 }
-
-/**
- * Bank the active chain once it has gone quiet. Call on kill events and per update;
- * cheap branch when no chain is live. Returns the amount banked (0 most calls).
- */
-export function bankIfQuiet(comboState, nowTick) {
+export function bankIfQuiet(comboState, nowTick, context = {}) {
   const combo = ensureCombo(comboState);
-  if (combo.activeCount <= 0) return 0;
-  const now = tickOf(nowTick, 0);
-  if (combo.lastTrickTick < 0) return 0;
-  if (now - combo.lastTrickTick >= COMBO_BANK_QUIET_TICKS) return bankActive(combo);
+  const now = tickOf(nowTick);
+  advanceCombo(combo, now, context);
+  if (!combo.activeCount || context.paused || context.intermission) return 0;
+  // Every provisional act gets its specified three-second amendment window. A known
+  // descendant can additionally wait up to the enclosing eight-second root horizon.
+  const amendmentUntil = Math.max(...combo.acts.map(a => a.amendmentDeadlineTick));
+  const rootUntil = Math.max(...combo.acts.map(a => a.rootTick + 480));
+  const pendingUntil = Math.max(amendmentUntil, Math.min(num(context.pendingUntilTick, -1), rootUntil));
+  const pending = pendingUntil > now;
+  const pressured = context.incomingInterception !== false || context.loadedManipulation !== false;
+  if (pressured || pending) combo.quietSinceTick = -1;
+  else if (combo.quietSinceTick < 0) combo.quietSinceTick = now;
+  if (now >= combo.deadlineTick && !pending) return bankActive(combo, { tick: now, reason: 'deadline' });
+  if (now >= Math.max(combo.deadlineTick, pendingUntil)) return bankActive(combo, { tick: now, reason: 'deadline' });
+  if (combo.quietSinceTick >= 0 && now - combo.quietSinceTick >= 120) return bankActive(combo, { tick: now, reason: 'quiet' });
   return 0;
 }
-
-/** Live total: banked plus the still-live chain. */
-export function comboTotal(comboState) {
+export function settleCrash(comboState, impact = {}) {
   const combo = ensureCombo(comboState);
-  return combo.banked + combo.activePoints;
+  const hard = impact.playerDeath === true || impact.deltaVCruise >= .30 && (impact.helmLossSeconds >= 1 || impact.entryHullLossFraction >= .20);
+  if (!hard) return 0;
+  const tick = tickOf(impact.tick);
+  const amount = bankActive(combo, { tick, reason: impact.playerDeath ? 'death' : 'hard_crash', multiplierOverride: 1 });
+  combo.carry = 0;
+  if (impact.playerDeath) { combo.postmortem = true; combo.deathTick = tick; combo.postmortemUntilTick = tick + 480; }
+  return amount;
 }
-
-/** Total kills seen (trick kills plus flat gun/pulse kills). */
-export function comboKills(comboState) {
+export function resetRound(comboState, nowTick, { begin = false } = {}) {
   const combo = ensureCombo(comboState);
-  return combo.trickKills + combo.gunKills + combo.pulseKills;
+  const tick = tickOf(nowTick);
+  if (begin) {
+    if (combo.nextRoundProtection) { combo.carryUntilTick = tick + 300; combo.carryUpdatedTick = tick; combo.nextRoundProtection = false; }
+    combo.repetition = {};
+    // Finite previous-round victim budgets are settled; new bodies must have new life IDs.
+    combo.victimBudgets = {}; combo.escapeBudgets = {}; combo.settledDeaths = {};
+    return 0;
+  }
+  const amount = bankActive(combo, { tick, reason: 'round_clear' });
+  combo.nextRoundProtection = true;
+  return amount;
 }
-
-/**
- * JSON-safe snapshot for the Crucible results surface. Read-only: never mutates live state.
- * Returns null when there is nothing worth showing (no tricks, no kills).
- */
+export function comboTotal(comboState) { return ensureCombo(comboState).banked; }
+export function comboKills(comboState) { const c = ensureCombo(comboState); return c.trickKills + c.gunKills + c.pulseKills; }
 export function comboSummary(comboState) {
-  if (!comboState || typeof comboState !== 'object') return null;
-  const combo = ensureCombo({ ...comboState, lastTricks: Array.isArray(comboState.lastTricks) ? [...comboState.lastTricks] : [] });
-  const totalScore = combo.banked + combo.activePoints;
-  const totalKills = combo.trickKills + combo.gunKills + combo.pulseKills;
-  if (totalScore <= 0 && totalKills <= 0 && combo.bestChain <= 0) return null;
-  return {
-    schemaVersion: STUNT_COMBO_SCHEMA_VERSION,
-    totalScore,
-    banked: combo.banked,
-    activePoints: combo.activePoints,
-    activeCount: combo.activeCount,
-    activeMultiplier: combo.activeCount > 0 ? chainFactor(combo.activeCount) : 1,
-    bestChain: combo.bestChain,
-    bestChainPoints: combo.bestChainPoints,
-    trickKills: combo.trickKills,
-    gunKills: combo.gunKills,
-    pulseKills: combo.pulseKills,
-    totalKills,
-    reputation: combo.reputation,
-    salvageRights: combo.salvageRights,
-    credits: 0,
-    lastTricks: combo.lastTricks.map((entry) => ({ ...entry })),
-  };
+  if (!comboState) return null;
+  const c = ensureCombo(JSON.parse(JSON.stringify(comboState)));
+  if (c.banked <= 0 && c.activeCount <= 0 && c.bestChain <= 0 && comboKills(c) <= 0) return null;
+  return { ...c, totalScore: c.banked, totalKills: comboKills(c), activeMultiplier: multiplier(c), credits: 0 };
 }

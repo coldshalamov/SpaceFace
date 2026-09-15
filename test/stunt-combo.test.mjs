@@ -1,292 +1,120 @@
-// test/stunt-combo.test.mjs — Combo meter and scoring (PQ-146.01).
-//
-// Done when:
-//   - equal-kill physics tape score >= 2x gun tape (seeded print below)
-//   - the free Pulse cannot top the physics board (scoring only; damage untouched)
-//   - combo state lives in the stunt module; crucible.js reads it for display
-//   - chain window, rarity/mass multipliers, bank-on-quiet all hold deterministically
-
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createComboState, recordTrick, recordKill, bankActive, bankIfQuiet, comboSummary, recordBridge, settleCrash, resetRound, advanceCombo, massFactor } from '../src/systems/stuntCombo.js';
+import { admitStuntThreat, allocateStyle } from '../src/combat/stuntScoring.js';
+const act = (trickId, episodeId, tick = 0, extra = {}) => ({ trickId, episodeId, tick, rootTick: tick, name: trickId,
+  victimLives: [{ lifeId: episodeId, threatClass: 'fodder', dead: true }], metrics: {}, ...extra });
 
-import {
-  bankActive,
-  bankIfQuiet,
-  chainFactor,
-  CHAIN_STEP,
-  COMBO_BANK_QUIET_TICKS,
-  COMBO_WINDOW_TICKS,
-  comboKills,
-  comboSummary,
-  comboTotal,
-  createComboState,
-  GUN_KILL_SCORE,
-  isPulseWeapon,
-  killPoints,
-  massFactor,
-  MAX_CHAIN_MULT,
-  PULSE_KILL_SCORE,
-  rarityFactor,
-  recordKill,
-  recordTrick,
-  recordTrickKill,
-  STUNT_COMBO_SCHEMA_VERSION,
-  trickPoints,
-} from '../src/systems/stuntCombo.js';
-import { stuntGrammar } from '../src/systems/stuntGrammar.js';
-import { createBus } from '../src/core/eventBus.js';
-import {
-  comboLead,
-  comboRows,
-  comboTrickLines,
-  stuntComboFor,
-} from '../src/ui/screens/crucible.js';
-
-function trick(overrides = {}) {
-  return {
-    trickId: 'collateral',
-    name: 'Collateral',
-    rarity: 'uncommon',
-    baseScore: 200,
-    actorId: 'player',
-    targetId: 'victim_1',
-    secondaryIds: ['hurled_1'],
-    metrics: {},
-    causeChain: [
-      { step: 1, type: 'primary_action', entityId: 'player', targetId: 'hurled_1' },
-      { step: 2, type: 'secondary_collision', entityId: 'hurled_1', targetId: 'victim_1' },
-    ],
-    tick: 0,
-    ...overrides,
-  };
-}
-
-test('combo schema and tuning constants', () => {
-  assert.equal(STUNT_COMBO_SCHEMA_VERSION, 1);
-  assert.ok(COMBO_WINDOW_TICKS > 0);
-  assert.ok(COMBO_BANK_QUIET_TICKS >= COMBO_WINDOW_TICKS);
-  assert.equal(CHAIN_STEP, 0.25);
-  assert.equal(MAX_CHAIN_MULT, 4);
-  assert.equal(PULSE_KILL_SCORE, GUN_KILL_SCORE, 'all guns have fair base kill pay');
-});
-
-test('rarity multiplier orders common < uncommon < rare < legendary', () => {
-  const base = trick({ metrics: {}, tick: 0 });
-  const c = trickPoints({ ...base, rarity: 'common' }, 1);
-  const u = trickPoints({ ...base, rarity: 'uncommon' }, 1);
-  const r = trickPoints({ ...base, rarity: 'rare' }, 1);
-  const l = trickPoints({ ...base, rarity: 'legendary' }, 1);
-  assert.ok(c < u && u < r && r < l, `expected ordering, got ${c} < ${u} < ${r} < ${l}`);
-  assert.equal(rarityFactor({ rarity: 'bogus' }), 1);
-});
-
-test('mass multiplier rewards hurled mass up to a 2x cap', () => {
-  assert.equal(massFactor(trick({ metrics: { mass: 20 } })), 1);
-  assert.equal(massFactor(trick({ metrics: { mass: 10 } })), 1);
-  const heavy = massFactor(trick({ metrics: { mass: 60 } }));
-  assert.equal(heavy, 2);
-  const mid = massFactor(trick({ metrics: { mass: 40 } }));
-  assert.ok(mid > 1 && mid < 2, `expected between 1 and 2, got ${mid}`);
-  // No mass recorded: momentum exchange still pays, never zero, never above cap.
-  const mom = massFactor(trick({ metrics: { exchangedMomentum: 3000 } }));
-  assert.ok(mom >= 1 && mom <= 2);
-  assert.equal(massFactor(trick({ metrics: {} })), 1);
-});
-
-test('chain multiplier grows per step and caps', () => {
-  assert.equal(chainFactor(1), 1);
-  assert.equal(chainFactor(2), 1.25);
-  assert.equal(chainFactor(5), 2);
-  assert.equal(chainFactor(13), MAX_CHAIN_MULT);
-  assert.equal(chainFactor(40), MAX_CHAIN_MULT);
-  const base = trick({});
-  assert.ok(trickPoints(base, 3) > trickPoints(base, 2));
-  assert.equal(trickPoints(base, 13), trickPoints(base, 40));
-});
-
-test('chain window extends inside, banks and restarts outside', () => {
-  const combo = createComboState();
-  recordTrick(combo, trick({ tick: 100 }));
-  recordTrick(combo, trick({ tick: 100 + COMBO_WINDOW_TICKS }));
-  assert.equal(combo.activeCount, 2);
-  assert.equal(combo.banked, 0);
-  recordTrick(combo, trick({ tick: 100 + COMBO_WINDOW_TICKS + COMBO_WINDOW_TICKS + 1 }));
-  assert.equal(combo.activeCount, 1);
-  assert.ok(combo.banked > 0, 'the expired chain must bank before the fresh one starts');
-});
-
-test('bank on quiet is idempotent and tick-driven', () => {
-  const combo = createComboState();
-  assert.equal(bankIfQuiet(combo, 9999), 0);
-  recordTrick(combo, trick({ tick: 50 }));
-  assert.equal(bankIfQuiet(combo, 51), 0);
-  const live = comboTotal(combo);
-  assert.ok(live > 0);
-  const banked = bankIfQuiet(combo, 50 + COMBO_BANK_QUIET_TICKS);
-  assert.equal(banked, live);
-  assert.equal(combo.activeCount, 0);
-  assert.equal(bankActive(combo), 0);
-});
-
-test('gun kills pay flat and fairly, tricks never double-pay', () => {
-  assert.equal(killPoints('wpn_autocannon_m'), GUN_KILL_SCORE);
-  assert.equal(killPoints('wpn_concussion_cannon_m'), GUN_KILL_SCORE);
-  assert.equal(killPoints(undefined), GUN_KILL_SCORE);
-  assert.equal(killPoints('wpn_pulse_laser_s'), PULSE_KILL_SCORE);
-  assert.equal(killPoints('wpn_pulse_laser_m'), PULSE_KILL_SCORE);
-  assert.equal(killPoints('unique_mirrorjaw_pulse'), PULSE_KILL_SCORE);
-  assert.ok(isPulseWeapon('wpn_pulse_laser_s'));
-  assert.ok(!isPulseWeapon('wpn_autocannon_m'));
-  assert.ok(!isPulseWeapon(null));
-
-  const combo = createComboState();
-  const before = comboTotal(combo);
-  recordKill(combo, { weaponId: 'wpn_pulse_laser_s', tick: 10 });
-  assert.equal(comboTotal(combo) - before, PULSE_KILL_SCORE);
-  assert.equal(combo.pulseKills, 1);
-  recordTrickKill(combo);
-  assert.equal(combo.trickKills, 1);
-  assert.equal(comboKills(combo), 2);
-});
-
-test('comboSummary is a read-only snapshot, null when empty', () => {
-  assert.equal(comboSummary(null), null);
-  assert.equal(comboSummary(createComboState()), null);
-  const combo = createComboState();
-  recordTrick(combo, trick({ tick: 5 }));
-  const snap = comboSummary(combo);
-  assert.ok(snap);
-  assert.equal(snap.totalScore, comboTotal(combo));
-  assert.equal(snap.bestChain, 1);
-  assert.equal(snap.lastTricks.length, 1);
-  snap.totalScore = -1;
-  assert.ok(comboTotal(combo) > 0, 'mutating the snapshot must not touch live state');
-});
-
-// --- Seeded headless scenario: equal-kill physics tape vs gun tape ---------------------------
-// Seed 14601. Fixed ticks, no RNG, no wall clock. The physics tape chains three named
-// tricks (razor release, wrecking ball, collateral) around 4 kills; the gun tape scores
-// the same 4 kills with plain fire; the Pulse tape scores them with the free Pulse.
-const SCENARIO_SEED = 14601;
-
-function driveTape(kind) {
-  const bus = createBus();
-  const entities = new Map();
-  for (const id of ['raider_0', 'raider_1', 'raider_2', 'raider_3', 'ore_pod']) {
-    entities.set(id, {
-      id, type: 'ship', team: 1, alive: true, pos: { x: 40, z: 0 },
-      data: { level: 1, runWave: 1, runCohort: 'survival' },
-    });
+test('worked A: three primary families bank 460 style plus 300 neutral base score', () => {
+  const c = createComboState();
+  for (const [id, episode, tick] of [['rock_discovery', 'a', 0], ['bolas', 'b', 180], ['bank_job', 'c', 360]]) {
+    recordTrick(c, act(id, episode, tick)); recordKill(c, { lifeId: episode, weaponId: 'wpn_pulse_laser_s' });
   }
-  const state = {
-    playerId: 'player', stunts: null, tick: 0, simTime: 0, mode: 'flight',
-    run: { kind: 'survival', phase: 'active' },
-    entities,
-  };
-  stuntGrammar.init({ bus, state });
-  try {
-    bus.emit('run:started', {});
-    if (kind === 'physics') {
-      bus.emit('tether:releaseRated', {
-        tick: 100, sourceId: 'player', targetId: 'rock_A', classification: 'razor',
-        releaseScore: 0.92, angularSpeed: 4.5, tangentialSpeed: 42.0,
-      });
-      bus.emit('tether:whipImpact', {
-        tick: 160, sourceId: 'player', targetId: 'rock_A', victimId: 'raider_1',
-        relSpeed: 58.5, mass: 45.0, momentum: 2632.5,
-      });
-      bus.emit('combat:collisionConsequence', {
-        tick: 165, targetId: 'raider_1', otherId: 'rock_A', surface: 'craft',
-        deltaV: 40.0, exchangedMomentum: 2632.5,
-        targetHostile: true, damageApplied: true, targetKilled: true,
-        hullDamage: 0, targetHullMax: 120, provenance: { actorId: 'player' },
-      });
-      bus.emit('combat:hitstunImpulse', {
-        tick: 220, actorId: 'player', victimId: 'raider_2',
-        weaponId: 'wpn_concussion_cannon_m', deltaV: 25.0,
-      });
-      bus.emit('combat:collisionConsequence', {
-        tick: 240, targetId: 'raider_3', otherId: 'raider_2', surface: 'craft',
-        deltaV: 18.0, exchangedMomentum: 950,
-        targetHostile: true, damageApplied: true, targetKilled: true,
-        hullDamage: 0, targetHullMax: 90, provenance: { actorId: 'player' },
-      });
-      // 4 kills: two plain concussion kills, two trick-adjacent (tow-kill + crush).
-      bus.emit('entity:killed', { tick: 300, id: 'raider_1', killerId: 'player', weaponId: 'wpn_concussion_cannon_m' });
-      bus.emit('tether:attached', { tick: 320, sourceId: 'player', targetId: 'ore_pod', isTow: true, relSpeed: 10 });
-      bus.emit('entity:killed', { tick: 340, id: 'raider_2', killerId: 'player', cause: 'ship_collision' });
-      bus.emit('entity:killed', { tick: 360, id: 'raider_3', killerId: 'player', weaponId: 'wpn_concussion_cannon_m' });
-      bus.emit('combat:collisionConsequence', {
-        tick: 375, targetId: 'ore_pod', otherId: 'asteroid_face', surface: 'terrain',
-        deltaV: 26.0, exchangedMomentum: 800,
-        targetHostile: true, damageApplied: true, targetKilled: true,
-        hullDamage: 0, targetHullMax: 60, provenance: { actorId: 'player' },
-      });
-      bus.emit('entity:killed', { tick: 380, id: 'ore_pod', killerId: 'player', cause: 'ship_collision' });
-    } else if (kind === 'gun') {
-      for (let i = 0; i < 4; i += 1) {
-        bus.emit('entity:killed', { tick: 300 + i * 20, id: `raider_${i}`, killerId: 'player', weaponId: 'wpn_autocannon_m' });
-      }
-    } else {
-      for (let i = 0; i < 4; i += 1) {
-        bus.emit('entity:killed', { tick: 300 + i * 20, id: `raider_${i}`, killerId: 'player', weaponId: 'wpn_pulse_laser_s' });
-      }
-    }
-    state.tick = 100000;
-    stuntGrammar.update(1 / 60, state);
-    const combo = state.stunts.combo;
-    bankActive(combo);
-    return { score: comboTotal(combo), kills: comboKills(combo), bestChain: combo.bestChain };
-  } finally {
-    stuntGrammar.destroy();
-  }
-}
-
-test('seeded scenario: executed tricks add style; base kills pay equally across guns', () => {
-  const physics = driveTape('physics');
-  const gun = driveTape('gun');
-  const pulse = driveTape('pulse');
-
-  console.log(`[stunt-combo scenario seed ${SCENARIO_SEED}] physics tape: score=${physics.score} kills=${physics.kills} bestChain=${physics.bestChain}`);
-  console.log(`[stunt-combo scenario seed ${SCENARIO_SEED}] gun tape: score=${gun.score} kills=${gun.kills}`);
-  console.log(`[stunt-combo scenario seed ${SCENARIO_SEED}] pulse tape: score=${pulse.score} kills=${pulse.kills}`);
-  console.log(`[stunt-combo scenario seed ${SCENARIO_SEED}] ratio physics/gun=${(physics.score / gun.score).toFixed(2)}x`);
-
-  assert.equal(physics.kills, 4);
-  assert.equal(gun.kills, 4);
-  assert.equal(pulse.kills, 4);
-  assert.ok(physics.bestChain >= 3, `physics tape must chain, got bestChain=${physics.bestChain}`);
-  assert.ok(
-    physics.score > gun.score,
-    `the executed multi-stage tricks (${physics.score}) add style to base kill pay (${gun.score})`,
-  );
-  assert.equal(pulse.score, gun.score);
+  assert.equal(c.activePoints, 230);
+  assert.equal(comboSummary(c).activeMultiplier, 2);
+  assert.equal(bankActive(c), 460);
+  assert.equal(c.banked, 760);
+  assert.equal(c.bestLine.acts.length, 3);
+  assert.equal(bankActive(c), 0);
 });
-
-test('crucible combo builders read the stunt snapshot and stay null-safe', () => {
-  assert.equal(stuntComboFor(null), null);
-  assert.equal(stuntComboFor({}), null);
-  assert.equal(stuntComboFor({ state: {} }), null);
-  assert.equal(stuntComboFor({ state: { stunts: { combo: createComboState() } } }), null);
-
-  const combo = createComboState();
-  recordTrick(combo, trick({ name: 'Wrecking Ball', trickId: 'wrecking_ball', rarity: 'uncommon', baseScore: 250, metrics: { mass: 45 }, tick: 160 }));
-  recordKill(combo, { weaponId: 'wpn_pulse_laser_s', tick: 300 });
-  const ctx = { state: { stunts: { combo } } };
-  const summary = stuntComboFor(ctx);
-  assert.ok(summary);
-  assert.ok(summary.totalScore > 0);
-
-  const lead = comboLead(summary);
-  assert.ok(lead.length > 0, 'the band carries a sentence, not just figures');
-  const rows = comboRows(summary);
-  assert.ok(rows.some(([k]) => k === 'Combo score'));
-  assert.ok(rows.some(([k]) => k === 'Pulse kills'), 'a Pulse kill is named, never hidden');
-  const lines = comboTrickLines(summary);
-  assert.equal(lines.length, 1);
-  assert.equal(lines[0].name, 'Wrecking Ball');
-
-  assert.equal(comboLead(null), '');
-  assert.deepEqual(comboRows(null), []);
-  assert.deepEqual(comboTrickLines(null), []);
+test('worked B: fodder lifetime caps a spectacular signature at 100', () => {
+  const c = createComboState();
+  const a = act('slingshot_golf', 's', 0, { metrics: { payloadMass: 80, playerDryHullMass: 20, usefulDeltaV: 100, referenceCruise: 100 } });
+  assert.equal(massFactor(a), 1.5);
+  assert.equal(recordTrick(c, a), 100);
+  assert.equal(bankActive(c), 100);
+});
+test('worked C: repeats retain fractions until one final floor and never raise multiplier', () => {
+  const c = createComboState();
+  for (let i = 0; i < 3; i++) recordTrick(c, act('rock_discovery', `r${i}`, i * 90));
+  assert.equal(c.activePoints, 87.5);
+  assert.equal(comboSummary(c).activeMultiplier, 1);
+  assert.equal(bankActive(c), 87);
+});
+test('Razor Bolas collateral has one primary, deterministic proportional allocations and bounded amendment', () => {
+  const c = createComboState();
+  const a = act('bolas', 'one', 0, { metrics: { payloadMass: 80, playerDryHullMass: 20, usefulDeltaV: 100, referenceCruise: 100 },
+    victimLives: ['a', 'b', 'c'].map(lifeId => ({ lifeId, threatClass: 'fodder', dead: true })),
+    modifiers: { razorRelease: 'razor', collateralCount: 3 } });
+  assert.equal(recordTrick(c, a), 185);
+  assert.equal(recordTrick(c, a), 0);
+  assert.equal(c.activeCount, 1);
+  assert.equal(bankActive(c), 185);
+  assert.equal(recordTrick(c, { ...a, modifiers: { ...a.modifiers, collateralCount: 4 } }), 0);
+  const allocation = allocateStyle(185, ['c', 'b', 'a'].map(lifeId => ({ lifeId, available: 100 })));
+  assert.deepEqual(allocation.map(x => x.lifeId), ['a', 'b', 'c']);
+  assert.equal(allocation.reduce((n, a) => n + a.points, 0), 185);
+});
+test('nonlethal half-budget then death unlocks only remainder, including save round-trip', () => {
+  let c = createComboState();
+  assert.equal(recordTrick(c, act('bolas', 'first', 0, { victimLives: [{ lifeId: 0, threatClass: 'fodder', dead: false }] })), 50);
+  bankActive(c); c = JSON.parse(JSON.stringify(c));
+  assert.equal(recordTrick(c, act('bank_job', 'second', 120, { victimLives: [{ lifeId: 0, threatClass: 'boss', dead: true }] })), 50, 'later boss claim cannot promote admitted fodder');
+  assert.equal(recordTrick(c, act('one_two', 'third', 180, { victimLives: [{ lifeId: 0, threatClass: 'fodder', dead: true }] })), 0);
+  assert.equal(c.activeCount, 1);
+});
+test('two other distinct paid IDs restore repetition; modifiers and zero-budget acts do not', () => {
+  const c = createComboState();
+  assert.equal(recordTrick(c, act('rock_discovery', 'r1')), 50);
+  assert.equal(recordTrick(c, act('rock_discovery', 'r2', 20)), 25);
+  assert.equal(recordTrick(c, act('collateral', 'm', 30)), 0);
+  recordTrick(c, act('bolas', 'b', 40)); recordTrick(c, act('bank_job', 'j', 50));
+  assert.equal(recordTrick(c, act('rock_discovery', 'r3', 60)), 50);
+});
+test('quiet requires explicit safe physical context; bridges require useful setup and are bounded', () => {
+  const c = createComboState(); recordTrick(c, act('bolas', 'b'));
+  assert.equal(bankIfQuiet(c, 120), 0, 'silence is not evidence of quiet');
+  assert.equal(recordBridge(c, { tick: 200, setupId: 0, kind: 'loaded_constraint', liveHostile: true, displacementLengths: 1 }), true);
+  assert.equal(recordBridge(c, { tick: 201, setupId: 0, kind: 'close_shave', preventedInterception: true }), false);
+  assert.equal(recordBridge(c, { tick: 202, setupId: 1, kind: 'bank_contact', liveDescendant: true, validTarget: true }), true);
+  assert.equal(recordBridge(c, { tick: 203, setupId: 2, kind: 'close_shave', preventedInterception: true }), false);
+  assert.equal(c.deadlineTick, 480);
+  assert.equal(bankIfQuiet(c, 220, { incomingInterception: false, loadedManipulation: false }), 0);
+  assert.equal(bankIfQuiet(c, 339, { incomingInterception: false, loadedManipulation: false }), 0);
+  assert.equal(bankIfQuiet(c, 340, { incomingInterception: false, loadedManipulation: false }), 90);
+});
+test('pending descendant bounded by root horizon; pressure timeout retains full multiplier', () => {
+  const c = createComboState(); recordTrick(c, act('rock_discovery', 'a')); recordTrick(c, act('bolas', 'b', 30));
+  assert.equal(bankIfQuiet(c, 330, { pendingUntilTick: 10000 }), 0);
+  assert.equal(bankIfQuiet(c, 510, { pendingUntilTick: 10000 }), 210);
+});
+test('escape has finite shared threat budget and only one escape multiplier contribution', () => {
+  const c = createComboState();
+  const escape = (name, id, threat, tick) => act(name, id, tick, { pureEscape: true, threatEpisodeId: threat, victimLives: [] });
+  assert.equal(recordTrick(c, escape('kickstart', 'k', 'pursuit', 0)), 40);
+  assert.equal(recordTrick(c, escape('needle_thread', 'n', 'pursuit', 20)), 0);
+  assert.equal(recordTrick(c, escape('needle_thread', 'n2', 'other', 30)), 40);
+  recordTrick(c, act('rock_discovery', 'r', 40));
+  assert.equal(comboSummary(c).activeMultiplier, 1.5);
+  assert.equal(bankActive(c), 93, 'combat 50 + capped escape 12.5, times 1.5, final floor');
+});
+test('hard crash and death settle at one without touching previous banks; postmortem remains bounded', () => {
+  const c = createComboState(); recordKill(c, { lifeId: 'kill' });
+  recordTrick(c, act('rock_discovery', 'a')); recordTrick(c, act('bolas', 'b', 30));
+  assert.equal(settleCrash(c, { tick: 31, deltaVCruise: .3, helmLossSeconds: .2, entryHullLossFraction: .1 }), 0);
+  assert.equal(settleCrash(c, { tick: 32, deltaVCruise: .3, helmLossSeconds: 1 }), 140);
+  assert.equal(c.banked, 240);
+  settleCrash(c, { tick: 40, playerDeath: true });
+  assert.equal(recordTrick(c, act('bank_job', 'new', 50)), 0);
+  assert.equal(recordTrick(c, act('bank_job', 'launched', 50, { rootTick: 35 })), 90);
+  assert.equal(bankActive(c), 90);
+  assert.equal(c.carry, 0);
+});
+test('safe carry decays only in active simulation, has next-round protection and is consumed once', () => {
+  const c = createComboState(); recordTrick(c, act('rock_discovery', 'a')); recordTrick(c, act('bolas', 'b', 30));
+  resetRound(c, 100); assert.equal(c.carry, .5);
+  advanceCombo(c, 1000, { intermission: true }); assert.equal(c.carry, .5);
+  resetRound(c, 1000, { begin: true }); advanceCombo(c, 1299); assert.equal(c.carry, .5);
+  advanceCombo(c, 1360); assert.equal(c.carry, .25);
+  recordTrick(c, act('bank_job', 'next', 1360)); assert.equal(c.carry, 0);
+  assert.equal(comboSummary(c).activeMultiplier, 1.25);
+});
+test('threat admission and death aliases are immutable, numeric ID zero is retained', () => {
+  const entity = { id: 0, data: { runCohort: 'survival', threatClass: 'elite' } };
+  const first = admitStuntThreat(entity, 'one'); entity.data.threatClass = 'boss';
+  assert.equal(admitStuntThreat(entity, 'two'), first); assert.equal(first.baseScore, 600);
+  const c = createComboState();
+  assert.equal(recordKill(c, { lifeId: 0, threatClass: 'elite', weaponId: 'wpn_pulse_laser_s' }), 600);
+  assert.equal(recordKill(c, { lifeId: 0, threatClass: 'elite' }), 0);
+  assert.equal(recordKill(c, { lifeId: 1, playerOwned: false }), 0);
 });

@@ -165,7 +165,7 @@ function drive(kind) {
   return out;
 }
 
-test('trick pay is reputation and salvage rights, never credits', () => {
+test('trick names alone have no reputation, salvage-rights or credit entitlement', () => {
   const empty = trickPay(null);
   assert.equal(empty.credits, 0);
   assert.equal(empty.reputation, 0);
@@ -176,8 +176,8 @@ test('trick pay is reputation and salvage rights, never credits', () => {
   assert.equal(common.credits, 0);
   assert.equal(rare.credits, 0);
   assert.equal(common.reputation, STUNT_REP_BY_RARITY.common);
-  assert.ok(rare.reputation > common.reputation);
-  assert.ok(rare.salvageRights > common.salvageRights);
+  assert.equal(rare.reputation, 0);
+  assert.equal(rare.salvageRights, 0);
   assert.equal(common.factionId, STUNT_PAY_FACTION_ID);
 
   const chit = makeSalvageRightsItem(2, 'wrecking_ball');
@@ -203,15 +203,12 @@ test('kill burst credits ignore style; salvage rights are not chips', () => {
   assert.equal(salvageRightsItemsOf(b).length, 0);
 });
 
-test('seed 15530: physics tape earns trick score; credits equal; stunts never pay credits', () => {
+test('seed 15530: unsupported legacy physics receipts cannot grant fame or invent positive recognition', () => {
   const physics = drive('physics');
   const gun = drive('gun');
 
-  console.log(`[PQ-155.03 seed ${SEED}] physics rep=${physics.positiveRep} pitborn=${physics.pitborn} credits=${physics.credits} rights=${physics.pay.salvageRights} tricks=${physics.tricks}`);
-  console.log(`[PQ-155.03 seed ${SEED}] gun     rep=${gun.positiveRep} pitborn=${gun.pitborn} credits=${gun.credits} rights=${gun.pay.salvageRights} tricks=${gun.tricks}`);
-  console.log(`[PQ-155.03 seed ${SEED}] combo pay physics=${JSON.stringify(physics.pay)} gun=${JSON.stringify(gun.pay)}`);
 
-  assert.equal(physics.tricks, 3);
+  assert.equal(physics.tricks, 0, 'release/impact labels without authoritative physical ancestry are not recognitions');
   assert.equal(gun.tricks, 0);
   assert.equal(physics.credits, gun.credits, 'kill credits must stay equal');
   assert.ok(physics.credits > 0, 'the gun path still pays its chips');
@@ -220,8 +217,8 @@ test('seed 15530: physics tape earns trick score; credits equal; stunts never pa
   assert.equal(physics.repDelta.filter((p) => p && p.reason === 'stunt_trick').length, 0,
     'no faction:repDelta from stunt pay');
   assert.equal(physics.pitborn, gun.pitborn, 'faction standing is identical across tapes');
-  assert.ok(physics.pay.reputation > 0, 'combo meter accrues stunt reputation points');
-  assert.ok(physics.pay.salvageRights > 0);
+  assert.equal(physics.pay.reputation, 0);
+  assert.equal(physics.pay.salvageRights, 0);
   assert.equal(physics.pay.credits, 0);
   assert.equal(gun.pay.reputation, 0);
   assert.equal(gun.pay.salvageRights, 0);
