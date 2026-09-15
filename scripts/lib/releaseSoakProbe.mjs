@@ -1314,27 +1314,45 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
   // The prompt fires for ANY station envelope crossed en route. Only Helios' corridor
   // identity may release the dock press — docking at a nearer non-Helios station shifts
   // the berth the next cycle undocks from and can carry the save across a sector line.
-  const waitHeliosDockPrompt = (timeoutMs) => page.waitForFunction(() => {
+  const readPromptState = () => page.evaluate(() => {
     const el = document.querySelector('.sf-alert--dock');
     const visible = !!el && !el.hidden && getComputedStyle(el).display !== 'none';
-    return visible === true && window.SF?.state?.dockingCorridor?.stationId === 'station_helios';
-  }, null, { timeout: timeoutMs }).then(() => true).catch(() => false);
-  let dockPromptVisible = await waitHeliosDockPrompt(60_000);
-  if (!dockPromptVisible) {
-    const firstDiag = await readDockDiag();
-    // A player whose approach stalls re-issues the command. If the autopilot is not
-    // actively driving (disengaged to 'manual', or the arm click missed), re-arm the
-    // waypoint once and give the approach another window. A still-driving autopilot
-    // that never reaches the berth is a real wedge — fail with diagnostics.
-    if (firstDiag?.autopilot?.active !== true) {
-      mark('redock-rearm', firstDiag);
+    const dc = window.SF?.state?.dockingCorridor || null;
+    return {
+      prompt: visible === true && dc?.stationId === 'station_helios',
+      inCorridor: dc?.inCorridor === true,
+      inCapture: dc?.inCapture === true,
+      autopilotActive: window.SF?.state?.nav?.autopilot?.active === true,
+    };
+  }).catch(() => null);
+  // A player whose approach stalls re-issues the dock command — the same recovery the
+  // route already used for a dropped autopilot arm. Emergent misses share that remedy:
+  // an autopilot that parks short ('arrived' outside the prompt envelope), an approach
+  // that overshoots the corridor on restored velocity, or an arm click that never
+  // engaged. Each gets one re-arm, bounded, while a still-driving autopilot that keeps
+  // missing after the retries is a real wedge and fails with diagnostics.
+  let dockPromptVisible = false;
+  let sawCorridor = false;
+  let rearms = 0;
+  const dockDeadline = Date.now() + 105_000;
+  while (Date.now() < dockDeadline && !dockPromptVisible) {
+    const s = await readPromptState();
+    if (s?.prompt === true) { dockPromptVisible = true; break; }
+    const corridorNow = s != null && (s.inCorridor === true || s.inCapture === true);
+    if (corridorNow) sawCorridor = true;
+    const overshot = sawCorridor && s != null && corridorNow === false;
+    const dropped = s != null && s.autopilotActive === false;
+    if ((overshot || dropped) && rearms < 3 && s != null) {
+      rearms += 1;
+      mark(overshot ? 'redock-overshoot-rearm' : 'redock-rearm', await readDockDiag());
       await armHeliosWaypoint(page);
-      dockPromptVisible = await waitHeliosDockPrompt(45_000);
+      sawCorridor = false;
     }
-    if (!dockPromptVisible) {
-      const diag = await readDockDiag();
-      throw new Error(`Helios dock prompt never appeared: ${JSON.stringify({ first: firstDiag, final: diag })}`);
-    }
+    await page.waitForTimeout(300);
+  }
+  if (!dockPromptVisible) {
+    const diag = await readDockDiag();
+    throw new Error(`Helios dock prompt never appeared: ${JSON.stringify({ rearms, final: diag })}`);
   }
   // Docking is a player-initiated loading span (station interior mount) — tag it like
   // save/load so the gameplay-hitch count stays honest about steady-state frames.
