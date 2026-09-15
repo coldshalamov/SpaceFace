@@ -342,6 +342,45 @@ export async function runReleaseSoakProbe({
     const soakStartedAt = Date.now();
     const soakThreshold = readMinSpecHitchThreshold(root);
     await installSoakRecorder(page, { hitchThresholdMs: soakThreshold });
+    // DIAG (worktree-only): geometry lifecycle census. Every BufferGeometry writes
+    // attributes in its constructor, so setAttribute is the universal creation hook;
+    // dispose deregisters. The live-by-stack map names the exact creation site whose
+    // geometries accumulate when memory.geometries grows across cycles.
+    if (process.env.SF_SOAK_GL_TRACE === '1') {
+      await page.evaluate(async () => {
+        if (window.__SF_GEO_CENSUS__) return;
+        const T = await import('three');
+        const live = new Map();
+        const liveByStack = new Map();
+        const state = { created: 0, disposed: 0, live };
+        const origSet = T.BufferGeometry.prototype.setAttribute;
+        const origDispose = T.BufferGeometry.prototype.dispose;
+        T.BufferGeometry.prototype.setAttribute = function (name, attr) {
+          if (!live.has(this)) {
+            state.created += 1;
+            const stack = (new Error().stack || '').split('\n').slice(2, 8).join(' | ');
+            live.set(this, stack);
+            liveByStack.set(stack, (liveByStack.get(stack) || 0) + 1);
+          }
+          return origSet.call(this, name, attr);
+        };
+        T.BufferGeometry.prototype.dispose = function () {
+          const stack = live.get(this);
+          if (stack != null) {
+            live.delete(this);
+            state.disposed += 1;
+            liveByStack.set(stack, Math.max(0, (liveByStack.get(stack) || 1) - 1));
+          }
+          return origDispose.call(this);
+        };
+        state.topStacks = () => [...liveByStack.entries()]
+          .filter(([, count]) => count > 0)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 8)
+          .map(([stack, count]) => ({ count, stack }));
+        window.__SF_GEO_CENSUS__ = state;
+      }).catch(() => {});
+    }
     doLog(`soak window opened (hitch threshold ${soakThreshold} ms; cycles >=${cycles}${minDurationMs > 0 ? `, wall >=${minDurationMs} ms` : ''})`);
 
     const cycleResults = [];
@@ -3333,6 +3372,12 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
         : null,
       entities: finiteOrNull(state?.entityList?.length),
       assetResidency: state?.render?.assetResidency || null,
+      geoCensus: window.__SF_GEO_CENSUS__ ? {
+        live: window.__SF_GEO_CENSUS__.live.size,
+        created: window.__SF_GEO_CENSUS__.created,
+        disposed: window.__SF_GEO_CENSUS__.disposed,
+        topStacks: window.__SF_GEO_CENSUS__.topStacks(),
+      } : null,
     };
     function finiteOrNull(value) { const number = Number(value); return Number.isFinite(number) ? number : null; }
   }, phaseTag);
