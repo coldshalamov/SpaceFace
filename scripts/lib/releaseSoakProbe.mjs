@@ -299,6 +299,7 @@ export async function runReleaseSoakProbe({
     } catch (warmupError) {
       const taps = await page.evaluate(() => ({
         posJumps: window.__PQ033_POS_JUMPS__ || [],
+        posWrites: window.__PQ033_POS_WRITES__ || [],
         sectorEvents: window.__PQ033_SECTOR_EVENTS__ || [],
       })).catch(() => null);
       warmupError.message = `${warmupError.message} | warmup-marks: ${JSON.stringify(warmupMarks)} | warmup-taps: ${JSON.stringify(taps)}`;
@@ -454,6 +455,7 @@ export async function runReleaseSoakProbe({
             dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
             sectorEvents: window.__PQ033_SECTOR_EVENTS__ || [],
             posJumps: window.__PQ033_POS_JUMPS__ || [],
+            posWrites: window.__PQ033_POS_WRITES__ || [],
           };
         }).catch(() => null);
         cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)} | cycle-marks: ${JSON.stringify(cycleMarks)}`;
@@ -1283,11 +1285,43 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     // the surrounding ring so the next occurrence says teleport (pos write, vel calm) vs
     // physics fling (vel spike first).
     window.__PQ033_POS_JUMPS__ = [];
+    // Writer trap: the acceptance run captured the jump as a single-frame X-only write
+    // (1277 -> -1248565, z and vel untouched, jump IDLE). Accessors on the live player's pos
+    // record the caller stack of any single write that moves an axis by >2000 wu.
+    window.__PQ033_POS_WRITES__ = [];
+    let trappedPos = null;
+    const trapPos = (pos) => {
+      if (!pos || trappedPos === pos) return;
+      trappedPos = pos;
+      for (const axis of ['x', 'z']) {
+        const desc = Object.getOwnPropertyDescriptor(pos, axis);
+        if (!desc || !('value' in desc)) continue;
+        let value = desc.value;
+        Object.defineProperty(pos, axis, {
+          configurable: true,
+          enumerable: true,
+          get: () => value,
+          set: (next) => {
+            if (Number.isFinite(next) && Number.isFinite(value) && Math.abs(next - value) > 2000
+                && window.__PQ033_POS_WRITES__.length < 6) {
+              const s = window.SF?.state;
+              window.__PQ033_POS_WRITES__.push({
+                axis, from: value, to: next, tick: s?.tick ?? null, mode: s?.mode ?? null,
+                stack: String(new Error().stack || '').split('\n').slice(2, 12)
+                  .map((l) => l.trim().replace(/^at\s+/, '').replace(/https?:\/\/[^/]+\//, '')).join(' < '),
+              });
+            }
+            value = next;
+          },
+        });
+      }
+    };
     const ring = [];
     const sample = () => {
       const s = window.SF?.state;
       const p = s?.entities?.get?.(s?.playerId);
       if (p?.pos) {
+        trapPos(p.pos);
         const cur = {
           t: Date.now(), tick: s.tick ?? null, simTime: s.simTime ?? null, mode: s.mode,
           x: Number(p.pos.x.toFixed(1)), z: Number(p.pos.z.toFixed(1)),
