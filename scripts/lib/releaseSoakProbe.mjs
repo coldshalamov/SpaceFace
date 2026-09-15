@@ -1895,6 +1895,14 @@ async function clickWaypointWithPointer(page, locator) {
     } else {
       nullBoxes = 0;
       const armsBefore = await page.evaluate(() => window.__M6_RELEASE_SOAK_EVENTS__?.heliosWaypointArms || 0);
+      // On a re-arm the autopilot still holds the previous Helios arm — active and
+      // labelled — so the label/active fallback below would pass on stale state even
+      // when the click missed entirely, leaving the chart open to fail map-closed.
+      // When an arm is already held, only a fresh nav:waypoint emission proves this click.
+      const alreadyArmed = await page.evaluate(() => {
+        const autopilot = window.SF?.state?.nav?.autopilot;
+        return autopilot?.active === true && /Helios Station/i.test(String(autopilot?.label || ''));
+      }).catch(() => false);
       if (attempt >= 3) {
         // Coverage fallback: if the real pointer keeps landing on the chart layer that
         // paints over the inspector, dispatch the click on the button itself — same
@@ -1907,19 +1915,20 @@ async function clickWaypointWithPointer(page, locator) {
         await page.mouse.down({ button: 'left' });
         await page.mouse.up({ button: 'left' });
       }
-      const armed = await page.waitForFunction((before) => {
+      const armed = await page.waitForFunction(([before, staleArm]) => {
         // A fresh nav:waypoint emission is the only race-free arm proof: the follower
         // can flip a point-blank arm to 'arrived' and clear nav.waypoint within one
         // sim tick, and a stale autopilot label survives from the previous approach.
         const events = window.__M6_RELEASE_SOAK_EVENTS__;
         if ((events?.heliosWaypointArms || 0) > before) return true;
+        if (staleArm) return false;
         const nav = window.SF?.state?.nav;
         const autopilot = nav?.autopilot;
         if (!/Helios Station/i.test(String(autopilot?.label || ''))) return false;
         if (autopilot.active === true) return true;
         return autopilot.status === 'arrived'
           && /Helios Station/i.test(String(nav?.waypoint?.label || ''));
-      }, armsBefore, { timeout: 750 }).then(() => true, () => false);
+      }, [armsBefore, alreadyArmed], { timeout: 750 }).then(() => true, () => false);
       if (armed) return;
     }
     await page.waitForTimeout(50);
