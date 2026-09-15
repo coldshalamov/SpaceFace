@@ -811,9 +811,16 @@ export function injectHudCss() {
     font-family:var(--hud-data); font-size:var(--k-fs-data);
     color:var(--hud-cyan);
   }
-  .sf-commtape .sf-comm-backlog-btn,
-  .sf-commtape #sf-contact-hail {
+  .sf-commtape .sf-comm-backlog-btn {
     position:static !important; left:auto !important; top:auto !important; z-index:auto !important;
+    width:auto !important; height:auto !important; margin:0 !important;
+  }
+  /* #sf-contact-hail stays position:relative, not static: it is the containing block for its
+     absolute popover panel (anchored at the button), and it needs a real z-index in #hud's
+     stacking context. z:auto made the whole hail subtree one flat layer UNDER the adopted
+     comms feed (z-index:1050) — the deck painted beneath live feed lines it should cover. */
+  .sf-commtape #sf-contact-hail {
+    position:relative !important; left:auto !important; top:auto !important; z-index:1055 !important;
     width:auto !important; height:auto !important; margin:0 !important;
   }
   .sf-commtape .sf-comm-backlog-btn {
@@ -828,8 +835,10 @@ export function injectHudCss() {
     color:var(--hud-paper);
   }
   .sf-commtape .sf-contact-hail__button[disabled] { color:var(--hud-muted); }
-  /* The hail panel is a popover off the button; keep it anchored to the tape, not the old corner. */
-  .sf-commtape .sf-contact-hail__panel { left:0 !important; top:30px !important; }
+  /* The hail panel is a popover off the button; keep it anchored to the tape, not the old corner.
+     It must also paint ABOVE the adopted comms feed: #sf-comms carries z-index:1050 inside #hud's
+     stacking context, which beats every z:auto popover — the deck opened under live feed lines. */
+  .sf-commtape .sf-contact-hail__panel { left:0 !important; top:30px !important; z-index:1055; }
   /* The tracker used a 2px amber top border to say "this is the mission". De-boxed, that job goes
      to a single amber rule under the title — one stroke, still the loudest thing in the column. */
   .sf-mission-tracker { padding:8px 10px 9px; }
@@ -1790,6 +1799,302 @@ export function injectHudCss() {
       color:GrayText;
     }
     .sf-pslot__key, .sf-pslot__name { color:CanvasText; }
+  }
+
+  /* ══ GLASS REGISTER — owner directive, 2026-09-14 ═════════════════════════════════════════════
+     The machined amber surfaces read as wood on the flight layer and sink into the render against
+     it. This register re-skins the SAME instruments as smoked glass with an ice signal light: a
+     translucent near-black fill under a faint top sheen, one crisp cool edge, a soft outer drop so
+     the instrument separates from whatever is behind it, and neon cyan reserved for live state.
+     Amber survives as the objective/warning signal only (--k-signal); red as danger only.
+     No backdrop-filter (flight perf floor, FIELD_HARDWARE_PROGRAM §7): legibility comes from fill
+     opacity and edge light, not blur. Layout, sizes, copy and data wiring are untouched; every
+     rule trails the sheet and wins by source order or #hud scoping. Forced-colours restatement
+     closes the section, after the sheet's own forced-colours block. */
+
+  :root {
+    --glass-fill:rgb(9 14 22 / .82);
+    --glass-fill-2:rgb(13 20 30 / .74);
+    --glass-fill-3:rgb(20 30 44 / .62);
+    --glass-edge:rgb(188 220 255 / .20);
+    --glass-sheen:linear-gradient(180deg, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 46%);
+    --glass-drop:0 10px 26px rgb(2 6 14 / .40);
+    --glass-inner:inset 0 1px 0 rgb(255 255 255 / .05);
+    --glass-neon:rgb(141 217 255);
+    --glass-neon-2:rgb(92 178 255);
+    --glass-glow:0 0 14px rgb(92 178 255 / .32);
+  }
+  /* The readable ink ramp on glass. The HUD's own cyan is the neon now; amber is the objective. */
+  #hud {
+    --hud-paper:rgb(236 244 253 / .97);
+    --hud-muted:rgb(178 199 222 / .80);
+    --hud-cyan:var(--glass-neon);
+    --hud-line:var(--glass-edge);
+  }
+
+  /* --- shared smoked-glass surface: every panel that carries text --- */
+  #hud .sf-bars,
+  #hud .sf-overview,
+  #hud .sf-target,
+  #hud .sf-mission-tracker,
+  #hud .sf-nav-readout,
+  #hud #sf-sector-law,
+  #hud .sf-cargo-panel,
+  #hud .sf-commtape,
+  #hud .sf-objarrow__label,
+  .sf-alert,
+  .sf-toast {
+    box-sizing:border-box;
+    background-color:var(--glass-fill);
+    background-image:var(--glass-sheen);
+    border:1px solid var(--glass-edge);
+    border-radius:10px;
+    box-shadow:var(--glass-drop), var(--glass-inner);
+    backdrop-filter:none !important;
+    -webkit-backdrop-filter:none !important;
+  }
+  #hud .sf-objarrow__label, .sf-toast { border-radius:8px; }
+  .sf-alert { border-radius:999px; }
+
+  /* --- left instrument card: hull schematic + vitals --- */
+  #hud .sf-bars { width:100%; max-width:288px; padding:10px 12px 11px; gap:5px 10px; border-radius:12px; }
+  #hud .sf-condition-head { color:var(--hud-muted); }
+  #hud .sf-condition-state { color:var(--hud-cyan); }
+  #hud .sf-cond-stat { color:var(--hud-muted); }
+  #hud .sf-cond-stat strong { color:var(--hud-paper); }
+  #hud .sf-schematic .sf-sch-track { stroke:var(--glass-edge); }
+  #hud .sf-sch-ship--empty .sf-sch-hull { stroke:var(--hud-muted); }
+  #hud .sf-sch-ship--fill .sf-sch-hull { stroke:var(--hud-cyan); fill:color-mix(in srgb, var(--glass-neon) 20%, transparent); }
+  #hud .sf-sch-fill-line { background:var(--hud-cyan); height:1px; }
+  #hud .sf-barrow__label { color:var(--hud-muted); }
+  #hud .sf-barrow__num { color:var(--hud-paper); }
+
+  /* --- segmented gauges: glass track, neon wells --- */
+  #hud .sf-bars .sf-bar.sf-kit-bar, #hud .sf-kit-bar {
+    height:26px; min-height:26px; padding:0 8px; gap:3px;
+    border:1px solid var(--glass-edge); border-image:none; border-radius:7px;
+    background:var(--glass-fill-3); background-image:none;
+    box-shadow:var(--glass-inner);
+  }
+  #hud .sf-kit-bar > .sf-bar__fill { inset:5px 8px; background:var(--glass-neon); opacity:0; }
+  #hud .sf-kit-bar:not(:has(.sf-kit-seg.is-on)) > .sf-bar__fill { opacity:1; }
+  #hud .sf-kit-seg {
+    flex:1 1 0; min-width:0; max-width:12px; height:11px; border-radius:3px;
+    background-color:rgb(198 226 255 / .12); background-image:none;
+  }
+  #hud .sf-kit-seg.is-on {
+    background-color:var(--glass-neon);
+    background-image:linear-gradient(180deg, rgb(255 255 255 / .38), transparent 72%);
+    box-shadow:0 0 9px rgb(92 178 255 / .65);
+  }
+  #hud .sf-kit-seg.is-hot {
+    background-color:var(--k-red);
+    background-image:linear-gradient(180deg, rgb(255 255 255 / .34), transparent 72%);
+    box-shadow:0 0 9px rgb(255 77 61 / .55);
+  }
+  #hud .sf-kit-seg.is-cold { background-color:rgb(214 236 255 / .85); background-image:none; box-shadow:none; }
+  html[data-k-temp="wanted"] #hud .sf-kit-seg.is-on { background-color:var(--k-red); box-shadow:0 0 8px rgb(255 77 61 / .5); }
+
+  /* --- speed instrument: owner directive, 2026-09-14 — the produced dial reads as a car dashboard
+         (warm bezel, smoked window, heavy pointer). It is retired here and the instrument is drawn
+         as a shiplike gauge: a glass panel carrying one fine 220 degree ring with the ticks, the
+         live arc and the needle all on the same pivot the wiring already rotates around
+         (--sf-gauge-deg / --sf-gauge-arc, set by setKitGauge). The DOM contract, the aria meter
+         and the responsive factor are untouched; only the painted layers change. --- */
+  #hud .sf-kit-gauge {
+    filter:none;
+    color:var(--glass-neon);
+    background-color:var(--glass-fill-2);
+    background-image:var(--glass-sheen);
+    border:1px solid var(--glass-edge);
+    border-radius:14px;
+    box-shadow:var(--glass-drop), var(--glass-inner);
+  }
+  #hud .sf-kit-gauge__arc {
+    background:repeating-conic-gradient(from -110deg at 50% 62%,
+        rgb(198 226 255 / .45) 0deg 0.7deg, transparent 0.7deg 22deg),
+      conic-gradient(from -110deg at 50% 62%,
+        var(--glass-neon) 0deg var(--sf-gauge-arc, 0deg), transparent var(--sf-gauge-arc, 0deg) 220deg),
+      conic-gradient(from -110deg at 50% 62%,
+        rgb(198 226 255 / .16) 0deg 220deg, transparent 220deg 360deg);
+    -webkit-mask-image:radial-gradient(circle closest-side at 50% 62%, transparent 0 86%, #000 88% 98%, transparent 99%),
+      conic-gradient(from -110deg at 50% 62%, #000 0deg 220deg, transparent 220deg 360deg);
+    -webkit-mask-composite:source-in;
+    mask-image:radial-gradient(circle closest-side at 50% 62%, transparent 0 86%, #000 88% 98%, transparent 99%),
+      conic-gradient(from -110deg at 50% 62%, #000 0deg 220deg, transparent 220deg 360deg);
+    mask-composite:intersect;
+    filter:drop-shadow(0 0 6px rgb(92 178 255 / .35));
+  }
+  #hud .sf-kit-gauge__needle { color:var(--glass-neon); }
+  #hud .sf-kit-gauge__hub { fill:var(--hud-paper); }
+  #hud .sf-kit-gauge__face { background:none; }
+  #hud .sf-kit-gauge__num { color:var(--hud-paper); text-shadow:0 0 14px rgb(92 178 255 / .28); }
+
+  /* --- power rail: glass tiles in a glass rack --- */
+  #hud .sf-prail { padding-bottom:0; }
+  #hud .sf-prail__label {
+    position:static; height:auto; line-height:1.2; padding:0 0 6px;
+    font-family:var(--k-display, var(--hud-display));
+    font-variation-settings:"wght" 700, "wdth" 62;
+    font-size:var(--k-fs-fine); letter-spacing:.18em; text-transform:uppercase;
+    color:var(--hud-muted); opacity:1;
+  }
+  #hud .sf-prail__slots {
+    border:1px solid var(--glass-edge); border-image:none; border-radius:12px;
+    background:var(--glass-fill-2); background-image:var(--glass-sheen);
+    box-shadow:var(--glass-drop), var(--glass-inner);
+    padding:8px 10px 24px; gap:8px; align-items:flex-end;
+  }
+  #hud .sf-pslot {
+    background:var(--glass-fill-3); background-image:var(--glass-sheen);
+    border:1px solid var(--glass-edge); border-radius:9px;
+    box-shadow:var(--glass-inner);
+    color:var(--hud-muted); opacity:1;
+  }
+  #hud .sf-pslot__key { color:var(--hud-muted); opacity:1; }
+  #hud .sf-pslot__name { bottom:-17px; color:var(--hud-muted); }
+  #hud .sf-pslot__sweep circle { stroke:var(--glass-neon); }
+  #hud .sf-pslot[data-state="armed"] {
+    border-color:rgb(141 217 255 / .85); color:rgb(234 246 255);
+    background:linear-gradient(180deg, rgb(70 132 194 / .46), rgb(20 42 66 / .58));
+    box-shadow:var(--glass-glow), var(--glass-inner);
+  }
+  #hud .sf-pslot[data-state="armed"] .fh-glyph .accent { fill:var(--glass-neon); }
+  #hud .sf-pslot[data-state="armed"] .sf-pslot__name { color:rgb(214 238 255); }
+  #hud .sf-pslot[data-state="cooling"] { opacity:.86; }
+  #hud .sf-pslot[data-state="cooling"] .sf-pslot__art { opacity:.6; }
+  #hud .sf-pslot[data-state="unaffordable"] { opacity:.62; }
+  #hud .sf-pslot[data-state="unaffordable"] .sf-pslot__art { opacity:.4; }
+  #hud .sf-pslot[data-state="locked"] { border-color:rgb(188 220 255 / .13); }
+  #hud .sf-pslot[data-state="locked"] .sf-pslot__art { opacity:.36; }
+  #hud .sf-pslot[data-state="empty"] { border-color:rgb(188 220 255 / .10); background:rgb(9 14 22 / .40); }
+  #hud .sf-pslot[data-state="empty"] .sf-pslot__art { opacity:.22; }
+  #hud .sf-prail[data-claimed] .sf-pslot__name { color:var(--glass-neon); }
+
+  /* --- radar: glass dial, ice rose --- */
+  #hud .sf-kit-radar__bezel {
+    background:radial-gradient(circle at 50% 40%, rgb(24 38 54 / .78), rgb(7 11 17 / .88) 68%);
+    border:1px solid var(--glass-edge); border-radius:50%;
+    box-shadow:var(--glass-drop), var(--glass-inner);
+  }
+  #hud .sf-kit-radar__face {
+    background:radial-gradient(circle at 50% 38%, rgb(30 48 68 / .35), rgb(6 10 16 / .55) 76%);
+    background-image:none; border-radius:50%;
+  }
+  #hud .sf-kit-radar__n { filter:hue-rotate(188deg) saturate(.35) brightness(1.6); }
+
+  /* --- right dock: roster, target card, sector law --- */
+  #hud .sf-overview { overflow:hidden; }
+  #hud .sf-overview-row { border-bottom:1px solid var(--glass-edge); }
+  #hud .sf-overview-row:hover { background:rgb(141 217 255 / .08); }
+  #hud .sf-overview-row__name { color:var(--hud-paper); }
+  #hud .sf-overview-row__right, #hud .sf-overview-row__detail,
+  #hud .sf-overview-row__state, #hud .sf-overview-row__tier, #hud .sf-overview-footer { color:var(--hud-muted); }
+  #hud .sf-target { padding:10px 12px; }
+  #hud .sf-target__name { color:var(--hud-paper); }
+  #hud .sf-target__faction, #hud .sf-target__meta, #hud .sf-target__dist,
+  #hud .sf-target__identity, #hud .sf-target__intent, #hud .sf-target__tri-label,
+  #hud .sf-target__tri-layer, #hud .sf-tri__k, #hud .sf-target__threat-word { color:var(--hud-muted); }
+  #hud .sf-target__dist { color:var(--hud-paper); }
+  #hud #sf-sector-law { padding:10px 12px; }
+  #hud .sf-law__head, #hud .sf-law__meta, #hud .sf-law__detail, #hud .sf-law__jurisdiction { color:var(--hud-muted); }
+  #hud .sf-law__headline { color:var(--hud-paper); }
+
+  /* --- left contextual column: mission, nav, comms tape, first-use --- */
+  #hud .sf-mission-tracker { padding:8px 12px 9px; border-left:2px solid var(--glass-neon-2); }
+  #hud .sf-mt-title { border-bottom-color:var(--glass-edge); }
+  #hud .sf-mt-obj { color:var(--hud-paper); }
+  #hud .sf-mt-time { color:var(--hud-muted); }
+  #hud .sf-nav-readout { padding:8px 12px; }
+  #hud .sf-nav-label { color:var(--hud-paper); }
+  #hud .sf-nav-meta { color:var(--hud-muted); }
+  #hud .sf-obj { color:var(--hud-paper); }
+  #hud .sf-commtape { padding:6px 10px; border-bottom:0; border-radius:8px; }
+  #hud .sf-commtape__band, #hud .sf-commtape .sf-comm-backlog-btn,
+  #hud .sf-commtape .sf-contact-hail__button, #hud .sf-commtape .sf-fx-comms-trace__wave {
+    color:var(--hud-muted);
+  }
+  #hud .sf-commtape .sf-comm-backlog-btn:hover, #hud .sf-commtape .sf-contact-hail__button:hover { color:var(--hud-paper); }
+  #hud .sf-news-ticker { color:var(--hud-paper); }
+  #hud .sf-firstuse { color:var(--hud-paper); }
+  #hud .sf-band-hud__button { color:var(--hud-muted); }
+  #hud .sf-band-hud__button:hover, #hud .sf-band-hud__button:focus-visible { color:var(--hud-paper); }
+
+  /* --- command deck readouts --- */
+  #hud .sf-stat__k { color:var(--hud-muted); }
+  #hud .sf-stat__v { color:var(--hud-paper); }
+  #hud .sf-tchip__verb, #hud .sf-tchip__hint, #hud .sf-tchip { color:var(--hud-muted); }
+  #hud .sf-tchip__bind { color:var(--hud-paper); }
+
+  /* --- onboarding card lives in a stylesheet injected later; the plate re-stated at ID weight --- */
+  #hud #sf-onboarding .sf-ob-card,
+  #sf-onboarding .sf-ob-card {
+    box-sizing:border-box;
+    background-color:var(--glass-fill) !important;
+    background-image:var(--glass-sheen) !important;
+    border:1px solid var(--glass-edge) !important;
+    border-radius:10px !important;
+    box-shadow:var(--glass-drop), var(--glass-inner) !important;
+    padding:10px 12px !important;
+  }
+  #hud #sf-onboarding .sf-ob-title { color:var(--hud-paper); }
+  #hud #sf-onboarding .sf-ob-hint, #hud #sf-onboarding .sf-ob-flavor { color:var(--hud-muted); }
+  #hud #sf-onboarding .sf-ob-progress { color:var(--glass-neon); }
+
+  /* --- world marks near the reticle cool with the register --- */
+  #hud .sf-lockring .sf-lockring__fill { stroke:var(--glass-neon); }
+  #hud .sf-lockring .sf-lockring__track { stroke:var(--glass-edge); }
+  #hud .sf-lockring__label { color:var(--hud-paper); }
+  #hud .sf-lockdiamond__inner { border-color:var(--glass-neon); }
+  #hud .sf-leadpip__full, #hud .sf-leadpip__arc, #hud .sf-leadpip__tick { stroke:var(--glass-neon); }
+  #hud .sf-gravity-mark__ring { border-color:var(--hud-paper); }
+  #hud .sf-gravity-mark__core { background:var(--hud-paper); }
+  #hud .sf-gravity-mark__label, #hud .sf-momentum-sink__label { color:var(--hud-paper); }
+  #hud .sf-objarrow--onscreen .sf-objarrow__glyph { border-color:var(--hud-paper); background:var(--k-signal); }
+  #hud .sf-objarrow__label { padding:4px 9px; }
+
+  /* --- alerts and receipts: same glass, one line each --- */
+  .sf-alert { padding:7px 18px; }
+  .sf-alert--dock { padding:9px 24px; }
+  .sf-toast { padding:6px 10px; }
+
+  /* --- high contrast: keep the glass readable, not translucent --- */
+  html.sf-high-contrast #hud .sf-bars, html.sf-high-contrast #hud .sf-overview,
+  html.sf-high-contrast #hud .sf-target, html.sf-high-contrast #hud .sf-mission-tracker,
+  html.sf-high-contrast #hud .sf-nav-readout,   html.sf-high-contrast #hud #sf-sector-law,
+  html.sf-high-contrast #hud .sf-commtape, html.sf-high-contrast #hud .sf-prail__slots,
+  html.sf-high-contrast #hud .sf-pslot, html.sf-high-contrast #hud .sf-kit-gauge,
+  html.sf-high-contrast .sf-alert, html.sf-high-contrast .sf-toast {
+    background:rgb(0 0 0 / .95); background-image:none;
+    border-color:rgb(230 240 255 / .85); box-shadow:none;
+  }
+
+  /* --- forced colours: the system palette owns the surface again --- */
+  @media (forced-colors: active) {
+    #hud .sf-bars, #hud .sf-overview, #hud .sf-target, #hud .sf-mission-tracker,
+    #hud .sf-nav-readout, #hud #sf-sector-law, #hud .sf-cargo-panel, #hud .sf-commtape,
+    #hud .sf-objarrow__label, #hud #sf-onboarding .sf-ob-card, .sf-alert, .sf-toast {
+      background:Canvas; background-image:none; border:1px solid CanvasText;
+      box-shadow:none; border-radius:0; forced-color-adjust:none;
+    }
+    #hud .sf-prail__slots, #hud .sf-pslot, #hud .sf-bars .sf-bar.sf-kit-bar, #hud .sf-kit-bar {
+      background:Canvas; background-image:none; border:1px solid CanvasText;
+      box-shadow:none; forced-color-adjust:none;
+    }
+    #hud .sf-pslot[data-state="armed"] { background:Highlight; border:2px solid Highlight; }
+    #hud .sf-kit-seg { background-color:Canvas; background-image:none; box-shadow:inset 0 0 0 1px GrayText; }
+    #hud .sf-kit-seg.is-on { background-color:Highlight; box-shadow:none; }
+    #hud .sf-kit-radar__bezel, #hud .sf-kit-radar__face {
+      background:Canvas; border:1px solid CanvasText; box-shadow:none; filter:none; forced-color-adjust:none;
+    }
+    #hud .sf-kit-radar__n { display:none; }
+    #hud .sf-kit-gauge {
+      background:Canvas; border:1px solid CanvasText; box-shadow:none; border-radius:0;
+      filter:none; forced-color-adjust:none;
+    }
+    #hud .sf-kit-gauge__arc { background:none; filter:none; -webkit-mask-image:none; mask-image:none; }
+    #hud .sf-kit-gauge__needle, #hud .sf-kit-gauge__num { color:CanvasText; text-shadow:none; }
+    #hud .sf-sch-ship--fill .sf-sch-hull { fill:none; }
   }
   `;
   document.head.appendChild(s);
