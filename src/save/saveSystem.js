@@ -3102,8 +3102,23 @@ export const save = {
       throw new Error('persistent_entity_limit');
     }
     const state = this.state;
+    // A persistent actor that also carries a durable worldRecordId was already rematerialized by
+    // enterSector's residency plan (step 9). Spawning the saved copy too doubled every persistent
+    // traffic fixture per load (release soak 2026-09-15: Helios arclight/tanker/customs x6 after
+    // ten loads, 31 live ships against a 24 budget). The live record body wins; the saved id
+    // remaps onto it so restored targets/combat still resolve.
+    const liveByRecord = new Map();
+    for (const e of state.entityList || []) {
+      const recordId = e && e.alive !== false && e.data && e.data.worldRecordId;
+      if (recordId && !liveByRecord.has(recordId)) liveByRecord.set(recordId, e.id);
+    }
     for (const saved of savedList) {
       if (!saved || typeof saved !== 'object') continue;
+      const savedRecordId = saved.data && saved.data.worldRecordId;
+      if (savedRecordId && liveByRecord.has(savedRecordId)) {
+        if (entityIdRemap && saved.id != null) entityIdRemap.set(String(saved.id), liveByRecord.get(savedRecordId));
+        continue;
+      }
       const spec = clonePlain(saved);
       delete spec.id; delete spec._isPlayer;
       if (spec.type !== 'projectile' && (!Number.isFinite(spec.ttl) || spec.ttl <= 0)) spec.ttl = Infinity;

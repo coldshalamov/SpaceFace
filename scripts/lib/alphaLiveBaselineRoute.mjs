@@ -327,6 +327,14 @@ export async function runBrowserPublicRoute({
             docked: state?.ui?.docked === true,
             mode: state?.mode || null,
             activeElement: document.activeElement?.id || document.activeElement?.tagName || null,
+            // verify67: the prompt vanished right after the first held E and never docked. Name
+            // whether the envelope was lost (dockInRange/corridor) or the press was fenced/denied.
+            dockInRange: state?.ui?.dockInRange ?? null,
+            dockDeny: state?.ui?.dockDeny || null,
+            fenced: state?.ui?.fulfillmentBlackoutActive === true,
+            corridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth, inCapture: state.dockingCorridor.inCapture } : null,
+            speed: (() => { const p = state?.entities?.get?.(state.playerId); return p?.vel ? Number(Math.hypot(p.vel.x, p.vel.z).toFixed(1)) : null; })(),
+            autopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status } : null,
             dockPromptVisible: (() => {
               const el = document.querySelector('.sf-alert--dock');
               if (!el || el.hidden) return false;
