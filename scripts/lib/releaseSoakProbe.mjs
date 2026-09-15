@@ -1342,10 +1342,12 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
             if (Number.isFinite(next) && Number.isFinite(value) && Math.abs(next - value) > 2000
                 && window.__PQ033_POS_WRITES__.length < 6) {
               const s = window.SF?.state;
+              const sg02o = window.SF?.registry?.get?.('physics')?._sg02;
               window.__PQ033_POS_WRITES__.push({
                 axis, from: value, to: next, tick: s?.tick ?? null, mode: s?.mode ?? null,
                 frameOrigin: s?.world?.frameOrigin ? { ...s.world.frameOrigin } : null,
                 frameOriginSeq: s?.world?.frameOriginSeq ?? null,
+                ownerOrigin: sg02o && sg02o._frameOrigin ? { x: sg02o._frameOrigin.x, z: sg02o._frameOrigin.z, seq: sg02o._frameOriginSeq } : null,
                 sector: s?.world?.currentSectorId || null,
                 stack: String(new Error().stack || '').split('\n').slice(2, 12)
                   .map((l) => l.trim().replace(/^at\s+/, '').replace(/https?:\/\/[^/]+\//, '')).join(' < '),
@@ -1365,20 +1367,30 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     const bodyWrite = (kind, detail) => {
       if (window.__PQ033_BODY_WRITES__.length < 8) {
         const s = window.SF?.state;
+        const sg02 = window.SF?.registry?.get?.('physics')?._sg02;
         window.__PQ033_BODY_WRITES__.push({
           kind, detail, t: Date.now(), tick: s?.tick ?? null,
           frameOrigin: s?.world?.frameOrigin ? { ...s.world.frameOrigin } : null,
+          ownerOrigin: sg02 && sg02._frameOrigin ? { x: sg02._frameOrigin.x, z: sg02._frameOrigin.z, seq: sg02._frameOriginSeq } : null,
           stack: String(new Error().stack || '').split('\n').slice(2, 14)
             .map((l) => l.trim().replace(/^at\s+/, '').replace(/https?:\/\/[^/]+\//, '')).join(' < '),
         });
       }
     };
     let trappedBody = null;
+    let trappedRec = null;
     let stepWrapped = false;
     const trapBody = () => {
       const sg02 = window.SF?.registry?.get?.('physics')?._sg02;
       const rec = sg02?.records?.get?.(window.SF?.state?.playerId);
       if (!sg02 || !rec) return;
+      // A record swap or body rebind mid-tick leaves setTranslation wrapped on the retired body
+      // while the sync reads the new one — stamp the identity change so that escape is visible.
+      if (rec !== trappedRec) {
+        bodyWrite('recordIdentity', { prev: trappedRec ? 'replaced' : 'initial', recEntityId: rec.entity && rec.entity.id });
+        trappedRec = rec;
+        trappedBody = null;
+      }
       if (rec.body && rec.body !== trappedBody) {
         trappedBody = rec.body;
         const orig = trappedBody.setTranslation.bind(trappedBody);
