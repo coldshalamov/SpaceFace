@@ -209,13 +209,14 @@ test('restore publishes one coherent zero-delta snapshot before simulation resum
     { type: 'resume', reason: 'restore-frame-complete' },
   ]);
 
-  const expected = advanceFixedTimestep(h.state.accumulator, 0.05, 1, () => {});
+  // 40 ms: a two-tick frame, under the ≥3-tick long-frame shed so the ordinary cadence applies.
+  const expected = advanceFixedTimestep(h.state.accumulator, 0.04, 1, () => {});
   h.calls.length = 0;
-  h.raf.flushOne(h.clock.advance(50));
+  h.raf.flushOne(h.clock.advance(40));
   assert.equal(countCalls(h, 'step'), expected.steps,
     'post-restore foreground time must retain the ordinary fixed-step cadence');
   assert.equal(countCalls(h, 'render'), 1);
-  assert.equal(h.calls.find((call) => call.type === 'render').frameDt, 0.05);
+  assert.equal(h.calls.find((call) => call.type === 'render').frameDt, 0.04);
   assert.ok(Math.abs(h.state.accumulator - expected.accumulator) < 1e-12);
   assert.equal(h.controller.getDiagnostics().shedBacklogFrames, 0);
   assert.equal(h.controller.getDiagnostics().postRestoreFrameCount, 1);
@@ -348,8 +349,8 @@ test('a hide fired during leftover sim keeps the last picture and aborts the nex
 
   h.raf.flushOne(h.clock.advance(16.667));
 
-  assert.deepEqual(h.calls.map((call) => call.type), ['render', 'step'],
-    'present-first still draws the last snapshot; hide during leftover sim cancels the next rAF');
+  assert.deepEqual(h.calls.map((call) => call.type), ['step'],
+    'a healthy frame simulates first; a hide fired during that sim skips the present and cancels the next rAF');
   assert.equal(h.controller.isSuspended(), true);
   assert.equal(h.raf.count(), 0);
   h.controller.destroy();

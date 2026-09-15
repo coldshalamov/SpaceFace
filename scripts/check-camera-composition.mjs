@@ -7,6 +7,7 @@ import {
   SPEED_ZOOM_MAX,
   SPEED_ZOOM_MIN,
   SPEED_ZOOM_SAMPLE_INTERVAL,
+  SPEED_ZOOM_SPEED_SMOOTHING_S,
   clampFocusToPlayerSafeRect,
   recenterBiasScale,
   resolveChaseComposition,
@@ -124,7 +125,8 @@ near(resolveInitialChaseZoom(72), 72,
   'an explicit 72 WU camera selection should retain its exact zoom semantics');
 near(resolveInitialChaseZoom(96), 96,
   'an explicit non-default camera selection should retain its exact zoom semantics');
-assert.ok(SPEED_ZOOM_SAMPLE_INTERVAL >= 0.1, 'speed zoom target should sample at low cadence, not retarget every render frame');
+assert.ok(SPEED_ZOOM_SPEED_SMOOTHING_S >= 0.05, 'speed zoom target should follow a smoothed speed, not retarget from raw per-frame velocity');
+assert.ok(SPEED_ZOOM_SAMPLE_INTERVAL >= 0.1, 'legacy sample interval stays exported for compatibility');
 near(resolveSpeedZoomFactor(0, 120), SPEED_ZOOM_MIN, 'idle speed zoom should keep the tight low-speed factor');
 assert.ok(resolveSpeedZoomFactor(60, 120) > 1, 'mid/high speed should naturally widen past base zoom');
 near(resolveSpeedZoomFactor(120, 120), SPEED_ZOOM_MAX, 'ship max speed should reach the speed zoom-out cap');

@@ -314,19 +314,24 @@ function simulate({ profile, b, input, ticks, runtime }) {
   simulate({ profile, b: braked, input: { throttle: 0, brake: true, assistMode: 'assisted' }, ticks: 60 });
   assert.ok(braked.vel.x < 390,
     `the pilot brake still spends earned speed with real reverse authority (got ${braked.vel.x.toFixed(1)})`);
-  // Gap Report F1: below the cap the hands-off assist is a SETTLE, not a stop — a capped
-  // deceleration (neutralBrakeFraction WU/s^2, fading under the stop horizon), so a released
-  // stick keeps essentially all of the speed it earned. "Drift when I choose to" is the vision;
-  // the brake is how you stop.
+  // Below the cap the hands-off assist is a SETTLE, not a stop: a proportional coast
+  // (|v| / settleTimeConstantS) with a small floor (settleFloorAccel) so the ship reads as
+  // coasting for a long time yet eventually rests. "Drift when I choose to" is the vision;
+  // the brake is how you stop fast.
   const nimble = body({ vel: { x: 70, z: 0 } });
   simulate({ profile, b: nimble, input: { throttle: 0, assistMode: 'assisted' }, ticks: 60 });
-  assert.ok(nimble.vel.x > 69 && nimble.vel.x < 70,
-    `"Nimble in a fight. Zip around, stay in control of the combat area, turn NOW when I twitch, stop when I brake, drift when I choose to." — below the cap the hands-off settle is a gentle coast, not braking (got ${nimble.vel.x.toFixed(2)})`);
-  // B1b: hands-off from governed cruise keeps ≥ 90 WU/s at 10 s on the starter drive.
+  assert.ok(nimble.vel.x > 62 && nimble.vel.x < 65,
+    `"Nimble in a fight. Zip around, stay in control of the combat area, turn NOW when I twitch, stop when I brake, drift when I choose to." — below the cap the hands-off settle is a gentle coast (70·e^-0.1 ≈ 63), not braking (got ${nimble.vel.x.toFixed(2)})`);
+  // Proportional coast on the starter drive: hands-off from governed cruise keeps ~41 WU/s at 10 s.
   const coast = body({ vel: { x: 95, z: 0 } });
   simulate({ profile: PROPULSION_PROFILES.drive_reaction_m, b: coast, input: { throttle: 0, assistMode: 'assisted' }, ticks: 600 });
-  assert.ok(coast.vel.x >= 90,
-    `B1b below-cap coast: hands-off from 95 must keep ≥ 90 WU/s at 10 s (got ${coast.vel.x.toFixed(1)})`);
+  assert.ok(coast.vel.x >= 38 && coast.vel.x <= 45,
+    `below-cap coast: hands-off from 95 settles to ~41 WU/s at 10 s (got ${coast.vel.x.toFixed(1)})`);
+  // The floor means a released ship eventually rests instead of drifting forever.
+  const rest = body({ vel: { x: 95, z: 0 } });
+  simulate({ profile: PROPULSION_PROFILES.drive_reaction_m, b: rest, input: { throttle: 0, assistMode: 'assisted' }, ticks: 2400 });
+  assert.ok(Math.abs(rest.vel.x) < 0.25,
+    `a released ship must come to rest within 40 s (got ${rest.vel.x.toFixed(3)})`);
 }
 
 // 12d. The physics-earned tag is telemetry: it cannot raise thrust's cap, and it is no longer

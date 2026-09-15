@@ -68,7 +68,7 @@
     "audio:cue": 6
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "a6e51947ae407036e5794686061cab1aa3c28bed5849ec945741a0223016b65c",
+    "authoritativeHash": "a583d48fc20ffdf8e9e1d31959d55afa13e8ea66232e19f4572b790f2d5ee304",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -156,6 +156,16 @@
     "Causes are landed content: hull derived stats (cargoCap, shield, shieldRegenRate, weapon heat) re-tuned with the packaged player hull; packagedProp* identity fields from the packaged-hardware presentation (PQ-193).",
     "Also: mission base rewards added for the set-piece / rescue-under-fire / tow-recovery / demolition / capital-boss kinds, and the player sessionSink ledger (momentum sinks) added to the save shape.",
     "phase0ObservedTraceCounts moved: audio:cue 5->6; camera:shake 4->3; presentation:cameraCue 4->3; presentation:caption 5->4; presentation:uiCue 5->4.",
-    "Those alert/presentation cue counts follow the re-tuned shield thresholds (scenario evidence event 2 fires at tick 147 instead of 152); every combat, tether, scenario-beat and economy count is unchanged."
+    "Those alert/presentation cue counts follow the re-tuned shield thresholds (scenario evidence event 2 fires at tick 147 instead of 152); every combat, tether, scenario-beat and economy count is unchanged.",
+    "2026-09-15 deliberate re-record (owner-selected): the hands-off settle in reactionAssistAcceleration is now a proportional coast with a floor, decel = max(|v| / settleTimeConstantS, settleFloorAccel) WU/s^2.",
+    "Authored per drive: starter 12 s / 1.5; fighter 10 s / 2.0; hauler 15 s / 1.2 (time constant / floor WU/s^2). From cruise 95 the starter reads ~41 WU/s at 10 s and rests by ~32 s.",
+    "The prior neutralBrakeFraction settle had become an absolute 0.10-0.48 WU/s^2, i.e. no settle at all, and assisted/drift/newtonian were indistinguishable off-stick.",
+    "sim-golden-diff --flight-system v3 against reference 9411ff8c8 (reproduces the prior hash exactly): VERDICT MOTION_CHANGED, 9 entity motion fields on entities 0, 4 and 5; 46 snapshot fields moved (36 $.entities[], 9 $.physics, 1 $.input).",
+    "Cause: the two S-drive NPCs (entities 4/5) drift at ~6 WU/s under the old settle and now come to rest (vel.z 5.67 -> 0.17 and 6.31 -> 0.18), spending slightly more propulsion energy/heat to do so.",
+    "The player moved by 6e-5 WU in z (float noise from the same branch).",
+    "Assist keys neutralBrakeFraction -> settleTimeConstantS / settleFloorAccel on every derived propulsion block.",
+    "Isolation: a clean git-archive HEAD tree with only propulsionKernel.js, propulsionCatalog.js and flightFeelEnvelopes.js copied in reproduces this hash exactly, so no concurrent working-tree work is folded into it.",
+    "Every phase0ObservedTraceCount is UNCHANGED. Legacy envelope test/47a.telemetry.expected.json stays bit-identical: compatibility flight has no propulsion kernel settle.",
+    "Prior authoritativeHash was a6e51947ae407036e5794686061cab1aa3c28bed5849ec945741a0223016b65c."
   ]
 }
