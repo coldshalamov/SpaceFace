@@ -1777,6 +1777,34 @@ async function readEconomySnapshot(page) {
 }
 
 async function probeWebGlContextLoss(page, { outputDir, log }) {
+  // Link-settle gate: Chromium runs service-side program introspection (real
+  // glGetProgramiv calls in ProgramManager) for every linkProgram. Forcing
+  // loseContext() while links are in-flight leaves those queries dead — the
+  // 12-in-1ms GL_INVALID_VALUE batches with no JS location seen in earlier
+  // diagnostics. They are browser-internal, not reachable from page JS, so
+  // the honest fix is to force loss only after link activity has settled —
+  // the same steady state a real user-facing loss would hit.
+  const linkSettle = await page.waitForFunction(() => {
+    const render = window.SF?.state?.render;
+    const renderer = render?.renderer;
+    const programs = renderer?.info?.programs;
+    if (!programs) return true;
+    const pending = (value) => (typeof value === 'function' ? value() : value) === true;
+    const positive = (value) => {
+      const read = typeof value === 'function' ? value() : value;
+      return Number.isFinite(read) && read > 0;
+    };
+    if (pending(render.sectorPrewarmSettlePending) || pending(render.archetypeWarmPending)) return false;
+    if (positive(render.pendingPipelineAdmissions) || positive(render.pendingAuthoredGpuResidency)) return false;
+    const lane = typeof render.sampleOpeningCookLane === 'function' ? render.sampleOpeningCookLane() : null;
+    if (lane && (lane.upgradeJobs > 0 || lane.upgradeInFlight > 0 || lane.queued > 0
+        || (lane.flushed - lane.settled) > 0 || lane.meshBuilds > 0)) return false;
+    const count = programs.length;
+    const rec = window.__SF_LINK_SETTLE__ || (window.__SF_LINK_SETTLE__ = { count: -1, since: 0 });
+    if (count !== rec.count) { rec.count = count; rec.since = performance.now(); return false; }
+    return performance.now() - rec.since > 1200;
+  }, null, { timeout: 60_000, polling: 250 }).then(() => 'settled').catch(() => 'timed-out');
+  log(`link settle before controlled context loss: ${linkSettle}`);
   const start = await page.evaluate(() => {
     const state = window.SF?.state;
     const player = state?.entityList?.find((entity) => entity?.id === state.playerId);
