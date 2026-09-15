@@ -41,6 +41,9 @@ import {
   loadCrucibleMeta,
   utcDateKeyNow,
   weeklyMutatorForNow,
+  bestLineRows,
+  normalizeBestLine,
+  roundProgress,
 } from '../../systems/survivalRecords.js';
 import {
   applyRunShareCode,
@@ -472,6 +475,21 @@ function renderRecordCorner(profile, dateKey) {
  */
 function renderRecordRows(profile) {
   const band = el('div', 'sf-crd-rec__rows');
+  const bests = Object.values(profile?.records?.byKey || {}).filter(row => row.bestResult?.recordRules?.complete).slice(-5);
+  if (bests.length) {
+    band.appendChild(el('p', 'k-caps', 'Survival records'));
+    const records = el('ul', 'k-rows');
+    for (const row of bests) {
+      const best = row.bestResult, progress = roundProgress(best);
+      const fraction = progress.roundThreatBudget != null && progress.roundThreatResolved != null
+        ? `${Math.floor(progress.roundThreatResolved / progress.roundThreatBudget * 100)}% resolved` : 'progress unknown';
+      records.appendChild(staticRow(`${best.recordRules?.mode || 'Unclassified'} · ${best.arenaId || 'arena unknown'}`,
+        `Round ${progress.highestRoundEntered ?? '?'} · ${fraction} · ${best.score} points`,
+        { sub: `Last cleared ${progress.lastRoundCleared ?? '?'} · ${progress.remainingEnemies ?? '?'} enemies remain${row.tieCount > 1 ? ` · ${row.tieCount} tied runs` : ''}` }));
+    }
+    band.appendChild(records);
+  }
+  for (const line of bestLineRows(profile)) band.appendChild(renderBestLineReview(line));
   const rows = unlockLadderRows(profile);
   const openCount = rows.filter((r) => r.open).length;
   // The heading and the figure must count the same thing. "Still to open" beside "1 / 14" read as
@@ -1072,9 +1090,14 @@ export function reachedRow(result) {
 
 export function resultRows(result) {
   if (!result) return [];
+  const progress = roundProgress(result);
   return [
     ['Outcome', result.outcome === 'victory' ? 'Survived' : (result.outcome === 'extracted' ? 'Extracted' : (result.outcome === 'aborted' ? 'Abandoned' : 'Lost'))],
     ['Reached', reachedRow(result)],
+    ['Last round cleared', progress.lastRoundCleared == null ? 'Not recorded' : String(progress.lastRoundCleared)],
+    ['Enemies remaining', progress.remainingEnemies == null ? 'Not recorded' : String(progress.remainingEnemies)],
+    ['Round threat resolved', progress.roundThreatBudget != null && progress.roundThreatResolved != null
+      ? `${progress.roundThreatResolved} / ${progress.roundThreatBudget}` : 'Not recorded'],
     ['Kills', String(result.kills || 0)],
     // The chain only exists in a swarm run, so the row only exists there — an arc plate must not
     // carry a figure that is always zero.
@@ -1470,6 +1493,40 @@ function renderCombo(band, summary) {
   }
 }
 
+/** A truthful causal account. A pose tape or unavailable video is never labelled replay. */
+export function bestLineReviewRows(line) {
+  const normalized = normalizeBestLine(line);
+  if (!normalized) return [];
+  const rules = normalized.recordRules;
+  return [
+    ['Banked style', String(normalized.points)], ['Seed', String(normalized.seed)],
+    ['Mode', rules.mode ?? 'Not recorded'], ['Arena', rules.arenaId ?? 'Not recorded'],
+    ['Difficulty', rules.difficulty ?? 'Not recorded'], ['Loadout rules', rules.loadoutRules ?? 'Not recorded'],
+    ['Simulation assist', rules.simulationAssistProfile ?? 'Not recorded'],
+    ['Physics revision', rules.physicsRevision ?? 'Not recorded'], ['Balance revision', rules.balanceRevision ?? 'Not recorded'],
+    ['Scoring revision', rules.scoringRevision == null ? 'Not recorded' : String(rules.scoringRevision)],
+    ['Video', 'Unavailable · causal account retained'],
+  ];
+}
+
+function renderBestLineReview(line) {
+  const review = el('details', 'sf-crres__band');
+  const summary = el('summary', 'k-caps', `Best Line · ${line.points} banked style`);
+  review.appendChild(summary);
+  review.appendChild(el('p', 'k-sentence', (line.acts || []).map(a => a.name || a.trickId).join(' → ')));
+  review.appendChild(pairRows(bestLineReviewRows(line), 'sf-crd-grid'));
+  const acts = el('ol', 'k-rows');
+  for (const act of line.acts || []) {
+    const evidence = (act.evidence || []).map(e => String(e.kind || e.type || e.step || 'physical transfer').replaceAll('_', ' '));
+    acts.appendChild(staticRow(act.name || act.trickId,
+      Number.isFinite(act.tick) ? `${(act.tick / 60).toFixed(2)} simulation seconds` : 'Time not recorded',
+      { sub: evidence.join(' → ') }));
+  }
+  review.appendChild(acts);
+  review.appendChild(el('p', 'k-sentence', 'This account preserves the observed force route. Video is unavailable.'));
+  return review;
+}
+
 function renderKillChain(band, defeat) {
   // Threat colour on the two rows that name the enemy. The label beside each is the channel that
   // survives forced-colors and colour blindness; the tint is never the only one.
@@ -1758,6 +1815,10 @@ export const crucibleResultsScreen = {
     } catch {
       // A combo read failure must never take down the results plate.
     }
+
+    const bestLine = normalizeBestLine({ ...(result?.bestLine || ctx?.state?.stunts?.combo?.bestLine),
+      seed: result?.seed, recordRules: result?.recordRules });
+    if (bestLine) story.appendChild(renderBestLineReview(bestLine));
 
     // PQ-160.02: the run as a code, its ghost as a block. Sharing must never take the plate down.
     try {
