@@ -15,6 +15,9 @@ import { build47aScenarioProp } from './scenarioProps47a.js';
 import {
   batchPackagedPropOpaqueMeshes,
   batchScenarioPropOpaqueMeshes,
+  disposeDetachedPackagedBody,
+  trackDetachedPackagedBody,
+  untrackDetachedPackagedBody,
 } from './scenarioPropBatching.js';
 import {
   GENERIC_TOW_PACKAGED_PROP,
@@ -341,6 +344,9 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
     // waits on the opening-graph release. Adding the group straight to the live scene left its
     // materials to link inside the first bloomScene draw (the wrk_glass_shattered / lnb_* brick);
     // routing through the queue instead delayed mounts into measured flight windows.
+    // Hoisted so the terminal catch can retire a detached body built before an unexpected throw;
+    // orphan exits below must not strand the welded batch geometry this group owns.
+    let packaged = null;
     const completion = loadPart(url, {
       renderer,
       slot: spec.slot || slotForPackagedFile(spec.file),
@@ -351,14 +357,16 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
         return false;
       }
-      const packaged = new THREE.Group();
+      packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || entity.type || 'prop'}_PackagedBody`;
       packaged.userData.scenarioPackagedBody = true;
       instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
+        packaged = null;
         root.userData.authoredAssetState = 'unavailable';
         return false;
       }
+      trackDetachedPackagedBody(packaged);
       fitPackagedGroup(packaged, packagedFitRadius(entity, spec));
       batchPackagedPropOpaqueMeshes(packaged);
       freezeStaticChildMatrices(packaged);
@@ -367,6 +375,8 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         await prepareAuthoredVisualPipelines(packaged, admissionOptions());
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed');
+        disposeDetachedPackagedBody(packaged);
+        packaged = null;
         root.userData.authoredAssetState = 'unavailable';
         reportAdmissionFailure(options,
           '[visualOverrides] packaged 47-A / TOW pipeline admission failed', error,
@@ -375,6 +385,8 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       }
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-after-compile');
+        disposeDetachedPackagedBody(packaged);
+        packaged = null;
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
@@ -382,10 +394,13 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       if (publicationWait) await publicationWait;
       if (!root.parent) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-orphaned-before-publication');
+        disposeDetachedPackagedBody(packaged);
+        packaged = null;
         root.userData.authoredAssetState = 'orphaned-before-swap';
         return false;
       }
       hideProceduralPropDrawables(root);
+      untrackDetachedPackagedBody(packaged);
       root.add(packaged);
       root.userData.hull = packaged;
       root.userData.authoredAssetState = 'authored';
@@ -400,6 +415,10 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       }, options);
       return true;
     }).catch((error) => {
+      // A body that was never added to the boundary still owns its welded batch geometry;
+      // mounted bodies stay live and retire through the boundary's normal dispose path.
+      if (packaged && !packaged.parent) disposeDetachedPackagedBody(packaged);
+      packaged = null;
       root.userData.authoredAssetState = 'unavailable';
       reportAdmissionFailure(options,
         '[visualOverrides] packaged 47-A / TOW body failed closed', error,

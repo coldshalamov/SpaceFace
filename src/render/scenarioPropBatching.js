@@ -127,3 +127,39 @@ export function batchPackagedPropOpaqueMeshes(root) {
   root.userData.scenarioPackagedOpaqueBatchesApplied = true;
   return root;
 }
+
+// Detached packaged bodies compile their pipelines while outside the scene graph, so the
+// context-loss detach walk cannot reach them through the scene. Track them from creation until
+// mount or retirement; the renderer's loss handler walks this set to strip stale dispose
+// listeners before any post-loss dispose() would report INVALID_OPERATION on the dead context.
+const detachedPackagedBodies = new Set();
+
+export function trackDetachedPackagedBody(root) {
+  if (root) detachedPackagedBodies.add(root);
+  return root;
+}
+
+export function untrackDetachedPackagedBody(root) {
+  detachedPackagedBodies.delete(root);
+}
+
+export function detachedPackagedBodyRoots() {
+  return [...detachedPackagedBodies];
+}
+
+/**
+ * Retire a packaged body that never mounted. Only the welded batch geometry is owned by the
+ * detached group — unmerged leaves still reference the cached record's geometry, which other
+ * live packaged bodies may be drawing right now, so they must not be disposed here.
+ */
+export function disposeDetachedPackagedBody(root) {
+  if (!root || typeof root.traverse !== 'function') return;
+  root.traverse((child) => {
+    if (child && child.userData && child.userData.scenarioStaticBatch === true
+        && child.geometry && typeof child.geometry.dispose === 'function') {
+      child.geometry.dispose();
+    }
+  });
+  root.clear();
+  detachedPackagedBodies.delete(root);
+}

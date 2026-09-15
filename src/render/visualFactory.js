@@ -50,7 +50,12 @@ import { attachLodState } from './lod.js';
 import { loadAuthoredPart } from './assetLoader.js';
 import { getAssetResidency } from './assetResidency.js';
 import { prepareAuthoredVisualPipelines } from './authoredVisualAdmission.js';
-import { batchPackagedPropOpaqueMeshes } from './scenarioPropBatching.js';
+import {
+  batchPackagedPropOpaqueMeshes,
+  disposeDetachedPackagedBody,
+  trackDetachedPackagedBody,
+  untrackDetachedPackagedBody,
+} from './scenarioPropBatching.js';
 import { interactionProfileForEntity } from '../data/entityInteractionProfiles.js';
 import { resolveWeaponPresentationFamily } from './vfxProfiles.js';
 
@@ -2940,19 +2945,6 @@ function packagedBodyAdmissionOptions(root, entity, requestOptions = {}) {
   return admission;
 }
 
-function disposeDetachedPackagedBody(packaged) {
-  if (!packaged || typeof packaged.traverse !== 'function') return;
-  packaged.traverse((child) => {
-    // Only the welded batch geometry is owned here. Unmerged leaves still reference the cached
-    // record's geometry, which other live packaged bodies may be drawing right now.
-    if (child && child.userData && child.userData.scenarioStaticBatch === true
-        && child.geometry && typeof child.geometry.dispose === 'function') {
-      child.geometry.dispose();
-    }
-  });
-  packaged.clear();
-}
-
 function attachPackagedBody(root, relativeFile, entity) {
   if (!root || !relativeFile) return root;
   const url = packagedPartUrl(relativeFile);
@@ -2984,6 +2976,9 @@ function attachPackagedBody(root, relativeFile, entity) {
     const loadPart = typeof requestOptions.loadAuthoredPart === 'function'
       ? requestOptions.loadAuthoredPart
       : loadAuthoredPart;
+    // Hoisted so the terminal catch can retire a detached body built before an unexpected throw;
+    // an unmounted body still owns its welded batch geometry and its detached-body tracking slot.
+    let packaged = null;
     const completion = loadPart(url, {
       renderer,
       slot: 'place',
@@ -2995,13 +2990,14 @@ function attachPackagedBody(root, relativeFile, entity) {
         root.userData.authoredAssetState = record ? 'orphaned-before-swap' : 'unavailable';
         return { status: record ? 'owner-released' : 'unavailable', boundary: root };
       }
-      const packaged = new THREE.Group();
+      packaged = new THREE.Group();
       packaged.name = `${root.userData.kind || 'entity'}_PackagedBody`;
       instantiatePackagedPrimitives(record, packaged);
       if (!packaged.children.length) {
         root.userData.authoredAssetState = 'unavailable';
         return { status: 'unavailable', boundary: root };
       }
+      trackDetachedPackagedBody(packaged);
       fitPackagedGroup(packaged, entity && entity.radius);
       // Same contract as the authored 47-A packaged props: weld same-material opaque leaves into
       // one draw each while the group is still detached, then compile/upload its exact pipelines
@@ -3026,12 +3022,15 @@ function attachPackagedBody(root, relativeFile, entity) {
         disposeDetachedPackagedBody(packaged);
         return { status: 'owner-released', boundary: root };
       }
+      untrackDetachedPackagedBody(packaged);
       root.add(packaged);
       root.userData.hull = packaged;
       root.userData.authoredAssetState = 'authored';
       root.userData.authoredVisualRoot = record.assetId || url;
       return { status: 'authored', boundary: root };
     }).catch(() => {
+      if (packaged && !packaged.parent) disposeDetachedPackagedBody(packaged);
+      packaged = null;
       root.userData.authoredAssetState = 'unavailable';
       return { status: 'unavailable', boundary: root };
     });

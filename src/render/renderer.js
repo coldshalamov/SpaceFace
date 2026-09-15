@@ -60,6 +60,7 @@ import {
   syncAuthoredInstancePools,
   warmSpawnableArchetypePipelines,
 } from './partsLibrary.js';
+import { detachedPackagedBodyRoots } from './scenarioPropBatching.js';
 import {
   bindAuthoredAssetPerfCounters,
   prepareSectorEntry,
@@ -3704,6 +3705,10 @@ export const render = {
           entities: state.entityList,
         });
         contextRoots.push(...preparedPoolResources.roots);
+        // Detached packaged bodies compile pipelines outside the scene graph during async
+        // admission; the loss walk must reach them or a post-loss orphan dispose reports
+        // INVALID_OPERATION through the dead context.
+        contextRoots.push(...detachedPackagedBodyRoots());
         const detachReceipt = detachStaleWebGlDisposeListeners(
           contextRoots,
           preparedPoolResources.provenance,
