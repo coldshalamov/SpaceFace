@@ -44,6 +44,8 @@ import { asteroidSites } from '../../systems/asteroidSites.js';
 import { spawnParticleBurst, stepParticles } from '../screens/drill.js';
 import { ORE_TINTS, STATUS_COLORS } from './asteroidRenderer2d.js';
 import { createBloom } from '../../render/bloom.js';
+import { installShaderLinkReporter } from '../../render/shaderLinkReporter.js';
+import { retireWhenProgramsReady } from '../previewContextRetire.js';
 import {
   preloadRockSurfaceLibrary, getReadyRockSurfaceTextures, ROCK_SURFACE_TEXTURE_REPEAT,
 } from '../../render/rockSurfaceLibrary.js';
@@ -1164,6 +1166,10 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
   // would only ever apply to a direct canvas draw, which this screen never makes.
   renderer.toneMapping = THREE.NoToneMapping;
   renderer.setClearColor(0x0b0a12, 1); // space behind the rock (law §3.5)
+  // Program-handle guards shared with the flight renderer and ship previews: stale-handle
+  // readiness queries warn GL_INVALID_VALUE, and dispose() must not deleteProgram handles
+  // whose links are still in flight under Chromium's pending post-link introspection.
+  installShaderLinkReporter(renderer);
 
   const scene = new THREE.Scene();
   scene.background = new THREE.Color(0x0b0a12);
@@ -8546,8 +8552,29 @@ export function createAsteroidRenderer3d({ canvas, wrapEl, drillSys, getDrill, g
     scene.environment = null;
     envRT.dispose();
     renderer.dispose();
-    renderer.forceContextLoss();
-    renderer.setSize(0, 0, false);
+    // The context kill waits out any program still linking: forceContextLoss under pending
+    // links leaves Chromium's service-side post-link introspection dead (GL_INVALID_VALUE).
+    const killContext = () => {
+      try { renderer.forceContextLoss(); } catch (_) {}
+      try { renderer.setSize(0, 0, false); } catch (_) {}
+    };
+    const stillLinking = (renderer.info && Array.isArray(renderer.info.programs)
+      ? renderer.info.programs : []).filter((program) => {
+      try { return program && program.program != null && program.isReady() === false; }
+      catch (_) { return false; }
+    });
+    if (stillLinking.length === 0) { killContext(); return; }
+    retireWhenProgramsReady({
+      programs: stillLinking,
+      parallelCompile: !!(renderer.extensions && renderer.extensions.has('KHR_parallel_shader_compile')),
+      finish: killContext,
+      isContextLost: () => {
+        try {
+          const gl = renderer.getContext && renderer.getContext();
+          return !gl || (typeof gl.isContextLost === 'function' && gl.isContextLost() === true);
+        } catch (_) { return true; }
+      },
+    });
     if (dom.root) dom.root.remove();
   }
 

@@ -18,6 +18,7 @@ import { MODULES } from '../data/modules.js';
 import { disposeAuthoredAssetRuntime, loadAuthoredPart } from '../render/assetLoader.js';
 import { compileScenePipelinesSafely } from '../render/compilePipelinesSafely.js';
 import { retireWhenProgramsReady } from './previewContextRetire.js';
+import { installShaderLinkReporter } from '../render/shaderLinkReporter.js';
 import { preloadAuthoredPartLibrary } from '../render/partsLibrary.js';
 import { isReleaseAssetMode } from '../render/releaseMode.js';
 import { yieldToBrowser } from '../render/startupGpuResidency.js';
@@ -485,6 +486,10 @@ export function createShipPreviewMount(canvas, opts) {
   // hull's and hangar's programs, and the words could not move. The picture is identical without
   // it - a program that failed to link still draws nothing - so the preview context leaves it off.
   renderer.debug.checkShaderErrors = false;
+  // Same program-handle guards the flight renderer gets: readiness queries must not touch stale
+  // handles after a context loss, and releaseGpu's renderer.dispose() must not deleteProgram
+  // handles whose links (and Chromium's pending post-link introspection) are still in flight.
+  installShaderLinkReporter(renderer);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.setSize(W, H, false);
   renderer.setClearColor(useDock ? 0x05070d : 0x000000, useDock ? 1 : 0);
@@ -1164,8 +1169,31 @@ export function createShipPreviewMount(canvas, opts) {
     // New Game stage measured hasGL:true five seconds into flight — exactly the second context
     // secondaryPreviewWebGlBlocked exists to keep off Intel iGPUs. WEBGL_lose_context is the only
     // reliable kill; every GPU resource of this context (hangar GLB upload included) dies with it.
-    try { renderer.forceContextLoss(); } catch (_) {}
-    try { canvas.width = 0; canvas.height = 0; } catch (_) {}
+    const killContext = () => {
+      try { renderer.forceContextLoss(); } catch (_) {}
+      try { canvas.width = 0; canvas.height = 0; } catch (_) {}
+    };
+    // Killing the context while any of its programs is still linking leaves Chromium's queued
+    // post-link introspection dead — the GL_INVALID_VALUE 'Program object expected' batches the
+    // deferred program destroys above already prevent on the deleteProgram path. If the outer
+    // retire hit its wait cap with links outstanding, the context kill waits out the same settle.
+    const stillLinking = (renderer.info && Array.isArray(renderer.info.programs)
+      ? renderer.info.programs : []).filter((program) => {
+      try { return program && program.program != null && program.isReady() === false; }
+      catch (_) { return false; }
+    });
+    if (stillLinking.length === 0) { killContext(); return; }
+    retireWhenProgramsReady({
+      programs: stillLinking,
+      parallelCompile: !!(renderer.extensions && renderer.extensions.has('KHR_parallel_shader_compile')),
+      finish: killContext,
+      isContextLost: () => {
+        try {
+          const gl = renderer.getContext && renderer.getContext();
+          return !gl || (typeof gl.isContextLost === 'function' && gl.isContextLost() === true);
+        } catch (_) { return true; }
+      },
+    });
   }
 
   function dispose() {

@@ -187,6 +187,66 @@ test('isReady answers ready without a GL query once the program context is stale
   assert.equal(queries, 1);
 });
 
+test('destroy defers while the program is still linking, then runs once settled', () => {
+  const gl = fakeGl();
+  const renderer = fakeRenderer(gl);
+  const timers = [];
+  installShaderLinkReporter(renderer, { timing: { setTimer: (callback) => timers.push(callback) } });
+
+  const program = fakeProgram();
+  let ready = false;
+  program.isReady = () => ready;
+  let destroyed = 0;
+  program.destroy = function () { destroyed += 1; this.program = undefined; };
+  renderer.info.programs.push(program);
+
+  program.destroy();
+  assert.equal(destroyed, 0, 'a linking program is not deleted immediately');
+  assert.equal(timers.length, 1);
+
+  timers.shift()();
+  assert.equal(destroyed, 0, 'the poll re-arms while the link is still pending');
+  assert.equal(timers.length, 1);
+
+  ready = true;
+  timers.shift()();
+  assert.equal(destroyed, 1, 'teardown runs once the link settles');
+  assert.equal(timers.length, 0);
+
+  program.destroy();
+  assert.equal(destroyed, 1, 'a second destroy after teardown is a no-op');
+  assert.equal(program.isReady(), true, 'a destroyed program reports ready without a GL query');
+});
+
+test('a direct destroy while deferred runs teardown once and cancels the pending poll', () => {
+  const gl = fakeGl();
+  const renderer = fakeRenderer(gl);
+  const timers = [];
+  installShaderLinkReporter(renderer, { timing: { setTimer: (callback) => timers.push(callback) } });
+
+  const program = fakeProgram();
+  let ready = false;
+  program.isReady = () => ready;
+  let destroyed = 0;
+  program.destroy = function () { destroyed += 1; this.program = undefined; };
+  renderer.info.programs.push(program);
+
+  program.destroy();
+  assert.equal(destroyed, 0);
+  assert.equal(timers.length, 1);
+
+  program.destroy();
+  assert.equal(destroyed, 0, 'a second destroy while still linking stays deferred');
+  assert.equal(timers.length, 1, 'the pending defer is not duplicated');
+
+  ready = true;
+  program.destroy();
+  assert.equal(destroyed, 1, 'the ready destroy runs the teardown directly');
+
+  timers.shift()();
+  assert.equal(destroyed, 1, 'the stale poll cannot destroy a second time');
+});
+
 test('the vendored three still has the program internals the reporter relies on', () => {
   const three = readFileSync(new URL('../vendor/three.module.js', import.meta.url), 'utf8');
   assert.match(three, /if \( renderer\.debug\.checkShaderErrors \) \{\s*const programInfoLog = gl\.getProgramInfoLog\( program \)/);
