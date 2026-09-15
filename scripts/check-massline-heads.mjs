@@ -11,6 +11,9 @@ const result = spawnSync(process.execPath, [
   'test/massline-monofilament-sweep-head.test.mjs',
   'test/massline-transverse-snare-head.test.mjs',
   'test/massline-twin-bridle-head.test.mjs',
+  // Twin Bridle NPC counterplay: an ace cuts the line and a heavy shrugs it by mass. The
+  // twin-bridle head test's heavy census leans on this proof, so it runs with the heads.
+  'test/pq-031-02-npc-counterplay.test.mjs',
 ], { cwd: root, stdio: 'inherit', windowsHide: true });
 
 process.exitCode = Number.isInteger(result.status) ? result.status : 1;
