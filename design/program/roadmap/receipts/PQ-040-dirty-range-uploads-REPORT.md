@@ -197,6 +197,25 @@ electronCapturedRuns:
       regardless of powered response. That is a route timing/window assumption
       upstream of the comparator, worth its own packet; not caused by the
       dirty-range implementation.
+    rootCauseFound: >-
+      The route gates flight-input sampling on authored-flight-ready, which used
+      to take ~1400 ticks on this machine (the old contract required every
+      sector ship authored + zero fallbacks). The in-flight rewrite of
+      alphaLiveBaselineRoute.mjs replaced that with the engine's own
+      authoredVisualReadiness() verdict, which resolves at tick ~1 on Electron —
+      so the released baseline samples the ship while berth placement /
+      depenetration is still writing player.pos directly (vel stays 0 through
+      positional correction, matching the observed speed-0-at-both-ends drift).
+      Browser still saw ~24 sim-seconds of incidental settle time; Electron saw
+      ~0. The check's powered-vs-baseline comparison was therefore
+      structurally unpassable on Electron independent of machine load.
+    routeFixApplied: >-
+      The flight-input phase now waits for the hull to actually settle — speed
+      <= 0.5 AND position stable within 0.25u across >= 0.75 sim-seconds —
+      before sampling the released baseline (alphaLiveBaselineRoute.mjs, hunk
+      rides uncommitted atop the foreign readiness rewrite; stale PQ-033.02
+      checkpoint on the file made it adoptable). This tightens the measurement:
+      the powered-vs-released contract itself is unchanged.
     earlierAttempt: broker-claim-stale-digest (foreign worktree write raced claim->probe)
 numericAcceptance: captured-but-demoted
 pairedRuntimeSourceBinding: not_established
@@ -209,12 +228,14 @@ unchanged frame p95 — but the acceptance contract requires a clean, stable
 candidate for the whole capture plus a zero-warning page, and concurrent foreign
 render work (renderer admission-path churn, opening-submission diagnostics) kept
 tripping worktree-stability, settings-stability, and page-warning gates. The
-Electron side launched once (its capture tore on the route's flight-input causal
-check — a timing-sensitive measurement unrelated to the upload work; the same
-check passed on the same tree in the browser run) after an earlier claim raced a
-foreign write inside the claim→probe handshake (`broker-claim-stale-digest`).
-Both manifests sit at `regression-required-after-acceptance-failure` until the
-regression set changes again.
+Electron side launched three times and failed identically at the route's
+flight-input causal check — root-caused to a settle-timing defect surfaced by
+the in-flight readiness-contract rewrite (see `rootCauseFound` in the YAML) and
+fixed with a settle gate ahead of the released baseline in
+`alphaLiveBaselineRoute.mjs`. The next unblocked Electron attempt should pass
+that phase; it has not yet exercised the attribution stage. Both manifests sit
+at `regression-required-after-acceptance-failure` until the regression set
+changes again.
 
 Evidence retained under `.devshots/perf/dirty-ranges/{browser,electron}/`:
 `performance-attribution.json` / `performance-closure-failure.json`,
