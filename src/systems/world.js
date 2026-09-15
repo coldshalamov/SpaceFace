@@ -874,7 +874,7 @@ export const world = {
     this._spawnStations(sector, active, rng);
     this._spawnFields(sector, active, disc, rng);
     this._spawnGates(sector, active, rng);
-    this._spawnPOIs(sector, active, disc, rng);
+    this._spawnPOIs(sector, active, disc, rng, tier);
     this._spawnHazards(sector, active);
     // Durable records rematerialize before ambient re-roll so identity/outcomes never reroll.
     const rematerialized = this._rematerializeSectorRecords(sectorId, active, tier, opts);
@@ -1808,8 +1808,12 @@ export const world = {
   },
 
   // POIs: tracked in the discovery overlay; spawn a lightweight marker entity for in-range scan.
-  _spawnPOIs(sector, active, disc, rng) {
+  _spawnPOIs(sector, active, disc, rng, tier = RESIDENCY_TIER.FULL) {
     const wr = sector.worldRadius || DEFAULT_WORLD_RADIUS;
+    // Only a FULL resident may put POI markers on the live combat list. REDUCED neighbors present
+    // the same authored markers through the dressing table, so a quiet pocket adjacent to several
+    // sectors does not grow entityList by other sectors' dressing (census contract).
+    const fullPresence = tier === RESIDENCY_TIER.FULL;
     if (!disc.pois) disc.pois = {};
     for (const poi of (sector.pois || [])) {
       const ang = rng() * Math.PI * 2;
@@ -1871,7 +1875,9 @@ export const world = {
         ? poi.activityObjectSlotId
         : null;
       if (activityObjectSlotId) poiData.activityObjectSlotId = activityObjectSlotId;
-      const keepLive = poiMustStayLiveActor(poi, activityObjectSlotId);
+      const keepLive = fullPresence
+        ? poiMustStayLiveActor(poi, activityObjectSlotId)
+        : (!!activityObjectSlotId || poi.collides === true);
       const ent = keepLive
         ? this.helpers.spawnEntity({
           type: 'fx', factionId: poi.factionId || null, pos,
@@ -1904,38 +1910,47 @@ export const world = {
       // identities today without introducing combatants, physics bodies, or a parallel signal path.
       const fleetCount = Math.max(0, Math.min(24, Math.trunc(Number(poi.bandLandmarkFleet) || 0)));
       if (fleetCount > 0 && poi.flavorTargetRef) {
+        const hullFleetData = (shipIndex) => ({
+          poi: true,
+          poiId: `${poi.id}_hull_${shipIndex}`,
+          poiType: 'anomaly',
+          hidden: true,
+          name: `Quiessence Hull ${shipIndex}`,
+          sectorId: sector.id,
+          homeSectorId: sector.id,
+          flavorTargetRef: String(poi.flavorTargetRef),
+          quiessenceShipIndex: shipIndex,
+          bandProximityRadius: finitePositive(poi.bandProximityRadius)
+            ? Number(poi.bandProximityRadius)
+            : 1600,
+          memorialHull: true,
+          scanRange: finitePositive(poi.scanRange) ? Number(poi.scanRange) : SCAN_RANGE,
+          visualRadius: 14,
+        });
         for (let shipIndex = 1; shipIndex <= fleetCount; shipIndex += 1) {
           const angle = (shipIndex / fleetCount) * Math.PI * 2;
           const ring = 120 + (shipIndex % 5) * 28;
-          const hull = this.helpers.spawnEntity({
-            type: 'fx',
-            pos: {
-              x: pos.x + Math.cos(angle) * ring,
-              z: pos.z + Math.sin(angle) * ring,
-            },
-            radius: 14,
-            mass: 0,
-            collides: false,
-            physicsBody: false,
-            ttl: Infinity,
-            data: {
-              poi: true,
-              poiId: `${poi.id}_hull_${shipIndex}`,
-              poiType: 'anomaly',
-              hidden: true,
-              name: `Quiessence Hull ${shipIndex}`,
-              sectorId: sector.id,
+          const hullPos = {
+            x: pos.x + Math.cos(angle) * ring,
+            z: pos.z + Math.sin(angle) * ring,
+          };
+          const hull = fullPresence
+            ? this.helpers.spawnEntity({
+              type: 'fx',
+              pos: hullPos,
+              radius: 14,
+              mass: 0,
+              collides: false,
+              physicsBody: false,
+              ttl: Infinity,
+              data: hullFleetData(shipIndex),
+            })
+            : insertDressingRow(this.state, {
+              pos: hullPos,
+              radius: 14,
               homeSectorId: sector.id,
-              flavorTargetRef: String(poi.flavorTargetRef),
-              quiessenceShipIndex: shipIndex,
-              bandProximityRadius: finitePositive(poi.bandProximityRadius)
-                ? Number(poi.bandProximityRadius)
-                : 1600,
-              memorialHull: true,
-              scanRange: finitePositive(poi.scanRange) ? Number(poi.scanRange) : SCAN_RANGE,
-              visualRadius: 14,
-            },
-          });
+              data: hullFleetData(shipIndex),
+            });
           this._stampHomeSector(hull, sector.id);
           active.pois.push({
             id: hull.id,
