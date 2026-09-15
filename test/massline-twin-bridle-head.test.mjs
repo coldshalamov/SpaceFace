@@ -232,7 +232,7 @@ test('pair admission rejects loops and two heavy anchors while allowing one fixe
   assert.equal(validateTwinBridlePair(h.system, h.state, h.player, h.source, h.target, BRIDLE_DEF), 'attachment_cycle');
 });
 
-// PQ-031.02 done-when: one cut and one ignore, both stepped through the route rather than asserted
+// PQ-031.02 leftover: one cut and one ignore, both stepped through the route rather than asserted
 // on constructed numbers. Every input here comes from what the live spawn writes:
 //   * masses and radii from ENEMY_TYPES (src/systems/combat.js:133 copies def.mass onto the entity;
 //     src/core/physicsAuthority.js:126 derives physicsBody.mass from it),
@@ -240,17 +240,24 @@ test('pair admission rejects loops and two heavy anchors while allowing one fixe
 //     spawn never writes data.enemyTypeId,
 //   * the cut phase from the live CombatDoctrineRuntime, relayed on the same 'ai:doctrinePhase'
 //     event tacticalAI.js:353 publishes, instead of a hand-typed phase string.
-test('a specialist cuts a player bridle and a heavy NPC ignores the throw', () => {
+// Ignore is mass, not an admission flag: the heavy takes the second latch. Helm-loss shrug is
+// proven in test/pq-031-02-npc-counterplay.test.mjs.
+test('a specialist cuts a player bridle and a heavy NPC takes the throw', () => {
   const ANCHOR = ENEMY_TYPES.find((row) => row.id === 'field_anchor_controller');
   const RAIDER = ENEMY_TYPES.find((row) => row.id === 'tether_control_raider');
-  // The heavy floor (150) is only reachable by these two hulls; every other hostile tops out at 96,
-  // so an invented mid-weight would prove the gate at a mass no spawn can produce.
+  // Live heavies at or above 150 kg. The leftover admission floor is gone; this census still
+  // names who can shrug a bridle by mass. The Mirrorjaw Foreman (PQ-133.04, Foundry wave ten) is
+  // heavy on purpose: it flies the Anchor's 420 kg Bastion body, its "mass and commitment are the
+  // fight" (CRUCIBLE_SURVIVAL_MASTER_PLAN.md §15.7), and its wave asks for escorts thrown into it.
+  const heavies = ENEMY_TYPES.filter((row) => Number(row.mass) >= 150);
   assert.deepEqual(
-    ENEMY_TYPES.filter((row) => Number(row.mass) >= 150).map((row) => row.id),
-    ['dreadnought_boss', 'field_anchor_controller'],
+    heavies.map((row) => row.id),
+    ['dreadnought_boss', 'field_anchor_controller', 'mirrorjaw_foreman'],
   );
+  assert.ok(heavies.every((row) => Number(row.mass) >= ANCHOR.mass),
+    'the shrug is proven at the Anchor mass; a lighter live heavy would sit outside that proof');
 
-  // --- one ignore: the heavy refuses the second latch on the stepped route -------------------
+  // --- one ignore: the heavy takes the second latch on the stepped route ----------------------
   const ignore = harness();
   const heavyNpc = entity(12, 'ship', 200, 0, {
     team: 1,
@@ -265,8 +272,8 @@ test('a specialist cuts a player bridle and a heavy NPC ignores the throw', () =
   });
   assert.equal(
     validateTwinBridlePair(ignore.system, ignore.state, ignore.player, ignore.source, heavyNpc, BRIDLE_DEF),
-    'heavy_endpoint_resists',
-    'moving terrain does not take a bridle as a control surface',
+    null,
+    'moving terrain takes a bridle; mass decides whether it notices',
   );
 
   ignore.state.entities.set(heavyNpc.id, heavyNpc);
@@ -276,14 +283,12 @@ test('a specialist cuts a player bridle and a heavy NPC ignores the throw', () =
   assert.equal(ignore.state.masslineBridle.sourceId, ignore.source.id);
   step(ignore, { aim: heavyNpc.pos, dt: 0.1 });
   assert.equal(ignore.state.masslineAcquisition.selected.targetId, heavyNpc.id,
-    'the heavy is a selectable endpoint, so the deny below is the law and not a selection miss');
+    'the heavy is a selectable endpoint, so the rope below is the throw and not a selection miss');
   step(ignore, { aim: heavyNpc.pos, latch: true });
-  assert.equal(Object.keys(ignore.state.combat.attachments.byId).length, 0,
-    'a second press on a heavy never becomes a rope');
-  assert.equal(ignore.state.masslineBridle.lastDenial, 'heavy_endpoint_resists');
-  assert.ok(ignore.events.some((entry) => entry.type === 'tether:latchDenied'
-    && entry.payload.reason === 'bridle_heavy_endpoint_resists'),
-  'the throw is refused by the heavy law, and the player keeps endpoint A');
+  const heavyLine = Object.values(ignore.state.combat.attachments.byId)
+    .find((entry) => entry.state === 'active');
+  assert.ok(heavyLine, 'a second press on a heavy becomes a rope');
+  assert.deepEqual([heavyLine.ownerId, heavyLine.targetId], [ignore.source.id, heavyNpc.id]);
 
   // --- one cut: the specialist verb, carried by doctrine and not by hardware -----------------
   const plan = specialistPlanByEnemyId(RAIDER.id);
