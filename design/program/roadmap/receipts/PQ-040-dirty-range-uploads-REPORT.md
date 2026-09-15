@@ -189,11 +189,14 @@ electronCapturedRuns:
       acceleration legs passed, ship reached ~200 u/s)
     note: >-
       route-level input proof, unrelated to dirty-range uploads — the run dies
-      before either attribution variant executes. Deterministic on electron,
-      passed by the same tree under browser minutes earlier: consistent with
-      electron first-flight pacing skewing the wall-clock-bounded input windows,
-      or a genuine electron input-latency characteristic worth its own packet.
-      Not caused by the dirty-range implementation.
+      before either attribution variant executes. On the passing browser run the
+      released baseline displaced 0 (ship at rest); on all three electron runs the
+      baseline window caught a still-drifting ship (~24u at ~70-95 u/s while
+      |vel| read 0 at both ends — residual undock motion decaying inside the
+      window), so the powered-vs-released comparison is structurally unwinnable
+      regardless of powered response. That is a route timing/window assumption
+      upstream of the comparator, worth its own packet; not caused by the
+      dirty-range implementation.
     earlierAttempt: broker-claim-stale-digest (foreign worktree write raced claim->probe)
 numericAcceptance: captured-but-demoted
 pairedRuntimeSourceBinding: not_established
