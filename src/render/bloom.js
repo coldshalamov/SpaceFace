@@ -33,6 +33,11 @@
 import * as THREE from 'three';
 import { recordPostRenderTargetAllocation } from './postTelemetry.js';
 import { touchSubjectOnExactTarget } from './openingGpuAdmission.js';
+import {
+  programHandleContext,
+  contextLossGeneration,
+  PROGRAM_HANDLE_RECHECK_GAP_MS,
+} from './programHandleContext.js';
 
 const BALANCED_BLOOM_MAX_LEVELS = 2;
 // A scene pass slower than this is a brick, not a frame. 200 ms is ~12 dropped frames at 60 Hz —
@@ -299,27 +304,8 @@ let pipelineReadinessBatch = null;
 // COMPLETION_STATUS_KHR (program.isReady) is answered without that wait, so the hot loop keeps it.
 // Handle validity comes from the context-loss event, three's destroy(), and one native recheck budget
 // that every waiter on a context shares: at most one isProgram() per gap, never one per program per poll.
-const PROGRAM_HANDLE_RECHECK_DELAY_MS = 1000;
-const PROGRAM_HANDLE_RECHECK_GAP_MS = 250;
-const programHandleContexts = new WeakMap();
-
-function programHandleContext(gl) {
-  let record = programHandleContexts.get(gl);
-  if (!record) {
-    record = { generation: 0, nextNativeCheckAt: Date.now() + PROGRAM_HANDLE_RECHECK_DELAY_MS };
-    programHandleContexts.set(gl, record);
-    const canvas = gl.canvas;
-    if (canvas && typeof canvas.addEventListener === 'function') {
-      // Bumped by the canvas's own event, so a context lost and restored between polls is still seen.
-      canvas.addEventListener('webglcontextlost', () => { record.generation += 1; }, false);
-    }
-  }
-  return record;
-}
-
-function contextLossGeneration(gl) {
-  return gl && typeof gl === 'object' ? programHandleContext(gl).generation : 0;
-}
+// The tracker lives in programHandleContext.js so shaderLinkReporter's isReady wrap shares the same
+// generation clock — a handle minted before a loss must be stale for every poll path, not just this one.
 
 /**
  * A pending program that can no longer be queried: its handle was released (three's

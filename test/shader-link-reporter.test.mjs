@@ -160,6 +160,33 @@ test('installing twice guards each program once', () => {
   assert.deepEqual(gl.calls, [['getProgramParameter', LINK_STATUS]]);
 });
 
+test('isReady answers ready without a GL query once the program context is stale', () => {
+  const canvas = fakeCanvas();
+  const gl = fakeGl();
+  gl.canvas = canvas;
+  const renderer = fakeRenderer(gl);
+  installShaderLinkReporter(renderer);
+
+  let queries = 0;
+  const program = fakeProgram();
+  program.isReady = () => { queries += 1; return false; };
+  renderer.info.programs.push(program);
+
+  assert.equal(program.isReady(), false);
+  assert.equal(queries, 1);
+
+  canvas.dispatch('webglcontextlost');
+  assert.equal(program.isReady(), true, 'a pre-loss handle reports ready so waiters stop polling');
+  assert.equal(queries, 1, 'the stale handle was never queried again');
+
+  gl.lost = true;
+  const live = fakeProgram();
+  live.isReady = () => { queries += 1; return false; };
+  renderer.info.programs.push(live);
+  assert.equal(live.isReady(), true, 'a lost context answers ready without querying');
+  assert.equal(queries, 1);
+});
+
 test('the vendored three still has the program internals the reporter relies on', () => {
   const three = readFileSync(new URL('../vendor/three.module.js', import.meta.url), 'utf8');
   assert.match(three, /if \( renderer\.debug\.checkShaderErrors \) \{\s*const programInfoLog = gl\.getProgramInfoLog\( program \)/);

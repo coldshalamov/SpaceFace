@@ -11,6 +11,8 @@
 // only a program that failed to link pays for the logs. renderer.js skips this under ?shaderChecks=1
 // so shader work still gets three's full report with the failing source lines.
 
+import { contextLossGeneration, programHandleContext } from './programHandleContext.js';
+
 const guardedPrograms = new WeakSet();
 
 export function installShaderLinkReporter(renderer, options = {}) {
@@ -66,6 +68,23 @@ function guardFirstUse(program, gl, report) {
     beforeFirstUse(this);
     return getAttributes.call(this);
   };
+  // isReady() is the one readiness query every poll path shares — and three's own poll calls it on
+  // the raw program object with no context guard. A program minted before a context loss (or while
+  // the context sits inside its lost window) keeps a JS wrapper whose handle the restored driver no
+  // longer recognises: every isReady() on it warns GL_INVALID_VALUE and can never report ready.
+  // Answer "ready" instead — the link is gone, the material re-acquires a fresh program on its next
+  // real draw, and no waiter should keep polling a handle that cannot finish.
+  const isReady = program.isReady;
+  if (typeof isReady === 'function') {
+    const generation = contextLossGeneration(gl);
+    program.isReady = function isReadyContextSafe() {
+      try {
+        if (typeof gl.isContextLost === 'function' && gl.isContextLost()) return true;
+        if (programHandleContext(gl).generation !== generation) return true;
+      } catch (_) { /* fall through to the real query */ }
+      return isReady.call(this);
+    };
+  }
 }
 
 function checkLinkStatus(program, gl, report) {

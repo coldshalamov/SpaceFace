@@ -1194,8 +1194,9 @@ test('renderer routes authored pipeline/GPU residency blocking slices into perf 
   const observerWires = source.match(/onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/g);
   assert.equal(
     observerWires?.length,
-    3,
-    'pipeline tracker, authored residency tracker, and opening residency call must share the observer',
+    5,
+    'pipeline tracker, authored residency tracker, opening residency, first-frame census residency, '
+      + 'and context-restore residency must share the observer',
   );
   assert.match(source,
     /createPipelineAdmissionTracker\([\s\S]*?onBlockingSlice:\s*recordAuthoredAdmissionBlockingSlice/,

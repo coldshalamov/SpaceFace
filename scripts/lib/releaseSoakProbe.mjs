@@ -676,24 +676,41 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
           for (const set of lostByContext.get(ctx) || []) if (set.has(program)) return 'dead-context';
           return 'never-created';
         };
+        const hookContextLost = (canvas, ctx) => {
+          if (!canvas || canvas.__glTraceLostHooked) return;
+          canvas.__glTraceLostHooked = true;
+          const tracedCtx = ctx;
+          canvas.addEventListener('webglcontextlost', () => {
+            const live = liveByContext.get(tracedCtx);
+            if (!live) return;
+            let lost = lostByContext.get(tracedCtx);
+            if (!lost) { lost = []; lostByContext.set(tracedCtx, lost); }
+            lost.push(live);
+            liveByContext.delete(tracedCtx);
+          }, false);
+        };
         const origGetContext = HTMLCanvasElement.prototype.getContext;
         HTMLCanvasElement.prototype.getContext = function getContextTraced(kind, ...rest) {
           const ctx = origGetContext.call(this, kind, ...rest);
-          if (ctx && !this.__glTraceLostHooked
-            && (kind === 'webgl2' || kind === 'webgl' || kind === 'experimental-webgl')) {
-            this.__glTraceLostHooked = true;
-            const tracedCtx = ctx;
-            this.addEventListener('webglcontextlost', () => {
-              const live = liveByContext.get(tracedCtx);
-              if (!live) return;
-              let lost = lostByContext.get(tracedCtx);
-              if (!lost) { lost = []; lostByContext.set(tracedCtx, lost); }
-              lost.push(live);
-              liveByContext.delete(tracedCtx);
-            }, false);
+          if (ctx && (kind === 'webgl2' || kind === 'webgl' || kind === 'experimental-webgl')) {
+            hookContextLost(this, ctx);
           }
           return ctx;
         };
+        // OffscreenCanvas has its own getContext — loading-terminal art and hull
+        // presentation mint GL contexts through it that the lost hook above never sees.
+        if (typeof OffscreenCanvas === 'function' && OffscreenCanvas.prototype) {
+          const origOffscreenGet = OffscreenCanvas.prototype.getContext;
+          if (typeof origOffscreenGet === 'function') {
+            OffscreenCanvas.prototype.getContext = function getContextTracedOffscreen(kind, ...rest) {
+              const ctx = origOffscreenGet.call(this, kind, ...rest);
+              if (ctx && (kind === 'webgl2' || kind === 'webgl' || kind === 'experimental-webgl')) {
+                hookContextLost(this, ctx);
+              }
+              return ctx;
+            };
+          }
+        }
         for (const protoName of ['WebGL2RenderingContext', 'WebGLRenderingContext']) {
           const proto = globalThis[protoName] && globalThis[protoName].prototype;
           if (!proto || typeof proto.getProgramParameter !== 'function') continue;
@@ -725,15 +742,16 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
             // isContextLost() has no GL side effects, so it is safe to check per call.
             const lostNow = typeof this.isContextLost === 'function' && this.isContextLost() === true;
             const result = origGet.call(this, program, pname);
-            // Catch-all independent of handle bookkeeping: a successful getProgramParameter
-            // never returns undefined, so an undefined result IS the driver rejection —
-            // whatever classification the provenance sets missed.
-            if (kind !== null || lostNow || result === undefined) {
+            // Catch-all independent of handle bookkeeping: Chrome returns null (not
+            // undefined) for getProgramParameter on an invalid object, so a nullish result
+            // IS the driver rejection — whatever the provenance sets missed. Every pname
+            // returns a boolean or number on success, never null.
+            if (kind !== null || lostNow || result == null) {
               console.warn('[gl-trace] getProgramParameter on invalid handle', {
                 t: Math.round(performance.now()),
                 kind: kind || (lostNow ? 'live-handle-during-lost-context' : 'rejected-by-driver'),
                 pname,
-                resultUndefined: result === undefined,
+                result: result === null ? 'null' : result === undefined ? 'undefined' : typeof result,
                 stack: (new Error().stack || '').split('\n').slice(2, 10).join(' | '),
               });
             }
