@@ -1724,9 +1724,24 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     if ((overshot || dropped || captureStalled) && rearms < 3 && s != null) {
       rearms += 1;
       mark(
-        captureStalled ? 'redock-capture-stall-rearm' : (overshot ? 'redock-overshoot-rearm' : 'redock-rearm'),
+        captureStalled ? 'redock-capture-stall-brake' : (overshot ? 'redock-overshoot-rearm' : 'redock-rearm'),
         await readDockDiag(),
       );
+      if (captureStalled) {
+        // The wedge is a speed-gate chicken-and-egg: above 26 wu/s the capture assist
+        // stays out and the berth prompt can't fire. A player's remedy is the brake —
+        // a manual press also disengages the autopilot for the same tick — so hold the
+        // dedicated brake until the ship is under the gate, then re-arm the approach.
+        await page.keyboard.down('Digit0');
+        const brakeDeadline = Date.now() + 9_000;
+        while (Date.now() < brakeDeadline) {
+          const cur = await readPromptState();
+          if (!cur || cur.prompt === true || cur.docked === true) break;
+          if (Number.isFinite(cur.speed) && cur.speed < 20) break;
+          await page.waitForTimeout(250);
+        }
+        await page.keyboard.up('Digit0');
+      }
       await armHeliosWaypoint(page);
       sawCorridor = false;
       closestBerth = Infinity;
