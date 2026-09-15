@@ -3485,8 +3485,10 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
         liveShips: Array.isArray(state.entityList) ? state.entityList.filter((e) => e?.type === 'ship' && e.id !== state.playerId).length : null,
         unbudgetedShips: Array.isArray(state.entityList) && state.spawnBudget.entityOwners instanceof Map
           ? state.entityList.filter((e) => e?.type === 'ship' && e.id !== state.playerId && !state.spawnBudget.entityOwners.has(String(e.id)))
-            .reduce((acc, e) => { const k = `${e.data?.defId || '?'}|${e.data?.role || e.data?.behavior || e.ai?.role || ''}|${e.data?.spawnSource || e.data?.origin || ''}`; acc[k] = (acc[k] || 0) + 1; return acc; }, {})
+            .reduce((acc, e) => { const k = `${e.data?.defId || '?'}|${e.data?.trafficRole || ''}|${e.data?.ai?.spawnContext || ''}|${e.homeSectorId || e.data?.homeSectorId || ''}`; acc[k] = (acc[k] || 0) + 1; return acc; }, {})
           : null,
+        trafficTracked: Array.isArray(state.traffic?.freighters) ? state.traffic.freighters.length : null,
+        trafficRoleShips: Array.isArray(state.entityList) ? state.entityList.filter((e) => e?.type === 'ship' && e.data?.trafficRole).length : null,
       } : null,
       geoCensus: window.__SF_GEO_CENSUS__ ? {
         live: window.__SF_GEO_CENSUS__.live.size,

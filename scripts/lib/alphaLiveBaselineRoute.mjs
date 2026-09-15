@@ -136,7 +136,26 @@ export async function runBrowserPublicRoute({
           firstRun: !!(firstRun && !firstRun.hidden && fs?.display !== 'none' && fs?.visibility !== 'hidden'),
           shipScan: (Array.isArray(state?.entityList) ? state.entityList : [])
             .filter((item) => item?.type === 'ship' && item.alive !== false)
-            .map((ship) => `${ship.id}:${ship.defId || ship.archetype || ''}:${ship?.mesh?.userData?.authoredAssetState || 'missing'}:${ship?.presentationAdmission || 'null'}`),
+            .map((ship) => `${ship.id}:${ship.defId || ship.archetype || ''}:${ship?.mesh?.userData?.authoredAssetState || 'missing'}:${ship?.presentationAdmission || 'null'}:mesh=${!!ship?.mesh}`),
+          // Mesh-streaming holds: a glass ship with no mesh at all after the timeout means the
+          // renderer never built it — name which hold parked the build queue.
+          meshStreaming: (() => {
+            const rd = state?.render || {};
+            const owner = window.SF?.registry?.get?.('render') || null;
+            return {
+              deferNoncriticalMeshStreaming: rd.deferNoncriticalMeshStreaming ?? null,
+              firstPlayableFrameAt: rd.firstPlayableFrameAt ?? null,
+              firstFlightResidencyHoldUntil: rd.firstFlightResidencyHoldUntil ?? null,
+              simTime: state?.simTime ?? null,
+              openingSubmissionReceiptPending: rd.openingSubmissionReceiptPending ?? null,
+              openingSubmissionValidation: !!rd.openingSubmissionValidation,
+              sectorShellAdmission: rd.sectorShellAdmission ?? null,
+              ownerDefer: owner?._deferNoncriticalMeshStreaming ?? null,
+              ownerHandoffHoldS: owner?._sectorHandoffStreamHoldS ?? null,
+              ownerReconcileDirty: owner?._meshReconcileDirty ?? null,
+              ownerQueue: owner?._meshBuildQueue ? `${owner._meshBuildQueueHead}/${owner._meshBuildQueue.length}` : null,
+            };
+          })(),
         };
       }).catch((e) => ({ evalError: String(e) }));
       log(`[route] flight-ready timeout state: ${JSON.stringify(stuck)}`);
