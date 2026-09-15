@@ -81,6 +81,10 @@ const flightRenderPackages = createFlightRenderPackageCache();
 // per-instance callbacks, bindings, transforms, and materials on a cache hit.
 const flightRootTemplates = new Map();
 const FLIGHT_ROOT_TEMPLATE_CACHE_LIMIT = 32;
+// Idle entries hold cloned geometries that stay GPU-resident after their last instance dies, so a
+// count cap alone lets sector variety pin hundreds of buffers. Bound the idle footprint in
+// geometries instead; entries with live instances are scene cost, not cache overhead.
+const FLIGHT_ROOT_TEMPLATE_IDLE_GEOMETRY_BUDGET = 32;
 let flightTemplateProbeSequence = 0;
 
 export function getFlightRenderPackageCache() {
@@ -88,8 +92,17 @@ export function getFlightRenderPackageCache() {
 }
 
 export function getFlightRootTemplateCacheDiagnostics() {
+  let idleGeometries = 0;
+  let heldGeometries = 0;
+  for (const entry of flightRootTemplates.values()) {
+    heldGeometries += entry.geometryCount || 0;
+    if ((entry.instanceRefs || 0) === 0) idleGeometries += entry.geometryCount || 0;
+  }
   return Object.freeze({
     size: flightRootTemplates.size,
+    idleGeometries,
+    heldGeometries,
+    idleGeometryBudget: FLIGHT_ROOT_TEMPLATE_IDLE_GEOMETRY_BUDGET,
     keys: Object.freeze([...flightRootTemplates.keys()]),
   });
 }
@@ -512,6 +525,10 @@ export function prepareAuthoredInstancePoolsForContextLoss(scene, renderer) {
     roots.push(root);
   };
   addRoot(scene);
+  // Held flight-root templates sit outside the scene graph, so the plain roots walk never reaches
+  // their cloned geometries/materials. Any of them that rendered through an instance before the
+  // loss carries a stale dispose listener; detaching here keeps later cache evictions silent.
+  for (const entry of flightRootTemplates.values()) addRoot(entry && entry.root);
   if (!state) {
     if (renderer) authoredInstancedMeshDisposeRegistrationByRenderer.delete(renderer);
     return {
@@ -5777,6 +5794,10 @@ function buildComposedShip(entity, library, scene, ownerBoundary, options = {}) 
   }
   const template = flightRootTemplates.get(templateKey);
   if (template) {
+    // Refresh recency: hits move the entry behind every idle sibling so the geometry budget
+    // evicts genuinely cold templates first instead of whichever was stored earliest.
+    flightRootTemplates.delete(templateKey);
+    flightRootTemplates.set(templateKey, template);
     const cached = instantiateFlightRootTemplate(
       template, entity, templateKey, loadoutFingerprint, assemblySeed, library, scene, ownerBoundary, palette,
     );
@@ -6201,9 +6222,24 @@ function flightRootTemplateKey({
     },
     // Whole-ship bodies also mount fitted weapons/modules on their sockets (PQ-176.04), so the
     // loadout must key the template for every body — otherwise a refit reuses a stale composition.
-    weapons: data.weapons || [],
-    fittings: data.fittings || [],
+    // Key only the fields the mounts actually read: runtime weapon records carry per-frame state
+    // (heat, cooldown, scaled stats) that would mint a fresh template on every rebuild.
+    weapons: (Array.isArray(data.weapons) ? data.weapons : []).map((weapon) => (
+      weapon && typeof weapon === 'object'
+        ? [weapon.defId || null, weapon.facing || null, weapon.size || null]
+        : null
+    )),
+    fittings: flightFitVisualToken(entity),
   });
+}
+
+function flightFitVisualToken(entity) {
+  const { modules, driveGlow, fittedWeaponIds } = visibleFittingsForEntity(entity);
+  return {
+    weapons: fittedWeaponIds,
+    modules: modules.map((mod) => mod.id),
+    driveGlow: driveGlow || null,
+  };
 }
 
 function flightVisualSeed(entity, palette) {
@@ -6301,6 +6337,10 @@ function createFlightRootTemplateEntry({
   const packageRecipes = collectFlightPackageRecipes(root);
   const templateRoot = createFlightTemplateRoot(root);
   stripFlightPackageTemplateSubtrees(templateRoot, packageRecipes);
+  const templateGeometries = new Set();
+  templateRoot?.traverse?.((object) => {
+    if (object.geometry) templateGeometries.add(object.geometry);
+  });
   return {
     root: templateRoot,
     hullPath: objectPathFromRoot(root, root.userData && root.userData.hull),
@@ -6319,6 +6359,7 @@ function createFlightRootTemplateEntry({
     cacheHeld: true,
     instanceRefs: 0,
     disposed: false,
+    geometryCount: templateGeometries.size,
   };
 }
 
@@ -6816,6 +6857,24 @@ function storeFlightRootTemplate(key, entry) {
     removeFlightRootTemplate(oldest);
   }
   flightRootTemplates.set(key, entry);
+  // Dead entries still pin their cloned geometries until eviction; bound that idle footprint so
+  // sector variety cannot grow renderer.info.geometry counts without limit. Entries with live
+  // instances are skipped — their geometry is in use and frees through the normal release path.
+  let idleGeometries = 0;
+  for (const candidate of flightRootTemplates.values()) {
+    if ((candidate.instanceRefs || 0) === 0) idleGeometries += candidate.geometryCount || 0;
+  }
+  while (idleGeometries > FLIGHT_ROOT_TEMPLATE_IDLE_GEOMETRY_BUDGET) {
+    let evicted = false;
+    for (const [candidateKey, candidate] of flightRootTemplates) {
+      if (candidate === entry || (candidate.instanceRefs || 0) !== 0) continue;
+      idleGeometries -= candidate.geometryCount || 0;
+      removeFlightRootTemplate(candidateKey);
+      evicted = true;
+      break;
+    }
+    if (!evicted) break;
+  }
   return true;
 }
 
@@ -7173,6 +7232,87 @@ export function runFlightKestrelTemplatePackageProbe() {
     disposeRebuildValid,
     templateDisposed,
     detachedCloneGeometryDisposed: detachedCloneGeometryDisposals > 0,
+  };
+}
+
+/** Focused seam probe: the template key must ignore runtime weapon state (heat, cooldown, scaled
+ *  stats) while still reacting to the loadout identity the mount path actually consumes. */
+export function runFlightRootTemplateKeyStabilityProbe() {
+  const token = ++flightTemplateProbeSequence;
+  const entityFor = (heat, weaponDefId = 'wpn_pulse_laser_s') => ({
+    id: `key-stability-${token}`,
+    type: 'ship',
+    alive: true,
+    radius: 12,
+    team: 0,
+    factionId: `key-stability-probe-${token}`,
+    data: {
+      defId: 'ship_kestrel',
+      fittings: [weaponDefId, 'mod_shield_booster_s'],
+      weapons: [{
+        defId: weaponDefId,
+        slotIndex: 0,
+        facing: 'front',
+        size: 'S',
+        _heat: heat,
+        _cooldown: 0.4 - heat * 0.1,
+        damage: 12 + heat * 3,
+      }],
+    },
+  });
+  const keyFor = (entity) => flightRootTemplateKey({
+    entity,
+    entityPlan: { hull: [`probe-${token}.glb`], cockpit: [], engine: [], fin: [] },
+    palette: paletteFor(entity),
+    releaseMode: false,
+    visualSeed: flightVisualSeed(entity, paletteFor(entity)),
+    selected: new Map([['hull', null]]),
+    wholeShip: true,
+    loadoutFingerprint: `probe-${token}`,
+  });
+  const cold = keyFor(entityFor(0.05));
+  const hot = keyFor(entityFor(0.93));
+  const differentWeapon = keyFor(entityFor(0.05, 'wpn_autocannon_s'));
+  const unarmed = keyFor({ ...entityFor(0.05), data: { ...entityFor(0.05).data, weapons: [], fittings: [] } });
+  return {
+    runtimeStateIgnored: cold === hot,
+    loadoutStillKeys: cold !== differentWeapon,
+    emptyLoadoutDistinct: cold !== unarmed,
+  };
+}
+
+/** Focused seam probe: idle template entries must stay under the geometry budget — evicted
+ *  zero-ref entries dispose their clones while instance-pinned entries survive eviction. */
+export function runFlightRootTemplateBudgetProbe() {
+  const token = ++flightTemplateProbeSequence;
+  let disposedGeometries = 0;
+  const probeKeys = [];
+  const makeEntry = (geoCount, refs) => {
+    const root = new THREE.Group();
+    for (let i = 0; i < geoCount; i++) {
+      const geometry = new THREE.BoxGeometry(1, 1, 1);
+      const release = geometry.dispose.bind(geometry);
+      geometry.dispose = () => { disposedGeometries++; return release(); };
+      root.add(new THREE.Mesh(geometry, new THREE.MeshBasicMaterial()));
+    }
+    return { root, cacheHeld: true, instanceRefs: refs, disposed: false, geometryCount: geoCount };
+  };
+  // A pinned entry is stored first so it is the oldest: idle eviction must skip over it.
+  const pinnedKey = `probe-budget-${token}-pinned`;
+  storeFlightRootTemplate(pinnedKey, makeEntry(8, 1));
+  probeKeys.push(pinnedKey);
+  for (let i = 0; i < 8; i++) {
+    const key = `probe-budget-${token}-${i}`;
+    probeKeys.push(key);
+    storeFlightRootTemplate(key, makeEntry(8, 0));
+  }
+  const diagnostics = getFlightRootTemplateCacheDiagnostics();
+  const pinnedSurvives = flightRootTemplates.get(pinnedKey)?.disposed !== true;
+  for (const key of probeKeys) removeFlightRootTemplate(key);
+  return {
+    idleWithinBudget: diagnostics.idleGeometries <= FLIGHT_ROOT_TEMPLATE_IDLE_GEOMETRY_BUDGET,
+    evictionsDisposedGeometry: disposedGeometries >= 16,
+    pinnedEntrySkipped: pinnedSurvives,
   };
 }
 

@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import {
   runFlightKestrelTemplatePackageProbe,
+  runFlightRootTemplateBudgetProbe,
   runFlightRootTemplateCacheProbe,
+  runFlightRootTemplateKeyStabilityProbe,
 } from '../src/render/partsLibrary.js';
 
 if (!globalThis.document) {
@@ -25,6 +27,22 @@ test('flight root template hits reuse geometry but rebind per-instance state', (
     distinctMaterials: true,
     reboundHooks: true,
     geometryDisposedOnce: true,
+  });
+});
+
+test('template key ignores runtime weapon state but still keys the mounted loadout', () => {
+  assert.deepEqual(runFlightRootTemplateKeyStabilityProbe(), {
+    runtimeStateIgnored: true,
+    loadoutStillKeys: true,
+    emptyLoadoutDistinct: true,
+  });
+});
+
+test('idle template entries stay under the geometry budget and dispose on evict', () => {
+  assert.deepEqual(runFlightRootTemplateBudgetProbe(), {
+    idleWithinBudget: true,
+    evictionsDisposedGeometry: true,
+    pinnedEntrySkipped: true,
   });
 });
 
