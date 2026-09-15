@@ -1640,6 +1640,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     const dc = window.SF?.state?.dockingCorridor || null;
     return {
       prompt: visible === true && dc?.stationId === 'station_helios',
+      docked: window.SF?.state?.ui?.docked === true,
       inCorridor: dc?.inCorridor === true,
       inCapture: dc?.inCapture === true,
       distToBerth: Number.isFinite(dc?.distToBerth) ? dc.distToBerth : null,
@@ -1660,10 +1661,15 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
   let recedingPolls = 0;
   let captureStallPolls = 0;
   let rearms = 0;
+  let alreadyDocked = false;
   const dockDeadline = Date.now() + 105_000;
   while (Date.now() < dockDeadline && !dockPromptVisible) {
     const s = await readPromptState();
     if (s?.prompt === true) { dockPromptVisible = true; break; }
+    // The capture assist can berth the ship on its own during a re-arm pass — a ship
+    // that reaches ui.docked has completed this leg; the dock press below would read
+    // as undock. Exit the wait and let the post-loop branch skip the press.
+    if (s?.docked === true) { alreadyDocked = true; break; }
     const corridorNow = s != null && (s.inCorridor === true || s.inCapture === true);
     if (corridorNow) sawCorridor = true;
     // The corridor flag flickers while an 'avoiding' autopilot weaves through approach
@@ -1675,14 +1681,21 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     recedingPolls = receding ? recedingPolls + 1 : 0;
     const overshot = recedingPolls >= 2;
     const dropped = s != null && s.autopilotActive === false;
-    // A ship can also wedge INSIDE the capture bubble above the berth speed gate: the
-    // capture assist is speed-gated so it never engages, the autopilot keeps cruising
-    // through, and the berth prompt (proximity + speed) never fires — neither the
-    // overshot nor the dropped trigger covers that hold (a min-spec soak cycle sat the
-    // full 105 s inCapture at ~42 wu/s). A re-arm re-drives the approach from a fresh
-    // braking plan — the same remedy as a player circling back for another pass.
-    captureStallPolls = s != null && s.inCapture === true ? captureStallPolls + 1 : 0;
-    const captureStalled = captureStallPolls >= 12;
+    // A ship can also wedge INSIDE the capture bubble above the capture speed gate (26
+    // wu/s for Helios): the assist is speed-gated so it never engages, the autopilot
+    // keeps cruising through, and the berth prompt (proximity + speed ≤ 12) never fires
+    // — neither the overshot nor the dropped trigger covers that hold (a min-spec soak
+    // cycle sat the full 105 s inCapture at ~42 wu/s). The discriminator is speed, not
+    // presence: a healthy final approach is already under the gate (5 wu/s, braking),
+    // and a hot entry either brakes below 26 or exits the bubble within seconds. Only
+    // a ship still above the gate after ~5 s in-capture is genuinely not converging —
+    // the re-arm re-drives the approach from a fresh braking plan, the same remedy as
+    // a player circling back for another pass.
+    const aboveCaptureGate = Number.isFinite(s?.speed) && s.speed > 26;
+    captureStallPolls = s != null && s.inCapture === true && aboveCaptureGate
+      ? captureStallPolls + 1
+      : 0;
+    const captureStalled = captureStallPolls >= 16;
     if ((overshot || dropped || captureStalled) && rearms < 3 && s != null) {
       rearms += 1;
       mark(
@@ -1697,16 +1710,19 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
     }
     await page.waitForTimeout(300);
   }
-  if (!dockPromptVisible) {
+  if (!dockPromptVisible && !alreadyDocked) {
     const diag = await readDockDiag();
     throw new Error(`Helios dock prompt never appeared: ${JSON.stringify({ rearms, final: diag })}`);
   }
   // Docking is a player-initiated loading span (station interior mount) — tag it like
   // save/load so the gameplay-hitch count stays honest about steady-state frames.
   await transition('dock-mount');
-  await page.keyboard.press('KeyE');
-  let docked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 })
-    .then(() => true).catch(() => false);
+  let docked = alreadyDocked;
+  if (!alreadyDocked) {
+    await page.keyboard.press('KeyE');
+    docked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 })
+      .then(() => true).catch(() => false);
+  }
   if (!docked && await dockPrompt.isVisible().catch(() => false)) {
     // A player with a live dock prompt and no response presses E again — one bounded
     // retry, then the cycle fails with the gate state already captured upstream.
@@ -1946,7 +1962,10 @@ async function armHeliosWaypoint(page) {
       await step('map-closed', () => page.waitForFunction(() => {
         const el = document.querySelector('#sf-galaxymap');
         const hidden = !el || el.hidden || getComputedStyle(el).display === 'none' || el.getBoundingClientRect().width < 2;
-        return window.SF?.state?.mode === 'flight' && hidden;
+        // A berth can complete while the chart is open (capture assist finishes the
+        // approach underneath); mode leaves 'flight' then, so the dock itself counts
+        // as the arm's outcome — the dock loop reads ui.docked directly.
+        return (window.SF?.state?.mode === 'flight' && hidden) || window.SF?.state?.ui?.docked === true;
       }, null, { timeout: 10_000 }));
       return;
     } catch (err) {
@@ -2002,10 +2021,20 @@ async function clickWaypointWithPointer(page, locator) {
         await page.mouse.up({ button: 'left' });
       }
       const armed = await page.waitForFunction(([before, staleArm]) => {
-        // A fresh nav:waypoint emission is the only race-free arm proof: the follower
-        // can flip a point-blank arm to 'arrived' and clear nav.waypoint within one
-        // sim tick, and a stale autopilot label survives from the previous approach.
+        // Proof needs BOTH sides of a landed Helios arm: a fresh Helios-labelled
+        // nav:waypoint (the counter, or the not-stale label checks) AND the chart
+        // actually closing. _activateSelectedCourse pops the chart on every non-route
+        // arm, so a landed click hides it; but the counter alone cannot be trusted —
+        // claims/sync re-emit the currently-held waypoint and the save restore re-emits
+        // the saved one, so a Helios bump can arrive while a click that missed leaves
+        // the chart open (map-closed then timed out behind it at soak cycle 57).
         const events = window.__M6_RELEASE_SOAK_EVENTS__;
+        const el = document.querySelector('#sf-galaxymap');
+        const chartHidden = !el || el.hidden || getComputedStyle(el).display === 'none'
+          || el.getBoundingClientRect().width < 2;
+        const docked = window.SF?.state?.ui?.docked === true;
+        if (docked) return true;
+        if (!chartHidden) return false;
         if ((events?.heliosWaypointArms || 0) > before) return true;
         if (staleArm) return false;
         const nav = window.SF?.state?.nav;
