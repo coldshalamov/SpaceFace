@@ -18,6 +18,7 @@ import { mulberry32, mulberry32FromContinuation } from '../core/rng.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { STORY_BEATS } from '../data/missions.js';
 import { restoreCombatState, serializeCombatState } from '../combat/persistence.js';
+import { pendingStuntBodyIds } from '../combat/stuntEvidence.js';
 import { fittingsFromDefaultModules, makeShipEntitySpec } from '../systems/ships.js';
 import { createTimeEffects } from '../core/timeEffects.js';
 import {
@@ -373,6 +374,8 @@ export const save = {
       ['world', () => this._callSerialize('world') || {}],
       ['entities', () => this._serializeEntities()],
       ['combat', () => serializeCombatState(state)],
+      ['stunts', () => this._callSerialize('stuntGrammar')],
+      ['fields', () => this._callSerialize('fields')],
       ['missions', () => this._callSerialize('missions') || this._serializeMissions()],
       ['careerOrigins', () => this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {})],
       ['careerLadders', () => this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {})],
@@ -423,6 +426,8 @@ export const save = {
     data.world = this._callSerialize('world') || {};
     data.entities = this._serializeEntities();
     data.combat = serializeCombatState(state);
+    data.stunts = this._callSerialize('stuntGrammar');
+    data.fields = this._callSerialize('fields');
     data.missions = this._callSerialize('missions') || this._serializeMissions();
     data.careerOrigins = this._callSerialize('careerOrigins') || clonePlain(state.careers && state.careers.origins || {});
     data.careerLadders = this._callSerialize('careerLadders') || clonePlain(state.careers && state.careers.ladders || {});
@@ -685,11 +690,12 @@ export const save = {
   _serializeEntities() {
     const state = this.state;
     const out = [];
+    const stuntBodies = pendingStuntBodyIds(state);
     for (const e of state.entityList) {
       const isPlayer = e.id === state.playerId;
       // A defeated wreck must still serialize. Skipping it writes player:null and poisons the slot.
-      if (!isPlayer && !e.alive) continue;
-      if (!isPlayer && !(e.flags && e.flags.persistent)) continue;
+      if (!isPlayer && !e.alive && !stuntBodies.has(e.id)) continue;
+      if (!isPlayer && !(e.flags && e.flags.persistent) && !stuntBodies.has(e.id)) continue;
       out.push(plainEntity(e, isPlayer));
     }
     return {
@@ -2797,6 +2803,9 @@ export const save = {
       // 14. rebuild master RNG from serialized CONTINUATION (H9), not seed alone.
       // simTime/tick were restored before spawn so sector rebuild sees the saved clock.
       this._restoreEntropy(data.entropy);
+      this.registry?.get?.('fields')?.deserialize?.(data.fields,entityIdRemap);
+      const stuntOwner = this.registry?.get?.('stuntGrammar');
+      stuntOwner?.deserialize?.(data.stunts, entityIdRemap);
 
       // 15. finalize.
       state.meta.version = CURRENT_VERSION;
@@ -4178,6 +4187,7 @@ function profileSettingsSnapshot(settings) {
       controlScheme: s.gameplay && s.gameplay.controlScheme,
       controlSchemeV2: s.gameplay && s.gameplay.controlSchemeV2,
       masslineReleaseAssist: s.gameplay && s.gameplay.masslineReleaseAssist,
+      stuntMoments: s.gameplay?.stuntMoments==='flow'?'flow':'cinematic',
     },
   };
 }

@@ -767,7 +767,7 @@ export const impulseCharges = {
           dirZ = -Math.sin(player.rot || 0);
         }
         const magnitude = MASSLINE_COMBOS.tailPop.impulse;
-        this._applyBlastImpulse(player, dirX * magnitude, dirZ * magnitude, state);
+        this._applyBlastImpulse(player, dirX * magnitude, dirZ * magnitude, state, state.playerId);
         this.bus.emit('charge:combo', {
           combo: 'tailPop',
           ownerId: player.id,
@@ -918,7 +918,7 @@ export const impulseCharges = {
       // of mass. Magnitude impulse × falloff is the old per-entity Δv × mass — same physics,
       // different owner of the mutation. A rejected request (no rigid body / no port) is skipped,
       // never forced with a direct vel write.
-      this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state);
+      this._applyBlastImpulse(ent, dirX * magnitude, dirZ * magnitude, state, ownerId, opts.chargeId);
       hits.push(ent.id);
       considerImpulseShove(shoves, ent.id, dirX, dirZ, magnitude);
       this._publishBlastHitstun(state, ent, {
@@ -1021,7 +1021,7 @@ export const impulseCharges = {
   // Physics-authority impulse (rung 15). Same port + call shape as combat/actions.js:185 and
   // combat/damage.js:201: helpers.combatPhysics.applyImpulse({entityId, impulse, point, reason,
   // tick}). Returns true only if the backend accepted the impulse.
-  _applyBlastImpulse(ent, impulseX, impulseZ, state) {
+  _applyBlastImpulse(ent, impulseX, impulseZ, state, ownerId, chargeId) {
     const physics = this.helpers && this.helpers.combatPhysics;
     if (!physics || typeof physics.applyImpulse !== 'function') return false;
     const accepted = physics.applyImpulse({
@@ -1030,6 +1030,7 @@ export const impulseCharges = {
       point: null,
       reason: 'impulse_charge',
       tick: state.tick,
+      provenance: { actorId: ownerId, weaponId: chargeId ?? 'impulse_charge', tag: 'impulse_charge_blast' },
     });
     return accepted !== false;
   },

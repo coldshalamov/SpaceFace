@@ -1235,6 +1235,7 @@ export const mining = {
           amount: credits,
           credits,
           grantReason: typeof it.grantReason === 'string' ? it.grantReason : null,
+          entitlementId: it.entitlementId ?? null,
           // The chip carries which wallet it belongs to (PQ-133 CRU-015). A Survival chip settles
           // into state.run.credits; everything else keeps the ordinary campaign route.
           wallet: typeof it.wallet === 'string' ? it.wallet : null,
@@ -1279,6 +1280,7 @@ export const mining = {
       data.credits = amount;
       if (opts.grantReason) data.grantReason = opts.grantReason;
       if (opts.wallet) data.wallet = opts.wallet;
+      if (opts.entitlementId != null) data.entitlementId = opts.entitlementId;
     }
     this.helpers.spawnEntity({
       type: 'pickup',
