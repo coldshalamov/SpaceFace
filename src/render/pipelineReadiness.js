@@ -198,22 +198,23 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
     const started = now();
     try {
       const result = compileBatch(subjects);
-      reportSlice(path, subjects.length, now() - started);
+      reportSlice(path, subjects, now() - started);
       return result;
     } catch (error) {
-      reportSlice(path, subjects.length, now() - started);
+      reportSlice(path, subjects, now() - started);
       throw error;
     }
   }
 
-  function reportSlice(path, subjectCount, durationMs) {
+  function reportSlice(path, subjects, durationMs) {
     if (!onBlockingSlice) return;
     try {
       onBlockingSlice({
         kind: 'pipelineAdmissionSync',
         durationMs,
         path,
-        subjectCount,
+        subjectCount: subjects.length,
+        subjects: subjects.slice(0, 4).map((subject) => String(subject && subject.name || subject && subject.type || 'unnamed')),
       });
     } catch {
       // Observer errors must not change admission semantics.

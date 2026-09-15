@@ -1,8 +1,3 @@
-import * as THREE from 'three';
-
-const STARTUP_GEOMETRY_BATCH_DRAWABLES = 4;
-const STARTUP_GEOMETRY_BATCH_BYTES = 8 * 1024 * 1024;
-
 function materialTextures(material, textures) {
   if (!material || typeof material !== 'object') return;
   for (const value of Object.values(material)) {
@@ -103,7 +98,7 @@ function createGeometryWorkItems(drawables, options = {}) {
     // Ordinary meshes sharing one BufferGeometry need one upload. InstancedMesh owns additional
     // per-object instanceMatrix / instanceColor buffers, so every live instanced object remains work.
     if (!firstGeometryUse && !object.isInstancedMesh) continue;
-    // F9 recook must not 1x1 ordinary geos the first cook already stamped.
+    // F9 recook must not re-upload ordinary geos the first cook already stamped.
     if (!ignoreStamps
         && geometry.userData && geometry.userData.spacefaceGpuResident === true
         && !object.isInstancedMesh) continue;
@@ -115,88 +110,6 @@ function createGeometryWorkItems(drawables, options = {}) {
     work.push({ object, geometry, estimatedBytes });
   }
   return { work, uniqueGeometries: seenGeometries.size };
-}
-
-function partitionGeometryWork(work, options = {}) {
-  const maxDrawables = Math.max(1, Number(options.geometryBatchDrawables)
-    || STARTUP_GEOMETRY_BATCH_DRAWABLES);
-  const maxBytes = Math.max(1, Number(options.geometryBatchBytes)
-    || STARTUP_GEOMETRY_BATCH_BYTES);
-  const batches = [];
-  let current = [];
-  let bytes = 0;
-  for (const item of work) {
-    if (current.length > 0
-        && (current.length >= maxDrawables || bytes + item.estimatedBytes > maxBytes)) {
-      batches.push({ work: current, estimatedBytes: bytes });
-      current = [];
-      bytes = 0;
-    }
-    current.push(item);
-    bytes += item.estimatedBytes;
-  }
-  if (current.length > 0) batches.push({ work: current, estimatedBytes: bytes });
-  return batches;
-}
-
-function createResidencyMaterial() {
-  // WebGLObjects.update() uploads every BufferGeometry attribute before renderBufferDirect() binds
-  // the program. The shader stays tiny and clips every vertex outside the 1x1 target.
-  return new THREE.RawShaderMaterial({
-    name: 'SF_StartupGeometryResidency',
-    vertexShader: `
-      precision highp float;
-      void main() {
-        gl_PointSize = 1.0;
-        gl_Position = vec4(2.0, 2.0, 2.0, 1.0);
-      }
-    `,
-    fragmentShader: `
-      precision highp float;
-      void main() { gl_FragColor = vec4(0.0); }
-    `,
-    depthTest: false,
-    depthWrite: false,
-    colorWrite: false,
-    toneMapped: false,
-  });
-}
-
-function createResidencyProxy(source, material) {
-  const geometry = source.geometry;
-  let proxy;
-  let cleanup = null;
-  if (source.isInstancedMesh) {
-    // Point the proxy at the production instance buffers. Restore its owned buffers before dispose
-    // so releasing the proxy cannot release production GPU state.
-    proxy = new THREE.InstancedMesh(geometry, material, 1);
-    const ownedMatrix = proxy.instanceMatrix;
-    const ownedColor = proxy.instanceColor;
-    proxy.instanceMatrix = source.instanceMatrix;
-    proxy.instanceColor = source.instanceColor;
-    proxy.count = Math.max(0, Number(source.count) || 0);
-    cleanup = () => {
-      proxy.instanceMatrix = ownedMatrix;
-      proxy.instanceColor = ownedColor;
-      proxy.dispose();
-    };
-  } else if (source.isPoints) {
-    proxy = new THREE.Points(geometry, material);
-  } else if (source.isLineSegments) {
-    proxy = new THREE.LineSegments(geometry, material);
-  } else if (source.isLineLoop) {
-    proxy = new THREE.LineLoop(geometry, material);
-  } else if (source.isLine) {
-    proxy = new THREE.Line(geometry, material);
-  } else {
-    proxy = new THREE.Mesh(geometry, material);
-  }
-  proxy.name = `SF_ResidencyProxy:${source.name || source.type || source.id || 'drawable'}`;
-  proxy.frustumCulled = false;
-  proxy.matrixAutoUpdate = false;
-  proxy.matrix.identity();
-  proxy.matrixWorld.identity();
-  return { proxy, cleanup };
 }
 
 function rendererMemoryGeometries(renderer) {
@@ -212,76 +125,23 @@ function reportBlockingSlice(observer, slice) {
   }
 }
 
-function captureRendererState(renderer) {
-  const state = {
-    target: typeof renderer.getRenderTarget === 'function' ? renderer.getRenderTarget() : null,
-    viewport: null,
-    scissor: null,
-    scissorTest: null,
-    autoClear: renderer.autoClear,
-    xrEnabled: renderer.xr && typeof renderer.xr.enabled === 'boolean'
-      ? renderer.xr.enabled : null,
-    shadowAutoUpdate: renderer.shadowMap && typeof renderer.shadowMap.autoUpdate === 'boolean'
-      ? renderer.shadowMap.autoUpdate : null,
-    shadowNeedsUpdate: renderer.shadowMap && typeof renderer.shadowMap.needsUpdate === 'boolean'
-      ? renderer.shadowMap.needsUpdate : null,
-  };
-  if (typeof renderer.getViewport === 'function') {
-    state.viewport = renderer.getViewport(new THREE.Vector4()).clone();
-  }
-  if (typeof renderer.getScissor === 'function') {
-    state.scissor = renderer.getScissor(new THREE.Vector4()).clone();
-  }
-  if (typeof renderer.getScissorTest === 'function') {
-    state.scissorTest = renderer.getScissorTest();
-  }
-  return state;
-}
-
-function applyResidencyRendererState(renderer, target) {
-  renderer.setRenderTarget(target);
-  if (typeof renderer.setViewport === 'function') renderer.setViewport(0, 0, 1, 1);
-  if (typeof renderer.setScissor === 'function') renderer.setScissor(0, 0, 1, 1);
-  if (typeof renderer.setScissorTest === 'function') renderer.setScissorTest(true);
-  renderer.autoClear = false;
-  if (renderer.xr && typeof renderer.xr.enabled === 'boolean') renderer.xr.enabled = false;
-  if (renderer.shadowMap) {
-    if (typeof renderer.shadowMap.autoUpdate === 'boolean') renderer.shadowMap.autoUpdate = false;
-    if (typeof renderer.shadowMap.needsUpdate === 'boolean') renderer.shadowMap.needsUpdate = false;
-  }
-}
-
-function restoreRendererState(renderer, state) {
-  renderer.setRenderTarget(state.target || null);
-  if (state.viewport && typeof renderer.setViewport === 'function') renderer.setViewport(state.viewport);
-  if (state.scissor && typeof renderer.setScissor === 'function') renderer.setScissor(state.scissor);
-  if (state.scissorTest !== null && typeof renderer.setScissorTest === 'function') {
-    renderer.setScissorTest(state.scissorTest);
-  }
-  renderer.autoClear = state.autoClear;
-  if (state.xrEnabled !== null && renderer.xr) renderer.xr.enabled = state.xrEnabled;
-  if (renderer.shadowMap) {
-    if (state.shadowAutoUpdate !== null) renderer.shadowMap.autoUpdate = state.shadowAutoUpdate;
-    if (state.shadowNeedsUpdate !== null) renderer.shadowMap.needsUpdate = state.shadowNeedsUpdate;
-  }
-}
-
 /**
- * Upload exact vertex/index/instance buffers through Three's public render path.
+ * Upload exact vertex/index/instance buffers through renderer.initGeometry().
  *
- * compileAsync() prepares programs only. WebGLObjects.update(), reached by render(), owns geometry
- * registration and buffer upload. This isolated clipped pass admits late Continue roots without
- * attaching them to the visible scene or changing their production materials.
+ * compileAsync() prepares programs only. WebGLObjects.update() — the same path render() reaches —
+ * owns geometry registration and buffer upload; initGeometry invokes it for one object without a
+ * draw. A bounded render pass pays a whole renderer.render() plus proxy/state churn per batch, so
+ * on integrated GPUs each ~4-drawable slice cost ~60ms of fixed overhead. One initGeometry per work
+ * item uploads the same buffers for ~1-3ms and never touches render targets, viewport, or
+ * production materials.
  */
 export async function prepareStartupGeometryResidency(renderer, subjects, options = {}) {
   const drawables = collectStartupGeometryDrawables(subjects, options);
   const { work, uniqueGeometries } = createGeometryWorkItems(drawables, options);
-  if (!renderer || typeof renderer.render !== 'function'
-      || typeof renderer.setRenderTarget !== 'function'
-      || typeof renderer.getRenderTarget !== 'function') {
+  if (!renderer || typeof renderer.initGeometry !== 'function') {
     return {
       skipped: true,
-      reason: 'render-target render unavailable',
+      reason: 'initGeometry unavailable',
       drawables: drawables.length,
       geometries: uniqueGeometries,
       batches: [],
@@ -304,77 +164,46 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
     ? options.onBlockingSlice
     : null;
   const now = typeof options.now === 'function' ? options.now : clockNow;
-  const batches = partitionGeometryWork(work, options);
-  const material = createResidencyMaterial();
-  const target = new THREE.WebGLRenderTarget(1, 1, {
-    depthBuffer: false,
-    stencilBuffer: false,
-    minFilter: THREE.NearestFilter,
-    magFilter: THREE.NearestFilter,
-  });
-  target.texture.generateMipmaps = false;
-  target.texture.name = 'SF_StartupGeometryResidencyTarget';
-  const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 10);
-  camera.layers.enableAll();
-  camera.updateMatrixWorld(true);
   const results = [];
   const geometriesBefore = rendererMemoryGeometries(renderer);
 
-  try {
-    for (let index = 0; index < batches.length; index++) {
-      const batch = batches[index];
-      await yieldToMain();
-      const scene = new THREE.Scene();
-      scene.name = `SF_StartupGeometryResidencyBatch:${index + 1}`;
-      const proxyEntries = batch.work.map(({ object }) => createResidencyProxy(object, material));
-      for (const entry of proxyEntries) scene.add(entry.proxy);
-      const state = captureRendererState(renderer);
-      const started = now();
-      let success = false;
-      try {
-        applyResidencyRendererState(renderer, target);
-        renderer.render(scene, camera);
-        success = true;
-      } finally {
-        const durationMs = now() - started;
-        try { restoreRendererState(renderer, state); } finally {
-          for (const entry of proxyEntries) {
-            scene.remove(entry.proxy);
-            if (entry.cleanup) entry.cleanup();
-          }
+  for (let index = 0; index < work.length; index++) {
+    const item = work[index];
+    await yieldToMain();
+    const started = now();
+    let success = false;
+    try {
+      renderer.initGeometry(item.object);
+      success = true;
+    } finally {
+      const durationMs = now() - started;
+      const receipt = {
+        kind: 'gpuGeometryResidency',
+        durationMs,
+        index,
+        count: work.length,
+        drawables: 1,
+        geometries: 1,
+        estimatedBytes: item.estimatedBytes,
+        subject: item.object.name || item.object.type || 'drawable',
+        success,
+      };
+      if (success) {
+        const geometry = item.geometry;
+        if (geometry) {
+          const data = geometry.userData || (geometry.userData = {});
+          data.spacefaceGpuResident = true;
         }
-        const receipt = {
-          kind: 'gpuGeometryResidency',
-          durationMs,
-          index,
-          count: batches.length,
-          drawables: batch.work.length,
-          geometries: new Set(batch.work.map((item) => item.geometry)).size,
-          estimatedBytes: batch.estimatedBytes,
-          success,
-        };
-        if (success) {
-          for (const item of batch.work) {
-            const geometry = item.geometry;
-            if (geometry) {
-              const data = geometry.userData || (geometry.userData = {});
-              data.spacefaceGpuResident = true;
-            }
-          }
-          results.push(receipt);
-        }
-        reportBlockingSlice(onBlockingSlice, receipt);
+        results.push(receipt);
       }
+      reportBlockingSlice(onBlockingSlice, receipt);
     }
-  } finally {
-    material.dispose();
-    target.dispose();
   }
 
   const geometriesAfter = rendererMemoryGeometries(renderer);
   return {
     skipped: false,
-    mode: 'bounded-1x1-render',
+    mode: 'direct-buffer-upload',
     drawables: drawables.length,
     geometryWorkItems: work.length,
     geometries: uniqueGeometries,

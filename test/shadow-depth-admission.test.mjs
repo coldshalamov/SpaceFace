@@ -366,7 +366,10 @@ test('live-scene mode renders the live scene with only staged casters drawable',
 
 test('inactive shadows skip unless forceEnable is set', () => {
   const hull = { isMesh: true, castShadow: true };
-  const renderer = { shadowMap: { enabled: false, render() { throw new Error('must not render'); } } };
+  const renderer = {
+    shadowMap: { enabled: false },
+    render() { throw new Error('must not render'); },
+  };
   const skipped = compileShadowDepthPipelines({
     renderer,
     light: { castShadow: false },

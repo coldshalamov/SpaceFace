@@ -4762,6 +4762,9 @@ export const render = {
     const recordAuthoredAdmissionBlockingSlice = (slice) => {
       const durationMs = Number(slice && slice.durationMs);
       if (!(durationMs > 0) || !Number.isFinite(durationMs)) return;
+      if (durationMs > 40 && typeof console !== 'undefined') {
+        console.warn('[admission-slice]', JSON.stringify(slice));
+      }
       const perf = state.perfRuntime;
       if (perf && typeof perf.recordAdmissionWork === 'function') {
         perf.recordAdmissionWork(durationMs);
@@ -4772,6 +4775,11 @@ export const render = {
       }
     };
     const pipelineAdmissions = createPipelineAdmissionTracker(compileForCurrentTarget, {
+      // Flight compiles already slice across presents and run one batched shadow-depth pass per
+      // call, so a resumed batch's marginal subject is ~free while its fixed cost is a whole live
+      // scene traversal plus a shadow render. One-subject batches (the default) paid that fixed
+      // cost per queued root — ~60ms × 24 on the min-spec iGPU.
+      resumeBatchSize: 4,
       deferAutoFlush: () => shouldDeferPipelineAutoFlush({
         postOpeningReleased: this._postOpeningPipelineAdmissionReleased === true,
         firstPlayableFrameAt: state.render && state.render.firstPlayableFrameAt,

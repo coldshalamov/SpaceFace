@@ -19505,6 +19505,15 @@ class WebGLRenderer {
 
 		};
 
+		// SpaceFace: upload one object's geometry (attributes, index, and instanced buffers) without a
+		// render. objects.update() is the same WebGLObjects path render() reaches; a bounded residency
+		// pass otherwise pays a whole renderer.render() per handful of drawables just to call it.
+		this.initGeometry = function ( object ) {
+
+			objects.update( object );
+
+		};
+
 		/**
 		 * Can be used to reset the internal WebGL state. This method is mostly
 		 * relevant for applications which share a single WebGL context across

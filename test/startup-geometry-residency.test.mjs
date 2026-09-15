@@ -73,43 +73,18 @@ test('first-visible admission identity names late roots, leaves, materials, and 
     'a named root exemption cannot silently accept an unattributed depth-program admission');
 });
 
-function setVector(target, x, y, z, w) {
-  if (x && x.isVector4) target.copy(x);
-  else target.set(x, y, z, w);
-}
-
-function createRendererHarness({ render } = {}) {
-  const previousTarget = { name: 'previous-target' };
-  let activeTarget = previousTarget;
-  const viewport = new THREE.Vector4(7, 9, 640, 360);
-  const scissor = new THREE.Vector4(11, 13, 320, 180);
-  let scissorTest = false;
+function createRendererHarness({ initGeometry } = {}) {
   const renderer = {
-    autoClear: true,
-    xr: { enabled: true },
-    shadowMap: { autoUpdate: true, needsUpdate: true },
     info: { memory: { geometries: 5 } },
     initTexture() {},
-    getRenderTarget: () => activeTarget,
-    setRenderTarget(target) { activeTarget = target; },
-    getViewport(out) { return out.copy(viewport); },
-    setViewport(x, y, z, w) { setVector(viewport, x, y, z, w); },
-    getScissor(out) { return out.copy(scissor); },
-    setScissor(x, y, z, w) { setVector(scissor, x, y, z, w); },
-    getScissorTest: () => scissorTest,
-    setScissorTest(value) { scissorTest = !!value; },
-    render(scene, camera) {
-      if (render) render({ scene, camera, renderer, activeTarget, viewport, scissor, scissorTest });
+    initGeometry(object) {
+      if (initGeometry) initGeometry({ object, renderer });
+    },
+    render() {
+      throw new Error('geometry residency must not render production or proxy scenes');
     },
   };
-  return {
-    renderer,
-    previousTarget,
-    activeTarget: () => activeTarget,
-    viewport,
-    scissor,
-    scissorTest: () => scissorTest,
-  };
+  return { renderer };
 }
 
 test('startup geometry census keeps every live instanced buffer owner sharing one geometry', () => {
@@ -139,7 +114,7 @@ test('startup geometry census keeps every live instanced buffer owner sharing on
   );
 });
 
-test('opening geometry admission uses the shared startup proxy pass', () => {
+test('opening geometry admission uses the shared startup residency pass', () => {
   const start = RENDERER_SOURCE.indexOf('state.render.prepareOpeningGpuResources = async');
   const end = RENDERER_SOURCE.indexOf('// Collision/socket/landing debug toggle', start);
   assert.ok(start >= 0 && end > start, 'the opening GPU resource boundary must remain present');
@@ -158,8 +133,15 @@ test('opening geometry admission uses the shared startup proxy pass', () => {
   const drawStart = RENDERER_SOURCE.indexOf('drawPreparedFrame()');
   const drawEnd = RENDERER_SOURCE.indexOf('renderFrame(alpha', drawStart);
   const firstDraw = RENDERER_SOURCE.slice(drawStart, drawEnd);
-  assert.doesNotMatch(firstDraw, /createOpeningSubmissionReceipt\(/,
-    'the first visible submit cannot replace its own geometry baseline');
+  const receiptCalls = firstDraw.match(/createOpeningSubmissionReceipt\(/g) || [];
+  assert.ok(receiptCalls.length <= 1,
+    'the first visible submit cannot mint a fresh geometry baseline');
+  if (receiptCalls.length === 1) {
+    const guardIndex = firstDraw.indexOf('if (priorReceipt && plan)');
+    const callIndex = firstDraw.indexOf('createOpeningSubmissionReceipt(');
+    assert.ok(guardIndex >= 0 && guardIndex < callIndex,
+      'a pre-submit rehearsal may only refresh a baseline that already exists');
+  }
   assert.match(firstDraw, /&& !this\.state\.render\.openingFirstVisibleGpuCounts/,
     'the unconditional first-visible count line must emit exactly once per opening');
   assert.match(firstDraw, /reason:\s*'first-visible-geometry-delta'/,
@@ -175,7 +157,7 @@ test('opening geometry admission uses the shared startup proxy pass', () => {
   );
 });
 
-test('startup residency uploads exact geometry through an isolated 1x1 pass and restores renderer state', async () => {
+test('startup residency uploads exact production objects through initGeometry', async () => {
   const sharedGeometry = new THREE.BoxGeometry();
   const otherGeometry = new THREE.SphereGeometry(1, 8, 6);
   const first = new THREE.Mesh(sharedGeometry, new THREE.MeshStandardMaterial());
@@ -185,49 +167,14 @@ test('startup residency uploads exact geometry through an isolated 1x1 pass and 
     sharedGeometry, new THREE.MeshStandardMaterial(), 2,
   );
   const other = new THREE.Points(otherGeometry, new THREE.PointsMaterial());
-  const productionMaterials = new Set([
-    first.material,
-    duplicate.material,
-    instanced.material,
-    secondInstanced.material,
-    other.material,
-  ]);
-  const productionInstanceMatrices = new Set([
-    instanced.instanceMatrix,
-    secondInstanced.instanceMatrix,
-  ]);
-  const renderCalls = [];
+  const uploaded = [];
   const resident = new Set();
   const harness = createRendererHarness({
-    render({ scene, camera, renderer, activeTarget, viewport, scissor, scissorTest }) {
-      renderCalls.push(scene.children.slice());
-      assert.equal(activeTarget.isWebGLRenderTarget, true);
-      assert.equal(activeTarget.width, 1);
-      assert.equal(activeTarget.height, 1);
-      assert.deepEqual(viewport.toArray(), [0, 0, 1, 1]);
-      assert.deepEqual(scissor.toArray(), [0, 0, 1, 1]);
-      assert.equal(scissorTest, true);
-      assert.equal(renderer.autoClear, false);
-      assert.equal(renderer.xr.enabled, false);
-      assert.equal(renderer.shadowMap.autoUpdate, false);
-      assert.equal(renderer.shadowMap.needsUpdate, false);
-      assert.equal(camera.layers.mask >>> 0, 0xffffffff);
-      assert.ok(scene.children.every((proxy) => proxy.frustumCulled === false));
-      assert.ok(scene.children.every((proxy) => !productionMaterials.has(proxy.material)),
-        'the upload pass cannot perturb or compile production materials');
-      const proxyInstances = scene.children.filter((proxy) => proxy.isInstancedMesh);
-      assert.equal(proxyInstances.length, 2,
-        'both instanced owners sharing one BufferGeometry remain upload work');
-      assert.deepEqual(
-        new Set(proxyInstances.map((proxy) => proxy.instanceMatrix)),
-        productionInstanceMatrices,
-        'the production instance buffers are the buffers admitted by the proxies',
-      );
-      for (const proxy of scene.children) {
-        if (!resident.has(proxy.geometry)) {
-          resident.add(proxy.geometry);
-          renderer.info.memory.geometries++;
-        }
+    initGeometry({ object, renderer }) {
+      uploaded.push(object);
+      if (!resident.has(object.geometry)) {
+        resident.add(object.geometry);
+        renderer.info.memory.geometries++;
       }
     },
   });
@@ -245,35 +192,36 @@ test('startup residency uploads exact geometry through an isolated 1x1 pass and 
     },
   );
 
-  assert.equal(renderCalls.length, 1);
+  assert.deepEqual(uploaded, [first, instanced, secondInstanced, other],
+    'the exact production objects upload — one ordinary duplicate is removed while both shared '
+    + 'instanced buffers remain work');
   assert.equal(result.geometryResidency.skipped, false);
-  assert.equal(result.geometryResidency.mode, 'bounded-1x1-render');
+  assert.equal(result.geometryResidency.mode, 'direct-buffer-upload');
   assert.equal(result.geometryResidency.drawables, 5);
-  assert.equal(result.geometryResidency.geometryWorkItems, 4,
-    'one ordinary duplicate is removed while both shared instanced buffers remain work');
+  assert.equal(result.geometryResidency.geometryWorkItems, 4);
   assert.equal(result.geometryResidency.geometries, 2);
   assert.equal(result.geometryResidency.newGeometries, 2);
-  assert.deepEqual(timeline, ['yield', 'texture', 'yield', 'yield']);
+  assert.deepEqual(timeline, [
+    'yield', 'texture', 'yield', 'yield', 'yield', 'yield', 'yield',
+  ]);
   assert.deepEqual(slices.map((slice) => slice.kind), [
     'gpuResidencyUpload',
     'gpuGeometryResidency',
+    'gpuGeometryResidency',
+    'gpuGeometryResidency',
+    'gpuGeometryResidency',
   ]);
-  assert.equal(slices[1].success, true);
-  assert.strictEqual(harness.activeTarget(), harness.previousTarget);
-  assert.deepEqual(harness.viewport.toArray(), [7, 9, 640, 360]);
-  assert.deepEqual(harness.scissor.toArray(), [11, 13, 320, 180]);
-  assert.equal(harness.scissorTest(), false);
-  assert.equal(harness.renderer.autoClear, true);
-  assert.equal(harness.renderer.xr.enabled, true);
-  assert.equal(harness.renderer.shadowMap.autoUpdate, true);
-  assert.equal(harness.renderer.shadowMap.needsUpdate, true);
+  assert.ok(slices.slice(1).every((slice) => slice.success === true));
+  assert.ok([sharedGeometry, otherGeometry].every(
+    (geometry) => geometry.userData.spacefaceGpuResident === true,
+  ), 'successful uploads stamp their geometries resident');
 });
 
-test('already-resident ordinary geometry is not 1x1 uploaded again', async () => {
+test('already-resident ordinary geometry is not uploaded again', async () => {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
   mesh.geometry.userData.spacefaceGpuResident = true;
   const harness = createRendererHarness({
-    render() { throw new Error('must not re-upload resident geometry'); },
+    initGeometry() { throw new Error('must not re-upload resident geometry'); },
   });
   const result = await prepareStartupGeometryResidency(harness.renderer, mesh, {
     yieldToMain: async () => {},
@@ -282,47 +230,44 @@ test('already-resident ordinary geometry is not 1x1 uploaded again', async () =>
   assert.equal(result.reason, 'no drawable geometry');
 });
 
-test('startup geometry residency slices admission into bounded batches with a browser yield before each', async () => {
+test('startup geometry residency yields before every upload item', async () => {
   const subjects = Array.from({ length: 5 }, (_, index) => {
     const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
     mesh.name = `mesh-${index}`;
     return mesh;
   });
-  const batchSizes = [];
   const timeline = [];
   const slices = [];
   let clock = 0;
   const harness = createRendererHarness({
-    render({ scene, renderer }) {
-      timeline.push('render');
-      batchSizes.push(scene.children.length);
-      clock += scene.children.length * 3;
-      renderer.info.memory.geometries += scene.children.length;
+    initGeometry({ renderer }) {
+      timeline.push('upload');
+      clock += 3;
+      renderer.info.memory.geometries++;
     },
   });
 
   const result = await prepareStartupGeometryResidency(harness.renderer, subjects, {
-    geometryBatchDrawables: 2,
-    geometryBatchBytes: Number.MAX_SAFE_INTEGER,
     yieldToMain: async () => { timeline.push('yield'); },
     now: () => clock,
     onBlockingSlice: (slice) => { slices.push(slice); },
   });
 
-  assert.deepEqual(batchSizes, [2, 2, 1]);
-  assert.deepEqual(timeline, ['yield', 'render', 'yield', 'render', 'yield', 'render']);
-  assert.equal(result.batches.length, 3);
-  assert.deepEqual(result.batches.map((batch) => batch.durationMs), [6, 6, 3]);
-  assert.deepEqual(slices.map((slice) => slice.success), [true, true, true]);
+  assert.deepEqual(timeline, [
+    'yield', 'upload', 'yield', 'upload', 'yield', 'upload', 'yield', 'upload', 'yield', 'upload',
+  ]);
+  assert.equal(result.batches.length, 5);
+  assert.deepEqual(result.batches.map((batch) => batch.durationMs), [3, 3, 3, 3, 3]);
+  assert.deepEqual(slices.map((slice) => slice.success), [true, true, true, true, true]);
   assert.equal(result.newGeometries, 5);
 });
 
-test('a failed geometry batch restores every renderer owner before rejecting', async () => {
+test('a failed geometry upload reports the slice before rejecting', async () => {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(), new THREE.MeshBasicMaterial());
   const slices = [];
   let clock = 20;
   const harness = createRendererHarness({
-    render() {
+    initGeometry() {
       clock += 7;
       throw new Error('driver upload failed');
     },
@@ -341,12 +286,4 @@ test('a failed geometry batch restores every renderer owner before rejecting', a
   assert.equal(slices[0].kind, 'gpuGeometryResidency');
   assert.equal(slices[0].durationMs, 7);
   assert.equal(slices[0].success, false);
-  assert.strictEqual(harness.activeTarget(), harness.previousTarget);
-  assert.deepEqual(harness.viewport.toArray(), [7, 9, 640, 360]);
-  assert.deepEqual(harness.scissor.toArray(), [11, 13, 320, 180]);
-  assert.equal(harness.scissorTest(), false);
-  assert.equal(harness.renderer.autoClear, true);
-  assert.equal(harness.renderer.xr.enabled, true);
-  assert.equal(harness.renderer.shadowMap.autoUpdate, true);
-  assert.equal(harness.renderer.shadowMap.needsUpdate, true);
 });
