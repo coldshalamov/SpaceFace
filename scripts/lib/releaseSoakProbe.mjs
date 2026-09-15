@@ -664,6 +664,7 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
         // can attribute. The heartbeat keeps the distinction provable from the console stream.
         const traceState = { calls: 0, nullish: 0, logged: 0 };
         const callerCensus = new Map();
+        let delStackKeys = 0;
         // loseContext() kills the driver-side objects before Chrome flips isContextLost() — the
         // exact window where a query warns while still looking client-live. Mark the dead window
         // at the extension call itself so gap-window queries attribute instead of slipping through.
@@ -859,19 +860,21 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
             // pending post-link introspection lands on a program that was deleted mid-link.
             // Attributing who issues deletes pins the churn source the warnings race with.
             traceState.deletes = (traceState.deletes || 0) + 1;
-            const dStack = (new Error().stack || '').split('\n').slice(2, 8).join(' | ');
-            const dSeen = callerCensus.get('del:' + dStack) || 0;
-            if (dSeen < 4) {
-              callerCensus.set('del:' + dStack, dSeen + 1);
-              console.warn(`[gl-trace] deleteProgram #${dSeen + 1}`, {
-                t: Math.round(performance.now()),
-                deletes: traceState.deletes,
-                lostNow: forcedLost.has(this)
-                  || (typeof this.isContextLost === 'function' && this.isContextLost() === true),
-                stack: dStack,
-              });
-            } else {
-              callerCensus.set('del:' + dStack, dSeen + 1);
+            if (delStackKeys < 40) {
+              const dStack = (new Error().stack || '').split('\n').slice(2, 8).join(' | ');
+              const dKey = 'del:' + dStack;
+              const dSeen = callerCensus.get(dKey) || 0;
+              if (!callerCensus.has(dKey)) delStackKeys += 1;
+              callerCensus.set(dKey, dSeen + 1);
+              if (dSeen < 4) {
+                console.warn(`[gl-trace] deleteProgram #${dSeen + 1}`, {
+                  t: Math.round(performance.now()),
+                  deletes: traceState.deletes,
+                  lostNow: forcedLost.has(this)
+                    || (typeof this.isContextLost === 'function' && this.isContextLost() === true),
+                  stack: dStack,
+                });
+              }
             }
             return origDel.call(this, program);
           };
@@ -898,10 +901,13 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
                 result: result === null ? 'null' : result === undefined ? 'undefined' : typeof result,
                 stack: (new Error().stack || '').split('\n').slice(2, 10).join(' | '),
               });
-            } else if (pname === 0x8B82 /* LINK_STATUS */ || pname === 0x82B4 /* COMPLETION_STATUS_KHR */
-                || pname === 0x8B89 /* ACTIVE_ATTRIBUTES */ || pname === 0x8B86 /* ACTIVE_UNIFORMS */) {
+            } else if ((pname === 0x8B82 /* LINK_STATUS */ || pname === 0x82B4 /* COMPLETION_STATUS_KHR */
+                || pname === 0x8B89 /* ACTIVE_ATTRIBUTES */ || pname === 0x8B86 /* ACTIVE_UNIFORMS */)
+                && callerCensus.size < 40) {
               // Caller census: every program-status query gets logged once per unique stack, so a
               // warn-emitting call site can never hide behind a successful-looking return value.
+              // Stack capture stops once every caller is mapped — building Error().stack on all
+              // ~10k status queries costs seconds of main-thread time on a contended host.
               const stack = (new Error().stack || '').split('\n').slice(2, 8).join(' | ');
               const seen = callerCensus.get(stack) || 0;
               if (seen < 3) {
