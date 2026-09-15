@@ -952,10 +952,11 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
     // on restored velocity and can wedge inside the station silhouette with no prompt.
     const navArmed = await page.waitForFunction(() => {
       const nav = window.SF?.state?.nav;
-      // Instant arrivals (restored save inside the dock envelope) disarm the
-      // autopilot and can retire the waypoint before this poll runs — 'arrived'
-      // is the surviving receipt that the arm succeeded.
-      return nav?.autopilot?.active === true || nav?.autopilot?.status === 'arrived' || nav?.waypoint != null;
+      // Transition evidence only — 'arrived' status and a persisted waypoint can
+      // both be stale survivors of the previous cycle's approach, so neither a
+      // bare status read nor waypoint!=null proves THIS arm landed.
+      return nav?.autopilot?.active === true
+        || (nav?.waypoint != null && nav.waypoint !== window.__M6_PREV_WAYPOINT__);
     }, null, { timeout: 8_000 }).then(() => true).catch(() => false);
     assert(navArmed, 'redock waypoint did not arm nav.waypoint/autopilot — the ship would drift unpowered');
     mark('redock-waypoint');
@@ -971,6 +972,8 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       autopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status, label: state.nav.autopilot.label } : null,
       waypoint: state?.nav?.waypoint ? { kind: state.nav.waypoint.kind, label: state.nav.waypoint.label } : null,
       corridor: dc ? { phase: dc.phase, distToBerth: dc.distToBerth, distCenter: dc.distCenter, inCorridor: dc.inCorridor, inCapture: dc.inCapture, headingOk: dc.headingOk } : null,
+      sectorId: state?.world?.currentSectorId || null,
+      trail: (window.__M6_RELEASE_SOAK_TRAIL__ || []).slice(-40),
     };
   }).catch(() => null);
   let dockPromptVisible = await dockPrompt.waitFor({ state: 'visible', timeout: 60_000 })
@@ -1136,6 +1139,30 @@ async function armSaveLoadObservers(page) {
       window.SF.bus.on('dock:attempt', (p) => pushDock({ kind: 'attempt', stationId: p?.stationId || null }));
       window.SF.bus.on('dock:denied', (p) => pushDock({ kind: 'denied', stationId: p?.stationId || null, reason: p?.reason || null }));
       window.SF.bus.on('dock:range', (p) => pushDock({ kind: 'range', stationId: p?.stationId || null, inRange: !!p?.inRange }));
+      // Position/sector trail: a once-observed anomaly restored a clean pose then
+      // later read the player at -1.1M in sector_kepler_scar during the dock wait.
+      // The FAIL dump only saw the end state; a bounded trail names the tick the
+      // position jumped and the jump/executor state that owned it.
+      window.__M6_RELEASE_SOAK_TRAIL__ = [];
+      setInterval(() => {
+        const trail = window.__M6_RELEASE_SOAK_TRAIL__;
+        if (!trail) return;
+        if (trail.length >= 4000) trail.splice(0, 2000); // ring: keep the recent half
+        const s = window.SF?.state;
+        const p = s?.entities?.get?.(s.playerId);
+        if (!s || !p || !p.pos) return;
+        trail.push({
+          t: Math.round(performance.now()),
+          sector: s.world?.currentSectorId || null,
+          x: Math.round(p.pos.x), z: Math.round(p.pos.z),
+          v: Math.round(Math.hypot(Number(p.vel?.x || 0), Number(p.vel?.z || 0))),
+          mode: s.mode,
+          jump: s.jump?.state || null,
+          jumpTarget: s.jump?.targetSectorId || null,
+          exec: s.nav?.executor ? `${s.nav.executor.status}:${s.nav.executor.engaged}` : null,
+          ap: s.nav?.autopilot ? `${s.nav.autopilot.status}:${s.nav.autopilot.active}` : null,
+        });
+      }, 200);
     }
     // Autosaves fire on the sim clock every 120 s and will interleave over a long
     // soak; a one-shot observer bound to an autosave would snapshot the wrong write.
@@ -1210,6 +1237,10 @@ async function armHeliosWaypoint(page) {
 async function clickWaypointWithPointer(page, locator) {
   const deadline = Date.now() + 10_000;
   let lastBox = null;
+  // arm evidence must be a TRANSITION, not a state: autopilot status/label persist
+  // 'arrived'+'Helios Station' from the previous cycle's approach, so a bare status
+  // read short-circuits before any click lands and the map never closes.
+  await page.evaluate(() => { window.__M6_PREV_WAYPOINT__ = window.SF?.state?.nav?.waypoint || null; });
   while (Date.now() < deadline) {
     // Same fix as alphaLiveBaselineRoute.clickWaypointWithPointer: the button is
     // rendered under the chart layer until scrolled into the inspector's clear
@@ -1223,12 +1254,15 @@ async function clickWaypointWithPointer(page, locator) {
       await page.mouse.down({ button: 'left' });
       await page.mouse.up({ button: 'left' });
       const armed = await page.waitForFunction(() => {
-        const autopilot = window.SF?.state?.nav?.autopilot;
+        const nav = window.SF?.state?.nav;
+        const autopilot = nav?.autopilot;
         const label = /Helios Station/i.test(String(autopilot?.label || ''));
-        // A restored save inside the docking envelope can complete the arm→arrive
-        // round-trip in under a frame of polling: accept 'arrived' as arm evidence
-        // or the 750ms window races the instant completion and the click reads as missed.
-        return label && (autopilot?.active === true || autopilot?.status === 'arrived');
+        // Fresh arm: a still-active autopilot on the Helios label, or a NEW waypoint
+        // object — waypoint sets mint a fresh object each click, and an instant
+        // arm→arrive round-trip still leaves the new waypoint behind (local waypoints
+        // are not retired on arrival). Stale 'arrived' from a prior cycle is neither.
+        return (label && autopilot?.active === true)
+          || (nav?.waypoint != null && nav.waypoint !== window.__M6_PREV_WAYPOINT__);
       }, null, { timeout: 750 }).then(() => true, () => false);
       if (armed) return;
     }
