@@ -729,6 +729,80 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
             };
           }
         }
+        // Worker realms: init scripts never reach a blob Worker (the loading-terminal art runs
+        // a whole WebGL2 engine in one). Prepend a self-contained trap to any javascript blob
+        // minted through createObjectURL; inside the worker it counts program queries, logs
+        // rejections, and reports webglcontextlost — worker console.warn reaches Playwright,
+        // so the blob realm gets the same liveness authority the page realm has.
+        try {
+          const workerTrapSrc = `(() => {
+            const wState = { calls: 0, nullish: 0, creates: 0, links: 0, ctxLost: 0 };
+            const wT = () => Math.round(performance.now());
+            try {
+              setInterval(() => {
+                if (wState.calls !== wState.logged) {
+                  wState.logged = wState.calls;
+                  console.warn('[gl-trace-worker] heartbeat ' + JSON.stringify(wState));
+                }
+              }, 5000);
+            } catch (_) {}
+            if (typeof OffscreenCanvas === 'function' && OffscreenCanvas.prototype) {
+              const oGet = OffscreenCanvas.prototype.getContext;
+              OffscreenCanvas.prototype.getContext = function (kind, ...rest) {
+                const c = oGet.call(this, kind, ...rest);
+                if (c && /webgl/.test(String(kind))) {
+                  try {
+                    this.addEventListener('webglcontextlost', () => {
+                      wState.ctxLost += 1;
+                      console.warn('[gl-trace-worker] context lost t=' + wT() + ' ' + JSON.stringify(wState));
+                    }, false);
+                    console.warn('[gl-trace-worker] context created ' + kind + ' t=' + wT());
+                  } catch (_) {}
+                }
+                return c;
+              };
+            }
+            for (const n of ['WebGL2RenderingContext', 'WebGLRenderingContext']) {
+              const p = globalThis[n] && globalThis[n].prototype;
+              if (!p) continue;
+              if (typeof p.createProgram === 'function') {
+                const o = p.createProgram;
+                p.createProgram = function () { const r = o.call(this); if (r) wState.creates += 1; return r; };
+              }
+              if (typeof p.linkProgram === 'function') {
+                const o = p.linkProgram;
+                p.linkProgram = function (prog) { wState.links += 1; return o.call(this, prog); };
+              }
+              if (typeof p.getProgramParameter === 'function') {
+                const o = p.getProgramParameter;
+                p.getProgramParameter = function (prog, pname) {
+                  wState.calls += 1;
+                  const r = o.call(this, prog, pname);
+                  if (r == null) {
+                    wState.nullish += 1;
+                    console.warn('[gl-trace-worker] getProgramParameter rejected', {
+                      t: wT(), pname, state: { ...wState },
+                      stack: (new Error().stack || '').split('\\n').slice(2, 8).join(' | '),
+                    });
+                  }
+                  return r;
+                };
+              }
+            }
+            console.warn('[gl-trace-worker] trap installed t=' + wT());
+          })();`;
+          const origCreateObjectURL = URL.createObjectURL;
+          URL.createObjectURL = function createObjectURLTraced(part, ...rest) {
+            let target = part;
+            try {
+              if (typeof Blob === 'function' && target instanceof Blob
+                  && /javascript|ecmascript/i.test(target.type || '')) {
+                target = new Blob([workerTrapSrc, '\n', target], { type: target.type });
+              }
+            } catch (_) { /* tracing must never break blob creation */ }
+            return origCreateObjectURL.call(this, target, ...rest);
+          };
+        } catch (_) { /* worker coverage is best-effort */ }
         for (const protoName of ['WebGL2RenderingContext', 'WebGLRenderingContext']) {
           const proto = globalThis[protoName] && globalThis[protoName].prototype;
           if (!proto || typeof proto.getProgramParameter !== 'function') continue;
