@@ -244,12 +244,19 @@ export function syncAsteroidInstancePool(pool, options = {}) {
 
     const lodTiers = bucket.lodTiers;
     const slotCount = 1 + (lodTiers ? lodTiers.length : 0);
+    // Shadow casting is gated per slot by the nearest submitted record's axis distance to the
+    // player — the same visual rule instanceChunkSubmitPolicy applies to authored chunks. Far
+    // tier slots (nothing inside the cast radius) drop out of the depth pass entirely instead
+    // of rasterizing hundreds of invisible-at-range instances every shadow refresh.
+    const shadowGate = Number.isFinite(options.castRadius) && options.castRadius > 0
+      && Number.isFinite(options.playerX) && Number.isFinite(options.playerZ);
     // An invalid buffer owner cannot accept writes this frame — park the whole variant
     // (same contract as the single-slot path) and try again next sync.
     let anyOwnerInvalid = false;
     forEachBucketSlot(bucket, (slot) => {
       slot._submit = 0;
       slot._matrixDirty = false;
+      slot._nearestAxis = Infinity;
       if (slot.dynamicBufferOwner && slot.dynamicBufferOwner.invalid) anyOwnerInvalid = true;
     });
     if (anyOwnerInvalid) {
@@ -322,6 +329,12 @@ export function syncAsteroidInstancePool(pool, options = {}) {
       }
       slot.entityIds[submitted] = record.entityId;
       slot._submit = submitted + 1;
+      if (shadowGate) {
+        const dx = elements[12] - options.playerX;
+        const dz = elements[14] - options.playerZ;
+        const axis = Math.max(Math.abs(dx), Math.abs(dz));
+        if (axis < slot._nearestAxis) slot._nearestAxis = axis;
+      }
     }
 
     forEachBucketSlot(bucket, (slot) => {
@@ -331,6 +344,9 @@ export function syncAsteroidInstancePool(pool, options = {}) {
       if (dynamicBufferOwner) commitDynamicBufferOwner(dynamicBufferOwner, submitted);
       else slot.mesh.count = submitted;
       slot.mesh.visible = submitted > 0;
+      // Written unconditionally so an ungated sync (preview/test paths without player
+      // context) restores the authored default rather than inheriting a stale gate.
+      slot.mesh.castShadow = shadowGate ? slot._nearestAxis <= options.castRadius : true;
       const uploadDirty = slot._matrixDirty || (!dynamicBufferOwner && countChanged);
       if (uploadDirty) {
         if (!dynamicBufferOwner) slot.mesh.instanceMatrix.needsUpdate = true;

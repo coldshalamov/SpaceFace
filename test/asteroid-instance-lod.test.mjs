@@ -67,6 +67,28 @@ assert.equal(bucket.lodTiers[1].entityIds[0], 3, 'far rock submits through the l
 assert.equal(bucket.lodTiers[0].mesh.geometry, lod1Geometry);
 assert.equal(bucket.lodTiers[1].mesh.geometry, lod2Geometry);
 
+// Per-slot shadow gating: with the player at the origin and cast radius 50, the far tier's
+// only rock (x=90) drops out of the depth pass while the near and mid slots still cast.
+const gated = syncAsteroidInstancePool(pool, {
+  camera, viewportHeight: 900, playerX: 0, playerZ: 0, castRadius: 50,
+});
+assert.equal(gated.submitted, 3);
+assert.equal(bucket.mesh.castShadow, true, 'near slot still casts');
+assert.equal(bucket.lodTiers[0].mesh.castShadow, true, 'mid-distance slot still casts');
+assert.equal(bucket.lodTiers[1].mesh.castShadow, false, 'all-far slot leaves the shadow map');
+
+// Move the player next to the far rock — the nearest-instance rule flips the slots.
+const shifted = syncAsteroidInstancePool(pool, {
+  camera, viewportHeight: 900, playerX: 85, playerZ: 0, castRadius: 50,
+});
+assert.equal(shifted.submitted, 3);
+assert.equal(bucket.mesh.castShadow, false, 'near slot drops out once nothing is in radius');
+assert.equal(bucket.lodTiers[1].mesh.castShadow, true, 'far slot casts when the player closes');
+
+// Ungated options keep the authored default (cast) so preview/test paths never regress.
+syncAsteroidInstancePool(pool, { camera, viewportHeight: 900 });
+assert.equal(bucket.mesh.castShadow, true, 'no gate fields → authored default restores');
+
 const roots = collectAsteroidInstancePoolRoots(pool);
 assert.equal(roots.length, 3, 'roots include every populated tier mesh');
 

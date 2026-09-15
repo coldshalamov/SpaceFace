@@ -8832,6 +8832,22 @@ export const render = {
     options.records = this._entityFrame.asteroids;
     options.recordsDirty = this._presentationWorld.consumeAsteroidDirty();
     options.viewportHeight = this.renderer ? this.renderer.getDrawingBufferSize(_drawSize).y : 0;
+    // Per-slot shadow gating origin — same membrane-local convention as the authored
+    // instance path so pooled rocks follow the established cast-radius visual rule.
+    const shadowRadius = Number.isFinite(this._frameShadowCastRadius)
+      ? this._frameShadowCastRadius
+      : liveShadowCastRadius(this.state);
+    options.castRadius = shadowRadius;
+    options.playerX = 0;
+    options.playerZ = 0;
+    const player = this.state.playerId
+      ? (this.state.entities && this.state.entities.get(this.state.playerId))
+      : null;
+    if (player && player.pos && this._frameMembrane) {
+      const local = this._frameMembrane.toLocal(player.pos, _shadowLocalXZ);
+      options.playerX = local.x;
+      options.playerZ = local.z;
+    }
     const result = syncAsteroidInstancePool(this._asteroidInstancePool, options);
     if (result?.matrixUploads > 0) this._shadowMapDirty = true;
     if (this.state && this.state.render) this.state.render.asteroidInstancePool = result;
