@@ -19,7 +19,7 @@ import { ensureActivityClassified } from '../world/activityRuntime.js';
 import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
-import { qualifiedStuntWitnesses } from './titles.js';
+import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, witnessLineOfSight } from '../combat/stuntWitnesses.js';
 
 const BARK_SET = new Set(BARK_SITUATIONS);
 const VOICE_TTL_S = 1.2;
@@ -158,6 +158,7 @@ export const barkDirector = {
   name: 'barkDirector',
 
   init(ctx) {
+    this.destroy();
     this.state = ctx.state;
     this.bus = ctx.bus || null;
     this.helpers = ctx.helpers || {};
@@ -168,16 +169,27 @@ export const barkDirector = {
     // republishes it whenever a witnessed act attaches to the hull. Listening to that receipt keeps
     // this observer independent of system init order.
     this._onHullHistory = (payload) => this._speakHullRecognition(payload || {});
-    this._onStuntTrick = (payload) => this._speakStunt(payload && payload.trick ? payload.trick : payload || {});
+    this._onStuntTrick = payload => this._speakStunt(payload || {});
+    this._onStuntSurface = payload => this._stuntSurface(payload || {});
+    this._onStuntLoad = () => {
+      const record=stuntRecognitionRecord(ensureState(this.state));
+      for(const pending of record.pending)if(pending.status==='submitted')pending.status='queued';
+      record.safeSince=null;this._voiceBusyUntil=0;this._stuntDangerUntil=0;
+    };
+    this._onStuntLoad();
+    this._onStuntDamage = payload => { if ((payload.targetId ?? payload.victimId) === this.state?.playerId) this._stuntDangerUntil = (this.state.tick || 0) + 72; };
     this._onCargoSpilled = (payload) => this._speakCargoSpill(payload || {}, 'freight:cargoSpilled');
     this._onCargoJettisoned = (payload) => this._speakCargoSpill(payload || {}, 'cargo:jettisoned');
     this._onCargoKilled = (payload) => this._speakCargoSpill(payload || {}, 'entity:killed');
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('ai:flee', this._onFlee);
+      this.bus.on('save:loaded', this._onStuntLoad);
       this.bus.on('ai:reinforcementScheduled', this._onReinforcement);
       this.bus.on('combat:outcome', this._onCombatOutcome);
       this.bus.on('ship:livingHullChanged', this._onHullHistory);
-      this.bus.on('stunt:trickDetected', this._onStuntTrick);
+      this.bus.on('voice:surface', this._onStuntSurface);
+      this.bus.on('combat:damage', this._onStuntDamage);
+      this.bus.on('story:stuntIncidentUpdated', this._onStuntTrick);
       this.bus.on('story:stuntIncidentRecorded', this._onStuntTrick);
       this.bus.on('freight:cargoSpilled', this._onCargoSpilled);
       this.bus.on('cargo:jettisoned', this._onCargoJettisoned);
@@ -193,6 +205,7 @@ export const barkDirector = {
     if (state.mode && state.mode !== 'flight') return;
     ensureActivityClassified(state);
     ensureState(state);
+    this._advanceStuntBarks();
     const player = state.entities && state.entities.get && state.entities.get(state.playerId);
     const thinkOpts = {
       playerId: state.playerId,
@@ -204,6 +217,7 @@ export const barkDirector = {
     };
     forEachLivingWorldActor(state, (entity) => {
       if (!shouldOwnerThink(state.tick, entity, thinkOpts)) return;
+      this._queueKnownStunt(entity);
       const situation = classifyBarkSituation(entity, state);
       if (!situation) return;
       this._speak(entity, situation, 'state');
@@ -327,90 +341,143 @@ export const barkDirector = {
    */
   _speakStunt(payload) {
     const state = this.state;
-    if (!state || !payload) return null;
-    if (state.mode && state.mode !== 'flight') return null;
-
-    const playerId = state.playerId;
-    if (playerId == null || payload.actorId !== playerId) return null;
-
-    const run = state.run;
-    if (run && typeof run === 'object' && !Array.isArray(run) && run.kind && run.phase !== 'inactive') return null;
-
-    const consequence = payload.consequence;
-    if (!consequence || typeof consequence !== 'object' || consequence.victimId !== payload.targetId) return null;
-    if (consequence.killed !== true
-      && !(consequence.hullMax > 0 && consequence.hullDamage >= 0.25 * consequence.hullMax
-        && consequence.helmLossSeconds >= 1)) return null;
-    if (typeof payload.episodeId !== 'string' || payload.episodeId.length === 0) return null;
-
-    const own = ensureState(state);
-    const now = Number(state.simTime) || 0;
-    const record = stuntRecognitionRecord(own);
-    if (Number(record.nextAt) > now) return null;
-
-    const incident = findStuntIncident(state, payload.episodeId);
-    if (!incident || incident.barkDelivered === true) return null;
-
-    const witnesses = qualifiedStuntWitnesses(state, payload)
-      .slice()
-      .sort((a, b) => (String(a.id) < String(b.id) ? -1 : String(a.id) > String(b.id) ? 1 : 0));
-    const witnessId = witnesses.length > 0 ? witnesses[0].id : null;
-    const witness = witnessId != null && state.entities && typeof state.entities.get === 'function'
-      ? state.entities.get(witnessId)
-      : null;
+    if (!state || !adventureStunts(state)) return null;
+    const incident = payload.incident || findStuntIncident(state, payload.episodeId);
+    if (!incident || !['witnessed', 'reported'].includes(incident.visibility)) return null;
+    const record = stuntRecognitionRecord(ensureState(state));
+    if (['delivered', 'suppressed'].includes(incident.barkStatus) || record.deliveredIds.includes(incident.id)) return null;
+    if (record.pending.some(p => p.incidentId === incident.id)) return null;
+    const witness = (incident.witnesses || []).find(w => {
+      const profile=observerProfile(state, state.entities?.get?.(w.id));
+      return completeWitness(w) && profile?.canSpeak && profile.lifeId===w.lifeId;
+    });
     if (!witness) return null;
+    const title = (incident.titleIds || []).map(id => state.story.titles.byId[id]).find(t => t?.knownWitnesses?.includes(witness.identity));
+    const rule = title && STUNT_TITLE_RULES.find(r => r.id === title.titleId);
+    const lines = STUNT_SITUATION_LINES[incident.trickId] || ['That changed the fight.', 'I saw that impact.', 'Keep clear.'];
+    const text = rule?.bark || lines[witness.role === 'hostile' ? 2 : witness.role === 'patrol' ? 0 : 1];
+    const first = !!title || !(state.story.titles.stuntIncidents || []).some(i => i.id !== incident.id && i.trickId === incident.trickId && i.barkDelivered);
+    const queued = { id: `stunt:${incident.id}:${witness.identity}`, incidentId: incident.id, speakerId: witness.id,
+      speakerIdentity: witness.identity, speakerLife: witness.lifeId, speakerName: witness.name, factionId: witness.factionId, trickId: incident.trickId,
+      title: title?.title || null, titleId: title?.titleId || null, text, first, tick: state.tick,
+      eligibleTick: state.tick, expiresTick: state.tick + (first ? 3600 : 720), status: 'queued', encounterId: incident.encounterId };
+    if(!record.pending.length)record.safeSince=null;
+    record.pending.push(queued);
+    record.pending.sort((a,b) => Number(b.first) - Number(a.first) || a.tick - b.tick);
+    if (record.pending.length > 8) {
+      const dropped = record.pending.pop();
+      const old = findStuntIncident(state, dropped.incidentId); if (old) old.barkStatus = 'expired';
+    }
+    incident.barkStatus = 'queued';
+    return queued;
+  },
 
-    const voice = this.helpers && this.helpers.voice;
-    if (!voice || typeof voice.say !== 'function') return null;
+  _queueKnownStunt(entity) {
+    const state = this.state;
+    if (!adventureStunts(state) || !entity?.alive || entity.id === state.playerId) return;
+    const profile = observerProfile(state, entity), player = state.entities?.get?.(state.playerId);
+    if (!profile?.canSpeak || !player?.pos || Math.hypot(entity.pos.x-player.pos.x, entity.pos.z-player.pos.z) > profile.range
+      || !witnessLineOfSight(state, entity, player.pos, [player.id])) return;
+    const record = stuntRecognitionRecord(ensureState(state));
+    const encounter = incidentIdentity(state,{}).encounterId ?? entity.data?.encounter?.id ?? entity.data?.encounterId ?? null;
+    if (encounter == null) return;
+    const speaker = record.speakers[profile.identity] ||= { titleEncounter: null, lines: [] };
+    if (speaker.titleEncounter === encounter || record.pending.some(p => p.speakerIdentity === profile.identity)) return;
+    const known = knownStuntTitles(state, entity);
+    const title = known.find(t => !speaker.lines.slice(-3).some(l => l.titleId === t.titleId));
+    if (!title) return;
+    const rule = STUNT_TITLE_RULES.find(r => r.id === title.titleId); if (!rule) return;
+    if (record.pending.length >= 8) return;
+    record.pending.push({ id: `stunt:recognition:${profile.identity}:${encounter}:${title.titleId}`,
+      incidentId: title.citations?.[0]?.incidentId, recognition: true, speakerId: entity.id,
+      speakerIdentity: profile.identity, speakerLife: profile.lifeId, speakerName: profile.name, factionId: profile.factionId,
+      trickId: title.trickId, title: title.title, titleId: title.titleId, text: rule.bark,
+      tick: state.tick, eligibleTick: state.tick, expiresTick: state.tick + 720, status: 'queued', encounterId: encounter });
+    speaker.titleEncounter = encounter;
+    const keys = Object.keys(record.speakers); if (keys.length > 32) delete record.speakers[keys[0]];
+  },
 
-    const factionId = factionFor(witness);
-    const trickId = String(payload.trickId || 'stunt');
-    const titles = state.story && state.story.titles;
-    const held = titles && titles.byId && titles.byId[`title_${trickId}`];
-    const title = held && held.status === 'held' && held.title
-      ? String(held.title)
-      : String(payload.title || payload.name || humanizeId(trickId, 'Stunt'));
+  _advanceStuntBarks() {
+    const state = this.state; if (!adventureStunts(state)) return;
+    const record = stuntRecognitionRecord(ensureState(state)), tick = state.tick || 0;
+    record.recentTicks = record.recentTicks.filter(t => tick-t < 3600);
+    for (const queued of record.pending.slice()) if (tick > queued.expiresTick) {
+      record.pending.splice(record.pending.indexOf(queued), 1);
+      const incident = findStuntIncident(state, queued.incidentId); if (incident && !queued.recognition) incident.barkStatus = 'expired';
+    }
+    if (!record.pending.length || tick < (record.nextTick || 0) || record.recentTicks.length >= 3) return;
+    const queued = record.pending[0];
+    if (queued.status === 'submitted') {
+      if(tick-(queued.submittedTick??tick)<=180)return;
+      queued.status='queued';record.safeSince=null;
+    }
+    const speaker = state.entities?.get?.(queued.speakerId);
+    const profile=observerProfile(state,speaker);
+    if (!profile?.canSpeak || profile.lifeId!==queued.speakerLife) return;
+    const audio = state.settings?.audio || {}, accessibility = state.settings?.accessibility || {};
+    const voiceOn = audio.muted !== true && audio.master !== 0 && audio.voice !== 0 && audio.comms !== 0;
+    const transcriptOn = accessibility.captions !== false;
+    const incident = findStuntIncident(state, queued.incidentId);
+    if (!voiceOn && !transcriptOn) {
+      queued.status = 'suppressed'; record.pending.shift(); record.deliveredIds.push(queued.incidentId);
+      if(record.deliveredIds.length>128)record.deliveredIds.shift();
+      if (incident && !queued.recognition) { incident.barkStatus = 'suppressed'; incident.barkSuppression = 'suppressed by player setting'; }
+      return;
+    }
+    const player = state.entities?.get?.(state.playerId);
+    let danger = tick < (this._stuntDangerUntil || 0) || tick < (this._voiceBusyUntil || 0) || state.onboarding?.active && !state.onboarding?.finished;
+    if (player?.pos) for (const e of state.entities.values()) {
+      if (!e.alive || !['bullet','projectile','missile'].includes(e.type) || (e.ownerId ?? e.data?.ownerId) === state.playerId || !e.pos) continue;
+      const rx=e.pos.x-player.pos.x, rz=e.pos.z-player.pos.z, vx=(e.vel?.x||0)-(player.vel?.x||0), vz=(e.vel?.z||0)-(player.vel?.z||0);
+      const square=vx*vx+vz*vz, t=square?-(rx*vx+rz*vz)/square:-1;
+      if (t>=0&&t<=2&&Math.hypot(rx+vx*t,rz+vz*t)<(player.radius||12)+(e.radius||2)) { danger=true;break; }
+    }
+    if (danger) { record.safeSince = null; return; }
+    if (record.safeSince == null) record.safeSince = tick;
+    if (tick-record.safeSince < 72 || tick < queued.eligibleTick) return;
+    if (!voiceOn && transcriptOn) {
+      this._emit('comms:popup', { sender: queued.speakerName, text: queued.text, category: 'ambient', factionId: queued.factionId });
+      this._completeStuntBark(queued, 'transcript');
+      return;
+    }
+    const voice = this.helpers?.voice;
+    if (!voice?.say) return;
+    queued.status = 'submitted';
+    queued.submittedTick=tick;
+    if (incident && !queued.recognition) incident.barkStatus = 'submitted';
+    if (!voice.say({ channel: 'bark', text: queued.text, kind: 'stuntRecognition', ttl: 3, id: queued.id, factionId: queued.factionId })) {
+      queued.status = 'queued'; if (incident && !queued.recognition) incident.barkStatus = 'queued';
+    }
+  },
 
-    const seed = state.meta && state.meta.seed;
-    const index = hash32(seed == null ? 0 : seed, 'stuntRecognition', String(witness.id), String(payload.episodeId));
-    const text = stuntRecognitionBarkFor(factionId, index, { title });
+  _stuntSurface(payload) {
+    this._voiceBusyUntil = (this.state?.tick || 0) + Math.ceil((payload.ttl || 1.2)*60);
+    const record = stuntRecognitionRecord(ensureState(this.state));
+    const queued = record.pending.find(p => p.id === payload.id && p.status === 'submitted');
+    if (queued) this._completeStuntBark(queued, 'voice');
+  },
 
-    const accepted = voice.say({
-      channel: 'bark',
-      text,
-      kind: 'stuntRecognition',
-      ttl: STUNT_RECOGNITION_TTL_S,
-      id: `stuntRecognition:${witness.id}:${trickId}:${now}`,
-      factionId,
-    });
-    if (!accepted) return null;
-
-    record.lastAt = now;
-    record.nextAt = now + STUNT_RECOGNITION_GAP_S;
-    record.lastEntityId = witness.id;
-    record.count = Math.min(Number.MAX_SAFE_INTEGER, (Number(record.count) || 0) + 1);
-    incident.barkDelivered = true;
-
-    const receipt = {
-      entityId: witness.id,
-      factionId,
-      trickId,
-      title,
-      text,
-      t: now,
-    };
-    this._emit('barkDirector:voice', {
-      entityId: witness.id,
-      situation: 'stunt-recognition',
-      reason: trickId,
-      text,
-      factionId,
-      t: now,
-      trickId,
-      title,
-    });
+  _completeStuntBark(queued, channel) {
+    const state = this.state, record = stuntRecognitionRecord(ensureState(state)), tick = state.tick || 0;
+    if (!record.pending.includes(queued)) return;
+    queued.status = 'delivered'; queued.deliveryTick = tick;
+    record.pending.splice(record.pending.indexOf(queued), 1);
+    record.lastAt = tick/60; record.nextAt = tick/60+8; record.nextTick = tick+480;
+    record.count = (record.count || 0)+1; record.recentTicks.push(tick);
+    if (!queued.recognition) record.deliveredIds.push(queued.incidentId);
+    if (record.deliveredIds.length > 128) record.deliveredIds.shift();
+    const speaker = record.speakers[queued.speakerIdentity] ||= { titleEncounter: null, lines: [] };
+    speaker.titleEncounter = queued.encounterId; speaker.lines.push({ titleId: queued.titleId, text: queued.text, encounterId: queued.encounterId });
+    if (speaker.lines.length>3) speaker.lines.shift();
+    const incident = findStuntIncident(state, queued.incidentId);
+    if (incident && !queued.recognition) { incident.barkDelivered = true; incident.barkStatus = 'delivered'; incident.barkDeliveryTick = tick; incident.barkChannel = channel; }
+    const receipt = { entityId: queued.speakerId, factionId: queued.factionId, trickId: queued.trickId, title: queued.title,
+      incidentId: queued.incidentId, text: queued.text, t: tick/60, channel };
+    if (channel === 'voice') {
+      this._emit('barkDirector:voice', { ...receipt, situation: 'stunt-recognition' });
+      if (state.settings?.accessibility?.captions !== false) this._emit('comms:popup', { sender: queued.speakerName, text: queued.text, category: 'ambient', _viaVoice: true });
+    }
     this._emit('barkDirector:stuntRecognition', receipt);
-    return receipt;
   },
 
   /** Closest eligible NPC hull inside the live authority radius; ties break on the lower id. */
@@ -558,7 +625,10 @@ export const barkDirector = {
       if (this._onReinforcement) this.bus.off('ai:reinforcementScheduled', this._onReinforcement);
       if (this._onCombatOutcome) this.bus.off('combat:outcome', this._onCombatOutcome);
       if (this._onHullHistory) this.bus.off('ship:livingHullChanged', this._onHullHistory);
-      if (this._onStuntTrick) this.bus.off('stunt:trickDetected', this._onStuntTrick);
+      if (this._onStuntSurface) this.bus.off('voice:surface', this._onStuntSurface);
+      if (this._onStuntLoad) this.bus.off('save:loaded', this._onStuntLoad);
+      if (this._onStuntDamage) this.bus.off('combat:damage', this._onStuntDamage);
+      if (this._onStuntTrick) this.bus.off('story:stuntIncidentUpdated', this._onStuntTrick);
       if (this._onStuntTrick) this.bus.off('story:stuntIncidentRecorded', this._onStuntTrick);
       if (this._onCargoSpilled) this.bus.off('freight:cargoSpilled', this._onCargoSpilled);
       if (this._onCargoJettisoned) this.bus.off('cargo:jettisoned', this._onCargoJettisoned);
@@ -772,7 +842,7 @@ function hullRecognitionRecord(own) {
 }
 
 function freshStuntRecognition() {
-  return { lastAt: 0, nextAt: 0, lastEntityId: null, count: 0 };
+  return { lastAt: 0, nextAt: 0, lastEntityId: null, count: 0, pending: [], recentTicks: [], deliveredIds: [], speakers: {}, safeSince: null };
 }
 
 function findStuntIncident(state, episodeId) {
@@ -785,7 +855,9 @@ function stuntRecognitionRecord(own) {
   if (!own.stuntRecognition || typeof own.stuntRecognition !== 'object') {
     own.stuntRecognition = freshStuntRecognition();
   }
-  return own.stuntRecognition;
+  const record = own.stuntRecognition;
+  record.pending ||= []; record.recentTicks ||= []; record.deliveredIds ||= []; record.speakers ||= {};
+  return record;
 }
 
 function ensureState(state) {

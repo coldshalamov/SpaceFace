@@ -360,6 +360,7 @@ function makeCandidate(seed, input, gateOpen) {
   };
   if (input.type === 'loss') candidate.playerCaused = input.playerCaused === true;
   if (input.trickId) candidate.trickId = input.trickId;
+  if (input.stuntDetail) candidate.stuntDetail = input.stuntDetail;
   if (input.tokens) candidate.tokens = { ...input.tokens };
   if (input.cause) candidate.cause = text(input.cause, '');
   if (input.beat) candidate.beat = text(input.beat, '');
@@ -635,21 +636,45 @@ function collectCandidates(state) {
     && state.story.titles.stuntIncidents);
   for (const record of stuntIncidents) {
     if (!record || record.id == null) continue;
+    const source=text(record.sourceName,'the released body'),target=text(record.targetName,'the target');
+    const account={
+      bolas:`released ${source} under load into ${target}`,
+      wrecking_ball:`swung the attached ${source} into ${target}`,
+      clothesline:`loaded a tether across ${target}'s path`,
+      tow_kill:`towed ${source} into a fatal collision`,
+      rock_discovery:`redirected ${source} into terrain`,
+      well_golf:`sent ${source} through a gravity field into ${target}`,
+      dead_mans_mass:`put the wreck ${source} back in motion against ${target}`,
+      bank_job:`banked a shot around cover into ${target}`,
+      return_to_sender:`returned hostile ordnance to its attacker ${target}`,
+      kickstart:record.escaped?'rode an explosion clear of an incoming threat':`spent blast momentum against ${target}`,
+      needle_thread:'escaped an incoming threat through a moving gap',
+      one_two:`corrected ${source}'s path with a second intervention into ${target}`,
+      slingshot_golf:`passed ${source} from a loaded tether through gravity into ${target}`,
+      near_miss:'changed course and cleared an incoming threat',
+    }[record.trickId] || `completed ${text(record.name || record.trickId,'a stunt')}`;
+    const names=record.witnessNames||(record.witnesses||[]).filter(w=>w.sourceTicks>=6&&w.transferTicks>=6&&w.payoffTicks>=6).map(w=>text(w.name,'unnamed observer'));
+    const evidence=record.visibility==='reported'
+      ? `report delivered to ${(record.reportedNetworks||[]).map(n=>text(n)).join(', ') || 'a recorded network'}`
+      : record.visibility==='witnessed'?`locally witnessed${names.length?` by ${names.join(', ')}`:''}; no delivered public report`
+      : 'private recording; no independent witness';
     add({
       type: 'stunt',
       sourceId: `stunt:${record.id}`,
       sourceKind: 'story.titles.stuntIncidents',
       at: record.tick != null ? record.tick / 60 : record.at,
       trickId: record.trickId,
+      stuntDetail: { incidentId:record.id,rootId:record.rootId,pilotId:record.pilotId,shipId:record.shipId,
+        visibility:record.visibility,chain:record.chain||[],witnesses:record.witnesses||[],reports:record.reports||[],
+        titleIds:record.titleIds||[],barkStatus:record.barkStatus||'unqualified',detailRetained:record.detailRetained!==false },
       tokens: {
         ship: text(record.shipName, 'the ship'),
         trick: text(record.name || record.trickId, 'a stunt'),
         target: text(record.targetName, 'the target'),
         outcome: text(record.outcome, 'faced the consequences'),
+        account,
         sector: sectorName(record.sectorId),
-        evidence: record.visibility === 'witnessed'
-          ? 'independently witnessed'
-          : 'private recording; no independent witness',
+        evidence,
       },
     });
   }
