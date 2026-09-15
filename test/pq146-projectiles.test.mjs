@@ -29,3 +29,22 @@ s.projectile=s.fire(s.player,0,{bank:true});s.step(25);return s;}
 test('Bank Job: real flight, emitted shot, physical reflection, cover and routed kill',async()=>{const s=await bankScene();try{const hits=s.events.filter(e=>e.k==='projectile:hit');assert.ok(hits.length>=2,JSON.stringify(hits.map(e=>[e.p.targetId,e.p.pos])));assert.equal(s.target.alive,false);const receipts=s.events.filter(e=>e.k==='combat:projectileConsequence');assert.equal(receipts.length,1,JSON.stringify({shots:journalFor(s.state).projectiles.shots,contacts:journalFor(s.state).projectiles.contacts}));const tricks=s.events.filter(e=>e.k==='stunt:trickDetected');assert.equal(tricks.length,1);assert.equal(tricks[0].p.trickId,'bank_job');assert.equal(tricks[0].p.actorId,0);assert.equal(s.state.physicsRuntime.diagnostics.backend,'rapier-dynamic');}finally{s.close();}});
 test('stationary/straight flight automatic banks and uncovered targets do not award',async()=>{for(const options of [{fly:false},{cover:false}]){const s=await bankScene(options);try{assert.equal(s.target.alive,false,'ordinary reflected damage remains lethal');assert.equal(s.events.filter(e=>e.k==='stunt:trickDetected').length,0,JSON.stringify(options));}finally{s.close();}}});
 test('Return to Sender: actual hostile emission and applied Rapier impulse return the same bullet',async()=>{const s=await scene();try{s.player.pos.z=100;const owner=s.spawn({type:'ship',team:1,pos:{x:200,z:0},radius:5,mass:16,hull:100,hullMax:100,data:{encounter:{id:'return-proof'}}});const q=s.fire(owner,Math.PI);s.step(8);const originalOwnerLife=bodyLife(owner,s.state).id;const before=q.vel.x;s.sim._sg02.applyImpulse({entityId:q.id,impulse:{x:-2*before*q.mass,z:0},provenance:{actorId:0},tick:s.state.tick,reason:'impulse_charge'});assert.equal(q.ownerId,0);assert.equal(q.data.stuntProjectile.originalOwnerLife,originalOwnerLife);s.step(20);assert.equal(owner.alive,false);const tricks=s.events.filter(e=>e.k==='stunt:trickDetected');assert.equal(tricks.length,1,JSON.stringify({shots:journalFor(s.state).projectiles.shots,contacts:journalFor(s.state).projectiles.contacts}));assert.equal(tricks[0].p.trickId,'return_to_sender');assert.equal(tricks[0].p.secondaryIds[0],q.id);s.bus.emit('entity:killed',{id:owner.id,killerId:0});assert.equal(s.events.filter(e=>e.k==='stunt:trickDetected').length,1);}finally{s.close();}});
+test('consumed projectile contacts survive a save as consumed; a pending shot restores only onto its own body',async()=>{const s=await bankScene();try{
+  const before=s.events.filter(e=>e.k==='combat:projectileConsequence').length;assert.equal(before,1);
+  const raw=serializeProjectileEvidence(s.state);const consumed=Object.values(raw.contacts).filter(c=>c.emitted);
+  assert.equal(consumed.length,1,'the bank kill is a consumed contact record');assert.ok(consumed[0].death&&consumed[0].damage);
+  assert.ok(Object.keys(raw.shots).length>=1);
+  restoreProjectileEvidence(s.state,structuredClone(raw));
+  const record=journalFor(s.state).projectiles;
+  assert.equal(Object.values(record.contacts).filter(c=>c.emitted).length,1,'the consumed record is restored as consumed');
+  assert.deepEqual(record.playerHistory,[]);assert.deepEqual(record.surfaceHistory,{});
+  // Replaying the routed death for the same target cannot publish the consequence again.
+  s.bus.emit('entity:killed',{id:s.target.id,killerId:0});s.bus.emit('combat:damage',{targetId:s.target.id,attackerId:0,hullDamage:50,before:{hull:100},after:{hull:50},origin:{stuntProjectileContactId:consumed[0].id,projectileLifeId:consumed[0].projectileLife}});
+  assert.equal(s.events.filter(e=>e.k==='combat:projectileConsequence').length,1);
+  assert.equal(s.events.filter(e=>e.k==='stunt:trickDetected').length,1);
+  // A shot whose body no longer matches its saved life is dropped instead of inheriting provenance.
+  const moved=structuredClone(raw);for(const shot of Object.values(moved.shots))shot.lifeId='life:forged';
+  restoreProjectileEvidence(s.state,moved);
+  assert.equal(Object.keys(journalFor(s.state).projectiles.shots).length,0);
+  assert.equal(Object.keys(journalFor(s.state).projectiles.contacts).length,0,'contacts without their shot are dropped with it');
+}finally{s.close();}});

@@ -10,6 +10,34 @@ import { serializeProjectileEvidence, restoreProjectileEvidence, pendingProjecti
 import { bankIfQuiet, createComboState, recordKill, recordTrick, recordBridge, resetRound, settleCrash } from './stuntCombo.js';
 export const STUNT_SYSTEM_SCHEMA_VERSION=2;
 export const MAX_RECENT_TRICKS=64;
+/** New saved narrative/provenance payload beyond the world's physical state: at most 512 KiB. */
+export const STUNT_SAVE_PAYLOAD_LIMIT=512*1024;
+const payloadBytes=record=>JSON.stringify(record).length;
+// Compaction ladder, cheapest truth loss first. Histories are resampled after load; incident and
+// trick rows lose only their oldest entries; an unresolved chain is never declared complete.
+const COMPACTION_STEPS=[
+  ['histories',r=>{if(r.flight)r.flight.history=[];if(r.projectiles){r.projectiles.playerHistory=[];r.projectiles.surfaceHistory={};}}],
+  ['banks',r=>{const combo=r.state?.combo;if(!combo)return;combo.banks=(combo.banks??[]).slice(-2);combo.lastTricks=(combo.lastTricks??[]).slice(-4);
+    for(const bank of combo.banks)for(const act of bank.acts??[])act.evidence=(act.evidence??[]).slice(0,3);}],
+  ['incidents',r=>{if(r.detector)r.detector.incidents=(r.detector.incidents??[]).slice(-64);r.state.recentTricks=(r.state.recentTricks??[]).slice(-16);}],
+  ['chains',r=>{for(const [,incident] of r.detector?.incidents??[])incident.causeChain=(incident.causeChain??[]).slice(0,4);
+    for(const trick of r.state.recentTricks??[])trick.causeChain=(trick.causeChain??[]).slice(0,4);}],
+  ['contacts',r=>{if(r.projectiles)for(const [id,c] of Object.entries(r.projectiles.contacts??{}))if(c.emitted)delete r.projectiles.contacts[id];}],
+  ['incidents-min',r=>{if(r.detector)r.detector.incidents=(r.detector.incidents??[]).slice(-16);r.state.recentTricks=(r.state.recentTricks??[]).slice(-4);}],
+];
+export function boundStuntSavePayload(record,limit=STUNT_SAVE_PAYLOAD_LIMIT) {
+  if(!record||typeof record!=='object')return record;
+  let bytes=payloadBytes(record);
+  if(bytes<=limit)return record;
+  record.compacted=[];
+  for(const [name,step] of COMPACTION_STEPS) {
+    step(record);record.compacted.push(name);
+    bytes=payloadBytes(record);
+    if(bytes<=limit)break;
+  }
+  record.payloadBytes=bytes;record.payloadLimit=limit;
+  return record;
+}
 function ensure(state) {
   if(!state.stunts || state.stunts.schemaVersion!==2) state.stunts={...state.stunts,schemaVersion:2,recentTricks:[],totalTricksDetected:0,tricksByRarity:{common:0,uncommon:0,rare:0,legendary:0},combo:createComboState(),pay:{credits:0,reputation:0,salvageRights:0}};
   return state.stunts;
@@ -28,7 +56,7 @@ export const stuntGrammar={
   destroy() { for(const off of this._unsubs??[])off();this._unsubs=[];unbindStuntEvidence(this.state);this.detector=null; },
   serialize() {
     const s=this.state;if(s.run?.kind==='survival'&&s.run.phase!=='inactive')return null;
-    return structuredClone({revision:2,mode:'adventure',state:ensure(s),evidence:serializeStuntEvidence(s,pendingProjectileBodyIds(s)),projectiles:serializeProjectileEvidence(s),detector:this.detector.serialize(),flight:this.flight.serialize()});
+    return boundStuntSavePayload(structuredClone({revision:2,mode:'adventure',state:ensure(s),evidence:serializeStuntEvidence(s,pendingProjectileBodyIds(s)),projectiles:serializeProjectileEvidence(s),detector:this.detector.serialize(),flight:this.flight.serialize()}));
   },
   deserialize(raw,remap=null) {
     const s=this.state;

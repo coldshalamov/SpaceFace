@@ -126,3 +126,26 @@ test('serialize is null during a live Survival run and a full adventure record o
   assert.equal(adventure.state.stunts.schemaVersion, 2);
   adventure.grammar.destroy();
 });
+
+test('the saved narrative payload is bounded to 512 KiB by compacting histories and oldest rows, never by inventing completion', async () => {
+  const { STUNT_SAVE_PAYLOAD_LIMIT, boundStuntSavePayload } = await import('../src/systems/stuntGrammar.js');
+  const h = boot({ survival: false });
+  const fat = i => ({ schemaVersion: 2, trickId: 'bolas', episodeId: `root:${i}`, rootId: `root:${i}`, tick: 1000 + i, rootTick: 900 + i, amendmentDeadline: 1180 + i,
+    victimLives: [{ lifeId: `life:${i}`, threatClass: 'fodder', dead: true }], modifiers: { razorRelease: null, collateralCount: 1, closeShave: false },
+    causeChain: Array.from({ length: 32 }, (_, k) => ({ step: k + 1, kind: 'contact', tick: 900 + i + k, pos: { x: k * 1.2345678, z: k * 2.3456789 }, before: { x: 1.1111111, z: 2.2222222 }, after: { x: 3.3333333, z: 4.4444444 }, normal: { x: 0.7071067, z: 0.7071067 }, note: 'x'.repeat(64) })) });
+  for (let i = 0; i < 256; i++) h.grammar.detector.incidents.set(`root:${i}`, fat(i));
+  for (let i = 0; i < 64; i++) h.state.stunts.recentTricks.push(fat(1000 + i));
+  for (let i = 0; i < 121; i++) h.grammar.flight.history.push({ tick: i, pos: { x: i, z: i }, vel: { x: 1, z: 1 }, bodies: Array.from({ length: 32 }, (_, k) => ({ id: k, pos: { x: k, z: k }, vel: { x: 0, z: 0 }, radius: 6 })) });
+  const raw = JSON.stringify({ revision: 2, mode: 'adventure', state: h.state.stunts, detector: h.grammar.detector.serialize(), flight: h.grammar.flight.serialize() }).length;
+  assert.ok(raw > STUNT_SAVE_PAYLOAD_LIMIT, `the fixture must actually exceed the cap (${raw})`);
+  const saved = h.grammar.serialize();
+  assert.ok(JSON.stringify(saved).length <= STUNT_SAVE_PAYLOAD_LIMIT, `bounded: ${JSON.stringify(saved).length}`);
+  assert.ok(Array.isArray(saved.compacted) && saved.compacted[0] === 'histories', JSON.stringify(saved.compacted));
+  assert.ok(saved.detector.incidents.length <= 256 && saved.detector.incidents.at(-1)[0] === 'root:255', 'the newest incidents survive');
+  assert.deepEqual(saved.flight.history, []);
+  h.grammar.deserialize(saved);
+  assert.ok(h.grammar.detector.incidents.has('root:255'));
+  assert.equal(h.grammar.detector.incidents.has('root:0'), saved.detector.incidents.some(([id]) => id === 'root:0'));
+  assert.equal(boundStuntSavePayload({ small: true }).compacted, undefined, 'a payload under the cap is untouched');
+  h.grammar.destroy();
+});
