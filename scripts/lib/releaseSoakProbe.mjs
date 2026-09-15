@@ -1281,17 +1281,53 @@ async function armSaveLoadObservers(page) {
 }
 
 async function armHeliosWaypoint(page) {
-  await page.keyboard.press('KeyN');
-  await page.locator('#sf-galaxymap').waitFor({ state: 'visible', timeout: 20_000 });
-  await page.keyboard.press('/');
-  await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
-  await page.keyboard.press('Control+A');
-  await page.keyboard.type('Helios Station');
-  await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first().waitFor({ state: 'visible', timeout: 10_000 });
-  await page.keyboard.press('Enter');
-  const button = page.getByRole('button', { name: 'Set Waypoint', exact: true });
-  await button.waitFor({ state: 'visible', timeout: 10_000 });
-  await clickWaypointWithPointer(page, button);
+  const deadline = Date.now() + 45_000;
+  let lastError = null;
+  while (Date.now() < deadline) {
+    // KeyN toggles the chart — press it only when it is not already open (a failed
+    // attempt leaves it open; a successful non-Helios arm can also pop it closed).
+    const mapVisible = await page.locator('#sf-galaxymap').isVisible().catch(() => false);
+    if (!mapVisible) {
+      await page.keyboard.press('KeyN');
+      await page.locator('#sf-galaxymap').waitFor({ state: 'visible', timeout: 20_000 });
+    }
+    await page.keyboard.press('/');
+    await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
+    await page.keyboard.press('Control+A');
+    await page.keyboard.type('Helios Station');
+    const row = page.locator('.gm-search-item', {
+      has: page.locator('.gm-search-item-name', { hasText: 'Helios Station' }),
+    }).first();
+    await row.waitFor({ state: 'visible', timeout: 10_000 });
+    // Click the named row rather than pressing Enter. _searchSelectedIdx always resolves
+    // filtered[0], and results sort by live-state priority — a mission marker or gate
+    // matching "Helios" can sit above the station, so Enter arms the wrong target (or a
+    // target with no course payload, which _activateSelectedCourse drops silently).
+    await row.click();
+    // Verify the selection actually resolved to the Helios station before clicking the
+    // button — _activateSelectedCourse no-ops silently on a null _selectedTarget, and a
+    // stray canvas click can clear the selection between row click and button click.
+    const selected = await page.evaluate(() => {
+      const def = window.SF?.ctx?.screenManager?.getActiveScreenDef?.();
+      const target = def && def._selectedTarget;
+      return target ? { name: target.name || target.label || '', kind: target.kind || null } : null;
+    }).catch(() => null);
+    if (!selected || !/Helios/i.test(String(selected.name))) {
+      lastError = new Error(`search row selected ${JSON.stringify(selected)} instead of Helios Station`);
+      continue;
+    }
+    const button = page.getByRole('button', { name: 'Set Waypoint', exact: true });
+    await button.waitFor({ state: 'visible', timeout: 10_000 });
+    try {
+      await clickWaypointWithPointer(page, button, 6_000);
+    } catch (err) {
+      lastError = err;
+      continue;
+    }
+    lastError = null;
+    break;
+  }
+  if (lastError) throw lastError;
   await page.waitForFunction(() => {
     const screen = document.querySelector('#sf-galaxymap');
     const hidden = !screen || screen.hidden || getComputedStyle(screen).display === 'none' || screen.getBoundingClientRect().width < 2;
@@ -1299,8 +1335,8 @@ async function armHeliosWaypoint(page) {
   }, null, { timeout: 10_000 });
 }
 
-async function clickWaypointWithPointer(page, locator) {
-  const deadline = Date.now() + 10_000;
+async function clickWaypointWithPointer(page, locator, timeoutMs = 10_000) {
+  const deadline = Date.now() + timeoutMs;
   let lastBox = null;
   // arm evidence must be a TRANSITION, not a state: autopilot status/label persist
   // 'arrived'+'Helios Station' from the previous cycle's approach, and an instant
@@ -1330,6 +1366,14 @@ async function clickWaypointWithPointer(page, locator) {
         return events.some((e) => e.seq > mark && e.status === 'armed' && /Helios Station/i.test(String(e.label || '')));
       }, null, { timeout: 750 }).then(() => true, () => false);
       if (armed) return;
+      // A click that landed on the chart canvas instead of the button clears the map's
+      // _selectedTarget — every later click is then an inert no-op. Bail so the caller
+      // can re-run the search selection instead of burning the rest of the budget.
+      const selectionLost = await page.evaluate(() => {
+        const def = window.SF?.ctx?.screenManager?.getActiveScreenDef?.();
+        return def != null && def._selectedTarget == null;
+      }).catch(() => false);
+      if (selectionLost) throw new Error('Set Waypoint click cleared the map selection (canvas hit)');
     }
     await page.waitForTimeout(50);
   }
