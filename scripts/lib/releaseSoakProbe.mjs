@@ -1436,6 +1436,19 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
             }
             return origSet(t, wake);
           };
+          // A >2000 wu/s linvel write integrates a >2000 wu step displacement inside
+          // world.step() while the structural-give pass then restores the predicted
+          // velocity — indistinguishable from depenetration without this wrap.
+          const origVel = body.setLinvel.bind(body);
+          body.setLinvel = (v, wake) => {
+            if (Math.hypot(finiteNum(v?.x), finiteNum(v?.z)) > 2000) {
+              bodyWrite('setLinvel', {
+                to: { x: v?.x, z: v?.z },
+                playerBound: sg02.records.get(window.SF?.state?.playerId)?.body === body,
+              });
+            }
+            return origVel(v, wake);
+          };
           return body;
         };
       }
@@ -1457,6 +1470,13 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true, m
           const dz = Math.abs(finiteNum(t?.z) - finiteNum(before?.z));
           if (Math.max(dx, dz) > 2000) bodyWrite('setTranslation', { to: { x: t?.x, z: t?.z }, from: { x: before?.x, z: before?.z } });
           return orig(t, wake);
+        };
+        const origVel = trappedBody.setLinvel.bind(trappedBody);
+        trappedBody.setLinvel = (v, wake) => {
+          if (Math.hypot(finiteNum(v?.x), finiteNum(v?.z)) > 2000) {
+            bodyWrite('setLinvel', { to: { x: v?.x, z: v?.z } });
+          }
+          return origVel(v, wake);
         };
       }
       if (!stepWrapped && sg02.world && typeof sg02.world.step === 'function') {
