@@ -984,12 +984,23 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       trail: (window.__M6_RELEASE_SOAK_TRAIL__ || []).slice(-40),
     };
   }).catch(() => null);
+  // Bounded approach loop. A still-driving autopilot can hold the ship in a tangential limit
+  // cycle inside the capture volume, and a berth arrival can end with the compound proxy
+  // expelling the ship back out at speed (dock:range flickers true→false) — a player whose
+  // autopilot can't park takes the brake, and a player bounced off the berth flies back in and
+  // tries again. Each attempt: re-arm when the AP isn't driving, then wait with the brake poll.
   let dockPromptVisible = false;
-  {
-    // A still-driving autopilot can hold the ship in a tangential limit cycle inside the capture
-    // volume — inside the corridor but too fast for the berth's speed gate, so the prompt never
-    // shows. A pilot whose autopilot can't park takes the brake themselves: pulse the public
-    // brake once (it also disengages the autopilot) and keep waiting for the prompt.
+  const attemptDiags = [];
+  for (let attempt = 0; attempt < 3 && !dockPromptVisible; attempt++) {
+    if (attempt > 0) {
+      const idleDiag = await readDockDiag();
+      attemptDiags.push(idleDiag);
+      // Only a player would re-issue the command — a still-driving AP gets the wait window, not
+      // a re-arm fight for the ship.
+      if (idleDiag?.autopilot?.active === true) break;
+      mark('redock-rearm', idleDiag);
+      await armHeliosWaypoint(page);
+    }
     const waitDeadline = Date.now() + 60_000;
     let brakePulsed = false;
     while (Date.now() < waitDeadline) {
@@ -1019,21 +1030,8 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
     }
   }
   if (!dockPromptVisible) {
-    const firstDiag = await readDockDiag();
-    // A player whose approach stalls re-issues the command. If the autopilot is not
-    // actively driving (disengaged to 'manual', or the arm click missed), re-arm the
-    // waypoint once and give the approach another window. A still-driving autopilot
-    // that never reaches the berth is a real wedge — fail with diagnostics.
-    if (firstDiag?.autopilot?.active !== true) {
-      mark('redock-rearm', firstDiag);
-      await armHeliosWaypoint(page);
-      dockPromptVisible = await dockPrompt.waitFor({ state: 'visible', timeout: 45_000 })
-        .then(() => true).catch(() => false);
-    }
-    if (!dockPromptVisible) {
-      const diag = await readDockDiag();
-      throw new Error(`dock prompt never appeared: ${JSON.stringify({ first: firstDiag, final: diag })}`);
-    }
+    const diag = await readDockDiag();
+    throw new Error(`dock prompt never appeared: ${JSON.stringify({ attempts: attemptDiags, final: diag })}`);
   }
   // Docking is a player-initiated loading span (station interior mount) — tag it like
   // save/load so the gameplay-hitch count stays honest about steady-state frames.
