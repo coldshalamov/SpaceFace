@@ -112,6 +112,8 @@ export function launchCueAwayText(variantId = HEIST_CAPSULE_RUN_VARIANT_ID) {
 // can act on (too fast, too sideways, off-centre) are published only when the load actually crosses
 // the mouth plane, so the event stream is bounded by real attempts rather than per-frame.
 const CAPTURE_REFUSAL_REASONS = new Set(['too_fast', 'too_sideways', 'outside_mouth', 'wrong_direction']);
+// A refused crossing is narrated only within this many rail half-widths of the fork's centre line.
+const CAPTURE_REFUSAL_LATERAL_REACH = 2;
 const CAPTURE_SETTLED_KIND = 'capture_settled';
 
 function makeState() {
@@ -811,7 +813,10 @@ export const heistFacilities = {
       if (out.torqueY !== 0) queuePhysicsTorqueImpulse(load, { x: 0, y: out.torqueY, z: 0 }, evidence);
     }
 
-    const refused = before === 'outside' && out.phase === 'outside' && CAPTURE_REFUSAL_REASONS.has(out.reason);
+    // The mouth PLANE is infinite; the mouth is not. A load crossing that plane a kilometre wide of
+    // the rails (the breakaway launch arc does exactly that) made no attempt worth narrating.
+    const refused = before === 'outside' && out.phase === 'outside' && CAPTURE_REFUSAL_REASONS.has(out.reason)
+      && Math.abs(out.lateral) <= receiver.halfWidth * CAPTURE_REFUSAL_LATERAL_REACH;
     if (out.event || refused) {
       this.bus.emit('heist:captureFork', Object.freeze({
         scheduleId: schedule.scheduleId,
