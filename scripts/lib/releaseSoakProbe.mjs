@@ -664,6 +664,10 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
         // can attribute. The heartbeat keeps the distinction provable from the console stream.
         const traceState = { calls: 0, nullish: 0, logged: 0 };
         const callerCensus = new Map();
+        // loseContext() kills the driver-side objects before Chrome flips isContextLost() — the
+        // exact window where a query warns while still looking client-live. Mark the dead window
+        // at the extension call itself so gap-window queries attribute instead of slipping through.
+        const forcedLost = new WeakSet();
         try { globalThis.__SF_GL_TRACE__ = traceState; } catch (_) { /* read-only globalThis */ }
         try {
           setInterval(() => {
@@ -731,13 +735,39 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
           const origGet = proto.getProgramParameter;
           const origDel = proto.deleteProgram;
           const origCreate = proto.createProgram;
+          const origGetExtension = proto.getExtension;
+          if (typeof origGetExtension === 'function') {
+            proto.getExtension = function getExtensionTraced(name, ...rest) {
+              const ext = origGetExtension.call(this, name, ...rest);
+              if (ext && name === 'WEBGL_lose_context' && typeof ext.loseContext === 'function'
+                  && !ext.__glTraceLossWrapped) {
+                ext.__glTraceLossWrapped = true;
+                const ctx = this;
+                const origLose = ext.loseContext.bind(ext);
+                const origRestore = typeof ext.restoreContext === 'function' ? ext.restoreContext.bind(ext) : null;
+                ext.loseContext = function loseContextTraced() {
+                  forcedLost.add(ctx);
+                  return origLose();
+                };
+                if (origRestore) {
+                  ext.restoreContext = function restoreContextTraced() {
+                    forcedLost.delete(ctx);
+                    return origRestore();
+                  };
+                }
+              }
+              return ext;
+            };
+          }
           proto.createProgram = function createProgramTraced() {
             const program = origCreate.call(this);
             if (program) {
               liveSetFor(this).add(program);
               // createProgram during the lost window returns a JS handle the driver never
               // registers — it stays in the live set but is an invalid query target forever.
-              if (typeof this.isContextLost === 'function' && this.isContextLost()) {
+              // forcedLost covers the loseContext()->isContextLost() flag gap as well.
+              if (forcedLost.has(this)
+                  || (typeof this.isContextLost === 'function' && this.isContextLost())) {
                 let dead = mintedDeadByContext.get(this);
                 if (!dead) { dead = new WeakSet(); mintedDeadByContext.set(this, dead); }
                 dead.add(program);
@@ -754,8 +784,10 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
             const kind = classify(this, program);
             // A live-set handle can still fail driver-side: programs minted (or polled) while the
             // context sits inside its lost window are JS objects the driver never registered.
-            // isContextLost() has no GL side effects, so it is safe to check per call.
-            const lostNow = typeof this.isContextLost === 'function' && this.isContextLost() === true;
+            // forcedLost marks the window synchronously at loseContext(), before Chrome flips
+            // isContextLost() or dispatches the event — the exact gap that hid these warnings.
+            const lostNow = forcedLost.has(this)
+              || (typeof this.isContextLost === 'function' && this.isContextLost() === true);
             const result = origGet.call(this, program, pname);
             if (result == null) traceState.nullish += 1;
             // Catch-all independent of handle bookkeeping: Chrome returns null (not
