@@ -3109,16 +3109,22 @@ function abandonAsteroidInstancePool(pool, scene) {
     try { releaseAsteroidInstancesForEntity(pool, entityId); } catch (_) { /* best effort */ }
   }
   for (const bucket of pool.variants || []) {
-    unregisterRendererDynamicOwner(bucket && bucket.dynamicBufferOwner);
-    removeRendererRoot(scene, bucket && bucket.mesh);
+    const slots = bucket && bucket.lodTiers ? [bucket, ...bucket.lodTiers] : [bucket];
+    for (const slot of slots) {
+      if (!slot) continue;
+      unregisterRendererDynamicOwner(slot.dynamicBufferOwner);
+      removeRendererRoot(scene, slot.mesh);
+      slot.dynamicBufferOwner = null;
+      slot.mesh = null;
+      slot.geometry = null;
+      slot.capacity = 0;
+      slot.entityIds?.splice?.(0);
+    }
     if (bucket) {
-      bucket.dynamicBufferOwner = null;
-      bucket.mesh = null;
-      bucket.geometry = null;
       bucket.material = null;
-      bucket.capacity = 0;
+      bucket.lodGeometries = null;
+      bucket.lodTiers = null;
       bucket.records?.splice?.(0);
-      bucket.entityIds?.splice?.(0);
     }
   }
   pool.byEntity?.clear?.();
@@ -8825,6 +8831,7 @@ export const render = {
     options.shadowCamera = shadowCamera || null;
     options.records = this._entityFrame.asteroids;
     options.recordsDirty = this._presentationWorld.consumeAsteroidDirty();
+    options.viewportHeight = this.renderer ? this.renderer.getDrawingBufferSize(_drawSize).y : 0;
     const result = syncAsteroidInstancePool(this._asteroidInstancePool, options);
     if (result?.matrixUploads > 0) this._shadowMapDirty = true;
     if (this.state && this.state.render) this.state.render.asteroidInstancePool = result;

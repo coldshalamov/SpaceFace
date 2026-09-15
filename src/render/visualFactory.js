@@ -1888,10 +1888,13 @@ function transformCommonRockUvs(geometry, variantIdx) {
   return transform;
 }
 
-function astDisplacedGeometry(typeId, def, variantIdx) {
-  const key = `ast:geology-v4:${typeId}:${variantIdx}`;
+function astDisplacedGeometry(typeId, def, variantIdx, subdivisionOverride) {
+  const subdivisions = Number.isFinite(subdivisionOverride)
+    ? Math.max(0, subdivisionOverride | 0)
+    : def.detail + 1;
+  const key = `ast:geology-v4:${typeId}:${variantIdx}${Number.isFinite(subdivisionOverride) ? `:s${subdivisions}` : ''}`;
   return getGeometry(key, () => {
-    const geo = new THREE.IcosahedronGeometry(1, def.detail + 1);
+    const geo = new THREE.IcosahedronGeometry(1, subdivisions);
     const uvTransform = typeId === 'ast_common_rock' ? transformCommonRockUvs(geo, variantIdx) : null;
     const pos = geo.attributes.position;
     const normal = geo.attributes.normal;
@@ -2220,6 +2223,14 @@ function buildAsteroid(e) {
   if (typeId === 'ast_common_rock' && tint == null) {
     mesh.userData.asteroidInstanceTypeId = 'ast_common_rock';
     mesh.userData.asteroidInstanceVariant = variantIdx;
+    // Coarser same-variant geometries for the instance pool's projected-size LOD tiers.
+    // The displacement field is direction-deterministic, so a sparser base samples the
+    // same macro silhouette — visually indistinguishable once the rock subtends a few
+    // dozen pixels.
+    mesh.userData.asteroidInstanceLodGeometries = [
+      astDisplacedGeometry(typeId, def, variantIdx, def.detail),
+      astDisplacedGeometry(typeId, def, variantIdx, def.detail - 1),
+    ];
     g.userData.asteroidInstanceBody = mesh;
   }
   if (def.variant === 'crystal') {

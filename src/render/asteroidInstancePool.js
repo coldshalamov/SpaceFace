@@ -6,6 +6,7 @@
 // Renderer view culling is applied before compaction, avoiding sector-wide always-visible batches.
 import * as THREE from 'three';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
+import { createLodState, projectedWidthPx } from './lod.js';
 import {
   assertDynamicBufferOwnerWritable,
   commitDynamicBufferOwner,
@@ -22,6 +23,7 @@ const _shadowProjection = new THREE.Matrix4();
 const _viewFrustum = new THREE.Frustum();
 const _shadowFrustum = new THREE.Frustum();
 const _worldSphere = new THREE.Sphere();
+const _lodViewport = { width: 0, height: 0 };
 
 function createVariantStats(variant) {
   return { variant, registered: 0, submitted: 0, capacity: 0, uploads: 0, reuses: 0 };
@@ -40,6 +42,12 @@ export function createAsteroidInstancePool(scene) {
       capacity: 0,
       records: [],
       entityIds: [],
+      // Coarser same-variant geometries supplied by the procedural leaf for projected-size
+      // LOD submission (spec §12.4). lodTiers holds one InstancedMesh slot per coarser
+      // geometry; each slot mirrors the bucket's own fields (mesh/capacity/entityIds/
+      // dynamicBufferOwner) so the sync loop treats the bucket itself as slot 0.
+      lodGeometries: null,
+      lodTiers: null,
     };
     variantStats[variant] = createVariantStats(variant);
   }
@@ -59,6 +67,8 @@ export function createAsteroidInstancePool(scene) {
       matrixReuses: 0,
       matrixEvaluations: 0,
       variants: variantStats,
+      // Per-tier submission counts for projected-size LOD observability (diagnostics only).
+      tierSubmissions: [0, 0, 0],
     },
     dirty: true,
     disposed: false,
@@ -73,9 +83,20 @@ export function createAsteroidInstancePool(scene) {
 
 export function collectAsteroidInstancePoolRoots(pool) {
   if (!pool || pool.disposed || !Array.isArray(pool.variants)) return [];
-  return pool.variants
-    .map((bucket) => bucket && bucket.mesh)
-    .filter((mesh) => mesh && mesh.visible !== false && mesh.count > 0);
+  const roots = [];
+  for (const bucket of pool.variants) {
+    if (!bucket) continue;
+    forEachBucketSlot(bucket, (slot) => {
+      if (slot.mesh && slot.mesh.visible !== false && slot.mesh.count > 0) roots.push(slot.mesh);
+    });
+  }
+  return roots;
+}
+
+function forEachBucketSlot(bucket, fn) {
+  fn(bucket);
+  const tiers = bucket.lodTiers;
+  if (tiers) for (let index = 0; index < tiers.length; index++) fn(tiers[index]);
 }
 
 // Bucket meshes minted since the last drain — a new (geometry, material) instanced combo
@@ -99,16 +120,44 @@ export function registerAsteroidBaseLeaf(pool, entity, ownerRoot) {
   if (bucket.geometry && (bucket.geometry !== leaf.geometry || bucket.material !== leaf.material)) return false;
   bucket.geometry = leaf.geometry;
   bucket.material = leaf.material;
-  ensureCapacity(pool, bucket, bucket.records.length + 1);
+  const lodGeometries = normalizeLodGeometries(info.asteroidInstanceLodGeometries);
+  if (bucket.lodGeometries == null) {
+    bucket.lodGeometries = lodGeometries;
+  } else if (bucket.lodGeometries.length !== lodGeometries.length
+    || bucket.lodGeometries.some((geometry, index) => geometry !== lodGeometries[index])) {
+    // A variant whose records disagree on the coarser geometry set stays uninstanced —
+    // same contract as the base geometry/material check above.
+    return false;
+  }
+  ensureCapacity(pool, bucket, bucket, bucket.records.length + 1);
+  for (let tier = 0; tier < bucket.lodGeometries.length; tier++) {
+    if (!bucket.lodTiers) bucket.lodTiers = [];
+    if (!bucket.lodTiers[tier]) {
+      bucket.lodTiers[tier] = {
+        tier: tier + 1,
+        geometry: bucket.lodGeometries[tier],
+        mesh: null,
+        dynamicBufferOwner: null,
+        capacity: 0,
+        entityIds: [],
+      };
+    }
+    ensureCapacity(pool, bucket, bucket.lodTiers[tier], bucket.records.length + 1);
+  }
   if (!bucket.mesh) return false;
 
-  const record = { entityId: entity.id, ownerRoot, leaf };
+  const record = { entityId: entity.id, ownerRoot, leaf, lod: createLodState() };
   bucket.records.push(record);
   pool.byEntity.set(entity.id, { bucket, record });
   pool.dirty = true;
   leaf.visible = false;
   leaf.userData.asteroidInstanceAdopted = true;
   return true;
+}
+
+function normalizeLodGeometries(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((geometry) => geometry && geometry.attributes && geometry.attributes.position);
 }
 
 export function isBorrowedAsteroidInstanceResource(object) {
@@ -146,7 +195,10 @@ export function syncAsteroidInstancePool(pool, options = {}) {
   const classifiedRecords = Array.isArray(options.records) ? options.records : null;
   const viewCameraDirty = cameraStateChanged(options.camera, pool.cameraState.view);
   const shadowCameraDirty = cameraStateChanged(options.shadowCamera, pool.cameraState.shadow);
-  const cameraDirty = viewCameraDirty || shadowCameraDirty;
+  const viewportHeight = Number(options.viewportHeight) || 0;
+  const viewportDirty = pool.cameraState.viewportHeight !== viewportHeight;
+  pool.cameraState.viewportHeight = viewportHeight;
+  const cameraDirty = viewCameraDirty || shadowCameraDirty || viewportDirty;
   const classifiedDirty = options.recordsDirty === true
     ? true
     : options.recordsDirty === false
@@ -175,30 +227,43 @@ export function syncAsteroidInstancePool(pool, options = {}) {
   const shadowFrustumReady = prepareFrustum(options.shadowCamera, _shadowProjection, _shadowFrustum);
   stats.submitted = 0;
   stats.visibleBatches = 0;
+  stats.tierSubmissions[0] = 0;
+  stats.tierSubmissions[1] = 0;
+  stats.tierSubmissions[2] = 0;
 
   for (let variant = 0; variant < pool.variants.length; variant++) {
     const bucket = pool.variants[variant];
     const variantStats = stats.variants[variant];
     variantStats.registered = bucket.records.length;
     variantStats.submitted = 0;
-    variantStats.capacity = bucket.capacity;
+    variantStats.capacity = 0;
+    forEachBucketSlot(bucket, (slot) => { variantStats.capacity += slot.capacity; });
     variantStats.uploads = 0;
     variantStats.reuses = 0;
     if (!bucket.mesh) continue;
 
-    let submitted = 0;
-    let matrixDirty = false;
-    const matrixArray = bucket.mesh.instanceMatrix.array;
-    const dynamicBufferOwner = bucket.dynamicBufferOwner;
-    if (dynamicBufferOwner && dynamicBufferOwner.invalid) {
-      if (bucket.mesh) {
-        bucket.mesh.count = 0;
-        bucket.mesh.visible = false;
-      }
+    const lodTiers = bucket.lodTiers;
+    const slotCount = 1 + (lodTiers ? lodTiers.length : 0);
+    // An invalid buffer owner cannot accept writes this frame — park the whole variant
+    // (same contract as the single-slot path) and try again next sync.
+    let anyOwnerInvalid = false;
+    forEachBucketSlot(bucket, (slot) => {
+      slot._submit = 0;
+      slot._matrixDirty = false;
+      if (slot.dynamicBufferOwner && slot.dynamicBufferOwner.invalid) anyOwnerInvalid = true;
+    });
+    if (anyOwnerInvalid) {
+      forEachBucketSlot(bucket, (slot) => {
+        if (slot.mesh) {
+          slot.mesh.count = 0;
+          slot.mesh.visible = false;
+        }
+      });
       variantStats.submitted = 0;
       continue;
     }
-    assertDynamicBufferOwnerWritable(dynamicBufferOwner);
+    forEachBucketSlot(bucket, (slot) => assertDynamicBufferOwnerWritable(slot.dynamicBufferOwner));
+    const lodMeasurable = slotCount > 1 && viewFrustumReady && viewportHeight > 0;
     for (let index = 0; index < bucket.records.length; index++) {
       const record = bucket.records[index];
       const root = record.ownerRoot;
@@ -221,42 +286,67 @@ export function syncAsteroidInstancePool(pool, options = {}) {
       } else if (root.userData.asteroidInstanceViewCulled) {
         continue;
       }
+      // Projected-size tier pick: the record's LodState holds hysteresis so a rock holding
+      // station on a boundary does not oscillate between tiers each sync.
+      let tierIndex = 0;
+      if (lodMeasurable) {
+        _lodViewport.height = viewportHeight;
+        const px = projectedWidthPx(_worldSphere.center, _worldSphere.radius, options.camera, _lodViewport);
+        // resolve() steps one level per call so a boundary hover cannot oscillate; repeat
+        // until stable so a record deep inside a coarser band reaches it in one sync.
+        let level = record.lod ? record.lod.resolve(px) : 'lod0';
+        for (let settle = 0; settle < 2; settle++) {
+          const next = record.lod ? record.lod.resolve(px) : 'lod0';
+          if (next === level) break;
+          level = next;
+        }
+        tierIndex = level === 'lod2' ? 2 : level === 'lod1' ? 1 : 0;
+        if (tierIndex >= slotCount) tierIndex = slotCount - 1;
+      }
+      const slot = tierIndex === 0 ? bucket : lodTiers[tierIndex - 1];
+      const matrixArray = slot.mesh.instanceMatrix.array;
+      const dynamicBufferOwner = slot.dynamicBufferOwner;
+      const submitted = slot._submit;
       const elements = leaf.matrixWorld.elements;
       stats.matrixEvaluations++;
       const offset = submitted * 16;
-      let slotDirty = false;
       for (let component = 0; component < 16; component++) {
         const value = Math.fround(elements[component]);
         if (matrixArray[offset + component] !== value) {
-          if (!slotDirty) {
+          if (!slot._matrixDirty) {
             markDynamicBufferItems(dynamicBufferOwner, 0, submitted);
-            slotDirty = true;
-            matrixDirty = true;
+            slot._matrixDirty = true;
           }
           matrixArray[offset + component] = value;
         }
       }
-      bucket.entityIds[submitted] = record.entityId;
-      submitted++;
+      slot.entityIds[submitted] = record.entityId;
+      slot._submit = submitted + 1;
     }
 
-    const countChanged = bucket.mesh.count !== submitted;
-    if (dynamicBufferOwner) commitDynamicBufferOwner(dynamicBufferOwner, submitted);
-    else bucket.mesh.count = submitted;
-    bucket.mesh.visible = submitted > 0;
-    const uploadDirty = matrixDirty || (!dynamicBufferOwner && countChanged);
-    if (uploadDirty) {
-      if (!dynamicBufferOwner) bucket.mesh.instanceMatrix.needsUpdate = true;
-      stats.matrixUploads++;
-      variantStats.uploads++;
-    } else if (submitted > 0) {
-      stats.matrixReuses++;
-      variantStats.reuses++;
-    }
-    variantStats.submitted = submitted;
-    stats.submitted += submitted;
-    if (submitted > 0) stats.visibleBatches++;
-    bucket.entityIds.length = submitted;
+    forEachBucketSlot(bucket, (slot) => {
+      const submitted = slot._submit;
+      const dynamicBufferOwner = slot.dynamicBufferOwner;
+      const countChanged = slot.mesh.count !== submitted;
+      if (dynamicBufferOwner) commitDynamicBufferOwner(dynamicBufferOwner, submitted);
+      else slot.mesh.count = submitted;
+      slot.mesh.visible = submitted > 0;
+      const uploadDirty = slot._matrixDirty || (!dynamicBufferOwner && countChanged);
+      if (uploadDirty) {
+        if (!dynamicBufferOwner) slot.mesh.instanceMatrix.needsUpdate = true;
+        stats.matrixUploads++;
+        variantStats.uploads++;
+      } else if (submitted > 0) {
+        stats.matrixReuses++;
+        variantStats.reuses++;
+      }
+      variantStats.submitted += submitted;
+      stats.submitted += submitted;
+      if (submitted > 0) stats.visibleBatches++;
+      const slotTier = slot.tier | 0;
+      if (slotTier < stats.tierSubmissions.length) stats.tierSubmissions[slotTier] += submitted;
+      slot.entityIds.length = submitted;
+    });
   }
   pool.dirty = false;
   return stats;
@@ -267,7 +357,10 @@ export function resolveAsteroidInstanceEntityId(pool, object, instanceId) {
   const variant = object.userData.asteroidInstanceVariant | 0;
   const bucket = pool.variants[variant];
   if (!bucket || !Number.isInteger(instanceId) || instanceId < 0) return null;
-  return bucket.entityIds[instanceId] ?? null;
+  const tier = object.userData.asteroidInstanceLodTier | 0;
+  const slot = tier === 0 ? bucket : bucket.lodTiers && bucket.lodTiers[tier - 1];
+  if (!slot) return null;
+  return slot.entityIds[instanceId] ?? null;
 }
 
 // Read-only acceptance surface for diagnosing source-mesh/instance handoff stability. It identifies
@@ -282,7 +375,19 @@ export function asteroidInstanceMembership(pool, entityId) {
     submittedIndex: -1,
   };
   const { bucket, record } = owned;
-  const submittedIndex = bucket.entityIds.indexOf(entityId);
+  let submittedIndex = bucket.entityIds.indexOf(entityId);
+  let submittedTier = 0;
+  if (submittedIndex < 0 && bucket.lodTiers) {
+    for (let tier = 0; tier < bucket.lodTiers.length; tier++) {
+      const index = bucket.lodTiers[tier].entityIds.indexOf(entityId);
+      if (index >= 0) {
+        submittedIndex = index;
+        submittedTier = tier + 1;
+        break;
+      }
+    }
+  }
+  const submittedSlot = submittedTier === 0 ? bucket : bucket.lodTiers[submittedTier - 1];
   return {
     entityId,
     registered: true,
@@ -292,9 +397,10 @@ export function asteroidInstanceMembership(pool, entityId) {
     sourceLeafUuid: record.leaf?.uuid || null,
     sourceGeometryUuid: record.leaf?.geometry?.uuid || null,
     sourceMaterialUuid: record.leaf?.material?.uuid || null,
-    poolMeshUuid: bucket.mesh?.uuid || null,
+    poolMeshUuid: submittedIndex >= 0 ? submittedSlot.mesh?.uuid || null : bucket.mesh?.uuid || null,
     submitted: submittedIndex >= 0,
     submittedIndex,
+    submittedTier,
   };
 }
 
@@ -307,12 +413,14 @@ export function clearAsteroidInstancePool(pool) {
       if (record.leaf.userData) record.leaf.userData.asteroidInstanceAdopted = false;
     }
     bucket.records.length = 0;
-    bucket.entityIds.length = 0;
-    if (bucket.mesh) {
-      if (bucket.dynamicBufferOwner) commitDynamicBufferOwner(bucket.dynamicBufferOwner, 0);
-      else bucket.mesh.count = 0;
-      bucket.mesh.visible = false;
-    }
+    forEachBucketSlot(bucket, (slot) => {
+      slot.entityIds.length = 0;
+      if (slot.mesh) {
+        if (slot.dynamicBufferOwner) commitDynamicBufferOwner(slot.dynamicBufferOwner, 0);
+        else slot.mesh.count = 0;
+        slot.mesh.visible = false;
+      }
+    });
   }
   pool.byEntity.clear();
   pool.dirty = true;
@@ -323,16 +431,19 @@ export function disposeAsteroidInstancePool(pool) {
   clearAsteroidInstancePool(pool);
   const scene = pool.scene;
   for (const bucket of pool.variants) {
-    const mesh = bucket.mesh;
-    if (mesh) disposeOwnedInstanceMesh(mesh, bucket.dynamicBufferOwner, scene);
-    else if (bucket.dynamicBufferOwner) releaseDynamicBufferOwner(bucket.dynamicBufferOwner);
-    bucket.dynamicBufferOwner = null;
+    forEachBucketSlot(bucket, (slot) => {
+      if (slot.mesh) disposeOwnedInstanceMesh(slot.mesh, slot.dynamicBufferOwner, scene);
+      else if (slot.dynamicBufferOwner) releaseDynamicBufferOwner(slot.dynamicBufferOwner);
+      slot.dynamicBufferOwner = null;
+      slot.mesh = null;
+      slot.capacity = 0;
+      slot.entityIds.length = 0;
+    });
     bucket.geometry = null;
     bucket.material = null;
-    bucket.mesh = null;
-    bucket.capacity = 0;
+    bucket.lodGeometries = null;
+    bucket.lodTiers = null;
     bucket.records.length = 0;
-    bucket.entityIds.length = 0;
   }
   pool.byEntity.clear();
   pool.stats.registered = 0;
@@ -359,13 +470,14 @@ export function getAsteroidInstancePoolDiagnostics(pool) {
   return pool ? pool.stats : null;
 }
 
-function ensureCapacity(pool, bucket, required) {
-  if (bucket.mesh && bucket.capacity >= required) return;
+function ensureCapacity(pool, bucket, slot, required) {
+  if (slot.mesh && slot.capacity >= required) return;
   const capacity = Math.max(INITIAL_CAPACITY, nextPowerOfTwo(required));
-  const previous = bucket.mesh;
-  const previousOwner = bucket.dynamicBufferOwner;
-  const mesh = new THREE.InstancedMesh(bucket.geometry, bucket.material, capacity);
-  mesh.name = `SF_CommonRockInstances_v${bucket.variant}`;
+  const previous = slot.mesh;
+  const previousOwner = slot.dynamicBufferOwner;
+  const tier = slot.tier | 0;
+  const mesh = new THREE.InstancedMesh(slot.geometry, bucket.material, capacity);
+  mesh.name = `SF_CommonRockInstances_v${bucket.variant}${tier ? `_lod${tier}` : ''}`;
   mesh.count = 0;
   mesh.visible = false;
   mesh.frustumCulled = false;
@@ -374,15 +486,17 @@ function ensureCapacity(pool, bucket, required) {
   mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
   mesh.userData.asteroidInstancePool = true;
   mesh.userData.asteroidInstanceVariant = bucket.variant;
+  mesh.userData.asteroidInstanceLodTier = tier;
   mesh.userData.borrowedGeometryMaterial = true;
   stampOpeningSubmissionPackage(mesh, {
     schema: 'spaceface.asteroidInstancePoolProducer.v1',
     producer: 'asteroid-instance-pool',
     variant: bucket.variant,
+    lodTier: tier,
     geometry: {
-      type: bucket.geometry && bucket.geometry.type || 'BufferGeometry',
-      attributes: Object.keys(bucket.geometry?.attributes || {}).sort().map((name) => {
-        const attribute = bucket.geometry.attributes[name];
+      type: slot.geometry && slot.geometry.type || 'BufferGeometry',
+      attributes: Object.keys(slot.geometry?.attributes || {}).sort().map((name) => {
+        const attribute = slot.geometry.attributes[name];
         return {
           name,
           itemSize: attribute && attribute.itemSize || 0,
@@ -397,19 +511,19 @@ function ensureCapacity(pool, bucket, required) {
     },
     instanceAbi: ['instanceMatrix'],
   }, {
-    assetId: `asteroid-instance-pool-v${bucket.variant}`,
+    assetId: `asteroid-instance-pool-v${bucket.variant}${tier ? `-lod${tier}` : ''}`,
     producer: 'asteroid-instance-pool',
   });
   if (previous) {
     disposeOwnedInstanceMesh(previous, previousOwner, pool.scene);
   }
-  bucket.mesh = mesh;
-  bucket.capacity = capacity;
+  slot.mesh = mesh;
+  slot.capacity = capacity;
   pool.dirty = true;
   if (pool.scene) pool.scene.add(mesh);
   if (Array.isArray(pool.pendingAdmission)) pool.pendingAdmission.push(mesh);
-  bucket.dynamicBufferOwner = registerDynamicBufferOwner(pool.scene, {
-    id: `common-rock-instances-v${bucket.variant}`,
+  slot.dynamicBufferOwner = registerDynamicBufferOwner(pool.scene, {
+    id: `common-rock-instances-v${bucket.variant}${tier ? `-lod${tier}` : ''}`,
     mesh,
     attributes: [{ name: 'instanceMatrix', attribute: mesh.instanceMatrix }],
   });
