@@ -287,7 +287,14 @@ export function promoteFarActor(state, id, helpers) {
   const live = state.entities && typeof state.entities.get === 'function'
     ? state.entities.get(id)
     : null;
-  if (live && live.alive !== false) return live;
+  if (live && live.alive !== false) {
+    // Core may recycle an entity id while its compact far row is still shelved. The live entity
+    // wins; evict the stale row now so it cannot remain an alias in the world ledger forever.
+    const table = state.world && state.world.farActors;
+    const stale = table && table.byId && table.byId.get(id);
+    if (stale) removeFarRecord(table, stale);
+    return live;
+  }
   const rec = getFarActor(state, id);
   if (!rec || rec.alive === false) return live;
   const spawn = helpers && typeof helpers.spawnEntity === 'function' ? helpers.spawnEntity : null;

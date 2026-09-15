@@ -81,6 +81,28 @@ test('far dormant ships leave the combat list and rematerialize on approach', ()
   assert.equal(getFarActor(state, farId), null);
 });
 
+test('a recycled live id evicts its stale far-actor row on approach', () => {
+  const { state, helpers, bus, player } = boot();
+  const far = spawnShip(helpers, { pos: { x: 12000, z: 0 } });
+  const farId = far.id;
+
+  tickFarActors(state, helpers, bus);
+  assert.equal(state.entities.has(farId), false);
+  assert.ok(getFarActor(state, farId));
+
+  const replacement = spawnShip(helpers, {
+    pos: { x: 12000, z: 0 },
+    activity: { simTier: SIM_TIER.S1_NEAR, pinnedExact: false },
+  });
+  assert.equal(replacement.id, farId, 'the fixture must exercise core free-id reuse');
+
+  player.pos.x = 12000;
+  tickFarActors(state, helpers, bus);
+
+  assert.equal(state.entities.get(farId), replacement);
+  assert.equal(getFarActor(state, farId), null, 'the stale row must not survive as an alias');
+});
+
 test('survival/swarm holds every live ship on the table', () => {
   const { state, helpers, bus } = boot();
   state.run = { kind: 'survival', ruleset: 'swarm' };
