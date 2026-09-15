@@ -245,28 +245,41 @@ export function observeContact(a, b, contact, state = activeState) {
       momentum: (target.physicsBody?.dynamic === false || ['asteroid','station','planet'].includes(target.type) ? sl.mass : sl.mass*tl.mass/(sl.mass+tl.mass)) * Math.max(0,(sv.x-tv.x)*axis.x+(sv.z-tv.z)*axis.z) };
     record.paths.push(path);
     const ongoing=root.nodes.find(n=>n.kind==='contact'&&n.sourceLife===sl.id&&n.targetLife===tl.id&&tick-(n.endTick??n.tick)<=1);
+    let contactNode=ongoing;
     if(ongoing){ongoing.endTick=tick;ongoing.momentum=Math.max(ongoing.momentum,path.momentum);}
     else if (!node(j, root, { ...path, kind: 'contact', pos: point(contact.pos) })) continue;
+    else contactNode=root.nodes.at(-1);
     const transferred = source.id === a.id ? contact.afterB : contact.afterA;
     if (transferred&&target.physicsBody?.dynamic!==false&&!['asteroid','station','planet'].includes(target.type)) {
-      const dv = { x: transferred.x-tv.x, z: transferred.z-tv.z };
+      // The solver resolves one physical contact over consecutive ticks. The transfer to the
+      // struck body is the whole episode's velocity change measured from its pre-contact motion,
+      // never one tick's slice, so the origin of its new corridor stays at the first contact tick.
+      const carried=ongoing&&j.bodies.get(tl.id);
+      const continuing=!!(carried&&carried.rootId===root.id&&carried.contactTick===ongoing.tick);
+      const before=continuing?carried.origin.before:point(tv);
+      const dv = { x: transferred.x-before.x, z: transferred.z-before.z };
       const line=root.constraint,player=line&&state.entities.get(line.actorId);
       // A rendered rope is not a collider. Only an actual endpoint/body contact can supply
       // this receipt; the victim must also cross the displaced loaded segment, then have a
       // separate downstream physical consequence. Damage-only monofilament sweeps never enter.
       if(line?.attached&&line.loadedTicks>=9&&player&&source.id===line.targetId&&target.id!==line.actorId
         &&tick-line.startTick<=90&&line.displacement>0&&line.sourceStart) {
-        const lx=sourcePos.x-player.pos.x,lz=sourcePos.z-player.pos.z,ll=lx*lx+lz*lz;
-        const along=ll>0?((targetPos.x-player.pos.x)*lx+(targetPos.z-player.pos.z)*lz)/ll:-1;
-        const transverse=Math.hypot(tv.x,tv.z)>0?Math.abs(dv.x*tv.z-dv.z*tv.x)/Math.hypot(tv.x,tv.z):0;
-        const near=along>0&&along<1&&Math.hypot(targetPos.x-player.pos.x-lx*along,targetPos.z-player.pos.z-lz*along)<=tl.radius;
-        const previousTarget={x:targetPos.x-tv.x*(tick-line.startTick)/60,z:targetPos.z-tv.z*(tick-line.startTick)/60};
-        const oldMiss=segmentSeparation(line.sourceStart,line.start,previousTarget,{x:previousTarget.x+tv.x*1.5,z:previousTarget.z+tv.z*1.5})>tl.radius;
-        if(near&&oldMiss&&transverse>=.3*tl.cruise)node(j,root,{kind:'line_intercept',tick,entityId:target.id,lifeId:tl.id,
+        if(!continuing) {
+          const lx=sourcePos.x-player.pos.x,lz=sourcePos.z-player.pos.z,ll=lx*lx+lz*lz;
+          const along=ll>0?((targetPos.x-player.pos.x)*lx+(targetPos.z-player.pos.z)*lz)/ll:-1;
+          const previousTarget={x:targetPos.x-tv.x*(tick-line.startTick)/60,z:targetPos.z-tv.z*(tick-line.startTick)/60};
+          contactNode.lineNear=along>0&&along<1&&Math.hypot(targetPos.x-player.pos.x-lx*along,targetPos.z-player.pos.z-lz*along)<=tl.radius;
+          contactNode.lineOldMiss=segmentSeparation(line.sourceStart,line.start,previousTarget,{x:previousTarget.x+tv.x*1.5,z:previousTarget.z+tv.z*1.5})>tl.radius;
+        }
+        const transverse=Math.hypot(before.x,before.z)>0?Math.abs(dv.x*before.z-dv.z*before.x)/Math.hypot(before.x,before.z):0;
+        const intercept=root.nodes.find(n=>n.kind==='line_intercept'&&n.lifeId===tl.id&&n.contactTick===contactNode.tick);
+        if(intercept){intercept.deltaV=Math.max(intercept.deltaV,transverse);intercept.after=point(transferred);intercept.endTick=tick;}
+        else if(contactNode.lineNear&&contactNode.lineOldMiss&&transverse>=.3*tl.cruise)node(j,root,{kind:'line_intercept',tick,contactTick:contactNode.tick,entityId:target.id,lifeId:tl.id,
           sourceId:source.id,targetId:target.id,loadedTicks:line.loadedTicks,endpointDisplacement:line.displacement,
-          displacementTick:line.startTick,deltaV:transverse,crossedPriorCorridor:true,normal:point(axis),before:point(tv),after:point(transferred)});
+          displacementTick:line.startTick,deltaV:transverse,crossedPriorCorridor:true,normal:point(axis),before:point(before),after:point(transferred)});
       }
-      j.bodies.set(tl.id, { rootId: root.id, lastTick: tick, edges: path.edges, useful: dv, other: { x:0,z:0 },origin:{pos:point(target.pos),before:point(tv),tick} });
+      j.bodies.set(tl.id, { rootId: root.id, lastTick: tick, edges: path.edges, useful: dv, other: { x:0,z:0 },
+        origin:continuing?carried.origin:{pos:point(target.pos),before,tick},contactTick:contactNode.tick });
     }
   }
   j.contacts.set(contactKey(tick,a.id,b.id), record);
