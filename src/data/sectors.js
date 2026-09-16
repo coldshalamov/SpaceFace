@@ -479,3 +479,107 @@ export function surveyDataPrice(sector) {
   const tier = Math.max(0, Number(sector && sector.tier) || 0);
   return Math.round(750 + tier * 1250);
 }
+
+// ── PQ-170.01 — station growth ladders ──────────────────────────────────────────────────────────
+// A station physically expands because of player-supplied throughput: goods the player sells at
+// its market and freight the player's Trade Relay convoys land there. claims.js owns the durable
+// per-station ledger (state.claims.stationGrowth) and the stamping; this table only authors WHAT
+// each station type grows and at WHAT cumulative throughput. It is a separate constant on purpose:
+// world copies every station record into runtime state and the data checks validate the station
+// shape, so growth never rides on the station record itself.
+//
+// Rung 1 is sized for one session on the starter hull: a Kestrel hold is 250 volume and every raw
+// ore is 1.0 vol/u, so one full load plus a partial second sold at the same station crosses it.
+// Later rungs are the endgame pull — a relay feeding one station over hours of play.
+//
+// Each rung: id, name, tag (short label stamped onto the live station's name), throughputU
+// (cumulative units), relayFeeCut (the player's relay convoys sold at a grown station keep more of
+// the sale), powerBonus (feeds the owning faction's war power in factions.js), line (dock/news copy;
+// tokens {station} {module} {units}).
+const GROWTH_RUNG_1_U = 150;
+const GROWTH_RUNG_2_U = 450;
+const GROWTH_RUNG_3_U = 1000;
+
+function growthRung(id, name, tag, throughputU, relayFeeCut, powerBonus, line) {
+  return Object.freeze({ id, name, tag, throughputU, relayFeeCut, powerBonus, line });
+}
+
+export const STATION_GROWTH_LADDERS = Object.freeze({
+  trade_hub: Object.freeze([
+    growthRung('growth_bonded_annex', 'Bonded Freight Annex', 'BONDED ANNEX', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} opens a Bonded Freight Annex — {units}u of your freight paid for the plating.'),
+    growthRung('growth_exchange_ring', 'Exchange Ring', 'EXCHANGE RING', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} rings a second exchange floor around the annex your deliveries built.'),
+    growthRung('growth_lane_authority', 'Lane Authority Office', 'LANE AUTHORITY', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} charters a Lane Authority Office — your route is now the one the charts are drawn from.'),
+  ]),
+  refinery: Object.freeze([
+    growthRung('growth_bulk_intake', 'Bulk Intake Dock', 'BULK INTAKE', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} fits a Bulk Intake Dock — {units}u of your ore kept the crackers hot long enough to earn it.'),
+    growthRung('growth_second_cracker', 'Second Cracking Line', 'SECOND LINE', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} lights a second cracking line on the back of your deliveries.'),
+    growthRung('growth_slag_gantry', 'Slag Export Gantry', 'EXPORT GANTRY', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} raises a Slag Export Gantry — the refinery now ships what your hauls made.'),
+  ]),
+  mining: Object.freeze([
+    growthRung('growth_ore_scale', 'Ore Scale Annex', 'SCALE ANNEX', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} bolts on an Ore Scale Annex — {units}u across your scale bought the second weigh-bay.'),
+    growthRung('growth_crusher_deck', 'Crusher Deck', 'CRUSHER DECK', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} opens a Crusher Deck; rock crews credit your hauls for the shift.'),
+    growthRung('growth_loading_arm', 'Bulk Loading Arm', 'LOADING ARM', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} swings out a Bulk Loading Arm — built for the tonnage you keep bringing.'),
+  ]),
+  fab: Object.freeze([
+    growthRung('growth_receiving_bay', 'Parts Receiving Bay', 'RECEIVING BAY', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} opens a Parts Receiving Bay — {units}u of your alloy and fittings filled the first racks.'),
+    growthRung('growth_assembly_two', 'Assembly Hall Two', 'HALL TWO', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} seals Assembly Hall Two, fed by the line you keep supplying.'),
+    growthRung('growth_fitting_yard', 'Certified Fitting Yard', 'FITTING YARD', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} certifies a Fitting Yard — the foundry now builds on your throughput.'),
+  ]),
+  military: Object.freeze([
+    growthRung('growth_provisioning_wing', 'Provisioning Wing', 'PROVISIONING', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} commissions a Provisioning Wing — {units}u of your supply stocked the first lockers.'),
+    growthRung('growth_patrol_hangar', 'Patrol Hangar Annex', 'PATROL HANGAR', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} opens a Patrol Hangar Annex on the strength of your deliveries.'),
+    growthRung('growth_tender_berth', 'Fleet Tender Berth', 'TENDER BERTH', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} lays a Fleet Tender Berth — the desk now counts your route as logistics.'),
+  ]),
+  blackmarket: Object.freeze([
+    growthRung('growth_unlisted_warehouse', 'Unlisted Warehouse', 'UNLISTED STORE', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} quietly adds an Unlisted Warehouse — {units}u of your freight moved through without a manifest.'),
+    growthRung('growth_back_channel_berth', 'Back-Channel Berth', 'BACK BERTH', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} cuts a Back-Channel Berth for the hulls that keep feeding it.'),
+    growthRung('growth_quiet_vault', 'Quiet Ledger Vault', 'LEDGER VAULT', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} seals a Quiet Ledger Vault — your route is the one nobody writes down.'),
+  ]),
+  research: Object.freeze([
+    growthRung('growth_sample_lab', 'Sample Intake Lab', 'INTAKE LAB', GROWTH_RUNG_1_U, 0.05, 2,
+      '{station} opens a Sample Intake Lab — {units}u of your cargo gave the instruments something to read.'),
+    growthRung('growth_instrument_deck', 'Second Instrument Deck', 'INSTRUMENT DECK', GROWTH_RUNG_2_U, 0.10, 4,
+      '{station} powers a Second Instrument Deck on the supply line you run.'),
+    growthRung('growth_field_annex', 'Field Station Annex', 'FIELD ANNEX', GROWTH_RUNG_3_U, 0.15, 6,
+      '{station} builds a Field Station Annex — the station now depends on what you bring.'),
+  ]),
+});
+
+const EMPTY_GROWTH_LADDER = Object.freeze([]);
+export const STATION_GROWTH_DEFAULT_TYPE = 'trade_hub';
+
+/** The authored growth ladder for a station record (or a live station's `data`). */
+export function stationGrowthLadderFor(station) {
+  if (!station) return EMPTY_GROWTH_LADDER;
+  const type = station.type || station.stationTypeId;
+  return STATION_GROWTH_LADDERS[type] || STATION_GROWTH_LADDERS[STATION_GROWTH_DEFAULT_TYPE] || EMPTY_GROWTH_LADDER;
+}
+
+/** How many rungs a cumulative throughput has earned on a ladder. Pure. */
+export function stationGrowthRungFor(ladder, throughputU) {
+  const units = Math.max(0, Number(throughputU) || 0);
+  let rung = 0;
+  for (const step of ladder || EMPTY_GROWTH_LADDER) {
+    if (units < step.throughputU) break;
+    rung += 1;
+  }
+  return rung;
+}

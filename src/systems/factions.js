@@ -11,7 +11,7 @@ import { isRunSealed } from '../core/runSeal.js';
 import { FACTION_META } from '../data/factions.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { CONTESTED_SECTOR_BY_PAIR, contestedSectorForPair } from '../data/conflictZones.js';
-import { SECTORS } from '../data/sectors.js';
+import { SECTORS, stationGrowthLadderFor } from '../data/sectors.js';
 import { KillCause, compactKillCausality } from '../combat/killCausality.js';
 import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
 
@@ -57,6 +57,13 @@ const FRONT_KILL_MOMENTUM = 6;    // base momentum banked per contested-sector k
 const BLOCKADE_MOMENTUM = 4;      // extra momentum for killing the lane's logistics hulls
 const SIEGE_MOMENTUM = 10;        // extra momentum for breaking a bastion/heavy hull
 const WRECKING_BALL_MOMENTUM = 5; // extra momentum when the kill was thrown mass / a caused slam
+// PQ-170.01 — station growth and depot dependency. A station the player's freight physically grew
+// is more of its faction's base (the authored rung's powerBonus feeds war power), and a stocked
+// depot provisioning a Concord rotation is Concord reach the player is paying for. Both earn a
+// little standing — through applyRep, the only rep writer — because they were earned with freight.
+const STATION_GROWTH_REP = 8;        // per module a station gains on the player's throughput
+const DEPOT_PROVISIONING_REP = 2;    // per completed Concord rotation the player's depot fed
+const DEPOT_SUPPORT_POWER = 3;       // Concord power per depot currently provisioning a rotation
 const SIEGE_CLASSES = new Set(['capital', 'guardian', 'frigate']);
 const SIEGE_HULLS = new Set(['ship_bastion', 'ship_warden', 'ship_colossus', 'ship_leviathan']);
 const LOGISTICS_ARCHETYPES = new Set(['passive', 'fleeing_trader']);
@@ -273,6 +280,16 @@ export const factions = {
     // Rescuing a faction distress call → standing gain (spec +20). Credits handled by economy.
     bus.on('distress:rescued', (p) => {
       if (p && p.factionId) this.applyRep(p.factionId, 20, 'rescue_faction_distress');
+    });
+
+    // PQ-170.01: a station module the player's throughput built, and a Concord rotation the
+    // player's depot provisioned, are standing earned with freight. claims emits the facts; this
+    // is the only place they touch rep.
+    bus.on('station:moduleGained', (p) => {
+      if (p && p.factionId) this.applyRep(p.factionId, STATION_GROWTH_REP, 'station_growth');
+    });
+    bus.on('claim:depotPatrolCompleted', (p) => {
+      if (p && p.factionId) this.applyRep(p.factionId, DEPOT_PROVISIONING_REP, 'depot_provisioning');
     });
 
     // Day boundary (core/time): decay extreme rep toward neutral + advance war resolution.
@@ -631,6 +648,26 @@ export const factions = {
     for (const id of FACTION_IDS) {
       power[id] += Math.min(12, (haulerByFac[id] || 0) * 2);  // haulers: trade power, capped
       power[id] += Math.min(8, (stationByFac[id] || 0) * 3);   // stations: infrastructure
+    }
+
+    // (2b) PQ-170.01: player-built infrastructure the faction leans on. Read-only over the
+    // claims-owned ledger; the authored rung carries the number so data stays the single source.
+    const growth = state.claims && state.claims.stationGrowth;
+    if (growth && typeof growth === 'object') {
+      for (const stationId in growth) {
+        const rec = growth[stationId];
+        if (!rec || !rec.factionId || power[rec.factionId] == null || !(rec.rung > 0)) continue;
+        const step = stationGrowthLadderFor({ type: rec.type })[rec.rung - 1];
+        if (step) power[rec.factionId] += Math.max(0, Number(step.powerBonus) || 0);
+      }
+    }
+    const claimBodies = state.claims && state.claims.bodies;
+    if (Array.isArray(claimBodies) && power.faction_scn != null) {
+      for (const body of claimBodies) {
+        if (body && body.depotSupport && body.depotSupport.supported === true) {
+          power.faction_scn += DEPOT_SUPPORT_POWER;
+        }
+      }
     }
 
     // (3) Military health: a faction at -aggro (losing the war of attrition) is weakened. This ties

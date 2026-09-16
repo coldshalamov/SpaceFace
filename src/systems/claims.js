@@ -50,9 +50,12 @@ import {
 import { techDisplayName } from '../data/tech.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
-import { SECTORS, dangerIndex } from '../data/sectors.js';
+import { SECTORS, dangerIndex, stationGrowthLadderFor } from '../data/sectors.js';
 import { OUTPOSTS } from '../data/automation.js';
 import { outpostOutputGoodId } from './automation.js';
+import { isRunSealed } from '../core/runSeal.js';
+import { farActorTableRadius } from '../world/farActorTable.js';
+import { depotPatrolLine, stationFactionIdFor, stationGrowthReaction } from '../data/conflictReactions.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
 const REFINE_RATIO = 2;
@@ -86,6 +89,30 @@ const SLING_MIN_ROUTE_WU = 520;
 const SLING_LATERAL_OFFSETS_WU = Object.freeze([0, 160, -160, 280, -280]);
 const CLAIM_DAY_SECONDS = 600;
 
+// PQ-170.01 — station growth and depot dependency.
+// A station gains an authored module because of PLAYER-supplied throughput: the sell side of the
+// player's own market trades plus the freight the player's Trade Relay convoys land there. The
+// ladder lives in data/sectors.js; claims owns the durable ledger (state.claims.stationGrowth,
+// created lazily on the first counted unit so untraded saves and goldens keep their exact shape).
+// A stocked Trade Relay is a DEPOT Concord's patrols depend on: while the player keeps freight in
+// it, claims asks the encounter director (its public authored-request seam, the same one traffic
+// uses for the depot pirate watch) to post a lawful patrol_beat rotation on the depot lane. Let the
+// stores run dry, go cold, or get raided and the rotation is withdrawn — the presence degrades
+// because the support did.
+export const STATION_GROWTH_SCHEMA = 'station_growth_v1';
+export const DEPOT_SUPPORT_GRACE_S = 90;         // dry stores tolerated before support lapses
+export const DEPOT_PATROL_SHAPE_ID = 'patrol_beat';
+export const DEPOT_PATROL_FACTION_ID = 'faction_scn'; // the shape flies the Concord flag everywhere
+export const DEPOT_PATROL_ROTATION_GAP_S = 30;   // relief gap after a beat resolves (≈80% duty cycle)
+export const DEPOT_PATROL_RETRY_S = 10;          // director denied / off-sector poll cadence
+export const DEPOT_PATROL_ANCHOR_FRAC = 0.35;    // rotation holds the lane a third of the way out
+export const DEPOT_PATROL_ZONE_RADIUS_WU = 280;
+// A rotation is a physical presence: it only posts while the player is inside the world's
+// near-residency radius of the lane anchor (capped here), otherwise the far-actor table would
+// virtualize the hulls two ticks after they spawned and the beat would churn spawns unseen.
+export const DEPOT_PATROL_PRESENCE_RANGE_WU = 1400;
+export const DEPOT_PATROL_ID_PREFIX = 'depot-patrol:';
+
 function pointSegmentDistanceSquared(px, pz, ax, az, bx, bz) {
   const dx = bx - ax;
   const dz = bz - az;
@@ -103,6 +130,16 @@ function pointSegmentDistanceSquared(px, pz, ax, az, bx, bz) {
 
 const SECTOR_BY_ID = new Map(SECTORS.map((s) => [s.id, s]));
 const OUTPOST_BY_ID = new Map(OUTPOSTS.map((o) => [o.id, o]));
+// Authored station records by id (PQ-170.01 growth resolves type/faction/name through these).
+const STATION_DEF_BY_ID = (() => {
+  const map = new Map();
+  for (const sector of SECTORS) {
+    for (const station of sector.stations || []) {
+      if (station && station.id) map.set(station.id, { station, sector });
+    }
+  }
+  return map;
+})();
 // F6 unification: which operating identity a legacy abstract outpost becomes.
 const OUTPOST_TO_SPEC = {
   outpost_refinery: 'spec_refinery',
@@ -181,6 +218,12 @@ export const claims = {
     // World respawns POI entities on sector entry — re-stamp specialization identity on them.
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('sector:enter', () => this._applyAllPoiLabels());
+      // PQ-170.01: world respawns stations on sector entry — re-stamp the growth they earned.
+      this.bus.on('sector:enter', () => this._stampAllStationGrowth());
+      // PQ-170.01: player-supplied throughput. Only the SELL side supplies a station.
+      this.bus.on('economy:tradeCompleted', (payload) => this._onTradeCompleted(payload || {}));
+      // PQ-170.01: a Concord depot rotation resolving (beat elapsed, stood down) schedules the next.
+      this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {}));
       this.bus.on('encounter:resolved', (payload) => this._onDefenseEncounterResolved(payload || {}));
       this.bus.on('claim:defenseIgnore', (payload) => {
         const body = this._body(payload && payload.bodyId);
@@ -525,6 +568,7 @@ export const claims = {
           : 0,
         damagePolicy: body.infrastructure.damagePolicy,
       } : null,
+      depot: this._depotSupportReadout(body),
       lastEvent: spec.receipts.length ? spec.receipts[spec.receipts.length - 1] : null,
       receipts: spec.receipts.slice(),
     };
@@ -790,6 +834,7 @@ export const claims = {
         const rate = (mod.refineRate || 0.5) * dt; // ore-units this tick
         this._tickRefinery(body, rate);
       }
+      this._tickDepotSupport(body, state);
       this._tickTravelInfrastructure(body, state);
     }
     this._tickRaidDefenses(bodies, state);
@@ -889,12 +934,18 @@ export const claims = {
           this._receipt(body, 'convoy_returned', 'No buyer found — freight returned',
             { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId });
         } else {
-          const revenue = Math.round(convoy.qty * unit * (1 - def.saleFee));
+          // PQ-170.01: a station the player's freight grew keeps less of the sale.
+          const saleFee = this._relaySaleFee(def, convoy.destStationId);
+          const revenue = Math.round(convoy.qty * unit * (1 - saleFee));
           this.bus.emit('economy:grantCredits', { amount: revenue, reason: 'claim_relay_sale' });
           this.bus.emit('economy:applyTradePressure', { stationId: convoy.destStationId, good: convoy.goodId, vol: convoy.qty });
           spec.totals.soldTotalCr += revenue;
           this._receipt(body, 'convoy_sold', 'Convoy sold ' + convoy.qty + 'u at ' + (this._stationName(convoy.destStationId) || convoy.destStationId),
-            { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId, revenueCr: revenue });
+            { goodId: convoy.goodId, qty: convoy.qty, destStationId: convoy.destStationId, revenueCr: revenue, saleFee });
+          // Relay freight landing at a real market is player-supplied throughput for that station.
+          this._recordStationThroughput(convoy.destStationId, convoy.qty, 'relay_convoy', {
+            goodId: convoy.goodId, bodyId: body.id,
+          });
         }
       }
     }
@@ -1520,6 +1571,499 @@ export const claims = {
     return sector.pois.find((p) => p && p.claimable && !this.isClaimed(p.id)) || null;
   },
 
+  // ------------------------------------------------------------------------------------------
+  // PQ-170.01 — STATION GROWTH. Player-supplied throughput → authored station modules.
+  // ------------------------------------------------------------------------------------------
+
+  // The sell side of the player's own market trade supplies that station. Buys drain it and count
+  // for nothing; a sealed Crucible run never grows the campaign's stations.
+  _onTradeCompleted(payload) {
+    if (!payload || payload.side !== 'sell' || !payload.stationId) return null;
+    const qty = Math.floor(Number(payload.qty) || 0);
+    if (qty <= 0) return null;
+    if (isRunSealed(this.state)) return null;
+    return this._recordStationThroughput(payload.stationId, qty, 'market_sell', {
+      goodId: payload.commodityId || null,
+    });
+  },
+
+  // Authored station record (type/faction/name/sector) with a live-entity fallback for stations the
+  // world spawned from somewhere other than SECTORS. Unknown stations grow nothing.
+  _stationDef(stationId) {
+    const authored = STATION_DEF_BY_ID.get(stationId);
+    if (authored) {
+      const station = authored.station;
+      return {
+        stationId,
+        type: station.type || 'trade_hub',
+        factionId: station.factionId || authored.sector.factionId || null,
+        name: station.name || stationId,
+        sectorId: authored.sector.id,
+      };
+    }
+    const entity = this._stationEntity(stationId);
+    const data = entity && entity.data;
+    if (!data || !data.stationTypeId) return null;
+    return {
+      stationId,
+      type: data.stationTypeId,
+      factionId: data.factionId || entity.factionId || null,
+      name: data.stationBaseName || data.name || stationId,
+      sectorId: data.sectorId || (this.state.world && this.state.world.currentSectorId) || null,
+    };
+  },
+
+  _ensureStationGrowth(stationId) {
+    const claims = this.state.claims;
+    if (!claims.stationGrowth) claims.stationGrowth = {};
+    let rec = claims.stationGrowth[stationId];
+    if (rec) return rec;
+    const def = this._stationDef(stationId);
+    if (!def) return null;
+    const t = this.state.simTime || 0;
+    rec = claims.stationGrowth[stationId] = {
+      schema: STATION_GROWTH_SCHEMA,
+      stationId,
+      sectorId: def.sectorId,
+      factionId: def.factionId,
+      name: def.name,
+      type: def.type,
+      throughputU: 0,
+      rung: 0,
+      modules: [],
+      sources: { market_sell: 0, relay_convoy: 0 },
+      firstSupplyAt: t,
+      lastSupplyAt: t,
+    };
+    return rec;
+  },
+
+  /** Count `qty` units of player-supplied freight against `stationId`; gain every rung crossed. */
+  _recordStationThroughput(stationId, qty, source, extra = {}) {
+    const units = Math.floor(Number(qty) || 0);
+    if (!stationId || units <= 0) return null;
+    const rec = this._ensureStationGrowth(stationId);
+    if (!rec) return null;
+    rec.throughputU += units;
+    rec.sources[source] = (rec.sources[source] || 0) + units;
+    rec.lastSupplyAt = this.state.simTime || 0;
+    const ladder = stationGrowthLadderFor({ type: rec.type });
+    while (rec.rung < ladder.length && rec.throughputU >= ladder[rec.rung].throughputU) {
+      this._gainStationModule(rec, ladder[rec.rung], source, extra);
+    }
+    this.bus.emit('station:throughput', {
+      stationId, sectorId: rec.sectorId, factionId: rec.factionId,
+      qty: units, source, throughputU: rec.throughputU, rung: rec.rung,
+    });
+    return rec;
+  },
+
+  _gainStationModule(rec, rung, source, extra = {}) {
+    const t = this.state.simTime || 0;
+    rec.rung += 1;
+    const receiptId = `station-growth:${rec.stationId}:${rung.id}`;
+    const module = {
+      id: rung.id, name: rung.name, tag: rung.tag, rung: rec.rung,
+      at: t, throughputU: rec.throughputU, source, receiptId,
+    };
+    rec.modules.push(module);
+    const reaction = stationGrowthReaction({
+      stationId: rec.stationId, stationName: rec.name, factionId: rec.factionId,
+      moduleName: rung.name, throughputU: rec.throughputU, line: rung.line,
+    });
+    this._stampStationGrowth(rec);
+    // The relay that fed it keeps the receipt too, so the Base ledger tells the same story.
+    if (extra && extra.bodyId) {
+      const body = this._body(extra.bodyId);
+      if (body && body.spec) {
+        this._receipt(body, 'station_grew', rec.name + ' gained ' + rung.name + ' on your convoys', {
+          stationId: rec.stationId, moduleId: rung.id, rung: rec.rung, receiptId,
+        });
+      }
+    }
+    this.bus.emit('station:moduleGained', {
+      stationId: rec.stationId, stationName: rec.name, sectorId: rec.sectorId, factionId: rec.factionId,
+      moduleId: rung.id, moduleName: rung.name, tag: rung.tag, rung: rec.rung,
+      throughputU: rec.throughputU, source, receiptId, text: reaction.text, dockLine: reaction.dockLine,
+    });
+    // Authored copy arrives verbatim on the ticker, the dock-arrival card and (through the news
+    // surface) the toast — one voice, no second toast from here. receiptId is the ticker citation.
+    this.bus.emit('news:publish', {
+      text: reaction.text,
+      kind: 'station_growth',
+      stationId: rec.stationId,
+      stationName: rec.name,
+      sectorId: rec.sectorId,
+      factionId: rec.factionId,
+      moduleId: rung.id,
+      receiptId,
+      sourceRef: receiptId,
+      eventId: receiptId,
+      source: 'claims',
+    });
+    this.bus.emit('audio:cue', { id: 'confirm' });
+    return module;
+  },
+
+  // Stamp earned growth onto the live station entity so every surface that reads a station's
+  // data.name (contacts, target panel, local map, dock toasts) shows the module. Display-only,
+  // idempotent, re-applied on sector entry because world respawns stations from data.
+  _stampStationGrowth(rec) {
+    if (!rec) return false;
+    const entity = this._stationEntity(rec.stationId);
+    const data = entity && entity.data;
+    if (!data) return false;
+    if (!data.stationBaseName) data.stationBaseName = data.name || rec.name || rec.stationId;
+    const top = rec.modules.length ? rec.modules[rec.modules.length - 1] : null;
+    data.name = top ? data.stationBaseName + ' · ' + top.tag : data.stationBaseName;
+    data.stationGrowth = {
+      rung: rec.rung,
+      throughputU: rec.throughputU,
+      label: top ? top.tag : null,
+      modules: rec.modules.map((m) => m.name),
+      lastReceiptId: top ? top.receiptId : null,
+    };
+    return true;
+  },
+
+  _stampAllStationGrowth() {
+    const growth = this.state.claims && this.state.claims.stationGrowth;
+    if (!growth) return 0;
+    let stamped = 0;
+    for (const stationId in growth) {
+      if (this._stampStationGrowth(growth[stationId])) stamped += 1;
+    }
+    return stamped;
+  },
+
+  /** Relay sale fee at a station, less the cut a grown station gives the player's convoys. */
+  _relaySaleFee(def, stationId) {
+    const base = Math.max(0, Number(def && def.saleFee) || 0);
+    const rec = this.stationGrowth(stationId);
+    if (!rec || !(rec.rung > 0)) return base;
+    const ladder = stationGrowthLadderFor({ type: rec.type });
+    const step = ladder[rec.rung - 1];
+    const cut = step ? Math.max(0, Number(step.relayFeeCut) || 0) : 0;
+    // Fixed to four places so receipts and revenue never carry a binary-fraction artifact.
+    return Math.max(0, Math.round((base - cut) * 10000) / 10000);
+  },
+
+  /** Public read: the growth record for a station, or null when nothing was ever supplied. */
+  stationGrowth(stationId) {
+    const growth = this.state.claims && this.state.claims.stationGrowth;
+    return (growth && stationId && growth[stationId]) || null;
+  },
+
+  /** Public read: the authored ladder for a station id (type-resolved through SECTORS). */
+  stationGrowthLadder(stationId) {
+    const def = this._stationDef(stationId);
+    return def ? stationGrowthLadderFor({ type: def.type }) : [];
+  },
+
+  _normalizeStationGrowth(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const out = {};
+    let any = false;
+    for (const stationId of Object.keys(raw)) {
+      const rec = raw[stationId];
+      if (!rec || typeof rec !== 'object') continue;
+      const def = this._stationDef(stationId);
+      const type = (typeof rec.type === 'string' && rec.type) || (def && def.type) || null;
+      if (!type) continue;
+      const ladder = stationGrowthLadderFor({ type });
+      const throughputU = Math.max(0, Math.floor(Number(rec.throughputU) || 0));
+      const modules = Array.isArray(rec.modules)
+        ? rec.modules.filter((m) => m && typeof m.id === 'string').map((m) => ({
+          id: m.id,
+          name: typeof m.name === 'string' ? m.name : m.id,
+          tag: typeof m.tag === 'string' ? m.tag : String(m.name || m.id).toUpperCase(),
+          rung: Math.max(1, Math.floor(Number(m.rung) || 0)),
+          at: Number.isFinite(Number(m.at)) ? Number(m.at) : 0,
+          throughputU: Math.max(0, Math.floor(Number(m.throughputU) || 0)),
+          source: typeof m.source === 'string' ? m.source : 'market_sell',
+          receiptId: typeof m.receiptId === 'string' ? m.receiptId : `station-growth:${stationId}:${m.id}`,
+        }))
+        : [];
+      // The rung is the count of modules actually gained; the ladder can only add rungs later.
+      const rung = Math.min(ladder.length, modules.length);
+      modules.length = rung;
+      out[stationId] = {
+        schema: STATION_GROWTH_SCHEMA,
+        stationId,
+        sectorId: (typeof rec.sectorId === 'string' && rec.sectorId) || (def && def.sectorId) || null,
+        factionId: (typeof rec.factionId === 'string' && rec.factionId) || (def && def.factionId) || null,
+        name: (typeof rec.name === 'string' && rec.name) || (def && def.name) || stationId,
+        type,
+        throughputU,
+        rung,
+        modules,
+        sources: {
+          market_sell: Math.max(0, Math.floor(Number(rec.sources && rec.sources.market_sell) || 0)),
+          relay_convoy: Math.max(0, Math.floor(Number(rec.sources && rec.sources.relay_convoy) || 0)),
+        },
+        firstSupplyAt: Number.isFinite(Number(rec.firstSupplyAt)) ? Number(rec.firstSupplyAt) : 0,
+        lastSupplyAt: Number.isFinite(Number(rec.lastSupplyAt)) ? Number(rec.lastSupplyAt) : 0,
+      };
+      any = true;
+    }
+    return any ? out : null;
+  },
+
+  // ------------------------------------------------------------------------------------------
+  // PQ-170.01 — DEPOT DEPENDENCY. A stocked Trade Relay is a depot Concord's patrols run on.
+  // ------------------------------------------------------------------------------------------
+
+  _freshDepotSupport() {
+    return {
+      supported: false,
+      since: 0,
+      stockedAt: 0,
+      dryAt: 0,
+      lapsedAt: 0,
+      lapseReason: null,
+      rotations: 0,
+      completedRotations: 0,
+      patrol: { encounterId: null, requestedAt: 0, nextAt: 0, lastDenied: null, announced: false },
+    };
+  },
+
+  _depotStocked(body) {
+    const spec = body && body.spec;
+    if (!spec || spec.id !== 'spec_relay' || spec.status !== 'active') return false;
+    if (sumStore(spec.store.input) > 0) return true;
+    return !!(spec.convoy && spec.convoy.qty > 0);
+  },
+
+  _tickDepotSupport(body, state) {
+    const spec = body && body.spec;
+    const isRelay = !!spec && spec.id === 'spec_relay';
+    if (!isRelay) {
+      if (body && body.depotSupport && body.depotSupport.supported) this._lapseDepotSupport(body, 'decommissioned');
+      return;
+    }
+    const now = Number(state.simTime) || 0;
+    const ds = body.depotSupport || (body.depotSupport = this._freshDepotSupport());
+    if (this._depotStocked(body)) {
+      ds.stockedAt = now;
+      ds.dryAt = 0;
+      if (!ds.supported) this._beginDepotSupport(body, ds, now);
+    } else if (ds.supported) {
+      if (spec.status !== 'active') {
+        this._lapseDepotSupport(body, spec.status === 'raided' ? 'raided' : 'cold');
+      } else {
+        if (!ds.dryAt) ds.dryAt = now;
+        if (now - ds.dryAt >= DEPOT_SUPPORT_GRACE_S) this._lapseDepotSupport(body, 'withdrawn');
+      }
+    }
+    if (ds.supported) this._maintainDepotPatrol(body, ds, state, now);
+  },
+
+  _beginDepotSupport(body, ds, now) {
+    ds.supported = true;
+    ds.since = now;
+    ds.lapsedAt = 0;
+    ds.lapseReason = null;
+    ds.patrol.nextAt = now;
+    ds.patrol.lastDenied = null;
+    ds.patrol.announced = false;
+    this._receipt(body, 'depot_supported', 'Depot stocked — Concord patrol rotation requested for the lane');
+    this.bus.emit('claim:depotSupport', {
+      bodyId: body.id, sectorId: body.sectorId, supported: true, reason: 'stocked',
+      factionId: DEPOT_PATROL_FACTION_ID,
+    });
+  },
+
+  _lapseDepotSupport(body, reason) {
+    const ds = body && body.depotSupport;
+    if (!ds || !ds.supported) return false;
+    const now = this.state.simTime || 0;
+    ds.supported = false;   // set before the abort so the resolved handler never reschedules
+    ds.lapsedAt = now;
+    ds.lapseReason = reason;
+    ds.dryAt = 0;
+    ds.patrol.nextAt = 0;
+    const encounterId = ds.patrol.encounterId;
+    const liveMap = this.state.encounterDirector && this.state.encounterDirector.live;
+    const live = liveMap && encounterId ? liveMap[encounterId] : null;
+    const director = this._encounterDirector();
+    if (live && director && typeof director.abort === 'function') {
+      director.abort(live, 'depot_support_lapsed');
+    }
+    ds.patrol.encounterId = null;
+    const line = depotPatrolLine(reason, { depot: body.name });
+    if (body.spec) this._receipt(body, 'depot_lapsed', line, { reason });
+    this.bus.emit('claim:depotSupport', {
+      bodyId: body.id, sectorId: body.sectorId, supported: false, reason,
+      factionId: DEPOT_PATROL_FACTION_ID, encounterId,
+    });
+    if (body.sectorId === (this.state.world && this.state.world.currentSectorId)) {
+      this.bus.emit('toast', { text: line, kind: 'warn', ttl: 5 });
+    }
+    return true;
+  },
+
+  // Keep one lawful patrol_beat rotation live on the depot lane while support holds. The director
+  // owns the set piece (spawn budget, doctrine, resolution); claims only asks, on a fixed cadence
+  // off simTime, and treats `reused` as "still live" — so a post-load wipe or a spawn-cap denial
+  // self-heals without reading director state.
+  _maintainDepotPatrol(body, ds, state, now) {
+    const patrol = ds.patrol;
+    if (now < (patrol.nextAt || 0)) return false;
+    patrol.nextAt = now + DEPOT_PATROL_RETRY_S;
+    if (!state.world || state.world.currentSectorId !== body.sectorId) return false;
+    const director = this._encounterDirector();
+    if (!director || typeof director.requestAuthoredEncounter !== 'function') {
+      patrol.lastDenied = 'no_director';
+      return false;
+    }
+    const stationId = this._relayDestination(body);
+    const station = this._stationEntity(stationId);
+    const anchor = station && station.pos
+      ? {
+        x: body.x + (station.pos.x - body.x) * DEPOT_PATROL_ANCHOR_FRAC,
+        z: body.z + (station.pos.z - body.z) * DEPOT_PATROL_ANCHOR_FRAC,
+      }
+      : { x: body.x + 200, z: body.z };
+    if (!this._playerCanSeeLane(anchor, state)) {
+      patrol.lastDenied = 'player_far';
+      return false;
+    }
+    const rotation = patrol.encounterId ? ds.rotations : ds.rotations + 1;
+    const encounterId = patrol.encounterId || `${DEPOT_PATROL_ID_PREFIX}${body.id}:${rotation}`;
+    const result = director.requestAuthoredEncounter({
+      shapeId: DEPOT_PATROL_SHAPE_ID,
+      encounterId,
+      sectorId: body.sectorId,
+      anchor,
+      zoneId: `depot-lane:${body.id}`,
+      zoneName: `${body.name} depot lane`,
+      zoneType: 'patrol_corridor',
+      zoneRadius: DEPOT_PATROL_ZONE_RADIUS_WU,
+      force: true,
+      data: { claimDepotId: body.id, depotPatrol: true, rotation, stationId: stationId || null },
+    });
+    if (!result || result.ok !== true) {
+      patrol.lastDenied = (result && result.reason) || 'denied';
+      return false;
+    }
+    patrol.lastDenied = null;
+    if (result.reused === true) return true;
+    // A new rotation was actually posted.
+    ds.rotations = rotation;
+    patrol.encounterId = encounterId;
+    patrol.requestedAt = now;
+    this.bus.emit('claim:depotPatrolRotation', {
+      bodyId: body.id, sectorId: body.sectorId, encounterId, rotation,
+      factionId: DEPOT_PATROL_FACTION_ID, anchor, stationId: stationId || null,
+    });
+    // Announce once per support window; reliefs every couple of minutes stay quiet.
+    if (!patrol.announced) {
+      patrol.announced = true;
+      const line = depotPatrolLine('posted', { depot: body.name });
+      this._receipt(body, 'depot_patrol_posted', line, {
+        encounterId, rotation, factionId: DEPOT_PATROL_FACTION_ID,
+      });
+      this.bus.emit('toast', { text: line, kind: 'good', ttl: 5 });
+    }
+    return true;
+  },
+
+  _playerCanSeeLane(anchor, state) {
+    const player = state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId) : null;
+    if (!player || player.alive === false || !player.pos || !anchor) return false;
+    let range = DEPOT_PATROL_PRESENCE_RANGE_WU;
+    try {
+      const radii = farActorTableRadius(state);
+      if (radii && Number.isFinite(radii.enter) && radii.enter > 0) range = Math.min(range, radii.enter);
+    } catch (_) { /* headless harness without activity runtime: keep the authored cap */ }
+    const dx = player.pos.x - anchor.x;
+    const dz = player.pos.z - anchor.z;
+    return dx * dx + dz * dz <= range * range;
+  },
+
+  _onDepotPatrolResolved(payload) {
+    const id = String((payload && payload.encounterId) || '');
+    if (!id.startsWith(DEPOT_PATROL_ID_PREFIX)) return false;
+    const bodyId = id.slice(DEPOT_PATROL_ID_PREFIX.length).split(':')[0];
+    const body = this._body(bodyId);
+    const ds = body && body.depotSupport;
+    if (!ds || ds.patrol.encounterId !== id) return false;
+    const now = this.state.simTime || 0;
+    ds.patrol.encounterId = null;
+    const aborted = String(payload.outcome || '').startsWith('aborted:');
+    if (!aborted) {
+      ds.completedRotations += 1;
+      this.bus.emit('claim:depotPatrolCompleted', {
+        bodyId: body.id, sectorId: body.sectorId, encounterId: id, rotation: ds.rotations,
+        outcome: payload.outcome || 'completed', factionId: DEPOT_PATROL_FACTION_ID,
+      });
+    }
+    if (ds.supported) {
+      ds.patrol.nextAt = now + (aborted ? DEPOT_PATROL_RETRY_S : DEPOT_PATROL_ROTATION_GAP_S);
+    }
+    return true;
+  },
+
+  _depotSupportReadout(body) {
+    const ds = body && body.depotSupport;
+    if (!ds) return null;
+    const t = this.state.simTime || 0;
+    return {
+      supported: ds.supported === true,
+      since: ds.since,
+      stocked: this._depotStocked(body),
+      dryForS: ds.dryAt ? Math.max(0, t - ds.dryAt) : 0,
+      graceS: DEPOT_SUPPORT_GRACE_S,
+      lapsedAt: ds.lapsedAt,
+      lapseReason: ds.lapseReason,
+      patrolFactionId: DEPOT_PATROL_FACTION_ID,
+      patrolLive: !!ds.patrol.encounterId,
+      patrolEncounterId: ds.patrol.encounterId,
+      rotations: ds.rotations,
+      completedRotations: ds.completedRotations,
+      lastDenied: ds.patrol.lastDenied,
+    };
+  },
+
+  _normalizeDepotSupport(raw, body) {
+    if (!raw || typeof raw !== 'object' || !body || !body.spec || body.spec.id !== 'spec_relay') return null;
+    const fresh = this._freshDepotSupport();
+    const num = (value, fallback = 0) => (Number.isFinite(Number(value)) ? Number(value) : fallback);
+    fresh.supported = raw.supported === true;
+    fresh.since = num(raw.since);
+    fresh.stockedAt = num(raw.stockedAt);
+    fresh.dryAt = num(raw.dryAt);
+    fresh.lapsedAt = num(raw.lapsedAt);
+    fresh.lapseReason = typeof raw.lapseReason === 'string' ? raw.lapseReason : null;
+    fresh.rotations = Math.max(0, Math.floor(num(raw.rotations)));
+    fresh.completedRotations = Math.max(0, Math.floor(num(raw.completedRotations)));
+    // Live encounters never survive a load (the director rebuilds fresh); the next maintain pass
+    // re-posts the rotation immediately when the depot is still stocked.
+    fresh.patrol.encounterId = null;
+    fresh.patrol.requestedAt = num(raw.patrol && raw.patrol.requestedAt);
+    fresh.patrol.nextAt = 0;
+    fresh.patrol.lastDenied = null;
+    fresh.patrol.announced = !!(raw.patrol && raw.patrol.announced === true);
+    return fresh;
+  },
+
+  /** Public read: bodies whose depot currently provisions a Concord rotation (optionally per sector). */
+  supportedDepots(sectorId = null) {
+    const out = [];
+    for (const body of (this.state.claims && this.state.claims.bodies) || []) {
+      if (!body || !body.depotSupport || body.depotSupport.supported !== true) continue;
+      if (sectorId && body.sectorId !== sectorId) continue;
+      out.push(body);
+    }
+    return out;
+  },
+
+  _encounterDirector() {
+    const registry = this.ctx && this.ctx.registry;
+    return registry && typeof registry.get === 'function' ? registry.get('encounterDirector') : null;
+  },
+
   // Public read API for the Base screen.
   list() { return (this.state.claims && this.state.claims.bodies) || []; },
 
@@ -1535,6 +2079,7 @@ export const claims = {
     };
     if (claims.meta) out.meta = { ...claims.meta };
     if (claims.legacyMigration) out.legacyMigration = { ...claims.legacyMigration };
+    if (claims.stationGrowth) out.stationGrowth = JSON.parse(JSON.stringify(claims.stationGrowth));
     return out;
   },
 
@@ -1553,6 +2098,9 @@ export const claims = {
       const infrastructure = this._normalizeTravelInfrastructure(b.infrastructure, b);
       if (infrastructure) b.infrastructure = infrastructure;
       else delete b.infrastructure;
+      const depotSupport = this._normalizeDepotSupport(b.depotSupport, b);
+      if (depotSupport) b.depotSupport = depotSupport;
+      else delete b.depotSupport;
       if (b.spec && b.spec.defense && b.spec.defense.phase === 'engaged') {
         this._resumeDefenseIds.add(b.spec.defense.id);
       }
@@ -1562,6 +2110,8 @@ export const claims = {
     if (data.legacyMigration && typeof data.legacyMigration === 'object') {
       this.state.claims.legacyMigration = { ...data.legacyMigration };
     }
+    const stationGrowth = this._normalizeStationGrowth(data.stationGrowth);
+    if (stationGrowth) this.state.claims.stationGrowth = stationGrowth;
     // Re-derive _nextClaimId past any restored claim id so the next claim() can't collide. (We
     // don't trust a serialized counter even if one is present — deriving from the bodies is the
     // source of truth and survives legacy/partial saves.)
@@ -1573,6 +2123,7 @@ export const claims = {
     // Saves older than specVersion 1 may still carry abstract automation outposts — the F6 path.
     if (data.specVersion == null) this._migrateLegacyOutposts();
     this._applyAllPoiLabels();
+    this._stampAllStationGrowth();
   },
 
   newGame() {

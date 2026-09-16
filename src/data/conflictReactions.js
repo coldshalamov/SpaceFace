@@ -172,6 +172,70 @@ function fillTokens(text, tokens) {
   return String(text || '').replace(/\{(sector|winner|loser)\}/g, (_match, key) => tokens[key]);
 }
 
+// ── PQ-170.01 — station growth and depot dependency copy ─────────────────────────────────────────
+// Pure authored lines. claims.js fills the tokens and publishes them; nothing here touches state
+// or the shared RNG. Station growth speaks in the station-owning faction's register (resolved
+// station→faction through SECTORS exactly like the flip surfaces above). The depot rotation is
+// always Concord: the lawful patrol_beat shape flies the Concord flag in every sector, so a stocked
+// depot in lawless space is Concord reach the player is provisioning.
+const STATION_GROWTH_VOICE = Object.freeze({
+  faction_scn: Object.freeze({ prefix: 'CONCORD DESK', suffix: 'Logged under your route file.' }),
+  faction_dmc: Object.freeze({ prefix: 'DRIFT SHIFT BOARD', suffix: 'Rock crews say the credit is yours.' }),
+  faction_mts: Object.freeze({ prefix: 'MERIDIAN MANIFEST', suffix: 'Your lane is a line item now.' }),
+  faction_free: Object.freeze({ prefix: 'FRONTIER DOCKLINE', suffix: 'Nobody ordered it. You built it.' }),
+  faction_quiet: Object.freeze({ prefix: 'QUIET WHISPER', suffix: 'Never on a manifest. Still there.' }),
+  faction_reach: Object.freeze({ prefix: 'SKER WALL', suffix: 'Reach remembers who fed the docks.' }),
+  faction_vael: Object.freeze({ prefix: 'VAEL KEEL', suffix: 'The hull grew where you kept touching it.' }),
+  faction_choir: Object.freeze({ prefix: 'CHOIR LITANY', suffix: 'Sung into the roster of what you carried.' }),
+});
+const DEFAULT_GROWTH_VOICE = Object.freeze({ prefix: 'DOCK NOTICE', suffix: 'Built on your throughput.' });
+
+export const DEPOT_PATROL_LINES = Object.freeze({
+  posted: 'CONCORD: {depot} lane provisioned — patrol rotation posted on your depot.',
+  withdrawn: 'CONCORD: {depot} stores are dry — patrol rotation withdrawn.',
+  cold: 'CONCORD: {depot} has gone cold — patrol rotation withdrawn.',
+  raided: 'CONCORD: {depot} is under repair — patrol rotation withdrawn.',
+  decommissioned: 'CONCORD: {depot} is no longer a relay — patrol rotation withdrawn.',
+});
+
+/** Which faction's voice a station carries (null for stations SECTORS does not author). */
+export function stationFactionIdFor(stationId) {
+  return STATION_FACTION_BY_ID.get(stationId) || null;
+}
+
+/**
+ * One dock-notice line for a station module the player's throughput built. `line` is the rung's
+ * authored sentence from STATION_GROWTH_LADDERS; this wraps it in the local register.
+ */
+export function stationGrowthReaction({ stationId, stationName, factionId, moduleName, throughputU, line } = {}) {
+  const owner = factionId || stationFactionIdFor(stationId) || null;
+  const voice = STATION_GROWTH_VOICE[owner] || DEFAULT_GROWTH_VOICE;
+  const tokens = {
+    station: String(stationName || humanizeId(stationId) || 'the station'),
+    module: String(moduleName || 'a new module'),
+    units: String(Math.max(0, Math.floor(Number(throughputU) || 0))),
+  };
+  const body = fillGrowthTokens(line || '{station} gains {module} — {units}u of your freight built it.', tokens);
+  return Object.freeze({
+    factionId: owner,
+    prefix: voice.prefix,
+    text: `${voice.prefix}: ${body}`,
+    dockLine: `${body} ${voice.suffix}`,
+  });
+}
+
+/** Concord's voice for the depot patrol rotation. `kind` is a DEPOT_PATROL_LINES key. */
+export function depotPatrolLine(kind, tokens = {}) {
+  const template = DEPOT_PATROL_LINES[kind] || DEPOT_PATROL_LINES.withdrawn;
+  return fillGrowthTokens(template, { depot: String(tokens.depot || 'your depot') });
+}
+
+function fillGrowthTokens(text, tokens) {
+  return String(text || '').replace(/\{(station|module|units|depot)\}/g, (_match, key) => (
+    tokens[key] != null ? tokens[key] : ''
+  ));
+}
+
 function factionLabel(id) {
   const faction = FACTION_BY_ID.get(id);
   return String(faction && (faction.short || faction.name) || humanizeId(id)).toUpperCase();
