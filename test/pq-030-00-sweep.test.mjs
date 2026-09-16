@@ -11,7 +11,10 @@ import { readTumbleStatus } from '../src/combat/tumbleStatus.js';
 import { createCombatCatalog, ensureCombatState } from '../src/combat/runtime.js';
 import { createBus } from '../src/core/eventBus.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
-import { resolveGovernedCombatSpeed } from '../src/core/flight/propulsionCatalog.js';
+import {
+  getPropulsionProfile,
+  resolveGovernedCombatSpeed,
+} from '../src/core/flight/propulsionCatalog.js';
 import { mulberry32 } from '../src/core/rng.js';
 import { COMBAT_FLAGS } from '../src/data/featureFlags.js';
 import { PRODUCTION_FEATURES } from '../src/runtime/runtimeProfiles.js';
@@ -23,7 +26,10 @@ import { tumbleStates } from '../src/systems/tumbleStates.js';
 
 const SEED = 30000;
 const DT = 1 / 60;
-const SWING_SPEED = 105;
+// The blade crosses at governed cruise: both the swinger (mass 20) and the tug (role fighter)
+// resolve to drive_reaction_s, so the swing follows the catalogue rather than pinning a literal
+// that goes stale whenever the speed regime retunes. The B11 bar is relative to victim cruise.
+const SWING_SPEED = getPropulsionProfile('drive_reaction_s').combatSpeed;
 const TOW_SPEED = 40;
 
 function stubCombatPhysics() {

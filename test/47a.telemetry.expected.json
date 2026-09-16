@@ -66,7 +66,7 @@
     "audio:cue": 3
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "371585f229c9795d513b009da5afa9942533d52156a0b02e74469932e3df1524",
+    "authoritativeHash": "22499c9366b276b4022eb9e4432853fef79aad7ae2b0b9881bf8fe19f05c6809",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -138,6 +138,10 @@
     "By-key breakdown of the 36 non-identical leaf fields: $.entities[] 24, $.missions 10, $.player 2. Nine tenths of the tree is unchanged; economy did not move at all this time.",
     "Causes are landed content: hull derived stats (cargoCap, shield, shieldRegenRate, weapon heat) re-tuned with the packaged player hull; packagedProp* identity fields from the packaged-hardware presentation (PQ-193).",
     "Also: mission base rewards added for the set-piece / rescue-under-fire / tow-recovery / demolition / capital-boss kinds, and the player sessionSink ledger (momentum sinks) added to the save shape.",
-    "phase0ObservedTraceCounts moved: audio:cue 2->3. Alert and presentation cue counts follow the re-tuned shield thresholds; every combat, tether, scenario and economy count is unchanged."
+    "phase0ObservedTraceCounts moved: audio:cue 2->3. Alert and presentation cue counts follow the re-tuned shield thresholds; every combat, tether, scenario and economy count is unchanged.",
+    "2026-09-15 deliberate re-record: propulsion catalogue combat/precision cruise ceilings restored to pre-nimble-regime values per owner feel direction. Prior authoritativeHash was 371585f229c9795d513b009da5afa9942533d52156a0b02e74469932e3df1524.",
+    "sim-golden-diff legacy vs reference 8f101f61: MOTION_CHANGED as intended, 12 entity motion fields / 158 snapshot fields moved. Zero observed trace counts moved (fire 17, hit 4, damage 4, cues unchanged).",
+    "repeat-20 and reload@600 are deterministic (baselineSha256 equals run hash). Recorded on an isolated tree (HEAD + owned files only); unrelated dirty-tree work in tetherGameplay moves this hash and is excluded.",
+    "Companion fix in this change: player contact-response budget bookkeeping now persists through save/reload instead of living only on the physics record, so a mid-episode scrape no longer re-spends its cruise budget."
   ]
 }

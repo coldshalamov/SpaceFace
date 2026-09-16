@@ -324,7 +324,11 @@ test('R2 production recovery matrix covers exact R0 radii and radial/signed head
   assert.ok(matrix.rows.every((row) => row.metrics.correctionBounded));
   assert.ok(matrix.rows.every((row) => row.metrics.orbitAssistActiveTicks > 0));
   assert.ok(matrix.rows.every((row) => Number.isFinite(row.metrics.worstDesiredYawRateRatio)));
-  assert.ok(matrix.rows.every((row) => row.metrics.worstDesiredYawRateRatio < 0.9));
+  // Hard whips legitimately saturate yaw authority (the orbit's own feed-forward outruns the
+  // hull), so the takeover gate is demand-relative: a near-full-rate request may only occur
+  // while the orbital rate plus the bounded correction budget could actually call for it.
+  assert.ok(matrix.rows.every((row) => row.metrics.fullRateTakeoverTicks === 0),
+    'a near-full-rate yaw request must only occur while the orbit itself demands the envelope');
   assert.ok(matrix.rows.every((row) => row.metrics.worstDesiredYawRateRatio
     >= row.metrics.initialAbsDesiredYawRate / row.metrics.maxYawRate - 1e-6));
   assert.ok(matrix.rows.some((row) => row.metrics.worstDesiredYawRateRatioTick > 0),

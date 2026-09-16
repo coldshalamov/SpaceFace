@@ -11,7 +11,10 @@ import {
 } from './feel.screen_crossing.mjs';
 
 const HULL_ID = 'ship_kestrel';
-const STRAIGHT_TICKS = 900;
+// Long enough to prove governed convergence, short enough that a ~195 WU/s cruise (~1,650 WU
+// traveled) stays inside the sector soft boundary (radius 2,600) — the fence is the thing being
+// measured once the ship crosses it, not the governor.
+const STRAIGHT_TICKS = 540;
 const WEAVE_TICKS = 2400;
 const HOLD_TICKS = 1800;
 const BOOST_TICKS = 900;

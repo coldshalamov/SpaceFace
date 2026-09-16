@@ -380,7 +380,7 @@ export const physics = {
     this._queueSectorFenceImpulses(dt, state);
     this._syncSg02DynamicAuthorityEntities(state);
     this._reconcileCombatPhysicsBeforeStep();
-    const sdiag = this._sg02.step(dt);
+    const sdiag = this._sg02.step(dt, state.tick);
     const sg02ImpactCount = this._emitSg02ContactImpacts(state);
     this._diag.rapierReady = true;
     this._diag.sg02Ready = true;

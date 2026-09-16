@@ -99,6 +99,11 @@ export const LAB_DEFAULTS = Object.freeze({
 /** The baseline: inject nothing. The matrix built on this measures CURRENT tether behavior. */
 export const BASELINE_CONTROLLER = null;
 
+// Takeover slack: a near-full-rate yaw request only counts as a takeover when the orbit's
+// own feed-forward plus the entire bounded correction budget still falls this far short
+// of the request — i.e. the assist invented demand rather than reporting the swing.
+const FULL_RATE_TAKEOVER_SLACK_RATIO = 0.05;
+
 /**
  * Reference orbit-radius PD controller — the seam demonstration and the "good tuning" test subject.
  * This is NOT the T05 controller (that packet owns the real design); it proves the seam accepts a
@@ -1072,6 +1077,7 @@ function productionOrbitHeadingMetrics(trace, initialHeading) {
   let correctionBounded = true;
   let worstDesiredYawRateRatio = 0;
   let worstDesiredYawRateRatioTick = null;
+  let fullRateTakeoverTicks = 0;
   for (const sample of trace) {
     if (!sample.orbitAssistActive) continue;
     orbitAssistActiveTicks++;
@@ -1088,11 +1094,23 @@ function productionOrbitHeadingMetrics(trace, initialHeading) {
         > Math.abs(finite(sample.orbitHeadingCorrectionLimit)) + 1e-6) {
       correctionBounded = false;
     }
+    // A near-full-rate request is only a takeover when the live orbit could not demand it:
+    // feed-forward plus the whole bounded correction budget still short of the request.
+    // Hard whips legitimately saturate yaw authority (the assist asks for what tracking
+    // needs and the hull gives all it has), so the ceiling alone is not the signal.
+    const legitimateDemandRatio = sampleMaxYawRate > 0
+      ? (Math.abs(finite(sample.orbitOrbitalYawRate))
+          + Math.abs(finite(sample.orbitHeadingCorrectionLimit))) / sampleMaxYawRate
+      : Infinity;
+    if (desiredYawRateRatio >= 0.9
+        && legitimateDemandRatio < 0.9 - FULL_RATE_TAKEOVER_SLACK_RATIO) {
+      fullRateTakeoverTicks++;
+    }
   }
   const visibleYaw = initialAbsDesiredYawRate > 0.05 && actualYawDelta30Ticks > 0.01;
   const noFullRateTakeover = orbitAssistActiveTicks > 0
     && Number.isFinite(worstDesiredYawRateRatio)
-    && worstDesiredYawRateRatio < 0.9;
+    && fullRateTakeoverTicks === 0;
   const attachmentActiveAtEnd = trace.length > 0 && trace[trace.length - 1].attachmentActive;
   const pass = visibleYaw
     && noFullRateTakeover
@@ -1110,6 +1128,7 @@ function productionOrbitHeadingMetrics(trace, initialHeading) {
       ? round6(worstDesiredYawRateRatio)
       : null,
     worstDesiredYawRateRatioTick,
+    fullRateTakeoverTicks,
     noFullRateTakeover,
     correctionBounded,
     orbitAssistActiveTicks,

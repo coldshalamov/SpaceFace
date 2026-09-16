@@ -54,8 +54,8 @@
     "tether:attached": 1,
     "tether:broken": 1,
     "combat:fire": 17,
-    "projectile:hit": 17,
-    "combat:damage": 17,
+    "projectile:hit": 13,
+    "combat:damage": 13,
     "economy:tick": 2,
     "camera:shake": 3,
     "presentation:cameraCue": 3,
@@ -63,12 +63,12 @@
     "presentation:audioCue": 5,
     "presentation:uiCue": 4,
     "presentation:caption": 4,
-    "presentation:cueApplied": 22,
-    "presentation:cue": 22,
+    "presentation:cueApplied": 18,
+    "presentation:cue": 18,
     "audio:cue": 6
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "a583d48fc20ffdf8e9e1d31959d55afa13e8ea66232e19f4572b790f2d5ee304",
+    "authoritativeHash": "f18d2929feff698a79dcfd5052905a123e806d2a25d0b510c9919ac6db215675",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -127,8 +127,8 @@
     "2026-08-21 deliberate CONTENT_ONLY re-record for the causal physics active set. sim-golden-diff against cdf6138d found 20 physics-membership leaves changed and ZERO entity pos / vel / rot / angVel / prevPos fields changed.",
     "V3 now reports seven causally active Rapier bodies instead of ten; far actors remain durable. Uninterrupted and reload-at-600 hashes match. Trace counts and motion are unchanged. Prior hash: 30e4dbd1a66950f5d1d827c686c7e8209b9738fe33f8af9ca521491b4dec1350.",
     "2026-08-24 deliberate re-record for PQ-135.01 per-hull feel envelopes (owner-mandated: every ship was heavy like underwater).",
-    "sim-golden-diff --flight-system v3: VERDICT MOTION_CHANGED, 10 entity motion fields — the player path under the same stick tape, plus matching physics-body x/z/vx/vz, input aimWorld, and two scenario-timing fields (event[2] tick 171->149).",
-    "Trace counts moved: projectile:hit and combat:damage 9->2, presentation cue fanout 13->6. combat:fire UNCHANGED at 17 — same shots fired; the crisper hull evades seven that used to connect (entity[2] shield 40.75->110).",
+    "sim-golden-diff --flight-system v3: VERDICT MOTION_CHANGED, 10 entity motion fields \u00e2\u20ac\u201d the player path under the same stick tape, plus matching physics-body x/z/vx/vz, input aimWorld, and two scenario-timing fields (event[2] tick 171->149).",
+    "Trace counts moved: projectile:hit and combat:damage 9->2, presentation cue fanout 13->6. combat:fire UNCHANGED at 17 \u00e2\u20ac\u201d same shots fired; the crisper hull evades seven that used to connect (entity[2] shield 40.75->110).",
     "Legacy envelope stays bit-identical: compatibility flight was deliberately given no feel envelopes.",
     "Prior authoritativeHash was b3d1d0afaf19657ccc413b529fb0938269bf123a183d1f941990ae2c58245c70.",
     "2026-08-30 deliberate re-record: SG-02 contact pose kicks are removed by restoring craft yaw to its no-contact prediction; authored yaw torque remains active.",
@@ -166,6 +166,13 @@
     "Assist keys neutralBrakeFraction -> settleTimeConstantS / settleFloorAccel on every derived propulsion block.",
     "Isolation: a clean git-archive HEAD tree with only propulsionKernel.js, propulsionCatalog.js and flightFeelEnvelopes.js copied in reproduces this hash exactly, so no concurrent working-tree work is folded into it.",
     "Every phase0ObservedTraceCount is UNCHANGED. Legacy envelope test/47a.telemetry.expected.json stays bit-identical: compatibility flight has no propulsion kernel settle.",
-    "Prior authoritativeHash was a6e51947ae407036e5794686061cab1aa3c28bed5849ec945741a0223016b65c."
+    "Prior authoritativeHash was a6e51947ae407036e5794686061cab1aa3c28bed5849ec945741a0223016b65c.",
+    "2026-09-16 deliberate re-record (owner feel): pre-nimble combat-speed ceilings restored on all eight drives (reaction M 95->195, torch L 160->320); newer accelerations kept.",
+    "Golden-diff vs clean HEAD 2b5def69b (reproduces prior hash a583d48f exactly): MOTION_CHANGED, 26 motion fields on entities 0-5; 73 fields moved (53 entities, 16 physics, 2 input, 2 scenario).",
+    "Doubled cruise: player covers ~935 WU more in 720 ticks (pos.x 2276->3211) and tows the tethered spindle further (ent 1 vel.x 53->111); dummy ent 2 engaged while moving; NPCs settle at marks.",
+    "Trace counts moved: projectile:hit 17->13, combat:damage 17->13, presentation:cue/cueApplied 22->18 \u2014 faster approach lands 4 fewer hits in the phase window; combat:fire still 17.",
+    "Also fixed a latent reload seam: the player contact-give budget was owner-runtime only, so reload mid-contact reopened the spent 10%-cruise budget. Now mirrored on entity.playerContactGive.",
+    "Isolation: clean-worktree HEAD + only propulsionCatalog/physics/sg02DynamicBodyOwner reproduces this hash; foreign shared-tree dirt moves it, so sim-v3 stays red there until that work lands.",
+    "Prior authoritativeHash was a583d48fc20ffdf8e9e1d31959d55afa13e8ea66232e19f4572b790f2d5ee304."
   ]
 }

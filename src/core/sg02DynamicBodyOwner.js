@@ -372,7 +372,8 @@ export class Sg02DynamicBodyOwner {
     return true;
   }
 
-  step(dt = this.fixedDt) {
+  step(dt = this.fixedDt, simTick = null) {
+    this._simTick = Number.isFinite(simTick) ? Math.max(0, Math.trunc(simTick)) : null;
     this.accumulator += Math.min(Math.max(0, finite(dt)), 0.25);
     while (this.accumulator + 1e-12 >= this.fixedDt) {
       this._stepFixed();
@@ -780,6 +781,11 @@ export class Sg02DynamicBodyOwner {
     let actualPlayerDeltaV = 0;
 
     const isActive = dMag > PLAYER_CONTACT_ACTIVITY_EPSILON;
+    // The episode budget must clock on the SIM tick, not this owner's internal step counter:
+    // a save/load rebuild restarts the owner at tick 0 while the episode is mid-flight, and an
+    // owner-clock stamp can never bridge that boundary. simTick falls back to this.tick for
+    // harnesses that step the owner without a sim clock.
+    const tickNow = Number.isFinite(this._simTick) ? this._simTick : this.tick;
     // THE ROPE IS A ROPE. A live line already couples the player to an anchor; traffic that
     // brushes the hull while the player is swinging is not an ordinary-flight bump, and spending
     // the 10 % cruise budget on those hulls is what put Helios rope over 2 knocks/min. Terrain
@@ -787,15 +793,15 @@ export class Sg02DynamicBodyOwner {
     const trafficHeldByRope = this._playerTrafficContactWhileTethered(rec, this._stepContactReceipts);
     if (isActive && trafficHeldByRope) {
       // Contact is still happening; do not open a fresh 10 % budget after the traffic ticks.
-      rec._playerContactLastTick = this.tick;
+      rec._playerContactLastTick = tickNow;
     }
     if (isActive && !trafficHeldByRope) {
       const lastTick = rec._playerContactLastTick;
-      const gap = Number.isFinite(lastTick) ? this.tick - lastTick : Infinity;
+      const gap = Number.isFinite(lastTick) ? tickNow - lastTick : Infinity;
       if (gap > PLAYER_CONTACT_EVENT_BRIDGE_TICKS) {
         rec._playerContactCumulativeDeltaV = 0;
       }
-      rec._playerContactLastTick = this.tick;
+      rec._playerContactLastTick = tickNow;
 
       const expectedSpeed = Math.hypot(e.vx, e.vz);
       if (expectedSpeed <= PLAYER_CONTACT_ACTIVITY_EPSILON) {
@@ -819,6 +825,15 @@ export class Sg02DynamicBodyOwner {
 
       actualPlayerDeltaV = Math.abs(appliedAlong);
       rec._playerContactCumulativeDeltaV = (rec._playerContactCumulativeDeltaV || 0) + actualPlayerDeltaV;
+    }
+    // The record is physics-owner runtime: a save/load rebuild starts it at zero and would hand a
+    // ship mid-contact-episode a fresh 10 % cruise budget the uninterrupted run already spent.
+    // Mirror the episode onto the entity so plainEntity carries it through the save and
+    // _createRecord can restore it on the rebuilt record.
+    if (isActive && rec.entity) {
+      const give = rec.entity.playerContactGive || (rec.entity.playerContactGive = {});
+      give.spentDv = finite(rec._playerContactCumulativeDeltaV, 0);
+      give.lastTick = tickNow;
     }
 
     let finalVx = e.vx;
@@ -1075,6 +1090,14 @@ export class Sg02DynamicBodyOwner {
         revision: spec.revision,
       },
     };
+    // Restore the player contact-give episode mirrored onto the entity by
+    // _applyPlayerStructuralGive (see the mirror write there): without it a mid-episode
+    // save/load would reopen the spent budget and change the first post-load contact tick.
+    const savedGive = entity && entity.playerContactGive;
+    if (savedGive && Number.isFinite(savedGive.spentDv)) {
+      record._playerContactCumulativeDeltaV = Math.max(0, savedGive.spentDv);
+      if (Number.isFinite(savedGive.lastTick)) record._playerContactLastTick = savedGive.lastTick;
+    }
     for (const ownedCollider of colliders) this._colliderOwners.set(ownedCollider.handle, { rec: record, collider: ownedCollider });
     return record;
   }
