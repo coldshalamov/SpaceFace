@@ -125,6 +125,8 @@ test('player Well pins and Repulsor unmoors a non-owner through the production s
       target.vel.x = 0;
       target.vel.z = 0;
       target.flags.noInterp = true;
+      sim.step();
+
       state.fields.cooldowns.repulsor = 0;
       state.input.actions.deployRepulsor = true;
       sim.step();

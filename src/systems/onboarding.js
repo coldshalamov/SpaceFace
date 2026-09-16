@@ -28,6 +28,7 @@ import { deboxCss, INK_SHADOW } from '../ui/hudBrackets.js';
 import { makeEnemySpawnSpec } from './combat.js';
 import { ONBOARDING_CHOICE_SOURCE } from './missions.js';
 import { massline2Flag } from '../data/featureFlags.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   FIRST_TRADE_CONTRACT_DEST_STATION_ID,
   FIRST_TRADE_CONTRACT_SOURCE,
@@ -1865,7 +1866,11 @@ export const onboarding = {
   // Find the beacon entity (B0/B1 waypoint target). Falls back to the nearest asteroid if no beacon
   // type exists in the live scene (the 47a opening spawns a kessler_handoff_beacon).
   _findBeacon() {
-    const list = (this.state.entityList || []);
+    const index = this.state.entityIndex;
+    const list = (index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.radarContacts))
+      ? index.radarContacts
+      : (this.state.entityList || []);
     let beacon = null;
     for (const e of list) {
       if (!e || !e.alive || !e.pos) continue;
@@ -1875,8 +1880,9 @@ export const onboarding = {
     // Fallback: nearest non-respawning asteroid (the "mass signal").
     const p = this.state.entities.get(this.state.playerId);
     if (!p) return null;
+    const mineables = indexedTypeScan(this.state, 'mineables');
     let best = null, bestD = Infinity;
-    for (const e of list) {
+    for (const e of mineables) {
       if (!e || !e.alive || e.type !== 'asteroid' || (e.data && e.data.respawnAt != null)) continue;
       const dx = e.pos.x - p.pos.x, dz = e.pos.z - p.pos.z;
       const d = dx * dx + dz * dz;
@@ -1886,7 +1892,14 @@ export const onboarding = {
   },
 
   _findHelios() {
-    const list = (this.state.entityIndex && this.state.entityIndex.stations) || this.state.entityList || [];
+    const byStationId = this.state.entityIndex && this.state.entityIndex.byStationId;
+    const indexed = byStationId && typeof byStationId.get === 'function'
+      && byStationId.get('station_helios');
+    if (indexed && indexed.alive && indexed.type === 'station' && indexed.pos) {
+      const name = (indexed.data && (indexed.data.name || indexed.data.stationName)) || 'HELIOS';
+      return { pos: indexed.pos, label: name };
+    }
+    const list = indexedTypeScan(this.state, 'stations');
     for (const e of list) {
       if (!e || !e.alive || e.type !== 'station' || (e.data && e.data.isGate)) continue;
       if (e.data && e.data.stationId === 'station_helios') {
