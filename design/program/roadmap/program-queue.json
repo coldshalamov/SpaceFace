@@ -17444,7 +17444,7 @@
       "priority": 455,
       "title": "Station growth and dependency",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-033.03"
       ],
@@ -17463,7 +17463,9 @@
         "npm run check:faction-standings",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-170.01-REPORT.md"
+      ],
       "brief": "A station gains a module because of player-supplied throughput; a faction's patrols depend on your depot. DONE WHEN: Both visible on the route within one session of play; save round-trip."
     },
     {
