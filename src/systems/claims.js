@@ -105,6 +105,10 @@ export const DEPOT_PATROL_SHAPE_ID = 'patrol_beat';
 export const DEPOT_PATROL_FACTION_ID = 'faction_scn'; // the shape flies the Concord flag everywhere
 export const DEPOT_PATROL_ROTATION_GAP_S = 30;   // relief gap after a beat resolves (≈80% duty cycle)
 export const DEPOT_PATROL_RETRY_S = 10;          // director denied / off-sector poll cadence
+// A rotation only counts (and only earns Concord standing) after it actually held the lane for
+// half a beat. The beat also resolves 'completed' when the far-actor table virtualizes the hulls
+// seconds after the player flies off, so without a floor a post/leave/return loop would farm rep.
+export const DEPOT_PATROL_CREDIT_FLOOR_S = 60;
 export const DEPOT_PATROL_ANCHOR_FRAC = 0.35;    // rotation holds the lane a third of the way out
 export const DEPOT_PATROL_ZONE_RADIUS_WU = 280;
 // A rotation is a physical presence: it only posts while the player is inside the world's
@@ -1990,13 +1994,14 @@ export const claims = {
     const ds = body && body.depotSupport;
     if (!ds || ds.patrol.encounterId !== id) return false;
     const now = this.state.simTime || 0;
+    const heldS = now - (Number(ds.patrol.requestedAt) || 0);
     ds.patrol.encounterId = null;
     const aborted = String(payload.outcome || '').startsWith('aborted:');
-    if (!aborted) {
+    if (!aborted && heldS >= DEPOT_PATROL_CREDIT_FLOOR_S) {
       ds.completedRotations += 1;
       this.bus.emit('claim:depotPatrolCompleted', {
         bodyId: body.id, sectorId: body.sectorId, encounterId: id, rotation: ds.rotations,
-        outcome: payload.outcome || 'completed', factionId: DEPOT_PATROL_FACTION_ID,
+        heldS, outcome: payload.outcome || 'completed', factionId: DEPOT_PATROL_FACTION_ID,
       });
     }
     if (ds.supported) {

@@ -7,6 +7,7 @@ import { SECTORS, STATION_GROWTH_LADDERS, stationGrowthLadderFor, stationGrowthR
 import { DEPOT_PATROL_LINES, depotPatrolLine, stationGrowthReaction } from '../src/data/conflictReactions.js';
 import {
   claims as claimsBase,
+  DEPOT_PATROL_CREDIT_FLOOR_S,
   DEPOT_PATROL_ID_PREFIX,
   DEPOT_SUPPORT_GRACE_S,
 } from '../src/systems/claims.js';
@@ -210,6 +211,43 @@ test('a grown station and a provisioned depot feed faction power and earn standi
   assert.ok(f.events.some((e) => e.event === 'faction:repChanged' && e.payload.reason === 'station_growth'));
 });
 
+test('a rotation only counts, and only earns Concord standing, after it held the lane for the credit floor', () => {
+  const h = bootClaims();
+  const body = commissionRelay(h);
+  addCargo(h.state, 'cmdty_refined_metals', 40);
+  h.sys.deliverToClaim(body.id, 'cmdty_refined_metals', 40);
+  runSim(h, 1, 0.5);
+  const ds = body.depotSupport;
+  assert.equal(ds.supported, true);
+  // No director in this harness: the rotation is never posted. Stand one in by hand at the same
+  // shape the maintain pass would use, then resolve it the way the director does.
+  const now = h.state.simTime;
+  ds.rotations = 1;
+  ds.patrol.encounterId = `${DEPOT_PATROL_ID_PREFIX}${body.id}:1`;
+  ds.patrol.requestedAt = now - 5; // virtualized five seconds after it posted
+  h.bus.emit('encounter:resolved', { encounterId: ds.patrol.encounterId, shape: 'patrol_beat', outcome: 'completed' });
+  assert.equal(ds.completedRotations, 0, 'five seconds on the lane is not a held rotation');
+  assert.equal(events(h, 'claim:depotPatrolCompleted').length, 0, 'no standing fact for it');
+  assert.equal(ds.patrol.encounterId, null, 'the live id is still released');
+  assert.equal(ds.patrol.nextAt, now + 30, 'and the relief is still scheduled');
+
+  ds.rotations = 2;
+  ds.patrol.encounterId = `${DEPOT_PATROL_ID_PREFIX}${body.id}:2`;
+  ds.patrol.requestedAt = now - DEPOT_PATROL_CREDIT_FLOOR_S - 30;
+  h.bus.emit('encounter:resolved', { encounterId: ds.patrol.encounterId, shape: 'patrol_beat', outcome: 'completed' });
+  assert.equal(ds.completedRotations, 1, 'a beat held past the floor counts');
+  const fact = events(h, 'claim:depotPatrolCompleted');
+  assert.equal(fact.length, 1);
+  assert.equal(fact[0].payload.factionId, 'faction_scn');
+  assert.ok(fact[0].payload.heldS >= DEPOT_PATROL_CREDIT_FLOOR_S);
+
+  ds.rotations = 3;
+  ds.patrol.encounterId = `${DEPOT_PATROL_ID_PREFIX}${body.id}:3`;
+  ds.patrol.requestedAt = now - 500;
+  h.bus.emit('encounter:resolved', { encounterId: ds.patrol.encounterId, shape: 'patrol_beat', outcome: 'aborted:depot_support_lapsed' });
+  assert.equal(ds.completedRotations, 1, 'an aborted rotation never counts, however long it held');
+});
+
 // ── depot dependency: a real headless sim with the real encounter director ─────────────────────
 
 const SEED = 17001;
@@ -346,6 +384,21 @@ test('a relay that goes cold loses its patrol at once, without waiting out the d
     sim.runTicks(120);
     assert.equal(body.depotSupport.supported, true);
     assert.equal(liveRotations(state).length, 1);
+
+    // Fly off: the beat ends without the player (virtualized by the far-actor table or expired),
+    // nothing re-posts while the lane is unseen, and support itself is about stock, not presence.
+    const player = state.entities.get(state.playerId);
+    Object.assign(player.pos, { x: body.x + 6000, z: body.z + 6000 });
+    let waited = 0;
+    while (liveRotations(state).length > 0 && waited < 140) { sim.runTicks(60); waited += 1; }
+    assert.equal(liveRotations(state).length, 0, 'the unseen beat resolved within one beat');
+    sim.runTicks(60 * 45);
+    assert.equal(liveRotations(state).length, 0, 'nothing re-posts while the player is off the lane');
+    assert.equal(body.depotSupport.patrol.lastDenied, 'player_far');
+    assert.equal(body.depotSupport.supported, true, 'support itself is about stock, not presence');
+    movePlayerTo(sim, body);
+    sim.runTicks(60 * 15);
+    assert.equal(liveRotations(state).length, 1, 'back on the lane, the rotation re-posts');
     // Upkeep goes unpaid: the site goes cold on the next settlement (the real path, not a flag).
     state.player.credits = 0;
     body.spec.upkeepDebt = 500;
