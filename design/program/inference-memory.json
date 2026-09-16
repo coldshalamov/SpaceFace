@@ -880,6 +880,19 @@
       "integration": "live",
       "commit": "441f7061b",
       "verification": "focused_green"
+    },
+    {
+      "id": "wreck-cathedral-identity",
+      "date": "2026-09-16",
+      "wf": "WF-04",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Io Reach derelict cruiser identified as the Concord Vigilant wreck with lore and discovery plate",
+      "fingerprint": "verb=scan,subject=derelict-cruiser,sector=io-reach,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "e5d9f36e4",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
