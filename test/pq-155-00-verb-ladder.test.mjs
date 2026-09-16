@@ -87,7 +87,7 @@ test('PQ-155.00: broad 23 verb / 9 stat-only; each leftover justified', () => {
   }
 });
 
-test('PQ-155.00: first upgrade is RP-gated at 60–90 min, not the 15-minute gate', () => {
+test('PQ-155.00: first upgrade is RP-gated inside the honest 15–25 min window', () => {
   assert.equal(NEW_GAME.credits, 5000);
   assert.equal(NEW_GAME.researchPoints, 0);
   assert.equal(FIRST_UPGRADE.nodeId, 'tech_combat_basics');
@@ -96,13 +96,11 @@ test('PQ-155.00: first upgrade is RP-gated at 60–90 min, not the 15-minute gat
   assert.equal(FIRST_UPGRADE.shortfallCredits, 1000);
   assert.equal(FIRST_UPGRADE.shortfallRp, 10);
   assert.equal(FIRST_UPGRADE.bottleneck, 'rp');
-  assert.equal(FIRST_UPGRADE.hourMinutes.min, 60);
-  assert.equal(FIRST_UPGRADE.hourMinutes.max, 90);
+  assert.equal(FIRST_UPGRADE.hourMinutes.min, 15);
+  assert.equal(FIRST_UPGRADE.hourMinutes.max, 25);
   assert.equal(FIRST_UPGRADE.targetMinutes, 15);
-  assert.equal(FIRST_UPGRADE.meetsTarget, false);
-  assert.ok(FIRST_UPGRADE.hour >= 1.0);
-  assert.ok(FIRST_UPGRADE.hour <= 1.5);
-  assert.ok(FIRST_UPGRADE.hour * 60 > TARGET_FIRST_UPGRADE_MINUTES);
+  assert.ok(FIRST_UPGRADE.hour * 60 >= FIRST_UPGRADE_MINUTES.min);
+  assert.ok(FIRST_UPGRADE.hour * 60 <= FIRST_UPGRADE_MINUTES.max);
 
   const combat = TECH_NODES.find((node) => node.id === 'tech_combat_basics');
   const live = honestHoursForCost(pathCostFor(combat.id));
@@ -110,18 +108,23 @@ test('PQ-155.00: first upgrade is RP-gated at 60–90 min, not the 15-minute gat
   assert.ok(live.hour * 60 <= FIRST_UPGRADE_MINUTES.max + 0.01);
 });
 
-test('PQ-155.00: 15 minutes cannot buy any tech; no new fold', () => {
+test('PQ-155.00: the early pool buys the entry node; flat rates alone still cannot', () => {
+  // Anti-fake guard: the canyon must be closed by real one-time early income
+  // (field sample + discovery firsts + B0 settlement), never by a sustained
+  // rate that would make the window trivially true.
   const minutes = TARGET_FIRST_UPGRADE_MINUTES;
-  const earnedCredits = VERB_LADDER_RATES.startCredits
-    + VERB_LADDER_RATES.creditsPerHour * (minutes / 60);
-  const earnedRp = VERB_LADDER_RATES.startRp
+  const flatRp = VERB_LADDER_RATES.startRp
     + VERB_LADDER_RATES.rpPerHour * (minutes / 60);
-  const affordable = TECH_NODES.filter((node) => (
-    (node.prereqs || []).length === 0
-    && earnedCredits >= node.cost.credits
-    && earnedRp >= node.cost.rp
-  ));
-  assert.deepEqual(affordable.map((node) => node.id), []);
+  assert.ok(flatRp < FIRST_UPGRADE.cost.rp,
+    'sustained RP alone must not reach the entry node at the 15-minute wish');
+  const pooledRp = VERB_LADDER_RATES.startRp + VERB_LADDER_RATES.earlyRpPool
+    + VERB_LADDER_RATES.rpPerHour * (FIRST_UPGRADE_MINUTES.midpoint / 60);
+  const pooledCredits = VERB_LADDER_RATES.startCredits + VERB_LADDER_RATES.earlyCreditsPool
+    + VERB_LADDER_RATES.creditsPerHour * (FIRST_UPGRADE_MINUTES.midpoint / 60);
+  assert.ok(pooledRp >= FIRST_UPGRADE.cost.rp,
+    'early pool + sustained RP must reach the entry node inside the window');
+  assert.ok(pooledCredits >= FIRST_UPGRADE.cost.credits,
+    'early pool + sustained credits must reach the entry node inside the window');
   assert.equal(FOLDED_TECH_NODES.length, 1);
   assert.equal(FOLDED_TECH_NODES[0].id, 'tech_advanced_navigation');
   assert.ok(!TECH_NODES.some((node) => node.id === 'tech_advanced_navigation'));

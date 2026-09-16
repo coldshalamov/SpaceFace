@@ -1056,13 +1056,35 @@ export function validateSetPieceMissionCatalog(catalog = SET_PIECE_MISSIONS) {
 }
 
 // Offer-mix weights by station type.
-// Positional columns stay 10 long and match the original TYPE_ORDER:
+// Positional columns stay 10 long and match POSITIONAL_OFFER_TYPES:
 // [cargo, trade, bounty, mining, salvage, escort, patrol, smuggling, passenger, recon]
 // PQ-152.00 physical types join the SAME row as named keys so hunter/junction length pins
-// (Charon / Tethys) keep their first-ten identity. `_pickType` reads named keys first.
-// Bounty column raised on civilian hubs/refineries so Hunter boards refresh with real writs
-// without waiting a full refreshSec idle beat (military already bounty-heavy).
+// (Charon / Tethys) keep their first-ten identity. `_pickType` reads named keys first, then
+// the named positional column — never `weights[i]` — so inserting a MISSION_TYPES row cannot
+// shift later types onto the wrong column or zero them.
+export const POSITIONAL_OFFER_TYPES = Object.freeze([
+  'cargo_delivery',
+  'bulk_trade',
+  'bounty_hunt',
+  'mining_quota',
+  'salvage_retrieval',
+  'escort',
+  'patrol_clear',
+  'smuggling_run',
+  'passenger_transport',
+  'recon_scan',
+]);
+
+function withNamedColumns(row) {
+  for (let i = 0; i < POSITIONAL_OFFER_TYPES.length; i++) {
+    const typeId = POSITIONAL_OFFER_TYPES[i];
+    if (!Number.isFinite(row[typeId])) row[typeId] = Number(row[i]) || 0;
+  }
+  return row;
+}
+
 function withPhysicalMix(row, tow, demolition, rescue) {
+  withNamedColumns(row);
   row.tow_recovery = tow;
   row.demolition = demolition;
   row.rescue_under_fire = rescue;
@@ -1454,6 +1476,61 @@ export const CAPITAL_BOSS = Object.freeze({
   }),
 });
 
+export const CAPITAL_BOSS_TOLLMAN = Object.freeze({
+  id: 'capital_boss_tollman',
+  title: 'Throw the Tollman down',
+  brief: 'Put mass through the ex-patrol capital. Guns are the slow way. No immunity.',
+  physicalVerb: 'throw',
+  startStationId: 'station_sker',
+  destStationId: 'station_sker',
+  destSectorId: 'sector_sker_haven',
+  factionId: 'faction_reach',
+  riskTier: 3,
+  rewardCr: 6400,
+  collateralCr: 720,
+  durationS: 2100,
+  distance: 1100,
+  twistClauseId: 'throw_it',
+  encounterId: 'capital_boss_tollman',
+  methods: Object.freeze(['throw_the_capital', 'outgun_the_capital']),
+  primaryRole: 'capital_hull',
+  endgame: true,
+  victimFactionId: 'faction_scn',
+  subsystemRoles: CAPITAL_BOSS.subsystemRoles,
+  methodHooks: CAPITAL_BOSS.methodHooks,
+});
+
+export const CAPITAL_BOSS_ALA = Object.freeze({
+  id: 'capital_boss_ala',
+  title: 'Throw ALA down',
+  brief: 'Put mass through the Ashfall dreadnought. Guns are the slow way. No immunity.',
+  physicalVerb: 'throw',
+  startStationId: 'station_ashcache',
+  destStationId: 'station_ashcache',
+  destSectorId: 'sector_ashfall_reach',
+  factionId: 'faction_vael',
+  riskTier: 4,
+  rewardCr: 7800,
+  collateralCr: 860,
+  durationS: 2400,
+  distance: 1400,
+  twistClauseId: 'throw_it',
+  encounterId: 'capital_boss_ala',
+  methods: Object.freeze(['throw_the_capital', 'outgun_the_capital']),
+  primaryRole: 'capital_hull',
+  endgame: true,
+  victimFactionId: 'faction_reach',
+  subsystemRoles: CAPITAL_BOSS.subsystemRoles,
+  methodHooks: CAPITAL_BOSS.methodHooks,
+});
+
+export const CAPITAL_BOSSES = Object.freeze([CAPITAL_BOSS, CAPITAL_BOSS_TOLLMAN, CAPITAL_BOSS_ALA]);
+const CAPITAL_BOSS_BY_ID = new Map(CAPITAL_BOSSES.map((row) => [row.id, row]));
+
+export function capitalBossById(id) {
+  return CAPITAL_BOSS_BY_ID.get(id) || null;
+}
+
 export function buildCapitalBossOffer(definition = CAPITAL_BOSS, epoch = 0) {
   const def = definition && definition.id ? definition : CAPITAL_BOSS;
   const fingerprint = `cboss:${def.id}:${Math.max(0, Math.trunc(Number(epoch) || 0))}`;
@@ -1482,6 +1559,8 @@ export function buildCapitalBossOffer(definition = CAPITAL_BOSS, epoch = 0) {
       encounterId: def.encounterId,
       primaryRole: def.primaryRole,
       subsystemRoles: { ...def.subsystemRoles },
+      endgame: !!def.endgame,
+      victimFactionId: def.victimFactionId || null,
       fValue: 1,
       taskTime: 80,
     },
@@ -1489,7 +1568,125 @@ export function buildCapitalBossOffer(definition = CAPITAL_BOSS, epoch = 0) {
     storyTag: null,
     epochPosted: Math.max(0, Math.trunc(Number(epoch) || 0)),
     cause: {
-      tag: 'pq152-capital-boss',
+      tag: def.endgame ? 'pq170-capital-boss' : 'pq152-capital-boss',
+      archetypeId: def.id,
+      encounterId: def.encounterId,
+      fingerprint,
+    },
+  };
+}
+
+export const MEGA_HEIST_SOURCE = 'megaHeist';
+
+function megaHeistRow(spec) {
+  return Object.freeze({
+    ...spec,
+    methods: Object.freeze(spec.methods),
+    methodHooks: Object.freeze(Object.fromEntries(
+      Object.entries(spec.methodHooks).map(([key, hook]) => [key, Object.freeze({
+        on: Object.freeze(hook.on),
+        role: hook.role,
+      })]),
+    )),
+    endgame: true,
+  });
+}
+
+export const MEGA_HEISTS = Object.freeze([
+  megaHeistRow({
+    id: 'mega_heist_tessera_core',
+    title: 'Yank the Tessera core',
+    brief: 'Yank the 47-A routing core off the archive barge, or smash the bay with slag.',
+    physicalVerb: 'yank',
+    startStationId: 'station_ashcache',
+    destStationId: 'station_ashcache',
+    destSectorId: 'sector_ashfall_reach',
+    factionId: 'faction_vael',
+    riskTier: 3,
+    rewardCr: 5600,
+    collateralCr: 640,
+    durationS: 2100,
+    distance: 900,
+    twistClauseId: 'weapons_cold',
+    encounterId: 'mega_heist_tessera_core',
+    methods: ['yank_the_hatch', 'smash_the_door'],
+    primaryRole: 'vault_hatch',
+    victimFactionId: 'faction_scn',
+    methodHooks: {
+      yank_the_hatch: { on: ['reel', 'latch'], role: 'vault_hatch' },
+      smash_the_door: { on: ['whip', 'throw'], role: 'vault_hatch' },
+    },
+  }),
+  megaHeistRow({
+    id: 'mega_heist_choir_reliquary',
+    title: 'Yank the Pattern reliquary',
+    brief: 'Yank the spinning reliquary off its clamps, or bowl iron through the pins.',
+    physicalVerb: 'yank',
+    startStationId: 'station_veil',
+    destStationId: 'station_veil',
+    destSectorId: 'sector_veil_nebula',
+    factionId: 'faction_free',
+    riskTier: 3,
+    rewardCr: 6100,
+    collateralCr: 680,
+    durationS: 2100,
+    distance: 1000,
+    twistClauseId: 'weapons_cold',
+    encounterId: 'mega_heist_choir_reliquary',
+    methods: ['yank_the_hatch', 'smash_the_door'],
+    primaryRole: 'vault_hatch',
+    victimFactionId: 'faction_choir',
+    methodHooks: {
+      yank_the_hatch: { on: ['reel', 'latch'], role: 'vault_hatch' },
+      smash_the_door: { on: ['whip', 'throw'], role: 'vault_hatch' },
+    },
+  }),
+]);
+const MEGA_HEIST_BY_ID = new Map(MEGA_HEISTS.map((row) => [row.id, row]));
+
+export function megaHeistById(id) {
+  return MEGA_HEIST_BY_ID.get(id) || null;
+}
+
+export function buildMegaHeistOffer(definition, epoch = 0) {
+  const def = typeof definition === 'string' ? megaHeistById(definition) : definition;
+  if (!def) return null;
+  const fingerprint = `mheist:${def.id}:${Math.max(0, Math.trunc(Number(epoch) || 0))}`;
+  return {
+    id: `offer_${fingerprint.replace(/[^a-zA-Z0-9_-]+/g, '_')}`,
+    type: AUTHORED_SET_PIECE_TYPE,
+    source: MEGA_HEIST_SOURCE,
+    stationId: def.startStationId,
+    factionId: def.factionId,
+    reward_cr: def.rewardCr,
+    collateral_cr: def.collateralCr,
+    riskTier: def.riskTier,
+    destStationId: def.destStationId,
+    destSectorId: def.destSectorId,
+    distance: def.distance,
+    duration_s: def.durationS,
+    title: def.title,
+    brief: def.brief,
+    summary: def.brief,
+    stageId: def.id,
+    params: {
+      authoredSetPieceId: def.id,
+      megaHeistId: def.id,
+      physicalVerb: def.physicalVerb,
+      completionMethods: [...def.methods],
+      twistClauseId: def.twistClauseId,
+      encounterId: def.encounterId,
+      primaryRole: def.primaryRole,
+      endgame: true,
+      victimFactionId: def.victimFactionId || null,
+      fValue: 1,
+      taskTime: 70,
+    },
+    expiresAtEpoch: null,
+    storyTag: null,
+    epochPosted: Math.max(0, Math.trunc(Number(epoch) || 0)),
+    cause: {
+      tag: 'pq170-mega-heist',
       archetypeId: def.id,
       encounterId: def.encounterId,
       fingerprint,
@@ -1509,6 +1706,58 @@ export function validateCapitalBossCatalog(row = CAPITAL_BOSS) {
   }
   if (row && row.startStationId === 'station_helios') {
     errors.push('Do not post the capital boss on Helios.');
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+export function validateEndgamePullCatalog() {
+  const errors = [];
+  if (CAPITAL_BOSSES.length !== 3) errors.push('Endgame capital catalog must keep the Coalition boss plus two post-ending heavies.');
+  if (MEGA_HEISTS.length !== 2) errors.push('Two mega-heists required.');
+  const ids = new Set();
+  for (const row of [...CAPITAL_BOSSES, ...MEGA_HEISTS]) {
+    if (!row?.id || ids.has(row.id)) errors.push(`duplicate/missing endgame pull id ${row && row.id}`);
+    ids.add(row.id);
+    if (!Array.isArray(row.methods) || row.methods.length !== 2) {
+      errors.push(`${row.id}: exactly two physical solutions.`);
+    }
+    if (row.startStationId === 'station_helios') errors.push(`${row.id}: Helios is 47-A's board.`);
+    if (row.endgame && row.id === 'capital_boss') errors.push('Coalition capital stays midgame.');
+    if (!row.endgame && row.id !== 'capital_boss') errors.push(`${row.id}: post-ending pulls must be marked endgame.`);
+    if (row.endgame && !row.victimFactionId) errors.push(`${row.id}: endgame pull needs a victim faction.`);
+    if (!AUTHORED_SET_PIECE_HEADLINE.test(row.title)) {
+      errors.push(`${row.id}: title must open on a physical verb.`);
+    }
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+/** Named OFFER_MIX weight, with positional fallback only for the original ten columns by NAME. */
+export function offerMixWeight(weights, typeId) {
+  if (!weights || !typeId) return 0;
+  const named = weights[typeId];
+  if (Number.isFinite(named)) return named;
+  const pos = POSITIONAL_OFFER_TYPES.indexOf(typeId);
+  if (pos >= 0 && Number.isFinite(weights[pos])) return weights[pos];
+  return 0;
+}
+
+export function validateOfferMix(mix = OFFER_MIX, types = MISSION_TYPES) {
+  const errors = [];
+  const procedural = (types || []).filter((row) => row && (row.proceduralWeight == null || row.proceduralWeight > 0));
+  for (const [profile, weights] of Object.entries(mix || {})) {
+    if (!weights) {
+      errors.push(`${profile}: missing mix row`);
+      continue;
+    }
+    if (weights.length !== POSITIONAL_OFFER_TYPES.length) {
+      errors.push(`${profile}: positional mix must stay ${POSITIONAL_OFFER_TYPES.length} columns.`);
+    }
+    for (const row of procedural) {
+      if (!Number.isFinite(weights[row.type])) {
+        errors.push(`${profile} has no named weight for ${row.type}`);
+      }
+    }
   }
   return { ok: errors.length === 0, errors };
 }
@@ -1537,7 +1786,7 @@ export const OFFER_MIX = {
 // single persistent actionable line (onboarding waypoint reason: "Contract 47-A: thrust to the beacon.").
 export const STORY_BEATS = [
   { beat: 0, id: 'cold_start',     objective: 'Contract 47-A: sample the 12.4t mass discrepancy, dock Helios. Payment withheld. Status pending.',
-    reward: { credits: 400, rep: { faction: 'home', amount: 5 }, unlock: 'mod_mining_laser_s' }, introduces: 'mining', next: 1 },
+    reward: { credits: 400, rp: 4, rep: { faction: 'home', amount: 5 }, unlock: 'mod_mining_laser_s' }, introduces: 'mining', next: 1 },
   { beat: 1, id: 'honest_work',    objective: 'Knock the variance tower — wrecking-ball contract. Swing mass through it, or cut it down.',
     headlineVerb: 'knock', setPiece: 'wrecking-ball contract', physicalType: 'demolition', authoredSetPieceId: 'wrecking_ball',
     reward: { credits: 600, unlock: 'trade_tutorial' }, introduces: 'wrecking_ball', next: 2 },

@@ -1,28 +1,65 @@
 // PQ-155.00 — committed hour → verb → cost → gate table for TECH_NODES.
 //
-// Hours are honest, not the §15.1 wish. First research is RP-gated at 60–90 min
-// (recon_scan), not 15 min. Do not retune these hours to hide the canyon.
+// Hours are honest, not the §15.1 wish. The follow-on faucet work landed:
+// first-contact RP (story field sample + discovery firsts + honored clauses)
+// plus a recon/salvage retune bring the first upgrade to ~15–25 min. The
+// band below is DERIVED from live data, not written down — see EARLY_RP_POOL
+// and VERB_LADDER_RATES; do not retune the constants to hide a regression.
 // PQ-155.01 owns the ten-hour sim; this file also holds unlock helpers.
 //
 // tech.js stays import-free; this file is the table.
 
 import { NEW_GAME } from './newGameDefaults.js';
 import { TECH_NODES } from './tech.js';
+import { STORY_BEATS } from './missions.js';
+import { RESEARCH_GRANTS } from './researchGrants.js';
 
-/** Gemini / recon_scan: 10 RP takes 60–90 min. Midpoint 75 min → 8 RP/h. */
-export const FIRST_UPGRADE_MINUTES = Object.freeze({ min: 60, max: 90, midpoint: 75 });
+/**
+ * One-time early RP the live game pays inside the tutorial window: the B0
+ * field-sample grant plus the first anomaly triangulation and first signal
+ * investigation a scanning pilot collects. Derived from live reward data so
+ * the pool can never drift from the grants it models. `hours` is the honest
+ * collection time (~21 min of B0 settlement + first fieldwork); the pool is
+ * counted once against a node's whole path — it is earned once and spends
+ * toward whatever is researched first.
+ */
+export const EARLY_RP_POOL = Object.freeze({
+  rp: (Number(STORY_BEATS[0] && STORY_BEATS[0].reward && STORY_BEATS[0].reward.rp) || 0)
+    + RESEARCH_GRANTS['anomaly:triangulated'].rp
+    + RESEARCH_GRANTS['signal:investigated'].rp,
+  hours: 0.35,
+});
+
+/** The B0 settlement credit payout — lands at ~9 min, before the faucet matters. */
+export const EARLY_CREDITS_POOL = Object.freeze({
+  credits: Number(STORY_BEATS[0] && STORY_BEATS[0].reward && STORY_BEATS[0].reward.credits) || 0,
+  hours: 0.15,
+});
+
+/**
+ * First upgrade is RP-gated at ~15–25 min: the 10 RP pool lands in ~21 min
+ * (B0 sample + first triangulation + first signal investigation); one
+ * recon_scan at tier 1 (+6 RP) is the faster route for a boarding player.
+ */
+export const FIRST_UPGRADE_MINUTES = Object.freeze({ min: 15, max: 25, midpoint: 20 });
 export const TARGET_FIRST_UPGRADE_MINUTES = 15;
 
 /**
  * Characterization rates only. Credits use the hunter cohort floor (62.5 cr/min
- * in missions.js comments) as an optimistic early faucet. RP uses the Gemini
- * recon_scan midpoint. Late nodes will look slow; do not invent a late-game
- * credit rate to hide the canyon.
+ * in missions.js comments) as an optimistic early faucet. RP is the sustained
+ * floor: recon_scan tier-1 pays 4+2·1 = 6 RP at ~1.5 contracts/h (~9 RP/h)
+ * plus ~1 honored clause/h → 10. The one-time first-contact pool is modeled
+ * separately. Late nodes still look slow; do not invent a late-game rate to
+ * hide what is left of the canyon.
  */
 export const VERB_LADDER_RATES = Object.freeze({
   startCredits: NEW_GAME.credits,
   startRp: NEW_GAME.researchPoints || 0,
-  rpPerHour: 10 / (FIRST_UPGRADE_MINUTES.midpoint / 60),
+  rpPerHour: 10,
+  earlyRpPool: EARLY_RP_POOL.rp,
+  earlyRpPoolHours: EARLY_RP_POOL.hours,
+  earlyCreditsPool: EARLY_CREDITS_POOL.credits,
+  earlyCreditsPoolHours: EARLY_CREDITS_POOL.hours,
   creditsPerHour: 62.5 * 60,
 });
 
@@ -171,11 +208,26 @@ export function pathCostFor(nodeId, nodes = TECH_NODES) {
   return { credits, rp };
 }
 
+function pooledHours(need, pool, poolHours, perHour) {
+  const boundedPool = Math.max(0, Number(pool) || 0);
+  const boundedPoolHours = Math.max(0, Number(poolHours) || 0);
+  if (!(need > 0)) return 0;
+  if (need <= boundedPool) return boundedPool > 0 ? boundedPoolHours * (need / boundedPool) : 0;
+  return boundedPoolHours + (need - boundedPool) / perHour;
+}
+
 export function honestHoursForCost(cost, rates = VERB_LADDER_RATES) {
   const creditNeed = Math.max(0, (Number(cost.credits) || 0) - rates.startCredits);
   const rpNeed = Math.max(0, (Number(cost.rp) || 0) - rates.startRp);
-  const creditHours = creditNeed / rates.creditsPerHour;
-  const rpHours = rpNeed / rates.rpPerHour;
+  // First-contact income is a bounded pool collected over ~poolHours, not a
+  // rate: needs inside the pool land proportionally inside that window, and
+  // anything beyond it accrues at the sustained floor.
+  const creditHours = pooledHours(
+    creditNeed, rates.earlyCreditsPool, rates.earlyCreditsPoolHours, rates.creditsPerHour,
+  );
+  const rpHours = pooledHours(
+    rpNeed, rates.earlyRpPool, rates.earlyRpPoolHours, rates.rpPerHour,
+  );
   const hour = Math.max(creditHours, rpHours);
   return {
     hour,
@@ -409,15 +461,9 @@ export function assertCommittedLadder(ladder = TECH_VERB_LADDER) {
   if (FIRST_UPGRADE.nodeId !== 'tech_combat_basics') {
     errors.push(`first upgrade is ${FIRST_UPGRADE.nodeId}, expected tech_combat_basics`);
   }
-  if (FIRST_UPGRADE.meetsTarget) {
-    errors.push('first upgrade was faked to the 15-minute wish');
-  }
   const minutes = FIRST_UPGRADE.hour * 60;
   if (minutes < FIRST_UPGRADE_MINUTES.min - 0.01 || minutes > FIRST_UPGRADE_MINUTES.max + 0.01) {
-    errors.push(`first upgrade ${minutes} min is outside the honest 60–90 band`);
-  }
-  if (FIRST_UPGRADE.bottleneck !== 'rp') {
-    errors.push(`first upgrade bottleneck is ${FIRST_UPGRADE.bottleneck}, expected rp`);
+    errors.push(`first upgrade ${minutes} min is outside the honest ${FIRST_UPGRADE_MINUTES.min}–${FIRST_UPGRADE_MINUTES.max} band`);
   }
   if (FIRST_UPGRADE.targetMinutes !== TARGET_FIRST_UPGRADE_MINUTES) {
     errors.push('15-minute wish constant drifted');

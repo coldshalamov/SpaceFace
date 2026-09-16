@@ -52,14 +52,26 @@ import {
   CAPITAL_BOSS_TYPE,
   CAPITAL_BOSS_SOURCE,
   CAPITAL_BOSS,
+  CAPITAL_BOSSES,
+  capitalBossById,
   buildCapitalBossOffer,
+  MEGA_HEIST_SOURCE,
+  MEGA_HEISTS,
+  megaHeistById,
+  buildMegaHeistOffer,
   missionMinRepForRisk,
   STORY_BRANCH_INTROS,
   STORY_BRANCH_INTRO_MIN_REP,
   STORY_BRANCH_INTRO_TAG,
   SET_PIECE_MISSIONS,
+  offerMixWeight,
 } from '../data/missions.js';
 import { settleContractClauses, unsatisfiedRequiredConditions } from '../data/contractClauses.js';
+import {
+  RESEARCH_GRANTS,
+  CLAUSE_HONOR_RP,
+  RESEARCH_FIRSTS_CAP,
+} from '../data/researchGrants.js';
 // Physics-aware contract terms (grammar §9.9.1). The catalog is data; the event half is observed by
 // the ONE generic observer in contractClauses.js; the per-tick half is the predicate slot in update().
 import {
@@ -75,7 +87,9 @@ import {
   QUIET_APPROACH_RANGE_WU,
 } from '../data/missionConditions.js';
 import { AUTHORED_SET_PIECE_ENCOUNTERS } from '../data/encounters/set-piece-authored.js';
-import { CAPITAL_BOSS_ENCOUNTER } from '../data/encounters/capital-boss.js';
+import { capitalBossEncounter } from '../data/encounters/capital-boss.js';
+import { MEGA_HEIST_ENCOUNTERS } from '../data/encounters/mega-heist.js';
+import { endgamePullsUnlocked } from '../data/postEndingReplayChains.js';
 import { SUBSYSTEM_DEFS } from '../data/combatDefs.js';
 import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { attachConditions } from './contractClauses.js';
@@ -226,7 +240,13 @@ const CAPITAL_SUBSYSTEM_BY_ID = new Map(SUBSYSTEM_DEFS.map((def) => [def.id, def
 const THROWN_MASS_SUBSYSTEM_DAMAGE = 40;
 
 function authoredDefinitionOf(mission) {
-  return authoredSetPieceById(mission && mission.params && mission.params.authoredSetPieceId);
+  const id = mission && mission.params && mission.params.authoredSetPieceId;
+  return authoredSetPieceById(id) || megaHeistById(id);
+}
+
+function authoredEncounterOf(definition) {
+  if (!definition) return null;
+  return AUTHORED_SET_PIECE_ENCOUNTERS[definition.id] || MEGA_HEIST_ENCOUNTERS[definition.id] || null;
 }
 
 function authoredMethodFor(definition, on, role) {
@@ -238,7 +258,9 @@ function authoredMethodFor(definition, on, role) {
 }
 
 function stampAuthoredTwist(offer) {
-  if (!offer || offer.source !== AUTHORED_SET_PIECE_SOURCE) return offer;
+  if (!offer || (offer.source !== AUTHORED_SET_PIECE_SOURCE && offer.source !== MEGA_HEIST_SOURCE)) {
+    return offer;
+  }
   const twistId = offer.params && offer.params.twistClauseId;
   const row = twistId ? serializableMissionCondition(twistId) : null;
   if (!row) return offer;
@@ -279,6 +301,11 @@ function stampCapitalBossTwist(offer) {
 
 function isCapitalBossMission(mission) {
   return !!(mission && mission.type === CAPITAL_BOSS_TYPE);
+}
+
+function completedEndgamePull(state, pullId) {
+  const completed = state && state.claims && state.claims.endgamePulls && state.claims.endgamePulls.completed;
+  return !!(completed && pullId && completed[pullId]);
 }
 
 function capitalSubsystemWorldPos(entity, subsystemId) {
@@ -819,6 +846,12 @@ export const missions = {
     // Causal POI follow-ups settle only when scanner physically investigates their exact live
     // entity. Generic scan pulses remain valid for ordinary recon_scan contracts.
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p));
+    // First-contact fieldwork RP (PQ-155 follow-on): each entry in RESEARCH_GRANTS pays once per
+    // durable discovery record via the bounded researchFirsts dedup. Missions stays the sole
+    // positive researchPoints writer; this loop only widens which events feed it.
+    for (const grantEvent of Object.keys(RESEARCH_GRANTS)) {
+      bus.on(grantEvent, (p) => this._grantResearchFirst(grantEvent, p || {}));
+    }
     bus.on('tether:reel', (p) => {
       this._onContract47aB2TetherReel(p);
       this._onPhysicalTetherReel(p);
@@ -1132,9 +1165,10 @@ export const missions = {
       const heistChanged = this._syncHeistOffer(info, board, epoch);
       const breakawayChanged = this._syncBreakawayOffer(info, board, epoch);
       const authoredChanged = this._syncAuthoredSetPieceOffers(info, board, epoch);
+      const megaHeistChanged = this._syncMegaHeistOffers(info, board, epoch);
       const capitalChanged = this._syncCapitalBossOffer(info, board, epoch);
       if (storyChanged || setPieceChanged || heistChanged || breakawayChanged
-        || authoredChanged || capitalChanged) {
+        || authoredChanged || megaHeistChanged || capitalChanged) {
         this.bus.emit('mission:updated', { missionId: null, stationId });
       }
       return board;
@@ -1181,8 +1215,13 @@ export const missions = {
     const retainedAuthoredSetPieces = previousSlots.filter((offer) => (
       offer && offer.source === AUTHORED_SET_PIECE_SOURCE
     ));
+    const retainedMegaHeists = previousSlots.filter((offer) => (
+      offer && offer.source === MEGA_HEIST_SOURCE
+      && !completedEndgamePull(state, offer.params && offer.params.megaHeistId)
+    ));
     const retainedCapitalBoss = previousSlots.filter((offer) => (
       offer && offer.source === CAPITAL_BOSS_SOURCE
+      && !completedEndgamePull(state, offer.params && offer.params.capitalBossId)
     ));
     board = {
       refreshEpoch: epoch,
@@ -1201,6 +1240,7 @@ export const missions = {
         ...retainedHeistOffers,
         ...retainedBreakawayOffers,
         ...retainedAuthoredSetPieces,
+        ...retainedMegaHeists,
         ...retainedCapitalBoss,
       ],
     };
@@ -1210,6 +1250,7 @@ export const missions = {
     this._syncHeistOffer(info, board, epoch);
     this._syncBreakawayOffer(info, board, epoch);
     this._syncAuthoredSetPieceOffers(info, board, epoch);
+    this._syncMegaHeistOffers(info, board, epoch);
     this._syncCapitalBossOffer(info, board, epoch);
     this.bus.emit('mission:updated', { missionId: null });
     return board;
@@ -1505,22 +1546,57 @@ export const missions = {
     return changed;
   },
 
-  /** Post the one capital-boss contract on its home board. Append, never unshift. */
+  /** Post the Coalition capital, and the two post-ending heavies once the replay chain is live. */
   _syncCapitalBossOffer(info, board, epoch = this._epoch()) {
     if (!info || !board || !Array.isArray(board.slots)) return false;
-    if (!CAPITAL_BOSS || CAPITAL_BOSS.startStationId !== info.id) return false;
-    const already = (this.state.missions.active || []).some((mission) => (
-      mission && mission.status === 'active' && isCapitalBossMission(mission)
-    )) || Object.values(this.state.missions.boards || {}).some((candidateBoard) => (
-      (candidateBoard && candidateBoard.slots || []).some((offer) => (
-        offer && offer.source === CAPITAL_BOSS_SOURCE
-      ))
-    ));
-    if (already) return false;
-    const offer = stampCapitalBossTwist(buildCapitalBossOffer(CAPITAL_BOSS, epoch));
-    if (!offer) return false;
-    board.slots.push(offer);
-    return true;
+    const unlocked = endgamePullsUnlocked(this.state);
+    let changed = false;
+    for (const definition of CAPITAL_BOSSES) {
+      if (!definition || definition.startStationId !== info.id) continue;
+      if (definition.endgame && !unlocked) continue;
+      if (definition.endgame && completedEndgamePull(this.state, definition.id)) continue;
+      const already = (this.state.missions.active || []).some((mission) => (
+        mission && mission.status === 'active' && isCapitalBossMission(mission)
+        && mission.params && mission.params.capitalBossId === definition.id
+      )) || Object.values(this.state.missions.boards || {}).some((candidateBoard) => (
+        (candidateBoard && candidateBoard.slots || []).some((offer) => (
+          offer && offer.source === CAPITAL_BOSS_SOURCE
+          && offer.params && offer.params.capitalBossId === definition.id
+        ))
+      ));
+      if (already) continue;
+      const offer = stampCapitalBossTwist(buildCapitalBossOffer(definition, epoch));
+      if (!offer) continue;
+      board.slots.push(offer);
+      changed = true;
+    }
+    return changed;
+  },
+
+  /** Post the two post-ending mega-heists on their home boards. Authored-only, never rolled. */
+  _syncMegaHeistOffers(info, board, epoch = this._epoch()) {
+    if (!info || !board || !Array.isArray(board.slots)) return false;
+    if (!endgamePullsUnlocked(this.state)) return false;
+    let changed = false;
+    for (const definition of MEGA_HEISTS) {
+      if (!definition || definition.startStationId !== info.id) continue;
+      if (completedEndgamePull(this.state, definition.id)) continue;
+      const already = (this.state.missions.active || []).some((mission) => (
+        mission && mission.status === 'active'
+        && mission.params && mission.params.megaHeistId === definition.id
+      )) || Object.values(this.state.missions.boards || {}).some((candidateBoard) => (
+        (candidateBoard && candidateBoard.slots || []).some((offer) => (
+          offer && offer.source === MEGA_HEIST_SOURCE
+          && offer.params && offer.params.megaHeistId === definition.id
+        ))
+      ));
+      if (already) continue;
+      const offer = stampAuthoredTwist(buildMegaHeistOffer(definition, epoch));
+      if (!offer) continue;
+      board.slots.push(offer);
+      changed = true;
+    }
+    return changed;
   },
 
   /** Keep one authored 47-A contract on the correct live board. The board remains the only
@@ -1768,8 +1844,7 @@ export const missions = {
     let total = 0;
     const w = new Array(TYPE_ORDER.length);
     for (let i = 0; i < TYPE_ORDER.length; i++) {
-      const named = weights && TYPE_ORDER[i] != null ? weights[TYPE_ORDER[i]] : null;
-      let weight = Number.isFinite(named) ? named : (weights[i] || 0);
+      let weight = offerMixWeight(weights, TYPE_ORDER[i]);
       // signature types (weight>=3) get the friendly-rep boost.
       if (weight >= 3) weight *= repBoost;
       w[i] = weight; total += weight;
@@ -1785,8 +1860,7 @@ export const missions = {
     // Float-rounding fallthrough: `r` can end a hair above 0 when rng() approaches 1. Return the
     // last WEIGHTED type rather than the last type in the registry — an authored-only type
     // (procedural weight 0, e.g. heist_intercept) has no _rollOffer/_rollParams case and must never
-    // be reachable here. For every shipped OFFER_MIX row the final entry is non-zero, so this is
-    // the same answer the previous expression gave.
+    // be reachable here.
     return TYPE_ORDER[lastWeighted >= 0 ? lastWeighted : TYPE_ORDER.length - 1];
   },
 
@@ -3414,6 +3488,57 @@ export const missions = {
     return bonus;
   },
 
+  /**
+   * Bounded one-time-firsts ledger under state.player.researchFirsts. Each key is
+   * `${scope}:${durableId}` → simTime of the grant. Absent on older saves; created lazily so
+   * the golden save shape is unchanged until a first actually pays.
+   */
+  _ensureResearchFirsts(state) {
+    const player = state && state.player;
+    if (!player) return null;
+    if (!player.researchFirsts || typeof player.researchFirsts !== 'object'
+        || Array.isArray(player.researchFirsts)) {
+      player.researchFirsts = {};
+    }
+    return player.researchFirsts;
+  },
+
+  /**
+   * Pay one entry of RESEARCH_GRANTS for `eventName` once per durable discovery record.
+   * Returns the RP granted (0 when deduped or the payload lacks its dedup field).
+   */
+  _grantResearchFirst(eventName, payload) {
+    const spec = RESEARCH_GRANTS[eventName];
+    const state = this.state;
+    if (!spec || !state || !state.player) return 0;
+    const rawId = payload ? payload[spec.field] : null;
+    if (rawId == null || rawId === '') return 0;
+    const firsts = this._ensureResearchFirsts(state);
+    const key = `${spec.scope}:${rawId}`;
+    if (firsts[key] != null) return 0;
+    const keys = Object.keys(firsts);
+    if (keys.length >= RESEARCH_FIRSTS_CAP) {
+      // Evict the oldest stamp so a brand-new first still pays; the cap bounds save size.
+      let oldestKey = null;
+      let oldestAt = Infinity;
+      for (const k of keys) {
+        const at = Number(firsts[k]);
+        if (Number.isFinite(at) && at < oldestAt) { oldestAt = at; oldestKey = k; }
+      }
+      if (oldestKey) delete firsts[oldestKey];
+    }
+    firsts[key] = Math.max(0, Number(state.simTime) || 0);
+    const rp = Math.max(0, Math.round(spec.rp) || 0);
+    if (!(rp > 0)) return 0;
+    state.player.researchPoints = (state.player.researchPoints || 0) + rp;
+    this.bus.emit('research:pointsChanged', {
+      researchPoints: state.player.researchPoints,
+      source: `first:${eventName}`,
+      granted: rp,
+    });
+    return rp;
+  },
+
   _onLandmarkProbeScan(payload) {
     if (!payload || !Array.isArray(payload.signals) || !payload.sectorId) return false;
     for (let i = this.state.missions.active.length - 1; i >= 0; i--) {
@@ -4084,7 +4209,7 @@ export const missions = {
   _spawnAuthoredSetPieceTargets(m, nextRng, px, pz) {
     const helpers = this.helpers;
     const definition = authoredDefinitionOf(m);
-    const encounter = definition && AUTHORED_SET_PIECE_ENCOUNTERS[definition.id];
+    const encounter = authoredEncounterOf(definition);
     if (!helpers || !helpers.spawnEntity || !encounter) return;
     const have = this._countAuthoredRoles(m);
     const occupied = new Set((m.targetEntityIds || []).map((id) => (
@@ -4161,7 +4286,8 @@ export const missions = {
 
   _spawnCapitalBossTargets(m, nextRng, px, pz) {
     const helpers = this.helpers;
-    const encounter = CAPITAL_BOSS_ENCOUNTER;
+    const encounterId = m && m.params && m.params.encounterId;
+    const encounter = capitalBossEncounter(encounterId);
     if (!helpers || !helpers.spawnEntity || !encounter) return;
     const have = this._countAuthoredRoles(m);
     const occupied = new Set((m.targetEntityIds || []).map((id) => (
@@ -5040,18 +5166,33 @@ export const missions = {
     if (m.params && m.params.completionMethod) {
       completedPayload.completionMethod = m.params.completionMethod;
     }
+    if (m.params && m.params.megaHeistId) completedPayload.megaHeistId = m.params.megaHeistId;
+    if (m.params && m.params.capitalBossId) completedPayload.capitalBossId = m.params.capitalBossId;
+    if (m.params && m.params.victimFactionId) completedPayload.victimFactionId = m.params.victimFactionId;
 
     // ── research points for cerebral mission types (recon/salvage) — missions is a legit RP writer.
     // Combat fieldwork RP for bounty_hunt is intentionally NOT granted here: early auto-RP + a
-    // 6,000cr Combat Basics unlock strands a death-recovered pilot under gate tolls. Hunter
-    // combat tech remains recon/salvage-gated; bounty BASE pay is the cash authority for the
-    // career ladder.
+    // 6,000cr Combat Basics unlock strands a death-recovered pilot under gate tolls. The hunter
+    // RP path is earned combat data instead — claim:trophyHeadGranted pays through
+    // RESEARCH_GRANTS; bounty BASE pay stays the cash authority for the career ladder.
     let researchPoints = 0;
     if (m.type === 'recon_scan' || m.type === 'salvage_retrieval') {
-      const rp = m.type === 'recon_scan' ? (3 + (m.riskTier || 0)) : (1 + (m.riskTier || 0));
+      const rp = m.type === 'recon_scan' ? (4 + (m.riskTier || 0) * 2) : (2 + (m.riskTier || 0));
       researchPoints = rp;
       state.player.researchPoints = (state.player.researchPoints || 0) + rp;
       this.bus.emit('research:pointsChanged', { researchPoints: state.player.researchPoints });
+    }
+    // Honored contract terms pay fieldwork RP — a settlement-time grant, not a researchFirsts
+    // entry, because a mission's clauses can honor exactly once when it completes.
+    if (clauseSettlement.honored.length) {
+      const clauseRp = CLAUSE_HONOR_RP * clauseSettlement.honored.length;
+      researchPoints += clauseRp;
+      state.player.researchPoints = (state.player.researchPoints || 0) + clauseRp;
+      this.bus.emit('research:pointsChanged', {
+        researchPoints: state.player.researchPoints,
+        source: 'clause_honor',
+        granted: clauseRp,
+      });
     }
 
     // ── stats / ledger ──
@@ -6289,9 +6430,22 @@ export const missions = {
     const story = this.state.story;
     if (story.beatIndex !== beat.beat) return; // already advanced
     const fromIndex = story.beatIndex;
-    // Grant beat reward (credits + rep + unlock flag).
+    // Grant beat reward (credits + rep + research + unlock flag).
     if (beat.reward) {
       if (beat.reward.credits && !options.skipCredits) this.bus.emit('economy:grantCredits', { amount: beat.reward.credits, reason: `story:${beat.id}` });
+      if (beat.reward.rp && !options.skipCredits) {
+        // Missions is the sole positive RP writer — beat 0's field sample is the tutorial's
+        // first research income (PQ-155 follow-on: closes the first-upgrade canyon).
+        const rp = Math.max(0, Math.round(Number(beat.reward.rp) || 0));
+        if (rp > 0) {
+          this.state.player.researchPoints = (this.state.player.researchPoints || 0) + rp;
+          this.bus.emit('research:pointsChanged', {
+            researchPoints: this.state.player.researchPoints,
+            source: `story:${beat.id}`,
+            granted: rp,
+          });
+        }
+      }
       if (beat.reward.rep) {
         const rep = beat.reward.rep;
         if (rep.faction) {

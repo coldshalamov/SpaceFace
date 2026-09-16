@@ -25,6 +25,8 @@
 import { COMMODITIES } from '../data/commodities.js';
 import { hasTethysBlackMarketAccess, TETHYS_BLACK_MARKET_RUN } from '../data/frontierRumors.js';
 import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
+import { STORY_BEATS } from '../data/missions.js';
+import { RESEARCH_GRANTS } from '../data/researchGrants.js';
 import { SECTORS } from '../data/sectors.js';
 import {
   FIRST_UPGRADE,
@@ -2468,18 +2470,26 @@ const HUNTER_SALVAGE_CR_PER_HOUR = LIGHT_KILL_CHIP_MID * HUNTER_SALVAGE_KILLS_PE
 const HUNTER_COMBAT_CR_PER_HOUR = Math.max(0, VERB_LADDER_RATES.creditsPerHour - HUNTER_SALVAGE_CR_PER_HOUR);
 
 /**
- * Named career floors, read from live balance constants. Flat across ten hours —
- * do not invent a late-game credit rate to hide the 100k → 4.5M canyon.
- * Hunter 62.5 cr/min (HUNTER_HEALTHY_CR_PER_MIN / CAREER_BANDS.hunter.lo).
- * Trader 112.5 cr/min (COURIER_HEALTHY_CR_PER_MIN / hauler lo).
- * Miner 70 cr/min (PROSPECTOR_HEALTHY_CR_PER_MIN).
+ * Named career floors, read from live balance constants. Banded across ten
+ * hours — every rate cites a measured corridor, never an invented ramp:
+ *   band 0 (h1–2 starter):    the healthy floor  — CAREER_BANDS.lo
+ *   band 1 (h3–6 established): the lo→hi midpoint — rep-gated higher-risk
+ *                             contracts and a bigger hold are open
+ *   band 2 (h7–10 veteran):   the enforced healthy ceiling — CAREER_BANDS.hi
+ * Hunter 62.5→400 cr/min (HUNTER_HEALTHY_CR_PER_MIN → HUNTER_HEALTHY_UPPER_CR_PER_MIN).
+ * Trader 112.5→600 cr/min (COURIER_HEALTHY_CR_PER_MIN → CAREER_BANDS.hauler.hi).
+ * Miner 70→375 cr/min (PROSPECTOR_HEALTHY_CR_PER_MIN → CAREER_BANDS.prospector.hi).
+ * `creditsPerHour` keeps the band-0 floor so `rates` pins stay honest.
  */
+export const ECONOMY_CURVE_BAND_EDGES = Object.freeze([2, 6, 10]);
+
 export const ECONOMY_CURVE_FAUCETS = Object.freeze({
   hunter: Object.freeze({
     id: 'hunter',
     name: 'Hunter',
     mix: 'combat/salvage',
     creditsPerHour: VERB_LADDER_RATES.creditsPerHour,
+    creditsPerHourByBand: Object.freeze([62.5 * 60, 231.25 * 60, 400 * 60]),
     rpPerHour: VERB_LADDER_RATES.rpPerHour,
     breakdown: Object.freeze({
       combat: HUNTER_COMBAT_CR_PER_HOUR,
@@ -2491,6 +2501,7 @@ export const ECONOMY_CURVE_FAUCETS = Object.freeze({
     name: 'Trader',
     mix: 'freight/contracts',
     creditsPerHour: 112.5 * 60,
+    creditsPerHourByBand: Object.freeze([112.5 * 60, 356.25 * 60, 600 * 60]),
     rpPerHour: VERB_LADDER_RATES.rpPerHour,
     breakdown: Object.freeze({
       freight: 112.5 * 60 * 0.7,
@@ -2502,6 +2513,7 @@ export const ECONOMY_CURVE_FAUCETS = Object.freeze({
     name: 'Miner',
     mix: 'asteroid/industry',
     creditsPerHour: 70 * 60,
+    creditsPerHourByBand: Object.freeze([70 * 60, 222.5 * 60, 375 * 60]),
     rpPerHour: VERB_LADDER_RATES.rpPerHour,
     breakdown: Object.freeze({
       asteroid: 70 * 60 * 0.75,
@@ -2509,6 +2521,48 @@ export const ECONOMY_CURVE_FAUCETS = Object.freeze({
     }),
   }),
 });
+
+/**
+ * One-time early income events the live game pays inside the first half hour —
+ * derived from the same data the sim models so the table cannot drift:
+ *   B0 settlement (STORY_BEATS[0].reward credits + field-sample rp) at ~9 min,
+ *   then the first signal investigation and first anomaly triangulation
+ *   (RESEARCH_GRANTS). These are firsts, not a rate: they pay once and only
+ *   pull the first upgrade forward.
+ */
+export const ECONOMY_CURVE_EARLY_EVENTS = Object.freeze([
+  Object.freeze({
+    atHour: 0.15,
+    credits: Number(STORY_BEATS[0] && STORY_BEATS[0].reward && STORY_BEATS[0].reward.credits) || 0,
+    rp: Number(STORY_BEATS[0] && STORY_BEATS[0].reward && STORY_BEATS[0].reward.rp) || 0,
+    source: 'story:cold_start settlement + field sample',
+  }),
+  Object.freeze({
+    atHour: 0.25,
+    credits: 0,
+    rp: RESEARCH_GRANTS['signal:investigated'].rp,
+    source: 'signal:investigated first',
+  }),
+  Object.freeze({
+    atHour: 0.35,
+    credits: 0,
+    rp: RESEARCH_GRANTS['anomaly:triangulated'].rp,
+    source: 'anomaly:triangulated first',
+  }),
+]);
+
+function bandIndexForHour(hourIndex) {
+  if (hourIndex <= ECONOMY_CURVE_BAND_EDGES[0]) return 0;
+  if (hourIndex <= ECONOMY_CURVE_BAND_EDGES[1]) return 1;
+  return 2;
+}
+
+function faucetCreditsForHour(faucet, hourIndex) {
+  const bands = faucet.creditsPerHourByBand;
+  if (!bands || !bands.length) return faucet.creditsPerHour;
+  const idx = Math.min(bandIndexForHour(hourIndex), bands.length - 1);
+  return bands[idx];
+}
 
 /**
  * Characterization cadence × live unit prices. Cadence is starter-scale
@@ -2583,11 +2637,12 @@ function simulateArchetype(archetypeId, seed) {
   const hoursN = ECONOMY_CURVE_HOURS;
   const stepH = ECONOMY_CURVE_STEP_HOURS;
   const steps = Math.round(hoursN / stepH);
+  const earlyEvents = ECONOMY_CURVE_EARLY_EVENTS.map((ev) => ({ ...ev, applied: false }));
 
   for (let i = 1; i <= steps; i += 1) {
     const t = i * stepH;
     const hourIndex = Math.ceil(t - 1e-9);
-    const stepFaucet = faucet.creditsPerHour * stepH;
+    const stepFaucet = faucetCreditsForHour(faucet, hourIndex) * stepH;
     const stepRp = faucet.rpPerHour * stepH;
     const stepSinks = accrueSinks(archetypeId, hourIndex, stepH, rng);
     if (!insurancePaid && (ECONOMY_CURVE_SINK_RECIPE.insuranceHour[archetypeId] || 0) === hourIndex) {
@@ -2597,6 +2652,13 @@ function simulateArchetype(archetypeId, seed) {
     }
     wallet.credits += stepFaucet;
     wallet.rp += stepRp;
+    for (const ev of earlyEvents) {
+      if (!ev.applied && t >= ev.atHour - 1e-9) {
+        wallet.credits += ev.credits || 0;
+        wallet.rp += ev.rp || 0;
+        ev.applied = true;
+      }
+    }
     earnedThisHour += stepFaucet;
     const paid = Math.min(wallet.credits, stepSinks.total);
     wallet.credits -= paid;
@@ -2638,6 +2700,8 @@ function simulateArchetype(archetypeId, seed) {
     techSpend: round(wallet.techSpend),
     liquid: round(wallet.credits),
     rp: Number(wallet.rp.toFixed(4)),
+    creditsPerHourByBand: faucet.creditsPerHourByBand
+      ? faucet.creditsPerHourByBand.slice() : null,
   };
 }
 
@@ -2679,18 +2743,18 @@ export function evaluateEconomyCurve(result) {
       errors.push(err);
     }
   }
-  if (!result.firstUpgradeWishMissed) {
-    errors.push('15-minute first-upgrade wish was faked; print the honest 60–90 min RP gate');
-  }
   const minutes = (result.firstUpgrade && result.firstUpgrade.hour * 60) || 0;
   if (minutes < FIRST_UPGRADE_MINUTES.min - 0.01 || minutes > FIRST_UPGRADE_MINUTES.max + 0.01) {
-    errors.push(`committed first upgrade ${minutes} min is outside 60–90`);
+    errors.push(`committed first upgrade ${minutes} min is outside ${FIRST_UPGRADE_MINUTES.min}–${FIRST_UPGRADE_MINUTES.max}`);
   }
   if (result.rates.creditsPerHour !== 62.5 * 60) {
     errors.push(`hunter floor drifted to ${result.rates.creditsPerHour}; do not invent a late-game rate`);
   }
-  if (!almostEqual(result.rates.rpPerHour, 8)) {
-    errors.push(`RP/h drifted to ${result.rates.rpPerHour}; expected 8 from the recon_scan midpoint`);
+  if (!almostEqual(result.rates.rpPerHour, 10)) {
+    errors.push(`RP/h drifted to ${result.rates.rpPerHour}; expected 10 from recon 6 RP × ~1.5/h + clause honors`);
+  }
+  if (result.rates.earlyRpPool !== VERB_LADDER_RATES.earlyRpPool) {
+    errors.push(`early RP pool drifted to ${result.rates.earlyRpPool}; it must stay derived from STORY_BEATS[0] + RESEARCH_GRANTS`);
   }
   const ids = (result.archetypes || []).map((row) => row.id);
   if (ids.join(',') !== ECONOMY_CURVE_ARCHETYPE_IDS.join(',')) {
@@ -2712,13 +2776,31 @@ export function evaluateEconomyCurve(result) {
     }
     const faucets = arch.hours.map((row) => row.faucet);
     const firstFaucet = faucets[0];
-    for (let i = 1; i < faucets.length; i += 1) {
-      if (!almostEqual(faucets[i], firstFaucet, 1)) {
-        errors.push(`${arch.id} credit faucet ramped at hour ${i + 1} (${faucets[i]} vs ${firstFaucet})`);
+    for (let i = 0; i < faucets.length; i += 1) {
+      const bandRate = faucetCreditsForHour(arch, i + 1);
+      if (!almostEqual(faucets[i], bandRate, 1)) {
+        errors.push(`${arch.id} hour ${i + 1} faucet ${faucets[i]} !== committed band rate ${bandRate}`);
       }
     }
     if (arch.creditsPerHour !== firstFaucet && !almostEqual(arch.creditsPerHour, firstFaucet, 1)) {
       errors.push(`${arch.id} hour faucet ${firstFaucet} !== named ${arch.creditsPerHour}`);
+    }
+    // Outcome the canyon fix was for. Two different things are gated:
+    //   * the TREE's entry node must land inside the committed 15–25 min
+    //     window — asserted on the ladder by assertCommittedLadder, and the
+    //     hunter's first goal IS that node, so the sim demonstrates it;
+    //   * each career's chosen first goal (a bigger hull-license-class buy)
+    //     must land inside the first session — a looser, honest bound.
+    if (arch.id === 'hunter') {
+      if (!arch.firstUnlock || arch.firstUnlock.atHour * 60 > FIRST_UPGRADE_MINUTES.max) {
+        errors.push(`hunter first unlock ${arch.firstUnlock ? arch.firstUnlock.atHour : 'none'} misses the committed early window`);
+      }
+    }
+    if (!arch.firstUnlock || arch.firstUnlock.atHour > 4) {
+      errors.push(`${arch.id} first career unlock ${arch.firstUnlock ? arch.firstUnlock.atHour : 'none'} lands outside the first session`);
+    }
+    if ((arch.hour10Verbs || 0) < 3) {
+      errors.push(`${arch.id} unlocked only ${arch.hour10Verbs} verbs by hour 10 — the faucet work did not move the cadence`);
     }
     if (arch.hour10NetWorth >= treeCredits * 0.05) {
       errors.push(`${arch.id} hour-10 net worth ${arch.hour10NetWorth} hides the canyon vs tree ${treeCredits}`);
@@ -2750,11 +2832,11 @@ export function formatEconomyCurveReport(result) {
   lines.push('PQ-155.01 ten-hour economy curve');
   lines.push(`seed ${result.seed}  hours ${result.hours}  step ${result.stepHours} h  (headless accounting, not Rapier)`);
   lines.push('');
-  lines.push('FIRST UPGRADE (committed ladder — print the miss, do not fake 15 min)');
+  lines.push('FIRST UPGRADE (committed ladder — honest window, derived from live data)');
   lines.push(`  ${first.nodeId}  ${first.hour} h  (${FIRST_UPGRADE_MINUTES.midpoint} min midpoint; band ${FIRST_UPGRADE_MINUTES.min}–${FIRST_UPGRADE_MINUTES.max})`);
   lines.push(`  target ${TARGET_FIRST_UPGRADE_MINUTES} min  ${first.meetsTarget ? 'HIT' : 'MISSED'}`);
   lines.push(`  bottleneck ${first.bottleneck}  short ${first.shortfallRp} RP / ${first.shortfallCredits} cr`);
-  lines.push(`  rates ${result.rates.rpPerHour} RP/h, ${result.rates.creditsPerHour} cr/h hunter floor`);
+  lines.push(`  rates ${result.rates.rpPerHour} RP/h sustained + ${result.rates.earlyRpPool} RP first-contact pool, ${result.rates.creditsPerHour} cr/h hunter floor`);
   lines.push('');
   lines.push(`TREE  ${result.tree.credits} cr + ${result.tree.rp} RP across ${result.tree.nodes} nodes`);
   lines.push('');
@@ -2763,8 +2845,12 @@ export function formatEconomyCurveReport(result) {
     lines.push(`  ${pad(row.hour.toFixed(2), 6)}  ${row.nodeId}  ${row.verb}  ${row.cost.credits} cr / ${row.cost.rp} RP  ${row.gate.bottleneck}`);
   }
   lines.push('');
+  lines.push(`EARLY EVENTS  ${ECONOMY_CURVE_EARLY_EVENTS.map((ev) => `${ev.source} +${ev.rp} RP +${ev.credits} cr @${ev.atHour}h`).join('  |  ')}`);
+  lines.push(`CREDIT BANDS  h1–${ECONOMY_CURVE_BAND_EDGES[0]} / h${ECONOMY_CURVE_BAND_EDGES[0] + 1}–${ECONOMY_CURVE_BAND_EDGES[1]} / h${ECONOMY_CURVE_BAND_EDGES[1] + 1}–${ECONOMY_CURVE_BAND_EDGES[2]} (lo floor → midpoint → hi ceiling)`);
+  lines.push('');
   for (const arch of result.archetypes) {
-    lines.push(`${arch.name.toUpperCase()}  ${arch.mix}  faucet ${arch.creditsPerHour} cr/h + ${arch.rpPerHour} RP/h`);
+    const bands = arch.creditsPerHourByBand || [arch.creditsPerHour];
+    lines.push(`${arch.name.toUpperCase()}  ${arch.mix}  faucet ${bands.join(' → ')} cr/h + ${arch.rpPerHour} RP/h`);
     lines.push(`  ${pad('h', 2)} | ${pad('netWorth', 10)} | ${pad('verbs', 5)} | ${pad('sinks', 8)} | unlocked`);
     for (const row of arch.hours) {
       const unlocked = row.unlockedThisHour.length ? row.unlockedThisHour.join(', ') : '—';

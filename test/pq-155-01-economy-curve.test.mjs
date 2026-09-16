@@ -10,8 +10,11 @@ import {
   VERB_LADDER_RATES,
   assertCommittedLadder,
 } from '../src/data/techVerbLadder.js';
+import { STORY_BEATS } from '../src/data/missions.js';
+import { RESEARCH_GRANTS } from '../src/data/researchGrants.js';
 import {
   ECONOMY_CURVE_ARCHETYPE_IDS,
+  ECONOMY_CURVE_EARLY_EVENTS,
   ECONOMY_CURVE_HOURS,
   ECONOMY_CURVE_SEED,
   evaluateEconomyCurve,
@@ -26,12 +29,26 @@ test('PQ-155.01: committed ladder stays hour → verb → cost → gate', () => 
   assert.equal(TECH_VERB_LADDER.length, 32);
   assert.equal(FIRST_UPGRADE.nodeId, 'tech_combat_basics');
   assert.equal(FIRST_UPGRADE.bottleneck, 'rp');
-  assert.equal(FIRST_UPGRADE.meetsTarget, false);
   assert.ok(FIRST_UPGRADE.hour * 60 >= FIRST_UPGRADE_MINUTES.min);
   assert.ok(FIRST_UPGRADE.hour * 60 <= FIRST_UPGRADE_MINUTES.max);
-  assert.ok(FIRST_UPGRADE.hour * 60 > TARGET_FIRST_UPGRADE_MINUTES);
   assert.equal(VERB_LADDER_RATES.creditsPerHour, 3750);
-  assert.equal(VERB_LADDER_RATES.rpPerHour, 8);
+  assert.equal(VERB_LADDER_RATES.rpPerHour, 10);
+  // The first-contact pool is derived from live data, never written down.
+  assert.equal(VERB_LADDER_RATES.earlyRpPool,
+    STORY_BEATS[0].reward.rp
+    + RESEARCH_GRANTS['anomaly:triangulated'].rp
+    + RESEARCH_GRANTS['signal:investigated'].rp);
+});
+
+test('PQ-155.01: early events are derived from the live grant table', () => {
+  const totalRp = ECONOMY_CURVE_EARLY_EVENTS.reduce((sum, ev) => sum + ev.rp, 0);
+  const totalCredits = ECONOMY_CURVE_EARLY_EVENTS.reduce((sum, ev) => sum + ev.credits, 0);
+  assert.equal(totalRp, VERB_LADDER_RATES.earlyRpPool);
+  assert.equal(totalCredits, VERB_LADDER_RATES.earlyCreditsPool);
+  for (const ev of ECONOMY_CURVE_EARLY_EVENTS) {
+    assert.ok(ev.atHour > 0 && ev.atHour < 1, `${ev.source} must land inside the first hour`);
+    assert.ok(ev.rp > 0 || ev.credits > 0, `${ev.source} pays something`);
+  }
 });
 
 test('PQ-155.01: seed 15510 prints ten hours for hunter, trader, miner', () => {
@@ -58,23 +75,28 @@ test('PQ-155.01: check:economy:curve is green and deterministic', () => {
   const again = evaluateEconomyCurve(simulateTenHourEconomyCurve({ seed: 15510 }));
   assert.equal(again.ok, true, again.errors.join('; '));
   const report = formatEconomyCurveReport(check.result);
-  assert.match(report, /MISSED/);
   assert.match(report, /15 min/);
-  assert.match(report, /60–90|60-90|band 60/);
   assert.match(report, /HUNTER/);
   assert.match(report, /TRADER/);
   assert.match(report, /MINER/);
   assert.match(report, /tech_combat_basics/);
+  assert.match(report, /EARLY EVENTS/);
+  assert.match(report, /CREDIT BANDS/);
 });
 
-test('PQ-155.01: first upgrade is still 60–90 min RP, not the 15-minute wish', () => {
+test('PQ-155.01: first upgrade lands in the honest 15–25 min window', () => {
   const result = simulateTenHourEconomyCurve({ seed: 15510 });
-  assert.equal(result.firstUpgradeWishMissed, true);
-  assert.equal(result.firstUpgrade.meetsTarget, false);
   const hunter = result.archetypes.find((row) => row.id === 'hunter');
-  assert.ok(hunter.firstUnlock, 'hunter should unlock Combat Basics inside ten hours');
+  // The hunter's first career goal IS the tree's entry node — the sim proves
+  // the committed window end-to-end, not just on the ladder.
   assert.equal(hunter.firstUnlock.id, 'tech_combat_basics');
-  assert.ok(hunter.firstUnlock.atHour >= 1.0);
-  assert.ok(hunter.firstUnlock.atHour <= 1.5);
-  assert.ok(hunter.firstUnlock.atHour * 60 > TARGET_FIRST_UPGRADE_MINUTES);
+  assert.ok(hunter.firstUnlock.atHour * 60 <= FIRST_UPGRADE_MINUTES.max,
+    `hunter first unlock at ${hunter.firstUnlock.atHour} h`);
+  // Other careers save for bigger first goals (hull licenses); honest bound is
+  // the first session, not the 15-minute wish.
+  for (const arch of result.archetypes) {
+    assert.ok(arch.firstUnlock, `${arch.id} should unlock a first career node`);
+    assert.ok(arch.firstUnlock.atHour <= 4, `${arch.id} first unlock at ${arch.firstUnlock.atHour} h`);
+    assert.ok(arch.hour10Verbs >= 3, `${arch.id} verb cadence by hour 10`);
+  }
 });

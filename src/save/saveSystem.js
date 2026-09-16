@@ -3519,6 +3519,17 @@ function normalizePlayerSaveRecord(player, savedEntity) {
   if (!out.efficiencyMods || typeof out.efficiencyMods !== 'object' || Array.isArray(out.efficiencyMods)) {
     out.efficiencyMods = { miningYieldMult: 1, shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, tradeFeeMult: 1 };
   }
+  // researchFirsts is the bounded one-time RP grant ledger (data/researchGrants.js). Keep only
+  // finite simTime stamps so a crafted or stale save cannot smuggle a malformed dedup record.
+  if (out.researchFirsts != null) {
+    if (typeof out.researchFirsts !== 'object' || Array.isArray(out.researchFirsts)) {
+      delete out.researchFirsts;
+    } else {
+      for (const key of Object.keys(out.researchFirsts)) {
+        if (!Number.isFinite(Number(out.researchFirsts[key]))) delete out.researchFirsts[key];
+      }
+    }
+  }
   return out;
 }
 
