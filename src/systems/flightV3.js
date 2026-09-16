@@ -304,13 +304,7 @@ export const flightV3 = {
           && state.settings.gameplay.orbitAssistStrength,
         controlsBlocked: !playerFlightControlsActive(state, entity) || !!input.drawFlight,
       });
-      if (orbitAssist.active) {
-        input = orbitAssist.input;
-        // M1: orbit assist rewrites `turn` as a yaw-rate request — reapply the taut-line mass
-        // drag so a heavy catch still slows the nose during an assisted orbit.
-        const massScale = tautLineMassScale(state);
-        if (massScale < 1) input.turn = clamp(finite(input.turn, 0) * massScale, -1, 1);
-      }
+      if (orbitAssist.active) input = orbitAssist.input;
     }
     const result = stepPropulsion({
       dt,
@@ -554,16 +548,6 @@ export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, 
   input.earnedMomentumDecayTauS = MASSLINE_SLING_DECAY_TAU_S;
   input.earnedMomentumAssistScale = input.physicsEarnedMomentum ? MASSLINE_EARNED_ASSIST_SCALE : 1;
 
-  // M1: a taut line couples the catch's mass into the helm — yaw and lateral authority scale
-  // down by 1/(1 + 0.35·attached/hull), so a heavy load visibly drags the nose and the strafe
-  // plates. Scaling the commanded axes (not the accel table) leaves yaw braking full-authority:
-  // you turn slower under load, but you can still kill rotation.
-  const massScale = tautLineMassScale(state);
-  if (massScale < 1) {
-    input.strafe = clamp(finite(input.strafe, 0) * massScale, -1, 1);
-    input.turn = clamp(finite(input.turn, 0) * massScale, -1, 1);
-  }
-
   const cloak = state && state.massline2 && state.massline2.cloak;
   const coasting = Math.abs(finite(input.throttle, 0)) <= 0.025
     && Math.abs(finite(input.strafe, 0)) <= 0.025
@@ -590,28 +574,6 @@ export function applyMasslineFlightModifiers(input, state, eventSlingUntil = 0, 
     if (drive && typeof drive === 'object') input.travelDrive = drive;
   }
   return input;
-}
-
-/** M1: while the player's line is taut (phase loaded/overload), the catch's mass scales yaw and
- * lateral authority by 1/(1 + 0.35·attached/hull). Returns 1 when no taut line or no mass data —
- * the caller then skips scaling, keeping the expression identical to its pre-M1 form. */
-export function tautLineMassScale(state) {
-  const tether = state && state.player && state.player.tether;
-  if (!tether || tether.targetId == null) return 1;
-  const phase = tether.phase;
-  if (phase !== 'loaded' && phase !== 'overload') return 1;
-  const entities = state.entities;
-  if (!entities || typeof entities.get !== 'function') return 1;
-  const anchor = entities.get(tether.targetId);
-  const hull = entities.get(state.playerId);
-  const attachedMass = positive(
-    anchor && anchor.physicsBody && anchor.physicsBody.mass,
-    positive(anchor && anchor.mass, 0));
-  const hullMass = positive(
-    hull && hull.physicsBody && hull.physicsBody.mass,
-    positive(hull && hull.mass, 0));
-  if (!(attachedMass > 0) || !(hullMass > 0)) return 1;
-  return 1 / (1 + 0.35 * (attachedMass / hullMass));
 }
 
 // Idempotent boost-resource normalizer (port of src/systems/flight.js:306-329). Guarantees the
