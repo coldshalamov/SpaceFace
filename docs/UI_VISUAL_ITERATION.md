@@ -14,21 +14,43 @@ the approved frames under `design/frontend/direction/approved/`.
 ## 0. Look before you touch
 
 ```
-node scripts/ui-look.mjs --only=pause      # open it, try EVERY control, see what each one does
-npm run ui:stills                          # menus + HUD, ~2.5 min, .devshots/ui-stills/
-npm run ui:stills -- --only=title,pause     # exact surfaces
-npm run ui:stills -- --set=station          # one group: menus,hud,instruments,station,crucible,works,deaths
-npm run ui:stills -- --all                  # every automatable surface (~10 min)
-npm run ui:stills -- --list                 # ids, groups, routes
+node scripts/ui-bench.mjs --shot=pause      # any 2D screen over a still, in seconds (see below)
+node scripts/ui-look.mjs --only=pause       # live route: clicks EVERY control, reports what each did
+npm run ui:stills                           # menus + HUD, ~2.5 min, .devshots/ui-stills/
+npm run ui:stills -- --only=title,pause      # exact surfaces
+npm run ui:stills -- --set=station           # one group: menus,hud,instruments,station,crucible,works,deaths
+npm run ui:stills -- --world --headed        # over the live 3D picture (HUD, world-lit screens)
+npm run ui:stills -- --list                  # ids, groups, routes
 ```
 
-`ui:look` is the first command of a pass and the one that answers "what is wrong". It opens the
-screen on the dev direct route (`?dev=screen:<id>`, `src/main.js`), clicks every control, and prints
-what each one actually did — opened a screen, raised a confirm, repainted, or nothing at all. It
-keeps a picture only where the surface visibly changed, so the output is small enough to read back.
-A control that does nothing, throws, or lands somewhere wrong is the first finding, before taste.
-The same route is for looking by hand: open `http://127.0.0.1:<port>/?dev=screen:pause` (any port
-`node server.js <port>` is serving) in a browser and click things — reload to reset.
+Three instruments, in the order a pass uses them:
+
+1. **The bench** (`tools/ui-bench.html`, served by `node scripts/ui-bench.mjs`): mounts the real
+   screen module with a real `GameState` over a frozen still — seconds per look, and it logs what
+   every control asked for. This is where composition, type, spacing, hover/focus and "does this
+   verb do anything" get judged. Put any capture behind it with `&bg=<path>`; hide its furniture
+   with `&chrome=0`. Synthetic state: never evidence about the live route.
+2. **`ui:look`**: the live register. Opens the screen on the dev route (`?dev=screen:<id>`) and
+   clicks every control, printing what each one actually did. A verb that does nothing, throws, or
+   lands somewhere wrong is the first finding of a pass — before taste.
+3. **`ui:stills`**: the honest picture, including `--world` for screens the world lights.
+
+### Which instrument sees what (verified 2026-09-16)
+
+| Surface family | Bench (`ui-bench`) | `ui-look` (live route) | `ui:stills` |
+|---|---|---|---|
+| Shell 2D: `mainMenu`, `newGame`, `pause`, `settings`, `saveLoad`, `help`, `codex`, `missionLog`, `credits`, `achievements`, `gameOver`, `techTree` | mounts, seconds | clicks every verb | yes |
+| Instruments/works: `range`, `footprint`, `automation`, `base` | mounts | yes | yes |
+| Crucible run: `crucible`, `crucibleDraft`, `crucibleRefit`, `crucibleResults` | mounts on synthetic state | needs a run first | yes (fixture) |
+| Overlays: `replay`, `clips`, `sandbox`, photo mode | mounts (photo needs a live canvas) | yes | yes |
+| HUD over the world: `flight`, `power-rail`, `comms-radial`, `wingman-radial` | not mountable (no live picture) | key entries only | `--world --headed` |
+| Station: `station-dock` + every station tab | not mountable (needs a live berth) | yes (dock fixture) | yes |
+| Maps: `chart`, `chart-galaxy` | not mountable (needs live geography) | yes | yes |
+| `ship` | not mountable (needs a hull) | yes | yes |
+
+The bench says so itself when asked for a live-only surface, and points at the command that can see
+it. If a screen cannot be judged by any of the three instruments, that is a scaffolding finding —
+report it, do not guess.
 
 Read `contact-sheet.png` first for the whole picture, then the full-size PNGs for detail. Open the
 still before deciding anything, and re-open the *after* still before claiming a fix.

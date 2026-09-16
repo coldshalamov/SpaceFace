@@ -30,12 +30,28 @@ DOM layering (ARCHITECTURE §1.2): canvas z0 < vignette z5 < hud+receipts z10–
 
 ## Seeing the UI before changing it
 
-`npm run ui:stills` captures the title, pause, HUD and other screens as PNGs into
-`.devshots/ui-stills/` in one boot (~2 min) with an index and a labeled contact sheet; `--set=` picks
-groups, `--only=` picks exact surfaces, `--world --headed` shoots over the live 3D picture. Look at
-the stills before judging or restyling a screen — the full matrix is `npm run capture:ui-matrix`, and
-layout measurement is `npm run check:ui:layout`. The look-first loop (judge, fix, re-shoot, three
-independent reviewers) is [`../../docs/UI_VISUAL_ITERATION.md`](../../docs/UI_VISUAL_ITERATION.md).
+Two instruments, and the split between them is the rule:
+
+| You want | Use | Cost |
+|---|---|---|
+| Look at a 2D screen, click every control, judge composition/type/spacing, iterate | `node scripts/ui-bench.mjs` → open `tools/ui-bench.html?screen=pause` (add `&bg=.devshots/ui-stills/flight.png`, `&chrome=0` for a clean frame), or `--shot=pause` for a PNG | seconds |
+| Ask what a control DOES on the live route, or a screen the bench cannot mount | `node scripts/ui-look.mjs --only=<id>` | one boot |
+| Judge a screen over the live world (HUD, chart, anything the world lights) | `npm run ui:stills -- --world --headed --only=<ids>` | ~1 min |
+
+The bench mounts the **real** screen module with a real `GameState` and the real kit stylesheets over
+a frozen still, and logs what each control asked for. It is a look instrument, never acceptance:
+its state is synthetic, so a bench still proves composition, type, spacing, hover/focus and "does
+this verb do anything", while the live route stays the evidence for behaviour. `ui-look` is the live
+register — it clicks every control and prints what each one did (opened `<screen>`, raised a
+confirm, repainted, or nothing at all). **A screen whose verb does nothing is a defect, not a style
+question**, and it is the first thing to check.
+
+Never restyle a screen without a still of it in hand; never claim a fix without the after-still. The
+look-fix-look loop, the four judgment tests and the end-of-pass review step are
+[`../../docs/UI_VISUAL_ITERATION.md`](../../docs/UI_VISUAL_ITERATION.md).
+
+The full matrix is `npm run capture:ui-matrix`, and layout measurement is
+`npm run check:ui:layout` (add `--pixels` to measure type against what is actually drawn behind it).
 
 ## Verification
 

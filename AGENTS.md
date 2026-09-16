@@ -22,7 +22,7 @@ the named outcome of the job you were given, then stop. Full working agreement:
 | Implement a feature/fix | `docs/MODULE_MAP.md` → nearest nested `AGENTS.md` |
 | Product or system design | `design/GDD_2_0.md` → relevant spec2/spec3 slice |
 | Player-facing graphics / Blender/GLB | `docs/visual-assets/README.md` → `assets/AGENTS.md` |
-| UI/HUD / frontend looks cheap / make the UI A-list / any menu, HUD or screen redesign | **`design/frontend/direction/FIELD_HARDWARE_PROGRAM.md`** (2026-09-10; frames under `design/frontend/direction/approved/` outrank prose) → `--id PQ-194`; five development sessions `design/frontend/direction/sessions/` (phase specs under `packets/`) → then `src/ui/AGENTS.md`, `styles/AGENTS.md` |
+| UI/HUD / frontend looks cheap / make the UI A-list / any menu, HUD or screen redesign | **`design/frontend/direction/FIELD_HARDWARE_PROGRAM.md`** (2026-09-10; frames under `design/frontend/direction/approved/` outrank prose) → `--id PQ-194`; five development sessions `design/frontend/direction/sessions/` (phase specs under `packets/`) → then **see it**: `node scripts/ui-bench.mjs` (any 2D screen over a still, seconds, `--shot=` for a PNG) and `node scripts/ui-look.mjs --only=<id>` (live: clicks every control and reports what each did) → `src/ui/AGENTS.md` §Seeing the UI, `styles/AGENTS.md` |
 | Recurring bug | `docs/COMMON_BUGS.md` |
 | Finish the game / it still looks unfinished / run the fleet | **`design/program/FINISH_THE_GAME.md`** — goal prompt `design/program/FINISH_THE_GAME_GOAL.txt` |
 | Tests/checks | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
