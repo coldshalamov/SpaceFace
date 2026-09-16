@@ -134,6 +134,21 @@ export function makeEnemySpawnSpec(enemyTypeId, level, pos, opts = {}) {
   spec.cap = spec.capMax = def.cap || 80;
   spec.capRegen = def.capRegen || 20;
   if (def.maxSpeed) spec.maxSpeed = def.maxSpeed;
+  if (def.combatSpeed) {
+    spec.combatSpeed = def.combatSpeed;
+    if (spec.data && spec.data.derived && spec.data.derived.propulsion) {
+      spec.data.derived.propulsion = {
+        ...spec.data.derived.propulsion,
+        combatSpeed: def.combatSpeed,
+      };
+    }
+    if (spec.propulsion) {
+      spec.propulsion = {
+        ...spec.propulsion,
+        combatSpeed: def.combatSpeed,
+      };
+    }
+  }
   if (def.accel) spec.thrust = def.accel;
   if (def.turnRate) spec.turnRate = def.turnRate;
   if (def.collisionRadius) spec.radius = def.collisionRadius;

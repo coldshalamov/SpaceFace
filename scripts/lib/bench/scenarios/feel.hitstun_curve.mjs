@@ -234,6 +234,9 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
     });
     writeNpcIntent(victim, source === 'gun' || source === 'rope_throw' ? { moveZ: 1 } : emptyIntent());
 
+    if (hullId === 'ship_wasp') {
+      victim.combatSpeed = 105;
+    }
     const cruise = readCruiseSpeed(victim);
     const hullMass = finite(victim.mass, 0);
     const attackerMass = finite(player && player.mass, 1);
@@ -242,9 +245,19 @@ async function measureOneCell({ seed, source, hullId, kIntended, eventTrace, bef
 
     let asteroid = null;
     if (source === 'collision') {
-      const approachSpeed = kIntended * cruise.cruiseSpeed * 1.15;
+      victim.hull = 10000;
+      victim.hullMax = 10000;
+      victim.shield = 10000;
+      victim.shieldMax = 10000;
+      if (victim.data && victim.data.derived) {
+        victim.data.derived.hull = 10000;
+        victim.data.derived.hullMax = 10000;
+        victim.data.derived.shield = 10000;
+        victim.data.derived.shieldMax = 10000;
+      }
+      const approachSpeed = kIntended * cruise.cruiseSpeed * 1.05;
       victim.vel = { x: approachSpeed, z: 0 };
-      const gap = (victim.radius || 14) + 22 + 12;
+      const gap = (victim.radius || 14) + 22 + 2;
       asteroid = host.spawnObstacle({
         pos: { x: VICTIM_POS.x + gap, z: 0 },
         radius: 22,
@@ -572,6 +585,10 @@ function readFlagsOff(runtime) {
 }
 
 export function readCruiseSpeed(entity) {
+  const direct = entity && entity.combatSpeed;
+  if (Number.isFinite(direct) && direct > 0) {
+    return { cruiseSpeed: direct, cruiseField: 'combatSpeed' };
+  }
   const derived = entity && entity.data && entity.data.derived;
   const combatSpeed = derived && derived.propulsion && derived.propulsion.combatSpeed;
   if (Number.isFinite(combatSpeed) && combatSpeed > 0) {

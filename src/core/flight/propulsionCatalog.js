@@ -430,6 +430,8 @@ function stumbleProfile(profile) {
  * exactly where the fight happens (FEEL_CONTRACT B3).
  */
 export function resolveGovernedCombatSpeed(entity, state = null, fallback = 0) {
+  const direct = entity && entity.combatSpeed;
+  if (Number.isFinite(direct) && direct > 0) return direct;
   const profile = resolvePropulsionProfile(entity, state);
   const combat = profile && profile.combatSpeed;
   if (Number.isFinite(combat) && combat > 0) return combat;

@@ -22,6 +22,7 @@ export const ENEMY_TYPES = [
     combatDoctrineId: 'interceptor_flyby',
     hull: 55, armor: 8, armorFlat: 0, shield: 25, shieldRegen: 5, cap: 60, capRegen: 20,
     // Overnight B1 fairness: slower zip, softer DPS so early fights are readable.
+    combatSpeed: 105,
     maxSpeed: 118, accel: 96, turnRate: 2.35, collisionRadius: 12, mass: 16,
     weapons: [{ id: 'wpn_pulse_laser_s', dmgOverride: 3, rofOverride: 2.4 }],
     aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 180, leashRadius: 2200 },
@@ -40,7 +41,7 @@ export const ENEMY_TYPES = [
     hull: 70, armor: 12, armorFlat: 1, shield: 50, shieldRegen: 6, cap: 120, capRegen: 22,
     maxSpeed: 126, accel: 84, turnRate: 1.5, collisionRadius: 14, mass: 24,
     weapons: [{ id: 'wpn_railgun_m', dmgOverride: 40, rofOverride: 0.7, projSpeedOverride: 700, rangeOverride: 1100 }],
-    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 420, leashRadius: 3000 },
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 280, leashRadius: 3000 },
     behavior: 'kite at max range, retreat when closed',
     bountyCr: 260, shipClass: 'fighter',
     loot: {
@@ -78,7 +79,7 @@ export const ENEMY_TYPES = [
     hull: 140, armor: 30, armorFlat: 1, shield: 60, shieldRegen: 8, cap: 100, capRegen: 14,
     maxSpeed: 133, accel: 63, turnRate: 1.2, collisionRadius: 18, mass: 55,
     weapons: [{ id: 'wpn_flak_turret_s', defensiveOnly: true }],
-    aiDoctrine: { defaultActivity: 'transit', roe: 'defensive', preferredRange: 420, leashRadius: 2600 },
+    aiDoctrine: { defaultActivity: 'transit', roe: 'defensive', preferredRange: 280, leashRadius: 2600 },
     behavior: 'flee to nearest station/lane, boost when threatened, shoots only if cornered',
     bountyCr: 0, illegalToKill: true, shipClass: 'frigate',
     loot: {
@@ -118,7 +119,7 @@ export const ENEMY_TYPES = [
     hull: 180, armor: 45, armorFlat: 2, shield: 80, shieldRegen: 12, shieldRegenCapable: true, cap: 200, capRegen: 26,
     maxSpeed: 147, accel: 119, turnRate: 2.1, collisionRadius: 18, mass: 64,
     weapons: [{ id: 'wpn_autocannon_m' }, { id: 'wpn_plasma_cannon_m', occasional: true }],
-    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 320, leashRadius: 2800 },
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 260, leashRadius: 2800 },
     behavior: 'mid-tier pirate elite, frontier ambush packs',
     bountyCr: 620, shipClass: 'gunship',
     loot: {
@@ -138,7 +139,7 @@ export const ENEMY_TYPES = [
     hull: 200, armor: 50, armorFlat: 2, shield: 100, shieldRegen: 14, shieldRegenCapable: true, cap: 220, capRegen: 28,
     maxSpeed: 140, accel: 112, turnRate: 1.95, collisionRadius: 18, mass: 70,
     weapons: [{ id: 'wpn_pulse_laser_m' }, { id: 'wpn_flak_turret_s' }],
-    aiDoctrine: { defaultActivity: 'patrol_route', roe: 'lawful_wanted_only', preferredRange: 520, leashRadius: 2600 },
+    aiDoctrine: { defaultActivity: 'patrol_route', roe: 'lawful_wanted_only', preferredRange: 320, leashRadius: 2600 },
     behavior: 'lawful patrol; hostile only if player wanted; assists at Trusted+ rep',
     bountyCr: 0, factionLawful: true, shipClass: 'gunship',
     loot: {
@@ -159,7 +160,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_autocannon_m',   count: 6, turret: true },
       { id: 'wpn_flak_turret_s',  count: 4, turret: true },
     ],
-    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 380, leashRadius: 3400 },
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 260, leashRadius: 3400 },
     telegraph: {
       bark: 'warn',
       line: 'Iron Maw is rolling broadside. Cross its bow before the batteries align.',
@@ -196,7 +197,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_missile_rack_m', occasional: true },
       { id: 'wpn_flak_turret_s', defensiveOnly: true },
     ],
-    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 300, leashRadius: 2500 },
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 240, leashRadius: 2500 },
     telegraph: { bark: 'warn', line: 'Wake is salted. Turn now or fly through our work.', cue: 'wake_mines' },
     counterHint: 'cut_tether_or_clear_wake',
     behavior: 'mines the wake, prefers cargo and wrecks over clean kills, breaks when outnumbered',
@@ -222,7 +223,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_flak_turret_s' },
       { id: 'wpn_autocannon_m' },
     ],
-    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 280, leashRadius: 2200 },
+    aiDoctrine: { defaultActivity: 'attack_run', roe: 'weapons_free', preferredRange: 240, leashRadius: 2200 },
     telegraph: { bark: 'warn', line: 'Point-defense curtain spinning up. Hold missiles.', cue: 'pd_curtain' },
     counterHint: 'hold_missiles_use_kinetics_peel_escort',
     behavior: 'screens a leader or wreck claim; shreds missiles and light craft at mid range',
@@ -248,7 +249,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_emp_disruptor_m', occasional: true },
       { id: 'wpn_flak_turret_s', defensiveOnly: true },
     ],
-    aiDoctrine: { defaultActivity: 'patrol_route', roe: 'lawful_wanted_only', preferredRange: 480, leashRadius: 2600 },
+    aiDoctrine: { defaultActivity: 'patrol_route', roe: 'lawful_wanted_only', preferredRange: 320, leashRadius: 2600 },
     behavior: 'lawful interdiction cutter; hostile only if wanted or contraband scan fails; assists Trusted+ pilots',
     bountyCr: 0, factionLawful: true, shipClass: 'gunship',
     loot: {
@@ -289,7 +290,7 @@ export const ENEMY_TYPES = [
       { id: 'wpn_railgun_m', dmgOverride: 36, rofOverride: 0.65, projSpeedOverride: 720, rangeOverride: 1050 },
       { id: 'wpn_emp_disruptor_m', occasional: true },
     ],
-    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 420, leashRadius: 3200 },
+    aiDoctrine: { defaultActivity: 'reposition', roe: 'weapons_free', preferredRange: 280, leashRadius: 3200 },
     telegraph: { bark: 'scan', line: 'Ghost already has the shot.', cue: 'sensor_ghost' },
     counterHint: 'break_lock_close_under_cover',
     behavior: 'low-signature sniper; disengages after first alpha, returns from a new bearing',
