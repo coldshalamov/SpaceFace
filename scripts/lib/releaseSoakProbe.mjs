@@ -347,6 +347,7 @@ export async function runReleaseSoakProbe({
             bounds: state?.bounds ? { radius: state.bounds.radius, hardRadius: state.bounds.hardRadius, center: state.bounds.center || null } : null,
             frameOrigin: state?.world?.frameOrigin ? { x: state.world.frameOrigin.x, z: state.world.frameOrigin.z, seq: state.world.frameOriginSeq } : null,
             dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
+            visibility: typeof document !== 'undefined' ? document.visibilityState : null,
             saveStartedSnapshot: window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null,
             trailTail: trail.slice(-60),
             posTrapEvents: (window.__M6_POS_TRAP_EVENTS__ || []).slice(-32),
@@ -607,7 +608,13 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
     browserServer = await chromium.launchServer({
       headless: false,
       executablePath,
-      args: ['--incognito', '--no-first-run', '--no-default-browser-check', '--disable-extensions', `--window-size=${viewport.width},${viewport.height}`, '--force-device-scale-factor=1'],
+      args: ['--incognito', '--no-first-run', '--no-default-browser-check', '--disable-extensions', `--window-size=${viewport.width},${viewport.height}`, '--force-device-scale-factor=1',
+        // The browser route suspends the sim while document.hidden is true, and Chromium reports
+        // hidden for a fully occluded window on Windows. A covered soak window used to freeze
+        // state.tick while page timers kept running (the cycle-31 'flight input must advance
+        // simulation ticks' false fail). Keep the page presenting under occlusion; a genuine
+        // minimize still suspends, which remains correct product behavior.
+        '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding', '--disable-background-timer-throttling'],
     });
     const browserChildProcess = browserServer.process();
     assert(browserChildProcess, 'browser launch server must expose its owned child process');
@@ -857,10 +864,21 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
   await transition(null, { settleMs: 2_500 });
 
   const beforeInput = await readPlayerSnapshot(page);
-  await page.keyboard.down('KeyW');
-  await page.waitForTimeout(450);
-  await page.keyboard.up('KeyW');
-  const afterInput = await readPlayerSnapshot(page);
+  const driveInput = async () => {
+    await page.keyboard.down('KeyW');
+    await page.waitForTimeout(450);
+    await page.keyboard.up('KeyW');
+    return readPlayerSnapshot(page);
+  };
+  let afterInput = await driveInput();
+  if (afterInput.tick <= beforeInput.tick) {
+    // A suspended presentation (document.hidden) or a transient main-thread stall can starve one
+    // 450 ms input window without being a gameplay defect — wait for visibility once, re-drive once.
+    try {
+      await page.waitForFunction(() => document.visibilityState === 'visible', null, { timeout: 10_000 });
+    } catch (_) { /* the assert below reports the still-frozen state with the full diag */ }
+    afterInput = await driveInput();
+  }
   assert(afterInput.tick > beforeInput.tick, 'flight input must advance simulation ticks');
   assert(distance(beforeInput.pos, afterInput.pos) > 0.05 || Math.abs(afterInput.speed - beforeInput.speed) > 0.05, 'flight input must cause motion');
   mark('flight-input', { before: beforeInput, after: afterInput });
