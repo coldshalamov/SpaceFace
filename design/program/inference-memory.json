@@ -906,6 +906,19 @@
       "integration": "live",
       "commit": "5d09f7ced",
       "verification": "focused_green"
+    },
+    {
+      "id": "first-bomb-drop-hint",
+      "date": "2026-09-16",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "first player bomb drop shows a one-shot teaching hint; NPC drops filtered",
+      "fingerprint": "verb=teach,subject=bomb-bay,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "ca8d52fce",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
