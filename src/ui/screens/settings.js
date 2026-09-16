@@ -144,10 +144,11 @@ function publishFrameCap(ctx) {
 const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // Flight actions the player may rebind. Mouse buttons stay out of the grid; Space is the
 // new-profile Massline primary and F remains its permanent alias.
-const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
+export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
   'brake', 'siteBeam', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
-  'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone'];
-const REBIND_LABELS = {
+  'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
+  'dropBomb', 'cycleBomb'];
+export const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
   yawLeft: 'Steer left (Classic scheme)',
@@ -176,15 +177,18 @@ const REBIND_LABELS = {
   deployWell: 'Field: deploy attractive Well',
   deployRepulsor: 'Field: deploy Repulsor',
   toggleClearingCone: 'Field: toggle Clearing Cone',
+  dropBomb: 'Bomb bay: drop bomb',
+  cycleBomb: 'Bomb bay: cycle payload',
 };
 
 // PQ-164.01 pad remap. Every gamepad action is rebindable; labels describe the verb, not the
 // default button (the live resolved map prints the button on the right of each row).
-const GAMEPAD_REBINDABLE = [
+export const GAMEPAD_REBINDABLE = [
   'accept', 'cancel', 'massline', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
   'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'tabPrev', 'tabNext',
+  'dropBomb', 'cycleBomb',
 ];
-const GAMEPAD_REBIND_LABELS = {
+export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept / dock',
   cancel: 'Back / cancel',
   massline: 'Massline: tap latch/cut; hold line control',
@@ -201,6 +205,8 @@ const GAMEPAD_REBIND_LABELS = {
   travelBurn: 'Travel drive (burn latch)',
   tabPrev: 'Station tab: previous',
   tabNext: 'Station tab: next',
+  dropBomb: 'Bomb bay: drop bomb',
+  cycleBomb: 'Bomb bay: cycle payload',
 };
 
 function controlSchemeFor(settings) {
@@ -516,7 +522,7 @@ export const settingsScreen = {
     build.toggle('Invert right-stick Y', () => !!gp().invertY, (v) => this._set(ctx, 'controls', 'gamepad', { ...gp(), invertY: v }));
     // Matches src/systems/gamepad.js ACTION_MAP + UI route: Start/menu → pause only;
     // Mission Log is chosen from the Pause menu (no direct gamepad missionLog action).
-    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, A/Cross Massline (dock/accept when prompted), X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Y/Triangle codex, Start → Pause → Mission Log.');
+    build.note('Default layout: left stick fly, right stick aim, RT fire, LT mine, RB boost, LB brake, R3 countermeasure, D-pad right bomb, D-pad left cycle bombs, A/Cross Massline (dock/accept when prompted), X/Square target, D-pad up auto-target (right stick draw-to-fly), View star map, Y/Triangle codex, Start → Pause → Mission Log.');
 
     // PQ-164.01 pad remap: capture-on-press rows, same grammar as the flight keys above — press
     // a word, then press the pad button. Conflict detection honours the designed context shares

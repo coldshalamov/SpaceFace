@@ -292,7 +292,7 @@ function liveBoostLabel(state) {
     : resolveActionLabel(state, 'boost');
 }
 
-function controlSections(state) {
+export function controlSections(state) {
   const holdLine = [liveGlyph(state, 'forward'), liveGlyph(state, 'reverse'), livePair(state, 'yawLeft', 'yawRight')]
     .filter(Boolean)
     .join('/');
@@ -323,6 +323,8 @@ function controlSections(state) {
       ['Deploy Repulsor (drops at ship; shoves bodies outward)', 'deployRepulsor'],
       ['Toggle Clearing Cone (forward gravitic snowplow; toggle on/off)', 'toggleClearingCone'],
       ['Open a scoop sheet and harvest by grazing a planet band', 'toggleSkimCollector'],
+      ['Drop bomb (releases at ship velocity; payload from the bomb bay)', 'dropBomb'],
+      ['Cycle bomb-bay payload', 'cycleBomb'],
     ]],
     ['Interface (fixed keys)', [
       ['Aim weapons', null, 'Mouse'],
@@ -352,6 +354,8 @@ function controlSections(state) {
       ['Massline', null, 'A / X: Massline (dock/accept when prompted)'],
       ['Anchor Mass Seed', null, 'keyboard verb — rebind under Settings → Controls'],
       ['Countermeasure', null, 'R3'],
+      ['Drop bomb', null, 'D-Pad Right'],
+      ['Cycle bomb-bay payload', null, 'D-Pad Left'],
       ['Cycle target', null, 'X / □'],
       ['Open star-map', null, 'View / Select'],
       ['Open codex', null, 'Y / △'],
