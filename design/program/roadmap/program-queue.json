@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "updatedAt": "2026-09-12",
+  "updatedAt": "2026-09-15",
   "purpose": "Canonical cross-plan priority and dispatch queue. Product completion remains authoritative in design/program/03_LIVE_ACCEPTANCE_MATRIX.md.",
   "stateContract": {
     "allowed": [
@@ -4034,6 +4034,30 @@
       ],
       "evidence": [],
       "brief": "ADMITTED 2026-09-10 on the owner's directive that ten frontend passes were \"equally bad\" and that agent-written style docs were poisoning the work. The interface is rebuilt by PRODUCTION, not styling: rendered style frames first (ChatGPT 6 Pro), produced assets second (transparent-PNG kits, SVG icon family and marks, 3D sets and hull renders), code that assembles the assets to match the frames third, and a picture-comparison review at every step. Direction: Field Hardware (manufactured, backlit, hand-worn equipment over a lit living world; POSTER/BENCH/EDGE registers). The frames under design/frontend/direction/approved/ outrank every prose doc. Supersedes PQ-187 (Cinematic Minimal) and build_map.md section 20.14 on aesthetics; the old units stay recorded as implemented and are not dispatched again. FIVE development sessions with ChatGPT 6 Pro (design/frontend/direction/sessions/ S1-S5: design system, bench register, prototype app, engine port, QA) built from 28 phase specs under packets/; local lanes between sessions (the stage, Blender sets, integration + title veto, sweep + proof). Build a session zip with node scripts/build-ui-packet.mjs S1."
+    },
+    {
+      "id": "PQ-195",
+      "priority": 115,
+      "title": "The Third Shift: a recovery you can see, sell out, and lose",
+      "state": "ready",
+      "canonical": [
+        "BREAKAWAY-THIRD-SHIFT"
+      ],
+      "aliases": [],
+      "dependsOn": [],
+      "mutexes": [
+        "heist-breakaway"
+      ],
+      "sources": [
+        "build_map.md",
+        "design/program/roadmap/active/PQ-195.md",
+        "design/program/roadmap/active/PQ-195-design/01_FEATURE_SPEC.md"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission"
+      ],
+      "evidence": [],
+      "brief": "BREAKAWAY Slice A is live: The Third Shift is on the Tethys board, the SP-07 assembly is a real body, the capture fork brakes and settles it, custody is re-proven at handoff, it pays once with a condition bonus and survives save/load. Gap: everything that makes it a situation rather than a delivery — the assembly is drawn as a 6 WU cargo pod inside a 16 WU collision body, the fork has no visual and no rail colliders, there is no instrument, no fence choice, no pressure, no visible local consequence, no recovery after loss, no suspension on sector exit, no transport clamp, and no player has played it. See design/program/roadmap/active/PQ-195.md and its PQ-195-design/ specification."
     }
   ],
   "dispatchUnits": [
@@ -18472,6 +18496,338 @@
         "design/frontend/direction/receipts/"
       ],
       "brief": "Build S5 with the integration captures and clip strips, hand off, apply the punch list, assets v2 and corrections; then the motion pass (thirteen clips), the sound pass and the mute default decided with the owner, the sweep (dead stylesheets, injected style nodes, old token layers, unused fonts deleted; budgets.json and the visual-regression matrix reshot), the blind tally per S5's protocol, the ninety-second reel."
+    },
+    {
+      "id": "PQ-195.00",
+      "parentId": "PQ-195",
+      "priority": 495,
+      "title": "The assembly and the fork are objects you can read",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-022.heist-receivers-promote"
+      ],
+      "mutexes": [
+        "blender",
+        "asset-manifest"
+      ],
+      "paths": [
+        "assets/ships/breakaway_v1/",
+        "assets/ships/parts/places/",
+        "assets/ships/release/parts/places/",
+        "src/data/heistFacilities.js",
+        "src/data/worldSiteAssetBindings.js"
+      ],
+      "checks": [
+        "npm run check:pq019a:facility-embodiment",
+        "npm run check:pq019c:mission",
+        "npm run check:asset-reachability"
+      ],
+      "receiptRefs": [],
+      "brief": "Author the SP-07 spindle and the capture fork through the material-truth preflight and wire them on the ordinary route; the unwired blockout candidates are in assets/ships/breakaway_v1/source_candidates/. Reuse the open-mouth catcher body PQ-022.heist-receivers-promote re-authors rather than building a rival one. DONE WHEN: at the ordinary chase camera a fresh reviewer locates the load, its tow point and the receiver entrance without being told; at thumbnail size the load is not mistaken for an asteroid or a fighter; the drawn silhouette fills its 16 WU collision body instead of the 6 WU cargo pod it wears today. Never wire the pod stretched to 16 WU."
+    },
+    {
+      "id": "PQ-195.01",
+      "parentId": "PQ-195",
+      "priority": 496,
+      "title": "The fork rails are solid",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "heist-breakaway"
+      ],
+      "paths": [
+        "src/systems/heistFacilities.js",
+        "src/missions/heistMissionRuntime.js",
+        "src/data/heistFacilities.js",
+        "src/data/heistMission.js",
+        "src/systems/missions.js",
+        "src/physicalCargo/breakaway/",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "The fork's two rails and rear arrestor become colliders, so a refused crossing is turned by the machine instead of passing through it. DONE WHEN: a 155 WU/s entry is refused and deflected by real colliders, the load stays recoverable, and the player is never knocked around by the rails — do not touch player collision immunity, and the knock ruling's runtime guard stays green."
+    },
+    {
+      "id": "PQ-195.02",
+      "parentId": "PQ-195",
+      "priority": 497,
+      "title": "The instrument says what the machine is doing",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "heist-breakaway"
+      ],
+      "paths": [
+        "src/systems/heistFacilities.js",
+        "src/missions/heistMissionRuntime.js",
+        "src/data/heistFacilities.js",
+        "src/data/heistMission.js",
+        "src/systems/missions.js",
+        "src/physicalCargo/breakaway/",
+        "test/",
+        "src/ui/"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission",
+        "npm run check:baseline",
+        "npm run check:ui:control-labels"
+      ],
+      "receiptRefs": [],
+      "brief": "Bind approach speed against the 100 WU/s limit, mouth alignment and the settle into the established contextual EDGE surface, reconciled with the approved Field Hardware frames (PQ-194). DONE WHEN: a player who has never read this packet aborts a too-fast approach because the instrument said so in words, not colour; no fourth permanent HUD anchor is added; the lab's standalone load card is not installed in the game."
+    },
+    {
+      "id": "PQ-195.03",
+      "parentId": "PQ-195",
+      "priority": 498,
+      "title": "Two destinations for one body",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "heist-breakaway"
+      ],
+      "paths": [
+        "src/systems/heistFacilities.js",
+        "src/missions/heistMissionRuntime.js",
+        "src/data/heistFacilities.js",
+        "src/data/heistMission.js",
+        "src/systems/missions.js",
+        "src/physicalCargo/breakaway/",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "A lawful recovery and an illicit handoff over one physical object and one mechanical receiver — two policies, not two implementations; the law owner decides witnesses and heat. DONE WHEN: both routes complete on the ordinary route from one accepted contract, the same assembly is never paid for twice by relabelling its destination, and latching alone never raises WANTED. The Capsule Run keeps its historical semantics."
+    },
+    {
+      "id": "PQ-195.04",
+      "parentId": "PQ-195",
+      "priority": 499,
+      "title": "One visible local consequence",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "heist-breakaway"
+      ],
+      "paths": [
+        "src/systems/heistFacilities.js",
+        "src/missions/heistMissionRuntime.js",
+        "src/data/heistFacilities.js",
+        "src/data/heistMission.js",
+        "src/systems/missions.js",
+        "src/physicalCargo/breakaway/",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "A lawful accepted receipt restarts the stalled local work once (Berth Three resumes); the fence route leaves it unresolved; a damaged return restores partial service. DONE WHEN: flying past after each of the three outcomes shows three different states, the state is bound to the receipt rather than a timer, it survives save and load, and the repaired-machine presentation never plays after a destroyed or stolen load."
+    },
+    {
+      "id": "PQ-195.05",
+      "parentId": "PQ-195",
+      "priority": 500,
+      "title": "Someone else wants it",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "heist-breakaway"
+      ],
+      "paths": [
+        "src/systems/heistFacilities.js",
+        "src/missions/heistMissionRuntime.js",
+        "src/data/heistFacilities.js",
+        "src/data/heistMission.js",
+        "src/systems/missions.js",
+        "src/physicalCargo/breakaway/",
+        "test/",
+        "src/data/encounters/"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "At most two pursuing light hulls and one optional specialist through the ordinary spawn-budget arbiter and the existing tactical owner, reusing current archetypes. DONE WHEN: a raider commits to an intelligible run at the load or the tug, can be crossed with the spindle itself, and abandons a bad attack; no decorative traffic is added to make the scene feel busy."
+    },
+    {
+      "id": "PQ-195.06",
+      "parentId": "PQ-195",
+      "priority": 501,
+      "title": "Losing it leaves something to do",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "heist-breakaway"
+      ],
+      "paths": [
+        "src/systems/heistFacilities.js",
+        "src/missions/heistMissionRuntime.js",
+        "src/data/heistFacilities.js",
+        "src/data/heistMission.js",
+        "src/systems/missions.js",
+        "src/physicalCargo/breakaway/",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "A genuinely destroyed assembly produces one bounded reduced-value recovery through existing aftermath and salvage ownership. DONE WHEN: the reduced recovery is offered once per destruction, a duplicate destroy callback or a reload never duplicates it, and it is never a second full reward or a resurrection of the original payload."
+    },
+    {
+      "id": "PQ-195.07",
+      "parentId": "PQ-195",
+      "priority": 502,
+      "title": "Leaving suspends the job instead of ending it",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "heist-breakaway"
+      ],
+      "paths": [
+        "src/systems/heistFacilities.js",
+        "src/missions/heistMissionRuntime.js",
+        "src/data/heistFacilities.js",
+        "src/data/heistMission.js",
+        "src/systems/missions.js",
+        "src/physicalCargo/breakaway/",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Flying out of Tethys mid-recovery currently removes the load and fails the contract; the fiction promises a suspension. DONE WHEN: leaving and returning resumes the same run with the same body, and the contract neither pays nor silently fails on a sector boundary. Facility state (launcher schedules, capture) is NOT in the save capture plan today — a new top-level save key is an integrator decision, so raise it as a shared change rather than adding a second writer."
+    },
+    {
+      "id": "PQ-195.08",
+      "parentId": "PQ-195",
+      "priority": 503,
+      "title": "The breakaway from a moving carrier",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "heist-breakaway"
+      ],
+      "paths": [
+        "src/systems/heistFacilities.js",
+        "src/missions/heistMissionRuntime.js",
+        "src/data/heistFacilities.js",
+        "src/data/heistMission.js",
+        "src/systems/missions.js",
+        "src/physicalCargo/breakaway/",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission",
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "The spindle starts clamped to an actual moving carrier through the existing physics/attachment owner; an authored transport clamp becomes a combat subsystem whose disabling releases a real body. DONE WHEN: the released body keeps the velocity and spin it already had, the release itself adds no cinematic impulse, ordinary Masslines stay unbreakable, and player collision immunity is untouched."
+    },
+    {
+      "id": "PQ-195.09",
+      "parentId": "PQ-195",
+      "priority": 504,
+      "title": "A player has actually played it",
+      "kind": "acceptance_review",
+      "state": "ready",
+      "dependsOn": [
+        "PQ-195.00",
+        "PQ-195.01",
+        "PQ-195.02",
+        "PQ-195.03",
+        "PQ-195.04",
+        "PQ-195.05",
+        "PQ-195.06"
+      ],
+      "mutexes": [
+        "heist-breakaway"
+      ],
+      "paths": [
+        "src/systems/heistFacilities.js",
+        "src/missions/heistMissionRuntime.js",
+        "src/data/heistFacilities.js",
+        "src/data/heistMission.js",
+        "src/systems/missions.js",
+        "src/physicalCargo/breakaway/",
+        "test/"
+      ],
+      "checks": [
+        "npm run check:pq019c:mission",
+        "npm run check:playable"
+      ],
+      "receiptRefs": [],
+      "brief": "Route acceptance for the finished feature. DONE WHEN: protect-and-deliver, fence, and failed-then-reduced-recovery each complete unaided on the ordinary route; the event left alone still has understandable actors; frame-time distribution and worst hitch are named with hardware, resolution, settings, seed and commit on the owner's target machine; and a fresh player finishes it without being taught the solution."
+    },
+    {
+      "id": "PQ-186.03",
+      "parentId": "PQ-186",
+      "priority": 505,
+      "title": "A mission type cannot fall off the board silently",
+      "kind": "implementation",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "regression"
+      ],
+      "paths": [
+        "src/data/missions.js",
+        "src/systems/missions.js",
+        "test/",
+        "scripts/"
+      ],
+      "checks": [
+        "npm run check:baseline",
+        "npm run check:mission-receipts"
+      ],
+      "receiptRefs": [],
+      "brief": "The offer picker reads OFFER_MIX by NAMED weight and falls back to the row's POSITIONAL entry (weights[i] || 0), so inserting a mission type shifts every later row's weight and can zero a type's board presence with no test failing — found while adding the breakaway_recovery type in 2026-09. DONE WHEN: a guard asserts every MISSION_TYPES entry with proceduralWeight > 0 has a named weight in every OFFER_MIX row, a fixture that inserts a type without one turns it red, and master is green."
+    },
+    {
+      "id": "PQ-186.04",
+      "parentId": "PQ-186",
+      "priority": 506,
+      "title": "Four red suites on master tell the truth",
+      "kind": "acceptance_repair",
+      "state": "ready",
+      "dependsOn": [],
+      "mutexes": [
+        "regression"
+      ],
+      "paths": [
+        "test/",
+        "src/systems/lootShards.js",
+        "src/systems/heat.js",
+        "src/systems/lawSecurity.js",
+        "assets/ships/parts/parts_manifest.json",
+        "assets/ships/release/release_manifest.json"
+      ],
+      "checks": [
+        "npm run check:baseline"
+      ],
+      "receiptRefs": [],
+      "brief": "Four assertions are red on master and were red before the 2026-09-15 breakaway work (proven by running them on an archive of the pre-change tree): two say a hostile kill still earns its shard burst (pq019-heat-incident-listener), one says an explicitly marked non-lawful entity can witness (pq019-law-incident-intake), and one says the authored cargo pod is present in source, release and the runtime pod slot but reads 4552 where 3976 is expected (pq019-authored-cargo-capsule). CHARACTERIZE FIRST: if the live game agrees with the test, two of these are player-facing bugs (kills that should drop shards and do not); if behaviour drifted deliberately, the assertion needs its causal record. Reconcile the byte mismatch through the manifest tooling. DONE WHEN: all four are green for a stated cause, and never by editing an expected number to match the code."
     }
   ]
 }
