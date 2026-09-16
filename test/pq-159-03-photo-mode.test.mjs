@@ -402,7 +402,9 @@ test('director holds FOLLOW on a taut line while photo mode is live', () => {
   assert.equal(out.zoom, 170);
   state.render.photoMode.active = false;
   const live = director.step(1 / 60, state, player, view);
-  assert.equal(live.mode, CameraDirectorMode.TWO_BODY);
+  // A plain taut tow no longer leases the camera (owner feel verdict 2026-09-16): FOLLOW before,
+  // during, and after photo mode.
+  assert.equal(live.mode, CameraDirectorMode.FOLLOW);
   console.log(`SEED=${SEED} directorPhoto=FOLLOW directorLive=${live.mode}`);
 });
 

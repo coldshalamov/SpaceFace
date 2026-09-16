@@ -35,7 +35,9 @@ export const CAMERA_DIRECTOR_PREDICT_MIN_REL_SPEED = 72;
 // M2: focus outputs are frame-local; entity.pos is read as galactic-global and projected here.
 //
 // CAMERA-FOCUS-SEPARATION: ordinary mining/asteroid/non-hostile tether never enters combat pair
-// modes (TETHER_PAIR / FOCUS_PAIR). Hostile ship/drone massline owns TETHER_PAIR; FOCUS_PAIR is now
+// modes (TETHER_PAIR / FOCUS_PAIR) — and since the 2026-09-16 owner feel verdict it never enters
+// TWO_BODY either (see resolveTwoBodyLinePair); the chase camera's damped tether composition owns
+// those. Hostile ship/drone massline owns TETHER_PAIR; FOCUS_PAIR is now
 // reserved for the explicitly flagged onboarding trainer pair (see step()). Everything else,
 // including a hostile Flyby Focus lease, stays FOLLOW so chase composition can apply its damped
 // bias + threat-aware zoom-out instead of a discrete mode switch.
@@ -44,8 +46,10 @@ export const CameraDirectorMode = Object.freeze({
   FOLLOW: 'FOLLOW',
   FOCUS_PAIR: 'FOCUS_PAIR',
   TETHER_PAIR: 'TETHER_PAIR',
-  // PQ-159.01: taut Massline / twin bridle. Not a combat pair — mining swings and world-to-world
-  // bridles use this so CAMERA-FOCUS-SEPARATION still holds (TETHER_PAIR stays hostile-only).
+  // PQ-159.01: twin bridle. Not a combat pair. Originally any taut line qualified, but a towed
+  // body on a spring crosses the taut threshold constantly, so the mode flapped and the camera
+  // re-took composition over and over (owner feel verdict 2026-09-16). Only the bridle — a
+  // discrete player-chosen attachment — owns TWO_BODY now; see resolveTwoBodyLinePair.
   TWO_BODY: 'TWO_BODY',
   GATE_APPROACH: 'GATE_APPROACH',
   RECOVER: 'RECOVER',
@@ -197,16 +201,20 @@ export function isTautOrBridle(tether, state) {
   return isLineTaut(tether);
 }
 
-/** The two bodies a taut line or live bridle should put on the frame diagonal. */
+/**
+ * The two bodies a live twin bridle puts on the frame diagonal.
+ *
+ * Owner feel verdict (2026-09-16): a plain taut massline no longer takes the camera. The old
+ * taut-line trigger fired on `phase === 'loaded'`, and the attachment spring crosses its stretch
+ * epsilon constantly under tow — so the director entered and left TWO_BODY on every slack/taut
+ * flip, each entry restarting the 0.35 s ease. Towing anything swung the view between a wide
+ * pair-fit and the chase shot faster than the player could fly, with no way to control it.
+ * Ordinary mining/tow tethers stay FOLLOW, where resolveChaseComposition biases the view toward
+ * the line's anchor continuously and damped. TWO_BODY remains for the twin bridle: a discrete
+ * player-chosen attachment whose active state cannot flicker with spring stretch.
+ */
 export function resolveTwoBodyLinePair(state, player) {
-  const bridle = resolveBridlePair(state);
-  if (bridle) return bridle;
-  const tether = state && state.player && state.player.tether;
-  if (!isLineTaut(tether)) return null;
-  const self = player || entityFor(state, state && state.playerId);
-  const other = entityFor(state, tether.targetId);
-  if (!self || !other || self === other) return null;
-  return { a: self, b: other, kind: 'taut', attachmentId: tether.attachmentId || null };
+  return resolveBridlePair(state);
 }
 
 /**
@@ -766,9 +774,12 @@ export function createCameraDirector() {
         pairSafeNdc = CAMERA_DIRECTOR_FOCUS_SAFE_NDC;
       }
 
-      // PQ-159.01: a taut line or a live bridle owns TWO_BODY (the line as the frame diagonal).
-      // Lower than combat TETHER_PAIR / training FOCUS_PAIR so CAMERA-FOCUS-SEPARATION holds;
-      // higher than GATE_APPROACH so a swing is not replaced by a scenic gate shot.
+      // PQ-159.01: a live twin bridle owns TWO_BODY (the line as the frame diagonal). A plain
+      // taut massline does not — its spring flips slack/loaded constantly under tow, which used
+      // to flap this takeover on every flip (owner verdict 2026-09-16; see
+      // resolveTwoBodyLinePair). Lower than combat TETHER_PAIR / training FOCUS_PAIR so
+      // CAMERA-FOCUS-SEPARATION holds; higher than GATE_APPROACH so a bridle is not replaced by
+      // a scenic gate shot.
       if (requestedMode === CameraDirectorMode.FOLLOW) {
         const pair = resolveTwoBodyLinePair(state, player);
         if (pair && pair.a && pair.b) {

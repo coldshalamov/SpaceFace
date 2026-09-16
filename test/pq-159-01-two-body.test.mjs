@@ -1,6 +1,9 @@
-// PQ-159.01 — Two-body framing: a taut line (or bridle) frames both bodies with the line as
-// the diagonal. Done when a swing capture shows both bodies inside the frame ≥ 90% of ticks.
-// Seed 15901. Imports the shipped director + chase camera — not a parallel geometry file.
+// PQ-159.01 — two-body framing. A live twin bridle frames its two endpoints with the line as the
+// diagonal. A plain taut massline does NOT take the camera: a towed body on a spring flips
+// slack/loaded constantly, which used to flap the TWO_BODY takeover over and over (owner feel
+// verdict 2026-09-16) — ordinary tows stay FOLLOW under the chase camera's damped tether
+// composition. Seed 15901. Imports the shipped director + chase camera — not a parallel geometry
+// file.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import * as THREE from 'three';
@@ -53,6 +56,12 @@ function loadedTether(targetId) {
     strain: 0.12,
     restLength: 100,
   };
+}
+
+// The B3b attacker-context suite exercises TWO_BODY machinery, which since the 2026-09-16
+// verdict is bridle-owned; flag the line so the pair resolves through the bridle seam.
+function bridledTether(targetId) {
+  return { ...loadedTether(targetId), bridle: true, headId: 'twin_bridle' };
 }
 
 function slackTether(targetId) {
@@ -112,12 +121,13 @@ test('taut-or-bridle helper: slack mining stays quiet, loaded/bridle fire', () =
   assert.equal(isTautOrBridle({ active: true, ratio: 0.4 }), false);
 });
 
-test(`seed ${SEED}: taut-line swing keeps both bodies in frame ≥ 90% of sampled ticks`, () => {
+test(`seed ${SEED}: a plain taut tow never takes the camera; the framing helper still fits pairs`, () => {
   const player = entity(1, 0, 0, { radius: 8 });
   const rock = entity(2, 80, 40, { type: 'asteroid', radius: 10, team: 0 });
   const tether = loadedTether(rock.id);
   const state = stateFor(player, rock, { tether });
-  assert.equal(resolveTwoBodyLinePair(state, player).kind, 'taut');
+  assert.equal(resolveTwoBodyLinePair(state, player), null,
+    'a plain taut massline is not a pair-camera lease');
 
   const pose = frameTwoBodyLine(player, rock, VIEW);
   assert.ok(pose.zoom >= 58, 'the helper opens far enough to fit the pair');
@@ -132,8 +142,7 @@ test(`seed ${SEED}: taut-line swing keeps both bodies in frame ≥ 90% of sample
   const cx = 40;
   const cz = 20;
   const radius = Math.hypot(player.pos.x - cx, player.pos.z - cz);
-  let inside = 0;
-  let twoBodyTicks = 0;
+  let followTicks = 0;
   for (let i = 0; i < ticks; i++) {
     swingPose(player, rock, i, ticks, cx, cz, radius);
     const frame = director.step(DT, state, player, {
@@ -141,15 +150,48 @@ test(`seed ${SEED}: taut-line swing keeps both bodies in frame ≥ 90% of sample
       followX: player.pos.x,
       followZ: player.pos.z,
     });
-    if (frame.mode === CameraDirectorMode.TWO_BODY) twoBodyTicks += 1;
-    const aIn = bodyInsideDirectorFrame(player, frame, VIEW, 1);
-    const bIn = bodyInsideDirectorFrame(rock, frame, VIEW, 1);
-    if (aIn && bIn) inside += 1;
+    if (frame.mode === CameraDirectorMode.FOLLOW) followTicks += 1;
   }
-  const fraction = inside / ticks;
-  assert.ok(twoBodyTicks === ticks, `director must stay in TWO_BODY for the taut swing (got ${twoBodyTicks}/${ticks})`);
-  assert.ok(fraction >= 0.9, `both-bodies fraction ${fraction} must be ≥ 0.90`);
-  console.log(`SEED=${SEED} bothBodies=${(fraction * 100).toFixed(1)}% ticks=${ticks} mode=TWO_BODY`);
+  assert.equal(followTicks, ticks,
+    `a sustained-taut tow must stay on the chase camera (FOLLOW ${followTicks}/${ticks})`);
+});
+
+test(`seed ${SEED}: slack/loaded spring flapping never flaps the camera mode`, () => {
+  // The reported failure: towing a broken-ship piece breathes on its attachment spring, so the
+  // line crosses the taut threshold over and over. Each flip used to re-take the composition and
+  // restart its 0.35 s ease — the view zoomed in and out from the towed object nonstop. The
+  // director must not change mode no matter how the phase flaps.
+  const player = entity(1, 0, 0, { radius: 8 });
+  const rock = entity(2, 90, 30, { type: 'asteroid', radius: 10, team: 0 });
+  const tether = loadedTether(rock.id);
+  const state = stateFor(player, rock, { tether });
+  const director = createCameraDirector();
+  director.syncFollow(0, 0, SHIPPING_ZOOM);
+  settle(director, 0.5, state, player);
+
+  const ticks = 120;
+  let followTicks = 0;
+  let maxZoomStep = 0;
+  let previousZoom = null;
+  for (let i = 0; i < ticks; i++) {
+    const loaded = Math.floor(i / 12) % 2 === 0;
+    tether.phase = loaded ? 'loaded' : 'slack';
+    tether.load = loaded ? 0.55 : 0;
+    player.pos.x = Math.cos(i * 0.05) * 40;
+    player.pos.z = Math.sin(i * 0.05) * 40;
+    const frame = director.step(DT, state, player, {
+      ...VIEW,
+      followX: player.pos.x,
+      followZ: player.pos.z,
+    });
+    if (frame.mode === CameraDirectorMode.FOLLOW) followTicks += 1;
+    if (previousZoom != null) maxZoomStep = Math.max(maxZoomStep, Math.abs(frame.zoom - previousZoom));
+    previousZoom = frame.zoom;
+  }
+  assert.equal(followTicks, ticks,
+    `a flapping tow tether must never take the camera (FOLLOW ${followTicks}/${ticks})`);
+  assert.ok(maxZoomStep <= 0.5,
+    `zoom must stay continuous while the line flaps (max step ${maxZoomStep.toFixed(3)} wu)`);
 });
 
 test('a live bridle also takes TWO_BODY and keeps both endpoints in frame', () => {
@@ -250,21 +292,20 @@ function chaseSwing(tetherPhase) {
   };
 }
 
-test(`seed ${SEED}: shipping chase camera keeps both bodies in a taut swing ≥ 90% from taut onset`, () => {
+test(`seed ${SEED}: shipping chase camera keeps a taut tow on FOLLOW with zero pair takeovers`, () => {
   const slack = chaseSwing('slack');
   assert.equal(slack.lastMode, CameraDirectorMode.FOLLOW,
     'a slack mining latch must stay FOLLOW so CAMERA-FOCUS-SEPARATION still holds');
   assert.equal(slack.twoBodyTicks, 0, 'slack must not enter TWO_BODY');
 
   const taut = chaseSwing('loaded');
-  assert.ok(taut.twoBodyTicks === taut.ticks,
-    `chase camera must stay in TWO_BODY for the taut swing (got ${taut.twoBodyTicks}/${taut.ticks})`);
-  assert.ok(taut.fraction >= 0.9,
-    `chase-camera both-bodies fraction ${taut.fraction} must be ≥ 0.90`);
+  assert.equal(taut.twoBodyTicks, 0,
+    'a plain taut tow must never enter TWO_BODY on the live chase camera');
+  assert.equal(taut.lastMode, CameraDirectorMode.FOLLOW,
+    'the taut tow stays on the chase camera, whose damped tether bias owns the view');
   console.log(
-    `SEED=${SEED} chaseCamera taut=${(taut.fraction * 100).toFixed(1)}% `
-    + `slack=${(slack.fraction * 100).toFixed(1)}% ticks=${taut.ticks} `
-    + `mode=${taut.lastMode}`,
+    `SEED=${SEED} chaseCamera taut=FOLLOW slack=FOLLOW ticks=${taut.ticks} `
+    + `takeovers=0`,
   );
 });
 
@@ -333,7 +374,7 @@ function tautRopeScene({ hostile = null, combat = undefined } = {}) {
   const player = entity(1, 0, 0, { radius: 18 });
   const rock = entity(2, 80, 0, { type: 'asteroid', radius: 12, team: 0 });
   const state = stateFor(player, rock, {
-    tether: loadedTether(rock.id),
+    tether: bridledTether(rock.id),
     extraEntities: hostile ? [hostile] : [],
     combat,
   });
