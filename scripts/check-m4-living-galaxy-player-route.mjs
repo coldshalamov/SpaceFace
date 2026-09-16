@@ -147,8 +147,8 @@ try {
       });
 
       const result = cell.id === 'helios-civic-yard'
-        ? await runHeliosCivicYardRoute(page, cell)
-        : await runPublicTravelEcologyRoute(page, cell);
+        ? await runHeliosCivicYardRoute(page, cell, issues)
+        : await runPublicTravelEcologyRoute(page, cell, issues);
 
       const pageErrors = issues.errorIssues();
       allPageIssues.push(...pageErrors);
@@ -273,7 +273,7 @@ if (primaryError) process.exit(process.exitCode || 1);
 
 // ── Route cells ──────────────────────────────────────────────────────────────
 
-async function runHeliosCivicYardRoute(page, cell) {
+async function runHeliosCivicYardRoute(page, cell, issues) {
   const before = await snapshotPublicState(page);
   await bootNewGame(page);
   const afterBoot = await snapshotPublicState(page);
@@ -345,7 +345,12 @@ async function runHeliosCivicYardRoute(page, cell) {
     }
   });
 
-  await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+  const navToken = issues?.beginExpectedNavigation?.('reload');
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+  } finally {
+    if (navToken) issues.endExpectedNavigation(navToken);
+  }
   await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 60_000 });
   await dismissSplash(page);
   await waitVisible(page, '[data-screen="mainMenu"]', 30_000, 'main menu continue');
@@ -431,7 +436,7 @@ async function runHeliosCivicYardRoute(page, cell) {
   };
 }
 
-async function runPublicTravelEcologyRoute(page, cell) {
+async function runPublicTravelEcologyRoute(page, cell, issues) {
   await bootNewGame(page);
   await installObservers(page);
   await focusFlightCanvas(page);
@@ -557,7 +562,12 @@ async function runPublicTravelEcologyRoute(page, cell) {
   await page.keyboard.press('Tab');
   await page.keyboard.press('F5');
   await page.waitForFunction(() => !!localStorage.getItem('sf.save.quick'), null, { timeout: 20_000 });
-  await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+  const navToken = issues?.beginExpectedNavigation?.('reload');
+  try {
+    await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+  } finally {
+    if (navToken) issues.endExpectedNavigation(navToken);
+  }
   await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 60_000 });
   await dismissSplash(page);
   await waitVisible(page, '[data-screen="mainMenu"]', 30_000, 'main menu');
