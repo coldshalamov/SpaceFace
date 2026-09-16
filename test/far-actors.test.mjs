@@ -9,11 +9,15 @@ import { ensureActivityClassified } from '../src/world/activityRuntime.js';
 import { getAsteroidFieldRock, insertAsteroidFieldRock } from '../src/world/asteroidField.js';
 import { getDressingRow, insertDressingRow } from '../src/world/dressingTable.js';
 import {
+  FAR_ACTOR_SCHEMA,
   farActorCensus,
+  farActorHoldsWorldRecord,
   farActorTableRadius,
   getFarActor,
   insertFarActor,
   promoteFarActor,
+  restoreFarActorTable,
+  serializeFarActorTable,
   shouldVirtualizeFarActor,
   tickFarActors,
 } from '../src/world/farActorTable.js';
@@ -336,4 +340,60 @@ test('production leftover S3 still shelves after delayed far-actor exit', () => 
   assert.ok(delayed.shelved >= 1, 'unvisited S3 beyond exit must still shelve');
   assert.equal(state.entities.has(farId), false);
   assert.ok(getFarActor(state, farId));
+});
+
+test('shelved far actors round-trip through the save payload', () => {
+  const { state, helpers, bus } = boot();
+  const far = spawnShip(helpers, {
+    pos: { x: 12000, z: 0 },
+    data: {
+      trafficRole: 'hauler',
+      homeSectorId: 'sector_ceres_belt',
+      worldRecordId: 'wr_npc_roundtrip',
+      ai: { archetype: 'trader', passive: true },
+    },
+  });
+  const farId = far.id;
+  tickFarActors(state, helpers, bus);
+  assert.equal(state.entities.has(farId), false);
+  assert.ok(getFarActor(state, farId));
+
+  // Save-path shape: serialize → JSON (localStorage) → restore into the cleared state.
+  const payload = JSON.parse(JSON.stringify(serializeFarActorTable(state.world.farActors)));
+  state.entities.clear();
+  state.entityList.length = 0;
+  state.freeIds.length = 0;
+  state.nextEntityId = 1;
+  restoreFarActorTable(state, payload);
+
+  const row = getFarActor(state, farId);
+  assert.ok(row, 'shelved row must restore from the save payload');
+  assert.equal(row.data.worldRecordId, 'wr_npc_roundtrip');
+  assert.deepEqual(row.data.ai, { archetype: 'trader', passive: true },
+    'the durable ai descriptor must survive shelve→save→load');
+  assert.equal(farActorHoldsWorldRecord(state, 'wr_npc_roundtrip'), true,
+    'a shelved record must not rematerialize a second live entity');
+  assert.equal(farActorHoldsWorldRecord(state, 'wr_npc_other'), false);
+
+  // The shelved id stays reserved: fresh spawns must never land on it.
+  state.nextEntityId = farId; // simulate an allocator that would collide
+  const spawned = helpers.spawnEntity({ type: 'fx', pos: { x: 0, z: 0 } });
+  assert.notEqual(spawned.id, farId, 'allocator must skip the shelved id');
+  assert.equal(getFarActor(state, farId), row);
+
+  // The actor still promotes back live on approach after reload.
+  const live = promoteFarActor(state, farId, helpers);
+  assert.ok(live, 'restored far actor must promote back to a live entity');
+  assert.equal(live.data.worldRecordId, 'wr_npc_roundtrip');
+  assert.deepEqual(live.data.ai, { archetype: 'trader', passive: true });
+});
+
+test('a missing or empty far-actor payload restores to no table', () => {
+  const { state } = boot();
+  assert.equal(restoreFarActorTable(state, null), null);
+  assert.equal(state.world.farActors, null);
+  assert.equal(restoreFarActorTable(state, { schema: FAR_ACTOR_SCHEMA, rows: [] }), null);
+  assert.equal(restoreFarActorTable(state, { schema: 'bogus', rows: [{ id: 5 }] }), null);
+  // Legacy saves (no farActors key) keep the old behavior: records rematerialize live.
+  assert.equal(farActorHoldsWorldRecord(state, 'wr_npc_roundtrip'), false);
 });

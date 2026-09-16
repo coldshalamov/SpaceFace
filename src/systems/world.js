@@ -135,7 +135,14 @@ import {
   getDressingRow,
 } from '../world/dressingTable.js';
 import { resetWorldPresentationTables } from '../world/presentationSources.js';
-import { dropFarActorSector, resetFarActors, tickFarActors } from '../world/farActorTable.js';
+import {
+  dropFarActorSector,
+  farActorHoldsWorldRecord,
+  resetFarActors,
+  restoreFarActorTable,
+  serializeFarActorTable,
+  tickFarActors,
+} from '../world/farActorTable.js';
 import {
   applyResourceBodyToEntity,
   captureResourceBodyRecord,
@@ -1107,6 +1114,9 @@ export const world = {
         }
         continue;
       }
+      // A shelved far-actor row already carries this record's live state — respawning here would
+      // double the actor (it promotes back to a live entity on approach via tickFarActors).
+      if (farActorHoldsWorldRecord(state, rec.recordId)) continue;
       const ent = this._spawnFromDurableRecord(rec, sectorId);
       if (!ent) continue;
       spawned++;
@@ -4489,6 +4499,9 @@ export const world = {
       // v11: durable global-space entity records (never frameOrigin / residentSectors / sectorContents).
       records: serializeRecordsBag(ensureWorldRecords(state.world)),
       resourceBodies: serializeResourceBodyBag(ensureResourceBodies(state.world)),
+      // Shelved far actors are durable run state: without them a virtualized NPC rematerializes
+      // live on load and the next serialize captures a fat record where the save held a thin one.
+      farActors: serializeFarActorTable(state.world.farActors),
       // Latest sectorSim recipes are bounded per sector and needed because sectorSim restores its
       // applied-id set on Continue (it correctly will not re-emit the same epoch).
       embodiment: serializeEmbodimentCache(state.world.embodiment),
@@ -4520,7 +4533,7 @@ export const world = {
     state.world.sectorContents = {};
     state.world.activeSector = this._emptySectorBag();
     resetWorldPresentationTables(state);
-    resetFarActors(state);
+    restoreFarActorTable(state, data.farActors);
     if (data.discovery) state.world.discovery = data.discovery;
     state.world.scanPings = (data.scanPings && typeof data.scanPings === 'object') ? data.scanPings : {};
     state.world.pendingSpawns = (data.pendingSpawns && typeof data.pendingSpawns === 'object') ? data.pendingSpawns : {};

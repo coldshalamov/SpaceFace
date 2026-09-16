@@ -76,13 +76,29 @@ test('residency service reports the first-flight hold and clears a banked full s
 });
 
 test('same-sector F9 recook keeps resident GPU meshes', () => {
+  const calls = [];
   const owner = {
     _sessionRecookKeepGpu: true,
     _deferNoncriticalMeshStreaming: true,
     _meshReconcileDirty: true,
-    state: { mode: 'loading' },
+    _meshes: new Map(),
+    _meshBuildQueue: [7],
+    _meshBuildQueueHead: 0,
+    state: { mode: 'loading', entities: new Map(), entityList: [] },
+    reconcileMeshes(options) {
+      calls.push(['reconcile', options]);
+      this._meshReconcileDirty = false;
+    },
+    _drainPendingMeshBuilds() {
+      calls.push(['drain']);
+      this._meshBuildQueueHead = this._meshBuildQueue.length;
+    },
   };
   assert.equal(serviceRenderMeshResidency(owner, 0.5), 'session-recook-keep-gpu');
+  // Restore reissues entity ids, so the kept set can leave restored entities mesh-less: the dirty
+  // scan still runs, but in keep-resident-set mode it releases only dead ownership, not the cooked
+  // resident set the F9 recook exists to preserve.
+  assert.deepEqual(calls, [['reconcile', { keepResidentSet: true }], ['drain']]);
   assert.equal(owner._meshReconcileDirty, false);
 });
 

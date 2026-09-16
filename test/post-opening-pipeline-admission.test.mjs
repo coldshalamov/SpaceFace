@@ -400,7 +400,9 @@ test('admission queues compiles during loading and retries the starting sector a
   assert.doesNotMatch(renderer, /gpu-residency-already-prepared/);
   assert.doesNotMatch(renderer, /includeGlobalPipelines:\s*true/);
   assert.doesNotMatch(renderer, /precompilePipelines\(/);
-  assert.match(renderer, /pipelinesPending = pending === true/);
+  // markSubjectPipelinesPending latches strict-true admission and counts co-held roots before
+  // releasing the latch (accab5a30: residency waits for upload settle, not just compile).
+  assert.match(renderer, /markSubjectPipelinesPending[\s\S]{0,300}?pending === true[\s\S]{0,200}?data\.pipelinesPending = true/);
   assert.match(readiness, /preparePostOpeningPipelines/);
   assert.match(readiness, /liveScenePresentReady/);
   assert.match(readiness, /prepareLiveSectorBeforeFlight/);

@@ -45,6 +45,66 @@ export function resetFarActors(state) {
   if (state && state.world) state.world.farActors = null;
 }
 
+function cloneTree(value) {
+  if (!value || typeof value !== 'object') return value;
+  if (Array.isArray(value)) return value.map(cloneTree);
+  const out = {};
+  for (const k in value) out[k] = cloneTree(value[k]);
+  return out;
+}
+
+// Shelved actors are part of the save. Without the rows, a save taken while an actor is
+// virtualized loses the shelve marker: on load the durable record rematerializes a live entity,
+// and the next serialize captures a fat record where the pre-save snapshot held a thin one
+// (save/reload hash equivalence). `rows` is plain data; byId/grid are rebuilt from it by
+// ensureFarActorTable on first touch.
+export function serializeFarActorTable(table) {
+  if (!table || table.schema !== FAR_ACTOR_SCHEMA || !Array.isArray(table.rows)) return null;
+  const rows = [];
+  for (const row of table.rows) {
+    if (!row || row.alive === false) continue;
+    const copy = {};
+    for (const k in row) {
+      if (k === '_cell') continue;
+      copy[k] = cloneTree(row[k]);
+    }
+    rows.push(copy);
+  }
+  if (!rows.length) return null;
+  return { schema: FAR_ACTOR_SCHEMA, version: table.version | 0, rows };
+}
+
+export function restoreFarActorTable(state, data) {
+  if (!state || typeof state !== 'object') return null;
+  const world = state.world || (state.world = {});
+  if (!data || data.schema !== FAR_ACTOR_SCHEMA || !Array.isArray(data.rows) || !data.rows.length) {
+    world.farActors = null;
+    return null;
+  }
+  world.farActors = {
+    schema: FAR_ACTOR_SCHEMA,
+    version: Number.isSafeInteger(data.version) ? data.version : 0,
+    rows: data.rows.filter((row) => row && row.alive !== false && Number.isSafeInteger(row.id)),
+  };
+  // Shelved ids stay reserved through allocateEntityId's ledger check — no counter bump needed
+  // here (bumping nextEntityId would shift the post-load spawn order and break save hash parity).
+  return ensureFarActorTable(state);
+}
+
+// True when a durable record's live state is carried by a shelved far-actor row. The record
+// must not rematerialize a second live entity on sector entry/restore.
+export function farActorHoldsWorldRecord(state, recordId) {
+  if (!recordId) return false;
+  const table = state && state.world && state.world.farActors;
+  const rows = table && table.rows;
+  if (!rows) return false;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    if (row && row.alive !== false && row.data && row.data.worldRecordId === recordId) return true;
+  }
+  return false;
+}
+
 function cellKey(x, z) {
   return `${Math.floor(x / FAR_ACTOR_CELL)}:${Math.floor(z / FAR_ACTOR_CELL)}`;
 }
@@ -149,6 +209,12 @@ function leanIdentityData(entity) {
   if (d.role != null) out.role = d.role;
   if (d.persistenceOwner != null) out.persistenceOwner = d.persistenceOwner;
   if (d.nextEventAtT != null) out.nextEventAtT = d.nextEventAtT;
+  // The durable AI descriptor (archetype/doctrine) must survive shelve→promote: captureEntityRecord
+  // reads it, and entitySpecFromRecord only default-fills when the record carries none — dropping it
+  // here makes the post-reload record differ from the pre-save one (save/reload hash equivalence).
+  const ai = d.ai && typeof d.ai === 'object' ? d.ai
+    : (entity && entity.ai && typeof entity.ai === 'object' ? entity.ai : null);
+  if (ai) out.ai = ai;
   return out;
 }
 

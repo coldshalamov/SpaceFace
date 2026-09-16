@@ -2701,6 +2701,9 @@ export const save = {
     let restoreError = null;
     let hadPendingRunTransition = false;
     const entityIdRemap = new Map();
+    // Exposed on state so the renderer's keep-GPU reattach can translate its retained mesh set
+    // (keyed by pre-restore ids) onto the freshly spawned ids instead of rebuilding every boundary.
+    state.sessionEntityIdRemap = entityIdRemap;
 
     try {
       // 1. meta (seed/version/playtime) first — enterSector & rng depend on meta.seed.

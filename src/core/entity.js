@@ -121,18 +121,32 @@ export function clearEntityRuntime(entity) {
   if (entity && typeof entity === 'object') RENDER_ATTACHMENTS.delete(entity);
 }
 
+// Far actor, dressing and field rows keep their id while they exist; the allocator must never
+// hand a ledger-held id to a live entity (see coreSystem._removeEntityAtIndex for the recycle side).
+function ledgerTableHoldsId(table, id) {
+  return !!(table && table.byId instanceof Map && table.byId.has(id));
+}
+
+export function worldLedgerHoldsId(world, id) {
+  return !!world && (ledgerTableHoldsId(world.farActors, id)
+    || ledgerTableHoldsId(world.dressing, id)
+    || ledgerTableHoldsId(world.asteroidField, id));
+}
+
 /** Consume one id from the authoritative simulation allocator. */
 export function allocateEntityId(state) {
   if (!state || typeof state !== 'object') {
     throw new TypeError('allocateEntityId requires simulation state');
   }
-  if (Array.isArray(state.freeIds) && state.freeIds.length > 0) {
-    return state.freeIds.pop();
+  while (Array.isArray(state.freeIds) && state.freeIds.length > 0) {
+    const recycled = state.freeIds.pop();
+    if (!worldLedgerHoldsId(state.world, recycled)) return recycled;
   }
   if (!Number.isSafeInteger(state.nextEntityId) || state.nextEntityId < 1) {
     throw new TypeError('allocateEntityId requires a positive integer nextEntityId');
   }
-  const id = state.nextEntityId;
+  let id = state.nextEntityId;
+  while (worldLedgerHoldsId(state.world, id)) id++;
   state.nextEntityId = id + 1;
   return id;
 }

@@ -189,6 +189,34 @@ let lastScene = null;
 let lastError = null;
 let idleFrames = 0;
 
+/**
+ * The Scene and Camera are retained across mounts on purpose. Three keys its per-scene render
+ * state — owner of the transmissive-material render target — on the Scene identity, and the
+ * render-target slot inside that state on camera.id. A fresh pair per mount orphaned a
+ * viewport-sized MSAA target (plus its resolve buffers) on every stage rebuild, which the
+ * release soak measured as +3 leaked GL textures per dock. Reusing the shell keeps the same
+ * render-state entry alive so the target is re-uploaded, not re-allocated.
+ */
+const stageShells = new Map();
+
+function stageShellFor(id, spec) {
+  let shell = stageShells.get(id);
+  if (!shell) {
+    shell = {
+      scene: new THREE.Scene(),
+      camera: new THREE.PerspectiveCamera(spec.camera.fov, 16 / 9, 0.5, SKY_RADIUS * 1.6),
+    };
+    stageShells.set(id, shell);
+  }
+  const { scene, camera } = shell;
+  scene.clear();
+  camera.fov = spec.camera.fov;
+  camera.near = 0.5;
+  camera.far = SKY_RADIUS * 1.6;
+  camera.updateProjectionMatrix();
+  return shell;
+}
+
 /** How long a requested-nothing stage is kept alive before its GPU memory goes back. */
 const IDLE_RELEASE_FRAMES = 90;
 
@@ -293,6 +321,17 @@ export function releaseUiStage(reason = 'release') {
     });
     dying.scene.clear();
     if (dying.rig && dying.rig.depthMaterial) dying.rig.depthMaterial.dispose();
+    // Shadow maps live on the light, not the scene: each mount's key light allocates a fresh
+    // WebGLRenderTarget + depth texture that scene.clear() does not free. Dispose them or every
+    // rebuild leaves a shadow-map pair orphaned on the context.
+    for (const light of (dying.rig && dying.rig.lights) || []) {
+      const shadow = light && light.shadow;
+      if (shadow && shadow.map) {
+        if (shadow.map.depthTexture) { shadow.map.depthTexture.dispose(); shadow.map.depthTexture = null; }
+        shadow.map.dispose();
+        shadow.map = null;
+      }
+    }
   } catch (error) {
     console.warn('[uiStage] release failed', error);
   }
@@ -387,8 +426,7 @@ function buildStage(id, renderer, request, hullFile) {
   const spec = SCENES[id];
   if (!spec) throw new Error(`unknown ui stage "${id}"`);
 
-  const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(spec.camera.fov, 16 / 9, 0.5, SKY_RADIUS * 1.6);
+  const { scene, camera } = stageShellFor(id, spec);
 
   const sky = buildSky(spec.sky);
   scene.add(sky);

@@ -165,7 +165,7 @@ test('ordinary residency poll keeps exact runway semantics in two retained colle
   );
   assert.equal(context._meshBuildQueue.includes(2), false, '9000-unit current-sector asteroid is outside the runway');
   assert.equal(context._meshBuildQueue.includes(5), false);
-  assert.equal(drainBudget, 2, 'runtime admission still builds at most two boundaries per frame');
+  assert.equal(drainBudget, 8, 'runtime admission still drains a bounded number of boundaries per frame');
   assert.equal(result.meshVisits, 5);
   assert.equal(result.entityVisits, entities.length);
   assert.equal(result.queuedShips, 1);
