@@ -330,6 +330,11 @@ export function ensurePerfRuntime(state) {
   let renderWorkEnabled = false;
   // Opt-in hitch owner ring. Default off so ordinary frames pay no classifier work.
   let hitchAttributionEnabled = false;
+  // Bounded ring of recent classifier verdicts keyed by the rAF timestamp that closed
+  // the interval (callbackTimestampMs). rAF timestamps are identical across every
+  // callback in a frame batch, so a probe can bind a verdict to its own measured
+  // gap exactly — even when the probe's callback ran before the loop's classify.
+  const hitchVerdicts = [];
   const hitchHistogram = createHitchHistogram();
   const frameHitchOwnerMs = createFrameHitchOwnerTotals();
   const frameNestedPresentationMs = createFrameHitchOwnerTotals();
@@ -527,6 +532,11 @@ export function ensurePerfRuntime(state) {
     getHitchHistogram() {
       return hitchHistogramReport(hitchHistogram);
     },
+    getHitchVerdicts() {
+      // Per-interval classifier verdicts for binding an owner to a probe's own
+      // rAF-measured gap. Only populated while hitchAttributionEnabled is on.
+      return hitchVerdicts.slice();
+    },
     get backgroundJobTrackingEnabled() { return backgroundJobTrackingEnabled; },
     isBackgroundJobTrackingEnabled() { return backgroundJobTrackingEnabled === true; },
     setBackgroundJobTrackingEnabled(on) {
@@ -671,7 +681,7 @@ export function ensurePerfRuntime(state) {
           nestedPresentationMs += frameNestedPresentationMs[owner];
         }
         if (isHitchFrame(ms)) {
-          accumulateHitch(hitchHistogram, classifyHitchFrame({
+          const classification = classifyHitchFrame({
             frameMs: ms,
             simMs: framePhaseMs.simFrame,
             presentMs: Math.max(0, framePhaseMs.render - nestedPresentationMs),
@@ -700,7 +710,14 @@ export function ensurePerfRuntime(state) {
             callbackIntervalMs: nextCallbackIntervalMs,
             externalGapMs: nextExternalCallbackGapMs,
             dispatchLagMs: nextCallbackDispatchLagMs,
-          }));
+          });
+          accumulateHitch(hitchHistogram, classification);
+          hitchVerdicts.push({
+            atMs: Number.isFinite(callbackTimestampMs) ? callbackTimestampMs : null,
+            owner: classification && classification.owner ? classification.owner : 'unknown',
+            frameMs: ms,
+          });
+          if (hitchVerdicts.length > 16) hitchVerdicts.shift();
         } else {
           accumulateHitch(hitchHistogram, null);
         }
@@ -988,6 +1005,7 @@ export function ensurePerfRuntime(state) {
       if (autosave) saveStats.autosaveLast = plain;
     },
     reset() {
+      hitchVerdicts.length = 0;
       hitchHistogram.frames = 0;
       hitchHistogram.hitches = 0;
       hitchHistogram.named = 0;

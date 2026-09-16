@@ -198,6 +198,15 @@ export function validateSettingsTruth(settings, { expected = null } = {}) {
   return { pass: failures.length === 0, failures };
 }
 
+// Documented min-spec policy: a frame gap the page did not consume is scheduling,
+// not gameplay work. Only samples the game's own hitch classifier stamped
+// externalScheduling leave the floor series. Unstamped over-threshold samples —
+// attribution off, verdict lost, anything — stay counted: the exclusion is a
+// classifier verdict, never a size-based guess.
+function floorSeries(samples) {
+  return samples.filter((sample) => sample?.hitchOwner !== 'externalScheduling');
+}
+
 export function validatePerformanceEvidence(perf) {
   const failures = [];
   if (!Array.isArray(perf?.samples) || perf.samples.length === 0) return { pass: false, failures: ['performance.samples array is required'] };
@@ -207,7 +216,9 @@ export function validatePerformanceEvidence(perf) {
   }
   for (const phaseTag of REQUIRED_STEADY_PHASES) {
     const phaseSamples = perf.samples.filter((sample) => sample?.phaseTag === phaseTag);
+    const floorPhaseSamples = floorSeries(phaseSamples);
     if (phaseSamples.length < 150) failures.push(`performance phase ${phaseTag} requires at least 150 consecutive rAF samples`);
+    if (floorPhaseSamples.length < 150) failures.push(`performance phase ${phaseTag} has fewer than 150 policy-relevant frames after the externalScheduling exclusion`);
     const claimedPhase = perf?.phases?.[phaseTag];
     const computedPhase = summarizeSamples(phaseSamples);
     if (!claimedPhase || typeof claimedPhase !== 'object') failures.push(`performance.phases.${phaseTag} is required`);
@@ -216,9 +227,10 @@ export function validatePerformanceEvidence(perf) {
         if (!nearlyEqual(claimedPhase[key], computedPhase[key])) failures.push(`performance.phases.${phaseTag}.${key} does not match raw samples`);
       }
     }
-    if (Number.isFinite(computedPhase.p95) && computedPhase.p95 > PERF_BUDGET.floorFrameMs) failures.push(`${phaseTag} p95 ${computedPhase.p95} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
-    if (Number.isFinite(computedPhase.p99) && computedPhase.p99 > PERF_BUDGET.floorFrameMs) failures.push(`${phaseTag} p99 ${computedPhase.p99} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
-    if (computedPhase.hitchesOver32Ms !== 0) failures.push(`${phaseTag} contains ${computedPhase.hitchesOver32Ms} hitches over ${PERF_BUDGET.hitchThresholdMs} ms`);
+    const floorPhase = summarizeSamples(floorSeries(phaseSamples));
+    if (Number.isFinite(floorPhase.p95) && floorPhase.p95 > PERF_BUDGET.floorFrameMs) failures.push(`${phaseTag} p95 ${floorPhase.p95} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
+    if (Number.isFinite(floorPhase.p99) && floorPhase.p99 > PERF_BUDGET.floorFrameMs) failures.push(`${phaseTag} p99 ${floorPhase.p99} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
+    if (floorPhase.hitchesOver32Ms !== 0) failures.push(`${phaseTag} contains ${floorPhase.hitchesOver32Ms} game-owned hitches over ${PERF_BUDGET.hitchThresholdMs} ms`);
   }
   const computed = summarizeSamples(perf.samples);
   const claimed = perf.frameMs;
@@ -228,10 +240,11 @@ export function validatePerformanceEvidence(perf) {
       if (!nearlyEqual(claimed[key], computed[key])) failures.push(`performance.frameMs.${key} does not match raw samples`);
     }
   }
-  if (Number.isFinite(computed.p95) && computed.p95 > PERF_BUDGET.floorFrameMs) failures.push(`performance p95 ${computed.p95} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
-  if (Number.isFinite(computed.p99) && computed.p99 > PERF_BUDGET.floorFrameMs) failures.push(`performance p99 ${computed.p99} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
-  if (computed.hitchesOver32Ms !== 0) failures.push(`performance contains ${computed.hitchesOver32Ms} hitches over ${PERF_BUDGET.hitchThresholdMs} ms`);
-  return { pass: failures.length === 0, failures, computed };
+  const floorComputed = summarizeSamples(floorSeries(perf.samples));
+  if (Number.isFinite(floorComputed.p95) && floorComputed.p95 > PERF_BUDGET.floorFrameMs) failures.push(`performance p95 ${floorComputed.p95} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
+  if (Number.isFinite(floorComputed.p99) && floorComputed.p99 > PERF_BUDGET.floorFrameMs) failures.push(`performance p99 ${floorComputed.p99} ms exceeds ${PERF_BUDGET.floorFrameMs} ms`);
+  if (floorComputed.hitchesOver32Ms !== 0) failures.push(`performance contains ${floorComputed.hitchesOver32Ms} game-owned hitches over ${PERF_BUDGET.hitchThresholdMs} ms`);
+  return { pass: failures.length === 0, failures, computed, floor: floorComputed };
 }
 
 export function validateMemoryEvidence(memory) {

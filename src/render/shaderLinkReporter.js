@@ -73,6 +73,11 @@ function checkLinkStatus(program, gl, report) {
   let linked = true;
   try {
     if (typeof gl.isContextLost === 'function' && gl.isContextLost()) return;
+    // A handle orphaned by context loss (the new context recreates it lazily on the
+    // next acquire) reads as GL_INVALID_VALUE on ANGLE when queried. isProgram()
+    // answers false for that dead handle without raising — same check bloom.js's
+    // readiness wait uses for handles released under it.
+    if (typeof gl.isProgram === 'function' && gl.isProgram(program.program) === false) return;
     linked = gl.getProgramParameter(program.program, gl.LINK_STATUS) !== false;
   } catch (_) {
     return;

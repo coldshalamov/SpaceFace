@@ -15,6 +15,7 @@ import {
   RELEASE_SOAK_SCHEMA,
   REQUIRED_PRIMARY_CYCLE_MARKS,
   summarizeSamples,
+  validatePerformanceEvidence,
 } from '../scripts/lib/releaseSoakContracts.mjs';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..');
@@ -160,6 +161,55 @@ test('browser and Electron entrypoints are runtime-locked thin wrappers with no 
     assert.match(source, /runReleaseSoakCli/);
     assert.doesNotMatch(source, /dry[-_]?run|synthetic|primaryAcceptance\s*:\s*false/i);
   }
+});
+
+function makePerformanceEvidence(externalStamps = []) {
+  const flight = Array.from({ length: 150 }, () => ({ frameMs: 16, phaseTag: 'flight_steady' }));
+  const recovery = Array.from({ length: 150 }, () => ({ frameMs: 16, phaseTag: 'context_recover_steady' }));
+  for (const stamp of externalStamps) flight.push({ frameMs: 40, phaseTag: 'flight_steady', ...stamp });
+  const samples = [...flight, ...recovery];
+  return {
+    samples,
+    frameMs: summarizeSamples(samples),
+    phases: {
+      flight_steady: summarizeSamples(flight),
+      context_recover_steady: summarizeSamples(recovery),
+    },
+  };
+}
+
+test('performance floor exempts only classifier-stamped externalScheduling gaps', () => {
+  const perf = makePerformanceEvidence([
+    { hitchOwner: 'externalScheduling' },
+    { hitchOwner: 'externalScheduling' },
+    { hitchOwner: 'externalScheduling' },
+  ]);
+  const result = validatePerformanceEvidence(perf);
+  assert.equal(result.pass, true, result.failures.join('; '));
+  // The exemption shows up in the returned floor series, not in raw integrity.
+  assert.equal(result.computed.hitchesOver32Ms, 3);
+  assert.equal(result.floor.hitchesOver32Ms, 0);
+});
+
+test('performance floor counts game-owned and unstamped over-threshold samples', () => {
+  for (const owner of ['presentation', 'sim', 'unknown']) {
+    const perf = makePerformanceEvidence([{ hitchOwner: owner }]);
+    const result = validatePerformanceEvidence(perf);
+    assert.equal(result.pass, false, `hitchOwner ${owner} must stay counted`);
+    assert.ok(result.failures.some((f) => /game-owned hitches/.test(f)), result.failures.join('; '));
+  }
+  // No stamp at all — attribution off or verdict lost — stays counted.
+  const unstamped = validatePerformanceEvidence(makePerformanceEvidence([{}]));
+  assert.equal(unstamped.pass, false, 'an unstamped over-threshold sample must stay counted');
+});
+
+test('a claimed phase summary that launders exempted gaps fails raw integrity', () => {
+  const perf = makePerformanceEvidence([{ hitchOwner: 'externalScheduling' }]);
+  // Claim the raw series had zero hitches — raw recomputation must catch it.
+  perf.phases.flight_steady = { ...perf.phases.flight_steady, hitchesOver32Ms: 0 };
+  const result = validatePerformanceEvidence(perf);
+  assert.equal(result.pass, false);
+  assert.ok(result.failures.some((f) => /does not match raw samples/.test(f)), result.failures.join('; '));
 });
 
 async function writeValidProbeResult(options) {

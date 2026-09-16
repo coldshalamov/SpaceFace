@@ -286,6 +286,21 @@ export async function runReleaseSoakProbe({
     const baselineSettings = await readSettingsTruth(page);
     assert.equal(await isDocked(page), true, 'public route must finish docked for comparable retained-heap baseline');
     await ensureMarketOpen(page);
+    // Warmup cycle before the baseline: a fresh dock never requests the station's
+    // exterior-only content, so the first measured undock→flight→load→redock admits
+    // ~250 MB of geometry/texture buffers once. Without the warmup that one-time
+    // admission lands inside the measured window and the retention slope reads it
+    // as a leak. The warmup runs before the recorder installs and before the
+    // baseline snapshot: its frames are not billed to the soak and its heap does
+    // not enter the growth series. Its save/load assertions still run.
+    await withTimeout(
+      runSoakCycle(page, { index: 'warmup', outputDir, log: doLog, screenshots: false }),
+      cycleTimeoutMs,
+      'release-soak warmup cycle',
+    );
+    // No ensureMarketOpen here: the warmup cycle ends in the same post-roundtrip
+    // market state every measured cycle ends in, which is the state
+    // docked-market-end is captured in — that is the comparability the floor needs.
     await page.waitForTimeout(1_500);
     const baselineMemory = await withTimeout(
       readPostGcMemorySnapshot(page, 'docked-market-start'),
@@ -2120,6 +2135,48 @@ async function sampleRafWindow(page, {
     }
 
     const raf = () => new Promise((resolve) => requestAnimationFrame(resolve));
+
+    // Per-interval hitch verdicts from the game's own classifier (PQ-129.02). The
+    // release contract excludes only gaps the page did not consume, so every
+    // over-threshold interval sampled below must carry its owner verdict.
+    const perfApi = window.__SPACEFACE_PERF__ || state?.perfRuntime || null;
+    const hitchAttribution = { armed: false, wasEnabled: null };
+    if (perfApi && typeof perfApi.setHitchAttributionEnabled === 'function'
+        && typeof perfApi.getHitchVerdicts === 'function') {
+      try {
+        hitchAttribution.wasEnabled = perfApi.hitchAttributionEnabled === true;
+        perfApi.setHitchAttributionEnabled(true);
+        hitchAttribution.armed = true;
+      } catch (_) { hitchAttribution.armed = false; }
+    }
+    // Verdicts can land a boundary after the sampler's own read (callback order),
+    // so requests queue until the ring reports the matching atMs. Unresolved
+    // requests stay unowned — the contract counts them, never launders them.
+    const pendingVerdicts = [];
+    function drainHitchVerdicts() {
+      if (!hitchAttribution.armed || pendingVerdicts.length === 0) return;
+      let verdicts;
+      try { verdicts = perfApi.getHitchVerdicts(); } catch (_) { return; }
+      if (!Array.isArray(verdicts)) return;
+      for (const verdict of verdicts) {
+        if (!verdict || !Number.isFinite(verdict.atMs)) continue;
+        const index = pendingVerdicts.findIndex((p) => Math.abs(p.atMs - verdict.atMs) <= 0.51);
+        if (index < 0) continue;
+        const pending = pendingVerdicts.splice(index, 1)[0];
+        pending.onVerdict(verdict.owner || 'unknown');
+      }
+    }
+    function requestHitchVerdict(atMs, onVerdict) {
+      if (!hitchAttribution.armed) return;
+      pendingVerdicts.push({ atMs, onVerdict });
+      // A pending request whose verdict never lands is an instrumentation gap —
+      // the sample stays unowned and counted. Cap the queue so a pathological
+      // run cannot accumulate stale requests; rAF atMs is monotone so the
+      // oldest entries are the least likely to ever match.
+      if (pendingVerdicts.length > 64) pendingVerdicts.splice(0, pendingVerdicts.length - 64);
+      drainHitchVerdicts();
+    }
+
     async function awaitPipelinePrerequisites(timeoutMs) {
       const candidates = [
         ['authoredPartLibraryReady', state?.render?.authoredPartLibraryReady],
@@ -2154,6 +2211,17 @@ async function sampleRafWindow(page, {
     const pipelinePrerequisiteBarrier = await awaitPipelinePrerequisites(pipelineTimeout);
     const pipelineObservationIntervalMs = 100;
     const pipelineWarmupStartedAt = performance.now();
+    // Frame quiescence: the measured window must not open while catch-up debt from
+    // a pre-window stall is still landing. A >32 ms interval is suspect until the
+    // game's classifier resolves it — externalScheduling (a gap the page did not
+    // consume) does not block; every other owner, an unarmed classifier, or a
+    // verdict that never lands does. Unarmed is fail-closed: evidence without
+    // attribution cannot claim the exemption downstream anyway.
+    const frameQuietRequiredMs = 500;
+    let prevWarmupRafTs = null;
+    let lastFrameBreakMs = -Infinity;
+    let warmupStallCount = 0;
+    let pendingWarmupStalls = [];
     let pipelineReadiness = collectPerformancePipelineReadiness({
       state,
       registry: window.SF?.registry,
@@ -2169,9 +2237,43 @@ async function sampleRafWindow(page, {
     let pipelineWarmupPassed = false;
     let nextPipelineObservationAt = pipelineWarmupStartedAt + pipelineObservationIntervalMs;
     while (true) {
-      await raf();
+      const rafTs = await raf();
       const now = performance.now();
       const elapsedMs = now - pipelineWarmupStartedAt;
+      if (prevWarmupRafTs != null) {
+        const delta = rafTs - prevWarmupRafTs;
+        drainHitchVerdicts();
+        if (delta > 32) {
+          warmupStallCount += 1;
+          const stall = { endMs: rafTs, resolved: false, external: false };
+          pendingWarmupStalls.push(stall);
+          requestHitchVerdict(rafTs, (owner) => {
+            stall.resolved = true;
+            if (owner === 'externalScheduling') stall.external = true;
+          });
+          if (!hitchAttribution.armed) {
+            stall.resolved = true;
+          }
+        }
+        pendingWarmupStalls = pendingWarmupStalls.filter((stall) => {
+          if (!stall.resolved) {
+            // A verdict never landing is an instrumentation gap — fail closed by
+            // treating the interval as game-owned after a bounded grace period.
+            if (now - stall.endMs > 2_000) {
+              stall.resolved = true;
+            } else {
+              return true;
+            }
+          }
+          if (!stall.external) lastFrameBreakMs = Math.max(lastFrameBreakMs, stall.endMs);
+          return false;
+        });
+      }
+      prevWarmupRafTs = rafTs;
+      let frameQuietBlockedUntil = lastFrameBreakMs;
+      for (const stall of pendingWarmupStalls) {
+        frameQuietBlockedUntil = Math.max(frameQuietBlockedUntil, stall.endMs);
+      }
       if (now >= nextPipelineObservationAt) {
         pipelineReadiness = collectPerformancePipelineReadiness({
           state,
@@ -2193,7 +2295,8 @@ async function sampleRafWindow(page, {
       const stableMs = now - pipelineStableSince;
       if (elapsedMs >= warmup
           && stableMs >= pipelineStable
-          && isPerformancePipelineSettled(pipelineReadiness)) {
+          && isPerformancePipelineSettled(pipelineReadiness)
+          && now - frameQuietBlockedUntil >= frameQuietRequiredMs) {
         pipelineWarmupPassed = true;
         break;
       }
@@ -2212,6 +2315,12 @@ async function sampleRafWindow(page, {
       timedOut: pipelineWarmupPassed !== true,
       observationCount: pipelineObservationCount,
       transitionCount: pipelineTransitionCount,
+      frameQuietRequiredMs,
+      warmupStallCount,
+      frameQuietWaitMs: Number.isFinite(lastFrameBreakMs)
+        ? Math.max(0, pipelineWarmupEndedAt - lastFrameBreakMs)
+        : null,
+      hitchAttributionArmed: hitchAttribution.armed,
       prerequisiteBarrier: pipelinePrerequisiteBarrier,
       startFingerprint: pipelineStartFingerprint,
       endFingerprint: pipelineFingerprint,
@@ -2277,10 +2386,20 @@ async function sampleRafWindow(page, {
       let previousShedBacklogFrames = 0;
       let previousShedStepsTotal = 0;
       let actionRun = false;
+      // The floor contract needs 150 policy-relevant frames. Gaps the classifier stamps
+      // externalScheduling never produced a gameplay frame, so under host contention the
+      // window extends (bounded) until enough real frames exist — it never fakes them.
+      const floorSamplesRequired = (tag === 'flight_steady' || tag === 'context_recover_steady') ? 150 : 0;
+      const sampleDeadlineMs = duration * 3;
+      const floorEligibleCount = () => {
+        drainHitchVerdicts();
+        return samples.reduce((count, sample) => count + (sample.hitchOwner !== 'externalScheduling' ? 1 : 0), 0);
+      };
       while (performance.now() - sampleStart < duration) {
         const timestamp = await raf();
         const frameMs = timestamp - previous;
         previous = timestamp;
+        drainHitchVerdicts();
         const elapsedMs = performance.now() - sampleStart;
         if (!actionRun && elapsedMs >= 1_000 && (autosaveUnderLoad || action)) {
           actionRun = true;
@@ -2336,7 +2455,59 @@ async function sampleRafWindow(page, {
             previousShedStepsTotal = sample.shedStepsTotal;
           }
           samples.push(sample);
+          if (frameMs > 32) {
+            requestHitchVerdict(timestamp, (owner) => {
+              sample.hitchOwner = owner;
+            });
+          }
         }
+      }
+      // Let one more rAF boundary pass so a classifier verdict for the final
+      // sampled interval can land before the window closes.
+      await raf();
+      drainHitchVerdicts();
+      while (floorEligibleCount() < floorSamplesRequired
+          && performance.now() - sampleStart < sampleDeadlineMs) {
+        // Bounded rAF: a fully starved page must not park the window past its deadline.
+        const timestamp = await Promise.race([
+          raf(),
+          new Promise((resolve) => setTimeout(resolve, 2_000, null)),
+        ]);
+        if (timestamp == null) continue;
+        const frameMs = timestamp - previous;
+        previous = timestamp;
+        if (!(Number.isFinite(frameMs) && frameMs > 0)) continue;
+        const sample = {
+          atMs: timestamp,
+          frameMs,
+          phaseTag: tag,
+          tick: Number(window.SF?.state?.tick),
+          mode: window.SF?.state?.mode || null,
+          timeScale: Number.isFinite(window.SF?.state?.timeScale) ? window.SF.state.timeScale : null,
+          docked: window.SF?.state?.ui?.docked === true,
+          jumpState: window.SF?.state?.jump?.state || null,
+          playerControlExposed: window.SF?.state?.mode === 'flight'
+            && window.SF?.state?.ui?.docked !== true
+            && window.SF?.state?.jump?.state === 'IDLE'
+            && !document.body.classList.contains('ui-modal-open'),
+          visibility: document.visibilityState,
+        };
+        const perf = window.__SPACEFACE_PERF__ || state?.perfRuntime;
+        if (perf && typeof perf.readFrameSample === 'function') {
+          perf.readFrameSample(sample);
+          sample.shedBacklog = sample.shedBacklogFrames > previousShedBacklogFrames;
+          sample.shedSteps = Math.max(0, sample.shedStepsTotal - previousShedStepsTotal);
+          previousShedBacklogFrames = sample.shedBacklogFrames;
+          previousShedStepsTotal = sample.shedStepsTotal;
+        }
+        samples.push(sample);
+        if (frameMs > 32) {
+          requestHitchVerdict(timestamp, (owner) => {
+            sample.hitchOwner = owner;
+          });
+        }
+        await Promise.race([raf(), new Promise((resolve) => setTimeout(resolve, 500, null))]);
+        drainHitchVerdicts();
       }
 
       if (autosaveUnderLoad && actionReceipt?.accepted === true) {
@@ -2456,6 +2627,9 @@ async function sampleRafWindow(page, {
       setRenderWorkEnabled(false);
       setSystemTimingEnabled(false);
       setBackgroundJobTrackingEnabled(false);
+      if (hitchAttribution.armed && hitchAttribution.wasEnabled !== true) {
+        try { perfApi.setHitchAttributionEnabled(false); } catch (_) { /* ignore */ }
+      }
     }
   }, {
     tag: phaseTag,

@@ -4954,13 +4954,22 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
     const previewTeardownOnly = failureCauses.every(
       (cause) => cause && cause.previewDisposed === true,
     );
+    // The same lifecycle abort when the owner itself goes away mid-admission: a promoted
+    // far actor that re-shelves (entity.alive flips false) makes isResidencyOwnerActive()
+    // fail — the ship legitimately left, so there is no visual to publish. Count it with
+    // preview teardown, not as a composition defect on the warning channel.
+    const ownerInactiveOnly = failureCauses.every(
+      (cause) => cause && /owner became inactive/i.test(String(cause && (cause.message || cause))),
+    );
     // A disposed preview rejects its in-flight compile/upload on teardown — the ordinary
     // hover-away case, not a composition defect. Keep the breadcrumb off the warning channel
     // so release evidence only counts real admission failures.
-    const log = previewTeardownOnly ? console.info : console.warn;
+    const log = (previewTeardownOnly || ownerInactiveOnly) ? console.info : console.warn;
     log.call(console, previewTeardownOnly
       ? '[partsLibrary] authored preview admission released by disposal'
-      : '[partsLibrary] authored composition failed; no substitute visual published', {
+      : ownerInactiveOnly
+        ? '[partsLibrary] authored admission aborted; owner left before publish'
+        : '[partsLibrary] authored composition failed; no substitute visual published', {
       entity: entity && entity.id,
       message: String(error && error.message || error),
       causes: error && Array.isArray(error.errors)
