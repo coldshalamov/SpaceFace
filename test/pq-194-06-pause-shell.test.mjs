@@ -64,7 +64,7 @@ test('pause HUD dims only for the exposed pause and lists every verb in one reac
   const dom = installMiniDom();
   try {
     const root = globalThis.document.createElement('div');
-    const ctx = { state: { mode: 'paused', missions: { active: [] }, nav: {}, save: {}, meta: {}, ui: {}, run: { phase: 'inactive' } }, bus: { emit() {}, on() { return () => {}; } }, screenManager: { pushScreen() {}, popScreen() {}, hasScreen() { return true; } } };
+    const ctx = { state: { mode: 'paused', missions: { active: [] }, nav: {}, save: {}, meta: {}, ui: {}, run: { phase: 'inactive' } }, bus: { emit() {}, on() { return () => {}; } }, screenManager: { pushScreen(id) { pushes.push(id); }, popScreen() {}, hasScreen() { return true; } } };
     pauseScreen.mount(root, ctx);
 
     const buttons = root.querySelectorAll('button');
@@ -82,6 +82,18 @@ test('pause HUD dims only for the exposed pause and lists every verb in one reac
       'Resume is the lit row until focus moves into the column',
     );
     assert.equal(root.querySelectorAll('.k-words').length, 1, 'every verb is one roving list, not a list plus a disclosure');
+    // Every verb must actually RUN when picked: the first cut wired the pick callback to a stale
+    // handler shape, so every click threw and the whole column was dead. That was caught by
+    // `ui-look` (which clicks everything), not by a structural assertion. These are the plain
+    // navigation verbs; the confirm-gated ones (Load, Main Menu, Quit) need a real dialog.
+    const pushes = [];
+    for (const label of ['Settings', 'Save', 'Mission Log', 'My Ship', 'Operations']) {
+      const button = buttons.find((candidate) => candidate.textContent.startsWith(label));
+      assert.ok(button, `${label} is reachable`);
+      assert.doesNotThrow(() => button.dispatch('click'), `${label} pick must not throw`);
+    }
+    assert.deepEqual(pushes, ['settings', 'saveLoad', 'missionLog', 'ship', 'automation'],
+      'every plain verb pushes its own destination');
   } finally {
     dom.restore();
   }

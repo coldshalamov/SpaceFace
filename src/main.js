@@ -367,14 +367,14 @@ async function boot() {
         let devTicks = 0;
         const reachWantedScreen = () => {
           devTicks += 1;
-          if (devTicks % 25 === 0) console.log('[SpaceFace] dev screen route waiting: mode =', state.mode, 'tick', devTicks);
           if (!wantsWorld) { attemptOpen(); return; }
           if (state.mode === 'flight' || state.mode === 'paused') {
             // One presented frame of the held world before the screen stands on it.
             setTimeout(() => attemptOpen(), 700);
             return;
           }
-          if (devTicks < 900) setTimeout(reachWantedScreen, 100); // ~90 s, then let the log speak
+          if (devTicks < 2400) setTimeout(reachWantedScreen, 100); // ~4 min, then the log speaks
+          else console.error('[SpaceFace] dev screen route gave up waiting for a run: mode =', state.mode);
         };
         setTimeout(() => {
           if (wantsWorld) {

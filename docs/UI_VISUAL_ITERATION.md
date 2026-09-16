@@ -14,12 +14,21 @@ the approved frames under `design/frontend/direction/approved/`.
 ## 0. Look before you touch
 
 ```
+node scripts/ui-look.mjs --only=pause      # open it, try EVERY control, see what each one does
 npm run ui:stills                          # menus + HUD, ~2.5 min, .devshots/ui-stills/
-npm run ui:stills -- --set=station         # one group: menus,hud,instruments,station,crucible,works,deaths
-npm run ui:stills -- --only=title,pause    # exact surfaces
-npm run ui:stills -- --all                 # every automatable surface (~10 min)
-npm run ui:stills -- --list                # ids, groups, routes
+npm run ui:stills -- --only=title,pause     # exact surfaces
+npm run ui:stills -- --set=station          # one group: menus,hud,instruments,station,crucible,works,deaths
+npm run ui:stills -- --all                  # every automatable surface (~10 min)
+npm run ui:stills -- --list                 # ids, groups, routes
 ```
+
+`ui:look` is the first command of a pass and the one that answers "what is wrong". It opens the
+screen on the dev direct route (`?dev=screen:<id>`, `src/main.js`), clicks every control, and prints
+what each one actually did — opened a screen, raised a confirm, repainted, or nothing at all. It
+keeps a picture only where the surface visibly changed, so the output is small enough to read back.
+A control that does nothing, throws, or lands somewhere wrong is the first finding, before taste.
+The same route is for looking by hand: open `http://127.0.0.1:<port>/?dev=screen:pause` (any port
+`node server.js <port>` is serving) in a browser and click things — reload to reset.
 
 Read `contact-sheet.png` first for the whole picture, then the full-size PNGs for detail. Open the
 still before deciding anything, and re-open the *after* still before claiming a fix.
@@ -55,11 +64,14 @@ npm run ui:stills -- --only=<changed ids>
 Compare against the previous still, not against memory. `--world --headed` shoots the same screens
 over the live 3D picture when the world is part of the judgment.
 
-## 4. Independent review — three reviewers, once each, per pass
+## 4. Independent review — once per pass, at the end
 
-Spawn **three reviewers in parallel** (Task tool), each with a different lane, and give them only:
-the still paths, the surface ids, the direction file, and the two tests. They must be memoryless —
-never tell them what was changed or what to see.
+Spawn **three reviewers in parallel** (Task tool) when the pass is finished, not after every edit.
+Iterate alone until the after-still looks right and `ui:look` reports nothing broken; then get eyes
+that have not seen the screen. Give them only: the still paths, the surface ids, the direction file,
+and the two tests. They must be memoryless — never tell them what was changed or what to see.
+(If the pass is a one-line fix inside an already-reviewed frame, the author's own before/after
+comparison is the review; say so in the receipt instead of manufacturing ceremony.)
 
 | Reviewer | Lane | Must return |
 |---|---|---|

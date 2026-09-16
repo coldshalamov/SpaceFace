@@ -709,7 +709,10 @@ export const pauseScreen = {
     // list; the kit's roving focus then moves the same light down the column.
     const list = words(items, {
       ariaLabel: 'Pause',
-      onPick: (action) => { const h = handlers.get(action); if (h) h.fn(); },
+      onPick: (action) => {
+        const run = handlers.get(action);
+        if (typeof run === 'function') run();
+      },
     });
     list.classList.add('sf-pause-words');
     for (const item of items) {
