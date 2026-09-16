@@ -388,6 +388,40 @@ test('shelved far actors round-trip through the save payload', () => {
   assert.deepEqual(live.data.ai, { archetype: 'trader', passive: true });
 });
 
+test('runtime presentation stamps on shelved rows never reach the save payload', () => {
+  const { state, helpers, bus } = boot();
+  const far = spawnShip(helpers, {
+    pos: { x: 12000, z: 0 },
+    data: { trafficRole: 'hauler', homeSectorId: 'sector_ceres_belt' },
+  });
+  const farId = far.id;
+  tickFarActors(state, helpers, bus);
+  const row = getFarActor(state, farId);
+  assert.ok(row);
+
+  // The mesh loop resolves the shelved row itself as a presentation entity and stamps a live
+  // Object3D on it (e.mesh = m; e.view = { root: m }). A recursive clone of that graph
+  // stack-overflows — serializing must strip runtime fields instead.
+  const fakeObject3D = { isObject3D: true, children: [], matrix: { elements: new Array(16).fill(0) } };
+  fakeObject3D.children.push(fakeObject3D); // cyclic, like a real scene graph can be
+  row.mesh = fakeObject3D;
+  row.view = { root: fakeObject3D };
+  row._noMesh = true;
+  row.liveEntityId = 9999;
+
+  const payload = serializeFarActorTable(state.world.farActors);
+  assert.ok(payload, 'serialize must not throw on presentation-stamped rows');
+  const json = JSON.stringify(payload); // proves the payload is JSON-safe
+  const restored = JSON.parse(json);
+  const saved = restored.rows.find((r) => r.id === farId);
+  assert.ok(saved);
+  for (const key of ['mesh', 'view', '_noMesh', 'liveEntityId', '_cell']) {
+    assert.equal(saved[key], undefined, `runtime field ${key} must not serialize`);
+  }
+  assert.equal(saved.type, 'ship');
+  assert.equal(saved.trafficRole, 'hauler');
+});
+
 test('a missing or empty far-actor payload restores to no table', () => {
   const { state } = boot();
   assert.equal(restoreFarActorTable(state, null), null);

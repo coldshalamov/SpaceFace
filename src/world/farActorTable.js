@@ -58,6 +58,20 @@ function cloneTree(value) {
 // and the next serialize captures a fat record where the pre-save snapshot held a thin one
 // (save/reload hash equivalence). `rows` is plain data; byId/grid are rebuilt from it by
 // ensureFarActorTable on first touch.
+// Shelved rows double as presentation entities: resolveWorldPresentationEntity returns the row
+// itself, so the mesh loop stamps live runtime references onto it (`e.mesh = m`,
+// `e.view = { root: m }`, `_noMesh`, grid `_cell`). Those are live Object3D graphs — a recursive
+// clone walks the whole children/matrix tree and can stack-overflow, and none of it could ever
+// round-trip through the save's JSON anyway. Same contract worldRecords.js applies to
+// liveEntityId: runtime-only fields are never serialized.
+const FAR_ROW_RUNTIME_KEYS = new Set(['mesh', 'view', 'liveEntityId', 'rematerializedTick']);
+
+function isRuntimeRenderResource(value) {
+  return !!(value && typeof value === 'object'
+    && (value.isObject3D === true || value.isTexture === true
+      || value.isBufferGeometry === true || value.isMaterial === true));
+}
+
 export function serializeFarActorTable(table) {
   if (!table || table.schema !== FAR_ACTOR_SCHEMA || !Array.isArray(table.rows)) return null;
   const rows = [];
@@ -65,8 +79,11 @@ export function serializeFarActorTable(table) {
     if (!row || row.alive === false) continue;
     const copy = {};
     for (const k in row) {
-      if (k === '_cell') continue;
-      copy[k] = cloneTree(row[k]);
+      if (k.charCodeAt(0) === 0x5f) continue; // '_' — _cell, _noMesh, other private runtime stamps
+      if (FAR_ROW_RUNTIME_KEYS.has(k)) continue;
+      const v = row[k];
+      if (isRuntimeRenderResource(v)) continue;
+      copy[k] = cloneTree(v);
     }
     rows.push(copy);
   }
