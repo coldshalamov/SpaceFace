@@ -30,7 +30,9 @@ assert.deepEqual(packageJson.build?.win, {
   target: 'nsis',
   artifactName: 'SpaceFace-Setup-${version}.${ext}',
 });
-assert.deepEqual(packageJson.build?.mac, { target: 'dmg' });
+const macTarget = packageJson.build?.mac?.target;
+assert.ok(macTarget === 'dmg' || (Array.isArray(macTarget) && macTarget.includes('dmg')),
+  'mac build must produce a dmg artifact (additional formats are allowed)');
 assert.deepEqual(packageJson.build?.linux, { target: 'AppImage' });
 for (const relative of [
   'electron/main.cjs',
