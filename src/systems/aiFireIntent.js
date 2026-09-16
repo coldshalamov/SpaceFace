@@ -256,6 +256,10 @@ function aggressionTrace(decision, state, targetId, ai) {
   });
 }
 
+export function clearAIFiringIntent(intent, reason = null, blockerId = null) {
+  clearFire(intent, reason, blockerId);
+}
+
 function clearFire(intent, reason = null, blockerId = null) {
   intent.fire = false;
   intent.fireBlockReason = reason;

@@ -6,7 +6,7 @@ import {
   NORMALIZED_THRUSTER_REQUEST_FLAG,
   wrapAngle,
 } from '../ai/contracts.js';
-import { applyAIFiringIntent } from './aiFireIntent.js';
+import { applyAIFiringIntent, clearAIFiringIntent } from './aiFireIntent.js';
 import {
   maintainFirstSessionAttackerOwnership,
   refreshFirstSessionAttackerOwnership,
@@ -819,8 +819,7 @@ function applySquadTokenFireGate(liveStack, state, shipLikeList = indexedShipLik
     if (!intent) continue;
     stampChoreography(entity, plan, director);
     if (plan && plan.fireAuthorized === false && intent.fire) {
-      intent.fire = false;
-      intent.fireBlockReason = 'squad_token';
+      clearAIFiringIntent(intent, 'squad_token');
     }
   }
 }
