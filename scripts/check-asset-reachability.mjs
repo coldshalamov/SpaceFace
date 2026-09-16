@@ -21,18 +21,21 @@ import {
 } from '../src/data/portraits.js';
 import { WRECK_CATHEDRAL_EVIDENCE_CATALOG } from '../src/data/wreckCathedralEvidenceCatalog.js';
 import { renderPackagePilotForSourceUrl } from '../src/render/renderPackageManifest.js';
+import { RELEASE_COPY_MAPPINGS } from './lib/releasePackaging.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Asset roots copied into build/web by build-bundle.mjs AND globbed into the electron package by
-// package.json build.files. A referenced asset outside these roots 404s in the shipped game.
-const BUNDLED_ROOTS = [
-  'assets/cinematics',
-  'assets/ui',
-  'assets/ships/release',
-  'assets/portraits',
-  'assets/fx/thruster',
-];
+// Asset roots copied into build/web by build-bundle.mjs (RELEASE_COPY_MAPPINGS is the authority —
+// a referenced asset outside them 404s in the shipped game). Derived rather than duplicated so a
+// new bundled root cannot drift from this contract.
+const BUNDLED_ROOTS = RELEASE_COPY_MAPPINGS
+  .map((m) => m.source)
+  .filter((source) => source.startsWith('assets/'));
+
+// UI kit helpers (kitUrl/fhUrl in src/ui/kit) resolve their asset arguments under this prefix at
+// runtime, so a source literal like 'assets/tiles/x.png' inside a kitUrl() call really ships as
+// 'assets/ui/kit/assets/tiles/x.png'.
+const UI_KIT_ROOT = 'assets/ui/kit';
 
 // Authoring/reference-only assets: AI-generated LABELLED contact-sheet bibles (baked caption text,
 // and in the pilot sheet's case the forbidden helmet/visor motif). They must stay OUT of the runtime
@@ -131,6 +134,20 @@ for (const asset of dynamicRegistries.wreckCathedralEvidence) {
 }
 for (const asset of dynamicRegistries.thrusterTextures) {
   addReference(asset, thrusterManifestPath);
+}
+
+// Resolve kit-scoped literals: a literal that is missing at the repo root but present under
+// UI_KIT_ROOT was passed through kitUrl/fhUrl and resolves there at runtime. Rewrite the reference
+// to the resolved path so existence and bundled-root checks measure what actually ships.
+for (const [asset, files] of [...referenced]) {
+  if (existsSync(join(ROOT, asset))) continue;
+  const kitPath = `${UI_KIT_ROOT}/${asset}`;
+  if (!existsSync(join(ROOT, kitPath))) continue;
+  referenced.delete(asset);
+  if (!referenced.has(kitPath)) referenced.set(kitPath, []);
+  for (const f of files) {
+    if (!referenced.get(kitPath).includes(f)) referenced.get(kitPath).push(f);
+  }
 }
 
 const issues = [];

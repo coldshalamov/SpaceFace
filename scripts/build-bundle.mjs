@@ -226,8 +226,9 @@ async function buildBundledHtml() {
   // with a single module script pointing at the bundled ./main.js (esbuild names it after the first
   // entry point). Keep the CSS links, the DOM shell, the meta, the icon.
   const html = devHtml
-    // strip the importmap block (the bundle resolves bare specifiers itself)
-    .replace(/<script type="importmap">[\s\S]*?<\/script>\s*/, '')
+    // strip the importmap block (the bundle resolves bare specifiers itself), including the
+    // dev-only comment that explains it — check-bundle fails on any 'importmap' text left behind
+    .replace(/(<!--[^>]*importmap[^>]*-->\s*)?<script type="importmap">[\s\S]*?<\/script>\s*/, '')
     // point the module script at the bundled output
     .replace('<script type="module" src="./src/main.js"></script>', '<script type="module" src="./main.js"></script>')
     // the inline module imports the boot terminal art from src/; repoint it at its chunk
