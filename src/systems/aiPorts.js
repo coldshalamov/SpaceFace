@@ -16,6 +16,7 @@ import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
+import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import {
@@ -41,7 +42,7 @@ const DIRECTOR_PHASES = new Set(Object.values(DirectorPhase));
 const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
 const EMPTY_ATTACHMENTS = Object.freeze([]);
-const AI_SPATIAL_MIN_COLLIDABLES = 1;
+const AI_SPATIAL_MIN_COLLIDABLES = 96;
 const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
 const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
   pocket.actorSlots
@@ -1138,23 +1139,81 @@ function tagsFor(entity, runtime, freeze = Object.freeze) {
 
 function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
   const helper = helpers && helpers.queryRadius;
-  if (scratch) scratch.length = 0;
+  const out = scratch || [];
+  out.length = 0;
+  const tableHits = queryCombatTableEntities(
+    state,
+    pos && pos.x,
+    pos && pos.z,
+    range,
+    nearbyCombatScratch,
+    COMBAT_TABLE_FLAGS.SHIP | COMBAT_TABLE_FLAGS.PROJECTILE | COMBAT_TABLE_FLAGS.WRECK,
+  );
+  const seen = nearbySeen;
+  seen.clear();
+  for (let i = 0; i < tableHits.length; i++) {
+    const entity = tableHits[i];
+    if (!entity || seen.has(entity.id)) continue;
+    seen.add(entity.id);
+    out.push(entity);
+  }
   const index = state && state.entityIndex;
   const collidables = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables)
     ? index.collidables
     : null;
-  if (collidables && collidables.length > 0 && !hasActiveSpatialHash(state && state.spatialHash) && collidables.length < 8) {
-    return collidables;
-  }
-  if (typeof helper === 'function') return helper(pos, range, scratch || []);
-  if (state.spatialHash && state.entityIndex && state.entityIndex.ready && typeof state.spatialHash.queryRadius === 'function') {
-    const out = scratch || [];
-    state.spatialHash.queryRadius(pos.x, pos.z, range, out);
+  if (collidables && collidables.length > 0 && collidables.length < AI_SPATIAL_MIN_COLLIDABLES && pos) {
+    for (let i = 0; i < collidables.length; i++) {
+      const entity = collidables[i];
+      if (!entity || seen.has(entity.id) || entity.alive === false || !entity.pos) continue;
+      const dx = entity.pos.x - pos.x;
+      const dz = entity.pos.z - pos.z;
+      if (dx * dx + dz * dz > range * range) continue;
+      seen.add(entity.id);
+      out.push(entity);
+    }
     return out;
   }
-  if (collidables) return collidables;
-  return Array.isArray(state.entityList) ? state.entityList : [];
+  if (hasActiveSpatialHash(state && state.spatialHash) && typeof (state.spatialHash.queryRadius) === 'function') {
+    nearbyHashScratch.length = 0;
+    state.spatialHash.queryRadius(pos.x, pos.z, range, nearbyHashScratch);
+    for (let i = 0; i < nearbyHashScratch.length; i++) {
+      const entity = nearbyHashScratch[i];
+      if (!entity || seen.has(entity.id)) continue;
+      seen.add(entity.id);
+      out.push(entity);
+    }
+    return out;
+  }
+  if (typeof helper === 'function') {
+    nearbyHashScratch.length = 0;
+    helper(pos, range, nearbyHashScratch);
+    for (let i = 0; i < nearbyHashScratch.length; i++) {
+      const entity = nearbyHashScratch[i];
+      if (!entity || seen.has(entity.id)) continue;
+      seen.add(entity.id);
+      out.push(entity);
+    }
+    return out;
+  }
+  if (collidables && pos) {
+    for (let i = 0; i < collidables.length; i++) {
+      const entity = collidables[i];
+      if (!entity || seen.has(entity.id) || entity.alive === false || !entity.pos) continue;
+      const dx = entity.pos.x - pos.x;
+      const dz = entity.pos.z - pos.z;
+      if (dx * dx + dz * dz > range * range) continue;
+      seen.add(entity.id);
+      out.push(entity);
+    }
+    return out;
+  }
+  if (Array.isArray(state.entityList) && out.length === 0) return state.entityList;
+  return out;
 }
+
+const nearbyCombatScratch = [];
+const nearbyHashScratch = [];
+const nearbySeen = new Set();
 
 function liveSensorBatchEntry(entries, index) {
   let entry = entries[index];

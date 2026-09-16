@@ -476,7 +476,9 @@ function intercept(self, target, horizonTicks, lateralSign = 0, commitSpeed = 72
     // the target at gun-envelope range rather than steering nose-in to ram or stall.
     // Ensure corridor offset also clears the target's physical and mass clearance envelope (e.g. capitals).
     const targetClearance = (target.radius || 14) + (config ? massClearanceFor(target, intent, self, config) : 0);
-    const minCorridor = Math.max(55, targetClearance + 20);
+    const minCorridor = target.operationalMassBand === 'capital'
+      ? Math.max(200, targetClearance + 105)
+      : Math.max(55, targetClearance + 20);
     const maxCorridor = Math.max(120, minCorridor + 40);
     const corridorOffset = clamp(distance * 0.28, minCorridor, maxCorridor) * (lateralSign < 0 ? -1 : 1);
     point.x += -nz * corridorOffset;

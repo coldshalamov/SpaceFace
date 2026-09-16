@@ -311,6 +311,7 @@ export class TacticalAIStack {
         authorityRadius: finitePositive(member.authorityRadius, TABLE_AI_AUTHORITY_WU),
         sleepPeriodTicks: 8,
         activePeriodTicks: 1,
+        nearPeriodTicks: 1,
       })) {
         selected.delete(member.id);
       }

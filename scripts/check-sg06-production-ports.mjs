@@ -244,15 +244,13 @@ assert.throws(() => {
 
 await ensureSg02Ready(harness);
 harness.rebuildSpatialHash();
-const beforeInactiveHashRebuilds = state.spatialHash.diagnostics.rebuilds;
+const beforeHashRebuilds = state.spatialHash.diagnostics.rebuilds;
 harness.physics.update(DT, state);
-assert.equal(state.spatialHash.diagnostics.rebuilds, beforeInactiveHashRebuilds,
-  'rapier-dynamic should not rebuild the spatial hash in small scenes with no indexed query consumer');
-assert.equal(state.spatialHash.diagnostics.activeBuckets, 0,
-  'rapier-dynamic should mark the unused small-scene spatial hash inactive instead of keeping stale buckets');
-const inactiveHashQuery = helpers.queryRadius(wingA.pos, 260);
-assert(inactiveHashQuery.some((entity) => entity.id === player.id),
-  'helper radius queries should fall back to the entity index while the spatial hash is inactive');
+assert.equal(state.spatialHash.diagnostics.rebuilds, beforeHashRebuilds + 1,
+  'rapier-dynamic maintains the always-on spatial hash');
+const query = helpers.queryRadius(wingA.pos, 260);
+assert(query.some((entity) => entity.id === player.id),
+  'helper radius queries should find nearby entities');
 
 wingA.pos.x = 0;
 wingA.pos.z = 0;
@@ -399,8 +397,8 @@ function poisonHiddenState(state, entity) {
 function assertFrameWhitelist(frame) {
   assertExactKeys(frame, ['contacts', 'events', 'self', 'tick'], 'SensorFrame');
   assertExactKeys(frame.self, [
-    'activity', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
-    'factionBehavior', 'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'operationalMassBand', 'pos', 'radius',
+    'activity', 'arenaPursuit', 'capabilities', 'cargoBand', 'combatDoctrineId', 'disabled', 'energyFraction',
+    'factionBehavior', 'heatFraction', 'hullFraction', 'id', 'mobilityBand', 'moraleImmune', 'operationalMassBand', 'pos', 'radius',
     'ramAuthorized', 'roe', 'rot', 'subsystemFractions', 'team', 'tetherabilityBand', 'tethered', 'vel',
   ], 'SensorFrame.self');
   assertExactKeys(frame.self.pos, ['x', 'z'], 'SensorFrame.self.pos');

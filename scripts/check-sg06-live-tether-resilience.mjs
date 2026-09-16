@@ -179,7 +179,7 @@ try {
   let challengePeakTension = peakTension;
   let challengePeakImpulse = peakImpulse;
   for (let i = 0; i < 90; i++) {
-    applyDashSlackLoad(harness, attachmentId, actor.id, 2_400);
+    applyDashSlackLoad(harness, attachmentId, actor.id, 250_000);
     registry.step(DT);
     const current = state.combat.attachments.byId[attachmentId];
     assert.equal(current && current.state, 'active',
@@ -207,7 +207,7 @@ try {
     // cut; a merely-ordinary load decays below the overload edge before the lease expires. The
     // extreme-load contract is only exercised by a load that stays past the edge, like the
     // former-edge challenge above.
-    applyDashSlackLoad(harness, attachmentId, actor.id, 2_400);
+    applyDashSlackLoad(harness, attachmentId, actor.id, 250_000);
     registry.step(DT);
     const current = state.combat.attachments.byId[attachmentId];
     if (current && current.state === 'broken') {

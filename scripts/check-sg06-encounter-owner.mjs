@@ -195,6 +195,7 @@ function tacticalSensorFrame(_entityId, tick) {
       radius: 14,
       confidence: 1,
       threat: 0.95,
+      hostile: true,
       tags: ['armed'],
     }],
     events: [],
