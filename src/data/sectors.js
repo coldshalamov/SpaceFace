@@ -412,6 +412,7 @@ const CORE_SECTORS = [
     pois: [
       {
         id: 'poi_boss', type: 'anomaly', name: 'Boss Arena Signal',
+        flavorTargetRef: 'landmark_c5_iron_maw',
         discoveryPlate: {
           title: 'Iron Maw Defeated',
           body: 'The Vael-grown Deep-Mother that guarded Ashfall\'s vault is dead. Its silent arena signal now marks a navigable grave.',

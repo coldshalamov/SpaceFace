@@ -1,6 +1,8 @@
 // The four INFERENCE landmark POIs (Metronome, Tide-Locked Watcher, Ringworld Arc, Vault Maw) must
 // merge into SECTORS with a live anchor position, an anchor that exists, and a flavorTargetRef the
 // authored landmark-lore pack actually defines — the "charts, scannable, readable" claims, pinned.
+// Below them, INFERENCE lore wirings pin existing POIs to their authored landmark refs — the
+// "scan surfaces the lore" claim (v2FlavorRuntime._presentLandmarkEntity), pinned.
 import assert from 'node:assert/strict';
 
 import { SECTORS } from '../src/data/sectors.js';
@@ -31,4 +33,20 @@ for (const { poiId, sectorId, ref } of LANDMARK_POIS) {
   const loreEntry = landmarkLorePack.entries.find((entry) => entry.targetRef === ref);
   assert.ok(loreEntry, `${ref} lore entry exists`);
   assert.equal(loreEntry.location?.poiId, poiId, `${poiId} mapped to lore entry location for physical proximity identification`);
+}
+
+const LORE_WIRINGS = [
+  { poiId: 'poi_boss', sectorId: 'sector_ashfall_reach', ref: 'landmark_c5_iron_maw' },
+];
+
+for (const { poiId, sectorId, ref } of LORE_WIRINGS) {
+  const sector = SECTORS.find((s) => s.id === sectorId);
+  assert.ok(sector, `${sectorId} exists`);
+  const poi = sector.pois.find((p) => p.id === poiId);
+  assert.ok(poi, `${poiId} exists in ${sectorId}`);
+  assert.equal(poi.flavorTargetRef, ref, `${poiId} targets its authored landmark ref`);
+  const loreEntry = landmarkLorePack.entries.find((entry) => entry.targetRef === ref);
+  assert.ok(loreEntry, `${ref} lore entry exists`);
+  assert.equal(loreEntry.location?.sectorId, sectorId,
+    `${ref} lore location matches the POI sector so scans present it`);
 }
