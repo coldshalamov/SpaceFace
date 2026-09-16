@@ -44,7 +44,7 @@ import { createPowerRail, readRailModel } from './powerRail.js';
 import { settle as kitSettle, cue as kitCue, reducedMotion as kitReducedMotion } from './kit/index.js';
 import { createThreatHalo } from './threatHalo.js';
 import {
-  hullMarkSvg, shipConditionMarkup, hudBarMarkup,
+  shipConditionMarkup, updateShipCondition, hudBarMarkup,
   speedGaugeMarkup, mountRadarKit, setKitBar, setKitGauge,
 } from './views/flightInstruments.js';
 import { computeLeadPipOverlay, leadSolution, primaryProjSpeed, hasBallisticWeapon } from '../ai/gunnery.js';
@@ -79,7 +79,6 @@ import {
   masslineInstrumentReadout,
   masslineInstrumentVisible,
   receiptLaneRect,
-  vitalNumericVisible,
 } from './hudAttention.js';
 
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
@@ -1038,50 +1037,17 @@ export function createHud(ctx, alerts) {
   leftContext.className = 'sf-leftcontext';
   leftStack.appendChild(leftContext);
 
-  // The active ship uses its canonical vector silhouette; the ring carries shield state.
-  // Presentation is shared with the isolated fixture, without a second HUD state owner.
+  // Lamina: authored hull laminae + a split, globally driven shield envelope.
+  // The view reads the same authoritative entity as all other vitals; it owns no simulation state.
   const bars = document.createElement('div');
-  bars.className = 'sf-bars';
-
-  const conditionHead = document.createElement('div');
-  conditionHead.className = 'sf-condition-head';
-  conditionHead.innerHTML =
-    '<div class="sf-condition-metrics mono">' +
-      '<span class="sf-cond-stat" data-vital="hull" hidden>hull <strong class="sf-cond-hull-val">0</strong></span>' +
-      '<span class="sf-cond-stat" data-vital="shield" hidden>shield <strong class="sf-cond-shd-val">0</strong></span>' +
-    '</div>';
-  bars.appendChild(conditionHead);
-
-  // J07: the ship-condition mark was a static PNG of a Scout, so the instrument showed a hull the
-  // player had very likely never flown. It is now a vector silhouette of the ACTIVE hull, drawn
-  // from the same table the shipyard uses (src/data/shipSilhouettes.js).
-  //
-  // The DOM shape is unchanged on purpose: an "empty" mark, a fill mark inside .sf-sch-ship-fill-crop
-  // (whose height is the --hull-pct var), and the fill line. Swapping <img> for <svg> inside those
-  // wrappers keeps the existing flask-fill mechanic working untouched.
-  //
-  // The silhouettes are authored nose-RIGHT in a 48x28 box; this instrument reads top-down with the
-  // nose UP. The quarter turn is applied in CSS (.sf-sch-hull), NOT as an SVG transform attribute:
-  // measured in the running game, the attribute did not take effect here and the hull drew
-  // unrotated and outside its own box. CSS transform on an SVG element wins over the attribute, so
-  // driving it from one place removes the ambiguity entirely.
-  function playerHullId(entity) {
-    const d = entity && entity.data;
-    return (d && (d.defId || d.shipId)) || 'ship_kestrel';
-  }
-  let schematicHullId = playerHullId(state.entities.get(state.playerId));
-
+  bars.className = 'sf-bars sf-bars--lamina';
+  const initialPlayer = state.entities.get(state.playerId);
+  const initialHull = initialPlayer?.data?.defId || initialPlayer?.data?.shipId || 'ship_kestrel';
   const schematic = document.createElement('div');
-  schematic.className = 'sf-schematic';
-  schematic.innerHTML = shipConditionMarkup(schematicHullId);
-  schematic.setAttribute('role', 'img');
-  schematic.setAttribute('aria-label', 'Ship condition');
+  schematic.className = 'sf-schematic sf-integrity';
+  schematic.innerHTML = shipConditionMarkup(initialHull);
   bars.appendChild(schematic);
-  const schShield = schematic.querySelector('.sf-sch-shield');
-  const schHullVal = conditionHead.querySelector('.sf-cond-hull-val');
-  const schShdVal = conditionHead.querySelector('.sf-cond-shd-val');
-  const schHullStat = conditionHead.querySelector('[data-vital="hull"]');
-  const schShdStat = conditionHead.querySelector('[data-vital="shield"]');
+  updateShipCondition(schematic, initialPlayer, 0, getMotionReduced(), getFlashReduced());
 
   // Thin micro-bars. Hull + shield are on the schematic; energy/boost/weapon-heat/fuel live here.
   const barDefs = [
@@ -1149,14 +1115,8 @@ export function createHud(ctx, alerts) {
   leftContext.prepend(commsTape);
   // marketNews owns the feed and may have initialized before this HUD rebuilt its tape host.
   if (ctx.bus && typeof ctx.bus.emit === 'function') ctx.bus.emit('news:render');
-  // Shield ring: dasharray = full circumference, dashoffset grows as shields drop (erasing the ring).
-  // Measured after mount so getTotalLength() reads the live geometry (the fallback equals 2πr anyway).
-  const SHIELD_RING_LEN = (() => { try { return schShield.getTotalLength() || 2 * Math.PI * 46; } catch (e) { return 2 * Math.PI * 46; } })();
-  schShield.style.strokeDasharray = String(SHIELD_RING_LEN);
-  schShield.style.strokeDashoffset = '0';
-  // SETTLE is JS-driven from bound state rows; disable CSS tweening on the live instrument tracks.
-  setStyle(schShield, 'transition', 'none');
-  const shieldSettle = createGaugeSettleSpring(1);
+  // Other vitals retain their existing settle owner. Integrity has a bounded damage echo,
+  // never a spring that can visually overstate health.
   const energySettle = createGaugeSettleSpring(1);
   const heatSettle = createGaugeSettleSpring(0);
   const boostSettle = createGaugeSettleSpring(0);
@@ -1186,20 +1146,8 @@ export function createHud(ctx, alerts) {
     revealedWeakPoints.set(p.entityId, { label: p.label, hint: p.hint, until: p.until || 0 });
   });
 
-  // Hit-flash helper: briefly pulse the ship schematic when the player takes damage.
-  // Re-triggering a CSS animation needs remove + reflow + re-add; we do it once per damage event.
-  let _schFlashTimer = 0;
-  function flashSchematic() {
-    schematic.classList.remove('sf-sch-hit');
-    void schematic.offsetWidth;   // force reflow so the animation restarts
-    schematic.classList.add('sf-sch-hit');
-    clearTimeout(_schFlashTimer);
-    _schFlashTimer = setTimeout(() => schematic.classList.remove('sf-sch-hit'), 340);
-  }
-  ctx.bus.on('combat:damage', (p) => {
-    if (!p || p.targetId !== state.playerId) return;
-    flashSchematic();
-  });
+  // Damage/repair motion is derived by updateShipCondition from real resource changes.
+  // No combat-event reflow, hit timeout, or second animation clock is needed.
 
   // ---- top-left: mission tracker (shows the tracked mission objective + timer) ----
   const missionTracker = document.createElement('div');
@@ -4131,7 +4079,8 @@ export function createHud(ctx, alerts) {
     // the rail genuinely stops costing anything once the numbers settle.
     if (slow) powerRail.update(readRailModel(state, state.simTime || 0), Date.now());
 
-    // --- schematic + arcs + micro-bars (every frame, transform/stroke only) ---
+    // --- integrity + arcs + micro-bars (existing frame owner; no independent animation loop) ---
+    if (!p) updateShipCondition(schematic, null, frameDt, getMotionReduced(), getFlashReduced());
     if (p) {
       const hullFrac = p.hullMax ? clamp01(p.hull / p.hullMax) : 0;
       const shieldFrac = p.shieldMax ? clamp01(p.shield / p.shieldMax) : 0;
@@ -4141,34 +4090,13 @@ export function createHud(ctx, alerts) {
       settleMotion.reducedMotion = getMotionReduced();
       settleMotion.shieldRegenRate = p.shieldRegenRate;
       settleMotion.inertia = p.flightModel && p.flightModel.inertia;
-      const shieldVisual = shieldSettle.step(shieldFrac, frameDt, settleMotion);
       const capVisual = energySettle.step(capFrac, frameDt, settleMotion);
       const heatVisual = heatSettle.step(heatFrac, frameDt, settleMotion);
       const fuelState = state.fuel || defaultFuel;
       const fuelFrac = fuelState.max > 0 ? clamp01(fuelState.current / fuelState.max) : 1;
       const fuelVisual = fuelSettle.step(fuelFrac, frameDt, settleMotion);
 
-      // Ship schematic (dual-color flask fill level + shield ring via stroke-dashoffset).
-      // Use a resolved percentage token rather than CSS multiplication. The latter is not
-      // consistently accepted by the Chromium versions used by browser and Electron builds,
-      // which can leave the damage fill stuck at its fallback height.
-      // Re-cut the silhouette when the player changes hull. Cheap: a string compare per frame, and
-      // the innerHTML write only happens on an actual swap (shipyard purchase, save load).
-      const liveHullId = playerHullId(p);
-      if (liveHullId !== schematicHullId) {
-        schematicHullId = liveHullId;
-        const emptyMark = schematic.querySelector('.sf-sch-ship--empty');
-        const fillMark = schematic.querySelector('.sf-sch-ship--fill');
-        if (emptyMark) emptyMark.outerHTML = hullMarkSvg('sf-sch-ship--empty', liveHullId);
-        if (fillMark) fillMark.outerHTML = hullMarkSvg('sf-sch-ship--fill', liveHullId);
-      }
-      setCssVar(schematic, '--hull-pct', `${(hullFrac * 100).toFixed(1)}%`);
-      setStyle(schShield, 'strokeDashoffset', (SHIELD_RING_LEN * (1 - shieldVisual)).toFixed(1));
-      setClass(schematic, 'sf-sch-critical', hullFrac < 0.25);
-      setClass(schematic, 'sf-sch-warning', hullFrac >= 0.25 && hullFrac < 0.55);
-      setClass(schematic, 'sf-sch-shield-low', shieldFrac < 0.25);
-      setClass(bars, 'sf-condition-critical', hullFrac < 0.25);
-      setClass(bars, 'sf-condition-shield-low', shieldFrac < 0.25 && hullFrac >= 0.25);
+      updateShipCondition(schematic, p, frameDt, getMotionReduced(), getFlashReduced());
 
       setScaleX(fillEls.energy, capVisual, gaugeScaleLimits);
       setScaleX(fillEls.heat, heatVisual, gaugeScaleLimits);
@@ -4215,15 +4143,6 @@ export function createHud(ctx, alerts) {
       syncSafetyAlerts(p, hullFrac, shieldFrac);
 
       if (slow) {
-        const arcadeVitals = state.run?.kind === 'survival' && state.run.phase !== 'inactive';
-        const showHull = arcadeVitals || vitalNumericVisible(hullFrac);
-        const showShield = arcadeVitals || vitalNumericVisible(shieldFrac);
-        const conditionLabel = `Hull ${Math.round(hullFrac * 100)} percent; shield ${Math.round(shieldFrac * 100)} percent`;
-        if (schematic.getAttribute('aria-label') !== conditionLabel) schematic.setAttribute('aria-label', conditionLabel);
-        if (schHullVal) setText(schHullVal, Math.max(0, Math.round(p.hull)) + '');
-        if (schShdVal) setText(schShdVal, Math.max(0, Math.round(p.shield)) + '');
-        setHidden(schHullStat, !showHull);
-        setHidden(schShdStat, !showShield);
         setText(numEls.energy, Math.max(0, Math.round(p.cap)) + '');
         setText(numEls.heat, wpnHeat.pct + '%');
         // Phase 4 fuel gauge: low fuel flashes a warning.

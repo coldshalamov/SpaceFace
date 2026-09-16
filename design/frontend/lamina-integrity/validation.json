@@ -1,0 +1,333 @@
+{
+  "base_commit": "ded324e70729a9e6dadde195755a58c47ad08020",
+  "delivery": "ZIP fallback; no PR created",
+  "focused_node_tests": {
+    "passed": 145,
+    "failed": 0,
+    "suites": [
+      "test/hull-integrity.test.mjs",
+      "test/velocity-rail.test.mjs",
+      "test/orbital-presentation.test.mjs",
+      "test/hud-flight-attention.test.mjs",
+      "test/j07-hud-contract.test.mjs",
+      "test/hud-contact-roster-keyed-rows.test.mjs"
+    ]
+  },
+  "browser": {
+    "passed": 35,
+    "failed": 0,
+    "scope": "Real production SVG and createHud/production CSS with synthetic entity state; no 3D scene or GPU/game FPS claim.",
+    "cases": [
+      {
+        "name": "production component mounts without script errors",
+        "pass": true,
+        "detail": []
+      },
+      {
+        "name": "all thirteen canonical hulls are present",
+        "pass": true,
+        "detail": null
+      },
+      {
+        "name": "all clip/gradient IDs are disjoint across eighteen simultaneous instruments",
+        "pass": true,
+        "detail": []
+      },
+      {
+        "name": "active hull geometry: ship_kestrel",
+        "pass": true,
+        "detail": {
+          "id": "ship_kestrel",
+          "cells": 16,
+          "clip": 2
+        }
+      },
+      {
+        "name": "active hull geometry: ship_pelican",
+        "pass": true,
+        "detail": {
+          "id": "ship_pelican",
+          "cells": 16,
+          "clip": 2
+        }
+      },
+      {
+        "name": "active hull geometry: ship_wasp",
+        "pass": true,
+        "detail": {
+          "id": "ship_wasp",
+          "cells": 16,
+          "clip": 2
+        }
+      },
+      {
+        "name": "active hull geometry: ship_mule",
+        "pass": true,
+        "detail": {
+          "id": "ship_mule",
+          "cells": 16,
+          "clip": 2
+        }
+      },
+      {
+        "name": "active hull geometry: ship_drifter",
+        "pass": true,
+        "detail": {
+          "id": "ship_drifter",
+          "cells": 16,
+          "clip": 2
+        }
+      },
+      {
+        "name": "active hull geometry: ship_hornet",
+        "pass": true,
+        "detail": {
+          "id": "ship_hornet",
+          "cells": 16,
+          "clip": 2
+        }
+      },
+      {
+        "name": "active hull geometry: ship_ironback",
+        "pass": true,
+        "detail": {
+          "id": "ship_ironback",
+          "cells": 16,
+          "clip": 2
+        }
+      },
+      {
+        "name": "active hull geometry: ship_bastion",
+        "pass": true,
+        "detail": {
+          "id": "ship_bastion",
+          "cells": 16,
+          "clip": 2
+        }
+      },
+      {
+        "name": "active hull geometry: ship_atlas",
+        "pass": true,
+        "detail": {
+          "id": "ship_atlas",
+          "cells": 16,
+          "clip": 2
+        }
+      },
+      {
+        "name": "active hull geometry: ship_ranger",
+        "pass": true,
+        "detail": {
+          "id": "ship_ranger",
+          "cells": 16,
+          "clip": 2
+        }
+      },
+      {
+        "name": "active hull geometry: ship_warden",
+        "pass": true,
+        "detail": {
+          "id": "ship_warden",
+          "cells": 16,
+          "clip": 3
+        }
+      },
+      {
+        "name": "active hull geometry: ship_colossus",
+        "pass": true,
+        "detail": {
+          "id": "ship_colossus",
+          "cells": 16,
+          "clip": 3
+        }
+      },
+      {
+        "name": "active hull geometry: ship_leviathan",
+        "pass": true,
+        "detail": {
+          "id": "ship_leviathan",
+          "cells": 16,
+          "clip": 3
+        }
+      },
+      {
+        "name": "damage values are immediate, retain nodes and have a separate loss echo",
+        "pass": true,
+        "detail": {
+          "h": "18",
+          "s": "0",
+          "status": "critical",
+          "identity": true,
+          "echo": true
+        }
+      },
+      {
+        "name": "damage echo sleeps completely after its bounded lifetime",
+        "pass": true,
+        "detail": null
+      },
+      {
+        "name": "repair never suppresses the critical word",
+        "pass": true,
+        "detail": "CRITICAL"
+      },
+      {
+        "name": "reduce-motion snaps the trail and hides the transient stroke",
+        "pass": true,
+        "detail": null
+      },
+      {
+        "name": "flash reduction removes the impact independently",
+        "pass": true,
+        "detail": null
+      },
+      {
+        "name": "10,000 real-browser steady updates: zero mutations and zero selectors",
+        "pass": true,
+        "detail": {
+          "mutations": 0,
+          "queries": 0,
+          "updates": 10000,
+          "totalMs": 101.5
+        }
+      },
+      {
+        "name": "all live textual labels meet the 12 CSS pixel floor",
+        "pass": true,
+        "detail": [
+          12,
+          12,
+          12,
+          12,
+          12,
+          12
+        ]
+      },
+      {
+        "name": "forced colours remove the decorative carrier but retain both meters",
+        "pass": true,
+        "detail": {
+          "background": "none",
+          "role": "group",
+          "labels": 2
+        }
+      },
+      {
+        "name": "OS reduced motion is honoured",
+        "pass": true,
+        "detail": null
+      },
+      {
+        "name": "critical wording does not overlap the shield label",
+        "pass": true,
+        "detail": {
+          "hullBottom": 471.45001220703125,
+          "shieldTop": 482.25
+        }
+      },
+      {
+        "name": "standalone controls fit a 390 px viewport",
+        "pass": true,
+        "detail": null
+      },
+      {
+        "name": "real createHud mounts on the production CSS without script errors",
+        "pass": true,
+        "detail": []
+      },
+      {
+        "name": "live HUD 1920x1080: indicator is on-screen and separate from speed/powers/radar",
+        "pass": true,
+        "detail": {
+          "instrument": {
+            "x": 12,
+            "y": 798,
+            "right": 284,
+            "bottom": 972,
+            "w": 272,
+            "h": 174
+          },
+          "inside": true,
+          "speed": false,
+          "powers": false,
+          "radar": false
+        }
+      },
+      {
+        "name": "live HUD 1280x720: indicator is on-screen and separate from speed/powers/radar",
+        "pass": true,
+        "detail": {
+          "instrument": {
+            "x": 12,
+            "y": 176.40625,
+            "right": 284,
+            "bottom": 350.40625,
+            "w": 272,
+            "h": 174
+          },
+          "inside": true,
+          "speed": false,
+          "powers": false,
+          "radar": false
+        }
+      },
+      {
+        "name": "live HUD 800x600: indicator is on-screen and separate from speed/powers/radar",
+        "pass": true,
+        "detail": {
+          "instrument": {
+            "x": 10,
+            "y": 93.03125,
+            "right": 246,
+            "bottom": 244,
+            "w": 236,
+            "h": 150.96875
+          },
+          "inside": true,
+          "speed": false,
+          "powers": false,
+          "radar": false
+        }
+      },
+      {
+        "name": "live frame writer updates hull and shield, not just the standalone demo",
+        "pass": true,
+        "detail": null
+      },
+      {
+        "name": "live hull swap follows the actual player entity",
+        "pass": true,
+        "detail": null
+      },
+      {
+        "name": "live player disappearance clears stale health",
+        "pass": true,
+        "detail": null
+      },
+      {
+        "name": "no page errors during live state changes",
+        "pass": true,
+        "detail": []
+      }
+    ]
+  },
+  "additional_baseline_comparison": {
+    "suite": "test/hud-contact-roster-visibility.test.mjs",
+    "original": {
+      "passed": 2,
+      "failed": 4
+    },
+    "candidate": {
+      "passed": 2,
+      "failed": 4
+    },
+    "new_failures": 0,
+    "detail": "Same four roster/projection assertions; the suite was not edited. Read the packaged baseline comparison."
+  },
+  "limitations": [
+    "Browser evidence uses the real production SVG and real createHud with synthetic entity state, not a running 3D game.",
+    "The source packet omits heavyweight game assets. No gameplay FPS, integrated-GPU cost or full-game acceptance claim is made.",
+    "DOM update benchmark is a microbenchmark in this environment, not a guaranteed target-PC timing.",
+    "Patch is pinned to the listed base commit. Newer overlapping work requires conflict-aware reconciliation."
+  ]
+}

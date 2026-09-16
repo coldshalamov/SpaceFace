@@ -3,7 +3,7 @@ import { contractDossierView, termRow } from '../../src/ui/views/contractPresent
 import { navigationFrameHtml } from '../../src/ui/views/navigationFrame.js';
 import { CSS as navigationCss } from '../../src/ui/views/navigationStyles.js';
 import { injectHudCss } from '../../src/ui/views/hudStyles.js';
-import { shipConditionMarkup, hudBarMarkup } from '../../src/ui/views/flightInstruments.js';
+import { shipConditionMarkup, updateShipCondition, hudBarMarkup } from '../../src/ui/views/flightInstruments.js';
 import { targetFrameHtml } from '../../src/ui/views/targetFrame.js';
 import { createPowerRail, RAIL_SLOTS } from '../../src/ui/powerRail.js';
 import { techTreeScreen } from '../../src/ui/screens/techTree.js';
@@ -127,9 +127,9 @@ function flight() {
   const hud=document.querySelector('#hud');hud.style.position='fixed';
   const left=el('div','sf-leftstack'), context=el('div','sf-leftcontext');
   context.innerHTML='<div class="sf-mission-tracker"><p class="k-caps">Tracked delivery</p><strong>Sealed cargo to Vesta</strong><p class="k-t-fine">Dock at Vesta Exchange · 6 u intact</p></div><div class="sf-nav-readout"><strong class="sf-nav-readout__h">Vesta Exchange</strong><div class="sf-nav-readout__sub">2.4 km · approach</div></div>';
-  const bars=el('div','sf-bars');bars.innerHTML='<div class="sf-condition-head"><div class="sf-condition-metrics"><span class="sf-cond-stat">Hull <strong>'+(edge==='danger'?'24':'86')+'%</strong></span><span class="sf-cond-stat">Shield <strong>'+(edge==='danger'?'12':'78')+'%</strong></span></div></div>';
-  const schematic=el('div','sf-schematic'+(edge==='danger'?' sf-sch-critical':''));schematic.innerHTML=shipConditionMarkup('ship_kestrel');schematic.style.setProperty('--hull-pct',edge==='danger'?'24%':'86%');schematic.setAttribute('role','img');schematic.setAttribute('aria-label',edge==='danger'?'Hull 24 percent; shield 12 percent':'Hull 86 percent; shield 78 percent');
-  const shield=schematic.querySelector('.sf-sch-shield');shield.style.strokeDasharray='289';shield.style.strokeDashoffset=edge==='danger'?'254':'64';bars.appendChild(schematic);
+  const bars=el('div','sf-bars sf-bars--lamina');
+  const schematic=el('div','sf-schematic sf-integrity');schematic.innerHTML=shipConditionMarkup('ship_kestrel');bars.appendChild(schematic);
+  updateShipCondition(schematic,{id:'fixture-player',data:{defId:'ship_kestrel'},hull:edge==='danger'?24:86,hullMax:100,shield:edge==='danger'?12:78,shieldMax:100},0,true,true);
   [['energy','Energy',64],['boost','Drive',82],['heat','Heat',edge==='danger'?92:34],['fuel','Fuel',72]].forEach(([mod,label,value])=>{const row=el('div','sf-barrow');row.innerHTML=hudBarMarkup(label,mod);row.querySelector('.sf-bar__fill').style.transform='scaleX('+value/100+')';row.querySelector('.sf-barrow__num').textContent=value+'%';bars.appendChild(row);});
   append(left,context,bars);hud.appendChild(left);
   const right=el('div','sf-rightdock');

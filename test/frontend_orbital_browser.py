@@ -225,7 +225,7 @@ async def main():
       try:
         bounds=await page.evaluate('''() => {const p=document.querySelector('.sf-bars').getBoundingClientRect();return [...document.querySelectorAll('.sf-barrow__num')].map(e=>{let r=e.getBoundingClientRect();return {text:e.textContent,left:r.left,right:r.right,panelRight:p.right,contained:r.right<=p.right-4&&r.left>=p.left};});}''')
         assert all(b['contained'] for b in bounds),bounds
-        assert '24 percent' in await page.locator('.sf-schematic').get_attribute('aria-label')
+        assert '24 percent' in await page.locator('.sf-schematic .sf-integrity__hull-readout').get_attribute('aria-valuetext')
         assert 'Hull critical' in await page.locator('#alerts').inner_text()
         assert not errors,errors
         return {'scope':'Native instrument markup and CSS, synthetic values, no game loop','gaugeBounds':bounds,'dangerAlsoTextual':True}

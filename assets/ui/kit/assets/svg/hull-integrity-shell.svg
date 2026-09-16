@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1088" height="696" viewBox="0 0 272 174" fill="none">
+<title>Lamina — smoked-glass integrity carrier</title>
+<defs>
+ <linearGradient id="glass" x1="28" y1="3" x2="212" y2="185" gradientUnits="userSpaceOnUse"><stop stop-color="#213a4c"/><stop offset=".35" stop-color="#0c1c29"/><stop offset="1" stop-color="#060e18"/></linearGradient>
+ <linearGradient id="edge" x1="25" y1="0" x2="186" y2="164" gradientUnits="userSpaceOnUse"><stop stop-color="#b8e2f3" stop-opacity=".78"/><stop offset=".24" stop-color="#6390a8" stop-opacity=".26"/><stop offset=".74" stop-color="#6390a8" stop-opacity=".14"/><stop offset="1" stop-color="#a9e0f5" stop-opacity=".48"/></linearGradient>
+ <linearGradient id="facet" x1="0" y1="4" x2="133" y2="133" gradientUnits="userSpaceOnUse"><stop stop-color="#96d6ee" stop-opacity=".07"/><stop offset="1" stop-color="#102333" stop-opacity="0"/></linearGradient>
+ <linearGradient id="rule"><stop stop-color="#c3f4ff" stop-opacity=".5"/><stop offset="1" stop-color="#89cbe5" stop-opacity="0"/></linearGradient>
+</defs>
+<path d="M13 1h236l22 22v138l-12 12H1V13Z" fill="#02060a"/>
+<path d="M13 1.5h235.5l22 22V161l-11.5 11.5H1.5V13Z" fill="url(#glass)" stroke="url(#edge)"/>
+<path d="M14 5h133l-28 153H5V14Z" fill="url(#facet)"/>
+<path d="M129 31v111l-10 17" stroke="#78a7c1" stroke-opacity=".18"/>
+<path d="M14 28h98M140 109h118" stroke="url(#rule)"/>
+<path d="M1.5 48V13L13 1.5h52M249 172.5h10.5l11-11.5v-37" stroke="#c0e9fa" stroke-opacity=".36"/>
+<path d="M5 146v14l9 9h38" stroke="#183e56" stroke-width="2"/>
+<path d="M5 153v7l9 9h21" stroke="#87dfff" stroke-width="1.5"/>
+<path d="M250 4l18 18h-6L244 4Z" fill="#7daabd" fill-opacity=".18"/>
+<path d="M13 4h104" stroke="#d9f6ff" stroke-opacity=".07"/>
+</svg>

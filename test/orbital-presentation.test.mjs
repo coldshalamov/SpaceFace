@@ -91,9 +91,9 @@ test('target presentation retains distinct selected and engaged identities', () 
   assert.match(html,/aria-label="Cycle target component"/);
 });
 test('ship condition follows canonical active hull, never the menu scout image', () => {
-  const a=shipConditionMarkup('ship_kestrel'), b=shipConditionMarkup('ship_mule');
-  assert.notEqual(a,b);assert.equal(shipConditionMarkup('unknown'),a);
-  assert.doesNotMatch(a,/<img|\.png|fetch\(/);assert.match(a,/sf-sch-ship-fill-crop/);
+  const a=shipConditionMarkup('ship_kestrel','contract'), b=shipConditionMarkup('ship_mule','contract');
+  assert.notEqual(a,b);assert.equal(shipConditionMarkup('unknown','contract'),a);
+  assert.doesNotMatch(a,/<img|\.png|fetch\(/);assert.match(a,/sf-integrity__lamina/);assert.match(a,/clipPathUnits="userSpaceOnUse"/);
 });
 test('gauge label escapes text and rejects arbitrary modifier classes', () => {
   assert.match(hudBarMarkup('<fuel>','energy'),/&lt;fuel&gt;/);

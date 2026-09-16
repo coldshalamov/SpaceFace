@@ -10,14 +10,7 @@ export function hullMarkSvg(cls, defId) {
   const body = SHIP_SILHOUETTES[defId] || SHIP_SILHOUETTES.ship_kestrel;
   return `<svg class="sf-sch-ship ${escapeMarkup(cls)}" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" preserveAspectRatio="xMidYMid meet"><g class="sf-sch-hull">${body}</g></svg>`;
 }
-export function shipConditionMarkup(defId) {
-  return '<svg class="sf-sch-ring" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-    '<circle class="sf-sch-track" cx="50" cy="50" r="46"/>' +
-    '<circle class="sf-sch-shield" cx="50" cy="50" r="46" transform="rotate(-90 50 50)"/></svg>' +
-    '<div class="sf-sch-ship-wrap">' + hullMarkSvg('sf-sch-ship--empty', defId) +
-    '<div class="sf-sch-ship-fill-crop">' + hullMarkSvg('sf-sch-ship--fill', defId) +
-    '</div><div class="sf-sch-fill-line"></div></div>';
-}
+export { shipConditionMarkup, updateShipCondition } from './hullIntegrity.js';
 
 function kitSegs() {
   let html = '';
