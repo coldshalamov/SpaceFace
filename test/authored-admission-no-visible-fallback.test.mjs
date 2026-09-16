@@ -7,6 +7,8 @@ import {
   authoredBootstrapPreloadPlan,
   buildAuthoredPlaceProp,
   buildAuthoredStationArchetype,
+  collectFirstFlightCookEntities,
+  isFirstFlightCookEntity,
   isInitialAuthoredCompositionEntity,
   resolvePlaceFileForEntity,
   upgradeAuthoredPlaceBoundaryForProbe,
@@ -1076,4 +1078,63 @@ test('the default Helios relay settles inside the loading-time authored runway',
   };
   assert.equal(isInitialAuthoredCompositionEntity(interceptor, later), false,
     'a later Continue does not keep composing far story ships');
+
+  const spindle = {
+    id: 9,
+    alive: true,
+    type: 'payload',
+    pos: { x: 92, z: 0 },
+    data: {
+      scenarioActorId: 'evidence_spindle_47a',
+      assetRef: 'asset.slice.47a_spindle',
+    },
+  };
+  const nearbyWreck = {
+    id: 10,
+    alive: true,
+    type: 'wreck',
+    pos: { x: 340, z: 220 },
+    data: { assetRef: 'asset.slice.bourse_carrier_wreck' },
+  };
+  assert.equal(isInitialAuthoredCompositionEntity(spindle, state), false,
+    'the 47-A spindle stays out of the authored opening set');
+  assert.equal(isFirstFlightCookEntity(spindle, state), true,
+    'the on-table spindle must still cook before first flight bloom');
+  assert.equal(isFirstFlightCookEntity(nearbyWreck, state), false,
+    'the carrier wreck is not a first-flight cook subject');
+
+  const nearRock = {
+    id: 11, alive: true, type: 'asteroid', pos: { x: 40, z: 0 }, data: {},
+  };
+  const sameVariantRock = {
+    id: 14, alive: true, type: 'asteroid', pos: { x: 50, z: 0 }, data: {},
+  };
+  const otherVariantRock = {
+    id: 15, alive: true, type: 'asteroid', pos: { x: 80, z: 0 }, data: {},
+  };
+  const farRock = {
+    id: 16, alive: true, type: 'asteroid', pos: { x: 2400, z: 0 }, data: {},
+  };
+  const rockState = {
+    ...state,
+    entityList: [player, spindle, nearbyWreck, nearRock, sameVariantRock, otherVariantRock, farRock],
+    entities: new Map([
+      [player.id, player],
+      [spindle.id, spindle],
+      [nearbyWreck.id, nearbyWreck],
+      [nearRock.id, nearRock],
+      [sameVariantRock.id, sameVariantRock],
+      [otherVariantRock.id, otherVariantRock],
+      [farRock.id, farRock],
+    ]),
+  };
+  const cookedIds = collectFirstFlightCookEntities(rockState).map((entity) => entity.id);
+  assert.equal(cookedIds.includes(spindle.id), true);
+  assert.equal(cookedIds.includes(nearRock.id), true);
+  assert.equal(cookedIds.includes(sameVariantRock.id), false,
+    'a second rock of the same type and displacement variant is not a separate cook subject');
+  assert.equal(cookedIds.includes(otherVariantRock.id), true,
+    'the nearest unused displacement variant still cooks');
+  assert.equal(cookedIds.includes(farRock.id), false);
+  assert.equal(cookedIds.includes(nearbyWreck.id), false);
 });

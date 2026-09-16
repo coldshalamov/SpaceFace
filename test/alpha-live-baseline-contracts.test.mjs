@@ -107,7 +107,7 @@ function testStationSequenceValidator() {
   assert.deepEqual(accepted.visibleTabLabels, ['Market', 'Shipyard', 'Missions']);
   assert.equal(accepted.contentFingerprint, 'station-content-v1');
   assert.deepEqual(accepted.sequence[0].undockAction, {
-    selector: 'button.st-undock',
+    selector: 'button[data-act="undock"]',
     canonicalMatchCount: 1,
     visibleCanonicalMatchCount: 1,
     present: true,
@@ -182,7 +182,7 @@ function testStationSequenceValidator() {
   assertStationActionRejected(stable, {
     ariaDisabled: 'true',
     effectiveAriaDisabled: true,
-    ariaDisabledAncestry: ['button.st-undock'],
+    ariaDisabledAncestry: ['button[data-act="undock"]'],
   }, /effective aria-disabled/i,
   'effective aria-disabled canonical action rejects settlement');
   assertStationActionRejected(stable, { ariaDisabled: 'true' },
@@ -665,7 +665,7 @@ function stationFrame(index) {
     contentLength: 120,
     undockVisible: true,
     undockAction: {
-      selector: 'button.st-undock',
+      selector: 'button[data-act="undock"]',
       canonicalMatchCount: 1,
       visibleCanonicalMatchCount: 1,
       present: true,
@@ -705,7 +705,7 @@ function stationFrame(index) {
 function computedUndockRoleProof(boundary, patch = {}) {
   return {
     boundary,
-    selector: 'button.st-undock',
+    selector: 'button[data-act="undock"]',
     canonicalCount: 1,
     computedRoleCount: 1,
     identityBoundCount: 1,

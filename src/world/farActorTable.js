@@ -8,6 +8,7 @@ import { ensureActivityClassified, physicsReachWuFromState } from './activityRun
 import { getAsteroidFieldRock } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
 import { advanceWorldRecord, normalizeIntent } from './worldCatchup.js';
+import { resolveFarEncounters } from './farEncounterOutcomes.js';
 
 export const FAR_ACTOR_SCHEMA = 'spaceface.farActors.v1';
 export const FAR_ACTOR_CELL = 400;
@@ -453,6 +454,7 @@ export function tickFarActors(state, helpers, bus) {
       });
     }
   }
+  resolveFarEncounters(state, simTime);
   return { shelved, restored };
 }
 

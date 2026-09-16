@@ -22,7 +22,7 @@ import {
   physicsReachWu,
 } from './activityClassification.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
-import { shouldOwnerThink } from '../core/activityScheduler.js';
+import { hasNearWorkSlot, shouldOwnerThink } from '../core/activityScheduler.js';
 import { ballisticDrift, consumeScheduledWorldWake } from './worldCatchup.js';
 import {
   captureEntityRecord,
@@ -1082,6 +1082,7 @@ export function entityNeedsAiThink(entity, state = null) {
   const tier = activity.simTier;
   if (tier === SIM_TIER.S0_EXACT) return true;
   if (tier === SIM_TIER.S1_NEAR) {
+    if (!hasNearWorkSlot(state, entity)) return false;
     const tick = state && Number.isInteger(state.tick) ? state.tick : 0;
     return shouldOwnerThink(tick, entity, {
       nearPeriodTicks: 2,

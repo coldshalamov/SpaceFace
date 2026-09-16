@@ -219,6 +219,15 @@ export function resolveFirstUseEntityId(state, payload = {}) {
   if (index && index.__spacefaceEntityIndexV1) {
     const indexed = index.byStationId && index.byStationId.get(stationId);
     if (indexed && indexed.alive !== false) return indexed.id;
+    const stations = index.stations;
+    if (Array.isArray(stations)) {
+      for (const entity of stations) {
+        if (entity && entity.alive !== false && entity.data && entity.data.stationId === stationId) {
+          return entity.id;
+        }
+      }
+    }
+    return null;
   }
   for (const entity of state.entityList || []) {
     if (entity && entity.alive !== false && entity.data && entity.data.stationId === stationId) {

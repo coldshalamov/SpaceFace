@@ -1,5 +1,5 @@
 <!-- LIFETIME: STABLE -->
-<!-- Front door for this folder. Dispatch and sequencing belong to CANONICAL_BUILD_MAP.md plus the admitted queue; EXPANSION_PROGRAM.md and TOP10_ROI_ASSET_PLAN.md are research context only. Craft and acceptance belong to docs/visual-assets/. -->
+<!-- Front door for this folder. Dispatch and sequencing belong to build_map.md plus the admitted queue; EXPANSION_PROGRAM.md and TOP10_ROI_ASSET_PLAN.md are research context only. Craft and acceptance belong to docs/visual-assets/. -->
 # Graphics Program — Start Here
 
 > **Manual sprint kit — explicit activation required.** The files in this folder coordinate named
@@ -20,7 +20,7 @@ authorize quality cuts, arbitrary asset budgets, or process metrics as substitut
    [`.grok/skills/spaceface-blender-material-truth/SKILL.md`](../../.grok/skills/spaceface-blender-material-truth/SKILL.md)
    and its material-truth preflight before modeling, not only after a plastic/clay/primitive defect
    is reported.
-3. Root [`CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md) and the admitted program queue own
+3. Root [`build_map.md`](../../build_map.md) and the admitted program queue own
    **dispatch, priority, and build order**.
 4. [`design/program/EXPANSION_PROGRAM.md`](../program/EXPANSION_PROGRAM.md) and
    [`TOP10_ROI_ASSET_PLAN.md`](TOP10_ROI_ASSET_PLAN.md) supply **research context and a measured

@@ -543,10 +543,28 @@ export class QuarksVfxSystem {
   }
 
   dispose() {
+    // detach first so nothing renders a half-torn-down batch
     if (this.scene) {
       this.scene.remove(this.renderer);
       this.scene.remove(this.root);
       this.scene = null;
     }
+    // ParticleSystem.dispose removes the emitter and unregisters from its batch; the batches
+    // themselves hold merged instanced geometry + generated ShaderMaterials that three.quarks
+    // never frees, so they need an explicit dispose or every presenter teardown leaks them.
+    for (const sys of [
+      this.impactSpall, this.shieldShards, this.muzzleSparks, this.casingEjection,
+      this.retroVenting, this.miningEjecta, this.collisionSpall, this.damageVenting,
+      this.shrapnel,
+    ]) {
+      if (sys && typeof sys.dispose === 'function') sys.dispose();
+    }
+    for (const batch of this.renderer.batches || []) {
+      if (!batch) continue;
+      if (batch.material && typeof batch.material.dispose === 'function') batch.material.dispose();
+      if (typeof batch.dispose === 'function') batch.dispose();
+    }
+    if (this.renderer.batches) this.renderer.batches.length = 0;
+    if (this.renderer.systemToBatchIndex) this.renderer.systemToBatchIndex.clear();
   }
 }

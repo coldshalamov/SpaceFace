@@ -1,4 +1,5 @@
 import { globalToFrame } from '../core/coordinates.js';
+import { entityWeaponBlocked } from '../combat/runtime.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
 import { readFrameOrigin } from './frameCoordinates.js';
 
@@ -7,6 +8,7 @@ export const CAMERA_DIRECTOR_MIN_ZOOM = 58;
 // legal 330 ceiling rather than crop either ship, but must report that authored-envelope overflow.
 export const CAMERA_DIRECTOR_MAX_ZOOM = 180;
 export const CAMERA_DIRECTOR_ENGINE_MAX_ZOOM = 330;
+export const CAMERA_DIRECTOR_COMBAT_MAX_ZOOM = 528;
 // Standard combat-pair margin: content stays inside NDC +/-0.80 → 10% context each side.
 export const CAMERA_DIRECTOR_SAFE_NDC = 0.8;
 // Focus shares the same 10% functional safe frame; extra cinematic tightening must never push an
@@ -64,6 +66,7 @@ const DEFAULT_ZOOM = 72;
 const DEFAULT_RADIUS = 4;
 const FOLLOW_MIN_ZOOM = 45;
 const FIT_SEARCH_STEPS = 24;
+const CONTEXT_ZOOM_OUT_STEP_MAX_WU = 5.5;
 
 const _frameOriginScratch = { x: 0, z: 0 };
 const _entityLocalA = { x: 0, z: 0 };
@@ -492,6 +495,7 @@ function cameraThreatCandidates(state) {
 
 function requiredThreatContextZoom(
   state, player, primaryTarget, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+  safeNdc = CAMERA_DIRECTOR_SAFE_NDC, activeOnly = false,
 ) {
   if (!state || !player || !player.pos || !state.entities || typeof state.entities.values !== 'function') {
     return CAMERA_DIRECTOR_MIN_ZOOM;
@@ -501,6 +505,11 @@ function requiredThreatContextZoom(
   let required = CAMERA_DIRECTOR_MIN_ZOOM;
   for (const ent of cameraThreatCandidates(state)) {
     if (!isActiveHostileThreat(state, player, ent, primaryTarget)) continue;
+    if (activeOnly) {
+      const combat = ent.data && ent.data.combat;
+      if (!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))
+        || entityWeaponBlocked(state, ent)) continue;
+    }
     const dx = ent.pos.x - player.pos.x;
     const dz = ent.pos.z - player.pos.z;
     if (dx * dx + dz * dz > range2) continue;
@@ -508,7 +517,7 @@ function requiredThreatContextZoom(
       required,
       requiredZoomForEntity(
         ent, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
-        _entityLocalThreat, CAMERA_DIRECTOR_SAFE_NDC,
+        _entityLocalThreat, safeNdc,
       ),
     );
   }
@@ -624,14 +633,15 @@ export function createCameraDirector() {
 
   function requiredCombatZoom(
     state, player, target, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
-    prediction = null,
+    prediction = null, threatPlayer = player, activeOnly = false,
   ) {
     const pairRequired = requiredPairZoom(
       player, target, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
       prediction,
     );
     const threatRequired = requiredThreatContextZoom(
-      state, player, target, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+      state, threatPlayer, target, focusX, focusZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+      activeOnly ? 0.95 : CAMERA_DIRECTOR_SAFE_NDC, activeOnly,
     );
     return Math.max(pairRequired, threatRequired);
   }
@@ -879,7 +889,7 @@ export function createCameraDirector() {
         const cosTilt = Math.cos(tilt);
         const pairA = (requestedMode === CameraDirectorMode.TWO_BODY && twoBodyPair) ? twoBodyPair.a : player;
         const pairB = (requestedMode === CameraDirectorMode.TWO_BODY && twoBodyPair) ? twoBodyPair.b : target;
-        const pairOnlyZoom = trainingFocusPair || requestedMode === CameraDirectorMode.TWO_BODY;
+        const pairOnlyZoom = trainingFocusPair;
         const playerRadius = entityRadius(pairA);
         const targetRadius = entityRadius(pairB);
         globalToFrame(pairA.pos, frameOrigin, _entityLocalA);
@@ -956,8 +966,12 @@ export function createCameraDirector() {
             )
           ) * 0.5;
         }
+        const twoBodyThreatRequired = requestedMode === CameraDirectorMode.TWO_BODY
+          ? requiredThreatContextZoom(state, player, pairB, desiredX, desiredZ,
+            tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, 0.95, true)
+          : CAMERA_DIRECTOR_MIN_ZOOM;
         const desiredRequired = requestedMode === CameraDirectorMode.TWO_BODY
-          ? twoBodyRequired
+          ? Math.max(twoBodyRequired, twoBodyThreatRequired)
           : pairOnlyZoom
             ? requiredPairZoom(
               pairA, pairB, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
@@ -967,7 +981,18 @@ export function createCameraDirector() {
               state, pairA, pairB, desiredX, desiredZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
               pairPrediction,
             );
-        const pairZoomMax = CAMERA_DIRECTOR_ENGINE_MAX_ZOOM;
+        let pairZoomMax = CAMERA_DIRECTOR_ENGINE_MAX_ZOOM;
+        if (requestedMode === CameraDirectorMode.TWO_BODY && twoBodyThreatRequired > CAMERA_DIRECTOR_MIN_ZOOM) {
+          const playerLocalZ = player.pos.z - frameOrigin.z;
+          const playerRadiusForContext = Math.max(0, finiteOr(player.radius, 0));
+          const maxPlayerDepth = playerRadiusForContext * 0.99 / (tanHalfFov * aspect * 0.04);
+          const depthOffset = cosTilt * Math.max(0, playerLocalZ - desiredZ, playerLocalZ - output.focusZ);
+          pairZoomMax = Math.max(CAMERA_DIRECTOR_ENGINE_MAX_ZOOM, Math.min(
+            CAMERA_DIRECTOR_COMBAT_MAX_ZOOM,
+            finiteOr(view.maxZoom, CAMERA_DIRECTOR_ENGINE_MAX_ZOOM),
+            maxPlayerDepth - depthOffset,
+          ));
+        }
         // Overflow describes the best authored pair pose, not the transient pose during its ease.
         // Publish it immediately so a 245-wu requirement can never masquerade as a successful
         // 180-wu fit while the visible camera is still moving.
@@ -999,7 +1024,7 @@ export function createCameraDirector() {
           )
           : requiredCombatZoom(
             state, pairA, pairB, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
-            pairPrediction,
+            pairPrediction, player, requestedMode === CameraDirectorMode.TWO_BODY,
           );
         // Do not move the focus ahead of the authored 0.35-second composition ease just to make an
         // intermediate frame look settled. Once acquired, the bounded search may keep a moving,
@@ -1020,7 +1045,7 @@ export function createCameraDirector() {
               )
               : requiredCombatZoom(
                 state, pairA, pairB, probeX, probeZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
-                pairPrediction,
+                pairPrediction, player, requestedMode === CameraDirectorMode.TWO_BODY,
               );
             if (probeRequired <= pairZoomMax) hi = mid;
             else lo = mid;
@@ -1034,7 +1059,7 @@ export function createCameraDirector() {
             )
             : requiredCombatZoom(
               state, pairA, pairB, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin, pairSafeNdc,
-              pairPrediction,
+              pairPrediction, player, requestedMode === CameraDirectorMode.TWO_BODY,
             );
         }
 
@@ -1046,12 +1071,25 @@ export function createCameraDirector() {
         // pair fitted immediately; impossible pairs remain clamped and explicitly reported.
         // TWO_BODY is a taut-line picture: ease the look-at so the takeover is not a cut, but never
         // stay tighter than the current-focus fit. Zooming out is not a cut; cropping the rock is.
-        const appliedZoom = (easingEntry && requestedMode !== CameraDirectorMode.TWO_BODY)
+        let appliedZoom = (easingEntry && requestedMode !== CameraDirectorMode.TWO_BODY)
           ? candidateZoom
           : Math.max(candidateZoom, required);
+        if (requestedMode === CameraDirectorMode.TWO_BODY) {
+          const pairRequiredNow = requiredPairZoom(
+            pairA, pairB, candidateX, candidateZ, tanHalfFov, aspect, sinTilt, cosTilt, frameOrigin,
+            pairSafeNdc, pairPrediction,
+          );
+          const desiredApplied = Math.max(candidateZoom, Math.min(required, pairZoomMax));
+          appliedZoom = twoBodyThreatRequired > CAMERA_DIRECTOR_MIN_ZOOM
+            ? Math.max(Math.min(pairRequiredNow, pairZoomMax),
+              Math.min(desiredApplied, output.zoom + CONTEXT_ZOOM_OUT_STEP_MAX_WU))
+            : desiredApplied;
+        }
         const transitionZoomMax = easingEntry
           ? Math.max(pairZoomMax, transitionStartZoom)
-          : pairZoomMax;
+          : requestedMode === CameraDirectorMode.TWO_BODY
+            ? Math.max(pairZoomMax, output.zoom)
+            : pairZoomMax;
         output.zoom = clamp(appliedZoom, CAMERA_DIRECTOR_MIN_ZOOM, transitionZoomMax);
         output.targetId = targetId;
         output.overflow = impossible;

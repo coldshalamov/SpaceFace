@@ -3,7 +3,7 @@
 
 Admitted executor for the reserved same-picture catalog in
 [`PERF_OPTION_SPACE.md`](../PERF_OPTION_SPACE.md). Queue identity:
-[`PQ-129`](./roadmap/active/PQ-129.md). Map door: [`CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md)
+[`PQ-129`](./roadmap/active/PQ-129.md). Map door: [`build_map.md`](../../build_map.md)
 §1 and §8.4.
 
 This file is method and evidence. It does not replace the catalog. It does not lower default

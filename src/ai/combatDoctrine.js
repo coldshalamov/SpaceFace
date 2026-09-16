@@ -643,7 +643,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       faceTarget = true;
     } else maneuverKind = ManeuverKind.INTERCEPT;
     // C1 engagement scale: egress holds inside the camera envelope, not off-screen.
-    preferredRange = phase === 'extend' || phase === 'breakaway' ? 300
+    preferredRange = phase === 'extend' || phase === 'breakaway' ? 240
       : (brawler && phase === 'commit' ? 140 : (brawler ? 190 : 150));
     if (phase === 'strike' || phase === 'commit') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) {
@@ -665,22 +665,22 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     if (phase === 'recover' || phase === 'retreat') {
       maneuverKind = ManeuverKind.RETREAT;
       maneuverTargetId = null;
-      preferredRange = 620;
+      preferredRange = 320;
     } else if (phase === 'reform') {
       maneuverKind = ManeuverKind.FORMATION;
       maneuverTargetId = null;
-      preferredRange = 500;
+      preferredRange = 320;
     } else if (phase === 'anchor_hold' || phase === 'field_spool') {
       maneuverKind = ManeuverKind.HOLD;
-      preferredRange = 300;   // C1 engagement scale: controller hold stays inside the frame
+      preferredRange = 220;   // C1 engagement scale: controller hold stays inside the frame
     } else {
       maneuverKind = ManeuverKind.INTERCEPT;
-      preferredRange = 500;
+      preferredRange = 340;
     }
     if (phase === 'anchor_hold') allowedActionId = 'action_burst';
   } else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
     maneuverKind = ManeuverKind.ORBIT;
-    preferredRange = 380;   // C1 engagement scale: the broadside ring fits the fight on screen
+    preferredRange = 260;   // B3b: the broadside ring fits inside the composed frame
     lateralSign = record.side;
     faceTarget = true;
     formationLocked = true;
@@ -697,7 +697,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     } else if (phase === 'regroup') {
       maneuverKind = ManeuverKind.FORMATION;
       maneuverTargetId = null;
-      preferredRange = 500;
+      preferredRange = 320;
     } else {
       maneuverKind = phase === 'screen_approach' ? ManeuverKind.INTERCEPT : ManeuverKind.HOLD;
       preferredRange = 120;
@@ -706,7 +706,7 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
   } else {
     maneuverKind = phase === 'retreat' ? ManeuverKind.RETREAT
       : (phase === 'outer_standoff' || phase === 'reset' ? ManeuverKind.ORBIT : ManeuverKind.HOLD);
-    preferredRange = 330;   // C1 engagement scale: default standoff orbits inside the frame
+    preferredRange = 240;   // B3b: default standoff orbits inside the composed frame
     // The standoff orbit is translational: fixed-gun ships keep their nose on the target while
     // sliding around the engagement ring, so even high-inertia hulls are aligned before the cue.
     faceTarget = phase !== 'retreat';

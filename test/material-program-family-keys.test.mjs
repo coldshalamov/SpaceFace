@@ -36,6 +36,8 @@ const probe = runMaterialSharingContractProbe(THREE);
 assert.equal(probe.hullProgramFamilyShared, true, 'hull color variants share program-family name');
 assert.equal(probe.mechanicalProgramFamilyShared, true, 'mechanical color variants share program-family name');
 assert.equal(probe.maplessHullCanonicalized, true, 'mapless hull still canonicalizes into textured');
+assert.equal(probe.authoredHullRoleStamped, true, 'authored hulls stamp the shared hull role');
+assert.equal(probe.authoredPaintSharesProgramFamily, true, 'a new paint must not mint a program family');
 
 // --- Scenario props: many semantic names, few program families ---
 const refs = [

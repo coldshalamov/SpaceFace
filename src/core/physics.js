@@ -41,8 +41,6 @@ const COLLISION_MATERIALS = Object.freeze({
   asteroid: { push: 1, restitution: 0.24, tangentDamping: 0.08, impactScale: 1.1 },
   station: { push: 0.48, restitution: 0.05, tangentDamping: 0.35, impactScale: 0.35 },
 });
-const DYNAMIC_SPATIAL_QUERY_MIN_COLLIDABLES = 96;
-const DYNAMIC_SPATIAL_QUERY_MIN_ASTEROIDS = 96;
 const PICKUP_SPATIAL_PAIR_THRESHOLD = 128;
 const PLAYER_PROJECTILE_NEAR_MISS_MARGIN = 22;
 const ZERO_FRAME_ORIGIN = Object.freeze({ x: 0, z: 0 });
@@ -540,9 +538,11 @@ export const physics = {
       }
       e.pos.x += e.vel.x * dt;
       e.pos.z += e.vel.z * dt;
-      // NOTE: e.rot is NOT integrated here. Rotation (yaw + bank) is fully owned by flight.js
-      // (Phase 1 fix: the old `e.rot += e.angVel*dt` here double-applied rotation, since flight
-      // already advanced e.rot). Projectiles set their own rot in weapons/spawn; flight sets ships'.
+      // NOTE: e.rot is NOT integrated here for ships/drones because flight controls their yaw.
+      // Non-craft entities (wrecks, debris, asteroids) integrate angVel so physics wrecks tumble.
+      if (e.type !== 'ship' && e.type !== 'drone' && Number.isFinite(e.angVel) && e.angVel !== 0) {
+        e.rot = (e.rot || 0) + e.angVel * dt;
+      }
     }
   },
 
@@ -599,7 +599,13 @@ export const physics = {
       if (useHash) {
         const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (ship.radius || 0);
         out.length = 0;
-        state.spatialHash.queryRadius((start.x + end.x) * 0.5, (start.z + end.z) * 0.5, sweepRadius, out);
+        const mx = (start.x + end.x) * 0.5;
+        const mz = (start.z + end.z) * 0.5;
+        if (typeof state.spatialHash.queryRadiusCoherent === 'function') {
+          state.spatialHash.queryRadiusCoherent(ship.id, mx, mz, sweepRadius, out);
+        } else {
+          state.spatialHash.queryRadius(mx, mz, sweepRadius, out);
+        }
         candidates = out;
       }
       let bestTarget = null;
@@ -646,7 +652,13 @@ export const physics = {
       if (useHash) {
         const sweepRadius = Math.hypot(end.x - start.x, end.z - start.z) * 0.5 + (proj.radius || 0);
         out.length = 0;
-        state.spatialHash.queryRadius((start.x + end.x) * 0.5, (start.z + end.z) * 0.5, sweepRadius, out);
+        const mx = (start.x + end.x) * 0.5;
+        const mz = (start.z + end.z) * 0.5;
+        if (typeof state.spatialHash.queryRadiusCoherent === 'function') {
+          state.spatialHash.queryRadiusCoherent(proj.id, mx, mz, sweepRadius, out);
+        } else {
+          state.spatialHash.queryRadius(mx, mz, sweepRadius, out);
+        }
         candidates = out;
       }
       let bestTarget = null;
@@ -944,13 +956,8 @@ export function spatialHashLayersFromState(state) {
   return null;
 }
 
-function shouldMaintainDynamicSpatialHash(state) {
-  const index = state && state.entityIndex;
-  if (!index || !index.__spacefaceEntityIndexV1) return true;
-  const collidables = Array.isArray(index.collidables) ? index.collidables.length : 0;
-  const asteroids = Array.isArray(index.asteroids) ? index.asteroids.length : 0;
-  return collidables >= DYNAMIC_SPATIAL_QUERY_MIN_COLLIDABLES ||
-    asteroids >= DYNAMIC_SPATIAL_QUERY_MIN_ASTEROIDS;
+export function shouldMaintainDynamicSpatialHash(_state) {
+  return true;
 }
 
 function shouldUsePickupSpatialQuery(state, pickups, collectors) {

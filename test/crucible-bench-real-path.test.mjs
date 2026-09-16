@@ -6,7 +6,129 @@ import {
   simulateCrucibleSwarm,
   CRUCIBLE_LOADOUTS,
   CRUCIBLE_HARNESS_BUS_EVENTS,
+  createHostileInFrameSampler,
+  disposeHostileInFrameSampler,
+  sampleHostileInFrame,
 } from '../scripts/lib/bench/crucibleBench.mjs';
+import { Vector3 } from 'three';
+import { createChaseCamera } from '../src/render/camera.js';
+
+function framingFixture() {
+  const player = {
+    id: 1, type: 'ship', team: 0, alive: true, hull: 100, radius: 7,
+    pos: { x: 0, z: 0 }, vel: { x: 95, z: 0 }, maxSpeed: 95, flags: {}, data: {},
+  };
+  const hostile = {
+    id: 2, type: 'ship', team: 1, alive: true, hull: 100, radius: 6,
+    pos: { x: 0, z: -310 }, vel: { x: 0, z: 0 },
+    data: { combat: { targetId: 1 }, weapons: [{ range: 1000 }], intent: { fire: false } },
+  };
+  const state = {
+    playerId: 1, mode: 'flight', simTime: 0, tick: 0,
+    entities: new Map([[1, player], [2, hostile]]), entityList: [player, hostile],
+    player: {}, world: { frameOrigin: { x: 0, z: 0 } },
+    input: { aimWorld: null }, settings: { video: { fov: 50, motionReduce: true } },
+    camera: { zoom: 144, tilt: 60, lookAhead: 400, lerp: 6, trauma: 0 },
+  };
+  return { state, player, hostile };
+}
+
+test('B3b samples the real perspective camera including lead and focus easing without mutating sim camera', (t) => {
+  const { state, player, hostile } = framingFixture();
+  const originalCamera = structuredClone(state.camera);
+  const referenceState = Object.create(state);
+  referenceState.camera = { ...state.camera };
+  const reference = createChaseCamera(referenceState, { innerWidth: 1600, innerHeight: 900 });
+  reference.snapToPlayer();
+  const sampler = createHostileInFrameSampler();
+  t.after(() => disposeHostileInFrameSampler(sampler));
+  const point = new Vector3();
+  let expectedInFrame = 0;
+  for (let tick = 0; tick < 180; tick++) {
+    player.pos.x = tick * 95 / 60;
+    reference.follow(1 / 60);
+    reference.obj.updateMatrixWorld(true);
+    point.set(hostile.pos.x, 0, hostile.pos.z).project(reference.obj);
+    if (Math.abs(point.x) <= 1 && Math.abs(point.y) <= 1 && point.z >= -1 && point.z <= 1) expectedInFrame++;
+    sampleHostileInFrame(state, player, sampler, 1 / 60);
+  }
+  assert.equal(sampler.attackingTicks, 180);
+  assert.equal(sampler.inFrameTicks, expectedInFrame);
+  assert.deepEqual(state.camera, originalCamera);
+});
+
+test('B3b issued fire is counted even when doctrine phase says no fire', (t) => {
+  const { state, player, hostile } = framingFixture();
+  hostile.data.intent.fire = true;
+  hostile.data.weapons[0].range = 10;
+  const sampler = createHostileInFrameSampler();
+  t.after(() => disposeHostileInFrameSampler(sampler));
+  sampleHostileInFrame(state, player, sampler, 1 / 60, new Map([[2, { targetId: 1, fireWindow: false, tick: state.tick }]]));
+  assert.equal(sampler.attackingTicks, 1);
+  assert.equal(sampler.issuedFireTicks, 1);
+  assert.equal(sampler.excludedPhaseTicks, 0);
+});
+
+test('B3b includes choreography-authorized windows before weapon intent is admitted', (t) => {
+  const { state, player, hostile } = framingFixture();
+  hostile.data.ai = { squadFrame: { fireAuthorized: true } };
+  hostile.data.intent.fireBlockReason = 'action_request_pending';
+  const sampler = createHostileInFrameSampler();
+  t.after(() => disposeHostileInFrameSampler(sampler));
+  const phases = new Map([[2, { targetId: 1, fireWindow: false, tick: 10 }]]);
+  state.tick = 10;
+  sampleHostileInFrame(state, player, sampler, 1 / 60, phases);
+  assert.equal(sampler.attackingTicks, 1);
+  assert.equal(sampler.issuedFireTicks, 0);
+  assert.equal(sampler.choreographyOverrideTicks, 1);
+  assert.equal(sampler.excludedPhaseTicks, 0);
+  hostile.data.ai.squadFrame.fireAuthorized = false;
+  state.tick = 11;
+  phases.get(2).tick = state.tick;
+  sampleHostileInFrame(state, player, sampler, 1 / 60, phases);
+  assert.equal(sampler.attackingTicks, 1);
+  assert.equal(sampler.excludedPhaseTicks, 1);
+  assert.equal(sampler.lockedTicks, 2);
+});
+
+test('B3b only current-tick false doctrine evidence can exclude attacking time', (t) => {
+  const { state, player } = framingFixture();
+  const sampler = createHostileInFrameSampler();
+  t.after(() => disposeHostileInFrameSampler(sampler));
+  const phases = new Map([[2, { targetId: 1, fireWindow: false, tick: 10 }]]);
+  state.tick = 10;
+  sampleHostileInFrame(state, player, sampler, 1 / 60, phases);
+  assert.equal(sampler.excludedPhaseTicks, 1);
+  assert.equal(sampler.attackingTicks, 0);
+  state.tick = 11;
+  for (const evidenceTick of [10, undefined, null, 12, '11', NaN, 11.5]) {
+    phases.get(2).tick = evidenceTick;
+    sampleHostileInFrame(state, player, sampler, 1 / 60, phases);
+  }
+  state.tick = undefined;
+  phases.get(2).tick = undefined;
+  sampleHostileInFrame(state, player, sampler, 1 / 60, phases);
+  assert.equal(sampler.attackingTicks, 8);
+  assert.equal(sampler.excludedPhaseTicks, 1);
+  assert.equal(sampler.lockedTicks, 9);
+  assert.equal(sampler.lockedTicks, sampler.attackingTicks + sampler.excludedPhaseTicks
+    + sampler.excludedWeaponTicks + sampler.excludedRangeTicks);
+});
+
+test('B3b retains exclusion accounting and counts missing doctrine evidence', (t) => {
+  const { state, player, hostile } = framingFixture();
+  const sampler = createHostileInFrameSampler();
+  t.after(() => disposeHostileInFrameSampler(sampler));
+  sampleHostileInFrame(state, player, sampler, 1 / 60, new Map([[2, { targetId: 1, fireWindow: false, tick: state.tick }]]));
+  hostile.data.weapons[0].range = 10;
+  sampleHostileInFrame(state, player, sampler, 1 / 60);
+  hostile.data.weapons[0].range = 1000;
+  sampleHostileInFrame(state, player, sampler, 1 / 60);
+  assert.equal(sampler.lockedTicks, 3);
+  assert.equal(sampler.excludedPhaseTicks, 1);
+  assert.equal(sampler.excludedRangeTicks, 1);
+  assert.equal(sampler.attackingTicks, 1);
+});
 
 const VISION = 'Crucible first: every combat number is tuned in the Crucible bench, and adventure inherits it.';
 const SEED = 4242;

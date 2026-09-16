@@ -7,7 +7,7 @@ budget to finish them. Work is resumed across threads, so the state has to live 
 It is a CHECKPOINT, not a lock board. Nothing here is a reason to stop. Compare it against
 `git log` and reality; recent commits beat this file.
 
-Program spec: `CANONICAL_BUILD_MAP.md` §11.12 and `design/frontend/NEXT_JOBS.md` (J01–J16).
+Program spec: `build_map.md` §11.12 and `design/frontend/NEXT_JOBS.md` (J01–J16).
 
 ---
 

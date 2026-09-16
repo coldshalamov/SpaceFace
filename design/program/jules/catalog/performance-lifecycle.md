@@ -15,7 +15,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/renderer.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of renderer frame preparation and draw in the smallest representative route.
@@ -47,7 +47,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/renderer.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of renderer frame preparation and draw in the smallest representative route.
@@ -79,7 +79,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/renderer.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of renderer frame preparation and draw in the smallest representative route.
@@ -111,7 +111,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/renderer.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of renderer frame preparation and draw in the smallest representative route.
@@ -143,7 +143,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/renderer.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of renderer frame preparation and draw in the smallest representative route.
@@ -175,7 +175,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/visualFactory.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of world visual factory in the smallest representative route.
@@ -206,7 +206,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/visualFactory.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of world visual factory in the smallest representative route.
@@ -237,7 +237,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/visualFactory.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of world visual factory in the smallest representative route.
@@ -268,7 +268,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/visualFactory.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of world visual factory in the smallest representative route.
@@ -299,7 +299,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/visualFactory.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of world visual factory in the smallest representative route.
@@ -330,7 +330,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of pooled VFX runtime in the smallest representative route.
@@ -362,7 +362,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of pooled VFX runtime in the smallest representative route.
@@ -394,7 +394,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of pooled VFX runtime in the smallest representative route.
@@ -426,7 +426,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of pooled VFX runtime in the smallest representative route.
@@ -458,7 +458,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of pooled VFX runtime in the smallest representative route.
@@ -490,7 +490,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/spaceBackground.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of space background compositor in the smallest representative route.
@@ -521,7 +521,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/spaceBackground.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of space background compositor in the smallest representative route.
@@ -552,7 +552,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/spaceBackground.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of space background compositor in the smallest representative route.
@@ -583,7 +583,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/spaceBackground.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of space background compositor in the smallest representative route.
@@ -614,7 +614,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/spaceBackground.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of space background compositor in the smallest representative route.
@@ -645,7 +645,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/starfield.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of starfield in the smallest representative route.
@@ -676,7 +676,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/starfield.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of starfield in the smallest representative route.
@@ -707,7 +707,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/starfield.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of starfield in the smallest representative route.
@@ -738,7 +738,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/starfield.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of starfield in the smallest representative route.
@@ -769,7 +769,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/starfield.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of starfield in the smallest representative route.
@@ -800,7 +800,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/parallaxLayers.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of parallax layers in the smallest representative route.
@@ -831,7 +831,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/parallaxLayers.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of parallax layers in the smallest representative route.
@@ -862,7 +862,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/parallaxLayers.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of parallax layers in the smallest representative route.
@@ -893,7 +893,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/parallaxLayers.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of parallax layers in the smallest representative route.
@@ -924,7 +924,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/parallaxLayers.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of parallax layers in the smallest representative route.
@@ -955,7 +955,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/bloom.js`, `src/render/post/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of bloom and post-processing in the smallest representative route.
@@ -987,7 +987,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/bloom.js`, `src/render/post/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of bloom and post-processing in the smallest representative route.
@@ -1019,7 +1019,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/bloom.js`, `src/render/post/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of bloom and post-processing in the smallest representative route.
@@ -1051,7 +1051,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/bloom.js`, `src/render/post/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of bloom and post-processing in the smallest representative route.
@@ -1083,7 +1083,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/bloom.js`, `src/render/post/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of bloom and post-processing in the smallest representative route.
@@ -1115,7 +1115,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/assetLoader.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of authored asset loading in the smallest representative route.
@@ -1147,7 +1147,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/assetLoader.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of authored asset loading in the smallest representative route.
@@ -1179,7 +1179,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/assetLoader.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of authored asset loading in the smallest representative route.
@@ -1211,7 +1211,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/assetLoader.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of authored asset loading in the smallest representative route.
@@ -1243,7 +1243,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/assetLoader.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of authored asset loading in the smallest representative route.
@@ -1275,7 +1275,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/partsLibrary.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of ship parts composition in the smallest representative route.
@@ -1307,7 +1307,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/partsLibrary.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of ship parts composition in the smallest representative route.
@@ -1339,7 +1339,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/partsLibrary.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of ship parts composition in the smallest representative route.
@@ -1371,7 +1371,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/partsLibrary.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of ship parts composition in the smallest representative route.
@@ -1403,7 +1403,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/partsLibrary.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of ship parts composition in the smallest representative route.
@@ -1435,7 +1435,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/precompile.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of shader and asset precompile in the smallest representative route.
@@ -1467,7 +1467,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/precompile.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of shader and asset precompile in the smallest representative route.
@@ -1499,7 +1499,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/precompile.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of shader and asset precompile in the smallest representative route.
@@ -1531,7 +1531,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/precompile.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of shader and asset precompile in the smallest representative route.
@@ -1563,7 +1563,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/precompile.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of shader and asset precompile in the smallest representative route.
@@ -1595,7 +1595,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/adaptiveQuality.js`, `src/render/lod.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of adaptive quality and LOD in the smallest representative route.
@@ -1626,7 +1626,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/adaptiveQuality.js`, `src/render/lod.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of adaptive quality and LOD in the smallest representative route.
@@ -1657,7 +1657,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/adaptiveQuality.js`, `src/render/lod.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of adaptive quality and LOD in the smallest representative route.
@@ -1688,7 +1688,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/adaptiveQuality.js`, `src/render/lod.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of adaptive quality and LOD in the smallest representative route.
@@ -1719,7 +1719,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/render/adaptiveQuality.js`, `src/render/lod.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of adaptive quality and LOD in the smallest representative route.
@@ -1750,7 +1750,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of flight HUD update path in the smallest representative route.
@@ -1781,7 +1781,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of flight HUD update path in the smallest representative route.
@@ -1812,7 +1812,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of flight HUD update path in the smallest representative route.
@@ -1843,7 +1843,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of flight HUD update path in the smallest representative route.
@@ -1874,7 +1874,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of flight HUD update path in the smallest representative route.
@@ -1905,7 +1905,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of radar update path in the smallest representative route.
@@ -1936,7 +1936,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of radar update path in the smallest representative route.
@@ -1967,7 +1967,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of radar update path in the smallest representative route.
@@ -1998,7 +1998,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of radar update path in the smallest representative route.
@@ -2029,7 +2029,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of radar update path in the smallest representative route.
@@ -2060,7 +2060,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ai/stack.js`, `src/systems/aiPorts.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of tactical AI cadence in the smallest representative route.
@@ -2092,7 +2092,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ai/stack.js`, `src/systems/aiPorts.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of tactical AI cadence in the smallest representative route.
@@ -2124,7 +2124,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ai/stack.js`, `src/systems/aiPorts.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of tactical AI cadence in the smallest representative route.
@@ -2156,7 +2156,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ai/stack.js`, `src/systems/aiPorts.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of tactical AI cadence in the smallest representative route.
@@ -2188,7 +2188,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/ai/stack.js`, `src/systems/aiPorts.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of tactical AI cadence in the smallest representative route.
@@ -2220,7 +2220,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of traffic and world cadence in the smallest representative route.
@@ -2251,7 +2251,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of traffic and world cadence in the smallest representative route.
@@ -2282,7 +2282,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of traffic and world cadence in the smallest representative route.
@@ -2313,7 +2313,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of traffic and world cadence in the smallest representative route.
@@ -2344,7 +2344,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of traffic and world cadence in the smallest representative route.
@@ -2375,7 +2375,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/core/rapierCollisionWorld.js`, `src/core/spatialHash.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of physics and spatial-query path in the smallest representative route.
@@ -2407,7 +2407,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/core/rapierCollisionWorld.js`, `src/core/spatialHash.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of physics and spatial-query path in the smallest representative route.
@@ -2439,7 +2439,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/core/rapierCollisionWorld.js`, `src/core/spatialHash.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of physics and spatial-query path in the smallest representative route.
@@ -2471,7 +2471,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/core/rapierCollisionWorld.js`, `src/core/spatialHash.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of physics and spatial-query path in the smallest representative route.
@@ -2503,7 +2503,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/core/rapierCollisionWorld.js`, `src/core/spatialHash.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of physics and spatial-query path in the smallest representative route.
@@ -2535,7 +2535,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/systems/economy.js`, `src/systems/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of economy and mission cadence in the smallest representative route.
@@ -2566,7 +2566,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/systems/economy.js`, `src/systems/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of economy and mission cadence in the smallest representative route.
@@ -2597,7 +2597,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/systems/economy.js`, `src/systems/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of economy and mission cadence in the smallest representative route.
@@ -2628,7 +2628,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/systems/economy.js`, `src/systems/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of economy and mission cadence in the smallest representative route.
@@ -2659,7 +2659,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/systems/economy.js`, `src/systems/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of economy and mission cadence in the smallest representative route.
@@ -2690,7 +2690,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/audio/audioSystem.js`, `src/systems/presentationOrchestrator.js`, `src/presentation/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of audio and presentation cue path in the smallest representative route.
@@ -2721,7 +2721,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/audio/audioSystem.js`, `src/systems/presentationOrchestrator.js`, `src/presentation/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of audio and presentation cue path in the smallest representative route.
@@ -2752,7 +2752,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/audio/audioSystem.js`, `src/systems/presentationOrchestrator.js`, `src/presentation/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of audio and presentation cue path in the smallest representative route.
@@ -2783,7 +2783,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/audio/audioSystem.js`, `src/systems/presentationOrchestrator.js`, `src/presentation/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of audio and presentation cue path in the smallest representative route.
@@ -2814,7 +2814,7 @@ Find measurable structural waste and lifetime leaks without reducing default vis
 
 **Inspect:** `src/audio/audioSystem.js`, `src/systems/presentationOrchestrator.js`, `src/presentation/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/PERF_BUDGET.md`, `src/render/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Measure or instrument the current cost/lifetime behavior of audio and presentation cue path in the smallest representative route.

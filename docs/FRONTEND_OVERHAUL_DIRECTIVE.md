@@ -36,7 +36,7 @@ The following files in the repository contain poisoned instructions from the fai
 3. **`design/frontend/direction/HANDOFF_PROMPTS.md` & Task Files (`tasks/TASK_A_*.md` through `TASK_D_*.md`):**
    - *Toxic Mandate:* Instructed agents to systematically scour every screen (Title, Pause, Station Market, Shipworks, Bar, Contracts, Tech Tree, Codex, Settings) and strip away all container cards, tables, and buttons.
    - *Action:* **Do not use as reference.** They represent the systematic dismantling of game affordances.
-4. **Legacy Directives in `CANONICAL_BUILD_MAP.md §20.14` & `design/FRONTEND_DIRECTION.md`:**
+4. **Legacy Directives in `build_map.md §20.14` & `design/FRONTEND_DIRECTION.md`:**
    - Any reference pointing to `DIRECTION_SHEET.md` as the "decided direction" is formally superseded by this directive.
 
 ---

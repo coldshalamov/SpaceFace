@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// check-screen-memory.mjs — J4 "Screen state memory" (CANONICAL_BUILD_MAP §11.12).
+// check-screen-memory.mjs — J4 "Screen state memory" (build_map §11.12).
 //
 // The store is pure, so most of this is a real behavioural test rather than substring matching.
 // The rest guards decisions that only source can express, each one a trap this codebase supplies:

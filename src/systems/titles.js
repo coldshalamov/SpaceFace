@@ -19,6 +19,7 @@ import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { KNOWN_TRICK_IDS } from '../combat/stuntTaxonomy.js';
 import { journalFor } from '../combat/stuntEvidence.js';
 import { adventureStunts, boundStuntNarrative, completeWitness, deliverWitnessReports, incidentIdentity, observeStuntWitnesses, qualifyStuntTitles, sampledStuntWitnesses, sendWitnessReports } from '../combat/stuntWitnesses.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 function finiteInteger(value, fallback = 0) {
   const number = Number(value);
@@ -205,7 +206,7 @@ function entityFor(state, id) {
     const entity = state.entities.get(id);
     if (entity) return entity;
   }
-  return Array.isArray(state.entityList) ? state.entityList.find((entity) => entity && entity.id === id) || null : null;
+  return null;
 }
 
 const KNOWN_TRICK_ID_SET = new Set(KNOWN_TRICK_IDS);
@@ -217,11 +218,12 @@ export function qualifiedStuntWitnesses(state, trick) {
 
 function entityForHolder(state, holderKey) {
   if (!holderKey || !state) return null;
-  const entities = Array.isArray(state.entityList)
-    ? state.entityList
-    : state.entities && typeof state.entities.values === 'function' ? [...state.entities.values()] : [];
-  return entities.find((entity) => entity && entity.alive !== false
-    && entity.data && entity.data.worldRecordId === holderKey) || null;
+  for (const entity of indexedShipLikeScan(state)) {
+    if (entity && entity.alive !== false && entity.data && entity.data.worldRecordId === holderKey) {
+      return entity;
+    }
+  }
+  return null;
 }
 
 function holderKeyOf(entity) {
@@ -239,9 +241,7 @@ function holderSnapshot(entity) {
 }
 
 function liveEntities(state) {
-  if (Array.isArray(state && state.entityList)) return state.entityList;
-  return state && state.entities && typeof state.entities.values === 'function'
-    ? [...state.entities.values()] : [];
+  return indexedShipLikeScan(state);
 }
 
 function isDurableNpcShip(state, entity) {

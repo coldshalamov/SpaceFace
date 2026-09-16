@@ -15,7 +15,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `assets/ships/parts/parts_manifest.json`, `assets/ships/release/release_manifest.json`, `scripts/build-sg04-release-assets.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace authoring and release manifest parity from source/data declaration through live loading/composition/presentation and final disposal.
@@ -48,7 +48,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `assets/ships/parts/parts_manifest.json`, `assets/ships/release/release_manifest.json`, `scripts/build-sg04-release-assets.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace authoring and release manifest parity from source/data declaration through live loading/composition/presentation and final disposal.
@@ -81,7 +81,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `assets/ships/parts/parts_manifest.json`, `assets/ships/release/release_manifest.json`, `scripts/build-sg04-release-assets.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace authoring and release manifest parity from source/data declaration through live loading/composition/presentation and final disposal.
@@ -114,7 +114,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `assets/ships/parts/parts_manifest.json`, `assets/ships/release/release_manifest.json`, `scripts/build-sg04-release-assets.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace authoring and release manifest parity from source/data declaration through live loading/composition/presentation and final disposal.
@@ -147,7 +147,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `assets/ships/parts/parts_manifest.json`, `assets/ships/release/release_manifest.json`, `scripts/build-sg04-release-assets.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace authoring and release manifest parity from source/data declaration through live loading/composition/presentation and final disposal.
@@ -180,7 +180,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `scripts/build-sg04-release-assets.mjs`, `tools/art/finalize_whole_ship.mjs`, `tools/art/finalize_part.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace release asset build and packaging from source/data declaration through live loading/composition/presentation and final disposal.
@@ -213,7 +213,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `scripts/build-sg04-release-assets.mjs`, `tools/art/finalize_whole_ship.mjs`, `tools/art/finalize_part.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace release asset build and packaging from source/data declaration through live loading/composition/presentation and final disposal.
@@ -246,7 +246,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `scripts/build-sg04-release-assets.mjs`, `tools/art/finalize_whole_ship.mjs`, `tools/art/finalize_part.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace release asset build and packaging from source/data declaration through live loading/composition/presentation and final disposal.
@@ -279,7 +279,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `scripts/build-sg04-release-assets.mjs`, `tools/art/finalize_whole_ship.mjs`, `tools/art/finalize_part.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace release asset build and packaging from source/data declaration through live loading/composition/presentation and final disposal.
@@ -312,7 +312,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `scripts/build-sg04-release-assets.mjs`, `tools/art/finalize_whole_ship.mjs`, `tools/art/finalize_part.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace release asset build and packaging from source/data declaration through live loading/composition/presentation and final disposal.
@@ -345,7 +345,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/data/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace whole-ship composition and definition routing from source/data declaration through live loading/composition/presentation and final disposal.
@@ -378,7 +378,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/data/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace whole-ship composition and definition routing from source/data declaration through live loading/composition/presentation and final disposal.
@@ -411,7 +411,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/data/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace whole-ship composition and definition routing from source/data declaration through live loading/composition/presentation and final disposal.
@@ -444,7 +444,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/data/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace whole-ship composition and definition routing from source/data declaration through live loading/composition/presentation and final disposal.
@@ -477,7 +477,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/data/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace whole-ship composition and definition routing from source/data declaration through live loading/composition/presentation and final disposal.
@@ -510,7 +510,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/renderer.js`, `src/render/partsLibrary.js`, `src/systems/traffic.js`, `src/systems/wingmen.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace enemy, traffic, and wingman visual roots from source/data declaration through live loading/composition/presentation and final disposal.
@@ -543,7 +543,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/renderer.js`, `src/render/partsLibrary.js`, `src/systems/traffic.js`, `src/systems/wingmen.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace enemy, traffic, and wingman visual roots from source/data declaration through live loading/composition/presentation and final disposal.
@@ -576,7 +576,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/renderer.js`, `src/render/partsLibrary.js`, `src/systems/traffic.js`, `src/systems/wingmen.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace enemy, traffic, and wingman visual roots from source/data declaration through live loading/composition/presentation and final disposal.
@@ -609,7 +609,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/renderer.js`, `src/render/partsLibrary.js`, `src/systems/traffic.js`, `src/systems/wingmen.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace enemy, traffic, and wingman visual roots from source/data declaration through live loading/composition/presentation and final disposal.
@@ -642,7 +642,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/renderer.js`, `src/render/partsLibrary.js`, `src/systems/traffic.js`, `src/systems/wingmen.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace enemy, traffic, and wingman visual roots from source/data declaration through live loading/composition/presentation and final disposal.
@@ -675,7 +675,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/visualFactory.js`, `src/render/renderer.js`, `src/render/assetLoader.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace stations, landmarks, props, and structures from source/data declaration through live loading/composition/presentation and final disposal.
@@ -708,7 +708,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/visualFactory.js`, `src/render/renderer.js`, `src/render/assetLoader.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace stations, landmarks, props, and structures from source/data declaration through live loading/composition/presentation and final disposal.
@@ -741,7 +741,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/visualFactory.js`, `src/render/renderer.js`, `src/render/assetLoader.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace stations, landmarks, props, and structures from source/data declaration through live loading/composition/presentation and final disposal.
@@ -774,7 +774,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/visualFactory.js`, `src/render/renderer.js`, `src/render/assetLoader.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace stations, landmarks, props, and structures from source/data declaration through live loading/composition/presentation and final disposal.
@@ -807,7 +807,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/visualFactory.js`, `src/render/renderer.js`, `src/render/assetLoader.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace stations, landmarks, props, and structures from source/data declaration through live loading/composition/presentation and final disposal.
@@ -840,7 +840,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/spaceBackground.js`, `src/render/starfield.js`, `src/render/camera.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace space background and starfield from source/data declaration through live loading/composition/presentation and final disposal.
@@ -873,7 +873,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/spaceBackground.js`, `src/render/starfield.js`, `src/render/camera.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace space background and starfield from source/data declaration through live loading/composition/presentation and final disposal.
@@ -906,7 +906,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/spaceBackground.js`, `src/render/starfield.js`, `src/render/camera.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace space background and starfield from source/data declaration through live loading/composition/presentation and final disposal.
@@ -939,7 +939,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/spaceBackground.js`, `src/render/starfield.js`, `src/render/camera.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace space background and starfield from source/data declaration through live loading/composition/presentation and final disposal.
@@ -972,7 +972,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/spaceBackground.js`, `src/render/starfield.js`, `src/render/camera.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace space background and starfield from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1005,7 +1005,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/parallaxLayers.js`, `src/render/spaceBackground.js`, `src/render/lod.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace parallax fields, dust, debris, and distant layers from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1038,7 +1038,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/parallaxLayers.js`, `src/render/spaceBackground.js`, `src/render/lod.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace parallax fields, dust, debris, and distant layers from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1071,7 +1071,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/parallaxLayers.js`, `src/render/spaceBackground.js`, `src/render/lod.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace parallax fields, dust, debris, and distant layers from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1104,7 +1104,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/parallaxLayers.js`, `src/render/spaceBackground.js`, `src/render/lod.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace parallax fields, dust, debris, and distant layers from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1137,7 +1137,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/parallaxLayers.js`, `src/render/spaceBackground.js`, `src/render/lod.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace parallax fields, dust, debris, and distant layers from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1170,7 +1170,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/render/ships`, `src/core/flight/flightTelemetry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace thruster history trail and propulsion marks from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1203,7 +1203,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/render/ships`, `src/core/flight/flightTelemetry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace thruster history trail and propulsion marks from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1236,7 +1236,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/render/ships`, `src/core/flight/flightTelemetry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace thruster history trail and propulsion marks from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1269,7 +1269,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/render/ships`, `src/core/flight/flightTelemetry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace thruster history trail and propulsion marks from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1302,7 +1302,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/render/ships`, `src/core/flight/flightTelemetry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace thruster history trail and propulsion marks from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1335,7 +1335,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/render/energy`, `src/combat/attachments.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace weapon, projectile, beam, and tether effects from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1368,7 +1368,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/render/energy`, `src/combat/attachments.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace weapon, projectile, beam, and tether effects from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1401,7 +1401,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/render/energy`, `src/combat/attachments.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace weapon, projectile, beam, and tether effects from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1434,7 +1434,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/render/energy`, `src/combat/attachments.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace weapon, projectile, beam, and tether effects from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1467,7 +1467,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/render/energy`, `src/combat/attachments.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace weapon, projectile, beam, and tether effects from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1500,7 +1500,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/combat/damage.js`, `src/systems/aftermathWrecks.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace damage, breakup, explosion, and aftermath effects from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1533,7 +1533,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/combat/damage.js`, `src/systems/aftermathWrecks.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace damage, breakup, explosion, and aftermath effects from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1566,7 +1566,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/combat/damage.js`, `src/systems/aftermathWrecks.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace damage, breakup, explosion, and aftermath effects from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1599,7 +1599,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/combat/damage.js`, `src/systems/aftermathWrecks.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace damage, breakup, explosion, and aftermath effects from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1632,7 +1632,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/vfx.js`, `src/combat/damage.js`, `src/systems/aftermathWrecks.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace damage, breakup, explosion, and aftermath effects from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1665,7 +1665,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/camera.js`, `src/render/feel.js`, `src/systems/presentationOrchestrator.js`, `src/ui/accessibility.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace camera framing, shake, hit-stop, and motion language from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1698,7 +1698,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/camera.js`, `src/render/feel.js`, `src/systems/presentationOrchestrator.js`, `src/ui/accessibility.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace camera framing, shake, hit-stop, and motion language from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1731,7 +1731,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/camera.js`, `src/render/feel.js`, `src/systems/presentationOrchestrator.js`, `src/ui/accessibility.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace camera framing, shake, hit-stop, and motion language from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1764,7 +1764,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/camera.js`, `src/render/feel.js`, `src/systems/presentationOrchestrator.js`, `src/ui/accessibility.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace camera framing, shake, hit-stop, and motion language from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1797,7 +1797,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/camera.js`, `src/render/feel.js`, `src/systems/presentationOrchestrator.js`, `src/ui/accessibility.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace camera framing, shake, hit-stop, and motion language from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1830,7 +1830,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/bloom.js`, `src/render/post`, `src/render/renderer.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace bloom, grading, and post-processing from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1863,7 +1863,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/bloom.js`, `src/render/post`, `src/render/renderer.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace bloom, grading, and post-processing from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1896,7 +1896,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/bloom.js`, `src/render/post`, `src/render/renderer.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace bloom, grading, and post-processing from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1929,7 +1929,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/bloom.js`, `src/render/post`, `src/render/renderer.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace bloom, grading, and post-processing from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1962,7 +1962,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/bloom.js`, `src/render/post`, `src/render/renderer.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace bloom, grading, and post-processing from source/data declaration through live loading/composition/presentation and final disposal.
@@ -1995,7 +1995,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/audio/audioSystem.js`, `src/audio/synth.js`, `src/data/audioRecipes.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace audio context, mix buses, and source lifecycle from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2028,7 +2028,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/audio/audioSystem.js`, `src/audio/synth.js`, `src/data/audioRecipes.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace audio context, mix buses, and source lifecycle from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2061,7 +2061,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/audio/audioSystem.js`, `src/audio/synth.js`, `src/data/audioRecipes.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace audio context, mix buses, and source lifecycle from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2094,7 +2094,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/audio/audioSystem.js`, `src/audio/synth.js`, `src/data/audioRecipes.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace audio context, mix buses, and source lifecycle from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2127,7 +2127,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/audio/audioSystem.js`, `src/audio/synth.js`, `src/data/audioRecipes.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace audio context, mix buses, and source lifecycle from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2160,7 +2160,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/systems/presentationOrchestrator.js`, `src/systems/presentationAdapters.js`, `src/presentation/cueRecipes.js`, `src/presentation/cueSchema.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace presentation cue recipes and arbitration from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2193,7 +2193,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/systems/presentationOrchestrator.js`, `src/systems/presentationAdapters.js`, `src/presentation/cueRecipes.js`, `src/presentation/cueSchema.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace presentation cue recipes and arbitration from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2226,7 +2226,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/systems/presentationOrchestrator.js`, `src/systems/presentationAdapters.js`, `src/presentation/cueRecipes.js`, `src/presentation/cueSchema.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace presentation cue recipes and arbitration from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2259,7 +2259,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/systems/presentationOrchestrator.js`, `src/systems/presentationAdapters.js`, `src/presentation/cueRecipes.js`, `src/presentation/cueSchema.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace presentation cue recipes and arbitration from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2292,7 +2292,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/systems/presentationOrchestrator.js`, `src/systems/presentationAdapters.js`, `src/presentation/cueRecipes.js`, `src/presentation/cueSchema.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace presentation cue recipes and arbitration from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2325,7 +2325,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/materialLibrary.js`, `src/render/canvasTextures.js`, `src/render/precompile.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace materials, canvas textures, and shader variants from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2358,7 +2358,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/materialLibrary.js`, `src/render/canvasTextures.js`, `src/render/precompile.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace materials, canvas textures, and shader variants from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2391,7 +2391,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/materialLibrary.js`, `src/render/canvasTextures.js`, `src/render/precompile.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace materials, canvas textures, and shader variants from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2424,7 +2424,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/materialLibrary.js`, `src/render/canvasTextures.js`, `src/render/precompile.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace materials, canvas textures, and shader variants from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2457,7 +2457,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/materialLibrary.js`, `src/render/canvasTextures.js`, `src/render/precompile.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace materials, canvas textures, and shader variants from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2490,7 +2490,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/renderer.js`, `src/render/assetLoader.js`, `src/render/visualFactory.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace renderer ownership, lifecycle, and resource disposal from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2523,7 +2523,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/renderer.js`, `src/render/assetLoader.js`, `src/render/visualFactory.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace renderer ownership, lifecycle, and resource disposal from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2556,7 +2556,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/renderer.js`, `src/render/assetLoader.js`, `src/render/visualFactory.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace renderer ownership, lifecycle, and resource disposal from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2589,7 +2589,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/renderer.js`, `src/render/assetLoader.js`, `src/render/visualFactory.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace renderer ownership, lifecycle, and resource disposal from source/data declaration through live loading/composition/presentation and final disposal.
@@ -2622,7 +2622,7 @@ Protect complete authored visuals, stable presentation, play-size readability, a
 
 **Inspect:** `src/render/renderer.js`, `src/render/assetLoader.js`, `src/render/visualFactory.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/render/AGENTS.md`, `docs/visual-assets/README.md`, `docs/visual-assets/VFX_TECHNIQUE_STANDARD.md`
 
 **Work:**
 1. Trace renderer ownership, lifecycle, and resource disposal from source/data declaration through live loading/composition/presentation and final disposal.

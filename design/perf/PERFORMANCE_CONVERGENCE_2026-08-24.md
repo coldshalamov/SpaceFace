@@ -3,7 +3,7 @@
      the PR #100 branch). Its geometry-cohort admission code was already ported to master under
      PQ-129.19 (receipt: design/program/roadmap/receipts/PQ-129-19-continue-residency-REPORT.md).
      This plan is DURABLE research input: it grants no lease, dispatch authority, or acceptance;
-     CANONICAL_BUILD_MAP.md section 8 and design/PERF_BUDGET.md remain the performance authority,
+     build_map.md section 8 and design/PERF_BUDGET.md remain the performance authority,
      and PQ-129/PQ-051..PQ-128 remain the admitted/reserved identities its backlog items map onto. -->
 
 # SpaceFace performance convergence plan

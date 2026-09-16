@@ -28,6 +28,7 @@ import {
 } from './objectSpaceGeology.js';
 import { configurePlanarAdditiveMaterial } from './planarAdditivePolicy.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
+import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
 import { buildPlanetSiteVisual } from './planetSiteVisual.js'; // PQ-013 colossal planet-site body
 import { freezeStaticChildMatrices } from './staticChildMatrices.js';
 import {
@@ -2928,6 +2929,7 @@ function attachPackagedBody(root, relativeFile, entity) {
       fitPackagedGroup(packaged, entity && entity.radius);
       freezeStaticChildMatrices(packaged);
       root.add(packaged);
+      canonicalizeObjectSurfaceProgramKeys(packaged);
       root.userData.hull = packaged;
       root.userData.authoredAssetState = 'authored';
       root.userData.authoredVisualRoot = record.assetId || url;
@@ -3996,30 +3998,35 @@ export function invalidateVisualFactoryCaches() {
   SHIP_ENV_MAP = null;
 }
 
+function stampBuiltVisual(root) {
+  if (root) canonicalizeObjectSurfaceProgramKeys(root);
+  return root;
+}
+
 export function createVisualFactory() {
   return {
     build(e) {
       try {
         if (!e) return null;
         switch (e.type) {
-          case 'ship': return optimizeStaticBatches(buildShipMesh(e, resolvePalette(e)));
-          case 'asteroid': return freezeStaticPresentation(buildAsteroid(e));
-          case 'station': return freezeStaticPresentation(attachStationHlod(buildStation(e), e));
-          case 'pickup': return buildPickup(e);
-          case 'projectile': return buildProjectile(e);
-          case 'drone': return buildDrone(e);
-          case 'payload': return buildPayload(e);
-          case 'mine': return buildMine(e);
-          case 'vectormine': return buildVectorMine(e);
-          case 'charge': return buildImpulseCharge(e);
-          case 'bomb': return buildBomb(e);
-          case 'massSeed': return buildMassSeed(e);
-          case 'masslineSnareAnchor': return buildMasslineSnareAnchor(e);
-          case 'wreck': return attachPackagedBody(freezeStaticPresentation(buildWreck(e)), wreckPackagedFile(e), e);
+          case 'ship': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(e, resolvePalette(e))));
+          case 'asteroid': return stampBuiltVisual(freezeStaticPresentation(buildAsteroid(e)));
+          case 'station': return stampBuiltVisual(freezeStaticPresentation(attachStationHlod(buildStation(e), e)));
+          case 'pickup': return stampBuiltVisual(buildPickup(e));
+          case 'projectile': return stampBuiltVisual(buildProjectile(e));
+          case 'drone': return stampBuiltVisual(buildDrone(e));
+          case 'payload': return stampBuiltVisual(buildPayload(e));
+          case 'mine': return stampBuiltVisual(buildMine(e));
+          case 'vectormine': return stampBuiltVisual(buildVectorMine(e));
+          case 'charge': return stampBuiltVisual(buildImpulseCharge(e));
+          case 'bomb': return stampBuiltVisual(buildBomb(e));
+          case 'massSeed': return stampBuiltVisual(buildMassSeed(e));
+          case 'masslineSnareAnchor': return stampBuiltVisual(buildMasslineSnareAnchor(e));
+          case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e)), wreckPackagedFile(e), e));
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
-          case 'planet': return freezeStaticPresentation(buildPlanetSiteVisual(e));
+          case 'planet': return stampBuiltVisual(freezeStaticPresentation(buildPlanetSiteVisual(e)));
           case 'fx': return null; // fx entities are handled by the vfx particle system, not meshed
-          default: return buildFallback(e);
+          default: return stampBuiltVisual(buildFallback(e));
         }
       } catch (err) {
         if (globalThis && globalThis.__SF_VISUAL_FACTORY_THROW__) throw err;
@@ -4028,7 +4035,7 @@ export function createVisualFactory() {
           const defId = e && e.data && e.data.defId ? e.data.defId : '';
           console.warn(`[visualFactory] fallback ${kind}${defId ? `:${defId}` : ''}`, err);
         }
-        try { return buildFallback(e); } catch (_e) { return null; }
+        try { return stampBuiltVisual(buildFallback(e)); } catch (_e) { return null; }
       }
     },
   };

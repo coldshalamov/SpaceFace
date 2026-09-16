@@ -4,7 +4,7 @@ You are running the Fun Convergence Loop for SpaceFace. Read, in this order, and
   design/program/FUN_CONVERGENCE_LOOP.md      (the loop, the roles, the stop conditions)
   design/FEEL_CONTRACT.md                     (the bars, in player units, with today's numbers)
   design/VISION.md                            (what the game is supposed to feel like)
-  CANONICAL_BUILD_MAP.md section 13C and 15   (the packets; use their IDs, never invent new ones)
+  build_map.md section 13C and 15   (the packets; use their IDs, never invent new ones)
 
 Scope: the words after MAKE IT BETTER, if any. Default scope is combat and flight feel in the
 Crucible bench. Adventure feel work waits until the Crucible bench passes (Crucible first).

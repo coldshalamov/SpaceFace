@@ -15,7 +15,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/commodities.js`, `src/systems/economy.js`, `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map commodity catalog and market identity to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -48,7 +48,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/commodities.js`, `src/systems/economy.js`, `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map commodity catalog and market identity to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -81,7 +81,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/commodities.js`, `src/systems/economy.js`, `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map commodity catalog and market identity to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -114,7 +114,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/commodities.js`, `src/systems/economy.js`, `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map commodity catalog and market identity to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -147,7 +147,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/commodities.js`, `src/systems/economy.js`, `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map commodity catalog and market identity to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -180,7 +180,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/economy.js`, `src/ui/priceHistory.js`, `src/ui/sparkline.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map market supply, demand, spreads, and price history to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -213,7 +213,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/economy.js`, `src/ui/priceHistory.js`, `src/ui/sparkline.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map market supply, demand, spreads, and price history to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -246,7 +246,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/economy.js`, `src/ui/priceHistory.js`, `src/ui/sparkline.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map market supply, demand, spreads, and price history to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -279,7 +279,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/economy.js`, `src/ui/priceHistory.js`, `src/ui/sparkline.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map market supply, demand, spreads, and price history to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -312,7 +312,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/economy.js`, `src/ui/priceHistory.js`, `src/ui/sparkline.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map market supply, demand, spreads, and price history to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -345,7 +345,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/cargo.js`, `src/data/commodities.js`, `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map cargo capacity, mass, and transfer logistics to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -377,7 +377,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/cargo.js`, `src/data/commodities.js`, `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map cargo capacity, mass, and transfer logistics to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -409,7 +409,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/cargo.js`, `src/data/commodities.js`, `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map cargo capacity, mass, and transfer logistics to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -441,7 +441,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/cargo.js`, `src/data/commodities.js`, `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map cargo capacity, mass, and transfer logistics to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -473,7 +473,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/cargo.js`, `src/data/commodities.js`, `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map cargo capacity, mass, and transfer logistics to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -505,7 +505,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/crafting.js`, `src/data/blueprints.js`, `src/ui/screens/automationPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map crafting, refining, and manufacturing queues to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -536,7 +536,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/crafting.js`, `src/data/blueprints.js`, `src/ui/screens/automationPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map crafting, refining, and manufacturing queues to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -567,7 +567,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/crafting.js`, `src/data/blueprints.js`, `src/ui/screens/automationPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map crafting, refining, and manufacturing queues to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -598,7 +598,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/crafting.js`, `src/data/blueprints.js`, `src/ui/screens/automationPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map crafting, refining, and manufacturing queues to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -629,7 +629,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/crafting.js`, `src/data/blueprints.js`, `src/ui/screens/automationPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map crafting, refining, and manufacturing queues to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -660,7 +660,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/ships.js`, `src/data/ships.js`, `src/ui/screens/shipyard.js`, `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map ship acquisition and outfitting progression to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -693,7 +693,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/ships.js`, `src/data/ships.js`, `src/ui/screens/shipyard.js`, `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map ship acquisition and outfitting progression to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -726,7 +726,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/ships.js`, `src/data/ships.js`, `src/ui/screens/shipyard.js`, `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map ship acquisition and outfitting progression to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -759,7 +759,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/ships.js`, `src/data/ships.js`, `src/ui/screens/shipyard.js`, `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map ship acquisition and outfitting progression to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -792,7 +792,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/ships.js`, `src/data/ships.js`, `src/ui/screens/shipyard.js`, `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map ship acquisition and outfitting progression to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -825,7 +825,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/tech.js`, `src/ui/screens/techTree.js`, `src/systems/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map technology tree progression to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -856,7 +856,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/tech.js`, `src/ui/screens/techTree.js`, `src/systems/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map technology tree progression to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -887,7 +887,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/tech.js`, `src/ui/screens/techTree.js`, `src/systems/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map technology tree progression to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -918,7 +918,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/tech.js`, `src/ui/screens/techTree.js`, `src/systems/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map technology tree progression to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -949,7 +949,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/tech.js`, `src/ui/screens/techTree.js`, `src/systems/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map technology tree progression to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -980,7 +980,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/mining.js`, `src/data/mining.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map beam mining cadence and seam extraction to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1013,7 +1013,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/mining.js`, `src/data/mining.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map beam mining cadence and seam extraction to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1046,7 +1046,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/mining.js`, `src/data/mining.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map beam mining cadence and seam extraction to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1079,7 +1079,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/mining.js`, `src/data/mining.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map beam mining cadence and seam extraction to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1112,7 +1112,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/mining.js`, `src/data/mining.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map beam mining cadence and seam extraction to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1145,7 +1145,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/mining.js`, `src/systems/cargo.js`, `src/systems/asteroidFormations.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map asteroid fracture, chunks, and pickup convergence to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1178,7 +1178,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/mining.js`, `src/systems/cargo.js`, `src/systems/asteroidFormations.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map asteroid fracture, chunks, and pickup convergence to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1211,7 +1211,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/mining.js`, `src/systems/cargo.js`, `src/systems/asteroidFormations.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map asteroid fracture, chunks, and pickup convergence to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1244,7 +1244,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/mining.js`, `src/systems/cargo.js`, `src/systems/asteroidFormations.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map asteroid fracture, chunks, and pickup convergence to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1277,7 +1277,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/mining.js`, `src/systems/cargo.js`, `src/systems/asteroidFormations.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map asteroid fracture, chunks, and pickup convergence to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1310,7 +1310,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/drill.js`, `src/ui/screens/drill.js`, `src/data/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map rich-core and deep-drill play to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1342,7 +1342,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/drill.js`, `src/ui/screens/drill.js`, `src/data/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map rich-core and deep-drill play to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1374,7 +1374,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/drill.js`, `src/ui/screens/drill.js`, `src/data/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map rich-core and deep-drill play to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1406,7 +1406,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/drill.js`, `src/ui/screens/drill.js`, `src/data/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map rich-core and deep-drill play to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1438,7 +1438,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/drill.js`, `src/ui/screens/drill.js`, `src/data/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map rich-core and deep-drill play to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1470,7 +1470,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/scanner.js`, `src/data/sectors.js`, `src/ui/radar.js`, `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map scanner, recon, and discovery state to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1503,7 +1503,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/scanner.js`, `src/data/sectors.js`, `src/ui/radar.js`, `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map scanner, recon, and discovery state to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1536,7 +1536,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/scanner.js`, `src/data/sectors.js`, `src/ui/radar.js`, `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map scanner, recon, and discovery state to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1569,7 +1569,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/scanner.js`, `src/data/sectors.js`, `src/ui/radar.js`, `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map scanner, recon, and discovery state to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1602,7 +1602,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/scanner.js`, `src/data/sectors.js`, `src/ui/radar.js`, `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map scanner, recon, and discovery state to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1635,7 +1635,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/sectors.js`, `src/systems/world.js`, `src/data/PLACE_REGISTRATION.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map sector topology, routes, gates, and place registration to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1668,7 +1668,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/sectors.js`, `src/systems/world.js`, `src/data/PLACE_REGISTRATION.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map sector topology, routes, gates, and place registration to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1701,7 +1701,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/sectors.js`, `src/systems/world.js`, `src/data/PLACE_REGISTRATION.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map sector topology, routes, gates, and place registration to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1734,7 +1734,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/sectors.js`, `src/systems/world.js`, `src/data/PLACE_REGISTRATION.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map sector topology, routes, gates, and place registration to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1767,7 +1767,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/sectors.js`, `src/systems/world.js`, `src/data/PLACE_REGISTRATION.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map sector topology, routes, gates, and place registration to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1800,7 +1800,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/dangerModel.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map hazards, cruise interdiction, and local danger to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1832,7 +1832,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/dangerModel.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map hazards, cruise interdiction, and local danger to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1864,7 +1864,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/dangerModel.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map hazards, cruise interdiction, and local danger to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1896,7 +1896,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/dangerModel.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map hazards, cruise interdiction, and local danger to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1928,7 +1928,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/dangerModel.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map hazards, cruise interdiction, and local danger to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1960,7 +1960,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/factions.js`, `src/systems/heat.js`, `src/data/factions.js`, `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map factions, reputation, law, and wanted consequences to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -1992,7 +1992,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/factions.js`, `src/systems/heat.js`, `src/data/factions.js`, `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map factions, reputation, law, and wanted consequences to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2024,7 +2024,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/factions.js`, `src/systems/heat.js`, `src/data/factions.js`, `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map factions, reputation, law, and wanted consequences to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2056,7 +2056,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/factions.js`, `src/systems/heat.js`, `src/data/factions.js`, `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map factions, reputation, law, and wanted consequences to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2088,7 +2088,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/factions.js`, `src/systems/heat.js`, `src/data/factions.js`, `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map factions, reputation, law, and wanted consequences to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2120,7 +2120,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/world.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map civilian traffic routes and behavior to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2151,7 +2151,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/world.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map civilian traffic routes and behavior to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2182,7 +2182,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/world.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map civilian traffic routes and behavior to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2213,7 +2213,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/world.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map civilian traffic routes and behavior to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2244,7 +2244,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/world.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map civilian traffic routes and behavior to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2275,7 +2275,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/claims.js`, `src/systems/beacons.js`, `src/data/claimableBodies.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map claims, beacons, and player infrastructure to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2306,7 +2306,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/claims.js`, `src/systems/beacons.js`, `src/data/claimableBodies.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map claims, beacons, and player infrastructure to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2337,7 +2337,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/claims.js`, `src/systems/beacons.js`, `src/data/claimableBodies.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map claims, beacons, and player infrastructure to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2368,7 +2368,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/claims.js`, `src/systems/beacons.js`, `src/data/claimableBodies.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map claims, beacons, and player infrastructure to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2399,7 +2399,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/claims.js`, `src/systems/beacons.js`, `src/data/claimableBodies.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map claims, beacons, and player infrastructure to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2430,7 +2430,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map station mission-board generation to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2461,7 +2461,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map station mission-board generation to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2492,7 +2492,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map station mission-board generation to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2523,7 +2523,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map station mission-board generation to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2554,7 +2554,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map station mission-board generation to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2585,7 +2585,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/missions.js`, `src/ui/screens/missionLog.js`, `src/systems/economy.js`, `src/systems/cargo.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map mission objective tracking and reward settlement to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2616,7 +2616,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/missions.js`, `src/ui/screens/missionLog.js`, `src/systems/economy.js`, `src/systems/cargo.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map mission objective tracking and reward settlement to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2647,7 +2647,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/missions.js`, `src/ui/screens/missionLog.js`, `src/systems/economy.js`, `src/systems/cargo.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map mission objective tracking and reward settlement to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2678,7 +2678,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/missions.js`, `src/ui/screens/missionLog.js`, `src/systems/economy.js`, `src/systems/cargo.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map mission objective tracking and reward settlement to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2709,7 +2709,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/missions.js`, `src/ui/screens/missionLog.js`, `src/systems/economy.js`, `src/systems/cargo.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map mission objective tracking and reward settlement to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2740,7 +2740,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/story.js`, `src/systems/aceMemory.js`, `src/data/narrative.js`, `src/data/sectorAnchors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map story beats, narrative memory, and player ledger to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2771,7 +2771,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/story.js`, `src/systems/aceMemory.js`, `src/data/narrative.js`, `src/data/sectorAnchors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map story beats, narrative memory, and player ledger to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2802,7 +2802,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/story.js`, `src/systems/aceMemory.js`, `src/data/narrative.js`, `src/data/sectorAnchors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map story beats, narrative memory, and player ledger to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2833,7 +2833,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/story.js`, `src/systems/aceMemory.js`, `src/data/narrative.js`, `src/data/sectorAnchors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map story beats, narrative memory, and player ledger to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2864,7 +2864,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/story.js`, `src/systems/aceMemory.js`, `src/data/narrative.js`, `src/data/sectorAnchors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map story beats, narrative memory, and player ledger to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2895,7 +2895,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/asteroidSites.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map battle aftermath, wrecks, and persistent world sites to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2927,7 +2927,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/asteroidSites.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map battle aftermath, wrecks, and persistent world sites to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2959,7 +2959,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/asteroidSites.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map battle aftermath, wrecks, and persistent world sites to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -2991,7 +2991,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/asteroidSites.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map battle aftermath, wrecks, and persistent world sites to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -3023,7 +3023,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/asteroidSites.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map battle aftermath, wrecks, and persistent world sites to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -3055,7 +3055,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/automation.js`, `src/ui/screens/automationPanel.js`, `src/systems/sectorSim.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map automation, drones, outposts, and logistics to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -3086,7 +3086,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/automation.js`, `src/ui/screens/automationPanel.js`, `src/systems/sectorSim.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map automation, drones, outposts, and logistics to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -3117,7 +3117,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/automation.js`, `src/ui/screens/automationPanel.js`, `src/systems/sectorSim.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map automation, drones, outposts, and logistics to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -3148,7 +3148,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/automation.js`, `src/ui/screens/automationPanel.js`, `src/systems/sectorSim.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map automation, drones, outposts, and logistics to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.
@@ -3179,7 +3179,7 @@ Harden and enrich the living-world loops through existing owners, catalogs, and 
 
 **Inspect:** `src/data/automation.js`, `src/ui/screens/automationPanel.js`, `src/systems/sectorSim.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`, `src/systems/AGENTS.md`
 
 **Work:**
 1. Map automation, drones, outposts, and logistics to its canonical data catalog, simulation writer, UI/presentation reader, and persistence path.

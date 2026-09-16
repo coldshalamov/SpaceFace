@@ -173,6 +173,16 @@ export function calculateSpatialSlotLayout({
   calloutHeight = 36,
   edgeInset = 12,
   nameplateBottom = 0,
+  // Right-edge reservations in stage coordinates: [{ top, bottom, leftX }] for chrome that owns
+  // the right flank — the gauges rack up top and the operation plate at bottom. A callout card
+  // whose y-band intersects a zone keeps its right edge left of that zone's leftX; without this
+  // the flank pushes cards to stageWidth and they print under the gauges/plate.
+  rightZones = [],
+  // Left-edge reservations [{ top, bottom, rightX, push }] for chrome that owns a left-flank
+  // column — the nameplate up top ('below' pushes crossing cards under it) and the camera words
+  // at the foot ('above' caps them over it). Sliding a card right instead would cover the
+  // hardpoint the card annotates.
+  leftZones = [],
 } = {}) {
   if (!Array.isArray(projectedSlots) || !projectedSlots.length || stageWidth <= 0 || stageHeight <= 0) return [];
 
@@ -223,7 +233,27 @@ export function calculateSpatialSlotLayout({
     if (!count) return;
 
     const minPitch = 42;
-    const targetYs = group.map((s) => Math.max(minY, Math.min(maxY, s.y - 18)));
+    // Per-card vertical bounds from the left-side zones: 'below' zones set a floor, 'above'
+    // zones a ceiling. The bounds hold through the backward and compressed passes below — a
+    // cramped pitch is preferable to a card printed on the nameplate or the camera words.
+    const bounds = group.map((s) => {
+      let lo = minY;
+      let hi = maxY;
+      if (isLeft) {
+        // The card's x-range is y-independent on the left flank, so its overlap with a zone's
+        // column can be checked up front.
+        const cardLeft = Math.max(edgeInset,
+          Math.max((s.cardW || calloutWidth) + edgeInset, Math.min(s.x - nodeRadius - 16, cx - 100)) - (s.cardW || calloutWidth));
+        for (const zone of leftZones) {
+          if (!zone || zone.rightX == null || cardLeft >= zone.rightX) continue;
+          if (zone.push === 'above') hi = Math.min(hi, zone.top - calloutHeight - 6);
+          else lo = Math.max(lo, zone.bottom + 6);
+        }
+      }
+      if (lo > hi) lo = hi; // unresolvable — keep clear of the interactive element
+      return { lo, hi };
+    });
+    const targetYs = group.map((s, i) => Math.max(bounds[i].lo, Math.min(bounds[i].hi, s.y - 18)));
 
     for (let i = 1; i < count; i++) {
       if (targetYs[i] < targetYs[i - 1] + minPitch) {
@@ -231,18 +261,20 @@ export function calculateSpatialSlotLayout({
       }
     }
 
-    if (targetYs[count - 1] > maxY) {
-      targetYs[count - 1] = maxY;
+    if (targetYs[count - 1] > bounds[count - 1].hi) {
+      targetYs[count - 1] = bounds[count - 1].hi;
       for (let i = count - 2; i >= 0; i--) {
         if (targetYs[i] > targetYs[i + 1] - minPitch) {
-          targetYs[i] = targetYs[i + 1] - minPitch;
+          targetYs[i] = Math.max(bounds[i].lo, targetYs[i + 1] - minPitch);
         }
       }
       if (targetYs[0] < minY) {
         const avail = Math.max(1, maxY - minY);
-        const compressedPitch = Math.max(28, Math.min(minPitch, avail / Math.max(1, count - 1)));
+        // The pitch floor is the card's own height: tighter than that and the cards overprint
+        // each other, which is how "Cargo" used to land on "Utility".
+        const compressedPitch = Math.max(calloutHeight + 2, Math.min(minPitch, avail / Math.max(1, count - 1)));
         for (let i = 0; i < count; i++) {
-          targetYs[i] = minY + i * compressedPitch;
+          targetYs[i] = Math.max(bounds[i].lo, Math.min(bounds[i].hi, minY + i * compressedPitch));
         }
       }
     }
@@ -250,20 +282,37 @@ export function calculateSpatialSlotLayout({
     group.forEach((item, i) => {
       const { index, order, x, y } = item;
       const targetY = targetYs[i];
+      const cardW = item.cardW || calloutWidth;
 
       let absoluteLabelX;
       let calloutX;
       if (isLeft) {
-        const targetRight = Math.max(calloutWidth + edgeInset, Math.min(x - nodeRadius - 16, cx - 100));
-        absoluteLabelX = Math.max(edgeInset, targetRight - calloutWidth);
-        calloutX = absoluteLabelX - (x - nodeRadius);
+        // .is-callout-left copies carry translateX(-100%): --callout-x anchors the card's RIGHT
+        // edge, not its left. Anchor it at the solved right edge or every left card renders one
+        // card-width left of its solved position — into the nameplate and camera columns the
+        // zones are meant to protect.
+        const cardRight = Math.max(cardW + edgeInset, Math.min(x - nodeRadius - 16, cx - 100));
+        absoluteLabelX = Math.max(edgeInset, cardRight - cardW);
+        calloutX = cardRight - x;
       } else {
-        const targetLeft = Math.min(stageWidth - calloutWidth - edgeInset, Math.max(x + nodeRadius + 16, cx + 100));
-        absoluteLabelX = Math.min(stageWidth - calloutWidth - edgeInset, Math.max(edgeInset, targetLeft));
-        calloutX = absoluteLabelX - (x - nodeRadius);
+        // The card's right bound is the nearer of the stage edge and any reserved zone its
+        // y-band crosses (gauges rack at top-right, operation plate at bottom-right).
+        let rightBound = stageWidth - edgeInset;
+        for (const zone of rightZones) {
+          if (!zone || zone.leftX == null) continue;
+          if (targetY + calloutHeight > zone.top && targetY < zone.bottom) {
+            rightBound = Math.min(rightBound, zone.leftX - edgeInset);
+          }
+        }
+        const targetLeft = Math.min(rightBound - cardW, Math.max(x + nodeRadius + 16, cx + 100));
+        absoluteLabelX = Math.max(edgeInset, Math.min(rightBound - cardW, Math.max(edgeInset, targetLeft)));
+        calloutX = absoluteLabelX - x;
       }
 
-      const calloutY = Math.round(targetY - (y - nodeRadius));
+      // The copy is offset from the node's zero-size point: --callout-x/y must be the card's
+      // stage position minus the node position exactly, or every card renders one nodeRadius
+      // low-and-right of where the solver placed it — straight through the reserved zones.
+      const calloutY = Math.round(targetY - y);
       const visualCardLeft = absoluteLabelX;
       const visualCardRight = absoluteLabelX + calloutWidth;
       const visualCardTop = targetY;
@@ -274,7 +323,7 @@ export function calculateSpatialSlotLayout({
       const cardCenterY = calloutY + 17;
       if (isLeft) {
         const reticleX = 0;
-        const cardX = calloutX + calloutWidth;
+        const cardX = calloutX; // the card's right edge — the side facing the node
         const midX = Math.round(reticleX - Math.max(6, Math.min(20, (reticleX - cardX) * 0.35)));
         leaderD = `M ${reticleX} ${reticleY} H ${midX} V ${cardCenterY} H ${cardX}`;
       } else {
@@ -406,10 +455,19 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     }
     // The verbs (Take it to the range · Record · Select a slot) are the screen's actions; they used
     // to sit at the end of the hero row, which wrapped them onto a third line inside the stats
-    // scroll at 1280x800 and 1080p, where they were out of sight under the side plate. They live
-    // at the foot of the stats block now, sticky, so they are on the glass at every scroll.
+    // scroll at 1280x800 and 1080p, where they were out of sight under the side plate. They are
+    // pinned as a footer row under the stats scroll instead: always on the glass, and unlike a
+    // sticky-in-scroll bar they can never veil the stat rows at the scroll's trailing edge.
     const verbsRack = statsEl.querySelector('.sx-sw-verbs');
-    if (verbsRack && verbsRack.parentElement !== statsEl) statsEl.appendChild(verbsRack);
+    if (verbsRack && statsEl.parentElement && verbsRack.parentElement !== statsEl.parentElement) {
+      // The refresh above rebuilt a fresh rack inside statsEl, but a rack pinned out here by an
+      // earlier refresh is still a child of the parent — without this the footer renders the same
+      // three verbs twice, stacked.
+      for (const stale of [...statsEl.parentElement.children]) {
+        if (stale !== verbsRack && stale.classList && stale.classList.contains('sx-sw-verbs')) stale.remove();
+      }
+      statsEl.parentElement.appendChild(verbsRack);
+    }
     pinKeyrack(verbsRack);
     for (const btn of statsEl.querySelectorAll('[data-verb]')) {
       paintKey(btn, btn.getAttribute('data-verb') === 'fit' || btn.getAttribute('data-verb') === 'activate' ? 'primary' : 'legend');
@@ -478,6 +536,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let selectedSlot = -1;
   let chooserAnchor = null;
   let projectionFrame = 0;
+  let pinnedSideTop = -1;
   let chooserCloseTimer = 0;
   let previewSettleTimer = 0;
   let previewSettleGeneration = 0;
@@ -1517,6 +1576,20 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     // and no way to choose a system at all. They lay out as a systems board instead: the same
     // buttons, the same copy, as a wrapped row of chips at the foot of the stage.
     if (slotfieldEl) slotfieldEl.classList.toggle('is-board', !mount);
+    // The operation plate is bottom-anchored to the panel while the gauges rack lives at the
+    // stage's top-right; CSS cannot express "start under the rack" across the two containing
+    // blocks, so the plate's top is pinned here in its own containing-block coordinates. When
+    // the station grid owns the column (position:static) the pin is skipped entirely.
+    if (sideEl && gaugeRackEl && sideEl.isConnected && gaugeRackEl.isConnected
+        && getComputedStyle(sideEl).position === 'absolute' && sideEl.offsetParent) {
+      const top = Math.round(
+        gaugeRackEl.getBoundingClientRect().bottom
+        - sideEl.offsetParent.getBoundingClientRect().top + 8);
+      if (top > 0 && top !== pinnedSideTop) {
+        pinnedSideTop = top;
+        sideEl.style.top = `${top}px`;
+      }
+    }
     if (!mount) return;
     const stageRect = stageEl.getBoundingClientRect();
     if (stageRect.width <= 0 || stageRect.height <= 0) return;
@@ -1541,6 +1614,12 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       if (!projected) return;
       const x = Math.max(36, Math.min(stageRect.width - 36, projected.x - stageRect.left));
       const y = Math.max(38, Math.min(stageRect.height - 38, projected.y - stageRect.top));
+      // The copy is white-space:nowrap — its width is text-driven and position-independent, so
+      // measure it now: the solver's 200 px planning width would push a 60 px card into reserved
+      // columns it never actually enters.
+      const copyEl = node.querySelector('.sx-hardpoint__copy');
+      const measured = copyEl ? copyEl.getBoundingClientRect().width : 0;
+      const cardW = measured > 4 ? measured : calloutWidth;
       projectedSlots.push({
         node,
         index,
@@ -1548,6 +1627,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         x,
         y,
         local,
+        cardW,
       });
     });
 
@@ -1558,6 +1638,61 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       ? nameplateRect.bottom - stageRect.top
       : 0;
 
+    // Right-flank reservations, measured live in stage coordinates: the gauges rack pinned to the
+    // stage's top-right and the operation plate pinned bottom-right. Both own their column; a
+    // callout card whose band crosses either keeps clear of its left edge.
+    const rightZones = [];
+    for (const zoneEl of [gaugeRackEl, sideEl, el.querySelector('.sx-sw__dragcue')]) {
+      if (!zoneEl || !zoneEl.isConnected) continue;
+      const zr = zoneEl.getBoundingClientRect();
+      if (zr.width <= 0 || zr.height <= 0) continue;
+      rightZones.push({
+        top: zr.top - stageRect.top,
+        bottom: zr.bottom - stageRect.top,
+        leftX: zr.left - stageRect.left,
+      });
+    }
+    // Left-flank reservations: the nameplate's column (cards drop below it) and the camera
+    // words' corner (cards keep above it — that row is interactive). The nameplate's padded box
+    // is far wider than its ink; the zone follows the text extent (per-text-node Range rects —
+    // a whole-contents bounding rect would union the block boxes and be no narrower than the
+    // padded box), or a card crossing only padding would be pushed into a band that does not exist.
+    const leftZones = [];
+    if (nameplateRect && nameplateRect.width > 0 && nameplateRect.height > 0) {
+      let ink = null;
+      const walker = document.createTreeWalker(nameplateEl, NodeFilter.SHOW_TEXT);
+      for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+        if (!t.nodeValue || !t.nodeValue.trim()) continue;
+        const r = document.createRange();
+        r.selectNodeContents(t);
+        for (const rr of r.getClientRects()) {
+          if (rr.width <= 0 || rr.height <= 0) continue;
+          ink = ink
+            ? { top: Math.min(ink.top, rr.top), right: Math.max(ink.right, rr.right), bottom: Math.max(ink.bottom, rr.bottom) }
+            : { top: rr.top, right: rr.right, bottom: rr.bottom };
+        }
+      }
+      const zoneRect = ink || nameplateRect;
+      leftZones.push({
+        top: zoneRect.top - stageRect.top,
+        bottom: zoneRect.bottom - stageRect.top,
+        rightX: zoneRect.right - stageRect.left,
+        push: 'below',
+      });
+    }
+    const cameraEl = el.querySelector('.sx-sw__camera');
+    if (cameraEl && cameraEl.isConnected) {
+      const cr = cameraEl.getBoundingClientRect();
+      if (cr.width > 0 && cr.height > 0) {
+        leftZones.push({
+          top: cr.top - stageRect.top,
+          bottom: cr.bottom - stageRect.top,
+          rightX: cr.right - stageRect.left,
+          push: 'above',
+        });
+      }
+    }
+
     const layout = calculateSpatialSlotLayout({
       projectedSlots,
       stageWidth: stageRect.width,
@@ -1567,6 +1702,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       calloutHeight,
       edgeInset,
       nameplateBottom,
+      rightZones,
+      leftZones,
     });
 
     layout.forEach((res) => {
@@ -2484,7 +2621,11 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   });
   const stageResizeObserver = typeof ResizeObserver !== 'undefined'
     ? new ResizeObserver(() => scheduleSpatialProjection()) : null;
-  if (stageResizeObserver) stageResizeObserver.observe(stageEl);
+  if (stageResizeObserver) {
+    stageResizeObserver.observe(stageEl);
+    // The rack's row count changes with the fit; a resize there must re-pin the side plate's top.
+    if (gaugeRackEl) stageResizeObserver.observe(gaugeRackEl);
+  }
 
   let buyConfirmBusy = false;
   chooserEl.addEventListener('click', async (ev) => {

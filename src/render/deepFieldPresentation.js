@@ -5,6 +5,7 @@ import {
   DEEP_FIELD_VOID_SIZE, DEEP_FIELD_FINISHES, DEEP_FIELD_VERTEX, DEEP_FIELD_FRAGMENT,
   projectDebrisVertex, rgbaMipBytes,
 } from './deepFieldDesign.js';
+import { canonicalizeSurfaceProgramFamilyKey } from './illustratedSurface.js';
 
 const INSTALL_MARK = Symbol.for('spaceface.deepFieldPresentation.v1');
 const POSITION_B = 'aDeepFieldPositionB';
@@ -87,7 +88,8 @@ export function decorateDebrisMaterial(material, spin) {
       #endif` : ''}
     `);
   };
-  material.customProgramCacheKey = () => `${previousKey()}|deep-field-fracture-normal-v1`;
+  const familyKey = canonicalizeSurfaceProgramFamilyKey(previousKey(), 'deep-field-fracture-normal-v1');
+  material.customProgramCacheKey = () => familyKey;
   material.userData.deepFieldPresentation = { version: 1, silhouettes: 2, animatedNormals: !!spin };
   material.needsUpdate = true;
 }

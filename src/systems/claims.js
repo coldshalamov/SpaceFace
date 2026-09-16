@@ -690,8 +690,16 @@ export const claims = {
     };
   },
 
+  _travelInfrastructureStaticCandidates() {
+    const index = this.state && this.state.entityIndex;
+    if (index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.statics)) {
+      return index.statics;
+    }
+    return this.state.entityList || [];
+  },
+
   _travelInfrastructurePointClear(pos, body, station) {
-    const list = this.state.entityList || [];
+    const list = this._travelInfrastructureStaticCandidates();
     for (const entity of list) {
       // A passing craft cannot invalidate a permanent surveyed hardpoint. Only static world bodies
       // participate in the build clearance test.
@@ -703,7 +711,7 @@ export const claims = {
   },
 
   _travelInfrastructureCorridorClear(from, to, corridorRadiusWU, body, station) {
-    const list = this.state.entityList || [];
+    const list = this._travelInfrastructureStaticCandidates();
     for (const entity of list) {
       if (!this._travelInfrastructureStaticBlocker(entity, body, station)) continue;
       const radius = corridorRadiusWU + Math.max(0, Number(entity.radius) || 0);
@@ -1480,8 +1488,14 @@ export const claims = {
     const throughline = infrastructure
       ? ` · THROUGHLINE ${infrastructure.operational ? 'ONLINE' : String(infrastructure.stage || 'OFFLINE').toUpperCase()}`
       : '';
-    const list = this.state.entityList || [];
-    for (const e of list) {
+    const index = this.state && this.state.entityIndex;
+    const lists = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      ? [index.asteroids, index.stations]
+      : [this.state.entityList || []];
+    for (let l = 0; l < lists.length; l++) {
+      const list = lists[l];
+      if (!list) continue;
+      for (const e of list) {
       if (!e || !e.alive || !e.data || e.data.poiId !== body.poiId) continue;
       if (!e.data.claimBaseName) e.data.claimBaseName = e.data.name || body.name;
       e.data.name = (def ? e.data.claimBaseName + ' — ' + def.name : e.data.claimBaseName) + throughline;
@@ -1494,6 +1508,7 @@ export const claims = {
       e.data.claimTravelInfrastructureId = infrastructure ? infrastructure.id : null;
       e.data.claimTravelInfrastructureOperational = infrastructure ? infrastructure.operational === true : false;
       e.data.claimSensorPostActive = Array.isArray(body.modules) && body.modules.includes('mod_sensor_post');
+      }
     }
   },
 

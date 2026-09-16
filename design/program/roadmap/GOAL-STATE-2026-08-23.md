@@ -1,6 +1,6 @@
 # Goal state — the 2026-08-23 completion thrust
 
-The standing brief was: finish the remaining `CANONICAL_BUILD_MAP.md` plans via delegated lanes, fix
+The standing brief was: finish the remaining `build_map.md` plans via delegated lanes, fix
 draw-to-fly, make the game performant, polish the frontend, and end-to-end review it. This is the
 ledger, so none of it depends on anybody's memory.
 

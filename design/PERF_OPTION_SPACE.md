@@ -7,12 +7,13 @@ It does **not** admit work, claim completion, or hold a queue snapshot.
 Companion to [`PERF_BUDGET.md`](./PERF_BUDGET.md),
 [`PERF_SYSTEMATIC_PROGRAM.md`](./PERF_SYSTEMATIC_PROGRAM.md) when that file is present,
 [`PERFORMANCE_OPTIMIZATION_CONSTELLATION.md`](./PERFORMANCE_OPTIMIZATION_CONSTELLATION.md),
-and [`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8 / §8.1 / §8.2 / **§8.3
+and [`build_map.md`](../build_map.md) §8 / §8.1 / §8.2 / **§8.3
 (exhaustive technique inventory)**.
 
 Existing identities `PQ-034`–`PQ-044` and `PQ-051`–`PQ-060` stay authoritative for their
-scopes. Identities `PQ-061`–`PQ-128` below are reserved so later campaigns can admit
-leaves without inventing overlapping outcomes.
+scopes. Identities `PQ-061`–`PQ-128` plus minted leftovers `PQ-196`–`PQ-203` (2026-09-15
+table-authority sweep) are reserved so later campaigns can admit leaves without inventing
+overlapping outcomes.
 
 The admitted hitch campaign that **executes** those reserved identities is
 [`PERF_HITCH_CAMPAIGN.md`](./program/PERF_HITCH_CAMPAIGN.md) / `PQ-129`.
@@ -246,6 +247,14 @@ Each still starts as INV unless a prior census already named that owner.
 | **`PQ-127` / `PERF-87-NON-SUBMIT-HORIZONS`** | Near INV | Several leftover large numbers are not 3D submit. | Camera shake 1200, director compose 600, pair-frame 280, and planet/sun sky dressing at 2800–6000 are feel or painted sky. The 300 NPC-signature constant is leftover comment; live draw uses the table. Do not shrink. | No fake-visible mesh tax; shake, director, and sky stay. |
 | **`PQ-128` / `PERF-88-HEADLESS-VFX-TABLE`** | Near IMPL | Headless VFX on-screen fallbacks still used leftover 900 WU. | Doctrine-tell `_doctrineTellOnScreen` with no camera now uses `TABLE_HEARING_FAR_WU`. Live play still projects. Do not shrink hail, missile-threat, or faction 900s. | Headless tests stay table-sized; on-table tells still fire. |
 | **`PQ-129.19` / `PERF-89-SIM-HITCH-ATTRIBUTION`** | Near INV | A `sim`-owned hitch stops being an unattributed lump, so the next sim leaf aims at a bill someone has weighed. | Minted by the `PQ-094` / `PQ-129.18` sweep of 2026-08-21. The headed witness names `sim` as the largest hitch owner (21 of 51 named) while the largest sampled sim system max is 2.90 ms and all sampled systems summed sit far below a 32 ms frame — so the spiky owner is not in the sampled list, and `unknown` is another 18 of 69. Give a `sim`-classified hitch frame a per-frame max-of-frame owner attribution rather than p95 sampling, then re-run `PQ-061`–`PQ-063`. Measurement only: no cadence change, no quality knob, no new system. Invalidate if per-frame attribution simply reproduces the existing sampled list. | Every `sim`-classified hitch carries a named per-frame owner; `unknown` share falls below 0.1; the next sim leaf cites a measured owner instead of `tacticalAI`'s steady p95. |
+| **`PQ-196` / `PERF-90-PACKED-ORM-FAMILY-KEY`** | Near INV | First painted hull does not mint a unique GPU program from leftover compile-source keys. | Family-key canonicalize already strips UUID/`onBeforeCompile.toString()` outside `partsLibrary`. Investigate the in-file packed-ORM concatenation when PQ-193.09/12 release that file. Dummy prewarm stays illegal. | First hostile / new traffic is not a 40+ ms compile brick; live keys match family stamps. |
+| **`PQ-197` / `PERF-91-RETAINED-SLOT-CROWDED-CENSUS`** | Near INV | Crowded Intel bloom stays ~11 ms while fewer unique plates draw. | Retained-slot BatchedMesh is written, shipping OFF. Headed crowded fly must name draw-count as the pole. Do not re-enable per-frame repack (bloomScene 11→114 ms). | Census names the pole; enable only via `PQ-052` after `PQ-202`. |
+| **`PQ-198` / `PERF-92-FIRST-SIGHT-LINKPROGRAM`** | Near INV | A new NPC entering the glass is not a first-draw `linkProgram` brick. | Empty admission slots still compose in flight. After-present compile only. | Headed first-contact hitch frames stay rare. |
+| **`PQ-199` / `PERF-93-FAT-LIST-MUST-STAY`** | Near INV | Typed indexes never drop a real interaction. | Keep entityList for world despawn, fields save rebuild, claim-sling, scanner distress, hangar occupancy. | Those verbs still find their bodies. |
+| **`PQ-200` / `PERF-94-FX-BEACON-BUCKET`** | Near INV | Journal leftover `fx`/`beacon` walks cost table size, not 408 bodies. | Quiet Ceres 56 live / 279 field rocks. Bucket only if membership stays and dressing stays off the combat list. | Chart/journal still see buoys; combat list stays 56. |
+| **`PQ-201` / `PERF-95-SECTOR-PREWARM-PLACEFILE`** | Near INV | Sector prewarm covers every place-bearing type without a needless fat-list walk. | `placeFile` can sit on massSeed/fieldEmitter/fx. Hitch path. | No missed authored GLB; no extra hitch from a partial census. |
+| **`PQ-202` / `PERF-96-INTEL-BLOOM-BATCH-AB`** | Near INV | Same crowded still, bloom and shadows on: draw-count vs bloom resolve. | Pair with `PQ-197`/`PQ-097`. | If bloom is the pole, batches stay off. If draw-count is the pole and bloom holds, admit `PQ-052`. |
+| **`PQ-203` / `PERF-97-QUIET-CERES-FIVE-MS`** | Standing | Quiet Ceres warm-sim p50 stays ≤ 5 ms. | Membership 56. Do not weaken the gate. Re-census after clock moves or enabling opaque batch. | p50 ≤ 5 ms on this host; picture unchanged. |
 
 ## 6. Investigation protocols (scaffolds this catalog may build)
 

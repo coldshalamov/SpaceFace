@@ -349,7 +349,7 @@ migration or a default render-graph flip.
 
 The completed original authority-admission transaction owned only:
 
-- `CANONICAL_BUILD_MAP.md`;
+- `build_map.md`;
 - `design/program/roadmap/active/README.md`;
 - `design/program/roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md`.
 
@@ -484,4 +484,4 @@ Return `BLOCKED` or a shared-change request when:
 - [`../../../PERF_BUDGET.md`](../../../PERF_BUDGET.md) — target/floor profiles and matched evidence.
 - [`../../../../docs/VALIDATION_WORKFLOW.md`](../../../../docs/VALIDATION_WORKFLOW.md) — deterministic
   lab and broker-managed Browser/Electron evidence.
-- [`../../../../CANONICAL_BUILD_MAP.md`](../../../../CANONICAL_BUILD_MAP.md) — stable program front door.
+- [`../../../../build_map.md`](../../../../build_map.md) — stable program front door.

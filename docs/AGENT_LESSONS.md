@@ -12,6 +12,7 @@ quality, planning graphics/VFX work, or declaring a bug fixed. Root `AGENTS.md` 
 - When handed a large agent review, wants what is safe to do now; leaves safe-vs-risky judgment to the agent once that bar is clear.
 - Does not want stale agent ledgers left in the repo, and does not want valuable unverified findings deleted blind—distill durable disposition (done / rejected / verified-open / leads) then remove the pile.
 - Treat hitching as structural: reject quality cuts, triangle-count trims, and ~2% easy-road opts as the performance plan; major refactors are discussable. Prefer cheap Node count gates over repeated headed browser soaks.
+- Dynamic graphics: Hitch, default quality, and the chase-frame ship stay full. A stranger must not see a blank lock, a box or floating engine, then a different ship. If a stranger can tell detail was dropped, too much was dropped. “Shave a little” means hide a fastener at a few dozen pixels (`hlod.js` garnish tags), never a cheaper species of hull, an impostor, or a modular stand-in while the real body loads. Empty-admission substrate plus a packaged complete body is the path; do not unhide junk to beat a pop-in. Process: [`design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md`](../design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md). Owner confirmation 2026-09-09.
 - When a plan is authorized, drive it through without stop-and-go “continue?” pauses.
 - Never stop halfway through a job. The owner cannot finish leftover technical work; a half-done
   commit with “revise / gates open / source candidate” leaves the game broken forever. “Do this one
@@ -38,6 +39,7 @@ quality, planning graphics/VFX work, or declaring a bug fixed. Root `AGENTS.md` 
 - Many `.test.mjs` files are unwired from `check:*`; do not blindly glob-enable them into CI—audit and wire high-value clusters only.
 - Tractor module `magnetRange` is still unwired in mining (UI no longer advertises inert numbers); drill-fade still mutates ship physics from UI—both are verified deferred work, not free cleanups.
 - Playable-flight `buildComposedShip` is gated off the combat thread; mid-fight authored upgrades settle to the visible procedural ship unless a prewarmed/prepared boundary exists. Do not reintroduce sync composition on the playable path.
+- Live play mounts a zero-draw admission substrate (`directAuthoredMount`) and publishes only `PACKAGED_LIVE_WHOLE_SHIP_FILES`. Zoom-out does not swap whole-ship GLBs today: Hitch LOD1/2 are packaged but the player is forced LOD0; Wasp/factory LOD siblings are not on that allowlist. Station/place HLOD hides tagged flourishes only and forbids a silhouette proxy. A ship that is not closing (closing speed ≤ 1) can skip authored prefetch and pop late — that is a runway race, not a reason to show a box. Verified 2026-09-09 against `visualOverrides.js`, `partsLibrary.js`, `hlod.js`, `authoredAdmissionPolicy.js`.
 
 ## Maintenance
 

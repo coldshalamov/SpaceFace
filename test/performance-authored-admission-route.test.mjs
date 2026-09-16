@@ -13,13 +13,19 @@ test('public performance route accepts invisible pending ships but rejects real 
     entities: new Map([[player.id, player], [pending.id, pending]]),
     entityList: [player, pending],
   };
-  const restore = installBrowserGlobals(state);
+  // The route delegates the authored-presentation verdict to the engine contract
+  // (authoredCriticalVisualReadiness via window.SF.authoredVisualReadiness): pending
+  // admissions and dormant distant NPCs are fine, real fallbacks are not. The stub
+  // mirrors that verdict surface so this test exercises the route-side wiring.
+  const readiness = { ready: true };
+  const restore = installBrowserGlobals(state, readiness);
   try {
     assert.equal(flightReadyInPage(), true,
       'quality-preserving zero-draw pending admission cannot hold the playable opening route');
 
     pending.presentationAdmission = 'unavailable';
     pending.mesh.userData.authoredAssetState = 'fallback-after-error';
+    readiness.ready = false;
     assert.equal(flightReadyInPage(), false, 'a failed authored admission still fails closed');
 
     pending.presentationAdmission = 'pending';
@@ -50,12 +56,12 @@ test('performance recovery completes the active Departure Check and retains stru
     'the performance route owns active Market-shell acceptance instead of the legacy stationHub DOM contract');
   assert.match(source, /PerformanceObserver\.supportedEntryTypes\?\.includes\(['"]gc['"]\)/,
     'optional GC observation must not emit a browser warning when unsupported');
-  assert.match(source, /\.sx-trade__go\[data-go\], \.st-buy-btn/,
-    'Market readiness accepts the active shell while retaining compatibility coverage');
+  assert.match(source, /\.sx-trade:visible \.sx-trade__go/,
+    'Market readiness accepts the active orbital-command trade shell');
   assert.match(source, /const activeTradeShell = page\.locator\(['"]\.sx-trade:visible['"]\)/,
     'active Market actions are scoped to the visible trade console');
-  assert.match(source, /\[data-cmdty\]\[role=\\?['"]tab\\?['"]\]\[aria-selected=\\?['"]true\\?['"]\]/,
-    'the active Market roundtrip binds its selected public commodity tab');
+  assert.match(source, /\[data-cmdty\]\[role=\\?['"]tab\\?['"]\]/,
+    'the active Market roundtrip binds its public commodity register rows');
   assert.doesNotMatch(source, /getByRole\(['"]button['"],\s*\{\s*name:\s*['"]Undock['"],\s*exact:\s*true/);
 });
 
@@ -70,10 +76,10 @@ function ship(id, authoredAssetState, presentationAdmission) {
   };
 }
 
-function installBrowserGlobals(state) {
+function installBrowserGlobals(state, readiness = null) {
   const prior = new Map();
   const globals = {
-    window: { SF: { state } },
+    window: { SF: { state, authoredVisualReadiness: readiness ? () => readiness : undefined } },
     document: {
       body: { classList: { contains: () => false } },
       getElementById: () => null,

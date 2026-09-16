@@ -471,28 +471,25 @@ test('C4-TRAVEL-03 gate control is intentional-gate scoped (via===gate), not fre
 // ════════════════════════════════════════════════════════════════════════════
 
 test('C4-LOCAL-01 buildLocalModel reads live entities from state; no second world graph', () => {
-  const { state, player } = bootWorld(21);
-  // Seed a contact entity near the player.
-  const contact = {
-    id: 77,
+  const { state, player, helpers } = bootWorld(21);
+  // Seed a contact entity near the player through the live spawn seam so membership
+  // and the typed index stay in the same graph the chart reads.
+  const contact = helpers.spawnEntity({
     type: 'ship',
-    alive: true,
     team: 2,
     pos: { x: player.pos.x + 40, z: player.pos.z + 10 },
     vel: { x: 0, z: 0 },
     rot: 0,
     data: { name: 'Patrol', hostile: true },
     factionId: 'faction_outlaw',
-  };
-  state.entities.set(77, contact);
-  state.entityList.push(contact);
+  });
   state.world.currentSectorId = HELIOS;
 
   const model = buildLocalModel(state, (e) => !!(e.data && e.data.hostile));
   assert.equal(model.level, 'local');
   assert.equal(model.sectorId, HELIOS);
   assert.ok(model.player);
-  assert.ok(model.contacts.some((c) => c.id === 77 && c.hostile === true));
+  assert.ok(model.contacts.some((c) => c.id === contact.id && c.hostile === true));
 });
 
 test('C4-LOCAL-02 galaxyMap local layer injects scanner hostility; does not re-own membership', () => {

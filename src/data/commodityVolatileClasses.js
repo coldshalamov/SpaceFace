@@ -1,7 +1,7 @@
 // src/data/commodityVolatileClasses.js — PQ-148.01 Volatile cargo classes.
 //
 // Volatile cargo classes define physical behavior when cargo pods are jettisoned,
-// spilled, or shoved as dynamic bodies (CANONICAL_BUILD_MAP §15, PQ-148.01).
+// spilled, or shoved as dynamic bodies (build_map §15, PQ-148.01).
 // Pure data catalog and lookup helpers: deterministic, no UI, no ambient randomness.
 
 export const VOLATILE_CLASSES = Object.freeze({

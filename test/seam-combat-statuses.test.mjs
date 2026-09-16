@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
-import { createCombatCatalog, ensureCombatant, ensureCombatState } from '../src/combat/runtime.js';
+import { createCombatCatalog, ensureCombatant, ensureCombatState, entityWeaponBlocked } from '../src/combat/runtime.js';
+import { recomputeCombatantModifiers } from '../src/combat/subsystems.js';
 import { createStatusService } from '../src/combat/statuses.js';
 
-function bootTarget() {
-  const catalog = createCombatCatalog();
+function bootTarget(catalog = createCombatCatalog()) {
   const state = { tick: 0, combat: {} };
   ensureCombatState(state);
   const entity = {
@@ -53,6 +53,57 @@ test('an unknown status id is refused and an immune tag blocks application', () 
     const immune = statuses.schedule(entity, runtime, { id: 'status_ionized' }, { attackerId: 1 });
     assert.equal(immune.ok, false);
     assert.equal(immune.reason, 'immune');
+  } finally {
+    bus.clear();
+  }
+});
+
+test('weapon-blocking catalog statuses block bursts only after runtime recompute', () => {
+  for (const statusId of ['status_tumbling', 'status_overheated', 'status_scrambled']) {
+    const { state, entity, runtime, bus, catalog } = bootTarget();
+    try {
+      assert.equal(entityWeaponBlocked(state, entity), false, `${statusId} starts unblocked`);
+      runtime.statuses[statusId] = { id: statusId, expiresTick: state.tick + 2, stacks: 1 };
+      recomputeCombatantModifiers({ state, catalog, bus }, entity, runtime, null, false);
+      assert.equal(entityWeaponBlocked(state, entity), true, `${statusId} active blocks burst`);
+      state.tick = 2;
+      recomputeCombatantModifiers({ state, catalog, bus }, entity, runtime, null, false);
+      assert.equal(entityWeaponBlocked(state, entity), false, `${statusId} expired key is ignored before sweep`);
+      state.tick = 0;
+      runtime.statuses = {
+        [statusId]: { id: statusId, expiresTick: state.tick + 2, stacks: 1, pending: true },
+      };
+      recomputeCombatantModifiers({ state, catalog, bus }, entity, runtime, null, false);
+      assert.equal(entityWeaponBlocked(state, entity), false, `${statusId} pending key is ignored`);
+    } finally {
+      bus.clear();
+    }
+  }
+});
+
+test('custom runtime blockedActionTags participate in burst blocking', () => {
+  const base = createCombatCatalog();
+  const catalog = createCombatCatalog({
+    statuses: [
+      ...base.statusDefs,
+      {
+        id: 'status_test_burst_block', version: 1, tags: ['test'], durationTicks: 10,
+        stacking: { mode: 'refresh', maxStacks: 1 }, immunityTags: [],
+        effects: { blockedActionTags: ['burst'] },
+        interactions: [], periodic: null, cueId: null,
+      },
+    ],
+  });
+  const { state, entity, runtime, bus } = bootTarget(catalog);
+  try {
+    runtime.statuses.status_test_burst_block = {
+      id: 'status_test_burst_block',
+      expiresTick: state.tick + 2,
+      stacks: 1,
+    };
+    recomputeCombatantModifiers({ state, catalog, bus }, entity, runtime, null, false);
+    assert.equal(entityWeaponBlocked(state, entity), true,
+      'custom status blocks action_burst by derived runtime tag');
   } finally {
     bus.clear();
   }

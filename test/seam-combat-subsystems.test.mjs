@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createBus } from '../src/core/eventBus.js';
-import { createCombatCatalog, ensureCombatant, ensureCombatState } from '../src/combat/runtime.js';
+import { createCombatCatalog, ensureCombatant, ensureCombatState, entityWeaponBlocked } from '../src/combat/runtime.js';
 import {
   applyPendingSubsystemTransitions,
   scheduleSubsystemTransition,
@@ -30,6 +30,7 @@ test('destroying power disables dependent drive and weapons', () => {
   try {
     assert.equal(runtime.capabilities.drive, true);
     assert.equal(runtime.capabilities.weapon, true);
+    assert.equal(entityWeaponBlocked(context.state, entity), false);
     scheduleSubsystemTransition(runtime.subsystems.subsystem_power, context.state.tick, true, 'core_hit', 1);
     const changed = applyPendingSubsystemTransitions(context, entity, runtime);
     assert.equal(changed, true);
@@ -38,6 +39,7 @@ test('destroying power disables dependent drive and weapons', () => {
     assert.equal(runtime.subsystems.subsystem_weapon.effectiveDisabled, true);
     assert.equal(runtime.capabilities.drive, false);
     assert.equal(runtime.capabilities.weapon, false);
+    assert.equal(entityWeaponBlocked(context.state, entity), true);
     assert.ok(disabled.some((p) => p.subsystemId === 'subsystem_power'));
     assert.ok(disabled.some((p) => p.subsystemId === 'subsystem_drive' && p.dependencyDisabled === true));
   } finally {
@@ -48,13 +50,39 @@ test('destroying power disables dependent drive and weapons', () => {
 test('a lone weapon kill does not take the drive offline', () => {
   const { entity, runtime, context, bus } = bootShip();
   try {
+    assert.equal(entityWeaponBlocked(context.state, entity), false);
     scheduleSubsystemTransition(runtime.subsystems.subsystem_weapon, context.state.tick, true, 'gun_hit', 1);
     applyPendingSubsystemTransitions(context, entity, runtime);
     assert.equal(runtime.subsystems.subsystem_weapon.destroyed, true);
     assert.equal(runtime.capabilities.weapon, false);
+    assert.equal(entityWeaponBlocked(context.state, entity), true);
     assert.equal(runtime.capabilities.drive, true);
     assert.equal(runtime.subsystems.subsystem_drive.effectiveDisabled, false);
   } finally {
     bus.clear();
   }
+});
+
+test('sensor destruction blocks weapon bursts through derived runtime capabilities', () => {
+  const { entity, runtime, context, bus } = bootShip();
+  try {
+    assert.equal(entityWeaponBlocked(context.state, entity), false);
+    scheduleSubsystemTransition(runtime.subsystems.subsystem_sensor, context.state.tick, true, 'sensor_hit', 1);
+    applyPendingSubsystemTransitions(context, entity, runtime);
+    assert.equal(runtime.subsystems.subsystem_sensor.destroyed, true);
+    assert.equal(runtime.capabilities.sensor, false);
+    assert.equal(runtime.capabilities.weapon, true);
+    assert.equal(entityWeaponBlocked(context.state, entity), true);
+  } finally {
+    bus.clear();
+  }
+});
+
+test('missing runtime does not block weapons or mutate combat tables', () => {
+  const { state, entity } = bootShip();
+  const before = JSON.stringify(state.combat.entities);
+  delete state.combat.entities[String(entity.id)];
+  assert.equal(entityWeaponBlocked(state, entity), false);
+  assert.equal(JSON.stringify(state.combat.entities), '{}');
+  state.combat.entities[String(entity.id)] = JSON.parse(before)[String(entity.id)];
 });

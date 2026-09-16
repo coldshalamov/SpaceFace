@@ -12,7 +12,7 @@ Agent constraint: the work must be executable by lower-cost agents using determi
 
 This plan does not own current priority, coverage, dispatch, acceptance, or cross-program status.
 Its CLI-first method and six checkpoint boundaries are historical reference material that apply only
-when an admitted packet explicitly reuses them. Current order comes from `CANONICAL_BUILD_MAP.md` and
+when an admitted packet explicitly reuses them. Current order comes from `build_map.md` and
 the admitted queue; live contracts and candidate-bound evidence remain authoritative.
 
 For substantive Tier A/B authored-3D work, the repeatable method begins with

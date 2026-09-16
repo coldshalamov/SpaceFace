@@ -76,6 +76,12 @@ paragraph, before the first visual commit. Inventing a better option is allowed.
 A factory loft of boxes cannot close. Hiding the gap with a glow blob cannot close.
 Matching Hitch triangle-for-triangle cannot close.
 
+**PQ-193.01 choice (chase stills vs Hitch, 2026-09-11):** keep Helios Lark / Cradle / Span
+as opening civilians; keep packaged Drifter as the smuggler enclose; unwire factory Hornet
+as the pirate and show the accepted Wasp of the same combat role. Rejected: factory Hornet
+(pale toy vs Hitch), remapping Helios onto unused factory remasters, dumping Hitch panels,
+Ashline Rig as the opening pirate (chase still reads as disconnected blobs).
+
 ### Reverse / brake jets
 
 - Same volumetric family as the main drive, stubby and hard (the *intent* of the current

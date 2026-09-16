@@ -37,11 +37,11 @@ research → worldbuild → concept → build → adversarial-review loop in §2
 **Nothing routed to it at the captured baseline.** At `f66f6768`, a repository-wide grep for
 `EXPANSION_PROGRAM` returned two
 hits: `design/program/NOW.md` (volatile, and see §1) and a gitignored `.devshots/` scratch file. It
-was absent from `CANONICAL_BUILD_MAP.md`, the repository's declared implementation front door.
+was absent from `build_map.md`, the repository's declared implementation front door.
 
 An agent following the documented entry path could not find the graphics brief. That is the root
 cause of most of what follows: work restarted from dated sprint prompts instead of continuing the
-standing plan. **Fixed in this pass** — `CANONICAL_BUILD_MAP.md` §1 now carries a
+standing plan. **Fixed in this pass** — `build_map.md` §1 now carries a
 "Graphics / expansion program" route.
 
 ---
@@ -133,7 +133,7 @@ previously had none. The generator now emits `LIFETIME: GENERATED` for
 - **2 marked `VOLATILE`** — the ROI ranking and draft one-leaf prompt.
 - **1 marked `GENERATED`** — `VISUAL_ASSET_CATALOG.md`, owned by its generator and check.
 
-**Lifetime consistency resolved in this pass.** `CANONICAL_BUILD_MAP.md` §9 and
+**Lifetime consistency resolved in this pass.** `build_map.md` §9 and
 `docs/POLICY_MANIFEST.md` now define `DURABLE` consistently for long-lived research, evidence, and
 rationale that may inform planning but cannot lease, dispatch, accept, or prioritize work.
 

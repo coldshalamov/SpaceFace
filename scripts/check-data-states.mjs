@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// check-data-states.mjs — J3 (CANONICAL_BUILD_MAP §11.12): the four required data states.
+// check-data-states.mjs — J3 (build_map §11.12): the four required data states.
 //
 // "A correct-but-blank screen reads as broken." Every pane must be able to render EMPTY / LOADING /
 // ERROR / DENIED, and each state must name WHAT WOULD FILL IT and carry a VERB.
@@ -129,7 +129,7 @@ if (siteCount === 0) {
 }
 notes.push(`${siteCount} data-state call site${siteCount === 1 ? '' : 's'} checked`);
 
-// Named minimum adoption set (CANONICAL_BUILD_MAP §11.12 J01). A primitive nobody mounts on the
+// Named minimum adoption set (build_map §11.12 J01). A primitive nobody mounts on the
 // three live failure paths is ceremony.
 const NAMED_ADOPTION = [
   ['src/ui/galaxyMap.js', /dataStateHtml\(\s*'error'/, 'Chart market-feed ERROR'],

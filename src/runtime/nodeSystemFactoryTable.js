@@ -21,6 +21,7 @@ import { autoTargetAssist } from '../systems/autoTargetAssist.js';
 import { flybyFocus } from '../systems/flybyFocus.js';
 import { scanner } from '../systems/scanner.js';
 import { mines } from '../systems/mines.js';
+import { bombs } from '../systems/bombs.js';
 import { dockingCorridor } from '../systems/dockingCorridor.js';
 import { scanReveal } from '../systems/scanReveal.js';
 import { buildIdentity } from '../systems/buildIdentity.js';
@@ -203,6 +204,7 @@ export function getNodeSystemFactoryTable(options = {}) {
     ['countermeasures', countermeasures],
     ['impulseCharges', impulseCharges],
     ['mines', mines],
+    ['bombs', bombs],
     ['massSeed', massSeed],
     ['uniqueLootAbilities', uniqueLootAbilities],
     ['fields', fields],

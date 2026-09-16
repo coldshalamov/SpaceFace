@@ -71,6 +71,7 @@ export function createOpaqueMaterialBatchState() {
   return {
     batches: new Map(),
     consolidatedChunks: new Set(),
+    slots: new Map(),
     stats: createBatchStats(),
   };
 }
@@ -81,6 +82,8 @@ function createBatchStats() {
     instances: 0,
     hiddenChunks: 0,
     skippedChunks: 0,
+    matrixWrites: 0,
+    colorWrites: 0,
   };
 }
 
@@ -90,6 +93,8 @@ export function syncOpaqueMaterialBatches(state, pools, options = {}) {
   stats.instances = 0;
   stats.hiddenChunks = 0;
   stats.skippedChunks = 0;
+  stats.matrixWrites = 0;
+  stats.colorWrites = 0;
   if (state) state.stats = stats;
   if (!state) return stats;
   if (options.enabled !== true || !options.scene || !pools) {
@@ -97,6 +102,8 @@ export function syncOpaqueMaterialBatches(state, pools, options = {}) {
     return stats;
   }
 
+  if (!state.slots) state.slots = new Map();
+  for (const slot of state.slots.values()) slot.seen = false;
   for (const batch of state.batches.values()) batch.used = 0;
 
   for (const pool of pools.values()) {
@@ -112,9 +119,9 @@ export function syncOpaqueMaterialBatches(state, pools, options = {}) {
     }
   }
 
+  releaseUnseenSlots(state);
   const refreshBounds = options.refreshBounds === true;
   for (const batch of state.batches.values()) {
-    hideUnusedInstances(batch);
     batch.mesh.visible = batch.used > 0;
     if (batch.used > 0) {
       if (refreshBounds || batch.boundsDirty === true) {
@@ -126,6 +133,18 @@ export function syncOpaqueMaterialBatches(state, pools, options = {}) {
     }
   }
   return stats;
+}
+
+function slotKeyFor(chunk, index, lane) {
+  return `${chunk.pool.key}|${index}|${lane}`;
+}
+
+function matrixHashFromArray(array, offset) {
+  let hash = 0;
+  for (let i = 0; i < 16; i++) {
+    hash = (Math.imul(hash, 31) + ((array[offset + i] * 1024) | 0)) | 0;
+  }
+  return hash;
 }
 
 function consolidateChunk(state, chunk, options) {
@@ -149,26 +168,50 @@ function consolidateChunk(state, chunk, options) {
       offset,
     });
   }
-  const reservations = [];
+  const created = [];
   for (const item of planned) {
-    const reservation = reserveBatchInstance(state, chunk, item.lane, options.scene);
-    if (!reservation) {
-      for (const undo of reservations) undo.batch.used = Math.max(0, undo.batch.used - 1);
-      restoreConsolidatedChunk(state, chunk);
-      return false;
+    const key = slotKeyFor(chunk, item.index, item.lane);
+    let slot = state.slots.get(key);
+    if (!slot) {
+      const reservation = reserveBatchInstance(state, chunk, item.lane, options.scene);
+      if (!reservation) {
+        for (const undo of created) releaseSlot(state, undo.key, undo.slot);
+        restoreConsolidatedChunk(state, chunk);
+        return false;
+      }
+      slot = {
+        batch: reservation.batch,
+        instanceId: reservation.instanceId,
+        matrixHash: null,
+        colorHash: null,
+        seen: true,
+      };
+      state.slots.set(key, slot);
+      created.push({ key, slot });
     }
-    reservations.push(reservation);
-  }
-  for (let i = 0; i < planned.length; i++) {
-    const item = planned[i];
-    const reservation = reservations[i];
-    _matrix.fromArray(array, item.offset);
-    reservation.batch.mesh.setMatrixAt(reservation.instanceId, _matrix);
-    reservation.batch.mesh.setVisibleAt(reservation.instanceId, true);
+    slot.seen = true;
+    slot.batch.used++;
+    const hash = matrixHashFromArray(array, item.offset);
+    if (slot.matrixHash !== hash) {
+      _matrix.fromArray(array, item.offset);
+      slot.batch.mesh.setMatrixAt(slot.instanceId, _matrix);
+      slot.matrixHash = hash;
+      state.stats.matrixWrites++;
+      slot.batch.boundsDirty = true;
+    }
     const sourceColor = chunk.pool.material && chunk.pool.material.color;
-    if (sourceColor && typeof reservation.batch.mesh.setColorAt === 'function') {
+    const colorHash = sourceColor && typeof sourceColor.getHex === 'function'
+      ? sourceColor.getHex()
+      : 0;
+    if (sourceColor && typeof slot.batch.mesh.setColorAt === 'function' && slot.colorHash !== colorHash) {
       _color.copy(sourceColor);
-      reservation.batch.mesh.setColorAt(reservation.instanceId, _color);
+      slot.batch.mesh.setColorAt(slot.instanceId, _color);
+      slot.colorHash = colorHash;
+      state.stats.colorWrites++;
+    }
+    if (slot.visible !== true) {
+      try { slot.batch.mesh.setVisibleAt(slot.instanceId, true); } catch (_) {}
+      slot.visible = true;
     }
   }
   if (chunk.consolidated !== true) chunk.unconsolidatedCastShadow = chunk.mesh.castShadow === true;
@@ -180,7 +223,15 @@ function consolidateChunk(state, chunk, options) {
 }
 
 function restoreConsolidatedChunk(state, chunk) {
-  if (!chunk || !chunk.mesh || chunk.consolidated !== true) return false;
+  if (!chunk || !chunk.mesh) return false;
+  if (state && chunk.pool && chunk.pool.key != null && state.slots) {
+    const prefix = `${chunk.pool.key}|`;
+    for (const [key, slot] of [...state.slots]) {
+      if (!String(key).startsWith(prefix)) continue;
+      releaseSlot(state, key, slot);
+    }
+  }
+  if (chunk.consolidated !== true) return false;
   chunk.consolidated = false;
   chunk.mesh.visible = (chunk.mesh.count || 0) > 0;
   chunk.mesh.castShadow = chunk.unconsolidatedCastShadow === true;
@@ -190,11 +241,29 @@ function restoreConsolidatedChunk(state, chunk) {
 }
 
 function disableOpaqueMaterialBatches(state) {
-  for (const chunk of state.consolidatedChunks || []) restoreConsolidatedChunk(state, chunk);
+  for (const chunk of [...(state.consolidatedChunks || [])]) restoreConsolidatedChunk(state, chunk);
+  if (state.slots) {
+    for (const [key, slot] of [...state.slots]) releaseSlot(state, key, slot);
+  }
   for (const batch of state.batches.values()) {
     batch.used = 0;
     hideUnusedInstances(batch);
     batch.mesh.visible = false;
+  }
+}
+
+function releaseSlot(state, key, slot) {
+  if (!slot) return;
+  try { slot.batch.mesh.setVisibleAt(slot.instanceId, false); } catch (_) {}
+  slot.visible = false;
+  if (slot.batch.freeIds) slot.batch.freeIds.push(slot.instanceId);
+  state.slots.delete(key);
+}
+
+function releaseUnseenSlots(state) {
+  for (const [key, slot] of [...state.slots]) {
+    if (slot.seen === true) continue;
+    releaseSlot(state, key, slot);
   }
 }
 
@@ -222,10 +291,11 @@ function reserveBatchInstance(state, chunk, lane, scene) {
     batch.geometryIds.set(chunk.pool.key, geometryId);
     batch.boundsDirty = true;
   }
-  if (batch.used >= OPAQUE_BATCH_MAX_INSTANCES) return null;
+  const live = batch.allocated - (batch.freeIds ? batch.freeIds.length : 0);
+  if (live >= OPAQUE_BATCH_MAX_INSTANCES) return null;
   let instanceId;
-  if (batch.used < batch.allocated) {
-    instanceId = batch.instanceIds[batch.used];
+  if (batch.freeIds && batch.freeIds.length) {
+    instanceId = batch.freeIds.pop();
     try {
       if (typeof batch.mesh.setGeometryIdAt === 'function') {
         batch.mesh.setGeometryIdAt(instanceId, geometryId);
@@ -243,7 +313,6 @@ function reserveBatchInstance(state, chunk, lane, scene) {
     batch.allocated++;
     batch.boundsDirty = true;
   }
-  batch.used++;
   return { batch, instanceId };
 }
 
@@ -280,6 +349,7 @@ function createBatch(material, lane, scene) {
     material,
     geometryIds: new Map(),
     instanceIds: [],
+    freeIds: [],
     allocated: 0,
     used: 0,
     boundsDirty: true,

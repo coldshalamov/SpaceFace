@@ -4,8 +4,11 @@
 Owner instruction. Full analysis: [`PERF_TABLE_ANALYSIS.md`](./PERF_TABLE_ANALYSIS.md).
 Campaign: [`PERF_PERSISTENCE_GOAL.txt`](./PERF_PERSISTENCE_GOAL.txt) and
 [`PERF_PERSISTENCE_CAMPAIGN.md`](./PERF_PERSISTENCE_CAMPAIGN.md).
-If an agent is “working on perf” and the work is not a row in **Do this**, they
-are slog. Stop them.
+**Current implement plan (2026-09-09):** [`../perf/TABLE_AUTHORITY_PLAN.md`](../perf/TABLE_AUTHORITY_PLAN.md)
+and prompt [`TABLE_AUTHORITY_GOAL.txt`](./TABLE_AUTHORITY_GOAL.txt). The “sleep 317 Rapier
+bodies” row below is **stale** — Rapier is already ~66 bodies / 0.8 ms; the pole is 98
+systems on a 408-object `entityList`. If an agent is “working on perf” and the work is
+not a lane in that plan or a row in **Do this**, they are slog. Stop them.
 
 Picture contract is unchanged: default bloom, shadows, particles, population,
 and near meshes stay on. This is not a quality-cut campaign.
@@ -81,19 +84,18 @@ new look appears.
 
 Ranked by expected player-facing win. One pole at a time. Headed A/B or revert.
 
-### 1. Sleep work that is not on the table — **the next 50%**
+### 1. Empty `entityList` — **the next 50% (supersedes “sleep 317 Rapier bodies”)**
 
-**Do this.** `PQ-129.15` / `PQ-080`, then `PQ-084` if physics is still fat.
+**Do this.** [`../perf/TABLE_AUTHORITY_PLAN.md`](../perf/TABLE_AUTHORITY_PLAN.md)
+Lane A, then B. Prompt: [`TABLE_AUTHORITY_GOAL.txt`](./TABLE_AUTHORITY_GOAL.txt).
 
-After the shadow gate, the biggest remaining bucket on the green sector-entry
-fly was **simFrame p95 ~9 ms** (budget is 5 ms). Rapier dynamic bodies are
-forced awake (`setCanSleep(false)`). AI still thinks across a huge radius.
+2026-09-09 Ceres quiet boot: **408** live entities, **98** systems on the combat
+clock, Rapier already **66 / 17** bodies and **0.8 ms**. `PQ-129.15` activity
+tiers exist; dormant objects are still in the list. Do not start a Rapier-sleep
+campaign.
 
-Player outcome: far ships and rocks stop burning the tick; hostiles and
-anything on the glass stay 60 Hz. Picture unchanged.
-
-This is a **cadence refactor**, not a tweak. If an agent is not changing who
-runs each sim step, they are not on this leaf.
+Player outcome: only the glass + runway tick at 60 Hz; everything else is a
+ledger row or seed caught up at `simTime`. Picture unchanged.
 
 ### 2. Fewer unique GPU programs — **the “new ship hitch”**
 
@@ -148,17 +150,10 @@ WebGPU (`PQ-089`) is a backend swap after the table is cheap. Not a hitch fix.
 node scripts/program-dispatch.mjs --id PQ-129
 ```
 
-`PQ-129.15` (table cadence / sleep off-table) is **shipped** — the activity-tier scheduler is
-`src/core/activityScheduler.js` and `PERF_HITCH_CAMPAIGN.md` records the rejection-as-shipped; the
-queue holds it `deferred`. Do not rebuild it. What is NOT proven is that every expensive consumer
-honours its tier, so the next perf task is the **production baseline route matrix on named hardware**
-(`PQ-144.01`, from the 2026-09-05 audit: cold opening, warm dense combat, earned-speed traversal,
-sustained Swarm, dock/refit/undock, Asteroid Works in and out, save/reload at a busy site — with input
-age and shed ticks, CPU and GPU separated). Then: if sim p95 is still >5 ms, physics sleep
-(`PQ-084`, starting with unconnected inactive bodies — `setCanSleep(false)` is a deliberate choice
-tied to save/reload, not an oversight); if the player still hitches on the first new ship,
-program-lane collapse (`.13`); if crowded flight is still 30 fps with sim already cheap, unique-hull
-batch (`.12`) with the mixed-batch ban in the leaf.
+`PQ-129.15` activity tiers and `PQ-144.01` headed matrix already exist. The 2026-09-09 Ceres
+census is the current pole: 408 live entities, Rapier cheap. Implement
+[`../perf/TABLE_AUTHORITY_PLAN.md`](../perf/TABLE_AUTHORITY_PLAN.md). Do not rebuild the
+scheduler and do not start `PQ-084` sleep as the campaign.
 
 `--next` still returns fleet remaster. That is not perf.
 
@@ -172,5 +167,6 @@ Matched headed Continue + combat fly on the owner GPU:
 - First hostile / new traffic is not a 40+ ms compile brick.
 - Picture unchanged.
 
-Until then, the magical combination of words is: **sleep off-table sim, then
-collapse shader keys, then batch same-material hulls. Nothing else.**
+Until then, the combination of words is: **empty `entityList` (table authority),
+then runway decode before the glass, then present-first. Shader-key collapse
+and same-material hull batch only after that census. Nothing else.**

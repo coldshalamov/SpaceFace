@@ -46,7 +46,7 @@ background-lifecycle/performance paths. Do not assume a clean or sole checkout.
    a playable checkpoint.
 3. **PQ-018 Wreck Cathedral runtime promotion.** Use the integrated source candidate and reviewed
    readiness handoff; do not confuse source-asset completion with runtime or route acceptance.
-4. **Later canonical queue work.** Continue from `CANONICAL_BUILD_MAP.md` and
+4. **Later canonical queue work.** Continue from `build_map.md` and
    `roadmap/program-queue.json` only after the game remains playable between slices.
 
 ## Per-item completion ritual

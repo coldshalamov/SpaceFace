@@ -4,6 +4,7 @@ import { MODULES } from '../data/modules.js';
 import { ATTACK_TRAIT_BY_ID } from '../data/attackTraits.js';
 import { resolveActionLabel } from '../systems/input.js';
 import { el } from './kit/index.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 const weapons = new Map(WEAPONS.map(def => [def.id, def]));
 const modules = new Map(MODULES.map(def => [def.id, def]));
@@ -59,7 +60,7 @@ function trapReadiness(state, ship) {
   const remaining = Number.isFinite(quantity) ? Math.max(0, Math.floor(quantity)) : 0;
   let deployed = 0;
   let arming = 0;
-  for (const entity of state.entityList || []) {
+  for (const entity of indexedTypeScan(state, 'charges')) {
     if (!entity.alive || entity.type !== 'charge' || entity.data?.ownerId !== state.playerId
       || entity.data?.chargeId !== 'charge_repulsion_trap') continue;
     if (entity.data.armed) deployed += 1;

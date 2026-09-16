@@ -49,7 +49,7 @@ export function parleyDemandText(demand) {
 function entityById(state, id) {
   if (!id || !state) return null;
   if (state.entities && typeof state.entities.get === 'function') return state.entities.get(id) || null;
-  return (Array.isArray(state.entityList) ? state.entityList : []).find((e) => e && e.id === id) || null;
+  return null;
 }
 
 function entityCallsign(entity) {
@@ -263,8 +263,9 @@ function injectStyle() {
     /* Flight-instrument plate: near-opaque hairline plate, severity on the TOP edge + head
        stamp (contactHail idiom) — replaces the glass box with the left accent bar. */
     background:linear-gradient(180deg, rgba(15,20,27,.94), rgba(8,11,16,.96));
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
     border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); border-top:2px solid var(--hud-amber, #dfa04e);
-    border-radius:3px; box-shadow:0 14px 30px rgba(0,0,0,.35);
+    border-radius:4px; box-shadow:0 16px 36px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
     color:var(--hud-paper, #e9eff4); font-family:var(--hud-data, var(--mono, Consolas, monospace)); contain:layout paint style;
     opacity:1; transform:translateX(0); transition:opacity .16s ease-out, transform .16s ease-out;
   }
@@ -279,9 +280,11 @@ function injectStyle() {
   .sf-parley__actions[hidden], .sf-parley__why[hidden], .sf-parley__receipt[hidden] { display:none !important; }
   .sf-parley__actions button { min-width:0; min-height:34px; display:flex; align-items:center; justify-content:center; gap:6px;
     background:rgba(255,255,255,.04); border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); color:var(--hud-paper, #e9eff4);
-    font:12px var(--hud-data, var(--mono, Consolas, monospace)); letter-spacing:.06em; cursor:pointer; border-radius:3px; }
+    font:12px var(--hud-data, var(--mono, Consolas, monospace)); letter-spacing:.06em; cursor:pointer; border-radius:3px;
+    transition:border-color .15s ease, background .15s ease, color .15s ease, translate .1s ease; }
   .sf-parley__actions button:hover, .sf-parley__actions button:focus-visible {
     outline:2px solid var(--hud-cyan, #4f8fdd); outline-offset:1px; background:rgba(255,255,255,.08); }
+  .sf-parley__actions button:active { translate:0 1px; }
   .sf-parley__actions button b { color:var(--hud-cyan, #4f8fdd); font-size:12px; font-weight:400; }
   .sf-parley__actions button[data-choice=refuse] { border-color:color-mix(in srgb, var(--hud-danger, #e0665f) 55%, transparent); }
   .sf-parley__actions button[data-choice=refuse] b { color:var(--hud-danger, #e0665f); }

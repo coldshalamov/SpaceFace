@@ -52,7 +52,7 @@ test('every task is independently identifiable and executable', () => {
     assert.equal(task.work.length, 4, `${task.id} work steps`);
     assert.equal(task.acceptance.length, 4, `${task.id} acceptance criteria`);
     assert.ok(task.inspectPaths.length >= 1, `${task.id} inspect paths`);
-    assert.ok(task.readFirst.includes('CANONICAL_BUILD_MAP.md'), `${task.id} canonical routing`);
+    assert.ok(task.readFirst.includes('build_map.md'), `${task.id} canonical routing`);
     assert.ok(task.readFirst.includes('AGENTS.md'), `${task.id} agent law`);
     assert.ok(task.suggestedChecks.length >= 1, `${task.id} checks`);
     assert.deepEqual(task.allowedResults, ['PR_READY', 'NO_CHANGE', 'BLOCKED']);

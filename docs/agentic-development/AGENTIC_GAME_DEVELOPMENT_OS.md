@@ -3,7 +3,7 @@
 
 This document is the durable architecture for using large amounts of agent inference to improve SpaceFace without letting local task completion substitute for a coherent game. It is the deep design behind the compact operator surface in `design/program/CENTRAL_BRAIN.md`.
 
-It does **not** create another queue, another acceptance system, or a permanent hierarchy of agents. `CANONICAL_BUILD_MAP.md`, `program-queue.json`, active PQ packets, current code ownership, and the user's current direction remain authoritative. The Development OS is a quality-control and allocation layer over work that already exists or is explicitly generated through the existing INFERENCE process.
+It does **not** create another queue, another acceptance system, or a permanent hierarchy of agents. `build_map.md`, `program-queue.json`, active PQ packets, current code ownership, and the user's current direction remain authoritative. The Development OS is a quality-control and allocation layer over work that already exists or is explicitly generated through the existing INFERENCE process.
 
 ## 1. The problem
 
@@ -26,7 +26,7 @@ When sources disagree, use the existing repository order. The Development OS add
 
 1. Current user direction.
 2. `ARCHITECTURE.md`, `design/VISION.md`, `design/GDD_2_0.md`.
-3. `CANONICAL_BUILD_MAP.md` and `design/PLAN_REGISTRY.md`.
+3. `build_map.md` and `design/PLAN_REGISTRY.md`.
 4. The admitted PQ queue and selected active packet.
 5. Live code, tests, deterministic evidence, normal-route captures.
 6. Supporting research, experiment banks and historical receipts.

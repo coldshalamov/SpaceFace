@@ -7,7 +7,7 @@ import { NAMED_CAPTAINS, ENCOUNTER_BARKS, barkText } from '../src/data/encounter
 
 const ARCHETYPES = new Set([
   'lancer_sniper', 'bruiser_brawler', 'corsair_raider', 'reaver_pirate',
-  'wasp_swarmer', 'mule_trader', 'patrol_lawman',
+  'wasp_swarmer', 'mule_trader', 'patrol_lawman', 'tether_control_raider',
 ]);
 const DOCTRINES = new Set(['scavenger', 'balanced', 'official', 'wolfpack']);
 const FORMATIONS = new Set(['wedge', 'loose', 'ring', 'column']);

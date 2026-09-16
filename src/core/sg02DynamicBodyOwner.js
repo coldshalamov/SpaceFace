@@ -34,6 +34,13 @@ export const SG02_DYNAMIC_BODY_OWNER_QUANTUM = 1e-4;
 export const SG02_CONTACT_FORCE_EVENT_THRESHOLD_N = 60;
 const POSE_RESYNC_EPS2 = 1e-4;
 
+export function mayRapierIslandSleep(entity, spec) {
+  if (!entity || !spec || spec.dynamic !== true) return false;
+  if (entity.isPlayer === true) return false;
+  if (entity.type === 'projectile' || spec.material === 'projectile') return false;
+  return true;
+}
+
 const CAPTURE_SLACK_S = 0.1;
 const REELED_ATTACHMENT_REPLAY_QUANTUM = 1e-7;
 const MAX_STRETCH_RATIO = 0.45;
@@ -215,6 +222,7 @@ export class Sg02DynamicBodyOwner {
     // authoritative Rapier body remains alive. These ids skip one forced scalar pose write after
     // a verified rebind, preserving the body's private numerical continuity across that swap.
     this._reboundEntityIds = new Set();
+    this._sleepHeld = new Set();
     this._staticLayerVersion = null;
     this._frameOrigin = {
       x: finite(options.frameOrigin && options.frameOrigin.x),
@@ -501,6 +509,8 @@ export class Sg02DynamicBodyOwner {
     };
     this._createAttachmentJoints(attachment);
     this.attachments.set(attachment.id, attachment);
+    this._wakeSleepingBody(owner);
+    this._wakeSleepingBody(target);
     return { id: attachment.id, attachmentId: attachment.id, ownerId: attachment.ownerId, targetId: attachment.targetId };
   }
 
@@ -627,6 +637,7 @@ export class Sg02DynamicBodyOwner {
   }
 
   _stepFixed() {
+    this._refreshSleepPolicy();
     for (const rec of this.dynamicRecords) {
       setZero3(rec.appliedForce);
       setZero3(rec.appliedTorque);
@@ -686,6 +697,7 @@ export class Sg02DynamicBodyOwner {
       this._syncEntityFromKinematics(rec, kinematics);
       this._publishTelemetry(rec);
     }
+    this._persistIslandSleep();
   }
 
   _hasManualSpringAttachment(rec) {
@@ -695,6 +707,35 @@ export class Sg02DynamicBodyOwner {
         && (attachment.owner === rec || attachment.target === rec)) return true;
     }
     return false;
+  }
+
+  _wakeSleepingBody(rec) {
+    if (!rec || !rec.body) return;
+    if (typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
+    if (typeof rec.body.setCanSleep === 'function') rec.body.setCanSleep(false);
+    if (rec.entity) rec.entity.physicsSleeping = false;
+  }
+
+  _refreshSleepPolicy() {
+    const held = this._sleepHeld;
+    held.clear();
+    for (const attachment of this.attachments.values()) {
+      if (attachment.owner) held.add(attachment.owner);
+      if (attachment.target) held.add(attachment.target);
+    }
+    for (const rec of this.dynamicRecords) {
+      const allow = mayRapierIslandSleep(rec.entity, rec.spec) && !held.has(rec)
+        && !(rec.entity && rec.entity.flags && rec.entity.flags.noInterp);
+      if (rec.body && typeof rec.body.setCanSleep === 'function') rec.body.setCanSleep(allow);
+      if (!allow && rec.body && typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
+    }
+  }
+
+  _persistIslandSleep() {
+    for (const rec of this.dynamicRecords) {
+      if (!rec.entity || !rec.body || typeof rec.body.isSleeping !== 'function') continue;
+      rec.entity.physicsSleeping = rec.body.isSleeping() === true;
+    }
   }
 
   _canonicalizeManualSpringBody(rec, kinematics) {
@@ -1001,9 +1042,7 @@ export class Sg02DynamicBodyOwner {
       .enabledRotations(false, true, false)
       .setCcdEnabled(!!spec.ccd);
     if (spec.dynamic && typeof desc.setCanSleep === 'function') {
-      // SG-02 save/reload rebuilds Rapier bodies from authoritative sim pose/velocity. Sleeping is
-      // hidden solver state, so dynamic bodies stay awake to keep taut attachments replay-stable.
-      desc.setCanSleep(false);
+      desc.setCanSleep(mayRapierIslandSleep(entity, spec));
     }
     if (spec.dynamic && material.angularDamping > 0 && typeof desc.setAngularDamping === 'function') {
       desc.setAngularDamping(material.angularDamping);
@@ -1048,6 +1087,10 @@ export class Sg02DynamicBodyOwner {
         colliderDescs = [buildBallColliderDesc(this.RAPIER, spec, material, this.captureContactImpacts)];
       }
       colliders = colliderDescs.map((colliderDesc) => this.world.createCollider(colliderDesc, body));
+    }
+    if (mayRapierIslandSleep(entity, spec) && entity.physicsSleeping === true
+      && typeof body.sleep === 'function') {
+      body.sleep();
     }
     const collider = colliders[0];
     const ccdEnabled = typeof body.isCcdEnabled === 'function' ? body.isCcdEnabled() : !!spec.ccd;
@@ -1301,6 +1344,8 @@ export class Sg02DynamicBodyOwner {
     rec.body.setRotation(quatFromYaw(yaw), true);
     rec.body.setLinvel({ x: vx, y: 0, z: vz }, true);
     rec.body.setAngvel({ x: 0, y: wy, z: 0 }, true);
+    if (typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
+    if (rec.entity) rec.entity.physicsSleeping = false;
     const kin = rec.kinematics || (rec.kinematics = { x: 0, z: 0, vx: 0, vz: 0, yaw: 0, wy: 0 });
     Object.assign(kin, { x: local.x, z: local.z, vx, vz, yaw, wy });
     rec.snapshot.id = entity.id;

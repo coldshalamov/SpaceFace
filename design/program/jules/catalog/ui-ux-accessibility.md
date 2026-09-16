@@ -15,7 +15,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/main.js`, `src/ui/uiRoot.js`, `src/ui/screens/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise main menu and New Game entry on the ordinary route at a normal and constrained window.
@@ -46,7 +46,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/main.js`, `src/ui/uiRoot.js`, `src/ui/screens/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise main menu and New Game entry on the ordinary route at a normal and constrained window.
@@ -77,7 +77,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/main.js`, `src/ui/uiRoot.js`, `src/ui/screens/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise main menu and New Game entry on the ordinary route at a normal and constrained window.
@@ -108,7 +108,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/main.js`, `src/ui/uiRoot.js`, `src/ui/screens/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise main menu and New Game entry on the ordinary route at a normal and constrained window.
@@ -139,7 +139,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/main.js`, `src/ui/uiRoot.js`, `src/ui/screens/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise main menu and New Game entry on the ordinary route at a normal and constrained window.
@@ -170,7 +170,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise flight HUD on the ordinary route at a normal and constrained window.
@@ -201,7 +201,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise flight HUD on the ordinary route at a normal and constrained window.
@@ -232,7 +232,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise flight HUD on the ordinary route at a normal and constrained window.
@@ -263,7 +263,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise flight HUD on the ordinary route at a normal and constrained window.
@@ -294,7 +294,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/hud.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise flight HUD on the ordinary route at a normal and constrained window.
@@ -325,7 +325,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise radar/minimap on the ordinary route at a normal and constrained window.
@@ -356,7 +356,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise radar/minimap on the ordinary route at a normal and constrained window.
@@ -387,7 +387,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise radar/minimap on the ordinary route at a normal and constrained window.
@@ -418,7 +418,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise radar/minimap on the ordinary route at a normal and constrained window.
@@ -449,7 +449,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise radar/minimap on the ordinary route at a normal and constrained window.
@@ -480,7 +480,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise target panel on the ordinary route at a normal and constrained window.
@@ -511,7 +511,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise target panel on the ordinary route at a normal and constrained window.
@@ -542,7 +542,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise target panel on the ordinary route at a normal and constrained window.
@@ -573,7 +573,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise target panel on the ordinary route at a normal and constrained window.
@@ -604,7 +604,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise target panel on the ordinary route at a normal and constrained window.
@@ -635,7 +635,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise comms and one-voice queue on the ordinary route at a normal and constrained window.
@@ -666,7 +666,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise comms and one-voice queue on the ordinary route at a normal and constrained window.
@@ -697,7 +697,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise comms and one-voice queue on the ordinary route at a normal and constrained window.
@@ -728,7 +728,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise comms and one-voice queue on the ordinary route at a normal and constrained window.
@@ -759,7 +759,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise comms and one-voice queue on the ordinary route at a normal and constrained window.
@@ -790,7 +790,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/alerts.js`, `src/ui/toasts.js`, `src/ui/floatingText.js`, `src/ui/damageIndicators.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise alerts, toasts, and floating feedback on the ordinary route at a normal and constrained window.
@@ -821,7 +821,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/alerts.js`, `src/ui/toasts.js`, `src/ui/floatingText.js`, `src/ui/damageIndicators.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise alerts, toasts, and floating feedback on the ordinary route at a normal and constrained window.
@@ -852,7 +852,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/alerts.js`, `src/ui/toasts.js`, `src/ui/floatingText.js`, `src/ui/damageIndicators.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise alerts, toasts, and floating feedback on the ordinary route at a normal and constrained window.
@@ -883,7 +883,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/alerts.js`, `src/ui/toasts.js`, `src/ui/floatingText.js`, `src/ui/damageIndicators.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise alerts, toasts, and floating feedback on the ordinary route at a normal and constrained window.
@@ -914,7 +914,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/alerts.js`, `src/ui/toasts.js`, `src/ui/floatingText.js`, `src/ui/damageIndicators.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise alerts, toasts, and floating feedback on the ordinary route at a normal and constrained window.
@@ -945,7 +945,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise station hub on the ordinary route at a normal and constrained window.
@@ -976,7 +976,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise station hub on the ordinary route at a normal and constrained window.
@@ -1007,7 +1007,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise station hub on the ordinary route at a normal and constrained window.
@@ -1038,7 +1038,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise station hub on the ordinary route at a normal and constrained window.
@@ -1069,7 +1069,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise station hub on the ordinary route at a normal and constrained window.
@@ -1100,7 +1100,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise market screen on the ordinary route at a normal and constrained window.
@@ -1132,7 +1132,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise market screen on the ordinary route at a normal and constrained window.
@@ -1164,7 +1164,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise market screen on the ordinary route at a normal and constrained window.
@@ -1196,7 +1196,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise market screen on the ordinary route at a normal and constrained window.
@@ -1228,7 +1228,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise market screen on the ordinary route at a normal and constrained window.
@@ -1260,7 +1260,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/shipyard.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise shipyard screen on the ordinary route at a normal and constrained window.
@@ -1291,7 +1291,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/shipyard.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise shipyard screen on the ordinary route at a normal and constrained window.
@@ -1322,7 +1322,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/shipyard.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise shipyard screen on the ordinary route at a normal and constrained window.
@@ -1353,7 +1353,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/shipyard.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise shipyard screen on the ordinary route at a normal and constrained window.
@@ -1384,7 +1384,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/shipyard.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise shipyard screen on the ordinary route at a normal and constrained window.
@@ -1415,7 +1415,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise outfitting screen on the ordinary route at a normal and constrained window.
@@ -1446,7 +1446,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise outfitting screen on the ordinary route at a normal and constrained window.
@@ -1477,7 +1477,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise outfitting screen on the ordinary route at a normal and constrained window.
@@ -1508,7 +1508,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise outfitting screen on the ordinary route at a normal and constrained window.
@@ -1539,7 +1539,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise outfitting screen on the ordinary route at a normal and constrained window.
@@ -1570,7 +1570,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise galaxy starmap on the ordinary route at a normal and constrained window.
@@ -1602,7 +1602,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise galaxy starmap on the ordinary route at a normal and constrained window.
@@ -1634,7 +1634,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise galaxy starmap on the ordinary route at a normal and constrained window.
@@ -1666,7 +1666,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise galaxy starmap on the ordinary route at a normal and constrained window.
@@ -1698,7 +1698,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise galaxy starmap on the ordinary route at a normal and constrained window.
@@ -1730,7 +1730,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/localmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise local map on the ordinary route at a normal and constrained window.
@@ -1761,7 +1761,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/localmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise local map on the ordinary route at a normal and constrained window.
@@ -1792,7 +1792,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/localmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise local map on the ordinary route at a normal and constrained window.
@@ -1823,7 +1823,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/localmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise local map on the ordinary route at a normal and constrained window.
@@ -1854,7 +1854,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/localmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise local map on the ordinary route at a normal and constrained window.
@@ -1885,7 +1885,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/techTree.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise technology tree on the ordinary route at a normal and constrained window.
@@ -1916,7 +1916,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/techTree.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise technology tree on the ordinary route at a normal and constrained window.
@@ -1947,7 +1947,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/techTree.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise technology tree on the ordinary route at a normal and constrained window.
@@ -1978,7 +1978,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/techTree.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise technology tree on the ordinary route at a normal and constrained window.
@@ -2009,7 +2009,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/techTree.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise technology tree on the ordinary route at a normal and constrained window.
@@ -2040,7 +2040,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/missionLog.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise mission log on the ordinary route at a normal and constrained window.
@@ -2071,7 +2071,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/missionLog.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise mission log on the ordinary route at a normal and constrained window.
@@ -2102,7 +2102,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/missionLog.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise mission log on the ordinary route at a normal and constrained window.
@@ -2133,7 +2133,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/missionLog.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise mission log on the ordinary route at a normal and constrained window.
@@ -2164,7 +2164,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/missionLog.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise mission log on the ordinary route at a normal and constrained window.
@@ -2195,7 +2195,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/settings.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise settings screen on the ordinary route at a normal and constrained window.
@@ -2226,7 +2226,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/settings.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise settings screen on the ordinary route at a normal and constrained window.
@@ -2257,7 +2257,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/settings.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise settings screen on the ordinary route at a normal and constrained window.
@@ -2288,7 +2288,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/settings.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise settings screen on the ordinary route at a normal and constrained window.
@@ -2319,7 +2319,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/settings.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise settings screen on the ordinary route at a normal and constrained window.
@@ -2350,7 +2350,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/drill.js`, `styles/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise Asteroid Works screen on the ordinary route at a normal and constrained window.
@@ -2382,7 +2382,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/drill.js`, `styles/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise Asteroid Works screen on the ordinary route at a normal and constrained window.
@@ -2414,7 +2414,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/drill.js`, `styles/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise Asteroid Works screen on the ordinary route at a normal and constrained window.
@@ -2446,7 +2446,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/drill.js`, `styles/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise Asteroid Works screen on the ordinary route at a normal and constrained window.
@@ -2478,7 +2478,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screens/drill.js`, `styles/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise Asteroid Works screen on the ordinary route at a normal and constrained window.
@@ -2510,7 +2510,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screenManager.js`, `src/ui/uiRoot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise pause and modal stack on the ordinary route at a normal and constrained window.
@@ -2541,7 +2541,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screenManager.js`, `src/ui/uiRoot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise pause and modal stack on the ordinary route at a normal and constrained window.
@@ -2572,7 +2572,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screenManager.js`, `src/ui/uiRoot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise pause and modal stack on the ordinary route at a normal and constrained window.
@@ -2603,7 +2603,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screenManager.js`, `src/ui/uiRoot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise pause and modal stack on the ordinary route at a normal and constrained window.
@@ -2634,7 +2634,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/screenManager.js`, `src/ui/uiRoot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise pause and modal stack on the ordinary route at a normal and constrained window.
@@ -2665,7 +2665,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/controlPrompts.js`, `src/ui/bindings.js`, `src/ui/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise control prompts and rebinding on the ordinary route at a normal and constrained window.
@@ -2696,7 +2696,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/controlPrompts.js`, `src/ui/bindings.js`, `src/ui/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise control prompts and rebinding on the ordinary route at a normal and constrained window.
@@ -2727,7 +2727,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/controlPrompts.js`, `src/ui/bindings.js`, `src/ui/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise control prompts and rebinding on the ordinary route at a normal and constrained window.
@@ -2758,7 +2758,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/controlPrompts.js`, `src/ui/bindings.js`, `src/ui/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise control prompts and rebinding on the ordinary route at a normal and constrained window.
@@ -2789,7 +2789,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/controlPrompts.js`, `src/ui/bindings.js`, `src/ui/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise control prompts and rebinding on the ordinary route at a normal and constrained window.
@@ -2820,7 +2820,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/accessibility.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise accessibility controls on the ordinary route at a normal and constrained window.
@@ -2851,7 +2851,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/accessibility.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise accessibility controls on the ordinary route at a normal and constrained window.
@@ -2882,7 +2882,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/accessibility.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise accessibility controls on the ordinary route at a normal and constrained window.
@@ -2913,7 +2913,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/accessibility.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise accessibility controls on the ordinary route at a normal and constrained window.
@@ -2944,7 +2944,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `src/ui/accessibility.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise accessibility controls on the ordinary route at a normal and constrained window.
@@ -2975,7 +2975,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `styles/`, `index.html`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise responsive UI and style tokens on the ordinary route at a normal and constrained window.
@@ -3006,7 +3006,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `styles/`, `index.html`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise responsive UI and style tokens on the ordinary route at a normal and constrained window.
@@ -3037,7 +3037,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `styles/`, `index.html`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise responsive UI and style tokens on the ordinary route at a normal and constrained window.
@@ -3068,7 +3068,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `styles/`, `index.html`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise responsive UI and style tokens on the ordinary route at a normal and constrained window.
@@ -3099,7 +3099,7 @@ Make every player-facing surface reachable, stable, legible, responsive, and con
 
 **Inspect:** `styles/`, `index.html`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `src/ui/AGENTS.md`, `styles/AGENTS.md`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
 **Work:**
 1. Open and exercise responsive UI and style tokens on the ordinary route at a normal and constrained window.

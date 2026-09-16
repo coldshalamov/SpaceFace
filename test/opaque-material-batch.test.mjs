@@ -149,3 +149,30 @@ test('live batches allocate the full vertex ceiling once', () => {
   assert.ok(batch);
   assert.equal(batch.mesh._maxVertexCount, OPAQUE_BATCH_MAX_VERTS);
 });
+
+test('a second identical sync retains slots and does not rewrite instance textures', () => {
+  const material = new THREE.MeshStandardMaterial({ color: 0x445566 });
+  const chunk = makeChunk(4, 0, { material, key: 'retainPlate' });
+  const scene = new THREE.Scene();
+  const pools = new Map([['retain', { chunks: [chunk] }]]);
+  const state = createOpaqueMaterialBatchState();
+  const first = syncOpaqueMaterialBatches(state, pools, {
+    enabled: true,
+    scene,
+    playerX: 0,
+    playerZ: 0,
+  });
+  assert.ok(first.matrixWrites >= 1);
+  const instanceId = [...state.slots.values()][0].instanceId;
+  const second = syncOpaqueMaterialBatches(state, pools, {
+    enabled: true,
+    scene,
+    playerX: 0,
+    playerZ: 0,
+  });
+  assert.equal(second.hiddenChunks, 1);
+  assert.equal(second.instances, 1);
+  assert.equal(second.matrixWrites, 0);
+  assert.equal(second.colorWrites, 0);
+  assert.equal([...state.slots.values()][0].instanceId, instanceId);
+});

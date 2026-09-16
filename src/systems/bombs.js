@@ -256,8 +256,9 @@ export const bombs = {
   // ── drift / fuze / fields ────────────────────────────────────────────────────────────────
 
   _tickBombs(dt, state) {
-    const now = simNow(state);
     const list = liveBombList(state);
+    if (!list.length) return;
+    const now = simNow(state);
     for (const bomb of list) {
       if (!bomb || !bomb.alive || bomb.type !== BOMB_TYPE) continue;
       const d = bomb.data;

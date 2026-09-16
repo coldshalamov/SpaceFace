@@ -26,6 +26,8 @@ export const SNAPSHOT_COLUMNS = Object.freeze({
   quaternion: { stride: 4, kind: 'f32' },
   scale: { stride: 3, kind: 'f32' },
   tint: { stride: 3, kind: 'f32' },
+  bank: { stride: 1, kind: 'f32' },
+  pitch: { stride: 1, kind: 'f32' },
   entityId: { stride: 1, kind: 'u32' },
   archetype: { stride: 1, kind: 'u32' },
   flags: { stride: 1, kind: 'u32' },
@@ -129,12 +131,20 @@ export function createPresentationSnapshot(options = {}) {
       columns.entityId[index] = entityId >>> 0;
       columns.archetype[index] = archetype >>> 0;
       columns.flags[index] = flags >>> 0;
+      columns.bank[index] = 0;
+      columns.pitch[index] = 0;
       return index;
     },
 
     setTint(index, r, g, b) {
       const t = index * 3;
       columns.tint[t] = r; columns.tint[t + 1] = g; columns.tint[t + 2] = b;
+    },
+
+    setLean(index, bank, pitch) {
+      if (index < 0 || index >= count) return;
+      columns.bank[index] = Number(bank) || 0;
+      columns.pitch[index] = Number(pitch) || 0;
     },
 
     /** Record an ordered event. Overflow is counted, never silently dropped. */

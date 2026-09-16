@@ -312,6 +312,78 @@ async function boot() {
         setTimeout(() => { window.SF.runAsteroidLab(); }, 800);
       }
     }
+    // Dev-only DIRECT SCREEN ROUTE, for the look-first UI loop (docs/UI_VISUAL_ITERATION.md):
+    //   ?dev=screen:pause              boot a deterministic session, open the pause screen
+    //   ?dev=screen:settings,saveLoad  open a stack, in order
+    //   ?dev=screen:pause&devseed=47   pin the run seed (the repo's canonical fixture seed)
+    //   ?dev=screen:mainMenu           no session at all; just raise the meta screen
+    // Reloading re-runs it, so "open it, click every control, look, fix, reload" costs one page
+    // load instead of a scripted capture boot. That cheapness is the point: a screen should be as
+    // easy to look at as a web page, because the failure this route exists to prevent is an agent
+    // restyling a screen it never actually looked at.
+    SF_DEBUG_ONLY: if (SF_DEBUG && typeof location !== 'undefined') {
+      const devQuery = new URLSearchParams(location.search);
+      const devRoute = devQuery.get('dev') || '';
+      if (devRoute.startsWith('screen:')) {
+        console.log('[SpaceFace] dev screen route armed:', devRoute);
+        const wantedScreens = devRoute.slice('screen:'.length)
+          .split(',').map((value) => value.trim()).filter(Boolean);
+        const devSeed = Number(devQuery.get('devseed'));
+        const wantsWorld = wantedScreens.some((id) => id !== 'mainMenu' && id !== 'title');
+        const opened = new Set();
+        const logFailure = () => {
+          const ui = registry.get('ui');
+          console.error('[SpaceFace] dev screen route could not open:',
+            wantedScreens.filter((id) => !opened.has(id)).join(', '),
+            '| ui entry keys:', ui ? Object.keys(ui).slice(0, 12).join(',') : 'none');
+        };
+        // uiRoot owns screen navigation (`ui:pushScreen` → screenManager.pushScreen), and the
+        // fixtures use exactly this event. The manager is only a fallback for a boot that lands
+        // before uiRoot has bound its listeners.
+        const attemptOpen = (attempt = 0) => {
+          if (attempt === 0) console.log('[SpaceFace] dev screen route: opening', wantedScreens.join(', '));
+          for (const id of wantedScreens) {
+            if (!opened.has(id)) bus.emit('ui:pushScreen', { id, source: 'dev-screen-route' });
+          }
+          setTimeout(() => {
+            for (const id of wantedScreens) {
+              if (document.querySelector(`[data-screen="${id}"]`)) opened.add(id);
+            }
+            if (wantedScreens.every((id) => opened.has(id))) { console.log('[SpaceFace] dev screen route: open', [...opened].join(', ')); return; }
+            if (attempt === 0) {
+              const ui = registry.get('ui');
+              const manager = ui && (ui.screenManager || ui.manager);
+              if (manager && typeof manager.pushScreen === 'function') {
+                for (const id of wantedScreens) {
+                  if (opened.has(id)) continue;
+                  try { manager.pushScreen(id); } catch (error) { console.error('[SpaceFace] dev screen open failed:', id, error); }
+                }
+              }
+            }
+            if (attempt >= 3) { logFailure(); return; }
+            attemptOpen(attempt + 1);
+          }, 1100);
+        };
+        let devTicks = 0;
+        const reachWantedScreen = () => {
+          devTicks += 1;
+          if (devTicks % 25 === 0) console.log('[SpaceFace] dev screen route waiting: mode =', state.mode, 'tick', devTicks);
+          if (!wantsWorld) { attemptOpen(); return; }
+          if (state.mode === 'flight' || state.mode === 'paused') {
+            // One presented frame of the held world before the screen stands on it.
+            setTimeout(() => attemptOpen(), 700);
+            return;
+          }
+          if (devTicks < 900) setTimeout(reachWantedScreen, 100); // ~90 s, then let the log speak
+        };
+        setTimeout(() => {
+          if (wantsWorld) {
+            bus.emit('game:new', Number.isFinite(devSeed) && devSeed > 0 ? { seed: devSeed } : {});
+          }
+          reachWantedScreen();
+        }, 300);
+      }
+    }
   } catch (err) {
     showBootError(err);
     throw err;

@@ -19,7 +19,7 @@ import {
 } from '../src/testing/lab/proofSixtySeconds.js';
 
 const SEED = 14920;
-const WARM_TICKS = 180;
+const WARM_TICKS = 240;
 const SAMPLE_TICKS = 240;
 
 function countByType(list) {

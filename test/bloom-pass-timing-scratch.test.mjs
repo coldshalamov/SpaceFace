@@ -235,4 +235,9 @@ test('shipping render reuses createBloom-lifetime pass functions with fixed argu
   assert.match(body, /timePassGroup\('bloomScene', renderScenePass, scene, camera, tier1\)/);
   assert.match(body, /timePassGroup\('bloomDownsample', renderDownsamplePass, tier1\)/);
   assert.match(body, /timePassGroup\('bloomComposite', renderCompositePass, tier1, bloomActive\)/);
+  assert.match(factoryPrefix, /function releaseBloomSceneSamplers\(/);
+  assert.match(factoryPrefix, /glState\.activeTexture/);
+  assert.match(factoryPrefix, /unit < 16/);
+  assert.doesNotMatch(factoryPrefix, /MAX_TEXTURE_IMAGE_UNITS/);
+  assert.match(source, /if \(!key \|\| !seenKeys\.has\(key\)\) continue/);
 });

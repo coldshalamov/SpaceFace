@@ -410,6 +410,7 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
   geo.setIndex(idx);
   const mat = createRibbonTrailMaterial(color);
   const mesh = new THREE.Mesh(geo, mat);
+  mesh.name = 'SF_RibbonTrail';
   mesh.frustumCulled = false;
   mesh.renderOrder = 4;
   mesh.visible = false;

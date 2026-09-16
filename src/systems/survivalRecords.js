@@ -758,7 +758,10 @@ export function recordRulesFor(result = {}, run = {}) {
     const value = provided[key] ?? result[key] ?? run[key];
     rules[key] = (typeof value === 'string' && value) || Number.isFinite(value) ? value : null;
   }
-  rules.mode ??= result.practice === true || run.practice === true ? 'practice' : result.ruleset ?? run.ruleset ?? run.kind ?? null;
+  // An explicit practice flag wins over a provided mode: practice runs must never file into a
+  // main-mode comparison even when the run's rules were stamped before the flag was read.
+  if (result.practice === true || run.practice === true) rules.mode = 'practice';
+  else rules.mode ??= result.ruleset ?? run.ruleset ?? run.kind ?? null;
   rules.arenaId ??= result.arenaId ?? run.arenaId ?? null;
   rules.mutators = normalizeMutators(provided.mutators ?? result.mutators ?? run.mutators);
   rules.complete = RECORD_RULE_FIELDS.every(key => rules[key] != null);

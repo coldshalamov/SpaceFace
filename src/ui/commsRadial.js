@@ -17,6 +17,7 @@ import { SHIPS } from '../data/ships.js';
 import { NEW_GAME } from '../data/newGameDefaults.js';
 import { buildSlotList, fits } from '../systems/ships.js';
 import { isUiInteractionFenced, spatialFocusTarget } from './input.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { createMorphLabel } from './effects/morphLabel.js';
 import { factionIcon, icon as stationIcon } from './station/icons.js';
 import { FACTION_META } from '../data/factions.js';
@@ -61,7 +62,7 @@ const CLOSE_GLYPH = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" str
 function entityById(state, id) {
   if (!state || id == null) return null;
   if (state.entities && typeof state.entities.get === 'function') return state.entities.get(id) || null;
-  return (state.entityList || []).find((row) => row && row.id === id) || null;
+  return null;
 }
 
 function clamp01(value) {
@@ -252,7 +253,7 @@ function nearestHailAvailability(state) {
   let bestId = null;
   let bestAvailability = null;
   let bestDistance = Infinity;
-  const candidates = Array.isArray(state.entityList) ? state.entityList : [];
+  const candidates = indexedShipLikeScan(state);
   const now = Number(state.simTime) || 0;
   for (const candidate of candidates) {
     if (!candidate || candidate.alive === false || (candidate.type !== 'ship' && candidate.type !== 'drone')) continue;

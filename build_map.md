@@ -27,15 +27,11 @@ ways to get it wrong. An agent given nothing, or "next", or "go", or "make it be
 
 ### 1.1 The procedure
 
-1. `git status --short`; read [`design/program/NOW.md`](./design/program/NOW.md). A dirty foreign hunk
-   is protected. A mutation row protects only its exact paths while its checkpoint is fresh; a
-   legacy row without a checkpoint uses the 90-minute path-mtime fallback.
+1. Glance at `git status --short` and [`design/program/NOW.md`](./design/program/NOW.md) so you do
+   not collide with another agent's live, exact paths. A dirty foreign hunk is protected.
 2. `node scripts/program-dispatch.mjs --next`. That is your unit. Open the packet it names under
    [`design/program/roadmap/active/`](./design/program/roadmap/active/README.md). Do not shop around
-   `--ready` for something you would rather do; the order is the plan (§1.2). If the unit's exact
-   hunk is covered by a fresh `NOW.md` checkpoint, take the next unit or continue on disjoint paths.
-   If the checkpoint is stale, adopt the existing diff and checkpoint after inspection; do not route
-   around unfinished work or create a parallel implementation.
+   `--ready` for something you would rather do; the order is the plan (§1.2).
 3. Read the packet's **How agents get this wrong** section before touching code. Then its Leaves row:
    the done-when is the definition of done, in player units. If a done-when is missing, unclear, or
    could be satisfied by something the owner would call thin, write the missing number into the
@@ -43,17 +39,19 @@ ways to get it wrong. An agent given nothing, or "next", or "go", or "make it be
 4. If the unit is feel or combat (packets `PQ-137`, `PQ-139`, `PQ-140`, `PQ-146`, `PQ-173`, `PQ-174`,
    `PQ-175`, `PQ-176`, `PQ-186` and any leaf whose done-when names a `FEEL_CONTRACT` bar), run the
    Fun Convergence Loop: [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md).
-   Fixed seeds, one hypothesis, a critic that can see, before/after numbers, a plain-words report.
-5. Finish the whole unit. Before mutation, run `node scripts/agent-checkpoint.mjs start` with 5–10
-   bounded todos and exact paths; if the prompt names a sequence, reserve the current unit plus at
-   most four next units with repeated `--reserve` flags. Add its checkpoint path to the `NOW.md` row.
-   Check off each todo at a meaningful boundary with `agent-checkpoint.mjs check` — never use it as a
-   heartbeat. Release the row when mutation stops. Run `npm run check:baseline` before and after; the packet's own checks; the docs checker
-   (`node scripts/check-program-docs.mjs`) if you touched a packet or the queue. Commit only your
-   files by pathspec; push the current branch by name.
-6. Write the report in the format of §1.4. Update the unit's state through the integrator path
-   (receipt, then queue). Then go to step 2 and take the next unit. Do not stop because a check is
-   green, because one leaf is done, or because the context is long. Stop only for §1.5.
+   Fixed seeds, one hypothesis, before/after numbers.
+5. Build it, then **iterate on it like a developer.** Play it yourself at the shipping camera, judge
+   it, and fix what you would not ship; the first version that merely meets the bar is a draft. When
+   you are about to close, have another agent look at the actual work for three things: is it
+   finished, what is buggy, and what would make it better. Fix what is real. Do not write review
+   files or store stills. Then run the checks that would catch this change's real failure modes
+   (§7 and the packet's own checks) — you are trusted to know which those are. If other agents are
+   live in the tree, leave a checkpoint row (`node scripts/agent-checkpoint.mjs start`) and release
+   it when you stop; otherwise skip the ceremony. Commit your files by pathspec.
+6. Set the unit's queue state. A short note for the next engineer only if you learned something
+   they could not see from the code. Write the report in §1.4's format. Then go to step 2 and take
+   the next unit. Do not stop because a check is green, because one leaf is done, or because the
+   context is long. Stop only for §1.5.
 
 Broad, unnamed quality work still goes through the Central Brain manager loop
 ([`design/program/CENTRAL_BRAIN.md`](./design/program/CENTRAL_BRAIN.md); ranked selector in
@@ -80,7 +78,7 @@ fleet remaster, `PQ-045` Ceres slice, `PQ-136` fielding, `PQ-193` 3D picture) ke
 in §1B and their own units in the queue; `--next` interleaves them by kind and priority. Do not take
 a unit whose paths a live row names.
 
-### 1.3 The law (binding on every unit; the reviewer rejects on any one)
+### 1.3 The craft (floors, not a script)
 
 1. **Numbers or it did not happen.** A unit closes on its done-when measured in player units (screen
    depths, seconds, hull lengths, fraction kept or lost, verbs per minute), before and after, on a
@@ -119,6 +117,12 @@ a unit whose paths a live row names.
 14. **Never ask the owner to adjudicate technical risk, and never ask in jargon.** Decide it. If a
     product judgment is genuinely theirs, ask in plain words with a default.
 15. **Report in the owner's words** (§1.4). No file paths, hashes or check names in the summary.
+16. **Iterate like a developer.** The done-when is the floor, not the target. Play your own work,
+    judge it, and fix what you would not ship before closing. Ship the second or third attempt, not
+    the first blind one that happened to go green.
+17. **Judgment over litany.** These laws are floors and honest-work defaults, not a script to
+    execute. Run the checks and measurements that would catch your change's real failure modes and
+    skip the rest; nothing here replaces looking at the work and using taste.
 
 ### 1.4 The report (the only thing the owner reads)
 
@@ -141,27 +145,24 @@ NEXT             the next unit --next will return
   scenario, choose another model; after three models, escalate in plain words.
 - The owner said stop.
 
-### 1.6 The reviewer's checklist
+### 1.6 Before you call it done
 
-**Blockers — the integrator rejects on any "yes":**
+There is no standing integrator gate and no approval step. These are the questions a good developer
+asks themselves before closing; use judgment, and iterate until the answers are yes:
 
-- Did the unit close on prose, a green check, or a screenshot at a flattering angle? (LAZY)
-- Does the outcome do one thing once, with no second consequence, where the law asks for two? (THIN)
-- Is any number in the done-when unmeasured, or measured on a random seed? (MISCONFIGURED)
-- Did it add content, shake, particles, drag, a clamp on given momentum, an NPC gyro, hit-point
-  scaling, a flag-only path, a second architecture, or a dialogue tree?
-- Did a test or a golden change without the vision sentence or the causal record?
+- Would you ship this? If it is thin, ugly, half-wired, or only green because a check passed, fix it
+  and play it again — that iteration is the job, not overhead.
+- Is the outcome measured in the done-when's player units, on a fixed seed? "It works" and a green
+  check are not numbers.
+- Is it reachable on the default route, with no flag, URL or debug key?
+- Did you add content, shake, particles, drag, a clamp on given momentum, an NPC gyro, hit-point
+  scaling, or a dialogue tree where the packet asked for feel? Take it back out.
+- Did a test or a golden change without the vision sentence or the causal record? Then find the cause.
+- Does the report say what moved and what it plays like now, in the owner's words?
 
-**Required proofs — the integrator rejects on any "no":**
-
-- Is the feature reachable on the default route? Does the surface pass the grammar matrix?
-- Is the report in the owner's words, with the numbers that moved and what it plays like now?
-- Does the receipt name the intended improvement AND the tradeoff it deliberately spent (a larger
-  impact may cost a little fill rate; a crisper brake may change a handling curve)? A unit is judged
-  on that bargain, not on every metric moving at once.
-
-(The 2026-09-05 audit found the old single list mixing both polarities — a "yes" to reachability
-could read as a rejection. Fixed here; `PQ-189.01`.)
+A second pair of eyes for unfinished work, bugs, and cheap bits is how you catch a lazy first try.
+It is a look at the actual work, then a fix — not a JSON wave, not a stored still, not a receipt
+novel. When the owner asks for a taste pass, do the same (§1.7).
 
 ### 1.7 If the owner names a symptom
 
@@ -171,7 +172,7 @@ procedure:
 | The owner says | Start here |
 |---|---|
 | "Here is a taste review / an outside audit; fold it in" | Grade every recommendation in §15.9 (adopt / adopt with a guard / decline, with the ruling it agrees or conflicts with); admit each adopted item as a leaf of the packet that already owns the surface, or a new packet only when no packet does; store the review under `docs/handoffs/` as HISTORICAL evidence with a pointer back to the grade. Never a second queue, never verbatim orders |
-| "review what just landed", "second pair of eyes", "taste passover before those units are finished" | `--id PQ-191` — a second agent plays the named surfaces, **fixes** real taste and bugs, and reports in §1.4 words. This is the passover itself. Incoming written audits still grade through the row above and §15.9; never a second standing queue |
+| "review what just landed", "second pair of eyes", "taste passover before those units are finished" | Play the named surfaces yourself or hand them to one agent, **fix** what is real (taste and bugs), and report in §1.4 words. Incoming written audits grade through the row above and §15.9. There is no standing review queue |
 | "it's not fun", "make it better", "it sucks", "wonky", "no control" | [`design/program/FUN_CONVERGENCE_LOOP.md`](./design/program/FUN_CONVERGENCE_LOOP.md) → `--id PQ-137`, then `--next` |
 | "finish the game", "what's next for release", "the professional bar" | §15 gates → `--next` |
 | "swarm mode should be more fun" | §16 → `--id PQ-174` |
@@ -181,7 +182,7 @@ procedure:
 | "the mining board is unreadable / ugly" | `--id PQ-130` (board law) and `PQ-131` (authored objects); `PQ-185` accepts |
 | "the ships / objects look like toys" | **§13D** → `--id PQ-193`; flyable remaster stays `PQ-050`; unused packs stay `PQ-136` |
 | "NPC ships look like another game / floating parts / reverse jets are needles" | **§13D** → `--id PQ-193` leaves `.01` / `.02`. Law: [`design/program/VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md). Hitch stays frozen. |
-| "ships don't render / pieces missing / empty targeting lock" | **§13D** → `--id PQ-193` leaf `.00`. Complete packaged body, not a procedural fallback. |
+| "ships don't render / pieces missing / empty targeting lock" | **§13D** → `--id PQ-193` leaf `.00`. Complete packaged body, not a procedural fallback. Do not unhide a box while waiting. Process: [`design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md). |
 | "the world feels dead / nobody reacts" | §13C `PQ-138`, then §15 `PQ-149`–`PQ-151` |
 | "I can't tell what anything is" | `PQ-161` readable at zoom, `PQ-153` sectors, `PQ-162` station |
 | "the sound is bad / there's no music" | `PQ-158` (after the ALPHA gate) |
@@ -221,11 +222,6 @@ admit, mutate queue truth, or replace the routing doors in this map.
 These campaigns are live or resumable and keep their own laws. `--next` already interleaves their
 units; open the door below only when the owner names the campaign.
 
-- **Independent passover of a just-landed batch** → `--id PQ-191` and
-  [`PQ-191.md`](./design/program/roadmap/active/PQ-191.md). A second agent plays the named
-  surfaces for taste, improvements, and bugs, and **fixes** what is real. A report with defects
-  still on camera is not done. Do not answer with new content. Incoming written audits still
-  grade through §1.7 / §15.9; this door is the play pass, not a second backlog.
 - **Hitching / stuttering** → §8.4, [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md),
   `--id PQ-129`. Measure with `npm run probe:runtime-witness` first. Never cut quality or delete
   off-screen actors.
@@ -470,9 +466,9 @@ on the direct player result, not on counters, reports, test volume, or lower def
 | Later plan | Player outcome | Production scope | Direct done condition and dependencies |
 |---|---|---|---|
 | **`PQ-051` / `PERF-11-FRAME-LIVENESS`** | Continue and ordinary flight never leave a permanently frozen 3D picture behind a still-moving HTML HUD. | Repair the actual renderer/presentation latch on the real player path: authoritative entity identity, frame/draw exceptions, WebGL context recovery, presentation scheduling, and canvas present. Promote the bounded runtime witness only as the failure classifier needed to fix the owner. Never clear/catch/skip work merely to keep the HUD alive. | On the owner's real save in Browser and Electron: leave loading, fly for 30+ seconds, and observe simulation, movement, renderer frames, and canvas pixels continuing together with no repeating frame error or unrecovered context loss. This is the release-blocking prerequisite for every later performance claim. |
-| **`PQ-052` / `PERF-12-RIGID-OPAQUE-BATCHING`** | Crowded fleets keep their authored appearance while materially reducing GPU submission cost. | Adopt, repair, or reject the existing material-keyed heterogeneous `THREE.BatchedMesh` candidate. Pool only rigid opaque render-package surfaces behind exact material identity; preserve owner release, LOD, damage, semantic proxies, pipeline/residency admission, context recovery, and bounded geometry capacity. Keep canopies, plumes, fans, nav lights, decals, animated surfaces, and transparency-sorted work out of this lane. | A clean same-scene before/after shows a material GPU-frame reduction and fewer opaque submissions/chunks with identical geometry, materials, transforms, animation, damage, and visible pixels. Depends on `PQ-051`, the `PQ-034` measurement seam, and current render-package authority; do not wire the older generic batcher merely because it exists. |
-| **`PQ-053` / `PERF-13-LIVE-LOD-HLOD-IMPOSTORS`** | Near ships and places retain full authored quality while distant fleets, stations, and landmarks become genuinely cheap. | Repair the Wasp separate-file demotion, generalize safe projected-pixel LOD0/1/2 selection to every valid ship family, spawn distant traffic at the appropriate resident level, and produce authored station/place HLOD clusters and far impostors through the offline package pipeline. Bound far greebles, animation, decals, and realtime shadow casting by projected contribution without reducing close detail. | Moving through the same route changes actual resident/drawn geometry and scales triangles, meshes, shadows, and GPU time with projected size without blank frames, visible popping outside the declared transition band, identity/socket drift, or extra LOD0 residency. Depends on `PQ-037`, `PQ-051`, and coordination with `PQ-052`. |
-| **`PQ-054` / `PERF-14-BOUNDED-GPU-ADMISSION`** | Continue, New Game, sector entry, and first combat no longer move the same unbounded shader/upload stall between loading and flight. | Finish the finite identity-bound opening pipeline/residency cohort, context-restore fail-closed behavior, low-LOD/opening-shell-first admission, and bounded post-paint draining. Compile and upload only exact critical roots before handoff; later roots use the normal per-root gate. Do not wait on a growing pending set, render the whole live scene as warmup, skip shaders, or raise timeouts as a fix. | The owner's real Continue and a heavy sector entry reach a changing playable canvas; every blocking slice stays within the performance budget's target/hard limits, late admissions cannot extend the opening watermark, and first-use combat/traffic produces no permanent freeze or seconds-scale shader/upload hitch. Depends on `PQ-051` and the live `PQ-037`/pipeline-residency seams. |
+| **`PQ-052` / `PERF-12-RIGID-OPAQUE-BATCHING`** | Crowded fleets keep their authored appearance while materially reducing GPU submission cost. | Adopt, repair, or reject the existing material-keyed heterogeneous `THREE.BatchedMesh` candidate. Pool only rigid opaque render-package surfaces behind exact material identity; preserve owner release, LOD, damage, semantic proxies, pipeline/residency admission, context recovery, and bounded geometry capacity. Keep canopies, plumes, fans, nav lights, decals, animated surfaces, and transparency-sorted work out of this lane. **2026-09-15:** a retained-slot rewrite (stable instance ids, dirty matrix/color only) exists and is covered by leaf tests; shipping `_opaqueBatchEnabled` stays **false** until `PQ-197` / `PQ-202` name draw-count as the pole. Do not re-enable the old per-frame repack (Intel bloomScene 11 ms → 114 ms). | A clean same-scene before/after shows a material GPU-frame reduction and fewer opaque submissions/chunks with identical geometry, materials, transforms, animation, damage, and visible pixels. Depends on `PQ-051`, the `PQ-034` measurement seam, `PQ-197`/`PQ-202` census, and current render-package authority; do not wire the older generic batcher merely because it exists. |
+| **`PQ-053` / `PERF-13-LIVE-LOD-HLOD-IMPOSTORS`** | Near ships and places retain full authored quality. Distant contacts may hide fasteners only. | **Paper row, not a queue id. Do not dispatch as a hull-swap or impostor campaign.** Live `hlod.js` already hides tagged flourishes at a speck and forbids a silhouette proxy. Whole-GLB swap bails unless the sibling is packaged-live; Hitch/player stay LOD0. After Wave A (`PQ-193.00`), the only allowed shave is garnish hide a stranger cannot name. Far impostors, cheaper species of ship, and Hitch dump are banned. Process: [`DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md). | Same picture at chase size; specks may lose a fastener; no blank lock, no box-then-ship, no identity drift. Depends on `PQ-193.00` being true first. |
+| **`PQ-054` / `PERF-14-BOUNDED-GPU-ADMISSION`** | Continue, New Game, sector entry, and first combat no longer move the same unbounded shader/upload stall between loading and flight. | **Paper row, not a live queue id.** Opening cohort is already finite (`openingAdmission.js`). Leftover *hitch* work was rejected as `PQ-129.09` (zero admission-owned hitches). Leftover *picture* (blank lock, late pop, kitbash stand-in) is `PQ-193.00` / `.01`. Do not reopen this as a cheaper-hull or “show a box while loading” leaf. Process: [`DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md). | Changing playable canvas; blocking slices stay inside the budget; late roots cannot grow the opening watermark; first visible identity is the authored complete body, not a substrate or modular junk. |
 | **`PQ-055` / `PERF-15-IMMUTABLE-ASSET-TRANSPORT`** | Boot, Continue, hub opening, and sector entry stop repeatedly transferring, hashing, decoding, and shipping the same large asset bytes. | Give immutable release assets content-derived cache identity and headers; retain no-cache only for mutable documents and saves. Remove duplicate package/source encodings from the retail bundle where the package is canonical, split the largest places into opening shell plus independently resident detail, and add validators/range or packaged-file transport only where a boot trace justifies them. Keep KTX2 and meshopt; use Brotli for code/text rather than recompressing already-compressed GLBs. | Warm launch and repeat-sector entry reuse immutable bytes; cold entry presents the bounded shell first; installed/runtime bytes fall without missing fallback/dev sources or visual drift; the largest package no longer has to decode as one monolith before useful presentation. Depends on `PQ-037` and coordinates with `PQ-053`/`PQ-054`. |
 | **`PQ-056` / `PERF-16-PRESENTATION-AND-AA-CONSOLIDATION`** | The default image pays once for anti-aliasing and presentation while retaining bloom, grade, grain, vignette, exposure, shadows, and authored detail. | After `PQ-042` selects the real GPU owner, maintain one default present path; prove whether canvas MSAA is dead work behind the single-sampled HDR/fullscreen-composite route, integrate one quality-preserving post-AA solution when needed, and perform only the selected shadow, transparency, opaque-order, depth, or post fusion. Do not promote the optional render graph, add a global depth prepass, or clamp supersampling without a net same-image win. | Same-camera image/temporal parity holds at default settings and the selected GPU scope plus aggregate frame time improves on Browser and Electron. Depends on terminal `PQ-042`; if its evidence selects another owner, this plan narrows to that result or closes with no product mutation. |
 | **`PQ-057` / `PERF-17-DETERMINISTIC-ACTIVITY-SCHEDULER`** | World density can grow without every registered system, AI cohort, query owner, and physics body paying 60 Hz work while inactive. | Remeasure after the civilian-threat cadence change, then add deterministic tick-quantized schedules and active-owner wake/sleep rules. Keep input, flight, weapons, collisions, and required physics authority at 60 Hz; cadence or sleep slow AI perception, traffic planning, remote economy/story, inactive world owners, and eligible Rapier bodies. Reuse the spatial hash and dirty journals rather than replacing working indices. | Fixed-seed/save parity remains exact; player response and combat authority remain 60 Hz; simulation p95 meets its 5 ms budget in crowded flight and query/candidate work scales with active cohorts rather than total registered systems. Depends on `PQ-039`; completion decides whether existing `PQ-043` is still causally necessary. |
@@ -496,7 +492,9 @@ unchanged. Full protocols, investigation scaffolds, and implement-after-census r
 
 These identities are reserved, not admitted. Admit a parent and its smallest leaves into
 `program-queue.json` before implementation. `PQ-094` may mint new reserved leaves when a sweep
-finds a pole this table does not name.
+finds a pole this table does not name. `PQ-196`–`PQ-203` were minted 2026-09-15 from the
+table-authority leftover sweep (shader-family collapse outside `partsLibrary`, retained-slot
+batch still shipping-off, fat-list walks that must stay).
 
 | Plan | Horizon | Player outcome |
 |---|---|---|
@@ -568,11 +566,24 @@ finds a pole this table does not name.
 | **`PQ-126` / `PERF-86-NPC-TRAIL-TABLE`** | Near IMPL | NPC engine trails follow `tableNpcTrailTier` (live look-at + `tableVfxDrawWuFromState`). Leftover 2200/3600/2800 player-camera horizons are retired. Player and current-target ribbons stay full. Off-glass NPC ribbons are map facts. |
 | **`PQ-127` / `PERF-87-NON-SUBMIT-HORIZONS`** | Near INV | Leftover large numbers that are **not** 3D submit: camera shake 1200, director threat compose 600, pair-frame 280, planet/sun sky dressing at 2800–6000 with parallax below the horizon, and the unused 300 NPC-signature comment. Live signature draw already uses the table. GPU timers and hitch rings stay default-off. Do not shrink these as a cull. |
 | **`PQ-128` / `PERF-88-HEADLESS-VFX-TABLE`** | Near IMPL | Headless/no-camera VFX “on-screen” fallbacks follow `TABLE_HEARING_FAR_WU`, not a leftover 900 WU pin. Live play already projects to the camera. Doctrine-tell cues near the player still fire; off-table headless cues stay map facts. Do not shrink hail, missile-threat, or faction gameplay 900s. |
+| **`PQ-196` / `PERF-90-PACKED-ORM-FAMILY-KEY`** | Near INV | First sight of a painted hull does not mint a unique GPU program from leftover `onBeforeCompile` source. Family-key canonicalize already drops compile-source fragments and UUID tokens outside `partsLibrary`. Investigate whether the in-file packed-ORM concatenation still wins the first compile when PQ-193.09 / PQ-193.12 release that file. Dummy prewarm stays illegal. |
+| **`PQ-197` / `PERF-91-RETAINED-SLOT-CROWDED-CENSUS`** | Near INV | Crowded Intel bloom stays ~11 ms, not 114 ms, while drawing fewer unique plates. Retained-slot BatchedMesh (stable ids, dirty matrix/color only) is written and shipping OFF. Headed crowded fly must name draw-count as the pole before enabling. Do not re-enable the old per-frame repack. |
+| **`PQ-198` / `PERF-92-FIRST-SIGHT-LINKPROGRAM`** | Near INV | A new NPC entering the glass is not a 40+ ms `linkProgram` brick. Empty admission slots still compose in flight. Census live program keys vs family stamps after authored upgrade. Route leftover keys through after-present compile, never dummy meshes. |
+| **`PQ-199` / `PERF-93-FAT-LIST-MUST-STAY`** | Near INV | Typed indexes never drop a real interaction. Keep the fat list for world despawn indexes, fields save rebuild, claim-sling NPC boost, scanner distress beacons, hangar occupancy (dormant spawn-obstacle rocks). Investigate only walks that still allocate on the 60 Hz table after those exceptions. |
+| **`PQ-200` / `PERF-94-FX-BEACON-BUCKET`** | Near INV | Journal / chart leftover `fx` and `beacon` walks cost table size, not the historic 408-body list. Quiet Ceres is 56 live / 279 field rocks. A type bucket for `fx`/`beacon` is legal only if membership stays 56 and dressing rows stay off the combat list. |
+| **`PQ-201` / `PERF-95-SECTOR-PREWARM-PLACEFILE`** | Near INV | Sector prewarm does not miss a place-bearing body, and does not scan the fat list when the index is ready. `placeFile` can sit on `massSeed` / `fieldEmitter` / `fx`. Typed census must cover those types or stay on the fat list. Hitch path, not 60 Hz. |
+| **`PQ-202` / `PERF-96-INTEL-BLOOM-BATCH-AB`** | Near INV | Same crowded still, bloom on, shadows on: prove whether draw-count or bloom resolve is the missed-vsync tax. Pair `PQ-197` with `PQ-097`. If bloomScene p95 is the pole with batching off, do not enable batches. If draw-count is the pole and retained-slot keeps bloomScene, admit `PQ-052`. |
+| **`PQ-203` / `PERF-97-QUIET-CERES-FIVE-MS`** | Standing | Quiet Ceres warm-sim p50 stays ≤ 5 ms on this host. Membership island is 56 live. Do not weaken the gate. Re-census after any calendar→table clock move or after re-enabling opaque batch. |
 
 Every leaf uses the investigate → invalidate → implement loop in
 `PERF_OPTION_SPACE.md` §3. Default order when no campaign is named: `PQ-061` → `PQ-062` → `PQ-063`
 → then §7 of that file. Long platform leaves wait until that table points at them, unless the owner
 starts that campaign.
+
+**Investigate next (2026-09-15 leftover sweep):** `PQ-196` packed-ORM family key once
+`partsLibrary` is free; `PQ-197`+`PQ-202` headed crowded draw-count vs bloom A/B before
+enabling retained-slot batches; `PQ-198` first-sight `linkProgram`; `PQ-199`–`PQ-201`
+fat-list exceptions vs leftover typed scans; `PQ-203` keep the quiet Ceres 5 ms gate.
 
 ### 8.3 Exhaustive same-picture technique inventory
 
@@ -610,7 +621,8 @@ saves → else implement the smallest leaf → tests of real functions → match
 
 #### Submit / GPU state (on-glass)
 
-- Material-keyed instancing and BatchedMesh for rigid opaque (`PQ-052`)
+- Material-keyed instancing and BatchedMesh for rigid opaque (`PQ-052`, `PQ-197`, `PQ-202`)
+- Packed-ORM / illustration family keys without UUID or `onBeforeCompile.toString()` leftovers (`PQ-064`, `PQ-196`, `PQ-198`)
 - Separate legal lanes: canopy, plume, decal, ribbon, sprite, beam (`PQ-076`)
 - Multi-draw / `WEBGL_multi_draw` (`PQ-052`)
 - Indirect / multi-draw-indirect / count buffers (`PQ-059`, `PQ-089`)
@@ -663,8 +675,8 @@ saves → else implement the smallest leaf → tests of real functions → match
 
 #### Admission / first use / hitch
 
-- Exact-key dummy prewarm (lights, HDR, batching, shadow depth) (`PQ-072`)
-- One new program per present after present; never whole-root on rAF (`PQ-054`, `PQ-072`)
+- Exact-key dummy prewarm (lights, HDR, batching, shadow depth) (`PQ-072`) — **illegal** as a hitch fix; family-key collapse (`PQ-196`) and after-present compile (`PQ-114`, `PQ-198`) only
+- One new program per present after present; never whole-root on rAF (`PQ-054`, `PQ-072`, `PQ-198`)
 - `KHR_parallel_shader_compile` / own readiness timer (`PQ-054`)
 - Binary program cache / WebGPU pipeline cache (`PQ-104`)
 - Idle/`scheduler.yield` admission **after** present; never `setTimeout(0)` on the next rAF (`PQ-114`)
@@ -777,6 +789,13 @@ admits them. **`PQ-129` is that campaign** for the owner-visible hitching proble
 Law: [`design/program/PERF_HITCH_CAMPAIGN.md`](./design/program/PERF_HITCH_CAMPAIGN.md).
 Packet: [`design/program/roadmap/active/PQ-129.md`](./design/program/roadmap/active/PQ-129.md).
 Dispatch: `node scripts/program-dispatch.mjs --id PQ-129`. `--next` still returns `PQ-050`.
+
+**Live smoothness work is `PQ-204`.** Quiet-machine census is not a gate. Deterministic algorithms
+(always-on grid, combat SoA, dirty journal, NEAR token budget, save-safe Rapier sleep, off-glass
+NPC outcomes, packed-ORM family keys, after-present compile, lean snapshot columns) ship under
+`--id PQ-204`. Law: [`design/program/PERF_ADVANCED_CAMPAIGN.md`](./design/program/PERF_ADVANCED_CAMPAIGN.md).
+Prompt: [`design/program/PERF_ADVANCED_GOAL.txt`](./design/program/PERF_ADVANCED_GOAL.txt). Same
+picture; no dummy prewarm; GPU batching stays off until a crowded fly names draw-count.
 
 **2026-08-20 headed Electron witness (Intel iGPU, real GPU, not SwiftShader):** Continue/new-game
 flight verdict was hitching. Eight of the last eight samples were hitches. Biggest bucket
@@ -1742,7 +1761,11 @@ why ships sometimes do not render, and the ordered work so the world never looks
 Packet: [`PQ-193.md`](./design/program/roadmap/active/PQ-193.md). Dispatch:
 `node scripts/program-dispatch.mjs --id PQ-193` and take the first ready leaf (`.00` first). Flyable
 remaster stays `PQ-050`. Unused-pack fielding stays `PQ-136` (`.00`–`.03` done). Liner G7 stays
-`PQ-049.05`. Hitch stays frozen.
+`PQ-049.05`. Hitch stays frozen. Stocktake tables:
+[`MODEL_STOCKTAKE_MANIFEST.md`](./design/program/MODEL_STOCKTAKE_MANIFEST.md). Order:
+[`MODEL_STOCKTAKE_PLAN.md`](./design/program/MODEL_STOCKTAKE_PLAN.md). Admission / runway / LOD
+process (blank lock, box-then-ship, “shave a little”):
+[`DYNAMIC_GRAPHICS_INVESTIGATION.md`](./design/program/DYNAMIC_GRAPHICS_INVESTIGATION.md).
 
 ### The bar
 
@@ -1761,22 +1784,26 @@ Three different failures get mixed together. Treat them as three queues, not one
 
 | Failure | What the player sees | Cause | First leaf |
 |---|---|---|---|
-| **Invisible** | Targeting locks empty space | Live slot asked for a body the loader will not admit (no package, or not on the empty-admission allowlist). Hitch and Wasp are the only *required* whole-ships; Pelican, Mule, Drifter, the nine factory hulls, and the liner have packages but are still omitted from that allowlist. | `PQ-193.00` |
-| **Falls apart** | Engine / wing / glow hanging in space | Accessory-only file, or modular kit with no meeting hull. Legacy Pelican/Wasp wholeships are blocked forever. Owner playtest 2026-09-08 still saw this on the opening NPC. | `PQ-193.01` |
-| **Wrong game / plastic** | Draws, but toy, unpainted, or another title | Factory player hulls (Hornet→Leviathan) now load; they have not closed Hitch-plus. Hornet burned dozens of cycles and still failed (fragmentary form; maps ~30 px/m where the bar wants hundreds). Reverse still reads as two needles even though a volumetric retro path exists. | `PQ-193.01` / `.02`, then `PQ-050` |
+| **Invisible** | Targeting locks empty space | Live slot asked for a body the loader will not admit (no package, or not on the empty-admission allowlist). Hitch and Wasp are the only *required* whole-ships. Pelican, Mule, Drifter, the nine factory hulls, and the liner have packages and maps but are **not required** and are omitted from that allowlist — they do not publish on the player path. | `PQ-193.00` |
+| **Falls apart** | Engine / wing / glow hanging in space | Accessory-only file, or modular kit with no meeting hull. Legacy Pelican/Wasp wholeships are blocked forever. Default New Game parks 47-A ships far; the opening kitbash is modular **smuggler / pirate** traffic. The official **recovery tug** is modular Mule when it arrives. | `PQ-193.01` |
+| **Wrong game / plastic** | Draws, but toy, unpainted, or another title | Factory player hulls (Hornet→Leviathan) are mapped, not published. They have not closed Hitch-plus. Hornet burned dozens of cycles and still failed (fragmentary form; maps ~30 px/m where the bar wants hundreds). Reverse still reads as two needles even though a volumetric retro path exists. | `PQ-193.01` / `.02`, then `PQ-050` |
 
 Also true:
 
-- All 13 roster ships have dedicated models and render packages. Only Wasp is `accepted`.
-- Code-built cans, gates, drones, mines, wrecks, and mass seeds have **no model file**
-  ([`WORLD_VISUAL_CENSUS.md`](./design/program/WORLD_VISUAL_CENSUS.md) A).
+- All 13 roster ships have dedicated models and render packages. Only Wasp is `accepted`. Mapped
+  factory hulls are not published until `PQ-193.00` requires them.
+- Code-built cans, drone *entities*, mines, generic wrecks, and mass seeds have **no model file**
+  ([`WORLD_VISUAL_CENSUS.md`](./design/program/WORLD_VISUAL_CENSUS.md) A). **Gates have**
+  `place_gate_jump_ring.glb`. The hoop is leftover fallback.
 - Factory remasters of already-live Ashline / Helios / work boats sit on disk. An earlier remap
   onto them made traffic invisible. **Do not remap** until that exact body is packaged and beats live.
 - Corsair still shares the pirate Rig. Arclight has no route. Tanker and inspection cutter are held.
-  Faction kits exist; nothing reads them. Dock / hulk / debris remaster is stuck at live presentation.
-  Station fallback is still a fat cylinder plus hoops.
+  **Yard tug is live.** Faction kits exist; nothing reads them. Dock / hulk / debris remaster is
+  stuck at live presentation. Station fallback is still a fat cylinder plus hoops.
 - Distant cheap LODs exist for every player hull and are never switched in. That is a later
-  performance unlock, not this packet.
+  performance unlock, not this packet. Zoom-out does not swap hulls today. Do not show a box
+  or modular kit while a body decodes. Garnish hide at a speck is the ceiling — not a cheaper
+  species of ship, not an impostor. See the dynamic-graphics investigation.
 - `needed-assets.md` is stale (still calls Hitch / Pelican / Wasp blocked). Do not dispatch from it.
 
 ### The order (law)
@@ -1789,8 +1816,8 @@ commission a new hull for a slot an unused authored body already fills.
 
 | Leaf | Outcome | Done when |
 |---|---|---|
-| **`PQ-193.00`** | **Every ship the player can lock publishes a packaged complete body.** Put all 13 roster hulls and the liner on the empty-admission allowlist. Accessory-only modular junk never substitutes. | Default-route targeting never sits on blank space for those hulls. `check:live-whole-ship-admission` and `test/live-ship-visual-package-coverage.test.mjs` cover them. Hitch freeze untouched. |
-| **`PQ-193.01`** | **Opening NPCs belong in Hitch's world.** No floating parts on the Helios / Kessler flyby. Taste-led ([`VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md)). | A stranger shown Hitch and the nearest NPC says they are the same game. Nothing structural floats. Hitch frozen. |
+| **`PQ-193.00`** | **Every ship the player can lock publishes a packaged complete body.** Put all 13 roster hulls and the liner on the empty-admission allowlist **and require them**. Accessory-only modular junk (smuggler / pirate included) never substitutes. | Default-route targeting never sits on blank space for those hulls. `check:live-whole-ship-admission` and `test/live-ship-visual-package-coverage.test.mjs` cover them. Hitch freeze untouched. |
+| **`PQ-193.01`** | **Opening NPCs belong in Hitch's world.** No floating parts on the Helios / Kessler flyby. Includes modular smuggler / pirate and the official 47-A recovery tug. Taste-led ([`VISUAL_WORLD_CLEANUP.md`](./design/program/VISUAL_WORLD_CLEANUP.md)). | A stranger shown Hitch and the nearest NPC says they are the same game. Nothing structural floats. Hitch frozen. |
 | **`PQ-193.02`** | **Reverse / brake is a jet.** One honest path from the existing volumetric retro; delete or stop the leftover needle trail. | A stranger can tell, HUD hidden, that the player is braking. Same family as the main drive. No second needle stacked on a failed volume. |
 
 ### Wave B — tubes next to ships
@@ -1802,7 +1829,7 @@ Upgrade the existing object. Do not invent a parallel prop.
 |---|---|---|
 | **`PQ-193.03`** | Lane buoy, lane beacon, and cargo pod look manufactured at chase size. | Same-slot replace. Stranger can name the job at 144 WU. Not a tube-plus-ring next to Hitch. |
 | **`PQ-193.04`** | 47-A spindle, rescue capsule, Kessler beacon, Bourse wreck, and the generic TOW can are designed objects. | Code-built family gone from that mission slot. Model first if hitch still owns the 47-A wiring file. |
-| **`PQ-193.05`** | Mining-drone entity, jump gate, disc mine, generic wreck, and mass seed stop being primitives. | Default route no longer shows those census-A shapes as cylinder stacks. |
+| **`PQ-193.05`** | Mining-drone entity, jump gate, disc mine, generic wreck, and mass seed stop being primitives. Gate: upgrade live `place_gate_jump_ring.glb`. Drone entity: point at `place_mining_drone.glb` after it looks like hardware. | Default route no longer shows those census-A shapes as cylinder stacks. |
 
 ### Wave C — buyable ships to Hitch-plus (already queued)
 
@@ -1812,7 +1839,7 @@ Do not duplicate these as `PQ-193` leaves. One ship at a time. Chase camera. No 
 |---|---|---|
 | `PQ-050.01` | Hornet | Wired candidate, Hitch-plus unmet. Next: form + texture density, not garnish. |
 | `PQ-050.02` | Drifter | After Hornet closes. |
-| `PQ-050.03`–`.09` | Ranger, Ironback, Bastion, Atlas, Warden, Colossus, Leviathan | Factory bodies now load; they are not accepted. |
+| `PQ-050.03`–`.09` | Ranger, Ironback, Bastion, Atlas, Warden, Colossus, Leviathan | Factory bodies are mapped and packaged; they are not required and not accepted. |
 | `PQ-050.10`–`.12` | Pelican, Mule, Wasp | Dedicated packages, not factory clones. Wasp is the only accepted non-Hitch hull; still in the sequence if Hitch still wins on matched stills. |
 | `PQ-050.13`–`.22` | Ashline Dart/Lode/Rig, Helios Lark/Cradle/Span, ore barge, tender, salvage cutter, survey pin | Remaster the **live** body. Do not swap the unused factory `*_production_v1` files onto traffic until packaged and better. |
 
@@ -2775,11 +2802,6 @@ Moved to [build_map_done.md](./build_map_done.md) — completed/historical, kept
   `node scripts/program-dispatch.mjs --id PQ-146` (or any ID in §15.2). The eight reactivated packets
   (`PQ-026`–`PQ-033`) are `ready` with fresh leaves; their old one-line briefs are superseded by their
   packet files.
-- **Door, landing passover:** another agent reviews what just landed for taste, improvements, and
-  bugs before those units are treated as finished →
-  `node scripts/program-dispatch.mjs --id PQ-191`. Play the surfaces named in
-  [`PQ-191.md`](./design/program/roadmap/active/PQ-191.md); fix real defects; do not open a second
-  backlog.
 - Every packet here closes on the same law as §13C: **numbers in player units, measured at the
   shipping camera, before and after.** A packet that adds content without naming the gate row it
   moves is not admitted.
@@ -3202,18 +3224,19 @@ The mining board is a game a player can see, read and drive: the owner's design 
 
 ## 19. How agents get SpaceFace wrong — the catalogue, and the rule that stops each — and the regression fortress (`PQ-186`)
 
-Every packet's *How agents get this wrong* section cites entries here. The integrator rejects a unit
-on any entry it matches. Where a check exists, its name is given; where none exists, `PQ-186` builds
+Every packet's *How agents get this wrong* section cites entries here. These are the ways the work
+actually goes wrong — judge your own work against them before closing. Where a check exists, its
+name is given; where none exists, `PQ-186` builds
 it.
 
 | # | The failure | What it looks like | The rule | The check |
 |---|---|---|---|---|
 | W1 | **Literal satisfaction** | "See, it follows the path" at walking speed; the test measured cross-track and never speed. | Done-when in player units; speed is the pass criterion, track the constraint. | bar checks (`PQ-186.00`) |
-| W2 | **Content instead of feel** | Answering "not fun" with more enemies, ships, stations, missions. | §1.3 rule 4; the Fun Loop's forbidden moves. | reviewer checklist |
-| W3 | **Camera shake as the fix** | Trauma and particles on a boring event. | Spectacle never substitutes for the event underneath. | reviewer checklist |
+| W2 | **Content instead of feel** | Answering "not fun" with more enemies, ships, stations, missions. | §1.3 rule 4; the Fun Loop's forbidden moves. | self-review (§1.6) |
+| W3 | **Camera shake as the fix** | Trauma and particles on a boring event. | Spectacle never substitutes for the event underneath. | self-review (§1.6) |
 | W4 | **Stacked clamps** | Each agent adds a local safety rule (governor brake, neutral brake, velocity clamp, contact bound) until nothing the player does sticks. | Never add drag; never clamp given momentum; every clamp names the bar it serves. | `PQ-186.01` guards |
 | W5 | **Test-to-pass** | Rewriting an assertion or re-recording a golden because it went red. | Assertions quote the vision sentence; goldens move only with the causal record. | anti-vision assertion lint (`PQ-186.02`), §8/§10d |
-| W6 | **Prose as proof** | "Verified", "works", a green check, a flattering still. | Numbers, frames, consequences. | reviewer checklist |
+| W6 | **Prose as proof** | "Verified", "works", a green check, a flattering still. | Numbers, frames, consequences. | self-review (§1.6) |
 | W7 | **Half-finished** | A leaf that looks done and is not; a feature behind a flag; a screen wired but unreachable. | Finish the unit; default route only; wired-feature policy. | `check:gate-reachability`, the matrix |
 | W8 | **Jargon questions to the owner** | "Should I use a spring or a distance constraint?" | Decide it; ask only product judgments, in plain words, with a default. | — |
 | W9 | **Random seeds** | Tuning on a run nobody can reproduce. | Fixed seeds or it did not happen. | bench refuses unseeded runs |
@@ -3229,8 +3252,8 @@ it.
 | W19 | **A check that cannot fail** | A gate that imports a `node:test` file and exits 0. | Run suites as child processes; inject a failure and watch it go red. | §7 |
 | W20 | **Cheating the golden hash** | Repinning on a moved motion field without a cause. | `sim-golden-diff` verdict before any repin. | §10d |
 | W21 | **Feature flags as done** | A flag OFF in production with the feature "implemented". | Production profile is the route; flags-off features are not done. | `runtimeProfiles.js` audit |
-| W22 | **Ignoring the wrong-way list** | Building the packet without reading its *How agents get this wrong*. | Step 3 of the procedure. | reviewer checklist |
-| W23 | **Scope creep as rescue** | A unit that could not close its bar closes something else instead. | New findings become ranked debt, never scope. | reviewer checklist |
+| W22 | **Ignoring the wrong-way list** | Building the packet without reading its *How agents get this wrong*. | Step 3 of the procedure. | self-review (§1.6) |
+| W23 | **Scope creep as rescue** | A unit that could not close its bar closes something else instead. | New findings become ranked debt, never scope. | self-review (§1.6) |
 | W24 | **Asking the owner to test** | "Please check if it feels better." | The bench, the critic, the report; the owner plays weekly on their own terms. | — |
 | W25 | **Teaching with text** | A tutorial wall; a hint longer than one line. | Verb-then-silence; the Range is the fallback. | `PQ-163` funnel |
 | W26 | **Anecdotal balance** | "The physics kit felt strong." | Twenty seeded runs per kit; the balance dashboard. | `PQ-174.02` |
@@ -3251,7 +3274,7 @@ it.
 
 **`PQ-186` — The regression fortress: every bar, every ruling and every refusal becomes a check** · *ALPHA* · after nothing
 
-The game cannot regress silently. Each FEEL_CONTRACT bar has a scenario check; each owner ruling (no drag, no clamp on given momentum, no NPC gyros, no HP scaling, no dialogue trees, the player never knocked around) has a static or runtime check whose message quotes the ruling; the refusals in §15.7 have grep-level guards where a grep can catch them; and a test that pins behaviour the vision forbids is itself detected by a lint on assertion messages against a banned-phrase list.
+The game cannot regress silently. Each FEEL_CONTRACT bar has a scenario check; each owner ruling (no drag, no clamp on given momentum, no NPC gyros, no HP scaling, no dialogue trees, the player never knocked around) has a static or runtime check whose message quotes the ruling; and the refusals in §15.7 have grep-level guards where a grep can catch them.
 
 - **Gap:** The 2026-09-03 audit found anti-vision behaviour pinned green by tests; nothing prevents it happening again. **Reference:** The repo's own §7 rule: inject a failure and watch the check go red.
 - **Exists:** `test/flightV3.spec.mjs`, `test/travel-drive.test.mjs` (rewritten with vision sentences), `check:baseline`, the Motion Lab, `check:sim` goldens, `scripts/check-*.mjs` pattern.
@@ -3262,35 +3285,9 @@ The game cannot regress silently. Each FEEL_CONTRACT bar has a scenario check; e
 |---|---|---|
 | `.00` (after PQ-137.10) | **Bars as checks.** One check per FEEL_CONTRACT bar the lab can reach, assertion message = the bar's sentence; wired into check:all:smoke. | Every reachable bar has a check; injecting the old governor brake turns B1 red. |
 | `.01` | **Rulings as guards.** Static guards: no linear damping calls in sim, no velocity writes outside the physics owner, no `Math.random`/`Date.now` in sim, no HP-scaled knockback, no dialogue-tree data shapes; runtime guards: player knock budget, NPC no-gyro invariant. | Each guard has a fixture that fails it; all green on master. |
-| `.02` | **Anti-vision assertion lint.** A lint over test assertion messages against a banned-phrase list ('should decay toward the cap', 'must not stagger', 'brake survives'), maintained in the feel contract. | Lint green; the 2026-09-02 phrases would have been caught. |
 
 - **Not:** No fixed pass/reviewer counts as gates; no check that cannot fail (§7).
 - **How agents get this wrong:** Writing a check that imports a node:test file and cannot fail (§7): run suites as child processes and honour exit codes; Encoding a bar with a tolerance so wide it never fails: inject the old defect and watch it go red before committing.
-
-## 20. Owed review — the flash ten-unit batch (`PQ-191.01`) — SESSION 2026-09-05/06
-
-A goal-directed session picked ten ready units rated ≤ 5 complexity and shipped five of them out
-of order (the rest of the picked pool went back untouched: PQ-184.01/.02/.03 and the two PQ-022
-captures are normal ready units, not leftovers). Every unit has a receipt, an integratedCommit,
-and a subagent review round behind it. **A senior agent owes this batch a review**:
-`node scripts/program-dispatch.mjs --id PQ-191`, then take leaf **`.01`** (packet:
-[`PQ-191.md`](./design/program/roadmap/active/PQ-191.md)). Leaf `.00` is the other 2026-09-06
-landing's play-and-fix passover; do not treat this section as the whole packet.
-
-The review is a judgment pass, not a rubber stamp: the six taste calls the batch made (grammar
-debt reported-not-fatal, the courier's deterministic traffic fixture, one-off set pieces reusing
-packaged art, the corkscrew amplitudes, the bars-as-checks polarity, the density table's home)
-are listed in the packet as INPUTS for the reviewer to ratify, adjust, or overturn — none of them
-is locked in, and the owner's taste outranks every one. Entry point: the five receipts named in
-the packet. Adopted defects are **fixed**, not only listed.
-
-| Unit | One line |
-|---|---|
-| PQ-144.00 | the three density layers as a budget table |
-| PQ-186.00 | every feel bar as a standing check that fails in the bar's own words |
-| PQ-139.04 | tumbling ships corkscrew their trail (both plume families) |
-| PQ-143.02 | six texture one-offs on the starter route |
-| PQ-184.00 | per-surface UI frame/DOM budgets, measured and gated |
 
 ## 20. The frontend direction — the A-list plan (`PQ-187`, `PQ-188`; re-gates `PQ-162`, `PQ-168`, `PQ-181`, `PQ-182`, `PQ-185`) — ADMITTED 2026-09-05
 
@@ -3340,9 +3337,9 @@ actual screens.
    stylesheets and delegated the decision; the sheet decides. Enforced in the queue: every surface
    packet's units depend on `PQ-187.03` (the title live on the kit), so `program-dispatch --next`
    cannot hand out surface work before the direction is visible in the game.
-3. **Every leaf ends with a hash-bound visual review against the sheet.** *(Revised 2026-09-06.)*
-   A memoryless reviewer answers the sheet's §9 checklist on the capture; the integrator closes; the
-   owner's veto is exercised in the game, never on a form.
+3. **Every leaf closes on its own rendered frames.** Play the surface at the shipping camera, answer
+   the sheet's §9 checklist yourself, and iterate until it genuinely passes; study stills when
+   useful and delete them after. The owner's veto is exercised in the game, never on a form.
 4. **The proof is blind and comparative** (§20.10).
 5. **Agents are told, by name, what not to reach for** (§20.9).
 
@@ -3449,7 +3446,7 @@ section. `PQ-183` and `PQ-184` are unchanged in scope and run after migration.
 
 ### 20.9 How agents get this wrong — the cheapness generators
 
-An integrator rejects a unit that matches any line (§1.6, §19 W-list applies too).
+Judge your surface against these lines, the §1.6 self-review and the §19 W-list; they are how frontend work goes cheap.
 
 - **Reaching for glow to be bold.** A halo, a gradient fill, a glass panel or a tracked-out label is
   an automatic reject; boldness is scale, face, composition, imagery, motion.
@@ -3464,7 +3461,8 @@ An integrator rejects a unit that matches any line (§1.6, §19 W-list applies t
 - **A settings-page voice on a hero surface.** Title, load, death, results are compositions, not
   lists.
 - **Consolidating the old CSS before the kit exists.** Build fresh; migrate; delete.
-- **Calling a phase done on a green matrix.** Done is the capture matching the sheet under a hash-bound visual review *(revised 2026-09-06)*.
+- **Calling a phase done on a green matrix.** Done is the surface genuinely matching the sheet when
+  you look at it in the game and answer the sheet's §9 checklist honestly — iterate until it is.
 - **Any first-person motif.** Permanent.
 - **Motion with no state variable, over 180 ms, or without a reduced-motion authoring.** The motion
   contract is floor.
@@ -3472,9 +3470,11 @@ An integrator rejects a unit that matches any line (§1.6, §19 W-list applies t
 ### 20.10 Proof — what "exceeds most games" means, measurably
 
 1. **Blind side-by-side.** For eight screen types (title, load, pause, results, map, ship, market,
-   HUD) a memoryless vision reviewer sees the SpaceFace frame beside the reference board's frame of
-   the same type, unlabeled, and picks the more polished, more distinctive interface. Target:
+   HUD) put the SpaceFace frame beside the reference board's frame of
+   the same type, unlabeled, and judge honestly which is the more polished, more distinctive
+   interface. Target:
    SpaceFace chosen in ≥ 50 % of pairings across the board and 100 % against the two genre baselines.
+   If it is not, iterate — that finding is the work.
 2. **The owner's thirteen.** Every signature moment has a clip the owner signed off.
 3. **The floor is green** across the matrix at three widths, pseudo-localised, forced-colours,
    reduced-motion, inside the budgets, with the regression baseline reshot on the new look.
@@ -3488,7 +3488,7 @@ An integrator rejects a unit that matches any line (§1.6, §19 W-list applies t
 | **`PQ-187`** The direction, decided: the sheet, the kit, the title live, the proof — [`active/PQ-187.md`](./design/program/roadmap/active/PQ-187.md) | F · Frontend | *(revised 2026-09-06)* The direction is decided and written as `DIRECTION_SHEET.md`; the kit is built from it; the title goes live first so the owner sees the direction in the game after one unit; a blind side-by-side against A-list games proves the result. | ALPHA |
 | **`PQ-192`** The reading screens on the kit — [`active/PQ-192.md`](./design/program/roadmap/active/PQ-192.md) | F · Frontend | Missions log, codex, help and tech tree migrate onto the kit to the sheet's pictures, shedding their old style blocks. | BETA |
 | **`PQ-188`** The flight HUD and the instruments to the direction — [`active/PQ-188.md`](./design/program/roadmap/active/PQ-188.md) | F · Frontend | The HUD and the three instruments §11 marked done, rebuilt on the kit with their centerpieces kept; the HUD gains its arrival choreography and its wanted temperature. | BETA |
-| `PQ-181` meta shell · `PQ-162` station · `PQ-168` chart · `PQ-182` Crucible · `PQ-185` Works | F · Frontend | Unchanged in scope; re-gated on `PQ-187.03` (packetRevision bumped, direction-override note under the yaml); done is a hash-bound visual review against the sheet *(revised 2026-09-06)*. | BETA |
+| `PQ-181` meta shell · `PQ-162` station · `PQ-168` chart · `PQ-182` Crucible · `PQ-185` Works | F · Frontend | Unchanged in scope; re-gated on `PQ-187.03` (packetRevision bumped, direction-override note under the yaml); done is the surface matching the sheet at the shipping camera, iterated until it does. | BETA |
 
 ### 20.12 The plans, in detail
 
@@ -3515,8 +3515,8 @@ sheet a builder can work from and a non-designer can picture; the title goes liv
 |---|---|---|
 | `.00` | **The reference board.** Done 2026-09-06. | Present. |
 | `.01` | **The decision and the direction sheet.** Done 2026-09-06. `DIRECTION_SHEET.md`: every screen as a picture in plain words, then faces, scale, temperature, the dense register, motion, sound, the review checklist, what survives and what retires. The comparison round is void. | The sheet exists and every frontend packet cites it; the receipt quotes the owner verbatim. |
-| `.02` (after `.01`) | **The kit.** The variable Bricolage vendored (OFL) beside Instrument Sans; tokens and the 12→160 px scale; the temperature states; the transition helper (cut + ≤ 160 ms settle, state-bound, reduced-motion = cut); ≤ 8 UI sounds through `audio:cue`; every component on one kit page. Old stylesheets untouched. | The kit page at three widths matches the sheet under a hash-bound visual review; `check:type-floor`, `check:wcag-contrast` green; no owner decision required. |
-| `.03` (after `.02`) | **The title and main menu live on the kit.** The hull in the hangar rig fills the frame against the sky; the game's name at hero scale; a column of words down the left edge; the menu plate and its CSS deleted; open/confirm sounds live. | Booting the game shows it; captures at three widths match the sheet under a hash-bound visual review; `check:title-continue-runtime` green; the owner has seen it in the game and not vetoed. **The gate every surface packet depends on.** |
+| `.02` (after `.01`) | **The kit.** The variable Bricolage vendored (OFL) beside Instrument Sans; tokens and the 12→160 px scale; the temperature states; the transition helper (cut + ≤ 160 ms settle, state-bound, reduced-motion = cut); ≤ 8 UI sounds through `audio:cue`; every component on one kit page. Old stylesheets untouched. | The kit page at three widths matches the sheet; `check:type-floor`, `check:wcag-contrast` green; no owner decision required. |
+| `.03` (after `.02`) | **The title and main menu live on the kit.** The hull in the hangar rig fills the frame against the sky; the game's name at hero scale; a column of words down the left edge; the menu plate and its CSS deleted; open/confirm sounds live. | Booting the game shows it; captures at three widths match the sheet; `check:title-continue-runtime` green; the owner has seen it in the game and not vetoed. **The gate every surface packet depends on.** |
 | `.04` (after every surface packet) | **The proof.** §20.10 in full; the thirteen signature moments as clips reviewed against the sheet; the reel. | ≥ 50 % / 100 % on the side-by-side; thirteen clip reviews; matrix and regression green; the reel under `receipts/`. |
 - **Not:** no comps; no second direction; no owner pick or sign-off form; no CSS cleanup.
 - **How agents get this wrong:** §20.9, plus: asking the owner to choose between stylesheets; treating a green matrix as a match to the sheet.
@@ -3539,9 +3539,9 @@ their centerpieces and manipulation verbs kept, and the HUD gains its two signat
 
 | Leaf | Outcome | Done when |
 |---|---|---|
-| `.00` | **The flight HUD.** Hero scale where it matters (speed, heat, the target); the display face on the few words that deserve it; the arrival choreography on first undock; the temperature change on wanted; the attention rules kept. | Contact sheet at 1280 / 1920 / 2560 under a hash-bound visual review against the sheet; two ten-second clips; `check:hud-j07` and `check:one-voice` green; the receipts channel unchanged. |
-| `.01` | **THE SHIP.** The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. | Contact sheet under a hash-bound visual review against the sheet; every band still answers "why does my ship fly like this". |
-| `.02` | **THE FOOTPRINT and THE RANGE.** The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. | Contact sheet under a hash-bound visual review against the sheet; the four rungs still complete under real input. |
+| `.00` | **The flight HUD.** Hero scale where it matters (speed, heat, the target); the display face on the few words that deserve it; the arrival choreography on first undock; the temperature change on wanted; the attention rules kept. | Contact sheet at 1280 / 1920 / 2560 matching the sheet; two ten-second clips; `check:hud-j07` and `check:one-voice` green; the receipts channel unchanged. |
+| `.01` | **THE SHIP.** The hull as the picture at full bleed with labels pinned to it; the four bands re-set on the kit; orbit kept. | Contact sheet matching the sheet; every band still answers "why does my ship fly like this". |
+| `.02` | **THE FOOTPRINT and THE RANGE.** The consequence board with its wanted temperature; the Range's teaching voice on the kit without changing the drills. | Contact sheet matching the sheet; the four rungs still complete under real input. |
 
 - **Not:** no change to what the instruments do; no second receipts channel; no restyle before the
   kit exists.
@@ -3575,9 +3575,9 @@ composition, the dense register, motion, sound, a review checklist, what survive
 the never-list). The why is the direction file §13. §20.2's owner pick, §20.8's Phase 0 comparison
 round, the "owner's yes" done-whens and §20.13 are superseded by this section.
 
-**The mechanism now.** The sheet is the authority. A leaf closes when its actual capture matches the
-sheet under a hash-bound review by a memoryless vision reviewer answering the sheet's §9 checklist,
-and the integrator accepts. No unit waits on a human choosing between options; a unit that would is
+**The mechanism now.** The sheet is the authority. A leaf closes when the agent plays it at the
+shipping camera, answers the sheet's §9 checklist honestly, and iterates until the surface
+genuinely matches the sheet. No unit waits on a human choosing between options; a unit that would is
 a defect. The owner's veto is exercised by looking at the game, and the title goes live first so
 that look happens after one unit.
 

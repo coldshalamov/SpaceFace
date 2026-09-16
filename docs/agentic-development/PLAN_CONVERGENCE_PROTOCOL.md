@@ -9,7 +9,7 @@ This protocol gives the Central Brain a way to reason across plan families while
 
 The canonical sources remain:
 
-- `CANONICAL_BUILD_MAP.md` — front door and route law;
+- `build_map.md` — front door and route law;
 - `design/PLAN_REGISTRY.md` — plan-family index/status;
 - `design/program/roadmap/program-queue.json` — admitted machine index and dependency graph;
 - `design/program/roadmap/active/` — executable packets;

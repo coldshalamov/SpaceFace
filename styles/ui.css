@@ -116,6 +116,16 @@ body.sf-flight-cursor #hud { cursor: none; }
     opacity: 0.85;
   }
 }
+/* The OS-level media query above does not cover the in-game "Reduce flashing" toggle: the
+   blowout invert-strobe must also yield to html.sf-reduce-flash (the blanket flash guard only
+   matches pulse/blink/flash class names, and the orbital.css rules target #hud descendants,
+   not #hud itself). */
+html.sf-reduce-flash #hud.sf-hud--blowout {
+  animation: none;
+  transform: none;
+  filter: none;
+  opacity: 0.85;
+}
 #modal-backdrop { inset: 0; z-index: 90; display: none; background: radial-gradient(circle at 50% 40%, color-mix(in srgb, var(--bg) 62%, transparent), color-mix(in srgb, var(--bg) 86%, transparent)); opacity: 0; visibility: hidden; pointer-events: none; }
 #modal-backdrop[hidden] { display: none !important; }
 #screens { inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; }
@@ -207,6 +217,7 @@ button:hover, .btn:hover {
   border-color: var(--accent);
   color: #fff;
   box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 30%, transparent);
+  translate: 0 -1px;
 }
 button:focus-visible, .btn:focus-visible {
   outline: 2px solid var(--accent);
@@ -223,6 +234,13 @@ button:focus-visible, .btn:focus-visible {
 button:active, .btn:active {
   translate: 0 1px;
   filter: brightness(0.95);
+}
+button:disabled, .btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+  box-shadow: none;
+  translate: none !important;
 }
 
 .hud-bar {
@@ -301,7 +319,9 @@ button:active, .btn:active {
   transform: scale(1.36);
 }
 
-#aim-reticle[data-hit="kill"] circle:last-of-type {
+/* Top-level circle only — a descendant :last-of-type would also catch the r=40 ring inside
+   .sf-reticle-shape--open and flash a large faint disc on kill. */
+#aim-reticle[data-hit="kill"] > svg > circle:last-of-type {
   fill: #fbbf24;
 }
 
@@ -593,6 +613,70 @@ input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:foc
   outline: none;
   border-color: var(--accent);
   box-shadow: inset 0 1px 3px rgba(0, 0, 0, .5), 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+/* Tactile aerospace checkboxes & radio inputs */
+input[type="checkbox"], input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  display: inline-grid;
+  place-content: center;
+  width: 18px;
+  height: 18px;
+  margin: 0 8px 0 0;
+  padding: 0;
+  border: 1px solid var(--panel-edge-2);
+  border-radius: var(--r-sm, 3px);
+  background: color-mix(in srgb, var(--panel-2) 90%, transparent);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, .4);
+  vertical-align: middle;
+  cursor: pointer;
+  transition: border-color .15s var(--ease), background-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+input[type="checkbox"]:hover, input[type="radio"]:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+input[type="checkbox"]::before {
+  content: '';
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid #020617;
+  border-bottom: 2px solid #020617;
+  transform: translateY(-1px) rotate(-45deg) scale(0);
+  transition: transform .12s var(--ease);
+}
+input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+input[type="checkbox"]:checked::before {
+  transform: translateY(-1px) rotate(-45deg) scale(1);
+}
+input[type="radio"] {
+  border-radius: 50%;
+}
+input[type="radio"]::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #020617;
+  transform: scale(0);
+  transition: transform .12s var(--ease);
+}
+input[type="radio"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+input[type="radio"]:checked::before {
+  transform: scale(1);
 }
 
 /* Screen-reader-only live-region text (still announced, never visually shown). */

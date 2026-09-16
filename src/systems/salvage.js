@@ -21,6 +21,7 @@ import { zonesForSector, VESTA_DERELICT_SALVAGE_SOURCE } from '../data/sectorZon
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import { pickWreckMission, wreckMissionById } from '../data/wreckMissions.js';
 import { WRECK_ECOLOGY_DAY_S, isPlayerWreckMarker, playerWreckMarker } from './aftermathWrecks.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 // Tuning (kept conservative so we never blow the ship/entity budget — brief: ≤2 salvage per zone).
 const MAX_SALVAGE_PER_ZONE = 2;     // hard cap on entities placed per derelict zone
@@ -377,7 +378,7 @@ export const salvage = {
     const marker = playerWreckMarker(this.state);
     if (!marker || (sectorId && marker.sectorId !== sectorId)) return null;
     let entityId = null;
-    const list = this.state && this.state.entityList || [];
+    const list = indexedTypeScan(this.state, 'wrecks');
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
       if (entity && entity.alive !== false && entity.data && entity.data.markerId === marker.markerId) {

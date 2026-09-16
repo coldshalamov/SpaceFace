@@ -15,7 +15,7 @@ const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 function entityById(state, id) {
   if (!state || id == null) return null;
   if (state.entities && typeof state.entities.get === 'function') return state.entities.get(id) || null;
-  return (state.entityList || []).find((entity) => entity && entity.id === id) || null;
+  return null;
 }
 
 function entityName(entity) {
@@ -33,8 +33,10 @@ export function stationName(state, stationId) {
     const station = (sector.stations || []).find((row) => row.id === stationId);
     if (station) return station.name;
   }
-  const entity = (state && state.entityList || []).find((row) => row && (row.data && row.data.stationId || row.stationId || row.id) === stationId);
-  return entityName(entity) || String(stationId || 'protected station').replace(/^station_/, '').replace(/_/g, ' ');
+  const byStationId = state && state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && byStationId.get && byStationId.get(stationId);
+  if (indexed) return entityName(indexed) || String(stationId || 'protected station').replace(/^station_/, '').replace(/_/g, ' ');
+  return String(stationId || 'protected station').replace(/^station_/, '').replace(/_/g, ' ');
 }
 
 export function authorityTargetText(payload, state) {
@@ -257,8 +259,10 @@ function injectStyle() {
      gas giant fills this corner, and the band tuner chip used to anchor inside the block. */
   #sf-sector-law { position:relative; width:100%; z-index:1070;
     box-sizing:border-box; padding:9px 11px 10px; pointer-events:none; contain:layout paint style;
-    background:rgba(10,14,20,.85); border:1px solid var(--hud-line, rgba(148,178,205,.18));
-    border-radius:var(--hud-radius, 3px); box-shadow:none;
+    background:rgba(10,14,20,.88);
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid var(--hud-line, rgba(148,178,205,.2));
+    border-radius:4px; box-shadow:0 14px 30px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.05);
     color:#e7edf5; text-shadow:${INK_SHADOW};
     font-family:var(--hud-body,"IBM Plex Sans","Segoe UI",sans-serif); transition:opacity .16s ease-out, transform .16s ease-out; }
   #ui-root > #sf-sector-law { position:absolute; top:112px; right:20px; width:min(340px, calc(100vw - 40px)); }

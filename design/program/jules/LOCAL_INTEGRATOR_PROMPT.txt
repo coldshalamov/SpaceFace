@@ -1,6 +1,6 @@
 Operate the SpaceFace Jules directed task bank as a dispatch-and-integration campaign.
 
-Start at CANONICAL_BUILD_MAP.md, AGENTS.md, and design/program/jules/README.md. Validate the bank:
+Start at build_map.md, AGENTS.md, and design/program/jules/README.md. Validate the bank:
 
 node scripts/jules-dispatch.mjs --validate
 node --test test/jules-task-bank.test.mjs
@@ -18,7 +18,7 @@ DISPATCH
 REVIEW EVERY RESULT
 1. Resolve the exact task record and compare the PR against its objective, work steps, acceptance criteria, inspect scope, and local merge gate.
 2. Fetch current master and review the complete diff. Do not review only the PR description.
-3. Reject any edit to CANONICAL_BUILD_MAP.md, root AGENTS.md, ARCHITECTURE.md, design/VISION.md, design/GDD_2_0.md, design/program/NOW.md, program-queue.json, design/program/jules/**, or test/*.expected.json.
+3. Reject any edit to build_map.md, root AGENTS.md, ARCHITECTURE.md, design/VISION.md, design/GDD_2_0.md, design/program/NOW.md, program-queue.json, design/program/jules/**, or test/*.expected.json.
 4. Reject unrelated refactors, new dependencies, broad formatting, copied framework layers, duplicate registries, speculative TODO plans, acceptance theater, and quality cuts.
 5. Confirm the changed production path is live. Default flight is V3; default AI is tactical. A green test of a legacy owner does not prove player value.
 6. For tests, prove the test can fail for the intended regression and does not assert source formatting, file counts, or implementation trivia.

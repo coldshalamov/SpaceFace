@@ -8,7 +8,7 @@
 // and encounter state remain with their canonical owners through events.
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
-import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { forEachLivingWorldActor, indexedTypeScan } from '../world/livingWorldViews.js';
 import { isHostileToPlayer } from './scanner.js';
 
 export const SURRENDER_SECURE_REEL_WU = 60;
@@ -1132,10 +1132,6 @@ function reachableCivilianRecoveryDestination(state, entity, requiredStationId =
   if (!state || !entity || !entity.pos) return null;
   const currentSectorId = boundedIdentity(state.world && state.world.currentSectorId);
   if (!currentSectorId) return null;
-  const index = state.entityIndex;
-  const stations = index && index.__spacefaceEntityIndexV1 && index.ready && Array.isArray(index.stations)
-    ? index.stations
-    : (state.entityList || []).filter((candidate) => candidate && candidate.type === 'station');
   const player = entityFor(state, state.playerId);
   const authoredMaxSpeed = Number(player && player.maxSpeed);
   const maxSpeed = Number.isFinite(authoredMaxSpeed) && authoredMaxSpeed > 0
@@ -1155,15 +1151,12 @@ function lawfulRecoveryDestination(state, entity, {
   maxTravelWU = Infinity,
 } = {}) {
   if (!state || !entity || !entity.pos) return null;
-  const index = state.entityIndex;
-  const stations = index && index.__spacefaceEntityIndexV1 && index.ready && Array.isArray(index.stations)
-    ? index.stations
-    : (state.entityList || []).filter((candidate) => candidate && candidate.type === 'station');
+  const stations = indexedTypeScan(state, 'stations');
   const seen = new Set();
   const candidates = [];
 
   for (const probe of stations) {
-    if (!probe || probe.alive === false || !probe.pos) continue;
+    if (!probe || probe.alive === false || probe.type !== 'station' || !probe.pos) continue;
     if (currentSectorId && boundedIdentity(probe.data && probe.data.sectorId) !== currentSectorId) continue;
     const jurisdiction = protectedStationAt(state, probe);
     if (!jurisdiction || !jurisdiction.stationId || seen.has(jurisdiction.stationId)) continue;

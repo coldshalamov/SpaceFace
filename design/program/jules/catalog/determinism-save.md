@@ -15,7 +15,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/gameState.js`, `src/data/newGameDefaults.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace new-game state defaults through the current live owners and selection seams.
@@ -46,7 +46,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/gameState.js`, `src/data/newGameDefaults.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace new-game state defaults through the current live owners and selection seams.
@@ -77,7 +77,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/gameState.js`, `src/data/newGameDefaults.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace new-game state defaults through the current live owners and selection seams.
@@ -108,7 +108,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/gameState.js`, `src/data/newGameDefaults.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace new-game state defaults through the current live owners and selection seams.
@@ -139,7 +139,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/gameState.js`, `src/data/newGameDefaults.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace new-game state defaults through the current live owners and selection seams.
@@ -170,7 +170,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/rng.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace core RNG streams through the current live owners and selection seams.
@@ -201,7 +201,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/rng.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace core RNG streams through the current live owners and selection seams.
@@ -232,7 +232,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/rng.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace core RNG streams through the current live owners and selection seams.
@@ -263,7 +263,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/rng.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace core RNG streams through the current live owners and selection seams.
@@ -294,7 +294,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/rng.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace core RNG streams through the current live owners and selection seams.
@@ -325,7 +325,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/eventBus.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace event delivery order through the current live owners and selection seams.
@@ -356,7 +356,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/eventBus.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace event delivery order through the current live owners and selection seams.
@@ -387,7 +387,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/eventBus.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace event delivery order through the current live owners and selection seams.
@@ -418,7 +418,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/eventBus.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace event delivery order through the current live owners and selection seams.
@@ -449,7 +449,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/eventBus.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace event delivery order through the current live owners and selection seams.
@@ -480,7 +480,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace registry update order through the current live owners and selection seams.
@@ -511,7 +511,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace registry update order through the current live owners and selection seams.
@@ -542,7 +542,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace registry update order through the current live owners and selection seams.
@@ -573,7 +573,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace registry update order through the current live owners and selection seams.
@@ -604,7 +604,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace registry update order through the current live owners and selection seams.
@@ -635,7 +635,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/core/rapierCollisionWorld.js`, `src/core/simSnapshot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace physics snapshot and body rebuild through the current live owners and selection seams.
@@ -666,7 +666,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/core/rapierCollisionWorld.js`, `src/core/simSnapshot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace physics snapshot and body rebuild through the current live owners and selection seams.
@@ -697,7 +697,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/core/rapierCollisionWorld.js`, `src/core/simSnapshot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace physics snapshot and body rebuild through the current live owners and selection seams.
@@ -728,7 +728,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/core/rapierCollisionWorld.js`, `src/core/simSnapshot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace physics snapshot and body rebuild through the current live owners and selection seams.
@@ -759,7 +759,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/core/rapierCollisionWorld.js`, `src/core/simSnapshot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace physics snapshot and body rebuild through the current live owners and selection seams.
@@ -790,7 +790,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace V3 flight simulation through the current live owners and selection seams.
@@ -822,7 +822,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace V3 flight simulation through the current live owners and selection seams.
@@ -854,7 +854,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace V3 flight simulation through the current live owners and selection seams.
@@ -886,7 +886,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace V3 flight simulation through the current live owners and selection seams.
@@ -918,7 +918,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace V3 flight simulation through the current live owners and selection seams.
@@ -950,7 +950,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/ai/stack.js`, `src/ai/shipDecision.js`, `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace tactical AI decisions through the current live owners and selection seams.
@@ -981,7 +981,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/ai/stack.js`, `src/ai/shipDecision.js`, `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace tactical AI decisions through the current live owners and selection seams.
@@ -1012,7 +1012,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/ai/stack.js`, `src/ai/shipDecision.js`, `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace tactical AI decisions through the current live owners and selection seams.
@@ -1043,7 +1043,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/ai/stack.js`, `src/ai/shipDecision.js`, `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace tactical AI decisions through the current live owners and selection seams.
@@ -1074,7 +1074,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/ai/stack.js`, `src/ai/shipDecision.js`, `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace tactical AI decisions through the current live owners and selection seams.
@@ -1105,7 +1105,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/combat/kernel.js`, `src/combat/damage.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace combat resolution through the current live owners and selection seams.
@@ -1137,7 +1137,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/combat/kernel.js`, `src/combat/damage.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace combat resolution through the current live owners and selection seams.
@@ -1169,7 +1169,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/combat/kernel.js`, `src/combat/damage.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace combat resolution through the current live owners and selection seams.
@@ -1201,7 +1201,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/combat/kernel.js`, `src/combat/damage.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace combat resolution through the current live owners and selection seams.
@@ -1233,7 +1233,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/combat/kernel.js`, `src/combat/damage.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace combat resolution through the current live owners and selection seams.
@@ -1265,7 +1265,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/mining.js`, `src/data/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace mining yields and fracture through the current live owners and selection seams.
@@ -1297,7 +1297,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/mining.js`, `src/data/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace mining yields and fracture through the current live owners and selection seams.
@@ -1329,7 +1329,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/mining.js`, `src/data/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace mining yields and fracture through the current live owners and selection seams.
@@ -1361,7 +1361,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/mining.js`, `src/data/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace mining yields and fracture through the current live owners and selection seams.
@@ -1393,7 +1393,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/mining.js`, `src/data/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace mining yields and fracture through the current live owners and selection seams.
@@ -1425,7 +1425,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/economy.js`, `src/systems/economyCycles.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace economy price cycles through the current live owners and selection seams.
@@ -1456,7 +1456,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/economy.js`, `src/systems/economyCycles.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace economy price cycles through the current live owners and selection seams.
@@ -1487,7 +1487,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/economy.js`, `src/systems/economyCycles.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace economy price cycles through the current live owners and selection seams.
@@ -1518,7 +1518,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/economy.js`, `src/systems/economyCycles.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace economy price cycles through the current live owners and selection seams.
@@ -1549,7 +1549,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/economy.js`, `src/systems/economyCycles.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace economy price cycles through the current live owners and selection seams.
@@ -1580,7 +1580,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/world.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace world generation and spawn IDs through the current live owners and selection seams.
@@ -1611,7 +1611,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/world.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace world generation and spawn IDs through the current live owners and selection seams.
@@ -1642,7 +1642,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/world.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace world generation and spawn IDs through the current live owners and selection seams.
@@ -1673,7 +1673,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/world.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace world generation and spawn IDs through the current live owners and selection seams.
@@ -1704,7 +1704,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/world.js`, `src/data/sectors.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace world generation and spawn IDs through the current live owners and selection seams.
@@ -1735,7 +1735,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace mission board generation through the current live owners and selection seams.
@@ -1766,7 +1766,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace mission board generation through the current live owners and selection seams.
@@ -1797,7 +1797,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace mission board generation through the current live owners and selection seams.
@@ -1828,7 +1828,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace mission board generation through the current live owners and selection seams.
@@ -1859,7 +1859,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace mission board generation through the current live owners and selection seams.
@@ -1890,7 +1890,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/sectorSim.js`, `src/systems/dangerModel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace offscreen sector simulation through the current live owners and selection seams.
@@ -1921,7 +1921,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/sectorSim.js`, `src/systems/dangerModel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace offscreen sector simulation through the current live owners and selection seams.
@@ -1952,7 +1952,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/sectorSim.js`, `src/systems/dangerModel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace offscreen sector simulation through the current live owners and selection seams.
@@ -1983,7 +1983,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/sectorSim.js`, `src/systems/dangerModel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace offscreen sector simulation through the current live owners and selection seams.
@@ -2014,7 +2014,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/sectorSim.js`, `src/systems/dangerModel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace offscreen sector simulation through the current live owners and selection seams.
@@ -2045,7 +2045,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/save/saveSystem.js`, `src/systems/adventureMigration.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace save migrations through the current live owners and selection seams.
@@ -2076,7 +2076,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/save/saveSystem.js`, `src/systems/adventureMigration.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace save migrations through the current live owners and selection seams.
@@ -2107,7 +2107,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/save/saveSystem.js`, `src/systems/adventureMigration.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace save migrations through the current live owners and selection seams.
@@ -2138,7 +2138,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/save/saveSystem.js`, `src/systems/adventureMigration.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace save migrations through the current live owners and selection seams.
@@ -2169,7 +2169,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/save/saveSystem.js`, `src/systems/adventureMigration.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace save migrations through the current live owners and selection seams.
@@ -2200,7 +2200,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace restore and autosave arbitration through the current live owners and selection seams.
@@ -2231,7 +2231,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace restore and autosave arbitration through the current live owners and selection seams.
@@ -2262,7 +2262,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace restore and autosave arbitration through the current live owners and selection seams.
@@ -2293,7 +2293,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace restore and autosave arbitration through the current live owners and selection seams.
@@ -2324,7 +2324,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace restore and autosave arbitration through the current live owners and selection seams.
@@ -2355,7 +2355,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/runTransitionGuard.js`, `src/main.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace new-game/load async tokens through the current live owners and selection seams.
@@ -2386,7 +2386,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/runTransitionGuard.js`, `src/main.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace new-game/load async tokens through the current live owners and selection seams.
@@ -2417,7 +2417,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/runTransitionGuard.js`, `src/main.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace new-game/load async tokens through the current live owners and selection seams.
@@ -2448,7 +2448,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/runTransitionGuard.js`, `src/main.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace new-game/load async tokens through the current live owners and selection seams.
@@ -2479,7 +2479,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/core/runTransitionGuard.js`, `src/main.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace new-game/load async tokens through the current live owners and selection seams.
@@ -2510,7 +2510,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/input.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace input tape and action edges through the current live owners and selection seams.
@@ -2542,7 +2542,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/input.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace input tape and action edges through the current live owners and selection seams.
@@ -2574,7 +2574,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/input.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace input tape and action edges through the current live owners and selection seams.
@@ -2606,7 +2606,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/input.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace input tape and action edges through the current live owners and selection seams.
@@ -2638,7 +2638,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `src/systems/input.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace input tape and action edges through the current live owners and selection seams.
@@ -2670,7 +2670,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `server.js`, `electron/main.cjs`, `src/main.js`, `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace browser/Electron gameplay parity through the current live owners and selection seams.
@@ -2701,7 +2701,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `server.js`, `electron/main.cjs`, `src/main.js`, `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace browser/Electron gameplay parity through the current live owners and selection seams.
@@ -2732,7 +2732,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `server.js`, `electron/main.cjs`, `src/main.js`, `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace browser/Electron gameplay parity through the current live owners and selection seams.
@@ -2763,7 +2763,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `server.js`, `electron/main.cjs`, `src/main.js`, `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace browser/Electron gameplay parity through the current live owners and selection seams.
@@ -2794,7 +2794,7 @@ Protect same-seed behavior, save/reload continuity, shell parity, and repeated l
 
 **Inspect:** `server.js`, `electron/main.cjs`, `src/main.js`, `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `test/AGENTS.md`, `docs/COMMON_BUGS.md`
 
 **Work:**
 1. Trace browser/Electron gameplay parity through the current live owners and selection seams.

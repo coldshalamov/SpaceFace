@@ -15,7 +15,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/input.js`, `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Pilot control scheme; do not edit legacy controllers for default behavior.
@@ -46,7 +46,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/input.js`, `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Pilot control scheme; do not edit legacy controllers for default behavior.
@@ -77,7 +77,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/input.js`, `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Pilot control scheme; do not edit legacy controllers for default behavior.
@@ -108,7 +108,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/input.js`, `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Pilot control scheme; do not edit legacy controllers for default behavior.
@@ -139,7 +139,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/input.js`, `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Pilot control scheme; do not edit legacy controllers for default behavior.
@@ -170,7 +170,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/input.js`, `src/ui/screens/settings.js`, `src/ui/controlPrompts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Classic and Helm Assist scheme parity; do not edit legacy controllers for default behavior.
@@ -201,7 +201,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/input.js`, `src/ui/screens/settings.js`, `src/ui/controlPrompts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Classic and Helm Assist scheme parity; do not edit legacy controllers for default behavior.
@@ -232,7 +232,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/input.js`, `src/ui/screens/settings.js`, `src/ui/controlPrompts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Classic and Helm Assist scheme parity; do not edit legacy controllers for default behavior.
@@ -263,7 +263,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/input.js`, `src/ui/screens/settings.js`, `src/ui/controlPrompts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Classic and Helm Assist scheme parity; do not edit legacy controllers for default behavior.
@@ -294,7 +294,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/input.js`, `src/ui/screens/settings.js`, `src/ui/controlPrompts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Classic and Helm Assist scheme parity; do not edit legacy controllers for default behavior.
@@ -325,7 +325,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/cruise.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for cruise engagement and interdiction; do not edit legacy controllers for default behavior.
@@ -356,7 +356,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/cruise.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for cruise engagement and interdiction; do not edit legacy controllers for default behavior.
@@ -387,7 +387,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/cruise.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for cruise engagement and interdiction; do not edit legacy controllers for default behavior.
@@ -418,7 +418,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/cruise.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for cruise engagement and interdiction; do not edit legacy controllers for default behavior.
@@ -449,7 +449,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/cruise.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for cruise engagement and interdiction; do not edit legacy controllers for default behavior.
@@ -480,7 +480,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`, `src/systems/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for boost and dash behavior; do not edit legacy controllers for default behavior.
@@ -511,7 +511,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`, `src/systems/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for boost and dash behavior; do not edit legacy controllers for default behavior.
@@ -542,7 +542,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`, `src/systems/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for boost and dash behavior; do not edit legacy controllers for default behavior.
@@ -573,7 +573,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`, `src/systems/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for boost and dash behavior; do not edit legacy controllers for default behavior.
@@ -604,7 +604,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/flightV3.js`, `src/core/flight/propulsionKernel.js`, `src/systems/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for boost and dash behavior; do not edit legacy controllers for default behavior.
@@ -635,7 +635,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/attachments.js`, `src/systems/masslineInputGrammar.js`, `src/systems/autoTargetAssist.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Massline target acquisition; do not edit legacy controllers for default behavior.
@@ -667,7 +667,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/attachments.js`, `src/systems/masslineInputGrammar.js`, `src/systems/autoTargetAssist.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Massline target acquisition; do not edit legacy controllers for default behavior.
@@ -699,7 +699,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/attachments.js`, `src/systems/masslineInputGrammar.js`, `src/systems/autoTargetAssist.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Massline target acquisition; do not edit legacy controllers for default behavior.
@@ -731,7 +731,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/attachments.js`, `src/systems/masslineInputGrammar.js`, `src/systems/autoTargetAssist.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Massline target acquisition; do not edit legacy controllers for default behavior.
@@ -763,7 +763,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/attachments.js`, `src/systems/masslineInputGrammar.js`, `src/systems/autoTargetAssist.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Massline target acquisition; do not edit legacy controllers for default behavior.
@@ -795,7 +795,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/core/constraints/masslineController.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Massline line control; do not edit legacy controllers for default behavior.
@@ -827,7 +827,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/core/constraints/masslineController.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Massline line control; do not edit legacy controllers for default behavior.
@@ -859,7 +859,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/core/constraints/masslineController.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Massline line control; do not edit legacy controllers for default behavior.
@@ -891,7 +891,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/core/constraints/masslineController.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Massline line control; do not edit legacy controllers for default behavior.
@@ -923,7 +923,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/core/constraints/masslineController.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for Massline line control; do not edit legacy controllers for default behavior.
@@ -955,7 +955,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/impulseCharges.js`, `src/data/impulseCharges.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for impulse charges; do not edit legacy controllers for default behavior.
@@ -986,7 +986,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/impulseCharges.js`, `src/data/impulseCharges.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for impulse charges; do not edit legacy controllers for default behavior.
@@ -1017,7 +1017,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/impulseCharges.js`, `src/data/impulseCharges.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for impulse charges; do not edit legacy controllers for default behavior.
@@ -1048,7 +1048,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/impulseCharges.js`, `src/data/impulseCharges.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for impulse charges; do not edit legacy controllers for default behavior.
@@ -1079,7 +1079,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/impulseCharges.js`, `src/data/impulseCharges.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for impulse charges; do not edit legacy controllers for default behavior.
@@ -1110,7 +1110,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/weapons.js`, `src/systems/aiFireIntent.js`, `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for weapon aiming and autofire; do not edit legacy controllers for default behavior.
@@ -1142,7 +1142,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/weapons.js`, `src/systems/aiFireIntent.js`, `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for weapon aiming and autofire; do not edit legacy controllers for default behavior.
@@ -1174,7 +1174,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/weapons.js`, `src/systems/aiFireIntent.js`, `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for weapon aiming and autofire; do not edit legacy controllers for default behavior.
@@ -1206,7 +1206,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/weapons.js`, `src/systems/aiFireIntent.js`, `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for weapon aiming and autofire; do not edit legacy controllers for default behavior.
@@ -1238,7 +1238,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/weapons.js`, `src/systems/aiFireIntent.js`, `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for weapon aiming and autofire; do not edit legacy controllers for default behavior.
@@ -1270,7 +1270,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/countermeasures.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for countermeasures; do not edit legacy controllers for default behavior.
@@ -1301,7 +1301,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/countermeasures.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for countermeasures; do not edit legacy controllers for default behavior.
@@ -1332,7 +1332,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/countermeasures.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for countermeasures; do not edit legacy controllers for default behavior.
@@ -1363,7 +1363,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/countermeasures.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for countermeasures; do not edit legacy controllers for default behavior.
@@ -1394,7 +1394,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/countermeasures.js`, `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for countermeasures; do not edit legacy controllers for default behavior.
@@ -1425,7 +1425,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/damage.js`, `src/data/weapons.js`, `src/ui/targetPanel.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for damage triangle readability; do not edit legacy controllers for default behavior.
@@ -1456,7 +1456,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/damage.js`, `src/data/weapons.js`, `src/ui/targetPanel.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for damage triangle readability; do not edit legacy controllers for default behavior.
@@ -1487,7 +1487,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/damage.js`, `src/data/weapons.js`, `src/ui/targetPanel.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for damage triangle readability; do not edit legacy controllers for default behavior.
@@ -1518,7 +1518,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/damage.js`, `src/data/weapons.js`, `src/ui/targetPanel.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for damage triangle readability; do not edit legacy controllers for default behavior.
@@ -1549,7 +1549,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/damage.js`, `src/data/weapons.js`, `src/ui/targetPanel.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for damage triangle readability; do not edit legacy controllers for default behavior.
@@ -1580,7 +1580,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/statuses.js`, `src/combat/subsystems.js`, `src/systems/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for combat statuses and subsystem damage; do not edit legacy controllers for default behavior.
@@ -1611,7 +1611,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/statuses.js`, `src/combat/subsystems.js`, `src/systems/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for combat statuses and subsystem damage; do not edit legacy controllers for default behavior.
@@ -1642,7 +1642,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/statuses.js`, `src/combat/subsystems.js`, `src/systems/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for combat statuses and subsystem damage; do not edit legacy controllers for default behavior.
@@ -1673,7 +1673,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/statuses.js`, `src/combat/subsystems.js`, `src/systems/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for combat statuses and subsystem damage; do not edit legacy controllers for default behavior.
@@ -1704,7 +1704,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/combat/statuses.js`, `src/combat/subsystems.js`, `src/systems/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for combat statuses and subsystem damage; do not edit legacy controllers for default behavior.
@@ -1735,7 +1735,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/perception.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for tactical perception and contact classification; do not edit legacy controllers for default behavior.
@@ -1766,7 +1766,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/perception.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for tactical perception and contact classification; do not edit legacy controllers for default behavior.
@@ -1797,7 +1797,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/perception.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for tactical perception and contact classification; do not edit legacy controllers for default behavior.
@@ -1828,7 +1828,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/perception.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for tactical perception and contact classification; do not edit legacy controllers for default behavior.
@@ -1859,7 +1859,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/perception.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for tactical perception and contact classification; do not edit legacy controllers for default behavior.
@@ -1890,7 +1890,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for engagement authority and response windows; do not edit legacy controllers for default behavior.
@@ -1921,7 +1921,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for engagement authority and response windows; do not edit legacy controllers for default behavior.
@@ -1952,7 +1952,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for engagement authority and response windows; do not edit legacy controllers for default behavior.
@@ -1983,7 +1983,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for engagement authority and response windows; do not edit legacy controllers for default behavior.
@@ -2014,7 +2014,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for engagement authority and response windows; do not edit legacy controllers for default behavior.
@@ -2045,7 +2045,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/squad.js`, `src/ai/maneuver.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for squad formations and leader loss; do not edit legacy controllers for default behavior.
@@ -2076,7 +2076,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/squad.js`, `src/ai/maneuver.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for squad formations and leader loss; do not edit legacy controllers for default behavior.
@@ -2107,7 +2107,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/squad.js`, `src/ai/maneuver.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for squad formations and leader loss; do not edit legacy controllers for default behavior.
@@ -2138,7 +2138,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/squad.js`, `src/ai/maneuver.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for squad formations and leader loss; do not edit legacy controllers for default behavior.
@@ -2169,7 +2169,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/squad.js`, `src/ai/maneuver.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for squad formations and leader loss; do not edit legacy controllers for default behavior.
@@ -2200,7 +2200,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/shipDecision.js`, `src/ai/maneuver.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for AI maneuver selection; do not edit legacy controllers for default behavior.
@@ -2231,7 +2231,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/shipDecision.js`, `src/ai/maneuver.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for AI maneuver selection; do not edit legacy controllers for default behavior.
@@ -2262,7 +2262,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/shipDecision.js`, `src/ai/maneuver.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for AI maneuver selection; do not edit legacy controllers for default behavior.
@@ -2293,7 +2293,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/shipDecision.js`, `src/ai/maneuver.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for AI maneuver selection; do not edit legacy controllers for default behavior.
@@ -2324,7 +2324,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/shipDecision.js`, `src/ai/maneuver.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for AI maneuver selection; do not edit legacy controllers for default behavior.
@@ -2355,7 +2355,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/director.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for encounter director pacing; do not edit legacy controllers for default behavior.
@@ -2386,7 +2386,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/director.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for encounter director pacing; do not edit legacy controllers for default behavior.
@@ -2417,7 +2417,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/director.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for encounter director pacing; do not edit legacy controllers for default behavior.
@@ -2448,7 +2448,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/director.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for encounter director pacing; do not edit legacy controllers for default behavior.
@@ -2479,7 +2479,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/director.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for encounter director pacing; do not edit legacy controllers for default behavior.
@@ -2510,7 +2510,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/aiEncounter.js`, `src/data/enemies.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for reinforcement package spawning; do not edit legacy controllers for default behavior.
@@ -2541,7 +2541,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/aiEncounter.js`, `src/data/enemies.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for reinforcement package spawning; do not edit legacy controllers for default behavior.
@@ -2572,7 +2572,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/aiEncounter.js`, `src/data/enemies.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for reinforcement package spawning; do not edit legacy controllers for default behavior.
@@ -2603,7 +2603,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/aiEncounter.js`, `src/data/enemies.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for reinforcement package spawning; do not edit legacy controllers for default behavior.
@@ -2634,7 +2634,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/aiEncounter.js`, `src/data/enemies.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for reinforcement package spawning; do not edit legacy controllers for default behavior.
@@ -2665,7 +2665,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/shipDecision.js`, `src/systems/aceMemory.js`, `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for flee, morale, and surrender behavior; do not edit legacy controllers for default behavior.
@@ -2696,7 +2696,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/shipDecision.js`, `src/systems/aceMemory.js`, `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for flee, morale, and surrender behavior; do not edit legacy controllers for default behavior.
@@ -2727,7 +2727,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/shipDecision.js`, `src/systems/aceMemory.js`, `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for flee, morale, and surrender behavior; do not edit legacy controllers for default behavior.
@@ -2758,7 +2758,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/shipDecision.js`, `src/systems/aceMemory.js`, `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for flee, morale, and surrender behavior; do not edit legacy controllers for default behavior.
@@ -2789,7 +2789,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/ai/shipDecision.js`, `src/systems/aceMemory.js`, `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for flee, morale, and surrender behavior; do not edit legacy controllers for default behavior.
@@ -2820,7 +2820,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/wingmen.js`, `src/systems/aiPorts.js`, `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for wingmen; do not edit legacy controllers for default behavior.
@@ -2851,7 +2851,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/wingmen.js`, `src/systems/aiPorts.js`, `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for wingmen; do not edit legacy controllers for default behavior.
@@ -2882,7 +2882,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/wingmen.js`, `src/systems/aiPorts.js`, `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for wingmen; do not edit legacy controllers for default behavior.
@@ -2913,7 +2913,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/wingmen.js`, `src/systems/aiPorts.js`, `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for wingmen; do not edit legacy controllers for default behavior.
@@ -2944,7 +2944,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/systems/wingmen.js`, `src/systems/aiPorts.js`, `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for wingmen; do not edit legacy controllers for default behavior.
@@ -2975,7 +2975,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/combat/damage.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for collision and ramming feel; do not edit legacy controllers for default behavior.
@@ -3006,7 +3006,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/combat/damage.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for collision and ramming feel; do not edit legacy controllers for default behavior.
@@ -3037,7 +3037,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/combat/damage.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for collision and ramming feel; do not edit legacy controllers for default behavior.
@@ -3068,7 +3068,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/combat/damage.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for collision and ramming feel; do not edit legacy controllers for default behavior.
@@ -3099,7 +3099,7 @@ Strengthen live V3 flight and tactical AI through bounded invariants, readable t
 
 **Inspect:** `src/core/physicsAuthority.js`, `src/combat/damage.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `ARCHITECTURE.md`, `design/GDD_2_0.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Confirm the live V3/tactical/physics owners for collision and ramming feel; do not edit legacy controllers for default behavior.

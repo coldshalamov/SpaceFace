@@ -73,6 +73,10 @@ export function createSnapshotFence(options = {}) {
         if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
         return snapshot.setTint(...args);
       },
+      setLean(...args) {
+        if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
+        return snapshot.setLean(...args);
+      },
       record(...args) {
         if (state.sealed) throw new Error('Presentation snapshot fence buffer is sealed');
         return snapshot.record(...args);
@@ -188,6 +192,20 @@ export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previo
   mesh.position.y = (snapshot.columns.position[p + 1] || 0) - oy;
   mesh.position.z = z - oz;
   mesh.rotation.y = -2 * Math.atan2(qy, qw || 1);
+  const hull = mesh.userData && mesh.userData.hull;
+  if (hull && snapshot.columns.bank && snapshot.columns.pitch) {
+    let bank = snapshot.columns.bank[index] || 0;
+    let pitch = snapshot.columns.pitch[index] || 0;
+    if (previous && t < 1 && previous.columns.bank && previous.columns.pitch) {
+      const prev = snapshotIndexOf(previous, entityId);
+      if (prev >= 0) {
+        bank = previous.columns.bank[prev] + (bank - previous.columns.bank[prev]) * t;
+        pitch = previous.columns.pitch[prev] + (pitch - previous.columns.pitch[prev]) * t;
+      }
+    }
+    hull.rotation.x = bank;
+    hull.rotation.z = pitch;
+  }
   return true;
 }
 
@@ -202,7 +220,7 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
     if (world.alive[slot] !== 1) continue;
     const rot = world.rot ? Number(world.rot[slot]) || 0 : 0;
     const half = rot * 0.5;
-    snapshot.write(
+    const packedIndex = snapshot.write(
       world.entityIds[slot] >>> 0,
       world.typeCodes ? world.typeCodes[slot] : 0,
       world.x[slot],
@@ -212,6 +230,13 @@ export function packPresentationWorldToFence(world, fence, simTime = 0, poseEpoc
       1, 1, 1,
       world.flags[slot] >>> 0,
     );
+    if (typeof snapshot.setLean === 'function') {
+      snapshot.setLean(
+        packedIndex,
+        world.bank ? Number(world.bank[slot]) || 0 : 0,
+        world.pitch ? Number(world.pitch[slot]) || 0 : 0,
+      );
+    }
     packed++;
   }
   fence.commit();

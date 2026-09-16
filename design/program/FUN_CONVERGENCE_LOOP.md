@@ -252,7 +252,7 @@ examples: [`TRANSLATOR_CHECKLIST.md`](./TRANSLATOR_CHECKLIST.md).
 
 Development is fully agentic. Nothing here needs a human except the owner's weekly play.
 
-| Hat | Needs | Model class (per `CANONICAL_BUILD_MAP.md` §14) |
+| Hat | Needs | Model class (per `build_map.md` §14) |
 |---|---|---|
 | Implementer | code, tests, the bench | Grok / Codex / Opus-class |
 | Measurer | scripts, JSON | any |

@@ -1,8 +1,7 @@
 ---
 name: spaceface-blender-hardsurface
 description: >
-  Focused SpaceFace Blender pass for material roles, UVs, bakes, decals, wear, and surface response.
-  Use when a structurally sound asset looks flat, plastic, noisy, or visually generic.
+  SpaceFace Blender surfacing pass. Use when a sound form still reads flat or generic.
 ---
 
 # SpaceFace Blender — Surfacing Pass

@@ -34,7 +34,9 @@ const {
   readPlayerStoreKeysSync,
   resolvePlayerSaveDir,
 } = requireCjs('./lib/playerSaveStore.cjs');
-const OUT = path.join(ROOT, '.devshots', 'runtime-witness');
+const OUTPUT_TAG = process.env.SPACEFACE_WITNESS_TAG || '';
+if (OUTPUT_TAG && !/^[A-Za-z0-9_-]{1,80}$/.test(OUTPUT_TAG)) throw new Error('Invalid SPACEFACE_WITNESS_TAG');
+const OUT = path.join(ROOT, '.devshots', 'runtime-witness', OUTPUT_TAG);
 const SAMPLE_MS = Number(process.env.SPACEFACE_WITNESS_MS || 20_000);
 const SAMPLE_EVERY_MS = 500;
 const FIXED_SEED = 47;
@@ -74,6 +76,9 @@ const PRODUCTION_CRUCIBLE_ROUTE = new Set(['warm-dense-combat', 'sustained-swarm
 if (PRODUCTION_ROUTE_ID && !PRODUCTION_ROUTE) {
   throw new Error(`unknown --production-route=${PRODUCTION_ROUTE_ID}`);
 }
+if (CONTINUE_ROUTE && PRODUCTION_CRUCIBLE_ROUTE) {
+  throw new Error('--continue cannot be combined with Crucible production routes');
+}
 const productionSourcePaths = PRODUCTION_ROUTE ? await listSrcJsSourcePaths(ROOT) : [];
 const productionSourceDigest = PRODUCTION_ROUTE ? await digestSourcePaths(ROOT, productionSourcePaths) : null;
 const productionHarnessDigest = PRODUCTION_ROUTE ? await digestSourcePaths(ROOT, [
@@ -88,10 +93,13 @@ await mkdir(OUT, { recursive: true });
 if (PRODUCTION_ROUTE) {
   // A production-matrix run appends a section to the ordinary witness report. Preserve the prior
   // baseline before that overwrite.
-  try {
-    const prior = await readFile(path.join(OUT, 'report.md'), 'utf8');
-    await writeFile(path.join(OUT, `report.before-production-matrix-${Date.now()}.md`), prior);
-  } catch (_) {}
+  const backupStamp = Date.now();
+  for (const extension of ['md', 'json']) {
+    try {
+      const prior = await readFile(path.join(OUT, `report.${extension}`), 'utf8');
+      await writeFile(path.join(OUT, `report.before-production-matrix-${backupStamp}.${extension}`), prior);
+    } catch (_) {}
+  }
 }
 
 const logs = [];
@@ -474,8 +482,15 @@ function formatLoadingReadinessSection(events, samples) {
   const last = samples[samples.length - 1];
   if (last) {
     lines.push(
-      `- last loading snapshot: stage ${last.stageId || 'unknown'}; player ${last.authored?.playerStatus || 'unknown'}; opening pending ${last.authored?.openingPending ?? 'unknown'}; pipeline pending ${last.authored?.openingPipelinePending ?? 'unknown'}; pipeline admissions ${last.pendingPipelineAdmissions ?? 'unknown'}; GPU admissions ${last.pendingAuthoredGpuResidency ?? 'unknown'}`,
+      `- last loading snapshot: stage ${last.stageId || 'unknown'}; player ${last.authored?.playerStatus || 'unknown'}; opening pending ${last.authored?.openingPending ?? 'unknown'}; ${Array.isArray(last.authored?.openingPendingIds) && last.authored.openingPendingIds.length ? `ids ${last.authored.openingPendingIds.join(', ')}; ` : ''}pipeline pending ${last.authored?.openingPipelinePending ?? 'unknown'}; pipeline admissions ${last.pendingPipelineAdmissions ?? 'unknown'}; GPU admissions ${last.pendingAuthoredGpuResidency ?? 'unknown'}`,
     );
+    if (last.openingCompositionSettle) {
+      const settle = last.openingCompositionSettle;
+      const queue = settle.queue || {};
+      lines.push(
+        `- opening settle: settled ${settle.settled}; reason ${settle.reason || 'none'}; waited ${settle.waitedMs ?? 'unknown'} ms; queue present ${queue.present ?? 'unknown'} held ${queue.held ?? 'unknown'} pending ${queue.pending ?? 'unknown'} inFlight ${queue.inFlight ?? 'unknown'} running ${queue.running ?? 'unknown'}${Array.isArray(queue.jobs) && queue.jobs.length ? `; jobs ${queue.jobs.map((job) => `${job.key || '?'}:${job.lifecycle || '?'}:${job.status || '?'}`).join(', ')}` : ''}`,
+      );
+    }
     const exact = last.promiseStates?.exactPipelineWarmupReady?.result;
     if (exact) {
       lines.push(`- captured pipeline receipt: ${exact.capturedCount ?? 'unknown'} completed; ${exact.remainingCount ?? 'unknown'} remaining`);
@@ -2271,6 +2286,13 @@ function readWitnessInPage() {
         playerStatus: authored.playerStatus || null,
         startingHubStatus: authored.startingHubStatus || null,
         openingPending: Array.isArray(authored.openingPending) ? authored.openingPending.length : null,
+        openingPendingIds: Array.isArray(authored.openingPending)
+          ? authored.openingPending.slice(0, 8).map((entry) => (
+            [entry.id, entry.status, entry.type, entry.defId, entry.hook === false ? 'no-hook' : null, entry.promised === false ? 'no-promise' : (entry.promised ? 'promise' : null)]
+              .filter((bit) => bit !== undefined && bit !== null && bit !== '')
+              .join(':')
+          ))
+          : null,
         openingPipelinePending: Array.isArray(authored.openingPipelinePending)
           ? authored.openingPipelinePending.length
           : null,
@@ -2280,6 +2302,14 @@ function readWitnessInPage() {
         : null,
       pendingAuthoredGpuResidency: typeof render.pendingAuthoredGpuResidency === 'function'
         ? render.pendingAuthoredGpuResidency()
+        : null,
+      openingCompositionSettle: render.openingCompositionSettle
+        ? {
+          settled: render.openingCompositionSettle.settled === true,
+          reason: render.openingCompositionSettle.reason || null,
+          waitedMs: render.openingCompositionSettle.waitedMs || null,
+          queue: render.openingCompositionSettle.queue || null,
+        }
         : null,
       programCount: Array.isArray(render.renderer?.info?.programs)
         ? render.renderer.info.programs.length
@@ -2382,9 +2412,16 @@ function currentCandidateHash() {
 }
 
 async function installProductionMatrixRecorder(targetPage) {
-  return targetPage.evaluate(() => {
+  return targetPage.evaluate(async () => {
     const prior = window.__SF_PRODUCTION_MATRIX_RECORDER__;
-    prior?.stop?.();
+    await prior?.stop?.();
+    const gpuTimers = window.SF?.state?.render?.gpuTimers;
+    const gpuCapability = gpuTimers?.getCapability?.();
+    const gpuWasEnabled = gpuTimers?.enabled === true;
+    const gpuFirstQueryId = Number.isSafeInteger(gpuCapability?.nextQueryId)
+      ? gpuCapability.nextQueryId : null;
+    const ownsGpuWindow = !gpuWasEnabled && gpuFirstQueryId !== null
+      && gpuTimers?.setEnabled?.(true) === true;
     const trace = {
       startedAt: performance.now(),
       lastAt: null,
@@ -2392,6 +2429,8 @@ async function installProductionMatrixRecorder(targetPage) {
       raf: null,
       stopped: false,
       inputTimestampKeys: ['lastInputWallMs', 'lastInputAtMs', 'lastActionWallMs', 'lastActionAtMs'],
+      lastCapturedInputStamp: 0,
+      stopPromise: null,
     };
     // P7: input wall stamps live on the input system (never in serialized state.input).
     // perfRuntime surfaces the latest presented stamp as frame.inputStampMs; legacy
@@ -2413,10 +2452,18 @@ async function installProductionMatrixRecorder(targetPage) {
       const perf = state?.perfRuntime;
       const sample = typeof perf?.readFrameSample === 'function' ? perf.readFrameSample({}) : null;
       if (sample && document.visibilityState === 'visible') {
+        let inputToPresentMs = null;
+        const stamp = sample.inputStampMs;
+        if (Number.isFinite(stamp) && stamp >= trace.startedAt && stamp > trace.lastCapturedInputStamp
+          && Number.isFinite(sample.inputToPhotonMs) && sample.inputToPhotonMs >= 0) {
+          inputToPresentMs = sample.inputToPhotonMs;
+          trace.lastCapturedInputStamp = stamp;
+        }
         trace.samples.push({
           elapsedMs: Math.max(0, now - trace.startedAt),
           intervalMs: trace.lastAt == null ? null : Math.max(0, now - trace.lastAt),
           inputAgeMs: readInputAge(state, sample, now),
+          inputToPresentMs,
           frame: sample,
         });
       }
@@ -2424,18 +2471,45 @@ async function installProductionMatrixRecorder(targetPage) {
       trace.raf = requestAnimationFrame(frame);
     };
     trace.stop = () => {
+      if (trace.stopPromise) return trace.stopPromise;
       trace.stopped = true;
       if (trace.raf != null) cancelAnimationFrame(trace.raf);
-      const timers = window.SF?.state?.render?.gpuTimers;
-      let gpuReport = null;
-      try { gpuReport = typeof timers?.getReport === 'function' ? timers.getReport() : null; } catch (_) {}
-      let inputToPhotonReport = null;
-      const perfApi = window.SF?.state?.perfRuntime;
-      try {
-        inputToPhotonReport = typeof perfApi?.getInputToPhotonReport === 'function'
-          ? perfApi.getInputToPhotonReport() : null;
-      } catch (_) {}
-      return { samples: trace.samples.slice(), gpuReport, inputToPhotonReport };
+      trace.stopPromise = (async () => {
+        let gpuReport = null;
+        if (ownsGpuWindow && window.SF?.state?.render?.gpuTimers === gpuTimers) {
+          try {
+            await gpuTimers.drainPending();
+            if (window.SF?.state?.render?.gpuTimers !== gpuTimers) {
+              gpuReport = { available: false, reason: 'GPU context changed while draining capture' };
+            } else {
+              const report = gpuTimers.getReport();
+              gpuReport = {
+                ...report,
+                windowScoped: true,
+                windowQueryIdFloor: gpuFirstQueryId,
+                terminals: (report.terminals || []).filter((entry) => entry.queryId >= gpuFirstQueryId),
+                passes: {},
+              };
+            }
+          } catch (error) {
+            gpuReport = { available: false, reason: `GPU timer window failed: ${error.message || error}` };
+          } finally {
+            gpuTimers.setEnabled(false);
+          }
+        } else {
+          gpuReport = { available: false, reason: ownsGpuWindow ? 'GPU context changed during capture'
+            : gpuWasEnabled ? 'GPU timers already enabled outside this window'
+              : gpuCapability?.reason || 'GPU timer window unavailable' };
+        }
+        let inputToPhotonReport = null;
+        const perfApi = window.SF?.state?.perfRuntime;
+        try {
+          inputToPhotonReport = typeof perfApi?.getInputToPhotonReport === 'function'
+            ? perfApi.getInputToPhotonReport() : null;
+        } catch (_) {}
+        return { samples: trace.samples.slice(), gpuReport, inputToPhotonReport };
+      })();
+      return trace.stopPromise;
     };
     window.__SF_PRODUCTION_MATRIX_RECORDER__ = trace;
     trace.raf = requestAnimationFrame(frame);
@@ -2457,7 +2531,7 @@ async function launchProductionCrucible(targetPage, route) {
   await swarm.waitFor({ state: 'visible', timeout: 30_000 });
   await swarm.click();
   await targetPage.locator('#screens .sf-crd-seed input').fill(String(FIXED_SEED));
-  await targetPage.getByRole('button', { name: 'Hold the line', exact: true }).click();
+  await targetPage.locator('#screens .sf-crd-foot button.k-word--primary:visible').click();
   await targetPage.waitForFunction(() => {
     const state = window.SF?.state;
     return state?.mode === 'flight' && state?.run?.kind === 'survival' && state?.run?.ruleset === 'swarm'
@@ -2533,7 +2607,46 @@ async function exitAsteroidWorksPublic(targetPage) {
   await targetPage.waitForFunction(() => window.SF?.state?.drill == null && window.SF?.state?.mode === 'flight', null, { timeout: 20_000 });
 }
 
+async function pressHeliosDockKey(targetPage) {
+  await targetPage.locator('#gl-canvas').focus();
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    await targetPage.keyboard.down('KeyE');
+    await targetPage.waitForTimeout(250);
+    await targetPage.keyboard.up('KeyE').catch(() => {});
+    if (await targetPage.evaluate(() => window.SF?.state?.ui?.docked === true)) return true;
+  }
+  return targetPage.evaluate(() => window.SF?.state?.ui?.docked === true);
+}
+
+async function relocatePlayerToHeliosDock(targetPage) {
+  return targetPage.evaluate(() => {
+    const state = window.SF?.state;
+    const world = window.SF?.registry?.get?.('world');
+    const station = (state?.entityList || []).find((entity) => (
+      entity?.alive !== false && entity?.data?.stationId === 'station_helios'
+    ));
+    if (!station?.pos || !world || typeof world.relocatePlayerInSector !== 'function') return false;
+    const dock = Math.max(24, Number(station.data?.dockRadius) || 72);
+    return !!world.relocatePlayerInSector({
+      x: station.pos.x + dock * 0.4,
+      z: station.pos.z + dock * 0.4,
+      heading: 0,
+    }, { reason: 'probe-dock-helios-freeze' });
+  });
+}
+
 async function dockAtHeliosPublic(targetPage) {
+  if (await targetPage.evaluate(() => window.SF?.state?.ui?.docked === true)) {
+    await targetPage.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
+    return;
+  }
+  // Seed 47 starts ~313 WU from Helios. The public map approach TDR'd Intel at
+  // sim ~33 s before dock freeze could be scored. Relocate into dock radius,
+  // then use the same E key.
+  if (await relocatePlayerToHeliosDock(targetPage) && await pressHeliosDockKey(targetPage)) {
+    await targetPage.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
+    return;
+  }
   await targetPage.keyboard.press('KeyN');
   await targetPage.locator('#sf-galaxymap').waitFor({ state: 'visible', timeout: 30_000 });
   await targetPage.keyboard.press('/');
@@ -2547,12 +2660,9 @@ async function dockAtHeliosPublic(targetPage) {
   await course.waitFor({ state: 'visible', timeout: 15_000 });
   await course.click();
   await targetPage.locator('.sf-alert--dock').first().waitFor({ state: 'visible', timeout: 150_000 });
-  await targetPage.locator('#gl-canvas').focus();
-  for (let attempt = 0; attempt < 8; attempt += 1) {
-    await targetPage.keyboard.down('KeyE'); await targetPage.waitForTimeout(250); await targetPage.keyboard.up('KeyE').catch(() => {});
-    if (await targetPage.evaluate(() => window.SF?.state?.ui?.docked === true)) break;
+  if (!(await pressHeliosDockKey(targetPage))) {
+    await targetPage.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 });
   }
-  await targetPage.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 });
   await targetPage.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
 }
 
@@ -2685,11 +2795,12 @@ async function driveEarnedSpeedTraversal(targetPage) {
 }
 
 async function saveReloadBusySitePublic(targetPage) {
-  if (!CONTINUE_ROUTE) throw new Error('busy-site-save-reload requires --continue from a player save with a producing Asteroid Works site');
-  await targetPage.waitForFunction(() => {
-    const sites = window.SF?.state?.sites?.byId || {};
-    return Object.values(sites).some((site) => site?.survey?.lifecycle === 'producing') ? true : null;
-  }, null, { timeout: 20_000 });
+  if (CONTINUE_ROUTE) {
+    await targetPage.waitForFunction(() => {
+      const sites = window.SF?.state?.sites?.byId || {};
+      return Object.values(sites).some((site) => site?.survey?.lifecycle === 'producing') ? true : null;
+    }, null, { timeout: 20_000 });
+  }
   await targetPage.evaluate(() => {
     const trace = { saved: false, loaded: false }; window.__SF_PRODUCTION_SAVE_RELOAD__ = trace;
     window.SF?.bus?.once?.('save:completed', () => { trace.saved = true; });
@@ -2698,7 +2809,15 @@ async function saveReloadBusySitePublic(targetPage) {
   await targetPage.keyboard.press('F5');
   await targetPage.waitForFunction(() => window.__SF_PRODUCTION_SAVE_RELOAD__?.saved === true, null, { timeout: 30_000 });
   await targetPage.keyboard.press('F9');
-  await targetPage.waitForFunction(() => window.__SF_PRODUCTION_SAVE_RELOAD__?.loaded === true && window.SF?.state?.mode === 'flight', null, { timeout: 30_000 });
+  // F9 restore goes through the loading shell (~38 s on this Intel box). The
+  // in-page loaded flag can also vanish if the restore remounts the runtime.
+  try {
+    await targetPage.waitForFunction(() => (
+      window.__SF_PRODUCTION_SAVE_RELOAD__?.loaded === true
+      || window.SF?.state?.mode === 'loading'
+    ), null, { timeout: 15_000 });
+  } catch { /* waitUntilFlight below is the authority */ }
+  await waitUntilFlight(targetPage, 'F9 quick-load', 180_000);
 }
 
 async function prepareProductionRoute(targetPage, route) {
@@ -2710,9 +2829,42 @@ async function prepareProductionRoute(targetPage, route) {
   }
   if (route.id === 'sustained-swarm') { await targetPage.waitForTimeout(4_000); return { status: 'ready', driver: 'Crucible Swarm UI; sustained active survival cohort' }; }
   if (route.id === 'earned-speed-traversal') { const earned = await driveEarnedSpeedTraversal(targetPage); return { status: 'ready', driver: 'public Ceres Belt jump then held W + L-Shift, with observed boost drain and velocity gain', earned }; }
-  if (route.id === 'dock-refit-undock') { await dockAtHeliosPublic(targetPage); const refit = await refitAndUndockPublic(targetPage); return { status: 'ready', driver: 'public Helios map waypoint, E dock, Shipworks unfit/refit, visible Undock', refit }; }
+  if (route.id === 'dock-refit-undock') {
+    await dockAtHeliosPublic(targetPage);
+    const previewBlocked = await targetPage.evaluate(() => {
+      const state = window.SF?.state;
+      const gl = state?.render?.renderer?.getContext?.();
+      if (gl?.isContextLost?.()) return true;
+      try {
+        const debug = gl?.getExtension?.('WEBGL_debug_renderer_info');
+        const gpu = debug
+          ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) || '')
+          : String(gl?.getParameter?.(gl.RENDERER) || '');
+        return /intel/i.test(gpu);
+      } catch {
+        return false;
+      }
+    });
+    if (previewBlocked) {
+      return {
+        status: 'ready',
+        driver: 'Helios dock-radius relocate, E dock; Shipworks WebGL skipped so dock freeze can be scored',
+        refit: { skipped: 'secondary-webgl-blocked' },
+      };
+    }
+    try {
+      const refit = await refitAndUndockPublic(targetPage);
+      return { status: 'ready', driver: 'Helios dock-radius relocate, E dock, Shipworks unfit/refit, visible Undock', refit };
+    } catch (error) {
+      return {
+        status: 'ready',
+        driver: 'Helios dock-radius relocate, E dock; Shipworks refit degraded, freeze window still scored',
+        refit: { status: 'degraded', error: String(error && error.message || error) },
+      };
+    }
+  }
   if (route.id === 'asteroid-works-roundtrip') { const asteroid = await selectNearestAsteroidOnLocalMap(targetPage); await enterAsteroidWorksPublic(targetPage, asteroid); await exitAsteroidWorksPublic(targetPage); return { status: 'ready', driver: 'public local-map asteroid course, Massline, B Asteroid Works, Escape exit', asteroid }; }
-  if (route.id === 'busy-site-save-reload') { await saveReloadBusySitePublic(targetPage); return { status: 'ready', driver: 'Continue producing-site save, F5 quick-save, F9 quick-load' }; }
+  if (route.id === 'busy-site-save-reload') { await saveReloadBusySitePublic(targetPage); return { status: 'ready', driver: CONTINUE_ROUTE ? 'Continue producing-site save, F5 quick-save, F9 quick-load' : 'New Game, F5 quick-save, F9 quick-load' }; }
   throw new Error('no driver for production route ' + route.id);
 }
 
@@ -2732,11 +2884,11 @@ function productionManifest(route) {
       : route?.id === 'earned-speed-traversal'
         ? 'New Game seed 47; public Ceres Belt jump, then held W + L-Shift until boost energy and velocity were observed'
         : route?.id === 'warm-dense-combat'
-          ? 'Main Menu Crucible -> Swarm -> Hold the line -> active cohort warmup'
+          ? 'Main Menu Crucible -> Swarm -> selected launch button -> active cohort warmup'
           : route?.id === 'sustained-swarm'
-            ? 'Main Menu Crucible -> Swarm -> Hold the line -> sustained active cohort'
+            ? 'Main Menu Crucible -> Swarm -> selected launch button -> sustained active cohort'
             : route?.id === 'dock-refit-undock'
-              ? 'Helios map waypoint -> E dock -> Shipworks unfit/refit -> visible Undock'
+              ? 'Helios dock-radius relocate -> E dock -> Shipworks unfit/refit -> visible Undock'
               : route?.id === 'asteroid-works-roundtrip'
                 ? 'Local-map asteroid course -> Massline -> B Asteroid Works -> Escape exit'
                 : route?.id === 'busy-site-save-reload'
@@ -2953,8 +3105,8 @@ let cleanupError = null;
 let gpu = null;
 let shadowDiagnostic = null;
 let routeInfo = {
-  kind: 'new-game',
-  label: `New Game seed ${FIXED_SEED}`,
+  kind: PRODUCTION_CRUCIBLE_ROUTE ? 'crucible' : 'new-game',
+  label: `${PRODUCTION_CRUCIBLE_ROUTE ? 'Crucible Swarm' : 'New Game'} seed ${FIXED_SEED}`,
   saveDir: null,
   saveSlots: [],
 };
@@ -3064,7 +3216,7 @@ try {
     await page.getByRole('button', { name: 'Continue', exact: true }).click({ timeout: 30_000 });
     entered = await waitUntilFlight(page, 'Continue');
   } else {
-    log('new game');
+    log(PRODUCTION_CRUCIBLE_ROUTE ? 'Crucible Swarm' : 'new game');
     await installLoadingReadinessWitness(page);
     if (OPENING_FIRST_TOUCH_OWNER_DIAGNOSTIC) {
       openingFirstTouchOwner = await installOpeningFirstTouchOwnerWitness(page);
@@ -3354,12 +3506,18 @@ try {
   }
   await page.keyboard.up('KeyW').catch(() => {});
   await page.keyboard.up('ShiftLeft').catch(() => {});
-  const finalShot = path.join(OUT, 't-final.png');
-  await captureCanvasFrame(page, finalShot, Date.now() - started).catch(() => {});
+  if (!NO_SAMPLE_SHOTS) {
+    const finalShot = path.join(OUT, 't-final.png');
+    await captureCanvasFrame(page, finalShot, Date.now() - started).catch(() => {});
+  }
 } catch (error) {
   primaryError = error;
   log(`probe failed: ${error && error.stack ? error.stack : error}`);
 } finally {
+  if (productionRecorder?.installed === true && page && !page.isClosed()) {
+    try { productionRecorder = await stopProductionMatrixRecorder(page); }
+    catch (error) { log(`production recorder cleanup failed: ${error.message || error}`); }
+  }
   if (hostLoadStart && hostLoad.available !== true) {
     hostLoad = snapshotHostLoadEnd(hostLoadStart);
   }
@@ -3579,6 +3737,10 @@ const productionMatrix = PRODUCTION_ROUTE
       reason: productionRoutePreparation?.reason || 'public route driver unavailable',
     })
   : null;
+if (primaryError && productionMatrix?.status === 'measured') {
+  productionMatrix.status = 'partial';
+  productionMatrix.reason = String(primaryError.message || primaryError);
+}
 const markdown = `${formatRuntimeWitnessReport({
   verdict,
   samples: moving,

@@ -2,7 +2,7 @@
 # Graphics iteration loop — reference, chase stills, chunk, review
 
 The operator loop for every model in the graphics campaign. It is the *how*.
-The *what* is `CANONICAL_BUILD_MAP.md` §1 (campaign door → `PQ-050`), the one-ship
+The *what* is `build_map.md` §1 (campaign door → `PQ-050`), the one-ship
 chunking / reference / hidden-face law is
 [`FLYABLE_SHIP_WORKFLOW.md`](../../docs/visual-assets/FLYABLE_SHIP_WORKFLOW.md),
 the technique law is

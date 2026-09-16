@@ -180,7 +180,9 @@ export function resolveRcsFirings(actuators, pose, scale, out = []) {
 
   // Aft push at the bow: the retro pair, symmetric so it produces no yaw.
   // Splay the exhaust outward (~20 degrees) so the jets visibly clear the nose and flanks.
-  if (rev > RCS_DEADBAND) {
+  // Reverse is a held continuous jet, not assist-trim. The lateral/yaw deadband would
+  // extinguish a real brake as speed bleeds off and the still would read as coasting.
+  if (rev > 0.001) {
     const splay = 0.349;
     const cosSplay = Math.cos(splay);
     const sinSplay = Math.sin(splay);

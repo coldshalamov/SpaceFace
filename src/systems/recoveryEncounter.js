@@ -9,6 +9,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { SECTORS } from '../data/sectors.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 const STATE_VERSION = 1;
 const SCAN_RANGE_WU = 260;
@@ -162,8 +163,15 @@ function sourcePointId(payload, wreck) {
 
 function entityForSalvagePoint(state, salvagePointId) {
   if (!salvagePointId) return null;
-  return (state.entityList || []).find((entity) => entity && entity.alive !== false
-    && entity.data && String(entity.data.salvagePointId || '') === String(salvagePointId)) || null;
+  const list = indexedTypeScan(state, 'wrecks');
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (entity && entity.alive !== false
+      && entity.data && String(entity.data.salvagePointId || '') === String(salvagePointId)) {
+      return entity;
+    }
+  }
+  return null;
 }
 
 function recoveryIdFor(pointId) {

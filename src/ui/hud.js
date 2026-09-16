@@ -38,6 +38,7 @@ import { SEMANTIC_PALETTE, getMotionReduced, getFlashReduced } from './accessibi
 import { resolveWaypointPresentationPosition } from './navigationWaypoint.js';
 import { contactThreatTier, contactStateWord, isHostileToPlayer, isWreckLike, wreckScanned } from '../systems/scanner.js';
 import { verbAcceptsType } from '../data/interactionDescriptorCatalog.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { presentationAllowsTargetLock } from '../core/presentationAdmission.js';
 import { weaponHeatSummary } from './weaponHeat.js';
 import { createPowerRail, readRailModel } from './powerRail.js';
@@ -1019,6 +1020,30 @@ function injectTravelTapeStyle() {
   document.head.appendChild(s);
 }
 
+// An anchored marker must never precede the hull it marks. state.render.meshes is the renderer's
+// submitted-roots map: a registered root with mesh.visible === false is held back (runway, pending
+// authored decode, publication gap) and a hull type with no root has not been admitted yet. The sim
+// position still projects on-screen in both cases, which is exactly the marker-over-nothing bug.
+// When the meshes map is absent entirely (headless/tests) keep the sim anchor; entities flagged
+// _noMesh never own a hull and keep theirs too. The returned point is the presented pose converted
+// back to world space so the marker tracks what is actually drawn, not the latest tick.
+export function presentedEntityAnchorPos(state, entity, out) {
+  if (!entity) return null;
+  const meshes = state.render && state.render.meshes;
+  if (!meshes || typeof meshes.get !== 'function') return entity.pos || null;
+  const mesh = entity.id != null ? meshes.get(entity.id) : null;
+  if (mesh) {
+    const pos = mesh.position;
+    if (mesh.visible !== true || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
+    const origin = state.world && state.world.frameOrigin;
+    out.x = pos.x + (origin && Number.isFinite(origin.x) ? origin.x : 0);
+    out.y = 0;
+    out.z = pos.z + (origin && Number.isFinite(origin.z) ? origin.z : 0);
+    return out;
+  }
+  return entity._noMesh === true && entity.pos ? entity.pos : null;
+}
+
 export function createHud(ctx, alerts) {
   const { state, helpers } = ctx;
   const root = document.getElementById('hud');
@@ -1631,6 +1656,11 @@ export function createHud(ctx, alerts) {
     return Math.max(1, Math.abs(edge.x - center.x));
   }
 
+  const presentedAnchorWorld = { x: 0, y: 0, z: 0 };
+  function presentedEntityAnchor(entity) {
+    return presentedEntityAnchorPos(state, entity, presentedAnchorWorld);
+  }
+
   // Gravity Mark is a simulation state, not target selection. A fixed DOM pool follows every live
   // player-authored mark (bounded to six) so retargeting cannot make the state disappear or jump.
   const gravityMarkOverlays = [];
@@ -1673,11 +1703,12 @@ export function createHud(ctx, alerts) {
     for (let i = 0; i < gravityMarkOverlays.length; i++) {
       const marker = gravityMarkOverlays[i];
       const entity = gravityMarkTargets[i];
-      if (!entity || entity.alive === false || !helpers.worldToScreen) {
+      const anchor = entity && entity.alive !== false ? presentedEntityAnchor(entity) : null;
+      if (!anchor || !helpers.worldToScreen) {
         setClass(marker, 'visible', false);
         continue;
       }
-      const projected = helpers.worldToScreen({ x: entity.pos.x, y: 0, z: entity.pos.z });
+      const projected = helpers.worldToScreen({ x: anchor.x, y: 0, z: anchor.z });
       if (!projected.onScreen) {
         setClass(marker, 'visible', false);
         continue;
@@ -1707,11 +1738,12 @@ export function createHud(ctx, alerts) {
     for (let i = 0; i < momentumSinkOverlays.length; i++) {
       const overlay = momentumSinkOverlays[i];
       const entity = momentumSinkTargets[i];
-      if (!entity || entity.alive === false || !helpers.worldToScreen) {
+      const anchor = entity && entity.alive !== false ? presentedEntityAnchor(entity) : null;
+      if (!anchor || !helpers.worldToScreen) {
         setClass(overlay.marker, 'visible', false);
         continue;
       }
-      const projected = helpers.worldToScreen({ x: entity.pos.x, y: 0, z: entity.pos.z });
+      const projected = helpers.worldToScreen({ x: anchor.x, y: 0, z: anchor.z });
       if (!projected.onScreen) {
         setClass(overlay.marker, 'visible', false);
         continue;
@@ -3350,8 +3382,9 @@ export function createHud(ctx, alerts) {
     // ---- Target lock diamond (world-space overlay on locked/selected target) ----
     const tid = (state.player || {}).targetId;
     const tgt = tid != null ? state.entities.get(tid) : null;
-    if (tgt && tgt.alive && helpers.worldToScreen) {
-      const proj = projectTargetCenter(tgt.pos);
+    const tgtAnchor = tgt && tgt.alive ? presentedEntityAnchor(tgt) : null;
+    if (tgt && tgt.alive && tgtAnchor && helpers.worldToScreen) {
+      const proj = projectTargetCenter(tgtAnchor);
       if (proj.onScreen) {
         setClass(lockDiamond, 'visible', true);
         setHudScreenTransform(lockDiamond, proj.x, proj.y);
@@ -3369,13 +3402,13 @@ export function createHud(ctx, alerts) {
     updateMomentumSinkOverlays(p);
 
     // ---- Lead pip (BP-02) — pure gate in gunnery; HUD only applies screen coords ----
-    const pipOverlay = computeLeadPipOverlay(p, tgt, state, {
+    const pipOverlay = tgtAnchor ? computeLeadPipOverlay(p, tgt, state, {
       worldToScreen: helpers.worldToScreen,
       isHostileToPlayer,
       leadSolution,
       hasBallisticWeapon,
       primaryProjSpeed,
-    });
+    }) : { visible: false };
     if (pipOverlay.visible) {
       setClass(leadPip, 'visible', true);
       setHudScreenTransform(leadPip, pipOverlay.x, pipOverlay.y);
@@ -3617,7 +3650,7 @@ export function createHud(ctx, alerts) {
     el.addEventListener('click', () => {
       const contact = state.entities && typeof state.entities.get === 'function'
         ? state.entities.get(rec.id)
-        : (state.entityList || []).find((candidate) => candidate && candidate.id === rec.id);
+        : null;
       if (!presentationAllowsTargetLock(contact, state)) return;
       if (!state.player) state.player = {};
       state.player.targetId = rec.id;
@@ -3708,17 +3741,17 @@ export function createHud(ctx, alerts) {
     // Retained scratch list: cleared and refilled, never reallocated (this runs at 5 Hz forever).
     const contacts = _overviewContacts;
     contacts.length = 0;
-    for (const e of state.entityList || []) {
-      if (!e.alive || e === player) continue;
+    const consider = (e) => {
+      if (!e || !e.alive || e === player) return;
       const isShip = verbAcceptsType('target', e.type); // PQ-015: shared ship|drone membership
       const isWreck = isWreckLike(e);
-      if (!isShip && !isWreck) continue;
-      if (!e.pos) continue;
+      if (!isShip && !isWreck) return;
+      if (!e.pos) return;
 
       const dx = e.pos.x - player.pos.x;
       const dz = e.pos.z - player.pos.z;
       const dist = Math.hypot(dx, dz);
-      if (dist > 5200) continue;
+      if (dist > 5200) return;
 
       const hostile = isHostileToPlayer(e, playerTeam, state);
       const ally = !hostile && !isWreck && playerTeam !== 0 && e.team === playerTeam;
@@ -3726,6 +3759,23 @@ export function createHud(ctx, alerts) {
         e, dist, dx, dz, isWreck, hostile, ally,
         threatTier: contactThreatTier(e, hostile),
       });
+    };
+    const index = state.entityIndex;
+    const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.shipLike) && Array.isArray(index.wrecks));
+    if (indexed) {
+      for (const e of indexedShipLikeScan(state)) consider(e);
+      for (const e of indexedTypeScan(state, 'wrecks')) consider(e);
+      const dressing = state.world && state.world.dressing;
+      const dressingRows = dressing && Array.isArray(dressing.rows) ? dressing.rows : null;
+      if (dressingRows) {
+        for (let i = 0; i < dressingRows.length; i++) {
+          const e = dressingRows[i];
+          if (e && e.type === 'fx' && isWreckLike(e)) consider(e);
+        }
+      }
+    } else {
+      for (const e of state.entityList || []) consider(e);
     }
 
     // On-demand reveal bookkeeping: a fresh hostile/derelict arriving, or a hostile closing inside
@@ -3872,8 +3922,9 @@ export function createHud(ctx, alerts) {
     const tgt = tid != null && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(tid)
       : null;
-    
-    if (!tgt || !tgt.alive) {
+    const tgtAnchor = tgt && tgt.alive ? presentedEntityAnchor(tgt) : null;
+
+    if (!tgt || !tgt.alive || !tgtAnchor) {
       setClass(targetArcs, 'visible', false);
       if (!targetArcs.classList.contains('visible')) {
         const cache = targetArcs._sfStyle || (targetArcs._sfStyle = Object.create(null));
@@ -3901,16 +3952,16 @@ export function createHud(ctx, alerts) {
       return;
     }
     
-    const center = projectTargetCenter(tgt.pos);
+    const center = projectTargetCenter(tgtAnchor);
     if (!center.onScreen) {
       setDisplay(targetArcs, false);
       setClass(targetArcs, 'visible', false);
       return;
     }
-    
-    const rShield = targetPixelRadius(tgt.pos, tgt.radius + 12, center);
-    const rArmor = targetPixelRadius(tgt.pos, tgt.radius + 9, center);
-    const rHull = targetPixelRadius(tgt.pos, tgt.radius + 6, center);
+
+    const rShield = targetPixelRadius(tgtAnchor, tgt.radius + 12, center);
+    const rArmor = targetPixelRadius(tgtAnchor, tgt.radius + 9, center);
+    const rHull = targetPixelRadius(tgtAnchor, tgt.radius + 6, center);
     
     if (rShield <= 0) {
       setDisplay(targetArcs, false);
@@ -4163,12 +4214,13 @@ export function createHud(ctx, alerts) {
           const k = (p.radius || 6) * 3;
           const inv = 1 / (spd || 1);
           const ux = vel.x * inv, uz = vel.z * inv;
-          progradeWorldA.x = p.pos.x;
+          const pAnchor = presentedEntityAnchor(p) || p.pos;
+          progradeWorldA.x = pAnchor.x;
           progradeWorldA.y = 0;
-          progradeWorldA.z = p.pos.z;
-          progradeWorldB.x = p.pos.x + ux * k;
+          progradeWorldA.z = pAnchor.z;
+          progradeWorldB.x = pAnchor.x + ux * k;
           progradeWorldB.y = 0;
-          progradeWorldB.z = p.pos.z + uz * k;
+          progradeWorldB.z = pAnchor.z + uz * k;
           const A = helpers.worldToScreen(progradeWorldA, progradeScreenA);
           const B = helpers.worldToScreen(progradeWorldB, progradeScreenB);
           let dx = B.x - A.x, dy = B.y - A.y;
@@ -4518,7 +4570,7 @@ export function createHud(ctx, alerts) {
     let pos = player && player.pos;
     if (firstUseHint.entityId != null && state.entities && state.entities.get) {
       const ent = state.entities.get(firstUseHint.entityId);
-      if (ent && ent.pos) pos = ent.pos;
+      if (ent && ent.pos) pos = presentedEntityAnchor(ent);
     } else if (firstUseHint.kind === 'station' && state.nav && state.nav.waypoint && state.nav.waypoint.pos) {
       pos = state.nav.waypoint.pos;
     }

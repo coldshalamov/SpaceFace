@@ -9,7 +9,7 @@ import py_compile
 import re
 from pathlib import Path
 
-ROOT_MARKER = "CANONICAL_BUILD_MAP.md"
+ROOT_MARKER = "build_map.md"
 REQUIRED_DOCS = (
     "docs/agentic-development/AGENTIC_GAME_DEVELOPMENT_OS.md",
     "docs/agentic-development/OBSERVABILITY_REPLAY_AND_PLAYTEST_ARCHITECTURE.md",

@@ -1,4 +1,4 @@
-import { installIllustratedSurface } from './illustratedSurface.js';
+import { canonicalizeSurfaceProgramFamilyKey, installIllustratedSurface } from './illustratedSurface.js';
 
 const ROLE_RULES = Object.freeze([
   ['glass', /canopy|cockpit.?glass|material_glass|window/i],
@@ -127,7 +127,8 @@ export function installRoughnessBreakup(material, { amount = 0.16, scale = 3.5 }
   }
   roughnessBreakupShader[ROUGHNESS_BREAKUP_HOOK_TAG] = ROUGHNESS_BREAKUP_KEY;
   material.onBeforeCompile = roughnessBreakupShader;
-  material.customProgramCacheKey = () => `${originalProgramCacheKey}|${ROUGHNESS_BREAKUP_KEY}`;
+  const familyKey = canonicalizeSurfaceProgramFamilyKey(originalProgramCacheKey, ROUGHNESS_BREAKUP_KEY);
+  material.customProgramCacheKey = () => familyKey;
   material.userData = { ...(material.userData || {}), spacefaceRoughnessBreakup: true };
   material.needsUpdate = true;
   return true;

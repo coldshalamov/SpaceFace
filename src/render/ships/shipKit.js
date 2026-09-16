@@ -473,8 +473,9 @@ export const SHIELD_SHELL_GLSL = /* glsl */`
     // Absorbed charge does not light every panel at once: each panel has its own place in the
     // sequence, so the lattice energises as a scatter across the shell and drains the same way.
     float panelCharge = clamp(flash * 1.35 - cell * 0.35, 0.0, 1.0);
+    float activity = clamp(flash * 4.0 + panelCharge * 2.0 + (contact.x + contact.y) * 2.5 + base * 4.0, 0.0, 1.0);
 
-    float wall = seam * (0.22 + 0.78 * panelCharge);
+    float wall = seam * (0.22 + 0.78 * panelCharge) * activity;
     float shoulder = pow(1.0 - inward, 2.4) * panelCharge * 0.30;
     float core = clamp(contact.x, 0.0, 1.4);
     float ring = clamp(contact.y, 0.0, 1.4);
@@ -529,7 +530,7 @@ export function createShieldBubble(color = '#5fd0ff', radius = 12) {
     uniforms: {
       uColor: { value: new THREE.Color(color) },
       uFlash: { value: 0 },
-      uBase:  { value: 0.035 },
+      uBase:  { value: 0.0 },
     },
     transparent: true,
     blending: THREE.AdditiveBlending,

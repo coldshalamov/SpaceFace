@@ -380,7 +380,7 @@ describe('PQ-193 required roster, liner, and opening kitbash', { concurrency: 1 
     { label: 'ship_leviathan', data: { defId: 'ship_leviathan' }, file: 'wholeships/leviathan_production_v1.glb' },
     { label: 'express-liner', data: { defId: 'ship_mule', trafficRole: 'express' }, file: 'wholeships/massline_express_liner_v1.glb' },
     { label: 'smuggler', data: { defId: 'ship_drifter', trafficRole: 'smuggler' }, file: 'wholeships/drifter_production_v1.glb' },
-    { label: 'pirate', data: { defId: 'ship_hornet', trafficRole: 'pirate' }, file: 'wholeships/hornet_production_v1.glb' },
+    { label: 'pirate', data: { defId: 'ship_hornet', trafficRole: 'pirate' }, file: 'wholeships/wasp_production_v1.glb' },
     { label: 'recovery-tug', data: { defId: 'ship_mule', assetRef: 'asset.slice.meridian_recovery_tug' }, file: 'wholeships/yard_tug.glb' },
   ]);
 

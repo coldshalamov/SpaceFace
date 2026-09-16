@@ -13,7 +13,7 @@ When an agent is told "next", "develop the game", "overnight", or another broad 
 
 ### Work
 
-- Make `CANONICAL_BUILD_MAP.md` name `design/program/CENTRAL_BRAIN.md` as the broad-development manager layer.
+- Make `build_map.md` name `design/program/CENTRAL_BRAIN.md` as the broad-development manager layer.
 - Preserve direct `program-dispatch --id PQ-XXX` for exact assignments.
 - Remove wording that makes `PQ-050` the universal unnamed/campaign default.
 - Update `design/program/AGENT_TASK_PROMPTS.md` so its generic prompts use the same routing.

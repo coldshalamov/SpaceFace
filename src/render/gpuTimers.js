@@ -490,6 +490,7 @@ export function createGpuTimers(gl) {
       lastInvalidation,
       queryIdentitySchema: 'spaceface.gpuTimerQueryTerminal.v1',
       queryCounts: reportQueryCounts(),
+      nextQueryId,
       labels: LABEL_POOL.slice(),
     };
   }

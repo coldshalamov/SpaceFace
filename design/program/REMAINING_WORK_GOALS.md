@@ -1,7 +1,7 @@
 <!-- LIFETIME: STABLE -->
 # The four remaining goals
 
-Every plan in [`CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md) that produces something a
+Every plan in [`build_map.md`](../../build_map.md) that produces something a
 player notices, reduced to four goal prompts. Hand one to a thread. They are independent: A and D
 need no GPU, C needs a healthy one.
 
@@ -15,7 +15,7 @@ scaffolding that should stay unopened until a measurement points at one.
 
 ## A · Frontend — jobs J08 to J16
 
-> Finish the frontend program: jobs J08 through J16 in `CANONICAL_BUILD_MAP.md` §11, plus the
+> Finish the frontend program: jobs J08 through J16 in `build_map.md` §11, plus the
 > responsive/ultrawide strategy nothing covers.
 >
 > Read `design/frontend/INSTRUMENT_GRAMMAR.md` before designing anything — it is binding, and
@@ -64,7 +64,7 @@ scaffolding that should stay unopened until a measurement points at one.
 
 ## D · Performance — `PQ-051` first
 
-> Work the performance program in `CANONICAL_BUILD_MAP.md` §8.1, in the order that section gives.
+> Work the performance program in `build_map.md` §8.1, in the order that section gives.
 > Follow `design/program/DELEGATED_WORK_LOOP.md`.
 >
 > Start with `PQ-051` (`PERF-11-FRAME-LIVENESS`). The map calls it the release-blocking prerequisite

@@ -97,7 +97,7 @@ status and pickup surface is [`design/program/README.md`](design/program/README.
 activated spec2/spec3/revamp/depth/graphics plan owns task detail.
 
 > **Agents and contributors:** read [`AGENTS.md`](AGENTS.md) for engineering invariants, and
-> [`CANONICAL_BUILD_MAP.md`](CANONICAL_BUILD_MAP.md) for program work / "what next" / multi-plan
+> [`build_map.md`](build_map.md) for program work / "what next" / multi-plan
 > dispatch (it routes into `design/program/` without replacing original plans).
 > `ARCHITECTURE.md` (repo root) is the technical contract; `design/GDD_2_0.md` is
 > the design authority. Live status ledgers live under

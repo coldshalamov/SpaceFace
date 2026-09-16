@@ -1058,7 +1058,9 @@ export async function driveRealCrucibleRoute(page, { hullId, seed, log = () => {
   await page.evaluate((s) => { document.querySelector('#screens .sf-crd-seed input').value = String(s); }, seed);
 
   // 5. Launch. The verb is the swarm ruleset's own button text.
-  if (!(await clickButtonByText(page, 'Hold the line'))) throw new Error('"Hold the line" did not click');
+  const launch = page.locator('#screens .sf-crd-foot button.k-word--primary:visible');
+  await launch.waitFor({ state: 'visible', timeout: 45000 });
+  await launch.click({ timeout: 45000 });
 
   // ── The wait chain: mode, then phase, then a live enemy ────────────────────────────────────
   // Photographing before the third condition gives an empty arena, and an empty arena is exactly
@@ -1617,7 +1619,7 @@ export async function captureFrameStrip({
       ruleset: origin.ruleset,
       seed: origin.seed,
       runKind: origin.kind,
-      route: 'real player click-through (title -> Crucible door -> hull/seed -> Hold the line)',
+      route: 'real player click-through (title -> Crucible door -> hull/seed -> selected launch button)',
       camera: 'shipping_chase',
       cameraMeasured: camera,
       hudText: 'off',

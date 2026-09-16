@@ -260,7 +260,7 @@ function renderReport(freeze, ledger, repoIdx, tallies, generatedAt) {
   push('> mutates the source clone. Preservation copies (route step 4) and the destructive close (route step 5)');
   push('> are a separate controller-gated action \u2014 see **PHASE 2 (not executed)** below.');
   push('');
-  push('- **Authority:** `CANONICAL_BUILD_MAP.md` \u00a7 REC-GROK-KES-SALVAGE; `design/program/WORKTREE_RECOVERY.md`.');
+  push('- **Authority:** `build_map.md` \u00a7 REC-GROK-KES-SALVAGE; `design/program/WORKTREE_RECOVERY.md`.');
   push('- **Source (frozen, read-only):** `' + freeze.cloneRoot + '`');
   push('- **Auditing tool:** `tools/recovery/audit-corrupt-asset-clone.mjs` (this run).');
   push('- **Generated:** ' + generatedAt + ' (idempotent; re-running regenerates an identical ledger).');
@@ -404,7 +404,7 @@ function renderReport(freeze, ledger, repoIdx, tallies, generatedAt) {
   push('> controller-gated action. No copies have been made. No deletion has occurred or is recommended by this report');
   push('> beyond listing the gate conditions below.');
   push('');
-  push('Phase 2 of the route (CANONICAL_BUILD_MAP steps 4\u20135) may, only after separate authorization:');
+  push('Phase 2 of the route (build_map steps 4\u20135) may, only after separate authorization:');
   push('');
   push('1. **Preservation copies.** Copy only selected non-runtime donors from ADAPT/PRESERVE families into a stable');
   push('  `assets/ships/<new-family>/reference/recovered_grok/` path with provenance and frozen current-asset hashes.');

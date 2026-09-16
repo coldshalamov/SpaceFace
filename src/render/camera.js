@@ -6,8 +6,8 @@ import * as THREE from 'three';
 import { damp } from '../core/math.js';
 import { globalToFrame } from '../core/coordinates.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
-import { readFrameOrigin } from './frameCoordinates.js';
-import { CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
+import { interpolateGlobalToFrame, readFrameOrigin } from './frameCoordinates.js';
+import { CAMERA_DIRECTOR_COMBAT_MAX_ZOOM, CameraDirectorMode, createCameraDirector } from './cameraDirector.js';
 import {
   readOwnedExceptionalSpeed,
   readVelocityLanguage,
@@ -15,11 +15,34 @@ import {
   VL_EXCEPTIONAL_SPEED_RATIO_MAX,
 } from './velocityLanguage.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
+import { entityWeaponBlocked } from '../combat/runtime.js';
 
 // M2 floating origin: chase focus / camera pose are frame-local. Entity.pos stays galactic-global.
 const _frameOriginScratch = { x: 0, z: 0 };
 const _playerLocalScratch = { x: 0, z: 0 };
 const _playerLocalProxy = { pos: _playerLocalScratch };
+
+/**
+ * Resolve the frame-local anchor the chase camera tracks. The presented mesh pose (frame-local,
+ * already interpolated across the same snapshot-fence span syncEntityViews used this frame) is the
+ * only anchor that cannot disagree with the drawn hull: sim prevPos→pos covers exactly one tick,
+ * while a presented pack can span several on a catch-up frame — anchoring to the narrower span reads
+ * as the hull jigging forward/back against the camera. Without a presented pose, fall back to the
+ * same prevPos→pos interpolation the fence would produce for a single-tick pack.
+ */
+function resolvePlayerAnchorLocal(p, alpha, frameOrigin, presentedLocal, out) {
+  if (presentedLocal && Number.isFinite(presentedLocal.x) && Number.isFinite(presentedLocal.z)) {
+    out.x = presentedLocal.x;
+    out.z = presentedLocal.z;
+    return out;
+  }
+  const prevValid = p.prevPos && Number.isFinite(p.prevPos.x) && Number.isFinite(p.prevPos.z);
+  const distSq = prevValid ? (p.pos.x - p.prevPos.x) ** 2 + (p.pos.z - p.prevPos.z) ** 2 : 0;
+  if (prevValid && alpha < 1 && distSq < 400 * 400) {
+    return interpolateGlobalToFrame(p.prevPos, p.pos, alpha, frameOrigin, out);
+  }
+  return globalToFrame(p.pos, frameOrigin, out);
+}
 
 const THREAT_COMPOSE_RANGE = 600;
 const THREAT_COMPOSE_MAX_BIAS = 70;
@@ -54,6 +77,37 @@ export const ACTIVE_ATTACKER_LOOKAHEAD_SCALE = 0.6;
 // is meaningfully closer or a new active attacker appears.
 export const COMPOSITION_THREAT_STICK_S = 0.28;
 export const COMPOSITION_THREAT_STICK_CLOSER = 0.85; // challenger must be < 85% of sticky distance
+// B3b group fit: with one or more hostiles attacking, single-threat composition leaves every
+// attacker but the composed pair off-frame — and even a lone attacker holding past ~330 zoom's
+// depth reach stays invisible. The group pass fits the player plus every active attacker inside
+// GROUP_FIT_RANGE_WU into the frame — centroid focus, a fit-all minZoom, and a per-member sticky
+// hold so a juggled targetId cannot pump the frame. Past COMPOSITION_ZOOM_MAX the farthest member
+// is dropped rather than zooming the fight to miniatures.
+export const CAMERA_ZOOM_MIN = 45;
+export const CAMERA_ZOOM_MAX = 330; // Expansive manual zoom-out for sector and tactical visibility.
+// Combat composition may open beyond the manual zoom ceiling: the report's engagement table holds
+// fights out to ~420 wu diagonal, which needs ~420+ of camera distance in the foreshortened depth
+// axis. Manual zoom stays at CAMERA_ZOOM_MAX; only an active-attacker fit spends the extra headroom.
+export const COMPOSITION_ZOOM_MAX = Math.max(CAMERA_ZOOM_MAX, CAMERA_DIRECTOR_COMBAT_MAX_ZOOM);
+const GROUP_FIT_ZOOM_CAP = COMPOSITION_ZOOM_MAX;
+export const GROUP_FIT_RANGE_WU = CAMERA_DIRECTOR_COMBAT_MAX_ZOOM;
+// Group members are fitted inside the visible frame (the metric's own measure), not the 0.55
+// safe rect the single-attacker path guarantees — a furball spread only needs to stay on screen.
+const GROUP_FIT_NDC = 0.95;
+const GROUP_MEMBER_STICK_S = COMPOSITION_THREAT_STICK_S;
+const _groupFitScratchByOwner = new WeakMap();
+const _groupFitDefaultOwner = {};
+function groupFitScratch(owner) {
+  let scratch = _groupFitScratchByOwner.get(owner);
+  if (!scratch) {
+    scratch = { attackers: [], members: [], byId: new Map(), focus: { x: 0, z: 0 }, candidate: [] };
+    _groupFitScratchByOwner.set(owner, scratch);
+  }
+  scratch.attackers.length = 0;
+  scratch.members.length = 0;
+  scratch.byId.clear();
+  return scratch;
+}
 const AIM_BIAS = 0.02;
 const AIM_BIAS_MAX = 18;
 const SHAKE_POS_MAX = 1.55;
@@ -246,8 +300,6 @@ export function stepPhotoFreeCamera(photo, input, dt) {
   return photo;
 }
 
-export const CAMERA_ZOOM_MIN = 45;
-export const CAMERA_ZOOM_MAX = 330; // 50% more manual zoom-out than the previous 220 wu ceiling.
 // The speed-zoom target is evaluated every frame from a smoothed speed (time constant below),
 // not from raw per-frame velocity. The old 8 Hz re-sample (kept as a compat constant) stepped
 // the target 6–7 times across the starter's 0.8 s spin-up, which the faster ZOOM_LERP exposed
@@ -265,9 +317,7 @@ export const BOOST_CAMERA_ZOOM_TARGET = 1.10;
 export const BOOST_CAMERA_ZOOM_RISE = 9.5; // /s — ~90% of the target in ~0.24 s
 export const BOOST_CAMERA_ZOOM_FALL = 1.2; // /s — a slow, readable return
 export const BOOST_CAMERA_ZOOM_LERP = BOOST_CAMERA_ZOOM_RISE; // compat alias
-// U13: outward zoom rate cap. The Focus-lease continuity contract forbids a cut larger than
-// 6 wu per 60 Hz frame; 330 wu/s stays under that at 60 Hz and, being a rate, opens the frame
-// in the same wall time at 30 or 144 fps instead of twice as slowly on a struggling machine.
+// Outward zoom rate cap: opens smoothly at 330 wu/s (at most 5.5 wu/frame at 60 Hz).
 const ZOOM_OUT_RATE_MAX_WU_PER_S = 330;
 const ZOOM_OUT_STEP_MAX_FRAME_DT = 0.1; // a stall must not turn the rate into an 80 wu cut
 // R1 gameplay-scale reset: 144 WU is the selected normal framing. At 1600×1000 the starter hull
@@ -535,6 +585,15 @@ function readFlybyLeaseTargetId(state) {
  * treat an active attacker as functional framing — sticky hold still active, live Flyby lease, or
  * any hostile currently targeting the player. Pure; does not mutate sticky.
  */
+// B3b: "actively attacking" means the hostile holds a target lock on the player AND can
+// still fire — a tumbling or weapon-disabled hull is neutralized, not attacking (the
+// physics loadout's payoff). The combat kernel's own status gates decide.
+function combatCanShootPlayer(state, e, player) {
+  const combat = e.data && e.data.combat;
+  return !!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))
+    && !entityWeaponBlocked(state, e);
+}
+
 export function playerHasActiveAttackerFraming(state, player, sticky = null) {
   if (!state || !player) return false;
   if (sticky && sticky.wasActive && sticky.remainS > 0 && sticky.id != null) {
@@ -549,20 +608,81 @@ export function playerHasActiveAttackerFraming(state, player, sticky = null) {
     if (e === player) continue;
     if (!isComposableThreatType(e) || e.alive === false || e.hull <= 0 || !e.pos) continue;
     if (!isHostileToPlayer(e, player.team, state)) continue;
-    const combat = e.data && e.data.combat;
-    if (combat && (combat.targetId === player.id || combat.lockTarget === player.id)) return true;
+    if (combatCanShootPlayer(state, e, player)) return true;
   }
   return false;
 }
 
-function extendCompositionMinZoom(minZoom, item, fx, fz, tanHalf, aspect, tilt) {
+function extendCompositionMinZoom(minZoom, item, fx, fz, tanHalf, aspect, tilt, ndc = ACTIVE_ATTACKER_SAFE_NDC) {
   const radius = Math.max(0, finiteOr(item.radius, 4));
   const dx = Math.abs(item.pos.x - fx);
   const dz = Math.abs(item.pos.z - fz);
   return Math.max(
     minZoom,
-    Math.cos(tilt) * dz + radius + (dx + radius) / (tanHalf * aspect * ACTIVE_ATTACKER_SAFE_NDC),
-    Math.cos(tilt) * dz + radius + (Math.sin(tilt) * dz + radius) / (tanHalf * ACTIVE_ATTACKER_SAFE_NDC),
+    Math.cos(tilt) * dz + radius + (dx + radius) / (tanHalf * aspect * ndc),
+    Math.cos(tilt) * dz + radius + (Math.sin(tilt) * dz + radius) / (tanHalf * ndc),
+  );
+}
+
+function groupMemberZoomNeed(item, player, gx, gz, zoom, tanHalf, aspect, tilt) {
+  const safeX = Math.max(14, SAFE_VIEW_X * tanHalf * 0.72 * aspect * zoom);
+  const safeZ = Math.max(22, SAFE_VIEW_Z * tanHalf * 0.72 * zoom);
+  const fx = player.pos.x + Math.max(-safeX, Math.min(safeX, gx - player.pos.x));
+  const fz = player.pos.z + Math.max(-safeZ, Math.min(safeZ, gz - player.pos.z));
+  const dx = item.pos.x - fx;
+  const dz = item.pos.z - fz;
+  const r = Math.max(0, finiteOr(item.radius, 4));
+  return -Math.cos(tilt) * dz + r + Math.max(
+    (Math.abs(dx) + r) / (tanHalf * aspect * GROUP_FIT_NDC),
+    (Math.sin(tilt) * Math.abs(dz) + r) / (tanHalf * GROUP_FIT_NDC),
+  );
+}
+
+function fitGroupFocus(members, player, gx, gz, zoom, tanHalf, aspect, tilt, out) {
+  const sinTilt = Math.sin(tilt), cosTilt = Math.cos(tilt);
+  const ky = tanHalf * GROUP_FIT_NDC, kx = ky * aspect, k = kx * cosTilt;
+  const safeX = Math.max(14, SAFE_VIEW_X * tanHalf * 0.72 * aspect * zoom);
+  const safeZ = Math.max(22, SAFE_VIEW_Z * tanHalf * 0.72 * zoom);
+  const positiveZ = sinTilt - ky * cosTilt, negativeZ = -sinTilt - ky * cosTilt;
+  let minZ = -safeZ, maxZ = safeZ, minX = -Infinity, maxX = Infinity;
+  for (let i = -1; i < members.length; i++) {
+    const item = i < 0 ? player : members[i];
+    const x = item.pos.x - player.pos.x, z = item.pos.z - player.pos.z;
+    const radius = Math.max(0, finiteOr(item.radius, 4));
+    const reach = ky * zoom - radius * (1 + ky);
+    if (positiveZ > 0) minZ = Math.max(minZ, z - reach / positiveZ);
+    else if (positiveZ < 0) maxZ = Math.min(maxZ, z - reach / positiveZ);
+    else if (reach < 0) return false;
+    maxZ = Math.min(maxZ, z - reach / negativeZ);
+    const halfX = kx * (zoom + cosTilt * z - radius) - radius;
+    minX = Math.max(minX, x - halfX);
+    maxX = Math.min(maxX, x + halfX);
+  }
+  maxZ = Math.min(maxZ, (maxX - minX) / (2 * k), (safeX - minX) / k, (maxX + safeX) / k);
+  if (minZ > maxZ) return false;
+  const z = Math.max(minZ, Math.min(maxZ, gz - player.pos.z));
+  const lo = Math.max(-safeX, minX + k * z), hi = Math.min(safeX, maxX - k * z);
+  out.x = player.pos.x + Math.max(lo, Math.min(hi, gx - player.pos.x));
+  out.z = player.pos.z + z;
+  return true;
+}
+
+export function resolveCombatCompositionZoomCap(player, view = {}) {
+  const r = Number(player && player.radius);
+  if (!Number.isFinite(r) || r <= 0) return Math.min(CAMERA_ZOOM_MAX, COMPOSITION_ZOOM_MAX);
+  const fov = Math.max(10, Math.min(140, finiteOr(view.baseFov, finiteOr(view.fov, 50))));
+  const tanHalf = Math.tan(fov * Math.PI / 360);
+  const aspect = Math.max(0.45, finiteOr(view.aspect, 16 / 9));
+  const tilt = Math.max(1, Math.min(89, finiteOr(view.tiltDeg, 60))) * Math.PI / 180;
+  const maxDepth = (r * 0.99) / (tanHalf * aspect * 0.04);
+  const safeZPer = SAFE_VIEW_Z * tanHalf * 0.72;
+  return Math.max(
+    CAMERA_ZOOM_MAX,
+    Math.min(
+      COMPOSITION_ZOOM_MAX,
+      maxDepth - Math.cos(tilt) * 22,
+      maxDepth / (1 + Math.cos(tilt) * safeZPer),
+    ),
   );
 }
 
@@ -610,6 +730,10 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
   }
 
   const leasedTargetId = readFlybyLeaseTargetId(state);
+  const groupScratch = groupFitScratch(sticky || out || _groupFitDefaultOwner);
+  const attackersInRange = groupScratch.attackers;
+  let groupBaseX = fx;
+  let groupBaseZ = fz;
 
   // Combat composes player + nearest threat instead of only following the player.
   for (const e of cameraThreatCandidates(state)) {
@@ -619,9 +743,11 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     const dx = e.pos.x - player.pos.x;
     const dz = e.pos.z - player.pos.z;
     const d2 = dx * dx + dz * dz;
-    const combat = e.data && e.data.combat;
-    const attacksPlayer = !!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))
+    const attacksPlayer = combatCanShootPlayer(state, e, player)
       || (leasedTargetId != null && e.id === leasedTargetId);
+    if (attacksPlayer && d2 <= GROUP_FIT_RANGE_WU * GROUP_FIT_RANGE_WU) {
+      attackersInRange.push(e);
+    }
     if (attacksPlayer && d2 < activeAttackerD2) {
       activeAttacker = e;
       activeAttackerD2 = d2;
@@ -654,8 +780,7 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
       const dx = e.pos.x - player.pos.x;
       const dz = e.pos.z - player.pos.z;
       const d2 = dx * dx + dz * dz;
-      const combat = e.data && e.data.combat;
-      const attacksPlayer = !!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))
+      const attacksPlayer = combatCanShootPlayer(state, e, player)
         || (leasedTargetId != null && e.id === leasedTargetId);
       if (activeAttackerTied && !resolvedActive && attacksPlayer && d2 === activeAttackerD2) {
         resolvedActive = e;
@@ -687,13 +812,13 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
       const challengerD2 = activeAttacker ? activeAttackerD2 : nearestThreatD2;
       const closerBreak = challenger && challenger !== held
         && challengerD2 < heldD2 * COMPOSITION_THREAT_STICK_CLOSER * COMPOSITION_THREAT_STICK_CLOSER;
-      const activeUpgrade = activeAttacker && activeAttacker !== held && !sticky.wasActive;
+      const heldIsActive = combatCanShootPlayer(state, held, player)
+        || (leasedTargetId != null && held.id === leasedTargetId);
+      const activeUpgrade = activeAttacker && activeAttacker !== held && !heldIsActive;
       if (sticky.remainS > 0 && !closerBreak && !activeUpgrade) {
         composedThreat = held;
         composedThreatD2 = heldD2;
-        const combat = held.data && held.data.combat;
-        composedIsActive = !!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))
-          || (leasedTargetId != null && held.id === leasedTargetId);
+        composedIsActive = heldIsActive;
       } else if (composedThreat) {
         sticky.id = composedThreat.id;
         sticky.remainS = COMPOSITION_THREAT_STICK_S;
@@ -735,6 +860,8 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
       const bias = Math.min(TETHER_COMPOSE_MAX_BIAS, d * TETHER_COMPOSE_FRACTION);
       fx += (dx / d) * bias;
       fz += (dz / d) * bias;
+      groupBaseX += (dx / d) * bias;
+      groupBaseZ += (dz / d) * bias;
       zoomBias = Math.min(CONTEXT_ZOOM_MAX, zoomBias + TETHER_ZOOM_BASE + clamp01(d / THREAT_COMPOSE_RANGE) * TETHER_ZOOM_RANGE);
     }
   }
@@ -743,10 +870,11 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
   // minZoom / safe-rect geometry must use the player's authored base FOV, never the feel-layer FOV
   // punch. Punching the projection is spectacle; letting it reframe combat composition is thrash.
   const compositionFov = Math.max(10, Math.min(140, finiteOr(view.baseFov, finiteOr(view.fov, 50))));
+  const tanHalf = Math.tan(compositionFov * Math.PI / 360);
+  const aspect = Math.max(0.45, finiteOr(view.aspect, 16 / 9));
+  const tilt = Math.max(1, Math.min(89, finiteOr(view.tiltDeg, 60))) * Math.PI / 180;
+  const compositionZoomCap = Math.max(CAMERA_ZOOM_MIN, Math.min(GROUP_FIT_ZOOM_CAP, finiteOr(view.maxZoom, GROUP_FIT_ZOOM_CAP)));
   if (composedIsActive && composedThreat && player.pos) {
-    const tanHalf = Math.tan(compositionFov * Math.PI / 360);
-    const aspect = Math.max(0.45, finiteOr(view.aspect, 16 / 9));
-    const tilt = Math.max(1, Math.min(89, finiteOr(view.tiltDeg, 60))) * Math.PI / 180;
     // Fit against the biased composition focus AND against the player position. The chase follow
     // may safe-rect-clamp focus back toward the ship after this returns; a minZoom computed only
     // at the ideal midpoint would then under-zoom and crop the attacker (U13 dense-scene miss).
@@ -756,7 +884,115 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
     minZoom = extendCompositionMinZoom(minZoom, composedThreat, fx, fz, tanHalf, aspect, tilt);
     minZoom = extendCompositionMinZoom(minZoom, player, px, pz, tanHalf, aspect, tilt);
     minZoom = extendCompositionMinZoom(minZoom, composedThreat, px, pz, tanHalf, aspect, tilt);
-    minZoom = Math.min(CAMERA_ZOOM_MAX, minZoom);
+    minZoom = Math.min(CAMERA_ZOOM_MAX, compositionZoomCap, minZoom);
+  }
+
+  // B3b group fit: two or more hostiles attacking at once share the frame. The composed focus
+  // moves halfway toward the group centroid (player weighted double — mirrors the pair-midpoint
+  // rule for a single attacker) and minZoom grows to fit every member. A per-member sticky hold
+  // keeps a just-stopped attacker composed for GROUP_MEMBER_STICK_S so targetId juggling cannot
+  // pump the frame. If the whole group will not fit under GROUP_FIT_ZOOM_CAP the farthest member
+  // is dropped and the fit recomputed — the out-of-frame attacker stays the metric's problem,
+  // not the camera's.
+  if (attackersInRange.length || (sticky && sticky.holds instanceof Map && sticky.holds.size)) {
+    const dtGroup = Math.max(0, finiteOr(view.dt, 0));
+    const groupSet = groupScratch.byId;
+    for (const e of attackersInRange) groupSet.set(e.id, e);
+    if (sticky && typeof state.entities.get === 'function') {
+      if (!(sticky.holds instanceof Map)) sticky.holds = new Map();
+      for (const id of sticky.holds.keys()) {
+        const remain = sticky.holds.get(id);
+        const next = remain - dtGroup;
+        if (next <= 0) sticky.holds.delete(id); else sticky.holds.set(id, next);
+      }
+      for (const id of sticky.holds.keys()) {
+        if (groupSet.has(id)) continue;
+        const held = state.entities.get(id);
+        if (held && held !== player && held.alive !== false && held.hull > 0 && held.pos
+          && isComposableThreatType(held) && isHostileToPlayer(held, player.team, state)
+          && ((held.pos.x - player.pos.x) ** 2 + (held.pos.z - player.pos.z) ** 2)
+            <= GROUP_FIT_RANGE_WU * GROUP_FIT_RANGE_WU) {
+          groupSet.set(id, held);
+        }
+      }
+      for (const e of attackersInRange) sticky.holds.set(e.id, GROUP_MEMBER_STICK_S);
+      for (const id of sticky.holds.keys()) {
+        const held = state.entities.get(id);
+        if (!held || held.alive === false || held.hull <= 0 || !held.pos
+          || !isHostileToPlayer(held, player.team, state)) {
+          sticky.holds.delete(id);
+        }
+      }
+    }
+    if (groupSet.size >= 1) {
+      const members = groupScratch.members;
+      const candidate = groupScratch.candidate;
+      for (const e of groupSet.values()) {
+        candidate[0] = e;
+        if (fitGroupFocus(candidate, player, groupBaseX, groupBaseZ, compositionZoomCap, tanHalf, aspect, tilt, groupScratch.focus)) members.push(e);
+      }
+      candidate.length = 0;
+      for (; members.length;) {
+        let cx = player.pos.x * 2;
+        let cz = player.pos.z * 2;
+        let w = 2;
+        for (const e of members) { cx += e.pos.x; cz += e.pos.z; w += 1; }
+        cx /= w;
+        cz /= w;
+        const gx = members.length === 1 ? fx : groupBaseX + (cx - player.pos.x) * 0.5;
+        const gz = members.length === 1 ? fz : groupBaseZ + (cz - player.pos.z) * 0.5;
+        // Fit target = the safe-rect clamp's own geometry: a member is on screen when it sits
+        // inside the full frame around the composed focus, or — worst case, the focus clamped
+        // all the way back to the player's safe edge — inside the full frame around that edge.
+        // The edge only helps toward the member when the composed focus lies on its side.
+        let neediest = null;
+        let neediestNeed = groupMemberZoomNeed(player, player, gx, gz, compositionZoomCap, tanHalf, aspect, tilt);
+        // The composed frame's real ground-plane reach: horizontal spans the full FOV×aspect;
+        // depth spans the FOV foreshortened by the tilt. The safe-rect clamp can pull the focus
+        // back to the player's safe edge, so the reachable envelope around the player is
+        // frame-half + safe edge on the side the focus leans toward.
+        for (const e of members) {
+          const need = groupMemberZoomNeed(e, player, gx, gz, compositionZoomCap, tanHalf, aspect, tilt);
+          if (need > neediestNeed) { neediestNeed = need; neediest = e; }
+        }
+        if (neediestNeed > compositionZoomCap && composedIsActive
+          && fitGroupFocus(members, player, gx, gz, compositionZoomCap, tanHalf, aspect, tilt, groupScratch.focus)) {
+          let lo = Math.min(minZoom, compositionZoomCap), hi = compositionZoomCap;
+          for (let step = 0; step < 14; step++) {
+            const mid = (lo + hi) * 0.5;
+            if (fitGroupFocus(members, player, gx, gz, mid, tanHalf, aspect, tilt, groupScratch.focus)) hi = mid;
+            else lo = mid;
+          }
+          fitGroupFocus(members, player, gx, gz, hi, tanHalf, aspect, tilt, groupScratch.focus);
+          fx = groupScratch.focus.x;
+          fz = groupScratch.focus.z;
+          minZoom = Math.max(minZoom, hi);
+          break;
+        }
+        if (neediestNeed <= compositionZoomCap || members.length <= 1) {
+          // Only spend zoom that can actually frame the member — a lone attacker beyond the
+          // composition ceiling is left out rather than pulling the fight to miniatures.
+          if (neediestNeed <= compositionZoomCap) {
+            let lo = 0, hi = compositionZoomCap;
+            for (let step = 0; step < 14; step++) {
+              const mid = (lo + hi) * 0.5;
+              let required = groupMemberZoomNeed(player, player, gx, gz, mid, tanHalf, aspect, tilt);
+              for (const e of members) required = Math.max(required, groupMemberZoomNeed(e, player, gx, gz, mid, tanHalf, aspect, tilt));
+              if (required <= mid) hi = mid; else lo = mid;
+            }
+            fx = gx;
+            fz = gz;
+            minZoom = Math.max(minZoom, hi);
+          }
+          break;
+        }
+        if (!neediest) break;
+        const index = members.indexOf(neediest);
+        if (index < 0) break;
+        for (let i = index; i < members.length - 1; i++) members[i] = members[i + 1];
+        members.length--;
+      }
+    }
   }
 
   result.x = fx;
@@ -768,6 +1004,9 @@ export function resolveChaseComposition(state, player, focus, view = {}, out = n
   result.zoomBias = Math.min(CONTEXT_ZOOM_MAX, zoomBias);
   result.minZoom = minZoom;
   result.composedThreatId = composedThreat ? composedThreat.id : null;
+  attackersInRange.length = 0;
+  groupScratch.members.length = 0;
+  groupScratch.byId.clear();
   return result;
 }
 
@@ -821,9 +1060,18 @@ function resolveTetherCompositionAnchor(state, player, out = null) {
   return result;
 }
 
-export function createChaseCamera(state) {
+export function createChaseCamera(state, viewport = globalThis.window, projectionCamera = null) {
   // Far plane is deep (14k) so distant planets + far star layers render; fog still fades mid-distance.
-  const cam = new THREE.PerspectiveCamera(state.settings.video.fov || 50, window.innerWidth / window.innerHeight, 1, 14000);
+  const cam = projectionCamera || new THREE.PerspectiveCamera(state.settings.video.fov || 50, viewport.innerWidth / viewport.innerHeight, 1, 14000);
+  if (projectionCamera) {
+    cam.fov = state.settings.video.fov || 50;
+    cam.aspect = viewport.innerWidth / viewport.innerHeight;
+    cam.near = 1;
+    cam.far = 14000;
+    cam.zoom = 1;
+    cam.view = null;
+    cam.updateProjectionMatrix();
+  }
   const c = state.camera;
   c.zoom = resolveInitialChaseZoom(c.zoom);
   c.shakeOffset = new THREE.Vector3();
@@ -892,6 +1140,7 @@ export function createChaseCamera(state) {
   let _compositionBiasZ = 0;
   let _contextZoomBias = 0;
   let _contextMinZoom = 0;
+  let _contextZoomCap = COMPOSITION_ZOOM_MAX;
   let _dynamicNear = cam.near;
   // U13 sticky composed-threat bag — keeps dense furball bias from thrashing every frame.
   const _compositionSticky = { id: null, remainS: 0, wasActive: false };
@@ -1049,8 +1298,13 @@ export function createChaseCamera(state) {
       _recenterDur = isMotionReduced(state) ? base * 0.25 : base;
       _recenterT = _recenterDur;
     },
-    follow(dt) {
+    follow(dt, alphaParam, presentedLocal) {
       const frameDt = Number.isFinite(dt) && dt > 0 ? Math.min(dt, 1 / 15) : 0;
+      const alpha = Number.isFinite(alphaParam)
+        ? Math.max(0, Math.min(1, alphaParam))
+        : (state.render && Number.isFinite(state.render.interpolationAlpha)
+          ? Math.max(0, Math.min(1, state.render.interpolationAlpha))
+          : 1);
       const photo = state.render && state.render.photoMode;
       if (photo && photo.active && photo.freeCamera !== false) {
         stepPhotoFreeCamera(photo, state.input, frameDt);
@@ -1082,8 +1336,11 @@ export function createChaseCamera(state) {
           snapToEntity(p);
         }
         // Frame-local player target: composition biases stay relative (global deltas === local deltas).
+        // Prefer the exact pose the hull was drawn at this frame (the presented mesh position); the
+        // prevPos→pos fallback interpolates with render alpha so camera follow and safe-rect clamping
+        // match the interpolated player mesh instead of stepping discretely on fixed 60 Hz sim ticks.
         const frameOrigin = readFrameOrigin(state, _frameOriginScratch);
-        globalToFrame(p.pos, frameOrigin, _playerLocalScratch);
+        resolvePlayerAnchorLocal(p, alpha, frameOrigin, presentedLocal, _playerLocalScratch);
         _playerLocalProxy.pos = _playerLocalScratch;
         fx = _playerLocalScratch.x;
         fz = _playerLocalScratch.z;
@@ -1094,7 +1351,14 @@ export function createChaseCamera(state) {
         if (_directorFrame.mode === CameraDirectorMode.FOLLOW
           && focusGap > Math.max(320, _dynamicZoom * 2.6)) {
           snapToEntity(p);
-          globalToFrame(p.pos, readFrameOrigin(state, _frameOriginScratch), _playerLocalScratch);
+          // snapToEntity wrote the scratch from the raw pos; restore the presented anchor.
+          resolvePlayerAnchorLocal(
+            p,
+            alpha,
+            readFrameOrigin(state, _frameOriginScratch),
+            presentedLocal,
+            _playerLocalScratch,
+          );
           fx = _playerLocalScratch.x;
           fz = _playerLocalScratch.z;
         }
@@ -1142,6 +1406,7 @@ export function createChaseCamera(state) {
         _directorView.aspect = cam.aspect;
         _directorView.tiltDeg = c.tilt || 60;
         _directorView.dt = frameDt;
+        _directorView.maxZoom = resolveCombatCompositionZoomCap(p, _directorView);
         // Seed pair entry from the pose the player actually saw last frame, not the director's
         // undamped FOLLOW request. Functional pair framing is identical under reduced motion.
         if (_directorFrame.mode === CameraDirectorMode.FOLLOW) {
@@ -1157,9 +1422,10 @@ export function createChaseCamera(state) {
           _contextZoomBias = 0;
           _contextMinZoom = 0;
         } else {
+          _contextZoomCap = _directorView.maxZoom;
           // Seed focus is frame-local; threat/tether biases are pure relative offsets (origin-invariant).
-          _compositionFocusScratch.x = baseFx;
-          _compositionFocusScratch.z = baseFz;
+          _compositionFocusScratch.x = baseFx + frameOrigin.x;
+          _compositionFocusScratch.z = baseFz + frameOrigin.z;
           const composition = resolveChaseComposition(
             state,
             p,
@@ -1174,8 +1440,8 @@ export function createChaseCamera(state) {
           // Reduced-motion may soften ambient/tether bias but must not move the actual threat out of
           // the zoom geometry that was computed to contain it.
           const compositionScale = composition.hasActiveAttacker ? 1 : motionScale;
-          const desiredBiasX = (composition.x - baseFx) * compositionScale;
-          const desiredBiasZ = (composition.z - baseFz) * compositionScale;
+          const desiredBiasX = (composition.x - _compositionFocusScratch.x) * compositionScale;
+          const desiredBiasZ = (composition.z - _compositionFocusScratch.z) * compositionScale;
           _compositionBiasX = dampSlewed(_compositionBiasX, desiredBiasX, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
           _compositionBiasZ = dampSlewed(_compositionBiasZ, desiredBiasZ, COMPOSITION_BIAS_LERP, COMPOSITION_BIAS_SLEW, frameDt);
           _contextZoomBias = damp(_contextZoomBias, (composition.zoomBias || 0) * compositionScale, CONTEXT_ZOOM_LERP, frameDt);
@@ -1293,6 +1559,9 @@ export function createChaseCamera(state) {
           _pushZoom = damp(_pushZoom, 0, _pushZoomDecay, frameDt);
           if (Math.abs(_pushZoom) < 0.0001) _pushZoom = 0;
         }
+      }
+      if (!directorOwnsComposition && _contextMinZoom > 0) {
+        targetZoom = Math.min(targetZoom, _contextZoomCap);
       }
       if (holding && !_deathCam) {
         // PQ-159.02 camera hold: freeze distance as well as look-at.
@@ -1420,7 +1689,7 @@ export function createChaseCamera(state) {
       if (shakePitch) { _shakePitchQ.setFromAxisAngle(_camRight, shakePitch); cam.quaternion.multiply(_shakePitchQ); }
     },
     onResize() {
-      cam.aspect = window.innerWidth / window.innerHeight;
+      cam.aspect = viewport.innerWidth / viewport.innerHeight;
       cam.updateProjectionMatrix();
     },
   };

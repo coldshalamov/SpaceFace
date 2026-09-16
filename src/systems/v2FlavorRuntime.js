@@ -7,6 +7,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { FLAVOR_PACKS } from '../data/flavor/index.generated.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const SCHEMA_VERSION = 1;
 const RECEIPT_CAP = 256;
@@ -380,7 +381,7 @@ function hasLiveConvoyCarrier(state, sectorId, zoneId) {
 }
 
 function hasLiveEncounterEntity(state, encounterId, sectorId, zoneId) {
-  for (const entity of state && state.entityList || []) {
+  for (const entity of indexedShipLikeScan(state)) {
     const ai = entity && entity.data && entity.data.ai;
     if (!ai || entity.alive === false || !finitePos(entity.pos)) continue;
     if (String(ai.encounterId || '') !== encounterId) continue;

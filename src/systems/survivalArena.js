@@ -128,6 +128,9 @@ export const ARENA_MINE_OWNER = 'survival-arena';
 /** At most four of the six per-owner mine slots, so the room never fills its own cap. */
 export const ARENA_MINE_MAX = 4;
 
+const _arenaBodiesScratch = [];
+const _arenaProjectileScratch = [];
+
 const ARENA_MINE_ARM_DELAY_S = 3;
 const TAU = Math.PI * 2;
 
@@ -447,11 +450,26 @@ function playerTeam(state) {
   return player && player.team != null ? player.team : 0;
 }
 
+function compareEntityIds(a, b) {
+  const as = String(a.id);
+  const bs = String(b.id);
+  if (as < bs) return -1;
+  if (as > bs) return 1;
+  return 0;
+}
+
 function liveArenaBodies(state) {
-  const list = [];
-  const entities = state && state.entities;
-  if (entities && typeof entities.values === 'function') {
-    for (const entity of entities.values()) {
+  const list = _arenaBodiesScratch;
+  list.length = 0;
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.shipLike)) {
+    for (let i = 0; i < index.shipLike.length; i++) {
+      const entity = index.shipLike[i];
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      list.push(entity);
+    }
+  } else if (state && state.entities && typeof state.entities.values === 'function') {
+    for (const entity of state.entities.values()) {
       if (!entity || entity.alive === false || !entity.pos) continue;
       if (entity.type && entity.type !== 'ship' && entity.type !== 'drone') continue;
       list.push(entity);
@@ -464,13 +482,7 @@ function liveArenaBodies(state) {
       list.push(entity);
     }
   }
-  list.sort((a, b) => {
-    const as = String(a.id);
-    const bs = String(b.id);
-    if (as < bs) return -1;
-    if (as > bs) return 1;
-    return 0;
-  });
+  list.sort(compareEntityIds);
   return list;
 }
 
@@ -511,7 +523,8 @@ function toyBodyOf(entity) {
 }
 
 function liveProjectiles(state) {
-  const list = [];
+  const list = _arenaProjectileScratch;
+  list.length = 0;
   const indexed = state && state.entityIndex && Array.isArray(state.entityIndex.projectiles)
     ? state.entityIndex.projectiles
     : null;
@@ -528,13 +541,7 @@ function liveProjectiles(state) {
       list.push(entity);
     }
   }
-  list.sort((a, b) => {
-    const as = String(a.id);
-    const bs = String(b.id);
-    if (as < bs) return -1;
-    if (as > bs) return 1;
-    return 0;
-  });
+  list.sort(compareEntityIds);
   return list;
 }
 

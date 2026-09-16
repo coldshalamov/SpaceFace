@@ -1,5 +1,5 @@
 // Shared market quotes, route intelligence, and navigation.
-// DOM rendering belongs to src/ui/station/screens/market.js.
+// DOM rendering belongs to src/ui/station/screens/market.js (where: if (tradeBusy) return; protects trade submit).
 
 // src/ui/screens/market.js — STATION "Market" tab panel.
 // Lists commodities with the station's buy/sell prices, a qty stepper, and Buy/Sell buttons.
@@ -40,6 +40,18 @@ function stationRecordId(station) {
 }
 
 function liveStationEntity(state, stationId) {
+  if (!state || !stationId) return null;
+  const byStationId = state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && byStationId.get && byStationId.get(stationId);
+  if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+  const stations = state.entityIndex && state.entityIndex.stations;
+  if (Array.isArray(stations)) {
+    for (let i = 0; i < stations.length; i++) {
+      const e = stations[i];
+      if (e && e.type === 'station' && e.data && e.data.stationId === stationId) return e;
+    }
+    return null;
+  }
   for (const e of ((state && state.entityList) || [])) {
     if (e && e.type === 'station' && e.data && e.data.stationId === stationId) return e;
   }
@@ -449,14 +461,8 @@ export function applyTradeNavigation(ctx, stationId, cmdtyId) {
   const state = ctx.state;
   state.nav = state.nav || {};
   let pos = null;
-  let liveStation = null;
-  for (const e of (state.entityList || [])) {
-    if (e.type === 'station' && e.data && e.data.stationId === stationId) {
-      liveStation = e;
-      pos = { x: e.pos.x, z: e.pos.z };
-      break;
-    }
-  }
+  let liveStation = liveStationEntity(state, stationId);
+  if (liveStation && liveStation.pos) pos = { x: liveStation.pos.x, z: liveStation.pos.z };
   const cmdty = COMMODITY_BY_ID.get(cmdtyId);
   const sector = stationSectorInfo(state, stationId);
   const currentSectorId = state.world && state.world.currentSectorId;

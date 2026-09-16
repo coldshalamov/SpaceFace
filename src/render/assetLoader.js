@@ -7,6 +7,7 @@
 // ready; a temporary procedural body must never impersonate the final ship, station, or place.
 import * as THREE from 'three';
 import { applyAuthoredMaterialProfile, configureAuthoredMaterialProfiles } from './authoredMaterialProfiles.js';
+import { canonicalizeObjectSurfaceProgramKeys } from './illustratedSurface.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 import {
   disposeAssetResidency,
@@ -1097,6 +1098,7 @@ function compileBlueprint(url, gltf, expectedSlot, residencyRegistration = null)
   const materialProfile = configureAuthoredMaterialProfiles(scene, {
     assetId: metadata.assetId || fileStem(url),
   });
+  canonicalizeObjectSurfaceProgramKeys(scene);
 
   const ktx2Textures = new Set();
   for (const primitive of primitives) {
@@ -1297,6 +1299,7 @@ export function bindAuthoredRuntimeTable(url, gltf, expectedSlot, table, plan) {
       profiledRoles[entry.role] = (profiledRoles[entry.role] || 0) + 1;
     }
   }
+  canonicalizeObjectSurfaceProgramKeys(scene);
   const materialProfile = { materials: profiled.size, roles: profiledRoles };
 
   return Object.freeze({

@@ -173,24 +173,36 @@ function injectStyle(doc) {
   style.id = STYLE_ID;
   style.textContent = `
   #sf-encounter-choice { position:absolute; right:28px; top:clamp(184px,23vh,280px); z-index:86;
-    width:min(360px,calc(100vw - 40px)); box-sizing:border-box; padding:14px 15px 15px;
-    border:1px solid rgba(119,203,255,.48); border-top:3px solid #77cbff;
-    background:linear-gradient(135deg,rgba(5,13,24,.98),rgba(3,7,14,.94)); color:#eef8ff;
-    font-family:var(--mono,Consolas,monospace); box-shadow:0 18px 36px rgba(0,0,0,.36); pointer-events:auto; }
+    width:min(360px,calc(100vw - 40px)); box-sizing:border-box; padding:14px 16px 16px;
+    border-radius:6px;
+    border:1px solid rgba(119,203,255,.45); border-top:3px solid #77cbff;
+    background:linear-gradient(145deg, rgba(8,16,28,.94), rgba(4,9,18,.96));
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    color:#eef8ff;
+    font-family:var(--mono,Consolas,monospace);
+    box-shadow:0 18px 40px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.08); pointer-events:auto; }
   #sf-encounter-choice[hidden] { display:none !important; }
-  .sf-encounter-choice__eyebrow { color:#9bdcff; font-size:12px; font-weight:700; letter-spacing:.06em; }
-  #sf-encounter-choice-title { margin:7px 0 0; font:700 17px/1.2 var(--mono,Consolas,monospace); letter-spacing:.025em; }
-  .sf-encounter-choice__status { margin:6px 0 0; color:#b6c9da; font-size:12px; line-height:1.35; }
-  .sf-encounter-choice__actions { display:grid; gap:6px; margin-top:13px; }
-  .sf-encounter-choice__actions button { min-height:42px; position:relative; padding:8px 11px 8px 44px;
+  .sf-encounter-choice__eyebrow { color:#9bdcff; font:700 12px/1.2 var(--mono,Consolas,monospace); letter-spacing:.08em; text-transform:uppercase; }
+  #sf-encounter-choice-title { margin:6px 0 0; font:700 16px/1.25 var(--mono,Consolas,monospace); letter-spacing:.03em; color:#eff8ff; }
+  .sf-encounter-choice__status { margin:6px 0 0; color:#b6c9da; font-size:12px; line-height:1.4; }
+  .sf-encounter-choice__actions { display:grid; gap:8px; margin-top:14px; }
+  .sf-encounter-choice__actions button { min-height:42px; position:relative; padding:8px 12px 8px 44px;
+    border-radius:4px;
     border:1px solid rgba(119,203,255,.34); background:rgba(91,158,198,.08); color:#eff8ff;
-    text-align:left; font:700 12px/1.25 var(--mono,Consolas,monospace); letter-spacing:.025em; cursor:pointer;
-    transition:transform .14s ease, border-color .14s ease, background .14s ease; }
+    text-align:left; font:600 12px/1.25 var(--mono,Consolas,monospace); letter-spacing:.03em; cursor:pointer;
+    transition:transform .12s ease, border-color .12s ease, background .12s ease, box-shadow .12s ease, translate .12s ease; }
   .sf-encounter-choice__actions button::before { content:attr(data-key); position:absolute; left:10px; top:50%;
-    width:22px; height:22px; display:grid; place-items:center; transform:translateY(-50%); border:1px solid rgba(155,220,255,.52);
-    color:#9bdcff; font-size:12px; letter-spacing:0; }
-  .sf-encounter-choice__actions button:hover,.sf-encounter-choice__actions button:focus-visible { transform:translateX(-2px);
-    border-color:#9bdcff; background:rgba(119,203,255,.17); outline:2px solid #bdeaff; outline-offset:2px; }
+    width:22px; height:22px; display:grid; place-items:center; transform:translateY(-50%);
+    border-radius:3px;
+    border:1px solid rgba(155,220,255,.52);
+    background:rgba(0,0,0,.35);
+    color:#9bdcff; font:700 12px/1 var(--mono,Consolas,monospace); letter-spacing:0; }
+  .sf-encounter-choice__actions button:hover, .sf-encounter-choice__actions button:focus-visible {
+    transform:translateX(-2px);
+    border-color:#9bdcff; background:rgba(119,203,255,.18);
+    box-shadow:0 0 12px rgba(119,203,255,.2);
+    outline:2px solid #bdeaff; outline-offset:2px; }
+  .sf-encounter-choice__actions button:active { translate:0 1px; }
   .sf-encounter-choice__actions button:disabled { opacity:.38; cursor:not-allowed; transform:none; }
   @media (max-width:820px) { #sf-encounter-choice { left:50%; right:auto; top:auto; bottom:104px;
     transform:translateX(-50%); width:min(400px,calc(100vw - 24px)); } }

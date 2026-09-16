@@ -38,7 +38,7 @@ This edition reorganizes the original six huge, 29 medium, and 40 small findings
 
 Read root `AGENTS.md`, the nearest directory instructions, and the live implementation before editing. The performance authority chain is:
 
-`CANONICAL_BUILD_MAP.md` → `design/PERF_OPTION_SPACE.md` → `design/program/PERF_HITCH_CAMPAIGN.md` / `PQ-129` → the particular admitted leaf.
+`build_map.md` → `design/PERF_OPTION_SPACE.md` → `design/program/PERF_HITCH_CAMPAIGN.md` / `PQ-129` → the particular admitted leaf.
 
 `design/PERF_BUDGET.md` supplies the frame and same-picture contract. This report supplies research and execution detail, **not a second queue**. Packet labels `P00`–`P17` below are local document references, not new PQ identities. Inspect current dispatch and ownership before claiming implementation. Reuse an existing reserved identity; route a genuinely uncovered outcome through the existing sweep/admission mechanism. Do not copy changing queue status into this dated report. [R01–R05]
 

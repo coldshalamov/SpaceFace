@@ -6,7 +6,7 @@
 game to one professional visual bar. Its old build order and acceptance language is non-authoritative.
 
 **Status authority:** this document does not dispatch, prioritize, lease, promote, or accept work.
-Current order comes from `CANONICAL_BUILD_MAP.md` and an admitted queue packet; craft acceptance comes
+Current order comes from `build_map.md` and an admitted queue packet; craft acceptance comes
 from the visual-asset standard plus candidate-bound evidence. When this reference and live evidence
 disagree, the live route, runtime maps, manifests, focused checks, and admitted packet win.
 

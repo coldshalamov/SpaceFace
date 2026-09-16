@@ -36,6 +36,27 @@ export const TABLE_AUTHORED_DECODE_SECONDS = 4.0;
 /** Immediate authored radius: already next to the glass. */
 export const TABLE_AUTHORED_IMMEDIATE_SECONDS = 1.25;
 
+/**
+ * Fastest sustained inbound approach the admission window must anticipate (WU/s).
+ * Ship ceilings run engine.topSpeed (~150) x the boost clamp (~2.6) x travel
+ * multipliers (~1.4) ~= 550; anything faster is a projectile, which carries no
+ * authored mesh. This sizes query discs only — per-candidate closing speed still
+ * decides admission.
+ */
+export const TABLE_INBOUND_APPROACH_WU = 600;
+
+/**
+ * Prediction horizon for promote -> decode -> build: the authored decode runway
+ * plus residency-poll and build-drain slack between "ledger row" and "pixels".
+ */
+export const TABLE_PROMOTE_HORIZON_SECONDS = TABLE_AUTHORED_DECODE_SECONDS + 1.5;
+
+/** Collect horizon for ledger rows that build procedurally once admitted. */
+export const TABLE_COLLECT_HORIZON_SECONDS = TABLE_RESIDENCY_PREFETCH_SECONDS + 1.0;
+
+/** This close to the glass a pending build must not sit behind ordinary filler. */
+export const TABLE_BUILD_URGENT_SECONDS = 1.25;
+
 /** Off-screen doctrine-tell cue sits this far from the player when the glass is wide enough. */
 export const TABLE_DOCTRINE_TELL_CUE_WU = 58;
 
@@ -354,6 +375,62 @@ export function glassHalfExtents(zoom, fovDeg, aspect, tiltDeg = 60) {
 
 export function submitRunwayWu(speed = TABLE_REFERENCE_SPEED_WU) {
   return approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, speed);
+}
+
+/**
+ * Earliest t in [0, horizonS] at which a point at relative position
+ * (relX, relZ) moving at relative velocity (relVx, relVz) sits within
+ * radiusWu of the anchor. Returns 0 when already inside, Infinity when the
+ * point never enters inside the horizon. Solves |p + v t| = r for the first
+ * root, so a fast inbound contact earns its runway from closing speed while a
+ * receding one earns none — the "leaned oval" falls out of the math instead of
+ * being a shifted disc that still cannot see an oncoming hull.
+ */
+export function timeToEnterRadiusSeconds(relX, relZ, relVx, relVz, radiusWu, horizonS) {
+  const r = Math.max(0, Number(radiusWu) || 0);
+  const h = Math.max(0, Number(horizonS) || 0);
+  const x = Number(relX) || 0;
+  const z = Number(relZ) || 0;
+  const vx = Number(relVx) || 0;
+  const vz = Number(relVz) || 0;
+  const c = x * x + z * z - r * r;
+  if (c <= 0) return 0;
+  if (!(h > 0)) return Infinity;
+  const a = vx * vx + vz * vz;
+  if (a <= 1e-8) return Infinity;
+  const b = x * vx + z * vz;
+  if (b >= 0) return Infinity;
+  const disc = b * b - a * c;
+  if (disc < 0) return Infinity;
+  const t = (-b - Math.sqrt(disc)) / a;
+  return t >= 0 && t <= h ? t : Infinity;
+}
+
+/**
+ * Anchor for admission prediction. The live look-at sits ahead of the hull
+ * under velocity lead, which is where the glass actually is — but after a
+ * relocate the frame-local focus can trail thousands of WU behind the player
+ * while it crawls over. Use the focus while it stays within leadCapWu of the
+ * player; otherwise predict from the player position. Focus is frame-local;
+ * world positions stay galactic-global, so rebase before subtracting.
+ */
+export function admissionAnchorPos(state, playerPos, leadCapWu, out) {
+  const target = out || { x: 0, z: 0 };
+  target.x = Number.isFinite(playerPos && playerPos.x) ? playerPos.x : 0;
+  target.z = Number.isFinite(playerPos && playerPos.z) ? playerPos.z : 0;
+  const focus = state && state.camera && state.camera.focus;
+  if (!focus || !Number.isFinite(focus.x) || !Number.isFinite(focus.z)) return target;
+  const frame = state && state.world && state.world.frameOrigin;
+  const gx = focus.x + (Number.isFinite(frame && frame.x) ? frame.x : 0);
+  const gz = focus.z + (Number.isFinite(frame && frame.z) ? frame.z : 0);
+  const dx = gx - target.x;
+  const dz = gz - target.z;
+  const cap = Math.max(0, Number(leadCapWu) || 0);
+  if (cap > 0 && dx * dx + dz * dz <= cap * cap) {
+    target.x = gx;
+    target.z = gz;
+  }
+  return target;
 }
 
 export function glassCornerWu(zoom, fovDeg, aspect, tiltDeg = 60) {

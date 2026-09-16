@@ -6,6 +6,7 @@
 
 import { compactKillCausality, KillCause } from '../combat/killCausality.js';
 import { THUNDERCHILD, THUNDERCHILD_TITLE_ID } from '../data/titles.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const STATE_VERSION = 1;
 const SCATTER_S = 6;
@@ -86,8 +87,8 @@ function isEscort(entity) {
 
 function liveSquadMembers(state, squadId, includeDead = null) {
   const out = [];
-  if (!state || !squadId || !Array.isArray(state.entityList)) return out;
-  for (const entity of state.entityList) {
+  if (!state || !squadId) return out;
+  for (const entity of indexedShipLikeScan(state)) {
     if (!entity || entity.id === state.playerId || entity.type !== 'ship') continue;
     if (squadIdOf(entity) !== squadId) continue;
     if (entity.alive === false && entity !== includeDead) continue;
@@ -144,9 +145,13 @@ function wardFor(state, escort, payload) {
 function thunderchildHolder(state) {
   const title = state && state.story && state.story.titles && state.story.titles.byId
     && state.story.titles.byId[THUNDERCHILD_TITLE_ID];
-  if (!title || title.status !== 'held' || !title.holderKey || !Array.isArray(state.entityList)) return null;
-  return state.entityList.find((entity) => entity && entity.alive !== false && entity.data
-    && entity.data.worldRecordId === title.holderKey) || null;
+  if (!title || title.status !== 'held' || !title.holderKey) return null;
+  for (const entity of indexedShipLikeScan(state)) {
+    if (entity && entity.alive !== false && entity.data && entity.data.worldRecordId === title.holderKey) {
+      return entity;
+    }
+  }
+  return null;
 }
 
 function thunderchildAuraApplies(state, entity) {

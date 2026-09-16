@@ -20,6 +20,7 @@ import {
   stepOrbitWorld,
   trySpawnOrbitNodes,
 } from '../combat/orbitNodes.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const HOST_TYPES = new Set(['ship', 'drone']);
 
@@ -114,12 +115,7 @@ function orbitSpecForHost(state, entity) {
 function entityById(state, id) {
   if (id == null) return null;
   if (state.entities && typeof state.entities.get === 'function') {
-    const found = state.entities.get(id);
-    if (found) return found;
-  }
-  const list = state.entityList || [];
-  for (let i = 0; i < list.length; i++) {
-    if (list[i] && list[i].id === id) return list[i];
+    return state.entities.get(id) || null;
   }
   return null;
 }
@@ -134,7 +130,7 @@ function statusIdsOf(state, entity) {
 }
 
 function orbitTargets(state, host) {
-  const list = state && state.entityList ? state.entityList : [];
+  const list = indexedShipLikeScan(state);
   const out = [];
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];
@@ -159,7 +155,7 @@ function orbitTargets(state, host) {
 }
 
 function collectLiveHosts(state) {
-  const list = state && state.entityList ? state.entityList : [];
+  const list = indexedShipLikeScan(state);
   const hosts = [];
   for (let i = 0; i < list.length; i++) {
     const entity = list[i];

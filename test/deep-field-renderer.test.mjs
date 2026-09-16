@@ -4,8 +4,8 @@ import * as THREE from 'three';
 import { SECTOR_PALETTE_CLASSES } from '../src/data/sectors.js';
 import { DEEP_FIELD_VERTEX, DEEP_FIELD_FRAGMENT } from '../src/render/deepFieldDesign.js';
 import {
-  createFracturedDebrisGeometry, installDebrisVariantAttribute, resolveDebrisFinish,
-  installDeepFieldPresentation,
+  createFracturedDebrisGeometry, decorateDebrisMaterial, installDebrisVariantAttribute,
+  resolveDebrisFinish, installDeepFieldPresentation,
 } from '../src/render/deepFieldPresentation.js';
 import * as parallax from '../src/render/parallaxLayers.js';
 
@@ -17,6 +17,18 @@ function fixtureState() {
     camera: { focus: new THREE.Vector3(8191, 0, -3200), zoom: 144 },
   };
 }
+
+test('two debris paints share one fracture-normal program family', () => {
+  const a = new THREE.MeshStandardMaterial({ color: 0x8899aa });
+  const b = new THREE.MeshStandardMaterial({ color: 0xaa9988 });
+  a.customProgramCacheKey = () => `MeshStandardMaterial|${a.uuid}`;
+  b.customProgramCacheKey = () => `MeshStandardMaterial|${b.uuid}`;
+  decorateDebrisMaterial(a, true);
+  decorateDebrisMaterial(b, true);
+  assert.equal(a.customProgramCacheKey(), b.customProgramCacheKey());
+  assert.match(a.customProgramCacheKey(), /deep-field-fracture-normal-v1/);
+  assert.equal(a.customProgramCacheKey().includes(a.uuid), false);
+});
 
 test('both closed silhouettes fit one original-size geometry with finite independent normals', () => {
   const geo = createFracturedDebrisGeometry();

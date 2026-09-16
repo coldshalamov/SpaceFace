@@ -6,6 +6,7 @@
 // salvage, or sectorSim edits.
 
 import { hash32 } from '../core/rng.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { zoneAt, zoneThreat } from '../data/sectorZones.js';
 import { globalToSectorLocalForSector } from '../data/sectorCoordinates.js';
 import { wreckClassById } from '../data/wreckClasses.js';
@@ -109,10 +110,17 @@ export function wreckFieldEcology(state, fieldId) {
 
 export function listWreckFieldInhabitants(state, fieldId = null) {
   const out = [];
-  const list = state && state.entityList || [];
-  for (let i = 0; i < list.length; i++) {
-    const entity = list[i];
-    if (isWreckEcologyInhabitant(entity, fieldId)) out.push(entity);
+  const index = state && state.entityIndex;
+  const lists = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.shipLike)
+    ? [index.shipLike, index.wrecks, index.payloads, index.mines]
+    : [state && state.entityList];
+  for (let l = 0; l < lists.length; l++) {
+    const list = lists[l];
+    if (!list) continue;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (isWreckEcologyInhabitant(entity, fieldId)) out.push(entity);
+    }
   }
   return out;
 }
@@ -365,16 +373,21 @@ function nearestStructure(state, pos) {
   if (!pos || !state) return null;
   let best = null;
   let bestD = Infinity;
-  for (const entity of state.entityList || []) {
-    if (!entity || entity.alive === false || !entity.pos) continue;
-    const data = entity.data || {};
-    const isStation = entity.type === 'station' && !!data.stationId;
-    const isPlace = !!(data.placeId || data.worldOneOff);
-    if (!isStation && !isPlace) continue;
-    const d = Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z);
-    if (!(d < bestD) || d > STRUCTURE_PATCH_RANGE_WU) continue;
-    bestD = d;
-    best = entity;
+  const lists = [indexedTypeScan(state, 'stations'), indexedTypeScan(state, 'wrecks')];
+  for (let l = 0; l < lists.length; l++) {
+    const list = lists[l];
+    if (!list) continue;
+    for (const entity of list) {
+      if (!entity || entity.alive === false || !entity.pos) continue;
+      const data = entity.data || {};
+      const isStation = entity.type === 'station' && !!data.stationId;
+      const isPlace = !!(data.placeId || data.worldOneOff);
+      if (!isStation && !isPlace) continue;
+      const d = Math.hypot(entity.pos.x - pos.x, entity.pos.z - pos.z);
+      if (!(d < bestD) || d > STRUCTURE_PATCH_RANGE_WU) continue;
+      bestD = d;
+      best = entity;
+    }
   }
   return best;
 }

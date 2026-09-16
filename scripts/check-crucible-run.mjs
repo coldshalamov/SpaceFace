@@ -1,7 +1,7 @@
 // scripts/check-crucible-run.mjs — focused gate for the PQ-133.02 ten-wave shell.
 //
 // Runs the deterministic node:test files behind the ten-wave shell as child
-// processes and honours their exit codes (per CANONICAL_BUILD_MAP.md §7, awaiting
+// processes and honours their exit codes (per build_map.md §7, awaiting
 // an import of a node:test module cannot fail). Covers the wave schema + planner
 // (CRU-009/010), the phase machine (CRU-011), materialization + completion
 // (CRU-012/013), wallet/XP (CRU-014), credit chips (CRU-015), draft + refit

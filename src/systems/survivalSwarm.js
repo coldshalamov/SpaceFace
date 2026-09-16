@@ -31,6 +31,7 @@ import {
 } from '../data/survivalWaves.js';
 import { WEAPONS } from '../data/weapons.js';
 import { PULSE_WEAPON_ID, SHOVE_WEAPON_ID } from './survivalStyle.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 export {
   SWARM_CLEANUP_TICKS,
@@ -256,11 +257,11 @@ function onRoleSpawn(payload) {
 const ROLE_DRAFT_RANK = Object.freeze(['elite', 'anchor', 'disruptor', 'support']);
 
 export function liveRoleCounterVerb(state) {
-  if (!state || !Array.isArray(state.entityList)) return null;
+  if (!state) return null;
   const rank = ROLE_DRAFT_RANK;
   let best = null;
   let bestRank = Infinity;
-  for (const entity of state.entityList) {
+  for (const entity of indexedShipLikeScan(state)) {
     if (!entity || entity.alive === false) continue;
     const role = roleFromEntity(entity);
     const idx = rank.indexOf(role);

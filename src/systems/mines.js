@@ -118,8 +118,9 @@ export const mines = {
 
   update(_dt, state) {
     if (state.mode !== 'flight') return;
-    const now = state.simTime || 0;
     const list = liveMineList(state);
+    if (!list.length) return;
+    const now = state.simTime || 0;
     for (const mine of list) {
       if (!mine || !mine.alive || mine.type !== MINE_TYPE) continue;
       const data = mine.data || (mine.data = {});

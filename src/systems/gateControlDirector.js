@@ -32,6 +32,7 @@ import { hash32, mulberry32 } from '../core/rng.js';
 import { planGateScene, WING_MAX } from '../data/gateControl.js';
 import { isHostileToPlayer } from './scanner.js';
 import { makeShipEntitySpec } from './ships.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const DAY_SECONDS = 600;
 const REPEAT_COOLDOWN_S = 120;   // min gap between scenes on the SAME gate (anti toll-farm / respam)
@@ -223,7 +224,7 @@ export const gateControlDirector = {
   _gateClearOfHostiles(state, gatePos) {
     if (!gatePos) return true;
     const playerTeam = playerTeamOf(state);
-    const list = state.entityList || [];
+    const list = indexedShipLikeScan(state);
     for (const e of list) {
       if (!e || e.alive === false || e.type !== 'ship') continue;
       const dx = e.pos.x - gatePos.x, dz = e.pos.z - gatePos.z;

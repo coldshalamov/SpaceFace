@@ -107,6 +107,28 @@ test('delayed GPU completion retains immutable monotonic query and frame origins
   }]);
 });
 
+test('next query identity survives a counter reset for window cutoffs', () => {
+  const fake = createFakeTimerGl();
+  const timers = createGpuTimers(fake.gl);
+  assert.equal(timers.getCapability().nextQueryId, 1);
+  timers.setEnabled(true);
+  timers.begin('drawPreparedFrame', origin(1, 1, 1));
+  timers.end();
+  fake.completeAll();
+  timers.poll();
+  timers.reset();
+  assert.equal(timers.getCapability().queryCounts.attempted, 0);
+  assert.equal(timers.getCapability().nextQueryId, 2);
+  timers.begin('drawPreparedFrame', origin(2, 2, 2));
+  timers.end();
+  fake.completeAll();
+  timers.poll();
+  assert.equal(timers.getReport().terminals[0].queryId, 2);
+  assert.equal(timers.getCapability().nextQueryId, 3);
+  assert.notEqual(timers.getCapability().nextQueryId, timers.getCapability().queryCounts.attempted + 1);
+  timers.dispose();
+});
+
 test('nested refusal does not end the outer query and both attempts retain origins', () => {
   const fake = createFakeTimerGl();
   const timers = createGpuTimers(fake.gl);
@@ -220,7 +242,7 @@ test('renderer and bloom end only the query instance whose begin succeeded', asy
     readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8'),
     readFile(new URL('../src/render/bloom.js', import.meta.url), 'utf8'),
   ]);
-  assert.match(renderer, /const gpuQueryBegan = !!\(useGpu && gpu\.begin\('drawPreparedFrame', gpuOrigin\)\)/);
+  assert.match(renderer, /const gpuQueryBegan = postRoute !== POST_PROCESS_ROUTE\.BLOOM\s*&& !!\(useGpu && gpu\.begin\('drawPreparedFrame', gpuOrigin\)\)/);
   assert.match(renderer, /if \(gpuQueryBegan\) gpu\.end\(\)/);
   assert.match(bloom, /const gpuQueryBegan = !!\(useGpu && gpu\.begin\(label, gpuOrigin\)\)/);
   assert.match(bloom, /if \(gpuQueryBegan\) gpu\.end\(\)/);

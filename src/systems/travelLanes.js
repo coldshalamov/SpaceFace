@@ -72,6 +72,7 @@ import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { sectorLocalToGlobalForSector, sectorMembershipAtGlobal } from '../data/sectorCoordinates.js';
 import { LANE_HELIOS_TETHYS, buildLaneGeometry } from '../data/travelLaneRoutes.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 export const TRAVEL_LANE_SCHEMA = 'travel_lane_v1';
 
@@ -802,7 +803,7 @@ export const travelLanes = {
     const dx = origin.x - finite(player.pos.x);
     const dz = origin.z - finite(player.pos.z);
     if (dx * dx + dz * dz > SLING_HAULER_SPAWN_RANGE_WU * SLING_HAULER_SPAWN_RANGE_WU) return;
-    const list = state.entityList;
+    const list = indexedShipLikeScan(state);
     if (!list || !list.length) return;
     const playerId = state.playerId;
     const haulerId = this._slingHaulerId;

@@ -15,7 +15,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/eventBus.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for event bus subscription and emission and its nearest existing tests/checks.
@@ -46,7 +46,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/eventBus.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for event bus subscription and emission and its nearest existing tests/checks.
@@ -77,7 +77,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/eventBus.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for event bus subscription and emission and its nearest existing tests/checks.
@@ -108,7 +108,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/eventBus.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for event bus subscription and emission and its nearest existing tests/checks.
@@ -139,7 +139,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/eventBus.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for event bus subscription and emission and its nearest existing tests/checks.
@@ -170,7 +170,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for system registry and update ordering and its nearest existing tests/checks.
@@ -201,7 +201,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for system registry and update ordering and its nearest existing tests/checks.
@@ -232,7 +232,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for system registry and update ordering and its nearest existing tests/checks.
@@ -263,7 +263,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for system registry and update ordering and its nearest existing tests/checks.
@@ -294,7 +294,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for system registry and update ordering and its nearest existing tests/checks.
@@ -325,7 +325,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/loop.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for fixed-timestep loop and its nearest existing tests/checks.
@@ -356,7 +356,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/loop.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for fixed-timestep loop and its nearest existing tests/checks.
@@ -387,7 +387,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/loop.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for fixed-timestep loop and its nearest existing tests/checks.
@@ -418,7 +418,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/loop.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for fixed-timestep loop and its nearest existing tests/checks.
@@ -449,7 +449,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/loop.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for fixed-timestep loop and its nearest existing tests/checks.
@@ -480,7 +480,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/timeEffects.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for time-effect arbitration and its nearest existing tests/checks.
@@ -512,7 +512,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/timeEffects.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for time-effect arbitration and its nearest existing tests/checks.
@@ -544,7 +544,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/timeEffects.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for time-effect arbitration and its nearest existing tests/checks.
@@ -576,7 +576,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/timeEffects.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for time-effect arbitration and its nearest existing tests/checks.
@@ -608,7 +608,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/timeEffects.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for time-effect arbitration and its nearest existing tests/checks.
@@ -640,7 +640,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/runTransitionGuard.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for new-game/load transition guard and its nearest existing tests/checks.
@@ -671,7 +671,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/runTransitionGuard.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for new-game/load transition guard and its nearest existing tests/checks.
@@ -702,7 +702,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/runTransitionGuard.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for new-game/load transition guard and its nearest existing tests/checks.
@@ -733,7 +733,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/runTransitionGuard.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for new-game/load transition guard and its nearest existing tests/checks.
@@ -764,7 +764,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/runTransitionGuard.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for new-game/load transition guard and its nearest existing tests/checks.
@@ -795,7 +795,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/entity.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for entity store lifecycle and its nearest existing tests/checks.
@@ -826,7 +826,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/entity.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for entity store lifecycle and its nearest existing tests/checks.
@@ -857,7 +857,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/entity.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for entity store lifecycle and its nearest existing tests/checks.
@@ -888,7 +888,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/entity.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for entity store lifecycle and its nearest existing tests/checks.
@@ -919,7 +919,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/entity.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for entity store lifecycle and its nearest existing tests/checks.
@@ -950,7 +950,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/physicsAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for physics authority membrane and its nearest existing tests/checks.
@@ -982,7 +982,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/physicsAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for physics authority membrane and its nearest existing tests/checks.
@@ -1014,7 +1014,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/physicsAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for physics authority membrane and its nearest existing tests/checks.
@@ -1046,7 +1046,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/physicsAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for physics authority membrane and its nearest existing tests/checks.
@@ -1078,7 +1078,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/physicsAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for physics authority membrane and its nearest existing tests/checks.
@@ -1110,7 +1110,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/rapierCollisionWorld.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for Rapier collision-world bridge and its nearest existing tests/checks.
@@ -1141,7 +1141,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/rapierCollisionWorld.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for Rapier collision-world bridge and its nearest existing tests/checks.
@@ -1172,7 +1172,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/rapierCollisionWorld.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for Rapier collision-world bridge and its nearest existing tests/checks.
@@ -1203,7 +1203,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/rapierCollisionWorld.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for Rapier collision-world bridge and its nearest existing tests/checks.
@@ -1234,7 +1234,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/rapierCollisionWorld.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for Rapier collision-world bridge and its nearest existing tests/checks.
@@ -1265,7 +1265,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/spatialHash.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for spatial hash queries and its nearest existing tests/checks.
@@ -1296,7 +1296,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/spatialHash.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for spatial hash queries and its nearest existing tests/checks.
@@ -1327,7 +1327,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/spatialHash.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for spatial hash queries and its nearest existing tests/checks.
@@ -1358,7 +1358,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/spatialHash.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for spatial hash queries and its nearest existing tests/checks.
@@ -1389,7 +1389,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/spatialHash.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for spatial hash queries and its nearest existing tests/checks.
@@ -1420,7 +1420,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/simSnapshot.js`, `src/core/sim.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for canonical simulation snapshots and its nearest existing tests/checks.
@@ -1452,7 +1452,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/simSnapshot.js`, `src/core/sim.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for canonical simulation snapshots and its nearest existing tests/checks.
@@ -1484,7 +1484,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/simSnapshot.js`, `src/core/sim.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for canonical simulation snapshots and its nearest existing tests/checks.
@@ -1516,7 +1516,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/simSnapshot.js`, `src/core/sim.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for canonical simulation snapshots and its nearest existing tests/checks.
@@ -1548,7 +1548,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/simSnapshot.js`, `src/core/sim.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for canonical simulation snapshots and its nearest existing tests/checks.
@@ -1580,7 +1580,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/flightV3.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for live V3 flight adapter and its nearest existing tests/checks.
@@ -1612,7 +1612,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/flightV3.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for live V3 flight adapter and its nearest existing tests/checks.
@@ -1644,7 +1644,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/flightV3.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for live V3 flight adapter and its nearest existing tests/checks.
@@ -1676,7 +1676,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/flightV3.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for live V3 flight adapter and its nearest existing tests/checks.
@@ -1708,7 +1708,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/flightV3.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for live V3 flight adapter and its nearest existing tests/checks.
@@ -1740,7 +1740,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for propulsion kernel and its nearest existing tests/checks.
@@ -1772,7 +1772,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for propulsion kernel and its nearest existing tests/checks.
@@ -1804,7 +1804,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for propulsion kernel and its nearest existing tests/checks.
@@ -1836,7 +1836,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for propulsion kernel and its nearest existing tests/checks.
@@ -1868,7 +1868,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/flight/propulsionKernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for propulsion kernel and its nearest existing tests/checks.
@@ -1900,7 +1900,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/flight/flightTelemetry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for flight telemetry export and its nearest existing tests/checks.
@@ -1931,7 +1931,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/flight/flightTelemetry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for flight telemetry export and its nearest existing tests/checks.
@@ -1962,7 +1962,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/flight/flightTelemetry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for flight telemetry export and its nearest existing tests/checks.
@@ -1993,7 +1993,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/flight/flightTelemetry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for flight telemetry export and its nearest existing tests/checks.
@@ -2024,7 +2024,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/flight/flightTelemetry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for flight telemetry export and its nearest existing tests/checks.
@@ -2055,7 +2055,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/constraints/masslineController.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for Massline constraint controller and its nearest existing tests/checks.
@@ -2087,7 +2087,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/constraints/masslineController.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for Massline constraint controller and its nearest existing tests/checks.
@@ -2119,7 +2119,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/constraints/masslineController.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for Massline constraint controller and its nearest existing tests/checks.
@@ -2151,7 +2151,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/constraints/masslineController.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for Massline constraint controller and its nearest existing tests/checks.
@@ -2183,7 +2183,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/core/constraints/masslineController.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for Massline constraint controller and its nearest existing tests/checks.
@@ -2215,7 +2215,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for live input contract and its nearest existing tests/checks.
@@ -2247,7 +2247,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for live input contract and its nearest existing tests/checks.
@@ -2279,7 +2279,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for live input contract and its nearest existing tests/checks.
@@ -2311,7 +2311,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for live input contract and its nearest existing tests/checks.
@@ -2343,7 +2343,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/input.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for live input contract and its nearest existing tests/checks.
@@ -2375,7 +2375,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/stack.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for tactical AI stack driver and its nearest existing tests/checks.
@@ -2406,7 +2406,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/stack.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for tactical AI stack driver and its nearest existing tests/checks.
@@ -2437,7 +2437,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/stack.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for tactical AI stack driver and its nearest existing tests/checks.
@@ -2468,7 +2468,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/stack.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for tactical AI stack driver and its nearest existing tests/checks.
@@ -2499,7 +2499,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/stack.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for tactical AI stack driver and its nearest existing tests/checks.
@@ -2530,7 +2530,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI perception frames and its nearest existing tests/checks.
@@ -2562,7 +2562,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI perception frames and its nearest existing tests/checks.
@@ -2594,7 +2594,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI perception frames and its nearest existing tests/checks.
@@ -2626,7 +2626,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI perception frames and its nearest existing tests/checks.
@@ -2658,7 +2658,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI perception frames and its nearest existing tests/checks.
@@ -2690,7 +2690,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI engagement authority and its nearest existing tests/checks.
@@ -2722,7 +2722,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI engagement authority and its nearest existing tests/checks.
@@ -2754,7 +2754,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI engagement authority and its nearest existing tests/checks.
@@ -2786,7 +2786,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI engagement authority and its nearest existing tests/checks.
@@ -2818,7 +2818,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/engagementAuthority.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI engagement authority and its nearest existing tests/checks.
@@ -2850,7 +2850,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI squad target voting and its nearest existing tests/checks.
@@ -2881,7 +2881,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI squad target voting and its nearest existing tests/checks.
@@ -2912,7 +2912,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI squad target voting and its nearest existing tests/checks.
@@ -2943,7 +2943,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI squad target voting and its nearest existing tests/checks.
@@ -2974,7 +2974,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI squad target voting and its nearest existing tests/checks.
@@ -3005,7 +3005,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI action/physics ports and its nearest existing tests/checks.
@@ -3036,7 +3036,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI action/physics ports and its nearest existing tests/checks.
@@ -3067,7 +3067,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI action/physics ports and its nearest existing tests/checks.
@@ -3098,7 +3098,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI action/physics ports and its nearest existing tests/checks.
@@ -3129,7 +3129,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for AI action/physics ports and its nearest existing tests/checks.
@@ -3160,7 +3160,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/kernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for combat kernel and its nearest existing tests/checks.
@@ -3192,7 +3192,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/kernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for combat kernel and its nearest existing tests/checks.
@@ -3224,7 +3224,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/kernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for combat kernel and its nearest existing tests/checks.
@@ -3256,7 +3256,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/kernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for combat kernel and its nearest existing tests/checks.
@@ -3288,7 +3288,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/kernel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for combat kernel and its nearest existing tests/checks.
@@ -3320,7 +3320,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/damage.js`, `src/combat/statuses.js`, `src/combat/subsystems.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for damage, status, and subsystem resolution and its nearest existing tests/checks.
@@ -3352,7 +3352,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/damage.js`, `src/combat/statuses.js`, `src/combat/subsystems.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for damage, status, and subsystem resolution and its nearest existing tests/checks.
@@ -3384,7 +3384,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/damage.js`, `src/combat/statuses.js`, `src/combat/subsystems.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for damage, status, and subsystem resolution and its nearest existing tests/checks.
@@ -3416,7 +3416,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/damage.js`, `src/combat/statuses.js`, `src/combat/subsystems.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for damage, status, and subsystem resolution and its nearest existing tests/checks.
@@ -3448,7 +3448,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/damage.js`, `src/combat/statuses.js`, `src/combat/subsystems.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for damage, status, and subsystem resolution and its nearest existing tests/checks.
@@ -3480,7 +3480,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/attachments.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for combat attachments and tethers and its nearest existing tests/checks.
@@ -3512,7 +3512,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/attachments.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for combat attachments and tethers and its nearest existing tests/checks.
@@ -3544,7 +3544,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/attachments.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for combat attachments and tethers and its nearest existing tests/checks.
@@ -3576,7 +3576,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/attachments.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for combat attachments and tethers and its nearest existing tests/checks.
@@ -3608,7 +3608,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/combat/attachments.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for combat attachments and tethers and its nearest existing tests/checks.
@@ -3640,7 +3640,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for weapon firing system and its nearest existing tests/checks.
@@ -3672,7 +3672,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for weapon firing system and its nearest existing tests/checks.
@@ -3704,7 +3704,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for weapon firing system and its nearest existing tests/checks.
@@ -3736,7 +3736,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for weapon firing system and its nearest existing tests/checks.
@@ -3768,7 +3768,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/weapons.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for weapon firing system and its nearest existing tests/checks.
@@ -3800,7 +3800,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for beam mining system and its nearest existing tests/checks.
@@ -3832,7 +3832,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for beam mining system and its nearest existing tests/checks.
@@ -3864,7 +3864,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for beam mining system and its nearest existing tests/checks.
@@ -3896,7 +3896,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for beam mining system and its nearest existing tests/checks.
@@ -3928,7 +3928,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/mining.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for beam mining system and its nearest existing tests/checks.
@@ -3960,7 +3960,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/cargo.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for cargo single-writer API and its nearest existing tests/checks.
@@ -3991,7 +3991,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/cargo.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for cargo single-writer API and its nearest existing tests/checks.
@@ -4022,7 +4022,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/cargo.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for cargo single-writer API and its nearest existing tests/checks.
@@ -4053,7 +4053,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/cargo.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for cargo single-writer API and its nearest existing tests/checks.
@@ -4084,7 +4084,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/cargo.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for cargo single-writer API and its nearest existing tests/checks.
@@ -4115,7 +4115,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/economy.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for market and credit economy and its nearest existing tests/checks.
@@ -4147,7 +4147,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/economy.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for market and credit economy and its nearest existing tests/checks.
@@ -4179,7 +4179,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/economy.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for market and credit economy and its nearest existing tests/checks.
@@ -4211,7 +4211,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/economy.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for market and credit economy and its nearest existing tests/checks.
@@ -4243,7 +4243,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/economy.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for market and credit economy and its nearest existing tests/checks.
@@ -4275,7 +4275,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for world and sector runtime and its nearest existing tests/checks.
@@ -4306,7 +4306,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for world and sector runtime and its nearest existing tests/checks.
@@ -4337,7 +4337,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for world and sector runtime and its nearest existing tests/checks.
@@ -4368,7 +4368,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for world and sector runtime and its nearest existing tests/checks.
@@ -4399,7 +4399,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for world and sector runtime and its nearest existing tests/checks.
@@ -4430,7 +4430,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/factions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for faction reputation writer and its nearest existing tests/checks.
@@ -4461,7 +4461,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/factions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for faction reputation writer and its nearest existing tests/checks.
@@ -4492,7 +4492,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/factions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for faction reputation writer and its nearest existing tests/checks.
@@ -4523,7 +4523,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/factions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for faction reputation writer and its nearest existing tests/checks.
@@ -4554,7 +4554,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/factions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for faction reputation writer and its nearest existing tests/checks.
@@ -4585,7 +4585,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for mission board and objective engine and its nearest existing tests/checks.
@@ -4616,7 +4616,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for mission board and objective engine and its nearest existing tests/checks.
@@ -4647,7 +4647,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for mission board and objective engine and its nearest existing tests/checks.
@@ -4678,7 +4678,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for mission board and objective engine and its nearest existing tests/checks.
@@ -4709,7 +4709,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/missions.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for mission board and objective engine and its nearest existing tests/checks.
@@ -4740,7 +4740,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/onboarding.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for first-hour onboarding arbiter and its nearest existing tests/checks.
@@ -4771,7 +4771,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/onboarding.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for first-hour onboarding arbiter and its nearest existing tests/checks.
@@ -4802,7 +4802,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/onboarding.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for first-hour onboarding arbiter and its nearest existing tests/checks.
@@ -4833,7 +4833,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/onboarding.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for first-hour onboarding arbiter and its nearest existing tests/checks.
@@ -4864,7 +4864,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/systems/onboarding.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for first-hour onboarding arbiter and its nearest existing tests/checks.
@@ -4895,7 +4895,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for versioned save system and its nearest existing tests/checks.
@@ -4926,7 +4926,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for versioned save system and its nearest existing tests/checks.
@@ -4957,7 +4957,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for versioned save system and its nearest existing tests/checks.
@@ -4988,7 +4988,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for versioned save system and its nearest existing tests/checks.
@@ -5019,7 +5019,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for versioned save system and its nearest existing tests/checks.
@@ -5050,7 +5050,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ui/screenManager.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for screen manager pause ownership and its nearest existing tests/checks.
@@ -5081,7 +5081,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ui/screenManager.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for screen manager pause ownership and its nearest existing tests/checks.
@@ -5112,7 +5112,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ui/screenManager.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for screen manager pause ownership and its nearest existing tests/checks.
@@ -5143,7 +5143,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ui/screenManager.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for screen manager pause ownership and its nearest existing tests/checks.
@@ -5174,7 +5174,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/ui/screenManager.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for screen manager pause ownership and its nearest existing tests/checks.
@@ -5205,7 +5205,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/render/assetLoader.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for authored asset loader and its nearest existing tests/checks.
@@ -5237,7 +5237,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/render/assetLoader.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for authored asset loader and its nearest existing tests/checks.
@@ -5269,7 +5269,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/render/assetLoader.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for authored asset loader and its nearest existing tests/checks.
@@ -5301,7 +5301,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/render/assetLoader.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for authored asset loader and its nearest existing tests/checks.
@@ -5333,7 +5333,7 @@ Add focused, behavior-level regression coverage around live ownership seams with
 
 **Inspect:** `src/render/assetLoader.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `docs/MODULE_MAP.md`
 
 **Work:**
 1. Locate the selected live owner for authored asset loader and its nearest existing tests/checks.

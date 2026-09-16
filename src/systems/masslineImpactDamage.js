@@ -17,14 +17,14 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { isMasslineTumbling } from '../combat/tumbleStatus.js';
 import { isHostileToPlayer } from './scanner.js';
 
-// Mirror the shipped whip-damage scaling (combat.js: 1/1600 momentum scale, 45 ceiling) so the
-// two halves of one impact stay proportionate.
-const MOMENTUM_DAMAGE_SCALE = 1 / 1600;
-const WHIP_RECOIL_FRACTION = 0.35;   // thrown ship's share of the damage its impact dealt
-const RECOIL_DAMAGE_MAX = 24;
-const TUMBLE_IMPACT_MIN_DP = 900;    // physics:impact dp floor before a tumble contact hurts
-const TUMBLE_DAMAGE_SCALE = 1 / 220; // dp -> damage (dp is impulse x material impactScale)
-const TUMBLE_DAMAGE_MAX = 30;
+// Mirror the whip-damage scaling (combat.js) so the two halves of one impact stay proportionate.
+const MOMENTUM_DAMAGE_SCALE = 1 / 250;
+const WHIP_RECOIL_FRACTION = 0.65;   // thrown ship's share of the damage its impact dealt
+const RECOIL_DAMAGE_MAX = 300;
+const TUMBLE_IMPACT_MIN_DP = 400;    // physics:impact dp floor before a tumble contact hurts
+const TUMBLE_DAMAGE_SCALE = 1 / 60;  // dp -> damage (dp is impulse x material impactScale)
+const TUMBLE_DAMAGE_MAX = 300;
+const MONOFILAMENT_DAMAGE_SCALE = 1 / 1600;
 const MONOFILAMENT_DAMAGE_MAX = 35;
 const DAMAGEABLE = new Set(['ship', 'drone']);
 
@@ -94,7 +94,7 @@ export const masslineImpactDamage = {
     const player = this._entity(this.state.playerId);
     if (!player || !isHostileToPlayer(victim, player.team, this.state)) return;
     const momentum = Math.max(0, Number(payload.momentum) || 0);
-    const damage = Math.min(MONOFILAMENT_DAMAGE_MAX, momentum * MOMENTUM_DAMAGE_SCALE);
+    const damage = Math.min(MONOFILAMENT_DAMAGE_MAX, momentum * MONOFILAMENT_DAMAGE_SCALE);
     if (damage <= 0) return;
     this._routeKinetic(victim, damage, 'massline_monofilament_sweep', payload.pos);
   },

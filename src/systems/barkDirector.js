@@ -16,7 +16,7 @@ import { isHostileToPlayer } from './scanner.js';
 import { shouldOwnerThink } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import { ensureActivityClassified } from '../world/activityRuntime.js';
-import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { forEachLivingWorldActor, indexedTypeScan } from '../world/livingWorldViews.js';
 import { activeHullIdentity } from '../data/hullIdentity.js';
 import { livingHullNotoriety } from '../core/livingHull.js';
 import { adventureStunts, completeWitness, incidentIdentity, knownStuntTitles, observerProfile, STUNT_SITUATION_LINES, STUNT_TITLE_RULES, witnessLineOfSight } from '../combat/stuntWitnesses.js';
@@ -703,14 +703,7 @@ function cargoSpillRecord(own) {
 function entityFromState(state, id) {
   if (id == null || !state) return null;
   if (state.entities && typeof state.entities.get === 'function') {
-    const found = state.entities.get(id);
-    if (found) return found;
-  }
-  if (Array.isArray(state.entityList)) {
-    for (let i = 0; i < state.entityList.length; i++) {
-      const entity = state.entityList[i];
-      if (entity && entity.id === id) return entity;
-    }
+    return state.entities.get(id) || null;
   }
   return null;
 }
@@ -760,7 +753,7 @@ function resolveNamedCargoIncident(state, payload, eventName) {
         isCivilian: true,
       });
     if (!identity || !identity.ownerName) {
-      const list = state.entityList || [];
+      const list = indexedTypeScan(state, 'payloads');
       for (let i = 0; i < list.length; i++) {
         const pod = namedPodIdentity(list[i]);
         if (pod && (list[i].data && list[i].data.sourceVictimId === (victim && victim.id))) {
@@ -787,7 +780,7 @@ function resolveNamedCargoIncident(state, payload, eventName) {
       isCivilian: true,
     });
     if (!identity || !identity.ownerName) {
-      const list = state.entityList || [];
+      const list = indexedTypeScan(state, 'payloads');
       for (let i = 0; i < list.length; i++) {
         const pod = namedPodIdentity(list[i]);
         if (!pod) continue;

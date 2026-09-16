@@ -863,6 +863,15 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       }
 
       diagnostics.lastLeftoverMs = Math.max(0, frameBudgetMs - presentationMs);
+      if (!skipPresentation && !capSkip && diagnostics.lastLeftoverMs >= 2 && presentationMs < frameBudgetMs) {
+        const drain = state.render && state.render.drainAfterPresentCompile;
+        if (typeof drain === 'function') {
+          drain({
+            leftoverMs: diagnostics.lastLeftoverMs,
+            late: presentationMs > fixedDt * 2000,
+          });
+        }
+      }
       if (presentFirst) {
         const latePresent = recoverFromPresentationOverrun || presentationMs > fixedDt * 2000;
         leftoverStepCap = restoring ? undefined : leftoverSimStepCap({ latePresent, longFrame: true });

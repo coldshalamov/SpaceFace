@@ -272,74 +272,85 @@ const CSS = `
    Mono for numerals. Every size is in px at or above the 12px floor — the previous block sized
    text in em against the 15px root (.62em = 9.3px), which check:type-floor cannot see. */
 #sf-automation { width: min(94vw, 1100px); height: min(88vh, 860px); display: flex; flex-direction: column;
-  background: color-mix(in srgb, var(--panel) 96%, transparent); border: 1px solid var(--panel-edge);
-  border-radius: 6px; box-shadow: 0 24px 64px rgba(0,0,0,.6); overflow: hidden; pointer-events: auto;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--panel) 96%, #0d1527) 0%, color-mix(in srgb, var(--panel) 92%, #050a14) 100%);
+  border: 1px solid var(--panel-edge); border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 24px 64px rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  overflow: hidden; pointer-events: auto;
   font-family: var(--sf-body-face); font-size: 14px; color: var(--ink); }
-#sf-automation .au-head { padding: 18px 24px 12px; border-bottom: 1px solid var(--panel-edge);
+#sf-automation .au-head { padding: 18px 24px 14px; border-bottom: 1px solid var(--panel-edge);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
   display: flex; flex-direction: column; gap: 12px; }
 #sf-automation .au-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 #sf-automation .au-top-right { display: flex; align-items: center; gap: 16px; }
-#sf-automation .au-title { font-family: var(--sf-display-face); font-weight: 600; font-size: 19px; line-height: 1.2;
-  letter-spacing: .04em; text-transform: uppercase; color: var(--ink); }
-#sf-automation .au-credits { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink); }
-#sf-automation .au-close { font-family: var(--sf-body-face); font-weight: 500; font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
-  padding: 6px 14px; border-radius: 3px; color: var(--ink-dim); background: transparent; border: 1px solid var(--panel-edge); box-shadow: none; }
-#sf-automation .au-close:hover { color: var(--ink); border-color: var(--accent); }
+#sf-automation .au-title { font-family: var(--sf-display-face); font-weight: 700; font-size: 19px; line-height: 1.2;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--ink); display: flex; align-items: center; gap: 10px; }
+#sf-automation .au-title::before { content: ''; display: inline-block; width: 4px; height: 16px; background: var(--accent); border-radius: 2px; box-shadow: 0 0 8px var(--accent); }
+#sf-automation .au-credits { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink); background: color-mix(in srgb, var(--panel-2) 60%, transparent); padding: 4px 10px; border-radius: 3px; border: 1px solid var(--panel-edge); }
+#sf-automation .au-close { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  padding: 6px 14px; border-radius: 4px; color: var(--ink-dim); background: color-mix(in srgb, var(--panel-2) 50%, transparent); border: 1px solid var(--panel-edge); box-shadow: none; cursor: pointer; transition: all .15s ease; }
+#sf-automation .au-close:hover { color: var(--ink); border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); translate: 0 -1px; }
+#sf-automation .au-close:active { translate: 0 1px; }
 #sf-automation .au-close:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
-#sf-automation .au-income { display: flex; align-items: center; gap: 14px; font-size: 13px; }
-#sf-automation .au-income .lbl { color: var(--ink-dim); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
-#sf-automation .au-income .val { color: var(--ink); font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 500; }
-#sf-automation .au-capbar { flex: 1; height: 8px; border-radius: 2px; background: color-mix(in srgb, var(--panel-2) 80%, transparent);
-  border: 1px solid var(--panel-edge); position: relative; overflow: hidden; min-width: 120px; }
+#sf-automation .au-income { display: flex; align-items: center; gap: 14px; font-size: 13px; background: color-mix(in srgb, var(--panel) 40%, transparent); padding: 8px 12px; border-radius: 4px; border: 1px solid var(--panel-edge); }
+#sf-automation .au-income .lbl { color: var(--ink-dim); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+#sf-automation .au-income .val { color: var(--accent); font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600; text-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent); }
+#sf-automation .au-capbar { flex: 1; height: 8px; border-radius: 3px; background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--panel-edge); position: relative; overflow: hidden; min-width: 120px; box-shadow: inset 0 1px 2px rgba(0,0,0,0.5); }
 #sf-automation .au-capfill { position: absolute; left: 0; top: 0; bottom: 0; width: 0%;
-  background: var(--accent); transition: width .18s ease; }
+  background: linear-gradient(90deg, #38bdf8 0%, var(--accent) 100%); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 50%, transparent); transition: width .18s ease; }
 #sf-automation .au-captxt { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ink-dim); white-space: nowrap; }
-#sf-automation .au-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
-#sf-automation .au-tab { padding: 6px 14px; font-family: var(--sf-body-face); font-weight: 500; font-size: 12px; letter-spacing: .05em; text-transform: uppercase;
-  color: var(--ink-dim); background: color-mix(in srgb, var(--panel) 60%, transparent); border: 1px solid var(--panel-edge-2); border-radius: 3px; box-shadow: none; }
-#sf-automation .au-tab:hover { color: var(--ink); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+#sf-automation .au-tabs { display: flex; gap: 6px; flex-wrap: wrap; background: rgba(0, 0, 0, 0.25); padding: 4px; border-radius: 6px; border: 1px solid var(--panel-edge); width: fit-content; }
+#sf-automation .au-tab { padding: 6px 16px; font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-dim); background: transparent; border: 1px solid transparent; border-radius: 4px; box-shadow: none; cursor: pointer; transition: all .15s ease; }
+#sf-automation .au-tab:hover { color: var(--ink); background: rgba(255, 255, 255, 0.05); }
 #sf-automation .au-tab:focus-visible { outline: 1px solid var(--accent); outline-offset: 2px; }
-#sf-automation .au-tab.active { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; text-shadow: none; }
-#sf-automation .au-body { flex: 1; overflow-y: auto; padding: 16px 24px 20px; display: flex; flex-direction: column; gap: 18px; }
-#sf-automation .au-command { display: grid; grid-template-columns: minmax(230px, 1.08fr) minmax(0, 1.92fr);
-  gap: 12px; align-items: stretch; }
+#sf-automation .au-tab.active { background: color-mix(in srgb, var(--accent) 22%, var(--panel)); border-color: color-mix(in srgb, var(--accent) 70%, transparent); color: var(--ink); font-weight: 700; box-shadow: inset 0 0 10px color-mix(in srgb, var(--accent) 25%, transparent), 0 1px 4px rgba(0,0,0,0.3); text-shadow: none; }
+#sf-automation .au-body { flex: 1; overflow-y: auto; padding: 18px 24px 24px; display: flex; flex-direction: column; gap: 18px; scrollbar-width: thin; scrollbar-color: rgba(148, 178, 205, 0.25) transparent; }
+#sf-automation .au-command { display: grid; grid-template-columns: minmax(240px, 1.08fr) minmax(0, 1.92fr);
+  gap: 14px; align-items: stretch; }
 #sf-automation .au-next, #sf-automation .au-summary {
-  border: 1px solid var(--panel-edge); border-radius: 4px; background: color-mix(in srgb, var(--panel-2) 55%, transparent);
-  padding: 14px 15px; }
-#sf-automation .au-next { display: flex; flex-direction: column; gap: 8px; }
-#sf-automation .au-kicker { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--ink-dim); }
+  border: 1px solid var(--panel-edge); border-radius: 6px; background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+  padding: 16px 18px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04); }
+#sf-automation .au-next { display: flex; flex-direction: column; gap: 8px; border-left: 2px solid var(--accent); }
+#sf-automation .au-kicker { font-family: var(--sf-body-face); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--accent); }
 #sf-automation .au-next-title { font-size: 15px; font-weight: 600; color: var(--ink); }
-#sf-automation .au-next-body { font-size: 13px; line-height: 1.45; color: var(--ink-dim); }
-#sf-automation .au-next-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: auto; }
+#sf-automation .au-next-body { font-size: 13px; line-height: 1.5; color: var(--ink-dim); }
+#sf-automation .au-next-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 6px; }
 #sf-automation .au-next-meta { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-dim); }
-#sf-automation .au-cta { padding: 8px 14px; white-space: nowrap; border: 1px solid var(--accent); border-radius: 3px;
-  background: var(--accent); color: var(--bg); font-weight: 600; font-size: 13px; box-shadow: none; }
-#sf-automation .au-cta:hover { background: color-mix(in srgb, var(--accent) 84%, white); }
+#sf-automation .au-cta { padding: 8px 16px; white-space: nowrap; border: 1px solid var(--accent); border-radius: 4px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 90%, #fff) 0%, var(--accent) 100%); color: #020617; font-weight: 700; font-size: 13px; box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 35%, transparent); cursor: pointer; transition: all .15s ease; }
+#sf-automation .au-cta:hover { filter: brightness(1.1); translate: 0 -1px; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 50%, transparent); }
+#sf-automation .au-cta:active { translate: 0 1px; box-shadow: 0 1px 4px color-mix(in srgb, var(--accent) 25%, transparent); }
 #sf-automation .au-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
 #sf-automation .au-metric { min-width: 0; border: 1px solid var(--panel-edge); border-radius: 4px;
-  background: color-mix(in srgb, var(--panel) 70%, transparent); padding: 10px 11px; }
+  background: color-mix(in srgb, var(--panel) 70%, transparent); padding: 10px 12px; transition: border-color .15s ease, background .15s ease; }
+#sf-automation .au-metric:hover { border-color: var(--panel-edge-2); background: color-mix(in srgb, var(--panel) 85%, transparent); }
 #sf-automation .au-metric .k { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
   color: var(--ink-dim); }
-#sf-automation .au-metric .v { margin-top: 4px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 500; font-size: 15px; color: var(--ink); }
-#sf-automation .au-metric .s { margin-top: 3px; font-size: 12px; line-height: 1.3; color: var(--ink-dim); }
+#sf-automation .au-metric .v { margin-top: 4px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-weight: 600; font-size: 15px; color: var(--ink); }
+#sf-automation .au-metric .s { margin-top: 3px; font-size: 12px; line-height: 1.35; color: var(--ink-dim); }
 #sf-automation .au-note { font-size: 13px; color: var(--ink-dim); line-height: 1.45; margin-top: 6px; }
-#sf-automation .au-section-h { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase;
-  color: var(--ink-dim); border-bottom: 1px solid var(--panel-edge); padding-bottom: 6px; margin-bottom: 2px; }
-#sf-automation .au-card { display: flex; align-items: center; gap: 14px; padding: 12px 14px;
-  background: color-mix(in srgb, var(--panel-2) 55%, transparent); border: 1px solid var(--panel-edge); border-radius: 4px; }
+#sf-automation .au-section-h { font-family: var(--sf-body-face); font-weight: 700; font-size: 12px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ink-dim); border-bottom: 1px solid var(--panel-edge); padding-bottom: 8px; margin-bottom: 2px; }
+#sf-automation .au-card { display: flex; align-items: center; gap: 16px; padding: 14px 16px;
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent); border: 1px solid var(--panel-edge); border-radius: 6px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03); transition: border-color .15s ease, background .15s ease, box-shadow .15s ease; }
+#sf-automation .au-card:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--panel-edge)); background: color-mix(in srgb, var(--panel-2) 70%, transparent); box-shadow: 0 4px 16px rgba(0,0,0,0.25); }
 #sf-automation .au-card .nm { font-size: 15px; font-weight: 600; color: var(--ink); }
-#sf-automation .au-card .meta { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-dim); margin-top: 4px;
+#sf-automation .au-card .meta { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 13px; color: var(--ink-dim); margin-top: 5px;
   display: flex; gap: 14px; flex-wrap: wrap; }
 #sf-automation .au-card .grow { flex: 1; min-width: 0; }
-#sf-automation .au-card button { padding: 7px 14px; white-space: nowrap; font-size: 13px; border-radius: 3px; box-shadow: none; }
-#sf-automation .au-card.au-outpost { align-items: stretch; padding: 13px 14px; }
+#sf-automation .au-card button { padding: 7px 16px; white-space: nowrap; font-size: 13px; border-radius: 4px; box-shadow: none; cursor: pointer; transition: all .15s ease; }
+#sf-automation .au-card button:not(:disabled):active { translate: 0 1px; }
+#sf-automation .au-card.au-outpost { align-items: stretch; padding: 14px 16px; }
 #sf-automation .au-card.au-outpost > .au-recall { align-self: center; min-height: 38px; }
 #sf-automation .au-outpost-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 #sf-automation .au-outpost-head .nm { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 #sf-automation .au-outpost-flow { display: grid; grid-template-columns: minmax(150px, 1fr) 30px minmax(145px, .92fr) 30px minmax(170px, 1.12fr);
-  align-items: stretch; gap: 5px; margin-top: 9px; padding: 9px 10px; border-top: 1px solid var(--panel-edge);
-  border-bottom: 1px solid var(--panel-edge); background: color-mix(in srgb, var(--panel) 50%, transparent); }
+  align-items: stretch; gap: 5px; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--panel-edge); border-radius: 4px;
+  background: color-mix(in srgb, var(--panel) 60%, transparent); }
 #sf-automation .au-flow-node, #sf-automation .au-flow-core { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 3px; }
 #sf-automation .au-flow-core { padding: 5px 8px; text-align: center; border-left: 1px solid var(--panel-edge); border-right: 1px solid var(--panel-edge); }
 #sf-automation .au-flow-k { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
@@ -347,8 +358,8 @@ const CSS = `
 #sf-automation .au-flow-core strong { white-space: normal; }
 #sf-automation .au-flow-v { font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; font-size: 12px; color: var(--ink-dim); }
 #sf-automation .au-flow-v + .au-flow-v { margin-top: 1px; }
-#sf-automation .au-storebar { width: 72px; height: 5px; margin-left: 5px; border-radius: 1px; background: color-mix(in srgb, var(--panel-2) 90%, transparent);
-  overflow: hidden; display: inline-block; vertical-align: middle; }
+#sf-automation .au-storebar { width: 72px; height: 6px; margin-left: 5px; border-radius: 2px; background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--panel-edge); overflow: hidden; display: inline-block; vertical-align: middle; }
 #sf-automation .au-storebar > i { display: block; height: 100%; }
 #sf-automation .au-flow-link { align-self: center; position: relative; height: 1px; background: var(--panel-edge-2); }
 #sf-automation .au-flow-link::after { content: ''; position: absolute; right: -1px; top: -3px; width: 6px; height: 6px;
@@ -370,36 +381,40 @@ const CSS = `
 #sf-automation .au-operation-status.bad { color: var(--danger); }
 #sf-automation .au-operation-status.neutral { color: var(--ink-dim); }
 #sf-automation .au-miner-ops { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px; margin-top: 8px; padding: 8px 10px; border-top: 1px solid var(--panel-edge);
-  background: color-mix(in srgb, var(--panel) 50%, transparent); }
+  gap: 8px; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--panel-edge); border-radius: 4px;
+  background: color-mix(in srgb, var(--panel) 60%, transparent); }
 #sf-automation .au-miner-ops .au-flow-k { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-dim); }
 #sf-automation .au-miner-ops strong { display: block; margin-top: 2px; font-size: 13px; color: var(--ink); }
-#sf-automation .au-card button.au-refuel { background: transparent; border: 1px solid var(--accent); color: var(--accent); }
-#sf-automation .au-outpost-detail { margin-top: 6px; font-size: 13px; color: var(--ink-dim); }
-#sf-automation .au-outpost-detail summary { width: fit-content; cursor: pointer; color: var(--accent); }
+#sf-automation .au-card button.au-refuel { background: color-mix(in srgb, var(--accent) 15%, transparent); border: 1px solid var(--accent); color: var(--accent); font-weight: 600; }
+#sf-automation .au-card button.au-refuel:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); translate: 0 -1px; box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 30%, transparent); }
+#sf-automation .au-outpost-detail { margin-top: 8px; font-size: 13px; color: var(--ink-dim); }
+#sf-automation .au-outpost-detail summary { width: fit-content; cursor: pointer; color: var(--accent); font-weight: 600; }
 #sf-automation .au-outpost-detail summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-#sf-automation .au-outpost-detail .au-detail-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; }
+#sf-automation .au-outpost-detail .au-detail-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 6px; font-family: var(--sf-data-face); font-variant-numeric: tabular-nums; background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 4px; border: 1px solid var(--panel-edge); }
 /* Verbs: the primary (buy / deploy) is the one accent fill; ordering is an accent outline; recall
    is destructive and stays a quiet danger outline. */
-#sf-automation .au-buy { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
-#sf-automation .au-buy:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 84%, white); border-color: var(--accent); }
-#sf-automation .au-order { background: transparent; border-color: var(--accent); color: var(--ink); }
-#sf-automation .au-recall { background: transparent; border-color: color-mix(in srgb, var(--danger) 55%, transparent); color: var(--danger); }
-#sf-automation .au-empty { font-size: 13px; color: var(--ink-dim); padding: 6px 0; line-height: 1.45; }
-#sf-automation .au-pill { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 2px;
-  border: 1px solid var(--panel-edge); color: var(--ink-dim); }
-#sf-automation .au-pill.ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 50%, transparent); }
-#sf-automation .au-pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); }
-#sf-automation .au-pill.bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
-#sf-automation .au-program-row { display:flex; align-items:center; gap:8px; margin-top:6px; }
+#sf-automation .au-buy { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 90%, #fff) 0%, var(--accent) 100%); border-color: var(--accent); color: #020617; font-weight: 700; box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 30%, transparent); }
+#sf-automation .au-buy:hover:not(:disabled) { filter: brightness(1.1); translate: 0 -1px; box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 45%, transparent); }
+#sf-automation .au-buy:disabled { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.5); }
+#sf-automation .au-order { background: color-mix(in srgb, var(--panel-2) 60%, transparent); border-color: var(--accent); color: var(--ink); font-weight: 600; }
+#sf-automation .au-order:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 18%, transparent); translate: 0 -1px; border-color: var(--accent); }
+#sf-automation .au-recall { background: color-mix(in srgb, var(--danger) 10%, transparent); border-color: color-mix(in srgb, var(--danger) 50%, transparent); color: var(--danger); font-weight: 600; }
+#sf-automation .au-recall:hover:not(:disabled) { background: color-mix(in srgb, var(--danger) 22%, transparent); border-color: var(--danger); translate: 0 -1px; box-shadow: 0 0 10px color-mix(in srgb, var(--danger) 30%, transparent); }
+#sf-automation .au-empty { font-size: 13px; color: var(--ink-dim); padding: 12px 14px; line-height: 1.5; background: color-mix(in srgb, var(--panel-2) 30%, transparent); border: 1px dashed var(--panel-edge); border-radius: 4px; }
+#sf-automation .au-pill { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px;
+  border: 1px solid var(--panel-edge); color: var(--ink-dim); background: rgba(0,0,0,0.25); }
+#sf-automation .au-pill.ok { color: var(--good); border-color: color-mix(in srgb, var(--good) 50%, transparent); background: color-mix(in srgb, var(--good) 12%, transparent); }
+#sf-automation .au-pill.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, transparent); background: color-mix(in srgb, var(--warn) 12%, transparent); }
+#sf-automation .au-pill.bad { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); background: color-mix(in srgb, var(--danger) 12%, transparent); }
+#sf-automation .au-program-row { display:flex; align-items:center; gap:8px; margin-top:8px; }
 #sf-automation .au-program-label { font-size: 12px; font-weight: 600; color: var(--ink-dim); letter-spacing: .06em; text-transform: uppercase; }
 #sf-automation .au-program { font-family: var(--sf-body-face); font-size: 13px; padding: 4px 8px; border-radius: 3px;
   background: var(--panel); color: var(--ink); border: 1px solid var(--panel-edge); cursor: pointer; }
-#sf-automation .au-program-badge { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; padding: 1px 6px; border-radius: 2px;
-  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); margin-left: 6px; }
-#sf-automation .au-minibar { width: 90px; height: 6px; border-radius: 2px; background: color-mix(in srgb, var(--panel-2) 90%, transparent);
-  overflow: hidden; display: inline-block; vertical-align: middle; }
-#sf-automation .au-minibar > i { display: block; height: 100%; background: var(--good); }
+#sf-automation .au-program-badge { font-family: var(--sf-body-face); font-weight: 600; font-size: 12px; padding: 2px 8px; border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); margin-left: 6px; }
+#sf-automation .au-minibar { width: 90px; height: 6px; border-radius: 2px; background: rgba(0, 0, 0, 0.45);
+  border: 1px solid var(--panel-edge); overflow: hidden; display: inline-block; vertical-align: middle; }
+#sf-automation .au-minibar > i { display: block; height: 100%; background: linear-gradient(90deg, #10b981, #34d399); }
 #sf-automation .au-locked { font-size: 13px; color: var(--warn); }
 @media (max-width: 760px) {
   #sf-automation .au-command { grid-template-columns: 1fr; }

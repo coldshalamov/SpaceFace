@@ -15,7 +15,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/data/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace whole-ship and modular asset routing through the current live owners and selection seams.
@@ -48,7 +48,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/data/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace whole-ship and modular asset routing through the current live owners and selection seams.
@@ -81,7 +81,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/data/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace whole-ship and modular asset routing through the current live owners and selection seams.
@@ -114,7 +114,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/data/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace whole-ship and modular asset routing through the current live owners and selection seams.
@@ -147,7 +147,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/assetLoader.js`, `src/data/ships.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace whole-ship and modular asset routing through the current live owners and selection seams.
@@ -180,7 +180,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/renderer.js`, `src/systems/traffic.js`, `src/systems/aiEncounter.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace NPC and enemy authored-ship visibility through the current live owners and selection seams.
@@ -213,7 +213,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/renderer.js`, `src/systems/traffic.js`, `src/systems/aiEncounter.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace NPC and enemy authored-ship visibility through the current live owners and selection seams.
@@ -246,7 +246,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/renderer.js`, `src/systems/traffic.js`, `src/systems/aiEncounter.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace NPC and enemy authored-ship visibility through the current live owners and selection seams.
@@ -279,7 +279,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/renderer.js`, `src/systems/traffic.js`, `src/systems/aiEncounter.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace NPC and enemy authored-ship visibility through the current live owners and selection seams.
@@ -312,7 +312,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/partsLibrary.js`, `src/render/renderer.js`, `src/systems/traffic.js`, `src/systems/aiEncounter.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace NPC and enemy authored-ship visibility through the current live owners and selection seams.
@@ -345,7 +345,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/main.js`, `src/render/assetLoader.js`, `src/render/partsLibrary.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace new-game authored-asset readiness through the current live owners and selection seams.
@@ -377,7 +377,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/main.js`, `src/render/assetLoader.js`, `src/render/partsLibrary.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace new-game authored-asset readiness through the current live owners and selection seams.
@@ -409,7 +409,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/main.js`, `src/render/assetLoader.js`, `src/render/partsLibrary.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace new-game authored-asset readiness through the current live owners and selection seams.
@@ -441,7 +441,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/main.js`, `src/render/assetLoader.js`, `src/render/partsLibrary.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace new-game authored-asset readiness through the current live owners and selection seams.
@@ -473,7 +473,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/main.js`, `src/render/assetLoader.js`, `src/render/partsLibrary.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace new-game authored-asset readiness through the current live owners and selection seams.
@@ -505,7 +505,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/visualFactory.js`, `src/render/assetLoader.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace station and world-prop visibility through the current live owners and selection seams.
@@ -537,7 +537,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/visualFactory.js`, `src/render/assetLoader.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace station and world-prop visibility through the current live owners and selection seams.
@@ -569,7 +569,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/visualFactory.js`, `src/render/assetLoader.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace station and world-prop visibility through the current live owners and selection seams.
@@ -601,7 +601,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/visualFactory.js`, `src/render/assetLoader.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace station and world-prop visibility through the current live owners and selection seams.
@@ -633,7 +633,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/visualFactory.js`, `src/render/assetLoader.js`, `src/systems/world.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace station and world-prop visibility through the current live owners and selection seams.
@@ -665,7 +665,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/spaceBackground.js`, `src/render/starfield.js`, `src/render/parallaxLayers.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace background field blips and stray geometry through the current live owners and selection seams.
@@ -697,7 +697,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/spaceBackground.js`, `src/render/starfield.js`, `src/render/parallaxLayers.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace background field blips and stray geometry through the current live owners and selection seams.
@@ -729,7 +729,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/spaceBackground.js`, `src/render/starfield.js`, `src/render/parallaxLayers.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace background field blips and stray geometry through the current live owners and selection seams.
@@ -761,7 +761,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/spaceBackground.js`, `src/render/starfield.js`, `src/render/parallaxLayers.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace background field blips and stray geometry through the current live owners and selection seams.
@@ -793,7 +793,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/spaceBackground.js`, `src/render/starfield.js`, `src/render/parallaxLayers.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace background field blips and stray geometry through the current live owners and selection seams.
@@ -825,7 +825,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/vfx.js`, `src/render/ships/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace thruster history trail through the current live owners and selection seams.
@@ -858,7 +858,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/vfx.js`, `src/render/ships/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace thruster history trail through the current live owners and selection seams.
@@ -891,7 +891,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/vfx.js`, `src/render/ships/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace thruster history trail through the current live owners and selection seams.
@@ -924,7 +924,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/vfx.js`, `src/render/ships/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace thruster history trail through the current live owners and selection seams.
@@ -957,7 +957,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/vfx.js`, `src/render/ships/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace thruster history trail through the current live owners and selection seams.
@@ -990,7 +990,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/radar.js`, `src/ui/screens/localmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace radar and minimap glyph layer through the current live owners and selection seams.
@@ -1022,7 +1022,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/radar.js`, `src/ui/screens/localmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace radar and minimap glyph layer through the current live owners and selection seams.
@@ -1054,7 +1054,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/radar.js`, `src/ui/screens/localmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace radar and minimap glyph layer through the current live owners and selection seams.
@@ -1086,7 +1086,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/radar.js`, `src/ui/screens/localmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace radar and minimap glyph layer through the current live owners and selection seams.
@@ -1118,7 +1118,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/radar.js`, `src/ui/screens/localmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace radar and minimap glyph layer through the current live owners and selection seams.
@@ -1150,7 +1150,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace full starmap navigation through the current live owners and selection seams.
@@ -1183,7 +1183,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace full starmap navigation through the current live owners and selection seams.
@@ -1216,7 +1216,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace full starmap navigation through the current live owners and selection seams.
@@ -1249,7 +1249,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace full starmap navigation through the current live owners and selection seams.
@@ -1282,7 +1282,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/screens/starmap.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace full starmap navigation through the current live owners and selection seams.
@@ -1315,7 +1315,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace target panel and in-world target cues through the current live owners and selection seams.
@@ -1346,7 +1346,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace target panel and in-world target cues through the current live owners and selection seams.
@@ -1377,7 +1377,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace target panel and in-world target cues through the current live owners and selection seams.
@@ -1408,7 +1408,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace target panel and in-world target cues through the current live owners and selection seams.
@@ -1439,7 +1439,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/targetPanel.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace target panel and in-world target cues through the current live owners and selection seams.
@@ -1470,7 +1470,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/uiRoot.js`, `src/ui/screenManager.js`, `src/ui/screens/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace screen mount/unmount lifecycle through the current live owners and selection seams.
@@ -1501,7 +1501,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/uiRoot.js`, `src/ui/screenManager.js`, `src/ui/screens/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace screen mount/unmount lifecycle through the current live owners and selection seams.
@@ -1532,7 +1532,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/uiRoot.js`, `src/ui/screenManager.js`, `src/ui/screens/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace screen mount/unmount lifecycle through the current live owners and selection seams.
@@ -1563,7 +1563,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/uiRoot.js`, `src/ui/screenManager.js`, `src/ui/screens/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace screen mount/unmount lifecycle through the current live owners and selection seams.
@@ -1594,7 +1594,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/uiRoot.js`, `src/ui/screenManager.js`, `src/ui/screens/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace screen mount/unmount lifecycle through the current live owners and selection seams.
@@ -1625,7 +1625,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/input.js`, `src/ui/bindings.js`, `src/ui/controlPrompts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace UI pointer and binding handoff through the current live owners and selection seams.
@@ -1656,7 +1656,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/input.js`, `src/ui/bindings.js`, `src/ui/controlPrompts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace UI pointer and binding handoff through the current live owners and selection seams.
@@ -1687,7 +1687,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/input.js`, `src/ui/bindings.js`, `src/ui/controlPrompts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace UI pointer and binding handoff through the current live owners and selection seams.
@@ -1718,7 +1718,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/input.js`, `src/ui/bindings.js`, `src/ui/controlPrompts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace UI pointer and binding handoff through the current live owners and selection seams.
@@ -1749,7 +1749,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ui/input.js`, `src/ui/bindings.js`, `src/ui/controlPrompts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace UI pointer and binding handoff through the current live owners and selection seams.
@@ -1780,7 +1780,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/ui/screens/missionLog.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace mission objective progression through the current live owners and selection seams.
@@ -1811,7 +1811,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/ui/screens/missionLog.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace mission objective progression through the current live owners and selection seams.
@@ -1842,7 +1842,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/ui/screens/missionLog.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace mission objective progression through the current live owners and selection seams.
@@ -1873,7 +1873,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/ui/screens/missionLog.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace mission objective progression through the current live owners and selection seams.
@@ -1904,7 +1904,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/ui/screens/missionLog.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace mission objective progression through the current live owners and selection seams.
@@ -1935,7 +1935,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/economy.js`, `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace market transaction integrity through the current live owners and selection seams.
@@ -1966,7 +1966,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/economy.js`, `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace market transaction integrity through the current live owners and selection seams.
@@ -1997,7 +1997,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/economy.js`, `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace market transaction integrity through the current live owners and selection seams.
@@ -2028,7 +2028,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/economy.js`, `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace market transaction integrity through the current live owners and selection seams.
@@ -2059,7 +2059,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/economy.js`, `src/ui/screens/market.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace market transaction integrity through the current live owners and selection seams.
@@ -2090,7 +2090,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/cargo.js`, `src/ui/screens/market.js`, `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace cargo capacity and removal edges through the current live owners and selection seams.
@@ -2121,7 +2121,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/cargo.js`, `src/ui/screens/market.js`, `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace cargo capacity and removal edges through the current live owners and selection seams.
@@ -2152,7 +2152,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/cargo.js`, `src/ui/screens/market.js`, `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace cargo capacity and removal edges through the current live owners and selection seams.
@@ -2183,7 +2183,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/cargo.js`, `src/ui/screens/market.js`, `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace cargo capacity and removal edges through the current live owners and selection seams.
@@ -2214,7 +2214,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/cargo.js`, `src/ui/screens/market.js`, `src/ui/screens/outfitting.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace cargo capacity and removal edges through the current live owners and selection seams.
@@ -2245,7 +2245,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/mining.js`, `src/systems/cargo.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace mining pickup and vacuum lifecycle through the current live owners and selection seams.
@@ -2277,7 +2277,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/mining.js`, `src/systems/cargo.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace mining pickup and vacuum lifecycle through the current live owners and selection seams.
@@ -2309,7 +2309,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/mining.js`, `src/systems/cargo.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace mining pickup and vacuum lifecycle through the current live owners and selection seams.
@@ -2341,7 +2341,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/mining.js`, `src/systems/cargo.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace mining pickup and vacuum lifecycle through the current live owners and selection seams.
@@ -2373,7 +2373,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/mining.js`, `src/systems/cargo.js`, `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace mining pickup and vacuum lifecycle through the current live owners and selection seams.
@@ -2405,7 +2405,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/asteroidSites.js`, `src/ui/screens/drill.js`, `styles/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Asteroid Works board runtime through the current live owners and selection seams.
@@ -2438,7 +2438,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/asteroidSites.js`, `src/ui/screens/drill.js`, `styles/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Asteroid Works board runtime through the current live owners and selection seams.
@@ -2471,7 +2471,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/asteroidSites.js`, `src/ui/screens/drill.js`, `styles/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Asteroid Works board runtime through the current live owners and selection seams.
@@ -2504,7 +2504,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/asteroidSites.js`, `src/ui/screens/drill.js`, `styles/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Asteroid Works board runtime through the current live owners and selection seams.
@@ -2537,7 +2537,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/asteroidSites.js`, `src/ui/screens/drill.js`, `styles/`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Asteroid Works board runtime through the current live owners and selection seams.
@@ -2570,7 +2570,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/world.js`, `src/ai/engagementAuthority.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace spawn hostility and lawful first fire through the current live owners and selection seams.
@@ -2602,7 +2602,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/world.js`, `src/ai/engagementAuthority.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace spawn hostility and lawful first fire through the current live owners and selection seams.
@@ -2634,7 +2634,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/world.js`, `src/ai/engagementAuthority.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace spawn hostility and lawful first fire through the current live owners and selection seams.
@@ -2666,7 +2666,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/world.js`, `src/ai/engagementAuthority.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace spawn hostility and lawful first fire through the current live owners and selection seams.
@@ -2698,7 +2698,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/world.js`, `src/ai/engagementAuthority.js`, `src/systems/aiPorts.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace spawn hostility and lawful first fire through the current live owners and selection seams.
@@ -2730,7 +2730,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/aiPorts.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace passive civilian traffic behavior through the current live owners and selection seams.
@@ -2761,7 +2761,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/aiPorts.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace passive civilian traffic behavior through the current live owners and selection seams.
@@ -2792,7 +2792,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/aiPorts.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace passive civilian traffic behavior through the current live owners and selection seams.
@@ -2823,7 +2823,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/aiPorts.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace passive civilian traffic behavior through the current live owners and selection seams.
@@ -2854,7 +2854,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/aiPorts.js`, `src/ai/perception.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace passive civilian traffic behavior through the current live owners and selection seams.
@@ -2885,7 +2885,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ai/perception.js`, `src/ai/squad.js`, `src/ai/shipDecision.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace stale AI contacts and target memory through the current live owners and selection seams.
@@ -2916,7 +2916,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ai/perception.js`, `src/ai/squad.js`, `src/ai/shipDecision.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace stale AI contacts and target memory through the current live owners and selection seams.
@@ -2947,7 +2947,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ai/perception.js`, `src/ai/squad.js`, `src/ai/shipDecision.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace stale AI contacts and target memory through the current live owners and selection seams.
@@ -2978,7 +2978,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ai/perception.js`, `src/ai/squad.js`, `src/ai/shipDecision.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace stale AI contacts and target memory through the current live owners and selection seams.
@@ -3009,7 +3009,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/ai/perception.js`, `src/ai/squad.js`, `src/ai/shipDecision.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace stale AI contacts and target memory through the current live owners and selection seams.
@@ -3040,7 +3040,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/weapons.js`, `src/combat/actions.js`, `src/combat/geometry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace weapon hit registration through the current live owners and selection seams.
@@ -3072,7 +3072,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/weapons.js`, `src/combat/actions.js`, `src/combat/geometry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace weapon hit registration through the current live owners and selection seams.
@@ -3104,7 +3104,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/weapons.js`, `src/combat/actions.js`, `src/combat/geometry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace weapon hit registration through the current live owners and selection seams.
@@ -3136,7 +3136,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/weapons.js`, `src/combat/actions.js`, `src/combat/geometry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace weapon hit registration through the current live owners and selection seams.
@@ -3168,7 +3168,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/weapons.js`, `src/combat/actions.js`, `src/combat/geometry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace weapon hit registration through the current live owners and selection seams.
@@ -3200,7 +3200,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/core/entity.js`, `src/combat/runtime.js`, `src/combat/persistence.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace combat cleanup after entity destruction through the current live owners and selection seams.
@@ -3231,7 +3231,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/core/entity.js`, `src/combat/runtime.js`, `src/combat/persistence.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace combat cleanup after entity destruction through the current live owners and selection seams.
@@ -3262,7 +3262,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/core/entity.js`, `src/combat/runtime.js`, `src/combat/persistence.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace combat cleanup after entity destruction through the current live owners and selection seams.
@@ -3293,7 +3293,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/core/entity.js`, `src/combat/runtime.js`, `src/combat/persistence.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace combat cleanup after entity destruction through the current live owners and selection seams.
@@ -3324,7 +3324,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/core/entity.js`, `src/combat/runtime.js`, `src/combat/persistence.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace combat cleanup after entity destruction through the current live owners and selection seams.
@@ -3355,7 +3355,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/combat/attachments.js`, `src/core/constraints/masslineController.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Massline attachment lifecycle through the current live owners and selection seams.
@@ -3387,7 +3387,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/combat/attachments.js`, `src/core/constraints/masslineController.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Massline attachment lifecycle through the current live owners and selection seams.
@@ -3419,7 +3419,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/combat/attachments.js`, `src/core/constraints/masslineController.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Massline attachment lifecycle through the current live owners and selection seams.
@@ -3451,7 +3451,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/combat/attachments.js`, `src/core/constraints/masslineController.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Massline attachment lifecycle through the current live owners and selection seams.
@@ -3483,7 +3483,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/combat/attachments.js`, `src/core/constraints/masslineController.js`, `src/systems/masslineInputGrammar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Massline attachment lifecycle through the current live owners and selection seams.
@@ -3515,7 +3515,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/save/saveSystem.js`, `electron/main.cjs`, `scripts/launch-electron.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Browser/Electron Continue synchronization through the current live owners and selection seams.
@@ -3546,7 +3546,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/save/saveSystem.js`, `electron/main.cjs`, `scripts/launch-electron.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Browser/Electron Continue synchronization through the current live owners and selection seams.
@@ -3577,7 +3577,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/save/saveSystem.js`, `electron/main.cjs`, `scripts/launch-electron.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Browser/Electron Continue synchronization through the current live owners and selection seams.
@@ -3608,7 +3608,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/save/saveSystem.js`, `electron/main.cjs`, `scripts/launch-electron.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Browser/Electron Continue synchronization through the current live owners and selection seams.
@@ -3639,7 +3639,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/save/saveSystem.js`, `electron/main.cjs`, `scripts/launch-electron.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace Browser/Electron Continue synchronization through the current live owners and selection seams.
@@ -3670,7 +3670,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/adventureMigration.js`, `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace adventure and save migration through the current live owners and selection seams.
@@ -3701,7 +3701,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/adventureMigration.js`, `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace adventure and save migration through the current live owners and selection seams.
@@ -3732,7 +3732,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/adventureMigration.js`, `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace adventure and save migration through the current live owners and selection seams.
@@ -3763,7 +3763,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/adventureMigration.js`, `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace adventure and save migration through the current live owners and selection seams.
@@ -3794,7 +3794,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/adventureMigration.js`, `src/save/saveSystem.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace adventure and save migration through the current live owners and selection seams.
@@ -3825,7 +3825,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/audio/audioSystem.js`, `src/systems/presentationOrchestrator.js`, `src/presentation/cueRecipes.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace audio cue duplication and silence through the current live owners and selection seams.
@@ -3857,7 +3857,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/audio/audioSystem.js`, `src/systems/presentationOrchestrator.js`, `src/presentation/cueRecipes.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace audio cue duplication and silence through the current live owners and selection seams.
@@ -3889,7 +3889,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/audio/audioSystem.js`, `src/systems/presentationOrchestrator.js`, `src/presentation/cueRecipes.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace audio cue duplication and silence through the current live owners and selection seams.
@@ -3921,7 +3921,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/audio/audioSystem.js`, `src/systems/presentationOrchestrator.js`, `src/presentation/cueRecipes.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace audio cue duplication and silence through the current live owners and selection seams.
@@ -3953,7 +3953,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/audio/audioSystem.js`, `src/systems/presentationOrchestrator.js`, `src/presentation/cueRecipes.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace audio cue duplication and silence through the current live owners and selection seams.
@@ -3985,7 +3985,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace VFX pool recycling through the current live owners and selection seams.
@@ -4017,7 +4017,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace VFX pool recycling through the current live owners and selection seams.
@@ -4049,7 +4049,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace VFX pool recycling through the current live owners and selection seams.
@@ -4081,7 +4081,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace VFX pool recycling through the current live owners and selection seams.
@@ -4113,7 +4113,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/render/vfx.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace VFX pool recycling through the current live owners and selection seams.
@@ -4145,7 +4145,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/world.js`, `src/ui/screens/stationHub.js`, `src/ui/screenManager.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace station docking interaction through the current live owners and selection seams.
@@ -4176,7 +4176,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/world.js`, `src/ui/screens/stationHub.js`, `src/ui/screenManager.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace station docking interaction through the current live owners and selection seams.
@@ -4207,7 +4207,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/world.js`, `src/ui/screens/stationHub.js`, `src/ui/screenManager.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace station docking interaction through the current live owners and selection seams.
@@ -4238,7 +4238,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/world.js`, `src/ui/screens/stationHub.js`, `src/ui/screenManager.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace station docking interaction through the current live owners and selection seams.
@@ -4269,7 +4269,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/world.js`, `src/ui/screens/stationHub.js`, `src/ui/screenManager.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace station docking interaction through the current live owners and selection seams.
@@ -4300,7 +4300,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/ships.js`, `src/ui/screens/outfitting.js`, `src/data/modules.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace ship outfitting and derived stats through the current live owners and selection seams.
@@ -4331,7 +4331,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/ships.js`, `src/ui/screens/outfitting.js`, `src/data/modules.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace ship outfitting and derived stats through the current live owners and selection seams.
@@ -4362,7 +4362,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/ships.js`, `src/ui/screens/outfitting.js`, `src/data/modules.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace ship outfitting and derived stats through the current live owners and selection seams.
@@ -4393,7 +4393,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/ships.js`, `src/ui/screens/outfitting.js`, `src/data/modules.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace ship outfitting and derived stats through the current live owners and selection seams.
@@ -4424,7 +4424,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/ships.js`, `src/ui/screens/outfitting.js`, `src/data/modules.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace ship outfitting and derived stats through the current live owners and selection seams.
@@ -4455,7 +4455,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/crafting.js`, `src/data/blueprints.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace crafting queue lifecycle through the current live owners and selection seams.
@@ -4486,7 +4486,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/crafting.js`, `src/data/blueprints.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace crafting queue lifecycle through the current live owners and selection seams.
@@ -4517,7 +4517,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/crafting.js`, `src/data/blueprints.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace crafting queue lifecycle through the current live owners and selection seams.
@@ -4548,7 +4548,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/crafting.js`, `src/data/blueprints.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace crafting queue lifecycle through the current live owners and selection seams.
@@ -4579,7 +4579,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/crafting.js`, `src/data/blueprints.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace crafting queue lifecycle through the current live owners and selection seams.
@@ -4610,7 +4610,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/scanner.js`, `src/systems/missions.js`, `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace scanner and recon mission handoff through the current live owners and selection seams.
@@ -4642,7 +4642,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/scanner.js`, `src/systems/missions.js`, `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace scanner and recon mission handoff through the current live owners and selection seams.
@@ -4674,7 +4674,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/scanner.js`, `src/systems/missions.js`, `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace scanner and recon mission handoff through the current live owners and selection seams.
@@ -4706,7 +4706,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/scanner.js`, `src/systems/missions.js`, `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace scanner and recon mission handoff through the current live owners and selection seams.
@@ -4738,7 +4738,7 @@ Reproduce one named failure class, fix only a proven defect, and terminate hones
 
 **Inspect:** `src/systems/scanner.js`, `src/systems/missions.js`, `src/ui/radar.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `docs/COMMON_BUGS.md`, `docs/MODULE_MAP.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Trace scanner and recon mission handoff through the current live owners and selection seams.

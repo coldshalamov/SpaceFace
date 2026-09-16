@@ -121,7 +121,7 @@ import {
   stableRecordId,
   upsertRecord,
 } from '../world/worldRecords.js';
-import { forEachLivingWorldActor } from '../world/livingWorldViews.js';
+import { forEachLivingWorldActor, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   dropAsteroidFieldSector,
   insertAsteroidFieldRock,
@@ -1098,7 +1098,7 @@ export const world = {
       }
       if (!recordShouldRematerialize(rec, tier)) continue;
       // Exactly-once: never double-spawn a live entity for the same record.
-      const existing = findLiveEntityForRecord(state.entityList, rec.recordId);
+      const existing = findLiveRecordEntity(state, rec.recordId);
       if (existing) {
         if (active && (rec.kind === RECORD_KIND.NPC || rec.kind === RECORD_KIND.CONVOY || rec.kind === RECORD_KIND.MISSION_TARGET)) {
           if (active.enemies && !active.enemies.includes(existing.id) && existing.type === 'ship') {
@@ -1148,7 +1148,7 @@ export const world = {
     for (const rec of recordsForSector(bag, sectorId)) {
       if (rec.recordSource !== 'sector_embodiment' || currentIds.has(rec.recordId)) continue;
       if (rec.outcome === 'destroyed' || rec.outcome === 'defeated') continue;
-      if (findLiveEntityForRecord(this.state.entityList, rec.recordId)) continue;
+      if (findLiveRecordEntity(this.state, rec.recordId)) continue;
       delete bag.byId[rec.recordId];
     }
 
@@ -1297,7 +1297,7 @@ export const world = {
         || record.markerId !== ORRIN_WITNESS_MARKER_ID
         || record.identityKey !== identityKey) return null;
       if (record.alive === false || record.outcome === 'destroyed' || record.outcome === 'defeated') {
-        const staleLive = findLiveEntityForRecord(this.state.entityList, recordId);
+        const staleLive = findLiveRecordEntity(this.state, recordId);
         if (staleLive) staleLive.alive = false;
         return record;
       }
@@ -1325,7 +1325,7 @@ export const world = {
 
     // worldRecords only retains schema-owned fields. Stamp the live shell after rematerialization
     // too, so the scanner receipt can prove the exact source instead of accepting a look-alike.
-    const candidate = findLiveEntityForRecord(this.state.entityList, record.recordId);
+    const candidate = findLiveRecordEntity(this.state, record.recordId);
     const existing = isOrrinWitnessRecorder(candidate, sourceId) ? candidate : null;
     const entity = existing || (this.state.world.currentSectorId === sectorId
       ? this._spawnFromDurableRecord(record, sectorId) : null);
@@ -2942,7 +2942,7 @@ export const world = {
     if (state.run?.kind !== 'survival' || state.run.phase === 'inactive') return;
     const remove = this.helpers?.removeEntity;
     if (typeof remove !== 'function') return;
-    for (const entity of state.entityList || []) {
+    for (const entity of indexedShipLikeScan(state)) {
       if (!entity.alive || entity.id === state.playerId
         || !['ship', 'drone'].includes(entity.type)
         || entity.data?.runCohort === 'survival'
@@ -3934,8 +3934,7 @@ export const world = {
     if (sectorId !== VESTA_ORE_CACHE.sectorId || this.state.world.currentSectorId !== sectorId) return null;
     const own = this._vestaOreCacheState();
     if (own.phase !== 'taken' || !own.cache || !own.cargoLot || !(own.cargoLot.remainingQty > 0)) return null;
-    const live = (this.state.entityList || []).find((entity) => entity && entity.alive !== false
-      && entity.data && entity.data.vestaOreCacheLotId === VESTA_ORE_CACHE.lotId);
+    const live = findCacheLotEntity(this.state, 'vestaOreCacheLotId', VESTA_ORE_CACHE.lotId);
     if (live) return live;
     const revision = own.cargoLot.collectedQty + own.cargoLot.lostQty;
     const entity = this.helpers.spawnEntity({
@@ -4172,8 +4171,7 @@ export const world = {
     if (!lot || !own.cache || !own.cargoLot || !(own.cargoLot.remainingQty > 0)) return null;
     if (own.cargoLot.lotId !== lot.lotId || own.cargoLot.provenanceId !== lot.provenanceId
       || own.cargoLot.commodityId !== lot.commodityId) return null;
-    const live = (this.state.entityList || []).find((entity) => entity && entity.alive !== false
-      && entity.data && entity.data.pallasHiddenCacheLotId === lot.lotId);
+    const live = findCacheLotEntity(this.state, 'pallasHiddenCacheLotId', lot.lotId);
     if (live) return live;
     const revision = own.cargoLot.collectedQty + own.cargoLot.lostQty;
     const entity = this.helpers.spawnEntity({
@@ -4722,6 +4720,34 @@ function tagAiSpawnContext(spec, sector, effectiveSector, context) {
   spec.data.ai.sectorTier = Number.isFinite(effectiveSector && effectiveSector.tier)
     ? effectiveSector.tier
     : (Number.isFinite(sector && sector.tier) ? sector.tier : 0);
+}
+
+function findCacheLotEntity(state, lotKey, lotId) {
+  if (!state || !lotKey || lotId == null) return null;
+  const lists = [indexedTypeScan(state, 'pickups'), indexedTypeScan(state, 'payloads')];
+  for (let l = 0; l < lists.length; l++) {
+    const list = lists[l];
+    if (!list) continue;
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (entity && entity.alive !== false && entity.data && entity.data[lotKey] === lotId) {
+        return entity;
+      }
+    }
+  }
+  return null;
+}
+
+function findLiveRecordEntity(state, recordId) {
+  if (!recordId || !state) return null;
+  const index = state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+    return findLiveEntityForRecord(index.shipLike, recordId)
+      || findLiveEntityForRecord(index.wrecks, recordId)
+      || findLiveEntityForRecord(index.stations, recordId)
+      || findLiveEntityForRecord(index.payloads, recordId);
+  }
+  return findLiveEntityForRecord(state.entityList, recordId);
 }
 
 function finitePositive(value) {

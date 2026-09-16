@@ -4058,6 +4058,34 @@
       ],
       "evidence": [],
       "brief": "BREAKAWAY Slice A is live: The Third Shift is on the Tethys board, the SP-07 assembly is a real body, the capture fork brakes and settles it, custody is re-proven at handoff, it pays once with a condition bonus and survives save/load. Gap: everything that makes it a situation rather than a delivery — the assembly is drawn as a 6 WU cargo pod inside a 16 WU collision body, the fork has no visual and no rail colliders, there is no instrument, no fence choice, no pressure, no visible local consequence, no recovery after loss, no suspension on sector exit, no transport clamp, and no player has played it. See design/program/roadmap/active/PQ-195.md and its PQ-195-design/ specification."
+    },
+    {
+      "id": "PQ-204",
+      "priority": 1001,
+      "title": "Deterministic smoothness algorithms",
+      "state": "ready",
+      "canonical": [
+        "PERF-ADVANCED-SMOOTHNESS"
+      ],
+      "aliases": [
+        "SMOOTHNESS-ALGORITHMS",
+        "PQ-204-PERF"
+      ],
+      "dependsOn": [],
+      "mutexes": [
+        "performance-control"
+      ],
+      "sources": [
+        "build_map.md",
+        "design/program/PERF_ADVANCED_CAMPAIGN.md",
+        "design/program/PERF_ADVANCED_GOAL.txt",
+        "design/program/roadmap/active/PQ-204.md"
+      ],
+      "checks": [
+        "node --test test/pq-204-advanced-perf.test.mjs"
+      ],
+      "evidence": [],
+      "brief": "ADMITTED 2026-09-16: ship always-on spatial hash, combat SoA, dirty journal, NEAR token budget, save-safe Rapier sleep, off-glass NPC outcomes, packed-ORM family keys, after-present compile, and snapshot lean columns. Quiet-machine census is not a gate. Same picture; no dummy prewarm; GPU batching and Worker/WebGPU stay off. See design/program/PERF_ADVANCED_CAMPAIGN.md."
     }
   ],
   "dispatchUnits": [
@@ -18832,6 +18860,134 @@
       ],
       "receiptRefs": [],
       "brief": "Four assertions are red on master and were red before the 2026-09-15 breakaway work (proven by running them on an archive of the pre-change tree): two say a hostile kill still earns its shard burst (pq019-heat-incident-listener), one says an explicitly marked non-lawful entity can witness (pq019-law-incident-intake), and one says the authored cargo pod is present in source, release and the runtime pod slot but reads 4552 where 3976 is expected (pq019-authored-cargo-capsule). CHARACTERIZE FIRST: if the live game agrees with the test, two of these are player-facing bugs (kills that should drop shards and do not); if behaviour drifted deliberately, the assertion needs its causal record. Reconcile the byte mismatch through the manifest tooling. DONE WHEN: all four are green for a stated cause, and never by editing an expected number to match the code."
+    },
+    {
+      "id": "PQ-204.00",
+      "parentId": "PQ-204",
+      "priority": 9810,
+      "title": "Always-on grid, combat SoA, dirty journal, NEAR token budget",
+      "kind": "implementation",
+      "state": "implemented",
+      "dependsOn": [],
+      "mutexes": [
+        "performance-control"
+      ],
+      "paths": [
+        "src/core/spatialHash.js",
+        "src/core/physics.js",
+        "src/core/combatTable.js",
+        "src/core/dirtyJournal.js",
+        "src/core/activityScheduler.js",
+        "src/core/coreSystem.js",
+        "src/systems/aiPorts.js",
+        "src/world/activityRuntime.js",
+        "src/systems/aiFireIntent.js",
+        "test/pq-204-advanced-perf.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq-204-advanced-perf.test.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Spatial hash stays active at every density. Combat columns pack each tick. Dirty bits mark spawn/pose. Sixteen S1 civilians think per tick; player and combatants always wake."
+    },
+    {
+      "id": "PQ-204.01",
+      "parentId": "PQ-204",
+      "priority": 9811,
+      "title": "Save-safe Rapier sleep and off-glass NPC outcomes",
+      "kind": "implementation",
+      "state": "implemented",
+      "dependsOn": [
+        "PQ-204.00"
+      ],
+      "mutexes": [
+        "performance-control"
+      ],
+      "paths": [
+        "src/core/sg02DynamicBodyOwner.js",
+        "src/world/farEncounterOutcomes.js",
+        "src/world/farActorTable.js",
+        "test/pq-204-advanced-perf.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq-204-advanced-perf.test.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Non-player non-projectile unattached bodies may sleep; physicsSleeping persists on the entity. Far hostile pairs in one 400 wu cell resolve on a seeded delay."
+    },
+    {
+      "id": "PQ-204.02",
+      "parentId": "PQ-204",
+      "priority": 9812,
+      "title": "Family-key collapse and after-present compile",
+      "kind": "implementation",
+      "state": "implemented",
+      "dependsOn": [
+        "PQ-204.00"
+      ],
+      "mutexes": [
+        "performance-control"
+      ],
+      "paths": [
+        "src/render/partsLibrary.js",
+        "src/render/pipelineReadiness.js",
+        "src/core/presentationRunner.js",
+        "src/render/renderer.js",
+        "test/pq-204-advanced-perf.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq-204-advanced-perf.test.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Packed-ORM program keys go through canonicalizeSurfaceProgramFamilyKey. After a healthy present, at most one queued compile starts. Weapon lights stay 6+2. No dummy prewarm."
+    },
+    {
+      "id": "PQ-204.03",
+      "parentId": "PQ-204",
+      "priority": 9813,
+      "title": "Leave GPU batching off",
+      "kind": "performance",
+      "state": "implemented",
+      "dependsOn": [
+        "PQ-204.02"
+      ],
+      "mutexes": [
+        "performance-control"
+      ],
+      "paths": [
+        "src/render/renderer.js",
+        "design/program/PERF_ADVANCED_CAMPAIGN.md"
+      ],
+      "checks": [
+        "node --test test/pq-204-advanced-perf.test.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Retained-slot BatchedMesh, multi_draw, and cheaper bloom stay off. Draw-count is not the named pole."
+    },
+    {
+      "id": "PQ-204.04",
+      "parentId": "PQ-204",
+      "priority": 9814,
+      "title": "Snapshot lean columns; no Worker/WebGPU port",
+      "kind": "implementation",
+      "state": "implemented",
+      "dependsOn": [
+        "PQ-204.00"
+      ],
+      "mutexes": [
+        "performance-control"
+      ],
+      "paths": [
+        "src/render/presentationSnapshot.js",
+        "src/render/snapshotFence.js",
+        "src/render/renderer.js",
+        "test/pq-204-advanced-perf.test.mjs"
+      ],
+      "checks": [
+        "node --test test/pq-204-advanced-perf.test.mjs"
+      ],
+      "receiptRefs": [],
+      "brief": "Fence packs bank/pitch. Present applies hull lean from snapshot columns. WASM SIMD, Worker, and WebGPU are not started."
     }
   ]
 }

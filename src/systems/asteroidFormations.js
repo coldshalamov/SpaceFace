@@ -25,6 +25,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { buildAsteroidFormations, FORMATION_MODEL_VERSION } from './asteroidFormationModel.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 export const FORMATIONS_SCHEMA_VERSION = 1;
 
@@ -197,7 +198,7 @@ export const asteroidFormations = {
     const metaSeed = state.meta && Number.isFinite(state.meta.seed) ? state.meta.seed : 0;
     const seed = formationSeedFor(metaSeed, sectorId, epoch);
     const asteroids = [];
-    const list = state.entityList || [];
+    const list = indexedTypeScan(state, 'asteroids');
     for (const e of list) {
       if (!e || e.alive === false || e.type !== 'asteroid' || !e.pos) continue;
       asteroids.push(e);

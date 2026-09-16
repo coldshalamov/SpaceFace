@@ -1,4 +1,4 @@
-Start at CANONICAL_BUILD_MAP.md, then read design/program/CENTRAL_BRAIN.md.
+Start at build_map.md, then read design/program/CENTRAL_BRAIN.md.
 
 Mission: converge SpaceFace toward one professional, coherent player experience instead of accumulating locally complete features. Use the existing PQ queue as work identity and the Central Brain as the manager layer.
 

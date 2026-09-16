@@ -23,7 +23,7 @@ const COMMODITY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const DEFAULT_MEMORY_COMMODITY = 'cmdty_ore_iron';
 for (const f of FACTION_META) {
   FACTION_NAME[f.id] = f.short || f.name || f.id;
-  FACTION_COLOR[f.id] = f.color || '#9aa8bc';
+  FACTION_COLOR[f.id] = f.color || '#84a0c8';
 }
 
 // Canvas 2D cannot resolve CSS variables. Same seven grammar hexes as localmap / drill.
@@ -347,7 +347,7 @@ function escapeHtml(value) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 function factionName(id) { return FACTION_NAME[id] || (id ? id.replace(/^faction_/, '') : 'Unaffiliated'); }
-function factionColor(id) { return FACTION_COLOR[id] || '#9aa8bc'; }
+function factionColor(id) { return FACTION_COLOR[id] || '#84a0c8'; }
 
 /** Three meaning bands: a gain (safe), what you are heading into, against you. */
 export function dangerRole(v) {

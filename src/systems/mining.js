@@ -17,7 +17,7 @@
 import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import {
   clearPickupAcceptanceRetry,
@@ -1778,13 +1778,28 @@ export const mining = {
   },
 };
 
+function appendIndexedPickupDomain(index, out) {
+  const pickups = index && index.pickups;
+  const payloads = index && index.payloads;
+  if (pickups) {
+    for (let i = 0; i < pickups.length; i++) out.push(pickups[i]);
+  }
+  if (payloads) {
+    for (let i = 0; i < payloads.length; i++) out.push(payloads[i]);
+  }
+  return out;
+}
+
 function pickupsNearPlayer(state, player, radius, out) {
-  const fallback = (state && state.entityIndex && (state.entityIndex.pickups || state.entityIndex.payloads))
-    ? (state.entityIndex.payloads && state.entityIndex.payloads.length > 0
-        ? state.entityIndex.pickups.concat(state.entityIndex.payloads)
-        : state.entityIndex.pickups)
-    : (state && state.entityList);
-  return queryNearbyEntities(state, player && player.pos, radius, out, fallback);
+  if (hasActiveSpatialHash(state && state.spatialHash)) {
+    return queryNearbyEntities(state, player && player.pos, radius, out);
+  }
+  const index = state && state.entityIndex;
+  if (index && (index.pickups || index.payloads)) {
+    out.length = 0;
+    return appendIndexedPickupDomain(index, out);
+  }
+  return queryNearbyEntities(state, player && player.pos, radius, out, state && state.entityList);
 }
 
 function hasAuthoritativeEmptyPickupIndex(state) {
@@ -2046,8 +2061,22 @@ function isBulkHaulChunk(e) {
 
 function isRefineryStation(state, stationId) {
   if (!state || !stationId) return false;
-  const entity = (state.entityIndex && state.entityIndex.byStationId && state.entityIndex.byStationId.get(stationId)) ||
-    (state.entityList || []).find((e) => e && e.type === 'station' && e.data && e.data.stationId === stationId);
+  const index = state.entityIndex;
+  let entity = index && index.byStationId && index.byStationId.get(stationId);
+  if (!(entity && entity.alive !== false && entity.type === 'station')) {
+    const stations = (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.stations))
+      ? index.stations
+      : (state.entityList || []);
+    entity = null;
+    for (let i = 0; i < stations.length; i++) {
+      const candidate = stations[i];
+      if (candidate && candidate.alive !== false && candidate.type === 'station'
+        && candidate.data && candidate.data.stationId === stationId) {
+        entity = candidate;
+        break;
+      }
+    }
+  }
   const data = entity && entity.data;
   if (data && (data.stationTypeId === 'refinery' || data.type === 'refinery' || data.kind === 'refinery')) return true;
   for (const sector of Object.values(state.world && state.world.sectors || {})) {

@@ -16,7 +16,7 @@ import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import { entityLocalPointToWorld } from '../combat/geometry.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { createMasslineRuntime } from '../core/constraints/masslineController.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { isHostileToPlayer } from './scanner.js';
@@ -121,6 +121,7 @@ export const tetherGameplay = {
     this._targetScratch = [];
     this._nonCollidingTargetScratch = [];
     this._fieldTargetScratch = [];
+    this._candidateSeen = new Set();
     this._active = null;
     this._lastStrainT = -Infinity;
     this._noRelatchUntil = -Infinity;
@@ -992,7 +993,12 @@ export const tetherGameplay = {
   // pure geometry with no scoring, no intent, and no hysteresis.
   _acquireCommandTarget(player, def, state) {
     const maxLength = positive(def && def.maxLength, positive(def && def.break && def.break.maxLength, 390));
-    const entities = state.entityList || (state.entities?.values ? Array.from(state.entities.values()) : []);
+    const entities = commandAcquireCandidates(
+      state,
+      player,
+      maxLength,
+      this._targetScratch || (this._targetScratch = []),
+    );
     let nearest = null;
     let nearestSurfaceDistance = Infinity;
     for (const entity of entities) {
@@ -2143,20 +2149,29 @@ function buildAcquisitionSnapshot(host, player, def, state, intent) {
     : null;
   const selectedPayloadId = masslineSelectedPayloadTargetId(state);
   const routeId = masslineRouteTargetId(state);
-  const nearby = queryNearbyEntities(
-    state,
-    player.pos,
-    maxLength + CURSOR_LATCH_GRACE_MAX,
-    host._targetScratch || (host._targetScratch = []),
-    state.entityList || [],
-  );
-  const candidates = nearby === state.entityList ? [...nearby] : [...nearby];
+  const scratch = host._targetScratch || (host._targetScratch = []);
+  let candidates;
+  if (hasActiveSpatialHash(state && state.spatialHash)) {
+    candidates = queryNearbyEntities(
+      state,
+      player.pos,
+      maxLength + CURSOR_LATCH_GRACE_MAX,
+      scratch,
+    );
+  } else {
+    scratch.length = 0;
+    visitIndexedAttachableBuckets(state, (entity) => {
+      if (isAttachable(entity, player && player.id)) scratch.push(entity);
+    });
+    candidates = scratch;
+  }
   appendNonCollidingAttachableCandidates(
     candidates,
-    state.entityList || [],
+    state,
     player,
     maxLength,
     host._nonCollidingTargetScratch || (host._nonCollidingTargetScratch = []),
+    host._candidateSeen || (host._candidateSeen = new Set()),
   );
   const fieldHits = queryAsteroidField(
     state,
@@ -2677,19 +2692,69 @@ function masslineScoringOwnership(entity, player, state) {
   return ownership === 'own' || ownership === 'station' ? 'neutral' : ownership;
 }
 
-function appendNonCollidingAttachableCandidates(candidates, entities, player, maxLength, scratch) {
+const COMMAND_ACQUIRE_PAD = 512;
+const ATTACHABLE_INDEX_BUCKETS = Object.freeze([
+  'shipLike', 'stations', 'wrecks', 'asteroids', 'payloads', 'pickups', 'mines', 'charges', 'bombs',
+  'damageables',
+]);
+
+function visitIndexedAttachableBuckets(state, fn) {
+  const index = state && state.entityIndex;
+  if (!(index && index.__spacefaceEntityIndexV1 && index.ready === true)) {
+    const list = state && state.entityList;
+    if (list) {
+      for (let i = 0; i < list.length; i++) fn(list[i]);
+    } else if (state && state.entities && typeof state.entities.values === 'function') {
+      for (const entity of state.entities.values()) fn(entity);
+    }
+    return;
+  }
+  for (let b = 0; b < ATTACHABLE_INDEX_BUCKETS.length; b++) {
+    const list = index[ATTACHABLE_INDEX_BUCKETS[b]];
+    if (!list) continue;
+    for (let i = 0; i < list.length; i++) fn(list[i]);
+  }
+}
+
+function commandAcquireCandidates(state, player, maxLength, scratch) {
+  const radius = maxLength + COMMAND_ACQUIRE_PAD;
+  if (hasActiveSpatialHash(state && state.spatialHash)) {
+    return queryNearbyEntities(state, player && player.pos, radius, scratch);
+  }
   scratch.length = 0;
-  for (const entity of entities) {
-    if (!isAttachable(entity, player.id)) continue;
-    if (entity.collides !== false || !NON_COLLIDING_ACQUISITION_TYPES.has(entity.type)) continue;
-    const dx = entity.pos.x - player.pos.x;
-    const dz = entity.pos.z - player.pos.z;
-    if (Math.hypot(dx, dz) > maxLength + (entity.radius || 0)) continue;
-    scratch.push(entity);
+  visitIndexedAttachableBuckets(state, (entity) => {
+    if (entity) scratch.push(entity);
+  });
+  return scratch;
+}
+
+function appendNonCollidingAttachableCandidates(candidates, state, player, maxLength, scratch, seen) {
+  scratch.length = 0;
+  const index = state && state.entityIndex;
+  const lists = index && index.__spacefaceEntityIndexV1 && index.ready === true
+    ? [index.payloads, index.pickups]
+    : [state && state.entityList];
+  for (let l = 0; l < lists.length; l++) {
+    const entities = lists[l];
+    if (!entities) continue;
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i];
+      if (!isAttachable(entity, player.id)) continue;
+      if (entity.collides !== false || !NON_COLLIDING_ACQUISITION_TYPES.has(entity.type)) continue;
+      const dx = entity.pos.x - player.pos.x;
+      const dz = entity.pos.z - player.pos.z;
+      if (Math.hypot(dx, dz) > maxLength + (entity.radius || 0)) continue;
+      scratch.push(entity);
+    }
   }
   scratch.sort(compareEntityIds);
-  const seen = new Set(candidates.map((entity) => entity.id));
-  for (const entity of scratch) {
+  seen.clear();
+  for (let i = 0; i < candidates.length; i++) {
+    const entity = candidates[i];
+    if (entity && entity.id != null) seen.add(entity.id);
+  }
+  for (let i = 0; i < scratch.length; i++) {
+    const entity = scratch[i];
     if (seen.has(entity.id)) continue;
     candidates.push(entity);
     seen.add(entity.id);

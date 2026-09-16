@@ -556,6 +556,30 @@
         "worstSeedBeats",
         "simSeconds"
       ]
+    },
+    {
+      "id": "pq-174-packet-bars",
+      "seconds": 1200,
+      "purpose": "Helios Core swarm: measure run length to first death (or 20 min cap) and whole-run quiet seconds per kit per seed. Scripted chase-bot, not a competent player.",
+      "bar": "PQ-174 Outcome death window + quiet-second",
+      "bench": "scripts/lib/bench/packetBars.mjs (extends crucible swarm-bars)",
+      "run": "node scripts/lib/bench/packetBars.mjs",
+      "seeds": [4242, 8008, 13502],
+      "loadouts": ["energy_baseline", "physics_toolkit", "massline_rig"],
+      "arenaId": "helios_core",
+      "checkpoints": [
+        "real-path-ready",
+        "death-or-20min",
+        "quiet-seconds-whole-run",
+        "death-story"
+      ],
+      "metrics": [
+        "firstDeathMinutes",
+        "quietSeconds",
+        "quietSecondsAfterWave1",
+        "deathCause",
+        "telegraphLeadMs"
+      ]
     }
   ]
 }

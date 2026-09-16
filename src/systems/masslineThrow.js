@@ -602,7 +602,9 @@ function combatAttachments(host) {
 export function releaseAssistMode(state) {
   const raw = state && state.settings && state.settings.gameplay
     && state.settings.gameplay.masslineReleaseAssist;
-  return raw === 'snap' || raw === 'off' ? raw : 'arm';
+  // M5: 'snap' is the default — the throw releases on the player's press with a 90 ms forgiveness
+  // window, never silently on the first solution frame. 'arm' and 'off' remain authored choices.
+  return raw === 'arm' || raw === 'off' ? raw : 'snap';
 }
 
 function ensureThrowSubtree(state) {

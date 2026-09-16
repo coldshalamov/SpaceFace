@@ -54,7 +54,11 @@ function currentSectorId(state) {
 
 function liveStationFor(state, stationId) {
   if (!stationId || !state) return null;
-  const list = state.entityList;
+  const byStationId = state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && byStationId.get && byStationId.get(stationId);
+  if (indexed && indexed.alive !== false && indexed.type === 'station') return indexed;
+  const stations = state.entityIndex && state.entityIndex.stations;
+  const list = Array.isArray(stations) ? stations : state.entityList;
   if (Array.isArray(list)) {
     for (const entity of list) {
       if (!entity || entity.alive === false || entity.type !== 'station') continue;

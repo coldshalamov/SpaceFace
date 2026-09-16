@@ -12,9 +12,12 @@ import {
 } from '../ai/pdScreen.js';
 import { isPlayerWanted } from './heat.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { queryCombatTableRadius } from '../core/combatTable.js';
 
 const RECENT_DEFENSIVE_DAMAGE_TICKS = 180;
 const FIRE_WINDOW_ADMISSION = new WeakMap();
+const PD_CONTACT_ID_SCRATCH = [];
+const PD_TABLE_RADIUS_PAD_WU = 80;
 
 export function applyAIFiringIntent(decision, state) {
   if (!decision || !state || !state.entities || typeof state.entities.get !== 'function') return;
@@ -175,56 +178,68 @@ export function applyPdScreenTargetPolicy(entity, state, decision = null) {
 
 function collectPdContacts(self, state, charge) {
   const out = [];
+  const table = state && state.combatTable;
+  const useTable = !!(table && table.tick === (state.tick | 0) && table.count > 0 && self && self.pos
+    && state.entities && typeof state.entities.get === 'function');
+  if (useTable) {
+    const origin = (charge && charge.pos) || self.pos;
+    const radius = ((self.data && self.data.pdScreenRadius) || PD_SCREEN_DEFAULT_RADIUS)
+      + PD_TABLE_RADIUS_PAD_WU;
+    queryCombatTableRadius(table, origin.x, origin.z, radius, PD_CONTACT_ID_SCRATCH);
+    for (let i = 0; i < PD_CONTACT_ID_SCRATCH.length; i++) {
+      considerPdContact(self, state, charge, state.entities.get(PD_CONTACT_ID_SCRATCH[i]), out);
+    }
+    return out;
+  }
   const index = state.entityIndex;
   const ships = indexedShipLikeScan(state);
   const projectiles = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.projectiles)
     ? index.projectiles
     : (state.entityList || []);
-  const selfTeam = self.team;
   const lists = [projectiles, ships];
   for (let b = 0; b < lists.length; b++) {
     const list = lists[b];
     if (!list) continue;
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-    if (!e || !e.alive || e.id === self.id) continue;
-    if (charge && e.id === charge.id) continue;
-    if (e.type === 'projectile') {
-      // A projectile is hostile only through its live owner's authored hostility. Team mismatch
-      // and ownerless ordnance cannot broaden the final engagement authority.
-      const owner = e.ownerId != null && state.entities ? state.entities.get(e.ownerId) : null;
-      if (!owner || !owner.alive || !isHostileForAI(state, self, owner)) continue;
-      out.push({
-        id: e.id,
-        kind: ContactKind.PROJECTILE,
-        pos: e.pos,
-        vel: e.vel,
-        alive: true,
-        valid: true,
-        visible: true,
-        hostile: true,
-        threat: 0.9,
-      });
-      continue;
-    }
-    if (e.type !== 'ship' && e.type !== 'drone') continue;
-    if (e.team != null && selfTeam != null && e.team === selfTeam) continue;
-    const hostile = isHostileForAI(state, self, e);
-    if (!hostile) continue;
+    for (let i = 0; i < list.length; i++) considerPdContact(self, state, charge, list[i], out);
+  }
+  return out;
+}
+
+function considerPdContact(self, state, charge, e, out) {
+  if (!e || !e.alive || e.id === self.id) return;
+  if (charge && e.id === charge.id) return;
+  if (e.type === 'projectile') {
+    // A projectile is hostile only through its live owner's authored hostility. Team mismatch
+    // and ownerless ordnance cannot broaden the final engagement authority.
+    const owner = e.ownerId != null && state.entities ? state.entities.get(e.ownerId) : null;
+    if (!owner || !owner.alive || !isHostileForAI(state, self, owner)) return;
     out.push({
       id: e.id,
-      kind: ContactKind.SHIP,
+      kind: ContactKind.PROJECTILE,
       pos: e.pos,
       vel: e.vel,
       alive: true,
       valid: true,
       visible: true,
       hostile: true,
-      threat: 0.6,
+      threat: 0.9,
     });
-    }
+    return;
   }
-  return out;
+  if (e.type !== 'ship' && e.type !== 'drone') return;
+  if (e.team != null && self.team != null && e.team === self.team) return;
+  if (!isHostileForAI(state, self, e)) return;
+  out.push({
+    id: e.id,
+    kind: ContactKind.SHIP,
+    pos: e.pos,
+    vel: e.vel,
+    alive: true,
+    valid: true,
+    visible: true,
+    hostile: true,
+    threat: 0.6,
+  });
 }
 
 function pdEngagementTarget(state, fireTarget) {

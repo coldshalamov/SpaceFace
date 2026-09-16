@@ -71,6 +71,33 @@ test('the completed activity frame owns glass submission while runway stays resi
     'the player keeps its last safe visibility through a fenced-pose gap');
 });
 
+test('a root inside the live glass submits even when the sim frame still classes it runway', () => {
+  // The activity frame derives its glass at the requested zoom and a fixed aspect; a dynamically
+  // zoomed-out live camera can place a runway-classed hull on the real screen. Submission there is
+  // the live frustum's call — otherwise the hull is hidden while its HUD markers still draw.
+  const activityFrame = {
+    complete: true,
+    renderGlassIds: new Set([7]),
+    renderRunwayIds: new Set([8]),
+  };
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true }), true,
+    'runway-classed but inside the live glass submits');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 9, onLiveGlass: true }), true,
+    'unlisted on a complete frame but inside the live glass submits');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: false }), false,
+    'off the live glass keeps runway residency semantics');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true, authoredPending: true }), false,
+    'a pending authored decode still holds an on-glass root');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true, pipelinesPending: true }), false,
+    'uncompiled pipelines still hold an on-glass root');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true, geometryPending: true }), false,
+    'unregistered geometry still holds an on-glass root');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true, snapshotMissing: true }), false,
+    'a missing fenced pose still fails closed on the live glass');
+  assert.equal(shouldSubmitEntityMesh({ activityFrame, entityId: 8, onLiveGlass: true, hidden: true }), false,
+    'a root outside the query bounds entirely stays hidden');
+});
+
 test('visibility helper only writes when the flag changes', () => {
   const mesh = { visible: true };
   assert.equal(applyEntityMeshVisibility(mesh, false), true);
@@ -119,6 +146,8 @@ test('live entity view sync hides off-runway roots through the helper', async ()
   assert.match(source, /middleBand:\s*viewBand === 'middle'/);
   assert.match(source, /pipelinesPending:\s*!!\(mesh\.userData && mesh\.userData\.pipelinesPending\)/);
   assert.match(source, /authoredPending:\s*isAuthoredPendingStatus\(mesh\.userData && mesh\.userData\.authoredAssetState\)/);
+  assert.match(source, /onLiveGlass/,
+    'the live-glass submit override reaches the visibility rule');
   assert.equal((source.match(/ledgerRow:\s*isPresentationLedgerRow\(entity\)/g) || []).length, 2,
     'both submit sites tell the visibility rule which roots are far/field/dressing ledger rows');
 });

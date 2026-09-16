@@ -2,7 +2,7 @@
 <!-- Retains the twelve-experiment table and EVE control. Do not repeat the same tested settings, scene, and scorer unchanged; other renderer, composition, camera, and route hypotheses remain open. -->
 # Modern-Parity Loop
 
-> **Measurement harness, not a new authority.** Priority comes from `CANONICAL_BUILD_MAP.md` and the
+> **Measurement harness, not a new authority.** Priority comes from `build_map.md` and the
 > admitted queue; craft acceptance for authored 3D assets
 > still comes from [`docs/visual-assets/`](../../docs/visual-assets/README.md); iteration validity still
 > comes from [`VISUAL_ITERATION_PROTOCOL.md`](VISUAL_ITERATION_PROTOCOL.md). This file adds one thing

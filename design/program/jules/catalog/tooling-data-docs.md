@@ -15,7 +15,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `package.json`, `scripts/check-ci-report.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that package scripts and aggregate check topology is supposed to validate or explain.
@@ -46,7 +46,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `package.json`, `scripts/check-ci-report.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that package scripts and aggregate check topology is supposed to validate or explain.
@@ -77,7 +77,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `package.json`, `scripts/check-ci-report.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that package scripts and aggregate check topology is supposed to validate or explain.
@@ -108,7 +108,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `package.json`, `scripts/check-ci-report.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that package scripts and aggregate check topology is supposed to validate or explain.
@@ -139,7 +139,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `package.json`, `scripts/check-ci-report.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that package scripts and aggregate check topology is supposed to validate or explain.
@@ -170,7 +170,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-baseline.mjs`, `scripts/check-ci-report.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that baseline gate and CI report accuracy is supposed to validate or explain.
@@ -201,7 +201,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-baseline.mjs`, `scripts/check-ci-report.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that baseline gate and CI report accuracy is supposed to validate or explain.
@@ -232,7 +232,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-baseline.mjs`, `scripts/check-ci-report.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that baseline gate and CI report accuracy is supposed to validate or explain.
@@ -263,7 +263,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-baseline.mjs`, `scripts/check-ci-report.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that baseline gate and CI report accuracy is supposed to validate or explain.
@@ -294,7 +294,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-baseline.mjs`, `scripts/check-ci-report.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that baseline gate and CI report accuracy is supposed to validate or explain.
@@ -325,7 +325,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/sim-golden-diff.mjs`, `scripts/sf-sim.mjs`, `src/core/simSnapshot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that simulation golden differential tooling is supposed to validate or explain.
@@ -357,7 +357,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/sim-golden-diff.mjs`, `scripts/sf-sim.mjs`, `src/core/simSnapshot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that simulation golden differential tooling is supposed to validate or explain.
@@ -389,7 +389,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/sim-golden-diff.mjs`, `scripts/sf-sim.mjs`, `src/core/simSnapshot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that simulation golden differential tooling is supposed to validate or explain.
@@ -421,7 +421,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/sim-golden-diff.mjs`, `scripts/sf-sim.mjs`, `src/core/simSnapshot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that simulation golden differential tooling is supposed to validate or explain.
@@ -453,7 +453,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/sim-golden-diff.mjs`, `scripts/sf-sim.mjs`, `src/core/simSnapshot.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that simulation golden differential tooling is supposed to validate or explain.
@@ -485,7 +485,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts`, `docs/SYSTEM_REGISTRY.md`, `docs/EVENT_ROUTING.md`, `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that generated system and event registries is supposed to validate or explain.
@@ -516,7 +516,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts`, `docs/SYSTEM_REGISTRY.md`, `docs/EVENT_ROUTING.md`, `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that generated system and event registries is supposed to validate or explain.
@@ -547,7 +547,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts`, `docs/SYSTEM_REGISTRY.md`, `docs/EVENT_ROUTING.md`, `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that generated system and event registries is supposed to validate or explain.
@@ -578,7 +578,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts`, `docs/SYSTEM_REGISTRY.md`, `docs/EVENT_ROUTING.md`, `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that generated system and event registries is supposed to validate or explain.
@@ -609,7 +609,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts`, `docs/SYSTEM_REGISTRY.md`, `docs/EVENT_ROUTING.md`, `src/core/registry.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that generated system and event registries is supposed to validate or explain.
@@ -640,7 +640,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-src-reachability.mjs`, `src`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that source reachability, import graph, and dead-route checks is supposed to validate or explain.
@@ -672,7 +672,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-src-reachability.mjs`, `src`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that source reachability, import graph, and dead-route checks is supposed to validate or explain.
@@ -704,7 +704,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-src-reachability.mjs`, `src`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that source reachability, import graph, and dead-route checks is supposed to validate or explain.
@@ -736,7 +736,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-src-reachability.mjs`, `src`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that source reachability, import graph, and dead-route checks is supposed to validate or explain.
@@ -768,7 +768,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-src-reachability.mjs`, `src`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that source reachability, import graph, and dead-route checks is supposed to validate or explain.
@@ -800,7 +800,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `src/data`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that data identifiers and cross-catalog references is supposed to validate or explain.
@@ -831,7 +831,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `src/data`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that data identifiers and cross-catalog references is supposed to validate or explain.
@@ -862,7 +862,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `src/data`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that data identifiers and cross-catalog references is supposed to validate or explain.
@@ -893,7 +893,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `src/data`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that data identifiers and cross-catalog references is supposed to validate or explain.
@@ -924,7 +924,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `src/data`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that data identifiers and cross-catalog references is supposed to validate or explain.
@@ -955,7 +955,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-asset-classifications.mjs`, `scripts`, `assets/ships/parts/parts_manifest.json`, `assets/ships/release/release_manifest.json`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that asset manifest, classification, and reachability checks is supposed to validate or explain.
@@ -988,7 +988,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-asset-classifications.mjs`, `scripts`, `assets/ships/parts/parts_manifest.json`, `assets/ships/release/release_manifest.json`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that asset manifest, classification, and reachability checks is supposed to validate or explain.
@@ -1021,7 +1021,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-asset-classifications.mjs`, `scripts`, `assets/ships/parts/parts_manifest.json`, `assets/ships/release/release_manifest.json`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that asset manifest, classification, and reachability checks is supposed to validate or explain.
@@ -1054,7 +1054,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-asset-classifications.mjs`, `scripts`, `assets/ships/parts/parts_manifest.json`, `assets/ships/release/release_manifest.json`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that asset manifest, classification, and reachability checks is supposed to validate or explain.
@@ -1087,7 +1087,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-asset-classifications.mjs`, `scripts`, `assets/ships/parts/parts_manifest.json`, `assets/ships/release/release_manifest.json`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that asset manifest, classification, and reachability checks is supposed to validate or explain.
@@ -1120,7 +1120,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `src/save/saveSystem.js`, `test`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that save schema and migration validation tooling is supposed to validate or explain.
@@ -1151,7 +1151,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `src/save/saveSystem.js`, `test`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that save schema and migration validation tooling is supposed to validate or explain.
@@ -1182,7 +1182,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `src/save/saveSystem.js`, `test`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that save schema and migration validation tooling is supposed to validate or explain.
@@ -1213,7 +1213,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `src/save/saveSystem.js`, `test`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that save schema and migration validation tooling is supposed to validate or explain.
@@ -1244,7 +1244,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `src/save/saveSystem.js`, `test`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that save schema and migration validation tooling is supposed to validate or explain.
@@ -1275,7 +1275,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/validation-broker-cli.mjs`, `scripts`, `docs/VALIDATION_WORKFLOW.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that validation broker and route manifests is supposed to validate or explain.
@@ -1307,7 +1307,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/validation-broker-cli.mjs`, `scripts`, `docs/VALIDATION_WORKFLOW.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that validation broker and route manifests is supposed to validate or explain.
@@ -1339,7 +1339,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/validation-broker-cli.mjs`, `scripts`, `docs/VALIDATION_WORKFLOW.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that validation broker and route manifests is supposed to validate or explain.
@@ -1371,7 +1371,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/validation-broker-cli.mjs`, `scripts`, `docs/VALIDATION_WORKFLOW.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that validation broker and route manifests is supposed to validate or explain.
@@ -1403,7 +1403,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/validation-broker-cli.mjs`, `scripts`, `docs/VALIDATION_WORKFLOW.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that validation broker and route manifests is supposed to validate or explain.
@@ -1435,7 +1435,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `server.js`, `electron/main.cjs`, `scripts/launch-electron.mjs`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that Browser and Electron launch parity tooling is supposed to validate or explain.
@@ -1468,7 +1468,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `server.js`, `electron/main.cjs`, `scripts/launch-electron.mjs`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that Browser and Electron launch parity tooling is supposed to validate or explain.
@@ -1501,7 +1501,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `server.js`, `electron/main.cjs`, `scripts/launch-electron.mjs`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that Browser and Electron launch parity tooling is supposed to validate or explain.
@@ -1534,7 +1534,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `server.js`, `electron/main.cjs`, `scripts/launch-electron.mjs`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that Browser and Electron launch parity tooling is supposed to validate or explain.
@@ -1567,7 +1567,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `server.js`, `electron/main.cjs`, `scripts/launch-electron.mjs`, `scripts`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that Browser and Electron launch parity tooling is supposed to validate or explain.
@@ -1600,7 +1600,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-colour-tokens.mjs`, `scripts/check-type-floor.mjs`, `styles`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that CSS color, type, and frontend grammar checks is supposed to validate or explain.
@@ -1633,7 +1633,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-colour-tokens.mjs`, `scripts/check-type-floor.mjs`, `styles`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that CSS color, type, and frontend grammar checks is supposed to validate or explain.
@@ -1666,7 +1666,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-colour-tokens.mjs`, `scripts/check-type-floor.mjs`, `styles`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that CSS color, type, and frontend grammar checks is supposed to validate or explain.
@@ -1699,7 +1699,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-colour-tokens.mjs`, `scripts/check-type-floor.mjs`, `styles`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that CSS color, type, and frontend grammar checks is supposed to validate or explain.
@@ -1732,7 +1732,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/check-colour-tokens.mjs`, `scripts/check-type-floor.mjs`, `styles`, `design/frontend/INSTRUMENT_GRAMMAR.md`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that CSS color, type, and frontend grammar checks is supposed to validate or explain.
@@ -1765,7 +1765,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `package.json`, `package-lock.json`, `src/render/GLTFLoader.js`, `vendor`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that dependency, license, and vendored-code hygiene is supposed to validate or explain.
@@ -1796,7 +1796,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `package.json`, `package-lock.json`, `src/render/GLTFLoader.js`, `vendor`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that dependency, license, and vendored-code hygiene is supposed to validate or explain.
@@ -1827,7 +1827,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `package.json`, `package-lock.json`, `src/render/GLTFLoader.js`, `vendor`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that dependency, license, and vendored-code hygiene is supposed to validate or explain.
@@ -1858,7 +1858,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `package.json`, `package-lock.json`, `src/render/GLTFLoader.js`, `vendor`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that dependency, license, and vendored-code hygiene is supposed to validate or explain.
@@ -1889,7 +1889,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `package.json`, `package-lock.json`, `src/render/GLTFLoader.js`, `vendor`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`
 
 **Work:**
 1. Read the live production contract that dependency, license, and vendored-code hygiene is supposed to validate or explain.
@@ -1920,7 +1920,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `docs/MODULE_MAP.md`, `docs/COMMON_BUGS.md`, `src/core/registry.js`, `package.json`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `ARCHITECTURE.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `ARCHITECTURE.md`
 
 **Work:**
 1. Read the live production contract that architecture and module-map drift detection is supposed to validate or explain.
@@ -1951,7 +1951,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `docs/MODULE_MAP.md`, `docs/COMMON_BUGS.md`, `src/core/registry.js`, `package.json`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `ARCHITECTURE.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `ARCHITECTURE.md`
 
 **Work:**
 1. Read the live production contract that architecture and module-map drift detection is supposed to validate or explain.
@@ -1982,7 +1982,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `docs/MODULE_MAP.md`, `docs/COMMON_BUGS.md`, `src/core/registry.js`, `package.json`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `ARCHITECTURE.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `ARCHITECTURE.md`
 
 **Work:**
 1. Read the live production contract that architecture and module-map drift detection is supposed to validate or explain.
@@ -2013,7 +2013,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `docs/MODULE_MAP.md`, `docs/COMMON_BUGS.md`, `src/core/registry.js`, `package.json`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `ARCHITECTURE.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `ARCHITECTURE.md`
 
 **Work:**
 1. Read the live production contract that architecture and module-map drift detection is supposed to validate or explain.
@@ -2044,7 +2044,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `docs/MODULE_MAP.md`, `docs/COMMON_BUGS.md`, `src/core/registry.js`, `package.json`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `ARCHITECTURE.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `ARCHITECTURE.md`
 
 **Work:**
 1. Read the live production contract that architecture and module-map drift detection is supposed to validate or explain.
@@ -2075,7 +2075,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/program-dispatch.mjs`, `scripts/inference-record.mjs`, `test`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `design/program/roadmap/program-queue.json`, `design/program/INFERENCE_LANES.md`, `design/program/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `design/program/roadmap/program-queue.json`, `design/program/INFERENCE_LANES.md`, `design/program/AGENTS.md`
 
 **Work:**
 1. Read the live production contract that program and inference dispatcher contracts is supposed to validate or explain.
@@ -2107,7 +2107,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/program-dispatch.mjs`, `scripts/inference-record.mjs`, `test`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `design/program/roadmap/program-queue.json`, `design/program/INFERENCE_LANES.md`, `design/program/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `design/program/roadmap/program-queue.json`, `design/program/INFERENCE_LANES.md`, `design/program/AGENTS.md`
 
 **Work:**
 1. Read the live production contract that program and inference dispatcher contracts is supposed to validate or explain.
@@ -2139,7 +2139,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/program-dispatch.mjs`, `scripts/inference-record.mjs`, `test`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `design/program/roadmap/program-queue.json`, `design/program/INFERENCE_LANES.md`, `design/program/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `design/program/roadmap/program-queue.json`, `design/program/INFERENCE_LANES.md`, `design/program/AGENTS.md`
 
 **Work:**
 1. Read the live production contract that program and inference dispatcher contracts is supposed to validate or explain.
@@ -2171,7 +2171,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/program-dispatch.mjs`, `scripts/inference-record.mjs`, `test`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `design/program/roadmap/program-queue.json`, `design/program/INFERENCE_LANES.md`, `design/program/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `design/program/roadmap/program-queue.json`, `design/program/INFERENCE_LANES.md`, `design/program/AGENTS.md`
 
 **Work:**
 1. Read the live production contract that program and inference dispatcher contracts is supposed to validate or explain.
@@ -2203,7 +2203,7 @@ Make the repository easier to trust and operate by reducing false greens, false 
 
 **Inspect:** `scripts/program-dispatch.mjs`, `scripts/inference-record.mjs`, `test`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `design/program/roadmap/program-queue.json`, `design/program/INFERENCE_LANES.md`, `design/program/AGENTS.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `scripts/AGENTS.md`, `test/AGENTS.md`, `docs/VALIDATION_WORKFLOW.md`, `design/program/roadmap/program-queue.json`, `design/program/INFERENCE_LANES.md`, `design/program/AGENTS.md`
 
 **Work:**
 1. Read the live production contract that program and inference dispatcher contracts is supposed to validate or explain.

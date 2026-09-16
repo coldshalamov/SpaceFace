@@ -23,6 +23,7 @@ import {
   masslineOwnsGuns,
 } from '../combat/tetherFireControl.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import {
   attackSpecHasLiveHit,
   attackSpecNeedsRuntime,
@@ -1890,10 +1891,8 @@ export function clearMomentumSinkPlant(plant) {
 }
 
 export function clearAllMomentumSinkPlants(state) {
-  const list = state && state.entityList;
-  if (!list) return;
-  for (let i = 0; i < list.length; i++) {
-    const plant = list[i] && list[i].data && list[i].data.momentumSinkPlant;
+  for (const entity of indexedShipLikeScan(state)) {
+    const plant = entity && entity.data && entity.data.momentumSinkPlant;
     if (plant) clearMomentumSinkPlant(plant);
   }
 }

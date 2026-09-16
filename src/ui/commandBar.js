@@ -79,14 +79,14 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
 }
 #sf-command-bar .sf-cb-k {
   font-family: var(--mono, monospace);
-  font-size: calc(9px * var(--ui-scale, 1));
+  font-size: calc(12px * var(--ui-scale, 1));
   letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute, #5a7aa0);
 }
 #sf-command-bar .sf-cb-v {
   font-family: var(--mono, monospace);
-  font-size: calc(13px * var(--ui-scale, 1));
+  font-size: calc(14px * var(--ui-scale, 1));
   color: var(--ink, #d3e6ff);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -96,13 +96,13 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
 #sf-command-bar .sf-cb-cell--id { min-width: 132px; }
 #sf-command-bar .sf-cb-brand {
   font-family: var(--mono, monospace);
-  font-size: calc(13px * var(--ui-scale, 1));
+  font-size: calc(14px * var(--ui-scale, 1));
   letter-spacing:.06em;
   color: var(--console-cyan, #4f8fdd);
 }
 #sf-command-bar .sf-cb-sector {
   font-family: var(--mono, monospace);
-  font-size: calc(10px * var(--ui-scale, 1));
+  font-size: calc(12px * var(--ui-scale, 1));
   letter-spacing: .06em;
   color: var(--ink-mute, #5a7aa0);
 }
@@ -121,9 +121,9 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
   gap: 6px;
 }
 #sf-command-bar .sf-cb-vlabel {
-  width: 34px;
+  width: 38px;
   font-family: var(--mono, monospace);
-  font-size: calc(9px * var(--ui-scale, 1));
+  font-size: calc(12px * var(--ui-scale, 1));
   letter-spacing:.06em;
   text-transform: uppercase;
   color: var(--ink-mute, #5a7aa0);
@@ -144,10 +144,10 @@ body.ui-live-screen #sf-command-bar { opacity: 0; }
 }
 #sf-command-bar .sf-cb-num {
   font-family: var(--mono, monospace);
-  font-size: calc(10px * var(--ui-scale, 1));
+  font-size: calc(12px * var(--ui-scale, 1));
   color: var(--ink-dim, #84a0c8);
   font-variant-numeric: tabular-nums;
-  width: 34px;
+  width: 38px;
   text-align: right;
 }
 /* Brightness encodes state: dim = healthy/nominal, bright = active/problem.

@@ -290,11 +290,11 @@ async function runRepositoryWiringAssertions() {
 
   const rootAgents = await readFile(path.join(PROJECT_ROOT, 'AGENTS.md'), 'utf8');
   const authorityHead = rootAgents.split(/\r?\n/).slice(0, 18).join('\n');
-  assert.match(authorityHead, /CANONICAL_BUILD_MAP\.md[\s\S]*single program map/i,
+  assert.match(authorityHead, /build_map\.md[\s\S]*single program map/i,
     'root orientation routes multi-plan work through the canonical program map');
   const programRoute = rootAgents.split(/\r?\n/).find((line) => line.includes('Program map, "next N"')) || '';
   assert.ok(
-    programRoute.indexOf('CANONICAL_BUILD_MAP.md') < programRoute.indexOf('design/program/NOW.md'),
+    programRoute.indexOf('build_map.md') < programRoute.indexOf('design/program/NOW.md'),
     'program routing reads the canonical map before live NOW state',
   );
   const productRoute = rootAgents.split(/\r?\n/).find((line) => line.includes('Product or system design')) || '';

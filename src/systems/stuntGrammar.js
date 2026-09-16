@@ -58,9 +58,10 @@ export const stuntGrammar={
       const off=this.bus?.on(event,p=>this._event(event,p??{}));if(typeof off==='function')this._unsubs.push(off);
     }
   },
-  destroy() { for(const off of this._unsubs??[])off();this._unsubs=[];unbindStuntEvidence(this.state);this.detector=null; },
+  destroy() { for(const off of this._unsubs??[])off();this._unsubs=[];unbindStuntEvidence(this.state);this.detector=null;this.flight=null; },
   serialize() {
-    const s=this.state;if(s.run?.kind==='survival'&&s.run.phase!=='inactive')return null;
+    const s=this.state;if(!s||(s.run?.kind==='survival'&&s.run.phase!=='inactive'))return null;
+    if(!this.detector||!this.flight)return null;
     return boundStuntSavePayload(structuredClone({revision:2,mode:'adventure',state:ensure(s),evidence:serializeStuntEvidence(s,pendingProjectileBodyIds(s)),projectiles:serializeProjectileEvidence(s),detector:this.detector.serialize(),flight:this.flight.serialize()}));
   },
   deserialize(raw,remap=null) {

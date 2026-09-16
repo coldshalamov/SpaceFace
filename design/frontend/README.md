@@ -83,7 +83,7 @@ already bigger than the HUD admits.
 | [`ADDITIONS.md`](./ADDITIONS.md) | Candidate additions **beyond** the specced surfaces — entity links, loadout presets, the watch list, the re-entry digest, recallable events, chart notes, global find. Each checked against the codebase as genuinely absent. Includes a deliberately-rejected list. |
 | [`icon-prompts/`](./icon-prompts/) | 16 ready-to-run prompt files, one per power. Committed so the set can be regenerated or extended later in the same style. |
 
-Program routing and sequencing live in [`../../CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md).
+Program routing and sequencing live in [`../../build_map.md`](../../build_map.md).
 
 ---
 

@@ -94,6 +94,10 @@
 .sx-mkt-table th:last-child, .sx-mkt-row__held { text-align: right; }
 .sx-mkt-row__price .sx-mkt-row__tr { margin-left: 0.4em; }
 .sx-mkt-row__held { white-space: nowrap; }
+/* The commodity glyph's only other rule lived in orbital.css, which the station never loads —
+   the svg fell back to inline 100% width (~53 px) and ate the whole name cell. A row icon is
+   text-sized: 18 px inline with the name, sightline -4 px onto the baseline. */
+.sx-mkt-row__name .of-commodity-icon { display: inline-block; width: 18px; height: 18px; margin-right: 7px; vertical-align: -4px; color: var(--k-bone-62); }
 .sx-mkt__quote > * + *, .sx-mkt__console > * + *, .sx-trade > * + * { margin-top: calc(16px * var(--k-s)); }
 .sx-mkt__quote { padding-right: calc(420px * var(--k-s)); }
 .sx-mkt__hero { margin-top: calc(8px * var(--k-s)); }
@@ -114,8 +118,11 @@
 .sx-ledger > .st-ledger { display: contents; }
 .sx-ledger .st-sub-h, .sx-ledger .st-ledger-intro, .sx-ledger .st-ledger-status, .sx-ledger .st-ledger-list,
 .sx-ledger .st-ledger-empty, .sx-ledger .st-ledger-nav { grid-column: 1; }
+/* The entry list owns the panel's bounded remainder row — an unbounded auto row let a long ledger
+   write straight past the panel's clipped foot, where no scroller could ever reach it. */
+.sx-ledger { grid-template-rows: auto auto auto minmax(0, 1fr) auto; }
 .sx-ledger .st-ledger-intro, .sx-ledger .st-ledger-status { margin: calc(12px * var(--k-s)) 0 0; }
-.sx-ledger .st-ledger-list { margin-top: calc(24px * var(--k-s)); }
+.sx-ledger .st-ledger-list { margin-top: calc(24px * var(--k-s)); min-height: 0; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
 .sx-ledger .st-ledger-detail, .sx-ledger__read { grid-column: 2; grid-row: 1 / span 6; align-self: start; padding-right: calc(420px * var(--k-s)); }
 .sx-ledger .st-ledger-detail[hidden], .sx-ledger__read[hidden] { display: none; }
 .sx-ledger__read > * + * { margin-top: calc(16px * var(--k-s)); }
@@ -138,7 +145,13 @@ button.sx-ct-row { width: 100%; background: none; border-left: 0; border-right: 
 .sx-ct-row.is-active .sx-ct-row__crest, .sx-ct-row:hover .sx-ct-row__crest { color: var(--k-text-live); }
 .sx-ct-row__badge { margin-right: 0.4em; }
 .sx-ct__jobs { --k-row-cols: minmax(0, 1fr) auto auto; }
-.sx-job__meta { white-space: nowrap; }
+/* paintRow's .fh-row makes these lis flex rows, so --k-row-cols is inert: default flex-shrink
+   squeezes the Track chip below its label and its overflow:hidden cuts it silently. The title is
+   the column built to truncate — it owns the squeeze; the nowrap meta and the chip keep their
+   content size. */
+.sx-job__title { flex: 1 1 auto; min-width: 0; }
+.sx-job__meta { white-space: nowrap; flex: none; }
+.sx-job__track { flex: none; }
 .sx-job.is-tracked .sx-job__title { color: var(--k-text-live); }
 
 /* The stage: the dossier reads top-down; the corner column (credits + vitals) stays clear. */
@@ -265,7 +278,11 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 .sx-sw__focusline.is-on { opacity: 1; }
 
 /* The title block, top-left of the stage: the hull's name, the condition verb as a fine word after it, the blurb. */
-.sx-sw__nameplate { position: absolute; left: 0; top: 0; max-width: var(--k-measure); padding-right: calc(420px * var(--k-s)); }
+/* Text-on-sky over the drag canvas: the plate is pointer-transparent so drag gestures and the
+   hardpoint pins beneath it stay live; only the condition word (a [data-why] tooltip carrier)
+   keeps a pointer target. */
+.sx-sw__nameplate { position: absolute; left: 0; top: 0; max-width: var(--k-measure); padding-right: calc(420px * var(--k-s)); pointer-events: none; }
+.sx-sw__nameplate [data-why] { pointer-events: auto; }
 .sx-sw__crestLine { display: flex; align-items: baseline; gap: calc(16px * var(--k-s)); flex-wrap: wrap; }
 .sx-sw__name { margin: 0; max-width: 14ch; }
 .sx-sw__condition { display: inline-flex; gap: 0.5em; }
@@ -279,7 +296,7 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
    above the panel at both sizes, so the two-row offset only pushed the gauges down into the side
    plate. The right column is gauges on top, the sunk side plate anchored to the panel floor, and
    the stats block keeps clear of that column instead of running under it. */
-.sx-sw__gauges { position: absolute; right: 0; top: 0; width: calc(400px * var(--k-s)); --k-row-cols: minmax(0, 1fr) auto; }
+.sx-sw__gauges { position: absolute; right: 0; top: 0; width: calc(400px * var(--k-s)); --k-row-cols: minmax(0, 1fr) auto; max-height: calc(100% - var(--k-row) * 2); overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
 .sx-sw--flight .sx-sw__gauges { top: 0; }
 .sx-sw__gauges .k-row { min-height: calc(var(--k-row) * 0.8); }
 .sx-sw__gauges .k-row:focus-visible { outline: none; box-shadow: inset 2px 0 0 var(--k-signal); }
@@ -334,6 +351,17 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 .sx-sw__acquiring { position: absolute; left: 0; bottom: calc(var(--k-row) * 2); max-width: var(--k-measure); pointer-events: none; }
 .sx-sw__acquiring > * { pointer-events: auto; }
 .sx-sw__acquiring:empty { display: none; }
+/* While the optics resolve, the state card owns a left rail: bottom-anchored shrink-to-fit left
+   it ~110 px wide and 400 px tall, interleaving with the nameplate and the callout pins. The
+   plate chrome that would sit under the rail yields for the duration — the pins describe a hull
+   still being read. */
+.sx-sw__stage.is-acquiring .sx-sw__acquiring:not(:empty) {
+  top: 0; bottom: 0; width: min(46ch, 54%); max-width: none;
+  display: flex; align-items: center; padding: 0 calc(20px * var(--k-s));
+  background: linear-gradient(to right, rgb(6 8 12 / 84%), rgb(6 8 12 / 42%) 70%, transparent);
+}
+.sx-sw__stage.is-acquiring .sx-sw__nameplate,
+.sx-sw__stage.is-acquiring .sx-sw__slotfield { visibility: hidden; }
 
 /* The stage: the title block above, the foot below; the stage's absolute children hang off it. */
 .sx-sw__main { display: flex; flex-direction: column; min-height: 0; }
@@ -341,7 +369,9 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 /* The stats keep clear of the right column (gauges + side plate, 400 px at 1920): before this the
    four heroes and the verbs row ran under the sunk plate and "Take it to the range / Record /
    Select a slot" were hidden behind it at every default viewport. */
-.sx-sw__stats { flex: 0 0 auto; margin-top: calc(16px * var(--k-s)); margin-right: calc(400px * var(--k-s) + var(--k-gap)); max-height: 50%; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
+/* The stats must shrink (0 1 auto + min-height:0) so the pinned verbs row under them keeps its
+   place on short panels — with 0 0 auto the column overflows and the verbs paint off-panel. */
+.sx-sw__stats { flex: 0 1 auto; min-height: 0; margin-top: calc(16px * var(--k-s)); margin-right: calc(400px * var(--k-s) + var(--k-gap)); max-height: 50%; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
 .sx-sw__stats:empty { display: none; }
 
 /* The foot: the four bands as hero numbers with a word each; the verbs as words at the row's end. */
@@ -355,10 +385,10 @@ button.sx-ind-row { width: 100%; background: none; border-left: 0; border-right:
 .sx-sw-hero:focus-visible { outline: none; }
 .sx-sw-power__state--you .k-hero__n { color: var(--k-good); }
 .sx-sw-power__state--foe .k-hero__n { color: var(--k-bad); }
-/* The verbs are moved to the foot of the stats block by shipworks.js (dressApron) and stick to the
-   bottom of its scroll, so the actions are always on the glass. */
+/* The verbs are pinned to the foot of the main column by shipworks.js (dressApron) — a footer row
+   under the stats scroll, always on the glass without covering any stat row. */
 .sx-sw-verbs { margin-left: auto; align-self: flex-end; gap: calc(24px * var(--k-s)); }
-.sx-sw__stats > .sx-sw-verbs { position: sticky; bottom: 0; z-index: 2; display: flex; justify-content: flex-end; margin: calc(8px * var(--k-s)) 0 0; padding: calc(6px * var(--k-s)) 0 calc(2px * var(--k-s)); background: linear-gradient(to top, rgb(6 8 12 / 94%) 0%, rgb(6 8 12 / 82%) 70%, rgb(6 8 12 / 0%) 100%); }
+.sx-sw__main > .sx-sw-verbs { flex: 0 0 auto; display: flex; justify-content: flex-end; margin: calc(8px * var(--k-s)) calc(400px * var(--k-s) + var(--k-gap)) 0 0; padding: calc(6px * var(--k-s)) 0 calc(2px * var(--k-s)); }
 .sx-sw-verb[disabled] { color: var(--k-bone-38); cursor: default; }
 .sx-sw-band { margin-top: calc(16px * var(--k-s)); max-width: var(--k-measure); }
 .sx-sw-band__label { margin: 0 0 calc(8px * var(--k-s)); }
@@ -425,10 +455,11 @@ button.sx-sw-row { width: 100%; background: none; border-left: 0; border-right: 
 .sx-modrow__buy small { font-size: var(--k-fs-fine); }
 
 /* The stage-right column, under the corner rows: the selected hull's identity (buy) or the build's circuit (fleet). */
-/* Anchored to the panel floor and capped to the room under the gauges (about 7.5 rows tall), so it
-   can never cover the gauges above it or the verbs/heroes to its left. */
-.sx-sw__side { position: absolute; right: 0; bottom: 0; width: calc(400px * var(--k-s)); z-index: 1; max-height: calc(100% - var(--k-row) * 7.75); overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
-.sx-sw--flight .sx-sw__side { max-height: calc(100% - var(--k-row) * 5.5); }
+/* Anchored to the panel floor and pinned under the gauges rack, so it can never cover the gauges
+   above it or the verbs/heroes to its left. The CSS top is the pre-JS contract; shipworks.js then
+   measures the rack's real bottom and sets style.top, since the rack lives in the stage's
+   containing block and the plate in the panel's. */
+.sx-sw__side { position: absolute; right: 0; bottom: 0; top: calc(var(--k-row) * 7); width: calc(400px * var(--k-s)); z-index: 1; overflow: hidden auto; scrollbar-width: thin; scrollbar-color: var(--k-hair) transparent; }
 /* The energy-core figure in the side plate at number size, not title size: at 1280x800 the plate
    has about four rows under the gauges and a title-size "80" was cut in half by its own scroll. */
 .sx-sw__side .sx-sw-circuit__core .k-hero__n { font-size: var(--k-fs-num); }

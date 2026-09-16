@@ -6,6 +6,7 @@
 import { SHIPS } from '../data/ships.js';
 import { MODULES } from '../data/modules.js';
 import { compactSynergy, synergiesForFittings } from '../data/synergies.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const MODULE_BY_ID = new Map(MODULES.map((mod) => [mod.id, mod]));
@@ -297,7 +298,7 @@ export const buildIdentity = {
   },
 
   _restampVisible() {
-    const list = this.state && Array.isArray(this.state.entityList) ? this.state.entityList : [];
+    const list = indexedShipLikeScan(this.state);
     for (const entity of list) {
       const reveal = entity && entity.data && entity.data.scanRevealed;
       if (reveal && reveal.entityId != null) this._stampReveal(reveal, { emit: false });

@@ -104,7 +104,14 @@ function eachWorldSector(state, visit) {
 export function resolveDockStationType(state) {
   const id = stationId(state);
   if (!id) return '';
-  const entities = (state && state.entityList) || [];
+  const byStationId = state && state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && typeof byStationId.get === 'function' ? byStationId.get(id) : null;
+  if (indexed && indexed.type === 'station') {
+    const live = typeFromEntity(indexed);
+    if (live) return live;
+  }
+  const stations = state && state.entityIndex && state.entityIndex.stations;
+  const entities = Array.isArray(stations) ? stations : ((state && state.entityList) || []);
   for (const entity of entities) {
     if (!entity || entity.type !== 'station') continue;
     const data = entity.data || {};

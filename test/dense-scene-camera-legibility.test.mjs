@@ -10,11 +10,13 @@
  */
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import * as THREE from 'three';
 
 import {
   ACTIVE_ATTACKER_LOOKAHEAD_SCALE,
   BOOST_CAMERA_ZOOM_TARGET,
   COMPOSITION_THREAT_STICK_S,
+  COMPOSITION_ZOOM_MAX,
   createChaseCamera,
   playerHasActiveAttackerFraming,
   resolveChaseComposition,
@@ -31,6 +33,21 @@ const DT = 1 / 60;
 const FOV = 50;
 const ASPECT = 16 / 9;
 const TILT = 60;
+
+function projectedWidthFraction(camera, player) {
+  const radius = Math.max(0, player.radius || 0);
+  const left = new THREE.Vector3(player.pos.x - radius, 0, player.pos.z).project(camera);
+  const right = new THREE.Vector3(player.pos.x + radius, 0, player.pos.z).project(camera);
+  return Math.abs(right.x - left.x) * 0.5;
+}
+
+function effectiveZoom(camera, focus) {
+  return Math.hypot(
+    camera.position.x - focus.x,
+    camera.position.y,
+    camera.position.z - focus.z,
+  );
+}
 
 function ship(id, x, z, team = 1, extras = {}) {
   return {
@@ -124,6 +141,26 @@ test('H1b: boost framing opens on keydown and eases back slowly (F5 asymmetric z
   assert.ok(Math.abs(factor - 1) < 0.005, `camera should settle back to neutral (factor=${factor.toFixed(4)})`);
 });
 
+test('H1c: live boosted combat composition preserves standard player hull legibility', () => {
+  globalThis.window = { innerWidth: 1600, innerHeight: 900 };
+  const player = ship(1, 0, 0, 0, { radius: 14 });
+  player.flags = { boosting: true };
+  const attacker = ship(2, 160, -80, 1, { combat: { targetId: 1, lockTarget: 1 }, radius: 6 });
+  const state = stateWith(player, [attacker]);
+  const camera = createChaseCamera(state);
+  camera.snapToPlayer();
+
+  for (let i = 0; i < 180; i++) camera.follow(DT);
+  camera.obj.updateMatrixWorld(true);
+
+  const zoom = effectiveZoom(camera.obj, state.camera.focus);
+  const width = projectedWidthFraction(camera.obj, player);
+  assert.ok(zoom <= COMPOSITION_ZOOM_MAX + 1e-6,
+    `boosting combat composition zoom ${zoom.toFixed(2)} must stay inside the settled cap`);
+  assert.ok(width >= 0.04,
+    `boosting player projected width ${(width * 100).toFixed(2)}% must preserve 4% hull legibility`);
+});
+
 // ── H2 / H4: composition FOV + conservative minZoom ───────────────────────────
 
 test('H2: punched view.fov must not shrink active-attacker minZoom vs base FOV', () => {
@@ -190,6 +227,26 @@ test('H3: sticky composition holds a threat through a brief nearer challenger bl
   b.pos.x = 40;
   const broken = resolveChaseComposition(state, player, { x: 0, z: 0 }, view, null, null, sticky);
   assert.equal(broken.composedThreatId, 3, 'meaningfully closer attacker breaks the sticky hold');
+});
+
+test('H3: a stale active hold cannot demote a live attacker after capability or lock loss', () => {
+  for (const loss of ['weapon', 'sensor', 'tag', 'lock']) {
+    const player = ship(1, 0, 0, 0);
+    const held = ship(2, 80, 0, 1);
+    const active = ship(3, 100, -40, 1);
+    const state = stateWith(player, [held, active]);
+    const sticky = { id: null, remainS: 0, wasActive: false };
+    const view = { fov: FOV, baseFov: FOV, aspect: ASPECT, tiltDeg: TILT, dt: DT };
+    const first = resolveChaseComposition(state, player, player.pos, view, null, null, sticky);
+    assert.equal(first.composedThreatId, held.id);
+    if (loss === 'lock') held.data.combat = { targetId: null, lockTarget: null };
+    else state.combat.entities = { [held.id]: loss === 'tag'
+      ? { blockedActionTags: ['weapon'] }
+      : { capabilities: { [loss]: false } } };
+    const next = resolveChaseComposition(state, player, player.pos, view, null, null, sticky);
+    assert.equal(next.composedThreatId, active.id, loss);
+    assert.equal(next.hasActiveAttacker, true, loss);
+  }
 });
 
 test('H3: playerHasActiveAttackerFraming is true when a hostile locks the player', () => {

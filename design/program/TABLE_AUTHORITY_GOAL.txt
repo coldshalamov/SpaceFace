@@ -1,0 +1,27 @@
+TABLE AUTHORITY
+
+You are the orchestrator for the table-authority performance plan. Copy this whole file
+as the job. Do not use INFERENCE. Do not start from PERF_WHAT_MATTERS “sleep 317 Rapier
+bodies” — that pole is wrong. Do not write another catalog.
+
+Law (read first, then spawn — do not implement every lane yourself):
+  design/perf/TABLE_AUTHORITY_PLAN.md
+
+Picture: default bloom, shadows, particles, population stay on.
+
+You are the parent. Spawn one subagent per lane. Never put two agents on the same
+owned files. If Lane A files are already dirty (canvas / island agent), skip A and
+spawn B and C now. Spawn D only after A’s Ceres census is green.
+
+Lanes (exact files and stay-off lists are in the plan §5):
+  A  Combat island — empty entityList; catch-up on promote; lean far rows
+  B  Dressing leftovers — heist / travelLanes / automation / asteroidSites FX
+  C  Runway / no-pop — decode and promote before the glass; no dummy prewarm
+  D  Present-first loop — after A only
+
+Each subagent must checkpoint, NOW-row its exact paths, stay off foreign files,
+run check:baseline, and report in player words.
+
+Done when the plan §8 is true: quiet Ceres is tens of live entities not ~400,
+headless tick p50 ≤ 5 ms, rim does not blink, first new hull is not an on-glass
+compile brick. Commit finished owned files as you go.

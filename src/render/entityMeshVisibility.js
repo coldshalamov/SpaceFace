@@ -39,6 +39,11 @@ export function shouldSubmitEntityMesh(options = {}) {
       ? collection.has(entityId)
       : Array.isArray(collection) && collection.includes(entityId);
     if (has(glass)) return true;
+    // The live frustum outranks the sim-side activity frame for submission: the frame's glass is
+    // computed at the requested zoom with a fixed aspect, so a dynamically zoomed-out camera can
+    // put a runway-classed hull on the real screen. Denying it there hides a hull the player can
+    // see while its HUD markers still draw.
+    if (options.onLiveGlass === true) return true;
     // Runway roots remain resident for approach-time warmup but are not submitted
     // until the activity frame promotes them onto the readable glass.
     if (has(runway)) return false;

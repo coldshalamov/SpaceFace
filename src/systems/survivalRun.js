@@ -67,6 +67,16 @@ function isPlanError(plan) {
   return !plan || plan.ok === false;
 }
 
+/**
+ * Milliseconds of sim time between a death mark and control regained. Pure, so the retry bar
+ * ("death to control on the same seed in under 5 s") is assertable without a DOM or wall clock.
+ */
+export function retryLatencyMs(deathMark, controlSimTime) {
+  const death = deathMark && Number.isFinite(deathMark.simTime) ? deathMark.simTime : 0;
+  const control = Number.isFinite(controlSimTime) ? controlSimTime : 0;
+  return Math.max(0, Math.round((control - death) * 1000));
+}
+
 export const survivalRun = {
   name: 'survivalRun',
 
@@ -92,6 +102,9 @@ export const survivalRun = {
     this._unsubs.push(this.bus.on('run:modifierChosen', () => this._onDraftResolved()));
     this._unsubs.push(this.bus.on('run:refitClosed', () => this._onRefitClosed()));
     this._unsubs.push(this.bus.on('run:extractionRequested', () => this._onExtractionRequested()));
+    // PQ-174.06: stamp the death moment so a same-seed retry is measurable from it. The mark
+    // survives the run:ended reset below and is cleared only when the next run begins.
+    this._unsubs.push(this.bus.on('player:death', () => this._onPlayerDeath()));
   },
 
   destroy() {
@@ -103,6 +116,11 @@ export const survivalRun = {
 
   newGame() {
     this._resetMachine();
+  },
+
+  /** The stamped death moment ({ tick, simTime }), or null before the first death. */
+  lastDeathMark() {
+    return this._lastDeath ? { ...this._lastDeath } : null;
   },
 
   /** First moment this run entered `active` — the player has control. Null before that. */
@@ -186,6 +204,7 @@ export const survivalRun = {
 
   _onStarted(payload) {
     this._resetMachine();
+    this._lastDeath = null;
     const queued = takeQueuedChallenge();
     const run = liveSurvivalRun(this.state);
     if (run && queued) {
@@ -428,6 +447,15 @@ export const survivalRun = {
       reason: 'extracted',
       tick: this._runTick,
     });
+  },
+
+  _onPlayerDeath() {
+    const run = liveSurvivalRun(this.state);
+    if (!run) return;
+    this._lastDeath = {
+      tick: Number.isFinite(this.state.tick) ? this.state.tick | 0 : 0,
+      simTime: Number.isFinite(this.state.simTime) ? this.state.simTime : 0,
+    };
   },
 
   _requestTransition(expectedPhase, nextPhase, reason) {

@@ -88,7 +88,7 @@ rewrite. Thin STABLE map pointer only.
 ## Write set
 
 - `design/program/roadmap/active/MASSLINE_PRESENTATION_UVP.md` (this packet)
-- `CANONICAL_BUILD_MAP.md` — thin §1 routing pointer only
+- `build_map.md` — thin §1 routing pointer only
 - `src/render/masslinePresentation.js` (new pure)
 - `src/render/shipPitchPresentation.js`
 - `src/render/vfx.js` (narrow force/tumble continuous + neon)

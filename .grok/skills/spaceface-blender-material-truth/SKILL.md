@@ -1,14 +1,7 @@
 ---
 name: spaceface-blender-material-truth
 description: >
-  Primary SpaceFace hard-surface workflow for authoring or remastering a camera-prominent Blender or
-  GLB ship, station, place, or prop. Always use for Blender/GLB form or surfacing work, and
-  especially when components read as plastic, clay, rubber, leather, LEGO-like primitive stacks,
-  generic greebles, or otherwise disagree with their in-fiction function and manufacture. Establish
-  fiction/material truth before modeling, preserve existing identity and gameplay interfaces when
-  remastering, use component-only generated references when selected, iterate on the complete
-  surfaced asset in Blender, export through the sanctioned pipeline, and require matched
-  clay/material/runtime evidence.
+  SpaceFace Blender/GLB material-truth preflight. Load for any form or surfacing work.
 ---
 
 # SpaceFace Blender Material Truth

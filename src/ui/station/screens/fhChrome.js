@@ -11,8 +11,10 @@ const FH_KEY = {
 };
 
 export function fhUrl(rel) {
-  try { return new URL('../../../assets/ui/kit/assets/' + rel, import.meta.url).href; }
-  catch { return 'assets/ui/kit/assets/' + rel; }
+  // This module sits four directories under the server root (src/ui/station/screens/),
+  // one deeper than the src/ui/screens/ helpers it mirrors — it needs four `..` hops.
+  try { return new URL('../../../../assets/ui/kit/assets/' + rel, import.meta.url).href; }
+  catch { return '/assets/ui/kit/assets/' + rel; }
 }
 
 function forcedColorsActive() {

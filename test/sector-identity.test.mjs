@@ -181,7 +181,7 @@ test('Helios and Ceres read as different places across a 30 s watch of each', { 
 });
 
 test('the same seed reads the same way twice', { timeout: 900_000 }, async () => {
-  // Law 7 of CANONICAL_BUILD_MAP §1.3: "Randomness in a bench is how agents lose the ability to test."
+  // Law 7 of build_map §1.3: "Randomness in a bench is how agents lose the ability to test."
   const first = await measureSectorIdentity(SEED);
   const second = await measureSectorIdentity(SEED);
   assert.deepEqual(

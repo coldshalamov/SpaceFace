@@ -159,12 +159,21 @@ export const CALENDAR_CLOCK_IDS = Object.freeze([
   'salvage', 'lossInvestigation', 'salvageActions', 'survivorPod', 'recoveryEncounter',
   'factions', 'sectorSim', 'missions', 'careerOrigins', 'careerLadders', 'liveCareerLadderBranches',
   'story', 'scenarioRuntime', 'drill', 'claims', 'bandRadio', 'onboarding', 'save',
+  // Ecology/morale are event-driven; the 60 Hz tick only expires or reseeds. 2 Hz is enough.
+  'aftermathWrecks', 'wingMorale',
+  // Event-driven owners whose update() is an empty registry placeholder.
+  'terrainAnchors', 'jettisonImpulse', 'masslineImpactDamage',
 ]);
 
 export const NEAR_CLOCK_IDS = Object.freeze([
   'flybyFocus', 'scanner', 'scanReveal', 'lawSecurity', 'pirateDisguise', 'pirateParley',
   'pirateDisengage', 'aiSlot', 'aiPorts', 'aiEncounter', 'traffic', 'titles', 'planetRuntime',
   'npcJobsRuntime',
+  // Observer receipts; primary ticks already throttle internally. Catch-up extra steps
+  // must not rescan the island just to notice a flee flag.
+  'combatOutcome',
+  // Dirty-flag mass recompute; catch-up extra steps do not change the hold.
+  'cargo',
 ]);
 
 const CLOCK_BY_ID = new Map();

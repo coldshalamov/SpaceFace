@@ -15,7 +15,7 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Any
 
-ROOT_MARKER = "CANONICAL_BUILD_MAP.md"
+ROOT_MARKER = "build_map.md"
 QUEUE_REL = Path("design/program/roadmap/program-queue.json")
 WORKSTREAM_REL = Path("design/program/AGENTIC_QUALITY_WORKSTREAMS.json")
 SCENARIO_REL = Path("tools/agentic/scenarios.json")
@@ -207,7 +207,7 @@ PARENT: {parent}
 WORKSTREAM: {c.workstream} — {c.workstreamTitle}
 WHY NOW: {c.reason}
 
-Start at CANONICAL_BUILD_MAP.md and design/program/CENTRAL_BRAIN.md. Re-read NOW.md immediately before mutation. Run `node scripts/program-dispatch.mjs --id {parent}` and open the exact unit/packet. Do not create a second queue or framework.
+Start at build_map.md and design/program/CENTRAL_BRAIN.md. Re-read NOW.md immediately before mutation. Run `node scripts/program-dispatch.mjs --id {parent}` and open the exact unit/packet. Do not create a second queue or framework.
 
 Before mutation, characterize the player-visible defect with: {scenario_text}. Reuse src/testing/lab, runtimeWitness and src/observability before adding instrumentation. Name one causal hypothesis.
 

@@ -468,6 +468,7 @@ export class RcsImpulseSystem {
       mesh.count = 0;
       mesh.frustumCulled = false;
       mesh.name = `rcs-layer:${role}`;
+      mesh.userData.spacefaceQualityTierGeometries = RCS_QUALITY_TIERS.map((tier) => tierBuffers[tier].geo);
       mesh.renderOrder = 30 + li;
       this.group.add(mesh);
 

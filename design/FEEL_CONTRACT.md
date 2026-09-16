@@ -15,7 +15,7 @@ the helm. These exact phrases are a regression warning, not a substitute for run
 <!-- assertion-guard:end -->
 
 **Status: ACCEPTANCE AUTHORITY for every packet in the "box of dangerous toys" program
-(`CANONICAL_BUILD_MAP.md` §13C, `PQ-137` … `PQ-145`).** Written 2026-09-03 from a code audit of the
+(`build_map.md` §13C, `PQ-137` … `PQ-145`).** Written 2026-09-03 from a code audit of the
 live default route, after the owner's verdict that the combat and flight "just suck" and that agents
 "keep expanding the turd instead of fixing the turd."
 

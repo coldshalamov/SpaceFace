@@ -97,6 +97,7 @@ import {
   resolveWorldPresentationEntity,
 } from '../world/presentationSources.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
@@ -254,19 +255,27 @@ import {
   willEntityEnterAuthoredUpgradeRunway,
 } from './authoredAdmissionPolicy.js';
 import {
+  admissionAnchorPos,
+  approachDistanceWu,
   authoredPrefetchRadius,
   authoredResidencyEvictRadius,
   censusTableBands,
   classifyTableBand,
+  glassCornerWu,
   glassHalfExtents,
   residencyEvictRadius,
   residencyPrefetchRadius,
   shouldKeepPersistentLandmarkResident,
   submitCullHalfExtents,
   TABLE_BAND,
+  TABLE_BUILD_URGENT_SECONDS,
+  TABLE_COLLECT_HORIZON_SECONDS,
+  TABLE_PROMOTE_HORIZON_SECONDS,
+  TABLE_SUBMIT_APPROACH_SECONDS,
   tableLookAtDelta,
   tableShadowCasterRadius,
   tableTravelSpeed,
+  timeToEnterRadiusSeconds,
 } from './tabletopPolicy.js';
 import { PRESENTATION_TIER } from '../world/activityClassification.js';
 import { getActivityFrame } from '../core/worldActivityManager.js';
@@ -554,16 +563,25 @@ function enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue) {
  * bounded per-frame build budget. New Game can spawn hundreds of asteroids/props before its late
  * traffic and 47-A ships; FIFO entity order otherwise strands those ships behind non-gating meshes.
  */
-export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue, shouldQueue = null) {
-  for (const entity of entityList) {
-    if (entity && entity.type === 'ship' && (!shouldQueue || shouldQueue(entity))) {
+export function enqueueMissingMeshBuilds(entityList, meshes, queuedIds, queue, shouldQueue = null, isUrgent = null) {
+  // When isUrgent is supplied, urgent candidates (about to cross the glass) drain
+  // ahead of ordinary ones within the same per-frame budget; ships keep their
+  // lead inside each urgency tier.
+  const passes = isUrgent ? 2 : 1;
+  for (let pass = 0; pass < passes; pass++) {
+    const urgentPass = isUrgent ? pass === 0 : false;
+    for (const entity of entityList) {
+      if (!entity || entity.type !== 'ship') continue;
+      if (shouldQueue && !shouldQueue(entity)) continue;
+      if (isUrgent && urgentPass !== isUrgent(entity)) continue;
       enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
     }
-  }
-  for (const entity of entityList) {
-    if (!entity || entity.type === 'ship') continue;
-    if (shouldQueue && !shouldQueue(entity)) continue;
-    enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
+    for (const entity of entityList) {
+      if (!entity || entity.type === 'ship') continue;
+      if (shouldQueue && !shouldQueue(entity)) continue;
+      if (isUrgent && urgentPass !== isUrgent(entity)) continue;
+      enqueueMeshBuildCandidate(entity, meshes, queuedIds, queue);
+    }
   }
 }
 
@@ -654,6 +672,63 @@ function inboundDecodeRadius(state, radius = null) {
   return authoredPrefetchRadius(tableTravelSpeed(state));
 }
 
+const _admissionEnv = { anchorX: 0, anchorZ: 0, pvx: 0, pvz: 0, glassR: 0 };
+const _admissionAnchor = { x: 0, z: 0 };
+
+/**
+ * Shared prediction frame for admission tests: the live look-at (while it is
+ * near the player), the player velocity the look-at translates with, and the
+ * live glass corner. Computed once per residency pass, not per entity.
+ */
+function renderAdmissionEnv(state, out = _admissionEnv) {
+  const player = playerEntityForRenderState(state);
+  const cam = liveTableCamera(state);
+  out.glassR = glassCornerWu(cam.zoom, cam.fov, cam.aspect, cam.tilt);
+  const anchor = admissionAnchorPos(
+    state,
+    player && player.pos,
+    Math.max(160, out.glassR),
+    _admissionAnchor,
+  );
+  out.anchorX = anchor.x;
+  out.anchorZ = anchor.z;
+  out.pvx = Number(player && player.vel && player.vel.x) || 0;
+  out.pvz = Number(player && player.vel && player.vel.z) || 0;
+  return out;
+}
+
+/**
+ * Seconds until the entity sits inside the glass corner of the moving view
+ * anchor — the approach-aware runway a fixed disc cannot express. Far ledger
+ * rows are extrapolated ballistically first: their stored pos froze at shelf
+ * time. Infinity when it never enters inside the horizon.
+ */
+function entityTimeToGlassSeconds(entity, env, state, horizonS = TABLE_PROMOTE_HORIZON_SECONDS, padWu = 0) {
+  const pos = entity && entity.pos;
+  if (!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return Infinity;
+  let ex = pos.x;
+  let ez = pos.z;
+  if (entity.farResident === true && Number.isFinite(entity.lastExactT)) {
+    const simTime = Number.isFinite(state && state.simTime)
+      ? state.simTime
+      : ((state && state.tick) | 0) / 60;
+    const drift = Math.max(0, simTime - entity.lastExactT);
+    ex += (Number(entity.vel && entity.vel.x) || 0) * drift;
+    ez += (Number(entity.vel && entity.vel.z) || 0) * drift;
+  }
+  const relVx = (Number(entity.vel && entity.vel.x) || 0) - env.pvx;
+  const relVz = (Number(entity.vel && entity.vel.z) || 0) - env.pvz;
+  const visual = Math.max(0, Number(entity.radius) || 0);
+  return timeToEnterRadiusSeconds(
+    ex - env.anchorX,
+    ez - env.anchorZ,
+    relVx,
+    relVz,
+    env.glassR + visual + (Number(padWu) || 0),
+    horizonS,
+  );
+}
+
 function playerPlanarDistance(entity, state) {
   const player = playerEntityForRenderState(state);
   if (!player || !player.pos || !entity || !entity.pos) return Infinity;
@@ -666,12 +741,32 @@ function playerPlanarDistance(entity, state) {
 function isInboundDecodeHull(entity, state, radius = null) {
   if (!entity || entity.alive === false) return false;
   if (entity.isPlayer === true || (state && entity.id === state.playerId)) return false;
-  if (entity.type !== 'ship' && entity.type !== 'wreck') return false;
+  if (entity.type !== 'ship' && entity.type !== 'wreck' && entity.type !== 'drone') return false;
   // Promote and catch-up are player-centered. tableLookAtDelta follows the
   // leftover chase focus, so a relocate leaves the hull "beyond the table"
   // until the camera crawls 10k+ WU. Cook from the player, not the look-at.
   const visual = Math.max(0, Number(entity.radius) || 0);
-  return (playerPlanarDistance(entity, state) - visual) <= inboundDecodeRadius(state, radius);
+  if ((playerPlanarDistance(entity, state) - visual) <= inboundDecodeRadius(state, radius)) {
+    return true;
+  }
+  // An explicit radius is a hysteresis caller's bound (evict/admit edge). Keep it
+  // a pure disc test; prediction only extends the default admission radius.
+  if (radius != null) return false;
+  // Approach-aware admission: a hull closing on the glass inside the promote
+  // horizon gets its decode+build chain started while it is still outside the
+  // static circle. entityTimeToGlassSeconds extrapolates shelved far rows from
+  // lastExactT first — their stored pos is stale for anything that kept moving.
+  const player = playerEntityForRenderState(state);
+  if (!player || !player.pos) return false;
+  const env = renderAdmissionEnv(state);
+  const pad = approachDistanceWu(TABLE_SUBMIT_APPROACH_SECONDS, tableTravelSpeed(state));
+  return entityTimeToGlassSeconds(
+    entity,
+    env,
+    state,
+    TABLE_PROMOTE_HORIZON_SECONDS,
+    pad,
+  ) <= TABLE_PROMOTE_HORIZON_SECONDS;
 }
 
 /** Hold the cooked GPU working set so first-flight travel cannot evict+rebuild it. */
@@ -744,15 +839,32 @@ export function isEntityRenderRelevant(entity, state, radius = null) {
   if (tier === PRESENTATION_TIER.R2_METADATA || tier === PRESENTATION_TIER.R3_UNLOADED) {
     return entity.type === 'planet' ? within : false;
   }
-  return within;
+  if (within) return true;
+  // Ledger rows are the not-yet-loaded population: a row closing on the live glass
+  // earns its mesh on approach time rather than when it crosses the static disc.
+  // Rows drifting away stay asleep — the leaned oval is a consequence, not a shape.
+  if (isPresentationLedgerRow(entity)) {
+    const env = renderAdmissionEnv(state);
+    return entityTimeToGlassSeconds(entity, env, state, TABLE_COLLECT_HORIZON_SECONDS)
+      <= TABLE_COLLECT_HORIZON_SECONDS;
+  }
+  return false;
 }
 
 /** Pure authored-admission policy: spatial runway, explicit focus, never whole-sector eagerness. */
 export function isEntityAuthoredUpgradeRelevant(entity, state, radius = null) {
   if (!entity || entity.alive === false) return false;
   if (state && state.mode === 'loading') return isInitialAuthoredCompositionEntity(entity, state);
-  if (willEntityEnterAuthoredUpgradeRunway(entity, state, { radius })) return true;
-  return isInboundDecodeHull(entity, state, radius);
+  // Hull check first: isInboundDecodeHull runs the time-to-glass clause on the
+  // shelf-extrapolated position, which the raw-pos policy cannot express for
+  // ledger rows. Non-hull rows fall through to the spatial policy — explicit
+  // focus and the authored radii still apply — now with a live horizon so the
+  // closing-speed clause is real instead of dead code under horizonSeconds: 0.
+  if (isInboundDecodeHull(entity, state, radius)) return true;
+  return willEntityEnterAuthoredUpgradeRunway(entity, state, {
+    radius,
+    horizonSeconds: TABLE_PROMOTE_HORIZON_SECONDS,
+  });
 }
 
 /**
@@ -3419,11 +3531,10 @@ export const render = {
     } catch (_) {
       this._opaqueBatchSupported = false;
     }
-    // The current BatchedMesh bridge repacks every visible slot and rewrites its matrix/color
-    // textures every frame. On the target Intel route, disabling it kept the identical authored
-    // chunks visible while cutting bloomScene p95 from 114.5 ms to 11.0 ms and removing the tail
-    // hitches, despite issuing more draws. Keep capability detection for the retained-slot rewrite,
-    // but never auto-enable the regressing per-frame implementation in shipping flight.
+    // Authored plates fold through retained-slot BatchedMesh (stable instance ids, dirty
+    // matrix/color only). The previous per-frame repack moved Intel bloomScene p95
+    // 11.0 ms → 114.5 ms. Keep capability detection, but do not auto-enable until a
+    // crowded fly names draw-count as the pole with this rewrite — not the old upload path.
     this._opaqueBatchEnabled = false;
     // ACES on the renderer covers the DIRECT-to-canvas draws; bloom.js's composite covers the bloom
     // path. Both are needed and they do not overlap, which is the fix for a real divergence:
@@ -4707,6 +4818,13 @@ export const render = {
       });
     };
     state.render.pendingAuthoredGpuResidency = () => gpuResidencyAdmissions.pendingCount;
+    state.render.drainAfterPresentCompile = (options = {}) => {
+      const leftoverMs = Number(options && options.leftoverMs);
+      if (Number.isFinite(leftoverMs) && leftoverMs < 2) return null;
+      if (options && options.late === true) return null;
+      if (typeof pipelineAdmissions.flushOneAfterPresent !== 'function') return null;
+      return pipelineAdmissions.flushOneAfterPresent();
+    };
     this._liveGeometryAdmissions = createLiveGeometryAdmissionQueue({
       compile: (root) => state.render.compileObjectPipelines(root),
       prepare: (root, options) => state.render.prepareAuthoredGpuResidency(root, options),
@@ -5230,9 +5348,15 @@ export const render = {
         await yieldLiveSectorGpu();
       };
       flushPipelinesBehindShell();
-      const openingEntities = (state.entityList || []).filter((entity) => (
-        isInitialAuthoredCompositionEntity(entity, state)
-      ));
+      const openingEntities = [];
+      const openingSeen = new Set();
+      const considerOpening = (entity) => {
+        if (!entity || openingSeen.has(entity) || !isInitialAuthoredCompositionEntity(entity, state)) return;
+        openingSeen.add(entity);
+        openingEntities.push(entity);
+      };
+      for (const entity of indexedShipLikeScan(state)) considerOpening(entity);
+      for (const entity of indexedTypeScan(state, 'stations')) considerOpening(entity);
       enqueueMissingMeshBuilds(
         openingEntities,
         this._meshes,
@@ -7660,8 +7784,10 @@ export const render = {
     const handle = world.handleForEntityId(entity.id, this._presentationHandleScratch);
     if (!handle) return false;
     if (!mesh.userData) mesh.userData = {};
-    if (mesh.userData.spacefaceProgramKeyCanonicalized !== true) {
+    if (mesh.userData.spacefaceProgramKeyCanonicalized !== true
+        || mesh.userData.spacefaceProgramKeyStamp !== (mesh.userData.authoredVisualRoot || '')) {
       stampCanonicalSurfaceProgramKeys(mesh);
+      mesh.userData.spacefaceProgramKeyStamp = mesh.userData.authoredVisualRoot || '';
     }
     mesh.userData.presentationEntityId = entity.id;
     const lanes = this._persistentSubmitLanes;
@@ -7798,6 +7924,7 @@ export const render = {
     const presentationList = this._presentationMeshScratch || (this._presentationMeshScratch = []);
     collectMeshPresentationEntities(state, presentationList);
     kickDecodeRunwayAssets(this, presentationList);
+    const env = renderAdmissionEnv(state);
     enqueueMissingMeshBuilds(
       presentationList,
       this._meshes,
@@ -7805,6 +7932,7 @@ export const render = {
       this._meshBuildQueue,
       (entity) => !this._sectorBoundaryPreparations?.has(entity.id)
         && isEntityRenderRelevant(entity, state),
+      (entity) => entityTimeToGlassSeconds(entity, env, state) <= TABLE_BUILD_URGENT_SECONDS,
     );
     const built = this._drainMeshBuildQueue(buildBudget);
     // Existing fallback boundaries may have crossed the authored prefetch radius since the last
@@ -7864,15 +7992,44 @@ export const render = {
     const presentationList = this._presentationMeshScratch || (this._presentationMeshScratch = []);
     collectMeshPresentationEntities(state, presentationList);
     kickDecodeRunwayAssets(this, presentationList);
+    const env = renderAdmissionEnv(state);
+    const urgentShips = this._meshResidencyUrgentShipCandidates
+      || (this._meshResidencyUrgentShipCandidates = []);
+    const urgentOthers = this._meshResidencyUrgentOtherCandidates
+      || (this._meshResidencyUrgentOtherCandidates = []);
+    urgentShips.length = 0;
+    urgentOthers.length = 0;
     for (let index = 0; index < presentationList.length; index++) {
       const entity = presentationList[index];
       stats.entityVisits++;
       if (!entity || this._meshes.has(entity.id)
           || this._sectorBoundaryPreparations?.has(entity.id)
           || !isEntityRenderRelevant(entity, state)) continue;
-      if (entity.type === 'ship') shipCandidates.push(entity);
-      else otherCandidates.push(entity);
+      // Candidates about to cross the glass drain ahead of ordinary runway filler.
+      const urgent = entityTimeToGlassSeconds(entity, env, state) <= TABLE_BUILD_URGENT_SECONDS;
+      if (entity.type === 'ship') (urgent ? urgentShips : shipCandidates).push(entity);
+      else (urgent ? urgentOthers : otherCandidates).push(entity);
     }
+    stats.queuedShips += urgentShips.length;
+    stats.queuedOther += urgentOthers.length;
+    for (let index = 0; index < urgentShips.length; index++) {
+      enqueueMeshBuildCandidate(
+        urgentShips[index],
+        this._meshes,
+        this._meshBuildQueuedIds,
+        this._meshBuildQueue,
+      );
+    }
+    for (let index = 0; index < urgentOthers.length; index++) {
+      enqueueMeshBuildCandidate(
+        urgentOthers[index],
+        this._meshes,
+        this._meshBuildQueuedIds,
+        this._meshBuildQueue,
+      );
+    }
+    urgentShips.length = 0;
+    urgentOthers.length = 0;
     for (let index = 0; index < shipCandidates.length; index++) {
       enqueueMeshBuildCandidate(
         shipCandidates[index],
@@ -7889,8 +8046,8 @@ export const render = {
         this._meshBuildQueue,
       );
     }
-    stats.queuedShips = shipCandidates.length;
-    stats.queuedOther = otherCandidates.length;
+    stats.queuedShips += shipCandidates.length;
+    stats.queuedOther += otherCandidates.length;
     shipCandidates.length = 0;
     otherCandidates.length = 0;
     stats.built = this._drainMeshBuildQueue(RUNTIME_MESH_BUILD_BUDGET);
@@ -8203,9 +8360,10 @@ export const render = {
     );
     if (!applied) return false;
     const hull = mesh.userData && mesh.userData.hull;
-    const entity = world.entityRefs[slot];
-    if (hull && entity && entity.bank != null) hull.rotation.x = world.bank[slot];
-    if (hull && entity && entity.pitch != null) hull.rotation.z = world.pitch[slot];
+    if (hull && !(snapshot.columns && snapshot.columns.bank && snapshot.columns.pitch)) {
+      hull.rotation.x = world.bank[slot];
+      hull.rotation.z = world.pitch[slot];
+    }
     return true;
   },
 
@@ -8369,6 +8527,12 @@ export const render = {
         && Number.isFinite(this.state.render?.firstPlayableFrameAt)) {
         void this._liveGeometryAdmissions?.enqueue(entity, mesh);
       }
+      // The sim-side activity frame classifies glass/runway at the requested zoom and a fixed
+      // aspect; the live camera can be zoomed out further, putting a runway-classed hull on the
+      // real screen. The presented pose inside the live glass extents wins over the runway deny.
+      const onLiveGlass = Number.isFinite(bounds.glassHalfX) && Number.isFinite(bounds.glassHalfZ)
+        && Math.abs(mesh.position.x - bounds.x) <= bounds.glassHalfX + lodRadius
+        && Math.abs(mesh.position.z - bounds.z) <= bounds.glassHalfZ + lodRadius;
       const visibilityChanged = !(!posed && protectedRoot)
         && applyEntityMeshVisibility(mesh, shouldSubmitEntityMesh({
           isPlayer,
@@ -8387,6 +8551,7 @@ export const render = {
           entityId,
           ledgerRow: isPresentationLedgerRow(entity),
           presentationTier: entity.activity && entity.activity.presentationTier,
+          onLiveGlass,
         }));
       if (visibilityChanged) this._persistentSubmitLanes.markDirty(entityId, 'visibility');
       if ((entity.type === 'ship' || entity.type === 'station')
@@ -9062,7 +9227,17 @@ export const render = {
       updateShipPitchPresentation(this.state, frameDt);
       this.syncEntityViews(alpha);
       if (this.state && this.state.render) this.state.render.interpolationAlpha = alpha;
-      if (this.cam && typeof this.cam.follow === 'function') this.cam.follow(frameDt);
+      if (this.cam && typeof this.cam.follow === 'function') {
+        // The player hull was just posed from the snapshot fence; hand the camera that exact
+        // presented position so follow/lookahead/safe-rect never track a narrower sim-tick window
+        // than the mesh actually drew (a pack can span several ticks on a catch-up frame).
+        const pm = this._meshes && this.state ? this._meshes.get(this.state.playerId) : null;
+        const presented = pm && pm.position
+          && Number.isFinite(pm.position.x) && Number.isFinite(pm.position.z)
+          ? pm.position
+          : null;
+        this.cam.follow(frameDt, alpha, presented);
+      }
     } else if (this.state && this.state.render) {
       // prepareOpeningFirstPicture already published the exact final pose, visibility, camera, and
       // LOD graph. Preserve that immutable composition through its first submit; re-running the

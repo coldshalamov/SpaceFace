@@ -5,6 +5,9 @@ import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from './physi
 import { mulberry32, hash32, wrapAngle } from './rng.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
 import { initializePresentationAdmission } from './presentationAdmission.js';
+import { packCombatTable } from './combatTable.js';
+import { beginDirtyTick, markDirty, DIRTY } from './dirtyJournal.js';
+import { stampNearWorkBudget } from './activityScheduler.js';
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
 
@@ -70,6 +73,7 @@ export const core = {
       state.entityList.push(e);
       appendEntityIndex(index, e);
       markEntityIndexSourceSynced(index, state.entityList);
+      markDirty(state, e.id, DIRTY.MEMBERSHIP | DIRTY.POSE);
       publishPresentation('recordSpawn', e);
       bus.emit('entity:spawned', { id, type: e.type, entity: e });
       return e;
@@ -177,6 +181,7 @@ export const core = {
     const index = ensureEntityIndex(state);
     reconcileEntityIndexSource(index, state.entityList);
     refreshVolatileEntityIndex(index);
+    beginDirtyTick(state, state.tick);
     const movables = index.movables;
     for (const e of movables) {
       if (!e || !e.alive) continue;
@@ -185,8 +190,13 @@ export const core = {
         e.prevRot = e.rot;
         e.prevBank = e.bank;   // snapshot roll for renderer interpolation (Phase 1 banking)
         e.prevPitch = e.pitch; // snapshot pitch lean for renderer interpolation
+        const vx = e.vel ? Number(e.vel.x) || 0 : 0;
+        const vz = e.vel ? Number(e.vel.z) || 0 : 0;
+        if ((vx * vx + vz * vz) > 1e-8) markDirty(state, e.id, DIRTY.POSE);
       }
     }
+    packCombatTable(state);
+    stampNearWorkBudget(state);
     index.ready = true;
     const day = Math.floor(state.simTime / DAY_SECONDS);
     if (day !== this._lastDay) {
@@ -207,6 +217,7 @@ export const core = {
     if (!e) return false;
     e.alive = false;
     this._publishPresentation?.('recordDestroy', e);
+    markDirty(state, e.id, DIRTY.MEMBERSHIP);
     removeEntityIndex(state.entityIndex, e);
     const destroyed = {
       id: e.id,

@@ -1,0 +1,264 @@
+{
+  "ok": true,
+  "glb": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\place_lane_pin.glb",
+  "out": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\lane_pin_shipped",
+  "focus": [
+    1.0356,
+    0.0,
+    15.81
+  ],
+  "boundsMin": [
+    -2.8587,
+    -4.3375,
+    0.0
+  ],
+  "boundsMax": [
+    4.93,
+    4.3375,
+    31.62
+  ],
+  "size": [
+    7.7887,
+    8.675,
+    31.62
+  ],
+  "lightScale": 2.9278,
+  "cameras": {
+    "play_chase": 144.0,
+    "play_chase_close": 58.0
+  },
+  "meshes": [
+    {
+      "name": "pin_annex_plate_sheared",
+      "triangles": 12,
+      "materials": [
+        "furniture_identity_plate"
+      ]
+    },
+    {
+      "name": "pin_ballast_drum",
+      "triangles": 20,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_cap",
+      "triangles": 36,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_chevron_housing",
+      "triangles": 12,
+      "materials": [
+        "furniture_painted_shell"
+      ]
+    },
+    {
+      "name": "pin_chevron_lens",
+      "triangles": 12,
+      "materials": [
+        "furniture_signal_lens"
+      ]
+    },
+    {
+      "name": "pin_foot_0",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_foot_1",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_foot_2",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_foot_3",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_foot_brace_0",
+      "triangles": 20,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_foot_brace_1",
+      "triangles": 20,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_foot_brace_2",
+      "triangles": 20,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_foot_brace_3",
+      "triangles": 20,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_mast",
+      "triangles": 36,
+      "materials": [
+        "furniture_painted_shell"
+      ]
+    },
+    {
+      "name": "pin_shim",
+      "triangles": 12,
+      "materials": [
+        "furniture_bare_steel"
+      ]
+    },
+    {
+      "name": "pin_speed_lamp_0",
+      "triangles": 36,
+      "materials": [
+        "furniture_signal_lens"
+      ]
+    },
+    {
+      "name": "pin_speed_lamp_2",
+      "triangles": 36,
+      "materials": [
+        "furniture_signal_lens"
+      ]
+    },
+    {
+      "name": "pin_speed_socket_empty",
+      "triangles": 28,
+      "materials": [
+        "furniture_scorch"
+      ]
+    },
+    {
+      "name": "pin_vane_0_0",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_vane_0_1",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_vane_0_2",
+      "triangles": 12,
+      "materials": [
+        "furniture_bare_steel"
+      ]
+    },
+    {
+      "name": "pin_vane_1_0",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_vane_1_1",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_vane_1_2",
+      "triangles": 12,
+      "materials": [
+        "furniture_bare_steel"
+      ]
+    },
+    {
+      "name": "pin_vane_collar_0",
+      "triangles": 36,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_vane_collar_1",
+      "triangles": 36,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_vane_root_0_0",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_vane_root_0_1",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_vane_root_0_2",
+      "triangles": 12,
+      "materials": [
+        "furniture_bare_steel"
+      ]
+    },
+    {
+      "name": "pin_vane_root_1_0",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_vane_root_1_1",
+      "triangles": 12,
+      "materials": [
+        "furniture_structural_alloy"
+      ]
+    },
+    {
+      "name": "pin_vane_root_1_2",
+      "triangles": 12,
+      "materials": [
+        "furniture_bare_steel"
+      ]
+    }
+  ],
+  "triangles": 584,
+  "stills": {
+    "play_chase.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\lane_pin_shipped\\play_chase.png",
+    "play_chase_abeam.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\lane_pin_shipped\\play_chase_abeam.png",
+    "play_chase_close.png": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\lane_pin_shipped\\play_chase_close.png"
+  },
+  "clay": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\lane_pin_shipped\\clay_play_chase.png",
+  "clayClose": "C:\\Users\\93rob\\Documents\\GitHub\\SpaceFace\\assets\\ships\\parts\\places\\evidence\\graphics_3d\\pq193_03\\lane_pin_shipped\\clay_play_chase_close.png"
+}

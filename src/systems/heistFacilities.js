@@ -34,6 +34,7 @@ import {
   getDressingRow,
   insertDressingRow,
 } from '../world/dressingTable.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 const HEIST_FACILITIES_SCHEMA_VERSION = 1;
 const MAX_CANDIDATE_RECEIPTS = 32;
@@ -396,12 +397,22 @@ export const heistFacilities = {
   },
 
   _findOwnedEntity(facilityId, role) {
-    const fromList = (this.state.entityList || []).find((entity) => (
-      entity?.alive !== false
-      && entity.data?.heistFacilityId === facilityId
-      && entity.data?.heistFacilityRole === role
-    ));
-    if (fromList) return fromList;
+    const index = this.state && this.state.entityIndex;
+    const lists = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      ? [index.collidables, index.payloads]
+      : [this.state.entityList];
+    for (let l = 0; l < lists.length; l++) {
+      const list = lists[l];
+      if (!list) continue;
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        if (entity?.alive !== false
+          && entity.data?.heistFacilityId === facilityId
+          && entity.data?.heistFacilityRole === role) {
+          return entity;
+        }
+      }
+    }
     let found = null;
     forEachDressingRow(this.state, (row) => {
       if (found) return;
@@ -965,7 +976,7 @@ export const heistFacilities = {
   /** Remove every owned load body stamped with `scheduleId`. Used only for a run that is over. */
   _removeUnadoptedLoads(scheduleId) {
     let removed = 0;
-    for (const entity of this.state.entityList || []) {
+    for (const entity of indexedTypeScan(this.state, 'payloads')) {
       if (!entity || entity.alive === false || !this._isOwnedCapsule(entity)) continue;
       if (entity.data.launchScheduleId !== scheduleId) continue;
       this.helpers.removeEntity(entity.id);
@@ -976,7 +987,7 @@ export const heistFacilities = {
 
   /** The restored body for a schedule, matched by stable data — never by a recycled entity id. */
   _findRestoredLoad(scheduleId, variant) {
-    for (const entity of this.state.entityList || []) {
+    for (const entity of indexedTypeScan(this.state, 'payloads')) {
       if (!entity || entity.alive === false || !this._isOwnedCapsule(entity)) continue;
       if (entity.data.launchScheduleId !== scheduleId) continue;
       if (entity.data.heistPayloadStableId !== variant.payload.stableId) continue;

@@ -2,6 +2,7 @@ import { formatScenarioIssue, validateScenarioDocument } from '../contracts/scen
 import { FIGURES } from '../data/narrative.js';
 import { CombatDoctrineId } from '../ai/combatDoctrine.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 
 export const SCENARIO_RUNTIME_SCHEMA_VERSION = 1;
 const SCENARIO_EVIDENCE_EVENT_CAP = 512;
@@ -194,7 +195,7 @@ function syncLiveColdStartCombatants(runtime) {
   const engagementAuthorized = !!safe.provoked
     || (scavengerBeat && safe.spindleClaimed && storyReady && outsideProtection
       && safe.response === 'refuse' && Number.isFinite(safe.noFireUntilS) && now >= safe.noFireUntilS);
-  for (const entity of state.entityList || []) {
+  for (const entity of indexedShipLikeScan(state)) {
     if (!entity || entity.type !== 'ship' || !entity.data) continue;
     const ai = entity.data.ai;
     if (!ai || !ai.liveColdStartSafe) continue;
@@ -294,8 +295,14 @@ function playerOutsideHeliosProtection(state) {
   if (!state || !state.world || state.world.currentSectorId !== 'sector_helios_prime') return false;
   const player = state.entities && state.entities.get(state.playerId);
   if (!player || !player.pos) return false;
-  const station = (state.entityList || []).find((entity) => entity && entity.alive !== false
-    && entity.data && entity.data.stationId === 'station_helios');
+  const stations = indexedTypeScan(state, 'stations');
+  let station = null;
+  for (const entity of stations) {
+    if (entity && entity.alive !== false && entity.data && entity.data.stationId === 'station_helios') {
+      station = entity;
+      break;
+    }
+  }
   if (!station || !station.pos) return false;
   const dx = player.pos.x - station.pos.x;
   const dz = player.pos.z - station.pos.z;
@@ -705,7 +712,10 @@ function entityForScenarioActor(state, actorId) {
     if (entity) return entity;
   }
   const list = Array.isArray(state.entityList) ? state.entityList : [];
-  return list.find((entity) => entity && entity.data && entity.data.scenarioActorId === actorId) || null;
+  for (const entity of list) {
+    if (entity && entity.data && entity.data.scenarioActorId === actorId) return entity;
+  }
+  return null;
 }
 
 function getAttachment(state, attachmentId) {

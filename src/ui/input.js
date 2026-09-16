@@ -641,32 +641,29 @@ export function createUiInput(ctx, screenManager) {
     bus.emit('dock:undocked', {});
   }
 
-  // mouse-wheel zoom passthrough (only in flight, not over a modal)
+  // mouse-wheel / trackpad zoom passthrough (only in flight, not over a modal).
+  // Note: ingestTrackpadWheel and onTrackpadPointer are retired so trackpads operate as standard pointers.
   function onWheel(ev) {
-    // Chrome reports a trackpad pinch as a Ctrl/Cmd-modified wheel. Cancel the browser's page-zoom
-    // default before the mode gates so the DOM HUD stays at its fixed viewport scale.
+    // Chrome/Electron reports a trackpad pinch as a Ctrl/Cmd-modified wheel. Cancel the browser's
+    // page-zoom default before the mode gates so the DOM HUD stays at its fixed viewport scale.
     noteDevice('kbm');
-    if ((ev.ctrlKey || ev.metaKey) && typeof ev.preventDefault === 'function') ev.preventDefault();
+    const isPinch = !!(ev.ctrlKey || ev.metaKey);
+    if (isPinch && typeof ev.preventDefault === 'function') ev.preventDefault();
     if (isUiInteractionFenced(state) || screenManager.isOpen() || (state.ui && state.ui.docked) || state.mode !== 'flight') return;
-    const tp = ctx.touch;
-    if (tp && typeof tp.ingestTrackpadWheel === 'function' && tp.ingestTrackpadWheel(ev, state)) {
-      if (typeof ev.preventDefault === 'function') ev.preventDefault();
-      noteDevice('touch');
-      return;
-    }
-    bus.emit('camera:zoom', { delta: Math.sign(ev.deltaY) * 8 });
-  }
 
-  function onTrackpadPointer(ev) {
-    if (isUiInteractionFenced(state) || screenManager.isOpen() || (state.ui && state.ui.docked) || state.mode !== 'flight') return;
-    const target = ev && ev.target;
-    if (target && typeof target.closest === 'function'
-      && target.closest('button, a, input, textarea, select, [role="dialog"]')) {
-      return;
+    let delta = 0;
+    if (isPinch) {
+      // Proportional smooth zoom for trackpad pinch/expand gestures
+      delta = (Number(ev.deltaY) || 0) * 0.8;
+    } else {
+      // Step zoom for mouse wheel notch / 2-finger scroll
+      const currentZoom = (state.camera && state.camera.zoom) || 144;
+      const step = Math.max(16, Math.round(currentZoom * 0.08));
+      delta = Math.sign(ev.deltaY) * step;
     }
-    const tp = ctx.touch;
-    if (!tp || typeof tp.ingestTrackpadPointer !== 'function') return;
-    if (tp.ingestTrackpadPointer(ev, state)) noteDevice('touch');
+    if (delta !== 0) {
+      bus.emit('camera:zoom', { delta });
+    }
   }
 
   const blackoutPointerEvents = [
@@ -687,10 +684,6 @@ export function createUiInput(ctx, screenManager) {
     noteDevice(ev && ev.pointerType === 'touch' ? 'touch' : 'kbm');
   };
   document.addEventListener('pointerdown', clearGamepadFocus, true);
-  document.addEventListener('pointerdown', onTrackpadPointer, true);
-  document.addEventListener('pointermove', onTrackpadPointer, true);
-  document.addEventListener('pointerup', onTrackpadPointer, true);
-  document.addEventListener('pointercancel', onTrackpadPointer, true);
 
   // let other modules (uiRoot Undock button) trigger an undock
   unsubscribers.push(bus.on('ui:undock', undock));
@@ -1047,10 +1040,6 @@ export function createUiInput(ctx, screenManager) {
       document.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('wheel', onWheel);
       document.removeEventListener('pointerdown', clearGamepadFocus, true);
-      document.removeEventListener('pointerdown', onTrackpadPointer, true);
-      document.removeEventListener('pointermove', onTrackpadPointer, true);
-      document.removeEventListener('pointerup', onTrackpadPointer, true);
-      document.removeEventListener('pointercancel', onTrackpadPointer, true);
       for (const unsubscribe of unsubscribers.splice(0)) {
         try { unsubscribe(); } catch (_) {}
       }

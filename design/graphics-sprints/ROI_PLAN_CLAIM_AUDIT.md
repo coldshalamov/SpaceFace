@@ -229,7 +229,7 @@ already flags reference count as a weak proxy for coverage. Recorded so a later 
 - **`NOW.md` was stale at capture.** The census records ≥305 commits past a 25-commit expiry at
   `f66f6768`, and this audit measured 310 at `de65b344`. Those values are historical evidence for
   refreshing NOW/status/diffs/live exact writers, not current ownership or worktree counts.
-- **The `DURABLE` marker inconsistency is resolved.** `CANONICAL_BUILD_MAP.md` §9 and
+- **The `DURABLE` marker inconsistency is resolved.** `build_map.md` §9 and
   `docs/POLICY_MANIFEST.md` now define it consistently as informative long-lived research, evidence,
   or rationale that cannot lease, dispatch, accept, or prioritize work. This audit is `HISTORICAL`:
   its captured claims can inform a new check but cannot be treated as current repository state.

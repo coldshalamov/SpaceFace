@@ -71,9 +71,11 @@ async function jsSize(dir) {
 async function build() {
   await recoverPublishedOutput();
   const screens = await screenEntries();
-  const entryPoints = [join(SRC, 'main.js')];
+  // loadingTerminalArt is imported by an inline module script in index.html, so it needs
+  // its own bundle entry — the HTML rewrite below repoints that import at the chunk.
+  const entryPoints = [join(SRC, 'main.js'), join(SRC, 'ui/loadingTerminalArt.js')];
 
-  console.log('[bundle] entry points:', entryPoints.length, '(main.js; ' + screens.length + ' screens via dynamic imports)');
+  console.log('[bundle] entry points:', entryPoints.length, '(main.js + loadingTerminalArt; ' + screens.length + ' screens via dynamic imports)');
   await cleanOutputDir();
 
   const result = await esbuild.build({
@@ -223,11 +225,26 @@ async function buildBundledHtml() {
   // The dev html has an importmap script + a module script pointing at ./src/main.js. Replace both
   // with a single module script pointing at the bundled ./main.js (esbuild names it after the first
   // entry point). Keep the CSS links, the DOM shell, the meta, the icon.
-  return devHtml
+  const html = devHtml
     // strip the importmap block (the bundle resolves bare specifiers itself)
     .replace(/<script type="importmap">[\s\S]*?<\/script>\s*/, '')
     // point the module script at the bundled output
-    .replace('<script type="module" src="./src/main.js"></script>', '<script type="module" src="./main.js"></script>');
+    .replace('<script type="module" src="./src/main.js"></script>', '<script type="module" src="./main.js"></script>')
+    // the inline module imports the boot terminal art from src/; repoint it at its chunk
+    .replace(/from\s+(['"])\.\/src\/ui\/loadingTerminalArt\.js\1/, "from $1./ui/loadingTerminalArt.js$1");
+  // A drifted index.html must fail the build here — a silently missed rewrite ships a
+  // bundle whose script tag still points at the raw src/ tree and 404s at packaged boot.
+  // Assert the rewrites actually landed (not just that no leftovers survive): if the
+  // entry tag drifts so the pattern no longer matches, the replace no-ops and only
+  // the presence check below can catch it.
+  if (!html.includes('<script type="module" src="./main.js"></script>')
+    || !html.includes('./ui/loadingTerminalArt.js')) {
+    throw new Error('index.html rewrite produced no bundled entry reference; update buildBundledHtml');
+  }
+  if (/["'(]\s*\.\/src\//.test(html) || /from\s+['"]\.\/src\//.test(html)) {
+    throw new Error('index.html rewrite missed a source-module reference; update buildBundledHtml');
+  }
+  return html;
 }
 
 async function runLockedBuild() {

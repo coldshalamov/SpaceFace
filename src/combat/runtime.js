@@ -97,6 +97,26 @@ export function entityKey(id) {
   return String(id);
 }
 
+// B3b active-attacker predicate: a hostile that cannot fire is not an attacker the camera must
+// compose. Statuses whose effects block the 'weapon' action tag (status_tumbling) or declare
+// capabilities.weapon === false are the combat kernel's own "cannot shoot" fact — reusing them
+// keeps camera framing and bench measurement honest about what can actually hurt the player.
+const WEAPON_ACTION_DEF = ACTION_DEFS.find((def) => def.id === 'action_burst');
+
+export function entityWeaponBlocked(state, entity) {
+  const table = state && state.combat && state.combat.entities;
+  const runtime = table && entity && entity.id != null ? table[entityKey(entity.id)] : null;
+  if (!runtime || !WEAPON_ACTION_DEF) return false;
+  for (const capability of WEAPON_ACTION_DEF.requiresCapabilities || []) {
+    if (runtime.capabilities && runtime.capabilities[capability] === false) return true;
+  }
+  const tags = runtime.blockedActionTags;
+  if (Array.isArray(tags)) {
+    for (const tag of WEAPON_ACTION_DEF.tags || []) if (tags.includes(tag)) return true;
+  }
+  return false;
+}
+
 export function cloneData(value) {
   if (value == null || typeof value !== 'object') return value;
   if (Array.isArray(value)) return value.map(cloneData);

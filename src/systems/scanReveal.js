@@ -3,6 +3,7 @@
 // Additive listener over scanner's scan:pulse seam. Writes only entity.data.scanRevealed so UI can
 // resolve ship contacts without scanner/HUD special cases.
 import { buildShipScanReveal, sameScanReveal } from '../data/scanReveal.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 export const scanReveal = {
   name: 'scanReveal',
@@ -19,7 +20,7 @@ export const scanReveal = {
     const origin = payload && payload.pos;
     if (!state || !origin) return;
     const playerId = state.playerId;
-    const list = Array.isArray(state.entityList) ? state.entityList : [];
+    const list = indexedShipLikeScan(state);
     for (const entity of list) {
       if (!entity || entity.id === playerId) continue;
       const data = entity.data || (entity.data = {});

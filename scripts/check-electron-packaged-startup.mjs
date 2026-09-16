@@ -63,6 +63,7 @@ let failureSnapshot = null;
 let assessment = null;
 let cleanup = null;
 let primaryError = null;
+let timing = null;
 
 try {
   isolatedLaunch = createIsolatedElectronLaunch({ root: ROOT, taskId: 'packaged-startup', timeout: STARTUP_TIMEOUT_MS });
@@ -74,6 +75,8 @@ try {
   delete launchEnv.ELECTRON_RUN_AS_NODE;
   delete launchEnv.ELECTRON_OVERRIDE_DIST_PATH;
 
+  // PQ-033.02 boot floor: player-visible packaged boot = process launch -> main menu.
+  const launchAt = Date.now();
   app = await electron.launch({
     ...isolatedLaunch.options,
     args: [],
@@ -102,6 +105,12 @@ try {
   }
   const newGame = page.getByRole('button', { name: 'New Game', exact: true });
   await newGame.waitFor({ state: 'visible', timeout: STARTUP_TIMEOUT_MS });
+  timing = { launchAt: new Date(launchAt).toISOString(), menuVisibleAt: new Date().toISOString(), bootToMenuMs: Date.now() - launchAt };
+  // The wall clock wraps Playwright's electron.launch machinery (driver install,
+  // firstWindow connect) — harness time, not game boot. The launch receipt's first
+  // line is stamped inside the spawned main process: that is the closest honest
+  // anchor to a player double-clicking the executable.
+  const menuVisibleMs = Date.parse(timing.menuVisibleAt);
   const newGameVisibleBeforeLaunch = await newGame.isVisible();
   await newGame.click({ timeout: 30_000 });
   const launch = page.getByRole('button', { name: 'Launch', exact: true });
@@ -186,6 +195,13 @@ try {
 
   const parsed = parseLaunchReceipts(readFileSync(receiptPath, 'utf8'));
   assert.equal(parsed.malformedLineCount, 0, 'packaged launch receipt must be valid JSONL');
+  const startingReceipt = parsed.receipts.find((r) => r && r.status === 'starting' && r.at);
+  const processStartMs = startingReceipt ? Date.parse(startingReceipt.at) : NaN;
+  if (timing && Number.isFinite(processStartMs) && Number.isFinite(menuVisibleMs)) {
+    timing.processStartAt = startingReceipt.at;
+    timing.processStartToMenuMs = menuVisibleMs - processStartMs;
+    timing.harnessOverheadMs = Math.max(0, processStartMs - Date.parse(timing.launchAt));
+  }
   const errors = pageIssues.errorIssues();
   const expectedCspBlocks = errors.filter(isExpectedCspBlock);
   const hardErrors = errors.filter((issue) => !isExpectedCspBlock(issue));
@@ -273,6 +289,7 @@ const report = {
   artifactIdentity,
   rootUrl,
   mainIdentity,
+  timing,
   page: pageSnapshot,
   failureSnapshot,
   assessment,

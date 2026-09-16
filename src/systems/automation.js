@@ -26,7 +26,7 @@ import { DRONES, TRADERS, OUTPOSTS, AUTO_BALANCE } from '../data/automation.js';
 import { TECH_NODES } from '../data/tech.js';
 import { SECTORS, dangerIndex } from '../data/sectors.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { queryNearbyEntities, hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { tickProgram, assignTemplate, clearTemplate, TEMPLATES } from './alphabet.js';
 import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { ASTEROIDS } from '../data/mining.js';
@@ -1162,15 +1162,21 @@ export const automation = {
 
   _collectOutpostPresence(o) {
     const live = [];
-    for (const entity of (this.state && this.state.entityList) || []) {
-      if (entity && entity.alive !== false && entity.data
-        && entity.data.automationOutpostId === o.id) {
-        live.push(entity);
-      }
+    const seen = new Set();
+    const push = (entity) => {
+      if (!entity || entity.alive === false || entity.id == null || seen.has(entity.id)) return;
+      if (!entity.data || entity.data.automationOutpostId !== o.id) return;
+      seen.add(entity.id);
+      live.push(entity);
+    };
+    push(this._getRuntimeEntity(o.entityId));
+    forEachDressingRow(this.state, push);
+    // Pre-dressing leftovers stay type fx on the table; skip ships/stations/shots.
+    const list = (this.state && this.state.entityList) || [];
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (entity && entity.type === 'fx') push(entity);
     }
-    forEachDressingRow(this.state, (row) => {
-      if (row.data && row.data.automationOutpostId === o.id) live.push(row);
-    });
     return live;
   },
 
@@ -2911,6 +2917,23 @@ function isGroupDrone(entity, group) {
     && entity.data?.groupId === group.id;
 }
 
+const DRONE_DETOUR_BUCKETS = Object.freeze(['stations', 'asteroids', 'wrecks', 'ships']);
+const droneDetourScratch = [];
+
+function visitDroneDetourObstacles(state, fn) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+    for (let b = 0; b < DRONE_DETOUR_BUCKETS.length; b++) {
+      const list = index[DRONE_DETOUR_BUCKETS[b]];
+      if (!list) continue;
+      for (let i = 0; i < list.length; i++) fn(list[i]);
+    }
+    return;
+  }
+  const list = state.entityList || [];
+  for (let i = 0; i < list.length; i++) fn(list[i]);
+}
+
 function resolveDroneDetour(state, drone, target, targetEntity, arrivalRadius) {
   if (!state || !drone || !drone.pos || !target) return null;
   const dx = Number(target.x) - Number(drone.pos.x);
@@ -2934,27 +2957,37 @@ function resolveDroneDetour(state, drone, target, targetEntity, arrivalRadius) {
   const maxProjection = Math.max(0, Math.min(distance - arrival, lookAhead));
   if (!(maxProjection > 0)) return null;
 
-  const list = state.entityList || [];
   const targetId = targetEntity && targetEntity.id;
   const blockers = [];
-  for (const obstacle of list) {
+  const consider = (obstacle) => {
     if (!obstacle || obstacle === drone || obstacle === targetEntity
       || (targetId != null && obstacle.id === targetId)
-      || obstacle.alive === false || obstacle.collides === false || !obstacle.pos) continue;
+      || obstacle.alive === false || obstacle.collides === false || !obstacle.pos) return;
     if (obstacle.type !== 'station' && obstacle.type !== 'asteroid'
-      && obstacle.type !== 'wreck' && obstacle.type !== 'ship') continue;
+      && obstacle.type !== 'wreck' && obstacle.type !== 'ship') return;
     const ox = Number(obstacle.pos.x) - Number(drone.pos.x);
     const oz = Number(obstacle.pos.z) - Number(drone.pos.z);
     const projection = ox * baseX + oz * baseZ;
-    if (!(projection > 0) || projection > maxProjection) continue;
+    if (!(projection > 0) || projection > maxProjection) return;
     const lateral = ox * perpX + oz * perpZ;
     const obstacleRadius = Number.isFinite(obstacle.radius) ? Math.max(0, obstacle.radius) : 0;
     const clearance = Math.max(0, Number(drone.radius) || DRONE_ENTITY_RADIUS)
       + obstacleRadius + DRONE_NAV_CLEARANCE_BASE + Math.min(70, speed * 0.22);
-    if (Math.abs(lateral) >= clearance) continue;
+    if (Math.abs(lateral) >= clearance) return;
     const depth = 1 - projection / Math.max(1, maxProjection);
     const strength = (1 - Math.abs(lateral) / Math.max(1, clearance)) * (0.7 + depth * 0.8);
     blockers.push({ obstacle, projection, lateral, clearance, strength });
+  };
+  if (hasActiveSpatialHash(state.spatialHash)) {
+    const nearby = queryNearbyEntities(
+      state,
+      drone.pos,
+      maxProjection + DRONE_NAV_CLEARANCE_BASE + 80,
+      droneDetourScratch,
+    );
+    for (let i = 0; i < nearby.length; i++) consider(nearby[i]);
+  } else {
+    visitDroneDetourObstacles(state, consider);
   }
   if (!blockers.length) return null;
 

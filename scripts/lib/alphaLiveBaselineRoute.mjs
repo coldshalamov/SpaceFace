@@ -137,8 +137,44 @@ export async function runBrowserPublicRoute({
     );
     await canvas.focus();
 
-    await page.waitForTimeout(250);
-    const baselineStart = await readFlightSnapshot(page);
+    // Authored readiness no longer implies the hull has settled: readiness can resolve within a
+    // few ticks of launch while berth placement/depenetration is still writing player.pos
+    // (velocity stays ~0 through positional correction, so a speed check alone passes mid-slide).
+    // Gate the released baseline on a hull that is both slow and positionally stable across a
+    // sim-time window; otherwise the powered window must out-displace launch drift, which is a
+    // property of when readiness resolved, not of keyboard causality.
+    const waitForSettledAnchor = () => page.waitForFunction(() => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get(state.playerId);
+      if (!player || player.alive === false) return false;
+      const speed = Math.hypot(Number(player.vel?.x || 0), Number(player.vel?.z || 0));
+      const x = Number(player.pos?.x || 0);
+      const z = Number(player.pos?.z || 0);
+      const simNow = Number(state.simTime || 0);
+      const probe = window.__SF_FLIGHT_SETTLE__ || (window.__SF_FLIGHT_SETTLE__ = { x: null, z: null, simTime: -1 });
+      if (probe.x == null || Math.hypot(x - probe.x, z - probe.z) > 0.25 || speed > 0.5) {
+        probe.x = x; probe.z = z; probe.simTime = simNow;
+        return false;
+      }
+      return simNow - probe.simTime >= 0.75 ? { x, z } : false;
+    }, null, { timeout: 30_000, polling: 100 }).then((handle) => handle.jsonValue());
+
+    // The baseline sample must itself be settle-confirmed: a positional correction that starts
+    // between the gate and the read would land inside the measured window unobserved. Verify the
+    // snapshot still sits at the settled anchor; if the hull moved, re-anchor and wait again.
+    let settledCandidate = null;
+    for (let attempt = 0; attempt < 8 && !settledCandidate; attempt++) {
+      const anchor = await waitForSettledAnchor();
+      await page.waitForTimeout(250);
+      const candidate = await readFlightSnapshot(page);
+      const drift = Math.hypot(
+        Number(candidate.player?.pos?.x || 0) - anchor.x,
+        Number(candidate.player?.pos?.z || 0) - anchor.z,
+      );
+      if (drift <= 0.5 && Number(candidate.player?.speed || 0) <= 0.5) settledCandidate = candidate;
+    }
+    const baselineStart = settledCandidate;
+    assert(baselineStart, 'released baseline never observed a settled hull');
     await page.waitForTimeout(500);
     const baselineEnd = await readFlightSnapshot(page);
     let wHeld = null;
@@ -228,10 +264,26 @@ export async function runBrowserPublicRoute({
     const dockPrompt = page.locator('.sf-alert--dock');
     const dockDeadline = Date.now() + dockTimeoutMs;
     let approachSnapshot = null;
+    // An autopilot can hold a fast hull in a tangential limit cycle inside the capture volume —
+    // inside the corridor but over the berth speed gate, so the prompt never shows. A pilot
+    // whose autopilot can't park takes the brake: pulse the public binding once (it disengages
+    // the autopilot) and let the capture assist finish the berth.
+    let corridorBrakePulsed = false;
     while (Date.now() < dockDeadline) {
       approachSnapshot = await readApproachSnapshot(page);
       assert.equal(approachSnapshot.playerAlive, true, `player died during public autopilot approach: ${JSON.stringify(approachSnapshot)}`);
       if (await dockPrompt.isVisible().catch(() => false)) break;
+      if (!corridorBrakePulsed && approachSnapshot.autopilot?.active === true
+        && approachSnapshot.corridor?.inCapture === true && Number(approachSnapshot.speed) > 26) {
+        corridorBrakePulsed = true;
+        mark('dock-corridor-brake', approachSnapshot);
+        try {
+          await page.keyboard.down('Digit0');
+          await page.waitForTimeout(900);
+        } finally {
+          await page.keyboard.up('Digit0').catch(() => {});
+        }
+      }
       await page.waitForTimeout(250);
     }
     assert.equal(await dockPrompt.isVisible().catch(() => false), true,
@@ -239,12 +291,24 @@ export async function runBrowserPublicRoute({
     const dockPromptText = (await dockPrompt.innerText()).trim();
     assert.match(dockPromptText, /\bE\b.*\bDOCK\b|\bDOCK\b.*\bE\b/i,
       `physical dock prompt must expose the public E binding, got ${JSON.stringify(dockPromptText)}`);
+    phase = 'dock-input';
+    await canvas.focus();
+    // The prompt gates on berth proximity AND a speed gate (Helios: 20 wu / 12 wu·s⁻¹); an
+    // autopilot still driving carries the ship back out of the envelope between the prompt
+    // check and the key tap — the screenshot readback alone stalls rAF for seconds on an iGPU.
+    // A docking player's own brake is the public disengage: pulse it to shed approach speed,
+    // then release so the corridor's capture assist (suppressed while any input is held) can
+    // pull an edge-parked ship back onto the berth.
+    try {
+      await page.keyboard.down('Digit0');
+      await page.waitForTimeout(900);
+    } finally {
+      await page.keyboard.up('Digit0').catch(() => {});
+    }
     await screenshot(page, outputDir, SCREENSHOTS.dockPrompt);
     mark('physical-dock-prompt', { text: dockPromptText, approach: approachSnapshot });
     recordCanonicalUrl('physical-dock-prompt');
 
-    phase = 'dock-input';
-    await canvas.focus();
     // Hold the public binding across several fixed sim ticks immediately while the prompt is
     // known visible. A zero-duration press can be missed, and waiting to retry lets the active
     // autopilot carry the ship back out of the interaction envelope.
@@ -271,6 +335,8 @@ export async function runBrowserPublicRoute({
         }
         const observation = await page.evaluate(() => {
           const state = window.SF?.state;
+          const player = state?.entities?.get?.(state.playerId);
+          const corridor = state?.dockingCorridor || null;
           return {
             docked: state?.ui?.docked === true,
             mode: state?.mode || null,
@@ -281,6 +347,12 @@ export async function runBrowserPublicRoute({
               const style = getComputedStyle(el);
               return style.display !== 'none' && style.visibility !== 'hidden';
             })(),
+            speed: player?.vel ? Number(Math.hypot(player.vel.x, player.vel.z).toFixed(1)) : null,
+            distToBerth: corridor ? corridor.distToBerth : null,
+            corridorPhase: corridor ? corridor.phase : null,
+            autopilot: state?.nav?.autopilot
+              ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status }
+              : null,
             visibleScreens: [...document.querySelectorAll('[data-screen]')]
               .filter((el) => !el.hidden && getComputedStyle(el).display !== 'none')
               .map((el) => el.getAttribute('data-screen')),
@@ -578,10 +650,12 @@ async function readFlightSnapshot(page) {
         )) result.pendingShipCount++;
         else result.fallbackShipCount++;
       }
-      const playerStatus = livePlayer?.mesh?.userData?.authoredAssetState || 'missing';
-      const playerReady = (playerStatus === 'authored' || playerStatus === 'authored-with-cleanup-error')
-        && (livePlayer?.presentationAdmission === 'ready' || livePlayer?.presentationAdmission == null);
-      result.ready = result.shipCount > 0 && playerReady && result.fallbackShipCount === 0;
+      // Same correction as flightReadyInPage: the engine's own readiness contract is the
+      // verdict; the per-ship counts stay as receipt diagnostics, not a pass condition.
+      const readiness = typeof window.SF?.authoredVisualReadiness === 'function'
+        ? window.SF.authoredVisualReadiness()
+        : null;
+      result.ready = !!(readiness && readiness.ready);
       return result;
     }
   });
@@ -590,27 +664,18 @@ async function readFlightSnapshot(page) {
 export function flightReadyInPage() {
   const state = window.SF?.state;
   const player = state?.entities?.get(state.playerId);
-  const ships = Array.isArray(state?.entityList)
-    ? state.entityList.filter((item) => item?.type === 'ship' && item.alive !== false)
-    : [];
-  let presentedShipCount = 0;
-  let fallbackShipCount = 0;
-  for (const ship of ships) {
-    const status = ship?.mesh?.userData?.authoredAssetState || 'missing';
-    const admission = ship?.presentationAdmission || null;
-    if ((status === 'authored' || status === 'authored-with-cleanup-error')
-        && (admission === 'ready' || admission == null)) presentedShipCount++;
-    else if (!(admission === 'pending' && (
-      status === 'awaiting-authored-admission'
-      || status === 'loading'
-      || status === 'compiling-pipelines'
-    ))) fallbackShipCount++;
-  }
-  const playerStatus = player?.mesh?.userData?.authoredAssetState || 'missing';
-  const playerReady = (playerStatus === 'authored' || playerStatus === 'authored-with-cleanup-error')
-    && (player?.presentationAdmission === 'ready' || player?.presentationAdmission == null);
-  const authoredPresentationReady = ships.length > 0 && presentedShipCount > 0
-    && playerReady && fallbackShipCount === 0;
+  // Ask the engine its own question: authoredCriticalVisualReadiness().ready covers the
+  // player flight package, the starting hub, the opening authored composition, and the
+  // glass/runway role set — everything the player can actually see on the first frame.
+  // Requiring EVERY ship in the sector to hold an authored mesh is unsatisfiable by
+  // construction: distant NPCs stay dormant on purpose (asset-npc-authored-binding.test
+  // pins that), so meshless residency-deferred ships are not fallback presentations.
+  // See the same correction in professionalTravelPublicRoute.flightReadyInPage.
+  const readiness = typeof window.SF?.authoredVisualReadiness === 'function'
+    ? window.SF.authoredVisualReadiness()
+    : null;
+  // Fail closed: if the contract is unavailable the route must not pass on mode alone.
+  const authoredPresentationReady = !!(readiness && readiness.ready);
   const modalOpen = document.body.classList.contains('ui-modal-open');
   const splash = document.getElementById('cinematic-splash');
   const splashStyle = splash ? getComputedStyle(splash) : null;
@@ -648,6 +713,7 @@ async function readApproachSnapshot(page) {
     const state = window.SF?.state;
     const player = state?.entities?.get(state.playerId);
     const nav = state?.nav?.autopilot;
+    const corridor = state?.dockingCorridor || null;
     return {
       tick: Number(state?.tick || 0),
       playerAlive: !!(player && player.alive !== false && Number(player.hull) > 0),
@@ -660,6 +726,13 @@ async function readApproachSnapshot(page) {
         distance: Number(nav.distance || 0),
         label: nav.label || '',
       } : null,
+      corridor: corridor ? {
+        phase: corridor.phase,
+        distToBerth: corridor.distToBerth,
+        inCorridor: corridor.inCorridor === true,
+        inCapture: corridor.inCapture === true,
+        headingOk: corridor.headingOk,
+      } : null,
     };
   });
 }
@@ -667,13 +740,13 @@ async function readApproachSnapshot(page) {
 export function observeStableStationFramesInPage({ maximumFrames }) {
   return new Promise((resolve) => {
     const frames = [];
-    const canonicalUndockSelector = 'button.st-undock';
+    const canonicalUndockSelector = 'button[data-act="undock"]';
     const sample = (frameTimestampMs) => {
       const state = window.SF?.state;
       const screen = document.querySelector('[data-screen="station"]');
       const overlay = document.querySelector('#sf-dock-overlay');
       const screenVisibility = visibilityOf(screen);
-      const visibleTabs = Array.from(screen?.querySelectorAll('[role="tab"][data-tab]') || [])
+      const visibleTabs = Array.from(screen?.querySelectorAll('[role="tab"][data-tab], [role="tab"][data-nav]') || [])
         .filter((tab) => visibilityOf(tab).visible);
       const undockMatches = Array.from(document.querySelectorAll(canonicalUndockSelector));
       const visibleUndockMatches = undockMatches.filter((candidate) => visibilityOf(candidate).visible);
@@ -693,7 +766,7 @@ export function observeStableStationFramesInPage({ maximumFrames }) {
         stationId: state?.ui?.dockedStationId || null,
         screenVisible: screenVisibility.visible,
         screenRect: visibilityDiagnosticsOf(screenVisibility),
-        visibleTabLabels: visibleTabs.map((tab) => String(tab.textContent || tab.getAttribute('data-tab') || '').trim()),
+        visibleTabLabels: visibleTabs.map((tab) => String(tab.getAttribute('data-tab') || tab.getAttribute('data-nav') || tab.textContent || '').trim()),
         contentFingerprint: fingerprint(content),
         contentLength: content.length,
         contentPreview: content.slice(0, 240),
@@ -889,7 +962,7 @@ async function waitForStableStationHub(page, requiredObservations) {
 }
 
 async function readComputedUndockRoleProof(page, boundary) {
-  const canonicalUndock = page.locator('button.st-undock');
+  const canonicalUndock = page.locator('button[data-act="undock"]');
   const computedUndockRole = page.getByRole('button', { name: /\bundock\b/i });
   const identityBoundUndock = canonicalUndock.and(computedUndockRole);
   const [canonicalCount, computedRoleCount, identityBoundCount] = await Promise.all([
@@ -908,7 +981,7 @@ async function readComputedUndockRoleProof(page, boundary) {
     : '';
   return {
     boundary,
-    selector: 'button.st-undock',
+    selector: 'button[data-act="undock"]',
     canonicalCount,
     computedRoleCount,
     identityBoundCount,
@@ -922,6 +995,11 @@ async function clickWaypointWithPointer(page, locator) {
   const deadline = Date.now() + 10_000;
   let lastBox = null;
   while (Date.now() < deadline) {
+    // The inspector renders the button below the fold under the chart layer:
+    // Playwright reports it visible while elementFromPoint returns the overlay.
+    // scrollIntoViewIfNeeded lifts it into the inspector's clear band before we
+    // read the box, otherwise every pointer click lands on the covering screen.
+    await locator.scrollIntoViewIfNeeded().catch(() => {});
     lastBox = await locator.boundingBox().catch(() => null);
     if (lastBox && lastBox.width > 2 && lastBox.height > 2) {
       const x = Math.round(lastBox.x + lastBox.width / 2);

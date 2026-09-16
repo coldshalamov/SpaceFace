@@ -48,6 +48,7 @@ import {
   findLivingWorldActor,
   forEachJobInteractable,
   forEachLivingWorldActor,
+  indexedShipLikeScan,
 } from '../world/livingWorldViews.js';
 
 export const LAW_SECURITY_VERSION = 2;
@@ -2995,7 +2996,7 @@ function isEligibleHeliosInspectionPatrol(state, patrol, player) {
 function inspectionPatrolByWorldRecord(state, worldRecordId) {
   if (!durableInspectionWorldRecordId(worldRecordId)) return null;
   let match = null;
-  for (const entity of state?.entityList || []) {
+  for (const entity of indexedShipLikeScan(state)) {
     if (!entity || entity.alive === false || entity.type !== 'ship'
       || entity.data?.worldRecordId !== worldRecordId) continue;
     // A duplicate stable record is a corrupted/ambiguous rebind, never permission to inspect an

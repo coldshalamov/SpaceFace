@@ -31,6 +31,7 @@ import {
   isPlayerWreckMarker,
   PLAYER_WRECK_ENCOUNTER_ID,
 } from './aftermathWrecks.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 const VALID_PHASES = new Set(['rumored', 'fixed', 'decision', 'salvaged']);
 
@@ -1078,7 +1079,7 @@ export const uniqueWrecks = {
       const known = this.state.entities.get(knownId);
       if (known && known.alive !== false) return known;
     }
-    for (const entity of this.state.entityList || []) {
+    for (const entity of indexedTypeScan(this.state, 'wrecks')) {
       if (entity && entity.alive !== false && entity.data && entity.data.uniqueWreckId === wreckId) return entity;
     }
     return null;

@@ -28,7 +28,7 @@ import {
 } from '../combat/impulseKernel.js';
 import { resolveGovernedCombatSpeed } from '../core/flight/propulsionCatalog.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
-import { indexedShipLikeScan } from '../world/livingWorldViews.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { MODULES } from '../data/modules.js';
 
@@ -136,9 +136,13 @@ function normalizeAngle(angle) {
   return value;
 }
 
+function liveChargeList(state) {
+  return indexedTypeScan(state, 'charges');
+}
+
 function activeCharges(state, ownerId) {
   const out = [];
-  for (const e of state.entityList) {
+  for (const e of liveChargeList(state)) {
     if (!e.alive || e.type !== 'charge') continue;
     const d = e.data;
     if (!d || d.ownerId !== ownerId) continue;
@@ -192,7 +196,11 @@ export function bombPropulsionAvailable(state) {
 }
 
 function stickCandidatesNear(state, pos, radius, out) {
-  return queryNearbyEntities(state, pos, radius, out, state.entityList);
+  const index = state && state.entityIndex;
+  const fallback = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables)
+    ? index.collidables
+    : (state && state.entityList);
+  return queryNearbyEntities(state, pos, radius, out, fallback);
 }
 
 export const impulseCharges = {
@@ -439,7 +447,7 @@ export const impulseCharges = {
 
   /** The armed plate stuck to `hostId`, or null. Bounded by the deployment cap (<= 8 charges). */
   _armedChargeOn(state, hostId) {
-    for (const e of state.entityList) {
+    for (const e of liveChargeList(state)) {
       if (!e.alive || e.type !== 'charge') continue;
       const d = e.data;
       if (!d || !d.armed || d.hostId !== hostId) continue;
@@ -553,11 +561,7 @@ export const impulseCharges = {
   },
 
   _tickCharges(dt, state) {
-    const index = state.entityIndex;
-    const charges = (index && index.__spacefaceEntityIndexV1 && index.ready === true
-      && Array.isArray(index.charges))
-      ? index.charges
-      : state.entityList;
+    const charges = liveChargeList(state);
     for (const e of charges) {
       if (!e.alive || e.type !== 'charge') continue;
       const d = e.data;
@@ -740,7 +744,7 @@ export const impulseCharges = {
     actions.chargeDetonate = false;
 
     let detonated = 0;
-    for (const charge of state.entityList) {
+    for (const charge of liveChargeList(state)) {
       if (!charge.alive || charge.type !== 'charge') continue;
       const d = charge.data;
       if (!d || !d.armed) continue;

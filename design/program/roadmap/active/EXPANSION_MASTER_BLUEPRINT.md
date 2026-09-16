@@ -3,7 +3,7 @@
 
 **Status:** `ACTIVE_SYNTHESIS` — retained design context; non-dispatching.
 **2026-09-06 controller disposition:** Preserve the ambitions below, route implementation through admitted packets, and do not create `MS-*` queue IDs.
-**Authority:** User direction; [ARCHITECTURE](../../../../ARCHITECTURE.md) for technical contracts; then [VISION](../../../VISION.md), [GDD](../../../GDD_2_0.md), the [canonical build map](../../../../CANONICAL_BUILD_MAP.md), and active packets. This document does not supersede those sources.
+**Authority:** User direction; [ARCHITECTURE](../../../../ARCHITECTURE.md) for technical contracts; then [VISION](../../../VISION.md), [GDD](../../../GDD_2_0.md), the [canonical build map](../../../../build_map.md), and active packets. This document does not supersede those sources.
 
 ## Purpose
 

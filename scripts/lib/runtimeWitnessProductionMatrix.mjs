@@ -91,29 +91,66 @@ function gpuSummary(report) {
       };
     }
   }
+  const byLabel = new Map();
+  const byFrame = new Map();
+  for (const entry of terminals) {
+    const ms = finite(entry?.elapsedMs);
+    let frame = null;
+    if (Number.isSafeInteger(entry?.renderFrameId) && entry.renderFrameId > 0) {
+      if (!byFrame.has(entry.renderFrameId)) byFrame.set(entry.renderFrameId, {
+        labels: new Set(), queryIds: new Set(), minQueryId: Infinity, maxQueryId: -Infinity,
+        total: 0, whole: null, duplicate: false, incomplete: false,
+      });
+      frame = byFrame.get(entry.renderFrameId);
+    }
+    if (entry?.state !== 'completed' || ms === null || ms < 0 || typeof entry.label !== 'string') {
+      if (frame) frame.incomplete = true;
+      continue;
+    }
+    if (!byLabel.has(entry.label)) byLabel.set(entry.label, []);
+    byLabel.get(entry.label).push(ms);
+    if (!frame) continue;
+    if (!Number.isSafeInteger(entry.queryId) || entry.queryId <= 0) frame.incomplete = true;
+    else {
+      if (frame.queryIds.has(entry.queryId)) frame.duplicate = true;
+      frame.queryIds.add(entry.queryId);
+      frame.minQueryId = Math.min(frame.minQueryId, entry.queryId);
+      frame.maxQueryId = Math.max(frame.maxQueryId, entry.queryId);
+    }
+    if (frame.labels.has(entry.label)) frame.duplicate = true;
+    frame.labels.add(entry.label);
+    frame.total += ms;
+    if (entry.label === 'drawPreparedFrame') frame.whole = ms;
+  }
+  for (const [label, samples] of byLabel) passes[label] = distribution(samples);
+  const totals = [];
+  for (const frame of byFrame.values()) {
+    if (frame.duplicate || frame.incomplete || frame.maxQueryId - frame.minQueryId + 1 !== frame.queryIds.size) continue;
+    if (frame.whole !== null && frame.labels.size === 1) totals.push(frame.whole);
+    else if (frame.whole === null && frame.labels.has('bloomScene') && frame.labels.has('bloomComposite')) totals.push(frame.total);
+  }
   return {
     status: values.length > 0 ? 'measured' : 'unavailable',
     reason: values.length > 0 ? null : (report.reason || 'GPU timer produced no completed non-disjoint samples'),
     ...distribution(values),
+    scope: 'retained GPU query spans; not a full-frame distribution',
     extension: report.extension || null,
     passes,
+    frameTotals: {
+      ...distribution(totals),
+      incompleteFrames: byFrame.size - totals.length,
+      scope: 'retained completed query tail, grouped by renderFrameId; excludes compositor and untimed GPU work',
+    },
   };
 }
 
-function inputToPhotonSummary(report) {
-  if (!report || typeof report !== 'object') {
-    return { status: 'unavailable', reason: 'runtime did not publish perfRuntime.getInputToPhotonReport()' };
-  }
-  const samples = finite(report.samples) ?? 0;
-  if (samples <= 0) {
-    return { status: 'unavailable', reason: 'no input command completed the photon path in this window', samples: 0 };
-  }
+function inputToPhotonSummary(samples) {
+  const values = samples.map((sample) => finite(sample.inputToPresentMs)).filter((value) => value !== null && value >= 0);
   return {
-    status: 'measured',
-    samples,
-    p50: finite(report.p50),
-    p95: finite(report.p95),
-    max: finite(report.max),
+    status: values.length > 0 ? 'measured' : 'unavailable',
+    reason: values.length > 0 ? null : 'no distinct input-to-present observation inside this recorder window',
+    source: 'input-to-present CPU proxy; not physical photon latency',
+    ...distribution(values),
   };
 }
 
@@ -151,7 +188,7 @@ export function summarizeRuntimeWitnessProductionWindow({ route, samples = [], g
     },
     cpuPhases: topPhase(clean),
     gpu: gpuSummary(gpuReport),
-    inputToPhoton: inputToPhotonSummary(inputToPhotonReport),
+    inputToPhoton: inputToPhotonSummary(clean),
     inputAge: inputAges.length > 0
       ? { status: 'measured', ...distribution(inputAges) }
       : { status: 'unknown', reason: 'no public input timestamp is published by the running route' },
@@ -178,9 +215,10 @@ export function formatRuntimeWitnessProductionMatrix(result) {
     `- status: ${result?.status || 'unavailable'}`,
     `- foreground intervals: n=${frames.samples || 0}; p50=${frames.p50 ?? 'unknown'} ms; p95=${frames.p95 ?? 'unknown'} ms; p99=${frames.p99 ?? 'unknown'} ms; max=${frames.max ?? 'unknown'} ms; >33.3ms=${frames.exceedances?.over33_3ms || 0}`,
     `- dominant measured CPU phase: ${top ? `${top.name} p95 ${top.p95 ?? 'unknown'} ms` : 'unknown'}`,
-    `- GPU: ${gpu.status || 'unavailable'}${gpu.reason ? ` (${gpu.reason})` : ''}${Number.isFinite(gpu.p95) ? `; p95=${gpu.p95} ms` : ''}`,
+    `- GPU query spans: ${gpu.status || 'unavailable'}${gpu.reason ? ` (${gpu.reason})` : ''}${Number.isFinite(gpu.p95) ? `; p95=${gpu.p95} ms (mixed passes, not frame time)` : ''}`,
+    `- GPU timed work per render frame: n=${gpu.frameTotals?.samples || 0}; p50=${gpu.frameTotals?.p50 ?? 'unknown'} ms; p95=${gpu.frameTotals?.p95 ?? 'unknown'} ms; incomplete=${gpu.frameTotals?.incompleteFrames ?? 'unknown'}; retained query tail, excludes compositor/untimed work`,
     ...passLines,
-    `- input-to-photon: ${photon.status || 'unknown'}${photon.reason ? ` (${photon.reason})` : ''}${photon.status === 'measured' ? `; n=${photon.samples}; p50=${photon.p50 ?? 'unknown'} ms; p95=${photon.p95 ?? 'unknown'} ms` : ''}`,
+    `- input-to-present CPU proxy (not physical photon latency): ${photon.status || 'unknown'}${photon.reason ? ` (${photon.reason})` : ''}${photon.status === 'measured' ? `; n=${photon.samples}; p50=${photon.p50 ?? 'unknown'} ms; p95=${photon.p95 ?? 'unknown'} ms` : ''}`,
     `- input age: ${result?.inputAge?.status || 'unknown'}${result?.inputAge?.reason ? ` (${result.inputAge.reason})` : ''}`,
     `- shed simulated time: ${result?.shedSimulation?.shedTimeMs ?? 'unknown'} ms; frames with shedding: ${result?.shedSimulation?.observedShedFrames ?? 'unknown'}${result?.shedSimulation?.reason ? ` (${result.shedSimulation.reason})` : ''}`,
   ].join('\n');

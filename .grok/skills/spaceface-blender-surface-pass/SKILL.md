@@ -1,8 +1,7 @@
 ---
 name: spaceface-blender-surface-pass
 description: >
-  Focused SpaceFace Blender pass for articulation, animation, sockets, secondary motion, damage/state
-  variants, and final integration polish. Use only when the asset's role benefits from those systems.
+  SpaceFace Blender motion/integration pass. Use only when the role needs those systems.
 ---
 
 # SpaceFace Blender — Life and Integration Pass

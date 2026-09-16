@@ -2906,7 +2906,7 @@ export const audio = {
     // PQ-130.08: inside the mine the three-layer grind bed (`_updateMine`) owns this voice. This
     // single-recipe loop stands down there so the two can never stack. It stays the grind for any
     // future non-mine deep-drill session.
-    if (mix.active && this._mineOwnsEar()) mix.active = false;
+    if (mix.active && typeof this._mineOwnsEar === 'function' && this._mineOwnsEar()) mix.active = false;
     rt._wantDrillGrind = mix.active;
 
     if (!mix.active) {

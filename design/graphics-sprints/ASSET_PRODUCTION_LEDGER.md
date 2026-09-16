@@ -2,7 +2,7 @@
 <!-- SCOPE: long-lived family subdivision and G0-G7 audit evidence for PQ-022/PQ-023 only. It cannot dispatch, prioritize, or claim completion; TOP10_ROI_ASSET_PLAN.md is research ranking only. -->
 # Visual Production Ledger — PQ-022 / PQ-023
 
-> **Subordinate execution ledger, not a sixth program queue.** `CANONICAL_BUILD_MAP.md` and
+> **Subordinate execution ledger, not a sixth program queue.** `build_map.md` and
 > `design/program/roadmap/program-queue.json` decide when PQ-022 and PQ-023 run. This file divides
 > those two packets into reviewable visual-production assignments and records craft evidence without
 > claiming whole-program completion.
@@ -14,7 +14,7 @@ Refresh manifests, runtime selectors, Git state, and current evidence before cla
 
 Use this order inside an activated graphics lane:
 
-1. `CANONICAL_BUILD_MAP.md`, the live queue, and `design/program/NOW.md` for dispatch and leases.
+1. `build_map.md`, the live queue, and `design/program/NOW.md` for dispatch and leases.
 2. `design/program/08_GRAPHICS_OVERHAUL_CHECKPOINT.md` for current integration truth.
 3. This ledger for PQ-022/PQ-023 subdivision and coverage.
 4. `VISUAL_ITERATION_PROTOCOL.md` for outcome-based scrutiny, valid framing, story-grounded briefs
@@ -250,7 +250,7 @@ integrates one coherent vertical, runs the normal route, and updates the global 
 
 ```text
 You are the SpaceFace graphics production controller. Start at
-CANONICAL_BUILD_MAP.md, then read design/program/NOW.md, the live
+build_map.md, then read design/program/NOW.md, the live
 program-queue.json, design/graphics-sprints/README.md, and
 design/graphics-sprints/ASSET_PRODUCTION_LEDGER.md. For every Tier A/B asset or
 VFX packet, also follow design/graphics-sprints/VISUAL_ITERATION_PROTOCOL.md.

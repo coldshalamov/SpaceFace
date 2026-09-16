@@ -30,6 +30,7 @@ import { wreckMissionById } from '../data/wreckMissions.js';
 import { protectedStationAt } from '../ai/engagementAuthority.js';
 import { rememberMoralDebt } from './moralMemory.js';
 import { playerWreckMarker } from './aftermathWrecks.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 
 const MISSION_ID = 'wm_survivor_pod';
 const CONCORD_FACTION_ID = 'faction_scn';
@@ -227,9 +228,16 @@ export function shouldEjectCausalSurvivorPod(state, victim) {
   return roll < CAUSAL_EJECT_CHANCE_PCT;
 }
 
+function payloadScanList(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.payloads)) return index.payloads;
+  if (Array.isArray(state && state.entityList)) return state.entityList;
+  return null;
+}
+
 export function countLiveCausalSurvivorPods(state) {
   let n = 0;
-  const list = state && state.entityList;
+  const list = payloadScanList(state);
   if (Array.isArray(list)) {
     for (let i = 0; i < list.length; i++) {
       if (isCausalSurvivorPod(list[i])) n += 1;
@@ -278,7 +286,7 @@ export function enforceCausalSurvivorPodCap(
     throw new Error('survivor pod cap requires canonical helpers.removeEntity');
   }
   const found = [];
-  const list = state.entityList;
+  const list = payloadScanList(state);
   if (Array.isArray(list)) {
     for (let i = 0; i < list.length; i++) {
       if (isCausalSurvivorPod(list[i])) found.push(list[i]);
@@ -312,7 +320,7 @@ function isFenceStation(station) {
 
 function fenceStationAt(state, entity) {
   if (!state || !entity || !entity.pos) return null;
-  const list = state.entityList || [];
+  const list = indexedTypeScan(state, 'stations');
   for (let i = 0; i < list.length; i++) {
     const station = list[i];
     if (!station || station.alive === false || station.type !== 'station' || !station.pos) continue;
@@ -346,7 +354,7 @@ function distance2(a, b) {
 function findRescueHullNear(state, pos, radius) {
   if (!state || !pos) return null;
   const r2 = radius * radius;
-  const list = state.entityList || [];
+  const list = indexedShipLikeScan(state);
   for (let i = 0; i < list.length; i++) {
     const e = list[i];
     if (!e || e.alive === false || e.type !== 'ship' || !e.pos) continue;
@@ -466,7 +474,7 @@ export const survivorPod = {
   },
 
   _livePlayerWreckPod(state) {
-    const list = state && state.entityList || [];
+    const list = payloadScanList(state) || [];
     for (let i = 0; i < list.length; i++) {
       if (isPlayerWreckPod(list[i])) return list[i];
     }
@@ -651,7 +659,7 @@ export const survivorPod = {
   _tickCausal(state, own) {
     if (!own || !own.causal) return;
     // Re-adopt pods restored via flags.persistent after save:loaded wiped coordinator state.
-    const list = state.entityList || [];
+    const list = payloadScanList(state) || [];
     for (let i = 0; i < list.length; i++) {
       const entity = list[i];
       if (!isCausalSurvivorPod(entity) || isPlayerWreckPod(entity)) continue;

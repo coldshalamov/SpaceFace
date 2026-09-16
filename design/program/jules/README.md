@@ -45,7 +45,7 @@ A task may inspect the paths listed in `inspectPaths`; those paths are a routing
 Every cloud job must:
 
 1. start from current `master` and record its actual base SHA;
-2. read `CANONICAL_BUILD_MAP.md`, root `AGENTS.md`, the task’s `readFirst`, and nearest scoped instructions;
+2. read `build_map.md`, root `AGENTS.md`, the task’s `readFirst`, and nearest scoped instructions;
 3. confirm the selected live owner before mutation;
 4. finish exactly one task on one branch;
 5. open at most one coherent PR;

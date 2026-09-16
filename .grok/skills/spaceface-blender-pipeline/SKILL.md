@@ -1,9 +1,7 @@
 ---
 name: spaceface-blender-pipeline
 description: >
-  SpaceFace Blender authoring and repair pipeline for ships, props, stations, and other authored
-  GLBs. Use when a task explicitly requires Blender/source-asset work, export-contract repair, or
-  player-route visual improvement. Techniques are selected from evidence, not quotas.
+  SpaceFace Blender export/repair pipeline. Use only for explicit Blender/source-asset work.
 ---
 
 # SpaceFace Blender Pipeline

@@ -12,7 +12,7 @@ reviewed against current product, policy, program, and Ceres authority on 2026-0
 
 This is supporting creative and production doctrine. It can help an admitted packet find a stronger
 solution; it cannot admit work or decide that work is accepted. It does **not** dispatch the
-non-Hitch fleet remaster. That campaign is `PQ-050` via [`CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md)
+non-Hitch fleet remaster. That campaign is `PQ-050` via [`build_map.md`](../../build_map.md)
 when the user asked for map / non-INFERENCE / overnight admitted work.
 
 - The GDD and current user direction own the intended game.

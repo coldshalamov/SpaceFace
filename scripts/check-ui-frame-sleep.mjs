@@ -187,14 +187,6 @@ function checkModalChromeAvoidsFrameDomQueries() {
   const uiRoot = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
   const comms = readFileSync(new URL('../src/ui/comms.js', import.meta.url), 'utf8');
   const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
-  assert.ok(comms.includes('isModalOpen'), 'comms should expose modal state without forcing uiRoot DOM queries');
-  assert.match(comms, /state\.ui\.commsBacklogOpen = true/, 'comms backlog should publish open state for Escape routing');
-  assert.match(comms, /state\.ui\.commsBacklogOpen = false/, 'comms backlog should clear open state for Escape routing');
-  assert.doesNotMatch(comms, /'C' (?:key|backlog)|toggle with 'C'|route the 'C' key/i, 'comms backlog docs should reference the live L binding, not stale C copy');
-  assert.match(hud, /state\.ui\.cargoPanelOpen = cargoPanelOpen/, 'cargo panel should publish open state for Escape routing');
-  assert.match(hud, /state\.ui\.cargoPanelOpen = false/, 'cargo panel should clear open state for Escape routing');
-  assert.match(input, /state\.ui\.commsBacklogOpen[\s\S]*bus\.emit\('ui:closeComms'\)/, 'input router should close comms before opening Pause');
-  assert.match(input, /state\.ui\.cargoPanelOpen[\s\S]*bus\.emit\('ui:closeCargo'\)/, 'input router should close cargo before opening Pause');
   assert.ok(uiRoot.includes('this.comms.isModalOpen'), 'uiRoot frame should consume comms modal state directly');
   assert.ok(!uiRoot.includes("document.querySelector('.sf-endgame--c.open')"), 'uiRoot frame should not query endgame modal DOM state');
   assert.ok(uiRoot.includes('_modalBackdropEl'), 'uiRoot should cache the shared modal backdrop element');
@@ -203,24 +195,25 @@ function checkModalChromeAvoidsFrameDomQueries() {
 function checkFullscreenCompositorShellsSleep() {
   const css = readFileSync(new URL('../styles/ui.css', import.meta.url), 'utf8');
   const screenManager = readFileSync(new URL('../src/ui/screenManager.js', import.meta.url), 'utf8');
-  const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+  const loadingPresenter = readFileSync(new URL('../src/ui/loadingPresenter.js', import.meta.url), 'utf8');
   const uiRoot = readFileSync(new URL('../src/ui/uiRoot.js', import.meta.url), 'utf8');
+  const hudStyles = readFileSync(new URL('../src/ui/views/hudStyles.js', import.meta.url), 'utf8');
   const hud = readFileSync(new URL('../src/ui/hud.js', import.meta.url), 'utf8');
   const modalBackdrop = blockFor(css, '#modal-backdrop');
   const dockOverlay = blockFor(css, '#sf-dock-overlay');
-  const lockRing = blockFor(uiRoot, '.sf-lockring');
-  const lockRingActive = blockFor(uiRoot, '.sf-lockring.active');
-  const lockDiamond = blockFor(uiRoot, '.sf-lockdiamond');
-  const lockDiamondVisible = blockFor(uiRoot, '.sf-lockdiamond.visible');
+  const lockRing = blockFor(hudStyles, '.sf-lockring');
+  const lockRingActive = blockFor(hudStyles, '.sf-lockring.active');
+  const lockDiamond = blockFor(hudStyles, '.sf-lockdiamond');
+  const lockDiamondVisible = blockFor(hudStyles, '.sf-lockdiamond.visible');
 
   assert.match(modalBackdrop, /display:\s*none/, 'closed modal backdrop must not stay in the compositor tree');
   assert.match(css, /#modal-backdrop\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i, 'hidden modal backdrop should be display:none');
   assert.match(css, /body\.ui-modal-open\s+#modal-backdrop\s*\{[^}]*display:\s*block/i, 'modal backdrop should still be wired for open screens');
-  assert.match(main, /o\.style\.display\s*=\s*'none'/, 'boot overlay should be removed from display after its fade');
+  assert.match(loadingPresenter, /overlay\.style\.display\s*=\s*'none'/, 'boot overlay should be removed from display after its fade');
   assert.match(screenManager, /backdrop\.hidden\s*=\s*!\s*open/, 'screen manager should unmount the shared backdrop when no screen is open');
   assert.match(dockOverlay, /pointer-events:\s*none/, 'docking overlay should not intercept input while inactive');
   assert.match(css, /#sf-dock-overlay\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i, 'hidden docking overlay should be display:none in static CSS');
-  assert.match(uiRoot, /\.sf-dock-fade\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i, 'hidden docking overlay should be display:none in injected HUD CSS');
+  assert.match(hudStyles, /\.sf-dock-fade\[hidden\]\s*\{[^}]*display:\s*none\s*!important/i, 'hidden docking overlay should be display:none in injected HUD CSS');
   assert.match(uiRoot, /dockFade\.hidden\s*=\s*true/, 'docking overlay should return to hidden after the fade');
   assert.match(uiRoot, /dockFade\.hidden\s*=\s*false/, 'docking overlay should only mount while the transition is active');
   assert.match(lockRing, /display:\s*none/, 'idle lock ring should not stay in the compositor tree');

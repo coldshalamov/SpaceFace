@@ -49,6 +49,12 @@ function stationLabel(station, stationId) {
 /** Find the live station entity's data by stationId (defensive; null if absent). */
 function findStationData(state, stationId) {
   if (!state || !stationId) return null;
+  const byStationId = state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && typeof byStationId.get === 'function' && byStationId.get(stationId);
+  if (indexed && indexed.alive !== false && indexed.type === 'station') {
+    const data = indexed.data || {};
+    return { ...data, factionId: data.factionId || indexed.factionId || null };
+  }
   const list = (state.entityIndex && state.entityIndex.stations) || state.entityList || [];
   for (const e of list) {
     if (!e || e.alive === false || e.type !== 'station') continue;

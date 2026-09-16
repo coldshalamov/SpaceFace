@@ -51,7 +51,7 @@ import { COMMODITIES } from '../data/commodities.js';
 import { volatileClassOf } from '../data/commodityVolatileClasses.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { rollKillRewardItems } from '../data/killRewards.js';
-import { forEachJobInteractable } from '../world/livingWorldViews.js';
+import { forEachJobInteractable, indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { isHostileToPlayer } from './scanner.js';
 
 const SHARD_REWARD_SALT = 'loot_shards_reward_v3';
@@ -145,6 +145,12 @@ function isCivilianManifestPayload(entity) {
     && entity.type === 'payload'
     && entity.data
     && entity.data.payloadType === CIVILIAN_MANIFEST_PAYLOAD_TYPE);
+}
+
+function payloadScanList(state) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && Array.isArray(index.payloads)) return index.payloads;
+  return state && state.entityList;
 }
 
 export function isJettisonedCargoPod(entity) {
@@ -263,7 +269,16 @@ function applyRadialPublishedImpulse(host, origin, skipId, magnitude, radius, re
   const physics = host.helpers && host.helpers.combatPhysics;
   if (!physics || typeof physics.applyImpulse !== 'function' || !origin) return 0;
   const state = host.state;
-  const nearby = queryNearbyEntities(state, origin, radius, _nearbyScratch, state && state.entityList);
+  const nearby = queryNearbyEntities(
+    state,
+    origin,
+    radius,
+    _nearbyScratch,
+    (state && state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1
+      && Array.isArray(state.entityIndex.collidables))
+      ? state.entityIndex.collidables
+      : (state && state.entityList),
+  );
   let applied = 0;
   for (let i = 0; i < nearby.length; i++) {
     const entity = nearby[i];
@@ -418,7 +433,7 @@ export function enforceCivilianManifestPayloadCap(
 ) {
   if (!state || !Number.isFinite(max) || max < 0) return 0;
   const found = [];
-  const list = state.entityList;
+  const list = payloadScanList(state);
   if (Array.isArray(list)) {
     for (let i = 0; i < list.length; i++) {
       if (isCivilianManifestPayload(list[i])) found.push(list[i]);
@@ -454,7 +469,7 @@ export function enforceJettisonedCargoPodCap(
 ) {
   if (!state || !Number.isFinite(max) || max < 0) return 0;
   const found = [];
-  const list = state.entityList;
+  const list = payloadScanList(state);
   if (Array.isArray(list)) {
     for (let i = 0; i < list.length; i++) {
       if (isJettisonedCargoPod(list[i])) found.push(list[i]);
@@ -519,12 +534,27 @@ export const lootShards = {
     const pods = _catchPodScratch;
     nets.length = 0;
     pods.length = 0;
-    forEachJobInteractable(state, (entity) => {
-      if (isOutlawCatchNet(entity) && entity.pos) nets.push(entity);
-      else if (isJettisonedCargoPod(entity) && entity.pos && entity.data && !entity.data.caughtByNet) {
-        pods.push(entity);
+    const entityIndex = state.entityIndex;
+    const indexed = !!(entityIndex && entityIndex.__spacefaceEntityIndexV1 && entityIndex.ready === true
+      && Array.isArray(entityIndex.payloads) && Array.isArray(entityIndex.shipLike));
+    if (indexed) {
+      for (const entity of indexedTypeScan(state, 'payloads')) {
+        if (isOutlawCatchNet(entity) && entity.pos) nets.push(entity);
+        else if (isJettisonedCargoPod(entity) && entity.pos && entity.data && !entity.data.caughtByNet) {
+          pods.push(entity);
+        }
       }
-    });
+      for (const entity of indexedShipLikeScan(state)) {
+        if (isOutlawCatchNet(entity) && entity.pos) nets.push(entity);
+      }
+    } else {
+      forEachJobInteractable(state, (entity) => {
+        if (isOutlawCatchNet(entity) && entity.pos) nets.push(entity);
+        else if (isJettisonedCargoPod(entity) && entity.pos && entity.data && !entity.data.caughtByNet) {
+          pods.push(entity);
+        }
+      });
+    }
     if (nets.length === 0 || pods.length === 0) return;
     for (let n = 0; n < nets.length; n++) {
       const net = nets[n];
@@ -846,24 +876,31 @@ export const lootShards = {
       isCivilian: true,
     });
     if (!identity) return 0;
-    const list = state.entityList || [];
+    const index = state.entityIndex;
+    const lists = index && index.__spacefaceEntityIndexV1
+      ? [index.pickups, index.payloads]
+      : [state.entityList];
     let stamped = 0;
-    for (let i = 0; i < list.length; i++) {
-      const entity = list[i];
-      const data = entity && entity.data;
-      if (!data) continue;
-      const freight = data.freightCustodyPod;
-      const freightMatch = freight && typeof freight === 'object'
-        && (freight.custodyId === payload.custodyId
-          || freight.manifestId === payload.manifestId
-          || freight.encounterId === payload.encounterId);
-      const payloadMatch = entity.type === 'payload'
-        && (data.sourceVictimId === payload.carrierId
-          || (data.jettisonedCargo === true
-            && (data.ownerId == null || String(data.ownerId) === String(identity.ownerId))));
-      if (!freightMatch && !payloadMatch) continue;
-      stampCargoIdentity(data, identity);
-      stamped += 1;
+    for (let l = 0; l < lists.length; l++) {
+      const list = lists[l];
+      if (!list) continue;
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        const data = entity && entity.data;
+        if (!data) continue;
+        const freight = data.freightCustodyPod;
+        const freightMatch = freight && typeof freight === 'object'
+          && (freight.custodyId === payload.custodyId
+            || freight.manifestId === payload.manifestId
+            || freight.encounterId === payload.encounterId);
+        const payloadMatch = entity.type === 'payload'
+          && (data.sourceVictimId === payload.carrierId
+            || (data.jettisonedCargo === true
+              && (data.ownerId == null || String(data.ownerId) === String(identity.ownerId))));
+        if (!freightMatch && !payloadMatch) continue;
+        stampCargoIdentity(data, identity);
+        stamped += 1;
+      }
     }
     return stamped;
   },

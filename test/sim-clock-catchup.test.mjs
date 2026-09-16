@@ -35,6 +35,13 @@ test('clock membership: table / near / calendar / glass', () => {
   assert.equal(getSystemClock('npcJobsRuntime'), SYSTEM_CLOCK.NEAR);
   assert.equal(getSystemClock('barkDirector'), SYSTEM_CLOCK.CALENDAR);
   assert.equal(getSystemClock('missions'), SYSTEM_CLOCK.CALENDAR);
+  assert.equal(getSystemClock('aftermathWrecks'), SYSTEM_CLOCK.CALENDAR);
+  assert.equal(getSystemClock('wingMorale'), SYSTEM_CLOCK.CALENDAR);
+  assert.equal(getSystemClock('combatOutcome'), SYSTEM_CLOCK.NEAR);
+  assert.equal(getSystemClock('cargo'), SYSTEM_CLOCK.NEAR);
+  assert.equal(getSystemClock('terrainAnchors'), SYSTEM_CLOCK.CALENDAR);
+  assert.equal(getSystemClock('jettisonImpulse'), SYSTEM_CLOCK.CALENDAR);
+  assert.equal(getSystemClock('masslineImpactDamage'), SYSTEM_CLOCK.CALENDAR);
   assert.equal(getSystemClock('liveCareerLadderBranches'), SYSTEM_CLOCK.CALENDAR);
   assert.equal(getSystemClock('masslineHud'), SYSTEM_CLOCK.GLASS);
   assert.equal(getSystemClock('voiceArbiter'), SYSTEM_CLOCK.GLASS);
@@ -123,7 +130,15 @@ test('production combat order excludes calendar owners', () => {
   assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('swarmChain'));
   assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('barkDirector'), false);
   assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('missions'), false);
+  assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('aftermathWrecks'), false);
+  assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('wingMorale'), false);
+  assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('combatOutcome'));
+  assert.ok(PRODUCTION_COMBAT_UPDATE_ORDER.includes('cargo'));
   assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('story'), false);
+  assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('terrainAnchors'), false);
+  assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('terrainAnchors'));
+  assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('jettisonImpulse'));
+  assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('masslineImpactDamage'));
   assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('bandRadio'), false);
   assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('regionalEcology'), false);
   assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('bountyHunt'), false);
@@ -131,6 +146,8 @@ test('production combat order excludes calendar owners', () => {
   assert.equal(PRODUCTION_COMBAT_UPDATE_ORDER.includes('liveCareerLadderBranches'), false);
   assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('barkDirector'));
   assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('missions'));
+  assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('aftermathWrecks'));
+  assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('wingMorale'));
   assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('encounterDirector'));
   assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('salvage'));
   assert.ok(PRODUCTION_CALENDAR_UPDATE_ORDER.includes('careerLadders'));

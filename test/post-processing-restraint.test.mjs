@@ -27,7 +27,7 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 // "A few distant galaxies", "float bandMask", "float breath"). Two of the four matched COMMENTS,
 // not code. No observed play failure was ever cited for any of them, they were defeatable by
 // renaming a variable, and they banned a whole category of visual work by string match — the exact
-// pattern CANONICAL_BUILD_MAP.md:164 and docs/POLICY_MANIFEST.md:44-58 forbid. Deleted.
+// pattern build_map.md:164 and docs/POLICY_MANIFEST.md:44-58 forbid. Deleted.
 //
 // Also withdrawn: pinning DEFAULT_POST_PRESENTATION to exactly {0,0,0}. Whether the shipped default
 // grade/vignette/grain is zero is a SETTINGS DEFAULT and a matter of taste; it belongs in the

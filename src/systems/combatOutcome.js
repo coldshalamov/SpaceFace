@@ -7,6 +7,7 @@
 import { compactKillCausality, KillCause } from '../combat/killCausality.js';
 import { isHostileToPlayer } from './scanner.js';
 import { shouldRunOnTick } from '../core/activityScheduler.js';
+import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 
 const STATE_VERSION = 2;
 const MAX_OUTCOMES = 64;
@@ -126,7 +127,7 @@ export const combatOutcome = {
     if (state && state.mode && state.mode !== 'flight') return;
     if (!shouldRunOnTick(state && state.tick, 'combatOutcome:scan', 4)) return;
     const own = ensureState(state);
-    const list = Array.isArray(state.entityList) ? state.entityList : [];
+    const list = indexedShipLikeScan(state);
     for (const entity of list) {
       if (!entity || !entity.alive || own.byEntity[entity.id]) continue;
       const ai = entity.data && entity.data.ai;

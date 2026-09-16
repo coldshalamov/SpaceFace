@@ -125,3 +125,88 @@ export function shouldOwnerThink(tick, owner, options = {}) {
   const key = owner && (owner.id != null ? `active:${owner.id}` : `active:${options.ownerKey || 'anon'}`);
   return shouldRunOnTick(tick, key, period);
 }
+
+export const NEAR_WORK_TOKEN_BUDGET = 16;
+
+function ownerIsAlwaysAwake(owner, state) {
+  if (!owner) return false;
+  if (owner.isPlayer === true || (state && owner.id === state.playerId)) return true;
+  const ai = ownerAiRecord(owner);
+  return !!(ai && ai.combatant === true);
+}
+
+/**
+ * Deterministic slice of S1 civilians that may think this tick. Hostiles and the
+ * player are always included and do not consume the budget. Walk order is the
+ * live shipLike index (spawn order).
+ */
+export function stampNearWorkBudget(state, budget = NEAR_WORK_TOKEN_BUDGET) {
+  const set = new Set();
+  if (!state) return set;
+  const ships = (state.entityIndex && state.entityIndex.shipLike) || [];
+  const tick = state.tick | 0;
+  const limit = Math.max(1, Math.floor(Number(budget) || NEAR_WORK_TOKEN_BUDGET));
+  const n = ships.length;
+  const start = n ? ((tick * limit) % n) : 0;
+  let granted = 0;
+  for (let i = 0; i < n; i++) {
+    const entity = ships[(start + i) % n];
+    if (!entity || entity.alive === false) continue;
+    if (ownerIsAlwaysAwake(entity, state)) {
+      set.add(entity.id);
+      continue;
+    }
+    const tier = entity.activity && entity.activity.simTier;
+    if (tier && tier !== SIM_TIER.S1_NEAR) continue;
+    if (granted >= limit) continue;
+    set.add(entity.id);
+    granted++;
+  }
+  state.nearWorkIds = set;
+  return set;
+}
+
+export function hasNearWorkSlot(state, entity) {
+  if (!entity) return false;
+  if (ownerIsAlwaysAwake(entity, state)) return true;
+  const set = state && state.nearWorkIds;
+  if (!set) return true;
+  return set.has(entity.id);
+}
+
+function compareStableIds(left, right) {
+  if (Number.isFinite(left) && Number.isFinite(right)) return left - right;
+  const a = String(left);
+  const b = String(right);
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+/**
+ * Count-based cooperative slice for NEAR owners (traffic/law/npcJobs/scanner).
+ * Leftover work resumes next primary tick in stable ID order. Not wall time.
+ */
+export function takeNearWorkSlice(
+  state,
+  ownerKey,
+  items,
+  getId = (item) => item && item.id,
+  budget = NEAR_WORK_TOKEN_BUDGET,
+) {
+  const list = Array.isArray(items) ? items : [];
+  const n = list.length;
+  if (n === 0) return list;
+  const limit = Math.max(1, Math.floor(Number(budget) || NEAR_WORK_TOKEN_BUDGET));
+  if (!state || n <= limit) return list;
+  const order = list.map((item, index) => ({ item, id: getId(item), index }));
+  order.sort((a, b) => {
+    const cmp = compareStableIds(a.id, b.id);
+    return cmp !== 0 ? cmp : a.index - b.index;
+  });
+  const cursors = state.nearWorkCursors || (state.nearWorkCursors = Object.create(null));
+  const key = String(ownerKey || 'near');
+  const cursor = cursors[key] | 0;
+  const out = [];
+  for (let i = 0; i < limit; i++) out.push(order[(cursor + i) % n].item);
+  cursors[key] = (cursor + limit) % n;
+  return out;
+}

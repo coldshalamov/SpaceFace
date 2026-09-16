@@ -3,7 +3,7 @@
 
 Independent taste + vision review of the station after the polish pass (12px type floor, ~300
 hand-typed colours tokenised, market rows and driver labels un-clipped). Judged from frames
-captured the same day against `design/frontend/INSTRUMENT_GRAMMAR.md` and CANONICAL_BUILD_MAP
+captured the same day against `design/frontend/INSTRUMENT_GRAMMAR.md` and build_map
 §11.7. Reviewer: Kimi K3 (vision), read-only packet.
 
 ## Controller note — what is verified, and the exact cause of finding #1

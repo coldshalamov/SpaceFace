@@ -20,6 +20,12 @@ export class SpatialHash {
     this._staticQueryCacheEntries = 0;
     this._staticQueryCacheLimit = 128;
     this._staticVersion = null;
+    this._dynamicQueryCache = new Map();
+    this._dynamicQueryCacheEntries = 0;
+    this._dynamicQueryCacheLimit = 64;
+    this._dynamicQueryVersion = 1;
+    this._coherentQueries = new Map();
+    this._coherentQueryLimit = 256;
     // id -> { entity, x0, x1, z0, z1, r, stamp } — dynamic membership for incremental rehash
     this._dynamicMembers = new Map();
     this._dynamicSyncStamp = 1;
@@ -54,6 +60,11 @@ export class SpatialHash {
       staticQueryCacheHits: 0,
       staticQueryCacheMisses: 0,
       staticQueryCacheEntries: 0,
+      dynamicQueryCacheHits: 0,
+      dynamicQueryCacheMisses: 0,
+      dynamicQueryCacheEntries: 0,
+      coherentQueryHits: 0,
+      coherentQueryMisses: 0,
     };
   }
 
@@ -63,6 +74,9 @@ export class SpatialHash {
     this._seenIds.clear();
     this._queryStamp = 1;
     this._staticVersion = null;
+    this._dynamicQueryVersion = 1;
+    this._clearDynamicQueryCache();
+    this._coherentQueries.clear();
     this._updateActiveDiagnostics();
   }
 
@@ -236,6 +250,11 @@ export class SpatialHash {
     this._pending.dynamicUnchanged += unchanged;
     this.diagnostics.dynamicReinserts += membershipUpdates;
     this.diagnostics.dynamicUnchanged += unchanged;
+    if (membershipUpdates > 0) {
+      this._dynamicQueryVersion = (this._dynamicQueryVersion + 1) | 0;
+      if (this._dynamicQueryVersion <= 0) this._dynamicQueryVersion = 1;
+      this._clearDynamicQueryCache();
+    }
   }
 
   _cellSpan(e) {
@@ -320,8 +339,25 @@ export class SpatialHash {
     candidates += staticResult.candidates;
     const seen = this._seenIds;
     const stamp = this._nextQueryStamp();
-    candidates += this._queryLayer(this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ,
-      scanActive, x0, x1, z0, z1, stamp, out);
+    const cachedDynamic = this._getDynamicQueryCache(x0, x1, z0, z1, scanActive);
+    let dynamicEntities;
+    if (cachedDynamic) {
+      this.diagnostics.dynamicQueryCacheHits++;
+      dynamicEntities = cachedDynamic;
+    } else {
+      this.diagnostics.dynamicQueryCacheMisses++;
+      dynamicEntities = [];
+      candidates += this._queryLayer(
+        this.buckets, this._activeBuckets, this._activeCellX, this._activeCellZ,
+        scanActive, x0, x1, z0, z1, stamp, dynamicEntities,
+      );
+      this._setDynamicQueryCache(x0, x1, z0, z1, scanActive, dynamicEntities);
+    }
+    for (let i = 0; i < dynamicEntities.length; i++) {
+      const entity = dynamicEntities[i];
+      seen.set(entity.id, stamp);
+      out.push(entity);
+    }
     for (let i = 0; i < staticResult.entities.length; i++) {
       const entity = staticResult.entities[i];
       if (seen.get(entity.id) === stamp) continue;
@@ -334,6 +370,45 @@ export class SpatialHash {
       this.diagnostics.queries++;
       this.diagnostics.candidates += candidates;
     }
+    return out;
+  }
+
+  /**
+   * Reuse last tick's neighbor list when the query AABB stays inside the same cell rectangle
+   * and dynamic membership has not changed (SAP/grid temporal coherence).
+   */
+  queryRadiusCoherent(key, x, z, r, out = []) {
+    const c = this.cell;
+    const x0 = Math.floor((x - r) / c);
+    const x1 = Math.floor((x + r) / c);
+    const z0 = Math.floor((z - r) / c);
+    const z1 = Math.floor((z + r) / c);
+    const version = this._dynamicQueryVersion;
+    let rec = key != null ? this._coherentQueries.get(key) : null;
+    if (rec
+      && rec.x0 === x0 && rec.x1 === x1 && rec.z0 === z0 && rec.z1 === z1
+      && rec.version === version) {
+      this.diagnostics.coherentQueryHits++;
+      out.length = 0;
+      const src = rec.entities;
+      for (let i = 0; i < src.length; i++) out.push(src[i]);
+      return out;
+    }
+    this.diagnostics.coherentQueryMisses++;
+    this.queryRadius(x, z, r, out);
+    if (key == null) return out;
+    if (!rec) {
+      if (this._coherentQueries.size >= this._coherentQueryLimit) this._coherentQueries.clear();
+      rec = { x0, x1, z0, z1, version, entities: [] };
+      this._coherentQueries.set(key, rec);
+    }
+    rec.x0 = x0;
+    rec.x1 = x1;
+    rec.z0 = z0;
+    rec.z1 = z1;
+    rec.version = version;
+    rec.entities.length = 0;
+    for (let i = 0; i < out.length; i++) rec.entities.push(out[i]);
     return out;
   }
 
@@ -673,12 +748,37 @@ export class SpatialHash {
     this.diagnostics.staticQueryCacheEntries = 0;
   }
 
+  _dynamicQueryCacheKey(x0, x1, z0, z1, scanActive) {
+    return `${this._dynamicQueryVersion}|${x0}|${x1}|${z0}|${z1}|${scanActive ? 1 : 0}`;
+  }
+
+  _getDynamicQueryCache(x0, x1, z0, z1, scanActive) {
+    return this._dynamicQueryCache.get(this._dynamicQueryCacheKey(x0, x1, z0, z1, scanActive)) || null;
+  }
+
+  _setDynamicQueryCache(x0, x1, z0, z1, scanActive, entities) {
+    if (this._dynamicQueryCacheEntries >= this._dynamicQueryCacheLimit) this._clearDynamicQueryCache();
+    const key = this._dynamicQueryCacheKey(x0, x1, z0, z1, scanActive);
+    if (!this._dynamicQueryCache.has(key)) {
+      this._dynamicQueryCacheEntries++;
+      this.diagnostics.dynamicQueryCacheEntries = this._dynamicQueryCacheEntries;
+    }
+    this._dynamicQueryCache.set(key, entities);
+  }
+
+  _clearDynamicQueryCache() {
+    this._dynamicQueryCache.clear();
+    this._dynamicQueryCacheEntries = 0;
+    this.diagnostics.dynamicQueryCacheEntries = 0;
+  }
+
   _clearDynamicLayer() {
     this.buckets.clear();
     this._activeBuckets.length = 0;
     this._activeCellX.length = 0;
     this._activeCellZ.length = 0;
     this._dynamicMembers.clear();
+    this._clearDynamicQueryCache();
   }
 
   _clearStaticLayer() {

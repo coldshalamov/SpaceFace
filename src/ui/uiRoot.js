@@ -30,6 +30,7 @@ import { isMapScreenId, openGalaxyMap } from './mapAuthority.js';
 import { IS_DEV } from '../core/devMode.js';
 import { installSandboxGameStartedHook } from './sandbox/sandboxSetup.js';
 import { bindSound, bindTemperature } from './kit/index.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 
 // Clean inline UI art (replaces the captioned reference-sheet .jpg assets that rendered text).
 const RETICLE_SVG = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;overflow:visible">
@@ -116,6 +117,22 @@ const SCREEN_MODULES = [
   // dynamic import and the module never enter build/web when IS_DEV folds false at build time.
   ...(IS_DEV ? [{ path: './screens/sandbox.js', load: () => import('./screens/sandbox.js'), name: 'sandboxScreen' }] : []),
 ];
+
+// Title / pause / death must win the first parse wave. Galaxy map, station, and shipworks
+// are huge modules; starting them in the same microtask as mainMenu freezes the loading
+// terminal. They still register before first dock/map use via the deferred wave below.
+const BOOT_SCREEN_EXPORTS = new Set([
+  'mainMenuScreen', 'newGameScreen', 'pauseScreen', 'gameOverScreen',
+  'settingsScreen', 'saveLoadScreen', 'helpScreen', 'creditsScreen',
+  'crucibleScreen', 'crucibleResultsScreen',
+]);
+
+function yieldPresentationFrame() {
+  if (typeof requestAnimationFrame === 'function') {
+    return new Promise((resolve) => requestAnimationFrame(() => resolve()));
+  }
+  return Promise.resolve();
+}
 
 
 export function beginScreenRegistrationCycle(owner, screenManager) {
@@ -1136,39 +1153,51 @@ export const ui = {
   // Dynamically import + register every screen; a missing/throwing module is logged and skipped.
   registerScreens() {
     const registrationCycle = this._screenRegistrationCycle;
-    const registrations = [];
-    for (const { path, load, name } of SCREEN_MODULES) {
-      registrations.push(load()
-        .then((mod) => {
-          if (!isScreenRegistrationCycleCurrent(registrationCycle)) return;
-          const def = mod && (mod[name] || mod.default);
-          if (!def || !def.id) { console.warn(`[ui] screen "${name}" missing valid export`); return; }
-          try { this.screenManager.register(def); }
-          catch (err) { console.error(`[ui] register("${def.id}") failed:`, err); return; }
-          // Station exit bus-gate must be live as soon as the hub module loads (before first dock).
-          if (def.id === 'station' && typeof mod.installStationExitGate === 'function') {
-            try { mod.installStationExitGate(this.ctx); } catch (e) { console.error('[ui] station exit gate', e); }
-          }
-          if (!this._registeredScreens) this._registeredScreens = new Set();
-          this._registeredScreens.add(def.id);
-          if (this.state.mode === 'menu' && this.screenManager.top && this.screenManager.top() === 'mainMenu') {
-            try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
-          }
-          // If we are in menu mode and the title flow just became usable, show it. The title screen
-          // waits for its primary New Game target so players never click a half-registered menu.
-          if ((def.id === 'mainMenu' || def.id === 'newGame') &&
-            this.state.mode === 'menu' && (this._pendingMainMenu || !this.screenManager.isOpen())) {
-            try { if (this._showMainMenuWhenReady) this._showMainMenuWhenReady(); }
-            catch (e) { console.error(e); }
-          }
-          // if docked already but the station hub registered late, open it
-          if (def.id === 'station' && this.state.ui.docked && this.screenManager.top() !== 'station') {
-            try { this.screenManager.pushScreen('station'); } catch (e) { console.error(e); }
-          }
-        })
-        .catch((err) => { console.warn(`[ui] screen module "${path}" unavailable:`, err && err.message ? err.message : err); }));
+    const registerOne = ({ path, load, name }) => load()
+      .then((mod) => {
+        if (!isScreenRegistrationCycleCurrent(registrationCycle)) return;
+        const def = mod && (mod[name] || mod.default);
+        if (!def || !def.id) { console.warn(`[ui] screen "${name}" missing valid export`); return; }
+        try { this.screenManager.register(def); }
+        catch (err) { console.error(`[ui] register("${def.id}") failed:`, err); return; }
+        // Station exit bus-gate must be live as soon as the hub module loads (before first dock).
+        if (def.id === 'station' && typeof mod.installStationExitGate === 'function') {
+          try { mod.installStationExitGate(this.ctx); } catch (e) { console.error('[ui] station exit gate', e); }
+        }
+        if (!this._registeredScreens) this._registeredScreens = new Set();
+        this._registeredScreens.add(def.id);
+        if (this.state.mode === 'menu' && this.screenManager.top && this.screenManager.top() === 'mainMenu') {
+          try { this.screenManager.refreshTop(); } catch (e) { console.error(e); }
+        }
+        // If we are in menu mode and the title flow just became usable, show it. The title screen
+        // waits for its primary New Game target so players never click a half-registered menu.
+        if ((def.id === 'mainMenu' || def.id === 'newGame') &&
+          this.state.mode === 'menu' && (this._pendingMainMenu || !this.screenManager.isOpen())) {
+          try { if (this._showMainMenuWhenReady) this._showMainMenuWhenReady(); }
+          catch (e) { console.error(e); }
+        }
+        // if docked already but the station hub registered late, open it
+        if (def.id === 'station' && this.state.ui.docked && this.screenManager.top() !== 'station') {
+          try { this.screenManager.pushScreen('station'); } catch (e) { console.error(e); }
+        }
+      })
+      .catch((err) => { console.warn(`[ui] screen module "${path}" unavailable:`, err && err.message ? err.message : err); });
+
+    const boot = [];
+    const rest = [];
+    for (const entry of SCREEN_MODULES) {
+      (BOOT_SCREEN_EXPORTS.has(entry.name) ? boot : rest).push(entry);
     }
-    this._screenRegistrationPromise = Promise.allSettled(registrations).then(() => {
+    const REST_BATCH = 3;
+    this._screenRegistrationPromise = Promise.allSettled(boot.map(registerOne)).then(async () => {
+      if (!isScreenRegistrationCycleCurrent(registrationCycle)) return;
+      await yieldPresentationFrame();
+      for (let i = 0; i < rest.length; i += REST_BATCH) {
+        if (!isScreenRegistrationCycleCurrent(registrationCycle)) return;
+        await Promise.allSettled(rest.slice(i, i + REST_BATCH).map(registerOne));
+        await yieldPresentationFrame();
+      }
+    }).then(() => {
       if (isScreenRegistrationCycleCurrent(registrationCycle)) {
         this._screenRegistrationSettledGeneration = registrationCycle.generation;
       }
@@ -1286,17 +1315,31 @@ function cycleTarget(state, dir, bus) {
   if (!player || !player.pos) return;
   if (!state.player) state.player = {};
   const contacts = [];
-  for (const e of state.entityList || []) {
-    if (!e || e.alive === false || e === player || !e.pos) continue;
+  const consider = (e) => {
+    if (!e || e.alive === false || e === player || !e.pos) return;
     const explicitWorldSiteTarget = !!(e.data && e.data.worldSiteTargetable === true);
-    if (explicitWorldSiteTarget && !presentationAllowsPlayerFacingAction(e, state)) continue;
-    if (!explicitWorldSiteTarget && !verbAcceptsType('target', e.type)) continue; // PQ-015 membership + explicit site exception
-    if (!explicitWorldSiteTarget && !isHostileToPlayer(e, player.team, state)) continue;
-    if (!presentationAllowsTargetLock(e, state)) continue;
+    if (explicitWorldSiteTarget && !presentationAllowsPlayerFacingAction(e, state)) return;
+    if (!explicitWorldSiteTarget && !verbAcceptsType('target', e.type)) return; // PQ-015 membership + explicit site exception
+    if (!explicitWorldSiteTarget && !isHostileToPlayer(e, player.team, state)) return;
+    if (!presentationAllowsTargetLock(e, state)) return;
     const dx = e.pos.x - player.pos.x, dz = e.pos.z - player.pos.z;
     const d = Math.hypot(dx, dz);
-    if (d > SCANNER_CONTACT_RANGE) continue;
+    if (d > SCANNER_CONTACT_RANGE) return;
     contacts.push({ e, d });
+  };
+  const index = state.entityIndex;
+  const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.shipLike));
+  if (indexed) {
+    for (const e of indexedShipLikeScan(state)) consider(e);
+    for (const e of indexedTypeScan(state, 'wrecks')) {
+      if (e && e.data && e.data.worldSiteTargetable === true) consider(e);
+    }
+    for (const e of indexedTypeScan(state, 'payloads')) {
+      if (e && e.data && e.data.worldSiteTargetable === true) consider(e);
+    }
+  } else {
+    for (const e of state.entityList || []) consider(e);
   }
   contacts.sort((a, b) => a.d - b.d);
   if (!contacts.length) {
@@ -1414,7 +1457,7 @@ function targetNearestHostileToPlayer(state, bus, options = {}) {
   }
   let best = null;
   let bestD2 = Infinity;
-  for (const e of state.entityList) {
+  for (const e of indexedShipLikeScan(state)) {
     if (!e || e.alive === false || e === player || !e.pos) continue;
     if (e.type !== 'ship' && e.type !== 'drone') continue;
     if (!isHostileToPlayer(e, player.team, state)) continue;

@@ -17,7 +17,7 @@ own the work:
 
 The companion to the broader four-pillar synthesis is
 [`EXPANSION_MASTER_BLUEPRINT.md`](../program/roadmap/active/EXPANSION_MASTER_BLUEPRINT.md). The
-canonical routing map remains the front door: [`CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md).
+canonical routing map remains the front door: [`build_map.md`](../../build_map.md).
 
 ## Boundaries
 

@@ -76,7 +76,7 @@ into one truthful, teachable, measurable, paced, readable, and accepted experien
 
 ## How to use this dossier
 
-- Start implementation routing at [CANONICAL_BUILD_MAP.md](../../../CANONICAL_BUILD_MAP.md), not
+- Start implementation routing at [build_map.md](../../../build_map.md), not
   here.
 - Use [program/roadmap/program-queue.json](../../program/roadmap/program-queue.json) for packet
   identity and [program/NOW.md](../../program/NOW.md) for current collision/lease truth.

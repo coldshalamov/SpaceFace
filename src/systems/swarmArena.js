@@ -51,6 +51,7 @@ import {
   CRUCIBLE_SLALOM_WELL_COUNT,
 } from '../data/survivalMutators.js';
 import { isSwarmRuleset } from './survivalSwarm.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 import { SURVIVAL_COHORT_TAG } from './waveMaterialization.js';
 import { CINDER_ARENA_ID } from './cinderSluiceArena.js';
 import { CRYO_ARENA_ID } from './cryoDriftArena.js';
@@ -226,10 +227,10 @@ function debrisStreamSeed(seed, wave) {
 }
 
 function liveCohortCount(state) {
-  if (!state || !Array.isArray(state.entityList)) return 0;
+  if (!state) return 0;
   const playerId = state.playerId;
   let n = 0;
-  for (const entity of state.entityList) {
+  for (const entity of indexedShipLikeScan(state)) {
     if (!entity || entity.alive === false) continue;
     if (entity.id === playerId) continue;
     if (entity.type && entity.type !== 'ship' && entity.type !== 'drone') continue;
@@ -541,7 +542,7 @@ export const swarmArena = {
     // everything, the loop then skipped the already-marked ones, and each pass released far fewer
     // than it meant to — a walk to wave 13 held at ~145 wrecks instead of the intended forty.
     const standing = [];
-    for (const entity of state.entityList) {
+    for (const entity of indexedTypeScan(state, 'wrecks')) {
       if (!entity || entity.alive === false || entity.type !== 'wreck' || !entity.pos) continue;
       const already = entity.data && Number.isFinite(entity.data.despawnAt)
         && entity.data.despawnAt <= deadline;
@@ -614,7 +615,14 @@ export const swarmArena = {
     const nearbySolids = [];
     let mine = 0;
     const surviving = [];
-    for (const entity of state.entityList || []) {
+    const index = state.entityIndex;
+    const indexed = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true);
+    const solidLists = indexed
+      ? [index.asteroids, index.stations, index.wrecks]
+      : [state.entityList || []];
+    for (const list of solidLists) {
+      if (!list) continue;
+      for (const entity of list) {
       if (!entity || entity.alive === false || !entity.pos) continue;
       if (!SOLID_TYPES.has(entity.type)) continue;
       const dx = entity.pos.x - anchor.x;
@@ -642,6 +650,7 @@ export const swarmArena = {
           );
         }
       }
+    }
     }
     this._ids = surviving;
 

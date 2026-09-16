@@ -143,7 +143,7 @@ SF-33 already use. There is no schema obstacle.
 ## 5. Admission — ten artifacts, in dependency order
 
 The integrator alone may perform these (`design/program/AGENTS.md:13`;
-`CANONICAL_BUILD_MAP.md:24-27`). Written as a proposal; the Status column records what has since been performed.
+`build_map.md:24-27`). Written as a proposal; the Status column records what has since been performed.
 
 | # | Artifact | Kind | Status | Why it is first |
 |---|---|---|---|---|
@@ -156,7 +156,7 @@ The integrator alone may perform these (`design/program/AGENTS.md:13`;
 | A6 | `dispatchUnits[]` leaves under PQ-045 (below) | admission | **DONE** | the actual claimable work |
 | A7 | A queue unit for the **five-minute Ceres gate** reserving `browser-gpu` + `validation-broker` | admission | **DONE** | today nothing reserves them |
 | A8 | R5 → gate → R8 chain expressed as `dependsOn` on the PQ-045 units | admission | **DONE** | moves the chain out of an unparsed file (§1) |
-| A9 | `CANONICAL_BUILD_MAP.md` stable-route paragraph (PR #91's `CANONICAL_BUILD_MAP_INSERT.md`) | routing | **OPEN** | front door |
+| A9 | `build_map.md` stable-route paragraph (PR #91's `build_map_INSERT.md`) | routing | **OPEN** | front door |
 
 ### Proposed leaf units under PQ-045
 
@@ -230,4 +230,4 @@ propagation pass is blocked on, and it is correct that it cannot be self-granted
 - [`BINDING_REVIEW_AND_SELECTION_LEDGER.md`](./BINDING_REVIEW_AND_SELECTION_LEDGER.md)
 - [`WAVE0_CERES_BASELINE.md`](./WAVE0_CERES_BASELINE.md)
 - [`SECTOR_IDENTITY_SHEETS.md`](./SECTOR_IDENTITY_SHEETS.md)
-- [`CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md) · [`NOW.md`](../program/NOW.md) · [`PACKET_TEMPLATE.md`](../program/roadmap/active/PACKET_TEMPLATE.md)
+- [`build_map.md`](../../build_map.md) · [`NOW.md`](../program/NOW.md) · [`PACKET_TEMPLATE.md`](../program/roadmap/active/PACKET_TEMPLATE.md)

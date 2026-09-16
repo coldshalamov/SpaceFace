@@ -18,17 +18,20 @@ export function fillActiveMassCouplingTargets(
   const momentum = Array.isArray(momentumOut) ? momentumOut : [];
   gravity.length = 0;
   momentum.length = 0;
-  const entities = state && state.entityList;
   const runtimes = state && state.combat && state.combat.entities;
-  if (!Array.isArray(entities) || !runtimes || attackerId == null) return 0;
+  const getEntity = state && state.entities && typeof state.entities.get === 'function'
+    ? (id) => state.entities.get(id) || state.entities.get(Number(id))
+    : null;
+  if (!runtimes || !getEntity || attackerId == null) return 0;
   const tick = Number.isInteger(state.tick) ? state.tick : 0;
   const gravityMax = Math.max(0, Math.floor(Number(gravityLimit) || 0));
   const momentumMax = Math.max(0, Math.floor(Number(momentumLimit) || 0));
-  for (let i = 0; i < entities.length && (gravity.length < gravityMax || momentum.length < momentumMax); i++) {
-    const entity = entities[i];
-    if (!entity || entity.alive === false || entity.id == null) continue;
-    const runtime = runtimes[String(entity.id)];
+  for (const id in runtimes) {
+    if (gravity.length >= gravityMax && momentum.length >= momentumMax) break;
+    const runtime = runtimes[id];
     if (!runtime || !runtime.statuses) continue;
+    const entity = getEntity(id);
+    if (!entity || entity.alive === false) continue;
     const gravityMark = runtime.statuses[GRAVITY_MARK_STATUS_ID];
     if (gravity.length < gravityMax && authoredActive(gravityMark, attackerId, tick)) gravity.push(entity);
     const momentumSink = runtime.statuses[MOMENTUM_SINK_STATUS_ID];

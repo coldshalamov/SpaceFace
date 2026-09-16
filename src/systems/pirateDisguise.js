@@ -20,6 +20,7 @@ import {
 } from '../data/salvageLegality.js';
 import { isJettisonedCargoPod } from './lootShards.js';
 import { hasTethysBlackMarketAccess, TETHYS_BLACK_MARKET_RUN } from '../data/frontierRumors.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 
 export const pirateDisguise = {
   name: 'pirateDisguise',
@@ -42,7 +43,7 @@ export const pirateDisguise = {
     const state = this.state;
     const pos = payload && payload.pos;
     if (!state || !pos) return;
-    const list = Array.isArray(state.entityList) ? state.entityList : [];
+    const list = indexedShipLikeScan(state);
     for (const entity of list) {
       if (!shouldRevealOnScan(entity, pos)) continue;
       const reveal = revealPirateDisguise(entity, state, { by: 'scan' });
@@ -202,7 +203,7 @@ function launderOrigin(state) {
 }
 
 function nearbyHotPods(state, origin, range) {
-  const list = Array.isArray(state.entityList) ? state.entityList : [];
+  const list = indexedTypeScan(state, 'payloads');
   const reach = Number(range);
   const reach2 = reach * reach;
   const out = [];

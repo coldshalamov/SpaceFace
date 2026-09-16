@@ -148,7 +148,7 @@ Design constraints on the state set:
 
 - Every state must be **legible without UI** — it needs a distinct silhouette, motion, or emission
   (see §9.3). A state the player cannot see is a bug, not a mechanic.
-- Every state must have **counterplay**, per `CANONICAL_BUILD_MAP.md` §6 question 3.
+- Every state must have **counterplay**, per `build_map.md` §6 question 3.
 - States belong to simulation, not presentation. Persistent changes survive save/Continue; short-lived
   webs, armed traps and temporary fields need explicit expiry and load cleanup, without dangling bodies.
 
@@ -610,7 +610,7 @@ every effect in the game bland; do not start a second one.
 redefined above), and the occlusion discipline are retained. The palette allowlist, the ≤6-draws-per-field
 ceiling, the 2px floor, "boundary never blooms," the non-additive mandate, and the ten-step review
 ritual are **withdrawn**. They are aesthetic prescriptions with no cited play failure and they
-contradict the product north star at `CANONICAL_BUILD_MAP.md:33`, which requires treating ambitious
+contradict the product north star at `build_map.md:33`, which requires treating ambitious
 graphics as part of the feature rather than a luxury to suppress.
 
 ### 9.3 State legibility
@@ -1155,7 +1155,7 @@ Open questions to resolve before or during admission:
 ## 12. Folding this into the program
 
 This document is design intent. It becomes work through the normal path in
-`CANONICAL_BUILD_MAP.md` §5 and `program/06_RETAINED_FUTURE_BACKLOG.md` §"Admitting an item".
+`build_map.md` §5 and `program/06_RETAINED_FUTURE_BACKLOG.md` §"Admitting an item".
 
 Suggested shape, smallest-first:
 

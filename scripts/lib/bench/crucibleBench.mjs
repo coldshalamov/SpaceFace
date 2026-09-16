@@ -17,17 +17,14 @@ import { createAuthoritativeRuntime } from '../../../src/runtime/createAuthorita
 import { createBus } from '../../../src/core/eventBus.js';
 import { SIM_DT } from '../../../src/core/sim.js';
 import { mulberry32, wrapAngle } from '../../../src/core/rng.js';
-import { damp } from '../../../src/core/math.js';
+import { PerspectiveCamera, Vector3 } from 'three';
 import { readPhysicsTelemetry } from '../../../src/core/physicsAuthority.js';
 import { PLAYER_CONTACT_EVENT_BRIDGE_TICKS } from '../../../src/core/sg02DynamicBodyOwner.js';
 import { resolveGovernedCombatSpeed } from '../../../src/core/flight/propulsionCatalog.js';
-import {
-  CAMERA_ZOOM_MAX,
-  CHASE_ZOOM_DEFAULT,
-  clampFocusToPlayerSafeRect,
-  resolveChaseComposition,
-  resolveSpeedZoomFactor,
-} from '../../../src/render/camera.js';
+import { entityWeaponBlocked } from '../../../src/combat/runtime.js';
+import { WEAPONS } from '../../../src/data/weapons.js';
+import { createChaseCamera, resolveCombatCompositionZoomCap } from '../../../src/render/camera.js';
+import { readFrameOrigin } from '../../../src/render/frameCoordinates.js';
 import { isHostileToPlayer } from '../../../src/systems/scanner.js';
 import { makeShipEntitySpec } from '../../../src/systems/ships.js';
 import { applyCombatLabSetup } from '../../../src/ui/sandbox/sandboxSetup.js';
@@ -247,6 +244,7 @@ export async function simulateCrucibleSwarm({
   const playerTickByTick = new Map();
   const waveCheckpoints = [];
   const eventTrace = [];
+  let hostileInFrame = null;
 
   const raw = createBus();
   let _state = null;
@@ -422,7 +420,7 @@ export async function simulateCrucibleSwarm({
     // ever admitted". Sampled, recorded, and reported as a gap — never thrown, because a hostile
     // legitimately spawns far and flies in.
     const bodyAdmission = { samples: 0, worst: null, final: null };
-    const hostileInFrame = createHostileInFrameSampler();
+    hostileInFrame = createHostileInFrameSampler();
 
     const t0 = wallNow();
     let t = 0;
@@ -475,8 +473,6 @@ export async function simulateCrucibleSwarm({
           dt: SIM_DT,
         }));
       }
-      sampleHostileInFrame(state, playerAfter, hostileInFrame, SIM_DT);
-
       const newEvents = log.slice(logCursor);
       logCursor = log.length;
       let sawPlayerKnock = false;
@@ -505,6 +501,7 @@ export async function simulateCrucibleSwarm({
           clearedWave = (ev.payload && ev.payload.wave) || (state.run && state.run.wave) || wavesCleared;
         }
       }
+      sampleHostileInFrame(state, playerAfter, hostileInFrame, SIM_DT, aiIntent.phase);
       // Record heading ONCE per unique tick. Rapier emits a run of receipts for one contact;
       // stamping the whole tick rotation onto every receipt (then summing) invented heading.
       if (sawPlayerKnock) {
@@ -664,6 +661,7 @@ export async function simulateCrucibleSwarm({
       resultsSummary: resultsBox.summary,
     };
   } finally {
+    disposeHostileInFrameSampler(hostileInFrame);
     FIELD_FLAGS.enabled = prevFieldsEnabled;
     runtime.dispose();
   }
@@ -1045,7 +1043,7 @@ function ingestLiveEvent(ev, ctx) {
       targetId: p.targetId != null ? p.targetId : null,
       doctrineId: p.doctrineId || null,
       flightProfile: p.flightProfile || null,
-      fireWindow: p.fireWindow || null,
+      fireWindow: p.fireWindow == null ? null : p.fireWindow === true,
     });
     return;
   }
@@ -1789,98 +1787,243 @@ function applyKnockHeadings(eventTrace, knockHeadingByTick) {
 }
 
 // ── B3b hostile-in-frame (Gap Report C1) ─────────────────────────────────────
-// Per sim tick, rebuild the chase camera's composed focus and ease a modeled zoom through the
-// same rules follow() applies (context bias damp, minZoom floor, outward step cap). A hostile
-// counts as "actively attacking" under the camera's own predicate — combat.targetId/lockTarget
-// naming the player — so the bar measures the framing the player actually gets. In-frame is the
-// safe-rect's own frame math: halfV = tan(fov/2) * zoom * 0.72, halfH = halfV * aspect.
+// Per sim tick, advance a private instance of the shipping chase controller, including lead,
+// focus easing, zoom continuity and director modes. Project hostile centers through its matrix.
+// The scoped attacking denominator excludes weapon-disabled, out-of-range and nonfiring phases;
+// issued fire overrides those exclusions. Companion counters retain broader locked/capable time.
+// This is geometric evidence, not a claim of rendered visibility or a complete display capture.
 export const B3B_FRAME_FRACTION_TARGET = 0.80;
 const B3B_FRAME_ASPECT = 16 / 9;
-const B3B_ZOOM_LERP = 4.0;             // mirrors camera.js ZOOM_LERP
-const B3B_CONTEXT_ZOOM_LERP = 1.2;     // mirrors camera.js CONTEXT_ZOOM_LERP
-const B3B_ZOOM_OUT_STEP_MAX_WU = 5.5;  // mirrors camera.js ZOOM_OUT_STEP_MAX_WU
-const B3B_FRAME_DEPTH_FACTOR = 0.72;   // mirrors camera.js clampFocusToPlayerSafeRect halfV factor
+// Projection resources are initialized before deterministic simulation begins.
+// Three's camera UUID is presentation-only and must not consume RNG inside the sim tick.
+// Sampler leases return to the projection pool when a run finishes or throws.
+// The shipping perspective matrix, not a rectangular ground-plane approximation, owns inclusion.
+// The safe rectangle remains the controller's internal player margin, never the visible edge.
+// Event-driven shake, kick and FOV punch are not replayed by this headless observer.
+// Actual authored-mesh size and raster visibility still require a shipping-camera capture.
 
-function createHostileInFrameSampler() {
+const B3B_WEAPONS_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+const B3B_PROJECTION_POOL = [new PerspectiveCamera()];
+
+function entityMaxWeaponRange(e) {
+  const ws = e.data && e.data.weapons;
+  let max = 0;
+  if (Array.isArray(ws)) {
+    for (const w of ws) {
+      const def = B3B_WEAPONS_BY_ID.get(w.defId);
+      const r = Number.isFinite(w.range) ? w.range : (def && Number.isFinite(def.range) ? def.range : 0);
+      if (r > max) max = r;
+    }
+  }
+  return max;
+}
+
+export function createHostileInFrameSampler() {
   return {
     attackingTicks: 0,
     inFrameTicks: 0,
-    zoom: CHASE_ZOOM_DEFAULT,
-    zoomBias: 0,
-    sticky: { id: null, remainS: 0, wasActive: false },
-    focus: { x: 0, z: 0 },
-    compScratch: {
-      x: 0, z: 0, nearbyEnemies: 0, hasThreatFocus: false, hasActiveAttacker: false,
-      hasTetherFocus: false, zoomBias: 0, minZoom: 0, composedThreatId: null,
-    },
-    tetherScratch: {},
-    safeScratch: {},
+    lockedTicks: 0,
+    lockedInFrameTicks: 0,
+    cameraActiveTicks: 0,
+    cameraActiveInFrameTicks: 0,
+    excludedWeaponTicks: 0,
+    excludedRangeTicks: 0,
+    excludedPhaseTicks: 0,
+    issuedFireTicks: 0,
+    issuedFireInFrameTicks: 0,
+    choreographyOverrideTicks: 0,
+    sampledFrames: 0,
+    maxZoom: 0,
+    minHullFrameFraction: null,
+    hullBelowFourPercentFrames: 0,
+    cameraState: null,
+    camera: null,
+    projectionCamera: null,
+    origin: { x: 0, z: 0 },
+    nextOrigin: { x: 0, z: 0 },
+    projected: new Vector3(),
+    hullRight: new Vector3(),
+    dbg: process.env.B3B_DEBUG ? { dist: {}, axis: {}, kinds: {}, modes: {}, examples: [] } : null,
   };
 }
 
-function sampleHostileInFrame(state, player, s, dt) {
+export function sampleHostileInFrame(state, player, s, dt, phaseMap = null) {
   if (!state || !player || !player.pos || !state.entities
     || typeof state.entities.values !== 'function') return;
-  const tiltDeg = state.camera && Number.isFinite(state.camera.tilt) ? state.camera.tilt : 60;
-  const fov = state.settings && state.settings.video && Number.isFinite(state.settings.video.fov)
-    ? state.settings.video.fov : 50;
-  s.focus.x = player.pos.x;
-  s.focus.z = player.pos.z;
-  const comp = resolveChaseComposition(state, player, s.focus, {
-    baseFov: fov,
-    aspect: B3B_FRAME_ASPECT,
-    tiltDeg,
-    dt,
-  }, s.compScratch, s.tetherScratch, s.sticky);
-  s.zoomBias = damp(s.zoomBias, comp.zoomBias || 0, B3B_CONTEXT_ZOOM_LERP, dt);
-  const speed = player.vel ? Math.hypot(player.vel.x || 0, player.vel.z || 0) : 0;
-  const governedCap = resolveGovernedCombatSpeed(player, state, player.maxSpeed || 120);
-  let target = CHASE_ZOOM_DEFAULT * resolveSpeedZoomFactor(speed, governedCap, false)
-    * (1 + s.zoomBias);
-  target = Math.max(target, comp.minZoom || 0);
-  let next = damp(s.zoom, target, B3B_ZOOM_LERP, dt);
-  if (comp.minZoom > s.zoom + 0.5 && target >= comp.minZoom - 1e-6) {
-    next = Math.max(next, Math.min(comp.minZoom, s.zoom + B3B_ZOOM_OUT_STEP_MAX_WU));
+  if (!s.camera) {
+    s.cameraState = Object.create(state);
+    s.cameraState.camera = { ...state.camera, trauma: 0 };
+    s.cameraState.render = Object.assign(Object.create(state.render || null), { photoMode: null });
+    s.projectionCamera = B3B_PROJECTION_POOL.pop() || new PerspectiveCamera();
+    s.camera = createChaseCamera(s.cameraState, { innerWidth: 1600, innerHeight: 900 }, s.projectionCamera);
+    readFrameOrigin(state, s.origin);
+    s.camera.snapToPlayer();
   }
-  if (next > s.zoom) next = Math.min(next, s.zoom + B3B_ZOOM_OUT_STEP_MAX_WU);
-  s.zoom = Math.min(CAMERA_ZOOM_MAX, next);
-  const safe = clampFocusToPlayerSafeRect(
-    comp, player, { zoom: s.zoom, fov, aspect: B3B_FRAME_ASPECT }, s.safeScratch,
+  readFrameOrigin(state, s.nextOrigin);
+  if (s.origin.x !== s.nextOrigin.x || s.origin.z !== s.nextOrigin.z) {
+    s.camera.reprojectFrame(s.origin.x - s.nextOrigin.x, s.origin.z - s.nextOrigin.z);
+    s.origin.x = s.nextOrigin.x;
+    s.origin.z = s.nextOrigin.z;
+  }
+  s.camera.follow(dt);
+  s.camera.obj.updateMatrixWorld(true);
+  s.sampledFrames++;
+  const focus = s.cameraState.camera.focus;
+  const zoom = Math.hypot(
+    s.camera.obj.position.x - focus.x, s.camera.obj.position.y,
+    s.camera.obj.position.z - focus.z,
   );
-  const halfV = Math.tan((fov * Math.PI / 180) * 0.5) * s.zoom * B3B_FRAME_DEPTH_FACTOR;
-  const halfH = halfV * B3B_FRAME_ASPECT;
+  s.maxZoom = Math.max(s.maxZoom, zoom);
+  if (Number.isFinite(player.radius) && player.radius > 0) {
+    s.projected.set(player.pos.x - s.origin.x - player.radius, 0, player.pos.z - s.origin.z)
+      .project(s.camera.obj);
+    s.hullRight.set(player.pos.x - s.origin.x + player.radius, 0, player.pos.z - s.origin.z)
+      .project(s.camera.obj);
+    const fraction = Math.abs(s.hullRight.x - s.projected.x) * 0.5;
+    if (Number.isFinite(fraction)) {
+      s.minHullFrameFraction = s.minHullFrameFraction === null ? fraction : Math.min(s.minHullFrameFraction, fraction);
+      if (fraction < 0.04) s.hullBelowFourPercentFrames++;
+    }
+  }
   for (const e of state.entities.values()) {
     if (e === player || !e.pos || e.alive === false || e.hull <= 0) continue;
     if (e.type !== 'ship' && e.type !== 'drone') continue;
     if (!isHostileToPlayer(e, player.team, state)) continue;
     const combat = e.data && e.data.combat;
     if (!(combat && (combat.targetId === player.id || combat.lockTarget === player.id))) continue;
+    const projected = s.projected.set(e.pos.x - s.origin.x, 0, e.pos.z - s.origin.z)
+      .project(s.camera.obj);
+    const inFrame = Math.abs(projected.x) <= 1 && Math.abs(projected.y) <= 1
+      && projected.z >= -1 && projected.z <= 1;
+    s.lockedTicks++;
+    if (inFrame) s.lockedInFrameTicks++;
+    const weaponBlocked = entityWeaponBlocked(state, e);
+    if (!weaponBlocked) {
+      s.cameraActiveTicks++;
+      if (inFrame) s.cameraActiveInFrameTicks++;
+    }
+    const issuedFire = e.data.intent && e.data.intent.fire === true;
+    if (issuedFire) {
+      s.issuedFireTicks++;
+      if (inFrame) s.issuedFireInFrameTicks++;
+    }
+    // A hostile that cannot fire (tumbling, weapon-disabled) is neutralized — the combat
+    // kernel's own status gate decides, matching the camera's combatCanShootPlayer.
+    if (!issuedFire && weaponBlocked) {
+      s.excludedWeaponTicks++;
+      continue;
+    }
+    // "Actively attacking" means it can hurt the player now (Gap Report §3: "every enemy that
+    // can hurt me"). A locked hostile outside its own longest weapon range is closing, not
+    // attacking — off-screen threat indication owns that case, not the frame bar.
+    const reach = entityMaxWeaponRange(e);
+    if (!issuedFire && reach > 0) {
+      const rdx = e.pos.x - player.pos.x;
+      const rdz = e.pos.z - player.pos.z;
+      if (rdx * rdx + rdz * rdz > reach * reach) {
+        s.excludedRangeTicks++;
+        continue;
+      }
+    }
+    // "Actively attacking" is the doctrine's own fire window: the egress/reform lull is the
+    // authored recovery beat, not an attack (combatDoctrine.js:449). An entity with no doctrine
+    // record defaults to counting — missing evidence never shrinks the denominator.
+    const dp = phaseMap && phaseMap.get(e.id);
+    const choreography = e.data.ai && e.data.ai.squadFrame;
+    const choreographyFire = choreography && choreography.fireAuthorized === true;
+    if (dp && Number.isInteger(dp.tick) && dp.tick === state.tick
+      && dp.targetId === player.id && dp.fireWindow === false) {
+      if (!issuedFire && !choreographyFire) {
+        s.excludedPhaseTicks++;
+        continue;
+      }
+      if (choreographyFire) s.choreographyOverrideTicks++;
+    }
     s.attackingTicks++;
-    if (Math.abs(e.pos.x - safe.x) <= halfH && Math.abs(e.pos.z - safe.z) <= halfV) {
+    if (s.dbg) {
+      const mode = s.camera.composition().mode;
+      const counts = s.dbg.modes[mode] || (s.dbg.modes[mode] = { attackingTicks: 0, inFrameTicks: 0 });
+      counts.attackingTicks++;
+      if (inFrame) counts.inFrameTicks++;
+    }
+    if (inFrame) {
       s.inFrameTicks++;
+    } else if (s.dbg) {
+      const d = Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z);
+      const bucket = Math.min(9, Math.floor(d / 100));
+      s.dbg.dist[bucket] = (s.dbg.dist[bucket] || 0) + 1;
+      const xFail = Math.abs(projected.x) > 1;
+      const zFail = Math.abs(projected.y) > 1;
+      s.dbg.axis[xFail ? (zFail ? 'xz' : 'x') : 'z'] = (s.dbg.axis[xFail ? (zFail ? 'xz' : 'x') : 'z'] || 0) + 1;
+      const kind = e.data && (e.data.enemyId || e.data.archetypeId || e.data.defId) || e.specId || e.kind || 'unknown';
+      s.dbg.kinds[kind] = (s.dbg.kinds[kind] || 0) + 1;
+      const reach = entityMaxWeaponRange(e);
+      if (reach > 0 && d > reach * 0.95) s.dbg.nearEdge = (s.dbg.nearEdge || 0) + 1;
+      if (s.dbg.examples.length < 6000) {
+        const point = (body) => ({ id: body.id, x: body.pos.x, z: body.pos.z, radius: body.radius });
+        const view = { fov: s.camera.obj.fov, aspect: s.camera.obj.aspect, tiltDeg: state.camera.tilt || 60 };
+        const group = [];
+        const lease = state.player?.flybyFocus;
+        for (const other of state.entities.values()) {
+          if (other === player || !other.pos || other.alive === false || other.hull <= 0
+            || (other.type !== 'ship' && other.type !== 'drone') || !isHostileToPlayer(other, player.team, state)) continue;
+          const combat = other.data?.combat;
+          const active = combat && (combat.targetId === player.id || combat.lockTarget === player.id)
+            && !entityWeaponBlocked(state, other);
+          if (!active && !(lease?.active && lease.targetId === other.id)) continue;
+          if (Math.hypot(other.pos.x - player.pos.x, other.pos.z - player.pos.z) <= 560) group.push(point(other));
+        }
+        s.dbg.examples.push({
+          tick: state.tick, mode: s.camera.composition().mode, player: point(player), attacker: point(e), group,
+          focus: { x: focus.x + s.origin.x, z: focus.z + s.origin.z }, zoom,
+          cap: resolveCombatCompositionZoomCap(player, view), view, issuedFire, weaponBlocked,
+          range: reach, phaseTick: dp?.tick ?? null, fireWindow: dp?.fireWindow ?? null,
+        });
+      }
     }
   }
 }
 
+export function disposeHostileInFrameSampler(s) {
+  if (!s) return;
+  if (s.projectionCamera && B3B_PROJECTION_POOL.length < 4) B3B_PROJECTION_POOL.push(s.projectionCamera);
+  s.camera = null;
+  s.cameraState = null;
+  s.projectionCamera = null;
+}
+
 function summarizeHostileInFrame(s) {
-  if (!s || !(s.attackingTicks > 0)) {
-    return {
-      attackingTicks: 0,
-      inFrameTicks: 0,
-      fraction: null,
-      met: null,
-      reason: 'no hostile ever held the camera\'s attacking predicate on this run; '
-        + 'the bar stays unmeasured rather than reading 100 %',
-    };
-  }
-  const fraction = s.inFrameTicks / s.attackingTicks;
-  return {
-    attackingTicks: s.attackingTicks,
-    inFrameTicks: s.inFrameTicks,
-    fraction: round6(fraction),
-    met: fraction >= B3B_FRAME_FRACTION_TARGET,
-    reason: null,
+  const attackingTicks = s ? s.attackingTicks : 0;
+  const inFrameTicks = s ? s.inFrameTicks : 0;
+  const fraction = attackingTicks > 0 ? inFrameTicks / attackingTicks : null;
+  const out = {
+    modelVersion: 'shipping-chase-center-ndc-v4',
+    denominator: 'locked-capable-in-range; only current-tick false doctrine excludes; missing or stale evidence counts; issued-fire and choreography override phase exclusions',
+    evidenceScope: '60 Hz headless camera; no rendered visibility, event-driven shake, kick, or FOV punch',
+    aspect: B3B_FRAME_ASPECT,
+    attackingTicks,
+    inFrameTicks,
+    fraction: fraction === null ? null : round6(fraction),
+    met: fraction === null ? null : fraction >= B3B_FRAME_FRACTION_TARGET,
+    reason: fraction === null ? 'no qualifying attacking ticks; framing is unmeasured' : null,
+    lockedTicks: s ? s.lockedTicks : 0,
+    lockedInFrameTicks: s ? s.lockedInFrameTicks : 0,
+    cameraActiveTicks: s ? s.cameraActiveTicks : 0,
+    cameraActiveInFrameTicks: s ? s.cameraActiveInFrameTicks : 0,
+    excludedWeaponTicks: s ? s.excludedWeaponTicks : 0,
+    excludedRangeTicks: s ? s.excludedRangeTicks : 0,
+    excludedPhaseTicks: s ? s.excludedPhaseTicks : 0,
+    issuedFireTicks: s ? s.issuedFireTicks : 0,
+    issuedFireInFrameTicks: s ? s.issuedFireInFrameTicks : 0,
+    choreographyOverrideTicks: s ? s.choreographyOverrideTicks : 0,
+    sampledFrames: s ? s.sampledFrames : 0,
+    maxZoom: s ? round6(s.maxZoom) : null,
+    minHullFrameFraction: s && s.minHullFrameFraction !== null ? round6(s.minHullFrameFraction) : null,
+    hullBelowFourPercentFrames: s ? s.hullBelowFourPercentFrames : 0,
+    hullEvidence: 'projected physical diameter; not raster or authored-mesh bounds',
   };
+  if (s && s.dbg) out.dbg = s.dbg;
+  return out;
 }
 
 function summarizeMetrics({

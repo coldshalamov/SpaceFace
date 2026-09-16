@@ -67,6 +67,7 @@ import {
   selectPlacePackageLayer,
 } from './flightReadySet.js';
 import { PRESENTATION_TIER } from '../world/activityClassification.js';
+import { canonicalizeSurfaceProgramFamilyKey } from './illustratedSurface.js';
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { sharedMaterialRoleFromAuthored, stampSharedMaterialRole } from './sharedMaterialRoles.js';
 
@@ -3355,7 +3356,10 @@ function installSingleSamplePackedOrmShader(material) {
       shader.fragmentShader = shader.fragmentShader.replace(needle, replacement);
     }
   };
-  material.customProgramCacheKey = () => `${originalProgramCacheKey}|spaceface-packed-orm-single-sample-v1`;
+  material.customProgramCacheKey = () => canonicalizeSurfaceProgramFamilyKey(
+    originalProgramCacheKey,
+    'spaceface-packed-orm-single-sample-v1',
+  );
   material.userData = {
     ...(material.userData || {}),
     spacefacePackedOrmSingleSample: true,

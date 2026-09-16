@@ -944,8 +944,14 @@ export async function openSurface(page, surface, context = {}) {
         const parentOpened = await openSurface(page, parent, context);
         if (!parentOpened.ok) return { ok: false, reason: `parent ${entry.parent}: ${parentOpened.reason}` };
         await page.waitForTimeout(300);
-        const clicked = await clickControl(page, entry);
-        if (!clicked.ok) return { ok: false, reason: clicked.reason };
+        const steps = Array.isArray(entry.steps) && entry.steps.length
+          ? entry.steps
+          : [{ selector: entry.selector, text: entry.text }];
+        for (const step of steps) {
+          const clicked = await clickControl(page, step);
+          if (!clicked.ok) return { ok: false, reason: clicked.reason };
+          await page.waitForTimeout(250);
+        }
         break;
       }
       case 'fixture': {
@@ -1110,77 +1116,93 @@ async function prepareAsteroidWorks(page) {
       && window.SF.state.player.tether && window.SF.state.player.tether.active), null, { timeout: 4000 })
       .catch(() => {});
   }
-  const staged = await page.evaluate(() => {
+  const listed = await page.evaluate(() => {
     const sf = window.SF;
     const s = sf && sf.state;
     if (!s) return { ok: false, reason: 'no SF state' };
     const player = s.entities && s.entities.get ? s.entities.get(s.playerId) : null;
     if (!player || !player.pos) return { ok: false, reason: 'no player entity' };
-    let best = null;
-    let bestD = Infinity;
+    const rocks = [];
     for (const e of (s.entityList || [])) {
       if (!e || !e.alive || e.type !== 'asteroid' || !e.pos) continue;
-      const d = Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z);
-      if (d < bestD) { bestD = d; best = e; }
+      rocks.push({
+        id: e.id, x: e.pos.x, z: e.pos.z, radius: e.radius || 0,
+        d: Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z),
+      });
     }
-    if (!best) return { ok: false, reason: 'no asteroid exists in this sector' };
-    const standoff = (best.radius || 0) + (player.radius || 0) + 90;
-    const standAt = {
-      x: best.pos.x + standoff,
-      z: best.pos.z,
-    };
-    standAt.heading = Math.atan2(best.pos.z - standAt.z, best.pos.x - standAt.x);
-    const world = sf.registry && sf.registry.get ? sf.registry.get('world') : null;
-    if (world && typeof world.relocatePlayerInSector === 'function') {
-      world.relocatePlayerInSector(standAt, { reason: 'capture:asteroid-works' });
-    } else {
-      player.pos.x = standAt.x;
-      player.pos.z = standAt.z;
-      player.rot = standAt.heading;
-      if (player.vel) { player.vel.x = 0; player.vel.z = 0; }
-      player.flags = player.flags || {};
-      player.flags.noInterp = true;
-    }
-    const physicsOwner = sf.registry && sf.registry.get && sf.registry.get('physics')
-      && sf.registry.get('physics')._sg02;
-    const rec = physicsOwner && physicsOwner.records && physicsOwner.records.get(player.id);
-    if (rec && rec.body && typeof rec.body.setTranslation === 'function') {
-      const local = physicsOwner._globalPointToFrameLocal
-        ? physicsOwner._globalPointToFrameLocal({ x: standAt.x, y: 0, z: standAt.z }, rec.body.translation())
-        : { x: standAt.x, z: standAt.z };
-      rec.body.setTranslation({ x: local.x, y: 0, z: local.z }, true);
-      if (typeof rec.body.setLinvel === 'function') rec.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
-      if (typeof rec.body.setAngvel === 'function') rec.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
-    }
-    if (s.player) s.player.targetId = best.id;
-    return { ok: true, asteroidId: best.id, flownFrom: Math.round(bestD) };
+    rocks.sort((a, b) => a.d - b.d);
+    if (!rocks.length) return { ok: false, reason: 'no asteroid exists in this sector' };
+    return { ok: true, playerRadius: player.radius || 0, rocks: rocks.slice(0, 8) };
   });
-  if (!staged.ok) return { ok: false, reason: `asteroid works: ${staged.reason}` };
+  if (!listed.ok) return { ok: false, reason: `asteroid works: ${listed.reason}` };
 
-  await waitForSimTicks(page, 45, 15_000, 800);
+  // The spawn pocket's payload pods are legitimate tow candidates and CAN outscore a rock under
+  // 'tow/salvage' context — a player who wants the rock flies to one in clean airspace instead.
+  // Stage at the nearest rock and, if the published pick is not a ready asteroid, try the next
+  // rock out. Selection is always read back through the real receipt; nothing is force-picked.
+  let staged = null;
+  let readyId = null;
+  let lastWhy = null;
+  for (const rock of listed.rocks) {
+    staged = await page.evaluate(({ rock, playerRadius }) => {
+      const sf = window.SF;
+      const s = sf && sf.state;
+      const player = s && s.entities && s.entities.get && s.entities.get(s.playerId);
+      if (!player || !player.pos) return { ok: false, reason: 'no player entity' };
+      const standoff = (rock.radius || 0) + (playerRadius || 0) + 90;
+      const standAt = { x: rock.x + standoff, z: rock.z };
+      standAt.heading = Math.atan2(rock.z - standAt.z, rock.x - standAt.x);
+      const world = sf.registry && sf.registry.get ? sf.registry.get('world') : null;
+      if (world && typeof world.relocatePlayerInSector === 'function') {
+        world.relocatePlayerInSector(standAt, { reason: 'capture:asteroid-works' });
+      } else {
+        player.pos.x = standAt.x;
+        player.pos.z = standAt.z;
+        player.rot = standAt.heading;
+        if (player.vel) { player.vel.x = 0; player.vel.z = 0; }
+        player.flags = player.flags || {};
+        player.flags.noInterp = true;
+      }
+      const physicsOwner = sf.registry && sf.registry.get && sf.registry.get('physics')
+        && sf.registry.get('physics')._sg02;
+      const rec = physicsOwner && physicsOwner.records && physicsOwner.records.get(player.id);
+      if (rec && rec.body && typeof rec.body.setTranslation === 'function') {
+        const local = physicsOwner._globalPointToFrameLocal
+          ? physicsOwner._globalPointToFrameLocal({ x: standAt.x, y: 0, z: standAt.z }, rec.body.translation())
+          : { x: standAt.x, z: standAt.z };
+        rec.body.setTranslation({ x: local.x, y: 0, z: local.z }, true);
+        if (typeof rec.body.setLinvel === 'function') rec.body.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        if (typeof rec.body.setAngvel === 'function') rec.body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      }
+      if (s.player) s.player.targetId = rock.id;
+      return { ok: true, asteroidId: rock.id, flownFrom: Math.round(rock.d) };
+    }, { rock, playerRadius: listed.playerRadius });
+    if (!staged.ok) return { ok: false, reason: `asteroid works: ${staged.reason}` };
 
-  await page.evaluate(() => {
-    const sf = window.SF;
-    const s = sf && sf.state;
-    const player = s && s.entities && s.entities.get && s.entities.get(s.playerId);
-    const tether = sf && sf.registry && sf.registry.get && sf.registry.get('tetherGameplay');
-    const def = { maxLength: 390 };
-    if (tether && typeof tether._refreshAcquisitionPreview === 'function' && player) {
-      tether._refreshAcquisitionPreview(player, def, s, s.simTime || 0, true, true);
-    }
-  });
+    await waitForSimTicks(page, 45, 15_000, 800);
 
-  // The scorer may prefer a different nearby rock than the nearest-at-spawn pick. Latch that one.
-  const readyId = await page.waitForFunction(() => {
-    const s = window.SF && window.SF.state;
-    const selected = s && s.masslineAcquisition && s.masslineAcquisition.selected;
-    if (!selected || selected.status !== 'ready') return false;
-    const target = s.entities && s.entities.get && s.entities.get(selected.targetId);
-    if (!target || target.type !== 'asteroid' || target.alive === false) return false;
-    return String(selected.targetId);
-  }, null, { timeout: 8000 }).then((handle) => handle.jsonValue()).catch(() => null);
-  if (readyId == null) {
-    const why = await page.evaluate((asteroidId) => {
+    await page.evaluate(() => {
+      const sf = window.SF;
+      const s = sf && sf.state;
+      const player = s && s.entities && s.entities.get && s.entities.get(s.playerId);
+      const tether = sf && sf.registry && sf.registry.get && sf.registry.get('tetherGameplay');
+      const def = { maxLength: 390 };
+      if (tether && typeof tether._refreshAcquisitionPreview === 'function' && player) {
+        tether._refreshAcquisitionPreview(player, def, s, s.simTime || 0, true, true);
+      }
+    });
+
+    // The scorer may prefer a different nearby rock than the staged pick — any ready asteroid
+    // satisfies `b`. The receipt's own targetType is used so a winning FIELD rock (no live entity)
+    // still counts.
+    readyId = await page.waitForFunction(() => {
+      const s = window.SF && window.SF.state;
+      const selected = s && s.masslineAcquisition && s.masslineAcquisition.selected;
+      if (!selected || selected.status !== 'ready' || selected.targetType !== 'asteroid') return false;
+      return String(selected.targetId);
+    }, null, { timeout: 5000 }).then((handle) => handle.jsonValue()).catch(() => null);
+    if (readyId != null) break;
+    lastWhy = await page.evaluate((asteroidId) => {
       const s = window.SF && window.SF.state;
       const player = s && s.entities && s.entities.get && s.entities.get(s.playerId);
       const ast = s && s.entities && s.entities.get && s.entities.get(asteroidId);
@@ -1189,19 +1211,21 @@ async function prepareAsteroidWorks(page) {
       const dist = player && ast && player.pos && ast.pos
         ? Math.round(Math.hypot(ast.pos.x - player.pos.x, ast.pos.z - player.pos.z))
         : null;
-      const selectedEnt = selected && s.entities && s.entities.get && s.entities.get(selected.targetId);
       return {
         live,
         dist,
         selectedId: selected && selected.targetId,
-        selectedType: selectedEnt && selectedEnt.type,
+        selectedType: selected && selected.targetType,
         status: selected && selected.status,
         reason: selected && selected.reason,
       };
-    }, staged.asteroidId);
+    }, rock.id);
+  }
+  if (readyId == null) {
+    const why = lastWhy || {};
     return {
       ok: false,
-      reason: `asteroid works: massline never read ready on a rock`
+      reason: `asteroid works: massline never read ready on a rock after ${listed.rocks.length} staged rocks`
         + ` (status=${why.status || 'none'} reason=${why.reason || 'n/a'} dist=${why.dist}`
         + ` live-screen=${why.live} selected=${why.selectedId || 'none'}:${why.selectedType || '?'})`,
     };

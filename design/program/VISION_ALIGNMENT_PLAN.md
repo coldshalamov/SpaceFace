@@ -111,7 +111,7 @@ readability.**
 ## Doc contradictions found and fixed (2026-08-10)
 
 VISION.md added to the authority chains in root `AGENTS.md`, `design/AGENTS.md`,
-`CANONICAL_BUILD_MAP.md` §3, `design/program/PROGRAM_MAP.md`, and the banners of
+`build_map.md` §3, `design/program/PROGRAM_MAP.md`, and the banners of
 `design/vision/00_CONSTITUTION.md` + `design/spec2/00_MASTER_TASTE.md`. GDD §6.1's in-world HP-arc
 spec replaced with physical damage-telling. `BP-02_COMBAT_CEILING.md` and `REVAMP_MASTER.md` row 4
 reframed from "dogfights with a ceiling" to physics-first combat. `00_CONSTITUTION.md` pillar 1

@@ -72,10 +72,12 @@ export function createDamageRouter(context, statusService, options = {}) {
     const runtime = ensureCombatant(state, target, catalog);
     const before = snapshotVitals(target, runtime);
     const model = catalog.damageModel;
-    const penetration = clamp01(packet.penetration);
+    const isPlayerTarget = Boolean(state && state.playerId && target && target.id === state.playerId);
+    // QoL overhaul: As long as the player's shield is up, hull HP is 100% protected (no cheap bypass or penetration bleed-through)
+    const penetration = (isPlayerTarget && (target.shield || 0) > 0) ? 0 : clamp01(packet.penetration);
     // Shield bypass (EMP/disable verb, spec §9): a fraction of the damage couples through the
     // shield directly to armor/hull/subsystems. 1.0 = shields ignored entirely.
-    const shieldBypass = clamp01(Number(packet.shieldBypass) || 0);
+    const shieldBypass = (isPlayerTarget && (target.shield || 0) > 0) ? 0 : clamp01(Number(packet.shieldBypass) || 0);
     // Scratch slots: [0]=penetratingRaw, [1]=postShieldRaw, [2]=postFlatRaw, [3]=terminalRaw,
     // [4]=subsystemInput, [5]=hullInput. Zeroed across the active channel order before each use.
     const penetratingRaw = emptyChannelsInto(model.channelOrder, ROUTE_SCRATCH[0]);

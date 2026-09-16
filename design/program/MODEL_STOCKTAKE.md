@@ -8,6 +8,11 @@ does not remaster a ship, does not wire a factory hull, and does not open a seco
 It produces a live inventory and an ordered plan that folds into the packets that already
 own the work.
 
+Written: [`MODEL_STOCKTAKE_MANIFEST.md`](./MODEL_STOCKTAKE_MANIFEST.md),
+[`MODEL_STOCKTAKE_PLAN.md`](./MODEL_STOCKTAKE_PLAN.md).
+How the picture arrives (empty substrate, runway, LOD, quality cuts):
+[`DYNAMIC_GRAPHICS_INVESTIGATION.md`](./DYNAMIC_GRAPHICS_INVESTIGATION.md).
+
 Live execution after the plan exists still goes through
 [`../../build_map.md`](../../build_map.md) **§13D** (`PQ-193`), flyable remaster `PQ-050`,
 unused-pack fielding `PQ-136`, liner G7 `PQ-049.05`. Hitch / Kestrel stays frozen.

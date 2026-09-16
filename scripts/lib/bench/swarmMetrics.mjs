@@ -11,6 +11,9 @@ import { SIM_DT } from '../../../src/core/sim.js';
 export const SWARM_METRICS_SCHEMA = 'spaceface.swarmMetrics.v1';
 export const SWARM_TICK_HZ = 60;
 export const SWARM_DEFAULT_CENSOR_SECONDS = 90;
+/** PQ-174 packet bars: long enough that the 8–14 minute death window sits inside, not at the edge. */
+export const SWARM_PACKET_CENSOR_SECONDS = 20 * 60;
+export const SWARM_PACKET_TICK_CAP = SWARM_PACKET_CENSOR_SECONDS * SWARM_TICK_HZ;
 export const SWARM_MOMENT_BURST_WINDOW_S = 2;
 export const SWARM_MOMENT_BURST_KILLS = 3;
 
@@ -117,7 +120,8 @@ export function measureSwarmRun(run = {}) {
     ?? 0;
   const ticks = Number.isFinite(run.ticks) ? (run.ticks | 0) : Math.round(simSeconds / SIM_DT);
   const stopReason = run.stopReason || null;
-  const censoredAtCap = isRightCensored(stopReason, simSeconds, ticks);
+  const censorSeconds = finiteNumber(run.censorSeconds) ?? SWARM_DEFAULT_CENSOR_SECONDS;
+  const censoredAtCap = isRightCensored(stopReason, simSeconds, ticks, censorSeconds);
 
   const events = trace.map(normalizeEvent).filter(Boolean);
   const kills = events.filter(isHostileKill);
@@ -171,12 +175,19 @@ export function measureSwarmRun(run = {}) {
     cleanup: waveCleanup,
     simSeconds,
   });
+  const activityTimes = collectQuietActivityTimes(kills, verbs, moments, events);
   const quietAfterWave1 = measureQuietSecondsAfterWave1({
     waveDurations,
-    events,
-    kills,
-    verbs,
-    moments,
+    activityTimes,
+    simSeconds,
+  });
+  const quietSeconds = measureQuietSecondsWholeRun({
+    activityTimes,
+    simSeconds,
+  });
+  const quietSecondsInWaves = measureQuietSecondsInWaves({
+    waveDurations,
+    activityTimes,
     simSeconds,
   });
 
@@ -189,7 +200,10 @@ export function measureSwarmRun(run = {}) {
     simSeconds,
   });
 
-  const playerDeaths = measurePlayerDeaths(playerDeathsRaw, events, run);
+  const playerDeaths = applySurvivalDeathStory(
+    measurePlayerDeaths(playerDeathsRaw, events, run),
+    run,
+  );
   const firstDeath = measureFirstDeath({
     playerDeaths,
     playerDeathsRaw,
@@ -229,7 +243,9 @@ export function measureSwarmRun(run = {}) {
     },
     meaningfulMoments: moments,
     momentsPerMinute: round6(momentsPerMinute),
+    quietSeconds,
     quietSecondsAfterWave1: quietAfterWave1,
+    quietSecondsInWaves,
     clearBreath,
     playerDeaths,
     buildIdentity,
@@ -263,7 +279,7 @@ export function ticksToSeconds(ticks, dt = SIM_DT) {
   return n * (Number.isFinite(dt) && dt > 0 ? dt : 1 / SWARM_TICK_HZ);
 }
 
-export function isRightCensored(stopReason, simSeconds, ticks) {
+export function isRightCensored(stopReason, simSeconds, ticks, censorSeconds = SWARM_DEFAULT_CENSOR_SECONDS) {
   if (stopReason === 'player_dead' || stopReason === 'playerDead' || stopReason === 'dead') {
     return false;
   }
@@ -272,8 +288,9 @@ export function isRightCensored(stopReason, simSeconds, ticks) {
     return true;
   }
   const seconds = finiteNumber(simSeconds) ?? ticksToSeconds(ticks) ?? 0;
+  const cap = Number.isFinite(censorSeconds) ? censorSeconds : SWARM_DEFAULT_CENSOR_SECONDS;
   // A survivor who ran the full window is right-censored even if the reason string is missing.
-  return seconds >= SWARM_DEFAULT_CENSOR_SECONDS - 1e-6 && stopReason !== 'player_dead';
+  return seconds >= cap - 1e-6 && stopReason !== 'player_dead';
 }
 
 export function isPlayerDeathKill(event) {
@@ -773,7 +790,48 @@ function sampleSeconds(sample) {
   return ticksToSeconds(sample?.tick) ?? 0;
 }
 
-function measureQuietSecondsAfterWave1({ waveDurations, events, kills, verbs, moments, simSeconds }) {
+/**
+ * Activity the quiet-second bar counts: a kill, a verb, a memorable moment, or a player shot.
+ * Occupancy (ships on the board) is a different claim and is not counted here.
+ */
+export function collectQuietActivityTimes(kills, verbs, moments, events) {
+  return [
+    ...(kills || []).map((e) => e.seconds),
+    ...(verbs || []).map((e) => e.seconds),
+    ...(moments || []).map((m) => m.seconds),
+    ...(events || []).filter((e) => e.type === 'player:shot').map((e) => e.seconds),
+  ].filter((t) => Number.isFinite(t));
+}
+
+/** Whole seconds in [start, end) with no kill, verb, moment, or shot. */
+export function countQuietSeconds(activityTimes, start, end) {
+  if (!(end > start)) return 0;
+  const times = Array.isArray(activityTimes) ? activityTimes : [];
+  let quiet = 0;
+  const lo = Math.ceil(start);
+  const hi = Math.floor(end);
+  for (let s = lo; s < hi; s++) {
+    const hit = times.some((t) => t >= s && t < s + 1);
+    if (!hit) quiet += 1;
+  }
+  return quiet;
+}
+
+function measureQuietSecondsWholeRun({ activityTimes, simSeconds }) {
+  const end = simSeconds;
+  if (!(end > 0)) {
+    return { available: true, seconds: 0, reason: null, windowStartSeconds: 0, windowEndSeconds: 0 };
+  }
+  return {
+    available: true,
+    seconds: countQuietSeconds(activityTimes, 0, end),
+    reason: null,
+    windowStartSeconds: 0,
+    windowEndSeconds: round6(end),
+  };
+}
+
+function measureQuietSecondsAfterWave1({ waveDurations, activityTimes, simSeconds }) {
   const w1 = waveDurations.find((w) => w.wave === 1);
   if (!w1 || w1.status !== 'completed') {
     return {
@@ -787,24 +845,94 @@ function measureQuietSecondsAfterWave1({ waveDurations, events, kills, verbs, mo
   const start = w1.endSeconds;
   const end = simSeconds;
   if (!(end > start)) {
-    return { available: true, seconds: 0, reason: null };
+    return {
+      available: true,
+      seconds: 0,
+      reason: null,
+      windowStartSeconds: round6(start),
+      windowEndSeconds: round6(end),
+    };
   }
-  const activity = [
-    ...kills.map((e) => e.seconds),
-    ...verbs.map((e) => e.seconds),
-    ...moments.map((m) => m.seconds),
-    ...events.filter((e) => e.type === 'player:shot').map((e) => e.seconds),
-  ].filter((t) => Number.isFinite(t) && t >= start && t <= end);
+  return {
+    available: true,
+    seconds: countQuietSeconds(activityTimes, start, end),
+    reason: null,
+    windowStartSeconds: round6(start),
+    windowEndSeconds: round6(end),
+  };
+}
 
-  // Count whole seconds after wave 1 with no kill, verb, moment, or shot.
-  let quiet = 0;
-  const lo = Math.ceil(start);
-  const hi = Math.floor(end);
-  for (let s = lo; s < hi; s++) {
-    const hit = activity.some((t) => t >= s && t < s + 1);
-    if (!hit) quiet += 1;
+function measureQuietSecondsInWaves({ waveDurations, activityTimes, simSeconds }) {
+  const waves = Array.isArray(waveDurations) ? waveDurations : [];
+  if (waves.length === 0) {
+    return {
+      available: false,
+      seconds: null,
+      perWave: [],
+      reason: 'no wave duration observed',
+    };
   }
-  return { available: true, seconds: quiet, reason: null, windowStartSeconds: round6(start), windowEndSeconds: round6(end) };
+  const perWave = [];
+  let total = 0;
+  for (const w of waves) {
+    const start = Number.isFinite(w.startSeconds) ? w.startSeconds : 0;
+    const end = Number.isFinite(w.endSeconds) ? w.endSeconds : simSeconds;
+    const seconds = countQuietSeconds(activityTimes, start, end);
+    total += seconds;
+    perWave.push({
+      wave: w.wave,
+      status: w.status,
+      seconds,
+      startSeconds: round6(start),
+      endSeconds: round6(end),
+    });
+  }
+  return { available: true, seconds: total, reason: null, perWave };
+}
+
+function readDeathStory(run) {
+  const summary = run && (run.resultsSummary || run.deathStory) || null;
+  if (!summary || typeof summary !== 'object') return null;
+  if (summary.death && typeof summary.death === 'object') return summary.death;
+  if (typeof summary.causeText === 'string') return summary;
+  return null;
+}
+
+function applySurvivalDeathStory(deaths, run) {
+  const story = readDeathStory(run);
+  if (!story) return deaths;
+  const list = Array.isArray(deaths) ? deaths : [];
+  const base = list[0] || {
+    available: true,
+    seconds: round6(finiteNumber(run.simSeconds) ?? 0),
+    tick: Number.isFinite(run.ticks) ? run.ticks : null,
+    cause: null,
+    causeAvailable: false,
+    causeReason: UNAVAILABLE_DEATH_CAUSE,
+    telegraph: null,
+    telegraphAvailable: false,
+    telegraphReason: UNAVAILABLE_TELEGRAPH,
+    attacker: null,
+  };
+  const causeText = typeof story.causeText === 'string' && story.causeText.trim()
+    ? story.causeText.trim()
+    : null;
+  const telegraphName = typeof story.telegraphName === 'string' && story.telegraphName.trim()
+    ? story.telegraphName.trim()
+    : null;
+  return [{
+    ...base,
+    cause: causeText ?? base.cause,
+    causeAvailable: causeText != null ? true : base.causeAvailable,
+    causeReason: causeText != null ? null : base.causeReason,
+    telegraph: telegraphName != null ? telegraphName : base.telegraph,
+    telegraphAvailable: telegraphName != null ? true : base.telegraphAvailable,
+    telegraphReason: telegraphName != null ? null : base.telegraphReason,
+    telegraphLeadMs: Number.isFinite(story.telegraphLeadMs) ? story.telegraphLeadMs : null,
+    telegraphSource: story.telegraphSource ?? null,
+    counterplay: story.counterplay ?? null,
+    story,
+  }];
 }
 
 function measurePlayerDeaths(playerDeathsRaw, events, run) {
@@ -925,6 +1053,7 @@ function measureFirstDeath({ playerDeaths, playerDeathsRaw, stopReason, simSecon
       available: true,
       censored: false,
       seconds: d.seconds,
+      minutes: Number.isFinite(d.seconds) ? round6(d.seconds / 60) : null,
       tick: d.tick,
       reason: null,
     };
@@ -935,6 +1064,7 @@ function measureFirstDeath({ playerDeaths, playerDeathsRaw, stopReason, simSecon
       available: true,
       censored: false,
       seconds: round6(d.seconds),
+      minutes: Number.isFinite(d.seconds) ? round6(d.seconds / 60) : null,
       tick: d.tick,
       reason: null,
     };
@@ -944,6 +1074,7 @@ function measureFirstDeath({ playerDeaths, playerDeathsRaw, stopReason, simSecon
       available: true,
       censored: false,
       seconds: round6(simSeconds),
+      minutes: Number.isFinite(simSeconds) ? round6(simSeconds / 60) : null,
       tick: null,
       reason: 'stopReason=player_dead; named cause/telegraph unavailable on this trace',
     };
@@ -953,7 +1084,10 @@ function measureFirstDeath({ playerDeaths, playerDeathsRaw, stopReason, simSecon
       available: false,
       censored: true,
       seconds: null,
+      minutes: null,
       tick: null,
+      censoredAtSeconds: round6(simSeconds),
+      censoredAtMinutes: Number.isFinite(simSeconds) ? round6(simSeconds / 60) : null,
       reason: `survived to ${round6(simSeconds)}s (right-censored; not a run-length-to-death)`,
     };
   }
@@ -961,6 +1095,7 @@ function measureFirstDeath({ playerDeaths, playerDeathsRaw, stopReason, simSecon
     available: false,
     censored: true,
     seconds: null,
+    minutes: null,
     tick: null,
     reason: 'no player death observed; duration is right-censored at stop',
   };
@@ -1143,6 +1278,36 @@ function formatQuietBar(quiet) {
   return String(quiet.seconds);
 }
 
+function formatQuietWholeBar(quiet) {
+  if (!quiet || quiet.available !== true) return fmtNa(quiet, 'quiet-second window was not observed on this trace');
+  return String(quiet.seconds);
+}
+
+function formatDeathStoryBar(swarm) {
+  const pd = Array.isArray(swarm.playerDeaths) ? swarm.playerDeaths[0] : null;
+  if (!pd) return 'n/a(survived; no death story)';
+  const story = pd.story;
+  if (story && typeof story.causeText === 'string' && story.causeText.trim()) {
+    const tg = story.telegraphName || 'n/a';
+    const lead = Number.isFinite(story.telegraphLeadMs) ? `${story.telegraphLeadMs}ms` : 'n/a';
+    const src = story.telegraphSource ? `/${story.telegraphSource}` : '';
+    return `${story.causeText}|${tg}@${lead}${src}`;
+  }
+  if (pd.causeAvailable) return String(pd.cause);
+  return fmtNa({ reason: pd.causeReason }, UNAVAILABLE_DEATH_CAUSE);
+}
+
+function formatFirstDeathMin(swarm) {
+  const death = swarm.firstDeath;
+  if (death?.available && Number.isFinite(death.minutes)) return `${death.minutes}min`;
+  if (death?.censored) {
+    if (Number.isFinite(death.censoredAtMinutes)) return `censored@${death.censoredAtMinutes}min`;
+    if (Number.isFinite(swarm.simSeconds)) return `censored@${round6(swarm.simSeconds / 60)}min`;
+    return 'censored';
+  }
+  return fmtNa(death, 'no player death observed');
+}
+
 function formatMenuBar(menus) {
   if (!menus || menus.available !== true) return fmtNa(menus, UNAVAILABLE_MENUS);
   return `${menus.count}@${menus.perWave}/wave`;
@@ -1202,11 +1367,14 @@ export function formatSwarmBars(swarm) {
     + `verbs=${formatVerbBar(swarm.verbs)} `
     + `inFrame=${formatInFrameBar(swarm.hostileInFrame)} `
     + `moments=${formatMomentBar(swarm)} `
+    + `quiet=${formatQuietWholeBar(swarm.quietSeconds)} `
     + `quietAfterW1=${formatQuietBar(swarm.quietSecondsAfterWave1)} `
     + `deaths=${pd.length}(${formatCauseBits(pd)}) `
+    + `deathStory=${formatDeathStoryBar(swarm)} `
     + `waves=${formatWaveBar(swarm.waveDurations)} `
     + `cleanup=${formatCleanupBar(swarm.cleanupDurations)} `
     + `menus=${formatMenuBar(swarm.menus)} `
-    + `firstDeath=${formatDeathBar(swarm)}`
+    + `firstDeath=${formatDeathBar(swarm)} `
+    + `firstDeathMin=${formatFirstDeathMin(swarm)}`
   );
 }

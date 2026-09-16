@@ -439,5 +439,5 @@ Recorded because a retracted finding is more useful than a silently dropped one.
 - [`WAVE0_CERES_BASELINE.md`](./WAVE0_CERES_BASELINE.md) — current-state ground truth and defect list
 - [`ADMISSION_ROUTE.md`](./ADMISSION_ROUTE.md) — the exact program-control steps
 - [`SECTOR_IDENTITY_SHEETS.md`](./SECTOR_IDENTITY_SHEETS.md) — gated propagation design
-- [`CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md) · [`NOW.md`](../program/NOW.md)
+- [`build_map.md`](../../build_map.md) · [`NOW.md`](../program/NOW.md)
 - [`CAMERA_VISIBLE_BUBBLE.md`](../graphics-sprints/CAMERA_VISIBLE_BUBBLE.md) — the 0–95 / 95–125 / 125–165 WU bands

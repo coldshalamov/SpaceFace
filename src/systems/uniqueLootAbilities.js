@@ -11,6 +11,7 @@ import { scalarHitToDamagePacket } from '../combat/damage.js';
 import { fittedModuleDefs, hasFittedModule } from '../core/fittedModules.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { MODULES } from '../data/modules.js';
 import { WEAPONS } from '../data/weapons.js';
 
@@ -19,7 +20,7 @@ export const PALE_COIL_BLINK_DISTANCE = 240;
 export const CHOIR_BELL_KNOCKBACK_SPEED = 420;
 export const NESTBREAKER_SUBMUNITION_DAMAGE = 49;
 export const NESTBREAKER_DIVERGENCE_RAD = 3 * Math.PI / 180;
-export const TIDELINE_MAGNET_RANGE = 720;
+export const TIDELINE_MAGNET_RANGE = 1600;
 export const TIDELINE_MAGNET_ACCEL = 520;
 export const TIDELINE_SMALL_WRECK_MAX_RADIUS = 9;
 export const KNITBOTS_REPAIR_RATE = 4.4;
@@ -29,7 +30,7 @@ const PALE_COIL_ID = 'unique_pale_coil_warp_drive';
 const CHOIR_BELL_ID = 'unique_choir_bell_aegis';
 const NESTBREAKER_ID = 'unique_nestbreaker_rack';
 const TIDELINE_ID = 'unique_tideline_tractor';
-const BASE_PICKUP_MAGNET_RANGE = 420;
+const BASE_PICKUP_MAGNET_RANGE = 800;
 const NESTBREAKER_SEPARATION = 1.4;
 const MAX_ENCOUNTER_RECORDS = 64;
 const EQUIPMENT_BY_ID = new Map(
@@ -132,9 +133,12 @@ export const uniqueLootAbilities = {
 
     // Restored missiles or a future target-acquisition path may not pass through entity:spawned
     // while their encounter is active. The marker makes this deterministic fallback idempotent.
-    if (state.mode === 'flight' && hasFittedModule(state, CHOIR_BELL_ID)) {
-      const projectiles = state.entityIndex?.projectiles || state.entityList || [];
-      for (const projectile of projectiles) this._tryChoirBellDeflection(projectile, player);
+    if (state.mode === 'flight' && hasFittedModule(state, CHOIR_BELL_ID)
+      && newestUnusedEncounter(ensureAbilityState(state), 'choirBellUsed')) {
+      const projectiles = indexedTypeScan(state, 'projectiles');
+      if (projectiles.length) {
+        for (const projectile of projectiles) this._tryChoirBellDeflection(projectile, player);
+      }
     }
 
     if (state.mode === 'flight') {
@@ -320,7 +324,7 @@ export const uniqueLootAbilities = {
       player.pos,
       TIDELINE_MAGNET_RANGE,
       this._nearbyScratch,
-      state.entityList,
+      indexedTypeScan(state, 'wrecks'),
     );
     for (const entity of nearby) {
       if (!entity || entity.alive === false || entity.id === player.id) continue;

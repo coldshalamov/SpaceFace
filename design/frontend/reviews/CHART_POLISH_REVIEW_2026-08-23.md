@@ -2,7 +2,7 @@
 # Chart polish review — 2026-08-23
 
 Independent taste + vision review of the star chart after the type-floor pass, judged from
-captured frames against `design/frontend/INSTRUMENT_GRAMMAR.md` and CANONICAL_BUILD_MAP §11.7.
+captured frames against `design/frontend/INSTRUMENT_GRAMMAR.md` and build_map §11.7.
 Reviewer: Kimi K3 (vision), read-only packet, no repository access beyond the frames and the
 binding grammar.
 

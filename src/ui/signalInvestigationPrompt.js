@@ -274,8 +274,9 @@ function injectStyle() {
     /* Flight-instrument plate (menu fascia material): near-opaque hairline plate, severity on the
        TOP edge + head stamp — not the old glass box with a vibe-coded left accent bar. */
     background:linear-gradient(180deg, rgba(15,20,27,.94), rgba(8,11,16,.96));
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
     border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); border-top:2px solid var(--hud-cyan, #4f8fdd);
-    border-radius:3px; box-shadow:0 14px 30px rgba(0,0,0,.35);
+    border-radius:4px; box-shadow:0 16px 36px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
     color:var(--hud-paper, #e9eff4); font-family:var(--hud-data, var(--mono, Consolas, monospace)); transition:opacity .16s ease-out,transform .16s ease-out; }
   #sf-signal-investigation[hidden] { display:none !important; }
   .sf-signal__head { display:flex; justify-content:space-between; gap:12px; color:var(--hud-cyan, #4f8fdd); font-size:12px; letter-spacing:.06em; }
@@ -286,10 +287,12 @@ function injectStyle() {
   .sf-signal__more { min-width:0; color:var(--hud-muted, #71828f); font-size:12px; letter-spacing:.06em; }
   .sf-signal__foot button { pointer-events:auto; flex:0 0 auto; min-height:32px; padding:6px 9px;
     border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); background:rgba(255,255,255,.04);
-    color:var(--hud-paper, #e9eff4); font:700 12px/1.2 var(--hud-data, var(--mono, Consolas, monospace)); letter-spacing:.06em; cursor:pointer; border-radius:3px; }
+    color:var(--hud-paper, #e9eff4); font:700 12px/1.2 var(--hud-data, var(--mono, Consolas, monospace)); letter-spacing:.06em; cursor:pointer; border-radius:3px;
+    transition:border-color .15s ease, background .15s ease, color .15s ease, translate .1s ease; }
   .sf-signal__foot button b { display:inline-grid; place-items:center; min-width:16px; min-height:16px; margin-right:5px;
-    border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); border-radius:50%; font-size:12px; color:var(--hud-cyan, #4f8fdd); }
+    border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); border-radius:3px; font-size:12px; color:var(--hud-cyan, #4f8fdd); }
   .sf-signal__foot button:hover,.sf-signal__foot button:focus-visible { background:rgba(255,255,255,.08); outline:2px solid var(--hud-cyan, #4f8fdd); outline-offset:2px; }
+  .sf-signal__foot button:active { translate:0 1px; }
   .sf-signal__foot button:disabled { opacity:.55; cursor:default; }
   #sf-signal-investigation.sf-signal--receipt { border-top-color:var(--good, #62e08a); }
   #sf-signal-investigation.sf-signal--receipt .sf-signal__head { color:var(--good, #62e08a); }

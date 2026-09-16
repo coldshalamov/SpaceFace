@@ -160,13 +160,18 @@ for (const causalToken of [
   assert.match(routeSource, causalToken, `causal flight proof is missing ${causalToken}`);
 }
 
+assert.match(routeSource, /__SF_FLIGHT_SETTLE__/,
+  'released baseline waits for a positionally settled hull — authored readiness alone does not imply rest');
+assert.match(routeSource, /Math\.hypot\(x - probe\.x, z - probe\.z\) > 0\.25/,
+  'settle gate re-anchors on positional drift, not just velocity');
+
 assert.match(routeSource, /recordCanonicalUrl\(['"]boot-ready['"]\)/, 'route checks URL at boot');
 assert.match(routeSource, /recordCanonicalUrl\(['"]before-route-return['"]\)/, 'route checks URL immediately before returning acceptance data');
 assert.match(routeSource, /validateFinalStationFrameSuffix\(observations/,
   'station consumer validates only the final contiguous animation-frame suffix');
 assert.doesNotMatch(routeSource, /observations\.slice\(start/,
   'station consumer cannot search for an earlier passing window');
-assert.match(routeSource, /const canonicalUndockSelector\s*=\s*['"]button\.st-undock['"]/,
+assert.match(routeSource, /const canonicalUndockSelector\s*=\s*['"]button\[data-act="undock"\]['"]/,
   'station settlement pins the canonical Undock structural selector');
 assert.match(routeSource, /document\.querySelectorAll\(canonicalUndockSelector\)/,
   'station settlement structurally enumerates canonical controls document-wide');
@@ -205,7 +210,7 @@ assert.match(routeSource, /accessibleName:\s*undockAccessibleName\.name/,
   'station telemetry records the deterministic diagnostic accessible name rather than presentation copy');
 assert.match(routeSource, /page\.getByRole\(['"]button['"],\s*\{\s*name:\s*\/\\bundock\\b\/i\s*\}\)/,
   'Playwright computed role/name matching is the station action acceptance authority');
-assert.match(routeSource, /page\.locator\(['"]button\.st-undock['"]\)/,
+assert.match(routeSource, /page\.locator\(['"]button\[data-act="undock"\]['"]\)/,
   'computed role/name authority begins with the document-wide canonical selector');
 assert.match(routeSource, /\.and\(computedUndockRole\)/,
   'computed role/name authority is identity-intersected with the canonical control');
@@ -491,9 +496,10 @@ function createStationDomFixture({
   const undock = fakeElement({
     tag: 'button',
     parent: fieldset,
-    classes: ['st-undock'],
+    classes: ['sx-tile', 'sx-tile--act'],
     attrs: {
       'aria-label': 'Undock from Helios Station',
+      'data-act': 'undock',
       'data-readiness': 'ready',
     },
     rect: buttonRect,
@@ -509,13 +515,13 @@ function createStationDomFixture({
   const outsideDuplicate = duplicateCanonical ? fakeElement({
     tag: 'button',
     parent: body,
-    classes: ['st-undock'],
-    attrs: { 'aria-label': 'Undock duplicate' },
+    classes: ['sx-tile', 'sx-tile--act'],
+    attrs: { 'aria-label': 'Undock duplicate', 'data-act': 'undock' },
     rect: { left: 20, top: 20, width: 120, height: 36 },
     innerText: 'Undock duplicate',
   }) : null;
 
-  station.querySelectorAll = (selector) => selector === '[role="tab"][data-tab]' ? [tab] : [];
+  station.querySelectorAll = (selector) => selector === '[role="tab"][data-tab], [role="tab"][data-nav]' ? [tab] : [];
   station.contains = (candidate) => containsElement(station, candidate);
   const canonical = [undock, outsideDuplicate].filter(Boolean);
   const documentRef = {
@@ -525,7 +531,7 @@ function createStationDomFixture({
       if (selector === '#sf-dock-overlay') return null;
       return null;
     },
-    querySelectorAll: (selector) => selector === 'button.st-undock' ? canonical : [],
+    querySelectorAll: (selector) => selector === 'button[data-act="undock"]' ? canonical : [],
     getElementById: () => null,
   };
   const windowRef = {

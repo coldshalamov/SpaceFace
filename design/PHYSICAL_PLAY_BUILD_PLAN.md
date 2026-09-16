@@ -225,7 +225,7 @@ owner's real design intent and must be protected. Others are decisions an agent 
 narrow context, that then got written into a test or a check and became permanent law — and are now
 blocking the game the design calls for.
 
-The repository already has a standard for telling these apart. `CANONICAL_BUILD_MAP.md:164` forbids
+The repository already has a standard for telling these apart. `build_map.md:164` forbids
 fossilizing taste "through CSS-property bans, palette allowlists, fixed technique counts, arbitrary
 geometry ceilings, source-string scans, or 'never do X' prose that lacks an observed failure," and
 `docs/POLICY_MANIFEST.md:44-58` sets a rule-admission test. Several shipped rules fail that standard.
@@ -282,7 +282,7 @@ an idle scene burning that budget is real waste.
 *Why it's wrong now:* zero is not a budget. `design/program/roadmap/receipts/PQ-023-propulsion-family-REPORT.md:64-80`
 and `NOW.md:35` record the consequence in the owner's own program: **"no always-on idle nozzle glow"** —
 a visual feature was refused by this check, and the glow's actual frame cost was never measured. That
-directly contradicts `CANONICAL_BUILD_MAP.md:33`, which says to treat ambitious graphics as part of the
+directly contradicts `build_map.md:33`, which says to treat ambitious graphics as part of the
 feature rather than a luxury to suppress.
 
 *What it should be:* rewrite the assertion as a measured ceiling — idle VFX under X ms and Y draw calls
@@ -716,7 +716,7 @@ entry-state command §5.1 requires.
 
 ### 5.3 The packet model cannot express this work
 
-- `CANONICAL_BUILD_MAP.md:95` instructs agents to **split** any packet needing several owners, and
+- `build_map.md:95` instructs agents to **split** any packet needing several owners, and
   `00_EXECUTION_PROTOCOL.md:74` instructs them to **stop** on an unforeseen shared edit. The state
   layer keystone is sim + save + render + data + UI by construction, so the correct behavior under
   current rules is to stop roughly five times. A naive split also leaves intermediate commits where

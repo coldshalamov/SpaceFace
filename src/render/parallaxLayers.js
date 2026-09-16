@@ -8,6 +8,7 @@ import { CAMERA_ZOOM_MAX, PHYSICS_EARNED_SPEED_ZOOM_MAX, CONTEXT_ZOOM_MAX, BOOST
 import { stampOpeningSubmissionPackage } from './openingSubmissionPlan.js';
 import { installSpaceBackgroundFrameCoordinateBridge } from './spaceBackgroundFrameCoordinates.js';
 import { SHARED_MATERIAL_ROLE, stampSharedMaterialRole } from './sharedMaterialRoles.js';
+import { canonicalizeSurfaceProgramFamilyKey } from './illustratedSurface.js';
 
 // renderer.js imports this module before it constructs SpaceBackground. Install the coordinate
 // adapter at that boundary so every ordinary browser/Electron route receives the same fix.
@@ -561,11 +562,12 @@ function configureParallaxBandGpuMotion(material, motionUniforms, spinUniforms =
     );
   };
 
-  material.customProgramCacheKey = () => [
+  const familyKey = canonicalizeSurfaceProgramFamilyKey([
     originalProgramCacheKey,
     INSTANCE_WRAP_SHADER_KEY,
     spin ? MID_SPIN_SHADER_KEY : '',
-  ].filter(Boolean).join('|');
+  ].filter(Boolean).join('|'));
+  material.customProgramCacheKey = () => familyKey;
   material.userData = {
     ...(material.userData || {}),
     spacefaceParallaxInstanceWrap: {

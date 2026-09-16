@@ -1,13 +1,13 @@
 # SpaceFace Repository Seam and Authority Map
 
-This map is a low-context starting point. It does not replace `CANONICAL_BUILD_MAP.md`, `ARCHITECTURE.md`, generated system/event maps, current code inspection, `NOW.md`, or an active packet. Refresh every path and owner before mutation.
+This map is a low-context starting point. It does not replace `build_map.md`, `ARCHITECTURE.md`, generated system/event maps, current code inspection, `NOW.md`, or an active packet. Refresh every path and owner before mutation.
 
 ## 1. Authority stack
 
 1. Current user direction.
 2. `ARCHITECTURE.md` — determinism, single writers, update ownership, browser/Electron parity.
 3. `design/GDD_2_0.md` — product pillars and intended experience.
-4. `CANONICAL_BUILD_MAP.md` and `design/program/` — dispatch, leases, packet and acceptance truth.
+4. `build_map.md` and `design/program/` — dispatch, leases, packet and acceptance truth.
 5. Current active packet.
 6. These inference workflows — creative/production method only.
 7. Historical plans and reference libraries — archaeology, not current completion truth.

@@ -1,0 +1,13 @@
+Copy this into a new agent. Do not wait for a quiet machine. Ship the next
+ready `--id PQ-204` leaf. Proof is focused tests plus the live route, not a
+headed census.
+
+Same picture: bloom, shadows, particles stay on. No dummy shader prewarm. No
+Bevy/ECS rewrite. No Rapier sleep without persisting `entity.physicsSleeping`.
+Do not empty the sky. Do not enable retained-slot GPU batching. Do not start
+WASM SIMD / Worker / WebGPU unless p99 still misses after waves 1–3 and a
+crowded fly names that pole.
+
+Law: design/program/PERF_ADVANCED_CAMPAIGN.md
+Packet: design/program/roadmap/active/PQ-204.md
+Dispatch: node scripts/program-dispatch.mjs --id PQ-204

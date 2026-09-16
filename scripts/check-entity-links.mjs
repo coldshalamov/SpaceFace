@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// check-entity-links.mjs — J5 "Everything is a link" (CANONICAL_BUILD_MAP §11.12).
+// check-entity-links.mjs — J5 "Everything is a link" (build_map §11.12).
 //
 // The resolver is PURE, so most of this is a real behavioural test rather than substring matching:
 // it imports entityResolver and exercises it. Only the placement rules — which are about DOM and

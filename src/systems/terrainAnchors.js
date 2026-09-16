@@ -16,6 +16,7 @@
 // Flag-gated; not in the sim harness; encounterDirector itself is untouched.
 import { massline2Flag } from '../data/featureFlags.js';
 import { Masks } from '../core/entity.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 import {
   PALLAS_REEF_MINES,
   PALLAS_REEF_MINE_BODY,
@@ -34,6 +35,21 @@ const ANCHOR_AFTERMATH_S = 45;    // match encounter straggler cleanup; leaves t
 const ANCHOR_TYPE_ID = 'ast_common_rock';
 
 const SOLID_TYPES = new Set(['asteroid', 'station', 'wreck']);
+const SOLID_INDEX_BUCKETS = Object.freeze(['asteroids', 'stations', 'wrecks']);
+
+function visitSolidAnchorCandidates(state, fn) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+    for (let b = 0; b < SOLID_INDEX_BUCKETS.length; b++) {
+      const list = index[SOLID_INDEX_BUCKETS[b]];
+      if (!list) continue;
+      for (let i = 0; i < list.length; i++) fn(list[i]);
+    }
+    return;
+  }
+  const list = (state && state.entityList) || [];
+  for (let i = 0; i < list.length; i++) fn(list[i]);
+}
 
 export const terrainAnchors = {
   id: 'terrainAnchors',
@@ -79,10 +95,10 @@ export const terrainAnchors = {
 
     // Count existing large solids in the bubble — stations and big rocks both count as anchors.
     let present = 0;
-    const list = state.entityList || [];
-    for (const e of list) {
-      if (!e || e.alive === false || !e.pos || !SOLID_TYPES.has(e.type)) continue;
-      if (!(Number.isFinite(e.radius) && e.radius >= ANCHOR_SIZE_MIN * 0.6)) continue;
+    visitSolidAnchorCandidates(state, (e) => {
+      if (present >= required) return;
+      if (!e || e.alive === false || !e.pos || !SOLID_TYPES.has(e.type)) return;
+      if (!(Number.isFinite(e.radius) && e.radius >= ANCHOR_SIZE_MIN * 0.6)) return;
       const dx = e.pos.x - pos.x, dz = e.pos.z - pos.z;
       if (dx * dx + dz * dz <= bubbleRadius * bubbleRadius) {
         present++;
@@ -93,8 +109,8 @@ export const terrainAnchors = {
           if (!owners.includes(payload.encounterId)) owners.push(payload.encounterId);
         }
       }
-      if (present >= required) return;
-    }
+    });
+    if (present >= required) return;
 
     const want = (arcade ? required : Math.min(ANCHOR_MAX, ANCHOR_MIN + 1)) - present;
     const now = Number.isFinite(state.simTime) ? state.simTime : 0;
@@ -139,7 +155,7 @@ export const terrainAnchors = {
     const encounterId = payload && payload.encounterId;
     if (!encounterId) return;
     const now = Number.isFinite(this.state && this.state.simTime) ? this.state.simTime : 0;
-    for (const entity of this.state && this.state.entityList || []) {
+    for (const entity of indexedTypeScan(this.state, 'asteroids')) {
       const data = entity && entity.data;
       if (!data || !data.terrainAnchor || !Array.isArray(data.terrainAnchorEncounterIds)) continue;
       const index = data.terrainAnchorEncounterIds.indexOf(encounterId);
@@ -156,7 +172,7 @@ export const terrainAnchors = {
     const id = spec && spec.id;
     const pos = spec && spec.pos;
     if (!id || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
-    const list = this.state && this.state.entityList || [];
+    const list = indexedTypeScan(this.state, 'asteroids');
     for (const entity of list) {
       if (entity && entity.alive !== false && entity.data && entity.data.killMachineAnvilId === id) {
         return entity;
@@ -202,7 +218,7 @@ export const terrainAnchors = {
   },
 
   _ensurePallasReef(_spec) {
-    const list = this.state && this.state.entityList || [];
+    const list = indexedTypeScan(this.state, 'wrecks');
     const existing = new Set();
     for (const entity of list) {
       if (entity && entity.alive !== false && entity.data && entity.data.reefMine === true) {
@@ -254,8 +270,7 @@ export const terrainAnchors = {
     const id = spec && spec.id;
     const pos = spec && spec.pos;
     if (!id || !pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.z)) return null;
-    const list = this.state && this.state.entityList || [];
-    for (const entity of list) {
+    for (const entity of indexedTypeScan(this.state, 'asteroids')) {
       if (entity && entity.alive !== false && entity.data && entity.data.aperturePlugId === id) {
         return entity;
       }
@@ -301,9 +316,8 @@ export const terrainAnchors = {
   _releaseAperturePlug(spec) {
     const id = spec && spec.id;
     if (!id) return false;
-    const list = this.state && this.state.entityList || [];
     let released = false;
-    for (const entity of list) {
+    for (const entity of indexedTypeScan(this.state, 'asteroids')) {
       if (!entity || !entity.data || entity.data.aperturePlugId !== id) continue;
       entity.alive = false;
       entity.collides = false;

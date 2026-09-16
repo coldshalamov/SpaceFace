@@ -7,7 +7,7 @@ work, and how to continue without reconstructing several days of task transcript
 
 This is **not a second roadmap**. Current authority remains:
 
-1. [`CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md) for routing;
+1. [`build_map.md`](../../build_map.md) for routing;
 2. `node scripts/program-dispatch.mjs --ready` for current claim-ready units;
 3. [`NOW.md`](./NOW.md) for exact live writers and dirty-path protection;
 4. the selected packet in [`roadmap/active/`](./roadmap/active/README.md);
@@ -51,7 +51,7 @@ The repository already has a coherent authority hierarchy. New agents should not
 
 | Source | What it owns | What it does not own |
 |---|---|---|
-| [`CANONICAL_BUILD_MAP.md`](../../CANONICAL_BUILD_MAP.md) | How to enter the program, select a packet, find current owners, and prove a result. | A live queue snapshot or task transcript. |
+| [`build_map.md`](../../build_map.md) | How to enter the program, select a packet, find current owners, and prove a result. | A live queue snapshot or task transcript. |
 | [`roadmap/program-queue.json`](./roadmap/program-queue.json) + `program-dispatch` | Exact dispatch units, dependencies, mutexes, allowed paths, and coarse state. | Current leases, implementation detail, or visual acceptance. |
 | [`roadmap/active/PQ-045.md`](./roadmap/active/PQ-045.md) | The R5 Ceres lived-world vertical slice and its current execution contract. | The entire graphics program or later sector propagation. |
 | [`roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md`](./roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md) | The R8 graphics/VFX/Massline showcase and later rollout gates. | Permission to skip the R5 Ceres five-minute gate. |
@@ -290,7 +290,7 @@ Use this only if the current `Implement recovery plan` task stops before publish
 ```text
 Take over only the SpaceFace program-control reconciliation already in progress.
 
-Start at CANONICAL_BUILD_MAP.md, design/program/NOW.md, the live output of
+Start at build_map.md, design/program/NOW.md, the live output of
 `node scripts/program-dispatch.mjs --ready`, design/program/roadmap/active/PQ-045.md,
 design/program/roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md, and
 design/program/DEVELOPMENT_HANDOFF_2026-08-09.md. Inspect PR #92 directly.
@@ -312,7 +312,7 @@ owned program files, and stop with the new commit plus the one first claim-ready
 ```text
 Implement only `PQ-045.tender-client-materialization` from the current SpaceFace queue.
 
-Read CANONICAL_BUILD_MAP.md, design/program/NOW.md,
+Read build_map.md, design/program/NOW.md,
 design/program/roadmap/active/PQ-045.md, and run
 `node scripts/program-dispatch.mjs --id PQ-045` before mutation. Fresh-check all exact paths.
 
@@ -615,7 +615,7 @@ unit. None of them alone means the game now looks or plays better.
 
 Give it this file plus the current versions of:
 
-- `CANONICAL_BUILD_MAP.md`;
+- `build_map.md`;
 - `design/program/roadmap/program-queue.json`;
 - `design/program/roadmap/active/PQ-045.md`;
 - `design/program/roadmap/active/PHYSICS_AS_SPECTACLE_PROGRAM.md`;

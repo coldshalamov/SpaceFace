@@ -16,6 +16,7 @@
 // onboarding trainer, which is still asserted in both directions below.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import * as THREE from 'three';
 
 import {
   CAMERA_DIRECTOR_EASE_S,
@@ -33,7 +34,9 @@ import {
 } from '../src/render/cameraDirector.js';
 import {
   clampFocusToPlayerSafeRect,
+  COMPOSITION_ZOOM_MAX,
   createChaseCamera,
+  resolveCombatCompositionZoomCap,
   resolveChaseComposition,
 } from '../src/render/camera.js';
 import { createBus } from '../src/core/eventBus.js';
@@ -127,6 +130,47 @@ function assertInFocusMargin(item, frame, safeNdc, label) {
   const b = projectedNdc(item, frame);
   assert.ok(b.x <= safeNdc + 1e-6, `${label} horizontal NDC ${b.x} must be <= ${safeNdc}`);
   assert.ok(b.y <= safeNdc + 1e-6, `${label} vertical NDC ${b.y} must be <= ${safeNdc}`);
+}
+
+function perspectiveCameraForFocus(focus, zoom, aspect = ASPECT) {
+  const tilt = TILT * Math.PI / 180;
+  const camera = new THREE.PerspectiveCamera(FOV, aspect, 1, 14000);
+  camera.position.set(focus.x, Math.sin(tilt) * zoom, focus.z - Math.cos(tilt) * zoom);
+  camera.lookAt(focus.x, 0, focus.z);
+  camera.updateMatrixWorld(true);
+  camera.updateProjectionMatrix();
+  return camera;
+}
+
+function projectionSamples(item, origin = { x: 0, z: 0 }) {
+  const x = item.pos.x - origin.x;
+  const z = item.pos.z - origin.z;
+  const radius = Math.max(0, item.radius || 0);
+  return [
+    new THREE.Vector3(x, 0, z),
+    new THREE.Vector3(x - radius, 0, z),
+    new THREE.Vector3(x + radius, 0, z),
+    new THREE.Vector3(x, 0, z - radius),
+    new THREE.Vector3(x, 0, z + radius),
+  ];
+}
+
+function assertProjectedVisible(camera, item, label, origin = { x: 0, z: 0 }) {
+  for (const point of projectionSamples(item, origin)) {
+    const ndc = point.project(camera);
+    assert.ok(Math.abs(ndc.x) <= 1 + 1e-6, `${label} projected x ${ndc.x} must stay on screen`);
+    assert.ok(Math.abs(ndc.y) <= 1 + 1e-6, `${label} projected y ${ndc.y} must stay on screen`);
+    assert.ok(ndc.z >= -1 - 1e-6 && ndc.z <= 1 + 1e-6, `${label} projected z ${ndc.z} must stay in clip`);
+  }
+}
+
+function projectedPlayerWidthFractionAtWorstSafeFocus(radius, zoom, aspect = ASPECT) {
+  const tanHalf = Math.tan(FOV * Math.PI / 360);
+  const focus = { x: 0, z: -Math.max(22, 0.46 * tanHalf * 0.72 * zoom) };
+  const camera = perspectiveCameraForFocus(focus, zoom, aspect);
+  const left = new THREE.Vector3(-radius, 0, 0).project(camera);
+  const right = new THREE.Vector3(radius, 0, 0).project(camera);
+  return Math.abs(right.x - left.x) * 0.5;
 }
 
 function countedMapValues(state) {
@@ -230,7 +274,10 @@ test('indexed chase preserves Map insertion order for an exact-distance hostile 
   const tieMapVisits = countedMapValues(rebuilt);
   const actual = resolveChaseComposition(rebuilt, player, { x: 0, z: 0 });
   assert.deepEqual(actual, expected, 'exact ties retain the legacy first Map-inserted hostile');
-  assert.ok(actual.x < 0, 'the Map-first hostile remains the composed side of the frame');
+  // Group fit owns the composed focus once a second attacker exists (B3b); the tie-break contract
+  // survives as which threat identity the composition names, not the frame side it leans toward.
+  assert.equal(actual.composedThreatId, mapFirst.id,
+    'the Map-first hostile remains the composed threat of the frame');
   assert.equal(tieMapVisits(), 2,
     'the whole tied formation resolves in one Map pass ending at the first hostile');
 });
@@ -618,6 +665,266 @@ test('ordinary chase calculations can reuse caller-owned frame records without c
     'live safe-rect clamping may write into one camera-owned result record');
   assert.deepEqual(reusedSafe, expectedSafe,
     'reusing the safe-rect record must preserve every clamp field');
+});
+
+test('resolveCombatCompositionZoomCap preserves standard hull legibility at combat cap', () => {
+  const viewOptions = { fov: FOV, baseFov: FOV, aspect: ASPECT, tiltDeg: TILT };
+  for (const radius of [14, 16]) {
+    const zoom = resolveCombatCompositionZoomCap({ radius }, viewOptions);
+    assert.ok(zoom <= COMPOSITION_ZOOM_MAX,
+      `radius ${radius} cap ${zoom.toFixed(2)} must stay at or below the settled ceiling`);
+    const width = projectedPlayerWidthFractionAtWorstSafeFocus(radius, zoom, ASPECT);
+    assert.ok(width >= 0.04,
+      `radius ${radius} projected width ${(width * 100).toFixed(2)}% must preserve 4% hull legibility`);
+  }
+});
+
+test('resolveCombatCompositionZoomCap responds to aspect, hull radius, and unknown-radius fallback', () => {
+  const base = { fov: FOV, baseFov: FOV, aspect: ASPECT, tiltDeg: TILT };
+  const wide = resolveCombatCompositionZoomCap({ radius: 14 }, { ...base, aspect: 21 / 9 });
+  const normal = resolveCombatCompositionZoomCap({ radius: 14 }, base);
+  const larger = resolveCombatCompositionZoomCap({ radius: 16 }, base);
+  const unknown = resolveCombatCompositionZoomCap({}, base);
+  assert.ok(wide < normal,
+    `21:9 cap ${wide.toFixed(2)} must be tighter than 16:9 cap ${normal.toFixed(2)}`);
+  assert.ok(larger > normal,
+    `larger hull cap ${larger.toFixed(2)} must exceed radius-14 cap ${normal.toFixed(2)}`);
+  assert.ok(unknown <= 330, `unknown-radius fallback ${unknown.toFixed(2)} must stay within manual zoom`);
+});
+
+test('active attacker composition projects single threats at the production cap angles', () => {
+  for (const [x, z] of [[0, -270], [0, 380], [520, 0]]) {
+    const player = entity(1, 0, 0, 7, { team: 0 });
+    const threat = entity(2, x, z, 6, {
+      team: 1,
+      data: { combat: { targetId: player.id } },
+    });
+    const state = stateFor(player, [threat]);
+    const comp = resolveChaseComposition(state, player, { x: 0, z: 0 }, view());
+    assert.ok(comp.minZoom > 330 && comp.minZoom <= COMPOSITION_ZOOM_MAX,
+      `single attacker ${x},${z} minZoom ${comp.minZoom} must stay inside production cap`);
+    const safe = clampFocusToPlayerSafeRect(comp, player, { zoom: comp.minZoom, fov: FOV, aspect: ASPECT });
+    const camera = perspectiveCameraForFocus(safe, comp.minZoom);
+    assertProjectedVisible(camera, player, `player vs ${x},${z}`);
+    assertProjectedVisible(camera, threat, `threat ${x},${z}`);
+  }
+});
+
+test('an unframeable group member cannot evict a frameable attacker', () => {
+  const player = entity(1, -628.3846435546875, 802.1555786132812, 16, { team: 0 });
+  const impossible = entity(14, -563.7261962890625, 1197.9014892578125, 12,
+    { data: { combat: { targetId: player.id } } });
+  const attacker = entity(16, -497.0660400390625, 606.7481689453125, 12,
+    { data: { combat: { targetId: player.id } } });
+  const state = stateFor(player, [impossible, attacker]);
+  const cap = resolveCombatCompositionZoomCap(player, view());
+  const comp = resolveChaseComposition(state, player, player.pos, view({ maxZoom: cap }));
+  assert.ok(comp.minZoom <= cap);
+  const safe = clampFocusToPlayerSafeRect(comp, player, { zoom: comp.minZoom, fov: FOV, aspect: ASPECT });
+  const camera = perspectiveCameraForFocus(safe, comp.minZoom);
+  assertProjectedVisible(camera, player, 'player with unreachable hostile');
+  assertProjectedVisible(camera, attacker, 'frameable attacker');
+});
+
+test('group fit repositions an infeasible centroid before dropping a frameable attacker', () => {
+  for (const origin of [{ x: 0, z: 0 }, { x: 10000, z: -20000 }]) {
+    const player = entity(1, -231.0701904296875 + origin.x, 213.49179077148438 + origin.z, 16, { team: 0, maxSpeed: 95 });
+    const positions = [
+      [14, -373.0793762207031, 424.9876403808594],
+      [15, -417.1158447265625, 390.6977233886719],
+      [16, -455.9724426269531, 385.01263427734375],
+      [18, -406.74969482421875, 160.3074951171875],
+      [21, -217.97549438476562, 375.75750732421875],
+      [23, -322.6826477050781, 362.9065246582031],
+      [24, -339.80657958984375, 379.60638427734375],
+      [25, -368.1152648925781, 368.9293212890625],
+      [22, -104.06979376819753, 94.14417014635379],
+    ];
+    const hostiles = positions.map(([id, x, z]) => entity(id, x + origin.x, z + origin.z, 12,
+      { data: { combat: { targetId: player.id } } }));
+    const state = stateFor(player, hostiles);
+    const cap = resolveCombatCompositionZoomCap(player, view());
+    const comp = resolveChaseComposition(state, player, player.pos, view({ maxZoom: cap }));
+    assert.ok(comp.minZoom <= cap);
+    const safe = clampFocusToPlayerSafeRect(comp, player, { zoom: comp.minZoom, fov: FOV, aspect: ASPECT });
+    const projection = perspectiveCameraForFocus(safe, comp.minZoom);
+    for (const body of [player, ...hostiles]) assertProjectedVisible(projection, body, `static body ${body.id}`);
+    state.world = { frameOrigin: origin };
+    state.camera = { zoom: 144, tilt: TILT, lookAhead: 400, lerp: 6, trauma: 0 };
+    state.settings = { video: { fov: FOV, motionReduce: true } };
+    state.input = { aimWorld: null };
+    const camera = createChaseCamera(state, { innerWidth: 1600, innerHeight: 900 });
+    camera.snapToPlayer();
+    let lastZoom = 144;
+    for (let tick = 0; tick < 300; tick++) {
+      camera.follow(DT);
+      const focus = state.camera.focus;
+      const zoom = Math.hypot(camera.obj.position.x - focus.x, camera.obj.position.y, camera.obj.position.z - focus.z);
+      assert.ok(zoom - lastZoom <= 5.5 + 1e-6);
+      assert.ok(zoom <= cap + 1e-6);
+      lastZoom = zoom;
+    }
+    camera.obj.updateMatrixWorld(true);
+    for (const body of [player, ...hostiles]) assertProjectedVisible(camera.obj, body, `live body ${body.id}`, origin);
+  }
+});
+
+test('active attacker composition projects two attackers in the same frame', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const left = entity(2, -180, -150, 6, {
+    team: 1,
+    data: { combat: { targetId: player.id } },
+  });
+  const right = entity(3, 160, -170, 6, {
+    team: 1,
+    data: { combat: { targetId: player.id } },
+  });
+  const state = stateFor(player, [left, right]);
+  const comp = resolveChaseComposition(state, player, { x: 0, z: 0 }, view());
+  assert.ok(comp.minZoom > 330 && comp.minZoom <= COMPOSITION_ZOOM_MAX,
+    `two-attacker minZoom ${comp.minZoom} must stay inside production cap`);
+  const safe = clampFocusToPlayerSafeRect(comp, player, { zoom: comp.minZoom, fov: FOV, aspect: ASPECT });
+  const camera = perspectiveCameraForFocus(safe, comp.minZoom);
+  assertProjectedVisible(camera, player, 'player in two-attacker fit');
+  assertProjectedVisible(camera, left, 'left attacker');
+  assertProjectedVisible(camera, right, 'right attacker');
+});
+
+test('live chase composition is invariant across matching frame origins', () => {
+  function liveState(offset) {
+    const player = entity(1, offset.x, offset.z, 7, {
+      team: 0,
+      vel: { x: 0, z: 0 },
+      maxSpeed: 120,
+    });
+    const left = entity(2, offset.x - 180, offset.z - 150, 6, {
+      team: 1,
+      data: { combat: { targetId: player.id } },
+    });
+    const right = entity(3, offset.x + 160, offset.z - 170, 6, {
+      team: 1,
+      data: { combat: { targetId: player.id } },
+    });
+    const state = stateFor(player, [left, right]);
+    state.world = { frameOrigin: { x: offset.x, z: offset.z }, frameOriginSeq: offset.x || offset.z ? 1 : 0 };
+    state.camera = { zoom: 144, tilt: TILT, lookAhead: 18, lerp: 6, trauma: 0 };
+    state.settings = { video: { fov: FOV, motionReduce: true } };
+    state.input = { aimWorld: null };
+    return { state, player, entities: [player, left, right], origin: state.world.frameOrigin };
+  }
+
+  function settleLive(offset) {
+    const fixture = liveState(offset);
+    const camera = createChaseCamera(fixture.state, { innerWidth: 1600, innerHeight: 900 });
+    camera.snapToPlayer();
+    for (let i = 0; i < 180; i++) camera.follow(DT);
+    camera.obj.updateMatrixWorld(true);
+    return {
+      fixture,
+      camera,
+      pose: {
+        focusX: fixture.state.camera.focus.x,
+        focusZ: fixture.state.camera.focus.z,
+        cameraX: camera.obj.position.x,
+        cameraY: camera.obj.position.y,
+        cameraZ: camera.obj.position.z,
+      },
+      projected: fixture.entities.map((item) => projectionSamples(item, fixture.origin)
+        .map((point) => {
+          const ndc = point.project(camera.obj);
+          return [ndc.x, ndc.y, ndc.z];
+        })),
+    };
+  }
+
+  const base = settleLive({ x: 0, z: 0 });
+  const translated = settleLive({ x: 10000, z: -20000 });
+  for (const key of Object.keys(base.pose)) {
+    assert.ok(Math.abs(base.pose[key] - translated.pose[key]) <= 1e-6,
+      `${key} must match across frame origins`);
+  }
+  for (let i = 0; i < base.projected.length; i++) {
+    for (let j = 0; j < base.projected[i].length; j++) {
+      for (let k = 0; k < 3; k++) {
+        assert.ok(Math.abs(base.projected[i][j][k] - translated.projected[i][j][k]) <= 1e-6,
+          `projected entity ${i} point ${j} axis ${k} must match across frame origins`);
+      }
+    }
+  }
+});
+
+test('preallocated chase camera avoids constructor RNG and resets projection parameters', () => {
+  const player = entity(1, 32, -18, 7, {
+    team: 0,
+    vel: { x: 0, z: 0 },
+    maxSpeed: 120,
+  });
+  const state = stateFor(player, []);
+  state.camera = { zoom: TACTICAL_ZOOM, tilt: TILT, lookAhead: 18, lerp: 6, trauma: 0 };
+  state.settings = { video: { fov: FOV } };
+  state.input = { aimWorld: null };
+  const viewport = { innerWidth: 1600, innerHeight: 900 };
+  const provided = new THREE.PerspectiveCamera(37, 4 / 3, 5, 777);
+  const originalUuid = provided.uuid;
+  provided.zoom = 2.25;
+  provided.setViewOffset(3200, 1800, 40, 30, 1200, 700);
+  provided.updateProjectionMatrix();
+
+  const originalRandom = Math.random;
+  Math.random = () => {
+    throw new Error('preallocated camera path must not touch Math.random');
+  };
+  try {
+    const camera = createChaseCamera(state, viewport, provided);
+    assert.strictEqual(camera.obj, provided);
+    assert.equal(provided.uuid, originalUuid);
+    assert.equal(provided.fov, FOV);
+    assert.equal(provided.aspect, ASPECT);
+    assert.equal(provided.near, 1);
+    assert.equal(provided.far, 14000);
+    assert.equal(provided.zoom, 1);
+    assert.equal(provided.view, null);
+    camera.snapToPlayer();
+    camera.follow(DT);
+  } finally {
+    Math.random = originalRandom;
+  }
+});
+
+test('group-fit sticky lifecycle removes stale holders and preserves caller-owned output', () => {
+  const player = entity(1, 0, 0, 7, { team: 0 });
+  const dead = entity(2, -120, -80, 6, {
+    team: 1,
+    alive: false,
+    data: { combat: { targetId: player.id } },
+  });
+  const neutral = entity(3, 120, -80, 6, {
+    team: 0,
+    data: { combat: { targetId: player.id } },
+  });
+  const active = entity(4, 150, 0, 6, {
+    team: 1,
+    data: { combat: { targetId: player.id } },
+  });
+  const state = stateFor(player, [dead, neutral, active]);
+  const sticky = { id: null, remainS: 0, wasActive: false, holds: new Map([[dead.id, 1], [neutral.id, 1], [99, 1]]) };
+  const out = {};
+  const first = resolveChaseComposition(state, player, { x: 0, z: 0 }, view({ dt: DT }), out, null, sticky);
+  assert.strictEqual(first, out);
+  assert.equal(sticky.holds.has(dead.id), false, 'dead held target is removed');
+  assert.equal(sticky.holds.has(neutral.id), false, 'neutral held target is removed');
+  assert.equal(sticky.holds.has(99), false, 'despawned held target is removed');
+  assert.equal(sticky.holds.has(active.id), true, 'live active target remains held');
+  const snapshot = { ...first };
+  const valuesOnlyState = {
+    ...state,
+    entities: { values: state.entities.values.bind(state.entities) },
+  };
+  assert.doesNotThrow(() => resolveChaseComposition(valuesOnlyState, player, { x: 0, z: 0 }, view({ dt: DT }), {}, null, sticky),
+    'values-only entity stores do not throw while sticky holds exist');
+  const second = resolveChaseComposition(state, player, { x: 0, z: 0 }, view({ dt: DT }), {});
+  assert.deepEqual(first, snapshot, 'pure caller result is not mutated by a later call');
+  assert.equal(second.hasActiveAttacker, true);
 });
 
 // ---------------------------------------------------------------------------
@@ -1352,6 +1659,95 @@ test('chase camera stays finite after death, missing player, or poisoned focus',
   assert.doesNotThrow(() => camera.follow(DT));
   assert.equal(camera.snapToPlayer(), false, 'snap after the player map is gone is a no-op, not a throw');
   assert.ok(Number.isFinite(camera.obj.position.x));
+});
+
+test('camera focus tracks interpolated player position during high-speed flight without jitter or reversals', () => {
+  const player = entity(1, 0, 0, 16, { team: 0, vel: { x: 0, y: 0, z: 200 } });
+  player.prevPos = { x: 0, y: 0, z: 0 };
+  const state = stateFor(player, []);
+  state.settings = { video: { fov: FOV } };
+  state.camera = { zoom: TACTICAL_ZOOM, tilt: TILT, lookAhead: 400, lerp: 20, trauma: 0 };
+  state.input = { aimWorld: null };
+  state.render = {};
+
+  const camera = createChaseCamera(state);
+  camera.snapToPlayer();
+
+  const dtSim = 1 / 60;
+  const speed = 200;
+  const simStepDist = speed * dtSim;
+
+  for (let step = 0; step < 180; step++) {
+    player.prevPos.z = player.pos.z;
+    player.pos.z += simStepDist;
+    camera.follow(dtSim, 1);
+  }
+
+  // Simulate 144 Hz display frames over multiple sim ticks
+  const frameDt = 1 / 144;
+  let accum = 0;
+  const relHistory = [];
+
+  for (let frame = 0; frame < 24; frame++) {
+    accum += frameDt;
+    while (accum >= dtSim) {
+      accum -= dtSim;
+      player.prevPos.z = player.pos.z;
+      player.pos.z += simStepDist;
+    }
+    const alpha = accum / dtSim;
+    const interpolatedPlayerZ = player.prevPos.z + (player.pos.z - player.prevPos.z) * alpha;
+    camera.follow(frameDt, alpha);
+    const relZ = interpolatedPlayerZ - state.camera.focus.z;
+    relHistory.push(relZ);
+  }
+
+  // Relative distance must monotonically decrease toward steady state without direction reversals
+  for (let i = 1; i < relHistory.length; i++) {
+    const delta = relHistory[i] - relHistory[i - 1];
+    assert.ok(delta > 0, `frame ${i} relative motion must be forward without reversing: delta was ${delta.toFixed(5)}`);
+  }
+});
+
+test('camera anchors to the presented hull pose, not the last sim-tick window', () => {
+  // On a catch-up frame the presented snapshot pack can span several sim ticks while prevPos→pos
+  // covers only the latest one. The renderer hands follow() the exact pose the hull drew; the chase
+  // anchor and safe-rect must track that or the ship reads as jigging forward/back along its path.
+  const player = entity(1, 0, 2000, 16, { team: 0, vel: { x: 0, y: 0, z: 0 } });
+  player.prevPos = { x: 0, y: 0, z: 1996.7 };
+  const state = stateFor(player, []);
+  state.settings = { video: { fov: FOV } };
+  state.camera = { zoom: TACTICAL_ZOOM, tilt: TILT, lookAhead: 400, lerp: 100, trauma: 0 };
+  state.input = { aimWorld: null };
+  state.render = {};
+
+  const camera = createChaseCamera(state);
+  camera.snapToPlayer();
+  assert.ok(Math.abs(state.camera.focus.z - 2000) < 1e-6, 'snap lands on the raw pos');
+
+  // The drawn hull sits one tick behind pos — a pack interpolated across a wider span. With zero
+  // velocity there is no look-ahead or composition bias, so focus converges on the anchor itself.
+  const presented = { x: 0, y: 0, z: 1990 };
+  for (let i = 0; i < 30; i++) camera.follow(DT, 0.5, presented);
+  assert.ok(Math.abs(state.camera.focus.z - 1990) < 0.5,
+    `focus ${state.camera.focus.z} must converge to the presented pose 1990, not pos 2000`);
+  assert.ok(Math.abs(state.camera.focus.z - 2000) > 5,
+    'the camera must not re-peg to the latest sim tick');
+
+  // Without a presented pose the fallback still interpolates prevPos→pos by alpha.
+  const fallbackPlayer = entity(1, 0, 2000, 16, { team: 0, vel: { x: 0, y: 0, z: 0 } });
+  fallbackPlayer.prevPos = { x: 0, y: 0, z: 1996.7 };
+  const fallbackState = stateFor(fallbackPlayer, []);
+  fallbackState.settings = { video: { fov: FOV } };
+  fallbackState.camera = { zoom: TACTICAL_ZOOM, tilt: TILT, lookAhead: 400, lerp: 100, trauma: 0 };
+  fallbackState.input = { aimWorld: null };
+  fallbackState.render = {};
+  const fallbackCamera = createChaseCamera(fallbackState);
+  fallbackCamera.snapToPlayer();
+  for (let i = 0; i < 30; i++) fallbackCamera.follow(DT, 0.5);
+  const simLerp = 1996.7 + (2000 - 1996.7) * 0.5;
+  assert.ok(Math.abs(fallbackState.camera.focus.z - simLerp) < 0.5,
+    `fallback focus ${fallbackState.camera.focus.z} must converge to the alpha-lerped ${simLerp}`);
 });
 
 console.log('camera-focus-separation tests loaded');

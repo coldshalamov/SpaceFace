@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// probe-frontend-snapshot.mjs — J04 fast visual snapshot lab (CANONICAL_BUILD_MAP §11.12).
+// probe-frontend-snapshot.mjs — J04 fast visual snapshot lab (build_map §11.12).
 //
 // Headless Playwright against `_kitlab.html` isolation fixtures. No Three.js, no `server.js`.
 // Writes `.devshots/frontend/<component>.png` at deviceScaleFactor 2, plus a magenta overlay

@@ -144,138 +144,20 @@ function clearInjected(touch, host) {
 
 /** Map pending trackpad verbs onto the keyboard/grammar seams the input host already samples. */
 export function applyTrackpadToInputHost(touch, inputHost, liveState) {
-  if (!touch || !touch.trackpad) return { injected: [] };
-  const tp = touch.trackpad;
-  clearInjected(touch, inputHost);
-  if (tp.latchTicks > 0) {
-    injectCodes(touch, inputHost, TRACKPAD_LATCH_CODES);
-    tp.latchTicks -= 1;
-  }
-  if (tp.reelInTicks > 0) {
-    injectCodes(touch, inputHost, TRACKPAD_LATCH_CODES);
-    injectCodes(touch, inputHost, TRACKPAD_REEL_IN_CODES);
-    tp.reelInTicks -= 1;
-  }
-  if (tp.reelOutTicks > 0) {
-    injectCodes(touch, inputHost, TRACKPAD_LATCH_CODES);
-    injectCodes(touch, inputHost, TRACKPAD_REEL_OUT_CODES);
-    tp.reelOutTicks -= 1;
-  }
-  if (tp.throwTicks > 0) {
-    injectCodes(touch, inputHost, TRACKPAD_THROW_CODES);
-    if (inputHost) inputHost._m2 = true;
-    tp.throwTicks -= 1;
-  } else if (inputHost && touch._trackpadArmedThrow) {
-    inputHost._m2 = false;
-    touch._trackpadArmedThrow = false;
-  }
-  if (tp.throwTicks > 0) touch._trackpadArmedThrow = true;
-  if (tp.boostTicks > 0) {
-    injectCodes(touch, inputHost, TRACKPAD_BOOST_CODES);
-    tp.boostTicks -= 1;
-  }
-  if ((tp.strokeDx || tp.strokeDy) && inputHost) {
-    const w = typeof innerWidth === 'number' && innerWidth > 0 ? innerWidth : 1280;
-    const h = typeof innerHeight === 'number' && innerHeight > 0 ? innerHeight : 800;
-    const now = (liveState && Number.isFinite(liveState.simTime) ? liveState.simTime : 0) * 1000;
-    recordDrawFlightGesture(inputHost, tp.strokeDx, tp.strokeDy, now, w, h);
-    tp.strokeDx = 0;
-    tp.strokeDy = 0;
-  }
-  return { injected: touch._trackpadInjected.slice() };
+  return { injected: [] };
 }
 
 function latched(state) {
   return !!(state && state.player && state.player.tether && state.player.tether.active);
 }
 
-/** Two-finger pixel wheel: reel when latched, flick-throw, pinch-boost. Returns true if consumed. */
+/** Two-finger pixel wheel: pass through to camera zoom. Returns false so wheel is not consumed. */
 export function ingestTrackpadWheel(touch, ev, state) {
-  if (!touch || !ev) return false;
-  const tp = touch.trackpad || (touch.trackpad = emptyTrackpadState());
-  const pixel = ev.deltaMode === 0 || ev.deltaMode === undefined;
-  const dy = Number(ev.deltaY) || 0;
-  const dx = Number(ev.deltaX) || 0;
-  if (!pixel && !ev.ctrlKey && !ev.metaKey) return false;
-  touch._activityPending = true;
-  if (ev.ctrlKey || ev.metaKey) {
-    tp.boostTicks = BOOST_HOLD_TICKS;
-    noteVerb(tp, 'boost');
-    return true;
-  }
-  const mag = Math.hypot(dx, dy);
-  if (!latched(state)) return false;
-  if (mag >= FLICK_PX) {
-    tp.throwTicks = THROW_HOLD_TICKS;
-    noteVerb(tp, 'throw');
-    return true;
-  }
-  if (dy > 0) {
-    tp.reelInTicks = REEL_HOLD_TICKS;
-    noteVerb(tp, 'reel');
-  } else if (dy < 0) {
-    tp.reelOutTicks = REEL_HOLD_TICKS;
-    noteVerb(tp, 'reel');
-  }
-  return dy !== 0;
+  return false;
 }
 
-/** Pointer tap = latch, flick = throw, drag = stroke (draw-to-fly). */
+/** Pointer events on trackpad are standard mouse events; return false so pointer is not consumed. */
 export function ingestTrackpadPointer(touch, ev, state) {
-  if (!touch || !ev) return false;
-  const tp = touch.trackpad || (touch.trackpad = emptyTrackpadState());
-  const type = ev.type || '';
-  const x = Number(ev.clientX) || 0;
-  const y = Number(ev.clientY) || 0;
-  const t = Number.isFinite(ev.timeStamp) ? ev.timeStamp : nowMs();
-  const button = Number.isFinite(ev.button) ? ev.button : 0;
-  touch._activityPending = true;
-  if (type === 'pointerdown' || type === 'mousedown') {
-    tp.pointer = { down: true, x, y, t, moved: 0, button };
-    return button === 1;
-  }
-  if (type === 'pointermove' || type === 'mousemove') {
-    if (!tp.pointer.down) {
-      if (state && state.input && state.input.autoFire) {
-        tp.strokeDx += x - (tp.pointer.x || x);
-        tp.strokeDy += y - (tp.pointer.y || y);
-        tp.pointer.x = x;
-        tp.pointer.y = y;
-        if (Math.hypot(tp.strokeDx, tp.strokeDy) >= 1) noteVerb(tp, 'stroke');
-      }
-      return false;
-    }
-    const dx = x - tp.pointer.x;
-    const dy = y - tp.pointer.y;
-    tp.pointer.moved += Math.hypot(dx, dy);
-    tp.pointer.x = x;
-    tp.pointer.y = y;
-    tp.strokeDx += dx;
-    tp.strokeDy += dy;
-    if (tp.pointer.moved >= TAP_MAX_PX) noteVerb(tp, 'stroke');
-    return false;
-  }
-  if (type === 'pointerup' || type === 'mouseup' || type === 'pointercancel') {
-    const dt = t - (tp.pointer.t || t);
-    const moved = tp.pointer.moved || 0;
-    const dx = x - (tp.pointer.x || x);
-    const flick = moved >= FLICK_PX || Math.hypot(dx, y - (tp.pointer.y || y)) >= FLICK_PX;
-    tp.pointer.down = false;
-    if (flick && (latched(state) || tp.pointer.button === 1)) {
-      tp.throwTicks = THROW_HOLD_TICKS;
-      noteVerb(tp, 'throw');
-      return true;
-    }
-    if (moved <= TAP_MAX_PX && dt <= TAP_MAX_MS && (button === 1 || tp.pointer.button === 1 || button === 0)) {
-      // Middle-click, or a short tap that the caller already classified as a Massline tap.
-      if (button === 1 || tp.pointer.button === 1) {
-        tp.latchTicks = LATCH_HOLD_TICKS;
-        noteVerb(tp, 'latch');
-        return true;
-      }
-    }
-    return false;
-  }
   return false;
 }
 

@@ -67,7 +67,7 @@ export const SWARM_DRAFT_OFFERS = Object.freeze([
   {
     id: 'gravity_payload', defId: 'mod_gravity_tag', verb: 'Weight',
     kind: 'verb', shape: 'well',
-    blurb: 'Hits leave a hull heavy. The well reaches it from farther away.',
+    blurb: 'Hits mark a hull so the well takes that one.',
   },
   {
     id: 'ion', defId: 'mod_ion_payload', verb: 'Short',
@@ -82,7 +82,7 @@ export const SWARM_DRAFT_OFFERS = Object.freeze([
   {
     id: 'cryo', defId: 'mod_cryo_payload', verb: 'Freeze',
     kind: 'verb', shape: null,
-    blurb: 'Hits stiffen a hull so the next blow does more.',
+    blurb: 'Hits freeze a hull stiff so the next blow lands on something that cannot yield.',
   },
   {
     id: 'herald', defId: 'mod_herald_fan', verb: 'Fan',
@@ -97,7 +97,7 @@ export const SWARM_DRAFT_OFFERS = Object.freeze([
   {
     id: 'reel', defId: 'mod_winch_hd', verb: 'Reel',
     kind: 'verb', shape: 'reel',
-    blurb: 'The line comes back faster than they can pull away.',
+    blurb: 'The line hauls them to you. You are the winch, not the bait.',
   },
   {
     id: 'charges', defId: 'mod_charge_rack', verb: 'Charges',
@@ -126,13 +126,13 @@ export const SWARM_DRAFT_OFFERS = Object.freeze([
   },
   {
     id: 'snare', defId: 'mod_transverse_snare_m', verb: 'Snare',
-    kind: 'verb', shape: null,
+    kind: 'verb', shape: 'line_load',
     blurb: 'One line laid across the lane they are coming down.',
   },
   {
     id: 'spool', defId: 'mod_massline_spool_m', verb: 'Spool',
-    kind: 'verb', shape: 'line_load',
-    blurb: 'A longer line, so the sling has farther to build speed.',
+    kind: 'number', shape: null,
+    blurb: 'A longer sling line. Speed lives in the rope.',
   },
   {
     id: 'chaff', defId: 'mod_chaff_dispenser_m', verb: 'Chaff',

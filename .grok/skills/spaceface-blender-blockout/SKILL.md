@@ -1,8 +1,7 @@
 ---
 name: spaceface-blender-blockout
 description: >
-  Focused SpaceFace Blender pass for silhouette, proportion, construction logic, topology, and
-  game-camera readability. Use when form is the asset's material weakness.
+  SpaceFace Blender form/construction pass. Use when silhouette or topology is the weakness.
 ---
 
 # SpaceFace Blender — Form and Construction Pass

@@ -6,7 +6,7 @@ changing the default picture. This file is plan-route and outcome law. It does
 not hold a queue snapshot, branch name, or cycle ledger.
 
 Companion to [`PERF_BUDGET.md`](./PERF_BUDGET.md),
-[`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8.1 / §8.2, and the
+[`build_map.md`](../build_map.md) §8.1 / §8.2, and the
 exhaustive reserved catalog [`PERF_OPTION_SPACE.md`](./PERF_OPTION_SPACE.md).
 
 ## Stop conditions
@@ -43,7 +43,7 @@ drop. A timer win that empties the sky is a failed cycle.
 
 ## Packet outcomes (map identities)
 
-Execute in outcome order from [`CANONICAL_BUILD_MAP.md`](../CANONICAL_BUILD_MAP.md) §8.1:
+Execute in outcome order from [`build_map.md`](../build_map.md) §8.1:
 
 `PQ-051` frame liveness → `PQ-052` rigid opaque batching → `PQ-053` live LOD/HLOD
 → `PQ-054` bounded GPU admission → `PQ-055` immutable asset transport →

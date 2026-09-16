@@ -15,7 +15,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/combat/attachments.js`, `src/systems/aftermathWrecks.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for Massline salvage and towing contracts using the GDD/VISION and existing live vocabulary.
@@ -47,7 +47,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/combat/attachments.js`, `src/systems/aftermathWrecks.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for Massline salvage and towing contracts using the GDD/VISION and existing live vocabulary.
@@ -79,7 +79,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/combat/attachments.js`, `src/systems/aftermathWrecks.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for Massline salvage and towing contracts using the GDD/VISION and existing live vocabulary.
@@ -111,7 +111,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/combat/attachments.js`, `src/systems/aftermathWrecks.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for Massline salvage and towing contracts using the GDD/VISION and existing live vocabulary.
@@ -143,7 +143,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/data/missions.js`, `src/combat/attachments.js`, `src/systems/aftermathWrecks.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for Massline salvage and towing contracts using the GDD/VISION and existing live vocabulary.
@@ -175,7 +175,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/mining.js`, `src/systems/world.js`, `src/data/mining.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for mining risk-reward micro-events using the GDD/VISION and existing live vocabulary.
@@ -207,7 +207,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/mining.js`, `src/systems/world.js`, `src/data/mining.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for mining risk-reward micro-events using the GDD/VISION and existing live vocabulary.
@@ -239,7 +239,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/mining.js`, `src/systems/world.js`, `src/data/mining.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for mining risk-reward micro-events using the GDD/VISION and existing live vocabulary.
@@ -271,7 +271,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/mining.js`, `src/systems/world.js`, `src/data/mining.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for mining risk-reward micro-events using the GDD/VISION and existing live vocabulary.
@@ -303,7 +303,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/mining.js`, `src/systems/world.js`, `src/data/mining.js`, `src/systems/presentationOrchestrator.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for mining risk-reward micro-events using the GDD/VISION and existing live vocabulary.
@@ -335,7 +335,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/ai/engagementAuthority.js`, `src/systems/factions.js`, `src/systems/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for lawful patrol operations and readable enforcement using the GDD/VISION and existing live vocabulary.
@@ -367,7 +367,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/ai/engagementAuthority.js`, `src/systems/factions.js`, `src/systems/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for lawful patrol operations and readable enforcement using the GDD/VISION and existing live vocabulary.
@@ -399,7 +399,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/ai/engagementAuthority.js`, `src/systems/factions.js`, `src/systems/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for lawful patrol operations and readable enforcement using the GDD/VISION and existing live vocabulary.
@@ -431,7 +431,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/ai/engagementAuthority.js`, `src/systems/factions.js`, `src/systems/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for lawful patrol operations and readable enforcement using the GDD/VISION and existing live vocabulary.
@@ -463,7 +463,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/ai/engagementAuthority.js`, `src/systems/factions.js`, `src/systems/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for lawful patrol operations and readable enforcement using the GDD/VISION and existing live vocabulary.
@@ -495,7 +495,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/aiEncounter.js`, `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for pirate interdiction choices and counterplay using the GDD/VISION and existing live vocabulary.
@@ -527,7 +527,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/aiEncounter.js`, `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for pirate interdiction choices and counterplay using the GDD/VISION and existing live vocabulary.
@@ -559,7 +559,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/aiEncounter.js`, `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for pirate interdiction choices and counterplay using the GDD/VISION and existing live vocabulary.
@@ -591,7 +591,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/aiEncounter.js`, `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for pirate interdiction choices and counterplay using the GDD/VISION and existing live vocabulary.
@@ -623,7 +623,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/world.js`, `src/systems/cruise.js`, `src/systems/aiEncounter.js`, `src/ui/comms.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for pirate interdiction choices and counterplay using the GDD/VISION and existing live vocabulary.
@@ -655,7 +655,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/missions.js`, `src/combat/attachments.js`, `src/systems/story.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for civilian rescue and emergency encounters using the GDD/VISION and existing live vocabulary.
@@ -686,7 +686,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/missions.js`, `src/combat/attachments.js`, `src/systems/story.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for civilian rescue and emergency encounters using the GDD/VISION and existing live vocabulary.
@@ -717,7 +717,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/missions.js`, `src/combat/attachments.js`, `src/systems/story.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for civilian rescue and emergency encounters using the GDD/VISION and existing live vocabulary.
@@ -748,7 +748,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/missions.js`, `src/combat/attachments.js`, `src/systems/story.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for civilian rescue and emergency encounters using the GDD/VISION and existing live vocabulary.
@@ -779,7 +779,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/traffic.js`, `src/systems/missions.js`, `src/combat/attachments.js`, `src/systems/story.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for civilian rescue and emergency encounters using the GDD/VISION and existing live vocabulary.
@@ -810,7 +810,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/aceMemory.js`, `src/systems/story.js`, `src/data/narrative.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for battle-aftermath vignettes and persistent consequences using the GDD/VISION and existing live vocabulary.
@@ -842,7 +842,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/aceMemory.js`, `src/systems/story.js`, `src/data/narrative.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for battle-aftermath vignettes and persistent consequences using the GDD/VISION and existing live vocabulary.
@@ -874,7 +874,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/aceMemory.js`, `src/systems/story.js`, `src/data/narrative.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for battle-aftermath vignettes and persistent consequences using the GDD/VISION and existing live vocabulary.
@@ -906,7 +906,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/aceMemory.js`, `src/systems/story.js`, `src/data/narrative.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for battle-aftermath vignettes and persistent consequences using the GDD/VISION and existing live vocabulary.
@@ -938,7 +938,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/aftermathWrecks.js`, `src/systems/aceMemory.js`, `src/systems/story.js`, `src/data/narrative.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for battle-aftermath vignettes and persistent consequences using the GDD/VISION and existing live vocabulary.
@@ -970,7 +970,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/data`, `src/systems`, `src/presentation`, `test/crucible-thirty-wave-arc.test.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for Crucible wave modifiers and attack synergies using the GDD/VISION and existing live vocabulary.
@@ -1003,7 +1003,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/data`, `src/systems`, `src/presentation`, `test/crucible-thirty-wave-arc.test.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for Crucible wave modifiers and attack synergies using the GDD/VISION and existing live vocabulary.
@@ -1036,7 +1036,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/data`, `src/systems`, `src/presentation`, `test/crucible-thirty-wave-arc.test.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for Crucible wave modifiers and attack synergies using the GDD/VISION and existing live vocabulary.
@@ -1069,7 +1069,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/data`, `src/systems`, `src/presentation`, `test/crucible-thirty-wave-arc.test.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for Crucible wave modifiers and attack synergies using the GDD/VISION and existing live vocabulary.
@@ -1102,7 +1102,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/data`, `src/systems`, `src/presentation`, `test/crucible-thirty-wave-arc.test.mjs`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for Crucible wave modifiers and attack synergies using the GDD/VISION and existing live vocabulary.
@@ -1135,7 +1135,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/data/enemies.js`, `src/ai/shipDecision.js`, `src/ai/maneuver.js`, `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for enemy behavior archetypes and formation logic using the GDD/VISION and existing live vocabulary.
@@ -1168,7 +1168,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/data/enemies.js`, `src/ai/shipDecision.js`, `src/ai/maneuver.js`, `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for enemy behavior archetypes and formation logic using the GDD/VISION and existing live vocabulary.
@@ -1201,7 +1201,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/data/enemies.js`, `src/ai/shipDecision.js`, `src/ai/maneuver.js`, `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for enemy behavior archetypes and formation logic using the GDD/VISION and existing live vocabulary.
@@ -1234,7 +1234,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/data/enemies.js`, `src/ai/shipDecision.js`, `src/ai/maneuver.js`, `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for enemy behavior archetypes and formation logic using the GDD/VISION and existing live vocabulary.
@@ -1267,7 +1267,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/data/enemies.js`, `src/ai/shipDecision.js`, `src/ai/maneuver.js`, `src/ai/squad.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for enemy behavior archetypes and formation logic using the GDD/VISION and existing live vocabulary.
@@ -1300,7 +1300,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/systems/economy.js`, `src/systems/cargo.js`, `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for station logistics and industrial jobs using the GDD/VISION and existing live vocabulary.
@@ -1332,7 +1332,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/systems/economy.js`, `src/systems/cargo.js`, `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for station logistics and industrial jobs using the GDD/VISION and existing live vocabulary.
@@ -1364,7 +1364,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/systems/economy.js`, `src/systems/cargo.js`, `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for station logistics and industrial jobs using the GDD/VISION and existing live vocabulary.
@@ -1396,7 +1396,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/systems/economy.js`, `src/systems/cargo.js`, `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for station logistics and industrial jobs using the GDD/VISION and existing live vocabulary.
@@ -1428,7 +1428,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/missions.js`, `src/systems/economy.js`, `src/systems/cargo.js`, `src/ui/screens/stationHub.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for station logistics and industrial jobs using the GDD/VISION and existing live vocabulary.
@@ -1460,7 +1460,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/scanner.js`, `src/systems/world.js`, `src/data/sectors.js`, `src/systems/story.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for frontier anomalies and physical discoveries using the GDD/VISION and existing live vocabulary.
@@ -1493,7 +1493,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/scanner.js`, `src/systems/world.js`, `src/data/sectors.js`, `src/systems/story.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for frontier anomalies and physical discoveries using the GDD/VISION and existing live vocabulary.
@@ -1526,7 +1526,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/scanner.js`, `src/systems/world.js`, `src/data/sectors.js`, `src/systems/story.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for frontier anomalies and physical discoveries using the GDD/VISION and existing live vocabulary.
@@ -1559,7 +1559,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/scanner.js`, `src/systems/world.js`, `src/data/sectors.js`, `src/systems/story.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for frontier anomalies and physical discoveries using the GDD/VISION and existing live vocabulary.
@@ -1592,7 +1592,7 @@ Use Gemini Pro for bounded, existing-owner content that makes SpaceFace richer w
 
 **Inspect:** `src/systems/scanner.js`, `src/systems/world.js`, `src/data/sectors.js`, `src/systems/story.js`
 
-**Read first:** `CANONICAL_BUILD_MAP.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
+**Read first:** `build_map.md`, `AGENTS.md`, `design/VISION.md`, `design/GDD_2_0.md`, `design/vision/INFERENCE_CONVERGENCE_METHOD.md`
 
 **Work:**
 1. Diagnose the ordinary-player opportunity for frontier anomalies and physical discoveries using the GDD/VISION and existing live vocabulary.

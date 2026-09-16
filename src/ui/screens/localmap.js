@@ -22,6 +22,7 @@ import { sectorSignalFor, effectiveDangerTierFor } from '../../systems/sectorSim
 import { resolveWaypointPresentationPosition } from '../navigationWaypoint.js';
 import { canvasFont, canvasFonts, invalidateCanvasFonts } from '../canvasFonts.js';
 import { drawGlyph } from '../glyphs.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../../world/livingWorldViews.js';
 
 // Friendly commodity/station names for the route panel (single source: the data catalogs).
 const COMM_NAME = new Map(COMMODITIES.map((c) => [c.id, c.name]));
@@ -44,33 +45,56 @@ const LOCALMAP_STYLE = `
 }
 #sf-localmap .lm-head {
   display: flex; align-items: center; justify-content: space-between;
-  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge); background: var(--sf-surface);
+  padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--sf-edge);
+  background: color-mix(in srgb, var(--sf-surface) 92%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
 }
 #sf-localmap .lm-title {
   font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
   letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
+  display: flex; align-items: center; gap: 8px;
+}
+#sf-localmap .lm-title::before {
+  content: ''; display: inline-block; width: 3px; height: 12px; background: var(--sf-goal); border-radius: 1px;
 }
 #sf-localmap .lm-scale {
   font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-calm); margin-top: var(--sp-1);
 }
 #sf-localmap .lm-close {
-  background: none; border: 1px solid var(--sf-edge); color: var(--sf-paper);
-  padding: var(--sp-1) var(--sp-3); border-radius: 2px; cursor: pointer; font-size: 13px;
+  background: color-mix(in srgb, var(--sf-calm) 8%, transparent); border: 1px solid var(--sf-edge); color: var(--sf-paper);
+  padding: var(--sp-1) var(--sp-3); border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500;
+  transition: all 0.15s ease;
 }
-#sf-localmap .lm-close:hover { border-color: var(--sf-you); color: var(--sf-you); }
+#sf-localmap .lm-close:hover {
+  border-color: var(--sf-you); color: var(--sf-you); background: color-mix(in srgb, var(--sf-you) 12%, transparent);
+  translate: 0 -1px;
+}
+#sf-localmap .lm-close:active {
+  translate: 0 1px;
+}
+#sf-localmap .lm-close:focus-visible {
+  outline: 1px solid var(--sf-you); outline-offset: 2px;
+}
 #sf-localmap .lm-body { flex: 1; position: relative; min-height: 0; }
 #sf-localmap canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; cursor: crosshair; }
 #sf-localmap .lm-legend {
   position: absolute; left: var(--sp-3); bottom: var(--sp-3);
   font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
   letter-spacing: var(--sf-track-micro); text-transform: uppercase; color: var(--sf-calm);
-  background: var(--sf-surface); border: 1px solid var(--sf-edge); border-radius: 2px;
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--sf-edge); border-radius: 4px;
   padding: var(--sp-1) var(--sp-2); line-height: 1.5;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 #sf-localmap .lm-routes {
   position: absolute; right: var(--sp-3); top: var(--sp-3); width: 230px; max-height: 60%; overflow-y: auto;
-  background: var(--sf-surface); border: 1px solid var(--sf-edge); border-radius: 2px;
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--sf-edge); border-radius: 4px;
   padding: var(--sp-2) var(--sp-3); font-family: var(--sf-body-face); font-size: 13px; color: var(--sf-paper);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--sf-calm) 25%, transparent) transparent;
 }
 #sf-localmap .lm-routes h4 {
   margin: 0 0 var(--sp-2) 0; font-family: var(--sf-subhead-face); font-weight: 600; font-size: 12px;
@@ -79,12 +103,15 @@ const LOCALMAP_STYLE = `
 }
 #sf-localmap .lm-route {
   display: block; width: 100%; text-align: left; background: transparent; color: inherit;
-  border: 0; border-bottom: 1px solid var(--sf-edge); padding: var(--sp-1) 2px; line-height: 1.4; cursor: pointer;
-  font-family: var(--sf-body-face); font-size: 13px;
+  border: 0; border-bottom: 1px solid var(--sf-edge); padding: var(--sp-1) 4px; line-height: 1.4; cursor: pointer;
+  font-family: var(--sf-body-face); font-size: 13px; border-radius: 2px; transition: all 0.15s ease;
 }
 #sf-localmap .lm-route:last-child { border-bottom: none; }
 #sf-localmap .lm-route:hover, #sf-localmap .lm-route:focus-visible {
-  outline: 0; background: color-mix(in srgb, var(--sf-goal) 10%, transparent); color: var(--sf-paper);
+  outline: 0; background: color-mix(in srgb, var(--sf-goal) 12%, transparent); color: var(--sf-paper);
+}
+#sf-localmap .lm-route:active {
+  translate: 0 1px;
 }
 #sf-localmap .lm-route .lm-route-hdr { display: flex; justify-content: space-between; gap: var(--sp-2); }
 #sf-localmap .lm-route .lm-route-comm { color: var(--sf-calm); }
@@ -99,8 +126,11 @@ const LOCALMAP_STYLE = `
 #sf-localmap .lm-routes-empty { color: var(--sf-calm); }
 #sf-localmap .lm-objective {
   position: absolute; left: var(--sp-3); top: var(--sp-3); width: min(340px, calc(100% - 270px)); min-width: 230px;
-  background: var(--sf-surface); border: 1px solid var(--sf-edge); border-left: var(--sf-rail-w) solid var(--sf-goal);
-  border-radius: 2px; padding: var(--sp-2) var(--sp-3); color: var(--sf-paper);
+  background: color-mix(in srgb, var(--sf-surface) 88%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--sf-edge); border-left: var(--sf-rail-w) solid var(--sf-goal);
+  border-radius: 4px; padding: var(--sp-2) var(--sp-3); color: var(--sf-paper);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05), -2px 0 12px color-mix(in srgb, var(--sf-goal) 20%, transparent);
 }
 #sf-localmap .lm-objective[hidden] { display: none; }
 #sf-localmap .lm-objective-k {
@@ -347,8 +377,8 @@ export const localmapScreen = {
     const player = state.entities && state.entities.get(state.playerId);
     if (!player) return;
     const playerTeam = player.team;
-    for (const e of state.entityList || []) {
-      if (!e || !e.alive || e.id === state.playerId) continue;
+    const consider = (e) => {
+      if (!e || !e.alive || e.id === state.playerId) return;
       if (e.type === 'ship' || e.type === 'drone') {
         m.observeContact({
           id: e.id, type: 'ship', name: e.data && e.data.name || e.role || 'ship',
@@ -366,7 +396,10 @@ export const localmapScreen = {
         m.observeContact({ id: e.id, type: 'asteroid', pos: e.pos, radius: e.radius },
           { timeS: now, confidence: 0.7, source: 'passive' });
       }
-    }
+    };
+    for (const e of indexedShipLikeScan(state)) consider(e);
+    for (const e of indexedTypeScan(state, 'stations')) consider(e);
+    for (const e of indexedTypeScan(state, 'asteroids')) consider(e);
     // Economy UX (spec §13): instantiate LocalSpaceIntel market beacons from the LIVE station
     // economy data (state.economy.marketIntel, captured when the player docks/scans) and compute
     // the ranked trade routes via the proven rankTradeRoutes model. The routes panel renders them.
@@ -740,7 +773,7 @@ export const localmapScreen = {
   _drawScanOverlays(g, state, wx, wz, roles) {
     const ink = roles || canvasRoles();
     const now = state.simTime || 0;
-    for (const e of state.entityList || []) {
+    for (const e of indexedTypeScan(state, 'asteroids')) {
       if (!e || !e.alive || e.type !== 'asteroid' || !e.pos) continue;
       const data = e.data || {};
       if (!(data.scanHighlightUntil > now)) continue;
@@ -899,7 +932,7 @@ function stationPositionForRoute(state, stationId) {
   const byStationId = state.entityIndex && state.entityIndex.byStationId;
   const indexed = byStationId && byStationId.get && byStationId.get(stationId);
   if (indexed && indexed.alive !== false && indexed.pos) return indexed.pos;
-  for (const entity of state.entityList || []) {
+  for (const entity of indexedTypeScan(state, 'stations')) {
     if (!entity || entity.alive === false || entity.type !== 'station' || !entity.pos) continue;
     const data = entity.data || {};
     if (data.stationId === stationId) return entity.pos;
@@ -914,7 +947,7 @@ function stationNameForRoute(state, stationId) {
   if (indexed && indexed.data && (indexed.data.name || indexed.data.stationName)) {
     return indexed.data.name || indexed.data.stationName;
   }
-  for (const entity of state.entityList || []) {
+  for (const entity of indexedTypeScan(state, 'stations')) {
     if (!entity || entity.type !== 'station') continue;
     const data = entity.data || {};
     if (data.stationId === stationId) return data.name || data.stationName || stationId;

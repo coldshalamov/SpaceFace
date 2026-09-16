@@ -24,7 +24,7 @@ import {
   SHIP_GLYPH_BOX,
   vitalNumericVisible,
 } from '../src/ui/hudAttention.js';
-import { flightDestinationSurface, resolveFlightObjectiveCommand, resolveObjectiveHudLayout } from '../src/ui/hud.js';
+import { flightDestinationSurface, presentedEntityAnchorPos, resolveFlightObjectiveCommand, resolveObjectiveHudLayout } from '../src/ui/hud.js';
 import { createToasts } from '../src/ui/toasts.js';
 import { createBus } from '../src/core/eventBus.js';
 
@@ -269,6 +269,40 @@ test('story HUD lies remain mounted', () => {
   assert.match(HUD_SRC, /createHudMeta/);
   const meta = readFileSync(fileURLToPath(new URL('../src/ui/hudMeta.js', import.meta.url)), 'utf8');
   assert.match(meta, /STABLE LOAD/);
+});
+
+test('anchored markers wait for the presented hull and track its drawn pose', () => {
+  const out = { x: 0, y: 0, z: 0 };
+  const entity = { id: 7, type: 'ship', alive: true, pos: { x: 500, y: 0, z: 300 } };
+
+  // No renderer mesh registry (headless/test state): keep the sim anchor.
+  const bare = { render: {}, world: { frameOrigin: { x: 0, z: 0 } } };
+  assert.equal(presentedEntityAnchorPos(bare, entity, out), entity.pos,
+    'without a meshes map the marker keeps its sim anchor');
+
+  const mesh = { position: { x: 400, y: 0, z: 200 }, visible: false };
+  const state = {
+    render: { meshes: new Map([[7, mesh]]) },
+    world: { frameOrigin: { x: 1000, z: 1000 } },
+  };
+  assert.equal(presentedEntityAnchorPos(state, entity, out), null,
+    'a held-back root (runway / pending decode / publication gap) draws no marker over empty space');
+
+  mesh.visible = true;
+  const anchored = presentedEntityAnchorPos(state, entity, out);
+  assert.equal(anchored, out);
+  assert.equal(anchored.x, 1400, 'frame-local 400 re-globalized by origin 1000');
+  assert.equal(anchored.z, 1200);
+  assert.notEqual(anchored.x, entity.pos.x,
+    'the marker follows the drawn hull, not the latest sim tick');
+
+  state.render.meshes.delete(7);
+  assert.equal(presentedEntityAnchorPos(state, entity, out), null,
+    'a hull type with no registered root has not been admitted yet');
+  const noMeshEntity = { id: 9, _noMesh: true, pos: { x: 1, y: 0, z: 2 } };
+  assert.equal(presentedEntityAnchorPos(state, noMeshEntity, out), noMeshEntity.pos,
+    'entities that never own a hull keep their sim anchor');
+  assert.equal(presentedEntityAnchorPos(state, null, out), null);
 });
 
 test('hud job follows latch, fight, and hurt', () => {

@@ -385,6 +385,10 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
       return flushResumedBatch();
     },
     waitForPending,
+    flushOneAfterPresent() {
+      if (queued.length === 0) return compileTail;
+      return flushQueuedThrough(Number.POSITIVE_INFINITY, 'after-present', 1, true);
+    },
     get pendingCount() { return pending.size; },
     /** Admissions not yet handed to compileBatch (the rest of pendingCount is linking). */
     get queuedCount() { return queued.length; },

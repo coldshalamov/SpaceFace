@@ -6,7 +6,7 @@
 import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import { formatSwarmBars, measureSwarmRun } from './swarmMetrics.mjs';
+import { formatSwarmBars, measureSwarmRun, SWARM_PACKET_TICK_CAP } from './swarmMetrics.mjs';
 
 export const SWARM_BARS_SCHEMA = 'spaceface.swarmPacing.before.v2';
 export const SWARM_BAR_ARENA_ID = 'helios_core';
@@ -18,7 +18,13 @@ export const SWARM_BAR_LOADOUTS = Object.freeze([
 ]);
 export const SWARM_BAR_CELL_PREFIX = 'SWARM_BAR_CELL_JSON:';
 export const SWARM_BARS_JSON_REL = 'design/program/roadmap/receipts/PQ-174-00-01-swarm-pacing.json';
-export const SWARM_BAR_TICK_CAP = 5400;
+/** 20 simulated minutes. The 8–14 minute death window sits inside this cap, not at its edge. */
+export const SWARM_BAR_TICK_CAP = SWARM_PACKET_TICK_CAP;
+/** High enough that death or the 20-minute cap stops the cell, not wave 3. */
+export const SWARM_BAR_WAVE_TARGET = 999;
+export const SWARM_BAR_CENSOR_SECONDS = SWARM_BAR_TICK_CAP / 60;
+/** The chase-bot that drives this bench is not a competent player. */
+export const SWARM_BAR_PILOT_IS_COMPETENT_PLAYER = false;
 
 /** Tokens that must appear on every formatSwarmBars line. */
 export const SWARM_BAR_LINE_KEYS = Object.freeze([
@@ -29,12 +35,15 @@ export const SWARM_BAR_LINE_KEYS = Object.freeze([
   'firstKill=',
   'verbs=',
   'moments=',
+  'quiet=',
   'quietAfterW1=',
   'inFrame=',
   'deaths=',
+  'deathStory=',
   'waves=',
   'menus=',
   'firstDeath=',
+  'firstDeathMin=',
 ]);
 
 export function serializeSwarmBarCell(swarm, extra = {}) {
@@ -55,7 +64,9 @@ export function serializeSwarmBarCell(swarm, extra = {}) {
     verbs: measured.verbs ?? null,
     meaningfulMoments: measured.meaningfulMoments ?? [],
     momentsPerMinute: measured.momentsPerMinute ?? null,
+    quietSeconds: measured.quietSeconds ?? null,
     quietSecondsAfterWave1: measured.quietSecondsAfterWave1 ?? null,
+    quietSecondsInWaves: measured.quietSecondsInWaves ?? null,
     playerDeaths: measured.playerDeaths ?? [],
     buildIdentity: measured.buildIdentity ?? null,
     waveDurations: measured.waveDurations ?? [],
@@ -125,6 +136,18 @@ export function missingSwarmBars(swarm) {
     if (!quiet.reason) gaps.push('quietSecondsAfterWave1 unavailable without a reason');
   } else {
     gaps.push('quietSecondsAfterWave1 has no available flag');
+  }
+
+  const quietAll = swarm.quietSeconds;
+  if (!quietAll || typeof quietAll !== 'object') {
+    gaps.push('quietSeconds missing');
+  } else if (quietAll.available === true) {
+    if (!Number.isFinite(quietAll.seconds)) gaps.push('quietSeconds available without seconds');
+  } else if (quietAll.available === false) {
+    if (quietAll.seconds != null) gaps.push('quietSeconds unavailable with a fake seconds value');
+    if (!quietAll.reason) gaps.push('quietSeconds unavailable without a reason');
+  } else {
+    gaps.push('quietSeconds has no available flag');
   }
 
   if (!Array.isArray(swarm.playerDeaths)) {
@@ -226,12 +249,13 @@ export async function runOneSwarmBarCell({
   loadoutId,
   seed,
   tickCap = SWARM_BAR_TICK_CAP,
+  waveCount = SWARM_BAR_WAVE_TARGET,
   simulate,
 } = {}) {
   if (typeof simulate !== 'function') {
     throw new Error('runOneSwarmBarCell requires simulate (simulateCrucibleSwarm)');
   }
-  const run = await simulate({ arenaId, loadoutId, seed, tickCap });
+  const run = await simulate({ arenaId, loadoutId, seed, tickCap, waveCount });
   const swarm = run.swarm || measureSwarmRun({
     eventTrace: run.eventTrace,
     fitReceipt: run.fitReceipt,
@@ -244,6 +268,8 @@ export async function runOneSwarmBarCell({
     arenaId,
     hullId: run.fitReceipt && run.fitReceipt.hullId,
     swarmTelemetry: { firstHostile: true, menus: true, deathTelegraph: true },
+    resultsSummary: run.resultsSummary || null,
+    censorSeconds: tickCap / 60,
     hostileInFrame: run.metrics ? run.metrics.hostileInFrame : null,
   });
   const cell = serializeSwarmBarCell(swarm, {

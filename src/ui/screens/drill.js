@@ -667,9 +667,12 @@ function injectStyle() {
 }
 .drill-housing {
   min-width: 0;
-  background: var(--sf-surface);
+  background: color-mix(in srgb, var(--sf-surface) 94%, transparent);
   border: 1px solid var(--sf-edge);
-  border-radius: 3px;
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   padding: 14px;
   display: flex;
   flex-direction: column;
@@ -677,6 +680,8 @@ function injectStyle() {
   color: var(--sf-calm);
   overflow: auto;
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--sf-calm) 25%, transparent) transparent;
 }
 .drill-housing .drill-deck {
   min-width: 0;
@@ -740,14 +745,15 @@ function injectStyle() {
   width:100%;
   min-width:0;
   box-sizing: border-box;
-  padding: 2px 5px;
+  padding: 3px 6px;
   border: 1px solid var(--sf-edge);
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--sf-you) 8%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--sf-you) 10%, transparent);
   color: var(--sf-you);
   font: 700 12px/1.4 var(--sf-data-face);
   letter-spacing: 0;
   text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
 }
 .drill-scan-button {
   width: 100%;
@@ -756,6 +762,15 @@ function injectStyle() {
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.drill-scan-button:hover {
+  translate: 0 -1px;
+}
+.drill-scan-button:active {
+  translate: 0 1px;
 }
 .drill-scan-button [data-scan-state] { color: var(--sf-calm); }
 .drill-stage {
@@ -771,7 +786,8 @@ function injectStyle() {
   width: 100%;
   max-width: 900px;
   border: 1px solid var(--sf-edge);
-  border-radius: 3px;
+  border-radius: 4px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
   background: var(--sf-surface);
   overflow: hidden;
 }
@@ -802,6 +818,9 @@ function injectStyle() {
   gap: 1px;
   max-width: 960px;
   border: 1px solid var(--sf-edge);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   background: var(--sf-surface);
   font-size: 12px;
   color: var(--sf-calm);
@@ -860,8 +879,8 @@ function injectStyle() {
   min-width:0;
   padding:8px;
   border:1px solid var(--sf-edge);
-  border-radius:2px;
-  background:var(--sf-surface);
+  border-radius:4px;
+  background:color-mix(in srgb, var(--sf-surface) 90%, transparent);
 }
 .drill-legend-item {
   min-width:0;
@@ -936,13 +955,16 @@ function injectStyle() {
 }
 .drill-summary-drawer.active { opacity: 1; }
 .drill-summary-slab {
-  background: var(--sf-surface);
+  background: color-mix(in srgb, var(--sf-surface) 96%, black);
   border: 1px solid var(--sf-edge);
-  border-radius: 3px;
+  border-radius: 6px;
   padding: 24px;
   width: min(480px, calc(100vw - 32px));
   box-sizing: border-box;
   display: flex; flex-direction: column; gap: 16px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 .drill-summary-slab .title {
   font-family: var(--sf-subhead-face);

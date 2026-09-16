@@ -492,7 +492,7 @@ export const factionPresence = {
       return null;
     }
 
-    const live = findLiveEntityForRecord(state.entityList, context.recordId);
+    const live = findLiveEntityForRecord(indexedShipLikeScan(state), context.recordId);
     // An active durable record without a materialized body belongs to world residency. Never
     // additive-spawn over it here; world will rematerialize it when the sector reaches FULL.
     if (record && !live) {
@@ -588,7 +588,7 @@ export const factionPresence = {
   },
 
   _bindPitbornConcordTargets() {
-    const entities = (this.state.entityList || []).filter((entity) => entity && entity.alive !== false);
+    const entities = indexedShipLikeScan(this.state);
     const concord = entities
       .filter((entity) => entity.id !== this.state.playerId && entity.type === 'ship' && entity.factionId === 'faction_scn')
       .sort((a, b) => String(a.id).localeCompare(String(b.id)))[0] || null;
@@ -644,7 +644,7 @@ export const factionPresence = {
 
   _activateDefensivePresence(factionId, targetId, trigger) {
     let activated = 0;
-    for (const entity of this.state.entityList || []) {
+    for (const entity of indexedShipLikeScan(this.state)) {
       const marker = entity && entity.data && entity.data.factionPresence;
       const ai = entity && entity.data && entity.data.ai;
       const profile = normalizeFactionBehaviorProfile(ai && ai.factionPresenceDoctrine);
@@ -677,7 +677,7 @@ export const factionPresence = {
   _activateFulfillmentRoute(routeId, { record = true } = {}) {
     const playerId = this.state.playerId;
     let activated = 0;
-    for (const entity of this.state.entityList || []) {
+    for (const entity of indexedShipLikeScan(this.state)) {
       const marker = entity && entity.data && entity.data.factionPresence;
       const ai = entity && entity.data && entity.data.ai;
       if (!marker || marker.factionId !== 'faction_fulfillment' || marker.routeId !== routeId || !ai) continue;
@@ -711,7 +711,7 @@ export const factionPresence = {
   },
 
   _resetFulfillmentRoute(routeId) {
-    for (const entity of this.state.entityList || []) {
+    for (const entity of indexedShipLikeScan(this.state)) {
       const marker = entity && entity.data && entity.data.factionPresence;
       const ai = entity && entity.data && entity.data.ai;
       if (!marker || marker.factionId !== 'faction_fulfillment' || marker.routeId !== routeId || !ai) continue;

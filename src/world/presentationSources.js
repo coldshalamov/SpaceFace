@@ -5,7 +5,17 @@
 import { getAsteroidFieldRock, queryAsteroidField } from './asteroidField.js';
 import { getDressingRow } from './dressingTable.js';
 import { getFarActor, promoteFarActor, queryFarActors } from './farActorTable.js';
-import { authoredPrefetchRadius, residencyPrefetchRadius, tableTravelSpeed } from '../render/tabletopPolicy.js';
+import {
+  authoredPrefetchRadius,
+  glassCornerWu,
+  residencyPrefetchRadius,
+  tableTravelSpeed,
+  timeToEnterRadiusSeconds,
+  TABLE_COLLECT_HORIZON_SECONDS,
+  TABLE_INBOUND_APPROACH_WU,
+  TABLE_PROMOTE_HORIZON_SECONDS,
+} from '../render/tabletopPolicy.js';
+import { projectileSkipsVisualFactoryMesh } from '../render/weapons/recipes.js';
 
 const _farPromoteScratch = [];
 const _rockQueryScratch = [];
@@ -48,7 +58,9 @@ export function resolveWorldPresentationEntity(state, id) {
 }
 
 function pushAlive(out, row) {
-  if (row && row.alive !== false) out.push(row);
+  if (!row || row.alive === false || row._noMesh) return;
+  if (row.type === 'projectile' && projectileSkipsVisualFactoryMesh(row)) return;
+  out.push(row);
 }
 
 export function collectJournalPresentationEntities(state, out = []) {
@@ -62,13 +74,6 @@ export function collectJournalPresentationEntities(state, out = []) {
     for (let i = 0; i < dressing.rows.length; i++) pushAlive(out, dressing.rows[i]);
   }
   return out;
-}
-
-function presentationCollectOrigin(state) {
-  const player = state && state.entities && typeof state.entities.get === 'function'
-    ? state.entities.get(state.playerId)
-    : null;
-  return player && player.pos ? player.pos : null;
 }
 
 /** Same prefetch horizon `isEntityRenderRelevant` uses for ledger rows. */
@@ -89,6 +94,41 @@ function presentationCollectRadius(state) {
   const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
   return residencyPrefetchRadius(speed, prefetchZoom, fov, aspect, tilt);
 }
+
+/** The live table corner the collect pass is feeding — same envelope as the radius. */
+function presentationGlassCorner(state) {
+  const camera = (state && state.camera) || {};
+  const video = (state && state.settings && state.settings.video) || {};
+  const requested = Number.isFinite(camera.zoom) ? camera.zoom : NaN;
+  const live = Number.isFinite(camera.liveZoom) ? camera.liveZoom : NaN;
+  const prefetchZoom = Math.max(
+    Number.isFinite(live) ? live : 0,
+    Number.isFinite(requested) ? requested : 0,
+  ) || (Number.isFinite(live) ? live : (Number.isFinite(requested) ? requested : 144));
+  const fov = Number.isFinite(camera.fov) ? camera.fov
+    : (Number.isFinite(video.fov) ? video.fov : 50);
+  const tilt = Number.isFinite(camera.tilt) ? camera.tilt : 60;
+  const aspect = Number.isFinite(camera.aspect) && camera.aspect > 0 ? camera.aspect : 16 / 9;
+  return glassCornerWu(prefetchZoom, fov, aspect, tilt);
+}
+
+function finite(n, fallback = 0) {
+  return Number.isFinite(n) ? n : fallback;
+}
+
+/**
+ * Ballistic-now position for a ledger row. Shelf-time `pos` is stale for anything
+ * that kept moving; far rows also carry `vel`, so project both ends before the
+ * collect/admit tests see them.
+ */
+function ledgerPredictedPos(rec, simTime, out) {
+  const drift = Math.max(0, finite(simTime) - finite(rec && rec.lastExactT));
+  out.x = finite(rec && rec.pos && rec.pos.x) + finite(rec && rec.vel && rec.vel.x) * drift;
+  out.z = finite(rec && rec.pos && rec.pos.z) + finite(rec && rec.vel && rec.vel.z) * drift;
+  return out;
+}
+
+const _ledgerPredictedScratch = { x: 0, z: 0 };
 
 function meshSpatialKeyMatches(state, origin, radius) {
   const world = state && state.world;
@@ -122,26 +162,69 @@ function rememberMeshSpatialKey(state, origin, radius) {
 }
 
 function appendNearbyLedgerRows(state, out) {
-  const origin = presentationCollectOrigin(state);
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const origin = player && player.pos;
   if (!origin) return;
   const radius = presentationCollectRadius(state);
   if (!(radius > 0)) return;
-  if (!meshSpatialKeyMatches(state, origin, radius)) {
-    queryAsteroidField(state, origin, radius, _meshRockScratch);
-    queryFarActors(state, origin, radius, _meshFarScratch);
-    rememberMeshSpatialKey(state, origin, radius);
+  const travel = tableTravelSpeed(state);
+  // The scan disc must hold every row that can still reach the glass inside the
+  // longest admit window — hulls ride the promote horizon, which exceeds the
+  // collect horizon, so sizing to collect would strand a fast inbound ship
+  // between "scannable" and "admissible". The per-row time-to-glass test below
+  // decides admission, so the disc leaning wide does not wake receding traffic.
+  const scanRadius = radius
+    + (travel + TABLE_INBOUND_APPROACH_WU) * TABLE_PROMOTE_HORIZON_SECONDS;
+  if (!meshSpatialKeyMatches(state, origin, scanRadius)) {
+    queryAsteroidField(state, origin, scanRadius, _meshRockScratch);
+    queryFarActors(state, origin, scanRadius, _meshFarScratch);
+    rememberMeshSpatialKey(state, origin, scanRadius);
   }
+  const pvx = finite(player.vel && player.vel.x);
+  const pvz = finite(player.vel && player.vel.z);
+  const simTime = Number.isFinite(state.simTime) ? state.simTime : (state.tick | 0) / 60;
+  const glassR = presentationGlassCorner(state);
+  const radius2 = radius * radius;
   for (let i = 0; i < _meshRockScratch.length; i++) {
     const rec = _meshRockScratch[i];
-    if (!rec || rec.alive === false || rec.liveEntityId != null) continue;
-    out.push(rec);
+    if (!rec || rec.alive === false || rec.liveEntityId != null || !rec.pos) continue;
+    const relX = rec.pos.x - origin.x;
+    const relZ = rec.pos.z - origin.z;
+    if (relX * relX + relZ * relZ <= radius2) {
+      out.push(rec);
+      continue;
+    }
+    // A static row only earns early residency on the player's own approach.
+    const tEnter = timeToEnterRadiusSeconds(
+      relX, relZ, -pvx, -pvz,
+      glassR + finite(rec.radius),
+      TABLE_COLLECT_HORIZON_SECONDS,
+    );
+    if (tEnter <= TABLE_COLLECT_HORIZON_SECONDS) out.push(rec);
   }
   const live = state.entities;
   for (let i = 0; i < _meshFarScratch.length; i++) {
     const rec = _meshFarScratch[i];
     if (!rec || rec.alive === false) continue;
     if (live && typeof live.has === 'function' && live.has(rec.id)) continue;
-    out.push(rec);
+    const eff = ledgerPredictedPos(rec, simTime, _ledgerPredictedScratch);
+    const relX = eff.x - origin.x;
+    const relZ = eff.z - origin.z;
+    if (relX * relX + relZ * relZ <= radius2) {
+      out.push(rec);
+      continue;
+    }
+    const relVx = finite(rec.vel && rec.vel.x) - pvx;
+    const relVz = finite(rec.vel && rec.vel.z) - pvz;
+    // Ship-like rows ride the promote horizon: their authored decode is the long pole.
+    const tEnter = timeToEnterRadiusSeconds(
+      relX, relZ, relVx, relVz,
+      glassR + finite(rec.radius, 8),
+      TABLE_PROMOTE_HORIZON_SECONDS,
+    );
+    if (tEnter <= TABLE_PROMOTE_HORIZON_SECONDS) out.push(rec);
   }
 }
 
@@ -189,6 +272,9 @@ export function requestDecodeRunwayPromote(state, helpers) {
   const farHits = queryFarActors(state, origin, decodeR, _farPromoteScratch);
   result.farSeen = farHits.length;
   _farPromoteIds.length = 0;
+  // Promote stays a sim-tier decision: rows beyond the disc get their decode and
+  // mesh from the ledger via the approach-aware collect/relevance path instead —
+  // spawning a live body this far out would re-shelve next tick and thrash.
   for (let i = 0; i < farHits.length; i++) {
     const rec = farHits[i];
     if (rec && rec.id != null) _farPromoteIds.push(rec.id);

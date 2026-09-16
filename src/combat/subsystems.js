@@ -27,7 +27,12 @@ export function applyPendingSubsystemTransitions(context, entity, runtime) {
     recomputeCombatantModifiers(context, entity, runtime, attachments);
     delete runtime.transitionAttackerId;
   }
-  else recomputeCombatantModifiers(context, entity, runtime, attachments, false);
+  else if (runtime.statusModifiersDirty === true) {
+    // Statuses cleared outside advance() still change modifier inputs; statuses.advance would
+    // recompute after consuming this flag anyway, so derive here once instead.
+    delete runtime.statusModifiersDirty;
+    recomputeCombatantModifiers(context, entity, runtime, attachments, false);
+  }
   return changed;
 }
 

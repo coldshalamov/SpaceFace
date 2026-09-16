@@ -165,3 +165,97 @@ test('hardware gate does not wait forever on nearby ships that already failed ad
   assert.equal(committed.ready, true,
     'unavailable neighbours must not refuse flight once the rest of the opening set is authored');
 });
+
+test('upgrade-queue pump is a no-op without a live scene', () => {
+  assert.deepEqual(partsLibrary.pumpAuthoredUpgradeQueue(null), {
+    pumped: 0,
+    pending: 0,
+    inFlight: 0,
+    held: false,
+  });
+  assert.deepEqual(partsLibrary.collectPreparedAuthoredCompileRoots(null), []);
+});
+
+test('GPU-stage cook can kick opening-composition upgrades that are still awaiting a first draw', () => {
+  const state = buildState({
+    npcStatuses: ['awaiting-authored-admission', 'awaiting-authored-admission'],
+  });
+  const kicked = [];
+  for (const entity of state.entityList) {
+    entity.mesh.userData.requestAuthoredUpgrade = () => {
+      kicked.push(entity.id);
+      entity.mesh.userData.authoredAssetState = 'loading';
+    };
+  }
+  const result = partsLibrary.requestOpeningCompositionUpgrades(state, {}, {}, null);
+  assert.deepEqual(result.ids.sort(), ['npc-0', 'npc-1']);
+  assert.deepEqual(kicked.sort(), ['npc-0', 'npc-1']);
+  assert.ok(!kicked.includes('player'));
+  assert.ok(!kicked.includes('station_helios'));
+});
+
+test('GPU-stage wait does not spend the loading shell on unstartable opening extras', async () => {
+  const state = buildState({ npcStatuses: ['missing'] });
+  const started = Date.now();
+  const result = await partsLibrary.waitForOpeningCompositionSettled(state, {
+    timeoutMs: 800,
+    yieldToMain: async () => {},
+  });
+  assert.equal(result.reason, 'unstartable');
+  assert.ok(Date.now() - started < 200);
+});
+
+test('GPU-stage wait pumps the authored upgrade queue while extras are still loading', async () => {
+  const state = buildState({ npcStatuses: ['loading'] });
+  for (const entity of state.entityList) {
+    entity.mesh.userData.requestAuthoredUpgrade = () => {};
+    entity.mesh.userData.authoredUpgradePromise = Promise.resolve();
+  }
+  const pumps = [];
+  const result = await partsLibrary.waitForOpeningCompositionSettled(state, {
+    timeoutMs: 80,
+    yieldToMain: async () => {},
+    pump: () => {
+      pumps.push(true);
+      if (pumps.length >= 2) {
+        for (const entity of state.entityList) {
+          entity.mesh.userData.authoredAssetState = 'authored';
+        }
+      }
+    },
+  });
+  assert.equal(result.settled, true);
+  assert.ok(pumps.length >= 2, 'loading-shell wait must admit queued upgrades without a display rAF');
+});
+
+test('GPU-stage wait settles once nearby opening actors become authored', async () => {
+  const state = buildState({ npcStatuses: ['loading'] });
+  for (const entity of state.entityList) {
+    entity.mesh.userData.requestAuthoredUpgrade = () => {};
+    entity.mesh.userData.authoredUpgradePromise = Promise.resolve();
+  }
+  let ticks = 0;
+  const result = await partsLibrary.waitForOpeningCompositionSettled(state, {
+    timeoutMs: 200,
+    yieldToMain: async () => {
+      ticks += 1;
+      if (ticks >= 2) {
+        for (const entity of state.entityList) {
+          entity.mesh.userData.authoredAssetState = 'authored';
+        }
+      }
+    },
+  });
+  assert.equal(result.settled, true);
+  assert.equal(result.pending, 0);
+  assert.ok(ticks >= 2);
+});
+
+test('GPU-stage wait does not sit on loading extras that have no upgrade work', async () => {
+  const state = buildState({ npcStatuses: ['loading'] });
+  const result = await partsLibrary.waitForOpeningCompositionSettled(state, {
+    timeoutMs: 800,
+    yieldToMain: async () => {},
+  });
+  assert.equal(result.reason, 'unstartable');
+});

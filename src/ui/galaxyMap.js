@@ -61,6 +61,7 @@ import { claimDefenseRating } from '../systems/claims.js';
 import { bestKnownSellAtStations, knownStationQuotes, AGE_HOLLOW_S } from './marketIntelligence.js';
 import { LocalSpaceIntel, projectTrack } from './navigation/localSpaceMapModel.js';
 import { buildTradeLanesModel as buildCargoDeckTradeLanesModel } from './navigation/cargoDeck.js';
+import { indexedShipLikeScan, indexedTypeScan } from '../world/livingWorldViews.js';
 
 export { buildCargoDeckTradeLanesModel as buildTradeLanesModel };
 // Wave 2 — the chart's camera and its always-present navigation readout, both pure modules.
@@ -669,9 +670,9 @@ export function missionMapGeometry(state, mission) {
   // simply stops resolving — the mark disappears rather than lingering as a lie.
   const ids = Array.isArray(mission.targetEntityIds) ? mission.targetEntityIds : [];
   if (ids.length) {
-    const wanted = new Set(ids.map((id) => String(id)));
-    for (const e of entityIterator(state)) {
-      if (!e || !e.pos || !wanted.has(String(e.id))) continue;
+    for (const rawId of ids) {
+      const e = resolveEntityById(state, rawId);
+      if (!e || !e.pos) continue;
       // `done` is always false for a spawn-tagged target, and that is correct rather than lazy: a
       // killed target is removed from `mission.targetEntityIds` by systems/missions.js and
       // swap-removed from the entity list at end-of-step, so a resolved-but-dead target cannot be
@@ -748,7 +749,7 @@ export function resolveMapOpenTarget(state, intent) {
 
   if (stationId) {
     // Live entity in the current sector (preferred for LOCAL selection ring).
-    for (const e of entityIterator(state)) {
+    for (const e of indexedTypeScan(state, 'stations')) {
       if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
       const eStationId = (e.data && e.data.stationId) || e.id;
       if (String(eStationId) !== stationId && String(e.id) !== stationId) continue;
@@ -1095,6 +1096,19 @@ function playerEntity(state) {
   return id != null ? state.entities.get(id) || null : null;
 }
 
+function resolveEntityById(state, id) {
+  if (!state || id == null) return null;
+  const map = state.entities;
+  if (map && typeof map.get === 'function') {
+    return map.get(id) || map.get(String(id)) || null;
+  }
+  const wanted = String(id);
+  for (const entity of entityIterator(state)) {
+    if (entity && String(entity.id) === wanted) return entity;
+  }
+  return null;
+}
+
 function entityIterator(state) {
   if (!state) return [];
   if (Array.isArray(state.entityList)) return state.entityList;
@@ -1102,6 +1116,42 @@ function entityIterator(state) {
     return Array.from(state.entities.values());
   }
   return [];
+}
+
+function visitIndexedLists(lists, fn) {
+  for (let l = 0; l < lists.length; l++) {
+    const list = lists[l];
+    if (!list) continue;
+    for (let i = 0; i < list.length; i++) fn(list[i]);
+  }
+}
+
+function visitClaimMarkerEntities(state, fn) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+    visitIndexedLists([index.asteroids, index.stations], fn);
+    const list = state.entityList || [];
+    for (let i = 0; i < list.length; i++) {
+      const entity = list[i];
+      if (entity && entity.type === 'fx') fn(entity);
+    }
+    const dressing = state.world && state.world.dressing;
+    const rows = dressing && dressing.rows;
+    if (Array.isArray(rows)) {
+      for (let i = 0; i < rows.length; i++) fn(rows[i]);
+    }
+    return;
+  }
+  visitIndexedLists([entityIterator(state)], fn);
+}
+
+function visitLocalChartContacts(state, fn) {
+  const index = state && state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
+    visitIndexedLists([index.shipLike, index.stations, index.asteroids], fn);
+    return;
+  }
+  visitIndexedLists([entityIterator(state)], fn);
 }
 
 /**
@@ -1214,14 +1264,14 @@ export function buildClaimOwnershipMarkers(state, sectorId, claimsSystem = null)
     : state && state.claims && Array.isArray(state.claims.bodies) ? state.claims.bodies : [];
   const liveByPoi = new Map();
   const liveByInfrastructurePart = new Map();
-  for (const entity of entityIterator(state)) {
+  visitClaimMarkerEntities(state, (entity) => {
     const poiId = entity && entity.alive !== false && entity.data && entity.data.poiId;
     if (poiId) liveByPoi.set(poiId, entity);
     const infrastructureId = entity && entity.alive !== false && entity.data
       && entity.data.claimTravelInfrastructureId;
     const part = entity && entity.data && entity.data.claimTravelPart;
     if (infrastructureId && part) liveByInfrastructurePart.set(`${infrastructureId}:${part}`, entity);
-  }
+  });
   // Depot freight already owns its itinerary; project that same service leg onto the chart.
   const depotRoutes = new Map();
   for (const entry of Object.values(state?.npcJobs?.byId || {})) {
@@ -1525,7 +1575,7 @@ export function buildSystemModel(state, sectorId, options = {}) {
   const seenIds = new Set();
   const isCurrent = sid === currentSectorId(state);
   if (isCurrent) {
-    for (const e of entityIterator(state)) {
+    for (const e of indexedTypeScan(state, 'stations')) {
       if (!e || e.alive === false || !e.pos) continue;
       // Continuous residency materializes neighbouring sectors' structural entities, and the
       // iterator is world-wide. Without this predicate a SYSTEM survey of Helios Prime listed every
@@ -1714,11 +1764,11 @@ export function buildLocalModel(state, isHostile, options = {}) {
   const contacts = [];
   const hostileFn = typeof isHostile === 'function' ? isHostile : null;
   const playerTeam = player && player.team;
-  for (const e of entityIterator(state)) {
-    if (!e || e.alive === false || !e.pos) continue;
-    if (player && e.id === player.id) continue;
+  visitLocalChartContacts(state, (e) => {
+    if (!e || e.alive === false || !e.pos) return;
+    if (player && e.id === player.id) return;
     let kind = e.type;
-    if (kind !== 'ship' && kind !== 'drone' && kind !== 'station' && kind !== 'asteroid') continue;
+    if (kind !== 'ship' && kind !== 'drone' && kind !== 'station' && kind !== 'asteroid') return;
     let hostile = false;
     if (kind === 'ship' || kind === 'drone') {
       hostile = hostileFn ? !!hostileFn(e, playerTeam, state) : !!(e.data && e.data.hostile);
@@ -1753,7 +1803,7 @@ export function buildLocalModel(state, isHostile, options = {}) {
       ageS: 0,
       confidence: 1,
     });
-  }
+  });
 
   // Remembered contacts (parity gap 3). Anything the intel still holds a track for but that is no
   // longer a live entity — it left sensor range, or the sector unloaded it — is emitted as a faded
@@ -2694,8 +2744,11 @@ function getMarketMemoryForStation(state, stationId, commodityId) {
 
 function findStationRecord(state, stationId) {
   if (!state || !stationId) return null;
-  for (const e of entityIterator(state)) {
-    if (e.type === 'station' && (e.id === stationId || (e.data && e.data.stationId === stationId))) {
+  const byStationId = state.entityIndex && state.entityIndex.byStationId;
+  const indexed = byStationId && typeof byStationId.get === 'function' ? byStationId.get(stationId) : null;
+  if (indexed && indexed.type === 'station' && indexed.data) return indexed.data;
+  for (const e of indexedTypeScan(state, 'stations')) {
+    if (e && e.type === 'station' && (e.id === stationId || (e.data && e.data.stationId === stationId))) {
       return e.data;
     }
   }
@@ -2715,7 +2768,7 @@ function stationPositionById(state, stationId) {
   const byStationId = state.entityIndex && state.entityIndex.byStationId;
   const indexed = byStationId && typeof byStationId.get === 'function' ? byStationId.get(stationId) : null;
   if (indexed && indexed.alive !== false && indexed.pos) return { x: indexed.pos.x, z: indexed.pos.z };
-  for (const e of entityIterator(state)) {
+  for (const e of indexedTypeScan(state, 'stations')) {
     if (!e || e.alive === false || e.type !== 'station' || !e.pos) continue;
     const data = e.data || {};
     if (data.stationId === stationId || e.id === stationId) return { x: e.pos.x, z: e.pos.z };
@@ -4772,7 +4825,7 @@ export const galaxyMapScreen = {
     const player = playerEntity(state);
     const playerTeam = player && player.team;
     const hostileFn = typeof this._isHostile === 'function' ? this._isHostile : null;
-    for (const e of entityIterator(state)) {
+    for (const e of indexedShipLikeScan(state)) {
       if (!e || e.alive === false || !e.pos) continue;
       if (player && e.id === player.id) continue;
       if (e.type !== 'ship' && e.type !== 'drone') continue;

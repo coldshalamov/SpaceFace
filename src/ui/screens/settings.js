@@ -107,9 +107,9 @@ function nav(ctx, method, arg) {
 
 const TABS = ['Audio', 'Video', 'Gameplay', 'Access', 'Controls'];
 
-/** PQ-164.02: one Controls-tab Deck/trackpad sentence. Gestures write existing Massline keys. */
+/** Controls-tab Deck/trackpad sentence. */
 export const STEAM_DECK_HEADER = 'Steam Deck';
-export const STEAM_DECK_NOTE = 'Verified at 1280×800. Trackpad: middle-tap latches the Massline, two-finger scroll reels a latched line, a flick throws, a stroke draws a flight route, pinch boosts.';
+export const STEAM_DECK_NOTE = 'Verified at 1280×800. Trackpad controls cursor and aiming (middle-tap optional); pinch or scroll zooms camera; keyboard or gamepad controls flight.';
 
 // The locale the picker shows: the player's choice when set, otherwise the live runtime locale.
 function chosenLocale(settings) {
@@ -427,6 +427,7 @@ export const settingsScreen = {
       g.aiBackend = 'sg06-tactical';
       g.flightBackend = 'v3';
       rowSelect('Difficulty', () => g.difficulty, [['casual', 'Casual'], ['standard', 'Standard'], ['veteran', 'Veteran'], ['ironman', 'Ironman']], (v) => this._set(ctx, 'gameplay', 'difficulty', v));
+      rowSelect('Stunt moments', () => g.stuntMoments || 'cinematic', [['cinematic', 'Cinematic · brief slowdown'], ['flow', 'Flow · continuous play']], (v) => this._set(ctx, 'gameplay', 'stuntMoments', v));
       rowSelect('Flight model', () => s.controls.flightMode || 'assisted', [['assisted', 'Assisted'], ['drift', 'Drift'], ['newtonian', 'Newtonian']], (v) => this._set(ctx, 'controls', 'flightMode', v));
       rowSelect('Massline orbit assist', () => g.orbitAssistStrength || 'standard', [
         ['full', 'Full'],

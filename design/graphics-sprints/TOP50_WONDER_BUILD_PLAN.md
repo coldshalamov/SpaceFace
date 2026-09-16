@@ -35,7 +35,7 @@ scale. Preserve that as a historical ROI hypothesis, not current order or dispat
 ## 1. Former authority chain (historical)
 
 1. Root `AGENTS.md` for repository safety, live paths, ownership, and performance doctrine.
-2. `CANONICAL_BUILD_MAP.md` and an admitted queue packet for current dispatch and order.
+2. `build_map.md` and an admitted queue packet for current dispatch and order.
 3. `README.md` for graphics-document routing and quality doctrine.
 4. **This file** only as a historical ranking and slice-outcome hypothesis.
 5. `FULL_GRAPHICS_REVAMP_GOAL.md` only as historical coverage/outcome evidence.

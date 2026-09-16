@@ -2,9 +2,9 @@
 # SpaceFace — agent orientation map
 
 The whole repo on one page: what the game is, how it works, where everything lives, and what to read
-for your job. Root [`../AGENTS.md`](../AGENTS.md) is the always-loaded front door (law + task
-router); this file is the second read, and everything deeper is read by need only. This file holds
-no volatile status — status pointers are named, never copied.
+for your job. Root [`../AGENTS.md`](../AGENTS.md) is the always-loaded front door (law + contracts).
+Named campaign doors live in [`TASK_ROUTER.md`](./TASK_ROUTER.md) and are read by need. This file is
+the second sit-down read. It holds no volatile status — status pointers are named, never copied.
 
 ## The game in one paragraph
 
@@ -46,7 +46,7 @@ Enter a directory through its `AGENTS.md`/`README.md`, not by listing it.
 | `build/`, `dist/`, `node_modules/` | Build output and dependencies. Never authority, never search. |
 | `.campaign/ .devshots/ terminals/ agent-tools/ scratch/ .tmp*/ .grok-scratch/ .serena/ .claude/ .codex/ .cursor/` | Agent/tool residue, captures, transcripts. Never search by default (`docs/SEARCH_CONTEXT.md` lists the exact exclusions). Exception: `.grok/skills/spaceface-blender-material-truth/` is routed from the front door for Blender work. |
 
-Root files beyond the front door: `ARCHITECTURE.md` (technical contract) · `CANONICAL_BUILD_MAP.md`
+Root files beyond the front door: `ARCHITECTURE.md` (technical contract) · `build_map.md`
 (program map) · `SAVE_SCHEMA.md` (generated) · `needed-assets.md` (active coverage inventory) ·
 `MASSLINE_PHYSICS_HANDOFF.md` (design handoff, high latitude) · `VISUAL_ASSET_PLAN.md` (historical
 generation ledger) · `plan.md` / `GOAL_PROMPT.txt` (retired legacy — do not execute).
@@ -55,17 +55,18 @@ generation ledger) · `plan.md` / `GOAL_PROMPT.txt` (retired legacy — do not e
 
 | Depth | Read | Cost |
 |---|---|---|
-| Always loaded | root `AGENTS.md` — law, router, contracts | small |
+| Always loaded | root `AGENTS.md` — law, coordination, contracts | small |
 | First sit-down | this file, then root `README.md` (product basics) and `docs/README.md` (doc routing) | small |
+| Named campaign / symptom | [`TASK_ROUTER.md`](./TASK_ROUTER.md) | small |
 | By task | `ARCHITECTURE.md` sections, `docs/MODULE_MAP.md`, `docs/COMMON_BUGS.md`, the routed plan/spec | medium — read sections, not whole files |
-| Program work | `CANONICAL_BUILD_MAP.md` sections + `design/program/README.md` | large — see route below |
+| Program work | `build_map.md` sections + `design/program/README.md` | large — see route below |
 
 **The big files are section-addressable — do not read them whole.**
 
 - `ARCHITECTURE.md`: §0 global conventions · §1 tech stack · §2 game loop · §3 GameState schema ·
   §4 system interface contract · §5 UI screen management · §6 file manifest · §7 cross-system
   invariants.
-- `CANONICAL_BUILD_MAP.md`: §1 start-here doors · §2 product north star · §3 authority · §4 control
+- `build_map.md`: §1 start-here doors · §2 product north star · §3 authority · §4 control
   surfaces · §5 selecting work · §6 implementation posture · §7 verification · §8 performance
   (§8.2 option space, §8.4 hitch campaign) · §11 frontend strategy · §12–§13B admitted campaigns
   (Crucible, arcade VFX, flight convergence, authored-asset fielding) · §14 fleet orchestration law.
@@ -80,7 +81,7 @@ You were asked to plan where the game goes next. Minimum sufficient reading:
 1. Root `AGENTS.md` + this file. You now know the law and the map.
 2. Product truth: `design/VISION.md` whole (it is short and outranks other docs on emphasis);
    `design/GDD_2_0.md` §1–§3 for pitch, challenge, pillars.
-3. Program truth: `CANONICAL_BUILD_MAP.md` §2 (north star), §4 (the five control surfaces), §5
+3. Program truth: `build_map.md` §2 (north star), §4 (the five control surfaces), §5
    (how work is selected and shaped).
 4. Current state: `design/program/README.md` (the status door) → its read-by-need table into
    `01_VERIFIED_DONE.md` / `02_REMAINING_WORK.md` / `06_RETAINED_FUTURE_BACKLOG.md` (read

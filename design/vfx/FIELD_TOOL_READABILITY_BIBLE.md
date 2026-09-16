@@ -16,7 +16,7 @@
 > the game was mild. This file also states at `:17` that its evidence base is code read while
 > writing it — **not play evidence** — and its own law 9 forbids arbitrary prose caps while it
 > then spends a thousand lines writing them. It contradicts the product north star at
-> `CANONICAL_BUILD_MAP.md:33`, which requires treating ambitious graphics as part of the feature
+> `build_map.md:33`, which requires treating ambitious graphics as part of the feature
 > rather than a luxury to suppress.
 >
 > **Withdrawn (do not cite these as blocking):**

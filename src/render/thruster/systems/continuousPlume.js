@@ -697,6 +697,7 @@ export class ContinuousPlumeSystem {
       }
       mesh.frustumCulled = false;
       mesh.name = `plume-layer:${role}`;
+      mesh.userData.spacefaceQualityTierGeometries = QUALITY_TIERS.map((tier) => tierBuffers[tier].geo);
       mesh.renderOrder = 20 + li;
       mesh.visible = this.pool._layerEnabled[li] === 1;
       this.group.add(mesh);

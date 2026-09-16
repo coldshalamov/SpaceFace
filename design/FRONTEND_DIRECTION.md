@@ -81,11 +81,12 @@ prerequisite.
    stylesheets and delegated the decision; the sheet decides. Enforced in the queue: every surface
    packet depends on `PQ-187.03` (the title live on the kit), so `program-dispatch --next` cannot
    hand out surface work before the direction is visible in the game.
-3. **Every leaf ends with a hash-bound visual review against the sheet.** *(Revised 2026-09-06.)*
-   A memoryless reviewer sees the capture and the sheet and answers the sheet's §9 checklist; the
-   integrator closes. The owner's veto is exercised by looking at the game, never on a form.
-4. **The proof is blind and comparative.** A memoryless vision reviewer sees a SpaceFace frame
-   beside a reference game's frame of the same screen type and picks the more polished one (§11).
+3. **Every leaf closes on its own rendered frames.** Play the surface at the shipping camera,
+   answer the sheet's §9 checklist yourself, and iterate until it genuinely passes. The owner's
+   veto is exercised by looking at the game, never on a form.
+4. **The proof is blind and comparative.** Put a SpaceFace frame beside a reference game's frame of
+   the same screen type, unlabeled, and judge honestly which is the more polished one (§11); if it
+   is not SpaceFace, that finding is the work — iterate.
 5. **Agents are told what not to reach for**, by name (§9), because "bold" in an agent's hands
    becomes glow within one commit.
 
@@ -264,7 +265,7 @@ owner individually.
 ## 8. The program
 
 Phases are sequential where they share the kit; surface phases can run in parallel by mutex once
-the kit exists. **Every leaf ends with a hash-bound visual review against the sheet** *(revised 2026-09-06: the owner's veto is exercised in the game, not on a contact sheet)*. Packet IDs are real and
+the kit exists. **Every leaf closes on captures judged honestly against the sheet, iterated until they match** *(the owner's veto is exercised in the game, not on a contact sheet)*. Packet IDs are real and
 dispatchable; `PQ-187` and `PQ-188` are new, the rest are existing packets re-gated on the direction
 lock.
 
@@ -290,7 +291,7 @@ will be reshot after Phase 2.** That lane is not blocked by this plan.
 
 ## 9. How agents get this wrong — the cheapness generators
 
-An integrator rejects a unit that matches any line.
+Judge your own work against every line here before closing.
 
 - **Reaching for glow to be bold.** Boldness is scale, face, composition, imagery, motion (§4).
   A halo, a gradient fill, a glass panel or a tracked-out label is an automatic reject.
@@ -307,7 +308,7 @@ An integrator rejects a unit that matches any line.
 - **A settings-page voice on a hero surface.** The title, load, death and results screens are
   compositions, not lists.
 - **Consolidating the old CSS before the kit exists.** Build fresh; migrate; delete.
-- **Calling a phase done on a green matrix.** Done is the capture matching the sheet under a hash-bound visual review *(revised 2026-09-06)*.
+- **Calling a phase done on a green matrix.** Done is the surface genuinely matching the sheet when you look at it in the game and answer the sheet's §9 checklist honestly — iterate until it is.
 - **Any first-person motif.** Permanent.
 - **Shipping motion with no state variable, or longer than 180 ms, or without a reduced-motion
   authoring.** The motion contract is floor.
@@ -326,17 +327,18 @@ An integrator rejects a unit that matches any line.
   and run after migration.
 - `PQ-180`'s matrix and `check:visual-regression` stay as floor instruments. Their "green" is a
   prerequisite for an owner review, never a substitute for one.
-- `CANONICAL_BUILD_MAP.md` §18 and `AGENTS.md` route every frontend request here first.
+- `build_map.md` §18 and `AGENTS.md` route every frontend request here first.
 
 ---
 
 ## 11. Proof — what "exceeds most games" means, measurably
 
 1. **Blind side-by-side.** For each of eight screen types (title, load, pause, results, map, ship,
-   market, HUD), a memoryless vision reviewer sees the SpaceFace frame beside the reference board's
-   frame of the same type, unlabeled, and answers "which is the more polished, more distinctive
-   interface?" Target: **SpaceFace chosen in ≥ 50 % of pairings across the board, and in 100 % of
-   pairings against the two genre baselines.**
+   market, HUD), put the SpaceFace frame beside the reference board's frame of the same type,
+   unlabeled, and answer honestly — ask a colleague or a fresh look if you have one — "which is the
+   more polished, more distinctive interface?" Target: **SpaceFace chosen in ≥ 50 % of pairings
+   across the board, and in 100 % of pairings against the two genre baselines.** If it is not,
+   that finding is the work: iterate, then re-run the comparison.
 2. **The owner's thirteen.** Every signature moment in §7 has a clip the owner signed off.
 3. **The floor is green** across the matrix at three widths, pseudo-localised, forced-colours,
    reduced-motion, inside the budgets, with the regression baseline reshot on the new look.
@@ -412,9 +414,8 @@ Why this direction, for this game specifically:
 ### 13.3 The mechanism, revised
 
 - **The sheet is the authority.** A frame is right when it matches the sheet's picture for that
-  screen and its rules. The reviewer is memoryless, sees only the capture and the sheet, and
-  answers the sheet's §9 checklist; the review is hash-bound to the capture.
-- **The integrator closes leaves**, never a human pick. A unit that cannot proceed without someone
+  screen and its rules. Judge the capture against the sheet's §9 checklist with a fresh eye — your own second look, a colleague, or an unlabeled comparison — and iterate until it passes.
+- **You close your own leaves** when they genuinely match, never a human pick. A unit that cannot proceed without someone
   choosing between options is a defect in the unit.
 - **The title goes live first** (`PQ-187.03`) so the direction is seen in the actual game after one
   unit. If the owner vetoes it there, the words are recorded verbatim, the sheet's title picture
@@ -425,7 +426,7 @@ Why this direction, for this game specifically:
 ### 13.4 The task series
 
 The ordered list, each line saying what the owner will see in the game when it lands, is
-`CANONICAL_BUILD_MAP.md` §20.14. In brief: the kit → the title live (the veto point) → the shell →
+`build_map.md` §20.14. In brief: the kit → the title live (the veto point) → the shell →
 the flight HUD → the station → THE SHIP, THE FOOTPRINT and THE RANGE → the chart → the Crucible →
 Asteroid Works reconciled → the reading screens → one system, fast → the proof. After the title is
 live, the surface tasks run in parallel under their own packets.

@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 from typing import Iterable
 
-ROOT_MARKER = "CANONICAL_BUILD_MAP.md"
+ROOT_MARKER = "build_map.md"
 SCAN_ROOTS = ("design", "docs")
 PQ_RE = re.compile(r"\bPQ-\d{3}(?:\.[A-Za-z0-9-]+)?\b")
 LIFETIME_RE = re.compile(r"<!--\s*LIFETIME:\s*([A-Z_]+)\s*-->", re.I)
@@ -33,7 +33,7 @@ def markdown_files(root: Path) -> Iterable[Path]:
 
 def classify(rel: str, text: str, lifetime: str | None) -> str:
     low = rel.lower()
-    if rel == "CANONICAL_BUILD_MAP.md":
+    if rel == "build_map.md":
         return "FRONT_DOOR"
     if low.endswith("plan_registry.md"):
         return "REGISTRY"

@@ -158,3 +158,11 @@ Full ladder: [`docs/VALIDATION_WORKFLOW.md`](./docs/VALIDATION_WORKFLOW.md).
 | [`docs/AGENT_LESSONS.md`](./docs/AGENT_LESSONS.md) | Owner preferences and verified workspace facts |
 | [`docs/POLICY_MANIFEST.md`](./docs/POLICY_MANIFEST.md) | Which files may direct an agent |
 | [`docs/TASK_ROUTER.md`](./docs/TASK_ROUTER.md) | Named campaign / symptom doors |
+
+## 12. Owner feel decision
+
+On 2026-09-15 the owner explicitly chose **gradually come to rest** for hands-off assisted flight.
+Keep the newer proportional settle-to-rest behavior and the separate deliberate brake. This
+supersedes the dated gap report's earlier requirement to retain at least 90 WU/s ten seconds after
+releasing at 95 WU/s; do not restore that old target as a regression fix. Newtonian-mode and
+above-cap earned-momentum contracts remain separate.
