@@ -4,6 +4,7 @@
 // the last successful paint (Massline still reading LOCKED after MASSLINE BROKEN) even though the
 // sim kept running. Cosmetic lanes must not strand the HUD or hit-stop clock.
 
+import { updateBombPresentation, releaseBombPresentation } from '../render/bombPresentation.js';
 import { shouldFreezeFlightSubmit } from './presentationFreeze.js';
 import { presentUiStage, releaseUiStage, uiStageResident } from '../render/uiStage.js';
 
@@ -24,6 +25,8 @@ export function runRenderUpdatePhase({
 } = {}) {
   const record = typeof recordPhase === 'function' ? recordPhase : noopPhase;
   const clock = typeof now === 'function' ? now : defaultNow;
+
+  if (state?.mode !== 'flight') releaseBombPresentation(state);
 
   if (shouldFreezeFlightSubmit(state)) {
     // The flight submit is frozen; the picture is not. A screen that asked for a stage gets its own
@@ -73,14 +76,15 @@ export function runRenderUpdatePhase({
   }
 
   let vfxError = null;
+  t = clock();
+  try { updateBombPresentation(state, alpha); }
+  catch (err) { vfxError = err; }
+  // One cosmetic lane failing cannot suppress the existing detonation presenter either.
   if (vfx && typeof vfx.update === 'function') {
-    t = clock();
     try { vfx.update(frameDt, state); }
-    catch (err) { vfxError = err; }
-    finally { record('vfx', clock() - t); }
-  } else {
-    record('vfx', 0);
+    catch (err) { vfxError ||= err; }
   }
+  record('vfx', clock() - t);
 
   let drawError = null;
   if (splitRender) {

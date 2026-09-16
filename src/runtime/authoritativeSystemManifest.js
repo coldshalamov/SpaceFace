@@ -63,7 +63,8 @@ export const PRODUCTION_UPDATE_ORDER = Object.freeze([
   'scanReveal', 'buildIdentity', 'pirateDisguise', 'pirateParley', 'pirateDisengage',
   'aceMemory', 'factionPresence', 'aiSlot', 'barkDirector', 'aiEncounter', 'actions',
   'beacons', 'travelLanes', 'flightSlot', 'cruise', 'aiPorts', 'tumbleStates',
-  'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'impulseCharges', 'mines', 'bombs', 'massSeed',
+  // Bombs read the shared chargeDetonate edge before impulseCharges consumes it.
+  'collisionConsequences', 'stuntGrammar', 'weapons', 'countermeasures', 'bombs', 'impulseCharges', 'mines', 'massSeed',
   'uniqueLootAbilities', 'dockingCorridor', 'environmentalMachinery',
   // Arena toys intercept shots and update field strengths before fields and physics resolve this tick.
   'survivalArena', 'fields', 'planetRuntime', 'physics', 'combat',

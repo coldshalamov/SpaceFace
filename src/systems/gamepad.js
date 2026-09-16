@@ -71,6 +71,7 @@ export const GAMEPAD_DEFAULT_BINDINGS = Object.freeze({
   // auto-target; the free d-pad wings are exactly the deployable-shaped pair.
   dropBomb: Object.freeze(['dRight']),
   cycleBomb: Object.freeze(['dLeft']),
+  chargeDetonate: Object.freeze(['dDown']), // flight only; UI navigation remains modal-owned
 });
 const ACTION_MAP = GAMEPAD_DEFAULT_BINDINGS;
 
@@ -116,6 +117,7 @@ const PAD_ACTION_CONTEXT = Object.freeze({
   travelBurn: 'flight',
   dropBomb: 'flight',
   cycleBomb: 'flight',
+  chargeDetonate: 'flight',
   massline: 'flight',
   cancel: 'modal',
   tabPrev: 'modal',

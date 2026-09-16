@@ -1,6 +1,6 @@
 // src/ui/powerRail.js — J06 The Power Rail (build_map §11.12).
 //
-// The permanent bottom-centre 1–9 rank, in three bands of three. This is the direct answer to the
+// The permanent bottom-centre 1–9 rank, with a dedicated bomb bay socket. This is the direct answer to the
 // owner's complaint that they "can't look at the HUD and see the big game": today `Digit4`–`Digit8`
 // fire five real physics powers (mass seed, well, repulsor, clearing cone, skim collector) and two
 // of them have ZERO references anywhere in `src/ui/`. The powers shipped; the shelf to put them on
@@ -9,7 +9,8 @@
 // THE BANDS ARE A PROMISE ABOUT CONSEQUENCE, not a grouping of convenience:
 //   ORDNANCE  (1–3) instantaneous; leaves nothing behind.
 //   FIELDWORK (4–6) spawns a persistent bounded object you must later live with.
-//   RIG       (7–9) ship-attached sustained toggle; it is on until you turn it off.
+//   RIG       (7–8) ship-attached sustained toggle; it is on until you turn it off.
+//   BAY       (9)   released drifting ordnance; shows actual deployed count and selected readiness.
 // A verb that breaks its band's promise belongs in a different band.
 //
 // ── Two design rules that are load-bearing ──────────────────────────────────────────────────────
@@ -40,12 +41,14 @@
 // underneath. A claim with a past `expiresAt` is dropped on the next render rather than trusted, so
 // a prompt that dies without releasing cannot wedge the rail permanently.
 
+import { BOMB_DRIFT, bombDef } from '../data/bombs.js';
 import { fhGlyph } from './views/fhGlyphs.js';
 import { repulsionTrapFitted } from '../systems/impulseCharges.js';
 
 export const BAND_ORDNANCE = 'ORDNANCE';
 export const BAND_FIELDWORK = 'FIELDWORK';
 export const BAND_RIG = 'RIG';
+export const BAND_BAY = 'BAY';
 
 export const CLAIM_SINGLE = 'SINGLE';
 export const CLAIM_PARTIAL = 'PARTIAL';
@@ -75,10 +78,10 @@ export const RAIL_SLOTS = Object.freeze([
   { index: 6, band: BAND_FIELDWORK, action: 'deployRepulsor', name: 'Repel', glyph: 'repel' },
   { index: 7, band: BAND_RIG, action: 'toggleClearingCone', name: 'Cone', glyph: 'cone' },
   { index: 8, band: BAND_RIG, action: 'toggleSkimCollector', name: 'Skim', glyph: 'skim' },
-  { index: 9, band: BAND_RIG, action: null, name: 'Rig', glyph: 'rig' },
+  { index: 9, band: BAND_BAY, action: 'dropBomb', name: 'Bomb', glyph: 'weapon' },
 ]);
 
-const BANDS = [BAND_ORDNANCE, BAND_FIELDWORK, BAND_RIG];
+const BANDS = [BAND_ORDNANCE, BAND_FIELDWORK, BAND_RIG, BAND_BAY];
 
 // Sweep ring geometry. r=13 in a 32-box leaves room for the 1.6 stroke without clipping.
 //
@@ -100,6 +103,8 @@ export function codeToLabel(code) {
   if (digit) return digit[1];
   const numpad = /^Numpad(\d)$/.exec(raw);
   if (numpad) return `Num${numpad[1]}`;
+  if (raw === 'Comma') return ',';
+  if (raw === 'Period') return '.';
   const letter = /^Key([A-Z])$/.exec(raw);
   if (letter) return letter[1];
   return raw;
@@ -206,16 +211,47 @@ export function readRailModel(state, nowS) {
   const armed = (s.entityList || []).some(e => e.alive && e.type === 'charge'
     && e.data?.ownerId === s.playerId && e.data?.armed);
 
+  const bay = readBombBayModel(s, now);
   return {
     1: { name: `${repulsionTrapFitted(s) ? 'Trap' : 'Charge'} ${charges}`,
       state: charges <= 0 ? 'empty' : throwCd > 0 ? 'cooling' : 'ready', cooldownMs: throwCd * 1000 },
-    2: { state: armed ? 'armed' : 'empty' },
+    2: { state: armed || bay.armedCount > 0 ? 'armed' : 'empty',
+      description: 'Detonate your armed bombs and the armed charge network. Active bomb fields finish normally.' },
     3: { state: player.tether?.active ? 'armed' : 'ready' },
     4: seedCd || { state: 'ready' },
     5: wellCd || { state: 'ready' },
     6: repCd || { state: 'ready' },
     7: { state: fields.coneActive ? 'armed' : 'ready' },
     8: skimSlotState(s),
+    9: bay,
+  };
+}
+
+/** Derived only: this HUD never owns ammo, readiness, selection or countdown clocks. */
+export function readBombBayModel(state, nowS) {
+  const rt = state.bombs || {}, def = bombDef(rt.selectedId);
+  let deployed = 0, armedCount = 0, fields = 0, worldCount = 0;
+  const index = state.entityIndex;
+  const source = index?.__spacefaceEntityIndexV1 && index.ready === true && Array.isArray(index.bombs)
+    ? index.bombs : state.entityList || [];
+  for (const e of source) {
+    if (!e?.alive || e.type !== 'bomb') continue;
+    worldCount++;
+    if (e.data?.ownerId !== state.playerId) continue;
+    deployed++;
+    if (e.data.phase === 'field') fields++;
+    if (e.data.phase === 'drift' && nowS >= e.data.armedAt) armedCount++;
+  }
+  const until = Math.max(rt.cooldownUntil || 0, rt.cooldowns?.[def.id] || 0);
+  const full = deployed >= BOMB_DRIFT.maxActive || worldCount >= BOMB_DRIFT.maxWorldActive;
+  const owner = state.entities?.get?.(state.playerId);
+  const locked = !owner?.alive || owner.flags?.docked || state.mode !== 'flight';
+  return {
+    name: def.shortName, glyph: def.field?.kind === 'singularity' ? 'well' : 'weapon',
+    state: locked || full ? 'locked' : until > nowS ? 'cooling' : 'ready',
+    cooldownMs: Math.max(0, until - nowS) * 1000, deployed, armedCount, fields,
+    badge: `BAY ${deployed}/${BOMB_DRIFT.maxActive}`,
+    description: `${def.name}. ${def.sentence} ${armedCount} armed; ${fields} active fields. Friendly fire applies.`,
   };
 }
 
@@ -234,6 +270,10 @@ function sweepSvg() {
     + `stroke-dashoffset="0"/></svg>`;
 }
 
+function escapeRailText(value) {
+  return String(value).replaceAll('&', '&amp;').replaceAll('\"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+}
+
 function slotMarkup(slot, label) {
   const name = slot.answer != null ? slot.answer : slot.name;
   // A claimed socket is answering a prompt, so it shows the answer word and no verb mark: a glyph
@@ -243,7 +283,7 @@ function slotMarkup(slot, label) {
     ? `${name}${label ? `, key ${label}` : ''}, ${slot.state}`
     : `${label ? `key ${label}` : 'unbound socket'}, ${slot.state}`;
   return `<button type="button" class="sf-pslot" data-slot="${slot.index}" data-state="${slot.state}"`
-    + ` data-band="${slot.band}" tabindex="-1" aria-label="${described}">`
+    + ` data-band="${slot.band}" tabindex="-1" aria-label="${escapeRailText(described + (slot.description ? '. ' + slot.description : ''))}" title="${escapeRailText(slot.description || described)}">`
     + `<span class="sf-pslot__key" aria-hidden="true">${label || '·'}</span>`
     + `<span class="sf-pslot__art" aria-hidden="true">${art}</span>`
     + sweepSvg()
@@ -267,6 +307,7 @@ export function createPowerRail(options = {}) {
   el.setAttribute('aria-label', 'Power rail');
 
   let labels = resolveSlotLabels(options.bindings);
+  let cycleLabel = codeToLabel(options.bindings?.cycleBomb?.[0]) || 'unbound';
   let claims = [];
   let lastSignature = '';
   const slotNodes = new Map();
@@ -282,6 +323,8 @@ export function createPowerRail(options = {}) {
         band: slot.band,
         name: given.name || slot.name,
         glyph: given.glyph || slot.glyph,
+        badge: given.badge || '',
+        description: (given.description || '') + (slot.index === 9 ? ` Cycle: ${cycleLabel}. Detonate: ${labels[2] || 'unbound'}.` : ''),
         state: bound ? (given.state || 'ready') : 'empty',
         cooldownMs: Number(given.cooldownMs) || 0,
         answer: null,
@@ -295,7 +338,7 @@ export function createPowerRail(options = {}) {
     // Signature covers everything that changes pixels EXCEPT cooldown remaining — that animates in
     // CSS, so letting it into the signature would rebuild the DOM every frame and defeat the point.
     const signature = resolved.slots
-      .map((s) => `${s.index}:${s.state}:${s.answer == null ? s.name : `=${s.answer}`}:${labels[s.index]}`)
+      .map((s) => `${s.index}:${s.state}:${s.answer == null ? s.name : `=${s.answer}`}:${labels[s.index]}:${s.glyph}:${s.badge}:${s.description}`)
       .join('|');
     if (signature === lastSignature) return;
     lastSignature = signature;
@@ -308,7 +351,7 @@ export function createPowerRail(options = {}) {
     el.innerHTML = BANDS.map((band) => {
       const inBand = resolved.slots.filter((s) => s.band === band);
       return `<div class="sf-prail__band" data-band="${band}">`
-        + `<span class="sf-prail__label">${band}</span>`
+        + `<span class="sf-prail__label">${band === BAND_BAY ? escapeRailText(inBand[0]?.badge || 'BAY') : band}</span>`
         + `<div class="sf-prail__slots">${inBand.map((s) => slotMarkup(s, labels[s.index])).join('')}</div>`
         + `</div>`;
     }).join('');
@@ -339,7 +382,7 @@ export function createPowerRail(options = {}) {
   return {
     el,
     /** Refresh key labels after a rebind. */
-    setBindings(bindings) { labels = resolveSlotLabels(bindings); lastSignature = ''; },
+    setBindings(bindings) { labels = resolveSlotLabels(bindings); cycleLabel = codeToLabel(bindings?.cycleBomb?.[0]) || 'unbound'; lastSignature = ''; },
     /** `model` is `{ [slotIndex]: { state, name, glyph, cooldownMs } }`. */
     update(model, now = 0) { render(model, now); },
     claim(payload) {
