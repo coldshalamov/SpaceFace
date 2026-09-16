@@ -10,7 +10,7 @@ import {
 const CLASSIC_KBM = Object.freeze({
   flight: 'W/Up thrust  •  0 or S/Down brake  •  A D steer  •  Mouse aim  •  LMB fire  •  Space/F Massline  •  4 anchor seed  •  RMB mine  •  B selected Site beam  •  Shift boost  •  X countermeasure  •  Tab target  •  M local map  •  N star map  •  J log  •  K codex  •  I cargo  •  L comms',
   mining: 'RMB hold to mine  •  B beam selected Site  •  Release to cool  •  Fly through cargo drift  •  B drill view  •  Tab next signal',
-  combat: 'LMB fire  •  Space/F Massline  •  Mouse aim at target  •  Tab cycle hostiles  •  X countermeasure  •  G auto-target  •  Shift boost to dodge',
+  combat: 'LMB fire  •  Space/F Massline  •  Mouse aim at target  •  Tab cycle hostiles  •  X countermeasure  •  9 bomb  •  Comma cycle bombs  •  G auto-target  •  Shift boost to dodge',
   station: 'E dock  •  Hub: arrow keys change tabs  •  Enter/Space act  •  E/Esc undock',
   gate: 'N open Star Map  •  Select destination  •  Jump to travel between systems',
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. W / Up thrusts, A D steer, and the mouse aims.',
@@ -26,14 +26,14 @@ const SCHEME_OVERRIDES = Object.freeze({
   classic: Object.freeze({}),
   'helm-assist': Object.freeze({
     flight: 'Mouse steer+aim  •  W thrust  •  0 or S/Down brake  •  A D strafe  •  LMB fire  •  RMB mine  •  Shift boost  •  Space/F Massline  •  4 anchor seed  •  G auto-target  •  Draw with pointer to fly; pause to clutch  •  Tab target  •  M map  •  N chart',
-    combat: 'G auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  LMB fire  •  0 or S/Down brake',
+    combat: 'G auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  LMB fire  •  0 or S/Down brake  •  9 bomb  •  Comma cycle bombs',
     tutorialFlight: 'Follow the yellow nav arrow. Nose follows the mouse — W thrusts, 0 or S/Down brakes, Space/F controls the Massline.',
     firstFlight: 'Nose follows the mouse. W thrusts. 0 or S/Down brakes to a stop.',
     firstCombat: 'G toggles auto-target. Guns track lock.',
   }),
   pilot: Object.freeze({
     flight: 'W thrust  •  0 or S/Down brake  •  A D turn  •  Mouse aim  •  LMB fire  •  G auto-target  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  4 anchor seed  •  Shift boost  •  Tab target  •  M map  •  N chart',
-    combat: 'G auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  LMB fire',
+    combat: 'G auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  Space/F Massline  •  LMB fire  •  9 bomb  •  Comma cycle bombs',
     tutorialFlight: 'Follow the yellow nav arrow. W thrusts; 0 or S/Down brakes; A/D turns; mouse aims; Space/F controls the Massline.',
     firstFlight: 'W thrusts. 0 or S/Down brakes to a stop. A D turn. Mouse aims.',
     firstCombat: 'G toggles auto-target. Guns track lock.',
@@ -44,7 +44,7 @@ const PRESERVED_NON_KBM = Object.freeze({
   gamepad: Object.freeze({
     flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine / selected Site beam  •  RB boost  •  LB brake  •  R3 countermeasure  •  A/Cross Massline (dock/accept when prompted)  •  X target  •  View star map  •  Y codex  •  Start → Pause → Mission Log',
     mining: 'LT hold to mine  •  Release to cool  •  Fly through cargo drift  •  X next signal',
-    combat: 'RT fire  •  Right stick aim at target  •  X cycle targets  •  R3 countermeasure  •  RB boost to dodge  •  Start pause',
+    combat: 'RT fire  •  Right stick aim at target  •  X cycle targets  •  R3 countermeasure  •  D-Pad Right bomb  •  D-Pad Left cycle bombs  •  RB boost to dodge  •  Start pause',
     station: 'A dock  •  Hub: LB/RB tabs  •  D-pad/left stick focus  •  A act  •  B undock',
     gate: 'View open Star Map  •  Select destination  •  Jump to travel between systems',
     tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right stick aims.',

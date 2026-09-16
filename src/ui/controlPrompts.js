@@ -52,6 +52,8 @@ function buildKbmPrompts(state) {
   const boost = promptKey(state, 'boost');
   const autoFire = promptKey(state, 'autoFire');
   const counter = promptKey(state, 'countermeasure');
+  const bomb = promptKey(state, 'dropBomb');
+  const bombCycle = promptKey(state, 'cycleBomb');
   const seed = promptKey(state, 'deployMassSeed');
   const beam = promptKey(state, 'siteBeam');
   const maps = `${BINDINGS.localmap.label} local map  •  ${BINDINGS.starmap.label} star map  •  ${BINDINGS.missionLog.label} log  •  ${BINDINGS.codex.label} codex  •  ${BINDINGS.cargo.label} cargo  •  ${BINDINGS.comms.label} comms`;
@@ -60,7 +62,7 @@ function buildKbmPrompts(state) {
   const classic = {
     flight: `${forward} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} steer  •  Mouse aim  •  ${fire} fire  •  ${tether} Massline  •  ${seed} anchor seed  •  ${mine} mine  •  ${beam} selected Site beam  •  ${boost} boost  •  ${counter} countermeasure  •  Tab target  •  ${maps}`,
     mining: `${mine} hold to mine  •  ${beam} beam selected Site  •  Release to cool  •  Fly through cargo drift  •  ${BINDINGS.drill.label} drill view  •  Tab next signal`,
-    combat: `${fire} fire  •  ${tether} Massline  •  Mouse aim at target  •  Tab cycle hostiles  •  ${counter} countermeasure  •  ${autoFire} auto-target  •  ${boost} boost to dodge`,
+    combat: `${fire} fire  •  ${tether} Massline  •  Mouse aim at target  •  Tab cycle hostiles  •  ${counter} countermeasure  •  ${bomb} bomb  •  ${bombCycle} cycle bombs  •  ${autoFire} auto-target  •  ${boost} boost to dodge`,
     station: `${BINDINGS.dock.label} dock  •  Hub: arrow keys change tabs  •  Enter/Space act  •  ${BINDINGS.dock.label}/Esc undock`,
     gate: `${BINDINGS.starmap.label} open Star Map  •  Select destination  •  Jump to travel between systems`,
     tutorialFlight: `Follow the yellow nav arrow to the bad reading. ${forwardSecond ? `${forwardFirst} / ${forwardSecond}` : forwardFirst} thrusts, ${yaw} steer, and the mouse aims.`,
@@ -76,7 +78,7 @@ function buildKbmPrompts(state) {
     return {
       ...classic,
       flight: `Mouse steer+aim  •  ${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${strafe} strafe  •  ${fire} fire  •  ${mine} mine  •  ${boost} boost  •  ${tether} Massline  •  ${seed} anchor seed  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  Tab target  •  ${mapChart}`,
-      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${fire} fire  •  ${brake} or ${reverse} brake`,
+      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${fire} fire  •  ${brake} or ${reverse} brake  •  ${bomb} bomb  •  ${bombCycle} cycle bombs`,
       tutorialFlight: `Follow the yellow nav arrow. Nose follows the mouse — ${forwardFirst} thrusts, ${brake} or ${reverse} brakes, ${tether} controls the Massline.`,
       firstFlight: `Nose follows the mouse. ${forwardFirst} thrusts. ${brake} or ${reverse} brakes to a stop.`,
       firstCombat: `${autoFire} toggles auto-target. Guns track lock.`,
@@ -86,7 +88,7 @@ function buildKbmPrompts(state) {
     return {
       ...classic,
       flight: `${forwardFirst} thrust  •  ${brake} or ${reverse} brake  •  ${yaw} turn  •  Mouse aim  •  ${fire} fire  •  ${autoFire} auto-target  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${seed} anchor seed  •  ${boost} boost  •  Tab target  •  ${mapChart}`,
-      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${fire} fire`,
+      combat: `${autoFire} auto-target (guns track lock)  •  Draw with pointer to fly; pause to clutch  •  ${tether} Massline  •  ${fire} fire  •  ${bomb} bomb  •  ${bombCycle} cycle bombs`,
       tutorialFlight: `Follow the yellow nav arrow. ${forwardFirst} thrusts; ${brake} or ${reverse} brakes; ${yaw.replace(' ', '/')} turns; mouse aims; ${tether} controls the Massline.`,
       firstFlight: `${forwardFirst} thrusts. ${brake} or ${reverse} brakes to a stop. ${yaw} turn. Mouse aims.`,
       firstCombat: `${autoFire} toggles auto-target. Guns track lock.`,
@@ -98,7 +100,7 @@ function buildKbmPrompts(state) {
 const GAMEPAD_PROMPTS = Object.freeze({
   flight: 'Left stick fly  •  Right stick aim  •  RT fire  •  LT mine / selected Site beam  •  RB boost  •  LB brake  •  R3 countermeasure  •  A/Cross Massline (dock/accept when prompted)  •  X target  •  View star map  •  Y codex  •  Start → Pause → Mission Log',
   mining: 'LT hold to mine  •  Release to cool  •  Fly through cargo drift  •  X next signal',
-  combat: 'RT fire  •  Right stick aim at target  •  X cycle targets  •  R3 countermeasure  •  RB boost to dodge  •  Start pause',
+  combat: 'RT fire  •  Right stick aim at target  •  X cycle targets  •  R3 countermeasure  •  D-Pad Right bomb  •  D-Pad Left cycle bombs  •  RB boost to dodge  •  Start pause',
   station: 'A dock  •  Hub: LB/RB tabs  •  D-pad/left stick focus  •  A act  •  B undock',
   gate: 'View open Star Map  •  Select destination  •  Jump to travel between systems',
   tutorialFlight: 'Follow the yellow nav arrow to the bad reading. Left stick flies and right stick aims.',
