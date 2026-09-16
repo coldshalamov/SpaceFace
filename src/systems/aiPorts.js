@@ -15,6 +15,7 @@ import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
+import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { massline2Flag } from '../data/featureFlags.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import {
@@ -40,7 +41,7 @@ const DIRECTOR_PHASES = new Set(Object.values(DirectorPhase));
 const NORMALIZED_ROSTER_FLAG = '__spacefaceNormalizedAIRoster';
 const ROSTER_SIGNATURE_FLAG = '__spacefaceRosterSignature';
 const EMPTY_ATTACHMENTS = Object.freeze([]);
-const AI_SPATIAL_MIN_COLLIDABLES = 96;
+const AI_SPATIAL_MIN_COLLIDABLES = 1;
 const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
 const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket) => (
   pocket.actorSlots
@@ -1142,7 +1143,7 @@ function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
   const collidables = index && index.__spacefaceEntityIndexV1 && Array.isArray(index.collidables)
     ? index.collidables
     : null;
-  if (collidables && collidables.length > 0 && collidables.length < AI_SPATIAL_MIN_COLLIDABLES) {
+  if (collidables && collidables.length > 0 && !hasActiveSpatialHash(state && state.spatialHash) && collidables.length < 8) {
     return collidables;
   }
   if (typeof helper === 'function') return helper(pos, range, scratch || []);
@@ -1151,6 +1152,7 @@ function nearbyEntities(state, pos, range, helpers = null, scratch = null) {
     state.spatialHash.queryRadius(pos.x, pos.z, range, out);
     return out;
   }
+  if (collidables) return collidables;
   return Array.isArray(state.entityList) ? state.entityList : [];
 }
 
