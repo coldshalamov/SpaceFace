@@ -78,8 +78,17 @@ claims:
 
 ```
 npm run check:ui:layout -- --only=<changed ids>
+node scripts/check-ui-layout.mjs --pixels --only=<changed ids>   # text vs the DRAWN ground
 npm run check:baseline        # if the change could touch shared UI contracts
 ```
+
+The `--pixels` pass screenshots the surface and measures each text element's worst-tile WCAG
+contrast against the pixels actually drawn behind it (the gate writes the frame it judged to
+`.devshots/ui-layout/<id>.pixels.png`). Geometry cannot see light words over a lit hull, and a DOM
+contrast check cannot either — the background is the 3D picture, not a CSS colour. **Ground
+caveat:** `check:ui:layout` opens surfaces on the neutral ground, so a screen that sits over the
+live world must also be judged from `npm run ui:stills -- --world --headed --only=<ids>`; the
+neutral-ground matrix is blind to world-contrast defects by construction.
 
 The pass ends when the after-still is clean against §1 and the reviewers' real findings are closed
 or explicitly handed to the right packet. Commit per pass by pathspec.
