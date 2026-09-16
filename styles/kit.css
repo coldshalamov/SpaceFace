@@ -639,16 +639,23 @@ body.k-screen-top #modal-backdrop { background: none; }
   border-style: solid; border-width: 0 16px 0 0;
   border-image-source: url('../assets/ui/kit/assets/plates/plate.edge.small.png');
   border-image-slice: 16; border-image-repeat: stretch; border-image-width: 16px;
-  /* 0.95, not the 0.90 this started at: the flight HUD does NOT dim behind pause on the live route
-     (the objective card, the contact rows and the segmented bars read straight through a 0.90
-     bulkhead and collide with the brief). Measured on a real Esc-from-flight capture, not assumed.
-     The world beyond the panel's right edge is still fully visible, which is the "held, not hidden"
-     part that matters. */
-  background: rgb(12 10 8 / 0.95);
+  /* Opaque, and measured: at 0.95 the flight HUD that stays visible behind pause at 38 %
+     (the kit's own `body.k-screen-top[data-k-screen="pause"] #hud` rule) showed through the
+     bulkhead as unreadable ghost text across the brief and the lower half of the verb column.
+     A bulkhead is opaque; the "held, not hidden" part of the frame is the world beyond the
+     panel's right edge, which is untouched. */
+  background: rgb(12 10 8);
   gap: clamp(12px, 1.8vh, 22px);
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas: 'title' 'stage' 'foot';
   grid-template-rows: auto minmax(0, 1fr) auto;
+  /* The verb column's own scale. Seventeen verbs have to set under the brief without running off
+     the frame, so the pause rows run tighter than the title's (--fht-*), and the stage scrolls at
+     short frames exactly as the title's column already does. Measured on the 1080 frame: 17 rows
+     at the 36 px row fit the stage box with the brief in place. */
+  --ofp-menu-size: clamp(15px, min(1.35vw, 2.05vh), 24px);
+  --ofp-row-h: clamp(28px, min(3vw, 3.35vh), 38px);
+  --ofp-indent: clamp(22px, 1.9vw, 34px);
 }
 #screens .of-pause.k-screen::before {
   z-index: -1; background-color: transparent;
@@ -660,12 +667,16 @@ body.k-screen-top #modal-backdrop { background: none; }
   text-transform: uppercase; letter-spacing: var(--fh-track-display); line-height: 0.9;
   font-size: clamp(38px, min(3.6vw, 6.4vh), 96px); color: var(--fh-text);
 }
-/* The flight brief on a produced sunk plate: the recessed well an instrument reads out of. */
+/* The flight brief on a produced sunk plate: the recessed well an instrument reads out of.
+   `plate.bench.sunk` is a 480×320 WELL and its rim is 4-6 px of source, not 24: the first build
+   sliced it at 24 with `stretch`, which scaled the top light line (source lum 41 against a field
+   of 5) over 24 px until it washed into a hairline — the well rendered as a thin-outlined web card
+   and the brief read as a quote. Slice the rim at its own thickness so the recess keeps its light. */
 #screens .of-pause .sf-pause-brief {
-  margin-top: clamp(14px, 2vh, 24px); box-sizing: border-box;
-  border-style: solid; border-width: 24px;
+  margin-top: clamp(12px, 1.7vh, 20px); box-sizing: border-box;
+  border-style: solid; border-width: 4px 6px;
   border-image-source: url('../assets/ui/kit/assets/plates/plate.bench.sunk.png');
-  border-image-slice: 24 fill; border-image-repeat: stretch; border-image-width: 24px;
+  border-image-slice: 4 6 4 6 fill; border-image-repeat: stretch; border-image-width: 4px 6px;
   background: none; padding: var(--fh-space-s) var(--fh-space-m);
 }
 #screens .of-pause .sf-pause-brief .sf-slot-sub:first-child {
@@ -685,71 +696,71 @@ body.k-screen-top #modal-backdrop { background: none; }
   color: var(--fh-text-tertiary);
   background: url('../assets/ui/kit/assets/tiles/tile.etch.hairline.png') repeat-x top left;
 }
-/* THE VERB COLUMN. `.k-word { all: unset }` would wipe the kit key, so this restores the
-   produced nine-slice AFTER that reset. Keys fill the bulkhead as a rack of hardware — not
-   shrink-wrapped 12 px pills on the left edge of an empty wall. */
-#screens .of-pause .k-stage { overflow: hidden auto; overscroll-behavior: contain; padding: 2px 2px 8px 0; }
-#screens .of-pause .k-words,
-#screens .of-pause .sf-pause-keys {
-  display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%;
+/* THE VERB COLUMN — the approved title frame's grammar, scoped to the pause bulkhead. Words, not
+   key sprites: a 160 px `key.legend` stretched across the 560 px column flattens into a black bar
+   with one gold hairline, and the lit row has to read as light rather than as a fill. `.k-word`
+   geometry is declared once (the row plate's 8/16 box, transparent, no image) and lighting a row
+   swaps only `border-image-source` — the same geometry-free state swap the title uses, so a
+   pointed row never shifts under the pointer. */
+#screens .of-pause .k-stage {
+  position: relative; overflow: hidden auto; overscroll-behavior: contain; padding: 0 2px 6px 0;
 }
-#screens .of-pause .sf-pause-operations__control { margin-top: 8px; }
-#screens .of-pause .sf-pause-operations { margin-top: 4px; }
-#screens .of-pause .sf-pause-operations[hidden] { display: none; }
-/* At 720px high the held-world brief leaves just enough room for the five interruption choices.
-   Compact those alone; the expanded operations rack keeps its normal touch target geometry. */
-@media (max-height: 760px) {
-  #screens .of-pause .sf-pause-keys--core .k-word.fh-key { min-height: 30px; }
-  #screens .of-pause .sf-pause-keys--core .k-word.fh-key--primary { min-height: 36px; }
-  #screens .of-pause .sf-pause-operations__control .k-word.fh-key { min-height: 30px; }
+#screens .of-pause .k-words {
+  display: flex; flex-direction: column; align-items: stretch; gap: 0; width: 100%;
 }
-#screens .of-pause .k-words > li { width: 100%; }
+#screens .of-pause .k-words > li { position: relative; width: 100%; }
+#screens .of-pause .k-word {
+  display: flex; align-items: center; justify-content: flex-start; text-align: left;
+  width: 100%; max-width: 100%; box-sizing: border-box; position: relative;
+  min-height: var(--ofp-row-h);
+  background: none; cursor: pointer; white-space: nowrap;
+  border-style: solid; border-width: 8px 16px; border-color: transparent;
+  border-image-source: none; border-image-slice: 8 16 8 16 fill;
+  border-image-repeat: stretch; border-image-width: 8px 16px;
+  padding: 0 0 0 calc(var(--ofp-indent) - 16px);
+  font-family: var(--fh-face-display); font-variation-settings: 'wght' 700, 'wdth' 100;
+  font-size: var(--ofp-menu-size); line-height: 1;
+  letter-spacing: var(--fh-track-display); text-transform: uppercase;
+  color: var(--fh-text-resting);
+  transition: color var(--fh-bench-lightUp, 100ms) var(--fh-bench-ease, ease-out);
+}
 #screens .of-pause .k-word::after { display: none; }
-#screens .of-pause .k-word.fh-key {
-  display: flex; align-items: center; justify-content: flex-start;
-  width: 100%; max-width: 100%; box-sizing: border-box;
-  min-height: clamp(34px, 3.6vh, 44px);
-  padding: 0 16px;
-  background: none;
-  border-style: solid; border-width: 14px; border-color: transparent;
-  border-image-source: url('../assets/ui/kit/assets/keys/key.legend.rest.png');
-  border-image-slice: 14 fill; border-image-repeat: stretch; border-image-width: 14px;
-  font-family: var(--fh-face-display); font-variation-settings: 'wght' 700, 'wdth' 85;
-  font-size: clamp(13px, 1.35vw, 18px); line-height: 1;
-  letter-spacing: var(--fh-track-legend); text-transform: uppercase;
-  color: var(--fh-text); cursor: pointer; white-space: nowrap;
+/* At 720 the screen title, the held-world brief and seventeen verbs do not all set at the 1080
+   scale: the column ran off the frame, which is a dead route and not a style problem (a row below
+   the fold cannot be read or clicked). Compact the brief's own padding and the row pitch instead
+   of dropping verbs: at this size every one of them still fits the stage box. */
+@media (max-height: 760px) {
+  /* The chrome above the column gives the rows their room back: shallower panel padding and gaps,
+     a smaller screen title, a tighter brief, and the row plate scaled to 5/10 so every verb sets
+     in the stage box (18 rows in a dev build, 17 shipped) without a clipped row. */
+  #screens .of-pause.k-screen {
+    padding: 18px clamp(20px, 3vw, 40px) 14px; gap: 8px;
+    --ofp-row-h: 22px; --ofp-menu-size: 14px;
+  }
+  #screens .of-pause .k-t-title { font-size: clamp(30px, 4.5vh, 44px); }
+  #screens .of-pause .k-word {
+    border-width: 5px 10px; border-image-slice: 5 10 5 10 fill; border-image-width: 5px 10px;
+  }
+  #screens .of-pause .sf-pause-brief { padding: 6px 10px; margin-top: 10px; }
+  #screens .of-pause .sf-pause-brief .sf-slot-sub:last-child { margin-top: 8px; padding-top: 6px; }
 }
-#screens .of-pause .k-word.fh-key--primary {
-  min-height: clamp(42px, 4.4vh, 56px);
-  border-width: 18px; border-image-width: 18px; border-image-slice: 18 fill;
-  border-image-source: url('../assets/ui/kit/assets/keys/key.primary.rest.png');
-  font-variation-settings: 'wght' 800, 'wdth' 100;
-  font-size: clamp(15px, 1.55vw, 20px);
-}
-#screens .of-pause .k-word.fh-key--hazard {
-  border-image-source: url('../assets/ui/kit/assets/keys/key.hazard.rest.png');
-  color: color-mix(in srgb, var(--fh-hazard) 42%, var(--fh-bone));
-}
-#screens .of-pause .k-word.fh-key:is(:hover, :focus-visible) {
-  border-image-source: url('../assets/ui/kit/assets/keys/key.legend.hover.png');
+/* ONE row lit at a time: the produced `plate.row.selected` — a machined plate with the amber
+   left-edge light already in the image — follows focus while focus is inside the list, and falls
+   back to Resume when it is not. */
+#screens .of-pause .k-word:is(:hover, :focus-visible),
+#screens .of-pause .k-words:not(:focus-within) .k-word[aria-current='true'] {
   color: var(--fh-text);
+  border-image-source: url('../assets/ui/kit/assets/plates/plate.row.selected.png');
 }
-#screens .of-pause .k-word.fh-key--primary:is(:hover, :focus-visible),
-#screens .of-pause .k-words:not(:focus-within) .k-word.fh-key--primary[aria-current='true'] {
-  border-image-source: url('../assets/ui/kit/assets/keys/key.primary.hover.png');
+/* Resume is the one primary verb (Task B §1.4): full-strength type at rest, and the same lit plate
+   on focus as every other row — two selection signals on one row read as a mistake. */
+#screens .of-pause .k-word--primary {
+  color: var(--fh-text); font-variation-settings: 'wght' 800, 'wdth' 125;
 }
-#screens .of-pause .k-word.fh-key--hazard:is(:hover, :focus-visible) {
-  border-image-source: url('../assets/ui/kit/assets/keys/key.hazard.hover.png');
-}
-#screens .of-pause .k-word.fh-key:active {
-  border-image-source: url('../assets/ui/kit/assets/keys/key.legend.pressed.png');
-}
-#screens .of-pause .k-word.fh-key--primary:active {
-  border-image-source: url('../assets/ui/kit/assets/keys/key.primary.pressed.png');
-}
-#screens .of-pause .k-word.fh-key--hazard:active {
-  border-image-source: url('../assets/ui/kit/assets/keys/key.hazard.pressed.png');
-}
+/* Main menu and Quit keep an affordance without becoming red web buttons; the title's own rule:
+   hazard enamel mixed into bone. */
+#screens .of-pause .k-word--danger { color: color-mix(in srgb, var(--fh-hazard) 38%, var(--fh-bone)); }
+#screens .of-pause .k-word--danger:is(:hover, :focus-visible) { color: var(--fh-text); }
 /* Pause ends with TWO `.k-fine` lines (the build string and "Esc resumes"). §6.1 pins `.k-fine`
    absolutely to one bottom-left slot, so as plain kit rows they land on top of each other and the
    build string is unreadable. They are a footer here, stacked in flow. */
@@ -794,5 +805,6 @@ body.k-screen-top #modal-backdrop { background: none; }
   }
   #screens :is(.of-title, .of-pause) .k-word[aria-disabled='true'] { color: GrayText; }
 }
-/* Forced-colours pause keys: sprites are class-driven (not inline !important), so the block
-   above can strip the nine-slice and put a Highlight outline on the live row. */
+/* Forced-colours pause rows: the row plate is a class-driven `border-image-source` on `.k-word`
+   (not an inline `!important`), so the block above can strip the nine-slice and put a Highlight
+   outline on the live row. */

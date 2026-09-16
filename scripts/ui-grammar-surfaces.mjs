@@ -80,6 +80,16 @@ const key = (k, detail) => ({ kind: 'key', key: k, evidence: 'public-route', det
 const nested = (parent, selector, text, detail) => ({
   kind: 'nested', parent, selector, text, evidence: 'public-route', detail,
 });
+/**
+ * A public route that is more than one click inside the parent — a disclosure toggle, then the
+ * item it reveals. `steps` are { selector, text } pairs clicked in order; each step's `text`
+ * matches the same pseudo-localization-stripped label `nested` uses. Use it when the first control
+ * matching a label is a toggle rather than the destination; no surface needs it today (the pause's
+ * disclosure was removed), so check that the label really is ambiguous before reaching for it.
+ */
+const nestedChain = (parent, steps, detail) => ({
+  kind: 'nested', parent, steps, evidence: 'public-route', detail,
+});
 const fixture = (name, detail) => ({ kind: 'fixture', fixture: name, evidence: 'fixture', detail });
 const none = (detail) => ({ kind: 'none', evidence: 'none', detail });
 
@@ -513,10 +523,12 @@ const RAW_SURFACES = Object.freeze([
     ownerFile: 'src/ui/screens/automationPanel.js',
     screenId: 'automation',
     root: ['[data-screen="automation"]'],
-    // A REAL public route: the pause menu's "Operations" button (pause.js:402) pushes 'automation'.
-    entry: nested('pause', '[data-screen="pause"] button', 'Operations', 'pause → Operations'),
+    // A REAL public route: the pause verb column's own "Operations" word. (It used to be two
+    // clicks through a disclosure that revealed a second, identically-labelled "Operations"
+    // control; the pause is one word column now, so the label is unique and the route is direct.)
+    entry: nested('pause', '[data-screen="pause"] [data-action]', 'Operations',
+      'pause → Operations'),
     owner: 'PQ-130',
-    ownerLeaf: 'works-screens',
     ownerLeaf: 'works-screens',
   }),
 

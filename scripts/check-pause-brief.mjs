@@ -6,6 +6,7 @@ import { MAP_FOCUS, MAP_SCREEN_ID } from '../src/ui/mapAuthority.js';
 import { pauseExitConfirmBody, pauseMapAction, pauseStatusLines } from '../src/ui/screens/pause.js';
 
 const pauseSrc = readFileSync(new URL('../src/ui/screens/pause.js', import.meta.url), 'utf8');
+const menuFramesSrc = readFileSync(new URL('../src/ui/views/menuFrames.js', import.meta.url), 'utf8');
 const uiInputSrc = readFileSync(new URL('../src/ui/input.js', import.meta.url), 'utf8');
 const localizedCoreCopySrc = readFileSync(new URL('../src/ui/localizedCoreCopy.js', import.meta.url), 'utf8');
 
@@ -13,9 +14,10 @@ assert.match(localizedCoreCopySrc, /flightBrief:\s*\{\s*label:\s*'FLIGHT BRIEF'\
   'localized core copy should retain the visible flight brief label');
 assert.match(pauseSrc, /briefKicker\.textContent\s*=\s*coreText\('flightBrief'\)/,
   'pause menu should render the localized flight brief label');
-assert.match(pauseSrc, /aria-live/, 'flight brief should announce refreshed objective state politely');
-assert.match(pauseSrc, /Mission Log \(' \+ BINDINGS\.missionLog\.label \+ '\)/,
-  'pause menu should label the Mission Log action with the live binding');
+assert.match(menuFramesSrc, /'sf-pause-brief'[\s\S]{0,200}setAttribute\('aria-live', 'polite'\)/,
+  'flight brief should announce refreshed objective state politely');
+assert.match(pauseSrc, /coreText\('missionLog', \{ key: BINDINGS\.missionLog\.label \}\)/,
+  'pause menu should label the Mission Log action with the live binding through the core copy');
 assert.match(pauseSrc, /export function pauseStatusLines/, 'pause brief policy should stay directly testable');
 assert.match(pauseSrc, /export function pauseMapAction/, 'pause map action policy should stay directly testable');
 assert.match(pauseSrc, /INTER-SYSTEM ROUTE/,

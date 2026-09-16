@@ -51,10 +51,15 @@ function installMiniDom() {
   return { restore() { globalThis.document = previous.document; globalThis.window = previous.window; globalThis.requestAnimationFrame = previous.requestAnimationFrame; globalThis.matchMedia = previous.matchMedia; } };
 }
 
-test('pause HUD dims only for the exposed pause and operations reveals every long-tail action', () => {
+test('pause HUD dims only for the exposed pause and lists every verb in one reachable word column', () => {
   const css = readFileSync(new URL('../styles/kit.css', import.meta.url), 'utf8');
   assert.match(css, /body\.k-screen-top\[data-k-screen="pause"\]\s+#hud/);
   assert.doesNotMatch(css, /body:has\(#screens \.of-pause\)\s+#hud/, 'an inactive mounted pause must not dim another screen');
+  // The sheet's pause line is a column of WORDS (Task B §1.4 lists `k-words` at menu size). The
+  // rack of stretched key sprites and the "Operations" disclosure that hid Main Menu and Quit are
+  // gone; both classes are how those builds were found.
+  assert.doesNotMatch(css, /\.of-pause[^{]*\.fh-key/, 'pause rows are kit words, not stretched key sprites');
+  assert.doesNotMatch(css, /sf-pause-operations/, 'no disclosure hides verbs behind a duplicate Operations label');
 
   const dom = installMiniDom();
   try {
@@ -62,18 +67,21 @@ test('pause HUD dims only for the exposed pause and operations reveals every lon
     const ctx = { state: { mode: 'paused', missions: { active: [] }, nav: {}, save: {}, meta: {}, ui: {}, run: { phase: 'inactive' } }, bus: { emit() {}, on() { return () => {}; } }, screenManager: { pushScreen() {}, popScreen() {}, hasScreen() { return true; } } };
     pauseScreen.mount(root, ctx);
 
-    const buttons = root.querySelectorAll('button').map((button) => button.textContent);
-    assert.deepEqual(buttons.slice(0, 5), ['Resume', 'Save', 'Load', 'Settings', 'Operations'], 'the 720p pause shows the four recovery choices before its disclosure');
-
-    const operations = root.querySelector('[data-action="pause-operations"]');
-    assert.equal(operations.getAttribute('aria-expanded'), 'false');
-    const operationsRegion = root.querySelector('.sf-pause-operations');
-    assert.equal(operationsRegion.hidden, true, 'mounted long-tail controls are absent from the interruption until requested');
-    operations.dispatch('click');
-    assert.equal(operations.getAttribute('aria-expanded'), 'true');
-    assert.equal(operationsRegion.hidden, false);
-    assert.ok(operationsRegion.querySelectorAll('[data-action]').length >= 10, 'every long-tail action remains in the revealed keyboard list');
-    assert.ok(operationsRegion.querySelectorAll('button').some((button) => button.textContent === 'Photo'), 'Photo remains reachable after Operations opens');
+    const buttons = root.querySelectorAll('button');
+    const labels = buttons.map((button) => button.textContent);
+    assert.deepEqual(labels.slice(0, 4), ['Resume', 'Settings', 'Save', 'Load'], 'the sheet order leads with the interruption choices');
+    for (const required of ['Mission Log', 'My Ship', 'Operations', 'Help / Controls', 'Codex', 'Photo', 'Main Menu', 'Quit Game']) {
+      assert.ok(labels.some((label) => label.startsWith(required)), `${required} is reachable without opening anything`);
+    }
+    assert.equal(new Set(labels).size, labels.length, 'no two pause verbs share a label');
+    assert.equal(buttons.filter((button) => button.classList.contains('k-word--primary')).length, 1, 'Resume is the only primary verb');
+    assert.equal(buttons.filter((button) => button.classList.contains('k-word--danger')).length, 2, 'Main Menu and Quit carry the danger treatment');
+    assert.deepEqual(
+      buttons.filter((button) => button.getAttribute('aria-current') === 'true').map((button) => button.textContent),
+      ['Resume'],
+      'Resume is the lit row until focus moves into the column',
+    );
+    assert.equal(root.querySelectorAll('.k-words').length, 1, 'every verb is one roving list, not a list plus a disclosure');
   } finally {
     dom.restore();
   }

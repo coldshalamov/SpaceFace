@@ -28,17 +28,19 @@ export function createTitleFrame(root) {
   return { backdrop, title, stage, status };
 }
 
-export function createPauseFrame(root, { titleText = 'Paused', briefLabel = 'Flight brief' } = {}) {
+export function createPauseFrame(root, { titleText = 'Paused' } = {}) {
   root.classList.add('of-pause');
   const title = el('header', 'k-title');
   title.appendChild(el('h1', 'k-display k-t-title', titleText));
   const brief = el('section', 'sf-pause-brief');
   brief.setAttribute('aria-live', 'polite');
-  const briefKicker = el('span', 'k-caps sf-slot-sub', briefLabel);
+  // Structure only: the kicker's words are the screen's copy (check:pause-brief asserts the screen
+  // renders them from the localized core copy), the same way every other label on the sheet is.
+  const briefKicker = el('span', 'k-caps sf-slot-sub');
   const briefObjective = el('p', 'k-sentence k-sentence--emph sf-slot-name');
   const briefNext = el('p', 'k-sentence sf-muted');
   const briefSave = el('p', 'k-t-fine k-38 sf-slot-sub');
   for (const node of [briefKicker, briefObjective, briefNext, briefSave]) brief.appendChild(node);
   title.appendChild(brief); root.appendChild(title);
-  return { title, briefObjective, briefNext, briefSave };
+  return { title, briefKicker, briefObjective, briefNext, briefSave };
 }
