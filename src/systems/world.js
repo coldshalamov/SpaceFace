@@ -77,6 +77,7 @@ import {
   pallasReefHazardZone,
   weatherHazardZones,
   weatherScanScale,
+  WEATHER_SECTOR_IDS,
 } from '../data/environmentalMachinery.js';
 import {
   EVERYDAY_SPACE_KIT_SALT,
@@ -243,6 +244,7 @@ const AMBUSH_SPAWN_MAX_RADIUS = 2300;
 const ZONE_HOSTILE_PLAYER_CLEARANCE = 1200; // zone-anchored hostiles never spawn this close to the player
 const AMBIENT_HEADROOM = 8; // REVAMP 2.1 — max live-ship slots ambient may reserve; the rest (MAX-8) stays for encounters
 const CRITICAL_SPAWN_RETRY_TICKS = 15;
+const WORLD_RECORD_GC_TICKS = 60;
 const PALETTE_CLASS_BY_REF = new Map(Object.entries(SECTOR_PALETTE_CLASSES).map(([key, value]) => [value, key]));
 const DRESSING_RADIUS = Object.freeze({
   place_lane_beacon: 18,
@@ -2927,7 +2929,11 @@ export const world = {
     this._tickWorldOneOffSpin(dt, state);
     this._tickAsteroidFieldInteractions(state);
     tickFarActors(state, this.helpers, this.bus);
-    gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
+    // 180 s expiry window: a 1 Hz sweep is exact enough and removes a per-tick Object.keys +
+    // full-bag scan. Tick-modulo gating keeps the sweep deterministic across replays and catch-up.
+    if ((state.tick | 0) % WORLD_RECORD_GC_TICKS === 0) {
+      gcExpiredRecentMemory(ensureWorldRecords(state.world), state.simTime);
+    }
   },
 
   _tickAsteroidFieldInteractions(state) {
@@ -3527,8 +3533,15 @@ export const world = {
   _tickPOIScan(state) {
     const player = state.entities.get(state.playerId);
     if (!player) return;
-    const disc = this._discoveryFor(state.world.currentSectorId);
+    const sectorId = state.world.currentSectorId;
+    const disc = this._discoveryFor(sectorId);
     const scannerTier = this._scannerTier();
+    // Weather is a pure function of (sector, player pos, sim time): evaluate once per tick, not
+    // once per POI. Non-weather sectors skip the volume scan entirely (scale is 1 by construction).
+    const weather = WEATHER_SECTOR_IDS.has(sectorId)
+      ? weatherScanScale(sectorId, player.pos, state.simTime)
+      : 1;
+    const scanBonus = 1 + 0.25 * scannerTier;
     for (const p of (state.world.activeSector.pois || [])) {
       const ent = this._poiCarrier(p.id);
       if (!ent || ent.alive === false) continue;
@@ -3539,12 +3552,11 @@ export const world = {
       if ((p.requiresActiveScan || ent.data && ent.data.requiresActiveScan) && !rec.investigated) continue;
       if (ent.data && ent.data.requiresTriangulation && !rec.triangulated && !ent.data.anomalyTriangulated) continue;
       const dx = ent.pos.x - player.pos.x, dz = ent.pos.z - player.pos.z;
-      const dist = Math.hypot(dx, dz);
-      const weather = weatherScanScale(state.world.currentSectorId, player.pos, state.simTime);
-      const sr = ((ent.data && ent.data.scanRange) || SCAN_RANGE) * (1 + 0.25 * scannerTier) * weather;
-      if (dist <= sr) {
+      const distSq = dx * dx + dz * dz;
+      const sr = ((ent.data && ent.data.scanRange) || SCAN_RANGE) * scanBonus * weather;
+      if (distSq <= sr * sr) {
         if (!rec.discovered) { rec.discovered = true; this.bus.emit('poi:discovered', { poiId: p.poiId, type: p.type }); }
-        if (dist <= sr * 0.5) {
+        if (distSq <= sr * sr * 0.25) {
           const newlyIdentified = !rec.identified;
           rec.identified = true;
           rec.type = p.type || rec.type || null;

@@ -3,6 +3,7 @@
 export const WEB_WEAPON_ID = 'wpn_snarl_s';
 export const WEB_DEF_ID = 'attachment_snarl';
 export const WEB_LIMITS = Object.freeze({ reach: 120, linksPerHit: 3, activeLinks: 12, lifetimeS: 9 });
+const WEB_REACH2 = WEB_LIMITS.reach * WEB_LIMITS.reach;
 
 export function createTetherWebs({ state, bus, registry }) {
   const pending = [];
@@ -51,14 +52,23 @@ export function createTetherWebs({ state, bus, registry }) {
       for (const { target, owner } of pending) {
         if (!owner.alive || !target.alive || state.entities.get(target.id) !== target) continue;
         if (!['ship', 'drone'].includes(target.type) || target.team === owner.team) continue;
-        const candidates = state.entityList.filter(e => e.alive && e !== target && e !== owner
-          && (e.type === 'ship' || e.type === 'drone') && e.team !== owner.team
-          && Math.hypot(e.pos.x - target.pos.x, e.pos.z - target.pos.z) <= WEB_LIMITS.reach)
-          .sort((a, b) => Math.hypot(a.pos.x - target.pos.x, a.pos.z - target.pos.z)
-            - Math.hypot(b.pos.x - target.pos.x, b.pos.z - target.pos.z) || a.id - b.id);
+        // Score each candidate's distance once: the old filter+sort chain paid a hypot per
+        // entity plus two more per sort comparison. Order stays nearest-first, id tiebreak.
+        const scored = [];
+        for (const e of state.entityList) {
+          if (!e || !e.alive || e === target || e === owner) continue;
+          if (e.type !== 'ship' && e.type !== 'drone') continue;
+          if (e.team === owner.team) continue;
+          const dx = e.pos.x - target.pos.x;
+          const dz = e.pos.z - target.pos.z;
+          const d2 = dx * dx + dz * dz;
+          if (d2 > WEB_REACH2) continue;
+          scored.push({ e, d2 });
+        }
+        scored.sort((a, b) => (a.d2 - b.d2) || (a.e.id - b.e.id));
         let source = target;
         let created = 0;
-        for (const next of candidates) {
+        for (const { e: next } of scored) {
           if (created >= WEB_LIMITS.linksPerHit || links.size >= WEB_LIMITS.activeLinks) break;
           const pairExists = [...links.keys()].some(id => {
             const a = service.get(id);

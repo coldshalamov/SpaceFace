@@ -581,8 +581,16 @@ export const WEATHER_SECTOR_IDS = Object.freeze(new Set([
   VESTA_WEATHER_SECTOR_ID,
 ]));
 
+// WEATHER_VOLUMES is frozen at module load, so per-sector slices are memoized: the tick loop
+// queries this every frame and every caller only iterates or maps (never mutates) the result.
+const WEATHER_VOLUMES_BY_SECTOR = new Map();
 export function weatherVolumesForSector(sectorId) {
-  return WEATHER_VOLUMES.filter((volume) => volume.sectorId === sectorId);
+  let rows = WEATHER_VOLUMES_BY_SECTOR.get(sectorId);
+  if (!rows) {
+    rows = Object.freeze(WEATHER_VOLUMES.filter((volume) => volume.sectorId === sectorId));
+    WEATHER_VOLUMES_BY_SECTOR.set(sectorId, rows);
+  }
+  return rows;
 }
 
 export function weatherPhase(volume, simTime, out = null) {
@@ -628,10 +636,13 @@ export function pointInsideWeatherVolume(volume, point) {
   return true;
 }
 
+// Shared scratch: weatherPhase sets every field on each call and this loop consumes the
+// verdict synchronously, so no per-volume allocation is needed.
+const SCAN_SCALE_PHASE_SCRATCH = {};
 export function weatherScanScale(sectorId, point, simTime) {
   let scale = 1;
   for (const volume of weatherVolumesForSector(sectorId)) {
-    const phase = weatherPhase(volume, simTime);
+    const phase = weatherPhase(volume, simTime, SCAN_SCALE_PHASE_SCRATCH);
     if (phase.phase !== 'surge') continue;
     if (!pointInsideWeatherVolume(volume, point)) continue;
     if (volume.scanScale < scale) scale = volume.scanScale;

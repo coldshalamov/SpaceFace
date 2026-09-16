@@ -401,9 +401,11 @@ function readGate(members, fallback) {
 }
 
 function syncMembers(cohort, members, recipe) {
-  const seen = new Set();
+  const seen = cohort.syncSeenScratch || (cohort.syncSeenScratch = new Set());
+  seen.clear();
   const ordered = members.slice().sort((a, b) => compareId(a && a.id, b && b.id));
-  const liveCount = ordered.filter((e) => e && e.id != null).length;
+  let liveCount = 0;
+  for (let i = 0; i < ordered.length; i++) if (ordered[i] && ordered[i].id != null) liveCount++;
   const laneCount = laneCountFor(recipe, liveCount);
   let index = 0;
   for (let i = 0; i < ordered.length; i++) {
@@ -534,13 +536,16 @@ function stepCohort(director, cohort, recipe, target, tick, dt, state, mutation)
   steerMembers(director, cohort, recipe, target, tick, step, state, mutation);
 }
 
+// Module scratch: hullClearanceSpacing only reads its input and this runs synchronously,
+// so the radii list needs no per-call allocation (currentSpacing runs twice per cohort tick).
+const SPACING_RADII_SCRATCH = [];
 function currentSpacing(cohort, recipe) {
-  const radii = [];
+  SPACING_RADII_SCRATCH.length = 0;
   for (const rec of cohort.members.values()) {
-    if (rec.alive) radii.push(rec.radius);
+    if (rec.alive) SPACING_RADII_SCRATCH.push(rec.radius);
   }
   const scale = recipe.shape === 'crescent' ? 1.05 : 1;
-  return Math.max(recipe.densityTarget, hullClearanceSpacing(radii, scale));
+  return Math.max(recipe.densityTarget, hullClearanceSpacing(SPACING_RADII_SCRATCH, scale));
 }
 
 function writeShapeSlots(cohort, recipe, target) {
@@ -917,18 +922,21 @@ function steerMembers(director, cohort, recipe, target, tick, dt, state, mutatio
     }
   }
   const queryR = recipe.queryRadius;
+  const queryR2 = queryR * queryR;
   const shared = director.queryScratch;
   shared.length = 0;
   if (hashOn && cn > 0) {
     cx /= cn;
     cz /= cn;
-    let extent = 0;
+    let extent2 = 0;
     for (const rec of cohort.members.values()) {
       if (!rec.alive || rec.coast || !rec.pos) continue;
-      const d = Math.hypot(rec.pos.x - cx, rec.pos.z - cz);
-      if (d > extent) extent = d;
+      const edx = rec.pos.x - cx;
+      const edz = rec.pos.z - cz;
+      const d2 = edx * edx + edz * edz;
+      if (d2 > extent2) extent2 = d2;
     }
-    state.spatialHash.queryRadius(cx, cz, queryR + extent, shared);
+    state.spatialHash.queryRadius(cx, cz, queryR + Math.sqrt(extent2), shared);
   }
   const sepR = Math.max(recipe.separationRadius, cohort.spacing || recipe.densityTarget);
   const speedCap = recipe.speedBand.max;
@@ -982,16 +990,18 @@ function steerMembers(director, cohort, recipe, target, tick, dt, state, mutatio
       if (!other || other.id === rec.id || !other.pos) continue;
       const dx = rec.pos.x - other.pos.x;
       const dz = rec.pos.z - other.pos.z;
-      const dist = Math.hypot(dx, dz);
-      if (dist > queryR) continue;
+      if (dx * dx + dz * dz > queryR2) continue;
       let slot = neighbors[visits];
       if (!slot) {
-        slot = { id: null, x: 0, z: 0, vx: 0, vz: 0, radius: 8, member: false, hazard: false, coast: false };
+        slot = { id: null, key: '', x: 0, z: 0, vx: 0, vz: 0, radius: 8, member: false, hazard: false, coast: false };
         neighbors[visits] = slot;
       }
       const inCohort = cohort.members.has(other.id);
       const memberRec = inCohort ? cohort.members.get(other.id) : null;
       slot.id = other.id;
+      // Precomputed once per neighbor (O(n)) so the deterministic sort below pays no String()
+      // coercion per comparison (O(n log n)). Ordering is exactly compareId order.
+      slot.key = String(other.id);
       slot.x = other.pos.x;
       slot.z = other.pos.z;
       slot.vx = finite(other.vel && other.vel.x);
@@ -1003,7 +1013,7 @@ function steerMembers(director, cohort, recipe, target, tick, dt, state, mutatio
       visits++;
     }
     neighbors.length = visits;
-    neighbors.sort((a, b) => compareId(a.id, b.id));
+    neighbors.sort((a, b) => (a.key < b.key ? -1 : (a.key > b.key ? 1 : 0)));
     rec.neighborCount = visits;
     cost.neighborVisits += visits;
     local.neighborVisits += visits;

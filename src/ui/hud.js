@@ -1521,6 +1521,8 @@ export function createHud(ctx, alerts) {
   firstUse.setAttribute('role', 'status');
   root.appendChild(firstUse);
   let firstUseHint = null;
+  const firstUseProjectionWorld = { x: 0, y: 0, z: 0 };
+  const firstUseProjectionScreen = { x: 0, y: 0, onScreen: false };
   ctx.bus.on('hud:firstUse', (payload) => {
     if (!payload || !payload.text) return;
     firstUseHint = {
@@ -1678,6 +1680,9 @@ export function createHud(ctx, alerts) {
   const gravityMarkTargets = [];
   const momentumSinkTargets = [];
   let massCouplingScanTick = -Infinity;
+  // Shared per-frame projection scratch for the mass-coupling overlay pools. Sequential use only.
+  const overlayProjectionWorld = { x: 0, y: 0, z: 0 };
+  const overlayProjectionScreen = { x: 0, y: 0, onScreen: false };
 
   function scanMassCouplingOverlays(player) {
     const tick = Number.isInteger(state.tick) ? state.tick : 0;
@@ -1708,7 +1713,9 @@ export function createHud(ctx, alerts) {
         setClass(marker, 'visible', false);
         continue;
       }
-      const projected = helpers.worldToScreen({ x: anchor.x, y: 0, z: anchor.z });
+      overlayProjectionWorld.x = anchor.x;
+      overlayProjectionWorld.z = anchor.z;
+      const projected = helpers.worldToScreen(overlayProjectionWorld, overlayProjectionScreen);
       if (!projected.onScreen) {
         setClass(marker, 'visible', false);
         continue;
@@ -1743,7 +1750,9 @@ export function createHud(ctx, alerts) {
         setClass(overlay.marker, 'visible', false);
         continue;
       }
-      const projected = helpers.worldToScreen({ x: anchor.x, y: 0, z: anchor.z });
+      overlayProjectionWorld.x = anchor.x;
+      overlayProjectionWorld.z = anchor.z;
+      const projected = helpers.worldToScreen(overlayProjectionWorld, overlayProjectionScreen);
       if (!projected.onScreen) {
         setClass(overlay.marker, 'visible', false);
         continue;
@@ -1775,6 +1784,9 @@ export function createHud(ctx, alerts) {
     `</svg>`;
   root.appendChild(leadPip);
   const leadPipArc = leadPip.querySelector('.sf-leadpip__arc');
+  // Shared hidden verdict: computeLeadPipOverlay is only called with a live target; the
+  // no-target path below runs every frame and never mutates the verdict (visible/x/y reads).
+  const leadPipHidden = Object.freeze({ visible: false });
   const threatHalo = createThreatHalo(root, ctx.bus);
 
   // ---- death / respawn feedback banner ----
@@ -1953,6 +1965,10 @@ export function createHud(ctx, alerts) {
       announced: '',
     });
   }
+  // Per-frame doctrine-tell projection scratch + shared centered-transform options (never mutated).
+  const tellProjectionWorld = { x: 0, y: 0, z: 0 };
+  const tellProjectionScreen = { x: 0, y: 0, onScreen: false };
+  const tellTransformCentered = Object.freeze({ center: true });
 
   function retireTell(slot) {
     if (!slot || slot.age >= Infinity) return;
@@ -2049,12 +2065,14 @@ export function createHud(ctx, alerts) {
         setDisplay(slot.el, false);
         continue;
       }
-      const proj = w2s({ x: ent.pos.x, y: 0, z: ent.pos.z });
+      tellProjectionWorld.x = ent.pos.x;
+      tellProjectionWorld.z = ent.pos.z;
+      const proj = w2s(tellProjectionWorld, tellProjectionScreen);
       const placement = resolveDoctrineTellPlacement(w, h, proj, slotIndex);
       if (!placement) { setDisplay(slot.el, false); continue; }
       setDisplay(slot.el, true, 'inline-flex');
       setClass(slot.el, 'is-offscreen', !placement.onScreen);
-      setHudScreenTransform(slot.el, placement.x, placement.y, { center: true });
+      setHudScreenTransform(slot.el, placement.x, placement.y, tellTransformCentered);
       if (slot.dirEl) setStyle(slot.dirEl, 'transform', `rotate(${placement.directionDeg.toFixed(1)}deg)`);
       setHidden(slot.el, false);
       setClass(slot.el, 'is-on', true);
@@ -3402,13 +3420,15 @@ export function createHud(ctx, alerts) {
     updateMomentumSinkOverlays(p);
 
     // ---- Lead pip (BP-02) — pure gate in gunnery; HUD only applies screen coords ----
+    // The opts literal stays per-call: helpers.worldToScreen is rebound on renderer
+    // regeneration, so a mount-time capture would go stale (the hidden verdict is shared).
     const pipOverlay = tgtAnchor ? computeLeadPipOverlay(p, tgt, state, {
       worldToScreen: helpers.worldToScreen,
       isHostileToPlayer,
       leadSolution,
       hasBallisticWeapon,
       primaryProjSpeed,
-    }) : { visible: false };
+    }) : leadPipHidden;
     if (pipOverlay.visible) {
       setClass(leadPip, 'visible', true);
       setHudScreenTransform(leadPip, pipOverlay.x, pipOverlay.y);
@@ -4186,7 +4206,7 @@ export function createHud(ctx, alerts) {
       if (heatRow) {
         const heatHot = !!(wpnHeat.armed && (heatFrac > 0.04 || wpnHeat.overheated));
         setStyle(heatRow, 'display', heatHot ? '' : 'none');
-        setClass(heatRow.querySelector('.sf-bar'), 'sf-bar--overheated', wpnHeat.overheated);
+        setClass(barEls.heat, 'sf-bar--overheated', wpnHeat.overheated);
       }
       setClass(fillEls.energy && fillEls.energy.parentElement, 'sf-bar--low', capFrac < 0.2 && capFrac > 0);
 
@@ -4578,7 +4598,9 @@ export function createHud(ctx, alerts) {
       firstUse.hidden = firstUseHint.kind !== 'player';
       return;
     }
-    const proj = helpers.worldToScreen({ x: pos.x, y: 0, z: pos.z });
+    firstUseProjectionWorld.x = pos.x;
+    firstUseProjectionWorld.z = pos.z;
+    const proj = helpers.worldToScreen(firstUseProjectionWorld, firstUseProjectionScreen);
     if (!proj) {
       firstUse.hidden = firstUseHint.kind !== 'player';
       return;
