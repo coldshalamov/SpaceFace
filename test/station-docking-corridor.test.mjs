@@ -26,10 +26,11 @@ import {
 } from '../src/data/collisionProxyManifests.js';
 import { dockingCorridor } from '../src/systems/dockingCorridor.js';
 import {
+  computeAutopilotGuidance,
   resolveAutopilotArrivalRadius,
   resolveAutopilotTarget,
 } from '../src/systems/flightV3.js';
-import { consumePhysicsCommand, writePhysicsControl } from '../src/core/physicsAuthority.js';
+import { consumePhysicsCommand, queuePhysicsImpulse, writePhysicsControl } from '../src/core/physicsAuthority.js';
 import { createSg02DynamicBodyOwner } from '../src/core/sg02DynamicBodyOwner.js';
 import { physics } from '../src/core/physics.js';
 
@@ -201,6 +202,95 @@ test('default station autopilot stages an outside-gap approach through the autho
     resolveBerthWorld(station, HELIOS),
     'once aligned just outside the mouth, the terminal leg must run down the open lane',
   );
+});
+
+test('a hull knocked off the lane keeps the mouth aim, and lane lock only arms inside the lane', () => {
+  const station = heliosStation();
+  const berth = resolveBerthWorld(station, HELIOS);
+  const mouthRadius = HELIOS.docking.corridor.mouthRadius * station.data.dockRadius;
+  const mouth = framePos(mouthRadius);
+  const autopilot = {
+    targetEntityId: station.id,
+    target: { x: station.pos.x, z: station.pos.z },
+    label: 'Helios Station',
+    arrivalRadius: 90,
+  };
+
+  // Inter-spar armpit: inside the mouth sphere (distCenter ≈ 92) but far outside the 22° wedge
+  // (lateral 70 ≫ ≈38). A traffic dodge or contact can put the hull here; the berth line from
+  // this bearing crosses structure, so the authored escape is the mouth aim through the ring gap.
+  const wedged = {
+    id: 'player', type: 'ship', alive: true, radius: 14,
+    pos: framePos(60, 70), vel: { x: 0, z: 0 },
+  };
+  const wedgedState = {
+    playerId: wedged.id,
+    entities: new Map([[wedged.id, wedged], [station.id, station]]),
+  };
+  const wedgedTarget = resolveAutopilotTarget(wedgedState, autopilot);
+  assert.equal(wedgedTarget.dockingStage, 'corridor-mouth');
+  assert.equal(wedgedTarget.corridorInLane, false);
+  assert.deepEqual(
+    { x: wedgedTarget.x, z: wedgedTarget.z },
+    mouth,
+    'an off-lane hull inside the silhouette must aim back out the corridor gap, not at the berth',
+  );
+
+  // Geometrically in the lane: berth stage arms and reports lane membership to the guidance.
+  const aligned = {
+    id: 'player', type: 'ship', alive: true, radius: 14,
+    pos: framePos(100, 0), vel: { x: 0, z: 0 },
+  };
+  const alignedState = {
+    playerId: aligned.id,
+    entities: new Map([[aligned.id, aligned], [station.id, station]]),
+  };
+  const alignedTarget = resolveAutopilotTarget(alignedState, autopilot);
+  assert.equal(alignedTarget.dockingStage, 'berth');
+  assert.equal(alignedTarget.corridorInLane, true);
+  assert.deepEqual({ x: alignedTarget.x, z: alignedTarget.z }, berth);
+});
+
+test('lane-locked berth guidance paces traffic squarely ahead instead of ramming it', () => {
+  const station = heliosStation();
+  const berth = resolveBerthWorld(station, HELIOS);
+
+  // Ship holding the lane at along=105, a convoy hull parked on the lane at along=85 —
+  // 20 wu dead ahead on the berth line. Lane lock forbids lateral dodging, so guidance must
+  // report the blocker distance as a traffic hold for the caller to pace against.
+  const player = {
+    id: 'player', type: 'ship', alive: true, radius: 14,
+    pos: framePos(105, 0), vel: { x: 0, z: 0 },
+  };
+  const blocker = {
+    id: 'convoy-1', type: 'ship', alive: true, radius: 10,
+    pos: framePos(85, 0), vel: { x: 0, z: 0 }, collides: true,
+  };
+  const state = {
+    playerId: player.id,
+    entities: new Map([[player.id, player], [blocker.id, blocker], [station.id, station]]),
+    entityList: [player, blocker, station],
+  };
+  const distance = Math.hypot(berth.x - player.pos.x, berth.z - player.pos.z);
+  const target = {
+    x: berth.x, z: berth.z, radius: 0,
+    dockingProxyId: HELIOS.id, dockingStage: 'berth', corridorInLane: true,
+    entity: station,
+  };
+  const held = computeAutopilotGuidance(state, player, target, distance, 20, {});
+  assert.ok(Math.abs(held.trafficHold - 20) < EPS, 'the blocker projection is the hold distance');
+
+  // A hull well off the lane centerline is not a blocker: lateral 80 ≫ player+obstacle+slack.
+  blocker.pos = framePos(85, 80);
+  const clear = computeAutopilotGuidance(state, player, target, distance, 20, {});
+  assert.equal(clear.trafficHold, null, 'traffic off the lane line must not hold the berth run');
+
+  // Not lane-locked (e.g. corridor-mouth stage): ordinary lateral avoidance resumes instead.
+  blocker.pos = framePos(85, 0);
+  const mouthTarget = { ...target, dockingStage: 'corridor-mouth', corridorInLane: false };
+  const dodged = computeAutopilotGuidance(state, player, mouthTarget, distance, 20, {});
+  assert.equal(dodged.trafficHold, null);
+  assert.equal(dodged.avoiding, true, 'outside the lane the blocker is dodged, not paced');
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -645,6 +735,63 @@ test('real authority: identical timeline produces an identical trajectory hash, 
   const first = await flyRealAuthorityTrajectory();
   const second = await flyRealAuthorityTrajectory();
   assert.equal(first.hash, second.hash, 'same start conditions → byte-identical trajectory hash');
+});
+
+// A hull knocked into an inter-spar armpit (off the corridor wedge, inside the mouth sphere)
+// must recover: the mouth aim draws it back out through the ring gap, the lane re-engages, and
+// the berth stage completes. The berth line from that bearing crosses structure — the release
+// soak ground against it for the full 90 s dock-prompt window.
+test('real authority: an off-lane knock inside the silhouette recovers through the mouth aim', async () => {
+  const owner = await createSg02DynamicBodyOwner({ publishTelemetry: false });
+  try {
+    const station = heliosStation();
+    const player = {
+      id: 'player', type: 'ship', alive: true, collides: true, flags: {},
+      pos: framePos(80, 50), vel: { x: 0, z: 0 }, rot: 0, angVel: 0, radius: 14, mass: 32, data: {},
+    };
+    const autopilot = {
+      active: true, targetEntityId: station.id,
+      target: { x: station.pos.x, z: station.pos.z },
+      label: 'Helios Station', arrivalRadius: 90,
+    };
+    const state = {
+      mode: 'flight', playerId: player.id,
+      entities: new Map([[player.id, player], [station.id, station]]),
+      entityIndex: { stations: [station] }, entityList: [player, station], input: {}, ui: {},
+    };
+    dockingCorridor.init({ bus: null });
+    owner.syncFromEntities([station, player]);
+    const berth = resolveBerthWorld(station, HELIOS);
+    const dt = 1 / 60;
+    const stages = [];
+    for (let tick = 0; tick < 7200; tick++) {
+      const target = resolveAutopilotTarget(state, autopilot);
+      if (!target) break;
+      if (stages[stages.length - 1] !== target.dockingStage) stages.push(target.dockingStage);
+      // Scripted driver: thrust toward the resolved aim under the corridor speed gate, brake to
+      // settle inside its arrival radius. Lane discipline — not thrust authority — is under test.
+      const ax = target.x - player.pos.x;
+      const az = target.z - player.pos.z;
+      const d = Math.hypot(ax, az) || 1;
+      const speed = Math.hypot(player.vel.x, player.vel.z);
+      if (d > target.arrivalRadius && speed < 45) {
+        queuePhysicsImpulse(player, { x: (ax / d) * 80 * player.mass * dt, y: 0, z: (az / d) * 80 * player.mass * dt });
+      } else if (speed > 8) {
+        queuePhysicsImpulse(player, { x: -player.vel.x * player.mass * 0.05, y: 0, z: -player.vel.z * player.mass * 0.05 });
+      }
+      dockingCorridor.update(dt, state);
+      owner.step(dt);
+      if (state.dockingCorridor && state.dockingCorridor.phase === 'berthed') break;
+    }
+    assert.equal(state.dockingCorridor.phase, 'berthed',
+      `the knocked-off-lane hull must recover through the mouth aim and berth (stages: ${stages.join(' → ')})`);
+    assert.ok(stages.includes('corridor-mouth') && stages.includes('berth'),
+      `recovery must route mouth-aim escape → lane re-entry → berth (saw ${stages.join(' → ')})`);
+    assert.ok(Math.hypot(player.pos.x - berth.x, player.pos.z - berth.z) <= HELIOS.docking.berth.dockRadius,
+      'the hull settles inside the physical berth gate');
+  } finally {
+    owner.dispose();
+  }
 });
 
 function round6(value) {

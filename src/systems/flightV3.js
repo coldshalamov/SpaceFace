@@ -765,7 +765,15 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
     positive(profile.mainAccel, 0) * 0.72,
     1,
   );
-  const desiredSpeed = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, dist - arrivalRadius)));
+  let desiredSpeed = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, dist - arrivalRadius)));
+  // Lane-locked berth runs report the distance to a blocker squarely ahead as a virtual arrival
+  // point: pace to ~30 WU behind it rather than ram. Below ~20 WU/s the hold releases — a slow
+  // contact is bounded, and parking forever behind a static hull in the lane is worse.
+  const trafficHold = guidance && Number.isFinite(guidance.trafficHold) ? guidance.trafficHold : null;
+  if (trafficHold != null) {
+    const pace = Math.sqrt(Math.max(0, 2 * brakeAccel * Math.max(0, trafficHold - 30)));
+    if (pace < desiredSpeed) desiredSpeed = pace;
+  }
   const stoppingDistance = closingSpeed > 0 ? (closingSpeed * closingSpeed) / (2 * brakeAccel) : 0;
   const halfway = Number.isFinite(autopilot.initialDistance) && dist <= autopilot.initialDistance * 0.52;
   const terminalBrake = closingSpeed > 4 && (
@@ -790,7 +798,9 @@ function resolveAutopilotInput(host, entity, rawInput, input, dt, state, profile
   // stop. Sustain the counter-burn until under the berth gate instead of flickering at it.
   const dockEnvelopeBrake = target && target.dockingProxyId && target.dockingStage === 'berth'
     && speed > positive(target.dockSpeedGate, 12);
-  const shouldBrake = terminalBrake || headingCapture || dockEnvelopeBrake;
+  const trafficBrake = trafficHold != null && speed > 20 && closingSpeed > 4
+    && trafficHold <= stoppingDistance + 45;
+  const shouldBrake = terminalBrake || headingCapture || dockEnvelopeBrake || trafficBrake;
 
   let throttle = 0;
   let strafe = 0;
@@ -926,13 +936,30 @@ export function resolveAutopilotTarget(state, autopilot) {
       // station silhouette outside its authored gap. First converge on the corridor mouth. Switch
       // to the berth well before the terminal dock gate could stop/deactivate the staging course,
       // or immediately when the ship is already geometrically inside the lane.
+      const inLane = !!(
+        corridor && (corridor.inCorridor || corridor.inCapture || corridor.berthed)
+      );
       const approachDistance = player && player.pos
         ? Math.hypot(finite(player.pos.x) - approach.x, finite(player.pos.z) - approach.z)
         : 0;
-      const approachSwitchRadius = Math.max(AUTOPILOT_ARRIVAL_RADIUS + 7, captureHalfWidth);
-      const berthStage = !player || !player.pos || approachDistance <= approachSwitchRadius || !!(
-        corridor && (corridor.inCorridor || corridor.inCapture || corridor.berthed)
+      // The berth stage holds the authored lane with lateral avoidance suppressed — it must only
+      // arm while the hull is geometrically in the lane, or just outside the mouth still aligned
+      // with the corridor wedge. A hull off the wedge — knocked into an inter-spar armpit by a
+      // traffic dodge or contact — keeps the mouth aim: the only path that exits back through the
+      // ring gap instead of grinding structure until the solver expels it.
+      const shipRelX = player && player.pos ? finite(player.pos.x) - finite(entity.pos.x) : 0;
+      const shipRelZ = player && player.pos ? finite(player.pos.z) - finite(entity.pos.z) : 0;
+      const shipAlong = shipRelX * axis.x + shipRelZ * axis.z;
+      const shipLateral = Math.abs(shipRelX * -axis.z + shipRelZ * axis.x);
+      const wedgeHalfWidth = Math.max(
+        captureHalfWidth,
+        Math.tan(finite(manifest.docking.corridor && manifest.docking.corridor.halfWidthDeg, 0)
+          * (Math.PI / 180)) * Math.max(shipAlong, 1),
       );
+      const alignedWithLane = shipAlong > 0 && shipLateral <= wedgeHalfWidth;
+      const approachSwitchRadius = Math.max(AUTOPILOT_ARRIVAL_RADIUS + 7, captureHalfWidth);
+      const berthStage = !player || !player.pos || inLane
+        || (approachDistance <= approachSwitchRadius && alignedWithLane);
       return {
         x: berthStage ? berth.x : approach.x,
         z: berthStage ? berth.z : approach.z,
@@ -940,6 +967,7 @@ export function resolveAutopilotTarget(state, autopilot) {
         arrivalRadius: dockingArrivalRadius,
         dockingProxyId: manifest.id || null,
         dockingStage: berthStage ? 'berth' : 'corridor-mouth',
+        corridorInLane: inLane,
         dockSpeedGate: positive(manifest.docking.berth && manifest.docking.berth.speedGate, 12),
         approachPoint: approach,
         entity,
@@ -973,7 +1001,7 @@ export function resolveAutopilotArrivalRadius(entity, autopilot, target) {
   );
 }
 
-function computeAutopilotGuidance(state, player, target, distance, arrivalRadius, autopilot) {
+export function computeAutopilotGuidance(state, player, target, distance, arrivalRadius, autopilot) {
   const px = finite(player.pos && player.pos.x);
   const pz = finite(player.pos && player.pos.z);
   const baseX = distance > 0.0001 ? (target.x - px) / distance : Math.cos(finite(player.rot));
@@ -985,11 +1013,15 @@ function computeAutopilotGuidance(state, player, target, distance, arrivalRadius
   let steerX = baseX;
   let steerZ = baseZ;
   let avoiding = false;
-  // On the berth stage the manifest corridor is the authored collision-free lane: lateral
-  // dodging inside it is what steers the hull across a spar or ring primitive and gets it
-  // expelled back out of the dock envelope at speed. A slow straight-in contact is kinder.
-  const berthLaneLocked = target && target.dockingProxyId && target.dockingStage === 'berth';
+  // While geometrically inside the lane, the manifest corridor is the authored collision-free
+  // path: lateral dodging inside it is what steers the hull across a spar or ring primitive and
+  // gets it expelled back out of the dock envelope at speed. The lock must NOT arm on proximity
+  // alone — a hull near the mouth but off-axis still needs traffic avoidance, and holding the
+  // berth line from off-lane is what drives it through structure.
+  const berthLaneLocked = target && target.dockingProxyId && target.dockingStage === 'berth'
+    && target.corridorInLane === true;
   const maxProjection = berthLaneLocked ? 0 : Math.max(0, Math.min(distance - arrivalRadius, lookAhead));
+  let trafficHold = null;
   if (maxProjection > 0) {
     const obstacles = autopilotObstacles(state, player, target, baseX, baseZ, maxProjection);
     let weightedLateral = 0;
@@ -1039,9 +1071,27 @@ function computeAutopilotGuidance(state, player, target, distance, arrivalRadius
     }
   } else {
     clearAutopilotAvoidance(autopilot, false);
+    // Lane-locked berth runs hold the authored heading, but traffic still crosses the corridor.
+    // Pace behind a blocker squarely ahead — a virtual arrival point — rather than ram it; a
+    // sustained grind against hull or hull-adjacent contact is how a docked-loop soak ship gets
+    // expelled toward the void.
+    if (berthLaneLocked) {
+      const holdProjection = Math.min(lookAhead, Math.max(70, speed * 2.2));
+      const blockers = autopilotObstacles(state, player, target, baseX, baseZ, holdProjection);
+      for (const obstacle of blockers) {
+        const ox = finite(obstacle.pos && obstacle.pos.x) - px;
+        const oz = finite(obstacle.pos && obstacle.pos.z) - pz;
+        const projection = ox * baseX + oz * baseZ;
+        if (projection <= 0 || projection > holdProjection) continue;
+        const lateral = Math.abs(ox * perpX + oz * perpZ);
+        if (lateral <= positive(player.radius, 0) + positive(obstacle.radius, 0) + 20) {
+          trafficHold = trafficHold == null ? projection : Math.min(trafficHold, projection);
+        }
+      }
+    }
   }
   const len = Math.hypot(steerX, steerZ) || 1;
-  return { x: steerX / len, z: steerZ / len, avoiding };
+  return { x: steerX / len, z: steerZ / len, avoiding, trafficHold };
 }
 
 function syncAutopilotAvoidanceContext(autopilot, target) {
