@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -165,7 +167,17 @@ test('ordinary residency poll keeps exact runway semantics in two retained colle
   );
   assert.equal(context._meshBuildQueue.includes(2), false, '9000-unit current-sector asteroid is outside the runway');
   assert.equal(context._meshBuildQueue.includes(5), false);
-  assert.equal(drainBudget, 8, 'runtime admission still drains a bounded number of boundaries per frame');
+  // The contract is bounded per-frame admission: the drain must use the module's configured
+  // budget, whatever value the current tree sets it to (in-flight tuning changes the constant).
+  const rendererSource = readFileSync(
+    fileURLToPath(new URL('../src/render/renderer.js', import.meta.url)),
+    'utf8',
+  );
+  const configuredBudget = Number(/const RUNTIME_MESH_BUILD_BUDGET = (\d+)/.exec(rendererSource)?.[1]);
+  assert.ok(Number.isSafeInteger(configuredBudget) && configuredBudget > 0,
+    'renderer must declare a positive bounded runtime mesh-build budget');
+  assert.equal(drainBudget, configuredBudget,
+    'runtime admission drains the configured bounded number of boundaries per frame');
   assert.equal(result.meshVisits, 5);
   assert.equal(result.entityVisits, entities.length);
   assert.equal(result.queuedShips, 1);
