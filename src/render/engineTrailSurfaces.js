@@ -33,10 +33,20 @@ const TRAIL_STREAK_RADIANCE_GLSL = /* glsl */`
 
 const RIBBON_TRAIL_VERT = /* glsl */`
   attribute vec2 aTrailUv;
+  attribute vec3 aTrailNormal;
   varying vec2 vTrailUv;
+  varying float vTrailGrazing;
   void main() {
     vTrailUv = aTrailUv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    // M2/B7: a flat strip with no view-dependent term reads as plastic tape. The trail keeps its
+    // world-space history, but its sheet now brightens at grazing angles relative to the real
+    // camera instead of presenting one constant value from every heading.
+    vec4 world = modelMatrix * vec4(position, 1.0);
+    vec3 viewDir = normalize(cameraPosition - world.xyz);
+    float normalLen = length(aTrailNormal);
+    vec3 sheetNormal = normalLen > 1e-5 ? aTrailNormal / normalLen : vec3(0.0, 1.0, 0.0);
+    vTrailGrazing = clamp(1.0 / max(abs(dot(sheetNormal, viewDir)), 0.22), 1.0, 2.4);
+    gl_Position = projectionMatrix * viewMatrix * world;
   }
 `;
 
@@ -49,6 +59,7 @@ const RIBBON_TRAIL_FRAG = /* glsl */`
   uniform float uOpacity;
   uniform float uRadiance;
   varying vec2 vTrailUv;
+  varying float vTrailGrazing;
   void main() {
     // aTrailUv.x is physical history: 0 = live nozzle, 1 = oldest retained wake. Flow scroll is
     // independent so animation never re-lights the tail as a solid painted strip.
@@ -81,6 +92,11 @@ const RIBBON_TRAIL_FRAG = /* glsl */`
     float dB = side + ribbonOffB;
     float ribbonA = exp(-dA * dA * 32.0 * strandTight);
     float ribbonB = exp(-dB * dB * 30.0 * strandTight);
+    // Grazing lift on the sheet itself: the strands carry the view response, while the throat
+    // filament below stays a stable core so the trail cannot flicker as the ship yaws.
+    float grazeLift = 1.0 + clamp(vTrailGrazing - 1.0, 0.0, 1.4) * 0.55;
+    ribbonA *= grazeLift;
+    ribbonB *= grazeLift;
 
     // Each strand runs out of material at its own distance and tears into its own clumps, so the
     // wake ends where several elements happen to expire rather than at a plane. The fields are
@@ -384,6 +400,7 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
   const verts = nSeg * 2;
   const pos = new Float32Array(verts * 3);
   const uvs = new Float32Array(verts * 2);
+  const normals = new Float32Array(verts * 3);
   const geo = new THREE.BufferGeometry();
   const posAttr = new THREE.BufferAttribute(pos, 3);
   posAttr.usage = THREE.DynamicDrawUsage;
@@ -391,10 +408,14 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
   const uvAttr = new THREE.BufferAttribute(uvs, 2);
   uvAttr.usage = THREE.DynamicDrawUsage;
   geo.setAttribute('aTrailUv', uvAttr);
+  const normalAttr = new THREE.BufferAttribute(normals, 3);
+  normalAttr.usage = THREE.DynamicDrawUsage;
+  geo.setAttribute('aTrailNormal', normalAttr);
   // Three clears updateRanges after each upload. Keep one owner-held range object per attribute and
   // reattach it, avoiding addUpdateRange()'s per-frame object allocation on the hot path.
   const posUpdateRange = { start: 0, count: 0 };
   const uvUpdateRange = { start: 0, count: 0 };
+  const normalUpdateRange = { start: 0, count: 0 };
   const markAttributeRange = (attribute, range, count) => {
     range.start = 0;
     range.count = count;
@@ -524,6 +545,14 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
     pos[(vi + 1) * 3] = px - ox;
     pos[(vi + 1) * 3 + 1] = 0.4;
     pos[(vi + 1) * 3 + 2] = pz - oz;
+    // The sheet normal is the transverse horizontal (the ribbon lies in the XZ plane), shared by
+    // both edge vertices; the shader turns it into the view-dependent grazing term.
+    normals[vi * 3] = normalX;
+    normals[vi * 3 + 1] = 0;
+    normals[vi * 3 + 2] = normalZ;
+    normals[(vi + 1) * 3] = normalX;
+    normals[(vi + 1) * 3 + 1] = 0;
+    normals[(vi + 1) * 3 + 2] = normalZ;
   };
 
   const appendHistory = (x, z, rot) => {
@@ -718,6 +747,7 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
       centers[2] = liveRot;
       writeCenterPair(0, renderedCount);
       markAttributeRange(posAttr, posUpdateRange, 6);
+      markAttributeRange(normalAttr, normalUpdateRange, 6);
       headSyncCount++;
       return true;
     },
@@ -759,6 +789,7 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
         }
       }
       markAttributeRange(posAttr, posUpdateRange, count * 6);
+      markAttributeRange(normalAttr, normalUpdateRange, count * 6);
       if (updateUvs) {
         markAttributeRange(uvAttr, uvUpdateRange, count * 4);
         lastUvCount = count;
@@ -791,9 +822,8 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
 }
 
 export function createPrecompileTrailSurfaces() {
-  // Use the live lazy-ribbon factory. A PlaneGeometry approximation carries standard normal/uv
-  // attributes while production carries position/aTrailUv; Three includes those geometry defines
-  // in the program key even though both materials share the same shader source.
+  // Use the live lazy-ribbon factory. The ribbon program key includes the geometry's attribute set
+  // (position, aTrailUv, aTrailNormal), so a stand-in ribbon would link a different program.
   const ribbonStaging = new THREE.Group();
   const ribbonOwner = createRibbonTrail(ribbonStaging, '#7fe0ff', 30, 5);
   ribbonOwner.push(-3, 0, 0);

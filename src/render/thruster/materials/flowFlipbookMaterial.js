@@ -59,8 +59,10 @@ export const FLOW_FLIPBOOK_VERTEX = /* glsl */`
   varying float vCoreSheath;
   varying float vDissipation;
   varying float vBoostBlend;
+  varying float vGrazing;
 
   uniform float uTime;
+  uniform float uShellArc;
   uniform float uReducedMotion;
   uniform float uMinProjectedWidth;
   uniform float uLayerRole;
@@ -135,9 +137,29 @@ ${AXIAL_WIDTH_ENVELOPE_GLSL}
     float widthEff = max(width, uMinProjectedWidth * latScale * envScale * (0.35 + 0.65 * foreshorten));
 
     float along = uv.x * lenWorld;
-    float lateral = (uv.y - 0.5) * 2.0 * widthEff;
-    vec3 world = worldNozzle - axisWorld * along + sideW * lateral
-      + binormalW * (lift + cameraEscape);
+    // M2/B7 curved cross-section. The layer is a partial shell around the plume axis with a
+    // world-anchored basis, not a camera-facing plate: the arc radius is chosen so the chord
+    // still equals the authored width, while the radial normals below vary with the real view
+    // direction. uShellArc = 0 keeps the legacy flat placement for the distortion encoder.
+    float arcSpan = clamp(uShellArc, 0.0, 1.7);
+    vec3 anchorW = mat3(modelMatrix) * e1;
+    vec3 anchorFlat = anchorW - axisWorld * dot(anchorW, axisWorld);
+    vec3 arcZero = length(anchorFlat) > 1e-4 ? normalize(anchorFlat) : sideW;
+    vec3 sideAxis = cross(axisWorld, arcZero);
+    vec3 arcNorm = arcZero;
+    vec3 world = worldNozzle;
+    // Radius so the arc's chord keeps the authored half-width; span is +/- arcSpan.
+    float halfChord = max(0.16, sin(max(arcSpan, 0.16)));
+    if (arcSpan > 0.001) {
+      float angle = vSide * arcSpan;
+      arcNorm = arcZero * cos(angle) + sideAxis * sin(angle);
+      world += arcNorm * (widthEff / halfChord);
+    } else {
+      world += sideW * (vSide * 2.0 * widthEff);
+    }
+    world += -axisWorld * along + binormalW * (lift + cameraEscape);
+    float grazeView = abs(dot(arcNorm, normalize(cameraPosition - world)));
+    vGrazing = clamp(1.0 / max(grazeView, 0.30), 1.0, 2.1);
     // Tumbling ships corkscrew (PQ-139.04): the card bows sideways along its length by a
     // spin-phased screw whose period is the hull's own spin (phase advances by angVel*dt on
     // the CPU). amp 0 at rest contributes an exact zero displacement — bit-identical.
@@ -161,6 +183,7 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
   varying float vCoreSheath;
   varying float vDissipation;
   varying float vBoostBlend;
+  varying float vGrazing;
 
   uniform float uTime;
   uniform float uFlowSpeed;
@@ -327,6 +350,10 @@ export const FLOW_FLIPBOOK_FRAGMENT = /* glsl */`
     float sheathWrap = mix(sideFall, sheathRim, mix(0.22, 0.46, breakupDrive));
     float crossShape = mix(sideFall, sheathWrap, sheathRole * mix(0.72, 0.38, uImpulseJet));
     crossShape = mix(crossShape, vaporWisp, vaporRole * mix(0.38, 0.68, uImpulseJet));
+    // M2 grazing response: the curved shell's radial normal changes with the real view, so the
+    // rim catches light as it turns edge-on. Reduced flash damps the hot lift, never the shape.
+    float graze = clamp(vGrazing - 1.0, 0.0, 1.1);
+    crossShape *= 1.0 + graze * (0.46 * (1.0 - uReducedFlash * 0.45));
     float stream = axial * crossShape;
 
     // Deep, attached axial breakup: broad sheath lobes change with throttle, but a 0.38 floor
@@ -545,6 +572,9 @@ export function createFlowFlipbookMaterial(THREE, options = {}) {
 
   const uniforms = {
     uTime: { value: 0 },
+    // The distortion encoder has no silhouette; keep its card flat. Live plume layers get the
+    // curved cross-section so their normals respond to the shipping camera.
+    uShellArc: { value: isDistort ? 0 : num(options.shellArc, 0.9) },
     uFlowSpeed: { value: num(options.flowSpeed, 2.4) },
     uNoiseScale: { value: num(options.noiseScale, 1.5) },
     uSoftEdge: { value: num(options.softEdge, 0.28) },
@@ -640,6 +670,7 @@ export function setMaterialUniforms(material, values) {
   if (!material || !material.uniforms) return;
   const u = material.uniforms;
   if (values.time != null && u.uTime) u.uTime.value = values.time;
+  if (values.shellArc != null && u.uShellArc) u.uShellArc.value = values.shellArc;
   if (values.flowSpeed != null && u.uFlowSpeed) u.uFlowSpeed.value = values.flowSpeed;
   if (values.noiseScale != null && u.uNoiseScale) u.uNoiseScale.value = values.noiseScale;
   if (values.softEdge != null && u.uSoftEdge) u.uSoftEdge.value = values.softEdge;
