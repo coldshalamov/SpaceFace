@@ -893,6 +893,19 @@
       "integration": "live",
       "commit": "e5d9f36e4",
       "verification": "focused_green"
+    },
+    {
+      "id": "bomb-remap-help-rows",
+      "date": "2026-09-16",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "bomb-bay drop/cycle are rebindable on keyboard and pad and taught in help",
+      "fingerprint": "verb=rebind,subject=bomb-bay,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "5d09f7ced",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
