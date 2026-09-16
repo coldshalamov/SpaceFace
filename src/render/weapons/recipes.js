@@ -7,17 +7,6 @@ export const FLIGHT_MODE = Object.freeze({
   NONE: 'none',
 });
 
-export const ATLAS_ROW = Object.freeze({
-  PULSE_MUZZLE: 0,
-  PULSE_IMPACT_SHIELD: 1,
-  PULSE_IMPACT_HULL: 2,
-  PLASMA_MUZZLE: 3,
-  KINETIC_MUZZLE: 4,
-  RAIL_MUZZLE: 5,
-  EXPLOSIVE_MUZZLE: 6,
-  EMP_MUZZLE: 7,
-});
-
 export const BOLT_VARIANT = Object.freeze({
   PULSE: 0,
   PLASMA: 1,
@@ -34,8 +23,7 @@ const PULSE = Object.freeze({
   family: 'plasma',
   variant: 'pulse-bolt',
   muzzle: Object.freeze({
-    flipbook: true,
-    atlasRow: ATLAS_ROW.PULSE_MUZZLE,
+    surface: true,
     life: 0.11,
     width: 1.55,
     height: 2.6,
@@ -63,16 +51,14 @@ const PULSE = Object.freeze({
   }),
   shield: Object.freeze({
     contact: true,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.PULSE_IMPACT_SHIELD,
+    surface: true,
     life: 0.16,
     haze: 0.55,
   }),
   hull: Object.freeze({
     scorch: true,
     scorchLife: 4.2,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.PULSE_IMPACT_HULL,
+    surface: true,
     sparks: true,
     sparkScale: 0.85,
   }),
@@ -82,8 +68,7 @@ const THERMAL = Object.freeze({
   family: 'plasma',
   variant: 'thermal-bolt',
   muzzle: Object.freeze({
-    flipbook: true,
-    atlasRow: ATLAS_ROW.PLASMA_MUZZLE,
+    surface: true,
     life: 0.16,
     width: 2.2,
     height: 2.4,
@@ -113,16 +98,14 @@ const THERMAL = Object.freeze({
   }),
   shield: Object.freeze({
     contact: true,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.PLASMA_MUZZLE,
+    surface: true,
     life: 0.28,
     haze: 0.8,
   }),
   hull: Object.freeze({
     scorch: true,
     scorchLife: 5.5,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.PLASMA_MUZZLE,
+    surface: true,
     sparks: true,
     sparkScale: 1.35,
   }),
@@ -132,8 +115,7 @@ const AUTOCANNON = Object.freeze({
   family: 'kinetic',
   variant: 'autocannon',
   muzzle: Object.freeze({
-    flipbook: true,
-    atlasRow: ATLAS_ROW.KINETIC_MUZZLE,
+    surface: true,
     life: 0.08,
     width: 1.2,
     height: 1.8,
@@ -162,16 +144,14 @@ const AUTOCANNON = Object.freeze({
   }),
   shield: Object.freeze({
     contact: true,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.KINETIC_MUZZLE,
+    surface: true,
     life: 0.12,
     haze: 0.2,
   }),
   hull: Object.freeze({
     scorch: true,
     scorchLife: 5.0,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.PULSE_IMPACT_HULL,
+    surface: true,
     sparks: true,
     sparkScale: 1.15,
   }),
@@ -181,8 +161,7 @@ const FLAK = Object.freeze({
   family: 'kinetic',
   variant: 'flak',
   muzzle: Object.freeze({
-    flipbook: true,
-    atlasRow: ATLAS_ROW.KINETIC_MUZZLE,
+    surface: true,
     life: 0.07,
     width: 1.0,
     height: 1.6,
@@ -210,16 +189,14 @@ const FLAK = Object.freeze({
   }),
   shield: Object.freeze({
     contact: false,
-    flipbook: false,
-    atlasRow: ATLAS_ROW.KINETIC_MUZZLE,
+    surface: false,
     life: 0.2,
     haze: 0.4,
   }),
   hull: Object.freeze({
     scorch: false,
     scorchLife: 0,
-    flipbook: false,
-    atlasRow: ATLAS_ROW.KINETIC_MUZZLE,
+    surface: false,
     sparks: true,
     sparkScale: 1.6,
   }),
@@ -229,8 +206,7 @@ const RAIL = Object.freeze({
   family: 'rail',
   variant: 'railgun',
   muzzle: Object.freeze({
-    flipbook: true,
-    atlasRow: ATLAS_ROW.RAIL_MUZZLE,
+    surface: true,
     life: 0.09,
     width: 1.1,
     height: 4.6,
@@ -258,16 +234,14 @@ const RAIL = Object.freeze({
   }),
   shield: Object.freeze({
     contact: true,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.RAIL_MUZZLE,
+    surface: true,
     life: 0.12,
     haze: 0.3,
   }),
   hull: Object.freeze({
     scorch: true,
     scorchLife: 3.6,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.RAIL_MUZZLE,
+    surface: true,
     sparks: true,
     sparkScale: 0.7,
   }),
@@ -298,8 +272,7 @@ const EMP = Object.freeze({
   family: 'emp',
   variant: 'disruptor',
   muzzle: Object.freeze({
-    flipbook: true,
-    atlasRow: ATLAS_ROW.EMP_MUZZLE,
+    surface: true,
     life: 0.14,
     width: 1.8,
     height: 2.2,
@@ -327,16 +300,14 @@ const EMP = Object.freeze({
   }),
   shield: Object.freeze({
     contact: true,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.EMP_MUZZLE,
+    surface: true,
     life: 0.22,
     haze: 0.45,
   }),
   hull: Object.freeze({
     scorch: false,
     scorchLife: 0,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.EMP_MUZZLE,
+    surface: true,
     sparks: true,
     sparkScale: 1.0,
   }),
@@ -346,8 +317,7 @@ const CONCUSSION = Object.freeze({
   family: 'concussion',
   variant: 'concussion-slug',
   muzzle: Object.freeze({
-    flipbook: true,
-    atlasRow: ATLAS_ROW.EXPLOSIVE_MUZZLE,
+    surface: true,
     life: 0.14,
     width: 1.8,
     height: 1.6,
@@ -375,16 +345,14 @@ const CONCUSSION = Object.freeze({
   }),
   shield: Object.freeze({
     contact: true,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.EXPLOSIVE_MUZZLE,
+    surface: true,
     life: 0.2,
     haze: 0.5,
   }),
   hull: Object.freeze({
     scorch: true,
     scorchLife: 6.0,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.EXPLOSIVE_MUZZLE,
+    surface: true,
     sparks: true,
     sparkScale: 1.5,
   }),
@@ -394,8 +362,7 @@ const MISSILE = Object.freeze({
   family: 'missile',
   variant: 'missile',
   muzzle: Object.freeze({
-    flipbook: true,
-    atlasRow: ATLAS_ROW.EXPLOSIVE_MUZZLE,
+    surface: true,
     life: 0.16,
     width: 2.0,
     height: 2.2,
@@ -423,16 +390,14 @@ const MISSILE = Object.freeze({
   }),
   shield: Object.freeze({
     contact: true,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.EXPLOSIVE_MUZZLE,
+    surface: true,
     life: 0.28,
     haze: 0.7,
   }),
   hull: Object.freeze({
     scorch: true,
     scorchLife: 6.5,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.EXPLOSIVE_MUZZLE,
+    surface: true,
     sparks: true,
     sparkScale: 1.8,
   }),
@@ -450,8 +415,7 @@ const BEAM = Object.freeze({
   family: 'beam',
   variant: 'continuous-beam',
   muzzle: Object.freeze({
-    flipbook: true,
-    atlasRow: ATLAS_ROW.PULSE_MUZZLE,
+    surface: true,
     life: 0.08,
     width: 1.3,
     height: 2.0,
@@ -479,16 +443,14 @@ const BEAM = Object.freeze({
   }),
   shield: Object.freeze({
     contact: true,
-    flipbook: false,
-    atlasRow: ATLAS_ROW.PULSE_IMPACT_SHIELD,
+    surface: false,
     life: 0.08,
     haze: 0.35,
   }),
   hull: Object.freeze({
     scorch: true,
     scorchLife: 2.4,
-    flipbook: false,
-    atlasRow: ATLAS_ROW.PULSE_IMPACT_HULL,
+    surface: false,
     sparks: false,
     sparkScale: 0.4,
   }),
@@ -498,8 +460,7 @@ const MINE = Object.freeze({
   family: 'mine',
   variant: 'vector-mine',
   muzzle: Object.freeze({
-    flipbook: false,
-    atlasRow: ATLAS_ROW.KINETIC_MUZZLE,
+    surface: false,
     life: 0,
     width: 0,
     height: 0,
@@ -527,16 +488,14 @@ const MINE = Object.freeze({
   }),
   shield: Object.freeze({
     contact: false,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.EMP_MUZZLE,
+    surface: true,
     life: 0.28,
     haze: 0.9,
   }),
   hull: Object.freeze({
     scorch: false,
     scorchLife: 0,
-    flipbook: true,
-    atlasRow: ATLAS_ROW.EMP_MUZZLE,
+    surface: true,
     sparks: true,
     sparkScale: 1.4,
   }),
@@ -576,8 +535,8 @@ export function recipeUsesRibbonWake(recipe) {
   return !!(recipe && recipe.flight && recipe.flight.ribbon);
 }
 
-export function recipeUsesMuzzleFlipbook(recipe) {
-  return !!(recipe && recipe.muzzle && recipe.muzzle.flipbook);
+export function recipeUsesSweptMuzzle(recipe) {
+  return !!(recipe && recipe.muzzle && recipe.muzzle.surface);
 }
 
 export function listWeaponRecipes() {

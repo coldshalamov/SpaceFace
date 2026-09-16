@@ -43,10 +43,10 @@ export const WEAPON_SIGNATURES = freeze({
   'siege-lance': { family: 'coherent', source: 'split-aperture', beat: 'sustained narrow aperture, long axial burn' },
   disruptor: { family: 'induction', source: 'circuit-fork', beat: 'branching discharge, segmented aftermath' },
   'concussion-slug': { family: 'kinetic', source: 'machined-burst', beat: 'short hard source kick, heavy pressure contact' },
-  missile: { family: 'propulsion', source: 'existing-launch', beat: 'eject → ignite → accelerate' },
-  torpedo: { family: 'propulsion', source: 'existing-launch', beat: 'heavy eject → delayed ignition' },
-  'continuous-beam': { family: 'coherent', source: 'existing-beam', beat: 'latched aperture and continuous contact' },
-  'vector-mine': { family: 'metric', source: 'existing-deployment', beat: 'deploy → arm → shaped impulse' },
+  missile: { family: 'propulsion', source: 'staged-launch', beat: 'eject → ignite → accelerate' },
+  torpedo: { family: 'propulsion', source: 'heavy-launch', beat: 'heavy eject → delayed ignition' },
+  'continuous-beam': { family: 'coherent', source: 'latched-aperture', beat: 'latched aperture and continuous contact' },
+  'vector-mine': { family: 'metric', source: 'shaped-deploy', beat: 'deploy → arm → shaped impulse' },
 });
 
 export function weaponSignature(variant) {

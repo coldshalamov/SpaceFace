@@ -7,17 +7,16 @@ import { EXPLOSION_SCHEDULES } from '../src/render/combat/phasedExplosions.js';
 import { vfx } from '../src/render/vfx.js';
 import {
   FLIGHT_MODE,
-  FLIPBOOK_ROLE,
   WEAPON_SOCKET_NAME,
   WeaponVfxPresenter,
-  recipeUsesMuzzleFlipbook,
+  recipeUsesSweptMuzzle,
   resolveWeaponRecipe,
 } from '../src/render/weapons/index.js';
 
 test('pulse muzzle is a socket-tracked split aperture, without stacked glow cards', () => {
   const recipe = resolveWeaponRecipe('wpn_pulse_laser_s');
   assert.equal(recipe.variant, 'pulse-bolt');
-  assert.equal(recipeUsesMuzzleFlipbook(recipe), true);
+  assert.equal(recipeUsesSweptMuzzle(recipe), true);
   assert.equal(recipe.muzzle.bore, true);
   assert.equal(recipe.flight.mode, FLIGHT_MODE.ENERGY_CARD);
 
@@ -48,8 +47,11 @@ test('pulse muzzle is a socket-tracked split aperture, without stacked glow card
   assert.equal(sources.length, 1, 'pulse ignition has one retained source owner');
   assert.equal(sources[0].source, 'split-aperture');
   assert.equal(sources[0].ownerId, 'ship');
-  assert.equal(presenter.flipbooks.slots.filter(slot => slot.alive).length, 0,
-    'MUZZLE and BORE cards do not stack over the aperture');
+  assert.equal(
+    presenter.getOwnerRoots().some((root) => root.name === 'SF_WeaponDischargeSurfaces'),
+    true,
+    'the swept source pool owns the muzzle; no card atlas survives to stack over it',
+  );
   assert.ok(Math.abs(presenter.discharges.batch.attributes[0].getX(0) - 12) < 1e-6,
     'source reads SOCKET_Weapon_Front, not ship center');
   socket.x = 18;

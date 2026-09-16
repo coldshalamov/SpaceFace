@@ -1,8 +1,11 @@
 import * as THREE from 'three';
-import { WeaponDischargePool } from '../forceLanguage/weaponDischargePool.js';
+import {
+  IMPACT_KIND,
+  SURFACE_ROLE,
+  WeaponDischargePool,
+} from '../forceLanguage/weaponDischargePool.js';
 import { resolveVfxAccessibilityProfile } from '../vfxAccessibility.js';
 import { EnergyBoltPool } from './energyBoltPool.js';
-import { FlipbookPool, FLIPBOOK_ROLE } from './flipbookPool.js';
 import { WeaponRibbonPool } from './ribbonPool.js';
 import { DistortionField } from './distortionField.js';
 import { WeaponLightPool } from './weaponLights.js';
@@ -18,7 +21,7 @@ import {
   FLIGHT_MODE,
   WEAPON_SOCKET_NAME,
   flightColorsForEntity,
-  recipeUsesMuzzleFlipbook,
+  recipeUsesSweptMuzzle,
   recipeUsesRibbonWake,
   resolveWeaponRecipe,
 } from './recipes.js';
@@ -98,20 +101,13 @@ export class WeaponVfxPresenter {
         return target;
       };
     this.bolts = new EnergyBoltPool(this.scene);
-    this.flipbooks = new FlipbookPool(this.scene);
     this.discharges = new WeaponDischargePool(this.scene);
-    this._dischargePoseResolver = (id) => {
-      const socket = this.helpers?.socketWorldPose?.(id, WEAPON_SOCKET_NAME);
-      if (!socket) return null;
-      const local = this.toLocalXZ(socket.x, socket.z, this._dischargeLocal);
-      const pose = this._dischargePose;
-      pose.x = local.x; pose.y = finiteOr(socket.y, 0.4); pose.z = local.z;
-      pose.ax = finiteOr(socket.forwardX, 1); pose.ay = finiteOr(socket.forwardY, 0);
-      pose.az = finiteOr(socket.forwardZ, 0);
-      return pose;
-    };
+    // One resolver for the whole weapon-surface pool: source slots follow the firing socket,
+    // impact slots re-lift their retained target-local contact each frame.
+    this._dischargePoseResolver = (slot) => this._resolveSurfacePose(slot);
     this._dischargeLocal = { x: 0, z: 0 };
     this._dischargePose = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
+    this._impactPoseScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0, targetId: null, attached: false, slant: 0 };
     this.ribbons = new WeaponRibbonPool(this.scene);
     this.distortion = new DistortionField();
     this.wellDistortion = new DistortionField({ capacity: WELL_DISTORTION_CAPACITY });
@@ -124,9 +120,8 @@ export class WeaponVfxPresenter {
     this._socketScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
     this._targetScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, attached: false };
     this._targetWorldScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0, nx: 1, ny: 0, nz: 0 };
-    this._flipbookPoseScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
+    this._surfacePoseScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
     this._scorchPoseScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0 };
-    this._socketOriginScratch = { x: 0, z: 0 };
     this._nearMissPlayerLocal = { x: 0, z: 0 };
     this._nearMissLocal = { x: 0, z: 0 };
     this._wellLocal = { x: 0, z: 0 };
@@ -141,8 +136,7 @@ export class WeaponVfxPresenter {
       entityId: -1, x: 0, y: 0, z: 0, width: 0, colorHead: '#ffffff', colorTail: '#ffffff', linger: 0,
     };
     this._nearMissSpec = { x: 0, y: 0.4, z: 0, radius: 5.5, strength: 0, life: 0.08 };
-    this._flashScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0 };
-    this._flipbookPoseCallback = (slot) => this._resolveFlipbookPose(slot);
+    this._flashScratch = { life: 0, size0: 0, size1: 0, opacity0: 0, opacity1: 0, r: 1, g: 1, b: 1 };
     this._scorchPoseCallback = (slot) => this._resolveScorchPose(slot);
     this._graph = null;
     this._disposed = false;
@@ -174,55 +168,16 @@ export class WeaponVfxPresenter {
 
   handleFire(payload, origin, angle, profile) {
     const recipe = resolveWeaponRecipe(payload && payload.weaponId, payload);
-    if (!recipeUsesMuzzleFlipbook(recipe)) return false;
+    if (!recipeUsesSweptMuzzle(recipe)) return false;
     const ownerId = payload && payload.ownerId;
     const pose = this._socketPose(ownerId, origin, angle);
     const muzzle = recipe.muzzle;
     const flash = this._flashSpec(muzzle.life, muzzle.width, muzzle.height, 1.35);
     hexColor(muzzle.coreColor, _color);
-    const sourceOwned = this.discharges.spawn(recipe, pose, ownerId, flash,
+    // Muzzle and bore are one ignition beat in the source geometry; there is no second
+    // stacked card. A missing/dead socket still yields a pose, so the source cannot vanish.
+    this.discharges.spawn(recipe, pose, ownerId, flash,
       ownerId === this.state?.playerId ? 1 : 0.45);
-    if (!sourceOwned) this.flipbooks.spawn({
-      role: FLIPBOOK_ROLE.MUZZLE,
-      ownerId,
-      x: pose.x,
-      y: pose.y,
-      z: pose.z,
-      ax: pose.ax,
-      ay: pose.ay,
-      az: pose.az,
-      width: flash.size0,
-      height: flash.size1,
-      intensity: flash.opacity0,
-      life: flash.life,
-      row: muzzle.atlasRow,
-      r: _color.r,
-      g: _color.g,
-      b: _color.b,
-      followSocket: true,
-    });
-    if (muzzle.bore && !sourceOwned) {
-      const bore = this._flashSpec(muzzle.boreLife || 0.24, muzzle.width * 0.45, muzzle.width * 0.45, 1.1);
-      this.flipbooks.spawn({
-        role: FLIPBOOK_ROLE.BORE,
-        ownerId,
-        x: pose.x,
-        y: pose.y,
-        z: pose.z,
-        ax: pose.ax,
-        ay: pose.ay,
-        az: pose.az,
-        width: bore.size0,
-        height: bore.size1,
-        intensity: bore.opacity0,
-        life: bore.life,
-        row: muzzle.atlasRow,
-        r: _color.r,
-        g: _color.g,
-        b: _color.b,
-        followSocket: true,
-      });
-    }
     const a11y = this._a11y();
     if (muzzle.haze > 0 && a11y.id === 'full') {
       this.distortion.spawn({
@@ -269,28 +224,10 @@ export class WeaponVfxPresenter {
     hexColor(hitShield ? '#5fd0ff' : recipe.muzzle.coreColor, _color);
     if (hitShield && recipe.shield.contact) {
       addShieldContact(payload.targetId, nx, 0.12, nz, 1);
-      if (recipe.shield.flipbook) {
+      if (recipe.shield.surface) {
         const captured = this._captureTargetLocal(payload.targetId, world.x, y, world.z, nx, 0.1, nz);
         const impact = this._flashSpec(recipe.shield.life, 2.2, 2.2, 1.2);
-        this.flipbooks.spawn({
-          role: FLIPBOOK_ROLE.IMPACT,
-          targetId: payload.targetId,
-          x: captured.x,
-          y: captured.y,
-          z: captured.z,
-          ax: captured.nx,
-          ay: captured.ny,
-          az: captured.nz,
-          width: impact.size0,
-          height: impact.size1,
-          intensity: impact.opacity0,
-          life: impact.life,
-          row: recipe.shield.atlasRow,
-          r: _color.r,
-          g: _color.g,
-          b: _color.b,
-          followTarget: captured.attached,
-        });
+        this._spawnImpactSurface(captured, IMPACT_KIND.SHIELD, recipe, impact, nx, nz, ax, az, payload.targetId);
       }
       if (recipe.shield.haze > 0 && a11y.id === 'full') {
         this.distortion.spawn({
@@ -300,34 +237,16 @@ export class WeaponVfxPresenter {
           life: 0.14,
         });
       }
-    } else if (!hitShield && recipe.hull.flipbook) {
+    } else if (!hitShield && recipe.hull.surface) {
       const captured = this._captureTargetLocal(
         payload.targetId,
         world.x + nx * 0.4,
         y,
         world.z + nz * 0.4,
-        ax, 0, az,
+        nx, 0.06, nz,
       );
       const impact = this._flashSpec(0.14, 1.6, 2.8, 1.15);
-      this.flipbooks.spawn({
-        role: FLIPBOOK_ROLE.IMPACT,
-        targetId: payload.targetId,
-        x: captured.x,
-        y: captured.y,
-        z: captured.z,
-        ax: captured.nx,
-        ay: captured.ny,
-        az: captured.nz,
-        width: impact.size0,
-        height: impact.size1,
-        intensity: impact.opacity0,
-        life: impact.life,
-        row: recipe.hull.atlasRow,
-        r: _color.r,
-        g: _color.g,
-        b: _color.b,
-        followTarget: captured.attached,
-      });
+      this._spawnImpactSurface(captured, IMPACT_KIND.HULL, recipe, impact, nx, nz, ax, az, payload.targetId);
     }
     if (!hitShield && recipe.hull.scorch) {
       const captured = this._captureTargetLocal(payload.targetId, world.x, y, world.z, nx, 0.08, nz);
@@ -382,7 +301,7 @@ export class WeaponVfxPresenter {
       ? index.projectiles
       : ((this.state && this.state.entityList) || []);
     ageShieldContacts(dt);
-    this.discharges.update(dt, this.helpers?.socketWorldPose ? this._dischargePoseResolver : null, this._a11y());
+    this.discharges.update(dt, this._dischargePoseResolver, this._a11y());
     this.bolts.setCamera(camera, viewportHeight);
     this.bolts.setDepthTexture(
       context.depthTexture || null,
@@ -391,7 +310,6 @@ export class WeaponVfxPresenter {
     );
     this._syncBolts(entities, alpha, camera);
     this._updateNearMiss(dt, entities, alpha, camera);
-    this.flipbooks.update(dt, this._flipbookPoseCallback);
     this.scorches.update(dt, this._scorchPoseCallback);
     this._syncWellDistortion();
     this.distortion.update(dt);
@@ -599,44 +517,79 @@ export class WeaponVfxPresenter {
     return out;
   }
 
-  _worldFromTargetLocal(slot, useNormal) {
+  /** Scorch marks are retained target-local; the contact normal rotates with the hull. */
+  _worldFromTargetLocal(slot) {
     const mesh = slot.targetId != null ? this._mesh(slot.targetId) : null;
-    const out = useNormal ? this._scorchPoseScratch : this._flipbookPoseScratch;
+    const out = this._scorchPoseScratch;
     if (!mesh) {
       out.x = slot.localX; out.y = slot.localY; out.z = slot.localZ;
-      if (useNormal) {
-        out.nx = slot.nx; out.ny = slot.ny; out.nz = slot.nz;
-      } else {
-        out.ax = slot.ax; out.ay = slot.ay; out.az = slot.az;
-      }
+      out.nx = slot.nx; out.ny = slot.ny; out.nz = slot.nz;
       return out;
     }
     _offset.set(slot.localX, slot.localY, slot.localZ).applyQuaternion(mesh.quaternion);
     _offset.add(mesh.position);
-    if (useNormal) {
-      _axis.set(slot.nx, slot.ny, slot.nz).applyQuaternion(mesh.quaternion);
-      out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
-      out.nx = _axis.x; out.ny = _axis.y; out.nz = _axis.z;
-      return out;
-    }
-    _axis.set(slot.ax, slot.ay, slot.az).applyQuaternion(mesh.quaternion);
+    _axis.set(slot.nx, slot.ny, slot.nz).applyQuaternion(mesh.quaternion);
     out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
-    out.ax = _axis.x; out.ay = _axis.y; out.az = _axis.z;
+    out.nx = _axis.x; out.ny = _axis.y; out.nz = _axis.z;
     return out;
   }
 
-  _resolveFlipbookPose(slot) {
-    if (slot.followSocket && slot.ownerId != null) {
-      this._socketOriginScratch.x = slot.localX;
-      this._socketOriginScratch.z = slot.localZ;
-      return this._socketPose(slot.ownerId, this._socketOriginScratch, 0);
+  _spawnImpactSurface(captured, kind, recipe, flash, nx, nz, apx, apz, targetId) {
+    const pose = this._impactPoseScratch;
+    pose.x = captured.x; pose.y = captured.y; pose.z = captured.z;
+    pose.ax = captured.nx; pose.ay = captured.ny; pose.az = captured.nz;
+    pose.targetId = targetId != null ? targetId : null;
+    pose.attached = captured.attached === true;
+    // Signed lean of the incoming path around the outward normal: head-on hits keep a symmetric
+    // fan, grazing hits smear it downrange. This is presentation, never a fabricated force axis.
+    const into = apx * nx + apz * nz;
+    const side = apx * nz - apz * nx;
+    pose.slant = Math.atan2(side, Math.max(0.25, -into));
+    flash.r = _color.r; flash.g = _color.g; flash.b = _color.b;
+    const priority = targetId === (this.state && this.state.playerId) ? 0.9 : 0.4;
+    this.discharges.spawnImpact(pose, kind, recipe.variant, flash, priority);
+  }
+
+  /** Source slots follow their firing socket; impact slots re-lift retained target-local hits. */
+  _resolveSurfacePose(slot) {
+    const cp = Math.cos(slot.pitch);
+    const nx = cp * Math.cos(slot.angle);
+    const ny = Math.sin(slot.pitch);
+    const nz = cp * Math.sin(slot.angle);
+    if (slot.role === SURFACE_ROLE.IMPACT) {
+      const out = this._surfacePoseScratch;
+      const mesh = slot.targetId != null ? this._mesh(slot.targetId) : null;
+      if (slot.attached && !mesh) return null;
+      if (!mesh) {
+        out.x = slot.x; out.y = slot.y; out.z = slot.z;
+        out.ax = nx; out.ay = ny; out.az = nz;
+        return out;
+      }
+      _offset.set(slot.x, slot.y, slot.z).applyQuaternion(mesh.quaternion);
+      _offset.add(mesh.position);
+      _axis.set(nx, ny, nz).applyQuaternion(mesh.quaternion);
+      out.x = _offset.x; out.y = _offset.y; out.z = _offset.z;
+      out.ax = _axis.x; out.ay = _axis.y; out.az = _axis.z;
+      return out;
     }
-    if (slot.followTarget && slot.targetId != null) {
-      return this._worldFromTargetLocal(slot, false);
+    if (slot.ownerId == null) return null;
+    const socket = this.helpers && this.helpers.socketWorldPose
+      ? this.helpers.socketWorldPose(slot.ownerId, WEAPON_SOCKET_NAME)
+      : null;
+    if (socket) {
+      const local = this.toLocalXZ(socket.x, socket.z, this._dischargeLocal);
+      const pose = this._dischargePose;
+      pose.x = local.x; pose.y = finiteOr(socket.y, 0.4); pose.z = local.z;
+      pose.ax = finiteOr(socket.forwardX, 1); pose.ay = finiteOr(socket.forwardY, 0);
+      pose.az = finiteOr(socket.forwardZ, 0);
+      return pose;
     }
-    const out = this._flipbookPoseScratch;
-    out.x = slot.localX; out.y = slot.localY; out.z = slot.localZ;
-    out.ax = slot.ax; out.ay = slot.ay; out.az = slot.az;
+    // Only the player's retained source may keep firing without a resolvable socket; a
+    // dead/decorative owner is killed by the pool instead of sticking in mid-air.
+    if (slot.ownerId !== this.state?.playerId) return null;
+    const out = this._surfacePoseScratch;
+    out.x = slot.x; out.y = slot.y; out.z = slot.z;
+    out.ax = nx; out.ay = ny; out.az = nz;
     return out;
   }
 
@@ -647,7 +600,7 @@ export class WeaponVfxPresenter {
       out.nx = slot.nx; out.ny = slot.ny; out.nz = slot.nz;
       return out;
     }
-    return this._worldFromTargetLocal(slot, true);
+    return this._worldFromTargetLocal(slot);
   }
 
   _mesh(entityId) {
@@ -676,12 +629,6 @@ export class WeaponVfxPresenter {
     const oz = Number(dz) || 0;
     if (!ox && !oz) return;
     this.discharges.reproject(ox, oz);
-    for (const slot of this.flipbooks.slots) {
-      if (!slot.alive) continue;
-      if (slot.followTarget && slot.targetId != null) continue;
-      slot.localX += ox;
-      slot.localZ += oz;
-    }
     for (const slot of this.scorches.slots) {
       if (!slot.alive) continue;
       if (slot.targetId != null) continue;
@@ -710,14 +657,13 @@ export class WeaponVfxPresenter {
   }
 
   getMeshes() {
-    return [this.bolts.mesh, this.flipbooks.mesh, this.discharges.mesh, this.ribbons.mesh, this.scorches.mesh];
+    return [this.bolts.mesh, this.discharges.mesh, this.ribbons.mesh, this.scorches.mesh];
   }
 
   /** Stable presenter-owned roots for scene residency/isolation checks. */
   getOwnerRoots() {
     return [
       this.bolts.mesh,
-      this.flipbooks.mesh,
       this.discharges.mesh,
       this.ribbons.mesh,
       this.scorches.mesh,
@@ -734,7 +680,6 @@ export class WeaponVfxPresenter {
     this._graph = null;
     clearShieldContacts();
     this.bolts.dispose();
-    this.flipbooks.dispose();
     this.discharges.dispose();
     this.ribbons.dispose();
     this.distortion.dispose();

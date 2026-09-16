@@ -44,3 +44,18 @@ export function sampleDischargeLifecycle(age, life, reducedMotion, out) {
   out.opacity = (0.25 + 0.75 * ignite) * (1 - cool);
   return out;
 }
+
+/**
+ * Contact impulse envelope: the compression front is already open on the first frame (a hit
+ * has no spool-up), then material cools and erodes from the contact outward. Reduced motion
+ * freezes extent growth, never the fade; the fragment's fracture stage still runs.
+ */
+export function sampleImpactLifecycle(age, life, reducedMotion, out) {
+  const t = clamp01(age / Math.max(0.001, life));
+  const flash = smooth01(t / 0.12);
+  const cool = smooth01((t - 0.10) / 0.90);
+  out.length = reducedMotion ? 1 : 0.42 + 0.58 * flash + 0.08 * cool;
+  out.width = reducedMotion ? 1 : (0.38 + 0.62 * flash) * (1 - 0.58 * cool);
+  out.opacity = (0.42 + 0.58 * flash) * (1 - cool);
+  return out;
+}

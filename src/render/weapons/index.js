@@ -1,15 +1,20 @@
 export {
   FLIGHT_MODE,
-  ATLAS_ROW,
   BOLT_VARIANT,
   WEAPON_SOCKET_NAME,
   resolveWeaponRecipe,
   projectileSkipsVisualFactoryMesh,
   recipeUsesRibbonWake,
-  recipeUsesMuzzleFlipbook,
+  recipeUsesSweptMuzzle,
   listWeaponRecipes,
   flightColorsForEntity,
 } from './recipes.js';
+export {
+  WeaponDischargePool,
+  DISCHARGE_CAPACITY,
+  SURFACE_ROLE,
+  IMPACT_KIND,
+} from '../forceLanguage/weaponDischargePool.js';
 export {
   worldSizeForPixels,
   resolveFloorWidth,
@@ -19,8 +24,6 @@ export {
   DEFAULT_BOLT_MIN_PIXELS,
 } from './pixelFloor.js';
 export { EnergyBoltPool, ENERGY_BOLT_CAPACITY, createEnergyBoltPrecompileMesh } from './energyBoltPool.js';
-export { FlipbookPool, FLIPBOOK_CAPACITY, FLIPBOOK_ROLE } from './flipbookPool.js';
-export { getWeaponFlipbookAtlas } from './flipbookAtlases.js';
 export { WeaponRibbonPool, WEAPON_RIBBON_CAPACITY } from './ribbonPool.js';
 export { DistortionField, DISTORTION_CAPACITY } from './distortionField.js';
 export { WeaponLightPool, WEAPON_LIGHT_POOL_SIZE, visiblePointLightBudget } from './weaponLights.js';

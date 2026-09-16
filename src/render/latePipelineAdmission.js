@@ -92,7 +92,7 @@ function isLiveFirstFlightEffect(object) {
   if (name === 'ShipNavLight_Pool' || name === 'ShipShieldBubble_Pool') return true;
   if (data.shipAuxPool === 'navLight' || data.shipAuxPool === 'shieldBubble') return true;
   if (name.startsWith('SF_VFX_') && name.endsWith('_sprite_instances')) return true;
-  if (name === 'SF_WeaponEnergyBolts' || name === 'SF_WeaponFlipbooks' || name === 'SF_WeaponRibbons'
+  if (name === 'SF_WeaponEnergyBolts' || name === 'SF_WeaponDischargeSurfaces' || name === 'SF_WeaponRibbons'
     || name === 'SF_WeaponDistortion' || name === 'SF_WeaponHullScorch' || name === 'SF_WeaponLightPool'
     || name === 'SF_WellDistortion') return true;
   if (name === 'sf-persistent-combat-beams'

@@ -4,9 +4,9 @@ import * as THREE from 'three';
 import { FIELD_SIGNATURES, FORCE_FAMILIES, fieldSignature, weaponSignature } from '../src/render/forceLanguage/catalog.js';
 import { FieldForcePresentation, FIELD_RELEASE_SECONDS } from '../src/render/forceLanguage/fieldForcePresentation.js';
 import { SweptSurfaceBatch, createForceSurfacePrecompileMesh } from '../src/render/forceLanguage/sweptSurfaceBatch.js';
-import { WeaponDischargePool } from '../src/render/forceLanguage/weaponDischargePool.js';
+import { IMPACT_KIND, WeaponDischargePool } from '../src/render/forceLanguage/weaponDischargePool.js';
 import { WeaponVfxPresenter } from '../src/render/weapons/presenter.js';
-import { resolveWeaponRecipe } from '../src/render/weapons/recipes.js';
+import { listWeaponRecipes, resolveWeaponRecipe } from '../src/render/weapons/recipes.js';
 
 const field=(kind,id=kind)=>({id,kind,center:{x:30,z:-25},dir:{x:1,z:0},radius:kind==='seed'?42:190,halfWidth:52,halfAngleRad:.56,engaged:true});
 const state=(active=[])=>({simTime:0,fields:{active},settings:{video:{}},massSeed:{seedId:'one',phase:'active',lockAt:0,activeAt:1,warnAt:4,expireAt:7}});
@@ -129,16 +129,42 @@ test('muzzle follows socket pose, expires, coalesces owner fire, and preserves f
  pose.x=44;pose.ax=0;pose.az=1;pool.update(.02,()=>pose);
  assert.equal(pool.slots[0].x,44);assert.equal(pool.slots[0].angle,Math.PI/2);
  pool.reproject(-100,40);assert.equal(pool.slots[0].x,-56);
- assert.equal(pool.spawn({variant:'unknown'},pose,'other',flash),false);
- pool.update(.2);assert.equal(pool.mesh.count,0);pool.dispose();
+ assert.equal(pool.spawn({variant:'unknown'},pose,'other',flash),true,
+  'no signature means a designed generic source, never a deleted muzzle or a card fallback');
+ pool.update(.2,()=>pose);assert.equal(pool.mesh.count,0);pool.dispose();
 });
 
-test('live presenter routes pulse to surfaces, not stacked MUZZLE/BORE flipbooks, preserving bolt recipe',()=>{
+test('every weapon recipe ignites a swept source; shield and hull contacts differ by structure',()=>{
+ const pool=new WeaponDischargePool(new THREE.Scene(),{capacity:16});
+ const pose={x:0,y:.4,z:0,ax:1,ay:0,az:0};
+ const flash={life:.14,size0:1.6,size1:2.8,opacity0:1.2,r:.4,g:.85,b:1};
+ const counts={};
+ for(const [variant] of Object.entries(listWeaponRecipes())){
+  for(const s of pool.slots)s.alive=false;
+  assert.equal(pool.spawn({variant},pose,'ship',flash,1),true,`${variant} has a swept source beat`);
+  pool.update(.02,()=>pose);
+  counts[variant]=pool.mesh.count;
+ }
+ for(const [variant,count] of Object.entries(counts))assert.ok(count>0,`${variant} emitted geometry`);
+ assert.ok(
+  counts.missile>0&&counts.torpedo>0&&counts['continuous-beam']>0&&counts['vector-mine']>0,
+  'launch, aperture and deploy sources are real geometry, not one generic kernel',
+ );
+ for(const s of pool.slots)s.alive=false;
+ pool.spawnImpact(pose,IMPACT_KIND.HULL,'autocannon',flash,1);pool.update(.02,()=>pose);
+ const hull=Array.from(pool.batch.attributes[1].array.slice(0,pool.mesh.count*4));
+ for(const s of pool.slots)s.alive=false;
+ pool.spawnImpact(pose,IMPACT_KIND.SHIELD,'autocannon',flash,1);pool.update(.02,()=>pose);
+ const shield=Array.from(pool.batch.attributes[1].array.slice(0,pool.mesh.count*4));
+ assert.notDeepEqual(hull,shield,'shield contact adds crossed panel seams the hull gouge does not');
+ pool.dispose();
+});
+
+test('live presenter routes pulse to surfaces, not stacked muzzle/bore cards, preserving bolt recipe',()=>{
  const socket={x:12,y:.82,z:3,forwardX:1,forwardY:0,forwardZ:0};
  const scene=new THREE.Scene(),presenter=new WeaponVfxPresenter({scene,helpers:{socketWorldPose:()=>socket}});
  presenter.state={playerId:'ship',settings:{video:{}}};
  assert.equal(presenter.handleFire({weaponId:'wpn_pulse_laser_s',ownerId:'ship'},{x:0,z:0},0),true);
- assert.equal(presenter.flipbooks.slots.filter(s=>s.alive).length,0);
  presenter.discharges.update(.02,presenter._dischargePoseResolver,presenter._a11y());
  assert.equal(presenter.discharges.slots[0].x,12);assert.equal(presenter.discharges.mesh.count,5);
  assert.equal(resolveWeaponRecipe('wpn_pulse_laser_s').flight.mode,'energy-card');

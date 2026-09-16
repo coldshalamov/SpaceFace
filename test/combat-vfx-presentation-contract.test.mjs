@@ -122,7 +122,7 @@ test('impact families differ by structure and timing rather than tint alone', ()
     recipe.flight.dashLength,
     recipe.flight.width,
     recipe.flight.ribbonWidth,
-    recipe.muzzle.atlasRow,
+    recipe.muzzle.surface,
     recipe.muzzle.width,
     recipe.muzzle.height,
     recipe.shield.contact,

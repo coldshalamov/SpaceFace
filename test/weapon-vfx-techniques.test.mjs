@@ -13,8 +13,9 @@ import {
   clearShieldContacts,
   ENERGY_BOLT_CAPACITY,
   FLIGHT_MODE,
-  FLIPBOOK_ROLE,
+  IMPACT_KIND,
   SHIELD_HIT_SLOTS,
+  SURFACE_ROLE,
   WEAPON_LIGHT_POOL_SIZE,
   WeaponVfxPresenter,
   readShieldContacts,
@@ -80,9 +81,12 @@ test('shield contact writes four bubble hit slots instead of a spark in empty sp
   assert.equal(hits.length, SHIELD_HIT_SLOTS * 4);
   assert.ok(hits[3] > 0, 'slot 0 age/strength is live');
   assert.ok(hits[0] < 0, 'contact direction faces the inbound hit');
-  const impact = presenter.flipbooks.slots.find((slot) => slot.alive && slot.role === FLIPBOOK_ROLE.IMPACT);
-  assert.ok(impact, 'shield hit also keeps a surface flipbook');
-  assert.equal(impact.followTarget, 1);
+  const impact = presenter.discharges.slots.find(
+    (slot) => slot.alive && slot.role === SURFACE_ROLE.IMPACT,
+  );
+  assert.ok(impact, 'shield hit also keeps a swept contact surface');
+  assert.equal(impact.kind, IMPACT_KIND.SHIELD);
+  assert.equal(impact.attached, true, 'shield contact stays retained to the target hull');
   clearShieldContacts();
 });
 
@@ -327,5 +331,6 @@ test('accessibility scales flash geometry and reproject keeps target-local marks
   assert.deepEqual({ x: scorch.localX, z: scorch.localZ }, before);
   presenter.dispose();
   presenter.dispose();
-  assert.deepEqual(presenter.getOwnerRoots().length, 8);
+  // Seven live roots: bolts, swept discharge surfaces, ribbons, scorch, two distortion stages, lights.
+  assert.equal(presenter.getOwnerRoots().length, 7, 'the card atlas pool no longer owns a live root');
 });

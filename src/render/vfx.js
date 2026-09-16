@@ -138,11 +138,12 @@ import { PersistentCombatBeamPool } from './combat/persistentBeams.js';
 import {
   createWeaponVfxPresenter,
   createEnergyBoltPrecompileMesh,
-  FlipbookPool,
+  WeaponDischargePool,
+  IMPACT_KIND,
   WeaponRibbonPool,
   DistortionField,
   HullScorchPool,
-  recipeUsesMuzzleFlipbook,
+  recipeUsesSweptMuzzle,
   recipeUsesRibbonWake,
   resolveWeaponRecipe,
   visiblePointLightBudget as weaponVisiblePointLightBudget,
@@ -2960,11 +2961,10 @@ export const vfx = {
       if (this._combatBeams.startCount === startsBefore) return;
     }
     const burst = this._burst || 1;
-    if (this._weaponPresenter && recipeUsesMuzzleFlipbook(resolveWeaponRecipe(p && p.weaponId, p))) {
+    if (this._weaponPresenter && recipeUsesSweptMuzzle(resolveWeaponRecipe(p && p.weaponId, p))) {
+      // Casings are owned by the presenter's quarks ejection for a recipe that declares them;
+      // the legacy particle-pool loop here double-ejected every kinetic shot.
       this._weaponPresenter.handleFire(p, origin, base, profile);
-      if (profile.family === 'kinetic' && profile.variant !== 'flak') {
-        this._spawnMuzzleCasings(origin, base, profile, burst);
-      }
       return;
     }
     switch (profile.lane) {
@@ -13243,12 +13243,13 @@ export function createVfxPrecompileSalvo() {
   weaponBolts.name = 'SF_Precompile_WeaponEnergyBolts';
   weaponBolts.position.set(0, 2, -8);
   group.add(weaponBolts);
-  const weaponFlip = new FlipbookPool(group, { capacity: 2 });
-  weaponFlip.spawn({
-    x: 2, y: 1.2, z: -8, ax: 1, ay: 0, az: 0,
-    width: 2, height: 2.4, intensity: 1, life: 1, row: 0, r: 0.2, g: 0.8, b: 1,
-  });
-  weaponFlip.update(0);
+  const weaponSurfaces = new WeaponDischargePool(group, { capacity: 2 });
+  const warmPose = { x: 2, y: 1.2, z: -8, ax: 1, ay: 0, az: 0, targetId: null, attached: false, slant: 0 };
+  const warmFlash = { life: 1, size0: 2, size1: 2.4, opacity0: 1, r: 0.2, g: 0.8, b: 1 };
+  weaponSurfaces.spawn({ variant: 'pulse-bolt' }, warmPose, 'warmup', warmFlash);
+  warmPose.ax = 0; warmPose.az = 1;
+  weaponSurfaces.spawnImpact(warmPose, IMPACT_KIND.SHIELD, 'pulse-bolt', warmFlash);
+  weaponSurfaces.update(0);
   const weaponRibbons = new WeaponRibbonPool(group, { capacity: 1, segments: 8 });
   weaponRibbons.spawn({
     entityId: 1, x: -2, y: 1.2, z: -8, width: 0.5,

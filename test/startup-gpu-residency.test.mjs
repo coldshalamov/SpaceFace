@@ -67,12 +67,12 @@ test('live VFX roots join the loading-stage texture upload instead of waiting fo
   assert.ok(roots.length > 0, 'the live pooled VFX owner must publish its startup roots');
   assert.ok(textures.length > 0, 'the live VFX roots must expose first-use textures');
   assert.ok(
-    roots.some((root) => root.name === 'SF_WeaponFlipbooks'),
-    'the live weapon presenter must publish its atlas-bearing flipbook pool',
+    roots.some((root) => root.name === 'SF_WeaponDischargeSurfaces'),
+    'the live weapon presenter must publish its swept surface pool',
   );
   assert.ok(
-    textures.some((texture) => texture.name === 'SF_WeaponFlipbookAtlas'),
-    'the weapon flipbook atlas must be uploaded during the loading-stage residency pass',
+    !textures.some((texture) => texture.name === 'SF_WeaponFlipbookAtlas'),
+    'the procedural weapon atlas is deleted, not merely unused',
   );
 
   const uploaded = [];
@@ -116,7 +116,7 @@ test('VFX teardown unsubscribes and disposes the weapon presenter roots', () => 
   const sceneAttachedRoots = presenterRoots.filter((root) => (
     root !== presenter.distortion.scene && root !== presenter.wellDistortion.scene
   ));
-  const presenterOwnerIds = ['weapon-energy-bolts', 'weapon-flipbooks', 'weapon-hull-scorch'];
+  const presenterOwnerIds = ['weapon-energy-bolts', 'SF_WeaponDischargeSurfaces', 'weapon-hull-scorch'];
   assert.ok(presenterRoots.length > 0);
   assert.ok(sceneAttachedRoots.every((root) => root.parent), 'presenter scene roots start attached');
   for (const id of presenterOwnerIds) {

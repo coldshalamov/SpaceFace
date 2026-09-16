@@ -65,7 +65,7 @@ test('pulse energy card has a chase-camera pixel floor and a saturated cyan reci
   assert.equal(recipe.flight.coreColor, '#34cfff');
   assert.notEqual(recipe.flight.coreColor.toLowerCase(), '#ffffff');
   assert.ok(recipe.flight.intensity > 1 && recipe.flight.intensity < 3.2);
-  assert.equal(recipe.muzzle.flipbook, true);
+  assert.equal(recipe.muzzle.surface, true);
   assert.equal(recipe.shield.contact, true);
   assert.equal(recipe.hull.scorch, true);
   const floor = worldSizeForPixels(
