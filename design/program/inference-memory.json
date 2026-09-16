@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-12",
+  "updated": "2026-09-16",
   "runs": [
     {
       "date": "2026-08-12",
@@ -50,6 +50,15 @@
       "scope": "AUDIO",
       "nx": 1,
       "note": "1-unit production target; WANTED heat audio family; 3x3 review waves requested by user"
+    },
+    {
+      "date": "2026-09-16",
+      "mode": "repair",
+      "domains": [
+        "WF-14"
+      ],
+      "nx": 5,
+      "note": "5-unit production target; sequential execution"
     }
   ],
   "units": [
@@ -844,6 +853,19 @@
       "references": [],
       "integration": "live",
       "commit": "a3f4cd6cd0b2d8bc6c57c22c34e37af2613423c1",
+      "verification": "focused_green"
+    },
+    {
+      "id": "bomb-bay-combat-prompts",
+      "date": "2026-09-16",
+      "wf": "WF-14",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "combat help on KBM and gamepad now teaches the bomb-bay drop/cycle keys",
+      "fingerprint": "verb=teach,subject=bomb-bay,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "133aaff91",
       "verification": "focused_green"
     }
   ],
