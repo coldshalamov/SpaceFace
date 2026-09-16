@@ -339,11 +339,12 @@ export function corridorStateFor(manifest, entity, pos, vel) {
   const nearBerth = distToBerth <= Math.max(docking.berth.dockRadius * 2.5, captureHalfWidth);
   const inCapture = inLane || nearBerth;
 
-  // Heading gate: velocity must point roughly INBOUND (opposite the outbound axis). Nearly
-  // stationary ships are always heading-ok — a stopped ship has no heading to be wrong.
+  // Heading gate: velocity must point roughly INBOUND (opposite the outbound axis). Ships at or
+  // below the berth dock speed are always heading-ok — a stopped or contact-held ship has no
+  // transit heading; its residual velocity is settle noise, not pilot intent.
   const inboundSpeed = -(vx * axis.x + vz * axis.z);
   let headingOk = true;
-  if (speed >= 8) {
+  if (speed > docking.berth.speedGate) {
     const heading = Math.atan2(vz, vx);
     const inbound = Math.atan2(-axis.z, -axis.x);
     headingOk = Math.abs(wrapDeg180((heading - inbound) / DEG)) <= docking.corridor.headingGateDeg;

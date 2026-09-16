@@ -354,9 +354,20 @@ test('heading gate: outbound and tangential motion are rejected, near-stationary
   // Pure tangential drift (90° off inbound): no inbound component to rescue the heading.
   assert.equal(classify(99, 0, frameVel(0, 20)).headingOk, false);
 
-  // A stopped ship has no heading to be wrong: speed < 8 is always heading-ok.
+  // A stopped or dock-speed ship has no heading to be wrong: speed <= berth.speedGate (12) is
+  // always heading-ok — residual velocity there is settle/contact noise, not a transit heading.
   assert.equal(classify(99, 0, { x: 0, z: 0 }).headingOk, true);
   assert.equal(classify(99, 0, frameVel(5)).phase, 'capture', 'a creeping ship is not heading-penalized');
+  // Regression (PQ-033.02 soak cycle 503): a contact-held ship parked ~23 wu off the berth reads
+  // ~8-11 wu/s while physically stopped. Below the dock gate that must not refuse the capture
+  // assist — an outbound dock-speed ship in the lane is docking traffic the PD pulls back in.
+  assert.equal(classify(99, 0, frameVel(11)).headingOk, true,
+    'dock-speed outbound drift in the capture lane is settle noise, not a transit refusal');
+  assert.equal(classify(99, 0, frameVel(11)).phase, 'capture',
+    'a dock-speed ship in the lane stays in capture so the assist can park it');
+  // Above the dock gate the gate still bites: 13 wu/s outbound is refused.
+  assert.equal(classify(99, 0, frameVel(13)).headingOk, false,
+    'above dock speed an outbound heading still refuses capture');
 
   // Heading tolerance edge: within 42° of inbound passes; beyond the drift allowance fails.
   const rotate = (deg) => {

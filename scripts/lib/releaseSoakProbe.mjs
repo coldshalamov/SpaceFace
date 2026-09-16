@@ -1046,8 +1046,24 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       // Only a player would re-issue the command — a still-driving AP gets the wait window, not
       // a re-arm fight for the ship.
       if (idleDiag?.autopilot?.active === true) break;
-      mark('redock-rearm', idleDiag);
-      await armHeliosWaypoint(page);
+      const distToBerth = idleDiag?.corridor?.distToBerth;
+      if (Number.isFinite(distToBerth) && distToBerth <= 60) {
+        // Already inside the dock envelope: re-plotting a waypoint to the station the ship is
+        // parked next to resolves RETURN TO SHIP, not a course — the Set Waypoint click has no
+        // emit to witness (same hazard the insideDockEnvelope guard above avoids). The player
+        // action here is a throttle nudge toward the berth; once residual speed drops under
+        // the dock gate the capture assist owns the pull-in.
+        mark('redock-nudge', idleDiag);
+        try {
+          await page.keyboard.down('KeyW');
+          await page.waitForTimeout(900);
+        } finally {
+          await page.keyboard.up('KeyW').catch(() => {});
+        }
+      } else {
+        mark('redock-rearm', idleDiag);
+        await armHeliosWaypoint(page);
+      }
     }
     const waitDeadline = Date.now() + 60_000;
     let brakePulsed = false;
