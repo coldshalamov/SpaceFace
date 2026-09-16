@@ -883,6 +883,12 @@ export const ui = {
     dockFade.id = 'sf-dock-overlay';
     dockFade.hidden = true;
     dockFade.setAttribute('aria-hidden', 'true');
+    if (typeof document !== 'undefined' && document.head && !document.getElementById('sf-dock-blackout-style')) {
+      const blackoutStyle = document.createElement('style');
+      blackoutStyle.id = 'sf-dock-blackout-style';
+      blackoutStyle.textContent = '#sf-dock-overlay.sf-administrative-blackout { background:#05070d; }';
+      document.head.appendChild(blackoutStyle);
+    }
     const blackoutStatus = document.createElement('div');
     blackoutStatus.className = 'sr-only';
     blackoutStatus.setAttribute('role', 'status');

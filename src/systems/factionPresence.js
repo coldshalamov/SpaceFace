@@ -590,7 +590,7 @@ export const factionPresence = {
   _bindPitbornConcordTargets() {
     const entities = indexedShipLikeScan(this.state);
     const concord = entities
-      .filter((entity) => entity.id !== this.state.playerId && entity.type === 'ship' && entity.factionId === 'faction_scn')
+      .filter((entity) => entity.alive !== false && entity.id !== this.state.playerId && entity.type === 'ship' && entity.factionId === 'faction_scn')
       .sort((a, b) => String(a.id).localeCompare(String(b.id)))[0] || null;
     for (const pitborn of entities) {
       const marker = pitborn.data && pitborn.data.factionPresence;

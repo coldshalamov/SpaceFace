@@ -484,6 +484,9 @@ const h8 = Object.freeze({
     echoSpec.data.callsign = 'Tessera Echo';
     echoSpec.data.scanLabel = 'Tessera Echo';
     echoSpec.data.role = 'echo';
+    if (Array.isArray(playerData.fittings)) {
+      echoSpec.data.fittings = [...playerData.fittings];
+    }
     const planned = Array.isArray(live.plan.ships) && live.plan.ships[0] || {};
     live.plan.ships = [{
       ...planned,

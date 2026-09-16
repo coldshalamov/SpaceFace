@@ -93,7 +93,9 @@ export function resolvePins(entity, context = {}) {
   }
   if (context.visibleOnGlass === true) pins.push(PIN_REASON.VISIBLE_ON_GLASS);
   if (context.hostileAggro === true) pins.push(PIN_REASON.HOSTILE_AGGRO);
-  if (context.projectileThreat === true) pins.push(PIN_REASON.PROJECTILE_THREAT);
+  if (context.projectileThreat === true || entity.type === 'projectile') {
+    pins.push(PIN_REASON.PROJECTILE_THREAT);
+  }
   if (context.tetherOrAttachment === true) pins.push(PIN_REASON.TETHER_OR_ATTACHMENT_COMPONENT);
   if (context.dockingOrLanding === true) pins.push(PIN_REASON.DOCKING_OR_LANDING);
   if (context.missionCritical === true) pins.push(PIN_REASON.MISSION_CRITICAL);

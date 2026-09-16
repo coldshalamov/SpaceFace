@@ -600,6 +600,7 @@ export function admitSameTickProjectiles(state, runtime, membership) {
     runtime.seenEntityIds.add(entity.id);
     runtime.currentEntityIds.add(entity.id);
     runtime.physicsDynamics.push(entity);
+    runtime.exactIds.push(entity.id);
     runtime.counts.physics += 1;
   }
   runtime.classifiedMembership = membership;
@@ -642,6 +643,10 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
   }
   for (let i = 0; i < runtime.nearIds.length; i++) {
     add(state.entities && state.entities.get(runtime.nearIds[i]));
+  }
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (entity && entity.alive !== false && entity.type === 'projectile') add(entity);
   }
   const scratch = runtime.radiusScratch;
   scratch.length = 0;

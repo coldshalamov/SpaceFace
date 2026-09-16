@@ -941,30 +941,31 @@ function overlaySelf(self, live) {
 function applyChoreographyIntent(intent, choreo, self) {
   const slot = choreo.slot || self.pos;
   const vel = choreo.slotVel || ZERO_VEL;
+  const faceTarget = choreo.faceTarget === true || intent.faceTarget === true;
   if (choreo.coast) {
     return {
       ...intent,
       kind: ManeuverKind.HOLD,
-      targetId: null,
+      targetId: faceTarget ? (intent.targetId || choreo.targetId) : null,
       formationSlot: { x: self.pos.x, z: self.pos.z },
       formationVelocity: { x: self.vel.x, z: self.vel.z },
       formationBound: choreo.bound || intent.formationBound,
       breakFormation: true,
       flightPoint: null,
-      faceTarget: false,
+      faceTarget,
       reason: choreo.reason || intent.reason,
     };
   }
   return {
     ...intent,
     kind: ManeuverKind.FORMATION,
-    targetId: choreo.faceTarget ? (intent.targetId || choreo.targetId) : intent.targetId,
+    targetId: faceTarget ? (intent.targetId || choreo.targetId) : intent.targetId,
     formationSlot: { x: slot.x, z: slot.z },
     formationVelocity: { x: vel.x || 0, z: vel.z || 0 },
     formationBound: choreo.bound || intent.formationBound || 120,
     breakFormation: false,
     flightPoint: null,
-    faceTarget: choreo.faceTarget === true,
+    faceTarget,
     reason: choreo.reason || intent.reason,
   };
 }

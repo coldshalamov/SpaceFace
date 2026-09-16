@@ -160,7 +160,7 @@ export const crucibleFocus = {
     this._applyCamera(st, wanted);
     if (!root) return;
     if (wanted) this._injectCss();
-    root.classList.toggle(CRUCIBLE_FOCUS_CLASS, wanted);
+    root.classList?.toggle(CRUCIBLE_FOCUS_CLASS, wanted);
   },
 
   _applyCamera(state, wanted) {
@@ -187,7 +187,7 @@ export const crucibleFocus = {
     this._applied = null;
     if (typeof document === 'undefined') return;
     const root = focusHost();
-    if (root) root.classList.remove(CRUCIBLE_FOCUS_CLASS);
+    if (root) root.classList?.remove(CRUCIBLE_FOCUS_CLASS);
   },
 
   _injectCss() {

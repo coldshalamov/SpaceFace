@@ -264,8 +264,8 @@ export function createScreenManager(ctx) {
     // settings, and future registered screens all receive the same input fence and simulation
     // freeze. There is deliberately no `.ui-live-screen` downgrade: a beautiful map that lets an
     // off-screen enemy keep killing the player is not a map, it is an ambush.
+    const modalOpen = open || state.ui.docked === true || state.ui.fulfillmentBlackoutActive === true;
     const externalModal = state.ui.docked === true || state.ui.fulfillmentBlackoutActive === true;
-    const modalOpen = open || externalModal;
     document.body.classList.toggle('ui-modal-open', modalOpen);
     document.body.classList.remove('ui-live-screen');
     syncHudAccessibility(open || externalModal || state.mode !== 'flight');

@@ -157,6 +157,7 @@ html.sf-reduce-flash #hud.sf-hud--blowout {
   opacity: 0; transition: opacity 0.4s ease-in-out; }
 #sf-dock-overlay[hidden] { display: none !important; }
 #sf-dock-overlay.active { opacity: 1; }
+#sf-dock-overlay.sf-administrative-blackout { background: #05070d; }
 /* --- Continue veil (title screen -> game; src/ui/screens/mainMenu.js _showContinueFade) ---
    Black to game with the location name bottom-left. It mounts on #ui-root above the title and
    below the loading shell (z-index 1900 < 2000: test/startup-loading-presentation.test.mjs). The

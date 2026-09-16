@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "r2-twelve-wreck-data-wired",
   "channels": [
-    { "id": "bar", "carrier": "src/ui/screens/bar.js" },
+    { "id": "bar", "carrier": "src/ui/station/screens/bar.js" },
     { "id": "news", "carrier": "src/data/newsTemplates.js" },
     { "id": "comms_intercept", "carrier": "src/ui/comms.js" },
     { "id": "bark", "carrier": "src/systems/barkDirector.js" },

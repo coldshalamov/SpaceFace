@@ -351,7 +351,7 @@ function prepareScenarioGeometry({ factionId, state, helpers, player, actors }) 
     // well outside that bubble while keeping the production sector and actors unchanged.
     const exchange = { x: origin.x + 2200, z: origin.z + 1600 };
     placeEntity(player, exchange.x, exchange.z, 0);
-    placeEntity(actors[0], factionId === 'faction_archive' ? exchange.x - 440 : exchange.x + 220,
+    placeEntity(actors[0], factionId === 'faction_archive' ? exchange.x - 440 : exchange.x + 380,
       exchange.z, factionId === 'faction_archive' ? 0 : Math.PI);
     actors[0].data.ai.activity = {
       ...(actors[0].data.ai.activity || {}),
@@ -384,6 +384,9 @@ function prepareScenarioGeometry({ factionId, state, helpers, player, actors }) 
     for (let index = 0; index < setup.concords.length; index++) {
       const concord = setup.concords[index];
       assert.equal(concord.factionId, 'faction_scn', 'Pitborn fixture must use production Concord patrols');
+      concord.flags = { ...(concord.flags || {}), missionPinned: true, persistent: true };
+      concord.data = { ...(concord.data || {}), missionPinned: true };
+      concord.activity = { ...(concord.activity || {}), pinnedExact: true };
       placeEntity(concord, origin.x + 380 + index * 90, origin.z + index * 70, Math.PI);
       concord.hull = concord.hullMax = Math.max(1000, concord.hullMax || 0);
       concord.shield = concord.shieldMax = 0;
@@ -617,6 +620,14 @@ async function makeHarness(sectorId) {
   state.settings.gameplay.tutorialHints = false;
   state.world.sectors = Object.fromEntries(SECTORS.map((sector) => [sector.id, clonePlain(sector)]));
   state.world.currentSectorId = sectorId;
+  const sector = state.world.sectors[sectorId];
+  const worldRadius = (sector && sector.worldRadius) || 2400;
+  const sectorOrigin = sectorGlobalOrigin(sectorId);
+  state.bounds = {
+    radius: worldRadius,
+    hardRadius: worldRadius + 500,
+    center: { x: sectorOrigin.x, z: sectorOrigin.z },
+  };
   const bus = createBus();
   const helpers = {};
   const ctx = { state, bus, helpers, registry: null };
@@ -936,7 +947,7 @@ function installHeadlessBrowserStubs() {
       };
     },
     head: { appendChild() {} },
-    body: { appendChild() {} },
+    body: { appendChild() {}, classList: { add() {}, remove() {}, toggle() {} }, style: {} },
   };
   globalThis.window = globalThis;
   globalThis.__SF_PUBLISH_SG02_TELEMETRY__ = true;

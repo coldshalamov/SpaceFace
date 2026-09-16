@@ -313,12 +313,12 @@ export const save = {
   },
 
   // Interval autosave is the only periodic job; playtime accrual is core's (§ core.preStep).
-  update(/* dt, state */) {
-    const state = this.state;
-    if (this._restoring || state.mode !== 'flight') return;
-    if (isCatchupPresentationSkip(state) || shouldSerializeDuringPresent()) return;
-    const intervalS = (state.settings.gameplay && state.settings.gameplay.autosaveIntervalS) || 0;
-    if (intervalS > 0 && (state.meta.playtimeS - this._lastAutosavePlaytime) >= intervalS) {
+  update(dt, state) {
+    const st = state || this.state;
+    if (!st || this._restoring || st.mode !== 'flight') return;
+    if (isCatchupPresentationSkip(st) || shouldSerializeDuringPresent()) return;
+    const intervalS = (st.settings?.gameplay && st.settings.gameplay.autosaveIntervalS) || 0;
+    if (intervalS > 0 && st.meta && (st.meta.playtimeS - this._lastAutosavePlaytime) >= intervalS) {
       this.requestAutosave('interval');
     }
   },
