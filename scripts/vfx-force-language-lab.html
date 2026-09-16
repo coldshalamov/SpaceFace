@@ -1,57 +1,99 @@
-<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SpaceFace / Force language specimen</title>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SpaceFace · Field lifecycle lab</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#070b11;color:#d9eaf5;font:14px system-ui,sans-serif;overflow:hidden}canvas{position:absolute;inset:0;width:100%;height:100%}header{position:absolute;top:30px;left:38px;right:38px;pointer-events:none}small{font-size:11px;letter-spacing:.22em;color:#829cb1}h1{font-size:30px;font-weight:450;letter-spacing:-.04em;margin:10px 0}p{font-size:13px;color:#9cb4c7;max-width:440px;line-height:1.6;margin:6px 0}.controls{position:absolute;bottom:28px;left:38px;right:38px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}button,select{background:#122131;color:#d7e9f7;border:1px solid #2a4054;padding:10px 14px;font:inherit;cursor:pointer;border-radius:3px}button[aria-pressed=true]{background:#c2eaf3;color:#101c26}label{padding:8px;color:#a4bccd}#readout{position:absolute;right:38px;top:34px;font:11px ui-monospace,monospace;color:#7795a9;line-height:1.8;text-align:right;white-space:pre-line}#note{position:absolute;right:38px;bottom:86px;color:#577083;font:11px system-ui;max-width:360px;text-align:right}body.gray canvas{filter:grayscale(1)}
+*{box-sizing:border-box}body{margin:0;background:#070b11;color:#dceaf2;font:14px system-ui,sans-serif;overflow:hidden}canvas{position:absolute;inset:0;width:100%;height:100%}header{position:absolute;top:26px;left:32px;right:32px;pointer-events:none}small{font-size:10px;letter-spacing:.21em;color:#93adc1}h1{font-size:28px;font-weight:450;letter-spacing:-.035em;margin:8px 0}p{font-size:12px;color:#9cb4c7;max-width:440px;line-height:1.6;margin:5px 0}nav{position:absolute;bottom:26px;left:32px;right:32px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}button,select{background:#12202f;color:#d7e9f7;border:1px solid #2a4054;padding:9px 12px;font:inherit;cursor:pointer;border-radius:3px}button[aria-pressed=true]{background:#bde4ef;color:#101c26}label{padding:6px;color:#b0c2cf;font-size:11px}#readout{position:absolute;right:32px;top:28px;font:11px ui-monospace,monospace;color:#97b3c5;line-height:1.8;text-align:right;white-space:pre-line}#timeline{position:absolute;bottom:99px;left:32px;right:32px;height:2px;background:#1c3345}#progress{height:2px;background:#80c3d1;width:0}#stage{position:absolute;bottom:112px;left:32px;font:11px ui-monospace,monospace;letter-spacing:.13em}#truth{position:absolute;bottom:112px;right:32px;color:#7294ab;font-size:10px;letter-spacing:.06em}body.gray canvas{filter:grayscale(1)}
 </style>
 <script type="importmap">{"imports":{"three":"/vendor/three.module.js"}}</script>
-<canvas id="view"></canvas><header><small>SPACEFACE / FORCE LANGUAGE / RENDERER SPECIMEN</small><h1 id="title"></h1><p id="description"></p></header><div id="readout"></div><div id="note">Production renderer classes • diagnostic stage, not an in-game capture • bloom OFF</div>
-<div class="controls"><button data-kind="seed">Seed</button><button data-kind="well">Well</button><button data-kind="repulsor">Repulsor</button><button data-kind="cone">Cone</button><button data-kind="sheet">Skim</button><button data-kind="retro">Reverse jets</button><button data-kind="autocannon">Guns</button><select id="weapon"><option>autocannon</option><option>pulse-bolt</option><option>railgun</option><option>thermal-bolt</option><option>flak</option><option>disruptor</option></select><select id="phase"><option>active</option><option>travel</option><option>locking</option><option>warning</option></select><label><input type="checkbox" id="engaged" checked>Engaged</label><label><input type="checkbox" id="motion">Reduced motion</label><label><input type="checkbox" id="flash">Reduced flash</label><label><input type="checkbox" id="gray">Grayscale</label><label><input type="checkbox" id="chase">Chase scale</label><button id="pause">Pause</button></div>
+</head><body>
+<canvas id="view"></canvas><header><small>SPACEFACE / LIVE VFX OWNER / LIFECYCLE v2</small><h1 id="title"></h1><p id="description"></p></header><div id="readout"></div>
+<div id="stage"></div><div id="truth">PRODUCTION FIELD UPDATE · DIAGNOSTIC SCENE · BLOOM OFF</div>
+<div id="timeline"><div id="progress"></div></div>
+<nav>
+<button data-kind="seed">Seed</button><button data-kind="well">Well</button><button data-kind="repulsor">Repulsor</button><button data-kind="cone">Cone</button><button data-kind="sheet">Skim</button>
+<button id="restart">Replay cycle</button><button id="pause">Pause</button>
+<label><input id="engaged" type="checkbox"> Targets affected</label>
+<label><input id="motion" type="checkbox"> Reduced motion</label><label><input id="flash" type="checkbox"> Reduced flash</label><label><input id="gray" type="checkbox"> Grayscale</label>
+</nav>
 <script type="module">
 import * as THREE from 'three';
-import {FieldForcePresentation} from '../src/render/forceLanguage/fieldForcePresentation.js';
-import {WeaponDischargePool} from '../src/render/forceLanguage/weaponDischargePool.js';
-import {listWeaponRecipes} from '../src/render/weapons/recipes.js';
-import {resolveVfxAccessibilityProfile,applyFlashAccessibility} from '../src/render/vfxAccessibility.js';
+import {vfx} from '../src/render/vfx.js';
 import {FIELD_SIGNATURES} from '../src/render/forceLanguage/catalog.js';
-import {PlayerRetroJets,retroEnvelopeForDemand} from '../src/render/thruster/systems/playerRetroVolume.js';
-const renderer=new THREE.WebGLRenderer({canvas:document.querySelector('#view'),antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x070b11);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.NoToneMapping;
+import {FIELD_LIFECYCLES, sampleFieldLifecycle} from '../src/render/forceLanguage/effectLifecycle.js';
+const canvas=document.getElementById('view');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(1);renderer.setSize(innerWidth,innerHeight);renderer.setClearColor(0x070b11);
+renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.NoToneMapping;
 const scene=new THREE.Scene();const camera=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,.1,4000);
-const discharges=new WeaponDischargePool(scene);let lastShot=-1;
-const fields=new FieldForcePresentation(scene);const retro=new PlayerRetroJets(THREE);retro.attach(scene);
-scene.add(new THREE.AmbientLight(0xb4cde6,2));const light=new THREE.DirectionalLight(0xffffff,4);light.position.set(-30,80,-30);scene.add(light);
-const hull=new THREE.Group();const material=new THREE.MeshStandardMaterial({color:0x4c5e71,metalness:.72,roughness:.43});
-const body=new THREE.Mesh(new THREE.BoxGeometry(10,2.0,3.8),material);hull.add(body);
-for(const z of [-3.1,3.1]){const m=new THREE.Mesh(new THREE.BoxGeometry(7,1.7,1.7),material);m.position.set(-1,0,z);hull.add(m);}hull.position.set(-24,1,15);scene.add(hull);
-const targets=new THREE.Group();for(let i=0;i<9;i++){const a=i*2.399;const r=65+i*13;const m=new THREE.Mesh(new THREE.IcosahedronGeometry(2+i%3,0),new THREE.MeshStandardMaterial({color:0x48525e,roughness:.82,metalness:.32}));m.position.set(Math.cos(a)*r,1,Math.sin(a)*r);m.rotation.set(i*.4,i*.7,0);targets.add(m);}scene.add(targets);
+scene.add(new THREE.AmbientLight(0xb4cde6,1.5));const light=new THREE.DirectionalLight(0xffffff,3.5);light.position.set(-30,80,-30);scene.add(light);
+// Fixed reference objects, not moving actors: temporal evidence cannot pass on camera/ship motion.
+const hull=new THREE.Group();const metal=new THREE.MeshStandardMaterial({color:0x475669,metalness:.6,roughness:.48});
+for(const [x,z,l,w]of [[0,0,10,3.8],[-1,-3.1,7,1.7],[-1,3.1,7,1.7]]){const mesh=new THREE.Mesh(new THREE.BoxGeometry(l,1.6,w),metal);mesh.position.set(x,0,z);hull.add(mesh);}scene.add(hull);
 const R={seed:42,well:190,repulsor:170,cone:260,sheet:220};
-let kind='well',t=1.3,paused=false,last=performance.now();
-const active={id:'specimen',kind:'well',center:{x:0,z:0},dir:{x:1,z:0},radius:190,halfAngleRad:.56,halfWidth:52,engaged:true};
-const state={simTime:0,fields:{active:[active]},massSeed:{seedId:'lab-anchor',phase:'active',lockAt:0,activeAt:1,warnAt:0,expireAt:10},settings:{video:{motionReduce:false,flashReduce:false}},render:{camera}};
-function setKind(next){kind=next;lastShot=-1;for(const slot of discharges.slots)slot.alive=false;active.id='specimen-'+next;active.kind=next;active.radius=R[next]||42;state.fields.active=R[next]?[active]:[];for(const b of document.querySelectorAll('[data-kind]'))b.setAttribute('aria-pressed',String(b.dataset.kind===kind));const sig=FIELD_SIGNATURES[kind];document.querySelector('#title').textContent=sig?.name||(kind==='retro'?'Reverse / open-throat jets':'Machined impulse / muzzle specimen');document.querySelector('#description').textContent=sig?sig.shape+' — '+sig.motion:'Directional swept surfaces; distinct source construction. The long main drive history is not modified.';}
-function draw(time=t,dt=1/60){
- t=time;state.simTime=t;state.massSeed.phase=document.querySelector('#phase').value;active.engaged=document.querySelector('#engaged').checked;state.settings.video.motionReduce=document.querySelector('#motion').checked;state.settings.video.flashReduce=document.querySelector('#flash').checked;
- document.body.classList.toggle('gray',document.querySelector('#gray').checked);
- const chase=document.querySelector('#chase').checked;
- const small=kind==='seed'||kind==='retro'||kind==='autocannon';const height=chase?144:small?90:510;
- const targetX=(kind==='cone'||kind==='sheet')?105:0;
- camera.position.set(targetX,height,height*.40);camera.lookAt(targetX,0,0);camera.updateMatrixWorld();
- hull.visible=true;hull.position.set(kind==='retro'?0:-24,1,kind==='retro'?0:15);targets.visible=!small;
- fields.update(dt,state);retro.setCamera(camera);
- if(kind==='retro')retro.update(dt,[{x:5,y:1,z:-3.1,ax:-1,ay:0,az:0},{x:5,y:1,z:3.1,ax:-1,ay:0,az:0}],retroEnvelopeForDemand(.95,{reducedFlash:state.settings.video.flashReduce,reducedMotion:state.settings.video.motionReduce}));else retro.reset();
- const profile=resolveVfxAccessibilityProfile(state.settings);
- if(kind==='autocannon'){
-  const recipe=listWeaponRecipes()[document.querySelector('#weapon').value];
-  const cycle=Math.floor(t*2.5);
-  if(cycle!==lastShot){
-   const flash=applyFlashAccessibility({life:recipe.muzzle.life,size0:recipe.muzzle.width,size1:recipe.muzzle.height,opacity0:1.35,opacity1:0},profile);
-   discharges.spawn(recipe,{x:hull.position.x+5,y:1,z:hull.position.z,ax:1,ay:0,az:0},'lab-ship',flash,1);lastShot=cycle;
-  }
- }
- discharges.update(dt,null,profile);
- renderer.render(scene,camera);
- document.querySelector('#readout').textContent=`${renderer.info.render.calls} draws / ${renderer.info.render.triangles.toLocaleString()} triangles\n${fields.stats.surfaces} folded surfaces / ${fields.stats.dropped} dropped\n${height} WU camera height / t ${t.toFixed(2)}`;
+const active={id:'specimen',kind:'well',center:{x:0,z:0},dir:{x:1,z:0},radius:190,halfAngleRad:.56,halfWidth:52,engaged:false};
+const state={simTime:0,fields:{active:[]},massSeed:{seedId:'lab-anchor',phase:'travel',lockAt:.65,activeAt:1.5,warnAt:3.5,expireAt:4.2},settings:{video:{motionReduce:false,flashReduce:false}},render:{camera}};
+// Exercise the EXACT adapter called by vfx.update in normal flight, not a parallel animation.
+const system=Object.create(vfx);system._scene=scene;system.state=state;system._fieldGeomInitialized=false;
+system._combatBeamLocalizer=(x,z,out)=>{out.x=x;out.z=z;return out;};
+let kind='well',time=0,paused=false,last=performance.now(),lastSample=0;
+const cycleResult={};const TOTAL=5.6,RELEASE=4.2;
+function select(next){
+ if(!FIELD_SIGNATURES[next])throw new Error(`Unknown kind: ${next}`);
+ system._fieldGeom?.dispose();system._fieldGeom=null;system._fieldGeomInitialized=false;
+ kind=next;time=0;lastSample=0;active.id='specimen-'+next;active.kind=next;active.radius=R[next];
+ state.massSeed.seedId='lab-'+next;state.fields.active=[active];
+ for(const b of document.querySelectorAll('[data-kind]'))b.setAttribute('aria-pressed',String(b.dataset.kind===kind));
+ document.getElementById('title').textContent=FIELD_SIGNATURES[next].name;
+ document.getElementById('description').textContent=FIELD_SIGNATURES[next].motion;
+ const cx=(next==='cone'||next==='sheet')?105:0,height=next==='seed'?88:585;
+ camera.position.set(cx,height,height*.42);camera.lookAt(cx,0,0);camera.updateMatrixWorld(true);
+ hull.position.set(next==='seed'?-24:-85,1,next==='seed'?15:90);hull.visible=true;
+ sample(0);
 }
-for(const b of document.querySelectorAll('[data-kind]'))b.onclick=()=>setKind(b.dataset.kind);document.querySelector('#weapon').onchange=()=>setKind('autocannon');document.querySelector('#pause').onclick=()=>{paused=!paused;};
+function sample(seconds,options={}){
+ time=seconds;state.simTime=seconds;
+ active.engaged=options.engaged??document.getElementById('engaged').checked;
+ state.settings.video.motionReduce=options.motion??document.getElementById('motion').checked;
+ state.settings.video.flashReduce=options.flash??document.getElementById('flash').checked;
+ state.massSeed.phase=seconds<.65?'travel':seconds<1.5?'locking':seconds<3.5?'active':'warning';
+ const present=options.present??seconds<RELEASE;
+ state.fields.active=present?[active]:[];
+ system._updateFieldGeometry(Math.max(0,seconds-lastSample));lastSample=seconds;
+ renderer.render(scene,camera);
+ const owner=system._fieldGeom,slot=owner?.slots.find(s=>s.id!==null);
+ let stage='QUIET';if(slot){sampleFieldLifecycle(seconds,slot.born,slot.release,FIELD_LIFECYCLES[kind],cycleResult);stage=cycleResult.stage.toUpperCase();}
+ document.getElementById('stage').textContent=`${stage}  /  ${seconds.toFixed(2)} s`;
+ document.getElementById('progress').style.width=`${Math.min(100,seconds/TOTAL*100)}%`;
+ const power=present?(active.engaged?'POWERED · BODY CONTACT':'POWERED · NO TARGETS'):(owner?.stats.releasing?'POWER OFF · RESIDUE ONLY':'QUIET · NO EFFECT');
+ document.getElementById('readout').textContent=`${power}${kind==='seed'&&present?'\nANCHOR '+state.massSeed.phase.toUpperCase():''}\n${owner?.stats.surfaces||0} surfaces / ${renderer.info.render.calls} draws\n${owner?.stats.releasing||0} retiring / ${owner?.stats.dropped||0} dropped`;
+ return {time:owner?.time,stage,stats:{...owner?.stats},draws:renderer.info.render.calls,triangles:renderer.info.render.triangles,
+   shaderTime:owner?.batch.material.uniforms.uTime.value,shaderMotion:owner?.batch.material.uniforms.uMotion.value,
+   attributeVersions:owner?.batch.attributes.map(a=>a.version)};
+}
+function pixels(){
+ const gl=renderer.getContext(),w=canvas.width,h=canvas.height;const out=new Uint8Array(w*h*4);
+ gl.readPixels(0,0,w,h,gl.RGBA,gl.UNSIGNED_BYTE,out);return out;
+}
+function compare(a,b){
+ let changed=0,union=0,sum=0;
+ for(let i=0;i<a.length;i+=4){
+  const af=Math.max(a[i]-7,a[i+1]-11,a[i+2]-17)>14,bf=Math.max(b[i]-7,b[i+1]-11,b[i+2]-17)>14;
+  if(af||bf)union++;
+  const d=Math.max(Math.abs(a[i]-b[i]),Math.abs(a[i+1]-b[i+1]),Math.abs(a[i+2]-b[i+2]));
+  if(d>8){changed++;sum+=d;}
+ }
+ return {changed,foreground:union,changedFraction:changed/Math.max(1,union),meanChange:sum/Math.max(1,changed)};
+}
+const capture=()=>canvas.toDataURL('image/png');
+window.__forceLab={threeRevision:THREE.REVISION,select,setKind:select,sample,draw:sample,pixels,compare,capture,state,system,renderer,camera,scene,
+ get fields(){return system._fieldGeom;},pause(){paused=true;},resume(){paused=false;last=performance.now();},
+ settings(v){for(const[k,x]of Object.entries(v)){const e=document.getElementById(k);if(e)e.checked=x;}},
+ async ready(){await renderer.compileAsync(scene,camera);},period:TOTAL,releaseAt:RELEASE};
+for(const b of document.querySelectorAll('[data-kind]'))b.onclick=()=>select(b.dataset.kind);
+document.getElementById('restart').onclick=()=>select(kind);
+document.getElementById('pause').onclick=(e)=>{paused=!paused;e.target.textContent=paused?'Play':'Pause';};
+document.getElementById('gray').onchange=(e)=>document.body.classList.toggle('gray',e.target.checked);
 window.addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();});
-window.__forceLab={setKind,draw,state,fields,retro,discharges,renderer,camera,scene,pause(){paused=true;},settings(v){for(const [k,x]of Object.entries(v)){const e=document.getElementById(k);if(e)e.checked=x;}},async ready(){await renderer.compileAsync(scene,camera);}};
-setKind(kind);draw();function frame(now){const dt=Math.min(.06,(now-last)/1000);last=now;if(!paused)draw(t+dt,dt);requestAnimationFrame(frame);}requestAnimationFrame(frame);
-</script></html>
+select(kind);
+function frame(now){const dt=Math.min(.06,(now-last)/1000);last=now;if(!paused){if(time+dt>=TOTAL)select(kind);else sample(time+dt);}requestAnimationFrame(frame);}requestAnimationFrame(frame);
+</script></body></html>

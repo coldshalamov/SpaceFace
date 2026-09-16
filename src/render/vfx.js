@@ -1665,6 +1665,7 @@ export const vfx = {
           lightKeys: LAW_HEAT_LIGHT_KEY,
         }
         : null,
+      fieldForceLanguage: this._fieldGeom ? this._fieldGeom.inspect() : null,
       arcadeStructuralFx: this._arcadeStructural ? this._arcadeStructural.inspect() : null,
       arcadeStructuralFxStats: this._arcadeStructural ? this._arcadeStructural.stats() : null,
     };
@@ -9859,20 +9860,10 @@ export const vfx = {
   // Per-frame integration (called inside renderFrame; frameDt = wall-clock seconds)
   // -------------------------------------------------------------------------
   // -------------------------------------------------------------------------
-  // PQ-012 continuous field flow (Well / Repulsor / Cone) — advected pooled particles.
-  // Reads state.fields.active (the fields system's published mirror). INSTANCED pooled particles
-  // only (reuses the shipped GPU point cloud); zero per-frame allocation; deterministic spawn
-  // distribution (low-discrepancy sequence, no Math.random per bible §9). The three flow
-  // signatures carry DIRECTION and BOUNDARY by construction (bible §4):
-  //   Well     — particles born at the rim flow INWARD and converge on a hot sink (cool→hot).
-  //   Repulsor — particles born at the core flow OUTWARD, decelerating into a pile at the rim (hot→cool).
-  //   Cone     — particles fill the wedge and flow downstream along dir (teal directed current).
-  // Reduced-motion drops flow speed (direction still drifts, no fast flashing); reduced-flash drops
-  // count + size (dimmer). Both preserve direction + boundary.
-  // -------------------------------------------------------------------------
-  // -------------------------------------------------------------------------
-  // PQ-012 frame-device geometry strand (FIELD_TOOL_READABILITY_BIBLE §4)
-  // Geometry carries primary read at 1x default camera; particles enrich.
+  // Force-language lifecycle v2: authored instanced folded surfaces for Seed, Well, Repulsor,
+  // Cone and Skim. The active mirror owns existence; `engaged` is contact, never the animation
+  // clock. Birth, sustained motion and full-body retirement are in FieldForcePresentation.
+  // See docs/visual-assets/VFX_LIFECYCLE_STANDARD.md. No particle fallthrough or private rAF.
   // -------------------------------------------------------------------------
   _initFieldGeometry() {
     if (!this._scene || this._fieldGeomInitialized) return;
@@ -10063,7 +10054,7 @@ export const vfx = {
       sub.lootMagnet = 0;
     }
     // Continuous, family-specific swept surfaces replace sparse particle fallthrough. Update
-    // an initialized owner even when empty so source-only decay retires, then buffers sleep.
+    // an initialized owner even when empty so the full release lifecycle retires, then buffers sleep.
     if (this._fieldFlowRelevant() || this._fieldGeomInitialized) {
       const fields = this._updateFieldGeometry(dt);
       sub.fieldFlow = fields ? fields.surfaces : 0;

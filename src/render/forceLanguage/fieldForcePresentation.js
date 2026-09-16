@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { fieldSignature } from './catalog.js';
-import { SweptSurfaceBatch } from './sweptSurfaceBatch.js';
+import { SweptSurfaceBatch, SURFACE_FLOATS } from './sweptSurfaceBatch.js';
+import { FIELD_LIFECYCLES, FIELD_ROLE, sampleFieldLifecycle } from './effectLifecycle.js';
+export { FIELD_RELEASE_SECONDS } from './effectLifecycle.js';
 
 export const FIELD_PRESENTATION_CAPACITY=7; // six simulation fields PLUS the published Seed
-export const FIELD_RELEASE_SECONDS=0.28;
 const TAU=Math.PI*2;
 const clamp01=(v)=>Math.max(0,Math.min(1,v));
 const finite=(v,f=0)=>Number.isFinite(v)?v:f;
@@ -16,8 +17,14 @@ export class FieldForcePresentation {
   constructor(scene,{toLocal=null}={}){
     this.batch=new SweptSurfaceBatch(scene,{capacity:224,name:'SF_FieldForceLanguage'});
     this.mesh=this.batch.mesh;this.toLocal=toLocal;
-    this.local={x:0,z:0};this.descriptor=new Float32Array(24);
-    this.slots=Array.from({length:10},()=>({id:null,seedId:null,kind:null,field:null,born:0,lastSeen:0,release:-1,x:0,z:0,radius:0,angle:0,seen:false,reserved:false}));
+    this.local={x:0,z:0};this.descriptor=new Float32Array(SURFACE_FLOATS);
+    this.slots=Array.from({length:10},()=>({
+      id:null,seedId:null,kind:null,born:0,lastSeen:0,release:-1,x:0,z:0,radius:0,angle:0,seen:false,reserved:false,
+      // The producer REUSES its records. Keep value snapshots, not foreign record references,
+      // so a retiring Well cannot become the Cone subsequently stored in the same array cell.
+      field:{engaged:false,halfAngleRad:0.56,halfWidth:52},
+      seed:{phase:'active',lockAt:0,activeAt:0,warnAt:0,expireAt:0},
+    }));
     this.time=0;this.frame=0;this.disposed=false;
     this.frustum=new THREE.Frustum();this.clip=new THREE.Matrix4();this.sphere=new THREE.Sphere();
     this.stats={active:0,releasing:0,surfaces:0,dropped:0,unknown:0,culled:0};
@@ -26,7 +33,7 @@ export class FieldForcePresentation {
     return field && field.id!=null && Number.isFinite(field.center?.x) && Number.isFinite(field.center?.z)
       && Number.isFinite(field.radius) && field.radius>0;
   }
-  _matches(slot,field,seedId){return slot.id===field.id && slot.kind===field.kind && (field.kind!=='seed'||slot.seedId===seedId);}
+  _matches(slot,field,seedId){return slot.release<0 && slot.id===field.id && slot.kind===field.kind && (field.kind!=='seed'||slot.seedId===seedId);}
   _accept(field,state){
     if(!this._valid(field))return;
     if(!fieldSignature(field.kind)){this.stats.unknown++;return;}
@@ -41,7 +48,18 @@ export class FieldForcePresentation {
       if(!slot){this.stats.dropped++;return;}
       slot.id=field.id;slot.kind=field.kind;slot.seedId=seedId;slot.born=this.time;
     }
-    slot.seen=true;slot.field=field;slot.release=-1;slot.lastSeen=this.time;
+    slot.seen=true;slot.release=-1;slot.lastSeen=this.time;
+    slot.field.engaged=field.engaged===true;
+    slot.field.halfAngleRad=finite(field.halfAngleRad,0.56);
+    slot.field.halfWidth=finite(field.halfWidth,52);
+    if(field.kind==='seed'){
+      const seed=state.massSeed;
+      slot.seed.phase=seed?.phase||'active';
+      slot.seed.lockAt=finite(seed?.lockAt,this.time);
+      slot.seed.activeAt=finite(seed?.activeAt,this.time);
+      slot.seed.warnAt=finite(seed?.warnAt,this.time);
+      slot.seed.expireAt=finite(seed?.expireAt,this.time);
+    }
     slot.x=field.center.x;slot.z=field.center.z;slot.radius=field.radius;
     const dx=finite(field.dir?.x,1),dz=finite(field.dir?.z);
     slot.angle=Math.abs(dx)+Math.abs(dz)>1e-6?Math.atan2(dz,dx):0;
@@ -51,7 +69,7 @@ export class FieldForcePresentation {
     if(this.disposed)return this.stats;
     const clock=Number.isFinite(state.simTime)?state.simTime:this.time+Math.max(0,finite(dt));
     // A restored/new simulation may rewind the clock. Release old purely cosmetic identities.
-    if(clock<this.time)for(const s of this.slots){s.id=null;s.field=null;}
+    if(clock<this.time)for(const s of this.slots){s.id=null;s.release=-1;}
     this.time=clock;this.frame++;
     const video=state.settings?.video,a11y=state.settings?.accessibility;
     const motion=!!(video?.motionReduce||a11y?.reducedMotion||a11y?.motionReduce);
@@ -79,11 +97,11 @@ export class FieldForcePresentation {
       if(s.id===null)continue;
       if(!s.seen){
         if(s.release<0)s.release=this.time;
-        const decay=clamp01(1-(this.time-s.release)/FIELD_RELEASE_SECONDS);
-        if(decay<=0){s.id=null;s.field=null;continue;}
+        const releaseSeconds=FIELD_LIFECYCLES[s.kind].release;
+        if(this.time-s.release>=releaseSeconds){s.id=null;continue;}
         stats.releasing++;
-        // Removed influence has NO lingering perimeter, conveyor or force-direction marks.
-        this._coreRelease(s,decay);continue;
+        // Keep the last visible body for a distinct breakup. The boundary disappears on this
+        // very frame and the shader freezes live transport at releaseAt; only residue retires.
       }
       const sig=fieldSignature(s.kind);
       if(!sig)continue;
@@ -92,14 +110,16 @@ export class FieldForcePresentation {
         this.sphere.center.set(this.local.x,0.45,this.local.z);this.sphere.radius=s.radius*1.12;
         if(!this.frustum.intersectsSphere(this.sphere)){stats.culled++;continue;}
       }
-      this.tint=COLORS.get(sig.color);this.alpha=1;
-      this.reveal=motion?1:clamp01((this.time-s.born)/0.24+0.035);
+      this.slot=s;this.cycle=FIELD_LIFECYCLES[s.kind];this.releasing=s.release>=0;
+      this.tint=COLORS.get(sig.color);this.alpha=0.88+(s.field.engaged?0.12:0);
+      this.reveal=1; // birth, geometric build, and release are owned by iLife in the shader
       this.orientation=s.angle;this.engaged=s.field.engaged===true;
-      this.moving=this.engaged&&!motion;
-      this.flow=this.engaged?1:0;this.style=0;
+      // `engaged` means a body was affected THIS TICK, not that the tool is switched on.
+      // Empty-space tools remain alive. The shader's motion uniform handles accessibility.
+      this.moving=true;this.flow=1;this.style=0;this.role=FIELD_ROLE.BODY;this.phaseOffset=0;
       this.radius=s.radius;
       switch(s.kind){
-        case 'seed':this._seed(s,state.massSeed,motion);break;
+        case 'seed':this._seed(s,s.seed,motion);break;
         case 'well':this._well(s);break;
         case 'repulsor':this._repulsor(s);break;
         case 'cone':this._cone(s);break;
@@ -123,20 +143,26 @@ export class FieldForcePresentation {
     d[12]=c.r;d[13]=c.g;d[14]=c.b;d[15]=alpha*this.alpha;
     d[16]=flow;d[17]=phase;d[18]=travel;d[19]=style;
     d[20]=this.reveal;d[21]=taper;d[22]=1;d[23]=0;
+    d[24]=this.slot.born;d[25]=this.cycle.attack;d[26]=this.slot.release;d[27]=this.cycle.release;
+    d[28]=this.cycle.code;d[29]=this.role;d[30]=this.phaseOffset;d[31]=0;
+    d[32]=this.local.x;d[33]=this.local.z;d[34]=0;d[35]=0;
     this.batch.add(d);
   }
-  _rim(radius,width,segments=4,alpha=0.72){
+  _rim(radius,width,segments=4,alpha=0.72,boundary=false){
+    if(boundary&&this.releasing)return;
+    const saved=this.role;this.role=boundary?FIELD_ROLE.BOUNDARY:FIELD_ROLE.CREST;
     for(let i=0;i<segments;i++){
       const a=i*TAU/segments;
-      this._surface(0,a+0.13,a+TAU/segments-0.13,radius,radius,width,0,0,0,0,0,alpha,0,0,0);
+      this._surface(0,a+0.13,a+TAU/segments-0.13,radius,radius,width,0,0,i/segments,0,0,alpha,0,0,0);
     }
+    this.role=saved;
   }
   _well(){
     const r=this.radius;this.orientation=0;
     // Outer edge is exactly the physics radius. Width lies INSIDE it, never outside the range.
-    this._rim(r-r*0.009,r*0.009,4,0.68);
+    this._rim(r-r*0.009,r*0.009,4,0.68,true);
     for(let i=0;i<5;i++){
-      const a=i*TAU/5;
+      const a=i*TAU/5;this.phaseOffset=i/5;
       this._surface(0,a,a+1.8+(i%2)*0.3,r*0.96,r*0.082,r*(0.035+(i%2)*0.008),r*0.025,0,i*0.193,0,1,0.88);
       this._surface(0,a+0.16,a+2.00,r*0.72,r*0.11,r*0.009,r*0.047,0,i*.19,0,1,0.78);
     }
@@ -147,10 +173,10 @@ export class FieldForcePresentation {
   }
   _repulsor(){
     const r=this.radius;this.orientation=0;this.style=1;
-    this._rim(r-r*.009,r*.009,4,.75);
-    // Three pressure fronts: fixed bowls when parked, propagating outward only on engagement.
+    this._rim(r-r*.009,r*.009,4,.75,true);
+    // Pressure fronts propagate whenever the tool exists, even with no affected targets.
     for(let front=0;front<3;front++)for(let sector=0;sector<4;sector++){
-      const a=sector*TAU/4+0.09+front*.19;
+      const a=sector*TAU/4+0.09+front*.19;this.phaseOffset=front/3+sector/4;
       const rr=this.moving?r:r*(.25+front*.25);
       this._surface(0,a,a+1.19,rr,rr,r*.038,r*.05,0,front/3,this.moving?1:0,0,.92);
     }
@@ -164,11 +190,16 @@ export class FieldForcePresentation {
     const r=this.radius,half=Math.max(.02,Math.min(1.5,finite(s.field.halfAngleRad,.56)));
     // Sector footprint, not an overshooting triangular end-cap. Banks end at radial R.
     for(let side=-1;side<=1;side+=2){
-      this._surface(1,side*half,0,r*.025,r*.994,r*.005,0,0,0,0,0,.83,0,0,0);
+      if(!this.releasing){this.role=FIELD_ROLE.BOUNDARY;
+        this._surface(1,side*half,0,r*.025,r*.994,r*.005,0,0,0,0,0,.83,0,0,0);
+        this.role=FIELD_ROLE.BODY;}
+      this.phaseOffset=side*.21;
       this._surface(1,side*half*.83,0,r*.035,r*.95,r*.046,r*.023,0,side*.18,0,1,.9);
       this._surface(1,side*half*.46,0,r*.065,r*.88,r*.024,r*.018,0,side*.32,0,1,.72);
     }
-    this._surface(0,-half,half,r*.994,r*.994,r*.005,0,0,0,0,0,.72,0,0,0);
+    if(!this.releasing){this.role=FIELD_ROLE.BOUNDARY;
+      this._surface(0,-half,half,r*.994,r*.994,r*.005,0,0,0,0,0,.72,0,0,0);
+      this.role=FIELD_ROLE.BODY;}
     for(let i=0;i<3;i++){
       const rr=this.moving?r*.95:r*(.28+i*.28);
       this._surface(0,-half*.80,half*.80,rr,rr,r*.024,r*.018,0,i/3,this.moving?1:0,1,.76,0,0,this.flow,1);
@@ -182,23 +213,28 @@ export class FieldForcePresentation {
     // True parallel rectangular banks; the ordinary cone visibly diverges, Skim does not.
     for(let side=-1;side<=1;side+=2){
       const shift=side*(w-Math.min(1,w*.018));
-      this._surface(1,0,0,0,r,Math.min(1,w*.018),0,0,0,0,0,.88,-sa*shift,ca*shift,0);
+      if(!this.releasing){this.role=FIELD_ROLE.BOUNDARY;
+        this._surface(1,0,0,0,r,Math.min(1,w*.018),0,0,0,0,0,.88,-sa*shift,ca*shift,0);
+        this.role=FIELD_ROLE.BODY;}
       const inner=side*w*.82;
       this._surface(1,0,0,r*.035,r*.965,w*.105,w*.10,0,0,0,1,.85,-sa*inner,ca*inner,0);
       for(let i=0;i<6;i++){
         // Cross-stream scoops point INWARD toward the axis, matching the published sheet kernel.
         const along=r*(.12+i*.14);
         const x=ca*along-sa*(side*w*.76),z=sa*along+ca*(side*w*.76);
-        this._surface(1,-side*Math.PI/2,0,0,w*.65,w*.09,w*.08,w*.16,i/6,0,1,.88,x,z);
+        this.phaseOffset=i/6;
+        this._surface(1,-side*Math.PI/2,0,0,w*.43,w*.09,w*.08,w*.16,i/6,2,1,.88,x,z);
       }
     }
     this.tint=COLORS.get(0xd9ffe0);
-    for(let end=0;end<2;end++)this._surface(1,Math.PI/2,0,-w,w,w*.016,0,0,0,0,0,.6,ca*end*r,sa*end*r,0);
+    if(!this.releasing){this.role=FIELD_ROLE.BOUNDARY;
+      for(let end=0;end<2;end++)this._surface(1,Math.PI/2,0,-w,w,w*.016,0,0,0,0,0,.6,ca*end*r,sa*end*r,0);
+      this.role=FIELD_ROLE.BODY;}
   }
   _seed(s,seed,motion){
     const phase=seed?.phase||'active';this.style=2;this.flow=0;this.orientation=s.angle;
     const r=Math.min(s.radius*.33,14);
-    const now=this.time;
+    const now=this.releasing?s.release:this.time;
     const lockSpan=Math.max(.001,finite(seed?.activeAt,now)-finite(seed?.lockAt,now));
     const progress=phase==='locking'?clamp01((now-finite(seed?.lockAt,now))/lockSpan):1;
     const open=phase==='travel'?1:phase==='locking'?(motion?0:1-progress):0;
@@ -207,6 +243,7 @@ export class FieldForcePresentation {
     if(warning)this.tint=COLORS.get(0xffc36c);
     // Four lifted, rectangular clamp jaws. No circular reticle and no false ambient suction.
     for(let i=0;i<4;i++){
+      this.phaseOffset=i/4;this.role=FIELD_ROLE.JAW;
       const a=i*Math.PI/2,ca=Math.cos(a),sa=Math.sin(a),rr=r*(1+open*.65),w=r*.28;
       const radialX=ca*rr,radialZ=sa*rr;
       this._line(radialX+sa*w,radialZ-ca*w,radialX-sa*w,radialZ+ca*w,r*.115,r*.13);
@@ -220,15 +257,20 @@ export class FieldForcePresentation {
   }
   _line(x0,z0,x1,z1,width,lift=0,alpha=1){
     const ca=Math.cos(this.orientation),sa=Math.sin(this.orientation);
-    this._surface(1,Math.atan2(z1-z0,x1-x0),0,0,Math.hypot(x1-x0,z1-z0),width,lift,0,0,0,0,alpha,ca*x0-sa*z0,sa*x0+ca*z0);
+    this._surface(1,Math.atan2(z1-z0,x1-x0),0,0,Math.hypot(x1-x0,z1-z0),width,lift,0,this.phaseOffset,0,0,alpha,ca*x0-sa*z0,sa*x0+ca*z0);
   }
 
-  _coreRelease(s,decay){
-    this._position(s);this.tint=COLORS.get(fieldSignature(s.kind)?.color||0x54e5ed);
-    this.orientation=s.angle;this.alpha=decay;this.reveal=1;this.flow=0;this.style=2;
-    // Small source-only extinction, no fake force acting after the simulation removed the field.
-    this._rim(Math.min(s.radius*.06,8),Math.min(s.radius*.009,1.3),3,.8);
+  inspect(){
+    return {
+      schema:'spaceface.force-language.lifecycle.v2', time:this.time, frame:this.frame,
+      motionReduced:this.batch.material.uniforms.uMotion.value===0,
+      stats:{...this.stats},
+      instances:this.slots.filter(s=>s.id!==null).map(s=>({
+        id:s.id,kind:s.kind,born:s.born,releaseAt:s.release,
+        ...sampleFieldLifecycle(this.time,s.born,s.release,FIELD_LIFECYCLES[s.kind],{}),
+      })),
+    };
   }
   reproject(dx,dz){ this.batch.reproject(dx,dz); } // Also safe when the next simulation dt is zero.
-  dispose(){if(this.disposed)return;this.disposed=true;this.batch.dispose();for(const s of this.slots){s.id=null;s.field=null;}}
+  dispose(){if(this.disposed)return;this.disposed=true;this.batch.dispose();for(const s of this.slots){s.id=null;s.release=-1;}}
 }

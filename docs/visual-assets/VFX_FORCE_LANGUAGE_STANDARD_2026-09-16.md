@@ -1,5 +1,13 @@
 # SpaceFace VFX Force Language Standard — 2026-09-16
 
+## Mandatory lifecycle revision (v2)
+
+Read `VFX_LIFECYCLE_STANDARD.md` with this document. The original checkpoint had a defect:
+`engaged` (contact with bodies) was used as the animation power switch, and locked Seed jaws
+were static. Those choices are superseded. An extant powered tool **must visibly animate even
+with zero affected targets**. Every effect needs birth, sustained motion, and retirement, with
+actual rendered temporal evidence. A still screenshot or a changing `uTime` uniform is not proof.
+
 ## Purpose
 
 This document turns the current VFX upgrade into a reusable authoring system rather than a one-off polish pass.
@@ -136,6 +144,7 @@ If the effect cannot survive bloom-off and grayscale review, it is not sufficien
 
 ## Implementation map in this packet
 
+- `src/render/forceLanguage/effectLifecycle.js` — shared timing/envelope contracts
 - `src/render/forceLanguage/catalog.js` — shared effect catalog and family metadata
 - `src/render/forceLanguage/sweptSurfaceBatch.js` — folded-surface batch renderer
 - `src/render/forceLanguage/fieldForcePresentation.js` — fieldwork recipes and lifecycle
@@ -158,6 +167,10 @@ Minimum acceptance for a new or modified effect:
 5. Effect still reads in reduced motion / reduced flash modes.
 6. Effect does not silently fall back to another tool's look.
 7. Effect decays when gameplay authority is removed.
+8. A no-target sustained-motion pixel comparison passes with camera and reference objects fixed.
+9. Birth and retirement are captured over time; the same-time control has zero changed pixels.
+10. Reduced-motion preserves readable phases without persistent shape motion. Reduced-flash
+    does not freeze the tool. Include the motion-validation JSON and a full-cycle movie.
 
 Suggested commands:
 
@@ -166,6 +179,7 @@ Suggested commands:
 - `npm run check:vfx-techniques`
 - `npm run check:thruster:plasma-unit`
 - `scripts/vfx-force-language-lab.html` — local authoring lab; open directly in a browser
+- `npm run capture:vfx-force-language`
 
 ---
 

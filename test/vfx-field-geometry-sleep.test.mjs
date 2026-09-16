@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { vfx } from '../src/render/vfx.js';
 import { FIELD_SIGNATURES } from '../src/render/forceLanguage/catalog.js';
+import { FIELD_RELEASE_SECONDS } from '../src/render/forceLanguage/effectLifecycle.js';
 
 function harness(active=[]){
  const system=Object.create(vfx);
@@ -31,11 +32,12 @@ test('all five live field routes produce the authored surface counts, without ol
  }
 });
 
-test('transition retires force boundaries, then core extinction sleeps without repeated uploads',()=>{
+test('transition retires force boundaries, animates body breakup, then sleeps without repeated uploads',()=>{
  const system=harness([field('repulsor')]);system._updateFieldGeometry(0);system.state.simTime=.5;system._updateFieldGeometry(.5);
  const fg=system._fieldGeom;system.state.fields.active=[];system._updateFieldGeometry(0);
- assert.equal(fg.stats.active,0);assert.equal(fg.mesh.count,3,'small source-only extinction is not a lingering field');
- system.state.simTime+=.3;system._updateFieldGeometry(.3);assert.equal(fg.mesh.count,0);
+ assert.equal(fg.stats.active,0);assert.ok(fg.mesh.count>3,'retain the authored body through breakup');
+ for(let i=0;i<fg.mesh.count;i++)assert.notEqual(fg.batch.attributes[7].getY(i),1,'force boundary retired');
+ system.state.simTime+=FIELD_RELEASE_SECONDS+.01;system._updateFieldGeometry(FIELD_RELEASE_SECONDS+.01);assert.equal(fg.mesh.count,0);
  const before=versions(fg);for(let i=0;i<12;i++)system._updateFieldGeometry(1/60);
  assert.deepEqual(versions(fg),before);fg.dispose();
 });

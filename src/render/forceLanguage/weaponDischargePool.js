@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SweptSurfaceBatch } from './sweptSurfaceBatch.js';
 import { weaponSignature } from './catalog.js';
+import { sampleDischargeLifecycle } from './effectLifecycle.js';
 
 export const DISCHARGE_CAPACITY=48;
 const SUPPORTED=new Set(['machined-burst','rail-shear','split-aperture','thermal-lobes','circuit-fork']);
@@ -13,6 +14,7 @@ export class WeaponDischargePool {
     this.mesh=this.batch.mesh;this.time=0;this.sequence=0;this.disposed=false;this.dropped=0;
     this.slots=Array.from({length:capacity},()=>({alive:false,age:0,life:0,x:0,y:0,z:0,angle:0,pitch:0,width:0,length:0,opacity:1,source:null,variant:null,ownerId:null,priority:0,seed:0}));
     this.descriptor=new Float32Array(24);
+    this.envelope={length:1,width:1,opacity:1};
   }
   spawn(recipe,pose,ownerId,flash,priority=0.45){
     if(this.disposed)return false;
@@ -62,8 +64,9 @@ export class WeaponDischargePool {
         s.angle=Math.atan2(pose.az,pose.ax);s.pitch=Math.atan2(pose.ay||0,Math.hypot(pose.ax,pose.az));
       }
       live++;const age=s.age/s.life;
-      this.opacity=s.opacity*Math.pow(1-age,1.15);
-      const length=s.length*(.88+age*.30),w=s.width;
+      const e=sampleDischargeLifecycle(s.age,s.life,a11y?.id?.includes('motion')===true,this.envelope);
+      this.opacity=s.opacity*e.opacity;
+      const length=s.length*e.length,w=s.width*e.width;
       this.style=3;this.color=BRASS;
       if(s.source==='machined-burst'){
         const spread=s.variant==='flak'?.27:.12;

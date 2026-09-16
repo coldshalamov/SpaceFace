@@ -397,7 +397,7 @@
     "check:perf:spatial-cache": "node scripts/check-static-spatial-query-cache.mjs",
     "check:perf-summary": "node scripts/check-perf-summary.mjs",
     "check:vfx-sleep": "node scripts/check-vfx-frame-sleep.mjs",
-    "check:vfx-force-language": "node --test test/vfx-force-language.test.mjs test/vfx-field-geometry-sleep.test.mjs test/pq-193-02-reverse-jets.test.mjs test/weapon-vfx-techniques.test.mjs test/muzzle-structural-vfx.test.mjs test/plasma-stream-thruster.test.mjs test/contrail-corkscrew.test.mjs",
+    "check:vfx-force-language": "node --test test/vfx-field-lifecycle.test.mjs test/vfx-force-language.test.mjs test/vfx-field-geometry-sleep.test.mjs test/pq-193-02-reverse-jets.test.mjs test/weapon-vfx-techniques.test.mjs test/muzzle-structural-vfx.test.mjs test/plasma-stream-thruster.test.mjs test/contrail-corkscrew.test.mjs",
     "check:vfx-techniques": "node scripts/check-vfx-techniques.mjs",
     "check:runtime-witness": "node --test test/runtime-witness.test.mjs",
     "check:hitch-attribution": "node --test test/render-hitch-attribution.test.mjs",
@@ -610,7 +610,9 @@
     "factory:dashboard": "node scripts/content-factory-dashboard.mjs",
     "check:content-factory": "node --test test/content-factory.test.mjs && node scripts/content-factory-validate.mjs && node scripts/content-factory-lint.mjs",
     "check:vision:assertions": "node scripts/check-vision-assertions.mjs",
-    "check:deep-field": "node --test test/deep-field-design.test.mjs test/deep-field-renderer.test.mjs test/deep-field-stars.test.mjs && node scripts/check-parallax-layers.mjs"
+    "check:deep-field": "node --test test/deep-field-design.test.mjs test/deep-field-renderer.test.mjs test/deep-field-stars.test.mjs && node scripts/check-parallax-layers.mjs",
+    "check:vfx-field-lifecycle": "node --test test/vfx-field-lifecycle.test.mjs",
+    "capture:vfx-force-language": "python scripts/capture-vfx-field-lifecycle.py"
   },
   "private": true,
   "devDependencies": {

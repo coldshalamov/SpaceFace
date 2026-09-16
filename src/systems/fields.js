@@ -28,6 +28,7 @@ import {
   rateClusterMoment,
 } from '../core/fields/clusterDetonate.js';
 import { queuePhysicsImpulse } from '../core/physicsAuthority.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 import { fieldEvidenceInput } from '../combat/stuntEvidence.js';
 import { isDynamicPhysicsBodyEntity } from '../core/physicsAuthority.js';
 import { Masks } from '../core/entity.js';
@@ -1430,8 +1431,8 @@ export const fields = {
     if (charges && typeof charges._armedChargeOn === 'function') {
       if (charges._armedChargeOn(state || this.state, entity.id)) return true;
     }
-    const list = state && state.entityList;
-    if (!list) return false;
+    const list = indexedTypeScan(state, 'charges');
+    if (!list.length) return false;
     for (let i = 0; i < list.length; i++) {
       const charge = list[i];
       if (!charge || charge.alive === false || charge.type !== 'charge') continue;
@@ -1617,8 +1618,9 @@ export const fields = {
       rec.volume = f.volume || fieldVolumeOf(f);
       rec.palette = FIELD_PALETTE[f.kind] || FIELD_PALETTE[rec.volume] || null;
       rec.expireAt = f.expireAt;  // Infinity for the sustained cone; the HUD countdown chip reads it
-      // engaged = this tick actually pulled/pushed a body (state-driven; drives the world-space
-      // engagement tell — no affected body, no articulation, per bible §4).
+      // engaged = this tick actually pulled/pushed a body: a contact-response cue, NOT an
+      // animation power switch. Presence in active owns the powered lifecycle; empty-space
+      // fields still build, sustain and dissipate (force-language lifecycle v2).
       rec.engaged = engaged;
       // PQ-139.05: wells publish RAW kernel radius/strength for the DistortionField producer.
       // Non-wells stay at zero. Presentation only — kernel forces are unchanged. The refraction

@@ -31,13 +31,14 @@ for(const kind of Object.keys(FIELD_SIGNATURES))test(`${kind}: actual surfaces, 
  owner.dispose();owner.dispose();assert.equal(scene.children.length,0);
 });
 
-test('parked / engaged field motion is uniform-driven and steady descriptors do not re-upload',()=>{
+test('empty-space and contact field motion is uniform-driven; steady descriptors do not re-upload',()=>{
  const owner=new FieldForcePresentation(new THREE.Scene()),s=state([field('well')]);prime(owner,s);
  const before=versions(owner),buffers=owner.batch.attributes.map(a=>a.array);
  for(let i=0;i<60;i++){s.simTime+=1/60;owner.update(1/60,s);}
  assert.deepEqual(versions(owner),before);owner.batch.attributes.forEach((a,i)=>assert.equal(a.array,buffers[i]));
  s.fields.active[0].engaged=false;owner.update(0,s);
- for(let i=0;i<owner.stats.surfaces;i++)assert.equal(owner.batch.attributes[4].getX(i),0);
+ assert.ok(Array.from({length:owner.stats.surfaces},(_,i)=>owner.batch.attributes[4].getX(i)).some(v=>v>0),
+  'no target contact must NOT turn off the live field flow');
  owner.dispose();
 });
 
@@ -61,11 +62,14 @@ test('Seed phase is read-only, never emits gravity flow, re-launch resets a cons
  owner.dispose();
 });
 
-test('removal retires perimeter immediately; only short source extinction remains, then uploads sleep',()=>{
+test('removal retires perimeter immediately; authored body breaks up, then uploads sleep',()=>{
  const owner=new FieldForcePresentation(new THREE.Scene()),s=state([field('repulsor')]);prime(owner,s);
  s.fields.active=[];owner.update(0,s);assert.equal(owner.stats.active,0);assert.equal(owner.stats.releasing,1);
- assert.equal(owner.stats.surfaces,3);
- for(let i=0;i<3;i++)assert.ok(owner.batch.attributes[1].getW(i)<=8);
+ assert.ok(owner.stats.surfaces>3,'retain the existing form for its visible breakup');
+ for(let i=0;i<owner.stats.surfaces;i++){
+  assert.notEqual(owner.batch.attributes[7].getY(i),1,'no active range boundary after removal');
+  assert.ok(owner.batch.attributes[6].getZ(i)>=0,'every remnant has a release clock');
+ }
  s.simTime+=FIELD_RELEASE_SECONDS+.01;owner.update(.3,s);assert.equal(owner.mesh.count,0);assert.equal(owner.mesh.visible,false);
  const before=versions(owner);for(let i=0;i<100;i++){s.simTime+=.016;owner.update(.016,s);}
  assert.deepEqual(versions(owner),before);owner.dispose();
@@ -75,7 +79,8 @@ test('deployment born at simTime zero does not reset; origin shifts update local
  let ox=0,oz=0;const owner=new FieldForcePresentation(new THREE.Scene(),{toLocal:(x,z,o)=>{o.x=x-ox;o.z=z-oz;return o;}});
  const s=state([field('well')]);owner.update(0,s);s.simTime=.1;owner.update(.1,s);
  assert.equal(owner.slots.find(x=>x.seen).born,0);
- assert.ok(owner.batch.attributes[5].getX(0)>.4&&owner.batch.attributes[5].getX(0)<.6);
+ assert.equal(owner.batch.attributes[6].getX(0),0,'birth at zero stays stable');
+ assert.ok(owner.batch.attributes[6].getY(0)>.1,'build duration is supplied to the GPU');
  ox=10000;oz=-20000;owner.update(0,s);
  assert.equal(owner.batch.attributes[0].getX(0),30-10000);assert.equal(owner.batch.attributes[0].getZ(0),-25+20000);
  owner.dispose();
