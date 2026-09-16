@@ -93,6 +93,7 @@ Ceres reference pocket shows all six quiet behaviours (`scripts/capture-ordinary
 | PQ-159.00 impact kick | devin-wave1 | RESULT: DONE | released; committed `8af83e60d` | seed 15900: dp 2124 → kick 1.850 wu authored / 1.833 wu applied, recoil −x, decays <0.02 wu; reduce-motion capture exactly 0; 7/7 new test, 63/63 camera+feel tests, check:feel:scenarios 48/48; baseline/camera-check reds all pre-existing foreign drift |
 | PQ-193.12 station fallback | devin-wave1 | MUTATING | `src/render/partsLibrary.js` (station-archetype hunks only; foreign first-flight cook hunks preserved uncommitted), `src/render/spaceBackground.js`, `test/` (new), `design/program/roadmap/receipts/PQ-193.12-REPORT.md` (new) | station archetype resolution total over STATION_TYPES; unresolved station archetype fails closed instead of publishing the fat-cylinder procedural; run leaf checks; receipt |
 | PQ-160.02 seeds and ghosts | grok-pq160-164 (adopting devin-wave1) | RESULT: DONE | released; two machines same runHash at seed 16002; translucent ghost hull 0.32 | 4/4 twice; pause.js/settings.js untouched |
+| PQ-033.02 floors + soaks | devin-pq033-verify (worktree `.worktrees/pq033-verify`) | MUTATING | `scripts/diag-wedge-craft.mjs`, `scripts/diag-save-growth.mjs` (worktree-only probes); fix targets `src/core/sg02DynamicBodyOwner.js`, `src/systems/dockingCorridor.js`; checkpoint `.codex/agent-checkpoints/PQ-033.02-min-spec-floors-soaks.json` | wedge-craft pose matrix vs live 135-deg colliders → root-cause fix → browser soak rerun |
 
 ## Start another task
 
