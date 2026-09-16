@@ -17414,7 +17414,7 @@
       "priority": 454,
       "title": "Fronts you can tilt",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-033.03"
       ],
@@ -17433,8 +17433,10 @@
         "npm run check:faction-standings",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
-      "brief": "War fronts as physical situations (blockade lanes, siege a bastion by wrecking ball) with visible ownership change. DONE WHEN: A player action flips one sector's owner in a scenario; reactions for 8 factions (not 2)."
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-170.00-REPORT.md"
+      ],
+      "brief": "DONE 2026-09-16 (271f75c7c): contested-sector kills bank front momentum with blockade/siege/wrecking-ball reads; one player action flips a sector owner with a toast; eight faction reaction surfaces resolve station->faction through SECTORS and a saved flip surfaces on every wall; starmap reads contested fronts and flips; ledger round-trips through save/load. Checks: faction-war-fronts+story-ecology 11/11, war-overlay, faction-standings, save-schema green."
     },
     {
       "id": "PQ-170.01",
