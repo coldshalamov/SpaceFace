@@ -283,7 +283,14 @@ const CORE_SECTORS = [
     ],
     pois: [
       { id: 'poi_merc',    type: 'colony',   name: 'Mercenary Outpost', factionId: 'faction_quiet' },
-      { id: 'poi_cruiser', type: 'derelict', name: 'Derelict Cruiser' },
+      {
+        id: 'poi_cruiser', type: 'derelict', name: 'Derelict Cruiser',
+        flavorTargetRef: 'landmark_c1_wreck_cathedral_concord_vigilant',
+        discoveryPlate: {
+          title: 'The Wreck Cathedral',
+          body: 'The Concord Vigilant held this lane nine hours while civilians jumped behind her. Concord claims the bow and the Frontier claims the stern, so neither tows her — scavengers nest in the engine bells instead.',
+        },
+      },
       // V2 §6 / M3: a claimable industrial moon — a body the player can claim and build on.
       { id: 'poi_claim_pallas', type: 'colony', name: 'Pallas Industrial Moon', claimable: true, size: 'M' },
     ],
@@ -583,4 +590,25 @@ export function stationGrowthRungFor(ladder, throughputU) {
     rung += 1;
   }
   return rung;
+}
+
+function trophyHead(tier, id, name, masslineHeadId, baseId, defaultAceId) {
+  return Object.freeze({ tier, id, name, masslineHeadId, baseId, defaultAceId });
+}
+
+// PQ-170.03 — one legendary Massline head per ace promotion tier. Lineage is who you took it from.
+export const ACE_TROPHY_HEADS = Object.freeze([
+  trophyHead(1, 'unique_no_cut_filament', 'No-Cut Filament', 'monofilament_sweep', 'mod_monofilament_sweep_m', 'ace_yara_no_cut'),
+  trophyHead(2, 'unique_toll_saint_bridle', 'Toll-Saint Bridle', 'twin_bridle', 'mod_twin_bridle_m', 'ace_toll_saint_venn'),
+  trophyHead(3, 'unique_broken_ring_whip', 'Broken-Ring Whip', 'elastic_whip', 'mod_elastic_whip_m', 'ace_mako_broken_ring'),
+]);
+const ACE_TROPHY_BY_MODULE = new Map(ACE_TROPHY_HEADS.map((row) => [row.id, row]));
+const ACE_TROPHY_BY_TIER = new Map(ACE_TROPHY_HEADS.map((row) => [row.tier, row]));
+
+export function aceTrophyHeadByModuleId(id) {
+  return ACE_TROPHY_BY_MODULE.get(id) || null;
+}
+
+export function aceTrophyHeadByTier(tier) {
+  return ACE_TROPHY_BY_TIER.get(tier | 0) || null;
 }

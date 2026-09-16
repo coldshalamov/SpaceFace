@@ -37,6 +37,7 @@ for (const { poiId, sectorId, ref } of LANDMARK_POIS) {
 
 const LORE_WIRINGS = [
   { poiId: 'poi_boss', sectorId: 'sector_ashfall_reach', ref: 'landmark_c5_iron_maw' },
+  { poiId: 'poi_cruiser', sectorId: 'sector_io_reach', ref: 'landmark_c1_wreck_cathedral_concord_vigilant' },
 ];
 
 for (const { poiId, sectorId, ref } of LORE_WIRINGS) {
@@ -45,6 +46,8 @@ for (const { poiId, sectorId, ref } of LORE_WIRINGS) {
   const poi = sector.pois.find((p) => p.id === poiId);
   assert.ok(poi, `${poiId} exists in ${sectorId}`);
   assert.equal(poi.flavorTargetRef, ref, `${poiId} targets its authored landmark ref`);
+  assert.ok(poi.discoveryPlate && poi.discoveryPlate.title && poi.discoveryPlate.body.length > 40,
+    `${poiId} carries a real discovery plate`);
   const loreEntry = landmarkLorePack.entries.find((entry) => entry.targetRef === ref);
   assert.ok(loreEntry, `${ref} lore entry exists`);
   assert.equal(loreEntry.location?.sectorId, sectorId,
