@@ -42,6 +42,7 @@
 
 import { fhGlyph } from './views/fhGlyphs.js';
 import { repulsionTrapFitted } from '../systems/impulseCharges.js';
+import { indexedTypeScan } from '../world/livingWorldViews.js';
 
 export const BAND_ORDNANCE = 'ORDNANCE';
 export const BAND_FIELDWORK = 'FIELDWORK';
@@ -203,7 +204,9 @@ export function readRailModel(state, nowS) {
   const hull = s.entities?.get?.(s.playerId);
   const charges = player.cargo?.items?.cmdty_impulse_charge || 0;
   const throwCd = Math.max(0, hull?.data?.impulseCharges?.throwCdT || 0);
-  const armed = (s.entityList || []).some(e => e.alive && e.type === 'charge'
+  // Typed `charges` bucket, not the fat entityList (rocks/FX/wrecks all live there). The per-entity
+  // predicate stays because the index-less fallback path returns the fat list.
+  const armed = indexedTypeScan(s, 'charges').some(e => e.alive && e.type === 'charge'
     && e.data?.ownerId === s.playerId && e.data?.armed);
 
   return {

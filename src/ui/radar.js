@@ -195,6 +195,16 @@ function drawAsteroidBlip(g, x, y) {
   g.fill();
 }
 
+// Plain-loop ping census (10 Hz draw path): the old `contacts.some` allocated a closure per draw.
+function contactsHaveLivePing(contacts, simTime) {
+  const until = Number.isFinite(simTime) ? simTime : 0;
+  for (let i = 0; i < contacts.length; i += 1) {
+    const entity = contacts[i];
+    if (entity && entity.alive && entity.data && entity.data.pingedUntil > until) return true;
+  }
+  return false;
+}
+
 function drawNeutralContact(g, entity, x, y, heading, colour, {
   selected = false,
   named = false,
@@ -598,6 +608,12 @@ export function createRadar(ctx) {
   const nearRockSlots = Array.from({ length: ASTEROID_DOT_LIMIT }, () => ({ x: 0, y: 0, distanceSq: Infinity }));
   const hostileMarks = [];
   const infrastructureMarks = [];
+  // Reused option records for the glyph draw calls. The draw functions destructure and read
+  // only; nothing retains these between contacts.
+  const neutralOpts = { selected: false, named: false, playerTeam: null, state: null };
+  const hostileOpts = { selected: false, capital: false };
+  const glyphOpts = { offRange: false, angle: 0 };
+  const zeroVel = { x: 0, z: 0 };
   let trailPruneCountdown = 0;
   const unsubscribers = [];
 
@@ -895,9 +911,13 @@ export function createRadar(ctx) {
     let salientContactCount = 0;
     let nearestOffRangeHostile = null;
     let nearestOffRangeHostileDistanceSq = Infinity;
+    let trailUpdates = 0;
     hostileMarks.length = 0;
     infrastructureMarks.length = 0;
 
+    // One contact pass: classification, projection, trails, and neutral glyphs. The old second
+    // pass recomputed dx/dz/distance, isHostileToPlayer, and the radar projection for every
+    // in-range contact; mark collection drew nothing, so fusing preserves paint order exactly.
     for (let i = 0; i < contacts.length; i += 1) {
       const entity = contacts[i];
       if (!entity || !entity.pos || !entity.alive || entity === player) continue;
@@ -923,37 +943,9 @@ export function createRadar(ctx) {
 
       const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
       if (!projected) continue;
-      if (hostile) {
-        hostileCount += 1;
-        hostileMarks.push({ entity, projected, distanceSq });
-      } else if (station) {
-        infrastructureMarks.push({ entity, projected, gate, distanceSq });
-      }
-    }
-
-    const swarmQuiet = hostileCount >= SWARM_DENSITY_THRESHOLD;
-    hostileMarks.sort((a, b) => (
-      a.entity.id === targetId ? -1
-        : b.entity.id === targetId ? 1
-          : a.distanceSq - b.distanceSq
-    ));
-    infrastructureMarks.sort((a, b) => a.distanceSq - b.distanceSq);
-
-    let trailUpdates = 0;
-    for (let i = 0; i < contacts.length; i += 1) {
-      const entity = contacts[i];
-      if (!entity || !entity.pos || !entity.alive || entity === player || entity.type === 'station') continue;
-      const dx = entity.pos.x - playerX;
-      const dz = entity.pos.z - playerZ;
-      const distanceSq = dx * dx + dz * dz;
-      if (distanceSq > rangeSq) continue;
-
-      const projected = projectRadarPoint(player.pos, entity.pos, range, metrics);
-      if (!projected) continue;
       const x = projected.x;
       const y = projected.y;
       const type = entity.type;
-      const hostile = isHostileToPlayer(entity, playerTeam, state);
       const colour = contactColor(entity, playerTeam, colorblindMode, state);
 
       if ((type === 'ship' || type === 'drone') && trailUpdates < MAX_TRAIL_UPDATES) {
@@ -962,7 +954,15 @@ export function createRadar(ctx) {
         trailUpdates += 1;
       }
 
-      if (hostile) continue; // drawn in the crisp priority pass below
+      if (hostile) {
+        hostileCount += 1;
+        hostileMarks.push({ entity, projected, distanceSq });
+        continue; // drawn in the crisp priority pass below
+      }
+      if (station) {
+        infrastructureMarks.push({ entity, projected, gate, distanceSq });
+        continue; // drawn in the glyph pass below
+      }
 
       if (type === 'pickup') {
         const pulse = reducedMotion ? 0.5 : 0.5 + 0.5 * Math.sin(now * 0.005);
@@ -991,26 +991,31 @@ export function createRadar(ctx) {
         g.stroke();
         g.restore();
       } else {
-        drawNeutralContact(g, entity, x, y, entityHeading(entity), colour, {
-          selected: entity.id === targetId,
-          named: !!(entity.data && entity.data.namedLaneContactId),
-          playerTeam,
-          state,
-        });
+        neutralOpts.selected = entity.id === targetId;
+        neutralOpts.named = !!(entity.data && entity.data.namedLaneContactId);
+        neutralOpts.playerTeam = playerTeam;
+        neutralOpts.state = state;
+        drawNeutralContact(g, entity, x, y, entityHeading(entity), colour, neutralOpts);
       }
 
       if (entity.id === targetId) drawTargetRing(g, x, y, center);
     }
 
-    for (const mark of hostileMarks.slice(0, MAX_SEMANTIC_HOSTILES)) {
+    const swarmQuiet = hostileCount >= SWARM_DENSITY_THRESHOLD;
+    hostileMarks.sort((a, b) => (
+      a.entity.id === targetId ? -1
+        : b.entity.id === targetId ? 1
+          : a.distanceSq - b.distanceSq
+    ));
+    infrastructureMarks.sort((a, b) => a.distanceSq - b.distanceSq);
+
+    const hostileMarkCount = Math.min(hostileMarks.length, MAX_SEMANTIC_HOSTILES);
+    for (let i = 0; i < hostileMarkCount; i += 1) {
+      const mark = hostileMarks[i];
       const selected = mark.entity.id === targetId;
-      drawHostileGlyph(
-        g,
-        mark.projected.x,
-        mark.projected.y,
-        entityHeading(mark.entity),
-        { selected, capital: isCapitalContact(mark.entity) },
-      );
+      hostileOpts.selected = selected;
+      hostileOpts.capital = isCapitalContact(mark.entity);
+      drawHostileGlyph(g, mark.projected.x, mark.projected.y, entityHeading(mark.entity), hostileOpts);
       if (selected || !swarmQuiet) {
         drawContactThreatPulse(
           g,
@@ -1031,17 +1036,15 @@ export function createRadar(ctx) {
       }
     }
 
-    for (const mark of infrastructureMarks.slice(0, MAX_SEMANTIC_INFRASTRUCTURE)) {
+    const infrastructureMarkCount = Math.min(infrastructureMarks.length, MAX_SEMANTIC_INFRASTRUCTURE);
+    for (let i = 0; i < infrastructureMarkCount; i += 1) {
+      const mark = infrastructureMarks[i];
+      glyphOpts.offRange = mark.projected.offRange;
+      glyphOpts.angle = mark.projected.angle;
       if (mark.gate) {
-        drawGateGlyph(g, mark.projected.x, mark.projected.y, {
-          offRange: mark.projected.offRange,
-          angle: mark.projected.angle,
-        });
+        drawGateGlyph(g, mark.projected.x, mark.projected.y, glyphOpts);
       } else {
-        drawStationGlyph(g, mark.projected.x, mark.projected.y, {
-          offRange: mark.projected.offRange,
-          angle: mark.projected.angle,
-        });
+        drawStationGlyph(g, mark.projected.x, mark.projected.y, glyphOpts);
       }
       if (mark.entity.id === targetId && !mark.projected.offRange) {
         drawTargetRing(g, mark.projected.x, mark.projected.y, center);
@@ -1050,9 +1053,7 @@ export function createRadar(ctx) {
 
     const sectorId = state.world && state.world.currentSectorId;
     const pings = sectorId && state.world.scanPings && state.world.scanPings[sectorId];
-    if (Array.isArray(pings) || contacts.some((entity) => (
-      entity && entity.alive && entity.data && entity.data.pingedUntil > state.simTime
-    ))) {
+    if (Array.isArray(pings) || contactsHaveLivePing(contacts, state.simTime)) {
       g.save();
       g.font = canvasFont(700, 12, 'data');
       g.textAlign = 'center';
@@ -1085,9 +1086,9 @@ export function createRadar(ctx) {
       if (target && target.alive && target.pos) {
         const lead = solveIntercept(
           player.pos,
-          player.vel || { x: 0, z: 0 },
+          player.vel || zeroVel,
           target.pos,
-          target.vel || { x: 0, z: 0 },
+          target.vel || zeroVel,
           playerProjSpeed(player),
         );
         if (lead) {

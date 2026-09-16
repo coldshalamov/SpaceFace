@@ -37,6 +37,44 @@ const THROWN_TRAIL_INPUT = {
   targetRelevant: false,
 };
 
+// Reused option records for the massline presentation resolvers. The resolvers only read these,
+// and every field is rewritten per craft before each call; the resolver results stay fresh
+// allocations because `pres.tumble` retains them for VFX consumers. The idle-path record is
+// separate so a prior craft's tumble cause/attacker can never leak into an idle result.
+const TUMBLE_RECOVER_OPTS = {
+  ageS: 0,
+  windowS: 0.35,
+  fromBank: 0,
+  fromPitch: 0,
+  flightBank: 0,
+  flightPitch: 0,
+};
+
+const TUMBLE_BODY_OPTS = {
+  mode: 'idle',
+  cause: null,
+  attackerId: null,
+  playerCaused: false,
+  angVel: 0,
+  spin: 0,
+  simTime: 0,
+  elapsedS: 0,
+  remainS: 0,
+  motionReduce: false,
+  phaseBias: 0,
+  flightBank: 0,
+  flightPitch: 0,
+};
+
+const TUMBLE_IDLE_OPTS = {
+  mode: 'idle',
+  cause: null,
+  attackerId: null,
+  playerCaused: false,
+  flightBank: 0,
+  flightPitch: 0,
+};
+
 // Deliberately does NOT gate on `index.ready`: presentation only needs the marker+bucket, and
 // test fixtures (and boot-window states before the first reconcile) supply shipLike without a
 // ready flag. Callers keep their per-entity type predicate in both modes.
@@ -142,14 +180,13 @@ export function updateShipPitchPresentation(state, frameDt) {
 
     if (recover && Number.isFinite(recover.until) && now < recover.until) {
       const ageS = Math.max(0, now - finite(recover.startedAt, now));
-      const body = resolveTumbleRecoverPose({
-        ageS,
-        windowS: Math.max(0.05, finite(recover.until, now) - finite(recover.startedAt, now)),
-        fromBank: finite(recover.fromBank, entity.bank),
-        fromPitch: finite(recover.fromPitch, entity.pitch),
-        flightBank: 0,
-        flightPitch,
-      });
+      TUMBLE_RECOVER_OPTS.ageS = ageS;
+      TUMBLE_RECOVER_OPTS.windowS = Math.max(0.05, finite(recover.until, now) - finite(recover.startedAt, now));
+      TUMBLE_RECOVER_OPTS.fromBank = finite(recover.fromBank, entity.bank);
+      TUMBLE_RECOVER_OPTS.fromPitch = finite(recover.fromPitch, entity.pitch);
+      TUMBLE_RECOVER_OPTS.flightBank = 0;
+      TUMBLE_RECOVER_OPTS.flightPitch = flightPitch;
+      const body = resolveTumbleRecoverPose(TUMBLE_RECOVER_OPTS);
       entity.bank = body.bank;
       entity.pitch = body.pitch;
       pres.tumble = body;
@@ -159,21 +196,20 @@ export function updateShipPitchPresentation(state, frameDt) {
     }
 
     if (loss.mode === 'tumbling' || loss.mode === 'drifting') {
-      const body = resolveTumbleBodyLanguage({
-        mode: loss.mode,
-        cause: loss.cause,
-        attackerId: loss.attackerId,
-        playerCaused: loss.playerCaused,
-        angVel: entity.angVel,
-        spin: loss.spin,
-        simTime: now,
-        elapsedS: loss.elapsedS,
-        remainS: loss.remainS,
-        motionReduce,
-        phaseBias: Number(entity.id) % 17,
-        flightBank: entity.bank,
-        flightPitch,
-      });
+      TUMBLE_BODY_OPTS.mode = loss.mode;
+      TUMBLE_BODY_OPTS.cause = loss.cause;
+      TUMBLE_BODY_OPTS.attackerId = loss.attackerId;
+      TUMBLE_BODY_OPTS.playerCaused = loss.playerCaused;
+      TUMBLE_BODY_OPTS.angVel = entity.angVel;
+      TUMBLE_BODY_OPTS.spin = loss.spin;
+      TUMBLE_BODY_OPTS.simTime = now;
+      TUMBLE_BODY_OPTS.elapsedS = loss.elapsedS;
+      TUMBLE_BODY_OPTS.remainS = loss.remainS;
+      TUMBLE_BODY_OPTS.motionReduce = motionReduce;
+      TUMBLE_BODY_OPTS.phaseBias = Number(entity.id) % 17;
+      TUMBLE_BODY_OPTS.flightBank = entity.bank;
+      TUMBLE_BODY_OPTS.flightPitch = flightPitch;
+      const body = resolveTumbleBodyLanguage(TUMBLE_BODY_OPTS);
       // Own bank/pitch for the thrash window (last presentation writer before mesh pose apply).
       entity.bank = body.bank;
       entity.pitch = body.pitch;
@@ -197,14 +233,13 @@ export function updateShipPitchPresentation(state, frameDt) {
         fromBank: finite(pres._lastTumbleBank, entity.bank),
         fromPitch: finite(pres._lastTumblePitch, entity.pitch),
       };
-      const body = resolveTumbleRecoverPose({
-        ageS: 0,
-        windowS: 0.35,
-        fromBank: pres.tumbleRecover.fromBank,
-        fromPitch: pres.tumbleRecover.fromPitch,
-        flightBank: 0,
-        flightPitch,
-      });
+      TUMBLE_RECOVER_OPTS.ageS = 0;
+      TUMBLE_RECOVER_OPTS.windowS = 0.35;
+      TUMBLE_RECOVER_OPTS.fromBank = pres.tumbleRecover.fromBank;
+      TUMBLE_RECOVER_OPTS.fromPitch = pres.tumbleRecover.fromPitch;
+      TUMBLE_RECOVER_OPTS.flightBank = 0;
+      TUMBLE_RECOVER_OPTS.flightPitch = flightPitch;
+      const body = resolveTumbleRecoverPose(TUMBLE_RECOVER_OPTS);
       entity.bank = body.bank;
       entity.pitch = body.pitch;
       pres.tumble = body;
@@ -216,7 +251,9 @@ export function updateShipPitchPresentation(state, frameDt) {
     entity.pitch += (flightPitch - entity.pitch) * (1 - Math.exp(-rate * dt));
     if (Math.abs(entity.pitch) < 0.0005 && Math.abs(flightPitch) < 0.0005) entity.pitch = 0;
     if (pres.tumble) {
-      pres.tumble = resolveTumbleBodyLanguage({ mode: 'idle', flightBank: entity.bank, flightPitch: entity.pitch });
+      TUMBLE_IDLE_OPTS.flightBank = entity.bank;
+      TUMBLE_IDLE_OPTS.flightPitch = entity.pitch;
+      pres.tumble = resolveTumbleBodyLanguage(TUMBLE_IDLE_OPTS);
     }
     updated++;
   }

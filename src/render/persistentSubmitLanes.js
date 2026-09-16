@@ -16,6 +16,11 @@ export const PERSISTENT_LANES_ENABLED = true;
 
 let liveLanes = null;
 
+// Steady-state shared results: an unchanged frame (menu, pause, docked, stationary world) must
+// not allocate a fresh frozen result graph on every presentation pass.
+const EMPTY_DIRTY = Object.freeze({});
+const IDLE_UPLOADS = Object.freeze({ enabled: true, uploaded: 0, lanes: 0, dirty: EMPTY_DIRTY });
+
 export function getPersistentSubmitLanes() {
   if (!liveLanes) liveLanes = createPersistentSubmitLanes();
   return liveLanes;
@@ -42,6 +47,7 @@ export function createPersistentSubmitLanes(options = {}) {
   const slots = new Map();
   const freeIndices = [];
   const dirtyByLane = new Map();
+  let pendingDirty = false;
   let reservations = 0;
   let releases = 0;
   let dirtyUploads = 0;
@@ -82,18 +88,22 @@ export function createPersistentSubmitLanes(options = {}) {
       if (!enabled || !slots.has(id)) return false;
       const slot = slots.get(id);
       mergeDirtyRange(rangesFor(slot.lane), slot.index, slot.index + 1);
+      pendingDirty = true;
       dirtyUploads++;
       return true;
     },
     drainDirtyRanges() {
-      if (!enabled) return Object.freeze({});
+      if (!enabled) return EMPTY_DIRTY;
+      if (!pendingDirty) return EMPTY_DIRTY;
       const out = {};
       for (const [lane, ranges] of dirtyByLane) {
+        if (ranges.length === 0) continue;
         out[lane] = Object.freeze(ranges.splice(0).map(([start, end]) => Object.freeze({
           start,
           count: end - start,
         })));
       }
+      pendingDirty = false;
       return Object.freeze(out);
     },
     notePlannerRun() { plannerRuns++; return plannerRuns; },
@@ -136,5 +146,6 @@ export function consumePersistentSubmitUploads(lanes, uploadRange) {
       uploaded += 1;
     }
   }
+  if (laneCount === 0) return IDLE_UPLOADS;
   return Object.freeze({ enabled: true, uploaded, lanes: laneCount, dirty });
 }

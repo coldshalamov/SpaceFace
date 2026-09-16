@@ -26,9 +26,15 @@ export function classifyEntityViewBand(options = {}) {
   if (options.isPlayer === true || options.forceInner === true) return ENTITY_VIEW_BAND.INNER;
   const absDx = Math.abs(Number(options.dx) || 0);
   const absDz = Math.abs(Number(options.dz) || 0);
-  const view = viewHalfExtents(options.zoom, options.fov, options.aspect, INNER_VIEW_BAND_SCALE);
-  const halfX = Number.isFinite(Number(options.innerHalfX)) ? Number(options.innerHalfX) : view.halfX;
-  const halfZ = Number.isFinite(Number(options.innerHalfZ)) ? Number(options.innerHalfZ) : view.halfZ;
+  // The frame caller supplies the extents it already computed once per frame; the tan-based
+  // fallback only serves callers that omit them. Keep it out of the per-entity path.
+  let halfX = Number(options.innerHalfX);
+  let halfZ = Number(options.innerHalfZ);
+  if (!Number.isFinite(halfX) || !Number.isFinite(halfZ)) {
+    const view = viewHalfExtents(options.zoom, options.fov, options.aspect, INNER_VIEW_BAND_SCALE);
+    if (!Number.isFinite(halfX)) halfX = view.halfX;
+    if (!Number.isFinite(halfZ)) halfZ = view.halfZ;
+  }
   if (absDx <= halfX && absDz <= halfZ) return ENTITY_VIEW_BAND.INNER;
   return ENTITY_VIEW_BAND.MIDDLE;
 }

@@ -3845,6 +3845,7 @@ export const traffic = {
 
     let lostWorldSiteRoute = false;
     let lostClaimTravelRoute = false;
+    let anyWorldSiteRoute = false;
     // Remove dead record bindings once, then let the classifier-owned traffic view drive all
     // behavior. Far S2/S3/S4 freighters remain in entityList and their durable record, but do not
     // enter this owner loop until a scheduled wake or explicit pin makes them due.
@@ -3875,6 +3876,7 @@ export const traffic = {
       }
       recordById.set(rec.id, rec);
       recordIndexById.set(rec.id, i);
+      if (rec.worldSiteRoute) anyWorldSiteRoute = true;
       // Legacy/fixture traffic records may predate data.trafficRole. Preserve their exact/near
       // behavior without re-admitting remote passive records to the owner loop.
       if (!activeTrafficIds.has(e.id) && (!hasLivePlayer || entityNeedsAiThink(e, state))) {
@@ -3883,6 +3885,13 @@ export const traffic = {
       }
     }
     const player = hasLivePlayer ? state.entities.get(state.playerId) : null;
+    // One entity walk per tick serves every world-site route: resolving each routed freighter's
+    // site through a full entity scan was O(routedFreighters × entities) at 60 Hz. The index is
+    // built before the stepper loop, whose world-site branch only reads positions and writes
+    // intent, so the entity set it snapshots is the same one each per-freighter scan saw.
+    const worldRecordIndex = anyWorldSiteRoute
+      ? buildWorldRecordIndex(state, this._worldRecordIndexScratch || (this._worldRecordIndexScratch = new Map()))
+      : null;
     const trafficPlanOpts = {
       playerId: state.playerId,
       playerTeam: player && player.team,
@@ -3925,7 +3934,7 @@ export const traffic = {
       const role = TRAFFIC_ROLES[rec.role] || TRAFFIC_ROLES.hauler;
 
       if (rec.worldSiteRoute) {
-        this._stepWorldSiteRoute(e, rec, stations, dt);
+        this._stepWorldSiteRoute(e, rec, stations, dt, worldRecordIndex);
         continue;
       }
       if (rec.claimTravelRoute) {
@@ -4009,9 +4018,11 @@ export const traffic = {
     this._maintainYardTugJobs();
   },
 
-  _stepWorldSiteRoute(entity, rec, stations, dt) {
+  _stepWorldSiteRoute(entity, rec, stations, dt, worldRecordIndex = null) {
     const route = rec.worldSiteRoute;
-    const site = entityWithWorldRecord(this.state, route.siteWorldRecordId);
+    const site = worldRecordIndex
+      ? (worldRecordIndex.get(route.siteWorldRecordId) || null)
+      : entityWithWorldRecord(this.state, route.siteWorldRecordId);
     const station = stations.find((candidate) => stationIdentity(candidate) === route.stationId);
     const target = route.endpoint === 'station' ? station : site;
     let targetPos = target && target.pos;
@@ -9363,6 +9374,21 @@ function entityWithWorldRecord(state, worldRecordId) {
     if (entity && entity.alive !== false && entity.data && entity.data.worldRecordId === worldRecordId) return entity;
   }
   return null;
+}
+
+// Per-tick worldRecordId → entity index for callers that resolve several records in one pass
+// (world-site routes). One walk of the entity map replaces one walk per lookup.
+function buildWorldRecordIndex(state, into) {
+  into.clear();
+  const entities = state && state.entities;
+  if (!entities || typeof entities.values !== 'function') return into;
+  for (const entity of entities.values()) {
+    if (!entity || entity.alive === false || !entity.data) continue;
+    const worldRecordId = entity.data.worldRecordId;
+    if (worldRecordId == null) continue;
+    into.set(worldRecordId, entity);
+  }
+  return into;
 }
 
 function liveEntity(state, id) {
