@@ -156,6 +156,7 @@ export const FIRST_USE_LINE = Object.freeze({
   masslineBulletTime: 'Hold to stretch time.',
   masslineCloak: 'Coast to stay hidden.',
   bombPropulsion: 'Drop aft, then detonate.',
+  firstBombDrop: 'Bomb away. Clear the blast.',
 });
 
 export function firstUseLine(verbId) {

@@ -373,6 +373,14 @@ export const onboarding = {
       this._showHint('firstCraft', firstUseLine('firstCraft'), p);
     });
 
+    // Bomb bay: the first time the player releases a drift bomb. NPC droppers do not
+    // exist yet; the owner filter keeps their future drops from spending the lesson.
+    bus.on('bombs:dropped', (p) => {
+      const playerId = this.state && this.state.playerId;
+      if (p && p.ownerId != null && playerId != null && p.ownerId !== playerId) return;
+      this._showHint('firstBombDrop', firstUseLine('firstBombDrop'), p);
+    });
+
     // Massline Physics Identity (Wave M2, massline2Flag-gated so headless contract runs and
     // flag-off sessions never see them). One-shot contextual hints for the three new verbs; the
     // authored first-hour BEATS rail is untouched.
