@@ -2016,7 +2016,8 @@ function convoyTick(d, live, state, now, isConvoy) {
   }
   const lead = haulers[0];
   const arrivedByPosition = dist2(lead.pos.x, lead.pos.z, end.x, end.z) <= CONVOY_ARRIVE_R * CONVOY_ARRIVE_R;
-  if (!arrivedByPosition) return;
+  const arrivedByDeadline = Number.isFinite(live.deadlineAt) && now >= live.deadlineAt;
+  if (!arrivedByPosition && !arrivedByDeadline) return;
 
   if (custody && custody.carrierArrived) return;
 

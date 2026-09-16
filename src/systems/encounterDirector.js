@@ -1421,6 +1421,13 @@ export const encounterDirector = {
       });
     }
     this.emit('freight:loss', { ...intent, encounterId: live.id });
+    if (intent.news) {
+      this.emit('news:headline', {
+        ...intent.news,
+        headline: null,
+        encounterId: live.id,
+      });
+    }
     return true;
   },
   dangerImpulse(live, kind, delta) {
@@ -2012,7 +2019,7 @@ function parkCeresActivityAmbushEntity(entity, sampler, now) {
 }
 
 function restoreCeresActivityAmbushEntities(state, holder) {
-  const list = state && state.entityList;
+  const list = indexedShipLikeScan(state);
   if (!Array.isArray(list)) return;
   const restoreByRecordId = holder && holder.restoreByRecordId || Object.create(null);
   for (const entity of list) {
@@ -3196,9 +3203,10 @@ function placeFarFromPlayer(state, payload, sectorId) {
   const seed = (state && state.meta && state.meta.seed) || 1;
   const angle = (hash32(seed, sectorId || 'no-sector', 'escalation-place') % 360) * (Math.PI / 180);
   return {
-    // C1 engagement scale: adventure escalation spawns inside the fight envelope, not 900 WU out.
-    x: px + Math.cos(angle) * 520,
-    z: pz + Math.sin(angle) * 520,
+    // B3b: escalation spawns just outside the composed frame — a short approach leg, not a
+    // kilometer of off-screen targeting time.
+    x: px + Math.cos(angle) * 380,
+    z: pz + Math.sin(angle) * 380,
     sectorId: sectorId || null,
     zoneId: null,
     stationId: escalationText(payload && payload.stationId),
