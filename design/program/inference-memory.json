@@ -919,6 +919,30 @@
       "integration": "live",
       "commit": "ca8d52fce",
       "verification": "focused_green"
+    },
+    {
+      "id": "bomb-verb-barks",
+      "date": "2026-09-16",
+      "wf": "WF-09",
+      "mode": "repair",
+      "verdict": "cut",
+      "reason": "NPC voice lines for bomb drops/detonations",
+      "rootReason": "bark corpus size pinned by pq-158-04 test and every line needs a delivered WAV; growing it is PQ-158 acceptance work, not inference",
+      "fingerprint": "verb=speak,subject=bomb-bay,sector=any,domain=wf-09",
+      "references": [],
+      "integration": "cut"
+    },
+    {
+      "id": "bomb-verb-achievements",
+      "date": "2026-09-16",
+      "wf": "WF-07",
+      "mode": "repair",
+      "verdict": "cut",
+      "reason": "first-bomb-drop achievement",
+      "rootReason": "achievement count pinned 12-16 by pq-033-03 defs test and new defs need a unique kit glyph plus store-asset build; growing it is PQ-033.03 acceptance work",
+      "fingerprint": "verb=earn,subject=bomb-bay,sector=any,domain=wf-07",
+      "references": [],
+      "integration": "cut"
     }
   ],
   "knownDefects": [
