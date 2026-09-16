@@ -867,6 +867,19 @@
       "integration": "live",
       "commit": "133aaff91",
       "verification": "focused_green"
+    },
+    {
+      "id": "iron-maw-arena-lore",
+      "date": "2026-09-16",
+      "wf": "WF-04",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Ashfall boss arena scans now surface the authored Iron Maw lore lines",
+      "fingerprint": "verb=scan,subject=boss-arena,sector=ashfall-reach,domain=wf-04",
+      "references": [],
+      "integration": "live",
+      "commit": "441f7061b",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
