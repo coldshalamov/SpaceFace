@@ -14,7 +14,7 @@ import {
   resolveWeaponRecipe,
 } from '../src/render/weapons/index.js';
 
-test('pulse muzzle is a socket-tracked flipbook, not a detached flash sprite', () => {
+test('pulse muzzle is a socket-tracked split aperture, without stacked glow cards', () => {
   const recipe = resolveWeaponRecipe('wpn_pulse_laser_s');
   assert.equal(recipe.variant, 'pulse-bolt');
   assert.equal(recipeUsesMuzzleFlipbook(recipe), true);
@@ -43,16 +43,19 @@ test('pulse muzzle is a socket-tracked flipbook, not a detached flash sprite', (
     ownerId: 'ship',
     origin: { x: 0, z: 0 },
   }, { x: 0, z: 0 }, 0, recipe.muzzle);
-  presenter.flipbooks.update(0, (slot) => presenter._resolveFlipbookPose(slot));
-
-  const muzzle = presenter.flipbooks.slots.filter((slot) => slot.alive && slot.role === FLIPBOOK_ROLE.MUZZLE);
-  const bore = presenter.flipbooks.slots.filter((slot) => slot.alive && slot.role === FLIPBOOK_ROLE.BORE);
-  assert.equal(muzzle.length, 1, 'pulse ignition is a barrel flipbook');
-  assert.equal(bore.length, 1, 'pulse keeps a bore afterglow card on the socket');
-  assert.equal(muzzle[0].followSocket, 1);
-  assert.equal(muzzle[0].ownerId, 'ship');
-  assert.ok(Math.abs(presenter.flipbooks.pos.getX(0) - 12) < 1e-6,
-    'muzzle reads SOCKET_Weapon_Front, not ship center');
+  presenter.discharges.update(0, presenter._dischargePoseResolver, presenter._a11y());
+  const sources = presenter.discharges.slots.filter((slot) => slot.alive);
+  assert.equal(sources.length, 1, 'pulse ignition has one retained source owner');
+  assert.equal(sources[0].source, 'split-aperture');
+  assert.equal(sources[0].ownerId, 'ship');
+  assert.equal(presenter.flipbooks.slots.filter(slot => slot.alive).length, 0,
+    'MUZZLE and BORE cards do not stack over the aperture');
+  assert.ok(Math.abs(presenter.discharges.batch.attributes[0].getX(0) - 12) < 1e-6,
+    'source reads SOCKET_Weapon_Front, not ship center');
+  socket.x = 18;
+  presenter.discharges.update(0.02, presenter._dischargePoseResolver, presenter._a11y());
+  assert.equal(sources[0].x, 18, 'source follows a moving weapon socket');
+  presenter.dispose();
 });
 
 test('live pulse fire skips the legacy SPR_FLASH muzzle path', () => {

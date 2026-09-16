@@ -113,19 +113,21 @@ test('production player reverse spawns zero needle sprites', () => {
   assert.equal(typeof PlayerRetroJets, 'function');
 });
 
-test('seed 19302: retro jet is stubby (exit radius not a hairline vs length) and same family as the drive', () => {
+test('seed 19302: retro jet has bounded directional aspect, separated sheets and the drive family', () => {
   const length = PLAYER_RETRO_VOLUME_RECIPE.lengthWU;
   const exitR = PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU;
   const aspect = length / exitR;
   assert.ok(exitR >= 1.0, `exitRadiusWU ${exitR} must read as a nozzle, not a filament`);
-  assert.ok(aspect <= 8, `length/exit ${aspect.toFixed(2)} must stay jet-like, not a needle`);
-  assert.ok(PLAYER_RETRO_VOLUME_RECIPE.tailFlare >= 1.5, 'the jet flares downstream');
-  assert.ok(length < 5, 'recipe is stubby, not a long filament');
+  assert.ok(aspect >= 5 && aspect <= 11, `length/exit ${aspect.toFixed(2)} rejects both bulbs and needles`);
+  assert.ok(PLAYER_RETRO_VOLUME_RECIPE.tailFlare > 1 && PLAYER_RETRO_VOLUME_RECIPE.tailFlare < 1.4, 'controlled downstream flare keeps the pair distinct');
+  assert.ok(length > 6 && length < 12, 'braking jet reads axially but stays shorter than the main drive');
   const envelope = retroEnvelopeForDemand(1);
   assert.equal(retroEnvelopeIsJetLike(envelope), true);
   assert.equal(envelope.construction, RETRO_JET_CONSTRUCTION);
   const diameter = envelope.exitRadiusWU * 2;
-  assert.ok(diameter / envelope.lengthWU >= 0.5, `diameter/length=${diameter / envelope.lengthWU}`);
+  assert.ok(envelope.lengthWU / diameter >= 2.2 && envelope.lengthWU / diameter <= 6, `length/diameter=${envelope.lengthWU / diameter}`);
+  assert.equal(retroEnvelopeIsJetLike({ lengthWU: 2, exitRadiusWU: 1.3 }), false, "reject luminous bulbs");
+  assert.equal(retroEnvelopeIsJetLike({ lengthWU: 50, exitRadiusWU: 0.1 }), false, "reject needles");
   const src = readFileSync(resolve(ROOT, 'src/render/thruster/recipes/plasmaStreamRecipe.js'), 'utf8');
   const recipeSrc = src.slice(src.indexOf('export const PLAYER_RETRO_VOLUME_RECIPE'));
   assert.equal(/needle/i.test(recipeSrc), false, 'recipe must not praise a needle silhouette');

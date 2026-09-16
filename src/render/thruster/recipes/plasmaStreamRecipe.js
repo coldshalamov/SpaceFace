@@ -187,17 +187,17 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
  * this recipe.
  */
 export const PLAYER_RETRO_VOLUME_RECIPE = freezeDeep({
-  id: 'player_retro_jet_v4',
-  // Short and fat: a braking thruster is a stubby high-pressure jet, not a long cruise plume.
+  id: 'player_retro_jet_v5',
+  // Open, directional high-pressure exhaust. Avoid a short, wide envelope that integrates to a bulb.
   // Long enough to read at chase height (~140 WU), still well under the main drive's 17 WU jet.
-  lengthWU: 4.6,
-  exitRadiusWU: 1.28,
-  tailFlare: 1.7,
-  spread: 1.55,
-  radiance: 1.12,
-  opacity: 0.036,
-  ribbons: 18,
-  stations: 32,
+  lengthWU: 8.8,
+  exitRadiusWU: 1.08,
+  tailFlare: 1.14,
+  spread: 0.82,
+  radiance: 1.6,
+  opacity: 0.16,
+  ribbons: 12,
+  stations: 40,
   across: 5,
 
   // Same temperature ramp as the main drive sheets so a stranger reads one engine family.

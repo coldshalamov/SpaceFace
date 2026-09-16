@@ -116,6 +116,8 @@ function buildForgeGeometry(T) {
 export class DriveForge {
   constructor(T = THREE, opts = {}) {
     this.THREE = T;
+    this.mouthScale = opts.mouthScale ?? FORGE_MOUTH_SCALE;
+    this.aftScale = opts.aftScale ?? FORGE_AFT_SCALE;
     this.geometry = buildForgeGeometry(T);
     this.material = new T.ShaderMaterial({
       uniforms: {
@@ -126,8 +128,8 @@ export class DriveForge {
         uEdgeColor: { value: new T.Color(0.16, 0.66, 1.0) },
         uDrive: { value: 0 },
         uBoost: { value: 0 },
-        uOpacity: { value: 0.5 },
-        uRadiance: { value: 2.05 },
+        uOpacity: { value: opts.opacity ?? 0.5 },
+        uRadiance: { value: opts.radiance ?? 2.05 },
         uCamPos: { value: new T.Vector3() },
       },
       vertexShader: FORGE_VERT,
@@ -137,6 +139,7 @@ export class DriveForge {
       depthTest: true,
       blending: T.AdditiveBlending,
       side: T.DoubleSide,
+      forceSinglePass: opts.forceSinglePass === true,
       toneMapped: false,
     });
     this.mesh = new T.Mesh(this.geometry, this.material);
@@ -187,8 +190,8 @@ export class DriveForge {
     u.uBoost.value = boost;
 
     const throat = env && env.throatRadius != null ? env.throatRadius : 1.32;
-    u.uMouthRadius.value = throat * FORGE_MOUTH_SCALE;
-    u.uAftRadius.value = throat * FORGE_AFT_SCALE;
+    u.uMouthRadius.value = throat * this.mouthScale;
+    u.uAftRadius.value = throat * this.aftScale;
 
     this.mesh.position.set(nozzle.x, nozzle.y, nozzle.z);
     this._aim.set(

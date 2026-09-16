@@ -1,7 +1,7 @@
 // Player reverse/brake: one honest jet path, no leftover needle trail.
 //
 // Impulse RCS can only pop. Holding brake is a continuous input, so retro uses the same swept
-// ribbon sheets + forge mouth as the main drive — short and fat at the bow, gone when demand ends.
+// ribbon sheets + forge mouth as the main drive — directional and open at the bow, gone when demand ends.
 // The isotropic volumetric proxy is B12 (soft smoke); it is not this jet.
 
 import { DriveForge } from '../ribbon/driveForge.js';
@@ -23,7 +23,7 @@ export function productionPlayerReverseNeedleSprites() {
 }
 
 export function retroEnvelopeForDemand(peak, a11y = null) {
-  const drive = Math.max(0, Number(peak) || 0);
+  const drive = Math.max(0, Math.min(1.4, Number(peak) || 0));
   const flashScale = a11y && a11y.reducedFlash ? 0.72 : 1;
   const lengthWU = PLAYER_RETRO_VOLUME_RECIPE.lengthWU * (0.55 + drive * 0.5);
   const exitRadiusWU = PLAYER_RETRO_VOLUME_RECIPE.exitRadiusWU;
@@ -40,13 +40,13 @@ export function retroEnvelopeForDemand(peak, a11y = null) {
   };
 }
 
-/** Exit diameter vs lit length: a jet, not a hairline. */
+/** Reject both source bulbs and hairline needles: visible throat, length 2.5–6 throat diameters. */
 export function retroEnvelopeIsJetLike(envelope) {
   if (!envelope) return false;
   const length = Number(envelope.lengthWU) || 0;
   const diameter = (Number(envelope.exitRadiusWU) || 0) * 2;
   if (!(length > 0) || !(diameter > 0)) return false;
-  return diameter / length >= 0.5 && envelope.exitRadiusWU >= 1;
+  return length / diameter >= 2.2 && length / diameter <= 6.0 && envelope.exitRadiusWU >= 0.8;
 }
 
 export function selectRetroJets(firings) {
@@ -163,7 +163,7 @@ export function updatePlayerRetroVolume(volume, opts = {}) {
 }
 
 /**
- * Live retro owner. Same swept-sheet + forge construction as the main drive; stubby envelope;
+ * Live retro owner. Same swept-sheet + forge construction as the main drive; bounded directional envelope;
  * no history filament. update() matches the volumetric pose contract so vfx stays one call site.
  */
 export class PlayerRetroJets {
@@ -223,7 +223,10 @@ export class PlayerRetroJets {
       plume.attach(this.group);
       this._plumes.push(plume);
 
-      const forge = new DriveForge(T, { lengthWU: Math.min(1.8, recipe.lengthWU * 0.45) });
+      const forge = new DriveForge(T, {
+        lengthWU: 1.45, mouthScale: 0.86, aftScale: 1.06,
+        opacity: 0.13, radiance: 1.08, forceSinglePass: true,
+      });
       forge.mesh.name = `${this.name}-forge-${i}`;
       forge.attach(this.group);
       this._forges.push(forge);
@@ -274,8 +277,21 @@ export class PlayerRetroJets {
     shape.jetLength = Math.max(0.75, p.lengthWU || this.recipe.lengthWU);
     shape.throatRadius = Math.max(0.4, p.exitRadiusWU || this.recipe.exitRadiusWU);
     shape.spread = p.spread != null ? p.spread : this.recipe.spread;
-    shape.radiance = p.radiance != null ? p.radiance : this.recipe.radiance;
-    shape.opacity = p.opacity != null ? p.opacity : this.recipe.opacity;
+    let radiance = p.radiance != null ? p.radiance : this.recipe.radiance;
+    let opacity = p.opacity != null ? p.opacity : this.recipe.opacity;
+    // Additive sheets average toward black at the shipping chase camera. Same minification
+    // compensation the main drive uses, so the bow pair stays a jet at 144 WU.
+    const cam = this._camObj;
+    if (cam && cam.position && sockets && sockets[0]) {
+      const dx = cam.position.x - (sockets[0].x || 0);
+      const dy = cam.position.y - (sockets[0].y || 0);
+      const dz = cam.position.z - (sockets[0].z || 0);
+      const camD = Math.hypot(dx, dy, dz);
+      radiance *= Math.max(1, Math.min(2.8, camD / 70));
+      opacity *= Math.max(1, Math.min(1.8, camD / 90));
+    }
+    shape.radiance = radiance;
+    shape.opacity = opacity;
     shape.spool = p.drive;
 
     this.group.visible = true;

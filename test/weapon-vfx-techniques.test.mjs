@@ -46,9 +46,11 @@ function pulseProjectile(id, x, z) {
 }
 
 test('weapon lights are a dedicated pool and do not steal the six event lights', () => {
+  // P1: pool sized to measured p90 occupancy — 8 total visible point lights (6 event + 2 weapon),
+  // so NUM_POINT_LIGHTS stops running a 22-wide unrolled loop on every lit fragment.
   assert.equal(EVENT_LIGHT_POOL_SIZE, 6);
-  assert.equal(WEAPON_LIGHT_POOL_SIZE, 16);
-  assert.equal(visiblePointLightBudget(), 22);
+  assert.equal(WEAPON_LIGHT_POOL_SIZE, 2);
+  assert.equal(visiblePointLightBudget(), 8);
   const scene = new THREE.Scene();
   const presenter = new WeaponVfxPresenter({ scene });
   const eventLights = scene.children.filter((child) => child.isPointLight);
@@ -166,7 +168,7 @@ test('pulse chase-camera evidence: dash, barrel flipbook, and contact survive bl
   assert.equal(presenter.bolts.live, 1, 'flight is the energy-card pool, not a tube mesh');
   assert.equal(presenter.bolts.mesh.geometry.type, 'PlaneGeometry');
   assert.equal(presenter.ribbons.byEntity.has(7), true, 'pulse keeps a ribbon wake');
-  assert.ok(presenter.flipbooks.live >= 1, 'barrel ignition is live at the chase camera');
+  assert.ok(presenter.discharges.mesh.count >= 1, 'source surfaces are live at the chase camera');
   assert.equal(presenter.bolts.material.uniforms.uMinPixels.value, DEFAULT_BOLT_MIN_PIXELS);
   assert.ok(presenter.bolts.material.vertexShader.includes('worldPerPx * uMinPixels'),
     'pixel floor is in the dash shader, not a fatter cylinder');
@@ -293,9 +295,8 @@ test('weapon pose and velocity preserve zero components', () => {
     helpers: { socketWorldPose: () => ({ x: 0, y: 0.4, z: 0, forwardX: 0, forwardY: 0, forwardZ: -1 }) },
   });
   presenter.handleFire({ weaponId: 'wpn_pulse_laser_s', ownerId: 'pilot' }, { x: 0, z: 0 }, 0);
-  const muzzle = presenter.flipbooks.slots.find((slot) => slot.alive && slot.role === FLIPBOOK_ROLE.MUZZLE);
-  assert.equal(muzzle.ax, 0);
-  assert.equal(muzzle.az, -1);
+  const muzzle = presenter.discharges.slots.find((slot) => slot.alive);
+  assert.equal(muzzle.angle, -Math.PI / 2);
   const projectile = pulseProjectile(44, 0, 0);
   projectile.vel.x = 0;
   projectile.vel.z = -320;
@@ -315,9 +316,9 @@ test('accessibility scales flash geometry and reproject keeps target-local marks
     render: { meshes: new Map([['foe', target]]) },
   };
   presenter.handleFire({ weaponId: 'wpn_pulse_laser_s', ownerId: 'pilot' }, { x: 0, z: 0 }, 0);
-  const muzzle = presenter.flipbooks.slots.find((slot) => slot.alive && slot.role === FLIPBOOK_ROLE.MUZZLE);
+  const muzzle = presenter.discharges.slots.find((slot) => slot.alive);
   assert.ok(muzzle.width < 1.55);
-  assert.ok(muzzle.intensity < 1.35);
+  assert.ok(muzzle.opacity < 1);
   presenter.handleHit({ weaponId: 'wpn_pulse_laser_s', targetId: 'foe', pos: { x: 4, z: 2 },
     normal: { x: -1, z: 0 }, approach: { x: 1, z: 0 } }, false);
   const scorch = presenter.scorches.slots.find((slot) => slot.alive);
@@ -326,5 +327,5 @@ test('accessibility scales flash geometry and reproject keeps target-local marks
   assert.deepEqual({ x: scorch.localX, z: scorch.localZ }, before);
   presenter.dispose();
   presenter.dispose();
-  assert.deepEqual(presenter.getOwnerRoots().length, 7);
+  assert.deepEqual(presenter.getOwnerRoots().length, 8);
 });

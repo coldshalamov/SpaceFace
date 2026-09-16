@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { WeaponDischargePool } from '../forceLanguage/weaponDischargePool.js';
 import { resolveVfxAccessibilityProfile } from '../vfxAccessibility.js';
 import { EnergyBoltPool } from './energyBoltPool.js';
 import { FlipbookPool, FLIPBOOK_ROLE } from './flipbookPool.js';
@@ -6,6 +7,7 @@ import { WeaponRibbonPool } from './ribbonPool.js';
 import { DistortionField } from './distortionField.js';
 import { WeaponLightPool } from './weaponLights.js';
 import { HullScorchPool } from './contactMarks.js';
+import { QuarksVfxSystem } from '../vfx/quarksSystem.js';
 import { addShieldContact, ageShieldContacts, clearShieldContacts } from './shieldContacts.js';
 import {
   shouldDrawTableVfx,
@@ -85,6 +87,7 @@ function finiteOr(value, fallback) {
 export class WeaponVfxPresenter {
   constructor(options = {}) {
     this.scene = options.scene || null;
+    this.state = options.state || null;
     this.helpers = options.helpers || {};
     this.toLocalXZ = typeof options.toLocalXZ === 'function'
       ? options.toLocalXZ
@@ -96,6 +99,19 @@ export class WeaponVfxPresenter {
       };
     this.bolts = new EnergyBoltPool(this.scene);
     this.flipbooks = new FlipbookPool(this.scene);
+    this.discharges = new WeaponDischargePool(this.scene);
+    this._dischargePoseResolver = (id) => {
+      const socket = this.helpers?.socketWorldPose?.(id, WEAPON_SOCKET_NAME);
+      if (!socket) return null;
+      const local = this.toLocalXZ(socket.x, socket.z, this._dischargeLocal);
+      const pose = this._dischargePose;
+      pose.x = local.x; pose.y = finiteOr(socket.y, 0.4); pose.z = local.z;
+      pose.ax = finiteOr(socket.forwardX, 1); pose.ay = finiteOr(socket.forwardY, 0);
+      pose.az = finiteOr(socket.forwardZ, 0);
+      return pose;
+    };
+    this._dischargeLocal = { x: 0, z: 0 };
+    this._dischargePose = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
     this.ribbons = new WeaponRibbonPool(this.scene);
     this.distortion = new DistortionField();
     this.wellDistortion = new DistortionField({ capacity: WELL_DISTORTION_CAPACITY });
@@ -104,6 +120,7 @@ export class WeaponVfxPresenter {
     this.distortionProducers = [this.distortion, this.wellDistortion];
     this.lights = new WeaponLightPool(this.scene);
     this.scorches = new HullScorchPool(this.scene);
+    this.quarks = new QuarksVfxSystem({ scene: this.scene });
     this._socketScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 };
     this._targetScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0, attached: false };
     this._targetWorldScratch = { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0, nx: 1, ny: 0, nz: 0 };
@@ -163,7 +180,9 @@ export class WeaponVfxPresenter {
     const muzzle = recipe.muzzle;
     const flash = this._flashSpec(muzzle.life, muzzle.width, muzzle.height, 1.35);
     hexColor(muzzle.coreColor, _color);
-    this.flipbooks.spawn({
+    const sourceOwned = this.discharges.spawn(recipe, pose, ownerId, flash,
+      ownerId === this.state?.playerId ? 1 : 0.45);
+    if (!sourceOwned) this.flipbooks.spawn({
       role: FLIPBOOK_ROLE.MUZZLE,
       ownerId,
       x: pose.x,
@@ -182,7 +201,7 @@ export class WeaponVfxPresenter {
       b: _color.b,
       followSocket: true,
     });
-    if (muzzle.bore) {
+    if (muzzle.bore && !sourceOwned) {
       const bore = this._flashSpec(muzzle.boreLife || 0.24, muzzle.width * 0.45, muzzle.width * 0.45, 1.1);
       this.flipbooks.spawn({
         role: FLIPBOOK_ROLE.BORE,
@@ -224,6 +243,14 @@ export class WeaponVfxPresenter {
         life: Math.max(0.08, muzzle.life),
         priority,
       });
+    }
+    if (this.quarks && pose) {
+      this.quarks.spawnMuzzle(
+        pose.x, pose.y, pose.z,
+        pose.ax, pose.ay, pose.az,
+        recipe.flight.boltVariant,
+        !!recipe.muzzle.casings,
+      );
     }
     return true;
   }
@@ -332,6 +359,14 @@ export class WeaponVfxPresenter {
         priority: payload.targetId === (this.state && this.state.playerId) ? 0.9 : 0.4,
       });
     }
+    if (this.quarks) {
+      this.quarks.spawnImpact(
+        world.x, y, world.z,
+        nx, 0.1, nz,
+        !!hitShield,
+        (recipe && recipe.flight && recipe.flight.boltVariant) || 0,
+      );
+    }
     return { sparks: !hitShield && recipe.hull.sparks };
   }
 
@@ -347,6 +382,7 @@ export class WeaponVfxPresenter {
       ? index.projectiles
       : ((this.state && this.state.entityList) || []);
     ageShieldContacts(dt);
+    this.discharges.update(dt, this.helpers?.socketWorldPose ? this._dischargePoseResolver : null, this._a11y());
     this.bolts.setCamera(camera, viewportHeight);
     this.bolts.setDepthTexture(
       context.depthTexture || null,
@@ -361,6 +397,7 @@ export class WeaponVfxPresenter {
     this.distortion.update(dt);
     this.lights.update(dt);
     this.ribbons.update(dt, camera && camera.position);
+    if (this.quarks) this.quarks.update(dt);
   }
 
   _syncBolts(entities, alpha, camera) {
@@ -420,6 +457,14 @@ export class WeaponVfxPresenter {
         }
       }
       if (recipe.flight.mode !== FLIGHT_MODE.ENERGY_CARD) continue;
+      const priorityBolt = (
+        (playerId != null && (entity.id === playerId || entity.ownerId === playerId))
+        || (targetId != null && (entity.id === targetId || entity.ownerId === targetId))
+      );
+      _ribbonWorld.x = currX;
+      _ribbonWorld.z = currZ;
+      const boltLook = tableLookAtDelta(state, player && player.pos, _ribbonWorld, _ribbonLookAt);
+      if (!priorityBolt && player && !shouldDrawTableVfx(boltLook.x, boltLook.z, ribbonDrawWu)) continue;
       const rawVx = entity.vel && Number(entity.vel.x);
       const rawVz = entity.vel && Number(entity.vel.z);
       let vx = Number.isFinite(rawVx) ? rawVx : 0;
@@ -630,6 +675,7 @@ export class WeaponVfxPresenter {
     const ox = Number(dx) || 0;
     const oz = Number(dz) || 0;
     if (!ox && !oz) return;
+    this.discharges.reproject(ox, oz);
     for (const slot of this.flipbooks.slots) {
       if (!slot.alive) continue;
       if (slot.followTarget && slot.targetId != null) continue;
@@ -664,7 +710,7 @@ export class WeaponVfxPresenter {
   }
 
   getMeshes() {
-    return [this.bolts.mesh, this.flipbooks.mesh, this.ribbons.mesh, this.scorches.mesh];
+    return [this.bolts.mesh, this.flipbooks.mesh, this.discharges.mesh, this.ribbons.mesh, this.scorches.mesh];
   }
 
   /** Stable presenter-owned roots for scene residency/isolation checks. */
@@ -672,6 +718,7 @@ export class WeaponVfxPresenter {
     return [
       this.bolts.mesh,
       this.flipbooks.mesh,
+      this.discharges.mesh,
       this.ribbons.mesh,
       this.scorches.mesh,
       this.distortion.scene,
@@ -688,11 +735,13 @@ export class WeaponVfxPresenter {
     clearShieldContacts();
     this.bolts.dispose();
     this.flipbooks.dispose();
+    this.discharges.dispose();
     this.ribbons.dispose();
     this.distortion.dispose();
     this.wellDistortion.dispose();
     this.lights.dispose();
     this.scorches.dispose();
+    if (this.quarks) this.quarks.dispose();
   }
 }
 

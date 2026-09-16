@@ -29,6 +29,9 @@
 //   Event→handler wiring: see _subscribe (L256). Full event routing map: docs/EVENT_ROUTING.md
 // ── end index ──
 import * as THREE from 'three';
+import { FieldForcePresentation } from './forceLanguage/fieldForcePresentation.js';
+import { fieldSignature } from './forceLanguage/catalog.js';
+import { createForceSurfacePrecompileMesh } from './forceLanguage/sweptSurfaceBatch.js';
 import { createEnergyVolume, createMasslineRibbonMaterial, createPlumeMaterial, createPlumeVolume, updateEnergyMaterial } from './energy/energyMaterials.js';
 import {
   commitTrailStreakInstances,
@@ -61,7 +64,6 @@ import {
 } from './vfxProfiles.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
 import { readOwnedExceptionalSpeed } from './velocityLanguage.js';
-import { fieldFalloff } from '../core/fields/fieldKernel.js'; // PQ-012: VFX density mirrors the kernel falloff (gauges must not lie)
 import {
   lootMagnetFocusDelta,
   shouldDrawLootMagnetTrail,
@@ -634,12 +636,8 @@ const NPC_JOB_CUT_BEAM_FALLBACK = 26;
 // unit visible ground-plane depth (design/graphics-sprints/CAMERA_VISIBLE_BUBBLE.md): a real cut
 // crosses at most a couple of frames' worth of space, never hundreds of units.
 const NPC_JOB_CUT_BEAM_MAX_REACH = 110;
-// PQ-012 continuous field flow (design/vfx/FIELD_TOOL_READABILITY_BIBLE.md §4/§10). Advected pooled
-// particles at 30 Hz; slept when no field is deployed. Pool share is a small slice of PARTICLE_CAP
-// (≤ ~10 per field per emission, ≤ FIELD_FLOW_MAX_FIELDS fields).
-const VFX_FIELD_FLOW_HZ = 30;
-const FIELD_FLOW_GOLDEN = 2.399963229728653; // golden angle — even, deterministic spawn distribution
-const FIELD_FLOW_MAX_FIELDS = 6;
+// Field shapes and semantics: forceLanguage/fieldForcePresentation.js and
+// docs/visual-assets/VFX_FORCE_LANGUAGE_STANDARD_2026-09-16.md. No legacy particle fallback.
 
 function emptyTrailBudgetDiag() {
   return {
@@ -1305,8 +1303,7 @@ export const vfx = {
       releaseVfxDynamicBufferOwner(bucket && bucket.dynamicBufferOwner);
     }
     releaseVfxDynamicBufferOwner(this._seamMarkers && this._seamMarkers.dynamicBufferOwner);
-    const fieldOwners = this._fieldGeom && this._fieldGeom.dynamicBufferOwners;
-    for (const owner of Object.values(fieldOwners || {})) releaseVfxDynamicBufferOwner(owner);
+    invokeVfxDisposer(this._fieldGeom, 'field force surfaces');
 
     // Child presenters own their internal pools/materials. They are retired before their parent
     // references are cleared, and every call is isolated so one optional presentation feature
@@ -1338,15 +1335,6 @@ export const vfx = {
     disposeVfxRoot(this._arcPreview && this._arcPreview.mesh, disposeState);
     disposeVfxRoot(this._masslineReleaseArc && this._masslineReleaseArc.mesh, disposeState);
     disposeVfxRoot(this._seamMarkers && this._seamMarkers.mesh, disposeState);
-
-    const fieldGeometry = this._fieldGeom;
-    if (fieldGeometry) {
-      for (const key of [
-        'vaneMesh', 'pipMesh', 'knotMesh', 'domeMesh', 'ribMesh', 'bermMesh',
-        'chevronMesh', 'bankMesh',
-      ]) disposeVfxRoot(fieldGeometry[key], disposeState);
-      for (const root of fieldGeometry.coreVols || []) disposeVfxRoot(root, disposeState);
-    }
 
     const planetSkim = this._planetSkim;
     for (const slot of planetSkim && planetSkim.slots || []) {
@@ -1500,6 +1488,7 @@ export const vfx = {
     add(this._masslineReleaseArc && this._masslineReleaseArc.mesh);
     add(this._seamMarkers && this._seamMarkers.mesh);
     add(this._combatBeams && this._combatBeams.group);
+    add(this._fieldGeom && this._fieldGeom.mesh);
     const arcadeRoots = this._arcadeStructural && (
       this._arcadeStructural.getOwnerRoots?.() || this._arcadeStructural.getMeshes?.()
     );
@@ -2190,6 +2179,7 @@ export const vfx = {
         this._weaponPresenter.reproject(ox, oz);
       }
       this._arcadeStructural?.reproject(dx, dz);
+      this._fieldGeom?.reproject(ox, oz);
     }
     // Prevent double-reproject when both renderer prepareFrame and vfx.update observe the same seq.
     if (this._frameMembrane) this._frameMembrane.reset(this.state);
@@ -2931,6 +2921,7 @@ export const vfx = {
   _initWeaponPresenter() {
     if (!this._scene || this._weaponPresenter) return;
     this._weaponPresenter = createWeaponVfxPresenter({
+      state: this.state,
       scene: this._scene,
       helpers: this.helpers,
       toLocalXZ: this._weaponPresenterLocalizer,
@@ -3815,6 +3806,12 @@ export const vfx = {
     // Cruise owns its directional travel grammar directly below. Keep the legacy cue receipt for
     // audio/contracts, but do not fan it back into the generic presentation particle family.
     if (typeof p.id === 'string' && p.id.startsWith('cruise.')) return;
+    // These phases have an explicit retained surface owner. Do not stack the old generic
+    // particle ring/flash on top; deny/interact and unknown field cues keep their normal route.
+    if (typeof p.id === 'string' && p.id.startsWith('field.')) {
+      const parts = p.id.split('.');
+      if (fieldSignature(parts[1]) && (parts[2] === 'deploy' || parts[2] === 'collapse')) return;
+    }
     // R3B owns release shape through the paired retained endpoints, destination annulus, and the
     // released body's actual-velocity streak. Keep the normalized cue for camera/audio/UI/caption
     // lanes, but never layer the generic tether ring/particle family over that causal handoff.
@@ -4252,9 +4249,9 @@ export const vfx = {
     if (lane.includes('branch') || id.includes('branch')) {
       return presentationStyle('#fff8d8', '#f5d06f', SPR_RING, { radial: true, echoRing: true, lightPeak: 4.0, lightDistance: 180, speed0: 18, speedJitter: 32, life0: 0.5 });
     }
-    // PQ-012 field deploy/collapse event beats (one-shot punch, NOT the continuous flow — that is
-    // the pooled advected particles in _updateFieldFlow). Distinct per kind; the boundary/direction
-    // read lives in the continuous flow, so these are brief state-change pulses only.
+    // PQ-012 field deploy/collapse event beats (one-shot punch, NOT the continuous identity — that
+    // is the swept force surfaces in _updateFieldGeometry). Distinct per kind; the boundary/direction
+    // read lives in the continuous surfaces, so these are brief state-change pulses only.
     if (lane === 'field' || id.startsWith('field.')) {
       if (id.startsWith('field.repulsor')) {
         return presentationStyle('#fff2d0', '#ffb35c', SPR_FLASH, { radial: true, lightPeak: 2.6, lightDistance: 150, speed0: 62, speedJitter: 40, life0: 0.3, size0: 1.8, size1: 0.2, drag: 1.2 });
@@ -9879,631 +9876,22 @@ export const vfx = {
   // -------------------------------------------------------------------------
   _initFieldGeometry() {
     if (!this._scene || this._fieldGeomInitialized) return;
+    this._fieldGeom = new FieldForcePresentation(this._scene, {
+      toLocal: this._combatBeamLocalizer || ((x, z, out) => this._toLocalXZ(x, z, out)),
+    });
     this._fieldGeomInitialized = true;
-
-    const frameMat = new THREE.MeshStandardMaterial({
-      color: 0x2b3138,
-      roughness: 0.48,
-      metalness: 0.72,
-      side: THREE.DoubleSide,
-    });
-
-    const crispPipMat = new THREE.MeshBasicMaterial({
-      color: 0x39d0ff,
-      transparent: true,
-      opacity: 0.85,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      forceSinglePass: true,
-    });
-
-    const crispBermMat = new THREE.MeshStandardMaterial({
-      color: 0x2b3138,
-      roughness: 0.48,
-      metalness: 0.72,
-      side: THREE.DoubleSide,
-    });
-
-    const crispChevronMat = new THREE.MeshBasicMaterial({
-      color: 0x39d0ff,
-      transparent: true,
-      opacity: 1.0,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      forceSinglePass: true,
-    });
-
-    const crispBankMat = new THREE.MeshBasicMaterial({
-      color: 0x39d0ff,
-      transparent: true,
-      opacity: 0.95,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      forceSinglePass: true,
-    });
-
-    const vaneGeo = createCurvedVaneGeometry();
-    const vaneCap = 48;
-    const vaneMesh = new THREE.InstancedMesh(vaneGeo, frameMat, vaneCap);
-    vaneMesh.name = 'SF_FieldVaneInstances';
-    vaneMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    vaneMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(vaneCap * 3), 3);
-    vaneMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
-    vaneMesh.frustumCulled = false;
-    vaneMesh.renderOrder = 9;
-    vaneMesh.count = 0;
-    this._scene.add(vaneMesh);
-
-    const pipGeo = new THREE.ConeGeometry(0.5, 1.4, 3);
-    pipGeo.rotateX(Math.PI / 2);
-    const pipCap = 96;
-    const pipMesh = new THREE.InstancedMesh(pipGeo, crispPipMat, pipCap);
-    pipMesh.name = 'SF_FieldPipInstances';
-    pipMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    pipMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(pipCap * 3), 3);
-    pipMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
-    pipMesh.frustumCulled = false;
-    pipMesh.renderOrder = 10;
-    pipMesh.count = 0;
-    this._scene.add(pipMesh);
-
-    const knotGeo = new THREE.OctahedronGeometry(0.5, 0);
-    const knotCap = 12;
-    const knotMesh = new THREE.InstancedMesh(knotGeo, frameMat, knotCap);
-    knotMesh.name = 'SF_FieldKnotInstances';
-    knotMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    knotMesh.frustumCulled = false;
-    knotMesh.renderOrder = 8;
-    knotMesh.count = 0;
-    this._scene.add(knotMesh);
-
-    const domeGeo = new THREE.IcosahedronGeometry(1.0, 1);
-    const domeCap = 12;
-    const domeMesh = new THREE.InstancedMesh(domeGeo, frameMat, domeCap);
-    domeMesh.name = 'SF_FieldDomeInstances';
-    domeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    domeMesh.frustumCulled = false;
-    domeMesh.renderOrder = 8;
-    domeMesh.count = 0;
-    this._scene.add(domeMesh);
-
-    const ribGeo = new THREE.BoxGeometry(0.35, 0.12, 1.0);
-    const ribCap = 64;
-    const ribMesh = new THREE.InstancedMesh(ribGeo, frameMat, ribCap);
-    ribMesh.name = 'SF_FieldRibInstances';
-    ribMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    ribMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(ribCap * 3), 3);
-    ribMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
-    ribMesh.frustumCulled = false;
-    ribMesh.renderOrder = 9;
-    ribMesh.count = 0;
-    this._scene.add(ribMesh);
-
-    const bermGeo = new THREE.DodecahedronGeometry(0.7, 0);
-    const bermCap = 96;
-    const bermMesh = new THREE.InstancedMesh(bermGeo, crispBermMat, bermCap);
-    bermMesh.name = 'SF_FieldBermInstances';
-    bermMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    bermMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(bermCap * 3), 3);
-    bermMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
-    bermMesh.frustumCulled = false;
-    bermMesh.renderOrder = 10;
-    bermMesh.count = 0;
-    this._scene.add(bermMesh);
-
-    const chevronGeo = new THREE.ConeGeometry(0.45, 0.95, 3);
-    chevronGeo.rotateZ(-Math.PI / 2);
-    const chevronCap = 96;
-    const chevronMesh = new THREE.InstancedMesh(chevronGeo, crispChevronMat, chevronCap);
-    chevronMesh.name = 'SF_FieldChevronInstances';
-    chevronMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    chevronMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(chevronCap * 3), 3);
-    chevronMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
-    chevronMesh.frustumCulled = false;
-    chevronMesh.renderOrder = 10;
-    chevronMesh.count = 0;
-    this._scene.add(chevronMesh);
-
-    const bankGeo = new THREE.BoxGeometry(0.18, 0.1, 1.0);
-    const bankCap = 24;
-    const bankMesh = new THREE.InstancedMesh(bankGeo, crispBankMat, bankCap);
-    bankMesh.name = 'SF_FieldBankInstances';
-    bankMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    bankMesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(bankCap * 3), 3);
-    bankMesh.instanceColor.setUsage(THREE.DynamicDrawUsage);
-    bankMesh.frustumCulled = false;
-    bankMesh.renderOrder = 9;
-    bankMesh.count = 0;
-    this._scene.add(bankMesh);
-
-    const coreEnergyGeo = new THREE.OctahedronGeometry(1.0, 0);
-    const coreVols = [];
-    for (let i = 0; i < 6; i++) {
-      const vol = createEnergyVolume(coreEnergyGeo, {
-        name: `field-core-vol-${i}`,
-        colorA: '#39d0ff',
-        colorB: '#a6f0ff',
-        coreIntensity: 4.5,
-        haloIntensity: 1.5,
-        haloScale: 1.25,
-      });
-      vol.visible = false;
-      this._scene.add(vol);
-      coreVols.push(vol);
-    }
-
-    this._fieldGeom = {
-      vaneMesh,
-      pipMesh,
-      knotMesh,
-      domeMesh,
-      ribMesh,
-      bermMesh,
-      chevronMesh,
-      bankMesh,
-      coreVols,
-      deployStart: new Map(),
-      dynamicBufferOwners: {
-        vane: registerFieldGeometryBufferOwner(this._scene, 'vane', vaneMesh),
-        pip: registerFieldGeometryBufferOwner(this._scene, 'pip', pipMesh),
-        knot: registerFieldGeometryBufferOwner(this._scene, 'knot', knotMesh),
-        dome: registerFieldGeometryBufferOwner(this._scene, 'dome', domeMesh),
-        rib: registerFieldGeometryBufferOwner(this._scene, 'rib', ribMesh),
-        berm: registerFieldGeometryBufferOwner(this._scene, 'berm', bermMesh),
-        chevron: registerFieldGeometryBufferOwner(this._scene, 'chevron', chevronMesh),
-        bank: registerFieldGeometryBufferOwner(this._scene, 'bank', bankMesh),
-      },
-    };
-
-    this._fieldMat4 = new THREE.Matrix4();
-    this._fieldQuat = new THREE.Quaternion();
-    this._fieldVec3 = new THREE.Vector3();
-    this._fieldScale = new THREE.Vector3();
-    this._fieldColor = new THREE.Color();
-    this._fieldColor2 = new THREE.Color();
-    this._fieldLeanQuat = new THREE.Quaternion();
-    this._fieldActiveIds = new Set();
   },
 
   _updateFieldGeometry(dt) {
-    if (!this._scene) return;
-    if (!this._fieldGeomInitialized) this._initFieldGeometry();
-    const fg = this._fieldGeom;
-    if (!fg) return;
-
-    const active = this.state.fields && this.state.fields.active;
-    const activeList = Array.isArray(active) ? active : [];
-    const activeIds = this._fieldActiveIds;
-    activeIds.clear();
-
-    if (activeList.length === 0) {
-      if (fg.deployStart.size > 0) fg.deployStart.clear();
-
-      commitFieldGeometryBuffer(fg.dynamicBufferOwners.vane, fg.vaneMesh, 0);
-      commitFieldGeometryBuffer(fg.dynamicBufferOwners.pip, fg.pipMesh, 0);
-      commitFieldGeometryBuffer(fg.dynamicBufferOwners.knot, fg.knotMesh, 0);
-      commitFieldGeometryBuffer(fg.dynamicBufferOwners.dome, fg.domeMesh, 0);
-      commitFieldGeometryBuffer(fg.dynamicBufferOwners.rib, fg.ribMesh, 0);
-      commitFieldGeometryBuffer(fg.dynamicBufferOwners.berm, fg.bermMesh, 0);
-      commitFieldGeometryBuffer(fg.dynamicBufferOwners.chevron, fg.chevronMesh, 0);
-      commitFieldGeometryBuffer(fg.dynamicBufferOwners.bank, fg.bankMesh, 0);
-
-      for (let i = 0; i < fg.coreVols.length; i++) {
-        if (fg.coreVols[i].visible) fg.coreVols[i].visible = false;
-      }
-      return;
+    if (!this._fieldGeomInitialized) {
+      if (!this._fieldFlowRelevant()) return;
+      this._initFieldGeometry();
     }
-
-    assertFieldGeometryBuffersWritable(fg.dynamicBufferOwners);
-
-    const settings = this.state && this.state.settings;
-    const v = settings && settings.video;
-    const a = settings && settings.accessibility;
-    const motionReduce = !!(v && v.motionReduce);
-    const flashReduce = !!((v && v.flashReduce) || (a && a.flashReduce));
-    const now = (this.state && Number.isFinite(this.state.simTime)) ? this.state.simTime : this._t;
-
-    for (const f of activeList) {
-      if (f && f.id) {
-        activeIds.add(f.id);
-        if (!fg.deployStart.has(f.id)) {
-          fg.deployStart.set(f.id, now);
-        }
-      }
-    }
-    for (const id of fg.deployStart.keys()) {
-      if (!activeIds.has(id)) fg.deployStart.delete(id);
-    }
-
-    let vaneCount = 0;
-    let pipCount = 0;
-    let knotCount = 0;
-    let domeCount = 0;
-    let ribCount = 0;
-    let bermCount = 0;
-    let chevronCount = 0;
-    let bankCount = 0;
-    let coreVolCount = 0;
-
-    const mat4 = this._fieldMat4;
-    const quat = this._fieldQuat;
-    const leanQuat = this._fieldLeanQuat;
-    const vec3 = this._fieldVec3;
-    const scale = this._fieldScale;
-    const col = this._fieldColor;
-    const col2 = this._fieldColor2;
-
-    const numFields = Math.min(activeList.length, 6);
-
-    for (let fi = 0; fi < numFields; fi++) {
-      const field = activeList[fi];
-      if (!field || !field.center || !(field.radius > 0)) continue;
-
-      const cx = field.center.x;
-      const cz = field.center.z;
-      const R = field.radius;
-      const kind = field.kind;
-      const engaged = !!field.engaged;
-      const pal = field.palette || null;
-
-      const startTime = fg.deployStart.get(field.id) || now;
-      const elapsed = Math.max(0, now - startTime);
-      const easeVal = Math.min(1.0, elapsed / 0.35);
-      const deploy = easeVal * easeVal * (3.0 - 2.0 * easeVal);
-
-      const baseOpacity = engaged ? (flashReduce ? 0.75 : 0.95) : 0.35;
-
-      if (kind === 'well') {
-        const knotRadius = 1.6;
-        mat4.compose(
-          vec3.set(cx, 0, cz),
-          quat.setFromAxisAngle(vec3.set(0, 1, 0), motionReduce ? 0 : this._t * 0.8),
-          scale.setScalar(knotRadius)
-        );
-        fg.knotMesh.setMatrixAt(knotCount++, mat4);
-
-        if (coreVolCount < fg.coreVols.length) {
-          const vol = fg.coreVols[coreVolCount++];
-          vol.position.set(cx, 0, cz);
-          vol.scale.setScalar(1.5);
-          vol.visible = true;
-          updateEnergyMaterial(vol.userData.energyCore, {
-            time: this._t,
-            colorA: pal ? pal.filament : '#39d0ff',
-            colorB: pal ? pal.core : '#a6f0ff',
-            intensity: flashReduce ? 2.0 : (engaged ? 4.8 : 3.0),
-            opacity: baseOpacity,
-            pulse: engaged ? 0.2 : 0,
-          });
-          updateEnergyMaterial(vol.userData.energyHalo, {
-            time: this._t,
-            colorA: pal ? pal.filament : '#39d0ff',
-            colorB: pal ? pal.core : '#a6f0ff',
-            intensity: flashReduce ? 1.0 : 1.5,
-            opacity: baseOpacity * 0.4,
-          });
-        }
-
-        const numVanes = 6;
-        const vaneRadius = 4.2;
-        const vaneSpan = 2.8;
-        const vaneWidth = 0.8;
-        const swirlAngle = motionReduce ? 0 : -this._t * 1.5;
-
-        for (let i = 0; i < numVanes; i++) {
-          if (vaneCount >= 48) break;
-          const baseAngle = (i / numVanes) * Math.PI * 2 + swirlAngle;
-          const radOffset = vaneRadius * (0.3 + 0.7 * deploy);
-          const vx = cx + Math.cos(baseAngle) * radOffset;
-          const vz = cz + Math.sin(baseAngle) * radOffset;
-
-          quat.setFromAxisAngle(vec3.set(0, 1, 0), baseAngle);
-
-          mat4.compose(
-            vec3.set(vx, 0, vz),
-            quat,
-            scale.set(vaneSpan * (0.4 + 0.6 * deploy), 1.0, vaneWidth * (0.4 + 0.6 * deploy))
-          );
-          fg.vaneMesh.setMatrixAt(vaneCount, mat4);
-          col.set(pal ? pal.filament : '#39d0ff');
-          fg.vaneMesh.setColorAt(vaneCount, col);
-          vaneCount++;
-        }
-
-        const numPips = 12;
-        const pipSize = 2.0;
-        for (let i = 0; i < numPips; i++) {
-          if (pipCount >= 96) break;
-          const pipAngle = (i / numPips) * Math.PI * 2;
-          const px = cx + Math.cos(pipAngle) * R;
-          const pz = cz + Math.sin(pipAngle) * R;
-
-          const tangAngle = pipAngle + Math.PI / 2;
-          quat.setFromAxisAngle(vec3.set(0, 1, 0), tangAngle);
-
-          if (engaged && !motionReduce) {
-            leanQuat.setFromAxisAngle(vec3.set(1, 0, 0), -0.28);
-            quat.multiply(leanQuat);
-          }
-
-          mat4.compose(
-            vec3.set(px, 0, pz),
-            quat,
-            scale.setScalar(pipSize)
-          );
-          fg.pipMesh.setMatrixAt(pipCount, mat4);
-          col.set(pal ? pal.filament : '#39d0ff');
-          fg.pipMesh.setColorAt(pipCount, col);
-          pipCount++;
-        }
-      } else if (kind === 'repulsor') {
-        const domeRadius = 1.8;
-        mat4.compose(
-          vec3.set(cx, 0, cz),
-          quat.setFromAxisAngle(vec3.set(0, 1, 0), motionReduce ? 0 : this._t * 0.3),
-          scale.set(domeRadius, domeRadius * 0.5, domeRadius)
-        );
-        fg.domeMesh.setMatrixAt(domeCount++, mat4);
-
-        if (coreVolCount < fg.coreVols.length) {
-          const vol = fg.coreVols[coreVolCount++];
-          vol.position.set(cx, 0, cz);
-          vol.scale.setScalar(1.5);
-          vol.visible = true;
-          updateEnergyMaterial(vol.userData.energyCore, {
-            time: this._t,
-            colorA: pal ? pal.coreWarm : '#ffb35c',
-            colorB: pal ? pal.rib : '#ffc878',
-            intensity: flashReduce ? 2.0 : (engaged ? 4.5 : 2.8),
-            opacity: baseOpacity,
-            pulse: engaged ? 0.15 : 0,
-          });
-          updateEnergyMaterial(vol.userData.energyHalo, {
-            time: this._t,
-            colorA: pal ? pal.berm : '#39d0ff',
-            colorB: pal ? pal.coreWarm : '#ffb35c',
-            intensity: flashReduce ? 0.8 : 1.5,
-            opacity: baseOpacity * 0.35,
-          });
-        }
-
-        const numRibs = 8;
-        const ribMinR = 1.8;
-        const ribMaxR = 5.2;
-        const ribLen = ribMaxR - ribMinR;
-
-        for (let i = 0; i < numRibs; i++) {
-          if (ribCount >= 64) break;
-          const ribAngle = (i / numRibs) * Math.PI * 2;
-          const midR = (ribMinR + ribMaxR) * 0.5;
-          const rx = cx + Math.cos(ribAngle) * midR;
-          const rz = cz + Math.sin(ribAngle) * midR;
-
-          quat.setFromAxisAngle(vec3.set(0, 1, 0), ribAngle);
-          mat4.compose(
-            vec3.set(rx, 0, rz),
-            quat,
-            scale.set(0.4, 0.2, ribLen)
-          );
-          fg.ribMesh.setMatrixAt(ribCount, mat4);
-
-          const pulseT = motionReduce ? 0.5 : ((this._t * 3.0 + i * 0.25) % 1.0);
-          col.set(pal ? pal.rib : '#ffc878').lerp(col2.set(pal ? pal.berm : '#39d0ff'), pulseT);
-          fg.ribMesh.setColorAt(ribCount, col);
-          ribCount++;
-        }
-
-        const numLobes = 14;
-        const lobeSize = 2.2;
-        for (let i = 0; i < numLobes; i++) {
-          if (bermCount >= 96) break;
-          const lobeAngle = (i / numLobes) * Math.PI * 2;
-          const rLobe = R * (0.96 + 0.08 * Math.sin(lobeAngle * 3.5 + (motionReduce ? 0 : this._t * 2.0)));
-          const bx = cx + Math.cos(lobeAngle) * rLobe;
-          const bz = cz + Math.sin(lobeAngle) * rLobe;
-
-          quat.setFromAxisAngle(vec3.set(0, 1, 0), lobeAngle + i);
-          mat4.compose(
-            vec3.set(bx, 0, bz),
-            quat,
-            scale.setScalar(lobeSize * (1.0 + 0.15 * Math.sin(i * 1.7)))
-          );
-          fg.bermMesh.setMatrixAt(bermCount, mat4);
-          col.set(pal ? pal.berm : '#39d0ff');
-          fg.bermMesh.setColorAt(bermCount, col);
-          bermCount++;
-        }
-      } else if (kind === 'cone') {
-        const dirx = field.dir ? field.dir.x : 1;
-        const dirz = field.dir ? field.dir.z : 0;
-        const mainAngle = Math.atan2(dirz, dirx);
-        const halfAngle = field.halfAngleRad || 0.5;
-
-        const px = -dirz;
-        const pz = dirx;
-
-        if (coreVolCount < fg.coreVols.length) {
-          const vol = fg.coreVols[coreVolCount++];
-          vol.position.set(cx, 0, cz);
-          vol.scale.setScalar(1.5);
-          vol.visible = true;
-          updateEnergyMaterial(vol.userData.energyCore, {
-            time: this._t,
-            colorA: pal ? pal.bank : '#39d0ff',
-            colorB: pal ? pal.pulse : '#a6f0ff',
-            intensity: flashReduce ? 2.0 : (engaged ? 4.5 : 2.8),
-            opacity: baseOpacity,
-          });
-          updateEnergyMaterial(vol.userData.energyHalo, {
-            time: this._t,
-            colorA: pal ? pal.bank : '#39d0ff',
-            colorB: pal ? pal.bank : '#39d0ff',
-            intensity: flashReduce ? 0.8 : 1.4,
-            opacity: baseOpacity * 0.35,
-          });
-        }
-
-        const corridorLen = R;
-        const numBankChevrons = 10;
-        const chevronSize = 2.6;
-
-        for (let side = -1; side <= 1; side += 2) {
-          for (let i = 0; i < numBankChevrons; i++) {
-            if (chevronCount >= 96) break;
-            const tDist = (i / (numBankChevrons - 1));
-            const d = corridorLen * (0.10 + 0.86 * tDist);
-            const wedgeWidth = 1.4 * d * Math.tan(halfAngle);
-
-            const bx = cx + dirx * d + px * (side * wedgeWidth * 0.5);
-            const bz = cz + dirz * d + pz * (side * wedgeWidth * 0.5);
-
-            quat.setFromAxisAngle(vec3.set(0, 1, 0), mainAngle);
-
-            const exitFade = tDist > 0.8 ? (1.0 - (tDist - 0.8) / 0.2) : 1.0;
-
-            mat4.compose(
-              vec3.set(bx, 0, bz),
-              quat,
-              scale.setScalar(chevronSize * exitFade)
-            );
-            fg.chevronMesh.setMatrixAt(chevronCount, mat4);
-
-            col.set(pal ? pal.chevron : '#39d0ff');
-            fg.chevronMesh.setColorAt(chevronCount, col);
-            chevronCount++;
-          }
-
-          const numRailSegs = 5;
-          for (let rIdx = 0; rIdx < numRailSegs; rIdx++) {
-            if (bankCount >= 24) break;
-            const tRail = (rIdx + 0.5) / numRailSegs;
-            const midD = corridorLen * (0.15 + 0.7 * tRail);
-            const midWidth = 1.4 * midD * Math.tan(halfAngle);
-            const rx = cx + dirx * midD + px * (side * midWidth * 0.5);
-            const rz = cz + dirz * midD + pz * (side * midWidth * 0.5);
-
-            const bankAngle = Math.atan2(dirz * corridorLen + pz * (side * midWidth * 0.5), dirx * corridorLen + px * (side * midWidth * 0.5));
-            quat.setFromAxisAngle(vec3.set(0, 1, 0), bankAngle);
-
-            mat4.compose(
-              vec3.set(rx, 0, rz),
-              quat,
-              scale.set(0.35, 0.12, 2.8)
-            );
-            fg.bankMesh.setMatrixAt(bankCount, mat4);
-            col.set(pal ? pal.bank : '#39d0ff');
-            fg.bankMesh.setColorAt(bankCount, col);
-            bankCount++;
-          }
-        }
-      }
-    }
-
-    for (let i = coreVolCount; i < fg.coreVols.length; i++) {
-      fg.coreVols[i].visible = false;
-    }
-
-    commitFieldGeometryBuffer(fg.dynamicBufferOwners.vane, fg.vaneMesh, vaneCount);
-    commitFieldGeometryBuffer(fg.dynamicBufferOwners.pip, fg.pipMesh, pipCount);
-    commitFieldGeometryBuffer(fg.dynamicBufferOwners.knot, fg.knotMesh, knotCount);
-    commitFieldGeometryBuffer(fg.dynamicBufferOwners.dome, fg.domeMesh, domeCount);
-    commitFieldGeometryBuffer(fg.dynamicBufferOwners.rib, fg.ribMesh, ribCount);
-    commitFieldGeometryBuffer(fg.dynamicBufferOwners.berm, fg.bermMesh, bermCount);
-    commitFieldGeometryBuffer(fg.dynamicBufferOwners.chevron, fg.chevronMesh, chevronCount);
-    commitFieldGeometryBuffer(fg.dynamicBufferOwners.bank, fg.bankMesh, bankCount);
+    if (this._fieldGeom) return this._fieldGeom.update(dt, this.state);
   },
 
   _fieldFlowRelevant() {
-    const f = this.state && this.state.fields;
-    return !!(f && Array.isArray(f.active) && f.active.length > 0);
-  },
-
-  _hexRgb(hex) {
-    if (!hex) return this._fieldFlowWhite || (this._fieldFlowWhite = { r: 1, g: 1, b: 1 });
-    let cache = this._hexRgbCache;
-    if (!cache) cache = this._hexRgbCache = new Map();
-    let c = cache.get(hex);
-    if (!c) { const col = new THREE.Color(hex); c = { r: col.r, g: col.g, b: col.b }; cache.set(hex, c); }
-    return c;
-  },
-
-  _updateFieldFlow() {
-    const active = this.state.fields.active;
-    if (!Array.isArray(active) || active.length === 0) return 0;
-    const settings = this.state && this.state.settings;
-    const v = settings && settings.video;
-    const a = settings && settings.accessibility;
-    const motionReduce = !!(v && v.motionReduce);
-    const flashReduce = !!((v && v.flashReduce) || (a && a.flashReduce));
-    let emitted = 0;
-    const n = Math.min(active.length, FIELD_FLOW_MAX_FIELDS);
-    for (let fi = 0; fi < n; fi++) emitted += this._emitFieldFlow(active[fi], fi, motionReduce, flashReduce);
-    this._fieldFlowSeq = ((this._fieldFlowSeq || 0) + 1) >>> 0;
-    return emitted;
-  },
-
-  _emitFieldFlow(field, fieldIndex, motionReduce, flashReduce) {
-    if (!field || !field.center || !(field.radius > 0)) return 0;
-    const R = field.radius;
-    const pal = field.palette || null;
-    let count = flashReduce ? 6 : 11;
-    if (!field.engaged) count = Math.max(3, count - 3); // dormant → sparse "parked machine" read
-    const sizeScale = flashReduce ? 0.62 : 1;
-    const speedScale = motionReduce ? 0.28 : 1;
-    // Velocity-aligned streak elongation. Under reduced-motion the flow is slow, so LONGER streaks
-    // keep DIRECTION readable in a still frame (bible §2/§11 "readable statically") — the dashes
-    // point the way the flow would move. Full-motion uses a subtler streak.
-    const stretch = motionReduce ? 1.7 : 0.7;
-    const seqBase = (this._fieldFlowSeq || 0) + fieldIndex * 101;
-    let emitted = 0;
-    for (let j = 0; j < count; j++) {
-      const t = seqBase + j;
-      const a01 = fieldFrac(t * 0.61803398875);
-      const r01 = fieldFrac(t * 0.75487766625 + 0.137);
-      if (this._emitFieldParticle(field, R, pal, a01, r01, sizeScale, speedScale, stretch)) emitted++;
-    }
-    return emitted;
-  },
-
-  _emitFieldParticle(field, R, pal, a01, r01, sizeScale, speedScale, stretch) {
-    const cx = field.center.x, cz = field.center.z;
-    if (field.kind === 'cone') {
-      const dirx = field.dir ? field.dir.x : 1, dirz = field.dir ? field.dir.z : 0;
-      const half = field.halfAngleRad || 0.5;
-      const d = R * (0.08 + 0.88 * r01);                    // distance from apex along the axis
-      const lateral = (a01 * 2 - 1) * d * Math.tan(half) * 0.92; // the widening wedge
-      const px = cx + dirx * d + (-dirz) * lateral;
-      const pz = cz + dirz * d + (dirx) * lateral;
-      const speed = (120 + 90 * fieldFalloff(field, d)) * speedScale;
-      const vx = dirx * speed, vz = dirz * speed;
-      const c0 = this._hexRgb(pal ? pal.bank : '#39d0ff');
-      const c1 = this._hexRgb(pal ? pal.chevron : '#39d0ff');
-      const life = Math.max(0.18, ((R - d) / Math.max(30, speed)) * 0.9);
-      this._spawnParticle(px, pz, vx, vz, life, 1.4 * sizeScale, 0.4 * sizeScale, c0, c1, 0.35, 0, 0, Math.atan2(vz, vx), stretch);
-      return true;
-    }
-    const ang = a01 * Math.PI * 2;
-    const ca = Math.cos(ang), sa = Math.sin(ang);
-    if (field.kind === 'repulsor') {
-      const rad = R * (0.10 + 0.14 * r01);                  // born near the core
-      const px = cx + ca * rad, pz = cz + sa * rad;
-      const speed = (185 + 55 * (1 - r01)) * speedScale;
-      const vx = ca * speed - sa * speed * 0.12, vz = sa * speed + ca * speed * 0.12; // outward + slight swirl
-      const c0 = this._hexRgb(pal ? pal.coreWarm : '#ffb35c');
-      const c1 = this._hexRgb(pal ? pal.berm : '#39d0ff');
-      this._spawnParticle(px, pz, vx, vz, 1.05, 1.4 * sizeScale, 0.4 * sizeScale, c0, c1, 1.15, 0, 0, Math.atan2(vz, vx), stretch);
-      return true;
-    }
-    // well — born rim-biased, flow inward + swirl, converge on the hot sink
-    const rad = R * (0.5 + 0.48 * r01);
-    const px = cx + ca * rad, pz = cz + sa * rad;
-    const speed = (150 + 120 * (1 - r01)) * speedScale;
-    const vx = -ca * speed + (-sa) * speed * 0.45, vz = -sa * speed + (ca) * speed * 0.45; // inward + tangential swirl
-    const c0 = this._hexRgb(pal ? pal.filament : '#39d0ff');
-    const c1 = this._hexRgb(pal ? pal.core : '#39d0ff');
-    const life = Math.max(0.2, (rad / Math.max(30, speed)) * 1.05);
-    this._spawnParticle(px, pz, vx, vz, life, 1.5 * sizeScale, 0.4 * sizeScale, c0, c1, 0.2, 0, 0, Math.atan2(vz, vx), stretch);
-    return true;
+    return !!(this.state?.fields?.active?.length);
   },
 
   update(frameDt) {
@@ -10674,15 +10062,12 @@ export const vfx = {
       this._lootMagnetLive = 0;
       sub.lootMagnet = 0;
     }
-    // PQ-012 continuous field flow — cadence-gated pooled emission; slept when no field is deployed.
-    if (this._fieldFlowRelevant()) {
-      const flowStep = this._consumeCadence('_cadenceFieldFlow', dt, VFX_FIELD_FLOW_HZ);
-      sub.fieldFlow = flowStep > 0 ? this._updateFieldFlow() : (sub.fieldFlow || 0);
-      this._updateFieldGeometry(dt);
-    } else {
-      sub.fieldFlow = 0;
-      if (this._fieldGeomInitialized) this._updateFieldGeometry(dt);
-    }
+    // Continuous, family-specific swept surfaces replace sparse particle fallthrough. Update
+    // an initialized owner even when empty so source-only decay retires, then buffers sleep.
+    if (this._fieldFlowRelevant() || this._fieldGeomInitialized) {
+      const fields = this._updateFieldGeometry(dt);
+      sub.fieldFlow = fields ? fields.surfaces : 0;
+    } else sub.fieldFlow = 0;
     sub.energy = this._updateEnergy(dt) ? 1 : 0;
     // PQ-013 planetary skim — band scroll + reentry sheath pool; slept when no site is registered
     // (dormant sectors cost one boolean read; the sheath slots exist only after first relevance).
@@ -11001,24 +10386,17 @@ export const vfx = {
   },
 
   _collectMomentumSinkCandidates() {
-    const list = this.state && this.state.entityList;
-    if (!Array.isArray(list) || !list.length) {
+    const state = this.state;
+    const runtimes = state && state.combat && state.combat.entities;
+    if (!runtimes || typeof runtimes !== 'object') {
       this._momentumSinkCandidateCount = 0;
       return 0;
     }
-    // Whole-subsystem sleep: a momentum-sink trail can only exist on an entity holding the
-    // combat status, so scan the (small) combat-runtime table first — a plain object keyed by
-    // String(id), not a Map — and skip the entity sweep entirely on frames with no sink
-    // candidate — the common case outside massline combat.
-    const runtimes = this.state.combat && this.state.combat.entities;
-    let anySinkStatus = false;
-    if (runtimes && typeof runtimes === 'object') {
-      for (const id in runtimes) {
-        const rt = runtimes[id];
-        if (rt && rt.statuses && rt.statuses[MOMENTUM_SINK_STATUS_ID]) { anySinkStatus = true; break; }
-      }
-    }
-    if (!anySinkStatus) {
+    const entities = state.entities;
+    const getEntity = entities && typeof entities.get === 'function'
+      ? (id) => entities.get(id) || entities.get(Number(id))
+      : null;
+    if (!getEntity) {
       this._momentumSinkCandidateCount = 0;
       return 0;
     }
@@ -11027,8 +10405,10 @@ export const vfx = {
     const priorities = this._momentumSinkCandidatePriorities;
     const plan = this._momentumSinkPlanScratch;
     let count = 0;
-    for (let cursor = 0; cursor < list.length; cursor++) {
-      const entity = list[cursor];
+    for (const id in runtimes) {
+      const rt = runtimes[id];
+      if (!rt || !rt.statuses || !rt.statuses[MOMENTUM_SINK_STATUS_ID]) continue;
+      const entity = getEntity(id);
       const active = this._momentumSinkStatusFor(entity);
       if (!active) continue;
       resolveMomentumSinkVfxPlan(plan, this._writeMomentumSinkInput(entity, active));
@@ -13736,7 +13116,10 @@ export function assertProjectileTrailSleepContracts() {
   }
 
   const wake = _makeProjectileTrailSelfCheckHarness([
-    _selfCheckProjectile(42, 'wpn_railgun_m', { damageType: 'kinetic' }),
+    // On-table only: this contract checks wake→dash wiring, not envelope reach. Off-table
+    // non-priority bolts are culled by the live tabletop envelope (contracted below the
+    // emission self-check with the off-table harness).
+    _selfCheckProjectile(42, 'wpn_railgun_m', { damageType: 'kinetic' }, { x: 280, z: 50 }),
   ]);
   wake._markProjectileCacheDirty();
   for (let i = 0; i < 4; i++) wake.update(1 / 60);
@@ -13805,6 +13188,7 @@ if (_isProjectileTrailGateImport()) {
 export function createVfxPrecompileSalvo() {
   const group = new THREE.Group();
   group.name = 'SF_Precompile_VFX_Salvo';
+  group.add(createForceSurfacePrecompileMesh());
 
   const shardPrecompile = createShardStreakCloud(group, 12);
   const points = shardPrecompile.mesh;
@@ -13945,43 +13329,11 @@ export function createVfxPrecompileSalvo() {
   return group;
 }
 
-function registerFieldGeometryBufferOwner(scene, name, mesh) {
-  const attributes = [{ name: 'matrix', attribute: mesh.instanceMatrix }];
-  if (mesh.instanceColor) attributes.push({ name: 'color', attribute: mesh.instanceColor });
-  return registerDynamicBufferOwner(scene, {
-    id: `vfx-field-${name}`,
-    mesh,
-    attributes,
-  });
-}
 
-function assertFieldGeometryBuffersWritable(owners) {
-  assertDynamicBufferOwnerWritable(owners.vane);
-  assertDynamicBufferOwnerWritable(owners.pip);
-  assertDynamicBufferOwnerWritable(owners.knot);
-  assertDynamicBufferOwnerWritable(owners.dome);
-  assertDynamicBufferOwnerWritable(owners.rib);
-  assertDynamicBufferOwnerWritable(owners.berm);
-  assertDynamicBufferOwnerWritable(owners.chevron);
-  assertDynamicBufferOwnerWritable(owners.bank);
-}
 
-function commitFieldGeometryBuffer(owner, mesh, count) {
-  mesh.visible = count > 0;
-  if (owner) {
-    if (count > 0) {
-      markDynamicBufferItems(owner, INSTANCED_MATRIX_BUFFER, 0, count);
-      if (mesh.instanceColor) markDynamicBufferItems(owner, INSTANCED_COLOR_BUFFER, 0, count);
-    }
-    commitDynamicBufferOwner(owner, count);
-    return;
-  }
-  mesh.count = count;
-  if (count > 0) {
-    mesh.instanceMatrix.needsUpdate = true;
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }
-}
+
+
+
 
 export function createSeamMarkerPipelineMesh({ visibleInstances = 0 } = {}) {
   const capacity = 96;

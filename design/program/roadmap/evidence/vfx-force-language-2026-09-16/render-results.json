@@ -1,0 +1,77 @@
+{
+  "errors": [],
+  "results": {
+    "seed": {
+      "stats": {
+        "active": 1,
+        "releasing": 0,
+        "surfaces": 16,
+        "dropped": 0,
+        "unknown": 0,
+        "culled": 0
+      },
+      "calls": 4,
+      "triangles": 7716
+    },
+    "well": {
+      "stats": {
+        "active": 1,
+        "releasing": 0,
+        "surfaces": 19,
+        "dropped": 0,
+        "unknown": 0,
+        "culled": 0
+      },
+      "calls": 13,
+      "triangles": 9336
+    },
+    "repulsor": {
+      "stats": {
+        "active": 1,
+        "releasing": 0,
+        "surfaces": 23,
+        "dropped": 0,
+        "unknown": 0,
+        "culled": 0
+      },
+      "calls": 13,
+      "triangles": 11256
+    },
+    "cone": {
+      "stats": {
+        "active": 1,
+        "releasing": 0,
+        "surfaces": 14,
+        "dropped": 0,
+        "unknown": 0,
+        "culled": 0
+      },
+      "calls": 13,
+      "triangles": 6936
+    },
+    "sheet": {
+      "stats": {
+        "active": 1,
+        "releasing": 0,
+        "surfaces": 18,
+        "dropped": 0,
+        "unknown": 0,
+        "culled": 0
+      },
+      "calls": 13,
+      "triangles": 8856
+    },
+    "retro": {
+      "stats": {
+        "active": 0,
+        "releasing": 0,
+        "surfaces": 0,
+        "dropped": 0,
+        "unknown": 0,
+        "culled": 0
+      },
+      "calls": 7,
+      "triangles": 9092
+    }
+  }
+}
