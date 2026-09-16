@@ -464,14 +464,36 @@ export async function runReleaseSoakProbe({
         const diag = await page.evaluate(() => {
           const state = window.SF?.state;
           const player = (state?.entityList || []).find((e) => e?.id === state.playerId);
-          const stations = (state?.entityList || []).filter((e) => e?.type === 'station').map((e) => e?.data?.stationId || e?.id);
+          const mapPlayer = state?.entities?.get?.(state.playerId) || null;
+          const snapPlayer = (state?.physicsRuntime?.sg02Snapshot || []).find((r) => r && r.id === state?.playerId) || null;
+          const round = (v, d = 1) => (Number.isFinite(v) ? Number(v.toFixed(d)) : null);
+          const playerPos = player?.pos ? { x: round(player.pos.x), z: round(player.pos.z) } : null;
+          const stations = (state?.entityList || []).filter((e) => e?.type === 'station').map((e) => ({
+            stationId: e?.data?.stationId || e?.id,
+            alive: e?.alive !== false,
+            pos: e?.pos ? { x: round(e.pos.x, 0), z: round(e.pos.z, 0) } : null,
+            proxy: e?.data?.collisionProxy || null,
+            distToPlayer: playerPos && e?.pos ? round(Math.hypot(e.pos.x - playerPos.x, e.pos.z - playerPos.z), 0) : null,
+          }));
+          const nearContacts = (state?.entityList || [])
+            .filter((e) => e && e.alive !== false && e.id !== state.playerId && e.pos && playerPos
+              && Math.hypot(e.pos.x - playerPos.x, e.pos.z - playerPos.z) <= 40)
+            .map((e) => ({ id: e.id, type: e.type, name: e.data?.name || e.name || null, radius: e.radius, dist: round(Math.hypot(e.pos.x - playerPos.x, e.pos.z - playerPos.z)) }))
+            .slice(0, 20);
           return {
             mode: state?.mode || null,
             sectorId: state?.world?.currentSectorId || null,
             docked: state?.ui?.docked ?? null,
-            playerPos: player?.pos ? { x: Number(player.pos.x.toFixed(0)), z: Number(player.pos.z.toFixed(0)) } : null,
+            playerId: state?.playerId ?? null,
+            playerPos,
+            playerVel: player?.vel ? { x: round(player.vel.x), z: round(player.vel.z), mag: round(Math.hypot(player.vel.x, player.vel.z)) } : null,
+            playerListIsMap: !!(player && mapPlayer && player === mapPlayer),
+            mapPlayerPos: mapPlayer?.pos ? { x: round(mapPlayer.pos.x), z: round(mapPlayer.pos.z) } : null,
+            mapPlayerVelMag: mapPlayer?.vel ? round(Math.hypot(mapPlayer.vel.x, mapPlayer.vel.z)) : null,
+            sg02SnapPlayer: snapPlayer ? { x: round(snapPlayer.x), z: round(snapPlayer.z), vx: round(snapPlayer.vx), vz: round(snapPlayer.vz), kind: snapPlayer.kind ?? null } : null,
             entityCount: state?.entityList?.length ?? null,
             stations,
+            nearContacts,
             loadedSlot: window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot ?? null,
             savedSlotWritten: !!localStorage.getItem('sf.save.quick'),
             saveErrors: window.__M6_RELEASE_SOAK_EVENTS__?.errors || [],
@@ -482,17 +504,25 @@ export async function runReleaseSoakProbe({
             activeElement: typeof document !== 'undefined' ? (document.activeElement?.tagName + '.' + (document.activeElement?.className || '')).slice(0, 120) : null,
             navAutopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status } : null,
             navEvents: (window.__M6_RELEASE_SOAK_EVENTS__?.nav || []).slice(-12),
-            dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
+            dockingCorridor: state?.dockingCorridor ? { ...state.dockingCorridor } : null,
             sectorEvents: window.__PQ033_SECTOR_EVENTS__ || [],
             posJumps: window.__PQ033_POS_JUMPS__ || [],
-            posWrites: window.__PQ033_POS_WRITES__ || [],
-            bodyWrites: window.__PQ033_BODY_WRITES__ || [],
+            posWrites: (window.__PQ033_POS_WRITES__ || []).slice(-40),
+            bodyWrites: (window.__PQ033_BODY_WRITES__ || []).slice(-40),
+            trail: (window.__M6_RELEASE_SOAK_TRAIL__ || []).slice(-40),
             sg02Guards: (() => {
               const d = window.SF?.registry?.get?.('physics')?._sg02?._diagnostics;
               return d ? { velocitySanityClamps: d.velocitySanityClamps || 0, stepDisplacementRejects: d.stepDisplacementRejects || 0 } : null;
             })(),
           };
         }).catch(() => null);
+        // Persist the failure bundle — a dead cycle's diagnostics must outlive the process
+        // (the error string alone is lost when the outer caller's stdout dies with it).
+        await writeFile(
+          path.join(outputDir, `failure-cycle-${index}-diag.json`),
+          `${JSON.stringify({ error: String(cycleError && cycleError.message || cycleError), diag, marks: cycleMarks }, null, 2)}\n`,
+          'utf8',
+        ).catch(() => {});
         cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)} | cycle-marks: ${JSON.stringify(cycleMarks)}`;
         throw cycleError;
       } finally {
