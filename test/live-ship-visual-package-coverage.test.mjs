@@ -139,7 +139,7 @@ test('modular live contract files remain packaged for accessory assembly', () =>
 test('all roster hulls and the liner select a shipped render package without modular slots', () => {
   const entities = SHIPS.map((ship) => ({ type: 'ship', data: { defId: ship.id } }));
   entities.push({ type: 'ship', data: { trafficRole: 'express' } });
-  assert.equal(SHIPS.length, 13, 'cover the complete lockable roster');
+  assert.equal(SHIPS.length, 14, 'cover the complete lockable roster');
   for (const entity of entities) {
     const label = entity.data.defId || entity.data.trafficRole;
     assert.equal(requiresProductionWholeShipForEntity(entity), true, label);

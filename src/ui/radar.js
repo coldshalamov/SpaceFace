@@ -145,7 +145,7 @@ function contactColor(entity, playerTeam, colorblindMode, state) {
 function contactShape(entity, playerTeam, state) {
   if (isHostileToPlayer(entity, playerTeam, state)) return semanticShape('hostile');
   const role = String((entity.data && (entity.data.trafficRole || entity.data.role)) || '').toLowerCase();
-  if (role === 'hauler' || role === 'miner' || role === 'smuggler') return 'square';
+  if (role === 'hauler' || role === 'miner' || role === 'smuggler' || role === 'tug') return 'square';
   if (role === 'patrol' || role === 'escort' || role === 'courier' || role === 'rescue') return 'diamond';
   return semanticShape(shipState(entity, playerTeam, state));
 }

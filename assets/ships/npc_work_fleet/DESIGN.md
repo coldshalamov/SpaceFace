@@ -26,7 +26,7 @@ still panel left blocking missing-hull / LEGO notes:
 | `volatiles_tanker` | `tanker` | Missing-hull / LEGO. No tanker role. |
 | `prospector_skiff` | `prospector` | Held. No prospector role. |
 | `scrap_sweeper` | `sweeper` | Held. No sweeper role. |
-| `yard_tug` | `tug` | Missing-hull / LEGO. No tug role. |
+| `yard_tug` | `tug` | **Wired.** The `ship_hawser` player hull carries the def; ambient tugs fly it. |
 | `inspection_cutter` | enemy `customs_cutter` | Held. Customs hostiles stay Hornet. |
 | `apron_shuttle` | `shuttle` | Held. No shuttle role. Not `express`. |
 

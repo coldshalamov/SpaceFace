@@ -32,6 +32,7 @@ const TRAFFIC_ROLE_SHIPS = Object.freeze([
   'ship_wasp',
   'ship_drifter',
   'ship_hornet',
+  'ship_hawser',
 ]);
 const COMPILE_GRID_SPACING = 92;
 export const POINT_LIGHT_BUDGET_STAGING_NAME = 'SF_Precompile_EventLight_Staging';

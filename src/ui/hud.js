@@ -88,7 +88,7 @@ const ROLE_LABEL = {
   starter: 'Starter', mining: 'Miner', fighter: 'Fighter', freighter: 'Freighter',
   multirole: 'Multirole', interceptor: 'Interceptor', mining_barge: 'Mining Barge',
   corvette: 'Corvette', heavy_hauler: 'Heavy Hauler', explorer: 'Explorer',
-  gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship',
+  gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship', tug: 'Tug',
 };
 // Drive-family short label for the CLASS readout. Resolved from the hull's driveId so the player
 // feels the propulsion family (spec §6) without opening a stat screen.

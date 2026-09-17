@@ -118,6 +118,14 @@ function roleFallback(role) {
     tags: ['mining', 'industrial'],
     matched: ['role:mining'],
   };
+  if (role.includes('tug')) return {
+    id: 'recovery_tug',
+    label: 'Recovery Tug',
+    summary: 'Tow-rated pusher frame; the line and the load are the threat.',
+    confidence: 'role_fallback',
+    tags: ['tether', 'industrial', 'heavy'],
+    matched: ['role:tug'],
+  };
   if (role.includes('explorer') || role.includes('survey')) return {
     id: 'survey_scout',
     label: 'Survey Scout',

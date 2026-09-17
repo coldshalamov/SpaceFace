@@ -171,7 +171,7 @@ test('Cathedral course arrival is all-hull safe while pocket-center transit stay
   const hulls = SHIPS.map((ship) => ({ id: ship.id, radius: ship.collisionRadius }))
     .sort((a, b) => b.radius - a.radius || a.id.localeCompare(b.id));
   assert.deepEqual(hulls[0], { id: 'ship_leviathan', radius: 45 });
-  assert.equal(hulls.length, 13, 'every canonical player-selectable hull participates');
+  assert.equal(hulls.length, 14, 'every canonical player-selectable hull participates');
   const envelopes = hulls.map((hull) => {
     const effectiveArrivalRadius = resolveAutopilotArrivalRadius(
       { radius: hull.radius },

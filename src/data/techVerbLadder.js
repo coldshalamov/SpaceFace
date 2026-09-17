@@ -136,7 +136,7 @@ const VERBS = Object.freeze({
   tech_impulse_ballistics: 'Throw a vector charge',
   tech_graviton_drives: 'Mark gravity, sink momentum, or shunt inertia',
   tech_long_range_survey: 'Fly the Ranger; open a wormhole',
-  tech_tractor_systems: 'Tow, whip, or couple a body',
+  tech_tractor_systems: 'Tow, whip, or couple a body; fly the Hawser tug',
   tech_drone_control: 'Launch a drone from a bay',
   tech_drone_swarm: 'More drones / higher tier (no new chassis)',
   tech_autonomous_fleets: 'Hire an NPC trader (menu, not a field verb)',

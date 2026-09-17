@@ -38,20 +38,30 @@ const CERES_DISABLED_HAULER_ACTIVE_STATES = new Set([
 
 const TRADER_ROLES = new Set(['hauler', 'courier', 'miner', 'smuggler', 'express', 'trader']);
 // Working traffic that can answer with living-chain / job phase without being a freighter or patrol.
-const WORK_ROLES = new Set(['miner', 'salvor', 'tender', 'surveyor', 'ore_carrier', 'rescue']);
-const HEAVE_TO_ROLES = new Set([
+const WORK_ROLES = new Set(['miner', 'salvor', 'tender', 'surveyor', 'ore_carrier', 'rescue', 'tug']);
+// The single heave-to authority: which traffic roles answer a heave-to order. traffic.js consumes
+// this for compliance; commsRadial for the unavailable reason. Keep role keys in sync with
+// TRAFFIC_ROLES — 'trader' is an ai archetype, never a role.
+export const HEAVE_TO_COMPLIANT_ROLES = new Set([
   'hauler',
   'courier',
   'miner',
   'smuggler',
   'express',
-  'trader',
+  'rescue',
   'surveyor',
   'salvor',
   'tender',
   'ore_carrier',
   'patrol',
   'escort',
+  'prospector',
+  'sweeper',
+  'shuttle',
+  'tug',
+  'arclight',
+  'tanker',
+  'customs',
 ]);
 const COMMODITY_BY_ID = new Map(COMMODITIES.map((row) => [row.id, row]));
 const COMMODITY_LABEL = new Map(COMMODITIES.map((row) => [row.id, row.name]));
@@ -172,7 +182,7 @@ function contactKind(state, entity) {
 function contactHeaveToAvailable(state, entity, kind) {
   const data = entity && entity.data || {};
   const role = String(data.trafficRole || data.role || entity && entity.role || '').toLowerCase();
-  if (!HEAVE_TO_ROLES.has(role)) return false;
+  if (!HEAVE_TO_COMPLIANT_ROLES.has(role)) return false;
   if (kind === 'patrol') return true;
   if (data.jobId) return true;
   const rec = traderRecord(state, entity && entity.id);

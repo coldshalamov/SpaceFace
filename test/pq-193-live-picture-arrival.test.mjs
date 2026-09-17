@@ -43,6 +43,8 @@ const ROSTER_FILES = Object.freeze({
   ship_warden: 'wholeships/warden_production_v1.glb',
   ship_colossus: 'wholeships/colossus_production_v1.glb',
   ship_leviathan: 'wholeships/leviathan_production_v1.glb',
+  // The Hawser player hull wears the accepted yard-tug body ambient tug traffic already flies.
+  ship_hawser: 'wholeships/yard_tug.glb',
 });
 
 const LINER_FILE = 'wholeships/massline_express_liner_v1.glb';
@@ -64,8 +66,8 @@ function planFiles(entity) {
   return Object.values(plan || {}).flat().filter(Boolean);
 }
 
-test('all 13 roster hulls and the liner are required packaged-live complete bodies', () => {
-  assert.equal(REQUIRED_WHOLE_SHIP_DEF_IDS.length, 13);
+test('all 14 roster hulls and the liner are required packaged-live complete bodies', () => {
+  assert.equal(REQUIRED_WHOLE_SHIP_DEF_IDS.length, 14);
   for (const defId of REQUIRED_WHOLE_SHIP_DEF_IDS) {
     const expected = ROSTER_FILES[defId];
     assert.ok(expected, defId);

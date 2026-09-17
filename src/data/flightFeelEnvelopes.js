@@ -109,6 +109,21 @@ export const PLAYER_FEEL_ENVELOPES = Object.freeze({
     brakeHorizon: 1.10,
     neutralBrake: 0.90,
   }),
+  // Working tug: the torch answers straight ahead and nowhere else. Axial commitment,
+  // dead lateral, early governor — you aim the load, not the dogfight.
+  ship_hawser: freezeEnv({
+    id: 'hawser',
+    translation: 1.30,
+    strafe: 0.68,
+    yawAccel: 0.66,
+    yawBrake: 1.00,
+    yawRate: 0.76,
+    lateralKill: 0.70,
+    stopHorizon: 1.22,
+    governor: 1.24,
+    brakeHorizon: 1.16,
+    neutralBrake: 0.88,
+  }),
 });
 
 const CLASS_FALLBACK = Object.freeze({

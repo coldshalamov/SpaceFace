@@ -24,6 +24,7 @@ export const SHIP_SILHOUETTES = Object.freeze({
   ship_drifter: '<path d="m3 14 12-7 14 2 16 5-16 5-14 2Z"/><path d="M10 4h15l5 5-15-2Zm0 20h15l5-5-15 2Z" class="sx-shipmark__cut"/>',
   ship_hornet: '<path d="m2 14 17-3 13-9 14 12-14 12-13-9Z"/><path d="M12 7h18l-7 6Zm0 14h18l-7-6Z" class="sx-shipmark__cut"/>',
   ship_ironback: '<path d="M3 7h15l7-4h14l7 11-7 11H25l-7-4H3Z"/><path d="M4 10h13v8H4Zm20-3h13v14H24Z" class="sx-shipmark__cut"/>',
+  ship_hawser: '<path d="M6 6h12l6 4h16l6 4-6 4H24l-6 4H6l3-8Z"/><path d="M8 3h13v5H8Zm0 20h13v5H8Zm18-9h14v3H26Z" class="sx-shipmark__cut"/>',
   ship_bastion: '<path d="M2 8h12l10-6 22 12-22 12-10-6H2l7-6Z"/><path d="M13 6h18l-7 7-11-3Zm0 16h18l-7-7-11 3Z" class="sx-shipmark__cut"/>',
   ship_atlas: '<path d="M2 5h12l6 3h14l12 6-12 6H20l-6 3H2Z"/><path d="M4 2h13v9H4Zm0 15h13v9H4Zm18-7h13v8H22Z" class="sx-shipmark__cut"/>',
   ship_ranger: '<path d="m2 14 18-5L35 3l11 11-11 11-15-6Z"/><path d="M11 5h18l-9 5Zm0 18h18l-9-5Z" class="sx-shipmark__cut"/><circle cx="30" cy="14" r="2" class="sx-shipmark__sensor"/>',

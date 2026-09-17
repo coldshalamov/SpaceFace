@@ -1,9 +1,9 @@
-// src/data/shipRoleLattice.js — Milestone-5 thirteen-ship role lattice.
+// src/data/shipRoleLattice.js — Milestone-5 fourteen-ship role lattice.
 // Pure data + pure helpers. Consumed by systems/ships.js (derived behavior authority)
 // and ui/screens/shipyard.js (why-this-ship + owned-hull compare). No Three.js, no RNG.
 //
 // Contract:
-// - Exactly one lattice row per canonical player hull in SHIPS (13).
+// - Exactly one lattice row per canonical player hull in SHIPS (14).
 // - Roles drive real derived behavior through ships.getDerivedStats (flight class +
 //   operational biases), not labels alone.
 // - Adjacency / counter / career fit are authored progression metadata; unlock truth
@@ -64,6 +64,12 @@ export const SHIP_ROLE_PATHS = Object.freeze({
     id: 'path_industrial_stripmine', signatureVerb: 'Work four seams at capital scale while the winch controls fragments.',
     counterplay: 'Anchor the worksite and reel mass inward; do not chase raiders in a barge.',
     kit: Object.freeze([{ defId: 'mod_mining_beam_m', count: 4 }, { defId: 'mod_drill_amp', count: 1 }, { defId: 'mod_winch_hd', count: 1 }]),
+  }),
+  ship_hawser: Object.freeze({
+    id: 'path_yard_recovery', signatureVerb: 'Couple, reel, and put a derelict under way that outweighs the hull.',
+    counterplay: 'Never solo a chase — the ring gun only covers the work; cut the line and burn axial.',
+    // One massline head per fit — the coupler is the yard hitch; the beam is the alternate swap-in.
+    kit: Object.freeze([{ defId: 'mod_frame_coupler_m', count: 1 }, { defId: 'mod_tether_capacitor', count: 1 }, { defId: 'mod_winch_hd', count: 1 }, { defId: 'wpn_flak_turret_s', count: 1 }]),
   }),
   ship_bastion: Object.freeze({
     id: 'path_broadside_anchor', signatureVerb: 'Plant a four-gun broadside and hold the contract lane.',
@@ -275,6 +281,24 @@ const LATTICE_ROWS = Object.freeze([
     upgradeAdjacency: Object.freeze(['ship_atlas', 'ship_ranger']),
     counterRoles: Object.freeze(['interceptor', 'fighter', 'gunship']),
     identityLine: 'Industrial slab — the field empties before the barge does.',
+  }),
+  Object.freeze({
+    shipId: 'ship_hawser',
+    role: 'tug',
+    roleLabel: 'Working Tug',
+    flightClass: 'hauler',
+    shortWhy: 'A torch drive bolted to a pusher frame — the hull whose job is moving mass that outweighs it.',
+    careerFit: Object.freeze({ hauler: 0.85, hunter: 0.35, prospector: 0.55 }),
+    primaryCareers: Object.freeze(['hauler']),
+    opMassBias: 1.06,
+    handlingBias: 0.90,
+    thrustBias: 1.02,
+    turnBias: 0.82,
+    strengths: Object.freeze(['tow authority', 'massline bay depth', 'planted frame']),
+    weaknesses: Object.freeze(['dead in a turn fight', 'token hold', 'no mining']),
+    upgradeAdjacency: Object.freeze(['ship_atlas', 'ship_ironback']),
+    counterRoles: Object.freeze(['interceptor', 'fighter']),
+    identityLine: 'Everything else is what it pulls.',
   }),
   Object.freeze({
     shipId: 'ship_bastion',
@@ -630,8 +654,8 @@ export function findDominatedSameTierHulls(ships = SHIPS) {
 export function validateRoleLattice(ships = SHIPS) {
   const errors = [];
   const shipIds = ships.map((s) => s.id);
-  if (shipIds.length !== 13) errors.push('expected exactly 13 ships, got ' + shipIds.length);
-  if (LATTICE_SHIP_IDS.length !== 13) errors.push('lattice rows must be exactly 13');
+  if (shipIds.length !== 14) errors.push('expected exactly 14 ships, got ' + shipIds.length);
+  if (LATTICE_SHIP_IDS.length !== 14) errors.push('lattice rows must be exactly 14');
 
   for (const id of shipIds) {
     if (!SHIP_ROLE_LATTICE[id]) errors.push('missing lattice row for ' + id);
@@ -691,6 +715,14 @@ export function validateRoleLattice(ships = SHIPS) {
         else freeSlots.splice(slotIndex, 1);
       }
     }
+    // Massline heads are mutually exclusive fittings (findMasslineHeadConflict in systems/ships.js):
+    // a kit is a simultaneous loadout, so it can carry at most one head.
+    const headCount = ((path && path.items) || []).reduce((sum, item) => {
+      const fitDef = FITTABLE_BY_ID.get(item.defId);
+      const isHead = fitDef && fitDef.mods && fitDef.mods.masslineHeadId;
+      return sum + (isHead ? item.count : 0);
+    }, 0);
+    if (headCount > 1) errors.push(def.id + ' role path carries ' + headCount + ' massline heads; only one can be fitted');
   }
 
   // Starter must remain the only free T0 and keep mixed slots.

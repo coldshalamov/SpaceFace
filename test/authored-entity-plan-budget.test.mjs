@@ -121,7 +121,7 @@ const WHOLE_SHIP_FILE_BY_DEF = Object.freeze({
   ship_ironback: 'wholeships/ironback_production_v1.glb', ship_bastion: 'wholeships/bastion_production_v1.glb',
   ship_atlas: 'wholeships/atlas_production_v1.glb', ship_ranger: 'wholeships/ranger_production_v1.glb',
   ship_warden: 'wholeships/warden_production_v1.glb', ship_colossus: 'wholeships/colossus_production_v1.glb',
-  ship_leviathan: 'wholeships/leviathan_production_v1.glb',
+  ship_leviathan: 'wholeships/leviathan_production_v1.glb', ship_hawser: 'wholeships/yard_tug.glb',
 });
 
 // resolveRequiredWholeShipRecord matches records on file AND assetId, so fixtures must carry the
@@ -151,6 +151,7 @@ const WHOLE_SHIP_ASSET_ID_BY_FILE = Object.freeze({
   'wholeships/wasp_free_militia.glb': 'SF_WASP_FREE_MILITIA',
   'wholeships/wasp_mts_escort.glb': 'SF_WASP_MTS_ESCORT',
   'wholeships/wasp_scn_patrol.glb': 'SF_WASP_SCN_PATROL',
+  'wholeships/yard_tug.glb': 'SF_WHOLESHIP_YARD_TUG',
 });
 
 const PRE_CHANGE_VISUAL_FINGERPRINTS = [
@@ -171,6 +172,7 @@ const HULL_BY_DEF_ID = {
   ship_ranger: 'hulls/hull_multirole.glb', ship_bastion: 'hulls/hull_corvette.glb',
   ship_warden: 'hulls/hull_frigate.glb', ship_colossus: 'hulls/hull_capital.glb',
   ship_leviathan: 'hulls/hull_capital.glb',
+  ship_hawser: 'hulls/hull_freighter.glb',
 };
 const ENGINE_BY_DEF_ID = {
   ship_kestrel: 'engines/engine_ion_small.glb', ship_drifter: 'engines/engine_ion_small.glb',
@@ -180,6 +182,7 @@ const ENGINE_BY_DEF_ID = {
   ship_atlas: 'engines/engine_industrial.glb', ship_bastion: 'engines/engine_plasma_ring.glb',
   ship_warden: 'engines/engine_plasma_ring.glb', ship_colossus: 'engines/engine_plasma_ring.glb',
   ship_leviathan: 'engines/engine_plasma_ring.glb',
+  ship_hawser: 'engines/engine_industrial.glb',
 };
 
 function fixtureHash(value) {
