@@ -55,6 +55,27 @@ export const CameraDirectorMode = Object.freeze({
   RECOVER: 'RECOVER',
 });
 
+// Owner feel verdict 2026-09-16: slow, purposeful zoom changes are welcome (speed framing,
+// widening to hold a whole battle in frame); FRENETIC re-takes are not. The governor below is
+// the family-wide safety net for that verdict, dosed by FREQUENCY, not by a single gap: a
+// one-off immediate re-latch is a legitimate continuity contract (camera-focus-separation
+// "same-target re-latch remains continuous"), but FAMILY_ENTRY_TRIP_ENTRIES takeovers inside
+// FAMILY_ENTRY_WINDOW_S is flapping, and flapping loses camera authority for
+// CAMERA_DIRECTOR_GOVERNOR_LOCK_S. Designed triggers are discrete and hysteretic and never
+// trip it (docs/CAMERA_AUTO_MODES.md §1); the governor contains the damage if a future
+// continuous trigger slips through anyway.
+export const CAMERA_DIRECTOR_FLAP_WINDOW_S = 3.0;
+export const CAMERA_DIRECTOR_FLAP_TRIP_ENTRIES = 3;
+export const CAMERA_DIRECTOR_GOVERNOR_LOCK_S = 4.0;
+
+/** The takeover modes the flap governor doses. RECOVER is an exit ease, not a takeover. */
+function isPairFamilyMode(mode) {
+  return mode === CameraDirectorMode.TETHER_PAIR
+    || mode === CameraDirectorMode.FOCUS_PAIR
+    || mode === CameraDirectorMode.TWO_BODY
+    || mode === CameraDirectorMode.GATE_APPROACH;
+}
+
 export const TWO_BODY_SEED = 15901;
 export const TWIN_BRIDLE_DEF_ID = 'attachment_twin_bridle';
 export const TWIN_BRIDLE_HEAD_ID = 'twin_bridle';
@@ -548,6 +569,9 @@ export function createCameraDirector() {
     predictiveHorizonS: 0,
     predictiveLeadX: 0,
     predictiveLeadZ: 0,
+    // Seconds of flap-governor lockout remaining (0 = takeovers allowed). Diagnostics for the
+    // runtime witness; the lock itself lives in closure state.
+    governorLockS: 0,
   };
   const pairPrediction = {
     horizonS: 0,
@@ -578,6 +602,11 @@ export function createCameraDirector() {
   let transitionStartZoom = DEFAULT_ZOOM;
   let transitionStartNear = 1;
   let transitionElapsed = CAMERA_DIRECTOR_EASE_S;
+  // Flap-governor state. `clockS` is a presentation-local accumulator (never state.simTime —
+  // slow time must not stretch the governor's wall-clock sense of "recent").
+  let clockS = 0;
+  let governorLockUntilS = -Infinity;
+  const pairFamilyEntryClocks = [];
 
   function syncFollow(focusX = 0, focusZ = 0, zoom = DEFAULT_ZOOM) {
     output.mode = CameraDirectorMode.FOLLOW;
@@ -594,6 +623,7 @@ export function createCameraDirector() {
     output.predictiveHorizonS = 0;
     output.predictiveLeadX = 0;
     output.predictiveLeadZ = 0;
+    output.governorLockS = Math.max(0, governorLockUntilS - clockS);
     transitionStartX = output.focusX;
     transitionStartZ = output.focusZ;
     transitionStartZoom = output.zoom;
@@ -685,6 +715,7 @@ export function createCameraDirector() {
       const followZoom = finiteOr(view.followZoom, DEFAULT_ZOOM);
       const frameDt = clamp(finiteOr(dt, 0), 0, 0.1);
       if (!initialized) reset(followX, followZ, followZoom);
+      clockS += frameDt;
 
       const photo = state && state.render && state.render.photoMode;
       if (photo && photo.active) {
@@ -802,6 +833,43 @@ export function createCameraDirector() {
           targetId = gateApproach.targetId;
           target = gateApproach.gate;
         }
+      }
+
+      // Flap governor (owner feel verdict 2026-09-16 — see the constants above). A fresh entry
+      // into the takeover family — the previously applied frame was outside it — is counted;
+      // entries older than the window are pruned. One or two entries are ordinary play (an
+      // immediate same-target re-latch is a continuity contract, not a flap). Reaching the trip
+      // count inside the window means the trigger itself is oscillating: that entry is denied
+      // and every further request degrades to FOLLOW for the lock window, so the chase camera's
+      // damped composition owns the view. Staying INSIDE the family (held stable mode, or
+      // authority handoffs like FOCUS_PAIR→TETHER_PAIR on the same target) never counts.
+      const freshPairEntry = requestedMode !== CameraDirectorMode.FOLLOW
+        && !isPairFamilyMode(output.mode);
+      // While a lock is active, denied requests must NOT count as entries — otherwise a
+      // continuously-live trigger re-trips every few frames and the lock never expires. The
+      // lock runs its full window, then admits exactly one entry; if THAT still flaps, the
+      // count rebuilds and trips again.
+      if (freshPairEntry && clockS >= governorLockUntilS) {
+        while (pairFamilyEntryClocks.length
+          && clockS - pairFamilyEntryClocks[0] > CAMERA_DIRECTOR_FLAP_WINDOW_S) {
+          pairFamilyEntryClocks.shift();
+        }
+        if (pairFamilyEntryClocks.length + 1 >= CAMERA_DIRECTOR_FLAP_TRIP_ENTRIES) {
+          pairFamilyEntryClocks.length = 0;
+          governorLockUntilS = clockS + CAMERA_DIRECTOR_GOVERNOR_LOCK_S;
+        } else {
+          pairFamilyEntryClocks.push(clockS);
+        }
+      }
+      output.governorLockS = Math.max(0, governorLockUntilS - clockS);
+      if (requestedMode !== CameraDirectorMode.FOLLOW && output.governorLockS > 0) {
+        requestedMode = CameraDirectorMode.FOLLOW;
+        targetId = null;
+        target = null;
+        gateApproach = null;
+        twoBodyPair = null;
+        trainingFocusPair = false;
+        focusHoldsAuthority = false;
       }
 
       const playerValid = !!(player && player.pos && Number.isFinite(player.pos.x) && Number.isFinite(player.pos.z));

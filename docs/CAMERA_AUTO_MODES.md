@@ -26,6 +26,12 @@ Every bad camera incident in this repo's history is one of these:
 game state (hostility, attachment active, autopilot lease, data flag) — never on a continuous
 analog signal. Continuous signals get continuous, damped responses only.**
 
+**Owner feel verdict (2026-09-16), the governing rule for this whole file:** slow, purposeful
+zoom changes are welcome — speed framing and widening slightly to hold a whole battle in frame
+are *helpful*. What is not welcome is frenetic in/out zooming on some odd trigger. The axis that
+matters is **rate and repeatability**, not the existence of auto-zoom. The flap governor below
+is that verdict turned into code.
+
 ## 2. Manifest — discrete takeovers (camera director)
 
 These replace the chase camera entirely for their duration. Highest-stakes family; each one
@@ -77,18 +83,24 @@ Photo mode free camera; manual zoom wheel/gamepad (clamped 45–330 — note dir
 legally exceed the manual ceiling to 528); `chaseClose` accessibility profile; dock/station screen
 swaps (fade, not camera).
 
-## 6. Hardening proposals (not yet implemented — owner decides)
+## 6. Hardening (status)
 
-1. **Mode-flap governor** (~15 lines in `createCameraDirector`): if the same pair/gate mode is
-   re-entered within ~1.5 s of exiting, lock the director to FOLLOW for ~4 s. A universal safety
-   net that would have contained the tow bug even before its trigger was fixed, and contains any
-   future P1 regression regardless of cause.
-2. **Observable flapping:** extend `npm run probe:runtime-witness` to log director mode-transition
-   rate (transitions/min). A live session crossing a small threshold flags any member of this
-   manifest misbehaving in real play, instead of waiting for the owner to feel it.
-3. **Invariant check:** a unit assertion that director mode transitions are only reachable from
-   discrete state flips (hostility, attachment active, autopilot lease, data flags) — encodes the
-   §1 design rule so a future continuous trigger fails a check instead of shipping.
+1. **Mode-flap governor — IMPLEMENTED 2026-09-16** (`cameraDirector.js`, owner verdict above):
+   takeover-family entries are counted over a rolling `CAMERA_DIRECTOR_FLAP_WINDOW_S` (3 s);
+   the `CAMERA_DIRECTOR_FLAP_TRIP_ENTRIES`-th (3rd) entry inside the window trips a
+   `CAMERA_DIRECTOR_GOVERNOR_LOCK_S` (4 s) FOLLOW lockout. One or two entries are ordinary play
+   — an immediate same-target re-latch is a continuity contract and never trips. While locked,
+   denied requests do not count (a live trigger cannot extend its own lock); the window runs,
+   then one entry is admitted — if that still flaps, the count rebuilds and trips again. A
+   `governorLockS` readout on the director output is published for diagnostics. Regression
+   tests: `test/camera-director-governor.test.mjs`.
+2. **Observable flapping (proposed):** extend `npm run probe:runtime-witness` to log director
+   mode-transition rate and governor trips per minute, so misbehavior is visible in a report
+   instead of waiting for the owner to feel it.
+3. **Invariant check (proposed):** a unit assertion that director mode transitions are only
+   reachable from discrete state flips (hostility, attachment active, autopilot lease, data
+   flags) — encodes the §1 design rule so a future continuous trigger fails a check instead of
+   shipping.
 
 ## 7. Scrap watchlist (owner feel calls, cheapest first)
 
@@ -96,9 +108,11 @@ swaps (fade, not camera).
    keeps the attacker framed; the mode adds cinematic midpoint framing on top. Highest
    annoyance-per-Hz of the surviving takeovers because combat is when the player most needs the
    geometry to hold still.
-2. **Exceptional-speed 3.5× pull-back** (speed zoom) — authored contract, but it is the largest
-   single zoom excursion the camera ever makes; worth a feel verdict.
-3. **Flyby Focus bullet-time** — not a camera behavior (the camera part was already demoted), but
+2. **Flyby Focus bullet-time** — not a camera behavior (the camera part was already demoted), but
    it is the same "the game did something I didn't ask for" family: 50 % slow-time opens
    involuntarily on a fast hostile pass, up to once per 4 s globally / 14 s per target. If
    involuntary moments bother the owner in principle, this is the biggest remaining one.
+
+Resolved by owner verdict 2026-09-16: **speed zoom (including the exceptional 3.5× band) is
+approved as-is** — slow zoom-outs keyed to speed, or slight widening that encompasses a battle,
+are wanted; only frenetic re-firing is not (now governed, see §6.1).
