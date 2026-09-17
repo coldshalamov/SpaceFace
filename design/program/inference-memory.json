@@ -1032,6 +1032,19 @@
       "integration": "live",
       "commit": "098541b04",
       "verification": "focused_green"
+    },
+    {
+      "id": "foreman-open-route",
+      "date": "2026-09-17",
+      "wf": "WF-02",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Mirrorjaw Foreman leaves the arena: lane toll, wreck herd, and claim breaker put the committed ram where open-route players meet it",
+      "fingerprint": "verb=dodge,subject=foreman-charge,sector=multi-belt,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "c15920890",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
