@@ -2543,6 +2543,18 @@ const namedHunter = {
     live.data.captainId = cap.id;
     if (culture) live.data.cultureId = culture.id;
     live.vars.name = cap.name;
+    // Revenge vow: a hunter entering after the player killed one of the seed roster names
+    // the most recent victim. Culture aces keep their own entrance.
+    let avenged = null;
+    if (!culture && typeof cap.id === 'string') {
+      for (const fallen of NAMED_CAPTAINS) {
+        const frec = named[fallen.id];
+        if (frec && frec.killedBy === 'player' && Number.isInteger(frec.deathTick)
+            && (!avenged || frec.deathTick > avenged.deathTick)) {
+          avenged = { name: fallen.name, deathTick: frec.deathTick };
+        }
+      }
+    }
 
     const p = d.player(); if (!p) return d.abort(live, 'no_player');
     const zc = live.anchor || p.pos;
@@ -2617,6 +2629,10 @@ const namedHunter = {
         signatureSpoken: true,
         t: d.now(),
       });
+    } else if (avenged) {
+      d.say(live, 'alert',
+        `${barkText(cap.bark || 'miniboss_taunt', live.vars, live.id)} ${cap.name} flies for ${avenged.name}.`,
+        live.vars, { primary: true, literal: true });
     } else {
       d.say(live, 'alert', cap.bark || 'miniboss_taunt', live.vars, { primary: true });
     }
@@ -2648,6 +2664,28 @@ const namedHunter = {
         rec.killedBy = p.byPlayer ? 'player' : 'world';
         rec.deathSector = live.sectorId;
         rec.deathTick = state.tick | 0;
+      }
+      if (typeof live.data.captainId === 'string' && live.data.captainId) {
+        // The ledger hears it too: scripted hunter kills never emitted the defeat event
+        // the external-captain path always has, so consequences never chained from them.
+        d.emit('encounter:namedCaptainDefeated', {
+          captainId: live.data.captainId,
+          captainName,
+          entityId: p.id,
+          byPlayer: !!p.byPlayer,
+          sectorId: live.sectorId,
+          t: d.now(),
+          tick: state.tick | 0,
+        });
+        if (p.byPlayer) {
+          // Revenge is composition: every surviving seed captain flies one wing heavier
+          // next time, capped like the escape grudge. World kills carry no grudge.
+          for (const survivor of NAMED_CAPTAINS) {
+            if (survivor.id === live.data.captainId) continue;
+            const srec = named[survivor.id];
+            if (srec && srec.alive !== false) srec.tier = Math.min(3, (srec.tier | 0) + 1);
+          }
+        }
       }
       // The hulk stays where they fell: named, scannable, worth stripping.
       const at = (p.pos && Number.isFinite(p.pos.x)) ? p.pos : (live.anchor || { x: 0, z: 0 });
