@@ -35,6 +35,38 @@
       "blocksMilestone": false,
       "ownerLane": "unowned — no lane has ever claimed the production Wasp LOD family",
       "reason": "Same unmanifested dormant artifact as wasp_production_v1_lod1, release side."
+    },
+    {
+      "assetId": "place_claim_outpost_catcher",
+      "gap": "source-artifact-missing",
+      "severity": "moderate",
+      "blocksMilestone": false,
+      "ownerLane": "PQ-022.heist-receivers-promote — KEEP re-authored open-mouth impound fork; GLB staged in lane worktree, uncommitted",
+      "reason": "Manifest row landed via PQ-195.00 R4 (2be848900) but the dev binary is the PQ-022 lane's in-flight deliverable. Delete the moment the lane commits the GLB; the gate fails stale if this lingers."
+    },
+    {
+      "assetId": "place_claim_outpost_catcher",
+      "gap": "release-artifact-missing",
+      "severity": "moderate",
+      "blocksMilestone": false,
+      "ownerLane": "PQ-022.heist-receivers-promote — KEEP re-authored open-mouth impound fork; GLB staged in lane worktree, uncommitted",
+      "reason": "Release side of the same in-flight PQ-022 deliverable."
+    },
+    {
+      "assetId": "place_claim_outpost_fence",
+      "gap": "source-artifact-missing",
+      "severity": "moderate",
+      "blocksMilestone": false,
+      "ownerLane": "PQ-022.heist-receivers-promote — KEEP re-authored shielded-handoff L; GLB staged in lane worktree, uncommitted",
+      "reason": "Manifest row landed via PQ-195.00 R4 (2be848900) but the dev binary is the PQ-022 lane's in-flight deliverable. Delete the moment the lane commits the GLB; the gate fails stale if this lingers."
+    },
+    {
+      "assetId": "place_claim_outpost_fence",
+      "gap": "release-artifact-missing",
+      "severity": "moderate",
+      "blocksMilestone": false,
+      "ownerLane": "PQ-022.heist-receivers-promote — KEEP re-authored shielded-handoff L; GLB staged in lane worktree, uncommitted",
+      "reason": "Release side of the same in-flight PQ-022 deliverable."
     }
   ]
 }
