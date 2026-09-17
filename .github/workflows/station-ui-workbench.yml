@@ -1,0 +1,41 @@
+name: Station UI workbench
+on:
+  push:
+    branches: [ui/station-orbital-glass]
+    paths: ['.github/workflows/station-ui-workbench.yml', '.station-ui-delivery.patch.b64']
+permissions:
+  contents: write
+jobs:
+  workbench:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/station-orbital-glass
+          fetch-depth: 1
+          sparse-checkout: |
+            src
+            styles
+            test
+            scripts
+            vendor
+            assets/ui/kit/tokens
+            assets/ui/kit/kit
+            .github
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Isolated runtime dependencies
+        run: |
+          mkdir -p "$RUNNER_TEMP/station-deps"
+          npm install --prefix "$RUNNER_TEMP/station-deps" --ignore-scripts --no-audit --no-fund @floating-ui/dom@1.8.0 pngjs@7.0.0
+          mkdir -p /tmp/station-workbench/styles
+          cp -R "$RUNNER_TEMP/station-deps/node_modules" /tmp/station-workbench/
+          cp -R styles/fonts /tmp/station-workbench/styles/
+          git rev-parse HEAD > /tmp/station-workbench/source-sha.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: station-workbench-dependencies
+          path: /tmp/station-workbench
+          retention-days: 7
