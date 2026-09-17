@@ -96,6 +96,17 @@
             "src/data/encounters.js"
           ],
           "finding": "anomaly_whisper was one line and nothing to do; now a full discovery chain (source site, scan hint, identify/break/ignore/fade, repeat-pay progression), proven 8/8 on fixed seeds"
+        },
+        {
+          "date": "2026-09-17",
+          "atCommit": "8ea110791e77f8c02150075d7f778ab173103706",
+          "paths": [
+            "src/data/encounters/120-anomaly-whisper.js",
+            "src/systems/encounterScripts.js",
+            "src/systems/encounterDirector.js",
+            "src/data/encounters.js"
+          ],
+          "finding": "re-verified after U2 touched shared director files: chain still 8/8, hunks disjoint (whisper vs namedHunter). No change needed."
         }
       ],
       "gaps": [
