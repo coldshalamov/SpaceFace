@@ -85,7 +85,35 @@ async function lookAtSurface({ surface, baseUrl, outDir }) {
     if (text.includes('__spaceface_player_store')) return;
     logs.push(text);
   });
-  const finder = selectorFor(surface);
+  let finder = selectorFor(surface);
+
+  // The registry lists roots best-first with fallbacks (e.g. the station tabs keep a stale
+  // `.sx-app__panel` head before the plain screen root). Resolve the first root that exists on
+  // the live page instead of trusting the head blindly.
+  const rootCandidates = (surface.root && surface.root.length ? surface.root : [`[data-screen="${surface.id}"]`]).slice();
+  // Wait for ANY of the registry's roots (best-first with fallbacks — the station tabs keep a
+  // stale `.sx-app__panel` head before the plain screen root) instead of burning the whole
+  // budget on a head that may no longer exist in the DOM.
+  const waitAnyRoot = async (totalMs) => {
+    const deadline = Date.now() + totalMs;
+    for (;;) {
+      for (const candidate of rootCandidates) {
+        const ok = await page.waitForSelector(candidate, { timeout: 1500 }).then(() => true).catch(() => false);
+        if (ok) { finder = candidate; return true; }
+      }
+      if (Date.now() > deadline) return false;
+      await page.waitForTimeout(500);
+    }
+  };
+  // A nested entry names the control that opens this surface inside its parent (the station tabs).
+  // When the parent is already up — the dev route opened the shared station screen — follow it so
+  // the look lands on the named tab instead of the parent's default view.
+  const applyNestedEntry = async () => {
+    const entry = surface.entry;
+    if (!entry || entry.kind !== 'nested' || !entry.selector) return;
+    await page.locator(entry.selector).first().click({ timeout: 8000 }).catch(() => {});
+    await page.waitForTimeout(SETTLE_MS);
+  };
 
   // Key-entry surfaces (the comms fan, the wingman radial) have no screen to push: they exist
   // only while their flight key is held. When the surface does not appear on its own, synthesize
@@ -119,11 +147,15 @@ async function lookAtSurface({ surface, baseUrl, outDir }) {
         await releaseEntryKey();
         await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
         if (needsKeyEntry) {
-          await page.waitForSelector('#hud', { state: 'visible', timeout: ROOT_TIMEOUT_MS });
+          // The HUD mounts before the run does; the flight-key surfaces refuse while the session
+          // is still loading, and the key must arrive while the page is focused.
+          await page.waitForFunction(() => globalThis.SF && globalThis.SF.state && globalThis.SF.state.mode === 'flight', null, { timeout: ROOT_TIMEOUT_MS });
+          await page.bringToFront();
           await synthesizeEntryKey();
           await page.waitForSelector(finder, { state: 'visible', timeout: 30_000 });
         } else {
-          await page.waitForSelector(finder, { state: 'visible', timeout: ROOT_TIMEOUT_MS });
+          await waitAnyRoot(ROOT_TIMEOUT_MS);
+          await applyNestedEntry();
         }
         await page.waitForTimeout(SETTLE_MS);
         return;

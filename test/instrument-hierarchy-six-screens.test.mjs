@@ -171,8 +171,10 @@ test('no state rests on hue alone: the words sit beside every colour', () => {
   const mkt = load('src/ui/station/screens/market.js');
   // The register's trend glyph carries the movement as a number (▲3%); demand is a word.
   assert.match(mkt, /demandWord/);
-  assert.match(mkt, /Tracked contract/);
-  assert.match(mkt, /LEGAL_LABEL/);
+  // The market rewrite split the register: route-intel wording lives in tradeLogic, and the
+  // legality words ride the presentation map beside their colour classes.
+  assert.match(load('src/ui/market/tradeLogic.js'), /Tracked contract/);
+  assert.match(load('src/ui/views/marketPresentation.js'), /contraband: 'Contraband'/);
   const controls = load('src/ui/screens/crucibleLabControls.js');
   assert.match(controls, /Invulnerable: on/);
   assert.match(controls, /Invulnerable: off/);

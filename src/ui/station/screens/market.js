@@ -668,10 +668,14 @@ export function createMarketScreen(ctx) {
       (free !== Infinity ? rowKV('Hold free', fmt(free) + ' u') : '') +
       intelRows.map((intelRow) => rowKV(intelRow.label, intelRow.value,
         intelRow.tone === 'good' ? 'gain' : (intelRow.tone === 'danger' || intelRow.tone === 'warn' ? 'loss' : ''))).join('');
-    const note = !quoteReady && qty >= 1 ? 'Live quote unavailable.'
-      : !creditReady ? 'Not enough credits for this quantity.'
+    // Priority matters: with no quote yet (qty 0, or nothing affordable) creditReady is false by
+    // construction, and checking it first blamed credits on first paint of a stockless market.
+    const note = maxQty < 1 ? (mode === 'buy' ? 'Not enough credits, stock, or hold space.' : 'Nothing to sell here.')
+      : qty < 1 ? ''
+      : !quoteReady ? 'Live quote unavailable.'
+      : mode === 'buy' && quote.total > cr ? 'Not enough credits for this quantity.'
       : qty > maxQty ? 'This quantity exceeds available stock or hold space.'
-      : maxQty < 1 ? (mode === 'buy' ? 'Not enough credits, stock, or hold space.' : 'Nothing to sell here.') : '';
+      : '';
     const goLabel = (side) => `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)}`;
     if (receiptOnly && tradeEl.querySelector('[data-market-intel]')) {
       // Keep the focused numeric input alive while each keystroke updates its actual quote.
@@ -796,7 +800,9 @@ export function createMarketScreen(ctx) {
     if (next >= 0 && rows[next]) selectCommodity(rows[next].getAttribute('data-cmdty'), { focus: true });
   });
 
-  consoleEl.addEventListener('click', (ev) => {
+  // Delegation rides the screen root, not consoleEl: the route table and trade leads live in
+  // .sx-mkt__stage outside the console, and their Set Course buttons must reach this handler.
+  el.addEventListener('click', (ev) => {
     const course = ev.target.closest('[data-course]');
     if (course) {
       const cmdtyId = course.getAttribute('data-course');
