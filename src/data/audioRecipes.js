@@ -1784,6 +1784,126 @@ export const RECIPES = [
     gainEnvelope: { attack: 0.02, sustain: 0.4, release: 0.18 },
     filterType: 'bandpass', filterFreq: 1400, filterQ: 1.6,
   },
+
+  // --- Psychoacoustic drama layer --------------------------------------------
+  // Supersonic whip-crack: a hostile round crossed the player's near-miss tube. Two layers —
+  // the crack (air split by something supersonic: high noise snap + falling saw screech) and a
+  // short pressure thud under it. The wide presentation near_miss voice stays the "whoosh" body;
+  // this recipe is the terrifying transient on top.
+  {
+    id: 'sfx_whip_snap',
+    category: 'weapon',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.04 },
+    filterType: 'highpass', filterFreq: 2400, filterQ: 0.8,
+    transientClick: { gain: 1.0 },
+  },
+  {
+    id: 'sfx_whip_body',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 3200, freqSweep: [3200, 640], sweepTimeS: 0.075,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.09 },
+    filterType: 'lowpass', filterFreq: 3800, filterQ: 0.9,
+    subBass: { startFreq: 150, endFreq: 38, dur: 0.1, gain: 0.55 },
+  },
+  {
+    id: 'sfx_wpn_whip_crack',
+    category: 'weapon',
+    type: 'layered',
+    layers: ['sfx_whip_snap', 'sfx_whip_body'],
+    gainMult: 1.0,
+    pitchRange: [0.96, 1.1],
+  },
+  // Capacitor spool: the rising whine a spinal railgun / siege lance makes while its capacitors
+  // recharge for the next shot. Heard on the cooldown tail so the released round feels charged.
+  {
+    id: 'sfx_wpn_capacitor_charge',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'sawtooth',
+    baseFreq: 150, freqSweep: [150, 2500], sweepTimeS: 0.62,
+    gainEnvelope: { attack: 0.06, sustain: 0.0, release: 0.2 },
+    filterType: 'bandpass', filterFreq: 950, filterQ: 1.3,
+    lfoRate: 11, lfoDepth: 0.018,
+  },
+  {
+    // A tiny metallic "capacitors topped off" tick the moment the heavy mount is ready again.
+    id: 'sfx_wpn_capacitor_ready',
+    category: 'weapon',
+    type: 'oscillator',
+    wave: 'square',
+    baseFreq: 1480, freqSweep: [1480, 2150], sweepTimeS: 0.035,
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.08 },
+    filterType: 'bandpass', filterFreq: 2000, filterQ: 2.6,
+  },
+  // Dead trigger: the solenoid clack of a fire-control group that cannot release a round —
+  // empty capacitor, overheated mount, venting, or no fitted gun. Two-stage clack: strike then
+  // the spring return.
+  {
+    id: 'sfx_wpn_dry_fire',
+    category: 'ui',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.03 },
+    filterType: 'bandpass', filterFreq: 2300, filterQ: 3.4,
+    transientClick: { gain: 0.7 },
+    repeatCount: 1, repeatIntervalS: 0.085,
+  },
+  // Radio punctuation. Key-in is the mic solenoid engaging; the squelch tail is the carrier
+  // collapsing when the transmission lets go.
+  {
+    id: 'sfx_comms_key_click',
+    category: 'comms',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.001, sustain: 0.0, release: 0.03 },
+    filterType: 'bandpass', filterFreq: 1950, filterQ: 3.6,
+    transientClick: { gain: 0.55 },
+  },
+  {
+    id: 'sfx_comms_squelch_tail',
+    category: 'comms',
+    type: 'noise_burst',
+    noiseColor: 'white',
+    gainEnvelope: { attack: 0.002, sustain: 0.0, release: 0.07 },
+    filterType: 'bandpass', filterFreq: 1150, filterQ: 1.7,
+    transientClick: { gain: 0.35 },
+  },
+  // Hull-breach interior family. These are cockpit-side sounds (conducted / pressurized-air), so
+  // they ride the ui bus and are NOT swallowed by the breach low-pass that mutes the world.
+  {
+    // Pressure leaving the cabin: a fast air hiss that dies into the vacuum plus a drop-thump.
+    id: 'sfx_hull_decompress',
+    category: 'ui',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.008, sustain: 0.12, release: 0.5 },
+    filterType: 'highpass', filterFreq: 650,
+    subBass: { startFreq: 95, endFreq: 26, dur: 0.42, gain: 0.85 },
+  },
+  {
+    // Hull sealed / pressure returning: a soft hiss that swells and dies.
+    id: 'sfx_hull_repressurize',
+    category: 'ui',
+    type: 'noise_filtered',
+    noiseColor: 'pink',
+    gainEnvelope: { attack: 0.22, sustain: 0.1, release: 0.55 },
+    filterType: 'bandpass', filterFreq: 950, filterQ: 0.9,
+  },
+  {
+    // The frame arguing with the vacuum — a slow metallic groan while the ship stays breached.
+    id: 'sfx_hull_stress_groan',
+    category: 'ui',
+    type: 'oscillator',
+    wave: 'triangle',
+    baseFreq: 92, freqSweep: [92, 54], sweepTimeS: 0.7,
+    gainEnvelope: { attack: 0.16, sustain: 0.0, release: 0.85 },
+    filterType: 'lowpass', filterFreq: 320, filterQ: 1.5,
+    lfoRate: 2.1, lfoDepth: 0.05,
+  },
 ];
 
 // PQ-158.00 — the sample-library hybrid bindings.

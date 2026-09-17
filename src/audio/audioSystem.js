@@ -505,6 +505,230 @@ export function audioNearbyHostileCount(state, player, range = 1200, scratch = [
   return count;
 }
 
+// =========================================================================
+// Psychoacoustic drama layer — pure resolvers (no nodes, no sim writes)
+// =========================================================================
+
+/** Near-miss whip-crack shaping. `distance` is the projectile's closest approach to the player. */
+export const NEAR_MISS_CRACK = Object.freeze({
+  // Physics emits the receipt inside hitRadius + ~22 wu; treat ~36 wu as the far edge of "inches".
+  maxDistanceWu: 36,
+  // Receipts already emit once per projectile; this gap only collapses back-to-back events
+  // (a crossing volley) so two frames of fire read as two cracks, not a machine-gun rattle.
+  minGapMs: 110,
+  minGain: 0.4,
+  maxGain: 0.95,
+  minRate: 0.9,
+  maxRate: 1.35,
+});
+
+export function resolveNearMissCrack(input = {}) {
+  const distance = Number(input.distance);
+  const closeness = Number.isFinite(distance)
+    ? clamp(1 - distance / NEAR_MISS_CRACK.maxDistanceWu, 0, 1)
+    : 1;
+  return {
+    closeness,
+    gain: NEAR_MISS_CRACK.minGain + (NEAR_MISS_CRACK.maxGain - NEAR_MISS_CRACK.minGain) * closeness,
+    rate: NEAR_MISS_CRACK.minRate + (NEAR_MISS_CRACK.maxRate - NEAR_MISS_CRACK.minRate) * closeness,
+  };
+}
+
+/**
+ * "Breathless moment" — the world ducks under a massive event so the roar that follows reads as
+ * colossal. Implemented as a gain envelope multiplied into every bus target inside _applySettings
+ * (ui/comms at partial depth so a critical alert still ghosts through). Pure wallclock math; the
+ * bus gains are written by the existing 50 ms ramp, so the shape is click-free.
+ */
+export const HUSH = Object.freeze({
+  capital:   Object.freeze({ depth: 0.07, attackS: 0.035, holdS: 0.40, releaseS: 1.10 }),
+  structure: Object.freeze({ depth: 0.16, attackS: 0.05,  holdS: 0.28, releaseS: 0.85 }),
+  // Player death drains the world out slowly — the death explosion plays THROUGH the sink,
+  // then the silence holds while the wreck tumbles.
+  death:     Object.freeze({ depth: 0.05, attackS: 0.55,  holdS: 1.40, releaseS: 2.40 }),
+  fullWu: 420,   // inside this the hush is full strength
+  farWu: 0,      // 0 -> fall back to D_FAR (world-hearing edge)
+});
+
+export function resolveHushEnvelope(input = {}, nowMs = 0) {
+  const spec = HUSH[input.kind] || HUSH.structure;
+  const distance = Number(input.distance);
+  let scale = 1;
+  if (Number.isFinite(distance) && distance > HUSH.fullWu) {
+    const farWu = HUSH.farWu > 0 ? HUSH.farWu : D_FAR;
+    scale = clamp(1 - (distance - HUSH.fullWu) / Math.max(1, farWu - HUSH.fullWu), 0, 1);
+    if (scale <= 0.02) return null; // a kill on the far side of the table doesn't steal the room
+  }
+  const startMs = Number.isFinite(nowMs) ? nowMs : 0;
+  return Object.freeze({
+    schema: 'spaceface.audioHush.v1',
+    kind: input.kind || 'structure',
+    // Distant events keep the shape but shallow: depth lerps toward 1, hold shrinks.
+    depth: 1 - (1 - spec.depth) * (0.35 + 0.65 * scale),
+    attackMs: spec.attackS * 1000,
+    holdMs: spec.holdS * 1000 * (0.7 + 0.3 * scale),
+    releaseMs: spec.releaseS * 1000,
+    startMs,
+    endMs: startMs + (spec.attackS + spec.holdS + spec.releaseS) * 1000,
+  });
+}
+
+/**
+ * Envelope gain 0..1 at nowMs. `done` means the record can be dropped. Release uses a steep
+ * power curve — the world rushes back early in the tail, which is what sells the scale.
+ */
+export function hushGainAt(envelope, nowMs, out = {}) {
+  out.done = false;
+  if (!envelope) { out.gain = 1; return out; }
+  const t = (Number(nowMs) || 0) - envelope.startMs;
+  if (t < 0) { out.gain = 1; return out; }
+  if (t < envelope.attackMs) {
+    const x = envelope.attackMs > 0 ? t / envelope.attackMs : 1;
+    out.gain = 1 - (1 - envelope.depth) * x;
+    return out;
+  }
+  const releaseStart = envelope.attackMs + envelope.holdMs;
+  if (t < releaseStart) { out.gain = envelope.depth; return out; }
+  const x = (t - releaseStart) / Math.max(1, envelope.releaseMs);
+  if (x >= 1) { out.gain = 1; out.done = true; return out; }
+  out.gain = 1 - (1 - envelope.depth) * Math.pow(1 - x, 2.4);
+  return out;
+}
+
+/**
+ * Hull-breach acoustics. Below `engageBelow` hull the cabin is venting: the physical buses run
+ * through a low-pass (external roar conducts through the seat rather than the air), a conduction
+ * bed opens under everything, and the frame groans. Hysteresis keeps the state from chattering
+ * on the threshold; ui/comms stay open — the cockpit speaker and radio are inside the pressure.
+ */
+export const HULL_BREACH_MIX = Object.freeze({
+  engageBelow: 0.34,     // hull fraction where the cabin starts venting
+  releaseAbove: 0.46,    // hysteresis: pressure is treated as restored above this
+  openHz: 20000,
+  minCutHz: 620,         // deepest muffle — hollow and dead, not silent; the seat still talks
+  filterTauS: 0.18,
+  intensityTauS: 0.35,   // approach time toward the hull-driven target
+  bedPeak: 0.16,         // conducted-rumble gain at zero hull
+  subPeak: 0.055,
+  groanMinS: 2.4,
+  groanVarS: 2.8,
+});
+
+/**
+ * Resolve breach on/off + muffle intensity from player hull state. Pure — the caller owns
+ * hysteresis state (`active` is the previous latch), smoothing, and node writes.
+ * @returns {{active:boolean, intensity:number, edge:'enter'|'exit'|null, exitSilent:boolean}}
+ */
+export function resolveBreachState(input = {}, out = {}) {
+  const hullPct = Number.isFinite(input.hullPct) ? clamp(input.hullPct, 0, 1) : 1;
+  const alive = input.alive !== false;
+  const docked = input.docked === true;
+  const was = input.active === true;
+  const enter = !was && alive && !docked && hullPct <= HULL_BREACH_MIX.engageBelow;
+  const exit = was && (!alive || docked || hullPct >= HULL_BREACH_MIX.releaseAbove);
+  out.active = enter || (was && !exit);
+  // Intensity rides the engage threshold so the muffle eases in, then deepens toward zero hull.
+  out.intensity = out.active ? clamp(1 - hullPct / HULL_BREACH_MIX.engageBelow, 0, 1) : 0;
+  out.edge = enter ? 'enter' : exit ? 'exit' : null;
+  // Dying mid-breach: pressure is gone for good — no repressurize hiss over a corpse.
+  out.exitSilent = exit && !alive;
+  return out;
+}
+
+/**
+ * Capacitor anticipation for heavy mounts. combat:fire is a post-shot receipt, so the whine is
+ * scheduled to crest as the mount's capacitor finishes recharging — the spool is heard BEFORE the
+ * trigger can go live again, then a tiny "topped off" tick marks ready. Same anticipation the
+ * player would get from a pre-fire charge event the sim does not emit.
+ */
+export const CHARGE_WHINE = Object.freeze({
+  minCooldownS: 0.55,   // mounts cycling faster never whine — pulse/autocannon stay snappy
+  maxCooldownS: 3.0,    // a 4 s torpedo tube is not a capacitor
+  whineDurS: 0.62,
+  whineLeadS: 0.54,     // whine starts this far before ready so its crest lands on-ready
+  whineGain: 0.32,
+  readyGain: 0.2,
+});
+
+/** Heavy-mount check: a spinal mount class, or an explicit rail/lance/siege defId. */
+export function isChargeWeapon(weaponId, mountClass) {
+  if (mountClass === 'spinal') return true;
+  const id = String(weaponId || '').toLowerCase();
+  return id.includes('rail') || id.includes('siege') || id.includes('lance');
+}
+
+/**
+ * @returns {null|{whineAtS:number, readyAtS:number, cooldownS:number}} ctx.currentTime-domain times.
+ */
+export function resolveChargeWhine(input = {}) {
+  if (!isChargeWeapon(input.weaponId, input.mountClass)) return null;
+  const cooldownS = Number(input.cooldownS);
+  if (!Number.isFinite(cooldownS) || cooldownS < CHARGE_WHINE.minCooldownS || cooldownS > CHARGE_WHINE.maxCooldownS) return null;
+  const nowS = Number.isFinite(input.nowS) ? input.nowS : 0;
+  const readyAtS = nowS + cooldownS;
+  return Object.freeze({
+    whineAtS: Math.max(nowS + 0.03, readyAtS - CHARGE_WHINE.whineLeadS),
+    readyAtS,
+    cooldownS,
+  });
+}
+
+/**
+ * Dead-trigger detection — a pure read of the same mount records weapons.js services. A press
+ * that cannot produce any shot (every mount cooling down, capacitor dry, overheated, venting, or
+ * unarmed) earns one solenoid clack on the press edge. "Cycling soon" (a mount inside the ready
+ * window) stays silent: the trigger works, it just isn't time.
+ */
+export const DRY_FIRE = Object.freeze({
+  readyWindowS: 0.3,
+  gain: 0.42,
+});
+
+export function resolveDryFireReadiness(player, state) {
+  const mounts = player && player.data && Array.isArray(player.data.weapons) ? player.data.weapons : [];
+  if (!mounts.length) return { clack: true, reason: 'unarmed' };
+  const cap = player && (Number.isFinite(player.cap) ? player.cap
+    : (player.data && player.data.derived && Number.isFinite(player.data.derived.cap)
+      ? player.data.derived.cap : null));
+  const simT = state && Number.isFinite(state.simTime) ? state.simTime : 0;
+  const ventUntil = player.data && Number.isFinite(player.data.weaponVentUntil) ? player.data.weaponVentUntil : -Infinity;
+  const venting = simT < ventUntil;
+  const combat = player.data && player.data.combat;
+  const locked = !!(combat && combat.lockTarget != null && Number(combat.lockProgress) >= 1);
+  let soonestReadyS = Infinity;
+  let anyBlocked = false;
+  for (const w of mounts) {
+    if (!w || typeof w !== 'object') continue;
+    const energyCost = Number.isFinite(w.energyCost) ? w.energyCost : 0;
+    // Continuous beams sip per-tick energy — any meaningful capacitor charge keeps them live.
+    const costNow = w.continuous ? energyCost / 60 : energyCost;
+    const heatPerShot = Number.isFinite(w.heat) && w.heat > 0 ? w.heat : 0;
+    const heatMax = heatPerShot > 0 && Number.isFinite(w.heatMax) && w.heatMax > 0 ? w.heatMax : Infinity;
+    const heat = Number.isFinite(w._heat) ? w._heat : 0;
+    // Homing tubes only release with a lock; an unlocked tube counts as blocked-by-lock.
+    const lockBlocked = w.tracking === 'homing' && !locked;
+    const blocked = venting || lockBlocked
+      || (cap != null && cap < costNow)
+      || heat >= heatMax;
+    if (blocked) { anyBlocked = true; continue; }
+    const readyIn = Math.max(0, Number.isFinite(w._cooldown) ? w._cooldown : 0);
+    if (readyIn < soonestReadyS) soonestReadyS = readyIn;
+  }
+  if (soonestReadyS === Infinity) return { clack: true, reason: anyBlocked ? 'blocked' : 'unarmed' };
+  return soonestReadyS > DRY_FIRE.readyWindowS
+    ? { clack: true, reason: 'cycling' }
+    : { clack: false, reason: 'armed' };
+}
+
+/** Radio punctuation timings: key-in click leads the voice, squelch tail follows it. */
+export const BARK_PUNCT = Object.freeze({
+  keyLeadS: 0.09,
+  tailPadS: 0.03,
+  keyGain: 0.5,
+  tailGain: 0.42,
+  popupTailDelayS: 0.12,
+});
+
 // Weapon-id / kind -> SFX recipe id. Player & NPC weapon defIds are 'wpn_*'; the combat:fire
 // payload carries weaponId. We classify by substring so any catalog id resolves.
 function recipeForWeapon(weaponId) {
@@ -1144,6 +1368,17 @@ export const audio = {
     rt._bulletTimePitch = 1;
     rt._bulletTimeMusicMult = 1;
     rt._bulletTimeFilters = [];
+    // --- psychoacoustic drama layer ---
+    rt._hush = null;               // active breathless-moment envelope (see HUSH / hushGainAt)
+    rt._lastWhipMs = -1e9;         // wallclock of last near-miss whip-crack (min-gap collapse)
+    rt._breachActive = false;      // hysteresis latch for resolveBreachState
+    rt._breachIntensity = 0;       // smoothed 0..1 muffle depth
+    rt._breachCutHz = HULL_BREACH_MIX.openHz; // last low-pass target written (skip rewrites)
+    rt._breachNextGroanS = 0;      // ctx.currentTime of next scheduled stress groan
+    rt._breachFilters = [];        // per-bus low-pass nodes, built with the graph
+    rt._breachBed = null;          // {noise, noiseGain, sub, subGain} conduction bed
+    rt._chargeWhineUntilS = 0;     // ctx.currentTime: one heavy spool at a time
+    rt._fireHeldPrev = false;      // input.fire edge detect for the dead-trigger clack
     if (rt.bandBed && typeof rt.bandBed.destroy === 'function') rt.bandBed.destroy();
     rt.bandBed = null;
     rt._bandBedIntent = { active: false, reason: 'not-tuned' };
@@ -1166,6 +1401,9 @@ export const audio = {
       if (!p || p.ownerStillFiring !== true) this._stopBeam(p && p.ownerId);
     });
     bus.on('projectile:hit', (p) => this._onHit(p, false));
+    // A hostile round crossed the player's near-miss tube without hitting — physics already
+    // dedupes per projectile; audio owns the supersonic crack that makes "inches" felt.
+    bus.on('projectile:nearMiss', (p) => this._onNearMissAudio(p));
     bus.on('combat:damage', (p) => this._onDamage(p));
     bus.on('collision', (p) => this._onCollision(p));
     bus.on('shieldDown', (p) => {
@@ -1239,6 +1477,9 @@ export const audio = {
         position: p && p.pos,
         gain: clamp(0.55 + hits * 0.08, 0.55, 1),
       });
+      // A charge that lands on several hulls is a massive event — let the world hold its breath
+      // under it so the detonation reads as colossal instead of merely loud.
+      if (hits >= 4) this._triggerHush({ kind: 'structure', pos: p && p.pos });
     });
     // Low-fuel alarm: fuel:empty fired with no sound (no warning before you're stranded). A short
     // alert cue surfaces the emergency. (The continuous low-health alarm is a separate poller.)
@@ -1654,13 +1895,33 @@ export const audio = {
       filter.Q.value = 0.55;
       filter.connect(sfxBus);
     }
-    engineBus.connect(engineSlowFilter);
-    ambientBus.connect(ambientSlowFilter);
-    combatBus.connect(combatSlowFilter);
+    // Hull-breach depressurization: one low-pass per world-facing bus (engine/ambient/combat
+    // ahead of the slow-time stage, music straight into master). Wide open at boot — the
+    // `_updateHullBreach` poller pulls the cutoffs down while the cabin is venting. UI/comms
+    // bypass it on purpose: cockpit speakers and the radio live inside the pressure hull.
+    const engineBreach = ctx.createBiquadFilter();
+    const ambientBreach = ctx.createBiquadFilter();
+    const combatBreach = ctx.createBiquadFilter();
+    const musicBreach = ctx.createBiquadFilter();
+    for (const filter of [engineBreach, ambientBreach, combatBreach, musicBreach]) {
+      filter.type = 'lowpass';
+      filter.frequency.value = HULL_BREACH_MIX.openHz;
+      filter.Q.value = 0.5;
+    }
+    engineBreach.connect(engineSlowFilter);
+    ambientBreach.connect(ambientSlowFilter);
+    combatBreach.connect(combatSlowFilter);
+    musicBreach.connect(master);
+    rt._breachFilters = [engineBreach, ambientBreach, combatBreach, musicBreach];
+    rt._breachCutHz = HULL_BREACH_MIX.openHz;
+    rt._breachBed = null;
+    engineBus.connect(engineBreach);
+    ambientBus.connect(ambientBreach);
+    combatBus.connect(combatBreach);
     uiBus.connect(sfxBus);
     commsBus.connect(sfxBus);
     sfxBus.connect(master);
-    musicBus.connect(master);
+    musicBus.connect(musicBreach);
     // PQ-158.05: one convolver per environment class, wet-tapped from the two mix buses.
     if (rt._environmentMix && typeof rt._environmentMix.destroy === 'function') rt._environmentMix.destroy();
     rt._environmentMix = createEnvironmentMixRuntime(ctx, master);
@@ -1841,6 +2102,13 @@ export const audio = {
     silence(rt.brakeGain);
     silence(rt.tetherHum);
     silence(rt.tetherOverloadGain);
+    if (rt._breachBed) {
+      silence(rt._breachBed.noiseGain);
+      silence(rt._breachBed.subGain);
+      // Track the hard-written values so the next breach update re-asserts the live targets.
+      rt._breachBedGainW = 0.0001;
+      rt._breachSubGainW = 0.0001;
+    }
     // These params were just hard-written behind the bed updaters' backs. Drop their cached
     // targets so resume re-asserts the live value even when it happens to equal the cached one
     // (e.g. still braking across a pause, where a skip would leave the hiss silenced forever).
@@ -1900,29 +2168,35 @@ export const audio = {
 
     const sfxVal = a.sfx == null ? 0.7 : a.sfx;
 
+    const nowMs = this._wallClockMs();
+    // Breathless-moment envelope: the world ducks under a massive event so the roar that follows
+    // reads as colossal. Master is left alone (it's the user's knob); the interior ui/comms buses
+    // take a softened cut so a critical alert can still ghost through the silence.
+    const hush = this._hushGainFor(nowMs);
+    const hushSoft = 1 - (1 - hush) * 0.55;
+
     const engineVal = a.engine == null ? 0.7 : a.engine;
-    const engineTarget = linearGain(sfxVal) * linearGain(engineVal) * 0.12589;
+    const engineTarget = linearGain(sfxVal) * linearGain(engineVal) * 0.12589 * hush;
     ramp('engine', rt.engineBus.gain, engineTarget);
 
     const sidechain = rt.sidechainDuck || 1.0;
     const ambientVal = a.ambient == null ? 0.7 : a.ambient;
-    const nowMs = this._wallClockMs();
     const ambientDuck = rt._weightDuckEnvelope
       ? weightDuckGainForTarget('ambient', rt._weightDuckEnvelope, nowMs)
       : 1;
-    const ambientTarget = linearGain(sfxVal) * linearGain(ambientVal) * 0.06309 * sidechain * ambientDuck;
+    const ambientTarget = linearGain(sfxVal) * linearGain(ambientVal) * 0.06309 * sidechain * ambientDuck * hush;
     ramp('ambient', rt.ambientBus.gain, ambientTarget);
 
     const combatVal = a.combat == null ? 0.7 : a.combat;
-    const combatTarget = linearGain(sfxVal) * linearGain(combatVal) * 0.25119;
+    const combatTarget = linearGain(sfxVal) * linearGain(combatVal) * 0.25119 * hush;
     ramp('combat', rt.combatBus.gain, combatTarget);
 
     const uiVal = a.ui == null ? 0.7 : a.ui;
-    const uiTarget = linearGain(sfxVal) * linearGain(uiVal) * 0.1;
+    const uiTarget = linearGain(sfxVal) * linearGain(uiVal) * 0.1 * hushSoft;
     ramp('ui', rt.uiBus.gain, uiTarget);
 
     const commsVal = a.comms == null ? 0.7 : a.comms;
-    const commsTarget = linearGain(sfxVal) * linearGain(commsVal) * 0.15849;
+    const commsTarget = linearGain(sfxVal) * linearGain(commsVal) * 0.15849 * hushSoft;
     ramp('comms', rt.commsBus.gain, commsTarget);
 
     const musicVal = a.music == null ? 0.32 : a.music;
@@ -1935,7 +2209,7 @@ export const audio = {
     const weightDuck = rt._weightDuckEnvelope
       ? weightDuckGainForTarget('music', rt._weightDuckEnvelope, nowMs)
       : 1;
-    const musicTarget = musicSilenced ? 0 : rt._musicBase * (rt._bulletTimeMusicMult || 1) * weightDuck;
+    const musicTarget = musicSilenced ? 0 : rt._musicBase * (rt._bulletTimeMusicMult || 1) * weightDuck * hush;
     ramp('music', rt.musicBus.gain, musicTarget, musicSilenced);
     // The mine bus is NOT ramped here: its envelope is the law's enter/retract fade (§9, ≤600 ms
     // in), owned by `_updateMine`. It still inherits master + sfx/ambient sliders through
@@ -2094,6 +2368,8 @@ export const audio = {
       detune: signature.detune,
       entity: owner,
     });
+    // Heavy mounts earn their capacitor spool on the recharge tail (see _maybeChargeWhine).
+    this._maybeChargeWhine(p, owner);
   },
 
   _startBeam(ownerId, pos, owner = null) {
@@ -2254,6 +2530,9 @@ export const audio = {
     
     if (isCapital && ctx) {
       this._duckMusic();
+      // Breathless beat: the world goes quiet under the delayed explosion so its roar returns
+      // against silence — scale reads through the contrast, not the loudness.
+      this._triggerHush({ kind: 'capital', pos: p.pos });
       const radius = p.victimRadius || p.radius || 120;
       const pos1 = {
         x: p.pos.x + (Math.random() - 0.5) * radius * 0.7,
@@ -2291,7 +2570,240 @@ export const audio = {
     // to non-ship physical destructions to avoid doubling.
     if (p.type === 'drone' || p.type === 'wreck' || p.type === 'station') {
       this.play(p.type === 'station' ? 'sfx_explosion_large' : 'sfx_explosion_small', { position: p.pos, gain: 0.8 });
+      if (p.type === 'station') this._triggerHush({ kind: 'structure', pos: p.pos });
     }
+  },
+
+  // =========================================================================
+  // Psychoacoustic drama layer — runtime
+  // =========================================================================
+
+  /**
+   * Hostile round crossed the player's near-miss tube. Physics already dedupes per projectile and
+   * gates by target/team; audio owns the supersonic whip-crack layered over the wide presentation
+   * whoosh. Positioned at the crossing point so the crack lands on the correct ear.
+   */
+  _onNearMissAudio(p) {
+    if (!p || p.targetId !== this.state.playerId) return;
+    const rt = this.rt;
+    if (!rt || !rt.ctx || rt._paused) return;
+    const nowMs = this._wallClockMs();
+    if (nowMs - rt._lastWhipMs < NEAR_MISS_CRACK.minGapMs) return;
+    rt._lastWhipMs = nowMs;
+    const crack = resolveNearMissCrack({ distance: p.distance });
+    this.play('sfx_wpn_whip_crack', {
+      position: p.pos || null,
+      gain: crack.gain,
+      rate: crack.rate,
+    });
+  },
+
+  /**
+   * Start a breathless-moment envelope. A live hush keeps its floor: a new envelope replaces it
+   * only when it digs deeper than the world currently sits, or extends the moment at depth.
+   */
+  _triggerHush(input = {}) {
+    const rt = this.rt;
+    if (!rt) return;
+    const listener = this._playerPos();
+    const pos = input.pos;
+    const distance = pos && Number.isFinite(pos.x) && Number.isFinite(pos.z) && listener
+      ? Math.hypot(pos.x - listener.x, pos.z - listener.z)
+      : null;
+    const nowMs = this._wallClockMs();
+    const env = resolveHushEnvelope({ kind: input.kind, distance }, nowMs);
+    if (!env) return;
+    const cur = rt._hush;
+    if (cur) {
+      const curState = hushGainAt(cur, nowMs);
+      if (!curState.done) {
+        const deeper = env.depth < curState.gain - 0.001;
+        const extendsAtDepth = env.depth <= cur.depth + 0.001 && env.endMs > (cur.endMs || 0);
+        if (!deeper && !extendsAtDepth) return;
+      }
+    }
+    rt._hush = env;
+  },
+
+  /** Current hush multiplier (1 = world open). Evaluated per frame inside _applySettings. */
+  _hushGainFor(nowMs) {
+    const rt = this.rt;
+    const env = rt && rt._hush;
+    if (!env) return 1;
+    const scratch = rt._hushScratch || (rt._hushScratch = {});
+    const r = hushGainAt(env, nowMs, scratch);
+    if (r.done) rt._hush = null;
+    return r.gain;
+  },
+
+  /**
+   * Capacitor anticipation: combat:fire is a post-shot receipt, so the heavy mount's spool is
+   * scheduled against its fresh cooldown — the whine crests as the capacitor tops off, then a
+   * small ready tick marks the trigger live again. NPC heavies get the same treatment at
+   * distance. One spool at a time: a battery of heavies shares the anticipation.
+   */
+  _maybeChargeWhine(p, owner) {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || ctx.state !== 'running' || rt._paused) return;
+    const mounts = owner && owner.data && Array.isArray(owner.data.weapons) ? owner.data.weapons : null;
+    let mount = null;
+    if (mounts) {
+      for (const w of mounts) {
+        if (w && p.hardpointIdx != null && w.slotIndex === p.hardpointIdx) { mount = w; break; }
+      }
+      if (!mount) {
+        for (const w of mounts) {
+          if (w && w.defId === p.weaponId) { mount = w; break; }
+        }
+      }
+    }
+    const plan = resolveChargeWhine({
+      weaponId: p.weaponId,
+      mountClass: mount && mount.mountClass,
+      // A heavy defId with no runtime mount record (e.g. an NPC capital) still spools — the
+      // weapon-id gate inside resolveChargeWhine keeps light mounts silent either way.
+      cooldownS: mount && Number.isFinite(mount._cooldown) ? mount._cooldown : 1.1,
+      nowS: ctx.currentTime,
+    });
+    if (!plan) return;
+    if (ctx.currentTime < rt._chargeWhineUntilS) return;
+    rt._chargeWhineUntilS = plan.readyAtS;
+    const isPlayer = owner && owner.id === this.state.playerId;
+    const positional = isPlayer ? null : { position: p.origin || (owner && owner.pos) || null, entity: owner };
+    this.play('sfx_wpn_capacitor_charge', {
+      gain: CHARGE_WHINE.whineGain,
+      startTime: plan.whineAtS,
+      ...(positional || {}),
+    });
+    this.play('sfx_wpn_capacitor_ready', {
+      gain: CHARGE_WHINE.readyGain,
+      startTime: plan.readyAtS + 0.01,
+      ...(positional || {}),
+    });
+  },
+
+  /**
+   * Per-frame hull-breach acoustics. Reads the player hull each frame (pure read), keeps the
+   * engage/release hysteresis, smooths the muffle intensity, and writes at most one
+   * setTargetAtTime per bus filter when the target has moved ~2%. No per-frame allocation —
+   * the bed nodes and the filter list are built once with the graph.
+   */
+  _updateHullBreach(now, dt) {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || ctx.state !== 'running') return;
+    const player = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    const hullPct = player && player.hullMax > 0 ? clamp(player.hull / player.hullMax, 0, 1) : 1;
+    const alive = !!(player && player.alive);
+    const docked = !!((player && player.flags && player.flags.docked)
+      || rt._docked
+      || (this.state && this.state.ui && this.state.ui.docked));
+    const input = rt._breachInput || (rt._breachInput = {});
+    input.hullPct = hullPct; input.alive = alive; input.docked = docked; input.active = rt._breachActive;
+    const st = resolveBreachState(input, rt._breachScratch || (rt._breachScratch = {}));
+    rt._breachActive = st.active;
+    if (st.edge === 'enter') {
+      this._ensureBreachBed();
+      this.play('sfx_hull_decompress', { gain: 0.75 });
+      rt._breachNextGroanS = now + 1.4;
+    } else if (st.edge === 'exit' && !st.exitSilent) {
+      this.play('sfx_hull_repressurize', { gain: 0.5 });
+    }
+    // A rebuilt AudioContext drops the bed without a new enter edge — rebuild while breached.
+    if (st.active && !rt._breachBed) this._ensureBreachBed();
+
+    const k = 1 - Math.exp(-(Number.isFinite(dt) && dt > 0 ? dt : 0.016) / HULL_BREACH_MIX.intensityTauS);
+    rt._breachIntensity += (st.intensity - rt._breachIntensity) * k;
+    if (!st.active && rt._breachIntensity < 0.005) rt._breachIntensity = 0;
+    const intensity = rt._breachIntensity;
+
+    // Pull the world buses into a hollow low-pass while breached.
+    const cutHz = HULL_BREACH_MIX.openHz * Math.pow(HULL_BREACH_MIX.minCutHz / HULL_BREACH_MIX.openHz, intensity);
+    if (Math.abs(cutHz - rt._breachCutHz) / Math.max(1, rt._breachCutHz) > 0.02) {
+      for (const f of rt._breachFilters) {
+        try { f.frequency.setTargetAtTime(cutHz, now, HULL_BREACH_MIX.filterTauS); } catch (_) {}
+      }
+      rt._breachCutHz = cutHz;
+    }
+
+    // Conduction bed — the ship's rumble arriving through the seat instead of the air.
+    const bed = rt._breachBed;
+    if (bed) {
+      const bedTarget = intensity * HULL_BREACH_MIX.bedPeak;
+      const subTarget = Math.pow(intensity, 1.6) * HULL_BREACH_MIX.subPeak;
+      if (Math.abs(bedTarget - (rt._breachBedGainW || 0)) > 0.0008) {
+        try { bed.noiseGain.gain.setTargetAtTime(Math.max(0.0001, bedTarget), now, 0.12); } catch (_) {}
+        rt._breachBedGainW = bedTarget;
+      }
+      if (Math.abs(subTarget - (rt._breachSubGainW || 0)) > 0.0008) {
+        try { bed.subGain.gain.setTargetAtTime(Math.max(0.0001, subTarget), now, 0.12); } catch (_) {}
+        rt._breachSubGainW = subTarget;
+      }
+    }
+
+    // The frame arguing with the vacuum — randomized spacing is cosmetic only.
+    if (st.active && now >= rt._breachNextGroanS) {
+      this.play('sfx_hull_stress_groan', { gain: 0.28 + 0.3 * intensity });
+      rt._breachNextGroanS = now + HULL_BREACH_MIX.groanMinS + Math.random() * HULL_BREACH_MIX.groanVarS;
+    }
+  },
+
+  /** Lazily build the conducted-rumble bed (slowed noise through a deep low-pass + a 34 Hz sub). */
+  _ensureBreachBed() {
+    const rt = this.rt, ctx = rt && rt.ctx;
+    if (!ctx || rt._breachBed || !rt.sfxBus) return;
+    try {
+      const noise = ctx.createBufferSource();
+      noise.buffer = getNoiseBuffer(ctx, rt._caches);
+      noise.loop = true;
+      try { noise.playbackRate.value = 0.5; } catch (_) {}
+      const noiseFilter = ctx.createBiquadFilter();
+      noiseFilter.type = 'lowpass';
+      noiseFilter.frequency.value = 240;
+      noiseFilter.Q.value = 0.6;
+      const noiseGain = ctx.createGain();
+      noiseGain.gain.value = 0.0001;
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      // sfxBus is downstream of the breach low-pass stage — the bed is conducted, not airborne,
+      // so it stays present while the world outside muffles away.
+      noiseGain.connect(rt.sfxBus);
+      const sub = ctx.createOscillator();
+      sub.type = 'sine';
+      sub.frequency.value = 34;
+      const subGain = ctx.createGain();
+      subGain.gain.value = 0.0001;
+      sub.connect(subGain);
+      subGain.connect(rt.sfxBus);
+      noise.start();
+      sub.start();
+      rt._breachBed = { noise, noiseFilter, noiseGain, sub, subGain };
+      rt._breachBedGainW = 0.0001;
+      rt._breachSubGainW = 0.0001;
+    } catch (_) {}
+  },
+
+  /**
+   * Dead trigger: a fire press that cannot produce a shot (every mount cooling down, capacitor
+   * dry, overheated, venting, unarmed, or docked) gets one solenoid clack on the press edge.
+   * Held fire does not repeat it — the edge is the complaint.
+   */
+  _updateDryFire() {
+    const rt = this.rt;
+    const input = this.state && this.state.input;
+    const held = !!(input && input.fire);
+    const was = rt._fireHeldPrev;
+    rt._fireHeldPrev = held;
+    if (!held || was) return;
+    const player = this.state && this.state.entities && typeof this.state.entities.get === 'function'
+      ? this.state.entities.get(this.state.playerId)
+      : null;
+    if (!player || player.alive === false) return;
+    if ((player.flags && player.flags.docked) || rt._docked
+      || (this.state.ui && this.state.ui.docked)) return;
+    const readiness = resolveDryFireReadiness(player, this.state);
+    if (readiness.clack) this.play('sfx_wpn_dry_fire', { gain: DRY_FIRE.gain });
   },
 
   _onPickupCollected(p) {
@@ -2346,8 +2858,10 @@ export const audio = {
 
   _onPlayerDeath(p) {
     // Big dramatic explosion at the player's location — use the dedicated heavy recipe, no position
-    // (player is always at center, full volume). Duck the music so it hits hard.
+    // (player is always at center, full volume). Duck the music so it hits hard. The death hush
+    // drains the world out SLOWLY around the blast, then holds the silence while the wreck tumbles.
     this._duckMusic(2.0);
+    this._triggerHush({ kind: 'death' });
     this.play('sfx_player_death', { gain: 1.0 });
   },
 
@@ -3209,11 +3723,23 @@ export const audio = {
       line: payload.text || payload.line,
       mechanic: payload.mechanic || payload.kind === 'mechanic',
     });
+    const rt = this.rt, ctx = rt && rt.ctx;
+    const t0 = ctx ? ctx.currentTime : 0;
+    // Industrial punctuation: the mic solenoid keys open, the voice rides the carrier, then the
+    // squelch tail collapses it. Scheduled starts keep the gap tight and sample-accurate.
+    this.play('sfx_comms_key_click', { gain: BARK_PUNCT.keyGain, startTime: t0 });
     this.play(resolved.recipeId, {
       gain: resolved.gain,
       rate: resolved.speech.rate,
       barkSampleId: resolved.sampleId,
       critical: true,
+      startTime: t0 + BARK_PUNCT.keyLeadS,
+    });
+    const speechDur = resolved.speech && Number.isFinite(resolved.speech.durationS)
+      ? resolved.speech.durationS : 0.9;
+    this.play('sfx_comms_squelch_tail', {
+      gain: BARK_PUNCT.tailGain,
+      startTime: t0 + BARK_PUNCT.keyLeadS + speechDur + BARK_PUNCT.tailPadS,
     });
     this._emitPresentationCaption(resolved.caption, {
       assertive: resolved.assertive,
@@ -4059,6 +4585,10 @@ export const audio = {
         rt._musicDirty = false;
       }
       this._tickAlarms();
+      // Psychoacoustic drama pollers — hull depressurization muffle + the dead-trigger clack.
+      // Both are pure sim reads and parameter smoothing; no allocation on this path.
+      this._updateHullBreach(now, dt);
+      this._updateDryFire();
     }
     if (rt._loopPositionDirty || now >= (rt._nextLoopPositionUpdate || 0)) {
       this._updateLoopPositions(now);
@@ -4180,6 +4710,12 @@ export const audio = {
     }
 
     this.play(recipeId, { gain: 0.8, startTime, critical });
+    // The carrier lets go a beat after the squelch opens — the key-off tail sells the release.
+    this.play('sfx_comms_squelch_tail', {
+      gain: BARK_PUNCT.tailGain,
+      startTime: startTime + BARK_PUNCT.popupTailDelayS,
+      critical,
+    });
   },
 
   _ensureEngineHum() {
