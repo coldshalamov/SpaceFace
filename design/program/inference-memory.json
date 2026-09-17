@@ -1045,6 +1045,19 @@
       "integration": "live",
       "commit": "c15920890",
       "verification": "focused_green"
+    },
+    {
+      "id": "warden-open-route",
+      "date": "2026-09-17",
+      "wf": "WF-02",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Warden escorts take the lanes: Vael convoy screen, lane tithe, and checkpoint interdiction put the guardian where players meet it",
+      "fingerprint": "verb=screen,subject=warden-pack,sector=multi-lane,domain=wf-02",
+      "references": [],
+      "integration": "live",
+      "commit": "e03449831",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
@@ -1063,6 +1076,14 @@
       "status": "open",
       "date": "2026-08-07",
       "note": "Drill minigame audit (2026-08-07) found a second presentation pipeline, third CSS surface, and sim-pause silence making drilling feel cheap. VERIFY against live code before acting; may be partially repaired since."
+    },
+    {
+      "id": "convoy-choices-dormant",
+      "wf": "WF-18",
+      "severity": "ambient",
+      "status": "open",
+      "date": "2026-09-17",
+      "note": "329-curtain-convoy declares defend/raid/pass but the convoy script has no choose(); the director ignores choices for choiceless scripts, so no convoy offer ever surfaces. Same drift class as 325 (repaired); needs a convoy demand phase or choice removal."
     }
   ],
   "referenceUse": {},
