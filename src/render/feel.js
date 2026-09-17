@@ -38,8 +38,27 @@ import { fillSpeedLineStreak, speedLineRgba } from './speedLineStrokeCache.js';
 // how slow the rate-of-fire is (a single railgun shot should punch more than a pulse laser tick).
 // Fully data-driven: new weapons in WEAPONS[] get scaled automatically, no hardcoded IDs.
 const WEAPON_BY_ID = new Map(WEAPONS.map((w) => [w.id, w]));
+
+// Kinetic crunch (presentation hold). A 1–2 frame interpolation freeze on heavy kinetic /
+// explosive contacts, then the pose and debris burst resume. This is NOT a timeScale dip:
+// the 60 Hz sim keeps stepping; only the render pose update is held. Fast repeaters stay
+// rhythmic (holdS = 0) so they read as ticks, not freezes.
+export const CRUNCH_FRAME_S = 1 / 60;
+export const CRUNCH_HOLD_MIN_S = CRUNCH_FRAME_S;
+export const CRUNCH_HOLD_MAX_S = CRUNCH_FRAME_S * 2;
+export const CRUNCH_MASS_REF = 24;           // torpedo L — curve ceiling
+export const CRUNCH_IMPULSE_REF = 320;       // torpedo authored impulse
+export const CRUNCH_REPEATER_ROF = 3.5;      // /s — at or above this, never hold
+export const CRUNCH_RECOIL_FOV_MAX = 2.8;    // deg — heavy muzzle kick ceiling (below death punch)
+
+const CRUNCH_FAMILY = new Set(['kinetic', 'explosive']);
+
+function weaponRecord(weaponId) {
+  return weaponId != null ? WEAPON_BY_ID.get(weaponId) || null : null;
+}
+
 function recoilWeight(weaponId) {
-  const w = WEAPON_BY_ID.get(weaponId);
+  const w = weaponRecord(weaponId);
   if (!w) return 0.08;   // unknown weapon — small default kick
   let weight = 0.06;     // baseline
   if (w.size === 'M') weight = 0.10;
@@ -50,7 +69,111 @@ function recoilWeight(weaponId) {
   // slow heavy hitters (low rof) punch harder per shot; fast weapons stay light to avoid nausea
   const rof = w.rof || 0;
   if (rof > 0 && rof < 1.5) weight *= 1.3;
-  return Math.min(0.2, weight);
+  // Authored mass is the "kicking the universe" term: a 2 t pulse stays light, a 24 t torpedo
+  // leans on the cap. Size/type still set the family; mass decides how hard that family hits.
+  const mass = Number.isFinite(w.mass) ? Math.max(0, w.mass) : 0;
+  weight *= 0.75 + 0.45 * Math.min(1, mass / CRUNCH_MASS_REF);
+  return Math.min(0.28, weight);
+}
+
+/**
+ * Mass-scaled muzzle kick. Pure. motionReduce returns null so the fire listener can no-op
+ * without touching FOV or trauma. Light repeaters stay under a degree; a torpedo shoves harder.
+ */
+export function resolveKineticRecoil(weaponId, context = {}) {
+  if (context.motionReduce) return null;
+  if (context.photoMode || photoModeFeelPresentation(context.state).silencePunch) return null;
+  if (context.mode && context.mode !== 'flight') return null;
+  const w = weaponRecord(weaponId);
+  const weight = recoilWeight(weaponId);
+  const mass = w && Number.isFinite(w.mass) ? Math.max(0, w.mass) : 0;
+  const massU = Math.min(1, mass / CRUNCH_MASS_REF);
+  const fov = Math.min(
+    CRUNCH_RECOIL_FOV_MAX,
+    RECOIL_FOV_MIN + (RECOIL_FOV_MAX - RECOIL_FOV_MIN) * Math.min(1, weight / 0.2) + massU * 0.85,
+  );
+  const trauma = weight * 0.4 * (1 + massU * 0.65);
+  return Object.freeze({
+    weaponId: weaponId == null ? null : String(weaponId),
+    weight,
+    mass,
+    fov,
+    trauma,
+    stallsSim: false,
+  });
+}
+
+function kineticBody(weapon, payload = {}) {
+  const type = (weapon && weapon.damageType) || payload.type || payload.damageType || '';
+  if (!CRUNCH_FAMILY.has(type)) return null;
+  const mass = weapon && Number.isFinite(weapon.mass) ? Math.max(0, weapon.mass) : 0;
+  const rof = weapon && Number.isFinite(weapon.rof) ? Math.max(0, weapon.rof) : 0;
+  const impulse = weapon && Number.isFinite(weapon.impulsePerHit) ? Math.max(0, weapon.impulsePerHit) : 0;
+  const massU = Math.min(1, mass / CRUNCH_MASS_REF);
+  const impulseU = Math.min(1, impulse / CRUNCH_IMPULSE_REF);
+  const explosive = type === 'explosive' ? 1 : 0;
+  const body = Math.min(1, 0.35 * massU + 0.45 * impulseU + 0.20 * explosive);
+  return { type, mass, rof, impulse, massU, impulseU, explosive, body };
+}
+
+/**
+ * Presentation crunch for a combat:damage receipt. Pure: no DOM, no timeScale, no RNG.
+ * Heavy kinetic / explosive contacts return a 1–2 frame interpolation hold plus mass-scaled
+ * FOV/trauma. Light repeaters return a rhythmic tick (holdS = 0). motionReduce / photo / non-flight
+ * / uninvolved NPC furballs return null.
+ */
+export function resolveKineticCrunch(payload, context = {}) {
+  if (!payload) return null;
+  if (context.motionReduce) return null;
+  if (context.photoMode || photoModeFeelPresentation(context.state).silencePunch) return null;
+  if (context.mode && context.mode !== 'flight') return null;
+  const playerId = context.playerId;
+  const playerInvolved = !!(
+    payload.isPlayer
+    || (playerId != null && (payload.targetId === playerId || payload.attackerId === playerId))
+  );
+  if (!playerInvolved) return null;
+
+  const struck = !!(
+    payload.armorHit || payload.hullHit || payload.shieldHit || payload.brokeShield
+    || payload.shieldAbsorbed || (Number.isFinite(payload.amount) && payload.amount > 0)
+  );
+  if (!struck) return null;
+
+  const weapon = weaponRecord(payload.weaponId);
+  const kin = kineticBody(weapon, payload);
+  if (!kin) return null;
+
+  const heavy = kin.body >= 0.35
+    || (kin.mass >= 8 && kin.impulse >= 100)
+    || (kin.explosive === 1 && kin.mass >= 7);
+  let holdS = 0;
+  if (heavy && !(kin.rof >= CRUNCH_REPEATER_ROF)) {
+    const holdT = Math.min(1, 0.55 * kin.body + 0.45 * kin.impulseU);
+    holdS = CRUNCH_HOLD_MIN_S + (CRUNCH_HOLD_MAX_S - CRUNCH_HOLD_MIN_S) * holdT;
+  }
+
+  const fov = 0.35 + kin.body * (heavy ? 2.45 : 0.75);
+  const trauma = 0.04 + kin.body * (heavy ? 0.30 : 0.07);
+  let id = 'crunch.tick';
+  if (heavy && kin.explosive) id = 'crunch.warhead';
+  else if (heavy && (kin.impulse >= 150 || (kin.rof > 0 && kin.rof < 1.2))) id = 'crunch.rail';
+  else if (heavy) id = 'crunch.slug';
+
+  return Object.freeze({
+    id,
+    holdS,
+    fov,
+    trauma,
+    mass: kin.mass,
+    body: kin.body,
+    stallsSim: false,
+  });
+}
+
+/** True when the current presentation frame must reuse last posed meshes. */
+export function kineticCrunchPresentationHold(state) {
+  return !!(state && state.render && state.render.holdInterpolation);
 }
 
 // Collision impact feel (PQ-139.00). Physics impacts and combat consequence receipts share one
@@ -164,7 +287,13 @@ export function resolveCollisionFeel(impact, context = {}, out = null) {
   if (deltaV < IMPACT_KNOCK_DV) id = 'impact.scrape';
   else if (deltaV < IMPACT_SLAM_DV) id = 'impact.knock';
 
-  if (!out) return Object.freeze({ id, deltaV, hsDur, fov, trauma, kickWu, kickX, kickZ });
+  // Slams also arm a 1–2 frame presentation hold so the hull reads as stopping the universe
+  // before the debris burst. Scrapes stay ticks (holdS = 0); timeScale hit-stop is unchanged.
+  const holdS = deltaV >= IMPACT_SLAM_DV
+    ? CRUNCH_HOLD_MIN_S + (CRUNCH_HOLD_MAX_S - CRUNCH_HOLD_MIN_S) * t
+    : 0;
+
+  if (!out) return Object.freeze({ id, deltaV, hsDur, fov, trauma, kickWu, kickX, kickZ, holdS });
   out.id = id;
   out.deltaV = deltaV;
   out.hsDur = hsDur;
@@ -173,6 +302,7 @@ export function resolveCollisionFeel(impact, context = {}, out = null) {
   out.kickWu = kickWu;
   out.kickX = kickX;
   out.kickZ = kickZ;
+  out.holdS = holdS;
   return out;
 }
 
@@ -474,6 +604,7 @@ export const feel = {
     this._hsRampIn = 0;       // >0 = cinematic ease-in window (death); timeScale ramps 1 -> floor
     this._hsFreezeTimer = 0;  // kill-cam hard-freeze window (timeScale = 0)
     this._hsRequest = { scale: HS_DEPTH }; // reused: frame() performs no request allocation
+    this._crunchHold = 0;     // remaining presentation-hold seconds (interpolation pause, not sim)
     this._collisionHitstopCooldown = 0; // remaining real-time seconds before another collision beat
     this._armedCollisionDeltaV = 0;     // deltaV that armed the current cooldown (upgrade gate)
     this._pendingCollisionFeel = null;  // strongest contact this frame, from either receipt source
@@ -891,11 +1022,29 @@ export const feel = {
       const isPlayer = p.isPlayer || (p.targetId === state.playerId);
       const playerInvolved = isPlayer || p.attackerId === state.playerId;
       const ctrl = this.state.render && this.state.render.cameraCtrl;
+      const mr = !!(this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce);
+      const crunch = resolveKineticCrunch(p, {
+        motionReduce: mr,
+        mode: this.state.mode,
+        photoMode: photoModeFeelPresentation(this.state).silencePunch,
+        playerId: state.playerId,
+        state: this.state,
+      });
 
       if (p.brokeShield) {
         const fov = isPlayer ? FOV_PUNCH_HEAVY : FOV_PUNCH_HEAVY * 0.4;
         this._trigger(HS_SHIELD_BREAK, fov, isPlayer ? VIG_HEAVY : 0, isPlayer ? 'hit' : null);
         if (playerInvolved && ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(0.3);
+        // Heavy kinetic/explosive shield strikes also get the presentation crunch. FOV is
+        // already punched by the shield-break beat; the hold + extra trauma are the mass term.
+        if (crunch) this._applyKineticCrunch(crunch, { fovScale: 0.35, traumaScale: 1 });
+        return;
+      }
+      if (crunch) {
+        this._applyKineticCrunch(crunch);
+        if (isPlayer) {
+          this._trigger(0, 0, VIG_HEAVY * (p.hullHit ? 0.6 : 0.45), 'hit');
+        }
         return;
       }
       if (p.armorHit) {
@@ -964,13 +1113,11 @@ export const feel = {
       if (this.state.mode !== 'flight' || !this._modalClear()) return;
       const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
       if (mr) return;
-      const w = recoilWeight(p.weaponId);
-      // fov punch scaled by weapon weight, clamped to [min, max]
-      const fov = RECOIL_FOV_MIN + (RECOIL_FOV_MAX - RECOIL_FOV_MIN) * (w / 0.2);
-      this._fovPunch = addFovPunch(this._fovPunch, fov);
-      // small camera shake via the controller (trauma is squared internally → 0.04 reads as a nudge)
+      const recoil = resolveKineticRecoil(p.weaponId, { motionReduce: false, mode: 'flight', state: this.state });
+      if (!recoil) return;
+      this._fovPunch = addFovPunch(this._fovPunch, recoil.fov);
       const ctrl = this.state.render && this.state.render.cameraCtrl;
-      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(w * 0.4);
+      if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(recoil.trauma);
     });
 
     // Boost pre-kick (F6): the dash fires on the press edge now, so the camera needs its
@@ -1257,6 +1404,7 @@ export const feel = {
     if (mr) return;
 
     this._trigger(pending.hsDur, pending.fov, 0, null);
+    if (pending.holdS > 0) this._armPresentationHold(pending.holdS);
     const ctrl = this.state.render && this.state.render.cameraCtrl;
     if (ctrl && typeof ctrl.addTrauma === 'function') ctrl.addTrauma(pending.trauma);
     // Directed kick rides the SAME armed beat — the cooldown above rate-limits it identically, so
@@ -1320,6 +1468,37 @@ export const feel = {
     }
   },
 
+  _applyKineticCrunch(crunch, scales = null) {
+    if (!crunch) return;
+    if (this.state.mode !== 'flight' || !this._modalClear()) return;
+    const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+    if (mr) return;
+    if (photoModeFeelPresentation(this.state).silencePunch) return;
+    const fovScale = scales && Number.isFinite(scales.fovScale) ? scales.fovScale : 1;
+    const traumaScale = scales && Number.isFinite(scales.traumaScale) ? scales.traumaScale : 1;
+    this._armPresentationHold(crunch.holdS);
+    if (crunch.fov * fovScale > 0) this._fovPunch = addFovPunch(this._fovPunch, crunch.fov * fovScale);
+    const ctrl = this.state.render && this.state.render.cameraCtrl;
+    if (crunch.trauma * traumaScale > 0 && ctrl && typeof ctrl.addTrauma === 'function') {
+      ctrl.addTrauma(crunch.trauma * traumaScale);
+    }
+  },
+
+  _armPresentationHold(holdS) {
+    const dur = Number.isFinite(holdS) ? Math.max(0, holdS) : 0;
+    if (!(dur > 0)) return;
+    this._crunchHold = Math.max(this._crunchHold || 0, dur);
+    this._publishCrunchHold();
+  },
+
+  _publishCrunchHold() {
+    const render = this.state && this.state.render;
+    if (!render) return;
+    const remaining = this._crunchHold > 0 ? this._crunchHold : 0;
+    render.holdInterpolation = remaining > 0;
+    render.kineticCrunchHoldRemaining = remaining;
+  },
+
   // Arm a punch. `vigCls` selects which vignette gradient ('hit'|'death'|null).
   _trigger(hsDur, fovAdd, vigPeak, vigCls) {
     // Cooperative gate: never punch during a deliberate freeze or outside flight. If a modal just
@@ -1376,6 +1555,8 @@ export const feel = {
     this._hsRampIn = 0;
     this._hsFreezeTimer = 0;
     this.timeEffects.clear('feel:hit-stop');
+    this._crunchHold = 0;
+    this._publishCrunchHold();
     this._collisionHitstopCooldown = 0;
     this._armedCollisionDeltaV = 0;
     this._pendingCollisionFeel = null;
@@ -1389,6 +1570,13 @@ export const feel = {
     void state;
 
     // ---- hit-stop timer updates only its time-effects request ----
+    const mr = this.state.settings && this.state.settings.video && this.state.settings.video.motionReduce;
+    if (mr && this._crunchHold > 0) {
+      this._crunchHold = 0;
+    } else if (this._crunchHold > 0) {
+      this._crunchHold = Math.max(0, this._crunchHold - frameDt);
+    }
+    this._publishCrunchHold();
     if (this._collisionHitstopCooldown > 0) {
       this._collisionHitstopCooldown = Math.max(0, this._collisionHitstopCooldown - frameDt);
     }
