@@ -2038,6 +2038,7 @@ export const vfx = {
     add('mining:stop', () => this._onMiningStop());
     add('mining:tick', (p) => this._onMiningTick(p));
     add('mining:yield', (p) => this._onMiningYield(p));
+    add('weapons:vent', (p) => this._onWeaponVent(p));
     add('station:sideEvent', (p) => this._onStationSideEvent(p));
     add('ship:thrust', (p) => this._onThrust(p));
     add('ship:boostStart', (p) => this._onBoost(p, true));
@@ -9483,10 +9484,11 @@ export const vfx = {
     // Top-50 rank-9: denser contact spray so beam mining reads as real work, not a whisper.
     // Spray sparks outward from the contact point, biased away from the miner so they fan
     // off the rock face like molten chips. Bigger, brighter, more numerous than before.
-    const player = this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId);
+    const miner = (p && (p.sourceEntityId || p.droneId || p.entityId) && this._ent(p.sourceEntityId || p.droneId || p.entityId))
+      || (this.helpers && this.helpers.player ? this.helpers.player() : this._ent(this.state.playerId));
     let backA = null;
-    if (player) {
-      const dx = player.pos.x - pos.x, dz = player.pos.z - pos.z;
+    if (miner && miner.pos) {
+      const dx = miner.pos.x - pos.x, dz = miner.pos.z - pos.z;
       if (dx * dx + dz * dz > 1) backA = Math.atan2(dz, dx);
     }
     // Hot white-to-ore sparks — wider spray, faster, longer life
@@ -9564,6 +9566,35 @@ export const vfx = {
     if (this._weaponPresenter && this._weaponPresenter.quarks) {
       const local = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
       this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, 0, 1, 0, 16);
+    }
+  },
+
+  _onWeaponVent(payload) {
+    if (!this._scene || !payload || payload.phase !== 'start') return;
+    const owner = this._ent(payload.ownerId);
+    if (!owner || !owner.pos) return;
+    const heading = Number.isFinite(owner.rot) ? owner.rot : 0;
+    // Dual lateral high-velocity steam vent jets perpendicular to ship heading
+    for (const sgn of [1, -1]) {
+      const jetAngle = heading + sgn * (Math.PI / 2);
+      const jvx = Math.cos(jetAngle) * 32;
+      const jvz = Math.sin(jetAngle) * 32;
+      for (let k = 0; k < 4; k++) {
+        this._spawnSprite(SPR_PUFF, owner.pos.x, 0.2, owner.pos.z,
+          0.55 + Math.random() * 0.2, 1.2, 3.5, 0.45, 0.0,
+          '#e2ecf8', jvx + (Math.random() - 0.5) * 8, jvz + (Math.random() - 0.5) * 8,
+          2.0, jetAngle);
+      }
+    }
+    if (this._weaponPresenter && this._weaponPresenter.distortion) {
+      this._weaponPresenter.distortion.spawn({
+        x: owner.pos.x,
+        y: 0.3,
+        z: owner.pos.z,
+        radius: (owner.radius || 5) * 2.2,
+        strength: 0.6,
+        life: 1.8,
+      });
     }
   },
 
@@ -10941,10 +10972,16 @@ export const vfx = {
           continue;
         }
         const width = Math.max(1.45, (entity.radius || 14) * 0.095);
-        this._ribbonTrails.set(
-          entity.id,
-          createRibbonTrail(this._scene, this._engineColor(entity), NPC_RIBBON_SEGMENTS, width),
-        );
+        const trail = createRibbonTrail(this._scene, this._engineColor(entity), NPC_RIBBON_SEGMENTS, width);
+        this._ribbonTrails.set(entity.id, trail);
+        // A lazily-created trail carries a never-compiled material and a never-uploaded geometry;
+        // without the pending latch its first thrust frame pays both inside the presented pass
+        // (diag20 GPU brick: unstamped SF_RibbonTrail + a physical,STANDARD link).
+        const trailRender = this.state && this.state.render;
+        const trailMesh = trail && typeof trail.getMesh === 'function' ? trail.getMesh() : null;
+        if (trailMesh && trailRender && typeof trailRender.compileObjectPipelines === 'function') {
+          Promise.resolve(trailRender.compileObjectPipelines(trailMesh)).catch(() => null);
+        }
         ribbons += 1;
       }
     }
@@ -11005,6 +11042,12 @@ export const vfx = {
       textures,
       maxShips: FLEET_MAX_SHIPS,
       socketsPerShip: FLEET_SOCKETS_PER_SHIP,
+      admitSubjectPipelines: (subject) => {
+        const render = this.state && this.state.render;
+        return render && typeof render.compileObjectPipelines === 'function'
+          ? render.compileObjectPipelines(subject)
+          : null;
+      },
     });
     fleet.attachToScene(this._scene);
     const player = this.state.entities && this.state.entities.get(this.state.playerId);

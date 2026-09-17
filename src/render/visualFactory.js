@@ -745,6 +745,8 @@ function weaponProp(wdefId, facing, size, pal, R, tier) {
 
   // barrel shape by weapon type — each reads as a distinct weapon system
   let barrel;
+  const coolingFins = [];
+  g.userData.coolingFins = coolingFins;
   if (isHoming) {
     // missile/torpedo rack: cluster of launch tubes + a loader rail
     const rack = new THREE.Group();
@@ -771,8 +773,10 @@ function weaponProp(wdefId, facing, size, pal, R, tier) {
     }
     // heat-dissipation fins along the housing
     for (let i = 0; i < 3; i++) {
-      const fin = new THREE.Mesh(getGeometry('wpn:bfin', () => new THREE.BoxGeometry(0.04, 0.14, 0.04)), housingMat);
+      const finMat = housingMat.clone();
+      const fin = new THREE.Mesh(getGeometry('wpn:bfin', () => new THREE.BoxGeometry(0.04, 0.14, 0.04)), finMat);
       fin.position.set((-0.1 - i * 0.12) * s, 0.18 * s, 0); fin.scale.setScalar(s); barrel.add(fin);
+      coolingFins.push(fin);
     }
   } else {
     // kinetic/energy gun: a long barrel + recoil housing + COOLING FINS (the signature of a real gun)
@@ -789,8 +793,10 @@ function weaponProp(wdefId, facing, size, pal, R, tier) {
     const finCount = size === 'L' ? 5 : size === 'M' ? 4 : 3;
     for (let i = 0; i < finCount; i++) {
       for (const sgn of [1, -1]) {
-        const fin = new THREE.Mesh(getGeometry('wpn:fin', () => new THREE.BoxGeometry(0.05, 0.03, 0.26)), housingMat);
+        const finMat = housingMat.clone();
+        const fin = new THREE.Mesh(getGeometry('wpn:fin', () => new THREE.BoxGeometry(0.05, 0.03, 0.26)), finMat);
         fin.position.set((0.0 + i * 0.14) * s, sgn * 0.17 * s, 0); fin.scale.set(s, s, s); barrel.add(fin);
+        coolingFins.push(fin);
       }
     }
     // a ventral ammo/feed belt box on kinetic guns (damageType hint)
@@ -2791,6 +2797,18 @@ function buildProjectile(e) {
       }), SHARED_MATERIAL_ROLE.HULL)));
     tip.position.x = R * 1.4; tip.scale.setScalar(R); g.add(tip);
     tip.name = 'ProjectileMissileWarhead';
+    const isTorpedo = presentation.variant === 'torpedo' || wid.includes('torpedo');
+    if (isTorpedo) {
+      g.userData.isTorpedo = true;
+      tip.material = tip.material.clone();
+      tip.material.emissive = new THREE.Color(0xff3300);
+      tip.material.emissiveIntensity = 0.6;
+      g.userData.warhead = tip;
+      tip.userData.animated = true;
+    } else {
+      g.userData.isMissile = true;
+    }
+    g.userData.animated = true;
     const exhaust = boltMesh('proj:missile:exhaust',
       () => new THREE.CapsuleGeometry(0.20, 1.55, 3, 8).rotateZ(Math.PI / 2), '#fff8df', color, 'missile-exhaust', R);
     exhaust.name = 'ProjectileMissileExhaust';

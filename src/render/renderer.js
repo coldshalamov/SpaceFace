@@ -154,6 +154,7 @@ import { globalShipMicroMotion } from './shipMicroMotion.js';
 import { globalAsteroidMotion } from './asteroidMotionPresentation.js';
 import { globalPickupMotion } from './pickupMotionPresentation.js';
 import { globalInfrastructureMotion } from './infrastructureMotion.js';
+import { globalProjectileMotion } from './projectileMotionPresentation.js';
 import { createLivingHullPresentation } from './livingHullPresentation.js';
 import { createCrucibleGhostPresentation } from './crucibleGhost.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
@@ -1458,8 +1459,8 @@ const SHIELD_POOL_FRAG = /* glsl */`
 const SHIELD_PRESENTATION_EPSILON = 0.015;
 
 /** Shields read on impact instead of coating every healthy ship in a permanent translucent sphere. */
-export function shouldPresentShieldBubble(shield, flash, hasContact = false) {
-  return Number(shield) > 0 && (Number(flash) > SHIELD_PRESENTATION_EPSILON || Boolean(hasContact));
+export function shouldPresentShieldBubble(shield, flash, hasContact = false, collapseTime = 0) {
+  return (Number(shield) > 0 || collapseTime > 0) && (Number(flash) > SHIELD_PRESENTATION_EPSILON || Boolean(hasContact) || collapseTime > 0);
 }
 
 export function createShipAuxPool(scene, options = {}) {
@@ -8809,8 +8810,12 @@ export const render = {
             motionReduce: _worldSiteA11y.reducedMotion,
             playerMiningActive: !!(this.state && this.state.player && this.state.player.miningBeam && this.state.player.miningBeam.active),
             playerId: this.state && this.state.playerId,
+            playerTargetId: this.state && this.state.player && this.state.player.targetId,
+            entities: this.state && this.state.entities,
           };
           globalShipMicroMotion.updateCraftMicroMotion(entity, mesh, simTime, frameDt, options);
+        } else if (typeName === 'projectile') {
+          globalProjectileMotion.updateProjectileMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
         } else if (typeName === 'asteroid') {
           globalAsteroidMotion.updateAsteroidMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
         } else if (typeName === 'pickup') {
@@ -8832,27 +8837,50 @@ export const render = {
       // Shield geometry is an impact response, not a permanent bubble. The flash decays each visible
       // frame and is punched up whenever the entity's shield value drops.
       const shieldBubble = userData.shieldBubble;
-      if (entity && shieldBubble) {
+      if (entity && shieldBubble && shieldBubble.material && shieldBubble.material.uniforms) {
+        const uniforms = shieldBubble.material.uniforms;
+        const previousShield = shieldBubble.userData._prevShield != null
+          ? shieldBubble.userData._prevShield
+          : entity.shield;
+        const previousFlashTime = shieldBubble.userData._prevFlashT != null
+          ? shieldBubble.userData._prevFlashT
+          : now;
+        const dt = Math.min(0.1, Math.max(0.001, now - previousFlashTime));
+        shieldBubble.userData._prevFlashT = now;
+
         const up = entity.shield > 0;
         let flash = 0;
+
+        if (shieldBubble.userData._collapseTimer == null) {
+          shieldBubble.userData._collapseTimer = 0;
+        }
+
         if (up) {
-          const uniforms = shieldBubble.material.uniforms;
-          const previousShield = shieldBubble.userData._prevShield != null
-            ? shieldBubble.userData._prevShield
-            : entity.shield;
           if (entity.shield < previousShield - 0.5) {
-            uniforms.uFlash.value = Math.min(1, uniforms.uFlash.value + 0.8);
+            uniforms.uFlash.value = Math.min(1.0, uniforms.uFlash.value + 0.8);
+          } else if (entity.shield > previousShield + 1.0) {
+            // Shield capacitor recovery wave
+            uniforms.uFlash.value = Math.max(uniforms.uFlash.value, 0.28);
           }
-          shieldBubble.userData._prevShield = entity.shield;
-          const previousFlashTime = shieldBubble.userData._prevFlashT != null
-            ? shieldBubble.userData._prevFlashT
-            : now;
-          const dt = Math.min(0.1, now - previousFlashTime);
-          shieldBubble.userData._prevFlashT = now;
           uniforms.uFlash.value *= Math.pow(0.05, dt);
           flash = uniforms.uFlash.value;
+          shieldBubble.userData._collapseTimer = 0;
+        } else {
+          // Shield broke this frame or is in collapse sequence
+          if (previousShield > 0) {
+            // Initiate dielectric rupture overload sequence
+            shieldBubble.userData._collapseTimer = 0.32;
+            uniforms.uFlash.value = 2.4; // blinding break flare
+          }
+          if (shieldBubble.userData._collapseTimer > 0) {
+            shieldBubble.userData._collapseTimer -= dt;
+            uniforms.uFlash.value *= Math.pow(0.1, dt);
+            flash = uniforms.uFlash.value;
+          }
         }
-        const visible = shouldPresentShieldBubble(entity.shield, flash, hasShieldContact(entity.id));
+        shieldBubble.userData._prevShield = entity.shield;
+
+        const visible = shouldPresentShieldBubble(entity.shield, flash, hasShieldContact(entity.id), shieldBubble.userData._collapseTimer);
         if (shieldBubble.visible !== visible) shieldBubble.visible = visible;
       }
 
