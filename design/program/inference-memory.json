@@ -1071,6 +1071,19 @@
       "integration": "live",
       "commit": "f9413327d",
       "verification": "focused_green"
+    },
+    {
+      "id": "convoy-stance-demand",
+      "date": "2026-09-17",
+      "wf": "WF-18",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Curtain convoy stance restored: the defend/raid/pass choice now surfaces with voiced acks, violence collapses the offer, escorted rewards the wingman",
+      "fingerprint": "verb=choose,subject=convoy-stance,sector=multi-lane,domain=wf-18",
+      "references": [],
+      "integration": "live",
+      "commit": "0c5f0ff78",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
