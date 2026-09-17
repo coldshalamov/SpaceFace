@@ -228,6 +228,7 @@ function bootSim(seed) {
     tradesCount: 0, lifetimeProfit: 0, biggestSingleProfit: 0, smuggledValue: 0, kills: 0, missionsDone: 0,
   };
   state.player.researchPoints = NEW_GAME.researchPoints || 0;
+  state.player.salvageRights = NEW_GAME.salvageRights || 0;
   state.player.researchedNodes = (NEW_GAME.researchedNodes || []).slice();
   state.simTime = 0;
   state.world = state.world || {};

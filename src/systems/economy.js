@@ -23,6 +23,7 @@
 //   stock target. We honor the schema field names (equilibrium = role-modified drift target,
 //   baseEq = fixed reference). Absolute early ROI is now moderated for M3 career parity.
 import { COMMODITIES } from '../data/commodities.js';
+import { presenceServiceForStation } from '../data/factionPresence.js';
 import { hasTethysBlackMarketAccess, TETHYS_BLACK_MARKET_RUN } from '../data/frontierRumors.js';
 import { KILL_REWARD_RECIPES } from '../data/killRewards.js';
 import { STORY_BEATS } from '../data/missions.js';
@@ -135,11 +136,15 @@ const FUEL_UNIT_CR = 6;            // cr per fuel unit
 const REPAIR_HP_CR = 0.9;          // cr per hull/armor point restored
 const AMMO_UNIT_CR = 12;           // cr per munition
 const HULL_WASH_CR = 75;           // cosmetic berth service; history survives the wash
+// PQ-155.03 sink: a Pitborn yard buys out a claimed salvage right at a premium over a medium
+// kill's chip line (2 chips × 60–120 cr). Rights stay scarce by mint, not by a cheap sink.
+const SALVAGE_RIGHT_CR = 150;
 export const SERVICE_PRICES = Object.freeze({
   fuelCrPerUnit: FUEL_UNIT_CR,
   repairCrPerHp: REPAIR_HP_CR,
   ammoCrPerUnit: AMMO_UNIT_CR,
   hullWashCr: HULL_WASH_CR,
+  salvageRightCr: SALVAGE_RIGHT_CR,
 });
 
 /** Live hull-insurance defaults. The deductible is the named sink PQ-155.01 reads. */
@@ -1904,6 +1909,37 @@ export const economy = {
       const realCost = round(added * AMMO_UNIT_CR);
       this.chargeCredits(realCost, 'service:ammo');
       this.bus.emit('toast', { text: `Bought ${added} munitions (${realCost}cr)`, kind: 'success', ttl: 2 });
+    } else if (type === 'redeem_rights') {
+      // Stunt-paid claim currency (PQ-155.03): a Pitborn yard/fence buys out held rights for
+      // credits plus a standing notice. Trick pay never opened the wallet; the sink only
+      // converts a right the player already scooped, at a berth the yards actually run.
+      const player = state.player || (state.player = {});
+      const held = Math.max(0, Math.floor(Number(player.salvageRights) || 0));
+      if (held <= 0) {
+        this.bus.emit('toast', { text: 'No salvage rights to redeem', kind: 'info', ttl: 2 });
+        return;
+      }
+      const stationId = this.dockedStationId();
+      const reps = {};
+      for (const [fid, row] of Object.entries(state.factions || {})) reps[fid] = Number(row && row.rep) || 0;
+      const presence = stationId ? presenceServiceForStation(stationId, reps) : null;
+      const yard = presence && presence.factionId === 'faction_pitborn'
+        && Array.isArray(presence.services) && presence.services.length > 0
+        && presence.available !== false;
+      if (!yard) {
+        this.bus.emit('toast', { text: 'Salvage rights redeem at a Pitborn yard', kind: 'error', ttl: 2 });
+        return;
+      }
+      const want = p.amount != null ? Math.min(held, Math.max(0, Math.floor(Number(p.amount)))) : held;
+      if (want <= 0) return;
+      player.salvageRights = held - want;
+      const payout = round(want * SALVAGE_RIGHT_CR);
+      this.grantCredits(payout, 'service:redeem_rights');
+      this.bus.emit('faction:repDelta', { factionId: 'faction_pitborn', delta: want, reason: 'salvage_rights_redeem' });
+      this.bus.emit('service:completed', {
+        type: 'redeem_rights', rights: want, payout, stationId, atT: Number(state.simTime) || 0,
+      });
+      this.bus.emit('toast', { text: `Redeemed ${want} salvage right${want === 1 ? '' : 's'} (+${payout}cr)`, kind: 'success', ttl: 2 });
     } else if (type === 'insurance') {
       const ins = state.player.insurance || (state.player.insurance = {
         rate: INSURANCE_DEFAULTS.rate,

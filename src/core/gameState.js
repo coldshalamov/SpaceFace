@@ -72,6 +72,7 @@ function defaultPlayer() {
     droneTierCap: 1,
     efficiencyMods: { miningYieldMult: 1, shieldRegenMult: 1, energyRegenMult: 1, cargoCapMult: 1, tradeFeeMult: 1 },
     researchPoints: 0,
+    salvageRights: 0,
     cargo: { items: {}, usedVolume: 0, usedMass: 0, capVolume: 40, capMass: 60 },
     targetId: null,
     fireGroups: { 1: [], 2: [] },

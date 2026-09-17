@@ -766,6 +766,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       };
       const q = (t) => { try { return sq(t, s, playerEntity(s)); } catch (_) { return null; } };
       const washAvailable = resolveStation(ctx).services.includes('repair');
+      const rightsQuote = q('redeem_rights');
       return {
         repair: toCost(q('repair'), 'repair'),
         refuel: toCost(q('refuel'), 'refuel'),
@@ -774,6 +775,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         wash: washAvailable
           ? toCost(q('hull_wash'), 'hull_wash')
           : { text: 'Offline', disabled: true, title: 'Hull wash requires a repair berth' },
+        // Redemption pays the player, so the verb reads as a gain, not a price.
+        rights: rightsQuote && !rightsQuote.disabled
+          ? { text: `+${fmtCr(rightsQuote.payout ?? rightsQuote.cost)} cr`, tone: 'gain', title: rightsQuote.detail }
+          : { text: rightsQuote ? (rightsQuote.disabledReason || 'Unavailable') : 'Offline', disabled: true, title: rightsQuote ? rightsQuote.detail : 'Salvage rights quote unavailable' },
         undock,
       };
     }
@@ -786,6 +791,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       refuel: fuelMissing > 0 ? { text: fmtCr(Math.ceil(fuelMissing * 3)) + ' cr', tone: 'warn' } : { text: 'Fuel OK', disabled: true, tone: 'gain' },
       resupply: { text: 'Rearm', tone: '' },
       wash: { text: 'Offline', disabled: true, title: 'Hull wash quote unavailable' },
+      rights: { text: 'Offline', disabled: true, title: 'Salvage rights quote unavailable' },
       undock,
     };
   }
@@ -802,7 +808,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       commitUndock();
       return true;
     }
-    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', insurance: 'insurance' };
+    const typeMap = { repair: 'repair', refuel: 'refuel', resupply: 'ammo', wash: 'hull_wash', insurance: 'insurance', rights: 'redeem_rights' };
     const type = typeMap[id];
     if (type && bus) {
       if (type === 'hull_wash' && !resolveStation(ctx).services.includes('repair')) return false;
@@ -948,6 +954,16 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         k: 'muni', label: 'Munitions', frac: 0, tone: 'warn', track: false,
         value: 'Low', aria: 'Munitions low',
         acts: [vitalActHtml('resupply', costs.resupply, 'Resupply')],
+      });
+    }
+    // Claimed rights surface only while there is something to redeem — like Munitions, this is
+    // an action unit, not a permanently-present tile.
+    const rightsHeld = Math.max(0, Math.floor(Number(s.player && s.player.salvageRights) || 0));
+    if (rightsHeld > 0) {
+      vitals.push({
+        k: 'rights', label: 'Salvage Rights', frac: 0, tone: 'ok', track: false,
+        value: `${rightsHeld}`, aria: `${rightsHeld} salvage rights held`,
+        acts: [vitalActHtml('rights', costs.rights, 'Redeem')],
       });
     }
 

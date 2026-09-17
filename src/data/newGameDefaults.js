@@ -40,6 +40,9 @@ export const NEW_GAME = {
   // Research points.
   researchPoints: 0,
 
+  // Salvage rights — stunt-paid claim currency; redeemed at Pitborn yards.
+  salvageRights: 0,
+
   // Automation assets.
   drones: [],
   traders: [],

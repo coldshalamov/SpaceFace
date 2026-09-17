@@ -46,9 +46,11 @@ import {
 import {
   CREDIT_CHIP_KIND,
   isCreditChipPickup,
+  isSalvageRightsItem,
   KILL_BURST_EJECT_SPEED_MAX,
   KILL_BURST_EJECT_SPEED_MIN,
   KILL_BURST_VEL_INHERIT,
+  SALVAGE_RIGHTS_KIND,
 } from '../data/killRewards.js';
 import { consumePendingSlam, peekPendingSlam, spawnFracturePieces } from './hullFracture.js';
 
@@ -1250,6 +1252,18 @@ export const mining = {
         });
         continue;
       }
+      if (isSalvageRightsItem(it)) {
+        const rights = finiteWholePickupAmount(it.salvageRights != null ? it.salvageRights : it.amount);
+        if (rights <= 0) continue;
+        this._spawnLootBurstPickup(stub, {
+          kind: SALVAGE_RIGHTS_KIND,
+          amount: rights,
+          grantReason: typeof it.grantReason === 'string' ? it.grantReason : null,
+          inheritX,
+          inheritZ,
+        });
+        continue;
+      }
       if (!it.commodityId) continue;
       if (burst) {
         this._spawnLootBurstPickup(stub, {
@@ -1287,6 +1301,11 @@ export const mining = {
       if (opts.grantReason) data.grantReason = opts.grantReason;
       if (opts.wallet) data.wallet = opts.wallet;
       if (opts.entitlementId != null) data.entitlementId = opts.entitlementId;
+    }
+    if (opts.kind === SALVAGE_RIGHTS_KIND) {
+      // stuntGrammar settles the right on pickup:collected; the flag marks a consumed chit.
+      data.salvageRights = amount;
+      if (opts.grantReason) data.grantReason = opts.grantReason;
     }
     this.helpers.spawnEntity({
       type: 'pickup',
@@ -1557,7 +1576,7 @@ export const mining = {
   _collectPickupOnBeamLine(pickup, player) {
     const line = this._activeBeamLine;
     if (!line || !pickup || !pickup.data) return false;
-    if (!pickup.data.commodityId && !isCreditChipPickup(pickup.data)) return false;
+    if (!pickup.data.commodityId && !isCreditChipPickup(pickup.data) && !isSalvageRightsItem(pickup.data)) return false;
     if (pointSegmentDistanceSq(pickup.pos.x, pickup.pos.z, line.ax, line.az, line.bx, line.bz) >
       BEAM_PICKUP_DIRECT_RADIUS * BEAM_PICKUP_DIRECT_RADIUS) return false;
     return this._collectPickupViaEvent(pickup, player);

@@ -175,10 +175,13 @@ test('trick names alone have no reputation, salvage-rights or credit entitlement
   const rare = trickPay({ rarity: 'rare' });
   assert.equal(common.credits, 0);
   assert.equal(rare.credits, 0);
-  assert.equal(common.reputation, STUNT_REP_BY_RARITY.common);
+  // A bare rarity label is a name, not a recognition: no schema, no episode, no entitlement.
+  assert.equal(common.reputation, 0);
   assert.equal(rare.reputation, 0);
   assert.equal(rare.salvageRights, 0);
   assert.equal(common.factionId, STUNT_PAY_FACTION_ID);
+  assert.ok(STUNT_REP_BY_RARITY.uncommon > 0 && STUNT_REP_BY_RARITY.legendary > 0,
+    'the live pay table is not the zero stub');
 
   const chit = makeSalvageRightsItem(2, 'wrecking_ball');
   assert.equal(chit.kind, SALVAGE_RIGHTS_KIND);

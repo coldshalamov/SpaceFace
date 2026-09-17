@@ -1,6 +1,7 @@
 // PQ-146 scoring revision 2. Recognitions consume immutable victim-life budgets;
 // only banked style joins personal score. Every clock is a simulation tick.
 import { allocateStyle, candidateStyle, executionFactor, PRIMARY_SCORING, threatReward } from '../combat/stuntScoring.js';
+import { TRICK_DEFINITIONS } from '../combat/stuntRecognition.js';
 
 export const STUNT_COMBO_SCHEMA_VERSION = 2;
 export const COMBO_WINDOW_TICKS = 300;
@@ -14,8 +15,11 @@ export const MAX_MASS_MULT = 1.5;
 export const RARITY_MULT = Object.freeze({ common: 1, uncommon: 1.4, rare: 1.8, legendary: 2.2 });
 export const PULSE_WEAPON_IDS = Object.freeze(['wpn_pulse_laser_s', 'wpn_pulse_laser_m', 'unique_mirrorjaw_pulse']);
 export const STUNT_PAY_FACTION_ID = 'faction_pitborn';
-export const STUNT_REP_BY_RARITY = Object.freeze({ common: 0, uncommon: 0, rare: 0, legendary: 0 });
-export const STUNT_SALVAGE_RIGHTS_BY_RARITY = STUNT_REP_BY_RARITY;
+// PQ-155.03 pay scale: a rated trick posts Pitborn standing plus a salvage-rights claim, never
+// credits. Six mixed tricks on the receipt tape paid ~42 rep / ~9 rights; an uncommon trick is
+// worth a small contract's standing, a legendary chit redeems near a heavy kill's chip line.
+export const STUNT_REP_BY_RARITY = Object.freeze({ common: 3, uncommon: 7, rare: 12, legendary: 20 });
+export const STUNT_SALVAGE_RIGHTS_BY_RARITY = Object.freeze({ common: 1, uncommon: 1, rare: 2, legendary: 4 });
 const num = (x, fallback = 0) => Number.isFinite(Number(x)) ? Number(x) : fallback;
 const tickOf = x => Math.max(0, Math.floor(num(x)));
 const keyOf = x => x == null ? null : String(x);
@@ -25,8 +29,33 @@ export const massFactor = executionFactor;
 export const rarityFactor = trick => RARITY_MULT[trick?.rarity] || 1;
 export const chainFactor = (n, d = 1, carry = 0) => Math.min(3, 1 + Math.min(.5, Math.max(0, carry)) + .35 * Math.max(0, Math.min(6, n) - 1) + .15 * Math.max(0, Math.min(6, d) - 1));
 export const trickPoints = trick => candidateStyle(trick);
-export const trickPay = () => ({ reputation: 0, salvageRights: 0, credits: 0, factionId: STUNT_PAY_FACTION_ID });
-export const comboPay = trickPay;
+const ZERO_STUNT_PAY = Object.freeze({ reputation: 0, salvageRights: 0, credits: 0, factionId: STUNT_PAY_FACTION_ID });
+/** Only an authoritative detector recognition is entitled — a bare name or rarity label pays nothing. */
+export function trickPay(trick) {
+  const def = trick && TRICK_DEFINITIONS[trick.trickId];
+  if (!def || trick.schemaVersion !== 2 || trick.episodeId == null) return { ...ZERO_STUNT_PAY };
+  const rarity = typeof trick.rarity === 'string' && RARITY_MULT[trick.rarity] ? trick.rarity : def.rarity;
+  return {
+    reputation: STUNT_REP_BY_RARITY[rarity] || 0,
+    salvageRights: STUNT_SALVAGE_RIGHTS_BY_RARITY[rarity] || 0,
+    credits: 0,
+    factionId: STUNT_PAY_FACTION_ID,
+  };
+}
+/** Aggregate pay for a settled bank ({ acts }) or a combo ledger ({ banks }). */
+export function comboPay(record) {
+  const acts = Array.isArray(record?.acts) ? record.acts
+    : Array.isArray(record?.banks) ? record.banks.flatMap((b) => (Array.isArray(b?.acts) ? b.acts : []))
+    : [];
+  let reputation = 0, salvageRights = 0;
+  for (const act of acts) {
+    const def = TRICK_DEFINITIONS[act?.trickId];
+    if (!def) continue;
+    reputation += STUNT_REP_BY_RARITY[def.rarity] || 0;
+    salvageRights += STUNT_SALVAGE_RIGHTS_BY_RARITY[def.rarity] || 0;
+  }
+  return { reputation, salvageRights, credits: 0, factionId: STUNT_PAY_FACTION_ID };
+}
 
 export function createComboState() {
   return { schemaVersion: 2, baseScore: 0, bankedStyle: 0, banked: 0, activePoints: 0, activeCount: 0,
@@ -203,6 +232,9 @@ export function bankActive(comboState, { tick = undefined, reason = 'safe', mult
   combo.banked += amount; combo.bankedStyle += amount;
   const bank = { bankId: combo.nextBankId++, tick: now, reason, points: amount, raw, multiplier: mult,
     acts: combo.acts.map(a => ({ ...a, allocation: a.allocation.map(x => ({ ...x })) })) };
+  const pay = comboPay(bank);
+  bank.pay = pay;
+  combo.reputation += pay.reputation; combo.salvageRights += pay.salvageRights;
   combo.banks.push(bank);
   // Consumers acknowledge bank IDs; keep bounded lightweight history for save/results.
   if (combo.banks.length > 8) combo.banks.shift();

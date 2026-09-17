@@ -54,7 +54,8 @@ test('base kill pay is weapon neutral: the free Pulse pays what every gun pays, 
   assert.equal(killPoints('anything', 'none'), 0, 'noncombatants and unbudgeted adds have no bounty');
   assert.ok(isPulseWeapon('wpn_pulse_laser_s'));
   assert.deepEqual(trickPay(), { reputation: 0, salvageRights: 0, credits: 0, factionId: 'faction_pitborn' });
-  assert.equal(comboPay, trickPay);
+  assert.deepEqual(comboPay(null), { reputation: 0, salvageRights: 0, credits: 0, factionId: 'faction_pitborn' });
+  assert.deepEqual(comboPay({ banks: [] }), { reputation: 0, salvageRights: 0, credits: 0, factionId: 'faction_pitborn' });
   const h = boot();
   h.bus.emit('entity:killed', { id: 1, killerId: 0, weaponId: 'wpn_pulse_laser_s', tick: 12 });
   h.bus.emit('entity:killed', { id: 2, killerId: 0, weaponId: 'wpn_railgun_m', tick: 12 });

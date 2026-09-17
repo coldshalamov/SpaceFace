@@ -4,6 +4,7 @@
 // on state.settings.showDamageNumbers. Driven each frame by hud.frame() -> update().
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
+import { SALVAGE_RIGHTS_KIND, salvageRightsItemsOf } from '../data/killRewards.js';
 import { SECTORS } from '../data/sectors.js';
 import { successfulPickupAmount } from '../core/pickupAcceptance.js';
 import { shouldHideOwnRepDelta } from '../story/endings/publicIdentity.js';
@@ -24,6 +25,9 @@ const STYLE_ID = 'sf-floattext-style';
 export function pickupFloatingTextSpec(payload) {
   const qty = successfulPickupAmount(payload);
   if (qty <= 0) return null;
+  if (payload && payload.kind === SALVAGE_RIGHTS_KIND) {
+    return { qty, text: '+' + qty + ' SALVAGE RIGHTS', cls: 'sf-ft--rights' };
+  }
   const def = CMDTY_BY_ID[payload && payload.commodityId];
   const name = def ? def.name : ((payload && payload.commodityId) || 'Item');
   const cat = def ? def.category : '';
@@ -168,6 +172,13 @@ export function createFloatingText(ctx) {
     });
   });
   bus.on('loot:drop', (p) => { if (p && p.pos && p.credits > 0) spawn('+' + p.credits + ' cr', 'sf-ft--credits', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 }); });
+  // A rated trick mints its claim chit at the contact site — mark the mint so the payout reads
+  // where it happened, not only when the chit is later scooped.
+  bus.on('loot:drop', (p) => {
+    if (!p || !p.pos || !Array.isArray(p.items)) return;
+    const rights = salvageRightsItemsOf(p.items).reduce((n, it) => n + (Number(it.salvageRights) || 0), 0);
+    if (rights > 0) spawn('+' + rights + ' SALVAGE RIGHTS', 'sf-ft--rights', p.pos.x, p.pos.z, null, { life: 1.4, vy: 36 });
+  });
   // Dash feedback is pure world VFX (violet afterburner burst in render/vfx.js) — no floating
   // "DASH" label; word-pop combat juice reads as arcade-corny for a thruster impulse.
 
@@ -289,6 +300,7 @@ function injectStyle() {
     text-shadow:0 0 12px rgba(255,216,74,.7),0 0 4px #000; }
   .sf-ft--exotic { color:#c98cff; font-size:15px; text-shadow:0 0 8px rgba(170,90,255,.6),0 0 4px #000; }
   .sf-ft--module { color:#4f8fdd; font-size:15px; text-shadow:0 0 8px rgba(79,143,221,.6),0 0 4px #000; }
+  .sf-ft--rights { color:#e8a05c; font-size:14px; letter-spacing:.05em; text-shadow:0 0 8px rgba(232,160,92,.55),0 0 4px #000; }
   .sf-ft--pickup { color:#d3e6ff; font-size:14px; }
   `;
   document.head.appendChild(s);

@@ -285,6 +285,7 @@ Current save version: `14`
 | `$.player.ownedShips[].fittings` | array | length 0 |
 | `$.player.researchedNodes` | array | length 0 |
 | `$.player.researchPoints` | number | 0 |
+| `$.player.salvageRights` | number | 0 |
 | `$.player.stats` | object | {} |
 | `$.player.stats.biggestSingleProfit` | number | 0 |
 | `$.player.stats.kills` | number | 0 |

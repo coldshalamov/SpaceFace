@@ -3530,6 +3530,9 @@ function normalizePlayerSaveRecord(player, savedEntity) {
       }
     }
   }
+  // salvageRights is the stunt-paid claim balance (stuntGrammar mints, economy redeems). A stale
+  // or crafted value normalizes to a non-negative whole number, never a negative purse.
+  out.salvageRights = Math.max(0, Math.floor(Number(out.salvageRights) || 0));
   return out;
 }
 

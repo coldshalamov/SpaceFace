@@ -7,8 +7,9 @@ import { StuntFlightObserver } from '../combat/stuntFlightEvidence.js';
 import { isHostileForAI } from '../ai/engagementAuthority.js';
 import { remapStuntReferences } from '../combat/stuntSaveReferences.js';
 import { serializeProjectileEvidence, restoreProjectileEvidence, pendingProjectileBodyIds } from '../combat/stuntProjectileEvidence.js';
-import { bankIfQuiet, createComboState, recordKill, recordTrick, recordBridge, resetRound, settleCrash } from './stuntCombo.js';
+import { bankIfQuiet, createComboState, recordKill, recordTrick, recordBridge, resetRound, settleCrash, trickPay } from './stuntCombo.js';
 import { awardContractCompletion, contractCompletionsFor, heldCargoPodLot, isCivilianEntity } from '../combat/stuntContracts.js';
+import { isSalvageRightsItem, makeSalvageRightsItem } from '../data/killRewards.js';
 export const STUNT_SYSTEM_SCHEMA_VERSION=2;
 export const MAX_RECENT_TRICKS=64;
 /** New saved narrative/provenance payload beyond the world's physical state: at most 512 KiB. */
@@ -54,7 +55,8 @@ export const stuntGrammar={
     bindStuntEvidence(this.state);ensure(this.state);this.detector=createStuntDetector({playerId:this.state.playerId});this.flight=new StuntFlightObserver();
     for(const entity of this.state.entities?.values?.()??[]) this._admit(entity);
     for(const event of ['combat:collisionConsequence','combat:projectileConsequence','tether:releaseRated','entity:killed','combat:kill','entity:spawned',
-      'run:started','game:started','game:newGame','save:restoring','save:loaded','run:waveCleared','player:death','player:died','combat:damage','physics:impact']) {
+      'run:started','game:started','game:newGame','save:restoring','save:loaded','run:waveCleared','player:death','player:died','combat:damage','physics:impact',
+      'pickup:collected']) {
       const off=this.bus?.on(event,p=>this._event(event,p??{}));if(typeof off==='function')this._unsubs.push(off);
     }
   },
@@ -85,6 +87,41 @@ export const stuntGrammar={
     const combo=ensure(this.state).combo;
     for(const bank of combo.banks??[])if(bank.bankId>before)this.bus?.emit('stunt:styleBanked',bank);
   },
+  /** PQ-155.03 — an authoritative recognition posts Pitborn standing plus a salvage-rights claim,
+   *  never credits. An amendment pays only the upgrade delta over the episode's previous name.
+   *  Outside scored runs the right mints as a physical claim chit at the contact site; inside a
+   *  run it stays on the session ledger (the run wallet keeps run rewards out of campaign). */
+  _payTrick(st,trick,prevTrick,tick) {
+    const pay=trickPay(trick),prev=trickPay(prevTrick);
+    const rep=Math.max(0,pay.reputation-prev.reputation),rights=Math.max(0,pay.salvageRights-prev.salvageRights);
+    if(rep<=0&&rights<=0)return;
+    st.pay.reputation+=rep;st.pay.salvageRights+=rights;
+    if(rep>0)this.bus?.emit('faction:repDelta',{factionId:pay.factionId,delta:rep,reason:'stunt_trick',trickId:trick.trickId,episodeId:trick.episodeId,tick});
+    if(rights<=0)return;
+    this.bus?.emit('stunt:salvageRights',{salvageRights:rights,trickId:trick.trickId,name:trick.name,episodeId:trick.episodeId,rarity:trick.rarity,tick});
+    const s=this.state;
+    if(s.run?.kind==='survival'&&s.run.phase!=='inactive')return;
+    const chit=makeSalvageRightsItem(rights,`${trick.trickId}:${trick.episodeId}`);
+    const pos=trick.terminalPos||s.entities?.get?.(s.playerId)?.pos||null;
+    if(!chit||!pos||!Number.isFinite(pos.x)||!Number.isFinite(pos.z))return;
+    this.bus?.emit('loot:drop',{pos:{x:pos.x,z:pos.z},vel:{x:0,z:0},source:'stunt_claim',items:[chit]});
+  },
+  /** A scooped claim chit settles into the player's redeemable balance. The shared payload's
+   *  acceptance fields are the synchronous commit receipt (the cargo.js convention). */
+  _collectRightsChit(p) {
+    const s=this.state;
+    if(p.collectorId!==s.playerId)return;
+    const data=p.pickupId!=null?s.entities?.get?.(p.pickupId)?.data:null;
+    if(!isSalvageRightsItem(p)&&!isSalvageRightsItem(data))return;
+    const amount=Math.max(0,Math.floor(Number(data?.salvageRights??p.salvageRights??p.amount)||0));
+    if(amount<=0){p.acceptedAmount=0;p.rejectedAmount=0;p.invalidAmount=true;return;}
+    p.acceptedAmount=amount;p.rejectedAmount=0;
+    if(p.rightsGranted===true||data?.rightsGranted===true)return;
+    p.rightsGranted=true;if(data)data.rightsGranted=true;
+    const player=s.player||(s.player={});
+    player.salvageRights=Math.max(0,Math.floor(Number(player.salvageRights)||0))+amount;
+    this.bus?.emit('stunt:salvageRightsClaimed',{salvageRights:amount,pickupId:p.pickupId??null,grantReason:data?.grantReason??p.grantReason??null,tick:s.tick});
+  },
   _event(event,p) {
     const s=this.state,st=ensure(s),tick=Number.isFinite(p.tick)?p.tick:s.tick;
     if(event==='combat:damage'){
@@ -93,6 +130,7 @@ export const stuntGrammar={
       return;
     }
     if(event==='physics:impact'){if(p.aId===s.playerId||p.bId===s.playerId)this.flight.contact(tick);return;}
+    if(event==='pickup:collected'){this._collectRightsChit(p);return;}
     if(event==='save:restoring') { unbindStuntEvidence(s);return; }
     if(event==='save:loaded') { bindStuntEvidence(s);return; }
     if(['run:started','game:started','game:newGame'].includes(event)) {
@@ -126,9 +164,11 @@ export const stuntGrammar={
     this.detector.setPlayerId(s.playerId);
     for(const trick of this.detector.processEvent(event,{...p,tick})) {
       const old=st.recentTricks.findIndex(t=>t.episodeId===trick.episodeId);
+      const prevTrick=old>=0?st.recentTricks[old]:null;
       if(old>=0)st.recentTricks[old]=trick;
       else {st.recentTricks.push(trick);st.totalTricksDetected++;st.tricksByRarity[trick.rarity]++;}
       if(st.recentTricks.length>64)st.recentTricks.shift();
+      this._payTrick(st,trick,prevTrick,tick);
       if(survival)recordTrick(st.combo,trick);
       this.bus?.emit(trick.amendment?'stunt:trickAmended':'stunt:trickDetected',trick);
       for(const contractId of contractCompletionsFor(trick,{cargoPodHeld:heldCargoPodLot(s)!=null,civilianHarm:st.contracts.harm})) {

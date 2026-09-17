@@ -64,6 +64,7 @@ const SERVICE_ROWS = Object.freeze([
   { type: 'hull_wash', label: 'Hull Wash', desc: 'Clear surface grime without erasing hull history', requires: ['repair'] },
   { type: 'ammo', label: 'Buy Munitions', desc: 'Restock missile/ammo stores', requires: ['trade', 'refuel'] },
   { type: 'insurance', label: 'Hull Insurance', desc: 'Station recovery payout; cargo loss still applies', requires: [] },
+  { type: 'redeem_rights', label: 'Redeem Salvage Rights', desc: 'A Pitborn yard buys out claimed wreck rights', requires: [] },
 ]);
 
 function fmtCr(n) { return (Math.round(n) || 0).toLocaleString('en-US'); }
@@ -331,6 +332,37 @@ export function serviceQuote(type, state, entity) {
       buttonLabel: limited ? 'Buy ' + units : 'Buy Munitions',
       disabled: false,
       chips: [{ text: fmtCr(cost) + ' cr', kind: 'cost' }, ...(limited ? [{ text: limitReason, kind: 'warn' }] : []), afterCreditsChip(credits, cost)],
+    };
+  }
+  if (type === 'redeem_rights') {
+    const rights = Math.max(0, Math.floor(Number(p.salvageRights) || 0));
+    const dockedId = (state && state.ui && state.ui.dockedStationId) || null;
+    const stored = state && state.factionPresence && state.factionPresence.servicesByStation
+      ? state.factionPresence.servicesByStation[dockedId] : null;
+    const yard = !!(stored && stored.factionId === 'faction_pitborn'
+      && Array.isArray(stored.services) && stored.services.length > 0);
+    if (!yard) {
+      return {
+        amount: 0, cost: 0,
+        detail: 'Claimed wreck rights cash out at a Pitborn yard or fence',
+        buttonLabel: 'Redeem', disabled: true, disabledReason: 'pitborn yard only',
+        chips: [{ text: 'pitborn yard only', kind: 'bad' }],
+      };
+    }
+    if (rights <= 0) {
+      return {
+        amount: 0, cost: 0,
+        detail: 'No claimed rights — rated stunts mint them in the field',
+        buttonLabel: 'Redeem', disabled: true,
+        chips: [{ text: 'none held', kind: 'warn' }],
+      };
+    }
+    const payout = rights * SERVICE_PRICES.salvageRightCr;
+    return {
+      amount: rights, cost: payout, payout,
+      detail: `${rights} right${rights === 1 ? '' : 's'} @ ${fmtCr(SERVICE_PRICES.salvageRightCr)} cr + Pitborn notice`,
+      buttonLabel: 'Redeem', disabled: false,
+      chips: [{ text: `+${fmtCr(payout)} cr`, kind: 'gain' }, { text: `+${rights} pitborn rep`, kind: 'ok' }],
     };
   }
   if (type === 'insurance') {
