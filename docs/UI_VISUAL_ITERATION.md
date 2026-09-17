@@ -3,7 +3,10 @@
 
 How an agent improves a player-facing screen **without mangling it**: photograph it, judge the
 pixels, change the owner file or its kit styling, photograph it again, and have independent eyes
-check the result. Words about a screen are not evidence; a still of the screen is.
+check the result. Words about a screen are not evidence of how it looks; the fastest way to look is
+the bench (`tools/ui-bench.html`, seconds, no boot). A capture is not a release gate — root
+`AGENTS.md` §13 makes the still optional, in-session and for a purely visual claim — so use the loop
+to see the work, not to satisfy a ritual.
 
 Companion tools: `node scripts/ui-stills.mjs` (fast stills, this loop's instrument),
 `node scripts/check-ui-layout.mjs` (geometric forensics: overlap, clip, offscreen, buried hover),

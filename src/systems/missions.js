@@ -1836,40 +1836,7 @@ export const missions = {
       offers.unshift(intro);
       if (offers.length > S) offers.length = S;
     }
-    this._markFeaturedOffer(offers, info, epoch);
     return offers;
-  },
-
-  /** Real-calendar day bucket for the featured mark — the only wall-clock read on the missions
-   *  seam. Board generation is a dock-side boundary; per-tick simulation never sees it. Same
-   *  'YYYY-MM-DD' UTC key the Crucible daily board uses, so "today" means one thing everywhere. */
-  _dayKey() {
-    return new Date().toISOString().slice(0, 10);
-  },
-
-  /** One generated offer per station per day bucket pays the featured premium. The pick is a
-   *  hash of (day key, station id, epoch, world seed) — deterministic inside a day × epoch ×
-   *  save, and it never re-prices a retained or authored row: only plain procedural rolls with
-   *  a real payout qualify. The boosted figure lands on reward_cr itself so the board, the
-   *  dossier, and settlement all read the same honest number. */
-  _markFeaturedOffer(offers, info, epoch) {
-    const cfg = (this.state.missions && this.state.missions.config) || MISSION_TUNING;
-    const spec = cfg.featured || {};
-    const mult = Number(spec.rewardMult) || 0;
-    if (!(mult > 1)) return null;
-    const candidates = offers.filter((o) => o && !o.storyTag && !o.source && Number(o.reward_cr) > 0);
-    if (!candidates.length) return null;
-    const dayKey = this._dayKey();
-    const pickHash = hash32(dayKey, info.id, epoch, (this.state.meta && this.state.meta.seed) || 0);
-    const pick = candidates[pickHash % candidates.length];
-    pick.featured = {
-      dayKey,
-      rewardMult: mult,
-      repBonus: Math.max(0, Math.floor(Number(spec.repBonus) || 0)),
-      baseRewardCr: pick.reward_cr,
-    };
-    pick.reward_cr = round(pick.reward_cr * mult);
-    return pick;
   },
 
   /** Weighted pick of a mission type by OFFER_MIX (signature types rep-boosted). */
@@ -2609,10 +2576,6 @@ export const missions = {
       channelId: offer.channelId || null,
       ...(Array.isArray(offer.clauses) && offer.clauses.length
         ? { clauses: JSON.parse(JSON.stringify(offer.clauses)) } : {}),
-      // The featured mark is a conditional spread on the same precedent as `clauses` — a plain
-      // offer carries no key at all, so non-featured instances stay byte-identical.
-      ...(offer.featured && typeof offer.featured === 'object'
-        ? { featured: JSON.parse(JSON.stringify(offer.featured)) } : {}),
       // PQ-019C. The heist subrecord nests inside an active entry, which serialize() already carries
       // wholesale via `{ ...rest }` — durable with NO save-schema change and no new top-level key.
       // Conditional spread on the same precedent as `clauses` above: every non-heist instance gains
@@ -5184,10 +5147,8 @@ export const missions = {
     }
 
     // ── offering-faction rep: route through mission:completed{repMult} (factions applies 15*repMult).
-    // We size repMult so factions' applied rep ≈ the spec's risk-scaled BASE_REP value, plus the
-    // featured day's small standing bonus when the accepted offer carried the mark.
-    const featuredRep = m.featured ? Math.max(0, Math.floor(Number(m.featured.repBonus) || 0)) : 0;
-    const specRep = missionSpecRep(m) + featuredRep;
+    // We size repMult so factions' applied rep ≈ the spec's risk-scaled BASE_REP value.
+    const specRep = missionSpecRep(m);
     const repMult = specRep / 15;
     const storyOutcome = m.params && m.params.investigationOutcome;
     const completedPayload = {
@@ -5199,7 +5160,6 @@ export const missions = {
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
       causeTag: m.cause && m.cause.tag || undefined,
       rewardCr: settledRewardCr,
-      ...(m.featured ? { featured: { dayKey: m.featured.dayKey ?? null, repBonus: featuredRep } } : {}),
       ...setPieceEventFields(m, setPieceTransition),
     };
     if (storyOutcome !== undefined) completedPayload.storyOutcome = storyOutcome;

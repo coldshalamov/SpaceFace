@@ -60,7 +60,19 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
 - Never run destructive tree-wide `reset`, `restore`, `checkout`, `clean`, or `stash`. Preserve
   unrelated edits. `git add -N` new files immediately. Stay on the current branch unless the user
   asked to switch. Push only the owned branch by explicit name. Commit finished owned files as you
-  go — do not wait for blanket authorization.
+  go - do not wait for blanket authorization.
+- **Commit with exact paths.** `git add -A` and `git commit -a` sweep other lanes' half-finished
+  work into your commit; stage only what you changed (`git add -- <paths>`). If a sweep already
+  happened, name it in the commit body instead of unpicking it.
+- **Reconcile the shared index after any bypass.** Committing through an alternate index
+  (`GIT_INDEX_FILE`), a filtered patch, or `read-tree` leaves the real index behind: run
+  `git reset -- <paths>` in the same turn. Symptom of a stale index: `git status --short` shows
+  `D ` staged for a file that exists in `HEAD` and on disk, next to `??` for the same path.
+  Committing that state silently reverts landed work - repair it, never commit it.
+- **A collision is repaired by content, not by winning.** If your landed hunk is overwritten or
+  reverted, re-land the content additively; if your own change breaks the app (a bad import, a red
+  core path), fix it or revert your own hunk in the same turn. Awareness of other lanes is
+  background, never permission: a live row on paths you are not editing blocks nothing.
 
 Detail: [`docs/AGENT_OPERATIONS.md`](./docs/AGENT_OPERATIONS.md).
 

@@ -46,7 +46,9 @@ register — it clicks every control and prints what each one did (opened `<scre
 confirm, repainted, or nothing at all). **A screen whose verb does nothing is a defect, not a style
 question**, and it is the first thing to check.
 
-Never restyle a screen without a still of it in hand; never claim a fix without the after-still. The
+Never restyle a screen without a still of it in hand; never claim a fix without the after-still. (For
+a purely visual change the *look* is what closes the work — but a capture is not a gate: root
+[`AGENTS.md`](../../AGENTS.md) §13 governs, and a GPU/Chromium failure never blocks the task.) The
 look-fix-look loop, the four judgment tests and the end-of-pass review step are
 [`../../docs/UI_VISUAL_ITERATION.md`](../../docs/UI_VISUAL_ITERATION.md).
 

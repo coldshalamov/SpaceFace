@@ -364,7 +364,6 @@ export function missionDossierHtml(m, state, options = {}) {
       + (consequences.collateral ? termRow('Collateral', cr(consequences.collateral), 'on failure') : '')
       + (upfrontCr ? termRow('Upfront', cr(upfrontCr), 'to accept') : '')
       + (missionOffersFollowUp(m) ? termRow('Follow-up', 'Posted on success', 'same contract family') : '')
-      + (m.featured ? termRow('Featured', 'Day rate', `pays ×${m.featured.rewardMult} · +${m.featured.repBonus} rep`) : '')
       + termRow('Readiness', escapeHtml(readiness.label), escapeHtml(readiness.detail)),
     readiness,
     clausesHtml: clauses.map((c) => `<li class="k-t-fine k-62"><span class="sx-tag"${clauseWhyAttr(c)}>${escapeHtml(c.label || c.id || 'clause')}</span></li>`).join(''),
@@ -483,11 +482,10 @@ export function createContractsScreen(ctx) {
         const r = risk(m);
         const filing = finalDispositionPresentation(m);
         const firstHour = firstHourBoardOfferPresentation(state, m);
-        // Authored first-hour provenance keeps the badge slot when it owns this offer; otherwise a
-        // featured day's premium mark outranks the best-next pick. Never more than one, never a reorder.
+        // Authored first-hour provenance keeps the badge slot when it owns this offer; otherwise the
+        // shared board policy may name one best-next pick. Never both, never a reorder.
         const badge = firstHour ? firstHour.label
-          : (m.featured ? 'FEATURED'
-            : (recommended.label && recommended.missionId === id ? recommended.label : ''));
+          : (recommended.label && recommended.missionId === id ? recommended.label : '');
         const badgePrefix = badge ? `${badge} · ` : '';
         const rowAria = filing
           ? `${m.title || `Choice ${filing.choiceId}`}, final disposition from ${filing.issuerName}, separate irreversible confirmation required`

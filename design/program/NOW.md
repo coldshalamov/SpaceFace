@@ -31,7 +31,9 @@ working. Product status and remaining tasks live in
    is the failure mode, not the safe choice.
 4. Reread a shared file before every patch. Release the row as soon as mutation stops.
 5. Use `PUBLISHING` only for the brief stage/commit/push window. Stage only the task's exact files,
-   verify the staged names, publish, then remove the row.
+   verify the staged names, publish, then remove the row. A staged deletion of a file that exists in
+   `HEAD` and on disk means the shared index is stale, not that the file is gone: `git reset --
+   <paths>`, then publish.
 6. End every task with `RESULT: DONE` or `RESULT: NOT DONE` using the template in
    [`02_REMAINING_WORK.md`](./02_REMAINING_WORK.md). Delete stale rows; Git and receipts own history.
 7. Do not create a worktree by default. Existing worktrees are recovery obligations recorded in

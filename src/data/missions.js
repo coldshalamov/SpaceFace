@@ -37,10 +37,6 @@ export const MISSION_TUNING = {
   collateralPct: 0.25,
   refreshSec: 600,
   maxActive: 8,
-  // Daily featured contract: one rolled offer per station per real-calendar day pays a fixed
-  // premium and a small standing bonus. The day key joins the board hash only at the
-  // generation/settlement seams — never a per-tick wall-clock read.
-  featured: { rewardMult: 1.75, repBonus: 3 },
 };
 
 // Mission families whose generated payload must fit in free hold at accept time. The simulation

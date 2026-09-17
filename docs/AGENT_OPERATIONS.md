@@ -61,7 +61,17 @@ normal, not a reason to stop.
 - Work inside the exact unclaimed write set. A collision is handled by preserving the foreign hunk
   and continuing on disjoint paths — never a revert-and-reapply loop.
 - Commit only the exact paths you changed; never sweep up, delete, revert, or "clean up" another
-  lane's uncommitted files.
+  lane's uncommitted files. `git add -A` and `git commit -a` *are* sweeps: they file another lane's
+  half-finished work under your message. Stage with `git add -- <paths>`.
+- **The index is shared state too.** A commit made through an alternate index (`GIT_INDEX_FILE`), a
+  filtered patch, or `read-tree` leaves the real index stale; reconcile it with
+  `git reset -- <paths>` in the same turn. The symptom is unmistakable: `git status --short` shows
+  `D ` staged for a file that exists in `HEAD` and on disk, next to `??` for that same path — that
+  commit would revert landed work. Repair it; never publish from it.
+- **Collisions are repaired additively, then forgotten.** Your hunk overwritten, your commit
+  reverted, the app unbootable from someone's mid-edit: re-land your content, revert only your own
+  broken hunk, note it in one line, keep going. No negotiation with the other lane, no waiting for a
+  reply, and no destructive command to settle it.
 - Never raise attribution. The owner does not care whose name work is filed under.
 - Questions like "should I edit this or wait for the other agent?" are yours to decide. A taste
   question is resolved by the selected design contract, not by asking the owner.
