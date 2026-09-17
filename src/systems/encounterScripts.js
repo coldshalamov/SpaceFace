@@ -360,13 +360,27 @@ const patrolScan = {
       return d.resolve(live, 'cloak_evaded', { speak: false });
     }
     live.phase = 'offer';
-    live.deadlineAt = d.now() + (live.shape.scanS || 10);
+    live.deadlineAt = d.now() + (live.shape.offerS || live.shape.scanS || 10);
     live.data.breakTicks = 0;
     live.data.scan = null;
     d.say(live, 'bark', 'patrol_scan_hail', null, { primary: true });
-    const opts = ['submit', 'run'];
-    if (d.hasContraband()) { opts.splice(1, 0, 'bribe', 'dump'); }
-    d.offerChoices(live, opts, 'submit', live.deadlineAt);
+    // Stage the bribe price BEFORE offering, like the toll scripts: the director's
+    // needs:credits gate reads live.vars.amount, and an unset amount reads as zero —
+    // a free-looking bribe that burns the offer when clicked. Same expression as the
+    // bribe branch below, so the gate and the charge can never disagree.
+    live.vars.amount = Math.round(d.fineEstimate() * 0.3);
+    const declared = Array.isArray(live.shape.choices) ? live.shape.choices.map((c) => c.id) : null;
+    if (declared && declared.length) {
+      // A shape that declares its own verbs (326: comply/bribe/run) is offered verbatim,
+      // so the director's shape-side validation accepts what the player clicks. Bribe only
+      // shows with contraband aboard — offering a fee for a clean hold is a dead button.
+      const opts = declared.filter((id) => id !== 'bribe' || d.hasContraband());
+      d.offerChoices(live, opts, live.shape.timeoutChoice || 'comply', live.deadlineAt);
+    } else {
+      const opts = ['submit', 'run'];
+      if (d.hasContraband()) { opts.splice(1, 0, 'bribe', 'dump'); }
+      d.offerChoices(live, opts, 'submit', live.deadlineAt);
+    }
   },
 
   tick(d, live, state, now) {
@@ -377,11 +391,13 @@ const patrolScan = {
     if (near2 > SCAN_RANGE * SCAN_RANGE) {
       if (++live.data.breakTicks >= SCAN_BREAK_TICKS) return patrolScan.choose(d, live, state, 'run');
     } else live.data.breakTicks = 0;
-    if (now >= live.deadlineAt) return patrolScan.choose(d, live, state, 'submit');
+    if (now >= live.deadlineAt) return patrolScan.choose(d, live, state, live.shape.timeoutChoice || 'submit');
   },
 
   choose(d, live, state, choiceId) {
     if (live.phase !== 'offer') return;
+    if (choiceId !== 'run' && choiceId !== 'dump' && choiceId !== 'bribe'
+        && choiceId !== 'submit' && choiceId !== 'comply') return;
     if (choiceId === 'run') {
       // No attack on a clean (or even suspected) runner — no scan, no proof. The consequence is a
       // transponder flag: a small rep nick. WANTED heat only ever comes from heat's own inputs.
@@ -407,7 +423,7 @@ const patrolScan = {
       d.despawnAll(live, 40);
       return d.resolve(live, 'bribed');
     }
-    // submit — run the real customs machinery (economy owns fines/confiscation/rep/heat)
+    // submit / comply — run the real customs machinery (economy owns fines/confiscation/rep/heat)
     const leader = d.entsOf(live)[0];
     const player = d.player();
     if (!patrolCanInitiateScan(state, leader, player)) {
