@@ -129,11 +129,20 @@
       "next": ""
     },
     "WF-14": {
-      "grade": "U",
+      "grade": "B",
       "updated": "2026-09-17",
-      "inspections": [],
+      "inspections": [
+        {
+          "date": "2026-09-17",
+          "atCommit": "f422120d4e7c232131aca02837bddaff43266a2b",
+          "paths": [
+            "src/ui/floatingText.js"
+          ],
+          "finding": "comms:log was emit-only (0 consumers); now one callsign toast per line, salvage skipped (self-toasts). Completes U1/U2 line readability. 5/5."
+        }
+      ],
       "gaps": [],
-      "next": ""
+      "next": "audit remaining information gaps (standing screen exists; tier toasts exist; what else evaporates?)"
     },
     "WF-15": {
       "grade": "U",
