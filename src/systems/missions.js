@@ -1195,6 +1195,12 @@ export const missions = {
       offer && offer.source === 'firstTradeContract'
       && (!Number.isFinite(offer.expiresAtEpoch) || offer.expiresAtEpoch > epoch)
     )).slice(0, 1);
+    // Ghost-convoy lane bounties are once-per-run authored progress minted from real lane losses:
+    // the news line told the player exactly which station holds this row, so a board refresh must
+    // not swallow it (the ledger never re-fires a lane, so a dropped row kills the arc for the save).
+    const retainedGhostConvoyOffers = previousSlots.filter((offer) => (
+      offer && offer.source === 'ghostConvoyRumor'
+    )).slice(0, 1);
     // B5's three authored choices are tutorial progress, not disposable procedural rows. Keep them
     // together through an epoch refresh until the player accepts one; acceptMission withdraws the
     // two unchosen siblings atomically before publishing mission:accepted.
@@ -1242,6 +1248,7 @@ export const missions = {
         ...retainedAuthoredSetPieces,
         ...retainedMegaHeists,
         ...retainedCapitalBoss,
+        ...retainedGhostConvoyOffers,
       ],
     };
     state.missions.boards[stationId] = board;
@@ -1708,6 +1715,9 @@ export const missions = {
       || rawOffer.source === 'poiBehavior'
       || rawOffer.source === LANDMARK_QUEST_SOURCE
       || rawOffer.source === 'uniqueWreck'
+      // lossLedger's ghost-convoy lane bounty: a complete, priced offer built from real lane
+      // losses — the rumor's news line points here, so the board must be allowed to carry it.
+      || rawOffer.source === 'ghostConvoyRumor'
       || rawOffer.source === SET_PIECE_MISSION_SOURCE
     );
     if (!allowedSource) return false;
@@ -2652,7 +2662,12 @@ export const missions = {
       case BULK_HAUL_TYPE: return params.massU || 1;
       case 'mining_quota': return params.qty;
       case 'patrol_clear': return params.clearCount;
-      case 'bounty_hunt': return 1;
+      case 'bounty_hunt':
+        // Ghost-convoy lane bounties pay per nest hull: the authored pack clears as a set, and the
+        // spawn quota below sizes itself from this same number. Ordinary bounties stay single-mark.
+        return (params && params.ghostConvoy)
+          ? Math.max(1, Math.min(4, Math.round(Number(params.clearCount) || 1)))
+          : 1;
       case 'recon_scan': return params.originSurveySample
         ? Math.max(1, params.scanTargets || 1) + Math.max(1, params.sampleQty || 1)
         : params.scanTargets;
@@ -5196,6 +5211,9 @@ export const missions = {
       factionId: m.factionId,
       repMult,
       source: m.source || undefined,
+      // Lets emit-side systems (lossLedger's ghost-convoy lane memory) match the settled mission
+      // back to the offer that minted it. Undefined for every mission that had no originating offer.
+      sourceOfferId: m.sourceOfferId || undefined,
       causeFingerprint: m.cause && m.cause.fingerprint || undefined,
       causeTag: m.cause && m.cause.tag || undefined,
       rewardCr: settledRewardCr,
@@ -5871,9 +5889,11 @@ export const missions = {
       // Spawn only the targets still owed (objectiveTarget - progress) so a mid-mission save/load or
       // partial clear doesn't re-spawn already-killed hostiles and leave an orphan.
       // Adopted rematerialized hosts count toward the remaining quota.
+      // Ghost-convoy bounties owe the whole nest (anchor + cutters), not a single mark.
+      const ghostPack = !!(m.params && m.params.ghostConvoy);
       const remaining = Math.max(0, (m.objectiveTarget || 1) - (m.objectiveProgress || 0));
       const adopted = (m.targetEntityIds || []).length;
-      const want = m.type === 'patrol_clear' ? remaining : Math.min(1, remaining);
+      const want = (m.type === 'patrol_clear' || ghostPack) ? remaining : Math.min(1, remaining);
       const n = Math.max(0, want - adopted);
       if (n <= 0) {
         if (this._missionBudgetDeferrals) this._missionBudgetDeferrals.delete(String(m.id));
@@ -5909,11 +5929,20 @@ export const missions = {
         const durableSlot = vacantSlots[i];
         const rng = nextRng(durableSlot);
         const storyTarget = durableSlot === 0 && m.storyTarget ? m.storyTarget : null;
-        const typeId = storyTarget && storyTarget.archetype || pool[Math.floor(rng() * pool.length)];
+        // Nest composition mirrors the live scavenger-ambush doctrine (020/215): one reaver anchor
+        // holding the seam, wasp cutters working around it. Ordinary bounties keep their tier pool.
+        const typeId = storyTarget && storyTarget.archetype
+          || (ghostPack
+            ? (durableSlot === 0 ? 'reaver_pirate' : 'wasp_swarmer')
+            : pool[Math.floor(rng() * pool.length)]);
         const level = Math.round(lvLo + (lvHi - lvLo) * (0.4 + rng() * 0.6));
-        const pos = storyTarget
-          ? missionStoryTargetSpawnPos(m, storyTarget, rng)
-          : missionHostileSpawnPos(this.state, { x: px, z: pz }, rng);
+        // The whole ghost pack rings the storyTarget anchor (the authored lane feature the rumor
+        // pointed at) so the nest is a PLACE; fall back to the player ring if the anchor fails to
+        // resolve — an unresolvable anchor must never silently void the spawn.
+        let pos = null;
+        if (storyTarget) pos = missionStoryTargetSpawnPos(m, storyTarget, rng);
+        if (!pos && ghostPack && m.storyTarget) pos = missionStoryTargetSpawnPos(m, m.storyTarget, rng);
+        if (!pos) pos = missionHostileSpawnPos(this.state, { x: px, z: pz }, rng);
         if (!pos) continue;
         const spec = makeEnemySpawnSpec(typeId, level, pos, {
           factionId: storyTarget && storyTarget.factionId,
@@ -5921,6 +5950,10 @@ export const missions = {
         });
         spec.data = spec.data || {};
         spec.data.missionTag = m.id; // attribution helper (kill resolver matches by entity id below)
+        if (ghostPack && durableSlot === 0 && !spec.data.scanLabel) {
+          // The hull the lane news pointed at: a scanner read should name it as the nest's anchor.
+          spec.data.scanLabel = 'Raider nest-anchor';
+        }
         if (storyTarget) {
           spec.data.storyTargetId = storyTarget.id || null;
           spec.data.storyTargetRole = storyTarget.role || null;

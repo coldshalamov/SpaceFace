@@ -48,6 +48,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { SECTORS } from '../data/sectors.js';
+import { SECTOR_ANCHORS } from '../data/sectorAnchors.js';
 import { SHIPS } from '../data/ships.js';
 import { MISSION_TUNING } from '../data/missions.js';
 import { wreckMissionById } from '../data/wreckMissions.js';
@@ -171,9 +172,32 @@ function stationForSector(sectorId) {
   return stations.find((s) => s.services && s.services.includes('missions')) || stations[0] || null;
 }
 
+/**
+ * The nest needs a PLACE, not a zone-type string: a nest is a seam the pack works. Pick a
+ * deterministic lane feature (asteroid field first, then a POI, then a gate — never a station)
+ * from the sector's authored anchors, seeded by the lane so the same losses always point at the
+ * same rockfield. Returns an anchorId missions resolves through its storyTarget spawn seam.
+ */
+function nestAnchorIdFor(state, laneKey, sectorId) {
+  const anchors = SECTOR_ANCHORS[sectorId];
+  if (!anchors) return null;
+  // Kind priority: a nest works a rockfield seam; POIs and gates are the fallback features.
+  for (const key of ['fields', 'pois', 'gates']) {
+    const candidates = (Array.isArray(anchors[key]) ? anchors[key] : [])
+      .filter((a) => a && a.id && (a.pos || a.center));
+    if (!candidates.length) continue;
+    const seed = hash32((state.meta && state.meta.seed) || 1, laneKey, 'nest-anchor', key);
+    return candidates[seed % candidates.length].id;
+  }
+  return null;
+}
+
 function ghostConvoyLine(state, entry, count) {
   const sName = sectorName(state, entry.sectorId);
-  return `Ghost convoy rumor: ${count} losses on the ${sName} lane point to a Reach raider nest.`;
+  // The line names WHERE the bounty sits; without it the rumor has no address and dies as news.
+  const station = stationForSector(entry.sectorId);
+  const posted = station && station.name ? ` ${station.name} posted a bounty.` : '';
+  return `Ghost convoy rumor: ${count} losses on the ${sName} lane point to a Reach raider nest.${posted}`;
 }
 
 function buildGhostConvoyOffer(state, entry, sameLane, signal) {
@@ -188,14 +212,28 @@ function buildGhostConvoyOffer(state, entry, sameLane, signal) {
   );
   const distance = 600;
   const targetStrength = Number((1.3 + dangerTier * 0.5 + Math.min(4, sameLane.length) * 0.25).toFixed(2));
+  // The fiction the ledger sells is a NEST, not a lone captain: size the hull count from the same
+  // lane-danger signal that priced the bounty (threshold-3 lanes always yield a 3-4 hull pack).
+  const packSize = clamp(Math.round(targetStrength), 3, 4);
   const params = {
-    clearCount: 1,
+    clearCount: packSize,
     killCount: 0,
     targetStrength,
     fValue: targetStrength,
-    taskTime: 60,
+    // A pack fight takes longer than a single mark: the window scales with the nest.
+    taskTime: 60 * packSize,
     ghostConvoy: true,
   };
+  // storyTarget carries the PLACE: missions resolves the anchorId to the authored lane feature
+  // and rings the whole pack around it (player-ring fallback when the anchor cannot resolve).
+  const nestAnchorId = nestAnchorIdFor(state, laneKey, sectorId);
+  const storyTarget = nestAnchorId ? {
+    id: 'ghost_nest',
+    archetype: 'reaver_pirate',
+    anchorId: nestAnchorId,
+    anchorRadius: 260,
+    label: 'Raider nest-anchor',
+  } : null;
   const base = (MISSION_TUNING.BASE && MISSION_TUNING.BASE.bounty_hunt) || 80;
   const fRisk = (MISSION_TUNING.RISK_MULT && MISSION_TUNING.RISK_MULT[dangerTier]) || 1;
   const fDist = 1 + distance / (MISSION_TUNING.distDivisor || 2000);
@@ -210,14 +248,19 @@ function buildGhostConvoyOffer(state, entry, sameLane, signal) {
     wreckMissionId: GHOST_CONVOY_MISSION_ID,
     stationId: station ? station.id : null,
     factionId: entry.factionId || (signal && signal.ownerId) || null,
+    // A lane-watch bounty is a public cry for help, not a faction job: any standing may answer.
+    minRep: 0,
     reward_cr,
     time_limit_s,
+    // Accepted-instance deadline: the board promises "before the next convoy vanishes".
+    duration_s: time_limit_s,
     collateral_cr: 0,
     riskTier: dangerTier,
     destStationId: station ? station.id : null,
     destSectorId: sectorId,
     distance,
     params,
+    ...(storyTarget ? { storyTarget } : {}),
     title: `Ghost convoy: Reach raider nest near ${sectorName(state, sectorId)}`,
     summary: `${sameLane.length} losses in this lane point to a repeat Reach ambush pattern. Clear the nest before the next convoy vanishes.`,
     giver: template ? template.giver : 'Lane rumor',
@@ -327,6 +370,7 @@ export const lossLedger = {
     this._onOutpostRaided = (p) => this._handleOutpostRaided(p);
     this._onEntitySpawned = (p) => this._tagWreck(p);
     this._onEntityKilled = (p) => this._handleEntityKilled(p);
+    this._onMissionCompleted = (p) => this._handleMissionCompleted(p);
     this._onNewGame = () => this._reset();
 
     if (this._bus && this._bus.on) {
@@ -334,6 +378,7 @@ export const lossLedger = {
       this._bus.on('automation:outpostRaided', this._onOutpostRaided);
       this._bus.on('entity:spawned', this._onEntitySpawned);
       this._bus.on('entity:killed', this._onEntityKilled);
+      this._bus.on('mission:completed', this._onMissionCompleted);
       this._bus.on('game:newGame', this._onNewGame);
     }
   },
@@ -423,6 +468,27 @@ export const lossLedger = {
     });
   },
 
+  // The rumor's ending: when the ghost-convoy bounty settles, the lane's news voice reports the
+  // quiet — once, through the same one-voice news channel that announced the deaths. A bounty that
+  // expires or fails stays silent; the lane's losses remain true, so no false closure is spoken.
+  _handleMissionCompleted(p) {
+    const state = this._state;
+    if (!state || !p || p.source !== 'ghostConvoyRumor') return;
+    const L = ensureState(state);
+    const fired = (L.ghostConvoy && L.ghostConvoy.fired) || {};
+    const laneKey = Object.keys(fired).find((key) => fired[key] && fired[key].offerId === p.sourceOfferId);
+    if (!laneKey || fired[laneKey].resolvedAt != null) return;
+    fired[laneKey].resolvedAt = state.simTime || 0;
+    const sName = sectorName(state, fired[laneKey].sectorId);
+    const line = `The ${sName} lane has gone quiet. The nest that took ${fired[laneKey].lossCount} hulls is scrap now.`;
+    if (this._helpers && this._helpers.voice && typeof this._helpers.voice.say === 'function') {
+      const said = this._helpers.voice.say({ channel: 'news', text: line, kind: 'ghostConvoyResolved' });
+      if (!said && this._bus && this._bus.emit) this._bus.emit('toast', { text: line, kind: 'info', ttl: 5 });
+    } else if (this._bus && this._bus.emit) {
+      this._bus.emit('toast', { text: line, kind: 'info', ttl: 5 });
+    }
+  },
+
   // Additive wreck tagging — the seam that makes a wreck read its provenance. Reads entity:spawned
   // (coreSystem.js:29 emits { id, type, entity }), so salvage.js / intervention.js are NOT edited.
   // A wreck in a sector with a recorded loss gets data.provenance + data.wreckClass + an enriched
@@ -467,12 +533,14 @@ export const lossLedger = {
       if (this._onOutpostRaided) this._bus.off('automation:outpostRaided', this._onOutpostRaided);
       if (this._onEntitySpawned) this._bus.off('entity:spawned', this._onEntitySpawned);
       if (this._onEntityKilled) this._bus.off('entity:killed', this._onEntityKilled);
+      if (this._onMissionCompleted) this._bus.off('mission:completed', this._onMissionCompleted);
       if (this._onNewGame) this._bus.off('game:newGame', this._onNewGame);
     }
     this._onAssetLost = null;
     this._onOutpostRaided = null;
     this._onEntitySpawned = null;
     this._onEntityKilled = null;
+    this._onMissionCompleted = null;
     this._onNewGame = null;
   },
 
