@@ -245,7 +245,8 @@ test('Prospector survey requires an asteroid reading and a mined sample before r
   route = h.state.careers.origins.__meta.routes.prospector;
   assert.equal(route.contractIndex, 1);
   assert.equal(h.credits.some((row) => row.amount === 220), true);
-  assert.equal(h.state.player.researchPoints, 3);
+  // recon_scan pays 4 + riskTier*2 under the widened early-RP ramp (was 3 + tier).
+  assert.equal(h.state.player.researchPoints, 4);
 });
 
 test('failed sealed manifest removes contract cargo and reissues one replacement load', () => {

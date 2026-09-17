@@ -407,16 +407,14 @@ Scope `INTENTIONAL`. It does not replace this contract, the Fun Loop, or the
 queue. A gallery or bind table with no pocket is support-only. Headed
 captures are not the review method.
 
-## 13. Convergence layer (ideas, standards, A-list round-robin)
+## 13. Hygiene playbook (memory, staleness, round-robin)
 
-Owner ideas and directions enter through
-[`INFERENCE_CONVERGENCE.md`](./INFERENCE_CONVERGENCE.md) §1 (EXPAND, then the
-normal loop) and the [`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) inbox (one
-idea per agent, capped, never a queue). Every unit satisfies the §2 standards
-basis (vision, architecture, craft floors, single writers, feel, visual,
-perf, accessibility) and clears the §3 eight-check A-list bar; the §10 ledger
-gains a one-line `STANDARDS` note. Batches of 3+ include at least one polish
-unit (review existing work against the bar, iterate to it — §4); polish
-records `--verdict rebuilt` (or `implemented` with a `polish:` reason).
-Convergence tracking: §6. This section adds intakes and bars; it changes no
-rule above.
+[`INFERENCE_CONVERGENCE.md`](./INFERENCE_CONVERGENCE.md) is the developer-on-duty
+mindset and cross-session memory: run `node scripts/inference-ledger.mjs`,
+pick the weakest/stalest domain verifiable by looking, inspect, grade,
+improve one thing completely (build, polish, simplify, optimize, or delete),
+record the row in place, rotate. Inspections die when their paths change
+(§3 staleness law); rows and gaps are capped and update in place (§4
+anti-bloat law). Owner ideas enter at PICK via EXPAND or the capped
+[`INFERENCE_IDEAS.md`](./INFERENCE_IDEAS.md) inbox (raw material, never a
+queue). This section adds memory and intakes; it changes no rule above.

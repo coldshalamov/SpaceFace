@@ -529,6 +529,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   let viewIdx = 0;          // owned ship index being viewed/fitted
   let buyId = SHIPS[0].id;  // hull being previewed in Buy mode
   let mount = null;
+  // A failed graphics allocation must not break inventory or retry on every UI refresh.
+  let previewMountFailed = false;
   let curPreviewKey = '';
   let expectedPreviewDefId = null;
   let ghostActive = false;
@@ -809,6 +811,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
       syncShipworksDockForState(mount, ctx.state);
       return mount;
     }
+    if (previewMountFailed) return null;
     if (secondaryPreviewWebGlBlocked(ctx && ctx.state)) {
       canvas.dataset.previewReady = 'false';
       canvas.dataset.previewBlocked = 'secondary-webgl';
@@ -817,7 +820,8 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     canvas.dataset.authoredRequired = 'true';
     canvas.dataset.fallbackAllowed = 'false';
     canvas.dataset.previewReady = 'false';
-    mount = createShipPreviewMount(canvas, {
+    try {
+      mount = createShipPreviewMount(canvas, {
       allowFastFallback: false,
       authoredShips: true,
       authoredWarmup: true,
@@ -833,6 +837,32 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
         settlePreviewReveal(defId, state || (mount && mount.getAssetState ? mount.getAssetState() : 'authored'));
       },
     });
+    } catch (_) {
+      previewMountFailed = true;
+      canvas.dataset.previewReady = 'false';
+      canvas.dataset.previewBlocked = 'webgl-unavailable';
+      canvas.dataset.previewAssetState = 'unavailable';
+      stageEl.classList.remove('is-acquiring', 'is-revealing');
+      stageEl.classList.add('is-preview-unavailable');
+      mountDataState(acquiringEl, 'error', {
+        code: 'PREVIEW_UNAVAILABLE',
+        headline: 'Ship preview unavailable.',
+        fills: 'The graphics context could not start. Your fleet, fittings and ship statistics remain available.',
+        verb: {
+          label: 'Retry ship preview',
+          onActivate: () => {
+            previewMountFailed = false;
+            stageEl.classList.remove('is-preview-unavailable');
+            settleDataState(acquiringEl);
+            delete canvas.dataset.previewBlocked;
+            refresh();
+          },
+        },
+      });
+      return null;
+    }
+    delete canvas.dataset.previewBlocked;
+    stageEl.classList.remove('is-preview-unavailable');
     // Read-only hook used by the live browser acceptance probe. It exposes the preview's rendered
     // scene facts without giving UI code permission to mutate Three.js objects.
     Object.defineProperty(canvas, '__sfPreviewDiagnostics', {
@@ -858,7 +888,7 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     expectedPreviewDefId = defId || null;
     if (!mount) {
       canvas.dataset.previewReady = 'false';
-      canvas.dataset.previewBlocked = 'secondary-webgl';
+      if (!canvas.dataset.previewBlocked) canvas.dataset.previewBlocked = 'secondary-webgl';
       return;
     }
     const sameHull = mount.getDefId && mount.getDefId() === defId;

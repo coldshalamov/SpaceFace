@@ -13,7 +13,10 @@ import { stationFrameHtml } from '../views/stationFrames.js';
 import { stationOperationToSurface } from '../commandDeckRefitHooks.js';
 import { createCommandDock } from './dock.js';
 import { autoUpdate, computePosition, flip, offset, shift, size } from '@floating-ui/dom';
-import { el, settle, stamp, reducedMotion } from '../kit/index.js';
+import { el } from '../kit/index.js';
+import { stationIcon } from './stationArt.js';
+import { createStationEffects, stationMotionAllowed } from './stationEffects.js';
+import { createStationCommands } from './stationCommands.js';
 import { buildDockArrival, writeBerthArrival } from '../dockArrival.js';
 import { createFactionsScreen } from './screens/factions.js';
 import { createMarketScreen } from './screens/market.js';
@@ -72,6 +75,7 @@ const STATION_STYLES = [
   { id: 'sx-fh-tokens', href: '/assets/ui/kit/tokens/tokens.css' },
   { id: 'sx-fh-css', href: '/assets/ui/kit/kit/fh.css' },
   { id: 'sx-station-css', href: '/styles/station.css' },
+  { id: 'sx-station-orbital-css', href: '/styles/station-orbital.css' },
 ];
 // Also called by the in-flight THE SHIP screen (src/ui/ship/shipScreen.js): the shared shipworks
 // stage wears .sx-sw* classes styled only by this sheet, so opening F2 before the first dock must
@@ -212,7 +216,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   // The host `.screen` is the kit screen; `.sx-app` is a plain wrapper (display: contents) so the
   // regions below sit directly on the kit grid. `app.className` is seeded exactly once (the hub-
   // classes check reads that) and never wiped.
-  if (rootEl && rootEl.classList) rootEl.classList.add('k-screen', 'sx-berth');
+  if (rootEl && rootEl.classList) rootEl.classList.add('k-screen', 'sx-berth', 'sx-observatory');
   const app = document.createElement('div');
   app.className = 'sx-app';
   app.innerHTML = stationFrameHtml();
@@ -249,11 +253,31 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     actions: [],
     onNavigate: (id) => navigate(id),
     onAction: (id) => runAction(id),
+    allowMotion: () => stationMotionAllowed(state()),
   });
   dock.el.querySelectorAll('.sx-tile').forEach((tile) => {
     tile.classList.add('fh-key', 'fh-key--legend');
   });
   app.querySelector('.sxb-ops__dock').appendChild(dock.el);
+  let shown = true;
+  const effects = createStationEffects({ root: rootEl, app, body: bodyEl, dock: dock.el, credits: creditsEl, getState: state });
+  const commands = createStationCommands({
+    root: app, trigger: app.querySelector('.so-command-trigger'),
+    canOpen: () => shown && !document.hidden && rootEl.isConnected,
+    getCommands: () => [
+      ...DESTINATIONS.map(d => ({ label: d.label, detail: HELP[d.id]?.[1] || 'Open station facility', icon: d.id,
+        run: () => { navigate(d.id); dock.el.querySelector(`[data-nav="${d.id}"]`)?.focus({ preventScroll: true }); } })),
+      { label: 'Sell cargo', detail: 'Open your hold in Sell mode', keywords: 'trade unload ore', icon: 'hold', run: () => navigate('market', { tradeMode: 'sell', cargoOnly: true }) },
+      { label: 'Buy commodities', detail: 'Browse this station’s exchange', keywords: 'trade goods', icon: 'market', run: () => navigate('market', { tradeMode: 'buy' }) },
+      { label: 'Cargo manifest', detail: 'Inspect quantities and local sale values', icon: 'hold', run: () => openHoldPop(app.querySelector('[data-hold]')) },
+      ...[['repair','Repair hull','hull'],['refuel','Refuel ship','fuel'],['resupply','Resupply munitions','muni']].map(([id,label,icon]) => {
+        const cost = actionCosts()[id] || {};
+        return { label, icon, detail: cost.title || cost.text || 'Station service', disabled: !!cost.disabled, run: () => runAction(id) };
+      }),
+      { label: 'Review departure', detail: 'Check hull, fuel, cargo and tracked mission before undocking', keywords: 'launch flight exit', icon: 'launch', run: openDeparturePop },
+    ],
+  });
+
 
   const screenCache = new Map();
   let activeId = null;
@@ -292,8 +316,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
         size({
           padding: 14,
           apply({ availableWidth, availableHeight, elements }) {
-            elements.floating.style.maxWidth = `${Math.max(280, availableWidth)}px`;
-            elements.floating.style.maxHeight = `${Math.max(220, availableHeight)}px`;
+            elements.floating.style.maxWidth = `${Math.max(0, availableWidth)}px`;
+            elements.floating.style.maxHeight = `${Math.max(0, availableHeight)}px`;
           },
         }),
       ],
@@ -311,6 +335,9 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     popEl.className = 'sx-pop fh-plate fh-plate--raised' + (cls ? ' ' + cls : '');
     popEl.innerHTML = html;
     popEl.hidden = false;
+    popEl.setAttribute('role', 'dialog');
+    popEl.setAttribute('aria-label', cls === 'sx-pop--dep' ? 'Departure check' : cls === 'sx-pop--hold' ? 'Cargo manifest' : 'Station details');
+    popEl.tabIndex = -1;
     positionPop(anchorEl);
     stopPopPositioning = autoUpdate(anchorEl, popEl, () => positionPop(anchorEl), {
       ancestorResize: true,
@@ -318,13 +345,15 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       elementResize: true,
       animationFrame: false,
     });
-    requestAnimationFrame(() => popEl.classList.add('is-open'));
+    requestAnimationFrame(() => { if (popEl.hidden || !shown) return; popEl.classList.add('is-open'); (popEl.querySelector('button') || popEl).focus({ preventScroll: true }); });
   }
   function closePop() {
     if (popEl.hidden) return;
     stopFloating();
+    const returnFocus = popEl.contains(document.activeElement) ? popAnchor : null;
     popAnchor = null;
     popKind = '';
+    returnFocus?.focus?.({ preventScroll: true });
     if (helpEl) helpEl.setAttribute('aria-expanded', 'false');
     popEl.classList.remove('is-open');
     // reset the variant class too, or the popover stays "findable" (and styled) while hidden
@@ -355,7 +384,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   // immediately re-open it). Capture-phase on window so we win regardless of where focus sits.
   // With no popover open, Esc falls through normally → exit request → Departure Check.
   const onEscCapture = (ev) => {
-    if (ev.key !== 'Escape') return;
+    if (!shown || commands.isOpen || ev.key !== 'Escape') return;
     if (!popEl.hidden) {
       ev.stopPropagation();
       ev.preventDefault();
@@ -399,7 +428,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     openPop(
       `<div class="sx-pop__head k-t-emph">Departure check · <em class="is-${dep.state} ${stateCls}">${escapeHtml(dep.status)}</em></div>` +
       `<ul class="k-rows sx-pop__chips">${rows}</ul>` +
-      `<button type="button" class="k-word k-word--emph k-word--primary fh-key fh-key--primary sx-btn-primary" data-pop-launch>Launch anyway</button>`,
+      `<button type="button" class="k-word k-word--emph k-word--primary fh-key fh-key--primary sx-btn-primary" data-pop-launch>${dep.state === 'ready' ? 'Undock' : 'Launch anyway'}</button>`,
       anchor, 'sx-pop--dep');
   }
 
@@ -563,7 +592,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     bodyEl.replaceChildren(screen.el);
     if (typeof screen.onShow === 'function') screen.onShow({ ...ctx, ...options });
     // On later navigation only the panel settles (the arrival choreography owns the first show).
-    if (!arriving) settle(screen.el, { from: DESTINATIONS.indexOf(dest) < 3 ? 'left' : 'right', state: 'station:navigate' });
+    effects.navigate();
     if (ctx && ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_tab' });
     if (ctx && ctx.screenMemory) ctx.screenMemory.set('station', { destination: id });
     closePop();
@@ -590,34 +619,10 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   // Arrival (moment 4): the name stamps in, then the news line, then the foot words, then the
   // panel. The dock swell (sfx_dock_clunk) is the audio system's own on dock:docked.
   function arrive() {
-    arriving = true;
-    arrivedOnce = false;
-    const reduced = reducedMotion();
-    const finish = () => {
-      arrivedOnce = true;
-      arriving = false;
-      applyDestinationRegister(activeId);
-    };
-    if (reduced || typeof requestAnimationFrame !== 'function') { finish(); return; }
-    const nameWords = splitWords(crestName);
-    stamp(nameWords, { gap: 60, state: 'station:arrive' });
-    settle(newsEl, { from: 'top', delay: 200, state: 'station:arrive' });
-    const footWords = [...footEl.querySelectorAll('.sx-tile'), launchEl].filter(Boolean);
-    setTimeout(() => stamp(footWords, { gap: 60, state: 'station:arrive' }), 400);
-    const screen = screenCache.get(activeId);
-    if (screen && screen.el) settle(screen.el, { from: 'left', delay: 700, state: 'station:arrive' });
-    setTimeout(finish, 1200);
-  }
-  /** Wrap each word of the name in a span so stamp() can land them one by one. */
-  function splitWords(h1) {
-    const text = h1.textContent || '';
-    const parts = text.split(/\s+/).filter(Boolean);
-    if (parts.length <= 1) return [h1];
-    h1.replaceChildren(...parts.flatMap((w, i) => {
-      const span = el('span', 'sxb-berth__word', w);
-      return i < parts.length - 1 ? [span, document.createTextNode(' ')] : [span];
-    }));
-    return [...h1.children];
+    arriving = false;
+    arrivedOnce = true;
+    applyDestinationRegister(activeId);
+    effects.arrive();
   }
 
   const HELP = {
@@ -682,6 +687,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     receiptEl.querySelector('.sx-receipt__delta').textContent = delta;
     void receiptEl.offsetWidth;
     receiptEl.classList.add('is-live');
+    effects.receipt();
     // One line of text on the world; it fades by the kit's k-out, no plate, no pulse.
     receiptTimer = setTimeout(() => {
       receiptEl.classList.remove('is-live');
@@ -898,7 +904,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     const track = v.track === false ? ''
       : `<span class="k-bar sxb-vital__track" role="img" aria-label="${escapeHtml(v.aria)}">` +
         `<span class="k-bar__fill sxb-vital__fill" style="width:${pct}%"></span></span>`;
-    const label = `<span class="sxb-vital__label k-t-body k-62">${escapeHtml(v.label)}</span>${track}`;
+    const label = `${stationIcon(v.k)}<span class="sxb-vital__label k-t-body k-62">${escapeHtml(v.label)}</span>${track}`;
     const headEl = v.openHold
       ? `<button type="button" class="k-word k-word--body sxb-vital__head" data-hold data-pop-owner` +
           ` aria-label="${escapeHtml(v.aria)}. Open the cargo manifest.">${label}</button>`
@@ -911,7 +917,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
 
   function renderStatus() {
     const s = state();
-    setTextIfChanged(creditsEl, fmtCr(credits(s)));
+    effects.credits(credits(s));
     const ship = playerEntity(s);
     const fuel = (s && s.fuel) || {};
     const cargo = (s && s.player && s.player.cargo) || {};
@@ -1072,6 +1078,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   function refresh(_nextCtx, options = {}) {
+    effects.syncPolicy();
     renderStatus();
     applyDockAttention({ allowAutoOpen: false, refreshActive: !options.periodic });
     // The global UI loop calls this every 18 frames so live hull/fuel/credit readouts stay current.
@@ -1134,6 +1141,7 @@ export function createStationApp(rootEl, ctx, opts = {}) {
     refresh,
     navigate,
     onShow() {
+      shown = true; commands.setEnabled(true); effects.show();
       // Fresh dock session: allow one auto-open for the highest-priority physical station action.
       attentionAutoOpenedThisDock = false;
       bodyEl.classList.remove('k-out');
@@ -1164,6 +1172,11 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       }
     },
     onHide() {
+      shown = false; commands.setEnabled(false); effects.hide();
+      if (receiptTimer) { clearTimeout(receiptTimer); receiptTimer = 0; }
+      receiptEl.hidden = true;
+      setCommsOpen(false);
+      app.querySelector('.so-bulletin').open = false;
       closePop();
       dock.setAttention(null);
       lastMissionAttention = null;
@@ -1173,6 +1186,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
       if (scr && typeof scr.onHide === 'function') { try { scr.onHide(); } catch (_) {} }
     },
     dispose() {
+      shown = false; commands.dispose(); effects.dispose();
+      rootEl.classList.remove('sx-observatory');
       berth.dispose();
       stopFloating();
       if (popCloseTimer) clearTimeout(popCloseTimer);

@@ -250,7 +250,7 @@ export function marketReceiptRow(k, v, tone) {
   const cls = tone === 'gain' ? ' k-good' : tone === 'loss' ? ' k-bad' : '';
   return `<li class="k-row k-row--static sx-kv"><span>${escapeHtml(k)}</span><b class="k-row__num${cls}">${escapeHtml(v)}</b></li>`;
 }
-export function marketTradeHtml({ mode, qty, canAct, receiptHtml, note = '' }) {
+export function marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel = '', totalText = '', note = '' }) {
   const word = side => {
     const live = side === mode;
     return `<li><button type="button" class="k-word k-word--emph sx-seg__btn sx-trade__go sx-trade__go--${side}${live ? ' is-on k-word--primary' : ''}" data-mode="${side}" aria-pressed="${live}"${live ? ` data-go${canAct ? '' : ' disabled'}` : ''}>${live ? `${side === 'buy' ? 'Buy' : 'Sell'} ${fmt(qty)}` : side === 'buy' ? 'Buy' : 'Sell'}</button></li>`;
@@ -258,7 +258,8 @@ export function marketTradeHtml({ mode, qty, canAct, receiptHtml, note = '' }) {
   return `<div class="sx-trade"><div class="sx-qty">
     <label class="k-caps sx-qty__k" for="sx-market-qty">Quantity</label><input id="sx-market-qty" class="k-input k-input--num sx-qty__in" type="text" inputmode="numeric" value="${escapeHtml(qty)}" aria-label="Quantity"/>
     <ul class="k-words k-words--row sx-qty__words"><li><button type="button" class="k-word k-word--body sx-qty__b" data-q="-1">Fewer</button></li><li><button type="button" class="k-word k-word--body sx-qty__b" data-q="1">More</button></li><li><button type="button" class="k-word k-word--body sx-qty__max" data-q="max">Max</button></li></ul></div>
-    <ul class="k-rows sx-trade__rows" data-market-intel>${receiptHtml}</ul>
+    <div class="so-trade-total"><span data-trade-total-label>${escapeHtml(totalLabel)}</span><strong data-trade-total>${escapeHtml(totalText)}</strong></div>
+    <details class="so-trade-breakdown"><summary>Quote breakdown <span>Live · includes price impact</span></summary><ul class="k-rows sx-trade__rows" data-market-intel>${receiptHtml}</ul></details>
     <ul class="k-words k-words--row sx-seg sx-trade__words" role="group" aria-label="Buy or sell">${word('buy')}${word('sell')}</ul>
     <p class="k-t-fine k-38 sx-trade__note" ${note ? '' : 'hidden'}>${escapeHtml(note)}</p></div>`;
 }

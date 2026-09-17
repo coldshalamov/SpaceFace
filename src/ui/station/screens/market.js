@@ -52,12 +52,16 @@ for (const sec of SECTORS) {
 export function chartTrendRole(up) { return up ? 'you' : 'foe'; }
 export function chartTrendColor(up) { return up ? 'var(--sf-you)' : 'var(--sf-foe)'; }
 export function maxAffordableQuantity({ limit, credits, quote }) {
+  const ceiling = Number(limit);
+  const budget = Number(credits);
+  if (!Number.isFinite(ceiling) || !Number.isFinite(budget) || budget < 0 || typeof quote !== 'function') return 0;
   let low = 0;
-  let high = Math.max(0, Math.floor(Number(limit) || 0));
+  let high = Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.floor(ceiling)));
+  // Canonical buy totals are monotone with quantity; this avoids linear quote scans.
   while (low < high) {
-    const mid = Math.ceil((low + high) / 2);
+    const mid = low + Math.ceil((high - low) / 2);
     const value = quote(mid);
-    if (value && value.ok && Number.isFinite(value.total) && value.total <= credits) low = mid;
+    if (value && value.ok && Number.isFinite(value.total) && value.total <= budget) low = mid;
     else high = mid - 1;
   }
   return low;
@@ -672,6 +676,8 @@ export function createMarketScreen(ctx) {
     if (receiptOnly && tradeEl.querySelector('[data-market-intel]')) {
       // Keep the focused numeric input alive while each keystroke updates its actual quote.
       tradeEl.querySelector('[data-market-intel]').innerHTML = receiptHtml;
+      tradeEl.querySelector('[data-trade-total]').textContent = quoteReady ? fmt(total) + ' cr' : 'Unavailable';
+      tradeEl.querySelector('[data-trade-total-label]').textContent = mode === 'buy' ? 'Total cost' : 'Total gain';
       const go = tradeEl.querySelector('[data-go]');
       go.disabled = !canAct;
       go.textContent = goLabel(mode);
@@ -684,7 +690,7 @@ export function createMarketScreen(ctx) {
     }
 
     // Preserve the native event contract: the live side commits, the other side switches mode.
-    tradeEl.innerHTML = marketTradeHtml({ mode, qty, canAct, receiptHtml, note });
+    tradeEl.innerHTML = marketTradeHtml({ mode, qty, canAct, receiptHtml, totalLabel: mode === 'buy' ? 'Total cost' : 'Total gain', totalText: quoteReady ? fmt(total) + ' cr' : 'Unavailable', note });
     dressConsole();
   }
 
@@ -722,6 +728,24 @@ export function createMarketScreen(ctx) {
     renderList(state); renderStage(state);
     renderConsole(state, { receiptOnly: editingQuantity });
     renderRoutes(state);
+  }
+
+  // Presentation timers belong to this visible screen, never a retired dock session.
+  let visible = true;
+  let disposed = false;
+  const deferred = new Set();
+  function cancelDeferred() {
+    for (const timer of deferred) clearTimeout(timer);
+    deferred.clear();
+    tradeBusy = false;
+  }
+  function deferRefresh(delay, settleTrade = false) {
+    const timer = setTimeout(() => {
+      deferred.delete(timer);
+      if (settleTrade) tradeBusy = false;
+      if (visible && !disposed) renderAll(ctx.state || {});
+    }, delay);
+    deferred.add(timer);
   }
 
   // ---- interactions ----
@@ -779,7 +803,7 @@ export function createMarketScreen(ctx) {
       const dest = course.getAttribute('data-dest');
       try { applyTradeNavigation(ctx, dest, cmdtyId); } catch (_) {}
       if (ctx.bus) ctx.bus.emit('audio:cue', { id: 'ui_accept' });
-      setTimeout(() => renderAll(ctx.state || {}), 60);
+      deferRefresh(60);
       return;
     }
     const go = ev.target.closest('[data-go]');
@@ -794,7 +818,7 @@ export function createMarketScreen(ctx) {
         ctx.bus.emit(mode === 'buy' ? 'ui:buy' : 'ui:sell', { commodityId: selectedId, qty: tradeQty });
         ctx.bus.emit('audio:cue', { id: 'ui_click' });
       }
-      setTimeout(() => { tradeBusy = false; renderAll(ctx.state || {}); }, 80);
+      deferRefresh(80, true);
       return;
     }
     const seg = ev.target.closest('[data-mode]');
@@ -830,6 +854,8 @@ export function createMarketScreen(ctx) {
   return {
     el,
     onShow(c) {
+      if (disposed) return;
+      visible = true;
       const open = c || ctx;
       const st = open.state || {};
       // Enable trading: the economy system opens/initializes this station's live market on show
@@ -852,8 +878,8 @@ export function createMarketScreen(ctx) {
       const active = tbodyEl && tbodyEl.querySelector('.is-active');
       if (active && typeof active.scrollIntoView === 'function') { try { active.scrollIntoView({ block: 'nearest' }); } catch (_) {} }
     },
-    refresh(c) { renderAll((c || ctx).state || {}); },
-    onHide() {},
-    dispose() {},
+    refresh(c) { if (visible && !disposed) renderAll((c || ctx).state || {}); },
+    onHide() { visible = false; cancelDeferred(); },
+    dispose() { disposed = true; visible = false; cancelDeferred(); },
   };
 }

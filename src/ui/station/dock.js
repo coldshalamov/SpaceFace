@@ -1,9 +1,10 @@
-import { iconHtml, escapeMarkup } from '../views/identity.js';
+import { escapeMarkup } from '../views/identity.js';
+import { stationIcon } from './stationArt.js';
 // Station destinations: an explicit facility rail, horizontal on narrow screens.
 // A real ARIA tablist of kit words: role=tab, roving tabindex, arrow keys, aria-current on the live
 // one. The pointer/keyboard distance field still writes --dock-scale / --dock-lift / --dock-near on
-// each word (the tab-navigation check reads them); the sheet no longer applies them — words do not
-// grow. `.sx-dock`, `.sx-dock__group--nav`, `.sx-tile`, `.sx-tile__seat`, `data-nav`, `sx-tab-<id>`
+// each word (the tab-navigation check reads them); the Orbital sheet applies them to icon artwork only. Hitboxes and labels never
+// move. `.sx-dock`, `.sx-dock__group--nav`, `.sx-tile`, `.sx-tile__seat`, `data-nav`, `sx-tab-<id>`
 // are inert hooks the station checks query.
 
 function tileHtml(item, kind) {
@@ -14,7 +15,7 @@ function tileHtml(item, kind) {
   const extra = isNav ? '' : ' sx-tile--act';
   return (
     `<li><button type="button" class="k-word k-word--body sx-tile${extra}" ${dataAttr} aria-label="${escapeMarkup(item.aria || item.label)}">` +
-      `<span class="sx-tile__seat" aria-hidden="true">${iconHtml(item.id)}</span>` +
+      `<span class="sx-tile__seat" aria-hidden="true">${stationIcon(item.id)}</span>` +
       `<span class="sx-tile__badge k-t-fine k-signal" data-badge="${item.id}" hidden></span>` +
       `<span class="sx-tile__label">${escapeMarkup(item.label)}</span>` +
       (kind === 'act' ? `<span class="sx-tile__cost k-t-fine k-38" data-cost="${item.id}">—</span>` : '') +
@@ -30,14 +31,14 @@ function tileHtml(item, kind) {
  * @param {(id:string)=>void} cfg.onAction
  */
 export function createCommandDock(cfg) {
-  const { destinations = [], actions = [], onNavigate, onAction } = cfg;
+  const { destinations = [], actions = [], onNavigate, onAction, allowMotion = () => true } = cfg;
   const el = document.createElement('div');
   el.className = 'sx-dock';
   el.setAttribute('role', 'toolbar');
   el.setAttribute('aria-label', 'Station destinations');
-  el.setAttribute('aria-orientation', 'vertical');
+  el.setAttribute('aria-orientation', 'horizontal');
   el.innerHTML =
-    `<ul class="k-words k-words--row sx-dock__group sx-dock__group--nav" role="tablist" aria-orientation="vertical" aria-label="Destinations">` +
+    `<ul class="k-words k-words--row sx-dock__group sx-dock__group--nav" role="tablist" aria-orientation="horizontal" aria-label="Destinations">` +
       destinations.map((d) => tileHtml(d, 'nav')).join('') +
     `</ul>` +
     (actions.length
@@ -57,7 +58,8 @@ export function createCommandDock(cfg) {
       t.classList.toggle('is-active', on);
       t.setAttribute('aria-selected', on ? 'true' : 'false');
       if (on) t.setAttribute('aria-current', 'true'); else t.removeAttribute('aria-current');
-      t.setAttribute('tabindex', on ? '0' : '-1'); // roving tab stop
+      t.setAttribute('tabindex', on ? '0' : '-1');
+      if (on) t.scrollIntoView?.({ block: 'nearest', inline: 'nearest' }); // roving tab stop
     });
   }
 
@@ -65,7 +67,7 @@ export function createCommandDock(cfg) {
   const navGroup = el.querySelector('.sx-dock__group--nav');
   const narrowQuery = typeof matchMedia === 'function' ? matchMedia('(max-width: 899px)') : null;
   const syncOrientation = () => {
-    const direction = narrowQuery?.matches ? 'horizontal' : 'vertical';
+    const direction = 'horizontal';
     el.setAttribute('aria-orientation', direction);
     navGroup.setAttribute('aria-orientation', direction);
   };
@@ -86,8 +88,7 @@ export function createCommandDock(cfg) {
     onNavigate && onNavigate(tabs[next].getAttribute('data-nav'));
   });
 
-  // The distance field: event-bound, writes custom properties only. The sheet ignores them (words
-  // do not grow); the values remain a legible, testable record of pointer proximity.
+  // The distance field is event-bound. Only icon artwork uses it; hitboxes remain fixed.
   const motionQuery = typeof matchMedia === 'function'
     ? matchMedia('(prefers-reduced-motion: reduce)') : null;
   const tiles = [...el.querySelectorAll('.sx-tile')];
@@ -104,16 +105,17 @@ export function createCommandDock(cfg) {
 
   function applyPointerField(clientX) {
     fieldFrame = 0;
-    if (motionQuery && motionQuery.matches) { resetField(); return; }
+    if (!allowMotion() || (motionQuery && motionQuery.matches)) { resetField(); return; }
     const radius = Math.max(112, Math.min(176, el.getBoundingClientRect().width * 0.13));
-    for (const tile of tiles) {
-      const rect = tile.getBoundingClientRect();
+    const bounds = tiles.map(tile => tile.getBoundingClientRect());
+    for (let i = 0; i < tiles.length; i++) {
+      const tile = tiles[i], rect = bounds[i];
       const distance = Math.abs(clientX - (rect.left + rect.width / 2));
       const proximity = Math.max(0, 1 - distance / radius);
       const eased = (1 - Math.cos(proximity * Math.PI)) / 2;
       const peak = tile.hasAttribute('data-act') ? 0.18 : 0.30;
       tile.style.setProperty('--dock-scale', (1 + peak * eased).toFixed(4));
-      tile.style.setProperty('--dock-lift', `${(-12 * eased).toFixed(2)}px`);
+      tile.style.setProperty('--dock-lift', `${(-3 * eased).toFixed(2)}px`);
       tile.style.setProperty('--dock-near', eased.toFixed(4));
     }
   }
@@ -126,7 +128,7 @@ export function createCommandDock(cfg) {
 
   function applyKeyboardField(target) {
     resetField();
-    if (!target || (motionQuery && motionQuery.matches)) return;
+    if (!target || !allowMotion() || (motionQuery && motionQuery.matches)) return;
     const index = tiles.indexOf(target);
     if (index < 0) return;
     tiles.forEach((tile, i) => {
@@ -134,7 +136,7 @@ export function createCommandDock(cfg) {
       const proximity = steps === 0 ? 1 : (steps === 1 ? 0.28 : 0);
       const peak = tile.hasAttribute('data-act') ? 0.16 : 0.25;
       tile.style.setProperty('--dock-scale', (1 + peak * proximity).toFixed(4));
-      tile.style.setProperty('--dock-lift', `${(-10 * proximity).toFixed(2)}px`);
+      tile.style.setProperty('--dock-lift', `${(-3 * proximity).toFixed(2)}px`);
       tile.style.setProperty('--dock-near', proximity.toFixed(4));
     });
   }

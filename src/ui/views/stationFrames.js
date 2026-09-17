@@ -1,80 +1,59 @@
+import { stationIcon, stationSealHtml, stationSymbolsHtml } from '../station/stationArt.js';
 // Production station frames. Pure markup; controllers retain all state, intent, focus and lifecycle ownership.
 // These exact functions also power the isolated presentation fixture; no game systems are substituted.
 
 export function stationFrameHtml() {
-  // Field Hardware chrome over the live berth: stencil name, authority legend, one news tape,
-  // leftover strips (not website cards), engraved vitals plate, destination keys along the
-  // bottom edge, Undock key. The work panel is a smoked window onto the hull.
-  return `<div class="k-world k-world--plate sxb-berth__plate" aria-hidden="true"></div>` +
-    `<canvas class="k-world sxb-berth__world" aria-hidden="true"></canvas>` +
-    `<header class="k-title sxb-berth">` +
-      `<span class="of-port-mark sxb-berth__lamp" aria-hidden="true"></span>` +
-      `<p class="sxb-berth__ident fh-legend"></p>` +
-      `<h1 class="k-display k-t-hero fh-hero sxb-berth__name"></h1>` +
-      `<div class="sxb-tape">` +
-        `<p class="k-t-emph k-62 fh-legend sxb-berth__news"></p>` +
-        `<article class="sxb-event" hidden>` +
-          `<span class="sxb-event__badge k-caps fh-legend"></span>` +
-          `<strong class="sxb-event__title"></strong>` +
-          `<p class="sxb-event__body"></p>` +
-        `</article>` +
-        `<article class="sxb-event sxb-berth__ledger" hidden>` +
-          `<span class="sxb-event__badge k-caps fh-legend"></span>` +
-          `<strong class="sxb-event__title"></strong>` +
-          `<p class="sxb-event__body"></p>` +
-        `</article>` +
-        `<article class="sxb-event sxb-berth__mechanic" hidden>` +
-          `<span class="sxb-event__badge k-caps fh-legend"></span>` +
-          `<strong class="sxb-event__title"></strong>` +
-          `<p class="sxb-event__body"></p>` +
-        `</article>` +
-        `<p class="k-t-fine k-62 sxb-berth__patch" hidden></p>` +
-        `<p class="k-t-fine k-62 sxb-berth__route" hidden></p>` +
-      `</div>` +
-      `<div class="sxb-handoff" hidden></div>` +
-    `</header>` +
-    `<aside class="k-corner sxb-crown fh-plate fh-plate--edge" aria-label="Credits and ship vitals">` +
-      `<div class="k-hero sxb-purse"><div class="k-hero__n fh-heronum sxb-purse__value">0</div><div class="k-hero__w sxb-purse__label">credits</div></div>` +
-      `<ul class="k-rows sxb-vitals" style="--k-row-cols: 1fr auto auto"></ul>` +
-    `</aside>` +
-    `<div class="k-span sx-screen__body fh-window fh-window--deep" id="sx-panel" role="tabpanel" tabindex="0"></div>` +
-    `<footer class="k-foot sxb-ops">` +
-      `<nav class="of-facility-rail" aria-label="Station facilities">` +
-        `<div class="of-rail-label">Facilities</div>` +
-        `<div class="sxb-ops__dock"></div>` +
-      `</nav>` +
-      `<aside class="sx-comms" aria-label="Station communications">` +
-        `<div class="sx-receipt" role="status" aria-live="polite" aria-atomic="true" hidden>` +
-          `<span class="sx-receipt__kind k-caps"></span> <strong class="sx-receipt__title"></strong> <span class="sx-receipt__delta k-62"></span>` +
-        `</div>` +
-        `<button type="button" class="k-word k-word--fine fh-key fh-key--small sx-comms__toggle" aria-expanded="false" aria-controls="sx-comms-history" aria-label="Open station communications history">` +
-          `<span>Comms</span><span class="sx-comms__count" hidden>0</span>` +
-        `</button>` +
-        `<button type="button" class="k-word k-word--fine fh-key fh-key--small sxb-help" aria-expanded="false" aria-label="Explain the active station operation" data-why="Context help">Help</button>` +
-        `<div class="sx-comms__history fh-plate fh-plate--sunk" id="sx-comms-history" aria-label="Berth session log" hidden></div>` +
-      `</aside>` +
-      `<div class="sxb-launch-seat">` +
-          `<button type="button" class="k-word k-word--emph k-word--primary fh-key fh-key--primary sxb-launch" data-act="undock" data-pop-owner>` +
-            `<span class="sxb-launch__light" aria-hidden="true"></span>` +
-            `<span class="sxb-launch__copy">` +
-              `<span class="sxb-launch__label">Undock</span>` +
-              `<span class="k-word-sub sxb-launch__state"></span>` +
-            `</span>` +
-          `</button>` +
-      `</div>` +
-    `</footer>` +
-    `<div class="sx-pop fh-plate fh-plate--raised" hidden></div>`;
+  return `${stationSymbolsHtml()}
+    <div class="k-world k-world--plate sxb-berth__plate" aria-hidden="true"></div>
+    <canvas class="k-world sxb-berth__world" aria-hidden="true"></canvas>
+    <header class="sxb-berth">
+      <div class="so-station-mark">${stationSealHtml()}</div>
+      <div class="so-station-title"><p class="sxb-berth__ident"></p><h1 class="sxb-berth__name"></h1></div>
+      <button type="button" class="so-command-trigger" aria-haspopup="dialog" aria-controls="so-command-palette">${stationIcon('search')}<span>Find a service</span><kbd>Ctrl K</kbd></button>
+      <div class="sxb-purse" aria-label="Available credits"><div class="sxb-purse__label">Available credits</div><div class="sxb-purse__value">0</div><span class="so-credit-delta" aria-hidden="true"></span></div>
+    </header>
+    <nav class="of-facility-rail" aria-label="Station facilities"><div class="sxb-ops__dock"></div><span class="so-berth-status">${stationIcon('signal')}Docked</span></nav>
+    <aside class="sxb-crown" aria-label="Ship vitals and services"><ul class="sxb-vitals"></ul></aside>
+    <div class="so-context">
+      <div class="sxb-handoff" hidden></div>
+      <details class="so-bulletin"><summary>${stationIcon('comms')}<span>Station intelligence</span><span class="so-disclosure">+</span></summary>
+        <div class="sxb-tape"><p class="sxb-berth__news"></p>
+          <article class="sxb-event" hidden><span class="sxb-event__badge"></span><strong class="sxb-event__title"></strong><p class="sxb-event__body"></p></article>
+          <article class="sxb-event sxb-berth__ledger" hidden><span class="sxb-event__badge"></span><strong class="sxb-event__title"></strong><p class="sxb-event__body"></p></article>
+          <article class="sxb-event sxb-berth__mechanic" hidden><span class="sxb-event__badge"></span><strong class="sxb-event__title"></strong><p class="sxb-event__body"></p></article>
+          <p class="sxb-berth__patch" hidden></p><p class="sxb-berth__route" hidden></p>
+        </div>
+      </details>
+    </div>
+    <div class="sx-screen__body" id="sx-panel" role="tabpanel" tabindex="0" data-so-light></div>
+    <footer class="sxb-ops">
+      <div class="so-session-mark">${stationIcon('check')}<span>Berth operations</span><span class="so-session-hint">Your ship. Your next move.</span></div>
+      <aside class="sx-comms" aria-label="Station communications">
+        <div class="sx-receipt" role="status" aria-live="polite" aria-atomic="true" hidden>
+          <svg class="so-transfer" viewBox="0 0 64 24" aria-hidden="true"><path d="M2 12h50m-7-6 7 6-7 6" fill="none" stroke="currentColor" pathLength="1"/></svg>
+          <span class="sx-receipt__kind"></span><strong class="sx-receipt__title"></strong><span class="sx-receipt__delta"></span>
+        </div>
+        <button type="button" class="sx-comms__toggle" aria-expanded="false" aria-controls="sx-comms-history" aria-label="Open station communications history">${stationIcon('comms')}<span>Comms</span><span class="sx-comms__count" hidden>0</span></button>
+        <button type="button" class="sxb-help" aria-expanded="false" aria-label="Explain the active station operation" data-why="Context help">${stationIcon('help')}<span>Help</span></button>
+        <div class="sx-comms__history" id="sx-comms-history" aria-label="Berth session log" hidden></div>
+      </aside>
+      <div class="sxb-launch-seat"><button type="button" class="sxb-launch" data-act="undock" data-pop-owner>
+        <span class="sxb-launch__light" aria-hidden="true"></span><span class="sxb-launch__copy"><span class="sxb-launch__label">Undock</span><span class="sxb-launch__state"></span></span>${stationIcon('launch')}
+      </button></div>
+    </footer>
+    <div class="sx-pop" hidden></div>`;
 }
 
 export function marketFrameHtml() {
   return `<nav class="k-hang sx-mkt__list" aria-label="Commodities"></nav>` +
     `<section class="k-stage k-stage--scroll sx-mkt__stage" id="sx-market-instrument" role="tabpanel" aria-describedby="sx-market-driver-summary">` +
-      `<div class="sx-mkt__quote"></div>` +
-      `<div class="sx-mkt__console">` +
-        `<div class="sx-mkt__trade"></div>` +
-        `<div class="sx-mkt__routes" aria-label="Trade routes"></div>` +
+      `<div class="sx-mkt__analysis"><div class="sx-mkt__quote"></div>` +
+        `<details class="so-route-disclosure"><summary>Route intelligence</summary>` +
+          `<div class="sx-mkt__routes" aria-label="Trade routes"></div>` +
+        `</details>` +
         `<aside class="k-t-fine k-62 sx-adboard" data-ad-board aria-label="Dockside commerce notice" hidden></aside>` +
       `</div>` +
+      `<div class="sx-mkt__console"><div class="sx-mkt__trade"></div></div>` +
     `</section>`;
 }
 

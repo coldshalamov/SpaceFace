@@ -1,0 +1,139 @@
+{
+  "schema": "spaceface.inferenceLedger.v1",
+  "updated": "2026-09-17",
+  "domains": {
+    "WF-01": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-02": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-03": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-04": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-05": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-06": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-07": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-08": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-09": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-10": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-11": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-12": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-13": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-14": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-15": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-16": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-17": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-18": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    },
+    "WF-19": {
+      "grade": "U",
+      "updated": "2026-09-17",
+      "inspections": [],
+      "gaps": [],
+      "next": ""
+    }
+  }
+}

@@ -67,10 +67,11 @@ Stop at N complete units, when the owner stops you, or when every remaining
 candidate collides with a live NOW.md hunk. Do not ask the owner to pick
 technical options.
 
-If they gave an idea (INFERENCE 3 — <idea> / INFERENCE IDEA: <idea> / a line
-from INFERENCE_IDEAS.md): EXPAND first (fantasy, verbs, place, people,
-script, density, consequence, live owners, standards), then CONSIDER
-alternatives inside the idea. An idea never excuses a thin row. Law:
-design/program/INFERENCE_CONVERGENCE.md. Every unit clears its eight-check
-A-list bar and the ledger gains STANDARDS. Batches of 3+ include at least
-one polish unit: review shipped work against the bar and iterate it there.
+Hygiene loop (law: design/program/INFERENCE_CONVERGENCE.md): run
+node scripts/inference-ledger.mjs, pick the weakest/stalest domain you can
+verify by looking, INSPECT the live owner, GRADE it, IMPROVE one thing
+completely (build, polish, simplify, optimize, or delete), RECORD the row
+in place plus inference-record, ROTATE. Stale notes are rumors — re-inspect
+before building on them. If they gave an idea (INFERENCE 3 — <idea> /
+INFERENCE IDEA: <idea> / an INFERENCE_IDEAS.md line): EXPAND it first,
+then run the loop; an idea never excuses a thin row.
