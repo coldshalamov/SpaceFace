@@ -11,6 +11,14 @@ House rules that bind every job here: fixed-seed printed numbers before/after (n
 a test that pins anti-vision behavior is a defect; never add drag; never clamp given momentum;
 no content — tuning only; `implemented ≠ focused_green ≠ route_accepted ≠ integrated`.
 
+**Dispatch hygiene (owner 2026-09-16 — no worktree litter):** every dispatched job runs in an
+isolated worktree registered in the delegation ledger, and the ledger entry carries a CLEANUP
+GATE: after review and a durable integration-or-rejection, remove the worktree, delete the
+worker branch (named ref only, merged-or-evidenced), and delete the packet/session files. A job
+is not done while its worktree is still registered. Pre-existing litter is triaged under
+`design/program/WORKTREE_RECOVERY.md` (disposition first, delete only named safe refs) — never
+bulk-pruned.
+
 | # | Job | The spot → the wonk | The tune | Bar to move | Status |
 |---|---|---|---|---|---|
 | 1 | **Velocity-vectoring assist** (Feel Contract C band, "try first") | Below the speed cap, strafing does nothing to your velocity vector — the ship slides; turning at cruise needs the whole yaw arc. Two outside designers endorsed a lateral force that rotates the velocity vector toward the nose (~1.6 rad/s at low speed → 0.9 at cap, **zero above cap**), making "turn NOW" and "earned speed is kept" coexist. Never tried. | `src/core/flight/propulsionKernel.js` (+ minimal `flightV3.js` wiring): below-cap vector rotation assist per the band; zero above cap; scratch-reused, allocation-free. | B1 (≥99% earned speed kept hands-off/forward) and B2 (reversal ≤3 s, turn ≤1 screen) stay MET; NEW number: 90° velocity redirect at cruise under full lateral drops well below the unassisted arc (print before/after); knock budget B13 unchanged. | **DISPATCHED** to fable-5-1 xhigh, worktree `tune/vva-fable-xhigh` |
