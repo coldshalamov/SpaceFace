@@ -146,8 +146,7 @@ const DEFAULT_BINDINGS = INPUT_DEFAULTS.BINDINGS;
 // new-profile Massline primary and F remains its permanent alias.
 export const REBINDABLE = ['forward', 'reverse', 'yawLeft', 'yawRight', 'strafeLeft', 'strafeRight', 'boost', 'autoFire',
   'brake', 'siteBeam', 'tether', 'chargeThrow', 'chargeDetonate', 'scanPulse', 'cruise', 'reelIn', 'reelOut',
-  'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone',
-  'dropBomb', 'cycleBomb'];
+  'dropBomb', 'cycleBomb', 'bulletTime', 'cloak', 'travelBurn', 'deployMassSeed', 'deployWell', 'deployRepulsor', 'toggleClearingCone'];
 export const REBIND_LABELS = {
   forward: 'Throttle up',
   reverse: 'Throttle down (reverse)',
@@ -161,7 +160,9 @@ export const REBIND_LABELS = {
   siteBeam: 'World Site beam (selected target)',
   tether: 'Massline: tap latch/cut; hold line control',
   chargeThrow: 'Impulse charge: throw',
-  chargeDetonate: 'Impulse charge: detonate',
+  chargeDetonate: 'Ordnance: detonate armed bombs and charges',
+  dropBomb: 'Bomb bay: release selected payload',
+  cycleBomb: 'Bomb bay: select next payload',
   scanPulse: 'Scanner pulse',
   cruise: 'Cruise drive (charge/drop)',
   reelIn: 'Tether winch in',
@@ -185,8 +186,7 @@ export const REBIND_LABELS = {
 // default button (the live resolved map prints the button on the right of each row).
 export const GAMEPAD_REBINDABLE = [
   'accept', 'cancel', 'massline', 'fire', 'mine', 'boost', 'brake', 'cycleTarget', 'autoTarget',
-  'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'tabPrev', 'tabNext',
-  'dropBomb', 'cycleBomb',
+  'map', 'codex', 'pause', 'countermeasure', 'travelBurn', 'dropBomb', 'cycleBomb', 'chargeDetonate', 'tabPrev', 'tabNext',
 ];
 export const GAMEPAD_REBIND_LABELS = {
   accept: 'Accept / dock',
@@ -203,6 +203,9 @@ export const GAMEPAD_REBIND_LABELS = {
   pause: 'Pause menu',
   countermeasure: 'Countermeasure',
   travelBurn: 'Travel drive (burn latch)',
+  dropBomb: 'Bomb bay: release selected payload',
+  cycleBomb: 'Bomb bay: select next payload',
+  chargeDetonate: 'Ordnance: detonate armed bombs and charges',
   tabPrev: 'Station tab: previous',
   tabNext: 'Station tab: next',
   dropBomb: 'Bomb bay: drop bomb',
