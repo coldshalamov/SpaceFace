@@ -41,6 +41,9 @@ function migrationBaselineCatalog() {
   for (const key of ['windowS', 'investigateR', 'scanTellR', 'identifyPay', 'identifyPayStep', 'brokenPay', 'cachePool', 'choices', 'timeoutChoice']) {
     delete catalog.anomaly_whisper[key];
   }
+  // The named-kill aftermath (INFERENCE U2) later marked the captain's hulk
+  // with a signature salvage pool. Strip it for the migration baseline.
+  delete catalog.named_hunter.killCachePool;
   // The first-hour difficulty pass later kept elite and multi-squad ambient encounters out of the
   // tier-1 Helios neighborhood. Remove those live admission gates when reconstructing the earlier
   // module-split baseline; this test proves that migration, not that gameplay can never evolve.

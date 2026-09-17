@@ -2490,9 +2490,30 @@ const namedHunter = {
 
   event(d, live, state, name, p) {
     if (name === 'squadKill' && p && p.role === 'boss') {
+      const captainName = live.vars.name || 'The hunter';
       const named = d.namedState();
       const rec = named[live.data.captainId];
-      if (rec) { rec.alive = false; rec.lastSeenSector = live.sectorId; }
+      if (rec) {
+        rec.alive = false;
+        rec.lastSeenSector = live.sectorId;
+        rec.killedBy = p.byPlayer ? 'player' : 'world';
+        rec.deathSector = live.sectorId;
+        rec.deathTick = state.tick | 0;
+      }
+      // The hulk stays where they fell: named, scannable, worth stripping.
+      const at = (p.pos && Number.isFinite(p.pos.x)) ? p.pos : (live.anchor || { x: 0, z: 0 });
+      d.spawnWreck(live, {
+        pos: { x: at.x, z: at.z },
+        pool: { ...(live.shape.killCachePool || { cmdty_salvage_electronics: 2, cmdty_scrap_metal: 3 }) },
+        scanLabel: `${captainName}'s Hulk`,
+      });
+      d.emit('comms:log', {
+        from: 'RUMOR',
+        text: p.byPlayer
+          ? `${captainName} is dead. You did that — the lanes noticed.`
+          : `${captainName} is dead.`,
+        kind: 'encounter',
+      });
       d.dangerImpulse(live, 'hunter_down', -0.03);
       d.despawnAll(live, 20, 'escort');                 // the wing scatters without its captain
       d.resolve(live, 'killed', { vars: live.vars });

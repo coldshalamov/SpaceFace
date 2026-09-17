@@ -34,5 +34,9 @@ export default defineEncounter(trigger, {
   "factionId": "faction_reach",
   "context": "encounter",
   "entranceS": 8,
-  "bark": null
+  "bark": null,
+  "killCachePool": {
+    "cmdty_salvage_electronics": 2,
+    "cmdty_scrap_metal": 3
+  }
 });

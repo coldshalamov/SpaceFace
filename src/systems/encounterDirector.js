@@ -1493,7 +1493,10 @@ export const encounterDirector = {
       const role = live.roles[p.id];
       if (role !== undefined && live.ids.includes(p.id)) {
         handled = live;
-        this._scriptEvent(live, 'squadKill', { id: p.id, role, byPlayer, killerId: p.killerId });
+        this._scriptEvent(live, 'squadKill', {
+          id: p.id, role, byPlayer, killerId: p.killerId,
+          pos: p.pos ? { x: p.pos.x, z: p.pos.z } : null,
+        });
         break;
       }
     }
