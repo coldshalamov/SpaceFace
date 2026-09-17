@@ -59,7 +59,10 @@ for (const id of args.only) {
   }
   const outDir = path.join(outRoot, id);
   mkdirSync(outDir, { recursive: true });
-  const baseUrl = `${server.baseUrl}?dev=screen:${encodeURIComponent(id)}`;
+  // The dev route speaks SCREEN ids (mainMenu, newGame, drill…), not surface ids; the surface
+  // registry keeps the mapping in `screenId` for exactly this.
+  const devId = surface.screenId || surface.id;
+  const baseUrl = `${server.baseUrl}?dev=screen:${encodeURIComponent(devId)}`;
   const result = await lookAtSurface({ surface, baseUrl, outDir });
   if (!result.ok) exitCode = 1;
 }
@@ -84,16 +87,49 @@ async function lookAtSurface({ surface, baseUrl, outDir }) {
   });
   const finder = selectorFor(surface);
 
+  // Key-entry surfaces (the comms fan, the wingman radial) have no screen to push: they exist
+  // only while their flight key is held. When the surface does not appear on its own, synthesize
+  // the registry's own entry key and hold it for letter keys.
+  let entryKeyHeld = false;
+  const releaseEntryKey = async () => {
+    if (!entryKeyHeld) return;
+    entryKeyHeld = false;
+    await page.keyboard.up('Alt').catch(() => {});
+    await page.keyboard.up('z').catch(() => {});
+  };
+  const synthesizeEntryKey = async () => {
+    const entry = surface.entry;
+    if (!entry || entry.kind !== 'key' || !entry.key) return;
+    const k = entry.key;
+    if (/^(F\d{1,2}|Escape)$/.test(k)) {
+      await page.keyboard.press(k);
+      return;
+    }
+    entryKeyHeld = true;
+    await page.keyboard.down(k);
+  };
+
   const reload = async () => {
     let lastError = null;
+    // Only surfaces with no screen of their own need the key (the comms fan, the wingman radial);
+    // for the rest the dev route's push is the open, and their entry key would only TOGGLE it shut.
+    const needsKeyEntry = surface.entry && surface.entry.kind === 'key' && !surface.screenId;
     for (let attempt = 1; attempt <= 3; attempt += 1) {
       try {
+        await releaseEntryKey();
         await page.goto(baseUrl, { waitUntil: 'domcontentloaded', timeout: 30_000 });
-        await page.waitForSelector(finder, { state: 'visible', timeout: ROOT_TIMEOUT_MS });
+        if (needsKeyEntry) {
+          await page.waitForSelector('#hud', { state: 'visible', timeout: ROOT_TIMEOUT_MS });
+          await synthesizeEntryKey();
+          await page.waitForSelector(finder, { state: 'visible', timeout: 30_000 });
+        } else {
+          await page.waitForSelector(finder, { state: 'visible', timeout: ROOT_TIMEOUT_MS });
+        }
         await page.waitForTimeout(SETTLE_MS);
         return;
       } catch (error) {
         lastError = error;
+        await releaseEntryKey();
         await page.waitForTimeout(2000 * attempt);
       }
     }
@@ -109,6 +145,7 @@ async function lookAtSurface({ surface, baseUrl, outDir }) {
     console.error(`  NOT OPENED after ${Math.round(ROOT_TIMEOUT_MS / 1000)}s of waiting (${error.message.split('\n')[0]})`);
     console.error(`  session mode: ${mode}${logs.length ? `\n  last console error: ${logs.at(-1)}` : ''}`);
     console.error('  the dev route needs a running session; if the mode is stuck in "loading", the machine is slow — retry, or open the URL by hand and look.');
+    await releaseEntryKey();
     await context.close();
     return { ok: false };
   }
@@ -219,6 +256,7 @@ async function lookAtSurface({ surface, baseUrl, outDir }) {
   for (const row of rows) console.log(`  ${row.control.label.padEnd(34)} ${row.effect}`);
   if (logs.length) console.log(`  (${logs.length} console error(s); last: ${logs.at(-1)})`);
   console.log(`  index: ${path.relative(ROOT, path.join(outDir, 'index.md'))}`);
+  await releaseEntryKey();
   await context.close();
   return { ok: true };
 }

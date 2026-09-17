@@ -454,6 +454,11 @@ export function createMarketNews(ctx) {
     span.textContent = item.text;
     el.appendChild(span);
     setTickerHostVisible(true);
+    // Legibility floor: the flight tape is narrow, and after the BAND / COMMS / HAIL chrome a
+    // headline can be squeezed to a couple of characters ("TR…"), which reads as broken text.
+    // Flight already surfaces news through the one-voice alert floor, so below a readable width
+    // the tape stays chrome-only instead of showing a truncated stub.
+    if (el.clientWidth > 0 && el.clientWidth < 64) setTickerHostVisible(false);
     scheduleTicker(items);
   }
 

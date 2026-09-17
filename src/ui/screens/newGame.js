@@ -718,7 +718,9 @@ export const newGameScreen = {
     if (!refs) return;
     const d = DIFFICULTIES.find((x) => x[0] === value) || DIFFICULTIES.find((x) => x[0] === DEFAULT_DIFFICULTY);
     refs.diff.value = d[0];
-    refs.diffDesc.textContent = d[2];
+    // Name the live tier in the sentence: the caption sits under the whole row, and unprefixed it
+    // reads as the last row's (Ironman's) description.
+    refs.diffDesc.textContent = `${d[1]} — ${d[2]}`;
     for (const b of refs.diffWords.querySelectorAll('.k-word')) {
       const live = b.dataset.action === 'difficulty:' + d[0];
       b.setAttribute('aria-pressed', String(live));

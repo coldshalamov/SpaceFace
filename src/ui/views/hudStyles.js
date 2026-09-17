@@ -835,7 +835,10 @@ export function injectHudCss() {
     font-family:var(--hud-display); font-size:var(--k-fs-data); font-weight:700;
     color:var(--hud-muted);
   }
-  .sf-commtape__news { min-width:0; flex:1 1 auto; overflow:hidden; }
+  /* flex-basis 0: the host must share only the tape's free slack. With basis auto the headline's
+     own width is the basis, and because BAND/COMMS/HAIL cannot shrink below min-content the host
+     absorbed the whole deficit — a headline truncated to "TR…" beside 200px of empty tape. */
+  .sf-commtape__news { min-width:0; flex:1 1 0; overflow:hidden; }
   .sf-news-ticker { overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
     font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-paper); }
   .sf-news-ticker__item--blockade, .sf-news-ticker__item--piracy { color:var(--hud-danger); }

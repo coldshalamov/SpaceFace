@@ -63,11 +63,19 @@ const checks = [
     label: 'Target panel v2 — threat badge, range bar, distance, closing speed, gimmick tag',
     needs: [
       'sf-target__threat',
-      'sf-target__rangebar',
       'sf-target__rangefill',
       'sf-target__dist',
       'sf-target__closing',
       'gimmick',
+    ],
+  },
+  // The range-bar track markup lives in the shared view frame; the panel drives its fill.
+  {
+    path: 'src/ui/views/targetFrame.js',
+    label: 'Target panel v2 range-bar track — bar + fill markup in the frame',
+    needs: [
+      'sf-target__rangebar',
+      'sf-target__rangefill',
     ],
   },
   {
@@ -116,7 +124,7 @@ const checks = [
       'tgt.shield / tgt.shieldMax',
       'tgt.armorHp / tgt.armorMax',
       'tgt.hull / tgt.hullMax',
-      'if (!tgt || !tgt.alive)',
+      'if (!tgt || !tgt.alive || !tgtAnchor)',
     ],
   },
 
