@@ -66,7 +66,7 @@
     "audio:cue": 3
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "22499c9366b276b4022eb9e4432853fef79aad7ae2b0b9881bf8fe19f05c6809",
+    "authoritativeHash": "82d9de5c32dc2df38280e4181131c0c5234ce0592ad0f4f71d1b4559bcf111e0",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -142,6 +142,7 @@
     "2026-09-15 deliberate re-record: propulsion catalogue combat/precision cruise ceilings restored to pre-nimble-regime values per owner feel direction. Prior authoritativeHash was 371585f229c9795d513b009da5afa9942533d52156a0b02e74469932e3df1524.",
     "sim-golden-diff legacy vs reference 8f101f61: MOTION_CHANGED as intended, 12 entity motion fields / 158 snapshot fields moved. Zero observed trace counts moved (fire 17, hit 4, damage 4, cues unchanged).",
     "repeat-20 and reload@600 are deterministic (baselineSha256 equals run hash). Recorded on an isolated tree (HEAD + owned files only); unrelated dirty-tree work in tetherGameplay moves this hash and is excluded.",
-    "Companion fix in this change: player contact-response budget bookkeeping now persists through save/reload instead of living only on the physics record, so a mid-episode scrape no longer re-spends its cruise budget."
+    "Companion fix in this change: player contact-response budget bookkeeping now persists through save/reload instead of living only on the physics record, so a mid-episode scrape no longer re-spends its cruise budget.",
+    "2026-09-16 re-record over e8d10fed7 (reproduces prior hash). CONTENT_ONLY: added player.salvageRights + missions.config.featured. No boards on the 47-A tape; no motion/trace diffs. Prior hash 22499c93."
   ]
 }
