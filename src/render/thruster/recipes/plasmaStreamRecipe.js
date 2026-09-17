@@ -5,7 +5,8 @@
  *              These are engine properties, so the plume never scales with hull speed. The volume
  *              block below says what the gas inside this envelope looks like.
  *  2. `throat` The over-range pinpoint inside the bell that an emission integral cannot reach.
- *  3. `snake`  Stylistic history filament. Thin, long, meanders through a world-space noise field.
+ *  3. `thread` Path-thread release timing. The legacy hidden "snake" strip mesh was deleted; the
+ *              live jet is the swept ribbon plume and the recorded wake is the contrail.
  *
  * There is no layer stack and no wake-parcel cloud here any more. Those described camera-facing
  * sheets, which are physically incapable of self-occlusion and could only ever render banding on a
@@ -120,23 +121,10 @@ export const PLAYER_PLASMA_STREAM_RECIPE = freezeDeep({
     edgeColor: [0.02, 0.10, 0.72],
   },
 
-  // ---- Stylistic history filament (the Snake thread) ----------------------------------------
-  // `freq` is [cycles per world unit along the flow, cycles across the half width].
-  snake: {
-    widthHeadWU: 0.66,
-    // Wider at the tail, not thinner. Exhaust left in space keeps spreading, so a thread that
-    // narrows with age converges on a one-pixel line and reads as a ruled line drawn to the edge of
-    // the screen. Spreading while the opacity collapses is what makes it read as dispersal.
-    widthTailWU: 2.6,
-    // World-space meander so the thread is never a ruled line behind a ship flying straight.
-    meanderWU: 5.5,
-    meanderScaleWU: 0.021,
-    meanderOnsetS: 0.05,
-    opacity: 0.09,
-    radiance: 0.32,
-    color: [0.34, 0.82, 1.0],
-    freq: [0.13, 1.3],
-    // Seconds for the head to erode away after thrust stops (the thread drains, not blinks out).
+  // ---- Path-thread release --------------------------------------------------------------------
+  // The retained live-head sampler drains after thrust stops (it also gates the cold-drive sleep
+  // path). The strip mesh this timing once fed was force-hidden dead weight and is deleted.
+  thread: {
     eraseS: 1.5,
   },
 
