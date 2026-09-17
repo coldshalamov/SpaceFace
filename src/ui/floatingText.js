@@ -46,6 +46,28 @@ export function factionRepToastText(state, payload = {}) {
   return (delta > 0 ? '+' : '') + delta + ' REP · ' + name;
 }
 
+// comms:log had emitters (barks, encounter acks, survey/rumor lines) and zero
+// consumers — every line evaporated. Map it onto the receipt lane so comms
+// actually read. Kinds whose emitter already toasts the same beat stay out.
+const COMMS_SELF_TOASTED_KINDS = new Set(['salvage']);
+const COMMS_TOAST_TTL = 5;
+
+export function commsToastSpec(payload = {}) {
+  if (!payload || typeof payload.text !== 'string' || !payload.text.trim()) return null;
+  if (COMMS_SELF_TOASTED_KINDS.has(payload.kind)) return null;
+  const from = String(payload.from || '').trim().toUpperCase();
+  const text = (from ? from + ': ' : '') + payload.text.trim();
+  return { text: text.length > 140 ? text.slice(0, 137) + '...' : text, kind: 'info', ttl: COMMS_TOAST_TTL };
+}
+
+export function bindCommsLogToasts(bus) {
+  if (!bus || typeof bus.on !== 'function') return;
+  bus.on('comms:log', (p) => {
+    const spec = commsToastSpec(p);
+    if (spec) bus.emit('toast', spec);
+  });
+}
+
 // Computed once per receipt, never during the pooled frame update. Keep legacy weak-point copy.
 export function weakPointFloatingTextSpec(payload) {
   if (!payload?.pos) return null;
@@ -206,6 +228,9 @@ export function createFloatingText(ctx) {
     const kind = p.delta > 0 ? 'good' : 'danger';
     bus.emit('toast', { text: factionRepToastText(state, p), kind, ttl: 3.5 });
   });
+
+  // ---- comms log (was emit-only: rescue acks, survey/rumor lines, cargo barks) -----------------
+  bindCommsLogToasts(bus);
 
   // ---- cargo full ---------------------------------------------------------------------------
   bus.on('cargo:full', (p) => {
