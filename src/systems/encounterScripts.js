@@ -20,7 +20,7 @@
 //   * passive ships are unrostered, so the director may steer them by writing data.intent
 //     (the claim-beacon pattern, beacons.js:147) — used for convoy/trader route life.
 
-import { ENCOUNTERS, NAMED_CAPTAINS, CONVOY_CARGO, WHISPER_LINES, FACTION_LABELS, tollAmountFor, barkText } from '../data/encounters.js';
+import { ENCOUNTERS, NAMED_CAPTAINS, CONVOY_CARGO, WHISPER_LINES, WHISPER_SOURCE_NAMES, FACTION_LABELS, tollAmountFor, barkText } from '../data/encounters.js';
 import { aceById, escalatedStyleFromMemory, styleEscalationBark, styleLoadoutForAce } from '../data/namedAces.js';
 import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -2255,16 +2255,102 @@ const salvageSignal = {
 };
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
-// H. ANOMALY WHISPER — CHN UNKNOWN says one strange thing, once. That's the whole event.
+// H. ANOMALY WHISPER — a discovery chain. The line is the clue; a physical source is placed
+//    nearby and the player investigates: close in to identify it (survey data + a wreck to
+//    strip), scan first for a range hint, destroy it from afar for partial data, or let it fade.
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 const whisper = {
   fire(d, live) {
     const rng = d.stream(live, 'line');
     const line = WHISPER_LINES[Math.floor(rng() * WHISPER_LINES.length) % WHISPER_LINES.length];
+    // The source sits 120–380 WU out — same readability band as salvage-signal caches.
+    const site = d.stream(live, 'site');
+    const zc = live.anchor || { x: 0, z: 0 };
+    const a = site() * Math.PI * 2, r = 120 + site() * 260;
+    const ent = d.spawnProp(live, {
+      pos: { x: zc.x + Math.cos(a) * r, z: zc.z + Math.sin(a) * r },
+      scanLabel: 'Unresolved Signal',
+      storyPropKind: 'anomaly_whisper_source',
+      radius: 6,
+    });
+    if (!ent) return d.abort(live, 'no_spawn');
+    live.ids.push(ent.id);
+    live.roles[ent.id] = 'source';
+    live.data.sourceId = ent.id;
+    live.phase = 'seek';
+    live.deadlineAt = d.now() + (live.shape.windowS || 420);
     d.say(live, 'info', line, null, { primary: true, literal: true, kind: 'anomaly' });
-    d.resolve(live, 'spoken', { speak: false });
+    d.offerChoices(live, ['approach', 'scan', 'ignore'], 'ignore', live.deadlineAt);
   },
-  tick() {},
+  tick(d, live, state, now) {
+    if (live.phase !== 'seek') return;
+    const p = d.player(); if (!p) return d.abort(live, 'no_player');
+    const src = state.entities.get(live.data.sourceId);
+    if (!src || src.alive === false) return d.resolve(live, 'scattered', { speak: false });
+    const pd2 = dist2(p.pos.x, p.pos.z, src.pos.x, src.pos.z);
+    const investigateR = live.shape.investigateR || 70;
+    if (pd2 <= investigateR * investigateR) {
+      const stats = state.encounterDirector && state.encounterDirector.stats;
+      const prior = (stats && stats.whisperIdentified) || 0;
+      const nameRoll = d.stream(live, 'name');
+      const name = WHISPER_SOURCE_NAMES[Math.floor(nameRoll() * WHISPER_SOURCE_NAMES.length) % WHISPER_SOURCE_NAMES.length];
+      const pay = (live.shape.identifyPay || 90) + prior * (live.shape.identifyPayStep || 30);
+      if (stats) stats.whisperIdentified = prior + 1;
+      live.vars.name = name;
+      live.vars.pay = pay;
+      d.say(live, 'info', 'whisper_reveal', live.vars);
+      d.emit('comms:log', { from: 'SURVEY', text: `Signal source identified: ${name}. Data accepted, ${pay} cr.`, kind: 'encounter' });
+      d.grant(pay, 'survey:whisper');
+      d.spawnWreck(live, {
+        pos: { x: src.pos.x, z: src.pos.z },
+        pool: { ...(live.shape.cachePool || { cmdty_scrap_metal: 2 }) },
+        scanLabel: 'Opened Signal Source',
+      });
+      d.despawnAll(live, 2, 'source');
+      return d.resolve(live, 'identified', { vars: live.vars });
+    }
+    if (now >= live.deadlineAt) {
+      d.despawnAll(live, 10);
+      return d.resolve(live, 'faded', { speak: false });
+    }
+  },
+  choose(d, live, state, choiceId) {
+    // 'approach' is flown, not clicked; 'scan' is the C-key pulse (routed as an event).
+    if (choiceId === 'ignore' && live.phase === 'seek') {
+      d.despawnAll(live, 10);
+      d.resolve(live, 'ignored', { speak: false });
+    }
+  },
+  event(d, live, state, name, p) {
+    if (live.phase !== 'seek') return;
+    if (name === 'squadKill' && p && p.role === 'source') {
+      // Shot from afar: partial survey data, no wreck to strip.
+      if (p.byPlayer) {
+        const pay = live.shape.brokenPay || 30;
+        live.vars.pay = pay;
+        d.say(live, 'info', 'whisper_broken');
+        d.grant(pay, 'survey:whisper-broken');
+        d.resolve(live, 'broken', { vars: live.vars });
+      } else {
+        d.resolve(live, 'scattered', { speak: false });
+      }
+      return;
+    }
+    if (name === 'sourceGone') {
+      d.resolve(live, 'scattered', { speak: false });
+      return;
+    }
+    if (name !== 'scanPulse' || live.data.toldHint) return;
+    const player = d.player(); if (!player) return;
+    const src = state.entities.get(live.data.sourceId);
+    if (!src) return;
+    const tellR = live.shape.scanTellR || 700;
+    if (dist2(player.pos.x, player.pos.z, src.pos.x, src.pos.z) > tellR * tellR) return;
+    live.data.toldHint = true;
+    d.say(live, 'info', 'whisper_scan_hint', {
+      range: `${Math.round(Math.sqrt(dist2(player.pos.x, player.pos.z, src.pos.x, src.pos.z)))} WU`,
+    });
+  },
 };
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════

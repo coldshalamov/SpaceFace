@@ -190,6 +190,7 @@ export const encounterDirector = {
       this.bus.on('contraband:scanned', (p) => this._routeToScript('patrolScan', 'contrabandScanned', p));
       this.bus.on('scan:pulse', (p) => {
         this._routeToScript('distress', 'scanPulse', p);
+        this._routeToScript('whisper', 'scanPulse', p);
         this._routeToSelfRegistered('scanPulse', p);
       });
       this.bus.on('tether:attached', (p) => this._routeToSelfRegistered('tetherAttached', p));
@@ -1460,6 +1461,9 @@ export const encounterDirector = {
       }
       if (live.script === 'salvageSignal' && live.data && live.data.cacheId === id) {
         this._scriptEvent(live, 'cacheGone', { id });
+      }
+      if (live.script === 'whisper' && live.data && live.data.sourceId === id) {
+        this._scriptEvent(live, 'sourceGone', { id });
       }
       if (liveIndex !== -1) {
         for (let index = live.ids.length - 1; index >= 0; index--) {

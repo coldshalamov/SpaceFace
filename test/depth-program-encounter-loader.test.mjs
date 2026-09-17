@@ -35,6 +35,12 @@ function migrationBaselineCatalog() {
   // intentionalDrift allowlist below documents the live evolution.
   catalog.salvage_signal.zoneTypes = ['derelict_field'];
   catalog.anomaly_whisper.zoneTypes = ['anomaly_deep'];
+  // The anomaly-whisper discovery chain (INFERENCE U1) later gave the ambient
+  // line a findable source: window, radii, pay, cache pool, choices. Strip
+  // those live-evolution fields when reconstructing the migration baseline.
+  for (const key of ['windowS', 'investigateR', 'scanTellR', 'identifyPay', 'identifyPayStep', 'brokenPay', 'cachePool', 'choices', 'timeoutChoice']) {
+    delete catalog.anomaly_whisper[key];
+  }
   // The first-hour difficulty pass later kept elite and multi-squad ambient encounters out of the
   // tier-1 Helios neighborhood. Remove those live admission gates when reconstructing the earlier
   // module-split baseline; this test proves that migration, not that gameplay can never evolve.

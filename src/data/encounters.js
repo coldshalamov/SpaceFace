@@ -233,6 +233,14 @@ export const ENCOUNTER_BARKS = Object.freeze({
   // claims
   claim_ping:         'Your claim beacon reports contacts picking the seam.',
   claim_defense_arrival: 'REACH: {count} hulls on {claim}. We take freight, not prisoners.',
+  // anomaly whisper discovery chain (the whisper has a findable source now)
+  whisper_reveal: Object.freeze([
+    'The whisper was {name}.',
+    'Source resolved: {name}.',
+    'Got it — the whisper was {name}.',
+  ]),
+  whisper_scan_hint: 'Signal has a source, {range} out. Hold it on your scanner.',
+  whisper_broken:    'The source is wreckage now. Partial data recovered.',
 });
 
 /** CHN UNKNOWN whisper pool (anomaly ambience — lowercase on purpose; seeded pick). */
@@ -240,6 +248,15 @@ export const WHISPER_LINES = Object.freeze([
   'count the quiet between your engines.',
   'the lanes remember older wakes.',
   'your mass sings at the threshold.',
+]);
+
+/** What the whisper turns out to be once investigated (seeded pick per encounter). */
+export const WHISPER_SOURCE_NAMES = Object.freeze([
+  'a dead survey relay',
+  'a pre-Collapse probe',
+  'a choir penitence buoy',
+  'a corpse-light cache',
+  "a mutineers' dead-drop",
 ]);
 
 /** Receipt templates keyed `shapeId.outcome`. Short, factual, never overclaiming: every line here
@@ -285,6 +302,8 @@ export const ENCOUNTER_RECEIPTS = Object.freeze({
   'tether_control_raider_wake.escaped':   'WAKE RAIDER EVADED — anchor contact fades.',
   'tether_control_raider_hunter.cleared': 'CONTROL HUNTER DOWN — enemy Massline silenced.',
   'tether_control_raider_hunter.escaped': 'CONTROL HUNTER EVADED — the hunter loses anchor.',
+  'anomaly_whisper.identified': 'SIGNAL IDENTIFIED — {name}. Survey data sold, {pay} cr.',
+  'anomaly_whisper.broken':     'SIGNAL BROKEN — source destroyed. Partial data, {pay} cr.',
 });
 
 /** Short spoken labels for faction ids (comms barks / receipts — callsign register). */

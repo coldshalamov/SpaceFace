@@ -26,5 +26,32 @@ export default defineEncounter(trigger, {
     twist: 'none',
     actor: 'none',
   },
-  "bark": null
+  "bark": null,
+  // Discovery-chain tuning: the whisper line is the clue; a physical source is
+  // placed 120–380 WU out (same readability band as salvage_signal caches).
+  "windowS": 420,
+  "investigateR": 70,
+  "scanTellR": 700,
+  "identifyPay": 90,
+  "identifyPayStep": 30,
+  "brokenPay": 30,
+  "cachePool": {
+    "cmdty_salvage_electronics": 2,
+    "cmdty_scrap_metal": 2
+  },
+  "choices": [
+    {
+      "id": "approach",
+      "label": "Close in"
+    },
+    {
+      "id": "scan",
+      "label": "Scan first"
+    },
+    {
+      "id": "ignore",
+      "label": "Ignore"
+    }
+  ],
+  "timeoutChoice": "ignore"
 });
