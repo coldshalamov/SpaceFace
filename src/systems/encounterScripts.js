@@ -276,8 +276,8 @@ const toll = {
         d.say(live, 'bark', 'toll_broke_ack');
         return toll.choose(d, live, state, 'refuse');
       }
-      d.charge(amount, 'toll:reach');
-      d.rep('faction_reach', 1, 'toll_paid');           // pirates respect a payer, slightly
+      d.charge(amount, `toll:${String(live.factionId || 'faction_reach').replace(/^faction_/, '')}`);
+      d.rep(live.factionId || 'faction_reach', 1, 'toll_paid'); // the tolling faction respects a payer, slightly
       d.dangerImpulse(live, 'toll_paid', -0.01);        // paid lanes run a touch cooler
       d.say(live, 'bark', 'toll_paid_ack');
       settleTollMotive(d, live, 'parley_resolved', true);
@@ -2125,7 +2125,7 @@ function convoyTick(d, live, state, now, isConvoy) {
   d.despawnAll(live, 6);                                // docked — off the board
   if (isConvoy && live.data.guardKills > 0) {
     d.grant(live.shape.guardPay || 200, 'convoy:guard');
-    d.rep('faction_mts', 5, 'convoy_guard');
+    d.rep((live.shape.civilian && live.shape.civilian.factionId) || 'faction_mts', 5, 'convoy_guard');
     live.vars.pay = live.shape.guardPay || 200;
     return d.resolve(live, 'guarded', { vars: live.vars });
   }

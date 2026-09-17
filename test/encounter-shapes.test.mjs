@@ -50,7 +50,7 @@ test('authored file count matches index.generated.js and catalog', () => {
 
   assert.equal(authoredFiles.length, ENCOUNTER_MODULES.length);
   assert.equal(Object.keys(ENCOUNTERS).length, authoredFiles.length);
-  assert.equal(authoredFiles.length, 52);
+  assert.equal(authoredFiles.length, 55);
 });
 
 test('every catalog entry has a complete legal shape and passes validation', () => {

@@ -1685,8 +1685,6 @@ export const traffic = {
           ? this.state.traffic.freighters.find((candidate) => candidate && candidate.id === entity.id)
           : null;
         this._ensureAmbushLoadedHaulerManifest(entity, rec);
-        const loaded = entity.data.cargoManifest;
-        if (validCausalManifest(loaded)) spec.payload.manifest = loaded;
       }
     }
     if (entry.slot.id === CERES_SEAM_MINER_SLOT_ID
@@ -4139,6 +4137,10 @@ export const traffic = {
   _onCombatDamage(payload) {
     const p = payload || {};
     if (!(Number(p.applied) > 0)) return;
+    // Scripted traffic-incident packets (drive impairment, scuttle) are internal mechanics, not
+    // witnessed violence: recording them would panic nearby civilians and spill the victim's
+    // causal manifest, which breaks the incident's own handoff binding.
+    if (p.origin && typeof p.origin.kind === 'string' && p.origin.kind.startsWith('traffic_')) return;
     const attackerId = p.attackerId != null ? p.attackerId
       : p.sourceId != null ? p.sourceId
         : null;

@@ -123,6 +123,11 @@ export const ENCOUNTER_BARKS = Object.freeze({
     'Weigh-off good. Clear the lane.',
     'Taken. The mines stay sleeping.',
   ]),
+  // vael warden convoy — lawful freight under guardian screen
+  warden_convoy_alert: Object.freeze([
+    'TRAFFIC ALERT: Vael freighter under warden screen. Raiders want the hold; the screen wants the lane.',
+    'VAEL: convoy under screen. Raiders closing — pick a side or keep clear.',
+  ]),
   // patrol scan — Concord [0,1,3] bureaucratic; Meridian [2,4] border-control voice
   patrol_scan_hail: Object.freeze([
     'CONCORD: cut thrust for scan.',
@@ -279,6 +284,15 @@ export const ENCOUNTER_RECEIPTS = Object.freeze({
   'minefield_wake.paid':     'TITHE PAID — {tithe}. The wake holds its fire and peels off to scoop.',
   'minefield_wake.cleared':  'WAKE CLEARED — mine rack scrap and a half-finished weigh-slip remain.',
   'minefield_wake.escaped':  'WAKE EVADED — the trap did not hold you.',
+  'vael_lane_tithe.paid':    'TITHE PAID — {amount} cr. Cargo intact, Vael cools.',
+  'vael_lane_tithe.cleared': 'SCREEN BROKEN — tithe lane cleared.',
+  'vael_lane_tithe.escaped': 'TITHE EVADED — Vael marks your wake.',
+  'vael_station_screen.cleared': 'SCREEN BROKEN — the checkpoint approach goes unguarded.',
+  'vael_station_screen.escaped': 'SCREEN SLIPPED — the wardens hold their station.',
+  'vael_warden_convoy.arrived':  'CONVOY ARRIVED — {dest} takes delivery.',
+  'vael_warden_convoy.guarded':  'CONVOY GUARDED — Vael owes you. {pay} cr.',
+  'vael_warden_convoy.robbed':   'CONVOY RAIDED — law logs the incident.',
+  'vael_warden_convoy.lost':     'CONVOY LOST — {dest} prices will feel it.',
   'patrol_scan.clean':       'SCAN CLEAR — Concord logged you clean.',
   'patrol_scan.fined':       'FINED {fine} cr — contraband seized.',
   'patrol_scan.bribed':      'BRIBE TAKEN — patrol looked away.',
