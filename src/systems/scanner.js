@@ -824,12 +824,14 @@ export const scanner = {
     this._contactHailHeaveTo = null;
     this._onSignalTrack = (payload) => this._trackSignal(payload || {});
     this._onSignalInvestigate = (payload) => this._investigateSignal(payload || {});
+    this._onSignalSurveyFiled = (payload) => this._completeSurveyedSignal(payload || {});
     this._onContactHailRequest = (payload) => this._requestContactHail(payload || {});
     this._onContactHailChoice = (payload) => this._chooseContactHail(payload || {});
     this._onContactHailReset = () => this._resetContactHail('lifecycle');
     if (this.bus && typeof this.bus.on === 'function') {
       this.bus.on('signal:track', this._onSignalTrack);
       this.bus.on('signal:investigate', this._onSignalInvestigate);
+      this.bus.on('signal:surveyFiled', this._onSignalSurveyFiled);
       this.bus.on('contactHail:request', this._onContactHailRequest);
       this.bus.on('contactHail:choice', this._onContactHailChoice);
       this.bus.on('game:new', this._onContactHailReset);
@@ -1391,6 +1393,25 @@ export const scanner = {
     const distance = dist(player.pos, pos);
     record.distance = Math.round(distance);
     if (distance > SIGNAL_INVESTIGATE_RADIUS) return;
+    this._finishSignalRecord(record);
+  },
+
+  // A surveyed member of a multi-signal census (Quiessence hulls) goes quiet once its
+  // reading is filed, so the six-row pulse window rotates to the next unsurveyed hull
+  // instead of re-listing finished work forever. Scanner owns the write; the filing
+  // system owns the semantic. Unknown or already finished ids fail closed.
+  _completeSurveyedSignal(payload) {
+    const own = this.state && ensureSignalState(this.state);
+    const id = String(payload && (payload.signalId || payload.id) || '');
+    const record = own && own.records[id];
+    if (!record || own.completed[id]) return false;
+    return this._finishSignalRecord(record);
+  },
+
+  _finishSignalRecord(record) {
+    const state = this.state;
+    const own = state && ensureSignalState(state);
+    if (!own || !record || own.completed[record.id]) return false;
     const receipt = {
       id: `signal-receipt:${record.id}`,
       signalId: record.id,
@@ -1407,9 +1428,10 @@ export const scanner = {
     own.receipts.push(receipt);
     while (own.receipts.length > SIGNAL_RECEIPT_CAP) own.receipts.shift();
     record.status = 'investigated';
-    own.trackedId = null;
+    if (own.trackedId === record.id) own.trackedId = null;
     this.bus.emit('signal:investigated', { ...receipt, pos: { ...receipt.pos } });
     this.bus.emit('signal:receipt', { ...receipt, pos: { ...receipt.pos } });
+    return true;
   },
 
   serialize() {
@@ -1426,6 +1448,7 @@ export const scanner = {
     if (this.bus && typeof this.bus.off === 'function') {
       if (this._onSignalTrack) this.bus.off('signal:track', this._onSignalTrack);
       if (this._onSignalInvestigate) this.bus.off('signal:investigate', this._onSignalInvestigate);
+      if (this._onSignalSurveyFiled) this.bus.off('signal:surveyFiled', this._onSignalSurveyFiled);
       if (this._onContactHailRequest) this.bus.off('contactHail:request', this._onContactHailRequest);
       if (this._onContactHailChoice) this.bus.off('contactHail:choice', this._onContactHailChoice);
       if (this._onContactHailReset) {
@@ -1440,6 +1463,7 @@ export const scanner = {
     this._contactHailAvailabilitySignature = '';
     this._onSignalTrack = null;
     this._onSignalInvestigate = null;
+    this._onSignalSurveyFiled = null;
     this._onContactHailRequest = null;
     this._onContactHailChoice = null;
     this._onContactHailReset = null;

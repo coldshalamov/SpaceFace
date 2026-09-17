@@ -269,15 +269,52 @@ export const v2FlavorRuntime = {
     const index = entity && entity.data && nonnegativeInt(entity.data.quiessenceShipIndex);
     const line = QUIESSENCE_BY_SHIP_INDEX.get(index);
     if (!line) return false;
-    return this._say({
+    // The census numbers itself like the shard fragments: each newly surveyed hull reads
+    // HULL n/17 in presentation order. The receipt is keyed by hull index (not the transient
+    // entity id) so a Continue never replays — or double-counts — an already filed hull.
+    const surveyed = quiessenceSurveyedIndices(this._ensureState());
+    if (surveyed.has(index)) {
+      // Filed under either receipt shape: quiet its signal (one-shot; the scanner dedupes)
+      // and let the loop move on to the next unsurveyed hull.
+      this._fileHullSignal(entity);
+      return false;
+    }
+    surveyed.add(index);
+    const total = QUIESSENCE_BY_SHIP_INDEX.size;
+    // The census line stays byte-identical to the authored pack (a live contract pins it);
+    // progress reads on the Band HUD census counter, which counts these same receipts.
+    const said = this._say({
       packId: QUIESSENCE_PACK.id,
       sourceRef: QUIESSENCE_TARGET_REF,
       surface: 'scan',
       line,
       channel: 'info',
-      receipt: `${QUIESSENCE_PACK.id}:${entity.id}:${index}`,
-      context: { entityId: entity.id },
+      receipt: `${QUIESSENCE_PACK.id}:hull:${index}`,
+      context: { entityId: entity.id, hullIndex: index, hullTotal: total },
     });
+    if (said) this._fileHullSignal(entity);
+    if (said && surveyed.size >= total) {
+      this._say({
+        packId: QUIESSENCE_PACK.id,
+        sourceRef: QUIESSENCE_TARGET_REF,
+        surface: 'scan',
+        line: {
+          id: 'formation_census_final',
+          text: 'FORMATION CENSUS COMPLETE — seventeen hulls, seventeen counts, no two alike. The Drift Market archive posted a return survey: bring them the full record.',
+        },
+        channel: 'info',
+        receipt: `${QUIESSENCE_PACK.id}:formation_census_final`,
+        context: { entityId: entity.id, hullTotal: total },
+      });
+    }
+    return said;
+  },
+
+  _fileHullSignal(entity) {
+    if (!this.bus || typeof this.bus.emit !== 'function') return;
+    const poiId = entity && entity.data && typeof entity.data.poiId === 'string' ? entity.data.poiId : null;
+    if (!poiId) return;
+    this.bus.emit('signal:surveyFiled', { signalId: `signal:poi:${poiId}` });
   },
 
   _presentShardSphereFragment(entity, signal) {
@@ -480,6 +517,22 @@ function stringOrNull(value) {
 function nonnegativeInt(value) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+}
+
+// Distinct Quiessence hull indices already filed, from both receipt shapes: the current
+// `quiessence:hull:<index>` and the legacy `quiessence:<entityId>:<index>`, so a mid-census
+// save keeps its progress. The completion receipt carries no index and never counts.
+function quiessenceSurveyedIndices(own) {
+  const seen = new Set();
+  const receipts = own && Array.isArray(own.presentedReceipts) ? own.presentedReceipts : [];
+  for (const receipt of receipts) {
+    if (typeof receipt !== 'string') continue;
+    const parts = receipt.split(':');
+    if (parts.length !== 3 || parts[0] !== QUIESSENCE_PACK.id) continue;
+    const index = Number(parts[2]);
+    if (Number.isInteger(index) && index >= 1 && index <= 24) seen.add(index);
+  }
+  return seen;
 }
 
 function finitePos(pos) {

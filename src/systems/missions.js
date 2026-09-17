@@ -843,6 +843,11 @@ export const missions = {
       // has committed its durable count so the fourth Shard Sphere fragment posts the real offer.
       this._reconcileLandmarkQuestOffers({ sectorId: p && p.sectorId });
     });
+    // Census-style landmarks become ready when flavor files a reading, which lands after this
+    // system's scanResults listener runs. Reconcile on presentation too so the seventeenth
+    // Quiessence hull posts its return survey on the same pulse. Unfiltered: the payload
+    // carries no sector, and re-reconciling four quest definitions is trivially cheap.
+    bus.on('v2:flavorPresented', () => this._reconcileLandmarkQuestOffers());
     // Causal POI follow-ups settle only when scanner physically investigates their exact live
     // entity. Generic scan pulses remain valid for ordinary recon_scan contracts.
     bus.on('signal:investigated', (p) => this._onSignalInvestigated(p));

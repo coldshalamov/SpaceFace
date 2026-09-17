@@ -92,10 +92,41 @@ export const RESONANCE_OBELISK_SURVEY = Object.freeze({
   }),
 });
 
+export const QUIESSENCE_CENSUS = Object.freeze({
+  id: 'landmark_c14_quiessence_census',
+  sectorId: 'sector_pallas_drift',
+  poiId: 'poi_quiessence',
+  targetRef: 'landmark_c14_quiessence',
+  stationId: 'station_drift',
+  factionId: 'faction_mts',
+  // The memorial sits at a generated site; missions resolve the live POI entity first and
+  // only fall back to this sector-center coordinate when the sector is not resident.
+  targetLocalPos: Object.freeze({ x: 0, z: 0 }),
+  maxRangeWu: 300,
+  poiLabel: 'The Quiessence',
+  requiredSurveyedHulls: 17,
+  rewardCr: 2200,
+  minRep: 50,
+  riskTier: 2,
+  title: 'The Quiessence: File the Census',
+  brief: 'Return to the formation and fire one close scanner pulse while the Drift archive records all seventeen hull counts.',
+  summary: 'Seventeen hulls, seventeen living-crew counts, no two alike. Drift Market pays for the full filed record, not an explanation.',
+  causeTag: 'landmark:quiessence_census',
+  causeFingerprint: 'landmark:c14:quiessence-census:v1',
+  causeLine: 'Seventeen hulls hold formation around one violet buoy and every bunk is warm.',
+  successText: 'Census filed. Seventeen counts agree on nothing except the formation; the archive pays for the record and asks no questions.',
+  artifact: Object.freeze({
+    id: 'artifact_c14_quiessence_census_record',
+    title: 'C14-5 · Quiessence Census Record',
+    body: 'Seventeen intact freighters, seventeen living-crew counts from zero to sixteen, every bunk warm, no transmitter answering by name. The buoy counts seventeen.',
+  }),
+});
+
 const LANDMARK_QUESTS = Object.freeze([
   CAVED_SHAFT_PROBE,
   SHARD_SPHERE_SONG,
   RESONANCE_OBELISK_SURVEY,
+  QUIESSENCE_CENSUS,
 ]);
 const LANDMARK_QUEST_BY_ID = new Map(LANDMARK_QUESTS.map((definition) => [definition.id, definition]));
 
@@ -137,7 +168,27 @@ function questReady(state, definition) {
   if (definition.requiredSignalScans) {
     return signalScanCount(state, definition) >= definition.requiredSignalScans;
   }
+  if (definition.requiredSurveyedHulls) {
+    return surveyedHullCount(state) >= definition.requiredSurveyedHulls;
+  }
   return isFound(record);
+}
+
+// Distinct memorial hulls filed, mirrored from v2FlavorRuntime receipts (this file stays
+// import-free): current `quiessence:hull:<index>` plus legacy `quiessence:<entityId>:<index>`.
+function surveyedHullCount(state) {
+  const receipts = state && state.v2Flavor && Array.isArray(state.v2Flavor.presentedReceipts)
+    ? state.v2Flavor.presentedReceipts
+    : [];
+  const seen = new Set();
+  for (const receipt of receipts) {
+    if (typeof receipt !== 'string') continue;
+    const parts = receipt.split(':');
+    if (parts.length !== 3 || parts[0] !== 'quiessence') continue;
+    const index = Number(parts[2]);
+    if (Number.isInteger(index) && index >= 1 && index <= 24) seen.add(index);
+  }
+  return seen.size;
 }
 
 function questComplete(state, definition) {
