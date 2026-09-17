@@ -7,7 +7,12 @@
  * Worker and called directly on the main thread). Both hosts get the full
  * animation.
  *
- * Direction (2026-08): no mascots, no scripted tableaus, nothing static.
+ * Direction (2026-09): five authored figures emerge from the same signal field.
+ * Pilot / courier / anchorage / massline / singularity; geometry is shared by
+ * GL, main-thread 2D, and worker 2D. The existing 32.5-second clock is unchanged.
+ * Grade (2026-09): field-dominant and ghostly. The figures stay half-buried in
+ * the swirl — a pseudo-abstract phosphor visualizer with a barely-visible
+ * horror/cyberpunk cast — rather than reading as clean illustration plates.
  * The picture is a single continuous simulation — every frame is derived from
  * the previous frame (ping-pong feedback) through a curl-noise flow field,
  * slow zoom / rotation / kaleidoscope folding, phosphor decay and hue drift,
@@ -19,6 +24,9 @@
  * is decoration. It must never throw out of boot, and losing it may only cost
  * the animation — never the game.
  */
+
+// SPACEFACE_SIGNAL_TABLEAUX_INTEGRATION_2
+import { createSignalTableaux } from './loadingSignalTableaux.js';
 
 // Phase timing shared with the DOM telemetry below.
 const ACT_COUNT = 5;
@@ -34,6 +42,7 @@ const LOOP_SECONDS = ACT_COUNT * ACT_SECONDS;
  */
 function createEngine(host) {
   'use strict';
+  let tableau = host.tableaux ? host.tableaux({ ...host, readFrequently: true }) : null;
 
   const ACTS = 5;
   const ACT_LEN = 6.5;
@@ -92,31 +101,34 @@ function createEngine(host) {
     }
     return lut;
   }
+  // Ghost-field grade (2026-09): mids sit ~30% lower so the swirl reads as dark
+  // phosphor over blood-black; accents carry a bruised magenta / dried-blood
+  // cast. Hot tips are preserved — bloom and the anamorphic streak need them.
   const PALETTES = [
-    { // 0 · GENESIS — deep teal condensation
-      main: buildLUT(['#020c0e', '#052226', '#0a4a4e', '#12827e', '#2cc4ae', '#b8fff0']),
-      accent: buildLUT(['#0a0714', '#241a3e', '#4b3a72', '#7d68ad', '#b3a3e0', '#efeaff']),
-      bg: '#030809',
+    { // 0 · GENESIS — abyssal teal condensation
+      main: buildLUT(['#010708', '#03161a', '#073236', '#0d5a58', '#1f9a86', '#a8e8d8']),
+      accent: buildLUT(['#0c060f', '#221228', '#471a3e', '#7d2f52', '#c06a7d', '#f2c9d4']),
+      bg: '#020506',
     },
-    { // 1 · CURRENTS — emerald flow
-      main: buildLUT(['#03100b', '#08321f', '#0f6b3c', '#1cae5c', '#54eca0', '#d6ffe4']),
-      accent: buildLUT(['#061019', '#123452', '#1f6a8e', '#39a8c4', '#7fe0ea', '#e0fbff']),
-      bg: '#040a08',
+    { // 1 · CURRENTS — toxic flow
+      main: buildLUT(['#020a07', '#052417', '#0a4a2a', '#127a40', '#37c878', '#c2f2cf']),
+      accent: buildLUT(['#040c12', '#0c2438', '#144a62', '#1f7a8e', '#4fc4d4', '#c8ecf2']),
+      bg: '#020604',
     },
-    { // 2 · BLOOM — jewel symmetry
-      main: buildLUT(['#0d0616', '#2c1440', '#5c2a6e', '#a0489a', '#e08ac2', '#ffe9f6']),
-      accent: buildLUT(['#160d02', '#48300a', '#8a6a14', '#cfa51e', '#ffd873', '#fff7dc']),
-      bg: '#0a0510',
+    { // 2 · BLOOM — ultraviolet ritual
+      main: buildLUT(['#090412', '#1f0e34', '#431c58', '#7a2c7a', '#b85a9e', '#f2c8e2']),
+      accent: buildLUT(['#100902', '#38240a', '#6e5412', '#a8821a', '#d8a83e', '#f2e2b0']),
+      bg: '#070410',
     },
-    { // 3 · TEMPEST — fire against ice
-      main: buildLUT(['#120503', '#401505', '#8a3a0c', '#d97a1e', '#ffc35e', '#fff0d0']),
-      accent: buildLUT(['#040a18', '#123058', '#2a5f9a', '#4f9ad4', '#93d4f2', '#e4f6ff']),
-      bg: '#0c0503',
+    { // 3 · TEMPEST — ember against corpse-light
+      main: buildLUT(['#0e0302', '#330f04', '#702a08', '#b85a14', '#e89a3e', '#f2dcae']),
+      accent: buildLUT(['#030710', '#0d2240', '#1c4470', '#35688e', '#5fa8bc', '#c8e2ea']),
+      bg: '#080302',
     },
-    { // 4 · SINGULARITY — indigo collapse
-      main: buildLUT(['#050512', '#141244', '#2c2a7e', '#5a54b8', '#9a92e8', '#eae6ff']),
-      accent: buildLUT(['#0d0310', '#3a0f3e', '#78216e', '#b8489a', '#eb8cc8', '#ffe4f2']),
-      bg: '#050510',
+    { // 4 · SINGULARITY — void collapse
+      main: buildLUT(['#03030c', '#0d0c30', '#1e1c58', '#3c3486', '#6e62b8', '#c2bce8']),
+      accent: buildLUT(['#0a020c', '#2a0a2e', '#5c1648', '#96305e', '#c85a7e', '#f2b8c8']),
+      bg: '#03030a',
     },
   ];
 
@@ -175,8 +187,8 @@ function createEngine(host) {
   // ─────────────────────────────────────────────────────────────────────────
   const FLOWP = [
     // speed fscale drift  swirl attract bright sym  energy
-    { sp: 14, fs: 0.055, dr: 0.10, sw: 0.10, at: 0.05, br: 0.30, sym: 0, en: 0.22 },
-    { sp: 30, fs: 0.105, dr: 0.24, sw: 0.30, at: 0.00, br: 0.42, sym: 0, en: 0.38 },
+    { sp: 14, fs: 0.055, dr: 0.10, sw: 0.24, at: 0.05, br: 0.30, sym: 0, en: 0.22 },
+    { sp: 34, fs: 0.105, dr: 0.24, sw: 0.44, at: 0.00, br: 0.42, sym: 0, en: 0.38 },
     { sp: 22, fs: 0.160, dr: 0.16, sw: 0.85, at: 0.12, br: 0.50, sym: 1, en: 0.52 },
     { sp: 58, fs: 0.290, dr: 0.55, sw: -0.4, at: -0.1, br: 0.66, sym: 0, en: 0.85 },
     { sp: 26, fs: 0.090, dr: 0.05, sw: 1.30, at: 0.65, br: 0.72, sym: 0, en: 0.62 },
@@ -520,7 +532,7 @@ function createEngine(host) {
       const c2 = v.getContext('2d');
       const g = c2.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.36, W / 2, H / 2, Math.max(W, H) * 0.72);
       g.addColorStop(0, 'rgba(0,0,0,0)');
-      g.addColorStop(1, 'rgba(0,0,0,0.24)');
+      g.addColorStop(1, 'rgba(0,0,0,0.32)');
       c2.fillStyle = g;
       c2.fillRect(0, 0, W, H);
       vignette = v;
@@ -568,7 +580,9 @@ function createEngine(host) {
     if (labAct < 0) {
       if (uLocal > 0.925) glitch = (uLocal - 0.925) / 0.075;
       else if (uLocal < 0.055) glitch = 1 - uLocal / 0.055;
-      if (reduced) glitch *= 0.35;
+      // Ghost-field grade: seams carry analog unrest (tear/dropout), but reduced
+      // motion still gets none of it — that zero is an accessibility contract.
+      glitch *= reduced ? 0 : 0.45;
     }
     // CRT power-on effect only lives for the first 0.9s of phase 1 — after
     // that it must get out of the way (a stale multiplier here once doubled
@@ -583,6 +597,10 @@ function createEngine(host) {
       if (!skipScene) {
         lum.fill(0); tint.fill(0);
         stepFlow(dt);
+        if (tableau) {
+          try { tableau.injectFallback(lum, tint, SW, SH, W / H, T, act, reduced); }
+          catch { tableau.dispose(); tableau = null; } // artwork can only cost artwork
+        }
         renderPost();
       } else {
         const decayK = Math.exp(-7.5 / 60);
@@ -654,6 +672,9 @@ function createEngine(host) {
           gyT = clamp(Number(msg.y) || 0, -1, 1);
           lastPointerAt = T;
           break;
+        case 'destroy':
+          if (tableau) tableau.dispose();
+          // fall through: a normal stop retains the resources needed for resume
         case 'stop':
           running = false;
           if (rafId != null) host.cancel(rafId);
@@ -708,6 +729,8 @@ float gfbm(vec2 p){
 //   uPalA..D — cosine palette (IQ): pal(t) = A + B*cos(2π(C·t + D))
 const GLSL_SCENE = `
 uniform sampler2D uPrev;
+uniform sampler2D uTableau;
+uniform float uTableauActive;
 uniform vec4 uWarp, uFlow, uLook, uDrive, uAux;
 uniform vec3 uPalA, uPalB, uPalC, uPalD;
 
@@ -837,7 +860,9 @@ void main(){
   puvA = 0.5 + rot2(puvA - 0.5, uWarp.y)/uWarp.x;
   // kaleidoscope fold (BLOOM): sector-mirror the lookup coordinate
   vec2 puvB = puvA;
-  if (uLook.y > 0.001){
+  float artHold = smoothstep(0.13, 0.24, uAux.x)*(1.0 - smoothstep(0.76, 0.96, uAux.x));
+  float symWeight = uLook.y*mix(1.0, mix(0.60, 0.30, artHold), uTableauActive);
+  if (symWeight > 0.001){
     vec2 k = (puvB - 0.5)*vec2(aspect, 1.0);
     float r = length(k);
     float a2 = atan(k.y, k.x + 1e-5);
@@ -845,7 +870,7 @@ void main(){
     a2 = abs(mod(a2, sect) - sect*0.5);
     puvB = 0.5 + vec2(cos(a2), sin(a2))*r/vec2(aspect, 1.0);
   }
-  vec2 puv = mix(puvA, puvB, uLook.y);
+  vec2 puv = mix(puvA, puvB, symWeight);
 
   vec3 prev = texture2D(uPrev, clamp(puv, 0.001, 0.999)).rgb;
   vec2 ef2 = abs(puv - 0.5);
@@ -862,11 +887,20 @@ void main(){
   // never has dead zones — the emitters ride on top of it
   float fogN = gfbm(cc*1.15 + uFlow.xy*uT*0.05 + 3.7);
   vec3 fog = pal(0.22 + fogN*0.5)*pow(gfbm(cc*0.85 - uT*0.03), 2.0)*uAux.z;
-  vec3 col = prev + inj*(1.0 - uAux.y*0.55) + fog;
+  // Authored signal is injected BEFORE the existing phosphor/character pass.
+  // Ghost-field grade: the swirl dominates and the figure ghosts through it at
+  // under half strength — half-buried signal, never an illustration plate.
+  vec4 figure = texture2D(uTableau, vec2(uv.x, 1.0 - uv.y));
+  float artOn = uTableauActive;
+  float legibility = smoothstep(0.13, 0.24, uAux.x)*(1.0 - smoothstep(0.76, 0.96, uAux.x));
+  vec3 col = prev*mix(1.0, mix(0.96, 0.82, legibility), artOn)
+    + inj*(1.0 - uAux.y*0.55)*mix(1.0, 0.55, artOn)
+    + fog*mix(1.0, 0.50, artOn);
+  col = mix(col, figure.rgb*1.38, figure.a*0.50*artOn);
 
   // dither defeats 8-bit feedback banding and keeps dark areas alive
   col += (gh2(gl_FragCoord.xy + fract(uT)*vec2(157.0, 113.0)) - 0.5)*0.012;
-  col = mix(col, vec3(1.25, 1.28, 1.20), white);
+  col = mix(col, vec3(1.25, 1.28, 1.20), white*mix(1.0, 0.30, uTableauActive));
   gl_FragColor = vec4(min(col, vec3(6.0)), 1.0);
 }
 `;
@@ -938,7 +972,7 @@ void main(){
   }
   // dropout
   if (uGlitch > 0.3 && ph2(cellId + floor(uTime*47.0)) > 0.93) outc *= 0.2;
-  outc *= 1.0 - 0.3*r2;   // vignette
+  outc *= 1.0 - 0.38*r2;   // vignette (ghost-field grade closes in slightly)
   outc = pow(max(outc, vec3(0.0)), vec3(0.96));
   outc += vec3(uFlash);
   gl_FragColor = vec4(outc, 1.0);
@@ -961,6 +995,7 @@ const GL_SOURCES = {
 
 function createEngineGL(host) {
   'use strict';
+  const tableau = host.tableaux ? host.tableaux(host) : null;
   const ACTS = 5, ACT_LEN = 6.5, LOOP_LEN = ACTS * ACT_LEN;
   const clamp = (v, lo, hi) => v < lo ? lo : v > hi ? hi : v;
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -1025,35 +1060,35 @@ function createEngineGL(host) {
   //   decay:    phosphor retention per frame; hue: rotation per frame
   //   period:   beat interval driving injection pulses
   const PH = [
-    { // 0 · GENESIS — dark water finding first light
-      zoom: 1.0006, rot: 0.00018, flowAmp: 0.0042, flowScale: 0.34,
-      drift: [0.045, 0.020], swirl: 0.0006, jitter: 0.0004,
-      symN: 6, symAmt: 0, decay: 0.9780, hue: 0.0026, period: 2.6, energy: 0.22, fog: 0.62,
-      palA: [0.085, 0.200, 0.185], palB: [0.085, 0.230, 0.205], palC: [1.0, 1.0, 1.0], palD: [0.38, 0.47, 0.42],
+    { // 0 · GENESIS — abyssal water finding first light
+      zoom: 1.0006, rot: 0.00018, flowAmp: 0.0052, flowScale: 0.34,
+      drift: [0.045, 0.020], swirl: 0.0016, jitter: 0.0004,
+      symN: 6, symAmt: 0, decay: 0.9830, hue: 0.0026, period: 2.6, energy: 0.22, fog: 0.55,
+      palA: [0.070, 0.165, 0.160], palB: [0.090, 0.235, 0.210], palC: [1.0, 1.0, 1.0], palD: [0.36, 0.46, 0.42],
     },
-    { // 1 · CURRENTS — long emerald streams
-      zoom: 0.99915, rot: -0.00033, flowAmp: 0.0085, flowScale: 0.95,
-      drift: [0.100, -0.030], swirl: 0.0012, jitter: 0.0009,
-      symN: 0, symAmt: 0, decay: 0.9650, hue: -0.0035, period: 1.7, energy: 0.38, fog: 0.42,
-      palA: [0.075, 0.190, 0.215], palB: [0.095, 0.235, 0.260], palC: [1.0, 1.0, 1.0], palD: [0.45, 0.35, 0.30],
+    { // 1 · CURRENTS — long toxic streams
+      zoom: 0.99915, rot: -0.00033, flowAmp: 0.0095, flowScale: 0.95,
+      drift: [0.100, -0.030], swirl: 0.0022, jitter: 0.0009,
+      symN: 0, symAmt: 0, decay: 0.9710, hue: -0.0035, period: 1.7, energy: 0.38, fog: 0.42,
+      palA: [0.055, 0.150, 0.175], palB: [0.100, 0.240, 0.265], palC: [1.0, 1.0, 1.0], palD: [0.47, 0.36, 0.30],
     },
     { // 2 · BLOOM — kaleidoscope opens (symAmt is shaped in code)
-      zoom: 1.0026, rot: 0.00062, flowAmp: 0.0050, flowScale: 1.65,
+      zoom: 1.0026, rot: 0.00062, flowAmp: 0.0062, flowScale: 1.65,
       drift: [0.060, 0.060], swirl: 0.0040, jitter: 0.0007,
-      symN: 6, symAmt: 1, decay: 0.9680, hue: 0.0042, period: 1.15, energy: 0.52, fog: 0.36,
-      palA: [0.240, 0.180, 0.270], palB: [0.200, 0.170, 0.230], palC: [1.0, 1.0, 0.9], palD: [0.10, 0.42, 0.70],
+      symN: 6, symAmt: 1, decay: 0.9620, hue: 0.0042, period: 1.15, energy: 0.52, fog: 0.30,
+      palA: [0.170, 0.120, 0.200], palB: [0.200, 0.170, 0.230], palC: [1.0, 1.0, 0.9], palD: [0.08, 0.44, 0.68],
     },
     { // 3 · TEMPEST — the field tears
       zoom: 1.0058, rot: 0.00130, flowAmp: 0.0160, flowScale: 2.70,
       drift: [-0.160, 0.090], swirl: -0.0028, jitter: 0.0050,
-      symN: 0, symAmt: 0, decay: 0.9520, hue: -0.0060, period: 0.60, energy: 0.85, fog: 0.26,
-      palA: [0.220, 0.120, 0.105], palB: [0.220, 0.140, 0.150], palC: [1.2, 0.9, 0.8], palD: [0.02, 0.55, 0.25],
+      symN: 0, symAmt: 0, decay: 0.9580, hue: -0.0060, period: 0.60, energy: 0.85, fog: 0.26,
+      palA: [0.170, 0.085, 0.085], palB: [0.235, 0.130, 0.155], palC: [1.2, 0.9, 0.8], palD: [0.02, 0.55, 0.25],
     },
     { // 4 · SINGULARITY — collapse (zoom accelerates in code), then rebirth
       zoom: 1.0030, rot: 0.00220, flowAmp: 0.0080, flowScale: 1.20,
       drift: [0.000, 0.000], swirl: 0.0200, jitter: 0.0016,
-      symN: 0, symAmt: 0, decay: 0.9710, hue: 0.0080, period: 0.90, energy: 0.62, fog: 0.34,
-      palA: [0.170, 0.155, 0.260], palB: [0.160, 0.145, 0.265], palC: [0.8, 1.0, 1.2], palD: [0.62, 0.58, 0.50],
+      symN: 0, symAmt: 0, decay: 0.9760, hue: 0.0080, period: 0.90, energy: 0.62, fog: 0.34,
+      palA: [0.120, 0.100, 0.190], palB: [0.175, 0.130, 0.270], palC: [0.8, 1.0, 1.2], palD: [0.60, 0.60, 0.52],
     },
   ];
 
@@ -1283,7 +1318,9 @@ function createEngineGL(host) {
     if (labAct < 0) {
       if (uLocal > 0.925) glitch = (uLocal - 0.925) / 0.075;
       else if (uLocal < 0.055) glitch = 1 - uLocal / 0.055;
-      if (reduced) glitch *= 0.35;
+      // Ghost-field grade: seams carry analog unrest (tear/dropout), but reduced
+      // motion still gets none of it — that zero is an accessibility contract.
+      glitch *= reduced ? 0 : 0.45;
     }
     const powerOn = (labAct === 0 || (labAct < 0 && act === 0 && tt < ACT_LEN)) ? (tt < 0.9 ? tt / 0.9 : -1) : -1;
 
@@ -1308,6 +1345,7 @@ function createEngineGL(host) {
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbB);
       gl.viewport(0, 0, rw, rh);
       gl.useProgram(progScene);
+      if (tableau) tableau.bindGL(gl, progScene, W, H, T, act, reduced);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, texA);
       gl.uniform1i(gl.getUniformLocation(progScene, 'uPrev'), 0);
@@ -1350,7 +1388,7 @@ function createEngineGL(host) {
       gl.uniform1f(gl.getUniformLocation(progPost, 'uTime'), T);
       gl.uniform1f(gl.getUniformLocation(progPost, 'uGlitch'), glitch);
       gl.uniform1f(gl.getUniformLocation(progPost, 'uPowerOn'), powerOn);
-      gl.uniform1f(gl.getUniformLocation(progPost, 'uFlash'), pp.white * (reduced ? 0.1 : 0.2) * 0.5);
+      gl.uniform1f(gl.getUniformLocation(progPost, 'uFlash'), 0);
       gl.uniform1f(gl.getUniformLocation(progPost, 'uGrille'), 1.0);
       const asciiShift = reduced ? 0.42 : (0.62 + 0.12 * Math.sin(T * 0.31 + Math.sin(T * 0.09) * 0.5));
       gl.uniform1f(gl.getUniformLocation(progPost, 'uAsciiShift'), asciiShift);
@@ -1395,6 +1433,9 @@ function createEngineGL(host) {
           gyT = clamp(Number(msg.y) || 0, -1, 1);
           lastPointerAt = T;
           break;
+        case 'destroy':
+          if (tableau) tableau.dispose();
+          // fall through: a normal stop retains the resources needed for resume
         case 'stop':
           running = false;
           if (rafId != null) host.cancel(rafId);
@@ -1419,6 +1460,7 @@ function createEngineGL(host) {
 const WORKER_BOOTSTRAP = (prefer2D) => `
 const factoryGL = ${createEngineGL.toString()};
 const factory2D = ${createEngine.toString()};
+const tableaux = ${createSignalTableaux.toString()};
 const sources = ${JSON.stringify(GL_SOURCES)};
 const engine = ${prefer2D ? 'factory2D' : 'factoryGL'}({
   post: (m) => self.postMessage(m),
@@ -1427,6 +1469,7 @@ const engine = ${prefer2D ? 'factory2D' : 'factoryGL'}({
   now: () => Date.now(),
   document: null,
   engine2D: factory2D,
+  tableaux: tableaux,
   sources: sources,
 });
 self.onmessage = (e) => engine.receive(e.data);
@@ -1610,6 +1653,7 @@ export function createTerminalArtwork({
           now: () => Date.now(),
           document: doc,
           engine2D: createEngine,
+          tableaux: createSignalTableaux,
           sources: GL_SOURCES,
           post: recordStatus,
         };
@@ -1820,7 +1864,7 @@ export function createTerminalArtwork({
         workerUrl = null;
       }
       if (mainEngine) {
-        try { mainEngine.receive({ type: 'stop' }); } catch {}
+        try { mainEngine.receive({ type: 'destroy' }); } catch {}
         mainEngine = null;
       }
       // A transferred canvas can never host another context, and a connected dead canvas is an
