@@ -1123,6 +1123,19 @@
       "integration": "live",
       "commit": "7244bd228",
       "verification": "focused_green"
+    },
+    {
+      "id": "customs-net-demand",
+      "date": "2026-09-17",
+      "wf": "WF-18",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Customs net offer repaired: declared comply/bribe/run clickable, honest bribe gate, comply timeout",
+      "fingerprint": "verb=comply,subject=customs-scan,sector=midsec-lanes,domain=wf-18",
+      "references": [],
+      "integration": "live",
+      "commit": "fc1d67a20",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
