@@ -64,6 +64,7 @@ export default defineEncounter(trigger, {
     escapeHoldS: 3,
   },
   bark: 'curtain_convoy_alert',
+  offerS: 12,
   choices: [
     { id: 'defend', label: 'Cover the freighter' },
     { id: 'raid', label: 'Join the claim' },

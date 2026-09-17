@@ -1,8 +1,8 @@
 // 340 — Vael warden convoy. A Vael freighter runs the lane under a warden screen
 // while a Reach pack works to crack it. First convoy to field the escort block:
 // wardens plant between the ward and the threat (escort_screen doctrine).
-// No choices — the convoy script's physical verbs carry it (kill raiders to guard,
-// kill the hauler to rob). Its defend/raid/pass UI is dormant on every convoy shape.
+// No choices by design — the physical verbs carry it (kill raiders to guard, kill
+// the hauler to rob). The stance offer lives on 329-curtain-convoy instead.
 import { deepFreeze, defineEncounter } from './catalog.js';
 
 export const encounterOrder = 340;

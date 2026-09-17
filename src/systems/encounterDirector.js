@@ -2462,6 +2462,8 @@ function buildPersistedFreightCustodyEnvelope(live, record, savedAt = null) {
         predationEndReason: data.predationEndReason,
         predationTargetIdentityKey: data.predationTargetIdentityKey,
         predationRaiderIdentityKey: data.predationRaiderIdentityKey,
+        convoyStance: data.convoyStance,
+        offerDeadlineAt: data.offerDeadlineAt,
       },
     },
     record,
@@ -2604,6 +2606,8 @@ function normalizePersistedFreightCustodyEnvelope(raw) {
         predationEndReason: boundedFreightString(dataRaw.predationEndReason),
         predationTargetIdentityKey: boundedFreightString(dataRaw.predationTargetIdentityKey) || carrierIdentityKey,
         predationRaiderIdentityKey: boundedFreightString(dataRaw.predationRaiderIdentityKey) || raiderIdentityKey,
+        convoyStance: ['defend', 'raid', 'pass'].includes(dataRaw.convoyStance) ? dataRaw.convoyStance : null,
+        offerDeadlineAt: finiteFreightNumber(dataRaw.offerDeadlineAt, 0),
       },
     },
     record: {

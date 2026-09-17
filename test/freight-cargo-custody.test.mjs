@@ -1154,3 +1154,31 @@ test('Continue rebinds only a valid persisted carrier record to its rematerializ
     'spilled custody never rebinds or revives carrier authority');
   assert.equal(h.events['freight:custodyRebound'].length, 1);
 });
+
+test('Continue preserves the convoy stance: defend pledge survives save and load', () => {
+  const before = boot(47520, { withSave: true });
+  const live = fire(before, ':save-stance');
+  before.bus.emit('encounter:choose', { encounterId: live.id, choiceId: 'defend' });
+  assert.equal(live.data.convoyStance, 'defend', 'production bus dispatch reaches convoy.choose');
+  assert.equal(live.phase, 'transit');
+  disable(before, live); // spill: custody publishes the envelope carrying the stance
+  assert.ok(live.data.freightCargoCustody);
+  const envelope = before.sim.registry.get('save').serialize('freight-custody-stance');
+  const saved = envelope.data.encounterDirector.stats.openFreightCustodies;
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0].live.data.convoyStance, 'defend');
+  assert.ok(Number.isFinite(saved[0].live.data.offerDeadlineAt), 'offer window rides the envelope');
+
+  const after = boot(47601, { withSave: true });
+  assert.equal(after.sim.registry.get('save').loadEnvelope(
+    JSON.parse(JSON.stringify(envelope)), 'freight-custody-stance',
+  ), true);
+  const resumed = after.state.encounterDirector.live[live.id];
+  assert.ok(resumed, 'stance-carrying custody restores its coordinator');
+  assert.equal(resumed.data.convoyStance, 'defend');
+  assert.equal(resumed.vars.stance, 'defend');
+  assert.ok(Number.isFinite(resumed.data.offerDeadlineAt));
+  after.sim.runTicks(61); // restored live ticks cleanly with the stance intact
+  assert.equal(resumed.data.convoyStance, 'defend');
+  assertConserved(resumed.data.freightCargoCustody);
+});

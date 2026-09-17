@@ -73,6 +73,13 @@ function ambushHasDemand(live) {
     && !(live.data && live.data.ceresActivityAmbush === true));
 }
 
+// Demand mode for convoys: a convoy shape that declares choices (329) opens a stance
+// offer — defend the hauler, join the claim, or keep clear — while the convoy keeps
+// flying. Choiceless convoys (070, 340) keep the pure physical transit.
+function convoyHasDemand(live) {
+  return !!(live && live.shape && Array.isArray(live.shape.choices) && live.shape.choices.length > 0);
+}
+
 // The spring, shared by proximity, refusal, timeout and opening fire: the squad goes
 // hot, the trap shuts, and the wake (325) seeds its mines behind the jackal.
 // The trigger stamp is load-bearing, not bookkeeping: the engagement authority denies
@@ -752,6 +759,16 @@ function convoyFire(d, live, state, isConvoy) {
   if (live.plan.predation && live.plan.predation.enabled === true) {
     attachConvoyCargoManifests(d, live, cargo.commodityId, perHauler);
     if (!initializeConvoyPredation(d, live, state)) return d.abort(live, 'predation_composition');
+  }
+  if (convoyHasDemand(live)) {
+    // Demand mode: the curtain opens with a voiced stance offer on its own decision
+    // window. The transit deadline stays physical — arrival-by-deadline still means
+    // the run completed, not that the player went silent.
+    live.phase = 'offer';
+    live.data.offerDeadlineAt = d.now() + (live.shape.offerS || 12);
+    d.say(live, isConvoy ? 'news' : 'info', live.shape.bark, live.vars, { primary: true });
+    d.offerChoices(live, live.shape.choices.map((c) => c.id), live.shape.timeoutChoice || 'pass', live.data.offerDeadlineAt);
+    return;
   }
   d.say(live, isConvoy ? 'news' : 'info', live.shape.bark, live.vars, { primary: true });
 }
@@ -2097,7 +2114,15 @@ function convoyTick(d, live, state, now, isConvoy) {
   const lead = haulers[0];
   const arrivedByPosition = dist2(lead.pos.x, lead.pos.z, end.x, end.z) <= CONVOY_ARRIVE_R * CONVOY_ARRIVE_R;
   const arrivedByDeadline = Number.isFinite(live.deadlineAt) && now >= live.deadlineAt;
-  if (!arrivedByPosition && !arrivedByDeadline) return;
+  if (!arrivedByPosition && !arrivedByDeadline) {
+    // Demand mode: silence at the offer deadline keeps clear — the convoy just runs.
+    // Physical arrival above still wins ties: freight truth beats indecision.
+    if (live.phase === 'offer' && convoyHasDemand(live)
+        && Number.isFinite(live.data.offerDeadlineAt) && now >= live.data.offerDeadlineAt) {
+      return convoy.choose(d, live, state, 'timeout');
+    }
+    return;
+  }
 
   if (custody && custody.carrierArrived) return;
 
@@ -2123,11 +2148,20 @@ function convoyTick(d, live, state, now, isConvoy) {
     finishFreightCustody(d, live, custody, 'carrier_arrived');
   }
   d.despawnAll(live, 6);                                // docked — off the board
+  const carrierFaction = (live.shape.civilian && live.shape.civilian.factionId) || live.factionId;
   if (isConvoy && live.data.guardKills > 0) {
     d.grant(live.shape.guardPay || 200, 'convoy:guard');
-    d.rep((live.shape.civilian && live.shape.civilian.factionId) || 'faction_mts', 5, 'convoy_guard');
+    d.rep(carrierFaction || 'faction_mts', 5, 'convoy_guard');
     live.vars.pay = live.shape.guardPay || 200;
+    live.vars.faction = FACTION_LABELS[carrierFaction] || live.vars.faction;
     return d.resolve(live, 'guarded', { vars: live.vars });
+  }
+  if (isConvoy && live.data.convoyStance === 'defend' && !live.data.robbed && live.data.noticed) {
+    // Pledged the screen, showed up in person, freight intact: no pay without kills,
+    // but the carrier's faction notes the wingman.
+    d.rep(carrierFaction || 'faction_mts', 2, 'convoy_escorted');
+    live.vars.faction = FACTION_LABELS[carrierFaction] || live.vars.faction;
+    return d.resolve(live, 'escorted', { vars: live.vars });
   }
   return d.resolve(live, 'arrived', {
     vars: live.vars,
@@ -2136,10 +2170,36 @@ function convoyTick(d, live, state, now, isConvoy) {
   });
 }
 
+// Demand mode: 329's defend/raid/pass stance. The choice pledges a side — the physical
+// verbs still carry the outcome (raider kills pay guarded, hauler kills flag robbed).
+function convoyChoose(d, live, state, choiceId) {
+  if (live.phase !== 'offer' || !convoyHasDemand(live)) return;
+  if (choiceId !== 'defend' && choiceId !== 'raid' && choiceId !== 'pass' && choiceId !== 'timeout') return;
+  const carrierFaction = (live.shape.civilian && live.shape.civilian.factionId) || 'faction_mts';
+  if (choiceId === 'defend') {
+    live.data.convoyStance = 'defend';
+    live.vars.stance = 'defend';
+    live.vars.faction = FACTION_LABELS[carrierFaction] || live.vars.faction;
+    d.rep(carrierFaction, 1, 'convoy_defend_pledge');
+    d.say(live, 'bark', 'convoy_guard_ack', live.vars);
+  } else if (choiceId === 'raid') {
+    live.data.convoyStance = 'raid';
+    live.vars.stance = 'raid';
+    d.rep(live.factionId || 'faction_reach', 1, 'convoy_raid_pledge');
+    d.say(live, 'bark', 'convoy_raid_ack', live.vars);
+  } else {
+    // pass / timeout: keep clear. No pledge, no ack — the lane just runs.
+    live.data.convoyStance = 'pass';
+    live.vars.stance = 'pass';
+  }
+  live.phase = 'transit';
+}
+
 const convoy = {
   restoreCustody(d, state, envelope) { return restoreFreightCargoCustody(d, state, envelope); },
   fire(d, live, state) { convoyFire(d, live, state, true); },
   tick(d, live, state, now) { convoyTick(d, live, state, now, true); },
+  choose(d, live, state, choiceId) { convoyChoose(d, live, state, choiceId); },
   event(d, live, state, name, p) {
     if (name === 'subsystemDisabled') {
       if (!p || p.subsystemId !== 'subsystem_drive') return;
@@ -2234,6 +2294,14 @@ const convoy = {
     }
     if (name === 'squadKill') {
       const role = p && p.role;
+      if (live.phase === 'offer' && convoyHasDemand(live) && p && p.byPlayer) {
+        // Violence is a choice: a player kill collapses the open offer into the transit
+        // it always was, stamped with the side the guns picked. No pledge rep — the
+        // physical consequences (robbed flag, guard kills, heat) already apply.
+        live.data.convoyStance = role === 'raider' ? 'defend' : role === 'hauler' || role === 'escort' ? 'raid' : 'pass';
+        live.vars.stance = live.data.convoyStance;
+        live.phase = 'transit';
+      }
       if (role === 'hauler') {
         if (p.id === live.data.predationTargetId) {
           const carrier = selectedFreightCarrier(live, state, true);
@@ -2270,6 +2338,7 @@ const traderRun = {
   fire(d, live, state) { convoyFire(d, live, state, false); },
   tick(d, live, state, now) { convoyTick(d, live, state, now, false); },
   event(d, live, state, name, p) { convoy.event(d, live, state, name, p); },
+  choose(d, live, state, choiceId) { convoyChoose(d, live, state, choiceId); },
 };
 
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
