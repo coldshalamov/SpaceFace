@@ -1084,6 +1084,19 @@
       "integration": "live",
       "commit": "0c5f0ff78",
       "verification": "focused_green"
+    },
+    {
+      "id": "quiessence-census-completion",
+      "date": "2026-09-17",
+      "wf": "WF-10",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Quiessence census completes: surveyed hulls go quiet, the 17th filing speaks completion and posts the Drift Market return survey with artifact payoff",
+      "fingerprint": "verb=survey,subject=memorial-hulls,sector=pallas-drift,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "e4456fb6d",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
