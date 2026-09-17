@@ -800,6 +800,10 @@ function weaponProp(wdefId, facing, size, pal, R, tier) {
     }
   }
   g.add(barrel);
+  g.userData.barrel = barrel;
+  g.userData.barrelBaseX = barrel.position.x;
+  g.userData.animated = true;
+  barrel.userData.animated = true;
   const port = new THREE.Mesh(
     getGeometry('wpn:port', () => new THREE.CylinderGeometry(0.07, 0.05, 0.09, 10).rotateZ(Math.PI / 2)),
     emissiveMaterial(pal.accent, 2.8),
@@ -906,6 +910,9 @@ function miningProp(pal, R, tier) {
   // auger bit (cone + spiral hint via stacked rings)
   const bit = new THREE.Mesh(getGeometry('mine:bit', () => new THREE.ConeGeometry(0.22, 0.8, 7).rotateZ(-Math.PI / 2)), housingMat);
   bit.position.x = 0.6 * s; bit.scale.setScalar(s); g.add(bit);
+  g.userData.drillBit = bit;
+  g.userData.animated = true;
+  bit.userData.animated = true;
   // glowing emitter tip (ore-cutter laser)
   const tip = new THREE.Mesh(getGeometry('mine:tip2', () => new THREE.OctahedronGeometry(0.14, 0)), emissiveMaterial('#ffb347', 2.2));
   tip.position.x = 1.0 * s; tip.scale.setScalar(s); g.add(tip);
@@ -1691,6 +1698,7 @@ function buildShipMesh(e, pal) {
   // 4) WEAPONS — place a barrel at each authored hardpoint whose slot has a fitted weapon.
   const slots = def && def.slots;
   const hardpoints = vis.hardpoints || [];
+  if (!outer.userData.weapons) outer.userData.weapons = [];
   if (slots && hardpoints.length) {
     const weaponFit = (e.data && e.data.fittings) || [];
     const wOffset = slotOffset(slots, 'weapon');
@@ -1701,7 +1709,9 @@ function buildShipMesh(e, pal) {
       const w = WPN_BY_ID.get(fid);
       const prop = weaponProp(fid, hp.facing || 'front', hp.size || 'S', pal, R, (w && w.tier) || 1);
       prop.position.set((hp.pos[0] || 0) * R, (hp.pos[1] || 0) * R, (hp.pos[2] || 0) * R);
+      prop.userData.slotIndex = i;
       g.add(prop);
+      outer.userData.weapons.push(prop);
     }
   }
 
@@ -1730,6 +1740,7 @@ function buildShipMesh(e, pal) {
     const drill = miningProp(pal, R, loadout.miningTier);
     drill.position.set(vis.drill[0] * R, vis.drill[1] * R, vis.drill[2] * R);
     g.add(drill);
+    outer.userData.drill = drill;
   }
 
   // 7) SHIELD emitter ring when a shield module is fitted.
@@ -2215,6 +2226,9 @@ function buildAsteroid(e) {
 
   const g = new THREE.Group();
   g.add(mesh);
+  g.userData.asteroidBody = mesh;
+  mesh.userData.animated = true;
+  g.userData.animated = true;
   if (typeId === 'ast_common_rock' && tint == null) {
     mesh.userData.asteroidInstanceTypeId = 'ast_common_rock';
     mesh.userData.asteroidInstanceVariant = variantIdx;
@@ -2469,6 +2483,9 @@ function buildGate(e, pal) {
   // core gates) so the world reads consistently across stations and travel infrastructure.
   applyStructureProfile(g, pal, R, hashId(e.id));
   g.userData.kind = 'station';
+  g.userData.innerRing = innerRing;
+  g.userData.portal = portal;
+  g.userData.hubGlow = hubGlow;
   return g;
 }
 
@@ -3973,6 +3990,7 @@ function buildPayload(e) {
   g.userData.kind = 'payload';
   g.userData.interactionKind = 'payload';
   g.userData.visualLanguage = 'sealed-cargo-canister';
+  g.userData.animated = true;
   return g;
 }
 
