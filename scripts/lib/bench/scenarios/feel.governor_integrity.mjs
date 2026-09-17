@@ -22,6 +22,12 @@ const UNGOVERNED_TICKS = 900;
 const YAW_TICKS = 180;
 const EARNED_HOLD_TICKS = 60;
 const WEAVE_MARK_S = Object.freeze([10, 20, 30, 40]);
+// Sized so the flown circle (radius ≈ v/ω ≈ 900-1,100 WU, worst-case diameter < 2,300 WU) stays
+// inside the 2,600 WU sector soft boundary on every heading, assist on or off.
+const WEAVE_TURN_INTENT = 0.14;
+// The fence acts at 2,600; the arm fails its own harness below that so a future steering drift
+// cannot reintroduce fence contamination.
+const WEAVE_ARENA_LIMIT_WU = 2400;
 
 export const AUTHORED_TRAVEL_CEILINGS = Object.freeze({
   drive_reaction_s: 472.5,
@@ -50,8 +56,9 @@ export const scenario = {
         hullId: HULL_ID,
         cruiseSpeed: hitch.cruiseSpeed,
         boostCap: hitch.boostCap,
-        weaveMarks: hitch.weaveMarks,
-        terminalWeaveSpeed: hitch.terminalWeaveSpeed,
+    weaveMarks: hitch.weaveMarks,
+    maxWeaveOriginDistance: hitch.maxWeaveOriginDistance,
+    terminalWeaveSpeed: hitch.terminalWeaveSpeed,
         terminalWeaveRatio: hitch.terminalWeaveRatio,
         diagonalLeftRatio: hitch.diagonalLeftRatio,
         diagonalRightRatio: hitch.diagonalRightRatio,
@@ -91,6 +98,9 @@ async function measureHitch(seed, eventTrace) {
   const newtonianRatio = ratio(newtonian.finalSpeed, cruiseSpeed);
 
   const bars = [
+    bar('B1-harness', 'weave arm stays inside the sector fence (arena 2600)', weave.maxOriginDistance, 'wu',
+      weave.maxOriginDistance < WEAVE_ARENA_LIMIT_WU,
+      `max displacement ${Math.round(weave.maxOriginDistance)} WU; the fence must never be the thing under test`),
     bar('B1', 'straight assisted cruise vs governed cap, Hitch', ratio(straight.finalSpeed, cruiseSpeed), 'fraction',
       Math.abs(straight.finalSpeed - cruiseSpeed) <= cruiseSpeed * 0.01,
       `governed ${cruiseSpeed} WU/s, measured ${straight.finalSpeed} WU/s`),
@@ -115,6 +125,7 @@ async function measureHitch(seed, eventTrace) {
     cruiseSpeed,
     boostCap,
     weaveMarks: weave.marks,
+    maxWeaveOriginDistance: weave.maxOriginDistance,
     terminalWeaveSpeed: weave.finalSpeed,
     terminalWeaveRatio,
     diagonalLeftRatio,
@@ -174,14 +185,30 @@ async function runWeaveArm(seed, eventTrace, cruiseSpeed) {
   try {
     settle(host);
     const marks = {};
+    // Harness repair 2026-09-16 (docs/TUNING_JOBS.md job 1 integration): the old gentle-S weave
+    // (sin × 0.06) flies a near-straight ~7,600 WU arc, crosses the 2,600 WU sector soft boundary
+    // at ~13 s of the 40 s arm, and from there the FENCE acts on the ship — the base only passed
+    // because the terminal sample landed at 187 WU/s by luck. A handling change that moves the
+    // path any distance re-rolled that dice (velocity-vectoring assist tripped it 0.98 → 1.17
+    // with the assist provably unable to add speed above the cap). The arm now flies a bounded
+    // constant-rate circle that stays deep inside the arena, and the arm publishes the exact
+    // quantity this file's own header warns about — max displacement from the start position —
+    // as a hard harness bar, so fence contamination can never pass silently again.
+    const weaveStart = { x: host.player.pos.x, z: host.player.pos.z };
+    let maxOriginDistance = 0;
     host.step(WEAVE_TICKS, {
       before: ({ index, state }) => {
         writeRealPathInput(state, {
           moveZ: 1,
-          turnIntent: Math.sin(index / 600) * 0.06,
+          turnIntent: WEAVE_TURN_INTENT,
         });
       },
       after: ({ index, host: h }) => {
+        const originDistance = Math.hypot(
+          h.player.pos.x - weaveStart.x,
+          h.player.pos.z - weaveStart.z,
+        );
+        if (originDistance > maxOriginDistance) maxOriginDistance = originDistance;
         const t = (index + 1) / 60;
         if (WEAVE_MARK_S.includes(t)) {
           marks[t] = planarSpeed(h.player);
@@ -193,8 +220,9 @@ async function runWeaveArm(seed, eventTrace, cruiseSpeed) {
       finalSpeed,
       marks,
       cruiseSpeed,
+      maxOriginDistance,
     });
-    return { finalSpeed, marks, proof: host.proof() };
+    return { finalSpeed, marks, maxOriginDistance, proof: host.proof() };
   } finally {
     host.dispose();
   }

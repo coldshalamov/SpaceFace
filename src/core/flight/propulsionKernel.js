@@ -16,7 +16,10 @@
 //      accumulate speed without interference.
 //   2. Assisted flight brakes by spending real counter-thruster authority.
 //   3. Turning the nose alone does not rotate velocity. Explicit draw-flight steering
-//      uses finite-rate vectoring forces; manual yaw and all NPC flight remain inertial.
+//      uses finite-rate vectoring forces; all NPC flight remains inertial. The opt-in
+//      velocity-vectoring assist (player packet only, assisted mode, below the cap, while the
+//      main drive is commanded) rotates velocity toward the commanded direction with a finite-rate
+//      lateral force that never changes speed — see VELOCITY_VECTORING_DEFAULTS.
 //   4. Gravimetric drives are explicitly non-Newtonian and trade cumulative speed for control.
 //   5. Pulse-plate boost is a charged discrete momentum impulse.
 //   6. Every result is deterministic for the same input stream.
@@ -86,6 +89,31 @@ const TRAVEL_DISENGAGE_DECAY_TAU_S = 5;
  * nimble regime (crisp hands-off settle) is untouched.
  */
 export const OVERCAP_ASSIST_BLEND_WU_S = 15;
+
+/**
+ * Velocity-vectoring assist (design/FEEL_CONTRACT.md §C "Velocity-vectoring assist";
+ * docs/TUNING_JOBS.md job 1). Below the governed cap, while the pilot commands the main drive,
+ * the assisted flight computer applies a lateral (perpendicular-to-velocity) force that ROTATES
+ * the velocity vector toward the commanded direction — the nose, offset by any strafe — so the
+ * path bends the moment the pilot twitches instead of the ship sliding on its old line. The rate
+ * falls from `rateLowRadS` at rest to `rateCapRadS` at the cap and blends to ZERO across
+ * OVERCAP_ASSIST_BLEND_WU_S above it (the same window as every other assist), so earned speed is
+ * never touched. The force is a pure rotation: speed is preserved to floating-point precision,
+ * which is what lets "turn NOW when I twitch" and "keep earned speed" coexist.
+ *
+ * Opt-in per input packet (`input.velocityVectoring`: `true` for the band defaults, or an object
+ * overriding these keys). The player's flight computer sets it (src/systems/flightV3.js); NPC
+ * intents and the frozen kernel fixture never do, so with the flag absent every result is
+ * byte-identical to the previous kernel. A nose ~180° from the velocity is a flip, not a turn:
+ * the assist is full within `fadeStartRad` of the command and fades smoothly to zero at
+ * `fadeEndRad`, which leaves the flip-and-burn reversal exactly as it was.
+ */
+export const VELOCITY_VECTORING_DEFAULTS = Object.freeze({
+  rateLowRadS: 1.6,
+  rateCapRadS: 0.9,
+  fadeStartRad: Math.PI / 2,
+  fadeEndRad: Math.PI,
+});
 
 const EPS = 1e-9;
 const TAU = Math.PI * 2;
@@ -270,9 +298,32 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
   accel = add2(accel, environmental);
 
   const yaw = computeYawControl(body, input, profile, dt);
+  // Resource demand is taken from the thrust the pilot and the ordinary assist commanded; the
+  // vectoring assist below redirects that thrust rather than burning more, so it adds no cost.
   const demand = resourceDemand(profile, accel, input.boost, dt);
   const nextRuntime = coolRuntime(runtime, profile, demand, dt);
   accel = applyTravelCapSpend(accel, body, governor, dt);
+  const vectoring = velocityVectoringAcceleration(body, input, profile, limits, governor, dt);
+  if (vectoring && vectoring.active) {
+    accel.x += vectoring.ax;
+    accel.z += vectoring.az;
+  }
+
+  const telemetry = {
+    driveState: 'thrust',
+    manualLocal,
+    assistLocal: assist.local,
+    assistReason: assist.reason,
+    environmentalAcceleration: environmental,
+    targetYawRate: yaw.targetYawRate,
+    coastHelm: !!yaw.coastHelm,
+    desiredHeading: null,
+    boostFraction: input.boost ? 1 : 0,
+    governor,
+  };
+  // Shape-gated like `governor.travel`: no key unless the packet opted in, so the frozen kernel
+  // fixture and every NPC result stay byte-identical.
+  if (vectoring) telemetry.vectoring = vectoring;
 
   return makeResult({
     body,
@@ -284,18 +335,7 @@ function stepReaction(body, input, profile, runtime, environment, dt) {
     maxSpeed: controlMadeSpeedLimit(governor, profile),
     demand,
     events: transitionEvents(runtime, nextRuntime, input, profile),
-    telemetry: {
-      driveState: 'thrust',
-      manualLocal,
-      assistLocal: assist.local,
-      assistReason: assist.reason,
-      environmentalAcceleration: environmental,
-      targetYawRate: yaw.targetYawRate,
-      coastHelm: !!yaw.coastHelm,
-      desiredHeading: null,
-      boostFraction: input.boost ? 1 : 0,
-      governor,
-    },
+    telemetry,
   });
 }
 
@@ -664,6 +704,24 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
   const demand = resourceDemand(profile, accel, input.boost, dt, spool > 0 ? positive(profile.resources && profile.resources.idleFuelPerS, 0) : 0);
   const nextRuntime = coolRuntime({ ...runtime, family: profile.family, spool }, profile, demand, dt);
   accel = applyTravelCapSpend(accel, body, governor, dt);
+  // Same opt-in vectoring as the reaction drive; `limits.forward` carries the spool, so a cold
+  // torch vectors as little as it pushes.
+  const vectoring = velocityVectoringAcceleration(body, input, effective, limits, governor, dt);
+  if (vectoring && vectoring.active) {
+    accel.x += vectoring.ax;
+    accel.z += vectoring.az;
+  }
+
+  const telemetry = {
+    driveState: spool > 0.01 ? 'spooling' : 'idle',
+    spool,
+    assistLocal: assist.local,
+    targetYawRate: yaw.targetYawRate,
+    coastHelm: !!yaw.coastHelm,
+    desiredHeading: null,
+    governor,
+  };
+  if (vectoring) telemetry.vectoring = vectoring;
 
   return makeResult({
     body,
@@ -675,15 +733,7 @@ function stepTorch(body, input, profile, runtime, environment, dt) {
     maxSpeed: controlMadeSpeedLimit(governor, effective),
     demand,
     events: transitionEvents(runtime, nextRuntime, input, profile),
-    telemetry: {
-      driveState: spool > 0.01 ? 'spooling' : 'idle',
-      spool,
-      assistLocal: assist.local,
-      targetYawRate: yaw.targetYawRate,
-      coastHelm: !!yaw.coastHelm,
-      desiredHeading: null,
-      governor,
-    },
+    telemetry,
   });
 }
 
@@ -806,6 +856,90 @@ function reactionAssistAcceleration(body, axes, input, profile, forceBrake) {
 
   const local = clampLocalAcceleration({ forward, lateral }, limits);
   return { accel: localToWorld(local, axes), local, reason };
+}
+
+/**
+ * Velocity-vectoring assist — see VELOCITY_VECTORING_DEFAULTS. Returns null when the packet did
+ * not opt in (no telemetry key, byte-identical results), otherwise a record that is `active` when
+ * the assist holds authority this tick. The force is the exact acceleration that rotates the
+ * current velocity by `deltaRad` over `dt`: a pure rotation, so speed is untouched and the physics
+ * owner's thrust-only cap never has to trim it. |R(δ)v − v| / dt = 2·v·sin(δ/2) / dt is bounded by
+ * the drive's forward authority (`limits.forward`), so a weak or cold drive vectors as little as
+ * it pushes and hull identity survives the assist.
+ */
+function velocityVectoringAcceleration(body, input, profile, limits, governor, dt) {
+  const tuning = input.velocityVectoring;
+  if (!tuning) return null;
+  const settings = profile.assist || {};
+  const deadInput = positive(settings.deadInput, 0.025);
+  if (normalizeAssistMode(input.assistMode) !== 'assisted') return vectoringIdle('mode');
+  if (input.brake) return vectoringIdle('brake');
+  // Vectored MAIN thrust: no main-drive command, no vectoring. Coast-and-yaw (the flip), pure
+  // strafe and the pilot brake keep their existing meaning.
+  if (!(input.throttle > deadInput)) return vectoringIdle('no-throttle');
+  const speed = length2(body.vel);
+  if (!(speed > positive(settings.deadSpeed, 0.18))) return vectoringIdle('dead-speed');
+  // The governed cap: boost raises it, and an engaged travel burn raises it further (the burn cap
+  // IS the cap while it is on). A decaying earned cap is deliberately not a cap here — above the
+  // ordinary cap the assist lets go, exactly like the counter-thrust and lateral kill.
+  let cap = positive(profile.combatSpeed, 0) * (input.boost ? positive(profile.boostSpeedMult, 1.55) : 1);
+  if (governor && governor.travel && governor.travel.state === 'engaged') {
+    cap = Math.max(cap, finite(governor.cap, 0));
+  }
+  if (!(cap > 0)) return vectoringIdle('no-cap');
+  const overCapScale = 1 - smoothstep(cap, cap + OVERCAP_ASSIST_BLEND_WU_S, speed);
+  if (!(overCapScale > 0)) return vectoringIdle('above-cap');
+  // The command is the nose offset by the strafe, so W+D bends the path toward the strafe side
+  // instead of the assist fighting the slide the pilot asked for.
+  const commandHeading = body.rot + Math.atan2(input.strafe, input.throttle);
+  const error = wrapAngle(commandHeading - Math.atan2(body.vel.z, body.vel.x));
+  const absError = Math.abs(error);
+  const alignScale = 1 - smoothstep(tuning.fadeStartRad, tuning.fadeEndRad, absError);
+  const earnedScale = input.physicsEarnedMomentum
+    ? clamp(finite(input.earnedMomentumAssistScale, 1), 0, 1)
+    : 1;
+  const rate = lerp(tuning.rateLowRadS, tuning.rateCapRadS, clamp(speed / cap, 0, 1))
+    * overCapScale * alignScale * earnedScale;
+  if (!(rate > 0)) return vectoringIdle('faded');
+  const requested = Math.min(absError, rate * dt);
+  const authority = positive(limits && limits.forward, 0);
+  const maxDelta = 2 * Math.asin(clamp(authority * dt / (2 * speed), 0, 1));
+  const delta = Math.min(requested, maxDelta);
+  const signed = error < 0 ? -delta : delta;
+  const c = Math.cos(signed);
+  const s = Math.sin(signed);
+  const vx = body.vel.x;
+  const vz = body.vel.z;
+  const ax = (c * vx - s * vz - vx) / dt;
+  const az = (s * vx + c * vz - vz) / dt;
+  return {
+    active: true,
+    reason: 'vectoring',
+    rateRadS: rate,
+    errorRad: error,
+    deltaRad: signed,
+    saturated: delta < requested - EPS,
+    accel: Math.hypot(ax, az),
+    ax,
+    az,
+  };
+}
+
+function vectoringIdle(reason) {
+  return { active: false, reason, rateRadS: 0, errorRad: 0, deltaRad: 0, saturated: false, accel: 0, ax: 0, az: 0 };
+}
+
+/** `true` selects the band defaults without allocating; an object overrides individual keys. */
+function normalizeVelocityVectoring(raw) {
+  if (!raw) return null;
+  if (raw === true || typeof raw !== 'object') return VELOCITY_VECTORING_DEFAULTS;
+  const d = VELOCITY_VECTORING_DEFAULTS;
+  return {
+    rateLowRadS: nonNegative(raw.rateLowRadS, d.rateLowRadS),
+    rateCapRadS: nonNegative(raw.rateCapRadS, d.rateCapRadS),
+    fadeStartRad: clamp(finite(raw.fadeStartRad, d.fadeStartRad), 0, Math.PI),
+    fadeEndRad: clamp(finite(raw.fadeEndRad, d.fadeEndRad), 0, Math.PI),
+  };
 }
 
 /**
@@ -1093,8 +1227,13 @@ function normalizeInput(input = {}) {
     // the drive rides the input packet rather than the serialized runtime, so it adds nothing to
     // the saved propulsion state and cannot reach a save file.
     travelDrive: normalizeTravelDrive(input.travelDrive),
+    // Velocity-vectoring opt-in (VELOCITY_VECTORING_DEFAULTS). Listed here for the same reason as
+    // travelDrive: this object is rebuilt from scratch, so an unlisted key never reaches the step.
+    velocityVectoring: normalizeVelocityVectoring(input.velocityVectoring),
   };
 }
+
+function nonNegative(value, fallback) { return Number.isFinite(value) && value >= 0 ? value : fallback; }
 
 function normalizeEnvironment(environment = {}) {
   return {

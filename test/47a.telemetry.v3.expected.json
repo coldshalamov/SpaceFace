@@ -54,21 +54,21 @@
     "tether:attached": 1,
     "tether:broken": 1,
     "combat:fire": 17,
-    "projectile:hit": 13,
-    "combat:damage": 13,
+    "projectile:hit": 8,
+    "combat:damage": 8,
     "economy:tick": 2,
     "camera:shake": 3,
     "presentation:cameraCue": 3,
-    "presentation:vfxCue": 5,
-    "presentation:audioCue": 5,
+    "presentation:vfxCue": 4,
+    "presentation:audioCue": 4,
     "presentation:uiCue": 4,
     "presentation:caption": 4,
-    "presentation:cueApplied": 18,
-    "presentation:cue": 18,
-    "audio:cue": 6
+    "presentation:cueApplied": 12,
+    "presentation:cue": 12,
+    "audio:cue": 5
   },
   "acceptanceCriteria": {
-    "authoritativeHash": "e65dbab13557a06d2e3e0078d83d96d5195a4696abb60c3b82ff251ce8a305c0",
+    "authoritativeHash": "142af1ec95ec251acc9fb51fe4bbfb3853d1ad37b270854e24033ad3ef9cbd0e",
     "firstMeaningfulSteeringTickMax": 300,
     "firstTetherAttachTickMax": 3600,
     "firstHostileShotTickMax": 5400,
@@ -174,6 +174,7 @@
     "Also fixed a latent reload seam: the player contact-give budget was owner-runtime only, so reload mid-contact reopened the spent 10%-cruise budget. Now mirrored on entity.playerContactGive.",
     "Isolation: clean-worktree HEAD + only propulsionCatalog/physics/sg02DynamicBodyOwner reproduces this hash; foreign shared-tree dirt moves it, so sim-v3 stays red there until that work lands.",
     "Prior authoritativeHash was a583d48fc20ffdf8e9e1d31959d55afa13e8ea66232e19f4572b790f2d5ee304.",
-    "2026-09-16 re-record over e8d10fed7 (reproduces prior hash). CONTENT_ONLY: added player.salvageRights + missions.config.featured; 12 foreign propulsionRuntime/Resources field removals (content-only). Prior hash f18d2929."
+    "2026-09-16 re-record over e8d10fed7 (reproduces prior hash). CONTENT_ONLY: added player.salvageRights + missions.config.featured; 12 foreign propulsionRuntime/Resources field removals (content-only). Prior hash f18d2929.",
+    "2026-09-16 velocity-vectoring assist (docs/TUNING_JOBS.md job 1, Feel Contract C band): deliberate handling change; player dodges 5+ hits in the tape. Field diff vs base: player+interacted entities only. Evidence detail in the tuning-job commit message."
   ]
 }

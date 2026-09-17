@@ -260,6 +260,20 @@ export const flightV3 = {
         profile = { ...profile, boostAccelMult: positive(profile.boostAccelMult, 1) * BOOST_ACCEL_OVERSHOOT };
       }
       applyMasslineFlightModifiers(input, state, this._masslineSlingUntil, this._dashEarnedUntil);
+      // Velocity-vectoring assist (design/FEEL_CONTRACT.md §C; docs/TUNING_JOBS.md job 1). A
+      // player-only shaping seam like the feel envelope: NPC intents never carry the key, so their
+      // kernel results are unchanged. Off while a rope is live (the rope owns the swing and the
+      // orbit assist rewrites `turn`) and under autopilot, so the experiment touches hand-flown
+      // flight only. `settings.gameplay.velocityVectoring`: absent/true = the band defaults,
+      // false = off, object = rate overrides for the lab.
+      const vectoringSetting = state && state.settings && state.settings.gameplay
+        ? state.settings.gameplay.velocityVectoring
+        : undefined;
+      input.velocityVectoring = vectoringSetting !== false
+        && !(autopilot && autopilot.active)
+        && !(tether && tether.active === true)
+        ? (vectoringSetting == null ? true : vectoringSetting)
+        : false;
       if (travelFlag('travelBurn') && input.travelDrive && input.travelDrive.state === 'engaged') {
         const energyBefore = finiteNonNeg(entity.boost && entity.boost.energy, 0);
         if (!(energyBefore > 0)) {
