@@ -1,4 +1,4 @@
-// src/data/ships.js – 13 canonical player hulls across T0..T5.
+// src/data/ships.js – 14 canonical player hulls across T0..T5.
 // IDs use ship_ prefix per ARCHITECTURE §0.4. requiresTech refs use tech_ prefix.
 // Pure data, no imports.
 //
@@ -255,6 +255,36 @@ export const SHIPS = [
       ],
       cockpit: [0.32, 0.34, 0.0], bridge: null,
       drill: [0.78, 0.0, 0.0], cargoRows: 3, sensor: [-0.20, 0.46, 0.0],
+    },
+  },
+  {
+    id: 'ship_hawser', name: 'Hawser', role: 'tug', tier: 2, requiresTech: 'tech_tractor_systems',
+    hull: 380, shield: 130, baseShieldRegen: 9, cargo: 160, mass: 68, handling: 0.55,
+    outfitSpace: 46, weaponCapacity: 6, engineCapacity: 9, designMass: 100,
+    bankFactor: 0.30,
+    driveId: 'drive_torch_l',  // open-cycle torch — sustained axial force is the job; the yard hull is a drive with a frame
+    energyCap: 220, energyRegen: 24, collisionRadius: 20, price: 118000,
+    boost: { max: 80, drainRate: 40, regenRate: 20, dashImpulse: 90, dashCooldown: 3.2 },  // a tug shoves; it does not sprint
+    // working hull: one dorsal ring covers the yard; the deep utility bay is the point
+    slots: { weapon: [{ size:'M', facing:'turret' }], shield: ['M'], engine: ['M'], cargo: ['S'], mining: [], utility: ['M','M','M'], thruster: ['M'] },
+    thrusterId: 'mod_thruster_stock_m',   // PQ-176.01 stock manoeuvring set: exactly neutral until the bay is refitted
+    visuals: {
+      family: 'freighter',
+      proportions: { length: 1.15, halfWidth: 0.68, height: 0.50 },
+      tiers: [
+        { minTier: 0, name: 'Mk.I', hints: { plating: 'paneled', greeble: 0.7, podCols: 1, podRows: 1 } },
+        { minTier: 8, name: 'Mk.II', hints: { plating: 'paneled', greeble: 0.9, podCols: 2, podRows: 1 } },
+        { minTier: 16, name: 'Mk.III', hints: { plating: 'armored', greeble: 1.0, podCols: 2, podRows: 2 } },
+      ],
+      hardpoints: [
+        { facing: 'turret', size: 'M', pos: [0.0, 0.44, 0.0] },
+      ],
+      engineMounts: [
+        { pos: [-0.60, 0.06, 0.34], scaleK: 1.1 },
+        { pos: [-0.60, 0.06, -0.34], scaleK: 1.1 },
+      ],
+      cockpit: null, bridge: [0.68, 0.22, 0.0],
+      drill: null, cargoRows: 1, sensor: [-0.24, 0.36, 0.0],
     },
   },
   // ---------- T3 ----------

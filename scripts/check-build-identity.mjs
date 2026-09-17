@@ -63,7 +63,7 @@ function testPureClassifierRules() {
 
 function testRoleFallbackCoversCanonicalHulls() {
   const identities = SHIPS.map((ship) => classifyBuildIdentity([], { shipId: ship.id, shipDef: ship }));
-  assert.equal(identities.length, 13, 'all canonical hulls were classified');
+  assert.equal(identities.length, 14, 'all canonical hulls were classified');
   assert.equal(identities.every((identity) => identity && identity.id !== 'unknown'), true,
     'no canonical hull falls through to Unknown');
   assert.ok(new Set(identities.map((identity) => identity.id)).size >= 7,
@@ -155,8 +155,14 @@ function testPackageAndRegistryWiring() {
   const registry = readFileSync(new URL('../src/core/registry.js', import.meta.url), 'utf8');
   assert.match(registry, /import \{ buildIdentity \} from '\.\.\/systems\/buildIdentity\.js';/,
     'registry imports buildIdentity system');
-  assert.match(registry, /scanner, scanReveal, buildIdentity, pirateDisguise/,
-    'buildIdentity is registered after scanReveal and before disguise/AI readers');
+  const registryOrder = ['scanner', 'scanReveal', 'buildIdentity', 'pirateDisguise']
+    .map((name) => registry.indexOf(`['${name}',`));
+  assert.ok(registryOrder.every((index) => index >= 0),
+    'scanner, scanReveal, buildIdentity and pirateDisguise are all registered');
+  assert.ok(
+    registryOrder.every((index, i) => i === 0 || index > registryOrder[i - 1]),
+    'buildIdentity is registered after scanReveal and before disguise/AI readers',
+  );
 
   const source = readFileSync(new URL('../src/systems/buildIdentity.js', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /Math\.random|Date\.now|performance\.now|setTimeout|setInterval/,

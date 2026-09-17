@@ -9,6 +9,7 @@ import {
   CONTACT_HAIL_RANGE,
   CONTACT_HAIL_RECEIPT_TTL_S,
   CONTACT_HAIL_REQUEST_TTL_S,
+  HEAVE_TO_COMPLIANT_ROLES,
   contactHailAvailability,
   createContactHailOffer,
 } from '../data/contactHail.js';
@@ -26,20 +27,7 @@ import { resolveEntity } from './entityResolver.js';
 const MODULE_BY_ID = new Map(MODULES.map((row) => [row.id, row]));
 const SHIP_BY_ID = new Map(SHIPS.map((row) => [row.id, row]));
 const FACTION_META_BY_ID = new Map(FACTION_META.map((row) => [row.id, row]));
-const HEAVE_TO_ROLES = new Set([
-  'hauler',
-  'courier',
-  'miner',
-  'smuggler',
-  'express',
-  'trader',
-  'surveyor',
-  'salvor',
-  'tender',
-  'ore_carrier',
-  'patrol',
-  'escort',
-]);
+
 
 const ACTION_ICON = Object.freeze({
   status: '<path d="M6 6h12M6 12h12M6 18h12"/><circle cx="4" cy="6" r="1.2"/><circle cx="4" cy="12" r="1.2"/><circle cx="4" cy="18" r="1.2"/>',
@@ -216,7 +204,7 @@ function actionReason(actionId, availability, state, target) {
   }
   if (actionId === CONTACT_HAIL_ACTION_HEAVE_TO && availability.heaveToAvailable !== true) {
     const role = roleWord(target);
-    if (role && !HEAVE_TO_ROLES.has(role)) return 'ROLE WILL NOT HEAVE';
+    if (role && !HEAVE_TO_COMPLIANT_ROLES.has(role)) return 'ROLE WILL NOT HEAVE';
     const record = traderRecord(state, availability.targetId);
     if (record && record.heaveTo === false) return 'NO HOLD WINDOW';
     return '';

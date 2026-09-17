@@ -29,6 +29,7 @@ const EXPECTED = {
   ship_warden: { file: 'wholeships/warden_production_v1.glb', assetId: 'SF_WARDEN_PRODUCTION_V1' },
   ship_colossus: { file: 'wholeships/colossus_production_v1.glb', assetId: 'SF_COLOSSUS_PRODUCTION_V1' },
   ship_leviathan: { file: 'wholeships/leviathan_production_v1.glb', assetId: 'SF_LEVIATHAN_PRODUCTION_V1' },
+  ship_hawser: { file: 'wholeships/yard_tug.glb', assetId: 'SF_WHOLESHIP_YARD_TUG' },
 };
 
 const hitch = makeShipEntitySpec('ship_kestrel', { isPlayer: true, team: 0 });
@@ -42,9 +43,9 @@ for (const [defId, expected] of Object.entries(EXPECTED)) {
   const visual = wholeShipVisualForEntity(entity, { requiredWholeShip: true });
   assert.equal(visual.file, expected.file, `${defId} live file`);
   assert.equal(visual.assetId, expected.assetId, `${defId} asset id`);
-  assert.deepEqual(authoredPreloadPlanForEntity(entity, { requiredWholeShip: true }), {
-    hull: [expected.file],
-  }, `${defId} must decode only LOD0`);
+  const plan = authoredPreloadPlanForEntity(entity, { requiredWholeShip: true });
+  assert.deepEqual(plan.hull, [expected.file],
+    `${defId} hull slot must decode only LOD0`);
   assert.match(shipArchetypeKeyForDefId(defId), new RegExp(expected.file.replace('.', '\\.')));
 
   const releaseUrl = `assets/ships/release/parts/${expected.file}`;

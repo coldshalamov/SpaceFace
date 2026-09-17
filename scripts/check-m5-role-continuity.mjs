@@ -76,7 +76,7 @@ function boot() {
 }
 
 // ---------------------------------------------------------------------------
-// Lattice completeness (13 distinct roles, deterministic packets)
+// Lattice completeness (14 distinct roles, deterministic packets)
 // ---------------------------------------------------------------------------
 {
   const { state, roleContexts, toasts, ships: shipsSys } = boot();
@@ -113,7 +113,7 @@ function boot() {
     assert.equal(roleIds.has(first.role), false, `${def.id} duplicate public role ${first.role}`);
     roleIds.add(first.role);
   }
-  assert.equal(roleIds.size, 13, 'all thirteen hull roles must remain distinct');
+  assert.equal(roleIds.size, 14, 'all fourteen hull roles must remain distinct');
   // Queries must not emit packets or toasts.
   assert.equal(roleContexts.length, afterNewGameContexts, 'queries must not publish role context');
   assert.equal(briefingToasts(toasts).length, afterNewGameToasts, 'queries must not toast');
@@ -237,6 +237,7 @@ function boot() {
   assert.equal(briefingToasts(toasts).length, 1, 'starter briefing surfaces in playable flight');
 
   state.ui.docked = true;
+  state.ui.dockedStationId = 'station_helios';  // a real berth with 'shipyard' service — the intent gate fails closed without it
   assert.equal(shipsSys.buyShip({ defId: 'ship_wasp', grant: true, setActive: false }), true);
   bus.emit('ui:setActiveShip', { index: 1 });
   assert.equal(state.player.activeShipIndex, 1, 'public Shipworks intent activates the owned hull while docked');
@@ -396,4 +397,4 @@ function boot() {
   assert.equal(briefingToasts(toasts).length, 1, 'Continue surfaces one restored-hull briefing at flight');
 }
 
-console.log('M5 role continuity OK — 13 roles, New Game/Continue/switch briefings once each, loading-boundary delivery, silence guards, legacy fallback, presentation-owned toast.');
+console.log('M5 role continuity OK — 14 roles, New Game/Continue/switch briefings once each, loading-boundary delivery, silence guards, legacy fallback, presentation-owned toast.');

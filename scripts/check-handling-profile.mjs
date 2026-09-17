@@ -100,7 +100,7 @@ function testAxisSources() {
 
 function testDistinctHullFingerprints() {
   const profiles = handlingProfilesForShips();
-  assert.equal(profiles.length, 13, 'all 13 shipped hulls have a profile');
+  assert.equal(profiles.length, 14, 'all 14 shipped hulls have a profile');
   const fingerprints = new Set(profiles.map((profile) => profile.fingerprint));
   assert.equal(fingerprints.size, profiles.length, 'all shipped hulls have distinct 4-axis fingerprints');
 

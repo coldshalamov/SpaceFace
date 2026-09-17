@@ -170,6 +170,8 @@ const ENGINE_FILE_BY_DEF_ID = Object.freeze({
   ship_hornet: 'engine_vector',
   ship_mule: 'engine_industrial',
   ship_atlas: 'engine_industrial',
+  // Torch-driven tug reads as an industrial plume, not a warship ring.
+  ship_hawser: 'engine_industrial',
   ship_bastion: 'engine_plasma_ring',
   ship_warden: 'engine_plasma_ring',
   ship_colossus: 'engine_plasma_ring',

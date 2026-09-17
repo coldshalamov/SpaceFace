@@ -344,6 +344,11 @@ export const SHIP_RECIPES = {
     wingSpan: 0.3, engineCount: 2, engineSize: 'M',
     detailLevel: 1, panelCount: 20, antennaCount: 1,
   },
+  ship_hawser: {
+    hullProfile: 'box_m', lengthM: 38, widthM: 26, heightM: 15,
+    wingSpan: 0.2, engineCount: 2, engineSize: 'L',
+    detailLevel: 1, panelCount: 16, antennaCount: 2,
+  },
   ship_bastion: {
     hullProfile: 'wedge_l', lengthM: 60, widthM: 28, heightM: 14,
     wingSpan: 0.8, engineCount: 2, engineSize: 'L',

@@ -237,6 +237,8 @@ test('live ambient spawn assigns fielded occupational craft to existing job mach
         ? (sim.state.entityList || []).find((e) => e && e.id === towTargetId && e.alive !== false)
         : null;
       found.set(craft.role, {
+        defId: data.defId || null,
+        mass: entity ? Number(entity.mass) || 0 : 0,
         trafficRole: data.trafficRole,
         trafficLabel: data.trafficLabel,
         jobId: data.jobId || null,
@@ -271,6 +273,10 @@ test('live ambient spawn assigns fielded occupational craft to existing job mach
     assert.equal(hit.jobKind, craft.jobKind,
       `${craft.craftId} must ride the existing ${craft.jobKind} phase machine`);
     if (craft.role === 'tug') {
+      assert.equal(hit.defId, 'ship_hawser',
+        'the yard-tug role flies the Hawser def — a silent Kestrel fallback must fail here');
+      assert.equal(hit.mass, 68,
+        'the dispatched tug carries the Hawser hull mass, not the old Mule stand-in');
       assert.equal(hit.jobSpeed, TRAFFIC_ROLES.tug.speed,
         'yard tug uses the slow planning speed in the existing hauler kernel');
       assert.ok(hit.manifestQty > 0,

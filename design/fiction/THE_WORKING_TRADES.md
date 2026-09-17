@@ -304,7 +304,7 @@ If mid-cut: **keep working**, cone lit, short snarl on open — *One Claim blind
 
 ### Hull
 
-**`ship_mule`** again, but the silhouette lies differently than Sola’s. Same freighter bones; **push work**, not plate nursing. (Heavy-yard tugs sometimes grow into Atlas frames — `ship_atlas` — when the berth is a cathedral. Pim’s world is the everyday mule-tug that keeps the stack from becoming Span-Hold with extra steps.)
+**`ship_hawser`** — the working tug has its own hull now. Torch drive on a pusher frame; **push work**, not plate nursing. (Heavy-yard tugs sometimes grow into Atlas frames — `ship_atlas` — when the berth is a cathedral. Pim’s world is the everyday Hawser that keeps the stack from becoming Span-Hold with extra steps.)
 
 ### Silhouette
 

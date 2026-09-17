@@ -30,7 +30,7 @@ const ROLE_LABEL = {
   starter: 'Starter', mining: 'Miner', fighter: 'Fighter', freighter: 'Freighter',
   multirole: 'Multirole', interceptor: 'Interceptor', mining_barge: 'Mining Barge',
   corvette: 'Corvette', heavy_hauler: 'Heavy Hauler', explorer: 'Explorer',
-  gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship',
+  gunship: 'Gunship', battlecruiser: 'Battlecruiser', flagship: 'Flagship', tug: 'Tug',
 };
 
 const STYLE_ID = 'sf-commandbar-style';

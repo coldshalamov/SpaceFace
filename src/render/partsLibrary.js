@@ -946,6 +946,7 @@ export const REQUIRED_WHOLE_SHIP_DEF_IDS = Object.freeze([
   'ship_warden',
   'ship_colossus',
   'ship_leviathan',
+  'ship_hawser',
 ]);
 const REQUIRED_WHOLE_SHIP_DEF_ID_SET = Object.freeze(new Set(REQUIRED_WHOLE_SHIP_DEF_IDS));
 const REQUIRED_WHOLE_SHIP_TRAFFIC_ROLES = Object.freeze(new Set([
@@ -1153,6 +1154,7 @@ const ENGINE_FILE_BY_DEF_ID = Object.freeze({
   ship_hornet: 'engines/engine_vector.glb',
   ship_mule: 'engines/engine_industrial.glb',
   ship_atlas: 'engines/engine_industrial.glb',
+  ship_hawser: 'engines/engine_industrial.glb',
   ship_bastion: 'engines/engine_plasma_ring.glb',
   ship_warden: 'engines/engine_plasma_ring.glb',
   ship_colossus: 'engines/engine_plasma_ring.glb',
@@ -1183,6 +1185,7 @@ const HULL_FILE_BY_DEF_ID = Object.freeze({
   ship_warden: 'hulls/hull_frigate.glb',
   ship_colossus: 'hulls/hull_capital.glb',
   ship_leviathan: 'hulls/hull_capital.glb',
+  ship_hawser: 'hulls/hull_freighter.glb',
 });
 
 // Only production-validated complete bodies belong here. Accessory-only exports remain unwired so a
@@ -1201,6 +1204,9 @@ const WHOLE_SHIP_FILE_BY_DEF_ID = Object.freeze({
   'ship_warden': 'wholeships/warden_production_v1.glb',
   'ship_colossus': 'wholeships/colossus_production_v1.glb',
   'ship_leviathan': 'wholeships/leviathan_production_v1.glb',
+  // The Hawser player hull wears the accepted yard-tug body — the same packaged work
+  // hull ambient tug traffic already flies. The fiction is the purchase, not a repaint.
+  'ship_hawser': 'wholeships/yard_tug.glb',
 });
 const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
   'ship_kestrel': 'SF_K0_KESTREL_BORROWED_TIME_V4',
@@ -1216,6 +1222,7 @@ const WHOLE_SHIP_ASSET_ID_BY_DEF_ID = Object.freeze({
   'ship_warden': 'SF_WARDEN_PRODUCTION_V1',
   'ship_colossus': 'SF_COLOSSUS_PRODUCTION_V1',
   'ship_leviathan': 'SF_LEVIATHAN_PRODUCTION_V1',
+  'ship_hawser': 'SF_WHOLESHIP_YARD_TUG',
 });
 // V4 is authored as three independent GLBs so the runtime can retain only the selected level.
 // The current whole-ship seam accepts one file, therefore LOD0 is canonical live truth while the
@@ -1504,10 +1511,10 @@ export const OPENING_FLYBY_NPC_SLOTS = Object.freeze([
   Object.freeze({ id: 'courier', data: Object.freeze({ defId: 'ship_kestrel', trafficRole: 'courier' }) }),
   Object.freeze({ id: 'hauler', data: Object.freeze({ defId: 'ship_mule', trafficRole: 'hauler' }) }),
   Object.freeze({ id: 'miner', data: Object.freeze({ defId: 'ship_pelican', trafficRole: 'miner' }) }),
-  Object.freeze({ id: 'tug', data: Object.freeze({ defId: 'ship_mule', trafficRole: 'tug' }) }),
+  Object.freeze({ id: 'tug', data: Object.freeze({ defId: 'ship_hawser', trafficRole: 'tug' }) }),
   Object.freeze({
     id: 'recovery_tug',
-    data: Object.freeze({ defId: 'ship_mule', assetRef: 'asset.slice.meridian_recovery_tug' }),
+    data: Object.freeze({ defId: 'ship_hawser', assetRef: 'asset.slice.meridian_recovery_tug' }),
   }),
 ]);
 const WHOLE_SHIP_URLS = Object.freeze([

@@ -82,7 +82,7 @@ import {
   cinderSluicePhase,
   pointInsideCinderSluice,
 } from '../data/environmentalMachinery.js';
-import { ceresDisabledHaulerManifestTruth } from '../data/contactHail.js';
+import { ceresDisabledHaulerManifestTruth, HEAVE_TO_COMPLIANT_ROLES } from '../data/contactHail.js';
 import {
   CERES_ACTIVITY_POCKETS,
   CERES_ACTIVITY_SECTOR_ID,
@@ -203,9 +203,10 @@ const PINNED_BODY_MASS = 1e6;
 const YARD_TUG_LOT = Object.freeze({
   assetId: 'pod_cargo_container',
   radius: 9,
-  // The Mule hull the tug flies is mass 55. The towing proof moved an 80-mass load behind a 20-mass
-  // hull (4x) through the same `tether_standard` policy, so 190 sits inside a ratio already shown to
-  // drag rather than snap. Heavier than the 180 heist capsule because this one is meant to look big.
+  // The Hawser hull the tug flies is mass 68. The towing proof moved an 80-mass load behind a
+  // 20-mass hull (4x) through the same `tether_standard` policy, so 190 sits inside a ratio
+  // already shown to drag rather than snap. Heavier than the 180 heist capsule because this one
+  // is meant to look big.
   mass: 190,
   hull: 220,
 });
@@ -338,9 +339,9 @@ const TRAFFIC_ROLES = {
   shuttle:    { ship: 'ship_mule',     team: 2, speed: 38, archetype: 'fleeing_trader', weight: 4,
               label: 'Apron Shuttle', docks: true, trades: true },
   // The tug carries a finite freight lot through the existing hauler graph. Its lower planning
-  // speed keeps the working hull visibly distinct until the combat/tether owner supplies its
-  // real attached load.
-  tug:        { ship: 'ship_mule',     team: 2, speed: 20, archetype: 'passive', weight: 4,
+  // speed keeps the working hull visibly distinct; the Hawser def is the yard-tug hull the
+  // role already renders (wholeships/yard_tug.glb), so its sim mass and radius now match the body.
+  tug:        { ship: 'ship_hawser',   team: 2, speed: 20, archetype: 'passive', weight: 4,
               label: 'Yard Tug', docks: true, trades: true },
   // PQ-193.07: rare Helios heavy. Own role and body — never remaps hauler/Span or Atlas.
   // Ambient mix weight is zeroed below so the seeded hauler draw stays Span.
@@ -366,27 +367,7 @@ function occupationalJobKind(role) {
 // not a new write seam — runtime ownership of role resolution is unchanged.
 export { TRAFFIC_ROLES };
 
-const HEAVE_TO_COMPLIANT_ROLES = new Set([
-  'hauler',
-  'courier',
-  'miner',
-  'smuggler',
-  'express',
-  'rescue',
-  'surveyor',
-  'salvor',
-  'tender',
-  'ore_carrier',
-  'patrol',
-  'escort',
-  'prospector',
-  'sweeper',
-  'shuttle',
-  'tug',
-  'arclight',
-  'tanker',
-  'customs',
-]);
+
 
 function trafficHeaveToComplies(role, entity) {
   if (!HEAVE_TO_COMPLIANT_ROLES.has(String(role || '').toLowerCase())) return false;
