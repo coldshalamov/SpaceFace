@@ -880,6 +880,36 @@ export function scaleDeathExplosionRadius(radius, tier) {
   return Math.max(DEATH_RADIUS_FLOOR, raw * scale);
 }
 
+// Grazing kinetic incidence, presentation-only. A round is "grazing" when its approach sits
+// within ~22 degrees of the plate (0 < -(a·n) <= limit): head-on hits dig in, separating
+// contacts are ignored, and only the acute band skips. Returns the mirror direction or null.
+export const RICOCHET_COS_LIMIT = 0.38;
+
+export function resolveRicochet(ax, az, nx, nz, out = null) {
+  const alen = Math.hypot(ax, az);
+  const nlen = Math.hypot(nx, nz);
+  if (!(alen > 1e-6) || !(nlen > 1e-6)) return null;
+  const ux = ax / alen;
+  const uz = az / alen;
+  const vx = nx / nlen;
+  const vz = nz / nlen;
+  const dot = ux * vx + uz * vz;
+  const into = -dot;
+  if (!(into > 0) || into > RICOCHET_COS_LIMIT) return null;
+  let rx = ux - 2 * dot * vx;
+  let rz = uz - 2 * dot * vz;
+  const rlen = Math.hypot(rx, rz) || 1;
+  rx /= rlen;
+  rz /= rlen;
+  if (out) {
+    out.rx = rx;
+    out.rz = rz;
+    out.graze = into;
+    return out;
+  }
+  return { rx, rz, graze: into };
+}
+
 // Mining beam shader structure. The flat additive quad becomes an energy conduit with a real
 // cross-section (hot centerline running out to soft edges, M2), packets of work travelling
 // along the beam (E3), and a bright work-face where the beam meets rock. uSfFlow carries the
@@ -2966,6 +2996,7 @@ export const vfx = {
       // Casings are owned by the presenter's quarks ejection for a recipe that declares them;
       // the legacy particle-pool loop here double-ejected every kinetic shot.
       this._weaponPresenter.handleFire(p, origin, base, profile);
+      this._emitBallisticMuzzleExhaust(origin, base, profile, burst);
       return;
     }
     switch (profile.lane) {
@@ -2983,6 +3014,38 @@ export const vfx = {
       for (const key of this._beamDamageCueNext.keys()) {
         if (key.startsWith(prefix)) this._beamDamageCueNext.delete(key);
       }
+    }
+  },
+
+  // Ballistic muzzle exhaust for the presenter-live path: a sharp bore-gas punch along
+  // the shot axis plus dark propellant-carbon flecks. Energy and missile families return
+  // immediately (their ignition is fully presenter-owned). No 3D casings: at top-down
+  // distance the Mach tracer plus carbon read 100x better with zero mesh overhead.
+  _emitBallisticMuzzleExhaust(origin, base, profile, burst) {
+    const family = profile && profile.family;
+    const variant = profile && profile.variant;
+    const ballistic = family === 'kinetic' || family === 'rail' || variant === 'concussion-slug';
+    if (!ballistic) return;
+    const sm = (profile && profile.sizeMul) || 1;
+    const rail = family === 'rail';
+    const cosBase = Math.cos(base);
+    const sinBase = Math.sin(base);
+    const mx = origin.x + cosBase * 1.2;
+    const mz = origin.z + sinBase * 1.2;
+    // Sharp bore-gas slit along the shot axis (additive glow, not a stacked card).
+    this._spawnSprite(SPR_FLASH, mx, 0.2, mz, 0.08, 0.9 * sm, 2.4 * sm, 0.8, 0,
+      (profile && profile.coreColor) || '#ffffff', cosBase * 6, sinBase * 6, 3.0, base);
+    // One breath of bore smoke, then dark carbon flecks (normal-blended smoke bucket:
+    // the only substrate that can render dark matter over the void).
+    this._spawnSprite(SPR_PUFF, mx, 0.1, mz, 0.42 * sm, 0.8 * sm, 2.6 * sm, 0.32, 0,
+      '#2a2320', cosBase * 9, sinBase * 9, 2.2, base);
+    const flecks = Math.max(1, Math.min(3, Math.round(2 * (burst || 1))));
+    for (let k = 0; k < flecks; k++) {
+      const a = base + (k - (flecks - 1) * 0.5) * 0.4 + (Math.random() - 0.5) * 0.2;
+      const sp = (rail ? 16 : 11) + Math.random() * 10;
+      this._spawnSprite(SPR_PUFF, mx, 0.12, mz, 0.3 + Math.random() * 0.2,
+        0.45 * sm, 1.3 * sm, 0.5, 0, '#14100d',
+        Math.cos(a) * sp, Math.sin(a) * sp, 1.6, a);
     }
   },
 
@@ -3150,6 +3213,7 @@ export const vfx = {
           profile.coreColor, profile.accentColor, 2.6,
         );
       }
+      this._emitRicochetIfGrazing(pos, p, recipe, scale, hitShield);
       return;
     }
     const approach = p && (p.approach || p.dir) || null;
@@ -3176,6 +3240,7 @@ export const vfx = {
     const shieldColor = this._shieldColor(fid);
     const materialColor = hitShield ? shieldColor : profile.accentColor;
     const burst = this._burst || 1;
+    this._emitRicochetIfGrazing(pos, p, recipe, scale, hitShield);
 
     switch (profile.mode) {
       case 'proximity-burst': {
@@ -3535,6 +3600,48 @@ export const vfx = {
         fragments, reduced ? 0.18 : 0.32, 0.9 * scale,
         profile.coreColor, profile.accentColor, 2.2);
     }
+  },
+
+  // Grazing kinetic skip: an acute-angle round glances off angled plate and carries on
+  // as a directional spark burst plus a skipping tracer leader. Presentation-only — no sim
+  // event, no new projectile, no ArcadeStructural bank burst (those stay combat-owned).
+  // Explicit contact geometry only: a fallen-back normal always reads head-on anyway.
+  _emitRicochetIfGrazing(pos, p, recipe, scale, hitShield) {
+    if (hitShield) return false;
+    const variant = recipe && recipe.variant;
+    if (variant !== 'autocannon' && variant !== 'flak'
+      && variant !== 'railgun' && variant !== 'siege-lance') return false;
+    const approach = (p && (p.approach || p.dir)) || null;
+    const normal = (p && p.normal) || null;
+    if (!approach || !normal) return false;
+    const ax = Number(approach.x);
+    const az = Number(approach.z);
+    const nx = Number(normal.x);
+    const nz = Number(normal.z);
+    if (!Number.isFinite(ax) || !Number.isFinite(az)
+      || !Number.isFinite(nx) || !Number.isFinite(nz)) return false;
+    if (!this._ricochetScratch) this._ricochetScratch = { rx: 0, rz: 0, graze: 0 };
+    const skip = resolveRicochet(ax, az, nx, nz, this._ricochetScratch);
+    if (!skip) return false;
+    const reduced = this._isReduced();
+    const burst = this._burst || 1;
+    const nlen = Math.hypot(nx, nz) || 1;
+    const sx = pos.x + (nx / nlen) * 0.42 * scale;
+    const sz = pos.z + (nz / nlen) * 0.42 * scale;
+    const reflectAngle = Math.atan2(skip.rz, skip.rx);
+    const heavy = variant === 'railgun' || variant === 'siege-lance';
+    const speedScale = (reduced ? 0.7 : 1) * (heavy ? 1.25 : 1);
+    this._impactParticleCone(sx, sz, reflectAngle, 0.42,
+      55 * speedScale, 120 * speedScale,
+      Math.max(4, Math.round(9 * burst * (reduced ? 0.5 : 1))),
+      0.3, 0.9, '#ffffff', '#ff7a2a', 2.2);
+    this._spawnProjectileTrailStreak(sx, 0.22, sz, 0.3, 0.14 * scale, 7.5 * scale, 0.85,
+      '#fff6e8', skip.rx * 90 * speedScale, skip.rz * 90 * speedScale, skip.rx, skip.rz);
+    if (!reduced) {
+      this._spawnProjectileTrailStreak(sx, 0.18, sz, 0.24, 0.08 * scale, 4.5 * scale, 0.5,
+        '#ffb36a', skip.rx * 70, skip.rz * 70, skip.rx, skip.rz);
+    }
+    return true;
   },
 
   _impactParticleCone(x, z, base, spread, speedMin, speedMax, count, life, size, color0, color1, drag) {
@@ -9531,6 +9638,24 @@ export const vfx = {
       const nx = backA != null ? Math.cos(backA + Math.PI) : 0;
       const nz = backA != null ? Math.sin(backA + Math.PI) : 1;
       this._weaponPresenter.quarks.spawnMiningEjecta(local.x, 0.3, local.z, nx, 0.4, nz, 8);
+    }
+    // Carve a molten work-face into the rock at a slow cadence. The shared 32-scar ring
+    // absorbs combat and mining together, oldest first; the beam target id comes from the
+    // retained mining beam (drone ticks stamp world-anchored instead — still attached).
+    if (this._weaponPresenter && typeof this._weaponPresenter.stampMiningScar === 'function') {
+      const simTime = this.state && Number.isFinite(this.state.simTime) ? this.state.simTime : null;
+      const now = simTime != null ? simTime : (this._t || 0);
+      if (!Number.isFinite(this._miningScarAt)) this._miningScarAt = -10;
+      if (now - this._miningScarAt >= 0.6) {
+        this._miningScarAt = now;
+        const targetId = this._miningBeam ? this._miningBeam.targetId : null;
+        const scarLocal = this._toLocalXZ(pos.x, pos.z, this._spawnLocalXZ);
+        const nx = backA != null ? Math.cos(backA + Math.PI) : 0;
+        const nz = backA != null ? Math.sin(backA + Math.PI) : 1;
+        this._weaponPresenter.stampMiningScar(
+          targetId, scarLocal.x, 0.3, scarLocal.z, nx, 0.4, nz, 1.7, 1.0,
+        );
+      }
     }
   },
 

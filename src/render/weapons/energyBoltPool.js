@@ -126,18 +126,28 @@ const FRAGMENT_SHADER = /* glsl */`
     body = mix(body, (plasmaCore * 1.1 + sheath * 0.7) * (0.6 + plasmaBulb * 0.5), plasma);
     col = mix(col, vec3(1.0, 0.95, 0.75), plasmaCore * plasma * 0.85);
 
-    // Variant 2: Kinetic - solid metal sabot core with incandescent rear tracer flare
+    // Variant 2: Kinetic Mach tracer - hypersonic sabot needle with shock-diamond
+    // flicker. A needle-thin white-hot head up front, an amber propellant tail behind:
+    // crisp ballistic punch that reads at combat distance, not a soft glowing ball.
     float kinetic = step(1.5, vVariant) * (1.0 - step(2.5, vVariant));
-    float tracerGlow = smoothstep(0.45, 0.0, vAlong);
-    float sabotSolid = pow(max(0.0, 1.0 - across), 8.0);
-    body = mix(body, (sabotSolid * 0.75 + sheath * 0.35) * (0.8 + tracerGlow * 1.4), kinetic);
-    col = mix(col, vec3(1.0, 0.65, 0.25), tracerGlow * kinetic * 0.9);
+    float machHead = smoothstep(0.55, 1.0, vAlong);
+    float machTail = smoothstep(0.5, 0.0, vAlong);
+    float machCore = pow(max(0.0, 1.0 - across), 12.0);
+    float machDiamonds = 0.82 + 0.18 * sin(vAlong * 46.0);
+    body = mix(body, (machCore * 1.5 + sheath * 0.28) * machDiamonds * (0.75 + machHead * 0.9), kinetic);
+    col = mix(col, vec3(1.0, 0.97, 0.9), machCore * machHead * kinetic * 0.95);
+    col = mix(col, vec3(1.0, 0.62, 0.22), machTail * kinetic * 0.85);
 
-    // Variant 3: Rail / Siege - hypersonic relativistic needle with white-hot core & shock rings
+    // Variant 3: Rail / Siege - relativistic needle with a white-hot core, a tight ionized
+    // halo, and shock rings running the shaft. Thinner and hotter than the kinetic Mach
+    // tracer: the most authoritative line on the field.
     float rail = step(2.5, vVariant) * (1.0 - step(3.5, vVariant));
-    float railRings = 0.85 + 0.15 * sin(vAlong * 38.0);
-    body = mix(body, (core * 1.35 + sheath * 0.5) * railRings, rail);
-    col = mix(col, vec3(1.0, 0.98, 0.95), core * rail * 0.92);
+    float railNeedle = pow(max(0.0, 1.0 - across), 10.0);
+    float railHalo = pow(max(0.0, 1.0 - across), 2.6);
+    float railRings = 0.86 + 0.14 * sin(vAlong * 44.0);
+    float railHead = smoothstep(0.35, 1.0, vAlong);
+    body = mix(body, (railNeedle * 1.7 + railHalo * 0.4) * railRings * (0.7 + railHead * 0.8), rail);
+    col = mix(col, vec3(1.0, 0.99, 0.96), railNeedle * rail * 0.95);
 
     // Variant 4: EMP - bifurcated electric arcs crackling across fins
     float emp = step(3.5, vVariant) * (1.0 - step(4.5, vVariant));

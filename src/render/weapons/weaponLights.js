@@ -36,17 +36,25 @@ export class WeaponLightPool {
   }
 
   spawn({ x, y, z, color, intensity, distance, life, priority }) {
-    let slot = this.slots[0];
+    const want = Number.isFinite(priority) ? priority : 0.5;
+    let slot = null;
+    let lowest = null;
     for (let i = 0; i < this.slots.length; i++) {
       const candidate = this.slots[i];
       if (!candidate.alive) { slot = candidate; break; }
-      if (candidate.priority < slot.priority) slot = candidate;
+      if (!lowest || candidate.priority < lowest.priority) lowest = candidate;
+    }
+    if (!slot) {
+      // Strict 2-slot pool: a newcomer that cannot beat the dimmest resident is culled
+      // at admission instead of stealing a brighter heavy-weapon beat mid-flash.
+      if (!lowest || want <= lowest.priority) return null;
+      slot = lowest;
     }
     slot.alive = 1;
     slot.age = 0;
     slot.life = Math.max(0.05, life || 0.12);
     slot.peak = Math.max(0, intensity || 2);
-    slot.priority = Number.isFinite(priority) ? priority : 0.5;
+    slot.priority = want;
     slot.light.position.set(x || 0, y || 0.4, z || 0);
     slot.light.distance = Math.max(4, distance || 14);
     slot.light.decay = 2;
@@ -77,6 +85,14 @@ export class WeaponLightPool {
 
   get size() {
     return this.capacity;
+  }
+
+  get live() {
+    let count = 0;
+    for (let i = 0; i < this.slots.length; i++) {
+      if (this.slots[i].alive) count++;
+    }
+    return count;
   }
 
   dispose() {

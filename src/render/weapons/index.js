@@ -27,7 +27,7 @@ export { EnergyBoltPool, ENERGY_BOLT_CAPACITY, createEnergyBoltPrecompileMesh } 
 export { WeaponRibbonPool, WEAPON_RIBBON_CAPACITY } from './ribbonPool.js';
 export { DistortionField, DISTORTION_CAPACITY } from './distortionField.js';
 export { WeaponLightPool, WEAPON_LIGHT_POOL_SIZE, visiblePointLightBudget } from './weaponLights.js';
-export { HullScorchPool, HULL_SCORCH_CAPACITY } from './contactMarks.js';
+export { HullScorchPool, HULL_SCORCH_CAPACITY, heatForWeaponVariant, scorchHeatForAge } from './contactMarks.js';
 export {
   addShieldContact,
   ageShieldContacts,

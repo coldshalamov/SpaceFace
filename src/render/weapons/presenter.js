@@ -9,7 +9,7 @@ import { EnergyBoltPool } from './energyBoltPool.js';
 import { WeaponRibbonPool } from './ribbonPool.js';
 import { DistortionField } from './distortionField.js';
 import { WeaponLightPool } from './weaponLights.js';
-import { HullScorchPool } from './contactMarks.js';
+import { HullScorchPool, heatForWeaponVariant } from './contactMarks.js';
 import { QuarksVfxSystem } from '../vfx/quarksSystem.js';
 import { addShieldContact, ageShieldContacts, clearShieldContacts } from './shieldContacts.js';
 import {
@@ -37,6 +37,38 @@ const _axis = new THREE.Vector3();
 const _invQuat = new THREE.Quaternion();
 const NEAR_MISS_RADIUS = 10;
 const FULL_LOD_DISTANCE = 240;
+
+// Impact point-light voice by weapon dialect: [peak, distance]. Heavy ordnance seats
+// itself with a harder, wider beat across the target hull and nearby crags; light
+// skirmish weapons stay small so dense exchanges do not wash the scene out.
+const HIT_LIGHT_BY_VARIANT = Object.freeze({
+  'thermal-bolt': Object.freeze([3.0, 16]),
+  'concussion-slug': Object.freeze([3.6, 18]),
+  'siege-lance': Object.freeze([4.2, 20]),
+  torpedo: Object.freeze([3.4, 16]),
+  missile: Object.freeze([3.0, 16]),
+  railgun: Object.freeze([2.6, 14]),
+  autocannon: Object.freeze([2.0, 12]),
+  flak: Object.freeze([1.6, 10]),
+  'pulse-bolt': Object.freeze([1.8, 12]),
+  disruptor: Object.freeze([2.0, 12]),
+  'continuous-beam': Object.freeze([1.6, 12]),
+  'vector-mine': Object.freeze([2.6, 14]),
+});
+
+// Heavy dialects outrank skirmish fire for the 2-slot weapon light pool.
+const HEAVY_LIGHT_VARIANTS = Object.freeze(new Set([
+  'thermal-bolt',
+  'concussion-slug',
+  'siege-lance',
+  'torpedo',
+  'missile',
+  'railgun',
+]));
+
+function hitLightForVariant(variant) {
+  return HIT_LIGHT_BY_VARIANT[variant] || HIT_LIGHT_BY_VARIANT.autocannon;
+}
 
 // PQ-139.05 well refraction. DistortionField encodes UV offset as envelope * 0.035; at a later
 // 1280px capture that maps the standard 190 WU / strength-240 well to ~11 px peak, localized to
@@ -124,6 +156,8 @@ export class WeaponVfxPresenter {
     this._scorchPoseScratch = { x: 0, y: 0, z: 0, nx: 1, ny: 0, nz: 0 };
     this._nearMissPlayerLocal = { x: 0, z: 0 };
     this._nearMissLocal = { x: 0, z: 0 };
+    this._lightCullWorld = { x: 0, z: 0 };
+    this._lightCullLook = { x: 0, z: 0 };
     this._wellLocal = { x: 0, z: 0 };
     this._prevLocal = { x: 0, z: 0 };
     this._flightColors = { core: '#ffffff', sheath: '#ffffff' };
@@ -188,8 +222,10 @@ export class WeaponVfxPresenter {
       });
     }
     const playerId = this.state && this.state.playerId;
-    const priority = ownerId === playerId ? 1 : 0.45;
-    if (muzzle.lightPeak > 0 && a11y.eventLightPeakScale > 0) {
+    let priority = ownerId === playerId ? 1 : 0.45;
+    if (HEAVY_LIGHT_VARIANTS.has(recipe.variant)) priority = Math.min(1, priority + 0.2);
+    if (muzzle.lightPeak > 0 && a11y.eventLightPeakScale > 0
+      && !this._lightCulled(origin && origin.x, origin && origin.z, priority)) {
       this.lights.spawn({
         x: pose.x, y: pose.y, z: pose.z,
         color: muzzle.lightColor,
@@ -263,20 +299,26 @@ export class WeaponVfxPresenter {
         height: scorch.size1,
         life: scorch.life,
         opacity: scorch.opacity0,
+        heat: heatForWeaponVariant(recipe.variant),
         r: _color.r,
         g: _color.g,
         b: _color.b,
       });
     }
     if (a11y.eventLightPeakScale > 0) {
-      this.lights.spawn({
-        x: world.x, y, z: world.z,
-        color: hitShield ? '#5fd0ff' : recipe.muzzle.lightColor,
-        intensity: (hitShield ? 2.2 : 1.8) * a11y.eventLightPeakScale,
-        distance: 12,
-        life: 0.1,
-        priority: payload.targetId === (this.state && this.state.playerId) ? 0.9 : 0.4,
-      });
+      const hitLight = hitLightForVariant(recipe.variant);
+      let hitPriority = payload.targetId === (this.state && this.state.playerId) ? 0.9 : 0.4;
+      if (HEAVY_LIGHT_VARIANTS.has(recipe.variant)) hitPriority = Math.min(1, hitPriority + 0.25);
+      if (!this._lightCulled(pos.x, pos.z, hitPriority)) {
+        this.lights.spawn({
+          x: world.x, y, z: world.z,
+          color: hitShield ? '#5fd0ff' : recipe.muzzle.lightColor,
+          intensity: hitLight[0] * (hitShield ? 1.15 : 1) * a11y.eventLightPeakScale,
+          distance: hitLight[1],
+          life: 0.1,
+          priority: hitPriority,
+        });
+      }
     }
     if (this.quarks) {
       this.quarks.spawnImpact(
@@ -611,6 +653,57 @@ export class WeaponVfxPresenter {
 
   _a11y() {
     return resolveVfxAccessibilityProfile(this.state && this.state.settings);
+  }
+
+  // Early light cull: the 2-slot weapon pool is precious, so a light nobody can see is
+  // never admitted. Player-involved beats always survive; everything else must sit inside
+  // the live look-at envelope. Uncertain coordinates never cull.
+  _lightCulled(worldX, worldZ, priority) {
+    if (priority >= 0.9) return false;
+    if (!Number.isFinite(worldX) || !Number.isFinite(worldZ)) return false;
+    const state = this.state;
+    const player = state && state.entities && typeof state.entities.get === 'function'
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player || !player.pos) return false;
+    this._lightCullWorld.x = worldX;
+    this._lightCullWorld.z = worldZ;
+    const look = tableLookAtDelta(state, player.pos, this._lightCullWorld, this._lightCullLook);
+    return !shouldDrawTableVfx(look.x, look.z, tableVfxDrawWuFromState(state));
+  }
+
+  // Mining carves a molten work-face into the rock. Coordinates are frame-local, matching
+  // the presenter's internal contact space; the caller converts from galactic-global.
+  stampMiningScar(targetId, localX, localY, localZ, nx, ny, nz, size = 1.7, heat = 1.0) {
+    const captured = this._captureTargetLocal(
+      targetId,
+      Number.isFinite(localX) ? localX : 0,
+      Number.isFinite(localY) ? localY : 0.3,
+      Number.isFinite(localZ) ? localZ : 0,
+      Number.isFinite(nx) ? nx : 0,
+      Number.isFinite(ny) ? ny : 1,
+      Number.isFinite(nz) ? nz : 0,
+    );
+    const scorch = this._flashSpec(6.0, size, size * 0.72, 1);
+    hexColor('#ff7a2a', _color);
+    this.scorches.spawn({
+      targetId: targetId != null ? targetId : null,
+      localX: captured.x,
+      localY: captured.y,
+      localZ: captured.z,
+      nx: captured.nx,
+      ny: captured.ny,
+      nz: captured.nz,
+      width: scorch.size0,
+      height: scorch.size1,
+      life: scorch.life,
+      opacity: scorch.opacity0,
+      heat,
+      r: _color.r,
+      g: _color.g,
+      b: _color.b,
+    });
+    return true;
   }
 
   _flashSpec(life, size0, size1, opacity) {
