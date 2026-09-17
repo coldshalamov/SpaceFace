@@ -16,6 +16,7 @@ import { queryNearbyEntities } from '../core/spatialQuery.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
 import { buildDefeatReceipt, buildRecoveryPlan } from '../combat/playerDefeat.js';
+import { DEFEAT_STREAK_WINDOW_S, defeatMercyScale } from '../data/difficulty.js';
 import { normalizeActivity, normalizeRoe, roeForActivity } from '../ai/doctrine.js';
 import {
   CombatDoctrineId,
@@ -673,10 +674,34 @@ export const combat = {
     setVecXZ(t.vel, 0, 0);
     this._pendingPlayerRecovery = { playerId: t.id, receipt };
     this.state.combat.lastPlayerDefeat = receipt;
+    // Defeat-streak bookkeeping (the adaptive floor in data/difficulty.js): a counter plus the
+    // sim timestamp, written once per recoverable defeat. Ironman exits before this seam, so a
+    // permadeath run never accrues mercy; Veteran accrues the count but its profile never eases.
+    // The receipt carries both the streak and the post-defeat scale so the lever stays auditable
+    // without ever surfacing as a banner.
+    const streak = this._recordDefeatStreak();
+    receipt.defeatStreak = streak.count;
+    const mercyScale = defeatMercyScale(this.state);
+    receipt.defeatMercyScale = mercyScale < 1 ? mercyScale : null;
     this.bus.emit('player:death', { ...receipt, recoverable: true });
     this.bus.emit('camera:shake', { amount: 0.9 });
     this.bus.emit('game:over', { reason: 'ship_destroyed', recoverable: true, receipt });
     return true;
+  },
+
+  /** Bounded streak on state.player: resets when the gap since the last defeat exceeds the window. */
+  _recordDefeatStreak() {
+    const state = this.state;
+    const player = state.player || (state.player = {});
+    const streak = player.defeatStreak && typeof player.defeatStreak === 'object'
+      ? player.defeatStreak : (player.defeatStreak = { count: 0, lastDefeatSimTime: null });
+    const now = Number(state.simTime) || 0;
+    const last = streak.lastDefeatSimTime;
+    streak.count = typeof last === 'number' && Number.isFinite(last) && now - last <= DEFEAT_STREAK_WINDOW_S
+      ? Math.max(0, Math.floor(Number(streak.count) || 0)) + 1
+      : 1;
+    streak.lastDefeatSimTime = now;
+    return streak;
   },
 
   /**

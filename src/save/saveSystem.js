@@ -3533,6 +3533,18 @@ function normalizePlayerSaveRecord(player, savedEntity) {
   // salvageRights is the stunt-paid claim balance (stuntGrammar mints, economy redeems). A stale
   // or crafted value normalizes to a non-negative whole number, never a negative purse.
   out.salvageRights = Math.max(0, Math.floor(Number(out.salvageRights) || 0));
+  // defeatStreak is { count, lastDefeatSimTime } for the adaptive incoming floor. A streak without
+  // a finite timestamp cannot prove a bounded window, so it fails closed back to baseline.
+  if (out.defeatStreak != null) {
+    const streak = out.defeatStreak;
+    const last = streak && Number(streak.lastDefeatSimTime);
+    if (typeof streak !== 'object' || Array.isArray(streak) || !Number.isFinite(last)) {
+      delete out.defeatStreak;
+    } else {
+      streak.count = Math.max(0, Math.floor(Number(streak.count) || 0));
+      streak.lastDefeatSimTime = last;
+    }
+  }
   return out;
 }
 
