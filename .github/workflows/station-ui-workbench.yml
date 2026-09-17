@@ -29,7 +29,7 @@ jobs:
       - name: Isolated runtime dependencies
         run: |
           mkdir -p "$RUNNER_TEMP/station-deps"
-          npm install --prefix "$RUNNER_TEMP/station-deps" --ignore-scripts --no-audit --no-fund @floating-ui/dom@1.8.0 pngjs@7.0.0
+          npm install --prefix "$RUNNER_TEMP/station-deps" --no-audit --no-fund @floating-ui/dom@1.8.0 pngjs@7.0.0 esbuild@0.25.12
           mkdir -p /tmp/station-workbench/styles
           cp -R "$RUNNER_TEMP/station-deps/node_modules" /tmp/station-workbench/
           cp -R styles/fonts /tmp/station-workbench/styles/
