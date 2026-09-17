@@ -10,10 +10,12 @@ Git/tree rules that overlap `AGENTS.md` §3 are not repeated. Named campaign doo
 You are the engineer who owns this work; your name is on it. Tests, queue states, and receipts do
 not own it — you do, and no ritual completes it for you.
 
-Before you call anything done: run the game and **look at what you built**. Then interrogate it like
-a skeptical reviewer of someone else's code. Where is this weak? What breaks on the edges nobody
-handed you? What would make the owner say "this feels cheap"? Fix what you find, then look again.
-Done means you would happily put it on screen in front of the owner — not that a checklist passed.
+Before you call anything done: run the focused proof the change actually needs — usually the
+live owner plus a number. Then interrogate it like a skeptical reviewer of someone else's
+code. Where is this weak? What breaks on the edges nobody handed you? What would make the
+owner say "this feels cheap"? Fix what you find. Headed captures are not how you look; a
+missing GPU does not keep the unit open. Done means you would put it in front of the owner
+— not that a capture matrix passed.
 
 You are the person closest to the problem. Methods are yours to choose. Specs describe what
 excellent feels like and give sanity bounds; they do not prescribe your steps. If a document tells
@@ -63,11 +65,16 @@ normal, not a reason to stop.
 - Commit only the exact paths you changed; never sweep up, delete, revert, or "clean up" another
   lane's uncommitted files. `git add -A` and `git commit -a` *are* sweeps: they file another lane's
   half-finished work under your message. Stage with `git add -- <paths>`.
-- **The index is shared state too.** A commit made through an alternate index (`GIT_INDEX_FILE`), a
-  filtered patch, or `read-tree` leaves the real index stale; reconcile it with
-  `git reset -- <paths>` in the same turn. The symptom is unmistakable: `git status --short` shows
-  `D ` staged for a file that exists in `HEAD` and on disk, next to `??` for that same path — that
-  commit would revert landed work. Repair it; never publish from it.
+- **Publish with pathspecs, not from a snapshot.** `git add -- <paths>` then
+  `git commit -m "..." -- <paths>` takes those paths as they are at commit time. Snapshot flows (an
+  alternate `GIT_INDEX_FILE`, a filtered patch, `read-tree`) race: if `HEAD` moves in between, the
+  commit's tree is the old snapshot and it silently **reverts** every file that landed meanwhile.
+  That happened on 2026-09-16 - a temp-index commit reverted seven other-lane files; one publish
+  repaired it, but the history is scarred.
+- **Read `git show --stat HEAD` after every partial commit.** A file you never touched in that list
+  is such a revert: restore it from the pre-commit revision in the same turn. The stale-index
+  symptom in `git status --short` is `D ` staged for a file that exists in `HEAD` and on disk, next
+  to `??` for that same path - repair with `git reset -- <paths>`; never publish from it.
 - **Collisions are repaired additively, then forgotten.** Your hunk overwritten, your commit
   reverted, the app unbootable from someone's mid-edit: re-land your content, revert only your own
   broken hunk, note it in one line, keep going. No negotiation with the other lane, no waiting for a

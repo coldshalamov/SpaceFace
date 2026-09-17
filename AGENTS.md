@@ -24,6 +24,7 @@ the named outcome of the job you were given, then stop. Full working agreement:
 | Player-facing graphics / Blender/GLB | `docs/visual-assets/README.md` → `assets/AGENTS.md` |
 | UI/HUD / frontend looks cheap / make the UI A-list / any menu, HUD or screen redesign | **`design/frontend/direction/FIELD_HARDWARE_PROGRAM.md`** (2026-09-10; frames under `design/frontend/direction/approved/` outrank prose) → `--id PQ-194`; five development sessions `design/frontend/direction/sessions/` (phase specs under `packets/`) → then **see it**: `node scripts/ui-bench.mjs` (any 2D screen over a still, seconds, `--shot=` for a PNG) and `node scripts/ui-look.mjs --only=<id>` (live: clicks every control and reports what each did) → `src/ui/AGENTS.md` §Seeing the UI, `styles/AGENTS.md` |
 | Recurring bug | `docs/COMMON_BUGS.md` |
+| INFERENCE / make N missions / throw an agent at the game | copy [`design/program/INFERENCE_GOAL.txt`](design/program/INFERENCE_GOAL.txt). Bare `INFERENCE`: look, infer, rotate. Detect is a hint, not the task. Law: [`design/program/INFERENCE_LANES.md`](design/program/INFERENCE_LANES.md) |
 | Finish the game / it still looks unfinished / run the fleet | **`design/program/FINISH_THE_GAME.md`** — goal prompt `design/program/FINISH_THE_GAME_GOAL.txt` |
 | Tests/checks | `test/AGENTS.md`, `scripts/AGENTS.md`, or `tools/AGENTS.md` |
 
@@ -64,11 +65,18 @@ The working tree may contain valuable concurrent work that is newer than `HEAD`.
 - **Commit with exact paths.** `git add -A` and `git commit -a` sweep other lanes' half-finished
   work into your commit; stage only what you changed (`git add -- <paths>`). If a sweep already
   happened, name it in the commit body instead of unpicking it.
-- **Reconcile the shared index after any bypass.** Committing through an alternate index
-  (`GIT_INDEX_FILE`), a filtered patch, or `read-tree` leaves the real index behind: run
-  `git reset -- <paths>` in the same turn. Symptom of a stale index: `git status --short` shows
-  `D ` staged for a file that exists in `HEAD` and on disk, next to `??` for the same path.
-  Committing that state silently reverts landed work - repair it, never commit it.
+- **Publish partial work with pathspecs, never from a snapshot.** `git add -- <paths>` and then
+  `git commit -m "..." -- <paths>`: a pathspec commit takes those paths as they are at commit time.
+  Snapshot flows (an alternate `GIT_INDEX_FILE`, a filtered patch, `read-tree`) are race hazards:
+  when `HEAD` moves between the snapshot and the commit, the commit's tree is the old snapshot, so
+  it silently *reverts* every file that landed in between. That happened on 2026-09-16 - a
+  temp-index commit reverted seven other-lane files; the worktree kept them, so one publish repaired
+  it, but the history is scarred.
+- **Read `git show --stat HEAD` after every partial commit, before walking away.** A file you never
+  touched in that list is such a revert: restore it from the pre-commit revision in the same turn.
+  The matching index symptom: `git status --short` shows `D ` staged for a file that exists in
+  `HEAD` and on disk, next to `??` for the same path - that is a stale index, repaired with
+  `git reset -- <paths>`, never published from.
 - **A collision is repaired by content, not by winning.** If your landed hunk is overwritten or
   reverted, re-land the content additively; if your own change breaks the app (a bad import, a red
   core path), fix it or revert your own hunk in the same turn. Awareness of other lanes is
@@ -147,6 +155,7 @@ Run the checks the change actually needs. Fast gate first; do not loop on verifi
 |---|---|
 | Quick sanity pass | `npm run check:baseline` (~15s) — run it when the change could plausibly break something it touches; judgment, not ritual |
 | What the running game is actually doing (freeze, hitch, "why is it slow") | `npm run probe:runtime-witness`, then read `.devshots/runtime-witness/report.md` |
+| A gameplay, feel, or content claim | The live owner plus a fixed-seed number or focused test. Do not capture to review. Owner ruling: `docs/AGENT_LESSONS.md` |
 | Broad sweep | `npm run check:all` (not `check` — a fail-fast chain that hides failures) |
 | Middle tier | `npm run check:all:smoke` |
 
@@ -178,3 +187,12 @@ Keep the newer proportional settle-to-rest behavior and the separate deliberate 
 supersedes the dated gap report's earlier requirement to retain at least 90 WU/s ten seconds after
 releasing at 95 WU/s; do not restore that old target as a regression fix. Newtonian-mode and
 above-cap earned-momentum contracts remain separate.
+
+## 13. Owner capture decision
+
+On 2026-09-16 the owner ruled that capture requirements had slowed production to a crawl.
+Agents review by reading the live owner and investigating; they do not make headed stills the
+proof. Default close is a number from a fixed-seed scenario or a focused test. A still is
+optional, in-session, deleted, and only for a purely visual claim. GPU/Chromium failure never
+blocks `implemented`. Detail: [`docs/AGENT_LESSONS.md`](./docs/AGENT_LESSONS.md). Craft:
+[`build_map.md`](./build_map.md) §1.3.2.
