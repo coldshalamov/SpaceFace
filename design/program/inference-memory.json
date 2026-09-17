@@ -845,6 +845,19 @@
       "integration": "live",
       "commit": "a3f4cd6cd0b2d8bc6c57c22c34e37af2613423c1",
       "verification": "focused_green"
+    },
+    {
+      "id": "hawser-working-tug",
+      "date": "2026-09-17",
+      "wf": "WF-11",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "Roster had no hull whose identity is moving mass; ship_hawser (yard_tug body, tractor-tech gate, ~241t tow class) makes 'Can tow an Atlas' a real T2 capability and gives the ambient tug role a matching sim hull",
+      "fingerprint": "verb=tow,subject=massline,sector=any,layer=midground,tempo=deliberate,domain=wf-11",
+      "references": [],
+      "integration": "live",
+      "commit": "a01b924da",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
