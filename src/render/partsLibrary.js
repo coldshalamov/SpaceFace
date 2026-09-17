@@ -223,25 +223,6 @@ export const OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID = Object.freeze({
   place_dead_hulk: 'places/place_dead_hulk.glb',
   place_debris_chunk: 'places/place_debris_chunk.glb',
 });
-const PLACE_FILES = Object.freeze([
-  'places/place_lane_beacon.glb',
-  'places/place_nav_buoy.glb',
-  'places/place_asteroid_seamed.glb',
-  OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID.place_debris_chunk,
-  'places/place_station_billboard.glb',
-  'places/place_memorial_array.glb',
-  OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID.place_dead_hulk,
-  OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID.place_dock_interior,
-  'places/place_ceres_bait_wreck.glb',
-  'places/place_ceres_grave_shard.glb',
-  'places/place_conveyor_barge.glb',
-  'places/place_mining_drone.glb',
-  'places/place_lane_pin.glb',
-  'places/place_cold_locker.glb',
-  'places/place_tally_post.glb',
-  'places/place_claim_mark.glb',
-  'places/place_ash_pin.glb',
-  'places/place_whistle.glb',
 // PQ-193.05: the five WORLD_VISUAL_CENSUS A shapes publish packaged bodies, never primitives.
 // Drone/wreck/gate entries mirror the live runtime selectors (visualFactory packaged bodies for
 // drone/wreck entities, the station-archetype path for gates). Mine + massSeed have no authored
@@ -273,6 +254,25 @@ export function is19305PackagedWreckFile(file) {
   const normalized = String(file || '').replace(/^.*places\//, 'places/');
   return PQ_193_05_WRECK_PACKAGED_FILES.includes(normalized);
 }
+const PLACE_FILES = Object.freeze([
+  'places/place_lane_beacon.glb',
+  'places/place_nav_buoy.glb',
+  'places/place_asteroid_seamed.glb',
+  OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID.place_debris_chunk,
+  'places/place_station_billboard.glb',
+  'places/place_memorial_array.glb',
+  OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID.place_dead_hulk,
+  OPENING_DOCK_HULK_DEBRIS_PLACE_FILE_BY_ID.place_dock_interior,
+  'places/place_ceres_bait_wreck.glb',
+  'places/place_ceres_grave_shard.glb',
+  'places/place_conveyor_barge.glb',
+  'places/place_mining_drone.glb',
+  'places/place_lane_pin.glb',
+  'places/place_cold_locker.glb',
+  'places/place_tally_post.glb',
+  'places/place_claim_mark.glb',
+  'places/place_ash_pin.glb',
+  'places/place_whistle.glb',
   'places/place_asteroid_rock_a.glb',
   'places/place_asteroid_rock_b.glb',
   'places/place_asteroid_rock_c.glb',
@@ -282,6 +282,10 @@ export function is19305PackagedWreckFile(file) {
   // path as every other place. Its World Site manifest, Ceres placement, and route acceptance are
   // separate PQ-018 phases; registration here only makes the release artifact resolvable.
   'places/place_landmark_wreck_cathedral.glb',
+  // PQ-195.00: the SP-07 spindle (authored payload) and the capture fork machine resolve through
+  // the same authored-place path. The fork GLB's origin is the mouth plane (no recentering).
+  'places/place_breakaway_sp07.glb',
+  'places/place_breakaway_fork.glb',
   ...Object.values(CLAIM_SPECIALIZATION_PLACE_FILE_BY_ID),
   ...STATION_ARCHETYPE_FILES,
   ...TRADE_HUB_OVERLAY_FILES,
@@ -305,10 +309,6 @@ export function invalidatePartsLibraryCaches(renderer) {
   sharedReadabilityShellVariants.clear();
   if (renderer) {
     const bootstrapOwner = bootstrapResidencyOwnersByRenderer.get(renderer);
-  // PQ-195.00: the SP-07 spindle (authored payload) and the capture fork machine resolve through
-  // the same authored-place path. The fork GLB's origin is the mouth plane (no recentering).
-  'places/place_breakaway_sp07.glb',
-  'places/place_breakaway_fork.glb',
     if (bootstrapOwner) {
       const residency = getAssetResidency(renderer);
       if (residency) residency.releaseOwner(bootstrapOwner, 'parts-library-invalidated');
@@ -2255,6 +2255,10 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
     center: center.map((value) => (Number(value) || 0) * scale),
     size: boundsSize.map((value) => (Number(value) || 0) * scale),
   };
+  // PQ-195.00: the slot follows the entity's authored body — `place` for the spindle, `pod`
+  // for the capsule — so slot-keyed consumers (loader cache, authoredSlots audits) see one truth.
+  const authoredSlot = authoredPayloadSlotForEntity(entity);
+  const authoredSlotMap = { [authoredSlot]: [record.url] };
   root.userData.renderContract = {
     version: 1,
     coordinateSystem: '+X forward, +Y up, +Z starboard; authored payload centered on physics origin',
@@ -2363,10 +2367,6 @@ function buildFallbackStationArchetype(entity, placeFile) {
     assetBoundary: 'GLTFKit v1 — station archetype procedural fallback',
     gracefulFallback: true,
   };
-  // PQ-195.00: the slot follows the entity's authored body — `place` for the spindle, `pod`
-  // for the capsule — so slot-keyed consumers (loader cache, authoredSlots audits) see one truth.
-  const authoredSlot = authoredPayloadSlotForEntity(entity);
-  const authoredSlotMap = { [authoredSlot]: [record.url] };
   const color = fallbackPlaceColor(placeId, data.paletteClass);
   const material = new THREE.MeshStandardMaterial({
     color,
