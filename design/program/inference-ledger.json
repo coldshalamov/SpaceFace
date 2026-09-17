@@ -66,11 +66,29 @@
       "next": ""
     },
     "WF-10": {
-      "grade": "U",
+      "grade": "B",
       "updated": "2026-09-17",
-      "inspections": [],
-      "gaps": [],
-      "next": ""
+      "inspections": [
+        {
+          "date": "2026-09-17",
+          "atCommit": "068fa52c7efb2f6ea95da4f7d9979a88749215cd",
+          "paths": [
+            "src/data/encounters/120-anomaly-whisper.js",
+            "src/systems/encounterScripts.js",
+            "src/systems/encounterDirector.js",
+            "src/data/encounters.js"
+          ],
+          "finding": "anomaly_whisper was one line and nothing to do; now a full discovery chain (source site, scan hint, identify/break/ignore/fade, repeat-pay progression), proven 8/8 on fixed seeds"
+        }
+      ],
+      "gaps": [
+        {
+          "id": "discovery-audit",
+          "note": "only the whisper chain is verified complete; audit other discovery chains for thin links",
+          "status": "open"
+        }
+      ],
+      "next": "audit remaining discovery coverage (quiessence census, scanner/POI verbs)"
     },
     "WF-11": {
       "grade": "U",

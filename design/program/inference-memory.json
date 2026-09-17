@@ -1,6 +1,6 @@
 {
   "schema": "spaceface.inferenceMemory.v1",
-  "updated": "2026-09-16",
+  "updated": "2026-09-17",
   "runs": [
     {
       "date": "2026-08-12",
@@ -943,6 +943,19 @@
       "fingerprint": "verb=earn,subject=bomb-bay,sector=any,domain=wf-07",
       "references": [],
       "integration": "cut"
+    },
+    {
+      "id": "whisper-source-chain",
+      "date": "2026-09-17",
+      "wf": "WF-10",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "polish: anomaly whisper is a full discovery chain (source site, scan hint, identify/break/ignore/fade, repeat-pay progression)",
+      "fingerprint": "verb=investigate,subject=anomaly-whisper,sector=any,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "068fa52c7",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
