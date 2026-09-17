@@ -36,6 +36,22 @@ const cathedralSockets = Object.freeze({
   ZONE_Service_Starboard: socket('service_zone', [110.7385025024414, 28.541553497314453, -73.49394989013672]),
 });
 
+// PQ-195.00: the Third Shift SP-07 spindle is XZ-symmetric about its long axis; the tow
+// sockets at +-14 X are the visible tow points, the +Y service socket the lug side.
+const spindleSockets = Object.freeze({
+  socket_tow_front: socket('tow_front', [14, 0, 0]),
+  socket_tow_aft: socket('tow_aft', [-14, 0, 0]),
+  socket_service: socket('service', [3, 11, 0]),
+});
+
+// PQ-195.00: the capture fork's origin IS the mouth plane (inward +X), so the mouth
+// socket is the placement authority and the visual center is the mouth itself.
+const forkSockets = Object.freeze({
+  socket_mouth: socket('fork_mouth', [0, 0, 0]),
+  socket_seat: socket('fork_seat', [44, 0, 0]),
+  socket_service: socket('service', [77, 5.5, 0]),
+});
+
 function binding({
   partId,
   assetId,
@@ -75,6 +91,24 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
     sourceBytes: 12409820, releaseBytes: 8180092,
     rootName: 'SF_PLACE_CLAIM_OUTPOST_REFINERY_ROOT', visualCenterXZ: { x: 2.3174, z: -1.9213 }, emissiveZ: -20.10449981689453,
   }),
+  // PQ-022.heist-receivers-promote: the Tethys heist receivers wear their own KEEP re-authored
+  // bodies (open-mouth impound fork / asymmetric shielded-handoff receiver). The shared
+  // place_claim_outpost_base and _refinery bodies above stay bound to the World Site stages; these
+  // entries reuse those sockets/center (+X approach unchanged) under separate place ids.
+  place_claim_outpost_catcher: binding({
+    partId: 'place_claim_outpost_catcher', assetId: 'SF_PLACE_CLAIM_OUTPOST_CATCHER',
+    sourceSha256: '705c277e3dc7e74fd803041a9c3e4502046bd9a6f473cbcb713c3ada8fc17d4b',
+    releaseSha256: 'e2943d275bdc9ed02b3340295b72c705e8176082342c22d36828840055f932eb',
+    sourceBytes: 6489504, releaseBytes: 1575280,
+    rootName: 'SF_PLACE_CLAIM_OUTPOST_CATCHER_ROOT', visualCenterXZ: { x: 4.2387, z: 0 }, emissiveZ: -8.125,
+  }),
+  place_claim_outpost_fence: binding({
+    partId: 'place_claim_outpost_fence', assetId: 'SF_PLACE_CLAIM_OUTPOST_FENCE',
+    sourceSha256: 'defefcb65fa80948c7a0d933136986076bc32f807eb448863ffa58e19ad84e65',
+    releaseSha256: '8768850defcb8761cb79d4fa7981992b26c12b163f878d4e7b6089860e9ffd1a',
+    sourceBytes: 5940356, releaseBytes: 1462828,
+    rootName: 'SF_PLACE_CLAIM_OUTPOST_FENCE_ROOT', visualCenterXZ: { x: 2.3174, z: -1.9213 }, emissiveZ: -20.10449981689453,
+  }),
   place_claim_outpost_relay: binding({
     partId: 'place_claim_outpost_relay', assetId: 'SF_PLACE_CLAIM_OUTPOST_RELAY',
     sourceSha256: '57f6e1a42d0f1b259aada019e1960d1cbb4f81cbe0aaabfe66ed0248a8e206c9',
@@ -92,6 +126,27 @@ export const WORLD_SITE_ASSET_BINDINGS = Object.freeze({
     rootName: 'SF_PLACE_LANDMARK_WRECK_CATHEDRAL_ROOT',
     visualCenterXZ: { x: 16.00636548, z: -12.99468677 },
     socketBindings: cathedralSockets,
+  }),
+  // PQ-195.00: the Third Shift SP-07 flywheel assembly — the moving industrial load.
+  // XZ-symmetric about +X; circumradius 15.02 WU fills (not overfills) its 16 WU body.
+  place_breakaway_sp07: binding({
+    partId: 'place_breakaway_sp07', assetId: 'SF_PLACE_BREAKAWAY_SP07',
+    sourceSha256: '874d8cb389df67422d936c60cf855d65fdc63ffed3d4a68b44a1edffc7d845b5',
+    releaseSha256: '67d91f27d4f5380596527242c50f62748465965a1cb942f01fe5ceae41940b73',
+    sourceBytes: 76664, releaseBytes: 22212,
+    rootName: 'SF_PLACE_BREAKAWAY_SP07_ROOT', visualCenterXZ: { x: 0, z: 0 },
+    socketBindings: spindleSockets,
+  }),
+  // PQ-195.00: the capture fork receiver extension ahead of the Concord Lawful Catcher
+  // head. Origin is the mouth plane, inward +X; the mouth socket is the placement
+  // authority, so the visual center is the mouth itself.
+  place_breakaway_fork: binding({
+    partId: 'place_breakaway_fork', assetId: 'SF_PLACE_BREAKAWAY_FORK',
+    sourceSha256: '79dfbc9f36be695b11446301e4a20990fdabd8c773e9df7ea36a3879fe161767',
+    releaseSha256: '063fe04ea2dd6e49b0fed63b1e7badd19813883f32ac08e46b90629aa7162912',
+    sourceBytes: 15712, releaseBytes: 10868,
+    rootName: 'SF_PLACE_BREAKAWAY_FORK_ROOT', visualCenterXZ: { x: 0, z: 0 },
+    socketBindings: forkSockets,
   }),
 });
 

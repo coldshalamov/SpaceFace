@@ -34,10 +34,14 @@ export function hasExplicitAuthoredGeologyPresentation(entity) {
     && targetRadius === radius;
 }
 
-/** PQ-019 cargo capsules opt into one exact authored pod without changing payload physics identity. */
+/**
+ * PQ-019 cargo capsules opt into one exact authored pod without changing payload physics identity.
+ * PQ-195.00: the SP-07 flywheel assembly opts into its own exact authored spindle the same way.
+ */
 export function hasExplicitAuthoredPayloadPresentation(entity) {
   if (!entity || entity.alive === false || entity.type !== 'payload') return false;
-  return entity.data?.authoredPayloadAssetId === 'pod_cargo_container';
+  const assetId = entity.data?.authoredPayloadAssetId;
+  return assetId === 'pod_cargo_container' || assetId === 'place_breakaway_sp07';
 }
 
 export function entityRequiresAuthoredPresentation(entity) {

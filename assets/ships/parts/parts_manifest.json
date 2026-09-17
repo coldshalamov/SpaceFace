@@ -2245,6 +2245,141 @@
       "triangleMetric": "lod0"
     },
     {
+      "id": "place_claim_outpost_catcher",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_claim_outpost_catcher.glb",
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "mount": "origin",
+      "tris": 24324,
+      "bytes": 6489504,
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Dock_Approach",
+        "SOCKET_Emissive",
+        "SOCKET_Module_Defense",
+        "SOCKET_Module_Depot",
+        "SOCKET_Module_Refinery",
+        "SOCKET_Module_Teleporter",
+        "SOCKET_Structure_Core"
+      ],
+      "bounds": {
+        "min": [
+          -47.0226,
+          -47.0226,
+          -13.5763
+        ],
+        "max": [
+          55.5,
+          47.0226,
+          17.6696
+        ],
+        "dimensionsM": [
+          102.5226,
+          94.0452,
+          31.2459
+        ]
+      },
+      "note": "PQ-022 Tethys heist lawful catcher; open-mouth impound fork re-authored from the KEEP receiver-facility candidate. 24324 tris LOD0; 2 tint roles. Promoted from assets/ships/m5_claim_outposts/source_candidates/receiver_facility_material_truth_v1/places/place_claim_outpost_base.glb (KEEP review 2026-08-10); source 705c277e3dc7.",
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_breakaway_sp07",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_breakaway_sp07.glb",
+      "textureSize": 1024,
+      "tintable": {},
+      "factionAccentVariants": {},
+      "mount": "origin",
+      "tris": 3780,
+      "bytes": 76664,
+      "hooks": [],
+      "sockets": [
+        "socket_service",
+        "socket_tow_aft",
+        "socket_tow_front"
+      ],
+      "bounds": {
+        "min": [
+          -13.9,
+          -9.3,
+          -9.3
+        ],
+        "max": [
+          13.9,
+          13.05,
+          9.3
+        ],
+        "dimensionsM": [
+          27.8,
+          22.35,
+          18.6
+        ]
+      },
+      "note": "PQ-195 Third Shift SP-07 flywheel assembly; caged industrial load promoted from the packet blockout candidate. 3780 tris (all); 0 tint roles. Promoted from assets/ships/breakaway_v1/source_candidates/sp07-spindle.glb (blockout silhouette pass, PQ-195.00); source 874d8cb389df.",
+      "triangleMetric": "all"
+    },
+    {
+      "id": "place_breakaway_fork",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_breakaway_fork.glb",
+      "textureSize": 1024,
+      "tintable": {},
+      "factionAccentVariants": {},
+      "mount": "origin",
+      "tris": 552,
+      "bytes": 15712,
+      "hooks": [],
+      "sockets": [
+        "socket_mouth",
+        "socket_seat",
+        "socket_service"
+      ],
+      "bounds": {
+        "min": [
+          -3.5,
+          -9.5,
+          -37.5
+        ],
+        "max": [
+          89.5,
+          5.65,
+          37.5
+        ],
+        "dimensionsM": [
+          93,
+          15.15,
+          75
+        ]
+      },
+      "note": "PQ-195 Third Shift capture fork; static receiver extension ahead of the Concord Lawful Catcher head, promoted from the packet blockout candidate. 552 tris (all); 0 tint roles. Promoted from assets/ships/breakaway_v1/source_candidates/capture-fork.glb (blockout silhouette pass, PQ-195.00); source 79dfbc9f36be.",
+      "triangleMetric": "all"
+    },
+    {
       "id": "place_claim_outpost_bastion",
       "category": "places",
       "priority": "P0",
@@ -2364,6 +2499,67 @@
         ]
       },
       "note": "Industrial Refinery Claim; player claim growth family, PBR, explicit LOD0/1/2. LOD0 56760 tris / 5 draw groups.",
+      "triangleMetric": "lod0"
+    },
+    {
+      "id": "place_claim_outpost_fence",
+      "category": "places",
+      "priority": "P0",
+      "file": "places/place_claim_outpost_fence.glb",
+      "textureSize": 1024,
+      "tintable": {
+        "hull": "Material_Hull",
+        "accent": "Material_Accent"
+      },
+      "factionAccentVariants": {
+        "core": {
+          "accent": "#39d0ff",
+          "thruster": "#88aaff"
+        },
+        "belt": {
+          "accent": "#ffb35c",
+          "thruster": "#ff8844"
+        },
+        "fringe": {
+          "accent": "#ff5c5c",
+          "thruster": "#ff4466"
+        },
+        "anomaly": {
+          "accent": "#8d66ff",
+          "thruster": "#4ddc92"
+        }
+      },
+      "mount": "origin",
+      "tris": 22560,
+      "bytes": 5940356,
+      "hooks": [],
+      "sockets": [
+        "SOCKET_Dock_Approach",
+        "SOCKET_Emissive",
+        "SOCKET_Module_Defense",
+        "SOCKET_Module_Depot",
+        "SOCKET_Module_Refinery",
+        "SOCKET_Module_Teleporter",
+        "SOCKET_Structure_Core"
+      ],
+      "bounds": {
+        "min": [
+          -50.8652,
+          -50.8652,
+          -30.93
+        ],
+        "max": [
+          55.5,
+          47.0226,
+          21.8698
+        ],
+        "dimensionsM": [
+          106.3652,
+          97.8878,
+          52.7998
+        ]
+      },
+      "note": "PQ-022 Tethys heist covert fence; asymmetric shielded-handoff receiver re-authored from the KEEP receiver-facility candidate. 22560 tris LOD0; 2 tint roles. Promoted from assets/ships/m5_claim_outposts/source_candidates/receiver_facility_material_truth_v1/places/place_claim_outpost_refinery.glb (KEEP review 2026-08-10); source defefcb65fa8.",
       "triangleMetric": "lod0"
     },
     {
@@ -7599,7 +7795,11 @@
       "places/place_claim_outpost_refinery.glb",
       "places/place_claim_outpost_relay.glb",
       "places/place_claim_outpost_bastion.glb",
-      "places/place_landmark_wreck_cathedral.glb"
+      "places/place_landmark_wreck_cathedral.glb",
+      "places/place_claim_outpost_catcher.glb",
+      "places/place_claim_outpost_fence.glb",
+      "places/place_breakaway_sp07.glb",
+      "places/place_breakaway_fork.glb"
     ]
   }
 }

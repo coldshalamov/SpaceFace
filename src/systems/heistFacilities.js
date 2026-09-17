@@ -9,6 +9,8 @@ import { Masks } from '../core/entity.js';
 import { queuePhysicsImpulse, queuePhysicsTorqueImpulse } from '../core/physicsAuthority.js';
 import { sectorLocalToGlobalForSector } from '../data/sectorCoordinates.js';
 import {
+  BREAKAWAY_CAPTURE_FORK,
+  BREAKAWAY_FORK_VISUAL,
   PQ019_CAPSULE,
   PQ019_FACILITIES,
   PQ019_HEIST_SECTOR_ID,
@@ -321,6 +323,20 @@ export const heistFacilities = {
         created++;
       }
       record.headEntityId = head.id;
+
+      // PQ-195.00: the capture fork machine is a static dressing visual at the mouth the
+      // capture kernel samples — the same placement math, so the seen machine and the
+      // physical capture volume cannot disagree. It never collides (rails become real
+      // colliders in leaf .01); the custody head above stays the physical rear stop.
+      if (facility.id === BREAKAWAY_CAPTURE_FORK.facilityId) {
+        let fork = liveOwnedThing(this.state, record.forkVisualEntityId)
+          || this._findOwnedEntity(facility.id, `${facility.role}_fork`);
+        if (!fork) {
+          fork = this._spawnForkVisual(facility);
+          created++;
+        }
+        record.forkVisualEntityId = fork.id;
+      }
     }
     return created;
   },
@@ -391,6 +407,9 @@ export const heistFacilities = {
         facilityId,
         visualEntityId: null,
         headEntityId: null,
+        // PQ-195.00: restored pre-fork records lack this key; materialize treats a
+        // missing id as "not yet spawned" and fills it in, so no migration is needed.
+        forkVisualEntityId: null,
       };
     }
     return records[facilityId];
@@ -445,6 +464,33 @@ export const heistFacilities = {
         name: facility.name,
         worldDressing: true,
         placeRadius: Math.max(20, facility.headRadius * 2),
+        factionId: facility.factionId,
+      },
+    });
+  },
+
+  _spawnForkVisual(facility) {
+    const mouth = projectBreakawayForkMouth();
+    // Mouth-centred extent of the authored machine: the farthest modelled corner is
+    // ~97 WU from the mouth plane, so a 100 WU envelope keeps the whole machine drawn.
+    const envelope = 100;
+    return insertDressingRow(this.state, {
+      type: 'fx',
+      pos: this._global({ x: mouth.x, z: mouth.z }),
+      rot: Math.atan2(mouth.nz, mouth.nx),
+      radius: envelope,
+      homeSectorId: facility.sectorId,
+      data: {
+        heistFacilityId: facility.id,
+        heistFacilityRole: `${facility.role}_fork`,
+        runtimeOwner: 'heistFacilities',
+        sectorId: facility.sectorId,
+        homeSectorId: facility.sectorId,
+        placeId: BREAKAWAY_FORK_VISUAL.placeId,
+        placeScale: BREAKAWAY_FORK_VISUAL.placeScale,
+        name: 'Breakaway Capture Fork',
+        worldDressing: true,
+        placeRadius: envelope,
         factionId: facility.factionId,
       },
     });
@@ -505,8 +551,14 @@ export const heistFacilities = {
         }
       }
       if (record.headEntityId != null) this.helpers.removeEntity(record.headEntityId);
+      if (record.forkVisualEntityId != null) {
+        if (!dropDressingRow(this.state, record.forkVisualEntityId)) {
+          this.helpers.removeEntity(record.forkVisualEntityId);
+        }
+      }
       record.visualEntityId = null;
       record.headEntityId = null;
+      record.forkVisualEntityId = null;
     }
   },
 
@@ -644,6 +696,7 @@ export const heistFacilities = {
       const facility = PQ019_FACILITIES[record.facilityId];
       const visualRole = facility ? `${facility.role}_visual` : null;
       const headRole = facility ? `${facility.role}_head` : null;
+      const forkRole = facility ? `${facility.role}_fork` : null;
       if (record.visualEntityId === id
         && !stillOurs(current, visualRole)
         && !stillOurs(dressing, visualRole)) {
@@ -651,6 +704,11 @@ export const heistFacilities = {
       }
       if (record.headEntityId === id && !stillOurs(current, headRole)) {
         record.headEntityId = null;
+      }
+      if (record.forkVisualEntityId === id
+        && !stillOurs(current, forkRole)
+        && !stillOurs(dressing, forkRole)) {
+        record.forkVisualEntityId = null;
       }
     }
   },

@@ -1,9 +1,13 @@
 # BREAKAWAY — SP-07 assembly and capture fork (asset candidates)
 
-**State: `blockout`. Not wired.** Nothing in this folder is loaded by the game. The live contract
-(The Third Shift) runs today with the released `pod_cargo_container` visual standing in for the
-SP-07, and the capture fork has **no visual at all** — the navigation marker and the fork's spoken
-cues are currently the only mouth cues. That is the largest open player-facing gap of the feature.
+**State: `blockout silhouette promotion` (PQ-195.00).** The candidates are promoted to
+identity-stamped canonical sources with a release pair, manifest rows, immutable bindings, and
+sim-side wiring (`BREAKAWAY_SP07.authoredPayloadAssetId`, fork dressing row at the capture
+mouth). The render-boundary generalization that draws them landed in-tree (R1–R4; the
+spindle renders through the authored-payload boundary); production surfacing (textures,
+wear) is still open per `MATERIAL_TRUTH_PREFLIGHT.md`.
+Previously: the Third Shift ran with the released `pod_cargo_container` visual standing in for
+the SP-07 and no fork visual at all.
 
 ## What the objects are for
 

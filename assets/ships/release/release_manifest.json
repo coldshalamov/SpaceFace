@@ -1535,6 +1535,63 @@
       "contractNodeCount": 22
     },
     {
+      "id": "place_claim_outpost_catcher",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_claim_outpost_catcher.glb",
+      "release": "assets/ships/release/parts/places/place_claim_outpost_catcher.glb",
+      "sourceSha256": "705c277e3dc7e74fd803041a9c3e4502046bd9a6f473cbcb713c3ada8fc17d4b",
+      "releaseSha256": "e2943d275bdc9ed02b3340295b72c705e8176082342c22d36828840055f932eb",
+      "sourceBytes": 6489504,
+      "releaseBytes": 1575280,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 65,
+      "contractNodeCount": 22,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_breakaway_sp07",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_breakaway_sp07.glb",
+      "release": "assets/ships/release/parts/places/place_breakaway_sp07.glb",
+      "sourceSha256": "874d8cb389df67422d936c60cf855d65fdc63ffed3d4a68b44a1edffc7d845b5",
+      "releaseSha256": "67d91f27d4f5380596527242c50f62748465965a1cb942f01fe5ceae41940b73",
+      "sourceBytes": 76664,
+      "releaseBytes": 22212,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 7,
+      "contractNodeCount": 3,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
+      "id": "place_breakaway_fork",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_breakaway_fork.glb",
+      "release": "assets/ships/release/parts/places/place_breakaway_fork.glb",
+      "sourceSha256": "79dfbc9f36be695b11446301e4a20990fdabd8c773e9df7ea36a3879fe161767",
+      "releaseSha256": "063fe04ea2dd6e49b0fed63b1e7badd19813883f32ac08e46b90629aa7162912",
+      "sourceBytes": 15712,
+      "releaseBytes": 10868,
+      "textures": 0,
+      "ktx2Textures": 0,
+      "meshoptBufferViews": 7,
+      "contractNodeCount": 3,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
+    },
+    {
       "id": "place_claim_outpost_bastion",
       "kind": "part:places",
       "source": "assets/ships/parts/places/place_claim_outpost_bastion.glb",
@@ -1561,6 +1618,25 @@
       "ktx2Textures": 15,
       "meshoptBufferViews": 65,
       "contractNodeCount": 22
+    },
+    {
+      "id": "place_claim_outpost_fence",
+      "kind": "part:places",
+      "source": "assets/ships/parts/places/place_claim_outpost_fence.glb",
+      "release": "assets/ships/release/parts/places/place_claim_outpost_fence.glb",
+      "sourceSha256": "defefcb65fa80948c7a0d933136986076bc32f807eb448863ffa58e19ad84e65",
+      "releaseSha256": "8768850defcb8761cb79d4fa7981992b26c12b163f878d4e7b6089860e9ffd1a",
+      "sourceBytes": 5940356,
+      "releaseBytes": 1462828,
+      "textures": 15,
+      "ktx2Textures": 15,
+      "meshoptBufferViews": 65,
+      "contractNodeCount": 22,
+      "textureProfiles": {
+        "baseColorTexture": "ETC1S quality=224 compression=4, mipmapped, sRGB transfer",
+        "normalTexture": "UASTC level=2, mipmapped, zstd supercompressed, normal-map mode, linear",
+        "materialTextures": "ETC1S quality=255 compression=5, mipmapped, linear ORM/material data"
+      }
     },
     {
       "id": "place_claim_outpost_relay",

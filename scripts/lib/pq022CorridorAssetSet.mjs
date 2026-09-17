@@ -322,24 +322,80 @@ const PLACE_ROWS = [
     family: 'place-infrastructure',
     status: 'never-touched',
     derivations: [
-      d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_tethys_junction.pois', 'lawful_catcher'),
-      d('pq019-facility', 'PQ019_FACILITIES', 'lawful_catcher'),
       d('world-site-stage', 'WORLD_SITE_MANIFESTS', 'sector_helios_prime site / stages "powered","opened"'),
       d('world-site-binding', 'WORLD_SITE_ASSET_BINDINGS', 'place_claim_outpost_base'),
     ],
-    note: 'Shares the relay-collar grey-primitives family risk; no leaf has judged it.',
+    note: 'Shares the relay-collar grey-primitives family risk; no leaf has judged it. '
+      + 'PQ-022.heist-receivers-promote moved the lawful-catcher routing to its own body.',
   }),
   row({
     assetId: 'place_claim_outpost_refinery',
     family: 'place-infrastructure',
     status: 'never-touched',
     derivations: [
-      d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_tethys_junction.pois', 'fence_receiver'),
-      d('pq019-facility', 'PQ019_FACILITIES', 'fence_receiver'),
       d('world-site-stage', 'WORLD_SITE_MANIFESTS', 'sector_helios_prime site / stage "recovered"'),
       d('world-site-binding', 'WORLD_SITE_ASSET_BINDINGS', 'place_claim_outpost_refinery'),
     ],
-    note: 'Shares the relay-collar grey-primitives family risk; no leaf has judged it.',
+    note: 'Shares the relay-collar grey-primitives family risk; no leaf has judged it. '
+      + 'PQ-022.heist-receivers-promote moved the fence-receiver routing to its own body.',
+  }),
+  // PQ-022.heist-receivers-promote — the Tethys heist receivers wear their own KEEP re-authored
+  // bodies (open-mouth impound fork / asymmetric shielded-handoff receiver). Promoted from the
+  // reviewed PQ-019 receiver-facility candidates; the shared base/refinery rows above keep the
+  // World Site routes. Headed chase-camera verdict remains open.
+  row({
+    assetId: 'place_claim_outpost_catcher',
+    family: 'place-infrastructure',
+    status: 'focused-green',
+    derivations: [
+      d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_tethys_junction.pois', 'lawful_catcher'),
+      d('pq019-facility', 'PQ019_FACILITIES', 'lawful_catcher'),
+      d('world-site-binding', 'WORLD_SITE_ASSET_BINDINGS', 'place_claim_outpost_catcher'),
+    ],
+    openIssues: ['live-chase-verdict-open'],
+    ownerLane: 'PQ-022.heist-receivers-promote',
+    note: 'KEEP review 2026-08-10 (whole-asset G1/G2/G4) on the source candidate; hashes, sockets, '
+      + 'embodiment, mission and reachability checks are green.',
+  }),
+  row({
+    assetId: 'place_claim_outpost_fence',
+    family: 'place-infrastructure',
+    status: 'focused-green',
+    derivations: [
+      d('sector-anchor-poi', 'SECTOR_ANCHORS.sector_tethys_junction.pois', 'fence_receiver'),
+      d('pq019-facility', 'PQ019_FACILITIES', 'fence_receiver'),
+      d('world-site-binding', 'WORLD_SITE_ASSET_BINDINGS', 'place_claim_outpost_fence'),
+    ],
+    openIssues: ['live-chase-verdict-open'],
+    ownerLane: 'PQ-022.heist-receivers-promote',
+    note: 'KEEP review 2026-08-10 (whole-asset G1/G2/G4) on the source candidate; hashes, sockets, '
+      + 'embodiment, mission and reachability checks are green.',
+  }),
+  // PQ-195.00: the Third Shift load + its receiver extension, routed by the heist data the
+  // ordinary route launches. Blockout surfacing; the surfacing pass owns G1/G2/G4.
+  row({
+    assetId: 'place_breakaway_sp07',
+    family: 'place-infrastructure',
+    status: 'focused-green',
+    derivations: [
+      d('pq019-capsule', 'BREAKAWAY_SP07.authoredPayloadAssetId', 'the Third Shift physical load the player tows'),
+      d('world-site-binding', 'WORLD_SITE_ASSET_BINDINGS', 'place_breakaway_sp07'),
+    ],
+    openIssues: ['blockout-surfacing'],
+    ownerLane: 'PQ-195.00 (geometry + sim + render-boundary wiring)',
+    note: 'Spindle fills its 16 WU body (circumradius 15.02 WU); tow sockets pinned fore/aft.',
+  }),
+  row({
+    assetId: 'place_breakaway_fork',
+    family: 'place-infrastructure',
+    status: 'focused-green',
+    derivations: [
+      d('pq019-capsule', 'BREAKAWAY_FORK_VISUAL.placeId', 'capture-mouth machine dressing on the lawful_catcher'),
+      d('world-site-binding', 'WORLD_SITE_ASSET_BINDINGS', 'place_breakaway_fork'),
+    ],
+    openIssues: ['blockout-surfacing'],
+    ownerLane: 'PQ-195.00 (geometry + sim + render-boundary wiring)',
+    note: 'GLB origin is the mouth plane; placement authority is projectBreakawayForkMouth().',
   }),
   row({
     assetId: 'place_landmark_wreck_cathedral',
@@ -657,6 +713,7 @@ export function derivePlaceAssets(modules) {
   const {
     SECTOR_ANCHORS, SECTORS, ASTEROIDS, CLAIMABLE_BODY_SITES,
     PQ019_FACILITIES, PQ019_CAPSULE, WORLD_SITE_MANIFESTS, WORLD_SITE_ASSET_BINDINGS,
+    BREAKAWAY_SP07, BREAKAWAY_FORK_VISUAL,
   } = modules;
   const out = new Map();
   const add = (assetId, kind, source, detail) => {
@@ -715,6 +772,14 @@ export function derivePlaceAssets(modules) {
   }
 
   add(PQ019_CAPSULE.authoredPayloadAssetId, 'pq019-capsule', 'PQ019_CAPSULE.authoredPayloadAssetId', 'heist payload');
+
+  // PQ-195.00: the Third Shift load + fork machine ride the same capsule derivation kind.
+  if (BREAKAWAY_SP07) {
+    add(BREAKAWAY_SP07.authoredPayloadAssetId, 'pq019-capsule', 'BREAKAWAY_SP07.authoredPayloadAssetId', 'Third Shift load');
+  }
+  if (BREAKAWAY_FORK_VISUAL) {
+    add(BREAKAWAY_FORK_VISUAL.placeId, 'pq019-capsule', 'BREAKAWAY_FORK_VISUAL.placeId', 'capture fork machine');
+  }
 
   return out;
 }

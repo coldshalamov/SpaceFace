@@ -244,6 +244,19 @@ export const INDUSTRIAL_ASSET_SURFACING = Object.freeze({
     byMaterialName: Object.freeze({}),
     byRole: Object.freeze({}),
   }),
+  // PQ-195.00: explicitly-empty blockout entries so the stem-key ⇒ table-entry
+  // invariant holds (resolveIndustrialAssetKey already resolves these stems).
+  // Empty maps apply nothing; the surfacing pass defines the real families.
+  place_breakaway_sp07: Object.freeze({
+    source: 'assets/ships/release/parts/places/place_breakaway_sp07.glb',
+    byMaterialName: Object.freeze({}),
+    byRole: Object.freeze({}),
+  }),
+  place_breakaway_fork: Object.freeze({
+    source: 'assets/ships/release/parts/places/place_breakaway_fork.glb',
+    byMaterialName: Object.freeze({}),
+    byRole: Object.freeze({}),
+  }),
 });
 
 /**
@@ -268,6 +281,10 @@ const FILE_STEM_TO_ASSET_KEY = Object.freeze({
   pod_cargo_container: 'pod_cargo_container',
   place_station_trade_hub: 'place_station_trade_hub',
   place_works_refinery: 'place_works_refinery',
+  // PQ-195.00: blockout surfacing entries below are explicitly empty, so
+  // applyIndustrialMaterialFamilies stays a no-op until the surfacing pass defines families.
+  place_breakaway_sp07: 'place_breakaway_sp07',
+  place_breakaway_fork: 'place_breakaway_fork',
 });
 
 function fileStem(value) {

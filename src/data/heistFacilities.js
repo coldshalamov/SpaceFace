@@ -61,7 +61,7 @@ export const PQ019_FACILITIES = Object.freeze({
     factionId: 'faction_scn',
     localPos: { x: -400, z: -1270 },
     rot: 5.913501018384284,
-    placeId: 'place_claim_outpost_base',
+    placeId: 'place_claim_outpost_catcher',
     placeScale: 0.16,
     headRadius: 12,
   }),
@@ -73,7 +73,7 @@ export const PQ019_FACILITIES = Object.freeze({
     factionId: 'faction_quiet',
     localPos: { x: -1320, z: 420 },
     rot: -1.0722791362393007,
-    placeId: 'place_claim_outpost_refinery',
+    placeId: 'place_claim_outpost_fence',
     placeScale: 0.20,
     headRadius: 12,
   }),
@@ -110,8 +110,9 @@ export const BREAKAWAY_SP07 = Object.freeze({
   mass: 180,
   // A durable cage, three times the capsule: using the load as a tool must not destroy the job.
   hull: 480,
-  // Interim released visual. The authored SP-07 GLB is a source candidate pending asset review.
-  authoredPayloadAssetId: 'pod_cargo_container',
+  // PQ-195.00: the authored SP-07 body. Never the 6 WU pod stretched to 16 WU — the
+  // spindle's silhouette is authored to fill this 16 WU collision body.
+  authoredPayloadAssetId: 'place_breakaway_sp07',
   legalOwnerFactionId: 'faction_mts',
   ownerId: 'facility:heist_launcher',
   launchSpeed: 60,
@@ -145,6 +146,14 @@ export const BREAKAWAY_CAPTURE_FORK = Object.freeze({
 
 export const HEIST_CAPSULE_RUN_VARIANT_ID = 'capsule_run';
 export const BREAKAWAY_THIRD_SHIFT_VARIANT_ID = 'breakaway_third_shift';
+
+// PQ-195.00: presentation identity of the capture fork receiver extension. The fork is a static
+// machine placed at the mouth projected by projectBreakawayForkMouth(), at unit scale in WU —
+// the GLB's origin IS the mouth plane and its inward axis is +X, so no recentering offset.
+export const BREAKAWAY_FORK_VISUAL = Object.freeze({
+  placeId: 'place_breakaway_fork',
+  placeScale: 1,
+});
 
 export const HEIST_LAUNCH_VARIANTS = Object.freeze({
   [HEIST_CAPSULE_RUN_VARIANT_ID]: Object.freeze({

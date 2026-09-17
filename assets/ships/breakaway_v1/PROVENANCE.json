@@ -2,8 +2,8 @@
   "schema": "spaceface.asset-provenance.v1",
   "program": "BREAKAWAY — The Third Shift",
   "folder": "assets/ships/breakaway_v1",
-  "status": "blockout",
-  "runtimeWiring": "none — not referenced by src/ or styles/, not in parts_manifest.json, not in the release build",
+  "status": "blockout-silhouette-promotion",
+  "runtimeWiring": "promotion wired (PQ-195.00): canonical + release pair, parts/release manifest rows, worldSiteAssetBindings, heistFacilities spawn, partsLibrary R1–R4 selectors; surfacing open",
   "origin": {
     "packet": "SpaceFace_BREAKAWAY_Implementation_Packet.zip (owner-supplied, 2026-09-15)",
     "packetBaselineCommit": "3bd28815e924a85cf3b952284b7fa6934ef4c487",
@@ -37,10 +37,10 @@
     }
   ],
   "gates": {
-    "G0_identity_brief": "open — fiction/role recorded in DESIGN.md; no approved brief yet",
-    "material_truth_preflight": "not started (required before any form or surfacing change)",
-    "G1_G2_G4_visual": "open — no hash-bound review at the shipping camera",
+    "G0_identity_brief": "promotion pass approved in MATERIAL_TRUTH_PREFLIGHT.md (PQ-195.00); surfacing brief open",
+    "material_truth_preflight": "promotion pass recorded in MATERIAL_TRUTH_PREFLIGHT.md; required again before any form or surfacing change",
+    "G1_G2_G4_visual": "open — blockout surfacing; no hash-bound review at the shipping camera",
     "G7_independent_review": "open",
-    "runtimePresentation": "open — in game the SP-07 renders with the released pod_cargo_container visual and the capture fork has no visual"
+    "runtimePresentation": "promotion wired (PQ-195.00): canonical sources + release pair + manifests + bindings + sim spawn + render-boundary R1–R4 selectors; surfacing open"
   }
 }
