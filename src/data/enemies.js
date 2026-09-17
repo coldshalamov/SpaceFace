@@ -408,6 +408,9 @@ export const ENEMY_TYPES = [
     },
     counterHint: 'Cross its committed pass; shoot through the slow turn or throw a swarmer into the hull.',
     behavior: 'heavy committed ram; slow recovery turn, concussion pressure and six wave-owned escorts',
+    // Zero pay is load-bearing: the survival boundary test pins boss kills at zero campaign
+    // economy, and combat.js pays d.bountyCr/d.loot without a run-ownership gate. Open-route
+    // foreman pay needs a cohort-scoped payout seam first — do not price this row directly.
     bountyCr: 0, shipClass: 'gunship',
     loot: null,
   },
