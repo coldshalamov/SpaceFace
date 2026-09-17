@@ -30,6 +30,7 @@ import { listSelectableComponents } from '../systems/interactionDescriptors.js';
 import { glyphSvg } from './glyphs.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { richSeamOpportunityForEntity } from '../systems/fieldDepletion.js';
+import { missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
@@ -293,6 +294,20 @@ export function engagedContactReadout(state) {
   return { subjectId, subject, engaged, subjectIsEngaged, text };
 }
 
+/**
+ * The campaign bounty this target would pay the player on a kill, or 0 when the kill
+ * would pay nothing. Gated by the SAME rewardEligibility predicates combat settles
+ * through, so the preview can never promise money the kill toast would not print:
+ * mission-owned targets settle through missions, Survival bodies through the run wallet.
+ * Pure and DOM-free for headless checks.
+ */
+export function targetBountyPreview(target) {
+  const amount = Math.max(0, Math.round(Number(target && target.data && target.data.bountyCr) || 0));
+  if (amount <= 0) return 0;
+  if (missionOwnsReward(target) || runOwnsReward(target)) return 0;
+  return amount;
+}
+
 export function targetIntelReadout(target, player, state, distance = Infinity) {
   if (!target) return null;
   const data = target.data || {};
@@ -375,6 +390,7 @@ export function createTargetPanel(ctx) {
   const elComponentGlyph = elComponent.querySelector('[data-glyph]');
   const elComponentTxt = elComponent.querySelector('[data-txt]');
   const elIdentity = el.querySelector('.sf-target__identity');
+  const elBounty = el.querySelector('.sf-target__bounty');
   const elIntent = el.querySelector('.sf-target__intent');
   const elRange = el.querySelector('.sf-target__range');
   const elEngaged = el.querySelector('.sf-target__engaged');
@@ -383,6 +399,7 @@ export function createTargetPanel(ctx) {
   let lastEngagedKey = null;
   let lastTriKey = null;
   let lastIdentityKey = null;
+  let lastBountyKey = null;
   let lastIntelKey = null;
   let lastComponentKey = null;
 
@@ -490,6 +507,21 @@ export function createTargetPanel(ctx) {
     } else if (elIdentity.style.display !== 'none') {
       elIdentity.style.display = 'none';
       lastIdentityKey = null;
+    }
+
+    // Bounty preview: the price on this hull, when the kill would actually pay it.
+    // Keyed like identity so the row only rewrites on target/amount change.
+    const bounty = (t.type === 'ship' || t.type === 'drone') ? targetBountyPreview(t) : 0;
+    if (bounty > 0) {
+      const bountyKey = `${tid}:${bounty}`;
+      if (bountyKey !== lastBountyKey) {
+        lastBountyKey = bountyKey;
+        setText(elBounty, `BOUNTY ${bounty} CR`);
+      }
+      if (elBounty.style.display !== 'block') elBounty.style.display = 'block';
+    } else {
+      if (elBounty.style.display !== 'none') elBounty.style.display = 'none';
+      if (lastBountyKey !== null) lastBountyKey = null;
     }
 
     // Damage triangle (BP-02): effectiveness of E/K/X against the target's current outer layer.

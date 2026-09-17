@@ -21,6 +21,7 @@ export function targetFrameHtml() {
     <div class="sf-target__engaged mono" role="status" aria-live="polite" aria-atomic="true"
       style="display:none;margin-top:2px;font-size:var(--k-fs-data);line-height:1.3;color:var(--k-signal);"><span data-glyph aria-hidden="true"></span><span data-txt></span></div>
     <div class="sf-target__identity mono" style="display:none"></div>
+    <div class="sf-target__bounty mono" style="display:none;color:var(--k-gold);"></div>
     <div class="sf-target__intent mono" style="display:none;margin-top:3px;font-size:var(--k-fs-data);line-height:1.3;color:var(--k-bone-62);"></div>
     <div class="sf-target__meta">
       <span class="sf-target__range mono" style="color:var(--k-bone-62);"></span>
