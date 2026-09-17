@@ -168,6 +168,8 @@ function beginAndDisable(ctx, suffix = 'default') {
     responderBound: !!ctx.traffic._ceresDisabledHaulerActor(incident, 'responder'),
   }));
   assert.equal(ctx.hauler.hull, ctx.hauler.hullMax, 'drive impairment is component-only');
+  assert.equal(ctx.hauler.data.cargoManifest.totalQty, 8,
+    'scripted impairment is not violence: the conserved handoff manifest must not spill');
   ctx.sim.step(SIM_DT);
   drive = driveRuntime(ctx.state, ctx.hauler);
   assert.equal(drive.effectiveDisabled, true, 'combat owns the actual disabled transition');
@@ -359,8 +361,12 @@ test('PQ-048.05: ABANDON, player death, and sector exit each create one durable 
       assert.equal(ctx.events['entity:killed'].length, 1, `${name} kill`);
       assert.equal(ctx.events['freight:loss'].length, 1, `${name} freight loss`);
       assert.equal(ctx.events['freight:loss'][0].manifestId, manifestId);
-      assert.equal(ctx.events['aftermathWreck:recorded'].length, 1, `${name} durable aftermath`);
-      assert.equal(ctx.events['aftermathWreck:recorded'][0].freightIdentity.manifestId, manifestId);
+      // player_death also records the recoverable player wreck (PQ-154.02); the incident owes
+      // exactly one non-player durable aftermath.
+      const incidentWrecks = ctx.events['aftermathWreck:recorded']
+        .filter((wreck) => wreck && wreck.kind !== 'player_wreck');
+      assert.equal(incidentWrecks.length, 1, `${name} durable aftermath`);
+      assert.equal(incidentWrecks[0].freightIdentity.manifestId, manifestId);
       assert.equal(ctx.events['economy:grantCredits'].length, 0, `${name} reward`);
       assert.equal(ctx.events['faction:repDelta'].length, 0, `${name} reputation`);
       assert.equal(ctx.state.player.credits, creditsBefore);
@@ -369,7 +375,12 @@ test('PQ-048.05: ABANDON, player death, and sector exit each create one durable 
       ctx.sim.runTicks(2, SIM_DT);
       assert.equal(ctx.events['entity:killed'].length, 1, `${name} duplicate kill`);
       assert.equal(ctx.events['freight:loss'].length, 1, `${name} duplicate loss`);
-      assert.equal(ctx.events['aftermathWreck:recorded'].length, 1, `${name} duplicate aftermath`);
+      assert.equal(
+        ctx.events['aftermathWreck:recorded']
+          .filter((wreck) => wreck && wreck.kind !== 'player_wreck').length,
+        1,
+        `${name} duplicate aftermath`,
+      );
     } finally {
       ctx.sim.dispose();
     }

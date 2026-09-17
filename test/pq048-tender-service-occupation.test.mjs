@@ -104,6 +104,18 @@ function rematerialize(ctx, actor, newId) {
   state.entities.delete(actor.id);
   state.entities.set(replacement.id, replacement);
   state.entityList = state.entityList.map((entity) => entity === actor ? replacement : entity);
+  // A real Continue rebuilds every entityIndex bucket through the spawn path; the manual swap must
+  // repoint the same buckets or index-based living-world scans keep seeing the dead ref.
+  const index = state.entityIndex;
+  if (index && index.__spacefaceEntityIndexV1) {
+    for (const key of Object.keys(index)) {
+      const bucket = index[key];
+      if (!Array.isArray(bucket)) continue;
+      for (let i = 0; i < bucket.length; i++) {
+        if (bucket[i] === actor) bucket[i] = replacement;
+      }
+    }
+  }
   const rec = state.traffic.freighters.find((row) => row && row.worldRecordId === actor.data.worldRecordId);
   if (rec) rec.id = replacement.id;
   delete state.combat.entities[String(actor.id)];
@@ -127,7 +139,12 @@ test('PQ-048.04: one existing tender services one existing miner through combat 
   const ctx = boot();
   try {
     const { sim, state, traffic: trafficSystem, jobs } = ctx;
-    const initialLiveCount = state.entityList.filter((entity) => entity && entity.alive !== false).length;
+    // The yard-tug profession may legitimately dispatch a tug + booked lot during the disable
+    // ticks; the count contract is about the incident spawning no replacement prop or helper hull.
+    const incidentRelevantLive = () => state.entityList.filter((entity) => entity
+      && entity.alive !== false
+      && !(entity.data && (entity.data.yardTug === true || entity.data.yardTugLot === true))).length;
+    const initialLiveCount = incidentRelevantLive();
     const initialTenderId = ctx.tender.id;
     const initialMinerId = ctx.miner.id;
     const tenderWorldRecordId = ctx.tender.data.worldRecordId;
@@ -136,7 +153,7 @@ test('PQ-048.04: one existing tender services one existing miner through combat 
 
     assert.equal(incident.tenderWorldRecordId, tenderWorldRecordId);
     assert.equal(incident.minerWorldRecordId, minerWorldRecordId);
-    assert.equal(state.entityList.filter((entity) => entity && entity.alive !== false).length, initialLiveCount,
+    assert.equal(incidentRelevantLive(), initialLiveCount,
       'starting service adopts the two real actors and spawns no replacement prop or helper hull');
     assert.equal(state.entityList.filter((entity) => entity && entity.data
       && entity.data.activityActorSlotId === TENDER_SLOT_ID).length, 1);

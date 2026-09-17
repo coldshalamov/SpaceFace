@@ -736,7 +736,10 @@ test('a completed authored hauler recommissions the same stable job before ambie
 
   assert.equal(hauler.data.jobId, jobId);
   assert.ok(harness.npcJobs.get(jobId));
-  assert.equal(harness.npcJobCalls.length, callsBefore + 1);
+  // Other professions (yard tugs) may dispatch in the same tick; the contract is that the
+  // completed authored hauler recommissions its own stable job id rather than falling to ambient.
+  assert.ok(harness.npcJobCalls.slice(callsBefore).some((call) => call.jobId === jobId),
+    'recommission reuses the stable job id');
   assert.equal(hauler.data.intent, null, 'traffic never falls through to the ambient hauler stepper');
   assert.equal(harness.emitted.length, 0, 'recommissioning claims no freight or mining receipt');
 });
@@ -1012,8 +1015,11 @@ test('non-Ceres entry retains the seeded ambient producer instead of using activ
     },
   });
   const entities = authoredEntities(harness.state);
-  assert.equal(entities.length, 1);
-  assert.equal(entities[0].data.activityActorSlotId, undefined);
+  // Ambient professions (yard tugs) may also spawn; the contract is that no entity carries an
+  // authored Ceres activity slot outside the activity sector.
+  assert.ok(entities.length >= 1);
+  assert.ok(entities.every((entity) => entity && entity.data
+    && entity.data.activityActorSlotId === undefined));
   assert.ok(harness.rngDraws().traffic > 0, 'ordinary ambient selection still consumes its owned RNG');
   assert.notEqual(harness.state.traffic.rngSeed, rngSeedBefore);
 });
