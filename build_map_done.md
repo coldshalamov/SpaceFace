@@ -674,4 +674,30 @@ by the integrator; nothing below is an owner ruling until the owner says so.
   words (no paint on the hull). The later admission stands until the owner rules; the packet carries
   the note.
 
+---
+
+### PQ-193.05 · Drone, gate, mine, generic wreck, and mass seed stop being primitives — **DONE**
+
+- Landed: content in `0cefd93a6` (foreign-titled sweep commit; own hunks verified), queue flip in
+  `2391e467e`. Receipt:
+  [`PQ-193.05-REPORT.md`](./design/program/roadmap/receipts/PQ-193.05-REPORT.md).
+- Cost: mine + mass seed decommissioned as packaged bodies rather than authored (census records the
+  cut); gate hoop deletion left as owner cleanup; Wave 1b implementation + Wave 2b spec review +
+  inline fix close + Wave 3 quality APPROVED.
+
+### PQ-018.cathedral-chase-read · The Wreck Cathedral reads as a capital wreck — **DONE**
+
+- Landed: content in `0cefd93a6` (foreign-titled sweep commit; own hunks verified), queue flip in
+  `2391e467e`. Receipt:
+  [`PQ-018-cathedral-chase-read-REPORT.md`](./design/program/roadmap/receipts/PQ-018-cathedral-chase-read-REPORT.md).
+- Cost: staged-approach activation analysis only — shell plating/rebind execution stays with the
+  map/autopilot owner; Wave 1b + Wave 2b PARTIAL + inline fix close + Wave 3 APPROVED.
+
+### PQ-195.00 · The assembly and the fork are objects you can read — **DONE**
+
+- Landed: `2be848900`, queue flip in `2391e467e`. Receipt:
+  [`PQ-195.00-REPORT.md`](./design/program/roadmap/receipts/PQ-195.00-REPORT.md).
+- Cost: SP-07 spindle + capture fork authored through material-truth preflight and wired on the
+  ordinary route; Wave 1b + Wave 2b PARTIAL + inline R1-R4 close + Wave 3 fixed-and-verified.
+
 
