@@ -1110,6 +1110,19 @@
       "integration": "live",
       "commit": "e0de577c7",
       "verification": "focused_green"
+    },
+    {
+      "id": "target-bounty-preview",
+      "date": "2026-09-17",
+      "wf": "WF-14",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Target panel previews payable bounties through the same eligibility gates combat settles",
+      "fingerprint": "verb=read,subject=target-bounty,sector=any,domain=wf-14",
+      "references": [],
+      "integration": "live",
+      "commit": "7244bd228",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
