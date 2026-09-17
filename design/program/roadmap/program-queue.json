@@ -11348,7 +11348,7 @@
       "priority": 494,
       "title": "The Wreck Cathedral reads as a capital wreck from the chase camera",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "blender",
@@ -11368,7 +11368,9 @@
         "npm run check:pq020:ceres-topology",
         "npm run check:pq022:corridor-assets"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-018-cathedral-chase-read-REPORT.md"
+      ],
       "brief": "Two defects seen 2026-09-14 on the re-authored source (7c2f3fcd) at the live chase camera (60 deg tilt, 50 deg vertical FOV). (1) Arrival: autopilot stops at the authored safe approach 440 WU from the site centre, about 130 WU past the east hull edge, while the default 144 WU frame reaches only about 119 WU to either side, so the player arrives at the monument and sees a corner sliver. (2) Form: from the cavity the hull reads as dark open bars, frames and rails rather than the plated capital-hull shells the art verdict asked for. Fix the read, not the camera: bring the approach inside the frame along a proxy-clear corridor and/or carry plated outer shell onto the faces the chase camera sees, then re-bind source/release/binding hashes in one transaction. DONE WHEN: at the arrival pose at 144 WU the Cathedral covers at least 25% of the frame while every roster hull keeps the world-site-map-traffic proxy clearance; a 144 WU still from the cavity reads as plated hull sections, not lattice; the Cathedral tests, the Ceres topology gate and the corridor asset gate stay green.",
       "blocker": null
     },
@@ -18091,7 +18093,7 @@
       "priority": 477,
       "title": "Drone, gate, mine, generic wreck, and mass seed stop being primitives",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-193.04"
       ],
@@ -18108,7 +18110,9 @@
         "npm run check:playable",
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-193.05-REPORT.md"
+      ],
       "brief": "Remaining WORLD_VISUAL_CENSUS A shapes on the default route: mining-drone entity, jump gate, disc mine, generic wreck, mass seed. Designed objects at chase size. No quality cut."
     },
     {
@@ -18535,7 +18539,7 @@
       "priority": 495,
       "title": "The assembly and the fork are objects you can read",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-022.heist-receivers-promote"
       ],
@@ -18555,7 +18559,9 @@
         "npm run check:pq019c:mission",
         "npm run check:asset-reachability"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-195.00-REPORT.md"
+      ],
       "brief": "Author the SP-07 spindle and the capture fork through the material-truth preflight and wire them on the ordinary route; the unwired blockout candidates are in assets/ships/breakaway_v1/source_candidates/. Reuse the open-mouth catcher body PQ-022.heist-receivers-promote re-authors rather than building a rival one. DONE WHEN: at the ordinary chase camera a fresh reviewer locates the load, its tow point and the receiver entrance without being told; at thumbnail size the load is not mistaken for an asteroid or a fighter; the drawn silhouette fills its 16 WU collision body instead of the 6 WU cargo pod it wears today. Never wire the pod stretched to 16 WU."
     },
     {
