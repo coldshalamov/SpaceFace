@@ -271,7 +271,7 @@ export function injectHudCss() {
   /* Lock-on progress arc — circular SVG indicator near reticle center */
   .sf-lockring { display:none; position:absolute; left:50%; top:50%; width:72px; height:72px;
     transform:translate(-50%,-50%) scale(1); transform-origin:50% 50%;
-    pointer-events:none; z-index:14; opacity:0;
+    pointer-events:none; z-index:14; opacity:0; will-change:transform;
     transition:opacity .15s ease; }
   .sf-lockring.active { display:block; opacity:1; }
   .sf-lockring.sf-lockring--latch { animation:sf-lockring-latch 160ms cubic-bezier(.2,.7,.2,1) 1; }
@@ -281,12 +281,28 @@ export function injectHudCss() {
   .sf-lockring.locked .sf-lockring__fill { stroke:var(--k-red); }
   .sf-lockring__label { position:absolute; left:50%; bottom:-2px; transform:translateX(-50%);
     font-family:var(--hud-data); font-size:var(--k-fs-data); color:var(--hud-cyan); white-space:nowrap; }
-  .sf-lockring.locked .sf-lockring__label { color:var(--k-red); }
+  .sf-lockring.locked .sf-lockring__label { color:var(--k-red); font-weight:700; }
   @keyframes sf-lockring-latch {
     0% { transform:translate(-50%,-50%) scale(1); }
     50% { transform:translate(-50%,-50%) scale(1.16); }
     100% { transform:translate(-50%,-50%) scale(1); }
   }
+
+  /* Multi-stage convergence brackets inside lockRing */
+  .sf-lockring__brackets { position:absolute; inset:0; pointer-events:none; will-change:transform; transition:transform .08s linear; }
+  .sf-lockring__bracket { position:absolute; width:8px; height:8px; border-color:var(--hud-cyan); border-style:solid; opacity:.8; }
+  .sf-lockring__bracket--tl { top:10px; left:10px; border-width:2px 0 0 2px; }
+  .sf-lockring__bracket--tr { top:10px; right:10px; border-width:2px 2px 0 0; }
+  .sf-lockring__bracket--br { bottom:10px; right:10px; border-width:0 2px 2px 0; }
+  .sf-lockring__bracket--bl { bottom:10px; left:10px; border-width:0 0 2px 2px; }
+
+  .sf-lockring[data-stage="acquiring"] .sf-lockring__track { stroke-dasharray:6 6; }
+  .sf-lockring[data-stage="tracking"] .sf-lockring__fill { stroke:var(--hud-amber); }
+  .sf-lockring[data-stage="tracking"] .sf-lockring__label { color:var(--hud-amber); }
+  .sf-lockring[data-stage="tracking"] .sf-lockring__bracket { border-color:var(--hud-amber); opacity:1; }
+  .sf-lockring[data-stage="locked"] .sf-lockring__fill { stroke:var(--k-red); }
+  .sf-lockring[data-stage="locked"] .sf-lockring__label { color:var(--k-red); }
+  .sf-lockring[data-stage="locked"] .sf-lockring__bracket { border-color:var(--k-red); opacity:1; border-width:2.5px; }
 
   /* Weapon heat bars — chromeless, anchored above the schematic (left:22px matches .sf-bars) */
   .sf-wpn-heats { position:absolute; left:22px;
@@ -315,12 +331,38 @@ export function injectHudCss() {
   .sf-lockdiamond.visible { display:block; opacity:1; }
   .sf-lockdiamond.locked-tgt { --dia-glow:255,84,112; }
   .sf-lockdiamond__inner { position:absolute; inset:2px;
-    transform:rotate(45deg);
+    transform:rotate(45deg); will-change:transform;
     border:2px solid var(--hud-cyan);
     animation:sf-diamondpulse 1s ease-in-out infinite alternate; }
   @keyframes sf-diamondpulse {
     from { transform:rotate(45deg) scale(.92); }
     to { transform:rotate(45deg) scale(1.04); } }
+  .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner { border-color:var(--hud-amber); }
+  .sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner { border-color:var(--k-red); border-width:3px; animation:none; }
+
+  /* G-LOC tunnel vision vignette */
+  .sf-gloc-vignette { position:absolute; inset:0; pointer-events:none; z-index:9; opacity:0;
+    background:radial-gradient(ellipse at center, transparent 45%, rgba(0,5,12,.4) 72%, rgba(0,2,8,.85) 92%, rgba(0,0,0,.98) 100%);
+    transition:opacity .12s linear; will-change:opacity; }
+
+  /* Electronic disruption glitch & scanlines */
+  #hud.sf-hud--glitch { animation:sf-hud-jitter 180ms steps(6, end) 1; }
+  #hud.sf-hud--glitch .sf-caption,
+  #hud.sf-hud--glitch .sf-nav-label,
+  #hud.sf-hud--glitch .sf-lockring__label,
+  #hud.sf-hud--glitch .sf-mt-obj { text-shadow:-2px 0 0 #ff0040, 2px 0 0 #00ffff !important; }
+  @keyframes sf-hud-jitter {
+    0% { transform:translate3d(0,0,0); }
+    20% { transform:translate3d(-3px,1px,0); }
+    40% { transform:translate3d(4px,-1px,0); }
+    60% { transform:translate3d(-2px,2px,0); }
+    80% { transform:translate3d(2px,-1px,0); }
+    100% { transform:translate3d(0,0,0); }
+  }
+  .sf-hud-glitch-overlay { display:none; position:absolute; inset:0; pointer-events:none; z-index:25; opacity:0;
+    background:repeating-linear-gradient(to bottom, transparent 0px, transparent 2px, rgba(0,255,255,.12) 3px, rgba(255,0,64,.12) 4px);
+    mix-blend-mode:screen; }
+  .sf-hud-glitch-overlay.active { display:block; opacity:.85; }
 
   /* Gravity Mark — a persistent world-space contracting well read, independent of selection. */
   .sf-gravity-mark { display:none; position:absolute; left:0; top:0; width:46px; height:46px;

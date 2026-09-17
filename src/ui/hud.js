@@ -82,6 +82,84 @@ import {
   receiptLaneRect,
 } from './hudAttention.js';
 
+// ---- Aerospace Optical G-Lag & G-LOC simulation helpers (Blueprint Category D) ----
+export function stepHudGLagSpring(spring, targetX, targetY, dt, reducedMotion = false) {
+  if (!spring) return { x: 0, y: 0, vx: 0, vy: 0, targetX: 0, targetY: 0 };
+  if (reducedMotion) {
+    spring.x = 0;
+    spring.y = 0;
+    spring.vx = 0;
+    spring.vy = 0;
+    spring.targetX = 0;
+    spring.targetY = 0;
+    return spring;
+  }
+  const clampedDt = Math.min(0.05, Math.max(0.001, dt || 1 / 60));
+  spring.targetX = targetX;
+  spring.targetY = targetY;
+
+  // 2nd-order damped spring: wn = 22 rad/s, zeta = 0.78
+  const wn = 22;
+  const zeta = 0.78;
+  const k = wn * wn;
+  const c = 2 * zeta * wn;
+
+  const fx = -k * (spring.x - targetX) - c * spring.vx;
+  const fy = -k * (spring.y - targetY) - c * spring.vy;
+
+  spring.vx += fx * clampedDt;
+  spring.vy += fy * clampedDt;
+  spring.x += spring.vx * clampedDt;
+  spring.y += spring.vy * clampedDt;
+
+  if (Math.abs(targetX) < 0.02 && Math.abs(targetY) < 0.02 &&
+      Math.abs(spring.x) < 0.02 && Math.abs(spring.y) < 0.02 &&
+      Math.abs(spring.vx) < 0.05 && Math.abs(spring.vy) < 0.05) {
+    spring.x = 0;
+    spring.y = 0;
+    spring.vx = 0;
+    spring.vy = 0;
+  }
+  return spring;
+}
+
+export function calculateHudGLagTarget(player, dt, lastVel, isBoosting = false) {
+  if (!player) return { x: 0, y: 0 };
+  const curVelX = Number.isFinite(player.vel?.x) ? player.vel.x : 0;
+  const curVelZ = Number.isFinite(player.vel?.z) ? player.vel.z : 0;
+  const lastVx = lastVel ? (Number.isFinite(lastVel.x) ? lastVel.x : curVelX) : curVelX;
+  const lastVz = lastVel ? (Number.isFinite(lastVel.z) ? lastVel.z : curVelZ) : curVelZ;
+  const safeDt = Math.min(0.05, Math.max(0.001, dt || 1 / 60));
+
+  const accelX = (curVelX - lastVx) / safeDt;
+  const accelZ = (curVelZ - lastVz) / safeDt;
+
+  let angVel = 0;
+  if (Number.isFinite(player.angVel)) {
+    angVel = player.angVel;
+  } else if (Number.isFinite(player.angularVelocity)) {
+    angVel = player.angularVelocity;
+  }
+
+  // Linear accel: +X world (right) -> -X target (left lag)
+  // Linear accel: +Z world (up/forward) -> +Y target (downward lag)
+  // Angular vel: turning right (+yaw) -> -X target (left lag)
+  const boostBonus = isBoosting ? 2.2 : 0;
+  let tx = -accelX * 0.022 - angVel * 1.15;
+  let ty = (accelZ + boostBonus) * 0.022;
+
+  // Clamp to max bounds: 1.0 - 5.5 px
+  tx = Math.max(-5.5, Math.min(5.5, tx));
+  ty = Math.max(-5.5, Math.min(5.5, ty));
+
+  return { x: tx, y: ty };
+}
+
+export function calculateGLocIntensity(sustainedTime) {
+  if (!Number.isFinite(sustainedTime) || sustainedTime <= 0.6) return 0;
+  return Math.min(1.0, (sustainedTime - 0.6) / 1.2);
+}
+
 // Ship role → friendly archetype label (Phase 3 HUD class indicator).
 const SHIP_BY_ID = new Map(SHIPS.map((s) => [s.id, s]));
 const ROLE_LABEL = {
@@ -1562,14 +1640,76 @@ export function createHud(ctx, alerts) {
     `<circle cx="36" cy="36" r="${LOCK_R}" class="sf-lockring__fill" ` +
     `stroke-dasharray="${LOCK_C}" stroke-dashoffset="${LOCK_C}" ` +
     `transform="rotate(-90 36 36)"/>` +
-    `</svg><div class="sf-lockring__label"></div>`;
+    `</svg>` +
+    `<div class="sf-lockring__brackets" aria-hidden="true">` +
+    `<div class="sf-lockring__bracket sf-lockring__bracket--tl"></div>` +
+    `<div class="sf-lockring__bracket sf-lockring__bracket--tr"></div>` +
+    `<div class="sf-lockring__bracket sf-lockring__bracket--br"></div>` +
+    `<div class="sf-lockring__bracket sf-lockring__bracket--bl"></div>` +
+    `</div>` +
+    `<div class="sf-lockring__label"></div>`;
   root.appendChild(lockRing);
   const lockFill = lockRing.querySelector('.sf-lockring__fill');
   const lockLabel = lockRing.querySelector('.sf-lockring__label');
+  const lockBrackets = lockRing.querySelector('.sf-lockring__brackets');
   let _wasLocked = false;   // rising-edge tracker for the lock-acquired audio cue
   lockRing.addEventListener('animationend', () => {
     lockRing.classList.remove('sf-lockring--latch');
   });
+
+  // G-LOC peripheral vignette (tunnel vision under sustained high-G turns)
+  const glocVignette = document.createElement('div');
+  glocVignette.className = 'sf-gloc-vignette';
+  glocVignette.setAttribute('aria-hidden', 'true');
+  root.appendChild(glocVignette);
+
+  // Split-second electronic disruption scanline static overlay (EMP / shield collapse shock)
+  const glitchOverlay = document.createElement('div');
+  glitchOverlay.className = 'sf-hud-glitch-overlay';
+  glitchOverlay.setAttribute('aria-hidden', 'true');
+  root.appendChild(glitchOverlay);
+
+  // Aerospace Optical G-Lag & G-LOC simulation state
+  const opticalGLag = { x: 0, y: 0, vx: 0, vy: 0, targetX: 0, targetY: 0 };
+  const lastPlayerVel = { x: 0, z: 0 };
+  let lastPlayerShield = -1;
+  let gLocSustainedTime = 0;
+  let disruptionTimeout = null;
+
+  function triggerElectronicDisruption(cause = 'shield') {
+    const isMotionReduced = getMotionReduced() || !!(state.settings && state.settings.video && state.settings.video.motionReduce);
+    const isFlashReduced = getFlashReduced() || !!(state.settings && state.settings.video && state.settings.video.flashReduce);
+    if (isMotionReduced || isFlashReduced) return;
+    root.classList.remove('sf-hud--glitch');
+    if (glitchOverlay) glitchOverlay.classList.remove('active');
+    void root.offsetWidth; // force animation restart
+    root.classList.add('sf-hud--glitch');
+    if (glitchOverlay) glitchOverlay.classList.add('active');
+    if (ctx.bus && typeof ctx.bus.emit === 'function') {
+      ctx.bus.emit('audio:cue', { id: 'ui_deny' });
+    }
+    if (disruptionTimeout) clearTimeout(disruptionTimeout);
+    disruptionTimeout = setTimeout(() => {
+      root.classList.remove('sf-hud--glitch');
+      if (glitchOverlay) glitchOverlay.classList.remove('active');
+      disruptionTimeout = null;
+    }, 180);
+  }
+
+  // EMP / Shield collapse listeners on event bus
+  if (ctx.bus && typeof ctx.bus.on === 'function') {
+    ctx.bus.on('combat:damage', (p) => {
+      if (!p) return;
+      if (p.targetId === state.playerId && (p.brokeShield || p.shieldBroke || p.damageType === 'emp' || p.emp)) {
+        triggerElectronicDisruption(p.damageType === 'emp' ? 'emp' : 'shield_collapse');
+      }
+    });
+    ctx.bus.on('combat:emp', (p) => {
+      if (!p || p.targetId === state.playerId) {
+        triggerElectronicDisruption('emp');
+      }
+    });
+  }
 
   // FR-1: prograde (velocity-vector) tick. An always-on, unlabeled read of where inertia carries
   // the ship if thrust cuts now — projected through the authoritative worldToScreen, never a magic
@@ -3349,24 +3489,58 @@ export function createHud(ctx, alerts) {
       const offset = LOCK_C * (1 - lockProgress);
       const offsetText = offset.toFixed(2);
       setAttr(lockFill, 'stroke-dashoffset', offsetText);
-      setText(lockLabel, isLocked ? 'LOCKED' : Math.round(lockProgress * 100) + '%');
+      const stage = isLocked ? 'locked' : (lockProgress < 0.45 ? 'acquiring' : 'tracking');
+      setAttr(lockRing, 'data-stage', stage);
+      if (lockDiamond) setAttr(lockDiamond, 'data-stage', stage);
+      if (isLocked) {
+        setText(lockLabel, 'LOCKED');
+        if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1)');
+      } else if (stage === 'tracking') {
+        setText(lockLabel, 'TRACKING ' + Math.round(lockProgress * 100) + '%');
+        if (lockBrackets) {
+          const bScale = 1.4 - (lockProgress - 0.45) * 0.72;
+          setStyle(lockBrackets, 'transform', `scale(${bScale.toFixed(3)})`);
+        }
+      } else {
+        setText(lockLabel, 'ACQUIRING ' + Math.round(lockProgress * 100) + '%');
+        if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1.4)');
+      }
+      const innerRing = lockRing.firstElementChild;
+      if (innerRing) {
+        if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
+          setStyle(innerRing, 'transform', `translate3d(${(opticalGLag.x * 0.95).toFixed(2)}px,${(opticalGLag.y * 0.95).toFixed(2)}px,0)`);
+        } else {
+          setStyle(innerRing, 'transform', 'none');
+        }
+      }
     } else {
       setClass(lockRing, 'active', false);
       setClass(lockRing, 'locked', false);
+      lockRing.removeAttribute('data-stage');
+      if (lockDiamond) lockDiamond.removeAttribute('data-stage');
+      if (lockBrackets) setStyle(lockBrackets, 'transform', 'scale(1.4)');
+      const innerRing = lockRing.firstElementChild;
+      if (innerRing) setStyle(innerRing, 'transform', 'none');
     }
-    // Lock-acquired tone: fire a two-note ascending cue on the rising edge (not-locked → locked).
-    // Locking a missile target was visually indicated but sonically silent — a clear cue closes that.
+    // Lock-acquired tone & snap-shut latch: fire on rising edge (not-locked → locked).
     if (isLocked && !_wasLocked) {
       ctx.bus.emit('audio:cue', { id: 'lock_acquired' });
       if (!getMotionReduced()) {
         lockRing.classList.remove('sf-lockring--latch');
         void lockRing.offsetWidth;
         lockRing.classList.add('sf-lockring--latch');
+        if (lockDiamond) {
+          lockDiamond.classList.remove('sf-lockdiamond--locked');
+          void lockDiamond.offsetWidth;
+          lockDiamond.classList.add('sf-lockdiamond--locked');
+        }
       } else {
         lockRing.classList.remove('sf-lockring--latch');
+        if (lockDiamond) lockDiamond.classList.remove('sf-lockdiamond--locked');
       }
     } else if (!isLocked) {
       lockRing.classList.remove('sf-lockring--latch');
+      if (lockDiamond) lockDiamond.classList.remove('sf-lockdiamond--locked');
     }
     _wasLocked = isLocked;
 
@@ -3409,6 +3583,14 @@ export function createHud(ctx, alerts) {
         // Tint: red when missile-locked, cyan when just selected/tracking.
         const tgtLocked = isLocked && combat && combat.lockTarget === tid;
         setClass(lockDiamond, 'locked-tgt', tgtLocked);
+        const innerDiamond = lockDiamond.firstElementChild;
+        if (innerDiamond) {
+          if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
+            setStyle(innerDiamond, 'transform', `translate3d(${(opticalGLag.x * 0.9).toFixed(2)}px,${(opticalGLag.y * 0.9).toFixed(2)}px,0) rotate(45deg)`);
+          } else {
+            setStyle(innerDiamond, 'transform', 'rotate(45deg)');
+          }
+        }
       } else {
         setClass(lockDiamond, 'visible', false);
       }
@@ -3433,6 +3615,14 @@ export function createHud(ctx, alerts) {
       setClass(leadPip, 'visible', true);
       setHudScreenTransform(leadPip, pipOverlay.x, pipOverlay.y);
       setClass(leadPip, 'on-solution', pipOverlay.onSolution);
+      const innerPip = leadPip.firstElementChild;
+      if (innerPip) {
+        if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
+          setStyle(innerPip, 'transform', `translate3d(${(opticalGLag.x * 1.05).toFixed(2)}px,${(opticalGLag.y * 1.05).toFixed(2)}px,0)`);
+        } else {
+          setStyle(innerPip, 'transform', 'none');
+        }
+      }
       if (leadPipArc && !pipOverlay.onSolution) {
         const pointer = state.input && state.input.pointerScreen;
         const fallbackX = ((typeof window !== 'undefined' && Number.isFinite(window.innerWidth))
@@ -4024,6 +4214,14 @@ export function createHud(ctx, alerts) {
     setArc(targetArcShield, rShield, shieldFrac);
     setArc(targetArcArmor, rArmor, armorFrac);
     setArc(targetArcHull, rHull, hullFrac);
+
+    if (targetArcsSvg) {
+      if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
+        setStyle(targetArcsSvg, 'transform', `translate3d(${(opticalGLag.x * 0.85).toFixed(2)}px,${(opticalGLag.y * 0.85).toFixed(2)}px,0)`);
+      } else {
+        setStyle(targetArcsSvg, 'transform', 'none');
+      }
+    }
   }
 
   // Travel Burn instrument update (D5 / W1-6 / W1-9).
@@ -4144,6 +4342,61 @@ export function createHud(ctx, alerts) {
       : null;
     resolveReticle();
     updateDoctrineTells(frameDt);
+
+    // --- Optical G-force lag & G-LOC simulation (Blueprint Category D) ---
+    const isMotionReduced = getMotionReduced() || !!(state.settings && state.settings.video && state.settings.video.motionReduce);
+    if (!p || isMotionReduced) {
+      stepHudGLagSpring(opticalGLag, 0, 0, frameDt, true);
+      gLocSustainedTime = 0;
+      if (glocVignette) setOpacity(glocVignette, '0');
+    } else {
+      const isBoosting = !!(p.boost && p.boost.energy > 0 && state.input && state.input.actions && state.input.actions.boost);
+      const target = calculateHudGLagTarget(p, frameDt, lastPlayerVel, isBoosting);
+      stepHudGLagSpring(opticalGLag, target.x, target.y, frameDt, false);
+
+      lastPlayerVel.x = Number.isFinite(p.vel && p.vel.x) ? p.vel.x : 0;
+      lastPlayerVel.z = Number.isFinite(p.vel && p.vel.z) ? p.vel.z : 0;
+
+      // Monitor shield collapse (when player shield drops to 0 from >0)
+      const curShield = Number.isFinite(p.shield) ? p.shield : 0;
+      if (lastPlayerShield > 0 && curShield <= 0 && (p.shieldMax || 0) > 0) {
+        triggerElectronicDisruption('shield_collapse');
+      }
+      lastPlayerShield = curShield;
+
+      // G-LOC sustained turn detection
+      let angVel = 0;
+      if (Number.isFinite(p.angVel)) {
+        angVel = p.angVel;
+      } else if (Number.isFinite(p.angularVelocity)) {
+        angVel = p.angularVelocity;
+      }
+      const turnRate = Math.abs(angVel);
+      const isMaxRateTurn = (turnRate > 2.2) || (turnRate > 1.4 && isBoosting);
+      if (isMaxRateTurn) {
+        gLocSustainedTime += frameDt;
+      } else {
+        gLocSustainedTime = Math.max(0, gLocSustainedTime - frameDt * 2.8);
+      }
+      const gLocFraction = calculateGLocIntensity(gLocSustainedTime);
+      if (glocVignette) {
+        if (gLocFraction > 0) {
+          setStyle(glocVignette, 'display', 'block');
+          setOpacity(glocVignette, (gLocFraction * 0.55).toFixed(3));
+        } else {
+          setOpacity(glocVignette, '0');
+        }
+      }
+    }
+
+    if (!elReticle) elReticle = document.getElementById('aim-reticle');
+    if (elReticle && elReticle.firstElementChild) {
+      if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
+        setStyle(elReticle.firstElementChild, 'transform', `translate3d(${(opticalGLag.x).toFixed(2)}px,${(opticalGLag.y).toFixed(2)}px,0)`);
+      } else {
+        setStyle(elReticle.firstElementChild, 'transform', 'none');
+      }
+    }
 
     // J06: gated on the slow clock, and `update` is a no-op when the slot signature is unchanged.
     // The cooldown sweep is a CSS animation, so a cooling slot needs no per-frame work either —
@@ -4331,7 +4584,14 @@ export function createHud(ctx, alerts) {
       _recoilBloom = Math.max(0, _recoilBloom - frameDt * 2.2);
       if (elReticle) {
         const inner = elReticle.firstElementChild;
-        if (inner) setStyle(inner, 'transform', `scale(${(1 + _recoilBloom * 0.25).toFixed(3)})`);
+        if (inner) {
+          const bloomScale = (1 + _recoilBloom * 0.25).toFixed(3);
+          if (opticalGLag.x !== 0 || opticalGLag.y !== 0) {
+            setStyle(inner, 'transform', `translate3d(${opticalGLag.x.toFixed(2)}px,${opticalGLag.y.toFixed(2)}px,0) scale(${bloomScale})`);
+          } else {
+            setStyle(inner, 'transform', `scale(${bloomScale})`);
+          }
+        }
       }
       // Class/archetype label: surfaces the ship's role + drive family so the player feels the
       // archetype and propulsion switch when they buy a new hull. Updates cheaply each slow tick.
@@ -4658,8 +4918,16 @@ export function createHud(ctx, alerts) {
 
   return {
     frame, tickHidden, forceRefresh, setVisible, refreshCredits, refreshCargo, refreshObjectives, arrive,
+    getGLagOffset: () => ({ x: opticalGLag.x, y: opticalGLag.y }),
+    getGLocVignetteOpacity: () => Number(glocVignette ? glocVignette.style.opacity || 0 : 0),
+    triggerElectronicDisruption,
+    getDisrupted: () => root.classList.contains('sf-hud--glitch'),
     destroy() {
       for (const t of arriveTimers) clearTimeout(t);
+      if (disruptionTimeout) {
+        clearTimeout(disruptionTimeout);
+        disruptionTimeout = null;
+      }
       objectiveHudDrag.destroy();
       if (offSlotClaim) offSlotClaim();
       if (offSlotRelease) offSlotRelease();

@@ -1,0 +1,265 @@
+/* ==========================================================================
+   SpaceFace - Living Aerospace Flight HUD Stylesheet
+   Hardware-accelerated instruments, optical G-lag, electronic disruption,
+   multi-stage missile lock convergence, and G-LOC tunnel vision.
+   ========================================================================== */
+
+/* --- Hardware Acceleration & Compositor Layers --- */
+#hud,
+#aim-reticle,
+.sf-lockdiamond,
+.sf-target-arcs,
+.sf-leadpip,
+.sf-lockring,
+.sf-protick {
+  will-change: transform;
+}
+
+#aim-reticle > svg,
+.sf-lockdiamond__inner,
+.sf-leadpip__svg,
+.sf-target-arcs svg,
+.sf-lockring > svg,
+.sf-lockring__brackets {
+  will-change: transform;
+  transform-origin: center center;
+}
+
+/* --- Electronic Disruption (EMP Strike & Shield Collapse) --- */
+@keyframes sf-hud-jitter {
+  0%   { transform: translate3d(0, 0, 0); filter: none; }
+  15%  { transform: translate3d(-3px, 1px, 0); filter: drop-shadow(-2px 0 0 #ff0040) drop-shadow(2px 0 0 #00ffff); }
+  35%  { transform: translate3d(4px, -1px, 0); filter: drop-shadow(2px 0 0 #ff0040) drop-shadow(-2px 0 0 #00ffff); }
+  55%  { transform: translate3d(-2px, 2px, 0); filter: drop-shadow(-3px 0 0 #ff0040) drop-shadow(1px 0 0 #00ffff); }
+  75%  { transform: translate3d(3px, -1px, 0); filter: drop-shadow(1px 0 0 #ff0040) drop-shadow(-1px 0 0 #00ffff); }
+  90%  { transform: translate3d(-1px, 0, 0); filter: drop-shadow(-1px 0 0 #ff0040) drop-shadow(1px 0 0 #00ffff); }
+  100% { transform: translate3d(0, 0, 0); filter: none; }
+}
+
+#hud.sf-hud--glitch {
+  animation: sf-hud-jitter 180ms steps(6, end) 1;
+}
+
+#hud.sf-hud--glitch .sf-caption,
+#hud.sf-hud--glitch .sf-nav-label,
+#hud.sf-hud--glitch .sf-lockring__label,
+#hud.sf-hud--glitch .sf-mt-obj {
+  text-shadow: -2px 0 0 #ff0040, 2px 0 0 #00ffff !important;
+}
+
+/* Raster Scanline Static Overlay */
+.sf-hud-glitch-overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+  opacity: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 255, 255, 0.12) 3px,
+    rgba(255, 0, 64, 0.12) 4px
+  );
+  mix-blend-mode: screen;
+}
+
+.sf-hud-glitch-overlay.active {
+  display: block;
+  opacity: 0.85;
+  animation: sf-scanline-flicker 180ms ease-out 1;
+}
+
+@keyframes sf-scanline-flicker {
+  0%   { opacity: 0.9; transform: translateY(0); }
+  30%  { opacity: 0.6; transform: translateY(3px); }
+  60%  { opacity: 0.85; transform: translateY(-2px); }
+  100% { opacity: 0; transform: translateY(0); }
+}
+
+/* --- G-LOC Tunnel Vision Vignette --- */
+.sf-gloc-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 45%,
+    rgba(0, 5, 12, 0.4) 72%,
+    rgba(0, 2, 8, 0.85) 92%,
+    rgba(0, 0, 0, 0.98) 100%
+  );
+  transition: opacity 0.12s linear;
+  will-change: opacity;
+}
+
+/* --- Multi-Stage Missile Lock Convergence --- */
+/* Brackets container inside lockRing */
+.sf-lockring__brackets {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: transform 0.08s linear;
+}
+
+.sf-lockring__bracket {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-color: var(--hud-cyan, #39d0ff);
+  border-style: solid;
+  opacity: 0.8;
+  transition: border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.sf-lockring__bracket--tl {
+  top: 10px;
+  left: 10px;
+  border-width: 2px 0 0 2px;
+}
+
+.sf-lockring__bracket--tr {
+  top: 10px;
+  right: 10px;
+  border-width: 2px 2px 0 0;
+}
+
+.sf-lockring__bracket--br {
+  bottom: 10px;
+  right: 10px;
+  border-width: 0 2px 2px 0;
+}
+
+.sf-lockring__bracket--bl {
+  bottom: 10px;
+  left: 10px;
+  border-width: 0 0 2px 2px;
+}
+
+/* Stage 1: Acquiring (slow search pulse, cyan/amber) */
+.sf-lockring[data-stage="acquiring"] .sf-lockring__track {
+  stroke-dasharray: 6 6;
+  animation: sf-lockring-spin 3s linear infinite;
+}
+
+.sf-lockring[data-stage="acquiring"] .sf-lockring__bracket {
+  border-color: var(--hud-cyan, #39d0ff);
+  animation: sf-bracket-pulse-slow 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes sf-lockring-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes sf-bracket-pulse-slow {
+  from { opacity: 0.4; }
+  to   { opacity: 0.9; }
+}
+
+/* Stage 2: Tracking (accelerating pulse, amber tint, converging inward) */
+.sf-lockring[data-stage="tracking"] .sf-lockring__fill {
+  stroke: var(--hud-amber, #ffaa00);
+}
+
+.sf-lockring[data-stage="tracking"] .sf-lockring__label {
+  color: var(--hud-amber, #ffaa00);
+}
+
+.sf-lockring[data-stage="tracking"] .sf-lockring__bracket {
+  border-color: var(--hud-amber, #ffaa00);
+  opacity: 0.95;
+  animation: sf-bracket-pulse-fast 0.16s ease-in-out infinite alternate;
+}
+
+@keyframes sf-bracket-pulse-fast {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
+}
+
+/* Stage 3: Locked (snapped shut, solid red/amber, heavy latch) */
+.sf-lockring[data-stage="locked"] .sf-lockring__fill {
+  stroke: var(--k-red, #ff3344);
+  filter: drop-shadow(0 0 4px rgba(255, 51, 68, 0.7));
+}
+
+.sf-lockring[data-stage="locked"] .sf-lockring__label {
+  color: var(--k-red, #ff3344);
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.sf-lockring[data-stage="locked"] .sf-lockring__bracket {
+  border-color: var(--k-red, #ff3344);
+  opacity: 1;
+  border-width: 2.5px;
+  filter: drop-shadow(0 0 3px rgba(255, 51, 68, 0.8));
+}
+
+/* Target Diamond Stages */
+.sf-lockdiamond[data-stage="acquiring"] .sf-lockdiamond__inner {
+  border-color: var(--hud-cyan, #39d0ff);
+  border-style: dashed;
+}
+
+.sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner {
+  border-color: var(--hud-amber, #ffaa00);
+  animation: sf-diamondpulse-fast 0.3s ease-in-out infinite alternate;
+}
+
+@keyframes sf-diamondpulse-fast {
+  from { transform: rotate(45deg) scale(0.9); }
+  to   { transform: rotate(45deg) scale(1.1); }
+}
+
+.sf-lockdiamond[data-stage="locked"] .sf-lockdiamond__inner {
+  border-color: var(--k-red, #ff3344);
+  border-width: 3px;
+  box-shadow: 0 0 8px rgba(255, 51, 68, 0.7);
+  animation: none;
+}
+
+/* --- Reduced Motion Accessibility Overrides --- */
+@media (prefers-reduced-motion: reduce) {
+  #hud.sf-hud--glitch {
+    animation: none !important;
+  }
+  .sf-hud-glitch-overlay {
+    display: none !important;
+  }
+  .sf-gloc-vignette {
+    display: none !important;
+  }
+  .sf-lockring.sf-lockring--latch {
+    animation: none !important;
+  }
+  .sf-lockring[data-stage="acquiring"] .sf-lockring__track {
+    animation: none !important;
+  }
+  .sf-lockring[data-stage="acquiring"] .sf-lockring__bracket {
+    animation: none !important;
+  }
+  .sf-lockring[data-stage="tracking"] .sf-lockring__bracket {
+    animation: none !important;
+  }
+  .sf-lockdiamond[data-stage="tracking"] .sf-lockdiamond__inner {
+    animation: none !important;
+  }
+}
+
+html.sf-reduce-motion #hud.sf-hud--glitch,
+html.sf-reduce-flash #hud.sf-hud--glitch {
+  animation: none !important;
+}
+
+html.sf-reduce-motion .sf-hud-glitch-overlay,
+html.sf-reduce-flash .sf-hud-glitch-overlay {
+  display: none !important;
+}
+
+html.sf-reduce-motion .sf-gloc-vignette {
+  display: none !important;
+}

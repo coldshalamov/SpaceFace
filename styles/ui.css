@@ -2,6 +2,7 @@
    They are not an art-direction mandate. New UI must not automatically inherit the old cyan/purple,
    glass, rounded-card, visor, or console vocabulary; choose a deliberate surface-specific direction. */
 @import "./commsradial.css";
+@import "./hud.css";
 
 :root {
   /* Visual identity (2026-08 revision): quiet modern neutral. Desaturated surfaces, one
