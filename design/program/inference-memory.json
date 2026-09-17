@@ -956,6 +956,19 @@
       "integration": "live",
       "commit": "068fa52c7",
       "verification": "focused_green"
+    },
+    {
+      "id": "named-kill-thread",
+      "date": "2026-09-17",
+      "wf": "WF-09",
+      "mode": "repair",
+      "verdict": "implemented",
+      "reason": "named-captain kills leave hulk, death record, and rumor",
+      "fingerprint": "verb=remember,subject=named-captain,sector=any,domain=wf-09",
+      "references": [],
+      "integration": "live",
+      "commit": "c8d7162d1",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [

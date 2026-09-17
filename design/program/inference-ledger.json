@@ -59,11 +59,28 @@
       "next": ""
     },
     "WF-09": {
-      "grade": "U",
+      "grade": "B",
       "updated": "2026-09-17",
-      "inspections": [],
-      "gaps": [],
-      "next": ""
+      "inspections": [
+        {
+          "date": "2026-09-17",
+          "atCommit": "c8d7162d146b28f6981cd408101b6812cf6d10a1",
+          "paths": [
+            "src/systems/encounterScripts.js",
+            "src/systems/encounterDirector.js",
+            "src/data/encounters/060-named-hunter.js"
+          ],
+          "finding": "named kills left only a flag+toast; now hulk marker + durable death record + rumor, proven 4/4. Rep/bounty already flowed via factions/combat."
+        }
+      ],
+      "gaps": [
+        {
+          "id": "revenge-thread",
+          "note": "dead captains pool does not react (no reinforced revenge hunter); consider blood-debt escalation as its own unit",
+          "status": "open"
+        }
+      ],
+      "next": "audit other narrative threads (depth-h series, ledger synthesis coverage)"
     },
     "WF-10": {
       "grade": "B",
