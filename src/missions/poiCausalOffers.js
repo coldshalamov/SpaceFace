@@ -56,7 +56,7 @@ export function buildPoiCausalOffer({
     : choose(originStations, `${key}:origin-station`)?.id;
   if (!resolvedStationId) return null;
 
-  const targetType = aftermath.familyId === 'anomaly_research' ? 'anomaly' : 'wreck';
+  const targetType = ['anomaly_research', 'gravity_well_sounding'].includes(aftermath.familyId) ? 'anomaly' : 'wreck';
   const angleUnit = hash32(key, 'target-angle') / 0x100000000;
   const radiusUnit = hash32(key, 'target-radius') / 0x100000000;
   const angle = angleUnit * Math.PI * 2;

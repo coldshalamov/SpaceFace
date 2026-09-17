@@ -29,7 +29,16 @@ const SYNTHETIC_ZONES = Object.freeze([
   { id: 'route-b', name: 'Forge Approach', type: 'refinery_approach', factionId: 'faction_dmc', center: { x: 1600, z: 800 }, radius: 600, threat: 1 },
   { id: 'nest-a', name: 'Raider Claim', type: 'outlaw_zone', factionId: 'faction_reach', center: { x: -1600, z: 0 }, radius: 600, threat: 2 },
   { id: 'nest-b', name: 'Ambush Lane', type: 'ambush_lane', factionId: 'faction_reach', center: { x: -1600, z: 800 }, radius: 600, threat: 3 },
+  { id: 'anvil-a', name: 'Deep Well', type: 'planetary_mass', factionId: 'faction_free', center: { x: 2400, z: -800 }, radius: 600, threat: 2 },
+  { id: 'anvil-b', name: 'Far Well', type: 'planetary_mass', factionId: 'faction_free', center: { x: 3200, z: -800 }, radius: 600, threat: 2 },
 ]);
+
+// Sounding pulses must arrive from three distinct range bands of the well (close graze,
+// middle orbit, far watch). Band edges sit at 0.35R and 0.7R; these fractions land mid-band.
+function soundingBandPos(row, band) {
+  const frac = [0.15, 0.5, 0.85][band];
+  return { x: row.zoneCenter.x + frac * row.zoneRadius, z: row.zoneCenter.z };
+}
 
 const SYNTHETIC_SECTOR = Object.freeze({
   id: 'sector_test',
@@ -73,13 +82,14 @@ function makeSystem(seed = 19) {
   return { system, state, bus, spoken, emitted };
 }
 
-test('catalog exposes exactly six distinct, solvable behavior grammars', () => {
+test('catalog exposes exactly seven distinct, solvable behavior grammars', () => {
   assert.deepEqual(POI_FAMILY_IDS, [
     'lawful_station_yard',
     'mining_field',
     'derelict_salvage',
     'anomaly_research',
     'convoy_industrial_route',
+    'gravity_well_sounding',
     'pirate_contested_nest',
   ]);
   const verbs = new Set();
@@ -99,8 +109,8 @@ test('catalog exposes exactly six distinct, solvable behavior grammars', () => {
     risks.add(family.riskLabel);
     rewards.add(family.rewardLabel);
   }
-  assert.deepEqual([...verbs].sort(), ['clear', 'dock', 'escort', 'mine', 'salvage', 'triangulate'],
-    'the six families expose six physical player verbs');
+  assert.deepEqual([...verbs].sort(), ['clear', 'dock', 'escort', 'mine', 'salvage', 'sound', 'triangulate'],
+    'the seven families expose seven physical player verbs');
 });
 
 function makeRouteSystem(seed = 137) {
@@ -257,8 +267,8 @@ test('20 seeds per family are deterministic, varied, bounded, and overlap-free',
     const a = plan(seed);
     const b = plan(seed);
     assert.deepEqual(a, b, `seed ${seed} changed fingerprint`);
-    assert.equal(a.length, 6);
-    assert.ok(a.reduce((sum, row) => sum + row.budgetCost, 0) <= 12, `seed ${seed} overflowed POI budget`);
+    assert.equal(a.length, 7);
+    assert.ok(a.reduce((sum, row) => sum + row.budgetCost, 0) <= 13, `seed ${seed} overflowed POI budget`);
     assert.equal(new Set(a.map((row) => row.familyId)).size, a.length, `seed ${seed} duplicated family`);
     assert.equal(new Set(a.map((row) => row.zoneId)).size, a.length, `seed ${seed} overlapped zone ownership`);
     for (const row of a) {
@@ -510,7 +520,7 @@ test('lawful-yard completion is bound to the exact docked station', () => {
   assert.equal(state.livingPoiBehaviors.aftermath[row.behaviorId]?.kind, 'cleared_manifest');
 });
 
-test('all six visible contracts expose a distinct verb, risk, and reward through one arbiter slot each', () => {
+test('all seven visible contracts expose a distinct verb, risk, and reward through one arbiter slot each', () => {
   const { bus, state, spoken } = makeSystem(97);
   for (const row of Object.values(state.livingPoiBehaviors.activeByZone)) {
     bus.emit('world:zoneEntered', { zoneId: row.zoneId, type: row.zoneType, threat: row.threat });
@@ -521,10 +531,10 @@ test('all six visible contracts expose a distinct verb, risk, and reward through
     assert.ok(cue.text.includes(family.riskLabel), `${row.familyId} exposes its risk`);
     assert.ok(cue.text.includes(family.rewardLabel), `${row.familyId} exposes its reward`);
   }
-  assert.equal(new Set(spoken.map((cue) => cue.text)).size, 6);
+  assert.equal(new Set(spoken.map((cue) => cue.text)).size, 7);
 });
 
-test('all six families resolve through shipped public authority events and survive Continue', () => {
+test('all seven families resolve through shipped public authority events and survive Continue', () => {
   const { system, bus, state } = makeSystem(83);
   const byFamily = Object.fromEntries(Object.values(state.livingPoiBehaviors.activeByZone)
     .map((row) => [row.familyId, row]));
@@ -550,6 +560,10 @@ test('all six families resolve through shipped public authority events and survi
     bus.emit('scan:pulse', {
       pos: { x: byFamily.anomaly_research.zoneCenter.x + index * 220, z: byFamily.anomaly_research.zoneCenter.z },
     });
+  }
+  bus.emit('world:zoneEntered', { zoneId: byFamily.gravity_well_sounding.zoneId });
+  for (let index = 0; index < byFamily.gravity_well_sounding.contract.required; index++) {
+    bus.emit('scan:pulse', { pos: soundingBandPos(byFamily.gravity_well_sounding, index) });
   }
   bus.emit('world:zoneEntered', { zoneId: byFamily.convoy_industrial_route.zoneId });
   bus.emit('encounter:resolved', {
@@ -578,9 +592,9 @@ test('all six families resolve through shipped public authority events and survi
   continued.system.planSector(SYNTHETIC_SECTOR.id, {
     zones: SYNTHETIC_ZONES, sector: SYNTHETIC_SECTOR, dayIndex: 4,
   });
-  assert.deepEqual(continued.system.serialize(), saved, 'all six durable consequences round-trip exactly');
+  assert.deepEqual(continued.system.serialize(), saved, 'all seven durable consequences round-trip exactly');
   assert.equal(Object.values(continued.state.livingPoiBehaviors.activeByZone)
-    .filter((row) => row.status === 'aftermath').length, 6);
+    .filter((row) => row.status === 'aftermath').length, 7);
 });
 
 test('each family resolves only through its own physical verb and records distinct persistent aftermath', () => {
@@ -593,11 +607,15 @@ test('each family resolves only through its own physical verb and records distin
   for (const row of rows) {
     const family = POI_BEHAVIOR_FAMILIES[row.familyId];
     for (let i = 0; i < family.contract.required; i++) {
+      // Soundings need three range bands of the well, not three spread bearings.
+      const pos = row.familyId === 'gravity_well_sounding'
+        ? soundingBandPos(row, i)
+        : { x: i * 220, z: i * 40 };
       bus.emit('poi:interact', {
         zoneId: row.zoneId,
         verb: family.contract.verb,
         commodityId: 'cmdty_ore_iron',
-        pos: { x: i * 220, z: i * 40 },
+        pos,
       });
     }
     const aftermath = state.livingPoiBehaviors.aftermath[row.behaviorId];
@@ -610,14 +628,14 @@ test('each family resolves only through its own physical verb and records distin
       commodityId: 'cmdty_ore_iron', pos: { x: 0, z: 0 },
     }), false, `${row.familyId} cannot resolve twice while aftermath is active`);
   }
-  assert.equal(Object.keys(state.livingPoiBehaviors.aftermath).length, 6);
-  assert.equal(emitted.filter((row) => row.event === 'poi:behaviorOutcome').length, 6);
+  assert.equal(Object.keys(state.livingPoiBehaviors.aftermath).length, 7);
+  assert.equal(emitted.filter((row) => row.event === 'poi:behaviorOutcome').length, 7);
   assert.ok(emitted.some((row) => row.event === 'economy:applyTradePressure'));
   assert.ok(emitted.some((row) => row.event === 'faction:repDelta'));
   assert.equal(emitted.some((row) => row.event === 'mission:offered'), false,
     'synthetic sectors with no connected graph destination cannot emit malformed board rows');
   assert.ok(emitted.some((row) => row.event === 'poi:cargoObserved'));
-  assert.equal(state.livingPoiBehaviors.receipts.length, 6);
+  assert.equal(state.livingPoiBehaviors.receipts.length, 7);
 
   const saved = system.serialize();
   const loaded = makeSystem(73);
@@ -632,9 +650,12 @@ test('active aftermath pins each family to its physical zone, then expiry reopen
   for (const row of dayFourRows) {
     const family = POI_BEHAVIOR_FAMILIES[row.familyId];
     for (let index = 0; index < family.contract.required; index++) {
+      const pos = row.familyId === 'gravity_well_sounding'
+        ? soundingBandPos(row, index)
+        : { x: index * 220, z: index * 40 };
       system._interact(row.zoneId, family.contract.verb, {
         commodityId: 'cmdty_ore_iron',
-        pos: { x: index * 220, z: index * 40 },
+        pos,
       });
     }
   }
@@ -717,4 +738,34 @@ test('wrong verbs and passive time cannot turn a POI into random combat', () => 
   assert.equal(state.livingPoiBehaviors.aftermath[anomaly.behaviorId], undefined);
   assert.equal(emitted.some((row) => row.event === 'spawn:request' || row.event === 'combat:fire'), false);
   assert.equal(nest.canAutoAggro, false);
+});
+
+test('gravity well sounding charts only from three distinct ranges and plans at the Anvil', () => {
+  const { bus, state } = makeSystem(83);
+  const row = Object.values(state.livingPoiBehaviors.activeByZone)
+    .find((candidate) => candidate.familyId === 'gravity_well_sounding');
+  assert.ok(row, 'synthetic sector plans the sounding family');
+  bus.emit('world:zoneEntered', { zoneId: row.zoneId, type: row.zoneType, threat: row.threat });
+
+  const inner = soundingBandPos(row, 0);
+  bus.emit('scan:pulse', { pos: inner });
+  bus.emit('scan:pulse', { pos: { x: inner.x + 5, z: inner.z } });
+  bus.emit('scan:pulse', { pos: { x: inner.x - 5, z: inner.z + 5 } });
+  assert.equal(row.progress, 1, 'three pulses from one parking spot chart a single band');
+  bus.emit('scan:pulse', { pos: soundingBandPos(row, 1) });
+  bus.emit('scan:pulse', { pos: soundingBandPos(row, 2) });
+  assert.equal(state.livingPoiBehaviors.aftermath[row.behaviorId]?.kind, 'charted_sounding');
+  assert.equal(state.livingPoiBehaviors.aftermath[row.behaviorId]?.outcome, 'charted');
+
+  // The live route: Tethys is the only sector with a planetary_mass zone, and the Anvil
+  // previously hosted no behavior at all.
+  const route = makeRouteSystem(173);
+  const tethys = route.state.world.sectors.sector_tethys_junction;
+  route.state.world.currentSectorId = tethys.id;
+  route.bus.emit('sector:enter', { sectorId: tethys.id, sector: tethys, continuous: true, noTeleport: true });
+  const anvil = Object.values(route.state.livingPoiBehaviors.activeByZone)
+    .find((candidate) => candidate.familyId === 'gravity_well_sounding');
+  assert.ok(anvil, 'Tethys plans a sounding behavior');
+  assert.equal(anvil.zoneId, 'zone_tethys_anvil');
+  assert.equal(anvil.affordance, 'sound');
 });

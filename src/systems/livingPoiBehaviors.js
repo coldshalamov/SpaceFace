@@ -1,4 +1,4 @@
-// Milestone 4 — six deterministic POI behavior families.
+// Milestone 4 — seven deterministic POI behavior families.
 //
 // This system owns only state.livingPoiBehaviors. It observes existing physical verbs and emits
 // consequence intents through the economy/faction/mission authorities. It never spawns actors,
@@ -14,7 +14,10 @@ import { buildPoiCausalOffer } from '../missions/poiCausalOffers.js';
 
 const SECTOR_BY_ID = new Map(SECTORS.map((sector) => [sector.id, sector]));
 const DAY_SECONDS = 600;
-const PLAN_BUDGET = 12;
+// Catalog spend is 13 with seven grammars (1+2+2+2+1+2+3); the budget preserves the
+// standing property that every family holding a candidate zone plans, instead of silently
+// dropping the last grammar in a complete sector.
+const PLAN_BUDGET = 13;
 const RECEIPT_CAP = 48;
 const HIGH_SECURITY = 0.85;
 const SAVE_SCHEMA_VERSION = 2;
@@ -126,6 +129,7 @@ export const livingPoiBehaviors = {
     this._listen('mining:yield', (payload) => this._interactAt('mine', payload || {}));
     this._listen('salvage:completed', (payload) => this._onSalvageCompleted(payload || {}));
     this._listen('scan:pulse', (payload) => this._interactAt('triangulate', payload || {}));
+    this._listen('scan:pulse', (payload) => this._interactAt('sound', payload || {}));
     this._listen('encounter:resolved', (payload) => this._onEncounterResolved(payload || {}));
     this._listen('entity:killed', (payload) => this._onEntityKilled(payload || {}));
     this._listen('contraband:scanned', (payload) => this._onContrabandScanned(payload || {}));
@@ -300,6 +304,20 @@ export const livingPoiBehaviors = {
       if (row._bearings.some((point) => dist2(point, local) < 180 * 180)) return false;
       row._bearings.push(local);
     }
+    if (row.familyId === 'gravity_well_sounding') {
+      if (!payload || !payload.pos) return false;
+      const local = this._localPosition(payload.pos);
+      const center = row.zoneLocalCenter || row.zoneCenter;
+      const radius = Number(row.zoneRadius) > 0 ? Number(row.zoneRadius) : 400;
+      // Range bands, not bearings: the sounding only charts when pulses arrive from a close
+      // graze, a middle orbit, and a far watch. Three pulses from one parking spot chart nothing.
+      const d2 = dist2(local, center);
+      const band = d2 < (radius * 0.35) * (radius * 0.35) ? 0
+        : d2 < (radius * 0.7) * (radius * 0.7) ? 1 : 2;
+      row._soundedBands = row._soundedBands || [];
+      if (row._soundedBands.includes(band)) return false;
+      row._soundedBands.push(band);
+    }
     row.progress = Math.min(row.contract.required, (row.progress || 0) + 1);
     row.status = 'engaged';
     this._emit('poi:behaviorProgress', {
@@ -433,6 +451,9 @@ export const livingPoiBehaviors = {
         break;
       case 'anomaly_research':
         this._emitMissionLead(row, 'Stable bearings expose a second research signal.');
+        break;
+      case 'gravity_well_sounding':
+        this._emitMissionLead(row, 'Charted soundings expose a second orbital signal.');
         break;
       case 'convoy_industrial_route':
         if (row.stationId) this._emit('economy:applyTradePressure', {

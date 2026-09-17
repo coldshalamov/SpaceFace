@@ -1,4 +1,4 @@
-// Six authored POI behavior grammars for Milestone 4.
+// Seven authored POI behavior grammars for Milestone 4.
 //
 // These rows describe what the player does, what proves completion, and what durable mark the
 // world keeps. They deliberately contain no spawn/fire instructions: danger is telegraphed by the
@@ -108,6 +108,25 @@ export const POI_BEHAVIOR_FAMILIES = Object.freeze({
       channels: ['economy:applyTradePressure'],
     },
     aftermath: { kind: 'freight_wake', persistsDays: 1 },
+  }),
+  gravity_well_sounding: row({
+    id: 'gravity_well_sounding',
+    zoneTypes: ['planetary_mass'],
+    budgetCost: 2,
+    entryLine: 'Dead orbital telemetry. Sound the well from three ranges.',
+    mapLabel: 'DEEP SOUNDING',
+    radarKind: 'gravity-sounding',
+    dangerMode: 'gravity',
+    riskLabel: 'GRAVITY WELL DESCENT',
+    rewardLabel: 'ORBITAL CHART LEAD',
+    contract: {
+      verb: 'sound', required: 3, targetKind: 'signal',
+      cause: 'dead orbital telemetry needs three range soundings to chart',
+      objective: 'Take scan soundings from three distinct ranges of the well.',
+      resolutionEvent: 'scan:pulse', successOutcome: 'charted',
+      channels: ['mission:offered'],
+    },
+    aftermath: { kind: 'charted_sounding', persistsDays: 5 },
   }),
   pirate_contested_nest: row({
     id: 'pirate_contested_nest',
