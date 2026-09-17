@@ -1006,6 +1006,19 @@
       "integration": "live",
       "commit": "d119047c4",
       "verification": "focused_green"
+    },
+    {
+      "id": "gravity-well-sounding",
+      "date": "2026-09-17",
+      "wf": "WF-10",
+      "mode": "starved",
+      "verdict": "implemented",
+      "reason": "Tethys Anvil hosts a deep-sounding discovery: chart dead orbital telemetry with scan pulses from three ranges for a mission lead",
+      "fingerprint": "verb=sound,subject=orbital-telemetry,sector=sector_tethys_junction,domain=wf-10",
+      "references": [],
+      "integration": "live",
+      "commit": "a0912c22b",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [
