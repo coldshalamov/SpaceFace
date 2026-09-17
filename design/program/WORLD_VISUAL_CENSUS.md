@@ -26,12 +26,12 @@ These are live world objects, not effects and not menu toys.
 | Credit chips | credit chip | Small code mesh. |
 | Common rocks | asteroid | Generated lumpy rock (5 variants). Crystal rocks grow extra diamond shards. Named rock GLBs (`place_asteroid_rock_*`) are a different, rarer set. |
 | Stations that missed their model | station fallback | Fat cylinder + two hoops + box spars. Authored station GLBs exist; this is what you get when they don’t load. |
-| Jump gates / wormholes | gate | **Live file:** stations spawn with `archetypeGlb: place_gate_jump_ring.glb` (`world.js`). The hoop in `visualFactory.buildGate` is leftover fallback, not the live selector. Stocktake 2026-09-09. |
-| Small mining drones | drone entity | Diamond body + stick arms + glow. Separate from the `place_mining_drone` GLB. Point the flyer at that file after it looks like hardware (`PQ-193.05`). |
-| Vector mine / impulse charge | mine / charge | Code pucks if they appear on the default route. Same family as the disc mine. |
-| Generic wreckage | wreck | Broken tube spine + hull plates. |
-| Disc mines | mine | Puck + hoop + warning lens. |
-| Mass seed (deployed anchor) | mass seed | Diamond core + hoop + folding arms. |
+| Jump gates / wormholes | gate | **Live file:** stations spawn with `archetypeGlb: place_gate_jump_ring.glb` (`world.js`). The hoop in `visualFactory.buildGate` is leftover fallback, not the live selector. Stocktake 2026-09-09. (PQ-193.05, 2026-09-17: every default-route gate resolves the authored jump ring — `resolvePlaceFileForEntity` is total over gates — so the hoop is unreachable; the 40k-tri PBR ring with `SOCKET_Gate_Aperture` is the live body. Deleting the dead hoop code is a visualFactory-owner follow-up.) |
+| Small mining drones | drone entity | **Live file:** `places/place_mining_drone.glb` (PQ-193.05, 2026-09-17). The flyer publishes the V3 hardware body (plate seams, carbide cutter, seated RCS, service finish) via the packaged-body pointer; the diamond + stick arms survive only as hidden identity substrate. |
+| Vector mine / impulse charge | mine / charge | Code pucks if they appear on the default route. Same family as the disc mine. (PQ-193.05: uncommissioned with the disc mine — no body on disk.) |
+| Generic wreckage | wreck | **Live files:** the six `place_aftermath_*` bodies (PQ-193.05, 2026-09-17). Hazardous wrecks publish the engine section, military the corvette turret, others a deterministic pick; the tube spine + hull plates survive only as hidden identity substrate. |
+| Disc mines | mine | Puck + hoop + warning lens. (PQ-193.05: UNCOMMISSIONED — no mine GLB exists anywhere under `assets/`; the procedural body stays until a `place_disc_mine.glb` commission lands. Spec: `design/program/roadmap/receipts/PQ-193.05-REPORT.md`.) |
+| Mass seed (deployed anchor) | mass seed | Diamond core + hoop + folding arms. (PQ-193.05: UNCOMMISSIONED — player-deployed only, no seed GLB exists under `assets/`; same commission path as the disc mine.) |
 | Massline snare ends | snare anchor | Short cylinder + rails + hoop. |
 | Planets you fly near | planet | Shader ball (Helios Prime). Rings are painted on the look, not a separate model. |
 | Distant suns | sun | Smaller shader ball. |

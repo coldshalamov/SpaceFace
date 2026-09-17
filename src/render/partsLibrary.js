@@ -126,6 +126,25 @@ import {
 const PART_ROOT = 'assets/ships/parts/';
 const PART_RELEASE_ROOT = 'assets/ships/release/parts/';
 const AUTHORED_CARGO_CAPSULE_FILE = 'pods/pod_cargo_container.glb';
+// PQ-195.00: the SP-07 flywheel assembly is the second authored payload body. File and loader
+// slot follow the entity's own authoredPayloadAssetId; the capsule variant below is untouched.
+const AUTHORED_SP07_PAYLOAD_ASSET_ID = 'place_breakaway_sp07';
+const AUTHORED_SP07_PAYLOAD_FILE = 'places/place_breakaway_sp07.glb';
+function authoredPayloadIsSpindle(entity) {
+  return entity?.data?.authoredPayloadAssetId === AUTHORED_SP07_PAYLOAD_ASSET_ID;
+}
+export function authoredPayloadFileForEntity(entity) {
+  return authoredPayloadIsSpindle(entity) ? AUTHORED_SP07_PAYLOAD_FILE : AUTHORED_CARGO_CAPSULE_FILE;
+}
+export function authoredPayloadSlotForEntity(entity) {
+  return authoredPayloadIsSpindle(entity) ? 'place' : 'pod';
+}
+// Draw-time fit: the spindle is authored 1:1 in WU (scale 1 always); the capsule keeps
+// the longest-axis fit. Exported for the PQ-195.00 render-selector contract test.
+export function authoredPayloadDrawScale(entity, targetRadius, authoredEnvelope) {
+  if (authoredPayloadIsSpindle(entity)) return 1;
+  return (targetRadius * 2) / authoredEnvelope;
+}
 const WRECK_CATHEDRAL_PLACE_ID = 'place_landmark_wreck_cathedral';
 const CLAIM_RELAY_PLACE_ID = 'place_claim_outpost_relay';
 const WRECK_CATHEDRAL_CLOSED_MATERIAL_ROLES = new Set([
@@ -223,6 +242,37 @@ const PLACE_FILES = Object.freeze([
   'places/place_claim_mark.glb',
   'places/place_ash_pin.glb',
   'places/place_whistle.glb',
+// PQ-193.05: the five WORLD_VISUAL_CENSUS A shapes publish packaged bodies, never primitives.
+// Drone/wreck/gate entries mirror the live runtime selectors (visualFactory packaged bodies for
+// drone/wreck entities, the station-archetype path for gates). Mine + massSeed have no authored
+// body on disk and stay explicitly uncommissioned rather than borrowing a substitute prop.
+export const PQ_193_05_DRONE_PACKAGED_FILE = 'places/place_mining_drone.glb';
+export const PQ_193_05_GATE_PACKAGED_FILE = 'places/place_gate_jump_ring.glb';
+export const PQ_193_05_WRECK_PACKAGED_FILES = Object.freeze([
+  'places/place_aftermath_aft_engine_section.glb',
+  'places/place_aftermath_aft_cockpit_section.glb',
+  'places/place_aftermath_aft_cargo_module.glb',
+  'places/place_aftermath_wreck_corvette_turret.glb',
+  'places/place_aftermath_aft_weapon_spar.glb',
+  'places/place_aftermath_aft_pressure_tank.glb',
+]);
+export const PQ_193_05_UNCOMMISSIONED_ENTITY_TYPES = Object.freeze(['mine', 'massSeed']);
+export function resolve19305CensusAEntityPackagedFile(entity) {
+  if (!entity) return null;
+  if (entity.type === 'drone') return PQ_193_05_DRONE_PACKAGED_FILE;
+  if (entity.type === 'station' && entity.data
+    && (entity.data.isGate === true || entity.data.isWormhole === true)) {
+    return PQ_193_05_GATE_PACKAGED_FILE;
+  }
+  // Wreck: the per-entity choice (hazardous / military / hash) lives with the visualFactory
+  // packaged-body pointer; the legal body set is PQ_193_05_WRECK_PACKAGED_FILES. Mine +
+  // massSeed: uncommissioned — null, never a substitute.
+  return null;
+}
+export function is19305PackagedWreckFile(file) {
+  const normalized = String(file || '').replace(/^.*places\//, 'places/');
+  return PQ_193_05_WRECK_PACKAGED_FILES.includes(normalized);
+}
   'places/place_asteroid_rock_a.glb',
   'places/place_asteroid_rock_b.glb',
   'places/place_asteroid_rock_c.glb',
@@ -255,6 +305,10 @@ export function invalidatePartsLibraryCaches(renderer) {
   sharedReadabilityShellVariants.clear();
   if (renderer) {
     const bootstrapOwner = bootstrapResidencyOwnersByRenderer.get(renderer);
+  // PQ-195.00: the SP-07 spindle (authored payload) and the capture fork machine resolve through
+  // the same authored-place path. The fork GLB's origin is the mouth plane (no recentering).
+  'places/place_breakaway_sp07.glb',
+  'places/place_breakaway_fork.glb',
     if (bootstrapOwner) {
       const residency = getAssetResidency(renderer);
       if (residency) residency.releaseOwner(bootstrapOwner, 'parts-library-invalidated');
@@ -1091,7 +1145,9 @@ export function authoredPrewarmRequestsForEntities(entities, options = {}) {
           || requiresProductionWholeShipForEntity(entity),
       });
     } else if (hasExplicitAuthoredPayloadPresentation(entity)) {
-      plan = { pod: [AUTHORED_CARGO_CAPSULE_FILE] };
+      // PQ-195.00: the prewarm slot must match the boundary's real slot or the loader decodes a
+      // second generation — `place` for the spindle, `pod` for the capsule.
+      plan = { [authoredPayloadSlotForEntity(entity)]: [authoredPayloadFileForEntity(entity)] };
     } else {
       const placeFile = placeFileForEntity(entity);
       if (placeFile) {
@@ -1876,9 +1932,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
   boundary.add(fallbackRoot);
   boundary.userData.kind = 'payload';
   boundary.userData.interactionKind = 'payload';
-  boundary.userData.authoredPayloadAssetId = AUTHORED_CARGO_CAPSULE_FILE
-    .replace(/^pods\//, '')
-    .replace(/\.glb$/, '');
+  boundary.userData.authoredPayloadAssetId = entity.data.authoredPayloadAssetId;
   boundary.userData.authoredAssetState = 'awaiting-authored-admission';
   boundary.userData.authoredAssetMode = releaseMode ? 'release' : 'dev';
   boundary.userData.authoredVisualRoot = 'none-pending-admission';
@@ -1922,7 +1976,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
       entity,
       renderer,
       scene,
-      assetUrls: [`${partRoot}${AUTHORED_CARGO_CAPSULE_FILE}`],
+      assetUrls: [`${partRoot}${authoredPayloadFileForEntity(entity)}`],
       options: upgradeOptions,
       run: () => upgradeAuthoredCargoCapsuleBoundary(
         boundary,
@@ -1985,9 +2039,9 @@ async function upgradeAuthoredCargoCapsuleBoundary(
     : loadAuthoredPart;
   let record = null;
   try {
-    record = await loadPart(`${partRoot}${AUTHORED_CARGO_CAPSULE_FILE}`, {
+    record = await loadPart(`${partRoot}${authoredPayloadFileForEntity(entity)}`, {
       renderer,
-      slot: 'pod',
+      slot: authoredPayloadSlotForEntity(entity),
       optional: true,
       residencyOwner: options.residencyOwner,
       residencyRole: options.residencyRole,
@@ -2172,7 +2226,10 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
   const boundsSize = Array.isArray(record.bounds?.size) ? record.bounds.size : [1, 1, 1];
   const authoredEnvelope = Math.max(1e-6, ...boundsSize.map((value) => Number(value) || 0));
   const targetRadius = Math.max(1, Number(entity.radius) || 3);
-  const scale = (targetRadius * 2) / authoredEnvelope;
+  // PQ-195.00: the spindle is authored 1:1 in WU to fill its own 16 WU body (draw-time
+  // circumradius 15.02 WU, pinned by test/pq195-00-spindle-fork). The capsule's longest-axis fit
+  // would scale it 32/27.8 = 1.15x and break that number at draw time; the capsule keeps the fit.
+  const scale = authoredPayloadDrawScale(entity, targetRadius, authoredEnvelope);
   const authoredLength = Math.max(Number(boundsSize[0]) || authoredEnvelope, 1e-6);
   instantiatePart(record, root, {
     position: [0, 0, 0],
@@ -2202,14 +2259,16 @@ function buildAuthoredCargoCapsuleRoot(entity, record, scene, ownerBoundary) {
     version: 1,
     coordinateSystem: '+X forward, +Y up, +Z starboard; authored payload centered on physics origin',
     authoredParts: [record.url],
-    authoredSlots: { pod: [record.url] },
-    collisionEnvelope: 'longest authored axis equals payload diameter',
+    authoredSlots: authoredSlotMap,
+    collisionEnvelope: authoredPayloadIsSpindle(entity)
+      ? 'authored 1:1 in WU; spindle circumradius fills the 16 WU body'
+      : 'longest authored axis equals payload diameter',
     gracefulFallback: false,
   };
   return {
     root,
     authoredParts: [record.url],
-    authoredSlots: { pod: [record.url] },
+    authoredSlots: authoredSlotMap,
   };
 }
 
@@ -2304,6 +2363,10 @@ function buildFallbackStationArchetype(entity, placeFile) {
     assetBoundary: 'GLTFKit v1 — station archetype procedural fallback',
     gracefulFallback: true,
   };
+  // PQ-195.00: the slot follows the entity's authored body — `place` for the spindle, `pod`
+  // for the capsule — so slot-keyed consumers (loader cache, authoredSlots audits) see one truth.
+  const authoredSlot = authoredPayloadSlotForEntity(entity);
+  const authoredSlotMap = { [authoredSlot]: [record.url] };
   const color = fallbackPlaceColor(placeId, data.paletteClass);
   const material = new THREE.MeshStandardMaterial({
     color,

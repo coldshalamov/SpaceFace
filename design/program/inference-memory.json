@@ -1058,6 +1058,19 @@
       "integration": "live",
       "commit": "e03449831",
       "verification": "focused_green"
+    },
+    {
+      "id": "ghost-convoy-bounty-arc",
+      "date": "2026-09-17",
+      "wf": "WF-08",
+      "mode": "recovery",
+      "verdict": "implemented",
+      "reason": "Ghost-convoy lane rumor now ends in a real bounty: station-addressed news, board row, nest pack fight at a lane feature, resolution news line",
+      "fingerprint": "verb=hunt,subject=ghost-convoy-bounty,sector=any,layer=midground,tempo=episodic,domain=wf-08",
+      "references": [],
+      "integration": "live",
+      "commit": "f9413327d",
+      "verification": "focused_green"
     }
   ],
   "knownDefects": [

@@ -23,6 +23,40 @@ export const CERES_WRECK_CATHEDRAL_COURSE_POS = Object.freeze({
     + Math.sin(CERES_WRECK_CATHEDRAL_COURSE_BEARING_RAD) * 440,
 });
 
+// PQ-018.cathedral-chase-read — proxy-clear framing corridor from the 440 WU safe approach to the
+// north-broadside hold. The fixed-heading chase camera looks south, so only the hull's north face
+// can fill its frame; from the hold the upper-row envelope covers >=25% of the D=144 frame.
+// Autopilot still targets coursePos; this corridor is the keep-clear path and activation target.
+// Small hulls (r<=16) keep 20 WU; every roster hull keeps positive clearance.
+export const CERES_WRECK_CATHEDRAL_CHASE_READ_CORRIDOR = Object.freeze({
+  schemaVersion: 1,
+  packet: 'PQ-018.cathedral-chase-read',
+  camera: Object.freeze({ distanceWu: 144, tiltDeg: 60, fovVDeg: 50, aspect: 16 / 9 }),
+  hold: Object.freeze({
+    x: CERES_WRECK_CATHEDRAL_GLOBAL_POS.x,
+    z: CERES_WRECK_CATHEDRAL_GLOBAL_POS.z - 240,
+  }),
+  waypoints: Object.freeze([
+    CERES_WRECK_CATHEDRAL_COURSE_POS,
+    Object.freeze({
+      x: CERES_WRECK_CATHEDRAL_COURSE_POS.x,
+      z: CERES_WRECK_CATHEDRAL_GLOBAL_POS.z - 300,
+    }),
+    Object.freeze({
+      x: CERES_WRECK_CATHEDRAL_GLOBAL_POS.x,
+      z: CERES_WRECK_CATHEDRAL_GLOBAL_POS.z - 300,
+    }),
+    Object.freeze({
+      x: CERES_WRECK_CATHEDRAL_GLOBAL_POS.x,
+      z: CERES_WRECK_CATHEDRAL_GLOBAL_POS.z - 240,
+    }),
+  ]),
+  minSmallHullClearanceWu: 20,
+  smallHullMaxRadius: 16,
+  minAllHullClearanceWu: 0,
+  minHoldCoverage: 0.25,
+});
+
 function stagePresentation(color, intensity, pulseRate, rotationRate) {
   return Object.freeze({
     schemaVersion: 1,
@@ -352,6 +386,7 @@ const WORLD_SITE_MANIFESTS_UNSORTED = [
       courseLabel: 'Wreck Cathedral',
       courseArrivalRadius: CERES_WRECK_CATHEDRAL_COURSE_ARRIVAL_RADIUS,
     }),
+    chaseRead: CERES_WRECK_CATHEDRAL_CHASE_READ_CORRIDOR,
     producer: Object.freeze({ kind: 'authored_static', cadence: 'sector_enter', sectorId: 'sector_ceres_belt' }),
     debug: Object.freeze({
       packet: 'PQ-018',

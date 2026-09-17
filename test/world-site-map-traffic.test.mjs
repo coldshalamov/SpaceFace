@@ -8,6 +8,7 @@ import {
   worldSiteManifestById,
 } from '../src/data/worldSiteManifests.js';
 import { SHIPS } from '../src/data/ships.js';
+import { WORLD_SITE_ASSET_BINDINGS } from '../src/data/worldSiteAssetBindings.js';
 import {
   CINDER_SLUICE_GLOBAL_POS,
   CINDER_SLUICE_SECTOR_ID,
@@ -488,4 +489,164 @@ test('traffic ignores fixed-step partial receipts and refreshes topology once on
     receipt: { kind: 'operation', complete: true, amountApplied: 1 },
   });
   assert.equal(refreshes, 1);
+});
+
+// PQ-018.cathedral-chase-read — additive: the proxy-clear framing corridor from the 440 WU safe
+// approach to the north-broadside hold. The pins above are untouched; this corridor is the
+// keep-clear path and the activation target for the approach fix.
+function chaseFrameHullCoverage(focus, solids) {
+  // Exact live chase pose (src/render/camera.js, tools/blender/spaceface_chase_camera.py):
+  // fixed heading, 60° tilt, 50° vertical FOV, D=144, 16/9 aspect. X-mirrored; coverage is not.
+  const distance = 144;
+  const tilt = 60 * Math.PI / 180;
+  const tanV = Math.tan((50 * Math.PI / 180) / 2);
+  const tanH = tanV * (16 / 9);
+  const camY = distance * Math.sin(tilt);
+  const camZ = focus.z - distance * Math.cos(tilt);
+  const fwd = { y: -Math.sin(tilt), z: Math.cos(tilt) };
+  const up = { y: Math.cos(tilt), z: Math.sin(tilt) };
+  assert.ok(fwd.y + tanV * up.y < 0, 'every chase ray points at the ground');
+  const nx = 160;
+  const ny = 90;
+  let total = 0;
+  let hull = 0;
+  for (let iy = 0; iy < ny; iy += 1) {
+    const sy = -1 + ((iy + 0.5) * 2) / ny;
+    for (let ix = 0; ix < nx; ix += 1) {
+      const sx = -1 + ((ix + 0.5) * 2) / nx;
+      const dx = sx * tanH;
+      const dy = fwd.y + sy * tanV * up.y;
+      const dz = fwd.z + sy * tanV * up.z;
+      const t = -camY / dy;
+      const px = focus.x + t * dx;
+      const pz = camZ + t * dz;
+      total += 1;
+      if (solids.some((proxy) => Math.hypot(px - proxy.pos.x, pz - proxy.pos.z) <= proxy.radius)) {
+        hull += 1;
+      }
+    }
+  }
+  return hull / total;
+}
+
+test('Cathedral chase-read corridor transits every roster hull to a 25%-frame broadside hold', () => {
+  const siteId = 'world_site_wreck_cathedral';
+  const manifest = worldSiteManifestById(siteId);
+  const corridor = manifest.chaseRead;
+  assert.ok(corridor, 'the cathedral manifest publishes its chase-read corridor');
+  assert.equal(corridor.schemaVersion, 1);
+  assert.equal(corridor.packet, 'PQ-018.cathedral-chase-read');
+  assert.deepEqual(corridor.camera, { distanceWu: 144, tiltDeg: 60, fovVDeg: 50, aspect: 16 / 9 });
+  assert.equal(corridor.minSmallHullClearanceWu, 20);
+  assert.equal(corridor.smallHullMaxRadius, 16);
+  assert.equal(corridor.minAllHullClearanceWu, 0);
+  assert.equal(corridor.minHoldCoverage, 0.25);
+
+  // Four global_v1 waypoints: live arrival, north turn, west turn, broadside hold.
+  assert.equal(corridor.waypoints.length, 4);
+  assert.deepEqual(corridor.waypoints[0], CERES_WRECK_CATHEDRAL_COURSE_POS);
+  const local = (point) => ({
+    x: point.x - CERES_WRECK_CATHEDRAL_GLOBAL_POS.x,
+    z: point.z - CERES_WRECK_CATHEDRAL_GLOBAL_POS.z,
+  });
+  assert.deepEqual(local(corridor.waypoints[2]), { x: 0, z: -300 });
+  assert.deepEqual(local(corridor.hold), { x: 0, z: -240 });
+  assert.deepEqual(corridor.hold, corridor.waypoints[3]);
+  assert.ok(Math.abs(local(corridor.waypoints[1]).x - local(corridor.waypoints[0]).x) < 1e-9
+    && local(corridor.waypoints[1]).z === -300);
+
+  const record = createWorldSiteRecord(manifest, { tick: 0 });
+  const materialization = planWorldSiteMaterialization(manifest, record);
+  const solids = materialization.collisionProxies.filter((proxy) => proxy.bodyType === 'solid');
+  assert.equal(solids.length, 7);
+
+  // Every leg keeps every roster hull clear of the wreck envelope: small hulls keep 20 WU,
+  // every hull keeps positive clearance (mirrors the arrival all-hull / transit Hornet split).
+  const hulls = SHIPS.map((ship) => ({ id: ship.id, radius: ship.collisionRadius }));
+  assert.equal(hulls.length, 14, 'every canonical player-selectable hull participates');
+  const barFor = (hull) => (hull.radius <= corridor.smallHullMaxRadius
+    ? corridor.minSmallHullClearanceWu
+    : corridor.minAllHullClearanceWu);
+  for (let leg = 0; leg + 1 < corridor.waypoints.length; leg += 1) {
+    const start = corridor.waypoints[leg];
+    const end = corridor.waypoints[leg + 1];
+    for (const hull of hulls) {
+      for (const proxy of solids) {
+        const gap = pointToSegmentDistance(proxy.pos, start, end) - proxy.radius - hull.radius;
+        assert.ok(gap > barFor(hull),
+          `leg ${leg} ${hull.id} keeps only ${gap} WU at ${proxy.proxyId}`);
+      }
+    }
+  }
+
+  // The hold itself is all-hull safe, then frames the wreck.
+  for (const hull of hulls) {
+    const gap = Math.min(...solids.map((proxy) => Math.hypot(
+      proxy.pos.x - corridor.hold.x,
+      proxy.pos.z - corridor.hold.z,
+    ) - proxy.radius - hull.radius));
+    assert.ok(gap > barFor(hull), `${hull.id} hold gap is only ${gap} WU`);
+  }
+  const holdCoverage = chaseFrameHullCoverage(corridor.hold, solids);
+  const arrivalCoverage = chaseFrameHullCoverage(CERES_WRECK_CATHEDRAL_COURSE_POS, solids);
+  assert.ok(holdCoverage >= corridor.minHoldCoverage,
+    `broadside hold frames only ${holdCoverage} of the wreck envelope`);
+  assert.ok(arrivalCoverage < holdCoverage,
+    `corridor must improve on the arrival sliver: ${arrivalCoverage} vs ${holdCoverage}`);
+});
+
+// PQ-018.cathedral-chase-read — exact pins: the bar test above hides erosion (a
+// ">" assertion passes while margins shrink), so the deterministic minima and frame
+// fractions are pinned to tight literals here. Any geometry/proxy/binding drift that
+// moves these numbers must update this test deliberately, with a receipt line.
+test('Cathedral chase-read corridor pins exact minima, coverage, and visualCenterXZ', () => {
+  const manifest = worldSiteManifestById('world_site_wreck_cathedral');
+  const corridor = manifest.chaseRead;
+  const record = createWorldSiteRecord(manifest, { tick: 0 });
+  const materialization = planWorldSiteMaterialization(manifest, record);
+  const solids = materialization.collisionProxies.filter((proxy) => proxy.bodyType === 'solid');
+  const hulls = SHIPS.map((ship) => ({ id: ship.id, radius: ship.collisionRadius }));
+  const near = (actual, expected, label) => {
+    assert.ok(Math.abs(actual - expected) < 1e-9, `${label}: expected ${expected}, got ${actual}`);
+  };
+
+  for (let leg = 0; leg + 1 < corridor.waypoints.length; leg += 1) {
+    const start = corridor.waypoints[leg];
+    const end = corridor.waypoints[leg + 1];
+    let minAll = Infinity;
+    let minSmall = Infinity;
+    for (const hull of hulls) {
+      for (const proxy of solids) {
+        const gap = pointToSegmentDistance(proxy.pos, start, end) - proxy.radius - hull.radius;
+        if (gap < minAll) minAll = gap;
+        if (hull.radius <= corridor.smallHullMaxRadius && gap < minSmall) minSmall = gap;
+      }
+    }
+    const expected = [60.58963396203944, 37, 12.175876270150383][leg];
+    near(minAll, expected, `leg ${leg} all-hull minimum clearance`);
+    const expectedSmall = [89.58963396203944, 66, 41.17587627015038][leg];
+    near(minSmall, expectedSmall, `leg ${leg} small-hull minimum clearance`);
+  }
+
+  let holdMinAll = Infinity;
+  let holdMinSmall = Infinity;
+  for (const hull of hulls) {
+    const gap = Math.min(...solids.map((proxy) => Math.hypot(
+      proxy.pos.x - corridor.hold.x,
+      proxy.pos.z - corridor.hold.z,
+    ) - proxy.radius - hull.radius));
+    if (gap < holdMinAll) holdMinAll = gap;
+    if (hull.radius <= corridor.smallHullMaxRadius && gap < holdMinSmall) holdMinSmall = gap;
+  }
+  near(holdMinAll, 12.175876270150383, 'hold all-hull minimum clearance (Leviathan)');
+  near(holdMinSmall, 41.17587627015038, 'hold small-hull minimum clearance (Pelican)');
+  near(chaseFrameHullCoverage(corridor.hold, solids), 0.2685416666666667, 'hold frame coverage');
+  near(chaseFrameHullCoverage(CERES_WRECK_CATHEDRAL_COURSE_POS, solids), 0.0002777777777777778, 'arrival frame coverage');
+
+  // visualCenterXZ feeds socketLocalOffset (worldSiteKernel): any drift shifts all 7
+  // proxy world positions and silently invalidates every corridor clearance above.
+  assert.deepEqual(
+    WORLD_SITE_ASSET_BINDINGS.place_landmark_wreck_cathedral.visualCenterXZ,
+    { x: 16.00636548, z: -12.99468677 },
+  );
 });
