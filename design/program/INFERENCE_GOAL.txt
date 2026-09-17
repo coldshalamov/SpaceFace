@@ -1,0 +1,76 @@
+INFERENCE
+
+You are running SpaceFace INFERENCE. The owner throws agents here to make
+the game better — not to hit a row count, and not to implement a detector
+score. Copy this prompt as-is.
+
+Read, in this order, then start:
+  design/program/INFERENCE_LANES.md
+  design/inference-workflows/02_CREATIVE_CONVERGENCE_LOOP.md
+  design/VISION.md
+  design/program/NOW.md
+  then the live owner for whatever you actually decide to touch
+  (the WF-xx "One production unit" list is the depth bar, not the menu)
+
+If the unit is flight/combat guts (the ship ignores you, shove does nothing,
+camera loses the fight), switch to design/program/FUN_CONVERGENCE_GOAL.txt
+and come back. Do not hide a handling bug inside new content.
+
+If the owner said only INFERENCE (no number, no MISSIONS/NPCS/WORLD/…):
+  N = 5. Unscoped. You have to FIND what is weak or ill-built.
+  Look at the ordinary route, the live owners, and the code a stranger hits.
+  Name two or three real weaknesses in player words. Pick the one that would
+  most help someone playing. Complete that whole thing. Then rotate to a
+  different kind of weakness you also saw — not five edits to one registry.
+  inference-detect.mjs is an optional count hint, at most once per batch.
+  It cannot see architectural mistakes, thin missions, or empty cameras.
+  If the hint disagrees with what you saw, ignore it. If you cannot explain
+  the unit without a detect score, you have not inferred yet.
+
+If they said INFERENCE N with no scope: same loop, that N.
+
+If they named a scope (INFERENCE 3 MISSIONS): stay in that domain, rotate
+kinds inside it, still by looking. N is the number they wrote.
+
+The loop for every unit. Do not skip CONSIDER. Do not stop after a thin row.
+
+1. CONSIDER. Read the live owner. Name the deficit in player words. Invent
+   two or three real alternatives (different verbs or places, not paraphrases).
+   Pick the one a stranger would remember after thirty seconds. If you cannot
+   say why the others lost, you have not considered yet.
+
+2. COMPLETE. Build the whole playable thing through live owners. Logical
+   extensions are in-scope: a mission includes placement, participants,
+   script (assess → approach → commit → complication → resolve → aftermath),
+   and enough density to go wrong. A tweak that makes an existing thing
+   actually good counts. A new parallel system does not. If the first
+   implementation is thin, iterate inside this unit — do not add a second
+   thin row.
+
+3. PROVE. Live owner plus a number or a focused test. Inspect spawn,
+   listeners, counts. Do not stall for a capture. GPU failure never blocks
+   implemented. Never edit a test or golden to pass. Never add drag,
+   momentum clamps, NPC gyros, shake, or particles to fake the moment.
+
+4. SHIP. Commit the production slice. Record with inference-record.
+   Report CONSIDERED (three ideas; why this one) plus the lanes §10 ledger.
+
+5. ROTATE. Next unit is a different kind of weakness you found by looking.
+   Scoped: different kind inside the domain. Consecutive units differ on
+   at least two of verb, subject, sector, domain.
+
+Thin does not count. A board entry, an encounter with nobody in it, a
+prop scatter, or "go there and hold E" is not a unit. Hitting N with
+first drafts is a failed run.
+
+Stop at N complete units, when the owner stops you, or when every remaining
+candidate collides with a live NOW.md hunk. Do not ask the owner to pick
+technical options.
+
+If they gave an idea (INFERENCE 3 — <idea> / INFERENCE IDEA: <idea> / a line
+from INFERENCE_IDEAS.md): EXPAND first (fantasy, verbs, place, people,
+script, density, consequence, live owners, standards), then CONSIDER
+alternatives inside the idea. An idea never excuses a thin row. Law:
+design/program/INFERENCE_CONVERGENCE.md. Every unit clears its eight-check
+A-list bar and the ledger gains STANDARDS. Batches of 3+ include at least
+one polish unit: review shipped work against the bar and iterate it there.
