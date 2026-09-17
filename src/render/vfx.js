@@ -2088,6 +2088,10 @@ export const vfx = {
     add('presentation:cue', (p) => this._onDirectTravelPresentationCue(p));
     add('presentation:vfxCue', (p) => this._onPresentationCue(p));
     add('pickup:collected', (p) => this._onPickup(p));
+    // Aerospace locomotion receipts, emitted render-side by shipMicroMotion (never sim).
+    add('ship:rcsPulse', (p) => this._onShipRcsPulse(p));
+    add('ship:deathPop', (p) => this._onShipDeathPop(p));
+    add('ship:deathFlash', (p) => this._onShipDeathFlash(p));
   },
 
   // Spec2/02 §3 juice-stack trace: emit a presentation cue + audio cue for every
@@ -9932,6 +9936,90 @@ export const vfx = {
           0.3 + Math.random() * 0.15, 1.8, 0.0, this._c0, this._c1, 3.0, 2, 6 + Math.random() * 10);
       }
     }
+  },
+
+  // Aerospace locomotion receipts (shipMicroMotion, render-side only). Deliberately
+  // cue-free: maneuvering puffs and death beats are continuous vocabulary, not scored
+  // moments, so they never touch _emitJuiceCue or cue-count contracts.
+  _onShipRcsPulse(p) {
+    if (!this._scene || !p) return;
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) return;
+    // The production RCS path is player-only: skip the player when it serves them, so
+    // player and NPCs share this seam without double-puffing (legacy-mode player included).
+    if (p.shipId != null && p.shipId === this.state.playerId) {
+      const owner = this._ent(p.shipId);
+      if (owner && this._usesProductionThruster(owner)) return;
+    }
+    const intensity = Math.max(0, Math.min(1, Number(p.intensity) || 0));
+    if (intensity <= 0.01) return;
+    const reduced = this._isReduced();
+    const burst = this._burst || 1;
+    const dirX = Number.isFinite(p.dirX) ? p.dirX : 1;
+    const dirZ = Number.isFinite(p.dirZ) ? p.dirZ : 0;
+    const roll = Math.atan2(dirZ, dirX);
+    const sm = reduced ? 0.7 : 1;
+    // Razor-sharp white cold-gas slit along the exhaust axis.
+    this._spawnSprite(SPR_FLASH, p.x, 0.12, p.z, 0.10 + intensity * 0.08,
+      (0.9 + intensity * 1.2) * sm, (2.2 + intensity * 2.6) * sm,
+      reduced ? 0.55 : 0.85, 0, '#ffffff',
+      dirX * (10 + intensity * 14), dirZ * (10 + intensity * 14), 3.2, roll);
+    const count = Math.max(2, Math.round((2 + intensity * 4) * burst * (reduced ? 0.6 : 1)));
+    this._c0.set('#ffffff'); this._c1.set('#bcd2e8');
+    for (let k = 0; k < count; k++) {
+      const a = roll + (Math.random() - 0.5) * 0.5;
+      const sp = 26 + intensity * 40 + Math.random() * 18;
+      this._spawnParticle(p.x, p.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.22 + intensity * 0.14, 1.1 + intensity * 0.8, 0.05,
+        this._c0, this._c1, 3.2, 0.1, 0, a, 2.4);
+    }
+  },
+
+  _onShipDeathPop(p) {
+    if (!this._scene || !p) return;
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) return;
+    const r = Math.max(2, Number(p.radius) || 6);
+    const reduced = this._isReduced();
+    const burst = this._burst || 1;
+    const scale = Math.max(0.5, Math.min(1.6, r / 9)) * (reduced ? 0.75 : 1);
+    // Armor-seam breach: white-hot crack slit, orange combustion tongue, ember cone.
+    const seam = Number.isFinite(p.seam) ? p.seam : Math.random() * Math.PI * 2;
+    this._spawnSprite(SPR_FLASH, p.x, 0.24, p.z, 0.12, 2.6 * scale, 1.0 * scale,
+      reduced ? 0.7 : 0.95, 0, '#ffffff', 0, 0, 3.0, seam);
+    this._spawnSprite(SPR_COMBUSTION, p.x, 0.2, p.z, 0.34, 1.1 * scale, 3.4 * scale,
+      reduced ? 0.5 : 0.72, 0, '#ff7a2e',
+      Math.cos(seam) * 5, Math.sin(seam) * 5, 2.1, seam);
+    this._c0.set('#ffd9a0'); this._c1.set('#5a1c08');
+    const count = Math.max(3, Math.round(6 * burst * (reduced ? 0.5 : 1)));
+    for (let k = 0; k < count; k++) {
+      const a = seam + (Math.random() - 0.5) * 1.6;
+      const sp = 14 + Math.random() * 30;
+      this._spawnParticle(p.x, p.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.4 + Math.random() * 0.3, 1.3, 0.1, this._c0, this._c1, 1.8, 0.15, 0);
+    }
+    this._flashLight({ x: p.x, z: p.z }, '#ff8a3a', 2.6 * scale, 12, 90);
+  },
+
+  _onShipDeathFlash(p) {
+    if (!this._scene || !p) return;
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.z)) return;
+    const r = Math.max(2, Number(p.radius) || 6);
+    const reduced = this._isReduced();
+    const burst = this._burst || 1;
+    const scale = Math.max(0.6, Math.min(2.0, r / 8)) * (reduced ? 0.7 : 1);
+    // Core detonation: collapsing white punch, expanding ring, hot debris fan, light.
+    this._spawnSprite(SPR_FLASH, p.x, 0.3, p.z, 0.14, 3.2 * scale, 0.9 * scale,
+      reduced ? 0.75 : 1.0, 0, '#ffffff', 0, 0, 1.4, 0);
+    this._spawnSprite(SPR_RING, p.x, 0.28, p.z, 0.42, r * 0.1 * scale, r * 0.85 * scale,
+      reduced ? 0.3 : 0.55, 0, '#ffd9a8', 0, 0);
+    this._c0.set('#ffe9c0'); this._c1.set('#4a1c08');
+    const count = Math.max(6, Math.round(14 * burst * (reduced ? 0.5 : 1)));
+    for (let k = 0; k < count; k++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = 20 + Math.random() * 55;
+      this._spawnParticle(p.x, p.z, Math.cos(a) * sp, Math.sin(a) * sp,
+        0.5 + Math.random() * 0.5, 1.6, 0.15, this._c0, this._c1, 1.2, 0.2, 0);
+    }
+    this._flashLight({ x: p.x, z: p.z }, '#fff0d0', 7.5 * scale, 11, 120 + r * 5);
   },
 
   // engine trail emitter — called per ship per frame from update(), throttled by accumulator

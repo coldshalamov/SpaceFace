@@ -21,14 +21,57 @@
 //  12. Turn Bank Overshoot & Harmonic Settle: Rolling out of a hard turn exhibits slight inertia rebound.
 //  13. Powerplant Boost Shudder: High-frequency micro-tremor conveys engine strain at peak boost.
 //  14. Zero-G Spatial Breathing: Subtle multi-axis attitude drift gives idle craft living presence.
+//  15. RCS Attitude Justification: Signed actuator demand resolves to Newton-correct corner-nozzle
+//      firings (translation pairs, yaw diagonal couples, retro twins); the hull kicks with the push
+//      and VFX renders razor-sharp white cold-gas puffs at the live nozzles.
+//  16. Engine Bell Gimbal: Exhaust bells/swirl sockets steer a few degrees toward the commanded
+//      thrust vector with critically damped lag, so the drive visibly aims the ship.
+//  17. Boost Ignition Pop: The boost rising edge punches the hull, snaps the gimbal, and flares the
+//      plume for a beat — a punchy afterburner light-off for player and NPC alike.
+//  18. Death Spiral: A witnessed ship kill leaves a tumbling hulk — runaway RCS, secondary armor-seam
+//      pops, then a core detonation flash — before the wreck settles to dead drift.
 //
 // PURE RENDER-ONLY PRESENTATION: Never mutates sim state, determinism-safe, zero per-frame garbage.
+// Transform-only mesh edits (position/rotation/scale); shared materials are never touched.
+
+import { resolveRcsFirings, resolveActuatorScale } from './rcsJets.js';
 
 function wrapAngle(a) {
   let res = (a + Math.PI) % (Math.PI * 2);
   if (res < 0) res += Math.PI * 2;
   return res - Math.PI;
 }
+
+function clamp01(v) {
+  return v < 0 ? 0 : v > 1 ? 1 : v;
+}
+
+function clamp(v, lo, hi) {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+// --- Aerospace locomotion tuning (presentation judgment, not sim values) ---
+const RCS_PULSE_MIN_INTENSITY = 0.22;   // below this a firing is trim, not worth a puff
+const RCS_PULSE_COOLDOWN_S = 0.12;      // per-craft puff cadence while maneuvering
+const RCS_PULSE_COOLDOWN_REDUCED_S = 0.22;
+const RCS_OBSERVED_YAW_GAIN = 4.0;      // fallback: observed yaw accel -> pseudo-demand
+const RCS_OBSERVED_LAT_GAIN = 0.55;     // fallback: observed lateral accel -> pseudo-demand
+const RCS_OBSERVED_FWD_GAIN = 0.35;     // fallback: observed forward accel -> pseudo-demand
+const GIMBAL_YAW_MAX = 0.13;            // ~7.5 deg bell steer, lateral/yaw demand
+const GIMBAL_PITCH_MAX = 0.09;          // ~5 deg bell nod, main-drive demand
+const GIMBAL_SMOOTH = 9.0;              // critically damped-ish follow rate
+const BOOST_FLASH_S = 0.38;             // ignition flare window
+const BOOST_IGNITION_KICK = 2.4;        // hull punch on the boost rising edge
+const DEATH_SPIRAL_S = 1.5;             // full spiral before dead drift owns the wreck
+const DEATH_FLASH_AT_S = 0.85;          // core detonation moment inside the spiral
+const DEATH_KILL_MATCH_WU = 30;         // wreck must sit near a fresh kill to spiral
+const DEATH_KILL_MATCH_S = 3.0;         // kills older than this read as cold salvage
+const DEATH_SPIN_START = 7.0;           // rad/s at spiral ignition
+const DEATH_SPIN_END = 1.2;             // rad/s handed to dead drift
+const RECENT_KILL_SLOTS = 8;
+const MAX_BELL_PIVOTS = 6;
+const MAX_RCS_PIVOTS = 4;
+const MOUNT_SCAN_NODE_CAP = 64;
 
 const RECOIL_DEFS = Object.freeze({
   light:     { kickX: 0.12, pitchRise: 0.015, heatCost: 0.08 },
@@ -59,6 +102,29 @@ export function createShipMicroMotionTracker() {
   // Pool of active micro-motion records keyed by entity ID
   const craftMotion = new Map();
   let busSubscribers = [];
+  let busRef = null;
+  let lastSimTime = 0;
+
+  // Family-agnostic actuator scale for presentation intensities. Nozzle SELECTION is exact
+  // (signs only); per-family authority ceilings would only rescale puff brightness.
+  const defaultActuatorScale = resolveActuatorScale(null);
+
+  // Recent witnessed kills, preallocated ring (death-spiral freshness matching).
+  const recentKills = [];
+  for (let i = 0; i < RECENT_KILL_SLOTS; i++) {
+    recentKills.push({ x: 0, z: 0, t: -1e9, used: false });
+  }
+  let killCursor = 0;
+  // Wreck ids that already spiraled (consume-once; cleared for recycled ids on spawn).
+  const spiralDone = new Map();
+
+  // Reused emission payloads. bus.emit is synchronous and every listener copies numbers
+  // immediately, so sharing one object per event kind is safe and allocation-free.
+  const rcsPulsePayload = { x: 0, z: 0, dirX: 1, dirZ: 0, intensity: 0, radius: 6, shipId: 0, runaway: false };
+  const deathPopPayload = { x: 0, z: 0, radius: 6, shipId: 0, seam: 0 };
+  const deathFlashPayload = { x: 0, z: 0, radius: 6, shipId: 0 };
+  const spiralShakePayload = { amount: 0, position: { x: 0, z: 0 } };
+  const spiralAudioPayload = { id: '' };
 
   function getRecord(entityId) {
     let rec = craftMotion.get(entityId);
@@ -105,6 +171,43 @@ export function createShipMicroMotionTracker() {
 
         // Idle breathing phase
         idlePhase: (Number(entityId) * 1.6180339887) % (Math.PI * 2),
+
+        // Aerospace locomotion: observed-motion history for actuator fallback synthesis
+        prevRot: null,
+        prevBank: 0,
+        prevFwdV: 0,
+        prevLatV: 0,
+        prevYawRate: 0,
+        actFallback: null, // lazy { lateral, yaw, reverse, main } pseudo-actuators
+        rcsPose: null,     // lazy { x, z, rot, radius } scratch for the RCS resolver
+        rcsFirings: null,  // lazy reused out-array for resolveRcsFirings (read: station/side/role/intensity)
+        rcsPulseCd: 0,
+        rcsMax: 0,
+        rcsLat: 0,
+        rcsYaw: 0,
+        rcsMain: 0,
+
+        // Engine bell gimbal + boost ignition
+        prevBoosting: false,
+        boostFlashT: 0,
+        gimbalYaw: 0,
+        gimbalPitch: 0,
+        mountMesh: null,   // mesh identity the pivot caches below were scanned from
+        bells: null,       // lazy [{ node, baseY, baseZ, baseSX, baseSY, baseSZ, isPlume }]
+        bellCount: 0,
+        flareApplied: 1,   // last frame's plume flare factor (unapplied before re-flaring)
+        rcsNozzles: null,  // lazy [{ node, baseSX, baseSY, baseSZ }]
+        rcsNozzleCount: 0,
+
+        // Death spiral (fresh wrecks near a witnessed kill)
+        spiralState: 0, // 0 off, 1 active, 2 holding frozen yaw offset
+        spiralT0: 0,
+        spiralY: 0,
+        spiralDir: 1,
+        spiralFlashDone: false,
+        spiralPopCd: 0,
+        spiralRcsCd: 0,
+        spiralRcsSide: 1,
 
         lastUpdate: 0,
       };
@@ -253,8 +356,144 @@ export function createShipMicroMotionTracker() {
     rec.flinchShudder = Math.max(rec.flinchShudder, 0.5);
   }
 
+  function onKilled(payload) {
+    if (!payload) return;
+    // Ships and drones die into wrecks; anything else typed is not our spiral.
+    if (payload.type && payload.type !== 'ship' && payload.type !== 'drone') return;
+    const pos = payload.pos || null;
+    if (pos && Number.isFinite(pos.x) && Number.isFinite(pos.z)) {
+      const slot = recentKills[killCursor];
+      slot.x = pos.x;
+      slot.z = pos.z;
+      slot.t = lastSimTime;
+      slot.used = true;
+      killCursor = (killCursor + 1) % RECENT_KILL_SLOTS;
+      // The ship mesh vanishes on the sweep the same tick, so the kill-frame itself must
+      // leave a mark: one armor-seam breach pop at the moment of death.
+      if (busRef && typeof busRef.emit === 'function') {
+        deathPopPayload.x = pos.x;
+        deathPopPayload.z = pos.z;
+        deathPopPayload.radius = Number.isFinite(payload.radius) ? payload.radius : 6;
+        deathPopPayload.shipId = payload.id != null ? payload.id : 0;
+        deathPopPayload.seam = Math.random() * Math.PI * 2;
+        busRef.emit('ship:deathPop', deathPopPayload);
+      }
+    }
+  }
+
+  function onSpawned(payload) {
+    // Entity ids recycle: a fresh wreck reusing an old id must be allowed to spiral again.
+    const entity = payload && payload.entity;
+    const id = payload && payload.id != null ? payload.id : (entity && entity.id);
+    if (id == null) return;
+    const type = (payload && payload.type) || (entity && entity.type);
+    if (type === 'wreck') spiralDone.delete(id);
+  }
+
+  function clearSpiralMemory() {
+    for (let i = 0; i < recentKills.length; i++) {
+      recentKills[i].used = false;
+      recentKills[i].t = -1e9;
+    }
+    spiralDone.clear();
+  }
+
+  function matchFreshKill(x, z, simTime) {
+    const r2 = DEATH_KILL_MATCH_WU * DEATH_KILL_MATCH_WU;
+    for (let i = 0; i < recentKills.length; i++) {
+      const k = recentKills[i];
+      if (!k.used) continue;
+      if (simTime - k.t > DEATH_KILL_MATCH_S) continue;
+      const dx = x - k.x;
+      const dz = z - k.z;
+      if (dx * dx + dz * dz <= r2) return true;
+    }
+    return false;
+  }
+
+  function emitRcsPulse(entity, firing, runaway) {
+    if (!busRef || typeof busRef.emit !== 'function' || !firing) return;
+    rcsPulsePayload.x = firing.x;
+    rcsPulsePayload.z = firing.z;
+    rcsPulsePayload.dirX = firing.dirX;
+    rcsPulsePayload.dirZ = firing.dirZ;
+    rcsPulsePayload.intensity = firing.intensity;
+    rcsPulsePayload.radius = Number.isFinite(entity.radius) && entity.radius > 0 ? entity.radius : 6;
+    rcsPulsePayload.shipId = entity.id != null ? entity.id : 0;
+    rcsPulsePayload.runaway = runaway === true;
+    busRef.emit('ship:rcsPulse', rcsPulsePayload);
+  }
+
+  // Iterative mount scan, duck-typed for THREE groups and plain mock graphs. Runs once per
+  // mesh identity (rebuilds rescan); never on the steady-state path. Transform targets only.
+  function scanMountPivots(rec, mesh, hull) {
+    rec.mountMesh = mesh;
+    rec.bellCount = 0;
+    rec.rcsNozzleCount = 0;
+    rec.flareApplied = 1;
+    if (!rec.bells) rec.bells = [];
+    if (!rec.rcsNozzles) rec.rcsNozzles = [];
+    const roots = [];
+    if (hull) roots.push(hull);
+    if (mesh && mesh !== hull) roots.push(mesh);
+    let scanned = 0;
+    for (let r = 0; r < roots.length; r++) {
+      const stack = [roots[r]];
+      while (stack.length > 0 && scanned < MOUNT_SCAN_NODE_CAP) {
+        const node = stack.pop();
+        if (!node) continue;
+        scanned++;
+        const name = typeof node.name === 'string' ? node.name : '';
+        const lower = name.toLowerCase();
+        const isSocket = name.indexOf('SOCKET_') === 0;
+        if (!isSocket && lower.indexOf('rcs') >= 0 && node.scale && rec.rcsNozzleCount < MAX_RCS_PIVOTS) {
+          let entry = rec.rcsNozzles[rec.rcsNozzleCount];
+          if (!entry) entry = rec.rcsNozzles[rec.rcsNozzleCount] = {};
+          entry.node = node;
+          entry.baseSX = Number.isFinite(node.scale.x) ? node.scale.x : 1;
+          entry.baseSY = Number.isFinite(node.scale.y) ? node.scale.y : 1;
+          entry.baseSZ = Number.isFinite(node.scale.z) ? node.scale.z : 1;
+          rec.rcsNozzleCount++;
+        } else if (node.rotation && rec.bellCount < MAX_BELL_PIVOTS) {
+          const isBell = lower.indexOf('nozzle') >= 0 || lower.indexOf('bell') >= 0
+            || lower.indexOf('drive') >= 0 || lower.indexOf('engine') >= 0
+            || lower.indexOf('plume') >= 0 || lower.indexOf('thruster') >= 0
+            || lower.indexOf('exhaust') >= 0;
+          const isGimbalSocket = isSocket && (lower.indexOf('engine') >= 0 || lower.indexOf('trail') >= 0);
+          if ((isBell && !isSocket) || isGimbalSocket) {
+            let entry = rec.bells[rec.bellCount];
+            if (!entry) entry = rec.bells[rec.bellCount] = {};
+            entry.node = node;
+            entry.baseY = Number.isFinite(node.rotation.y) ? node.rotation.y : 0;
+            entry.baseZ = Number.isFinite(node.rotation.z) ? node.rotation.z : 0;
+            entry.isPlume = lower.indexOf('plume') >= 0 && !isSocket;
+            entry.isSocket = isSocket;
+            if (node.scale) {
+              entry.baseSX = Number.isFinite(node.scale.x) ? node.scale.x : 1;
+              entry.baseSY = Number.isFinite(node.scale.y) ? node.scale.y : 1;
+              entry.baseSZ = Number.isFinite(node.scale.z) ? node.scale.z : 1;
+            } else {
+              entry.baseSX = 1; entry.baseSY = 1; entry.baseSZ = 1;
+            }
+            rec.bellCount++;
+          }
+        }
+        const children = node.children;
+        if (children && children.length > 0) {
+          for (let i = 0; i < children.length; i++) stack.push(children[i]);
+        }
+      }
+    }
+  }
+
   function bindEvents(bus) {
     if (!bus || typeof bus.on !== 'function') return;
+    busRef = bus;
+    busSubscribers.push(bus.on('entity:killed', onKilled));
+    busSubscribers.push(bus.on('entity:spawned', onSpawned));
+    busSubscribers.push(bus.on('sector:enter', clearSpiralMemory));
+    busSubscribers.push(bus.on('save:loaded', clearSpiralMemory));
+    busSubscribers.push(bus.on('game:newGame', clearSpiralMemory));
     busSubscribers.push(bus.on('combat:fire', onFire));
     busSubscribers.push(bus.on('weapons:vent', onVent));
     busSubscribers.push(bus.on('combat:damage', onDamage));
@@ -274,7 +513,9 @@ export function createShipMicroMotionTracker() {
       if (typeof unsub === 'function') unsub();
     }
     busSubscribers = [];
+    busRef = null;
     craftMotion.clear();
+    clearSpiralMemory();
   }
 
   function updateCraftMicroMotion(entity, mesh, simTime, frameDt, options = {}) {
@@ -371,7 +612,157 @@ export function createShipMicroMotionTracker() {
       idleBreathHeave = Math.sin(t * 1.6) * 0.035 * bScale;
     }
 
-    // 8. High frequency shudder synthesis
+    // 8. Aerospace locomotion: RCS demand, bell gimbal, boost ignition (presentation only)
+    lastSimTime = simTime;
+    const rot = Number.isFinite(entity.rot) ? entity.rot : 0;
+    const cf = Math.cos(rot);
+    const sf = Math.sin(rot);
+    const vx = entity.vel && Number.isFinite(entity.vel.x) ? entity.vel.x : 0;
+    const vz = entity.vel && Number.isFinite(entity.vel.z) ? entity.vel.z : 0;
+    const fwdV = vx * cf + vz * sf;
+    const latV = vx * -sf + vz * cf;
+    const yawRate = Number.isFinite(entity.angVel) ? entity.angVel
+      : (rec.prevRot == null ? 0 : wrapAngle(rot - rec.prevRot) / dt);
+
+    // Signed flight-computer demand when published; otherwise synthesize pseudo-demand from
+    // observed motion deltas so drones and assist trims still justify their attitude puffs.
+    const frame = entity._flightFrame || null;
+    let actuators = frame && frame.actuators ? frame.actuators : null;
+    if (!actuators) {
+      if (!rec.actFallback) rec.actFallback = { lateral: 0, yaw: 0, reverse: 0, main: 0 };
+      const firstObs = rec.prevRot == null;
+      const yawAccel = firstObs ? 0 : (yawRate - rec.prevYawRate) / dt;
+      const latAccel = firstObs ? 0 : (latV - rec.prevLatV) / dt;
+      const fwdAccel = firstObs ? 0 : (fwdV - rec.prevFwdV) / dt;
+      rec.actFallback.lateral = latAccel * RCS_OBSERVED_LAT_GAIN;
+      rec.actFallback.yaw = yawAccel * RCS_OBSERVED_YAW_GAIN;
+      rec.actFallback.reverse = Math.max(0, -fwdAccel) * RCS_OBSERVED_FWD_GAIN;
+      rec.actFallback.main = Math.max(0, fwdAccel) * RCS_OBSERVED_FWD_GAIN;
+      actuators = rec.actFallback;
+    }
+    const sc = defaultActuatorScale;
+    const latRaw = Number.isFinite(actuators.lateral) ? actuators.lateral : 0;
+    const yawRaw = Number.isFinite(actuators.yaw) ? actuators.yaw : 0;
+    const mainRaw = Number.isFinite(actuators.main) ? actuators.main : 0;
+    const latN = clamp(latRaw / sc.strafe, -1, 1);
+    const yawN = clamp(yawRaw / sc.yaw, -1, 1);
+    const mainN = clamp(mainRaw / sc.main, 0, 1);
+    rec.rcsLat = latN;
+    rec.rcsYaw = yawN;
+    rec.rcsMain = mainN;
+
+    if (!rec.rcsPose) rec.rcsPose = { x: 0, z: 0, rot: 0, radius: 6 };
+    if (!rec.rcsFirings) rec.rcsFirings = [];
+    const epos = entity.pos || null;
+    rec.rcsPose.x = epos && Number.isFinite(epos.x) ? epos.x : 0;
+    rec.rcsPose.z = epos && Number.isFinite(epos.z) ? epos.z : 0;
+    rec.rcsPose.rot = rot;
+    rec.rcsPose.radius = Number.isFinite(entity.radius) && entity.radius > 0 ? entity.radius : 6;
+    const firings = resolveRcsFirings(actuators, rec.rcsPose, sc, rec.rcsFirings);
+
+    let rcsMax = 0;
+    let pushX = 0;
+    let pushZ = 0;
+    for (let i = 0; i < firings.length; i++) {
+      const f = firings[i];
+      if (f.intensity > rcsMax) rcsMax = f.intensity;
+      pushX += f.pushX * f.intensity;
+      pushZ += f.pushZ * f.intensity;
+    }
+    rec.rcsMax = rcsMax;
+    // The hull rides WITH the push (reaction physics, centimeters): exhaust kicks one way,
+    // multi-ton hull answers the other. Ship-local: +X forward, +Z starboard.
+    const rcsKickFwd = (pushX * cf + pushZ * sf) * 0.035;
+    const rcsKickLat = (pushX * -sf + pushZ * cf) * 0.035;
+    const rcsRoll = yawN * 0.012;
+    const bankNow = Number.isFinite(entity.bank) ? entity.bank : 0;
+    const pitchRate = rec.prevRot == null ? 0 : (bankNow - rec.prevBank) / dt;
+    const rcsPitchKick = clamp(pitchRate * 0.03, -0.02, 0.02);
+    rec.prevBank = bankNow;
+    rec.prevRot = rot;
+    rec.prevFwdV = fwdV;
+    rec.prevLatV = latV;
+    rec.prevYawRate = yawRate;
+
+    // Boost rising edge: afterburner light-off punch, gimbal snap, plume flare window.
+    if (isBoosting && !rec.prevBoosting) {
+      rec.boostFlashT = BOOST_FLASH_S;
+      rec.recoilVelX -= BOOST_IGNITION_KICK;
+      rec.gimbalYaw += 0.045;
+      rec.gimbalPitch -= 0.03;
+      rec.recoilShudder = Math.max(rec.recoilShudder, 0.3);
+    }
+    rec.prevBoosting = isBoosting;
+    if (rec.boostFlashT > 0) rec.boostFlashT = Math.max(0, rec.boostFlashT - dt);
+
+    // Engine bells steer with stern-local demand (translation minus yaw couple): the drive
+    // visibly aims the push. Pitch nods with main-drive power.
+    if (rec.mountMesh !== mesh) scanMountPivots(rec, mesh, hull);
+    const gimbalScale = reducedMotion ? 0.5 : 1.0;
+    const targetGimbalYaw = (yawN - latN) * GIMBAL_YAW_MAX * gimbalScale;
+    const targetGimbalPitch = -mainN * GIMBAL_PITCH_MAX * gimbalScale;
+    const gimbalK = 1 - Math.exp(-GIMBAL_SMOOTH * dt);
+    rec.gimbalYaw += (targetGimbalYaw - rec.gimbalYaw) * gimbalK;
+    rec.gimbalPitch += (targetGimbalPitch - rec.gimbalPitch) * gimbalK;
+    // Plume flare is multiplicative over the drive-state base (which resets scale every
+    // frame): unapply last frame's factor first so mock graphs without a drive driver
+    // cannot compound, then apply this frame's.
+    const boostFlash01 = rec.boostFlashT > 0 ? rec.boostFlashT / BOOST_FLASH_S : 0;
+    const flare = 1 + boostFlash01 * 1.1 + (isBoosting ? 0.15 : 0);
+    for (let i = 0; i < rec.bellCount; i++) {
+      const b = rec.bells[i];
+      const node = b.node;
+      if (!node || !node.rotation) continue;
+      node.rotation.y = b.baseY + rec.gimbalYaw;
+      node.rotation.z = b.baseZ + rec.gimbalPitch;
+      if (b.isPlume && !b.isSocket && node.scale) {
+        if (rec.flareApplied !== 1 && rec.flareApplied > 0) {
+          node.scale.x /= rec.flareApplied;
+          node.scale.y /= rec.flareApplied;
+          node.scale.z /= rec.flareApplied;
+        }
+        if (flare !== 1) {
+          node.scale.x *= flare;
+          node.scale.y *= flare;
+          node.scale.z *= flare;
+        }
+      }
+    }
+    rec.flareApplied = flare;
+    // RCS nozzle hardware breathes with total attitude effort (absolute set; we own it).
+    const nozzlePulse = 1 + rcsMax * 0.4;
+    for (let i = 0; i < rec.rcsNozzleCount; i++) {
+      const nz = rec.rcsNozzles[i];
+      const node = nz.node;
+      if (!node || !node.scale) continue;
+      node.scale.x = nz.baseSX * nozzlePulse;
+      node.scale.y = nz.baseSY * nozzlePulse;
+      node.scale.z = nz.baseSZ * nozzlePulse;
+    }
+
+    // Throttled cold-gas puff emission for VFX (top two nozzles: a couple reads as a
+    // pair). Culled meshes stay silent. VFX skips owners already served by the production
+    // RCS path, so player and NPCs share this seam without double-puffing.
+    rec.rcsPulseCd -= dt;
+    if (busRef && rcsMax >= RCS_PULSE_MIN_INTENSITY && rec.rcsPulseCd <= 0
+        && mesh.visible !== false && firings.length > 0) {
+      let i0 = 0;
+      for (let i = 1; i < firings.length; i++) {
+        if (firings[i].intensity > firings[i0].intensity) i0 = i;
+      }
+      emitRcsPulse(entity, firings[i0], false);
+      let i1 = -1;
+      for (let i = 0; i < firings.length; i++) {
+        if (i === i0) continue;
+        if (i1 < 0 || firings[i].intensity > firings[i1].intensity) i1 = i;
+      }
+      if (i1 >= 0 && firings[i1].intensity >= RCS_PULSE_MIN_INTENSITY) {
+        emitRcsPulse(entity, firings[i1], false);
+      }
+      rec.rcsPulseCd = reducedMotion ? RCS_PULSE_COOLDOWN_REDUCED_S : RCS_PULSE_COOLDOWN_S;
+    }
+
+    // 9. High frequency shudder synthesis
     const shudderPhase = simTime * 140.0;
     const totalShudder = (rec.recoilShudder + rec.flinchShudder) * (reducedMotion ? 0.2 : 1.0);
     const shudderOffset = totalShudder > 0.002
@@ -381,18 +772,18 @@ export function createShipMicroMotionTracker() {
     // Apply composite displacements to hull.position (local space: +X forward, +Y up, +Z lateral)
     const surgeSquatX = rec.accelSurge * 0.8;
     if (!reducedMotion) {
-      hull.position.x = rec.recoilX + rec.flinchX + boostJitterX + surgeSquatX + jumpShudderX;
+      hull.position.x = rec.recoilX + rec.flinchX + boostJitterX + surgeSquatX + jumpShudderX + rcsKickFwd;
       hull.position.y = idleBreathHeave + boostJitterY;
-      hull.position.z = rec.flinchZ + shudderOffset + jumpShudderZ;
+      hull.position.z = rec.flinchZ + shudderOffset + jumpShudderZ + rcsKickLat;
     } else {
-      hull.position.x = rec.recoilX * 0.3;
+      hull.position.x = rec.recoilX * 0.3 + rcsKickFwd * 0.3;
       hull.position.y = 0;
-      hull.position.z = 0;
+      hull.position.z = rcsKickLat * 0.3;
     }
 
     // Additive secondary angular micro-motion
-    hull.rotation.x += (rec.flinchRoll + idleBreathRoll) * (reducedMotion ? 0.3 : 1.0);
-    hull.rotation.z += (rec.recoilPitch + rec.flinchPitch + rec.accelSurge + idleBreathPitch) * (reducedMotion ? 0.3 : 1.0);
+    hull.rotation.x += (rec.flinchRoll + idleBreathRoll + rcsRoll) * (reducedMotion ? 0.3 : 1.0);
+    hull.rotation.z += (rec.recoilPitch + rec.flinchPitch + rec.accelSurge + idleBreathPitch + rcsPitchKick) * (reducedMotion ? 0.3 : 1.0);
 
     // 9. Weapon thermal dissipation & cooling fin blackbody glow
     if (rec.isVenting) {
@@ -517,6 +908,111 @@ export function createShipMicroMotionTracker() {
     }
   }
 
+  // Death spiral for fresh wrecks near a witnessed kill: uncontrolled spin with runaway
+  // attitude thrusters, secondary armor-seam pops, then a core detonation flash. Owns the
+  // wreck ROOT transform (updateWreckMotion owns children[0]), so both run every frame with
+  // no handoff snap: the spin composes with dead drift, then freezes as a static knock angle.
+  function updateDeathSpiral(entity, mesh, simTime, frameDt, a11y = {}) {
+    if (!entity || !mesh || entity.type !== 'wreck') return false;
+    lastSimTime = simTime;
+    const dt = Math.min(0.05, Math.max(0.001, frameDt));
+    const rec = getRecord(entity.id);
+    if (rec.spiralState === 2) {
+      if (rec.spiralY !== 0 && mesh.rotation) mesh.rotation.y += rec.spiralY;
+      return true;
+    }
+    if (rec.spiralState === 0) {
+      if (spiralDone.get(entity.id)) return false;
+      const data = entity.data || null;
+      if (!data || data.parentType !== 'ship') return false;
+      if (!entity.pos || !Number.isFinite(entity.pos.x) || !Number.isFinite(entity.pos.z)) return false;
+      if (!matchFreshKill(entity.pos.x, entity.pos.z, simTime)) return false;
+      spiralDone.set(entity.id, 1);
+      rec.spiralState = 1;
+      rec.spiralT0 = simTime;
+      const idNum = Number(entity.id);
+      rec.spiralDir = (Number.isFinite(idNum) && Math.abs(Math.trunc(idNum)) % 2 === 1) ? -1 : 1;
+      rec.spiralY = 0;
+      rec.spiralFlashDone = false;
+      rec.spiralPopCd = 0.12;
+      rec.spiralRcsCd = 0;
+      rec.spiralRcsSide = 1;
+    }
+    const reduced = !!(a11y && a11y.reducedMotion === true);
+    const age = simTime - rec.spiralT0;
+    if (age >= DEATH_SPIRAL_S) {
+      rec.spiralState = 2;
+      return true;
+    }
+    const k = clamp01(age / DEATH_SPIRAL_S);
+    const ease = 1 - k * k;
+    const rate = (DEATH_SPIN_END + (DEATH_SPIN_START - DEATH_SPIN_END) * ease)
+      * rec.spiralDir * (reduced ? 0.3 : 1.0);
+    const dy = rate * dt;
+    rec.spiralY += dy;
+    if (mesh.rotation) {
+      // Root yaw is pose-owned (absolute every synced frame): add the running TOTAL so the
+      // spin survives the reset. Root pitch/roll persist, so they accumulate directly.
+      mesh.rotation.y += rec.spiralY;
+      mesh.rotation.x += dy * 0.45;
+      mesh.rotation.z += dy * 0.3;
+    }
+    const radius = Number.isFinite(entity.radius) && entity.radius > 0 ? entity.radius : 6;
+    const meshVisible = mesh.visible !== false;
+    // Runaway attitude thrusters: alternating corner firings walking bow/stern.
+    rec.spiralRcsCd -= dt;
+    if (busRef && rec.spiralRcsCd <= 0 && meshVisible) {
+      rec.spiralRcsSide = -rec.spiralRcsSide;
+      const side = rec.spiralRcsSide;
+      const bow = (Math.floor(age / 0.18) % 2 === 0) ? 1 : -1;
+      const rot = Number.isFinite(entity.rot) ? entity.rot : 0;
+      const a = rot + rec.spiralY;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+      const lx = bow * radius * 0.45;
+      const lz = side * radius * 0.3;
+      rcsPulsePayload.x = entity.pos.x + lx * ca - lz * sa;
+      rcsPulsePayload.z = entity.pos.z + lx * sa + lz * ca;
+      rcsPulsePayload.dirX = -sa * side;
+      rcsPulsePayload.dirZ = ca * side;
+      rcsPulsePayload.intensity = reduced ? 0.55 : 0.9;
+      rcsPulsePayload.radius = radius;
+      rcsPulsePayload.shipId = entity.id != null ? entity.id : 0;
+      rcsPulsePayload.runaway = true;
+      busRef.emit('ship:rcsPulse', rcsPulsePayload);
+      rec.spiralRcsCd = reduced ? 0.16 : 0.09;
+    }
+    // Secondary explosions popping through armor seams (before the core lets go).
+    rec.spiralPopCd -= dt;
+    if (busRef && rec.spiralPopCd <= 0 && age < DEATH_FLASH_AT_S && meshVisible) {
+      const seam = Math.random() * Math.PI * 2;
+      const rr = radius * (0.2 + Math.random() * 0.35);
+      deathPopPayload.x = entity.pos.x + Math.cos(seam) * rr;
+      deathPopPayload.z = entity.pos.z + Math.sin(seam) * rr;
+      deathPopPayload.radius = radius;
+      deathPopPayload.shipId = entity.id != null ? entity.id : 0;
+      deathPopPayload.seam = seam;
+      busRef.emit('ship:deathPop', deathPopPayload);
+      rec.spiralPopCd = reduced ? 0.34 : 0.22;
+    }
+    // Core detonation flash: light, shake (distance-attenuated by the renderer), boom.
+    if (busRef && !rec.spiralFlashDone && age >= DEATH_FLASH_AT_S) {
+      rec.spiralFlashDone = true;
+      deathFlashPayload.x = entity.pos.x;
+      deathFlashPayload.z = entity.pos.z;
+      deathFlashPayload.radius = radius;
+      deathFlashPayload.shipId = entity.id != null ? entity.id : 0;
+      busRef.emit('ship:deathFlash', deathFlashPayload);
+      spiralShakePayload.amount = reduced ? 0.12 : 0.3;
+      spiralShakePayload.position.x = entity.pos.x;
+      spiralShakePayload.position.z = entity.pos.z;
+      busRef.emit('camera:shake', spiralShakePayload);
+      spiralAudioPayload.id = 'sfx_explosion_small';
+      busRef.emit('audio:cue', spiralAudioPayload);
+    }
+    return true;
+  }
+
   function prune(activeEntityIds) {
     if (!activeEntityIds || typeof activeEntityIds.has !== 'function') return;
     for (const id of craftMotion.keys()) {
@@ -524,12 +1020,16 @@ export function createShipMicroMotionTracker() {
         craftMotion.delete(id);
       }
     }
+    for (const id of spiralDone.keys()) {
+      if (!activeEntityIds.has(id)) spiralDone.delete(id);
+    }
   }
 
   return {
     bindEvents,
     unbindEvents,
     updateCraftMicroMotion,
+    updateDeathSpiral,
     onFire,
     onVent,
     onDamage,
@@ -542,6 +1042,8 @@ export function createShipMicroMotionTracker() {
     onJumpArrive,
     onJumpChargeAbort,
     onDocked,
+    onKilled,
+    onSpawned,
     prune,
     getRecord,
   };

@@ -8846,6 +8846,8 @@ export const render = {
             globalInfrastructureMotion.updateStationMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
           }
         } else if (typeName === 'wreck') {
+          // Fresh kill wrecks spiral (root-owned) while dead drift continues (child-owned).
+          globalShipMicroMotion.updateDeathSpiral(entity, mesh, simTime, frameDt, _worldSiteA11y);
           globalInfrastructureMotion.updateWreckMotion(entity, mesh, simTime, frameDt, _worldSiteA11y);
         }
       }
