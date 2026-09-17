@@ -49,7 +49,7 @@ import {
   sectorLocalToGlobalForSector,
 } from '../data/sectorCoordinates.js';
 import { makeEnemySpawnSpec } from './combat.js';
-import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptText } from '../data/encounters.js';
+import { ENCOUNTERS, NAMED_CAPTAINS, barkText, receiptTextWithFallback } from '../data/encounters.js';
 import { ENCOUNTER_MODULES } from '../data/encounters/index.generated.js';
 import { ENEMY_TYPES } from '../data/enemies.js';
 import { ENCOUNTER_SCRIPTS } from './encounterScripts.js';
@@ -1339,7 +1339,7 @@ export const encounterDirector = {
       t: now,
     });
     const text = (live.shape.receipts && live.shape.receipts[outcome])
-      || receiptText(live.shapeId, outcome, o.vars || live.vars);
+      || receiptTextWithFallback(live.shapeId, live.script, outcome, o.vars || live.vars);
     if (text && o.speak !== false) {
       const voice = this.helpers && this.helpers.voice;
       if (voice && typeof voice.say === 'function') voice.say({ channel: o.channel || 'info', text, kind: 'receipt' });

@@ -317,6 +317,12 @@ export const ENCOUNTER_RECEIPTS = Object.freeze({
   'curtain_convoy.robbed':   'CONVOY RAIDED — law logs the incident.',
   'curtain_convoy.lost':     'CONVOY LOST — {dest} prices will feel it.',
   'trader_run.arrived':      'HAULER ARRIVED — {dest} takes delivery.',
+  'trader_run.robbed':       'HAULER RAIDED — law logs the incident.',
+  'trader_run.lost':         'HAULER LOST — {dest} prices will feel it.',
+  'ghost_on_the_bearing.cleared': 'GHOST BROKEN — the Quiet bearing goes silent.',
+  'ghost_on_the_bearing.escaped': 'GHOST EVADED — it keeps to the dark between lanes.',
+  'pattern_refrain.cleared':  'REFRAIN BROKEN — the Choir withdraws its verse.',
+  'pattern_refrain.escaped':  'REFRAIN EVADED — the pattern resolves without you.',
   'salvage_signal.recovered':'BLACK BOX RECOVERED — new lead logged.',
   'salvage_signal.stripped': 'CACHE STRIPPED — salvage secured.',
   'named_hunter.killed':     'HUNTER DOWN — {name} removed from the lanes.',
@@ -413,6 +419,31 @@ export function barkText(barkId, vars, pickKey) {
 /** The receipt text for a shape+outcome with `{key}` substitution ('' if the outcome is silent). */
 export function receiptText(shapeId, outcome, vars) {
   return fmt(ENCOUNTER_RECEIPTS[`${shapeId}.${outcome}`] || '', vars);
+}
+
+// Classic shape per script: the 010–120 originals whose receipt rows double as the family
+// voice. Newer shapes on the same scripts resolve silently unless they carry their own
+// rows — the director falls back to these so no outcome goes quiet. Scripts without an
+// entry stay silent by design (patrolBeat resolves quietly; self-registered shapes carry
+// their own receipts; followOnStub never resolves).
+export const RECEIPT_FAMILY_BY_SCRIPT = Object.freeze({
+  toll: 'pirate_toll',
+  ambush: 'ambush_snare',
+  patrolScan: 'patrol_scan',
+  convoy: 'convoy_departure',
+  traderRun: 'trader_run',
+  distress: 'distress_call',
+  salvageSignal: 'salvage_signal',
+  whisper: 'anomaly_whisper',
+  bountyHunter: 'bounty_hunter',
+  claimThreat: 'claim_threat',
+  namedHunter: 'named_hunter',
+});
+
+/** Shape receipt with family fallback: own row, else the script's classic row, else ''. */
+export function receiptTextWithFallback(shapeId, script, outcome, vars) {
+  return receiptText(shapeId, outcome, vars)
+    || receiptText(RECEIPT_FAMILY_BY_SCRIPT[script], outcome, vars);
 }
 
 /** Tiny `{key}` template substitution (pure; missing keys render as ''). */
