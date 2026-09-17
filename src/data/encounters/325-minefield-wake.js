@@ -40,7 +40,7 @@ export default defineEncounter(trigger, {
     doctrine: 'scavenger',
     formation: 'loose',
   },
-  bark: 'toll_demand',
+  bark: 'wake_tithe_demand',
   telegraph: 'Wake mines arming. Break the trail.',
   aftermath: {
     flee: 'Jackal dumps scrap and seeds a second wake on exit.',

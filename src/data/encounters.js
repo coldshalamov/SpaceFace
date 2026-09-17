@@ -112,6 +112,17 @@ export const ENCOUNTER_BARKS = Object.freeze({
     'Broke answer. Scrape the hold for value.',
     'Accounts dry. Payment due in stripped cargo.',
   ]),
+  // minefield wake demand — Reach jackal crew; tithe is weighed in goods, not credits
+  wake_tithe_demand: Object.freeze([
+    'REACH: jettison a {amount} cr tithe or clear the wake.',
+    'REACH: tithe {amount} in goods, or we take the hold.',
+    'JACKAL: weigh off {amount} cr of cargo, or run the mines.',
+  ]),
+  wake_tithe_paid: Object.freeze([
+    'Tithe taken. The wake holds its fire.',
+    'Weigh-off good. Clear the lane.',
+    'Taken. The mines stay sleeping.',
+  ]),
   // patrol scan — Concord [0,1,3] bureaucratic; Meridian [2,4] border-control voice
   patrol_scan_hail: Object.freeze([
     'CONCORD: cut thrust for scan.',
@@ -265,6 +276,9 @@ export const ENCOUNTER_RECEIPTS = Object.freeze({
   'pirate_toll.paid':        'TOLL PAID — {amount} cr. Cargo intact, Reach cools.',
   'pirate_toll.cleared':     'RAIDERS DOWN — toll lane cleared.',
   'pirate_toll.escaped':     'TOLL EVADED — Reach marks your wake.',
+  'minefield_wake.paid':     'TITHE PAID — {tithe}. The wake holds its fire and peels off to scoop.',
+  'minefield_wake.cleared':  'WAKE CLEARED — mine rack scrap and a half-finished weigh-slip remain.',
+  'minefield_wake.escaped':  'WAKE EVADED — the trap did not hold you.',
   'patrol_scan.clean':       'SCAN CLEAR — Concord logged you clean.',
   'patrol_scan.fined':       'FINED {fine} cr — contraband seized.',
   'patrol_scan.bribed':      'BRIBE TAKEN — patrol looked away.',

@@ -298,6 +298,7 @@ test('shape 325 minefield_wake seeds mines on ambush spring', () => {
     minDist2ToSquad() { return 0; },
     player() { return t.player; },
     aliveCount() { return 1; },
+    entsOf() { return []; },
     despawnAll() {},
     resolve() {},
     dangerImpulse() {},

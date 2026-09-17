@@ -66,6 +66,46 @@ const CLAIM_RETREAT_HOLD_S = 12;  // brief overshoots do not forfeit the defense
 const MINEFIELD_WAKE_COUNT = 3;   // mines seeded on minefield_wake spring
 const MINEFIELD_WAKE_SPACING = 70;
 
+// Demand mode: an ambush shape that declares choices gets a voiced demand and a decision
+// window instead of a silent stalk. The Ceres activity adoption keeps its choreography.
+function ambushHasDemand(live) {
+  return !!(live && live.shape && Array.isArray(live.shape.choices) && live.shape.choices.length > 0
+    && !(live.data && live.data.ceresActivityAmbush === true));
+}
+
+// The spring, shared by proximity, refusal, timeout and opening fire: the squad goes
+// hot, the trap shuts, and the wake (325) seeds its mines behind the jackal.
+// The trigger stamp is load-bearing, not bookkeeping: the engagement authority denies
+// cargo_extortion shots until the robbery escalates (explicit_refusal / ignored_demand /
+// player_attack). An unstamped spring maneuvers but can never fire.
+function springAmbush(d, live, state, player, trigger = 'ignored_demand') {
+  d.setPassive(live, false);
+  live.phase = 'conflict';
+  settleWakeMotive(d, live, trigger);
+  d.say(live, 'alert', 'ambush_spring');
+  // W03 shape 325: mine_layer_jackal seeds wake mines on spring (telegraph cue wake_mines).
+  if (live.shapeId === 'minefield_wake') seedMinefieldWake(d, live, state, player || d.player());
+  // A demand-mode shape also speaks its authored telegraph as the trap shuts — 325's
+  // "Wake mines arming. Break the trail." was declared but never voiced.
+  if (ambushHasDemand(live) && live.shape.telegraph) {
+    d.say(live, 'alert', live.shape.telegraph, null, { literal: true });
+  }
+}
+
+// Toll-standard motive settling for the wake: every spring path stamps how the robbery
+// escalated, so the engagement authority releases the squad's guns. The Ceres activity
+// adoption is excluded: its AI state is world-owned with an exact-restore contract.
+function settleWakeMotive(d, live, trigger) {
+  if (live && live.data && live.data.ceresActivityAmbush === true) return;
+  for (const entity of d.entsOf(live)) {
+    const data = entity.data || (entity.data = {});
+    const ai = data.ai || (data.ai = {});
+    ai.motive = (live.shape && live.shape.motive) || 'cargo_extortion';
+    ai.engagementTrigger = trigger;
+    ai.motiveSatisfied = false;
+  }
+}
+
 /**
  * W03: seed physical mines behind the jackal on minefield_wake spring.
  * Prefer the registered mines system helper; fall back to bus placeRequest.
@@ -426,8 +466,17 @@ const ambush = {
     live.phase = 'offer';                               // "offer" = the telegraph window
     live.data.springAt = d.now() + 4;
     live.data.snared = false;
-    live.deadlineAt = d.now() + 300;
-    d.say(live, 'bark', 'ambush_tele', null, { primary: true });
+    // Demand mode: an ambush shape that declares choices (minefield wake) voices its own
+    // demand bark and opens the decision window. Choiceless ambushes keep the 300 s stalk.
+    if (ambushHasDemand(live)) {
+      live.vars.amount = tollAmountFor(d.cargoValue());
+      live.deadlineAt = d.now() + (live.shape.offerS || 12);
+      d.say(live, 'bark', live.shape.bark || 'ambush_tele', live.vars, { primary: true });
+      d.offerChoices(live, live.shape.choices.map((c) => c.id), live.shape.timeoutChoice || 'refuse', live.deadlineAt);
+    } else {
+      live.deadlineAt = d.now() + 300;
+      d.say(live, 'bark', 'ambush_tele', null, { primary: true });
+    }
     // Cruise interdiction: one snare per shape instance, warned ≥1 s ahead — a vector break or
     // manual cruise-drop inside the warning defeats it (the counterplay IS the design).
     const cruise = state.player && state.player.cruise;
@@ -451,14 +500,15 @@ const ambush = {
     if (live.phase === 'offer') {
       const springNow = now >= live.data.springAt && d.minDist2ToSquad(live, p) <= AMBUSH_SPRING_R * AMBUSH_SPRING_R;
       if (springNow) {
-        d.setPassive(live, false);
-        live.phase = 'conflict';
-        d.say(live, 'alert', 'ambush_spring');
-        // W03 shape 325: mine_layer_jackal seeds wake mines on spring (telegraph cue wake_mines).
-        if (live.shapeId === 'minefield_wake') seedMinefieldWake(d, live, state, p);
+        springAmbush(d, live, state, p);
         return;
       }
-      if (now >= live.deadlineAt) { d.despawnAll(live, 10); return d.resolve(live, 'escaped', { speak: false }); }
+      // Demand mode: silence at the deadline shuts the wake (325's declared timeout
+      // choice is refuse). Choiceless ambushes keep the quiet stalk-away.
+      if (now >= live.deadlineAt) {
+        if (ambushHasDemand(live)) return ambush.choose(d, live, state, 'timeout');
+        d.despawnAll(live, 10); return d.resolve(live, 'escaped', { speak: false });
+      }
       return;
     }
     if (live.phase === 'conflict') {
@@ -470,8 +520,38 @@ const ambush = {
     }
   },
 
+  choose(d, live, state, choiceId) {
+    if (live.phase !== 'offer' || !ambushHasDemand(live)) return;
+    if (choiceId === 'pay') {
+      const amount = live.vars.amount | 0;
+      if (d.cargoValue() < amount) {
+        d.say(live, 'bark', 'toll_broke_ack');
+        return ambush.choose(d, live, state, 'refuse');
+      }
+      const tithe = d.takeTithe(amount);
+      d.rep('faction_reach', 1, 'wake_tithe_paid');        // pirates respect a payer, slightly
+      d.dangerImpulse(live, 'wake_tithe_paid', -0.01);
+      d.say(live, 'bark', 'wake_tithe_paid');
+      d.despawnAll(live, 22);                              // they peel off to scoop the tithe
+      return d.resolve(live, 'paid', { vars: { ...live.vars, tithe: tithe.label } });
+    }
+    if (choiceId === 'run') {
+      d.say(live, 'bark', 'toll_flee_ack');
+      d.despawnAll(live, 18);
+      return d.resolve(live, 'escaped');
+    }
+    // refuse (and the response to opening fire): the demand collapses into the spring —
+    // mines and all. Timeout arrives as 'timeout' so silence stamps ignored_demand while
+    // an explicit refusal stamps explicit_refusal, mirroring the toll contract.
+    d.say(live, 'bark', 'toll_refused_ack');
+    const trigger = choiceId === 'attack' ? 'player_attack'
+      : choiceId === 'timeout' ? 'ignored_demand' : 'explicit_refusal';
+    springAmbush(d, live, state, d.player(), trigger);
+  },
+
   event(d, live, state, name) {
     if (name === 'playerHitSquad' && live.phase === 'offer') {
+      if (ambushHasDemand(live)) return ambush.choose(d, live, state, 'attack');
       d.setPassive(live, false);
       live.phase = 'conflict';
       d.say(live, 'alert', 'ambush_spring');

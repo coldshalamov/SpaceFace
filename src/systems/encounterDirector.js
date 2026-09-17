@@ -832,6 +832,37 @@ export const encounterDirector = {
     }
     return dumped;
   },
+  // Cargo tithe for demand-mode ambushes (minefield wake): pirates take the best goods
+  // first — highest base price first until the tithe value is covered. Quest-persistent
+  // cargo is never touched (removeCargo refuses it). Returns what left the hold.
+  takeTithe(amount) {
+    const state = this.state;
+    const taken = [];
+    const items = state.player && state.player.cargo && state.player.cargo.items;
+    let need = Math.max(0, Math.round(Number(amount) || 0));
+    if (!items || need <= 0) return { taken, value: 0, label: 'nothing' };
+    const ids = Object.keys(items).filter((id) => (items[id] | 0) > 0 && CMDTY.get(id));
+    ids.sort((a, b) => (CMDTY.get(b).basePrice || 0) - (CMDTY.get(a).basePrice || 0));
+    let value = 0;
+    for (const id of ids) {
+      if (need <= 0) break;
+      const def = CMDTY.get(id);
+      const price = def.basePrice || 0;
+      if (price <= 0) continue;
+      const qty = Math.min(items[id] | 0, Math.ceil(need / price));
+      if (qty <= 0) continue;
+      const removed = removeCargo(state, id, qty) | 0;
+      if (removed > 0) {
+        taken.push({ id, qty: removed });
+        value += removed * price;
+        need -= removed * price;
+      }
+    }
+    const label = taken.length
+      ? taken.map((t) => `${t.qty}× ${(CMDTY.get(t.id) && CMDTY.get(t.id).name) || t.id}`).join(', ')
+      : 'nothing';
+    return { taken, value, label };
+  },
   stationsInSector() {
     const active = this.state.world && this.state.world.activeSector;
     const out = [];
@@ -1210,6 +1241,7 @@ export const encounterDirector = {
       const def = defs.find((c) => c.id === id) || { id, label: id };
       let available = true;
       if (def.needs === 'credits') available = (state.player.credits | 0) >= (live.vars.amount | 0);
+      else if (def.needs === 'cargo') available = this.cargoValue() >= (live.vars.amount | 0);
       else if (def.needs === 'contraband') available = this.hasContraband();
       else if (def.needs === 'contraband+credits') available = this.hasContraband() && (state.player.credits | 0) >= Math.round(this.fineEstimate() * 0.3);
       options.push({ id: def.id, label: def.label, available });
