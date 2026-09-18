@@ -11331,6 +11331,12 @@ export const vfx = {
         { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
       ];
       this._retroSocketView = [];
+      // Last held bow pose, so a released brake can spool down at the position it left (B10).
+      this._retroHeldSockets = [
+        { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+        { x: 0, y: 0, z: 0, ax: 1, ay: 0, az: 0 },
+      ];
+      this._retroHeldCount = 0;
       this._retroParams = { ...PLAYER_RETRO_VOLUME_RECIPE, drive: 0, boost: 0, turbulence: 0 };
     }
   },
@@ -11775,7 +11781,29 @@ export const vfx = {
       }
     }
 
-    if (!view.length) { volume.reset(); return; }
+    if (!view.length) {
+      // Release tail: the demand is gone but the spool may still be winding down. Reuse the last
+      // held pose so the pair shrinks in place instead of popping off (B10).
+      const spool = Number.isFinite(volume.spool) ? volume.spool : 0;
+      if (this._retroHeldCount > 0 && spool > 0) {
+        for (let i = 0; i < this._retroHeldCount; i++) view.push(this._retroHeldSockets[i]);
+        const cam = this.state.render && this.state.render.camera;
+        if (cam) volume.setCamera(cam);
+        applyPlayerRetroVolume(volume, view, 0, dt, a11y, this._retroParams);
+        return;
+      }
+      volume.reset();
+      return;
+    }
+
+    // Retain the live pose for the release tail.
+    this._retroHeldCount = Math.min(view.length, this._retroHeldSockets.length);
+    for (let i = 0; i < this._retroHeldCount; i++) {
+      const dst = this._retroHeldSockets[i];
+      const src = view[i];
+      dst.x = src.x; dst.y = src.y; dst.z = src.z;
+      dst.ax = src.ax; dst.ay = src.ay; dst.az = src.az;
+    }
 
     const cam = this.state.render && this.state.render.camera;
     if (cam) volume.setCamera(cam);

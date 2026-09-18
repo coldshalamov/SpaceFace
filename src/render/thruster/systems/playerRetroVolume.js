@@ -22,6 +22,26 @@ export function productionPlayerReverseNeedleSprites() {
   return 0;
 }
 
+// Retro spool. A held brake must bite quickly, and a released one must not snap the bow pair off
+// on the first frame the demand crosses zero (B10). Rise is faster than fall, like the main drive.
+export const RETRO_SPOOL_RISE_TAU = 0.14;
+export const RETRO_SPOOL_FALL_TAU = 0.24;
+
+/**
+ * Asymmetric one-pole spool for the retro pair. The spool lives on the volume instance so the
+ * release keeps the last held pose while the demand decays to exactly zero (no idle stub).
+ */
+export function integrateRetroSpool(volume, demand, dt) {
+  const target = Math.max(0, Math.min(1.4, Number(demand) || 0));
+  const current = Number.isFinite(volume.spool) ? volume.spool : 0;
+  const tau = target > current ? RETRO_SPOOL_RISE_TAU : RETRO_SPOOL_FALL_TAU;
+  const d = Math.max(0, Math.min(0.1, Number.isFinite(dt) ? dt : 0));
+  let next = current + (target - current) * (1 - Math.exp(-d / tau));
+  if (next < 1e-4) next = 0;
+  volume.spool = next;
+  return next;
+}
+
 export function retroEnvelopeForDemand(peak, a11y = null) {
   const drive = Math.max(0, Math.min(1.4, Number(peak) || 0));
   const flashScale = a11y && a11y.reducedFlash ? 0.72 : 1;
@@ -71,7 +91,9 @@ export function applyPlayerRetroVolume(volume, sockets, peak, dt, a11y, paramsOu
       construction: RETRO_JET_CONSTRUCTION,
     };
   }
-  if (!sockets || !sockets.length || !(peak > 0.001)) {
+  // Spool first: a zero demand releases from the current spool instead of cutting the pair off.
+  const spool = integrateRetroSpool(volume, peak, dt);
+  if (!sockets || !sockets.length || spool <= 0) {
     if (typeof volume.reset === 'function') volume.reset();
     return {
       live: 0,
@@ -80,7 +102,7 @@ export function applyPlayerRetroVolume(volume, sockets, peak, dt, a11y, paramsOu
       construction: RETRO_JET_CONSTRUCTION,
     };
   }
-  const envelope = retroEnvelopeForDemand(peak, a11y);
+  const envelope = retroEnvelopeForDemand(spool, a11y);
   if (paramsOut) {
     paramsOut.drive = envelope.drive;
     paramsOut.animRate = envelope.animRate;
@@ -192,6 +214,8 @@ export class PlayerRetroJets {
     };
     this._camObj = null;
     this._liveCount = 0;
+    // Asymmetric spool state owned here so the release can decay across frames (B10).
+    this.spool = 0;
     this._disposed = false;
   }
 
@@ -246,6 +270,7 @@ export class PlayerRetroJets {
 
   reset() {
     this._liveCount = 0;
+    this.spool = 0;
     for (let i = 0; i < this._plumes.length; i++) {
       this._plumes[i].reset();
       this._forges[i].update(null, null, this._shape);
