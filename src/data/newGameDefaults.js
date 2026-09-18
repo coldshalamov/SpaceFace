@@ -5,7 +5,10 @@
 export const NEW_GAME = {
   credits: 5000,
   shipId: 'ship_kestrel',
-  cargoCapacity: 40,
+  // Must match the starter Kestrel's derived cargo cap (no cargo modules in the default
+  // fit): live capVolume syncs from derived stats, so a stale constant here silently models
+  // the wrong hold in benchmarks and corrupt-save fallbacks.
+  cargoCapacity: 250,
   startingSectorId: 'sector_helios_prime',
 
   // Starting reputation per faction (ARCHITECTURE §3.10).

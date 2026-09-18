@@ -30,6 +30,8 @@ import {
 import { ROUTE_EXECUTOR_SCHEMA, ROUTE_EXECUTOR_STATUS, summarizeExecutor } from '../src/systems/routeFollower.js';
 
 const MAP_SOURCE = readFileSync(new URL('../src/ui/galaxyMap.js', import.meta.url), 'utf8');
+// Mounted control markup lives in the extracted navigation frame, not galaxyMap.js.
+const FRAME_SOURCE = readFileSync(new URL('../src/ui/views/navigationFrame.js', import.meta.url), 'utf8');
 const FOLLOWER_SOURCE = readFileSync(new URL('../src/systems/routeFollower.js', import.meta.url), 'utf8');
 const WORLD_SOURCE = readFileSync(new URL('../src/systems/world.js', import.meta.url), 'utf8');
 
@@ -264,7 +266,7 @@ test('a disabled action FAILS CLOSED — it can never fire a fake success', () =
 // --- reachability on the default route --------------------------------------------------------
 
 test('the engage control is wired into the shipped map DOM, not a hidden candidate', () => {
-  assert.match(MAP_SOURCE, /id="gm-engage-route-btn"/, 'the button must exist in the mounted markup');
+  assert.match(FRAME_SOURCE, /id="gm-engage-route-btn"/, 'the button must exist in the mounted markup');
   assert.match(
     MAP_SOURCE,
     /_engageButton\.addEventListener\('click'/,
@@ -289,7 +291,7 @@ test('routeFollower listens for exactly the events this control emits', () => {
 });
 
 test('the reason element is announced to assistive tech and carries non-colour semantics', () => {
-  assert.match(MAP_SOURCE, /id="gm-engage-reason"[^>]*aria-live="polite"/,
+  assert.match(FRAME_SOURCE, /id="gm-engage-reason"[^>]*aria-live="polite"/,
     'a state change the player cannot see must still be announced');
   assert.match(MAP_SOURCE, /data-engage-state/,
     'state must be encoded as an attribute, not only as a colour');

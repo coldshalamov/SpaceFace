@@ -240,7 +240,8 @@ test('gamepad map entry has a deterministic focused scale control', () => {
   assert.match(galaxyMap, /mapFocusButtonSelector\(intent\)[\s\S]*querySelector\(focusSelector\)[\s\S]*\.focus\(/,
     'the live onShow path must focus the resolved gamepad scale control');
   // Regression: search must not be the first Tab stop / focus fallback, or M types into the box.
-  assert.match(galaxyMap, /gm-search-input[^>]*tabindex="-1"/,
+  // The input markup lives in the extracted navigation frame, not galaxyMap.js.
+  assert.match(read('../src/ui/views/navigationFrame.js'), /gm-search-input[^>]*tabindex="-1"/,
     'search is programmatic-only (Press /); never the autoFocus first-operable fallback');
   assert.match(galaxyMap, /_root\.focus/,
     'keyboard/pointer open parks focus on the dialog root so M/N still close the map');

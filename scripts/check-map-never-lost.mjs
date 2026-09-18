@@ -166,6 +166,20 @@ globalThis.window = {
   addEventListener() {},
   removeEventListener() {},
 };
+// Node has no Path2D; the map paints its vector glyphs through `new Path2D(d)` (see
+// src/ui/glyphs.js). A recording stand-in keeps the wired route drawable headlessly.
+// Nothing asserts on the recorded ops today — texts/arcs carry the assertions.
+if (typeof globalThis.Path2D !== 'function') {
+  globalThis.Path2D = class Path2D {
+    constructor(d) { this.d = d == null ? '' : String(d); this.ops = []; }
+    moveTo(x, y) { this.ops.push(['M', x, y]); }
+    lineTo(x, y) { this.ops.push(['L', x, y]); }
+    closePath() { this.ops.push(['Z']); }
+    rect(x, y, w, h) { this.ops.push(['R', x, y, w, h]); }
+    arc(x, y, r) { this.ops.push(['A', x, y, r]); }
+    addPath(other) { this.ops.push(['P', other && other.d]); }
+  };
+}
 
 const {
   galaxyMapScreen,

@@ -1758,7 +1758,9 @@ function checkTrafficUsesEntityIndexesForStationsAndAsteroids() {
     team: 2,
     pos: { x: 0, z: 0 },
     rot: 0,
-    data: { ai: { passive: true }, combat: {} },
+    // Traffic ownership is keyed on data.trafficRole (activityRuntime): without the tag the
+    // hull classifies as AI-owned and update() never steps it, so the index assertion is vacuous.
+    data: { ai: { passive: true }, combat: {}, trafficRole: 'miner' },
   };
   const asteroids = [rock];
   for (let i = 0; i < 120; i++) {
@@ -1795,6 +1797,10 @@ function checkTrafficUsesEntityIndexesForStationsAndAsteroids() {
   const originalEntityList = state.entityList;
   state.entityList = nonIterableEntityList(originalEntityList.length,
     'traffic should use entityIndex buckets instead of iterating or filtering entityList during flight updates');
+  // Ambient planning runs on a staggered cadence (shouldAmbientHaulerPlan): entity id 4 plans on
+  // odd ticks, so a single update at the fixture's tick 0 would never reach the stepper. The check
+  // owns what the stepper reads, not when cadence fires.
+  state.tick = 1;
   try {
     assert.equal(traffic._sectorStations(), state.entityIndex.dockStations,
       'traffic station lookup should reuse the indexed non-gate station bucket');
@@ -2234,8 +2240,9 @@ function checkMissionCompletionAutosaveSeesSettledState() {
   missions._completeMission(mission, 0);
 
   assert.equal(state.missions.active.length, 0, 'completed mission should leave active missions immediately');
-  assert.equal(state.player.researchPoints, 4, 'recon completion should award research points before completion autosave');
-  assert.equal(autosaveData.player.researchPoints, 4, 'mission-completed autosave should include research point rewards');
+  // Recon RP is risk-scaled (4 + riskTier * 2): 6 at this fixture's riskTier 1.
+  assert.equal(state.player.researchPoints, 6, 'recon completion should award research points before completion autosave');
+  assert.equal(autosaveData.player.researchPoints, 6, 'mission-completed autosave should include research point rewards');
   assert.equal(autosaveData.player.stats.missionsDone, 1, 'mission-completed autosave should include mission stats');
   assert.equal(autosaveData.missions.active.length, 0, 'mission-completed autosave should not persist a completed mission as active');
   assert.equal(autosaveData.missions.completedLog[0].type, 'recon_scan', 'mission-completed autosave should include completion log');
@@ -3536,11 +3543,13 @@ function checkFailedCargoFitDoesNotDuplicateModules() {
       ownedShips: [{ defId: 'ship_atlas', fittings }],
       activeShipIndex: 0,
       cargo: {
-        items: { cmdty_silicate: 650 },
-        usedVolume: 650,
-        usedMass: 650,
-        capVolume: 678,
-        capMass: 999,
+        // Genuine overflow band on current Atlas numbers: compactor cap 4151 > used >
+        // expander cap 3660, so swapping compactor L for expander L must be rejected.
+        items: { cmdty_silicate: 4000 },
+        usedVolume: 4000,
+        usedMass: 4000,
+        capVolume: 4151,
+        capMass: 9999,
       },
       moduleInventory: [inventoryItem],
       researchedNodes: ['tech_bulk_logistics', 'tech_matter_compression'],

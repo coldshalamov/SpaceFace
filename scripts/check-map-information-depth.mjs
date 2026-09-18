@@ -277,6 +277,20 @@ globalThis.window = {
   removeEventListener() {},
 };
 globalThis.ResizeObserver = class { observe() {} disconnect() {} };
+// Node has no Path2D; the map paints its vector glyphs through `new Path2D(d)` (see
+// src/ui/glyphs.js). A recording stand-in keeps the wired route drawable headlessly.
+// Nothing asserts on the recorded ops today — texts/arcs carry the assertions.
+if (typeof globalThis.Path2D !== 'function') {
+  globalThis.Path2D = class Path2D {
+    constructor(d) { this.d = d == null ? '' : String(d); this.ops = []; }
+    moveTo(x, y) { this.ops.push(['M', x, y]); }
+    lineTo(x, y) { this.ops.push(['L', x, y]); }
+    closePath() { this.ops.push(['Z']); }
+    rect(x, y, w, h) { this.ops.push(['R', x, y, w, h]); }
+    arc(x, y, r) { this.ops.push(['A', x, y, r]); }
+    addPath(other) { this.ops.push(['P', other && other.d]); }
+  };
+}
 
 const {
   galaxyMapScreen,
@@ -289,6 +303,9 @@ const { resolveRouteRibbon, RIBBON_ACTION_IDS } = await import('../src/ui/map/ma
 const { ROUTE_EXECUTOR_STATUS } = await import('../src/systems/routeFollower.js');
 
 const MAP_SOURCE = readFileSync(new URL('../src/ui/galaxyMap.js', import.meta.url), 'utf8');
+// Ribbon CSS moved out of galaxyMap.js into the views stylesheet (same rules, new home);
+// motion/contrast assertions read the stylesheet, behaviour assertions read the module.
+const NAV_CSS_SOURCE = readFileSync(new URL('../src/ui/views/navigationStyles.js', import.meta.url), 'utf8');
 const FOLLOWER_SOURCE = readFileSync(new URL('../src/systems/routeFollower.js', import.meta.url), 'utf8');
 const MISSIONS_SOURCE = readFileSync(new URL('../src/systems/missions.js', import.meta.url), 'utf8');
 const WORLD_SOURCE = readFileSync(new URL('../src/systems/world.js', import.meta.url), 'utf8');
@@ -821,12 +838,16 @@ function mountWith(state, { busEvents = [] } = {}) {
     'the ribbon must emit the shipped abort verb — and nothing else');
   assert.equal(busEvents[0].payload.reason, 'manual');
 
-  // PAUSE must refuse: disabled in the DOM, and refusing even when driven directly.
+  // PAUSE must refuse while staying reachable: the ribbon marks unavailable actions with
+  // aria-disabled (never the `disabled` property) so keyboard and screen-reader users can
+  // still land on the control and hear WHY — and driving it directly still refuses.
   const pause = root.querySelector('[data-ribbon-action="pause"]');
   assert.ok(pause, 'pause must be VISIBLE so its unavailability is legible, not hidden away');
-  assert.equal(pause.disabled, true);
+  assert.equal(pause.disabled, false,
+    'unavailable ribbon actions stay focusable via aria-disabled, not disabled');
   assert.equal(pause.getAttribute('aria-disabled'), 'true');
-  assert.ok(pause.getAttribute('title'), 'a disabled control must explain itself');
+  assert.match(pause.getAttribute('data-why') || '', /disengage/i,
+    'an unavailable control must explain itself and name the shipped equivalent');
   busEvents.length = 0;
   assert.equal(galaxyMapScreen._activateRibbonAction('pause'), false,
     'activating an unavailable action must return FALSE, never fake a success');
@@ -898,7 +919,7 @@ function mountWith(state, { busEvents = [] } = {}) {
   const acts = root.querySelectorAll('[data-place-action]');
   assert.ok(acts.length >= 4, 'inspect/plot/frame/bookmark/open-system must be offered');
   for (const a of acts) {
-    assert.ok(a.getAttribute('title'), 'every place action must carry its reason');
+    assert.ok(a.getAttribute('data-why'), 'every place action must carry its reason');
     assert.ok(a.hasAttribute('aria-disabled'), 'availability must be announced');
   }
 
@@ -956,15 +977,15 @@ function mountWith(state, { busEvents = [] } = {}) {
 // 15. MOTION AND CONTRAST
 // =============================================================================================
 {
-  assert.match(MAP_SOURCE, /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,900}gm-ribbon \{ animation: none/,
+  assert.match(NAV_CSS_SOURCE, /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,900}gm-ribbon \{ animation: none/,
     'the ribbon reveal animation must be suppressed under reduced motion');
-  assert.match(MAP_SOURCE, /@media \(forced-colors: active\)[\s\S]{0,900}gm-ribbon/,
+  assert.match(NAV_CSS_SOURCE, /@media \(forced-colors: active\)[\s\S]{0,900}gm-ribbon/,
     'the ribbon must have a forced-colors treatment');
   // Non-colour semantics, asserted structurally: each state is an ATTRIBUTE the CSS keys shape off.
   for (const attr of ['data-ribbon-state', 'data-leg-state', 'data-haz', 'data-tone']) {
     assert.ok(MAP_SOURCE.includes(attr), `${attr} must exist so state is not carried by colour alone`);
   }
-  assert.match(MAP_SOURCE, /gm-ribbon-btn:disabled[\s\S]{0,220}border-style: dashed/,
+  assert.match(NAV_CSS_SOURCE, /gm-ribbon-btn:disabled[\s\S]{0,220}border-style: dashed/,
     'disabled must be a SHAPE as well as an opacity, or it vanishes in forced-colors');
   ok('reduced motion, forced colors, and non-colour state semantics are all present');
 }

@@ -295,15 +295,12 @@ test('a throwing snap burst still leaves the ribbon in fade-out', () => {
 });
 
 test('invalid particle buffers fail closed instead of throwing every frame', () => {
+  // The shard cloud draws mesh.count instances (owner commit), not a vertex drawRange, so the
+  // fail-closed contract is: no throw, and the drawn instance count is zeroed on the spot.
   const fixture = Object.create(vfx);
-  let drawRange = null;
   fixture._particleDynamicBufferOwner = { invalid: true };
-  fixture._pGeo = {
-    setDrawRange(start, count) {
-      drawRange = [start, count];
-    },
-  };
+  fixture._shardMesh = { count: 7 };
   fixture._liveCount = 8;
   assert.doesNotThrow(() => fixture._integrateParticles(DT));
-  assert.deepEqual(drawRange, [0, 0]);
+  assert.equal(fixture._shardMesh.count, 0);
 });

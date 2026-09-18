@@ -65,7 +65,10 @@ assert.doesNotMatch(
 );
 
 // Regression: dumped cargo used to spawn inside the mining collector/magnet, so the same units
-// were re-collected on the next tick while jettisonImpulse still granted dv.
+// were re-collected on the next tick while jettisonImpulse still granted dv. The dump now
+// spawns a colliding persistent payload pod (not a TTL pickup); the deterministic embargo is
+// enforced by mining._updatePickups for both types, and physics contact collection only ever
+// handles type 'pickup', so the embargo cannot be bypassed on the contact path.
 {
   const handlers = new Map();
   const bus = {
@@ -106,11 +109,11 @@ assert.doesNotMatch(
   try {
     impulseSystem.init({ state, bus, helpers, registry });
     assert.equal(cargoSystem.jettison('cmdty_ore_iron', 4), 4);
-    const pickup = state.entityList.find((e) => e.type === 'pickup');
+    const pickup = state.entityList.find((e) => e.type === 'payload' && e.data.jettisonedCargo);
     assert.ok(pickup && pickup.data.jettisonedCargo && pickup.data.pickupEmbargoUntil > state.simTime,
       'dumped cargo must carry a deterministic collection embargo');
     assert.ok(pickup.pos.x < -(player.radius + pickup.radius), 'dumped cargo must start safely aft');
-    assert.equal(pickup.collides, false, 'physics collection must stay disabled during the embargo');
+    assert.equal(pickup.collides, true, 'the jettisoned pod is a colliding physical body from birth');
     miningSystem._updatePickups(1 / 60, state);
     assert.equal(pickup.alive, true, 'dumped cargo must not be immediately re-collected');
     assert.equal(state.player.cargo.items.cmdty_ore_iron || 0, 0, 'the hold stays empty after the kick');

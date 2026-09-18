@@ -622,14 +622,14 @@ function pickThruster(equipped) {
 // this split moves no golden: only a deliberately refitted bay changes anything.
 const REFERENCE_DRIVE_ACCEL_MULT = 1.0;   // mod_engine_ion_m
 const REFERENCE_DRIVE_TOP_SPEED = 70;     // mod_engine_ion_m
-const DRIVE_SCALED_ACCEL_KEYS = Object.freeze(['mainAccel', 'maxAccel', 'rcsForwardAccel', 'fieldAccel']);
+export const DRIVE_SCALED_ACCEL_KEYS = Object.freeze(['mainAccel', 'maxAccel', 'rcsForwardAccel', 'fieldAccel']);
 // The drive owns TOP speed, and top speed lives ABOVE the governed cap. FEEL_CONTRACT B3 measures
 // the crossing time at the cap and the camera only opens ABOVE it, so a purchasable drive must
 // never raise the cap itself: a Warp Coil that lifts `combatSpeed` (or `maxSpeed`, which IS the
 // cap on the gravimetric hulls) hands the camera a ship it cannot hold and re-breaks PQ-137.03.
 // The drive's travel authority is `travelCeilingMult` -- propulsionKernel's own words, 'drive-tier
 // upgrades hang off this' -- plus the boost ceiling, both of which sit above the cap by design.
-const DRIVE_SCALED_SPEED_KEYS = Object.freeze(['boostMaxSpeed']);
+export const DRIVE_SCALED_SPEED_KEYS = Object.freeze(['boostMaxSpeed']);
 const THRUSTER_TURN_KEYS = Object.freeze(['yawAccel', 'yawBrake']);
 // The bay owns TORQUE. The yaw-rate ceiling is the balance between that torque and the hull's own
 // damping, so it follows on the square root: a bay with twice the authority does not give the hull
@@ -771,9 +771,11 @@ export function massLoadFactor(shipDefOrId, operationalMass) {
 }
 
 /** Build the complete propulsion profile once per derived-stat recompute. The underlying profile is
- * the hull's authored drive, with class/mass retained for legacy fallback. Only Travel Burn V-MAX
- * is tier-scaled, so fitting an engine cannot silently rewrite top speed or drive-family behavior;
- * the ship's own operational mass is the one thing that moves its accelerations (MASS_LOAD_LAW). */
+ * the hull's authored drive, with class/mass retained for legacy fallback. PQ-176.01: the fitted drive advances forward thrust (DRIVE_SCALED_ACCEL_KEYS)
+ * and boost top speed (DRIVE_SCALED_SPEED_KEYS), the thruster bay advances turning/strafe/brake,
+ * and the engine's travelCeilingMult moves Travel Burn V-MAX. The governed cap (combatSpeed/maxSpeed)
+ * and the drive's identity/family are never for sale; the ship's operational mass is the one thing
+ * that moves its accelerations after fitting (MASS_LOAD_LAW). */
 function buildDerivedPropulsion(shipDef, flightClass, totalMass, engine, equipped) {
   const base = resolvePropulsionProfile({ driveId: shipDef.driveId, flightClass, mass: totalMass });
   const mult = engineMods(engine).travelCeilingMult;

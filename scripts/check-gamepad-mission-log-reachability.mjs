@@ -138,6 +138,14 @@ class El {
     return child;
   }
 
+  append(...nodes) {
+    for (const node of nodes) {
+      if (node == null) continue;
+      if (typeof node === 'string') this._text = (this._text || '') + node;
+      else this.appendChild(node);
+    }
+  }
+
   removeChild(child) {
     const i = this.children.indexOf(child);
     if (i >= 0) this.children.splice(i, 1);

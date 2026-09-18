@@ -48,7 +48,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/ships.js';
+import {
+  DRIVE_SCALED_ACCEL_KEYS, DRIVE_SCALED_SPEED_KEYS,
+  fittingsFromDefaultModules, makeShipEntitySpec } from '../src/systems/ships.js';
 import { NEW_GAME } from '../src/data/newGameDefaults.js';
 import { SHIPS } from '../src/data/ships.js';
 import {
@@ -356,10 +358,13 @@ test('the travel ceiling honours an authored per-drive override — the upgrade 
   );
 });
 
-test('fitted engine tiers raise Travel Burn V-MAX without changing ordinary propulsion', () => {
+test('fitted engine tiers raise Travel Burn V-MAX and advance thrust without touching the cap', () => {
   // Atlas has an L engine bay and an unbounded reaction-drive solver, so all three production
   // engine tiers can express their full V-MAX multiplier through the real fitting helper. Capped
   // families still retain the multiplier in their derived descriptor, but the solver envelope wins.
+  // PQ-176.01: the drive advances forward thrust (mainAccel scales by engine accelMult) and the
+  // travel ceiling; the governed cap (combatSpeed), the drive identity/family, and the
+  // thruster-owned axes (stock bay here, so neutral) never move.
   const shipId = 'ship_atlas';
   const profileFor = (engineId) => player(
     shipId,
@@ -369,9 +374,14 @@ test('fitted engine tiers raise Travel Burn V-MAX without changing ordinary prop
   const fusion = profileFor('mod_engine_fusion_m');
   const warp = profileFor('mod_engine_warp_l');
 
-  for (const field of ['id', 'family', 'combatSpeed', 'mainAccel', 'reverseAccel', 'strafeAccel']) {
-    assert.equal(fusion[field], ion[field], `${field}: fusion must not rewrite ordinary flight`);
-    assert.equal(warp[field], ion[field], `${field}: warp must not rewrite ordinary flight`);
+  for (const field of ['id', 'family', 'combatSpeed', 'reverseAccel', 'strafeAccel']) {
+    assert.equal(fusion[field], ion[field], `${field}: fusion must not rewrite the cap, identity, or thruster axes`);
+    assert.equal(warp[field], ion[field], `${field}: warp must not rewrite the cap, identity, or thruster axes`);
+  }
+  for (const [profile, mult, name] of [[fusion, 1.3, 'fusion'], [warp, 1.6, 'warp']]) {
+    const ratio = profile.mainAccel / ion.mainAccel;
+    assert.ok(Math.abs(ratio - mult) < 1e-9,
+      `${name} mainAccel must scale by the engine accelMult x${mult} (got x${ratio})`);
   }
 
   const ionCeiling = resolveTravelCeiling(ion);
@@ -409,7 +419,14 @@ test('bounded authored drives retain engine-tier scaling beneath their solver en
   const ion = profileFor('mod_engine_ion_m');
   const fusion = profileFor('mod_engine_fusion_m');
   const warp = profileFor('mod_engine_warp_l');
-  const withoutTravelCeiling = ({ travelCeiling: _travelCeiling, ...profile }) => profile;
+  // PQ-176.01: engine tiers move the drive-scaled thrust/speed keys, the drive mults, and the
+  // travel ceiling — everything else must be identical across tiers.
+  const withoutTierScaling = (profile) => {
+    const rest = { ...profile };
+    for (const key of [...DRIVE_SCALED_ACCEL_KEYS, ...DRIVE_SCALED_SPEED_KEYS,
+      'travelCeiling', 'driveAccelMult', 'driveSpeedMult', 'driveTravelMult']) delete rest[key];
+    return rest;
+  };
 
   for (const profile of [ion, fusion, warp]) {
     assert.equal(profile.id, 'drive_gravimetric_s', 'Hornet engine tiers must preserve authored drive identity');
@@ -421,10 +438,10 @@ test('bounded authored drives retain engine-tier scaling beneath their solver en
     );
   }
 
-  assert.deepEqual(withoutTravelCeiling(fusion), withoutTravelCeiling(ion),
-    'fusion fitting must change only Hornet\'s tier-scaled travel ceiling');
-  assert.deepEqual(withoutTravelCeiling(warp), withoutTravelCeiling(ion),
-    'warp fitting must change only Hornet\'s tier-scaled travel ceiling');
+  assert.deepEqual(withoutTierScaling(fusion), withoutTierScaling(ion),
+    'fusion fitting must change only Hornet\'s tier-scaled thrust/speed/ceiling keys');
+  assert.deepEqual(withoutTierScaling(warp), withoutTierScaling(ion),
+    'warp fitting must change only Hornet\'s tier-scaled thrust/speed/ceiling keys');
 
   assert.ok(ion.travelCeiling < fusion.travelCeiling && fusion.travelCeiling < warp.travelCeiling,
     'the derived descriptor must retain each fitted engine tier multiplier before solver clamping');

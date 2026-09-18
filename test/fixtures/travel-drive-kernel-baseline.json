@@ -87,7 +87,7 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": 760,
+        "x": 2000,
         "y": 0,
         "z": 0
       },
@@ -97,12 +97,12 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 195,
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.005699999999999999,
+        "energySpent": 0.014999999999999998,
         "fuelSpent": 0,
         "boosting": false,
         "chargeS": 0,
@@ -112,8 +112,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.005699999999999999,
-        "heat": 0.0076,
+        "energy": -0.014999999999999998,
+        "heat": 0.02,
         "fuel": 0
       },
       "events": [],
@@ -122,12 +122,12 @@
         "driveId": "drive_reaction_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": 38,
+          "x": 100,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": 760,
+          "x": 2000,
           "y": 0,
           "z": 0
         },
@@ -141,7 +141,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": 38,
+          "forward": 100,
           "lateral": 0
         },
         "assistLocal": {
@@ -174,7 +174,7 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": 368.42105263157896,
+        "x": 1000,
         "y": 0,
         "z": 0
       },
@@ -184,12 +184,12 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 97.5,
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.002763157894736842,
+        "energySpent": 0.007499999999999999,
         "fuelSpent": 0,
         "boosting": false,
         "chargeS": 0,
@@ -199,8 +199,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.002763157894736842,
-        "heat": 0.00368421052631579,
+        "energy": -0.007499999999999999,
+        "heat": 0.01,
         "fuel": 0
       },
       "events": [],
@@ -209,12 +209,12 @@
         "driveId": "drive_reaction_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": 18.42105263157895,
+          "x": 50,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": 368.42105263157896,
+          "x": 1000,
           "y": 0,
           "z": 0
         },
@@ -228,7 +228,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": 18.42105263157895,
+          "forward": 50,
           "lateral": 0
         },
         "assistLocal": {
@@ -247,7 +247,7 @@
         "governor": {
           "cap": 97.5,
           "baseCap": 97.5,
-          "engaged": true,
+          "engaged": false,
           "overspeed": false,
           "physicsEarned": false
         }
@@ -261,7 +261,7 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": 760,
+        "x": 2000,
         "y": 0,
         "z": 0
       },
@@ -271,12 +271,12 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 195,
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.005699999999999999,
+        "energySpent": 0.014999999999999998,
         "fuelSpent": 0,
         "boosting": false,
         "chargeS": 0,
@@ -286,8 +286,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.005699999999999999,
-        "heat": 0.0076,
+        "energy": -0.014999999999999998,
+        "heat": 0.02,
         "fuel": 0
       },
       "events": [],
@@ -296,12 +296,12 @@
         "driveId": "drive_reaction_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": 38,
+          "x": 100,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": 760,
+          "x": 2000,
           "y": 0,
           "z": 0
         },
@@ -315,7 +315,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": 38,
+          "forward": 100,
           "lateral": 0
         },
         "assistLocal": {
@@ -358,7 +358,7 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 302.25,
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
@@ -450,7 +450,7 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 195,
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
@@ -537,7 +537,7 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 302.25,
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
@@ -629,7 +629,7 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 418.8349522044021,
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
@@ -706,7 +706,7 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": -1026,
+        "x": -2700,
         "y": 0,
         "z": 0
       },
@@ -721,7 +721,7 @@
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.007695,
+        "energySpent": 0.020249999999999997,
         "fuelSpent": 0,
         "boosting": false,
         "chargeS": 0,
@@ -731,8 +731,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.007695,
-        "heat": 0.01026,
+        "energy": -0.020249999999999997,
+        "heat": 0.027,
         "fuel": 0
       },
       "events": [],
@@ -741,12 +741,12 @@
         "driveId": "drive_reaction_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": -51.300000000000004,
+          "x": -135,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": -1026,
+          "x": -2700,
           "y": 0,
           "z": 0
         },
@@ -764,7 +764,7 @@
           "lateral": 0
         },
         "assistLocal": {
-          "forward": -51.300000000000004,
+          "forward": -135,
           "lateral": 0
         },
         "assistReason": "pilot-brake",
@@ -787,7 +787,7 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": 1557.9999999999998,
+        "x": 4099.999999999999,
         "y": 0,
         "z": 0
       },
@@ -801,8 +801,8 @@
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
-        "heat": 0,
-        "energySpent": 0.011684999999999997,
+        "heat": 0.023799999999999974,
+        "energySpent": 0.030749999999999993,
         "fuelSpent": 0,
         "boosting": true,
         "chargeS": 0,
@@ -812,8 +812,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.011684999999999997,
-        "heat": 0.028044,
+        "energy": -0.030749999999999993,
+        "heat": 0.07379999999999998,
         "fuel": 0
       },
       "events": [
@@ -827,12 +827,12 @@
         "driveId": "drive_reaction_m",
         "assistMode": "drift",
         "acceleration": {
-          "x": 77.89999999999999,
+          "x": 204.99999999999997,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": 1557.9999999999998,
+          "x": 4099.999999999999,
           "y": 0,
           "z": 0
         },
@@ -846,7 +846,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": 77.89999999999999,
+          "forward": 204.99999999999997,
           "lateral": 0
         },
         "assistLocal": {
@@ -873,7 +873,7 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": 1557.9999999999998,
+        "x": 4099.999999999999,
         "y": 0,
         "z": 0
       },
@@ -887,8 +887,8 @@
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
-        "heat": 0,
-        "energySpent": 0.011684999999999997,
+        "heat": 0.023799999999999974,
+        "energySpent": 0.030749999999999993,
         "fuelSpent": 0,
         "boosting": true,
         "chargeS": 0,
@@ -898,8 +898,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.011684999999999997,
-        "heat": 0.028044,
+        "energy": -0.030749999999999993,
+        "heat": 0.07379999999999998,
         "fuel": 0
       },
       "events": [
@@ -913,12 +913,12 @@
         "driveId": "drive_reaction_m",
         "assistMode": "newtonian",
         "acceleration": {
-          "x": 77.89999999999999,
+          "x": 204.99999999999997,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": 1557.9999999999998,
+          "x": 4099.999999999999,
           "y": 0,
           "z": 0
         },
@@ -932,7 +932,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": 77.89999999999999,
+          "forward": 204.99999999999997,
           "lateral": 0
         },
         "assistLocal": {
@@ -959,9 +959,9 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": 500.4903876440509,
+        "x": 1576.6637161534936,
         "y": 0,
-        "z": 210.62435746701243
+        "z": 174.84211155615492
       },
       "torque": {
         "x": 0,
@@ -969,12 +969,12 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 179.7811169172113,
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.004072529337480545,
+        "energySpent": 0.011897464052339903,
         "fuelSpent": 0,
         "boosting": false,
         "chargeS": 0,
@@ -984,8 +984,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.004072529337480545,
-        "heat": 0.005430039116640728,
+        "energy": -0.011897464052339903,
+        "heat": 0.015863285403119872,
         "fuel": 0
       },
       "events": [],
@@ -994,14 +994,14 @@
         "driveId": "drive_reaction_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": 25.024519382202545,
-          "z": 10.531217873350622
+          "x": 78.83318580767468,
+          "z": 8.742105577807745
         },
         "angularAcceleration": 8.8,
         "force": {
-          "x": 500.4903876440509,
+          "x": 1576.6637161534936,
           "y": 0,
-          "z": 210.62435746701243
+          "z": 174.84211155615492
         },
         "torque": {
           "x": 0,
@@ -1013,12 +1013,12 @@
         "lateralSpeed": -43.78257578261826,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": 26.599999999999998,
-          "lateral": -11.4
+          "forward": 70,
+          "lateral": -40.8
         },
         "assistLocal": {
           "forward": 0,
-          "lateral": 5.961882659760784
+          "lateral": 3.502606062609461
         },
         "assistReason": "slip-assist",
         "environmentalAcceleration": {
@@ -1030,8 +1030,8 @@
         "desiredHeading": null,
         "boostFraction": 0,
         "governor": {
-          "cap": 136.5,
-          "baseCap": 136.5,
+          "cap": 179.7811169172113,
+          "baseCap": 179.7811169172113,
           "engaged": false,
           "overspeed": false,
           "physicsEarned": false
@@ -1056,7 +1056,7 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 246.5,
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
@@ -1148,7 +1148,7 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 336,
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
@@ -1230,7 +1230,7 @@
       "driveId": "drive_torch_l",
       "family": "torch",
       "force": {
-        "x": 333.3333333333336,
+        "x": 866.6666666666673,
         "y": 0,
         "z": 0
       },
@@ -1240,13 +1240,13 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 320,
       "runtime": {
         "schemaVersion": 1,
         "family": "torch",
         "heat": 0,
         "energySpent": 0.013333333333333327,
-        "fuelSpent": 0.17110833333333328,
+        "fuelSpent": 0.4235483333333334,
         "boosting": false,
         "chargeS": 0,
         "pulseCooldownS": 0,
@@ -1256,8 +1256,8 @@
       },
       "resourceDelta": {
         "energy": -0.0003333333333333333,
-        "heat": 0.00972222222222223,
-        "fuel": -0.005333333333333337
+        "heat": 0.0252777777777778,
+        "fuel": -0.013333333333333341
       },
       "events": [],
       "telemetry": {
@@ -1265,12 +1265,12 @@
         "driveId": "drive_torch_l",
         "assistMode": "assisted",
         "acceleration": {
-          "x": 16.66666666666668,
+          "x": 43.333333333333364,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": 333.3333333333336,
+          "x": 866.6666666666673,
           "y": 0,
           "z": 0
         },
@@ -1318,7 +1318,7 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 448,
       "runtime": {
         "schemaVersion": 1,
         "family": "torch",
@@ -1396,7 +1396,7 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 320,
       "runtime": {
         "schemaVersion": 1,
         "family": "torch",
@@ -1464,7 +1464,7 @@
       "driveId": "drive_gravimetric_m",
       "family": "gravimetric",
       "force": {
-        "x": 1560,
+        "x": 2400,
         "y": 0,
         "z": 0
       },
@@ -1479,7 +1479,7 @@
         "schemaVersion": 1,
         "family": "gravimetric",
         "heat": 0,
-        "energySpent": 0.04036666666666667,
+        "energySpent": 0.05716666666666667,
         "fuelSpent": 0.009166666666666667,
         "boosting": true,
         "chargeS": 0,
@@ -1489,8 +1489,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.04036666666666667,
-        "heat": 0.026,
+        "energy": -0.05716666666666667,
+        "heat": 0.04,
         "fuel": -0.009166666666666667
       },
       "events": [
@@ -1504,12 +1504,12 @@
         "driveId": "drive_gravimetric_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": 78,
+          "x": 120,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": 1560,
+          "x": 2400,
           "y": 0,
           "z": 0
         },
@@ -1697,7 +1697,7 @@
       "driveId": "drive_field_sail_m",
       "family": "field_sail",
       "force": {
-        "x": 35.46666666666666,
+        "x": 93.33333333333334,
         "y": 0,
         "z": 0
       },
@@ -1723,7 +1723,7 @@
       },
       "resourceDelta": {
         "energy": -0.0013333333333333333,
-        "heat": 0.00011822222222222221,
+        "heat": 0.0003111111111111111,
         "fuel": -0.0013333333333333333
       },
       "events": [],
@@ -1732,12 +1732,12 @@
         "driveId": "drive_field_sail_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": 1.7733333333333332,
+          "x": 4.666666666666667,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": 35.46666666666666,
+          "x": 93.33333333333334,
           "y": 0,
           "z": 0
         },
@@ -1770,7 +1770,7 @@
       "driveId": "drive_reaction_m",
       "family": "reaction",
       "force": {
-        "x": 310.60547368421055,
+        "x": 994.816,
         "y": 0,
         "z": 0
       },
@@ -1780,12 +1780,12 @@
         "z": 0
       },
       "impulse": null,
-      "maxSpeed": "Infinity",
+      "maxSpeed": 195,
       "runtime": {
         "schemaVersion": 1,
         "family": "reaction",
         "heat": 0,
-        "energySpent": 0.002329541052631579,
+        "energySpent": 0.00746112,
         "fuelSpent": 0,
         "boosting": false,
         "chargeS": 0,
@@ -1795,8 +1795,8 @@
         "deployed": 0
       },
       "resourceDelta": {
-        "energy": -0.002329541052631579,
-        "heat": 0.0031060547368421056,
+        "energy": -0.00746112,
+        "heat": 0.009948160000000001,
         "fuel": 0
       },
       "events": [],
@@ -1805,12 +1805,12 @@
         "driveId": "drive_reaction_m",
         "assistMode": "assisted",
         "acceleration": {
-          "x": 15.530273684210528,
+          "x": 49.7408,
           "z": 0
         },
         "angularAcceleration": 0,
         "force": {
-          "x": 310.60547368421055,
+          "x": 994.816,
           "y": 0,
           "z": 0
         },
@@ -1824,7 +1824,7 @@
         "lateralSpeed": 0,
         "driveState": "thrust",
         "manualLocal": {
-          "forward": 15.789473684210527,
+          "forward": 50,
           "lateral": 0
         },
         "assistLocal": {

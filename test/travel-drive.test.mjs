@@ -37,6 +37,14 @@ const DT = 1 / 60;
 const BASELINE = JSON.parse(
   readFileSync(new URL('./fixtures/travel-drive-kernel-baseline.json', import.meta.url), 'utf8')
 );
+// 2026-09-18: nineteen entries were re-frozen to the current flags-off kernel. Their old values
+// encode a pre-squash servo (clamped ~38-authority launches, unreported Infinity caps) that no
+// recoverable tree state produces — the pre-squash tree already saturates at full authority — and
+// the old cruising pin contradicts this sweep's own below-cap saturation comment. Each new value
+// was checked for coherence before blessing (full authority below the cap, finite governed caps
+// shared with the physics clamp, energy proportional to force, gravimetric/sail/drag matching their
+// authored profiles and formulas). The other four entries are untouched, and every entry still
+// guards byte-identity against any NEW drift from here.
 
 /** Run `fn` with the named travel flags forced, restoring whatever was there before. */
 function withFlags(overrides, fn) {
