@@ -4024,10 +4024,28 @@ export function residencyOptionsForBoundary(entity, boundary, renderer) {
   };
 }
 
-function entityIsOnscreen(entity, state) {
+function rootHiddenByAncestor(root) {
+  for (let node = root && root.parent; node; node = node.parent) {
+    if (node.visible === false) return true;
+  }
+  return false;
+}
+
+function entityIsOnReadableGlass(entity) {
+  if (!entity || entity.alive === false) return false;
+  const activity = entity.activity || {};
+  return activity.presentationTier === PRESENTATION_TIER.R0_GLASS;
+}
+
+export function entityIsOnscreen(entity, state) {
   const root = entity && entity.mesh;
-  if (!root || root.visible === false) return false;
-  for (let node = root.parent; node; node = node.parent) if (node.visible === false) return false;
+  if (!root || root.visible === false || rootHiddenByAncestor(root)) {
+    // No visible mesh yet (direct-admission substrate, queued build): the activity
+    // frame already decides glass membership every tick, so an R0 entity is onscreen
+    // by definition. Returning false here parks the exact ships the player is looking
+    // at at background priority behind offscreen queue filler.
+    return entityIsOnReadableGlass(entity);
+  }
   const camera = state && state.render && state.render.camera;
   if (!camera || !camera.projectionMatrix || !camera.matrixWorldInverse) return true;
   try {
