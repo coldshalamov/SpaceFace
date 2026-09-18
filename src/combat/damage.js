@@ -64,7 +64,16 @@ export function createDamageRouter(context, statusService, options = {}) {
     if (!packet.flags.allowAnyTarget && !verbAcceptsType('damage', target.type)) return rejected('target_not_damageable', input, packet);
     if (!packet.flags.ignoreInvulnerability && playerDockProtected(state, target)) return rejected('target_docked', input, packet);
     if (target.flags && target.flags.invuln && !packet.flags.ignoreInvulnerability) return rejected('target_invulnerable', input, packet);
-    if (!packet.flags.ignoreFriendlyFire && attacker && attacker.id !== target.id && attacker.team != null && target.team != null && attacker.team === target.team) {
+    // Player malice is adjudicated by law (player_assault/player_piracy incidents) and NPC
+    // retaliation (self-defense motive), not by the NPC IFF team gate: neutral team-0 stations,
+    // civilians, and ambient ships share the player's default team, so gating the player here
+    // silently blocks the designed assault-to-dispatch loop (the sector-law panel advertises that
+    // station attacks trigger dispatch). The gate still protects the player's own deployables
+    // (owner-marked mines/anchors) and player-faction devices (drones).
+    const attackerIsPlayer = state != null && attacker != null && attacker.id === state.playerId;
+    const targetIsOwnDevice = (target.ownerId != null && attacker != null && target.ownerId === attacker.id)
+      || target.factionId === 'faction_player';
+    if (!packet.flags.ignoreFriendlyFire && attacker && attacker.id !== target.id && attacker.team != null && target.team != null && attacker.team === target.team && !(attackerIsPlayer && !targetIsOwnDevice)) {
       return rejected('friendly_fire', input, packet);
     }
     if (!(rawTotal > 0) && !(packet.heat > 0) && !packet.statuses.length && !hasImpulse(packet.impulse)) return rejected('empty_packet', input, packet);
