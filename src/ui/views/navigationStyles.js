@@ -292,10 +292,15 @@ export const CSS = `
   scrollbar-color: var(--k-hair) transparent;
 }
 /* The action band stays out of the detail overflow: when the tab strip and the symbol key spend
-   the column, the primary action must still be on the glass rather than clipped to zero height. */
+   the column, the primary action must still be on the glass rather than clipped to zero height.
+   The band does not shrink: a clipped band leaves the primary button's layout box painted over
+   by the parity key below, which swallows the click while the button still reads enabled
+   (elementFromPoint returns the key, not the button). Overflow belongs to the column's own
+   scroll; max-height only bounds an absurdly tall cluster, whose first control stays fully
+   painted at scrollTop 0. */
 #sf-galaxymap .gm-inspector-actions {
-  flex: 0 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
+  min-height: var(--k-row);
   max-height: 50%;
   display: flex;
   flex-direction: column;
