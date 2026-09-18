@@ -650,7 +650,7 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
         } : null,
         targetIntent: target && target.data ? target.data.intent || null : null,
         targetSimTier: target && target.activity ? target.activity.simTier || null : null,
-        aiInspect,
+        targetInspect: target ? inspectEntity(target.id) : null,
         authorization,
         protection: protection ? { stationId: protection.stationId, radius: protection.radius } : null,
         hitCount: hits.length,
