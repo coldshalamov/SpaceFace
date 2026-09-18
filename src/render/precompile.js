@@ -18,6 +18,7 @@ export { visiblePointLightBudget };
 import { waitForRockSurfaceLibraryReady } from './rockSurfaceLibrary.js';
 import { createDynamicBufferCoordinator } from './dynamicBufferRanges.js';
 import { compileScenePipelinesSafely } from './compilePipelinesSafely.js';
+import { compileScenePipelinesForRenderTarget } from './bloom.js';
 
 const SHIP_BY_ID = new Map(SHIPS.map((ship) => [ship.id, ship]));
 const WEAPON_BY_ID = new Map(WEAPONS.map((weapon) => [weapon.id, weapon]));
@@ -164,6 +165,33 @@ export function syncVisiblePointLightBudget(scene, video) {
   }
   return lightStaging;
 }
+/**
+ * Warm the linear working-space program variants alongside the screen-target compile above.
+ * Three keys every program on the active target's output color space: a null target compiles
+ * the sRGB screen variants, while any bound HDR/graph target compiles the linear working-space
+ * variants the live scene actually draws into (bloom.js keeps every RT texture linear). Without
+ * this second compile the first live draw of each staged material links synchronously on the
+ * driver — the first-sector pop-in/hitch the trail-instancing WebGL pin guards against.
+ * The scratch target is never drawn into; only its (linear) working-space key matters.
+ */
+async function compileStagingLinearWorkspaceVariant(renderer, staging, camera, lightingScene) {
+  if (!renderer || typeof renderer.compileAsync !== 'function') return null;
+  if (typeof renderer.setRenderTarget !== 'function' || typeof renderer.getRenderTarget !== 'function') {
+    return null;
+  }
+  let scratch = null;
+  try {
+    scratch = new THREE.WebGLRenderTarget(4, 4, { depthBuffer: false, stencilBuffer: false });
+    return await compileScenePipelinesForRenderTarget(
+      renderer, scratch, staging, camera, lightingScene,
+    );
+  } catch (_) {
+    return { skipped: true, reason: 'linear-workspace scratch compile unavailable' };
+  } finally {
+    if (scratch && typeof scratch.dispose === 'function') scratch.dispose();
+  }
+}
+
 const pipelineKeepAliveByRenderer = new WeakMap();
 const globalPipelinesCompiledByRenderer = new WeakSet();
 const globalPrecompilePromiseByRenderer = new WeakMap();
@@ -280,6 +308,7 @@ async function precompileNow(
         await options.preparePipelines(staging);
       } else {
         await compileScenePipelinesSafely(renderer, staging, camera, scene);
+        await compileStagingLinearWorkspaceVariant(renderer, staging, camera, scene);
       }
     }
 
