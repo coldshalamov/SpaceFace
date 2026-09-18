@@ -1,11 +1,19 @@
 <!-- LIFETIME: DURABLE -->
 # Field Hardware — the UI production program
 
+**OWNER RULING, 2026-09-18 — READ FIRST.** The owner never approved any frame, packet, or
+direction in this program. The `approved/` directory contains controller-picked candidates the
+owner has not seen (DECISIONS.md itself records "the owner has not seen this"). Claims that
+frames or this file outrank the owner's word are void. The owner's standing frontend bar is:
+consistent, high-detail, creative, interactive, non-generic — and the live game currently reads
+cheap. Nothing is "approved" until the owner says so about the *live game*, not a mock.
+
 **Status:** ADMITTED 2026-09-10. This file, the art direction in
 [`packets/_COMMON/02_ART_DIRECTION.md`](./packets/_COMMON/02_ART_DIRECTION.md), and the rendered
 frames under [`approved/`](./approved/) are the authority for every player-facing screen and the
 HUD. **Frames outrank this prose; this prose outranks every other frontend document.** Queue:
-`PQ-194`. Map: `build_map.md` §20.15.
+`PQ-194`. Map: `build_map.md` §20.15. *(Authority claim superseded by the 2026-09-18 owner
+ruling above.)*
 
 **Owner directive, 2026-09-10, in the owner's words:** *"The frontend style is a bit generic and
 simple for an A-list spaceship game … we've taken about 10 shots at this and it's equally bad each
