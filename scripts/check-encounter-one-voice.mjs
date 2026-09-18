@@ -96,10 +96,14 @@ function assertNoModal(emitted, label) {
   const havenZone = zonesForSector('sector_sker_haven').find((z) => z.id === 'zone_sker_haven');
   const havenPos = sectorLocalToGlobalForSector(havenZone.center, 'sector_sker_haven');
   // Coverage fixture, not a pinned content schedule: squad-density tuning intentionally consumes a
-  // different number of seeded composition draws. Seed 1 retains the live taste-law floor (at
+  // different number of seeded composition draws. The seed retains the live taste-law floor (at
   // least three fired, exact voice parity, and at least one proximity-gated shape), while the
   // forced ambush case below independently pins the global-coordinate proximity behavior.
-  const SOAK_SEED = 1;
+  // 2026-09-18: 1 -> 9. Encounter-catalog growth moved seed 1's haven-zone proximity cover out of
+  // the two-day window (its only proximity shapes now sit in zones the parked player correctly
+  // refuses); seed 9 schedules ambush_snare in the haven on day 0 with the richest two-day
+  // schedule. Floor unchanged.
+  const SOAK_SEED = 9;
   const { sim, state, bus, emitted, voice } = boot(SOAK_SEED, 'sector_sker_haven', havenPos, { cmdty_refined_metals: 12 });
   const referee = [];
   const firedKinds = [];

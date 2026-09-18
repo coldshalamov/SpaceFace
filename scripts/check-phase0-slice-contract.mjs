@@ -47,6 +47,14 @@ const allowedRandomFiles = new Map([
   ['src/render/camera.js', 'cosmetic camera shake offset'],
   ['src/render/feel.js', 'cosmetic warp streak variation'],
   ['src/render/vfx.js', 'cosmetic particle variation'],
+  // Wreck arc-discharge retimer. Verified renderer-local: the draw lands in `rec.arcTimer` /
+  // `rec.arcIntensity` inside createInfrastructureMotionTracker's module-local `infrastructureStates`
+  // map, which drives mesh rotation/arc presentation only and never feeds back into sim state.
+  ['src/render/infrastructureMotion.js', 'cosmetic wreck arc-discharge timing (renderer-local motion recs)'],
+  // Hit-flinch recoil variation. Verified renderer-local: every draw lands in a `craftMotion`
+  // module-local record (`flinchVelRoll/Pitch`, `flinchShudder`) that offsets mesh pose only and
+  // never feeds back into sim state.
+  ['src/render/shipMicroMotion.js', 'cosmetic hit-flinch recoil variation (renderer-local motion recs)'],
   ['src/systems/telemetry.js', 'local telemetry session id only'],
   ['src/ui/floatingText.js', 'cosmetic floating text drift'],
   ['src/ui/screens/drill.js', 'cosmetic drill screen particles and rover shake'],

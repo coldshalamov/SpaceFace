@@ -20,6 +20,8 @@ Allowed current call sites:
 | `src/render/camera.js` | cosmetic camera | Applies shake jitter after authoritative camera target/zoom decisions. |
 | `src/render/feel.js` | cosmetic render | Varies warp streak presentation; no gameplay state mutation. |
 | `src/render/vfx.js` | cosmetic render | Particle variation; no gameplay state mutation. |
+| `src/render/infrastructureMotion.js` | cosmetic render | Retimes the wreck electrical-arc discharge. Verified renderer-local: the draw lands in `rec.arcTimer` / `rec.arcIntensity` inside the tracker's module-local `infrastructureStates` map, which drives mesh rotation/arc presentation only and never feeds back into sim state. |
+| `src/render/shipMicroMotion.js` | cosmetic render | Varies hit-flinch recoil direction. Verified renderer-local: every draw lands in a `craftMotion` module-local record (`flinchVelRoll/Pitch`, `flinchShudder`) that offsets mesh pose only and never feeds back into sim state. |
 | `src/systems/telemetry.js` | local telemetry | Builds a local session id; not read by simulation. |
 | `src/testing/lab/runScenario.js` | local lab id | Mints a `runId` for lab/internal-test results that are non-promoting; not read by simulation. |
 | `src/ui/floatingText.js` | cosmetic UI | Adds presentation drift to damage/pickup text. |

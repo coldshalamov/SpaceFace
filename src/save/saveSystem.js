@@ -2690,7 +2690,10 @@ export const save = {
       // A nested restore may be intentionally queued by the active route. It has not failed and
       // the existing deferral contract still reports the outer request as accepted.
       if (result && result.queued) return true;
-      if (result && result.restored === false) return false;
+      // Same one step later: the outer destructive error was superseded by a drained newer route,
+      // so there is no failure to report. Returning false here would misread a legitimate preemption
+      // as a failed load (and the lab harness would file it as infra).
+      if (result && result.restored === false) return result.superseded === true;
       return true;
     } catch (err) {
       console.error('[save] load failed', err);
