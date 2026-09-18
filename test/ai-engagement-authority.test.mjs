@@ -205,8 +205,13 @@ test('first-session combat permits at most two simultaneous attackers on the pla
   }
   refreshFirstSessionAttackerOwnership(state, [5, 4, 2].map((id) => ownershipDecision(id, 'strike', 'action_burst')));
 
-  assert.deepEqual(authorize(state, { self: state.entities.get(5) }),
+  // Entity 2 holds a committed slot from 400 WU out while 4 and 5 press at ~105 WU: the cap
+  // bounds simultaneous threat, so the markedly closer attacker displaces the distant incumbent.
+  assert.deepEqual(authorize(state, { self: state.entities.get(2) }),
     { ok: false, reason: 'first_session_attacker_cap' });
+  assert.deepEqual(authorize(state, { self: state.entities.get(5) }),
+    { ok: true, reason: 'authorized' },
+    'the close committed attacker owns a slot over the distant incumbent');
 
   state.run = { kind: 'survival', ruleset: 'swarm', phase: 'active' };
   assert.deepEqual(authorize(state, { self: state.entities.get(5) }), { ok: true, reason: 'authorized' },
@@ -374,6 +379,56 @@ test('actors absent from a complete tactical batch release stale target ownershi
     owners: [3, 4],
     waiting: [],
   }, 'a ship no longer present in the complete live decision batch must not hold a slot');
+});
+
+test('CONTROL-dispatched security responders fire outside the novice cap without consuming slots', () => {
+  const state = ownershipState([2, 3]);
+  const responderAI = authorizedAI({
+    lawful: true,
+    motive: 'jurisdiction_enforcement',
+    engagementTrigger: 'security_response',
+    securityTargetId: 1,
+    activity: normalizeActivity({
+      kind: ActivityKind.ATTACK_RUN,
+      reason: 'security_response:law:1',
+      anchor: { x: 1400, z: 0 },
+      startedTick: 100,
+      targetId: 1,
+    }),
+  });
+  for (const id of [7, 8]) {
+    const responder = ship(id, 1, { x: 1500 + id * 4, z: id * 9 }, responderAI);
+    responder.data.combat.targetId = state.playerId;
+    state.entities.set(id, responder);
+    state.entityList.push(responder);
+  }
+  refreshFirstSessionAttackerOwnership(state, [2, 3, 7, 8].map((id) => ownershipDecision(id, 'strike', 'action_burst')));
+
+  assert.deepEqual(inspectFirstSessionAttackerOwnership(state, state.playerId), {
+    targetId: state.playerId,
+    owners: [2, 3],
+    waiting: [],
+  }, 'dispatched responders are never cap candidates — ambient attackers keep both slots');
+  assert.deepEqual(authorize(state, { self: state.entities.get(7) }),
+    { ok: true, reason: 'authorized' },
+    'a dispatched responder answers the incident regardless of filled ambient slots');
+  assert.deepEqual(authorize(state, { self: state.entities.get(8) }),
+    { ok: true, reason: 'authorized' },
+    'every dispatched responder in the incident answers, not just two');
+
+  const wantedHunter = ship(9, 1, { x: 3400, z: 30 }, authorizedAI({
+    lawful: true,
+    motive: 'jurisdiction_enforcement',
+    engagementTrigger: 'wanted_status',
+    securityTargetId: 1,
+  }));
+  state.entities.set(9, wantedHunter);
+  state.entityList.push(wantedHunter);
+  refreshFirstSessionAttackerOwnership(state, [2, 3, 9].map((id) => ownershipDecision(id, 'strike', 'action_burst')));
+  assert.deepEqual(authorize(state, { self: state.entities.get(9) }), {
+    ok: false,
+    reason: 'first_session_attacker_cap',
+  }, 'wanted/self-defence lawful fire stays inside the novice cap');
 });
 
 test('authorized fire records a deterministic motive and doctrine trace on the attacker', () => {

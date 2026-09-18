@@ -35,6 +35,9 @@ const INTERCEPTOR_STRIKE_MAX_TICKS = 54;
 const INTERCEPTOR_EXTEND_TICKS = 75;
 const INTERCEPTOR_EXTEND_MAX_TICKS = 180;
 const INTERCEPTOR_REFORM_TICKS = 45;
+// Below this speed the target cannot maneuver out of a re-attack: a parked or drifting craft
+// gains nothing from the flyby's long extend leg, so the run wheels straight back into reform.
+const INTERCEPTOR_STATIONARY_TARGET_SPEED = 8;
 const BRAWLER_COMMIT_MIN_TICKS = 90;
 const BRAWLER_COMMIT_MAX_TICKS = 120;
 const BRAWLER_BREAKAWAY_TICKS = 105;
@@ -359,7 +362,8 @@ function updateInterceptor(record, tick, self, target, distance) {
     record.closestDistance = Math.min(record.closestDistance, distance);
     const passed = runHasPassed(record, self, target, distance);
     if ((age >= INTERCEPTOR_STRIKE_MIN_TICKS && passed) || age >= INTERCEPTOR_STRIKE_MAX_TICKS) {
-      beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
+      if (interceptorTargetStationary(target)) beginReform(record, tick);
+      else beginEgress(record, 'extend', tick, self, target, 'attack_run_complete');
     }
   } else if (record.phase === 'extend' && age >= INTERCEPTOR_EXTEND_TICKS &&
     (distance >= 520 || age >= INTERCEPTOR_EXTEND_MAX_TICKS)) {
@@ -1155,6 +1159,12 @@ function flightProfileFor(doctrineId, self) {
   if (doctrineId === CombatDoctrineId.SWARM_PACK || doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'flyby';
   if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'ranged_standoff';
   return 'ranged_standoff';
+}
+
+function interceptorTargetStationary(target) {
+  const vel = target && target.vel;
+  if (!vel || !Number.isFinite(vel.x) || !Number.isFinite(vel.z)) return false;
+  return Math.hypot(vel.x, vel.z) <= INTERCEPTOR_STATIONARY_TARGET_SPEED;
 }
 
 function runHasPassed(record, self, target, distance) {

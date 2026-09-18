@@ -15,6 +15,7 @@ import {
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
 import { sectorGlobalOrigin } from '../data/sectorCoordinates.js';
+import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { ActivityKind, RulesOfEngagement, normalizeActivity } from '../ai/doctrine.js';
 import {
   is47aScavengerCounterplayAuthorized,
@@ -77,6 +78,9 @@ const RESPONSE_GRACE_S = 6;
 const RESPONSE_CLEARANCE = 320;
 const RECEIPT_CAP = 24;
 const LAW_JOB_RESPONSE_HOLDER = 'lawSecurity';
+// Claim marker for a responder's pre-dispatch moraleImmune value: the response borrows the flag
+// while the incident is live and hands it back at stand-down, so an authored immune hull keeps it.
+const SECURITY_RESPONSE_MORALE_RESTORE = '_lawSecurityMoraleRestore';
 const AMBIENT_SCAN_INTERVAL_TICKS = 30;
 const LAW_FACTIONS = new Set(['faction_scn', 'faction_mts', 'faction_dmc', 'faction_free']);
 const DANGEROUS_CONTEXTS = new Set([
@@ -106,6 +110,7 @@ const LAW_RESPONSE_AI_FIELDS = Object.freeze([
   'activity',
   'witnessRole',
   'witnessIncidentId',
+  'moraleImmune',
 ]);
 const LAW_RESPONSE_COMBAT_FIELDS = Object.freeze(['targetId', 'lockTarget']);
 const LAW_RESPONSE_INTENT_FIELDS = Object.freeze(['fire', 'fireGroup']);
@@ -902,6 +907,8 @@ export const lawSecurity = {
     if (exactEntityAndDataAfter && exactAi && responseSuccessorMatches(record, current.data, 'ai')) {
       restoreOwnFields(record.topLevels.ai.value, record.snapshots.ai);
       restoreOwnValue(current.data, 'ai', record.topLevels.ai);
+      // The morale claim's own bookkeeping is not a snapped field; retire it with the response.
+      if (current.data.ai) delete current.data.ai[SECURITY_RESPONSE_MORALE_RESTORE];
     }
     if (exactEntityAndDataAfter && exactCombat && responseSuccessorMatches(record, current.data, 'combat')) {
       restoreOwnFields(record.topLevels.combat.value, record.snapshots.combat);
@@ -1122,6 +1129,16 @@ export const lawSecurity = {
     ai.lawful = true;
     ai.passive = false;
     ai.securityTargetId = attacker.id;
+    // A dispatched enforcement action does not withdraw on attrition: the incident's own
+    // stand-down decides when the response ends, not squad morale. Without this, responders
+    // catching stray fire from a suspect's sustained assault rout before the exchange resolves.
+    // The exemption is claimed, not assigned: snapshot any authored immunity so stand-down can
+    // return the hull to the morale contract it carried before the call went out (re-authorizing
+    // a chaser must not snapshot the claim's own true over the original).
+    if (!ai[SECURITY_RESPONSE_MORALE_RESTORE]) {
+      ai[SECURITY_RESPONSE_MORALE_RESTORE] = ownSnapshot(ai, 'moraleImmune');
+    }
+    ai.moraleImmune = true;
     ai.witnessRole = 'chase';
     if (incident) ai.witnessIncidentId = incident.id;
     ai.motive = motive === 'self_defense' ? 'self_defense' : 'jurisdiction_enforcement';
@@ -1129,6 +1146,14 @@ export const lawSecurity = {
     ai.zoneId = incident ? `jurisdiction:${incident.stationId}` : String(ai.zoneId || 'patrol_route');
     ai.approachTelegraph = 'patrol_challenge';
     ai.noFireResponseWindowS = incident ? incident.challengeWindowS : 1;
+    // Execution authorization fail-closes on a missing combat doctrine, so a claimed
+    // responder spawned without one (ambient squad patrol) would orbit the offender forever
+    // without ever firing. Outfitting for response includes a doctrine: keep an authored
+    // one, else the faction profile's, else the patrol flyby. Activity/ROE still gate fire.
+    if (!normalizeCombatDoctrineId(ai.combatDoctrineId)) {
+      ai.combatDoctrineId = normalizeCombatDoctrineId(ai.factionPresenceDoctrine && ai.factionPresenceDoctrine.combatDoctrineId)
+        || CombatDoctrineId.INTERCEPTOR_FLYBY;
+    }
     ai.roe = RulesOfEngagement.WEAPONS_FREE;
     const stationPos = incident && (stationByPublicId(state, incident.stationId)?.pos);
     const victimPos = incident && entityById(state, incident.victimId)?.pos;
@@ -1211,6 +1236,7 @@ export const lawSecurity = {
       if (matchesWitnessIncident || ai.securityTargetId === targetId) {
         const isHolder = matchesWitnessIncident && ai.witnessRole === 'hold';
         ai.securityTargetId = null;
+        releaseResponseMoraleClaim(ai);
         ai.witnessRole = null;
         ai.witnessIncidentId = null;
         ai.passive = false;
@@ -1523,6 +1549,7 @@ export const lawSecurity = {
       holderAi.lawful = true;
       holderAi.passive = false;
       holderAi.securityTargetId = null;
+      releaseResponseMoraleClaim(holderAi);
       holderAi.witnessRole = 'hold';
       holderAi.witnessIncidentId = incident.id;
       holderAi.motive = 'jurisdiction_enforcement';
@@ -1560,6 +1587,7 @@ export const lawSecurity = {
     } else {
       if (holderAi.securityTargetId != null) {
         holderAi.securityTargetId = null;
+        releaseResponseMoraleClaim(holderAi);
       }
       if (holderData.combat && (holderData.combat.targetId === incident.attackerId || holderData.combat.lockTarget === incident.attackerId)) {
         clearCombatTarget(holderData.combat, incident.attackerId);
@@ -3249,6 +3277,26 @@ function distance2(a, b) {
   const dx = Number(a && a.x) - Number(b && b.x);
   const dz = Number(a && a.z) - Number(b && b.z);
   return dx * dx + dz * dz;
+}
+
+// Same {had,value} claim idiom as encounterDirector's restore snapshot: record whether the key
+// existed so stand-down can hand back exactly the pre-dispatch contract — present value restored,
+// absent stays absent.
+function ownSnapshot(object, key) {
+  return Object.prototype.hasOwnProperty.call(object, key)
+    ? { had: true, value: object[key] }
+    : { had: false, value: undefined };
+}
+
+function restoreSnapshot(object, key, snapshot) {
+  if (snapshot && snapshot.had) object[key] = snapshot.value;
+  else delete object[key];
+}
+
+function releaseResponseMoraleClaim(ai) {
+  if (!ai) return;
+  restoreSnapshot(ai, 'moraleImmune', ai[SECURITY_RESPONSE_MORALE_RESTORE]);
+  delete ai[SECURITY_RESPONSE_MORALE_RESTORE];
 }
 
 export function wantedWarrantFor(state) {

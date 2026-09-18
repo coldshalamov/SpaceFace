@@ -152,7 +152,12 @@ export function authorizeAIEngagement({
     if (!lawfulEnforcement && !scenarioCounterplay) return denied('station_protection');
   }
 
-  if (inFirstSession(state, nowTick) && !claimFirstSessionAttackerOwnership(state, self, target)) {
+  // A CONTROL-dispatched lawful response is an adjudicated escalation, not an opportunistic
+  // threat: lawSecurity already sized the dispatch when the incident opened. The novice cap
+  // exists to bound simultaneous ambient pressure, so wanted/self-defence lawful fire and every
+  // hostile stay cap-bound — dispatched responders do not.
+  if (inFirstSession(state, nowTick) && !isDispatchedSecurityResponse(ai, target)
+    && !claimFirstSessionAttackerOwnership(state, self, target)) {
     return denied('first_session_attacker_cap');
   }
 
@@ -601,20 +606,12 @@ function reconcileOwnership(state, runtime) {
       const d = distance2(actor.pos, target.pos);
       return Number.isFinite(d) ? d : Infinity;
     };
-    // The cap bounds simultaneous threat, so its slots belong to the attackers actually able to
-    // press the target — a committed responder parked beyond reach must not starve one already in
-    // weapon range. Incumbents hold while still candidates; open slots fill by proximity; a
-    // markedly closer waiter displaces the farthest incumbent (hysteresis damps churn).
     let owners = previous.owners.filter((id) => candidateSet.has(id));
-    if (owners.length < MAX_FIRST_SESSION_ATTACKERS) {
-      const byProximity = candidates
-        .filter((id) => !owners.includes(id))
-        .sort((a, b) => (distanceOf(a) - distanceOf(b)) || compareStableIds(a, b));
-      for (const id of byProximity) {
-        if (owners.length >= MAX_FIRST_SESSION_ATTACKERS) break;
-        owners.push(id);
-      }
-    }
+    const waiting = candidates.filter((id) => !owners.includes(id));
+    while (owners.length < MAX_FIRST_SESSION_ATTACKERS && waiting.length) owners.push(waiting.shift());
+    // The cap bounds simultaneous threat, so a committed attacker parked far beyond reach must not
+    // starve one already pressing the target — a markedly closer waiter displaces the farthest
+    // incumbent. The hysteresis keeps ordinary engagements (similar ranges) on stable order.
     for (const id of candidates) {
       if (owners.includes(id)) continue;
       const challengerDistance = distanceOf(id);
@@ -629,7 +626,10 @@ function reconcileOwnership(state, runtime) {
       }
     }
     const ownerSet = new Set(owners);
-    runtime.byTarget.set(targetId, { owners, waiting: candidates.filter((id) => !ownerSet.has(id)) });
+    runtime.byTarget.set(targetId, {
+      owners,
+      waiting: candidates.filter((id) => !ownerSet.has(id)),
+    });
   }
 }
 
@@ -643,7 +643,18 @@ function ownershipEligible(state, actor, target) {
   if (!Number.isFinite(Number(ai.noFireResponseWindowS)) || Number(ai.noFireResponseWindowS) < MIN_AI_RESPONSE_WINDOW_S) return false;
   if (normalizeRoe(ai.roe) === RulesOfEngagement.HOLD_FIRE) return false;
   if (!activityAllowsOffense(effectiveActivityForAI(ai))) return false;
+  // Dispatched responders are never cap candidates: they fire outside the ownership system, so
+  // registering them would only starve ambient attackers of slots the responders do not need.
+  if (isDispatchedSecurityResponse(ai, target)) return false;
   return isHostileForAI(state, actor, target);
+}
+
+function isDispatchedSecurityResponse(ai, target) {
+  return !!(ai && ai.lawful === true
+    && ai.engagementTrigger === 'security_response'
+    && ai.securityTargetId != null
+    && target && target.id != null
+    && ai.securityTargetId === target.id);
 }
 
 function committedTargetId(decision) {

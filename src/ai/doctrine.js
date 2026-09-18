@@ -148,12 +148,19 @@ export function setEntityDoctrine(entity, values = {}) {
 
 /** Player wing orders refine squad advice; retreat remains an absolute survival override. */
 export function overrideDirectiveForWingOrder(directive, perception, freeze = Object.freeze) {
-  if (!directive || !directive.objective) return directive;
-  if (directive.objective.kind === ObjectiveKind.RETREAT) return directive;
+  if (!directive) return directive;
+  if (directive.objective && directive.objective.kind === ObjectiveKind.RETREAT) return directive;
   const activity = normalizeActivity(perception && perception.self && perception.self.activity);
   if (!activity) return directive;
   const reason = String(activity.reason || '');
-  if (reason.startsWith('ambush_snare:') && activity.kind === ActivityKind.ATTACK_RUN && activity.targetId != null) {
+  // An ATTACK_RUN activity that names a concrete target is an authoritative assignment — an
+  // ambush's marked prey or CONTROL's dispatched incident offender — and outranks the squad's
+  // advisory tactic vote, including a veto that left the objective null. Without the override,
+  // ambient same-squad members who never learned of the incident vote the offender non-hostile
+  // (hostileVotes <= friendlyVotes), no focus ever materializes, and dispatched lawmen hold an
+  // impotent guard ring around the jurisdiction anchor while the offender fires at will.
+  if ((reason.startsWith('ambush_snare:') || reason.startsWith('security_response:'))
+    && activity.kind === ActivityKind.ATTACK_RUN && activity.targetId != null) {
     return freeze({
       ...directive,
       focusTargetId: activity.targetId,
@@ -161,10 +168,11 @@ export function overrideDirectiveForWingOrder(directive, perception, freeze = Ob
       formation: freeze({
         ...(directive.formation || {}),
         breakFormation: true,
-        breakReason: 'ambush_snare_prey',
+        breakReason: reason.startsWith('ambush_snare:') ? 'ambush_snare_prey' : 'security_response_target',
       }),
     });
   }
+  if (!directive.objective) return directive;
   if (!reason.startsWith('wing_order:')) return directive;
   const order = reason.slice('wing_order:'.length);
   let kind = ObjectiveKind.REFORM;
@@ -200,9 +208,18 @@ export function perceptionForWingOrderCombatDoctrine(perception, directive, free
   const exactTargetId = directive.objective.targetId;
   if (!activity || exactTargetId == null) return perception;
   const reason = String(activity.reason || '');
-  if (reason !== 'wing_order:attack' && !reason.startsWith('ambush_snare:')) return perception;
+  if (reason !== 'wing_order:attack' && !reason.startsWith('ambush_snare:') && !reason.startsWith('security_response:')) return perception;
   const contacts = Array.isArray(perception.contacts) ? perception.contacts : [];
-  const filtered = contacts.filter((contact) => contact && (contact.kind !== 'ship' || contact.id === exactTargetId));
+  const filtered = contacts
+    .filter((contact) => contact && (contact.kind !== 'ship' || contact.id === exactTargetId))
+    .map((contact) => {
+      // A wing-order mark, ambush prey, or CONTROL-dispatched offender arrives WITH its firing
+      // track — the assignment is the sensor contact. confidenceFor() dips below the doctrine's
+      // 0.55 selection floor at long range (~45%+ of sensor reach), which would leave a lawfully
+      // dispatched responder orbiting its anchor forever while the offender sits in plain sight.
+      if (contact.kind !== 'ship' || contact.id !== exactTargetId) return contact;
+      return { ...contact, confidence: Math.max(finite(contact.confidence, 0), 0.55) };
+    });
   return freeze({ ...perception, contacts: freeze(filtered) });
 }
 

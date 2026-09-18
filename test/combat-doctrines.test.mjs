@@ -255,12 +255,33 @@ for (const [label, selfOverrides, contactOverrides] of [
   assert.equal(result.fireWindow, true);
   result = runtime.update({
     tick: 59, entityId: 2, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
-    perception: perception([shipContact(1, { x: 120, mobilityBand: 'high', threat: 0.9 })], { x: 160, vx: 70 }), directive,
+    perception: perception([shipContact(1, { x: 120, vx: -60, mobilityBand: 'high', threat: 0.9 })], { x: 160, vx: 70 }), directive,
   });
   assert.equal(result.phase, 'extend');
   assert.equal(result.maneuverKind, ManeuverKind.INTERCEPT, 'interceptor extends on a committed flight point instead of orbiting forever');
   assert.equal(result.maneuverTargetId, null);
   assert(result.flightPoint, 'interceptor extension owns a stable target-independent flight point');
+}
+
+{
+  // A parked or drifting target cannot exploit the boom-zoom extend: after the pass the run
+  // wheels straight back into reform and re-commits instead of flying the long egress leg.
+  const runtime = new CombatDoctrineRuntime({ seed: 61 });
+  let result = runtime.update({
+    tick: 0, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 210, threat: 0.9 })]), directive,
+  });
+  assert.equal(result.phase, 'engine_flare');
+  result = runtime.update({
+    tick: 30, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 160, threat: 0.9 })]), directive,
+  });
+  assert.equal(result.phase, 'strike');
+  result = runtime.update({
+    tick: 60, entityId: 3, doctrineId: CombatDoctrineId.INTERCEPTOR_FLYBY,
+    perception: perception([shipContact(1, { x: 40, threat: 0.9 })], { x: 160, vx: 70 }), directive,
+  });
+  assert.equal(result.phase, 'reform', 'stationary target skips the extend leg and re-attacks');
 }
 
 {

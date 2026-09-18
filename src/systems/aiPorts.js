@@ -15,6 +15,7 @@ import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { authorizeAIEngagement, isHostileForAI } from '../ai/engagementAuthority.js';
 import { measureThrusterAuthority, writePhysicsControl } from '../core/physicsAuthority.js';
 import { resolveFlightProfile } from '../core/flightDynamics.js';
+import { resolvePropulsionProfile } from '../core/flight/propulsionCatalog.js';
 import { hasActiveSpatialHash } from '../core/spatialQuery.js';
 import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { massline2Flag } from '../data/featureFlags.js';
@@ -24,6 +25,8 @@ import {
   CERES_ACTIVITY_SECTOR_ID,
 } from '../data/sectorActivityPockets.js';
 import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
+import { ATTACHMENT_DEFS } from '../data/combatDefs.js';
+import { automaticMasslineBreakAllowed } from '../combat/attachments.js';
 import {
   ensureActivityClassified,
   entityNeedsAiThink,
@@ -51,6 +54,7 @@ const CERES_LAW_JOB_SLOTS_BY_ID = new Map(CERES_ACTIVITY_POCKETS.flatMap((pocket
 )));
 const OWNED_TETHER_TAGS = Object.freeze(['cuttable_by_self', 'massline', 'owned_by_self', 'severable']);
 const HOSTILE_TETHER_TAGS = Object.freeze(['hostile', 'massline', 'overloadable']);
+const ATTACHMENT_DEF_BY_ID = new Map(ATTACHMENT_DEFS.map((row) => [row.id, row]));
 const SOLID_TAGS = Object.freeze(['solid']);
 const EMPTY_SUBSYSTEM_FRACTIONS = Object.freeze({});
 const CAPABILITY_DEPENDENCIES = Object.freeze({
@@ -791,25 +795,54 @@ function controlFromManeuver(entity, request, dt, state) {
   const authority = measureThrusterAuthority(entity);
   const axes = localAxes(entity.rot || 0);
   const boostMult = request.boost ? profile.boostMult : 1;
+  // Ambient hulls (traffic convoys, job patrol actors) carry an all-zero legacy flightModel —
+  // they cruise on the propulsion catalog, not on derived thrust. When a claim re-tasks one for
+  // tactical duty (a dispatched responder, a WANTED-status patrol going hostile), the job drive
+  // stops and the legacy profile leaves it inert at zero force. The catalog drive is still the
+  // hull's real propulsion: fall back to it so the hull can actually answer the order. Tuned
+  // combat ships keep their authored flight model untouched.
+  const propulsion = (profile.mainAccel > 0 && profile.maxSpeed > 0)
+    ? null
+    : resolvePropulsionProfile(entity, state);
+  const mainAccel = profile.mainAccel > 0
+    ? profile.mainAccel
+    : finite(propulsion && propulsion.mainAccel, finite(propulsion && propulsion.maxAccel));
+  const reverseAccel = profile.reverseAccel > 0
+    ? profile.reverseAccel
+    : finite(propulsion && propulsion.reverseAccel, mainAccel * 0.6);
+  const strafeAccel = profile.strafeAccel > 0
+    ? profile.strafeAccel
+    : finite(propulsion && propulsion.strafeAccel, mainAccel * 0.7);
+  const maxSpeed = profile.maxSpeed > 0
+    ? profile.maxSpeed
+    : finite(propulsion && propulsion.combatSpeed, finite(propulsion && propulsion.maxSpeed, 120));
   const forwardInput = clamp(request.forceLocal.forward, -1, 1);
   const rightInput = clamp(request.forceLocal.right, -1, 1) * 0.75;  // damp strafe vs forward to make NPCs behave more like they must broadly face their velocity (more regular ship physics)
   const forwardAuthority = forwardInput >= 0 ? authority.forward : authority.reverse;
-  const forwardAccel = forwardInput * (forwardInput >= 0 ? profile.mainAccel : profile.reverseAccel) * forwardAuthority * boostMult;
-  const rightAccel = rightInput * profile.strafeAccel * authority.strafe * boostMult;
+  const forwardAccel = forwardInput * (forwardInput >= 0 ? mainAccel : reverseAccel) * forwardAuthority * boostMult;
+  const rightAccel = rightInput * strafeAccel * authority.strafe * boostMult;
   const force = {
     x: (axes.fx * forwardAccel + axes.rx * rightAccel) * profile.mass,
     y: 0,
     z: (axes.fz * forwardAccel + axes.rz * rightAccel) * profile.mass,
   };
   if (request.brake) addBrakeForce(force, entity, profile, dt);
-  const torqueYaw = clamp(request.torqueYaw, -1, 1) * profile.angularAccel * profile.inertia * authority.yaw;
+  // Torque must be sized against the body that actually rotates. Tuned hulls keep
+  // physicsBody.inertiaY synced to the flight model, but ambient hulls carry the geometric
+  // fallback (0.5·mass·radius²) while their zeroed legacy profile reports ~200 — scaling by
+  // profile.inertia there undersizes torque ~50× and the hull can never answer a turn order.
+  const angularAccel = profile.angularAccel > 0
+    ? profile.angularAccel
+    : finite(propulsion && propulsion.yawAccel, 0);
+  const inertia = positive(entity.physicsBody && entity.physicsBody.inertiaY, positive(profile.inertia, 1));
+  const torqueYaw = clamp(request.torqueYaw, -1, 1) * angularAccel * inertia * authority.yaw;
   return {
     source: 'sg06-ai-maneuver',
     mode: profile.mode,
     force,
     torque: { x: 0, y: torqueYaw, z: 0 },
     authority,
-    maxSpeed: profile.maxSpeed * (request.boost ? profile.boostMaxSpeedMult : profile.normalMaxSpeedMult),
+    maxSpeed: maxSpeed * (request.boost ? profile.boostMaxSpeedMult : profile.normalMaxSpeedMult),
   };
 }
 
@@ -930,6 +963,20 @@ function entityContacts(state, self, range, helpers = null, attachmentIndex = nu
       attachmentIndex, 'ship', freeze, cacheOwner), confidence: 1,
       threat: threatFor(state, self, pilot, hostile), hostile });
   }
+  // A CONTROL-dispatched responder carries its offender as a reported track, not a sensor guess —
+  // the same broadcast-objective semantics as the Crucible pilot. The jurisdiction witnessed the
+  // offense and feeds the assignment to its own units; a responder dispatched from beyond its own
+  // sensor reach still closes on the scene instead of drifting on a null intercept. Cloaking still
+  // breaks the track; hostility and fire authority are resolved per contact as usual.
+  const securityTargetId = ((self.data && self.data.ai) || self.ai || {}).securityTargetId;
+  const offender = securityTargetId != null ? getEntity(state, securityTargetId) : null;
+  if (offender && offender.alive && !out.some(c => c.id === offender.id)
+    && !cloakHidesPlayerFrom(state, self, offender)) {
+    const hostile = isHostileForAI(state, self, offender);
+    out.push({ ...buildContactBase(state, offender, combatRuntimeFor(state, offender.id),
+      attachmentIndex, 'ship', freeze, cacheOwner), confidence: 1,
+      threat: threatFor(state, self, offender, hostile), hostile });
+  }
   return out;
 }
 
@@ -1018,7 +1065,17 @@ function tetherTags(ownedBySelf, attachment, owner, target) {
   const base = ownedBySelf ? OWNED_TETHER_TAGS : HOSTILE_TETHER_TAGS;
   const length = distance2(owner && owner.pos, target && target.pos);
   const slack = positive(attachment && attachment.restLength, 0) - length;
-  return slack >= 6 ? Object.freeze([...base, 'slack']) : base;
+  let tags = base;
+  // 'overloadable' must mean a real escape option. Lines whose massline policy only yields to
+  // extreme endpoints (the standard player tether) can never be snapped by ship thrust, so a
+  // tethered member must not be diverted into a futile overload objective against them.
+  if (!ownedBySelf) {
+    const def = ATTACHMENT_DEF_BY_ID.get(attachment && attachment.defId) || null;
+    if (!automaticMasslineBreakAllowed(def, owner, target)) {
+      tags = Object.freeze(base.filter((tag) => tag !== 'overloadable'));
+    }
+  }
+  return slack >= 6 ? Object.freeze([...tags, 'slack']) : tags;
 }
 
 function recentEventIndexFor(state, tick) {

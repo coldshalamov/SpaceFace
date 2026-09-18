@@ -99,6 +99,23 @@ test('each current R0 glass actor remains independently required', () => {
   assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true);
 });
 
+test('runtime glass stops blocking once the first playable frame has painted', () => {
+  const state = buildState({ tier: 'discrete' });
+  const actor = state.entityList.find((entity) => entity.id === 'npc-0');
+  actor.activity = { presentationTier: 'R0_GLASS' };
+  state.mode = 'flight';
+  // Before the reveal, an unauthored hull on the readable glass is an opening-frame defect.
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, false);
+  // After the first playable picture has painted, that same actor is ordinary on-demand
+  // traffic: it still gets its authored upgrade, but the startup verdict must not flap
+  // closed for every inbound hull for the rest of the session.
+  state.render.firstPlayableFrameAt = 1000;
+  assert.equal(partsLibrary.authoredCriticalVisualReadiness(state).ready, true);
+  // The deferred verdict must not widen: the actor stays diagnostic, not a blocker.
+  const readiness = partsLibrary.authoredCriticalVisualReadiness(state);
+  assert.equal(readiness.flightReadyBlockers.some((entry) => entry.role === 'glassActors'), false);
+});
+
 test('loading ignores a prior flight activity frame whose entity ids are being reused', () => {
   const state = buildState({ tier: 'integrated' });
   state.mode = 'loading';
