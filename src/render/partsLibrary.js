@@ -1025,7 +1025,12 @@ const REQUIRED_WHOLE_SHIP_ASSET_REFS = Object.freeze(new Set([
 export function requiresProductionWholeShipForEntity(entity) {
   if (!entity || entity.type !== 'ship' || !entity.data) return false;
   const data = entity.data;
-  if (REQUIRED_WHOLE_SHIP_DEF_ID_SET.has(data.defId)) return true;
+  if (REQUIRED_WHOLE_SHIP_DEF_ID_SET.has(data.defId)) {
+    // The Kestrel production body is authored for the player hero ship (see isPlayerKestrel):
+    // an NPC Kestrel must stay on the modular authored path even when the V4 record is loaded.
+    if (data.defId === 'ship_kestrel') return entity.isPlayer === true;
+    return true;
+  }
   if (REQUIRED_WHOLE_SHIP_TRAFFIC_ROLES.has(String(data.trafficRole || ''))) return true;
   if (REQUIRED_WHOLE_SHIP_ASSET_REFS.has(String(data.assetRef || ''))) return true;
   return false;
@@ -4847,7 +4852,14 @@ export function authoredCriticalVisualReadiness(state) {
 
   for (const entity of entityList) {
     const data = entity && entity.data || {};
-    const allowRuntimeActivityGate = state && state.mode !== 'loading';
+    // Runtime glass membership is an opening-frame contract only: it gates until the first
+    // playable picture paints, so every hull visible at the reveal is authored. After the latch,
+    // inbound traffic that drifts onto the glass is ordinary on-demand streaming (fallback hull
+    // until its authored body commits) and must not keep `ready` false for the rest of the
+    // session — otherwise a ship arriving a minute into flight re-blocks a startup verdict the
+    // route and the first-picture submission both read as point-in-time.
+    const allowRuntimeActivityGate = state && state.mode !== 'loading'
+      && !Number.isFinite(state.render && state.render.firstPlayableFrameAt);
     const frameGlassIds = state && state.render && state.render.activityFrame
       && state.render.activityFrame.renderGlassIds;
     const isCurrentGlass = allowRuntimeActivityGate && (
