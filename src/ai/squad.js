@@ -52,7 +52,7 @@ export class SquadCommander {
       members,
       factionBehavior,
       roles: assignRoles(members),
-      composition: resolveWingComposition(definition.id, members, this.seed),
+      composition: resolveWingComposition(definition.id, members, this.seed, factionBehavior),
       currentTactic: null,
       tacticSinceTick: -Infinity,
       focusTargetId: null,
@@ -313,6 +313,10 @@ function assignRoles(members) {
 // Data: WING_COMPOSITION_GRAMMAR / TWIST_CLAUSES in src/data/combatDefs.js. A wing resolves to
 // at most one composition (first matching row); the twist is seeded from (squadId, seed) so
 // every consumer of the same fight sees the same wing grammar.
+//
+// Authority boundary: the twist clauses are AGGRESSOR flavor. Squads whose sampled faction
+// behavior opts out of destruction (non-lethal interdiction, convoys, fixed-route logistics —
+// e.g. K1 fulfillment) run authored tactic contracts and never draw one.
 
 const IDENTITY_WING_ROLE = Object.freeze({
   swarm_pack: 'flank',
@@ -323,8 +327,11 @@ const IDENTITY_WING_ROLE = Object.freeze({
   field_anchor_controller: 'screen',
 });
 
-export function resolveWingComposition(squadId, members, seed = 1) {
+export function resolveWingComposition(squadId, members, seed = 1, factionBehavior = null) {
   const doctrineIds = members.map((member) => member.combatDoctrineId).filter(Boolean);
+  if (factionBehavior && factionBehavior.destroyTarget === false) {
+    return { grammarId: null, twist: null, roles: new Map() };
+  }
   let grammar = null;
   for (const row of WING_COMPOSITION_GRAMMAR) {
     const when = row && row.when;
