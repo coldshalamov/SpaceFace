@@ -163,6 +163,35 @@ export function snapshotIndexOf(snapshot, entityId) {
   return -1;
 }
 
+/**
+ * Pose blend parameter for the previous→latest pack span, normalized by that span's real length.
+ *
+ * The raw render alpha is accumulator/fixedDt — a fraction of ONE sim tick — and it is only the
+ * correct blend while every present advances exactly one step, keeping the previous pack exactly
+ * one tick behind the latest. On any frame that completes k > 1 steps (a missed vsync, a long
+ * frame, present-first recovery after a late present) the previous pack sits k ticks back, and a
+ * one-tick alpha across a k-tick span lands near the STALE previous pose: the hull holds last
+ * frame's position for a whole present, then snaps the entire span forward on the next one. That
+ * freeze-then-jump cadence is the visible judder under load. The rendered moment is always
+ * latest.simTime + accumulator − fixedDt, so normalizing by the actual span
+ *
+ *   t = 1 + (accumulator − fixedDt) / (latest.simTime − previous.simTime)
+ *
+ * reduces to accumulator/fixedDt for a one-tick span and otherwise spreads catch-up motion across
+ * the span at correct world speed. Degenerate spans (no predecessor, equal stamps, clock resets)
+ * return the fallback alpha unchanged.
+ */
+export function poseSpanAlpha(latest, previous, accumulatorS, fixedDt, fallbackAlpha = 1) {
+  if (!latest || !previous) return fallbackAlpha;
+  const dt = Number.isFinite(fixedDt) && fixedDt > 0 ? fixedDt : 0;
+  if (!(dt > 0)) return fallbackAlpha;
+  const span = latest.simTime - previous.simTime;
+  if (!Number.isFinite(span) || span <= 0) return fallbackAlpha;
+  const acc = Number.isFinite(accumulatorS) ? accumulatorS : 0;
+  const t = 1 + (acc - dt) / span;
+  return t < 0 ? 0 : (t > 1 ? 1 : t);
+}
+
 export function applySnapshotPoseToMesh(mesh, snapshot, entityId, origin, previous = null, alpha = 1) {
   if (!mesh || !mesh.position || !snapshot) return false;
   const index = snapshotIndexOf(snapshot, entityId);

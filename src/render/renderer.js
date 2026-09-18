@@ -106,6 +106,7 @@ import {
   applySnapshotPoseToMesh,
   createSnapshotFence,
   packPresentationWorldToFence,
+  poseSpanAlpha,
   snapshotIndexOf,
 } from './snapshotFence.js';
 import {
@@ -138,6 +139,7 @@ import { detectGpu, createAdaptiveResolution } from './adaptiveQuality.js';
 import { createGpuTimers } from './gpuTimers.js';
 import { ensurePerfRuntime } from '../core/perfRuntime.js';
 import { perfCountersRequested } from '../core/perfCounters.js';
+import { LOOP_FIXED_DT } from '../core/simulationRunner.js';
 import { installGlInstrumentation } from './glInstrumentation.js';
 import { installDomInstrumentation } from '../ui/domInstrumentation.js';
 import {
@@ -8692,7 +8694,15 @@ export const render = {
       world.entityIds[slot],
       origin,
       previous,
-      currentOnly ? 1 : alpha,
+      currentOnly
+        ? 1
+        : poseSpanAlpha(
+          snapshot,
+          previous,
+          this.state ? this.state.accumulator : NaN,
+          LOOP_FIXED_DT,
+          alpha,
+        ),
     );
     if (!applied) return false;
     const hull = mesh.userData && mesh.userData.hull;
