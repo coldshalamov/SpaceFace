@@ -568,6 +568,23 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
       const ai = target && target.data && target.data.ai;
       let authorization = null;
       let protection = null;
+      let aiInspect = null;
+      try {
+        if (target && window.SF?.helpers && typeof window.SF.helpers.inspectAI === 'function') {
+          const raw = window.SF.helpers.inspectAI({ entityId: target.id });
+          const lastDecision = raw && raw.lastResult && Array.isArray(raw.lastResult.decisions)
+            ? raw.lastResult.decisions.find((d) => d && d.entityId === target.id) || null
+            : null;
+          aiInspect = raw ? {
+            tick: raw.tick,
+            perception: raw.perception || null,
+            behavior: raw.behavior || null,
+            maneuver: raw.maneuver || null,
+            combatDoctrine: raw.combatDoctrine || null,
+            lastDecision,
+          } : null;
+        }
+      } catch (e) { aiInspect = { error: String(e && e.message || e) }; }
       try {
         const mod = await import('/src/ai/engagementAuthority.js');
         protection = target && player ? mod.protectedStationAt(state, player) : null;
@@ -605,6 +622,9 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
           passive: ai.passive ?? null, doctrinePhase: ai.doctrinePhase || null,
           combatDoctrine: ai.combatDoctrine ? { phase: ai.combatDoctrine.phase, fireWindow: ai.combatDoctrine.fireWindow } : null,
         } : null,
+        targetIntent: target && target.data ? target.data.intent || null : null,
+        targetSimTier: target && target.activity ? target.activity.simTier || null : null,
+        aiInspect,
         authorization,
         protection: protection ? { stationId: protection.stationId, radius: protection.radius } : null,
         hitCount: hits.length,
