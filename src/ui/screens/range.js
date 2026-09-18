@@ -1,5 +1,6 @@
 import { SHIPS } from '../../data/ships.js';
 import { ENEMY_TYPES } from '../../data/enemies.js';
+import { masslineCounterByHead } from '../../data/masslineCounters.js';
 import { WEAK_POINTS_BY_CLASS } from '../../data/weakPoints.js';
 import { ATTACHMENT_DEFS } from '../../data/combatDefs.js';
 import { getPropulsionProfile } from '../../core/flight/propulsionCatalog.js';
@@ -408,6 +409,15 @@ export function masslineCutterBestiaryFacts() {
     ['Threat', threat],
   ];
 }
+
+// MASSLINE rung → the tether head that rung drills. The rung's bestiary rows gain the shared
+// head counter table's Tell/Counter pair (src/data/masslineCounters.js); the cutter rows above
+// already name the sweep specialist the rungs stage as the hostile.
+const MASSLINE_RUNG_HEAD_BY_ID = Object.freeze({
+  swing_do_not_pull: 'tractor',
+  [TRACTOR_THROW_DRILL_ID]: 'tractor',
+  [ELASTIC_WHIP_DRILL_ID]: 'elastic_whip',
+});
 
 const TETHER_STANDARD = ATTACHMENT_DEFS.find((def) => def && def.id === 'tether_standard');
 const BASE_TETHER_LEN = Math.max(90, finite(TETHER_STANDARD && TETHER_STANDARD.maxLength, 390));
@@ -2472,6 +2482,8 @@ export const rangeScreen = {
     ];
     if (cutter) {
       for (const fact of masslineCutterBestiaryFacts()) facts.push(fact);
+      const counter = masslineCounterByHead(MASSLINE_RUNG_HEAD_BY_ID[rung.id]);
+      if (counter) facts.push(['Tell', counter.tell], ['Counter', counter.counter]);
     }
     const list = el('ul', 'k-rows');
     list.setAttribute('aria-label', 'Bestiary');
