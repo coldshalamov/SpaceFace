@@ -4,9 +4,12 @@
 // Route A proves the public title -> New Game -> ordinary flight -> map waypoint -> physical dock
 // chain, then opens Outfitting and verifies its hover preview against the canonical engineering
 // presenter. From that same run it uses the visible Undock command, takes the authored Hunter
-// origin through Mission Log,
-// tracks its named Yard Perimeter Writ through the public map, and captures readable damage, the
-// after-action receipt, and recovery. Route B independently proves intentional gate travel plus a
+// origin through Mission Log, tracks its named Yard Perimeter Writ through the public map, and
+// captures readable natural damage from the warranted quarry. The probationary mark cannot kill a
+// passive starter ship by design, so the death leg uses the other ordinary-combat path the same
+// sector offers: fly home on the public waypoint, fire on Helios Station inside its lawful
+// protection volume, and let CONTROL's dispatched patrol produce the kill — then the after-action
+// receipt and recovery run unchanged. Route B independently proves intentional gate travel plus a
 // cold Continue. The harness observes state/events but never writes gameplay state or invents
 // entities.
 
@@ -64,6 +67,39 @@ try {
   const baselineIssues = collectPageIssues(baselinePage, { ignoreProbeWarnings: true });
   await baselinePage.goto(server.baseUrl, { waitUntil: 'domcontentloaded', timeout: 60_000 });
   await baselinePage.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 180_000 });
+  // Install the combat/law observer before the baseline route starts so a death anywhere on the
+  // public path — including the autopilot approach, which can kill the player before the hunter
+  // leg's own install runs — leaves evidence of what fired, hit, and dispatched. Observer only:
+  // it records bus traffic and never mutates gameplay state.
+  await baselinePage.evaluate(() => {
+    if (window.__M3_DAMAGE_OBSERVER__) return;
+    window.__M3_DAMAGE_OBSERVER__ = { playerHits: [], outgoingHits: [], deaths: [], respawns: [], lawIncidents: [], fires: [] };
+    window.SF.bus.on('combat:fire', (payload) => {
+      if (payload?.ownerId === window.SF.state.playerId) {
+        window.__M3_DAMAGE_OBSERVER__.fires.push({ atTick: window.SF.state.tick });
+      }
+    });
+    window.SF.bus.on('combat:damage', (payload) => {
+      if (payload?.targetId === window.SF.state.playerId) {
+        window.__M3_DAMAGE_OBSERVER__.playerHits.push({ ...payload, atTick: window.SF.state.tick });
+      }
+      if (payload?.attackerId === window.SF.state.playerId) {
+        window.__M3_DAMAGE_OBSERVER__.outgoingHits.push({ ...payload, atTick: window.SF.state.tick });
+      }
+    });
+    window.SF.bus.on('player:death', (payload) => {
+      window.__M3_DAMAGE_OBSERVER__.deaths.push({ ...payload, atTick: window.SF.state.tick });
+    });
+    window.SF.bus.on('player:respawn', (payload) => {
+      window.__M3_DAMAGE_OBSERVER__.respawns.push({ ...payload, atTick: window.SF.state.tick });
+    });
+    window.SF.bus.on('law:incidentOpened', (payload) => {
+      window.__M3_DAMAGE_OBSERVER__.lawIncidents.push({ ...payload, atTick: window.SF.state.tick });
+    });
+    window.SF.bus.on('law:dispatchStarted', (payload) => {
+      window.__M3_DAMAGE_OBSERVER__.lawIncidents.push({ ...payload, event: 'dispatch', atTick: window.SF.state.tick });
+    });
+  });
   const baseline = await runBrowserPublicRoute({
     page: baselinePage,
     outputDir: BASELINE_DIR,
@@ -102,6 +138,7 @@ try {
     outputDir: TRAVEL_DIR,
     expectedRootUrl: server.baseUrl,
     log: (line) => process.stdout.write(`${line}\n`),
+    issues: travelIssues,
   });
   const rawTravelIssues = travelIssues.errorIssues();
   const ignoredReloadAborts = DEMO_OPENING
@@ -192,7 +229,7 @@ try {
     notes: [
       'Primary evidence: no query flags, state writes, entity injection, teleports, direct damage, or internal transition calls.',
       'Engineering expected values are recomputed read-only through the same canonical presenter used by the live Outfitting screen.',
-      'Damage comes from the authored Hunter Yard Perimeter Writ: Mission Log posts Rook Nine as a mission-owned hostile outside Helios sanctuary, then the player uses Track Nav, Local Map, Tab targeting, MMB pursuit, and a Space brake only after the first natural hit.',
+      'Damage comes from the authored Hunter Yard Perimeter Writ: Mission Log posts Rook Nine as a mission-owned hostile outside Helios sanctuary, then the player uses Track Nav, Local Map, Tab targeting, MMB pursuit, and a Digit0 brake only after the first natural hit.',
       ...(DEMO_OPENING && ignoredReloadAborts.length > 0
         ? [`Cold reload canceled ${ignoredReloadAborts.length} in-flight blob texture requests; authored flight readiness passed after Continue and every non-navigation error remained fatal.`]
         : []),
@@ -354,10 +391,18 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
 
   await page.evaluate(() => {
     if (window.__M3_DAMAGE_OBSERVER__) return;
-    window.__M3_DAMAGE_OBSERVER__ = { playerHits: [], deaths: [], respawns: [] };
+    window.__M3_DAMAGE_OBSERVER__ = { playerHits: [], outgoingHits: [], deaths: [], respawns: [], lawIncidents: [], fires: [] };
+    window.SF.bus.on('combat:fire', (payload) => {
+      if (payload?.ownerId === window.SF.state.playerId) {
+        window.__M3_DAMAGE_OBSERVER__.fires.push({ atTick: window.SF.state.tick });
+      }
+    });
     window.SF.bus.on('combat:damage', (payload) => {
       if (payload?.targetId === window.SF.state.playerId) {
         window.__M3_DAMAGE_OBSERVER__.playerHits.push({ ...payload, atTick: window.SF.state.tick });
+      }
+      if (payload?.attackerId === window.SF.state.playerId) {
+        window.__M3_DAMAGE_OBSERVER__.outgoingHits.push({ ...payload, atTick: window.SF.state.tick });
       }
     });
     window.SF.bus.on('player:death', (payload) => {
@@ -365,6 +410,12 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
     });
     window.SF.bus.on('player:respawn', (payload) => {
       window.__M3_DAMAGE_OBSERVER__.respawns.push({ ...payload, atTick: window.SF.state.tick });
+    });
+    window.SF.bus.on('law:incidentOpened', (payload) => {
+      window.__M3_DAMAGE_OBSERVER__.lawIncidents.push({ ...payload, atTick: window.SF.state.tick });
+    });
+    window.SF.bus.on('law:dispatchStarted', (payload) => {
+      window.__M3_DAMAGE_OBSERVER__.lawIncidents.push({ ...payload, event: 'dispatch', atTick: window.SF.state.tick });
     });
   });
 
@@ -463,13 +514,86 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   await trackTarget.waitFor({ state: 'visible', timeout: 10_000 });
   assert.match((await trackTarget.innerText()).trim(), /Track Target|Set Waypoint/i,
     'local-map quarry inspector must expose a public flight-computer action');
+  // Bus-level witness for the click chain: a Track press that never emits ui:setCourse (button
+  // side) looks identical downstream to one whose payload nav rejected (world side). The failure
+  // dump needs to know which half failed, so count emissions before the first click.
+  await page.evaluate(() => {
+    window.__M3_TRACK_DEBUG__ = { courses: [] };
+    window.SF.bus.on('ui:setCourse', (payload) => {
+      window.__M3_TRACK_DEBUG__.courses.push({
+        type: payload?.type || null, label: payload?.label || null,
+        targetEntityId: payload?.targetEntityId ?? null,
+        pos: payload?.pos ? { x: Math.round(payload.pos.x), z: Math.round(payload.pos.z) } : null,
+        autopilot: payload?.autopilot ?? null,
+      });
+    });
+  });
   await pointerClick(page, trackTarget, 'Track Target');
-  await page.waitForFunction(({ targetId, label }) => {
-    const nav = window.SF?.state?.nav;
+  // The quarry is a respawnable mission target: lawful patrols can kill it while the route is
+  // still in the station, and missions respawns the same storyTarget on a fresh entity id.
+  // authoredMission.targetId captured the FIRST spawn's id — gate on live mission ownership
+  // (targetEntityIds) instead of the stale snapshot so a respawn cannot wedge the route.
+  const autopilotTracksQuarry = (missionId) => {
+    const state = window.SF?.state;
+    const nav = state?.nav;
+    const mission = (state?.missions?.active || [])
+      .find((item) => String(item?.id) === String(missionId));
+    const liveIds = (mission?.targetEntityIds || []).map(String);
     return nav?.autopilot?.active === true
-      && String(nav.autopilot.targetEntityId) === String(targetId)
-      && new RegExp(label, 'i').test(String(nav.autopilot.label || ''));
-  }, { targetId: authoredMission.targetId, label: 'Rook Nine' }, { timeout: 10_000 });
+      && liveIds.includes(String(nav.autopilot.targetEntityId))
+      && /Rook Nine/i.test(String(nav.autopilot.label || ''));
+  };
+  let trackArmed = await page.waitForFunction(autopilotTracksQuarry, authoredMission.id, { timeout: 8_000 })
+    .then(() => true, () => false);
+  if (!trackArmed) {
+    // A click whose inspector re-rendered under the pointer, or one swallowed by the focus
+    // handoff, reads exactly like a Track that never armed: a real player clicks again.
+    await pointerClick(page, trackTarget, 'Track Target (retry)');
+    trackArmed = await page.waitForFunction(autopilotTracksQuarry, authoredMission.id, { timeout: 10_000 })
+      .then(() => true, () => false);
+  }
+  assert(trackArmed === true,
+    'Track Target must arm the public autopilot onto the live mission quarry: '
+      + JSON.stringify(await page.evaluate((missionId) => {
+        const state = window.SF?.state;
+        const nav = state?.nav;
+        const mission = (state?.missions?.active || [])
+          .find((item) => String(item?.id) === String(missionId));
+        return {
+          autopilot: nav?.autopilot ? {
+            active: nav.autopilot.active, label: nav.autopilot.label,
+            targetEntityId: nav.autopilot.targetEntityId, status: nav.autopilot.status,
+          } : null,
+          navWaypoint: nav?.waypoint ? { kind: nav.waypoint.kind, label: nav.waypoint.label } : null,
+          coursesEmitted: (window.__M3_TRACK_DEBUG__?.courses || []).slice(-4),
+          // The click handler resolves THIS object, not the painted inspector: if it is null or
+          // kind-swapped at click time the emit silently skips while the button still reads armed.
+          selectedTarget: (() => {
+            const def = window.SF?.ctx?.screenManager?.getActiveScreenDef?.();
+            const t = def && def._selectedTarget;
+            return t ? { kind: t.kind || null, name: t.name || null,
+              entityId: t.entityId ?? null, targetEntityId: t.targetEntityId ?? null,
+              x: Number.isFinite(t.x) ? Math.round(t.x) : null,
+              z: Number.isFinite(t.z) ? Math.round(t.z) : null,
+              courseDisabled: t.courseDisabled === true } : (def ? 'null' : 'no-screen');
+          })(),
+          activeScreenId: window.SF?.ctx?.screenManager?.getActiveScreenDef?.()?.id || null,
+          missionTargets: (mission?.targetEntityIds || []).map(String),
+          missionStatus: mission?.status || null,
+          buttonText: document.querySelector('#gm-set-course-btn')?.textContent?.trim() || null,
+          buttonHidden: document.querySelector('#gm-set-course-btn')?.hidden ?? null,
+          buttonDisabled: document.querySelector('#gm-set-course-btn')?.disabled ?? null,
+          clickInterceptor: (() => {
+            const btn = document.querySelector('#gm-set-course-btn');
+            if (!btn) return 'no-button';
+            const rect = btn.getBoundingClientRect();
+            if (!(rect.width > 0 && rect.height > 0)) return 'no-rect';
+            const top = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+            if (top === btn || btn.contains(top)) return null;
+            return top ? `${top.tagName.toLowerCase()}${top.id ? '#' + top.id : ''}.${top.className}` : 'none';
+          })(),
+        };
+      }, authoredMission.id).catch((e) => ({ evalError: String(e && e.message || e) }))));
   await galaxyMap.waitFor({ state: 'hidden', timeout: 10_000 });
   await canvas.focus();
   await page.keyboard.press('KeyO');
@@ -477,20 +601,61 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   const hostile = await acquireAuthoredMissionHostile(page, authoredMission, 150_000);
   assert.equal(hostile.hostile, true, `public Tab must lock the warranted hostile: ${JSON.stringify(hostile)}`);
   await page.keyboard.press('KeyG');
-  await page.waitForFunction((targetId) => {
+  await page.waitForFunction((missionId) => {
     const state = window.SF?.state;
+    const mission = (state?.missions?.active || [])
+      .find((item) => String(item?.id) === String(missionId));
+    const liveIds = (mission?.targetEntityIds || []).map(String);
     return state?.input?.autoFire === true
-      && String(state?.player?.targetId) === String(targetId);
-  }, authoredMission.targetId, { timeout: 10_000 });
+      && liveIds.includes(String(state?.player?.targetId));
+  }, authoredMission.id, { timeout: 10_000 });
 
-  await page.waitForFunction(() => {
-    if ((window.__M3_DAMAGE_OBSERVER__?.playerHits?.length || 0) <= 0) return false;
-    return [...document.querySelectorAll('.sf-dmgind-marker')].some((marker) => {
-      const style = getComputedStyle(marker);
-      const glyph = String(marker.querySelector('.sf-dmgind-marker__layer')?.textContent || '').trim();
-      return style.display !== 'none' && Number(style.opacity) > 0.05 && /^[SAH]$/.test(glyph);
-    });
-  }, null, { timeout: DAMAGE_TIMEOUT_MS });
+  // Poll the readable-damage wait instead of blocking blind: the timeout alone cannot
+  // distinguish a passive quarry, a pursuit that never closed, or a quarry the player's own
+  // autoFire killed before it landed a hit. Sample the hunt state so a timeout names the cause.
+  const huntSamples = [];
+  const huntDeadline = Date.now() + DAMAGE_TIMEOUT_MS;
+  let huntReady = false;
+  while (Date.now() < huntDeadline && !huntReady) {
+    const sample = await page.evaluate((missionId) => {
+      const state = window.SF?.state;
+      const player = state?.entities?.get?.(state.playerId);
+      const mission = (state?.missions?.active || [])
+        .find((item) => String(item?.id) === String(missionId));
+      const quarry = (mission?.targetEntityIds || [])
+        .map((id) => state?.entities?.get?.(id)).find((entity) => entity) || null;
+      return {
+        t: Math.round(state?.simTime || 0),
+        playerHits: window.__M3_DAMAGE_OBSERVER__?.playerHits?.length || 0,
+        quarry: quarry ? {
+          alive: quarry.alive !== false,
+          hull: Number(quarry.hull || 0),
+          dist: player?.pos ? Math.round(Math.hypot(quarry.pos.x - player.pos.x, quarry.pos.z - player.pos.z)) : null,
+        } : null,
+        autopilot: state?.nav?.autopilot ? {
+          active: state.nav.autopilot.active, status: state.nav.autopilot.status,
+        } : null,
+        playerVitals: player ? {
+          shield: Number(player.shield || 0), hull: Number(player.hull || 0), alive: player.alive !== false,
+        } : null,
+        marker: [...document.querySelectorAll('.sf-dmgind-marker')].some((marker) => {
+          const style = getComputedStyle(marker);
+          const glyph = String(marker.querySelector('.sf-dmgind-marker__layer')?.textContent || '').trim();
+          return style.display !== 'none' && Number(style.opacity) > 0.05 && /^[SAH]$/.test(glyph);
+        }),
+      };
+    }, authoredMission.id);
+    huntSamples.push(sample);
+    if (sample.playerHits > 0 && sample.marker) {
+      huntReady = true;
+      break;
+    }
+    if (sample.quarry && sample.quarry.alive === false && sample.playerHits <= 0) {
+      break;
+    }
+    await page.waitForTimeout(5_000);
+  }
+  assert(huntReady, `readable natural damage never arrived: ${JSON.stringify(huntSamples.slice(-8))}`);
   const damageReadout = await page.evaluate(() => {
     const state = window.SF.state;
     const player = state.entities.get(state.playerId);
@@ -541,25 +706,227 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
     };
   }
 
-  // The accepted warrant is the combat cause; do not damage the light Wasp or trip its morale
-  // response. After its first natural hit, yield with normal Space brake/counter-thrust input so
-  // ordinary AI can complete the death route without health, velocity, damage, or AI state writes.
-  await page.keyboard.down('Space');
-  await page.waitForTimeout(4_000);
-  await page.keyboard.up('Space');
+  // The probationary writ deliberately fields a single weakest-tier wasp: enough for the readable
+  // damage readout above, but its ~1.65 effective shield damage per hit cannot out-damage the
+  // Hitch's regeneration — a legal interception mark is authored to be beaten BY the player, not
+  // to kill a passive one. The death half of this route uses the other ordinary-combat path Helios
+  // already provides: its starter protection volume makes a witnessed hit on the station a lawful
+  // assault, CONTROL dispatches patrol lawmen, and their response is an ordinary-combat kill. Every
+  // step stays on public controls — map search, Set Waypoint, autopilot, brake, cursor aim, LMB —
+  // with no health, velocity, damage, or AI state writes.
+  const autoFireOn = await page.evaluate(() => window.SF?.state?.input?.autoFire === true);
+  if (autoFireOn) {
+    await page.keyboard.press('KeyG');
+    await page.waitForFunction(() => window.SF?.state?.input?.autoFire === false, null, { timeout: 5_000 });
+  }
+
+  const stationRef = await page.evaluate(() => {
+    const state = window.SF.state;
+    for (const e of state.entities.values()) {
+      if (e && e.type === 'station' && e.alive !== false
+        && (e.data?.stationId === 'station_helios' || e.stationId === 'station_helios')) {
+        return { id: e.id, pos: { x: Number(e.pos.x), z: Number(e.pos.z) }, radius: Number(e.radius || 0) };
+      }
+    }
+    return null;
+  });
+  assert(stationRef, 'Helios Station entity must exist for the lawful-assault death leg');
+
+  await canvas.focus();
+  await page.keyboard.press('KeyM');
+  await galaxyMap.waitFor({ state: 'visible', timeout: 20_000 });
+  await page.keyboard.press('/');
+  const homeSearchFocused = await page.waitForFunction(
+    () => document.activeElement?.matches('.gm-search-input') === true,
+    null,
+    { timeout: 1_000 },
+  ).then(() => true, () => false);
+  if (!homeSearchFocused) await pointerClick(page, galaxyMap.locator('.gm-search-input'), 'local-map search');
+  // The map screen caches the previous search — clear before typing so the station query is exact.
+  await galaxyMap.locator('.gm-search-input').fill('');
+  await page.keyboard.type('Helios Station');
+  await galaxyMap.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first()
+    .waitFor({ state: 'visible', timeout: 10_000 });
+  await page.keyboard.press('Enter');
+  const homeWaypoint = galaxyMap.locator('#gm-set-course-btn');
+  await homeWaypoint.waitFor({ state: 'visible', timeout: 10_000 });
+  assert.match((await homeWaypoint.innerText()).trim(), /Set Waypoint|Track Target/i,
+    'local-map station inspector must expose a public flight-computer action');
+  await pointerClick(page, homeWaypoint, 'Set Waypoint — Helios Station');
+  await page.waitForFunction(() => {
+    const nav = window.SF?.state?.nav;
+    return nav?.autopilot?.active === true && /Helios Station/i.test(String(nav.autopilot.label || ''));
+  }, null, { timeout: 10_000 });
+  await galaxyMap.waitFor({ state: 'hidden', timeout: 10_000 });
+  await canvas.focus();
+
+  // Ride the public autopilot back inside the station's weapon envelope, then take the dedicated
+  // Digit0 brake (disarms the flight computer and holds the ship in place — exempt from the
+  // above-cap earned-momentum settle cutoff, so return speed and any hit impulse get spent).
+  await page.waitForFunction((stationId) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId);
+    const station = state?.entities?.get?.(stationId);
+    if (!player?.pos || !station?.pos) return false;
+    return Math.hypot(station.pos.x - player.pos.x, station.pos.z - player.pos.z) < 500;
+  }, stationRef.id, { timeout: 180_000 });
+  await page.keyboard.down('Digit0');
   await page.waitForFunction(() => {
     const state = window.SF?.state;
     const player = state?.entities?.get?.(state.playerId);
     return state?.flight?.mode === 'manual' && player?.vel
       && Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0) < 20;
-  }, null, { timeout: 15_000 });
+  }, null, { timeout: 30_000 });
 
+  // Aim the real cursor at the station's projected screen position and hold LMB — the public
+  // trigger. One landed round on a lawful hull inside its own jurisdiction is a witnessed
+  // assault: lawSecurity opens a player_assault incident and CONTROL dispatches the patrol.
+  // aimAngle only carries a bearing, so when the hull projects off-screen the cursor rides a
+  // nearer point on the same player->station bearing instead. input.js drops any mousedown whose
+  // DOM target is a HUD element rather than the canvas, so a candidate must also elementFromPoint
+  // onto bare canvas before it is usable.
+  const aimAtStationBearing = (stationId) => {
+    const state = window.SF?.state;
+    const player = state?.entities?.get?.(state.playerId);
+    const station = state?.entities?.get?.(stationId);
+    const project = window.SF?.helpers?.worldToScreen;
+    const canvas = document.getElementById('gl-canvas');
+    if (!player?.pos || !station?.pos || typeof project !== 'function' || !canvas) return null;
+    const dx = station.pos.x - player.pos.x;
+    const dz = station.pos.z - player.pos.z;
+    const dist = Math.hypot(dx, dz) || 1;
+    for (const leg of [dist, Math.min(260, dist * 0.6), Math.min(180, dist * 0.4), Math.min(120, dist * 0.25), Math.min(60, dist * 0.1), Math.min(30, dist * 0.05)]) {
+      const out = project({ x: player.pos.x + (dx / dist) * leg, y: 0, z: player.pos.z + (dz / dist) * leg });
+      if (!out || out.onScreen !== true || !Number.isFinite(out.x) || !Number.isFinite(out.y)) continue;
+      const top = document.elementFromPoint(out.x, out.y);
+      if (top === canvas || canvas.contains(top)) return { x: out.x, y: out.y };
+    }
+    return null;
+  };
+  const stationScreen = await page.evaluate(aimAtStationBearing, stationRef.id);
+  assert(stationScreen, `station bearing must project onto bare canvas for cursor aim: ${JSON.stringify(stationRef)}`);
+  await page.mouse.move(Math.round(stationScreen.x), Math.round(stationScreen.y));
+  await page.mouse.down();
+  // The incident is the real gate, not a hit on the station hull itself: any landed round on a
+  // lawful target inside the bubble (station, patrol, or traffic caught in the line of fire)
+  // opens player_assault/player_piracy. Holding LMB through the death watch is also the honest
+  // posture — sustained assault keeps lastDamageAt fresh and catches crossing responders.
+  //
+  // The hold is supervised, not blind: input.js drops a mousedown whose DOM target is a HUD
+  // element rather than the canvas, and a single dropped press would otherwise read as 90 s of
+  // firing with zero rounds. While no incident is open and no player combat:fire has been
+  // observed since the last press, release and re-press the public trigger.
+  let assaultIncident = null;
+  let triggerPresses = 1;
+  const assaultDeadline = Date.now() + 90_000;
+  let lastFireCount = 0;
+  while (Date.now() < assaultDeadline) {
+    assaultIncident = await page.evaluate(() => {
+      const incidents = window.__M3_DAMAGE_OBSERVER__?.lawIncidents || [];
+      return incidents.find((entry) => /player_assault|player_piracy/.test(String(entry?.cause || ''))) || null;
+    });
+    if (assaultIncident) break;
+    const fireCount = await page.evaluate(() => window.__M3_DAMAGE_OBSERVER__?.fires?.length || 0);
+    if (fireCount <= lastFireCount) {
+      await page.mouse.up().catch(() => {});
+      await page.mouse.down();
+      triggerPresses += 1;
+    }
+    lastFireCount = Math.max(lastFireCount, fireCount);
+    await page.waitForTimeout(3_000);
+  }
+  await page.mouse.up().catch(() => {});
+  assert(assaultIncident,
+    `firing on the station inside its lawful jurisdiction must open a CONTROL incident ` +
+    `(trigger pressed ${triggerPresses}x, ${lastFireCount} player rounds observed)`);
+  await page.mouse.down();
+
+  // Poll rather than a bare waitFor: if the response never engages (no dispatch, responders
+  // outranged, player carried away) a single end-state dump cannot say which. The ring buffer
+  // keeps the transition itself.
+  //
+  // The lethality budget is a SIM budget, not a wall one: a throttled page stretches wall time
+  // without giving the response more sim seconds to work. The observed lawful kill takes ~140 s
+  // of sim (dispatch → responder transit → shield grind → hull); 15 000 ticks (~250 s sim)
+  // covers it with margin while still failing a response that never engages. The wall deadline
+  // stays only as a backstop for a page whose sim has stopped entirely.
+  const DEATH_WATCH_SIM_TICKS = 15_000;
+  const deathWatch = [];
+  let gameOverShown = false;
+  let watchStartTick = null;
+  let watchSimElapsed = 0;
+  let watchFireCount = null;
+  let watchFireStall = 0;
+  let watchPresses = 0;
+  const deathDeadline = Date.now() + 600_000;
+  while (Date.now() < deathDeadline && watchSimElapsed < DEATH_WATCH_SIM_TICKS) {
+    gameOverShown = await page.locator('[data-screen="gameOver"]').isVisible().catch(() => false);
+    if (gameOverShown) break;
+    const sample = await page.evaluate((stationId) => {
+      const state = window.SF?.state;
+      const player = state && state.entities && state.entities.get(state.playerId);
+      const station = state && state.entities && state.entities.get(stationId);
+      let responders = 0;
+      if (state && state.entities && typeof state.entities.values === 'function') {
+        for (const e of state.entities.values()) {
+          const ai = e && e.data && e.data.ai;
+          if (e && e.alive !== false && ai && (ai.spawnContext === 'security_response'
+            || ai.motive === 'jurisdiction_enforcement' || ai.motive === 'self_defense')) responders++;
+        }
+      }
+      return {
+        tick: state?.tick ?? null,
+        mode: state?.flight?.mode ?? null,
+        speed: player && player.vel ? Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0) : null,
+        shield: player ? Number(player.shield || 0) : null,
+        hull: player ? Number(player.hull || 0) : null,
+        stationDist: player && station ? Math.hypot(station.pos.x - player.pos.x, station.pos.z - player.pos.z) : null,
+        incidents: (window.__M3_DAMAGE_OBSERVER__?.lawIncidents || []).length,
+        responders,
+        incomingHits: (window.__M3_DAMAGE_OBSERVER__?.playerHits || []).length,
+        fires: (window.__M3_DAMAGE_OBSERVER__?.fires || []).length,
+        inputFire: state?.input ? !!state.input.fire : null,
+      };
+    }, stationRef.id).catch((e) => ({ error: String(e && e.message || e) }));
+    if (Number.isInteger(sample && sample.tick)) {
+      if (watchStartTick == null) watchStartTick = sample.tick;
+      watchSimElapsed = sample.tick - watchStartTick;
+    }
+    deathWatch.push(sample);
+    if (deathWatch.length > 40) deathWatch.shift();
+    // The same dropped-mousedown hazard as the assault-trigger loop: a press whose DOM target
+    // silently became a HUD element reads as a held trigger that fires nothing — the assault
+    // goes stale, CONTROL stands the response down, and the ship regens untouched. When the
+    // player's own combat:fire stream stalls for a few samples, release, ride a fresh
+    // canvas-clear point on the station bearing, and press again — what a player does when
+    // they notice the trigger isn't shooting.
+    if (Number.isInteger(sample && sample.fires)) {
+      if (watchFireCount == null || sample.fires > watchFireCount) {
+        watchFireCount = sample.fires;
+        watchFireStall = 0;
+      } else {
+        watchFireStall += 1;
+      }
+      if (watchFireStall >= 4) {
+        await page.mouse.up().catch(() => {});
+        const reaim = await page.evaluate(aimAtStationBearing, stationRef.id).catch(() => null);
+        if (reaim) await page.mouse.move(Math.round(reaim.x), Math.round(reaim.y));
+        await page.mouse.down();
+        watchPresses += 1;
+        watchFireStall = 0;
+      }
+    }
+    await page.waitForTimeout(1_000);
+  }
+  await page.keyboard.up('Digit0');
+  await page.mouse.up().catch(() => {});
   try {
-    await page.locator('[data-screen="gameOver"]').waitFor({ state: 'visible', timeout: DAMAGE_TIMEOUT_MS });
+    assert.equal(gameOverShown, true, 'player death route never surfaced gameOver');
   } catch (err) {
-    // The death route is the assertion under test — a timeout needs the combat state at expiry:
-    // did the quarry die first, disengage, or simply fail to out-damage a braking starter ship?
-    const lastCombat = await page.evaluate(async (quarryId) => {
+    // The death route is the assertion under test — a timeout needs the law-response state at
+    // expiry: did the assault open an incident, did CONTROL dispatch, did responders reach and
+    // out-damage a braking starter ship?
+    const lastCombat = await page.evaluate(async ({ quarryId, missionId, stationId }) => {
       const state = window.SF?.state;
       const player = state && state.entities && state.entities.get(state.playerId);
       const target = state && state.entities && state.entities.get(state.player && state.player.targetId);
@@ -572,16 +939,19 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
       const inspectEntity = (id) => {
         if (id == null || !window.SF?.helpers || typeof window.SF.helpers.inspectAI !== 'function') return null;
         try {
-          const raw = window.SF.helpers.inspectAI({ entityId: id });
+          const envelope = window.SF.helpers.inspectAI({ entityId: id });
+          const raw = envelope && envelope.result ? envelope.result : envelope;
           const lastDecision = raw && raw.lastResult && Array.isArray(raw.lastResult.decisions)
             ? raw.lastResult.decisions.find((d) => d && d.entityId === id) || null
             : null;
+          const squads = raw && raw.squads && typeof raw.squads === 'object' ? raw.squads : null;
           return raw ? strip({
             tick: raw.tick,
             perception: raw.perception || null,
             behavior: raw.behavior || null,
             maneuver: raw.maneuver || null,
             combatDoctrine: raw.combatDoctrine || null,
+            squads: squads && !Array.isArray(squads) ? Object.keys(squads) : squads,
             lastDecision: lastDecision ? {
               directive: lastDecision.directive || null,
               action: lastDecision.action || null,
@@ -628,6 +998,9 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
         vitals: player ? { shield: player.shield, armor: player.armor, hull: player.hull } : null,
         playerSpeed: player && player.vel ? Math.hypot(player.vel.x || 0, player.vel.z || 0) : null,
         playerPos: player && player.pos ? { x: Math.round(player.pos.x), z: Math.round(player.pos.z) } : null,
+        lawIncidents: (window.__M3_DAMAGE_OBSERVER__?.lawIncidents || []).slice(-8),
+        stationHits: (window.__M3_DAMAGE_OBSERVER__?.outgoingHits || [])
+          .filter((h) => String(h?.targetId) === String(stationId)).length,
         targetId: target && target.id,
         targetAlive: target ? target.alive !== false && Number(target.hull || 0) > 0 : null,
         targetVitals: target ? { shield: target.shield, armor: target.armor, hull: target.hull } : null,
@@ -635,9 +1008,14 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
         targetPos: target && target.pos ? { x: Math.round(target.pos.x), z: Math.round(target.pos.z) } : null,
         targetVel: target && target.vel ? { x: +target.vel.x.toFixed(1), z: +target.vel.z.toFixed(1) } : null,
         targetRot: target && typeof target.rot === 'number' ? +target.rot.toFixed(2) : null,
-        quarry: quarryId == null ? null
-          : describeEntity((target && target.id === quarryId) ? target : state.entities.get(quarryId))
-            || { id: quarryId, missing: true },
+        quarry: (() => {
+          const mission = (state.missions?.active || [])
+            .find((item) => String(item?.id) === String(missionId));
+          const liveId = mission?.targetEntityIds?.[0] ?? quarryId;
+          return liveId == null ? null
+            : describeEntity((target && target.id === liveId) ? target : state.entities.get(liveId))
+              || { id: liveId, missing: true };
+        })(),
         targetAi: ai ? {
           activity: ai.activity || null, roe: ai.roe || null, motive: ai.motive || null,
           engagementTrigger: ai.engagementTrigger || null, combatDoctrineId: ai.combatDoctrineId || null,
@@ -651,6 +1029,37 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
         targetIntent: target && target.data ? target.data.intent || null : null,
         targetSimTier: target && target.activity ? target.activity.simTier || null : null,
         targetInspect: target ? inspectEntity(target.id) : null,
+        // The dispatched responders decide the death leg; when incoming hits freeze after a
+        // dispatch, the dump must say whether they stood down passive, chased another offender,
+        // or never closed. Resolve the latest player-caused incident's responderIds live.
+        responders: (() => {
+          const incident = (window.__M3_DAMAGE_OBSERVER__?.lawIncidents || [])
+            .filter((item) => item && (item.cause === 'player_assault' || item.cause === 'player_piracy'))
+            .pop();
+          const ids = (incident && incident.responderIds) || [];
+          return ids.map((id) => {
+            const e = state.entities.get(id);
+            if (!e) return { id, missing: true };
+            const eAi = e.data && e.data.ai || {};
+            return {
+              id,
+              name: e.data && (e.data.displayName || e.data.name) || null,
+              alive: e.alive !== false,
+              dist: player && e.pos ? Math.round(Math.hypot(e.pos.x - player.pos.x, e.pos.z - player.pos.z)) : null,
+              speed: e.vel ? Math.round(Math.hypot(e.vel.x || 0, e.vel.z || 0)) : null,
+              passive: eAi.passive ?? null,
+              roe: eAi.roe || null,
+              motive: eAi.motive || null,
+              motiveSatisfied: eAi.motiveSatisfied ?? null,
+              activity: eAi.activity ? { kind: eAi.activity.kind, reason: eAi.activity.reason,
+                targetId: eAi.activity.targetId ?? null } : null,
+              intent: e.data && e.data.intent
+                ? { fire: e.data.intent.fire === true, boost: e.data.intent.boost === true,
+                    moveX: +(e.data.intent.moveX || 0).toFixed(2), moveZ: +(e.data.intent.moveZ || 0).toFixed(2) }
+                : null,
+            };
+          });
+        })(),
         authorization,
         protection: protection ? { stationId: protection.stationId, radius: protection.radius } : null,
         hitCount: hits.length,
@@ -658,9 +1067,10 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
         simTick: state && state.tick,
         autoFire: state && state.input && state.input.autoFire,
       };
-    }, authoredMission && authoredMission.targetId)
+    }, { quarryId: authoredMission && authoredMission.targetId,
+         missionId: authoredMission && authoredMission.id, stationId: stationRef.id })
       .catch((evalErr) => ({ evalError: String(evalErr && evalErr.message || evalErr) }));
-    assert.fail(`player death route never surfaced gameOver: ${JSON.stringify(lastCombat)}`);
+    assert.fail(`player death route never surfaced gameOver: ${JSON.stringify({ ...lastCombat, deathWatch, watchPresses })}`);
     throw err;
   }
   const afterAction = await page.evaluate(() => {
@@ -721,7 +1131,7 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
     damageReadout,
     afterAction,
     recovered,
-    publicActions: ['Undock command', 'J Mission Log', 'Take hunter path', 'Track Nav', 'M local map', 'search Rook Nine', 'Track Target', 'O contacts', 'Tab target', 'MMB pursue', 'Space brake after first hit', 'Continue from recovery berth'],
+    publicActions: ['Undock command', 'J Mission Log', 'Take hunter path', 'Track Nav', 'M local map', 'search Rook Nine', 'Track Target', 'O contacts', 'Tab target', 'MMB pursue', 'M local map', 'search Helios Station', 'Set Waypoint', 'autopilot return', 'Digit0 brake', 'LMB witnessed assault on station', 'CONTROL patrol response', 'Continue from recovery berth'],
   };
 }
 
@@ -731,14 +1141,35 @@ async function acquireAuthoredMissionHostile(page, authoredMission, timeoutMs) {
   while (Date.now() < deadline) {
     await page.keyboard.press('Tab');
     await page.waitForTimeout(450);
-    last = await page.evaluate(async () => {
+    last = await page.evaluate(async (missionId) => {
       const { isHostileToPlayer } = await import('/src/systems/scanner.js');
       const state = window.SF.state;
       const player = state.entities.get(state.playerId);
       const target = state.entities.get(state.player.targetId);
+      // Resolve the quarry from the live mission record each poll — a respawned mark wears a
+      // fresh entity id while keeping the same missionTag/storyTarget identity.
+      const mission = (state.missions?.active || [])
+        .find((item) => String(item?.id) === String(missionId));
+      const liveQuarryId = mission?.targetEntityIds?.[0] ?? null;
+      const quarry = liveQuarryId != null ? state.entities.get(liveQuarryId) : null;
+      const autopilot = state.nav && state.nav.autopilot;
       return {
         sectorId: state.world?.currentSectorId || null,
+        simTime: Number.isFinite(state.simTime) ? Math.round(state.simTime * 10) / 10 : null,
         playerAlive: player?.alive !== false && Number(player?.hull || 0) > 0,
+        playerPos: player?.pos ? { x: Math.round(player.pos.x), z: Math.round(player.pos.z) } : null,
+        playerSpeed: player?.vel ? Math.round(Math.hypot(player.vel.x, player.vel.z)) : null,
+        quarryPos: quarry?.pos ? { x: Math.round(quarry.pos.x), z: Math.round(quarry.pos.z) } : null,
+        quarryAlive: quarry ? quarry.alive !== false : null,
+        quarryName: quarry?.data?.name || quarry?.data?.callsign || quarry?.type || null,
+        quarryMissionId: quarry?.data?.missionId || quarry?.data?.missionTag || null,
+        quarrySpeed: quarry?.vel ? Math.round(Math.hypot(quarry.vel.x, quarry.vel.z)) : null,
+        quarryDist: (player?.pos && quarry?.pos)
+          ? Math.round(Math.hypot(player.pos.x - quarry.pos.x, player.pos.z - quarry.pos.z)) : null,
+        liveQuarryId,
+        autopilot: autopilot
+          ? { active: autopilot.active === true, targetEntityId: autopilot.targetEntityId ?? null }
+          : null,
         targetId: target?.id || null,
         targetName: target?.data?.callsign || target?.data?.name || target?.type || null,
         targetTeam: target?.team ?? null,
@@ -748,10 +1179,14 @@ async function acquireAuthoredMissionHostile(page, authoredMission, timeoutMs) {
         contactsVisible: [...document.querySelectorAll('.sf-overview-row')]
           .filter((el) => getComputedStyle(el).display !== 'none').length,
       };
-    });
+    }, authoredMission && authoredMission.id != null ? authoredMission.id : null);
     assert.equal(last.playerAlive, true, `player died before public hostile lock: ${JSON.stringify(last)}`);
-    if (last.hostile && String(last.targetId) === String(authoredMission.targetId)
-      && String(last.targetMissionId) === String(authoredMission.id)) return last;
+    // The warranted hostile is whoever the mission currently owns — missionTag is stamped on
+    // respawn too, so ownership survives entity-id churn that a first-spawn snapshot cannot.
+    if (last.hostile && String(last.targetMissionId) === String(authoredMission.id)) return last;
+    if (Math.floor((deadline - Date.now()) / 1000) % 20 === 0) {
+      console.log('[route] hunt-acquire', JSON.stringify(last));
+    }
     await page.waitForTimeout(550);
   }
   throw new Error(`Warranted mission hostile did not enter public targeting range within ${timeoutMs} ms; mission=${JSON.stringify(authoredMission)} last=${JSON.stringify(last)}`);
@@ -759,6 +1194,11 @@ async function acquireAuthoredMissionHostile(page, authoredMission, timeoutMs) {
 
 async function pointerClick(page, locator, label) {
   await locator.waitFor({ state: 'visible', timeout: 10_000 });
+  // A control nested inside the chart inspector's own scroll band (or below the column's fold)
+  // reports a visible bounding box while its pixels belong to whatever is painted on top —
+  // Playwright's box is layout, not hit-testing. Scroll it into view exactly as a player
+  // would before committing the pointer.
+  await locator.scrollIntoViewIfNeeded().catch(() => {});
   const box = await locator.boundingBox();
   assert(box && box.width > 2 && box.height > 2, `${label} must expose a visible pointer target`);
   const x = Math.round(box.x + box.width / 2);
