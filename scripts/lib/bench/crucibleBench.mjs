@@ -23,6 +23,8 @@ import { PLAYER_CONTACT_EVENT_BRIDGE_TICKS } from '../../../src/core/sg02Dynamic
 import { resolveGovernedCombatSpeed } from '../../../src/core/flight/propulsionCatalog.js';
 import { entityWeaponBlocked } from '../../../src/combat/runtime.js';
 import { WEAPONS } from '../../../src/data/weapons.js';
+import { ENEMY_TYPES } from '../../../src/data/enemies.js';
+import { makeEnemySpawnSpec } from '../../../src/systems/combat.js';
 import { createChaseCamera, resolveCombatCompositionZoomCap } from '../../../src/render/camera.js';
 import { readFrameOrigin } from '../../../src/render/frameCoordinates.js';
 import { isHostileToPlayer } from '../../../src/systems/scanner.js';
@@ -2724,9 +2726,667 @@ function avgMs(runs) {
   return n ? Math.round(sum / n) : 0;
 }
 
+// ═════════════════════════════════════════════════════════════════════════════════
+// CRUCIBLE DUEL AUDIT — per-archetype 1v1 / 2v2 fights on fixed seeds.
+//
+// The survival swarm measures the WASP fight. This harness answers a different question:
+// is each roster archetype a DIFFERENT FIGHT IN KIND? It boots the same real production
+// runtime, spawns the named archetype (from src/data/enemies.js via the real
+// makeEnemySpawnSpec — identical stamps to live spawners), and runs a fixed-seed scripted
+// duel: 1v1 is player vs one hull, 2v2 adds a player-wing ally hornet vs two of the
+// archetype. Distributions compared: time-to-kill, engagement-distance profile, pass
+// rhythm, fire pressure, damage taken, AI verb vocabulary (doctrine phases, telegraph
+// kinds, maneuvers), death causes, and COUNTERPLAY events (boarder attach/cut, wake
+// mines, snare fields, status payloads). Same boot law as the swarm: real physics, real
+// tactical AI, real weapons; nothing here integrates physics or writes motion.
+
+export const CRUCIBLE_DUEL_ARCHETYPES = [
+  'wasp_swarmer', 'lancer_sniper', 'bruiser_brawler', 'reaver_pirate', 'corsair_raider',
+  'patrol_lawman', 'customs_cutter', 'mine_layer_jackal', 'pd_screen_escort',
+  'choir_zealot', 'quiet_ghost', 'tether_control_raider', 'warden_escort',
+  'field_anchor_controller', 'dreadnought_boss',
+];
+
+/** Mid-band level, clamped: comparable stats without dragging endgame hulls into the pair sweep. */
+export function duelLevelFor(def) {
+  const range = def && Array.isArray(def.levelRange) ? def.levelRange : [1, 3];
+  const mid = Math.round((range[0] + range[1]) / 2);
+  return Math.max(1, Math.min(8, mid));
+}
+
+const DUEL_SPAWN_DISTANCE = 480;
+const DUEL_DEFAULT_TICK_CAP = 3600; // 60 s of sim — long enough for a real fight, bounded wall time
+const DUEL_ALLY_ARCHETYPE = 'corsair_raider';
+const DUEL_ENEMY_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, row]));
+
+export async function simulateCrucibleDuel({
+  archetypeId,
+  enemyWing = 1,
+  playerWing = 1,
+  seed,
+  tickCap = DUEL_DEFAULT_TICK_CAP,
+  arenaId = 'helios_core',
+  loadoutId = 'energy_baseline',
+} = {}) {
+  if (!Number.isFinite(seed)) {
+    throw new Error('simulateCrucibleDuel: `seed` must be a finite number (fixed seeds or it did not happen)');
+  }
+  const def = DUEL_ENEMY_BY_ID.get(archetypeId);
+  if (!def) throw new Error(`simulateCrucibleDuel: unknown archetype "${archetypeId}"`);
+
+  const prevFieldsEnabled = FIELD_FLAGS.enabled;
+  FIELD_FLAGS.enabled = true;
+
+  const log = [];
+  const raw = createBus();
+  let _state = null;
+  const bus = Object.create(raw);
+  bus.emit = (ev, payload) => {
+    log.push({ tick: _state ? (_state.tick | 0) : -1, ev, payload });
+    return raw.emit(ev, payload);
+  };
+  const aim = { x: 0, z: 0 };
+  const runtime = createAuthoritativeRuntime({
+    profileId: 'production',
+    nodeSafeOnly: true,
+    seed,
+    bus,
+    helpers: { raycastToPlane: () => ({ x: aim.x, z: aim.z }) },
+  });
+  const state = runtime.state;
+  _state = state;
+  state.mode = 'flight';
+  state.settings.gameplay.physicsBackend = 'rapier-dynamic';
+  state.settings.gameplay.flightBackend = 'v3';
+  state.settings.gameplay.aiBackend = 'sg06-tactical';
+
+  const ctx = {
+    state,
+    bus,
+    helpers: runtime.getHelpers(),
+    registry: { get: (n) => runtime.getSystem(n) },
+  };
+  const shipsSys = runtime.getSystem('ships');
+  const economySys = runtime.getSystem('economy');
+  const inputSys = runtime.getSystem('input');
+  const physicsSys = runtime.getSystem('physics');
+
+  try {
+    const previousFlags = snapshotFeatureMaps();
+    applyFeatureConfigToMaps(runtime.config.features);
+    let starter;
+    let arena;
+    let spawned;
+    try {
+      unlockAllTech(state.player, shipsSys, economySys);
+      starter = COMBAT_LAB_STARTER_PACKAGES.find((s) => s.id === loadoutId);
+      arena = COMBAT_LAB_ARENAS.find((a) => a.id === arenaId);
+      if (!starter) throw new Error(`simulateCrucibleDuel: unknown loadout "${loadoutId}"`);
+      if (!arena) throw new Error(`simulateCrucibleDuel: unknown arena "${arenaId}"`);
+
+      spawned = runtime.spawn(makeShipEntitySpec(starter.hullId, {
+        isPlayer: true,
+        player: state.player,
+        fittings: [],
+        pos: arena.spawnPos,
+        rot: 0,
+        team: 0,
+      }));
+      state.playerId = spawned.id;
+
+      const ready = await physicsSys.prepareBackend(state, { reset: true });
+      if (ready !== true) {
+        throw new Error('simulateCrucibleDuel: physics.prepareBackend did not return true — not the real path');
+      }
+
+      // The loadout fit reuses the validated combat-lab schema path. The enemy package field
+      // is schema-shaped only — the duel spawns its own named roster below, never waves.
+      const setup = validateCombatLabSetup({
+        schema: 'spaceface.combatLabSetup.v1',
+        hullId: starter.hullId,
+        loadout: starter.loadout.map((e) => ({ slotIndex: e.slotIndex, defId: e.defId })),
+        enemyPackageId: 'wasp_flight',
+        arenaId,
+        seed,
+        wave: 1,
+      });
+      if (!setup.ok || !setup.value) {
+        const detail = setup.issues && setup.issues[0] && setup.issues[0].message
+          ? setup.issues[0].message
+          : 'invalid setup';
+        throw new Error(`simulateCrucibleDuel: combat lab setup invalid: ${detail}`);
+      }
+      const fitReceipt = applyCombatLabSetup(ctx, setup.value);
+      if (!fitReceipt || fitReceipt.notFitted.length !== 0) {
+        throw new Error(`simulateCrucibleDuel: loadout ${loadoutId} did not fit`);
+      }
+    } finally {
+      restoreFeatureMaps(previousFlags);
+    }
+
+    // ── spawn the duelling wings ────────────────────────────────────────────────
+    const allyIds = new Set();
+    for (let i = 0; i < Math.max(0, playerWing - 1); i++) {
+      const bearing = Math.PI * 0.75 + i * (Math.PI / 6);
+      const pos = {
+        x: arena.spawnPos.x + Math.cos(bearing) * 140,
+        z: arena.spawnPos.z + Math.sin(bearing) * 140,
+      };
+      // makeEnemySpawnSpec hard-stamps team 1; the wingman flips to the player's side AFTER
+      // spec construction, keeping the full weapon/AI stamping path identical to a hostile.
+      const spec = makeEnemySpawnSpec(DUEL_ALLY_ARCHETYPE, 3, pos);
+      spec.team = 0;
+      spec.factionId = 'faction_free';
+      spec.data.ai.forcePlayerTarget = false;
+      spec.data.ai.motive = 'player_wing';
+      spec.data.ai.engagementTrigger = 'duel_wing_orders';
+      spec.data.duelAlly = true;
+      spec.data.reinforcements = null;
+      const ent = runtime.spawn(spec);
+      if (ent) allyIds.add(ent.id);
+    }
+
+    const enemyIds = new Set();
+    for (let i = 0; i < Math.max(1, enemyWing); i++) {
+      const bearing = -Math.PI / 2 + (i - (enemyWing - 1) / 2) * (Math.PI / 5);
+      const pos = {
+        x: arena.spawnPos.x + Math.cos(bearing) * DUEL_SPAWN_DISTANCE,
+        z: arena.spawnPos.z + Math.sin(bearing) * DUEL_SPAWN_DISTANCE,
+      };
+      const spec = makeEnemySpawnSpec(archetypeId, duelLevelFor(def), pos);
+      spec.data.ai.forcePlayerTarget = true;
+      spec.data.duelHostile = true;
+      const ent = runtime.spawn(spec);
+      if (ent) enemyIds.add(ent.id);
+    }
+
+    const rng = mulberry32((seed ^ 0x5bf03635) >>> 0);
+    const verbCadence = 30 + Math.floor(rng() * 30);
+    const prevVerbs = new Set();
+    const verbTrace = [];
+    let logCursor = 0;
+    let lastAction = null;
+    const lastActionOn = new Map();
+    const collisionVictims = new Set();
+    const duel = {
+      archetypeId, enemyWing, playerWing, seed,
+      resolveTick: null, stopReason: 'tick_cap',
+      firstPlayerDamageTick: null, firstEnemyFireTick: null,
+      distSamples: 0, distSum: 0, distMin: Infinity, distMax: 0,
+      distBuckets: [0, 0, 0, 0, 0], // 0-150, 150-300, 300-450, 450-600, 600+
+      passes: 0, _prevNearest: null,
+      enemyFireEvents: 0, enemyHitsOnPlayer: 0,
+      playerDamageTaken: 0, playerDamageDealt: 0,
+      playerShots: 0,
+      statusesOnPlayer: {},
+      telegraphKinds: {}, doctrinePhases: {}, maneuverKinds: {},
+      enemyActions: {},
+      counterplay: { attach: 0, cut_line: 0, mines: 0, snare_field: 0 },
+      deaths: [], playerDead: false,
+    };
+    const hostileInFrame = createHostileInFrameSampler();
+
+    const t0 = wallNow();
+    let t = 0;
+    const cap = Number.isFinite(tickCap) ? Math.max(0, tickCap | 0) : DUEL_DEFAULT_TICK_CAP;
+    for (; t < cap; t++) {
+      const player = playerEntity(state) || spawned;
+      driveDuelPilot({ tick: t, state, player, inputSys, aim, loadoutId, verbCadence, enemies: enemyIds });
+      runtime.step(SIM_DT);
+      const tick = state.tick | 0;
+      const playerAfter = playerEntity(state) || player;
+
+      const newEvents = log.slice(logCursor);
+      logCursor = log.length;
+      for (const ev of newEvents) ingestDuelEvent(ev, duel, state, {
+        allyIds, enemyIds, lastActionOn, lastAction, collisionVictims,
+      });
+
+      lastAction = sampleIssuedVerbs(state, prevVerbs, tick, verbTrace, lastAction);
+
+      // Engagement geometry: nearest live enemy distance to the player, per tick.
+      if (playerAfter && playerAfter.pos) {
+        let nearest = null;
+        let nearestD = Infinity;
+        for (const id of enemyIds) {
+          const e = state.entities.get(id);
+          if (!e || e.alive === false || !e.pos) continue;
+          const d = Math.hypot(e.pos.x - playerAfter.pos.x, e.pos.z - playerAfter.pos.z);
+          if (d < nearestD) { nearestD = d; nearest = e; }
+        }
+        if (nearest) {
+          duel.distSamples++;
+          duel.distSum += nearestD;
+          duel.distMin = Math.min(duel.distMin, nearestD);
+          duel.distMax = Math.max(duel.distMax, nearestD);
+          const bucket = Math.min(4, Math.floor(nearestD / 150));
+          duel.distBuckets[bucket] += 1;
+          if (duel._prevNearest != null && duel._prevNearest < 260 && nearestD >= 260) duel.passes++;
+          duel._prevNearest = nearestD;
+        }
+      }
+      sampleHostileInFrame(state, playerAfter, hostileInFrame, SIM_DT, null);
+
+      if (!playerAfter || playerAfter.alive === false) { duel.stopReason = 'player_dead'; break; }
+      let anyAlive = false;
+      for (const id of enemyIds) {
+        const e = state.entities.get(id);
+        if (e && e.alive !== false) { anyAlive = true; break; }
+      }
+      if (!anyAlive) { duel.stopReason = 'wing_dead'; duel.resolveTick = tick; break; }
+    }
+    const wallMs = elapsedMs(t0);
+    if (duel.stopReason !== 'wing_dead') duel.resolveTick = t;
+
+    const inFrame = summarizeHostileInFrame(hostileInFrame);
+    disposeHostileInFrameSampler(hostileInFrame);
+
+    return {
+      duel: {
+        archetypeId, enemyWing, playerWing, seed, arenaId, loadoutId,
+        stopReason: duel.stopReason,
+        ticks: t,
+        fightSeconds: round2(t / 60),
+        ttkSeconds: duel.deaths.length ? round2(duel.resolveTick / 60) : null,
+        timeToFirstPlayerDamageS: duel.firstPlayerDamageTick != null ? round2(duel.firstPlayerDamageTick / 60) : null,
+        timeToFirstEnemyFireS: duel.firstEnemyFireTick != null ? round2(duel.firstEnemyFireTick / 60) : null,
+        meanEngagementDistanceWU: duel.distSamples ? round2(duel.distSum / duel.distSamples) : null,
+        minEngagementDistanceWU: Number.isFinite(duel.distMin) ? round2(duel.distMin) : null,
+        maxEngagementDistanceWU: duel.distSamples ? round2(duel.distMax) : null,
+        distanceProfile: duel.distSamples
+          ? duel.distBuckets.map((n) => round3(n / duel.distSamples))
+          : null,
+        passesPerMinute: duel.passes / Math.max(1 / 60, t / 3600),
+        enemyFireEvents: duel.enemyFireEvents,
+        enemyFirePerMinute: round2(duel.enemyFireEvents / Math.max(1 / 60, t / 3600)),
+        enemyHitsOnPlayer: duel.enemyHitsOnPlayer,
+        playerDamageTaken: round2(duel.playerDamageTaken),
+        playerDamageDealt: round2(duel.playerDamageDealt),
+        playerShots: duel.playerShots,
+        playerVerbsUsed: [...new Set(verbTrace.map((v) => v.data && v.data.verb).filter(Boolean))],
+        statusesOnPlayer: duel.statusesOnPlayer,
+        statusesOnEnemies: duel.statusesOnEnemies,
+        telegraphKinds: duel.telegraphKinds,
+        doctrinePhaseTransitions: duel.doctrinePhases,
+        maneuverKinds: duel.maneuverKinds,
+        enemyActions: duel.enemyActions,
+        counterplay: duel.counterplay,
+        deaths: duel.deaths,
+        allyDeaths: duel.deaths.filter((d) => d.side === 'ally').length,
+        hostileInFrame: inFrame,
+      },
+      wallMs: wallMs == null ? 0 : wallMs,
+    };
+  } finally {
+    FIELD_FLAGS.enabled = prevFieldsEnabled;
+    runtime.dispose();
+  }
+}
+
+/** The duel pilot: same grammar as the swarm pilot, but it targets the named enemy wing. */
+function driveDuelPilot({ tick, state, player, inputSys, aim, loadoutId, verbCadence, enemies }) {
+  inputSys._keys = inputSys._keys || Object.create(null);
+  for (const k of Object.keys(inputSys._keys)) inputSys._keys[k] = false;
+  inputSys._m0 = false;
+  if (!player || player.alive === false) return;
+  let best = null;
+  let bestD = Infinity;
+  for (const id of enemies) {
+    const h = state.entities.get(id);
+    if (!h || h.alive === false || !h.pos) continue;
+    const d = Math.hypot(h.pos.x - player.pos.x, h.pos.z - player.pos.z);
+    if (d < bestD) { bestD = d; best = h; }
+  }
+  if (!best) return;
+  const phase = tick % VERB_PERIOD;
+  const gunPoint = interceptPoint(player, best, PHYSICS_PROJ_SPEED);
+  aim.x = gunPoint.x;
+  aim.z = gunPoint.z;
+  const toAim = Math.atan2(aim.z - player.pos.z, aim.x - player.pos.x);
+  const err = wrapAngle(toAim - player.rot);
+  if (Math.abs(err) > 0.12) {
+    press(inputSys, err > 0 ? BIND.yawRight : BIND.yawLeft);
+  }
+  if (bestD > RANGE) {
+    press(inputSys, BIND.forward);
+  } else if (bestD < RANGE * 0.45) {
+    press(inputSys, BIND.brake);
+  }
+  if (Math.abs(err) < 0.35 && bestD < 620) {
+    inputSys._m0 = true;
+  }
+  if (loadoutId === 'massline_rig') {
+    if (phase === verbCadence) press(inputSys, BIND.tether);
+    if (phase > verbCadence && phase < verbCadence + 40) press(inputSys, BIND.tether);
+    if (phase === verbCadence + 70) press(inputSys, BIND.chargeThrow);
+  }
+}
+
+function ingestDuelEvent(ev, duel, state, ctx) {
+  const tick = ev.tick | 0;
+  const p = ev.payload || {};
+  const playerId = state.playerId;
+  const isEnemyActor = (id) => id != null && ctx.enemyIds.has(id);
+  const isAllyActor = (id) => id != null && ctx.allyIds.has(id);
+  const isPlayerActor = (id) => id != null && id === playerId;
+
+  if (ev.ev === 'ai:doctrinePhase' && p.entityId != null && (isEnemyActor(p.entityId) || isAllyActor(p.entityId))) {
+    const key = `${p.doctrineId || '?'}:${p.phase || '?'}`;
+    duel.doctrinePhases[key] = (duel.doctrinePhases[key] || 0) + 1;
+    if (p.maneuverKind) duel.maneuverKinds[p.maneuverKind] = (duel.maneuverKinds[p.maneuverKind] || 0) + 1;
+    return;
+  }
+  if (ev.ev === 'ai:telegraph' && p.entityId != null && isEnemyActor(p.entityId)) {
+    const kind = p.kind || '?';
+    duel.telegraphKinds[kind] = (duel.telegraphKinds[kind] || 0) + 1;
+    // The anchor's area-denial read: its own doctrine telegraph IS the counterplay cue.
+    if (kind === 'field_spool') duel.counterplay.snare_field += 1;
+    return;
+  }
+  if (ev.ev === 'mines:placed' && isEnemyActor(p.ownerId)) {
+    duel.counterplay.mines += 1;
+    return;
+  }
+  // NPC tether verbs go through the combat kernel (combat/attachments.js): attach emits
+  // `tether:attached`, every sever emits `tether:broken` with the reason.
+  if (ev.ev === 'tether:attached' && p.actorId != null && isEnemyActor(p.actorId)) {
+    duel.counterplay.attach += 1;
+    return;
+  }
+  if (ev.ev === 'tether:broken' && p.actorId != null && isEnemyActor(p.actorId)) {
+    duel.counterplay.cut_line += 1;
+    return;
+  }
+  if (ev.ev === 'combat:actionStarted' && isEnemyActor(p.actorId)) {
+    duel.enemyActions[p.actionId || '?'] = (duel.enemyActions[p.actionId || '?'] || 0) + 1;
+    return;
+  }
+  if (ev.ev === 'combat:fire' && isEnemyActor(p.ownerId)) {
+    duel.enemyFireEvents += 1;
+    if (duel.firstEnemyFireTick == null) duel.firstEnemyFireTick = tick;
+    return;
+  }
+  if (ev.ev === 'combat:fire' && isPlayerActor(p.ownerId)) {
+    duel.playerShots += 1;
+    return;
+  }
+  if (ev.ev === 'projectile:hit' && isEnemyActor(p.ownerId) && p.targetId === playerId) {
+    duel.enemyHitsOnPlayer += 1;
+    return;
+  }
+  if (ev.ev === 'combat:statusApplied' && p.targetId === playerId && isEnemyActor(p.attackerId)) {
+    const sid = p.statusId || '?';
+    duel.statusesOnPlayer[sid] = (duel.statusesOnPlayer[sid] || 0) + 1;
+    return;
+  }
+  if (ev.ev === 'combat:statusApplied' && isEnemyActor(p.attackerId)) {
+    duel.statusesOnEnemies[p.statusId || '?'] = (duel.statusesOnEnemies[p.statusId || '?'] || 0) + 1;
+    return;
+  }
+  if (ev.ev === 'combat:damage') {
+    const amt = Number.isFinite(p.applied) ? p.applied : (Number.isFinite(p.rawTotal) ? p.rawTotal : 0);
+    if (p.targetId === playerId) {
+      duel.playerDamageTaken += amt;
+      if (duel.firstPlayerDamageTick == null) duel.firstPlayerDamageTick = tick;
+    }
+    if (p.attackerId === playerId && isEnemyActor(p.targetId)) duel.playerDamageDealt += amt;
+    if (isPlayerActor(p.attackerId) && p.targetId != null) ctx.lastActionOn.set(p.targetId, ctx.lastAction || 'fire');
+    return;
+  }
+  if (ev.ev === 'projectile:hit' && isPlayerActor(p.ownerId) && p.targetId != null) {
+    ctx.lastActionOn.set(p.targetId, ctx.lastAction || 'fire');
+    return;
+  }
+  if (ev.ev === 'physics:impact' && p.playerInvolved === true) {
+    if (p.aId != null) ctx.collisionVictims.add(p.aId);
+    if (p.bId != null) ctx.collisionVictims.add(p.bId);
+    return;
+  }
+  if (ev.ev === 'entity:killed') {
+    const targetId = p.id != null ? p.id : p.targetId;
+    if (targetId == null) return;
+    const side = isEnemyActor(targetId) ? 'enemy' : (isAllyActor(targetId) ? 'ally' : null);
+    if (!side) return;
+    let cause = 'ai';
+    if (p.killerId === playerId) {
+      const act = ctx.lastActionOn.get(targetId) || ctx.lastAction;
+      cause = act === 'fire' || act == null ? 'weapon' : act;
+    } else if (isAllyActor(p.killerId)) cause = 'ally';
+    else if (ctx.collisionVictims.has(targetId)) cause = 'collision';
+    duel.deaths.push({ side, cause, archetype: p.victimClass || p.type || null });
+    return;
+  }
+  if (ev.ev === 'player:death') {
+    duel.playerDead = true;
+    duel.deaths.push({ side: 'player', cause: 'player', archetype: null });
+  }
+}
+
+// ── duel distribution audit ─────────────────────────────────────────────────────
+
+export const CRUCIBLE_DUEL_DEFAULT_SEEDS = [4242, 8008, 13502];
+
+/**
+ * Runs every archetype at 1v1 and 2v2 across fixed seeds, aggregates per-archetype
+ * distributions, and classifies which archetypes are statistically THE SAME FIGHT.
+ */
+export async function runCrucibleDuelAudit({
+  archetypes = CRUCIBLE_DUEL_ARCHETYPES,
+  seeds = CRUCIBLE_DUEL_DEFAULT_SEEDS,
+  wings = [1, 2],
+  tickCap = DUEL_DEFAULT_TICK_CAP,
+  verbose = false,
+} = {}) {
+  const runs = [];
+  for (const archetypeId of archetypes) {
+    for (const enemyWing of wings) {
+      const playerWing = enemyWing; // 1v1 and 2v2, never 1v2
+      for (const seed of seeds) {
+        if (verbose) console.log(`[duel-audit] ${archetypeId} ${enemyWing}v${playerWing} seed:${seed}...`);
+        const { duel } = await simulateCrucibleDuel({ archetypeId, enemyWing, playerWing, seed, tickCap });
+        runs.push(duel);
+        if (verbose) {
+          console.log(`[duel-audit]   ${duel.stopReason} ${duel.fightSeconds}s ttk=${duel.ttkSeconds} `
+            + `meanDist=${duel.meanEngagementDistanceWU} inFrame=${duel.hostileInFrame.fraction}`);
+        }
+      }
+    }
+  }
+  const audit = summarizeDuelAudit(runs);
+  printDuelAudit(audit);
+  return audit;
+}
+
+function summarizeDuelAudit(runs) {
+  const byArchetype = new Map();
+  for (const run of runs) {
+    const key = `${run.archetypeId}:${run.enemyWing}v${run.playerWing}`;
+    if (!byArchetype.has(key)) byArchetype.set(key, []);
+    byArchetype.get(key).push(run);
+  }
+  const cells = new Map();
+  for (const [key, list] of byArchetype) {
+    cells.set(key, {
+      key,
+      runs: list.length,
+      ttkMedian: median(list.map((r) => r.ttkSeconds)),
+      meanDistMedian: median(list.map((r) => r.meanEngagementDistanceWU)),
+      minDistMedian: median(list.map((r) => r.minEngagementDistanceWU)),
+      maxDistMedian: median(list.map((r) => r.maxEngagementDistanceWU)),
+      passesMedian: median(list.map((r) => r.passesPerMinute)),
+      fireMedian: median(list.map((r) => r.enemyFirePerMinute)),
+      damageTakenMedian: median(list.map((r) => r.playerDamageTaken)),
+      damageDealtMedian: median(list.map((r) => r.playerDamageDealt)),
+      statusKinds: unionOf(list.map((r) => Object.keys(r.statusesOnPlayer || {}))),
+      telegraphKinds: unionOf(list.map((r) => Object.keys(r.telegraphKinds || {}))),
+      counterplayKinds: unionOf(list.map((r) => (
+        Object.entries(r.counterplay || {}).filter(([, n]) => n > 0).map(([k]) => k)
+      ))),
+      counterplayTotal: sumOf(list.map((r) => sumOf(Object.values(r.counterplay || {})))),
+      phaseKeys: unionOf(list.map((r) => Object.keys(r.doctrinePhaseTransitions || {}))),
+      dominantManeuver: dominantKey(mergeCounts(list.map((r) => r.maneuverKinds || {}))),
+      maneuverMix: mergeCounts(list.map((r) => r.maneuverKinds || {})),
+      distanceProfileMean: meanProfile(list.map((r) => r.distanceProfile)),
+      deathCauses: mergeCounts(list.map((r) => r.deaths.map((d) => `${d.side}:${d.cause}`))),
+      inFrameMedian: median(list.map((r) => r.hostileInFrame && r.hostileInFrame.fraction)),
+      stopReasons: mergeCounts(list.map((r) => r.stopReason)),
+    });
+  }
+  const pairs = [];
+  const keys = [...cells.keys()];
+  for (let i = 0; i < keys.length; i++) {
+    for (let j = i + 1; j < keys.length; j++) {
+      // Only compare like wing sizes against like: a 2v2 is never called the same fight as a 1v1.
+      const wingOf = (k) => k.split(':')[1];
+      if (wingOf(keys[i]) !== wingOf(keys[j])) continue;
+      pairs.push(classifyDuelPair(cells.get(keys[i]), cells.get(keys[j])));
+    }
+  }
+  pairs.sort((a, b) => (a.sameFight === b.sameFight ? b.differingDimensions.length - a.differingDimensions.length : (a.sameFight ? -1 : 1)));
+  return { cells: [...cells.values()], pairs, runCount: runs.length };
+}
+
+// Difference thresholds are absolute and stated. Two cells are THE SAME FIGHT when at most
+// DUEL_SAME_FIGHT_TOLERANCE of these dimensions differ.
+const DUEL_SAME_FIGHT_TOLERANCE = 2;
+
+export function classifyDuelPair(a, b) {
+  const differing = [];
+  if (!nearlyEqual(a.ttkMedian, b.ttkMedian, 8, 0.2)) differing.push('ttk');
+  if (!nearlyEqual(a.meanDistMedian, b.meanDistMedian, 70, 0.2)) differing.push('engagement_distance');
+  if (profileDistance(a.distanceProfileMean, b.distanceProfileMean) > 0.45) differing.push('distance_profile');
+  if (!nearlyEqual(a.passesMedian, b.passesMedian, 2.5, 0.45)) differing.push('pass_rhythm');
+  if (!nearlyEqual(a.fireMedian, b.fireMedian, 20, 0.3)) differing.push('fire_pressure');
+  if (!nearlyEqual(a.damageTakenMedian, b.damageTakenMedian, 25, 0.35)) differing.push('player_damage_taken');
+  if (setDifferenceScore(a.telegraphKinds, b.telegraphKinds)) differing.push('telegraph_vocabulary');
+  if (setDifferenceScore(a.counterplayKinds, b.counterplayKinds)) differing.push('counterplay');
+  if (setDifferenceScore(a.statusKinds, b.statusKinds)) differing.push('status_payloads');
+  if (a.dominantManeuver !== b.dominantManeuver) differing.push('dominant_maneuver');
+  return {
+    a: a.key,
+    b: b.key,
+    sameFight: differing.length <= DUEL_SAME_FIGHT_TOLERANCE,
+    differingDimensions: differing,
+    summary: {
+      ttk: [a.ttkMedian, b.ttkMedian],
+      meanDist: [a.meanDistMedian, b.meanDistMedian],
+      passes: [a.passesMedian, b.passesMedian],
+      fire: [a.fireMedian, b.fireMedian],
+      damageTaken: [a.damageTakenMedian, b.damageTakenMedian],
+      counterplay: [a.counterplayKinds, b.counterplayKinds],
+    },
+  };
+}
+
+function printDuelAudit(audit) {
+  console.log(`\n[duel-audit] ${audit.runCount} scripted duels, ${audit.cells.length} cells\n`);
+  console.log('| cell | ttk s | meanDist | minDist | passes/min | fire/min | dmg taken | counterplay | in-frame |');
+  console.log('|---|---|---|---|---|---|---|---|---|');
+  for (const c of audit.cells) {
+    console.log(`| ${c.key} | ${fmtNum(c.ttkMedian)} | ${fmtNum(c.meanDistMedian)} | ${fmtNum(c.minDistMedian)} `
+      + `| ${fmtNum(c.passesMedian)} | ${fmtNum(c.fireMedian)} | ${fmtNum(c.damageTakenMedian)} `
+      + `| ${c.counterplayKinds.join('+') || '—'} (${c.counterplayTotal}) | ${fmtNum(c.inFrameMedian)} |`);
+  }
+  const same = audit.pairs.filter((p) => p.sameFight);
+  console.log(`\nSAME-FIGHT pairs (${same.length}/${audit.pairs.length}) — differing dimensions <= ${DUEL_SAME_FIGHT_TOLERANCE}:`);
+  for (const p of same) {
+    console.log(`  ${p.a}  ==  ${p.b}   [${p.differingDimensions.join(', ') || 'identical'}]`);
+  }
+  const cp = new Map();
+  for (const c of audit.cells) {
+    for (const kind of c.counterplayKinds) cp.set(kind, (cp.get(kind) || 0) + c.counterplayTotal);
+  }
+  console.log(`\ncounterplay behaviors that fired: ${[...cp.entries()].map(([k, n]) => `${k}:${n}`).join(', ') || 'NONE'}`);
+}
+
+function nearlyEqual(a, b, abs, rel) {
+  if (a == null && b == null) return true;
+  if (a == null || b == null) return false;
+  return Math.abs(a - b) <= Math.max(abs, Math.abs(Math.max(Math.abs(a), Math.abs(b))) * rel);
+}
+
+function profileDistance(p, q) {
+  if (!p || !q) return 0;
+  let sum = 0;
+  for (let i = 0; i < Math.max(p.length, q.length); i++) sum += Math.abs((p[i] || 0) - (q[i] || 0));
+  return sum / 2;
+}
+
+function setDifferenceScore(a, b) {
+  const sa = new Set(a || []);
+  const sb = new Set(b || []);
+  let diff = 0;
+  for (const v of sa) if (!sb.has(v)) diff++;
+  for (const v of sb) if (!sa.has(v)) diff++;
+  return diff;
+}
+
+function median(values) {
+  const nums = (values || []).filter((v) => Number.isFinite(v)).sort((x, y) => x - y);
+  if (!nums.length) return null;
+  const mid = Math.floor(nums.length / 2);
+  return nums.length % 2 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+}
+
+function sumOf(values) {
+  return (values || []).reduce((s, v) => s + (Number.isFinite(v) ? v : 0), 0);
+}
+
+function unionOf(list) {
+  const out = new Set();
+  for (const item of list || []) for (const v of item || []) out.add(v);
+  return [...out].sort();
+}
+
+function mergeCounts(list) {
+  const out = {};
+  for (const counts of list || []) {
+    for (const [k, n] of Object.entries(counts || {})) out[k] = (out[k] || 0) + n;
+  }
+  return out;
+}
+
+function dominantKey(counts) {
+  let best = null;
+  let bestN = -1;
+  for (const [k, n] of Object.entries(counts || {})) {
+    if (n > bestN) { best = k; bestN = n; }
+  }
+  return best;
+}
+
+function meanProfile(profiles) {
+  const valid = (profiles || []).filter(Boolean);
+  if (!valid.length) return null;
+  const len = Math.max(...valid.map((p) => p.length));
+  const out = new Array(len).fill(0);
+  for (const p of valid) for (let i = 0; i < len; i++) out[i] += (p[i] || 0) / valid.length;
+  return out;
+}
+
+function fmtNum(v) {
+  return v == null ? '—' : String(Math.round(v * 100) / 100);
+}
+
 const invokedDirectly = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (invokedDirectly && process.argv.includes('--print-run-hash')) {
   printRunHashCli(process.argv.slice(2)).catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+if (invokedDirectly && process.argv.includes('--duel-audit')) {
+  const args = process.argv.slice(2);
+  const readList = (flag, fallback) => {
+    const row = args.find((a) => a.startsWith(`${flag}=`));
+    return row ? row.slice(flag.length + 1).split(',').filter(Boolean) : fallback;
+  };
+  runCrucibleDuelAudit({
+    archetypes: readList('--archetypes', CRUCIBLE_DUEL_ARCHETYPES),
+    seeds: readList('--seeds', CRUCIBLE_DUEL_DEFAULT_SEEDS.map(String)).map(Number),
+    wings: readList('--wings', ['1', '2']).map(Number),
+    verbose: args.includes('--verbose'),
+  }).catch((err) => {
     console.error(err);
     process.exit(1);
   });

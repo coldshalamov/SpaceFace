@@ -10,6 +10,7 @@ import {
   stableId,
 } from './contracts.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
+import { CAPITAL_BOSS_CHOREOGRAPHY } from '../data/combatDefs.js';
 
 export const CombatDoctrineId = Object.freeze({
   INTERCEPTOR_FLYBY: 'interceptor_flyby',
@@ -18,7 +19,12 @@ export const CombatDoctrineId = Object.freeze({
   FIELD_ANCHOR_CONTROLLER: 'field_anchor_controller',
   RANGED_DISENGAGER: 'ranged_disengager',
   CAPITAL_BROADSIDE: 'capital_broadside',
+  CAPITAL_BROADSIDE_TOLLMAN: 'capital_broadside_tollman',
+  CAPITAL_BROADSIDE_ALA: 'capital_broadside_ala',
   ESCORT_SCREEN: 'escort_screen',
+  SWARM_PACK: 'swarm_pack',
+  MINE_LAYER_WAKE: 'mine_layer_wake',
+  SHIELD_BREAKER: 'shield_breaker',
 });
 
 export const DOCTRINE_TELEGRAPH_TICKS = 30;
@@ -48,8 +54,41 @@ const FIELD_ANCHOR_RECOVER_MAX_TICKS = 200;
 const RANGED_REPOSITION_TICKS = 45;
 const RANGED_FIRE_TICKS = 18;
 const RANGED_RESET_TICKS = 18;
-const CAPITAL_BROADSIDE_FIRE_TICKS = 60;
-const CAPITAL_BROADSIDE_SHIFT_TICKS = 90;
+// Swarm pack: the light-hull identity. Short synchronized passes instead of the raider flyby's
+// measured cycle — the fight reads as a swarm, not as three lone interceptors taking turns.
+// The strike window has to outlive the action cooldown race (burst cooldown 12t + executor
+// blocked-retry backoff) or the pass ends before a single salvo lands.
+const SWARM_STRIKE_MIN_TICKS = 20;
+const SWARM_STRIKE_MAX_TICKS = 44;
+const SWARM_EXTEND_TICKS = 30;
+const SWARM_EXTEND_MAX_TICKS = 90;
+const SWARM_REFORM_TICKS = 24;
+const SWARM_INGRESS_RANGE_WU = 200;
+// Mine-layer wake: flank, telegraph the salted wake, fly the drop line, disengage. The mine
+// itself is dropped by the tacticalAI verb port (src/ai/mineLayerVerb.js) during 'mine_drop'.
+const MINE_FLANK_RANGE_WU = 340;
+const MINE_DROP_TICKS = 70;
+const MINE_DISENGAGE_TICKS = 45;
+const MINE_DISENGAGE_MAX_TICKS = 180;
+const MINE_REFORM_TICKS = 40;
+// Shield-breaker: close through the engagement band, telegraph the lance, land the ion/plasma
+// burst, peel while the target's capacitor is scrambled. Hit-and-run rhythm, never a grind.
+const SHIELD_CLOSE_RANGE_WU = 300;
+const SHIELD_LANCE_TICKS = 36;
+const SHIELD_PEEL_TICKS = 36;
+const SHIELD_PEEL_MAX_TICKS = 150;
+const SHIELD_REFORM_TICKS = 30;
+// Identity doctrines own their engagement band: factionBehavior.preferredRange would otherwise
+// re-flatten every identity onto its faction's sampled range and re-collapse the vocabulary.
+// The boss choreographies are staged the same way — the act table owns the standoff.
+const IDENTITY_OWNED_RANGE_DOCTRINES = new Set([
+  CombatDoctrineId.SWARM_PACK,
+  CombatDoctrineId.MINE_LAYER_WAKE,
+  CombatDoctrineId.SHIELD_BREAKER,
+  CombatDoctrineId.CAPITAL_BROADSIDE,
+  CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN,
+  CombatDoctrineId.CAPITAL_BROADSIDE_ALA,
+]);
 // Escort screen: the warden's job is the WARD, not the kill. It holds a point between its nearest
 // friendly and the pressed threat, and darts only when the threat actually breaches the ward.
 const ESCORT_APPROACH_RANGE_WU = 160;
@@ -183,8 +222,14 @@ export class CombatDoctrineRuntime {
       const egressPhase = doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY ? 'breakaway'
         : doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER ? 'escape'
           : doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER ? 'recover'
-          : doctrineId === CombatDoctrineId.ESCORT_SCREEN ? 'regroup'
-          : 'retreat';
+            : doctrineId === CombatDoctrineId.ESCORT_SCREEN ? 'regroup'
+              : doctrineId === CombatDoctrineId.SWARM_PACK ? 'extend'
+                : doctrineId === CombatDoctrineId.MINE_LAYER_WAKE ? 'disengage'
+                  : doctrineId === CombatDoctrineId.SHIELD_BREAKER ? 'peel'
+                    : doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
+                      || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
+                      || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA ? 'broadside_shift'
+                        : 'retreat';
       if (record.phase !== egressPhase) beginEgress(record, egressPhase, tick, self, target, 'target_disabled');
       return snapshot(record, target, directive, factionBehavior, self);
     }
@@ -200,10 +245,18 @@ export class CombatDoctrineRuntime {
       updateTetherRaider(record, tick, entityId, perception, self, target, distance);
     } else if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) {
       updateFieldAnchor(record, tick, self, target, distance);
-    } else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
-      updateCapitalBroadside(record, tick, distance);
+    } else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
+      || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
+      || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) {
+      updateCapitalBroadside(record, tick, self, distance);
     } else if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) {
       updateEscort(record, tick, perception, self, target, distance);
+    } else if (doctrineId === CombatDoctrineId.SWARM_PACK) {
+      updateSwarmPack(record, tick, self, target, distance);
+    } else if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) {
+      updateMineLayer(record, tick, self, target, distance);
+    } else if (doctrineId === CombatDoctrineId.SHIELD_BREAKER) {
+      updateShieldBreaker(record, tick, self, target, distance);
     } else {
       updateRanged(record, tick, self, target, distance);
     }
@@ -453,6 +506,7 @@ function pointWithin(self, point, rangeWu) {
 // from egressPhaseFor again.
 const PRESSURE_BREAK_EXCLUDED_PHASES = new Set([
   'extend', 'breakaway', 'escape', 'recover', 'retreat', 'reform', 'regroup', 'reset', 'broadside_shift',
+  'disengage', 'peel',
 ]);
 
 /**
@@ -495,10 +549,15 @@ function egressPhaseFor(record) {
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'escape';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'recover';
   if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) return 'regroup';
+  if (doctrineId === CombatDoctrineId.SWARM_PACK) return 'extend';
+  if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'disengage';
+  if (doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'peel';
   // The capital has no generic retreat machine: broadside_shift is its authored reposition beat
   // (timer exit back to broadside_charge), so a broken-off capital re-enters its cycle instead of
   // parking on a stale flightPoint in a phase updateCapitalBroadside never advances.
-  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'broadside_shift';
+  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) return 'broadside_shift';
   return 'retreat';
 }
 
@@ -527,24 +586,122 @@ function updateRanged(record, tick, self, target, distance) {
   else if (record.phase === 'reset' && age >= RANGED_RESET_TICKS) advanceCycle(record, tick, 'outer_standoff');
 }
 
-function updateCapitalBroadside(record, tick, distance) {
+/**
+ * Capital broadside + the three boss choreographies. The boss tables (CAPITAL_BOSS_CHOREOGRAPHY
+ * in src/data/combatDefs.js) stage the fight by hull fraction: each stage has its own telegraph
+ * cue, fire cadence and standoff, so a boss kill reads as acts — not one loop until death. A
+ * stage transition interrupts the current act and re-enters broadside_charge with the new cue,
+ * which is what the ai:telegraph / ai:doctrinePhase listeners (and the player) see.
+ */
+function capitalStageFor(record, self) {
+  const table = CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId];
+  const stages = (table && table.stages) || CAPITAL_BOSS_CHOREOGRAPHY.capital_broadside.stages;
+  const hull = self && Number.isFinite(self.hullFraction) ? self.hullFraction : 1;
+  let stage = stages[0];
+  for (const candidate of stages) {
+    if (hull <= candidate.hullAtMost) stage = candidate;
+  }
+  return stage;
+}
+
+function updateCapitalBroadside(record, tick, self, distance) {
+  const stage = capitalStageFor(record, self);
+  const stageIndex = CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId]
+    ? CAPITAL_BOSS_CHOREOGRAPHY[record.doctrineId].stages.indexOf(stage)
+    : 0;
+  if (stageIndex > (record.bossStage || 0)) {
+    // A new act begins: announce it through the charge telegraph even mid-broadside.
+    record.bossStage = stageIndex;
+    if (record.phase !== 'broadside_approach') {
+      enter(record, 'broadside_charge', tick, stage.cue);
+      return;
+    }
+  }
   const age = tick - record.phaseStartedTick;
   if (distance > 1100 && record.phase !== 'broadside_approach') {
     enter(record, 'broadside_approach', tick, null);
     return;
   }
-  if (record.phase === 'broadside_approach' && distance <= 900) {
-    enter(record, 'broadside_charge', tick, 'broadside_charge');
+  if (record.phase === 'broadside_approach' && distance <= stage.preferredRange + 640) {
+    enter(record, 'broadside_charge', tick, stage.cue);
   } else if (record.phase === 'broadside_charge' && age >= DOCTRINE_TELEGRAPH_TICKS) {
     enter(record, 'broadside_fire', tick, null);
-  } else if (record.phase === 'broadside_fire' && age >= CAPITAL_BROADSIDE_FIRE_TICKS) {
+  } else if (record.phase === 'broadside_fire' && age >= stage.fireTicks) {
     record.side *= -1;
     enter(record, 'broadside_shift', tick, null);
-  } else if (record.phase === 'broadside_shift' && age >= CAPITAL_BROADSIDE_SHIFT_TICKS) {
+  } else if (record.phase === 'broadside_shift' && age >= stage.shiftTicks) {
     record.cycle++;
     // Release the egress/shift steering point so the re-committed cycle steers on its own maneuver.
     record.flightPoint = null;
-    enter(record, 'broadside_charge', tick, 'broadside_charge');
+    enter(record, 'broadside_charge', tick, stage.cue);
+  }
+}
+
+/**
+ * The light-hull pack identity: short committed passes with a tight extend, so a swarm fight is
+ * a rapid sequence of flank→flare→strike→extend beats instead of the raider flyby's long cycles.
+ */
+function updateSwarmPack(record, tick, self, target, distance) {
+  const age = tick - record.phaseStartedTick;
+  if (record.phase === 'ingress' && distance <= SWARM_INGRESS_RANGE_WU) enter(record, 'engine_flare', tick, 'engine_flare');
+  else if (record.phase === 'engine_flare' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+    record.closestDistance = distance;
+    enter(record, 'strike', tick, null);
+  } else if (record.phase === 'strike') {
+    record.closestDistance = Math.min(record.closestDistance, distance);
+    const passed = runHasPassed(record, self, target, distance);
+    if ((age >= SWARM_STRIKE_MIN_TICKS && passed) || age >= SWARM_STRIKE_MAX_TICKS) {
+      beginEgress(record, 'extend', tick, self, target, 'swarm_pass_complete');
+    }
+  } else if (record.phase === 'extend' && age >= SWARM_EXTEND_TICKS &&
+    (distance >= 320 || age >= SWARM_EXTEND_MAX_TICKS)) {
+    beginReform(record, tick);
+  } else if (record.phase === 'reform' && age >= SWARM_REFORM_TICKS) {
+    advanceCycle(record, tick, 'ingress');
+  }
+}
+
+/**
+ * The mine-layer identity: flank to the wake band, telegraph the salted wake (cue `wake_mines`,
+ * the same cue the minefield_wake encounter telegraphs), fly the drop line while the tacticalAI
+ * verb port seeds mines behind the hull, then disengage and reform. Harassment, not commitment.
+ */
+function updateMineLayer(record, tick, self, target, distance) {
+  const age = tick - record.phaseStartedTick;
+  if (record.phase === 'flank' && distance <= MINE_FLANK_RANGE_WU) enter(record, 'wake_cue', tick, 'wake_mines');
+  else if (record.phase === 'wake_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) enter(record, 'mine_drop', tick, null);
+  else if (record.phase === 'mine_drop' && age >= MINE_DROP_TICKS) {
+    beginEgress(record, 'disengage', tick, self, target, 'wake_seeded');
+  } else if (record.phase === 'disengage' && age >= MINE_DISENGAGE_TICKS &&
+    (distance >= 520 || age >= MINE_DISENGAGE_MAX_TICKS)) {
+    beginReform(record, tick);
+  } else if (record.phase === 'reform' && age >= MINE_REFORM_TICKS) {
+    advanceCycle(record, tick, 'flank');
+  }
+}
+
+/**
+ * The shield-breaker identity: a committed closer that spears the shield layer (its burst carries
+ * the ion channel + status_ionized) and peels BEFORE the grind — the counterplay is capacitor
+ * discipline and catching the peel, not out-DPS-ing a committed brawler.
+ */
+function updateShieldBreaker(record, tick, self, target, distance) {
+  const age = tick - record.phaseStartedTick;
+  if (record.phase === 'close' && distance <= SHIELD_CLOSE_RANGE_WU) enter(record, 'lance_cue', tick, 'shield_lance');
+  else if (record.phase === 'lance_cue' && age >= DOCTRINE_TELEGRAPH_TICKS) {
+    record.closestDistance = distance;
+    enter(record, 'lance', tick, null);
+  } else if (record.phase === 'lance') {
+    record.closestDistance = Math.min(record.closestDistance, distance);
+    const passed = runHasPassed(record, self, target, distance);
+    if ((age >= SHIELD_LANCE_TICKS && passed) || age >= SHIELD_LANCE_TICKS * 2) {
+      beginEgress(record, 'peel', tick, self, target, 'shield_lanced');
+    }
+  } else if (record.phase === 'peel' && age >= SHIELD_PEEL_TICKS &&
+    (distance >= 380 || age >= SHIELD_PEEL_MAX_TICKS)) {
+    beginReform(record, tick);
+  } else if (record.phase === 'reform' && age >= SHIELD_REFORM_TICKS) {
+    advanceCycle(record, tick, 'close');
   }
 }
 
@@ -558,6 +715,7 @@ function makeRecord(seed, tick, entityId, doctrineId, targetId, flightProfile) {
     targetId: targetId == null ? null : targetId,
     actionTargetId: targetId == null ? null : targetId,
     cycle: 0,
+    bossStage: 0,
     side: sideFor(seed, entityId, doctrineId, 0, targetId),
     telegraph: null,
     telegraphStartedTick: null,
@@ -590,7 +748,8 @@ function enter(record, phase, tick, telegraphKind) {
   record.telegraphStartedTick = telegraphKind ? tick : null;
   record.fireWindow = phase === 'strike' || phase === 'commit' || phase === 'fire_window'
     || phase === 'anchor_hold' || phase === 'broadside_fire'
-    || phase === 'screen_hold' || phase === 'shield_dart';
+    || phase === 'screen_hold' || phase === 'shield_dart'
+    || phase === 'lance' || phase === 'mine_drop';
 }
 
 function advanceCycle(record, tick, phase) {
@@ -619,6 +778,15 @@ function beginReform(record, tick) {
 function snapshot(record, target, directive, factionBehavior = null, self = null) {
   const phase = record.phase;
   const doctrineId = record.doctrineId;
+  // A CONTROL dispatch (security_response) or an ambush's marked prey is an authoritative
+  // singleton assignment: the member must close on its named offender, not hold the squad's
+  // formation anchor. Without this release, an ingress-locked member's breakFormation=false
+  // triggers the maneuver planner's mustRejoin, steering it back to the jurisdiction slot —
+  // responders park in a deterrence ring hundreds of WU short of the fire gate while the
+  // offender fires untouched.
+  const assignedTargetBreak = !!(directive && directive.formation
+    && (directive.formation.breakReason === 'security_response_target'
+      || directive.formation.breakReason === 'ambush_snare_prey'));
   let maneuverKind = ManeuverKind.INTERCEPT;
   let preferredRange = 180;
   let allowedActionId = null;
@@ -678,9 +846,79 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
       preferredRange = 340;
     }
     if (phase === 'anchor_hold') allowedActionId = 'action_burst';
-  } else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) {
+  } else if (doctrineId === CombatDoctrineId.SWARM_PACK) {
+    formationLocked = phase === 'ingress' || phase === 'reform';
+    lateralSign = phase === 'ingress' || phase === 'reform' ? 0 : record.side;
+    if (phase === 'extend') {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      maneuverTargetId = null;
+    } else if (phase === 'reform') {
+      maneuverKind = ManeuverKind.FORMATION;
+      maneuverTargetId = null;
+    } else if (phase === 'strike') {
+      // The pass itself is a committed close orbit, not a straight intercept: the nose stays on
+      // the target while the hull crosses, so the burst lands inside the tight pack band.
+      maneuverKind = ManeuverKind.ORBIT;
+      faceTarget = true;
+      allowedActionId = 'action_burst';
+    } else maneuverKind = ManeuverKind.INTERCEPT;
+    preferredRange = phase === 'extend' ? 240 : 120;   // swarm lives inside the composed frame
+  } else if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) {
+    formationLocked = phase === 'reform';
+    if (phase === 'disengage') {
+      maneuverKind = ManeuverKind.RETREAT;
+      maneuverTargetId = null;
+      preferredRange = 320;
+    } else if (phase === 'reform') {
+      maneuverKind = ManeuverKind.FORMATION;
+      maneuverTargetId = null;
+      preferredRange = 320;
+    } else if (phase === 'wake_cue') {
+      maneuverKind = ManeuverKind.HOLD;
+      faceTarget = true;
+      preferredRange = 300;
+    } else if (phase === 'mine_drop') {
+      // The drop line: keep the nose off the target so the hull flies its wake PAST the player;
+      // the mine verb releases behind the hull along its own motion.
+      maneuverKind = ManeuverKind.INTERCEPT;
+      faceTarget = false;
+      preferredRange = 340;
+      allowedActionId = 'action_burst';
+    } else {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      preferredRange = 300;
+    }
+  } else if (doctrineId === CombatDoctrineId.SHIELD_BREAKER) {
+    formationLocked = phase === 'reform';
+    if (phase === 'close') {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      preferredRange = 220;
+    } else if (phase === 'lance_cue') {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      faceTarget = true;
+      preferredRange = 200;
+    } else if (phase === 'lance') {
+      maneuverKind = ManeuverKind.ORBIT;
+      faceTarget = true;
+      preferredRange = 180;
+      allowedActionId = 'action_burst';
+    } else if (phase === 'peel') {
+      maneuverKind = ManeuverKind.INTERCEPT;
+      maneuverTargetId = null;
+      preferredRange = 300;
+    } else {
+      maneuverKind = ManeuverKind.FORMATION;
+      maneuverTargetId = null;
+      preferredRange = 300;
+    }
+  } else if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) {
     maneuverKind = ManeuverKind.ORBIT;
-    preferredRange = 260;   // B3b: the broadside ring fits inside the composed frame
+    // B3b: the broadside ring fits inside the composed frame, tightened act by act — the boss
+    // stage table owns the number, the composed-frame floor owns the minimum.
+    const bossStage = capitalStageFor(record, self);
+    preferredRange = Math.max(180, bossStage.preferredRange);
     lateralSign = record.side;
     faceTarget = true;
     formationLocked = true;
@@ -712,8 +950,12 @@ function snapshot(record, target, directive, factionBehavior = null, self = null
     faceTarget = phase !== 'retreat';
     if (phase === 'fire_window') allowedActionId = 'action_burst';
   }
-  const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover' || phase === 'retreat';
-  if (factionBehavior && !isEgress) preferredRange = factionBehavior.preferredRange;
+  const isEgress = phase === 'extend' || phase === 'breakaway' || phase === 'escape' || phase === 'recover'
+    || phase === 'retreat' || phase === 'disengage' || phase === 'peel';
+  if (factionBehavior && !isEgress && !IDENTITY_OWNED_RANGE_DOCTRINES.has(doctrineId)) {
+    preferredRange = factionBehavior.preferredRange;
+  }
+  if (assignedTargetBreak) formationLocked = false;
   return Object.freeze({
     doctrineId,
     flightProfile: record.flightProfile,
@@ -808,6 +1050,21 @@ function targetScore(doctrineId, contact, ward = null) {
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) {
     return threat * 5 + bandScore(contact.mobilityBand, ['low', 'medium', 'high']) * 2;
   }
+  if (doctrineId === CombatDoctrineId.SWARM_PACK) {
+    // The pack votes for the closest soft thing: mobility over mass, so passes converge on one
+    // hull instead of scattering across the formation.
+    return threat * 5 + bandScore(contact.mobilityBand, ['high', 'medium', 'low']) * 3;
+  }
+  if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) {
+    // The wake is the weapon: fast, valuable, predictable traffic outranks clean kills. Slow
+    // heavies turn inside the seeded lane anyway.
+    return threat * 2 + bandScore(contact.cargoBand, ['empty', 'light', 'valuable', 'rich']) * 3
+      + bandScore(contact.mobilityBand, ['high', 'medium', 'low']) * 2;
+  }
+  if (doctrineId === CombatDoctrineId.SHIELD_BREAKER) {
+    // Spear the biggest shield wallet first — the lance is worth most against a full capacitor.
+    return threat * 4 + bandScore(contact.operationalMassBand, ['light', 'medium', 'heavy', 'capital']) * 2;
+  }
   if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) {
     // Rate hostiles by how hard they press the ward, not by what they are worth to me: a light
     // scout sitting on the ward outranks a rich freighter far from it. No ward → plain threat.
@@ -870,14 +1127,20 @@ function initialPhase(doctrineId) {
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'flank';
   if (doctrineId === CombatDoctrineId.RANGED_DISENGAGER) return 'outer_standoff';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'approach';
-  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'broadside_approach';
+  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) return 'broadside_approach';
   if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) return 'screen_approach';
+  if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'flank';
+  if (doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'close';
   return 'ingress';
 }
 
 function flightProfileFor(doctrineId, self) {
   if (doctrineId === CombatDoctrineId.BRAWLER_COMMIT) return 'brawler_commit';
-  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE) return 'capital_broadside';
+  if (doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_TOLLMAN
+    || doctrineId === CombatDoctrineId.CAPITAL_BROADSIDE_ALA) return 'capital_broadside';
   if (doctrineId === CombatDoctrineId.ESCORT_SCREEN) return 'escort_screen';
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY &&
     (self && (self.operationalMassBand === 'heavy' || self.operationalMassBand === 'capital'))) {
@@ -886,6 +1149,11 @@ function flightProfileFor(doctrineId, self) {
   if (doctrineId === CombatDoctrineId.INTERCEPTOR_FLYBY) return 'flyby';
   if (doctrineId === CombatDoctrineId.TETHER_CONTROL_RAIDER) return 'tether_raider';
   if (doctrineId === CombatDoctrineId.FIELD_ANCHOR_CONTROLLER) return 'field_anchor';
+  // The identity doctrines reuse published flight profiles: their motion vocabulary (a close
+  // pass, a standoff wake line, a hit-and-run pass) is already expressed by the planner through
+  // maneuverKind + preferredRange, and downstream consumers only know these profile strings.
+  if (doctrineId === CombatDoctrineId.SWARM_PACK || doctrineId === CombatDoctrineId.SHIELD_BREAKER) return 'flyby';
+  if (doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) return 'ranged_standoff';
   return 'ranged_standoff';
 }
 

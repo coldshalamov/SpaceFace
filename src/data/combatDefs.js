@@ -466,3 +466,159 @@ export function resolveWeaponCueTable(weaponId, weaponsArray = []) {
   const key = `${dt}_${size}`;
   return WEAPON_CUE_TABLES[key] || WEAPON_CUE_TABLES.kinetic_m;
 }
+
+// ═══ ENEMY FIGHT-IDENTITY LAYER ═════════════════════════════════════════════
+// src/data/enemies.js owns the roster's STATS; this table owns each hull's FIGHT IDENTITY —
+// which doctrine machine the tactical AI runs for it. The audit harness
+// (scripts/lib/bench/crucibleBench.mjs --duel-audit) proved most of the roster resolves to the
+// same fight: eight hulls share `interceptor_flyby` and three share `ranged_disengager`, so a
+// Wasp, a Corsair and a lawman were the same problem with different HP. These overrides give the
+// roster the six-identity vocabulary — swarm, kiter, brawler, boarder, mine-layer,
+// shield-breaker — without touching the stat owner.
+//
+// APPLICATION (single writer): src/systems/tacticalAI.js stampManeuverIdentities() stamps the
+// override onto data.ai.combatDoctrineId ONLY when that field still equals the enemy def's own
+// stock id, so encounter scripts, ACE loadouts, and any other author who sets a doctrine always
+// outrank this table.
+
+export const ENEMY_DOCTRINE_OVERRIDES = Object.freeze({
+  // The two light pack hulls stop flying the generic raider flyby and run tight synchronized
+  // pack passes (short cycles, 120 WU commit band).
+  wasp_swarmer: 'swarm_pack',
+  choir_zealot: 'swarm_pack',
+  // The jackal was mis-filed as a ranged disengager — it KITED like a lancer. Its authored
+  // identity (telegraph cue `wake_mines`, counter hint `cut_tether_or_clear_wake`) is area
+  // denial: flank, telegraph, seed the wake, disengage, repeat.
+  mine_layer_jackal: 'mine_layer_wake',
+  // The corsair elite is the roster's shield-breaker: closes through the band, telegraphs, lands
+  // an ion/plasma lance (action_burst carries ion 8 + status_ionized), peels while the target's
+  // capacitor is scrambled. The counterplay is capacitor discipline, not DPS racing.
+  corsair_raider: 'shield_breaker',
+  // The PD hull's authored text ("screens a leader or wreck claim; shreds missiles and light
+  // craft") is an escort warden, not a third copy of the raider flyby.
+  pd_screen_escort: 'escort_screen',
+});
+
+// The three CAPITAL_BOSSES missions (src/data/missions.js) stamp `data.missionTag`; each boss
+// gets its own choreography doctrine so a boss kill is a STORY (hull-fraction stages, each with
+// its own telegraph cue and cadence), not one broadside loop until death.
+export const MISSION_TAG_BOSS_DOCTRINE = Object.freeze({
+  capital_boss: 'capital_broadside',
+  capital_boss_tollman: 'capital_broadside_tollman',
+  capital_boss_ala: 'capital_broadside_ala',
+});
+
+// Boss choreography stages, keyed by the boss doctrine id. Stage 0 is the opening act; each
+// later stage engages when hullFraction drops to `hullAtMost`. `cue` is the telegraph kind the
+// transition emits (the readable beat), fireTicks/shiftTicks/preferredRange reshape the
+// broadside cadence for that act.
+export const CAPITAL_BOSS_CHOREOGRAPHY = Object.freeze({
+  capital_broadside: Object.freeze({
+    boss: 'IRON MAW',
+    stages: Object.freeze([
+      Object.freeze({ hullAtMost: 1.01, fireTicks: 60, shiftTicks: 90, preferredRange: 260, cue: 'broadside_charge' }),
+      Object.freeze({ hullAtMost: 0.66, fireTicks: 84, shiftTicks: 66, preferredRange: 230, cue: 'broadside_charge' }),
+      Object.freeze({ hullAtMost: 0.33, fireTicks: 96, shiftTicks: 48, preferredRange: 200, cue: 'broadside_desperation' }),
+    ]),
+  }),
+  capital_broadside_tollman: Object.freeze({
+    boss: 'THE TOLLMAN',
+    stages: Object.freeze([
+      Object.freeze({ hullAtMost: 1.01, fireTicks: 48, shiftTicks: 96, preferredRange: 300, cue: 'broadside_charge' }),
+      Object.freeze({ hullAtMost: 0.66, fireTicks: 120, shiftTicks: 72, preferredRange: 300, cue: 'pd_wall' }),
+      Object.freeze({ hullAtMost: 0.33, fireTicks: 54, shiftTicks: 42, preferredRange: 220, cue: 'toll_run' }),
+    ]),
+  }),
+  capital_broadside_ala: Object.freeze({
+    boss: 'ALA DREADNOUGHT',
+    stages: Object.freeze([
+      Object.freeze({ hullAtMost: 1.01, fireTicks: 72, shiftTicks: 84, preferredRange: 260, cue: 'broadside_charge' }),
+      Object.freeze({ hullAtMost: 0.66, fireTicks: 72, shiftTicks: 84, preferredRange: 240, cue: 'grave_pull' }),
+      Object.freeze({ hullAtMost: 0.33, fireTicks: 108, shiftTicks: 36, preferredRange: 190, cue: 'ashfall_enrage' }),
+    ]),
+  }),
+});
+
+// ── Encounter composition grammar ────────────────────────────────────────────
+// A wing is not a pile of hulls. Each composition declares ROLES (who presses, who flanks, who
+// denies ground, who kites) and exactly ONE twist clause — the wing's signature trick that makes
+// the same roster read as a different fight. Pure data; consumed by src/ai/squad.js
+// (SquadCommander), which picks the first matching composition for a squad deterministically and
+// seeds the twist choice from (squadId, seed) so browser/Electron/probes see the same wing.
+//
+// `identityAll` matches when EVERY doctrine-carrying member runs that doctrine id; `identityAny`
+// matches when at least one does. Rows are evaluated in order; a squad matches at most one.
+
+export const WING_COMPOSITION_GRAMMAR = Object.freeze([
+  {
+    id: 'swarm_pincer_pack',
+    when: Object.freeze({ sizeMin: 2, identityAll: 'swarm_pack' }),
+    roles: Object.freeze(['press', 'flank', 'flank', 'flank']),
+    twists: Object.freeze(['synchronized_strike']),
+  },
+  {
+    id: 'wake_denial_pair',
+    when: Object.freeze({ sizeMin: 2, identityAny: 'mine_layer_wake' }),
+    roles: Object.freeze(['area_denial', 'press', 'flank']),
+    twists: Object.freeze(['seed_the_exit']),
+  },
+  {
+    id: 'capacitor_hunt',
+    when: Object.freeze({ sizeMin: 2, identityAny: 'shield_breaker' }),
+    roles: Object.freeze(['shield_breaker', 'press', 'flank']),
+    twists: Object.freeze(['drain_then_commit']),
+  },
+  {
+    id: 'kite_and_bait',
+    when: Object.freeze({ sizeMin: 2, identityAny: 'ranged_disengager' }),
+    roles: Object.freeze(['kite', 'press', 'flank']),
+    twists: Object.freeze(['repositioning_fire']),
+  },
+  {
+    id: 'warden_screen',
+    when: Object.freeze({ sizeMin: 2, identityAny: 'escort_screen' }),
+    roles: Object.freeze(['screen', 'press', 'flank']),
+    twists: Object.freeze(['protect_the_pack']),
+  },
+  {
+    id: 'raider_wing',
+    when: Object.freeze({ sizeMin: 2 }),
+    roles: Object.freeze(['press', 'flank', 'press', 'flank']),
+    twists: Object.freeze(['synchronized_strike', 'feigned_break', 'focus_the_soft']),
+  },
+]);
+
+// One twist per wing, applied as deterministic tactic-weight modulation in squad.js. `weight`
+// entries are ADDITIVE utility deltas on the named squad tactic; `targeting` swaps the target
+// allocation sort. Anything richer is a behavior change and belongs in a doctrine, not here.
+export const TWIST_CLAUSES = Object.freeze({
+  synchronized_strike: Object.freeze({
+    summary: 'the pack commits on one beat — pincer pressure instead of a trickle of singles',
+    weights: Object.freeze({ swarm_pincer: 0.16 }),
+  }),
+  seed_the_exit: Object.freeze({
+    summary: 'the wake is the weapon — the wing presses to keep you inside the seeded lane',
+    weights: Object.freeze({ swarm_pincer: 0.08, fighting_retreat: -0.1 }),
+  }),
+  drain_then_commit: Object.freeze({
+    summary: 'bleed the capacitor first, commit only against a scrambled hull',
+    weights: Object.freeze({ contain_and_disable: 0.14 }),
+  }),
+  repositioning_fire: Object.freeze({
+    summary: 'every salvo from a new bearing — the standoff never repeats a firing solution',
+    weights: Object.freeze({ standoff_focus: 0.14 }),
+  }),
+  protect_the_pack: Object.freeze({
+    summary: 'the ward holds before the kill does — screening outguns pressing',
+    weights: Object.freeze({ hold_formation: 0.1, swarm_pincer: -0.06 }),
+  }),
+  feigned_break: Object.freeze({
+    summary: 'one hull fakes the egress to buy the flank a free pass',
+    weights: Object.freeze({ fighting_retreat: 0.08 }),
+  }),
+  focus_the_soft: Object.freeze({
+    summary: 'allocate guns to the weakest hull in reach, not the loudest threat',
+    weights: Object.freeze({}),
+    targeting: 'weakest_hull',
+  }),
+});

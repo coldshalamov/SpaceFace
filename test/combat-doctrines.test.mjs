@@ -35,10 +35,15 @@ assert(Object.isFrozen(CombatDoctrineId), 'combat doctrine ids are an immutable 
 assert.deepEqual(Object.values(CombatDoctrineId).sort(), [
   'brawler_commit',
   'capital_broadside',
+  'capital_broadside_ala',
+  'capital_broadside_tollman',
   'escort_screen',
   'field_anchor_controller',
   'interceptor_flyby',
+  'mine_layer_wake',
   'ranged_disengager',
+  'shield_breaker',
+  'swarm_pack',
   'tether_control_raider',
 ]);
 assert.equal(DOCTRINE_TELEGRAPH_TICKS, 30, 'every attack telegraph lasts at least 30 fixed ticks');

@@ -13,12 +13,15 @@ import {
 } from '../data/sectorCoordinates.js';
 import { isPlayerWanted } from '../systems/heat.js';
 import { isHostileToPlayer } from '../systems/scanner.js';
-import { stableId } from './contracts.js';
+import { distance2, stableId } from './contracts.js';
 
 const TICKS_PER_SECOND = 60;
 export const MIN_AI_RESPONSE_WINDOW_S = 1;
 const FIRST_SESSION_DURATION_TICKS = 10 * 60 * TICKS_PER_SECOND;
 const MAX_FIRST_SESSION_ATTACKERS = 2;
+// A waiting attacker displaces an incumbent only when it is markedly closer to the shared target
+// (hysteresis keeps ownership stable tick to tick when distances are similar).
+const OWNER_DISPLACEMENT_HYSTERESIS = 1.5;
 const LAWFUL_STATION_PROTECTION_MIN = 600;
 const LAWFUL_STATION_FACTIONS = new Set([
   'faction_scn',
@@ -45,6 +48,16 @@ const DOCTRINE_FIRE_PHASES = Object.freeze({
   // line) and the breach dart is its committed lunge. Same fail-closed rule as the brawler: a
   // missing key silences a live doctrine.
   escort_screen: new Set(['screen_hold', 'shield_dart']),
+  // Combat-variety identities (src/data/combatDefs.js ENEMY_DOCTRINE_OVERRIDES). Same fail-closed
+  // contract: the snapshot's fireWindow and this table must name the same phases or the hull
+  // never fires. The swarm passes on strike; the mine-layer harasses through its drop line (the
+  // wake_mines telegraph always precedes it); the shield-breaker fires only its telegraphed
+  // lance; the two staged boss choreographies fire on their broadside_fire acts.
+  swarm_pack: new Set(['strike']),
+  mine_layer_wake: new Set(['mine_drop']),
+  shield_breaker: new Set(['lance']),
+  capital_broadside_tollman: new Set(['broadside_fire']),
+  capital_broadside_ala: new Set(['broadside_fire']),
 });
 const ROBBERY_ESCALATION_TRIGGERS = new Set(['explicit_refusal', 'ignored_demand', 'player_attack']);
 const CERES_ACTIVITY_AMBUSH_ENCOUNTER_ID = 'ceres:activity:throughline-ambush';
@@ -581,10 +594,42 @@ function reconcileOwnership(state, runtime) {
   for (const [targetId, candidates] of candidatesByTarget) {
     const previous = runtime.byTarget.get(targetId) || { owners: [], waiting: [] };
     const candidateSet = new Set(candidates);
-    const owners = previous.owners.filter((id) => candidateSet.has(id));
-    const waiting = candidates.filter((id) => !owners.includes(id));
-    while (owners.length < MAX_FIRST_SESSION_ATTACKERS && waiting.length) owners.push(waiting.shift());
-    runtime.byTarget.set(targetId, { owners, waiting });
+    const target = entityById(state, targetId);
+    const distanceOf = (id) => {
+      const actor = entityById(state, id);
+      if (!actor || !actor.pos || !target || !target.pos) return Infinity;
+      const d = distance2(actor.pos, target.pos);
+      return Number.isFinite(d) ? d : Infinity;
+    };
+    // The cap bounds simultaneous threat, so its slots belong to the attackers actually able to
+    // press the target — a committed responder parked beyond reach must not starve one already in
+    // weapon range. Incumbents hold while still candidates; open slots fill by proximity; a
+    // markedly closer waiter displaces the farthest incumbent (hysteresis damps churn).
+    let owners = previous.owners.filter((id) => candidateSet.has(id));
+    if (owners.length < MAX_FIRST_SESSION_ATTACKERS) {
+      const byProximity = candidates
+        .filter((id) => !owners.includes(id))
+        .sort((a, b) => (distanceOf(a) - distanceOf(b)) || compareStableIds(a, b));
+      for (const id of byProximity) {
+        if (owners.length >= MAX_FIRST_SESSION_ATTACKERS) break;
+        owners.push(id);
+      }
+    }
+    for (const id of candidates) {
+      if (owners.includes(id)) continue;
+      const challengerDistance = distanceOf(id);
+      let farthestId = null;
+      let farthestDistance = -Infinity;
+      for (const ownerId of owners) {
+        const d = distanceOf(ownerId);
+        if (d > farthestDistance) { farthestDistance = d; farthestId = ownerId; }
+      }
+      if (farthestId != null && challengerDistance * OWNER_DISPLACEMENT_HYSTERESIS < farthestDistance) {
+        owners = owners.map((ownerId) => (ownerId === farthestId ? id : ownerId));
+      }
+    }
+    const ownerSet = new Set(owners);
+    runtime.byTarget.set(targetId, { owners, waiting: candidates.filter((id) => !ownerSet.has(id)) });
   }
 }
 

@@ -23,11 +23,22 @@ import { ensureActivityClassified, entityNeedsAiThink } from '../world/activityR
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import { applySpecialistCounterplay } from '../ai/specialistCounterplay.js';
 import { specialistPlanByEnemyId } from '../ai/specialistPlans.js';
+import { applyMineLayerVerb } from '../ai/mineLayerVerb.js';
+import {
+  ENEMY_DOCTRINE_OVERRIDES,
+  MISSION_TAG_BOSS_DOCTRINE,
+} from '../data/combatDefs.js';
+import { ENEMY_TYPES } from '../data/enemies.js';
+import { CombatDoctrineId, normalizeCombatDoctrineId } from '../ai/combatDoctrine.js';
 import { applyNpcFieldDeploy } from '../ai/npcFieldDeploy.js';
 import { getCombatKernel } from '../combat/kernel.js';
 
 const OWNERSHIP_REFRESH_TICKS = 3;
 const HEAVY_MASS_THRESHOLD = 150;
+// Stock doctrine id stamped by the enemy def (makeEnemySpawnSpec) for each roster id. The
+// identity stamp only upgrades a hull still carrying its stock id, so an encounter script,
+// ACE loadout, or any other author who assigns a doctrine always outranks the identity table.
+const ENEMY_BASE_DOCTRINE_BY_ID = new Map(ENEMY_TYPES.map((row) => [row.id, normalizeCombatDoctrineId(row.combatDoctrineId)]));
 const HEAVY_TURN_MANEUVERS = new Set([
   ManeuverKind.INTERCEPT,
   ManeuverKind.ORBIT,
@@ -306,6 +317,7 @@ export function createTacticalAISystem({
       // entity) four to six times per fixed step.
       const shipLikeList = indexedShipLikeScan(state);
       markCheapCohortMembers(state, shipLikeList);
+      stampManeuverIdentities(state, shipLikeList);
       const liveStack = ensureStack(state);
       bindHullResolver(liveStack);
       const tick = Number.isInteger(state && state.tick) ? state.tick : liveStack.lastTick + 1;
@@ -386,6 +398,17 @@ export function createTacticalAISystem({
             fields: fieldsSys,
           });
         }
+        // The mine-layer's area-denial verb: the doctrine telegraphed `wake_mines` and is flying
+        // its drop line; this port releases real mines behind the hull through the mines system.
+        if (entity && doctrine && doctrine.doctrineId === CombatDoctrineId.MINE_LAYER_WAKE) {
+          applyMineLayerVerb({
+            state,
+            entity,
+            doctrinePhase: doctrine.phase,
+            tick,
+            placeMine: ctxRef.helpers && ctxRef.helpers.placeMine,
+          });
+        }
         if (entity && fieldsSys) applyNpcFieldDeploy(entity, state, fieldsSys);
       }
       driveChoreographyMembers(liveStack, state, tick, result.decisions || [], shipLikeList);
@@ -438,6 +461,7 @@ export function revalidateCachedAIFiringIntents(liveStack, state, entityRefs = n
  */
 const POSTURE_EGRESS_PHASES = new Set([
   'extend', 'breakaway', 'escape', 'recover', 'retreat', 'regroup', 'reform', 'reset', 'broadside_shift',
+  'disengage', 'peel',
 ]);
 const POSTURE_REASON_PREFIX = 'combat_doctrine:';
 
@@ -528,6 +552,44 @@ export function markCheapCohortMembers(state, shipLikeList = indexedShipLikeScan
     ai.passive = true;
     ai.allowPassiveManeuver = false;
   }
+}
+
+/**
+ * Per-archetype fight identity (combat-variety vertical). Resolves the ENEMY_DOCTRINE_OVERRIDES
+ * / boss-choreography doctrine for each armed hull and stamps it onto data.ai.combatDoctrineId
+ * — the one channel the tactical stack reads. Authority rules:
+ *   - a hull whose doctrine was set by anyone OTHER than the stock enemy def (encounter script,
+ *     ACE loadout, spawn option) keeps its assignment; only a stock stamp is upgraded;
+ *   - a CAPITAL_BOSSES mission tag (data.missionTag) outranks the archetype override, so the
+ *     bruiser-brawler hulk of `capital_boss` still choreographs as a capital.
+ * Idempotent per tick and deterministic: the same entity data always resolves the same doctrine.
+ */
+export function stampManeuverIdentities(state, shipLikeList = indexedShipLikeScan(state)) {
+  const list = shipLikeList;
+  if (!list || !list.length) return 0;
+  let stamped = 0;
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false) continue;
+    const data = entity.data;
+    const ai = data && data.ai;
+    if (!ai || ai.passive === true) continue;
+    const enemyId = data.lootTableId || data.enemyTypeId || null;
+    if (enemyId == null && data.missionTag == null) continue;
+    let wanted = null;
+    if (data.missionTag && MISSION_TAG_BOSS_DOCTRINE[data.missionTag]) {
+      wanted = MISSION_TAG_BOSS_DOCTRINE[data.missionTag];
+    } else if (enemyId && ENEMY_DOCTRINE_OVERRIDES[enemyId]) {
+      wanted = ENEMY_DOCTRINE_OVERRIDES[enemyId];
+    }
+    if (!wanted) continue;
+    const baseId = enemyId ? ENEMY_BASE_DOCTRINE_BY_ID.get(enemyId) : null;
+    if (baseId && ai.combatDoctrineId && ai.combatDoctrineId !== baseId) continue;
+    if (ai.combatDoctrineId === wanted) continue;
+    ai.combatDoctrineId = wanted;
+    stamped += 1;
+  }
+  return stamped;
 }
 
 function stepFodderCohorts(liveStack, state, tick, dt, shipLikeList = indexedShipLikeScan(state)) {

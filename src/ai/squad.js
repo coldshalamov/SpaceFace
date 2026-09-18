@@ -12,6 +12,7 @@ import {
 } from './contracts.js';
 import { normalizeCombatDoctrineId } from './combatDoctrine.js';
 import { normalizeFactionBehaviorProfile } from './factionBehavior.js';
+import { TWIST_CLAUSES, WING_COMPOSITION_GRAMMAR } from '../data/combatDefs.js';
 
 const DEFAULTS = Object.freeze({
   formation: 'wedge',
@@ -51,6 +52,7 @@ export class SquadCommander {
       members,
       factionBehavior,
       roles: assignRoles(members),
+      composition: resolveWingComposition(definition.id, members, this.seed),
       currentTactic: null,
       tacticSinceTick: -Infinity,
       focusTargetId: null,
@@ -90,6 +92,7 @@ export class SquadCommander {
     squad.focusTargetId = focus ? focus.id : null;
 
     const candidates = this._tacticCandidates(squad, tick, perceptions, contacts, director);
+    applyTwistWeights(squad, candidates);
     candidates.sort((a, b) => b.utility - a.utility || a.id.localeCompare(b.id));
     let selected = candidates[0];
     const current = candidates.find((candidate) => candidate.id === squad.currentTactic);
@@ -137,6 +140,8 @@ export class SquadCommander {
         combatDoctrineId: member.combatDoctrineId,
         factionBehavior: member.factionBehavior || squad.factionBehavior,
         role,
+        wingRole: squad.composition ? squad.composition.roles.get(member.id) || null : null,
+        twist: squad.composition ? squad.composition.twist : null,
         tactic: selected.id,
         focusTargetId: focus ? focus.id : null,
         objective,
@@ -194,21 +199,29 @@ export class SquadCommander {
     let objectives = 0;
     let firstObjectiveValue = 0;
     let exposedTether = false;
+    let memberTetheredOverloads = false;
     for (const contact of contacts) {
       if (contact.kind === ContactKind.SHIP && contact.hostileVotes > 0) hostileShips++;
       else if (contact.kind === ContactKind.OBJECTIVE) {
         if (objectives === 0) firstObjectiveValue = contact.objectiveValue || 0;
         objectives++;
-      } else if (!exposedTether && contact.kind === ContactKind.TETHER && contact.exposed && contact.confidence >= 0.55 &&
-        (contact.ownedBySelf || contact.tags.includes('owned_by_self') || contact.tags.includes('cuttable_by_self'))) {
-        exposedTether = true;
+      } else if (contact.kind === ContactKind.TETHER) {
+        if (!exposedTether && contact.exposed && contact.confidence >= 0.55 &&
+          (contact.ownedBySelf || contact.tags.includes('owned_by_self') || contact.tags.includes('cuttable_by_self'))) {
+          exposedTether = true;
+        }
+        // Only a line an overload dash can actually snap justifies diverting a member. A tether
+        // whose break policy ignores ship thrust (the standard player Massline) never resolves
+        // the objective, so the member must stay on ordinary combat orders instead.
+        if (!memberTetheredOverloads && Array.isArray(contact.tags) && contact.tags.includes('overloadable')
+          && squad.members.some((member) => member.id === contact.targetId || member.id === contact.ownerId)) {
+          memberTetheredOverloads = true;
+        }
       }
     }
-    let memberTethered = false;
     let lowHullTotal = 0;
     let disabledTotal = 0;
     for (const perception of perceptions) {
-      if (perception.self.tethered) memberTethered = true;
       lowHullTotal += 1 - perception.self.hullFraction;
       disabledTotal += perception.self.disabled ? 1 : 0;
     }
@@ -237,7 +250,7 @@ export class SquadCommander {
       ? 'sampled nonlethal doctrine prioritizes disabling mobility'
       : 'disable mobility before capture or egress');
     push('cut_and_scatter', exposedTether && capabilities.has('counter_tether_cut') ? 0.92 : 0, 'exposed hostile tether can be severed');
-    push('overload_and_break', memberTethered && capabilities.has('counter_tether_overload') ? 0.96 : 0, 'tethered member has energy and overload capability');
+    push('overload_and_break', memberTetheredOverloads && capabilities.has('counter_tether_overload') ? 0.96 : 0, 'tethered member has energy and overload capability');
     // Survival cohorts still dodge, flank and break webs. Attrition cannot order them to
     // leave the arena indefinitely and strand a finite round with unreachable survivors.
     if (!perceptions.some(perception => perception.self.moraleImmune)) push('fighting_retreat', (director && director.command && director.command.type === 'order_retreat') || profileRetreat
@@ -294,6 +307,69 @@ function assignRoles(members) {
   claim(SquadRole.SUPPORT, 'ranged');
   for (const member of unassigned) roles.set(member.id, SquadRole.STRIKER);
   return roles;
+}
+
+// ── encounter composition grammar (wings with roles + one twist clause) ────────
+// Data: WING_COMPOSITION_GRAMMAR / TWIST_CLAUSES in src/data/combatDefs.js. A wing resolves to
+// at most one composition (first matching row); the twist is seeded from (squadId, seed) so
+// every consumer of the same fight sees the same wing grammar.
+
+const IDENTITY_WING_ROLE = Object.freeze({
+  swarm_pack: 'flank',
+  ranged_disengager: 'kite',
+  mine_layer_wake: 'area_denial',
+  shield_breaker: 'shield_breaker',
+  escort_screen: 'screen',
+  field_anchor_controller: 'screen',
+});
+
+export function resolveWingComposition(squadId, members, seed = 1) {
+  const doctrineIds = members.map((member) => member.combatDoctrineId).filter(Boolean);
+  let grammar = null;
+  for (const row of WING_COMPOSITION_GRAMMAR) {
+    const when = row && row.when;
+    if (!when) continue;
+    if (members.length < (when.sizeMin || 1)) continue;
+    if (when.identityAll) {
+      if (!doctrineIds.length || !doctrineIds.every((id) => id === when.identityAll)) continue;
+    }
+    if (when.identityAny && !doctrineIds.includes(when.identityAny)) continue;
+    grammar = row;
+    break;
+  }
+  if (!grammar) return { grammarId: null, twist: null, roles: new Map() };
+  const twists = Array.isArray(grammar.twists) ? grammar.twists : [];
+  const twist = twists.length
+    ? twists[Math.floor(hashUnit(seed, squadId, 'twist', grammar.id) * twists.length) % twists.length]
+    : null;
+  return { grammarId: grammar.id, twist, roles: assignWingRoles(members, grammar.roles || []) };
+}
+
+function assignWingRoles(members, roleCycle) {
+  const roles = new Map();
+  const pool = members.slice();
+  // First pass: identity claims the role it exists to play (the mine-layer takes area_denial,
+  // the warden takes screen), in grammar order so earlier slots win contested identities.
+  for (const role of roleCycle) {
+    const index = pool.findIndex((member) => (IDENTITY_WING_ROLE[member.combatDoctrineId] || 'press') === role);
+    if (index >= 0) roles.set(pool.splice(index, 1)[0].id, role);
+  }
+  // Second pass: everyone else fills the remaining slots in grammar order.
+  for (let slot = 0; pool.length; slot++) {
+    roles.set(pool.shift().id, roleCycle[slot % roleCycle.length]);
+  }
+  return roles;
+}
+
+function applyTwistWeights(squad, candidates) {
+  const twist = squad.composition && squad.composition.twist;
+  const clause = twist && TWIST_CLAUSES[twist];
+  const weights = clause && clause.weights;
+  if (!weights) return;
+  for (const candidate of candidates) {
+    const delta = weights[candidate.id];
+    if (delta) candidate.utility = saturate(candidate.utility + delta);
+  }
 }
 
 function mergeContacts(perceptions, freeze = Object.freeze, mergeScratch = null, outScratch = null) {
@@ -387,7 +463,15 @@ function objectiveFor(tactic, role, focus, objective, tether, perception, assign
   allocationActive = false, freeze = Object.freeze) {
   if (tactic === 'fighting_retreat') return freezeObjective(ObjectiveKind.RETREAT, null, 'director_or_attrition', freeze);
   if (tactic === 'cut_and_scatter') return freezeObjective(role === SquadRole.SUPPORT || role === SquadRole.STRIKER ? ObjectiveKind.COUNTER_TETHER_CUT : ObjectiveKind.SCREEN, tether && tether.id, 'exposed_tether', freeze);
-  if (tactic === 'overload_and_break') return freezeObjective(perception && perception.self.tethered ? ObjectiveKind.COUNTER_TETHER_OVERLOAD : ObjectiveKind.SCREEN, tether && tether.id, 'tethered_member', freeze);
+  if (tactic === 'overload_and_break') {
+    const selfTethered = !!(perception && perception.self && perception.self.tethered);
+    if (selfTethered && memberLineOverloadable(perception)) {
+      return freezeObjective(ObjectiveKind.COUNTER_TETHER_OVERLOAD, tether && tether.id, 'tethered_member', freeze);
+    }
+    if (!selfTethered) return freezeObjective(ObjectiveKind.SCREEN, tether && tether.id, 'tethered_member', freeze);
+    // A tethered member on an unbreakable line cannot resolve an overload objective. It falls
+    // through to the ordinary combat orders below so its doctrine keeps running while held.
+  }
   if (tactic === 'screen_tug_steal') {
     if (role === SquadRole.TUG) return freezeObjective(ObjectiveKind.TUG, objective && objective.id, 'assigned_tug', freeze);
     if (role === SquadRole.THIEF) return freezeObjective(ObjectiveKind.STEAL, objective && objective.id, 'assigned_thief', freeze);
@@ -420,6 +504,12 @@ function allocateCombatTargets(squad, tactic, contacts, focus) {
     if (focus) {
       if (a.id === focus.id && b.id !== focus.id) return -1;
       if (b.id === focus.id && a.id !== focus.id) return 1;
+    }
+    // Twist `focus_the_soft`: the wing guns the lightest hull in reach instead of the loudest
+    // threat — mass class ascending, so attrition concentrates on what dies.
+    if (squad.composition && squad.composition.twist === 'focus_the_soft') {
+      const softDelta = softnessRank(a) - softnessRank(b);
+      if (softDelta !== 0) return softDelta;
     }
     const scoreA = finiteTargetPriority(a);
     const scoreB = finiteTargetPriority(b);
@@ -477,6 +567,11 @@ function finiteTargetPriority(contact) {
     + (contact.tethered ? 0.25 : 0);
 }
 
+/** Light, low-mass hulls first — the `focus_the_soft` twist's targeting rank. */
+function softnessRank(contact) {
+  return Number.isFinite(contact.massClass) ? contact.massClass : 99;
+}
+
 function assignmentRoleRank(role) {
   if (role === SquadRole.LEADER) return 0;
   if (role === SquadRole.STRIKER) return 1;
@@ -494,6 +589,23 @@ function selectObjectiveContact(contacts) {
     }
   }
   return best;
+}
+
+// Whether the line holding this member can realistically be snapped by an overload dash. The
+// member's own tether contacts always include its endpoint lines, so an absent contact means the
+// tethered flag arrived through merged squad data and counterplay keeps the benefit of the doubt.
+function memberLineOverloadable(perception) {
+  const selfId = perception && perception.self && perception.self.id;
+  const contacts = perception && perception.contacts;
+  if (selfId == null || !Array.isArray(contacts)) return true;
+  let sawOwnLine = false;
+  for (const contact of contacts) {
+    if (!contact || contact.kind !== ContactKind.TETHER) continue;
+    if (contact.targetId !== selfId && contact.ownerId !== selfId) continue;
+    sawOwnLine = true;
+    if (Array.isArray(contact.tags) && contact.tags.includes('overloadable')) return true;
+  }
+  return !sawOwnLine;
 }
 
 function selectTetherContact(contacts) {
