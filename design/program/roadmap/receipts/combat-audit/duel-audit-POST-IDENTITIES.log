@@ -1,0 +1,58 @@
+
+[duel-audit] 90 scripted duels, 30 cells
+
+| cell | ttk s | meanDist | minDist | passes/min | fire/min | dmg taken | counterplay | in-frame |
+|---|---|---|---|---|---|---|---|---|
+| wasp_swarmer:1v1 | 4.82 | 206.4 | 50.89 | 0 | 0 | 0 | — (0) | 0.92 |
+| wasp_swarmer:2v2 | 60 | 127.53 | 12.54 | 4 | 1 | 0 | — (0) | 0.96 |
+| lancer_sniper:1v1 | 8.9 | 202.7 | 52.62 | 0 | 0 | 0 | — (0) | 0.82 |
+| lancer_sniper:2v2 | 60 | 136.5 | 13.74 | 2 | 5 | 0 | — (0) | 0.98 |
+| bruiser_brawler:1v1 | 38.58 | 108.71 | 25.83 | 0 | 46.29 | 19.15 | — (0) | 0.97 |
+| bruiser_brawler:2v2 | 60 | 147.96 | 4.69 | 2 | 75 | 16.72 | — (0) | 0.79 |
+| reaver_pirate:1v1 | 13.57 | 128.92 | 18.09 | 0 | 39.66 | 12.33 | — (0) | 0.94 |
+| reaver_pirate:2v2 | 60 | 135.99 | 5.52 | 2 | 18 | 3.29 | — (0) | 0.67 |
+| corsair_raider:1v1 | 24.13 | 130.42 | 26.54 | 0 | 36.99 | 63.52 | — (0) | 0.99 |
+| corsair_raider:2v2 | 60 | 146.39 | 17.24 | 2 | 0 | 0 | — (0) | 0.78 |
+| patrol_lawman:1v1 | 27.13 | 120.22 | 16.72 | 0 | 0 | 0 | — (0) | 0.99 |
+| patrol_lawman:2v2 | 60 | 1008.22 | 13.93 | 2 | 16 | 9.03 | — (0) | 0.96 |
+| customs_cutter:1v1 | 18.55 | 126.52 | 15.49 | 0 | 0 | 0 | — (0) | 0.98 |
+| customs_cutter:2v2 | 60 | 169.25 | 13.78 | 2 | 7.81 | 9.03 | — (0) | 0.94 |
+| mine_layer_jackal:1v1 | 16.07 | 131.23 | 24.05 | 0 | 7.48 | 75.81 | mines (15) | 0.97 |
+| mine_layer_jackal:2v2 | 48.48 | 124.15 | 4.67 | 1.24 | 28 | 83.21 | mines (24) | 0.98 |
+| pd_screen_escort:1v1 | 28.32 | 103.02 | 23.41 | 0 | 12.8 | 0 | — (0) | 0.98 |
+| pd_screen_escort:2v2 | 60 | 122.86 | 9.79 | 1 | 30 | 3.28 | — (0) | 0.96 |
+| choir_zealot:1v1 | 9.03 | 171.21 | 50.84 | 0 | 6.65 | 0 | — (0) | 0.97 |
+| choir_zealot:2v2 | 24.93 | 157.11 | 16.01 | 4.94 | 16.86 | 0 | — (0) | 0.98 |
+| quiet_ghost:1v1 | 13.5 | 170.91 | 59.6 | 0 | 0 | 0 | — (0) | 0.88 |
+| quiet_ghost:2v2 | 60 | 136.15 | 6.42 | 3 | 12 | 15.62 | — (0) | 0.86 |
+| tether_control_raider:1v1 | 29.6 | 83.93 | 0.14 | 0 | 0 | 0 | attach+cut_line (24) | 0.99 |
+| tether_control_raider:2v2 | 39.1 | 174.51 | 0.28 | 1.77 | 0 | 0 | attach+cut_line (20) | 0.76 |
+| warden_escort:1v1 | 55.9 | 114.7 | 21.94 | 0 | 37.83 | 32.33 | — (0) | 0.98 |
+| warden_escort:2v2 | 55.68 | 112.06 | 7.71 | 0 | 143.35 | 70.63 | — (0) | 0.88 |
+| field_anchor_controller:1v1 | — | 118.74 | 23.65 | 0 | 13 | 0 | snare_field (30) | 0.97 |
+| field_anchor_controller:2v2 | 59.24 | 145.57 | 6.55 | 1 | 61 | 12.33 | snare_field (26) | 0.98 |
+| dreadnought_boss:1v1 | 25.17 | 117.33 | 26.39 | 0 | 572.19 | 378.14 | — (0) | 0.95 |
+| dreadnought_boss:2v2 | 12.25 | 100.26 | 7.28 | 0 | 3669.04 | 337 | — (0) | 0.96 |
+
+SAME-FIGHT pairs (16/210) — differing dimensions <= 2:
+  wasp_swarmer:1v1  ==  choir_zealot:1v1   [phase_vocabulary, maneuver_mix]
+  wasp_swarmer:2v2  ==  reaver_pirate:2v2   [phase_vocabulary, maneuver_mix]
+  wasp_swarmer:2v2  ==  customs_cutter:2v2   [phase_vocabulary, maneuver_mix]
+  reaver_pirate:1v1  ==  patrol_lawman:1v1   [ttk, fire_pressure]
+  reaver_pirate:1v1  ==  choir_zealot:1v1   [fire_pressure, phase_vocabulary]
+  reaver_pirate:2v2  ==  corsair_raider:2v2   [telegraph_vocabulary, maneuver_mix]
+  reaver_pirate:2v2  ==  patrol_lawman:2v2   [engagement_distance, maneuver_mix]
+  corsair_raider:2v2  ==  patrol_lawman:2v2   [engagement_distance, telegraph_vocabulary]
+  customs_cutter:1v1  ==  choir_zealot:1v1   [ttk, phase_vocabulary]
+  lancer_sniper:2v2  ==  quiet_ghost:2v2   [phase_vocabulary]
+  reaver_pirate:1v1  ==  customs_cutter:1v1   [fire_pressure]
+  corsair_raider:2v2  ==  customs_cutter:2v2   [telegraph_vocabulary]
+  patrol_lawman:1v1  ==  customs_cutter:1v1   [ttk]
+  patrol_lawman:2v2  ==  customs_cutter:2v2   [engagement_distance]
+  lancer_sniper:1v1  ==  quiet_ghost:1v1   [identical]
+  reaver_pirate:2v2  ==  customs_cutter:2v2   [identical]
+
+differing-dimension histogram over all pairs (0=identical .. N+):
+  0:2  1:5  2:9  3+:194
+
+counterplay behaviors that fired: mines:39, attach:44, cut_line:44, snare_field:56

@@ -3424,7 +3424,13 @@ if (invokedDirectly && process.argv.includes('--duel-audit')) {
     const row = args.find((a) => a.startsWith(`${flag}=`));
     return row ? row.slice(flag.length + 1).split(',').filter(Boolean) : fallback;
   };
-  const outRow = args.find((a) => a.startsWith('--out='));
+  const flagValue = (flag) => {
+    const eq = args.find((a) => a.startsWith(`${flag}=`));
+    if (eq) return eq.slice(flag.length + 1);
+    const at = args.indexOf(flag);
+    return at >= 0 && at + 1 < args.length && !args[at + 1].startsWith('--') ? args[at + 1] : null;
+  };
+  const outPath = flagValue('--out');
   runCrucibleDuelAudit({
     archetypes: readList('--archetypes', CRUCIBLE_DUEL_ARCHETYPES),
     seeds: readList('--seeds', CRUCIBLE_DUEL_DEFAULT_SEEDS.map(String)).map(Number),
@@ -3432,9 +3438,9 @@ if (invokedDirectly && process.argv.includes('--duel-audit')) {
     verbose: args.includes('--verbose'),
     stockDoctrineOnly: args.includes('--stock-doctrines'),
   }).then((audit) => {
-    if (outRow) {
-      writeFileSync(outRow.slice('--out='.length), JSON.stringify(audit, null, 1));
-      console.log(`[duel-audit] full pair evidence written to ${outRow.slice('--out='.length)}`);
+    if (outPath) {
+      writeFileSync(outPath, JSON.stringify(audit, null, 1));
+      console.log(`[duel-audit] full pair evidence written to ${outPath}`);
     }
   }).catch((err) => {
     console.error(err);
