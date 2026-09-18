@@ -65,3 +65,7 @@ assets/**/evidence/*.gif
 
 # User content ("mods") dropped for the PQ-172 loader — player-installed, never shipped source.
 user-content/
+
+# Oversize bench dumps (100MB+; GitHub rejects them): keep the small .md verdicts tracked.
+design/program/roadmap/receipts/fun-loop/runs/2026-09-12-fun-bench-summary.json
+design/program/roadmap/receipts/fun-loop/runs/2026-09-14-fun-bench-summary.json
