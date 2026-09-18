@@ -1138,6 +1138,39 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
   }
 
   /**
+   * Machine-readable provenance mirror for the stats panel: the same derived-stat numbers the
+   * visible gauges/heroes show, stamped as [data-metric][data-value] rows so the acceptance route
+   * can prove the panel reads ships.getDerivedStats and not a fabricated second source. Mirrors
+   * whichever model was last synced — the ghost fit while a module/preset is previewed, the live
+   * fit otherwise. statsEl.innerHTML rebuilds wipe the mirror, so it re-appends on each sync.
+   */
+  const PREVIEW_METRIC_KEYS = [
+    'mass', 'hullMax', 'shieldMax', 'capMax', 'capRegen', 'continuousDrain',
+    'cargoCap', 'operationalMass', 'turnRate', 'thrust', 'maxSpeed',
+  ];
+  let metricsMirrorEl = null;
+  function stampStatsProvenance(model) {
+    if (!statsEl) return;
+    if (!model || !model.derived) {
+      delete statsEl.dataset.previewSource;
+      if (metricsMirrorEl) metricsMirrorEl.remove();
+      metricsMirrorEl = null;
+      return;
+    }
+    statsEl.dataset.previewSource = 'ships.getDerivedStats';
+    if (!metricsMirrorEl || !metricsMirrorEl.isConnected) {
+      metricsMirrorEl = document.createElement('span');
+      metricsMirrorEl.className = 'sx-sw__metrics';
+      metricsMirrorEl.hidden = true;
+      metricsMirrorEl.setAttribute('aria-hidden', 'true');
+      statsEl.appendChild(metricsMirrorEl);
+    }
+    metricsMirrorEl.innerHTML = PREVIEW_METRIC_KEYS.map((key) =>
+      `<span data-metric="${key}" data-value="${finite(model.derived[key], 0)}"></span>`,
+    ).join('');
+  }
+
+  /**
    * Write the six corner rows. `ghost: true` (a hovered module, a selected preset) leaves the live
    * value in place and writes the proposed value beside it at 38 %; a live write clears the ghost.
    */
@@ -1145,8 +1178,13 @@ export function createShipStage(ctx, { host: initialHost = 'dock' } = {}) {
     ensureGaugeRack();
     if (!model || !model.derived) {
       currentGaugeStats = null;
+      stampStatsProvenance(ghostBandModel);
       return;
     }
+    // Mirror the previewed fit while a ghost is on screen — a live-model refresh firing between
+    // the hover and the read must not flip the provenance back to the numbers the player is not
+    // being shown.
+    stampStatsProvenance(ghostBandModel || model);
     const stats = {
       mass: finite(model.derived.mass, 0),
       capMax: finite(model.derived.capMax, 0),

@@ -239,12 +239,15 @@ async function proveEngineeringPreview(page) {
       && el?.dataset?.previewReady === 'true';
   }, null, { timeout: 120_000 });
 
-  const slot = station.locator('.sx-slot[data-slot]').first();
+  const slot = station.locator('.sx-hardpoint[data-spatial-slot]').first();
   await slot.waitFor({ state: 'visible', timeout: 20_000 });
   const slotBox = await slot.boundingBox();
   assert(slotBox && slotBox.width > 2 && slotBox.height > 2, 'Shipworks loadout slot must expose a pointer target');
   await page.mouse.click(slotBox.x + slotBox.width / 2, slotBox.y + slotBox.height / 2);
-  const row = station.locator('.sx-modrow[data-preview-module]:not(.is-eq):not(.is-locked)').first();
+  // A fresh pilot cannot afford and has not researched most modules, so nearly every chooser row
+  // renders `is-locked` (buy disabled). Locked rows still preview on hover — that is the surface
+  // this gate exercises — so only the equipped row is excluded (its delta is the trivial no-op).
+  const row = station.locator('.sx-modrow[data-preview-module]:not(.is-eq)').first();
   await row.waitFor({ state: 'visible', timeout: 20_000 });
   const moduleId = await row.getAttribute('data-preview-module');
   const slotIndex = Number(await row.getAttribute('data-preview-slot'));

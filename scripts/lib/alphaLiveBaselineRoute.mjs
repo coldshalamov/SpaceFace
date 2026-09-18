@@ -348,8 +348,19 @@ export async function runBrowserPublicRoute({
               return style.display !== 'none' && style.visibility !== 'hidden';
             })(),
             speed: player?.vel ? Number(Math.hypot(player.vel.x, player.vel.z).toFixed(1)) : null,
+            pos: player?.pos
+              ? { x: Number(player.pos.x.toFixed(1)), z: Number(player.pos.z.toFixed(1)) }
+              : null,
+            tether: player?.tether
+              ? { active: player.tether.active === true, phase: player.tether.phase || null,
+                  targetId: player.tether.targetId ?? null }
+              : null,
+            dockInRange: state?.ui?.dockInRange === true,
+            dockDeny: state?.ui?.dockDeny || null,
+            hull: Number.isFinite(player?.hull) ? player.hull : null,
             distToBerth: corridor ? corridor.distToBerth : null,
             corridorPhase: corridor ? corridor.phase : null,
+            corridorAssist: corridor?.assist || null,
             autopilot: state?.nav?.autopilot
               ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status }
               : null,
@@ -733,6 +744,10 @@ async function readApproachSnapshot(page) {
         inCapture: corridor.inCapture === true,
         headingOk: corridor.headingOk,
       } : null,
+      tether: player?.tether
+        ? { active: player.tether.active === true, phase: player.tether.phase || null,
+            targetId: player.tether.targetId ?? null }
+        : null,
     };
   });
 }
