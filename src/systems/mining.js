@@ -1817,10 +1817,18 @@ function appendIndexedPickupDomain(index, out) {
 }
 
 function pickupsNearPlayer(state, player, radius, out) {
+  const index = state && state.entityIndex;
+  // The maintained pickup/payload domain is authoritative once the index is ready: the caller
+  // re-filters every candidate by live distance, so reading the domain skips the per-tick
+  // broadphase query entirely (it also sees non-colliding embargoed cargo the hash cannot).
+  if (index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && (Array.isArray(index.pickups) || Array.isArray(index.payloads))) {
+    out.length = 0;
+    return appendIndexedPickupDomain(index, out);
+  }
   if (hasActiveSpatialHash(state && state.spatialHash)) {
     return queryNearbyEntities(state, player && player.pos, radius, out);
   }
-  const index = state && state.entityIndex;
   if (index && (index.pickups || index.payloads)) {
     out.length = 0;
     return appendIndexedPickupDomain(index, out);

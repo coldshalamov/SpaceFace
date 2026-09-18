@@ -21,7 +21,7 @@ import {
   classifyActivity,
   physicsReachWu,
 } from './activityClassification.js';
-import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { hasNearWorkSlot, shouldOwnerThink } from '../core/activityScheduler.js';
 import { ballisticDrift, consumeScheduledWorldWake } from './worldCatchup.js';
 import {
@@ -661,7 +661,18 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
   const scratch = runtime.radiusScratch;
   scratch.length = 0;
   const radius = Math.max(0, reach) + NEAR_EXIT_PAD_WU;
-  queryNearbyEntities(state, origin, radius, scratch, runtime.classifyEmptyFallback);
+  // The classify disc is the same player-centred rect every pass, and the result is consumed as
+  // a broad near-superset (never an exact circle). The coherent cache replays last pass's
+  // candidates whenever the rect stays in the same cells and membership is unchanged; any
+  // spawn/despawn/cell-crossing bumps the version and forces a fresh query, so correctness
+  // is identical to an unconditional radius query.
+  const classifyHash = state && state.spatialHash;
+  if (origin && typeof classifyHash?.queryRadiusCoherent === 'function'
+      && hasActiveSpatialHash(classifyHash)) {
+    classifyHash.queryRadiusCoherent('activity:classify', origin.x, origin.z, radius, scratch);
+  } else {
+    queryNearbyEntities(state, origin, radius, scratch, runtime.classifyEmptyFallback);
+  }
   for (let i = 0; i < scratch.length; i++) add(scratch[i]);
   // The spatial hash only indexes physics bodies. Closed-form movers that opted out of
   // physics (travel-lane traffic repositions itself every tick at 420 WU/s) are invisible
