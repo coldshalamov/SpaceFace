@@ -95,13 +95,10 @@ test('R2 radial-facing starts use a small correction without replacing physical 
       <= result.telemetry.headingCorrectionLimit + 1e-12);
     assert.equal(result.telemetry.headingCorrectionSaturated, true,
       'the large radial heading error is bounded independently');
-    assert.equal(result.telemetry.headingDirectionCommitted, true,
-      'the radial tie is resolved in the player-selected orbit direction');
-    assert.equal(
-      Math.sign(result.telemetry.alignmentYawRate),
-      Math.sign(result.telemetry.orbitalYawRate),
-      'radial alignment must reinforce rather than cancel physical swing feed-forward',
-    );
+    assert.equal(result.telemetry.headingDirectionCommitted, false,
+      'capture always takes the shortest path onto the selected tangent, never a full extra revolution');
+    assert.ok(Math.abs(result.telemetry.headingError) <= Math.PI + 1e-12,
+      'a radial-facing launch turns at most 180 degrees, never the long 270-degree way around');
   }
   assert.ok(Math.abs(short.telemetry.orbitalYawRate) > Math.abs(long.telemetry.orbitalYawRate),
     'radial-facing nose correction leaves the stronger 72 WU physical feed-forward intact');
@@ -160,8 +157,10 @@ test('R2 heading recovery is symmetric across direction, strength, angle wrap, a
     radialByDirection.set(direction, result);
     assert.equal(result.telemetry.selectedDirection, direction);
     assert.equal(Math.sign(result.telemetry.orbitalYawRate), direction);
-    assert.equal(Math.sign(result.telemetry.alignmentYawRate), direction);
-    assert.equal(result.telemetry.headingDirectionCommitted, true);
+    assert.equal(Math.sign(result.telemetry.alignmentYawRate), -direction);
+    assert.equal(result.telemetry.headingDirectionCommitted, false);
+    assert.ok(Math.abs(result.telemetry.headingError) <= Math.PI + 1e-12,
+      'radial capture turns at most 180 degrees, never the long way around');
   }
   assert.equal(
     Math.abs(radialByDirection.get(-1).telemetry.desiredYawRate),
@@ -212,10 +211,11 @@ test('R2 heading recovery is symmetric across direction, strength, angle wrap, a
     const outside = orbitStep({ anchorAhead: true, lateral: direction, hostRot: outsideHeading });
     assert.equal(inside.telemetry.headingDirectionCommitted, false,
       `${direction}: immediately inside capture uses shortest-path trim`);
-    assert.equal(outside.telemetry.headingDirectionCommitted, true,
-      `${direction}: immediately outside capture commits to the held orbit direction`);
+    assert.equal(outside.telemetry.headingDirectionCommitted, false,
+      `${direction}: outside capture still takes the shortest path, never a full extra revolution`);
     assert.equal(Math.sign(inside.telemetry.alignmentYawRate), -direction);
-    assert.equal(Math.sign(outside.telemetry.alignmentYawRate), direction);
+    assert.equal(Math.sign(outside.telemetry.alignmentYawRate), -direction);
+    assert.ok(Math.abs(outside.telemetry.headingError) <= Math.PI + 1e-12);
   }
 });
 
@@ -230,6 +230,16 @@ test('the assist exists only for the explicit forward-plus-turn chord', () => {
     assert.deepEqual(result.input, input, 'releasing either chord key restores raw steering immediately');
     assert.equal(Object.hasOwn(result, 'impulse'), false);
   }
+});
+
+test('the pilot carve chord (forward plus a small turn intent) still orbits at the exact rate', () => {
+  // Default pilot scheme blends only a 0.35 carve yaw into W+D, but the chord must still
+  // engage and request the same inverse-radius yaw as a full turn press.
+  const full = orbitStep({ radius: 120, tangentialSpeed: 30, hostRot: Math.PI / 2, lateral: 1 });
+  const carve = orbitStep({ radius: 120, tangentialSpeed: 30, hostRot: Math.PI / 2, lateral: 0.35 });
+  assert.equal(carve.active, true);
+  assert.ok(Math.abs(carve.telemetry.orbitalYawRate - 0.25) < 1e-12);
+  assert.equal(carve.input.turn, full.input.turn);
 });
 
 test('slack, loaded and overload phases do not change thrust, speed policy, or steering rules', () => {
@@ -345,10 +355,16 @@ test('R2 production recovery matrix covers exact R0 radii and radial/signed head
         assert.ok(short && long);
         assert.ok(short.metrics.initialAbsOrbitalYawRate > long.metrics.initialAbsOrbitalYawRate,
           `${direction}/${strength}/${headingCase}: short line keeps stronger physical feed-forward`);
-        assert.ok(short.metrics.initialAbsDesiredYawRate > long.metrics.initialAbsDesiredYawRate,
-          `${direction}/${strength}/${headingCase}: short line requests faster yaw`);
-        assert.ok(short.metrics.actualYawDelta30Ticks > long.metrics.actualYawDelta30Ticks,
-          `${direction}/${strength}/${headingCase}: short line produces more visible hull yaw`);
+        if (headingCase !== 'radial-facing') {
+          assert.ok(short.metrics.initialAbsDesiredYawRate > long.metrics.initialAbsDesiredYawRate,
+            `${direction}/${strength}/${headingCase}: short line requests faster yaw`);
+          assert.ok(short.metrics.actualYawDelta30Ticks > long.metrics.actualYawDelta30Ticks,
+            `${direction}/${strength}/${headingCase}: short line produces more visible hull yaw`);
+        }
+        // Radial-facing capture takes the shortest path onto the tangent, so on the opposed
+        // side the bounded alignment transiently subtracts from the feed-forward instead of
+        // reinforcing it (no 270-degree spins). The inverse-radius property above still guards
+        // the physical rate, and the lab's own visibleYaw/bounded/takeover gates guard capture.
       }
     }
   }

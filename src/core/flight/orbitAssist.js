@@ -68,17 +68,16 @@ export function stepAnchorRelativeOrbitAssist(options = {}) {
   const headingCorrectionLimit = maxYawRate
     * ORBIT_ASSIST_TUNING_V1.maxHeadingCorrectionRateFraction
     * strengthScale;
-  // Far outside the proportional correction cone, preserve the orbit direction chosen by the
-  // held key. Once the nose enters the unsaturated cone, ordinary shortest-path trim can correct
-  // either side without turning a small overshoot into a full revolution.
+  // Heading capture always takes the shortest path onto the selected tangent. The desired
+  // tangent already encodes the held orbit direction, so the shortest turn reaches the same
+  // nose heading as any longer route — without spinning the hull through a full extra
+  // revolution when a latch begins radial-facing.
   const headingCaptureAngle = headingCorrectionLimit
     * (ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS / strengthScale);
   const desiredHeading = Math.atan2(tangentZ, tangentX);
   const headingSelection = selectedTangentHeadingError(
     desiredHeading,
     finite(host.rot),
-    selectedDirection,
-    headingCaptureAngle,
   );
   const headingError = headingSelection.headingError;
   const rawAlignmentYawRate = headingError
@@ -166,24 +165,11 @@ function wrapAngle(value) {
   return angle;
 }
 
-function selectedTangentHeadingError(
-  desiredHeading,
-  currentHeading,
-  selectedDirection,
-  captureAngle,
-) {
+function selectedTangentHeadingError(desiredHeading, currentHeading) {
   const shortestHeadingError = wrapAngle(desiredHeading - currentHeading);
-  const direction = Math.sign(finite(selectedDirection));
-  const outsideCapture = Math.abs(shortestHeadingError) + 1e-12
-    >= positive(captureAngle);
-  const directionCommitted = outsideCapture
-    && direction !== 0
-    && shortestHeadingError * direction < 0;
   return {
     shortestHeadingError,
-    headingError: directionCommitted
-      ? shortestHeadingError + direction * Math.PI * 2
-      : shortestHeadingError,
-    directionCommitted,
+    headingError: shortestHeadingError,
+    directionCommitted: false,
   };
 }
