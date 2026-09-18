@@ -418,6 +418,12 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
     'quarry must be owned by the accepted mission');
   assert.equal(authoredMission.targetLawful, false, 'the warranted quarry must not masquerade as lawful patrol traffic');
 
+  // The stage renders only the focused mission's verbs, and focus persists on whatever was
+  // selected before the writ posted (a fresh pilot still holds the seeded starter contract).
+  // The public path: click the writ's list row, then its stage card exposes Track.
+  const writRow = missionLog.locator(`.k-row[data-id="${authoredMission.id}"]`);
+  await writRow.waitFor({ state: 'visible', timeout: 20_000 });
+  await pointerClick(page, writRow, authoredMission.title);
   const trackButton = missionLog.locator(`button[data-act="track"][data-mid="${authoredMission.id}"]`);
   await trackButton.waitFor({ state: 'visible', timeout: 20_000 });
   await pointerClick(page, trackButton, 'Track Nav');
