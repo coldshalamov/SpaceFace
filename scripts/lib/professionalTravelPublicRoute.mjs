@@ -208,6 +208,7 @@ export async function runProfessionalTravelPublicRoute({
   jumpTimeoutMs = 60_000,
   continueTimeoutMs = 150_000,
   destination: destinationArg = TRAVEL_DESTINATION,
+  issues = null,
 } = {}) {
   let destination = { ...destinationArg };
   assert(page, 'travel public route requires a Playwright page');
@@ -479,7 +480,14 @@ export async function runProfessionalTravelPublicRoute({
     assert.equal(preReloadSector, destination.sectorId, 'save must capture destination sector');
     mark('save-written', { sectorId: preReloadSector });
 
-    await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+    // The cold Continue reload aborts in-flight shared player-store PUTs/GETs (queued mirror
+    // flushes around the F5 save). That is the expected-navigation class, not a page error.
+    const continueNavToken = issues?.beginExpectedNavigation?.('travel-route-continue-reload') ?? null;
+    try {
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 90_000 });
+    } finally {
+      if (continueNavToken != null) issues?.endExpectedNavigation?.(continueNavToken);
+    }
     await page.waitForFunction(() => !!(window.SF && window.SF.state), null, { timeout: 60_000 });
     await installTravelObservers(page);
 

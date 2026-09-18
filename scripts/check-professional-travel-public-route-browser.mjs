@@ -111,6 +111,7 @@ try {
     outputDir: STAGING,
     expectedRootUrl: rootUrl,
     log,
+    issues: pageIssues,
   });
 
   const errors = pageIssues.errorIssues();
