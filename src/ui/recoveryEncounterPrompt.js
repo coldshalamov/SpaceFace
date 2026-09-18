@@ -292,7 +292,16 @@ export function createRecoveryEncounterPrompt(ctx = {}) {
         choices: [],
       });
     }
-    if (readout.phase !== 'decision') return false;
+    if (readout.phase !== 'decision') {
+      // Unknown/transitional phases (e.g. awaiting_tether) render as an honest status frame —
+      // the pre-deck card showed them too; going dark mid-state machine reads as a broken promise.
+      return offer({
+        ...base,
+        kind: 'info',
+        statusFlag: words(readout.phase).toUpperCase() || 'IN PROGRESS',
+        choices: [],
+      });
+    }
     return offer({
       ...base,
       kind: 'info',
