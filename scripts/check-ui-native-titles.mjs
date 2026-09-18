@@ -75,7 +75,7 @@ export const BANNED_FILES = [
 export const ALLOWLIST = {
   'src/ui/station/screens/shipworks.js': [
     'title="${escapeHtml(def.name || s.defId)}"',
-    'title="${escapeHtml(s.name)} · ${escapeHtml(s.role || \'ship\')}"',
+    'title="${escapeHtml(s.name)} · ${escapeHtml(roleLabel)}"',
   ],
 };
 
