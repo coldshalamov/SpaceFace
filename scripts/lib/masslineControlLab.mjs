@@ -579,8 +579,8 @@ export function makeTraceSample(tick, obs, restLength, opts = {}) {
     orbitDesiredYawRate: round6(finite(orbitAssist && orbitAssist.desiredYawRate, 0)),
     orbitOrbitalYawRate: round6(finite(orbitAssist && orbitAssist.orbitalYawRate, 0)),
     orbitAlignmentYawRate: round6(finite(orbitAssist && orbitAssist.alignmentYawRate, 0)),
-    orbitHeadingCorrectionLimit: round6(finite(orbitAssist && orbitAssist.headingCorrectionLimit, 0)),
-    orbitHeadingCorrectionSaturated: !!(orbitAssist && orbitAssist.headingCorrectionSaturated),
+    orbitHeadingError: round6(finite(orbitAssist && orbitAssist.headingError, 0)),
+    orbitHeadingDirectionCommitted: !!(orbitAssist && orbitAssist.headingDirectionCommitted),
     orbitMaxYawRate: round6(finite(orbitAssist && orbitAssist.maxYawRate, 0)),
     hostHeading: round6(finite(host && host.rot, 0)),
     hostAngularVelocity: round6(finite(host && host.angVel, 0)),
@@ -1069,15 +1069,17 @@ function productionOrbitHeadingMetrics(trace, initialHeading) {
   const initialAbsDesiredYawRate = Math.abs(finite(first.orbitDesiredYawRate));
   const initialAbsOrbitalYawRate = Math.abs(finite(first.orbitOrbitalYawRate));
   const initialAbsAlignmentYawRate = Math.abs(finite(first.orbitAlignmentYawRate));
+  const initialAbsHeadingError = Math.abs(finite(first.orbitHeadingError));
   const maxYawRate = Math.abs(finite(first.orbitMaxYawRate));
   const actualYawDelta30Ticks = Math.abs(wrapLabAngle(
     finite(yawWindow.hostHeading, initialHeading) - initialHeading,
   ));
   let orbitAssistActiveTicks = 0;
-  let correctionBounded = true;
+  let longestHeadingError = initialAbsHeadingError;
   let worstDesiredYawRateRatio = 0;
   let worstDesiredYawRateRatioTick = null;
   let fullRateTakeoverTicks = 0;
+  let directionCommittedTicks = 0;
   for (const sample of trace) {
     if (!sample.orbitAssistActive) continue;
     orbitAssistActiveTicks++;
@@ -1090,17 +1092,16 @@ function productionOrbitHeadingMetrics(trace, initialHeading) {
       worstDesiredYawRateRatio = desiredYawRateRatio;
       worstDesiredYawRateRatioTick = sample.tick;
     }
-    if (Math.abs(finite(sample.orbitAlignmentYawRate))
-        > Math.abs(finite(sample.orbitHeadingCorrectionLimit)) + 1e-6) {
-      correctionBounded = false;
-    }
-    // A near-full-rate request is only a takeover when the live orbit could not demand it:
-    // feed-forward plus the whole bounded correction budget still short of the request.
-    // Hard whips legitimately saturate yaw authority (the assist asks for what tracking
-    // needs and the hull gives all it has), so the ceiling alone is not the signal.
+    if (!Number.isFinite(sample.orbitHeadingError)) continue;
+    longestHeadingError = Math.max(longestHeadingError, Math.abs(sample.orbitHeadingError));
+    if (sample.orbitHeadingDirectionCommitted) directionCommittedTicks++;
+    // The restored law commands exactly what tangent tracking needs: the inverse-radius
+    // feed-forward plus the proportional bridge, bounded only by the hull envelope. A
+    // near-full-rate request is therefore legitimate whenever the live orbital feed-forward
+    // plus the bridge actually calls for it, and never a hidden takeover.
     const legitimateDemandRatio = sampleMaxYawRate > 0
       ? (Math.abs(finite(sample.orbitOrbitalYawRate))
-          + Math.abs(finite(sample.orbitHeadingCorrectionLimit))) / sampleMaxYawRate
+          + Math.abs(finite(sample.orbitAlignmentYawRate))) / sampleMaxYawRate
       : Infinity;
     if (desiredYawRateRatio >= 0.9
         && legitimateDemandRatio < 0.9 - FULL_RATE_TAKEOVER_SLACK_RATIO) {
@@ -1111,16 +1112,24 @@ function productionOrbitHeadingMetrics(trace, initialHeading) {
   const noFullRateTakeover = orbitAssistActiveTicks > 0
     && Number.isFinite(worstDesiredYawRateRatio)
     && fullRateTakeoverTicks === 0;
+  // Shortest-path capture: the commanded heading error never opens past a half turn, and the
+  // hull never carves a full extra revolution onto the tangent. The erratic flip the owner hit
+  // was exactly this 270-degree direction-committed route; restoring the exact-rate config must
+  // not bring it back.
+  const shortestPathCapture = longestHeadingError <= Math.PI + 1e-6
+    && directionCommittedTicks === 0
+    && actualYawDelta30Ticks <= Math.PI + 0.25;
   const attachmentActiveAtEnd = trace.length > 0 && trace[trace.length - 1].attachmentActive;
   const pass = visibleYaw
     && noFullRateTakeover
-    && correctionBounded
+    && shortestPathCapture
     && orbitAssistActiveTicks > 0
     && attachmentActiveAtEnd;
   return {
     initialAbsDesiredYawRate: round6(initialAbsDesiredYawRate),
     initialAbsOrbitalYawRate: round6(initialAbsOrbitalYawRate),
     initialAbsAlignmentYawRate: round6(initialAbsAlignmentYawRate),
+    initialAbsHeadingError: round6(initialAbsHeadingError),
     maxYawRate: round6(maxYawRate),
     actualYawDelta30Ticks: round6(actualYawDelta30Ticks),
     visibleYaw,
@@ -1130,7 +1139,8 @@ function productionOrbitHeadingMetrics(trace, initialHeading) {
     worstDesiredYawRateRatioTick,
     fullRateTakeoverTicks,
     noFullRateTakeover,
-    correctionBounded,
+    directionCommittedTicks,
+    shortestPathCapture,
     orbitAssistActiveTicks,
     attachmentActiveAtEnd,
     pass,

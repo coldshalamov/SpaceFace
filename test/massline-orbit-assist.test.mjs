@@ -67,10 +67,14 @@ test('the requested turn rate scales with swing speed and inverse line radius', 
   assert.ok(Math.abs(fastShort.telemetry.orbitalYawRate - fastLong.telemetry.orbitalYawRate * 2) < 1e-12);
 });
 
-test('R2 radial-facing starts use a small correction without replacing physical angular motion', () => {
-  const capFraction = ORBIT_ASSIST_TUNING_V1.maxHeadingCorrectionRateFraction;
-  assert.ok(capFraction > 0 && capFraction < 0.5,
-    'heading correction has its own small cap below half of full yaw authority');
+test('R2 radial-facing starts swing onto the tangent at full authority, then hold the exact orbital rate', () => {
+  // The working contract: while the nose is off-tangent the proportional bridge may spend the
+  // whole yaw envelope to swing onto the selected tangent, then the bridge falls to zero and the
+  // requested rate IS the inverse-radius orbital feed-forward. A separate heading cap starved the
+  // swing and made a tethered orbit read under-speed.
+  assert.equal(ORBIT_ASSIST_TUNING_V1.tangentAlignTimeS, 0.55);
+  assert.equal(Object.hasOwn(ORBIT_ASSIST_TUNING_V1, 'maxHeadingCorrectionRateFraction'), false,
+    'the bounded-correction cap that starved the swing is gone');
 
   const long = orbitStep({
     radius: 220,
@@ -87,14 +91,8 @@ test('R2 radial-facing starts use a small correction without replacing physical 
 
   for (const result of [long, short]) {
     assert.equal(result.active, true);
-    assert.ok(Math.abs(result.telemetry.desiredYawRate) > 0.05,
-      'a radial-facing launch still requests visible yaw');
-    assert.ok(Math.abs(result.telemetry.desiredYawRate) < result.telemetry.maxYawRate * 0.9,
-      'heading alignment cannot take over at full yaw rate');
-    assert.ok(Math.abs(result.telemetry.alignmentYawRate)
-      <= result.telemetry.headingCorrectionLimit + 1e-12);
-    assert.equal(result.telemetry.headingCorrectionSaturated, true,
-      'the large radial heading error is bounded independently');
+    assert.equal(Math.abs(result.telemetry.desiredYawRate), result.telemetry.maxYawRate,
+      'a radial-facing launch uses the full yaw envelope to reach the tangent');
     assert.equal(result.telemetry.headingDirectionCommitted, false,
       'capture always takes the shortest path onto the selected tangent, never a full extra revolution');
     assert.ok(Math.abs(result.telemetry.headingError) <= Math.PI + 1e-12,
@@ -102,6 +100,13 @@ test('R2 radial-facing starts use a small correction without replacing physical 
   }
   assert.ok(Math.abs(short.telemetry.orbitalYawRate) > Math.abs(long.telemetry.orbitalYawRate),
     'radial-facing nose correction leaves the stronger 72 WU physical feed-forward intact');
+
+  // On-tangent the bridge contributes nothing and the request is exactly the orbital rate.
+  const onTangent = orbitStep({ radius: 120, tangentialSpeed: 30, hostRot: Math.PI / 2 });
+  assert.ok(Math.abs(onTangent.telemetry.alignmentYawRate) < 1e-12,
+    'the proportional bridge is zero on the tangent');
+  assert.ok(Math.abs(onTangent.telemetry.desiredYawRate - onTangent.telemetry.orbitalYawRate) < 1e-12,
+    'holding the orbit chord requests the exact inverse-radius angular velocity');
 });
 
 test('R2 signed heading offsets preserve feed-forward and release either chord key immediately', () => {
@@ -203,19 +208,24 @@ test('R2 heading recovery is symmetric across direction, strength, angle wrap, a
 
   for (const direction of [-1, 1]) {
     const desiredHeading = direction > 0 ? -Math.PI / 2 : Math.PI / 2;
-    const probe = orbitStep({ anchorAhead: true, lateral: direction, hostRot: desiredHeading });
-    const boundary = probe.telemetry.headingCaptureAngle;
-    const insideHeading = desiredHeading + direction * (boundary - 1e-6);
-    const outsideHeading = desiredHeading + direction * (boundary + 1e-6);
-    const inside = orbitStep({ anchorAhead: true, lateral: direction, hostRot: insideHeading });
-    const outside = orbitStep({ anchorAhead: true, lateral: direction, hostRot: outsideHeading });
-    assert.equal(inside.telemetry.headingDirectionCommitted, false,
-      `${direction}: immediately inside capture uses shortest-path trim`);
-    assert.equal(outside.telemetry.headingDirectionCommitted, false,
-      `${direction}: outside capture still takes the shortest path, never a full extra revolution`);
-    assert.equal(Math.sign(inside.telemetry.alignmentYawRate), -direction);
-    assert.equal(Math.sign(outside.telemetry.alignmentYawRate), -direction);
-    assert.ok(Math.abs(outside.telemetry.headingError) <= Math.PI + 1e-12);
+    const near = orbitStep({
+      anchorAhead: true,
+      lateral: direction,
+      hostRot: desiredHeading + direction * 0.05,
+    });
+    assert.equal(near.telemetry.headingDirectionCommitted, false);
+    assert.equal(Math.sign(near.telemetry.headingError), -direction,
+      `${direction}: a small offset trims toward the tangent`);
+    assert.equal(Math.sign(near.telemetry.alignmentYawRate), Math.sign(near.telemetry.headingError),
+      `${direction}: the proportional bridge follows the shortest heading error`);
+    const opposite = orbitStep({
+      anchorAhead: true,
+      lateral: direction,
+      hostRot: desiredHeading + Math.PI - 0.05,
+    });
+    assert.equal(opposite.telemetry.headingDirectionCommitted, false,
+      `${direction}: a near-opposite start still never commits to a full extra revolution`);
+    assert.ok(Math.abs(opposite.telemetry.headingError) <= Math.PI + 1e-12);
   }
 });
 
@@ -331,12 +341,15 @@ test('R2 production recovery matrix covers exact R0 radii and radial/signed head
   );
   assert.ok(matrix.rows.every((row) => row.metrics.visibleYaw));
   assert.ok(matrix.rows.every((row) => row.metrics.noFullRateTakeover));
-  assert.ok(matrix.rows.every((row) => row.metrics.correctionBounded));
+  assert.ok(matrix.rows.every((row) => row.metrics.shortestPathCapture),
+    'every recovery start takes the short way onto the tangent, never the 270-degree route');
+  assert.ok(matrix.rows.every((row) => row.metrics.directionCommittedTicks === 0),
+    'the erratic direction-committed full revolution stays gone');
   assert.ok(matrix.rows.every((row) => row.metrics.orbitAssistActiveTicks > 0));
   assert.ok(matrix.rows.every((row) => Number.isFinite(row.metrics.worstDesiredYawRateRatio)));
   // Hard whips legitimately saturate yaw authority (the orbit's own feed-forward outruns the
   // hull), so the takeover gate is demand-relative: a near-full-rate request may only occur
-  // while the orbital rate plus the bounded correction budget could actually call for it.
+  // while the orbital feed-forward plus the proportional bridge actually call for it.
   assert.ok(matrix.rows.every((row) => row.metrics.fullRateTakeoverTicks === 0),
     'a near-full-rate yaw request must only occur while the orbit itself demands the envelope');
   assert.ok(matrix.rows.every((row) => row.metrics.worstDesiredYawRateRatio
@@ -361,10 +374,10 @@ test('R2 production recovery matrix covers exact R0 radii and radial/signed head
           assert.ok(short.metrics.actualYawDelta30Ticks > long.metrics.actualYawDelta30Ticks,
             `${direction}/${strength}/${headingCase}: short line produces more visible hull yaw`);
         }
-        // Radial-facing capture takes the shortest path onto the tangent, so on the opposed
-        // side the bounded alignment transiently subtracts from the feed-forward instead of
-        // reinforcing it (no 270-degree spins). The inverse-radius property above still guards
-        // the physical rate, and the lab's own visibleYaw/bounded/takeover gates guard capture.
+        // Radial-facing capture spends the full yaw envelope on both radii, so the requested
+        // rate is equal rather than radius-ordered. The inverse-radius property above still
+        // guards the physical feed-forward, and the lab's visibleYaw/shortestPathCapture/
+        // takeover gates guard capture without the 270-degree direction-committed route.
       }
     }
   }
