@@ -703,7 +703,7 @@
       "wf": "WF-01",
       "mode": "repair",
       "verdict": "implemented",
-      "reason": "Ceres refinery now answers the delivered ore with one outbound refined-metals capsule the player can chase and catch — ev_cargo_capsule_launch wired as the causal chain's eighth link (8/58 catalog events live)",
+      "reason": "Ceres refinery now answers the delivered ore with one outbound refined-metals capsule the player can chase and catch ΓÇö ev_cargo_capsule_launch wired as the causal chain's eighth link (8/58 catalog events live)",
       "fingerprint": "verb=chase,subject=cargo_capsule,sector=ceres,layer=midground,tempo=ambient,domain=wf-01",
       "references": [],
       "integration": "live",
@@ -1004,7 +1004,7 @@
       "fingerprint": "verb=tow,subject=massline,sector=any,layer=midground,tempo=deliberate,domain=wf-11",
       "references": [],
       "integration": "live",
-      "commit": "d119047c4",
+      "commit": "a01b924da",
       "verification": "focused_green"
     },
     {
