@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -32,6 +32,30 @@ export function runSfSim(args) {
   return runJson(['scripts/sf-sim.mjs', ...args]);
 }
 
+export function runJsonAsync(args) {
+  return new Promise((resolve, reject) => {
+    execFile(process.execPath, args, {
+      cwd: ROOT,
+      encoding: 'utf8',
+      maxBuffer: 1024 * 1024 * 64,
+    }, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(`sf-sim failed: ${error.message}${stderr ? `\n${stderr}` : ''}`));
+        return;
+      }
+      try {
+        resolve(JSON.parse(stdout));
+      } catch (parseError) {
+        reject(new Error(`sf-sim returned non-JSON output: ${parseError.message}`));
+      }
+    });
+  });
+}
+
+export function runSfSimAsync(args) {
+  return runJsonAsync(['scripts/sf-sim.mjs', ...args]);
+}
+
 export function runTrace({
   ticks,
   inputPath = BASE_TAPE_PATH,
@@ -62,6 +86,43 @@ export function runTrace({
   if (counterTetherProbe) args.push('--counter-tether-probe', counterTetherProbe);
   if (reloadAt != null) args.push('--reload-at', String(reloadAt));
   return runSfSim(args);
+}
+
+// Async twin of runTrace: same trace, same args, promise-based so a check that needs several
+// long independent traces (one per branch) can overlap them instead of paying the sum serially.
+// Each trace is an isolated sf-sim subprocess reading its own tape file, so concurrent runs of
+// the same deterministic seed do not share state.
+export function runTraceAsync(options = {}) {
+  const {
+    ticks,
+    inputPath = BASE_TAPE_PATH,
+    events = 'combat:actionStarted,combat.*,tether.*,scenario.*',
+    limit = 400,
+    physicsBackend = 'rapier-dynamic',
+    tacticalAI = false,
+    counterTetherProbe = null,
+    reloadAt = null,
+  } = options;
+  const args = [
+    'trace',
+    '47a',
+    '--seed',
+    '47',
+    '--ticks',
+    String(ticks),
+    '--inputs',
+    inputPath,
+    '--events',
+    events,
+    '--limit',
+    String(limit),
+    '--physics-backend',
+    physicsBackend,
+  ];
+  if (tacticalAI) args.push('--tactical-ai');
+  if (counterTetherProbe) args.push('--counter-tether-probe', counterTetherProbe);
+  if (reloadAt != null) args.push('--reload-at', String(reloadAt));
+  return runSfSimAsync(args);
 }
 
 export function runInspect({

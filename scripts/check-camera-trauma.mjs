@@ -39,6 +39,11 @@ check('SPEC3-18 physics emits impact dp without writing camera state', () => {
 
   const host = Object.create(physics);
   host._pairMaterialScratch = {};
+  // resolvePair routes impact options through _impactOptionsScratch (backend/tick/normal);
+  // the lightweight mock must carry it, mirroring test/pq-159-00-impact-kick.test.mjs.
+  host._impactOptionsScratch = {
+    backend: 'custom', tick: 0, normal: { x: 0, z: 0 }, causalActorId: null, preSolveClosingSpeed: 0,
+  };
   host.resolvePair(player, asteroid, 18, 18, 0, bus, state);
 
   const impact = events.find((entry) => entry.name === 'physics:impact');

@@ -77,13 +77,13 @@ const rendererSrc = readFileSync(new URL('../src/render/renderer.js', import.met
 check('renderer imports and applies the shared attenuation instead of re-deriving one', () => {
   assert.match(rendererSrc, /import \{[^}]*shakeDistanceAttenuation[^}]*\} from '\.\/camera\.js'/,
     'renderer must import shakeDistanceAttenuation from camera.js (a second local curve would drift)');
-  const handler = rendererSrc.slice(rendererSrc.indexOf("bus.on('camera:shake'"));
+  const handler = rendererSrc.slice(rendererSrc.indexOf("onBus('camera:shake'"));
   assert(handler.includes('shakeDistanceAttenuation'), 'the camera:shake handler must apply the attenuation');
   assert(handler.includes('position'), 'the camera:shake handler must read payload.position');
 });
 
 check('un-positioned shakes pass through the consumer unattenuated', () => {
-  const handler = rendererSrc.slice(rendererSrc.indexOf("bus.on('camera:shake'"), rendererSrc.indexOf("bus.on('camera:kill'"));
+  const handler = rendererSrc.slice(rendererSrc.indexOf("onBus('camera:shake'"), rendererSrc.indexOf("onBus('camera:kill'"));
   // Two early-outs: no usable position, and no player to measure against. Both must add full trauma,
   // otherwise the 11 player-scoped emitters would be silently weakened.
   const passThrough = handler.match(/cam\.addTrauma\(amount\)/g) || [];

@@ -187,6 +187,11 @@ function makePlayer() {
     vel: { x: 900, z: 0 },
     radius: 7,
     maxSpeed: MAX_SPEED,
+    // PQ-137.03: the chase zoom envelope keys the ordinary frame to the hull's GOVERNED combat
+    // speed (propulsionCatalog.resolveGovernedCombatSpeed reads entity.combatSpeed first), not to
+    // the legacy derived maxSpeed. Without this the fixture falls through to the default drive
+    // profile (cap 210) and MAX_SPEED stops meaning at-cap framing below.
+    combatSpeed: MAX_SPEED,
     bank: 0,
   };
 }
@@ -297,7 +302,13 @@ check('physics-earned overspeed opens farther than ordinary max thrust, then ret
     earned.camera.follow(DT);
     returnSamples.push(cameraDistance(earned.state, earned.camera));
   }
-  assert.ok(returnSamples[0] > earnedDistance * 0.98,
+  // Ease bound is derived from the deliberate chase zoom rate (camera.js ZOOM_LERP = 4.0/s:
+  // one 60 Hz frame closes 1-e^(-4/60) ~= 6.4% of the remaining gap). With the current earned
+  // range the gap is ~44% of the earned distance, so a healthy first frame lands at ~97.1%.
+  // 0.96 keeps margin over that while still catching a true cut (which would land at/below the
+  // ~56% ordinary level) or a doubled zoom rate (~94.5%). Do not tighten past 0.97 without also
+  // slowing ZOOM_LERP — the two pins share one time constant.
+  assert.ok(returnSamples[0] > earnedDistance * 0.96,
     'clearing earned provenance must ease rather than snap the camera inward on one frame');
   assert.ok(returnSamples[12] < earnedDistance - 0.5 && returnSamples[12] > ordinaryDistance,
     'the return should make visible progress while retaining an intermediate composition');

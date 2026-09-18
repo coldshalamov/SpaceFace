@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   CAMERA_ZOOM_MAX,
   CHASE_ZOOM_DEFAULT,
+  CONTEXT_ZOOM_MAX,
   PHYSICS_EARNED_SPEED_ZOOM_MAX,
   SPEED_ZOOM_MAX,
   SPEED_ZOOM_MIN,
@@ -89,7 +90,13 @@ assert.equal(combined.nearbyEnemies, 1, 'combined combat+tether framing should k
 assert.equal(combined.hasThreatFocus, true, 'combined framing should include threat focus');
 assert.equal(combined.hasTetherFocus, true, 'combined framing should include tether focus');
 near(combined.x, 78.4, 'combined framing should include bounded threat and Massline endpoint bias');
-near(combined.zoomBias, 0.14, 'combined combat+tether context zoom should cap before feeling like a map peek');
+// The composition cap moved 0.14 -> 0.42 -> 0.20 (bounded-threat-camera lane); the underlying
+// threat+tether sum is unchanged. Pin the contract, not the number: both contexts must compose
+// (exceeding either alone) while the cap holds before it feels like a map peek.
+assert.ok(combined.zoomBias > Math.max(threat.zoomBias, tether.zoomBias),
+  'combined framing must compose both contexts, not max() them');
+assert.ok(combined.zoomBias <= CONTEXT_ZOOM_MAX + 1e-9,
+  'combined combat+tether context zoom should cap before feeling like a map peek');
 
 const unrelatedTetherState = stateWith([player, payload(3, 320, 0), ship(4, -200, 0, 'player')], {
   att_unrelated: { id: 'att_unrelated', state: 'active', ownerId: 4, targetId: 3 },
