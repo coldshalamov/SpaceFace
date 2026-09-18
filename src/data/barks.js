@@ -606,6 +606,200 @@ export function hullRecognitionBarkFor(factionId, rng, tokens = {}) {
   return String(line).replace(/\{ship\}/g, ship).replace(/\{class\}/g, shipClass);
 }
 
+// ── Living-world history recognition ──────────────────────────────────────────────────────────
+//
+// Where HULL_RECOGNITION names the hull, HISTORY_RECOGNITION names what the hull DID: the count of
+// a faction's hulls the player broke, and the named captains who remember them (hunting, fearful,
+// or grateful). Same contract as hull recognition — not a BARK_SITUATION, an event line. The
+// selector only ever picks a family whose fact actually exists (a named captain, or a nonzero kill
+// count), so a history line always references real history.
+
+export const HISTORY_RECOGNITION = Object.freeze({
+  faction_scn: Object.freeze({
+    kills: Object.freeze([
+      'Registry cross-reference: {kills} Concord hulls lost to {ship}. Your file is thick.',
+      '{ship}. {kills} open incident files. Ref 44-C notes repeat offenders.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} filed a standing grievance against {ship}. It is approved.',
+      'Advisory: {captain} holds priority claim on {ship}. Do not interfere with the recovery.',
+    ]),
+    fears: Object.freeze([
+      '{captain} requests armed escort whenever {ship} is on the board. Request granted.',
+      '{ship} sighted. {captain}\'s wing declines engagement. Noted, not judged.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} holds a work order with {ship}\'s name on it. Lucky hull.',
+      '{captain} vouches for {ship}. The vouch is on file.',
+    ]),
+  }),
+  faction_mts: Object.freeze({
+    kills: Object.freeze([
+      '{kills} of our hulls, {ship}. Someone has been paying your premiums.',
+      '{ship} — {kills} write-offs this quarter. The board knows your name.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} bought your debt, {ship}. Collections is on the lane.',
+      '{captain} holds the note on {ship}. The rate just went up.',
+    ]),
+    fears: Object.freeze([
+      '{captain} passed on your contract, {ship}. First smart money all cycle.',
+      'The floor dropped {captain}\'s position on {ship}. Even collectors have limits.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} fronted you credit, {ship}. Good for the margin. Keep flying.',
+      '{captain} underwrote {ship}. That is a reputation with a number on it.',
+    ]),
+  }),
+  faction_dmc: Object.freeze({
+    kills: Object.freeze([
+      '{kills} rigs. That is {kills} shift whistles that went quiet. We know, {ship}.',
+      '{ship}. {kills} of our hulls on the scrap list this cycle. Long war.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} keeps a wrench with {ship}\'s name scratched in it.',
+      '{captain} radioed the belts: {ship} owes blood on the ledger.',
+    ]),
+    fears: Object.freeze([
+      '{captain} pulled their crew off the lane when {ship} showed. Smart, that.',
+      'Nobody blames {captain} for running. {ship} earned that fear.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} says {ship} pulls weight for the Collective. The yard remembers that.',
+      '{captain} put in a word for {ship} at the yard. Words like that hold.',
+    ]),
+  }),
+  faction_reach: Object.freeze({
+    kills: Object.freeze([
+      '{ship}. {kills} hulls on their weigh-slip. The Reach counts, friend.',
+      '{kills} of ours, by {ship}\'s guns. That is a debt with mass.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} opened the weigh-slip on {ship}. The number keeps climbing.',
+      '{captain} called the pack. {ship}\'s tonnage is the prize.',
+    ]),
+    fears: Object.freeze([
+      '{captain}\'s crew won\'t weigh against {ship}. Look at the slip — can\'t blame them.',
+      '{ship} is on the board and {captain} just remembered urgent business elsewhere.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} vouches {ship} pays fair. Rare words in the Reach.',
+      '{captain} pulled {ship}\'s wake out of the red. The crew noticed.',
+    ]),
+  }),
+  faction_quiet: Object.freeze({
+    kills: Object.freeze([
+      '{kills}. Counted. {ship}.',
+      '{ship}. {kills} of ours. The number holds.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} speaks your name, {ship}. Once.',
+      '{captain} keeps the count. {ship} is in it.',
+    ]),
+    fears: Object.freeze([
+      '{captain} saw {ship}. {captain} left.',
+      '{ship}. {captain} says nothing. That is the answer.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} owes {ship}. Debts are quiet but paid.',
+      '{captain} holds work with {ship}\'s name on it.',
+    ]),
+  }),
+  faction_choir: Object.freeze({
+    kills: Object.freeze([
+      '{kills} voices, {ship}, silenced into the Pattern. It remembers.',
+      '{ship} carries {kills} of our names. Heavy cargo.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} notates {ship}\'s correction. The interval approaches.',
+      '{captain} sings the verse that ends with {ship}.',
+    ]),
+    fears: Object.freeze([
+      '{captain} deferred the chorus when {ship} neared. Deferred, never denied.',
+      '{ship} is counted and {captain} withdrew. The Pattern is patient.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} names {ship} friendly to the chorus. Rare grace.',
+      '{captain} walks with {ship}. The Pattern notes the kindness.',
+    ]),
+  }),
+  faction_free: Object.freeze({
+    kills: Object.freeze([
+      '{ship}. Folks say {kills} hulls went down to your guns. We keep count out here too.',
+      '{kills} of ours, {ship}. Neighbors remember.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} is asking after {ship}. Nothing good comes of that ask.',
+      '{captain} took the {ship} contract personal. Watch the lane.',
+    ]),
+    fears: Object.freeze([
+      '{captain} wants no part of {ship}. First wise call all week.',
+      '{captain} saw {ship} and turned. Can\'t say I\'d blame them.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} speaks well of {ship}. Says the hull pays its debts.',
+      '{captain} owes {ship} one. Out here that means something.',
+    ]),
+  }),
+  faction_vael: Object.freeze({
+    kills: Object.freeze([
+      'Clause {kills}: {ship} stands in breach. The ledger accumulates.',
+      '{ship}. {kills} entries under breach-of-accord. The terms remember.',
+    ]),
+    hunts: Object.freeze([
+      '{captain} holds an open term against {ship}. It matures soon.',
+      'The accord assigns {captain} to {ship}. Enforcement follows.',
+    ]),
+    fears: Object.freeze([
+      '{captain} declined the {ship} term. Disposition deferred.',
+      '{captain}\'s consensus withdrew from {ship}. The ledger notes hesitation.',
+    ]),
+    offers_work: Object.freeze([
+      '{captain} extends {ship} provisional credit. Rare terms.',
+      '{captain} names {ship} a party of record in good standing.',
+    ]),
+  }),
+});
+
+const HISTORY_STANCE_PRECEDENCE = Object.freeze(['hunts', 'fears', 'offers_work']);
+
+/**
+ * One line that references the player's actual history with a faction. Facts come from
+ * factionHistoryFromMemory (namedAces.js): at least one of { captains, kills } must be truthy.
+ * Family order: a remembered captain beats a kill count; each family's fact is guaranteed real.
+ *
+ * @param {string} factionId  one of BARK_FACTIONS (unknown ids fall back to faction_free).
+ * @param {{shipName?: string, kills?: number, captains?: Array<{name: string, stance: string}>}} facts
+ * @param {function|number} [rng]  seeded rng fn or numeric index. Deterministic.
+ * @returns {string} a non-empty line referencing a real fact (falls back to '' without facts).
+ */
+export function historyBarkFor(factionId, facts = {}, rng = 0) {
+  if (!facts || facts.hasHistory !== true) return '';
+  const families = (factionId && HISTORY_RECOGNITION[factionId]) || HISTORY_RECOGNITION.faction_free;
+  const captains = Array.isArray(facts.captains) ? facts.captains : [];
+  let family = null;
+  let captain = null;
+  for (const stance of HISTORY_STANCE_PRECEDENCE) {
+    const match = captains.find((row) => row && row.stance === stance);
+    if (match && Array.isArray(families[stance]) && families[stance].length) {
+      family = stance;
+      captain = match;
+      break;
+    }
+  }
+  if (!family && facts.kills > 0 && Array.isArray(families.kills) && families.kills.length) {
+    family = 'kills';
+  }
+  if (!family) return '';
+  const line = families[family][pickIndex(rng, families[family].length)];
+  const ship = typeof facts.shipName === 'string' && facts.shipName.trim()
+    ? facts.shipName.trim() : 'that hull';
+  return String(line)
+    .replace(/\{ship\}/g, ship)
+    .replace(/\{kills\}/g, String(Math.max(0, facts.kills | 0)))
+    .replace(/\{captain\}/g, (captain && captain.name) || 'the captain');
+}
+
 const contactChoice = (id, label, lineIndexes) => Object.freeze({
   id,
   label,
@@ -811,6 +1005,8 @@ export default {
   BARK_SITUATIONS,
   CONTACT_VOICE_REGISTERS,
   HULL_RECOGNITION,
+  HISTORY_RECOGNITION,
   barkFor,
   hullRecognitionBarkFor,
+  historyBarkFor,
 };

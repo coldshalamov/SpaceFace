@@ -407,6 +407,15 @@ export const WHISPER_LINES = Object.freeze([
   'count the quiet between your engines.',
   'the lanes remember older wakes.',
   'your mass sings at the threshold.',
+  'someone is keeping your tally. keep flying.',
+  'the third rock past the gate has your name filed under it.',
+  'they weigh what you jettison. all of it. always.',
+  'a captain you unpaid is counting your turns.',
+  'the debt is not credits. the debt is memory.',
+  'your transponder rhymes with a name in a dead ledger.',
+  'two crews fled from you. the third is watching how you fly.',
+  'the salvage rig asks after you by hull color.',
+  'what the front remembers, the whisper repeats.',
 ]);
 
 /** What the whisper turns out to be once investigated (seeded pick per encounter). */
@@ -416,6 +425,11 @@ export const WHISPER_SOURCE_NAMES = Object.freeze([
   'a choir penitence buoy',
   'a corpse-light cache',
   "a mutineers' dead-drop",
+  'a weigh-slip buoy still counting hulls',
+  "a toll-keeper's retired ledger beacon",
+  'a claimed seam marker with fresh welds',
+  'a grudge beacon naming one transponder',
+  'a yard tender\'s lost inventory drone',
 ]);
 
 /** Receipt templates keyed `shapeId.outcome`. Short, factual, never overclaiming: every line here

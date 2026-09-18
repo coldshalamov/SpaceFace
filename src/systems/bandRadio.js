@@ -6,6 +6,7 @@
 
 import { hash32 } from '../core/rng.js';
 import { localizeText } from '../localization/gameLocalization.js';
+import { conflictPressureForSector } from '../data/conflictZones.js';
 import {
   BAND_BEARING_TEMPLATE,
   BAND_CHANNEL_BY_ID,
@@ -431,6 +432,7 @@ export const bandRadio = {
       tier: finite(sector.tier, 0),
       security: finite(sector.security, 0.35),
       reachRep: factionRep(this.state, 'faction_reach'),
+      conflictPressure: conflictPressureForSector(this.state.conflicts, sectorId),
       proximitySources: this._ensureState().proximitySources,
     };
   },

@@ -6,6 +6,7 @@ import { SECTORS } from './sectors.js';
 import { hash32, mulberry32 } from '../core/rng.js';
 import { sampleFactionBehavior } from './factionDoctrines.js';
 import { sectorGlobalOrigin } from './sectorCoordinates.js';
+import { conflictPairsForSector, escalationForConflict } from './conflictZones.js';
 
 function freeze(value) {
   if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -104,6 +105,97 @@ function seededPosition(seed, factionId, sectorId, index = 0) {
   });
 }
 
+// Conflict garrisons: what the holding faction stages on a hot front. Existing SHIPS hulls only —
+// presence plans never invent hulls (the K1 contract).
+export const CONFLICT_PRESENCE_HULLS = freeze({
+  faction_scn: ['ship_warden', 'ship_hornet'],
+  faction_mts: ['ship_hornet', 'ship_atlas'],
+  faction_dmc: ['ship_ironback', 'ship_mule'],
+  faction_reach: ['ship_drifter', 'ship_hornet'],
+  faction_quiet: ['ship_ranger', 'ship_wasp'],
+  faction_vael: ['ship_warden', 'ship_hawser'],
+});
+const CONFLICT_PRESENCE_DEFAULT_HULLS = ['ship_hornet', 'ship_wasp'];
+
+function conflictPlan({ factionId, shipDefId, sectorId, seed, index, pos, pairKey, stage, role, formationIndex = 0, formationCount = 1 }) {
+  return freeze({
+    factionId,
+    shipDefId,
+    sectorId,
+    seed,
+    index,
+    pos: freeze({ ...pos }),
+    passive: true,
+    routeId: `conflict:${pairKey}:${role}`,
+    source: 'conflictPresence',
+    conflictStage: stage,
+    conflictPairKey: pairKey,
+    formation: role === 'escort' ? 'line' : null,
+    formationIndex,
+    formationCount,
+    formationSpacing: role === 'escort' ? 52 : null,
+    behavior: [],
+  });
+}
+
+/**
+ * Pure planner: war-made-visible presence on contested lanes. Tense fronts stage a picket; war
+ * fronts stage a two-hull picket plus a three-ship escort wing — always the sector holder's
+ * garrison, so a flipped front re-garrisons with the NEW owner the next time the sector loads.
+ * Conflicts input is the factions-owned state.conflicts map; this module never writes it.
+ */
+export function planConflictPresence({ sectorId, seed = 1, conflicts = null, ownerFactionId = null } = {}) {
+  if (!sectorId) return [];
+  const plans = [];
+  for (const pairKey of conflictPairsForSector(sectorId)) {
+    const escalation = escalationForConflict(conflicts && conflicts[pairKey]);
+    if (!escalation.pickets && !escalation.escortWing) continue;
+    const sides = pairKey.split(':');
+    const garrison = ownerFactionId && sides.includes(ownerFactionId)
+      ? ownerFactionId
+      : sides[0];
+    const hulls = CONFLICT_PRESENCE_HULLS[garrison] || CONFLICT_PRESENCE_DEFAULT_HULLS;
+    const anchor = seededPosition(seed, `conflict-${pairKey}`, sectorId, 40);
+    let slot = 0;
+    for (let i = 0; i < escalation.pickets; i++) {
+      const angle = hash32(seed, pairKey, sectorId, 'picket', i) / 0x100000000 * Math.PI * 2;
+      plans.push(conflictPlan({
+        factionId: garrison,
+        shipDefId: hulls[i % hulls.length],
+        sectorId,
+        seed,
+        index: 41 + slot,
+        pos: {
+          x: anchor.x + Math.cos(angle) * 70,
+          z: anchor.z + Math.sin(angle) * 70,
+        },
+        pairKey,
+        stage: escalation.stage,
+        role: 'picket',
+      }));
+      slot += 1;
+    }
+    for (let i = 0; i < escalation.escortWing; i++) {
+      const offset = (i - 1) * 52;
+      plans.push(conflictPlan({
+        factionId: garrison,
+        shipDefId: hulls[(i + 1) % hulls.length],
+        sectorId,
+        seed,
+        index: 41 + slot,
+        pos: { x: anchor.x + offset, z: anchor.z - 120 },
+        pairKey,
+        stage: escalation.stage,
+        role: 'escort',
+        formationIndex: i,
+        formationCount: escalation.escortWing,
+      }));
+      slot += 1;
+    }
+  }
+  return plans;
+}
+
 function fulfillmentRouteFrame(sectorId, seed, routeId) {
   const origin = sectorGlobalOrigin(sectorId);
   const sign = (hash32(seed, routeId, sectorId, 'route-direction') & 1) ? 1 : -1;
@@ -129,6 +221,8 @@ function plan({ factionId, shipDefId, sectorId, seed, index = 0, ...extra }) {
 /**
  * Pure planner. Understory receives explicit loss-ledger rows from the caller and cannot invent a
  * hull. All other hulls are existing SHIPS ids; Verge count/phase derive only from saved inputs.
+ * Conflict garrisons (planConflictPresence) ride the same additive seam when the caller passes the
+ * factions-owned conflicts map; callers that do not pass conflicts get unchanged output.
  */
 export function planFactionPresence({
   sectorId,
@@ -136,6 +230,8 @@ export function planFactionPresence({
   losses = [],
   storyFlags = {},
   revocationCount = 0,
+  conflicts = null,
+  ownerFactionId = null,
 } = {}) {
   if (!sectorId) return Object.freeze([]);
   const plans = [];
@@ -216,6 +312,10 @@ export function planFactionPresence({
         observerPrism: true, vergePhase: verge.phase,
       }));
     }
+  }
+
+  if (conflicts) {
+    plans.push(...planConflictPresence({ sectorId, seed, conflicts, ownerFactionId }));
   }
 
   return Object.freeze(plans);

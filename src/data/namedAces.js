@@ -1,7 +1,7 @@
 // BP-13/B10 Named Crews & Aces.
 //
 // Pure roster + deterministic readers. Runtime memory lives in systems/aceMemory.js.
-import { NAMED_CAPTAINS } from './encounters.js';
+import { FACTION_LABELS, NAMED_CAPTAINS } from './encounters.js';
 import { hash32 } from '../core/rng.js';
 
 const RETURN_MIN_S = 360;
@@ -158,6 +158,65 @@ const VARIETY_ROSTER = Object.freeze([
   }),
 ]);
 
+// Persistent-cast expansion (living-world vertical): rivals with a memory of being crossed, and
+// the mechanic who remembers being helped. Same append-only contract as VARIETY_ROSTER — the B10
+// three-ace exports stay untouched. `role` marks the cast seat: 'ace' | 'rival' | 'mechanic'.
+const RIVAL_ROSTER = Object.freeze([
+  Object.freeze({
+    id: 'ace_cade_haltred',
+    name: 'Cade Haltred',
+    crew: 'The Ninth Toll',
+    factionId: 'faction_mts',
+    role: 'rival',
+    gimmickTag: 'debt-collector',
+    returnArchetype: 'lancer_sniper',
+    escortArchetype: 'pd_screen_escort',
+    baseReturnLevel: 5,
+    signatureBark: 'NINTH TOLL: your account is nine cycles past due. We settle in hull.',
+  }),
+  Object.freeze({
+    id: 'ace_serrat_clause',
+    name: 'Serrat of the Ninth Clause',
+    crew: 'The Accord Bailiffs',
+    factionId: 'faction_vael',
+    role: 'rival',
+    gimmickTag: 'lane-anchor',
+    returnArchetype: 'field_anchor_controller',
+    escortArchetype: 'lancer_sniper',
+    baseReturnLevel: 5,
+    signatureBark: 'ACCORD BAILIFFS: clause nine names your wake. Stand still for the reading.',
+  }),
+  Object.freeze({
+    id: 'ace_brigga_two_turn',
+    name: 'Brigga Two-Turn',
+    crew: 'The Long Wager',
+    factionId: 'faction_free',
+    role: 'rival',
+    gimmickTag: 'duelist',
+    returnArchetype: 'corsair_raider',
+    escortArchetype: 'wasp_swarmer',
+    baseReturnLevel: 4,
+    signatureBark: 'LONG WAGER: two turns is all I ever need. You get three. Charitably.',
+  }),
+]);
+
+const MECHANIC_ROSTER = Object.freeze([
+  Object.freeze({
+    // The mechanic: remembers every hull that paid in parts. Helps the Drift and the yard remembers
+    // you back — work, not war. Cross the yard and the wrench turns on you.
+    id: 'ace_wick_blackwrench',
+    name: 'Wick Blackwrench',
+    crew: 'The Kindling Yard',
+    factionId: 'faction_dmc',
+    role: 'mechanic',
+    gimmickTag: 'salvage-surgeon',
+    returnArchetype: 'bruiser_brawler',
+    escortArchetype: 'corsair_raider',
+    baseReturnLevel: 4,
+    signatureBark: 'KINDLING YARD: Blackwrench remembers every hull that ever paid in parts.',
+  }),
+]);
+
 export const NAMED_ACE_IDS = Object.freeze(CORE_ROSTER.map((ace) => ace.id));
 export const NAMED_ACES = Object.freeze(Object.fromEntries(CORE_ROSTER.map((ace) => [ace.id, ace])));
 export const REACH_CULTURE_ACE_IDS = Object.freeze(REACH_CULTURE_ROSTER.map((ace) => ace.id));
@@ -167,6 +226,14 @@ export const REACH_CULTURE_ACES = Object.freeze(Object.fromEntries(
 export const VARIETY_ACE_IDS = Object.freeze(VARIETY_ROSTER.map((ace) => ace.id));
 export const VARIETY_ACES = Object.freeze(Object.fromEntries(
   VARIETY_ROSTER.map((ace) => [ace.id, ace]),
+));
+export const RIVAL_ACE_IDS = Object.freeze(RIVAL_ROSTER.map((ace) => ace.id));
+export const RIVAL_ACES = Object.freeze(Object.fromEntries(
+  RIVAL_ROSTER.map((ace) => [ace.id, ace]),
+));
+export const MECHANIC_ACE_IDS = Object.freeze(MECHANIC_ROSTER.map((ace) => ace.id));
+export const MECHANIC_ACES = Object.freeze(Object.fromEntries(
+  MECHANIC_ROSTER.map((ace) => [ace.id, ace]),
 ));
 
 const CAPTAIN_ALIASES = Object.freeze(NAMED_CAPTAINS.map((cap) => Object.freeze({
@@ -182,7 +249,10 @@ const CAPTAIN_ALIASES = Object.freeze(NAMED_CAPTAINS.map((cap) => Object.freeze(
   encounterCaptain: true,
 })));
 
-const ALL_KNOWN_ACES = Object.freeze([...CORE_ROSTER, ...REACH_CULTURE_ROSTER, ...VARIETY_ROSTER, ...CAPTAIN_ALIASES]);
+const ALL_KNOWN_ACES = Object.freeze([
+  ...CORE_ROSTER, ...REACH_CULTURE_ROSTER, ...VARIETY_ROSTER,
+  ...RIVAL_ROSTER, ...MECHANIC_ROSTER, ...CAPTAIN_ALIASES,
+]);
 const ACE_BY_ID = new Map(ALL_KNOWN_ACES.map((ace) => [ace.id, ace]));
 const ACE_BY_NAME = new Map(ALL_KNOWN_ACES.map((ace) => [normalizeName(ace.name), ace]));
 
@@ -327,6 +397,121 @@ export function styleEscalationBark(ace, style) {
   if (!template) return '';
   const name = ace && ace.name ? ace.name : 'Ace';
   return template.replace(/\{name\}/g, name);
+}
+
+// ── Living-world memory stances ───────────────────────────────────────────────────────────────
+//
+// A captain who remembers reads the player's ledger and picks a stance:
+//   hunts       — crossed them once too often: shorter returns, a bigger wing, a line that names
+//                 the debt.
+//   fears       — beaten twice and still short a max wing: they run on sight until the crew is
+//                 heavy enough to try again.
+//   offers_work — helped their faction enough and never crossed them: the wing shows up friendly
+//                 with an offer, not a toll.
+// Stances are pure derivations over the persisted aceMemory record; this module owns none of it.
+
+export const ACE_GRUDGE_HUNT_AT = 3;
+export const ACE_BEATS_FEAR_AT = 2;
+export const ACE_LOYALTY_WORK_AT = 3;
+export const ACE_GRUDGE_MAX = 9;
+export const ACE_LOYALTY_MAX = 9;
+
+export function grudgeOf(rec) {
+  return Math.min(ACE_GRUDGE_MAX, Math.max(0, (rec && rec.grudge) | 0));
+}
+
+export function loyaltyOf(rec) {
+  return Math.min(ACE_LOYALTY_MAX, Math.max(0, (rec && rec.loyalty) | 0));
+}
+
+/** Times the player beat this captain: forced flights plus a counted kill worth two. */
+export function beatsOf(rec) {
+  if (!rec) return 0;
+  return (rec.fleeCount | 0) + (rec.defeated === true ? 2 : 0);
+}
+
+export function stanceForRecord(rec, returnTier = null) {
+  const grudge = grudgeOf(rec);
+  const loyalty = loyaltyOf(rec);
+  const tier = Number.isFinite(returnTier) ? returnTier : ((rec && rec.returnTier) | 0);
+  if (loyalty >= ACE_LOYALTY_WORK_AT && grudge < ACE_BEATS_FEAR_AT) {
+    return { stance: 'offers_work', reason: 'helped_faction', grudge, loyalty };
+  }
+  if (grudge >= ACE_GRUDGE_HUNT_AT) return { stance: 'hunts', reason: 'crossed', grudge, loyalty };
+  if (beatsOf(rec) >= ACE_BEATS_FEAR_AT && tier < PIRATE_PROMOTION_MAX_TIER) {
+    return { stance: 'fears', reason: 'beaten', grudge, loyalty };
+  }
+  return { stance: 'neutral', reason: null, grudge, loyalty };
+}
+
+/** Crossed captains come back sooner: ~45 s shaved per grudge step, never inside 2 minutes. */
+export function huntsReturnDelayS(baseDelayS, grudge) {
+  const base = Math.max(0, Number(baseDelayS) || 0);
+  return Math.max(120, Math.round(base - 45 * Math.max(0, grudge | 0)));
+}
+
+const REMEMBERED_BARKS = Object.freeze({
+  hunts: [
+    '{name}: {grudge} of ours you broke. This time the ledger closes.',
+    '{name}: we counted {grudge} hulls with your wake on them. The weigh-slip is full.',
+    '{name}: you crossed the {crew} {grudge} times. Cross no more.',
+  ],
+  fears: [
+    '{name}: that transponder — break off, BREAK OFF. You remember what they did.',
+    '{name}: not again. Last time we flew home as scrap. RUN.',
+    '{name}: the {crew} still pulls your guns from wreck two. Scatter!',
+  ],
+  offers_work: [
+    '{name}: you bled for {faction} and the {crew} keeps count. No toll today — and there is work in it.',
+    '{name}: the {faction} owes you and we pay the {faction}\'s debts. Fly with us a while.',
+    '{name}: {faction} talks your name at the yard. We have work that pays like it.',
+  ],
+});
+
+/** A return line that names the actual history (grudge count, flight record, faction debt). */
+export function rememberedBarkFor(ace, rec, stance, seed = 0) {
+  if (!ace) return '';
+  const resolved = stance && REMEMBERED_BARKS[stance.stance] ? stance.stance : 'neutral';
+  const lines = REMEMBERED_BARKS[resolved];
+  if (!lines) return '';
+  const line = lines[hash32(seed, ace.id, resolved, 'remembered') % lines.length];
+  return String(line)
+    .replace(/\{name\}/g, ace.name || 'Ace')
+    .replace(/\{crew\}/g, ace.crew || 'the crew')
+    .replace(/\{faction\}/g, FACTION_LABELS[ace.factionId] || 'the faction')
+    .replace(/\{grudge\}/g, String(grudgeOf(rec)));
+}
+
+// ── Faction history summary (bark-layer read) ─────────────────────────────────────────────────
+//
+// Pure read over a persisted aceMemory snapshot for voice that references real history: how many
+// of a faction's hulls the player broke, which named captains remember them and how. Returns
+// { hasHistory: false } when nothing is remembered, so callers keep their old line for free.
+
+export function factionHistoryFromMemory(memory, factionId, shipName = '') {
+  const playerStyle = memory && memory.playerStyle;
+  const factionRow = playerStyle && playerStyle.factions && playerStyle.factions[factionId];
+  const kills = factionRow
+    ? (factionRow.fling | 0) + (factionRow.gun | 0) + (factionRow.rock | 0)
+    : 0;
+  const captains = [];
+  for (const ace of ALL_KNOWN_ACES) {
+    if (ace.factionId !== factionId) continue;
+    const rec = memory ? memory[ace.id] : null;
+    if (!rec || !rec.encountered) continue;
+    const stance = stanceForRecord(rec);
+    if (stance.stance === 'neutral') continue;
+    captains.push(Object.freeze({ id: ace.id, name: ace.name, stance: stance.stance }));
+  }
+  const hasHistory = kills > 0 || captains.length > 0;
+  if (!hasHistory) return { hasHistory: false };
+  return Object.freeze({
+    hasHistory: true,
+    factionId,
+    shipName: String(shipName || '').trim(),
+    kills,
+    captains: Object.freeze(captains),
+  });
 }
 
 export function escalatedStyleFromMemory(memory, ace) {

@@ -3,10 +3,10 @@
 // Observer-only voice surfacing for already-live ship state. It reads AI/contact transitions,
 // routes faction-specific lines through voiceArbiter's bark channel, and writes only its own
 // state.barkDirector receipt cache so combat/AI/economy behavior stays unchanged.
-import { BARK_SITUATIONS, barkFor, hullRecognitionBarkFor } from '../data/barks.js';
+import { BARK_SITUATIONS, barkFor, historyBarkFor, hullRecognitionBarkFor } from '../data/barks.js';
 import { aceTrophyBarkFor } from '../data/conflictReactions.js';
 import { trophyFromFittings } from '../data/sectors.js';
-import { aceById } from '../data/namedAces.js';
+import { aceById, factionHistoryFromMemory } from '../data/namedAces.js';
 import {
   CARGO_OWNER_REACTIONS,
   cargoIdentityOf,
@@ -248,10 +248,20 @@ export const barkDirector = {
     const factionId = factionFor(entity);
     const seed = state.meta && state.meta.seed;
     const index = hash32(seed == null ? 0 : seed, 'barkDirector', entityId, situation);
-    const trophy = situation === 'scan' ? liveTrophyFromState(state) : null;
-    const text = trophy
-      ? aceTrophyBarkFor(factionId, index, { ace: trophy.aceName, head: trophy.name })
-      : barkFor(factionId, situation, index);
+    // Recognition moments reference real history first: a faction whose hulls the player broke,
+    // or whose named captains remember them, speaks the fact instead of a first-contact line.
+    const identity = (situation === 'scan' || situation === 'warn' || situation === 'taunt')
+      ? activeHullIdentity(state)
+      : null;
+    const history = identity
+      ? factionHistoryFromMemory(state.aceMemory, factionId, identity.name)
+      : { hasHistory: false };
+    const trophy = situation === 'scan' && !history.hasHistory ? liveTrophyFromState(state) : null;
+    const text = history.hasHistory
+      ? historyBarkFor(factionId, history, index)
+      : trophy
+        ? aceTrophyBarkFor(factionId, index, { ace: trophy.aceName, head: trophy.name })
+        : barkFor(factionId, situation, index);
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
 

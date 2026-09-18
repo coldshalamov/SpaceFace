@@ -22,21 +22,25 @@ export const TUNABLE_BAND_CHANNEL_IDS = Object.freeze(TUNABLE_BAND_CHANNELS.map(
 
 // Signal policy is intentionally data, not conditionals in the system. A weak carrier is always
 // available away from home; home factions/sectors make it legible. Future sector content may add
-// presenceFactionIds without changing this contract.
+// presenceFactionIds without changing this contract. `conflictBias` is the war-front term: channels
+// whose traffic a contested sector would actually carry get louder as the front heats up (context
+// conflictPressure 0..1 from the factions-owned conflict records via conflictPressureForSector).
 export const BAND_SIGNAL_RULES = Object.freeze({
   concord_bulletin: freezeRule({
     base: 0.14, homeSectors: ['sector_helios_prime'], homeFactions: ['faction_scn'],
-    securityBias: 0.24,
+    securityBias: 0.24, conflictBias: 0.12,
   }),
   the_margin: freezeRule({
-    base: 0.36, homeFactions: ['faction_free', 'faction_quiet'], tierBias: 0.025,
+    base: 0.36, homeFactions: ['faction_free', 'faction_quiet'], tierBias: 0.025, conflictBias: 0.10,
   }),
   the_static: freezeRule({
     base: 0.24, homeSectors: ['sector_io_reach', 'sector_sker_haven'],
     homeFactions: ['faction_reach', 'faction_quiet'], dangerBias: 0.28, tierBias: 0.025,
+    conflictBias: 0.30,
   }),
   ballad_line: freezeRule({
     base: 0.32, homeFactions: ['faction_dmc', 'faction_free', 'faction_reach'], tierBias: 0.04,
+    conflictBias: 0.20,
   }),
   choir_vespers: freezeRule({
     base: 0.18, homeFactions: ['faction_choir'], tierBias: 0.015,
@@ -46,7 +50,7 @@ export const BAND_SIGNAL_RULES = Object.freeze({
   }),
   numbers_station: freezeRule({
     base: 0.12, homeSectors: ['sector_pallas_drift', 'sector_veil_nebula'],
-    homeFactions: ['faction_quiet'], dangerBias: 0.16, tierBias: 0.055,
+    homeFactions: ['faction_quiet'], dangerBias: 0.16, tierBias: 0.055, conflictBias: 0.12,
   }),
 });
 
@@ -74,12 +78,14 @@ export function bandSignalStrength(channelOrId, context = {}) {
   ].filter(Boolean));
   const security = clamp01(finite(context.security, 0.35));
   const tier = Math.max(0, finite(context.tier, 0));
+  const conflictPressure = clamp01(finite(context.conflictPressure, 0));
   let strength = rule.base;
   if (rule.homeSectors.includes(context.sectorId)) strength += 0.34;
   if (rule.homeFactions.some((id) => factionIds.has(id))) strength += 0.34;
   strength += rule.securityBias * security;
   strength += rule.dangerBias * (1 - security);
   strength += rule.tierBias * Math.min(4, tier);
+  strength += rule.conflictBias * conflictPressure;
   return rounded(clamp01(strength));
 }
 
@@ -155,6 +161,7 @@ function freezeRule(rule) {
     securityBias: finite(rule.securityBias, 0),
     dangerBias: finite(rule.dangerBias, 0),
     tierBias: finite(rule.tierBias, 0),
+    conflictBias: finite(rule.conflictBias, 0),
   });
 }
 

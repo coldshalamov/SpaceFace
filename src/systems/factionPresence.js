@@ -21,6 +21,7 @@ import {
   planFactionPresence,
   presenceServiceForStation,
 } from '../data/factionPresence.js';
+import { conflictAftermathAnchor } from '../data/conflictZones.js';
 import {
   RECORD_KIND,
   findLiveEntityForRecord,
@@ -406,6 +407,7 @@ export const factionPresence = {
       this.bus.on('ui:factionPresenceService', (payload) => this._onServiceAction(payload || {})),
       this.bus.on('entity:spawned', (payload) => this._onEntitySpawned(payload || {})),
       this.bus.on('save:loaded', () => this._onSaveLoaded()),
+      this.bus.on('conflict:flip', (payload) => this._onConflictFlip(payload || {})),
     ];
   },
 
@@ -444,7 +446,15 @@ export const factionPresence = {
       && Array.isArray(state.lossLedger.entries);
     const losses = hasLedger ? lossesFor(state, sectorId) : [];
     const story = currentStoryInputs(state);
-    const plans = planFactionPresence({ sectorId, seed, losses, ...story });
+    const sectors = (state.world && state.world.sectors) || {};
+    const plans = planFactionPresence({
+      sectorId,
+      seed,
+      losses,
+      ...story,
+      conflicts: state.conflicts || null,
+      ownerFactionId: (sectors[sectorId] && sectors[sectorId].owner) || null,
+    });
     const own = ensureOwnState(state);
     for (const presencePlan of plans) {
       const tenderContext = ceresTenderContext(presencePlan, seed, state.tick);
@@ -570,6 +580,34 @@ export const factionPresence = {
       : null);
     if (!entity || !['faction_scn', 'faction_pitborn'].includes(entity.factionId)) return;
     this._bindPitbornConcordTargets();
+  },
+
+  /** A flipped front leaves wreckage behind: register a durable aftermath field at the pair's
+   *  seeded anchor so the flipped sector reads as fought-over the next time the player enters.
+   *  aftermathWrecks owns wreck state — this only emits its documented wreckField:source seam. */
+  _onConflictFlip(payload) {
+    const state = this.state;
+    const sectorId = payload && payload.sectorId;
+    const pairKey = payload && payload.pairKey;
+    if (!state || !sectorId || !pairKey) return;
+    const seed = ((state.meta && state.meta.seed) || 1) >>> 0;
+    const pos = conflictAftermathAnchor(pairKey, sectorId, seed);
+    const receipt = {
+      t: state.simTime || 0,
+      sectorId,
+      factionId: payload.newOwner || null,
+      entityId: null,
+      shipDefId: null,
+      source: 'conflictFlip',
+    };
+    pushReceipt(state, { kind: 'conflictFlip', ...receipt, pairKey, pos });
+    this.bus.emit('wreckField:source', {
+      fieldId: `conflict-flip:${pairKey}`,
+      sectorId,
+      kind: 'aftermath',
+      pos: { x: pos.x, z: pos.z },
+      bornAt: state.simTime || 0,
+    });
   },
 
   _boundPitbornConcordIsGone() {

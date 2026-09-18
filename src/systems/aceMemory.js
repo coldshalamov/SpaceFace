@@ -5,6 +5,8 @@
 // owns first-contact entities or changes hostility.
 import {
   ACE_STYLE_ESCALATE_AT,
+  ACE_GRUDGE_MAX,
+  ACE_LOYALTY_MAX,
   PIRATE_PROMOTION_MAX_TIER,
   REACH_CULTURE_ACES,
   aceById,
@@ -12,23 +14,37 @@ import {
   aceFromText,
   aceKillStyleFromHints,
   escalatedStyleFromMemory,
+  huntsReturnDelayS,
   knownAces,
   newsForAceTransition,
+  rememberedBarkFor,
   returnCrewForAce,
   returnLevelBandsForAce,
   returnPlanForAce,
+  stanceForRecord,
   styleEscalationBark,
   styleLoadoutForAce,
 } from '../data/namedAces.js';
 import { barkFor } from '../data/barks.js';
 import { reachCultureDoctrineById } from '../data/pirateDoctrines.js';
 import { planetStatesForSector } from '../data/planetStates.js';
+import { activeFrontForFaction } from '../data/conflictZones.js';
 import { WEAPONS } from '../data/weapons.js';
 import { hash32 } from '../core/rng.js';
 import { normalizeFactionBehaviorProfile } from '../ai/factionBehavior.js';
 import { makeEnemySpawnSpec } from './combat.js';
 
 export const ACE_MEMORY_VERSION = 2;
+
+// Receipt shapes that read as the player settling — or crossing — a faction's lane.
+const TOLL_SHAPE_FACTION = Object.freeze({
+  pirate_toll: 'faction_reach',
+  minefield_wake: 'faction_reach',
+  vael_lane_tithe: 'faction_vael',
+});
+const CONVOY_GUARD_SHAPE_FACTION = Object.freeze({
+  vael_warden_convoy: 'faction_vael',
+});
 
 const META_KEYS = new Set([
   'schemaVersion', 'news', 'activeReturns', 'cultureIntros', 'planetChallenges', 'playerStyle',
@@ -68,6 +84,11 @@ export const aceMemory = {
     this._listen('namedAce:fled', (p) => this._transition('fled', p));
     this._listen('namedAce:defeated', (p) => this._transition('defeated', p));
     this._listen('encounter:receipt', (p) => this._receipt(p));
+    // Living-world memory: helped and crossed ledger lines. Factions/missions/economy stay sole
+    // writers of their own state — these are event receipts, read-only over their payloads.
+    this._listen('distress:rescued', (p) => this._helpedFaction(p && p.factionId, 2));
+    this._listen('mission:completed', (p) => this._helpedFaction(p && p.factionId, 1));
+    this._listen('conflict:frontAction', (p) => this._frontAction(p));
     this._listen('encounter:resolved', (p) => {
       this._introResolved(p);
       this._planetChallengeResolved(p);
@@ -199,6 +220,10 @@ export const aceMemory = {
       rec.returnScheduled = true;
       rec.returnTier = Math.min(PIRATE_PROMOTION_MAX_TIER, Math.max(1, (rec.returnTier | 0) + 1));
       Object.assign(rec, returnPlanForAce(ace, seedOf(this.state), now));
+      // A crossed captain hunts: the return window tightens with the grudge ledger.
+      if (stanceForRecord(rec).stance === 'hunts') {
+        rec.returnAt = now + huntsReturnDelayS(rec.returnAfterS, rec.grudge | 0);
+      }
       if (first) this._completeTransition('fled', ace, rec);
       return;
     }
@@ -216,14 +241,75 @@ export const aceMemory = {
   },
 
   _receipt(payload) {
-    if (!payload || payload.shape !== 'named_hunter') return;
-    const outcome = payload.outcome === 'killed'
-      ? 'defeated'
-      : (payload.outcome === 'escaped' ? 'fled' : null);
-    if (!outcome) return;
-    const ace = resolveAce(payload) || aceFromText(payload.text);
-    if (!ace) return;
-    this._transition(outcome, { ...payload, aceId: ace.id });
+    if (!payload || typeof payload.shape !== 'string') return;
+    if (payload.shape === 'named_hunter') {
+      const outcome = payload.outcome === 'killed'
+        ? 'defeated'
+        : (payload.outcome === 'escaped' ? 'fled' : null);
+      if (!outcome) return;
+      const ace = resolveAce(payload) || aceFromText(payload.text);
+      if (!ace) return;
+      this._transition(outcome, { ...payload, aceId: ace.id });
+      return;
+    }
+    // Lane receipts: paying a toll banks loyalty with the faction's captains; running one, or
+    // clearing it with guns, reads as crossing them. Guarded convoys bank loyalty too.
+    const shape = payload.shape;
+    if (TOLL_SHAPE_FACTION[shape]) {
+      const factionId = TOLL_SHAPE_FACTION[shape];
+      if (payload.outcome === 'paid') this._helpedFaction(factionId, 1);
+      else if (payload.outcome === 'escaped') this._crossedFaction(factionId, 1);
+      else if (payload.outcome === 'cleared') this._crossedFaction(factionId, 2);
+      return;
+    }
+    if (CONVOY_GUARD_SHAPE_FACTION[shape] && payload.outcome === 'guarded') {
+      this._helpedFaction(CONVOY_GUARD_SHAPE_FACTION[shape], 2);
+    }
+  },
+
+  /** Loyalty receipt: the player helped a faction, so its captains remember. */
+  _helpedFaction(factionId, amount = 1) {
+    if (!factionId || !(amount > 0)) return;
+    const memory = ensureMemory(this.state);
+    let applied = 0;
+    for (const ace of knownAces()) {
+      if (ace.factionId !== factionId) continue;
+      const rec = recordFor(memory, ace);
+      const next = Math.min(ACE_LOYALTY_MAX, (rec.loyalty | 0) + amount);
+      if (next === rec.loyalty) continue;
+      rec.loyalty = next;
+      applied += 1;
+    }
+    if (applied) emit(this.bus, 'aceMemory:helpedFaction', { factionId, amount, captainsTouched: applied });
+  },
+
+  /** Grudge receipt: the player crossed a faction, so its captains remember that instead. */
+  _crossedFaction(factionId, amount = 1) {
+    if (!factionId || !(amount > 0)) return;
+    const memory = ensureMemory(this.state);
+    let applied = 0;
+    for (const ace of knownAces()) {
+      if (ace.factionId !== factionId) continue;
+      const rec = recordFor(memory, ace);
+      const next = Math.min(ACE_GRUDGE_MAX, (rec.grudge | 0) + amount);
+      if (next === rec.grudge) continue;
+      rec.grudge = next;
+      applied += 1;
+    }
+    if (applied) emit(this.bus, 'aceMemory:crossedFaction', { factionId, amount, captainsTouched: applied });
+  },
+
+  /** Front actions bank loyalty with the side the kill favored and grudge with the side bled. */
+  _frontAction(payload) {
+    if (!payload || !payload.pairKey) return;
+    const sides = String(payload.pairKey).split(':');
+    if (sides.length !== 2) return;
+    const [a, b] = sides;
+    const lean = payload.lean > 0 ? 1 : (payload.lean < 0 ? -1 : 0);
+    if (!lean) return;
+    // lean > 0 favors side B: B's captains warm to the player, A's captains mark the debt.
+    this._helpedFaction(lean > 0 ? b : a, 1);
+    this._crossedFaction(lean > 0 ? a : b, 1);
   },
 
   _scheduleCultureIntro(payload, options = {}) {
@@ -434,6 +520,7 @@ export const aceMemory = {
     const rec = recordFor(ensureMemory(this.state), ace);
     rec.encountered = true;
     rec.flungCount = (rec.flungCount | 0) + 1;
+    rec.grudge = Math.min(ACE_GRUDGE_MAX, (rec.grudge | 0) + 1);
     rec.lastFlungAt = now;
     rec.lastFlungCause = String(payload.cause || 'massline');
     rec.lastFlungSpin = Number.isFinite(payload.spin) ? payload.spin : 0;
@@ -483,6 +570,15 @@ export const aceMemory = {
       aceId: ace && ace.id,
       now,
     });
+    // The killed hull's faction remembers: a small grudge for every captain of the victim faction,
+    // a bigger one when the hull was the captain's own.
+    if (factionId) {
+      for (const member of knownAces()) {
+        if (member.factionId !== factionId) continue;
+        const rec = recordFor(memory, member);
+        rec.grudge = Math.min(ACE_GRUDGE_MAX, (rec.grudge | 0) + (ace && member.id === ace.id ? 2 : 1));
+      }
+    }
     forgetRecentFlung(this._recentFlung, victimId);
   },
 
@@ -503,6 +599,12 @@ export const aceMemory = {
   _spawnReturn(ace, rec, now) {
     const spawnEntity = this.helpers && this.helpers.spawnEntity;
     const budget = this.helpers && this.helpers.spawnBudget;
+    const stance = stanceForRecord(rec);
+    rec.stance = stance.stance;
+    if (stance.stance === 'offers_work') {
+      this._spawnWorkOffer(ace, rec, stance, now);
+      return;
+    }
     const requestId = `aceReturn:${ace.id}:${rec.returnSeed || 0}:${rec.returnTier || 1}`;
     const style = escalatedStyleFromMemory(ensureMemory(this.state), ace);
     if (style) rec.escalatedStyle = rec.escalatedStyle || style;
@@ -515,6 +617,7 @@ export const aceMemory = {
       requestId,
       returnTier: rec.returnTier || 1,
       wanted,
+      stance: stance.stance,
       levelBand: bands.current.slice(),
       previousLevelBand: bands.previous.slice(),
     });
@@ -536,7 +639,7 @@ export const aceMemory = {
     const spawnedIds = [];
     for (let i = 0; i < crew.length && spawnedIds.length < grant; i++) {
       const ship = crew[i];
-      const spec = this._returnShipSpec(ace, rec, requestId, ship, i);
+      const spec = this._returnShipSpec(ace, rec, requestId, ship, i, stance);
       const entity = spawnEntity(spec);
       if (entity && entity.id != null) {
         spawnedIds.push(entity.id);
@@ -560,12 +663,13 @@ export const aceMemory = {
     rec.levelBand = bands.current.slice();
     rec.previousLevelBand = bands.previous.slice();
     rec.spawnedCount = spawnedIds.length;
-    this._speakReturnTaunt(ace, rec, requestId);
+    this._speakReturnTaunt(ace, rec, requestId, stance);
     emit(this.bus, 'aceMemory:returnSpawned', {
       aceId: ace.id,
       aceName: ace.name,
       requestId,
       returnTier: rec.returnTier || 1,
+      stance: stance.stance,
       levelBand: bands.current.slice(),
       previousLevelBand: bands.previous.slice(),
       spawnedIds: spawnedIds.slice(),
@@ -573,10 +677,104 @@ export const aceMemory = {
     });
   },
 
-  _returnShipSpec(ace, rec, requestId, ship, index) {
+  /** A loyal captain's "return" is a friendly wing with an offer, not a fight: the crew loiters
+   *  passive at the player's lane, the bark names the helped fact, and the offer points at the
+   *  faction's live war front (or home lanes) so the pointer is a real place. */
+  _spawnWorkOffer(ace, rec, stance, now) {
+    const spawnEntity = this.helpers && this.helpers.spawnEntity;
+    const budget = this.helpers && this.helpers.spawnBudget;
+    const requestId = `aceWorkOffer:${ace.id}:${rec.returnSeed || 0}`;
+    rec.returnScheduled = false;
+    rec.returned = true;
+    rec.returnedAt = now;
+    rec.returnRequestId = requestId;
+    rec.stance = 'offers_work';
+    if (typeof spawnEntity !== 'function') return;
+    const crew = returnCrewForAce(ace, Math.max(1, rec.returnTier || 1), null);
+    const front = activeFrontForFaction(this.state && this.state.conflicts, ace.factionId);
+    let grant = crew.length;
+    if (budget && typeof budget.request === 'function') {
+      grant = budget.request(crew.length, requestId);
+      if (grant <= 0) {
+        rec.returnScheduled = true;
+        rec.returned = false;
+        rec.stance = null;
+        rec.nextReturnAttemptAt = now + 10;
+        return;
+      }
+    }
+    const spawnedIds = [];
+    for (let i = 0; i < crew.length && spawnedIds.length < grant; i++) {
+      const ship = crew[i];
+      const pos = returnPosition(this.state, ace, rec, i);
+      const spec = makeEnemySpawnSpec(ship.archetype, ship.level, pos, {
+        factionId: ace.factionId || 'faction_reach',
+        startedTick: this.state.tick,
+      });
+      spec.data = spec.data || {};
+      spec.data.ai = spec.data.ai || {};
+      const ai = spec.data.ai;
+      ai.squadId = requestId;
+      ai.doctrine = 'scavenger';
+      ai.spawnContext = 'faction_presence';
+      ai.encounterKind = 'named_ace_work_offer';
+      ai.encounterRole = ship.role;
+      ai.passive = true;
+      ai.roe = 'hold_fire';
+      ai.forcePlayerTarget = false;
+      ai.activity = {
+        kind: 'loiter',
+        reason: 'ace_loyal_work_offer',
+        anchor: { ...pos },
+        leashRadius: 700,
+        startedTick: this.state.tick | 0,
+      };
+      if (ship.role === 'boss') ai.name = ace.name;
+      spec.data.aceMemory = {
+        aceId: ace.id,
+        aceName: ace.name,
+        requestId,
+        role: ship.role,
+        loyal: true,
+        workOffer: true,
+        frontSectorId: front ? front.sectorId : null,
+      };
+      const entity = spawnEntity(spec);
+      if (entity && entity.id != null) {
+        spawnedIds.push(entity.id);
+        rememberActiveReturn(this.state, entity.id, ace.id, requestId);
+      }
+    }
+    if (budget && typeof budget.releaseSome === 'function' && spawnedIds.length < grant) {
+      budget.releaseSome(requestId, grant - spawnedIds.length);
+    }
+    if (!spawnedIds.length) {
+      if (budget && typeof budget.release === 'function') budget.release(requestId);
+      rec.returnScheduled = true;
+      rec.returned = false;
+      rec.stance = null;
+      rec.nextReturnAttemptAt = now + 10;
+      return;
+    }
+    rec.activeReturnIds = spawnedIds.slice();
+    const text = rememberedBarkFor(ace, rec, stance, hash32(seedOf(this.state), ace.id, requestId));
+    if (text) this._speakAceLine(ace, text, 'work-offer', `aceMemory:${ace.id}:work-offer`);
+    emit(this.bus, 'aceMemory:workOffered', {
+      aceId: ace.id,
+      aceName: ace.name,
+      requestId,
+      frontSectorId: front ? front.sectorId : null,
+      frontPairKey: front ? front.pairKey : null,
+      spawnedIds: spawnedIds.slice(),
+      t: now,
+    });
+  },
+
+  _returnShipSpec(ace, rec, requestId, ship, index, stance = null) {
     const pos = returnPosition(this.state, ace, rec, index);
     const style = rec.escalatedStyle || escalatedStyleFromMemory(ensureMemory(this.state), ace);
     const loadout = styleLoadoutForAce(ace, style);
+    const resolvedStance = stance || stanceForRecord(rec);
     const spec = makeEnemySpawnSpec(ship.archetype, ship.level, pos, {
       factionId: ace.factionId || 'faction_reach',
       startedTick: this.state.tick,
@@ -597,6 +795,13 @@ export const aceMemory = {
     ai.forcePlayerTarget = true;
     ai.hostileTeams = [0];
     ai.passive = false;
+    // A beaten captain runs on sight — his hull breaks off until the crew is heavy enough (max
+    // tier) to try the fight again; the escorts stay to cover the retreat, so the read is a chase,
+    // not an empty lane.
+    if (resolvedStance.stance === 'fears' && ship.role === 'boss') {
+      ai.forceFlee = true;
+      ai.moraleFleeReason = 'beaten_by_player';
+    }
     if (cultureProfile) {
       ai.cultureId = culture.id;
       ai.combatDoctrineId = cultureProfile.combatDoctrineId;
@@ -628,13 +833,25 @@ export const aceMemory = {
     return spec;
   },
 
-  _speakReturnTaunt(ace, rec, requestId) {
+  _speakReturnTaunt(ace, rec, requestId, stance = null) {
     if (rec.lastTauntRequestId === requestId) return;
     rec.lastTauntRequestId = requestId;
+    // Style counter-kits keep top billing (PQ-150.00): the line names how the player actually
+    // kills. Memory lines come next — the grudge count, the flight record, the faction debt.
     const style = rec.escalatedStyle || escalatedStyleFromMemory(ensureMemory(this.state), ace);
     if (style) {
       rec.styleTauntSpoken = true;
       this._speakStyleTaunt(ace, style, requestId);
+      return;
+    }
+    const remembered = rememberedBarkFor(ace, rec, stance || stanceForRecord(rec), hash32(seedOf(this.state), ace.id, requestId));
+    if (remembered) {
+      this._speakAceLine(
+        ace,
+        remembered,
+        `return-${(stance || stanceForRecord(rec)).stance}`,
+        `aceMemory:${ace.id}:return-taunt`,
+      );
       return;
     }
     const bark = barkFor(
@@ -920,6 +1137,13 @@ function resolveAceFromEntity(entity) {
     || aceFromText(data.callsign || data.name || ai.name || '');
 }
 
+// Memory snapshots already healed by normalizeMemory, keyed by identity. normalizeMemory clones
+// every record, which detaches any record reference a caller is still holding (a spawn mid-flight
+// writing returnScheduled=false to a dead clone re-armed the return forever) — so the snapshot is
+// normalized once, on first touch and on load, then read in place. A WeakSet leaves no
+// serialization footprint on the saved slice.
+const normalizedMemories = new WeakSet();
+
 function freshMemory() {
   return {
     schemaVersion: ACE_MEMORY_VERSION,
@@ -933,7 +1157,12 @@ function freshMemory() {
 
 function ensureMemory(state) {
   if (!state) return freshMemory();
-  state.aceMemory = normalizeMemory(state.aceMemory);
+  const existing = state.aceMemory;
+  if (existing && normalizedMemories.has(existing) && existing.schemaVersion === ACE_MEMORY_VERSION) {
+    return existing;
+  }
+  state.aceMemory = normalizeMemory(existing);
+  normalizedMemories.add(state.aceMemory);
   return state.aceMemory;
 }
 
@@ -979,6 +1208,9 @@ function normalizeRecord(id, input, ace = null) {
   rec.fleeCount = rec.fleeCount | 0;
   rec.flungCount = rec.flungCount | 0;
   rec.returnTier = rec.returnTier | 0;
+  rec.grudge = Math.min(ACE_GRUDGE_MAX, Math.max(0, rec.grudge | 0));
+  rec.loyalty = Math.min(ACE_LOYALTY_MAX, Math.max(0, rec.loyalty | 0));
+  rec.stance = typeof rec.stance === 'string' ? rec.stance : null;
   rec.styleTauntSpoken = rec.styleTauntSpoken === true;
   rec.escalatedStyle = isStyleValue(rec.escalatedStyle) ? rec.escalatedStyle : null;
   rec.styleKills = normalizeStyleCounts(rec.styleKills);
