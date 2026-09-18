@@ -117,6 +117,9 @@ export function makeSiteRecord({ id, asteroidId, sectorId, fieldId, createdT }) 
 
 export const asteroidSites = {
   name: 'asteroidSites',
+  // serialize() JSON-clones each site record and normalizes world records into fresh trees;
+  // saveSystem must not clonePlain the whole payload a second time during autosave capture.
+  saveSnapshotOwned: true,
 
   init(ctx) {
     this.state = ctx.state;

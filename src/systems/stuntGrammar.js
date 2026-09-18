@@ -50,6 +50,9 @@ function noteContractHarm(st,entry) {
 }
 export const stuntGrammar={
   id:'stuntGrammar',name:'stuntGrammar',
+  // serialize() wraps every branch in structuredClone before bounding; saveSystem must not
+  // clonePlain the whole payload a second time during autosave capture.
+  saveSnapshotOwned: true,
   init(ctx) {
     this.destroy();this.state=ctx.state;this.bus=ctx.bus;this._unsubs=[];
     bindStuntEvidence(this.state);ensure(this.state);this.detector=createStuntDetector({playerId:this.state.playerId});this.flight=new StuntFlightObserver();
