@@ -9,7 +9,8 @@ orient without ingesting the repository's history.
 
 | Need | Read |
 |---|---|
-| Make the game richer (NPCs, enemies, sectors, economy, story, graphics, VFX, audio, feel, content, a slice) | [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) — reusable `WF-01`–`WF-19` workflows and `1x`/`3x`/`5x` scale; concrete work still flows through the queue below |
+| Make the game better with INFERENCE (look, infer, rotate — detect is a hint) | [`INFERENCE_LANES.md`](./INFERENCE_LANES.md) (prompt [`INFERENCE_GOAL.txt`](./INFERENCE_GOAL.txt)). Thin rows do not count |
+| INFERENCE overlay when the sim is busy but undesigned | [`INFERENCE_INTENTIONAL_FUN.md`](./INFERENCE_INTENTIONAL_FUN.md) (prompt [`INFERENCE_INTENTIONAL_FUN_GOAL.txt`](./INFERENCE_INTENTIONAL_FUN_GOAL.txt)). Fun Loop still owns guts |
 | Close the gap between the build and the owner's vision (combat feel, visual energy, living world, rewards) | [`VISION_ALIGNMENT_PLAN.md`](./VISION_ALIGNMENT_PLAN.md) — audited file-level gap map, the Big Five unlocks, phased fixes |
 | Harvest leftover worktrees / unused models | [`ORPHAN_HARVEST_GOAL.txt`](./ORPHAN_HARVEST_GOAL.txt) → [`ORPHAN_HARVEST_PLAYBOOK.md`](./ORPHAN_HARVEST_PLAYBOOK.md) + [`ORPHAN_HARVEST_LEDGER.md`](./ORPHAN_HARVEST_LEDGER.md) |
 | The game is hitching / not playing smoothly | [`PERF_HITCH_CAMPAIGN.md`](./PERF_HITCH_CAMPAIGN.md) → `node scripts/program-dispatch.mjs --id PQ-129` |

@@ -21,7 +21,7 @@
 //     never touches player state. Economy impact is via the event bus.
 
 import { isRunSealed } from '../core/runSeal.js';
-import { shouldAmbientHaulerPlan, shouldRunOnTick } from '../core/activityScheduler.js';
+import { shouldAmbientHaulerPlan, shouldRunOnTick, takeNearWorkSlice } from '../core/activityScheduler.js';
 import { tableSimAuthorityWuFromState } from '../render/tabletopPolicy.js';
 import {
   ensureActivityClassified,
@@ -3877,7 +3877,26 @@ export const traffic = {
       authorityRadius: tableSimAuthorityWuFromState(state),
       origin: player && player.pos,
     };
-    for (const e of activeTraffic) {
+    const inCeres = state.world && state.world.currentSectorId === CERES_ACTIVITY_SECTOR_ID;
+    const trafficUrgent = this._trafficTokenUrgent || (this._trafficTokenUrgent = []);
+    const trafficRest = this._trafficTokenRest || (this._trafficTokenRest = []);
+    trafficUrgent.length = 0;
+    trafficRest.length = 0;
+    if (inCeres) {
+      // Authored pocket jobs commission on the first Ceres ticks, before slot ids are stable
+      // enough to NEAR-slice. Ambient leftovers stay urgent here; other sectors still slice.
+      for (let i = 0; i < activeTraffic.length; i++) trafficUrgent.push(activeTraffic[i]);
+    } else {
+      for (let i = 0; i < activeTraffic.length; i++) {
+        const entity = activeTraffic[i];
+        const slot = entity && entity.data && entity.data.activityActorSlotId;
+        if (slot && CERES_ACTIVITY_CAST_BY_SLOT_ID.has(slot)) trafficUrgent.push(entity);
+        else trafficRest.push(entity);
+      }
+      const trafficSlice = takeNearWorkSlice(state, 'traffic', trafficRest);
+      for (let i = 0; i < trafficSlice.length; i++) trafficUrgent.push(trafficSlice[i]);
+    }
+    for (const e of trafficUrgent) {
       const rec = recordById.get(e.id);
       if (!rec) continue;
       const i = recordIndexById.get(e.id);

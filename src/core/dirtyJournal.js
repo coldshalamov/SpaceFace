@@ -110,6 +110,21 @@ export function isDirty(state, id, mask) {
   return (journal.entityBits[nid] & (mask | 0)) !== 0;
 }
 
+/** Fail-open true when the journal is missing so TABLE scans still run. */
+export function hasDirty(state, mask) {
+  const journal = state && state.dirtyJournal;
+  if (!journal || !(journal.ids instanceof Uint32Array)) return true;
+  const want = mask | 0;
+  const generation = journal.generation;
+  const count = journal.count | 0;
+  for (let i = 0; i < count; i++) {
+    const id = journal.ids[i];
+    if (journal.entityGen[id] !== generation) continue;
+    if ((journal.entityBits[id] & want) !== 0) return true;
+  }
+  return false;
+}
+
 export function collectDirtyIds(state, mask, out = []) {
   out.length = 0;
   const journal = state && state.dirtyJournal;

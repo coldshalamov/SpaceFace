@@ -317,6 +317,71 @@ test('the eleventh ship in one family gets a real plume, not a silent drop', () 
   fleet.dispose();
 });
 
+// The mid-flight GPU brick regression: a capacity migration builds a fresh
+// ContinuousPlumeSystem whose programs/buffers have never touched the GPU. The
+// replacement must be routed through the pipeline-admission latch at swap so the
+// per-pass scan keeps its unlinked layers hidden until compile + residency settle.
+test('capacity-grown plume replacement is admitted through the pipeline latch at swap', async () => {
+  const admissions = [];
+  const fleet = new FamilyProductionFleet(THREE, {
+    textures: {},
+    admitSubjectPipelines: (subject) => {
+      admissions.push(subject);
+      return Promise.resolve({ skipped: true });
+    },
+  });
+  const scene = new THREE.Scene();
+  fleet.attachToScene(scene);
+  const oldPlume = fleet.familyPlume('engine_vector');
+  const oldGroup = oldPlume.group;
+
+  const sockets = [
+    { x: -1, y: 0, z: 0, ax: -1, ay: 0, az: 0 },
+    { x: 1, y: 0, z: 0, ax: -1, ay: 0, az: 0 },
+  ];
+  fleet.beginFrame(A11Y);
+  fleet.beginAdmitPhase();
+  for (let i = 0; i < FLEET_INITIAL_SHIPS + 1; i++) {
+    const s = fleet.acquireShip(700 + i, 'engine_vector', i === 0);
+    assert.ok(s);
+    fleet.setShipSockets(s, sockets, 2);
+    fleet.setShipDrive(s, { drive: 1, throttle: 1, boost: 0 });
+  }
+  fleet.endFrame(1 / 60);
+
+  const plume = fleet.familyPlume('engine_vector');
+  assert.notEqual(plume, oldPlume, 'over-demand must migrate to a rebuilt plume system');
+  assert.equal(admissions.length, 1, 'the rebuilt plume root must enter pipeline admission');
+  assert.equal(admissions[0], plume.group, 'admission covers the live replacement root');
+  assert.equal(plume.group.parent, scene, 'the replacement stays mounted under the scene');
+  assert.equal(oldGroup.parent, null, 'the retired group leaves the scene');
+  // The admission promise is fire-and-forget; a resolved admission must not throw.
+  await Promise.resolve();
+
+  fleet.dispose();
+});
+
+test('plume capacity migration without an admission hook still swaps cleanly', () => {
+  const fleet = new FamilyProductionFleet(THREE, { textures: {} });
+  const scene = new THREE.Scene();
+  fleet.attachToScene(scene);
+  const sockets = [
+    { x: -1, y: 0, z: 0, ax: -1, ay: 0, az: 0 },
+    { x: 1, y: 0, z: 0, ax: -1, ay: 0, az: 0 },
+  ];
+  fleet.beginFrame(A11Y);
+  fleet.beginAdmitPhase();
+  for (let i = 0; i < FLEET_INITIAL_SHIPS + 1; i++) {
+    const s = fleet.acquireShip(800 + i, 'engine_vector', i === 0);
+    fleet.setShipSockets(s, sockets, 2);
+    fleet.setShipDrive(s, { drive: 1, throttle: 1, boost: 0 });
+  }
+  const diag = fleet.endFrame(1 / 60);
+  assert.equal(diag.shipsActive, FLEET_INITIAL_SHIPS + 1);
+  assert.ok(fleet.familyPlume('engine_vector').pool.maxSockets >= (FLEET_INITIAL_SHIPS + 1) * 2);
+  fleet.dispose();
+});
+
 test('route-level idle sleeps production energy; thrust wakes it non-allocating', () => {
   const player = {
     id: 1,

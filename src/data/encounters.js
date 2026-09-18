@@ -38,8 +38,150 @@
 // factual about what changed. One-voice timing and UI fit are validated without English word-count
 // or punctuation taste rules so localization and distinct faction voices remain viable.
 
-import { ENCOUNTERS } from './encounters/index.generated.js';
-export { ENCOUNTERS };
+import { ENCOUNTERS as SHIPPED_ENCOUNTERS } from './encounters/index.generated.js';
+import { validateEncounterShape } from './encounters/shape.js';
+import { deepFreeze } from './encounters/catalog.js';
+import { ZONE_TYPES } from './sectorZones.js';
+import { ENEMY_TYPES } from './enemies.js';
+import {
+  userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
+} from './userContent.js';
+
+// ─────────────────────────────── user content (PQ-172.00) ───────────────────────────────
+// User-dropped JSON encounter records merge into the shipped registry here, at module-eval time.
+// A user record IS a flat encounter record (the same shape defineEncounter produces) plus `order`
+// (planner sort position — user range starts at 1000, shipped orders end at 342) and an optional
+// `barks` table of mod-authored lines ({key: line|[lines]}). Script ids may only reuse shipped
+// director scripts — JSON mods never introduce new behavior code (packet non-goal).
+
+const USER_ENCOUNTER_ORDER_MIN = 1000;
+const USER_ENCOUNTER_TIERS = new Set(['major', 'minor', 'ambient']);
+const USER_ENCOUNTER_DECKS = new Set(['combat', 'civilian', 'mystery', 'patrol']);
+const USER_ENCOUNTER_KEYS = new Set([
+  'id', 'order', 'tier', 'deck', 'weight', 'zoneTypes', 'script', 'pressureCost', 'cooldownS',
+  'proximity', 'gates', 'shape', 'barks', 'receipts',
+  'factionId', 'context', 'squad', 'escort', 'boss', 'bossName', 'genuine', 'bait',
+  'bark', 'beatS', 'choices', 'timeoutChoice', 'primaryLine', 'title',
+  'aftermath', 'anchorPoiId', 'approachR', 'behavior', 'cachePool', 'civilian',
+  'engagementTrigger', 'entranceS', 'followOnStub', 'follows', 'genuineChance', 'graffitiOn',
+  'guardPay', 'identifyPay', 'identifyPayStep', 'intendedCadence', 'investigateR',
+  'killCachePool', 'mirrorCourse', 'motive', 'noCombat', 'noCredits', 'offerS', 'phaseGate',
+  'predation', 'presenceNodeId', 'rare', 'requiredPings', 'requiredRep', 'rescuePay', 'routeId',
+  'runtimeReady', 'scanS', 'scanTellR', 'services', 'source', 'springR', 'telegraph',
+  'transitS', 'triggerKind', 'unitsPerHauler', 'variant', 'windowS',
+]);
+// Scripts that are runtime-registered machinery or director-internal stubs — not standalone
+// data scripts. A JSON record cannot supply the registration code these need (no script mods).
+const USER_ENCOUNTER_FORBIDDEN_SCRIPTS = new Set(['selfRegistered', 'followOnStub']);
+
+const USER_ENEMY_IDS = new Set(ENEMY_TYPES.map((e) => e.id));
+const USER_BARK_LINES = {};   // `${encounterId}:${barkKey}` -> string | string[]
+
+function userEncounterSquadProblem(recipe, field) {
+  if (recipe == null) return null;
+  if (typeof recipe !== 'object' || Array.isArray(recipe)) return `${field} must be an object`;
+  if (recipe.archetypes != null) {
+    if (!Array.isArray(recipe.archetypes)) return `${field}.archetypes must be an array`;
+    for (const archetype of recipe.archetypes) {
+      if (!USER_ENEMY_IDS.has(archetype)) return `${field}.archetypes references unknown archetype "${archetype}"`;
+    }
+  }
+  return null;
+}
+
+function userEncounterProblem(rec, baseIds, baseScripts, claimedOrders) {
+  if (!rec || typeof rec !== 'object' || Array.isArray(rec)) return 'record must be an object';
+  for (const key of Object.keys(rec)) {
+    if (!USER_ENCOUNTER_KEYS.has(key)) return `unknown field "${key}"`;
+  }
+  if (typeof rec.id !== 'string' || !/^[a-z][a-z0-9_]{1,79}$/.test(rec.id)) {
+    return 'id must be a lowercase_snake string';
+  }
+  if (!Number.isInteger(rec.order) || rec.order < USER_ENCOUNTER_ORDER_MIN) {
+    return `order must be an integer >= ${USER_ENCOUNTER_ORDER_MIN} (shipped range is below it)`;
+  }
+  if (claimedOrders.has(rec.order)) return `order ${rec.order} collides with another user encounter`;
+  if (!USER_ENCOUNTER_TIERS.has(rec.tier)) return 'tier must be major, minor, or ambient';
+  if (!USER_ENCOUNTER_DECKS.has(rec.deck)) return 'deck must be combat, civilian, mystery, or patrol';
+  if (!Number.isInteger(rec.weight) || rec.weight < 1) return 'weight must be a positive integer';
+  if (!Array.isArray(rec.zoneTypes) || !rec.zoneTypes.length) return 'zoneTypes must be a non-empty array';
+  for (const zt of rec.zoneTypes) {
+    if (!ZONE_TYPES[zt]) return `zoneTypes references unknown zone type "${zt}"`;
+  }
+  if (typeof rec.script !== 'string' || !baseScripts.has(rec.script)) {
+    return `script "${rec.script}" is not a shipped encounter script — JSON content cannot add scripts`;
+  }
+  if (USER_ENCOUNTER_FORBIDDEN_SCRIPTS.has(rec.script)) {
+    return `script "${rec.script}" is runtime-registered machinery, not usable from JSON`;
+  }
+  if (rec.gates != null && (typeof rec.gates !== 'object' || Array.isArray(rec.gates))) {
+    return 'gates must be an object';
+  }
+  for (const field of ['squad', 'escort', 'genuine', 'bait', 'boss']) {
+    const problem = userEncounterSquadProblem(rec[field], field);
+    if (problem) return problem;
+  }
+  if (rec.bark != null && typeof rec.bark !== 'string') return 'bark must be a bark id string';
+  if (rec.barks != null) {
+    if (typeof rec.barks !== 'object' || Array.isArray(rec.barks)) return 'barks must be an object';
+    for (const [key, line] of Object.entries(rec.barks)) {
+      const ok = typeof line === 'string'
+        || (Array.isArray(line) && line.length > 0 && line.every((l) => typeof l === 'string'));
+      if (!ok) return `barks.${key} must be a string or non-empty string array`;
+    }
+    if (rec.bark != null && !(rec.bark in rec.barks) && !(rec.bark in ENCOUNTER_BARKS)) {
+      return `bark "${rec.bark}" is not a shipped bark id and is not declared in this record's barks`;
+    }
+  } else if (rec.bark != null && !(rec.bark in ENCOUNTER_BARKS)) {
+    return `bark "${rec.bark}" is not a shipped bark id (declare custom lines via "barks")`;
+  }
+  if (rec.receipts != null && (typeof rec.receipts !== 'object' || Array.isArray(rec.receipts))) {
+    return 'receipts must be an object of outcome -> line';
+  }
+  try {
+    validateEncounterShape(rec.shape, rec.id);
+  } catch (error) {
+    return error.message;
+  }
+  return null;
+}
+
+function mergeUserEncounters(base) {
+  const candidates = userContentCandidates('encounters')
+    .slice()
+    .sort((a, b) => (a.record?.order ?? 0) - (b.record?.order ?? 0));
+  // No payload → return the shipped registry untouched: reference identity and freeze state are
+  // exactly what consumers saw before the loader existed.
+  if (!candidates.length) return base;
+  const baseIds = new Set(Object.keys(base));
+  const baseScripts = new Set(Object.values(base).map((e) => e.script));
+  const claimedOrders = new Set();
+  const merged = { ...base };
+  for (const cand of candidates) {
+    const rec = cand.record;
+    const problem = userEncounterProblem(rec, baseIds, baseScripts, claimedOrders)
+      || claimUserContentId('encounters', rec && rec.id, cand.modId, baseIds);
+    if (problem) {
+      rejectUserContent(cand.modId, 'encounters', rec && rec.id, problem, cand.file);
+      continue;
+    }
+    const record = { ...rec };
+    delete record.order;
+    if (record.barks) {
+      for (const [key, line] of Object.entries(record.barks)) {
+        USER_BARK_LINES[`${record.id}:${key}`] = line;
+      }
+      if (record.bark && record.bark in record.barks) record.bark = `${record.id}:${record.bark}`;
+      delete record.barks;
+    }
+    merged[record.id] = deepFreeze(record);
+    claimedOrders.add(rec.order);
+    acceptUserContent(cand.modId, 'encounters', record.id, cand.file);
+  }
+  return Object.freeze(merged);
+}
+
+export const ENCOUNTERS = mergeUserEncounters(SHIPPED_ENCOUNTERS);
 
 /** Persistent named captains (the seed roster). State lives in state.encounterDirector.named:
  *  { [id]: { alive, tier, escapes, kills, lastSeenSector } } — saved, migration-safe. Escalation is
@@ -403,7 +545,7 @@ function barkHash32(...args) {
 /** The bark text for a bark id with `{key}` substitution (empty string if unknown).
  *  Array values pick one variant deterministically from barkId + pickKey (encounter id). */
 export function barkText(barkId, vars, pickKey) {
-  const raw = ENCOUNTER_BARKS[barkId];
+  const raw = USER_BARK_LINES[barkId] ?? ENCOUNTER_BARKS[barkId];
   if (!raw) return '';
   let line;
   if (Array.isArray(raw)) {

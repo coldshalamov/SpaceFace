@@ -67,6 +67,12 @@ export class FamilyProductionFleet {
     this.maxShips = Math.max(1, opts.maxShips ?? FLEET_MAX_SHIPS);
     this.socketsPerShip = opts.socketsPerShip ?? FLEET_SOCKETS_PER_SHIP;
     this.textures = opts.textures || {};
+    // Optional pipeline-admission seam (render.compileObjectPipelines). Capacity migrations build a
+    // fresh plume system whose programs/buffers have never touched the GPU; without the latch its
+    // first visible draw links inside the presented frame.
+    this._admitSubjectPipelines = typeof opts.admitSubjectPipelines === 'function'
+      ? opts.admitSubjectPipelines
+      : null;
     this._disposed = false;
     this._allocCount = 0;
     this._frameAllocs = 0;
@@ -237,6 +243,13 @@ export class FamilyProductionFleet {
     const host = parent || this._scene;
     if (host && replacement.group) host.add(replacement.group);
     if (this._scene && replacement.bindDynamicBuffers) replacement.bindDynamicBuffers(this._scene);
+    // The replacement's programs/buffers have never touched the GPU: on a non-KHR driver its first
+    // visible draw links synchronously inside the presented pass (the mid-flight GPU brick). Arm the
+    // pending-subject latch so the per-pass scan keeps its unlinked layers hidden until the queued
+    // compile + residency admission settles.
+    if (replacement.group && typeof this._admitSubjectPipelines === 'function') {
+      Promise.resolve(this._admitSubjectPipelines(replacement.group)).catch(() => null);
+    }
     if (parent && old.group) parent.remove(old.group);
     old.dispose();
     entry.plume = replacement;

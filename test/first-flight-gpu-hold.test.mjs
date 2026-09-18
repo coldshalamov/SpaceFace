@@ -8,6 +8,7 @@ import {
   isEntityRenderRelevant,
   reattachResidentGpuMeshes,
   serviceRenderMeshResidency,
+  stableMeshKeyForEntity,
 } from '../src/render/renderer.js';
 
 test('dock, screen stack, and sector-shell cook freeze 3D submit', () => {
@@ -117,6 +118,59 @@ test('same-sector F9 recook reattaches GPU meshes onto restored entities', () =>
   assert.equal(owner.bound, 1);
 });
 
+test('place props carry a durable (sector, place, position) mesh key', () => {
+  const prop = {
+    type: 'fx', alive: true, pos: { x: 100, z: 200 },
+    data: { placeId: 'place_comms_array', worldDressing: true, homeSectorId: 'sec_helio' },
+  };
+  const twin = { ...prop, pos: { x: -50, z: 60 } };
+  const key = stableMeshKeyForEntity(prop);
+  assert.equal(key, 'place:sec_helio:place_comms_array:100.0,200.0');
+  assert.notEqual(stableMeshKeyForEntity(twin), key, 'same placeId at a different spot must not share a key');
+  // A place prop without the dressing marker (e.g. an activity entity) keeps keying null —
+  // it must never claim a kept dressing boundary by position coincidence.
+  assert.equal(stableMeshKeyForEntity({
+    ...prop, data: { placeId: 'place_comms_array' },
+  }), null);
+});
+
+test('kept place boundary rebinds to the matching restored row, not a recycled id', () => {
+  // Before save, dressing rows A and B held ids 10/11 and matching boundaries. After load
+  // the boundary for A is still keyed under the numeric slot B's restored row now owns.
+  const rowA = {
+    id: 10, type: 'fx', alive: true, dressingResident: true, pos: { x: 100, z: 200 },
+    data: { placeId: 'place_observation_blister', worldDressing: true, homeSectorId: 'sec_helio' },
+  };
+  const rowB = {
+    id: 11, type: 'fx', alive: true, dressingResident: true, pos: { x: -50, z: 60 },
+    data: { placeId: 'place_lane_beacon', worldDressing: true, homeSectorId: 'sec_helio' },
+  };
+  const boundary = {
+    userData: {
+      authoredAssetState: 'authored',
+      sfStableEntityKey: 'place:sec_helio:place_observation_blister:100.0,200.0',
+    },
+  };
+  const owner = {
+    _meshes: new Map([[11, boundary]]),
+    state: {
+      mode: 'loading',
+      entities: new Map(),
+      entityList: [],
+      world: { dressing: { rows: [rowA, rowB], byId: new Map([[10, rowA], [11, rowB]]) } },
+    },
+    unbound: [],
+    _unbindPresentationMesh(id) { this.unbound.push(id); },
+    _bindPresentationMesh() {},
+  };
+  assert.equal(reattachResidentGpuMeshes(owner), 1);
+  assert.equal(owner._meshes.get(10), boundary, 'boundary must re-key onto row A');
+  assert.equal(owner._meshes.has(11), false, 'the recycled-id pairing must not survive');
+  assert.equal(rowA.mesh, boundary);
+  assert.equal(rowB.mesh, undefined, 'row B must not be bound to the wrong boundary');
+  assert.deepEqual(owner.unbound, [11]);
+});
+
 test('intentional sector enter cooks the live next scene behind the jump shell', async () => {
   const renderer = await readFile(new URL('../src/render/renderer.js', import.meta.url), 'utf8');
   const freeze = await readFile(new URL('../src/core/presentationFreeze.js', import.meta.url), 'utf8');
@@ -164,6 +218,10 @@ test('intentional sector enter cooks the live next scene behind the jump shell',
   assert.match(vfx, /Walk the nozzle so the snake has real buffers/);
   assert.match(vfx, /particleQuality === 'med' \? 'medium' : particleQuality/);
   assert.match(vfx, /createRibbonTrail\(this\._scene/);
+  // A lazily-created trail carries a never-compiled material and never-uploaded geometry; it is
+  // routed through the pending admission latch so its first thrust frame does not pay both inside
+  // the presented pass (diag20 GPU brick: unstamped SF_RibbonTrail + a physical,STANDARD link).
+  assert.match(vfx, /trailRender\.compileObjectPipelines\(trailMesh\)/);
   assert.match(vfx, /restLiveFlightEffectsAfterCook/);
   assert.doesNotMatch(renderer, /includeGlobalPipelines:\s*true/);
   assert.doesNotMatch(renderer, /precompilePipelines\(/);

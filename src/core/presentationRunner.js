@@ -11,6 +11,8 @@ import {
 import { mustRescheduleAfterFrame } from './frameLiveness.js';
 import { collectJournalPresentationEntities } from '../world/presentationSources.js';
 import { resolveFrameCap, stepFrameCapDebt } from '../render/adaptiveQuality.js';
+import { shouldSkipFullTickSystems } from './presentationFreeze.js';
+import { SECTOR_ENTER_DRAIN_BUDGET, SECTOR_ENTER_LISTENER_BUDGET } from './eventBus.js';
 
 // Consecutive failing frames before the loop calls the picture dead. 30 is half a second at 60 Hz:
 // long enough that a single hitch, a context blip or one bad entity cannot trip it, short enough
@@ -178,6 +180,11 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
   const presentationJournal = deps.presentationJournal
     || registry?.ctx?.presentationJournal
     || null;
+  const bus = registry?.ctx?.bus || null;
+  if (bus && typeof bus.setEmitSliceBudget === 'function') {
+    bus.setEmitSliceBudget('sector:enter', SECTOR_ENTER_LISTENER_BUDGET);
+  }
+  if (state && state.world) state.world.sliceArrival = true;
 
   if (typeof requestFrame !== 'function') {
     throw new Error('PresentationRunner requires requestAnimationFrame');
@@ -798,6 +805,11 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         frameBudgetMs,
       );
 
+      if (shouldSkipFullTickSystems(state) && !(Number(state.timeScale) > 0)
+        && typeof registry.keepalive === 'function') {
+        registry.keepalive(0);
+      }
+
       // Ordering policy (Gap Report F2). On a healthy frame the sim advances FIRST and the
       // picture presents the tick it just completed, so a keypress reaches the photon one
       // frame sooner than present-then-simulate. On a long frame (any cause: GC, long task,
@@ -863,14 +875,26 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
       }
 
       diagnostics.lastLeftoverMs = Math.max(0, frameBudgetMs - presentationMs);
-      if (!skipPresentation && !capSkip && diagnostics.lastLeftoverMs >= 2 && presentationMs < frameBudgetMs) {
+      const drainAfterPresentCompile = (leftoverMs) => {
+        if (skipPresentation || capSkip) return;
+        if (!(leftoverMs >= 2) || !(presentationMs < frameBudgetMs)) return;
+        if (presentationMs > fixedDt * 2000) return;
         const drain = state.render && state.render.drainAfterPresentCompile;
         if (typeof drain === 'function') {
-          drain({
-            leftoverMs: diagnostics.lastLeftoverMs,
-            late: presentationMs > fixedDt * 2000,
-          });
+          drain({ leftoverMs, late: false });
         }
+      };
+      const drainArrivalSlices = () => {
+        const sliceBus = registry?.ctx?.bus;
+        if (sliceBus && typeof sliceBus.drainEmitSlice === 'function') {
+          sliceBus.drainEmitSlice(SECTOR_ENTER_DRAIN_BUDGET);
+        }
+      };
+      // Healthy frames: sim already ran. Hitch/present-first frames still owe leftover
+      // catch-up; do not spend that budget on a shader compile.
+      if (!presentFirst) {
+        drainAfterPresentCompile(diagnostics.lastLeftoverMs);
+        drainArrivalSlices();
       }
       if (presentFirst) {
         const latePresent = recoverFromPresentationOverrun || presentationMs > fixedDt * 2000;
@@ -880,6 +904,10 @@ export function createPresentationRunner(state, registry, simulationRunner, deps
         if (!destroyed && !suspended) {
           advanceLeftoverSimulation(frameDt, restoring, leftoverStepCap, perf);
         }
+        const remainMs = Math.max(0, frameBudgetMs - (measureNow() - callbackStart));
+        diagnostics.lastLeftoverMs = remainMs;
+        drainAfterPresentCompile(remainMs);
+        drainArrivalSlices();
       }
       diagnostics.lastLeftoverStepCap = leftoverStepCap ?? leftoverSimStepCap({});
       if (presentationError) throw presentationError;

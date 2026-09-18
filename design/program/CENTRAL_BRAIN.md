@@ -20,7 +20,7 @@ SpaceFace has enough local plans. The failure is global coordination and observa
 - agents can prove source invariants while missing a frozen canvas, oscillating AI, partial ship, noisy camera, or lazy VFX;
 - graphics work can optimize detail invisible at the chase camera;
 - agents can repeatedly re-audit the same area instead of making one measurable intervention;
-- open-ended INFERENCE can produce breadth without attacking the weakest exposed part of the game;
+- open-ended INFERENCE can produce thin volume (three board rows, three pirate tolls) instead of considered play; the lanes now require think / complete / rotate, and a thin row does not count;
 - humans become the only cross-system integration test.
 
 The Central Brain changes the unit of optimization from **task completion** to **measured player experience**.
@@ -325,7 +325,7 @@ candidate digest
 semantic checkpoints reached
 telemetry summary
 runtime-witness/perf summary when relevant
-before/after captures at shipping camera when visual
+an optional in-session still only for a purely visual claim (never a close gate)
 regressions checked
 verdict: KEEP | REVERT | LEARN_ONLY
 highest remaining player-visible defect

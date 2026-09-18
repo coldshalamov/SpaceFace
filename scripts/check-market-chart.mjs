@@ -19,6 +19,7 @@ import { maxAffordableQuantity } from '../src/ui/station/screens/market.js';
 const ROOT = fileURLToPath(new URL('../', import.meta.url));
 const MARKET_SOURCE = readFileSync(join(ROOT, 'src/ui/market/tradeLogic.js'), 'utf8');
 const STATION_MARKET_SOURCE = readFileSync(join(ROOT, 'src/ui/station/screens/market.js'), 'utf8');
+const MARKET_PRESENTATION_SOURCE = readFileSync(join(ROOT, 'src/ui/views/marketPresentation.js'), 'utf8');
 const STATION_APP_SOURCE = readFileSync(join(ROOT, 'src/ui/station/stationApp.js'), 'utf8');
 
 assert.equal(typeof window, 'undefined', 'this check must run headless');
@@ -93,22 +94,25 @@ function testRealEconomyHistoryAndForecast() {
 }
 
 function testMarketScreenChartSourceContract() {
-  // Visible chart checks belong to the shipped Station Market. Trade-route helpers live in
-  // market/tradeLogic and intentionally contain no DOM/chart implementation.
+  // Visible chart checks belong to the shipped Station Market. The register, quote and chart markup
+  // moved to the market presentation read model (market.js renders marketQuoteHtml); trade-route
+  // helpers live in market/tradeLogic and intentionally contain no DOM/chart implementation.
   const checks = [
-    [/export function createMarketScreen\(ctx\)/, 'exports the shipped Station Market screen'],
-    [/entry && Array\.isArray\(entry\.history\)/, 'reads economy-owned listing history'],
-    [/function buildChart\(hist, avg, gradientId, label\)/, 'builds the selected commodity chart'],
-    // Frontend Task C §1.3: the chart is a 240×48 sparkline in the dense register — the history as a
-    // hairline with the last point in the signal colour; no gradient fill, no brush chrome.
-    [/class="sx-mkt-chart"/, 'renders the selected commodity sparkline'],
-    [/style="fill:var\(--k-signal\)"/, 'marks the latest sample in the signal colour'],
+    [/export function createMarketScreen\(ctx\)/, 'exports the shipped Station Market screen', STATION_MARKET_SOURCE],
+    [/entry && Array\.isArray\(entry\.history\)/, 'reads economy-owned listing history', STATION_MARKET_SOURCE],
+    [/marketQuoteHtml\(\{ id: r\.id/, 'renders the selected commodity through the market read model', STATION_MARKET_SOURCE],
+    // Frontend Task C §1.3: the chart is a dense-register sparkline — the history as a hairline with
+    // the last point marked; no gradient fill, no brush chrome.
+    [/export function buildChart\(history, average, gradientId, label/, 'builds the selected commodity chart', MARKET_PRESENTATION_SOURCE],
+    [/class="sx-mkt-chart"/, 'renders the selected commodity sparkline', MARKET_PRESENTATION_SOURCE],
+    [/data-history-line/, 'plots the live history as the chart line', MARKET_PRESENTATION_SOURCE],
+    [/<circle cx="\$\{endX\}" cy="\$\{endY\}" r="3"\/>/, 'marks the latest sample', MARKET_PRESENTATION_SOURCE],
     // Selection follows focus over the register rows (Arrow / Home / End / PageUp / PageDown).
-    [/selectCommodity\(rows\[next\]\.getAttribute\('data-cmdty'\), \{ focus: true \}\)/, 'keeps the commodity register keyboard-selectable'],
-    [/const go = ev\.target\.closest\('\[data-go\]'\);/, 'keeps the visible buy/sell control wired'],
+    [/selectCommodity\(rows\[next\]\.getAttribute\('data-cmdty'\), \{ focus: true \}\)/, 'keeps the commodity register keyboard-selectable', STATION_MARKET_SOURCE],
+    [/const go = ev\.target\.closest\('\[data-go\]'\);/, 'keeps the visible buy/sell control wired', STATION_MARKET_SOURCE],
   ];
-  for (const [pattern, label] of checks) {
-    if (!pattern.test(STATION_MARKET_SOURCE)) {
+  for (const [pattern, label, source] of checks) {
+    if (!pattern.test(source)) {
       throw new Error(`station market chart source contract failed: ${label}`);
     }
   }
@@ -240,7 +244,7 @@ function testStationMarketSourceContract() {
     'the shipped Station Market must not fabricate one shared fallback chart');
   assert.match(STATION_MARKET_SOURCE, /entry && Array\.isArray\(entry\.history\)/,
     'the shipped Station Market reads the economy-owned price history');
-  assert.match(STATION_MARKET_SOURCE, /data-chart="\$\{escapeHtml\(gradientId\)\}"/,
+  assert.match(MARKET_PRESENTATION_SOURCE, /data-chart="\$\{escapeHtml\(gradientId\)\}"/,
     'each Station Market sparkline is keyed to its commodity');
   assert.match(STATION_MARKET_SOURCE, /cargoOnly = mode === 'sell'/,
     'the cargo handoff can filter the market to sellable hold contents');

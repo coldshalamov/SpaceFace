@@ -55,6 +55,29 @@ const APERTURE_MOUTH_QUERY = (() => {
 const APERTURE_OCCUPANT_SCRATCH = [];
 const EMPTY_LIST = [];
 
+function apertureOccupantIsLive(state, entity) {
+  if (!entity || entity.alive === false) return false;
+  const entities = state && state.entities;
+  if (entities && typeof entities.get === 'function' && entity.id != null) {
+    if (entities.get(entity.id) === entity) return true;
+  }
+  const list = (state && state.entityList) || EMPTY_LIST;
+  for (let i = 0; i < list.length; i++) {
+    if (list[i] === entity) return true;
+  }
+  const index = state && state.entityIndex;
+  if (!(index && index.__spacefaceEntityIndexV1 && index.ready === true)) return false;
+  const buckets = [index.ships, index.wrecks, index.asteroids];
+  for (let b = 0; b < buckets.length; b++) {
+    const bucket = buckets[b];
+    if (!bucket) continue;
+    for (let i = 0; i < bucket.length; i++) {
+      if (bucket[i] === entity) return true;
+    }
+  }
+  return false;
+}
+
 function simTimeOf(state) {
   return Number.isFinite(state && state.simTime)
     ? state.simTime
@@ -97,6 +120,7 @@ export const environmentalMachinery = {
     this._apertureJammedAtS = null;
     this._aperturePlugEnsured = false;
     this._apertureLastPhase = null;
+    this._apertureLastOccupant = null;
     if (this.bus && typeof this.bus.on === 'function') {
       const clear = (why) => this._clear(why);
       this._unsubs = [
@@ -292,7 +316,7 @@ export const environmentalMachinery = {
     // The hash only holds activity-classified bodies, and the mouth is a fixed world point:
     // when the player is far enough away that the mouth lies outside the classify bubble, a
     // parked occupant is dormant and absent from the hash. Gate the query on coverage —
-    // mouth circle inside the classify circle — and scan entityList when it is not.
+    // mouth circle inside the classify circle — and scan occupant-type buckets when it is not.
     const player = state && state.entities && typeof state.entities.get === 'function'
       ? state.entities.get(state.playerId)
       : null;
@@ -303,16 +327,43 @@ export const environmentalMachinery = {
       ? Math.hypot(player.pos.x - APERTURE_MOUTH_QUERY.x, player.pos.z - APERTURE_MOUTH_QUERY.z)
       : Infinity;
     const covered = mouthDist + APERTURE_MOUTH_QUERY.radius <= reach;
-    const list = covered
-      ? queryNearbyEntities(
+    if (covered) {
+      const nearby = queryNearbyEntities(
         state,
         APERTURE_MOUTH_QUERY,
         APERTURE_MOUTH_QUERY.radius,
         APERTURE_OCCUPANT_SCRATCH,
-      )
-      : (state && state.entityList) || EMPTY_LIST;
-    for (const entity of list) {
-      if (isApertureOccupant(entity)) return true;
+      );
+      for (let i = 0; i < nearby.length; i++) {
+        const entity = nearby[i];
+        if (isApertureOccupant(entity)) {
+          this._apertureLastOccupant = entity;
+          return true;
+        }
+      }
+      this._apertureLastOccupant = null;
+      return false;
+    }
+    // Off-hash: a parked occupant is dormant and missing from the classify bubble.
+    // Do not walk rocks, FX, or projectiles — only the three occupant types.
+    const last = this._apertureLastOccupant;
+    if (last && isApertureOccupant(last) && apertureOccupantIsLive(state, last)) return true;
+    this._apertureLastOccupant = null;
+    const index = state && state.entityIndex;
+    const ready = !!(index && index.__spacefaceEntityIndexV1 && index.ready === true);
+    const buckets = ready
+      ? [index.ships, index.wrecks, index.asteroids]
+      : [(state && state.entityList) || EMPTY_LIST];
+    for (let b = 0; b < buckets.length; b++) {
+      const list = buckets[b];
+      if (!list) continue;
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        if (isApertureOccupant(entity)) {
+          this._apertureLastOccupant = entity;
+          return true;
+        }
+      }
     }
     return false;
   },

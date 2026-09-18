@@ -19,7 +19,6 @@ Allowed current call sites:
 | `src/audio/audioSystem.js` | cosmetic audio | Varies playback rate/gain timing for presentation only. |
 | `src/render/camera.js` | cosmetic camera | Applies shake jitter after authoritative camera target/zoom decisions. |
 | `src/render/feel.js` | cosmetic render | Varies warp streak presentation; no gameplay state mutation. |
-| `src/render/starfield.js` | cosmetic render | Creates decorative background distribution. |
 | `src/render/vfx.js` | cosmetic render | Particle variation; no gameplay state mutation. |
 | `src/systems/telemetry.js` | local telemetry | Builds a local session id; not read by simulation. |
 | `src/testing/lab/runScenario.js` | local lab id | Mints a `runId` for lab/internal-test results that are non-promoting; not read by simulation. |

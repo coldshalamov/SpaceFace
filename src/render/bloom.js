@@ -341,6 +341,27 @@ function contextLossGeneration(gl) {
   return gl && typeof gl === 'object' ? programHandleContext(gl).generation : 0;
 }
 
+// A WebGLProgram wrapper carries the GL handle it was created with. Context loss kills every
+// handle without touching the wrappers, and destroy() clears program.program — in both cases
+// isReady() reads a handle the live context does not own: it answers null and warns
+// GL_INVALID_VALUE forever. The wrapper can never become ready either; the material re-acquires
+// a fresh wrapper on its next use. Track the context generation each wrapper was first seen
+// under so a stale wrapper is recognised without a native call, and treat it as ready.
+const programSeenGenerations = new WeakMap();
+
+export function programWrapperDead(gl, program) {
+  if (!program || !program.program) return true;
+  if (!gl || typeof gl !== 'object') return false;
+  const generation = contextLossGeneration(gl);
+  const seen = programSeenGenerations.get(program);
+  if (seen === undefined) {
+    const lost = typeof gl.isContextLost === 'function' && gl.isContextLost();
+    programSeenGenerations.set(program, lost ? generation - 1 : generation);
+    return lost;
+  }
+  return seen !== generation;
+}
+
 /**
  * A pending program that can no longer be queried: its handle was released (three's
  * WebGLProgram.destroy clears it), the context was lost since `generation`, or the driver no longer
@@ -980,6 +1001,8 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     if (!scene || typeof scene.traverse !== 'function' || !props || typeof props.get !== 'function') {
       return;
     }
+    admissionGl = renderer && typeof renderer.getContext === 'function'
+      ? renderer.getContext() : null;
     const programs = renderer.info && renderer.info.programs;
     if (!Array.isArray(programs)) {
       admissionScene = scene;
@@ -987,6 +1010,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       scene.traverse(hideOneUnreadySceneDrawable);
       admissionScene = null;
       admissionPendingSubjects = null;
+      admissionGl = null;
       return;
     }
     // length+tail catches every mutation: acquireProgram pushes at the tail, releaseProgram
@@ -999,6 +1023,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     for (let i = 0; i < programs.length; i++) {
       const program = programs[i];
       if (!program || typeof program.isReady !== 'function') continue;
+      if (programWrapperDead(admissionGl, program)) continue;
       let ready = true;
       try { ready = program.isReady() === true; } catch (_) { ready = false; }
       if (!ready) { unreadyProgramsPending = true; break; }
@@ -1009,6 +1034,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
     scene.traverse(hideOneUnreadySceneDrawable);
     admissionScene = null;
     admissionPendingSubjects = null;
+    admissionGl = null;
   }
 
   function hideOneUnreadySceneDrawable(object) {
@@ -1032,6 +1058,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
 
   let admissionScene = null;
   let admissionPendingSubjects = null;
+  let admissionGl = null;
 
   function hideIfProgramUnready(object, material, props) {
     if (!material || unreadySceneCount >= UNREADY_SCENE_CAP) return false;
@@ -1071,6 +1098,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
       return true;
     }
     if (typeof program.isReady !== 'function') return false;
+    if (programWrapperDead(admissionGl, program)) return false;
     let ready = true;
     try { ready = program.isReady() === true; } catch (_) { ready = false; }
     if (ready) return false;
@@ -1227,18 +1255,42 @@ export function createBloom(renderer, width, height, instrumentation = null) {
           ? object.material
           : (object?.material ? [object.material] : []);
         for (const material of materials) {
-          let program = null;
-          try { program = props.get(material)?.currentProgram || null; } catch (_) { continue; }
-          const key = String(program && (program.cacheKey || program.name) || '');
-          // seenKeys is the set this render just linked. Keep those owners; skip already-warm ones.
-          if (!key || !seenKeys.has(key)) continue;
-          rows.push({
-            object: String(object.name || object.type || 'unnamed').slice(0, 48),
-            material: String(material.name || material.type || 'unnamed').slice(0, 32),
-            root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed').slice(0, 48),
-            key: key.slice(0, 24),
-            visible: object.visible === true,
-          });
+          let rec = null;
+          try { rec = props.get(material) || null; } catch (_) { continue; }
+          // currentProgram only names the LAST-BOUND variant. A material that drew a different
+          // variant this pass (post-compile state change, per-object program parameters) links it
+          // and re-binds — the just-linked program then sits in materialProperties.programs while
+          // currentProgram points elsewhere, which is how an in-frame link reported owners:[].
+          const candidates = [];
+          if (rec && rec.currentProgram) candidates.push(rec.currentProgram);
+          const variants = rec && rec.programs;
+          if (variants && typeof variants.values === 'function') {
+            for (const variant of variants.values()) candidates.push(variant);
+          }
+          for (const program of candidates) {
+            const key = String(program && (program.cacheKey || program.name) || '');
+            // seenKeys is the set this render just linked. Keep those owners; skip already-warm ones.
+            if (!key || !seenKeys.has(key)) continue;
+            // Sibling variants of the same material expose which cacheKey field drifted between
+            // the admission compile and this presented pass (numDirLightShadows, geometry flags).
+            const siblings = [];
+            if (variants && typeof variants.values === 'function') {
+              for (const variant of variants.values()) {
+                const skey = String(variant && (variant.cacheKey || variant.name) || '');
+                if (skey && skey !== key) siblings.push(skey.slice(0, 160));
+                if (siblings.length >= 6) break;
+              }
+            }
+            rows.push({
+              object: String(object.name || object.type || 'unnamed').slice(0, 48),
+              material: String(material.name || material.type || 'unnamed').slice(0, 32),
+              root: String(rootOf(object)?.name || rootOf(object)?.type || 'unnamed').slice(0, 48),
+              key: key.slice(0, 160),
+              siblingKeys: siblings,
+              visible: object.visible === true,
+            });
+            break;
+          }
         }
       });
     } catch (_) { return null; }
@@ -1305,7 +1357,7 @@ export function createBloom(renderer, width, height, instrumentation = null) {
             // programsBefore is EXACTLY what this render call linked. The old diff-against-the-
             // previous-brick set reported every program acquired since the last brick — dozens of
             // legitimately warm ones — which made the payload unusable for naming a producer.
-            newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 64)),
+            newPrograms: exactNewProgramKeys(programsBefore).slice(0, 8).map((key) => key.slice(0, 160)),
           })}`);
         }
         if (brick || grewGeometries) rememberBloomGeometries(scene);

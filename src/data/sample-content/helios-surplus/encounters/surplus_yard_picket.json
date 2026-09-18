@@ -1,0 +1,36 @@
+{
+  "id": "surplus_yard_picket",
+  "order": 1000,
+  "tier": "ambient",
+  "deck": "civilian",
+  "weight": 1,
+  "zoneTypes": ["derelict_field"],
+  "script": "patrolBeat",
+  "pressureCost": 12,
+  "cooldownS": 300,
+  "proximity": true,
+  "gates": {},
+  "shape": {
+    "situation": "patrol",
+    "place": ["derelict_field"],
+    "twist": "none",
+    "actor": "faction_reach"
+  },
+  "factionId": "faction_reach",
+  "context": "patrol",
+  "squad": {
+    "archetypes": ["reaver_pirate"],
+    "size": [1, 2],
+    "doctrine": "scavenger",
+    "formation": "loose"
+  },
+  "barks": {
+    "surplus_picket_hail": [
+      "REACH: yard watch on station. Buy clean or drift.",
+      "REACH: this scrap is spoken for. Trade, don't touch.",
+      "REACH: picket holding the surplus seam. Mind the wreck drift."
+    ]
+  },
+  "bark": "surplus_picket_hail",
+  "beatS": 120
+}

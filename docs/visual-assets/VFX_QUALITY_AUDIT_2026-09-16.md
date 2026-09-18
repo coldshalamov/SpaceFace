@@ -1,4 +1,9 @@
+<!-- LIFETIME: HISTORICAL -->
 # VFX quality and style audit — 2026-09-16
+
+**Not a style guide.** Live law is [`VFX_TECHNIQUE_STANDARD.md`](./VFX_TECHNIQUE_STANDARD.md) and
+[`VFX_LIFECYCLE_STANDARD.md`](./VFX_LIFECYCLE_STANDARD.md). `starfield.js` and `momentBeat.js`
+named below as deletion candidates were removed on 2026-09-16.
 
 **Scope.** Every player-facing runtime effect family in the live route: propulsion (player jet,
 contrail, retro, RCS, NPC fleet drives, boost/dash, speed language), weapons and combat (bolts,
@@ -116,8 +121,8 @@ Scores /10 → grade. "Gap" is the single highest-leverage deficiency per family
 | Massline presentation helpers | pixel-free intent | 9 | A | None |
 | Background stack (deep field, stars, flares, comet, parallax) | sky dialect | 9 | A | Sky exception properly contained; zero-alloc update |
 | Crucible ghost | translucent clone | 7 | B | No accessibility/easing polish |
-| **starfield.js** (legacy) | point sprites | **2** | **F** | Dead module embodying the exact patterns the shipped system replaced — deletion candidate |
-| **momentBeat.js** | pure resolver | **3** | **D** | Orphaned duplicate of `feel.js` logic; zero consumers — deletion/unification candidate |
+| **starfield.js** (legacy) | point sprites | **2** | **F** | Deleted 2026-09-16 — dead module embodying the patterns the shipped system replaced |
+| **momentBeat.js** | pure resolver | **3** | **D** | Deleted 2026-09-16 — orphaned duplicate of live `feel.js` beat logic |
 
 ---
 
@@ -161,7 +166,7 @@ Scores /10 → grade. "Gap" is the single highest-leverage deficiency per family
    the structured-vfx candidate's normal-game visual and integrated-GPU cost cells are still
    open (`VFX_UPGRADE_2026-09-07.md` §"Ordered continuation" items 1–2). Code quality is ahead
    of observed quality.
-6. **Dead weight.** `starfield.js` (F), `momentBeat.js` (D), the benched volumetric stack, the
+6. **Dead weight.** `starfield.js` and `momentBeat.js` deleted 2026-09-16. Remaining: the benched volumetric stack, the
    force-hidden snake layer, dead `shockAmp`/`reel`/forge-aim paths. Each is a style-regression
    hazard or review noise.
 7. **Minor duplication.** Double casing ejection on the flipbook route; legacy trail-streak seam.
@@ -178,7 +183,7 @@ Scores /10 → grade. "Gap" is the single highest-leverage deficiency per family
 4. Add a view-dependent term (or curved cross-section) to `flowFlipbookMaterial` and
    `engineTrailSurfaces` — the single change that lifts three families from B to B+/A.
 5. Envelope the mining beam (0.05–0.1 s attack/release on width/radiance) and beam birth width.
-6. Delete `starfield.js` and `momentBeat.js`; strip the dead snake/shock/reel paths.
+6. ~~Delete `starfield.js` and `momentBeat.js`~~ done 2026-09-16; remaining: strip the dead snake/shock/reel paths.
 7. Give retro jets the same spool envelope the main drive has.
 
 ## 6. Verification status

@@ -37,6 +37,7 @@ import { ensureCombatant } from '../combat/runtime.js';
 import { publishHitstunImpulse, signedHitSide } from '../combat/impulseKernel.js';
 import { PINNED_STATUS_ID, UNMOORED_STATUS_ID } from '../data/combatDefs.js';
 import { combatFlag } from '../data/featureFlags.js';
+import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import {
   ORBIT_NODE_TYPE,
   attachOrbitWorld,
@@ -907,9 +908,13 @@ export const fields = {
       || (state.entityIndex && state.entityIndex.ships)
       || state.entityList
       || [];
+    const npcFields = rt.npcFields || {};
     for (let i = 0; i < ships.length; i++) {
       const entity = ships[i];
       if (!entity || entity.type !== 'ship' || entity.id === state.playerId) continue;
+      if (entity.physicsSleeping === true && !npcFields[entity.id] && !npcFields[String(entity.id)]) {
+        continue;
+      }
       this.applyNpcFieldPlan(state, entity);
     }
   },
@@ -1111,6 +1116,21 @@ export const fields = {
     const seen = this._candidateSeen || (this._candidateSeen = new Set());
     seen.clear();
     for (let i = 0; i < out.length; i++) seen.add(out[i]);
+    const combatScratch = this._combatTableScratch || (this._combatTableScratch = []);
+    queryCombatTableEntities(
+      state,
+      field.center.x,
+      field.center.z,
+      field.radius,
+      combatScratch,
+      COMBAT_TABLE_FLAGS.SHIP | COMBAT_TABLE_FLAGS.PROJECTILE | COMBAT_TABLE_FLAGS.WRECK,
+    );
+    for (let i = 0; i < combatScratch.length; i++) {
+      const e = combatScratch[i];
+      if (!e || seen.has(e)) continue;
+      seen.add(e);
+      out.push(e);
+    }
     const r2 = field.radius * field.radius;
     const cx = field.center.x;
     const cz = field.center.z;

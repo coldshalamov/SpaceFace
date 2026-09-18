@@ -405,6 +405,12 @@ const RENDER_STREAM_EVICT_RADIUS = residencyEvictRadius();
 // ship speeds this provides several seconds of runway, while current-sector objects farther away
 // remain dormant instead of replacing procedural placeholders during unrelated play.
 const RENDER_RESIDENCY_POLL_SECONDS = 0.25;
+// Decoded packages whose presentation owner is gone keep only a soft cache lease, which the
+// sector-exit sweep was the sole release point for — inside one sector every archetype ever
+// admitted stayed GPU-resident forever. A slow sweep with an idle-age gate keeps short oscillation
+// warm while bounding dead packages to ~seconds instead of the whole session.
+const CACHE_LEASE_SWEEP_SECONDS = 10;
+const CACHE_LEASE_MAX_IDLE_MS = 30_000;
 // The opening first-picture hold is a startup latch measured in frames, not seconds. If the paint
 // latch has not ended it after this long, the paint callback is never coming; resume streaming.
 const OPENING_PICTURE_HOLD_FAILSAFE_MS = 15000;
@@ -1048,6 +1054,15 @@ export function serviceRenderMeshResidency(owner, frameDt) {
   if (owner._renderResidencyPollS <= 0) {
     owner._renderResidencyPollS = RENDER_RESIDENCY_POLL_SECONDS;
     pollDue = true;
+  }
+  owner._cacheLeaseSweepS = (owner._cacheLeaseSweepS || 0) - dt;
+  if (owner._cacheLeaseSweepS <= 0) {
+    owner._cacheLeaseSweepS = CACHE_LEASE_SWEEP_SECONDS;
+    try {
+      owner._assetResidency?.releaseUnreferencedCacheOwners?.(
+        'in-sector-cache-decay', { minAgeMs: CACHE_LEASE_MAX_IDLE_MS },
+      );
+    } catch (_) { /* cache decay is best-effort */ }
   }
   if (owner._meshReconcileDirty) {
     owner.reconcileMeshes();
@@ -2996,10 +3011,12 @@ function requestAuthoredUpgrade(mesh, renderer, scene, options = {}) {
 // Prepare the live directional-shadow camera before asteroid visibility consumes its frustum.
 // The renderer's actual shadow-map state is authoritative: a setting can remain on while zero
 // receivers intentionally disable the map for this frame.
-export function prepareActiveShadowCamera(renderer, keyLight) {
+export function prepareActiveShadowCamera(renderer, keyLight, receiverCount) {
   const shadowMap = renderer && renderer.shadowMap;
   const shadow = keyLight && keyLight.shadow;
-  if (!shadowMap || !shadowMap.enabled || !shadow) return null;
+  // shadowMap.enabled is pinned while the setting is on so program keys stay stable; the
+  // resolved receiver tally is what actually gates the culling camera and the depth pass.
+  if (!shadowMap || !shadowMap.enabled || !shadow || !(receiverCount > 0)) return null;
   keyLight.updateMatrixWorld(true);
   if (keyLight.target) keyLight.target.updateMatrixWorld(true);
   shadow.updateMatrices(keyLight);
@@ -3458,7 +3475,11 @@ export function disposeRendererOwnedResources(owner, options = {}) {
     invokeRendererDisposer(collision, 'collision debug', true);
     invokeRendererDisposer(owner.bloom, 'bloom', true);
     invokeRendererDisposer(owner._renderGraph, 'render graph', true);
-    if (owner._envMap && typeof owner._envMap.dispose === 'function') {
+    if (owner._envMapTarget && typeof owner._envMapTarget.dispose === 'function') {
+      // Render-target disposal releases the env texture, framebuffer, and depth buffer;
+      // Texture.dispose() alone would be a no-op for a render-target texture.
+      invokeRendererDisposer(owner._envMapTarget, 'environment map', true);
+    } else if (owner._envMap && typeof owner._envMap.dispose === 'function') {
       invokeRendererDisposer(owner._envMap, 'environment map', true);
     }
     invokeRendererDisposer(owner._gpuTimers, 'GPU timers', true);
@@ -3489,6 +3510,7 @@ export function disposeRendererOwnedResources(owner, options = {}) {
   owner._firstPresentGpuReady = false;
   owner._rebuildRestoredGpuResources = null;
   owner._envMap = null;
+  owner._envMapTarget = null;
   owner._lostEnvMap = null;
   owner._contextRecovery = null;
   owner._adaptive = null;
@@ -3717,8 +3739,9 @@ export const render = {
     const rim = new THREE.DirectionalLight(corePalette.rim, SECTOR_LIGHT_INTENSITIES.rim); rim.position.set(-70, 50, -60); scene.add(rim);
     const fill = new THREE.DirectionalLight(corePalette.fill, SECTOR_LIGHT_INTENSITIES.fill); fill.position.set(20, 30, 120); scene.add(fill);
     // Real shadow maps (graphics spec Workstream G). Keep one reusable key light regardless of the
-    // boot setting; _ensureKeyLightShadows configures it once and _syncShadowMapEnabled gates work.
-    // This lets a default shadows:false profile enable shadows live without allocating a new light.
+    // boot setting; _ensureKeyLightShadows configures it once and _syncShadowMapEnabled keeps the
+    // key-visible flags pinned while the tally gates the depth pass. This lets a default
+    // shadows:false profile enable shadows live without allocating a new light.
     const shadowsOn = !(state.settings && state.settings.video && state.settings.video.shadows === false);
 
     // --- GPU capability detection (adaptiveQuality.js) -----------------------------------------
@@ -3789,6 +3812,7 @@ export const render = {
     // context invalidates the envMap GPU texture, and without re-baking chrome hulls go matte after
     // a driver/GPU hiccup.
     this._envMap = null;
+    this._envMapTarget = null;
     try {
       // wait one frame so scene.background (an async-decoded CanvasTexture) is present, then bake
       const bakeEnv = () => {
@@ -3865,6 +3889,8 @@ export const render = {
         this._lostEnvMap = this._envMap;
         if (scene.environment === this._lostEnvMap) scene.environment = null;
         this._envMap = null;
+        // The PMREM target belongs to the dead context — abandon it, never dispose through the new one.
+        this._envMapTarget = null;
         state.render.envMap = null;
         setEnvMapForShips(null);
         if (typeof console !== 'undefined') console.warn('[render] WebGL context lost — awaiting restore');
@@ -4702,14 +4728,25 @@ export const render = {
         dynamicBuffers.disarm(dynamicBufferEpoch);
       }
     };
+    // Compile and exact-target touch must see the envMap the presented draw resolves. A subject
+    // compiled while scene.environment was unset (or while a detached material still carried an
+    // older bake) links an env-less/stale variant; the first real draw then relinks inside the
+    // presented bloom pass. Stamping the renderer's live env onto standard materials here also
+    // re-points stale references left by a PMREM re-bake before they can bind a disposed target.
+    const stampSubjectEnv = (subject) => {
+      const envMap = this._envMap;
+      if (envMap && subject) bindEnvironmentToStandardMaterials(subject, envMap);
+    };
     const compileSubjectColorAndDepth = (subject, route) => {
       // Color only. Per-root shadowMap.render during sliced flight compiles threw
       // (WebGLProgram.setProgram on a null material state) and split ~460 ms depth
       // links across presents, which raised hitch count. Opening and post-opening
       // each run one batched compileShadowDepthPipelines behind the loading shell.
+      stampSubjectEnv(subject);
       return Promise.resolve(this._compilePostRoute(route, subject, cam.obj, scene));
     };
     const touchExactTargetSubject = (subject) => {
+      stampSubjectEnv(subject);
       if (this.bloom && typeof this.bloom.touchScenePipelines === 'function') {
         return this.bloom.touchScenePipelines(subject, cam.obj, scene);
       }
@@ -4880,6 +4917,31 @@ export const render = {
             () => result,
             () => result,
           );
+        })
+        .then((result) => {
+          if (state.mode === 'loading' && state.render.liveSectorGpuAdmission !== true) {
+            return result;
+          }
+          const recovering = state.render
+            && state.render.contextRecovery && state.render.contextRecovery.pending === true;
+          if (!result || result.contextLost === true || recovering
+              || !subject || !this.scene || !cam.obj) {
+            return result;
+          }
+          // compile() resolves under the armed admission state; the presented pass can still
+          // ask the driver for a different program key (shadow-gate drift, env binding, target
+          // color space). Draw the admitted subject once on the exact post target under live
+          // state — the same touch the opening plan runs — so any residual variant links here,
+          // behind the pending latch, instead of inside a presented bloom frame.
+          const restore = revealSubjectForCompile(subject);
+          try {
+            touchExactTargetSubject(subject);
+          } catch (error) {
+            console.warn('[render] exact-target admission touch failed', error);
+          } finally {
+            restore();
+          }
+          return result;
         })
         .finally(() => {
           markSubjectPipelinesPending(subject, false);
@@ -8078,21 +8140,30 @@ export const render = {
       // src/. The cards live in their own offscreen scene, so the playable backdrop stays black and
       // its black level is untouched.
       let reflectionEnv = null;
-      let envMap;
+      let envTarget;
       if (scene.background && scene.background.isTexture) {
-        envMap = pmrem.fromEquirectangular(scene.background).texture;
+        envTarget = pmrem.fromEquirectangular(scene.background);
       } else {
         reflectionEnv = createSpaceReflectionEnvironment(THREE);
-        envMap = pmrem.fromScene(
+        envTarget = pmrem.fromScene(
           reflectionEnv.scene, SPACE_REFLECTION_PMREM_SIGMA_RADIANS, 0.1, 1000,
-        ).texture;
+        );
       }
+      const envMap = envTarget.texture;
       pmrem.dispose();
       if (reflectionEnv) reflectionEnv.dispose();
-      // Dispose the previous env GPU texture if we're re-baking (context restore path).
-      if (disposePrevious && previousEnvMap && previousEnvMap !== envMap) {
-        try { previousEnvMap.dispose(); } catch (_) {}
+      // The PMREM output is a render-target texture: Texture.dispose() reaches no listener for
+      // those (initTexture never runs on isRenderTargetTexture), so only disposing the owning
+      // WebGLRenderTarget releases its GL texture, framebuffer, and depth buffer.
+      if (disposePrevious) {
+        const previousTarget = this._envMapTarget;
+        if (previousTarget && previousTarget !== envTarget) {
+          try { previousTarget.dispose(); } catch (_) {}
+        } else if (previousEnvMap && previousEnvMap !== envMap) {
+          try { previousEnvMap.dispose(); } catch (_) {}
+        }
       }
+      this._envMapTarget = envTarget;
       this._envMap = envMap;
       state.render.envMap = envMap;
       setEnvMapForShips(envMap);   // hand it to the visual factory for chrome/authority hulls
@@ -9212,13 +9283,15 @@ export const render = {
     if (this._syncKeyLightShadowFrustum(openingShadowRadius)) this._shadowMapDirty = true;
     if (this._updateShadowFollow(true)) this._shadowMapDirty = true;
     if (this._keyLight && this._keyLight.shadow && this.renderer && this.renderer.shadowMap) {
-      const shadowMapActive = this.renderer.shadowMap.enabled === true
-        && this._keyLight.castShadow === true;
+      // enabled/castShadow are pinned while the setting is on (stable program keys); the
+      // resolved receiver tally is the remaining depth-pass/culling-camera work gate.
+      const shadowMapActive = this._shadowSettingOn === true
+        && this._shadowReceiverCount > 0;
       this._keyLight.shadow.autoUpdate = false;
       this._keyLight.shadow.needsUpdate = shadowMapActive;
       this._shadowRefreshScheduled = shadowMapActive;
       this._activeShadowCamera = shadowMapActive
-        ? prepareActiveShadowCamera(this.renderer, this._keyLight)
+        ? prepareActiveShadowCamera(this.renderer, this._keyLight, this._shadowReceiverCount)
         : null;
     }
     this._syncAsteroidInstanceSubmission(this._activeShadowCamera);
@@ -9571,8 +9644,9 @@ export const render = {
     const shadowFollowChanged = this._updateShadowFollow(false);
     if (this._keyLight && this._keyLight.shadow && this.renderer && this.renderer.shadowMap) {
       const refreshWasPending = this._shadowRefreshScheduled === true;
-      const shadowMapActive = this.renderer.shadowMap.enabled === true
-        && this._keyLight.castShadow === true;
+      // Same pinned-keys contract as the opening path: the tally, not the map flags, gates work.
+      const shadowMapActive = this._shadowSettingOn === true
+        && this._shadowReceiverCount > 0;
       const dirty = shadowMapActive && (
         this._shadowMapDirty !== false
         || shadowFollowChanged
@@ -9597,7 +9671,9 @@ export const render = {
     // so the tight 1400-unit ortho box always covers the local action. DirectionalLight position is
     // an offset from its target; we move both together. No-op unless the shadow map will render.
     if (this._shadowRefreshScheduled) {
-      this._activeShadowCamera = prepareActiveShadowCamera(this.renderer, this._keyLight);
+      this._activeShadowCamera = prepareActiveShadowCamera(
+        this.renderer, this._keyLight, this._shadowReceiverCount,
+      );
     }
     const shadowCamera = this._activeShadowCamera || null;
     if (!holdOpeningPicture && !holdLoadingGpu) this._syncAsteroidInstanceSubmission(shadowCamera);
@@ -9615,10 +9691,15 @@ export const render = {
     const renderState = this.state && this.state.render;
     if (!renderState) return 0;
     const watch = this._openingAdmissionWatch
-      || (this._openingAdmissionWatch = { seen: new Set(), pending: 0 });
+      || (this._openingAdmissionWatch = { seen: new WeakSet(), pending: 0 });
     for (const key of OPENING_ADMISSION_HANDLE_KEYS) {
       const handle = renderState[key];
       if (!handle || typeof handle.then !== 'function' || watch.seen.has(handle)) continue;
+      // WeakSet, not Set: the handle only needs dedup while its owner still references it.
+      // A strong Set pins every settled promise forever, and a resolved promise retains its
+      // result — openingSubmissionPlan objects whose roots arrays hold entire authored
+      // boundary subtrees (~50 meshes each) — so each save/load or sector re-cook leaked one
+      // full boundary on the JS heap even after the GPU side was released.
       watch.seen.add(handle);
       watch.pending += 1;
       Promise.resolve(handle).then(
@@ -10190,9 +10271,15 @@ export const render = {
       this._shadowReceiverCount = receivers;
       this._shadowReceiversDirty = false;
     }
-    const enabled = this._shadowReceiverCount > 0;
-    this.renderer.shadowMap.enabled = enabled;
-    this._keyLight.castShadow = enabled;
+    // shadowMap.enabled and castShadow are baked into every lit material's program key
+    // (shadowMapEnabled and numDirLightShadows). Flapping them with the receiver tally rekeyed
+    // the whole scene at every 0/N boundary, and the first draw under the new state linked the
+    // missing variant inside the presented frame — the mid-flight bloom brick. Keep the
+    // key-visible flags pinned while the setting is on; _shadowReceiverCount still gates the
+    // actual depth pass through shadowMapActive/shadow.needsUpdate, so zero receivers cost no
+    // map work and non-receivers never sample the map (receiveShadow is a per-object uniform).
+    this.renderer.shadowMap.enabled = true;
+    this._keyLight.castShadow = true;
   },
 
   _syncKeyLightShadowFrustum(radius) {

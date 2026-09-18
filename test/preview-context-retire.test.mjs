@@ -26,7 +26,8 @@ function fakeTimers() {
 }
 
 function program(ready) {
-  return { ready, queries: 0, isReady() { this.queries += 1; return this.ready; } };
+  // `program` mirrors the WebGLProgram wrapper's GL handle field: destroyed wrappers lose it.
+  return { ready, queries: 0, program: {}, isReady() { this.queries += 1; return this.ready; } };
 }
 
 test('a preview with nothing linking tears down at once', () => {
@@ -127,6 +128,55 @@ test('a lost context, a destroyed program or a missing entry counts as settled',
   });
   assert.equal(outcome, 'now');
   assert.equal(finished, 1);
+});
+
+test('a dead context settles the whole cohort without another readiness query', () => {
+  const timers = fakeTimers();
+  // isReady() on a dead handle emits a GL warning per call; after context loss the poll must not
+  // query a single captured wrapper.
+  const stale = () => ({
+    program: {},
+    queries: 0,
+    isReady() { this.queries += 1; return false; },
+  });
+  const programs = [stale(), stale(), stale()];
+  const context = { lost: false, isContextLost() { return this.lost; } };
+  let finished = 0;
+  const outcome = retireWhenProgramsReady({
+    programs,
+    parallelCompile: true,
+    context,
+    finish: () => { finished += 1; },
+    setTimer: timers.setTimer,
+    now: timers.now,
+    pollMs: 250,
+  });
+  assert.equal(outcome, 'deferred');
+  assert.equal(programs[2].queries, 1, 'the live-context check ran once');
+  context.lost = true;
+  timers.advance(250);
+  assert.equal(finished, 1, 'the lost context finishes the retire at once');
+  assert.equal(programs.reduce((n, p) => n + p.queries, 0), 1, 'no dead handle is queried again');
+  timers.advance(10_000);
+  assert.equal(timers.pending(), 0);
+});
+
+test('a destroyed wrapper (no program handle) is dropped without querying it', () => {
+  const destroyed = {
+    program: undefined,
+    queries: 0,
+    isReady() { this.queries += 1; return false; },
+  };
+  let finished = 0;
+  const outcome = retireWhenProgramsReady({
+    programs: [destroyed],
+    parallelCompile: true,
+    finish: () => { finished += 1; },
+    setTimer: () => { throw new Error('no poll expected'); },
+  });
+  assert.equal(outcome, 'now');
+  assert.equal(finished, 1);
+  assert.equal(destroyed.queries, 0);
 });
 
 test('the ship preview mount retires its context through the readiness wait', async () => {

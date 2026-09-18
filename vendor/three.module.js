@@ -7244,6 +7244,12 @@ function WebGLProgram( renderer, cacheKey, parameters, bindingStates ) {
 
 		if ( programReady === false ) {
 
+			// SpaceFace: destroy() clears this.program and deletes the GL handle, but compileAsync's
+			// checkMaterialsReady and the game's bloom/admission pollers can still hold this program.
+			// Polling a dead handle warns GL_INVALID_VALUE and never turns true — report ready so the
+			// poll releases its material set instead of spinning every 10 ms for the session.
+			if ( this.program === undefined ) { programReady = true; return true; }
+
 			programReady = gl.getProgramParameter( program, COMPLETION_STATUS_KHR );
 
 		}

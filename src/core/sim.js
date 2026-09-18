@@ -14,6 +14,7 @@ import { createBus } from './eventBus.js';
 import { createGameState } from './gameState.js';
 import { core as coreDefinition } from './coreSystem.js';
 import { partitionUpdateSystems, updateQueueForThisStep } from './catchupPolicy.js';
+import { isHiddenKeepaliveSystem, shouldSkipFullTickSystems } from './presentationFreeze.js';
 
 export const SIM_DT = 1 / 60;
 
@@ -168,6 +169,14 @@ export function createSimulation(options = {}) {
       const tier1 = state.perfRuntime && state.perfRuntime.tier1;
       const countSystems = !!tier1 && tier1.isEnabled();
       try {
+        if (shouldSkipFullTickSystems(state)) {
+          for (const system of updates) {
+            if (!isHiddenKeepaliveSystem(system.name) || typeof system.update !== 'function') continue;
+            if (countSystems) tier1.countSystemInvocation(system.name);
+            system.update(dt, state);
+          }
+          return state;
+        }
         if (core.preStep) {
           if (countSystems) tier1.countSystemInvocation('core.preStep');
           core.preStep(dt, state);

@@ -910,21 +910,28 @@ export function resolveRicochet(ax, az, nx, nz, out = null) {
   return { rx, rz, graze: into };
 }
 
+// Mining beam spool envelope: a beam driven straight off the mining input popped on/off (B10).
+// Attack is shorter than release, and stopping from mid-spool fades from the current power.
+export const MINING_BEAM_ATTACK_S = 0.07;
+export const MINING_BEAM_RELEASE_S = 0.10;
+
 // Mining beam shader structure. The flat additive quad becomes an energy conduit with a real
 // cross-section (hot centerline running out to soft edges, M2), packets of work travelling
 // along the beam (E3), and a bright work-face where the beam meets rock. uSfFlow carries the
 // verb's fiction: extraction pulls matter target -> ship (-1), cut/repair/transfer push energy
-// ship -> target (+1), so the player can read which way value is moving.
+// ship -> target (+1), so the player can read which way value is moving. uSfBeamPower is the
+// shared attack/release radiance scalar; it reaches zero before the meshes are hidden.
 function _applyMiningBeamStructure(material, shared, role) {
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uSfBeamTime = shared.time;
     shader.uniforms.uSfBeamFlow = shared.flow;
+    shader.uniforms.uSfBeamPower = shared.power;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\nvSfBeam = uv;');
     if (role === 'core') {
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfBeamTime;\nuniform float uSfBeamFlow;')
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfBeamTime;\nuniform float uSfBeamFlow;\nuniform float uSfBeamPower;')
         .replace('#include <color_fragment>', `#include <color_fragment>
 {
   float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
@@ -933,18 +940,19 @@ function _applyMiningBeamStructure(material, shared, role) {
   float sfPackets = 0.5 + 0.5 * sin(sfU * 19.0 - uSfBeamTime * 30.0);
   float sfWorkFace = smoothstep(0.82, 1.0, vSfBeam.x);
   float sfMuzzle = smoothstep(0.1, 0.0, vSfBeam.x);
-  diffuseColor.rgb *= sfFilament * (0.7 + 0.55 * sfPackets) + 0.5 * sfWorkFace + 0.25 * sfMuzzle;
+  diffuseColor.rgb *= (sfFilament * (0.7 + 0.55 * sfPackets) + 0.5 * sfWorkFace + 0.25 * sfMuzzle)
+    * uSfBeamPower;
 }`);
     } else {
       shader.fragmentShader = shader.fragmentShader
-        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfBeamTime;\nuniform float uSfBeamFlow;')
+        .replace('#include <common>', '#include <common>\nvarying vec2 vSfBeam;\nuniform float uSfBeamTime;\nuniform float uSfBeamFlow;\nuniform float uSfBeamPower;')
         .replace('#include <color_fragment>', `#include <color_fragment>
 {
   float sfAcross = abs(vSfBeam.y * 2.0 - 1.0);
   float sfSheath = pow(1.0 - sfAcross, 2.9);
   float sfU = uSfBeamFlow > 0.0 ? vSfBeam.x : 1.0 - vSfBeam.x;
   float sfWave = 0.5 + 0.5 * sin(sfU * 7.0 - uSfBeamTime * 11.0);
-  diffuseColor.rgb *= sfSheath * (0.45 + 0.55 * sfWave);
+  diffuseColor.rgb *= sfSheath * (0.45 + 0.55 * sfWave) * uSfBeamPower;
 }`);
     }
   };
@@ -7336,11 +7344,13 @@ export const vfx = {
     glow.visible = false;
     this._scene.add(glow);
 
-    const shaderShared = { time: { value: 0 }, flow: { value: 1 } };
+    const shaderShared = { time: { value: 0 }, flow: { value: 1 }, power: { value: 0 } };
     _applyMiningBeamStructure(mat, shaderShared, 'core');
     _applyMiningBeamStructure(mat2, shaderShared, 'sheath');
 
-    this._miningBeam = { mesh, glow, active: false, t: 0, color: '#60d0ff', shaderShared };
+    this._miningBeam = {
+      mesh, glow, active: false, t: 0, attack: 0, release: 0, color: '#60d0ff', shaderShared,
+    };
   },
 
   _onMiningStart(p) {
@@ -7349,8 +7359,12 @@ export const vfx = {
       this._initMiningBeam();
     }
     if (!this._miningBeam) return;
-    this._miningBeam.active = true;
-    this._miningBeam.t = 0;
+    const beam = this._miningBeam;
+    // Retargeting mid-beam must not re-spool: the attack only resets on an inactive -> active edge.
+    if (!beam.active) beam.attack = 0;
+    beam.release = 0;
+    beam.active = true;
+    beam.t = 0;
     this._miningBeam.targetId = (p && p.targetId) || null;
     this._miningBeam.verb = (p && p.verb) || 'extract';
     const target = p && p.targetId ? this._ent(p.targetId) : null;
@@ -7371,18 +7385,32 @@ export const vfx = {
 
   _onMiningStop() {
     if (!this._miningBeam) return;
+    // The authoritative state is off immediately (perf gates read `active`), but the visible beam
+    // keeps a short release tail so the shutdown reads as the conduit winding down, not a cut (B10).
     this._miningBeam.active = false;
-    this._miningBeam.mesh.visible = false;
-    this._miningBeam.glow.visible = false;
+    this._miningBeam.release = 1;
   },
 
   // Called each frame from update() to reposition the beam quad between ship and contact.
   _updateMiningBeam(dt) {
     const beam = this._miningBeam;
-    if (!beam || !beam.active) return;
+    if (!beam) return;
+    if (!beam.active) {
+      // Release tail: no geometry chase and no transport advance; the shared power scalar winds
+      // down and the pair is hidden when it reaches zero.
+      beam.release = Math.max(0, beam.release - dt / MINING_BEAM_RELEASE_S);
+      if (beam.shaderShared) beam.shaderShared.power.value = beam.release;
+      if (beam.release <= 0) {
+        beam.mesh.visible = false;
+        beam.glow.visible = false;
+      }
+      return;
+    }
     beam.t += dt;
+    beam.attack = Math.min(1, beam.attack + dt / MINING_BEAM_ATTACK_S);
     if (beam.shaderShared) {
       beam.shaderShared.time.value = beam.t;
+      beam.shaderShared.power.value = beam.attack;
       // extract draws refined matter into the hold; every other verb delivers energy to the rock.
       beam.shaderShared.flow.value = (beam.verb === 'extract') ? -1 : 1;
     }
@@ -7430,6 +7458,10 @@ export const vfx = {
       w = 0.8 * pulse;
       gw = 2.5 * pulse;
     }
+    // Spool width is the other half of the attack/release: the conduit grows out of the bell and
+    // collapses back into it, while the power scalar handles radiance.
+    w *= beam.attack;
+    gw *= beam.attack;
 
     const corePos = beam.mesh.geometry.attributes.position.array;
     corePos[0] = sx + nx * w; corePos[1] = 1.5; corePos[2] = sz + nz * w;
@@ -10765,7 +10797,8 @@ export const vfx = {
   },
 
   _miningBeamActive() {
-    return !!(this._miningBeam && this._miningBeam.active);
+    return !!(this._miningBeam
+      && (this._miningBeam.active || this._miningBeam.release > 0));
   },
 
   _tetherCableActive() {

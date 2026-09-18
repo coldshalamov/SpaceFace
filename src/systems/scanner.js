@@ -7,6 +7,7 @@ import { ASTEROIDS } from '../data/mining.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
 import { maxFittedModuleMod, sumFittedModuleMod } from '../core/fittedModules.js';
 import { hash32 } from '../core/rng.js';
+import { takeNearWorkSlice } from '../core/activityScheduler.js';
 import { isPlayerWanted } from './heat.js';
 import { combatFlag } from '../data/featureFlags.js';
 import { weakPointForEntity } from '../data/weakPoints.js';
@@ -870,9 +871,16 @@ export const scanner = {
     const tick = Number.isInteger(state.tick) ? state.tick : 0;
     if (tick % GHOST_CONTACT_CADENCE_TICKS !== 0) return;
     const now = state.simTime || 0;
+    const ghosts = this._ghostScratch || (this._ghostScratch = []);
+    ghosts.length = 0;
     forEachLivingWorldActor(state, (entity) => {
       if (!entity.data) return;
       if (!entity.data.isGhost && !entity.data.ghost) return;
+      ghosts.push(entity);
+    });
+    const slice = takeNearWorkSlice(state, 'scanner', ghosts);
+    for (let i = 0; i < slice.length; i++) {
+      const entity = slice[i];
       const result = tickGhostEscape(entity, state, now);
       if (result.escaped) {
         this.bus.emit('scanner:ghostEscaped', {
@@ -882,7 +890,7 @@ export const scanner = {
           simTime: now,
         });
       }
-    });
+    }
   },
 
   _pulse(state, player, now) {

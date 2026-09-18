@@ -278,6 +278,10 @@ const PLACE_FILES = Object.freeze([
   'places/place_asteroid_rock_c.glb',
   'places/place_asteroid_graffiti.glb',
   'places/place_claim_outpost_base.glb',
+  // PQ-022.heist-receivers-promote: the Tethys heist catcher/fence wear their own KEEP re-authored
+  // bodies; the shared base/refinery files above stay with the World Site stages.
+  'places/place_claim_outpost_catcher.glb',
+  'places/place_claim_outpost_fence.glb',
   // PQ-018 admission: the Wreck Cathedral hero landmark resolves through the same authored-place
   // path as every other place. Its World Site manifest, Ceres placement, and route acceptance are
   // separate PQ-018 phases; registration here only makes the release artifact resolvable.
@@ -1796,6 +1800,68 @@ export function resolveRequiredWholeShipRecord(entity, records, options = {}) {
 }
 
 /**
+ * Statuses a still-mounted boundary may recover from. The prior admission was aborted by its
+ * owner's lifecycle — entity torn down under a kept-GPU recook, a queued job cancelled, an
+ * orphaned swap — which says nothing about the content. Terminal content verdicts
+ * ('unavailable', 'fallback-after-error', 'procedural-settled', same-semantic fallbacks) stay
+ * out: re-requesting those would spin the queue on a real failure.
+ */
+const READMISSION_STATUSES = new Set([
+  'missing',
+  'awaiting-authored-admission',
+  'cancelled-before-load',
+  'orphaned-before-swap',
+  'orphaned-after-pipeline-compile',
+]);
+
+export function authoredReadmissionStatus(status) {
+  return READMISSION_STATUSES.has(status == null ? 'missing' : status);
+}
+
+/**
+ * The entity a kept boundary is currently bound to. `_bindPresentationMesh` stamps
+ * `presentationEntityId` at every reattach, so after a save restore the boundary can resolve
+ * its live owner instead of the object captured when the boundary was built — restore reuses
+ * the mesh but replaces the entity record, and a stale capture would be born dead
+ * (`entity.alive === false`) and abort every re-admission at its first owner check.
+ */
+export function boundaryLiveEntity(boundary, fallback) {
+  const live = authoredRuntimeState();
+  const id = boundary && boundary.userData && boundary.userData.presentationEntityId;
+  const resolved = id != null && live && live.entities && typeof live.entities.get === 'function'
+    ? live.entities.get(id)
+    : null;
+  return resolved && resolved.alive !== false ? resolved : fallback;
+}
+
+/** True when the admission's residency owner is gone — the entity record died mid-admission. */
+export function admissionOwnerInactive(options, entity, error = null) {
+  const isActive = options && options.isResidencyOwnerActive;
+  if (typeof isActive === 'function') {
+    let active;
+    try { active = isActive(); } catch { active = undefined; }
+    if (active === false) return true;
+  }
+  if (entity && entity.alive === false) return true;
+  return !!(error && /owner became inactive/i.test(String(error.message || error)));
+}
+
+/**
+ * Reset an owner-orphaned boundary to a requestable state. Only valid while the boundary is
+ * still mounted: a kept-GPU recook leaves `boundary.parent` set while the restore swaps the
+ * entity graph underneath the in-flight admission. Clearing the settled promise is required —
+ * `requestAuthoredUpgrade` returns it verbatim and would never start the replacement job.
+ */
+export function markAuthoredBoundaryForReadmission(boundary, reason) {
+  if (!boundary || !boundary.userData) return false;
+  boundary.userData.authoredAssetState = 'awaiting-authored-admission';
+  boundary.userData.authoredVisualRoot = 'none-pending-admission';
+  boundary.userData.authoredReadmissionReason = reason || 'owner-inactive';
+  delete boundary.userData.authoredUpgradePromise;
+  return true;
+}
+
+/**
  * Wrap a ship admission substrate in the authored-asset boundary. Pending authored assets stay
  * invisible; the renderer requests admission as soon as the stable boundary joins the scene.
  */
@@ -1852,31 +1918,40 @@ export function wrapShipWithAuthoredParts(entity, fallbackRoot, options = {}) {
     startAuthoredUpgrade(renderer, scene);
   }
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
+    const state = boundary.userData.authoredAssetState;
     const existing = boundary.userData.authoredUpgradePromise;
-    if (existing) return existing;
-    if (!armed) return null;
+    // A settled promise from a lifecycle-aborted admission must not gate re-admission; only an
+    // in-flight or completed request is honoured.
+    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing) delete boundary.userData.authoredUpgradePromise;
+    if (!armed) {
+      // One-shot disarm spent on an aborted admission re-arms for a still-mounted boundary.
+      if (!authoredReadmissionStatus(state)) return null;
+      armed = true;
+    }
     if (!renderer || !scene) return;
     if (!boundaryBelongsToScene(boundary, scene)) {
       return Promise.resolve({ status: 'cancelled-before-queue' });
     }
     armed = false;
     if (trigger) trigger.onBeforeRender = previousBeforeRender;
+    const liveEntity = boundaryLiveEntity(boundary, entity);
     const upgradeOptions = {
       releaseMode,
       requiredWholeShip: options.requiredWholeShip === true
-        || requiresProductionWholeShipForEntity(entity),
+        || requiresProductionWholeShipForEntity(liveEntity),
       onSwap: options.onSwap,
       loadAuthoredPart: options.loadAuthoredPart,
       libraryScope: options.libraryScope,
       bootstrapPlan: options.bootstrapPlan,
-      ...residencyOptionsForBoundary(entity, boundary, renderer),
+      ...residencyOptionsForBoundary(liveEntity, boundary, renderer),
       ...requestOptions,
     };
     boundary.userData.authoredAssetState = 'loading';
     const completion = Promise.resolve(enqueueBoundaryUpgrade(scene, {
       boundary,
       fallbackRoot,
-      entity,
+      entity: liveEntity,
       renderer,
       scene,
       options: upgradeOptions,
@@ -1957,11 +2032,14 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
     if (typeof update === 'function') update(level);
   };
   boundary.userData.requestAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
+    const state = boundary.userData.authoredAssetState;
     const existing = boundary.userData.authoredUpgradePromise;
-    if (existing) return existing;
-    if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return false;
+    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing) delete boundary.userData.authoredUpgradePromise;
+    if (!renderer || !scene || authoredAdmissionStarted(state)) return false;
+    const liveEntity = boundaryLiveEntity(boundary, entity);
     boundary.userData.authoredAssetState = 'loading';
-    const residency = residencyOptionsForBoundary(entity, boundary, renderer);
+    const residency = residencyOptionsForBoundary(liveEntity, boundary, renderer);
     const upgradeOptions = {
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
@@ -1973,7 +2051,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
     const completion = enqueueBoundaryUpgrade(scene, {
       key: `payload:${entity.data.payloadStableId || entity.id}`,
       boundary,
-      entity,
+      entity: liveEntity,
       renderer,
       scene,
       assetUrls: [`${partRoot}${authoredPayloadFileForEntity(entity)}`],
@@ -1981,7 +2059,7 @@ export function buildAuthoredCargoCapsule(entity, options = {}) {
       run: () => upgradeAuthoredCargoCapsuleBoundary(
         boundary,
         fallbackRoot,
-        entity,
+        liveEntity,
         renderer,
         scene,
         upgradeOptions,
@@ -2145,6 +2223,10 @@ function failAuthoredCargoCapsuleAdmission(
   error = null,
 ) {
   releaseBoundaryResidency(renderer, boundary, `payload-${reason}`);
+  if (boundary.parent && admissionOwnerInactive(null, entity, error)) {
+    markAuthoredBoundaryForReadmission(boundary, `payload-${reason}`);
+    return false;
+  }
   fallbackRoot.visible = false;
   boundary.userData.authoredAssetState = 'unavailable';
   boundary.userData.authoredVisualRoot = reason.includes('pipeline')
@@ -2446,24 +2528,27 @@ function wrapStationArchetypeWithAuthoredPart(entity, fallbackRoot, placeFile, o
   };
   const trigger = firstRenderable(fallbackRoot);
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
+    const state = boundary.userData.authoredAssetState;
     const existing = boundary.userData.authoredUpgradePromise;
-    if (existing) return existing;
-    if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return null;
+    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing) delete boundary.userData.authoredUpgradePromise;
+    if (!renderer || !scene || authoredAdmissionStarted(state)) return null;
+    const liveEntity = boundaryLiveEntity(boundary, options.liveEntity || entity);
     boundary.userData.authoredAssetState = 'loading';
-    const residency = residencyOptionsForBoundary(options.liveEntity || entity, boundary, renderer);
+    const residency = residencyOptionsForBoundary(liveEntity, boundary, renderer);
     const upgradeOptions = {
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
-      admissionEntity: options.liveEntity || entity,
+      admissionEntity: liveEntity,
       onSwap: options.onSwap,
       ...residency,
       ...requestOptions,
     };
     const completion = enqueueBoundaryUpgrade(scene, {
       boundary,
-      entity: options.liveEntity || entity,
+      entity: liveEntity,
       run: () => upgradePlaceBoundary(
-        boundary, fallbackRoot, entity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
+        boundary, fallbackRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
       ),
       renderer,
       options: upgradeOptions,
@@ -2551,21 +2636,24 @@ function wrapPlacePropWithAuthoredPart(entity, fallbackRoot, placeFile, options 
   };
   const trigger = firstRenderable(fallbackRoot);
   const startAuthoredUpgrade = (renderer, scene, requestOptions = {}) => {
+    const state = boundary.userData.authoredAssetState;
     const existing = boundary.userData.authoredUpgradePromise;
-    if (existing) return existing;
-    if (!renderer || !scene || authoredAdmissionStarted(boundary.userData.authoredAssetState)) return null;
+    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing) delete boundary.userData.authoredUpgradePromise;
+    if (!renderer || !scene || authoredAdmissionStarted(state)) return null;
+    const liveEntity = boundaryLiveEntity(boundary, entity);
     boundary.userData.authoredAssetState = 'loading';
     const upgradeOptions = {
       releaseMode,
       loadAuthoredPart: options.loadAuthoredPart,
-      ...residencyOptionsForBoundary(entity, boundary, renderer),
+      ...residencyOptionsForBoundary(liveEntity, boundary, renderer),
       ...requestOptions,
     };
     const completion = enqueueBoundaryUpgrade(scene, {
       boundary,
-      entity,
+      entity: liveEntity,
       run: () => upgradePlaceBoundary(
-        boundary, fallbackRoot, entity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
+        boundary, fallbackRoot, liveEntity, placeFile, renderer, scene, upgradeOptions, setActiveVisualRoot,
       ),
       renderer,
       options: upgradeOptions,
@@ -2756,6 +2844,13 @@ function failAuthoredPlaceAdmission(
 ) {
   if (!flags.residencyReleased) releaseBoundaryResidency(renderer, boundary, reason);
   const admissionEntity = options.admissionEntity || entity;
+  // Owner died mid-admission but the boundary stayed mounted (kept-GPU save recook). The abort
+  // is a lifecycle event, not a content verdict — leave the boundary re-requestable so the
+  // restored entity's reattach admits it instead of stranding a required shell at 'unavailable'.
+  if (boundary.parent && admissionOwnerInactive(options, admissionEntity, error)) {
+    markAuthoredBoundaryForReadmission(boundary, reason);
+    return false;
+  }
   if (boundary.parent && hasExplicitAuthoredGeologyPresentation(admissionEntity)) {
     fallbackRoot.visible = true;
     markReadableFallbackLayer(fallbackRoot);
@@ -4169,8 +4264,16 @@ function admitNextUpgradeJob(state) {
     diagnostic.status = 'fallback-after-error';
     diagnostic.error = error && error.message ? error.message : String(error);
     releaseBoundaryResidency(job.renderer, job.boundary, 'queued-upgrade-failed');
-    job.boundary.userData.authoredAssetState = 'fallback-after-error';
-    console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
+    if (job.entity && job.entity.alive === false && job.boundary && job.boundary.parent) {
+      // The job's owner died under a kept boundary (save recook) — a terminal verdict would
+      // strand the restored entity that rebinds to this mesh. Readmission status re-requests.
+      markAuthoredBoundaryForReadmission(job.boundary, 'queued-upgrade-owner-inactive');
+      diagnostic.status = 'awaiting-authored-admission';
+      console.info('[partsLibrary] queued authored composition aborted; owner left before publish');
+    } else {
+      job.boundary.userData.authoredAssetState = 'fallback-after-error';
+      console.warn('[partsLibrary] queued authored composition failed; retaining fallback', error);
+    }
   })
     .finally(() => {
       if (!serialSlotReleased) state.inFlight = Math.max(0, state.inFlight - 1);
@@ -5014,10 +5117,6 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
         try { await disposePreparedAuthoredShip(authored); } catch (cleanupError) { cleanupErrors.push(cleanupError); }
       }
     }
-    // Fail closed: no substitute ship identity. Fix the load/composition bug; do not invent a junk hull.
-    boundary.userData.authoredAssetState = 'unavailable';
-    boundary.userData.authoredVisualRoot = 'none-build-failed';
-    setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
     const failureCauses = error && Array.isArray(error.errors) && error.errors.length
       ? error.errors
       : [error];
@@ -5031,6 +5130,17 @@ async function handleAuthoredBoundaryAdmissionError(boundary, entity, renderer, 
     const ownerInactiveOnly = failureCauses.every(
       (cause) => cause && /owner became inactive/i.test(String(cause && (cause.message || cause))),
     );
+    if ((ownerInactiveOnly || (entity && entity.alive === false)) && boundary.parent) {
+      // Kept-GPU recook: the boundary outlived the entity record that owned this admission.
+      // A terminal 'unavailable' here would strand the restored entity — the mesh is still
+      // mounted and reattach re-requests the upgrade for its live owner.
+      markAuthoredBoundaryForReadmission(boundary, 'owner-inactive');
+    } else {
+      // Fail closed: no substitute ship identity. Fix the load/composition bug; do not invent a junk hull.
+      boundary.userData.authoredAssetState = 'unavailable';
+      boundary.userData.authoredVisualRoot = 'none-build-failed';
+      setPresentationAdmission(entity, PRESENTATION_ADMISSION.unavailable);
+    }
     // A disposed preview rejects its in-flight compile/upload on teardown — the ordinary
     // hover-away case, not a composition defect. Keep the breadcrumb off the warning channel
     // so release evidence only counts real admission failures.

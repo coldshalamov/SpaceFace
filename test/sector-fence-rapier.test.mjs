@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { physics } from '../src/core/physics.js';
 import { consumePhysicsCommand } from '../src/core/physicsAuthority.js';
+import { sectorGlobalOrigin } from '../src/data/sectorCoordinates.js';
 
 const DT = 1 / 60;
 
@@ -44,4 +45,19 @@ test('the fence is a no-op without sector bounds', () => {
   const s = ship(1, 5000, 5000);
   physics._queueSectorFenceImpulses(DT, stateWith([s], null));
   assert.equal(consumePhysicsCommand(s), null);
+});
+
+test('a Ceres currentSectorId does not herd ships toward the boot Helios origin', () => {
+  const ceres = sectorGlobalOrigin('sector_ceres_belt');
+  const hull = ship(7, ceres.x + 40, ceres.z - 20);
+  const state = {
+    tick: 4,
+    bounds: { center: { x: 0, z: 0 }, radius: 2600, hardRadius: 3000 },
+    world: { currentSectorId: 'sector_ceres_belt' },
+    entityList: [hull],
+    entityIndex: null,
+  };
+  physics._queueSectorFenceImpulses(DT, state);
+  assert.equal(consumePhysicsCommand(hull), null,
+    'corridor playable bounds keep a Ceres hull inside the fence');
 });

@@ -34,11 +34,15 @@ check('prints-board', stdout.includes('INFERENCE DIRECTOR BOARD'));
 check('prints-mode', stdout.includes('SUGGESTED MODE:'));
 check('prints-starved-cell', stdout.includes('STARVED'));
 check('prints-opportunity-cell', stdout.includes('OPPORTUNITY'));
+check('prints-count-hint', stdout.includes('COUNT HINT'));
 
 const report = JSON.parse(readFileSync(OUT, 'utf8'));
 check('schema-v2', report.schema === 'spaceface.inferenceDetect.v2');
 check('board-present', report.board && typeof report.board.suggestedMode === 'string');
 check('mode-valid', ['recovery', 'integration', 'starved', 'opportunity', 'repair'].includes(report.board.suggestedMode));
+check('unscoped-pick-present', report.board.unscopedPick && typeof report.board.unscopedPick.wf === 'string', JSON.stringify(report.board.unscopedPick));
+check('unscoped-pick-not-opportunity', report.board.unscopedPick && report.board.unscopedPick.mode !== 'opportunity');
+check('unscoped-default-n', report.nx === 5);
 
 // Every gap names its workflows and its blind spots — a score with no stated
 // blindness invites treating the count as an experience verdict.

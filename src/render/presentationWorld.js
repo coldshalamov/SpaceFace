@@ -15,6 +15,8 @@ export const PRESENTATION_FLAGS = Object.freeze({
   NO_INTERPOLATION: 1 << 0,
   FORCE_RENDER: 1 << 1,
   NEVER_CULL: 1 << 2,
+  PLAYER: 1 << 3,
+  LEDGER: 1 << 4,
 });
 
 const DEFAULT_CAPACITY = 256;
@@ -50,6 +52,10 @@ function presentationFlags(entity) {
   if (flags.noInterp) value |= PRESENTATION_FLAGS.NO_INTERPOLATION;
   if (flags.forceRender) value |= PRESENTATION_FLAGS.FORCE_RENDER;
   if (flags.neverCull) value |= PRESENTATION_FLAGS.NEVER_CULL;
+  if (entity && entity.isPlayer === true) value |= PRESENTATION_FLAGS.PLAYER;
+  if (entity && (entity.farResident === true || entity.fieldResident === true)) {
+    value |= PRESENTATION_FLAGS.LEDGER;
+  }
   return value;
 }
 

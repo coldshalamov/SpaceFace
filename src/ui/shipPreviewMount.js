@@ -1182,6 +1182,7 @@ export function createShipPreviewMount(canvas, opts) {
     retireWhenProgramsReady({
       programs: renderer.info && renderer.info.programs,
       parallelCompile: !!(renderer.extensions && renderer.extensions.has('KHR_parallel_shader_compile')),
+      context: typeof renderer.getContext === 'function' ? renderer.getContext() : null,
       finish: releaseGpu,
     });
   }

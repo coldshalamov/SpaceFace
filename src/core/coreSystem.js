@@ -1,26 +1,15 @@
 // Core system: owns the entity store + lifecycle, the per-step prelude (tick/time/snapshot),
 // the end-of-step lifetime sweep, and the cross-cutting helpers exposed via ctx.helpers (§4.3).
-import { allocateEntityId, makeEntity } from './entity.js';
+import { allocateEntityId, makeEntity, worldLedgerHoldsId } from './entity.js';
 import { isDynamicPhysicsBodyEntity, shouldSyncPhysicsBodyEntity } from './physicsAuthority.js';
 import { mulberry32, hash32, wrapAngle } from './rng.js';
 import { hasActiveSpatialHash } from './spatialQuery.js';
 import { initializePresentationAdmission } from './presentationAdmission.js';
 import { packCombatTable } from './combatTable.js';
-import { beginDirtyTick, markDirty, DIRTY } from './dirtyJournal.js';
+import { beginDirtyTick, markDirty, collectDirtyIds, DIRTY } from './dirtyJournal.js';
 import { stampNearWorkBudget } from './activityScheduler.js';
 
 const DAY_SECONDS = 600; // 10 sim-minutes per in-game "day" (faction decay/conflict cadence)
-
-// Far actor, dressing and field rows keep their id while they exist; see _removeEntityAtIndex.
-function ledgerTableHoldsId(table, id) {
-  return !!(table && table.byId instanceof Map && table.byId.has(id));
-}
-
-function worldLedgerHoldsId(world, id) {
-  return !!world && (ledgerTableHoldsId(world.farActors, id)
-    || ledgerTableHoldsId(world.dressing, id)
-    || ledgerTableHoldsId(world.asteroidField, id));
-}
 
 export const core = {
   name: 'core',
@@ -186,13 +175,28 @@ export const core = {
     for (const e of movables) {
       if (!e || !e.alive) continue;
       if (isMovableEntity(e)) {
+        const noInterp = !!(e.flags && e.flags.noInterp);
+        if (e.physicsSleeping === true && !noInterp) {
+          const svx = e.vel ? Number(e.vel.x) || 0 : 0;
+          const svz = e.vel ? Number(e.vel.z) || 0 : 0;
+          const swy = Number(e.angVel) || 0;
+          const poseStill = e.prevPos
+            && e.prevPos.x === e.pos.x
+            && e.prevPos.z === e.pos.z
+            && e.prevRot === e.rot;
+          if (svx * svx + svz * svz <= 1e-8 && swy * swy <= 1e-8 && poseStill) continue;
+        }
+        const posChanged = !e.prevPos
+          || e.prevPos.x !== e.pos.x
+          || e.prevPos.z !== e.pos.z
+          || e.prevRot !== e.rot;
         e.prevPos.copy(e.pos);
         e.prevRot = e.rot;
         e.prevBank = e.bank;   // snapshot roll for renderer interpolation (Phase 1 banking)
         e.prevPitch = e.pitch; // snapshot pitch lean for renderer interpolation
         const vx = e.vel ? Number(e.vel.x) || 0 : 0;
         const vz = e.vel ? Number(e.vel.z) || 0 : 0;
-        if ((vx * vx + vz * vz) > 1e-8) markDirty(state, e.id, DIRTY.POSE);
+        if ((vx * vx + vz * vz) > 1e-8 || posChanged) markDirty(state, e.id, DIRTY.POSE);
       }
     }
     packCombatTable(state);
@@ -253,31 +257,60 @@ export const core = {
       }
     }
     const list = state.entityList;
-    // Tier-1 causal count: the sweep visits every entity once per tick. One hoisted boolean per
-    // tick; the visit count itself is a length read, not a per-entity call.
+    // Clocks and pose-dirty belong to movers / short-lived extras. Stations and field rocks
+    // do not get a TTL or a transform publish from this sweep. The dead-compact pass still
+    // walks entityList so a skipped clock cannot leak a corpse.
+    const index = state.entityIndex;
+    const clocks = index && index.__spacefaceEntityIndexV1 && index.ready === true
+      && Array.isArray(index.movables)
+      ? index.movables
+      : list;
+    for (let i = 0; i < clocks.length; i++) {
+      const e = clocks[i];
+      if (!e || e.id === state.playerId) continue;
+      if (e.alive && e.ttl !== Infinity) {
+        e.ttl -= dt;
+        if (e.ttl <= 0) {
+          e.alive = false;
+          markDirty(state, e.id, DIRTY.MEMBERSHIP);
+        }
+      }
+      if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) {
+        e.alive = false;
+        markDirty(state, e.id, DIRTY.MEMBERSHIP);
+      }
+      if (e.alive) {
+        const pos = e.pos;
+        const prev = e.prevPos;
+        if (pos && prev && (pos.x !== prev.x || pos.z !== prev.z)) markDirty(state, e.id, DIRTY.POSE);
+        else if (e.prevRot != null && e.rot !== e.prevRot) markDirty(state, e.id, DIRTY.POSE);
+      }
+    }
+    const dirty = collectDirtyIds(
+      state,
+      DIRTY.MEMBERSHIP | DIRTY.POSE,
+      this._lifetimeDirty || (this._lifetimeDirty = []),
+    );
+    const entities = state.entities;
+    const player = entities && typeof entities.get === 'function' ? entities.get(state.playerId) : null;
+    if (player && player.alive && !this._presentationPausedForDock && isMovableEntity(player)) {
+      this._publishPresentation?.('recordTransformIfChanged', player);
+    }
+    for (let i = 0; i < dirty.length; i++) {
+      const e = entities && typeof entities.get === 'function' ? entities.get(dirty[i]) : null;
+      if (!e || e.id === state.playerId || !e.alive) continue;
+      if (!this._presentationPausedForDock && isMovableEntity(e)) {
+        this._publishPresentation?.('recordTransformIfChanged', e);
+      }
+    }
     const tier1 = state.perfRuntime && state.perfRuntime.tier1;
-    if (tier1 && tier1.isEnabled()) tier1.countEntityVisits(list.length, 'lifetime-sweep');
+    if (tier1 && tier1.isEnabled()) {
+      tier1.countEntityVisits(list.length, 'lifetime-sweep');
+    }
     for (let i = list.length - 1; i >= 0; i--) {
       const e = list[i];
-      // Defeat leaves the current player dead on purpose (wreck / recovery latch). Recycle would
-      // hand that id to the next projectile and make helpers.player() return the wrong object.
-      if (e && e.id === state.playerId) {
-        if (e.alive && !this._presentationPausedForDock && isMovableEntity(e)) {
-          this._publishPresentation?.('recordTransformIfChanged', e);
-        }
-        continue;
-      }
-      if (e.alive && e.ttl !== Infinity) { e.ttl -= dt; if (e.ttl <= 0) e.alive = false; }
-      if (e.alive && e.data && e.data.despawnAt != null && state.simTime >= e.data.despawnAt) e.alive = false;
-      if (e.alive) {
-        if (!this._presentationPausedForDock && isMovableEntity(e)) {
-          this._publishPresentation?.('recordTransformIfChanged', e);
-        }
-        continue;
-      }
-      if (!e.alive) {
-        this._removeEntityAtIndex(i, state);
-      }
+      if (e && e.id === state.playerId) continue;
+      if (e && !e.alive) this._removeEntityAtIndex(i, state);
     }
     if (state.entityIndex && state.entityIndex.__spacefaceEntityIndexV1) {
       markEntityIndexSourceSynced(state.entityIndex, list);
@@ -308,6 +341,7 @@ function ensureEntityIndex(state) {
     asteroids: [],
     mineables: [],
     wrecks: [],
+    fx: [],
     mines: [],
     vectorMines: [],
     snares: [],
@@ -350,6 +384,10 @@ function repairEntityIndex(index) {
   if (!Array.isArray(index.asteroids)) index.asteroids = [];
   if (!Array.isArray(index.mineables)) index.mineables = [];
   if (!Array.isArray(index.wrecks)) index.wrecks = [];
+  if (!Array.isArray(index.fx)) {
+    index.fx = [];
+    index.ready = false;
+  }
   if (!Array.isArray(index.mines)) {
     index.mines = [];
     index.ready = false;
@@ -407,6 +445,7 @@ function clearEntityIndex(index) {
   index.asteroids.length = 0;
   index.mineables.length = 0;
   index.wrecks.length = 0;
+  index.fx.length = 0;
   index.mines.length = 0;
   index.vectorMines.length = 0;
   index.snares.length = 0;
@@ -501,6 +540,9 @@ function appendEntityIndex(index, e) {
       index.wrecks.push(e);
       index.mineables.push(e);
       break;
+    case 'fx':
+      index.fx.push(e);
+      break;
     case 'mine':
       // W03 physical mines: shootable (damageables) so clearing a wake is counterplay.
       index.damageables.push(e);
@@ -564,6 +606,7 @@ function removeEntityIndex(index, e) {
   removeFromIndexArray(index.asteroids, e);
   removeFromIndexArray(index.mineables, e);
   removeFromIndexArray(index.wrecks, e);
+  removeFromIndexArray(index.fx, e);
   removeFromIndexArray(index.mines, e);
   removeFromIndexArray(index.vectorMines, e);
   removeFromIndexArray(index.snares, e);

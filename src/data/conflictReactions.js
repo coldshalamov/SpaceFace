@@ -230,8 +230,81 @@ export function depotPatrolLine(kind, tokens = {}) {
   return fillGrowthTokens(template, { depot: String(tokens.depot || 'your depot') });
 }
 
+export const ENDGAME_PULL_LINES = Object.freeze({
+  mega_heist_tessera_core: 'The Tessera routing core is off the barge. 47-A has a body again.',
+  mega_heist_choir_reliquary: 'The Pattern reliquary left the procession. Choir is counting the empty clamps.',
+  capital_boss_tollman: 'The Tollman is down. Sker is rewriting the fee.',
+  capital_boss_ala: 'ALA is down in Ashfall. The grave has a new name.',
+  capital_boss: 'The Coalition heavy is down. Mass decided it.',
+});
+
+export function endgamePullLine(pullId, tokens = {}) {
+  const template = ENDGAME_PULL_LINES[pullId] || 'The pull is done.';
+  return fillGrowthTokens(template, {
+    station: String(tokens.station || ''),
+    module: String(tokens.module || ''),
+    units: String(tokens.units || ''),
+    depot: String(tokens.depot || ''),
+    ace: String(tokens.ace || 'an ace'),
+    head: String(tokens.head || 'a Massline head'),
+  });
+}
+
+export const ACE_TROPHY_BARKS = Object.freeze({
+  faction_scn: Object.freeze([
+    'That {head} is filed to {ace}. You are flying evidence.',
+    'Registry: {head}, provenance {ace}. Do not pretend it is stock.',
+  ]),
+  faction_mts: Object.freeze([
+    'That is {ace}\'s {head}. Someone already priced the blood on it.',
+    'Meridian floor: {head} taken from {ace}. The spread moved.',
+  ]),
+  faction_dmc: Object.freeze([
+    'That {head} used to be {ace}\'s. Long shift if you keep it on.',
+    '{ace} lost that {head}. Crews talk.',
+  ]),
+  faction_reach: Object.freeze([
+    'That is {ace}\'s {head}! You took a trophy!',
+    '{head} off {ace}. Reach knows the lineage.',
+  ]),
+  faction_quiet: Object.freeze([
+    '{ace}\'s {head}.',
+    'Trophy: {head}. Hold.',
+  ]),
+  faction_choir: Object.freeze([
+    'The {head} of {ace} is written. The Pattern reads trophies.',
+    '{ace} is counted in the {head} you wear.',
+  ]),
+  faction_free: Object.freeze([
+    "That's {ace}'s {head}. Word travels.",
+    '{head} taken from {ace}. Leave them the lane or don\'t.',
+  ]),
+  faction_vael: Object.freeze([
+    'Clause: {head} is the trophy of {ace}. Terms amended.',
+    '{ace} appears in the {head}. Prior obligations resume.',
+  ]),
+});
+
+export function aceTrophyBarkFor(factionId, rng, tokens = {}) {
+  const lines = ACE_TROPHY_BARKS[factionId] || ACE_TROPHY_BARKS.faction_free;
+  const idx = typeof rng === 'number' && Number.isFinite(rng)
+    ? ((Math.floor(rng) % lines.length) + lines.length) % lines.length
+    : (typeof rng === 'function' ? Math.floor(Math.max(0, Math.min(0.9999999, rng())) * lines.length) : 0);
+  const line = lines[idx] || lines[0];
+  const ace = String(tokens.ace || 'an ace');
+  const head = String(tokens.head || 'Massline head');
+  return String(line).replace(/\{ace\}/g, ace).replace(/\{head\}/g, head);
+}
+
+export function aceTrophyNewsLine(tokens = {}) {
+  const ace = String(tokens.ace || 'an ace');
+  const head = String(tokens.head || 'a Massline head');
+  const tier = Math.max(1, tokens.tier | 0);
+  return `${ace}'s ${head} is now a trophy — ace tier ${tier}.`;
+}
+
 function fillGrowthTokens(text, tokens) {
-  return String(text || '').replace(/\{(station|module|units|depot)\}/g, (_match, key) => (
+  return String(text || '').replace(/\{(station|module|units|depot|ace|head)\}/g, (_match, key) => (
     tokens[key] != null ? tokens[key] : ''
   ));
 }

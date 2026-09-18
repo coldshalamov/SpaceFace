@@ -1,0 +1,50 @@
+{
+  "schema": "spaceface.package0.ownerChosenSettle.v1",
+  "capturedAt": "2026-09-15T06:16:31.798Z",
+  "ownerChoice": "Gradually come to rest",
+  "scope": "focused V3 adapter and real Rapier physics, shipped starter, empty space, neutral input",
+  "seed": 47,
+  "samples": [
+    {
+      "seconds": 0,
+      "speed": 95
+    },
+    {
+      "seconds": 1,
+      "speed": 86.52825927734375
+    },
+    {
+      "seconds": 3,
+      "speed": 71.78380584716797
+    },
+    {
+      "seconds": 10,
+      "speed": 37.33076095581055
+    },
+    {
+      "seconds": 20,
+      "speed": 14.319812774658203
+    },
+    {
+      "seconds": 40,
+      "speed": 0.17984962463378906
+    }
+  ],
+  "settledBelowQuarterWuSAt": 28.383333333333333,
+  "proof": {
+    "backend": "rapier-dynamic",
+    "sg02Ready": true,
+    "sg02Bodies": 1,
+    "sg02DynamicBodies": 1,
+    "rapierContacts": 0,
+    "contactCaptureEnabled": true,
+    "featuresOutsideStep": {
+      "tumble": false,
+      "weaponImpulseConsequences": false
+    },
+    "physicsBackend": "rapier-dynamic",
+    "flightBackend": "v3",
+    "aiBackend": "sg06-tactical",
+    "profileId": "production"
+  }
+}

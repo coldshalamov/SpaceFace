@@ -167,6 +167,7 @@ import { DEFAULT_RUNTIME_PROFILE_ID } from '../runtime/runtimeProfiles.js';
 import { applyFeatureConfigToMaps } from '../data/featureFlags.js';
 import { bindRuntimeToState } from '../runtime/createAuthoritativeRuntime.js';
 import { partitionUpdateSystems, updateQueueForThisStep } from './catchupPolicy.js';
+import { shouldSkipFullTickSystems } from './presentationFreeze.js';
 
 /**
  * Teardown dependencies are expressed as [dependent, owner] pairs. Dependents release their
@@ -736,10 +737,23 @@ export function createRegistry(ctx) {
     get(name) { return byName.get(name); },
     init: lifecycle.init,
     destroy: lifecycle.destroy,
+    keepalive(dt = 0) {
+      const state = ctx.state;
+      if (input.update) input.update(dt, state);
+      if (save.update) save.update(dt, state);
+    },
     step(dt, tickBoundary = null) {
       const state = ctx.state;
       const perf = ensurePerfRuntime(state);
       const stepStart = perfNow();
+      if (shouldSkipFullTickSystems(state)) {
+        try {
+          this.keepalive(dt);
+        } finally {
+          perf.recordStepTotal(perfNow() - stepStart);
+        }
+        return;
+      }
       // Tier-1 causal counting: one hoisted boolean per step; per-system work is a branch + an
       // integer increment. Counts are workload facts, never durations, so they stay valid under
       // host contention (see perfCounters.js header).

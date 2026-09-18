@@ -62,3 +62,6 @@ assets/**/evidence/*.jpeg
 assets/**/evidence/*.webm
 assets/**/evidence/*.mp4
 assets/**/evidence/*.gif
+
+# User content ("mods") dropped for the PQ-172 loader — player-installed, never shipped source.
+user-content/

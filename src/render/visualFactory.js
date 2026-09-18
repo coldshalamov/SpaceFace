@@ -2940,7 +2940,10 @@ function attachPackagedBody(root, relativeFile, entity) {
   };
   const start = (renderer, scene, requestOptions = {}) => {
     const existing = root.userData.authoredUpgradePromise;
-    if (existing) return existing;
+    // An orphaned admission settles its promise while the kept boundary stays mounted —
+    // honouring it would suppress the restored owner's re-admission forever.
+    if (existing && root.userData.authoredAssetState !== 'orphaned-before-swap') return existing;
+    if (existing) delete root.userData.authoredUpgradePromise;
     if (!renderer) return null;
     if (root.userData.authoredAssetState === 'authored') return Promise.resolve(true);
     root.userData.authoredAssetState = 'loading';

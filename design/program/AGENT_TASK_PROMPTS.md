@@ -22,11 +22,37 @@ Read build_map.md section 1 and do exactly what it says: node scripts/program-di
 
 - **Finish a known exact task** → use Prompts A/B/C below, or
   `node scripts/program-dispatch.mjs --next/--ready/--id`. The queue is unchanged.
-- **Spend inference making the game richer** — NPCs, enemies, sectors, economy, story, graphics, VFX,
-  audio, gameplay feel, content, a playable slice → start at
-  [`INFERENCE_LANES.md`](./INFERENCE_LANES.md). It indexes the reusable `WF-01`–`WF-19` workflows with
-  the `1x`/`3x`/`5x` scale shorthand and a copy-ready activation prompt. Concrete implementation work
-  the lane produces still goes through the normal ownership/packet/acceptance system.
+- **Spend inference making the game better** — say `INFERENCE` (no spec) to
+  look at play and rotate real weaknesses, or `INFERENCE 3 MISSIONS` to stay
+  in a domain → copy [`INFERENCE_GOAL.txt`](./INFERENCE_GOAL.txt). Law:
+  [`INFERENCE_LANES.md`](./INFERENCE_LANES.md). Detect does not assign the
+  unit. Thin rows do not count. Concrete work still obeys ownership / `NOW.md`.
+- **Spend inference on undesigned moments** — busy sim, no designed pocket →
+  copy [`INFERENCE_INTENTIONAL_FUN_GOAL.txt`](./INFERENCE_INTENTIONAL_FUN_GOAL.txt). Law:
+  [`INFERENCE_INTENTIONAL_FUN.md`](./INFERENCE_INTENTIONAL_FUN.md). Overlay, not a second queue.
+
+## Prompt A0 — INFERENCE (think, complete, rotate)
+
+Copy `INFERENCE_GOAL.txt` as the whole prompt. Do not paraphrase.
+
+```text
+INFERENCE
+```
+
+That is the default: five units. Look at play. Infer a real weakness.
+Complete it. Rotate to a different kind. Detect is a hint, not a pick list.
+Or `INFERENCE 8`, `INFERENCE 3 MISSIONS`, `INFERENCE 5 NPCS`, etc.
+Then paste the contents of `design/program/INFERENCE_GOAL.txt`.
+
+## Prompt A0-IF — INFERENCE for undesigned moments
+
+Copy `INFERENCE_INTENTIONAL_FUN_GOAL.txt` as the whole prompt. Do not paraphrase.
+
+```text
+INFERENCE 5 INTENTIONAL
+```
+
+Then paste the contents of `design/program/INFERENCE_INTENTIONAL_FUN_GOAL.txt`.
 
 ## Starting several threads at once
 

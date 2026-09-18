@@ -1,8 +1,11 @@
 <!-- LIFETIME: STABLE -->
 # SpaceFace bounded INFERENCE invocation
 
+Prefer copying [`../../program/INFERENCE_GOAL.txt`](../../program/INFERENCE_GOAL.txt).
+
 ```text
 INFERENCE [N] [SCOPE or WF-ID]
+Bare INFERENCE (no N, no scope) = 5 units. Look, infer, rotate. Detect is a hint.
 
 Current player-facing deficit:
 [what ordinary play lacks]
@@ -13,28 +16,33 @@ Desired player outcome:
 Protected exact paths:
 [only current live collisions, if any]
 
-Read root AGENTS.md, design/program/INFERENCE_LANES.md, the relevant workflow, and the live owner.
+Read root AGENTS.md, design/program/INFERENCE_LANES.md,
+design/program/INFERENCE_GOAL.txt, 02_CREATIVE_CONVERGENCE_LOOP.md,
+the selected workflow's "One production unit" list, and the live owner.
 
-N means sequential committed production units. Plans, tests, reviews, receipts, probes, harnesses,
-and acceptance infrastructure do not count.
+N means sequential COMPLETE production units. Plans, tests, reviews, receipts,
+probes, harnesses, thin table rows, and first drafts do not count.
 
-For each unit: choose one bounded slice, implement production, perform sufficient direct verification
-for the claim, commit, record as implemented or accepted, then continue.
+For each unit:
+CONSIDER two or three real alternatives, then COMPLETE the whole playable
+thing (logical extensions: placement, script, people, density), PROVE with
+the live owner plus a number or test, COMMIT, then ROTATE to a different
+kind of value.
 
-Do not create a candidate portfolio before unit one. Additional support work requires a named
-load-bearing uncertainty and a possible material delta. Do not repair a high-level harness unless it
-is explicitly requested or is the narrowest necessary repair for the claim this unit actually makes.
-Route-unproven is an honest terminal state for the broader claim, not permission to skip direct
-verification of the production change.
+Do not create a candidate portfolio before unit one. Do not skip CONSIDER.
+Do not hit N with reskins. Additional support work requires a named
+load-bearing uncertainty. Do not stall for a capture. Route-unproven is an
+honest terminal state for the broader claim.
 
-Stop at N production units, when the user stops or changes the task, when the environment ends, or
-when every remaining eligible unit has a concrete external blocker. Skip an individually blocked
-candidate while eligible production remains.
+Stop at N complete production units, when the user stops or changes the task,
+when the environment ends, or when every remaining eligible unit has a
+concrete external blocker. Skip an individually blocked or thin candidate
+while eligible production remains.
 ```
 
 Compact form:
 
 ```text
-INFERENCE 20 WORLD — build twenty sequential player-visible world units. Production first; focused
-proof; one commit and record per unit; no acceptance-infrastructure detour.
+INFERENCE — five complete units. Look at play, infer a real weakness, rotate
+kinds. Detect is a hint, not a pick list. Thin rows do not count.
 ```

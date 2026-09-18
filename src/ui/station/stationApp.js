@@ -1078,8 +1078,8 @@ export function createStationApp(rootEl, ctx, opts = {}) {
   }
 
   function refresh(_nextCtx, options = {}) {
-    effects.syncPolicy();
     renderStatus();
+    effects.syncPolicy();
     applyDockAttention({ allowAutoOpen: false, refreshActive: !options.periodic });
     // The global UI loop calls this every 18 frames so live hull/fuel/credit readouts stay current.
     // Station operation screens are event-driven and contain real pointer targets. Rebuilding them

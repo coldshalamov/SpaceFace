@@ -19,6 +19,7 @@ import {
   resolveGamepadBindings,
 } from '../../systems/gamepad.js';
 import { massline2Flag } from '../../data/featureFlags.js';
+import { listUserMods, userContentDirLabel } from '../../data/userContent.js';
 import { MASSLINE_BINDING_PROFILE_SPACE } from '../../core/graphicsProfileBootstrap.js';
 import { DEFAULT_BLOOM_STRENGTH } from '../../render/bloom.js';
 import {
@@ -339,7 +340,7 @@ export const settingsScreen = {
     ctx.bus.emit('settings:changed', payload);
   },
 
-  // Apply a Low/Medium/High preset. `applyQualityPreset` writes only presentation keys, then we
+  // Apply a Performance / Balanced / Quality preset. `applyQualityPreset` writes only presentation keys, then we
   // publish each changed key so the renderer live-applies exactly what moved.
   _applyPreset(ctx, presetId) {
     const applied = applyQualityPreset(ctx.state.settings, presetId);
@@ -455,6 +456,79 @@ export const settingsScreen = {
       rowSelect('Autosave', () => String(g.autosaveIntervalS), [['0', 'Off'], ['60', '60s'], ['120', '120s'], ['300', '300s']], (v) => this._set(ctx, 'gameplay', 'autosaveIntervalS', parseInt(v, 10)));
       rowToggle('Tutorial hints', () => g.tutorialHints, (v) => this._set(ctx, 'gameplay', 'tutorialHints', v));
       rowToggle('Damage numbers', () => !!g.damageNumbers, (v) => this._set(ctx, 'gameplay', 'damageNumbers', v));
+      // Installed content packs (PQ-172.00): JSON the loader validated at boot. Content is
+      // read-only here — mods are installed by dropping files into the content directory.
+      const mods = listUserMods();
+      const modsDir = userContentDirLabel();
+      build.header('Mods');
+      if (!mods.length) {
+        build.note(modsDir
+          ? `No content packs installed. Drop a pack folder into ${modsDir} and restart.`
+          : 'No content packs installed.');
+      } else {
+        if (modsDir) build.note(`Content packs load from ${modsDir}. Restart to pick up changes.`);
+        for (const mod of mods) {
+          const counts = ['weapons', 'modules', 'encounters', 'places']
+            .map((k) => (mod.counts[k] ? `${mod.counts[k]} ${k}` : null))
+            .filter(Boolean).join(' · ');
+          const detail = [mod.description || null, counts || null]
+            .filter(Boolean).join(' — ')
+            + (mod.errors.length ? ` — errors: ${mod.errors.join('; ')}` : '')
+            + (mod.rejected.length ? ` — refused: ${mod.rejected.join('; ')}` : '');
+          const label = mod.origin === 'workshop' && mod.workshopItemId
+            ? `${mod.version || ''} WORKSHOP ${mod.workshopItemId} · ${mod.status}`.trim()
+            : `${mod.version || ''} ${mod.status}`.trim();
+          build.shortcut(mod.name, label, detail || null);
+        }
+      }
+      // Steam Workshop (PQ-172.01): Electron shell only — the bridge is absent in the browser.
+      // Publish words stay hidden until status proves availability, so a direct build or a
+      // signed-out Steam client never shows a dead control.
+      const shell = typeof window !== 'undefined' ? window.spacefaceShell : null;
+      if (shell && typeof shell.workshopStatus === 'function') {
+        const wsNote = build.note('Steam Workshop: checking…');
+        const workshopReady = shell.workshopStatus().then((s) => {
+          wsNote.textContent = s && s.available
+            ? `Steam Workshop: ${s.items.length} subscribed item(s). Sync mirrors them into the content directory; a restart loads them.`
+            : `Steam Workshop unavailable (${(s && s.reason) || 'unknown'}) — publish and sync need the Steam build.`;
+          return !!(s && s.available);
+        }).catch(() => {
+          wsNote.textContent = 'Steam Workshop unavailable.';
+          return false;
+        });
+        const wsWord = (label, fn, note) => {
+          const btn = build.word(label, fn, note);
+          // .k-word's `all: unset` beats the UA [hidden] rule — hide the wrap with inline style.
+          const wrap = btn.parentElement;
+          if (wrap) wrap.style.display = 'none';
+          workshopReady.then((ok) => { if (wrap) wrap.style.display = ok ? '' : 'none'; });
+          return btn;
+        };
+        wsWord('Sync subscribed Workshop items', () => {
+          shell.workshopSync().then((res) => {
+            const n = res && Array.isArray(res.synced) ? res.synced.length : 0;
+            ctx.bus.emit('toast', {
+              text: res && res.ok === false
+                ? `Workshop sync failed: ${res.error || res.reason || 'unknown'}`
+                : `Workshop sync mirrored ${n} pack(s) — restart to load`,
+              kind: 'info', ttl: 5,
+            });
+          }).catch(() => {});
+        }, 'Copies subscribed items into the content directory.');
+        for (const mod of mods) {
+          if (mod.origin === 'workshop' || mod.status === 'invalid') continue;
+          wsWord(`Publish ${mod.name} to Workshop`, () => {
+            shell.workshopPublish(mod.id).then((res) => {
+              ctx.bus.emit('toast', {
+                text: res && res.ok
+                  ? `Published ${mod.name} — Workshop item ${res.itemId}`
+                  : `Publish failed: ${(res && (res.error || res.reason)) || 'unknown'}`,
+                kind: 'info', ttl: 5,
+              });
+            }).catch(() => {});
+          });
+        }
+      }
     } else if (refs.active === 'Access') {
       const ac = s.accessibility || (s.accessibility = { colorblindMode: 'none', highContrast: false, flashReduce: false, dyslexiaFont: false,
         motionPreference: 'system', captions: true, audioCues: true, captionSize: 'medium', captionBackground: true });

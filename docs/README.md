@@ -38,6 +38,8 @@ This is the navigation front door for engineering and world-content documentatio
 - **Navigation/reference:** `MODULE_MAP.md`, `COMMON_BUGS.md`, and `SEARCH_CONTEXT.md`.
 - **Generated indexes:** `EVENT_ROUTING.md` and `SYSTEM_REGISTRY.md`; regenerate with `npm run build:indexes`.
 - **Historical evidence:** handoffs, reviews, old audit reports, and captures. They explain; they do not dispatch.
+- **Retired directives:** [`FRONTEND_OVERHAUL_DIRECTIVE.md`](./FRONTEND_OVERHAUL_DIRECTIVE.md) and
+  [`GAMEPLAY_QOL_OVERHAUL.md`](./GAMEPLAY_QOL_OVERHAUL.md) are stubs. Follow the doors they name.
 
 ## Maintenance
 

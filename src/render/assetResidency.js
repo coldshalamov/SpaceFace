@@ -353,12 +353,17 @@ export function createAssetResidencyRegistry(options = {}) {
     return false;
   }
 
+  // Cache-lease roles: owners that exist only to keep a decoded blueprint/package reusable while
+  // no live boundary needs it. `render-package-cache` covers decoded packages; `decode-cache` is
+  // the same lease for source-route GLB blueprints (assetLoader's decodeCacheOwner).
   function isRenderPackageCacheOwner(metadata) {
-    return String(metadata && metadata.role || '').trim().toLowerCase() === 'render-package-cache';
+    const role = String(metadata && metadata.role || '').trim().toLowerCase();
+    return role === 'render-package-cache' || role === 'decode-cache';
   }
 
   /**
-   * Release decoded render-package cache owners that no longer have a presentation owner.
+   * Release decoded cache owners (render packages and source-route blueprint leases) that no
+   * longer have a presentation owner.
    *
    * The package loader keeps one cache owner so content-addressed packages can be reused while a
    * live boundary, warm sector, or preview retains them. That owner is intentionally not part of
@@ -366,8 +371,15 @@ export function createAssetResidencyRegistry(options = {}) {
    * owner is a mixed lifetime and must stay pinned. Once the cache owner is the *only* owner, however,
    * retaining it makes every traversed package permanent even when the total heap is below the global
    * governor budget. This explicit boundary cleanup is the release point for that soft cache lease.
+   *
+   * `options.minAgeMs` gates in-sector callers: an entry keeps its cache lease until it has been
+   * idle at least that long (idle = since registration or its last owner release), so a boundary
+   * that pops back inside the residency radius still reuses the warm decode while a package whose
+   * content departed for good is reclaimed instead of accumulating for the whole sector.
    */
-  function releaseUnreferencedCacheOwners(reason = 'cache-only-residency-cleanup') {
+  function releaseUnreferencedCacheOwners(reason = 'cache-only-residency-cleanup', options = {}) {
+    const minAgeMs = Number.isFinite(Number(options.minAgeMs)) ? Math.max(0, Number(options.minAgeMs)) : 0;
+    const nowMs = now();
     // Only the GPU byte totals are needed. Building two full diagnostics() tables here (a frozen,
     // sorted row per asset with owner-role sets) was a 445 ms freeze on every jump's sector exit
     // (2026-09-13 profile); the totals are the same sum over memory units diagnostics() reports.
@@ -377,6 +389,7 @@ export function createAssetResidencyRegistry(options = {}) {
 
     for (const entry of [...assets.values()]) {
       if (entry.state !== 'resident' || hasActiveRequestForEntry(entry)) continue;
+      if (minAgeMs > 0 && nowMs - entry.lastReleaseAtMs < minAgeMs) continue;
       const ownerRecords = [...entry.owners.entries()];
       const cacheOwners = ownerRecords.filter(([, metadata]) => isRenderPackageCacheOwner(metadata));
       if (cacheOwners.length === 0 || cacheOwners.length !== ownerRecords.length) continue;

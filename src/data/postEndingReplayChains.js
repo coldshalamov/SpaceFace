@@ -106,6 +106,12 @@ export function postEndingReplayChain(choiceId) {
   return POST_ENDING_REPLAY_BY_CHOICE[choiceId] || null;
 }
 
+/** Post-ending pulls (PQ-170.02) unlock once a replay chain is live. Tests may stamp the same slice. */
+export function endgamePullsUnlocked(state) {
+  const run = state && state.missions && state.missions.postEndingReplay;
+  return !!(run && run.chainId);
+}
+
 export function validatePostEndingReplayChains() {
   const errors = [];
   const expected = [...ENDING_IDS, SANDBOX_ID];

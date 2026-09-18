@@ -103,8 +103,9 @@ before/after evidence.
 ## D. Process rules for this program
 
 1. **No packet closes without numbers.** Before/after values for the bar it claims, from a
-   deterministic scenario, plus one normal-speed capture at the shipping camera for anything
-   player-felt. "It follows the path" is not a number.
+   deterministic scenario. "It follows the path" is not a number. A shipping-camera still is
+   optional and never a close gate (owner 2026-09-16; `build_map.md` §1.3.2). Historical
+   “capture owed” notes do not block `implemented`.
 2. **A test that pins anti-vision behaviour is a defect.** Rewrite the assertion with the
    VISION.md sentence in its message. Re-freeze a golden only with the causal diff recorded
    (`docs/COMMON_BUGS.md` §8); never to pass.

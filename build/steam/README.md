@@ -13,6 +13,7 @@ are the ones only the account holder can do. Do them in order.
 | Store page art, screenshots and achievement icons (achieved + unachieved) at Steam's exact sizes + a local preview of the page | `build/store/steam/` (icons in `achievements/`), `build/store/preview.html` | `npm run build:store-assets` (`npm run check:store-assets`) |
 | Unpacked Windows build for a SteamPipe depot + rendered build scripts | `dist/steam/win-unpacked/`, `build/steam/output/` | `npm run dist:steam` |
 | SteamPipe script templates | `build/steam/scripts/app_build_APPID.vdf`, `depot_build_DEPOTID.vdf` | — |
+| Workshop publish/subscribe for the user content directory (PQ-172.01) | `electron/workshopMods.cjs` + the `workshop()` accessor on the Steam adapter; Settings → Gameplay → Mods shows the row | `npm run check:pq172` |
 
 In game, achievements unlock locally in every build (browser and desktop), show a one-line notice
 and are listed under **Achievements** on the title screen's fine line and in Pause → Operations. The
@@ -139,3 +140,18 @@ upload from `build/store/steam/`:
 Store copy for all five launch languages is in `src/localization/storeCopy.js`.
 
 Then submit the store page and the build for Steam review from the partner site.
+
+## 7. Workshop (content packs, PQ-172.01)
+
+The Steam build exposes Workshop publish/subscribe for the user content directory
+(`electron/workshopMods.cjs` over the same optional `steamworks.js` binding). On the partner site:
+
+1. Under **Workshop → General**, enable Steam Workshop for the app (UGC, "in-game or on disk" items).
+2. Nothing else needs configuring: items are created with `createItem`/`updateItem` at publish time
+   and tagged `spaceface-content-pack`.
+
+Player-side: **Settings → Gameplay → Mods** lists every pack in the content directory, offers
+**Publish to Workshop** for local packs, and **Sync subscribed Workshop items** mirrors subscribed
+items into `workshop-<itemId>` folders under the same directory the JSON loader scans. Workshop
+packs are data-only — mirrored JSON goes through the same validators as hand-dropped packs, and
+script mods are not possible.

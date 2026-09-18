@@ -245,6 +245,7 @@ const ZONE_HOSTILE_PLAYER_CLEARANCE = 1200; // zone-anchored hostiles never spaw
 const AMBIENT_HEADROOM = 8; // REVAMP 2.1 — max live-ship slots ambient may reserve; the rest (MAX-8) stays for encounters
 const CRITICAL_SPAWN_RETRY_TICKS = 15;
 const WORLD_RECORD_GC_TICKS = 60;
+const ARRIVAL_RESIDENCY_BUDGET = 1;
 const PALETTE_CLASS_BY_REF = new Map(Object.entries(SECTOR_PALETTE_CLASSES).map(([key, value]) => [value, key]));
 const DRESSING_RADIUS = Object.freeze({
   place_lane_beacon: 18,
@@ -373,6 +374,7 @@ export const world = {
     this._sectorSeq = 0;          // legacy counter (kept for compat; residency epoch owns content RNG)
     this._tethysRunEntities = {};
     this._nextCriticalSpawnTick = 0;
+    this._pendingResidency = [];
     this._vestaDecisionSignature = null;
     this._vestaDecisionNeedsRebind = false;
     this._pallasDecisionSignature = null;
@@ -778,6 +780,7 @@ export const world = {
   _applyResidencyPlan(membershipSectorId, opts = {}) {
     const state = this.state;
     this._ensureResidencyState();
+    this._pendingResidency = [];
     const focus = opts.focusGlobal
       || this._playerGlobalPos()
       || sectorGlobalOrigin(membershipSectorId);
@@ -803,8 +806,16 @@ export const world = {
       }
     }
 
-    // Materialize / promote first so demotion never leaves the player with zero content mid-plan.
+    const slice = this._arrivalSliceEnabled(opts);
+    const immediate = [];
+    const deferred = [];
     for (const id of plan.materialize) {
+      if (!slice || id === membershipSectorId) immediate.push(id);
+      else deferred.push(id);
+    }
+
+    // Materialize / promote first so demotion never leaves the player with zero content mid-plan.
+    for (const id of immediate) {
       const tier = plan.tiers.get(id);
       const restoreDurableRecords = opts.restoreDurableRecords === true
         && id === membershipSectorId
@@ -822,12 +833,22 @@ export const world = {
       }
     }
     // Sync FULL/REDUCED transitions for already-materialized bags (enemies/dressing LOD).
-    for (const id of plan.materialize) {
+    for (const id of immediate) {
       const tier = plan.tiers.get(id);
       const restoreDurableRecords = opts.restoreDurableRecords === true
         && id === membershipSectorId
         && tier === RESIDENCY_TIER.FULL;
       this._syncSectorTierContent(id, tier, { restoreDurableRecords });
+    }
+
+    if (deferred.length) {
+      this._pendingResidency = deferred.map((id) => ({
+        sectorId: id,
+        tier: plan.tiers.get(id),
+        reason: opts.reason || 'residency',
+        membershipSectorId,
+        noTeleport: !!opts.noTeleport,
+      }));
     }
 
     this.bus.emit('world:residency', {
@@ -840,7 +861,43 @@ export const world = {
       reason: opts.reason || 'residency',
       tick: state.tick | 0,
       noTeleport: !!opts.noTeleport,
+      pending: this._pendingResidency.map((job) => job.sectorId),
     });
+  },
+
+  _arrivalSliceEnabled(opts = {}) {
+    if (opts.restoreDurableRecords === true || opts.syncResidency === true) return false;
+    return !!(this.state && this.state.world && this.state.world.sliceArrival === true);
+  },
+
+  _drainResidencyQueue(budget = ARRIVAL_RESIDENCY_BUDGET) {
+    const jobs = this._pendingResidency;
+    if (!jobs || !jobs.length) return 0;
+    const limit = Math.max(1, Math.floor(Number(budget) || ARRIVAL_RESIDENCY_BUDGET));
+    let ran = 0;
+    while (ran < limit && jobs.length) {
+      const job = jobs.shift();
+      this._ensureSectorMaterialized(job.sectorId, job.tier, { restoreDurableRecords: false });
+      this._setResidentMeta(job.sectorId, job.tier, job.reason || 'residency');
+      this._syncSectorTierContent(job.sectorId, job.tier, { restoreDurableRecords: false });
+      ran++;
+    }
+    if (!jobs.length) {
+      const state = this.state;
+      this.bus.emit('world:residency', {
+        sectors: Object.keys(state.world.residentSectors).sort().map((sectorId) => ({
+          sectorId,
+          tier: state.world.residentSectors[sectorId].tier,
+          epoch: state.world.residentSectors[sectorId].epoch,
+        })),
+        membershipSectorId: state.world.currentSectorId,
+        reason: 'arrival-slice',
+        tick: state.tick | 0,
+        noTeleport: true,
+        pending: [],
+      });
+    }
+    return ran;
   },
 
   _setResidentMeta(sectorId, tier, reason) {
@@ -2901,6 +2958,7 @@ export const world = {
   // =========================================================================================
   update(dt, state) {
     if (state.mode !== 'flight') return;
+    this._drainResidencyQueue(ARRIVAL_RESIDENCY_BUDGET);
     if (state.run?.kind === 'survival' && state.run.phase !== 'inactive') {
       this._tickFrameOrigin(state);
       this._tickWorldOneOffSpin(dt, state);

@@ -39,6 +39,9 @@ export async function cookLiveSceneGpu(state, options = {}) {
     : prepareStartupGpuResidency;
   const buffers = await prepare(renderer, scene, {
     includeGeometry: true,
+    // The cook rebuilds the world: dormant plume/RCS/pool layers sit at count 0, and skipping
+    // them leaves their full-capacity instance buffers for the first 0->N draw inside a frame.
+    includeEmpty: true,
     yieldToMain: options.yieldToMain,
     onBlockingSlice: options.onBlockingSlice,
   });

@@ -617,18 +617,23 @@ function updateIntegrity(cohort) {
 function collectMassBodies(director, state) {
   const scratch = director.massScratch;
   let n = 0;
-  const list = state && state.entityList;
-  for (let i = 0; i < (list ? list.length : 0); i++) {
-    const entity = list[i];
-    if (!entity || !entity.pos || entity.alive === false) continue;
-    if (!isHazard(entity)) continue;
+  const addHazard = (entity) => {
+    if (!entity || !entity.pos || entity.alive === false) return;
+    if (!isHazard(entity)) return;
     const slot = massSlot(scratch, n++);
     slot.x = finite(entity.pos.x);
     slot.z = finite(entity.pos.z);
     slot.radius = Math.max(4, finite(entity.radius, 8));
     slot.well = false;
     slot.id = entity.id;
-  }
+  };
+  // Collidables already exclude dressing FX and non-solid ghosts. Ships fail isHazard.
+  const index = state && state.entityIndex;
+  const collidables = index && index.__spacefaceEntityIndexV1 && index.ready === true
+    ? index.collidables
+    : null;
+  const list = collidables || (state && state.entityList);
+  for (let i = 0; i < (list ? list.length : 0); i++) addHazard(list[i]);
   const fields = state && state.fields;
   const snap = fields && (Array.isArray(fields.active) && fields.active.length
     ? fields.active

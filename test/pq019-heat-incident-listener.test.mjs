@@ -15,6 +15,7 @@ import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { combat, makeEnemySpawnSpec } from '../src/systems/combat.js';
 import { collisionConsequences } from '../src/systems/collisionConsequences.js';
 import { lootShards } from '../src/systems/lootShards.js';
+import { CREDIT_CHIP_KIND } from '../src/data/killRewards.js';
 import {
   captureEntityRecord,
   createEmptyRecordsBag,
@@ -97,10 +98,21 @@ function withLootShardsEnabled(fn) {
   }
 }
 
+function isKillBurstItem(item) {
+  if (!item) return false;
+  if (typeof item.commodityId === 'string' && item.commodityId) return true;
+  // AC-01 moved campaign kill credits onto physical chips. They ride the same loot:drop burst
+  // as scrap and have no commodityId — requiring every item to carry one silently dropped the
+  // whole hostile burst after that change.
+  return item.kind === CREDIT_CHIP_KIND && Number(item.credits || item.amount) > 0;
+}
+
 function shardDropsOf(run) {
   return run.lootDrops.filter((drop) => (
-    Array.isArray(drop.items) && drop.items.length > 0
-      && drop.items.every((item) => item && item.commodityId)
+    drop && drop.source === 'kill_burst'
+    && Array.isArray(drop.items) && drop.items.length > 0
+    && drop.items.every(isKillBurstItem)
+    && drop.items.some((item) => item.commodityId)
   ));
 }
 

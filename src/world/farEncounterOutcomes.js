@@ -1,7 +1,10 @@
 // Off-glass NPC vs NPC is a scheduled outcome, not a 60 Hz dogfight.
 // Deterministic from seed + ids + simTime. Does not promote either body.
+// Motion uses worldCatchup ballistic drift; identity uses encounterCausality fingerprints.
 
 import { hash32 } from '../core/rng.js';
+import { ballisticDrift } from './worldCatchup.js';
+import { encounterFingerprint, resolvedEncounterFingerprint } from './encounterCausality.js';
 
 const DELAY_MIN_S = 8;
 const DELAY_SPAN_S = 12;
@@ -18,6 +21,16 @@ function liveShip(rec) {
   return !!(rec && rec.alive !== false && rec.type !== 'wreck' && rec.pos);
 }
 
+function driftRecordTo(rec, fromT, toT) {
+  const dt = toT - fromT;
+  if (!(dt > 0)) return;
+  const drifted = ballisticDrift(rec.pos, rec.vel, rec.rot, rec.angVel, dt);
+  rec.pos = drifted.pos;
+  rec.vel = drifted.vel;
+  rec.rot = drifted.rot;
+  rec.angVel = drifted.angVel;
+}
+
 export function resolveFarEncounters(state, simTime) {
   const table = state && state.world && state.world.farActors;
   if (!table || !Array.isArray(table.rows) || table.rows.length < 2) return 0;
@@ -25,6 +38,7 @@ export function resolveFarEncounters(state, simTime) {
   if (!(grid instanceof Map)) return 0;
   const t = Number.isFinite(simTime) ? simTime : 0;
   const seed = (state.meta && state.meta.seed) >>> 0 || 1;
+  const sectorId = state.world && state.world.currentSectorId;
   let resolved = 0;
 
   for (const bucket of grid.values()) {
@@ -50,7 +64,24 @@ export function resolveFarEncounters(state, simTime) {
         }
         if (t < due) continue;
 
-        const roll = hash32(seed, a.id, b.id, Math.floor(due));
+        driftRecordTo(a, due, t);
+        driftRecordTo(b, due, t);
+
+        const lo = a.id < b.id ? a : b;
+        const hi = a.id < b.id ? b : a;
+        const causality = {
+          fingerprint: encounterFingerprint({
+            seed,
+            encounterId: `far:${lo.id}:${hi.id}`,
+            shapeId: 'off_glass_fight',
+            sectorId,
+            zoneId: 'far-cell',
+          }),
+          shapeId: 'off_glass_fight',
+          sectorId,
+        };
+        const experience = resolvedEncounterFingerprint(causality, 'killed');
+        const roll = hash32(seed, causality.fingerprint, Math.floor(due));
         const aWins = (roll & 1) === 0;
         const winner = aWins ? a : b;
         const loser = aWins ? b : a;
@@ -58,6 +89,8 @@ export function resolveFarEncounters(state, simTime) {
         loser.type = 'wreck';
         loser.vel = { x: 0, z: 0 };
         loser.nextEventAtT = -1;
+        loser.encounterFingerprint = causality.fingerprint;
+        loser.resolvedEncounterFingerprint = experience && experience.fingerprint;
         winner.nextEventAtT = t + WINNER_COOLDOWN_S;
         resolved++;
       }

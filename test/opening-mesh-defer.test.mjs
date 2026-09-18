@@ -5,6 +5,7 @@ import {
   applyFirstPlayablePaintRelease,
   freezeOpeningGraphPublication,
   releaseOpeningMeshDefer,
+  shouldScheduleFirstPlayablePaintRelease,
 } from '../src/render/renderer.js';
 
 test('first-playable-paint always clears mesh streaming defer even off the flight mode', () => {
@@ -130,6 +131,42 @@ test('a passing opening validation stamps firstPlayableFrameAt and releases the 
   assert.equal(Number.isFinite(owner.state.render.firstPlayableFrameAt), true);
   assert.equal(owner._deferNoncriticalMeshStreaming, false);
   assert.equal(owner._openingFirstPicturePrepared, false);
+});
+
+test('a same-sector recook flight still schedules the paint release for its re-armed defer', () => {
+  // F9/Continue in the cooked sector keeps the first-playable receipt finite but
+  // mode:changed -> 'flight' re-arms the streaming defer. Gating the latch on the
+  // receipt alone parked streaming for the whole post-reload flight: the reconcile
+  // flag never cleared and no new entity gained a mesh.
+  const owner = {
+    state: { mode: 'flight', render: { firstPlayableFrameAt: 1234 } },
+    _firstPlayablePaintScheduled: false,
+    _deferNoncriticalMeshStreaming: true,
+  };
+  assert.equal(shouldScheduleFirstPlayablePaintRelease(owner), true);
+});
+
+test('the paint latch stays armed for the opening flight and does not refire after release', () => {
+  const opening = {
+    state: { mode: 'flight', render: {} },
+    _firstPlayablePaintScheduled: false,
+    _deferNoncriticalMeshStreaming: true,
+  };
+  assert.equal(shouldScheduleFirstPlayablePaintRelease(opening), true);
+  opening._firstPlayablePaintScheduled = true;
+  assert.equal(shouldScheduleFirstPlayablePaintRelease(opening), false);
+  const steady = {
+    state: { mode: 'flight', render: { firstPlayableFrameAt: 1234 } },
+    _firstPlayablePaintScheduled: false,
+    _deferNoncriticalMeshStreaming: false,
+  };
+  assert.equal(shouldScheduleFirstPlayablePaintRelease(steady), false);
+  const docked = {
+    state: { mode: 'station', render: {} },
+    _firstPlayablePaintScheduled: false,
+    _deferNoncriticalMeshStreaming: true,
+  };
+  assert.equal(shouldScheduleFirstPlayablePaintRelease(docked), false);
 });
 
 test('the paint release keeps working when the first painted frame is no longer flight', () => {

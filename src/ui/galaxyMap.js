@@ -1129,11 +1129,15 @@ function visitIndexedLists(lists, fn) {
 function visitClaimMarkerEntities(state, fn) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.ready === true) {
-    visitIndexedLists([index.asteroids, index.stations], fn);
-    const list = state.entityList || [];
-    for (let i = 0; i < list.length; i++) {
-      const entity = list[i];
-      if (entity && entity.type === 'fx') fn(entity);
+    if (Array.isArray(index.fx)) {
+      visitIndexedLists([index.asteroids, index.stations, index.fx], fn);
+    } else {
+      visitIndexedLists([index.asteroids, index.stations], fn);
+      const list = state.entityList || [];
+      for (let i = 0; i < list.length; i++) {
+        const entity = list[i];
+        if (entity && entity.type === 'fx') fn(entity);
+      }
     }
     const dressing = state.world && state.world.dressing;
     const rows = dressing && dressing.rows;
@@ -3426,6 +3430,7 @@ export const galaxyMapScreen = {
   _engageHandler: null,
   _engageSubscribed: false,
   _inspectorDetailsHtml: null,
+  _lastInspectorTarget: null,
   _setCourseHandler: null,
   _scaleButtons: [],
   // LOCAL contact memory. Cosmetic, screen-owned, never written into sim state.
@@ -4881,6 +4886,15 @@ export const galaxyMapScreen = {
     this._renderPlaceActions(state);
 
     const t = this._selectedTarget;
+    // A new selection re-seats the action band at its top so the primary action is never
+    // clipped: the band is a scrollable clip, and focus-following on a previously clicked
+    // action can otherwise keep the primary scrolled out of the paint (release soak hit
+    // this — Set Waypoint laid out above the clip while a focused sibling held the scroll).
+    if (t !== this._lastInspectorTarget) {
+      const actions = this._root.querySelector('.gm-inspector-actions');
+      if (actions && actions.scrollTop !== 0) actions.scrollTop = 0;
+      this._lastInspectorTarget = t;
+    }
     if (!t) {
       // NO SELECTION IS NOT AN EMPTY PANEL. The active tab renders with a null selection —
       // Overview falls through to the four always-present navigation answers, so the inspector

@@ -91,6 +91,12 @@ try {
   });
 
   await waitForVisible(page, '[data-screen="station"] .sx-dock', DOCK_TIMEOUT_MS, 'command dock after dock');
+  // The station sheet is injected on first dock; measuring geometry before it applies would grade
+  // the browser's default styles, not the shipped layout.
+  await page.waitForFunction(() => {
+    const link = document.getElementById('sx-station-orbital-css');
+    return !!(link && link.sheet && link.sheet.cssRules && link.sheet.cssRules.length);
+  }, null, { timeout: DOCK_TIMEOUT_MS });
 
   // ---- structure: one dock, six destinations, four actions, a labelled tabpanel ----
   const shell = await page.evaluate(() => {
@@ -214,10 +220,18 @@ try {
   const marketMotion = kinetic.find((entry) => entry.id === 'market');
   const shipworksMotion = kinetic.find((entry) => entry.id === 'shipworks');
   const ledgerMotion = kinetic.find((entry) => entry.id === 'ledger');
-  assert.ok(marketMotion.scale > 1.25 && parseFloat(marketMotion.lift) < -10,
+  // The Orbital dock magnifies icon artwork only: labels read at a fixed size and hitboxes never
+  // move, so the lift is a few pixels on the seat rather than the word-box travel of earlier shells.
+  assert.ok(marketMotion.scale > 1.25 && parseFloat(marketMotion.lift) <= -2,
     'pointer target should respond physically, got: ' + JSON.stringify(marketMotion));
-  assert.ok(marketMotion.scale <= 1.32 && parseFloat(marketMotion.lift) >= -13,
+  assert.ok(marketMotion.scale <= 1.32 && parseFloat(marketMotion.lift) >= -5,
     'dock response should stay controlled rather than ballooning: ' + JSON.stringify(marketMotion));
+  const marketBoxHover = await marketTile.boundingBox();
+  assert.ok(marketBoxHover
+    && Math.abs(marketBoxHover.width - marketBox.width) < 0.6
+    && Math.abs(marketBoxHover.height - marketBox.height) < 0.6,
+    'the magnetic field must not move or resize the destination hitbox: '
+      + JSON.stringify({ rest: marketBox, hover: marketBoxHover }));
   assert.ok(shipworksMotion.scale > 1.01 && shipworksMotion.scale < marketMotion.scale,
     'magnetic response should yield through neighboring items, got: ' + JSON.stringify(shipworksMotion));
   assert.ok(ledgerMotion && Math.abs(ledgerMotion.scale - 1) < 0.01,

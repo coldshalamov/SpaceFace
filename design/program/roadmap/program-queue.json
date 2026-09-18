@@ -10655,7 +10655,7 @@
       "priority": 493,
       "title": "Tethys heist catcher and fence read as their roles",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "blender",
@@ -10673,7 +10673,9 @@
         "npm run check:pq019c:mission",
         "npm run check:asset-reachability"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-022-heist-receivers-promote-REPORT.md"
+      ],
       "brief": "The lawful catcher and covert fence on the PQ-019 Tethys heist route still wear the shared place_claim_outpost_base / place_claim_outpost_refinery bodies, so the two receivers read as one generic outpost (PQ-019 H2 facility REVISE). KEEP re-authors exist at 7761327b (tag archive/pre-squash-2026-09-08; builder tools/blender/build_claim_outpost_receiver_facility_material_truth_v1.py): an open-mouth impound fork and an asymmetric shielded-handoff L. Recover them, package release GLBs, and give the two heist facilities their own place ids without changing the World Site stages that also use the base/refinery bodies. DONE WHEN: at the Tethys chase camera (144 WU) a stranger names the catcher as the lawful receiver and the fence as the covert one; sockets, collision hull, AABB and +X approach are unchanged; check:pq019a:facility-embodiment and check:pq019c:mission stay green.",
       "blocker": null
     },
@@ -17504,7 +17506,7 @@
       "priority": 456,
       "title": "Two mega-heists and two capital bosses",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-033.03"
       ],
@@ -17523,7 +17525,9 @@
         "npm run check:faction-standings",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-170.02-REPORT.md"
+      ],
       "brief": "Authored at 47-A craft; physics-solvable. DONE WHEN: Owner verdict per piece."
     },
     {
@@ -17532,7 +17536,7 @@
       "priority": 457,
       "title": "Legendary lines",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [
         "PQ-033.03"
       ],
@@ -17551,7 +17555,9 @@
         "npm run check:faction-standings",
         "npm run check:save-schema"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-170.03-REPORT.md"
+      ],
       "brief": "Ace trophy heads with lineage and recognition. DONE WHEN: One trophy head per ace tier; NPCs bark about it."
     },
     {
@@ -17560,7 +17566,7 @@
       "priority": 458,
       "title": "JSON content loader",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-033.03"
       ],
@@ -17576,7 +17582,9 @@
         "npm run check:baseline",
         "node scripts/check-data.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-172-REPORT.md"
+      ],
       "brief": "Weapons, modules, encounters and places load from a user content directory through the existing validators; mods are listed in-app. DONE WHEN: A sample mod adds a weapon and an encounter; determinism hash unaffected without the mod."
     },
     {
@@ -17585,7 +17593,7 @@
       "priority": 459,
       "title": "Workshop",
       "kind": "implementation",
-      "state": "ready",
+      "state": "implemented",
       "dependsOn": [
         "PQ-033.03"
       ],
@@ -17601,7 +17609,9 @@
         "npm run check:baseline",
         "node scripts/check-data.mjs"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-172-REPORT.md"
+      ],
       "brief": "Steam Workshop publish/subscribe for the same directory. DONE WHEN: One mod round-trips through Workshop."
     },
     {
@@ -18824,7 +18834,7 @@
       "priority": 505,
       "title": "A mission type cannot fall off the board silently",
       "kind": "implementation",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "regression"
@@ -18839,7 +18849,9 @@
         "npm run check:baseline",
         "npm run check:mission-receipts"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-186.03-REPORT.md"
+      ],
       "brief": "The offer picker reads OFFER_MIX by NAMED weight and falls back to the row's POSITIONAL entry (weights[i] || 0), so inserting a mission type shifts every later row's weight and can zero a type's board presence with no test failing — found while adding the breakaway_recovery type in 2026-09. DONE WHEN: a guard asserts every MISSION_TYPES entry with proceduralWeight > 0 has a named weight in every OFFER_MIX row, a fixture that inserts a type without one turns it red, and master is green."
     },
     {
@@ -18848,7 +18860,7 @@
       "priority": 506,
       "title": "Four red suites on master tell the truth",
       "kind": "acceptance_repair",
-      "state": "ready",
+      "state": "done",
       "dependsOn": [],
       "mutexes": [
         "regression"
@@ -18864,7 +18876,9 @@
       "checks": [
         "npm run check:baseline"
       ],
-      "receiptRefs": [],
+      "receiptRefs": [
+        "design/program/roadmap/receipts/PQ-186.04-REPORT.md"
+      ],
       "brief": "Four assertions are red on master and were red before the 2026-09-15 breakaway work (proven by running them on an archive of the pre-change tree): two say a hostile kill still earns its shard burst (pq019-heat-incident-listener), one says an explicitly marked non-lawful entity can witness (pq019-law-incident-intake), and one says the authored cargo pod is present in source, release and the runtime pod slot but reads 4552 where 3976 is expected (pq019-authored-cargo-capsule). CHARACTERIZE FIRST: if the live game agrees with the test, two of these are player-facing bugs (kills that should drop shards and do not); if behaviour drifted deliberately, the assertion needs its causal record. Reconcile the byte mismatch through the manifest tooling. DONE WHEN: all four are green for a stated cause, and never by editing an expected number to match the code."
     },
     {

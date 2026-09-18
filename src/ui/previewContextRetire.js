@@ -20,6 +20,8 @@ export const RETIRE_MAX_WAIT_MS = 8000;
  * @param {boolean} o.parallelCompile  KHR_parallel_shader_compile is present; without it every link
  *   already completed synchronously
  * @param {() => void} o.finish
+ * @param {{ isContextLost?: () => boolean }} [o.context]  the owning WebGL context; once lost, no
+ *   captured program can still be linking and every isReady() call only emits a GL warning
  * @param {(callback: () => void, ms: number) => unknown} [o.setTimer]
  * @param {() => number} [o.now]
  * @param {number} [o.pollMs]
@@ -30,6 +32,7 @@ export function retireWhenProgramsReady({
   programs,
   parallelCompile,
   finish,
+  context = null,
   setTimer = (callback, ms) => setTimeout(callback, ms),
   now = () => Date.now(),
   pollMs = RETIRE_POLL_MS,
@@ -39,10 +42,23 @@ export function retireWhenProgramsReady({
   // Every readiness query is a synchronous round trip to a GPU process busy with the loading cook, so
   // a check stops at the first program still linking. A lost context answers null and a destroyed
   // program throws; neither can finish linking, so both count as settled.
+  const contextLost = () => {
+    try { return !!(context && typeof context.isContextLost === 'function' && context.isContextLost()); }
+    catch (_) { return false; }
+  };
   const settled = () => {
+    // Querying a dead handle emits a GL warning per call: a retire poll that outlives a force-lost
+    // (or driver-evicted) context warns once per captured wrapper per tick. A lost context can never
+    // finish a link, so the whole cohort counts as settled without another GL round trip.
+    if (contextLost()) { pending.length = 0; return true; }
     while (pending.length > 0) {
+      const program = pending[pending.length - 1];
+      if (!program || typeof program.isReady !== 'function' || program.program == null) {
+        pending.pop();
+        continue;
+      }
       let linking = false;
-      try { linking = pending[pending.length - 1].isReady() === false; } catch (_) { linking = false; }
+      try { linking = program.isReady() === false; } catch (_) { linking = false; }
       if (linking) return false;
       pending.pop();
     }

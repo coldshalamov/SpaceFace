@@ -13,9 +13,15 @@
  *   onto whichever registry is easiest to count.
  * - Memory decays; rejected ideas block resurrection for a window; domains
  *   never structurally measured still get scheduled via staleness.
+ * - Bare INFERENCE (no scope) is agent judgment: look at play, fix a real
+ *   weakness, rotate kinds. pickUnscopedTarget is an optional COUNT HINT,
+ *   never the assigned unit. Scripts cannot see architectural mistakes.
  */
 
 export const MEMORY_SCHEMA = 'spaceface.inferenceMemory.v1';
+
+/** Bare `INFERENCE` with no N means this many complete units, rotating weakness. */
+export const DEFAULT_UNSCOPED_N = 5;
 
 export const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -65,6 +71,7 @@ export const SCOPE_MAP = {
   AUDIO: ['WF-13'],
   UI: ['WF-14'],
   FEEL: ['WF-15', 'WF-18'],
+  INTENTIONAL: ['WF-03', 'WF-08', 'WF-02', 'WF-01', 'WF-15'],
   POLISH: ['WF-12', 'WF-13', 'WF-14', 'WF-15'],
   VARIANTS: ['WF-16'],
   INTEGRATION: ['WF-17'],
@@ -402,9 +409,9 @@ export function suggestMode({ memory, today, scopeWfs = null, knownDefects = [],
     return { mode: 'starved', reason: `last ${repairStreak}/6 runs were structural repair; ${starved[0].wf} (${starved[0].name}) has waited ${starved[0].staleness === Infinity ? 'forever' : Math.round(starved[0].staleness) + 'd'}` };
   }
 
-  // 4. Periodic opportunity pass: at least one run in six starts from
-  //    "what could only SpaceFace do" instead of a deficit.
-  if (recent.length >= 5 && !recentModes.includes('opportunity')) {
+  // 4. Periodic opportunity pass, scoped runs only. Bare INFERENCE is a
+  //    weakness round-robin (ill-built / thin / starved), not a strength hunt.
+  if (scopeWfs && recent.length >= 5 && !recentModes.includes('opportunity')) {
     return { mode: 'opportunity', reason: 'no opportunity-mode run in the last 6 — generate from strengths, not deficits' };
   }
 
@@ -463,7 +470,7 @@ export function buildDirectorBoard({ structural, memory, today, integrationDebt 
 
   const suggestion = suggestMode({ memory, today, scopeWfs, knownDefects, integrationDebt: integration, starved, repair });
 
-  return {
+  const board = {
     modes: MODES,
     suggestedMode: suggestion.mode,
     modeReason: suggestion.reason,
@@ -474,7 +481,93 @@ export function buildDirectorBoard({ structural, memory, today, integrationDebt 
     blocked,
     failedTwice,
     overusedReferences: overused,
+    unscopedPick: null,
   };
+  if (!scopeWfs) {
+    board.unscopedPick = pickUnscopedTarget({ board, memory });
+  }
+  return board;
+}
+
+/** Workflow ids of the most recent recorded units, newest last. */
+export function recentUnitWfs(memory, n = 1) {
+  return uniq((memory.units || []).slice(-n).map((u) => u.wf).filter(Boolean));
+}
+
+function firstAllowedWf(wfs, excluded) {
+  const list = Array.isArray(wfs) ? wfs : (wfs ? [wfs] : []);
+  return list.find((wf) => wf && !excluded.has(wf)) || null;
+}
+
+/**
+ * Optional count hint for bare INFERENCE. Not the unit selector. Agents look
+ * at play; they may ignore this when common sense disagrees.
+ * Order: ill-built, then thin, then starved, skipping the last unit's domain
+ * so a naive follower at least rotates. Warehouse integration does not beat
+ * a live player-facing gap. Opportunity is never the unscoped default.
+ */
+export function pickUnscopedTarget({ board, memory, excludeWfs = null }) {
+  const excluded = new Set(excludeWfs || recentUnitWfs(memory, 1));
+
+  const tryPass = (allowExcluded) => {
+    const okWf = (wf) => wf && (allowExcluded || !excluded.has(wf));
+    const okWfs = (wfs) => firstAllowedWf(wfs, allowExcluded ? new Set() : excluded);
+
+    const recovery = (board.recovery || []).find((d) => (
+      d.severity === 'foundation'
+      && d.status !== 'resolved'
+      && okWf(d.wf)
+    ));
+    if (recovery) {
+      return {
+        kind: 'ill-built',
+        mode: 'recovery',
+        wf: recovery.wf,
+        id: recovery.id,
+        why: `ill-built: ${recovery.id} — ${recovery.note || 'foundation defect'}`,
+      };
+    }
+
+    const repair = (board.repair || []).find((g) => (
+      g.score > 0 && !g.saturated && okWfs(g.wfs)
+    ));
+    if (repair) {
+      return {
+        kind: 'weak',
+        mode: 'repair',
+        wf: okWfs(repair.wfs),
+        id: repair.id,
+        score: repair.score,
+        why: repair.why || `thin: ${repair.id}`,
+      };
+    }
+
+    const starved = (board.starved || []).find((d) => okWf(d.wf));
+    if (starved) {
+      return {
+        kind: 'weak',
+        mode: 'starved',
+        wf: starved.wf,
+        id: starved.wf,
+        why: `starved: ${starved.name}${starved.measured ? '' : ' (unmeasured)'}`,
+      };
+    }
+
+    const debt = (board.integration || []).find((d) => (d.count || 0) > 0 && okWfs(d.wfs));
+    if (debt) {
+      return {
+        kind: 'ill-built',
+        mode: 'integration',
+        wf: okWfs(debt.wfs),
+        id: debt.id,
+        why: `ill-built: ${debt.count} unwired (${debt.id})`,
+      };
+    }
+
+    return null;
+  };
+
+  return tryPass(false) || tryPass(true);
 }
 
 /** Resolve `INFERENCE Nx <SCOPE>` scope keyword to workflow ids (null = unscoped). */

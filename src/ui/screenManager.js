@@ -222,7 +222,7 @@ export function createScreenManager(ctx) {
         cancelPendingExit(rec);
         // A kit screen (styles/kit.css `.k-screen`) lays out as a grid; an inline `flex` here
         // would override it. Every other screen keeps the legacy flex root.
-        rec.el.style.display = rec.el.classList.contains('k-screen') ? 'grid' : 'flex';
+        rec.el.style.display = (typeof rec.el.classList?.contains === 'function' && rec.el.classList.contains('k-screen')) ? 'grid' : 'flex';
         rec.el.removeAttribute('aria-hidden');
         rec.el.setAttribute('aria-modal', 'true');
         rec.el.inert = false;

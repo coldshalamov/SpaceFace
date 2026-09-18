@@ -89,6 +89,58 @@ test('a late present caps leftover sim on this callback and the next hitch', () 
   controller.destroy();
 });
 
+test('a hitch present-first frame runs leftover sim before after-present compile', () => {
+  const raf = createRaf();
+  const state = {
+    accumulator: 0,
+    timeScale: 1,
+    tick: 0,
+    simTime: 0,
+    input: { actions: {} },
+    render: {
+      drainAfterPresentCompile() { order.push('compile'); },
+    },
+  };
+  const order = [];
+  const simulationRunner = {
+    fixedDt: LOOP_FIXED_DT,
+    advance() {
+      order.push('advance');
+      return { steps: 1, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+    },
+    prepareWithoutAdvance() {
+      return { steps: 0, shedBacklog: false, shedSteps: 0, accumulator: 0 };
+    },
+    consumeLatestCompletedTick() { return 0; },
+    interpolationAlpha() { return 0; },
+    setLifecycleGeneration() {},
+    close() { return true; },
+    getDiagnostics() { return {}; },
+  };
+  const registry = {
+    renderUpdate() { order.push('render'); },
+    get() { return null; },
+  };
+  const controller = startLoop(state, registry, {
+    simulationRunner,
+    requestFrame: raf.requestFrame,
+    cancelFrame: raf.cancelFrame,
+    nowMs: () => 1000,
+    perfNow: () => 0,
+    visibilityTarget: null,
+    lifecyclePort: null,
+  });
+
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000);
+  assert.deepEqual(order, ['advance', 'render', 'compile'],
+    'a healthy frame simulates, presents, then compiles with leftover present budget');
+  order.length = 0;
+  raf.flushOne(1000 + LOOP_FIXED_DT * 1000 + 50);
+  assert.deepEqual(order, ['render', 'advance', 'compile'],
+    'a long frame presents, catches leftover sim, then compiles only with remaining budget');
+  controller.destroy();
+});
+
 test('PresentationRunner consumes completed ticks without owning simulation order', () => {
   const raf = createRaf();
   const state = {

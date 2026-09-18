@@ -83,12 +83,15 @@ a unit whose paths a live row names.
 1. **Numbers or it did not happen.** A unit closes on its done-when measured in player units (screen
    depths, seconds, hull lengths, fraction kept or lost, verbs per minute), before and after, on a
    fixed seed. "It works", "it follows the path", "check is green" are not numbers.
-2. **Numbers or a looked-at still — never a stored video.** Player-felt claims close on numeric
-   measurements printed by the deterministic scenario or bench on a fixed seed; visual claims close
-   on a vision-capable reviewer inspecting a still at the shipping camera, default quality, no
-   overlays. A capture, when one is genuinely useful, is analyzed in the same session and then
-   deleted: it is a process artifact, never a stored deliverable. Headed recordings happen only on
-   the owner's explicit request.
+2. **Numbers and the live owner — not a capture campaign.** Player-felt claims close on numeric
+   measurements printed by the deterministic scenario or bench on a fixed seed, plus reading the
+   code path that produces them (the listener, the bind, the spawn). A headed still is **not** the
+   review method and **not** a close gate (owner, 2026-09-16). Use a still only when the claim is
+   purely visual (silhouette, material, “one game”) and no structural check can falsify it; look
+   in-session and delete it. Headed recordings happen only on the owner's explicit request.
+   Timed-out Chromium, a missing GPU, or a capture-harness red never blocks `implemented`. Packet
+   prose that says “scenario + capture” means the scenario; the capture is optional. Art remaster
+   KEEP/REVISE is the exception because that claim is the picture.
 3. **Consequences or it is thin.** A new player-facing action or feature produces at least two further
    things (a motion, a reaction, a receipt someone consumes). One thing once is content, not a feature.
    A control, a confirmation, a selection, a brake or an instrument is exempt: it must do exactly its
@@ -236,9 +239,14 @@ units; open the door below only when the owner names the campaign.
   before designing or building anything; §11 records the sixteen jobs that already landed.
 - **Crucible / swarm / combat lab / arenas / attack modifiers** → §12 (`PQ-133`, engineering complete),
   §16 (`PQ-174`, `PQ-175`, fun and content), §13 (`PQ-134` VFX pool).
-- **`INFERENCE <N> [scope]`** → [`design/vision/INFERENCE_CONVERGENCE_METHOD.md`](./design/vision/INFERENCE_CONVERGENCE_METHOD.md)
-  and [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md); production units only. That door does
-  not run the fleet remaster and does not replace §1.1.
+- **`INFERENCE`** (no spec) → copy [`INFERENCE_GOAL.txt`](./design/program/INFERENCE_GOAL.txt);
+  law [`INFERENCE_LANES.md`](./design/program/INFERENCE_LANES.md). Five units: look at play,
+  infer a real weakness, complete it, rotate to a different kind. Detect is an optional
+  count hint, not the assignment. `INFERENCE <N> [scope]` is the same loop with a named
+  count or domain. Thin rows do not count. That door does not run the fleet remaster and
+  does not replace §1.1. When the deficit is a busy sim with no designed moment, also
+  [`INFERENCE_INTENTIONAL_FUN.md`](./design/program/INFERENCE_INTENTIONAL_FUN.md)
+  (prompt [`INFERENCE_INTENTIONAL_FUN_GOAL.txt`](./design/program/INFERENCE_INTENTIONAL_FUN_GOAL.txt)).
 - **Jules / cloud agents** → [`design/program/jules/README.md`](./design/program/jules/README.md);
   a directed candidate bank, not the live queue. Validate with `node scripts/jules-dispatch.mjs --validate`;
   select or render exact work with `node scripts/jules-dispatch.mjs --next` or `--id JULES-XXXX --format prompt`.
@@ -2331,7 +2339,7 @@ A wreck is a place: cover, anchor, loot, and an ecology (scavengers, a squatter,
 The curve is designed, not accreted: start-to-first-upgrade ≤ 15 min; hour by hour a new physical verb (tow class, head, field, slam survival); the Massline's ceiling is not behind a 2.5 M capital-hull tech; sinks (repairs, fines, insurance, restitution) and faucets (salvage, contracts, industry, stunts) balance; a headless ten-hour simulation prints the curve and the check gates it.
 
 - **Gap:** Start 5,000 cr vs cheapest tech 6,000; spool ceiling behind 2.5 M; ending at 100 k of a 4.5 M curve; the 100 k → 4.5 M canyon is 40+ hours of repetition. **Reference:** Subnautica pacing, Endless Sky, Slay the Spire unlock cadence.
-- **Exists:** `src/data/tech.js` (32 nodes), `ships.js` (13 hulls), `modules.js` (72), `economy.js`, `economyCycles.js`, `killRewards.js`, `careerContracts.js`, telemetry aggregates.
+- **Exists:** `src/data/tech.js` (32 nodes), `ships.js` (14 hulls), `modules.js` (72), `economy.js`, `economyCycles.js`, `killRewards.js`, `careerContracts.js`, telemetry aggregates.
 - **Routes through:** S2-05 long ladder; SPEC3-F1; GDX-A15/A17; PQ-142 verbs.
 - **Writes:** `src/data/tech.js`, `src/data/modules.js`, `src/data/ships.js`, `src/data/killRewards.js`, `src/systems/economy.js`, `scripts/`
 

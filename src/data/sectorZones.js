@@ -2,6 +2,9 @@
 
 import { FRONTIER_ZONES } from './frontierRegions/index.js';
 import { appendAuthoredZones, ZONE_CERES_THROUGHLINE } from './authoredPlaces.js';
+import {
+  userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
+} from './userContent.js';
 //
 // Problem this solves: content used to be scattered on random radial rings, so a sector read as a
 // flat disc of unrelated dots — "a test room." This module gives every sector a set of NAMED zones,
@@ -253,10 +256,83 @@ const CORE_SECTOR_ZONES = {
 
 // Additive authored places (src/data/authoredPlaces.js) are APPENDED, never spread: a spread would
 // replace a sector's whole authored zone list with the additions instead of extending it.
-export const SECTOR_ZONES = appendAuthoredZones({
+const AUTHORED_SECTOR_ZONES = appendAuthoredZones({
   ...CORE_SECTOR_ZONES,
   ...FRONTIER_ZONES,
 });
+
+// ─────────────────────────────── user content (PQ-172.00) ───────────────────────────────
+// User-dropped JSON place records are ordinary authored zones in the ordinary zone schema — the
+// same seam authoredPlaces.js documents, sourced from the mounted user content directory. A place
+// must target an existing sector (a JSON record cannot carry a whole sector's anchors/economy;
+// new sectors are out of scope for .00). Validated here because ZONE_TYPES is owned by this file.
+
+const USER_PLACE_KEYS = new Set([
+  'sectorId', 'id', 'name', 'type', 'factionId', 'reason', 'center', 'radius', 'threat',
+  'presence', 'anchorPoiId',
+]);
+
+function userPlaceProblem(rec, knownSectorIds, knownZoneIds) {
+  if (!rec || typeof rec !== 'object' || Array.isArray(rec)) return 'record must be an object';
+  for (const key of Object.keys(rec)) {
+    if (!USER_PLACE_KEYS.has(key)) return `unknown field "${key}"`;
+  }
+  if (typeof rec.sectorId !== 'string' || !knownSectorIds.has(rec.sectorId)) {
+    return `sectorId "${rec.sectorId}" is not a known sector (a place record cannot create a sector)`;
+  }
+  if (typeof rec.id !== 'string' || !/^zone_[a-z0-9_]+$/.test(rec.id)) {
+    return 'id must match zone_*';
+  }
+  if (knownZoneIds.has(rec.id)) return `id "${rec.id}" collides with an existing zone`;
+  if (typeof rec.name !== 'string' || !rec.name.trim()) return 'name is required';
+  if (!ZONE_TYPES[rec.type]) {
+    return `type must be one of ${Object.keys(ZONE_TYPES).join(', ')}`;
+  }
+  if (rec.factionId != null && (typeof rec.factionId !== 'string' || !rec.factionId.startsWith('faction_'))) {
+    return 'factionId must be a faction_* id';
+  }
+  if (typeof rec.reason !== 'string' || !rec.reason.trim()) return 'reason is required';
+  if (!rec.center || typeof rec.center !== 'object'
+      || !Number.isFinite(rec.center.x) || !Number.isFinite(rec.center.z)) {
+    return 'center must be {x, z} numbers';
+  }
+  if (typeof rec.radius !== 'number' || !Number.isFinite(rec.radius) || rec.radius <= 0) {
+    return 'radius must be a positive number';
+  }
+  if (rec.threat != null && (!Number.isInteger(rec.threat) || rec.threat < 0 || rec.threat > 5)) {
+    return 'threat must be an integer 0-5';
+  }
+  if (rec.presence != null && (typeof rec.presence !== 'object' || Array.isArray(rec.presence))) {
+    return 'presence must be an object';
+  }
+  return null;
+}
+
+function mergeUserPlaces(base) {
+  const knownSectorIds = new Set(Object.keys(base));
+  const knownZoneIds = new Set();
+  for (const zones of Object.values(base)) for (const zone of zones) knownZoneIds.add(zone.id);
+  const additions = {};
+  for (const cand of userContentCandidates('places')) {
+    const rec = cand.record;
+    const problem = userPlaceProblem(rec, knownSectorIds, knownZoneIds)
+      || claimUserContentId('places', rec && rec.id, cand.modId, null);
+    if (problem) {
+      rejectUserContent(cand.modId, 'places', rec && rec.id, problem, cand.file);
+      continue;
+    }
+    const zone = { ...rec };
+    delete zone.sectorId;
+    zone.center = Object.freeze({ ...zone.center });
+    knownZoneIds.add(zone.id);
+    (additions[rec.sectorId] ||= []).push(Object.freeze(zone));
+    acceptUserContent(cand.modId, 'places', zone.id, cand.file);
+  }
+  if (!Object.keys(additions).length) return base;
+  return appendAuthoredZones(base, additions);
+}
+
+export const SECTOR_ZONES = mergeUserPlaces(AUTHORED_SECTOR_ZONES);
 
 /** All zones for a sector (empty array if the sector has no authored zones → legacy behaviour). */
 export function zonesForSector(sectorId) {

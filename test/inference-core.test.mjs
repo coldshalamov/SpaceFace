@@ -7,6 +7,7 @@ import {
   isBlockedCandidate, failedTwicePatterns, overusedReferences, pruneMemory,
   recordUnit, suggestMode, buildDirectorBoard, resolveScope,
   slateRequirements, checkSlate, sameIdea, DOMAINS,
+  pickUnscopedTarget, DEFAULT_UNSCOPED_N,
 } from '../scripts/lib/inferenceCore.mjs';
 
 let failures = 0;
@@ -281,9 +282,58 @@ const TODAY = '2026-08-11';
   check('decay-bad-date-zero', decayWeight('garbage', TODAY) === 0);
 }
 
+// --- 17. Bare INFERENCE round-robins weakness, not the warehouse ----------
+{
+  check('default-unscoped-n', DEFAULT_UNSCOPED_N === 5);
+
+  const structural = [
+    { id: 'enemy_gap', score: 40, wfs: ['WF-02'], why: 'too few combat roles', blindSpots: 'y', metric: { unique: 1, n: 1, topShare: 0 } },
+    { id: 'job_gap', score: 20, wfs: ['WF-01'], why: 'jobs look alike', blindSpots: 'y', metric: { unique: 1, n: 1, topShare: 0 } },
+  ];
+  const debt = [{ id: 'incubator', count: 121, wfs: ['WF-11', 'WF-17'] }];
+  const board = buildDirectorBoard({
+    structural, memory: emptyMemory(TODAY), today: TODAY, integrationDebt: debt,
+  });
+  check('unscoped-board-has-pick', board.unscopedPick && board.unscopedPick.wf === 'WF-02', JSON.stringify(board.unscopedPick));
+  check('unscoped-repair-beats-warehouse', board.unscopedPick.mode === 'repair' && board.unscopedPick.kind === 'weak');
+
+  const memory = emptyMemory(TODAY);
+  recordUnit(memory, {
+    id: 'u1', date: TODAY, wf: 'WF-02', mode: 'repair', verdict: 'implemented',
+    reason: 'role', fingerprint: 'verb=fight,subject=skiff,sector=ceres,domain=wf-02',
+  });
+  const after = pickUnscopedTarget({ board, memory });
+  check('round-robin-skips-last-wf', after && after.wf !== 'WF-02', JSON.stringify(after));
+
+  const scoped = buildDirectorBoard({
+    structural, memory: emptyMemory(TODAY), today: TODAY, integrationDebt: debt,
+    scopeWfs: resolveScope('MISSIONS'),
+  });
+  check('scoped-has-no-unscoped-pick', scoped.unscopedPick == null);
+
+  const defectBoard = buildDirectorBoard({
+    structural, memory: {
+      ...emptyMemory(TODAY),
+      knownDefects: [{ id: 'shove-dead', wf: 'WF-15', severity: 'foundation', status: 'open', date: TODAY, note: 'shove does nothing' }],
+    }, today: TODAY, integrationDebt: debt,
+  });
+  check('ill-built-beats-thin', defectBoard.unscopedPick && defectBoard.unscopedPick.mode === 'recovery' && defectBoard.unscopedPick.wf === 'WF-15', JSON.stringify(defectBoard.unscopedPick));
+
+  const fiveRepairRuns = emptyMemory(TODAY);
+  for (let i = 0; i < 5; i++) {
+    fiveRepairRuns.runs.push({ date: TODAY, mode: 'repair', domains: ['WF-02'] });
+  }
+  const unscopedAfterStreak = suggestMode({
+    memory: fiveRepairRuns, today: TODAY,
+    repair: [{ score: 12, saturated: false, wfs: ['WF-02'] }],
+    starved: [],
+  });
+  check('unscoped-does-not-default-opportunity', unscopedAfterStreak.mode === 'repair', `got ${unscopedAfterStreak.mode}: ${unscopedAfterStreak.reason}`);
+}
+
 if (failures) {
   console.error(`inference-core.test: ${failures} failures`);
   process.exit(1);
 }
-console.log('inference-core.test: ok (16 behavioral eval sections)');
+console.log('inference-core.test: ok (17 behavioral eval sections)');
 process.exit(0);

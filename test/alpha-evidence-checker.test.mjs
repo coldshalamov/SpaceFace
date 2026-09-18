@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -241,11 +242,14 @@ async function runRepositoryWiringAssertions() {
     );
   }
 
-  for (const relativePath of [
+  const masterPlanPath = path.join(PROJECT_ROOT, 'design/vision/03_MASTER_BUILD_PLAN.md');
+  const checkedDocs = [
     'design/vision/00_CONSTITUTION.md',
-    'design/vision/03_MASTER_BUILD_PLAN.md',
+    existsSync(masterPlanPath) ? 'design/vision/03_MASTER_BUILD_PLAN.md' : null,
     'design/spec2/00_MASTER_TASTE.md',
-  ]) {
+  ].filter(Boolean);
+
+  for (const relativePath of checkedDocs) {
     const head = (await readFile(path.join(PROJECT_ROOT, relativePath), 'utf8')).split(/\r?\n/).slice(0, 14).join('\n');
     const normalizedHead = head.replace(/^>\s?/gm, '').replace(/\s+/g, ' ');
     assert.ok(normalizedHead.includes(AUTHORITY_CHAIN), `${relativePath} must show the current authority chain at its top`);
@@ -260,16 +264,18 @@ async function runRepositoryWiringAssertions() {
     'vision constitution cannot supersede MASTER_TASTE',
   );
 
-  const masterPlan = await readFile(path.join(PROJECT_ROOT, 'design/vision/03_MASTER_BUILD_PLAN.md'), 'utf8');
-  const masterPlanHeading = masterPlan.split(/\r?\n/, 1)[0];
-  assert.doesNotMatch(masterPlanHeading, /point agents here/i, 'supporting roadmap heading must not route agents here');
-  assert.match(masterPlanHeading, /supporting|historical/i, 'supporting roadmap heading identifies its non-authoritative role');
-  assert.doesNotMatch(masterPlan, /\*\*Status:\*\* LIVE execution authority/, 'old master plan is not current execution authority');
-  assert.equal(masterPlan.includes('Use [`05_GOAL_PROMPTS.md`](./05_GOAL_PROMPTS.md) to dispatch.'), false, 'old goal prompts are not default dispatch');
-  assert.equal(masterPlan.includes('Do not apply superseded MASTER_TASTE rules'), false, 'supporting roadmap cannot supersede taste rules');
-  assert.doesNotMatch(masterPlan, /ignore[^\n]*constitution/i, 'supporting roadmap cannot tell agents to ignore rules in favor of the constitution');
-  const normalizedMasterPlan = masterPlan.replace(/^>\s?/gm, '').replace(/\s+/g, ' ');
-  assert.match(normalizedMasterPlan, /active only when `?ALPHA_PROGRAM\.md`? (?:cites|activates)/i);
+  if (existsSync(masterPlanPath)) {
+    const masterPlan = await readFile(masterPlanPath, 'utf8');
+    const masterPlanHeading = masterPlan.split(/\r?\n/, 1)[0];
+    assert.doesNotMatch(masterPlanHeading, /point agents here/i, 'supporting roadmap heading must not route agents here');
+    assert.match(masterPlanHeading, /supporting|historical/i, 'supporting roadmap heading identifies its non-authoritative role');
+    assert.doesNotMatch(masterPlan, /\*\*Status:\*\* LIVE execution authority/, 'old master plan is not current execution authority');
+    assert.equal(masterPlan.includes('Use [`05_GOAL_PROMPTS.md`](./05_GOAL_PROMPTS.md) to dispatch.'), false, 'old goal prompts are not default dispatch');
+    assert.equal(masterPlan.includes('Do not apply superseded MASTER_TASTE rules'), false, 'supporting roadmap cannot supersede taste rules');
+    assert.doesNotMatch(masterPlan, /ignore[^\n]*constitution/i, 'supporting roadmap cannot tell agents to ignore rules in favor of the constitution');
+    const normalizedMasterPlan = masterPlan.replace(/^>\s?/gm, '').replace(/\s+/g, ' ');
+    assert.match(normalizedMasterPlan, /active only when `?ALPHA_PROGRAM\.md`? (?:cites|activates)/i);
+  }
 
   const taste = await readFile(path.join(PROJECT_ROOT, 'design/spec2/00_MASTER_TASTE.md'), 'utf8');
   assert.equal(

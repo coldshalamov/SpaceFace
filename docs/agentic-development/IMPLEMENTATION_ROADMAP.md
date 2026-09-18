@@ -1,6 +1,11 @@
 <!-- LIFETIME: STABLE -->
 # Agentic Development Implementation Roadmap
 
+**Not a dispatch queue.** Broad work still enters through [`build_map.md`](../../build_map.md) and
+`node scripts/program-dispatch.mjs`. This file is the staged method plan behind
+[`CENTRAL_BRAIN.md`](../../design/program/CENTRAL_BRAIN.md). Phase 0 routing and Phase 1 ranking
+exist; later phases are optional method, not admitted work.
+
 This roadmap turns the Central Brain architecture into staged implementation. It deliberately builds on existing SpaceFace owners instead of demanding a rewrite before agents can get value.
 
 The stages are ordered by leverage. Each stage is useful on its own.

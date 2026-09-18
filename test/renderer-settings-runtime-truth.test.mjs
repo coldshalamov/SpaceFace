@@ -204,9 +204,10 @@ function createLiveShadowRuntime({ shadowsAtBoot = false } = {}) {
       _shadowReceiverCount = 1; // pretend a receiver exists after dirty scan
       _shadowReceiversDirty = false;
     }
-    const enabled = _shadowReceiverCount > 0;
-    renderer.shadowMap.enabled = enabled;
-    _keyLight.castShadow = enabled;
+    // Mirrors _syncShadowMapEnabled: key-visible flags pin while the setting is on; the resolved
+    // tally gates the depth pass through shadowMapActive instead of flapping the program key.
+    renderer.shadowMap.enabled = true;
+    _keyLight.castShadow = true;
   }
 
   function snapshot() {

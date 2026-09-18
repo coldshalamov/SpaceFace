@@ -1,6 +1,9 @@
 // Dense combat SoA beside GameState. Entity objects remain save/authority;
 // hot radius queries and later snapshot packing read these columns.
 
+import { DIRTY, hasDirty } from './dirtyJournal.js';
+import { hasActiveSpatialHash } from './spatialQuery.js';
+
 export const COMBAT_TABLE_SCHEMA = 'spaceface.combatTable.v1';
 
 const FLAG_SHIP = 1 << 0;
@@ -32,6 +35,7 @@ export function ensureCombatTable(state, capacity = 64) {
     count: 0,
     capacity: 0,
     tick: -1,
+    rowById: new Map(),
   };
   grow(table, Math.max(8, capacity));
   state.combatTable = table;
@@ -41,6 +45,12 @@ export function ensureCombatTable(state, capacity = 64) {
 export function packCombatTable(state) {
   const table = ensureCombatTable(state);
   if (!table) return null;
+  const tick = state.tick | 0;
+  if (table.tick === tick && table.count >= 0) return table;
+  if (table.packedOnce === true && !hasDirty(state, DIRTY.POSE | DIRTY.MEMBERSHIP)) {
+    table.tick = tick;
+    return table;
+  }
   const index = state.entityIndex;
   const ships = (index && index.shipLike) || [];
   const projectiles = (index && index.projectiles) || [];
@@ -52,6 +62,8 @@ export function packCombatTable(state) {
     grow(table, next);
   }
   let w = 0;
+  const rowById = table.rowById || (table.rowById = new Map());
+  rowById.clear();
   const write = (entity, extraFlags) => {
     if (!entity || entity.alive === false || !entity.pos) return;
     table.id[w] = entity.id >>> 0;
@@ -65,13 +77,15 @@ export function packCombatTable(state) {
     let flags = extraFlags;
     if (entity.isPlayer === true || entity.id === state.playerId) flags |= FLAG_PLAYER;
     table.flags[w] = flags;
+    rowById.set(table.id[w], w);
     w++;
   };
   for (let i = 0; i < ships.length; i++) write(ships[i], FLAG_SHIP);
   for (let i = 0; i < projectiles.length; i++) write(projectiles[i], FLAG_PROJECTILE);
   for (let i = 0; i < wrecks.length; i++) write(wrecks[i], FLAG_WRECK);
   table.count = w;
-  table.tick = state.tick | 0;
+  table.tick = tick;
+  table.packedOnce = true;
   return table;
 }
 
@@ -88,6 +102,8 @@ export function queryCombatTableRadius(table, x, z, radius, outIds = []) {
   return outIds;
 }
 
+const COMBAT_HASH_MIN_COUNT = 48;
+
 export function queryCombatTableEntities(state, x, z, radius, out = [], flagMask = 0) {
   out.length = 0;
   const table = state && state.combatTable;
@@ -97,6 +113,28 @@ export function queryCombatTableEntities(state, x, z, radius, out = [], flagMask
   const r2 = radius * radius;
   const n = table.count;
   const want = flagMask | 0;
+  const rowById = table.rowById;
+  const hash = state.spatialHash;
+  if (n >= COMBAT_HASH_MIN_COUNT && rowById && hasActiveSpatialHash(hash)
+    && typeof hash.queryRadius === 'function') {
+    const nearby = hash.queryRadius(
+      x, z, radius,
+      table._hashScratch || (table._hashScratch = []),
+    );
+    for (let i = 0; i < nearby.length; i++) {
+      const candidate = nearby[i];
+      if (!candidate || candidate.alive === false || candidate.id == null) continue;
+      const row = rowById.get(candidate.id >>> 0);
+      if (row == null) continue;
+      if (want && (table.flags[row] & want) === 0) continue;
+      const dx = table.x[row] - x;
+      const dz = table.z[row] - z;
+      if (dx * dx + dz * dz > r2) continue;
+      const entity = state.entities.get(table.id[row]);
+      if (entity && entity.alive !== false) out.push(entity);
+    }
+    return out;
+  }
   for (let i = 0; i < n; i++) {
     if (want && (table.flags[i] & want) === 0) continue;
     const dx = table.x[i] - x;

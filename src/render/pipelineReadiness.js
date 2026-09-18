@@ -147,8 +147,18 @@ export function createPipelineAdmissionTracker(compileBatch, options = {}) {
   const scheduleResume = typeof options.scheduleResume === 'function'
     ? options.scheduleResume
     : (callback) => {
-        if (typeof requestAnimationFrame === 'function') return requestAnimationFrame(callback);
-        return setTimeout(callback, 16);
+        // rAF starvation (occluded or minimized headed window) would otherwise park the bounded
+        // resume lane forever — queued compiles would never flush and the authored-readiness gate
+        // would wait out its full timeout. The timer fires the same callback without presenting.
+        if (typeof requestAnimationFrame !== 'function') return setTimeout(callback, 16);
+        let fired = false;
+        const fire = () => {
+          if (fired) return;
+          fired = true;
+          callback();
+        };
+        requestAnimationFrame(fire);
+        return setTimeout(fire, 48);
       };
   const deferAutoFlush = typeof options.deferAutoFlush === 'function'
     ? options.deferAutoFlush

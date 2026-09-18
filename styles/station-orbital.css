@@ -33,6 +33,12 @@
 :is(#screens .sx-observatory, .sx-observatory) [hidden] { display: none !important; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-app {
   position: relative; display: grid; width: 100%; height: 100%; min-height: 0;
+  /* The ScreenManager stamps inline display:grid on every .k-screen root, which outranks the
+     block on the rule above. If this app is left to auto-place it lands in the kit grid's
+     --k-hang column (~360px) and crushes .sx-screen__body to zero height — the market console
+     exists in the DOM but paints nothing. Span every track so the app fills the screen under
+     either display mode. */
+  grid-column: 1 / -1; grid-row: 1 / -1;
   grid-template: 'header' auto 'nav' 64px 'vitals' auto 'context' auto 'body' minmax(0,1fr) 'footer' 66px / minmax(0,1fr);
   padding: 0 clamp(16px,2.4vw,38px); gap: 0;
   background: linear-gradient(115deg, rgb(6 15 24 / .96) 0%, rgb(7 17 27 / .9) 58%, rgb(9 21 30 / .72) 100%);
@@ -106,7 +112,10 @@
 :is(#screens .sx-observatory, .sx-observatory) .sxb-vital { flex: 1 1 210px; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 12px; row-gap: 6px; padding: 15px 22px 12px; min-height: 78px; min-width: 0; border: 0; border-right: 1px solid var(--so-line-soft); color: var(--so-muted); margin: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-vital:first-child { padding-left: 0; flex-basis: 310px; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-vital:last-child { border-right: 0; padding-right: 0; }
-:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__head { display: grid; grid-template-columns: 20px auto; grid-template-rows: auto 4px; align-items: center; gap: 5px 8px; padding: 0; border: 0; background: none; box-shadow: none; min-height: 0; text-align: left; min-width: 80px; margin: 0; }
+/* justify-content: normal — the button head otherwise inherits the base control rule's centring
+   and its auto track shrink-wraps the label, so the Hold meter rendered one third narrower than
+   its siblings. The 1fr label track keeps icon and copy aligned at every width. */
+:is(#screens .sx-observatory, .sx-observatory) .sxb-vital__head { display: grid; grid-template-columns: 20px minmax(0,1fr); grid-template-rows: auto 4px; align-items: center; justify-content: normal; gap: 5px 8px; padding: 0; border: 0; background: none; box-shadow: none; min-height: 0; text-align: left; min-width: 80px; margin: 0; }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-vital__head .so-icon { width: 17px; height: 17px; grid-column: 1; color: var(--so-accent); }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-vital__label { font-size: 12px; color: var(--so-muted); }
 :is(#screens .sx-observatory, .sx-observatory) .sxb-vital__track { display: block; grid-column: 1/-1; height: 3px; width: 100%; margin: 2px 0 0; border: 0; background: #29404a; border-radius: 2px; overflow: hidden; }
@@ -426,11 +435,15 @@
   --so-face: Arial, Verdana, sans-serif; --so-display: Arial, Verdana, sans-serif;
 }
 
-/* The unavailable graphics state is truthful: no fake hull and no readiness receipt. */
+/* The unavailable graphics state is truthful: no fake hull and no readiness receipt — but the
+   systems board is the screen's working verb, not a picture. It stays reachable as a board of
+   chips (shipworks.js lays it out with .is-board when the preview mount is unavailable), so only
+   the chrome that annotates a hull still gets hidden. */
 :is(#screens .sx-observatory, .sx-observatory) .sx-sw__stats { margin-right: 0; max-height: none; }
 :is(#screens .sx-observatory, .sx-observatory) .sx-sw__stage.is-preview-unavailable { min-height: 335px; }
 :is(#screens .sx-observatory, .sx-observatory) .is-preview-unavailable .sx-sw__acquiring { position: relative; inset: auto; max-width: 430px; padding: 26px 22px; margin: 0; }
-:is(#screens .sx-observatory, .sx-observatory) .is-preview-unavailable :is(.sx-sw__camera,.sx-sw__dragcue,.sx-sw__gauges,.sx-sw__slotfield,.sx-sw__power) { visibility: hidden; pointer-events: none; }
+:is(#screens .sx-observatory, .sx-observatory) .is-preview-unavailable :is(.sx-sw__camera,.sx-sw__dragcue,.sx-sw__gauges,.sx-sw__power) { visibility: hidden; pointer-events: none; }
+:is(#screens .sx-observatory, .sx-observatory) .is-preview-unavailable .sx-sw__slotfield { visibility: visible; }
 :is(#screens .sx-observatory, .sx-observatory) .is-preview-unavailable .sf-state { background: none; border: 0; color: var(--so-ink); }
 :is(#screens .sx-observatory, .sx-observatory) .is-preview-unavailable .sf-state__verb { color: var(--so-accent); padding: 10px 12px; margin-top: 10px; border: 1px solid var(--so-line); border-radius: 4px; }
 

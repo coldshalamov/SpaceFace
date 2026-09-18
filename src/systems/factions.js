@@ -64,6 +64,8 @@ const WRECKING_BALL_MOMENTUM = 5; // extra momentum when the kill was thrown mas
 const STATION_GROWTH_REP = 8;        // per module a station gains on the player's throughput
 const DEPOT_PROVISIONING_REP = 2;    // per completed Concord rotation the player's depot fed
 const DEPOT_SUPPORT_POWER = 3;       // Concord power per depot currently provisioning a rotation
+const ENDGAME_PULL_VICTIM_REP = -10; // the faction that lost the vault / heavy
+const ENDGAME_PULL_POWER = 8;        // durable power hole left by a finished pull
 const SIEGE_CLASSES = new Set(['capital', 'guardian', 'frigate']);
 const SIEGE_HULLS = new Set(['ship_bastion', 'ship_warden', 'ship_colossus', 'ship_leviathan']);
 const LOGISTICS_ARCHETYPES = new Set(['passive', 'fleeing_trader']);
@@ -290,6 +292,11 @@ export const factions = {
     });
     bus.on('claim:depotPatrolCompleted', (p) => {
       if (p && p.factionId) this.applyRep(p.factionId, DEPOT_PROVISIONING_REP, 'depot_provisioning');
+    });
+    bus.on('endgame:pullCompleted', (p) => {
+      if (p && p.victimFactionId) {
+        this.applyRep(p.victimFactionId, ENDGAME_PULL_VICTIM_REP, 'endgame_pull_victim');
+      }
     });
 
     // Day boundary (core/time): decay extreme rep toward neutral + advance war resolution.
@@ -667,6 +674,15 @@ export const factions = {
         if (body && body.depotSupport && body.depotSupport.supported === true) {
           power.faction_scn += DEPOT_SUPPORT_POWER;
         }
+      }
+    }
+    const pulls = state.claims && state.claims.endgamePulls;
+    if (pulls && pulls.completed && typeof pulls.completed === 'object') {
+      const order = Array.isArray(pulls.completedOrder) ? pulls.completedOrder : Object.keys(pulls.completed);
+      for (const pullId of order) {
+        const rec = pulls.completed[pullId];
+        const victim = rec && rec.victimFactionId;
+        if (victim && power[victim] != null) power[victim] = Math.max(2, power[victim] - ENDGAME_PULL_POWER);
       }
     }
 

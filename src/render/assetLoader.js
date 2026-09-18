@@ -526,6 +526,14 @@ export async function loadAuthoredPart(url, options = {}) {
     return null;
   }
   if (request && !request.commit()) return null;
+  // Only boundary-scoped loads need the soft lease — the default runtime-cache owner already pins
+  // non-boundary decodes for the session, and a second lease there would defeat invalidation.
+  if (residency && options.residencyOwner) {
+    residency.retain(cacheKey, runtime.decodeCacheOwner, {
+      role: 'decode-cache',
+      sectorId: options.sectorId || null,
+    });
+  }
   return blueprint;
 }
 
@@ -692,6 +700,11 @@ export async function invalidateAuthoredAsset(renderer, url = null) {
     const invalidateKey = (key) => {
       if (residency) {
         residency.release(key, runtime.defaultResidencyOwner, 'asset-cache-invalidated');
+        // Explicit invalidation outranks the decode-cache lease: an asset held only by the soft
+        // owner must still drop its compiled blueprint here.
+        if (runtime.decodeCacheOwner) {
+          residency.release(key, runtime.decodeCacheOwner, 'asset-cache-invalidated');
+        }
         // A live boundary/preview still owns this exact generation. Keep its Promise canonical so
         // invalidation cannot admit a second decode under the same cache key.
         if (residency.has(key)) return false;
@@ -792,6 +805,12 @@ async function createRuntime(renderer) {
     retiring: false,
     retirementPromise: null,
     defaultResidencyOwner: Object.freeze({ type: 'authored-runtime-cache' }),
+    // Soft lease over compiled source-route blueprints. A boundary owner releasing used to leave
+    // the entry unowned, so evictIfUnowned dropped runtime.assets and every rebuild re-fetched and
+    // re-decoded the same GLB into fresh texture/geometry objects. The cache owner keeps the decode
+    // reusable across boundary churn; role 'decode-cache' stays governor-evictable and is reclaimed
+    // by releaseUnreferencedCacheOwners at sector exit, matching the render-package lifecycle.
+    decodeCacheOwner: Object.freeze({ type: 'authored-decode-cache' }),
   };
 }
 

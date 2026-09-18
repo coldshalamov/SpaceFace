@@ -1,24 +1,56 @@
 // Field-name-agnostic cross-reference integrity check: every string value anywhere in the data
 // that looks like a namespaced ID (ship_/wpn_/mod_/tech_/cmdty_/beam_/faction_/sector_) must
 // resolve to a real entry in the matching registry. Catches dangling refs the export check can't.
+//
+// `--user-content-dir=<dir>` (PQ-172.00): installs the scanned mod payload BEFORE the data
+// modules import, so user content is held to the same cross-reference contract — a mod record
+// referencing a tech_/cmdty_/sector_ id that does not exist fails here exactly like shipped data.
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SHIPS } from '../src/data/ships.js';
-import { WEAPONS } from '../src/data/weapons.js';
-import { MODULES } from '../src/data/modules.js';
-import { TECH_NODES } from '../src/data/tech.js';
-import { COMMODITIES } from '../src/data/commodities.js';
-import { ORES, ASTEROIDS, BEAMS, RECIPES, FIELDS } from '../src/data/mining.js';
-import { SECTORS, STATION_TYPES } from '../src/data/sectors.js';
-import { FACTION_META } from '../src/data/factions.js';
-import { MISSION_TYPES, STORY_BEATS } from '../src/data/missions.js';
-import { DRONES, TRADERS, OUTPOSTS } from '../src/data/automation.js';
-import { ENEMY_TYPES } from '../src/data/enemies.js';
-import { BODY_MODULES, BODY_SLOTS_BY_SIZE, CLAIM_COST } from '../src/data/claimableBodies.js';
-import { NEW_GAME } from '../src/data/newGameDefaults.js';
+import { createRequire } from 'node:module';
 
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+
+const argv = process.argv.slice(2);
+const ucEq = argv.find((a) => a.startsWith('--user-content-dir='));
+const ucIdx = argv.indexOf('--user-content-dir');
+const userContentDir = ucEq ? ucEq.slice('--user-content-dir='.length)
+  : ucIdx >= 0 ? argv[ucIdx + 1] ?? ''
+  : null;
+if (userContentDir != null) {
+  if (!userContentDir) {
+    console.log('FAIL --user-content-dir must name a directory');
+    process.exit(1);
+  }
+  const require = createRequire(import.meta.url);
+  const { scanUserContentDir } = require('./lib/userContentStore.cjs');
+  globalThis.__SF_USER_MODS__ = scanUserContentDir(userContentDir);
+  console.log(`user content dir: ${userContentDir}`);
+}
+
+// Dynamic imports: the payload above must already be on globalThis when the data modules evaluate.
+const [
+  { SHIPS }, { WEAPONS }, { MODULES }, { TECH_NODES }, { COMMODITIES },
+  { ORES, ASTEROIDS, BEAMS, RECIPES, FIELDS },
+  { SECTORS, STATION_TYPES }, { FACTION_META }, { MISSION_TYPES, STORY_BEATS },
+  { DRONES, TRADERS, OUTPOSTS }, { ENEMY_TYPES },
+  { BODY_MODULES, BODY_SLOTS_BY_SIZE, CLAIM_COST }, { NEW_GAME },
+] = await Promise.all([
+  import('../src/data/ships.js'),
+  import('../src/data/weapons.js'),
+  import('../src/data/modules.js'),
+  import('../src/data/tech.js'),
+  import('../src/data/commodities.js'),
+  import('../src/data/mining.js'),
+  import('../src/data/sectors.js'),
+  import('../src/data/factions.js'),
+  import('../src/data/missions.js'),
+  import('../src/data/automation.js'),
+  import('../src/data/enemies.js'),
+  import('../src/data/claimableBodies.js'),
+  import('../src/data/newGameDefaults.js'),
+]);
 
 function ids(coll) {
   const out = new Set();

@@ -15,6 +15,24 @@ function admissionScratchTarget(THREE) {
   return _admissionScratchTarget;
 }
 
+// The depth admission exists to link caster depth variants, but renderer.render() also runs a
+// color pass over the staged roots — against a bare rig (one shadowed key light, no env, no fog).
+// That pass used to link an extra COLOR program per staged material under the wrong key, which did
+// two kinds of damage: the wasted link cost a program slot each time, and the junk variant left
+// materialProperties.currentProgram non-null, so bloom's unready-drawable guard saw a "ready"
+// program and let the first presented draw link the real (env'd) variant inside bloomScene
+// (~394 ms on the min-spec Intel iGPU — the ae_bell soak brick). A Scene overrideMaterial makes the
+// color pass draw every caster with one shared basic material: WebGLShadowMap still reads
+// object.material for the real depth variants, while no subject color program is evaluated.
+let _admissionOverrideMaterial = null;
+function admissionOverrideMaterial(THREE) {
+  if (!_admissionOverrideMaterial && THREE && typeof THREE.MeshBasicMaterial === 'function') {
+    _admissionOverrideMaterial = new THREE.MeshBasicMaterial();
+    _admissionOverrideMaterial.name = 'SF_AdmissionShadowDepthOverride';
+  }
+  return _admissionOverrideMaterial;
+}
+
 export function collectShadowCastSubjects(roots) {
   const list = Array.isArray(roots) ? roots : [roots];
   const casting = [];
@@ -64,11 +82,13 @@ export function compileShadowDepthPipelines(options = {}) {
   }
 
   const THREE = options.THREE;
-  if (!THREE || typeof THREE.Group !== 'function') {
-    return { skipped: true, reason: 'THREE.Group unavailable for depth staging', subjects: 0 };
+  if (!THREE || typeof THREE.Scene !== 'function') {
+    return { skipped: true, reason: 'THREE.Scene unavailable for depth staging', subjects: 0 };
   }
-  const staging = new THREE.Group();
+  const staging = new THREE.Scene();
   staging.name = options.stagingName || 'SF_AdmissionShadowDepthPipelines';
+  const colorOverride = admissionOverrideMaterial(THREE);
+  if (colorOverride) staging.overrideMaterial = colorOverride;
   const homes = casting.map((root) => captureObjectHome(root));
   const lightHome = captureObjectHome(light);
   const previousTarget = typeof renderer.getRenderTarget === 'function'

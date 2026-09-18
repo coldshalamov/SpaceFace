@@ -20,7 +20,7 @@ on feel must be able to name which one it is fighting:
 |---|---|---|---|
 | **THIN** | The feature exists and does one thing once. A shove moves a ship one hull length. A spill spawns pods nobody wants. | "See, it shoves." The test asserts existence, not consequence. | **Consequence count.** An action that does not produce at least two further things (a motion, a reaction, a receipt someone else consumes) is thin. |
 | **MISCONFIGURED** | The system is right and the numbers are wrong. Thrust vs speed vs screen made the ship a bus. A governor braked earned speed. | The number was never written down as a bar, so nothing failed. | **A bar in player units** (screen depths, seconds, hull lengths, fraction kept) with the before and after number. |
-| **LAZY** | Nobody played it. The path follower "followed the path" at walking speed and passed its own tracking test. | The test measured the wrong thing; the feature was never watched at the shipping camera. | **Frames.** A capture at the shipping camera, at normal speed, graded by a critic that can see, plus the owner's weekly hands-on. |
+| **LAZY** | Nobody played it. The path follower "followed the path" at walking speed and passed its own tracking test. | The test measured the wrong thing; the feature was never watched at the shipping camera. | **A number in player units plus the live owner.** Print the bar. Read the rule that produces it. A headed strip is optional when a GPU is free and the remaining doubt is purely visual; it is never the close gate. |
 
 "Make it better" has no operational meaning by itself. This loop gives it one: **run the bench,
 find the lowest bar or the worst frame, name the fundamental, change one thing, measure, keep or
@@ -64,9 +64,9 @@ PLAY ──> MEASURE ──> JUDGE ──> NAME THE FUNDAMENTAL ──> FIX THE 
  └──────────────────────── keep or revert; next lowest bar ────────────────────────────┘
 ```
 
-### 3.1 PLAY — run the bench, headless and headed
+### 3.1 PLAY — run the bench, headless first
 
-Until `PQ-173` lands, "run the bench" means: run the scenarios and captures named below by hand (they exist), print the numbers you can, and record the gaps as `PQ-173` leaves. Do not fake a bench that is not there.
+Until `PQ-173` lands, "run the bench" means: run the scenarios named below by hand (they exist), print the numbers you can, and record the gaps as `PQ-173` leaves. Do not fake a bench that is not there. Do not stall a cycle for a headed capture.
 
 The bench is fixed and small so results compare across days:
 
@@ -77,10 +77,10 @@ The bench is fixed and small so results compare across days:
 | **Adventure proof** | The 60-second proof at the reference site (`PQ-141`) | 5 seeds | `proof.sixty_seconds` when it exists; `scripts/capture-gameplay-60s.mjs` for frames |
 | **Verb benches** | One scenario per verb: rope swing/release, shove, well, draw-path stroke, terrain slam, cargo spill | fixed | the `feel.*` scenarios (`PQ-137.10`) |
 
-Headless runs print numbers. Headed runs (real browser, shipping camera, normal speed, HUD text off
-for the critic) produce **frame strips**: 4 frames per second, 8 around impacts, 8 seconds before
-and 12 after each moment, aligned to tick and simTime (the observatory capture contract in
-`design/production/04_GAMEPLAY_OBSERVATORY.md` §3).
+Headless runs print numbers and are the required play. Headed frame strips are optional: use them
+only when a GPU is free **and** a remaining doubt is purely visual (a stand-in, an unreadable
+threat). A missing GPU, a Chromium timeout, or a capture-harness red does not fail the cycle.
+Owner weekly hands-on remains the visual gate the agent does not fake with a stored still.
 
 ### 3.2 MEASURE — print every bar and the fun metrics
 
@@ -103,12 +103,17 @@ player units:
 The measurer writes one JSON and one Markdown table per run under
 `design/program/roadmap/receipts/fun-loop/<date>-<bench>-<seed>.md`.
 
-### 3.3 JUDGE — the critic looks, with a fixed rubric
+### 3.3 JUDGE — metrics and the live owner; strips only if they already exist
+
+A critic that did not make the change reads the **metrics and the causal code path**. That is
+enough to name the fundamental. When a frame strip already exists, a vision-capable model may
+also answer the visual questions below. Prose without a number is not a verdict. Do not stall
+the cycle to capture. If no strip exists, leave visual blockers unraised unless the code itself
+proves a stand-in (a `THREE.Sprite` / glow disc as the object).
 
 <!-- critic-rubric:begin (generated from scripts/lib/critic/rubric.mjs — do not edit by hand) -->
-A vision-capable model that did not make the change reads the frame strips and the metrics and
-answers ten yes/no questions, each with the frame index that proves the answer. Prose without a
-frame is not a verdict.
+A vision-capable model that did not make the change reads the frame strips **when present** and the metrics and
+answers ten yes/no questions, each with the frame index that proves the answer **or** the metric/receipt when no strip exists.
 
 1. Can I tell what the player did from the frames alone?
 2. Did the world answer within a third of a second (motion, light, or a visible receipt)?
@@ -204,10 +209,10 @@ The change ships with a test whose assertion message quotes the vision sentence 
 
 Re-run the same bench, same seeds. Keep only if: the bar the hypothesis named moved toward its
 target, no bar regressed beyond the noise floor except a tradeoff the cycle declared BEFORE the run
-(and no hard bar — B13, the rulings, the refusals — ever), the critic raised no blocker, and `npm run
-check:baseline` is green. Ties revert. Not every design metric is monotone; a cycle is judged on the
-bargain it named, never on every bar moving at once (audit 2026-09-05). Two failed cycles on the same causal model falsify the model
-(`CENTRAL_BRAIN.md` §6.5).
+(and no hard bar — B13, the rulings, the refusals — ever), and `npm run check:baseline` is green.
+Do not wait on a critic strip. Ties revert. Not every design metric is monotone; a cycle is judged
+on the bargain it named, never on every bar moving at once (audit 2026-09-05). Two failed cycles
+on the same causal model falsify the model (`CENTRAL_BRAIN.md` §6.5).
 
 ### 3.7 REPORT — one page, in the owner's words
 
@@ -218,7 +223,6 @@ WHAT I FOUND     one sentence naming the fundamental in plain words
 WHAT I CHANGED   one sentence, no file names
 WHAT YOU WILL FEEL   two sentences: what is different when you play, and what still is not
 THE NUMBERS      one small table: bar | before | after | target
-THE FRAMES       the before/after strip (two rows of six frames)
 NEXT             the next lowest bar
 ```
 

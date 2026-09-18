@@ -3,6 +3,42 @@ import * as THREE from 'three';
 const STARTUP_GEOMETRY_BATCH_DRAWABLES = 4;
 const STARTUP_GEOMETRY_BATCH_BYTES = 8 * 1024 * 1024;
 
+// One 1x1 scratch target per renderer, shared by every geometry-residency admission for the
+// context's lifetime. A fresh WebGLRenderTarget per admission used to orphan its texture and
+// framebuffer whenever the admission was abandoned mid-yield — a soak's repeated dock/load cycles
+// measured the residue directly. Shadow-depth admission already caches its scratch target the same
+// way; the GL objects die with the context and re-upload on restore through the normal path.
+const residencyScratchTargets = new WeakMap();
+
+function residencyScratchTargetFor(renderer) {
+  let target = residencyScratchTargets.get(renderer);
+  if (!target) {
+    target = new THREE.WebGLRenderTarget(1, 1, {
+      depthBuffer: false,
+      stencilBuffer: false,
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+    });
+    target.texture.generateMipmaps = false;
+    target.texture.name = 'SF_StartupGeometryResidencyTarget';
+    residencyScratchTargets.set(renderer, target);
+  }
+  return target;
+}
+
+// The scratch pass binds shared render-target state, so admissions cannot interleave: a second
+// caller that captured the scratch target as its "previous" target would restore the renderer to a
+// 1x1 buffer instead of the canvas. Serializing the batch loops per renderer keeps every capture/
+// restore honest while each admission's texture uploads still overlap freely.
+const residencyBatchChains = new WeakMap();
+
+function enqueueGeometryResidencyBatches(renderer, work) {
+  const prior = residencyBatchChains.get(renderer) || Promise.resolve();
+  const run = prior.then(work, work);
+  residencyBatchChains.set(renderer, run.catch(() => null));
+  return run;
+}
+
 function materialTextures(material, textures) {
   if (!material || typeof material !== 'object') return;
   for (const value of Object.values(material)) {
@@ -66,6 +102,17 @@ export function collectStartupGeometryDrawables(subjects, options = {}) {
       if (!drawableHasWork(object, options) || seen.has(object)) return;
       seen.add(object);
       drawables.push(object);
+      // Quality-tier systems (continuous plume, RCS impulse) carry alternate geometries and swap
+      // mesh.geometry on a live frame; an unstamped tier uploads inside the presented pass.
+      const tiers = object.userData && object.userData.spacefaceQualityTierGeometries;
+      if (Array.isArray(tiers)) {
+        for (const tierGeo of tiers) {
+          if (!tierGeo || tierGeo === object.geometry) continue;
+          const facade = Object.create(object);
+          facade.geometry = tierGeo;
+          drawables.push(facade);
+        }
+      }
     };
     if (typeof root.traverse === 'function') root.traverse(visit);
     else visit(root);
@@ -306,14 +353,7 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   const now = typeof options.now === 'function' ? options.now : clockNow;
   const batches = partitionGeometryWork(work, options);
   const material = createResidencyMaterial();
-  const target = new THREE.WebGLRenderTarget(1, 1, {
-    depthBuffer: false,
-    stencilBuffer: false,
-    minFilter: THREE.NearestFilter,
-    magFilter: THREE.NearestFilter,
-  });
-  target.texture.generateMipmaps = false;
-  target.texture.name = 'SF_StartupGeometryResidencyTarget';
+  const target = residencyScratchTargetFor(renderer);
   const camera = new THREE.PerspectiveCamera(50, 1, 0.01, 10);
   camera.layers.enableAll();
   camera.updateMatrixWorld(true);
@@ -321,7 +361,8 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
   const geometriesBefore = rendererMemoryGeometries(renderer);
 
   try {
-    for (let index = 0; index < batches.length; index++) {
+    await enqueueGeometryResidencyBatches(renderer, async () => {
+      for (let index = 0; index < batches.length; index++) {
       const batch = batches[index];
       await yieldToMain();
       const scene = new THREE.Scene();
@@ -365,10 +406,10 @@ export async function prepareStartupGeometryResidency(renderer, subjects, option
         }
         reportBlockingSlice(onBlockingSlice, receipt);
       }
-    }
+      }
+    });
   } finally {
     material.dispose();
-    target.dispose();
   }
 
   const geometriesAfter = rendererMemoryGeometries(renderer);
@@ -466,7 +507,17 @@ export function yieldToNextPresent(options = {}) {
       ? options.scheduleTask
       : (callback) => setTimeout(callback, 0);
     if (requestFrame) {
-      requestFrame(() => scheduleTask(resolve));
+      let fired = false;
+      const fire = () => {
+        if (fired) return;
+        fired = true;
+        scheduleTask(resolve);
+      };
+      requestFrame(fire);
+      // An occluded or minimized headed window can starve rAF indefinitely; a parked admission
+      // would hold its GPU work (and any scratch state) forever. Same unstick window
+      // armCallbackAfterPresent documents for headless/background stalls.
+      setTimeout(fire, 48);
       return;
     }
     scheduleTask(resolve);

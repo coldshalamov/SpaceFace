@@ -12,6 +12,7 @@ const { app, BrowserWindow, ipcMain, powerMonitor, dialog } = electron;
 const path = require('path');
 const fs = require('fs');
 const { createGameServer } = require('../scripts/lib/gameServer.cjs');
+const { resolveMountedUserContentDir } = require('../scripts/lib/userContentStore.cjs');
 const {
   appendLaunchReceipt,
   isAllowedElectronListenerPort,
@@ -29,6 +30,7 @@ const {
 const { publicBuildInfo, resolveReleaseIdentity } = require('./releaseIdentity.cjs');
 const { configureAutoUpdate } = require('./autoUpdate.cjs');
 const steamworks = require('./steamworks.cjs');
+const workshopMods = require('./workshopMods.cjs');
 
 // WEB ROOT: packaged desktop serves the bundled release output in build/web/. Electron dev serves
 // the project root so `npm run electron` and `node server.js 8123` run the same source route even
@@ -65,6 +67,19 @@ let powerLifecycleListenersInstalled = false;
 let gameServerPortPromise = null;
 let windowCreationPromise = null;
 let appQuitting = false;
+let resolvedUserContentDir;
+
+// User content ("mods") mount, PQ-172.00/.01. Resolved lazily so an isolated-evidence profile's
+// userData override (applied at module scope below) governs the mods home too; isolated evidence
+// mounts no mods at all. SPACEFACE_USER_CONTENT_DIR is the explicit override.
+function mountedUserContentDir() {
+  if (resolvedUserContentDir === undefined) {
+    resolvedUserContentDir = launchConfig.isolatedEvidence ? null : resolveMountedUserContentDir(process.env, {
+      platformDir: path.join(app.getPath('userData'), 'mods'),
+    });
+  }
+  return resolvedUserContentDir;
+}
 
 app.on('before-quit', () => { appQuitting = true; });
 
@@ -146,6 +161,18 @@ steamAdapter.enableOverlay();
 ipcMain.handle(steamworks.ACHIEVEMENT_UNLOCK_CHANNEL, (_event, payload) => steamAdapter.unlockAchievement(payload));
 ipcMain.handle(steamworks.STEAM_STATUS_CHANNEL, () => steamAdapter.publicStatus());
 
+// PQ-172.01 Steam Workshop for the user content directory: publish a local pack by manifest id and
+// mirror subscribed items into workshop-<itemId>/ dirs the .00 loader scans. Only a mod id crosses
+// the bridge — the shell resolves the directory itself. Non-Steam builds answer unavailable.
+const workshopBridge = workshopMods.createWorkshopBridge({
+  adapter: steamAdapter,
+  userContentDir: mountedUserContentDir,
+  receipt,
+});
+ipcMain.handle(workshopMods.WORKSHOP_STATUS_CHANNEL, () => workshopBridge.status());
+ipcMain.handle(workshopMods.WORKSHOP_PUBLISH_CHANNEL, (_event, payload) => workshopBridge.publishMod(payload));
+ipcMain.handle(workshopMods.WORKSHOP_SYNC_CHANNEL, () => workshopBridge.syncSubscribed());
+
 // PQ-033.01 crash reports: Crashpad dumps under userData/crashes carry version+build in extras;
 // human-readable JSON reports land alongside them on renderer/child-process/uncaught faults. Local
 // files only — no upload store.
@@ -210,6 +237,7 @@ function listenGameServer(root, requestedPort) {
       async: true,
       devDiagnostics: !app.isPackaged,
       playerStoreDir,
+      userContentDir: mountedUserContentDir(),
       staticHeaders: { 'Content-Security-Policy': ELECTRON_CONTENT_SECURITY_POLICY },
       staticHeadersByPath: {
         [KTX2_TRANSCODER_WORKER_PATH]: {

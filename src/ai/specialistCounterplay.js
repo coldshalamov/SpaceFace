@@ -46,12 +46,17 @@ export function applySpecialistCounterplay({
   if (plan.verb === 'cut_line') {
     if (!CUT_PHASES.has(doctrinePhase)) return null;
     if (tick - last < CUT_COOLDOWN_TICKS) return null;
-    const tether = state && state.player && state.player.tether;
-    if (!tether || tether.active !== true || tether.attachmentId == null) return null;
-    const player = state.entities && state.entities.get && state.entities.get(state.playerId);
+    const player = state && state.entities && state.entities.get && state.playerId != null
+      ? state.entities.get(state.playerId)
+      : null;
+    if (!player) return null;
+    const activeLine = attachments && typeof attachments.listForEntity === 'function'
+      ? attachments.listForEntity(player.id).find((a) => a && a.id != null)
+      : null;
+    if (!activeLine) return null;
     const range = plan.cutRangeWu || 180;
-    if (distSq(specialist.pos, player && player.pos) > range * range) return null;
-    const result = specialistBreakLine(attachments, tether.attachmentId, specialist.id);
+    if (distSq(specialist.pos, player.pos) > range * range) return null;
+    const result = specialistBreakLine(attachments, activeLine.id, specialist.id);
     if (result && result.ok) data._pq140LastVerbTick = tick;
     return result && result.ok ? { verb: 'cut_line', ok: true } : null;
   }

@@ -40,6 +40,8 @@ const SMOKE_COMMANDS = [
   cmd('seam-terrain-anchors', 'node --test test/seam-terrain-anchors.test.mjs'),
   cmd('seam-bounty-hunt', 'node --test test/seam-bounty-hunt.test.mjs'),
   cmd('seam-mines', 'node --test test/seam-mines.test.mjs'),
+  // PQ-172: user content packs — the Workshop publish/subscribe round-trip on the loader contract.
+  cmd('workshop-roundtrip', 'node --test test/pq-172-01-workshop.test.mjs'),
 ];
 
 // NOTE: the CLI entry point is at the BOTTOM of this file, not here. The group/shard classifier

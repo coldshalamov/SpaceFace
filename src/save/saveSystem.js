@@ -729,6 +729,39 @@ export const save = {
     return !!(state && state.playerId && state.entities && state.entities.get(state.playerId));
   },
 
+  /**
+   * Quota pressure escalation, per this file's own policy — a lost backup beats a lost save.
+   * Tier 1 evicts every `sf.recovery.*` backup (insurance copies, never primaries); tier 2 also
+   * drops the autosave primary, which is rolling insurance that the next trigger rewrites within
+   * seconds — a manual save the player just requested must outrank it. Deletions are mirrored to
+   * the shared store so a boot-time merge cannot resurrect them.
+   * @returns {number} bytes freed (approximate — measured pre-removal)
+   */
+  _evictForQuotaPressure({ includeAutosaveSlot = false } = {}) {
+    const doomed = [];
+    let freed = 0;
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(RECOVERY_PREFIX)) doomed.push(key);
+      }
+      if (includeAutosaveSlot) doomed.push(LS_PREFIX + AUTOSAVE_SLOT);
+      for (const key of doomed) {
+        try {
+          const raw = localStorage.getItem(key);
+          localStorage.removeItem(key);
+          freed += raw ? raw.length : 0;
+        } catch (_) { /* removal raced or storage disabled — keep evicting the rest */ }
+      }
+    } catch (_) { /* localStorage enumeration unavailable */ }
+    if (doomed.length) {
+      const patch = {};
+      for (const key of doomed) patch[key] = null;
+      this._queueSharedStoreMirror(patch);
+    }
+    return freed;
+  },
+
   // ── save (write a slot) ─────────────────────────────────────────────────────────────────────
 
   /** Serialize the current state and persist it to localStorage under `slot`. */
@@ -779,7 +812,11 @@ export const save = {
       indexMs: write.indexMs,
       bytes: write.bytes,
       ok: !!write.ok,
-      failure: write.reason || null,
+      // write_verify_* collapses many prepare sub-reasons — keep the sub-reason (and the bound it
+      // tripped) in the emitted failure so a soak/test report names the limit instead of a shrug.
+      failure: write.reason && write.verifyReason
+        ? `${write.reason}:${write.verifyReason}${Number.isFinite(write.verifyActual) ? `(${write.verifyActual}>${write.verifyLimit})` : ''}`
+        : write.reason || null,
     });
     const ok = this._publishSaveResult(slot, envelope, write, timing);
     if (ok) this._acknowledgeSaveSnapshotBoundary(snapshotBoundary);
@@ -840,26 +877,54 @@ export const save = {
       localStorage.setItem(primaryKey, json);
       storageMs = nowMs() - t;
     } catch (err) {
-      if (err && err.name === 'QuotaExceededError' && previousRaw) {
-        // The recovery rotation above doubled this slot's footprint. The previous primary is
-        // still intact underneath, so sacrifice the just-written recovery copy and retry once —
-        // a lost backup beats a lost save (release soak hit this at 5MB localStorage quota).
+      if (err && err.name === 'QuotaExceededError') {
+        // Escalate through expendable copies before conceding the write — a lost backup beats a
+        // lost save (release soak hit this at 5MB localStorage quota). The same-slot recovery
+        // rotation above can double one slot's footprint; when there is no previous save the
+        // pressure is from other slots' backups, so the ladder runs either way:
+        //   1. this slot's recovery copy, 2. every sf.recovery.* backup,
+        //   3. the autosave primary (rolling insurance; rewrites itself next trigger).
         try { localStorage.removeItem(recoveryKey); } catch (_) { /* keep retrying anyway */ }
+        let fitted = false;
         try {
           const t = nowMs();
           localStorage.setItem(primaryKey, json);
           storageMs = nowMs() - t;
+          fitted = true;
         } catch (retryErr) {
-          try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ }
-          const reason = (retryErr && retryErr.name === 'QuotaExceededError') ? 'quota' : 'write_failed';
-          console.error('[save] write failed', retryErr);
-          return { ok: false, reason, bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
+          if (!(retryErr && retryErr.name === 'QuotaExceededError')) {
+            if (previousRaw) { try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ } }
+            console.error('[save] write failed', retryErr);
+            return { ok: false, reason: 'write_failed', bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
+          }
+        }
+        if (!fitted) {
+          this._evictForQuotaPressure();
+          try {
+            const t = nowMs();
+            localStorage.setItem(primaryKey, json);
+            storageMs = nowMs() - t;
+            fitted = true;
+          } catch (_) { /* keep escalating */ }
+        }
+        if (!fitted && slot !== AUTOSAVE_SLOT) {
+          this._evictForQuotaPressure({ includeAutosaveSlot: true });
+          try {
+            const t = nowMs();
+            localStorage.setItem(primaryKey, json);
+            storageMs = nowMs() - t;
+            fitted = true;
+          } catch (_) { /* genuinely out of room */ }
+        }
+        if (!fitted) {
+          if (previousRaw) { try { localStorage.setItem(recoveryKey, previousRaw); } catch (_) { /* recovery already spent */ } }
+          console.error('[save] write failed: storage quota exceeded');
+          return { ok: false, reason: 'quota', bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
         }
       } else {
-        // QuotaExceeded or storage disabled — suggest export-to-file fallback.
-        const reason = (err && err.name === 'QuotaExceededError') ? 'quota' : 'write_failed';
+        // Storage disabled or a non-quota failure — suggest export-to-file fallback.
         console.error('[save] write failed', err);
-        return { ok: false, reason, bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
+        return { ok: false, reason: 'write_failed', bytes: json ? json.length : 0, stringifyMs, storageMs, indexMs };
       }
     }
 
@@ -867,6 +932,11 @@ export const save = {
     // truncated values, and checksum drift. Roll back to the previous bytes before reporting red.
     let storedRaw = null;
     try { storedRaw = localStorage.getItem(primaryKey); } catch (err) {}
+    if (storedRaw !== json) {
+      // One re-read before condemning the write: a transient storage fault (getItem throw or a
+      // stale null) must not masquerade as corruption — a real byte mismatch reads identically.
+      try { storedRaw = localStorage.getItem(primaryKey); } catch (err) {}
+    }
     const storedPrepared = this._prepareEnvelopeString(storedRaw);
     if (storedRaw !== json || !storedPrepared.ok) {
       try {
@@ -876,6 +946,13 @@ export const save = {
       return {
         ok: false,
         reason: storedPrepared.reason === 'parse_failed' ? 'write_verify_parse' : 'write_verify_failed',
+        // The write/verify path is synchronous — a mismatch can only be a read-back anomaly, so
+        // carry the envelope-prepare sub-reason and sizes or the next failure stays unactionable
+        // (release soak cycle 225 surfaced a bare write_verify_failed).
+        verifyReason: storedPrepared.reason || null,
+        verifyLimit: Number.isFinite(storedPrepared.limit) ? storedPrepared.limit : null,
+        verifyActual: Number.isFinite(storedPrepared.actual) ? storedPrepared.actual : null,
+        storedBytes: typeof storedRaw === 'string' ? storedRaw.length : null,
         bytes: json.length,
         stringifyMs,
         storageMs,
@@ -2212,6 +2289,27 @@ export const save = {
     const started = workNowMs();
     try { localStorage.setItem(LS_PREFIX + AUTOSAVE_SLOT, snapshot.json); }
     catch (error) {
+      // Under quota, recovery backups are the cheapest thing to free — but an autosave is itself
+      // insurance, so it may never escalate to evicting another slot's primary the way a manual
+      // save can. If the recovery sweep is not enough, this cycle's autosave simply fails; the
+      // next trigger retries against whatever the manual save left behind.
+      if (error && error.name === 'QuotaExceededError' && this._evictForQuotaPressure() > 0) {
+        try {
+          localStorage.setItem(LS_PREFIX + AUTOSAVE_SLOT, snapshot.json);
+          const sliceMs = workNowMs() - started;
+          tx.primaryWritten = true;
+          tx.storageMs += sliceMs;
+          this._pushAutosaveSlice(tx, 'storage_write_primary', sliceMs);
+          this._scheduleAutosaveWork(() => this._autosaveReadback(job, snapshot, tx));
+          return true;
+        } catch (retryErr) {
+          const failureMs = workNowMs() - started;
+          tx.storageMs += failureMs;
+          this._pushAutosaveSlice(tx, 'storage_write_primary_error', failureMs);
+          const retryReason = retryErr && retryErr.name === 'QuotaExceededError' ? 'quota' : 'write_failed';
+          return this._finishAutosaveTransaction(job, snapshot, tx, { ok: false, reason: retryReason });
+        }
+      }
       const failureMs = workNowMs() - started;
       tx.storageMs += failureMs;
       this._pushAutosaveSlice(tx, 'storage_write_primary_error', failureMs);
@@ -2279,8 +2377,9 @@ export const save = {
     tx.verifyMs += verifyMs;
     this._pushAutosaveSlice(tx, 'validate_readback_sync', verifyMs);
     if (!prepared.ok) {
+      const reason = prepared.reason === 'parse_failed' ? 'write_verify_parse' : 'write_verify_failed';
       return this._scheduleAutosaveRollback(job, snapshot, tx,
-        prepared.reason === 'parse_failed' ? 'write_verify_parse' : 'write_verify_failed');
+        `${reason}:${prepared.reason || 'unknown'}${Number.isFinite(prepared.actual) ? `(${prepared.actual}>${prepared.limit})` : ''}`);
     }
     this._scheduleAutosaveWork(() => this._autosaveWriteIndex(job, snapshot, tx));
     return true;

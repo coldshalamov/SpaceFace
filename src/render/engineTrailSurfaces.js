@@ -796,7 +796,11 @@ export function createRibbonTrail(scene, color, nSeg, baseWidth) {
       }
       geo.setDrawRange(0, (count - 1) * 6);
       renderedCount = count;
-      mesh.visible = true;
+      // Compile latch (same userData.pipelinesPending contract entity meshes use): a
+      // lazily-created trail queues its program link after-present, and the first thrust
+      // draw before it settles links inside bloomScene (1.7 s Intel brick). Geometry is
+      // already built, so reveal on the first rebuild after the latch clears.
+      mesh.visible = mesh.userData.pipelinesPending === true ? false : true;
       fullRebuildCount++;
     },
     getMaterial() { return mat; },

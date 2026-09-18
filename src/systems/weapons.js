@@ -23,6 +23,7 @@ import {
   masslineOwnsGuns,
 } from '../combat/tetherFireControl.js';
 import { presentationAllowsPlayerFacingAction } from '../core/presentationAdmission.js';
+import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
 import { indexedShipLikeScan } from '../world/livingWorldViews.js';
 import {
   attackSpecHasLiveHit,
@@ -328,12 +329,14 @@ export const weapons = {
     } else if (state.player && state.player.gunTargetId != null) {
       state.player.gunTargetId = null;
     }
-    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    const ships = (state.entityIndex && (state.entityIndex.weaponShips || state.entityIndex.ships))
+      || state.entityList;
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive || e.id === state.playerId) continue;
       const intent = e.data && e.data.intent;
       const firing = !!(intent && intent.fire)
         && presentationAllowsPlayerFacingAction(e, state);
+      if (e.physicsSleeping === true && !firing) continue;
       // NPC aim = its intent aimAngle (already a lead/intercept angle from ai.js). fall back to nose.
       const aimAngle = (intent && intent.aimAngle != null) ? intent.aimAngle : e.rot;
       this._serviceShip(e, firing, false, dt, state, aimAngle, null);
@@ -356,6 +359,7 @@ export const weapons = {
     const ships = (state.entityIndex && (state.entityIndex.weaponShips || state.entityIndex.ships)) || state.entityList;
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;
+      if (e.physicsSleeping === true && !npcWeaponsNeedTick(e, state)) continue;
       const ws = e.data && e.data.weapons;
       if (ws) {
         for (const w of ws) {
@@ -1186,11 +1190,26 @@ export const weapons = {
       }
       const trigR = d.triggerRadius;
       let triggered = false;
-      for (const s of ships) {
-        if (!s.alive || (s.type !== 'ship' && s.type !== 'drone')) continue;
-        const dx = s.pos.x - mine.pos.x, dz = s.pos.z - mine.pos.z;
-        const rr = trigR + (s.radius || 0);
-        if (dx * dx + dz * dz <= rr * rr) { triggered = true; break; }
+      const table = state.combatTable;
+      if (table && table.count > 0) {
+        const mx = mine.pos.x;
+        const mz = mine.pos.z;
+        const n = table.count;
+        const shipFlag = COMBAT_TABLE_FLAGS.SHIP;
+        for (let i = 0; i < n; i++) {
+          if ((table.flags[i] & shipFlag) === 0) continue;
+          const rr = trigR + (table.radius[i] || 0);
+          const dx = table.x[i] - mx;
+          const dz = table.z[i] - mz;
+          if (dx * dx + dz * dz <= rr * rr) { triggered = true; break; }
+        }
+      } else {
+        for (const s of ships) {
+          if (!s.alive || (s.type !== 'ship' && s.type !== 'drone')) continue;
+          const dx = s.pos.x - mine.pos.x, dz = s.pos.z - mine.pos.z;
+          const rr = trigR + (s.radius || 0);
+          if (dx * dx + dz * dz <= rr * rr) { triggered = true; break; }
+        }
       }
       if (triggered) this._detonateVectorMine(mine, d, state);
     }
@@ -1205,7 +1224,14 @@ export const weapons = {
     const pos = { x: mine.pos.x, z: mine.pos.z };
     const blastR = d.blastRadius;
     const hits = [];
-    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList || [];
+    const table = state.combatTable;
+    const ships = (table && table.count > 0 && state.entities && typeof state.entities.get === 'function')
+      ? queryCombatTableEntities(
+        state, pos.x, pos.z, blastR,
+        this._mineBlastQuery || (this._mineBlastQuery = []),
+        COMBAT_TABLE_FLAGS.SHIP,
+      )
+      : ((state.entityIndex && state.entityIndex.ships) || state.entityList || []);
     for (const s of ships) {
       if (!s.alive || (s.type !== 'ship' && s.type !== 'drone')) continue;
       const dx = s.pos.x - pos.x, dz = s.pos.z - pos.z;
@@ -1438,6 +1464,19 @@ function missileDecoyAim(d) {
   const z = d.divertPos.z;
   if (!Number.isFinite(x) || !Number.isFinite(z)) return null;
   return d.divertPos;
+}
+
+function npcWeaponsNeedTick(e, state) {
+  const data = e && e.data;
+  const plant = data && data.momentumSinkPlant;
+  if (plant && plant.active) return true;
+  if (data && data.weaponVentUntil && (state && state.simTime || 0) < data.weaponVentUntil) return true;
+  const ws = data && data.weapons;
+  if (!ws) return false;
+  for (const w of ws) {
+    if ((w._cooldown || 0) > 0 || (w._heat || 0) > 0) return true;
+  }
+  return false;
 }
 
 function npcFireTargetVisibleOnPlayerRadar(e, state) {

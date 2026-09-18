@@ -1,4 +1,8 @@
+<!-- LIFETIME: HISTORICAL -->
 # VFX upgrade audit and implemented candidate — 2026-09-07
+
+**Not a style guide.** Live law is [`VFX_TECHNIQUE_STANDARD.md`](./VFX_TECHNIQUE_STANDARD.md).
+This is a dated candidate record.
 
 ## Status and scope
 

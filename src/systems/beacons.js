@@ -15,6 +15,8 @@
 // AI internals. It is a strict no-op while no beacon is deployed, so the deterministic 47a sim (which
 // never deploys one) is unaffected. Beacons are transient — not persisted across save/load.
 
+import { queryNearbyEntities } from '../core/spatialQuery.js';
+
 const BEACON_COST = 250;            // cheap, one-slot
 const BEACON_TTL = 45;              // seconds a beacon lives
 const BEACON_MAX_ACTIVE = 2;        // active-at-once cap
@@ -31,6 +33,7 @@ export const beacons = {
     this.bus = ctx.bus;
     this.helpers = ctx.helpers;
     if (!Array.isArray(this.state.beacons)) this.state.beacons = [];
+    this._lureScratch = [];
     this._nextId = 1;
     this.bus.on('beacon:deploy', () => this.deploy());
     // Beacons are transient; a loaded save starts with none.
@@ -109,9 +112,11 @@ export const beacons = {
 
   // Steer nearby hostiles toward the beacon (intent override), leaving player-engagers alone.
   _lure(state, b, player) {
-    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    const fallback = (state.entityIndex && state.entityIndex.ships) || state.entityList;
+    const scratch = this._lureScratch || (this._lureScratch = []);
+    const ships = queryNearbyEntities(state, { x: b.x, z: b.z }, LURE_RADIUS, scratch, fallback);
     for (const e of ships) {
-      if (!e.alive || e.type !== 'ship' || e.id === state.playerId) continue;
+      if (!e || !e.alive || !e.pos || e.type !== 'ship' || e.id === state.playerId) continue;
       if (e.team === 0) continue;                         // player-aligned (incl. wingmen) excluded
       if (e.data && e.data.isWingman) continue;
       const dx = b.x - e.pos.x, dz = b.z - e.pos.z;

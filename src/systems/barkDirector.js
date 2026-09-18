@@ -4,6 +4,9 @@
 // routes faction-specific lines through voiceArbiter's bark channel, and writes only its own
 // state.barkDirector receipt cache so combat/AI/economy behavior stays unchanged.
 import { BARK_SITUATIONS, barkFor, hullRecognitionBarkFor } from '../data/barks.js';
+import { aceTrophyBarkFor } from '../data/conflictReactions.js';
+import { trophyFromFittings } from '../data/sectors.js';
+import { aceById } from '../data/namedAces.js';
 import {
   CARGO_OWNER_REACTIONS,
   cargoIdentityOf,
@@ -245,7 +248,10 @@ export const barkDirector = {
     const factionId = factionFor(entity);
     const seed = state.meta && state.meta.seed;
     const index = hash32(seed == null ? 0 : seed, 'barkDirector', entityId, situation);
-    const text = barkFor(factionId, situation, index);
+    const trophy = situation === 'scan' ? liveTrophyFromState(state) : null;
+    const text = trophy
+      ? aceTrophyBarkFor(factionId, index, { ace: trophy.aceName, head: trophy.name })
+      : barkFor(factionId, situation, index);
     const voice = this.helpers && this.helpers.voice;
     if (!voice || typeof voice.say !== 'function') return false;
 
@@ -644,6 +650,23 @@ export const barkDirector = {
     this._onCargoKilled = null;
   },
 };
+
+function liveTrophyFromState(state) {
+  if (!state) return null;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const trophy = trophyFromFittings(
+    player && player.data && player.data.fittings,
+    state.claims && state.claims.legendaryHeads,
+  );
+  if (!trophy) return null;
+  if (!trophy.aceName) {
+    const ace = aceById(trophy.aceId);
+    trophy.aceName = ace && ace.name || trophy.aceId || 'an ace';
+  }
+  return trophy;
+}
 
 export function classifyBarkSituation(entity, state) {
   if (!eligibleShip(entity, state)) return null;

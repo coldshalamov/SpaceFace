@@ -4,12 +4,13 @@ import test from 'node:test';
 import { prepareActiveShadowCamera, render } from '../src/render/renderer.js';
 import { SHADOW_TEXEL_WORLD_SIZE } from '../src/render/shadowCasterPolicy.js';
 
-// The thesis under test is that the RENDERER'S shadow-map state, not the user's shadows setting, is
-// what gates per-frame shadow work: the setting can stay on while zero receivers disable the map.
+// The thesis under test is that the RESOLVED RECEIVER TALLY, not the user setting or the pinned
+// program-key flags, is what gates per-frame shadow work. shadowMap.enabled and castShadow stay
+// pinned while the setting is on because both are baked into every lit material's program key —
+// flapping them with the tally rekeyed the scene and linked variants inside presented frames.
 // So the harness must never hand-write renderer.shadowMap.enabled — it drives the real
 // _syncShadowMapEnabled from a settings flag plus a controllable receiver count, exactly as
-// prepareFrame does. Hardcoding the boolean would leave the derivation untested, and a regression
-// that stopped clearing it at zero receivers would sail through green.
+// prepareFrame does, and publishes the tally-derived camera the way the frame loop does.
 function createShadowHarness({ shadowSetting = true, receivers = 1 } = {}) {
   const matrixCalls = [];
   const positions = { light: null, target: null };
@@ -79,7 +80,9 @@ function createShadowHarness({ shadowSetting = true, receivers = 1 } = {}) {
       positions.target = null;
       render._syncShadowMapEnabled.call(harness);
       render._updateShadowFollow.call(harness);
-      return prepareActiveShadowCamera(harness.renderer, harness.keyLight);
+      return prepareActiveShadowCamera(
+        harness.renderer, harness.keyLight, harness._shadowReceiverCount,
+      );
     },
     setReceivers(next) {
       receiverCount = next;
@@ -89,19 +92,19 @@ function createShadowHarness({ shadowSetting = true, receivers = 1 } = {}) {
   return harness;
 }
 
-test('the shadows setting stays on at zero receivers while the map itself gates the work', () => {
+test('zero receivers gate the depth pass and culling camera while the program-key flags stay pinned', () => {
   const harness = createShadowHarness({ shadowSetting: true, receivers: 0 });
 
   const shadowCamera = harness.frame();
 
-  // Both halves of the split are observed, not assumed: the setting is untouched, and the map the
-  // real derivation produced from it is off.
+  // Both halves of the split are observed, not assumed: the setting is untouched, and the
+  // key-visible flags stay armed so live programs and admission compiles agree on one variant.
   assert.equal(harness._shadowSettingOn, true, 'zero receivers must not rewrite the user setting');
-  assert.equal(harness.renderer.shadowMap.enabled, false,
-    'the derivation clears the map when nothing can receive a shadow');
-  assert.equal(harness.keyLight.castShadow, false);
-  assert.equal(shadowCamera, null, 'an inactive shadow map publishes no culling camera');
-  assert.deepEqual(harness.positions, { light: null, target: null }, 'the shadow rig is not moved');
+  assert.equal(harness.renderer.shadowMap.enabled, true,
+    'the key-visible map flag stays pinned while the setting is on');
+  assert.equal(harness.keyLight.castShadow, true,
+    'numDirLightShadows must not flap with the receiver tally');
+  assert.equal(shadowCamera, null, 'zero receivers still publish no culling camera');
   assert.deepEqual(harness.matrixCalls, [], 'no shadow matrix work is performed');
 });
 
@@ -138,7 +141,8 @@ test('re-enabling shadows re-follows the moved player before the culling camera 
   assert.equal(harness.frame(), harness.shadowCamera, 'baseline frame renders shadows');
   assert.deepEqual(harness.positions.light, [340.078125, 140, -140.46875]);
 
-  // Every receiver disappears. The follow now early-returns, so the key light FREEZES where it was.
+  // Every receiver disappears. The tally now gates the camera publication; the rig may still
+  // follow (a moving node costs nothing when no map renders), but no camera is published.
   harness.setReceivers(0);
   assert.equal(harness.frame(), null, 'a zero-receiver frame publishes no camera');
   assert.deepEqual(harness.matrixCalls, [], 'and does no matrix work');

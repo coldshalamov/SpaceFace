@@ -50,12 +50,13 @@ import {
 import { techDisplayName } from '../data/tech.js';
 import { addCargo, removeCargo } from './cargo.js';
 import { drawSeeded, hash32 } from '../core/rng.js';
-import { SECTORS, dangerIndex, stationGrowthLadderFor } from '../data/sectors.js';
+import { SECTORS, dangerIndex, stationGrowthLadderFor, aceTrophyHeadByTier, aceTrophyHeadByModuleId, trophyFromFittings } from '../data/sectors.js';
 import { OUTPOSTS } from '../data/automation.js';
 import { outpostOutputGoodId } from './automation.js';
 import { isRunSealed } from '../core/runSeal.js';
 import { farActorTableRadius } from '../world/farActorTable.js';
-import { depotPatrolLine, stationFactionIdFor, stationGrowthReaction } from '../data/conflictReactions.js';
+import { depotPatrolLine, stationFactionIdFor, stationGrowthReaction, endgamePullLine, aceTrophyNewsLine } from '../data/conflictReactions.js';
+import { aceById } from '../data/namedAces.js';
 
 // Refinery conversion: 2 ore -> 1 refined material (the "lighter, dearer goods to ship" beat).
 const REFINE_RATIO = 2;
@@ -116,6 +117,55 @@ export const DEPOT_PATROL_ZONE_RADIUS_WU = 280;
 // virtualize the hulls two ticks after they spawned and the beat would churn spawns unseen.
 export const DEPOT_PATROL_PRESENCE_RANGE_WU = 1400;
 export const DEPOT_PATROL_ID_PREFIX = 'depot-patrol:';
+export const ENDGAME_PULLS_SCHEMA = 'endgame_pulls_v1';
+export const LEGENDARY_HEADS_SCHEMA = 'legendary_heads_v1';
+export const ACE_TROPHY_TIER_MAX = 3;
+const ENDGAME_MEGA_HEIST_TAG = 'pq170-mega-heist';
+const ENDGAME_CAPITAL_BOSS_TAG = 'pq170-capital-boss';
+
+export function fittedTrophyFromState(state) {
+  if (!state) return null;
+  const player = state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const fittings = player && player.data && player.data.fittings;
+  const ledger = state.claims && state.claims.legendaryHeads;
+  const trophy = trophyFromFittings(fittings, ledger);
+  if (!trophy) return null;
+  if (!trophy.aceName) {
+    const ace = aceById(trophy.aceId);
+    trophy.aceName = ace && ace.name || trophy.aceId || 'an ace';
+  }
+  return trophy;
+}
+
+function endgamePullIdFromMission(payload) {
+  if (!payload) return null;
+  if (payload.causeTag === ENDGAME_MEGA_HEIST_TAG) {
+    return payload.megaHeistId || payload.params && payload.params.megaHeistId || null;
+  }
+  if (payload.causeTag === ENDGAME_CAPITAL_BOSS_TAG) {
+    return payload.capitalBossId || payload.params && payload.params.capitalBossId || null;
+  }
+  return null;
+}
+
+function nextOpenTrophyTier(taken) {
+  for (let tier = 1; tier <= ACE_TROPHY_TIER_MAX; tier++) {
+    if (!taken.has(tier)) return tier;
+  }
+  return null;
+}
+
+function playerOwnsModule(state, defId) {
+  const inventory = state && state.player && state.player.moduleInventory || [];
+  if (inventory.some((item) => item && item.defId === defId)) return true;
+  const player = state && state.entities && typeof state.entities.get === 'function'
+    ? state.entities.get(state.playerId)
+    : null;
+  const fittings = player && player.data && player.data.fittings;
+  return Array.isArray(fittings) && fittings.includes(defId);
+}
 
 function pointSegmentDistanceSquared(px, pz, ax, az, bx, bz) {
   const dx = bx - ax;
@@ -226,6 +276,8 @@ export const claims = {
       this.bus.on('sector:enter', () => this._stampAllStationGrowth());
       // PQ-170.01: player-supplied throughput. Only the SELL side supplies a station.
       this.bus.on('economy:tradeCompleted', (payload) => this._onTradeCompleted(payload || {}));
+      this.bus.on('mission:completed', (payload) => this._onEndgamePullCompleted(payload || {}));
+      this.bus.on('aceMemory:transition', (payload) => this._onAceTrophyDefeat(payload || {}));
       // PQ-170.01: a Concord depot rotation resolving (beat elapsed, stood down) schedules the next.
       this.bus.on('encounter:resolved', (payload) => this._onDepotPatrolResolved(payload || {}));
       this.bus.on('encounter:resolved', (payload) => this._onDefenseEncounterResolved(payload || {}));
@@ -2087,6 +2139,134 @@ export const claims = {
   // Public read API for the Base screen.
   list() { return (this.state.claims && this.state.claims.bodies) || []; },
 
+  endgamePulls() {
+    return this.state.claims && this.state.claims.endgamePulls || null;
+  },
+
+  legendaryHeads() {
+    return this.state.claims && this.state.claims.legendaryHeads || null;
+  },
+
+  fittedTrophyHead() {
+    return fittedTrophyFromState(this.state);
+  },
+
+  _onEndgamePullCompleted(payload) {
+    if (isRunSealed(this.state)) return null;
+    const pullId = endgamePullIdFromMission(payload);
+    if (!pullId) return null;
+    const ledger = this._ensureEndgamePulls();
+    if (ledger.completed[pullId]) return ledger.completed[pullId];
+    const now = this.state.simTime || 0;
+    const rec = {
+      id: pullId,
+      kind: payload && payload.megaHeistId ? 'mega_heist' : 'capital_boss',
+      factionId: payload && payload.factionId || null,
+      victimFactionId: payload && payload.victimFactionId || null,
+      method: payload && payload.completionMethod || null,
+      completedAt: now,
+    };
+    ledger.completed[pullId] = rec;
+    ledger.completedOrder.push(pullId);
+    const text = endgamePullLine(pullId);
+    this.bus.emit('endgame:pullCompleted', {
+      pullId,
+      kind: rec.kind,
+      factionId: rec.factionId,
+      victimFactionId: rec.victimFactionId,
+      method: rec.method,
+      text,
+    });
+    this.bus.emit('news:publish', {
+      text,
+      kind: 'endgame_pull',
+      pullId,
+      factionId: rec.factionId,
+      victimFactionId: rec.victimFactionId,
+      receiptId: `endgame-pull:${pullId}`,
+      source: 'claims',
+    });
+    return rec;
+  },
+
+  _onAceTrophyDefeat(payload) {
+    if (!payload || payload.transition !== 'defeated') return null;
+    if (isRunSealed(this.state)) return null;
+    const aceId = payload.aceId || (payload.record && payload.record.aceId);
+    const ace = aceById(aceId) || { id: aceId, name: payload.aceName || 'an ace' };
+    if (!ace || !ace.id) return null;
+    const ledger = this._ensureLegendaryHeads();
+    const existing = (ledger.heads || []).find((row) => row && row.aceId === ace.id);
+    if (existing) return existing;
+    const preferred = Math.max(1, Math.min(ACE_TROPHY_TIER_MAX, (payload.record && payload.record.returnTier) | 0 || 1));
+    const taken = new Set((ledger.heads || []).map((row) => row.tier));
+    const tier = !taken.has(preferred) ? preferred : nextOpenTrophyTier(taken);
+    if (!tier) return null;
+    const def = aceTrophyHeadByTier(tier);
+    if (!def) return null;
+    if (ledger.byModuleId && ledger.byModuleId[def.id]) return ledger.byModuleId[def.id];
+    const ships = this.ctx && this.ctx.registry && this.ctx.registry.get('ships');
+    const alreadyOwned = playerOwnsModule(this.state, def.id);
+    const granted = alreadyOwned || !!(ships && typeof ships.grantModule === 'function'
+      && ships.grantModule({ defId: def.id, reason: `ace-trophy:${ace.id}:${tier}` }));
+    if (!granted) return null;
+    const rec = {
+      schema: LEGENDARY_HEADS_SCHEMA,
+      tier,
+      moduleId: def.id,
+      name: def.name,
+      masslineHeadId: def.masslineHeadId,
+      aceId: ace.id,
+      aceName: ace.name || def.defaultAceId,
+      grantedAt: this.state.simTime || 0,
+    };
+    ledger.heads.push(rec);
+    ledger.byModuleId[def.id] = rec;
+    const text = aceTrophyNewsLine({ ace: rec.aceName, head: rec.name, tier });
+    this.bus.emit('claim:trophyHeadGranted', rec);
+    this.bus.emit('news:publish', {
+      text,
+      kind: 'ace_trophy',
+      aceId: rec.aceId,
+      moduleId: rec.moduleId,
+      tier,
+      receiptId: `ace-trophy:${rec.aceId}:${tier}`,
+      source: 'claims',
+    });
+    this.bus.emit('toast', { text, kind: 'good', ttl: 6 });
+    return rec;
+  },
+
+  _ensureEndgamePulls() {
+    if (!this.state.claims) this.state.claims = { bodies: [] };
+    const claims = this.state.claims;
+    if (!claims.endgamePulls) {
+      claims.endgamePulls = {
+        schema: ENDGAME_PULLS_SCHEMA,
+        completed: {},
+        completedOrder: [],
+      };
+    }
+    return claims.endgamePulls;
+  },
+
+  _ensureLegendaryHeads() {
+    if (!this.state.claims) this.state.claims = { bodies: [] };
+    const claims = this.state.claims;
+    if (!claims.legendaryHeads) {
+      claims.legendaryHeads = {
+        schema: LEGENDARY_HEADS_SCHEMA,
+        heads: [],
+        byModuleId: {},
+      };
+    }
+    if (!Array.isArray(claims.legendaryHeads.heads)) claims.legendaryHeads.heads = [];
+    if (!claims.legendaryHeads.byModuleId || typeof claims.legendaryHeads.byModuleId !== 'object') {
+      claims.legendaryHeads.byModuleId = {};
+    }
+    return claims.legendaryHeads;
+  },
+
   // Serialization (save system delegates via serialize/deserialize). state.claims is plain JSON.
   // Bodies (including spec state) deep-copy so the snapshot can't alias live buffers. The
   // module-level _nextClaimId counter is NOT serialized — deserialize re-derives it from the
@@ -2100,6 +2280,8 @@ export const claims = {
     if (claims.meta) out.meta = { ...claims.meta };
     if (claims.legacyMigration) out.legacyMigration = { ...claims.legacyMigration };
     if (claims.stationGrowth) out.stationGrowth = JSON.parse(JSON.stringify(claims.stationGrowth));
+    if (claims.endgamePulls) out.endgamePulls = JSON.parse(JSON.stringify(claims.endgamePulls));
+    if (claims.legendaryHeads) out.legendaryHeads = JSON.parse(JSON.stringify(claims.legendaryHeads));
     return out;
   },
 
@@ -2132,6 +2314,13 @@ export const claims = {
     }
     const stationGrowth = this._normalizeStationGrowth(data.stationGrowth);
     if (stationGrowth) this.state.claims.stationGrowth = stationGrowth;
+    if (data.endgamePulls && typeof data.endgamePulls === 'object') {
+      this.state.claims.endgamePulls = JSON.parse(JSON.stringify(data.endgamePulls));
+    }
+    if (data.legendaryHeads && typeof data.legendaryHeads === 'object') {
+      this.state.claims.legendaryHeads = JSON.parse(JSON.stringify(data.legendaryHeads));
+      this._ensureLegendaryHeads();
+    }
     // Re-derive _nextClaimId past any restored claim id so the next claim() can't collide. (We
     // don't trust a serialized counter even if one is present — deriving from the bodies is the
     // source of truth and survives legacy/partial saves.)

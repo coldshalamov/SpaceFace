@@ -221,7 +221,26 @@ function createSteamworksAdapter({
     return { enabled: true };
   }
 
-  return Object.freeze({ init, unlockAchievement, publicStatus, enableOverlay, distribution });
+  /**
+   * PQ-172.01: the UGC namespace for the Workshop bridge. Returns null unless Steam is live and
+   * the binding carries the workshop surface — callers treat null exactly like any other
+   * unavailable reason. Never exposed to the renderer; only electron/workshopMods.cjs consumes it.
+   */
+  function workshop() {
+    const current = init();
+    if (!current.available || !client) return null;
+    const api = client.workshop;
+    if (!api
+      || typeof api.createItem !== 'function'
+      || typeof api.updateItem !== 'function'
+      || typeof api.getSubscribedItems !== 'function'
+      || typeof api.subscribe !== 'function') {
+      return null;
+    }
+    return api;
+  }
+
+  return Object.freeze({ init, unlockAchievement, publicStatus, enableOverlay, workshop, distribution });
 }
 
 module.exports = {

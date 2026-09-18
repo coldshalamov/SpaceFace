@@ -18,27 +18,27 @@ WASM SIMD / Worker / WebGPU stay off until waves 1–3 miss p99 on that same fly
 
 | Wave | Algorithm | Live path |
 |---|---|---|
-| 1 | Always-on incremental spatial hash | `shouldMaintainDynamicSpatialHash` never deactivates; AI sensors query the hash below 96 collidables; `queryRadius` reuses dynamic cell lists until membership changes |
-| 1 | Combat SoA | `packCombatTable` each tick; PD contacts radius-query the columns |
-| 1 | Dirty journal | `DIRTY.MEMBERSHIP/POSE` stamped on spawn/remove/move |
-| 1 | NEAR token budget | 16 civilian S1 thinkers rotate; player and combatants always awake |
-| 1 | Save-safe Rapier sleep | Non-player, non-projectile, unattached dynamics may sleep; `entity.physicsSleeping` is authoritative across save; attachments wake and hold both ends |
-| 1 | Off-glass outcomes | Hostile far pairs in the same 400 wu cell resolve on a seeded delay instead of a 60 Hz dogfight |
-| 2 | Packed-ORM family key | `partsLibrary` installs through `canonicalizeSurfaceProgramFamilyKey` so compile-source concatenation cannot mint a program per hull |
-| 2 | After-present compile | `flushOneAfterPresent` admits one queued subject when leftover frame budget is ≥2 ms and the present was not late |
+| 1 | Always-on incremental spatial hash | Hash never deactivates; projectile and ship sweeps use `queryRadiusCoherent`. A later query whose cell rectangle is inside the last one reuses the neighbor list. Sleeping still dynamics skip cell-span until they move or `noInterp` teleports |
+| 1 | Combat SoA | `packCombatTable` includes ships, projectiles, and wrecks; AI sensors, beams, fields, PD, mines, and tether range read columns. Still frames reuse last packed columns. A teleport without velocity dirties pose so columns do not skip-repack. NPC fire/heat walks `weaponShips`. Beacon lure uses the spatial hash; claim-sling NPC boosts walk `shipLike` |
+| 1 | Dirty bitsets | Per-id `Uint32Array` bits + generation skip; lifetime, combat regen, and mining magnet iterate set bits |
+| 1 | NEAR token budget | Count-based slice (not wall time) for traffic, law ambient, npcJobs threat, and scanner ghosts; leftover resumes in stable ID order |
+| 1 | Save-safe Rapier sleep | Only off-glass / S2–S4 dynamics may sleep; S0/S1 table collisions stay awake; `physicsSleeping` + `physicsIslandId` persist on the entity. Sector fence uses corridor/sector playable bounds when the boot Helios disk cannot contain `currentSectorId`. Sleeping islands skip WASM pose writeback, expected-kinematics capture, force reset, pose resync, and redundant `setCanSleep` / `wakeUp`. Still NPCs skip flight commands, field plans, weapon service, and interpolation snapshots |
+| 1 | Off-glass outcomes | Far hostile pairs drift with `worldCatchup.ballisticDrift` and resolve under `encounterCausality` fingerprints |
+| 2 | Packed-ORM family key | `partsLibrary` installs through `canonicalizeSurfaceProgramFamilyKey` |
+| 2 | After-present compile | One queued subject after present, then one real next-contact hull from traffic intent. Hitch / present-first frames run leftover sim first and only compile with remaining budget |
+| 2 | In-flight admission | Mesh builds time-sliced; `reconcileMeshes` no longer promotes on the present beat. `tickFarActors` still promotes at table enter. |
+| 2 | Binary program cache | `WEBGL_get_program_binary` wrap on the live GL context; dummy prewarm stays illegal |
 | 2 | Occupancy lights | Unchanged: 6 event + 2 weapon visible point lights |
 | 3 | GPU batch | Left off. `_opaqueBatchEnabled` stays false |
-| 4 | Snapshot lean | Fence packs `bank`/`pitch`; present applies hull lean from columns, not `entityRefs` |
-| 4 | Platform ports | Not triggered |
+| 4 | Snapshot fence | Present pose/visibility uses packed flags + fence columns; no `state.entities.get` on the pose path |
+| 4 | Platform ports | WASM SIMD / Worker / WebGPU not triggered |
+| follow-on | Hidden skip + arrival slice | Map/station/pause skip full-tick systems; input/save stay alive. Neighbor residency and leftover `sector:enter` listeners drain after present |
 
 ## What could still improve
 
-- Wire the dirty journal into more TABLE scanners that still walk a fat list when pose is still.
-- Combat SoA is packed every tick; more radius consumers (weapons, friendly-fire lanes) still walk `shipLike`.
-- Dynamic query cache is per exact cell rectangle; nearby sensors with slightly different radii still miss.
-- Rapier sleep now wakes on pose resync and refuses sleep during `noInterp` teleports; it still does not skip the CPU writeback of a sleeping island.
-- After-present compile still competes with leftover sim on a long frame; it yields when leftover < 2 ms.
-- First-use materials that never go through packed-ORM canonicalize can still hitch; dummy prewarm stays illegal.
+- First-use materials that never go through packed-ORM canonicalize can still hitch; dummy prewarm stays illegal. `partsLibrary` is live on PQ-193.09.
+- GPU batching stays off until a crowded fly names draw-count.
+- Hangar occupancy still walks the fat list (a real hangar-jam path).
 
 ## Illegal here
 

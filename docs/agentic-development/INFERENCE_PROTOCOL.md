@@ -1,7 +1,7 @@
 <!-- LIFETIME: STABLE -->
 # Bounded INFERENCE Protocol
 
-SpaceFace already has `design/vision/INFERENCE_CONVERGENCE_METHOD.md` and `design/program/INFERENCE_LANES.md`. They contain the correct core idea: inference is valuable when it produces bounded production, and fixed reviewer/candidate/iteration counts are heuristics rather than universal gates.
+SpaceFace already has `design/vision/INFERENCE_CONVERGENCE_METHOD.md` and `design/program/INFERENCE_LANES.md`. They contain the correct core idea: inference is valuable when it produces bounded, **complete** production after real consideration. Fixed reviewer/candidate/iteration counts are heuristics rather than universal gates. Thin rows that hit `N` are a failed run, not production. Operator prompt: `design/program/INFERENCE_GOAL.txt`.
 
 This document defines how the Central Brain invokes that machinery without turning INFERENCE into an infinite side institution.
 
@@ -19,7 +19,8 @@ Do **not** invoke INFERENCE merely because an agent does not want to read the cu
 
 ## 2. The production unit
 
-An INFERENCE unit is not "think about X." It has:
+An INFERENCE unit is not "write a note about X." Thinking is required *inside*
+the unit; thinking-only is not a unit. It has:
 
 ```text
 player problem / opportunity

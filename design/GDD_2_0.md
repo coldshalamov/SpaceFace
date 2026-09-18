@@ -345,7 +345,7 @@ The economy sim is the codebase's crown jewel — expose it:
 - **Price memory on maps:** last-seen buy/sell per station overlays the nav chart (Elite's market
   data). "Best known margin" line on the market screen using *only* data the player has seen (no
   omniscience — exploration has trade value).
-- **Ship ladder stays** (13 hulls); add the **role fantasy kits**: ram plating, tether-winch upgrades
+- **Ship ladder stays** (14 hulls); add the **role fantasy kits**: ram plating, tether-winch upgrades
   (haul mass ↑), charge racks (impulse bombs), drill amps. Physics verbs get their own progression lane.
 - Contract ladder + collateral + faction gates already work — the *board UI* gets risk/reward/distance
   glyphs and one recommended job (recommendation engine exists).

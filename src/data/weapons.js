@@ -1,6 +1,7 @@
 // src/data/weapons.js – canonical weapon modules.
 // IDs use wpn_ prefix per ARCHITECTURE §0.4. requiresTech refs use tech_ prefix.
-// ammo refs use cmdty_ prefix. Pure data, no imports.
+// ammo refs use cmdty_ prefix. The only import is userContent.js, which merges validated
+// user-dropped JSON records onto the shipped table (PQ-172.00 — see bottom of file).
 // Combat fields: dmg, rof(/s), dps(derived), damageType, projSpeed(wu/s),
 //   range(wu), tracking, energyCost(cap/shot or cap/s for continuous).
 // PQ-009 impulse identity: impulsePerHit is world-space momentum at a full authored hit;
@@ -23,7 +24,11 @@ export const HARDPOINT_ACCEPTS = Object.freeze({
  *  same gun on a fixed hardpoint out-damages its ring twin by a third. */
 export const TURRET_RING_OUTPUT = 0.75;
 
-export const WEAPONS = [
+import {
+  userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
+} from './userContent.js';
+
+const SHIPPED_WEAPONS = [
   {
     id: 'wpn_snarl_s', name: 'Snarl Webcaster', slotType: 'weapon', size: 'S', tier: 3,
     mass: 4, price: 38000, requiresTech: 'tech_fire_control',
@@ -273,3 +278,95 @@ export const WEAPONS = [
     attackTraits: ['mod_bank_shot', 'mod_bank_relay'],
   },
 ];
+
+// ─────────────────────────────── user content (PQ-172.00) ───────────────────────────────
+// User-dropped JSON weapon records merge onto the shipped table here, at module-eval time, so
+// every consumer that snapshots WEAPONS (ships.js Maps etc.) sees the complete set. Validation
+// is the same contract the shipped records above satisfy by hand: required combat fields, the
+// same vocab sets, known keys only (a misspelled key must fail loudly, not load as a weaker gun).
+// Rejected records are reported per-mod via listUserMods() — they never reach WEAPONS.
+
+const USER_WEAPON_KEYS = new Set([
+  'id', 'name', 'slotType', 'size', 'tier', 'mass', 'price', 'requiresTech', 'baseId',
+  'dmg', 'dps', 'rof', 'damageType', 'energyCost', 'projSpeed', 'projSpeedMin', 'range',
+  'tracking', 'spreadDeg', 'mount', 'turretArcDeg', 'lockTimeS', 'turnRate',
+  'heatPerShot', 'heatPerSec', 'heatMax', 'heatDissip', 'continuous',
+  'impulsePerHit', 'tumbleTorque', 'impulseProvenance',
+  'armorPierce', 'shieldBypass', 'subsystemShare', 'rcsDisruptS',
+  'splashDmg', 'splashRadius', 'splitCount', 'submunitions',
+  'ammo', 'intercepts', 'statuses', 'attackTraits',
+  'deployKind', 'mineArmS', 'mineTriggerRadius', 'mineBlastRadius', 'mineLifeS', 'mineMaxActive',
+  'purchasable', 'unique', 'salvageOnly', 'variantBonuses',
+]);
+const USER_WEAPON_DAMAGE_TYPES = new Set(['energy', 'kinetic', 'explosive', 'thermal', 'ion', 'emp']);
+const USER_WEAPON_TRACKING = new Set(['fixed', 'auto_turret', 'homing', 'hitscan', 'deploy']);
+const USER_WEAPON_SIZES = new Set(['S', 'M', 'L']);
+
+function userWeaponProblem(rec) {
+  if (!rec || typeof rec !== 'object' || Array.isArray(rec)) return 'record must be an object';
+  for (const key of Object.keys(rec)) {
+    if (!USER_WEAPON_KEYS.has(key)) return `unknown field "${key}"`;
+  }
+  if (typeof rec.id !== 'string' || !/^(wpn|unique)_[a-z0-9_]+$/.test(rec.id)) {
+    return 'id must match wpn_* or unique_*';
+  }
+  if (typeof rec.name !== 'string' || !rec.name.trim()) return 'name is required';
+  if (rec.slotType !== 'weapon') return 'slotType must be "weapon" (module records belong in modules/)';
+  if (!USER_WEAPON_SIZES.has(rec.size)) return 'size must be S, M, or L';
+  if (!Number.isInteger(rec.tier) || rec.tier < 1 || rec.tier > 5) return 'tier must be an integer 1-5';
+  for (const f of ['mass', 'price', 'dmg', 'rof', 'energyCost', 'projSpeed', 'range']) {
+    if (typeof rec[f] !== 'number' || !Number.isFinite(rec[f]) || rec[f] < 0) {
+      return `${f} must be a non-negative number`;
+    }
+  }
+  if (!rec.rof) return 'rof must be > 0';
+  if (!USER_WEAPON_DAMAGE_TYPES.has(rec.damageType)) {
+    return `damageType must be one of ${[...USER_WEAPON_DAMAGE_TYPES].join(', ')}`;
+  }
+  if (!USER_WEAPON_TRACKING.has(rec.tracking)) {
+    return `tracking must be one of ${[...USER_WEAPON_TRACKING].join(', ')}`;
+  }
+  if (rec.mount != null && !WEAPON_MOUNT_CLASSES.includes(rec.mount)) {
+    return `mount must be one of ${WEAPON_MOUNT_CLASSES.join(', ')}`;
+  }
+  if (rec.requiresTech != null && (typeof rec.requiresTech !== 'string' || !rec.requiresTech.startsWith('tech_'))) {
+    return 'requiresTech must be a tech_* id';
+  }
+  if (rec.ammo != null && (typeof rec.ammo !== 'string' || !rec.ammo.startsWith('cmdty_'))) {
+    return 'ammo must be a cmdty_* id';
+  }
+  if (rec.baseId != null && typeof rec.baseId !== 'string') return 'baseId must be a string id';
+  for (const f of ['purchasable', 'unique', 'salvageOnly', 'continuous', 'intercepts']) {
+    if (rec[f] != null && typeof rec[f] !== 'boolean') return `${f} must be a boolean`;
+  }
+  for (const f of ['statuses', 'attackTraits', 'submunitions']) {
+    if (rec[f] != null && !Array.isArray(rec[f])) return `${f} must be an array`;
+  }
+  if (rec.variantBonuses != null && (typeof rec.variantBonuses !== 'object' || Array.isArray(rec.variantBonuses))) {
+    return 'variantBonuses must be an object';
+  }
+  return null;
+}
+
+function mergeUserWeapons(base) {
+  const candidates = userContentCandidates('weapons');
+  if (!candidates.length) return base;   // no payload → the shipped array, untouched
+  const takenIds = new Set(base.map((w) => w.id));
+  const merged = [...base];
+  for (const cand of candidates) {
+    const rec = cand.record;
+    const problem = userWeaponProblem(rec)
+      || claimUserContentId('weapons', rec.id, cand.modId, takenIds)
+      || (rec.baseId && !takenIds.has(rec.baseId) && !merged.some((w) => w.id === rec.baseId)
+        ? `baseId "${rec.baseId}" does not resolve to a known weapon` : null);
+    if (problem) {
+      rejectUserContent(cand.modId, 'weapons', rec && rec.id, problem, cand.file);
+      continue;
+    }
+    merged.push(rec);
+    acceptUserContent(cand.modId, 'weapons', rec.id, cand.file);
+  }
+  return merged;
+}
+
+export const WEAPONS = mergeUserWeapons(SHIPPED_WEAPONS);

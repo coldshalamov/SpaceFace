@@ -203,6 +203,7 @@ export const flightV3 = {
     for (const entity of flightCraftCandidates(state)) {
       if (!entity || entity.id === state.playerId || entity.alive === false) continue;
       if (entity.type !== 'ship' && entity.type !== 'drone') continue;
+      if (!npcFlightNeedsCommand(entity)) continue;
       const intent = entity.data && entity.data.intent;
       if (intent) this._stepCraft(entity, intent, dt, state, false);
       else this._stepCraft(entity, neutralInput(), dt, state, false);
@@ -502,7 +503,9 @@ export const flightV3 = {
 
   _settleAllBanks(dt, state) {
     for (const entity of flightCraftCandidates(state)) {
-      if (entity && (entity.type === 'ship' || entity.type === 'drone')) settleBank(entity, dt);
+      if (!entity || (entity.type !== 'ship' && entity.type !== 'drone')) continue;
+      if (!(Math.abs(entity.bank) > 0.0005)) continue;
+      settleBank(entity, dt);
     }
   },
 
@@ -1292,6 +1295,33 @@ function flightCraftCandidates(state) {
   const index = state && state.entityIndex;
   if (index && index.__spacefaceEntityIndexV1 && index.shipLike) return index.shipLike;
   return (state && state.entityList) || [];
+}
+
+/** Still NPCs must not emit a zero-force command that would wake a sleeping Rapier island. */
+export function npcFlightNeedsCommand(entity) {
+  if (!entity || entity.alive === false) return false;
+  const intent = entity.data && entity.data.intent;
+  if (entity.physicsSleeping === true) return npcIntentIsLive(entity, intent);
+  const vx = entity.vel ? Number(entity.vel.x) || 0 : 0;
+  const vz = entity.vel ? Number(entity.vel.z) || 0 : 0;
+  if (vx * vx + vz * vz > 1e-8) return true;
+  const wy = Number(entity.angVel) || 0;
+  if (wy * wy > 1e-8) return true;
+  return npcIntentIsLive(entity, intent);
+}
+
+function npcIntentIsLive(entity, intent) {
+  if (!intent || typeof intent !== 'object') return false;
+  if (intent.boost || intent.fire) return true;
+  const mx = Number(intent.moveX) || 0;
+  const mz = Number(intent.moveZ) || 0;
+  const turn = Number(intent.turnIntent) || 0;
+  if (mx !== 0 || mz !== 0 || turn !== 0) return true;
+  if (Number.isFinite(intent.aimAngle)
+    && Math.abs(intent.aimAngle - (Number(entity.rot) || 0)) > 0.01) {
+    return true;
+  }
+  return false;
 }
 function normalizeFlightComputerMode(mode) {
   return mode === 'cruise' || mode === 'lane' ? mode : 'manual';

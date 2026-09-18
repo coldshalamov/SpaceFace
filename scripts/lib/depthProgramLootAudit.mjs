@@ -86,6 +86,11 @@ export function runDepthProgramLootAudit({
     }
   }
   const uniqueIds = new Set([...reservedById.keys(), ...declaredById.keys()]);
+  const lineageUniqueIds = [];
+  for (const id of catalogs.lineageUniqueIds || []) {
+    if (typeof id === 'string' && id) lineageUniqueIds.push(id);
+  }
+  for (const id of lineageUniqueIds) uniqueIds.add(id);
   const authoritativeRows = declaredRows.length ? declaredRows : reservedRows;
 
   const modules = catalogs.modules || [];
@@ -105,6 +110,20 @@ export function runDepthProgramLootAudit({
       issues.push(issue(
         'audit.unique-flags',
         row.id,
+        'Unique equipment must set unique:true, purchasable:false, salvageOnly:true, and price:0.',
+      ));
+    }
+  }
+  for (const id of lineageUniqueIds) {
+    const equipment = equipmentById.get(id);
+    if (!equipment) {
+      issues.push(issue('audit.lineage-missing', id, 'Lineage unique equipment is absent from the live equipment catalogs.'));
+      continue;
+    }
+    if (equipment.unique !== true || equipment.purchasable !== false || equipment.salvageOnly !== true || Number(equipment.price) !== 0) {
+      issues.push(issue(
+        'audit.unique-flags',
+        id,
         'Unique equipment must set unique:true, purchasable:false, salvageOnly:true, and price:0.',
       ));
     }

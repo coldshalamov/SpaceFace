@@ -184,8 +184,20 @@ export class SpatialHash {
         continue;
       }
 
-      const span = this._cellSpan(e);
       const prev = this._dynamicMembers.get(id);
+      if (prev && prev.entity === e && e.physicsSleeping === true
+        && !(e.flags && e.flags.noInterp)) {
+        const vx = e.vel ? Number(e.vel.x) || 0 : 0;
+        const vz = e.vel ? Number(e.vel.z) || 0 : 0;
+        const wy = Number(e.angVel) || 0;
+        if (vx * vx + vz * vz <= 1e-8 && wy * wy <= 1e-8) {
+          prev.stamp = stamp;
+          unchanged++;
+          continue;
+        }
+      }
+
+      const span = this._cellSpan(e);
 
       if (!prev || prev.entity !== e) {
         // New entity, id reuse with a different object, or first insert after clear.
@@ -386,8 +398,8 @@ export class SpatialHash {
     const version = this._dynamicQueryVersion;
     let rec = key != null ? this._coherentQueries.get(key) : null;
     if (rec
-      && rec.x0 === x0 && rec.x1 === x1 && rec.z0 === z0 && rec.z1 === z1
-      && rec.version === version) {
+      && rec.version === version
+      && x0 >= rec.x0 && x1 <= rec.x1 && z0 >= rec.z0 && z1 <= rec.z1) {
       this.diagnostics.coherentQueryHits++;
       out.length = 0;
       const src = rec.entities;

@@ -773,7 +773,7 @@ export const travelLanes = {
       }
 
       if (!near) continue;
-      const list = state.entityList;
+      const list = indexedShipLikeScan(state);
       if (!list || !list.length) continue;
       for (let i = 0; i < list.length; i++) {
         const entity = list[i];

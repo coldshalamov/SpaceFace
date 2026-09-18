@@ -67,7 +67,7 @@ export function detectGpu(renderer) {
 export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
   low: Object.freeze({
     id: 'low',
-    label: 'Low',
+    label: 'Performance',
     adaptiveFloor: 0.5,
     renderScale: 0.75,
     bloom: true,
@@ -79,7 +79,7 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
   }),
   medium: Object.freeze({
     id: 'medium',
-    label: 'Medium',
+    label: 'Balanced',
     adaptiveFloor: 0.6,
     renderScale: 1,
     bloom: true,
@@ -91,7 +91,7 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
   }),
   high: Object.freeze({
     id: 'high',
-    label: 'High',
+    label: 'Quality',
     adaptiveFloor: 0.6,
     renderScale: 1,
     bloom: true,
@@ -104,9 +104,9 @@ export const ADAPTIVE_QUALITY_TIERS = Object.freeze({
 });
 
 export const QUALITY_PRESETS = Object.freeze([
-  Object.freeze({ id: 'low', label: 'Low', tier: 'low' }),
-  Object.freeze({ id: 'medium', label: 'Medium', tier: 'medium' }),
-  Object.freeze({ id: 'high', label: 'High', tier: 'high' }),
+  Object.freeze({ id: 'low', label: 'Performance', tier: 'low' }),
+  Object.freeze({ id: 'medium', label: 'Balanced (recommended)', tier: 'medium' }),
+  Object.freeze({ id: 'high', label: 'Quality', tier: 'high' }),
 ]);
 export const DEFAULT_QUALITY_PRESET = 'medium';
 

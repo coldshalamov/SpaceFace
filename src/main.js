@@ -14,6 +14,7 @@ import { installLiveClipDirector } from './ui/screens/clips.js';
 import { makeShipEntitySpec } from './systems/ships.js';
 import { makeEnemySpawnSpec } from './systems/combat.js';
 import { NEW_GAME, resolveNewGameStarter } from './data/newGameDefaults.js';
+import { listUserMods, hasUserContent, userContentDirLabel } from './data/userContent.js';
 import { createTelemetry } from './systems/telemetry.js';
 import { installAchievements } from './systems/achievements.js';
 import { createDeterministicEventTrace } from './core/eventTrace.js';
@@ -267,6 +268,9 @@ async function boot() {
       // test/asset-npc-authored-binding.test.mjs). Publishing the real contract is what stops
       // that divergence recurring: harnesses consume this, they do not re-derive it.
       window.SF.authoredVisualReadiness = () => authoredVisualReadiness(state);
+      // PQ-172.00: user content packs validated+merged at module-eval time — the settings
+      // Gameplay tab is the player-facing list; this is the probe/diagnostic surface.
+      window.SF.userMods = { list: listUserMods, dir: userContentDirLabel() };
       // Phase 4 test-only live-route stepping bridge. Dynamic import lives inside SF_DEBUG_ONLY so
       // production dropLabels strips the call and the bridge module never enters build/web.
       import('./testing/lab/liveRouteBridge.js').then((mod) => {
@@ -285,6 +289,13 @@ async function boot() {
         }
       }).catch((err) => console.error('[SpaceFace] perfToolsBootstrap import failed', err));
       console.log('[SpaceFace] booted -> main menu. seed=%d', seed);
+      if (hasUserContent()) {
+        const mods = listUserMods();
+        const loaded = mods.filter((m) => m.status !== 'rejected' && m.status !== 'invalid').length;
+        const refused = mods.length - loaded;
+        console.log('[SpaceFace] user content: %d pack(s) from %s%s', mods.length,
+          userContentDirLabel() || '(mounted dir)', refused ? ` (${refused} with refusals)` : '');
+      }
     }
 
     // Dev-only ship turntable preview: ?dev=shippreview renders every hull × tier into .devshots/

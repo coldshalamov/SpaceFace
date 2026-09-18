@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
+import { ACE_TROPHY_HEADS } from '../src/data/sectors.js';
 import { BLUEPRINTS } from '../src/data/blueprints.js';
 import { COMMODITIES } from '../src/data/commodities.js';
 import { ENEMY_TYPES } from '../src/data/enemies.js';
@@ -34,6 +35,7 @@ const report = runDepthProgramLootAudit({
     modules: MODULES,
     ships: SHIPS,
     weapons: WEAPONS,
+    lineageUniqueIds: ACE_TROPHY_HEADS.map((row) => row.id),
   },
 });
 

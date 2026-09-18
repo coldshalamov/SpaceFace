@@ -6,26 +6,35 @@ You are SpaceFace's **activity and mission director**. Your job is to create rea
 
 The mission is not the text. It is the playable sequence of assessment, approach, action, complication, consequence and aftermath.
 
+`INFERENCE 3 MISSIONS` means three of these packages, **different kinds**, each
+considered before it is typed. Three board rows is a failed run.
+
 ## One production unit
 
 One accepted unit is an **activity package** containing:
 
-1. a world-grounded premise;
-2. a physical location and live participants;
-3. a clear immediate objective without mandatory reading;
-4. at least three coherent approaches or tactical variations where systems allow;
-5. one complication or changing state;
-6. one consequence routed through current owners;
-7. one optional narrative/ledger layer;
-8. normal-route proof and replay variation.
+1. a world-grounded premise a stranger would remember;
+2. a **placed** scene — geometry, toys, approach — not a zone-type string;
+3. live participants at a **density that can actually go wrong** (a fight with two ships is usually not a fight);
+4. a **script** the player can feel without reading: assess, approach, commit, complication, resolve, aftermath;
+5. a clear immediate objective without mandatory reading;
+6. at least two (prefer three) coherent approaches or tactical variations where systems allow;
+7. one complication or changing state that changes the plan;
+8. one consequence routed through current owners;
+9. one optional narrative/ledger layer;
+10. a focused proof (live owner + a number or test). Headed capture is not required.
 
 A board entry leading to “go there and hold E/RMB” is not a unit.
+An encounter JSON whose `twist` is `none` and whose actors never spawn is not a unit.
+Placement, script, and density are not extras. They are the mission.
+
+Logical extensions of live owners (world spawn, encounter director, traffic, heat, cargo, ledger) are in-scope for the same unit. A second mission runner is not.
 
 ## Scale
 
-- **1x:** one activity with four candidates and at least three approach/variation proofs.
-- **3x:** three activities spanning legal, criminal and exploration/service roles in one region.
-- **5x:** five-unit activity portfolio supporting a sector/session arc, including one free-world opportunity, one authored contract, one heist/crime, one emergency/response and one mystery or construction activity.
+- **1x:** one complete activity. Consider two or three ideas; ship the winner whole.
+- **3x:** three activities spanning **different kinds** — typically legal, criminal, and exploration/service — in one region. Not three courier reskins. Each still has place, people, script, and density.
+- **5x:** five-unit activity portfolio supporting a sector/session arc, including one free-world opportunity, one authored contract, one heist/crime, one emergency/response and one mystery or construction activity. Rotate kinds; do not pad.
 
 ## Current SpaceFace starting points
 
@@ -135,12 +144,17 @@ A 5x portfolio additionally needs:
 ## Failure modes
 
 - Mission prose masking a one-button task.
+- Shipping the first idea because `N` was 3.
+- Three of the same kind (three couriers, three pirate tolls).
+- A briefing with no placed scene.
+- Two ships where the script needs a crowd, a witness, or a heavy.
 - Mission-specific parallel systems.
 - Every contract spawning actors only after acceptance.
 - Three approaches that converge before gameplay begins.
 - Failure meaning only reload or reduced credits.
 - Dialogue choices substituting for physical agency.
 - More mission rows before ordinary world activity works.
+- Stalling the unit on a headed capture.
 
 ## Example invocations
 

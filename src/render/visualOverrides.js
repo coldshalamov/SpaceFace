@@ -21,10 +21,14 @@ import {
   SCENARIO_47A_PACKAGED_PROPS,
 } from '../data/scenarios/47aLiveScene.js';
 import {
+  admissionOwnerInactive,
+  authoredReadmissionStatus,
+  boundaryLiveEntity,
   buildAuthoredCargoCapsule,
   buildAuthoredPlaceProp,
   buildAuthoredStationArchetype,
   enqueueBoundaryUpgrade,
+  markAuthoredBoundaryForReadmission,
   prepareAuthoredVisualPipelines,
   releaseBoundaryResidency,
   requiresProductionWholeShipForEntity,
@@ -304,16 +308,19 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
     gracefulFallback: hideImmediately !== true,
   };
   const start = (renderer, scene, requestOptions = {}) => {
+    const state = root.userData.authoredAssetState;
     const existing = root.userData.authoredUpgradePromise;
-    if (existing) return existing;
+    if (existing && !authoredReadmissionStatus(state)) return existing;
+    if (existing) delete root.userData.authoredUpgradePromise;
     if (!renderer || !scene) return null;
-    if (root.userData.authoredAssetState === 'authored') return Promise.resolve(true);
+    if (state === 'authored') return Promise.resolve(true);
     root.userData.authoredAssetState = 'loading';
+    const liveEntity = boundaryLiveEntity(root, entity);
     const loadPart = typeof requestOptions.loadAuthoredPart === 'function'
       ? requestOptions.loadAuthoredPart
       : loadAuthoredPart;
     const admissionOptions = () => ({
-      ...residencyOptionsForBoundary(entity, root, renderer),
+      ...residencyOptionsForBoundary(liveEntity, root, renderer),
       ...requestOptions,
     });
     // Same admission barrier as ship/capsule boundaries, without the serial upgrade queue: the
@@ -347,8 +354,24 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
         await prepareAuthoredVisualPipelines(packaged, admissionOptions());
       } catch (error) {
         releaseBoundaryResidency(renderer, root, 'packaged-prop-pipeline-failed');
-        root.userData.authoredAssetState = 'unavailable';
-        reportVisualWarning(options, '[visualOverrides] packaged 47-A / TOW pipeline admission failed', error);
+        // Same lifecycle abort partsLibrary classifies: an owner that shelves mid-admission
+        // has no visual to publish — a breadcrumb, not a composition defect.
+        const causes = error && Array.isArray(error.errors) && error.errors.length
+          ? error.errors
+          : [error];
+        const ownerInactive = admissionOwnerInactive(admissionOptions(), liveEntity, error)
+          || causes.every((cause) => cause && /owner became inactive/i.test(String(cause && (cause.message || cause))));
+        if (ownerInactive) {
+          if (root.parent) {
+            markAuthoredBoundaryForReadmission(root, 'packaged-prop-owner-inactive');
+          } else {
+            root.userData.authoredAssetState = 'unavailable';
+          }
+          console.info('[visualOverrides] packaged 47-A / TOW admission aborted; owner left before publish');
+        } else {
+          root.userData.authoredAssetState = 'unavailable';
+          reportVisualWarning(options, '[visualOverrides] packaged 47-A / TOW pipeline admission failed', error);
+        }
         return false;
       }
       if (!root.parent) {
@@ -378,8 +401,12 @@ function attachPackagedScenarioProp(root, entity, options = {}) {
       }, options);
       return true;
     }).catch((error) => {
-      root.userData.authoredAssetState = 'unavailable';
-      reportVisualWarning(options, '[visualOverrides] packaged 47-A / TOW body failed closed', error);
+      if (root.parent && admissionOwnerInactive(null, entity, error)) {
+        markAuthoredBoundaryForReadmission(root, 'packaged-prop-owner-inactive');
+      } else {
+        root.userData.authoredAssetState = 'unavailable';
+        reportVisualWarning(options, '[visualOverrides] packaged 47-A / TOW body failed closed', error);
+      }
       return false;
     });
     root.userData.authoredUpgradePromise = completion;

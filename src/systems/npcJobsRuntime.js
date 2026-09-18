@@ -55,6 +55,7 @@ import {
   NPC_JOB_SCHEMA,
 } from './npcJobs.js';
 import { hash32 } from '../core/rng.js';
+import { takeNearWorkSlice, NEAR_WORK_TOKEN_BUDGET } from '../core/activityScheduler.js';
 import { createNearestEntityQueryService } from '../core/spatialQuery.js';
 import { normalizeRoe, RulesOfEngagement } from '../ai/doctrine.js';
 import { isPlayerWanted } from './heat.js';
@@ -95,6 +96,30 @@ const NPC_MINER_CADENCE_DEPLETION_START = 0.04;
 const NPC_MINER_FIELD_RETARGET_INTERVAL_S = 1;
 const NPC_MINER_BASE_WORK_S = 30;
 const NPC_MINER_THIN_WORK_S = 54;
+
+/** PQ-045 targets include dressing FX and seam asteroids. Those types are excluded from
+ *  forEachLivingWorldActor, so event-time refresh walks the live list. Not a 60 Hz owner loop. */
+function forEachCeresRealTargetBody(state, fn) {
+  if (typeof fn !== 'function') return;
+  const list = (state && state.entityList) || [];
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false) continue;
+    fn(entity);
+  }
+}
+
+/** Same-record uniqueness includes malformed fx/asteroid duplicates. Not a 60 Hz owner loop. */
+function forEachWorldRecordContender(state, worldRecordId, fn) {
+  if (typeof fn !== 'function' || !worldRecordId) return;
+  const list = (state && state.entityList) || [];
+  for (let i = 0; i < list.length; i++) {
+    const entity = list[i];
+    if (!entity || entity.alive === false || !entity.data) continue;
+    if (entity.data.worldRecordId !== worldRecordId) continue;
+    fn(entity);
+  }
+}
 
 // A yard tug's freight manifest and its physical load are two different authored bodies. The
 // manifest is still settled by the freight/economy owner; this runtime only binds an already-live
@@ -850,10 +875,8 @@ export const npcJobsRuntime = {
     if (!this._ceresRealTargetActorBinding(worldRecordId)) return true;
     let count = 0;
     let match = null;
-    forEachLivingWorldActor(this.state, (candidate) => {
-      if (count > 1 || !candidate.data
-        || candidate.data.worldRecordId !== worldRecordId
-        || this.state.entities?.get(candidate.id) !== candidate) return;
+    forEachWorldRecordContender(this.state, worldRecordId, (candidate) => {
+      if (count > 1 || this.state.entities?.get(candidate.id) !== candidate) return;
       count++;
       if (count === 1) match = candidate;
     });
@@ -862,10 +885,8 @@ export const npcJobsRuntime = {
 
   _collectCeresRealTargetActorCandidates(worldRecordId) {
     const candidates = [];
-    forEachLivingWorldActor(this.state, (candidate) => {
-      if (!candidate.data
-        || candidate.data.worldRecordId !== worldRecordId
-        || this.state.entities?.get(candidate.id) !== candidate) return;
+    forEachWorldRecordContender(this.state, worldRecordId, (candidate) => {
+      if (this.state.entities?.get(candidate.id) !== candidate) return;
       candidates.push(candidate);
       // Two exact refs are sufficient: only a two-way ambiguity can become unique after one
       // deletion. Larger malicious duplicate sets stay fail-closed until a retained contender is
@@ -1200,7 +1221,7 @@ export const npcJobsRuntime = {
       if (this._hasCanonicalCeresRealTargetRoute(binding, entry, entity)) ownsBinding = true;
     }
     if (!ownsBinding || this.state.world?.currentSectorId !== CERES_ACTIVITY_SECTOR_ID) return false;
-    forEachLivingWorldActor(this.state, (candidate) => {
+    forEachCeresRealTargetBody(this.state, (candidate) => {
       for (const binding of authority.bindings) {
         if (binding.entryRef !== entry || !this._isCeresRealTargetCandidate(binding, candidate)) continue;
         binding.targetMatches++;
@@ -2635,8 +2656,11 @@ export const npcJobsRuntime = {
     if (shouldQueryThreats) {
       // Civilian flight remains a 60 Hz writer. Only its coarse threat sensor is sampled at 15 Hz,
       // on the deterministic fixed-step clock; entity churn bypasses the cadence above.
-      for (let index = 0; index < ids.length; index++) {
-        const jobId = ids[index];
+      const threatIds = currentSector === CERES_ACTIVITY_SECTOR_ID || ids.length <= NEAR_WORK_TOKEN_BUDGET
+        ? ids
+        : takeNearWorkSlice(this.state, 'npcJobs', ids, (id) => id);
+      for (let index = 0; index < threatIds.length; index++) {
+        const jobId = threatIds[index];
         const entry = byId[jobId];
         if (!entry || !entry.job || entry.entityId == null) continue;
         const entity = this.state.entities && this.state.entities.get(entry.entityId);

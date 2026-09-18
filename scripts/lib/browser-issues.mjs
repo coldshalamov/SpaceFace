@@ -21,7 +21,17 @@ export function collectPageIssues(page, options = {}) {
     expectedNavigationAborts.delete(request);
   });
   page.on('console', (msg) => {
+    // msg.location() names the JS callsite for console entries that carry one — for driver-level
+    // GL warnings it identifies the source file/worker blob, which text alone cannot do.
+    let location = null;
+    try {
+      const raw = msg.location();
+      if (raw && (raw.url || raw.lineNumber || raw.columnNumber)) {
+        location = { url: raw.url || '', line: raw.lineNumber ?? raw.line ?? 0, column: raw.columnNumber ?? raw.column ?? 0 };
+      }
+    } catch (_) { /* location is best-effort */ }
     const issue = { type: msg.type(), text: msg.text(), at: new Date().toISOString() };
+    if (location) issue.location = location;
     if (isGenericResourceLoadConsoleError(issue)) return;
     if (isIgnorableWebglValidation(issue) || (ignoreProbeWarnings && isProbeInducedWarning(issue))) {
       ignoredIssues.push(issue);

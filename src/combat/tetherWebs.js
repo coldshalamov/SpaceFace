@@ -55,7 +55,12 @@ export function createTetherWebs({ state, bus, registry }) {
         // Score each candidate's distance once: the old filter+sort chain paid a hypot per
         // entity plus two more per sort comparison. Order stays nearest-first, id tiebreak.
         const scored = [];
-        for (const e of state.entityList) {
+        const index = state.entityIndex;
+        const candidates = index && index.__spacefaceEntityIndexV1 && index.ready === true
+          && Array.isArray(index.shipLike)
+          ? index.shipLike
+          : state.entityList;
+        for (const e of candidates) {
           if (!e || !e.alive || e === target || e === owner) continue;
           if (e.type !== 'ship' && e.type !== 'drone') continue;
           if (e.team === owner.team) continue;

@@ -167,7 +167,7 @@
 | `src/render/releaseMode.js` | `isReleaseAssetMode()` returns `true` unless overridden. | Release is the default game path. |
 | `src/render/vfx.js` (131KB) | Pooled GPU particle cloud + additive sprites. Purely cosmetic, event-driven, never writes sim state. Has a good header — read it. `EVENT_LIGHT_POOL_SIZE` is a shader cache key. |
 | `src/render/visualFactory.js` (131KB) | World prop / station / structure factory. `applyStructureProfile` controls shell opacity. |
-| `src/render/spaceBackground.js` (66KB) / `starfield.js` / `parallaxLayers.js` / `bloom.js` / `feel.js` / `camera.js` | Background, starfield, parallax dust/motes, selective bloom (**never > 0.9 global**), game-feel (shake/trauma plus owned `feel:hit-stop` request), camera (position-follow only, never yaw). | Camera params canonical at ARCHITECTURE §0.14. |
+| `src/render/spaceBackground.js` (66KB) / `parallaxLayers.js` / `bloom.js` / `feel.js` / `camera.js` | Background, starfield, parallax dust/motes, selective bloom (**never > 0.9 global**), game-feel (shake/trauma plus owned `feel:hit-stop` request), camera (position-follow only, never yaw). | Camera params canonical at ARCHITECTURE §0.14. |
 | `src/render/precompile.js` | Shader precompile (hitch elimination). | Perf lane. |
 | `src/render/adaptiveQuality.js` / `lod.js` | Dynamic resolution + LOD. |
 | `src/render/materialLibrary.js` / `canvasTextures.js` | Material + runtime canvas texture factories. |

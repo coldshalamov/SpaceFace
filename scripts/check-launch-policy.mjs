@@ -73,8 +73,10 @@ assert.match(electronMain, /server\.listen\(requestedPort, '127\.0\.0\.1'/,
   'Electron listener must bind only the selected port on IPv4 loopback');
 assert.match(electronMain, /EADDRINUSE/, 'Electron must classify fixed-port contention without changing the save origin');
 assert.match(electronMain, /package-invalid/, 'Electron must publish an actionable receipt for an incomplete packaged bundle');
-assert.match(electronMain, /__spaceface_health/, 'Electron fixed-port ownership probe must work when dev diagnostics are stripped');
-assert.doesNotMatch(electronMain, /path:\s*['"]\/__dev_freshness['"]/, 'Packaged instance detection must not depend on a dev-only endpoint');
+assert.match(electronMain, /probeSpaceFacePort/, 'Electron main must invoke probeSpaceFacePort on port conflict');
+const electronProtocol = read('scripts/lib/electronLaunchProtocol.cjs');
+assert.match(electronProtocol, /__spaceface_health/, 'Electron fixed-port ownership probe must work when dev diagnostics are stripped');
+assert.doesNotMatch(electronProtocol, /path:\s*['"]\/__dev_freshness['"]/, 'Packaged instance detection must not depend on a dev-only endpoint');
 assert.doesNotMatch(
   electronMain,
   /'\.glb'\s*:\s*'model|'\.ktx2'\s*:\s*'image|const MIME\s*=/,

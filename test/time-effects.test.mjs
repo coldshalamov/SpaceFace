@@ -1012,6 +1012,7 @@ function installDomFixture() {
     constructor() { this.values = new Set(); }
     add(...values) { values.forEach((value) => this.values.add(value)); }
     remove(...values) { values.forEach((value) => this.values.delete(value)); }
+    contains(value) { return this.values.has(value); }
     toggle(value, force) {
       if (force === undefined) force = !this.values.has(value);
       if (force) this.values.add(value); else this.values.delete(value);

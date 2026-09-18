@@ -18,6 +18,8 @@ import { ORES, ASTEROIDS, BEAMS, deriveAsteroidSeams } from '../data/mining.js';
 import { COMMODITIES } from '../data/commodities.js';
 import { MODULES } from '../data/modules.js';
 import { hasActiveSpatialHash, queryNearbyEntities } from '../core/spatialQuery.js';
+import { queryCombatTableEntities, combatTableRowDistance, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
+import { collectDirtyIds, markDirty, DIRTY } from '../core/dirtyJournal.js';
 import { promoteAsteroidFieldRock, queryAsteroidField } from '../world/asteroidField.js';
 import {
   clearPickupAcceptanceRetry,
@@ -198,7 +200,10 @@ export const mining = {
     this._updateRichCoreCharge(firing, dt, state);
     this._updateMiningNoise(this._beaming, dt, state);
 
-    this._updatePickups(dt, state);
+    const cargoDirty = collectDirtyIds(state, DIRTY.CARGO | DIRTY.POSE | DIRTY.MEMBERSHIP, this._miningDirtyScratch || (this._miningDirtyScratch = []));
+    if (firing || cargoDirty.length > 0 || !hasAuthoritativeEmptyPickupIndex(state)) {
+      this._updatePickups(dt, state);
+    }
   },
 
   // ---- beam runtime resolution ----------------------------------------------
@@ -1027,6 +1032,8 @@ export const mining = {
 
   _onPickupCollected(p) {
     if (!p) return;
+    if (p.pickupId != null) markDirty(this.state, p.pickupId, DIRTY.CARGO | DIRTY.MEMBERSHIP);
+    if (p.collectorId != null) markDirty(this.state, p.collectorId, DIRTY.CARGO);
     if (p.collectorId !== this.state.playerId) return; // drones manage their own holds
     if (isCreditChipPickup(p) || isCreditChipPickup(this._pickupDataForEvent(p))) {
       this._collectCreditChip(p);
@@ -1838,16 +1845,40 @@ const miningFieldScratch = [];
 function mineablesNearShip(state, ship, radius, out) {
   const nearby = queryNearbyEntities(state, ship.pos, radius, out,
     (state.entityIndex && state.entityIndex.mineables) || state.entityList);
+  const wreckHits = queryCombatTableEntities(
+    state,
+    ship.pos.x,
+    ship.pos.z,
+    radius,
+    miningCombatScratch,
+    COMBAT_TABLE_FLAGS.WRECK,
+  );
   const fieldHits = queryAsteroidField(state, ship.pos, radius, miningFieldScratch);
-  if (!fieldHits.length) return nearby;
-  if (nearby === out) {
-    for (let i = 0; i < fieldHits.length; i++) nearby.push(fieldHits[i]);
-    return nearby;
+  if (!wreckHits.length && !fieldHits.length) return nearby;
+  const merged = nearby === out ? nearby : nearby.slice();
+  const seen = miningMineableSeen;
+  seen.clear();
+  for (let i = 0; i < merged.length; i++) {
+    const e = merged[i];
+    if (e && e.id != null) seen.add(e.id);
   }
-  const merged = nearby.slice();
-  for (let i = 0; i < fieldHits.length; i++) merged.push(fieldHits[i]);
+  for (let i = 0; i < wreckHits.length; i++) {
+    const e = wreckHits[i];
+    if (!e || seen.has(e.id)) continue;
+    seen.add(e.id);
+    merged.push(e);
+  }
+  for (let i = 0; i < fieldHits.length; i++) {
+    const e = fieldHits[i];
+    if (!e || seen.has(e.id)) continue;
+    seen.add(e.id);
+    merged.push(e);
+  }
   return merged;
 }
+
+const miningCombatScratch = [];
+const miningMineableSeen = new Set();
 
 function activeMineableTetherTarget(state, ship, range) {
   if (!state || !ship) return undefined;
@@ -1861,12 +1892,12 @@ function activeMineableTetherTarget(state, ship, range) {
     ids.push(att.targetId);
   }
   if (!ids.length) return undefined;
+  const table = state.combatTable;
   for (const id of ids) {
+    const tableDist = combatTableRowDistance(table, id, ship.pos.x, ship.pos.z);
     const target = state.entities && state.entities.get && state.entities.get(id);
     if (!target || !target.alive || (target.type !== 'asteroid' && target.type !== 'wreck')) continue;
-    const dx = target.pos.x - ship.pos.x;
-    const dz = target.pos.z - ship.pos.z;
-    const dist = Math.hypot(dx, dz);
+    const dist = tableDist != null ? tableDist : Math.hypot(target.pos.x - ship.pos.x, target.pos.z - ship.pos.z);
     const allowed = Math.max(0, Number(range) || 0) + (target.radius || 0) + (ship.radius || 0);
     return dist <= allowed ? target : null;
   }

@@ -1,7 +1,7 @@
 // PQ-165.00 — Presets and frame cap (headless numbers, fixed seed 16500).
 //
 // Proves the pure contracts this leaf adds:
-//   • Low / Medium / High each select an adaptive-quality tier (render scale, particle density,
+//   • Performance / Balanced / Quality each select an adaptive-quality tier (render scale, particle density,
 //     render graph, adaptive floor) and never touch simulation content — no fewer actors.
 //   • Frame cap 30 / 60 / 120 / off resolves against the live cap.
 //   • VSync is honoured: a cap never exceeds the display refresh when VSync is on, and off means

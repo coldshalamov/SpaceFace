@@ -612,3 +612,25 @@ export function aceTrophyHeadByModuleId(id) {
 export function aceTrophyHeadByTier(tier) {
   return ACE_TROPHY_BY_TIER.get(tier | 0) || null;
 }
+
+/** Fitted trophy plus lineage from the claims ledger, if the player is wearing one. */
+export function trophyFromFittings(fittings, ledger) {
+  if (!Array.isArray(fittings)) return null;
+  for (const id of fittings) {
+    if (typeof id !== 'string') continue;
+    const def = aceTrophyHeadByModuleId(id);
+    if (!def) continue;
+    const rec = ledger && ledger.byModuleId && ledger.byModuleId[id];
+    return {
+      tier: def.tier,
+      id: def.id,
+      name: def.name,
+      masslineHeadId: def.masslineHeadId,
+      baseId: def.baseId,
+      defaultAceId: def.defaultAceId,
+      aceId: rec && rec.aceId || def.defaultAceId,
+      aceName: rec && rec.aceName || null,
+    };
+  }
+  return null;
+}

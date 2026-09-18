@@ -22,6 +22,7 @@ import { loadRapierCompatRuntime } from './rapierCompatRuntime.js';
 import { resolveGovernedCombatSpeed } from './flight/propulsionCatalog.js';
 import { observeAppliedImpulse, observeConstraint, observeRelease, observeContact, journalFor } from '../combat/stuntEvidence.js';
 import { observeAppliedSurfaceTorque } from '../combat/stuntProjectileEvidence.js';
+import { SIM_TIER } from '../world/activityClassification.js';
 
 export const SG02_DYNAMIC_BODY_OWNER_SCHEMA_VERSION = 1;
 export const SG02_DYNAMIC_BODY_OWNER_DT = 1 / 60;
@@ -38,7 +39,20 @@ export function mayRapierIslandSleep(entity, spec) {
   if (!entity || !spec || spec.dynamic !== true) return false;
   if (entity.isPlayer === true) return false;
   if (entity.type === 'projectile' || spec.material === 'projectile') return false;
-  return true;
+  if (entity.flags && entity.flags.noInterp) return false;
+  const data = entity.data;
+  if (data && (data.jobId || data.activityActorSlotId || data.ceresActivityCast)) return false;
+  const tier = entity.activity && entity.activity.simTier;
+  return tier === SIM_TIER.S2_ABSTRACT
+    || tier === SIM_TIER.S3_DORMANT
+    || tier === SIM_TIER.S4_AGGREGATE;
+}
+
+/** Sleeping islands keep last pose; skip WASM translation/linvel writeback. */
+export function shouldSkipSleepingKinematics(entity, spec, opts = {}) {
+  if (opts.sleeping !== true) return false;
+  if (opts.held === true || opts.hadCommand === true) return false;
+  return mayRapierIslandSleep(entity, spec);
 }
 
 const CAPTURE_SLACK_S = 0.1;
@@ -223,6 +237,7 @@ export class Sg02DynamicBodyOwner {
     // a verified rebind, preserving the body's private numerical continuity across that swap.
     this._reboundEntityIds = new Set();
     this._sleepHeld = new Set();
+    this._sleepReeled = new Set();
     this._staticLayerVersion = null;
     this._frameOrigin = {
       x: finite(options.frameOrigin && options.frameOrigin.x),
@@ -644,8 +659,10 @@ export class Sg02DynamicBodyOwner {
       setZero3(rec.controlForce);
       setZero3(rec.controlTorque);
       rec.maxSpeed = Infinity;
-      resetBodyForces(rec.body);
       const command = consumePhysicsCommand(rec.entity);
+      rec._hadCommand = !!command;
+      if (!command && this._sleepingRecordSkipsCpu(rec, false)) continue;
+      resetBodyForces(rec.body);
       this._applyBodyResponse(rec, command && command.bodyResponse);
       if (command) this._applyCommand(rec, command);
     }
@@ -655,7 +672,10 @@ export class Sg02DynamicBodyOwner {
     // Structural-give baseline: at this point every impulse (dash, spring, combat) has already
     // mutated linvel/angvel; only the continuous control force/torque still integrates inside
     // world.step(). Predicting that lets the post-step pass isolate pure contact response.
-    for (const rec of this.dynamicRecords) this._captureExpectedKinematics(rec);
+    for (const rec of this.dynamicRecords) {
+      if (this._sleepingRecordSkipsCpu(rec, false)) continue;
+      this._captureExpectedKinematics(rec);
+    }
 
     this.world.timestep = this.fixedDt;
     let stepReceipts = [];
@@ -688,12 +708,23 @@ export class Sg02DynamicBodyOwner {
     if (stepReceipts.length > 0) {
       this._distributeAppliedPlayerDeltaV(stepReceipts);
       this._contactImpacts.push(...stepReceipts);
+      for (let i = 0; i < stepReceipts.length; i++) {
+        const receipt = stepReceipts[i];
+        this._wakeSleepingBody(this.records.get(receipt.aId));
+        this._wakeSleepingBody(this.records.get(receipt.bId));
+      }
     }
 
     for (const rec of this.dynamicRecords) {
+      if (this._sleepingRecordSkipsCpu(rec, true)) {
+        rec._skippedSleepKinematics = true;
+        this._stampIslandSleep(rec, true);
+        continue;
+      }
+      rec._skippedSleepKinematics = false;
       const kinematics = this._enforcePlane(rec);
       this._clampSpeed(rec, kinematics);
-      if (this._hasManualSpringAttachment(rec)) this._canonicalizeManualSpringBody(rec, kinematics);
+      if (this._sleepReeled.has(rec)) this._canonicalizeManualSpringBody(rec, kinematics);
       this._syncEntityFromKinematics(rec, kinematics);
       this._publishTelemetry(rec);
     }
@@ -718,23 +749,52 @@ export class Sg02DynamicBodyOwner {
 
   _refreshSleepPolicy() {
     const held = this._sleepHeld;
+    const reeled = this._sleepReeled;
     held.clear();
+    reeled.clear();
     for (const attachment of this.attachments.values()) {
       if (attachment.owner) held.add(attachment.owner);
       if (attachment.target) held.add(attachment.target);
+      const isReeled = Math.max(0, Math.trunc(finite(attachment.reelRevision))) > 0;
+      if (isReeled && !usesLegacyRopeSpring(attachment.spring)) {
+        if (attachment.owner) reeled.add(attachment.owner);
+        if (attachment.target) reeled.add(attachment.target);
+      }
     }
     for (const rec of this.dynamicRecords) {
       const allow = mayRapierIslandSleep(rec.entity, rec.spec) && !held.has(rec)
         && !(rec.entity && rec.entity.flags && rec.entity.flags.noInterp);
-      if (rec.body && typeof rec.body.setCanSleep === 'function') rec.body.setCanSleep(allow);
+      if (rec._sleepAllowed !== allow) {
+        rec._sleepAllowed = allow;
+        if (rec.body && typeof rec.body.setCanSleep === 'function') rec.body.setCanSleep(allow);
+      }
       if (!allow && rec.body && typeof rec.body.wakeUp === 'function') rec.body.wakeUp();
     }
   }
 
+  _sleepingRecordSkipsCpu(rec, afterStep) {
+    if (!rec || !rec.body || typeof rec.body.isSleeping !== 'function') return false;
+    if (rec.body.isSleeping() !== true) return false;
+    return shouldSkipSleepingKinematics(rec.entity, rec.spec, {
+      sleeping: true,
+      held: this._sleepReeled.has(rec),
+      hadCommand: afterStep ? false : rec._hadCommand === true,
+    });
+  }
+
+  _stampIslandSleep(rec, sleeping) {
+    if (!rec || !rec.entity || !rec.body) return;
+    rec.entity.physicsSleeping = sleeping === true;
+    const handle = rec.body.handle;
+    rec.entity.physicsIslandId = typeof handle === 'number' ? handle
+      : (typeof rec.body.islandId === 'function' ? rec.body.islandId() | 0 : 0);
+  }
+
   _persistIslandSleep() {
     for (const rec of this.dynamicRecords) {
+      if (rec._skippedSleepKinematics === true) continue;
       if (!rec.entity || !rec.body || typeof rec.body.isSleeping !== 'function') continue;
-      rec.entity.physicsSleeping = rec.body.isSleeping() === true;
+      this._stampIslandSleep(rec, rec.body.isSleeping() === true);
     }
   }
 
@@ -1219,6 +1279,7 @@ export class Sg02DynamicBodyOwner {
   // spec.ccd authoring stays intact (no record rebuilds); authored ccd:false is never overridden.
   _applyCcdGate(rec, entity) {
     if (!rec || !rec.spec.dynamic || !rec.spec.ccd) return;
+    if (entity && entity.physicsSleeping === true) return;
     const type = entity.type;
     let desired = rec.ccdEnabled;
     if (type === 'projectile') {
@@ -1329,6 +1390,11 @@ export class Sg02DynamicBodyOwner {
 
   _maybeResyncBodyPose(rec, entity) {
     if (!rec || !rec.body || !entity) return false;
+    if (entity.physicsSleeping === true
+      && !(entity.flags && entity.flags.noInterp)
+      && shouldSkipSleepingKinematics(entity, rec.spec, { sleeping: true })) {
+      return false;
+    }
     const local = globalToFrame(entity.pos, this._frameOrigin, this._frameScratch);
     const p = rec.body.translation();
     const dx = local.x - finite(p.x);

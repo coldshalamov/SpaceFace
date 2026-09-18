@@ -4,8 +4,10 @@
  * mode selection so repeated runs cannot collapse onto easy-to-count registries.
  *
  * This is NOT the program queue. PQ/NEXT = pre-specified units.
- * INFERENCE = agent runs this, picks ONE cell of the board, invents the unit,
- * implements it through live owners, records the result in inference-memory.
+ * INFERENCE = agent looks at play, infers a unit, implements it through live
+ * owners, records the result in inference-memory. This script prints COUNT
+ * HINTS. It does not assign the unit. A score cannot see architectural
+ * mistakes, thin missions, or empty cameras.
  *
  * v2 changes (see design/program/INFERENCE_LANES.md):
  * - Structural metrics DETECT; they no longer alone CHOOSE. The board offers
@@ -36,7 +38,7 @@ import { SECTOR_ZONES } from '../src/data/sectorZones.js';
 import {
   uniq, concentration, idBreadth, scoreStructuralGap, liveAssetBreadth,
   normalizeMemory, buildDirectorBoard, resolveScope, slateRequirements,
-  objectLiteralKeys, SCOPE_MAP,
+  objectLiteralKeys, SCOPE_MAP, DEFAULT_UNSCOPED_N,
 } from './lib/inferenceCore.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -434,7 +436,8 @@ if (scopeArg && !scopeWfs) {
   console.error(`Unknown scope "${scopeArg}". Known: ${Object.keys(SCOPE_MAP).join(', ')}`);
 }
 const board = buildDirectorBoard({ structural: gaps, memory, today, integrationDebt, scopeWfs });
-const slate = slateRequirements(nxArg || 1, scopeWfs);
+const defaultNx = scopeWfs ? 1 : DEFAULT_UNSCOPED_N;
+const slate = slateRequirements(nxArg || defaultNx, scopeWfs);
 const slateDomainRule = slate.minDomainsSpanned > 1
   ? `span >=${slate.minDomainsSpanned} domain(s) when accepting 2+ units`
   : `span >=${slate.minDomainsSpanned} domain(s)`;
@@ -446,10 +449,10 @@ const slateDomainRule = slate.minDomainsSpanned > 1
 const report = {
   schema: 'spaceface.inferenceDetect.v2',
   generatedAt: new Date().toISOString(),
-  purpose: 'Autonomous INFERENCE director board (not PQ dispatch). Structural metrics detect; the board chooses.',
+  purpose: 'Optional count hints for INFERENCE (not PQ dispatch, not the unit selector). Structural metrics cannot see architectural mistakes.',
   scope: scopeArg || null,
   scopeWfs,
-  nx: nxArg ? Number(nxArg) : null,
+  nx: nxArg ? Number(nxArg) : (scopeWfs ? null : DEFAULT_UNSCOPED_N),
   slateRequirements: slate,
   memoryWarnings,
   snapshots: {
@@ -488,6 +491,7 @@ const report = {
   board: {
     suggestedMode: board.suggestedMode,
     modeReason: board.modeReason,
+    unscopedPick: board.unscopedPick,
     repair: board.repair.slice(0, 8).map(({ id, score, wfs, recentWeight, saturated, why }) => ({ id, score, wfs, recentWeight: Number(recentWeight.toFixed(2)), saturated, why })),
     starved: board.starved.slice(0, 8).map(({ wf, name, measured, staleness }) => ({ wf, name, measured, staleness: staleness === Infinity ? 'never' : Math.round(staleness) })),
     integration: board.integration,
@@ -496,14 +500,24 @@ const report = {
     failedTwice: board.failedTwice.map((p) => ({ reason: p.reason, count: p.count })),
     overusedReferences: board.overusedReferences,
   },
-  agentInstructions: [
+  agentInstructions: scopeWfs ? [
     'You are NOT waiting for a human-named unit. PQ owns that door.',
     `Suggested mode this run: ${board.suggestedMode.toUpperCase()} — ${board.modeReason}. Override only with stated evidence.`,
     'Pick ONE board cell, then invent the unit yourself inside it. A count is a symptom, not a task: verify the experiential reality on the ordinary route before building.',
     'Printed examples in the workflow docs are SPENT ideas — never submit one as a candidate (design/inference-workflows/02_CREATIVE_CONVERGENCE_LOOP.md).',
     'Candidates matching a BLOCKED fingerprint need new recorded evidence, not silence.',
-    `Slate: up to ${slate.acceptedMax} accepted unit(s), >=${slate.minCandidates} candidates, pairwise-distinct fingerprints (>=${slate.minDistinctAxesPerPair} axes), ${slateDomainRule}. Fewer accepted units than requested is an HONEST outcome.`,
-    'Implement through live owners; prove on the ordinary route; then record the unit: node scripts/inference-record.mjs --help',
+    `Slate: up to ${slate.acceptedMax} accepted unit(s), pairwise-distinct fingerprints (>=${slate.minDistinctAxesPerPair} axes), ${slateDomainRule}. Thin rows do not count.`,
+    'Implement through live owners; prove with a number or focused test; then record: node scripts/inference-record.mjs --help',
+  ] : [
+    'Bare INFERENCE: YOU find what is weak. This board is optional count hints, not the task.',
+    board.unscopedPick
+      ? `COUNT HINT (ignore if looking disagrees): ${board.unscopedPick.kind} ${board.unscopedPick.mode} ${board.unscopedPick.wf} (${board.unscopedPick.id}) — ${board.unscopedPick.why}`
+      : 'COUNT HINT: none. Look at the live owner.',
+    'A script cannot see architectural mistakes, thin missions, or empty cameras. Common sense selects.',
+    'Complete one whole playable unit. Rotate to a different kind of weakness you also saw.',
+    `Default N=${DEFAULT_UNSCOPED_N} unless the owner named a number. Thin rows do not count.`,
+    'Do not spend the batch implementing this file\'s highest score.',
+    'Implement through live owners; prove with a number or focused test; then record: node scripts/inference-record.mjs --help',
   ],
 };
 
@@ -514,9 +528,13 @@ const fmtGap = (g) => (
   + `\n         why: ${g.why}\n         blind: ${g.blindSpots}`
 );
 
+const unscopedPickLine = board.unscopedPick
+  ? `>>> COUNT HINT (not the task): ${board.unscopedPick.kind} · ${board.unscopedPick.mode.toUpperCase()} · ${board.unscopedPick.wf} · ${board.unscopedPick.id}\n    ${board.unscopedPick.why}`
+  : null;
+
 const lines = [
   'INFERENCE DIRECTOR BOARD (structural detection + mode selection)',
-  scopeArg ? `scope=${scopeArg} -> ${(scopeWfs || []).join(', ') || 'UNKNOWN'}` : 'scope=(none)',
+  scopeArg ? `scope=${scopeArg} -> ${(scopeWfs || []).join(', ') || 'UNKNOWN'}` : `scope=(none)  bare INFERENCE → look for weakness, N=${nxArg || DEFAULT_UNSCOPED_N} (this file does not assign the unit)`,
   '',
   `enemies=${ENEMY_TYPES.length} behaviorCombos=${enemyBehaviorCombos.unique} doctrines=${enemyDoctrines.unique} silhouettes=${enemySilhouettes.unique} telegraphs=${telegraphed}/${ENEMY_TYPES.length}`,
   `jobs kinds=${jobKinds.length} pocketJobKinds=${pocketJobKinds.length} pocketSectors=${pocketSectorIds.length}/${SECTORS.length}`,
@@ -527,6 +545,7 @@ const lines = [
   ...(memoryWarnings.length ? ['', ...memoryWarnings.map((w) => `MEMORY WARNING: ${w}`)] : []),
   '',
   `>>> SUGGESTED MODE: ${board.suggestedMode.toUpperCase()} — ${board.modeReason}`,
+  ...(unscopedPickLine ? ['', unscopedPickLine] : []),
   '',
   'REPAIR (structural gaps; a count is a symptom — verify on the ordinary route first):',
   ...board.repair.slice(0, 6).map(fmtGap),
@@ -540,18 +559,18 @@ const lines = [
   'RECOVERY (known defects; VERIFY liveness against current code before acting):',
   ...(board.recovery.length ? board.recovery.map((d) => `  [${d.severity}] ${d.id} (${d.wf}) — ${d.note}`) : ['  (none recorded)']),
   '',
-  'OPPORTUNITY (deficits are not the only door — generate from strengths):',
+  'OPPORTUNITY (scoped runs may hunt strengths; bare INFERENCE does not start here):',
   '  What do existing SpaceFace systems make possible that nothing exploits yet?',
   '  What would be funny, beautiful, dangerous, or trailer-worthy that only THIS game can do?',
-  '  At least one candidate must be justified purely from SpaceFace systems/fiction,',
-  '  generated BEFORE reading the reference library. Printed doc examples are spent.',
   ...(board.blocked.length ? ['', 'BLOCKED (recently rejected/cut — do not resurrect without NEW recorded evidence):', ...board.blocked.map((u) => `  ${u.date} ${u.id}: ${u.fingerprint} (${u.reason || 'no reason recorded'})`)] : []),
   ...(board.failedTwice.length ? ['', 'FAILED TWICE (do not attempt a third time on the same premise):', ...board.failedTwice.map((p) => `  ${p.reason} (x${p.count})`)] : []),
   ...(board.overusedReferences.length ? ['', 'OVERUSED REFERENCES (rotate or go repo-native):', ...board.overusedReferences.map((r) => `  ${r.ref} used ${r.uses}x in 30d`)] : []),
   '',
-  `SLATE for ${nxArg || 1}x${scopeArg ? ` ${scopeArg}` : ''}: up to ${slate.acceptedMax} accepted, >=${slate.minCandidates} candidates, ${slateDomainRule}. Fewer accepted than requested is HONEST when the rest are filler.`,
+  `SLATE for ${nxArg || defaultNx}x${scopeArg ? ` ${scopeArg}` : ' (unscoped — look, then rotate)'}: up to ${slate.acceptedMax} complete units, ${slateDomainRule}. Thin rows do not count.`,
   '',
-  'Agent: pick ONE cell, verify its reality on the ordinary route, invent the unit, ship it through live owners, then: node scripts/inference-record.mjs',
+  scopeWfs
+    ? 'Agent: this board is hints. Invent a complete unit from what play actually lacks, then: node scripts/inference-record.mjs'
+    : 'Agent: this board is optional counts. Look at play, complete one real weakness, rotate to a different kind you also saw.',
 ];
 
 console.log(lines.join('\n'));

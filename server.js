@@ -14,9 +14,18 @@ import { fileURLToPath } from 'node:url';
 const require = createRequire(import.meta.url);
 const { createGameServer } = require('./scripts/lib/gameServer.cjs');
 const { resolveMountedPlayerStoreDir } = require('./scripts/lib/playerSaveStore.cjs');
+const { resolveMountedUserContentDir } = require('./scripts/lib/userContentStore.cjs');
 
 const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const PORT = Number(process.argv[2] || process.env.PORT || 8123);
+
+// Per-user mods home by platform (matching where Electron's userData lands).
+function defaultUserContentPlatformDir() {
+  const home = process.env.HOME || '';
+  if (process.platform === 'darwin') return join(home, 'Library', 'Application Support', 'SpaceFace', 'mods');
+  if (process.platform === 'win32') return join(process.env.APPDATA || join(home, 'AppData', 'Roaming'), 'SpaceFace', 'mods');
+  return join(process.env.XDG_DATA_HOME || join(home, '.local', 'share'), 'SpaceFace', 'mods');
+}
 
 // Dev-only screenshot sink: the page POSTs a data: URL here and we save the bytes to
 // .devshots/<name>.jpg so the dev loop can Read the rendered frame (the headless preview
@@ -57,26 +66,23 @@ const server = createGameServer({
   // localStorage. That fails soft, which is worse than failing loud -- the two launch paths saw
   // DIFFERENT SAVE SETS and nothing said so. The env var still overrides for isolated harnesses.
   playerStoreDir: resolveMountedPlayerStoreDir(process.env) || undefined,
+  // User content ("mods") — PQ-172.00. SPACEFACE_USER_CONTENT_DIR overrides; a repo-local
+  // user-content/ directory mounts when present (dev convenience); otherwise the platform
+  // app-data mods dir is the default home. Isolated harnesses pass SPACEFACE_USER_CONTENT_DIR=''
+  // to boot with no mods mounted.
+  userContentDir: resolveMountedUserContentDir(process.env, {
+    devDir: join(ROOT, 'user-content'),
+    platformDir: defaultUserContentPlatformDir(),
+  }) || undefined,
   extraRoutes: [
     {
       test: (method, url) => method === 'POST' && url.startsWith('/__shot'),
       stateChanging: true,
       handle: handleShot,
     },
-    {
-      // A dev tree has no release receipt: scripts/build-bundle.mjs writes
-      // spaceface-release-build.json into build/web for packaged builds only. The title and pause
-      // version fine print fetch it on every boot (src/ui/screens/mainMenu.js), so the raw browser
-      // route logged a 404 on every launch — harmless to the player (the fine print falls back to
-      // the compiled version) but it failed every "no console errors" walk, e.g.
-      // check:crucible:route CLEAN. Answer with an empty receipt so dev boots are clean and the
-      // fine print falls back exactly as it does on a packaged build without a digest.
-      test: (method, url) => method === 'GET' && url.split('?')[0] === '/spaceface-release-build.json',
-      handle: (req, res) => {
-        res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-        res.end('{"dev":true,"output":{}}');
-      },
-    },
+    // spaceface-release-build.json is answered by the shared server: packaged bytes when the
+    // bundle receipt exists, a synthesized dev receipt (env/git identity) otherwise — see
+    // scripts/lib/gameServer.cjs. No browser-only route here; the two hosts must not drift.
   ],
 });
 

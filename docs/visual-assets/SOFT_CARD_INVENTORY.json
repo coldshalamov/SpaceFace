@@ -87,15 +87,6 @@
       "files": ["src/render/startupGpuResidency.js"]
     },
     {
-      "id": "legacy-starfield",
-      "effectClasses": ["background"],
-      "status": "unused",
-      "playerSees": "Nothing on the live route (spaceBackground replaced this)",
-      "technique": "Point sprites with a round texture",
-      "whyListed": "Dead path. Do not revive it as a world-object renderer.",
-      "files": ["src/render/starfield.js"]
-    },
-    {
       "id": "graphics-lab-sprites",
       "effectClasses": ["engine-jet", "shield-response"],
       "classificationRole": "lab-examples; class assignment is no production permission",

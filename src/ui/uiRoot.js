@@ -1252,7 +1252,7 @@ export const ui = {
         }
         this._hudVisibleLast = hudVisible;
       }
-      if (this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
+      if (hudVisible && this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
       if (this.encounterChoicePrompt && typeof this.encounterChoicePrompt.tick === 'function') {
         this.encounterChoicePrompt.tick();
       }
@@ -1260,8 +1260,8 @@ export const ui = {
         this.lawfulInspectionPrompt.tick();
       }
       if (this.toasts && this.toasts.tick) this.toasts.tick();
-      // comms feed fade sweep + graffiti (narrative overlay; cheap, runs every frame)
-      if (this.comms && this.comms.tick) this.comms.tick();
+      // Comms fade is a flight overlay. Toasts/prompts stay alive on menus.
+      if (hudVisible && this.comms && this.comms.tick) this.comms.tick();
       // refresh the active modal screen at a low cadence (event-driven screens also self-update)
       this._rt = (this._rt || 0) + 1;
       if ((this._rt % 18) === 0 && this.screenManager && this.screenManager.isOpen()) {

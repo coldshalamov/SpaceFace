@@ -29,6 +29,21 @@ quality, planning graphics/VFX work, or declaring a bug fixed. Root `AGENTS.md` 
 - When the player reports a freeze or other play-blocking bug, find the actual cause on the real
   play path and verify that freeze is gone before claiming it fixed; do not paper it over with
   catch-and-continue or scatter unrelated nearby changes.
+- Captures are not the review method (owner, 2026-09-16). Headed stills, frame strips, capture
+  matrices, and Chromium soaks slowed production to a crawl. Default proof is reading the live
+  owner and printing a number from a fixed-seed scenario or a focused test. A still is allowed
+  only when the claim is purely visual and no structural check can falsify it; look in-session
+  and delete it. Timed-out Chromium, a missing GPU, or a capture-harness failure never blocks
+  `implemented`. Packet prose that says “scenario + capture” means the scenario. Art remaster
+  KEEP/REVISE is the exception: that claim *is* the picture.
+- INFERENCE is considered play, not the first row that compiles (owner, 2026-09-16). Bare
+  `INFERENCE` (no spec) means look at the game, find what is weak or ill-built, complete
+  that, then rotate to a different kind of weakness you also saw. `inference-detect.mjs`
+  is an optional count hint, not the assignment — scripts cannot see architectural
+  mistakes. Named scopes still think and build the whole playable thing (a mission
+  includes placement, script, people, and density). Three thin board entries is a
+  failed run. Law: `design/program/INFERENCE_LANES.md`. Prompt:
+  `design/program/INFERENCE_GOAL.txt`. Captures remain not the review.
 - Browser and Electron are shells of the same game; they must share player saves and must not drift
   as separate copies.
 

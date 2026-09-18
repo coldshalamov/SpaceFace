@@ -98,16 +98,13 @@ export function entityIndexVersion(state) {
     : null;
 }
 
-/**
- * Call `fn` for every living-world actor. Never yields asteroids or dressing FX.
- * Returns the source used so tests can assert the fat list was not the iterator.
- */
 /** Heist/facility dressing marked as a witness. Never asteroids. */
 export function forEachExplicitWitnessMarker(state, fn) {
   if (typeof fn !== 'function') return 'none';
-  const list = (state && state.entityList) || [];
-  for (let i = 0; i < list.length; i++) {
-    const entity = list[i];
+  const fx = indexedTypeScan(state, 'fx');
+  const usedIndex = hasEntityIndex(state) && Array.isArray(state.entityIndex.fx);
+  for (let i = 0; i < fx.length; i++) {
+    const entity = fx[i];
     if (!entity || entity.alive === false || entity.type !== 'fx') continue;
     if (!entity.data || entity.data.lawWitness !== true) continue;
     fn(entity);
@@ -121,9 +118,13 @@ export function forEachExplicitWitnessMarker(state, fn) {
       fn(row);
     }
   }
-  return 'filter';
+  return usedIndex ? 'index' : 'filter';
 }
 
+/**
+ * Call `fn` for every living-world actor. Never yields asteroids or dressing FX.
+ * Returns the source used so tests can assert the fat list was not the iterator.
+ */
 export function forEachLivingWorldActor(state, fn) {
   if (typeof fn !== 'function') return 'none';
   if (hasEntityIndex(state)) {

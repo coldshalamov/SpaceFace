@@ -8,6 +8,7 @@
 // shared. Credits/cargo/rep/heat remain with their canonical owners.
 
 import { hash32 } from '../core/rng.js';
+import { takeNearWorkSlice } from '../core/activityScheduler.js';
 import { COMMODITIES } from '../data/commodities.js';
 import {
   CERES_ACTIVITY_POCKETS,
@@ -46,9 +47,11 @@ import { RECORD_KIND, stableRecordId } from '../world/worldRecords.js';
 import {
   collectLivingWorldActors,
   findLivingWorldActor,
+  forEachExplicitWitnessMarker,
   forEachJobInteractable,
   forEachLivingWorldActor,
   indexedShipLikeScan,
+  indexedTypeScan,
 } from '../world/livingWorldViews.js';
 
 export const LAW_SECURITY_VERSION = 2;
@@ -213,7 +216,9 @@ export const lawSecurity = {
     this._updateCustomsScanCones(_dt, state);
     if ((state.tick | 0) >= (own.nextAmbientScanTick | 0)) {
       own.nextAmbientScanTick = (state.tick | 0) + AMBIENT_SCAN_INTERVAL_TICKS;
-      forEachLivingWorldActor(state, (entity) => this._stampAmbient(entity));
+      const actors = collectLivingWorldActors(state, this._ambientActorScratch || (this._ambientActorScratch = []));
+      const slice = takeNearWorkSlice(state, 'lawSecurity', actors);
+      for (let i = 0; i < slice.length; i++) this._stampAmbient(slice[i]);
     }
     if ((state.tick | 0) < (own.nextIncidentTick | 0)) return;
     own.nextIncidentTick = (state.tick | 0) + 15;
@@ -496,8 +501,10 @@ export const lawSecurity = {
    * from encounters and sector promotion before the weapon system can consume it.
   */
   _enforceSanctuaryWithdrawals(state) {
-    forEachLivingWorldActor(state, (entity) => {
-      if (!isArmedNpc(entity, state) || isLawful(entity)) return;
+    const armed = indexedTypeScan(state, 'aiShips');
+    for (let i = 0; i < armed.length; i++) {
+      const entity = armed[i];
+      if (!isArmedNpc(entity, state) || isLawful(entity)) continue;
       const data = entity.data || (entity.data = {});
       const ai = data.ai || (data.ai = {});
       const combat = data.combat || (data.combat = {});
@@ -509,12 +516,12 @@ export const lawSecurity = {
         targetId = state.playerId;
       }
       const target = entityById(state, targetId);
-      if (!target) return;
-      if (is47aScavengerCounterplayAuthorized(state, entity, target)) return;
+      if (!target) continue;
+      if (is47aScavengerCounterplayAuthorized(state, entity, target)) continue;
       const jurisdiction = protectedStationAt(state, target) || protectedStationAt(state, entity);
-      if (!jurisdiction) return;
+      if (!jurisdiction) continue;
       this._withdrawFromSanctuary(entity, target, jurisdiction);
-    });
+    }
   },
 
   _withdrawFromSanctuary(entity, target, jurisdiction) {
@@ -3447,13 +3454,16 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
   if (!state || !anchor) return [];
   const limitSq = Math.max(0, Number(radius) || 0) ** 2;
   const out = [];
-  forEachLivingWorldActor(state, (entity) => {
-    if (!entity.pos) return;
+  const seen = new Set();
+  const consider = (entity) => {
+    if (!entity || !entity.pos) return;
     if (offenderEntityId != null && entity.id === offenderEntityId) return;
     if (entity.id === state.playerId) return;
+    if (seen.has(entity.id)) return;
     if (!isLawful(entity) && entity.data?.lawWitness !== true) return;
     const d2 = distance2(entity.pos, anchor);
     if (d2 > limitSq) return;
+    seen.add(entity.id);
     out.push({
       stableId: String(entity.data?.worldRecordId
         || entity.data?.stationId
@@ -3463,7 +3473,11 @@ export function lawWitnessesNear(state, { pos, offenderEntityId = null, radius =
       distanceSq: d2,
       lawful: isLawful(entity),
     });
-  });
+  };
+  // Living-world actors never include dressing FX. Authored heist/facility markers opt in with
+  // `data.lawWitness` and live on that dressing type, so they have their own walk.
+  forEachLivingWorldActor(state, consider);
+  forEachExplicitWitnessMarker(state, consider);
   return out
     .sort((a, b) => a.distanceSq - b.distanceSq || a.stableId.localeCompare(b.stableId))
     .slice(0, LAW_INCIDENT_WITNESS_CAP);

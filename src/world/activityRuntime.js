@@ -586,8 +586,13 @@ export function admitSameTickProjectiles(state, runtime, membership) {
   if (list.length < lastN) return false;
   const unseen = runtime.unstampedScratch || (runtime.unstampedScratch = []);
   unseen.length = 0;
-  for (let i = 0; i < list.length; i++) {
-    const entity = list[i];
+  const index = state.entityIndex;
+  const projectiles = index && index.__spacefaceEntityIndexV1 && index.ready === true
+    && Array.isArray(index.projectiles)
+    ? index.projectiles
+    : list;
+  for (let i = 0; i < projectiles.length; i++) {
+    const entity = projectiles[i];
     if (!entity || entity.alive === false) continue;
     if (runtime.seenEntityIds.has(entity.id)) continue;
     if (entity.type !== 'projectile') return false;
@@ -644,8 +649,13 @@ function selectClassifyEntities(state, runtime, list, origin, reach) {
   for (let i = 0; i < runtime.nearIds.length; i++) {
     add(state.entities && state.entities.get(runtime.nearIds[i]));
   }
-  for (let i = 0; i < list.length; i++) {
-    const entity = list[i];
+  const projectileIndex = state.entityIndex;
+  const projectiles = projectileIndex && projectileIndex.__spacefaceEntityIndexV1
+    && projectileIndex.ready === true && Array.isArray(projectileIndex.projectiles)
+    ? projectileIndex.projectiles
+    : list;
+  for (let i = 0; i < projectiles.length; i++) {
+    const entity = projectiles[i];
     if (entity && entity.alive !== false && entity.type === 'projectile') add(entity);
   }
   const scratch = runtime.radiusScratch;

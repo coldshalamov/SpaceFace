@@ -72,6 +72,9 @@ const SHELL_SAVE_CLIP_CHANNEL = 'spaceface:save-clip';
 const SHELL_BUILD_INFO_CHANNEL = 'spaceface:build-info';
 const SHELL_ACHIEVEMENT_UNLOCK_CHANNEL = 'spaceface:achievement-unlock';
 const SHELL_STEAM_STATUS_CHANNEL = 'spaceface:steam-status';
+const SHELL_WORKSHOP_STATUS_CHANNEL = 'spaceface:workshop-status';
+const SHELL_WORKSHOP_PUBLISH_CHANNEL = 'spaceface:workshop-publish';
+const SHELL_WORKSHOP_SYNC_CHANNEL = 'spaceface:workshop-sync';
 try {
   contextBridge.exposeInMainWorld('spacefaceShell', Object.freeze({
     quit() {
@@ -92,6 +95,17 @@ try {
     // {available, reason, distribution, achievements, cloud} — no paths, no app internals.
     steamStatus() {
       return ipcRenderer.invoke(SHELL_STEAM_STATUS_CHANNEL);
+    },
+    // PQ-172.01 Steam Workshop for the content directory. Only a manifest mod id crosses on
+    // publish — the shell resolves the dir itself; no path ever leaves the sandbox.
+    workshopStatus() {
+      return ipcRenderer.invoke(SHELL_WORKSHOP_STATUS_CHANNEL);
+    },
+    workshopPublish(modId) {
+      return ipcRenderer.invoke(SHELL_WORKSHOP_PUBLISH_CHANNEL, { modId: typeof modId === 'string' ? modId.slice(0, 80) : '' });
+    },
+    workshopSync() {
+      return ipcRenderer.invoke(SHELL_WORKSHOP_SYNC_CHANNEL);
     },
   }));
 } catch (e) {}

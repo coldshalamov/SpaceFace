@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 
 import {
@@ -10,10 +11,12 @@ import {
 import * as partsLibrary from '../src/render/partsLibrary.js';
 import { createVisualFactory } from '../src/render/visualFactory.js';
 import { installVisualOverrides } from '../src/render/visualOverrides.js';
+import { fileRecord, glbMetrics } from '../scripts/lib/graphics-asset-receipts.mjs';
 
 const CAPSULE_ASSET_ID = 'pod_cargo_container';
 const CAPSULE_PART_FILE = 'pods/pod_cargo_container.glb';
 const CAPSULE_RELEASE_URL = `assets/ships/release/parts/${CAPSULE_PART_FILE}`;
+const REPO_ROOT = fileURLToPath(new URL('../', import.meta.url));
 
 function capsuleEntity(id = 'cargo_capsule') {
   return {
@@ -313,9 +316,16 @@ test('the existing cargo pod is already present in source, release, and the runt
   const source = sourceManifest.parts.find((entry) => entry.id === CAPSULE_ASSET_ID);
   const release = releaseManifest.assets.find((entry) => entry.id === CAPSULE_ASSET_ID);
 
+  const sourceDisk = fileRecord(REPO_ROOT, `assets/ships/parts/${CAPSULE_PART_FILE}`);
+  const releaseDisk = fileRecord(REPO_ROOT, CAPSULE_RELEASE_URL);
+  const sourceMesh = glbMetrics(REPO_ROOT, `assets/ships/parts/${CAPSULE_PART_FILE}`);
+
   assert.equal(source?.file, CAPSULE_PART_FILE);
-  assert.equal(source?.tris, 3976);
   assert.equal(release?.release, CAPSULE_RELEASE_URL);
-  assert.equal(release?.releaseSha256, '1bd99864be12a7909ffca950b33733765dd6fce0ce9f213ff8d83383aeff3b9b');
+  assert.equal(source?.bytes, sourceDisk.bytes, 'parts_manifest bytes must match the live source GLB');
+  assert.equal(source?.tris, sourceMesh.triangles, 'parts_manifest tris must match the live source GLB');
+  assert.equal(String(release?.sourceSha256 || '').toLowerCase(), sourceDisk.sha256.toLowerCase());
+  assert.equal(String(release?.releaseSha256 || '').toLowerCase(), releaseDisk.sha256.toLowerCase());
+  assert.ok(sourceMesh.triangles > 0);
   assert.ok(partsLibrary.PART_LIBRARY_CONTRACT.slots.pod.includes(CAPSULE_PART_FILE));
 });

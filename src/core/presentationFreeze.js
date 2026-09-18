@@ -22,6 +22,22 @@ export function shouldFreezeFlightSubmit(state) {
   return false;
 }
 
+/** Input and save keep ticking while the 3D world is hidden. Everything else does not. */
+export const HIDDEN_KEEPALIVE_SYSTEM_NAMES = Object.freeze(['input', 'save']);
+
+export function isHiddenKeepaliveSystem(name) {
+  return name === 'input' || name === 'save';
+}
+
+/**
+ * Map / station / pause / dock / sector-shell cook: skip physics, combat, AI, and the
+ * clock. ScreenManager already zeros timeScale; this is the registry-side skip so a
+ * forced step cannot keep simulating an ambush behind a menu.
+ */
+export function shouldSkipFullTickSystems(state) {
+  return shouldFreezeFlightSubmit(state);
+}
+
 /**
  * True when the frozen canvas is holding a picture nothing else may draw over.
  *

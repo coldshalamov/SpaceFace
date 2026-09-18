@@ -155,11 +155,18 @@ test('opening geometry admission uses the shared startup proxy pass', () => {
     'the admission-time GPU baseline must not be reset after yielding toward handoff',
   );
 
-  const drawStart = RENDERER_SOURCE.indexOf('drawPreparedFrame()');
+  const drawStart = RENDERER_SOURCE.indexOf('drawPreparedFrame() {');
   const drawEnd = RENDERER_SOURCE.indexOf('renderFrame(alpha', drawStart);
   const firstDraw = RENDERER_SOURCE.slice(drawStart, drawEnd);
-  assert.doesNotMatch(firstDraw, /createOpeningSubmissionReceipt\(/,
-    'the first visible submit cannot replace its own geometry baseline');
+  // The rehearsal sweep may refresh the receipt before the first submit, but only while a prior
+  // receipt and frozen plan exist — the first visible submit itself never mints the baseline.
+  const receiptCreations = firstDraw.match(/createOpeningSubmissionReceipt\(/g) || [];
+  if (receiptCreations.length > 0) {
+    assert.match(firstDraw, /const priorReceipt = this\.state\.render\.openingSubmissionReceipt/,
+      'an in-submit receipt recapture must require a pre-existing receipt');
+    assert.match(firstDraw, /if \(priorReceipt && plan\)/,
+      'an in-submit receipt recapture must stay gated on the frozen plan');
+  }
   assert.match(firstDraw, /&& !this\.state\.render\.openingFirstVisibleGpuCounts/,
     'the unconditional first-visible count line must emit exactly once per opening');
   assert.match(firstDraw, /reason:\s*'first-visible-geometry-delta'/,
@@ -267,6 +274,103 @@ test('startup residency uploads exact geometry through an isolated 1x1 pass and 
   assert.equal(harness.renderer.xr.enabled, true);
   assert.equal(harness.renderer.shadowMap.autoUpdate, true);
   assert.equal(harness.renderer.shadowMap.needsUpdate, true);
+});
+
+// Mid-flight GPU brick regression: continuous plume / RCS layers swap mesh.geometry
+// across prebuilt quality tiers on a live frame. Only the active geometry used to be
+// admission work, so a tier switch uploaded an unstamped buffer inside the presented pass.
+test('quality-tier alternate geometries join residency work and are stamped resident', async () => {
+  const activeGeometry = new THREE.BoxGeometry();
+  const tierLow = new THREE.BoxGeometry();
+  const tierMedium = new THREE.SphereGeometry(1, 4, 3);
+  const mesh = new THREE.Mesh(activeGeometry, new THREE.MeshBasicMaterial());
+  mesh.name = 'plume-layer:core';
+  mesh.userData.spacefaceQualityTierGeometries = [activeGeometry, tierLow, tierMedium];
+  const root = new THREE.Group();
+  root.add(mesh);
+
+  const drawables = collectStartupGeometryDrawables(root);
+  assert.equal(drawables.length, 3, 'the live drawable plus one facade per alternate tier');
+  const collected = new Set(drawables.map((d) => d.geometry));
+  assert.ok(collected.has(activeGeometry));
+  assert.ok(collected.has(tierLow), 'inactive tier geometry must be upload work');
+  assert.ok(collected.has(tierMedium));
+
+  const uploaded = new Set();
+  const harness = createRendererHarness({
+    render({ scene }) {
+      for (const proxy of scene.children) uploaded.add(proxy.geometry);
+    },
+  });
+  const result = await prepareStartupGeometryResidency(harness.renderer, root, {
+    yieldToMain: async () => {},
+  });
+  assert.equal(result.skipped, false);
+  assert.equal(result.geometries, 3);
+  for (const geo of [activeGeometry, tierLow, tierMedium]) {
+    assert.ok(uploaded.has(geo), 'every tier geometry reaches the upload pass');
+    assert.equal(geo.userData.spacefaceGpuResident, true,
+      'every tier geometry is stamped resident so a tier swap is not a first upload');
+  }
+});
+
+// Late-admitted roots carry dormant pools: plume/RCS layers are InstancedMesh at count 0 with
+// full-capacity instance buffers. Without includeEmpty the admission walk skips them, so the
+// first 0->N activation uploads inside a presented frame (the mid-flight GPU brick).
+test('late admission uploads count-0 instanced pool buffers before activation', async () => {
+  const poolGeometry = new THREE.BoxGeometry();
+  const dormantPool = new THREE.InstancedMesh(poolGeometry, new THREE.MeshBasicMaterial(), 8);
+  dormantPool.count = 0;
+  dormantPool.name = 'plume-layer:core';
+  const root = new THREE.Group();
+  root.name = 'plume-system:family_industrial_main_plume';
+  root.add(dormantPool);
+
+  const drawables = collectStartupGeometryDrawables(root, { includeEmpty: true });
+  assert.ok(drawables.includes(dormantPool),
+    'includeEmpty admits the dormant instanced pool into residency work');
+
+  const submitted = [];
+  const harness = createRendererHarness({
+    render({ scene }) {
+      for (const proxy of scene.children) {
+        submitted.push({
+          isInstancedMesh: proxy.isInstancedMesh === true,
+          geometry: proxy.geometry,
+          instanceMatrix: proxy.instanceMatrix,
+          count: proxy.count,
+        });
+      }
+    },
+  });
+  const result = await prepareStartupGpuResidency(harness.renderer, root, {
+    includeGeometry: true,
+    includeEmpty: true,
+    yieldToMain: async () => {},
+  });
+  assert.equal(result.skipped, false);
+  assert.equal(submitted.length, 1);
+  assert.equal(submitted[0].isInstancedMesh, true);
+  assert.equal(submitted[0].geometry, poolGeometry);
+  assert.equal(submitted[0].instanceMatrix, dormantPool.instanceMatrix,
+    'the proxy submits the production capacity-sized instance buffer, not a throwaway');
+  assert.equal(submitted[0].count, 0, 'the dormant pool stays dormant in the proxy pass');
+  assert.equal(poolGeometry.userData.spacefaceGpuResident, true,
+    'the dormant pool geometry is stamped so first activation is not a first upload');
+});
+
+test('every residency admission lane admits dormant instanced pools', () => {
+  const trackerStart = RENDERER_SOURCE.indexOf('createGpuResidencyAdmissionTracker(');
+  assert.ok(trackerStart >= 0, 'the late-admission tracker must exist');
+  const tracker = RENDERER_SOURCE.slice(trackerStart, trackerStart + 2200);
+  assert.match(tracker, /includeEmpty:\s*true/,
+    'the late-admission lane must upload count-0 pool buffers behind the pending latch');
+
+  const restoreStart = RENDERER_SOURCE.indexOf('ignoreResidentStamps: true');
+  assert.ok(restoreStart >= 0, 'the context-restore re-admission must exist');
+  const restore = RENDERER_SOURCE.slice(Math.max(0, restoreStart - 400), restoreStart + 400);
+  assert.match(restore, /includeEmpty:\s*true/,
+    'context restore must re-upload dormant pool buffers, not only stamped drawables');
 });
 
 test('already-resident ordinary geometry is not 1x1 uploaded again', async () => {

@@ -1,8 +1,13 @@
 // src/data/modules.js – canonical non-weapon modules.
 // IDs use mod_ prefix per ARCHITECTURE §0.4. requiresTech refs use tech_ prefix.
-// Covers: shields, engines, cargo, mining lasers, utility. Pure data, no imports.
+// Covers: shields, engines, cargo, mining lasers, utility. The only import is userContent.js,
+// which merges validated user-dropped JSON records onto the shipped table (PQ-172.00 — bottom).
 
-export const MODULES = [
+import {
+  userContentCandidates, claimUserContentId, acceptUserContent, rejectUserContent,
+} from './userContent.js';
+
+const SHIPPED_MODULES = [
   // ===================== SHIELDS =====================
   {
     id: 'mod_shield_booster_s', name: 'Shield Booster S', slotType: 'shield', size: 'S', tier: 1, mass: 3, price: 6000,
@@ -175,6 +180,26 @@ export const MODULES = [
     energyDraw: 6, purchasable: false, unique: true, salvageOnly: true,
     mods: { magnetRange: 1600, tractorWholeWrecks: true, masslineHeadId: 'tractor' },
     variantBonuses: { magnetRangePct: 0.80, energyDrawPct: 1.00, tractorWholeWrecks: true },
+  },
+  {
+    // PQ-170.03 — ace trophy heads. Same physics law as the stock head they were taken from;
+    // the unique id and lineage are what NPCs recognize.
+    id: 'unique_no_cut_filament', baseId: 'mod_monofilament_sweep_m', name: 'No-Cut Filament',
+    slotType: 'utility', size: 'M', tier: 3, mass: 5, price: 0,
+    energyDraw: 6, purchasable: false, unique: true, salvageOnly: true,
+    mods: { masslineHeadId: 'monofilament_sweep' },
+  },
+  {
+    id: 'unique_toll_saint_bridle', baseId: 'mod_twin_bridle_m', name: 'Toll-Saint Bridle',
+    slotType: 'utility', size: 'M', tier: 3, mass: 7, price: 0,
+    energyDraw: 8, purchasable: false, unique: true, salvageOnly: true,
+    mods: { masslineHeadId: 'twin_bridle' },
+  },
+  {
+    id: 'unique_broken_ring_whip', baseId: 'mod_elastic_whip_m', name: 'Broken-Ring Whip',
+    slotType: 'utility', size: 'M', tier: 2, mass: 4, price: 0,
+    energyDraw: 4, purchasable: false, unique: true, salvageOnly: true,
+    mods: { masslineHeadId: 'elastic_whip' },
   },
   {
     // ELASTIC WHIP — stretch stores ½ k s². A player cut spends that remaining energy as a
@@ -412,3 +437,80 @@ export const MODULES = [
     requiresTech: 'tech_attack_topology', energyDraw: 1,
   },
 ];
+
+// ─────────────────────────────── user content (PQ-172.00) ───────────────────────────────
+// Same contract as weapons.js: user JSON records validate against the shipped field/vocab set at
+// module-eval time and merge before consumers snapshot MODULES. Rejections are listed per-mod.
+
+const USER_MODULE_KEYS = new Set([
+  'id', 'name', 'slotType', 'size', 'tier', 'mass', 'price', 'requiresTech', 'baseId',
+  'energyDraw', 'mods', 'dps', 'range', 'rareOreChance', 'directToCargo',
+  'legality', 'behavior', 'description', 'visuals',
+  'purchasable', 'unique', 'salvageOnly', 'variantBonuses',
+]);
+const USER_MODULE_SLOT_TYPES = new Set(['shield', 'engine', 'cargo', 'mining', 'thruster', 'utility']);
+const USER_MODULE_SIZES = new Set(['S', 'M', 'L']);
+
+function userModuleProblem(rec) {
+  if (!rec || typeof rec !== 'object' || Array.isArray(rec)) return 'record must be an object';
+  for (const key of Object.keys(rec)) {
+    if (!USER_MODULE_KEYS.has(key)) return `unknown field "${key}"`;
+  }
+  if (typeof rec.id !== 'string' || !/^(mod|unique)_[a-z0-9_]+$/.test(rec.id)) {
+    return 'id must match mod_* or unique_*';
+  }
+  if (typeof rec.name !== 'string' || !rec.name.trim()) return 'name is required';
+  if (!USER_MODULE_SLOT_TYPES.has(rec.slotType)) {
+    return `slotType must be one of ${[...USER_MODULE_SLOT_TYPES].join(', ')}`;
+  }
+  if (!USER_MODULE_SIZES.has(rec.size)) return 'size must be S, M, or L';
+  if (!Number.isInteger(rec.tier) || rec.tier < 1 || rec.tier > 5) return 'tier must be an integer 1-5';
+  for (const f of ['mass', 'price']) {
+    if (typeof rec[f] !== 'number' || !Number.isFinite(rec[f]) || rec[f] < 0) {
+      return `${f} must be a non-negative number`;
+    }
+  }
+  if (rec.mods != null && (typeof rec.mods !== 'object' || Array.isArray(rec.mods))) {
+    return 'mods must be an object';
+  }
+  if (rec.energyDraw != null && (typeof rec.energyDraw !== 'number' || !Number.isFinite(rec.energyDraw))) {
+    return 'energyDraw must be a number';
+  }
+  if (rec.requiresTech != null && (typeof rec.requiresTech !== 'string' || !rec.requiresTech.startsWith('tech_'))) {
+    return 'requiresTech must be a tech_* id';
+  }
+  if (rec.baseId != null && typeof rec.baseId !== 'string') return 'baseId must be a string id';
+  for (const f of ['purchasable', 'unique', 'salvageOnly', 'directToCargo']) {
+    if (rec[f] != null && typeof rec[f] !== 'boolean') return `${f} must be a boolean`;
+  }
+  if (rec.variantBonuses != null && (typeof rec.variantBonuses !== 'object' || Array.isArray(rec.variantBonuses))) {
+    return 'variantBonuses must be an object';
+  }
+  if (rec.visuals != null && (typeof rec.visuals !== 'object' || Array.isArray(rec.visuals))) {
+    return 'visuals must be an object';
+  }
+  return null;
+}
+
+function mergeUserModules(base) {
+  const candidates = userContentCandidates('modules');
+  if (!candidates.length) return base;   // no payload → the shipped array, untouched
+  const takenIds = new Set(base.map((m) => m.id));
+  const merged = [...base];
+  for (const cand of candidates) {
+    const rec = cand.record;
+    const problem = userModuleProblem(rec)
+      || claimUserContentId('modules', rec.id, cand.modId, takenIds)
+      || (rec.baseId && !takenIds.has(rec.baseId) && !merged.some((m) => m.id === rec.baseId)
+        ? `baseId "${rec.baseId}" does not resolve to a known module` : null);
+    if (problem) {
+      rejectUserContent(cand.modId, 'modules', rec && rec.id, problem, cand.file);
+      continue;
+    }
+    merged.push(rec);
+    acceptUserContent(cand.modId, 'modules', rec.id, cand.file);
+  }
+  return merged;
+}
+
+export const MODULES = mergeUserModules(SHIPPED_MODULES);

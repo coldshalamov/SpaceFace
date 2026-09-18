@@ -367,6 +367,11 @@ export async function runKnockBudget(seed, { simSeconds, emptyField = false } = 
   const host = await bootRealPath({
     seed,
     systems: SYSTEMS,
+    // The rolling corridor is unbounded deep space; a sector fence disk would herd the hull back to
+    // origin once it crosses 2600 WU, corrupting the measured cruise speed and stalling the corridor.
+    prepareState({ state }) {
+      state.bounds = null;
+    },
     hulls: [{
       hullId: PLAYER_HULL,
       pos: { x: 0, z: 0 },

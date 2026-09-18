@@ -378,6 +378,7 @@ describe('PQ-193 required roster, liner, and opening kitbash', { concurrency: 1 
     { label: 'ship_warden', data: { defId: 'ship_warden' }, file: 'wholeships/warden_production_v1.glb' },
     { label: 'ship_colossus', data: { defId: 'ship_colossus' }, file: 'wholeships/colossus_production_v1.glb' },
     { label: 'ship_leviathan', data: { defId: 'ship_leviathan' }, file: 'wholeships/leviathan_production_v1.glb' },
+    { label: 'ship_hawser', data: { defId: 'ship_hawser' }, file: 'wholeships/yard_tug.glb' },
     { label: 'express-liner', data: { defId: 'ship_mule', trafficRole: 'express' }, file: 'wholeships/massline_express_liner_v1.glb' },
     { label: 'smuggler', data: { defId: 'ship_drifter', trafficRole: 'smuggler' }, file: 'wholeships/drifter_production_v1.glb' },
     { label: 'pirate', data: { defId: 'ship_hornet', trafficRole: 'pirate' }, file: 'wholeships/wasp_production_v1.glb' },

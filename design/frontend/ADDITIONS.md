@@ -118,7 +118,7 @@ The Chart has search. Nothing else does. **Verified: no global search exists.**
 
 One key opens a find-anything field — commodities, modules, ships, factions, contracts, sectors,
 people — with results that route to the right instrument. In a game with 47 commodities, 49 modules,
-22 weapons, 13 hulls, 24 sectors and 14 factions, *search is a navigation primitive*, not a
+22 weapons, 14 hulls, 24 sectors and 14 factions, *search is a navigation primitive*, not a
 nice-to-have.
 **Pairs with idea 1** — same resolver, different entry point.
 

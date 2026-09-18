@@ -26,6 +26,11 @@ import {
   resolveCollisionProxyManifest,
 } from '../data/collisionProxyManifests.js';
 import { queuePhysicsImpulse, resolvePhysicsBodySpec } from './physicsAuthority.js';
+import {
+  corridorPlayableBounds,
+  isCorridorSector,
+  sectorGlobalOrigin,
+} from '../data/sectorCoordinates.js';
 
 const DEFAULT_MATERIAL = Object.freeze({
   push: 1,
@@ -512,7 +517,7 @@ export const physics = {
    * `_captureExpectedKinematics`, so structural-give treats the fence as expected motion.
    */
   _queueSectorFenceImpulses(dt, state) {
-    const b = state.bounds;
+    const b = fenceBoundsForState(state);
     if (!b) return;
     const ships = (state.entityIndex && state.entityIndex.ships) || physicsMovableEntities(state);
     for (const e of ships) {
@@ -528,7 +533,7 @@ export const physics = {
   },
 
   integrate(dt, state) {
-    const b = state.bounds;
+    const b = fenceBoundsForState(state);
     for (const e of physicsMovableEntities(state)) {
       if (!e.alive) continue;
       // sector soft boundary: gentle inward acceleration past the soft radius
@@ -1004,6 +1009,29 @@ function shouldPublishSg02Telemetry(state) {
 }
 
 const _fenceScratch = { x: 0, z: 0 };
+const FENCE_SECTOR_FALLBACK_RADIUS = 4000;
+
+/**
+ * Boot `state.bounds` is a Helios-origin disk. Focused Rapier proofs (and any tick before
+ * world.js publishes corridor bounds) still set `currentSectorId` to Ceres. Herding those
+ * hulls toward {0,0} is not a sector fence — it is an origin attractor. Use the current
+ * sector's playable envelope until world ownership replaces `state.bounds`.
+ */
+function fenceBoundsForState(state) {
+  const b = state && state.bounds;
+  if (!b || !b.center) return b || null;
+  const sectorId = state.world && state.world.currentSectorId;
+  if (!sectorId) return b;
+  const origin = sectorGlobalOrigin(sectorId);
+  const dx = origin.x - (Number(b.center.x) || 0);
+  const dz = origin.z - (Number(b.center.z) || 0);
+  const radius = Number(b.radius) || 0;
+  if (Math.hypot(dx, dz) <= radius) return b;
+  if (isCorridorSector(sectorId)) return corridorPlayableBounds();
+  const r = Math.max(radius, FENCE_SECTOR_FALLBACK_RADIUS);
+  return { center: origin, radius: r, hardRadius: r + 500 };
+}
+
 /** Inward Δv for a ship past the soft radius; ramps to 60 WU/s² at the hard radius. */
 function sectorFenceDeltaV(b, e, dt, out) {
   const dx = e.pos.x - b.center.x, dz = e.pos.z - b.center.z;

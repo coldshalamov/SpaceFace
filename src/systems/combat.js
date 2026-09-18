@@ -13,6 +13,8 @@ import { getCombatKernel } from '../combat/kernel.js';
 import { legacyHitToDamagePacket, scalarHitToDamagePacket } from '../combat/damage.js';
 import { createVictimRewardRng, missionOwnsReward, runOwnsReward } from '../combat/rewardEligibility.js';
 import { queryNearbyEntities } from '../core/spatialQuery.js';
+import { queryCombatTableEntities, COMBAT_TABLE_FLAGS } from '../core/combatTable.js';
+import { markDirty, isDirty, DIRTY } from '../core/dirtyJournal.js';
 import { combatFlag, massline2Flag } from '../data/featureFlags.js';
 import { weakPointForEntity, isHitInWeakArc } from '../data/weakPoints.js';
 import { buildDefeatReceipt, buildRecoveryPlan } from '../combat/playerDefeat.js';
@@ -488,6 +490,8 @@ export const combat = {
     if (targetId === this.state.playerId && this.playerIsDockProtected()) {
       return { ok: false, reason: 'target_docked', targetId, attackerId: ownerId == null ? null : ownerId };
     }
+    markDirty(this.state, targetId, DIRTY.COMBAT);
+    if (ownerId != null) markDirty(this.state, ownerId, DIRTY.COMBAT);
     const authoredPacket = damagePacket || packet || null;
     // Weak-point bonus (BP-02): a PLAYER shot landing in a large hull's exposed subsystem arc does
     // bonus damage. Player-only + flag-gated (`combat.weakPoints`, OFF in the golden) + geometric, so
@@ -972,7 +976,11 @@ export const combat = {
     const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList;
     for (const e of ships) {
       if (e.type !== 'ship' || !e.alive) continue;
-      if (e.flags.invuln && e._invulnUntil != null && state.simTime >= e._invulnUntil) e.flags.invuln = false;
+      const regenerating = (e.shieldMax > 0 && e.shield < e.shieldMax)
+        || (e.capMax > 0 && e.cap < e.capMax)
+        || !!(e.flags && e.flags.invuln);
+      if (!regenerating && !isDirty(state, e.id, DIRTY.COMBAT | DIRTY.POSE)) continue;
+      if (e.flags && e.flags.invuln && e._invulnUntil != null && state.simTime >= e._invulnUntil) e.flags.invuln = false;
       if (e.shieldMax > 0 && e.shield < e.shieldMax && state.simTime - (e.lastDamageT || -1e9) >= (e.shieldRegenDelay || 3)) {
         e.shield = Math.min(e.shieldMax, e.shield + (e.shieldRegenRate || 0) * dt);
       }
@@ -1041,6 +1049,19 @@ function beamDamageCandidates(host, state, beam, dx, dz) {
   center.x = (beam.from.x + beam.to.x) * 0.5;
   center.z = (beam.from.z + beam.to.z) * 0.5;
   const queryRadius = Math.hypot(dx, dz) * 0.5 + BEAM_QUERY_RADIUS_PAD;
+  const tableHits = queryCombatTableEntities(
+    state,
+    center.x,
+    center.z,
+    queryRadius,
+    host._beamTableScratch || (host._beamTableScratch = []),
+    COMBAT_TABLE_FLAGS.SHIP,
+  );
+  if (tableHits.length) {
+    host._diag.beamSpatialQueries++;
+    host._diag.beamCandidates += tableHits.length;
+    return tableHits;
+  }
   const candidates = queryNearbyEntities(state, center, queryRadius, host._beamCandidateScratch, fallback);
   if (candidates === host._beamCandidateScratch) host._diag.beamSpatialQueries++;
   host._diag.beamCandidates += candidates.length;

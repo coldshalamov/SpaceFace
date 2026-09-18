@@ -286,27 +286,92 @@ export async function runReleaseSoakProbe({
     const baselineSettings = await readSettingsTruth(page);
     assert.equal(await isDocked(page), true, 'public route must finish docked for comparable retained-heap baseline');
     await ensureMarketOpen(page);
-    // Warmup cycle before the baseline: a fresh dock never requests the station's
-    // exterior-only content, so the first measured undock→flight→load→redock admits
-    // ~250 MB of geometry/texture buffers once. Without the warmup that one-time
-    // admission lands inside the measured window and the retention slope reads it
-    // as a leak. The warmup runs before the recorder installs and before the
-    // baseline snapshot: its frames are not billed to the soak and its heap does
-    // not enter the growth series. Its save/load assertions still run.
-    await withTimeout(
-      runSoakCycle(page, { index: 'warmup', outputDir, log: doLog, screenshots: false }),
-      cycleTimeoutMs,
-      'release-soak warmup cycle',
-    );
-    // No ensureMarketOpen here: the warmup cycle ends in the same post-roundtrip
-    // market state every measured cycle ends in, which is the state
-    // docked-market-end is captured in — that is the comparability the floor needs.
-    await page.waitForTimeout(1_500);
+    // Warmup cycles before the baseline: a fresh dock never requests the station's
+    // exterior-only content, so the first undock→flight→load→redock admits
+    // ~250 MB of geometry/texture buffers once, and later cycles keep admitting
+    // first-seen NPC hull variants. A single warmup cycle ends before that
+    // warm-in completes, so its growth lands inside the measured window and the
+    // retention slope reads it as a leak. Warmup therefore runs until a full
+    // cycle is quiet — post-GC heap within the plateau bound AND zero net new
+    // shader programs — which is exactly the steady state the contract's
+    // start/end deltas intend to measure from. It is capped: a run whose
+    // residency never settles takes its baseline after the last warmup cycle
+    // and the strict contract measures the real remaining growth. Warmup frames
+    // are not billed to the soak and warmup heap does not enter the growth
+    // series; each cycle's save/load assertions still run.
+    const WARMUP_PLATEAU_HEAP_BYTES = 12 * 1024 * 1024;
+    // Resource counters oscillate by a few entries as pools churn; a plateau requires near-zero
+    // net movement in ALL of them, not just heap+programs — diag22 declared plateau at warmup-2 on
+    // a 2.5 MB heap delta while the measured window then grew geometries +27/+37 in later cycles.
+    const WARMUP_PLATEAU_RESOURCE_DELTA = 8;
+    const WARMUP_MAX_CYCLES = 6;
+    // The soak recorder turns the game's per-frame instrumentation on mid-window
+    // (system timing, render work, hitch attribution). Enabling it here lets the
+    // warmup cycles absorb its one-time warm-in — newly hot code paths compile and
+    // stat maps populate once — instead of billing that retained step to the first
+    // measured cycle. installSoakRecorder re-enables idempotently and still records
+    // the flags' prior state for its own restore bookkeeping.
+    await page.evaluate(() => {
+      const perf = window.__SPACEFACE_PERF__;
+      try {
+        if (typeof perf?.setRenderWorkEnabled === 'function') perf.setRenderWorkEnabled(true);
+        if (typeof perf?.setSystemTimingEnabled === 'function') perf.setSystemTimingEnabled(true);
+        if (typeof perf?.setHitchAttributionEnabled === 'function') perf.setHitchAttributionEnabled(true);
+      } catch (_) { /* instrumentation hooks are optional */ }
+    }).catch(() => {});
+    let prevWarmupSnapshot = null;
+    for (let warmupIndex = 0; warmupIndex < WARMUP_MAX_CYCLES; warmupIndex++) {
+      try {
+        await withTimeout(
+          runSoakCycle(page, { index: `warmup-${warmupIndex}`, outputDir, log: doLog, screenshots: false }),
+          cycleTimeoutMs,
+          `release-soak warmup cycle ${warmupIndex}`,
+        );
+      } catch (warmupError) {
+        // Same contract as measured cycles: a dead warmup must carry the live state
+        // that killed it, not a bare waitForFunction timeout.
+        const diag = await captureCycleStateDiag(page).catch(() => null);
+        warmupError.message = `${warmupError.message} | cycle-state: ${JSON.stringify(diag)}`;
+        throw warmupError;
+      }
+      // No ensureMarketOpen here: the warmup cycle ends in the same post-roundtrip
+      // market state every measured cycle ends in, which is the state
+      // docked-market-end is captured in — that is the comparability the floor needs.
+      await page.waitForTimeout(1_500);
+      const snap = await withTimeout(
+        readPostGcMemorySnapshot(page, `docked-market-warmup-${warmupIndex}`),
+        30_000,
+        `release-soak warmup ${warmupIndex} memory snapshot`,
+      );
+      const snapDelta = (key) => prevWarmupSnapshot && Number.isFinite(snap[key])
+        && Number.isFinite(prevWarmupSnapshot[key])
+        ? snap[key] - prevWarmupSnapshot[key] : null;
+      const heapDelta = snapDelta('heapBytes');
+      const programDelta = snapDelta('programs');
+      const geometryDelta = snapDelta('geometries');
+      const textureDelta = snapDelta('textures');
+      doLog(`warmup ${warmupIndex} snapshot: heap ${snap.heapBytes} B (delta ${heapDelta}), programs ${snap.programs} (delta ${programDelta}), geometries ${snap.geometries} (delta ${geometryDelta}), textures ${snap.textures} (delta ${textureDelta})`);
+      if (prevWarmupSnapshot && snap.docked === true
+          && Number.isFinite(heapDelta) && heapDelta <= WARMUP_PLATEAU_HEAP_BYTES
+          && Number.isFinite(programDelta) && programDelta <= 0
+          && Number.isFinite(geometryDelta) && geometryDelta <= WARMUP_PLATEAU_RESOURCE_DELTA
+          && Number.isFinite(textureDelta) && textureDelta <= WARMUP_PLATEAU_RESOURCE_DELTA) {
+        doLog(`warmup plateau reached after ${warmupIndex + 1} cycle(s)`);
+        break;
+      }
+      prevWarmupSnapshot = snap;
+      if (warmupIndex === WARMUP_MAX_CYCLES - 1) {
+        doLog('warmup never plateaued; the baseline follows the last warmup cycle and the contract measures the remaining growth');
+      }
+    }
     const baselineMemory = await withTimeout(
       readPostGcMemorySnapshot(page, 'docked-market-start'),
       30_000,
       'release-soak baseline memory snapshot',
     );
+    if (process.env.SF_SOAK_HEAP_SNAPSHOTS === '1' && outputDir) {
+      await captureHeapSnapshot(page, path.join(outputDir, 'heap-start.heapsnapshot')).catch(() => {});
+    }
 
     // The soak window opens after the public route lands docked on the market: every
     // frame gap >50 ms from here to the controlled context loss is recorded with its
@@ -332,42 +397,7 @@ export async function runReleaseSoakProbe({
         // A dead cycle must carry the live state that killed it — a waitForFunction
         // timeout alone says nothing about whether the world restored, the ship is
         // wedged, or the page froze.
-        const diag = await page.evaluate(() => {
-          const state = window.SF?.state;
-          const player = (state?.entityList || []).find((e) => e?.id === state.playerId);
-          const stations = (state?.entityList || []).filter((e) => e?.type === 'station').map((e) => e?.data?.stationId || e?.id);
-          const trail = window.__M6_RELEASE_SOAK_TRAIL__ || [];
-          return {
-            mode: state?.mode || null,
-            sectorId: state?.world?.currentSectorId || null,
-            docked: state?.ui?.docked ?? null,
-            playerPos: player?.pos ? { x: Number(player.pos.x.toFixed(0)), z: Number(player.pos.z.toFixed(0)) } : null,
-            playerVel: player?.vel ? Number(Math.hypot(player.vel.x, player.vel.z).toFixed(1)) : null,
-            entityCount: state?.entityList?.length ?? null,
-            stations,
-            loadedSlot: window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot ?? null,
-            savedSlotWritten: !!localStorage.getItem('sf.save.quick'),
-            saveErrors: window.__M6_RELEASE_SOAK_EVENTS__?.errors || [],
-            dockInRange: state?.ui?.dockInRange ?? null,
-            dockDeny: state?.ui?.dockDeny || null,
-            fulfillmentBlackout: state?.ui?.fulfillmentBlackoutActive ?? null,
-            boarding: state?.factionPresence?.boarding ? { phase: state.factionPresence.boarding.phase, holdingPos: state.factionPresence.boarding.holdingPos || null } : null,
-            dockEvents: window.__M6_RELEASE_SOAK_EVENTS__?.dock || [],
-            activeElement: typeof document !== 'undefined' ? (document.activeElement?.tagName + '.' + (document.activeElement?.className || '')).slice(0, 120) : null,
-            navAutopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status } : null,
-            navWaypoint: state?.nav?.waypoint ? { kind: state.nav.waypoint.kind, label: state.nav.waypoint.label, pos: state.nav.waypoint.pos || null, targetSectorId: state.nav.waypoint.targetSectorId || null } : null,
-            navExecutor: state?.nav?.executor ? { status: state.nav.executor.status, engaged: state.nav.executor.engaged === true, legIndex: state.nav.executor.legIndex, destinationSectorId: state.nav.executor.destinationSectorId || null } : null,
-            navEvents: (window.__M6_RELEASE_SOAK_EVENTS__?.nav || []).slice(-12),
-            jump: state?.jump ? { state: state.jump.state, targetSectorId: state.jump.targetSectorId || null, via: state.jump.via || null } : null,
-            bounds: state?.bounds ? { radius: state.bounds.radius, hardRadius: state.bounds.hardRadius, center: state.bounds.center || null } : null,
-            frameOrigin: state?.world?.frameOrigin ? { x: state.world.frameOrigin.x, z: state.world.frameOrigin.z, seq: state.world.frameOriginSeq } : null,
-            dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
-            visibility: typeof document !== 'undefined' ? document.visibilityState : null,
-            saveStartedSnapshot: window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null,
-            trailTail: trail.slice(-60),
-            posTrapEvents: (window.__M6_POS_TRAP_EVENTS__ || []).slice(-32),
-          };
-        }).catch(() => null);
+        const diag = await captureCycleStateDiag(page).catch(() => null);
         cycleError.message = `${cycleError.message} | cycle-state: ${JSON.stringify(diag)}`;
         // The position trail is the only witness that names the tick a far-field excursion
         // began; the cycle-state tail alone reads end state. Persist the whole ring plus
@@ -403,6 +433,9 @@ export async function runReleaseSoakProbe({
       30_000,
       'release-soak final memory snapshot',
     );
+    if (process.env.SF_SOAK_HEAP_SNAPSHOTS === '1' && outputDir) {
+      await captureHeapSnapshot(page, path.join(outputDir, 'heap-end.heapsnapshot')).catch(() => {});
+    }
 
     await setSoakTransition(page, 'undock');
     try {
@@ -431,6 +464,24 @@ export async function runReleaseSoakProbe({
     const samples = [...flightSamples, ...recoverySamples];
     assert(samples.length > 0, 'steady-state rAF sampler produced no finite frame samples');
     const finalSettings = await readSettingsTruth(page);
+    // Bounded resource trail — geo/tex/prog at 200 ms cadence through the cycle legs. Persisted
+    // unconditionally so post-plateau resource growth attributes to a leg without a rerun; the
+    // ring is already bounded in-page so this read cannot stall on history.
+    try {
+      const resourceTrail = await page.evaluate(() => (window.__M6_RELEASE_SOAK_TRAIL__ || []).slice(-4000));
+      if (outputDir && Array.isArray(resourceTrail) && resourceTrail.length > 0) {
+        await writeFile(path.join(outputDir, 'resource-trail.json'), JSON.stringify(resourceTrail));
+      }
+    } catch (_) { /* diagnostic-only; never block evidence assembly */ }
+    // Read the armed program-query trap before cleanup closes the page: when warnings fail
+    // validation these stacks name the exact caller issuing dead-handle getProgramParameter
+    // calls, which the browser's own GL warning text cannot identify.
+    const programQueryTrap = await readGlProgramQueryTrap(page);
+    if (programQueryTrap.length > 0) {
+      doLog(`program-query trap captured ${programQueryTrap.length} invalid getProgramParameter caller(s): ${
+        programQueryTrap.slice(0, 4).map((entry) => `${entry.count}x ${String(entry.stack || '').split('\n')[2] || '?'}${entry.lost === true ? ' [context-lost]' : ''}`).join(' | ')
+      }`);
+    }
 
     const endFingerprint = await strictWorktreeFingerprint(root);
     const worktreeStable = endFingerprint.digest === startFingerprint.digest;
@@ -479,6 +530,7 @@ export async function runReleaseSoakProbe({
     const cleanup = normalizeCleanup(runtime, cleanupReport);
     const cleanupValidation = validateCleanupEvidence(cleanup, { runtimeKind: runtime });
     const errors = buildErrorEvidence(runtime, pageIssueTracker);
+    errors.programQueryTrap = programQueryTrap;
     pageIssueTracker?.stop?.();
 
     const checks = [
@@ -639,6 +691,7 @@ async function launchBrowser(viewport, { enableTier1Counters = false } = {}) {
     // install so any replacement page inherits the immutable measurement authority; the causal
     // New Game failure was a product-side counter-owner swap, not Playwright injection ordering.
     if (enableTier1Counters) await installTier1CountersInitScript(context);
+    await installGlProgramQueryTrap(context);
     const page = await context.newPage();
     return { browserServer, browserChildProcess, browser, context, page };
   } catch (error) {
@@ -789,6 +842,83 @@ export async function installTier1CountersInitScript(target) {
   });
 }
 
+// GL_INVALID_VALUE storms name no caller: Chrome reports the context id and the API, never the JS
+// frame that issued the query. Dead-handle getProgramParameter calls are a known failure class here
+// (compileAsync's uncancellable 10 ms poll, retire polls on force-lost preview contexts), so the
+// soak arms a writer trap — same pattern as __M6_POS_TRAP_EVENTS__ — that records the stack of every
+// program-parameter query the driver answered with null — the same condition the decoder reports as
+// GL_INVALID_VALUE "Program object expected" (a JS-binding-level isProgram check is unsound: stale
+// post-restore wrappers still belong to the context object and can pass it). The trap is read-only:
+// it never filters, throws, or alters the return value, so product behaviour is untouched and the
+// captured stacks travel with the evidence when warnings fail validation.
+export async function installGlProgramQueryTrap(target) {
+  assert(target && typeof target.addInitScript === 'function', 'program-query trap requires an init-script seam');
+  await target.addInitScript(() => {
+    const queries = [];
+    const seen = new Map();
+    const wrap = (proto, ctxKind) => {
+      if (!proto || typeof proto.getProgramParameter !== 'function') return;
+      const original = proto.getProgramParameter;
+      if (original.__sfProgramQueryTrap === true) return;
+      const wrapped = function (program, pname) {
+        const result = original.call(this, program, pname);
+        // The driver-level verdict is the only version-proof predicate: the JS binding accepts
+        // stale wrappers that "belong" to this context object (post-restore pre-loss handles) and
+        // forwards them to the decoder, which answers GL_INVALID_VALUE "Program object expected"
+        // and returns null. isProgram() is unreliable here — it can still answer true for those
+        // wrappers, which is how the earlier isProgram-based trap observed a 256-warning storm as
+        // zero bad queries. A live same-context program never returns null for a valid pname.
+        if (result === null) {
+          try {
+            const stack = (new Error('sf-program-query-trap')).stack || '';
+            const key = stack.split('\n').slice(2, 8).join('|');
+            const existing = seen.get(key);
+            if (existing != null) {
+              queries[existing].count += 1;
+            } else if (queries.length < 64) {
+              seen.set(key, queries.length);
+              queries.push({
+                count: 1,
+                ctx: ctxKind,
+                pname: Number(pname),
+                isProgram: typeof this.isProgram === 'function' ? this.isProgram(program) : null,
+                lost: typeof this.isContextLost === 'function' ? this.isContextLost() === true : null,
+                at: Math.round(performance.now()),
+                stack: stack.slice(0, 3000),
+              });
+            }
+          } catch (_) { /* trap bookkeeping must never break the queried path */ }
+        }
+        return result;
+      };
+      wrapped.__sfProgramQueryTrap = true;
+      proto.getProgramParameter = wrapped;
+    };
+    try {
+      wrap(globalThis.WebGL2RenderingContext && globalThis.WebGL2RenderingContext.prototype, 'webgl2');
+      wrap(globalThis.WebGLRenderingContext && globalThis.WebGLRenderingContext.prototype, 'webgl1');
+    } catch (_) { /* prototypes may be locked down; the trap simply stays disarmed */ }
+    Object.defineProperty(globalThis, '__SF_PROGRAM_QUERY_TRAP__', {
+      value: queries,
+      configurable: false,
+      enumerable: false,
+      writable: false,
+    });
+  });
+}
+
+export async function readGlProgramQueryTrap(page) {
+  try {
+    return await page.evaluate(() => (
+      Array.isArray(globalThis.__SF_PROGRAM_QUERY_TRAP__)
+        ? globalThis.__SF_PROGRAM_QUERY_TRAP__.slice()
+        : []
+    ));
+  } catch (_) {
+    return [];
+  }
+}
+
 export async function assertTier1CountersBooted(page, { timeoutMs = 30_000, phase = 'boot' } = {}) {
   assert(page && typeof page.waitForFunction === 'function' && typeof page.evaluate === 'function',
     'Tier-1 counters require a page readiness seam');
@@ -827,6 +957,7 @@ export async function reloadElectronWithTier1Counters(page, pageIssueTracker, { 
   // Installing an init script is not navigation. Arm expected-cancellation authority only for the
   // exact reload so unrelated in-flight requests cannot inherit the waiver if installation fails.
   await installTier1CountersInitScript(page);
+  await installGlProgramQueryTrap(page);
   const navigationToken = pageIssueTracker.beginExpectedNavigation('tier1-counter-install');
   try {
     return await page.reload({ waitUntil: 'domcontentloaded', timeout: timeoutMs });
@@ -861,6 +992,48 @@ export function cleanupIsolatedElectronProfile(isolatedLaunch, cleanupReport) {
   if (!runtimeClosed) return false;
   isolatedLaunch.cleanup({ runtimeClosed: true });
   return true;
+}
+
+// A dead cycle must carry the live state that killed it — a waitForFunction timeout alone says
+// nothing about whether the world restored, the ship is wedged, or the page froze. Shared by the
+// measured-cycle and warmup-cycle failure paths.
+async function captureCycleStateDiag(page) {
+  return page.evaluate(() => {
+    const state = window.SF?.state;
+    const player = (state?.entityList || []).find((e) => e?.id === state.playerId);
+    const stations = (state?.entityList || []).filter((e) => e?.type === 'station').map((e) => e?.data?.stationId || e?.id);
+    const trail = window.__M6_RELEASE_SOAK_TRAIL__ || [];
+    return {
+      mode: state?.mode || null,
+      sectorId: state?.world?.currentSectorId || null,
+      docked: state?.ui?.docked ?? null,
+      playerPos: player?.pos ? { x: Number(player.pos.x.toFixed(0)), z: Number(player.pos.z.toFixed(0)) } : null,
+      playerVel: player?.vel ? Number(Math.hypot(player.vel.x, player.vel.z).toFixed(1)) : null,
+      entityCount: state?.entityList?.length ?? null,
+      stations,
+      loadedSlot: window.__M6_RELEASE_SOAK_EVENTS__?.loadedSlot ?? null,
+      savedSlotWritten: !!localStorage.getItem('sf.save.quick'),
+      saveErrors: window.__M6_RELEASE_SOAK_EVENTS__?.errors || [],
+      dockInRange: state?.ui?.dockInRange ?? null,
+      dockDeny: state?.ui?.dockDeny || null,
+      fulfillmentBlackout: state?.ui?.fulfillmentBlackoutActive ?? null,
+      boarding: state?.factionPresence?.boarding ? { phase: state.factionPresence.boarding.phase, holdingPos: state.factionPresence.boarding.holdingPos || null } : null,
+      dockEvents: window.__M6_RELEASE_SOAK_EVENTS__?.dock || [],
+      activeElement: typeof document !== 'undefined' ? (document.activeElement?.tagName + '.' + (document.activeElement?.className || '')).slice(0, 120) : null,
+      navAutopilot: state?.nav?.autopilot ? { active: state.nav.autopilot.active, status: state.nav.autopilot.status } : null,
+      navWaypoint: state?.nav?.waypoint ? { kind: state.nav.waypoint.kind, label: state.nav.waypoint.label, pos: state.nav.waypoint.pos || null, targetSectorId: state.nav.waypoint.targetSectorId || null } : null,
+      navExecutor: state?.nav?.executor ? { status: state.nav.executor.status, engaged: state.nav.executor.engaged === true, legIndex: state.nav.executor.legIndex, destinationSectorId: state.nav.executor.destinationSectorId || null } : null,
+      navEvents: (window.__M6_RELEASE_SOAK_EVENTS__?.nav || []).slice(-12),
+      jump: state?.jump ? { state: state.jump.state, targetSectorId: state.jump.targetSectorId || null, via: state.jump.via || null } : null,
+      bounds: state?.bounds ? { radius: state.bounds.radius, hardRadius: state.bounds.hardRadius, center: state.bounds.center || null } : null,
+      frameOrigin: state?.world?.frameOrigin ? { x: state.world.frameOrigin.x, z: state.world.frameOrigin.z, seq: state.world.frameOriginSeq } : null,
+      dockingCorridor: state?.dockingCorridor ? { phase: state.dockingCorridor.phase, distToBerth: state.dockingCorridor.distToBerth } : null,
+      visibility: typeof document !== 'undefined' ? document.visibilityState : null,
+      saveStartedSnapshot: window.__M6_RELEASE_SOAK_EVENTS__?.saveStartedSnapshot || null,
+      trailTail: trail.slice(-60),
+      posTrapEvents: (window.__M6_POS_TRAP_EVENTS__ || []).slice(-32),
+    };
+  });
 }
 
 async function runSoakCycle(page, { index, outputDir, log, screenshots = true }) {
@@ -1010,7 +1183,7 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
     mark(alreadyAtDockPrompt ? 'redock-already-in-range' : 'redock-already-in-envelope');
   } else {
     await transition('waypoint');
-    await armHeliosWaypoint(page);
+    await armHeliosWaypoint(page, { log });
     // 'Set Waypoint' must arm the local autopilot; if the click missed, the ship drifts
     // on restored velocity and can wedge inside the station silhouette with no prompt.
     const navArmed = await page.waitForFunction(() => {
@@ -1047,44 +1220,121 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       posTrapEvents: (window.__M6_POS_TRAP_EVENTS__ || []).slice(-16),
     };
   }).catch(() => null);
+  // A hull-vs-lawful collision inside a protected ring opens a player_assault incident and
+  // patrols keep knocking the ship off the berth — the dock prompt can never convert while
+  // flagged. Read the incident the sector-law card is presenting (observer only).
+  const readLawFlag = () => page.evaluate(() => {
+    const state = window.SF?.state;
+    const incidents = state?.lawSecurity?.incidents;
+    if (!incidents || typeof incidents !== 'object') return null;
+    const inc = Object.values(incidents).find((i) => i
+      && String(i.attackerId) === String(state.playerId)
+      && i.status !== 'resolved');
+    if (!inc) return null;
+    const findStation = () => {
+      if (inc.stationEntityId != null) return state.entities?.get?.(inc.stationEntityId) || null;
+      return state.entityList?.find((e) => e?.type === 'station' && (e?.data?.stationId === inc.stationId || e?.stationId === inc.stationId)) || null;
+    };
+    const station = findStation();
+    const victim = inc.victimId != null ? state.entities?.get?.(inc.victimId) : null;
+    return {
+      status: inc.status || null,
+      cause: inc.cause || null,
+      radius: Number.isFinite(inc.radius) ? inc.radius : 1400,
+      stationPos: station?.pos ? { x: station.pos.x, z: station.pos.z } : null,
+      victimPos: victim?.pos ? { x: victim.pos.x, z: victim.pos.z } : null,
+      heat: Number.isFinite(state.player?.heat) ? state.player.heat : null,
+    };
+  }).catch(() => null);
+  // Player-faithful break-contact: course out of the ring (the public ui:setCourse channel —
+  // the map cannot target open space), hold past the clearance radius until the incident
+  // disengages, then the caller re-arms Helios. A flag that never clears (e.g. WANTED heat
+  // blocks 'disengaged') fails the cycle with the incident state on record.
+  const disengageLawFlag = async (law) => {
+    const escapePoint = await page.evaluate((l) => {
+      const s = window.SF?.state;
+      const p = s?.entities?.get?.(s.playerId);
+      const origin = l?.victimPos || l?.stationPos || (p?.pos ? { x: p.pos.x, z: p.pos.z } : { x: 0, z: 0 });
+      let dx = (p?.pos?.x ?? origin.x + 1) - origin.x;
+      let dz = (p?.pos?.z ?? origin.z) - origin.z;
+      const len = Math.hypot(dx, dz);
+      if (len < 1) { dx = 1; dz = 0; } else { dx /= len; dz /= len; }
+      const dist = Math.max(800, (l?.radius || 1400) + 700);
+      return { x: origin.x + dx * dist, z: origin.z + dz * dist };
+    }, law);
+    await page.evaluate((point) => {
+      (window.SF?.bus || window.SF?.ctx?.bus)?.emit('ui:setCourse', {
+        pos: { x: point.x, z: point.z },
+        label: 'Break contact',
+        waypointKind: 'local',
+        autopilot: true,
+      });
+    }, escapePoint);
+    return page.waitForFunction(() => {
+      const s = window.SF?.state;
+      return !Object.values(s?.lawSecurity?.incidents || {}).some((i) => i
+        && String(i.attackerId) === String(s.playerId)
+        && i.status !== 'resolved');
+    }, null, { timeout: 150_000 }).then(() => true).catch(() => false);
+  };
   // Bounded approach loop. A still-driving autopilot can hold the ship in a tangential limit
   // cycle inside the capture volume, and a berth arrival can end with the compound proxy
   // expelling the ship back out at speed (dock:range flickers true→false) — a player whose
   // autopilot can't park takes the brake, and a player bounced off the berth flies back in and
-  // tries again. Each attempt: re-arm when the AP isn't driving, then wait with the brake poll.
-  let dockPromptVisible = false;
+  // tries again. The dock press lives inside the same budget: a ship that sails through the
+  // envelope faster than the E tap can land gets another approach, not a terminal assert.
+  let docked = false;
+  let sawDockPrompt = false;
+  let lawFlees = 0;
   const attemptDiags = [];
-  for (let attempt = 0; attempt < 3 && !dockPromptVisible; attempt++) {
+  for (let attempt = 0; attempt < 3 && !docked; attempt++) {
     if (attempt > 0) {
       const idleDiag = await readDockDiag();
       attemptDiags.push(idleDiag);
-      // Only a player would re-issue the command — a still-driving AP gets the wait window, not
-      // a re-arm fight for the ship.
-      if (idleDiag?.autopilot?.active === true) break;
-      const distToBerth = idleDiag?.corridor?.distToBerth;
-      if (Number.isFinite(distToBerth) && distToBerth <= 60) {
-        // Already inside the dock envelope: re-plotting a waypoint to the station the ship is
-        // parked next to resolves RETURN TO SHIP, not a course — the Set Waypoint click has no
-        // emit to witness (same hazard the insideDockEnvelope guard above avoids). The player
-        // action here is a throttle nudge toward the berth; once residual speed drops under
-        // the dock gate the capture assist owns the pull-in.
-        mark('redock-nudge', idleDiag);
-        try {
-          await page.keyboard.down('KeyW');
-          await page.waitForTimeout(900);
-        } finally {
-          await page.keyboard.up('KeyW').catch(() => {});
+      const promptUp = await dockPrompt.isVisible().catch(() => false);
+      // Only a player would re-issue the command — a still-driving AP gets the wait window,
+      // not a re-arm fight for the ship. A live prompt needs the E press below, not motion.
+      if (!promptUp && idleDiag?.autopilot?.active !== true) {
+        const distToBerth = idleDiag?.corridor?.distToBerth;
+        if (Number.isFinite(distToBerth) && distToBerth <= 60) {
+          // Already inside the dock envelope: re-plotting a waypoint to the station the ship is
+          // parked next to resolves RETURN TO SHIP, not a course — the Set Waypoint click has no
+          // emit to witness (same hazard the insideDockEnvelope guard above avoids). The player
+          // action here is a throttle nudge toward the berth; once residual speed drops under
+          // the dock gate the capture assist owns the pull-in.
+          mark('redock-nudge', idleDiag);
+          try {
+            await page.keyboard.down('KeyW');
+            await page.waitForTimeout(900);
+          } finally {
+            await page.keyboard.up('KeyW').catch(() => {});
+          }
+        } else {
+          mark('redock-rearm', idleDiag);
+          await armHeliosWaypoint(page, { log });
         }
-      } else {
-        mark('redock-rearm', idleDiag);
-        await armHeliosWaypoint(page);
       }
     }
-    const waitDeadline = Date.now() + 60_000;
+    let dockPromptVisible = false;
+    let waitDeadline = Date.now() + 60_000;
     let brakePulsed = false;
     while (Date.now() < waitDeadline) {
       dockPromptVisible = await dockPrompt.isVisible().catch(() => false);
       if (dockPromptVisible) break;
+      if (lawFlees < 2) {
+        const law = await readLawFlag();
+        if (law) {
+          lawFlees += 1;
+          mark('dock-law-disengage', { law });
+          await disengageLawFlag(law);
+          // The return leg owns a fresh approach window — the clock restarted
+          // when the waypoint back to Helios was armed, not when the flag rose.
+          await armHeliosWaypoint(page, { log });
+          waitDeadline = Date.now() + 60_000;
+          brakePulsed = false;
+          continue;
+        }
+      }
       if (!brakePulsed) {
         const stuckFast = await page.evaluate(() => {
           const s = window.SF?.state;
@@ -1114,36 +1364,43 @@ async function runSoakCycle(page, { index, outputDir, log, screenshots = true })
       }
       await page.waitForTimeout(250);
     }
-  }
-  if (!dockPromptVisible) {
-    const diag = await readDockDiag();
-    throw new Error(`dock prompt never appeared: ${JSON.stringify({ attempts: attemptDiags, final: diag })}`);
-  }
-  // Docking is a player-initiated loading span (station interior mount) — tag it like
-  // save/load so the gameplay-hitch count stays honest about steady-state frames.
-  await transition('dock-mount');
-  // The berth prompt gates on proximity AND a speed gate; a still-driving autopilot can carry
-  // the ship back out between the prompt wait and the key tap. Pulse the public brake to
-  // disengage it and shed speed, then release so the corridor capture assist (suppressed
-  // while any input is held) can pull an edge-parked ship back onto the berth.
-  try {
-    await page.keyboard.down('Digit0');
-    await page.waitForTimeout(900);
-  } finally {
-    await page.keyboard.up('Digit0').catch(() => {});
-  }
-  await page.keyboard.press('KeyE');
-  let docked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 })
-    .then(() => true).catch(() => false);
-  if (!docked && await dockPrompt.isVisible().catch(() => false)) {
-    // A player with a live dock prompt and no response presses E again — one bounded
-    // retry, then the cycle fails with the gate state already captured upstream.
-    mark('dock-key-retry');
+    if (!dockPromptVisible) continue;
+    sawDockPrompt = true;
+    // Docking is a player-initiated loading span (station interior mount) — tag it like
+    // save/load so the gameplay-hitch count stays honest about steady-state frames.
+    await transition('dock-mount');
+    // The berth prompt gates on proximity AND a speed gate; a still-driving autopilot can
+    // carry the ship back out between the prompt wait and the key tap. Pulse the public
+    // brake to disengage it and shed speed, then release so the corridor capture assist
+    // (suppressed while any input is held) can pull an edge-parked ship back onto the berth.
+    try {
+      await page.keyboard.down('Digit0');
+      await page.waitForTimeout(900);
+    } finally {
+      await page.keyboard.up('Digit0').catch(() => {});
+    }
     await page.keyboard.press('KeyE');
-    docked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 15_000 })
+    docked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 20_000 })
       .then(() => true).catch(() => false);
+    if (!docked && await dockPrompt.isVisible().catch(() => false)) {
+      // A player with a live dock prompt and no response presses E again — one bounded
+      // retry, then the cycle fails with the gate state already captured upstream.
+      mark('dock-key-retry');
+      await page.keyboard.press('KeyE');
+      docked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true, null, { timeout: 15_000 })
+        .then(() => true).catch(() => false);
+    }
+    // The ship sailed through the envelope (or the gate denied the press) — the next
+    // iteration's diag decides between re-arm and in-envelope nudge, like a player
+    // braking off a missed approach and flying back in.
+    if (!docked) mark('dock-sailed-through', await readDockDiag());
   }
-  assert(docked, 'dock key did not dock within the retry window');
+  if (!docked) {
+    const diag = await readDockDiag();
+    throw new Error(
+      `${sawDockPrompt ? 'dock key did not dock within the retry window' : 'dock prompt never appeared'}: ${JSON.stringify({ attempts: attemptDiags, final: diag })}`,
+    );
+  }
   await page.locator('[data-screen="station"]').waitFor({ state: 'visible', timeout: 20_000 });
   mark('docked');
 
@@ -1227,15 +1484,23 @@ async function publicUndockFromStation(page) {
     }
     assert.equal(clicked, true, 'station recovery requires a visible public Departure Check or Undock action');
 
-    // A risk/check Undock action may open Departure Check instead of committing immediately.
+    // A risk/check Undock action may open Departure Check instead of committing immediately —
+    // or commit with latency (soak cycle 186: the undock landed >1.5 s post-click and the 5 s
+    // Launch-button wait raced the transition). Wait for whichever resolves first: the check's
+    // Launch button can never appear once the hull has already left the berth.
     const leftAfterUndockAction = await page.waitForFunction(
       () => window.SF?.state?.ui?.docked === false,
       null,
       { timeout: 1_500 },
     ).then(() => true).catch(() => false);
     if (!leftAfterUndockAction) {
-      await departureLaunch.waitFor({ state: 'visible', timeout: 5_000 });
-      await departureLaunch.click();
+      const left = page.waitForFunction(() => window.SF?.state?.ui?.docked === false, null, { timeout: 20_000 })
+        .then(() => 'left').catch(() => null);
+      const launch = departureLaunch.waitFor({ state: 'visible', timeout: 20_000 })
+        .then(() => 'launch').catch(() => null);
+      if ((await Promise.race([left, launch])) === 'launch') {
+        await departureLaunch.click();
+      }
     }
   }
   await page.waitForFunction(() => window.SF?.state?.ui?.docked === false, null, { timeout: 20_000 });
@@ -1358,6 +1623,10 @@ async function armSaveLoadObservers(page) {
         const p = s?.entities?.get?.(s.playerId);
         if (!s || !p || !p.pos) return;
         armPosTrap(); // re-arm: restore/respawn replaces the pos object or the entity
+        // Renderer resource counts ride the same 200 ms cadence: a post-plateau
+        // geometry/texture/program climb is only diagnosable if the trail can point at the
+        // cycle leg (undock / save / load / redock / market) where the count moved.
+        const mem = s.render?.renderer?.info?.memory || null;
         trail.push({
           t: Math.round(performance.now()),
           sector: s.world?.currentSectorId || null,
@@ -1368,6 +1637,9 @@ async function armSaveLoadObservers(page) {
           jumpTarget: s.jump?.targetSectorId || null,
           exec: s.nav?.executor ? `${s.nav.executor.status}:${s.nav.executor.engaged}` : null,
           ap: s.nav?.autopilot ? `${s.nav.autopilot.status}:${s.nav.autopilot.active}` : null,
+          geo: mem?.geometries ?? null,
+          tex: mem?.textures ?? null,
+          prog: Array.isArray(s.render?.renderer?.info?.programs) ? s.render.renderer.info.programs.length : null,
         });
       }, 200);
     }
@@ -1422,10 +1694,53 @@ async function armSaveLoadObservers(page) {
   });
 }
 
-async function armHeliosWaypoint(page) {
+async function armHeliosWaypoint(page, { log = () => {} } = {}) {
   const deadline = Date.now() + 45_000;
   let lastError = null;
+  const dockPrompt = page.locator('.sf-alert--dock');
+  const readArmDiag = () => page.evaluate(() => {
+    const def = window.SF?.ctx?.screenManager?.getActiveScreenDef?.();
+    const t = def && def._selectedTarget;
+    const btn = document.querySelector('#gm-set-course-btn');
+    const rect = btn ? btn.getBoundingClientRect() : null;
+    const hit = rect && rect.width > 2 && rect.height > 2 ? (() => {
+      const el = document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2);
+      return el ? `${el.tagName}#${el.id || ''}.${String(el.className || '').slice(0, 60)}` : null;
+    })() : null;
+    const dc = window.SF?.state?.dockingCorridor;
+    return {
+      mapOpen: !!document.querySelector('#sf-galaxymap'),
+      activeDef: def ? (def.id || def.screenId || null) : null,
+      selected: t ? { kind: t.kind || null, name: t.name || t.label || null, hasPos: Number.isFinite(t.x) && Number.isFinite(t.z), courseDisabled: t.courseDisabled === true } : null,
+      button: btn ? { text: btn.textContent, hidden: btn.hidden, disabled: btn.disabled, coveredBy: hit && !hit.includes('gm-set-course-btn') ? hit : null } : null,
+      corridor: dc ? { phase: dc.phase, distToBerth: dc.distToBerth, inCapture: dc.inCapture } : null,
+      searchRows: [...document.querySelectorAll('.gm-search-item')].slice(0, 6).map((el) => ({
+        name: el.querySelector('.gm-search-item-name')?.textContent?.trim() || null,
+        detail: el.querySelector('.gm-search-item-detail')?.textContent?.trim() || null,
+      })),
+      searchValue: document.querySelector('.gm-search-input')?.value || null,
+      activeElement: document.activeElement ? `${document.activeElement.tagName}.${String(document.activeElement.className || '').slice(0, 40)}` : null,
+    };
+  }).catch((err) => ({ diagError: String(err) }));
   while (Date.now() < deadline) {
+    // A ship that drifts back into the berth envelope mid-arm gets a live dock prompt —
+    // the caller's dock loop owns that path, so abandon the arm instead of fighting the
+    // map for the rest of the budget.
+    if (await dockPrompt.isVisible().catch(() => false)) {
+      log('arm abandoned: dock prompt appeared mid-arm (ship already at the berth)');
+      if (await page.locator('#sf-galaxymap').isVisible().catch(() => false)) {
+        // The map's Escape/M/N close only fires when the search input is not holding
+        // focus — blur first so the key reaches the screen's own onKey.
+        await page.evaluate(() => document.activeElement?.blur?.()).catch(() => {});
+        await page.keyboard.press('Escape').catch(() => {});
+        const closed = await page.waitForFunction(() => {
+          const screen = document.querySelector('#sf-galaxymap');
+          return !screen || screen.hidden || getComputedStyle(screen).display === 'none';
+        }, null, { timeout: 5_000 }).then(() => true).catch(() => false);
+        if (!closed) await page.keyboard.press('KeyN').catch(() => {});
+      }
+      return;
+    }
     // KeyN toggles the chart — press it only when it is not already open (a failed
     // attempt leaves it open; a successful non-Helios arm can also pop it closed).
     const mapVisible = await page.locator('#sf-galaxymap').isVisible().catch(() => false);
@@ -1446,7 +1761,12 @@ async function armHeliosWaypoint(page) {
       has: page.locator('.gm-search-item-name', { hasText: 'Helios Station' }),
       has: page.locator('.gm-search-item-detail', { hasText: 'STATION' }),
     }).first();
-    await row.waitFor({ state: 'visible', timeout: 10_000 });
+    const rowVisible = await row.waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true).catch(() => false);
+    if (!rowVisible) {
+      lastError = new Error(`Helios Station search row never appeared: ${JSON.stringify(await readArmDiag())}`);
+      continue;
+    }
     // Click the named row rather than pressing Enter. _searchSelectedIdx always resolves
     // filtered[0], and results sort by live-state priority — a mission marker or gate
     // matching "Helios" can sit above the station, so Enter arms the wrong target.
@@ -1460,15 +1780,20 @@ async function armHeliosWaypoint(page) {
       return target ? { name: target.name || target.label || '', kind: target.kind || null } : null;
     }).catch(() => null);
     if (!selected || selected.kind !== 'station' || !/Helios/i.test(String(selected.name))) {
-      lastError = new Error(`search row selected ${JSON.stringify(selected)} instead of Helios Station`);
+      lastError = new Error(`search row selected ${JSON.stringify(selected)} instead of Helios Station: ${JSON.stringify(await readArmDiag())}`);
       continue;
     }
     const button = page.getByRole('button', { name: 'Set Waypoint', exact: true });
-    await button.waitFor({ state: 'visible', timeout: 10_000 });
+    const buttonVisible = await button.waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true).catch(() => false);
+    if (!buttonVisible) {
+      lastError = new Error(`Set Waypoint never became visible for the selected station: ${JSON.stringify(await readArmDiag())}`);
+      continue;
+    }
     try {
       await clickWaypointWithPointer(page, button, 6_000);
     } catch (err) {
-      lastError = err;
+      lastError = new Error(`${err.message || err} | arm-state: ${JSON.stringify(await readArmDiag())}`);
       continue;
     }
     lastError = null;
@@ -1500,11 +1825,41 @@ async function clickWaypointWithPointer(page, locator, timeoutMs = 10_000) {
     await locator.scrollIntoViewIfNeeded().catch(() => {});
     lastBox = await locator.boundingBox().catch(() => null);
     if (lastBox && lastBox.width > 2 && lastBox.height > 2) {
-      const x = Math.round(lastBox.x + lastBox.width / 2);
-      const y = Math.round(lastBox.y + lastBox.height / 2);
-      await page.mouse.move(x, y);
-      await page.mouse.down({ button: 'left' });
-      await page.mouse.up({ button: 'left' });
+      // The action band is a scrollable clip: when the inspector spends its column on
+      // tabs/details/legend, the button's laid-out rect can straddle the clip edge and
+      // a center click lands on the parity legend below (soak cycle 100). Worse, a focused
+      // sibling action keeps the band scrolled to IT — focus-following re-snaps the clip on
+      // the next frame and Set Waypoint never paints (cycle 56: coveredBy the inspector
+      // itself). Taking focus first makes the browser scroll this button into view and
+      // keep it there; then click a point that actually hit-tests to it — where a player
+      // would click.
+      const point = await page.evaluate(() => {
+        const btn = document.querySelector('#gm-set-course-btn');
+        if (!btn || btn.hidden || btn.disabled) return null;
+        try { btn.focus(); } catch (_) { /* focus is best-effort */ }
+        btn.scrollIntoView({ block: 'center', inline: 'nearest' });
+        const r = btn.getBoundingClientRect();
+        if (r.width < 2 || r.height < 2) return null;
+        for (const fy of [0.5, 0.3, 0.7, 0.15, 0.85]) {
+          for (const fx of [0.5, 0.3, 0.7]) {
+            const x = r.x + r.width * fx;
+            const y = r.y + r.height * fy;
+            const el = document.elementFromPoint(x, y);
+            if (el === btn || btn.contains(el)) return { x: Math.round(x), y: Math.round(y) };
+          }
+        }
+        return null;
+      }).catch(() => null);
+      if (point) {
+        await page.mouse.move(point.x, point.y);
+        await page.mouse.down({ button: 'left' });
+        await page.mouse.up({ button: 'left' });
+      } else {
+        // The pointer could not resolve a painted point inside the clip band — activate the
+        // focused button with Enter, the public keyboard path for the same control.
+        const focused = await page.evaluate(() => document.activeElement?.id === 'gm-set-course-btn').catch(() => false);
+        if (focused) await page.keyboard.press('Enter');
+      }
       const armed = await page.waitForFunction(() => {
         const autopilot = window.SF?.state?.nav?.autopilot;
         if (/Helios Station/i.test(String(autopilot?.label || '')) && autopilot?.active === true) return true;
@@ -1550,85 +1905,92 @@ async function exerciseMarketRoundtrip(page) {
   const tradeGo = activeTradeShell.locator('.sx-trade__go[data-go]:not([disabled])').first();
   const qtyInput = activeTradeShell.locator('input.sx-qty__in').first();
   const rows = page.locator('[data-cmdty][role="tab"]');
-  const selectRow = async (id) => {
-    const row = page.locator(`[data-cmdty="${id}"]`).first();
-    await row.waitFor({ state: 'visible', timeout: 10_000 });
-    if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') await row.click();
-  };
-  // Bound every trade to exactly one unit: the hold can carry freight of the same
-  // commodity, and Sell mode defaults qty to the whole held stack — selling the stack
-  // is not a roundtrip of the traded unit.
-  const commitTrade = async () => {
-    await qtyInput.fill('1');
-    await tradeGo.waitFor({ state: 'visible', timeout: 20_000 });
-    await tradeGo.click();
-  };
+  const tradeConsoleDiag = () => page.evaluate(() => {
+    const shell = document.querySelector('.sx-trade');
+    const liveMode = shell?.querySelector('.sx-trade__go.is-on')?.getAttribute('data-mode') || null;
+    return {
+      mode: liveMode,
+      note: shell?.querySelector('.sx-trade__note')?.textContent?.trim() || null,
+      noteHidden: shell?.querySelector('.sx-trade__note')?.hidden ?? null,
+      qtyValue: shell?.querySelector('.sx-qty__in')?.value ?? null,
+      goDisabled: shell?.querySelector('[data-go]')?.disabled ?? null,
+      selectedCommodity: document.querySelector('.sx-mkt-row.is-active')?.getAttribute('data-cmdty')
+        || document.querySelector('[data-cmdty][aria-selected="true"]')?.getAttribute('data-cmdty') || null,
+    };
+  }).catch(() => null);
   // market.js execute() emits ui:buy/ui:sell directly — there is no .sf-confirm
   // dialog in the trade path, so waiting for one is dead time inside the tag.
   // The commodity rows (.sx-mkt-row[data-cmdty]) live in the market table, not inside the
-  // .sx-trade trade panel — scope the query to the page. Not every row is buyable here
-  // (stock, credits, and hold space gate the live quote), so walk the register through
-  // public row clicks until the console offers an enabled buy action.
-  const rowCount = await rows.count().catch(() => 0);
-  let commodityId = null;
-  for (let i = 0; i < Math.min(rowCount, 12) && !commodityId; i++) {
-    const row = rows.nth(i);
+  // .sx-trade trade panel — scope the query to the page.
+  // Commit one unit of a row through the public GO control, then verify the trade
+  // actually landed in state — a GO that flickers enabled on a stale quote settles
+  // disabled once the console re-prices it (full hold, thin credits, no stock), so
+  // "the button enabled once during the walk" is not proof the row is actionable.
+  const attemptRowCommit = async (row, id, verifyFn) => {
     if (await row.getAttribute('aria-selected').catch(() => null) !== 'true') {
       await row.click().catch(() => {});
     }
-    const id = await row.getAttribute('data-cmdty').catch(() => null);
-    if (!id) continue;
-    const actionable = await tradeGo.waitFor({ state: 'visible', timeout: 1_500 }).then(() => true, () => false);
-    if (actionable) commodityId = id;
-  }
-  if (!commodityId) {
-    // In-flight pickups can run the hold full, leaving no buyable register row. Sell one
-    // unit of held cargo through Sell mode first, then buy the same unit back — still one
-    // public buy/sell roundtrip ending at the pre-cycle quantity.
+    // Bound every trade to exactly one unit: the hold can carry freight of the same
+    // commodity, and Sell mode defaults qty to the whole held stack — selling the
+    // stack is not a roundtrip of the traded unit.
+    await qtyInput.fill('1').catch(() => {});
+    const enabled = await tradeGo.waitFor({ state: 'visible', timeout: 1_500 }).then(() => true, () => false);
+    if (!enabled) return null;
+    const before = await readTradeSnapshot(page, id);
+    await tradeGo.click();
+    const landed = await page.waitForFunction(verifyFn, before, { timeout: 8_000 }).then(() => true, () => false);
+    return landed ? { commodityId: id, before } : null;
+  };
+  // Walk register rows the way a pilot does: select each and try the commit until one
+  // lands. A row can list while its quote fails (no market entry at this berth, locked
+  // cargo, empty stock), so "listed" is not "actionable".
+  const walkRowsForCommit = async (verifyFn, limit = 14) => {
+    const count = await rows.count().catch(() => 0);
+    for (let i = 0; i < Math.min(count, limit); i++) {
+      const row = rows.nth(i);
+      const id = await row.getAttribute('data-cmdty').catch(() => null);
+      if (!id) continue;
+      const committed = await attemptRowCommit(row, id, verifyFn);
+      if (committed) return committed;
+    }
+    return null;
+  };
+  const BUY_VERIFY = ({ commodityId, credits, owned }) => {
+    const s = window.SF?.state;
+    return Number(s?.player?.credits) < credits
+      && Number(s?.player?.cargo?.items?.[commodityId] || 0) > owned;
+  };
+  const SELL_VERIFY = ({ commodityId, owned }) =>
+    Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) < owned;
+  // Long soaks bleed the bid-ask spread on every roundtrip and in-flight pickups can
+  // overfill the hold past cap — credits and free space are not guaranteed. Try the
+  // buy leg first; when no buyable row exists, sell one held unit (which restores
+  // both) and then buy through whichever register row is stocked. The roundtrip
+  // contract is one landed buy + one landed sell, not same-unit bookkeeping.
+  let direction = 'buy-first';
+  let buy = await walkRowsForCommit(BUY_VERIFY);
+  let sell = null;
+  if (buy) {
     await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
     await sellMode.click();
-    const heldRow = rows.first();
-    await heldRow.waitFor({ state: 'visible', timeout: 10_000 });
-    commodityId = await heldRow.getAttribute('data-cmdty');
-    assert(commodityId, 'market register must offer a buyable row or held cargo to sell');
-    const before = await readTradeSnapshot(page, commodityId);
-    assert(before.owned > 0, 'sell-first roundtrip requires held cargo');
-    await commitTrade();
-    await page.waitForFunction(({ commodityId, owned }) =>
-      Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) < owned,
-      before, { timeout: 20_000 });
-    const mid = await readTradeSnapshot(page, commodityId);
-    assert.equal(mid.owned, before.owned - 1, 'sell-first roundtrip must sell exactly one unit');
+    // Prefer selling back exactly the bought unit so cargo stays neutral; when the
+    // register won't buy that commodity here, any held unit still lands the leg.
+    const sameRow = page.locator(`[data-cmdty="${buy.commodityId}"]`).first();
+    const sameRowPresent = await sameRow.count().catch(() => 0) > 0;
+    sell = (sameRowPresent ? await attemptRowCommit(sameRow, buy.commodityId, SELL_VERIFY) : null)
+      || await walkRowsForCommit(SELL_VERIFY);
+    assert(sell, `buy leg landed but no sell commits: ${JSON.stringify(await tradeConsoleDiag())}`);
+  } else {
+    direction = 'sell-first';
+    await sellMode.waitFor({ state: 'visible', timeout: 20_000 });
+    await sellMode.click();
+    sell = await walkRowsForCommit(SELL_VERIFY);
+    assert(sell, `market register must offer a sellable held row: ${JSON.stringify(await tradeConsoleDiag())}`);
     await ensureBuyMode();
-    await selectRow(commodityId);
-    await commitTrade();
-    await page.waitForFunction(({ commodityId, owned }) =>
-      Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) >= owned,
-      before, { timeout: 20_000 });
-    const after = await readTradeSnapshot(page, commodityId);
-    assert.equal(after.owned, before.owned, 'market roundtrip must restore the sold unit');
-    return { shell: 'orbital-command', direction: 'sell-first', commodityId, before, mid, after };
+    buy = await walkRowsForCommit(BUY_VERIFY);
+    assert(buy, `a freed hold must offer a buyable row: ${JSON.stringify(await tradeConsoleDiag())}`);
   }
-  const before = await readTradeSnapshot(page, commodityId);
-  await commitTrade();
-  await page.waitForFunction(({ commodityId, credits, owned }) => {
-    const state = window.SF?.state;
-    return Number(state?.player?.credits) < credits
-      && Number(state?.player?.cargo?.items?.[commodityId] || 0) > owned;
-  }, before, { timeout: 20_000 });
-  const bought = await readTradeSnapshot(page, commodityId);
-  assert.equal(bought.owned, before.owned + 1, 'market roundtrip must buy exactly one unit');
-
-  await sellMode.click();
-  // Sell mode auto-selects the first held row and qty=heldQty — reselect the bought
-  // row through the public register and reset the quantity to the purchased unit.
-  await selectRow(commodityId);
-  await commitTrade();
-  await page.waitForFunction(({ commodityId, owned }) => Number(window.SF?.state?.player?.cargo?.items?.[commodityId] || 0) <= owned,
-    before, { timeout: 20_000 });
-  const sold = await readTradeSnapshot(page, commodityId);
-  assert.equal(sold.owned, before.owned, 'market roundtrip must sell the purchased unit');
-  return { shell: 'orbital-command', direction: 'buy-first', commodityId, before, bought, sold };
+  return { shell: 'orbital-command', direction, buy, sell };
 }
 
 async function ensureMarketOpen(page) {
@@ -3239,6 +3601,25 @@ async function readPlayerSnapshot(page) {
   });
 }
 
+/**
+ * Diagnostic heapsnapshot capture — opt-in via SF_SOAK_HEAP_SNAPSHOTS=1. A retained-growth
+ * failure otherwise only reports byte deltas; a start/end pair diffed offline names the exact
+ * retained constructor and retaining path. Never runs during acceptance: the snapshot is heavy
+ * and its only consumer is the operator comparing the two files.
+ */
+async function captureHeapSnapshot(page, filePath) {
+  const cdp = await page.context().newCDPSession(page);
+  const chunks = [];
+  cdp.on('HeapProfiler.addHeapSnapshotChunk', (event) => { chunks.push(event.chunk || ''); });
+  try {
+    await cdp.send('HeapProfiler.enable');
+    await cdp.send('HeapProfiler.takeHeapSnapshot', { reportProgress: false });
+    await writeFile(filePath, chunks.join(''));
+  } finally {
+    await cdp.detach().catch(() => {});
+  }
+}
+
 async function readPostGcMemorySnapshot(page, phaseTag) {
   // The forced GC is measurement apparatus: pause the soak-window hitch register so a
   // stop-the-world collect is not billed to the game as a gameplay hitch.
@@ -3273,9 +3654,12 @@ async function readPostGcMemorySnapshot(page, phaseTag) {
       // Identity detail so a nonzero programs delta names the exact variants that linked
       // mid-cycle instead of only counting them.
       programIdentities: Array.isArray(state?.render?.renderer?.info?.programs)
-        ? state.render.renderer.info.programs.map((program) => (
-          `${String(program?.name || '?')}|${String(program?.cacheKey || '').slice(-80)}`
-        ))
+        ? state.render.renderer.info.programs.map((program) => {
+          const key = String(program?.cacheKey || '');
+          // Head carries the drifting parameter block (light/shadow counts, envMap mode,
+          // boolean masks); tail carries the custom program cache key (material family).
+          return `${String(program?.name || '?')}|${key.slice(0, 160)}|${key.slice(-40)}`;
+        })
         : null,
       entities: finiteOrNull(state?.entityList?.length),
       assetResidency: state?.render?.assetResidency || null,

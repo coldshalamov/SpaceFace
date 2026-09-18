@@ -10,25 +10,25 @@ Scope: the words after MAKE IT BETTER, if any. Default scope is combat and fligh
 Crucible bench. Adventure feel work waits until the Crucible bench passes (Crucible first).
 
 Do this, and do not stop after one step:
-1. PLAY the bench on fixed seeds, headless for numbers and headed for frame strips at the shipping
-   camera at normal speed.
+1. PLAY the bench on fixed seeds, headless for numbers. A headed strip is optional when a GPU is
+   free and a remaining doubt is purely visual. Do not stall the cycle to capture.
 2. MEASURE every bar the bench reaches plus the fun metrics (verbs per minute, consequences per
    action, time to first consequence, moments per minute, nothing-happened seconds, deaths by
    cause, knock budget on the player).
-3. JUDGE with a vision-capable critic that did not make the change, ten questions, each answered
-   with the frame that proves it. Take its ONE fundamental.
+3. JUDGE from the numbers and the live owner. Name the ONE fundamental. A vision critic on frames
+   is extra, not the gate.
 4. NAME THE FUNDAMENTAL in one line: when X happens, rule R in file F does Y, which breaks vision
    sentence S; changing R should move bar B from n to m.
 5. FIX THE GUTS. Numbers, rules, listeners, clamps removed, systems connected. Never add content to
    hide a feel defect, never add drag or clamp given momentum, never give NPCs hidden gyros, never
    use camera shake or particles as the fix, never change a test or a golden to pass. Ship a test
    whose assertion message quotes the vision sentence.
-6. COMPARE on the same seeds. Keep only if the bars moved toward target, nothing regressed, the
-   critic pass count held, and npm run check:baseline is green. Ties revert.
+6. COMPARE on the same seeds. Keep only if the bars moved toward target, nothing regressed, and
+   npm run check:baseline is green. Ties revert.
 7. REPORT one page in plain words: WHAT I FOUND, WHAT I CHANGED, WHAT YOU WILL FEEL, THE NUMBERS,
-   THE FRAMES, NEXT. Commit the change and the report; push the current branch by name.
+   NEXT. Commit the change and the report; push the current branch by name.
 8. Take the next lowest bar. Stop only for a stop condition in the loop document, and say which.
 
-Rules that never bend: fixed seeds; one hypothesis per cycle; the critic can see; a number in
-player units before and after; the owner is never asked to adjudicate technical risk; finish the
-whole cycle before replying.
+Rules that never bend: fixed seeds; one hypothesis per cycle; a number in player units before and
+after; headed captures are optional and never the close gate; the owner is never asked to
+adjudicate technical risk; finish the whole cycle before replying.

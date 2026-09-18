@@ -132,7 +132,9 @@ function ownerIsAlwaysAwake(owner, state) {
   if (!owner) return false;
   if (owner.isPlayer === true || (state && owner.id === state.playerId)) return true;
   const ai = ownerAiRecord(owner);
-  return !!(ai && ai.combatant === true);
+  if (ai && ai.combatant === true) return true;
+  const slot = owner.data && owner.data.activityActorSlotId;
+  return slot != null && slot !== '';
 }
 
 /**
@@ -141,7 +143,8 @@ function ownerIsAlwaysAwake(owner, state) {
  * live shipLike index (spawn order).
  */
 export function stampNearWorkBudget(state, budget = NEAR_WORK_TOKEN_BUDGET) {
-  const set = new Set();
+  const set = (state && state.nearWorkIds instanceof Set) ? state.nearWorkIds : new Set();
+  set.clear();
   if (!state) return set;
   const ships = (state.entityIndex && state.entityIndex.shipLike) || [];
   const tick = state.tick | 0;
@@ -185,6 +188,19 @@ function compareStableIds(left, right) {
  * Count-based cooperative slice for NEAR owners (traffic/law/npcJobs/scanner).
  * Leftover work resumes next primary tick in stable ID order. Not wall time.
  */
+const NEAR_WORK_ORDER_SCRATCH = new Map();
+
+function nearWorkOrderScratch(ownerKey, n) {
+  const key = String(ownerKey || 'near');
+  let order = NEAR_WORK_ORDER_SCRATCH.get(key);
+  if (!order) {
+    order = [];
+    NEAR_WORK_ORDER_SCRATCH.set(key, order);
+  }
+  while (order.length < n) order.push({ item: null, id: null, index: 0 });
+  return order;
+}
+
 export function takeNearWorkSlice(
   state,
   ownerKey,
@@ -197,13 +213,20 @@ export function takeNearWorkSlice(
   if (n === 0) return list;
   const limit = Math.max(1, Math.floor(Number(budget) || NEAR_WORK_TOKEN_BUDGET));
   if (!state || n <= limit) return list;
-  const order = list.map((item, index) => ({ item, id: getId(item), index }));
+  const key = String(ownerKey || 'near');
+  const order = nearWorkOrderScratch(key, n);
+  for (let i = 0; i < n; i++) {
+    const slot = order[i];
+    slot.item = list[i];
+    slot.id = getId(list[i]);
+    slot.index = i;
+  }
+  order.length = n;
   order.sort((a, b) => {
     const cmp = compareStableIds(a.id, b.id);
     return cmp !== 0 ? cmp : a.index - b.index;
   });
   const cursors = state.nearWorkCursors || (state.nearWorkCursors = Object.create(null));
-  const key = String(ownerKey || 'near');
   const cursor = cursors[key] | 0;
   const out = [];
   for (let i = 0; i < limit; i++) out.push(order[(cursor + i) % n].item);

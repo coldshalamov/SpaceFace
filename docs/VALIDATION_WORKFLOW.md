@@ -20,8 +20,10 @@ For lab implementation work, read
 4. Prove repeatability and save/load continuation when the feature owns those claims.
 5. Run adjacent ownership/save/integration checks named by the packet.
 6. Only after lower layers pass, use the relevant broker manifest for Browser/Electron acceptance.
-7. When a unit itself claims visual feel, accessibility, or performance, those are player-route
-   claims a headless green cannot prove — escalate exactly those claims, and nothing else.
+7. When a unit itself claims a purely visual, accessibility, or performance fact that a number
+   cannot falsify, escalate exactly that claim. Headed capture is not the default review method
+   (owner 2026-09-16). Gameplay and feel close on the live owner plus a fixed-seed number.
+   A capture-harness failure never blocks `implemented`.
 
 Never rerun an unchanged expensive failure. Preserve its fingerprint, classify it, reduce it to a
 seconds-scale regression, change the owning source or evidence, and only then request another
