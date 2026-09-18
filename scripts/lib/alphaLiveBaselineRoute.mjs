@@ -239,26 +239,36 @@ export async function runBrowserPublicRoute({
     mark('galaxy-map-visible');
     recordCanonicalUrl('galaxy-map');
 
-    const searchInput = page.locator('.gm-search-input');
-    await page.keyboard.press('/');
-    const shortcutFocused = await page.waitForFunction(
-      () => document.activeElement?.matches('.gm-search-input') === true,
-      null,
-      { timeout: 1_000 },
-    ).then(() => true, () => false);
-    if (!shortcutFocused) await searchInput.click({ timeout: 10_000 });
-    await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
-    await page.keyboard.type('Helios Station');
-    await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first().waitFor({ state: 'visible', timeout: 10_000 });
-    await page.keyboard.press('Enter');
-    const setWaypointButton = page.getByRole('button', { name: 'Set Waypoint', exact: true });
-    await setWaypointButton.waitFor({ state: 'visible', timeout: 10_000 });
-    const inspectorText = await page.locator('.gm-inspector-content').innerText();
-    assert.match(inspectorText, /Helios Station/i, 'map inspector must visibly identify Helios Station');
-    await clickWaypointWithPointer(page, setWaypointButton);
-    const navSnapshot = await readNavigationSnapshot(page);
-    mark('helios-waypoint-armed', navSnapshot);
-    recordCanonicalUrl('helios-waypoint-armed');
+    // The Helios waypoint arm is a reusable public-map flow: the approach below re-arms
+    // through the same UI when a corridor-brake pulse strands the ship outside assist reach.
+    const armHeliosWaypoint = async (markName) => {
+      if (!(await page.locator('#sf-galaxymap').isVisible().catch(() => false))) {
+        await page.keyboard.press('KeyN');
+      }
+      await waitForVisible(page, '#sf-galaxymap', 20_000, 'galaxy map');
+      const searchInput = page.locator('.gm-search-input');
+      await page.keyboard.press('/');
+      const shortcutFocused = await page.waitForFunction(
+        () => document.activeElement?.matches('.gm-search-input') === true,
+        null,
+        { timeout: 1_000 },
+      ).then(() => true, () => false);
+      if (!shortcutFocused) await searchInput.click({ timeout: 10_000 });
+      await page.waitForFunction(() => document.activeElement?.matches('.gm-search-input') === true, null, { timeout: 5_000 });
+      await page.keyboard.type('Helios Station');
+      await page.locator('.gm-search-item-name', { hasText: 'Helios Station' }).first().waitFor({ state: 'visible', timeout: 10_000 });
+      await page.keyboard.press('Enter');
+      const setWaypointButton = page.getByRole('button', { name: 'Set Waypoint', exact: true });
+      await setWaypointButton.waitFor({ state: 'visible', timeout: 10_000 });
+      const inspectorText = await page.locator('.gm-inspector-content').innerText();
+      assert.match(inspectorText, /Helios Station/i, 'map inspector must visibly identify Helios Station');
+      await clickWaypointWithPointer(page, setWaypointButton);
+      const navSnapshot = await readNavigationSnapshot(page);
+      mark(markName, navSnapshot);
+      recordCanonicalUrl(markName);
+      return navSnapshot;
+    };
+    const navSnapshot = await armHeliosWaypoint('helios-waypoint-armed');
 
     phase = 'autopilot-dock-approach';
     const dockPrompt = page.locator('.sf-alert--dock');
@@ -269,6 +279,8 @@ export async function runBrowserPublicRoute({
     // whose autopilot can't park takes the brake: pulse the public binding once (it disengages
     // the autopilot) and let the capture assist finish the berth.
     let corridorBrakePulsed = false;
+    let reArms = 0;
+    let strandIterations = 0;
     while (Date.now() < dockDeadline) {
       approachSnapshot = await readApproachSnapshot(page);
       assert.equal(approachSnapshot.playerAlive, true, `player died during public autopilot approach: ${JSON.stringify(approachSnapshot)}`);
@@ -284,6 +296,19 @@ export async function runBrowserPublicRoute({
           await page.keyboard.up('Digit0').catch(() => {});
         }
       }
+      // A ship parked in 'approach' space with the autopilot disengaged is stranded whether
+      // the brake pulse caused it or the autopilot simply 'arrived' short of the berth:
+      // manual, slow, and well outside the berth envelope with no prompt coming. A pilot
+      // re-engages through the same public map flow (bounded: the deadline still applies).
+      const stranded = approachSnapshot.autopilot?.active !== true
+        && approachSnapshot.corridor?.phase === 'approach'
+        && Number(approachSnapshot.corridor?.distToBerth || 0) > 90;
+      if (stranded) strandIterations += 1; else strandIterations = 0;
+      if (strandIterations > 80 && reArms < 2) {
+        reArms += 1;
+        strandIterations = 0;
+        await armHeliosWaypoint('helios-waypoint-rearmed');
+      }
       await page.waitForTimeout(250);
     }
     assert.equal(await dockPrompt.isVisible().catch(() => false), true,
@@ -298,12 +323,19 @@ export async function runBrowserPublicRoute({
     // check and the key tap — the screenshot readback alone stalls rAF for seconds on an iGPU.
     // A docking player's own brake is the public disengage: pulse it to shed approach speed,
     // then release so the corridor's capture assist (suppressed while any input is held) can
-    // pull an edge-parked ship back onto the berth.
-    try {
-      await page.keyboard.down('Digit0');
-      await page.waitForTimeout(900);
-    } finally {
-      await page.keyboard.up('Digit0').catch(() => {});
+    // pull an edge-parked ship back onto the berth. Brake to a VERIFIED near-stop before the
+    // screenshot: on a throttled box one 900 ms pulse leaves residual velocity, and the
+    // multi-second readback stall then advances the sim far enough to drift the ship clean
+    // out of the capture volume.
+    for (let brakePulses = 0; brakePulses < 6; brakePulses += 1) {
+      const settle = brakePulses === 0 ? null : await readApproachSnapshot(page).catch(() => null);
+      if (settle && Number(settle.speed) <= 2 && settle.autopilot?.active !== true) break;
+      try {
+        await page.keyboard.down('Digit0');
+        await page.waitForTimeout(600);
+      } finally {
+        await page.keyboard.up('Digit0').catch(() => {});
+      }
     }
     await screenshot(page, outputDir, SCREENSHOTS.dockPrompt);
     mark('physical-dock-prompt', { text: dockPromptText, approach: approachSnapshot });
@@ -312,26 +344,66 @@ export async function runBrowserPublicRoute({
     // Hold the public binding across several fixed sim ticks immediately while the prompt is
     // known visible. A zero-duration press can be missed, and waiting to retry lets the active
     // autopilot carry the ship back out of the interaction envelope.
-    try {
-      await page.keyboard.down('KeyE');
-      await page.waitForTimeout(250);
-    } finally {
-      await page.keyboard.up('KeyE').catch(() => {});
+    //
+    // E is DUAL-USE: it confirms the dock prompt while visible, but it is flight
+    // strafe-right otherwise (src/systems/input.js). Every E-hold below is gated on a fresh
+    // prompt-visible read — holding it blind strafes the ship out of the berth envelope,
+    // which is exactly the fly-away an ungated retry loop produces and then reports.
+    let quickDocked = false;
+    if (await dockPrompt.isVisible().catch(() => false)) {
+      try {
+        await page.keyboard.down('KeyE');
+        await page.waitForTimeout(250);
+      } finally {
+        await page.keyboard.up('KeyE').catch(() => {});
+      }
+      quickDocked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true,
+        null, { timeout: 1_000 }).then(() => true, () => false);
     }
-    const quickDocked = await page.waitForFunction(() => window.SF?.state?.ui?.docked === true,
-      null, { timeout: 1_000 }).then(() => true, () => false);
     if (!quickDocked) {
       // A zero-duration synthetic press can fall entirely between headed-browser fixed sim ticks.
-      // Retry ordinary held taps while the public prompt remains visible, as a player would while
-      // the autopilot finishes braking inside the interaction envelope.
+      // Retry while the public prompt remains visible, as a player would while the autopilot
+      // finishes braking inside the interaction envelope. The E-hold only fires while a fresh
+      // poll sees the prompt; a lost prompt brakes (Digit0) instead so the corridor capture
+      // assist can pull the ship back on — E without the prompt is strafe-right.
       const attempts = [];
-      const deadline = Date.now() + 20_000;
+      let lastObservation = null;
+      let reDockArms = 0;
+      let deadline = Date.now() + 20_000;
       while (Date.now() < deadline) {
-        try {
-          await page.keyboard.down('KeyE');
-          await page.waitForTimeout(250);
-        } finally {
-          await page.keyboard.up('KeyE').catch(() => {});
+        if (await dockPrompt.isVisible().catch(() => false)) {
+          try {
+            await page.keyboard.down('KeyE');
+            await page.waitForTimeout(250);
+          } finally {
+            await page.keyboard.up('KeyE').catch(() => {});
+          }
+        } else {
+          // Prompt lost mid-dock: hold nothing. Kill drift with the single-purpose brake,
+          // then release all input so the corridor capture assist can pull the ship back
+          // onto the berth. A ship that has drifted clean out of the capture volume cannot
+          // be braked back onto the berth — a pilot re-engages the public waypoint and lets
+          // the autopilot fly the corridor in again (bounded; the deadline still applies).
+          const farFromBerth = lastObservation
+            && lastObservation.dockPromptVisible === false
+            && lastObservation.corridorPhase === 'approach'
+            && Number(lastObservation.distToBerth || 0) > 90;
+          if (lastObservation?.autopilot?.active === true) {
+            // A re-approach is already flying — hold nothing and let it park.
+          } else if (farFromBerth && reDockArms < 2) {
+            reDockArms += 1;
+            mark('dock-reapproach-arm', lastObservation);
+            await armHeliosWaypoint('helios-waypoint-redock');
+            deadline = Date.now() + 120_000;
+          } else {
+            mark('dock-prompt-recover', await readApproachSnapshot(page).catch(() => null));
+            try {
+              await page.keyboard.down('Digit0');
+              await page.waitForTimeout(900);
+            } finally {
+              await page.keyboard.up('Digit0').catch(() => {});
+            }
+          }
         }
         const observation = await page.evaluate(() => {
           const state = window.SF?.state;
@@ -370,6 +442,7 @@ export async function runBrowserPublicRoute({
           };
         });
         attempts.push(observation);
+        lastObservation = observation;
         if (observation.docked) break;
         await page.waitForTimeout(500);
       }
