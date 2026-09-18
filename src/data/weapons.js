@@ -252,6 +252,21 @@ const SHIPPED_WEAPONS = [
     impulsePerHit: 756, tumbleTorque: 24, impulseProvenance: 'vector_mine_pulse',
   },
   {
+    // GRAVITY WELLHEAD — a deployed sustained pull, not a detonation. Same DEPLOY fire path and
+    // entity lifecycle as the vector mine (arms after mineArmS, dies at mineLifeS), but instead of
+    // one radial kick it drags every ship/drone inside mineBlastRadius toward itself for its whole
+    // life at up to mineWellPull WU/s² with distance falloff — INCLUDING the owner, because the
+    // well does not know friend from mass. dmg 0 is honest: nothing here damages; the fight is
+    // repositioned, then finished with whatever else you carry. Fired on the same key as the mine.
+    id: 'wpn_gravity_well_m', name: 'Gravity Wellhead M', slotType: 'weapon', size: 'M', tier: 3, mass: 8, price: 38000, requiresTech: 'tech_graviton_drives',
+    mount: 'launcher',
+    dmg: 0, rof: 0.25, dps: 0, damageType: 'kinetic', energyCost: 26,
+    projSpeed: 90, range: 260, tracking: 'deploy',
+    heatPerShot: 30, heatMax: 100, heatDissip: 20,
+    deployKind: 'gravity_well', mineArmS: 1.2, mineTriggerRadius: 0, mineBlastRadius: 300, mineLifeS: 6, mineMaxActive: 2,
+    mineWellPull: 62, tumbleTorque: 0, impulseProvenance: 'gravity_well_pull',
+  },
+  {
     // RCS DISRUPTOR — a subsystem-coupling spike that couples through shields like the EMP disruptor
     // (subsystemShare/shieldBypass) and, for a bounded window (rcsDisruptS), suppresses the target's
     // attitude control: it drifts, cannot hold a firing line, and slides into your tether arc. It
@@ -295,7 +310,7 @@ const USER_WEAPON_KEYS = new Set([
   'armorPierce', 'shieldBypass', 'subsystemShare', 'rcsDisruptS',
   'splashDmg', 'splashRadius', 'splitCount', 'submunitions',
   'ammo', 'intercepts', 'statuses', 'attackTraits',
-  'deployKind', 'mineArmS', 'mineTriggerRadius', 'mineBlastRadius', 'mineLifeS', 'mineMaxActive',
+  'deployKind', 'mineArmS', 'mineTriggerRadius', 'mineBlastRadius', 'mineLifeS', 'mineMaxActive', 'mineWellPull',
   'purchasable', 'unique', 'salvageOnly', 'variantBonuses',
 ]);
 const USER_WEAPON_DAMAGE_TYPES = new Set(['energy', 'kinetic', 'explosive', 'thermal', 'ion', 'emp']);

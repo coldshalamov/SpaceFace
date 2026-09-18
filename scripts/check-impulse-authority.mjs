@@ -144,11 +144,18 @@ function assertMagnitudeAndDirectionMatchBlastGeometry() {
 
 // 6. PQ-009: every shipped weapon carries a stable authored identity; the starter exemption is a
 //    near-zero plink, never a missing value, and representative families remain mechanically apart.
+//    Gravity wellheads are the one sustained-impulse weapon: they never detonate, so their identity
+//    is the pull (mineWellPull) plus the same provenance law — never a fake blast momentum.
 function assertUniversalWeaponIdentities() {
   assert.ok(WEAPONS.length > 0, 'weapon catalog must not be empty');
   for (const weapon of WEAPONS) {
-    assert.ok(Number.isFinite(weapon.impulsePerHit) && weapon.impulsePerHit > 0,
-      `${weapon.id}: positive impulsePerHit required`);
+    const isGravityWell = weapon.deployKind === 'gravity_well';
+    assert.ok(
+      isGravityWell
+        ? (Number.isFinite(weapon.mineWellPull) && weapon.mineWellPull > 0)
+        : (Number.isFinite(weapon.impulsePerHit) && weapon.impulsePerHit > 0),
+      `${weapon.id}: positive ${isGravityWell ? 'mineWellPull' : 'impulsePerHit'} required`,
+    );
     assert.ok(Number.isFinite(weapon.tumbleTorque) && weapon.tumbleTorque >= 0,
       `${weapon.id}: finite tumbleTorque required`);
     assert.match(String(weapon.impulseProvenance || ''), /^[a-z0-9_]+$/,

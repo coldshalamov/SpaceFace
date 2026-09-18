@@ -231,6 +231,7 @@ export function lineLoadSpeedFor(derived) {
 const FIELD_KIND_WORD = Object.freeze({
   chaff: 'a chaff cloud',
   ecm: 'a jamming bubble',
+  decoy: 'a decoy buoy',
 });
 
 /** The field this fit can deploy, or `{ available: false }`. */

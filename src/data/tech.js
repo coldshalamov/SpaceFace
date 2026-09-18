@@ -37,7 +37,7 @@ export const TECH_NODES = [
   {
     id: 'tech_deflector_theory', name: 'Deflector Theory', branch: 'combat', prereqs: [],
     cost: { credits: 12000, rp: 20 },
-    unlocks: { modules: ['mod_shield_capacitor_m', 'mod_shield_hardener_m', 'mod_chaff_dispenser_m'] },
+    unlocks: { modules: ['mod_shield_capacitor_m', 'mod_shield_hardener_m', 'mod_chaff_dispenser_m', 'mod_decoy_buoy_s'] },
   },
   {
     id: 'tech_hardened_deflectors', name: 'Hardened Deflectors', branch: 'combat', prereqs: ['tech_deflector_theory'],
@@ -55,7 +55,7 @@ export const TECH_NODES = [
     // Massline-native home of the spool ceiling: this node already grants the three advanced
     // Massline heads (monofilament sweep, transverse snare, twin bridle). Gating the signature
     // mechanic's 6x spool behind Flagship Command forced a capital-empire buy-in VISION.md forbids.
-    unlocks: { modules: ['mod_targeting_computer_m', 'mod_ecm_jammer_l', 'mod_monofilament_sweep_m', 'mod_transverse_snare_m', 'mod_twin_bridle_m', 'mod_massline_spool_l'] },
+    unlocks: { modules: ['mod_targeting_computer_m', 'mod_ecm_jammer_l', 'mod_monofilament_sweep_m', 'mod_transverse_snare_m', 'mod_twin_bridle_m', 'mod_massline_spool_l', 'mod_pds_servo_s'] },
   },
   {
     id: 'tech_warship_license', name: 'Warship License', branch: 'combat', prereqs: ['tech_strike_craft'],
@@ -129,7 +129,7 @@ export const TECH_NODES = [
   {
     id: 'tech_drive_tuning', name: 'Drive Tuning', branch: 'drives', prereqs: [],
     cost: { credits: 15000, rp: 20 },
-    unlocks: { modules: ['mod_engine_fusion_m', 'mod_afterburner_m', 'mod_jump_drive_m', 'mod_cloak_mk2', 'mod_sensor_scrambler_m'] },
+    unlocks: { modules: ['mod_engine_fusion_m', 'mod_afterburner_m', 'mod_jump_drive_m', 'mod_cloak_mk2', 'mod_sensor_scrambler_m', 'mod_swing_drive_m'] },
   },
   {
     id: 'tech_impulse_ballistics', name: 'Impulse Ballistics', branch: 'drives', prereqs: ['tech_drive_tuning'],
@@ -139,7 +139,7 @@ export const TECH_NODES = [
   {
     id: 'tech_graviton_drives', name: 'Graviton Drives', branch: 'drives', prereqs: ['tech_drive_tuning'],
     cost: { credits: 95000, rp: 150 },
-    unlocks: { modules: ['mod_engine_warp_l', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_inertial_shunt_s'], efficiency: { energyRegenMult: 0.08 } },
+    unlocks: { modules: ['mod_engine_warp_l', 'wpn_gravity_marker_s', 'wpn_momentum_sink_s', 'wpn_inertial_shunt_s', 'wpn_gravity_well_m'], efficiency: { energyRegenMult: 0.08 } },
   },
   {
     id: 'tech_long_range_survey', name: 'Long-Range Survey', branch: 'drives', prereqs: ['tech_drive_tuning'],
@@ -155,7 +155,7 @@ export const TECH_NODES = [
   {
     id: 'tech_tractor_systems', name: 'Tractor Systems', branch: 'logistics', prereqs: [],
     cost: { credits: 10000, rp: 15 },
-    unlocks: { ships: ['ship_hawser'], modules: ['mod_tractor_beam_m', 'mod_elastic_whip_m', 'mod_frame_coupler_m', 'mod_tether_capacitor'] },
+    unlocks: { ships: ['ship_hawser'], modules: ['mod_tractor_beam_m', 'mod_elastic_whip_m', 'mod_frame_coupler_m', 'mod_tether_capacitor', 'mod_loot_magnet_s', 'mod_mass_flail_rig_m'] },
   },
   {
     id: 'tech_drone_control', name: 'Drone Control', branch: 'logistics', prereqs: ['tech_tractor_systems'],

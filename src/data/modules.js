@@ -235,6 +235,23 @@ const SHIPPED_MODULES = [
     energyDraw: 4, mods: { weaponRangePct: 0.15, weaponDmgPct: 0.08 },
   },
   {
+    // POINT-DEFENSE SERVO — an autonomous intercept verb, not a damage stat. While armed it watches
+    // a short sphere around the hull and kills the nearest hostile projectile inside it on a
+    // cooldown; missiles and slugs that would have hit simply die at the ring. Consumed by
+    // systems/countermeasures.js from the fittings record (same pattern as the cloak trio).
+    id: 'mod_pds_servo_s', name: 'Point-Defense Servo S', slotType: 'utility', size: 'S', tier: 3, mass: 3, price: 34000, requiresTech: 'tech_fire_control',
+    energyDraw: 4, mods: { pointDefense: { radius: 240, cooldownS: 2.4, interceptPct: 1.0 } },
+  },
+  {
+    // DECOY BUOY — a bait verb, not a bigger chaff puff. The deploy puts a persistent false contact
+    // in the water: every missile that enters its radius re-attacks the buoy (chaff only diverts
+    // missiles already aimed at YOU, for 3.5 s), and attacker locks decay while it broadcasts.
+    // Same countermeasure keybind, same cooldown law — a different question answered.
+    id: 'mod_decoy_buoy_s', name: 'Signal Decoy Buoy S', slotType: 'utility', size: 'S', tier: 2, mass: 3, price: 16500, requiresTech: 'tech_deflector_theory',
+    energyDraw: 2,
+    mods: { countermeasure: { kind: 'decoy', radius: 620, durationS: 8, cooldownS: 14, lockBreakPct: 0.6, divertPct: 0.9 } },
+  },
+  {
     id: 'mod_sensor_array_l', name: 'Sensor Array L', slotType: 'utility', size: 'L', tier: 3, mass: 8, price: 36000, requiresTech: 'tech_long_range_survey',
     // scanRpBonus: research points granted per ordinary freeflight scan pulse (missions writer).
     energyDraw: 5, mods: { radarRangePct: 0.60, scanRpBonus: 2 },
@@ -257,6 +274,29 @@ const SHIPPED_MODULES = [
   {
     id: 'mod_winch_hd', name: 'Heavy-Duty Winch', slotType: 'utility', size: 'S', tier: 1, mass: 3, price: 12000,
     energyDraw: 2, mods: { tetherReelRateMult: 1.80, tetherSpoolMult: 1.5 },
+  },
+  {
+    // SWING DRIVE — a pendulum dash, not a straighter dash. On the dash keypress while a taut line
+    // is latched, flightV3 redirects the whole impulse along the line's tangent (and uprates it),
+    // so the dash swings you AROUND the anchor instead of off it. Without the module the same press
+    // is the ordinary straight dash. Consumed via derived.swingDrive (systems/ships.js).
+    id: 'mod_swing_drive_m', name: 'Swing Drive M', slotType: 'utility', size: 'M', tier: 2, mass: 5, price: 19000, requiresTech: 'tech_drive_tuning',
+    energyDraw: 3, mods: { swingDrive: true },
+  },
+  {
+    // LOOT MAGNET — reach without the line. Debris shards and jettisoned pods inside the ring are
+    // drawn to the hull (bounded attraction through physics authority), so salvage is a fly-by
+    // instead of a latch-per-piece. Consumed via derived.lootMagnetRange by systems/lootShards.js.
+    id: 'mod_loot_magnet_s', name: 'Loot Magnet Ring S', slotType: 'utility', size: 'S', tier: 1, mass: 2, price: 9000, requiresTech: 'tech_tractor_systems',
+    energyDraw: 2, mods: { lootMagnetRange: 420 },
+  },
+  {
+    // MASS FLAIL — the tow IS the weapon. While a line is attached and the load outmasses the
+    // hull, direct contacts the player makes carry the load's mass into the hit: the towed body
+    // turns every bump into a flail strike scaled by what you drag (collisionConsequences reads
+    // derived.towFlail + the live tether target mass). Towing ore into a fight becomes a decision.
+    id: 'mod_mass_flail_rig_m', name: 'Mass Flail Rig M', slotType: 'utility', size: 'M', tier: 2, mass: 6, price: 21000, requiresTech: 'tech_tractor_systems',
+    energyDraw: 0, mods: { towFlail: true },
   },
   {
     id: 'mod_massline_spool_m', name: 'Industrial Massline Spool', slotType: 'utility', size: 'M', tier: 3,

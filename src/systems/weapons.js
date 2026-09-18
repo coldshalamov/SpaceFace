@@ -1104,7 +1104,7 @@ export const weapons = {
     // Active-mine cap: refuse to deploy past mineMaxActive (the oldest is NOT auto-culled — the pilot
     // must let mines resolve, so placement stays deliberate rather than a spammed field).
     const maxActive = Math.max(1, def.mineMaxActive || 3);
-    if (this._countOwnerVectorMines(state, e.id) >= maxActive) {
+    if (this._countOwnerVectorMines(state, e.id, def.deployKind || 'vector_mine') >= maxActive) {
       if (isPlayer && this.bus) this.bus.emit('toast', { text: 'Mine bank full', kind: 'warn', ttl: 1.5 });
       return capLeft;
     }
@@ -1120,15 +1120,20 @@ export const weapons = {
     return capLeft;
   },
 
-  // Drop a stationary vector mine BEHIND the ship's heading (STEP 9 "deploy behind"). It sits where
-  // dropped — the arm delay lets the deployer clear the blast — then arms and waits for a proximity
-  // trigger. collides:false, so like an impulse charge it is a logical trigger volume, not a physics
-  // body; its position is authored at spawn and never re-integrated (no motion writes at all).
+  // Drop a stationary deployable BEHIND the ship's heading (STEP 9 "deploy behind"). It sits where
+  // dropped — the arm delay lets the deployer clear it — then arms and waits. collides:false, so
+  // like an impulse charge it is a logical trigger volume, not a physics body; its position is
+  // authored at spawn and never re-integrated (no motion writes at all).
+  //
+  // Two payloads share this spawn path: the vector mine (one radial shove on proximity) and the
+  // gravity wellhead (a sustained inward pull for its whole life, `_tickGravityWell`). The def's
+  // deployKind picks the data block; the tick loop branches on data.kind.
   _spawnVectorMine(e, w, def, state) {
     const dir = (e.rot || 0) + Math.PI;
     const standoff = (e.radius || 6) + 6;
     const pos = { x: e.pos.x + Math.cos(dir) * standoff, z: e.pos.z + Math.sin(dir) * standoff };
     const now = state.simTime || 0;
+    const isWell = def.deployKind === 'gravity_well';
     const mine = this.helpers.spawnEntity({
       type: 'vectormine',
       pos, vel: { x: 0, z: 0 }, rot: dir,
@@ -1136,7 +1141,15 @@ export const weapons = {
       // alone only disables the legacy collision path; an overlapping hull would be ejected.
       radius: 1.6, mass: 0.6, collides: false, physicsBody: false,
       team: e.team, ownerId: e.id, factionId: e.factionId,
-      data: {
+      data: isWell ? {
+        kind: 'gravity_well', weaponId: w.defId, ownerId: e.id,
+        armAt: now + (def.mineArmS != null ? def.mineArmS : 1.2),
+        dieAt: now + (def.mineLifeS != null ? def.mineLifeS : 6),
+        blastRadius: def.mineBlastRadius != null ? def.mineBlastRadius : 300,
+        pull: def.mineWellPull != null ? def.mineWellPull : 60,
+        provenance: def.impulseProvenance || 'gravity_well_pull',
+        armed: false, spawnedAt: now,
+      } : {
         kind: 'vector_mine', weaponId: w.defId, ownerId: e.id,
         armAt: now + (def.mineArmS != null ? def.mineArmS : 1.4),
         dieAt: now + (def.mineLifeS != null ? def.mineLifeS : 30),
@@ -1150,15 +1163,23 @@ export const weapons = {
     if (this.bus) {
       this.bus.emit('combat:fire', { ownerId: e.id, weaponId: w.defId, hardpointIdx: w.slotIndex, origin: pos, dir, deploy: true });
       this.bus.emit('weapons:mineDeployed', { ownerId: e.id, mineId: mine && mine.id, weaponId: w.defId, pos });
+      if (isWell) {
+        this.bus.emit('presentation:vfxCue', {
+          id: 'combat.gravityWell.deploy', lane: 'field', particles: 18, lights: 1,
+          magnitude: 1.2, position: pos, material: 'impulse',
+          sourceId: e.id, targetId: null, flashReduced: false,
+        });
+      }
     }
     return mine;
   },
 
-  _countOwnerVectorMines(state, ownerId) {
+  _countOwnerVectorMines(state, ownerId, kind = 'vector_mine') {
     let n = 0;
     const list = liveVectorMineList(state);
     for (const ent of list) {
-      if (ent.type === 'vectormine' && ent.alive && ent.data && ent.data.ownerId === ownerId) n++;
+      if (ent.type === 'vectormine' && ent.alive && ent.data && ent.data.ownerId === ownerId
+        && (ent.data.kind || 'vector_mine') === kind) n++;
     }
     return n;
   },
@@ -1166,7 +1187,7 @@ export const weapons = {
   // Per-tick vector-mine lifecycle: expire → arm → proximity trigger. Strict no-op in the golden
   // (flag pinned OFF). Proximity is a linear scan of the ship index, NOT a broadphase/spatial-hash
   // query (perf-budget constraint), and touches only mine.data — no entity motion is written here.
-  _tickVectorMines(_dt, state) {
+  _tickVectorMines(dt, state) {
     if (!combatFlag('weaponImpulseConsequences')) return;
     const list = liveVectorMineList(state);
     if (!list.length) return;
@@ -1186,6 +1207,14 @@ export const weapons = {
           d.armed = true;
           if (this.bus) this.bus.emit('weapons:mineArmed', { mineId: mine.id, ownerId: d.ownerId, pos: { x: mine.pos.x, z: mine.pos.z } });
         }
+        continue;
+      }
+      // A gravity well does not detonate: once armed it drags until it dies. The pull is a
+      // mass-scaled impulse toward the well each tick (uniform acceleration with linear falloff —
+      // gravity does not check team tags, the owner included), routed through physics authority
+      // with provenance so a well-thrown hull meeting terrain is attributed to the owner.
+      if (d.kind === 'gravity_well') {
+        this._tickGravityWell(mine, d, state, dt);
         continue;
       }
       const trigR = d.triggerRadius;
@@ -1212,6 +1241,37 @@ export const weapons = {
         }
       }
       if (triggered) this._detonateVectorMine(mine, d, state);
+    }
+  },
+
+  // Sustained pull for one armed gravity well. Uniform acceleration (pull × linear falloff) so
+  // the well bends light hulls and heavies alike — a well is terrain you place, not a damage
+  // source; the fight is repositioned and finished with whatever else the fit carries.
+  _tickGravityWell(mine, d, state, dt) {
+    const physics = this.helpers && this.helpers.combatPhysics;
+    if (!physics || typeof physics.applyImpulse !== 'function') return;
+    const pull = Math.max(0, Number(d.pull) || 0);
+    const radius = Math.max(1, Number(d.blastRadius) || 1);
+    if (!(pull > 0) || !(dt > 0)) return;
+    const pos = { x: mine.pos.x, z: mine.pos.z };
+    const ships = (state.entityIndex && state.entityIndex.ships) || state.entityList || [];
+    const step = Math.min(dt, 1 / 30); // clamp catch-up so a hitch frame cannot fling hulls
+    for (const s of ships) {
+      if (!s.alive || (s.type !== 'ship' && s.type !== 'drone')) continue;
+      const dx = pos.x - s.pos.x, dz = pos.z - s.pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > radius || dist < 1e-4) continue;
+      const accel = pull * (1 - dist / radius);
+      const mass = Math.max(0.1, Number(s.physicsBody && s.physicsBody.mass) || Number(s.mass) || 1);
+      const mag = accel * mass * step;
+      const provenance = { actorId: d.ownerId == null ? null : d.ownerId, weaponId: d.weaponId, tag: d.provenance, appliedTick: state.tick };
+      const accepted = physics.applyImpulse({
+        entityId: s.id, impulse: { x: (dx / dist) * mag, z: (dz / dist) * mag }, point: null,
+        reason: 'gravity_well', tick: state.tick, provenance,
+      });
+      if (accepted !== false) {
+        recordImpulseProvenance(s, { ...provenance, magnitude: mag });
+      }
     }
   },
 

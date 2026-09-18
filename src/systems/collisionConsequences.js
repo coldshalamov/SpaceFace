@@ -29,6 +29,13 @@ import {
 
 export const COLLISION_CONSEQUENCE_PAIR_COOLDOWN_TICKS = 12;
 
+// MASS FLAIL RIG tuning: the flail needs a real load before it reads as one, then pays out
+// linearly in towed tonnes. At +400 t the strike is doubled; past +560 t it caps at 2.4 —
+// below the ram plate's own clamp, so the two verbs never collapse into one number.
+const TOW_FLAIL_MIN_MASS_T = 100;
+const TOW_FLAIL_MASS_PER_POINT = 400;
+const TOW_FLAIL_MAX_MULT = 2.4;
+
 const DAMAGEABLE_MOTION = new Set(['ship', 'drone']);
 const RESOLVE_PENDING_CRAFT_CONTACT_EVENT = 'collisionConsequences:resolvePendingCraftContact';
 
@@ -180,7 +187,13 @@ export const collisionConsequences = {
     const life = bodyLife(target, state);
     const targetHullMax = life?.hull ?? Math.max(0, Number(target.hullMax) || 0);
     const targetHullBefore = Math.max(0, Number(target.hull) || 0);
-    const ramPlate = playerRamPlateImpact(other, state.playerId, tick, causalProvenance);
+    // A ram/flail identity check must read the CONTACT's own causal attribution: while towing
+    // (or after any recorded impulse) the rope's freshest provenance would otherwise shadow the
+    // direct-contact fact and silently disarm the strike verb.
+    const explicitContact = explicitContactProvenance(payload, tick);
+    const ramProvenance = explicitContact
+      && explicitContact.actorId === state.playerId ? explicitContact : causalProvenance;
+    const ramPlate = playerRamPlateImpact(other, state.playerId, tick, ramProvenance, state);
     const observed=evidenceForConsequence({tick,targetId:target.id,otherId:other.id,
       surface:['asteroid','planet'].includes(other.type)?'terrain':other.type==='station'?'structure':'craft',otherMass:positiveMass(other)},state);
     const provenance = ramPlate?.provenance || (observed?{actorId:observed.root.actorId,weaponId:observed.root.weaponId,
@@ -438,10 +451,34 @@ function explicitContactProvenance(payload, tick) {
   });
 }
 
-function playerRamPlateImpact(entity, playerId, tick, provenance) {
+export function playerRamPlateImpact(entity, playerId, tick, provenance, state) {
   if (!entity || entity.id !== playerId) return null;
   if (!provenance || provenance.actorId !== playerId || provenance.tag !== 'direct_contact') return null;
-  const damageMultiplier = clamp(finite(entity.data?.derived?.ramDamageDealtMult), 0, 4);
+  const derived = entity.data?.derived;
+  // MASS FLAIL RIG (derived.towFlail): a player contact while towing a real load carries the
+  // load into the strike — the multiplier grows with the tethered body's mass, so what you drag
+  // IS the damage. No live tow, no flail; the ram-plate path below keeps its own law.
+  if (derived?.towFlail) {
+    const tether = state && state.player && state.player.tether;
+    const towed = tether && tether.active && tether.targetId != null && state.entities
+      && typeof state.entities.get === 'function' ? state.entities.get(tether.targetId) : null;
+    const towedMassT = towed && towed.alive !== false ? Math.max(0, Number(towed.mass) || 0) : 0;
+    if (towedMassT > TOW_FLAIL_MIN_MASS_T) {
+      return {
+        damageMultiplier: Math.min(
+          TOW_FLAIL_MAX_MULT,
+          1 + ((towedMassT - TOW_FLAIL_MIN_MASS_T) / TOW_FLAIL_MASS_PER_POINT),
+        ),
+        provenance: {
+          actorId: playerId,
+          weaponId: 'mod_mass_flail_rig',
+          tag: 'tow_flail',
+          appliedTick: tick,
+        },
+      };
+    }
+  }
+  const damageMultiplier = clamp(finite(derived?.ramDamageDealtMult), 0, 4);
   if (!(damageMultiplier > 0)) return null;
   return {
     damageMultiplier,

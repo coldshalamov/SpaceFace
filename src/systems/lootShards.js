@@ -68,6 +68,10 @@ export const CIVILIAN_MANIFEST_PAYLOAD_TYPE = 'civilian_manifest';
 export const MAX_JETTISONED_CARGO_PODS = 48;
 export const JETTISONED_CARGO_PAYLOAD_TYPE = 'jettisoned_cargo';
 export const JETTISONED_CARGO_MASS_FLOOR = 20;
+// LOOT MAGNET ring pull: peak acceleration (WU/s²) at the ring's centre, falling linearly to
+// zero at the ring edge. Enough to close a 420 WU ring in a few seconds against drift, never
+// enough to yank a pod out of a passing hauler's wake.
+export const LOOT_MAGNET_ACCEL = 26;
 
 /** PQ-148.01 — slam bar (WU/s closing) before an explosive pod cooks off a radial shove. */
 export const EXPLOSIVE_SLAM_CLOSING_SPEED = 12;
@@ -508,6 +512,7 @@ export const lootShards = {
       this._unsubs.push(this.bus.on('entity:killed', (p) => this._onKilled(p || {})));
       this._unsubs.push(this.bus.on('physics:impact', (p) => this._onPodImpact(p || {})));
       this._unsubs.push(this.bus.on('freight:cargoSpilled', (p) => this._onFreightCargoSpilled(p || {})));
+      this._unsubs.push(this.bus.on('game:started', () => { if (this._magnetTracked) this._magnetTracked.clear(); }));
     }
   },
 
@@ -520,6 +525,62 @@ export const lootShards = {
     const live = state || this.state;
     this._catchPodsInNets(live);
     this._pullSuperdensePods(dt, live);
+    this._pullLootWithMagnet(dt, live);
+  },
+
+  // LOOT MAGNET (mod_loot_magnet_s → derived.lootMagnetRange): free salvage bodies inside the
+  // ring drift to the hull, so salvage is a fly-by instead of a chase-and-latch per pod. The
+  // pull is a bounded physics-authority attraction with linear falloff — custody is NOT granted
+  // here; the pods still have to be claimed by the ordinary beam/tether verbs, this only brings
+  // them to the mouth. Deterministic: no rng, index-ordered scan, one impulse per pod per tick.
+  _pullLootWithMagnet(dt, state) {
+    if (!state || state.mode !== 'flight') return;
+    const step = Number(dt);
+    if (!(step > 0)) return;
+    const player = state.entities && state.entities.get ? state.entities.get(state.playerId) : null;
+    const range = player && player.data && player.data.derived
+      ? Number(player.data.derived.lootMagnetRange) || 0 : 0;
+    if (!(range > 0) || !player || player.alive === false || !player.pos) return;
+    const physics = this.helpers && this.helpers.combatPhysics;
+    if (!physics || typeof physics.applyImpulse !== 'function') return;
+    const list = payloadScanList(state);
+    if (!Array.isArray(list)) return;
+    const r2 = range * range;
+    for (let i = 0; i < list.length; i++) {
+      const pod = list[i];
+      if (!pod || pod.alive === false || !pod.pos) continue;
+      if (pod.data && pod.data.caughtByNet) continue;
+      if (!isJettisonedCargoPod(pod) && !isCivilianManifestPayload(pod)) continue;
+      const dx = player.pos.x - pod.pos.x;
+      const dz = player.pos.z - pod.pos.z;
+      const dist2 = dx * dx + dz * dz;
+      if (dist2 > r2 || dist2 < 1) continue;
+      const dist = Math.sqrt(dist2);
+      const mass = Math.max(1, Number(pod.physicsBody && pod.physicsBody.mass) || Number(pod.mass) || 1);
+      const accel = LOOT_MAGNET_ACCEL * (1 - dist / range);
+      physics.applyImpulse({
+        entityId: pod.id,
+        impulse: { x: (dx / dist) * accel * mass * step, z: (dz / dist) * accel * mass * step },
+        point: null,
+        reason: 'loot_magnet',
+        tick: state.tick,
+      });
+      this._noteMagnetCapture(pod, state);
+    }
+  },
+
+  // One readable event per pod per ring-entry (not per tick): presentation and the archetype
+  // harness count captures, not pull volume. The tracker is bounded and self-pruning.
+  _noteMagnetCapture(pod, state) {
+    if (!this._magnetTracked) this._magnetTracked = new Set();
+    if (this._magnetTracked.has(pod.id)) return;
+    if (this._magnetTracked.size > 256) this._magnetTracked.clear();
+    this._magnetTracked.add(pod.id);
+    if (this.bus && typeof this.bus.emit === 'function') {
+      this.bus.emit('loot:magnetCaptured', {
+        schemaVersion: 1, podId: pod.id, playerId: state.playerId, tick: state.tick,
+      });
+    }
   },
 
   _catchPodsInNets(state) {

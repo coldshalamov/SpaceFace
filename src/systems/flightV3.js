@@ -94,6 +94,9 @@ export const FLIGHT_V3_TRAVEL_TUNING = Object.freeze({ TRAVEL_BURN_DRAIN_MULT })
 const BOOST_PREKICK_S = 0.08;
 const BOOST_ACCEL_OVERSHOOT = 1.35;
 const BOOST_ACCEL_OVERSHOOT_S = 0.2;
+// SWING DRIVE: a tangent-redirected dash carries this uprate over the straight dash — the line
+// constrains the direction, so the pendulum press is worth more than an ordinary burst.
+const SWING_DRIVE_GAIN = 1.35;
 const DEFAULT_BOOST_RESOURCE = Object.freeze({
   energy: 0,
   max: 0,
@@ -414,12 +417,40 @@ export const flightV3 = {
   _triggerDash(e, boost, state) {
     if (!(boost.dashImpulse > 0) || boost.dashCdT > 0 || boost.energy < boost.dashCost) return false;
     const cf = Math.cos(finite(e.rot)), sf = Math.sin(finite(e.rot));
-    const imp = boost.dashImpulse;
+    let imp = boost.dashImpulse;
+    let dirX = cf, dirZ = sf;
+    let swung = false;
+    // SWING DRIVE (mod_swing_drive_m → derived.swingDrive): with a live tether latched, the dash
+    // becomes a pendulum input — the whole impulse is redirected onto the line's tangent (the
+    // swing direction the hull is already carrying, else the side the nose points), and uprated,
+    // so the press swings you AROUND the anchor instead of off it. Same energy cost, same
+    // cooldown: the verb changes where the dash goes, not whether it fires.
+    const derived = e.data && e.data.derived;
+    const tether = state && state.player && state.player.tether;
+    if (derived && derived.swingDrive && tether && tether.active && tether.targetId != null) {
+      const anchor = state.entities && typeof state.entities.get === 'function'
+        ? state.entities.get(tether.targetId) : null;
+      const rx = anchor && anchor.pos ? e.pos.x - anchor.pos.x : 0;
+      const rz = anchor && anchor.pos ? e.pos.z - anchor.pos.z : 0;
+      const rLen = Math.hypot(rx, rz);
+      if (rLen > 1) {
+        const tx = -rz / rLen, tz = rx / rLen;           // unit tangent around the anchor
+        const vel = e.vel || {};
+        const tangential = (finite(vel.x) * tx + finite(vel.z) * tz);
+        const facing = cf * tx + sf * tz;
+        const sign = Math.abs(tangential) > 1 ? Math.sign(tangential)
+          : (Math.abs(facing) > 0.05 ? Math.sign(facing) : 1);
+        dirX = tx * sign;
+        dirZ = tz * sign;
+        imp *= SWING_DRIVE_GAIN;
+        swung = true;
+      }
+    }
     const mass = positive(e.physicsBody && e.physicsBody.mass, positive(e.mass, 1));
     // Rapier authority path: queue the impulse (mass-scaled so delta-v is `imp` units/s),
     // matching src/systems/flight.js:176-179. The physics owner applies it next solve.
     const cryoScale = helmControlScaleFromCombat(state, e.id);
-    queuePhysicsImpulse(e, { x: cf * imp * mass * cryoScale, y: 0, z: sf * imp * mass * cryoScale });
+    queuePhysicsImpulse(e, { x: dirX * imp * mass * cryoScale, y: 0, z: dirZ * imp * mass * cryoScale });
     boost.energy = Math.max(0, boost.energy - boost.dashCost);
     boost.dashCdT = boost.dashCd;
     // The dash impulse is queued through physics authority above, so by the time the pure kernel
@@ -430,7 +461,8 @@ export const flightV3 = {
       finite(state && state.simTime, 0) + TRAVEL_DASH_TAG_S
     );
     if (this.bus && typeof this.bus.emit === 'function') {
-      this.bus.emit('ship:dash', { shipId: e.id, impulse: imp });
+      this.bus.emit('ship:dash', { shipId: e.id, impulse: imp, swung });
+      if (swung) this.bus.emit('ship:swingDash', { shipId: e.id, impulse: imp });
     }
     return true;
   },

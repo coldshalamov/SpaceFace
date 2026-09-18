@@ -1,12 +1,20 @@
 // Countermeasures / EW system (goal P1-7).
 //
 // Gives homing missiles real counterplay beyond pure dodging. Ships equipped with a countermeasure
-// utility module (mod_chaff_dispenser_m / mod_ecm_jammer_l) can deploy it on a cooldown:
+// utility module (mod_chaff_dispenser_m / mod_decoy_buoy_s / mod_ecm_jammer_l) can deploy it on a
+// cooldown:
 //   CHAFF — breaks missile locks on the deploying ship (resets attackers' lockProgress) AND diverts
 //           a fraction of in-flight missiles targeting the ship toward a decoy cloud (they fly
 //           harmlessly toward the cloud origin until their TTL expires). The classic missile-defense.
+//   DECOY — breaks locks partially AND, for the buoy's whole duration, re-baits ANY seeker that
+//           crosses the buoy's water: the missile re-attacks the buoy point, not the ship. A bait
+//           verb — you place it ahead of the fight, not behind you.
 //   ECM   — jams homing guidance: any missile within the effect radius has its turnRate zeroed for
 //           the effect duration (it flies straight, easy to dodge). Also partially breaks locks.
+//
+// POINT-DEFENSE SERVO (mod_pds_servo_s) rides the same system as the autonomous defensive verb:
+// a fitted servo kills the nearest hostile projectile inside its ring on a cooldown — no keybind,
+// no deploy; it is always on while fitted.
 //
 // Deploy trigger: the player presses the countermeasure keybind (default X, remappable); AI ships
 // auto-deploy when a missile is locked onto them or within a close threshold. Effects are timed
@@ -33,6 +41,23 @@ function equippedCountermeasure(fittings) {
   }
   return null;
 }
+
+// Find the equipped point-defense servo config on a ship's fittings, or null. Same pattern as the
+// countermeasure block: the config object is read from the fitting at runtime, not folded into
+// derived stats, so a deployed servo always matches the module the hull actually carries.
+function equippedPointDefense(fittings) {
+  if (!fittings) return null;
+  for (const id of fittings) {
+    if (!id) continue;
+    const def = MODULE_BY_ID.get(id);
+    const pds = def && def.mods && def.mods.pointDefense;
+    if (pds) return { moduleId: id, def, cfg: pds };
+  }
+  return null;
+}
+
+const CM_KIND_WORD = Object.freeze({ chaff: 'Chaff deployed', ecm: 'ECM jamming active', decoy: 'Decoy buoy broadcasting' });
+const CM_KIND_AUDIO = Object.freeze({ chaff: 'cm_chaff', ecm: 'cm_ecm', decoy: 'cm_chaff' });
 
 // Per-ship countermeasure runtime state lives on e.data.cm (lazily initialized).
 function ensureCm(e) {
@@ -125,7 +150,10 @@ export const countermeasures = {
         if (p.type !== 'projectile' || !p.alive) continue;
         const d = p.data;
         if (!d || d.kind !== 'missile') continue;
-        const dx = p.pos.x - e.pos.x, dz = p.pos.z - e.pos.z;
+        // A decoy is a place, not a ship: its pull is measured from the buoy, not the broadcaster.
+        const cx = cfg.kind === 'decoy' ? cm.effect.originX : e.pos.x;
+        const cz = cfg.kind === 'decoy' ? cm.effect.originZ : e.pos.z;
+        const dx = p.pos.x - cx, dz = p.pos.z - cz;
         if (dx * dx + dz * dz > r2) continue; // outside the effect radius
         if (cfg.kind === 'chaff') {
           // Divert missiles targeting THIS ship to the decoy cloud (a static point behind the ship).
@@ -134,6 +162,19 @@ export const countermeasures = {
           // present in the sim; if absent (defensive), skip diversion rather than break determinism.
           const rng = state.rng;
           if (d.targetId === e.id && rng && rng() < cfg.divertPct) {
+            d.targetId = cm.effect.decoyId;
+            d.diverted = true;
+            d.divertPos = {
+              x: cm.effect.originX,
+              z: cm.effect.originZ,
+            };
+          }
+        } else if (cfg.kind === 'decoy') {
+          // Bait verb: ANY seeker that crosses the buoy's water re-attacks the buoy — chaff only
+          // pulls missiles already aimed at you, for a moment; the buoy keeps eating locks for
+          // its whole duration. Already-hooked missiles are skipped, not re-rolled.
+          const rng = state.rng;
+          if (d.targetId !== cm.effect.decoyId && rng && rng() < cfg.divertPct) {
             d.targetId = cm.effect.decoyId;
             d.diverted = true;
             d.divertPos = {
@@ -151,6 +192,44 @@ export const countermeasures = {
           }
         }
       }
+    }
+    // 5. Point-defense servos (mod_pds_servo_s): an autonomous intercept verb. Each armed servo
+    //    watches its ring and kills the nearest hostile projectile inside it — missiles first,
+    //    then the closest slug — on its cooldown. No lock/permission is asked; the module owns
+    //    the trigger and the player owns the positioning. Scan only runs when the servo is ready,
+    //    so an idle fleet with no servos pays nothing here.
+    for (const e of countermeasureShipCandidates(state)) {
+      if (e.type !== 'ship' || !e.alive) continue;
+      const eq = equippedPointDefense(e.data && e.data.fittings);
+      if (!eq) continue;
+      const pds = e.data.pds || (e.data.pds = { cooldownT: 0 });
+      if (pds.cooldownT > 0) {
+        pds.cooldownT = Math.max(0, pds.cooldownT - dt);
+        continue;
+      }
+      const cfg = eq.cfg;
+      const radius = Math.max(1, Number(cfg.radius) || 0);
+      if (!(radius > 0)) continue;
+      const projectiles = projectilesNear(state, e.pos, radius, this._projectileScratch);
+      if (projectiles === this._projectileScratch) this._diag.effectSpatialQueries++;
+      this._diag.projectileCandidates += projectiles.length;
+      const target = nearestInterceptableProjectile(projectiles, e, radius);
+      if (!target) continue;
+      target.alive = false;
+      pds.cooldownT = Math.max(0.1, Number(cfg.cooldownS) || 1);
+      this.bus.emit('pds:intercept', {
+        schemaVersion: 1,
+        shipId: e.id,
+        projectileId: target.id,
+        missile: !!(target.data && target.data.kind === 'missile'),
+        radius,
+        tick: state.tick,
+      });
+      this.bus.emit('presentation:vfxCue', {
+        id: 'combat.pds.intercept', lane: 'combat', particles: 10, lights: 0,
+        magnitude: 0.5, position: { x: target.pos.x, z: target.pos.z }, material: 'impulse',
+        sourceId: e.id, targetId: null, flashReduced: false,
+      });
     }
     state.countermeasureRuntime = state.countermeasureRuntime || {};
     state.countermeasureRuntime.diagnostics = this._diag;
@@ -178,11 +257,13 @@ export const countermeasures = {
       }
     }
 
-    // Spawn the timed effect. Chaff creates a decoy point missiles divert to (not a live entity —
-    // weapons._steerHoming homes on divertPos). ECM just marks the effect active (the per-tick
+    // Spawn the timed effect. Chaff and the decoy buoy create a point seekers divert to (not a
+    // live entity — weapons._steerHoming homes on divertPos); the decoy's point is the buoy and
+    // it keeps re-baiting for its whole duration. ECM just marks the effect active (the per-tick
     // loop jams missiles in radius).
-    const decoyId = cfg.kind === 'chaff' ? ('cm_decoy_' + e.id + '_' + Math.floor(this.state.simTime * 1000)) : null;
-    const decoy = cfg.kind === 'chaff' ? chaffDecoyPoint(e) : null;
+    const hasDecoyPoint = cfg.kind === 'chaff' || cfg.kind === 'decoy';
+    const decoyId = hasDecoyPoint ? ('cm_decoy_' + e.id + '_' + Math.floor(this.state.simTime * 1000)) : null;
+    const decoy = hasDecoyPoint ? chaffDecoyPoint(e) : null;
     cm.effect = {
       cfg,
       decoyId,
@@ -197,9 +278,9 @@ export const countermeasures = {
       shipId: e.id, kind: cfg.kind, x: e.pos.x, z: e.pos.z,
       radius: cfg.radius, durationS: cfg.durationS, decoyId,
     });
-    this.bus.emit('audio:cue', { id: cfg.kind === 'chaff' ? 'cm_chaff' : 'cm_ecm' });
+    this.bus.emit('audio:cue', { id: CM_KIND_AUDIO[cfg.kind] || 'cm_chaff' });
     if (e.id === this.state.playerId) {
-      this.bus.emit('toast', { text: cfg.kind === 'chaff' ? 'Chaff deployed' : 'ECM jamming active', kind: 'info', ttl: 2 });
+      this.bus.emit('toast', { text: CM_KIND_WORD[cfg.kind] || 'Countermeasure deployed', kind: 'info', ttl: 2 });
     }
     return true;
   },
@@ -232,6 +313,36 @@ export const countermeasures = {
 function projectilesNear(state, pos, radius, out) {
   return queryNearbyEntities(state, pos, radius, out,
     (state.entityIndex && state.entityIndex.projectiles) || state.entityList);
+}
+
+// The servo's shot choice, deterministic by construction: nearest missile wins outright, else
+// nearest hostile projectile inside the ring, ties broken by scan order (the spatial index's
+// stable order). Own-side rounds and the servo owner's own shots are never intercepted. The
+// radius check is restated here so the choice stays correct even on a fallback (unhashed) scan.
+function nearestInterceptableProjectile(projectiles, ship, radius) {
+  let bestMissile = null;
+  let bestMissileD2 = Infinity;
+  let bestOther = null;
+  let bestOtherD2 = Infinity;
+  const r2 = radius * radius;
+  for (const p of projectiles) {
+    if (p.type !== 'projectile' || !p.alive) continue;
+    if (p.ownerId != null && p.ownerId === ship.id) continue;
+    if (p.team != null && ship.team != null && p.team === ship.team) continue;
+    const dx = p.pos.x - ship.pos.x, dz = p.pos.z - ship.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 > r2) continue;
+    if (p.data && p.data.kind === 'missile') {
+      if (d2 < bestMissileD2) {
+        bestMissile = p;
+        bestMissileD2 = d2;
+      }
+    } else if (d2 < bestOtherD2) {
+      bestOther = p;
+      bestOtherD2 = d2;
+    }
+  }
+  return bestMissile || bestOther;
 }
 
 function countermeasureShipCandidates(state) {

@@ -884,7 +884,10 @@ export function getDerivedStats(defId, fittings = [], player = null) {
   let tetherSpoolMult = 1, tetherReelRateMult = 1;
   let ramDamageDealtMult = 0;
   let magnetRange = 0;
+  let lootMagnetRange = 0;
   let masslineHeadId = null;
+  let swingDrive = false;
+  let towFlail = false;
   let controlWeaponCount = 0;
   let chaffCount = 0;
   let ecmCount = 0;
@@ -959,6 +962,15 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     if (Number.isFinite(mods.magnetRange) && mods.magnetRange > 0) {
       magnetRange = Math.max(magnetRange, mods.magnetRange);
     }
+    // Salvage reach is a capability rating (max wins) — lootShards reads derived.lootMagnetRange.
+    if (Number.isFinite(mods.lootMagnetRange) && mods.lootMagnetRange > 0) {
+      lootMagnetRange = Math.max(lootMagnetRange, mods.lootMagnetRange);
+    }
+    // Pendulum dash and tow-as-weapon are capability flags: the verb exists or it does not.
+    // Malformed/manual data cannot half-grant them — truthy only, and only from a fitted slot
+    // the hull actually has (same slot-compat gate the countermeasure kinds use below).
+    if (occupiesCompatibleSlot && mods.swingDrive) swingDrive = true;
+    if (occupiesCompatibleSlot && mods.towFlail) towFlail = true;
     // Specialized heads are fitted capabilities, not input modes. Live fitting keeps them mutually
     // exclusive; fixed priority makes malformed/manual data deterministic instead of slot-ordered.
     const candidateHeadId = masslineHeadIdForDef(d);
@@ -1100,6 +1112,7 @@ export function getDerivedStats(defId, fittings = [], player = null) {
     massLoadFactor: propulsion.massLoadFactor,
     mass: totalMass, radius: shipDef.collisionRadius || 14,
     tetherSpoolMult, tetherReelRateMult, masslineHeadId, magnetRange,
+    lootMagnetRange, swingDrive, towFlail,
     weaponRangePct,
     weaponDmgPct,
     weaponHeatDissipPct,
