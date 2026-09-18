@@ -339,6 +339,12 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
   const undock = station.locator('button[data-act="undock"]');
   await undock.waitFor({ state: 'visible', timeout: 10_000 });
   await pointerClick(page, undock, 'Undock');
+  // Departure readiness: a flagged state (low munitions, unreviewed cargo, …) opens the review
+  // pop instead of undocking directly — the public path continues through its primary verb.
+  const popLaunch = page.locator('[data-pop-launch]');
+  if (await popLaunch.waitFor({ state: 'visible', timeout: 5_000 }).then(() => true, () => false)) {
+    await pointerClick(page, popLaunch, 'Launch anyway');
+  }
   await page.waitForFunction(() => {
     const state = window.SF?.state;
     return state?.mode === 'flight' && state?.ui?.docked !== true
