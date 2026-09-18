@@ -8277,7 +8277,7 @@ function addStaticBatchMesh(parent, bindings, geometry, material, tags, urls, la
 function instantiatePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
   if (record?.renderPackage && typeof record.renderPackage.createInstance === 'function') {
     return instantiateRenderPackagePart(
-      record, parent, placement, palette, scene, owner, bindings, mutableMaterials,
+      record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches,
     );
   }
 
@@ -8377,7 +8377,7 @@ function instantiatePart(record, parent, placement, palette, scene, owner, bindi
   return partRoot;
 }
 
-function instantiateRenderPackagePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials) {
+function instantiateRenderPackagePart(record, parent, placement, palette, scene, owner, bindings, mutableMaterials, staticBatches = null) {
   const partRoot = new THREE.Group();
   partRoot.name = `GLTFKit_${placement.label}_${record.assetId}`;
   applyPlacementTransform(partRoot, placement);
@@ -8410,6 +8410,14 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
       poolAdmissions: bindings.packagePoolAdmissions,
     })
     : null;
+  // Place/station props batch their static package primitives through the caller's collector —
+  // the same contract compositionPrimitives records already follow. Ships keep the cross-root
+  // instance pool instead: fleet-wide repetition is the stronger win there. flightStaticV3
+  // records stay direct because the flight-template cache deep-clones nodes, which would
+  // resurrect a demoted mesh alongside the merged batch.
+  const mergePackageMeshes = staticBatches
+    && record.flightStaticV3 !== true
+    && (owner?.userData?.kind === 'place' || owner?.userData?.kind === 'station');
   const createPackageInstance = record.flightStaticV3 === true
     ? record.renderPackage.createFlightInstance?.bind(record.renderPackage)
     : record.renderPackage.createInstance.bind(record.renderPackage);
@@ -8437,6 +8445,7 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
   };
   partRoot.userData.renderPackageInstance = instance;
   partRoot.add(packageRoot);
+  if (mergePackageMeshes) packageRoot.updateMatrixWorld(true);
 
   // Specialisation walks the loader's FLAT instance plan, not packageRoot.traverse(). The plan is
   // in depth-first pre-order with the root at index 0, so this visits exactly the same nodes in
@@ -8477,7 +8486,24 @@ function instantiateRenderPackagePart(record, parent, placement, palette, scene,
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       object.castShadow = materials.some((material) => material && !material.transparent && material.depthWrite !== false);
       object.receiveShadow = materials.some((material) => material && !material.transparent);
+      const batchable = mergePackageMeshes
+        && isRigidOpaqueBatchableSurface(object, tags, { requiresPerShipMesh });
       object.visible = !tags.lod || tags.lod === 'lod0';
+      if (batchable) {
+        staticBatches.add({
+          record,
+          primitive: {
+            geometry: object.geometry,
+            matrix: packageMeshMatrixInPartSpace(object, partRoot),
+            name: object.name,
+            tags,
+          },
+          partRoot,
+          material: object.material,
+        });
+        retirePackagePoolCandidate(scene, object);
+        demotePackageMeshToStaticBatch(object);
+      }
       registerBinding(object, tags, bindings);
       continue;
     }
@@ -8699,6 +8725,37 @@ function promoteRenderPackageMeshToPoolProxy(object, key) {
     spacefaceInstanceProxy: true,
     spacefaceRenderPackagePooled: true,
     spacefaceInstancePoolKey: key,
+  };
+  delete object.userData.spacefacePackagePoolCandidate;
+  return object;
+}
+
+function packageMeshMatrixInPartSpace(object, partRoot) {
+  const matrix = object.matrix.clone();
+  for (let node = object.parent; node && node !== partRoot; node = node.parent) {
+    matrix.premultiply(node.matrix);
+  }
+  return matrix;
+}
+
+function retirePackagePoolCandidate(scene, object) {
+  const key = object && object.userData && object.userData.spacefaceInstancePoolKey;
+  if (!key || !scene) return;
+  const state = sceneState(scene);
+  const candidate = state && state.packageCandidates && state.packageCandidates.get(key);
+  // A merged mesh must retire its candidacy: a later cross-root repeat would otherwise promote
+  // this object into a pooled draw on top of the batch that already draws it.
+  if (candidate && candidate.object === object) state.packageCandidates.delete(key);
+}
+
+// Same suppress-direct-submission contract as promoteRenderPackageMeshToPoolProxy: the node keeps
+// its place in planNodes/hierarchy for bounds, texture residency, and inspection while the merged
+// static batch owns the draw.
+function demotePackageMeshToStaticBatch(object) {
+  object.isMesh = false;
+  object.userData = {
+    ...(object.userData || {}),
+    spacefaceStaticBatchProxy: true,
   };
   delete object.userData.spacefacePackagePoolCandidate;
   return object;

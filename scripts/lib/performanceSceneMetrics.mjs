@@ -32,6 +32,7 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
   const visibleShipMeshByPart = Object.create(null);
   const visibleShipMeshByRoleAndPart = Object.create(null);
   const visibleShipMeshSamples = [];
+  const visibleUnownedMeshSamples = [];
   const materialKeys = new Set();
   const materialKeyCounts = Object.create(null);
   const materialKeyCountsByCategory = Object.create(null);
@@ -51,6 +52,7 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
     visibleShipMeshByPart,
     visibleShipMeshByRoleAndPart,
     visibleShipMeshSamples,
+    visibleUnownedMeshSamples,
     visibleMaterialKeys: [],
     visibleMaterialKeysByCategory: [],
     visibleShipMaterialKeys: [],
@@ -152,6 +154,18 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
         category = object.isBatchedMesh
           ? 'unowned:batched'
           : object.isInstancedMesh ? 'unowned:instanced' : 'unowned:mesh';
+        if (visibleUnownedMeshSamples.length < 48) {
+          const parentName = object.parent && object.parent.name ? object.parent.name : '';
+          const grand = object.parent && object.parent.parent && object.parent.parent.name
+            ? object.parent.parent.name : '';
+          visibleUnownedMeshSamples.push({
+            name: object.name || '',
+            parent: parentName,
+            grandparent: grand,
+            type: object.type || '',
+            material: materialKey(materialList(object)[0]),
+          });
+        }
       }
       increment(visibleMeshByCategory, category);
       if (category === 'station') stats.stationPlaceHlod.stationVisibleMeshes++;
