@@ -60,6 +60,7 @@ import { createHud } from './hud.js';
 import { createBandHud } from './bandHud.js';
 import { createEncounterChoicePrompt } from './encounterChoicePrompt.js';
 import { createLawfulInspectionPrompt } from './lawfulInspectionPrompt.js';
+import { createPromptDeck } from './promptDeck.js';
 import { createCommandBar } from './commandBar.js';
 import { createToasts } from './toasts.js';
 import { createMarketNews } from './marketNews.js'; // REVAMP 2.1 — economy news ticker + dock event cards
@@ -371,14 +372,8 @@ export const ui = {
     this.hud = null;
     if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
     this.bandHud = null;
-    if (this.encounterChoicePrompt && typeof this.encounterChoicePrompt.destroy === 'function') {
-      this.encounterChoicePrompt.destroy();
-    }
-    this.encounterChoicePrompt = null;
-    if (this.lawfulInspectionPrompt && typeof this.lawfulInspectionPrompt.destroy === 'function') {
-      this.lawfulInspectionPrompt.destroy();
-    }
-    this.lawfulInspectionPrompt = null;
+    if (this.promptDeck && typeof this.promptDeck.destroy === 'function') this.promptDeck.destroy();
+    this.promptDeck = null;
     destroyCommsOwner(this);
     if (this.input && typeof this.input.dispose === 'function') this.input.dispose();
     this.input = null;
@@ -462,6 +457,9 @@ export const ui = {
 
     // comms / graffiti / endgame narrative overlay (story system drives it via events)
     replaceCommsOwner(this, ctx);
+    // ONE decision surface for the whole flight layer (promptDeck): the encounter/inspection/
+    // parley/signal/recovery/customs adapters below subscribe to their events and render INTO it.
+    this.promptDeck = createPromptDeck(ctx);
     this.encounterChoicePrompt = createEncounterChoicePrompt(ctx);
     this.lawfulInspectionPrompt = createLawfulInspectionPrompt(ctx);
 
@@ -1253,12 +1251,7 @@ export const ui = {
         this._hudVisibleLast = hudVisible;
       }
       if (hudVisible && this.bandHud && typeof this.bandHud.update === 'function') this.bandHud.update();
-      if (this.encounterChoicePrompt && typeof this.encounterChoicePrompt.tick === 'function') {
-        this.encounterChoicePrompt.tick();
-      }
-      if (this.lawfulInspectionPrompt && typeof this.lawfulInspectionPrompt.tick === 'function') {
-        this.lawfulInspectionPrompt.tick();
-      }
+      if (this.promptDeck && typeof this.promptDeck.tick === 'function') this.promptDeck.tick();
       if (this.toasts && this.toasts.tick) this.toasts.tick();
       // Comms fade is a flight overlay. Toasts/prompts stay alive on menus.
       if (hudVisible && this.comms && this.comms.tick) this.comms.tick();
@@ -1288,14 +1281,8 @@ export const ui = {
     this.hud = null;
     if (this.bandHud && typeof this.bandHud.destroy === 'function') this.bandHud.destroy();
     this.bandHud = null;
-    if (this.encounterChoicePrompt && typeof this.encounterChoicePrompt.destroy === 'function') {
-      this.encounterChoicePrompt.destroy();
-    }
-    this.encounterChoicePrompt = null;
-    if (this.lawfulInspectionPrompt && typeof this.lawfulInspectionPrompt.destroy === 'function') {
-      this.lawfulInspectionPrompt.destroy();
-    }
-    this.lawfulInspectionPrompt = null;
+    if (this.promptDeck && typeof this.promptDeck.destroy === 'function') this.promptDeck.destroy();
+    this.promptDeck = null;
     destroyCommsOwner(this);
     destroyMarketNewsOwner(this);
     if (typeof this._fulfillmentBlackoutTeardown === 'function') this._fulfillmentBlackoutTeardown();

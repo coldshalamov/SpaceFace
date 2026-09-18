@@ -1,21 +1,20 @@
-// Pirate parley response strip — a non-modal, edge-aligned flight interaction.
+// src/ui/pirateParleyPrompt.js — adapter from the pirateParley sim events to the flight decision
+// deck (src/ui/promptDeck.js), plus the pure text/surfacing helpers its contract tests pin.
 //
-// The simulation owns eligibility, timing, payment, hostility and escape. This module only reads
-// the public pirateParley events, renders their meaning, and emits canonical choices. It never
-// pauses flight, writes cargo/credits, or creates a second combat state machine.
+// The simulation owns eligibility, timing, payment, hostility and escape. This module reads the
+// public pirateParley events, renders their meaning on the deck, and emits canonical choices. It
+// never pauses flight, writes cargo/credits, or creates a second combat state machine.
+//
+// Before the deck this module owned its own corner card, style tag, digit keys and a gamepad poll
+// that fired simultaneously with every other card's poll (one A press complied AND tracked).
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
-import { isUiInteractionFenced } from './input.js';
+import { getPromptDeck } from './promptDeck.js';
 
-const STYLE_ID = 'sf-pirate-parley-style';
-const RECEIPT_TTL_S = 4;
 const COMMODITY_LABELS = new Map(COMMODITIES.map((c) => [c.id, String(c.name || c.id).replace(/^Refined /i, '')]));
 const FACTION_LABELS = new Map(FACTION_META.map((f) => [f.id, String(f.name || f.id)]));
-const KEY_CHOICE = Object.freeze({
-  Digit1: 'comply', Numpad1: 'comply',
-  Digit2: 'refuse', Numpad2: 'refuse',
-  Digit3: 'run', Numpad3: 'run',
-});
+const RECEIPT_TTL_S = 4;
+const ESCALATION_OUTCOMES = new Set(['refused', 'timeout', 'player_attack']);
 
 function positiveCargo(state) {
   const items = state && state.player && state.player.cargo && state.player.cargo.items || {};
@@ -88,229 +87,98 @@ export function parleyRemainingSeconds(deadlineAt, simTime) {
   return Math.max(0, Number(deadlineAt || 0) - Number(simTime || 0));
 }
 
-export function createPirateParleyPrompt(ctx) {
-  const { state, bus } = ctx;
-  injectStyle();
+const DECK_ID = 'pirateParley';
 
-  const root = document.createElement('aside');
-  root.id = 'sf-pirate-parley';
-  root.hidden = true;
-  root.setAttribute('role', 'region');
-  root.setAttribute('aria-live', 'polite');
-  root.setAttribute('aria-atomic', 'true');
-  root.innerHTML = `
-    <div class="sf-parley__head">
-      <span class="sf-parley__flag">TOLL HAIL</span>
-      <span class="sf-parley__sender" data-k="sender">UNREGISTERED RAIDERS</span>
-      <span class="sf-parley__timer" data-k="timer">RESPONSE —</span>
-    </div>
-    <div class="sf-parley__demand" data-k="demand">—</div>
-    <div class="sf-parley__why" data-k="why">Cargo toll. Profit motive; weapons held during response.</div>
-    <div class="sf-parley__actions" data-k="actions">
-      <button type="button" data-choice="comply" aria-label="Comply with pirate demand. Keyboard 1. Controller A."><b>1 · A</b><span>COMPLY</span></button>
-      <button type="button" data-choice="refuse" aria-label="Refuse pirate demand and authorize combat. Keyboard 2. Controller B."><b>2 · B</b><span>REFUSE</span></button>
-      <button type="button" data-choice="run" aria-label="Run from pirate demand and clear the intercept radius. Keyboard 3. Controller X."><b>3 · X</b><span>RUN 1.2 KM</span></button>
-    </div>
-    <div class="sf-parley__receipt" data-k="receipt" hidden></div>`;
-  document.getElementById('ui-root').appendChild(root);
+export function createPirateParleyPrompt(ctx = {}) {
+  const state = ctx.state || {};
+  const bus = ctx.bus;
+  if (!bus || typeof bus.on !== 'function') return inertPrompt();
 
-  const senderEl = root.querySelector('[data-k=sender]');
-  const timerEl = root.querySelector('[data-k=timer]');
-  const demandEl = root.querySelector('[data-k=demand]');
-  const whyEl = root.querySelector('[data-k=why]');
-  const actionsEl = root.querySelector('[data-k=actions]');
-  const receiptEl = root.querySelector('[data-k=receipt]');
-  const runButton = root.querySelector('[data-choice=run]');
-  let active = null;
-  let lastTimerText = '';
-  let destroyed = false;
+  let running = false;
 
-  function setText(el, value) {
-    const text = String(value == null ? '' : value);
-    if (el && el.textContent !== text) el.textContent = text;
-  }
-
-  function hide() {
-    root.hidden = true;
-    root.classList.remove('sf-parley--receipt', 'sf-parley--danger', 'sf-parley--running');
-    active = null;
-    lastTimerText = '';
-  }
-
-  function showDemand(payload) {
+  const showDemand = (payload) => {
     if (!shouldSurfaceParley(payload, state)) return false;
-    const sender = parleyHailerText(payload, state);
-    const demand = parleyDemandText(payload.demand);
-    active = { ...payload, phase: 'demand', selected: null };
-    setText(senderEl, sender.toUpperCase());
-    setText(demandEl, demand);
-    setText(whyEl, 'Cargo toll. Profit motive; weapons held during response.');
-    whyEl.hidden = false;
-    runButton.disabled = false;
-    runButton.querySelector('span').textContent = 'RUN 1.2 KM';
-    actionsEl.hidden = false;
-    receiptEl.hidden = true;
-    root.hidden = false;
-    root.classList.remove('sf-parley--receipt', 'sf-parley--danger', 'sf-parley--running');
-    root.setAttribute('aria-label', `${sender} hailing. ${demand}. Cargo toll for profit. Choose comply, refuse, or run.`);
-    updateTimer();
-    return true;
-  }
+    const deck = getPromptDeck();
+    if (!deck) return false;
+    running = false;
+    return deck.offerDecision({
+      id: DECK_ID,
+      kind: 'danger',
+      sender: parleyHailerText(payload, state).toUpperCase(),
+      statusFlag: 'TOLL HAIL',
+      headline: parleyDemandText(payload.demand),
+      detail: 'Cargo toll. Profit motive; weapons held during response.',
+      deadlineAt: Number(payload.deadlineAt),
+      choices: [
+        { id: 'comply', label: 'COMPLY' },
+        { id: 'refuse', label: 'REFUSE', danger: true, cancel: true },
+        { id: 'run', label: 'RUN 1.2 KM' },
+      ],
+      onChoose: (choiceId, source) => {
+        const live = getPromptDeck();
+        if (!live) return false;
+        if (choiceId === 'run') {
+          running = true;
+          live.updateDecision(DECK_ID, {
+            statusFlag: 'CLEAR 1.2 KM',
+            detail: 'Run selected. Clear every raider by 1.2 km before time expires.',
+            choices: [
+              { id: 'comply', label: 'COMPLY' },
+              { id: 'refuse', label: 'REFUSE', danger: true, cancel: true },
+              { id: 'run', label: 'RUNNING', disabled: true, reason: 'Run selected — clear the intercept radius.' },
+            ],
+          });
+        }
+        return bus.emit('pirateParley:choose', { squadId: payload.squadId, choice: choiceId, source });
+      },
+    });
+  };
 
-  function showReceipt(payload) {
-    if (!active || String(active.squadId) !== String(payload && payload.squadId)) return false;
-    const text = parleyReceiptText(payload);
-    const danger = ['refused', 'timeout', 'player_attack'].includes(String(payload.outcome || ''));
-    active = { ...payload, phase: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
-    setText(receiptEl, text);
-    actionsEl.hidden = true;
-    whyEl.hidden = true;
-    receiptEl.hidden = false;
-    timerEl.textContent = danger ? 'WEAPONS FREE' : 'DISENGAGING';
-    root.classList.add('sf-parley--receipt');
-    root.classList.toggle('sf-parley--danger', danger);
-    root.classList.remove('sf-parley--running');
-    root.setAttribute('aria-label', text);
-    return true;
-  }
+  const showReceipt = (payload) => {
+    if (!payload || !payload.squadId) return false;
+    running = false;
+    const deck = getPromptDeck();
+    if (deck) deck.resolveDecision(DECK_ID);
+    if (!wasLive(payload.squadId)) return false;
+    return !!bus.emit('toast', {
+      text: parleyReceiptText(payload),
+      kind: ESCALATION_OUTCOMES.has(String(payload.outcome || '')) ? 'danger' : 'info',
+      ttl: RECEIPT_TTL_S,
+    });
+  };
 
-  function choose(choice, source) {
-    if (isUiInteractionFenced(state) || !active || active.phase !== 'demand') return false;
-    const canonical = choice === 'comply' || choice === 'refuse' || choice === 'run' ? choice : null;
-    if (!canonical) return false;
-    if (canonical === 'run') {
-      active.selected = 'run';
-      root.classList.add('sf-parley--running');
-      runButton.disabled = true;
-      runButton.querySelector('span').textContent = 'RUNNING';
-      setText(whyEl, 'Run selected. Clear every raider by 1.2 km before time expires.');
-    }
-    bus.emit('pirateParley:choose', { squadId: active.squadId, choice: canonical, source });
-    return true;
-  }
+  // The receipt only reads when the parley was actually on the deck — a resolution for a demand
+  // that never surfaced (Helios, empty hold) stays silent, matching shouldSurfaceParley.
+  let liveSquadId = null;
+  const surface = (payload) => {
+    const shown = showDemand(payload);
+    if (shown) liveSquadId = payload.squadId;
+    return shown;
+  };
+  function wasLive(squadId) { return liveSquadId != null && String(liveSquadId) === String(squadId); }
 
-  function updateTimer() {
-    if (!active || active.phase !== 'demand') return;
-    const remaining = parleyRemainingSeconds(active.deadlineAt, state.simTime);
-    const prefix = active.selected === 'run' ? 'CLEAR 1.2 KM' : 'RESPONSE';
-    const text = `${prefix} ${remaining.toFixed(1)} S`;
-    if (text !== lastTimerText) {
-      lastTimerText = text;
-      setText(timerEl, text);
-      timerEl.setAttribute('aria-label', `${remaining.toFixed(1)} seconds remaining`);
-    }
-  }
-
-  function onClick(event) {
-    if (isUiInteractionFenced(state)) return;
-    const button = event.target && event.target.closest && event.target.closest('[data-choice]');
-    if (!button || !root.contains(button)) return;
-    choose(button.dataset.choice, 'click');
-  }
-
-  function onKeyDown(event) {
-    if (isUiInteractionFenced(state)
-      || !active || active.phase !== 'demand' || event.altKey || event.ctrlKey || event.metaKey) return;
-    const choice = KEY_CHOICE[event.code];
-    if (!choice) return;
-    event.preventDefault();
-    event.stopPropagation();
-    choose(choice, 'keyboard');
-  }
-
-  function tick() {
-    if (destroyed || !active || isUiInteractionFenced(state)) return;
-    if (state.mode !== 'flight' || state.ui && state.ui.docked) {
-      hide();
-      return;
-    }
-    if (active.phase === 'receipt') {
-      if (Number(state.simTime || 0) >= active.hideAt) hide();
-      return;
-    }
-    updateTimer();
-    const actions = ctx.gamepad && ctx.gamepad.actions || {};
-    if (actions.accept && actions.accept.pressed) choose('comply', 'gamepad');
-    else if (actions.cancel && actions.cancel.pressed) choose('refuse', 'gamepad');
-    else if (actions.cycleTarget && actions.cycleTarget.pressed) choose('run', 'gamepad');
-  }
-
-  function destroy() {
-    destroyed = true;
-    document.removeEventListener('keydown', onKeyDown, true);
-    root.removeEventListener('click', onClick);
-    root.remove();
-  }
-
-  root.addEventListener('click', onClick);
-  document.addEventListener('keydown', onKeyDown, true);
-  bus.on('pirateParley:demand', showDemand);
+  bus.on('pirateParley:demand', surface);
   bus.on('pirateParley:resolved', showReceipt);
-  bus.on('game:new', hide);
-  bus.on('game:load', hide);
+  // game:new / game:load / sector transitions are deck-owned now.
 
-  return { el: root, tick, hide, destroy, showDemand, showReceipt, choose };
+  return {
+    el: null,
+    tick: () => {},
+    hide: () => !!(getPromptDeck() && getPromptDeck().resolveDecision(DECK_ID)),
+    destroy: () => {
+      try { bus.off && bus.off('pirateParley:demand', surface); } catch (_) {}
+      try { bus.off && bus.off('pirateParley:resolved', showReceipt); } catch (_) {}
+    },
+    showDemand, showReceipt,
+    choose: () => false,
+  };
 }
 
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const style = document.createElement('style');
-  style.id = STYLE_ID;
-  style.textContent = `
-  #sf-pirate-parley {
-    position:absolute; top:112px; right:16px; width:min(390px, calc(100vw - 32px)); z-index:1080;
-    box-sizing:border-box; padding:10px 12px 11px; pointer-events:none;
-    /* Flight-instrument plate: near-opaque hairline plate, severity on the TOP edge + head
-       stamp (contactHail idiom) — replaces the glass box with the left accent bar. */
-    background:linear-gradient(180deg, rgba(15,20,27,.94), rgba(8,11,16,.96));
-    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
-    border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); border-top:2px solid var(--hud-amber, #dfa04e);
-    border-radius:4px; box-shadow:0 16px 36px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
-    color:var(--hud-paper, #e9eff4); font-family:var(--hud-data, var(--mono, Consolas, monospace)); contain:layout paint style;
-    opacity:1; transform:translateX(0); transition:opacity .16s ease-out, transform .16s ease-out;
-  }
-  #sf-pirate-parley[hidden] { display:none !important; }
-  .sf-parley__head { display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:8px; align-items:baseline; }
-  .sf-parley__flag, .sf-parley__timer { font-size:12px; letter-spacing:.06em; color:var(--hud-amber, #dfa04e); white-space:nowrap; }
-  .sf-parley__sender { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    font-size:12px; letter-spacing:.06em; color:var(--hud-copy, #a9b8c4); }
-  .sf-parley__demand { margin-top:6px; font-size:15px; line-height:1.2; letter-spacing:.04em; color:var(--hud-paper, #e9eff4); }
-  .sf-parley__why { margin-top:3px; font-size:12px; line-height:1.35; color:var(--hud-copy, #a9b8c4); }
-  .sf-parley__actions { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:9px; pointer-events:auto; }
-  .sf-parley__actions[hidden], .sf-parley__why[hidden], .sf-parley__receipt[hidden] { display:none !important; }
-  .sf-parley__actions button { min-width:0; min-height:34px; display:flex; align-items:center; justify-content:center; gap:6px;
-    background:rgba(255,255,255,.04); border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); color:var(--hud-paper, #e9eff4);
-    font:12px var(--hud-data, var(--mono, Consolas, monospace)); letter-spacing:.06em; cursor:pointer; border-radius:3px;
-    transition:border-color .15s ease, background .15s ease, color .15s ease, translate .1s ease; }
-  .sf-parley__actions button:hover, .sf-parley__actions button:focus-visible {
-    outline:2px solid var(--hud-cyan, #4f8fdd); outline-offset:1px; background:rgba(255,255,255,.08); }
-  .sf-parley__actions button:active { translate:0 1px; }
-  .sf-parley__actions button b { color:var(--hud-cyan, #4f8fdd); font-size:12px; font-weight:400; }
-  .sf-parley__actions button[data-choice=refuse] { border-color:color-mix(in srgb, var(--hud-danger, #e0665f) 55%, transparent); }
-  .sf-parley__actions button[data-choice=refuse] b { color:var(--hud-danger, #e0665f); }
-  .sf-parley__actions button:disabled { cursor:default; border-color:color-mix(in srgb, var(--hud-amber, #dfa04e) 60%, transparent); color:var(--hud-amber, #dfa04e); opacity:1; }
-  .sf-parley__receipt { margin-top:7px; font-size:12px; line-height:1.4; color:var(--hud-cyan, #4f8fdd); letter-spacing:.03em; }
-  #sf-pirate-parley.sf-parley--danger { border-top-color:var(--hud-danger, #e0665f); }
-  #sf-pirate-parley.sf-parley--danger .sf-parley__flag,
-  #sf-pirate-parley.sf-parley--danger .sf-parley__timer,
-  #sf-pirate-parley.sf-parley--danger .sf-parley__receipt { color:var(--hud-danger, #e0665f); }
-  #sf-pirate-parley.sf-parley--running { border-top-color:var(--hud-cyan, #4f8fdd); }
-  @media (max-width:900px), (max-height:620px) {
-    #sf-pirate-parley { top:78px; left:12px; right:12px; width:auto; padding:8px 10px 9px; }
-    .sf-parley__demand { font-size:13px; }
-    .sf-parley__why { font-size:12px; }
-    .sf-parley__actions { margin-top:7px; }
-    .sf-parley__actions button { min-height:32px; font-size:12px; }
-  }
-  @media (max-width:520px) {
-    .sf-parley__head { grid-template-columns:auto minmax(0,1fr); }
-    .sf-parley__timer { grid-column:1 / -1; }
-    .sf-parley__actions button { flex-direction:column; gap:2px; }
-  }
-  @media (prefers-reduced-motion:reduce) {
-    #sf-pirate-parley { transition:none; }
-  }`;
-  document.head.appendChild(style);
+function inertPrompt() {
+  return {
+    el: null, tick: () => {}, hide: () => false, destroy: () => {},
+    showDemand: () => false, showReceipt: () => false, choose: () => false,
+  };
 }
 
 export default createPirateParleyPrompt;

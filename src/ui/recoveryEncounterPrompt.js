@@ -1,10 +1,15 @@
-// Compact, non-modal presenter for the physical derelict recovery state machine.
+// src/ui/recoveryEncounterPrompt.js — adapter from the derelict-recovery / named-wreck / cache /
+// custody sim events to the flight decision deck (src/ui/promptDeck.js) and the reserved receipt
+// lane. The pure view builders below (recoveryCustodyView, the cache views, the text helpers) are
+// the headless contract (test/recovery-encounter.test.mjs, test/pq048-*.test.mjs) and are kept
+// verbatim; only the hand-rolled card DOM, style tag, digit router and per-card gamepad poll were
+// retired — the deck owns placement, keys, gamepad, announcements and lifecycle now.
+//
 // Simulation owns range, condition, hazards, stabilization, settlement and persistence.
 
-import { isUiInteractionFenced } from './input.js';
 import { stationName } from './sectorLawPresenter.js';
+import { getPromptDeck } from './promptDeck.js';
 
-const STYLE_ID = 'sf-recovery-encounter-style';
 const RECEIPT_TTL_S = 6;
 
 export function recoveryOutcomeText(receipt) {
@@ -208,40 +213,31 @@ export function pallasHiddenCachePromptView(payload) {
   });
 }
 
-export function createRecoveryEncounterPrompt(ctx) {
-  const { state, bus } = ctx;
-  injectStyle();
-  const root = document.createElement('aside');
-  root.id = 'sf-recovery-encounter';
-  root.hidden = true;
-  root.setAttribute('role', 'status');
-  root.setAttribute('aria-live', 'polite');
-  root.setAttribute('aria-atomic', 'true');
-  root.innerHTML = `
-    <div class="sf-recovery__head"><span data-k="flag">DERELICT RECOVERY</span><span data-k="status">—</span></div>
-    <div class="sf-recovery__headline" data-k="headline">—</div>
-    <div class="sf-recovery__meta" data-k="meta">—</div>
-    <div class="sf-recovery__detail" data-k="detail">—</div>
-    <div class="sf-recovery__meter" data-k="meter" hidden><i data-k="fill"></i></div>
-    <div class="sf-recovery__actions" data-k="actions" hidden></div>`;
-  document.getElementById('ui-root').appendChild(root);
-  const el = Object.fromEntries(['flag', 'status', 'headline', 'meta', 'detail', 'meter', 'fill', 'actions']
-    .map((key) => [key, root.querySelector(`[data-k=${key}]`)]));
-  let active = null;
-  let destroyed = false;
-  let lastAnnouncementKey = '';
-  let lastCountdownSecond = null;
-  const unsubscribers = [];
+// ── deck adapter ───────────────────────────────────────────────────────────────────────────────
 
-  function text(node, value) {
-    const next = String(value == null ? '' : value);
-    if (node && node.textContent !== next) node.textContent = next;
-  }
+const ID_RECOVERY = 'recovery';
+const ID_UNIQUE_WRECK = 'uniqueWreck';
+const ID_VESTA = 'vestaOreCache';
+const ID_PALLAS = 'pallasHiddenCache';
+const ID_CUSTODY = 'custody';
 
-  function canSurface() {
-    return state && state.mode === 'flight' && !(state.ui && state.ui.docked);
-  }
+function meterContent(doc, value) {
+  const meter = doc.createElement('div');
+  meter.className = 'sf-prompt-meter';
+  const fill = doc.createElement('i');
+  fill.style.setProperty('--v', String(Math.max(0, Math.min(1, Number(value) || 0))));
+  meter.appendChild(fill);
+  return meter;
+}
 
+export function createRecoveryEncounterPrompt(ctx = {}) {
+  const state = ctx.state || {};
+  const bus = ctx.bus;
+  const doc = ctx.document || (typeof document !== 'undefined' ? document : null);
+  if (!bus || typeof bus.on !== 'function') return inertPrompt();
+  const simNow = () => Number(state && state.simTime) || 0;
+
+  function canSurface() { return state && state.mode === 'flight' && !(state.ui && state.ui.docked); }
   function canSurfacePallas(readout) {
     if (!state || state.mode !== 'flight') return false;
     if (!(state.ui && state.ui.docked)) return true;
@@ -249,446 +245,280 @@ export function createRecoveryEncounterPrompt(ctx) {
       && state.ui.dockedStationId === readout.reportStationId;
   }
 
-  function hide() {
-    root.hidden = true;
-    root.className = '';
-    active = null;
-    lastAnnouncementKey = '';
-    lastCountdownSecond = null;
-  }
+  const offer = (spec) => {
+    const deck = getPromptDeck();
+    return !!(deck && deck.offerDecision(spec));
+  };
 
-  function syncMotionPreference() {
-    const next = state && state.settings && state.settings.video && state.settings.video.motionReduce
-      ? 'true' : 'false';
-    if (root.dataset.reducedMotion !== next) root.dataset.reducedMotion = next;
-  }
+  const emitReceipt = (text, kind = 'info') => {
+    return !!bus.emit('toast', { text, kind, ttl: RECEIPT_TTL_S });
+  };
 
-  function actionButton(choice, key, label, disabled = false, title = '') {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.dataset.choice = choice;
-    button.disabled = disabled;
-    button.title = title || label;
-    button.setAttribute('aria-label', `${label}. ${key === 'A' ? 'Controller A' : key === 'B' ? 'Controller B' : 'Controller X'}. ${title}`.trim());
-    const keyEl = document.createElement('b');
-    keyEl.textContent = key;
-    const labelEl = document.createElement('span');
-    labelEl.textContent = label;
-    button.replaceChildren(keyEl, labelEl);
-    return button;
-  }
+  let custodyPayload = null;
+  let custodyLastSecond = null;
 
-  function renderActions(readout) {
-    el.actions.replaceChildren();
-    if (readout.mode === 'unique-wreck' || readout.mode === 'vesta-ore-cache' || readout.mode === 'pallas-hidden-cache') {
-      for (const [index, choice] of (readout.choices || []).entries()) {
-        const title = choice.available === false
-          ? choice.unavailableReason || choice.consequence
-          : choice.consequence;
-        el.actions.appendChild(actionButton(choice.id, index === 0 ? 'A' : index === 1 ? 'B' : 'X', choice.label,
-          choice.available === false, title));
-      }
-      el.actions.hidden = !(readout.choices || []).length;
-      return;
+  function renderEncounter(readout) {
+    if (!readout || !readout.recoveryId) return false;
+    const deck = getPromptDeck();
+    if (!deck) return false;
+    const meta = `${readout.ownership || 'CLAIM UNKNOWN'} · ${readout.legalStatus ? String(readout.legalStatus).replace(/_/g, ' ').toUpperCase() : 'SCAN REQUIRED'}`;
+    const base = {
+      id: ID_RECOVERY,
+      sender: 'DERELICT RECOVERY',
+      headline: readout.conditionLabel || 'UNIDENTIFIED DERELICT',
+      detail: meta,
+    };
+    if (readout.phase === 'awaiting_scan') {
+      return offer({ ...base, kind: 'info', statusFlag: 'IDENTIFY', detail: 'Pulse scanner within 260 WU. Condition and ownership are still unknown.', choices: [] });
     }
     if (readout.phase === 'hazard') {
-      el.actions.appendChild(actionButton('vent', 'A', 'VENT CORE', false, 'Vent the reactor before its timer closes.'));
-      el.actions.hidden = false;
-      return;
+      return offer({
+        ...base,
+        kind: 'danger',
+        statusFlag: `CORE ${Math.max(0, Number(readout.hazardRemaining_s) || 0).toFixed(1)} S`,
+        detail: `Vent now, or tether and tow ${readout.towClear_wu || 260} WU clear.`,
+        choices: [{ id: 'vent', label: 'VENT CORE', title: 'Vent the reactor before its timer closes.' }],
+        onChoose: (choiceId, source) => bus.emit('recovery:vent', { recoveryId: readout.recoveryId, source }),
+      });
     }
-    if (readout.phase !== 'decision') {
-      el.actions.hidden = true;
-      return;
-    }
-    el.actions.appendChild(actionButton('rescue', 'A', 'RESCUE', !readout.hasSurvivor,
-      readout.hasSurvivor ? 'Recover the survivor and earn claimant goodwill.' : 'No life signs detected.'));
-    el.actions.appendChild(actionButton('blackbox', 'B', 'BLACK BOX', false, 'Recover the flight record and return registered evidence.'));
-    el.actions.appendChild(actionButton('strip', 'X', 'STRIP', false, 'Take components; claimed or restricted wrecks carry reputation consequences.'));
-    el.actions.hidden = false;
-  }
-
-  function render(readout) {
-    if (!canSurface() || !readout || !readout.recoveryId) return false;
-    active = { ...readout, mode: 'encounter', hideAt: Infinity };
-    lastAnnouncementKey = '';
-    syncMotionPreference();
-    el.status.removeAttribute('aria-hidden');
-    root.className = readout.phase === 'hazard' || readout.poweredSurprise === 'defense_drone'
-      ? 'sf-recovery--hazard' : '';
-    text(el.flag, 'DERELICT RECOVERY');
-    text(el.headline, readout.conditionLabel || 'UNIDENTIFIED DERELICT');
-    const ownership = readout.ownership || 'CLAIM UNKNOWN';
-    const legal = readout.legalStatus ? String(readout.legalStatus).replace(/_/g, ' ').toUpperCase() : 'SCAN REQUIRED';
-    text(el.meta, `${ownership} · ${legal}`);
-    el.meter.hidden = true;
-
-    if (readout.phase === 'awaiting_scan') {
-      text(el.status, 'IDENTIFY');
-      text(el.detail, 'Pulse scanner within 260 WU. Condition and ownership are still unknown.');
-    } else if (readout.phase === 'hazard') {
-      text(el.status, `CORE ${Math.max(0, Number(readout.hazardRemaining_s) || 0).toFixed(1)} S`);
-      text(el.detail, `Vent now, or tether and tow ${readout.towClear_wu || 260} WU clear.`);
-    } else if (readout.phase === 'stabilizing') {
+    if (readout.phase === 'stabilizing') {
       const pct = Math.round((Number(readout.stabilization) || 0) * 100);
-      text(el.status, `STABILIZE ${pct}%`);
-      text(el.detail, recoveryStabilizationText(readout));
-      el.meter.hidden = false;
-      el.fill.style.transform = `scaleX(${Math.max(0, Math.min(1, Number(readout.stabilization) || 0))})`;
-    } else if (readout.phase === 'decision') {
-      text(el.status, 'STABLE · CHOOSE');
-      text(el.detail, readout.retryReason === 'cargo_full'
+      return offer({
+        ...base,
+        kind: 'warn',
+        statusFlag: `STABILIZE ${pct}%`,
+        detail: recoveryStabilizationText(readout),
+        content: doc ? meterContent(doc, readout.stabilization) : null,
+        choices: [],
+      });
+    }
+    if (readout.phase !== 'decision') return false;
+    return offer({
+      ...base,
+      kind: 'info',
+      statusFlag: 'STABLE · CHOOSE',
+      detail: readout.retryReason === 'cargo_full'
         ? 'Hold full. Make cargo space, then choose again.'
         : readout.retryReason === 'no_life_signs'
           ? 'No life signs. Recover the box or strip components.'
-          : 'Method sets cargo, payout, and reputation.');
-    }
-    renderActions(readout);
-    root.setAttribute('aria-label', `Derelict recovery. ${el.status.textContent}. ${el.headline.textContent}. ${el.meta.textContent}. ${el.detail.textContent}`);
-    root.hidden = false;
-    return true;
+          : 'Method sets cargo, payout, and reputation.',
+      choices: [
+        { id: 'rescue', label: 'RESCUE', disabled: !readout.hasSurvivor, reason: readout.hasSurvivor ? 'Recover the survivor and earn claimant goodwill.' : 'No life signs detected.' },
+        { id: 'blackbox', label: 'BLACK BOX', cancel: true, title: 'Recover the flight record and return registered evidence.' },
+        { id: 'strip', label: 'STRIP', danger: true, title: 'Take components; claimed or restricted wrecks carry reputation consequences.' },
+      ],
+      onChoose: (choiceId, source) => bus.emit('recovery:choose', { recoveryId: readout.recoveryId, choice: choiceId, source }),
+    });
   }
 
   function renderUniqueWreck(readout) {
-    if (!canSurface() || !readout || !readout.wreckId || !Array.isArray(readout.choices)) return false;
-    active = { ...readout, mode: 'unique-wreck', hideAt: Infinity };
-    lastAnnouncementKey = '';
-    syncMotionPreference();
-    el.status.removeAttribute('aria-hidden');
-    root.className = 'sf-recovery--unique';
-    text(el.flag, 'NAMED WRECK CLAIM');
-    text(el.status, 'RECOVERED · CHOOSE');
-    text(el.headline, readout.headline || 'UNIQUE RECOVERY');
-    text(el.meta, 'ONE SETTLEMENT · SAVES IMMEDIATELY · NO DUPLICATE CLAIM');
-    text(el.detail, readout.prompt || 'Choose who receives the recovered systems.');
-    el.meter.hidden = true;
-    renderActions(active);
-    root.setAttribute('aria-label', `Named wreck claim. ${el.headline.textContent}. ${el.detail.textContent}`);
-    root.hidden = false;
-    return true;
+    const deck = getPromptDeck();
+    if (!deck || !readout || !readout.wreckId || !Array.isArray(readout.choices)) return false;
+    return offer({
+      id: ID_UNIQUE_WRECK,
+      kind: 'info',
+      sender: 'NAMED WRECK CLAIM',
+      statusFlag: 'RECOVERED · CHOOSE',
+      headline: readout.headline || 'UNIQUE RECOVERY',
+      detail: readout.prompt || 'Choose who receives the recovered systems. One settlement · saves immediately · no duplicate claim.',
+      choices: readout.choices.map((choice) => ({
+        id: choice.id,
+        label: choice.label,
+        disabled: choice.available === false,
+        reason: choice.available === false ? (choice.unavailableReason || choice.consequence) : choice.consequence,
+      })),
+      onChoose: (choiceId, source) => bus.emit('uniqueWreck:choose', { wreckId: readout.wreckId, choiceId, source }),
+    });
   }
 
   function renderVestaOreCache(readout) {
     const view = vestaOreCachePromptView(readout);
-    if (!canSurface() || !view) return false;
-    active = { ...view, mode: 'vesta-ore-cache', hideAt: Infinity };
-    lastAnnouncementKey = '';
-    syncMotionPreference();
-    el.status.removeAttribute('aria-hidden');
-    root.className = 'sf-recovery--unique';
-    text(el.flag, 'VESTA ORE CACHE');
-    text(el.status, 'SEAL INTACT · CHOOSE');
-    text(el.headline, view.headline);
-    text(el.meta, 'PRESERVE · REPORT · TAKE PHYSICAL LOT');
-    text(el.detail, view.prompt);
-    el.meter.hidden = true;
-    renderActions(active);
-    root.setAttribute('aria-label', view.ariaLabel);
-    root.hidden = false;
-    return true;
+    const deck = getPromptDeck();
+    if (!deck || !view || !canSurface()) return false;
+    return offer({
+      id: ID_VESTA,
+      kind: 'info',
+      sender: 'VESTA ORE CACHE',
+      statusFlag: 'SEAL INTACT · CHOOSE',
+      headline: view.headline,
+      detail: view.prompt,
+      choices: view.choices.map((choice) => ({
+        id: choice.id,
+        label: choice.label,
+        title: choice.consequence,
+      })),
+      onChoose: (choiceId, source) => bus.emit('vestaOreCache:choose', { recordId: view.recordId, choiceId, source }),
+    });
   }
 
   function renderPallasHiddenCache(readout) {
     const view = pallasHiddenCachePromptView(readout);
-    if (!canSurfacePallas(view) || !view) return false;
-    active = { ...view, mode: 'pallas-hidden-cache', hideAt: Infinity };
-    lastAnnouncementKey = '';
-    syncMotionPreference();
-    el.status.removeAttribute('aria-hidden');
-    root.className = 'sf-recovery--unique';
-    text(el.flag, 'PALLAS HIDDEN CACHE');
-    text(el.status, view.reportAvailable ? 'DRIFT MARKET · FILE OR ACT' : 'CACHE FIXED · CHOOSE');
-    text(el.headline, view.headline);
-    text(el.meta, view.reportAvailable
-      ? 'REPORT AVAILABLE HERE · OTHER OPTIONS LEAVE PHYSICAL LOTS'
-      : 'RECOVER · REPORT AT DRIFT MARKET · CRIMINAL USE');
-    text(el.detail, view.prompt);
-    el.meter.hidden = true;
-    renderActions(active);
-    root.setAttribute('aria-label', view.ariaLabel);
-    root.hidden = false;
-    return true;
-  }
-
-  function showReceipt(receipt) {
-    if (!canSurface() || !receipt) return false;
-    active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
-    lastAnnouncementKey = '';
-    syncMotionPreference();
-    el.status.removeAttribute('aria-hidden');
-    root.className = receipt.failure ? 'sf-recovery--failed' : 'sf-recovery--receipt';
-    text(el.flag, receipt.failure ? 'RECOVERY CLOSED' : 'RECOVERY RECEIPT');
-    text(el.status, 'LOGGED');
-    text(el.headline, recoveryOutcomeText(receipt));
-    text(el.meta, `${receipt.ownership || 'OPEN SALVAGE'} · ${String(receipt.legalStatus || 'open').toUpperCase()}`);
-    text(el.detail, receiptDetail(receipt));
-    el.meter.hidden = true;
-    el.actions.hidden = true;
-    root.setAttribute('aria-label', `${recoveryOutcomeText(receipt)}. ${receiptDetail(receipt)} Outcome saved.`);
-    root.hidden = false;
-    return true;
-  }
-
-  function showUniqueReceipt(payload) {
-    const receipt = payload && payload.receipt;
-    if (!canSurface() || !receipt) return false;
-    active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
-    lastAnnouncementKey = '';
-    syncMotionPreference();
-    el.status.removeAttribute('aria-hidden');
-    root.className = Number(receipt.repDelta) < 0 ? 'sf-recovery--failed' : 'sf-recovery--receipt';
-    text(el.flag, 'NAMED RECOVERY RECEIPT');
-    text(el.status, 'SAVED');
-    text(el.headline, receipt.title || 'RECOVERY CLOSED');
-    text(el.meta, `${String(receipt.outcome || 'resolved').replace(/_/g, ' ').toUpperCase()} · EXACT-ONCE CLAIM`);
-    text(el.detail, receipt.detail || 'Outcome recorded. No duplicate settlement.');
-    el.meter.hidden = true;
-    el.actions.hidden = true;
-    root.setAttribute('aria-label', `${el.headline.textContent}. ${el.detail.textContent}. Outcome saved.`);
-    root.hidden = false;
-    return true;
-  }
-
-  function showVestaOreCacheReceipt(payload) {
-    const receipt = payload && payload.receipt;
-    if (!canSurface() || !receipt) return false;
-    active = { mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
-    lastAnnouncementKey = '';
-    syncMotionPreference();
-    el.status.removeAttribute('aria-hidden');
-    root.className = 'sf-recovery--receipt';
-    text(el.flag, 'VESTA CACHE RECEIPT');
-    text(el.status, 'SAVED');
-    text(el.headline, receipt.title || 'CACHE DISPOSITION RECORDED');
-    text(el.meta, `${String(receipt.choiceId || 'resolved').toUpperCase()} · EXACT-ONCE OUTCOME`);
-    text(el.detail, receipt.detail || 'Outcome recorded.');
-    el.meter.hidden = true;
-    el.actions.hidden = true;
-    root.setAttribute('aria-label', `${el.headline.textContent}. ${el.detail.textContent}. Outcome saved.`);
-    root.hidden = false;
-    return true;
-  }
-
-  function showPallasHiddenCacheReceipt(payload) {
-    const receipt = payload && payload.receipt;
-    const dockedReport = receipt && receipt.choiceId === 'report'
-      && state && state.mode === 'flight' && state.ui && state.ui.docked === true
-      && state.ui.dockedStationId === receipt.stationId;
-    if ((!canSurface() && !dockedReport) || !receipt) return false;
-    active = {
-      mode: 'receipt', hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S,
-      ...(dockedReport ? { dockedReportStationId: receipt.stationId } : {}),
-    };
-    lastAnnouncementKey = '';
-    syncMotionPreference();
-    el.status.removeAttribute('aria-hidden');
-    root.className = 'sf-recovery--receipt';
-    text(el.flag, 'PALLAS CACHE RECEIPT');
-    text(el.status, 'SAVED');
-    text(el.headline, receipt.title || 'CACHE DISPOSITION RECORDED');
-    text(el.meta, `${String(receipt.choiceId || 'resolved').replace(/_/g, ' ').toUpperCase()} · EXACT-ONCE OUTCOME`);
-    text(el.detail, receipt.detail || 'Outcome recorded.');
-    el.meter.hidden = true;
-    el.actions.hidden = true;
-    root.setAttribute('aria-label', `${el.headline.textContent}. ${el.detail.textContent}. Outcome saved.`);
-    root.hidden = false;
-    return true;
+    const deck = getPromptDeck();
+    if (!deck || !view || !canSurfacePallas(view)) return false;
+    return offer({
+      id: ID_PALLAS,
+      kind: 'info',
+      sender: 'PALLAS HIDDEN CACHE',
+      statusFlag: view.reportAvailable ? 'DRIFT MARKET · FILE OR ACT' : 'CACHE FIXED · CHOOSE',
+      headline: view.headline,
+      detail: view.prompt,
+      choices: view.choices.map((choice) => ({
+        id: choice.id,
+        label: choice.label,
+        disabled: choice.available === false,
+        reason: choice.available === false ? choice.unavailableReason : choice.consequence,
+      })),
+      onChoose: (choiceId, source) => bus.emit('pallasHiddenCache:choose', { recordId: view.recordId, choiceId, source }),
+    });
   }
 
   function renderCustody(payload) {
-    const view = recoveryCustodyView(payload, state, state && state.simTime || 0);
-    if (destroyed || !canSurface() || !view) return false;
-    active = {
-      mode: 'custody',
-      payload: { ...payload },
-      view,
-      hideAt: view.terminal ? Number(state.simTime || 0) + RECEIPT_TTL_S : Infinity,
-    };
-    syncMotionPreference();
-    root.className = view.terminal
-      ? (view.status === 'SUCCESS' ? 'sf-recovery--receipt sf-recovery--custody' : 'sf-recovery--failed sf-recovery--custody')
-      : 'sf-recovery--custody';
-    text(el.flag, view.flag);
-    text(el.status, view.status);
-    el.status.setAttribute('aria-hidden', 'true');
-    text(el.headline, view.headline);
-    text(el.meta, view.meta);
-    text(el.detail, view.detail);
-    el.meter.hidden = true;
-    el.actions.replaceChildren();
-    el.actions.hidden = true;
-    if (view.announcementKey !== lastAnnouncementKey) {
-      root.setAttribute('aria-label', view.ariaLabel);
-      lastAnnouncementKey = view.announcementKey;
-    }
-    lastCountdownSecond = Math.floor(Number(state.simTime || 0));
-    root.hidden = false;
-    return true;
-  }
-
-  function choose(choice, source) {
-    if (isUiInteractionFenced(state) || !active) return false;
-    if (active.mode === 'unique-wreck') {
-      if (!(active.choices || []).some((entry) => entry.id === choice)) return false;
-      bus.emit('uniqueWreck:choose', { wreckId: active.wreckId, choiceId: choice, source });
-      return true;
-    }
-    if (active.mode === 'vesta-ore-cache') {
-      if (!(active.choices || []).some((entry) => entry.id === choice)) return false;
-      bus.emit('vestaOreCache:choose', { recordId: active.recordId, choiceId: choice, source });
-      return true;
-    }
-    if (active.mode === 'pallas-hidden-cache') {
-      const selected = (active.choices || []).find((entry) => entry.id === choice);
-      if (!selected || selected.available === false) return false;
-      bus.emit('pallasHiddenCache:choose', { recordId: active.recordId, choiceId: choice, source });
-      return true;
-    }
-    if (active.mode !== 'encounter') return false;
-    if (choice === 'vent') bus.emit('recovery:vent', { recoveryId: active.recoveryId, source });
-    else bus.emit('recovery:choose', { recoveryId: active.recoveryId, choice, source });
-    return true;
-  }
-
-  function onClick(event) {
-    if (isUiInteractionFenced(state)) return;
-    const button = event.target && event.target.closest && event.target.closest('[data-choice]');
-    if (!button || button.disabled || !root.contains(button)) return;
-    choose(button.dataset.choice, 'click');
-  }
-
-  function tick() {
-    if (destroyed || !active || isUiInteractionFenced(state)) return;
-    if (active.mode === 'pallas-hidden-cache') {
-      if (!canSurfacePallas(active)) { hide(); return; }
-    } else if (active.mode === 'receipt' && active.dockedReportStationId) {
-      if (!(state && state.mode === 'flight' && state.ui && state.ui.docked === true
-        && state.ui.dockedStationId === active.dockedReportStationId)) { hide(); return; }
-    } else if (!canSurface()) { hide(); return; }
-    syncMotionPreference();
-    if (active.mode === 'receipt') {
-      if (Number(state.simTime || 0) >= active.hideAt) hide();
-      return;
-    }
-    if (active.mode === 'custody') {
-      if (active.hideAt <= Number(state.simTime || 0)) { hide(); return; }
-      if (!active.view.terminal) {
-        const simSecond = Math.floor(Number(state.simTime || 0));
-        if (simSecond !== lastCountdownSecond) {
-          lastCountdownSecond = simSecond;
-          const view = recoveryCustodyView(active.payload, state, state.simTime);
-          active.view = view;
-          text(el.status, view.status);
-        }
+    const view = recoveryCustodyView(payload, state, simNow());
+    const deck = getPromptDeck();
+    if (!view) return false;
+    if (view.terminal) {
+      if (deck) deck.resolveDecision(ID_CUSTODY);
+      if (canSurface() || view.phase === 'lost' || view.phase === 'escaped') {
+        emitReceipt(`${view.flag} — ${view.headline} — ${view.meta}`, view.status === 'SUCCESS' ? 'success' : 'danger');
       }
-      return;
+      return true;
     }
-    const actions = ctx.gamepad && ctx.gamepad.actions || {};
-    if (active.phase === 'hazard' && actions.accept && actions.accept.pressed) choose('vent', 'gamepad');
-    else if (active.mode === 'unique-wreck' || active.mode === 'vesta-ore-cache' || active.mode === 'pallas-hidden-cache') {
-      const choices = active.choices || [];
-      if (actions.accept && actions.accept.pressed && choices[0] && choices[0].available !== false) choose(choices[0].id, 'gamepad');
-      else if (actions.cancel && actions.cancel.pressed && choices[1] && choices[1].available !== false) choose(choices[1].id, 'gamepad');
-      else if (actions.cycleTarget && actions.cycleTarget.pressed && choices[2] && choices[2].available !== false) choose(choices[2].id, 'gamepad');
-    }
-    else if (active.phase === 'decision') {
-      if (actions.accept && actions.accept.pressed && active.hasSurvivor) choose('rescue', 'gamepad');
-      else if (actions.cancel && actions.cancel.pressed) choose('blackbox', 'gamepad');
-      else if (actions.cycleTarget && actions.cycleTarget.pressed) choose('strip', 'gamepad');
-    }
+    if (!deck || !canSurface()) return false;
+    custodyPayload = payload;
+    return deck.offerDecision({
+      id: ID_CUSTODY,
+      kind: 'warn',
+      sender: view.flag,
+      statusFlag: view.status,
+      headline: view.headline,
+      detail: [view.meta, view.detail].filter(Boolean).join(' — '),
+      choices: [],
+      // The countdown lives in the custody view; refresh the status each sim second.
+      onTick: () => {
+        const second = Math.floor(simNow());
+        if (second === custodyLastSecond) return;
+        custodyLastSecond = second;
+        const next = recoveryCustodyView(payload, state, simNow());
+        if (!next || next.terminal) return;
+        deck.updateDecision(ID_CUSTODY, { statusFlag: next.status, detail: [next.meta, next.detail].filter(Boolean).join(' — ') });
+      },
+    });
   }
 
-  function destroy() {
-    destroyed = true;
-    for (const unsubscribe of unsubscribers.splice(0)) {
-      try { if (typeof unsubscribe === 'function') unsubscribe(); } catch (_) {}
-    }
-    root.removeEventListener('click', onClick);
-    root.remove();
-  }
+  const showReceipt = (receipt) => {
+    const deck = getPromptDeck();
+    if (deck) deck.resolveDecision(ID_RECOVERY);
+    if (!receipt || !canSurface()) return false;
+    const danger = !!receipt.failure || Number(receipt.repDelta) < 0;
+    return emitReceipt(
+      `RECOVERY ${receipt.failure ? 'CLOSED' : 'RECEIPT'} — ${receipt.title || recoveryOutcomeText(receipt)} — ${receiptDetail(receipt)}`,
+      danger ? 'danger' : 'success',
+    );
+  };
 
-  function subscribe(event, handler) {
-    const unsubscribe = bus.on(event, handler);
-    if (typeof unsubscribe === 'function') unsubscribers.push(unsubscribe);
-    else if (bus && typeof bus.off === 'function') unsubscribers.push(() => bus.off(event, handler));
-  }
+  const showUniqueReceipt = (payload) => {
+    const receipt = payload && payload.receipt;
+    const deck = getPromptDeck();
+    if (deck) deck.resolveDecision(ID_UNIQUE_WRECK);
+    if (!receipt || !canSurface()) return false;
+    return emitReceipt(
+      `NAMED RECOVERY — ${receipt.title || 'RECOVERY CLOSED'} — ${receipt.detail || 'Outcome recorded. No duplicate settlement.'}`,
+      Number(receipt.repDelta) < 0 ? 'danger' : 'success',
+    );
+  };
 
-  root.addEventListener('click', onClick);
+  const showVestaOreCacheReceipt = (payload) => {
+    const receipt = payload && payload.receipt;
+    const deck = getPromptDeck();
+    if (deck) deck.resolveDecision(ID_VESTA);
+    if (!receipt || !canSurface()) return false;
+    return emitReceipt(
+      `VESTA CACHE — ${receipt.title || 'CACHE DISPOSITION RECORDED'} — ${receipt.detail || 'Outcome recorded.'}`,
+      'success',
+    );
+  };
+
+  const showPallasHiddenCacheReceipt = (payload) => {
+    const receipt = payload && payload.receipt;
+    const deck = getPromptDeck();
+    if (deck) deck.resolveDecision(ID_PALLAS);
+    if (!receipt) return false;
+    const dockedReport = receipt.choiceId === 'report'
+      && state && state.mode === 'flight' && state.ui && state.ui.docked === true
+      && state.ui.dockedStationId === receipt.stationId;
+    // The docked report receipt is exactly the attention plan's receipt-lane case: a fact, not a
+    // card — toasts render on menus, so this lands even while docked at the drift market.
+    if (!canSurface() && !dockedReport) return false;
+    return emitReceipt(
+      `PALLAS CACHE — ${receipt.title || 'CACHE DISPOSITION RECORDED'} — ${receipt.detail || 'Outcome recorded.'}`,
+      'success',
+    );
+  };
+
+  const onEncounterEvent = (readout) => { renderEncounter(readout); return false; };
+
   for (const event of ['recovery:started', 'recovery:identified', 'recovery:defenseAwake', 'recovery:hazardCleared', 'recovery:readout', 'recovery:decisionReady', 'recovery:retryAvailable']) {
-    subscribe(event, render);
+    bus.on(event, onEncounterEvent);
   }
-  subscribe('recovery:completed', showReceipt);
-  subscribe('uniqueWreck:decisionReady', renderUniqueWreck);
-  subscribe('uniqueWreck:resolved', showUniqueReceipt);
-  subscribe('vestaOreCache:decisionReady', renderVestaOreCache);
-  subscribe('vestaOreCache:resolved', showVestaOreCacheReceipt);
-  subscribe('pallasHiddenCache:decisionReady', renderPallasHiddenCache);
-  subscribe('pallasHiddenCache:resolved', showPallasHiddenCacheReceipt);
-  subscribe('pirateParley:demand', hide);
-  subscribe('pirateParley:resolved', () => bus.emit('uniqueWreck:decisionRequest', { source: 'pirate-parley-cleared' }));
-  subscribe('law:distressRaised', hide);
-  subscribe('law:incidentResolved', () => bus.emit('uniqueWreck:decisionRequest', { source: 'law-alert-cleared' }));
-  subscribe('game:new', hide);
-  subscribe('game:load', hide);
+  bus.on('recovery:completed', showReceipt);
+  bus.on('uniqueWreck:decisionReady', renderUniqueWreck);
+  bus.on('uniqueWreck:resolved', showUniqueReceipt);
+  bus.on('vestaOreCache:decisionReady', renderVestaOreCache);
+  bus.on('vestaOreCache:resolved', showVestaOreCacheReceipt);
+  bus.on('pallasHiddenCache:decisionReady', renderPallasHiddenCache);
+  bus.on('pallasHiddenCache:resolved', showPallasHiddenCacheReceipt);
+  bus.on('encounter:receipt', (payload) => { if (isCustodyReceipt(payload)) renderCustody(payload); });
   for (const event of ['surrender:option', 'surrender:updated', 'surrender:tethered', 'surrender:secured', 'surrender:recoveryLost', 'surrender:escaped']) {
-    subscribe(event, renderCustody);
+    bus.on(event, renderCustody);
   }
-  subscribe('encounter:receipt', (payload) => { if (isCustodyReceipt(payload)) renderCustody(payload); });
+  // The old cross-card hide/re-request chains (pirateParley:demand → hide, parley resolved →
+  // re-request uniqueWreck) are retired: the deck stacks coexisting surfaces, so an interruption
+  // no longer erases the wreck decision and nothing needs re-requesting.
+
+  const subscribers = [
+    ...['recovery:started', 'recovery:identified', 'recovery:defenseAwake', 'recovery:hazardCleared', 'recovery:readout', 'recovery:decisionReady', 'recovery:retryAvailable'].map((event) => [event, onEncounterEvent]),
+    ['recovery:completed', showReceipt],
+    ['uniqueWreck:decisionReady', renderUniqueWreck],
+    ['uniqueWreck:resolved', showUniqueReceipt],
+    ['vestaOreCache:decisionReady', renderVestaOreCache],
+    ['vestaOreCache:resolved', showVestaOreCacheReceipt],
+    ['pallasHiddenCache:decisionReady', renderPallasHiddenCache],
+    ['pallasHiddenCache:resolved', showPallasHiddenCacheReceipt],
+    ...['surrender:option', 'surrender:updated', 'surrender:tethered', 'surrender:secured', 'surrender:recoveryLost', 'surrender:escaped'].map((event) => [event, renderCustody]),
+  ];
+
   return {
-    el: root, tick, hide, destroy, render, renderCustody, renderUniqueWreck, renderVestaOreCache,
-    renderPallasHiddenCache, showReceipt, showUniqueReceipt, showVestaOreCacheReceipt,
-    showPallasHiddenCacheReceipt, choose,
+    el: null,
+    tick: () => {},
+    hide: () => {
+      const deck = getPromptDeck();
+      if (!deck) return false;
+      for (const id of [ID_RECOVERY, ID_UNIQUE_WRECK, ID_VESTA, ID_PALLAS, ID_CUSTODY]) deck.resolveDecision(id);
+      return true;
+    },
+    destroy: () => {
+      for (const [event, handler] of subscribers) {
+        try { bus.off && bus.off(event, handler); } catch (_) {}
+      }
+    },
+    render: renderEncounter,
+    renderUniqueWreck,
+    renderVestaOreCache,
+    renderPallasHiddenCache,
+    renderCustody,
+    showReceipt, showUniqueReceipt, showVestaOreCacheReceipt, showPallasHiddenCacheReceipt,
+    choose: () => false,
   };
 }
 
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const style = document.createElement('style');
-  style.id = STYLE_ID;
-  style.textContent = `
-  #sf-recovery-encounter { position:absolute; top:112px; right:16px; width:min(410px,calc(100vw - 32px)); z-index:1068;
-    box-sizing:border-box; padding:9px 11px 10px; contain:layout paint style;
-    /* Flight-instrument plate: near-opaque hairline plate, severity on the TOP edge + head
-       stamp (contactHail idiom) — replaces the glass box with the left accent bar. */
-    background:linear-gradient(180deg, rgba(15,20,27,.94), rgba(8,11,16,.96));
-    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
-    border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); border-top:2px solid var(--hud-cyan, #4f8fdd);
-    border-radius:4px; box-shadow:0 16px 36px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06); color:var(--hud-paper, #e9eff4);
-    font-family:var(--hud-data, var(--mono, Consolas, monospace)); transition:opacity .16s ease-out,transform .16s ease-out; }
-  #sf-recovery-encounter[hidden] { display:none !important; }
-  .sf-recovery__head { display:flex; justify-content:space-between; gap:12px; color:var(--hud-cyan, #4f8fdd); font-size:12px; letter-spacing:.06em; }
-  .sf-recovery__headline { margin-top:5px; font-size:14px; line-height:1.25; letter-spacing:.045em; }
-  .sf-recovery__meta { margin-top:3px; color:var(--hud-copy, #a9b8c4); font-size:12px; line-height:1.35; letter-spacing:.06em; }
-  .sf-recovery__detail { margin-top:4px; color:var(--hud-copy, #a9b8c4); font-size:12px; line-height:1.4; }
-  .sf-recovery__meter { height:3px; margin-top:8px; overflow:hidden; background:rgba(145,171,201,.16); }
-  .sf-recovery__meter i { display:block; width:100%; height:100%; transform:scaleX(0); transform-origin:left center; background:var(--hud-cyan, #4f8fdd); transition:transform .12s ease-out; }
-  .sf-recovery__actions { display:flex; justify-content:flex-end; gap:6px; margin-top:8px; pointer-events:auto; }
-  .sf-recovery__actions[hidden] { display:none !important; }
-  .sf-recovery__actions button { display:flex; align-items:center; gap:5px; min-height:32px; padding:5px 8px;
-    border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); background:rgba(255,255,255,.04);
-    color:var(--hud-paper, #e9eff4); font:700 12px/1.2 var(--hud-data, var(--mono, Consolas, monospace)); letter-spacing:.05em; cursor:pointer; border-radius:3px;
-    transition:border-color .15s ease, background .15s ease, color .15s ease, translate .1s ease; }
-  .sf-recovery__actions button b { display:inline-grid; place-items:center; min-width:16px; min-height:16px; border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); border-radius:3px; font-size:12px; color:var(--hud-cyan, #4f8fdd); }
-  .sf-recovery__actions button:hover,.sf-recovery__actions button:focus-visible { background:rgba(255,255,255,.08); outline:2px solid var(--hud-cyan, #4f8fdd); outline-offset:2px; }
-  .sf-recovery__actions button:active { translate:0 1px; }
-  .sf-recovery__actions button:disabled { opacity:.38; cursor:not-allowed; }
-  #sf-recovery-encounter.sf-recovery--hazard { border-top-color:var(--hud-amber, #dfa04e); }
-  #sf-recovery-encounter.sf-recovery--hazard .sf-recovery__head { color:var(--hud-amber, #dfa04e); }
-  #sf-recovery-encounter.sf-recovery--receipt { border-top-color:var(--good, #62e08a); }
-  #sf-recovery-encounter.sf-recovery--receipt .sf-recovery__head { color:var(--good, #62e08a); }
-  #sf-recovery-encounter.sf-recovery--unique { border-top-color:var(--hud-amber, #dfa04e); }
-  #sf-recovery-encounter.sf-recovery--unique .sf-recovery__head { color:var(--hud-amber, #dfa04e); }
-  #sf-recovery-encounter.sf-recovery--failed { border-top-color:var(--hud-danger, #e0665f); }
-  #sf-recovery-encounter.sf-recovery--failed .sf-recovery__head { color:var(--hud-danger, #e0665f); }
-  #sf-recovery-encounter.sf-recovery--custody { pointer-events:none; }
-  @media (max-width:900px),(max-height:620px) {
-    #sf-recovery-encounter { top:78px; left:12px; right:12px; width:auto; padding:8px 10px; }
-    .sf-recovery__headline { font-size:12px; } .sf-recovery__detail { font-size:12px; }
-    .sf-recovery__actions { flex-wrap:wrap; }
-  }
-  #sf-recovery-encounter[data-reduced-motion=true],
-  #sf-recovery-encounter[data-reduced-motion=true] .sf-recovery__meter i { transition:none; }
-  @media (prefers-reduced-motion:reduce) { #sf-recovery-encounter,.sf-recovery__meter i { transition:none; } }`;
-  document.head.appendChild(style);
+function inertPrompt() {
+  return {
+    el: null, tick: () => {}, hide: () => false, destroy: () => {}, choose: () => false,
+    render: () => false, renderUniqueWreck: () => false, renderVestaOreCache: () => false,
+    renderPallasHiddenCache: () => false, renderCustody: () => false,
+    showReceipt: () => false, showUniqueReceipt: () => false,
+    showVestaOreCacheReceipt: () => false, showPallasHiddenCacheReceipt: () => false,
+  };
 }
 
 export default createRecoveryEncounterPrompt;

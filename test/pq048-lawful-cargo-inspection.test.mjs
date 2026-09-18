@@ -10,6 +10,7 @@ import { heat } from '../src/systems/heat.js';
 import { lawSecurity } from '../src/systems/lawSecurity.js';
 import { customsPrompt } from '../src/ui/customsPrompt.js';
 import { createLawfulInspectionPrompt } from '../src/ui/lawfulInspectionPrompt.js';
+import { setPromptDeck } from '../src/ui/promptDeck.js';
 import { lawfulInspectionStatusText } from '../src/ui/targetPanel.js';
 
 const HELIOS = 'sector_helios_prime';
@@ -313,101 +314,64 @@ test('Continue rebinds the active case by worldRecordId after a numeric patrol r
   assert.equal(fixture.state.player.lawfulInspection.last.outcome, 'cleared');
 });
 
-test('the accessible inspection prompt owns only Digit1 and never offers a fake flee action', () => {
-  const document = new FakeDocument();
+test('the inspection adapter offers exactly one COMPLY decision and resolves into a receipt line', () => {
   const bus = createBus();
-  const state = { mode: 'flight', simTime: 10, ui: {} };
   const chosen = [];
+  const toasts = [];
   bus.on('lawfulInspection:choose', (payload) => chosen.push(payload));
-  const prompt = createLawfulInspectionPrompt({ state, bus, document, mount: document.uiRoot });
+  bus.on('toast', (payload) => toasts.push(payload));
+  const deck = fakeDeck();
+  setPromptDeck(deck);
+  const prompt = createLawfulInspectionPrompt({ state: { mode: 'flight', simTime: 10, ui: {} }, bus });
+
   const offerPayload = {
     id: 'lawful-inspection:world:patrol:1', patrolWorldRecordId: 'world:patrol',
     deadlineAt: 20, phase: 'offered', stationId: 'station_helios', factionId: SCN,
   };
   bus.emit('lawfulInspection:offered', offerPayload);
-  assert.equal(prompt.el.hidden, false);
-  assert.equal(prompt.el.getAttribute('role'), 'dialog');
-  assert.equal(prompt.button.tagName, 'BUTTON');
-  assert.match(prompt.button.textContent, /COMPLY/i);
-  assert.doesNotMatch(prompt.el.children[3].textContent, /flee/i);
-  const event = keyEvent('1', 'Digit1');
-  document.dispatchEvent(event);
-  assert.equal(event.prevented, true);
-  assert.equal(event.stopped, true);
+  assert.equal(deck.offers.length, 1);
+  const spec = deck.offers[0].spec;
+  assert.equal(spec.id, 'lawfulInspection');
+  assert.equal(spec.kind, 'warn');
+  assert.match(spec.headline, /INSPECTION/);
+  assert.equal(spec.choices.length, 1, 'the offer is a single COMPLY verb');
+  assert.equal(spec.choices[0].id, 'comply');
+  assert.doesNotMatch(spec.choices.map((c) => c.label).join(' '), /flee/i,
+    'no fake flee action — breaking range is a flight act, not a button');
+
+  spec.onChoose('comply', 'keyboard');
   assert.deepEqual(chosen, [{ caseId: offerPayload.id, choice: 'comply', source: 'keyboard' }]);
+  const transmit = deck.updates.filter((u) => u.id === 'lawfulInspection');
+  assert.ok(transmit.length && /TRANSMITTING/.test(transmit[transmit.length - 1].patch.statusFlag || ''),
+    'a submitted compliance switches the decision to the transmitting status');
+
+  bus.emit('lawfulInspection:scanning', offerPayload);
+  const scan = deck.updates[deck.updates.length - 1];
+  assert.match(scan.patch.statusFlag, /SCAN AUTHORIZED/);
+  assert.deepEqual(scan.patch.choices, [], 'no escape action after the player has submitted');
+
   bus.emit('lawfulInspection:resolved', { ...offerPayload, outcome: 'cleared', resolvedAt: 10 });
-  assert.match(prompt.el.children[2].textContent, /HOLD CLEAR/i);
-  state.simTime = 14;
-  prompt.tick();
-  assert.equal(prompt.el.hidden, true);
+  assert.ok(deck.resolved.includes('lawfulInspection'), 'the decision frame comes down on resolve');
+  assert.ok(toasts.some((t) => /HOLD CLEAR/.test(t.text)), 'the result is a receipt line, not a card');
   prompt.destroy();
 });
 
-class FakeDocument {
-  constructor() {
-    this.byId = new Map();
-    this.head = new FakeElement('head', this);
-    this.body = new FakeElement('body', this);
-    this.uiRoot = new FakeElement('div', this);
-    this.uiRoot.id = 'ui-root';
-    this.body.appendChild(this.uiRoot);
-    this.listeners = new Map();
-  }
-  createElement(tagName) { return new FakeElement(tagName, this); }
-  getElementById(id) { return this.byId.get(id) || null; }
-  addEventListener(name, fn) {
-    const listeners = this.listeners.get(name) || new Set();
-    listeners.add(fn);
-    this.listeners.set(name, listeners);
-  }
-  removeEventListener(name, fn) { this.listeners.get(name)?.delete(fn); }
-  dispatchEvent(event) { for (const listener of this.listeners.get(event.type) || []) listener(event); }
-}
-
-class FakeElement {
-  constructor(tagName, ownerDocument) {
-    this.tagName = String(tagName).toUpperCase();
-    this.ownerDocument = ownerDocument;
-    this.children = [];
-    this.attributes = new Map();
-    this.dataset = {};
-    this.hidden = false;
-    this.disabled = false;
-    this.textContent = '';
-    this.className = '';
-    this.listeners = new Map();
-    this.parentNode = null;
-    this.style = {};
-    this._id = '';
-  }
-  set id(value) {
-    if (this._id) this.ownerDocument.byId.delete(this._id);
-    this._id = String(value || '');
-    if (this._id) this.ownerDocument.byId.set(this._id, this);
-  }
-  get id() { return this._id; }
-  setAttribute(name, value) { this.attributes.set(name, String(value)); }
-  getAttribute(name) { return this.attributes.get(name) ?? null; }
-  appendChild(child) { child.parentNode = this; this.children.push(child); return child; }
-  replaceChildren(...children) {
-    for (const child of this.children) child.parentNode = null;
-    this.children = [];
-    for (const child of children) this.appendChild(child);
-  }
-  addEventListener(name, fn) { this.listeners.set(name, fn); }
-  removeEventListener(name, fn) { if (this.listeners.get(name) === fn) this.listeners.delete(name); }
-  remove() {
-    if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((child) => child !== this);
-    this.parentNode = null;
-    if (this.id) this.ownerDocument.byId.delete(this.id);
-  }
-}
-
-function keyEvent(key, code) {
-  return {
-    type: 'keydown', key, code, ctrlKey: false, altKey: false, metaKey: false,
-    prevented: false, stopped: false,
-    preventDefault() { this.prevented = true; },
-    stopImmediatePropagation() { this.stopped = true; },
+function fakeDeck() {
+  const deck = { offers: [], updates: [], resolved: [] };
+  const byId = new Map();
+  deck.offerDecision = (spec) => { deck.offers.push({ spec }); byId.set(spec.id, spec); return true; };
+  deck.updateDecision = (id, patch) => {
+    deck.updates.push({ id, patch });
+    const spec = byId.get(id);
+    if (spec) Object.assign(spec, patch);
+    return !!spec;
   };
+  deck.resolveDecision = (id) => {
+    if (!byId.has(id)) return false;
+    byId.delete(id);
+    deck.resolved.push(id);
+    return true;
+  };
+  deck.hasDecision = (id) => byId.has(id);
+  return deck;
 }

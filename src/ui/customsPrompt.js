@@ -29,7 +29,9 @@
 
 import { COMMODITIES } from '../data/commodities.js';
 import { FACTION_META } from '../data/factions.js';
+import { getPromptDeck } from './promptDeck.js';
 
+const DECK_ID = 'customs';
 const CMDTY_BY_ID = new Map(COMMODITIES.map((c) => [c.id, c]));
 const FACTION_BY_ID = new Map(FACTION_META.map((f) => [f.id, f]));
 
@@ -107,7 +109,12 @@ export function customsDecision(state, scanPayload, economySys) {
   };
 }
 
-// ── registry SYSTEMS-only entry (no update; event-driven; one voice hail; guarded DOM) ─────────
+// ── registry SYSTEMS-only entry (no update; event-driven; one voice hail; deck-rendered) ──────
+//
+// The decision renders on the flight decision deck (src/ui/promptDeck.js) with REAL verbs. The
+// pre-deck panel printed "[submit] · [bribe] · [run]" as inert text with pointer-events:none —
+// a phantom decision. Each deck choice routes through an EXISTING intent; this panel adds the
+// decision, never a second penalty path (the packet's named failure mode).
 
 export const customsPrompt = {
   name: 'customsPrompt',
@@ -117,8 +124,6 @@ export const customsPrompt = {
     this._bus = ctx && ctx.bus;
     this._state = ctx && ctx.state;
     this._last = { t: -Infinity };
-    this._panelEl = null;
-    this._hideTimer = null;
     this._onScanned = (p) => this._handleScan(p);
     this._onResolved = (p) => {
       // PQ-048.06 owns the correlated decision surface. Do not let a real lawful-inspection
@@ -163,7 +168,7 @@ export const customsPrompt = {
       if (!said && this._bus && this._bus.emit) this._bus.emit('toast', { text: hail, kind: 'info', ttl: 3 });
     }
 
-    this._render(decision);
+    this._render(decision, now);
   },
 
   // The 3 shipped actions. Each routes through an EXISTING intent — this panel adds the decision,
@@ -191,60 +196,33 @@ export const customsPrompt = {
   _dismiss() {
     const state = this._state;
     if (state && state.ui) delete state.ui.customsPrompt;
-    this._hide();
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (deck) deck.resolveDecision(DECK_ID);
   },
 
-  // ── DOM decision panel (cosmetic; fully guarded; never blocks flight input) ──────────────────
-  _render(decision) {
-    if (typeof document === 'undefined') return;
-    const host = document.getElementById('hud') || document.body;
-    if (!host) return;
-    this._hide();
-
-    const el = document.createElement('div');
-    el.id = 'sf-customs-prompt';
-    el.setAttribute('role', 'alert');
-    el.setAttribute('aria-live', 'assertive');
-    el.style.cssText = [
-      'position:absolute', 'top:24%', 'left:50%', 'transform:translateX(-50%)',
-      'padding:10px 14px', 'background:rgba(10,18,30,0.92)', 'border:1px solid rgba(216,170,51,0.55)',
-      'border-radius:5px', 'color:#ffe9b0', 'font:12px/1.5 system-ui,sans-serif',
-      'text-align:center', 'pointer-events:none', 'z-index:42', 'max-width:54ch',
-    ].join(';');
-
-    const head = document.createElement('div');
-    head.style.cssText = 'font-weight:600;letter-spacing:0.06em;margin-bottom:4px';
-    head.textContent = `⟢ ${decision.factionShort} — CUSTOMS SCAN`;
-    el.appendChild(head);
-
-    if (decision.hasContraband && decision.risk.stacks.length) {
-      const body = document.createElement('div');
-      body.style.cssText = 'opacity:0.92;margin-bottom:6px';
-      const top = decision.risk.stacks.slice(0, 3).map((s) => `${s.name} ×${s.qty}`).join(', ');
-      body.textContent = `Hold flagged. Projected fine ≈ ${decision.estFine || decision.risk.estFine} cr · bribe ≈ ${decision.bribeCost} cr. Flagged: ${top}.`;
-      el.appendChild(body);
-    } else {
-      const body = document.createElement('div');
-      body.style.cssText = 'opacity:0.8;margin-bottom:6px';
-      body.textContent = 'Hold reads clean. Stand by for clearance — or break range to skip the scan.';
-      el.appendChild(body);
-    }
-
-    const opts = document.createElement('div');
-    opts.style.cssText = 'opacity:0.7;letter-spacing:0.04em';
-    opts.textContent = '[submit] · [bribe] · [run]';
-    el.appendChild(opts);
-
-    host.appendChild(el);
-    this._panelEl = el;
-    if (typeof window !== 'undefined') this._hideTimer = window.setTimeout(() => this._dismiss(), PANEL_TTL_MS);
-  },
-
-  _hide() {
-    if (this._hideTimer != null && typeof window !== 'undefined') window.clearTimeout(this._hideTimer);
-    this._hideTimer = null;
-    if (this._panelEl && this._panelEl.parentNode) this._panelEl.parentNode.removeChild(this._panelEl);
-    this._panelEl = null;
+  // ── deck decision (the old inline-styled centered panel with inert text verbs is retired) ────
+  _render(decision, now) {
+    const deck = typeof getPromptDeck === 'function' ? getPromptDeck() : null;
+    if (!deck || !decision) return;
+    const flagged = decision.hasContraband && decision.risk.stacks.length;
+    deck.offerDecision({
+      id: DECK_ID,
+      kind: 'warn',
+      sender: `${decision.factionShort.toUpperCase()} PATROL`,
+      statusFlag: 'CUSTOMS SCAN',
+      headline: flagged ? 'HOLD FLAGGED' : 'HOLD READS CLEAN',
+      detail: flagged
+        ? `Projected fine ≈ ${decision.estFine || decision.risk.estFine} cr · bribe ≈ ${decision.bribeCost} cr. Flagged: ${decision.risk.stacks.slice(0, 3).map((s) => `${s.name} ×${s.qty}`).join(', ')}.`
+        : 'Stand by for clearance — or break range to skip the scan.',
+      deadlineAt: Number(now || (this._state && this._state.simTime) || 0) + (PANEL_TTL_MS / 1000),
+      choices: [
+        { id: 'submit', label: 'SUBMIT TO SCAN', title: 'Let the shipped patrolScan encounter resolve.' },
+        { id: 'bribe', label: `BRIBE — ${decision.bribeCost} CR`, title: 'Route through economy.payBribe.' },
+        { id: 'run', label: 'BREAK RANGE', danger: true, title: 'Avoid the scan; the patrol records the attempt.' },
+      ],
+      onChoose: (choiceId) => this.choose(choiceId),
+      onExpire: () => this._dismiss(),
+    });
   },
 
   destroy() {
@@ -257,7 +235,7 @@ export const customsPrompt = {
     }
     this._onScanned = null;
     this._onResolved = null;
-    this._hide();
+    this._dismiss();
   },
 };
 

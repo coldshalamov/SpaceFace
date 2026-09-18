@@ -10,6 +10,7 @@
 // The UI never mutates sim state; docking sets ui.docked + emits dock:docked + pushes 'station'.
 
 import { isConfirmOpen, confirmGamepadAccept, confirmGamepadCancel } from './confirm.js';
+import { getPromptDeck } from './promptDeck.js';
 import {
   BINDINGS,
   setPromptDevice,
@@ -898,6 +899,24 @@ export function createUiInput(ctx, screenManager) {
       if (rawPad.buttons[13] && rawPad.buttons[13].pressed) navNow.down = true;
       if (rawPad.buttons[14] && rawPad.buttons[14].pressed) navNow.left = true;
       if (rawPad.buttons[15] && rawPad.buttons[15].pressed) navNow.right = true;
+    }
+
+    // Flight decision deck (promptDeck) owns the pad while a decision is live — ONE gamepad
+    // grammar consumed here, replacing the per-card polls that double-fired one press across two
+    // cards and hijacked cycleTarget as a card verb. A/B choose; d-pad/stick up-down moves the
+    // highlight. Nothing below (dock, map, cycleTarget) may fire through a live decision.
+    // A modal screen above the deck keeps input (the decision is hidden under it anyway).
+    const promptDeck = getPromptDeck();
+    if (!modalOpen && promptDeck && promptDeck.size > 0 && promptDeck.gamepadCapture(gp.actions)) {
+      let deckNav = false;
+      for (const d of ['up', 'down', 'left', 'right']) {
+        if ((d === 'up' || d === 'down') && navNow[d] && !_nav[d]) {
+          deckNav = promptDeck.gamepadNav(d) || deckNav;
+        }
+        _nav[d] = navNow[d];
+      }
+      if (deckNav) bus.emit('audio:cue', { id: 'hover' });
+      return;
     }
 
     if (modalOpen) {

@@ -1,307 +1,185 @@
-// Compact scanner investigation card. Simulation owns detection, classification, tracking and
-// durable receipts; this presenter only renders public signal events and emits the matching
-// `signal:track` or manual `signal:investigate` intent.
-
-import { isUiInteractionFenced } from './input.js';
+// src/ui/signalInvestigationPrompt.js — adapter from the scanner's signal events to the flight
+// decision deck (src/ui/promptDeck.js) and the reserved receipt lane.
+//
+// scanResults → an info decision with the track/investigate verb (self-expiring via ttlAt);
+// tracked / investigating → thin receipt lines; investigated → a receipt, or — when a quiet
+// contact was remembered — a one-verb decision that opens the Codex discovery.
+//
+// Before the deck this module pinned its own corner card AND hid itself whenever three other
+// cards fired (recovery:started, pirateParley:demand, law:distressRaised). The deck's ladder made
+// that cross-card hiding obsolete: coexisting surfaces stack instead of erasing each other.
 import { TETHYS_BLACK_MARKET_DISCOVERY } from '../data/frontierRumors.js';
 import { clearCodexDiscoveryRequest, requestCodexDiscovery } from './screens/codex.js';
+import { getPromptDeck } from './promptDeck.js';
 
-const STYLE_ID = 'sf-signal-investigation-style';
-const RESULT_TTL_S = 8;
 const RECEIPT_TTL_S = 4;
+const RESULT_TTL_S = 10;
 
-export function signalStrengthWord(value) {
-  const n = Math.max(0, Math.min(1, Number(value) || 0));
-  if (n >= 0.66) return 'STRONG';
-  if (n >= 0.33) return 'MEDIUM';
-  return 'FAINT';
-}
-
-export function signalMetaText(record) {
-  if (!record) return 'FAINT · RANGE —';
-  if (record.triangulation) {
-    const bearing = Math.round(Number(record.triangulation.bearingDeg) || 0)
-      .toString().padStart(3, '0');
-    const sampleCount = Math.max(0, Math.round(Number(record.triangulation.sampleCount) || 0));
-    const requiredPings = Math.max(1, Math.round(Number(record.triangulation.requiredPings) || 3));
-    return `BEARING ${bearing}° · FIX ${sampleCount}/${requiredPings}`;
-  }
-  const distance = Math.max(0, Math.round(Number(record.distance) || 0)).toLocaleString('en-US');
-  const pass = Math.max(1, Math.round(Number(record.scanCount) || 1));
-  return `${signalStrengthWord(record.strength)} · ${distance} WU · PASS ${pass}`;
-}
+const DECK_ID_RESULT = 'signal:results';
+const DECK_ID_CODEX = 'signal:codex';
 
 function safeRecord(payload) {
   const row = payload && payload.primary;
-  if (!row || !row.id || !row.classification) return null;
+  if (!row || !row.classification) return null;
   return {
-    id: String(row.id),
+    id: String(row.id || row.signalId || ''),
     classification: String(row.classification),
-    detail: String(row.detail || 'Source unresolved. Close range or pulse again.'),
-    confidence: Math.max(0, Math.min(1, Number(row.confidence) || 0)),
-    strength: Math.max(0, Math.min(1, Number(row.strength) || 0)),
-    distance: Math.max(0, Number(row.distance) || 0),
-    scanCount: Math.max(1, Math.round(Number(row.scanCount) || 1)),
+    confidence: Number(row.confidence) || 0,
     trackable: row.trackable !== false,
-    manualInvestigation: row.manualInvestigation === true,
-    triangulation: row.triangulation && typeof row.triangulation === 'object'
-      ? { ...row.triangulation }
-      : null,
+    manualInvestigation: !!row.manualInvestigation,
+    detail: String(row.detail || 'Scanner return logged.'),
+    meta: signalMetaText(row),
   };
 }
 
-export function tethysCodexTargetForCompletion(state, payload) {
-  const discovery = TETHYS_BLACK_MARKET_DISCOVERY;
-  if (!payload || payload.sectorId !== discovery.sectorId || payload.sourceId !== discovery.poiId) return null;
-  const record = state && state.world && state.world.frontierRumors && state.world.frontierRumors.byId
-    && state.world.frontierRumors.byId[discovery.rumorId];
-  if (!record || record.phase !== 'contacted' || record.contactId !== discovery.contactId) return null;
-  return { sectorId: discovery.sectorId, poiId: discovery.poiId };
+function signalMetaText(row) {
+  const bits = [];
+  if (row && row.rangeText) bits.push(String(row.rangeText));
+  if (row && row.bearingText) bits.push(String(row.bearingText));
+  return bits.length ? bits.join(' · ') : 'RETURN LOGGED';
 }
 
-export function createSignalInvestigationPrompt(ctx) {
-  const { state, bus } = ctx;
-  injectStyle();
-  const root = document.createElement('aside');
-  root.id = 'sf-signal-investigation';
-  root.hidden = true;
-  root.setAttribute('role', 'status');
-  root.setAttribute('aria-live', 'polite');
-  root.setAttribute('aria-atomic', 'true');
-  root.innerHTML = `
-    <div class="sf-signal__head"><span data-k="flag">SCAN RETURN</span><span data-k="confidence">—</span></div>
-    <div class="sf-signal__headline" data-k="headline">—</div>
-    <div class="sf-signal__meta" data-k="meta">—</div>
-    <div class="sf-signal__detail" data-k="detail">—</div>
-    <div class="sf-signal__foot">
-      <span class="sf-signal__more" data-k="more"></span>
-      <button type="button" data-k="track" aria-label="Track and investigate scanner return. Controller A."><b>A</b> TRACK / INVESTIGATE</button>
-    </div>`;
-  document.getElementById('ui-root').appendChild(root);
+function tethysCodexTargetForCompletion(state, payload) {
+  if (!payload || payload.sectorId !== TETHYS_BLACK_MARKET_DISCOVERY.sectorId
+    || payload.sourceId !== TETHYS_BLACK_MARKET_DISCOVERY.poiId) return null;
+  return TETHYS_BLACK_MARKET_DISCOVERY.codexTarget || TETHYS_BLACK_MARKET_DISCOVERY.id || null;
+}
 
-  const el = Object.fromEntries(['flag', 'confidence', 'headline', 'meta', 'detail', 'more', 'track']
-    .map((key) => [key, root.querySelector(`[data-k=${key}]`)]));
-  let active = null;
-  let destroyed = false;
+export function createSignalInvestigationPrompt(ctx = {}) {
+  const state = ctx.state || {};
+  const bus = ctx.bus;
+  if (!bus || typeof bus.on !== 'function') return inertPrompt();
 
-  function text(node, value) {
-    const next = String(value == null ? '' : value);
-    if (node && node.textContent !== next) node.textContent = next;
-  }
+  function deckFor() { return getPromptDeck(); }
 
-  function hide() {
-    if (active && active.codexTarget) clearCodexDiscoveryRequest();
-    root.hidden = true;
-    root.className = '';
-    active = null;
-  }
-
-  function canSurface() {
-    return state && state.mode === 'flight' && !(state.ui && state.ui.docked);
-  }
-
-  function showResults(payload) {
-    if (!canSurface()) return false;
+  const showResults = (payload) => {
+    const deck = deckFor();
     const record = safeRecord(payload);
-    if (!record) return false;
-    if (active && active.codexTarget) clearCodexDiscoveryRequest();
-    active = {
-      mode: 'result',
-      signalId: record.id,
-      trackable: record.trackable,
-      manualInvestigation: record.manualInvestigation,
-      hideAt: Number(state.simTime || 0) + RESULT_TTL_S,
-    };
-    root.className = 'sf-signal--result';
-    text(el.flag, 'SCAN RETURN');
-    text(el.confidence, `CONFIDENCE ${Math.round(record.confidence * 100)}%`);
-    text(el.headline, record.classification.toUpperCase());
-    text(el.meta, signalMetaText(record));
-    text(el.detail, record.detail);
-    const other = Math.max(0, Number(payload.total || (payload.signals && payload.signals.length) || 1) - 1);
-    text(el.more, record.trackable
-      ? (record.manualInvestigation
-        ? 'FLY THIS RETURN MANUALLY · NO COURSE SET'
-        : (other ? `+${other} OTHER RETURN${other === 1 ? '' : 'S'}` : 'PRIMARY RETURN'))
-      : 'MOVE LATERALLY · PULSE AGAIN');
-    el.track.hidden = !record.trackable;
-    el.track.disabled = !record.trackable;
-    el.track.removeAttribute('aria-keyshortcuts');
-    text(el.track, record.manualInvestigation ? 'A  INVESTIGATE MANUALLY' : 'A  TRACK / INVESTIGATE');
-    root.setAttribute('aria-label', record.trackable
-      ? `Scan return. ${record.classification}. ${signalMetaText(record)}. ${record.detail} ${record.manualInvestigation ? 'Investigate manually.' : 'Track or investigate.'}`
-      : `Scan return. ${record.classification}. ${signalMetaText(record)}. ${record.detail}`);
-    root.hidden = false;
-    return true;
-  }
+    if (!deck || !record) return false;
+    return deck.offerDecision({
+      id: DECK_ID_RESULT,
+      kind: 'info',
+      sender: 'SCAN RETURN',
+      statusFlag: `CONFIDENCE ${Math.round(record.confidence * 100)}%`,
+      headline: record.classification.toUpperCase(),
+      detail: [record.meta, record.detail].filter(Boolean).join(' — '),
+      ttlAt: Number(state.simTime || 0) + RESULT_TTL_S,
+      choices: record.trackable ? [{
+        id: 'track',
+        label: record.manualInvestigation ? 'INVESTIGATE MANUALLY' : 'TRACK / INVESTIGATE',
+        title: record.manualInvestigation
+          ? 'Fly this return manually · no course set'
+          : 'Track the return and investigate.',
+      }] : [],
+      onExpire: () => {},
+      onChoose: (choiceId, source) => {
+        if (choiceId !== 'track') return false;
+        deck.updateDecision(DECK_ID_RESULT, { choices: [] });
+        return bus.emit(record.manualInvestigation ? 'signal:investigate' : 'signal:track',
+          { signalId: record.id, source });
+      },
+    });
+  };
 
-  function showTracked(payload) {
-    if (!canSurface() || !payload || !payload.classification) return false;
-    if (active && active.codexTarget) clearCodexDiscoveryRequest();
-    active = { mode: 'receipt', signalId: payload.id || payload.signalId, hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S };
-    root.className = 'sf-signal--receipt';
-    text(el.flag, 'NAV FIX ARMED');
-    text(el.confidence, 'TRACKING');
-    text(el.headline, String(payload.classification).toUpperCase());
-    text(el.meta, signalMetaText(payload));
-    text(el.detail, 'Course plotted. Follow the primary objective marker to investigate.');
-    text(el.more, 'OBJECTIVE + MAP UPDATED');
-    el.track.hidden = true;
-    el.track.removeAttribute('aria-keyshortcuts');
-    root.setAttribute('aria-label', `${payload.classification} tracked. Course plotted. Follow the primary objective marker to investigate.`);
-    root.hidden = false;
-    return true;
-  }
+  const showTracked = (payload) => {
+    const deck = deckFor();
+    if (deck) deck.resolveDecision(DECK_ID_RESULT);
+    if (!payload || !payload.classification) return false;
+    return !!bus.emit('toast', {
+      text: `NAV FIX ARMED — ${String(payload.classification).toUpperCase()} — course plotted. Follow the primary objective marker to investigate.`,
+      kind: 'info',
+      ttl: RECEIPT_TTL_S,
+    });
+  };
 
-  function showInvestigating(payload) {
-    if (!canSurface() || !payload || !payload.classification) return false;
-    if (active && active.codexTarget) clearCodexDiscoveryRequest();
-    active = {
-      mode: 'receipt', signalId: payload.id || payload.signalId,
-      hideAt: Number(state.simTime || 0) + RECEIPT_TTL_S,
-    };
-    root.className = 'sf-signal--receipt';
-    text(el.flag, 'MANUAL INVESTIGATION ARMED');
-    text(el.confidence, 'FLY MANUALLY');
-    text(el.headline, String(payload.classification).toUpperCase());
-    text(el.meta, signalMetaText(payload));
-    text(el.detail, 'Fly to the scanner return yourself. Close range records the source; no course was set.');
-    text(el.more, 'NO WAYPOINT · NO AUTOPILOT');
-    el.track.hidden = true;
-    el.track.removeAttribute('aria-keyshortcuts');
-    root.setAttribute('aria-label', `${payload.classification} manual investigation armed. Fly to the scanner return yourself; no course was set.`);
-    root.hidden = false;
-    return true;
-  }
+  const showInvestigating = (payload) => {
+    const deck = deckFor();
+    if (deck) deck.resolveDecision(DECK_ID_RESULT);
+    if (!payload || !payload.classification) return false;
+    return !!bus.emit('toast', {
+      text: `MANUAL INVESTIGATION ARMED — ${String(payload.classification).toUpperCase()} — fly to the return yourself; no course was set.`,
+      kind: 'info',
+      ttl: RECEIPT_TTL_S,
+    });
+  };
 
-  function showInvestigated(payload) {
-    if (!canSurface() || !payload) return false;
-    if (active && active.codexTarget) clearCodexDiscoveryRequest();
+  const showInvestigated = (payload) => {
+    const deck = deckFor();
+    if (!payload) return false;
     const codexTarget = tethysCodexTargetForCompletion(state, payload);
-    active = {
-      mode: 'receipt',
-      signalId: payload.signalId,
-      codexTarget,
-      hideAt: Number(state.simTime || 0) + (codexTarget ? RESULT_TTL_S : RECEIPT_TTL_S),
-    };
-    root.className = 'sf-signal--receipt sf-signal--complete';
-    if (codexTarget) {
+    if (codexTarget && deck) {
       requestCodexDiscovery(codexTarget);
-      text(el.flag, 'QUIET CONTACT REMEMBERED');
-      text(el.confidence, 'SAVED');
-      text(el.headline, 'TETHYS BLACK MARKET');
-      text(el.meta, 'DISCOVERY RECEIPT · SAVED');
-      text(el.detail, 'Return to Tethys Bar for the risky Capsule Run lead. Law attention can still leave you with no payout.');
-      text(el.more, 'NO COURSE SET · NO DUPLICATE REWARD');
-      el.track.hidden = false;
-      el.track.disabled = false;
-      el.track.setAttribute('aria-keyshortcuts', 'K');
-      text(el.track, 'K / Y  VIEW CODEX');
-      root.setAttribute('aria-label', 'Quiet contact remembered and saved. View the saved Tethys Black Market discovery in Codex with K or controller Y. Return to Tethys Bar for the risky Capsule Run lead.');
-      root.hidden = false;
-      return true;
+      return deck.offerDecision({
+        id: DECK_ID_CODEX,
+        kind: 'info',
+        sender: 'QUIET CONTACT REMEMBERED',
+        statusFlag: 'SAVED',
+        headline: 'TETHYS BLACK MARKET',
+        detail: 'Discovery receipt saved. Return to Tethys Bar for the risky Capsule Run lead.',
+        ttlAt: Number(state.simTime || 0) + RESULT_TTL_S,
+        choices: [{ id: 'codex', label: 'VIEW CODEX', title: 'Open the saved discovery in the Codex (K).' }],
+        onExpire: () => { try { clearCodexDiscoveryRequest(); } catch (_) {} },
+        onChoose: () => openCodex('deck'),
+      });
     }
-    text(el.flag, 'INVESTIGATION COMPLETE');
-    text(el.confidence, 'LOGGED');
-    text(el.headline, String(payload.classification || 'SIGNAL').toUpperCase());
-    text(el.meta, 'DISCOVERY RECEIPT · SAVED');
-    text(el.detail, 'Source reached and recorded. Local salvage, distress, or anomaly systems retain authority over any outcome.');
-    text(el.more, 'NO DUPLICATE REWARD');
-    el.track.hidden = true;
-    el.track.removeAttribute('aria-keyshortcuts');
-    root.setAttribute('aria-label', `${payload.classification || 'Signal'} investigation complete and saved.`);
-    root.hidden = false;
-    return true;
-  }
+    if (deck) {
+      // A stale codex decision must not outlive its signal.
+      deck.resolveDecision(DECK_ID_CODEX);
+    }
+    return !!bus.emit('toast', {
+      text: `INVESTIGATION COMPLETE — ${String(payload.classification || 'signal').toUpperCase()} — discovery logged. No duplicate reward.`,
+      kind: 'info',
+      ttl: RECEIPT_TTL_S,
+    });
+  };
 
   function track(source = 'click') {
-    if (isUiInteractionFenced(state) || !active || active.mode !== 'result'
-      || active.trackable === false || !active.signalId) return false;
-    const signalId = active.signalId;
-    el.track.disabled = true;
-    bus.emit(active.manualInvestigation ? 'signal:investigate' : 'signal:track', { signalId, source });
-    return true;
+    const deck = deckFor();
+    if (!deck || !deck.hasDecision(DECK_ID_RESULT)) return false;
+    // The decision's own onChoose normalizes the intent; routing through the deck keeps one verb.
+    return deck.choose(DECK_ID_RESULT, 'track', source);
   }
 
   function openCodex(source = 'click') {
-    if (isUiInteractionFenced(state) || !active || !active.codexTarget) return false;
-    requestCodexDiscovery(active.codexTarget);
+    const deck = deckFor();
+    if (deck) deck.resolveDecision(DECK_ID_CODEX);
     bus.emit('ui:pushScreen', { id: 'codex', source: `signal-investigation:${source}` });
     return true;
   }
 
-  function tick() {
-    if (destroyed || !active || isUiInteractionFenced(state)) return;
-    if (!canSurface()) { hide(); return; }
-    if (Number(state.simTime || 0) >= active.hideAt) { hide(); return; }
-    if (active.mode !== 'result') return;
-    const actions = ctx.gamepad && ctx.gamepad.actions || {};
-    if (actions.accept && actions.accept.pressed) track('gamepad');
-  }
-
-  function destroy() {
-    destroyed = true;
-    el.track.removeEventListener('click', onTrackClick);
-    root.remove();
-  }
-
-  function onTrackClick() {
-    if (isUiInteractionFenced(state)) return;
-    if (active && active.codexTarget) openCodex('click');
-    else track('click');
-  }
-  el.track.addEventListener('click', onTrackClick);
   bus.on('signal:scanResults', showResults);
   bus.on('signal:tracked', showTracked);
   bus.on('signal:investigating', showInvestigating);
   bus.on('signal:investigated', showInvestigated);
-  bus.on('recovery:started', hide);
-  bus.on('pirateParley:demand', hide);
-  bus.on('law:distressRaised', hide);
-  bus.on('game:new', hide);
-  bus.on('game:load', hide);
+  // The old hide-on-recovery:started / pirateParley:demand / law:distressRaised subscriptions are
+  // retired: the deck stacks coexisting surfaces instead of erasing them.
 
-  return { el: root, tick, hide, destroy, showResults, showTracked, showInvestigated, track, openCodex };
+  return {
+    el: null,
+    tick: () => {},
+    hide: () => {
+      const deck = deckFor();
+      if (!deck) return false;
+      return deck.resolveDecision(DECK_ID_RESULT) | deck.resolveDecision(DECK_ID_CODEX);
+    },
+    destroy: () => {
+      for (const [event, handler] of [
+        ['signal:scanResults', showResults], ['signal:tracked', showTracked],
+        ['signal:investigating', showInvestigating], ['signal:investigated', showInvestigated],
+      ]) {
+        try { bus.off && bus.off(event, handler); } catch (_) {}
+      }
+    },
+    showResults, showTracked, showInvestigated, track, openCodex,
+  };
 }
 
-function injectStyle() {
-  if (document.getElementById(STYLE_ID)) return;
-  const style = document.createElement('style');
-  style.id = STYLE_ID;
-  style.textContent = `
-  #sf-signal-investigation { position:absolute; top:112px; right:16px; width:min(390px,calc(100vw - 32px));
-    z-index:1065; box-sizing:border-box; padding:9px 11px 10px; contain:layout paint style;
-    /* Flight-instrument plate (menu fascia material): near-opaque hairline plate, severity on the
-       TOP edge + head stamp — not the old glass box with a vibe-coded left accent bar. */
-    background:linear-gradient(180deg, rgba(15,20,27,.94), rgba(8,11,16,.96));
-    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
-    border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); border-top:2px solid var(--hud-cyan, #4f8fdd);
-    border-radius:4px; box-shadow:0 16px 36px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06);
-    color:var(--hud-paper, #e9eff4); font-family:var(--hud-data, var(--mono, Consolas, monospace)); transition:opacity .16s ease-out,transform .16s ease-out; }
-  #sf-signal-investigation[hidden] { display:none !important; }
-  .sf-signal__head { display:flex; justify-content:space-between; gap:12px; color:var(--hud-cyan, #4f8fdd); font-size:12px; letter-spacing:.06em; }
-  .sf-signal__headline { margin-top:5px; font-size:14px; line-height:1.25; letter-spacing:.045em; }
-  .sf-signal__meta { margin-top:3px; color:var(--hud-copy, #a9b8c4); font-size:12px; line-height:1.35; letter-spacing:.06em; }
-  .sf-signal__detail { margin-top:4px; color:var(--hud-copy, #a9b8c4); font-size:12px; line-height:1.4; }
-  .sf-signal__foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; }
-  .sf-signal__more { min-width:0; color:var(--hud-muted, #71828f); font-size:12px; letter-spacing:.06em; }
-  .sf-signal__foot button { pointer-events:auto; flex:0 0 auto; min-height:32px; padding:6px 9px;
-    border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); background:rgba(255,255,255,.04);
-    color:var(--hud-paper, #e9eff4); font:700 12px/1.2 var(--hud-data, var(--mono, Consolas, monospace)); letter-spacing:.06em; cursor:pointer; border-radius:3px;
-    transition:border-color .15s ease, background .15s ease, color .15s ease, translate .1s ease; }
-  .sf-signal__foot button b { display:inline-grid; place-items:center; min-width:16px; min-height:16px; margin-right:5px;
-    border:1px solid var(--hud-line-strong, rgba(148,178,205,.34)); border-radius:3px; font-size:12px; color:var(--hud-cyan, #4f8fdd); }
-  .sf-signal__foot button:hover,.sf-signal__foot button:focus-visible { background:rgba(255,255,255,.08); outline:2px solid var(--hud-cyan, #4f8fdd); outline-offset:2px; }
-  .sf-signal__foot button:active { translate:0 1px; }
-  .sf-signal__foot button:disabled { opacity:.55; cursor:default; }
-  #sf-signal-investigation.sf-signal--receipt { border-top-color:var(--good, #62e08a); }
-  #sf-signal-investigation.sf-signal--receipt .sf-signal__head { color:var(--good, #62e08a); }
-  @media (max-width:900px),(max-height:620px) {
-    #sf-signal-investigation { top:78px; left:12px; right:12px; width:auto; padding:8px 10px; }
-    .sf-signal__headline { font-size:12px; } .sf-signal__detail { font-size:12px; }
-  }
-  @media (prefers-reduced-motion:reduce) { #sf-signal-investigation { transition:none; } }`;
-  document.head.appendChild(style);
+function inertPrompt() {
+  return {
+    el: null, tick: () => {}, hide: () => false, destroy: () => {},
+    showResults: () => false, showTracked: () => false, showInvestigated: () => false,
+    track: () => false, openCodex: () => false,
+  };
 }
 
 export default createSignalInvestigationPrompt;

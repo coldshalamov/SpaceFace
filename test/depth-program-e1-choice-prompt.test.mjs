@@ -3,14 +3,20 @@ import assert from 'node:assert/strict';
 
 import { createBus } from '../src/core/eventBus.js';
 import { createEncounterChoicePrompt } from '../src/ui/encounterChoicePrompt.js';
+import { setPromptDeck } from '../src/ui/promptDeck.js';
 
-test('encounter choice prompt subscribes, exposes native accessible buttons, and emits exactly one choice', () => {
-  const document = new FakeDocument();
+// The encounter adapter's contract is its event→deck mapping: normalize an offer into ONE deck
+// decision, emit exactly one `encounter:choose` through the deck verb, and resolve the frame the
+// moment the choice is submitted. Ladder placement, digit fencing and the input fence are the
+// deck's own contracts (test/prompt-deck.test.mjs pins those; the browser harness sees them live).
+
+test('encounter adapter normalizes the offer into one deck decision and emits exactly one choice', () => {
   const bus = createBus();
-  const state = { mode: 'flight', ui: {} };
   const chosen = [];
   bus.on('encounter:choose', (payload) => chosen.push(payload));
-  const prompt = createEncounterChoicePrompt({ state, bus, document, mount: document.uiRoot });
+  const deck = fakeDeck();
+  setPromptDeck(deck);
+  const prompt = createEncounterChoicePrompt({ state: { mode: 'flight', ui: {} }, bus });
 
   bus.emit('encounter:choiceOffered', {
     encounterId: 'e1:h1', kind: 'depth_h1_distress_from_inside', title: 'THE DISTRESS FROM INSIDE',
@@ -22,28 +28,29 @@ test('encounter choice prompt subscribes, exposes native accessible buttons, and
     deadlineAt: 45,
   });
 
-  assert.equal(prompt.el.hidden, false);
-  assert.equal(prompt.el.getAttribute('role'), 'dialog');
-  assert.equal(prompt.el.getAttribute('aria-modal'), 'false');
-  assert.equal(prompt.el.getAttribute('aria-labelledby'), 'sf-encounter-choice-title');
-  assert.equal(prompt.buttons.length, 3);
-  assert.equal(prompt.buttons[0].tagName, 'BUTTON');
-  assert.equal(prompt.buttons[2].disabled, true);
+  assert.equal(deck.offers.length, 1);
+  const spec = deck.offers[0].spec;
+  assert.equal(spec.id, 'encounter:e1:h1');
+  assert.equal(spec.headline, 'THE DISTRESS FROM INSIDE');
+  assert.equal(spec.deadlineAt, 45);
+  assert.equal(spec.choices.length, 3);
+  assert.equal(spec.choices[2].disabled, true, 'the unavailable option is offered but disabled');
+  assert.equal(spec.choices[2].label, 'Leave quietly');
 
-  assert.equal(prompt.choose('listen', 'test'), true);
-  assert.equal(prompt.choose('board', 'test-double'), false);
+  spec.onChoose('listen', 'test');
   assert.deepEqual(chosen, [{ encounterId: 'e1:h1', choiceId: 'listen', source: 'test' }]);
-  assert.equal(prompt.el.hidden, true, 'a submitted response immediately clears its decision surface');
+  assert.ok(deck.resolved.includes('encounter:e1:h1'),
+    'a submitted response immediately clears its decision surface');
   prompt.destroy();
 });
 
-test('encounter choice prompt accepts number keys and fences them from flight input', () => {
-  const document = new FakeDocument();
+test('encounter adapter resolve events tear down the decision without emitting a choice', () => {
   const bus = createBus();
-  const state = { mode: 'flight', ui: {} };
   const chosen = [];
   bus.on('encounter:choose', (payload) => chosen.push(payload));
-  const prompt = createEncounterChoicePrompt({ state, bus, document, mount: document.uiRoot });
+  const deck = fakeDeck();
+  setPromptDeck(deck);
+  const prompt = createEncounterChoicePrompt({ state: { mode: 'flight', ui: {} }, bus });
 
   bus.emit('encounter:choiceOffered', {
     encounterId: 'e1:h6', title: 'PATROL AMBUSH',
@@ -52,104 +59,64 @@ test('encounter choice prompt accepts number keys and fences them from flight in
       { id: 'reach', label: 'Aid Reach', available: true },
     ],
   });
-  const event = keyEvent('2', 'Digit2');
-  document.dispatchEvent(event);
+  assert.equal(deck.offers.length, 1);
 
-  assert.equal(event.prevented, true);
-  assert.equal(event.stopped, true);
-  assert.deepEqual(chosen, [{ encounterId: 'e1:h6', choiceId: 'reach', source: 'keyboard' }]);
-  assert.equal(prompt.el.hidden, true);
+  bus.emit('encounter:resolved', { encounterId: 'e1:h6' });
+  assert.ok(deck.resolved.includes('encounter:e1:h6'));
+  assert.deepEqual(chosen, [], 'a resolution is not a choice');
+  assert.equal(deck.offers.length, 1, 'a resolution does not re-offer');
+
   prompt.destroy();
 });
 
-test('encounter choice prompt rejects fenced, unavailable, and stale choices and cleans listeners', () => {
-  const document = new FakeDocument();
+test('encounter adapter rejects malformed offers, inert without a deck, cleans listeners', () => {
   const bus = createBus();
-  const state = { mode: 'flight', ui: { fulfillmentBlackoutActive: true } };
   const chosen = [];
   bus.on('encounter:choose', (payload) => chosen.push(payload));
-  const prompt = createEncounterChoicePrompt({ state, bus, document, mount: document.uiRoot });
+  const deck = fakeDeck();
+  setPromptDeck(deck);
+  const prompt = createEncounterChoicePrompt({ state: { mode: 'flight', ui: {} }, bus });
+
+  bus.emit('encounter:choiceOffered', { encounterId: 'e1:x' });
+  bus.emit('encounter:choiceOffered', { options: [{ id: 'a', label: 'A' }] });
+  assert.equal(deck.offers.length, 0, 'an offer without options or id is not a decision');
+
   const offer = {
     encounterId: 'e1:h4', title: 'THE LOVE LETTER BUOY',
     options: [{ id: 'reseed', label: 'Re-seed on the grave route', available: true }],
   };
   bus.emit('encounter:choiceOffered', offer);
-  assert.equal(prompt.el.hidden, true, 'opaque blackout must fence the encounter prompt itself');
-  assert.equal(prompt.choose('reseed', 'fenced'), false);
-  state.ui.fulfillmentBlackoutActive = false;
-  assert.equal(prompt.choose('missing', 'stale'), false);
-  assert.equal(chosen.length, 0);
+  assert.equal(deck.offers.length, 1);
+
   prompt.destroy();
   bus.emit('encounter:choiceOffered', { ...offer, encounterId: 'after-destroy' });
-  assert.equal(prompt.el.hidden, true);
+  assert.equal(deck.offers.length, 1, 'destroyed adapters stop listening');
+  assert.deepEqual(chosen, []);
+
+  // Headless inertness: with no live deck the adapter must not throw and must not emit.
+  setPromptDeck(null);
+  const inert = createEncounterChoicePrompt({ state: { mode: 'flight', ui: {} }, bus });
+  bus.emit('encounter:choiceOffered', { ...offer, encounterId: 'no-deck' });
+  assert.deepEqual(chosen, []);
+  inert.destroy();
 });
 
-class FakeDocument {
-  constructor() {
-    this.byId = new Map();
-    this.head = new FakeElement('head', this);
-    this.body = new FakeElement('body', this);
-    this.uiRoot = new FakeElement('div', this);
-    this.uiRoot.id = 'ui-root';
-    this.body.appendChild(this.uiRoot);
-    this.listeners = new Map();
-  }
-  createElement(tagName) { return new FakeElement(tagName, this); }
-  getElementById(id) { return this.byId.get(id) || null; }
-  addEventListener(name, fn) {
-    const listeners = this.listeners.get(name) || new Set();
-    listeners.add(fn);
-    this.listeners.set(name, listeners);
-  }
-  removeEventListener(name, fn) { this.listeners.get(name)?.delete(fn); }
-  dispatchEvent(event) { for (const listener of this.listeners.get(event.type) || []) listener(event); }
-}
-
-class FakeElement {
-  constructor(tagName, ownerDocument) {
-    this.tagName = String(tagName).toUpperCase();
-    this.ownerDocument = ownerDocument;
-    this.children = [];
-    this.attributes = new Map();
-    this.dataset = {};
-    this.hidden = false;
-    this.disabled = false;
-    this.textContent = '';
-    this.className = '';
-    this.listeners = new Map();
-    this.parentNode = null;
-    this.style = {};
-    this._id = '';
-  }
-  set id(value) {
-    if (this._id) this.ownerDocument.byId.delete(this._id);
-    this._id = String(value || '');
-    if (this._id) this.ownerDocument.byId.set(this._id, this);
-  }
-  get id() { return this._id; }
-  setAttribute(name, value) { this.attributes.set(name, String(value)); }
-  getAttribute(name) { return this.attributes.get(name) ?? null; }
-  appendChild(child) { child.parentNode = this; this.children.push(child); return child; }
-  replaceChildren(...children) {
-    for (const child of this.children) child.parentNode = null;
-    this.children = [];
-    for (const child of children) this.appendChild(child);
-  }
-  addEventListener(name, fn) { this.listeners.set(name, fn); }
-  removeEventListener(name, fn) { if (this.listeners.get(name) === fn) this.listeners.delete(name); }
-  contains(node) { return node === this || this.children.some((child) => child.contains(node)); }
-  remove() {
-    if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((child) => child !== this);
-    this.parentNode = null;
-    if (this.id) this.ownerDocument.byId.delete(this.id);
-  }
-}
-
-function keyEvent(key, code) {
-  return {
-    type: 'keydown', key, code, ctrlKey: false, altKey: false, metaKey: false,
-    prevented: false, stopped: false,
-    preventDefault() { this.prevented = true; },
-    stopImmediatePropagation() { this.stopped = true; },
+function fakeDeck() {
+  const deck = { offers: [], updates: [], resolved: [] };
+  const byId = new Map();
+  deck.offerDecision = (spec) => { deck.offers.push({ spec }); byId.set(spec.id, spec); return true; };
+  deck.updateDecision = (id, patch) => {
+    deck.updates.push({ id, patch });
+    const spec = byId.get(id);
+    if (spec) Object.assign(spec, patch);
+    return !!spec;
   };
+  deck.resolveDecision = (id) => {
+    if (!byId.has(id)) return false;
+    byId.delete(id);
+    deck.resolved.push(id);
+    return true;
+  };
+  deck.hasDecision = (id) => byId.has(id);
+  return deck;
 }
