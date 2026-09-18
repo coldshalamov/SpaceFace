@@ -16,7 +16,7 @@ export function performanceAdmissionHorizonMs(sampleMs, timeScale = 1) {
   return durationMs * scale;
 }
 
-export function collectPerformanceSceneStructure({ state = globalThis.SF?.state, diagnostics = readDiagnostics() } = {}) {
+export function collectPerformanceSceneStructure({ state = globalThis.SF?.state, diagnostics = readDiagnostics(), isRenderRelevant = null } = {}) {
   const renderState = state?.render || null;
   const scene = renderState?.scene || null;
   const owners = new WeakMap();
@@ -204,7 +204,7 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
   stats.visibleMaterialKeys = rankedCounts(materialKeyCounts, 32);
   stats.visibleMaterialKeysByCategory = rankedCounts(materialKeyCountsByCategory, 32);
   stats.visibleShipMaterialKeys = rankedCounts(shipMaterialKeyCounts, 48);
-  const authored = authoredAssetStatus(state);
+  const authored = authoredAssetStatus(state, { isRenderRelevant });
   stats.authoredShipAdmission = {
     relevant: authored.shipCount,
     ready: authored.readyCount,
@@ -236,6 +236,7 @@ export function collectPerformancePipelineReadiness({
   diagnostics = readDiagnostics(),
   resourceStartTime = 0,
   measurementHorizonMs = 0,
+  isRenderRelevant = null,
 } = {}) {
   const renderSystem = registry && typeof registry.get === 'function' ? registry.get('render') : null;
   const renderState = state?.render || {};
@@ -243,7 +244,7 @@ export function collectPerformancePipelineReadiness({
     ? Math.max(0, renderSystem._meshBuildQueue.length - (renderSystem._meshBuildQueueHead || 0))
     : null;
   const upgrade = renderState.scene?.userData?.authoredUpgradeDiagnostics || null;
-  const authored = authoredAssetStatus(state);
+  const authored = authoredAssetStatus(state, { isRenderRelevant });
   const admissionRiskEntities = pendingAdmissionRiskEntities(state, measurementHorizonMs);
   const resources = typeof performance !== 'undefined' && typeof performance.getEntriesByType === 'function'
     ? performance.getEntriesByType('resource')
@@ -403,7 +404,12 @@ function ownerCategory(entity) {
   return entity?.type || 'entity:unknown';
 }
 
-export function authoredAssetStatus(state) {
+export function authoredAssetStatus(state, { isRenderRelevant = null } = {}) {
+  const meshExpected = typeof isRenderRelevant === 'function'
+    ? (entity) => {
+      try { return isRenderRelevant(entity, state) !== false; } catch (_) { return true; }
+    }
+    : null;
   const result = {
     shipCount: 0,
     readyCount: 0,
@@ -431,8 +437,17 @@ export function authoredAssetStatus(state) {
     };
     result.entities.push(detail);
     if (!entity.mesh) {
-      result.missingMeshCount++;
-      result.fallbackCount++;
+      // A ship outside the renderer's own residency contract (off-glass ledger row, R2/R3
+      // metadata tier, beyond the prefetch/horizon runway) is virtualized on purpose — the
+      // leaned oval is a consequence, not a fallback boundary. Only a mesh missing where the
+      // renderer says one belongs is a defect the fallback budget should fail on. Without the
+      // renderer's predicate, stay strict and keep counting.
+      if (meshExpected && !meshExpected(entity)) {
+        result.ignoredNonresidentCount++;
+      } else {
+        result.missingMeshCount++;
+        result.fallbackCount++;
+      }
       continue;
     }
     const assetState = entity.mesh.userData?.authoredAssetState;

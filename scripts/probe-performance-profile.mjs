@@ -381,8 +381,11 @@ async function runCrowdedFlightScenario(cdp, { pageIssues, startTick }) {
 }
 
 async function sampleRuntime(cdp, durationMs) {
-  return evalJson(cdp, `import('/scripts/lib/performanceSceneMetrics.mjs')
-    .then(({ collectPerformanceSceneStructure }) => new Promise((resolve) => {
+  return evalJson(cdp, `Promise.all([
+    import('/scripts/lib/performanceSceneMetrics.mjs'),
+    import('/src/render/renderer.js'),
+  ])
+    .then(([{ collectPerformanceSceneStructure }, { isEntityRenderRelevant }]) => new Promise((resolve) => {
     const started = performance.now();
     const rafFrames = [];
     const rafHitches = [];
@@ -550,6 +553,7 @@ async function sampleRuntime(cdp, durationMs) {
 
     const sceneBreakdown = () => collectPerformanceSceneStructure({
       state: window.SF?.state || null,
+      isRenderRelevant: isEntityRenderRelevant,
     });
 
     const hasTerminalAutosave = () => {
@@ -1511,8 +1515,11 @@ async function waitForAuthoredAssetsSteady(cdp) {
       };
       try {
         const metrics = await import('/scripts/lib/performanceSceneMetrics.mjs');
+        const renderer = await import('/src/render/renderer.js');
         if (typeof metrics.authoredAssetStatus === 'function') {
-          authoredStatus = metrics.authoredAssetStatus(state);
+          authoredStatus = metrics.authoredAssetStatus(state, {
+            isRenderRelevant: renderer.isEntityRenderRelevant,
+          });
         }
       } catch (_) {}
       const states = {};
