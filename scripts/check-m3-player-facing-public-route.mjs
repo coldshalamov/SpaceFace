@@ -566,6 +566,9 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
       const hits = (window.__M3_DAMAGE_OBSERVER__ && window.__M3_DAMAGE_OBSERVER__.playerHits) || [];
       const lastHit = hits.at(-1) || null;
       const ai = target && target.data && target.data.ai;
+      const strip = (value) => {
+        try { return JSON.parse(JSON.stringify(value)); } catch { return String(value); }
+      };
       const inspectEntity = (id) => {
         if (id == null || !window.SF?.helpers || typeof window.SF.helpers.inspectAI !== 'function') return null;
         try {
@@ -573,14 +576,18 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
           const lastDecision = raw && raw.lastResult && Array.isArray(raw.lastResult.decisions)
             ? raw.lastResult.decisions.find((d) => d && d.entityId === id) || null
             : null;
-          return raw ? {
+          return raw ? strip({
             tick: raw.tick,
             perception: raw.perception || null,
             behavior: raw.behavior || null,
             maneuver: raw.maneuver || null,
             combatDoctrine: raw.combatDoctrine || null,
-            lastDecision,
-          } : null;
+            lastDecision: lastDecision ? {
+              directive: lastDecision.directive || null,
+              action: lastDecision.action || null,
+              combatDoctrine: lastDecision.combatDoctrine || null,
+            } : null,
+          }) : null;
         } catch (e) { return { error: String(e && e.message || e) }; }
       };
       let authorization = null;
@@ -651,7 +658,8 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
         simTick: state && state.tick,
         autoFire: state && state.input && state.input.autoFire,
       };
-    }, authoredMission && authoredMission.targetId).catch(() => null);
+    }, authoredMission && authoredMission.targetId)
+      .catch((evalErr) => ({ evalError: String(evalErr && evalErr.message || evalErr) }));
     assert.fail(`player death route never surfaced gameOver: ${JSON.stringify(lastCombat)}`);
     throw err;
   }
