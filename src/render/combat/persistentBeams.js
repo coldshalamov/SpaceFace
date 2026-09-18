@@ -8,6 +8,16 @@ import {
 
 const DEFAULT_MAX_BEAMS = 16;
 const DEFAULT_TIMEOUT_S = 0.14;
+// Birth spool: a latched continuous beam grows out of the aperture instead of snapping to full
+// width and brightness on the first presented frame (B10). Releases stay a hard stop because the
+// simulation has already ended the connection.
+export const BEAM_BIRTH_S = 0.08;
+
+/** Smooth 0..1 birth ramp; 1 once the beam has spooled. */
+export function beamBirthGlow(ageS) {
+  const t = Math.max(0, Math.min(1, (Number.isFinite(ageS) ? ageS : 0) / BEAM_BIRTH_S));
+  return t * t * (3 - 2 * t);
+}
 
 function finite(value, fallback) {
   return Number.isFinite(value) ? value : fallback;
@@ -130,6 +140,7 @@ export class PersistentCombatBeamPool {
       toZ: 0,
       y: 0.35,
       widthMul: 1,
+      bornAt: -Infinity,
       lastSeen: -Infinity,
       coreR: 1,
       coreG: 1,
@@ -223,6 +234,7 @@ export class PersistentCombatBeamPool {
     let entry = this._byKey.get(key);
     if (!entry) {
       entry = this._claimEntry(key);
+      entry.bornAt = finite(timeS, 0);
       this.startCount++;
     }
     entry.fromX = finite(from.x, entry.fromX);
@@ -234,16 +246,19 @@ export class PersistentCombatBeamPool {
     entry.ownerId = payload.ownerId == null ? entry.ownerId : payload.ownerId;
     entry.weaponId = payload.weaponId == null ? entry.weaponId : payload.weaponId;
     entry.lastSeen = finite(timeS, 0);
+    const birth = beamBirthGlow(entry.lastSeen - entry.bornAt);
     this._color.set(colorValue(profile && profile.coreColor, 0xffffff));
     entry.coreR = this._color.r;
     entry.coreG = this._color.g;
     entry.coreB = this._color.b;
-    this._writeSlotColor(this._coreBatch, entry.slot, entry.coreR, entry.coreG, entry.coreB);
+    this._writeSlotColor(this._coreBatch, entry.slot,
+      entry.coreR * birth, entry.coreG * birth, entry.coreB * birth);
     this._color.set(colorValue(profile && profile.accentColor, 0x66ccff));
     entry.haloR = this._color.r;
     entry.haloG = this._color.g;
     entry.haloB = this._color.b;
-    this._writeSlotColor(this._haloBatch, entry.slot, entry.haloR, entry.haloG, entry.haloB);
+    this._writeSlotColor(this._haloBatch, entry.slot,
+      entry.haloR * birth, entry.haloG * birth, entry.haloB * birth);
     this._commitBatch(this._coreBatch);
     this._commitBatch(this._haloBatch);
     this.group.visible = true;
@@ -302,8 +317,12 @@ export class PersistentCombatBeamPool {
       // Preserve a stable core through the normal route's video downscale as well as fixed stills.
       // The beam remains a restrained two-layer line, but the prior 0.48 width visually vanished
       // in consecutive 720p evidence frames despite the pool staying live.
+      // Birth spool scales the drawn width, not the simulated connection: the beam exists at full
+      // length immediately and opens from a filament to its full cross-section.
+      const birth = beamBirthGlow(now - entry.bornAt);
+      const birthWidth = 0.22 + 0.78 * (birth * birth * (3 - 2 * birth));
       const width = Math.max(
-        (reducedFlash ? 0.36 : 0.52) * entry.widthMul,
+        (reducedFlash ? 0.36 : 0.52) * entry.widthMul * birthWidth,
         cameraFloor || 0,
       );
       this._writeSlotQuad(this._coreBatch, entry.slot, ax, az, bx, bz, entry.y, width, length);
