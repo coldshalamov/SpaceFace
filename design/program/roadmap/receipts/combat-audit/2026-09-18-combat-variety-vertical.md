@@ -1,0 +1,89 @@
+# Combat variety vertical — audit-then-rebuild receipt (2026-09-18)
+
+Instrument: `scripts/lib/bench/crucibleBench.mjs --duel-audit` — scripted 1v1 and 2v2 duels per
+roster archetype on fixed seeds (4242, 8008, 13502), on the real production runtime (rapier-dynamic,
+SG-06 tactical AI, real weapons, real mines/attachments). 15 fight archetypes x {1v1, 2v2} x 3 seeds
+= 90 duels per arm. Log files in this directory; `duel-audit-STOCK.json` / `duel-audit-POST.json`
+carry the full per-pair evidence.
+
+## Arms
+
+- **STOCK** (`--stock-doctrines`): every hull fights with its stock enemy-def doctrine
+  (`ai.identityStock` opt-out), i.e. the pre-identity baseline, on the same tree and instrument.
+- **POST** (default): the identity layer active — `ENEMY_DOCTRINE_OVERRIDES` (combatDefs.js)
+  stamped by `tacticalAI.stampManeuverIdentities`, wing grammar + twist clauses in `squad.js`,
+  boss choreographies for the three CAPITAL_BOSSES missions.
+
+## The diagnosis (baseline)
+
+The stock roster collapses onto two machines: seven hulls run `interceptor_flyby`
+(wasp, zealot, reaver, corsair, lawman, cutter, PD screen) and three run `ranged_disengager`
+(lancer, ghost, jackal) with identical phase timings — by construction those hulls were the same
+fight with different HP. The stock audit's differing-dimension histogram and same-fight pairs name
+them: 12 pairs of cells were **fully identical** across every measured dimension and 68/210 pairs
+sat inside the same-fight tolerance. Stock counterplay across the whole suite: attach + cut_line
+(tether raider) and snare_field (anchor controller) only — the mine-layer never laid a mine (it
+was flying the kiter machine).
+
+## The rebuild
+
+Six maneuver identities + boss choreography, all in owned files:
+
+| identity | archetypes | machine (src/ai/combatDoctrine.js) | signature |
+|---|---|---|---|
+| swarm | wasp_swarmer, choir_zealot | `swarm_pack` | 200 WU ingress, telegraphed 20-44t strikes, tight extend; pass rhythm, not sieges |
+| kiter | lancer_sniper, quiet_ghost | `ranged_disengager` (kept) | standoff orbit, weapon_charge windows, displace-on-reset |
+| mine-layer | mine_layer_jackal | `mine_layer_wake` | flank → `wake_mines` telegraph → drop line (real mines via `ai/mineLayerVerb.js` + mines system) → disengage |
+| shield-breaker | corsair_raider | `shield_breaker` | `shield_lance` telegraph → ion/plasma burst (action_burst) → peel while the target is scrambled |
+| brawler | bruiser_brawler, mirrorjaw | `brawler_commit` (kept) | committed orbit at 140 WU |
+| boarder | tether_control_raider | `tether_control_raider` (kept) | attach/reel/cut counterplay |
+| — | field_anchor_controller | `field_anchor_controller` (kept) | snare-field area denial |
+| — | warden_escort, pd_screen_escort | `escort_screen` (pd screen moved off the raider flyby) | ward screen + breach dart |
+| boss x3 | CAPITAL_BOSSES missions | `capital_broadside` / `_tollman` / `_ala` | hull-fraction stages (66% / 33%), each act its own telegraph cue + cadence (pd_wall, toll_run, grave_pull, ashfall_enrage…) |
+
+Wing grammar (`WING_COMPOSITION_GRAMMAR`, `TWIST_CLAUSES` in combatDefs.js; consumed by
+`src/ai/squad.js`): every wing of 2+ resolves roles (press / flank / screen / kite /
+area_denial / shield_breaker) and exactly ONE seeded twist clause (synchronized_strike,
+seed_the_exit, drain_then_commit, repositioning_fire, protect_the_pack, feigned_break,
+focus_the_soft) that modulates tactic weights or target allocation. Directive carries
+`wingRole` + `twist` for inspection.
+
+## Results (same classifier both arms; same-fight = <=2 of 12 dimensions differ)
+
+| metric | STOCK | POST |
+|---|---|---|
+| same-fight pairs | 68/210 | 57/210 |
+| fully-identical pairs | 12 | 6 |
+| counterplay behaviors that fired | attach, cut_line, snare_field (3) | attach, cut_line, snare_field, **mines** (4) |
+| jackal mines laid across suite | 0 | 39 |
+| B3b hostile-in-frame, survival cell (helios/energy, 3 seeds) | — | **98.7% / 100% / 99.7%, all MET** (bar 0.80; owner's last number 75.7% RED) |
+| B13 ambient knocks/min, survival cell s4242 | 4.0 (morning receipt) | 2.67 (bar 2; heading changes 0) |
+
+Fill-in after the final A/B arms complete (refined classifier with phase_vocabulary +
+maneuver_mix dimensions): see `duel-audit-STOCK.log` / `duel-audit-POST-IDENTITIES.log` headers.
+
+## Known honest gaps
+
+- Same-identity roster mates (wasp==zealot, lancer==ghost) read as the same fight **by design** —
+  they share an identity and differ by stats; 6 identities cover 17 hulls.
+- The duel classifier's set dimensions (telegraphs/statuses) degenerate to "equal" when short 1v1
+  fights end before any telegraph; the phase_vocabulary + maneuver_mix dimensions were added to
+  counter exactly this.
+- Degenerate flee cells exist in BOTH arms (tether 2v2 s13502 walked ~10k WU; PD 2v2 s4242 ~5.3k):
+  low-hull morale flee + 960 WU egress points stack when the pilot cannot finish the wing. Authored
+  behavior, not an identity regression.
+- The dreadnought 2v2 cell resolves in ~12s in BOTH arms (stock doctrine, pre-existing) — the
+  capital dies to something other than pilot DPS in wing fights; needs its own investigation
+  (out of this vertical's ownership: combat.js/missions.js stat owners).
+- Wasp swarm cells deal ~0 damage to the duel pilot in 1v1 (they die in ~4.5s having flown one
+  pass); the machine cycles and fires on the passive-target probe (15 strikes, 6 damage events over
+  60s), so the fire chain works — the one-pass lifespan is the limiter, not a broken gate.
+- B13's full pass still requires headed jitter measurement (headless can never set jitterMeasured).
+
+## Tests
+
+- `test/combat-doctrines.test.mjs` (doctrine catalog pin extended for the 5 new ids) — pass.
+- `check:baseline` 15/15; `check:crucible:arc` 15/15; ai-maneuver/crucible-real-path/fun-measurer
+  43/43; squad/doctrine/engagement suites 44/44.
+- `test/combat-ecology-roles.test.mjs` has 2 PRE-EXISTING failures (ghost preferredRange data vs
+  test pin; reads only src/data/enemies.js + makeEnemySpawnSpec — untouched by this vertical).

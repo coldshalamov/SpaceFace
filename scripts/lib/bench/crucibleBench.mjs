@@ -11,6 +11,7 @@
 // Vision: "Crucible first: every combat number is tuned in the Crucible bench, and adventure inherits it."
 
 import { spawnSync } from 'node:child_process';
+import { writeFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { createAuthoritativeRuntime } from '../../../src/runtime/createAuthoritativeRuntime.js';
@@ -2767,6 +2768,7 @@ export async function simulateCrucibleDuel({
   tickCap = DUEL_DEFAULT_TICK_CAP,
   arenaId = 'helios_core',
   loadoutId = 'energy_baseline',
+  stockDoctrineOnly = false,
 } = {}) {
   if (!Number.isFinite(seed)) {
     throw new Error('simulateCrucibleDuel: `seed` must be a finite number (fixed seeds or it did not happen)');
@@ -2894,6 +2896,12 @@ export async function simulateCrucibleDuel({
         z: arena.spawnPos.z + Math.sin(bearing) * DUEL_SPAWN_DISTANCE,
       };
       const spec = makeEnemySpawnSpec(archetypeId, duelLevelFor(def), pos);
+      if (stockDoctrineOnly) {
+        // A/B arm: opt this hull out of the identity stamp so it fights with its STOCK enemy-def
+        // doctrine — the pre-identity baseline, on this same tree and instrument. lootTableId is
+        // kept, so pre-existing specialist verbs (tether cut, field disrupt) still fire.
+        spec.data.ai.identityStock = true;
+      }
       spec.data.ai.forcePlayerTarget = true;
       spec.data.duelHostile = true;
       const ent = runtime.spawn(spec);
@@ -3176,6 +3184,7 @@ export async function runCrucibleDuelAudit({
   wings = [1, 2],
   tickCap = DUEL_DEFAULT_TICK_CAP,
   verbose = false,
+  stockDoctrineOnly = false,
 } = {}) {
   const runs = [];
   for (const archetypeId of archetypes) {
@@ -3183,7 +3192,9 @@ export async function runCrucibleDuelAudit({
       const playerWing = enemyWing; // 1v1 and 2v2, never 1v2
       for (const seed of seeds) {
         if (verbose) console.log(`[duel-audit] ${archetypeId} ${enemyWing}v${playerWing} seed:${seed}...`);
-        const { duel } = await simulateCrucibleDuel({ archetypeId, enemyWing, playerWing, seed, tickCap });
+        const { duel } = await simulateCrucibleDuel({
+          archetypeId, enemyWing, playerWing, seed, tickCap, stockDoctrineOnly,
+        });
         runs.push(duel);
         if (verbose) {
           console.log(`[duel-audit]   ${duel.stopReason} ${duel.fightSeconds}s ttk=${duel.ttkSeconds} `
@@ -3193,6 +3204,7 @@ export async function runCrucibleDuelAudit({
     }
   }
   const audit = summarizeDuelAudit(runs);
+  audit.stockDoctrineOnly = stockDoctrineOnly === true;
   printDuelAudit(audit);
   return audit;
 }
@@ -3262,6 +3274,13 @@ export function classifyDuelPair(a, b) {
   if (setDifferenceScore(a.counterplayKinds, b.counterplayKinds)) differing.push('counterplay');
   if (setDifferenceScore(a.statusKinds, b.statusKinds)) differing.push('status_payloads');
   if (a.dominantManeuver !== b.dominantManeuver) differing.push('dominant_maneuver');
+  // The fight GRAMMAR: which doctrine state machines actually ran (phase transitions observed).
+  // Two hulls passing through different authored phase sequences are different fights in kind even
+  // when the coarse ManeuverKind histogram agrees.
+  if (setDifferenceScore(a.phaseKeys, b.phaseKeys)) differing.push('phase_vocabulary');
+  // Maneuver MIX (L1 over the kind histogram, halved = total mass that moved), for when the
+  // dominant kind agrees but the mix does not.
+  if (histogramDistance(a.maneuverMix, b.maneuverMix) > 0.4) differing.push('maneuver_mix');
   return {
     a: a.key,
     b: b.key,
@@ -3279,8 +3298,9 @@ export function classifyDuelPair(a, b) {
 }
 
 function printDuelAudit(audit) {
-  console.log(`\n[duel-audit] ${audit.runCount} scripted duels, ${audit.cells.length} cells\n`);
-  console.log('| cell | ttk s | meanDist | minDist | passes/min | fire/min | dmg taken | counterplay | in-frame |');
+  console.log(`\n[duel-audit] ${audit.runCount} scripted duels, ${audit.cells.length} cells`
+    + (audit.stockDoctrineOnly ? ' [STOCK doctrines — pre-identity baseline arm]' : ''));
+  console.log('\n| cell | ttk s | meanDist | minDist | passes/min | fire/min | dmg taken | counterplay | in-frame |');
   console.log('|---|---|---|---|---|---|---|---|---|');
   for (const c of audit.cells) {
     console.log(`| ${c.key} | ${fmtNum(c.ttkMedian)} | ${fmtNum(c.meanDistMedian)} | ${fmtNum(c.minDistMedian)} `
@@ -3292,6 +3312,14 @@ function printDuelAudit(audit) {
   for (const p of same) {
     console.log(`  ${p.a}  ==  ${p.b}   [${p.differingDimensions.join(', ') || 'identical'}]`);
   }
+  const histogram = {};
+  for (const p of audit.pairs) {
+    const n = p.differingDimensions.length;
+    const bucket = n >= DUEL_SAME_FIGHT_TOLERANCE + 1 ? `${DUEL_SAME_FIGHT_TOLERANCE + 1}+` : String(n);
+    histogram[bucket] = (histogram[bucket] || 0) + 1;
+  }
+  console.log('\ndiffering-dimension histogram over all pairs (0=identical .. N+):');
+  console.log('  ' + Object.entries(histogram).map(([k, n]) => `${k}:${n}`).join('  '));
   const cp = new Map();
   for (const c of audit.cells) {
     for (const kind of c.counterplayKinds) cp.set(kind, (cp.get(kind) || 0) + c.counterplayTotal);
@@ -3310,6 +3338,21 @@ function profileDistance(p, q) {
   let sum = 0;
   for (let i = 0; i < Math.max(p.length, q.length); i++) sum += Math.abs((p[i] || 0) - (q[i] || 0));
   return sum / 2;
+}
+
+/** L1 distance between two labeled histograms, halved to total moved mass in [0, 1]. */
+function histogramDistance(a, b) {
+  const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+  if (!keys.size) return 0;
+  let sum = 0;
+  let total = 0;
+  for (const k of keys) {
+    const x = (a && a[k]) || 0;
+    const y = (b && b[k]) || 0;
+    sum += Math.abs(x - y);
+    total += Math.max(x, y);
+  }
+  return total > 0 ? sum / total : 0;
 }
 
 function setDifferenceScore(a, b) {
@@ -3381,11 +3424,18 @@ if (invokedDirectly && process.argv.includes('--duel-audit')) {
     const row = args.find((a) => a.startsWith(`${flag}=`));
     return row ? row.slice(flag.length + 1).split(',').filter(Boolean) : fallback;
   };
+  const outRow = args.find((a) => a.startsWith('--out='));
   runCrucibleDuelAudit({
     archetypes: readList('--archetypes', CRUCIBLE_DUEL_ARCHETYPES),
     seeds: readList('--seeds', CRUCIBLE_DUEL_DEFAULT_SEEDS.map(String)).map(Number),
     wings: readList('--wings', ['1', '2']).map(Number),
     verbose: args.includes('--verbose'),
+    stockDoctrineOnly: args.includes('--stock-doctrines'),
+  }).then((audit) => {
+    if (outRow) {
+      writeFileSync(outRow.slice('--out='.length), JSON.stringify(audit, null, 1));
+      console.log(`[duel-audit] full pair evidence written to ${outRow.slice('--out='.length)}`);
+    }
   }).catch((err) => {
     console.error(err);
     process.exit(1);

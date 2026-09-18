@@ -560,6 +560,8 @@ export function markCheapCohortMembers(state, shipLikeList = indexedShipLikeScan
  * — the one channel the tactical stack reads. Authority rules:
  *   - a hull whose doctrine was set by anyone OTHER than the stock enemy def (encounter script,
  *     ACE loadout, spawn option) keeps its assignment; only a stock stamp is upgraded;
+ *   - `ai.identityStock === true` opts the hull out entirely (spawn-level authoring control;
+ *     the duel audit's A/B arm uses it to reproduce the pre-identity baseline);
  *   - a CAPITAL_BOSSES mission tag (data.missionTag) outranks the archetype override, so the
  *     bruiser-brawler hulk of `capital_boss` still choreographs as a capital.
  * Idempotent per tick and deterministic: the same entity data always resolves the same doctrine.
@@ -573,7 +575,7 @@ export function stampManeuverIdentities(state, shipLikeList = indexedShipLikeSca
     if (!entity || entity.alive === false) continue;
     const data = entity.data;
     const ai = data && data.ai;
-    if (!ai || ai.passive === true) continue;
+    if (!ai || ai.passive === true || ai.identityStock === true) continue;
     const enemyId = data.lootTableId || data.enemyTypeId || null;
     if (enemyId == null && data.missionTag == null) continue;
     let wanted = null;
