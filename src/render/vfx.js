@@ -63,6 +63,7 @@ import {
   assertProjectileTrailProfileContracts,
 } from './vfxProfiles.js';
 import { createRenderFrameMembrane } from './frameCoordinates.js';
+import { presentedAnchorRot, presentedAnchorXZ } from './presentedAnchor.js';
 import { readOwnedExceptionalSpeed } from './velocityLanguage.js';
 import {
   lootMagnetFocusDelta,
@@ -8021,7 +8022,8 @@ export const vfx = {
     // much larger. Using the collision radius made lines attach to empty space in station centers.
     // Chord math stays galactic-global; mesh buffer writes are frame-local.
     const endpoints = cable.endpointScratch;
-    if (!writeTetherVisualEndpoints(sourceEnt, anchorEnt, cable.lastRemote, endpoints)) {
+    if (!writeTetherVisualEndpoints(sourceEnt, anchorEnt, cable.lastRemote, endpoints,
+      this._renderInterpolationAlpha())) {
       setTetherCableVisible(cable, false);
       return;
     }
@@ -10054,6 +10056,18 @@ export const vfx = {
     this._flashLight({ x: p.x, z: p.z }, '#fff0d0', 7.5 * scale, 11, 120 + r * 5);
   },
 
+  // The render alpha the renderer posed this frame's hulls with (accumulator/fixedDt, set in
+  // prepareFrame before vfx.update runs). Sim-anchored presentation must blend prevPos→pos with
+  // this same alpha to land on the drawn hull's moment; see presentedAnchor.js.
+  _renderInterpolationAlpha() {
+    const alpha = this.state && this.state.render && this.state.render.interpolationAlpha;
+    return Number.isFinite(alpha) ? alpha : 1;
+  },
+
+  _presentedAnchorXZScratch() {
+    return this._presentedAnchorXZ || (this._presentedAnchorXZ = { x: 0, z: 0 });
+  },
+
   // engine trail emitter — called per ship per frame from update(), throttled by accumulator
   _emitEngineTrail(e, throttle, dt, out = this._trailSpawnScratch) {
     const result = out || (this._trailSpawnScratch = { particles: 0, streaks: 0 });
@@ -10071,7 +10085,11 @@ export const vfx = {
     if (factionThruster) this._cFaction.lerp(this._ctmp.set(factionThruster), 0.38);
     const col0 = this._cFaction;
     const streakLenMul = prof.streakLenMul || 1;
-    const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
+    // Nozzle heading at the drawn hull's moment: the raw sim rot sits up to one tick of turn
+    // ahead of the fence-blended hull, and the fallback nozzle swings against it every tick.
+    const anchorAlpha = this._renderInterpolationAlpha();
+    const anchorRot = presentedAnchorRot(e, anchorAlpha);
+    const cf = Math.cos(anchorRot), sf = Math.sin(anchorRot);
     const boostBlend = e.flags && e.flags.boosting ? 1 : 0;
     const cruising = e.id === this.state.playerId && this.state.player && this.state.player.cruise && this.state.player.cruise.phase === 'cruising';
     const cruiseBlend = cruising ? 1 : 0;
@@ -10091,8 +10109,9 @@ export const vfx = {
     }
     else {
       const back = (e.radius || 4) * 0.85;
-      bx = e.pos.x - cf * back;
-      bz = e.pos.z - sf * back;
+      const anchor = presentedAnchorXZ(e, anchorAlpha, this._presentedAnchorXZScratch());
+      bx = anchor.x - cf * back;
+      bz = anchor.z - sf * back;
       baseA = Math.atan2(-sf, -cf);
     }
     const nozzleClearance = TRAIL_NOZZLE_CLEARANCE + boostBlend * 0.65 + cruiseBlend * 0.55;
@@ -12917,12 +12936,17 @@ export const vfx = {
         );
         this._ribbonTrails.set(e.id, trail);
       }
-      // sample from engine nozzle (rear of ship); socket/entity XZ are galactic-global → frame-local
-      const cf = Math.cos(e.rot), sf = Math.sin(e.rot);
+      // sample from engine nozzle (rear of ship); socket/entity XZ are galactic-global → frame-local.
+      // Socket-less fallback presents at the drawn hull's moment — the raw sim pose sits up to one
+      // tick of travel ahead of the fence-blended hull and sawtooths against it every tick.
+      const anchorAlpha = this._renderInterpolationAlpha();
+      const anchorRot = presentedAnchorRot(e, anchorAlpha);
+      const cf = Math.cos(anchorRot), sf = Math.sin(anchorRot);
       const back = (e.radius || 14) * 0.88;
       const sock = this._trailSocketWorldPose(e);
-      const txG = sock ? sock.x : e.pos.x - cf * back;
-      const tzG = sock ? sock.z : e.pos.z - sf * back;
+      const anchor = presentedAnchorXZ(e, anchorAlpha, this._presentedAnchorXZScratch());
+      const txG = sock ? sock.x : anchor.x - cf * back;
+      const tzG = sock ? sock.z : anchor.z - sf * back;
       const local = this._toLocalXZ(txG, tzG, this._spawnLocalXZ);
       const radius = Math.max(4, e.radius || 14);
       const spacing = Math.max(RIBBON_MIN_SAMPLE_SPACING_WU, radius * 0.12);
@@ -13826,12 +13850,24 @@ function sameTetherIdentity(a, b) {
 
 // Writes the exact galactic-global cable endpoints used by both the live mesh and break VFX.
 // The caller owns `out`; the frame update therefore stays allocation-free.
-function writeTetherVisualEndpoints(source, target, remote, out) {
+const TETHER_SOURCE_ANCHOR = { x: 0, z: 0 };
+const TETHER_TARGET_ANCHOR = { x: 0, z: 0 };
+
+/**
+ * Chord math stays galactic-global; mesh buffer writes are frame-local. `alpha` is the render
+ * interpolation alpha: with it, both endpoints are presented at the drawn hulls' moment instead of
+ * the live sim tick — a raw-sim ship end sits up to one tick of travel ahead of the fence-blended
+ * hull and sawtooths against it every tick (the visible detach-and-stab on a taut line). Statics
+ * and teleports fall through to the live pose; see presentedAnchor.js.
+ */
+export function writeTetherVisualEndpoints(source, target, remote, out, alpha = 1) {
   if (!source || !target || !out || !source.pos || !target.pos) return false;
-  const sourceX = Number(source.pos.x);
-  const sourceZ = Number(source.pos.z);
-  const targetX = Number(target.pos.x);
-  const targetZ = Number(target.pos.z);
+  presentedAnchorXZ(source, alpha, TETHER_SOURCE_ANCHOR);
+  presentedAnchorXZ(target, alpha, TETHER_TARGET_ANCHOR);
+  const sourceX = TETHER_SOURCE_ANCHOR.x;
+  const sourceZ = TETHER_SOURCE_ANCHOR.z;
+  const targetX = TETHER_TARGET_ANCHOR.x;
+  const targetZ = TETHER_TARGET_ANCHOR.z;
   if (!Number.isFinite(sourceX) || !Number.isFinite(sourceZ)
     || !Number.isFinite(targetX) || !Number.isFinite(targetZ)) return false;
 
@@ -13846,7 +13882,7 @@ function writeTetherVisualEndpoints(source, target, remote, out) {
     ax = sourceX + (sourceDx / sourceDistance) * sourceRadius * 0.88;
     az = sourceZ + (sourceDz / sourceDistance) * sourceRadius * 0.88;
   } else {
-    const rot = Number.isFinite(source.rot) ? source.rot : 0;
+    const rot = presentedAnchorRot(source, alpha);
     const noseRadius = Number.isFinite(source.radius) && source.radius > 0 ? source.radius : 6;
     ax = sourceX + Math.cos(rot) * noseRadius;
     az = sourceZ + Math.sin(rot) * noseRadius;
