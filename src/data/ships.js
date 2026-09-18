@@ -263,7 +263,7 @@ export const SHIPS = [
     outfitSpace: 46, weaponCapacity: 6, engineCapacity: 9, designMass: 100,
     bankFactor: 0.30,
     driveId: 'drive_torch_l',  // open-cycle torch — sustained axial force is the job; the yard hull is a drive with a frame
-    energyCap: 220, energyRegen: 24, collisionRadius: 20, price: 118000,
+    energyCap: 220, energyRegen: 24, collisionRadius: 22, price: 118000, // 22 keeps a travel-ceiling tick (18.67 WU) under the 85%-of-radius tunnelling bound shared with the Bastion; the yard hull is the widest small frame (halfWidth 0.68)
     boost: { max: 80, drainRate: 40, regenRate: 20, dashImpulse: 90, dashCooldown: 3.2 },  // a tug shoves; it does not sprint
     // working hull: one dorsal ring covers the yard; the deep utility bay is the point
     slots: { weapon: [{ size:'M', facing:'turret' }], shield: ['M'], engine: ['M'], cargo: ['S'], mining: [], utility: ['M','M','M'], thruster: ['M'] },
