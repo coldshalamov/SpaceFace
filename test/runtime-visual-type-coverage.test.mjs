@@ -11,6 +11,8 @@ function stubCanvas() {
     putImageData() {}, fillRect() {}, strokeRect() {}, clearRect() {}, drawImage() {},
     save() {}, restore() {}, translate() {}, rotate() {}, scale() {}, setTransform() {},
     beginPath() {}, closePath() {}, moveTo() {}, lineTo() {}, arc() {}, rect() {}, fill() {}, stroke() {},
+    quadraticCurveTo() {}, bezierCurveTo() {}, arcTo() {}, ellipse() {}, fillText() {},
+    measureText() { return { width: 0 }; },
     createLinearGradient() { return { addColorStop() {} }; },
     createRadialGradient() { return { addColorStop() {} }; },
   };
@@ -136,4 +138,48 @@ test('displaced smooth asteroid variants publish final-surface normal policy', (
   }
   assert.ok(maxRadialDeviation > 0.001,
     `normals must follow the displaced surface rather than the source sphere: ${maxRadialDeviation}`);
+});
+
+test('live lane beacons receive a lit nav-buoy visual instead of failing hidden', () => {
+  const root = createVisualFactory().build({
+    id: 61,
+    type: 'beacon',
+    radius: 14,
+    data: { parentType: 'story_prop', laneId: 'lane_helios_tethys', laneBeaconDead: false },
+  });
+  const receipt = inspect(root);
+  assert.equal(root.visible, true);
+  assert.equal(root.userData.visualLanguage, 'route-nav-buoy');
+  assert.equal(root.userData.animated, true);
+  assert.ok(receipt.geometryTypes.length >= 4, 'beacon needs mast, base, fins, and lens');
+  assert.ok(!root.userData.visualBuildFailed, 'beacon must not render as an invisible failure root');
+});
+
+test('dead lane beacons read as unlit props', () => {
+  const root = createVisualFactory().build({
+    id: 62,
+    type: 'beacon',
+    radius: 14,
+    data: { parentType: 'story_prop', laneId: 'lane_helios_tethys', laneBeaconDead: true },
+  });
+  const receipt = inspect(root);
+  assert.equal(root.visible, true);
+  assert.equal(root.userData.animated, false);
+  assert.ok(receipt.geometryTypes.length >= 4);
+});
+
+test('lane traffic freighters receive a hauler visual instead of failing hidden', () => {
+  const root = createVisualFactory().build({
+    id: 63,
+    type: 'freighter',
+    radius: 12,
+    team: 0,
+    factionId: null,
+    data: { parentType: 'lane_traffic', laneId: 'lane_helios_tethys', laneTrafficIndex: 0 },
+  });
+  const receipt = inspect(root);
+  assert.equal(root.visible, true);
+  assert.ok(!root.userData.visualBuildFailed, 'freighter must not render as an invisible failure root');
+  assert.ok(root.userData.hull, 'freighter visual must be a ship-family hull');
+  assert.ok(receipt.geometryTypes.length >= 4, 'freighter needs a real hull, not a marker');
 });

@@ -3977,6 +3977,74 @@ function buildFallback(e) {
   return root;
 }
 
+// Route/nav buoy: a mast + fins + head lens scaled to the entity radius (lane beacons ~14,
+// story buoys ~5). Lane beacons carry data.laneBeaconDead — the OFFLINE tell is a dark unlit
+// lens so the dropout reads before the drive drops, matching the scanner label's contract.
+// Live beacons blink amber via the shared animateStation driver hosted on the mast mesh.
+function buildBeacon(e) {
+  const R = Math.max(1, (e && e.radius) || 10);
+  const dead = !!(e && e.data && e.data.laneBeaconDead);
+  const g = new THREE.Group();
+  const hull = getMaterial('beacon:hull', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+    color: 0x2c343c, roughness: 0.55, metalness: 0.7,
+  }), SHARED_MATERIAL_ROLE.HULL));
+  const mast = new THREE.Mesh(
+    getGeometry('beacon:mast', () => new THREE.CylinderGeometry(0.07, 0.11, 1.5, 8)),
+    hull,
+  );
+  g.add(mast);
+  const base = new THREE.Mesh(
+    getGeometry('beacon:base', () => new THREE.CylinderGeometry(0.3, 0.42, 0.2, 8)),
+    hull,
+  );
+  base.position.y = -0.72;
+  g.add(base);
+  for (const side of [-1, 1]) {
+    const fin = new THREE.Mesh(
+      getGeometry('beacon:fin', () => new THREE.BoxGeometry(0.04, 0.3, 0.5)),
+      getMaterial('beacon:fin', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+        color: 0x1d2733, roughness: 0.4, metalness: 0.85, emissive: 0x16324a, emissiveIntensity: 0.2,
+      }), SHARED_MATERIAL_ROLE.HULL)),
+    );
+    fin.position.set(side * 0.26, 0.05, 0);
+    g.add(fin);
+  }
+  const lens = new THREE.Mesh(
+    getGeometry('beacon:lens', () => new THREE.SphereGeometry(0.24, 12, 10)),
+    dead
+      ? getMaterial('beacon:lens:dead', () => stampSharedMaterialRole(new THREE.MeshStandardMaterial({
+          color: 0x23272c, roughness: 0.6, metalness: 0.3, emissive: 0x11151a, emissiveIntensity: 0.2,
+        }), SHARED_MATERIAL_ROLE.HULL))
+      : emissiveMaterial('#ffb03a', 3.2).clone(),
+  );
+  lens.position.y = 0.86;
+  g.add(lens);
+  if (!dead) {
+    lens.userData.blink = { phase: (hashId(e && e.id) % 97) / 97, hz: 0.55, base: 3.2 };
+    lens.userData.spacefaceTags = { damageRole: 'navLight', vfxRole: 'navBlinker' };
+    animateStation(mast, [lens]);
+  }
+  g.scale.setScalar(R);
+  g.userData.kind = 'beacon';
+  g.userData.interactionKind = 'beacon';
+  g.userData.visualLanguage = 'route-nav-buoy';
+  g.userData.animated = !dead;
+  return g;
+}
+
+// Lane traffic (type 'freighter') is closed-form route furniture: it has no defId, no team and no
+// fittings, so it cannot ride the ship path raw — a default kestrel in player cyan would read as a
+// friendly fighter. Wrap it as a neutral-team Mule hauler: the same silhouette the manufactured
+// routes are described by, in a neutral gray instead of the player's palette.
+function laneTrafficVisualEntity(e) {
+  const data = (e && e.data) || {};
+  return {
+    ...e,
+    team: 2,
+    data: { ...data, defId: data.defId || 'ship_mule' },
+  };
+}
+
 function buildPayload(e) {
   const R = Math.max(1, (e && e.radius) || 3);
   const g = new THREE.Group();
@@ -4064,6 +4132,11 @@ export function createVisualFactory() {
           case 'wreck': return stampBuiltVisual(attachPackagedBody(freezeStaticPresentation(buildWreck(e)), wreckPackagedFile(e), e));
           // PQ-013: the colossal planet-site body (Q18 identity transaction spawns exactly one).
           case 'planet': return stampBuiltVisual(freezeStaticPresentation(buildPlanetSiteVisual(e)));
+          // Lane/route infrastructure: buoys are scannable props (OFFLINE reads as an unlit lens);
+          // traffic haulers are closed-form route visuals that must render as haulers, not as
+          // player-cyan default kestrels — hence the neutral-team mule wrap.
+          case 'beacon': return stampBuiltVisual(buildBeacon(e));
+          case 'freighter': return stampBuiltVisual(optimizeStaticBatches(buildShipMesh(laneTrafficVisualEntity(e), resolvePalette(laneTrafficVisualEntity(e)))));
           case 'fx': return null; // fx entities are handled by the vfx particle system, not meshed
           default: return stampBuiltVisual(buildFallback(e));
         }
