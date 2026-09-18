@@ -212,6 +212,8 @@ export function collectPerformanceSceneStructure({ state = globalThis.SF?.state,
     fallback: authored.fallbackCount,
     missingMesh: authored.missingMeshCount,
     ignoredNonresident: authored.ignoredNonresidentCount,
+    missingMeshEntities: authored.missingMeshEntities,
+    fallbackEntities: authored.fallbackEntities,
   };
   for (const entity of authored.entities) {
     const assetState = entity.assetState || 'unknown';
@@ -417,6 +419,8 @@ export function authoredAssetStatus(state, { isRenderRelevant = null } = {}) {
     fallbackCount: 0,
     missingMeshCount: 0,
     ignoredNonresidentCount: 0,
+    missingMeshEntities: [],
+    fallbackEntities: [],
     entities: [],
   };
   for (const entity of state?.entityList || []) {
@@ -447,6 +451,8 @@ export function authoredAssetStatus(state, { isRenderRelevant = null } = {}) {
       } else {
         result.missingMeshCount++;
         result.fallbackCount++;
+        if (result.missingMeshEntities.length < 8) result.missingMeshEntities.push(detail);
+        if (result.fallbackEntities.length < 8) result.fallbackEntities.push(detail);
       }
       continue;
     }
@@ -463,6 +469,7 @@ export function authoredAssetStatus(state, { isRenderRelevant = null } = {}) {
       result.pendingCount++;
     } else {
       result.fallbackCount++;
+      if (result.fallbackEntities.length < 8) result.fallbackEntities.push(detail);
     }
   }
   return result;

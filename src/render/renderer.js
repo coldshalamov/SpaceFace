@@ -1109,6 +1109,19 @@ function isHoldExemptMeshBuild(entity, state, glassIds) {
 }
 
 /**
+ * Whether the renderer owes this entity a built mesh right now. Outside the first-flight
+ * residency hold that is the plain render-relevance contract; during the hold only the
+ * exempt set (protected set piece, explicit focus, on-glass rows) is owed one — every
+ * other deferred hull is a scheduled deferral, not a missing admission.
+ */
+export function isEntityMeshExpected(entity, state) {
+  if (!isEntityRenderRelevant(entity, state)) return false;
+  if (!holdFirstFlightStreaming(state)) return true;
+  const frame = state && state.render && state.render.activityFrame;
+  return isHoldExemptMeshBuild(entity, state, frame && frame.renderGlassIds);
+}
+
+/**
  * Queue the hold-exempt set while the first-flight residency hold owns streaming.
  * Reconcile and poll never run under the hold, so without this the build queue stays
  * empty and the exempt drain below is a no-op (live-confirmed: the rescue rock sat

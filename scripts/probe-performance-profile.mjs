@@ -385,7 +385,7 @@ async function sampleRuntime(cdp, durationMs) {
     import('/scripts/lib/performanceSceneMetrics.mjs'),
     import('/src/render/renderer.js'),
   ])
-    .then(([{ collectPerformanceSceneStructure }, { isEntityRenderRelevant }]) => new Promise((resolve) => {
+    .then(([{ collectPerformanceSceneStructure }, { isEntityMeshExpected }]) => new Promise((resolve) => {
     const started = performance.now();
     const rafFrames = [];
     const rafHitches = [];
@@ -553,7 +553,7 @@ async function sampleRuntime(cdp, durationMs) {
 
     const sceneBreakdown = () => collectPerformanceSceneStructure({
       state: window.SF?.state || null,
-      isRenderRelevant: isEntityRenderRelevant,
+      isRenderRelevant: isEntityMeshExpected,
     });
 
     const hasTerminalAutosave = () => {
@@ -1518,7 +1518,7 @@ async function waitForAuthoredAssetsSteady(cdp) {
         const renderer = await import('/src/render/renderer.js');
         if (typeof metrics.authoredAssetStatus === 'function') {
           authoredStatus = metrics.authoredAssetStatus(state, {
-            isRenderRelevant: renderer.isEntityRenderRelevant,
+            isRenderRelevant: renderer.isEntityMeshExpected,
           });
         }
       } catch (_) {}

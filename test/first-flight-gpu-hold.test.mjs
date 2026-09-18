@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { shouldFreezeFlightSubmit } from '../src/core/presentationFreeze.js';
 import {
   holdFirstFlightStreaming,
+  isEntityMeshExpected,
   isEntityRenderRelevant,
   reattachResidentGpuMeshes,
   serviceRenderMeshResidency,
@@ -229,4 +230,50 @@ test('intentional sector enter cooks the live next scene behind the jump shell',
   assert.match(renderer, /method: 'live-scene-restore'/);
   assert.match(renderer, /restored hulls at loading:promise/);
   assert.match(freeze, /sectorShellAdmission/);
+});
+
+test('isEntityMeshExpected mirrors the hold-exempt build contract', () => {
+  const player = { id: 1, type: 'ship', alive: true, isPlayer: true, pos: { x: 0, z: 0 } };
+  const runwayShip = {
+    id: 2, type: 'ship', alive: true, pos: { x: 800, z: 0 },
+    activity: { presentationTier: 'R1_RUNWAY' },
+  };
+  const glassShip = { id: 3, type: 'ship', alive: true, pos: { x: 50, z: 0 } };
+  const focusShip = {
+    id: 4, type: 'ship', alive: true, pos: { x: 900, z: 0 }, flags: { forceRender: true },
+  };
+  const rescueShip = {
+    id: 5, type: 'ship', alive: true, pos: { x: 700, z: 0 },
+    data: { rescue: true },
+  };
+  const unloadedShip = {
+    id: 6, type: 'ship', alive: true, pos: { x: 50000, z: 0 },
+    activity: { presentationTier: 'R3_UNLOADED' },
+  };
+  const state = {
+    mode: 'flight',
+    playerId: 1,
+    simTime: 10,
+    entities: new Map([[1, player]]),
+    entityList: [player, runwayShip, glassShip, focusShip, rescueShip, unloadedShip],
+    camera: { zoom: 144 },
+    render: {
+      activityFrame: {
+        complete: true,
+        renderGlassIds: new Set([3]),
+        renderRunwayIds: new Set([2, 5]),
+      },
+    },
+  };
+  // Under the hold only the exempt set is owed a mesh: the runway hull is render-relevant
+  // but its build is a scheduled deferral, not a missing admission.
+  assert.equal(isEntityMeshExpected(runwayShip, state), false);
+  assert.equal(isEntityMeshExpected(glassShip, state), true);
+  assert.equal(isEntityMeshExpected(focusShip, state), true);
+  assert.equal(isEntityMeshExpected(rescueShip, state), true);
+  assert.equal(isEntityMeshExpected(unloadedShip, state), false);
+  // Once the hold lifts, plain render relevance owns the contract again.
+  state.simTime = 21;
+  assert.equal(isEntityMeshExpected(runwayShip, state), true);
+  assert.equal(isEntityMeshExpected(unloadedShip, state), false);
 });

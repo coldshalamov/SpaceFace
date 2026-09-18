@@ -117,6 +117,8 @@ test('scene metrics count actual visible instances, surfaces, semantic roles, an
     fallback: 0,
     missingMesh: 0,
     ignoredNonresident: 0,
+    missingMeshEntities: [],
+    fallbackEntities: [],
   });
   assert.equal(result.instancedMeshes, 1);
   assert.equal(result.batchedMeshes, 1);
@@ -319,6 +321,8 @@ test('invisible pending authored admission is not misreported as a procedural fa
     fallbackCount: 0,
     missingMeshCount: 0,
     ignoredNonresidentCount: 0,
+    missingMeshEntities: [],
+    fallbackEntities: [],
     entities: [
       { id: null, defId: null, trafficRole: null, sectorId: null, distanceToPlayer: null, admission: 'ready', assetState: 'authored' },
       { id: null, defId: null, trafficRole: null, sectorId: null, distanceToPlayer: null, admission: 'pending', assetState: 'awaiting-authored-admission' },
