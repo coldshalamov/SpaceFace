@@ -148,6 +148,6 @@ test('live entity view sync hides off-runway roots through the helper', async ()
   assert.match(source, /authoredPending:\s*isAuthoredPendingStatus\(mesh\.userData && mesh\.userData\.authoredAssetState\)/);
   assert.match(source, /onLiveGlass/,
     'the live-glass submit override reaches the visibility rule');
-  assert.equal((source.match(/ledgerRow:\s*isPresentationLedgerRow\(entity\)/g) || []).length, 2,
+  assert.equal((source.match(/ledgerRow:\s*!!\(packedFlags & PRESENTATION_FLAGS\.LEDGER\) \|\| isPresentationLedgerRow\(entity\)/g) || []).length, 2,
     'both submit sites tell the visibility rule which roots are far/field/dressing ledger rows');
 });

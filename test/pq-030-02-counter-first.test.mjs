@@ -54,7 +54,11 @@ const RAIDER_SECTOR = 'sector_sker_haven';
 const RAIDER_SHAPE_IDS = ['tether_control_raider_ambush', 'tether_control_raider_wake'];
 const DAY_SECONDS = 600;      // core time contract: encounterDirector DAY_SECONDS (10 sim-min day)
 const TWO_HOURS_S = 2 * 3600; // the packet's own "two hours before" bar
-const SCAN_DAYS = 60;
+// Encounter-catalog growth (54 -> 61 shapes since this clock was recorded) moves the
+// per-day shared RNG stream, so seed 30000's first wake contact sits at day ~133. The
+// packet bar is the two-hour margin, which still holds with room — the scan bound follows
+// the catalog, matching the 150-day bound of the multi-seed test below.
+const SCAN_DAYS = 150;
 
 test('the sweep head unlocks on the committed honest-hours ladder, not in the first session', () => {
   const ladderRow = TECH_VERB_LADDER.find((row) => row.nodeId === 'tech_fire_control');
