@@ -710,8 +710,8 @@ function injectCommsCss() {
   s.textContent = `
   /* ===== comms feed — joined to the flight context rail when the HUD is present ===== */
   #sf-comms { position:relative; width:100%; max-height:124px; display:flex;
-    flex-direction:column-reverse; gap:4px; pointer-events:none; z-index:1050; overflow:hidden;
-    font-family:var(--hud-body, "IBM Plex Sans", "Segoe UI", sans-serif); }
+    flex-direction:column-reverse; gap:4px; pointer-events:none; z-index:20; overflow:hidden;
+    font-family:var(--hud-data, var(--mono, Consolas, monospace)); }
   #ui-root > #sf-comms { position:absolute; left:20px; top:118px; width:340px; }
   #sf-comms .sf-comm { pointer-events:auto; }
   body.ui-modal-open #sf-comms,

@@ -13,6 +13,7 @@ import {
   hailFrequencyText,
   resolveHailVisual,
 } from './commsRadial.js';
+import { getPromptDeck } from './promptDeck.js';
 
 const STYLE_ID = 'sf-contact-hail-style';
 
@@ -193,6 +194,10 @@ export function createContactHailPrompt(ctx) {
 
   function onKeyDown(event) {
     if (isUiInteractionFenced(state) || !active || event.altKey || event.ctrlKey || event.metaKey) return;
+    // The decision deck owns the digits while any decision is live — the hail panel's numbered
+    // choices step aside rather than race it (pre-deck, both capture listeners fired).
+    const deck = getPromptDeck();
+    if (deck && deck.size > 0) return;
     const index = event.code === 'Digit1' || event.code === 'Numpad1' ? 0
       : event.code === 'Digit2' || event.code === 'Numpad2' ? 1
         : event.code === 'Digit3' || event.code === 'Numpad3' ? 2 : -1;
@@ -257,8 +262,8 @@ function injectStyle() {
   style.textContent = `
   /* No paint containment: the deck panel intentionally hangs 71px left of the button (left:-71px)
      — contain:paint would clip it to the root's border box and it would never render. */
-  #sf-contact-hail { position:absolute; left:85px; top:20px; z-index:1061;
-    font-family:var(--sf-body-face, "IBM Plex Sans", "Segoe UI", sans-serif); contain:layout style; }
+  #sf-contact-hail { position:absolute; left:85px; top:20px; z-index:20;
+    font-family:var(--hud-data, var(--mono, Consolas, monospace)); contain:layout style; }
   .sf-contact-hail__button { width:72px; height:32px; padding:0 10px; border-radius:4px;
     border:1px solid color-mix(in srgb, var(--sf-calm) 38%, transparent);
     background:color-mix(in srgb, var(--sf-surface) 90%, transparent); color:var(--sf-calm);
@@ -276,12 +281,13 @@ function injectStyle() {
     outline:2px solid var(--sf-goal); outline-offset:2px; }
   .sf-contact-hail__button:disabled { opacity:.72; }
   .sf-contact-hail__panel { position:absolute; left:-71px; top:38px; width:min(332px, calc(100vw - 28px));
-    box-sizing:border-box; padding:10px 11px; border-radius:4px;
-    background:color-mix(in srgb, var(--sf-surface) 92%, transparent);
-    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
-    color:var(--sf-paper);
-    border:1px solid color-mix(in srgb, var(--sf-calm) 38%, transparent); border-top:2px solid var(--sf-goal);
-    box-shadow:0 16px 36px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.06); }
+    box-sizing:border-box; padding:10px 11px; border-radius:8px;
+    /* Glass register (hudStyles :root tokens) — no backdrop-filter, flight perf floor §7. */
+    background-color:var(--glass-fill, rgb(9 14 22 / .82));
+    background-image:var(--glass-sheen, linear-gradient(180deg, rgb(255 255 255 / .08), rgb(255 255 255 / 0) 46%));
+    color:var(--hud-paper, rgb(236 244 253 / .97));
+    border:1px solid var(--glass-edge, rgb(188 220 255 / .2)); border-top:2px solid var(--glass-neon, rgb(141 217 255));
+    box-shadow:var(--glass-drop, 0 10px 26px rgb(2 6 14 / .4)), var(--glass-inner, inset 0 1px 0 rgb(255 255 255 / .05)); }
   .sf-contact-hail__panel[hidden] { display:none !important; }
   .sf-contact-hail__deck { width:100%; border-radius:3px; border:1px solid var(--sf-edge);
     background:color-mix(in srgb, var(--sf-surface) 88%, transparent);
@@ -294,9 +300,9 @@ function injectStyle() {
   .sf-contact-hail__deck:active { translate:0 1px; }
   .sf-contact-hail__crest { grid-row:1 / span 2; width:24px; height:24px; display:inline-flex; align-items:center; justify-content:center; color:var(--sf-calm); }
   .sf-contact-hail__who { grid-column:2; display:grid; gap:1px; }
-  .sf-contact-hail__pilot { font:600 14px var(--sf-subhead-face, "IBM Plex Sans", sans-serif); line-height:1.1; letter-spacing:.02em; }
-  .sf-contact-hail__class { font-size:12px; color:var(--sf-calm); line-height:1.2; }
-  .sf-contact-hail__freq { grid-column:2; font:500 12px var(--sf-data-face, "IBM Plex Mono", monospace); color:var(--sf-goal); }
+  .sf-contact-hail__pilot { font:600 13px var(--hud-data, var(--mono, Consolas, monospace)); line-height:1.15; letter-spacing:.03em; }
+  .sf-contact-hail__class { font-size:12px; color:var(--hud-muted, rgb(178 199 222 / .8)); line-height:1.2; }
+  .sf-contact-hail__freq { grid-column:2; font:500 12px var(--hud-data, var(--mono, Consolas, monospace)); color:var(--glass-neon, rgb(141 217 255)); }
   .sf-contact-hail__ribbon { grid-column:1 / -1; width:100%; height:22px; color:var(--sf-you); }
   .sf-contact-hail__ribbon path { fill:none; stroke:currentColor; stroke-width:1.4; }
   .sf-contact-hail__lines { display:grid; gap:2px; }

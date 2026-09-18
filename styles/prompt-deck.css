@@ -143,6 +143,8 @@
   font-weight: 400;
   color: var(--glass-neon, rgb(141 217 255));
 }
+/* Disabled choices claim no digit — the empty keycap box stays out of the way. */
+.sf-prompt__choice b:empty { visibility: hidden; }
 .sf-prompt__choice span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sf-prompt__choice:hover,
 .sf-prompt__choice:focus-visible,

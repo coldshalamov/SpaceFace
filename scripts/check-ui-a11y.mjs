@@ -18,7 +18,7 @@ const checks = [
       "state.mode !== 'flight'",
       "hud.setAttribute('aria-hidden', 'true')",
       "hud.removeAttribute('aria-hidden')",
-      'hud.inert = hidden',
+      'hud.inert = next',
       'el.hidden',
       "el.style && el.style.display === 'none'",
       'p.hidden',

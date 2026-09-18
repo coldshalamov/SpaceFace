@@ -159,16 +159,19 @@ Two distinct quantities that specs conflated:
 <body>
   <canvas id="gl-canvas"></canvas>   <!-- z-index: 0  — Three.js WebGLRenderer -->
   <div id="ui-root">                  <!-- position:fixed; inset:0; pointer-events:none -->
-     <div id="hud">      ...          <!-- z 10   — always-mounted flight HUD -->
+     <div id="vignette"></div>        <!-- z 5    — low-health CSS radial gradient -->
+     <div id="hud">      ...          <!-- z 10   — always-mounted flight HUD (receipt lane lives here) -->
+     <div id="sf-prompt-deck"> ...    <!-- z 20   — flight decision ladder (promptDeck.js) -->
      <div id="modal-backdrop"></div>  <!-- z 90   — shared blur backdrop -->
      <div id="screens">  ...          <!-- z 100  — modal screens (cached, one visible) -->
-     <div id="toasts">   ...          <!-- z 1000 — transient toasts -->
      <div id="alerts">   ...          <!-- z 1100 — contextual alerts (missile lock on top) -->
-     <div id="vignette"></div>        <!-- z 5    — low-health CSS radial gradient -->
   </div>
 </body>
 ```
 - `#ui-root` is `pointer-events:none`; interactive children opt back in with `pointer-events:auto`.
+- The prompt deck (z 20) is the ONE flight decision surface — timed, verbed cards render on its
+  ladder; facts go to the receipt lane inside `#hud`, alarms to `#alerts` (HUD_FLIGHT_ATTENTION).
+  Any modal screen (z 100) covers it, and its input router yields to modals and the confirm.
 - The canvas fills the viewport; renderer `setPixelRatio(min(devicePixelRatio, settings.video.pixelRatioCap))`.
 - UI never reads the WebGL framebuffer. The bridge from 3D→DOM is **one function**: `render.worldToScreen(vec3) -> {x, y, onScreen}` (camera.project), used by HUD for target reticles, damage numbers, off-screen arrows, dock prompts.
 - Screen shake moves only the 3D camera; the DOM HUD is immune and stays readable (relied upon by UI spec).

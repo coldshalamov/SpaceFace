@@ -390,11 +390,20 @@ body.k-screen-top #modal-backdrop { background: none; }
 .k-screen .sf-drawer__x { all: unset; cursor: pointer; font-size: var(--k-fs-body); color: var(--k-bone-62); }
 
 /* Task D additions */
-/* §4.2: the confirm dialog (src/ui/confirm.js) — a title, a sentence and two words on a dark ground; no plate. */
+/* §4.2: the confirm dialog (src/ui/confirm.js) — a modal, so it gets a real surface. The old
+   "words on a dark ground, no plate" rule cited Task D of the voided direction sheet
+   (FIELD_HARDWARE_PROGRAM §8) and read as a rendering glitch over the dark flight world.
+   Glass register, same tokens the prompt deck consumes. */
 #sf-confirm-root { position: fixed; inset: 0; z-index: 5000; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--k-ink) 82%, transparent); opacity: 0; transition: opacity var(--k-d-settle) var(--k-ease); pointer-events: auto; }
 #sf-confirm-root:empty { display: none; pointer-events: none; }
 #sf-confirm-root.sf-confirm--in { opacity: 1; }
-.sf-confirm { width: min(calc(560px * var(--k-s)), 92vw); display: flex; flex-direction: column; gap: var(--k-gap); }
+.sf-confirm { width: min(calc(560px * var(--k-s)), 92vw); display: flex; flex-direction: column; gap: var(--k-gap);
+  box-sizing: border-box; padding: calc(22px * var(--k-s)) calc(26px * var(--k-s));
+  background-color: var(--glass-fill, rgb(9 14 22 / 0.82));
+  background-image: var(--glass-sheen, linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0) 46%));
+  border: 1px solid var(--glass-edge, rgb(188 220 255 / 0.2));
+  border-radius: 10px;
+  box-shadow: var(--glass-drop, 0 10px 26px rgb(2 6 14 / 0.4)), var(--glass-inner, inset 0 1px 0 rgb(255 255 255 / 0.05)); }
 .sf-confirm__title { margin: 0; }
 .sf-confirm__title--danger { color: var(--k-red); }
 .sf-confirm__body { margin: 0; white-space: pre-line; }

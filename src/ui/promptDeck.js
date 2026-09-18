@@ -145,6 +145,7 @@ export function createPromptDeck(ctx = {}) {
   let destroyed = false;
   let settleIn = null;
   let raisedId = null;
+  let raisedExplicit = false;
   let lastLiveText = '';
 
   try {
@@ -303,11 +304,20 @@ export function createPromptDeck(ctx = {}) {
     const order = planLadder([...entries.values()].map((e) => ({
       id: e.spec.id, deadlineAt: e.spec.deadlineAt, ttlAt: e.spec.ttlAt, seq: e.seq,
     })));
-    // The raised entry leads the line; the ladder order fills the rest. Exactly FULL_SLOTS frames
-    // ever render — everything past them collapses to chips, so overlap cannot be expressed.
-    const front = raisedId && order.includes(raisedId) ? order.filter((id) => id === raisedId) : [];
-    const line = [...front, ...order.filter((id) => id !== raisedId)];
-    raisedId = line.length ? line[0] : null;
+    if (!order.length) {
+      raisedId = null;
+      raisedExplicit = false;
+      root.replaceChildren();
+      root.hidden = true;
+      return;
+    }
+    // Deadline urgency owns the order unless the PLAYER explicitly raised an entry (chip click or
+    // its digit); a stale explicit raise falls back to ladder order. The deck never lets the mere
+    // fact of being first-offered keep a card above a more urgent one.
+    const raised = raisedExplicit && raisedId && order.includes(raisedId) ? raisedId : order[0];
+    const line = [raised, ...order.filter((id) => id !== raised)];
+    raisedId = raised;
+    raisedExplicit = false;
 
     root.replaceChildren();
     const full = line.slice(0, FULL_SLOTS);
@@ -334,6 +344,16 @@ export function createPromptDeck(ctx = {}) {
       digitSlot += 1;
     }
     root.hidden = line.length === 0;
+    // Clamp the ladder above the sector-law panel when it is on screen — the right column is the
+    // HUD's reserved composition (approved resting frame) and the deck may not enter it.
+    const lawPanel = doc.getElementById('sf-sector-law');
+    if (lawPanel && lawPanel.getBoundingClientRect) {
+      const lawTop = lawPanel.getBoundingClientRect().top;
+      if (Number.isFinite(lawTop) && lawTop > 0) {
+        const deckTop = root.getBoundingClientRect().top;
+        root.style.maxHeight = `${Math.max(200, Math.floor(lawTop - deckTop - 10))}px`;
+      }
+    }
     syncChoiceHighlight();
   }
 
@@ -341,7 +361,9 @@ export function createPromptDeck(ctx = {}) {
     for (const entry of entries.values()) {
       const raisedEntry = entry.spec.id === raisedId;
       (entry.choiceButtons || []).forEach((btn, i) => {
-        btn.classList.toggle('is-highlight', raisedEntry && i === (entry.highlightIndex || 0));
+        // The highlight is the gamepad's cursor: it appears only once stick/d-pad navigation is
+        // used, so mouse/keyboard users never see a stuck ring on the default choice.
+        btn.classList.toggle('is-highlight', raisedEntry && entry.highlightIndex != null && i === entry.highlightIndex);
       });
     }
   }
@@ -462,6 +484,7 @@ export function createPromptDeck(ctx = {}) {
   function raise(id) {
     if (!entries.has(id)) return false;
     raisedId = id;
+    raisedExplicit = true;
     layout();
     return true;
   }
@@ -478,7 +501,7 @@ export function createPromptDeck(ctx = {}) {
       entry = {
         spec: normalized,
         seq: ++seqCounter,
-        frameEl: null, chipEl: null, highlightIndex: 0, lastCountdown: null,
+        frameEl: null, chipEl: null, highlightIndex: null, lastCountdown: null,
       };
       entry.frameEl = buildFrame(entry);
       renderFrame(entry);

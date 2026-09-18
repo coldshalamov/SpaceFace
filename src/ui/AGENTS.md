@@ -12,6 +12,9 @@ element is assembled from the produced kit under `assets/ui/kit/` (packet P21). 
 - **Clean NON-diegetic HUD.** No visor/cockpit/helmet framing, screen-edge arcs, or pilot portraits.
 - Choose panel treatment per screen; measure compositor cost. No universal opaque-panel recipe.
 - Match the surface to the decision (HUD, card, modal, full screen). Avoid duplicate simultaneous copy.
+- **Flight transient routing (HUD_FLIGHT_ATTENTION):** a timed decision with verbs → the prompt
+  deck; a fact/result → a receipt line (`toasts.js` / `admitReceipt`); continuous state → a HUD
+  instrument; an alarm → `alerts.js`; a moment → its own presenter. Never a new hand-styled card.
 - Combat and economy feedback stay configurable and legible.
 - Motion follows purpose and `motionReduce`/`flashReduce` in `accessibility.js`.
 - Player-facing strings pass `check:player-facing-labels`.
@@ -19,14 +22,20 @@ element is assembled from the produced kit under `assets/ui/kit/` (packet P21). 
 ## Non-obvious owners
 
 - `uiRoot.js` / `screenManager.js` — mount and one-visible-screen switching.
+- `promptDeck.js` — the ONE flight decision surface (ladder, z 20, Digit1-9, gamepad, lifecycle).
+  The encounter / lawful-inspection / parley / signal / recovery / customs modules are thin
+  adapters that normalize their bus events into `offerDecision` specs; they own no DOM, no keys,
+  no placement. Receipts never go on the deck. Styling: `styles/prompt-deck.css` on the glass
+  tokens (no backdrop-filter — flight floor §7).
 - `commandDeckRefit.js` — additive presentation/interaction layer (PR #113). Does not own transactions.
 - `hud.js` — always-mounted flight HUD. Attention pass: `design/HUD_FLIGHT_ATTENTION.md`.
 - `input.js` here is UI input; `src/systems/input.js` owns the sim contract.
 - `asteroid/` is live Asteroid Works (`drill` screen). `screens/drill.js` is a helper, not the shell.
   Campaign: `design/program/ASTEROID_WORKS_PLAYFIELD.md` / `PQ-130`.
 
-DOM layering (ARCHITECTURE §1.2): canvas z0 < vignette z5 < hud+receipts z10–11 < modal-backdrop z90
-< screens z100 < alerts z1100. `#ui-root` is `pointer-events:none`; interactive children opt in.
+DOM layering (ARCHITECTURE §1.2): canvas z0 < vignette z5 < hud+receipts z10–11 < prompt-deck z20
+< modal-backdrop z90 < screens z100 < alerts z1100. `#ui-root` is `pointer-events:none`;
+interactive children opt in.
 
 ## Seeing the UI before changing it
 
