@@ -50,24 +50,24 @@ focus_the_soft) that modulates tactic weights or target allocation. Directive ca
 
 ## Results (same classifier both arms; same-fight = <=2 of 12 dimensions differ)
 
-Final A/B (refined classifier with phase_vocabulary + maneuver_mix dimensions):
+Final A/B (refined classifier with phase_vocabulary + maneuver_mix dimensions; identical seeds,
+identical tree, only the identity stamp differs between arms):
 
 | metric | STOCK (pre-identity) | POST (identities) |
 |---|---|---|
-| differing-dimension histogram (0 / 1 / 2 / 3+ of 12) | see duel-audit-STOCK-BASELINE.log | **0:2  1:5  2:9  3+:194** — 92% of pairs differ on 3+ dimensions |
-| same-fight pairs | (running — fill on completion) | **16/210**, of which 9 are same-identity roster mates (wasp==zealot, lancer==ghost — by design) and 7 cross-identity, each differing on exactly 2 marginal dimensions |
-| fully-identical pairs | 12 (coarse run) | 2 |
-| counterplay behaviors that fired | attach, cut_line, snare_field (3) | attach, cut_line, snare_field, **mines** (4) |
-| jackal mines laid across suite | 0 | 39 |
+| differing-dimension histogram (0 / 1 / 2 / 3+ of 12) | 0:7  1:9  2:20  3+:174 (82.9%) | **0:2  1:5  2:9  3+:194 (92.4%)** |
+| same-fight pairs | 36/210 (32 of them share a stock doctrine by construction) | **16/210**, of which 9 are same-identity roster mates (wasp==zealot, lancer==ghost — by design) and 7 cross-identity, each differing on exactly 2 marginal dimensions |
+| fully-identical pairs (0 differing dimensions) | **7** — whole cells indistinguishable from each other | **2** (the two same-identity roster mates) |
+| counterplay behaviors that fired | attach:45, cut_line:44, snare_field:59 (3 kinds) | attach:44, cut_line:44, snare_field:55, **mines:39** (4 kinds) |
 | B3b hostile-in-frame, survival cell (helios/energy, 3 seeds) | — | **98.7% / 100% / 99.7%, all MET** (bar 0.80; owner's last number 75.7% RED) |
 | B13 ambient knocks/min, survival cell s4242 | 4.0 (morning receipt) | 2.67 (bar 2; heading changes 0) |
 
-The POST cross-identity remainder (7 pairs, all listed in duel-audit-POST-IDENTITIES.log): each
-differs on exactly two marginal dimensions (e.g. fire_pressure + phase_vocabulary), i.e. these are
-fights at the SAME bar, not the same fight — the stock run's 12 fully-identical pairs (wasp==zealot
-== reaver == cutter == lawman indistinguishable cell-for-cell) are gone.
-
-Determinism note: two identical POST-arm launches produced byte-identical 90-run logs and
+The stock run's 7 fully-identical pairs are the audit's namesake: wasp, zealot, reaver, cutter,
+lawman, corsair and PD-screen cells were literally the same fight cell-for-cell before the
+identities. Post-identity, only the two roster mates that deliberately share the swarm identity
+remain fully identical. The 7 remaining POST cross-identity pairs each differ on exactly two
+marginal dimensions (e.g. fire_pressure + phase_vocabulary) — fights at the same bar, not the same
+fight. Determinism note: two identical POST-arm launches produced byte-identical 90-run logs and
 summaries — the instrument is seed-stable end to end.
 
 ## Known honest gaps
