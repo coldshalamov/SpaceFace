@@ -554,7 +554,39 @@ async function proveAuthoredHunterDamageAndRecovery(page, { requireRecovery = tr
       && Math.hypot(Number(player.vel.x) || 0, Number(player.vel.z) || 0) < 20;
   }, null, { timeout: 15_000 });
 
-  await page.locator('[data-screen="gameOver"]').waitFor({ state: 'visible', timeout: DAMAGE_TIMEOUT_MS });
+  try {
+    await page.locator('[data-screen="gameOver"]').waitFor({ state: 'visible', timeout: DAMAGE_TIMEOUT_MS });
+  } catch (err) {
+    // The death route is the assertion under test — a timeout needs the combat state at expiry:
+    // did the quarry die first, disengage, or simply fail to out-damage a braking starter ship?
+    const lastCombat = await page.evaluate(() => {
+      const state = window.SF?.state;
+      const player = state && state.entities && state.entities.get(state.playerId);
+      const target = state && state.entities && state.entities.get(state.player && state.player.targetId);
+      const hits = (window.__M3_DAMAGE_OBSERVER__ && window.__M3_DAMAGE_OBSERVER__.playerHits) || [];
+      const lastHit = hits.at(-1) || null;
+      return {
+        mode: state && state.mode,
+        playerAlive: player && player.alive !== false,
+        vitals: player ? { shield: player.shield, armor: player.armor, hull: player.hull } : null,
+        playerSpeed: player && player.vel ? Math.hypot(player.vel.x || 0, player.vel.z || 0) : null,
+        targetId: target && target.id,
+        targetAlive: target ? target.alive !== false && Number(target.hull || 0) > 0 : null,
+        targetVitals: target ? { shield: target.shield, armor: target.armor, hull: target.hull } : null,
+        targetDist: target && player ? Math.hypot(target.pos.x - player.pos.x, target.pos.z - player.pos.z) : null,
+        targetAiState: target && target.data && target.data.ai ? {
+          state: target.data.ai.state || null, morale: target.data.ai.morale ?? null,
+          disengaged: target.data.ai.disengaged ?? null,
+        } : null,
+        hitCount: hits.length,
+        lastHitAt: lastHit && lastHit.atTick,
+        simTick: state && state.tick,
+        autoFire: state && state.input && state.input.autoFire,
+      };
+    }).catch(() => null);
+    assert.fail(`player death route never surfaced gameOver: ${JSON.stringify(lastCombat)}`);
+    throw err;
+  }
   const afterAction = await page.evaluate(() => {
     const root = document.querySelector('[data-screen="gameOver"]');
     const receipt = window.SF?.state?.combat?.lastPlayerDefeat || null;
