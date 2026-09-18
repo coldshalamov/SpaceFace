@@ -96,6 +96,8 @@ const FRAGMENT_SHADER = /* glsl */`
   uniform float uCameraNear;
   uniform float uCameraFar;
   uniform float uSoftDistance;
+  // B16: the cross-section patterns must travel with the round instead of riding a still image.
+  uniform float uBoltTime;
 
   float linearDepth(float depth01) {
     float z = depth01 * 2.0 - 1.0;
@@ -122,8 +124,10 @@ const FRAGMENT_SHADER = /* glsl */`
     // Variant 1: Plasma - superheated incandescent convection with boiling edges
     float plasma = step(0.5, vVariant) * (1.0 - step(1.5, vVariant));
     float plasmaBulb = sin(clamp(vAlong, 0.0, 1.0) * 3.14159);
+    float plasmaBoil = 0.5 + 0.5 * sin(vAlong * 11.0 - uBoltTime * 14.0);
     float plasmaCore = pow(max(0.0, 1.0 - across), 3.2);
-    body = mix(body, (plasmaCore * 1.1 + sheath * 0.7) * (0.6 + plasmaBulb * 0.5), plasma);
+    body = mix(body, (plasmaCore * 1.1 + sheath * 0.7)
+      * (0.52 + plasmaBulb * 0.42 + plasmaBoil * 0.16), plasma);
     col = mix(col, vec3(1.0, 0.95, 0.75), plasmaCore * plasma * 0.85);
 
     // Variant 2: Kinetic Mach tracer - hypersonic sabot needle with shock-diamond
@@ -133,7 +137,7 @@ const FRAGMENT_SHADER = /* glsl */`
     float machHead = smoothstep(0.55, 1.0, vAlong);
     float machTail = smoothstep(0.5, 0.0, vAlong);
     float machCore = pow(max(0.0, 1.0 - across), 12.0);
-    float machDiamonds = 0.82 + 0.18 * sin(vAlong * 46.0);
+    float machDiamonds = 0.82 + 0.18 * sin(vAlong * 46.0 - uBoltTime * 55.0);
     body = mix(body, (machCore * 1.5 + sheath * 0.28) * machDiamonds * (0.75 + machHead * 0.9), kinetic);
     col = mix(col, vec3(1.0, 0.97, 0.9), machCore * machHead * kinetic * 0.95);
     col = mix(col, vec3(1.0, 0.62, 0.22), machTail * kinetic * 0.85);
@@ -144,7 +148,7 @@ const FRAGMENT_SHADER = /* glsl */`
     float rail = step(2.5, vVariant) * (1.0 - step(3.5, vVariant));
     float railNeedle = pow(max(0.0, 1.0 - across), 10.0);
     float railHalo = pow(max(0.0, 1.0 - across), 2.6);
-    float railRings = 0.86 + 0.14 * sin(vAlong * 44.0);
+    float railRings = 0.86 + 0.14 * sin(vAlong * 44.0 - uBoltTime * 62.0);
     float railHead = smoothstep(0.35, 1.0, vAlong);
     body = mix(body, (railNeedle * 1.7 + railHalo * 0.4) * railRings * (0.7 + railHead * 0.8), rail);
     col = mix(col, vec3(1.0, 0.99, 0.96), railNeedle * rail * 0.95);
@@ -153,7 +157,8 @@ const FRAGMENT_SHADER = /* glsl */`
     float emp = step(3.5, vVariant) * (1.0 - step(4.5, vVariant));
     float fork = abs(vUv.y - 0.5) * 2.0;
     float empArc = step(0.32, fork) * (1.0 - smoothstep(0.55, 0.95, fork));
-    body *= mix(1.0, 0.55 + 0.55 * empArc, emp);
+    float empCrackle = 0.78 + 0.22 * sin(vAlong * 24.0 - uBoltTime * 33.0);
+    body *= mix(1.0, (0.55 + 0.55 * empArc) * empCrackle, emp);
     col = mix(col, vec3(0.75, 0.88, 1.0), empArc * emp * 0.8);
 
     // Variant 5: Concussion - dense shockwave compression slug
@@ -221,6 +226,7 @@ export class EnergyBoltPool {
         uCameraNear: { value: 0.5 },
         uCameraFar: { value: 4000 },
         uSoftDistance: { value: 1.4 },
+        uBoltTime: { value: 0 },
       },
       vertexShader: VERTEX_SHADER,
       fragmentShader: FRAGMENT_SHADER,
@@ -281,7 +287,10 @@ export class EnergyBoltPool {
     u.uResolution.value.set(Math.max(1, width || 1), Math.max(1, height || 1));
   }
 
-  beginFrame() {
+  beginFrame(dt = 0) {
+    this._time = (Number.isFinite(this._time) ? this._time : 0)
+      + (Number.isFinite(dt) && dt > 0 ? Math.min(dt, 0.1) : 0);
+    this.material.uniforms.uBoltTime.value = this._time;
     this.writeCount = 0;
     this.byEntity.clear();
   }

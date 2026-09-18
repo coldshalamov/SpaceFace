@@ -145,7 +145,7 @@ export class PlasmaStreamSystem {
     // One forge per line: the mouth each line is drawn out of. Paired with the trail rather than
     // with the bell, because it has to follow the line's heading, not the hull's.
     this._forges = [];
-    this._forgeAim = { x: 0, y: 0, z: 0 };
+
     for (let i = 0; i < 4; i++) {
       this._trails.push(new ContrailTrail(this.THREE, {}));
       this._trailNozzles.push({ x: 0, y: 0, z: 0, aftX: -1, aftZ: 0 });
@@ -466,14 +466,10 @@ export class PlasmaStreamSystem {
 
       // The mouth rides the line's own heading and fires on the line's own pulse, so the flash at
       // the bell and the band leaving it are one event rather than two effects near each other.
+      // The forge takes its aim from the nozzle axis; the legacy `aft` fallback is never needed
+      // here, so no dead aim vector is maintained.
       forge.setCamera(this._camObj);
-      if (trail.headAftDirection(this._forgeAim)) {
-        forge.update(nz, this._forgeAim, this._ribbonShape, trail.bandFlash(this._ribbonShape.drive));
-      } else {
-        // No line yet — aim the mouth down the bell so a standing start still lights it.
-        this._forgeAim.x = nz.aftX; this._forgeAim.y = 0; this._forgeAim.z = nz.aftZ;
-        forge.update(nz, this._forgeAim, this._ribbonShape, trail.bandFlash(this._ribbonShape.drive));
-      }
+      forge.update(nz, null, this._ribbonShape, trail.bandFlash(this._ribbonShape.drive));
     }
     this._active = emitting || trailLive >= 2;
 

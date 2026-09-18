@@ -350,7 +350,7 @@ export class WeaponVfxPresenter {
       context.depthWidth,
       context.depthHeight,
     );
-    this._syncBolts(entities, alpha, camera);
+    this._syncBolts(entities, alpha, camera, dt);
     this._updateNearMiss(dt, entities, alpha, camera);
     this.scorches.update(dt, this._scorchPoseCallback);
     this._syncWellDistortion();
@@ -360,8 +360,8 @@ export class WeaponVfxPresenter {
     if (this.quarks) this.quarks.update(dt);
   }
 
-  _syncBolts(entities, alpha, camera) {
-    this.bolts.beginFrame();
+  _syncBolts(entities, alpha, camera, dt = 0) {
+    this.bolts.beginFrame(dt);
     _seen.clear();
     const camPos = camera && camera.position;
     const state = this.state;
